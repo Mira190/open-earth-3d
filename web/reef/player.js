@@ -198,7 +198,8 @@ export async function init(ctx) {
   }
   function placeCrate(x, north) { const h = ctx.height(x, north); gearCrate.position.set(x, h, -north); gearCrate.rotation.y = -0.4; }
   const cycleGear = () => { const g = S.gear; equip(g.scuba ? 'none' : g.snorkel ? 'scuba' : 'snorkel'); };
-  function addInteractable(o) { const it = Object.assign({ radius: 2.4, key: 'E' }, o); interactables.push(it); return it; }
+  // keeps the object itself (not a copy), so getters such as a moving x/north stay live
+  function addInteractable(o) { if (o.radius === undefined) o.radius = 2.4; if (!o.key) o.key = 'E'; interactables.push(o); return o; }
   function nearest() {
     let best = null, bd = 1e9;
     for (const it of interactables) {
@@ -533,6 +534,7 @@ export async function init(ctx) {
   const player = {
     S, rig, look: rig.look,
     get position() { return S.pos; },
+    get group() { return rig.group; },                       // the body: boats/control.js hides it while aboard
     get state() { return S.state; },
     get depth() { return S.depthBody; },
     get gear() { return Object.assign({}, S.gear); },
@@ -600,10 +602,12 @@ export async function init(ctx) {
   }
 
   // ------------------------------------------------------------ frame
-  let acc = 0;
+  let acc = 0, lastUpdate = 0;
   const controller = {
     update(dt) {
       if (S.auto) return;
+      // keys pressed while another controller drove (a boat, an aircraft; E is also the helicopter's strafe) are stale
+      const now = performance.now(); if (now - lastUpdate > 250) pressed.clear(); lastUpdate = now;
       dt = dt > 0 ? Math.min(dt, 0.1) : 1 / 60;           // still-frame tests can hand in a negative step
       pollPad(dt);
       simulate(dt, input());

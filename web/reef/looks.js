@@ -12,7 +12,8 @@ const SKIN_LIST = Object.values(SKIN_TONES);
 export const HAIR_TONES = { black: '#17110e', darkBrown: '#2c1d14', brown: '#4a3220', auburn: '#6e3a22', chestnut: '#7a5230', blond: '#c9a96a', sunBleached: '#dcc189', grey: '#9a958f', white: '#d8d4cd' };
 const HAIR_COMMON = ['#17110e', '#17110e', '#2c1d14', '#2c1d14', '#4a3220', '#6e3a22', '#7a5230', '#c9a96a', '#dcc189'];
 
-// marine stingers (box jellyfish, Irukandji) are a hazard from October to May on this coast
+// marine stingers (box jellyfish, Irukandji) are a hazard from October to May in the Whitsundays (Wikipedia, Whitsunday
+// Islands National Park; Surf Life Saving Queensland gives November to May for the state's beaches)
 export const stingerSeason = (d = new Date()) => { const m = d.getUTCMonth(); return m >= 9 || m <= 4; };
 
 // which character templates suit which role (men, women)
