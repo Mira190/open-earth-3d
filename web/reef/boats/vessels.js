@@ -42,6 +42,13 @@ function bimini(K, M, x0, x1, w, y, yFrame) {
   g.computeVertexNormals();
   K.add(M.canvas, g);
 }
+// a window band on a tapering cabin side: z follows zOf(x); sd = -1 port, +1 starboard
+function windowStrip(x0, x1, y0, y1, zOf, sd, n = 6) {
+  const pos = [], idx = [];
+  for (let i = 0; i <= n; i++) { const x = x0 + (x1 - x0) * i / n, z = sd * zOf(x); pos.push(x, y0, z, x, y1, z); }
+  for (let i = 0; i < n; i++) { const a = i * 2; if (sd > 0) idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); else idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
 const lightsOf = (g, list) => list.map(([c, x, y, z, s]) => lamp(g, c, x, y, z, s));
 
 // =====================================================================================================
@@ -61,10 +68,8 @@ export function buildYacht(o = {}) {
   const y0 = 0.96;
   const plan = [[3.2, -0.82], [3.4, 0], [3.2, 0.82], [-0.9, 1.12], [-1.1, 1.0], [-1.1, -1.0], [-0.9, -1.12]];
   K.add(M.white, slab(plan.map(([x, z]) => [x, z]), y0, 0.55, 0.07));
-  for (const sd of [-1, 1]) {
-    // portlight strips just proud of the cabin side
-    K.add(M.glass, box(2.5, 0.24, 0.03, 0.9, y0 + 0.30, sd * 0.99));
-  }
+  // portlight strips following the taper of the cabin side (plan half-width 1.12 at x -0.9 to 0.82 at x 3.2, plus the bevel)
+  for (const sd of [-1, 1]) K.add(M.glass, windowStrip(-0.4, 2.4, y0 + 0.18, y0 + 0.42, x => (1.12 - (x + 0.9) / 4.1 * 0.3) + 0.075, sd));
   K.add(M.glass, box(0.05, 0.22, 1.2, 3.17, y0 + 0.34, 0)); // forward window
   K.add(M.white, slab(rrect(0.9, 0.9, 0.1), y0 + 0.55, 0.12, 0.03), 2.6, 0, 0); // hatch
   K.add(M.glass, box(0.7, 0.02, 0.7, 2.6, y0 + 0.69, 0));
@@ -136,8 +141,8 @@ export function buildCat(o = {}) {
   K.add(M.teak, slab(rrect(4.4, 5.2, 0.15), 1.42, 0.03, 0.005), -4.0, 0, 0);
   const cabin = [[3.2, -1.0], [3.6, 0], [3.2, 1.0], [2.4, 2.45], [-1.8, 2.45], [-1.8, -2.45], [2.4, -2.45]];
   K.add(M.white, slab(cabin, 1.45, 1.15, 0.12));
-  K.add(M.glass, box(4.0, 0.58, 0.04, 0.4, 2.25, 2.45)); K.add(M.glass, box(4.0, 0.58, 0.04, 0.4, 2.25, -2.45));
-  K.add(M.glass, box(0.04, 0.6, 1.6, 3.62, 2.25, 0));
+  K.add(M.glass, box(4.0, 0.58, 0.04, 0.4, 2.25, 2.6)); K.add(M.glass, box(4.0, 0.58, 0.04, 0.4, 2.25, -2.6));
+  K.add(M.glass, box(0.04, 0.6, 1.6, 3.78, 2.25, 0));
   K.add(M.white, slab(rrect(6.4, 5.4, 0.2), 2.58, 0.1, 0.03), -1.0, 0, 0);          // hardtop
   for (const [x, z] of [[-4.0, -2.45], [-4.0, 2.45]]) K.add(M.alu, rod([x, 1.45, z], [x, 2.62, z], 0.04));
   // trampoline between the bows, forward of the cabin

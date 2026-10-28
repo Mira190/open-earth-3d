@@ -23,6 +23,7 @@ const rnd = (() => { let s = 12345; return () => ((s = (s * 1664525 + 1013904223
 const pick = a => a[Math.floor(rnd() * a.length)];
 
 export async function init(ctx) {
+  const tInit = performance.now();
   const { scene, camera, env, q } = ctx;
   shared.env = env;
   materials();
@@ -46,7 +47,7 @@ export async function init(ctx) {
   };
 
   // ---- api handed to Vessel and the controllers ----
-  const api = { scene, env, surf, wind: windNow, vessels,
+  const api = { scene, env, surf, wind: windNow, vessels, noRibbon: q.get('noribbon') === '1',
     placeAir(v, y, pitch, roll) { v.y = y; v.pitch = pitch; v.roll = roll; v.place(); },
     floatAir(v, dt, alt, pitch, bank, wave) {
       v.buoyancy(dt, true);
@@ -92,8 +93,8 @@ export async function init(ctx) {
   };
 
   const YACHT_BANDS = [0x16365f, 0x7a1d24, 0x1d4d3a, 0x4a4f55, 0x14365e];
-  const YACHT_NAMES = ['Moana Breeze', 'Sea Whisper', 'Coral Dancer', 'Windchaser', 'Blue Horizon', 'Pacific Pearl', 'Tradewind', 'Salty Dog', 'Kookaburra', 'Southern Cross', 'Reef Runner', 'Gypsy Soul', 'Banksia', 'Tucker Bay'];
-  const CAT_NAMES = ['Island Time', 'Cat Nap', 'Two Hulls', 'Sunseeker Cat'];
+  const YACHT_NAMES = ['Moana Breeze', 'Sea Whisper', 'Coral Dancer', 'Windchaser', 'Blue Horizon', 'Pacific Pearl', 'Tradewind', 'Salty Dog', 'Kookaburra', 'Southern Cross', 'Reef Runner', 'Gypsy Soul', 'Banksia', 'Tucker Bay', 'Mango Moon', 'Ningaloo', 'Wattle', 'Dugong', 'Sundowner', 'Frangipani', 'Barefoot', 'Lazy Susan', 'Lorikeet', 'Saltwater'];
+  const CAT_NAMES = ['Island Time', 'Cat Nap', 'Two Hulls', 'Sunseeker Cat', 'Double Dutch', 'Twin Peaks'];
   let yi = 0, ci = 0;
   const yacht = (o) => add('yacht', YACHT_NAMES[yi++ % YACHT_NAMES.length], buildYacht({ band: pick(YACHT_BANDS) }), o);
   const cat = (o) => add('cat', CAT_NAMES[ci++ % CAT_NAMES.length], buildCat(), o);
@@ -207,9 +208,9 @@ export async function init(ctx) {
     if (pontoon && moorings.length) {
       const pp = [pontoon.x + 450, -pontoon.z + 300];
       const pr = nav.snap(pp[0], pp[1]) || pp;
-      const stops = [pr, ...moorings.slice(0, 2).map(m => [m.x, -m.z - 0])].filter(Boolean);
+      const stops = [pr, ...moorings.slice(-2).map(m => [m.x, -m.z])].filter(Boolean);
       const hop = chain(...stops, pr);
-      traffic(add('daycat', 'Hardy Looper', buildDayCat(), { mode: 'ai' }), hop, { loop: 'repeat', dwell: 30, vmax: 12 });
+      traffic(add('daycat', 'Hardy Looper', buildDayCat(), { mode: 'ai' }), hop, { loop: 'repeat', dwell: 30, vmax: 9 });
     }
     // yachts under sail between anchorages
     traffic(yacht({ mode: 'ai' }), chain(cid, wh), { loop: 'pingpong', dwell: 60, vmax: 4.2 });
@@ -280,18 +281,23 @@ export async function init(ctx) {
   }
 
   // ---- per-frame ----
-  function update(dt, t) {
+  const update = (dt) => step(Math.max(0, Math.min(dt, 0.1)));   // the screenshot tool's first frame arrives with a negative dt
+  let simT = 0;
+  function step(dt) {
+    simT += dt; const t = simT;
     const wnd = windNow();
     shared.time.value = T();
     surf.update();
     const sunAlt = env.u.sunAlt.value;
-    shared.lamp.value = 1 - sstep(0.02, 0.16, sunAlt);       // running lights come on as the sun gets low
+    shared.lamp.value = 1 - sstep(0.09, 0.22, sunAlt);       // running lights come on as the sun gets low
+    const lampsOn = shared.lamp.value > 0.02;
     const cam = camera.position;
     const tide = env.u.tide.value;
     if (jetty) jetty.group.position.y = tide;
     for (const v of vessels) {
       const dist = Math.hypot(v.x - cam.x, v.z - cam.z);
       const near = dist < 1600 || v.mode === 'player';
+      if (v.lampsOn !== lampsOn) { v.lampsOn = lampsOn; for (const l of v.desc.lamps || []) l.visible = lampsOn; }
       switch (v.mode) {
         case 'ai': v.aiStep(dt, wnd); break;
         case 'anchored': v.anchorStep(dt, wnd, t); break;
@@ -317,11 +323,15 @@ export async function init(ctx) {
       if (v.trails.length && v.kind !== 'helicopter' && !(v.kind === 'seaplane' && v.air > 1)) v.wake(dt, t, dist < 2600, wake);
       else for (const tr of v.trails) tr.mesh.visible = false;
     }
-    wake.update(dt, T());
+    wake.update(dt, t);
     testCam();
   }
   // the 'player' camera swing on a still: camera placed before the first frame
-  update(0.016, 0);
-
-  return { update, vessels, board, leave, wake, byName, seaplane: seaplaneApi, helicopter: helicopterApi, nav, surfaceAt: surf.surfaceAt, wakeNode: wake.wakeNode, windInfo: wind, pads, jetty, pontoon, moorings, hooked };
+  // settle buoyancy and sails before the first frame, then optionally run ?warm=<s> seconds so wakes have built up
+  { const w = windNow(); for (let k = 0; k < 2; k++) for (const v of vessels) if (v.mode !== 'orbit' && v.kind !== 'helicopter') { v.buoyancy(6, true); v.rig(6, w); v.place(); } }
+  for (let i = 0, n = Number(q.get('warm') ?? 0) * 30; i < n; i++) step(1 / 30);
+  const API = { update, vessels, board, leave, wake, byName, seaplane: seaplaneApi, helicopter: helicopterApi, nav, surfaceAt: surf.surfaceAt, wakeNode: wake.wakeNode, windInfo: wind, pads, jetty, pontoon, moorings, hooked };
+  API.ctx = ctx; API.initMs = Math.round(performance.now() - tInit);
+  window.__boats = API;
+  return API;
 }

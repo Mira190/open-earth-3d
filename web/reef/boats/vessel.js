@@ -182,15 +182,15 @@ export class Vessel {
     for (const tr of this.trails) {
       this.toWorld(tr.origin[0], tr.origin[1], w);
       tr.push(w[0], w[1], this.speed, t);
-      tr.rebuild(t, near);
+      tr.rebuild(t, near && !this.api.noRibbon);
     }
     if (near && this.speed > 0.8 && field) {
       const sp = Math.min(1, this.speed / 8), L = this.desc.L, B = Math.min(this.desc.B, 6);
       const hulls = this.desc.trails.length ? this.desc.trails.map(p => p[1]) : [0];
       for (const hz of hulls) {
-        this.toWorld(L * 0.42, hz, w); field.stamp(w[0], w[1], 1.6 + B * 0.2, 0.05 * sp * dt * 30 * (this.kind === 'daycat' ? 2 : 1), 0.0, t);
-        this.toWorld(0, hz, w); field.stamp(w[0], w[1], 1.2 + B * 0.18, -0.03 * sp * dt * 30, 0.1 * sp, t);
-        this.toWorld(-L * 0.45, hz, w); field.stamp(w[0], w[1], 1.4 + B * 0.2, 0.05 * sp * dt * 30, 0.55 * sp + 0.1, t);
+        this.toWorld(L * 0.42, hz, w); field.stamp(w[0], w[1], 1.6 + B * 0.2, 0.012 * sp * dt * 30 * (this.kind === 'daycat' ? 2 : 1), 0.3 * sp, t);
+        this.toWorld(0, hz, w); field.stamp(w[0], w[1], 1.2 + B * 0.18, -0.006 * sp * dt * 30, 0.25 * sp, t);
+        this.toWorld(-L * 0.45, hz, w); field.stamp(w[0], w[1], 1.4 + B * 0.2, 0.012 * sp * dt * 30, 0.7 * sp, t);
       }
     }
   }

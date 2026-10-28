@@ -43,7 +43,7 @@ export function materials() {
   M.net = std({ color: 0x20282d, roughness: 0.95, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
   // glass: dark tinted, warm window glow when the lamps are on
   M.glass = std({ color: 0x0d1a26, roughness: 0.08, metalness: 0 });
-  M.glass.emissiveNode = vec3(1.0, 0.72, 0.38).mul(shared.lamp).mul(0.55);
+  M.glass.emissiveNode = vec3(1.0, 0.72, 0.38).mul(shared.lamp).mul(0.7).add(vec3(0.05, 0.09, 0.13).mul(shared.env.u.white));   // sky tint by day, lit cabins at dusk
   M.glassClear = std({ color: 0x1a2c3c, roughness: 0.05, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
 
   // gelcoat hull with antifoul below the waterline, a boot stripe and an optional colour band
@@ -86,7 +86,7 @@ export function materials() {
   M.nonslip = std({ roughness: 0.9, metalness: 0 });
   M.nonslip.colorNode = Fn(() => {
     const n = mx_noise_float(vec3(positionLocal.x.mul(30), positionLocal.y.mul(30), positionLocal.z.mul(30)));
-    return vec3(0.62, 0.65, 0.66).mul(float(0.9).add(n.mul(0.1)));
+    return vec3(0.42, 0.45, 0.46).mul(float(0.9).add(n.mul(0.1)));
   })();
   M.woodPlank = std({ roughness: 0.85, metalness: 0 });   // jetty and pontoon decks: weathered boards
   M.woodPlank.colorNode = Fn(() => {
@@ -345,7 +345,7 @@ export function glowMaterial(color) {
     const r = uv().sub(0.5).length().mul(2);
     const core = float(1).sub(smoothstep(0.0, 0.35, r));
     const halo = float(1).sub(smoothstep(0.0, 1.0, r)).pow(2.5);
-    return vec3(c.r, c.g, c.b).mul(core.mul(1.6).add(halo.mul(0.7))).mul(shared.lamp);
+    return vec3(c.r, c.g, c.b).mul(core.mul(2.4).add(halo.mul(1.1))).mul(shared.lamp);
   })();
   m.opacityNode = Fn(() => float(1).sub(smoothstep(0.0, 1.0, uv().sub(0.5).length().mul(2))).mul(shared.lamp))();
   m.fog = false;
@@ -356,7 +356,7 @@ export function lamp(group, color, x, y, z, size = 1.4) {
   const key = String(color);
   const m = glowCache[key] || (glowCache[key] = glowMaterial(color));
   const s = new THREE.Sprite(m);
-  s.position.set(x, y, z); s.scale.set(size, size, 1);
+  s.position.set(x, y, z); s.scale.set(size * 1.6, size * 1.6, 1);
   s.renderOrder = 20;
   group.add(s);
   return s;

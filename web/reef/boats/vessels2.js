@@ -25,7 +25,7 @@ export function buildDayCat(o = {}) {
     const hm = new THREE.Matrix4().makeTranslation(0, 0, sd * S);
     K.add(hullMat, h.shell, hm); K.add(M.nonslip, h.deck, hm);
     K.add(M.dark, box(1.4, 0.5, 0.9, -L / 2 + 0.7, -0.6, 0), new THREE.Matrix4().makeTranslation(0, 0, sd * S)); // waterjet/prop tunnel shading
-    K.add(M.nonslip, slab(rrect(1.6, 2.1, 0.12), 0.35, 0.08, 0.02), -L / 2 - 0.6, 0, sd * S);  // swim platforms
+    K.add(M.nonslip, slab(rrect(1.0, 1.5, 0.1), 0.35, 0.06, 0.015), -L / 2 - 0.35, 0, sd * S);  // swim platforms
   }
   // main deck: spans between the hulls
   const yD = 2.0;
@@ -37,12 +37,12 @@ export function buildDayCat(o = {}) {
   K.add(M.white, slab(plan1, y1, hl, 0.1));
   // window band wraps the saloon: boxes along the sides and across the front
   const winY = y1 + 1.35;
-  K.add(M.glass, box(18.2, 1.1, 0.05, -2.2, winY, 4.43)); K.add(M.glass, box(18.2, 1.1, 0.05, -2.2, winY, -4.43));
+  K.add(M.glass, box(18.2, 1.1, 0.05, -2.2, winY, 4.59)); K.add(M.glass, box(18.2, 1.1, 0.05, -2.2, winY, -4.59));
   K.add(M.glass, new THREE.BoxGeometry(2.2, 1.1, 0.05).rotateY(Math.atan2(1.6, 2.4)).translate(8.6, winY, 2.3)); K.add(M.glass, new THREE.BoxGeometry(2.2, 1.1, 0.05).rotateY(-Math.atan2(1.6, 2.4)).translate(8.6, winY, -2.3));
-  K.add(M.glass, box(0.05, 1.1, 2.2, 9.4, winY, 0));
-  K.add(M.glass, box(0.05, 1.1, 8.6, -12.0, winY, 0));
+  K.add(M.glass, box(0.05, 1.1, 2.2, 9.56, winY, 0));
+  K.add(M.glass, box(0.05, 1.1, 8.6, -12.12, winY, 0));
   // blue stripe across the saloon sides, below the windows
-  for (const sd of [-1, 1]) K.add(M.blue, box(24.0, 0.32, 0.06, -2.4, y1 + 0.5, sd * 4.46));
+  for (const sd of [-1, 1]) K.add(M.blue, box(24.0, 0.32, 0.06, -2.4, y1 + 0.5, sd * 4.57));
   // upper deck roof (viewing deck) with a rail
   const y2 = y1 + hl;
   K.add(M.white, slab(plan1.map(([x, z]) => [x * 0.99, z * 1.01]), y2, 0.18, 0.05));
@@ -51,14 +51,14 @@ export function buildDayCat(o = {}) {
   const plan2 = [[5.0, -2.4], [6.6, -1.2], [6.6, 1.2], [5.0, 2.4], [-5.8, 3.4], [-7.0, 3.4], [-7.0, -3.4], [-5.8, -3.4]];
   const hb2 = 2.4, y3 = y2 + 0.18;
   K.add(M.white, slab(plan2, y3, hb2, 0.1));
-  K.add(M.glass, box(11.0, 1.0, 0.05, -0.6, y3 + 1.4, 3.36)); K.add(M.glass, box(11.0, 1.0, 0.05, -0.6, y3 + 1.4, -3.36));
+  K.add(M.glass, box(11.0, 1.0, 0.05, -0.6, y3 + 1.4, 3.52)); K.add(M.glass, box(11.0, 1.0, 0.05, -0.6, y3 + 1.4, -3.52));
   K.add(M.glass, new THREE.BoxGeometry(2.0, 1.0, 0.05).rotateY(Math.atan2(1.2, 1.6)).translate(5.9, y3 + 1.4, 1.95)); K.add(M.glass, new THREE.BoxGeometry(2.0, 1.0, 0.05).rotateY(-Math.atan2(1.2, 1.6)).translate(5.9, y3 + 1.4, -1.95));
-  K.add(M.glass, box(0.05, 1.0, 2.4, 6.6, y3 + 1.4, 0));
+  K.add(M.glass, box(0.05, 1.0, 2.4, 6.72, y3 + 1.4, 0));
   K.add(M.blue, slab(rrect(15, 6.2, 0.3), y3 + hb2, 0.14, 0.05), -0.4, 0, 0);       // blue roof
-  for (const sd of [-1, 1]) K.add(M.blue, box(13.4, 0.24, 0.06, -0.8, y3 + 0.45, sd * 3.43));
+  for (const sd of [-1, 1]) K.add(M.blue, box(13.4, 0.24, 0.06, -0.8, y3 + 0.45, sd * 3.53));
   // wheelhouse on top: a small raised bridge
   K.add(M.white, slab([[3.0, -1.6], [4.2, 0], [3.0, 1.6], [-0.6, 1.9], [-0.6, -1.9]], y3 + hb2 + 0.14, 1.6, 0.08));
-  K.add(M.glass, box(0.05, 0.8, 2.8, 4.18, y3 + hb2 + 0.14 + 0.95, 0).rotateZ(0)); K.add(M.glass, box(4.0, 0.8, 0.05, 1.2, y3 + hb2 + 0.14 + 0.95, 1.9)); K.add(M.glass, box(4.0, 0.8, 0.05, 1.2, y3 + hb2 + 0.14 + 0.95, -1.9));
+  K.add(M.glass, box(0.05, 0.8, 2.2, 4.12, y3 + hb2 + 0.14 + 0.95, 0).rotateZ(0)); K.add(M.glass, box(4.0, 0.8, 0.05, 1.2, y3 + hb2 + 0.14 + 0.95, 2.0)); K.add(M.glass, box(4.0, 0.8, 0.05, 1.2, y3 + hb2 + 0.14 + 0.95, -2.0));
   K.add(M.blue, slab(rrect(5.4, 4.4, 0.25), y3 + hb2 + 1.74, 0.1, 0.03), 1.4, 0, 0);
   // radar mast, antennas, funnel-like vents
   const yTop = y3 + hb2 + 1.84;

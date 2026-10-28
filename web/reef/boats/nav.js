@@ -41,8 +41,8 @@ export function createNav(ctx) {
     }
     return null;
   }
-  const segClear = (a, b, minD = MIN - 0.5) => {
-    const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 40));
+  const segClear = (a, b, minD = MIN - 0.3) => {
+    const L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.ceil(L / 20));
     for (let k = 0; k <= n; k++) { const f = k / n; if (depthAt(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f) < minD) return false; }
     return true;
   };

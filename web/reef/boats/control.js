@@ -131,17 +131,15 @@ export function createControl(ctx, api) {
         if (air && lift > 0.99 && Math.abs(P.pitch) < 0.05) vs *= 0.2;
         P.vs += (vs - P.vs) * Math.min(1, dt * 2.5);
         P.alt += P.vs * dt;
-        // movement; the terrain is solid
+        // movement. Over land the plane is lifted clear of the ground (terrain assist); on the water it just stops at the shore.
         const [fx, fy] = v.fwd();
         const nx = v.x + fx * v.speed * dt, nz = v.z - fy * v.speed * dt;
         const ground = Math.max(0, ctx.height(nx, -nz) - ctx.env.u.tide.value);   // height of the ground above the sea
-        const floor = ground > 0.2 ? ground + 3.2 : 0;
-        if (P.alt < floor) {
-          if (ground > 0.2 && P.alt < ground + 0.5) { v.speed *= 0.6; P.vs = 0; P.alt = ground + 3.2; if (P.alt > 6 && !air) P.alt = ground + 3.2; }
-          else { if (-P.vs > 6) { P.vs = -P.vs * 0.25; v.speed *= 0.85; } else if (P.vs < 0) P.vs = 0; P.alt = Math.max(floor, 0); }
-        }
-        if (ground > 0.2 && !air) { v.speed *= 0.3; } else { v.x = nx; v.z = nz; }
-        if (ground > 0.2 && P.alt <= ground + 3.3 && v.speed > 0) { v.x = nx; v.z = nz; }
+        if (ground > 0.2 && P.alt < ground + 2.5) {
+          if (air) { P.alt = ground + 2.5; P.vs = Math.max(P.vs, 0); v.x = nx; v.z = nz; }
+          else v.speed *= 0.4;
+        } else { v.x = nx; v.z = nz; }
+        if (P.alt < 0) { if (-P.vs > 7) { P.vs = -P.vs * 0.2; v.speed *= 0.8; } else P.vs = Math.max(P.vs, 0); P.alt = 0; }
         v.air = P.alt;
         const wave = surf.surfaceAt(v.x, v.z, undefined);
         v.api.floatAir(v, dt, P.alt, P.pitch, P.bank, wave);
