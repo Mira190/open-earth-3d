@@ -228,6 +228,10 @@
   "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
   "game": {
     "title": "Sydney on Foot",
+    "local_name": "Sydneysider",
+    "water_name": "the harbour",
+    "greeting": "G'day.",
+    "shade_landmarks": ["opera"],
     "start": {
       "at": [120, 205],
       "facing": [298, 432],
