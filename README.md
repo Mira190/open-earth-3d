@@ -46,6 +46,11 @@ computed from the model as you play. Open **Play** on the globe, or go to
   Discovery Tour;
 - where this game does better than they do.
 
+[docs/ENGINES.md](docs/ENGINES.md) studies what to take from Unreal Engine and
+other engines: movement, cameras, crowds, interaction and gameplay. Its first
+step is built: Unreal-style capsule collision against the exact building
+footprints.
+
 | Under the Harbour Bridge | The Opera House's Monumental Steps | Talking to the Opera House guide |
 |---|---|---|
 | ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-steps.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |

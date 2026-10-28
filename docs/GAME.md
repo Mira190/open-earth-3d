@@ -87,6 +87,7 @@ listed at the end.
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
+| **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 
 ## How it works
 
@@ -126,15 +127,29 @@ pipeline writes. The only city-specific code is landmark geometry in
     way the real approaches continue to the Cahill Expressway and North Sydney.
   - People and cars use the same surface, so you can walk across with the
     traffic.
-- **Navigation** (`web/game/nav.js`): the 2 m surface model (terrain plus
-  buildings, with building ids) does three jobs:
-  - walls;
-  - low roofs you can step onto;
-  - the sun meter.
-
-  Piers are 2.2 m decks, and the bridge deck is a walkable strip. The landmark
-  meshes are rasterised as height intervals, so the helicopter can pass under
-  the deck but not through the arch.
+- **Navigation** (`web/game/nav.js`):
+  - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
+    runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
+    of the water.
+  - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
+    walkable strip.
+  - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
+    cells, so the helicopter can pass under the deck but not through the arch.
+- **Collision** (`web/game/collision.js`): every building solid is a prism, its
+  published footprint between two heights, and each landmark cell is a box.
+  - **Walking:** the walker is a 0.35 m capsule, moved the way Unreal's
+    CharacterMovementComponent moves one:
+    - it is swept against the walls between knee and head;
+    - it slides along what it hits and stops in a corner;
+    - it is pushed out if it starts inside;
+    - anything lower than a 0.75 m step is left to the floor, which also comes
+      from the exact footprints.
+  - **Camera:** a 0.25 m probe sphere is swept from the player to the camera
+    against walls, roofs and soffits, as Unreal's SpringArm does.
+  - **Measured against the old 2 m grid:** 120 walks into walls at random
+    angles ended inside a footprint 50 times before and never now. The closest
+    approach is now the capsule radius. See
+    [ENGINES.md](ENGINES.md#1-movement-and-collision-built).
 - **People** (`web/game/people.js`, assets from `pipeline/fetch_people.py`):
   - **Characters:** 13 rigged characters from Quaternius's Ultimate Modular Men
     and Women packs (CC0): office workers, a suit, a hoodie, beachwear,
@@ -158,7 +173,8 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Headlights:** come on after sunset.
 - **Vehicles** (`web/game/vehicles.js`):
   - **Helicopter:** the assisted model, with collisions against buildings and
-    landmark solids.
+    landmark solids. It slides along a wall it meets at a glancing angle and
+    bounces off a hard hit.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     Each slows into its wharf and waits. You can take the helm into a wharf by
     hand.
@@ -219,14 +235,20 @@ and the menus are checked in a phone-sized browser.
   base bodies. Distant walkers swing rigid legs and arms instead of playing the
   full animation. The box-built figures return if the character files cannot
   be loaded.
-- **No physics engine:** collisions use the surface model, which is 2 m. There
-  is no ragdoll or car damage, and pedestrians don't avoid each other.
+- **No rigid-body physics:** walls are exact, but the landmarks (the Opera
+  House shells, the bridge steel) still collide as 2 m boxes. The floor is found
+  under the walker's centre, not under the whole capsule. There is no ragdoll or
+  car damage, and pedestrians don't avoid each other.
+  [ENGINES.md](ENGINES.md#roadmap) lists the next steps.
 - **Ferry timetable:** the routes follow the inner-harbour services, but the
   timetable is invented. Ferries run at 1.5 times real speed.
 - **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
   except where OpenStreetMap maps building parts.
 
 ## Sources
+
+- Unreal Engine's CharacterMovementComponent and SpringArm: see
+  [ENGINES.md](ENGINES.md#sources).
 
 - Microsoft Flight Simulator buildings and the Melbourne tower:
   [TechCrunch](https://techcrunch.com/2020/08/17/meet-the-startup-that-helped-microsoft-build-the-world-of-flight-simulator),
