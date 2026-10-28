@@ -40,7 +40,7 @@ export async function init(ctx) {
   if (q.get('life') === '0') return null;
   const t0 = performance.now();
   const ground = makeGround(ctx.d);
-  const torch = makeTorch(env);
+  const torch = env.torch || makeTorch(env);              // the core's torch (env.js) when there is one, so the floor is lit too
   const mats = createMats(env, torch);
   const root = new THREE.Group(); root.name = 'life';
   scene.add(root);

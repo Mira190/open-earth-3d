@@ -165,6 +165,9 @@ async function main() {
     } else ctx.controller.update(dt, now / 1000);
     for (const u of ctx.updaters) u(dt, now / 1000);
     env.u.time.value = (q.get('freeze') ? Number(q.get('freeze')) : now / 1000);
+    // the diver's torch: on under water at night, along the view
+    env.u.torchOn.value = camera.position.y < env.u.tide.value - 0.05 ? env.u.night.value : 0;
+    camera.getWorldDirection(env.u.torchFwd.value);
     env.u.tide.value = tideNow();
     ripples.update(env.u.time.value); chop.update(env.u.time.value);
     terrain.update(camera.position);

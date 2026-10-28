@@ -220,7 +220,12 @@ export async function gametest(api, ctx) {
     if (life) {
       if (!G.state('survey')) G.start('survey');
       player.equip('snorkel');
-      const sp0 = G.spawn(), c = life.nearestCreature(sp0.x, sp0.north, ctx.env.u.tide.value - 1, 600);
+      // life.js fills the water around the camera as frames run; this test runs before the first frame, so put the
+      // camera in the water off the spawn and step it there
+      const sp0 = G.spawn(), cam = ctx.camera.position, keep = cam.clone();
+      if (life.update) { cam.set(sp0.x + 250, ctx.env.u.tide.value - 2, -sp0.north); for (let i = 0; i < 3; i++) life.update(0.1, i * 0.1); }
+      const c = life.nearestCreature(sp0.x, sp0.north, ctx.env.u.tide.value - 1, 600);
+      cam.copy(keep);
       must(!!c, 'life.nearestCreature finds an animal near the spawn', c && c.species && c.species.common);
       if (c) {
         const p = c.position.north !== undefined ? c.position : { x: c.position.x, north: -c.position.z };

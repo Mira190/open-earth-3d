@@ -253,7 +253,7 @@ export async function init(ctx) {
     const x = S.pos.x, north = -S.pos.z;
     for (let r = 0.5; r <= reach; r += 0.55) for (let a = 0; a < 12; a++) {
       const px = x + Math.sin(a * Math.PI / 6) * r, pn = north + Math.cos(a * Math.PI / 6) * r;
-      for (const f of decks) { const d = f(px, pn); if (d !== null && d - S.surf < 1.9 && d > S.surf - 0.3) return [px, pn, d]; }
+      for (const f of decks) { const d = f(px, pn); if (d !== null && d - S.surf < 2.4 && d > S.surf - 0.3) return [px, pn, d]; }   // up to a jetty deck from a trough, by its ladder
     }
     return null;
   }
@@ -673,6 +673,8 @@ async function autotest(api, T) {
   const run = (secs, inp, until) => { const n = Math.round(secs / dt); S.virt = inp; for (let i = 0; i < n; i++) { T.simulate(dt, inp); maxSplash = Math.max(maxSplash, api.fx.splashCount); T.animate(dt); T.fx.update(dt, T.surfaceAt); T.hudFrame(dt); if (until && until()) return i * dt; } return secs; };
   const seen = new Set(); player.onChange(s => seen.add(s));
   const must = (cond, name, extra) => out(!!cond, name, extra || '');
+  // the scripted spots assume mean sea level: hold the tide there while the test runs (it runs before the first frame)
+  const tide0 = ctx.env.u.tide.value; ctx.env.u.tide.value = 0;
   try {
     // 1. the beach: walk, run, then wade and swim out to sea
     T.teleport(505, 445, undefined, 90);
@@ -758,7 +760,7 @@ async function autotest(api, T) {
     if (jt) {
       T.equip('none');
       const g = jt.group, at = (lx, lz) => new THREE.Vector3(lx, 0, lz).applyMatrix4(g.matrix);
-      g.updateMatrix();
+      g.position.y = ctx.env.u.tide.value; g.updateMatrix();         // the jetty floats at the (held) tide
       const on = at(jt.len - 4, 0), off = at(jt.len - 4, -6);
       T.teleport(on.x, -on.z, undefined, 0);
       run(0.5, V());
@@ -767,6 +769,8 @@ async function autotest(api, T) {
       run(4, V({ f: 1 }), () => S.water);
       must(S.water, 'steps off the jetty into the sea', `${player.state} y=${S.pos.y.toFixed(2)}`);
       run(1, V());
+      // back beside the deck's open side, a metre off it (the fall can carry the swimmer further on a long jetty)
+      const side = at(jt.len - 4, -(jt.w / 2 + 1.0)); T.teleport(side.x, -side.z, undefined, 0); run(0.5, V());
       const climb = api.interactables.find(i => i.id === 'climb');
       must(climb.enabled(player), 'a swimmer by the jetty can climb out', `${player.state}`);
       climb.action(player); run(0.5, V());
@@ -774,7 +778,7 @@ async function autotest(api, T) {
     }
     must(S.state && Number.isFinite(S.pos.x) && Number.isFinite(S.pos.y), 'no NaNs in the player state');
   } catch (e) { out(false, 'exception', String(e && e.stack || e)); }
-  S.auto = false; S.virt = null;
+  S.auto = false; S.virt = null; ctx.env.u.tide.value = tide0;
   T.teleport(505, 445, undefined, 90); T.equip('none');
   console.log(`[test] DONE pass=${R.pass} fail=${R.fail}`);
   window.__autotest = R;

@@ -59,7 +59,8 @@ export function createEnv(scene, optics, waves, ripples, chop) {
     sunI: uniform(2.8),           // the sun's irradiance on a surface facing it, in the lights' units
     moonI: uniform(0),            // the same for the moon (2.3e-6 of the sun when full and overhead)
     skyScale: uniform(1),         // the sky's brightness relative to a clear day (twilight, night)
-    adapt: uniform(1)             // the eye's adaptation, already in the lights (main.js); post.js reads it for night vision
+    adapt: uniform(1),            // the eye's adaptation, already in the lights (main.js); post.js reads it for night vision
+    torchOn: uniform(0), torchFwd: uniform(new THREE.Vector3(0, 0, -1))   // a diver's torch at night (main.js)
   };
   // the ripples scale with the wind as the Cox-Munk slope variance does (unity at wind 0.6)
   const c0 = coxMunk(windSpeed(0.6));
@@ -162,7 +163,19 @@ export function createEnv(scene, optics, waves, ripples, chop) {
 
   // the last reach of the swash: a little above the tide, breathing with the sets of waves
   const swash = u.tide.add(0.35).add(sin(u.time.mul(0.62)).mul(0.12)).add(sin(u.time.mul(0.23).add(1.3)).mul(0.1));
-  return { u, sky, skyRefl, medium, radiance, waterBg, caustic, causticSoft, ripple, rippleAmp: fw, chopTile, waves, ripples, scene, swash };
+  // ---- a dive torch for night dives (from life/kit.js): an emissive term for materials, light(albedo). The medium
+  // dims every colour by the sun's path down to the point and the path back to the eye; for torch light the first is
+  // wrong, so it is swapped for the torch's own path out from the camera
+  const torchLight = Fn(([alb]) => {
+    const d = positionWorld.sub(cameraPosition), L = max(length(d), 0.05);
+    const cone = smoothstep(0.65, 0.92, dot(d.div(L), u.torchFwd)).mul(0.85).add(0.15);
+    const fall = float(1).div(L.mul(L).mul(0.12).add(1));
+    const dP = max(u.tide.sub(positionWorld.y), 0);
+    const comp = exp(u.K.mul(min(dP.mul(u.lightPath), 30).sub(L)));
+    return alb.mul(u.torchOn.mul(cone).mul(fall).mul(2.2)).mul(comp);
+  });
+  const torch = { on: u.torchOn, fwd: u.torchFwd, light: torchLight };
+  return { u, torch, sky, skyRefl, medium, radiance, waterBg, caustic, causticSoft, ripple, rippleAmp: fw, chopTile, waves, ripples, scene, swash };
 }
 
 // ---- the sun for the model's own clock

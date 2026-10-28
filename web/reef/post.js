@@ -54,9 +54,12 @@ export function createPost(renderer, scene, camera, env) {
   let base = color.rgb;
   if (q.get('bloom') !== '0') base = base.add(bloomPass.rgb);
   if (q.get('shafts') !== '0') base = base.add(shafts());
-  // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift)
-  const scot = smoothstep(2.3, 4.3, log(u.adapt).div(2.302585)).mul(0.75);
+  // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift);
+  // what is bright enough for the cones (a torch beam, a lamp, the moon's path) keeps its colour
   const lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
+  // (a dive torch lights what it reaches to cone levels: inside its beam, round the middle of the view, colour stays)
+  const beam = float(1).sub(smoothstep(0.18, 0.42, length(screenUV.sub(0.5).mul(vec2(1.6, 1))))).mul(u.torchOn);
+  const scot = smoothstep(2.3, 4.3, log(u.adapt).div(2.302585)).mul(0.75).mul(float(1).sub(smoothstep(0.08, 0.35, lum))).mul(float(1).sub(beam.mul(0.9)));
   post.outputNode = vec4(mix(base, vec3(0.72, 0.86, 1.12).mul(lum), scot).mul(vignette()), 1);
   return post;
 }

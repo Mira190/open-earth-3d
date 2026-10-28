@@ -132,6 +132,7 @@ export function createTerrain(d, env, renderer) {
     c = mix(c, c.mul(vec3(0.60, 0.58, 0.56)), wet);
     return c;
   })();
+  mat.emissiveNode = env.torch.light(mat.colorNode).mul(2.2);   // the dive torch, at night under water (the floor colour is the dark inverted one)
   const mesh = new THREE.Group();
   const cw = Math.ceil((t.w - 1) / CHUNK), ch = Math.ceil((t.h - 1) / CHUNK);
   const chunks = [];
