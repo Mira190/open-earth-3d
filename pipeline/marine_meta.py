@@ -11,8 +11,8 @@ build_marine.py calls `meta()` when it writes scene.json.
 A POI is {id, name, kind, lonlat: [lon, lat] | xy: [x, north], src, note?}. `lonlat` is
 projected into the local frame; `xy` is taken as it is (for nominal spots such as an anchorage
 that the viewer searches for the right depth near). Kinds the viewer understands: beach, bay,
-inlet, lookout, peak, island, anchorage, marina, airport, pontoon, reef, dive, gate, town,
-cultural. The output POI always has `x` and `y` (metres east and north of the origin, rounded
+inlet, lookout, point, peak, island, anchorage, marina, airport, helipad, pontoon, reef, dive,
+gate, town, cultural. The output POI always has `x` and `y` (metres east and north of the origin, rounded
 to 1 m) and keeps `lonlat` when it was given.
 """
 import json

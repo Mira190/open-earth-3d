@@ -148,7 +148,7 @@
   {
    "id": "tongue-point",
    "name": "Tongue Point",
-   "kind": "lookout",
+   "kind": "point",
    "lonlat": [
     149.027,
     -20.2348
@@ -427,12 +427,12 @@
    "name": "South Whitehaven anchorage",
    "kind": "anchorage",
    "lonlat": [
-    149.05,
-    -20.293
+    149.0511,
+    -20.2916
    ],
    "src": "nominal",
-   "x": 2089,
-   "y": -1439
+   "x": 2204,
+   "y": -1284
   },
   {
    "id": "chalkies-anchorage",
