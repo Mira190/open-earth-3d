@@ -41,7 +41,7 @@
     "y": -95,
     "heading": 0,
     "water": true,
-    "note": "the site has no land: on the deck of the Reefworld pontoon (the viewer puts the player there; x, y are the fallback in the water off its south end, about 12 m deep on the 30 m model)",
+    "note": "the site has no land: on the deck of the Reefworld pontoon (the viewer puts the player there; x, y are the fallback in the water off its south end, about 15 m deep on the 30 m model)",
     "deck": "pontoon"
   },
   "pois": [
@@ -52,7 +52,7 @@
       "lonlat": [149.18311, -19.74546],
       "src": "osm",
       "osm": "node 2360082104",
-      "note": "tour pontoon permanently moored at Hardy Reef (Cruise Whitsundays); on the 30 m model it sits on the top of the reef wall, 7 m deep, with 30-50 m of water 60 m to the west"
+      "note": "tour pontoon permanently moored at Hardy Reef (Cruise Whitsundays); on the 30 m model it sits on the top of the reef wall, 8.6 m deep, with 32 m of water 60 m to the west"
     },
     {
       "id": "heart-reef",
@@ -123,7 +123,7 @@
       "exact": true,
       "name": "Reefworld",
       "heading": 180,
-      "note": "exact: put the pontoon on its mapped position instead of searching for 9-18 m water (the reef wall drops from 7 to 32 m within 60 m, so the search finds nothing on this side of the channel; needs the viewer change described in docs/cities/hardy-reef.md). heading 180: long side along the north-south reef wall, day boat on the starboard (west) side over the channel, helipad astern to the north"
+      "note": "exact: put the pontoon on its mapped position instead of searching for 9-18 m water (the reef wall drops from 9 to 32 m within 60 m, so the search finds nothing on this side of the channel). heading 180: long side along the north-south reef wall, day boat on the starboard (west) side over the channel, helipad astern to the north"
     },
     "parked": [],
     "moorings": 6,

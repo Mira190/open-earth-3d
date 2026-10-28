@@ -163,14 +163,14 @@
       "id": "green-anchorage",
       "name": "Green Island, west side",
       "kind": "anchorage",
-      "xy": [-5210, -8020],
+      "xy": [-5180, -8020],
       "src": "nominal"
     },
     {
       "id": "michaelmas-anchorage",
       "name": "Michaelmas Cay, south-west side",
       "kind": "anchorage",
-      "xy": [-4940, 8670],
+      "xy": [-5200, 8670],
       "src": "nominal"
     },
     {

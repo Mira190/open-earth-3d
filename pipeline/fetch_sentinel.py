@@ -29,7 +29,9 @@ from rasterio.warp import Resampling, reproject
 from cityctx import city_args
 
 STAC = "https://earth-search.aws.element84.com/v1/search"
-BANDS = ["blue", "green", "red", "nir"]
+# B2, B3, B4, B8 at 10 m, and B1 (coastal aerosol, 443 nm, 60 m) for the water's optics (qaa.py)
+BANDS = ["blue", "green", "red", "nir", "coastal"]
+SCL = len(BANDS)  # the scene classification is the stack's last layer
 
 
 def search(bbox, since, max_cloud, limit=100):
@@ -81,7 +83,7 @@ def main():
 
     n = len(chosen)
     stack_path = os.path.join(city.raw, "s2_stack.npy")
-    stack = np.lib.format.open_memmap(stack_path, mode="w+", dtype=np.uint16, shape=(n, 5, H, W))  # bands + scene class
+    stack = np.lib.format.open_memmap(stack_path, mode="w+", dtype=np.uint16, shape=(n, len(BANDS) + 1, H, W))  # bands + scene class
     tmp = np.zeros((H, W), np.uint16)
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="4", GDAL_HTTP_RETRY_DELAY="2"):
         for i, fs in enumerate(chosen):
@@ -105,6 +107,9 @@ def main():
                 print(f"  {i + 1}/{n} {f['id']} cloud {f['properties']['eo:cloud_cover']:.1f}%", flush=True)
     stack.flush()
     json.dump([f["id"] for fs in chosen for f in fs], open(os.path.join(city.raw, "s2_scenes.json"), "w"))
+    # each product's solar zenith angle: the diffuse attenuation depends on it (qaa.py)
+    json.dump({f["id"]: 90 - f["properties"]["view:sun_elevation"] for fs in chosen for f in fs
+               if "view:sun_elevation" in f["properties"]}, open(os.path.join(city.raw, "s2_sun.json"), "w"))
     composite(city.raw, px, city.x0, city.y1)
 
 
@@ -118,8 +123,8 @@ def composite(raw, px, x0, y1, keep=0.6):
     for r0 in range(0, H, 200):  # strips keep memory small
         st = np.asarray(stack[:, :, r0:r0 + 200]).astype(np.float32)
         # clear observations: not no-data, saturated, shadow, cloud (8, 9), thin cirrus (10) or snow
-        valid = (st[:, 0] > 0) & ~np.isin(st[:, 4], [0, 1, 3, 8, 9, 10, 11])
-        nir = np.where(valid, st[:, 3], np.inf)
+        valid = (st[:, 0] > 0) & ~np.isin(st[:, SCL], [0, 1, 3, 8, 9, 10, 11])
+        nir = np.where(valid, st[:, BANDS.index("nir")], np.inf)
         rank = np.argsort(np.argsort(nir, axis=0), axis=0)
         cnt = valid.sum(axis=0)
         take = valid & (rank < np.maximum(2, np.ceil(cnt * keep)))
@@ -128,7 +133,9 @@ def composite(raw, px, x0, y1, keep=0.6):
             with np.errstate(all="ignore"):
                 m = np.nanmedian(v, axis=0)
             out[name][r0:r0 + 200] = np.nan_to_num(m, nan=0).astype(np.uint16)
-    np.savez_compressed(os.path.join(raw, "s2.npz"), **out, pixel_m=px, x0=x0, y1=y1, scenes=scenes)
+    sun = os.path.join(raw, "s2_sun.json")
+    zen = float(np.mean(list(json.load(open(sun)).values()))) if os.path.exists(sun) else float("nan")
+    np.savez_compressed(os.path.join(raw, "s2.npz"), **out, pixel_m=px, x0=x0, y1=y1, scenes=scenes, sun_zenith=zen)
     print("s2.npz", W, H, "no-data share", float((out["blue"] == 0).mean()))
 
 

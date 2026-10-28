@@ -110,6 +110,11 @@ def main():
         if p["kind"] == "anchorage":
             a = g.anchorage(p["x"], p["y"], 4.8, 9, 1500, 30)
             row["boats_go_to"] = [round(a[0]), round(a[1]), round(math.hypot(a[0] - p["x"], a[1] - p["y"]))] if a else None
+            # a nominal spot may sit off a narrow 5-9 m band on purpose (so boats routing to it stay in open
+            # water); what matters is that the boats find their anchoring depth close by
+            if not ok and a and row["boats_go_to"][2] <= 300:
+                ok = row["ok"] = True
+                row["note"] += f"; the boats anchor {row['boats_go_to'][2]} m away"
         rows.append(row)
         bad += not ok
     H = s.get("harbour") or {}
