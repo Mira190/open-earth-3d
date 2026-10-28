@@ -1,0 +1,21 @@
+{
+ "plateau_buildings": 80870,
+ "overture_buildings": 64471,
+ "matched_overture": 58161,
+ "plateau_added": 3960,
+ "prior_height_vs_plateau": {
+  "floors": {
+   "n": 3129,
+   "median_factor": 1.133,
+   "median_bias": 0.0,
+   "p90_factor": 1.526
+  },
+  "mapped": {
+   "n": 107,
+   "median_factor": 1.014,
+   "median_bias": 0.0,
+   "p90_factor": 1.776
+  }
+ },
+ "note": "median_factor is the median of max(a/b, b/a) between the height a building had before PLATEAU and its measured PLATEAU height; median_bias below 0 means the earlier source was too short."
+}

@@ -48,8 +48,9 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `vertical_datum` | no | A label for heights, such as `m AHD` |
 | `year` | no | Year for dates in the viewer and analyses (default: this year) |
 | `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}` |
-| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`, or `{type: "terrarium"}` as a last resort |
-| `terrain_check` | no | `{type: "arcgis_identify", url, field, name}`: an independent elevation service for `analysis/dem_check.py` |
+| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`, `{type: "gsi_dem_png", url, zoom, bare_earth, attribution}` for GSI Japan elevation tiles, or `{type: "terrarium"}` as a last resort |
+| `plateau` | no | `{zip, source}`: a Project PLATEAU 3D Tiles zip; `fetch_plateau.py` turns it into measured building heights (source `plateau`) |
+| `terrain_check` | no | `{type: "arcgis_identify", url, field, name}` or `{type: "gsi_elevation_api", url, name}`: an elevation service for `analysis/dem_check.py` |
 | `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
@@ -135,6 +136,7 @@ the answers most. Cite a source for every row.
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
   python pipeline/fetch_overture.py --city <id>
 python pipeline/fetch_tiles.py --city <id>
+python pipeline/fetch_plateau.py --city <id>      # if the city has a plateau block (Japan)
 python pipeline/build_scene.py --city <id>
 python pipeline/landmarks.py --city <id>
 python analysis/heights.py --city <id>            # if there is a reference table

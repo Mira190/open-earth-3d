@@ -21,6 +21,14 @@ from cityctx import city_args  # noqa: E402
 
 
 def identify(cfg, lon, lat):
+    if cfg["type"] == "gsi_elevation_api":  # GSI's own lookup, best source at each point (1 m laser where flown)
+        for _ in range(3):
+            try:
+                v = requests.get(cfg["url"], params=dict(lon=lon, lat=lat, outtype="JSON"), timeout=60).json().get("elevation")
+                return float(v) if isinstance(v, (int, float)) else None
+            except (requests.RequestException, ValueError):
+                continue
+        return None
     p = dict(geometry=f"{lon},{lat}", geometryType="esriGeometryPoint", sr=4326, layers="all", tolerance=0,
              mapExtent=f"{lon - 0.001},{lat - 0.001},{lon + 0.001},{lat + 0.001}", imageDisplay="100,100,96", returnGeometry="false", f="json")
     for _ in range(3):
@@ -36,8 +44,8 @@ def identify(cfg, lon, lat):
 def main():
     C, _ = city_args(__doc__.splitlines()[0])
     chk = C.cfg.get("terrain_check")
-    if not chk or chk.get("type") != "arcgis_identify":
-        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify in city.json")
+    if not chk or chk.get("type") not in ("arcgis_identify", "gsi_elevation_api"):
+        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify or gsi_elevation_api in city.json")
     dem = load_dem(C)
     B = json.load(open(os.path.join(C.out, "buildings.json")))
     img = Image.new("L", (dem.shape[1], dem.shape[0]), 0)
