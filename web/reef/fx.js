@@ -6,15 +6,16 @@ import * as THREE from 'three/webgpu';
 export function createFx(ctx) {
   const { scene } = ctx;
   const dummy = new THREE.Object3D();
-  const mk = (geo, color, opacity, max) => {
+  const mk = (geo, color, opacity, max, fog = true) => {
     const m = new THREE.MeshBasicNodeMaterial({ color, transparent: true, opacity, depthWrite: false });
+    m.fog = fog;
     const im = new THREE.InstancedMesh(geo, m, max);
     im.frustumCulled = false; im.count = 0; im.renderOrder = 20;
     scene.add(im);
     return im;
   };
   const BUB = 260, SPL = 200;
-  const bubMesh = mk(new THREE.IcosahedronGeometry(1, 1), 0xe8f6ff, 0.55, BUB);
+  const bubMesh = mk(new THREE.IcosahedronGeometry(1, 1), 0xbfe9f5, 0.5, BUB, false)   // bubbles flash the sun back: left out of the water's dimming so they stay readable;
   const splMesh = mk(new THREE.IcosahedronGeometry(1, 0), 0xf4fbff, 0.8, SPL);
   const bub = [], spl = [];
   let tNow = 0;

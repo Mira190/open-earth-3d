@@ -104,14 +104,14 @@ function fins(T, o) {
     g.add(mesh(new THREE.BoxGeometry(0.1, 0.04, 0.17), rails, 0, 0.022, 0.03));   // the foot pocket
     g.position.set(F.cx, F.bottom + 0.006, F.front - 0.15);
     g.rotation.x = 0.0;
-    out.push({ obj: g, bone: s > 0 ? 'Foot.L' : 'Foot.R' });
+    out.push({ obj: g, bone: s > 0 ? 'FootL' : 'FootR' });
   }
   return out;
 }
 
 // ---- scuba kit
 function bcd(T, o) {
-  const g = new THREE.Group(), body = new THREE.Group(), c = mat(o.color || '#14395c', { rough: 0.7, double: true }), trim = mat(o.trim || '#f2a413', { rough: 0.7 });
+  const g = new THREE.Group(), body = new THREE.Group(), c = mat(o.color || '#e8b90f', { rough: 0.7, double: true }), trim = mat(o.trim || '#14395c', { rough: 0.7 });
   const h = 0.4, y0 = T.torso.chestY - 0.17;
   const cyl = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, h, 28, 1, true), c);
   cyl.scale.set(T.torso.halfW + 0.035, 1, (T.torso.front - T.torso.back) / 2 + 0.035);
@@ -185,7 +185,7 @@ function thongs(T, o) {
     g.add(mesh(new THREE.BoxGeometry(0.095, 0.014, F.front - F.back + 0.03), c, 0, 0, 0));
     g.add(mesh(new THREE.BoxGeometry(0.012, 0.012, 0.09), c, 0, 0.03, 0.04)).rotation.x = 0;
     g.position.set(F.cx, F.bottom + 0.005, (F.front + F.back) / 2);
-    out.push({ obj: g, bone: s > 0 ? 'Foot.L' : 'Foot.R' });
+    out.push({ obj: g, bone: s > 0 ? 'FootL' : 'FootR' });
   }
   return out;
 }

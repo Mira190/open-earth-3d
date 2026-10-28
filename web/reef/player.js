@@ -70,7 +70,7 @@ export async function init(ctx) {
 
   function outfit() {
     const g = S.gear;
-    if (g.scuba) return { suit: { color: '#15181d', top: '#15181d', legs: '#15181d', legN: 2, arms: 2, torso: true }, sleeve: null };
+    if (g.scuba) return { suit: { color: '#1d7f9f', top: '#1d7f9f', legs: '#14465e', legN: 2, arms: 2, torso: true }, sleeve: null };   // blue and teal read well at depth, where red goes black
     if (g.mask) return season ? { suit: { color: '#16324f', top: '#16324f', legs: '#16324f', legN: 2, arms: 2, torso: true }, sleeve: null } : { suit: { color: '#e4572e', top: '#e4572e', arms: 2, legN: 0, torso: true }, sleeve: null };
     return null;
   }
@@ -234,6 +234,8 @@ export async function init(ctx) {
     S.focus.copy(S.pos); S.focus.y += S.water ? 0.3 : 1.5;
     S.state = S.water ? (S.gear.scuba ? 'scuba' : S.gear.mask ? 'snorkel' : 'swim') : dep > WADE_FROM ? 'wade' : 'walk';
     S.dressKey = '';
+    ears.eq = S.water ? Math.max(0, env.u.tide.value - S.pos.y - BODY_FLOAT) : 0; breath.t = 0;   // teleported divers arrive equalised
+    if (S.water && up !== undefined && S.gear.scuba) S.bcd.n = Math.max(0, ambient(Math.max(0, env.u.tide.value - up)) * 4.5 - 3);   // dropped in at depth: start roughly neutral
     return player;
   }
 
@@ -383,7 +385,7 @@ export async function init(ctx) {
       if (S.emergency && S.depthBody < 0.3) { S.emergency = false; hud.say('Surface. The tank is empty: take the kit off (E) and grab a full one.', { kind: 'warn', secs: 6 }); S.bcd.n = 5; diver.air = 0.5; diver.outOfAir = false; }
       // exhale: a burst of bubbles from the regulator
       S.breathT -= dt;
-      if (S.breathT <= 0 && S.depthBody > 0.4) { S.breathT = 3.8 + Math.random() * 1.2; rig.group.updateMatrixWorld(true); rig.mouth(tmp2); fx.bubbles(tmp2, 8 + Math.floor(Math.random() * 6), 0.034, 0.06); }
+      if (S.breathT <= 0 && S.depthBody > 0.4) { S.breathT = 3.8 + Math.random() * 1.2; rig.group.updateMatrixWorld(true); rig.mouth(tmp2); fx.bubbles(tmp2, 8 + Math.floor(Math.random() * 6), 0.026, 0.06); }
       setState('scuba');
     } else {
       diver.update(dt, 0, 0, false);
@@ -564,6 +566,7 @@ export async function init(ctx) {
   const controller = {
     update(dt) {
       if (S.auto) return;
+      dt = dt > 0 ? Math.min(dt, 0.1) : 1 / 60;           // still-frame tests can hand in a negative step
       pollPad(dt);
       simulate(dt, input());
       animate(dt);
@@ -573,9 +576,32 @@ export async function init(ctx) {
   };
   ctx.controller = controller;
   const api = { player, spawnPerson, makeCrowd, makeLook: P.makeLook, createPerson: P.createPerson, hud, fx, interactables, surfaceAt, ears, breath, diver, people: P,
-    update(dt) { for (const n of npcs) if (n.rig) { const d = n.group.position.distanceTo(camera.position); if (d < 220) n.rig.update(dt, camera); } } };
+    update(dt) { dt = dt > 0 ? Math.min(dt, 0.1) : 1 / 60; for (const n of npcs) if (n.rig) { const d = n.group.position.distanceTo(camera.position); if (d < 220) n.rig.update(dt, camera); } } };
   ctx.player = player; ctx.people = api; ctx.hud = hud; ctx.spawnPerson = spawnPerson; ctx.makeCrowd = makeCrowd;
   window.__player = api;
+
+  // ---- test and demo hooks (query): dive=1 duck-dives, demo=npcs|crowd places people, settle=<s> runs the sim before the first frame
+  if (q.get('dive')) S.dive = true;
+  const demoWait = [];
+  if (q.get('demo')) {
+    const here = player.local, ah = THREE.MathUtils.degToRad(S.camYaw * 0 + SPAWN.heading);
+    const dx = Math.sin(S.camYaw), dn = Math.cos(S.camYaw), rx = Math.cos(S.camYaw), rn = -Math.sin(S.camYaw);
+    if (q.get('demo') === 'npcs') ['skipper', 'guide', 'ranger', 'traditionalOwner'].forEach((role, i) => {
+      const o = (i - 1.5) * 1.5, x = here.x + dx * 5 + rx * o, nn = here.north + dn * 5 + rn * o;
+      const n = spawnPerson(role, { x, north: nn, heading: THREE.MathUtils.radToDeg(S.camYaw) + 180 + (i - 1.5) * -8, gender: ['M', 'W', 'W', 'W'][i], animation: i === 1 ? 'Wave' : 'Idle' });
+      if (i === 3) n.say('Welcome to Ngaro Country.', 60);
+      demoWait.push(n.ready);
+    });
+    if (q.get('demo') === 'crowd') demoWait.push(makeCrowd(Number(q.get('n') || 40), [here.x + dx * 12, here.north + dn * 12], 22).ready);
+  }
+  await Promise.all(demoWait);
+  const settle = Number(q.get('settle') || 0);
+  if (settle) {
+    const hold = (q.get('hold') || '').split(',');
+    S.virt = { f: hold.includes('f') ? 1 : 0, r: 0, up: hold.includes('up') ? 1 : 0, down: hold.includes('down') ? 1 : 0, run: hold.includes('run') ? 1 : 0, inflate: 0, deflate: hold.includes('deflate') ? 1 : 0 };
+    for (let i = 0; i < settle / 0.05; i++) controller.update(0.05);
+    S.virt = null;
+  }
 
   // ------------------------------------------------------------ ?autotest=1: script the transitions headlessly
   if (q.get('autotest') === '1') await autotest(api, { ctx, simulate, animate, S, input, equip, teleport, fx, surfaceAt, hudFrame, season });

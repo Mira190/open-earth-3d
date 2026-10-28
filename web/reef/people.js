@@ -251,20 +251,37 @@ export async function createPerson(lookIn, opts = {}) {
     const k = proc.k;
     pivot.rotation.x = k * (Math.PI / 2) * 0.96 + proc.pitch * k;   // body horizontal, face down; pitch adds the dive angle
     const ph = proc.phase, B = bones, a = proc.amp, f = proc.fin;
-    const kick = Math.sin(ph) * (0.38 + 0.16 * (f - 1)) * a;
+    const kick = Math.sin(ph) * (0.2 + 0.1 * (f - 1)) * a;
     // flutter kick: thighs swing in opposition, knees follow a little later; fins lengthen the stroke
-    twist(B['UpperLeg.L'], AX, kick * k); twist(B['UpperLeg.R'], AX, -kick * k);
-    twist(B['LowerLeg.L'], AX, Math.sin(ph - 0.9) * 0.3 * a * k); twist(B['LowerLeg.R'], AX, -Math.sin(ph - 0.9) * 0.3 * a * k);
+    twist(B['UpperLegL'], AX, kick * k); twist(B['UpperLegR'], AX, -kick * k);
+    twist(B['LowerLegL'], AX, Math.sin(ph - 0.9) * 0.2 * a * k); twist(B['LowerLegR'], AX, -Math.sin(ph - 0.9) * 0.2 * a * k);
     if (proc.mode === 'crawl') {                                // a swimmer without a mask: head-up crawl, arms windmill
       const w = ph * 0.5;
-      twist(B['UpperArm.L'], AX, -(Math.sin(w) * 1.5 + 2.1) * k * a); twist(B['UpperArm.R'], AX, -(Math.sin(w + Math.PI) * 1.5 + 2.1) * k * a);
+      twist(B['UpperArmL'], AX, -(Math.sin(w) * 1.5 + 2.1) * k * a); twist(B['UpperArmR'], AX, -(Math.sin(w + Math.PI) * 1.5 + 2.1) * k * a);
     } else {                                                    // snorkel / scuba: arms by the sides, a little sculling
-      twist(B['UpperArm.L'], AZ, 0.2 * k); twist(B['UpperArm.R'], AZ, -0.2 * k);
-      twist(B['UpperArm.L'], AX, Math.sin(ph * 0.5) * 0.12 * k); twist(B['UpperArm.R'], AX, -Math.sin(ph * 0.5) * 0.12 * k);
+      twist(B['UpperArmL'], AZ, 0.2 * k); twist(B['UpperArmR'], AZ, -0.2 * k);
+      twist(B['UpperArmL'], AX, Math.sin(ph * 0.5) * 0.12 * k); twist(B['UpperArmR'], AX, -Math.sin(ph * 0.5) * 0.12 * k);
     }
+    // the foot bones hang off the root (the clips drive them like IK targets), so bring them along with the shins and point the toes
+    for (const side of ['L', 'R']) followFoot(side, (1.0 + 0.3 * (f - 1)) * k + Math.sin(ph - 1.6) * 0.25 * a * k * (side === 'L' ? 1 : -1));
     // neck: the head comes up so a face-down swimmer looks ahead and down, not straight at the sea floor
     twist(B.Neck, AX, -0.55 * k * (1 - proc.headUp * 0.3)); twist(B.Head, AX, -0.35 * k);
     twist(B.Torso, AX, -0.1 * k * Math.sin(ph) * 0.3);
+  }
+  const _mA = new THREE.Matrix4(), _mB = new THREE.Matrix4(), _mC = new THREE.Matrix4(), _mD = new THREE.Matrix4();
+  function followFoot(side, plantar) {
+    const ll = bones['LowerLeg' + side], ft = bones['Foot' + side];
+    if (!ll || !ft) return;
+    ll.updateWorldMatrix(true, false);
+    const rLL = tpl.restWorld['LowerLeg' + side], rF = tpl.restWorld['Foot' + side], F = T.feet[side];
+    // the shin's skinning transform, then a toe-pointing rotation about the ankle, then the foot's own bind pose
+    _mA.copy(rLL).invert().premultiply(ll.matrixWorld);
+    _mB.makeTranslation(F.cx, 0.1, F.back + 0.06).multiply(_mC.makeRotationX(plantar)).multiply(_mD.makeTranslation(-F.cx, -0.1, -(F.back + 0.06)));
+    _mA.multiply(_mB).multiply(rF);
+    ft.parent.updateWorldMatrix(true, false);
+    _mA.premultiply(_mC.copy(ft.parent.matrixWorld).invert());
+    _mA.decompose(ft.position, ft.quaternion, ft.scale);
+    ft.updateMatrixWorld(true);
   }
   rig.faceTowards = (v, snap) => {
     const p = group.getWorldPosition(_v.clone());

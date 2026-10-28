@@ -20,10 +20,10 @@ const CSS = `
 .rh-tr small { opacity: .7; }
 .rh-gauge { position: absolute; left: 12px; top: 10px; display: none; gap: 6px 14px; padding: 8px 12px; border-radius: 12px; background: var(--glass); border: 1px solid var(--edge); grid-template-columns: auto auto; font-variant-numeric: tabular-nums; }
 .rh-gauge.on { display: grid; }
-.rh-gauge .big { grid-column: 1 / -1; font-size: 30px; font-weight: 700; line-height: 1; }
+.rh-gauge .big { grid-column: 1 / -1; font-size: 30px; font-weight: 700; line-height: 1; display: flex; align-items: baseline; gap: 6px; }
 .rh-gauge .big small { font-size: 13px; font-weight: 500; opacity: .75; margin-left: 4px; }
-.rh-gauge div > small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .65; }
-.rh-gauge div > span { font-size: 17px; font-weight: 600; }
+.rh-gauge .cell > small { display: block; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; opacity: .65; }
+.rh-gauge .cell > span { font-size: 17px; font-weight: 600; }
 .rh-gauge .bar { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: rgba(255,255,255,.14); overflow: hidden; }
 .rh-gauge .bar > b { display: block; height: 100%; background: #6fd3e6; width: 50%; transition: width .2s, background .3s; }
 .rh-gauge .w { color: var(--warn); } .rh-gauge .b { color: var(--bad); } .rh-gauge .g { color: var(--good); }

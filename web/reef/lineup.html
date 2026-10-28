@@ -35,6 +35,8 @@ addEventListener('unhandledrejection', e => { $('err').textContent += String(e.r
   if (q.get('chars')) {
     await P.loadLibrary();
     list = Object.keys((await P.loadLibrary()).info.characters).map(c => ({ look: { character: c, skin: '#d6a47a', scale: 1, accessories: [] } }));
+  } else if (q.get('sets')) {
+    list = q.get('sets').split('/').map(() => ({ look: P.makeLook(roles[0].split(':')[0], { gender: roles[0].split(':')[1] || 'M', seed: 5 }) }));
   } else list = roles.map((r, i) => ({ look: P.makeLook(r.split(':')[0], { gender: r.split(':')[1] || (i % 2 ? 'W' : 'M'), seed: i + Number(q.get('seed') || 3) }) }));
   const gear = (q.get('gear') || '').split(',').filter(Boolean);
   const rigs = [];
@@ -42,7 +44,8 @@ addEventListener('unhandledrejection', e => { $('err').textContent += String(e.r
     const rig = await P.createPerson(list[i].look);
     rig.group.position.set((i - (list.length - 1) / 2) * Number(q.get('gap') || 1.1), 0, 0);
     rig.group.rotation.y = Number(q.get('ry') || 0) ;
-    for (const g of gear) rig.show(g, true);
+    const sets = q.get('sets') ? q.get('sets').split('/')[i].split(',').filter(Boolean) : gear;
+    for (const g of sets) rig.show(g, true);
     if (q.get('pose')) { rig.group.position.y = 1.0; rig.setSwim(1, { mode: q.get('pose'), amp: 1, phase: 0.8 + i, fin: gear.includes('fins') ? 1.6 : 1 }); }
     scene.add(rig.group); rigs.push(rig);
     rig.update(0.05);
