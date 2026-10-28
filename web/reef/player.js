@@ -6,12 +6,18 @@
 //   dry sand .. 0.15 m: walk / run        0.15 .. 1.35 m: wade (slower, spray)
 //   deeper than ~1.35 m: swim at the surface (no gear), snorkel (mask on), freedive (duck-dive from
 //   the surface, breath-hold to 10 m), scuba (BCD buoyancy, air, no-deco limit, safety stop).
+// Controls: WASD/arrows move, mouse drag or click-to-lock looks, Shift run/fast, Space jump/up, Ctrl or C dive/down,
+// E use, V view (third / shoulder / first), F and G add and vent BCD air, Q equalise, B clear the snorkel, H help, M sound.
+// Touch: stick, drag to look, four buttons. Gamepad: sticks, A up, B or RT down, X use, Y view, LB/RB BCD.
+// Query hooks for tests: autotest=1 (script every state, log "[test]" lines), player=1&x&y&z&yaw (place, z < 0 is under water),
+// snorkel=1 | scuba=1 | equip=<gear>, dive=1, view=first|shoulder, cam=<heading>,<pitch>,<dist>, settle=<s>&hold=f,down,up,run
+// (run the sim before the first frame), demo=npcs | crowd&n=, mute=1, nolock=1.
 // Axes: local (east, north, up) is drawn at three.js (x, y, -z). Heading 0 = north, 90 = east.
 import * as THREE from 'three/webgpu';
 import * as P from './people.js';
 import { createHud } from './hud.js';
 import { createFx } from './fx.js';
-import { Diver, BreathHold, Ears, waterTemp, ambient } from './dive.js';
+import { Diver, BreathHold, Ears, waterTemp, ambient, ndlAt } from './dive.js';
 
 const V3 = THREE.Vector3, clamp = THREE.MathUtils.clamp;
 const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };
@@ -24,6 +30,7 @@ const WADE_FROM = 0.15, SWIM_ENTER = 1.35, SWIM_EXIT = 1.0, MAX_SLOPE = 0.95, FR
 export async function init(ctx) {
   const { scene, camera, env, q } = ctx;
   const hud = createHud();
+  { const h0 = document.getElementById('hud'); if (h0) Object.assign(h0.style, { left: 'auto', right: '12px', bottom: 'auto', top: '62px', fontSize: '11px', padding: '4px 8px', opacity: '.7', display: matchMedia('(pointer: coarse)').matches ? 'none' : '' }); }   // the viewer's debug line makes room for ours
   const fx = createFx(ctx);
   const msg = (kind, text) => hud.say(text, { kind: kind === 'info' ? '' : kind, secs: kind === 'bad' ? 7 : 5 });
   const diver = new Diver({ onEvent: msg });
@@ -142,7 +149,7 @@ export async function init(ctx) {
     if (!gp) { padState.f = padState.r = padState.up = padState.down = padState.run = padState.inflate = padState.deflate = 0; return; }
     const dz = v => Math.abs(v) < 0.15 ? 0 : v;
     padState.r = dz(gp.axes[0]); padState.f = -dz(gp.axes[1]);
-    look2(dz(gp.axes[2]) * dt * 2.2 / 0.0024 * 0.0024 * 60 / 60 * 60, dz(gp.axes[3]) * dt * 2.2 / 0.0024 * 0.0024 * 60 / 60 * 60, 1 / 60 * 0.9);
+    look2(dz(gp.axes[2]) * dt * 900, dz(gp.axes[3]) * dt * 900, 0.0024);
     const b = i => gp.buttons[i] && gp.buttons[i].pressed;
     padState.up = b(0) ? 1 : 0; padState.down = (b(1) || b(7)) ? 1 : 0; padState.run = b(10) ? 1 : 0; padState.inflate = b(5) ? 1 : 0; padState.deflate = b(4) ? 1 : 0;
     [[2, 'KeyE'], [3, 'KeyV'], [6, 'KeyQ']].forEach(([i, k]) => { if (b(i) && !padState.prev[i]) pressed.add(k); padState.prev[i] = b(i); });
@@ -219,7 +226,7 @@ export async function init(ctx) {
     dress();
     return true;
   }
-  interactables.push({ id: 'kit', x: 0, north: 0, radius: 2.4, key: 'E', get label() { return S.gear.scuba ? 'E: take the scuba kit off' : S.gear.snorkel ? 'E: swap to the scuba kit' : 'E: put on mask, snorkel and fins'; }, action: cycleGear });
+  interactables.push({ id: 'kit', object: gearCrate, radius: 2.4, key: 'E', get label() { return S.gear.scuba ? 'E: take the scuba kit off' : S.gear.snorkel ? 'E: swap to the scuba kit' : 'E: put on mask, snorkel and fins'; }, action: cycleGear });
 
   // ------------------------------------------------------------ simulation
   const fwdV = new V3(), rightV = new V3(), tmp = new V3(), tmp2 = new V3();
@@ -336,7 +343,7 @@ export async function init(ctx) {
       const lung = 0.55 * Math.sin(S.time * 1.4);                    // breathing in lifts you, breathing out lets you sink
       const net = bn.n / amb + 3.0 / amb - 4.5 + (1 - diver.air / diver.tankBar) * 1.8 + lung;
       const kick = (inp.up ? 1 : 0) - (inp.down ? 1 : 0);
-      ay = net * 0.9 + kick * 1.7 - 2.2 * S.vy + pitchSteer * hv * 2.2;
+      ay = net * 0.9 + kick * 1.2 - 2.2 * S.vy + pitchSteer * hv * 2.2;
       if (S.emergency) ay += (0.28 - S.vy) * 3.5;
       effort = Math.min(1, effort + Math.abs(kick) * 0.4);
       S.vy += ay * dt;
@@ -471,7 +478,7 @@ export async function init(ctx) {
     const eyeUnder = camera.position.y < env.u.tide.value - 0.05;
     hud.mask(wearMask && (eyeUnder || S.view === 'first'));
     const near = nearest();
-    hud.promptAuto(near ? near.label : (!inW && S.dep > WADE_FROM + 0.4 && S.dep < SWIM_ENTER && !S.gear.mask && false) ? '' : '');
+    hud.promptAuto(near ? near.label : '');
     const sc = S.state, below = S.depthBody;
     let gauge = null;
     if (sc === 'scuba') {
@@ -516,7 +523,6 @@ export async function init(ctx) {
     placeKit: placeCrate, kit: gearCrate
   };
   player.interactables = interactables;
-  interactables[0].object = gearCrate;
 
   // ---- spawn: Whitehaven Beach, facing the sea
   teleport(SPAWN.x, SPAWN.north, undefined, SPAWN.heading);
@@ -617,7 +623,8 @@ async function autotest(api, T) {
   const dt = 0.05;
   S.auto = true;
   const V = (o = {}) => Object.assign({ f: 0, r: 0, up: 0, down: 0, run: 0, inflate: 0, deflate: 0 }, o);
-  const run = (secs, inp, until) => { const n = Math.round(secs / dt); S.virt = inp; for (let i = 0; i < n; i++) { T.simulate(dt, inp); T.animate(dt); T.fx.update(dt, T.surfaceAt); T.hudFrame(dt); if (until && until()) return i * dt; } return secs; };
+  let maxSplash = 0;
+  const run = (secs, inp, until) => { const n = Math.round(secs / dt); S.virt = inp; for (let i = 0; i < n; i++) { T.simulate(dt, inp); maxSplash = Math.max(maxSplash, api.fx.splashCount); T.animate(dt); T.fx.update(dt, T.surfaceAt); T.hudFrame(dt); if (until && until()) return i * dt; } return secs; };
   const seen = new Set(); player.onChange(s => seen.add(s));
   const must = (cond, name, extra) => out(!!cond, name, extra || '');
   try {
@@ -628,7 +635,7 @@ async function autotest(api, T) {
     run(2, V({ f: 1, run: 1 })); must(S.speed > 2.5 || player.state === 'wade', 'run speed', `${S.speed.toFixed(2)} ${player.state}`);
     S.camYaw = Math.PI / 2;
     run(120, V({ f: 1 }), () => player.state === 'swim');
-    must(seen.has('wade'), 'wade state entered'); must(player.state === 'swim', 'swim state entered', `${player.state} depth=${S.dep.toFixed(2)} x=${S.pos.x.toFixed(0)}`);
+    must(seen.has('wade'), 'wade state entered'); must(maxSplash > 0, 'wading throws spray', String(maxSplash)); must(player.state === 'swim', 'swim state entered', `${player.state} depth=${S.dep.toFixed(2)} x=${S.pos.x.toFixed(0)}`);
     must(Math.abs(S.pos.y - (S.surf - 0.15)) < 0.3, 'floats at the surface', `y=${S.pos.y.toFixed(2)} surf=${S.surf.toFixed(2)}`);
     // 2. snorkel and duck-dive
     let spot = null;
@@ -676,6 +683,26 @@ async function autotest(api, T) {
     T.equip('none');
     T.teleport(560, 445, undefined, 270); run(40, V({ f: 1 }), () => player.state === 'walk');
     must(['walk', 'wade'].includes(player.state), 'wades back ashore', `${player.state} x=${S.pos.x.toFixed(0)}`);
+    // 4b. interaction hook: the dive kit on the beach cycles the gear; customising the character rebuilds it
+    T.teleport(player.kit.position.x + 1, -player.kit.position.z + 1, undefined, 90); run(0.2, V());
+    must(player.interact() && player.gear.mask, 'E at the kit puts the gear on', JSON.stringify(player.gear));
+    player.equip('none');
+    const oldRig = player.rig; await player.setLook({ gender: 'W', skin: 'deep', hair: 'white' });
+    must(player.rig !== oldRig && player.look.gender === 'W', 'setLook rebuilds the character', player.look.character);
+    const np = api.spawnPerson('traditionalOwner', { x: 520, north: 445, gender: 'W' }); await np.ready; np.say('Hello', 2); np.faceTowards(S.pos); np.play('Wave'); api.update(0.05);
+    must(np.rig && np.group.children.length > 0, 'spawnPerson returns a working NPC', np.look.character);
+    np.dispose();
+    // 4c. the dive tables and the stops, on the physiology model alone
+    const near = (a, b, tol) => Math.abs(a - b) <= tol;
+    must(near(ndlAt(18), 56, 1) && near(ndlAt(21), 37, 1) && near(ndlAt(24), 29, 1) && near(ndlAt(30), 20, 1), 'no-deco table: 18 m 56, 21 m 37, 24 m 29, 30 m 20', [18, 21, 24, 30].map(d => ndlAt(d).toFixed(0)).join('/'));
+    const ev = [], D = new Diver({ onEvent: (k, t) => ev.push(k + ':' + t) });
+    for (let t = 0; t < 21 * 60; t += 1) D.update(1, 30, 0.4, true);
+    must(D.decoDue && ev.some(e => /passed/.test(e)), '30 m for 21 min passes the no-deco limit (warning only)', `load=${D.load.toFixed(2)}`);
+    const D2 = new Diver({ onEvent: (k, t) => ev.push(k + ':' + t) });
+    for (let t = 0; t < 8 * 60; t++) D2.update(1, 18, 0.4, true);
+    must(D2.stopDue && D2.ndl > 30 && D2.air < 300, 'a normal 18 m dive owes a safety stop', `ndl=${D2.ndl.toFixed(0)} stop=${D2.stopDue}`);
+    for (let t = 0; t < 200; t++) D2.update(1, 5, 0.2, true);
+    must(!D2.stopDue, 'three minutes at 5 m clears the safety stop', `left=${D2.stopLeft.toFixed(0)}`);
     // 5. views, interaction hooks
     for (const v of ['first', 'shoulder', 'third']) { S.view = v; run(0.3, V()); }
     must(typeof player.addInteractable === 'function' && typeof api.spawnPerson === 'function', 'API present');
