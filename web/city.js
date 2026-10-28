@@ -384,6 +384,7 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ picking
   const ray = new THREE.Raycaster();
+  ray.firstHitOnly = true; // with a BVH, stop at the nearest hit
   let down = null;
   canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
   canvas.addEventListener('pointerup', e => {
@@ -549,7 +550,7 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ sun hours map
   const hr = CITY.sun_hours_region || [scene.frame.x[0] + 300, scene.frame.x[1] - 300, scene.frame.y[0] + 300, scene.frame.y[1] - 300];
-  const HEAT = { x0: hr[0], x1: hr[1], y0: hr[2], y1: hr[3], cell: 8 };
+  const HEAT = { x0: hr[0], x1: hr[1], y0: hr[2], y1: hr[3], cell: 8 }; // 2 m when the GPU casts the rays
   const RAMP = ['#3a2504', '#6f4306', '#a8680b', '#d9952a', '#f3c467', '#fde8b0'];
   $('#heat-ramp').style.background = `linear-gradient(90deg, ${RAMP.join(', ')})`;
   let heatMesh = null;
@@ -561,23 +562,36 @@ window.OpenEarthCity = async function main(cityId) {
   $('#heat-run').onclick = async () => {
     const btn = $('#heat-run');
     btn.disabled = true;
+    // on the GPU (sun-gpu.js): every 2 m cell of the surface model, every 10 minutes;
+    // on the CPU (sun.js): 8 m cells every 20 minutes
+    const gpu = window.SunGPU && SunGPU.available(DSM);
+    HEAT.cell = gpu ? DSM.cell : 8;
     const nx = Math.round((HEAT.x1 - HEAT.x0) / HEAT.cell), ny = Math.round((HEAT.y1 - HEAT.y0) / HEAT.cell);
-    const L = state.limits, step = 20, times = [];
+    const L = state.limits, step = gpu ? 10 : 20, times = [];
     for (let t = Math.ceil(L.sunrise / step) * step; t < L.sunset; t += step) times.push(t);
     const suns = times.map(t => S.position(S.localToUtc(state.y, state.m, state.d, t))).filter(s => s.altitude > 0);
     const hours = new Float32Array(nx * ny), roofed = new Uint8Array(nx * ny);
     const t0 = performance.now();
+    const pts = [], at = [];
     for (let r = 0; r < ny; r++) {
       const y = HEAT.y1 - (r + 0.5) * HEAT.cell;
       for (let c = 0; c < nx; c++) {
         const x = HEAT.x0 + (c + 0.5) * HEAT.cell, g = ground(x, y);
         const dc = Math.floor((x - DSM.x0) / DSM.cell), dr = Math.floor((DSM.y1 - y) / DSM.cell);
         if (DSM.data[dr * DSM.nx + dc] > g + 2.5) { roofed[r * nx + c] = 1; continue; }
-        let lit = 0;
-        for (const s of suns) if (S.sunlit(DSM, x, y, g + 0.5, s)) lit++;
-        hours[r * nx + c] = lit * step / 60;
+        pts.push(x, y, g + 0.5); at.push(r * nx + c);
       }
-      if (r % 12 === 0) { $('#heat-msg').textContent = `Ray casting… ${Math.round(r / ny * 100)}%`; await idle(); }
+    }
+    if (gpu) {
+      const lit = await SunGPU.count(DSM, new Float32Array(pts), suns, f => { $('#heat-msg').textContent = `Ray casting on the GPU… ${Math.round(f * 100)}%`; });
+      for (let i = 0; i < at.length; i++) hours[at[i]] = lit[i] * step / 60;
+    } else {
+      for (let i = 0; i < at.length; i++) {
+        let lit = 0;
+        for (const s of suns) if (S.sunlit(DSM, pts[3 * i], pts[3 * i + 1], pts[3 * i + 2], s)) lit++;
+        hours[at[i]] = lit * step / 60;
+        if (i % 4000 === 0) { $('#heat-msg').textContent = `Ray casting… ${Math.round(i / at.length * 100)}%`; await idle(); }
+      }
     }
     const maxH = (L.sunset - L.sunrise) / 60;
     const cv = document.createElement('canvas');
@@ -590,7 +604,7 @@ window.OpenEarthCity = async function main(cityId) {
     }
     ctx.putImageData(img, 0, 0);
     const tex = new THREE.CanvasTexture(cv);
-    tex.encoding = THREE.sRGBEncoding;
+    tex.colorSpace = THREE.SRGBColorSpace;
     tex.magFilter = THREE.NearestFilter;
     if (heatMesh) { world.remove(heatMesh); heatMesh.geometry.dispose(); }
     const w = HEAT.x1 - HEAT.x0, h = HEAT.y1 - HEAT.y0;
@@ -607,7 +621,7 @@ window.OpenEarthCity = async function main(cityId) {
     $('#heat-ticks').innerHTML = ticks.map(t => `<span>${t}</span>`).join('');
     $('#heat-legend').hidden = false;
     $('#heat-clear').hidden = false;
-    $('#heat-msg').textContent = `${state.d} ${MONTHS[state.m - 1]}: ${(nx * ny).toLocaleString()} points × ${suns.length} sun positions in ${((performance.now() - t0) / 1000).toFixed(1)} s.`;
+    $('#heat-msg').textContent = `${state.d} ${MONTHS[state.m - 1]}: ${(nx * ny).toLocaleString()} points (${HEAT.cell} m) × ${suns.length} sun positions in ${((performance.now() - t0) / 1000).toFixed(1)} s${gpu ? ' on the GPU' : ''}.`;
     btn.disabled = false;
   };
   $('#heat-clear').onclick = () => {

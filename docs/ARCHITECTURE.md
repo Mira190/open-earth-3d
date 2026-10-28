@@ -108,7 +108,15 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 ## Viewer
 
-`web/index.html` is one page with three views. A route script picks one:
+`web/index.html` is one page with three views. three.js r186 loads as ES modules
+through an import map (cdnjs for the core, jsDelivr for the addons and
+three-mesh-bvh), and a small module exposes them as the global `THREE` the app's
+scripts use. Colour management is left off: the scripts convert their sRGB
+colours to linear themselves, as they did on r128. The sky keeps r128's output too:
+r183 made the Sky shader's radiance linear and its sun disc far brighter, and the
+environment map turned that disc into a second sun, over-lighting noon and
+darkening dawn. With r128's tone curve and disc restored, a game frame differs
+from r128's by 5 levels in 255 at the mean. A route script picks a view:
 - `#<id>` opens a built city's 3D model;
 - `#play-<id>` opens its game;
 - anything else shows the globe.
@@ -130,7 +138,9 @@ The views switch in place, without reloading the page.
   sphere and hidden on the far side. Each live city shows its local time and
   sun altitude.
 - **`city.js`** is the model viewer. It drives everything city-specific from
-  `scene.city`. It also builds a 2 m
+  `scene.city`. Picking a building goes through a bounding-volume hierarchy
+  (three-mesh-bvh) over the extruded buildings. One ray against Sydney's 178,683
+  building triangles takes 0.04 ms instead of 13 ms. It also builds a 2 m
   surface model for ray casting, so the panel's numbers do not depend on the
   shadow map's resolution.
 - **`sun.js`** works in the browser and in Node, so the viewer and the
@@ -141,6 +151,15 @@ The views switch in place, without reloading the page.
   - ray casting (`castRay`, `sunlit`, `blocker`, `fractionSunlit`, `litMask`).
 
   Ray casting skips empty space with 8-cell block maxima.
+
+- **`sun-gpu.js`** is the same ray caster as a WebGL2 fragment shader. Each
+  output pixel is one ground point, and it counts the sun positions that point
+  sees. The surface model and the block maxima are float textures, so the result
+  matches `sun.js` ray for ray: 87,000 of 87,000 test rays agree. The viewer uses
+  it for the sun-hours map, with 2 m cells every 10 minutes, against 8 m every 20
+  minutes on the CPU. A software renderer (SwiftShader, llvmpipe) is slower than
+  `sun.js`, so it gets the CPU path, as does any GPU whose texture limit is
+  smaller than the surface model.
 
 - **`game/`** is the game; [GAME.md](GAME.md) describes it:
   - navigation;

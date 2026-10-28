@@ -31,11 +31,11 @@ window.OEWorld = (function () {
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.6;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     const SHADOW = renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048;
 
     const world = new THREE.Scene();
@@ -44,6 +44,14 @@ window.OEWorld = (function () {
     world.add(sky);
     const su = sky.material.uniforms;
     su.turbidity.value = 3.5; su.rayleigh.value = 1.1; su.mieCoefficient.value = 0.004; su.mieDirectionalG.value = 0.8;
+    if (su.cloudCoverage) su.cloudCoverage.value = 0; // r183+ Sky draws clouds by default; the analysis assumes a clear sky
+    // r183 also made the sky's output linear and its sun disc ~60,000 times the sky, which the
+    // environment map turns into a second sun. Keep r128's tone curve and disc, the light this
+    // app's exposure and materials were tuned under.
+    sky.material.fragmentShader = sky.material.fragmentShader
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;')
+      .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
+      .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ), 1.0 );');
     const envScene = new THREE.Scene();
     const envSky = new THREE.Mesh(sky.geometry, sky.material);
     envSky.scale.setScalar(50); // inside the PMREM cube camera's far plane
@@ -51,7 +59,7 @@ window.OEWorld = (function () {
     const pmrem = new THREE.PMREMGenerator(renderer);
     let envRT = null, envKey = '';
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2 * Math.PI); // intensities are physical since r155: π × the old values
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(SHADOW, SHADOW);
     sunLight.shadow.bias = -0.0003;
@@ -59,7 +67,7 @@ window.OEWorld = (function () {
     const shCam = sunLight.shadow.camera;
     shCam.near = 10; shCam.far = 9000;
     world.add(sunLight, sunLight.target);
-    const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25);
+    const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
 
@@ -77,7 +85,7 @@ window.OEWorld = (function () {
       for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(T, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
       const tex = texLoader.load(D.DATA + t.file);
-      tex.encoding = THREE.sRGBEncoding;
+      tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       m.receiveShadow = true;
@@ -224,6 +232,10 @@ window.OEWorld = (function () {
     }
     const bGeo = extrude(B.s, bColour);
     const buildings = new THREE.Mesh(bGeo, facadeMaterial());
+    if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
+      bGeo.boundsTree = new THREE.MeshBVH(bGeo);
+      buildings.raycast = THREE.acceleratedRaycast;
+    }
     buildings.castShadow = buildings.receiveShadow = true;
     world.add(buildings);
 
@@ -290,9 +302,9 @@ window.OEWorld = (function () {
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
         sunLight.visible = sp.altitude > -0.5;
-        sunLight.intensity = 2.4 * smooth(-0.5, 10, sp.altitude);
+        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
-        hemi.intensity = 0.07 + 0.25 * day;
+        hemi.intensity = Math.PI * (0.07 + 0.25 * day);
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         for (const m of Object.values(floodMats)) m.emissiveIntensity = 0.32 * U.uNight.value;

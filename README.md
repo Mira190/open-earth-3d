@@ -207,7 +207,8 @@ Data tab. The shared sources are:
   Buildings (ODbL). A derived database must stay under ODbL.
 - **The globe's base map:** Natural Earth (public domain).
 - **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono).
-- **3D library:** three.js r128 (MIT), loaded from a CDN.
+- **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
+  modules from a CDN.
 - **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular
   Women (CC0 1.0, public domain).
 
