@@ -1,0 +1,43 @@
+name,height_m,floors,year,address,exclude
+Australia 108,316.7,100,2020,70 Southbank Boulevard,
+Eureka Tower,297.3,91,2006,7 Riverside Quay,
+Aurora Melbourne Central,270.5,85,2019,250 La Trobe Street,
+West Side Place Tower A,268.7,81,2021,250 Spencer Street,"250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+120 Collins Street,266.6,52,1991,120 Collins Street,the address point resolves to St Michael's Uniting Church next door; the model's 120 Collins is mapped at 266 m
+101 Collins Street,260.0,50,1991,101 Collins Street,
+Prima Pearl,254.0,72,2014,31-49 Queensbridge Square,
+Queens Place North Tower,252.8,79,2021,350 Queen Street,the address point falls on the shared podium; the model's Queens Place tower is mapped at 253 m
+Rialto Towers,251.1,63,1986,525 Collins Street,
+Victoria One,246.8,76,2018,452 Elizabeth Street,
+Premier Tower,245.7,78,2021,134-160 Spencer Street,
+West Side Place Tower D,239.0,72,2023,250 Spencer Street,"250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+Swanston Central,236.7,71,2020,168 Victoria Street,
+Shangri-La by the Gardens,231.7,59,2023,308 Exhibition Street,
+Melbourne Square Tower 1,231.0,70,2021,93-119 Kavanagh Street,
+West Side Place Tower C,230.0,70,2023,250 Spencer Street,"250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+Vision Apartments,229.0,70,2016,500 Elizabeth Street,
+568 Collins Street,224.0,68,2015,568 Collins Street,
+Bourke Place,224.0,49,1991,600 Bourke Street,
+380 Melbourne,221.2,67,2021,380 Lonsdale Street,
+Sapphire by the Gardens,218.8,57,2022,308 Exhibition Street,
+Light House Melbourne,218.0,69,2017,450 Elizabeth Street,
+Telstra Corporate Centre,218.0,47,1992,242 Exhibition Street,"the address point resolves to a low building; the model's 242 Exhibition Street is mapped at 193 m, the published roof height"
+Melbourne Central,211.0,53,1991,350 Elizabeth Street,
+Aspire Melbourne,210.6,65,2023,299 King Street,
+UNO Melbourne,210.0,65,2023,111 A'Beckett Street,
+The Queensbridge,209.0,66,2025,84-88 Queensbridge Street,
+West Side Place Tower B,206.0,65,2021,250 Spencer Street,"250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+Freshwater Place North,205.0,63,2005,1 Queensbridge Square,the address point resolves to the Red Stair Amphitheatre; the model's Freshwater Place is mapped at 205 m
+Eq. Tower,202.0,63,2017,127-141 A'Beckett Street,
+Empire Melbourne,198.4,62,2017,398 Elizabeth Street,
+Home Southbank,198.0,60,2022,258 City Road,
+Melbourne Grand,198.0,57,2020,556-558 Lonsdale Street,
+405 Bourke Street,194.9,43,2021,405 Bourke Street,
+Collins House,190.0,59,2019,466 Collins Street,
+80 Collins South,188.4,41,2020,80 Collins Street,
+Meriton Suites,188.0,58,2023,140 King Street,
+Sofitel Hotel at Collins Place,188.0,50,1980,35 Collins Street,
+ANZ Tower at Collins Place,188.0,46,1978,55 Collins Street,
+Abode318,187.3,57,2015,312-318 Russell Street,
+Victoria Police Centre Tower 2,180.0,40,2020,311 Spencer Street,
+Melbourne Quarter Tower,155.2,34,2024,695 Collins Street,

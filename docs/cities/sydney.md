@@ -73,8 +73,8 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
   is up to 85 m at the edges. The extent is 3.0 × 4.8 km.
 - **Trees:** 6,096 trees mapped in OSM, as points and tree rows.
 - **Buildings:** 7,962 buildings and 8,308 solids. OSM building parts replace
-  their outlines, so Sydney Tower is a 290 m shaft, a 240–270 m turret and a
-  spire to 309 m, all from data. Each building records:
+  their outlines, so in the surface model Sydney Tower is a 290 m shaft, a
+  240–270 m turret and a spire to 309 m, all from data. Each building records:
   - its height and the source of that height;
   - its footprint source and OSM id, linked from the viewer's inspector;
   - a wall colour, from the mapped facade material or else the region's
@@ -90,6 +90,43 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
     right 69% of the time (`analysis/roof_model.json`);
   - a facade style, storey and ground-floor heights, and shopfronts and
     awnings on the edges that face a street.
+- **Landmarks** (`cities/sydney/city.py`, with the kit in
+  `pipeline/meshkit.py`), each from its published dimensions:
+  - **The Opera House:** its shells carry the chevron pattern of glossy white
+    and matte cream tiles, with tile lids between the ribs. The glass walls
+    are fanned between radial mullions. The Monumental Steps run down to the
+    forecourt.
+  - **The Harbour Bridge:** the deck is laid out in its real strips, west to
+    east:
+    - the cycleway;
+    - the railway, with its sleepers;
+    - six lanes;
+    - two more lanes on the old tram tracks;
+    - the footway.
+
+    It has kerb rails, New Jersey barriers between the strips, railings with
+    their bars, and a lamp every 36 m that lights up after dark. Underneath,
+    the deck's steel is visible: a cross girder at every panel point, seven
+    stringers, and an edge girder behind each fascia. All of it sits within the
+    deck's depth, so the published 49 m clearance is kept.
+  - **Sydney Tower:** the shaft, the golden turret with its two glazed bands,
+    the mast to 309 m, and 36 cable stays twisted into a hyperboloid. It takes
+    its sizes from the OSM parts it replaces. Those parts stay in the surface
+    model, so the shadow analysis is unchanged.
+- **Water** (`web/water.js`): the harbour has FFT waves from a 5 m/s
+  north-easterly sea breeze over the 4 km reach to the bridge, which gives a
+  significant wave height of 0.19 m. The fetch-limited estimate is 0.16 m.
+  The wind is a typical afternoon, not a measured sea state.
+  - **Shore foam** follows the kind of shore. Overture's land cover has 220
+    rock and 25 sand polygons here, which leaves 93% of the harbour's edge in
+    the model built:
+    - a lap against the seawalls;
+    - splash off rock (5% of the edge);
+    - swash on sand (2%).
+  - **Reflections:** the city and the bridge show in the water, lit windows
+    too at night.
+  - **Bottom:** where the water is shallow off a beach, its modelled bottom
+    shows through.
 - **The same files feed everything.** The browser viewer, the shadow analysis
   and the Blender scene all read the same `web/data/sydney` files. What you see is
   what is analysed.
@@ -286,12 +323,15 @@ it can only show a picture of it.
 
 ## 6. Performance and size
 
-- The whole viewer downloads about 6 MB of data:
+- The whole viewer downloads about 7 MB of data:
   - buildings: 1.5 MB JSON;
   - imagery: 3.8 MB in twelve 1 × 1.2 km JPEG tiles at 1 m;
-  - landmarks: 0.6 MB;
+  - landmarks: 1.3 MB;
   - terrain: 0.4 MB, base64 JSON;
+  - the shoreline: 0.26 MB PNG;
   - places, piers and trees: 0.15 MB.
+
+  The game adds 3 MB of walking and path data.
 - It builds about 330,000 building vertices on load and runs on a phone. The
   shadow map is 4096² on desktop and 2048² on small screens.
 - In headless Chromium with software rendering (SwiftShader), it loads and
@@ -304,7 +344,9 @@ it can only show a picture of it.
   follow a grammar per style, and our roofs are inferred where they are not
   mapped. Our trees are still low-poly blobs.
 - **Unmapped detail.** Things OSM does not hold, such as the Opera House's
-  real shell layout, ornament and each building's actual elevation.
+  real shell layout, ornament and each building's actual elevation. The tile
+  pattern and the bridge deck are now built from published descriptions, but
+  at approximate sizes.
 
 The sensible combination is to use our scene as the **ground truth layer**
 (footprints, heights, terrain, sun) and let Opus and Blender dress it. Load
@@ -331,7 +373,15 @@ numbers stay valid because the geometry they depend on is unchanged.
   place's sun by more than 0.1 points.
 - **Water.** The water comes from the Port Jackson and bay polygons. Overture's
   "ocean" polygon stops at the Heads and does not cover the harbour at all,
-  which is another trap for a naive pipeline.
+  which is another trap for a naive pipeline. There is no open bathymetry, so
+  the bottom is modelled from the distance to each kind of shore, down to 4 m.
+  The harbour is deeper than that, but only the first few metres show.
+- **Landmark details.** These are approximations:
+  - the tile lid size;
+  - the widths of the deck strips, which add up to the published 48.8 m;
+  - the lamp spacing;
+  - the sizes and number of the steel members under the deck;
+  - the number of Sydney Tower's cable stays.
 - **Landmarks in the shadow analysis.** The surface model leaves out the
   Harbour Bridge and the Opera House shells. Neither shades a protected place.
 - **Protected windows and their reading.** The cl. 6.18 windows were

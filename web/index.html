@@ -525,7 +525,7 @@ a { color: var(--accent); }
       <p class="note" id="shade-now">Select a place to see which buildings shade it.</p>
       <div class="group" id="tower-group">
         <span class="eyebrow">Test a new tower</span>
-        <p>Place a tower, then check it against every protected window: the four solstice and equinox dates that fall in each period, every 15 minutes. As in the clause, a place fails if its total shadow across the protected hours goes up.</p>
+        <p>Place a tower, then check it against every protected window: <span id="tw-dates">the four solstice and equinox dates</span> that fall in each period, every 15 minutes. As in the clause, a place fails if its total shadow across the protected hours goes up.</p>
         <div class="row"><button class="btn primary" id="tw-place">Place a tower</button><button class="btn" id="tw-check" disabled>Check overshadowing</button><button class="btn" id="tw-remove" hidden>Remove</button></div>
         <div class="field"><label for="tw-h"><span>Height</span><span class="num" id="tw-h-v">180 m</span></label><input type="range" id="tw-h" min="20" max="320" step="5" value="180"></div>
         <div class="field"><label for="tw-w"><span>Footprint</span><span class="num" id="tw-w-v">40 × 40 m</span></label><input type="range" id="tw-w" min="15" max="90" step="5" value="40"></div>
@@ -657,19 +657,38 @@ a { color: var(--accent); }
   </section>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
+<script type="importmap">{"imports": {
+  "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.js": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.min.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
+  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.9.16/build/index.module.min.js"
+}}</script>
+<script type="module">
+// three.js r186 as ES modules, exposed as the global THREE the app's scripts use.
+// Colour management stays off: the app converts sRGB colours to linear itself (lin()).
+import * as T from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Sky } from 'three/addons/objects/Sky.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
+import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
+T.ColorManagement.enabled = false;
+window.THREE = Object.assign({}, T, { OrbitControls, Sky, Reflector, GLTFLoader, SkeletonUtils, BufferGeometryUtils, MeshBVH, acceleratedRaycast });
+window.dispatchEvent(new Event('three-ready'));
+</script>
 <script src="sun.js"></script>
+<script src="sun-gpu.js"></script>
 <script src="globe.js"></script>
+<script src="water.js"></script>
 <script src="buildings.js"></script>
 <script src="world.js"></script>
 <script src="city.js"></script>
 <script src="game/nav.js"></script>
 <script src="game/actors.js"></script>
 <script src="game/people.js"></script>
+<script src="game/kit.js"></script>
 <script src="game/vehicles.js"></script>
 <script src="game/audio.js"></script>
 <script src="game/hud.js"></script>
@@ -718,6 +737,7 @@ a { color: var(--accent); }
   }
   document.addEventListener('click', e => { if (e.target.closest('#back-globe')) { e.preventDefault(); location.hash = 'globe'; } });
   addEventListener('hashchange', show);
+  if (!window.THREE) await new Promise(r => addEventListener('three-ready', r, { once: true })); // three.js loads as a module
   show();
 })();
 </script>

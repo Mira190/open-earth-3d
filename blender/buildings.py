@@ -232,7 +232,18 @@ def add_buildings(B, scene, small=False):
         seed = (m[14] if has_style else bi * 2654435761 % 65535) % 997 / 997
         return style, storey, ground, seed, lin(m[7] or "#bdb6aa"), lin(m[8] or "#8d8f8f")
 
+    hidden, seen = set(scene.get("hidden_solids", [])), set()  # drawn by a parametric landmark instead
     for si, s in enumerate(solids):
+        if si in hidden:
+            continue
+        # OSM sometimes maps one tower twice; Cycles shades coincident faces black
+        x, y = np.asarray(s[4], float).reshape(-1, 2).T / 10
+        cr = x * np.roll(y, -1) - np.roll(x, -1) * y
+        area = cr.sum() / 2 or 1e-9
+        key = (round((x + np.roll(x, -1)) @ cr / (6 * area)), round((y + np.roll(y, -1)) @ cr / (6 * area)), round(area / 20), s[1], s[2], s[3], len(s))
+        if key in seen:
+            continue
+        seen.add(key)
         bi = s[0]
         style, storey, ground, seed, wall_c, roof_c = info(bi)
         g0, zb, zt = s[1] / 10, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10

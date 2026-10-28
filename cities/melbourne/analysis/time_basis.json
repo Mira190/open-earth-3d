@@ -1,0 +1,25 @@
+{
+ "rows": [
+  {
+   "place": "Fitzroy Gardens",
+   "month": 3,
+   "clock_time": 98.2,
+   "standard_time": 98.4,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Royal Botanic Gardens",
+   "month": 3,
+   "clock_time": 96.3,
+   "standard_time": 96.4,
+   "diff_pp": 0.1
+  }
+ ],
+ "worst": {
+  "place": "Fitzroy Gardens",
+  "month": 3,
+  "clock_time": 98.2,
+  "standard_time": 98.4,
+  "diff_pp": 0.1
+ }
+}

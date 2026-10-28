@@ -1,0 +1,227 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Federation Square",
+   "prod": 43.52,
+   "finer_samples": 43.5,
+   "finer_dsm": 42.22,
+   "finer_time": 43.71,
+   "reference": 42.58,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.94,
+   "seconds": 13.633
+  },
+  {
+   "place": "City Square",
+   "prod": 42.8,
+   "finer_samples": 43.12,
+   "finer_dsm": 43.05,
+   "finer_time": 43.28,
+   "reference": 43.85,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -1.05,
+   "seconds": 1.499
+  },
+  {
+   "place": "Bourke Street Mall",
+   "prod": 25.42,
+   "finer_samples": 25.23,
+   "finer_dsm": 25.54,
+   "finer_time": 25.57,
+   "reference": 25.75,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.33,
+   "seconds": 0.336
+  },
+  {
+   "place": "Boyd Community Park",
+   "prod": 41.8,
+   "finer_samples": 41.28,
+   "finer_dsm": 40.89,
+   "finer_time": 41.88,
+   "reference": 40.64,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 1.16,
+   "seconds": 0.318
+  },
+  {
+   "place": "Yarra River corridor",
+   "prod": 79.17,
+   "finer_samples": 79.19,
+   "finer_dsm": 79.1,
+   "finer_time": 79.29,
+   "reference": 79.26,
+   "lit_rays_leaving_extent_low_pct": 3.99,
+   "prod_minus_reference": -0.09,
+   "seconds": 7.538
+  },
+  {
+   "place": "Parliament Gardens",
+   "prod": 56.52,
+   "finer_samples": 56.51,
+   "finer_dsm": 56.55,
+   "finer_time": 56.17,
+   "reference": 56.16,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.36,
+   "seconds": 3.292
+  },
+  {
+   "place": "Treasury Gardens",
+   "prod": 93.83,
+   "finer_samples": 93.83,
+   "finer_dsm": 93.68,
+   "finer_time": 94.11,
+   "reference": 93.98,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.15,
+   "seconds": 37.15
+  },
+  {
+   "place": "Gordon Reserve",
+   "prod": 98.73,
+   "finer_samples": 98.72,
+   "finer_dsm": 98.7,
+   "finer_time": 99.23,
+   "reference": 99.21,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.48,
+   "seconds": 2.757
+  },
+  {
+   "place": "Batman Park",
+   "prod": 50.73,
+   "finer_samples": 50.65,
+   "finer_dsm": 50.43,
+   "finer_time": 50.56,
+   "reference": 50.17,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.56,
+   "seconds": 4.263
+  },
+  {
+   "place": "Birrarung Marr",
+   "prod": 91.48,
+   "finer_samples": 91.68,
+   "finer_dsm": 91.55,
+   "finer_time": 91.63,
+   "reference": 91.8,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.32,
+   "seconds": 11.598
+  },
+  {
+   "place": "Sturt Street Reserve",
+   "prod": 97.39,
+   "finer_samples": 97.44,
+   "finer_dsm": 97.3,
+   "finer_time": 97.35,
+   "reference": 97.2,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.19,
+   "seconds": 2.042
+  },
+  {
+   "place": "Grant Street Reserve",
+   "prod": 100,
+   "finer_samples": 100,
+   "finer_dsm": 100,
+   "finer_time": 100,
+   "reference": 100,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0,
+   "seconds": 1.319
+  },
+  {
+   "place": "Dodds St Linear Park",
+   "prod": 90.22,
+   "finer_samples": 89.87,
+   "finer_dsm": 89.22,
+   "finer_time": 90.45,
+   "reference": 89.35,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.87,
+   "seconds": 0.701
+  },
+  {
+   "place": "Flagstaff Gardens",
+   "prod": 96.65,
+   "finer_samples": 96.7,
+   "finer_dsm": 96.67,
+   "finer_time": 96.76,
+   "reference": 96.66,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.01,
+   "seconds": 2.769
+  },
+  {
+   "place": "Fitzroy Gardens",
+   "prod": 98.29,
+   "finer_samples": 98.24,
+   "finer_dsm": 98.14,
+   "finer_time": 98.3,
+   "reference": 98.14,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.15,
+   "seconds": 9.457
+  },
+  {
+   "place": "Royal Botanic Gardens",
+   "prod": 96.37,
+   "finer_samples": 96.44,
+   "finer_dsm": 96.22,
+   "finer_time": 96.38,
+   "reference": 96.2,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.17,
+   "seconds": 14.428
+  },
+  {
+   "place": "Carlton Gardens",
+   "prod": 98.44,
+   "finer_samples": 98.43,
+   "finer_dsm": 98.4,
+   "finer_time": 98.47,
+   "reference": 98.42,
+   "lit_rays_leaving_extent_low_pct": 22.43,
+   "prod_minus_reference": 0.02,
+   "seconds": 54.84
+  },
+  {
+   "place": "Kings Domain",
+   "prod": 98.84,
+   "finer_samples": 98.85,
+   "finer_dsm": 98.55,
+   "finer_time": 98.85,
+   "reference": 98.56,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.28,
+   "seconds": 101.342
+  },
+  {
+   "place": "Queen Victoria Gardens",
+   "prod": 99.67,
+   "finer_samples": 99.68,
+   "finer_dsm": 99.59,
+   "finer_time": 99.67,
+   "reference": 99.6,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.07,
+   "seconds": 58.654
+  },
+  {
+   "place": "Alexandra Gardens",
+   "prod": 92.09,
+   "finer_samples": 92.13,
+   "finer_dsm": 91.78,
+   "finer_time": 92.11,
+   "reference": 91.83,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.26,
+   "seconds": 31.994
+  }
+ ],
+ "max_abs_numerical_error_pp": 1.16
+}

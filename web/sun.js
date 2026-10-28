@@ -305,11 +305,16 @@
   }
 
   // "1 Sep..31 May" style periods; period = "all" or "MM-DD..MM-DD"
+  // period: 'all', a range 'MM-DD..MM-DD' (may wrap the new year), a single date
+  // 'MM-DD', or a comma-separated list of those
   function inPeriod(period, m, d) {
     if (!period || period === 'all') return true;
-    const [a, b] = period.split('..').map(s => s.split('-').map(Number));
-    const v = m * 100 + d, va = a[0] * 100 + a[1], vb = b[0] * 100 + b[1];
-    return va <= vb ? (v >= va && v <= vb) : (v >= va || v <= vb);
+    const v = m * 100 + d;
+    return period.split(',').some(part => {
+      const [a, b] = (part.includes('..') ? part.split('..') : [part, part]).map(s => s.trim().split('-').map(Number));
+      const va = a[0] * 100 + a[1], vb = b[0] * 100 + b[1];
+      return va <= vb ? (v >= va && v <= vb) : (v >= va || v <= vb);
+    });
   }
   const hm = s => { const [h, mm] = s.split(':').map(Number); return h * 60 + mm; };
 

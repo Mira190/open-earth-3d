@@ -8,6 +8,8 @@
 // month, every 15 minutes. Also times the ray caster.
 const fs = require('fs'), path = require('path');
 const { S, load } = require('./common');
+// a period that names single days (22 April, 22 June) protects their months too
+const namesDayIn = (period, m) => (period || '').split(',').some(p => !p.includes('..') && p.trim() !== 'all' && +p.trim().split('-')[0] === m);
 const { B, P, T, frame, outDir, year } = load();
 
 let t = Date.now();
@@ -31,7 +33,7 @@ for (const pl of P.places) {
   }
   out.places.push({ name: pl.name, lep: pl.lep, period: pl.period, window: `${pl.from || '10:00'}-${pl.to || '14:00'}`,
     window_verified: !!pl.period, area_m2: pl.area_m2, samples: smp.pts.length / 3, mean_pct_in_sun_by_month: months,
-    protected_months: months.map((_, i) => S.inPeriod(pl.period || 'all', i + 1, 21)) });
+    protected_months: months.map((_, i) => S.inPeriod(pl.period || 'all', i + 1, 21) || namesDayIn(pl.period, i + 1)) });
 }
 out.rays = rays;
 out.ray_ms = Date.now() - t;

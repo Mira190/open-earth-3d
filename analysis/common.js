@@ -31,12 +31,19 @@ function load(id = cityArg()) {
   return { id, scene, cfg, B, P, T, frame, dataDir: D, outDir: out, year: scene.city.year || new Date().getFullYear() };
 }
 
+// the dates of a list that fall in a place's protected period; when none do (a rule that
+// names single days, such as 22 June), the days the period itself names
+function datesFor(place, dates) {
+  const inside = dates.filter(([m, d]) => S.inPeriod(place.period || 'all', m, d));
+  if (inside.length || !place.period || place.period === 'all') return inside;
+  return place.period.split(',').map(part => part.split('..')[0].trim().split('-').map(Number));
+}
+
 // protected instants of a place on some dates: [{m, d, t, sun}] (local clock time)
 function instants(place, dates, step = 15, year = 2026) {
   const out = [];
   const from = S.hm(place.from || '10:00'), to = S.hm(place.to || '14:00');
-  for (const [m, d] of dates) {
-    if (!S.inPeriod(place.period || 'all', m, d)) continue;
+  for (const [m, d] of datesFor(place, dates)) {
     for (let t = from; t <= to + 1e-9; t += step) {
       const sun = S.position(S.localToUtc(year, m, d, t));
       if (sun.altitude > 0) out.push({ m, d, t, sun });
@@ -54,4 +61,4 @@ function analysedPlaces(P, { unprotected = false } = {}) {
 const MONTH_21 = Array.from({ length: 12 }, (_, i) => [i + 1, 21]);
 const KEY_DATES = [[3, 21], [6, 21], [9, 22], [12, 21]];
 
-module.exports = { S, ROOT, load, instants, analysedPlaces, cityArg, numArg, MONTH_21, KEY_DATES };
+module.exports = { S, ROOT, load, instants, datesFor, analysedPlaces, cityArg, numArg, MONTH_21, KEY_DATES };

@@ -1,8 +1,11 @@
-# Sydney on Foot: the game
+# The game: Sydney on Foot and Melbourne on Foot
 
-The city model becomes a place you can be in. You walk central Sydney as a
-surveyor, talk to the people who know it, catch the ferry, and fly a helicopter
-under the Harbour Bridge. The world is the same open-data model as the viewer:
+The city model becomes a place you can be in. In Sydney you walk the centre as
+a surveyor, talk to the people who know it, climb the Opera House steps, catch
+the ferry, and fly a helicopter under the Harbour Bridge. In Melbourne you check
+the winter sun on Federation Square, take a river shuttle down the Yarra, and
+fly past the Arts Centre spire. The world is the same open-data model as the
+viewer. In Sydney that means:
 
 - 7,962 buildings from OpenStreetMap;
 - the NSW bare-earth terrain;
@@ -11,18 +14,22 @@ under the Harbour Bridge. The world is the same open-data model as the viewer:
 Everything the characters tell you about the city is computed from the model
 while you play.
 
-Open it from the globe (**Play** on the Sydney card), from the 3D model (the
-**Play** chip), or directly at `web/index.html#play-sydney`.
+Open it from the globe (**Play** on a city card), from the 3D model (the
+**Play** chip), or directly at `web/index.html#play-sydney` or `#play-melbourne`.
 
 | Talking to an NPC | On the bridge deck at golden hour |
 |---|---|
 | ![](images/sydney/game-dialogue.jpg) | ![](images/sydney/game-bridge.jpg) |
 | **Under the Harbour Bridge** | **Bird's-eye view from the helicopter** |
 | ![](images/sydney/game-heli.jpg) | ![](images/sydney/game-birdseye.jpg) |
-| **Cross Harbour ferry, Opera House behind** | **The map, with live ferries and fast travel** |
+| **The Cross Harbour ferry leaving Circular Quay** | **The map, with live ferries and fast travel** |
 | ![](images/sydney/game-ferry.jpg) | ![](images/sydney/game-map.jpg) |
-| **Martin Place, 21 June, 12:30: the sun meter** | **After dark: lit windows and street lamps** |
+| **Martin Place, 21 June, 12:30: the sun meter** | **After dark from Bennelong Point: the city's lights in the harbour** |
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
+| **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
+| ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
+| **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
+| ![](images/melbourne/game-river.jpg) | ![](images/melbourne/game-heli.jpg) |
 
 ## Playing
 
@@ -39,9 +46,10 @@ Open it from the globe (**Play** on the Sydney card), from the 3D model (the
 
 On a phone you get a joystick and buttons.
 
-The survey has seven stamps:
+The Sydney survey has seven stamps:
 1. Get your bearings at Circular Quay.
-2. Hear how the Opera House shells are cut from one sphere.
+2. Hear how the Opera House shells are cut from one sphere, and climb the
+   Monumental Steps to the podium.
 3. Ride the ferry to Milsons Point.
 4. Walk up the bridge approach to the middle of the arch.
 5. Fly under the deck and land in the Domain.
@@ -50,6 +58,20 @@ The survey has seven stamps:
 
 Docking a ferry by hand earns an extra stamp. After the survey, the city is
 free roam.
+
+The Melbourne survey has six:
+1. Meet Mia at Federation Square.
+2. Hear from Hannah in City Square how DDO10 protects public spaces from new
+   shadow.
+3. Find a sunny spot on Federation Square at lunchtime on 22 June.
+4. Take the river shuttle from Federation Wharf to Crown Landing.
+5. Fly from the Yarra helipad past the Arts Centre spire to Birrarung Marr.
+6. Use the survey lens on three height sources.
+
+Melbourne has no ferry through the city, so the shuttle is invented and says
+so.
+
+The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 ## What we took from other games, and where this one is different
 
@@ -69,8 +91,10 @@ listed at the end.
 ## How it works
 
 All of this is driven by `cities/<id>/city.json` (`game` block) and the files the
-pipeline writes. The only Sydney-specific code is the bridge and Opera House
-geometry in `cities/sydney/city.py`.
+pipeline writes. The only city-specific code is landmark geometry in
+`cities/<id>/city.py`:
+- Sydney's bridge, Opera House and steps;
+- Melbourne's spire.
 
 - **Game data** (`pipeline/game_data.py` writes `web/data/<city>/game.json`):
   - **Water mask:** 5 m.
@@ -88,6 +112,14 @@ geometry in `cities/sydney/city.py`.
     - Smoothed only as far as the route still stays at least 4 m from land.
   - **Benches and street lamps:** from OpenStreetMap.
   - **NPCs:** snapped to open ground.
+- **Opera House steps** (`city.py`): the Monumental Steps are 90 m wide and run
+  40 m from the forecourt to the podium, as measured on the NSW aerial photo.
+  They climb in two flights of 15 cm risers, with a landing between them and
+  one at the top. A short ramp at the foot meets the forecourt, where the 5 m
+  terrain dips up to 2 m into the vehicle concourse entrance. They are a walkable strip whose profile follows every riser,
+  so feet land on the treads. Footways that cross them are draped onto them,
+  so the crowd uses them too. The risers are a darker granite, so the steps
+  read from a distance.
 - **Bridge deck** (`city.py`):
   - The deck runs level across the arch and pylons.
   - The approach viaducts then descend at 5% until they meet the ground, the
@@ -103,19 +135,53 @@ geometry in `cities/sydney/city.py`.
   Piers are 2.2 m decks, and the bridge deck is a walkable strip. The landmark
   meshes are rasterised as height intervals, so the helicopter can pass under
   the deck but not through the arch.
-- **People and traffic** (`web/game/actors.js`):
-  - **Player and NPCs:** articulated rigs.
-  - **Crowd and cars:** instanced meshes animated in the vertex shader, a few
-    draw calls for hundreds.
-  - **Spawning:** both spawn within about 450 m of the player.
+- **People** (`web/game/people.js`, assets from `pipeline/fetch_people.py`):
+  - **Characters:** 13 rigged characters from Quaternius's Ultimate Modular Men
+    and Women packs (CC0): office workers, a suit, a hoodie, beachwear,
+    hikers, hi-vis workers. They have realistic proportions and 5,000–10,000
+    triangles each.
+  - **One draw call each:** the pipeline merges each character into one skinned
+    mesh. Every vertex indexes a small palette, so skin, hair and clothes are
+    recoloured per person, and 13 files make a varied crowd.
+  - **Animation:** walk, jog, idle and wave clips. Their playback speed is
+    matched to the ground speed, measured from how fast the planted foot slides
+    in each clip, so feet don't skate. NPCs turn their heads to look at you and
+    wave when you talk to them, and passers-by wave back when greeted.
+  - **Near and far:** the 14 nearest passers-by (6 on a phone) are fully
+    skinned. Everyone further away is an instanced copy of the same character,
+    simplified by vertex clustering. Its legs, knees and arms swing in the
+    vertex shader, and the shadows move with them. That is one draw call per
+    character for hundreds of people.
+- **Traffic** (`web/game/actors.js`):
+  - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
   - **Headlights:** come on after sunset.
-- **Vehicles** (`web/game/vehicles.js`):
-  - **Helicopter:** the assisted model, with collisions against buildings and
-    landmark solids.
+- **Vehicles** (`web/game/vehicles.js`), built from `web/game/kit.js`. The
+  kit has lofted hulls, lathes, slabs, fins, rods and tubes at real
+  dimensions, merged into one mesh per material. It is adapted from the vessel
+  kit of an earlier reef scene, with classic materials so the city's lights and
+  shadows fall on it.
+  - **Helicopter:** a light scenic type. It has a bubble cabin with its glass,
+    an engine deck, a tail boom with a fin and stabiliser, skids, and a rotor
+    that blurs into a disc at speed. It flies the assisted model, with
+    collisions against buildings and landmark solids.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
-    Each slows into its wharf and waits. You can take the helm into a wharf by
-    hand.
+    The size and livery come from the city's `ferry_style`: Sydney Ferries'
+    green and cream with a gold band, and an invented navy shuttle on the Yarra.
+    Each one has:
+    - a lofted hull with antifouling, a boot stripe and a sheer band;
+    - a rubbing strake;
+    - a windowed saloon;
+    - an upper deck with rails, benches and lifebuoys;
+    - a wheelhouse at each end;
+    - a mast and flag;
+    - navigation and deck lights that come on after dark.
+
+    Each ferry slows into its wharf and waits. You can take the helm into a
+    wharf by hand.
+- **Water:** the same `web/water.js` sea as the model viewer. The waves follow
+  the city's wind, the shore foam follows the kind of shore, and the city
+  shows in the water. The ground gets a wet band at the waterline.
 - **Sun and time:**
   - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
     title screen offers 9 am first.
@@ -159,7 +225,9 @@ the whole survey this way. It checks:
      height.
 4. All seven stamps are awarded.
 
-A second script docks a ferry by hand. Phone layout, the routes into the game
+A Melbourne script plays its six stamps the same way: the sun step at
+Federation Square on 22 June, the river shuttle to Crown Landing, and the
+flight to Birrarung Marr. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
 
 ## Limitations
@@ -167,14 +235,20 @@ and the menus are checked in a phone-sized browser.
 - **Close-up ground:** at street level the aerial imagery is still the weak
   point. The drawn streets help on paths and roads. Plazas and courtyards that
   OpenStreetMap maps only as areas still show the photo.
-- **Boxy people:** characters are box rigs with no clothing or faces. That is a
-  deliberate style, and cheap to instance.
+- **People:** the characters are low-poly, with simple faces, and there are 13
+  base bodies. Distant walkers swing rigid legs and arms instead of playing the
+  full animation. The box-built figures return if the character files cannot
+  be loaded.
 - **No physics engine:** collisions use the surface model, which is 2 m. There
   is no ragdoll or car damage, and pedestrians don't avoid each other.
 - **Ferry timetable:** the routes follow the inner-harbour services, but the
   timetable is invented. Ferries run at 1.5 times real speed.
-- **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
-  except where OpenStreetMap maps building parts.
+- **Vessels on the water:** a ferry rides the mean water level and does not
+  pitch or roll on the waves. Its wake is a fan of foam drawn on the water, not
+  waves of its own.
+- **Interiors:** buildings have no interiors you can enter; the rooms seen
+  through their windows are drawn by the shader. You walk on roofs as the
+  surface model has them, so a pitched roof is a slope in steps of one cell.
 
 ## Sources
 

@@ -367,7 +367,9 @@ window.OEBuildings = (function () {
     }
 
     const deckZ = new Map(); // solid -> deck height, for rooftop plant
+    const hidden = new Set(scene.hidden_solids || []); // drawn by a parametric landmark instead
     B.s.forEach((s, si) => {
+      if (hidden.has(si)) return;
       const bi = s[0], P = BI[bi], g0 = s[1] / 10, zb = g0 + s[2] / 10, zt = g0 + s[3] / 10;
       const rings = s.slice(4).map(r => r.map(q => q / 10));
       const r = roofOf.get(si), fronts = frontOf.get(si);
@@ -404,7 +406,7 @@ window.OEBuildings = (function () {
       if (fronts && !small) for (const [k, fl] of fronts) if (fl & 2) awning(rings[0], k, g0, bi);
     });
     // awnings on roofed solids too
-    if (!small) for (const [si, fronts] of frontOf) if (roofOf.has(si)) {
+    if (!small) for (const [si, fronts] of frontOf) if (roofOf.has(si) && !hidden.has(si)) {
       const s = B.s[si];
       for (const [k, fl] of fronts) if (fl & 2) awning(s[4].map(q => q / 10), k, s[1] / 10, s[0]);
     }

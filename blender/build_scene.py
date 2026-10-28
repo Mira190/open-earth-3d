@@ -157,6 +157,15 @@ def build(data):
         counts["objects"] += 1
         counts["triangles"] += 2 * len(faces)
 
+    def up_tris(loops):  # tessellate a footprint with every triangle facing up
+        flat = [p for loop in loops for p in loop]
+        out = []
+        for tri in tessellate_polygon(loops):
+            a, b, c = (flat[i] for i in tri)
+            ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0
+            out.append(tri if ccw else (tri[0], tri[2], tri[1]))
+        return flat, out
+
     # buildings: walls with the facade grid, LOD2 roofs, parapets, awnings and rooftop plant (buildings.py)
     bc = add_buildings(B, scene)
     counts["objects"] += 4
@@ -168,10 +177,10 @@ def build(data):
     pv, pf = [], []
     for r in P.get("piers", []):
         r = np.asarray(r, float).reshape(-1, 2) / 10
-        loop = [Vector((p[0], p[1], 2.2)) for p in r]
         base = len(pv)
+        loop, tris = up_tris([[Vector((p[0], p[1], 2.2)) for p in r]])
         pv += [tuple(p) for p in loop]
-        pf += [tuple(base + i for i in tri) for tri in tessellate_polygon([loop])]
+        pf += [tuple(base + i for i in tri) for tri in tris]
     if pf:
         mesh_object("piers", pv, pf, principled("pier", "#a7a59d", 0.9))
 
@@ -206,8 +215,10 @@ def build(data):
         counts["objects"] += 1
         counts["triangles"] += len(idx)
 
-    # sea level: the ground mesh sits above it on land, so one plane is all the water
-    bpy.ops.mesh.primitive_plane_add(size=200000, location=(0, 0, 0))
+    # sea level: the ground mesh sits above it on land, so one plane is all the water. It is
+    # 10 cm up so that it covers the shore cells the terrain puts at exactly 0 m, which would
+    # be coplanar with it, and Cycles shades coplanar faces black.
+    bpy.ops.mesh.primitive_plane_add(size=200000, location=(0, 0, 0.1))
     water = bpy.context.active_object
     water.name = "water"
     wmat = principled("water", "#16303f", 0.07, 0.0)
@@ -322,7 +333,10 @@ def main():
                               "render_s": round(time.time() - t1, 1)}
         print(name, log["views"][name])
     log["total_s"] = round(time.time() - t0, 1)
-    json.dump(log, open(os.path.join(out, "render_log.json"), "w"), indent=1)
+    path = os.path.join(out, "render_log.json")
+    if a.views and os.path.exists(path):  # a subset of views: keep the others' entries
+        log["views"] = {**json.load(open(path)).get("views", {}), **log["views"]}
+    json.dump(log, open(path, "w"), indent=1)
 
 
 if __name__ == "__main__":
