@@ -1,0 +1,1746 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "Federation Square",
+   "period": "04-22..09-22",
+   "window": "11:00-15:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 56.5,
+   "catchment_buildings": 20,
+   "shade_by_height_source_pct": {
+    "estimate": 59.9,
+    "mapped": 11.5,
+    "floors": 8.6,
+    "terrain": 0.6,
+    "ml": 19.4
+   },
+   "top_blockers": [
+    {
+     "building": 2889,
+     "name": "Ian Potter Centre: NGV Australia",
+     "height_m": 11.7,
+     "source": "estimate",
+     "osm_id": "w22963243",
+     "share_pct": 24.6
+    },
+    {
+     "building": 2892,
+     "name": "Alfred Deakin Building",
+     "height_m": 14.2,
+     "source": "ml",
+     "osm_id": "w800163541",
+     "share_pct": 19.4
+    },
+    {
+     "building": 2932,
+     "name": "Birrarung Building",
+     "height_m": 12.9,
+     "source": "estimate",
+     "osm_id": "w22963268",
+     "share_pct": 8.1
+    },
+    {
+     "building": 2885,
+     "name": "Zinc at Fed Square",
+     "height_m": 7.8,
+     "source": "floors",
+     "osm_id": "w406695495",
+     "share_pct": 6.1
+    },
+    {
+     "building": 2934,
+     "name": "Transport Hotel",
+     "height_m": 10,
+     "source": "estimate",
+     "osm_id": "w22963353",
+     "share_pct": 5.8
+    },
+    {
+     "building": 2887,
+     "name": "Crossbar",
+     "height_m": 12.9,
+     "source": "estimate",
+     "osm_id": "w778486279",
+     "share_pct": 5.1
+    }
+   ],
+   "base_by_month": [
+    38.6,
+    33.1,
+    38.1,
+    49.8,
+    58
+   ],
+   "p05_by_month": [
+    28,
+    23.3,
+    27.6,
+    38.7,
+    48.3
+   ],
+   "p95_by_month": [
+    39.5,
+    34.1,
+    39.3,
+    52.6,
+    62.5
+   ],
+   "window_mean": {
+    "base": 43.5,
+    "p05": 33.4,
+    "p95": 45.3
+   },
+   "max_halfwidth_pp": 7.1
+  },
+  {
+   "name": "City Square",
+   "period": "04-22..09-22",
+   "window": "11:00-15:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 57.2,
+   "catchment_buildings": 5,
+   "shade_by_height_source_pct": {
+    "mapped": 50,
+    "floors": 9.4,
+    "estimate": 40.6
+   },
+   "top_blockers": [
+    {
+     "building": 3155,
+     "name": "unnamed building",
+     "height_m": 60,
+     "source": "mapped",
+     "osm_id": "w46206279",
+     "share_pct": 50
+    },
+    {
+     "building": 3152,
+     "name": "City Square Entrance",
+     "height_m": 28.6,
+     "source": "estimate",
+     "osm_id": "w1290599790",
+     "share_pct": 40.6
+    },
+    {
+     "building": 3151,
+     "name": "Melbourne Visitor Services",
+     "height_m": 3.9,
+     "source": "floors",
+     "osm_id": "w1455018314",
+     "share_pct": 6.9
+    },
+    {
+     "building": 3169,
+     "name": "Wales Corner",
+     "height_m": 66.3,
+     "source": "floors",
+     "osm_id": "w46500443",
+     "share_pct": 1.2
+    },
+    {
+     "building": 3204,
+     "name": "Century Building",
+     "height_m": 54.6,
+     "source": "floors",
+     "osm_id": "w46752288",
+     "share_pct": 1
+    },
+    {
+     "building": 3168,
+     "name": "Manchester Unity Building",
+     "height_m": 35.1,
+     "source": "floors",
+     "osm_id": "w46493095",
+     "share_pct": 0.2
+    }
+   ],
+   "base_by_month": [
+    39.9,
+    36.5,
+    38.6,
+    45.3,
+    53.7
+   ],
+   "p05_by_month": [
+    25.5,
+    18.5,
+    24.7,
+    33.5,
+    43.8
+   ],
+   "p95_by_month": [
+    39.7,
+    36.8,
+    38.8,
+    47.5,
+    57
+   ],
+   "window_mean": {
+    "base": 42.8,
+    "p05": 30.9,
+    "p95": 43.3
+   },
+   "max_halfwidth_pp": 9.1
+  },
+  {
+   "name": "Bourke Street Mall",
+   "period": "04-22,09-22",
+   "window": "12:00-14:00",
+   "months": [
+    4,
+    9
+   ],
+   "shaded_share_pct": 74.6,
+   "catchment_buildings": 11,
+   "shade_by_height_source_pct": {
+    "mapped": 74.1,
+    "estimate": 2.2,
+    "floors": 23.7
+   },
+   "top_blockers": [
+    {
+     "building": 3263,
+     "name": "Myer",
+     "height_m": 40,
+     "source": "mapped",
+     "osm_id": "w46218295",
+     "share_pct": 29.9
+    },
+    {
+     "building": 3262,
+     "name": "David Jones",
+     "height_m": 40,
+     "source": "mapped",
+     "osm_id": "w117894663",
+     "share_pct": 25.2
+    },
+    {
+     "building": 3264,
+     "name": "Melbourne's GPO",
+     "height_m": 40,
+     "source": "mapped",
+     "osm_id": "w46854371",
+     "share_pct": 18.9
+    },
+    {
+     "building": 3727,
+     "name": "unnamed building",
+     "height_m": 54.6,
+     "source": "floors",
+     "osm_id": "w117894666",
+     "share_pct": 7.4
+    },
+    {
+     "building": 3256,
+     "name": "Zara",
+     "height_m": 15.6,
+     "source": "floors",
+     "osm_id": "w117894667",
+     "share_pct": 6
+    },
+    {
+     "building": 3259,
+     "name": "Bradman's Building",
+     "height_m": 19.5,
+     "source": "floors",
+     "osm_id": "w47529542",
+     "share_pct": 3.7
+    }
+   ],
+   "base_by_month": [
+    21.1,
+    29.8
+   ],
+   "p05_by_month": [
+    13.5,
+    19.5
+   ],
+   "p95_by_month": [
+    25.9,
+    31.6
+   ],
+   "window_mean": {
+    "base": 25.5,
+    "p05": 17,
+    "p95": 27.8
+   },
+   "max_halfwidth_pp": 6.2
+  },
+  {
+   "name": "Boyd Community Park",
+   "period": "04-22,09-22",
+   "window": "12:00-14:00",
+   "months": [
+    4,
+    9
+   ],
+   "shaded_share_pct": 58.2,
+   "catchment_buildings": 4,
+   "shade_by_height_source_pct": {
+    "mapped": 100
+   },
+   "top_blockers": [
+    {
+     "building": 5280,
+     "name": "Southbank Central",
+     "height_m": 153,
+     "source": "mapped",
+     "osm_id": "w821682350",
+     "share_pct": 48.9
+    },
+    {
+     "building": 5287,
+     "name": "Boyd Community Hub",
+     "height_m": 17,
+     "source": "mapped",
+     "osm_id": "w225370260",
+     "share_pct": 48
+    },
+    {
+     "building": 2761,
+     "name": "Prima Pearl Tower",
+     "height_m": 244,
+     "source": "mapped",
+     "osm_id": "w154296962",
+     "share_pct": 1.9
+    },
+    {
+     "building": 5286,
+     "name": "Epic Apartments",
+     "height_m": 120,
+     "source": "mapped",
+     "osm_id": "w331322503",
+     "share_pct": 1.2
+    }
+   ],
+   "base_by_month": [
+    36.1,
+    47.6
+   ],
+   "p05_by_month": [
+    27.6,
+    41.8
+   ],
+   "p95_by_month": [
+    36.5,
+    47.9
+   ],
+   "window_mean": {
+    "base": 41.9,
+    "p05": 35.7,
+    "p95": 42.2
+   },
+   "max_halfwidth_pp": 4.4
+  },
+  {
+   "name": "Yarra River corridor",
+   "period": "06-22",
+   "window": "11:00-14:00",
+   "months": [
+    6
+   ],
+   "shaded_share_pct": 20.8,
+   "catchment_buildings": 19,
+   "shade_by_height_source_pct": {
+    "mapped": 66.4,
+    "verified": 0.1,
+    "reference": 8.9,
+    "floors": 24.6,
+    "estimate": 0.1
+   },
+   "top_blockers": [
+    {
+     "building": 2706,
+     "name": "unnamed building",
+     "height_m": 66,
+     "source": "mapped",
+     "osm_id": "w45442781",
+     "share_pct": 10.7
+    },
+    {
+     "building": 2757,
+     "name": "WTC Wharf",
+     "height_m": 72,
+     "source": "mapped",
+     "osm_id": "w27859116",
+     "share_pct": 10.7
+    },
+    {
+     "building": 2670,
+     "name": "No.1 Collins Wharf",
+     "height_m": 88,
+     "source": "mapped",
+     "osm_id": "w720126098",
+     "share_pct": 9.3
+    },
+    {
+     "building": 2704,
+     "name": "ANZ Centre",
+     "height_m": 50,
+     "source": "mapped",
+     "osm_id": "w44158771",
+     "share_pct": 8.9
+    },
+    {
+     "building": 2543,
+     "name": "Rialto Towers",
+     "height_m": 251.1,
+     "source": "reference",
+     "osm_id": "w14665796",
+     "share_pct": 8.9
+    },
+    {
+     "building": 2652,
+     "name": "839 Collins Street",
+     "height_m": 81.9,
+     "source": "floors",
+     "osm_id": "w710589390",
+     "share_pct": 7.2
+    }
+   ],
+   "base_by_month": [
+    79.2
+   ],
+   "p05_by_month": [
+    71.3
+   ],
+   "p95_by_month": [
+    78
+   ],
+   "window_mean": {
+    "base": 79.2,
+    "p05": 71.3,
+    "p95": 78
+   },
+   "max_halfwidth_pp": 3.4
+  },
+  {
+   "name": "Parliament Gardens",
+   "period": "04-22..09-22",
+   "window": "11:00-15:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 43.5,
+   "catchment_buildings": 3,
+   "shade_by_height_source_pct": {
+    "mapped": 97.9,
+    "floors": 1.9,
+    "estimate": 0.2
+   },
+   "top_blockers": [
+    {
+     "building": 11454,
+     "name": "Orica House",
+     "height_m": 81,
+     "source": "mapped",
+     "osm_id": "w46188389",
+     "share_pct": 96.1
+    },
+    {
+     "building": 11453,
+     "name": "8 Nicholson Street",
+     "height_m": 70.2,
+     "source": "floors",
+     "osm_id": "w46188830",
+     "share_pct": 1.8
+    },
+    {
+     "building": 10535,
+     "name": "Casselden Place",
+     "height_m": 166,
+     "source": "mapped",
+     "osm_id": "w46211886",
+     "share_pct": 1.8
+    },
+    {
+     "building": 11455,
+     "name": "unnamed building",
+     "height_m": 33,
+     "source": "estimate",
+     "osm_id": "w1207998454",
+     "share_pct": 0.2
+    },
+    {
+     "building": 11462,
+     "name": "VECCI",
+     "height_m": 27.3,
+     "source": "floors",
+     "osm_id": "w306963068",
+     "share_pct": 0.1
+    },
+    {
+     "building": 3918,
+     "name": "Park Tower Apartments",
+     "height_m": 70.2,
+     "source": "floors",
+     "osm_id": "w46213256",
+     "share_pct": 0
+    }
+   ],
+   "base_by_month": [
+    49.7,
+    46.4,
+    48.3,
+    60.1,
+    78.1
+   ],
+   "p05_by_month": [
+    44.7,
+    40.8,
+    42.7,
+    53.6,
+    70.6
+   ],
+   "p95_by_month": [
+    51.1,
+    48.2,
+    49.9,
+    62.3,
+    80.3
+   ],
+   "window_mean": {
+    "base": 56.5,
+    "p05": 51.6,
+    "p95": 58.2
+   },
+   "max_halfwidth_pp": 4.9
+  },
+  {
+   "name": "Treasury Gardens",
+   "period": "04-22..09-22",
+   "window": "11:00-15:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 6.2,
+   "catchment_buildings": 13,
+   "shade_by_height_source_pct": {
+    "estimate": 10.2,
+    "ml": 5.5,
+    "mapped": 39.1,
+    "floors": 45.2
+   },
+   "top_blockers": [
+    {
+     "building": 3967,
+     "name": "State Government Offices",
+     "height_m": 20,
+     "source": "mapped",
+     "osm_id": "w45554456",
+     "share_pct": 31.8
+    },
+    {
+     "building": 3963,
+     "name": "State Government Offices",
+     "height_m": 15.6,
+     "source": "floors",
+     "osm_id": "w188557728",
+     "share_pct": 15.8
+    },
+    {
+     "building": 3968,
+     "name": "Commonwealth Offices",
+     "height_m": 15.6,
+     "source": "floors",
+     "osm_id": "w227078000",
+     "share_pct": 10.3
+    },
+    {
+     "building": 3797,
+     "name": "unnamed building",
+     "height_m": 101.4,
+     "source": "floors",
+     "osm_id": "w306947039",
+     "share_pct": 9.2
+    },
+    {
+     "building": 3969,
+     "name": "unnamed building",
+     "height_m": 12.9,
+     "source": "estimate",
+     "osm_id": "w1286167828",
+     "share_pct": 7.7
+    },
+    {
+     "building": 3795,
+     "name": "Old Treasury Building",
+     "height_m": 12.2,
+     "source": "ml",
+     "osm_id": "w46503614",
+     "share_pct": 5.5
+    }
+   ],
+   "base_by_month": [
+    92.1,
+    90,
+    92.9,
+    96.5,
+    97.6
+   ],
+   "p05_by_month": [
+    80.4,
+    76.6,
+    81.5,
+    91.1,
+    92.1
+   ],
+   "p95_by_month": [
+    93.3,
+    91.2,
+    94,
+    96.8,
+    97.3
+   ],
+   "window_mean": {
+    "base": 93.8,
+    "p05": 84.6,
+    "p95": 94.6
+   },
+   "max_halfwidth_pp": 7.3
+  },
+  {
+   "name": "Gordon Reserve",
+   "period": "04-22..09-22",
+   "window": "11:00-15:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 1.3,
+   "catchment_buildings": 3,
+   "shade_by_height_source_pct": {
+    "mapped": 100
+   },
+   "top_blockers": [
+    {
+     "building": 10537,
+     "name": "Urban Workshop",
+     "height_m": 154,
+     "source": "mapped",
+     "osm_id": "w46629792",
+     "share_pct": 43.4
+    },
+    {
+     "building": 10535,
+     "name": "Casselden Place",
+     "height_m": 166,
+     "source": "mapped",
+     "osm_id": "w46211886",
+     "share_pct": 40.9
+    },
+    {
+     "building": 10534,
+     "name": "242 Exhibition Street",
+     "height_m": 193,
+     "source": "mapped",
+     "osm_id": "w1528704424",
+     "share_pct": 15.7
+    }
+   ],
+   "base_by_month": [
+    98.4,
+    95.2,
+    100,
+    100,
+    100
+   ],
+   "p05_by_month": [
+    72.2,
+    67.2,
+    74,
+    83.1,
+    89.9
+   ],
+   "p95_by_month": [
+    98.6,
+    95.8,
+    100,
+    100,
+    100
+   ],
+   "window_mean": {
+    "base": 98.7,
+    "p05": 79,
+    "p95": 98.7
+   },
+   "max_halfwidth_pp": 14.3
+  },
+  {
+   "name": "Batman Park",
+   "period": "04-22..09-22",
+   "window": "11:00-14:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 49.3,
+   "catchment_buildings": 7,
+   "shade_by_height_source_pct": {
+    "mapped": 72.5,
+    "reference": 27.5
+   },
+   "top_blockers": [
+    {
+     "building": 2747,
+     "name": "unnamed building",
+     "height_m": 54,
+     "source": "mapped",
+     "osm_id": "w46278625",
+     "share_pct": 30
+    },
+    {
+     "building": 2543,
+     "name": "Rialto Towers",
+     "height_m": 251.1,
+     "source": "reference",
+     "osm_id": "w14665796",
+     "share_pct": 27.5
+    },
+    {
+     "building": 2733,
+     "name": "unnamed apartments",
+     "height_m": 55.2,
+     "source": "mapped",
+     "osm_id": "w46278578",
+     "share_pct": 25.8
+    },
+    {
+     "building": 2748,
+     "name": "unnamed building",
+     "height_m": 49.5,
+     "source": "mapped",
+     "osm_id": "w46278688",
+     "share_pct": 13.3
+    },
+    {
+     "building": 2530,
+     "name": "568 Collins Street",
+     "height_m": 224,
+     "source": "mapped",
+     "osm_id": "w50523289",
+     "share_pct": 1.4
+    },
+    {
+     "building": 2759,
+     "name": "unnamed building",
+     "height_m": 10,
+     "source": "mapped",
+     "osm_id": "w975419590",
+     "share_pct": 1.1
+    }
+   ],
+   "base_by_month": [
+    32,
+    20.8,
+    32,
+    71.3,
+    97.4
+   ],
+   "p05_by_month": [
+    28.3,
+    17,
+    28.1,
+    66,
+    93.7
+   ],
+   "p95_by_month": [
+    33.6,
+    22.5,
+    33.5,
+    74.1,
+    98
+   ],
+   "window_mean": {
+    "base": 50.7,
+    "p05": 47.2,
+    "p95": 52.1
+   },
+   "max_halfwidth_pp": 4
+  },
+  {
+   "name": "Birrarung Marr",
+   "period": "04-22..09-22",
+   "window": "11:00-14:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 8.5,
+   "catchment_buildings": 7,
+   "shade_by_height_source_pct": {
+    "terrain": 5.1,
+    "ml": 10,
+    "mapped": 59.6,
+    "estimate": 25.3
+   },
+   "top_blockers": [
+    {
+     "building": 4045,
+     "name": "Ernst & Young",
+     "height_m": 165,
+     "source": "mapped",
+     "osm_id": "w52050591",
+     "share_pct": 33.8
+    },
+    {
+     "building": 2883,
+     "name": "Federation Square Car Park",
+     "height_m": 11.7,
+     "source": "estimate",
+     "osm_id": "r18687788",
+     "share_pct": 25.3
+    },
+    {
+     "building": 4025,
+     "name": "101 Collins Street",
+     "height_m": 260,
+     "source": "mapped",
+     "osm_id": "w140834631",
+     "share_pct": 20.3
+    },
+    {
+     "building": 2884,
+     "name": "ArtPlay",
+     "height_m": 9.4,
+     "source": "ml",
+     "osm_id": "w233836125",
+     "share_pct": 10
+    },
+    {
+     "name": "terrain",
+     "share_pct": 5.1
+    },
+    {
+     "building": 4009,
+     "name": "120 Collins",
+     "height_m": 266,
+     "source": "mapped",
+     "osm_id": "w66210449",
+     "share_pct": 4.3
+    }
+   ],
+   "base_by_month": [
+    88.5,
+    84.6,
+    89.1,
+    96.9,
+    98.3
+   ],
+   "p05_by_month": [
+    79.9,
+    71,
+    79.7,
+    90.7,
+    95
+   ],
+   "p95_by_month": [
+    89.1,
+    85,
+    89.7,
+    97.6,
+    98.9
+   ],
+   "window_mean": {
+    "base": 91.5,
+    "p05": 84.5,
+    "p95": 91.9
+   },
+   "max_halfwidth_pp": 7
+  },
+  {
+   "name": "Sturt Street Reserve",
+   "period": "04-22..09-22",
+   "window": "11:00-14:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 2.6,
+   "catchment_buildings": 2,
+   "shade_by_height_source_pct": {
+    "estimate": 64.8,
+    "mapped": 35.2
+   },
+   "top_blockers": [
+    {
+     "building": 5453,
+     "name": "unnamed toilets",
+     "height_m": 3.9,
+     "source": "estimate",
+     "osm_id": "w991047939",
+     "share_pct": 64.8
+    },
+    {
+     "building": 5283,
+     "name": "unnamed building",
+     "height_m": 231,
+     "source": "mapped",
+     "osm_id": "w1058416315",
+     "share_pct": 35.2
+    }
+   ],
+   "base_by_month": [
+    98.2,
+    93.3,
+    98.1,
+    98.5,
+    98.9
+   ],
+   "p05_by_month": [
+    32.2,
+    20.8,
+    28.9,
+    58,
+    83.6
+   ],
+   "p95_by_month": [
+    98.4,
+    95.1,
+    98.3,
+    98.5,
+    99
+   ],
+   "window_mean": {
+    "base": 97.4,
+    "p05": 46.5,
+    "p95": 97.8
+   },
+   "max_halfwidth_pp": 37.2
+  },
+  {
+   "name": "Grant Street Reserve",
+   "period": "04-22..09-22",
+   "window": "11:00-14:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 0,
+   "catchment_buildings": 0,
+   "shade_by_height_source_pct": {},
+   "top_blockers": [],
+   "base_by_month": [
+    100,
+    100,
+    100,
+    100,
+    100
+   ],
+   "p05_by_month": [
+    90.4,
+    81.8,
+    90.3,
+    96.2,
+    100
+   ],
+   "p95_by_month": [
+    100,
+    100,
+    100,
+    100,
+    100
+   ],
+   "window_mean": {
+    "base": 100,
+    "p05": 92.4,
+    "p95": 100
+   },
+   "max_halfwidth_pp": 9.1
+  },
+  {
+   "name": "Dodds St Linear Park",
+   "period": "04-22..09-22",
+   "window": "11:00-14:00",
+   "months": [
+    5,
+    6,
+    7,
+    8,
+    9
+   ],
+   "shaded_share_pct": 9.8,
+   "catchment_buildings": 3,
+   "shade_by_height_source_pct": {
+    "floors": 100
+   },
+   "top_blockers": [
+    {
+     "building": 5315,
+     "name": "Southbank Art Studios 1 (874)",
+     "height_m": 7.8,
+     "source": "floors",
+     "osm_id": "w52049691",
+     "share_pct": 51.2
+    },
+    {
+     "building": 5243,
+     "name": "Southbank Melbourne Theatre Company",
+     "height_m": 15.6,
+     "source": "floors",
+     "osm_id": "w35308682",
+     "share_pct": 32.2
+    },
+    {
+     "building": 5251,
+     "name": "Southbank Performing Arts, Dodds St (879)",
+     "height_m": 7.8,
+     "source": "floors",
+     "osm_id": "w52049836",
+     "share_pct": 16.6
+    }
+   ],
+   "base_by_month": [
+    87.3,
+    85.1,
+    88.4,
+    93.8,
+    96.5
+   ],
+   "p05_by_month": [
+    59.5,
+    56,
+    63,
+    73.6,
+    83.2
+   ],
+   "p95_by_month": [
+    92.5,
+    90.5,
+    93.6,
+    96.4,
+    98.1
+   ],
+   "window_mean": {
+    "base": 90.2,
+    "p05": 66.6,
+    "p95": 94.2
+   },
+   "max_halfwidth_pp": 17.3
+  },
+  {
+   "name": "Flagstaff Gardens",
+   "period": "06-22",
+   "window": "11:00-14:00",
+   "months": [
+    6
+   ],
+   "shaded_share_pct": 3.4,
+   "catchment_buildings": 6,
+   "shade_by_height_source_pct": {
+    "estimate": 18.1,
+    "floors": 24.9,
+    "mapped": 56.9,
+    "terrain": 0.1
+   },
+   "top_blockers": [
+    {
+     "building": 10167,
+     "name": "City of Melbourne Bowls Club",
+     "height_m": 6,
+     "source": "mapped",
+     "osm_id": "w505188637",
+     "share_pct": 44.9
+    },
+    {
+     "building": 2295,
+     "name": "The Istana",
+     "height_m": 77.8,
+     "source": "floors",
+     "osm_id": "w245924502",
+     "share_pct": 13.3
+    },
+    {
+     "building": 10243,
+     "name": "unnamed building",
+     "height_m": 12.9,
+     "source": "estimate",
+     "osm_id": "w1089402583",
+     "share_pct": 12
+    },
+    {
+     "building": 2292,
+     "name": "Radisson On Flagstaff Gardens",
+     "height_m": 42.9,
+     "source": "floors",
+     "osm_id": "w245915081",
+     "share_pct": 11.6
+    },
+    {
+     "building": 2291,
+     "name": "Flagstaff Lodge",
+     "height_m": 6,
+     "source": "mapped",
+     "osm_id": "w505188636",
+     "share_pct": 11.6
+    },
+    {
+     "building": 2327,
+     "name": "City Loop ventilation",
+     "height_m": 12.9,
+     "source": "estimate",
+     "osm_id": "w896063970",
+     "share_pct": 5.7
+    }
+   ],
+   "base_by_month": [
+    96.6
+   ],
+   "p05_by_month": [
+    78.1
+   ],
+   "p95_by_month": [
+    93.5
+   ],
+   "window_mean": {
+    "base": 96.6,
+    "p05": 78.1,
+    "p95": 93.5
+   },
+   "max_halfwidth_pp": 7.7
+  },
+  {
+   "name": "Fitzroy Gardens",
+   "period": "03-22,09-22",
+   "window": "11:00-14:00",
+   "months": [
+    3,
+    9
+   ],
+   "shaded_share_pct": 1.7,
+   "catchment_buildings": 20,
+   "shade_by_height_source_pct": {
+    "ml": 41.9,
+    "floors": 15.1,
+    "estimate": 43
+   },
+   "top_blockers": [
+    {
+     "building": 4100,
+     "name": "unnamed building",
+     "height_m": 9.2,
+     "source": "ml",
+     "osm_id": "w321364601",
+     "share_pct": 13.2
+    },
+    {
+     "building": 4102,
+     "name": "unnamed building",
+     "height_m": 7,
+     "source": "ml",
+     "osm_id": "w713541830",
+     "share_pct": 11
+    },
+    {
+     "building": 3970,
+     "name": "The Conservatory",
+     "height_m": 3.9,
+     "source": "floors",
+     "osm_id": "w50999929",
+     "share_pct": 9.9
+    },
+    {
+     "building": 3972,
+     "name": "unnamed building",
+     "height_m": 7.8,
+     "source": "estimate",
+     "osm_id": "w713541828",
+     "share_pct": 9.7
+    },
+    {
+     "building": 4099,
+     "name": "unnamed building",
+     "height_m": 9.5,
+     "source": "ml",
+     "osm_id": "w321364602",
+     "share_pct": 9.6
+    },
+    {
+     "building": 4478,
+     "name": "unnamed building",
+     "height_m": 10.6,
+     "source": "ml",
+     "osm_id": "w50999779",
+     "share_pct": 8.1
+    }
+   ],
+   "base_by_month": [
+    98.2,
+    98.3
+   ],
+   "p05_by_month": [
+    95.7,
+    97.2
+   ],
+   "p95_by_month": [
+    98.1,
+    98.3
+   ],
+   "window_mean": {
+    "base": 98.3,
+    "p05": 96.6,
+    "p95": 98.2
+   },
+   "max_halfwidth_pp": 1.2
+  },
+  {
+   "name": "Royal Botanic Gardens",
+   "period": "03-22,09-22",
+   "window": "11:00-14:00",
+   "months": [
+    3,
+    9
+   ],
+   "shaded_share_pct": 3.6,
+   "catchment_buildings": 40,
+   "shade_by_height_source_pct": {
+    "estimate": 43.7,
+    "ml": 53.6,
+    "floors": 2.7
+   },
+   "top_blockers": [
+    {
+     "building": 5551,
+     "name": "National Herbarium of Victoria",
+     "height_m": 11.9,
+     "source": "ml",
+     "osm_id": "w399439190",
+     "share_pct": 13
+    },
+    {
+     "building": 5129,
+     "name": "unnamed kiosk",
+     "height_m": 5.7,
+     "source": "ml",
+     "osm_id": "w338796309",
+     "share_pct": 7.9
+    },
+    {
+     "building": 5540,
+     "name": "Old Melbourne Observatory",
+     "height_m": 8.6,
+     "source": "ml",
+     "osm_id": "w38701073",
+     "share_pct": 7
+    },
+    {
+     "building": 5542,
+     "name": "Royal Botanic Gardens Visitor Centre",
+     "height_m": 6.7,
+     "source": "ml",
+     "osm_id": "w50883300",
+     "share_pct": 6.1
+    },
+    {
+     "building": 5520,
+     "name": "unnamed building",
+     "height_m": 9.5,
+     "source": "ml",
+     "osm_id": "w50884103",
+     "share_pct": 4.2
+    },
+    {
+     "building": 5568,
+     "name": "unnamed building",
+     "height_m": 9.3,
+     "source": "ml",
+     "osm_id": "w1154842747",
+     "share_pct": 4.1
+    }
+   ],
+   "base_by_month": [
+    96.3,
+    96.4
+   ],
+   "p05_by_month": [
+    95.4,
+    95.6
+   ],
+   "p95_by_month": [
+    96.3,
+    96.5
+   ],
+   "window_mean": {
+    "base": 96.4,
+    "p05": 95.5,
+    "p95": 96.4
+   },
+   "max_halfwidth_pp": 0.5
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "City Square",
+   "building": 3152,
+   "name": "City Square Entrance",
+   "osm_id": "w1290599790",
+   "height_m": 28.6,
+   "source": "estimate",
+   "plausible_m": [
+    12,
+    123
+   ],
+   "sun_change_pp": [
+    -5.7,
+    8.4
+   ],
+   "swing_pp": 14.2
+  },
+  {
+   "place": "Bourke Street Mall",
+   "building": 3727,
+   "name": "unnamed building",
+   "osm_id": "w117894666",
+   "height_m": 54.6,
+   "source": "floors",
+   "plausible_m": [
+    37,
+    98
+   ],
+   "sun_change_pp": [
+    -9.6,
+    1.4
+   ],
+   "swing_pp": 11
+  },
+  {
+   "place": "Federation Square",
+   "building": 2892,
+   "name": "Alfred Deakin Building",
+   "osm_id": "w800163541",
+   "height_m": 14.2,
+   "source": "ml",
+   "plausible_m": [
+    6,
+    55
+   ],
+   "sun_change_pp": [
+    -7,
+    3.9
+   ],
+   "swing_pp": 10.8
+  },
+  {
+   "place": "Dodds St Linear Park",
+   "building": 5243,
+   "name": "Southbank Melbourne Theatre Company",
+   "osm_id": "w35308682",
+   "height_m": 15.6,
+   "source": "floors",
+   "plausible_m": [
+    11,
+    28
+   ],
+   "sun_change_pp": [
+    -8,
+    2.1
+   ],
+   "swing_pp": 10.1
+  },
+  {
+   "place": "Bourke Street Mall",
+   "building": 3260,
+   "name": "unnamed building",
+   "osm_id": "w47529541",
+   "height_m": 12.6,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    62
+   ],
+   "sun_change_pp": [
+    -8.1,
+    0
+   ],
+   "swing_pp": 8.1
+  },
+  {
+   "place": "Dodds St Linear Park",
+   "building": 5315,
+   "name": "Southbank Art Studios 1 (874)",
+   "osm_id": "w52049691",
+   "height_m": 7.8,
+   "source": "floors",
+   "plausible_m": [
+    5,
+    14
+   ],
+   "sun_change_pp": [
+    -5.4,
+    2.4
+   ],
+   "swing_pp": 7.8
+  },
+  {
+   "place": "Dodds St Linear Park",
+   "building": 5251,
+   "name": "Southbank Performing Arts, Dodds St (879)",
+   "osm_id": "w52049836",
+   "height_m": 7.8,
+   "source": "floors",
+   "plausible_m": [
+    5,
+    14
+   ],
+   "sun_change_pp": [
+    -6.4,
+    1
+   ],
+   "swing_pp": 7.5
+  },
+  {
+   "place": "Birrarung Marr",
+   "building": 2883,
+   "name": "Federation Square Car Park",
+   "osm_id": "r18687788",
+   "height_m": 11.7,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    46
+   ],
+   "sun_change_pp": [
+    -5.1,
+    1.1
+   ],
+   "swing_pp": 6.2
+  },
+  {
+   "place": "Dodds St Linear Park",
+   "building": 5242,
+   "name": "Melbourne Recital Centre",
+   "osm_id": "w35308681",
+   "height_m": 12.6,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    62
+   ],
+   "sun_change_pp": [
+    -5.8,
+    0
+   ],
+   "swing_pp": 5.8
+  },
+  {
+   "place": "Federation Square",
+   "building": 2889,
+   "name": "Ian Potter Centre: NGV Australia",
+   "osm_id": "w22963243",
+   "height_m": 11.7,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    46
+   ],
+   "sun_change_pp": [
+    -4.2,
+    1.5
+   ],
+   "swing_pp": 5.7
+  },
+  {
+   "place": "Gordon Reserve",
+   "building": 3816,
+   "name": "unnamed building",
+   "osm_id": "w1222688338",
+   "height_m": 10,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    39
+   ],
+   "sun_change_pp": [
+    -5.6,
+    0
+   ],
+   "swing_pp": 5.6
+  },
+  {
+   "place": "Bourke Street Mall",
+   "building": 3724,
+   "name": "unnamed building",
+   "osm_id": "w241959714",
+   "height_m": 33,
+   "source": "estimate",
+   "plausible_m": [
+    13,
+    142
+   ],
+   "sun_change_pp": [
+    -5.1,
+    0
+   ],
+   "swing_pp": 5.1
+  },
+  {
+   "place": "Treasury Gardens",
+   "building": 3963,
+   "name": "State Government Offices",
+   "osm_id": "w188557728",
+   "height_m": 15.6,
+   "source": "floors",
+   "plausible_m": [
+    11,
+    28
+   ],
+   "sun_change_pp": [
+    -4,
+    0.9
+   ],
+   "swing_pp": 5
+  },
+  {
+   "place": "Federation Square",
+   "building": 2932,
+   "name": "Birrarung Building",
+   "osm_id": "w22963268",
+   "height_m": 12.9,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    63
+   ],
+   "sun_change_pp": [
+    -1.6,
+    2.5
+   ],
+   "swing_pp": 4
+  },
+  {
+   "place": "Federation Square",
+   "building": 2887,
+   "name": "Crossbar",
+   "osm_id": "w778486279",
+   "height_m": 12.9,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    63
+   ],
+   "sun_change_pp": [
+    -2.5,
+    1.1
+   ],
+   "swing_pp": 3.5
+  },
+  {
+   "place": "Federation Square",
+   "building": 2886,
+   "name": "Deakin Edge",
+   "osm_id": "w420153509",
+   "height_m": 7.8,
+   "source": "estimate",
+   "plausible_m": [
+    3,
+    31
+   ],
+   "sun_change_pp": [
+    -2.4,
+    1.1
+   ],
+   "swing_pp": 3.4
+  },
+  {
+   "place": "City Square",
+   "building": 3204,
+   "name": "Century Building",
+   "osm_id": "w46752288",
+   "height_m": 54.6,
+   "source": "floors",
+   "plausible_m": [
+    37,
+    98
+   ],
+   "sun_change_pp": [
+    -2.6,
+    0.7
+   ],
+   "swing_pp": 3.3
+  },
+  {
+   "place": "Bourke Street Mall",
+   "building": 3256,
+   "name": "Zara",
+   "osm_id": "w117894667",
+   "height_m": 15.6,
+   "source": "floors",
+   "plausible_m": [
+    11,
+    28
+   ],
+   "sun_change_pp": [
+    -2.6,
+    0.7
+   ],
+   "swing_pp": 3.2
+  },
+  {
+   "place": "Sturt Street Reserve",
+   "building": 5453,
+   "name": "unnamed toilets",
+   "osm_id": "w991047939",
+   "height_m": 3.9,
+   "source": "estimate",
+   "plausible_m": [
+    2,
+    15
+   ],
+   "sun_change_pp": [
+    -1.9,
+    1.1
+   ],
+   "swing_pp": 3.1
+  },
+  {
+   "place": "Treasury Gardens",
+   "building": 3964,
+   "name": "unnamed building",
+   "osm_id": "w1013710885",
+   "height_m": 12.6,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    62
+   ],
+   "sun_change_pp": [
+    -2.6,
+    0
+   ],
+   "swing_pp": 2.6
+  },
+  {
+   "place": "Treasury Gardens",
+   "building": 3795,
+   "name": "Old Treasury Building",
+   "osm_id": "w46503614",
+   "height_m": 12.2,
+   "source": "ml",
+   "plausible_m": [
+    5,
+    47
+   ],
+   "sun_change_pp": [
+    -2.1,
+    0.3
+   ],
+   "swing_pp": 2.4
+  },
+  {
+   "place": "Bourke Street Mall",
+   "building": 3259,
+   "name": "Bradman's Building",
+   "osm_id": "w47529542",
+   "height_m": 19.5,
+   "source": "floors",
+   "plausible_m": [
+    13,
+    35
+   ],
+   "sun_change_pp": [
+    -2,
+    0.4
+   ],
+   "swing_pp": 2.3
+  },
+  {
+   "place": "City Square",
+   "building": 3168,
+   "name": "Manchester Unity Building",
+   "osm_id": "w46493095",
+   "height_m": 35.1,
+   "source": "floors",
+   "plausible_m": [
+    24,
+    63
+   ],
+   "sun_change_pp": [
+    -2.1,
+    0.1
+   ],
+   "swing_pp": 2.1
+  },
+  {
+   "place": "Federation Square",
+   "building": 2885,
+   "name": "Zinc at Fed Square",
+   "osm_id": "w406695495",
+   "height_m": 7.8,
+   "source": "floors",
+   "plausible_m": [
+    5,
+    14
+   ],
+   "sun_change_pp": [
+    -1,
+    0.9
+   ],
+   "swing_pp": 1.9
+  },
+  {
+   "place": "City Square",
+   "building": 3169,
+   "name": "Wales Corner",
+   "osm_id": "w46500443",
+   "height_m": 66.3,
+   "source": "floors",
+   "plausible_m": [
+    45,
+    119
+   ],
+   "sun_change_pp": [
+    -0.7,
+    1.2
+   ],
+   "swing_pp": 1.9
+  }
+ ],
+ "seconds": 375.927,
+ "sigma": {
+  "floors": 0.365,
+  "estimate": 0.199,
+  "ml": 0.341
+ }
+}

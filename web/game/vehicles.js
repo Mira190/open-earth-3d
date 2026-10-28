@@ -19,37 +19,73 @@ window.OEVehicles = (function () {
   const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
 
   // ------------------------------------------------------------ helicopter
-  function helicopter(world, nav, pad) {
-    const g = new THREE.Group(), red = mat('#c62d2a'), white = mat('#f2f0ea'), dark = mat('#20262b', { roughness: 0.4 }),
-      glass = mat('#1d2a33', { roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.75 });
-    // model axes: +z forward (nose), +y up; origin at the bottom of the skids
-    g.add(mesh(new THREE.BoxGeometry(1.9, 1.7, 3.4), red, 0, 1.55, 0.2));
-    const nose = mesh(new THREE.SphereGeometry(1, 16, 12), glass, 0, 1.6, 1.85);
-    nose.scale.set(0.95, 0.85, 1.05);
-    g.add(nose);
-    g.add(mesh(new THREE.BoxGeometry(1.92, 0.25, 3.0), white, 0, 1.05, 0.1));
-    g.add(mesh(new THREE.BoxGeometry(1.2, 0.7, 2.0), red, 0, 2.5, -0.4));
-    const boom = mesh(new THREE.CylinderGeometry(0.22, 0.38, 5.4, 10), red, 0, 1.9, -4.0);
-    boom.rotation.x = Math.PI / 2;
-    g.add(boom);
-    g.add(mesh(new THREE.BoxGeometry(0.12, 1.5, 0.9), white, 0, 2.5, -6.5));
-    g.add(mesh(new THREE.BoxGeometry(1.6, 0.1, 0.6), white, 0, 1.95, -5.9));
-    for (const sx of [-1, 1]) {
-      g.add(mesh(new THREE.BoxGeometry(0.12, 0.12, 4.2), dark, sx * 1.1, 0.06, 0.2));
-      for (const sz of [-0.8, 1.1]) g.add(mesh(new THREE.BoxGeometry(0.08, 0.8, 0.08), dark, sx * 1.0, 0.45, sz));
+  // the blur of two spinning blades: they sweep a share of each ring that falls as 1/r (dense at
+  // the hub, faint at the rim), with a band where the painted tips pass
+  const rotorDisc = (() => {
+    let tex = null;
+    return () => {
+      if (tex) return tex;
+      const n = 128, c = document.createElement('canvas');
+      c.width = c.height = n;
+      const x = c.getContext('2d'), g = x.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+      for (let k = 0; k <= 20; k++) { const r = k / 20; g.addColorStop(Math.min(r, 0.95), `rgba(32,38,43,${Math.min(0.55, 0.105 / Math.max(r, 0.01)).toFixed(3)})`); }
+      g.addColorStop(0.955, 'rgba(214,112,40,0.28)'); g.addColorStop(0.985, 'rgba(214,112,40,0.28)'); g.addColorStop(1, 'rgba(32,38,43,0)');
+      x.fillStyle = g; x.fillRect(0, 0, n, n);
+      return (tex = new THREE.CanvasTexture(c));
+    };
+  })();
+  // a light scenic helicopter (R44 / AS350 style), the design of the reef scene's one
+  // (see kit.js) ported to this app: built in that scene's frame (+x nose, +z right) inside
+  // a group turned to ours (+z nose)
+  function helicopterModel(livery = '#c62d2a') {
+    const K = OEKit, M = K.materials(), kit = new K.Kit(), g = new THREE.Group(), body = new THREE.Group();
+    body.rotation.y = -Math.PI / 2;
+    g.add(body);
+    const stripe = new THREE.MeshStandardMaterial({ color: lin(livery), roughness: 0.35 });
+    const latheX = (prof, seg = 20) => new THREE.LatheGeometry(prof.map(([x, r]) => new THREE.Vector2(r, x)), seg).rotateZ(-Math.PI / 2);
+    const finZ = (profile, t) => new THREE.ExtrudeGeometry(new THREE.Shape(profile.map(([x, y]) => new THREE.Vector2(x, y))),
+      { depth: t, bevelEnabled: false }).translate(0, 0, -t / 2);
+    // body: bubble cabin, engine deck, tail boom with a fin and a stabiliser
+    kit.add(M.white, latheX([[1.7, 0.0], [1.6, 0.35], [1.2, 0.62], [0.5, 0.75], [-0.4, 0.76], [-1.2, 0.62], [-1.9, 0.34], [-2.1, 0.0]], 20).scale(1, 0.95, 0.88), 0, 1.15, 0);
+    kit.add(M.glass, new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.62).scale(0.95, 0.72, 0.74), 1.0, 1.25, 0);
+    kit.add(M.glass, K.box(1.0, 0.45, 0.02, -0.1, 1.55, 0.67)); kit.add(M.glass, K.box(1.0, 0.45, 0.02, -0.1, 1.55, -0.67));
+    kit.add(stripe, latheX([[0.2, 0.0], [0.0, 0.7], [-0.9, 0.7], [-1.0, 0]], 8).scale(1, 0.12, 0.9).translate(0, 1.0, 0));
+    kit.add(M.white, K.rod([-1.6, 1.4, 0], [-6.0, 1.65, 0], 0.3, 0.09, 12));
+    kit.add(stripe, K.rod([-3.5, 1.52, 0], [-4.6, 1.58, 0], 0.202, 0.17, 12));
+    kit.add(M.white, finZ([[-5.4, 1.55], [-6.15, 1.55], [-6.35, 2.55], [-5.9, 2.55]], 0.06));
+    kit.add(M.white, K.slab([[-5.0, -0.8], [-5.0, 0.8], [-5.6, 0.8], [-5.6, -0.8]], 1.58, 0.05, 0.012));
+    kit.add(M.white, K.ellipsoid(0.9, 0.42, 0.52), -0.7, 2.05, 0); // engine cowl and transmission fairing
+    kit.add(M.dark, K.rod([-1.4, 1.95, -0.25], [-2.2, 1.75, -0.25], 0.07, 0.06, 6));
+    for (const sd of [-1, 1]) { // skids on their cross tubes
+      kit.add(M.black, K.rod([-1.4, 0.07, sd * 0.95], [1.8, 0.07, sd * 0.95], 0.045, 0.045, 8));
+      kit.add(M.black, K.tube([[1.8, 0.07, sd * 0.95], [2.1, 0.2, sd * 0.93], [2.25, 0.45, sd * 0.9]], 0.045, 8, 6));
+      for (const x of [0.65, -0.65]) kit.add(M.black, K.rod([x, 0.07, sd * 0.95], [x * 0.9, 0.85, sd * 0.42], 0.035, 0.035, 6));
     }
-    g.add(mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 8), dark, 0, 3.1, 0));
+    kit.add(M.dark, K.box(0.4, 0.4, 1.0, 0.0, 1.0, 0)); kit.add(M.dark, K.box(0.12, 0.3, 0.9, 0.9, 1.3, 0)); // seats, panel
+    kit.add(M.dark, K.cyl(0.07, 0.07, 0.5, 8).translate(-0.7, 2.35, 0)); // rotor mast
+    kit.build(body);
+    // main rotor: hub, two blades, a soft blur disc; the tail rotor is a small cross
     const rotor = new THREE.Group();
-    rotor.position.set(0, 3.42, 0);
-    for (const a of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) { const b = mesh(new THREE.BoxGeometry(0.3, 0.05, 5.2), dark, 0, 0, 2.6); const p = new THREE.Group(); p.rotation.y = a; p.add(b); rotor.add(p); }
-    const blur = new THREE.Mesh(new THREE.CircleGeometry(5.3, 40), new THREE.MeshBasicMaterial({ color: 0x20262b, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
+    rotor.position.set(-0.7, 2.6, 0);
+    const rk = new K.Kit();
+    rk.add(M.black, K.box(5.1, 0.025, 0.28, 2.55, 0, 0)); rk.add(M.black, K.box(5.1, 0.025, 0.28, -2.55, 0, 0));
+    rk.add(M.alu, K.cyl(0.12, 0.12, 0.12, 10)); rk.add(M.orange, K.box(0.2, 0.03, 0.3, 4.95, 0.002, 0)); rk.add(M.orange, K.box(0.2, 0.03, 0.3, -4.95, 0.002, 0));
+    rk.build(rotor, false);
+    const blur = new THREE.Mesh(new THREE.CircleGeometry(5.1, 40), new THREE.MeshBasicMaterial({ map: rotorDisc(), transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }));
     blur.rotation.x = -Math.PI / 2;
     rotor.add(blur);
-    g.add(rotor);
+    body.add(rotor);
     const tail = new THREE.Group();
-    tail.position.set(0.12, 2.6, -6.6);
-    for (const a of [0, Math.PI / 2]) { const b = mesh(new THREE.BoxGeometry(0.04, 1.4, 0.15), dark); b.rotation.x = a; tail.add(b); }
-    g.add(tail);
+    tail.position.set(-6.05, 1.95, 0.1);
+    const tk = new K.Kit(); tk.add(M.black, K.box(0.04, 0.9, 0.1)); tk.add(M.black, K.box(0.04, 0.1, 0.9)); tk.build(tail, false);
+    body.add(tail);
+    for (const [c, x, y, z, sz] of [['#ff2a1a', 1.0, 1.1, -0.75, 0.6], ['#22ff55', 1.0, 1.1, 0.75, 0.6], ['#fff4d8', -6.2, 2.5, 0, 0.7], ['#ffffff', -0.7, 2.75, 0, 0.8]])
+      K.lamp(body, c, x, y, z, sz);
+    return { g, rotor, tail, blur, tailAxis: 'z' };
+  }
+
+  function helicopter(world, nav, pad) {
+    const { g, rotor, tail, blur, tailAxis } = helicopterModel();
     const seat = new THREE.Vector3(0.45, 0.9, 0.6), door = { x: 1.8, y: 0.3 }; // pilot seat (model) and door (local x right, y forward)
     world.add(g);
 
@@ -99,7 +135,7 @@ window.OEVehicles = (function () {
         const below = nz + 3.8 < d.z - 3.0;
         if (Math.abs(d.v) > d.s.half_width + 4) {
           const side = Math.sign(d.v);
-          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge' });
+          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge', name: d.s.label || d.s.name });
           st.under = { side, ok: true };
         } else if (st.under && !below) st.under.ok = false;
       } else st.under = null;
@@ -115,8 +151,8 @@ window.OEVehicles = (function () {
       g.rotateX(st.pitch);
       g.rotateZ(st.roll);
       rotor.rotation.y += st.rotor * dt * 42;
-      tail.rotation.x += st.rotor * dt * 60;
-      blur.material.opacity = st.rotor * 0.22;
+      tail.rotation[tailAxis] += st.rotor * dt * 60;
+      blur.material.opacity = st.rotor;
       for (const b of rotor.children) if (b !== blur) b.visible = st.rotor < 0.6 || Math.random() < 0.5;
     }
     // the door in local coordinates, for walking up to it
@@ -128,45 +164,79 @@ window.OEVehicles = (function () {
   }
 
   // ------------------------------------------------------------ ferries
-  function ferryModel() {
-    const g = new THREE.Group(), green = mat('#1e5b3a', { roughness: 0.6 }), cream = mat('#efe6cc'), gold = mat('#e2b22b'),
-      dark = mat('#1b2328', { roughness: 0.2, metalness: 0.4 }), deck = mat('#7d6a52', { roughness: 0.9 }), red = mat('#a8322a');
-    // 36 m long, 10 m beam, symmetric fore and aft; origin at the waterline, +z one end
-    const hull = new THREE.Shape();
-    hull.moveTo(-5, -18); hull.quadraticCurveTo(0, -20.5, 5, -18); hull.lineTo(5, 18); hull.quadraticCurveTo(0, 20.5, -5, 18); hull.closePath();
-    const hg = new THREE.ExtrudeGeometry(hull, { depth: 2.4, bevelEnabled: false });
-    hg.rotateX(-Math.PI / 2);
-    hg.translate(0, -0.8, 0);
-    g.add(mesh(hg, green));
-    g.add(mesh(new THREE.BoxGeometry(10.12, 0.22, 33.5), gold, 0, 1.2, 0)); // gold band along the hull
-    const dg = new THREE.ExtrudeGeometry(hull, { depth: 0.1, bevelEnabled: false });
-    dg.rotateX(-Math.PI / 2); dg.translate(0, 1.6, 0);
-    g.add(mesh(dg, deck));
-    g.add(mesh(new THREE.BoxGeometry(8.6, 2.4, 22), cream, 0, 2.9, 0));
-    g.add(mesh(new THREE.BoxGeometry(8.62, 0.9, 21.8), dark, 0, 3.1, 0));
-    g.add(mesh(new THREE.BoxGeometry(8.0, 0.25, 26), cream, 0, 4.2, 0));
-    for (const sz of [-1, 1]) {
-      g.add(mesh(new THREE.BoxGeometry(4.2, 1.8, 3.2), cream, 0, 5.2, sz * 9.5));
-      g.add(mesh(new THREE.BoxGeometry(4.25, 0.7, 3.25), dark, 0, 5.45, sz * 9.5));
-      g.add(mesh(new THREE.BoxGeometry(4.6, 0.15, 3.6), gold, 0, 6.15, sz * 9.5));
+  // a double-ended harbour ferry from the kit, at the dimensions and livery of the city's
+  // game config ("ferry_style"): a lofted hull with its antifouling, boot stripe and sheer
+  // band, a rubbing strake, a windowed saloon, an upper deck with rails and lifebuoys, a
+  // wheelhouse at each end, a mast, and navigation and deck lights
+  function ferryModel(style = {}) {
+    const K = OEKit, M = K.materials(), kit = new K.Kit(), g = new THREE.Group();
+    const L = style.length_m || 36, B = style.beam_m || 10, fb = 1.6;
+    const colour = (c, d, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: lin(c || d), roughness: 0.45 }, o));
+    const upper = colour(style.upper, '#efe6cc'), trim = colour(style.trim, '#e2b22b', { roughness: 0.35 });
+    const h = K.hull2({ L, B, dh: 1.3, fb, sheerEnd: 0.35, pn: 4.2, pm: 0.6 });
+    kit.add(M.hull({ top: style.hull || '#1e5b3a', band: style.trim || '#e2b22b', bandY: [fb - 0.42, fb - 0.22], boot: '#d8d3c4', bootY: [0.0, 0.12], anti: '#5a1d18' }), h.shell);
+    kit.add(M.deck, K.slab(h.plan, fb - 0.12, 0.12, 0));
+    kit.add(M.rubber, K.tube(h.plan.map(([x, z]) => [x * 1.005, fb - 0.06, z]), 0.13, 120, 6, true)); // rubbing strake
+    // main saloon: a rounded box with a band of windows and their mullions, doors amidships
+    const sw = B - 1.6, sl = L * 0.74, y1 = fb, hs = 2.4;
+    kit.add(upper, K.slab(K.rrect(sw, sl, 2.6), y1, hs, 0.04));
+    kit.add(trim, K.slab(K.rrect(sw + 0.08, sl + 0.08, 2.64), y1 + hs - 0.32, 0.16, 0)); // a gold band under the eave
+    for (const sx of [-1, 1]) {
+      // (the slab's 4 cm bevel puts its wall at w / 2 + 0.04, so the glazing sits just proud of it)
+      kit.add(M.glass, K.box(0.04, 1.05, sl - 5.6, sx * (sw / 2 + 0.065), y1 + 1.45, 0));
+      for (let z = -sl / 2 + 2.8; z <= sl / 2 - 2.8 + 1e-6; z += 1.45) kit.add(upper, K.box(0.06, 1.1, 0.12, sx * (sw / 2 + 0.09), y1 + 1.45, z));
+      kit.add(M.dark, K.box(0.05, 2.0, 1.4, sx * (sw / 2 + 0.07), y1 + 1.0, 0)); // doors amidships
     }
-    g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 4.5, 6), dark, 0, 6.5, 0));
-    const flag = mesh(new THREE.BoxGeometry(0.04, 0.7, 1.1), red, 0, 8.3, 0.55);
+    for (const sz of [-1, 1]) kit.add(M.glass, K.box(sw - 5.6, 1.0, 0.04, 0, y1 + 1.45, sz * (sl / 2 + 0.065)));
+    // upper deck: an overhanging roof, rails round it, a smaller enclosed cabin and benches
+    const y2 = y1 + hs;
+    kit.add(upper, K.slab(K.rrect(sw + 0.6, sl + 0.6, 2.9), y2, 0.18, 0.03));
+    const rail = K.rrect(sw + 0.3, sl + 0.3, 2.75, 4).map(([x, z]) => [x, y2 + 1.05, z]);
+    kit.add(M.chrome, K.tube(rail, 0.035, 90, 5, true));
+    kit.add(M.chrome, K.tube(rail.map(([x, y, z]) => [x, y - 0.5, z]), 0.025, 90, 5, true));
+    for (let k = 0; k < rail.length; k += 2) kit.add(M.chrome, K.rod([rail[k][0], y2 + 0.15, rail[k][2]], rail[k], 0.025, 0.025, 5));
+    const cw = sw - 2.6, cl = sl * 0.42;
+    kit.add(upper, K.slab(K.rrect(cw, cl, 1.0), y2 + 0.18, 2.1, 0.04));
+    for (const sx of [-1, 1]) kit.add(M.glass, K.box(0.04, 0.9, cl - 2.4, sx * (cw / 2 + 0.065), y2 + 1.35, 0));
+    kit.add(upper, K.slab(K.rrect(cw + 0.4, cl + 0.4, 1.1), y2 + 2.28, 0.12, 0.03));
+    kit.add(trim, K.slab(K.rrect(cw + 0.44, cl + 0.44, 1.12), y2 + 2.2, 0.1, 0));
+    for (const sz of [-1, 1]) for (const sx of [-1, 1]) for (let r = 0; r < 3; r++) // benches fore and aft of the cabin
+      kit.add(M.seat, K.box(1.6, 0.45, 0.5, sx * 1.6, y2 + 0.4, sz * (cl / 2 + 1.4 + r * 1.2)));
+    // a wheelhouse at each end, windows all round, a light mast on the roof
+    for (const sz of [-1, 1]) {
+      const zc = sz * (sl / 2 - 2.0);
+      kit.add(upper, K.slab(K.rrect(3.6, 2.6, 0.6), y2 + 0.18, 2.0, 0.04).translate(0, 0, zc));
+      kit.add(M.glass, K.box(2.6, 0.8, 0.04, 0, y2 + 1.55, zc + sz * 1.365));
+      for (const sx of [-1, 1]) kit.add(M.glass, K.box(0.04, 0.8, 1.6, sx * 1.865, y2 + 1.55, zc));
+      kit.add(upper, K.slab(K.rrect(4.2, 3.2, 0.7), y2 + 2.2, 0.12, 0.03).translate(0, 0, zc));
+      kit.add(M.dark, K.rod([0, y2 + 2.32, zc], [0, y2 + 3.6, zc], 0.05, 0.04, 6));
+      K.lamp(g, '#fff6e0', 0, y2 + 3.65, zc, 0.6); // masthead light
+    }
+    // lifebuoys on the rails
+    for (const sx of [-1, 1]) for (const sz of [-0.3, 0.3])
+      kit.add(M.orange, new THREE.TorusGeometry(0.33, 0.07, 6, 16).rotateY(Math.PI / 2).translate(sx * (sw / 2 + 0.2), y2 + 0.75, sz * sl));
+    // mast and flag amidships
+    kit.add(M.dark, K.rod([0, y2 + 2.4, 0], [0, y2 + 6.6, 0], 0.07, 0.05, 6));
+    kit.build(g);
+    const flag = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.7, 1.1), colour(style.flag, '#a8322a'));
+    flag.position.set(0, y2 + 6.1, 0.55);
     g.add(flag);
-    for (const sx of [-1, 1]) g.add(mesh(new THREE.BoxGeometry(0.06, 0.9, 25), cream, sx * 3.95, 4.75, 0));
+    // navigation lights: red to port (+x), green to starboard, white deck lights
+    K.lamp(g, '#ff2a1a', sw / 2 + 0.3, y2 + 0.4, 0, 0.7); K.lamp(g, '#22ff55', -sw / 2 - 0.3, y2 + 0.4, 0, 0.7);
+    for (const sz of [-1, 1]) K.lamp(g, '#ffe7c0', 0, y2 + 2.5, sz * cl / 2, 0.9);
     return { g, flag };
   }
 
-  const foamTex = (() => {
+  let foam = null; // made on first use (three.js may load after this file)
+  const foamTex = () => foam || (foam = (() => {
     const c = document.createElement('canvas'); c.width = 64; c.height = 256;
     const g = c.getContext('2d');
     for (let i = 0; i < 260; i++) {
       const y = Math.random() * 256, x = 32 + (Math.random() - 0.5) * (8 + y * 0.22), a = (1 - y / 256) * 0.55;
       g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(x, y, 1 + Math.random() * 2.5, 2 + Math.random() * 7);
     }
-    const t = new THREE.CanvasTexture(c);
-    return t;
-  })();
+    return new THREE.CanvasTexture(c);
+  })());
   function wake() {
     const geo = new THREE.PlaneGeometry(1, 1, 1, 1);
     geo.rotateX(-Math.PI / 2);
@@ -174,7 +244,7 @@ window.OEVehicles = (function () {
     for (let i = 0; i < p.count; i++) { const back = p.getZ(i) > 0; p.setX(i, p.getX(i) * (back ? 46 : 9)); p.setZ(i, back ? 98 : 18); }
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setY(i, p.getZ(i) > 50 ? 0 : 1);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: foamTex, transparent: true, depthWrite: false, opacity: 0 }));
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: foamTex(), transparent: true, depthWrite: false, opacity: 0 }));
     m.position.y = 0.06;
     m.renderOrder = 1;
     return m;
@@ -205,7 +275,7 @@ window.OEVehicles = (function () {
       for (const l of legs) cycle.push({ leg: l, rev: false });
       for (let i = legs.length - 1; i >= 0; i--) cycle.push({ leg: legs[i], rev: true });
       r.vessels.forEach((name, k) => {
-        const { g, flag } = ferryModel();
+        const { g, flag } = ferryModel(G.ferry_style);
         world.add(g);
         const wk = wake();
         world.add(wk);
@@ -302,5 +372,5 @@ window.OEVehicles = (function () {
     return { vessels, update, eta, stopOf, nextStop, wharf, finishHelm };
   }
 
-  return { helicopter, ferries };
+  return { helicopter, ferries, models: { ferry: ferryModel, helicopter: helicopterModel } };
 })();

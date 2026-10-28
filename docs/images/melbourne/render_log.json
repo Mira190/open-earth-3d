@@ -1,0 +1,52 @@
+{
+ "city": "melbourne",
+ "blender": "5.2.3 LTS",
+ "views": {
+  "overview": {
+   "date": "2026-6-22",
+   "time": "12:00",
+   "sun_altitude": 28.53,
+   "sun_azimuth": 5.77,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 76.3
+  },
+  "fedsquare": {
+   "date": "2026-6-22",
+   "time": "12:30",
+   "sun_altitude": 28.72,
+   "sun_azimuth": 357.94,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 81.9
+  },
+  "southbank": {
+   "date": "2026-6-22",
+   "time": "10:30",
+   "sun_altitude": 23.33,
+   "sun_azimuth": 28.0,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 74.3
+  },
+  "spire": {
+   "date": "2026-6-22",
+   "time": "16:20",
+   "sun_altitude": 7.15,
+   "sun_azimuth": 307.21,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 77.7
+  }
+ },
+ "build_s": 4.4,
+ "objects": 23,
+ "triangles": 944346,
+ "buildings": 13050,
+ "trees": 11335,
+ "total_s": 314.6
+}

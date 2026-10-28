@@ -85,7 +85,6 @@ window.OEPeople = (function () {
   // ------------------------------------------------------------ one person: skinned, animated
   function paletteMaterial(pal) {
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0 });
-    mat.skinning = true;
     mat.userData.pal = { value: pal };
     mat.onBeforeCompile = sh => {
       sh.uniforms.uPal = mat.userData.pal;
@@ -102,8 +101,9 @@ varying vec3 vPal;`)
     return mat;
   }
 
-  const up = new THREE.Vector3(0, 1, 0), tv = new THREE.Vector3(), tq = new THREE.Quaternion(), tq2 = new THREE.Quaternion(), hp = new THREE.Vector3();
+  let up, tv, tq, tq2, hp; // scratch objects, made on first use (three.js may load after this file)
   function person(lib, look) {
+    if (!up) { up = new THREE.Vector3(0, 1, 0); tv = new THREE.Vector3(); tq = new THREE.Quaternion(); tq2 = new THREE.Quaternion(); hp = new THREE.Vector3(); }
     const T = lib.tpl[look.character], speeds = lib.info.ground_speed[T.pack];
     const model = THREE.SkeletonUtils.clone(T.scene);
     let mesh = null, head = null;

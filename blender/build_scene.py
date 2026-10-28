@@ -153,11 +153,31 @@ def build(data):
         counts["objects"] += 1
         counts["triangles"] += 2 * len(faces)
 
+    def up_tris(loops):  # tessellate a footprint with every triangle facing up
+        flat = [p for loop in loops for p in loop]
+        out = []
+        for tri in tessellate_polygon(loops):
+            a, b, c = (flat[i] for i in tri)
+            ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0
+            out.append(tri if ccw else (tri[0], tri[2], tri[1]))
+        return flat, out
+
     # buildings: one mesh, colours per face corner
     verts, faces, cols = [], [], []
-    for s in B["s"]:
+    seen, hidden = set(), set(scene.get("hidden_solids", []))  # drawn by a parametric landmark instead
+    for si, s in enumerate(B["s"]):
+        if si in hidden:
+            continue
         m = B["b"][s[0]]
         g0, zb, zt = s[1] / 10, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10
+        # OSM sometimes maps one tower twice; Cycles shades coincident faces black
+        x, y = np.asarray(s[4], float).reshape(-1, 2).T / 10
+        cr = x * np.roll(y, -1) - np.roll(x, -1) * y
+        area = cr.sum() / 2 or 1e-9
+        key = (round((x + np.roll(x, -1)) @ cr / (6 * area)), round((y + np.roll(y, -1)) @ cr / (6 * area)), round(area / 20), round(zb), round(zt), len(s))
+        if key in seen:
+            continue
+        seen.add(key)
         wall, roof = srgb_to_linear(m[7]) + [1], srgb_to_linear(m[8]) + [1]
         rings = [np.asarray(r, float).reshape(-1, 2) / 10 for r in s[4:]]
         for r in rings:
@@ -168,15 +188,11 @@ def build(data):
                 verts += [(a[0], a[1], zb), (b[0], b[1], zb), (b[0], b[1], zt), (a[0], a[1], zt)]
                 cols += [wall] * 4
                 faces.append((v, v + 1, v + 2, v + 3))
-        loops = [[Vector((p[0], p[1], zt)) for p in r] for r in rings]
         base = len(verts)
-        flat = [p for loop in loops for p in loop]
+        flat, tris = up_tris([[Vector((p[0], p[1], zt)) for p in r] for r in rings])
         verts += [tuple(p) for p in flat]
         cols += [roof] * len(flat)
-        for tri in tessellate_polygon(loops):
-            a, b, c = (flat[i] for i in tri)
-            ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0
-            faces.append((base + tri[0], base + tri[1], base + tri[2]) if ccw else (base + tri[0], base + tri[2], base + tri[1]))
+        faces += [tuple(base + i for i in tri) for tri in tris]
     bmat = principled("buildings", rough=0.75, vcol="col")
     mesh_object("buildings", verts, faces, bmat, colors=cols)
     counts["objects"] += 1
@@ -187,10 +203,10 @@ def build(data):
     pv, pf = [], []
     for r in P.get("piers", []):
         r = np.asarray(r, float).reshape(-1, 2) / 10
-        loop = [Vector((p[0], p[1], 2.2)) for p in r]
         base = len(pv)
+        loop, tris = up_tris([[Vector((p[0], p[1], 2.2)) for p in r]])
         pv += [tuple(p) for p in loop]
-        pf += [tuple(base + i for i in tri) for tri in tessellate_polygon([loop])]
+        pf += [tuple(base + i for i in tri) for tri in tris]
     if pf:
         mesh_object("piers", pv, pf, principled("pier", "#a7a59d", 0.9))
 
@@ -225,8 +241,10 @@ def build(data):
         counts["objects"] += 1
         counts["triangles"] += len(idx)
 
-    # sea level: the ground mesh sits above it on land, so one plane is all the water
-    bpy.ops.mesh.primitive_plane_add(size=200000, location=(0, 0, 0))
+    # sea level: the ground mesh sits above it on land, so one plane is all the water. It is
+    # 10 cm up so that it covers the shore cells the terrain puts at exactly 0 m, which would
+    # be coplanar with it, and Cycles shades coplanar faces black.
+    bpy.ops.mesh.primitive_plane_add(size=200000, location=(0, 0, 0.1))
     water = bpy.context.active_object
     water.name = "water"
     wmat = principled("water", "#16303f", 0.07, 0.0)
@@ -338,7 +356,10 @@ def main():
                               "render_s": round(time.time() - t1, 1)}
         print(name, log["views"][name])
     log["total_s"] = round(time.time() - t0, 1)
-    json.dump(log, open(os.path.join(out, "render_log.json"), "w"), indent=1)
+    path = os.path.join(out, "render_log.json")
+    if a.views and os.path.exists(path):  # a subset of views: keep the others' entries
+        log["views"] = {**json.load(open(path)).get("views", {}), **log["views"]}
+    json.dump(log, open(path, "w"), indent=1)
 
 
 if __name__ == "__main__":

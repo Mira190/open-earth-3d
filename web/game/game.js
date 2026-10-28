@@ -59,6 +59,7 @@ window.OpenEarthGame = async function game(cityId) {
   U.uTime = { value: 0 };
   // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
+    if (Wd.sea) Wd.sea.patchGround(sh); // the wet band and swash along the shore
     sh.uniforms.uStreet = m.material.userData.street = m.material.userData.street || { value: null };
     sh.uniforms.uStreetOn = m.material.userData.streetOn = m.material.userData.streetOn || { value: 0 };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
@@ -72,7 +73,7 @@ float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
 float camD = distance(vWP, cameraPosition);
 float near = 1.0 - smoothstep(12.0, 70.0, camD);
 if (uStreetOn > 0.5) { // drawn streets near the camera: no blur, no shadows baked into the photo
-  vec4 st = sRGBToLinear(texture2D(uStreet, vUv));
+  vec4 st = sRGBTransferEOTF(texture2D(uStreet, vMapUv));
   diffuseColor.rgb = mix(diffuseColor.rgb, st.rgb, st.a * (1.0 - smoothstep(35.0, 140.0, camD)) * 0.92);
 }
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
@@ -111,7 +112,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const r of roads) if ((ROADW[r.c] || 0) >= 9) { path(r.p); g.strokeStyle = '#e6e2d6'; g.lineWidth = 0.15 / PX; g.stroke(); }
     g.setLineDash([]);
     const tex = new THREE.CanvasTexture(cv);
-    tex.encoding = THREE.sRGBEncoding;
+    tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
     return tex;
   }
@@ -143,8 +144,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const FRAME = { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] };
   const DSM = S.buildDSM(T, B.s, Object.assign({ ids: true }, FRAME));
   const nav = OENav.create(D, DSM);
-  // the Opera House shells and the bridge deck shade the ground too
-  for (const [name, m] of Object.entries(nav.tops)) if (/^opera/.test(name)) for (const [k, z] of m) if (z > DSM.data[k]) DSM.data[k] = z;
+  // landmark solids (the Opera House shells) and walkable strips (the bridge deck) shade the ground too
+  for (const [name, m] of Object.entries(nav.tops)) if ((G.shade_landmarks || []).some(p => name.startsWith(p))) for (const [k, z] of m) if (z > DSM.data[k]) DSM.data[k] = z;
   for (const s of nav.strips) for (let i = 0; i < s.us.length - 1; i++) {
     const a = s.us[i], b = s.us[i + 1], w = s.half_width, P2 = (u, v) => [s.origin[0] + s.axis[0] * u - s.axis[1] * v, s.origin[1] + s.axis[1] * u + s.axis[0] * v];
     S.fillMax(DSM, [[...P2(a, -w), ...P2(b, -w), ...P2(b, w), ...P2(a, w)]], Math.max(s.zs[i], s.zs[i + 1]), -3);
@@ -651,7 +652,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const p = crowd.P[pi];
       p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y); p.wave = true;
       setTimeout(() => { p.face = null; }, 6000);
-      dlg.show({ name: 'Passer-by', role: 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
+      dlg.show({ name: 'Passer-by', role: G.local_name || 'Local', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
     } };
     return null;
   }
@@ -720,6 +721,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   // survey lens: what is this building, and where does its height come from?
   const ray = new THREE.Raycaster();
+  ray.firstHitOnly = true;
   function aimed() { // the building under the reticle, within 600 m
     camera.updateMatrixWorld();
     ray.setFromCamera({ x: 0, y: 0.08 }, camera);
@@ -743,7 +745,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     clearTimeout(lens.t);
     lens.t = setTimeout(() => { $('#g-lens').hidden = true; U.uSel.value = -1; }, 6000);
     const s = step();
-    if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !qs.inspected.includes(m[4])) { qs.inspected.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${qs.inspected.length}/${s.sources.length})`); }
+    if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !qs.inspected.includes(m[4])) { qs.inspected.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${qs.inspected.length}/${s.sources.length})`); checkSteps(); }
   }
 
   // ------------------------------------------------------------ height challenge: guess, then see how good the data is
@@ -1056,7 +1058,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(dt, titleOn);
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
-    Wd.tick(now);
+    Wd.tick(now, camera);
+    if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     dlg.tick(dt);
     // HUD
@@ -1108,7 +1111,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const events = [];
       heli.update(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), lift: Math.max(-1, Math.min(1, lift)) }, events);
       for (const ev of events) {
-        if (ev.type === 'under_bridge') { H.toast('<b>Under the Harbour Bridge!</b> 49 m of clearance, and you used it.'); A.chime(); const s = step(); if (s && s.type === 'under_bridge') completeStep(); }
+        if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); const s = step(); if (s && s.type === 'under_bridge') completeStep(); }
         if (ev.type === 'bump' && clockT - bumpT > 2) { bumpT = clockT; H.toast('Careful! That was a building.'); }
       }
       A.rotor(heli.st.rotor, Math.abs(lift) + Math.abs(fwd) * 0.5);
@@ -1181,7 +1184,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
-      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast('No swimming in the harbour. Ferries leave from the wharves marked F.'); }
+      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in the ${G.water_name || 'water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
     }
     if (!moved) player.speed *= 0.5;
     const f = nav.floorAt(player.x, player.y, player.z);

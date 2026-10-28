@@ -35,7 +35,11 @@
   "water": {
     "classes": ["ocean", "bay", "water"],
     "min_area_m2": 5000,
-    "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads."
+    "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads.",
+    "waves": {"wind_ms": 5.0, "wind_from_deg": 45, "fetch_km": 4.0, "depth_m": 15, "cascades_m": [157, 33.3, 7.1], "choppiness": 0.9,
+              "note": "A typical afternoon north-easterly sea breeze over the 4 km reach from Bradleys Head to the bridge; chosen values, not a measurement."},
+    "colour": "#0e2b31", "shallow_colour": "#2d6862", "clarity_m": 3.5,
+    "colour_note": "Harbour water is green-brown with a few metres of visibility; the colours were picked from the NSW aerial photo."
   },
   "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
   "labels": {
@@ -228,6 +232,12 @@
   "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
   "game": {
     "title": "Sydney on Foot",
+    "local_name": "Sydneysider",
+    "water_name": "harbour",
+    "under_bridge_note": "49 m of clearance, and you used it.",
+    "shade_landmarks": ["opera", "sydney_tower"],
+    "ferry_style": {"length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
+                    "note": "Sydney Ferries' green and cream with a gold band; the dimensions are approximate."},
     "start": {
       "at": [120, 205],
       "facing": [298, 432],
@@ -339,7 +349,7 @@
         "giver": "ava",
         "title": "Welcome to the Quay",
         "stamp": "Circular Quay",
-        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "Before we check anything, get your bearings. Marco is on the Opera House forecourt. Walk over and say hello.", "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."],
+        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "Before we check anything, get your bearings. Marco is on the Opera House forecourt. Walk over and say hello.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk."],
         "steps": [{"type": "talk", "npc": "marco", "text": "Meet Marco on the Opera House forecourt"}]
       },
       {
@@ -347,8 +357,9 @@
         "giver": "marco",
         "title": "Shells from one sphere",
         "stamp": "Sydney Opera House",
-        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "Next, see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
+        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.", "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
         "steps": [
+          {"type": "surface", "surface": "Opera House steps", "u": [-6, 1], "text": "Climb the Monumental Steps to the podium"},
           {
             "type": "ride",
             "from": "circular-quay",

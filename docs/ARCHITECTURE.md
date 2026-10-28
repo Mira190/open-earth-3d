@@ -28,13 +28,30 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Step | Script | Output |
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`), and Terrarium tiles for the radar check |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer or an OGC WCS), and Terrarium tiles for the radar check |
+| People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
-| Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, ground tiles; `cities/<id>/analysis/height_model.json` |
+| Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
+
+### Ground
+
+The ground tiles are the aerial photo, resampled into the local frame at 1 m
+per pixel, where the city has openly licensed imagery. Where it has none
+(Melbourne), the build draws them from the vector data instead:
+- land use and land cover;
+- water;
+- roads with their kerbs and footpaths;
+- footways, cycleways and rail;
+- piers;
+- footprints, with contact shading and fine noise so the surface reads at
+  street level.
+
+Roofs then get neutral colours rather than a sampled photo.
 
 ### Heights: the ladder
 
@@ -79,19 +96,59 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   - `piers`: rings.
   - `trees`: flat `[x, y, z, h]` in decimetres.
 - `terrain.json`: a 10 m grid, int16 decimetres, little-endian, base64,
-  starting at the north-west corner.
+  starting at the north-west corner. Under the water the bottom is modelled, as
+  below.
+- `shore.png`: the shoreline at 2.5 m per pixel (`pipeline/shore.py`):
+  - red is 128 + 2 × the signed distance to the shoreline (water positive,
+    0.5 m steps, ±64 m);
+  - green is sand on land, and in the water whether the nearest shore is sand;
+  - blue is rock or a mapped cliff, the same way.
+
+  There is no open bathymetry for the harbour or the river, so each water cell's
+  depth is its distance to the nearest shore times a slope for that kind of
+  shore, down to 4 m:
+  - 0.04 off a beach;
+  - 0.25 off rock;
+  - 1.0 off a seawall or any other built edge.
+
+  The water shader uses the same slopes for how much of the bottom shows.
+  Sydney's map holds 25 sand and 220 rock polygons from Overture's land cover.
+  Melbourne's sand is sports fields, away from the river.
 - `scene.json`: the frame, the terrain grid, the ground tiles, storey
   heights, landmark anchors, labels, sources, the published-heights summary,
   and a `city` block. That block is a copy of the config fields the viewer
-  needs: tour, start, protection, labels and regions.
+  needs: tour, start, protection, labels and regions. It also has:
+  - `shore`: where `shore.png` lies, and its slopes;
+  - `water`: the city's wave and colour settings from `city.json`;
+  - `hidden_solids`: the solids a parametric landmark draws instead. Sydney
+    Tower's shaft, turret and mast stay in `buildings.json`, so the surface
+    model and every analysis still have the tower's shadow, but the renderers
+    skip them.
 - `landmarks.json`: `materials` and `meshes`. Each mesh is `{name, material,
-  position, index, smooth, floodlit}`, with positions in the local frame.
+  position, index, smooth, floodlit}`, with positions in the local frame, and
+  `uv` (metres) where its material has a surface pattern. Materials are
+  `{color, roughness, metalness}`, optionally with a `pattern`:
+  - `chevron_tiles`: the Opera House roof;
+  - `deck_zones`: a deck in strips across its width;
+  - `railing`: bars cut out of a strip.
+
+  The meshes are built with `pipeline/meshkit.py`, the landmarks' counterpart
+  of the vehicles' `web/game/kit.js`: boxes, tubes, lathes, swept sections,
+  panels and railings at real dimensions, one material per mesh.
 - `uncertainty.json`: per-place 90% ranges by month, the buildings that shade
   each place, and the fix list. It is written by `analysis/uncertainty.js`.
 
 ## Viewer
 
-`web/index.html` is one page with three views. A route script picks one:
+`web/index.html` is one page with three views. three.js r186 loads as ES modules
+through an import map (cdnjs for the core, jsDelivr for the addons and
+three-mesh-bvh), and a small module exposes them as the global `THREE` the app's
+scripts use. Colour management is left off: the scripts convert their sRGB
+colours to linear themselves, as they did on r128. The sky keeps r128's output too:
+r183 made the Sky shader's radiance linear and its sun disc far brighter, and the
+environment map turned that disc into a second sun, over-lighting noon and
+darkening dawn. With r128's tone curve and disc restored, a game frame differs
+from r128's by 5 levels in 255 at the mean. A route script picks a view:
 - `#<id>` opens a built city's 3D model;
 - `#play-<id>` opens its game;
 - anything else shows the globe.
@@ -100,10 +157,61 @@ The views switch in place, without reloading the page.
 
 - **`world.js`** builds the city scene the model viewer and the game share:
   - terrain tiles under the imagery;
-  - extruded buildings, with a facade shader for windows, lit windows at night
-    and the height-source colours;
-  - landmarks, trees, piers and water;
+  - extruded buildings with facades, lit windows at night and the
+    height-source colours;
+  - landmarks with their surface patterns, trees, piers and water;
   - sky, sun and shadows.
+
+  Each building gets one of three facades, from its class and height:
+  - a glass curtain wall for towers of 55 m and more: panes between mullions
+    every 1.5 m, an opaque spandrel at each slab, glossy enough to reflect the
+    sky;
+  - ribbon windows for other non-residential buildings of 15 m and more;
+  - punched windows with sills for the rest.
+
+  Storeys come from the mapped floor count where there is one. The ground floor
+  of offices and towers is a shopfront. Every pattern fades to its average
+  colour where a storey covers only a few pixels, so distant facades do not
+  shimmer. Pane tones and lit windows come from an integer hash of bay, storey
+  and building, which interpolation noise cannot turn into speckle.
+
+  Flat roofs sit 0.5 m below their walls' tops, behind a parapet, so the
+  outline keeps each building's stated height.
+
+- **`water.js`** is the sea and the river for every city, after Tidewater
+  (github.com/dgreenheck/tidewater, MIT), ported from WebGPU compute to WebGL2:
+  - **Spectrum:** JONSWAP with the Horvath directional spread and the TMA depth
+    correction. It is seeded on the CPU from the city's wind speed, wind
+    direction, fetch and depth (`city.json` `water.waves`).
+  - **Waves:** three FFT cascades, 256² (128² on a software renderer or a
+    small screen). Each frame and cascade runs one pass that evolves the
+    spectrum into four packed complex fields, 2 × log₂N Stockham inverse-FFT
+    passes, and one pass that writes displacement, slopes and foam. Foam is
+    made where the surface compresses and decays over time.
+  - **Check:** a single wave mode comes back from the GPU as A·cos(k·x − ωt)
+    to within 0.3 mm, so the FFT's orientation, direction of travel and
+    dispersion are right.
+  - **Surface:** a polar grid that follows the camera, each cascade faded
+    where the grid is too coarse for it, and the heights calmed within 14 m of
+    the shore so the water never climbs the land.
+  - **Shading:** the scene's own lights on a physical material (ior 1.33):
+    sun glints, the sky, unresolved slope as roughness (Cox–Munk), and a
+    half-resolution planar reflection of the city, broken up by the ripples
+    (off on software renderers and small screens). The output is
+    premultiplied: the reflection adds on top, and the bottom shows through
+    what the water column and the surface's reflection leave.
+  - **Shore:** foam by the kind of shore and the size of the waves:
+    - a faint broken lap against a seawall;
+    - splash off rock;
+    - swash lines running in on a beach.
+
+    The ground gets a wet band at the waterline and the swash on sand.
+    `?water=flat` restores the old flat sheet, which is also the fallback
+    where the GPU cannot render to float targets.
+
+  Sydney's settings (a 5 m/s north-easterly over 4 km) give a significant wave
+  height of 0.19 m, close to the fetch-limited estimate of 0.16 m. The Yarra's
+  (4 m/s over 0.5 km) give 0.05 m.
 
   `setSun()` lights the scene for any sun position.
 
@@ -113,7 +221,9 @@ The views switch in place, without reloading the page.
   sphere and hidden on the far side. Each live city shows its local time and
   sun altitude.
 - **`city.js`** is the model viewer. It drives everything city-specific from
-  `scene.city`. It also builds a 2 m
+  `scene.city`. Picking a building goes through a bounding-volume hierarchy
+  (three-mesh-bvh) over the extruded buildings. One ray against Sydney's 178,683
+  building triangles takes 0.04 ms instead of 13 ms. It also builds a 2 m
   surface model for ray casting, so the panel's numbers do not depend on the
   shadow map's resolution.
 - **`cine.js`** holds the camera moves the viewer and the game share. A shot maps
@@ -131,10 +241,23 @@ The views switch in place, without reloading the page.
 
   Ray casting skips empty space with 8-cell block maxima.
 
+- **`sun-gpu.js`** is the same ray caster as a WebGL2 fragment shader. Each
+  output pixel is one ground point, and it counts the sun positions that point
+  sees. The surface model and the block maxima are float textures, so the result
+  matches `sun.js` ray for ray: 87,000 of 87,000 test rays agree. The viewer uses
+  it for the sun-hours map, with 2 m cells every 10 minutes, against 8 m every 20
+  minutes on the CPU. A software renderer (SwiftShader, llvmpipe) is slower than
+  `sun.js`, so it gets the CPU path, as does any GPU whose texture limit is
+  smaller than the surface model.
+
 - **`game/`** is the game; [GAME.md](GAME.md) describes it:
   - navigation;
-  - people and traffic;
-  - helicopter and ferries;
+  - people (`people.js`): skinned characters near the player, instanced crowd
+    copies further away, all recoloured from one palette per character;
+  - traffic;
+  - helicopter and ferries, built from `kit.js`, a kit of parts at real
+    dimensions: a double-ended ferry in the city's livery (`game.ferry_style`)
+    and a light helicopter;
   - HUD;
   - sound.
 
@@ -171,8 +294,13 @@ All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
 files. It builds the same scene:
 - terrain tiles with the imagery;
 - one building mesh with face-corner colours;
-- trees, piers and landmarks;
-- a water plane.
+- trees, piers and landmarks, with the same geometry as the browser (the
+  surface patterns are the browser's only);
+- a water plane, 10 cm above sea level so that it does not share a plane with
+  the shore cells.
+
+It skips `hidden_solids`, and draws a tower that OSM maps twice only once, since
+Cycles shades coincident faces black.
 
 It lights the scene with a sun lamp placed by the same NOAA equations, in the
 city's time zone, and a physical sky. It renders each view in `city.json`
