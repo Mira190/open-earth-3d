@@ -835,19 +835,19 @@ HULL_L, HULL_B, KEEL, DECK = 17.0, 4.8, -1.25, 1.55     # half-length, half-beam
 HULL_P = 2.6                                            # plan superellipse exponent: rounded, fairly fine ends
 
 
-def hull_surface():
+def hull_surface(hl=HULL_L, hb=HULL_B, keel=KEEL, deck=DECK, p=HULL_P, rise=0.30):
     def plan(a):
         c, s = math.cos(a), math.sin(a)
-        e = 2 / HULL_P
-        return HULL_L * math.copysign(abs(c) ** e, c), HULL_B * math.copysign(abs(s) ** e, s)
+        e = 2 / p
+        return hl * math.copysign(abs(c) ** e, c), hb * math.copysign(abs(s) ** e, s)
 
     def sheer(a):
-        return DECK + 0.30 * (plan(a)[0] / HULL_L) ** 2
+        return deck + rise * (plan(a)[0] / hl) ** 2
 
     def S(a, z):
         x, y = plan(a)
-        q = min(1.0, max(0.0, (DECK - z) / (DECK - KEEL)))
-        ky = (1 - q ** 2.4) ** (1 / 2.4) + 0.035 * max(0.0, z) / DECK     # round bilge, a little flare above the water
+        q = min(1.0, max(0.0, (deck - z) / (deck - keel)))
+        ky = (1 - q ** 2.4) ** (1 / 2.4) + 0.035 * max(0.0, z) / deck     # round bilge, a little flare above the water
         kx = 1 - 0.24 * q ** 1.7                                        # the ends rake in towards the keel
         return Vector((x * kx, y * ky, z))
     return Surface(S, lambda a, z, p: Vector((p.x * 0.3, p.y, 0))), plan, sheer
@@ -985,8 +985,7 @@ def offset_outline(pts, d):
     return out
 
 
-def build_ferry():
-    L = FERRY_LIVERIES["harbour"]
+def ferry_materials(L):
     material("Hull", L["hull"], 0.35, 0.0, coat=0.6)
     material("Band", L["band"], 0.35, 0.1, coat=0.6)
     material("Boot", L["boot"], 0.7)
@@ -1010,6 +1009,9 @@ def build_ferry():
     material("Flag", "#c8102e", 0.8, cull=False)
     material("Decal_Name", "#ffffff", 0.4, alpha=0.999)
 
+
+def build_ferry():
+    ferry_materials(FERRY_LIVERIES["harbour"])
     H, plan, sheer = hull_surface()
     body, trim = Mesh(), Mesh()
     alphas = list(np.linspace(0, TAU, 200, endpoint=False))
@@ -1138,7 +1140,474 @@ def build_ferry():
         objs[k] = empty(k, p)
     # the waterline (x forward, y left), for the foam the game draws round the hull
     waterline = [[round(x, 2), round(y, 2)] for x, y in (plan(a) for a in np.linspace(0, TAU, 48, endpoint=False))]
-    info = {"length_m": 2 * HULL_L, "beam_m": 2 * HULL_B, "deck_m": DECK, "upper_deck_m": 4.18, "waterline": waterline}
+    info = {"length_m": 2 * HULL_L, "beam_m": 2 * HULL_B, "deck_m": DECK, "upper_deck_m": 4.18, "label_m": 12.2, "waterline": waterline}
+    return objs, info
+
+
+# A double-ended river shuttle, 22 m: low freeboard for the river walls, one long saloon
+# glazed floor to roof for the view, open decks at both ends, and a small wheelhouse
+# amidships on the roof. Same anchors and paint names as the harbour ferry.
+RIVER = dict(hl=11.0, hb=3.3, keel=-0.85, deck=0.95, p=3.0, rise=0.16)
+
+
+def build_ferry_river():
+    ferry_materials(FERRY_LIVERIES["river"])
+    R = RIVER
+    H, plan, sheer = hull_surface(**R)
+    deck = R["deck"]
+    body, trim = Mesh(), Mesh()
+    alphas = list(np.linspace(0, TAU, 160, endpoint=False))
+    zs = [R["keel"] + 0.02, -0.7, -0.5, -0.3, -0.12, 0.0, 0.10, 0.30, 0.52, 0.62, 0.76, deck]
+
+    def hull_mat(a, z):
+        return "Boot" if z < 0 else "Trim" if z < 0.10 else "Band" if 0.52 <= z < 0.62 else "Hull"
+    Hs = Surface(lambda t, a: H(a, zs[int(t)] + (zs[int(t) + 1] - zs[int(t)]) * (t - int(t))) if t < len(zs) - 2
+                 else H(a, zs[-2] + (sheer(a) - zs[-2]) * (t - len(zs) + 2)), lambda t, a, p: H.out(a, 0, p))
+    Hs.grid(body, list(range(len(zs))), alphas, lambda t, a: hull_mat(a, zs[int(t)]), period=TAU)
+    keel = [body.vert(H(a, R["keel"] + 0.02)) for a in alphas]
+    body.face(keel[::-1], "Boot", False)
+    top = [H(a, sheer(a)) for a in alphas]
+    c = body.vert((0, 0, deck))
+    ring = [body.vert(p) for p in top]
+    for k in range(len(ring)):
+        body.face([c, ring[k], ring[(k + 1) % len(ring)]], "Deck", False)
+    edge = [(p.x * 1.004, p.y * 1.014, p.z - 0.08) for p in top]
+    tube(body, "Fender", edge + [edge[0]], 0.10, segs=10, caps=False)
+    # a second, lower rubbing strake for the river walls
+    low = [(q.x, q.y, 0.34) for q in (H(a, 0.34) for a in alphas)]
+    tube(body, "Fender", [(x * 1.01, y * 1.03, z) for x, y, z in low] + [(low[0][0] * 1.01, low[0][1] * 1.03, 0.34)], 0.06, segs=8, caps=False)
+
+    # the saloon: posts 0.12 m, panes 1.45 m from a low sill to just under the roof; a door
+    # each side near each end
+    hx, hy, rc = 7.4, 2.75, 1.5
+    out1 = rounded_rect(hx, hy, rc)
+    per1 = sum(math.dist(out1[i], out1[(i + 1) % len(out1)]) for i in range(len(out1)))
+    straight = 2 * (hx - rc)
+    side_u = lambda x, left: (rc * HALF + (hy - rc) + rc * HALF + (hx - rc - x)) if left else \
+        (3 * rc * HALF + 2 * (hy - rc) + straight + rc * HALF + (hy - rc) + rc * HALF + (hx - rc + x))
+    doors = [(side_u(x, left) - 0.55, side_u(x, left) + 0.55) for x in (5.3, -5.3) for left in (True, False)]
+    doors = [(min(a, b), max(a, b)) for a, b in doors]
+    roof0 = 3.05
+    cabin(body, out1, deck, roof0, window_band(per1, deck + 0.55, roof0 - 0.18, pane=1.45, post=0.12, doors=doors, door_z=deck + 0.04),
+          "Cabin", "Interior", thick=0.07)
+    # the roof: a shallow crown, overhanging the walls a little
+    roof = rounded_rect(hx + 0.35, hy + 0.22, rc + 0.3, step=0.25)
+    slab(body, roof, roof0, roof0 + 0.12, "Trim", "Trim", "Trim")
+    ring_r = [body.vert((x, y, roof0 + 0.12)) for x, y in roof]
+    crown = body.vert((0, 0, roof0 + 0.30))
+    for k in range(len(ring_r)):
+        body.face([crown, ring_r[k], ring_r[(k + 1) % len(ring_r)]], "Cabin", False)
+    # seats facing the windows across the aisle, two rows each side, and the lights over them
+    for x in np.arange(-6.2, 6.21, 0.95):
+        if abs(abs(x) - 5.3) < 0.75:
+            continue
+        for y in (-1.75, 1.75):
+            box(body, "Seat", (0.45, 1.6, 0.40), T((x, y, deck + 0.24)))
+            box(body, "Seat", (0.10, 1.6, 0.50), T((x - 0.22, y, deck + 0.66), (0, -0.12, 0)))
+    for y in (-1.1, 1.1):
+        box(body, "Light_Cabin", (12.5, 0.16, 0.03), T((0, y, roof0 - 0.02)))
+
+    # open decks at both ends: a railing round the hull edge, benches facing out, a lifebuoy
+    for sx in (1, -1):
+        pts = [(p.x * 0.975, p.y * 0.975) for p in top if p.x * sx > hx + 0.05]
+        pts.sort(key=lambda q: math.atan2(q[1], q[0] * sx))
+        z = max(sheer(math.atan2(pts[0][1], pts[0][0])), deck)
+        railing(body, pts, z, h=1.0, spacing=0.9, closed=False)
+        box(body, "Bench", (0.42, 3.4, 0.07), T(((hx + 1.0) * sx, 0, deck + 0.45)))
+        box(body, "Bench", (0.06, 3.4, 0.40), T(((hx + 0.8) * sx, 0, deck + 0.70)))
+        for y in (-1.4, 0, 1.4):
+            box(body, "Metal_Dark", (0.32, 0.05, 0.42), T(((hx + 1.0) * sx, y, deck + 0.21)))
+        for sy in (1, -1):
+            revolve(body, "Buoy", [(0.28 + 0.065 * math.cos(t), 0.065 * math.sin(t)) for t in np.linspace(0, TAU, 10, endpoint=False)][::-1],
+                    (sx * (hx + 1.4), sy * 2.62, deck + 0.62), (0, 1, 0), segs=16)
+        # bollards and a coil of rope at each end
+        for sy in (1, -1):
+            cyl(body, "Metal_Dark", 0.11, 0.32, T(((hx + 2.4) * sx, sy * 1.6, deck + 0.16)), segs=12)
+            cyl(body, "Metal_Dark", 0.15, 0.04, T(((hx + 2.4) * sx, sy * 1.6, deck + 0.34)), segs=12)
+
+    # the roof: a railing round its edge, life rafts, and the wheelhouse amidships
+    railing(body, offset_outline(rounded_rect(hx + 0.35, hy + 0.22, rc + 0.3, step=0.6), -0.1), roof0 + 0.12, h=0.45, spacing=1.6)
+    for x in (4.6, -4.6):
+        cyl(body, "Raft", 0.30, 1.1, T((x, 0, roof0 + 0.52), (0, HALF, 0)), segs=14)
+        for d in (-0.28, 0.28):
+            cyl(body, "Metal_Dark", 0.305, 0.05, T((x + d, 0, roof0 + 0.52), (0, HALF, 0)), segs=14)
+    w0 = roof0 + 0.22
+    out3 = rounded_rect(1.7, 1.45, 0.7, step=0.2)
+    per3 = sum(math.dist(out3[i], out3[(i + 1) % len(out3)]) for i in range(len(out3)))
+    cabin(body, out3, w0, w0 + 1.55, window_band(per3, w0 + 0.62, w0 + 1.42, pane=0.85, post=0.11), "Cabin", "Interior")
+    slab(body, rounded_rect(1.95, 1.65, 0.85, step=0.2), w0 + 1.55, w0 + 1.68, "Trim", "Trim", "Trim")
+    for sx in (1, -1):
+        box(body, "Metal_Dark", (0.35, 1.2, 0.8), T((1.25 * sx, 0, w0 + 0.42)))
+    top_w = w0 + 1.68
+    cyl(body, "Rail", 0.06, 1.9, T((0, 0, top_w + 0.95)), segs=10)
+    box(body, "Rail", (0.07, 0.9, 0.07), T((0, 0, top_w + 0.55)))
+    lights = {"Side_Left": (0, 1.68, w0 + 1.0), "Side_Right": (0, -1.68, w0 + 1.0), "Masthead": (0.0, 0, top_w + 1.98)}
+    sphere(body, "Light_White", 0.07, T(lights["Masthead"]), segs=10, rings=6)
+    for k in ("Side_Left", "Side_Right"):
+        box(body, "Metal_Dark", (0.42, 0.06, 0.26), T((0, lights[k][1] * 1.01, lights[k][2])))
+        sphere(body, "Light_White", 0.05, T((0, lights[k][1] * 1.04, lights[k][2])), segs=8, rings=6)
+
+    # names on the hull near each end, both sides, between the band and the waterline
+    def name_patch(xc, left):
+        a0 = math.acos(min(1.0, (abs(xc) / R["hl"]) ** (R["p"] / 2)))
+        a = (a0 if xc > 0 else math.pi - a0) if left else (TAU - a0 if xc > 0 else math.pi + a0)
+        da = 1.25 * 2e-3 / (H(a + 1e-3, 0.30) - H(a - 1e-3, 0.30)).length
+        H.band(trim, [(a - da, 0.30), (a + da, 0.30)], 0.17, "Decal_Name", offset=0.012, across=5, uv=True, step=0.1)
+    for xc in (7.6, -7.6):
+        for left in (True, False):
+            name_patch(xc, left)
+
+    objs = {"Body": body.build("Body"), "Trim": trim.build("Trim")}
+    radar = Mesh()
+    cyl(radar, "Metal_Dark", 0.09, 0.15, T((0, 0, top_w + 0.10)), segs=12)
+    box(radar, "Raft", (0.18, 1.3, 0.11), T((0, 0, top_w + 0.22)), bevel=0.03)
+    objs["Radar"] = radar.build("Radar", origin=(0, 0, top_w + 0.10))
+    flag = Mesh()
+    w, h = 0.8, 0.5
+    fz = top_w + 1.35
+    fx = [flag.vert((-0.05 - w * k / 6, 0, fz + h * r)) for r in (0, 1) for k in range(7)]
+    for k in range(6):
+        flag.face([fx[k], fx[k + 1], fx[k + 8], fx[k + 7]], "Flag", False)
+    objs["Flag"] = flag.build("Flag", origin=(0, 0, fz))
+
+    anchors = dict(lights)
+    anchors.update({"Deck_Passenger": (hx + 1.6, -0.9, deck), "Bow_A": (R["hl"], 0, 0), "Bow_B": (-R["hl"], 0, 0)})
+    for k, p in anchors.items():
+        objs[k] = empty(k, p)
+    waterline = [[round(x, 2), round(y, 2)] for x, y in (plan(a) for a in np.linspace(0, TAU, 48, endpoint=False))]
+    info = {"length_m": 2 * R["hl"], "beam_m": 2 * R["hb"], "deck_m": deck, "upper_deck_m": roof0 + 0.12, "label_m": round(top_w + 2.6, 2),
+            "waterline": waterline}
+    return objs, info
+
+
+# ------------------------------------------------------------ cars
+# Traffic: a sedan (and the same body as a taxi, with a roof sign), a hatchback, an SUV, a
+# van and a city bus. Each body is one surface: stations along x give the roof and floor
+# lines, and each section is a rounded box that narrows above the beltline (tumblehome).
+# Windows are panes laid on that surface, framed in black, so no edge is ever cut; the
+# wheel arches are cut and lined. The game paints the material Paint per car, Paint2 with
+# a second colour (a taxi's or a bus's band), and lights the lamps after dark.
+CARS = {
+    "sedan": dict(L=4.80, W=1.82, axles=(1.45, -1.35), r=0.33, track=1.56, floor=0.17, belt=(0.99, 0.93),
+                  roof=[(-2.40, 0.80), (-2.30, 0.99), (-1.75, 1.04), (-1.05, 1.40), (-0.70, 1.45), (0.10, 1.45), (0.95, 1.00),
+                        (1.45, 0.93), (2.25, 0.84), (2.40, 0.70)],
+                  ws=(0.93, 0.16), rw=(-1.74, -1.03), dlo=(0.84, 0.10, -0.98, -1.55), bpillar=-0.34, weight=0.30),
+    "hatch": dict(L=4.15, W=1.76, axles=(1.27, -1.27), r=0.31, track=1.52, floor=0.16, belt=(1.00, 0.92),
+                  roof=[(-2.075, 0.85), (-2.05, 1.05), (-1.95, 1.30), (-1.75, 1.44), (-1.30, 1.47), (0.05, 1.47), (0.85, 1.00),
+                        (1.35, 0.92), (1.95, 0.84), (2.075, 0.70)],
+                  ws=(0.83, 0.10), rw=(-2.02, -1.80), dlo=(0.74, 0.04, -1.30, -1.62), bpillar=-0.42, weight=0.25),
+    "suv": dict(L=4.70, W=1.88, axles=(1.38, -1.32), r=0.38, track=1.62, floor=0.24, belt=(1.18, 1.10),
+                roof=[(-2.35, 1.00), (-2.30, 1.25), (-2.18, 1.62), (-1.90, 1.74), (-1.20, 1.76), (0.05, 1.75), (0.90, 1.18),
+                      (1.40, 1.10), (2.20, 1.00), (2.35, 0.84)],
+                ws=(0.88, 0.10), rw=(-2.22, -1.95), dlo=(0.78, 0.04, -1.70, -1.95), bpillar=-0.40, weight=0.25),
+    "van": dict(L=5.10, W=1.95, axles=(1.62, -1.60), r=0.36, track=1.68, floor=0.22, belt=(1.20, 1.15),
+                roof=[(-2.55, 1.10), (-2.52, 1.70), (-2.45, 2.02), (-2.20, 2.08), (1.00, 2.08), (1.45, 1.85), (1.95, 1.25),
+                      (2.30, 1.08), (2.50, 0.98), (2.55, 0.82)],
+                ws=(1.92, 1.48), rw=(-2.50, -2.42), dlo=(1.40, 1.05, 0.35, 0.40), bpillar=None, weight=0.08),
+}
+CAR_LIVERIES = {"taxi": {"colours": ["#f3f3f0", "#c9ccd0", "#1c1d1f"], "band": "#1c1d1f", "share": 0.12},
+                "bus": {"colour": "#f2f2ef", "band": "#1f5fa8", "share": 0.04},
+                "colours": ["#f2f2f2", "#1c1c1e", "#8a9099", "#b3242b", "#1f4e8c", "#d8d3c8", "#2f3b33", "#c9a227", "#5a6470", "#7a1f2b",
+                            "#e7e5df", "#3d4146"]}
+
+
+def car_materials():
+    material("Paint", "#d8dadc", 0.3, 0.0, coat=1.0)
+    material("Paint2", "#1c1d1f", 0.3, 0.0, coat=1.0)
+    material("Glass", "#10161b", 0.05, 0.1)
+    material("Trim", "#141516", 0.6, cull=False)
+    material("Chrome", "#c9cdd1", 0.2, 1.0)
+    material("Tyre", "#1a1b1c", 0.85)
+    material("Rim", "#a7adb3", 0.3, 0.9)
+    material("Light_Head", "#aeb6bd", 0.08, 0.6, emit="#fff4dc")
+    material("Light_Tail", "#8a0d10", 0.2, emit="#ff2a1a")
+    material("Light_Amber", "#d97b0e", 0.2, emit="#ffae2a")
+    material("Plate", "#f2f2ec", 0.5)
+    material("Sign", "#f6e9a8", 0.4, emit="#ffe9a0")
+    material("Seam", "#2a2c2e", 0.6)
+
+
+def car_surface(c):
+    xs = [p[0] for p in c["roof"]]
+    top = pchip(xs, [p[1] for p in c["roof"]])
+    half, W = c["L"] / 2, c["W"]
+    belt0, belt1 = c["belt"]
+
+    def belt(x):
+        return belt0 + (belt1 - belt0) * (x + half) / (2 * half)
+
+    def params(x):
+        zt = top(min(max(x, -half), half))
+        zb = c["floor"] + 0.18 * max(0.0, abs(x) / half - 0.80) / 0.20
+        # blunt ends: in plan the corners round off over the last 30 cm, and the section
+        # closes to a point only in the last few centimetres
+        t = max(0.0, (abs(x) - (half - 0.30)) / 0.30)
+        plan = (1 - min(1.0, t) ** 2.2) ** (1 / 2.2)
+        close = (1 - min(1.0, max(0.0, (abs(x) - (half - 0.06)) / 0.059)) ** 3) ** (1 / 3)
+        return zt, zb, W / 2 * (0.80 + 0.20 * plan), close
+
+    def S(x, th):
+        zt, zb, hw, k = params(x)
+        zc, hz = (zt + zb) / 2, (zt - zb) / 2
+        cth, sth = math.cos(th), math.sin(th)
+        e = 2 / (4.2 if sth >= 0 else 7.0)
+        y = -hw * math.copysign(abs(cth) ** e, cth)
+        z = zc + hz * math.copysign(abs(sth) ** e, sth)
+        b = belt(x)
+        y *= 1 - 0.20 * min(1.0, max(0.0, (z - b) / 0.45)) ** 1.2 * (1 if zt > b + 0.15 else 0.0)
+        return Vector((x, y * k, zc + (z - zc) * k))
+    F = Surface(S, lambda x, th, p: Vector((p.x * 0.4, p.y, p.z - (params(x)[0] + params(x)[1]) / 2)))
+    return F, belt, top, params
+
+
+def theta_at(F, x, z, lo=-HALF + 1e-3, hi=HALF - 1e-3):
+    """The angle on the right side (theta in -pi/2..pi/2) where the section at x reaches height z."""
+    for _ in range(40):
+        mid = (lo + hi) / 2
+        if F(x, mid).z < z:
+            lo = mid
+        else:
+            hi = mid
+    return (lo + hi) / 2
+
+
+def patch(mesh, F, poly, mat, offset=0.006, rings=4, step=0.04, uv=None):
+    """A filled pane lying on the surface F inside a param-space polygon (star-shaped about its centre)."""
+    dense = []
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        n = max(1, int(math.ceil((F(*b) - F(*a)).length / step)))
+        dense += [(a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n) for k in range(n)]
+    cx = sum(p[0] for p in dense) / len(dense)
+    cy = sum(p[1] for p in dense) / len(dense)
+    P = lambda u, v: F(u, v) + F.normal(u, v) * offset
+    centre = mesh.vert(P(cx, cy))
+    ringv = [[mesh.vert(P(cx + (u - cx) * k / rings, cy + (v - cy) * k / rings)) for u, v in dense] for k in range(1, rings + 1)]
+    out = F.normal(cx, cy)
+    n = len(dense)
+
+    def face(ids):
+        a, b, c = (Vector(mesh.v[i]) for i in ids[:3])
+        mesh.face(ids if (b - a).cross(c - a).dot(out) >= 0 else ids[::-1], mat, True)
+    for i in range(n):
+        face([centre, ringv[0][i], ringv[0][(i + 1) % n]])
+    for k in range(rings - 1):
+        for i in range(n):
+            i2 = (i + 1) % n
+            face([ringv[k][i], ringv[k + 1][i], ringv[k + 1][i2], ringv[k][i2]])
+    return dense
+
+
+def text_mesh(mesh, text, mat, size, M, depth=0.004):
+    """Letters from Blender's own font as geometry, laid in the x-y plane of M."""
+    cu = bpy.data.curves.new("txt", "FONT")
+    cu.body = text
+    cu.size = size
+    cu.extrude = depth
+    cu.align_x = "CENTER"
+    cu.align_y = "CENTER"
+    ob = bpy.data.objects.new("txt", cu)
+    bpy.context.scene.collection.objects.link(ob)
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = ob.evaluated_get(dg).to_mesh()
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    ob.evaluated_get(dg).to_mesh_clear()
+    bpy.data.objects.remove(ob)
+    bpy.data.curves.remove(cu)
+    mesh.add_bm(bm, mat, M, smooth=False)
+
+
+def build_car(kind, taxi=False):
+    c = CARS[kind]
+    F, belt, top, params = car_surface(c)
+
+    def hw_at(x):
+        return params(x)[2]
+    half, L = c["L"] / 2, c["L"]
+    body, trim = Mesh(), Mesh()
+    r, track = c["r"], c["track"]
+    arches = [(ax, r + 0.05) for ax in c["axles"]]
+
+    def cut(x, th):
+        p = F(x, th)
+        if abs(p.y) < c["W"] / 2 * 0.55:
+            return "Paint"
+        for ax, ra in arches:
+            if (p.x - ax) ** 2 + (p.z - r) ** 2 < ra * ra:
+                return None
+        return "Paint"
+    xs = sorted(set(spaced(-half, half, 0.05) + [half - 0.22 * (1 - t) for t in np.linspace(0, 1, 10)] +
+                    [-half + 0.22 * (1 - t) for t in np.linspace(0, 1, 10)]))
+    xs = [x for x in xs if -half <= x <= half]
+    xs[0], xs[-1] = -half + 1e-3, half - 1e-3
+    ths = list(np.linspace(0, TAU, 72, endpoint=False))
+    F.grid(body, xs, ths, cut, period=TAU)
+    # floor pan under the car, so it reads solid from low angles
+    box(body, "Trim", (L - 0.7, c["W"] - 0.25, 0.04), T((0, 0, c["floor"] + 0.06)))
+    # wheel arches: a black liner, a trim lip, and the wheels
+    for ax, ra in arches:
+        for side in (1, -1):
+            yo = side * (c["W"] / 2)
+            arc = [(ax + ra * math.cos(a), yo * 0.985, r + ra * math.sin(a)) for a in np.linspace(-0.25, math.pi + 0.25, 24)]
+            tube(trim, "Trim", arc, 0.025, segs=6)
+            cyl(body, "Trim", ra + 0.01, 0.30, T((ax, side * (c["W"] / 2 - 0.16), r), (HALF, 0, 0)), segs=20, caps=False)
+            yw = side * track / 2
+            tyre = [(r * 0.62, -0.105), (r * 0.62, 0.105), (r * 0.92, 0.112), (r, 0.09), (r * 1.01, 0.0), (r, -0.09), (r * 0.92, -0.112)]
+            revolve(body, "Tyre", tyre, (ax, yw, r), (0, 1, 0), segs=24)
+            cyl(body, "Rim", r * 0.63, 0.20, T((ax, yw + side * 0.005, r), (HALF, 0, 0)), segs=20)
+            cyl(body, "Trim", r * 0.22, 0.21, T((ax, yw + side * 0.006, r), (HALF, 0, 0)), segs=10)
+            for k in range(5):
+                a = k * TAU / 5
+                box(body, "Chrome", (0.035, 0.012, r * 0.55), T((ax + math.sin(a) * r * 0.36, yw + side * 0.103, r + math.cos(a) * r * 0.36), (0, a, 0)))
+
+    # glass: windscreen, rear window and the side windows, each framed in black
+    ws0, ws1 = c["ws"]
+    corner = 0.80
+    panes = [[(ws0, corner), (ws1, corner), (ws1, math.pi - corner), (ws0, math.pi - corner)]]
+    if c["rw"][0] < c["rw"][1] - 0.05:
+        rw0, rw1 = c["rw"]
+        panes.append([(rw1, corner), (rw0, corner), (rw0, math.pi - corner), (rw1, math.pi - corner)])
+    f0, f1, r1, r0 = c["dlo"]
+    for side in (1, -1):
+        b0, b1 = theta_at(F, f0, belt(f0) + 0.03), theta_at(F, r0, belt(r0) + 0.03)
+        dlo = [(f0, b0), (f1, corner - 0.08), (r1, corner - 0.08), (r0, b1)]
+        panes.append(dlo if side > 0 else mirror(dlo)[::-1])
+    for pane in panes:
+        outline = patch(trim, F, chaikin(pane, 2), "Glass", offset=0.005)
+        F.band(trim, outline, 0.022, "Trim", offset=0.007, across=2, closed=True, step=0.03)
+    if c.get("bpillar") is not None:
+        for side in (1, -1):
+            x = c["bpillar"]
+            pts = [(x, theta_at(F, x, belt(x))), (x, corner - 0.06)]
+            F.band(trim, pts if side > 0 else mirror(pts), 0.05, "Trim", offset=0.008, across=2)
+    # lamps, grille, plates, mirrors, handles, sill trim
+    zt_f, zt_r = top(half - 0.12), top(-half + 0.12)
+    for side in (1, -1):
+        sgn = 1 if side > 0 else -1
+        # lamp units set into the corners: a dark housing, then the lens
+        # the units wrap round the corners, so their outer ends sit further back
+        hy = side * (hw_at(half - 0.07) - 0.24)
+        box(body, "Trim", (0.10, 0.36, 0.13), T((half - 0.075, hy, zt_f - 0.10), (0, 0, side * 0.30)), bevel=0.02)
+        box(body, "Light_Head", (0.04, 0.30, 0.09), T((half - 0.03, hy, zt_f - 0.10), (0, 0, side * 0.30)), bevel=0.012)
+        box(body, "Light_Amber", (0.03, 0.08, 0.04), T((half - 0.10, side * (hw_at(half - 0.10) - 0.05), zt_f - 0.12), (0, 0, side * 0.7)))
+        ty = side * (hw_at(-half + 0.06) - 0.22)
+        box(body, "Light_Tail", (0.07, 0.36, 0.12), T((-half + 0.04, ty, zt_r - 0.12), (0, 0, -side * 0.28)), bevel=0.015)
+        x = c["dlo"][0] - 0.05
+        box(body, "Paint", (0.10, 0.10, 0.10), T((x, side * (c["W"] / 2 + 0.06), belt(x) + 0.06)), bevel=0.02)
+        box(body, "Trim", (0.06, 0.14, 0.03), T((x, side * (c["W"] / 2 + 0.01), belt(x) + 0.02)))
+        sill = [(xx, theta_at(F, xx, c["floor"] + 0.14)) for xx in np.linspace(c["axles"][0] - r - 0.12, c["axles"][1] + r + 0.12, 8)]
+        F.band(trim, sill if sgn > 0 else mirror(sill), 0.035, "Trim", offset=0.005, across=2)
+        for xh in ((0.30, -0.80) if c.get("bpillar") is not None else (0.6,)):
+            p = F(xh, theta_at(F, xh, belt(xh) - 0.07) if sgn > 0 else math.pi - theta_at(F, xh, belt(xh) - 0.07))
+            box(body, "Chrome", (0.16, 0.025, 0.03), T(p + Vector((0, 0.01 * sgn, 0))))
+    # grille, lower intake and plates on the blunt ends
+    box(body, "Trim", (0.06, c["W"] * 0.42, 0.16), T((half - 0.03, 0, zt_f - 0.14)), bevel=0.02)
+    box(body, "Chrome", (0.02, c["W"] * 0.40, 0.012), T((half + 0.002, 0, zt_f - 0.09)))
+    box(body, "Trim", (0.06, c["W"] * 0.62, 0.10), T((half - 0.03, 0, c["floor"] + 0.16)), bevel=0.02)
+    box(body, "Plate", (0.02, 0.50, 0.12), T((half + 0.005, 0, c["floor"] + 0.30)))
+    box(body, "Plate", (0.02, 0.50, 0.12), T((-half - 0.005, 0, c["floor"] + 0.45)))
+    box(body, "Trim", (0.06, c["W"] * 0.80, 0.12), T((-half + 0.03, 0, c["floor"] + 0.17)), bevel=0.02)
+    box(body, "Chrome", (0.12, 0.05, 0.05), T((-half + 0.02, -0.45, c["floor"] + 0.08)))
+    if taxi:
+        zt = top(-0.35)
+        box(body, "Sign", (0.26, 0.72, 0.16), T((-0.35, 0, zt + 0.09)), bevel=0.02)
+        for side in (1, -1):
+            M = T((-0.35, side * 0.362, zt + 0.09), (HALF, 0, HALF if side < 0 else -HALF))
+            text_mesh(trim, "TAXI", "Trim", 0.11, M)
+    return body, trim
+
+
+def build_bus():
+    """A low-floor city bus, 12 m: glazing all round, doors on the left (the kerb side where
+    traffic keeps left; the game mirrors nothing), a destination sign that lights up."""
+    c = dict(L=12.0, W=2.50, axles=(3.45, -2.45), r=0.50, track=2.08, floor=0.30)
+    half = c["L"] / 2
+
+    def S(x, th):
+        t = max(0.0, (abs(x) - (half - 0.18)) / 0.18)
+        k = (1 - min(1.0, t) ** 4) ** 0.25
+        zt, zb = 3.05 - (0.10 if x < -half + 0.4 else 0), c["floor"]
+        zc, hz, hw = (zt + zb) / 2, (zt - zb) / 2 * (0.9 + 0.1 * k), c["W"] / 2 * (0.9 + 0.1 * k)
+        cth, sth = math.cos(th), math.sin(th)
+        e = 2 / 8.0
+        return Vector((x, -hw * math.copysign(abs(cth) ** e, cth), zc + hz * math.copysign(abs(sth) ** e, sth)))
+    F = Surface(S, lambda x, th, p: Vector((p.x * 0.2, p.y, p.z - 1.65)))
+    body, trim = Mesh(), Mesh()
+    arches = [(ax, c["r"] + 0.06) for ax in c["axles"]]
+
+    def mat_of(x, th):
+        p = F(x, th)
+        if abs(p.y) > 0.9 and any((p.x - ax) ** 2 + (p.z - c["r"]) ** 2 < ra * ra for ax, ra in arches):
+            return None
+        return "Paint2" if 0.75 < p.z < 1.05 else "Paint"
+    xs = sorted(set(spaced(-half, half, 0.12) + [half - 0.18 * (1 - t) for t in np.linspace(0, 1, 8)] + [-half + 0.18 * (1 - t) for t in np.linspace(0, 1, 8)]))
+    xs = [x for x in xs if -half <= x <= half]
+    xs[0], xs[-1] = -half + 1e-3, half - 1e-3
+    ths = list(np.linspace(0, TAU, 64, endpoint=False))
+    F.grid(body, xs, ths, mat_of, period=TAU)
+    for x in (xs[0], xs[-1]):    # flat end caps, fanned from the middle
+        ring = [body.vert(F(x, th)) for th in ths]
+        mid = body.vert(sum((Vector(body.v[i]) for i in ring), Vector()) / len(ring))
+        for j in range(len(ring)):
+            a, b = ring[j], ring[(j + 1) % len(ring)]
+            body.face([mid, b, a] if x > 0 else [mid, a, b], "Paint", smooth=False)
+    for ax, ra in arches:
+        for side in (1, -1):
+            cyl(body, "Trim", ra + 0.01, 0.36, T((ax, side * (c["W"] / 2 - 0.2), c["r"]), (HALF, 0, 0)), segs=20, caps=False)
+            yw, r = side * c["track"] / 2, c["r"]
+            revolve(body, "Tyre", [(r * 0.6, -0.14), (r * 0.6, 0.14), (r * 0.94, 0.15), (r, 0.11), (r, -0.11), (r * 0.94, -0.15)], (ax, yw, r), (0, 1, 0), segs=24)
+            cyl(body, "Rim", r * 0.6, 0.26, T((ax, yw + side * 0.01, r), (HALF, 0, 0)), segs=20)
+    # windows: a band each side, the windscreen and the rear window, a destination sign
+    th_lo, th_hi = theta_at(F, 0, 1.25), theta_at(F, 0, 2.75)
+    for side in (1, -1):
+        band_ = [(half - 1.0, th_lo), (half - 1.0, th_hi), (-half + 0.5, th_hi), (-half + 0.5, th_lo)]
+        outline = patch(trim, F, band_ if side > 0 else mirror(band_)[::-1], "Glass", offset=0.006, rings=2)
+        F.band(trim, outline, 0.03, "Trim", offset=0.008, across=2, closed=True, step=0.06)
+        for x in np.arange(-half + 1.3, half - 1.0, 1.25):
+            F.band(trim, [(x, th_lo), (x, th_hi)] if side > 0 else mirror([(x, th_lo), (x, th_hi)]), 0.035, "Trim", offset=0.009, across=2)
+    for xx, z0, z1, m in ((half - 0.001, 0.95, 2.55, "Glass"), (-half + 0.001, 1.6, 2.6, "Glass")):
+        sgn = 1 if xx > 0 else -1
+        box(trim, m, (0.02, c["W"] - 0.25, z1 - z0), T((xx + sgn * 0.005, 0, (z0 + z1) / 2)))
+        box(trim, "Trim", (0.025, c["W"] - 0.18, 0.05), T((xx + sgn * 0.004, 0, z1 + 0.03)))
+    box(trim, "Sign", (0.03, 1.6, 0.25), T((half + 0.01, 0, 2.78)))
+    for x in (half - 0.5, -0.2):
+        box(trim, "Glass", (0.9 if x > 0 else 1.2, 0.02, 2.2), T((x, c["W"] / 2 + 0.006, 1.42)))
+    for side in (1, -1):
+        for poly, m in (((half - 0.003, 0.45), "Light_Head"), ((-half + 0.003, 0.95), "Light_Tail")):
+            box(trim, m, (0.02, 0.32, 0.16), T((poly[0], side * 0.95, poly[1])))
+    box(body, "Plate", (0.02, 0.5, 0.12), T((half + 0.01, 0, 0.55)))
+    box(body, "Plate", (0.02, 0.5, 0.12), T((-half - 0.01, 0, 0.75)))
+    return body, trim
+
+
+def build_cars():
+    car_materials()
+    objs = {}
+    for name, kind, taxi in (("Car_Sedan", "sedan", False), ("Car_Taxi", "sedan", True), ("Car_Hatch", "hatch", False),
+                             ("Car_SUV", "suv", False), ("Car_Van", "van", False)):
+        b, t = build_car(kind, taxi)
+        b.merge(t)
+        objs[name] = b.build(name)
+    b, t = build_bus()
+    b.merge(t)
+    objs["Bus"] = b.build("Bus")
+    # the end sections close to a point: weld those rings
+    for ob in objs.values():
+        bm = bmesh.new()
+        bm.from_mesh(ob.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+        bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-6)
+        bm.to_mesh(ob.data)
+        bm.free()
+    # spread them out so the bake sees each on its own
+    for k, (name, ob) in enumerate(objs.items()):
+        ob.location = to_blender((0, k * 6.0 - 15, 0))
+    info = {"models": {"Car_Sedan": {"weight": CARS["sedan"]["weight"]}, "Car_Hatch": {"weight": CARS["hatch"]["weight"]},
+                       "Car_SUV": {"weight": CARS["suv"]["weight"]}, "Car_Van": {"weight": CARS["van"]["weight"]},
+                       "Car_Taxi": {"taxi": True}, "Bus": {"bus": True}},
+            "liveries": CAR_LIVERIES,
+            "tones": {"Paint": 0, "Paint2": 1, "Glass": 4, "Tyre": 5, "Light_Head": 6, "Light_Tail": 7, "Trim": 8, "Chrome": 9,
+                      "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8}}
     return objs, info
 
 
@@ -1319,7 +1788,7 @@ def water_material():
 def stage(kind, samples, res):
     """A Cycles set for the beauty shots and previews: sky, sun, and a helipad or open water."""
     setup_render(samples, res, sun=(24, 205) if kind == "helicopter" else (28, 230))
-    if kind == "helicopter":
+    if kind in ("helicopter", "cars"):
         ground_plane("Ground", 300, material("Asphalt", "#3b3d3f", 0.85))
         pad = Mesh()
         revolve(pad, "Paint_Line", [(9.0, 0.005), (9.0, 0.015), (9.6, 0.015), (9.6, 0.005)][::-1], (0, 0, 0), (0, 0, 1), segs=96, smooth=False)
@@ -1334,9 +1803,30 @@ def stage(kind, samples, res):
         sun_lamp(28, 230)
 
 
+def bake_vertex_ao(meshes, distance, samples):
+    """Ambient occlusion into each mesh's colour attribute (for the instanced traffic, which has no UVs)."""
+    t = time.time()
+    for o in meshes:
+        attr = o.data.color_attributes.new("ao", "BYTE_COLOR", "POINT")
+        o.data.color_attributes.active_color = attr
+    select(meshes)
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = samples
+    world = bpy.data.worlds.get("Bake") or bpy.data.worlds.new("Bake")
+    world.light_settings.distance = distance
+    sc.world = world
+    bpy.ops.object.bake(type="AO", target="VERTEX_COLORS", use_clear=True)
+    print(f"  vertex AO for {len(meshes)} meshes: {time.time() - t:.0f} s")
+
+
+KINDS = ["helicopter", "ferry", "ferry_river", "cars"]
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--only", choices=["helicopter", "ferry"])
+    ap.add_argument("--only", choices=KINDS)
     ap.add_argument("--preview", help="render quick previews into this folder instead of exporting")
     ap.add_argument("--render", action="store_true", help="also render beauty shots into docs/images/vehicles")
     ap.add_argument("--samples", type=int, default=96, help="Cycles samples for the beauty shots")
@@ -1355,21 +1845,47 @@ def main():
                             ("rear34", (-12.5, 7.5, 3.6), (-1.4, 0, 1.7), 40), ("top", (-0.5, 0.01, 19), (-0.5, 0, 0), 35),
                             ("cockpit", (5.0, -2.7, 1.9), (2.3, 0, 1.3), 35)],
              "ferry": [("front34", (34, -26, 9), (0, 0, 3), 40), ("side", (0, -48, 5), (0, 0, 3.2), 40),
-                       ("end", (40, 4, 6), (0, 0, 3.5), 45), ("deck", (16, -9, 7.5), (4, 0, 4.5), 30)]}
-    hero = {"helicopter": ("front34", (9.6, -7.4, 1.9), (-0.9, 0.2, 1.75), 46), "ferry": ("front34", (36, -30, 4.5), (-1, 0, 3.6), 42)}
-    for kind in ("helicopter", "ferry"):
+                       ("end", (40, 4, 6), (0, 0, 3.5), 45), ("deck", (16, -9, 7.5), (4, 0, 4.5), 30)],
+             "ferry_river": [("front34", (24, -18, 6), (0, 0, 2), 40), ("side", (0, -32, 3.5), (0, 0, 2.0), 40),
+                             ("end", (26, 3, 4), (0, 0, 2.2), 45), ("deck", (10, -6, 5), (3, 0, 2.5), 32)],
+             "cars": [("row", (9, -24, 2.2), (0, -6, 0.8), 40), ("front", (11, -9, 1.6), (0, -9, 0.8), 45), ("rear", (-9, -3, 1.8), (0, -3, 0.8), 45),
+                      ("bus", (-14, 20, 3.0), (0, 15, 1.5), 40), ("high", (16, -20, 10), (0, -4, 0.5), 35)]}
+    hero = {"helicopter": ("front34", (9.6, -7.4, 1.9), (-0.9, 0.2, 1.75), 46), "ferry": ("front34", (36, -30, 4.5), (-1, 0, 3.6), 42),
+            "ferry_river": ("front34", (24, -20, 3.2), (-1, 0, 2.0), 42)}
+    builders = {"helicopter": build_helicopter, "ferry": build_ferry, "ferry_river": build_ferry_river, "cars": build_cars}
+    for kind in KINDS:
         if a.only and a.only != kind:
             continue
         print(kind)
         bpy.ops.wm.read_factory_settings(use_empty=True)
         MAT.clear()
-        objs, info = build_helicopter() if kind == "helicopter" else build_ferry()
+        objs, info = builders[kind]()
         if a.preview:
             os.makedirs(a.preview, exist_ok=True)
             stage(kind, min(a.samples, 24), (960, 540))
             for name, loc, tgt, lens in shots[kind]:
                 camera("Cam", loc, tgt, lens)
                 render(os.path.join(a.preview, f"{kind}_{name}.jpg"))
+            continue
+        if kind == "cars":
+            # ambient occlusion per vertex, two decimated copies of each for distance, one file for all
+            bake_vertex_ao(list(objs.values()), 0.6, a.bake_samples)
+            for name in list(objs):
+                lo, far = lod_copy(objs[name], f"{name}_LOD1", 0.22), lod_copy(objs[name], f"{name}_LOD2", 0.045)
+                info["models"][name].update({"triangles": triangles([objs[name]]), "lod1_triangles": triangles([lo]),
+                                             "lod2_triangles": triangles([far])})
+                objs[f"{name}_LOD1"], objs[f"{name}_LOD2"] = lo, far
+            for ob in objs.values():
+                ob.location = (0, 0, 0)
+            path = os.path.join(OUT, "cars.glb")
+            select(list(objs.values()))
+            bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_vertex_color="ACTIVE",
+                                      export_materials="EXPORT", export_cameras=False, export_lights=False, export_animations=False)
+            print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
+            info.update({"file": "cars.glb", "lod1_m": 35, "lod2_m": 110,
+                         "note": "Paint takes each car's colour, Paint2 a second (a taxi's or bus's band); 'tones' maps materials to the "
+                                 "traffic shader's slots"})
+            manifest[kind] = info
             continue
         meshes = [o for k, o in objs.items() if o.type == "MESH" and k not in ("Trim", "Flag")]
         bake_ao(meshes, [objs["Trim"]], 2048, 1.0 if kind == "helicopter" else 2.5, a.bake_samples)
@@ -1386,7 +1902,7 @@ def main():
                           "registrations": REGISTRATIONS, "registration_default": "OEH-3D", "logo": "OPEN EARTH 3D",
                           "rotor_rpm": 395, "tail_rotor_rpm": 3580})
         else:
-            entry.update({"default_livery": "bay", "liveries": FERRY_LIVERIES,
+            entry.update({"default_livery": "river" if kind == "ferry_river" else "bay", "liveries": FERRY_LIVERIES,
                           "paint": {"Hull": "hull", "Band": "band", "Cabin": "cabin", "Bulwark": "cabin", "Trim": "trim",
                                     "Deck": "deck", "Boot": "boot"}})
         entry.update(info)

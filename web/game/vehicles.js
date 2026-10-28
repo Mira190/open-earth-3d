@@ -40,13 +40,20 @@ window.OEVehicles = (function () {
   const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
 
   // ------------------------------------------------------------ loading and liveries
-  async function load(base = 'assets/vehicles/', { ferry = true } = {}) {
+  // ferry: false for a city without ferries, else its ferry_style, which picks the model:
+  // 'model': 'river' (the 22 m shuttle) or 'harbour' (the 34 m ferry), else by its length
+  async function load(base = 'assets/vehicles/', { ferry = true, cars = true } = {}) {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
     const L = new THREE.GLTFLoader();
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
     const info = await (await fetch(base + 'vehicles.json')).json();
-    const [heli, fer] = await Promise.all([get(info.helicopter.file), ferry ? get(info.ferry.file) : null]);
-    return { info, heli, ferry: fer };
+    const style = typeof ferry === 'object' ? ferry : {};
+    const river = style.model ? style.model === 'river' : style.length_m < 28;
+    const ferryInfo = ferry ? (river && info.ferry_river) || info.ferry : null;
+    // the traffic's cars are optional: without them the streets keep their box cars
+    const car = cars && info.cars ? get(info.cars.file).catch(e => { console.warn('Car models unavailable:', e); return null; }) : null;
+    const [heli, fer, carLib] = await Promise.all([get(info.helicopter.file), ferryInfo ? get(ferryInfo.file) : null, car]);
+    return { info, heli, ferry: fer, ferryInfo, cars: carLib };
   }
   // a livery by name, or the city's own colours over the default
   function livery(I, spec) {
@@ -465,7 +472,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       return out;
     };
     const tmp = {};
-    const I = lib && lib.info.ferry, style = G.ferry_style || {};
+    const I = lib && (lib.ferryInfo || lib.info.ferry), style = G.ferry_style || {};
     // a livery named in game.vehicles, else the colours of the city's ferry_style, else the default
     const colours = I ? livery(I, cfg.livery || (style.hull && { hull: style.hull, band: style.trim, cabin: style.upper, trim: style.upper, flag: style.flag })) : null;
     let shared = null; // materials shared by every vessel in the city's livery
@@ -585,7 +592,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   }
 
   function glbFerry(lib, name, colours, shared, opts, scale = 1) {
-    const I = lib.info.ferry, src = lib.ferry.scene.clone(true), node = n => src.getObjectByName(n);
+    const I = lib.ferryInfo || lib.info.ferry, src = lib.ferry.scene.clone(true), node = n => src.getObjectByName(n);
     const decal = decalTexture(name.toUpperCase(), { w: 1024, h: 150, color: colours.band, fill: 0.62, weight: 700, spacing: 0.1 });
     const lamps = {};
     let mats;
@@ -647,7 +654,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     };
     // the city's ferry_style may ask for a longer or shorter vessel: the whole model scales
     g.scale.setScalar(scale);
-    return { g, labelY: 12.2 * scale, shared, length: I.length_m * scale, deck: { fwd: dp.z * scale, right: -dp.x * scale, up: dp.y * scale },
+    return { g, labelY: (I.label_m || 12.2) * scale, shared, length: I.length_m * scale, deck: { fwd: dp.z * scale, right: -dp.x * scale, up: dp.y * scale },
       animate: (dt, t, o) => { animateLamps(o.night); animate(dt, t, o); } };
   }
 

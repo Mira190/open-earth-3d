@@ -243,7 +243,7 @@
     "water_name": "harbour",
     "under_bridge_note": "49 m of clearance, and you used it.",
     "shade_landmarks": ["opera", "sydney_tower"],
-    "ferry_style": {"length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
+    "ferry_style": {"model": "harbour", "length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
                     "note": "Sydney Ferries' green and cream with a gold band; the dimensions are approximate."},
     "start": {
       "at": [120, 205],
@@ -276,7 +276,8 @@
     "helipads": [{"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}],
     "vehicles": {
       "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). Pick a livery from vehicles.json or give your own colours; the registration defaults to the country's. The ferries take their colours and length from ferry_style.",
-      "helicopter": {"livery": "survey"}
+      "helicopter": {"livery": "survey"},
+      "cars": {"taxi": {"colours": ["#f3f3f0", "#c9ccd0", "#1c1d1f", "#e8e6df"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#2a5caa"}, "note": "Sydney's taxis come in any colour, mostly white, silver or black, with a roof sign; the buses are white with a blue band (approximate)."}
     },
     "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
     "npcs": [
