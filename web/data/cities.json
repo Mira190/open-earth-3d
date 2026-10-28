@@ -11,6 +11,18 @@
   "game": true
  },
  {
+  "id": "osaka",
+  "name": "Osaka",
+  "country": "Japan",
+  "lat": 34.679,
+  "lon": 135.513,
+  "status": "live",
+  "summary": "Umeda to Shinsekai along Midosuji, with Osaka Castle: 73,000 buildings, 89% of the roof area with a height measured for Project PLATEAU, the Dotonbori neon, a winter-sun study of the parks, and a game with Osaka people.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true
+ },
+ {
   "id": "melbourne",
   "name": "Melbourne",
   "country": "Australia",

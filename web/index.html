@@ -8,7 +8,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
 <style>
 /* Layout: a survey plate. Globe: the Earth on the left, the city register on the right.
    City: full-bleed 3D stage, a working panel on the right, a sun dial dock along the bottom. */
@@ -33,8 +33,8 @@
   --s3: #1baf7a;
   --hud: rgba(248, 250, 251, 0.9);
   --shadow: 0 1px 2px rgba(18, 32, 42, 0.08), 0 6px 20px rgba(18, 32, 42, 0.10);
-  --f-display: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
-  --f-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-display: "Bricolage Grotesque", "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --f-body: "Public Sans", "Noto Sans JP", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic", sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
   --r: 8px;
   --g-ocean: #b7cad5; --g-land: #f3f0e8; --g-coast: #8fa5b1; --g-border: #c6c0b3; --g-grid: rgba(18, 32, 42, 0.07);
@@ -636,7 +636,7 @@ a { color: var(--accent); }
       <div class="gt-card">
         <span class="eyebrow">Open Earth 3D · <span id="gt-city">City</span></span>
         <h1 id="gt-title">On Foot</h1>
-        <p>Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the ferries, and fly under the Harbour Bridge. Every fact they tell you comes from the model.</p>
+        <p id="gt-blurb">Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the ferries, and fly under the Harbour Bridge. Every fact they tell you comes from the model.</p>
         <div class="gt-time"><span class="note">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button><button data-t="morning">9 am</button><button data-t="golden">Golden hour</button><button data-t="night">Night</button></div></div>
         <div class="row"><button class="btn primary" id="gt-play">Start the survey</button><button class="btn" id="gt-continue" hidden>Continue</button></div>
         <table class="gt-keys"><tbody>

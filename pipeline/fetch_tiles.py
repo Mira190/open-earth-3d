@@ -4,6 +4,8 @@
            "synth": none; build_scene.py draws the ground from the vector data instead
            (for cities with no openly licensed aerial imagery)
   terrain  "arcgis_image": an ArcGIS ImageServer exportImage of float elevations
+           "gsi_dem_png": GSI (Japan) DEM tiles: 5 m airborne-LiDAR bare earth (dem5a_png, zoom 15),
+                        with an optional coarser "fallback" tile set (dem_png, zoom 14) for gaps
            "wcs": an OGC WCS 1.0.0 GetCoverage of float elevations in geographic
                   coordinates (`crs`, e.g. EPSG:4283 for GDA94); pits deeper than
                   `fill_below_m` (voids in the source) are filled from their neighbours
@@ -136,6 +138,54 @@ def dem_terrarium(raw, z, xs, ys):
     return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
 
 
+def gsi_decode(path):
+    """GSI PNG elevation tiles: x = 65536 R + 256 G + B; 2^23 is no data; metres = x / 100."""
+    a = np.asarray(Image.open(path).convert("RGB")).astype(np.int64)
+    x = a[..., 0] * 65536 + a[..., 1] * 256 + a[..., 2]
+    h = np.where(x < 2 ** 23, x, x - 2 ** 24) * 0.01
+    h[x == 2 ** 23] = np.nan
+    return h.astype(np.float32)
+
+
+def dem_gsi(bbox, cfg, raw):
+    """Stitch GSI elevation tiles into a float32 Web Mercator grid; gaps come from the
+    fallback tiles (bilinear), then the nearest valid cell."""
+    from scipy.ndimage import distance_transform_edt, zoom as ndzoom
+    z = cfg["zoom"]
+    d1 = os.path.join(raw, "gsi_dem", str(z))
+    ok, n, (xs, ys) = fetch_xyz(bbox, cfg["url"], z, "png", d1)
+    xs, ys = list(xs), list(ys)
+    fb = cfg.get("fallback")
+    a = np.full(((ys[-1] - ys[0] + 1) * 256, (xs[-1] - xs[0] + 1) * 256), np.nan, np.float32)
+    filled = 0
+    for tx in xs:
+        for ty in ys:
+            p = os.path.join(d1, f"{tx}_{ty}.png")
+            t = gsi_decode(p) if os.path.exists(p) else np.full((256, 256), np.nan, np.float32)
+            if fb and np.isnan(t).any():
+                f = 2 ** (z - fb["zoom"])
+                q = os.path.join(raw, "gsi_dem", f"fb{fb['zoom']}", f"{tx // f}_{ty // f}.png")
+                os.makedirs(os.path.dirname(q), exist_ok=True)
+                if get(fb["url"].format(z=fb["zoom"], x=tx // f, y=ty // f), q):
+                    c = gsi_decode(q)
+                    c = np.where(np.isnan(c), np.nanmedian(c) if (~np.isnan(c)).any() else 0, c)
+                    s = 256 // f
+                    sub = c[(ty % f) * s:(ty % f + 1) * s, (tx % f) * s:(tx % f + 1) * s]
+                    up = ndzoom(sub, f, order=1)
+                    m = np.isnan(t)
+                    t[m] = up[m]
+                    filled += int(m.sum())
+            a[(ty - ys[0]) * 256:(ty - ys[0] + 1) * 256, (tx - xs[0]) * 256:(tx - xs[0] + 1) * 256] = t
+    bad = np.isnan(a)
+    if bad.any():
+        idx = distance_transform_edt(bad, return_distances=False, return_indices=True)
+        a = a[tuple(idx)]
+    print(f"gsi dem: {ok}/{n} tiles, {filled} gap px from the fallback, {int(bad.sum())} px filled by nearest")
+    Image.fromarray(a).save(os.path.join(raw, "dem.tif"))
+    span = 2 * E / 2 ** z
+    return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
+
+
 def main():
     city, _ = city_args(__doc__.splitlines()[0])
     city.ensure_dirs()
@@ -152,6 +202,8 @@ def main():
     tc = cfg["terrain"]
     if tc["type"] == "arcgis_image":
         mbbox, size = dem_arcgis(bbox, tc, city.raw)
+    elif tc["type"] == "gsi_dem_png":
+        mbbox, size = dem_gsi(bbox, tc, city.raw)
     elif tc["type"] == "terrarium":
         mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
     elif tc["type"] == "wcs":
