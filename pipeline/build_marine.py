@@ -240,6 +240,7 @@ def main():
         "terrain": {"file": "terrain.bin", "w": tw, "h": th, "cell_m": cell, "x0": city.x0, "y1": city.y1, "units_m": 0.1},
         "ground": {"file": "ground.jpg", "w": W, "h": H, "px_m": px},
         "habitat": {"file": "habitat.png", "classes": HABITAT},
+        "start": cfg.get("start"),
         "optics": {"K": [kd["red"], kd["green"], kd["blue"]],
                    "Rinf": [float(np.median(rinf[k])) for k in ("red", "green", "blue")], "g": G},
         "sources": {"terrain": cfg["terrain"]["attribution"], "imagery": cfg["imagery"]["attribution"],

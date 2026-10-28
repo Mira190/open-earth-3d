@@ -69,9 +69,10 @@ async function main() {
   lights(sun);
 
   // camera: local frame (east, north, up) -> three (x, up, -north)
-  const cx = Number(q.get('x') ?? 4000), cy = Number(q.get('y') ?? -3000), cz = Number(q.get('z') ?? 60);
+  const st = S.start || {};
+  const cx = Number(q.get('x') ?? st.x ?? 0), cy = Number(q.get('y') ?? st.y ?? 0), cz = Number(q.get('z') ?? st.z ?? 60);
   camera.position.set(cx, cz, -cy);
-  let yaw = THREE.MathUtils.degToRad(Number(q.get('yaw') ?? 0)), pitch = THREE.MathUtils.degToRad(Number(q.get('pitch') ?? -15));
+  let yaw = THREE.MathUtils.degToRad(Number(q.get('yaw') ?? st.yaw ?? 0)), pitch = THREE.MathUtils.degToRad(Number(q.get('pitch') ?? st.pitch ?? -15));
   const keys = new Set();
   addEventListener('keydown', e => keys.add(e.code)); addEventListener('keyup', e => keys.delete(e.code));
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });

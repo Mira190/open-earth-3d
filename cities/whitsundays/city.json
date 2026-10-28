@@ -7,9 +7,22 @@
   "timezone": "Australia/Brisbane",
   "locale": "en-AU",
   "description": "The Whitsunday Islands and the inner Great Barrier Reef, rebuilt from open data: 30 m survey bathymetry, a Sentinel-2 composite and the real sun.",
-  "bbox": [148.88, -20.42, 149.20, -20.12],
-  "origin": [149.03, -20.28],
-  "extent_m": [-15700, 17700, -15500, 17700],
+  "bbox": [
+    148.88,
+    -20.42,
+    149.2,
+    -20.12
+  ],
+  "origin": [
+    149.03,
+    -20.28
+  ],
+  "extent_m": [
+    -15700,
+    17700,
+    -15500,
+    17700
+  ],
   "overture_release": "2026-10-21.0",
   "vertical_datum": "m MSL",
   "year": 2026,
@@ -25,5 +38,13 @@
     "pixel_m": 30,
     "bare_earth": true,
     "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)"
+  },
+  "start": {
+    "x": 900,
+    "y": 450,
+    "z": 60,
+    "yaw": 70,
+    "pitch": -8,
+    "date": null
   }
 }

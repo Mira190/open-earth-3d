@@ -46,6 +46,14 @@
    "16": "wetland"
   }
  },
+ "start": {
+  "x": 900,
+  "y": 450,
+  "z": 60,
+  "yaw": 70,
+  "pitch": -8,
+  "date": null
+ },
  "optics": {
   "K": [
    0.4,

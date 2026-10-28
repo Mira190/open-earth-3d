@@ -66,10 +66,17 @@ def main():
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="4", GDAL_HTTP_RETRY_DELAY="2"):
         for i, f in enumerate(chosen):
             for b, name in enumerate(BANDS + ["scl"]):
-                with rasterio.open(f["assets"][name]["href"]) as src:
-                    reproject(source=rasterio.band(src, 1), destination=stack[i, b], dst_transform=dst_tf,
-                              dst_crs=city.proj, resampling=Resampling.nearest if name == "scl" else Resampling.bilinear,
-                              src_nodata=0, dst_nodata=0)
+                for attempt in range(4):  # the bucket occasionally drops a range request
+                    try:
+                        with rasterio.open(f["assets"][name]["href"]) as src:
+                            reproject(source=rasterio.band(src, 1), destination=stack[i, b], dst_transform=dst_tf,
+                                      dst_crs=city.proj, resampling=Resampling.nearest if name == "scl" else Resampling.bilinear,
+                                      src_nodata=0, dst_nodata=0)
+                        break
+                    except Exception as e:  # rasterio raises several types for network faults
+                        if attempt == 3:
+                            raise
+                        print("  retry", name, e.__class__.__name__, flush=True)
             print(f"  {i + 1}/{n} {f['id']} cloud {f['properties']['eo:cloud_cover']:.1f}%", flush=True)
     stack.flush()
     json.dump([f["id"] for f in chosen], open(os.path.join(city.raw, "s2_scenes.json"), "w"))
