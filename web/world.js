@@ -102,6 +102,31 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
   };
 
   // build the scene into a new THREE.Scene; the caller owns the renderer and camera
+  // The edge of the model: where the open data stops, the ground, the buildings and the
+  // water fade into the haze over the last few hundred metres, and beyond the frame there
+  // is only haze, so the city does not end in a cliff over a flat sea. It is the scene's
+  // fog, anchored to the model's frame rather than to the camera: three.js's fog chunks,
+  // with the frame written in as constants, so every material that takes fog takes it,
+  // reflections included. The world position comes from the view matrix (rigid, so its
+  // inverse is its transpose). Things within about 150 m of the camera stay clear, so you
+  // can still stand near the edge.
+  let FOG0 = null;
+  function edgeHaze(frame, near = 150) {
+    const C = THREE.ShaderChunk;
+    if (!FOG0) FOG0 = { pv: C.fog_pars_vertex, v: C.fog_vertex, pf: C.fog_pars_fragment, f: C.fog_fragment };
+    const w = frame.x[1] - frame.x[0], h = frame.y[1] - frame.y[0], fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
+    const n = v => v.toFixed(1), last = (chunk, add) => chunk.replace(/#endif\s*$/, `\t${add}\n#endif`); // inside the outer USE_FOG block
+    C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;');
+    C.fog_vertex = last(FOG0.v, 'vEdgeXZ = ( transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) ).xz;');
+    C.fog_pars_fragment = last(FOG0.pf, 'varying vec2 vEdgeXZ;');
+    // how far out into the haze a point is (0 inside, 1 at the frame and beyond); the camera's own
+    // value lifts the near exemption when it is out there itself, so the sea in front of it hazes too
+    const out = p => `smoothstep( 0.0, ${n(fade)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfogFactor = max( fogFactor, ${out('vEdgeXZ')} * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
+	gl_FragColor.rgb`);
+    return fade;
+  }
+
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -144,6 +169,7 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
+    edgeHaze(scene.frame);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
