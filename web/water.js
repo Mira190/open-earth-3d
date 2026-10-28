@@ -280,7 +280,7 @@ void main() {
     const u = {
       uDisp: { value: sizes.map((_, c) => fft.disp(c)) }, uDeriv: { value: sizes.map((_, c) => fft.deriv(c)) },
       uSize: { value: sizes.slice() }, uTime: { value: 0 }, uHs: { value: Hs },
-      uShore: { value: shore ? shore.texture : null }, uShoreOn: { value: shore ? 1 : 0 },
+      uShore: { value: shore ? shore.texture : null }, uShoreOn: { value: shore ? 1 : 0 }, uInland: { value: cfg.sea === false && shore ? 1 : 0 },
       uShoreBox: { value: shore ? new THREE.Vector4(shore.x0, shore.y1, shore.w, shore.h) : new THREE.Vector4(0, 0, 1, 1) },
       uDeep: { value: lin(cfg.colour || '#0f2b33') }, uShallow: { value: lin(cfg.shallow_colour || '#2f6b66') },
       uClarity: { value: cfg.clarity_m ?? 4 }, uSlopes: { value: new THREE.Vector3(...['sand', 'rock', 'built'].map(k => (shore && shore.slopes || {})[k] ?? { sand: 0.04, rock: 0.25, built: 1 }[k])) },
@@ -289,7 +289,7 @@ void main() {
     };
     const C = sizes.length;
     const COMMON = `
-uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind;
+uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uInland, uClarity, uFloor, uReflOn, uWind;
 uniform vec4 uShoreBox; uniform vec3 uDeep, uShallow, uSlopes; uniform sampler2D uRefl; uniform mat4 uReflMat;
 // shore.png: r signed distance to the shoreline (0.5 m per level, 128 = shore, water positive),
 // g sand, b rock; outside the map it is open water
@@ -329,6 +329,7 @@ float wNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 *
 float wAlpha; float wFoam; vec3 wN;`)
         .replace('#include <color_fragment>', `#include <color_fragment>
   vec4 sh0 = shoreAt(vXZ);
+  if (uInland > 0.5 && sh0.w < 0.5) discard; // an inland city: no sea beyond the model's edge
   float camD = length(vXZ - cameraPosition.xz);
   // slopes of every cascade, faded where the pixel footprint is wider than the waves
   float fp = camD * 0.0015 + 0.02;

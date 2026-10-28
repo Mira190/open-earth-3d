@@ -23,7 +23,7 @@ import numpy as np
 import shapely
 import shapely.affinity
 from PIL import Image, ImageDraw
-from scipy.ndimage import map_coordinates
+from scipy.ndimage import binary_dilation, map_coordinates
 from pyproj import Transformer
 from scipy.spatial import cKDTree
 from shapely import wkb as swkb
@@ -33,7 +33,7 @@ from shapely.ops import polylabel
 import roofs
 import typology
 from cityctx import ROOT, City, city_args, polygons
-from shore import FLOOR_M, SHORE_CELL, depth_at, shore_map
+from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, depth_at, shore_map
 
 DEM_CELL = 5.0       # m, building bases and analysis
 TERRAIN_CELL = 10.0  # m, shipped mesh grid
@@ -493,7 +493,7 @@ class Plateau:
     MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
 
     def __init__(self, C):
-        self.tree, self.polys, self.feats = None, [], []
+        self.tree, self.polys, self.feats, self.roofs = None, [], [], False
         self.cfg = C.cfg.get("plateau") or {}
         path = os.path.join(C.raw, "plateau.json")
         if not self.cfg or not os.path.exists(path):
@@ -510,6 +510,7 @@ class Plateau:
                 self.polys.append(g)
                 self.feats.append(f)
         self.h = [f["h"] for f in self.feats]
+        self.roofs = any("roof" in f for f in self.feats)
         self.tree = shapely.STRtree(self.polys)
         print(f"plateau: {len(self.polys)} footprints indexed")
 
@@ -520,6 +521,19 @@ class Plateau:
     def named(self, name):
         """The PLATEAU feature with this exact name, or None (for city.py hooks)."""
         return next((f for f in self.feats if f.get("name") == name), None)
+
+    def roof_at(self, q):
+        """The roof PLATEAU's LOD2 model measured over most of footprint q, {roof, pitch, roof_h},
+        or None (fetch_plateau.py measures them with plateau.roofs)."""
+        if not self.roofs:
+            return None
+        best, best_a = None, 0.5 * q.area
+        for i in self.tree.query(q):
+            if "roof" in self.feats[i]:
+                a = q.intersection(self.polys[i]).area
+                if a > best_a:
+                    best, best_a = i, a
+        return None if best is None else {k: self.feats[best].get(k) for k in ("roof", "pitch", "roof_h")}
 
     def match(self, g):
         """The PLATEAU feature of the building that is the same as footprint g (at least half of
@@ -648,7 +662,7 @@ def road_index(C, con, path):
     return cKDTree(pts), np.array(dirs), pts, np.array(main)
 
 
-ROOF_SRC = ["rule", "prior", "mapped"]
+ROOF_SRC = ["rule", "prior", "mapped", "measured"]
 
 
 def pack_roof(pos, idx):
@@ -664,7 +678,7 @@ def pack_roof(pos, idx):
 
 
 NO_TAGS = {"roof_shape": None, "roof_height": None, "roof_direction": None, "roof_orientation": None, "roof_material": None,
-           "num_floors": None, "parametric": False, "part": False}
+           "num_floors": None, "parametric": False, "part": False, "measured": None}
 
 
 def pad_records(meta, solids, sinfo, bextra):
@@ -709,9 +723,11 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
             if parametric or k in hidden:  # a landmark draws it; the analyses keep it as it is
                 continue
             h0, top = s[2] / 10, s[3] / 10
-            mapped = info["roof_shape"]
+            mapped, meas = info["roof_shape"], info.get("measured")
             if mapped:
                 shape, src = mapped.replace("half_hipped", "half-hipped"), "mapped"
+            elif meas:  # measured from a LOD2 model
+                shape, src = meas["roof"], "measured"
             elif len(ks) > 1 and not (top_b < 12 and area_b < 600):
                 shape, src = "flat", "rule"  # parts of a larger building keep flat roofs unless mapped
             else:
@@ -727,8 +743,10 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                 cap = min(R["roof_cap_m"] if shape not in ("dome", "onion", "spherical") else 60.0,
                           room - (2.0 if cls in typology.SMALL else 2.4))
                 axis, across = None, info["roof_orientation"] == "across"
+                if shape == "gabled_across":  # measured: the ridge runs across the long axis
+                    shape, across = "gabled", True
                 gable = shape in ("gabled", "half-hipped", "gambrel", "round", "saltbox")
-                if gable and not info["roof_orientation"]:
+                if gable and not info["roof_orientation"] and src != "measured":
                     _, long_side, short_side = roofs.long_axis(rings[0])
                     if cls in R.get("ridge_follows_street", ()) and roads is not None:
                         dist, j = roads[0].query(np.array(poly.centroid.coords[0]))
@@ -741,6 +759,8 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                 if cap >= 0.8:
                     pitch = R.get("pitch_by_group", {}).get(typology.roof_group(cls, floors, top_b, area_b), R["pitch"].get(mat, 25))
                     mh = float(info["roof_height"]) if info["roof_height"] else None
+                    if src == "measured":
+                        pitch, mh = min(max(meas.get("pitch") or pitch, 5.0), 60.0), meas.get("roof_h") or mh
                     for attempt in (0, 1):
                         rr = rings if attempt == 0 else [np.asarray(Polygon(rings[0]).simplify(0.6).exterior.coords)[:-1]]
                         if attempt and len(rr[0]) < 3:
@@ -817,31 +837,56 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
     return roof_rows, front_rows, prop_rows, dict(stat)
 
 
+FAMILY = {"gabled_across": "gabled", "saltbox": "gabled", "half-hipped": "hipped", "pyramidal": "hipped"}
+
+
+def score_roofs(pairs):
+    """[(truth, prediction)] -> flat-or-pitched and shape-family agreement"""
+    if not pairs:
+        return {"n": 0}
+    fam = lambda x: FAMILY.get(x, x)
+    pitched = lambda x: x != "flat"
+    conf = Counter((pitched(t), pitched(p)) for t, p in pairs)
+    n, tp, tn = len(pairs), conf[(True, True)], conf[(False, False)]
+    return {"n": n, "flat_vs_pitched_accuracy": round((tp + tn) / n, 3),
+            "exact_shape_accuracy": round(sum(t == p for t, p in pairs) / n, 3),
+            "family_accuracy": round(sum(fam(t) == fam(p) for t, p in pairs) / n, 3),
+            "pitched_recall": round(tp / max(1, tp + conf[(True, False)]), 3), "flat_recall": round(tn / max(1, tn + conf[(False, True)]), 3),
+            "confusion_pitched": {"true_pitched_pred_pitched": tp, "true_pitched_pred_flat": conf[(True, False)],
+                                  "true_flat_pred_flat": tn, "true_flat_pred_pitched": conf[(False, True)]},
+            "truth": dict(Counter(map(fam, (t for t, _ in pairs))).most_common())}
+
+
 def validate_roof_rules(C, meta, solids, sinfo, bextra):
-    """predict every mapped roof shape with the rules alone and score it"""
+    """Predict every mapped roof shape, and every roof a LOD2 model measured, with the rules
+    alone and score them; and where a roof is both mapped and measured, how the two agree."""
     R = typology.region(C.cfg)
     first = {}
     for k, s in enumerate(solids):
         first.setdefault(s[0], k)
-    conf, n = Counter(), 0
+    mapped, measured, both = [], [], []
     for bi, m in enumerate(meta):
         k = first.get(bi)
-        if k is None or not sinfo[k]["roof_shape"] or sinfo[k]["part"]:
+        if k is None or sinfo[k]["part"] or sinfo[k]["parametric"]:
             continue
-        truth = sinfo[k]["roof_shape"]
+        truth, meas = sinfo[k]["roof_shape"], sinfo[k].get("measured")
+        truth = truth and truth.replace("half_hipped", "half-hipped")
+        if not truth and not meas:
+            continue
         area = Polygon(np.array(solids[k][4]).reshape(-1, 2) / 10).area
         pred, _ = typology.infer_roof(R, m[1], int(m[3] or 0), m[2], area, bextra[bi]["seed"] + k)
-        pitched = lambda x: x not in ("flat",)
-        conf[(pitched(truth), pitched(pred))] += 1
-        conf["exact"] += truth == pred
-        n += 1
-    if not n:
-        return {"n": 0}
-    tp, tn = conf[(True, True)], conf[(False, False)]
-    return {"n": n, "flat_vs_pitched_accuracy": round((tp + tn) / n, 3), "exact_shape_accuracy": round(conf["exact"] / n, 3),
-            "pitched_recall": round(tp / max(1, tp + conf[(True, False)]), 3), "flat_recall": round(tn / max(1, tn + conf[(False, True)]), 3),
-            "confusion_pitched": {"true_pitched_pred_pitched": tp, "true_pitched_pred_flat": conf[(True, False)],
-                                  "true_flat_pred_flat": tn, "true_flat_pred_pitched": conf[(False, True)]}}
+        if truth:
+            mapped.append((truth, pred))
+        if meas:
+            measured.append((meas["roof"], pred))
+        if truth and meas:
+            both.append((truth, meas["roof"]))
+    out = score_roofs(mapped)
+    if measured:
+        out["vs_measured"] = score_roofs(measured)
+    if both:
+        out["measured_vs_mapped"] = score_roofs(both)
+    return out
 
 
 def rooftop(k, s, poly, style, seed, top_b, floors, R):
@@ -920,6 +965,10 @@ def build(C):
     sm = shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg)
     wr, wc = np.nonzero(water)
     dem[water] = -depth_at(sm, C.x0 + (wc + 0.5) * DEM_CELL, C.y1 - (wr + 0.5) * DEM_CELL, C.x0, C.y1)
+    # the first point out from a quay stays just under the surface, so on the 5 m grid the waterline
+    # falls at the quay's edge and not up to a cell inland (a river walk beside a canal would go under)
+    edge = water & binary_dilation(~water)
+    dem[edge] = np.maximum(dem[edge], -QUAY_SHELF_M)
     sm["image"].save(os.path.join(C.out, "shore.png"), optimize=True)
     ctx = Ctx(C, dem_land)
 
@@ -1050,7 +1099,8 @@ def build(C):
                           [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
             r0 = rec[0] if rec else b  # roof tags of the part, else of the building
             sinfo.append({k: r0.get(k) for k in ("roof_shape", "roof_height", "roof_direction", "roof_orientation", "roof_material", "num_floors")}
-                         | {"parametric": src == "parametric", "part": bool(rec) and r0 is not b})
+                         | {"parametric": src == "parametric", "part": bool(rec) and r0 is not b,
+                            "measured": plateau.roof_at(q) if src != "parametric" else None})
             top = max(top, h1)
             srcs[src] += q.area
             a0 = geo.setdefault(bi, [0.0, 0.0, 0.0])
@@ -1140,7 +1190,7 @@ def build(C):
                "frontage_solids": len(front_rows), "skeleton_failures": roofs.FAILS},
               open(os.path.join(C.analysis, "roof_model.json"), "w"), indent=1)
     print(f"roofs: {len(roof_rows)} built; {roof_stat}")
-    print("roof rules vs mapped roofs:", roof_check)
+    print("roof rules against mapped and measured roofs:", roof_check)
     src_count = Counter(m[4] for m in meta)
     share = Counter()
     for i, m in enumerate(meta):
@@ -1197,7 +1247,7 @@ def build(C):
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
-        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m")},
+        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "sea")},
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),

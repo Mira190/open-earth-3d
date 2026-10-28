@@ -532,7 +532,7 @@ window.OpenEarthCity = async function main(cityId) {
     if (m[3]) rows.push(['Floors', `<span class="num">${m[3]}</span>`]);
     if (m[1]) rows.push(['Type', m[1].replace(/_/g, ' ')]);
     if (B.styles && typeof m[10] === 'number') {
-      const how = ['ruled by size and type', "drawn from the region's mapped roofs", 'mapped in OpenStreetMap'][m[16]] || '';
+      const how = ['ruled by size and type', "drawn from the region's mapped roofs", 'mapped in OpenStreetMap', "measured from Project PLATEAU's LOD2 model"][m[16]] || '';
       rows.push(['Roof', `${(B.roof_shapes[m[15]] || 'flat').replace(/_/g, ' ')}, ${B.roof_materials[m[13]] || ''} <span class="note">(${how})</span>`],
         ['Facade', `${B.styles[m[10]]}, ${m[11]} m storeys`]);
     }

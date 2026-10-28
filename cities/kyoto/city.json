@@ -42,11 +42,13 @@
   "plateau": {
     "zip": "https://assets.cms.plateau.reearth.io/assets/3c/f912d5-980d-4c10-a037-6a9e87874a4e/26100_kyoto-shi_2022_3dtiles-mvt_1_op.zip",
     "attribution": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0): building heights measured from aerial survey",
-    "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)"
+    "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
+    "roofs": true
   },
   "water": {
     "classes": [],
     "min_area_m2": 5000,
+    "sea": false,
     "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
   },
   "storey": {

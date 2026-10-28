@@ -6,6 +6,12 @@ that touch the bounding box and returns [{h, rings}] in longitude and latitude, 
 fetch_plateau.py writes to plateau.json, with each footprint taken from the upward-facing
 triangles of its mesh, and the building's use, storeys and name where the batch table has them.
 
+With `plateau.roofs: true`, the LOD2 tiles of the wards that have them are read too, and
+each building's roof is measured from its mesh (roof_of): flat, gabled (ridge along the
+footprint's long axis), gabled_across, hipped, half-hipped or skillion, with its pitch and its
+height from eave to ridge. Gables are told from hips by the wall area standing above the
+eave, against the triangle a gable on the short side would make.
+
 Frame: tiles are glTF y-up with a CESIUM_RTC centre in ECEF; the tile frame is rotated to
 z-up (x, -z, y) and added to the centre, then converted to longitude and latitude.
 The zip is large (Kyoto: 1.8 GB), so the tiles inside the bbox are read out of it with HTTP
@@ -113,6 +119,81 @@ def buildings_in_tile(blob, city):
     return out
 
 
+def above(z, a, zc):
+    """Area of the part of a planar triangle (vertex heights z, area a) above the plane z = zc."""
+    lo, mid, hi = np.sort(z)
+    if zc >= hi:
+        return 0.0
+    if zc <= lo:
+        return a
+    if zc <= mid:  # one vertex below: the part below is a small triangle at that vertex
+        return a * (1 - (zc - lo) ** 2 / ((mid - lo + 1e-9) * (hi - lo + 1e-9)))
+    return a * (hi - zc) ** 2 / ((hi - mid + 1e-9) * (hi - lo + 1e-9))
+
+
+def roof_of(P, F, foot):
+    """{roof, pitch (deg), roof_h (m)} of one LOD2 building: P [n, 3] local metres, z up;
+    F [m, 3] its triangles; foot its footprint. None if it has no roof to speak of."""
+    a, b, c = P[F[:, 0]], P[F[:, 1]], P[F[:, 2]]
+    n = np.cross(b - a, c - a)
+    A = np.linalg.norm(n, axis=1) / 2
+    ok = A > 1e-4
+    nz = np.where(ok, n[:, 2] / (2 * A + 1e-12), 0)
+    slope = np.degrees(np.arccos(np.clip(nz, -1, 1)))
+    roof = ok & (nz > 0.26)  # facing up and under 75 degrees; walls are near vertical
+    wall = ok & (np.abs(nz) < 0.1)
+    plan = A * nz
+    if plan[roof].sum() < 4:
+        return None
+    flat = roof & (slope < 6)
+    sl = roof & ~flat
+    if plan[flat].sum() > 0.7 * plan[roof].sum() or not sl.any():
+        return {"roof": "flat"}
+    zs = P[F[sl]][:, :, 2]
+    eave, ridge = np.percentile(zs.min(axis=1), 10), zs.max()
+    if ridge - eave < 0.4:
+        return {"roof": "flat"}
+    w = plan[sl]
+    order = np.argsort(slope[sl])
+    pitch = slope[sl][order][np.searchsorted(np.cumsum(w[order]), w.sum() / 2)]  # area-weighted median
+    q = np.asarray(foot.minimum_rotated_rectangle.exterior.coords)[:4]
+    e1, e2 = q[1] - q[0], q[2] - q[1]
+    L, W = np.hypot(*e1), np.hypot(*e2)
+    axis, short = (e1 / max(L, 1e-9), W) if L >= W else (e2 / max(W, 1e-9), L)
+    hn = n[sl, :2] / (np.linalg.norm(n[sl, :2], axis=1, keepdims=True) + 1e-12)
+    if np.linalg.norm((hn * w[:, None]).sum(axis=0)) > 0.8 * w.sum():
+        shape = "skillion"  # one plane
+    else:
+        gable = sum(above(P[f][:, 2], ar, eave + 0.15) for f, ar in zip(F[wall], A[wall]))
+        ratio = gable / max(short * (ridge - eave), 1.0)
+        along = w[np.abs(hn @ axis) > math.cos(math.radians(45))].sum() / w.sum()  # slopes facing the ends
+        shape = ("gabled" if along < 0.5 else "gabled_across") if ratio > 0.55 else "half-hipped" if ratio > 0.2 else "hipped"
+    return {"roof": shape, "pitch": round(float(pitch), 1), "roof_h": round(float(ridge - eave), 2)}
+
+
+def roofs_in_tile(blob, city):
+    """{gml:id: roof_of(...)} for the buildings of one LOD2 tile."""
+    bt, ecef, faces, bid = decode_b3dm(blob)
+    lon, lat, h = ECEF_TO_LL.transform(ecef[:, 0], ecef[:, 1], ecef[:, 2])
+    x, y = city.fwd.transform(lon, lat)
+    P = np.c_[x, y, h]
+    fb = bid[faces[:, 0]]
+    out = {}
+    for k in np.unique(fb):
+        if k >= len(bt):
+            continue
+        F = faces[fb == k]
+        a, b, c = (P[F[:, i], :2] for i in range(3))
+        up = (b[:, 0] - a[:, 0]) * (c[:, 1] - a[:, 1]) - (b[:, 1] - a[:, 1]) * (c[:, 0] - a[:, 0]) > 1e-6
+        foot = shapely.unary_union([Polygon(P[f, :2]) for f in F[up]]).buffer(0.02).buffer(-0.02)
+        if foot.is_empty or foot.area < 3:
+            continue
+        r = roof_of(P, F, foot)
+        if r:
+            out[bt[k].get("gml:id", "")] = r
+    return out
+
+
 def read(city, cfg):
     path = os.path.join(city.raw, "plateau_3dtiles.zip")
     src = path if os.path.exists(path) else cfg["zip"]
@@ -128,16 +209,23 @@ def read(city, cfg):
     wards = sorted({m.group(1) for n in names if (m := re.match(re.escape(root) + r"(bldg_\d+_[a-z-]+)_lod\d", n))})
     w, s, e, n = city.cfg["bbox"]
     bbox = [w - 0.002, s - 0.002, e + 0.002, n + 0.002]
-    jobs = []
+    jobs, roof_jobs = [], []
     for ward in wards:
         for lv in LEVELS:
             ts = f"{root}{ward}_{lv}/tileset.json"
             if ts in names:
                 jobs += [f"{root}{ward}_{lv}/{uri}" for uri in tile_uris(json.loads(z.read(ts)), bbox)]
                 break
-    print(f"{len(jobs)} tiles in {len(wards)} wards")
-    out, seen = [], set()
+        ts = f"{root}{ward}_lod2_no_texture/tileset.json"
+        if cfg.get("roofs") and ts in names:
+            roof_jobs += [f"{root}{ward}_lod2_no_texture/{uri}" for uri in tile_uris(json.loads(z.read(ts)), bbox)]
+    print(f"{len(jobs)} tiles in {len(wards)} wards" + (f", and {len(roof_jobs)} LOD2 tiles for the roofs" if roof_jobs else ""))
+    out, seen, roofs = [], set(), {}
     with ThreadPoolExecutor(min(os.cpu_count() or 4, 8)) as ex:
+        for i, got in enumerate(ex.map(lambda j: roofs_in_tile(archive().read(j), city), roof_jobs)):
+            roofs.update(got)
+            if i % 200 == 0:
+                print(f"  {i}/{len(roof_jobs)} LOD2 tiles, {len(roofs)} roofs", file=sys.stderr)
         for i, got in enumerate(ex.map(lambda j: buildings_in_tile(archive().read(j), city), jobs)):
             for gid, h, extra, g in got:
                 if gid in seen:
@@ -149,7 +237,9 @@ def read(city, cfg):
                 for r in [g.exterior] + list(g.interiors):
                     lon, lat = city.inv.transform(*np.asarray(r.coords).T)
                     rings.append([(round(float(a), 7), round(float(b), 7)) for a, b in zip(lon, lat)])
-                out.append({"h": h, "rings": rings, **extra})
+                out.append({"h": h, "rings": rings, **extra, **roofs.get(gid, {})})
             if i % 200 == 0:
                 print(f"  {i}/{len(jobs)} tiles, {len(out)} buildings", file=sys.stderr)
+    if roofs:
+        print(f"roofs measured for {sum(1 for f in out if 'roof' in f)} of {len(out)} buildings")
     return out
