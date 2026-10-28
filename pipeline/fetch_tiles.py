@@ -2,6 +2,7 @@
 
   imagery  "xyz": any slippy-map tile service ({z}, {x}, {y} in the URL), Web Mercator
   terrain  "arcgis_image": an ArcGIS ImageServer exportImage of float elevations
+           "gsi_dem_png": GSI (Japan) DEM5A / DEM10B PNG elevation tiles, bare earth
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -106,6 +107,41 @@ def dem_terrarium(raw, z, xs, ys):
     return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
 
 
+def dem_gsi(cfg, raw, bbox):
+    """GSI elevation PNG tiles (R*65536 + G*256 + B, 0.01 m; 2^23 means no data) stitched to a float32
+    Web Mercator grid. DEM5A is a 5 m airborne laser survey; where it has no tile or no data the
+    10 m DEM fills in."""
+    z = cfg["zoom"]
+    xs, ys = tile_range(bbox, z, pad=0)
+    d5, d10 = os.path.join(raw, "gsi_dem5a"), os.path.join(raw, "gsi_dem10")
+    os.makedirs(d5, exist_ok=True)
+    os.makedirs(d10, exist_ok=True)
+    a = np.full(((ys[-1] - ys[0] + 1) * 256, (xs[-1] - xs[0] + 1) * 256), np.nan, np.float32)
+    n5 = n10 = 0
+    for tx in xs:
+        for ty in ys:
+            for kind, d, url in (("5a", d5, cfg["url"]), ("10", d10, cfg.get("fallback_url"))):
+                if not url:
+                    continue
+                p = os.path.join(d, f"{tx}_{ty}.png")
+                if not get(url.format(z=z, x=tx, y=ty), p):
+                    continue
+                rgb = np.asarray(Image.open(p).convert("RGB")).astype(np.int64)
+                v = rgb[..., 0] * 65536 + rgb[..., 1] * 256 + rgb[..., 2]
+                h = np.where(v == 2 ** 23, np.nan, np.where(v < 2 ** 23, v, v - 2 ** 24) * 0.01).astype(np.float32)
+                blk = a[(ty - ys[0]) * 256:(ty - ys[0] + 1) * 256, (tx - xs[0]) * 256:(tx - xs[0] + 1) * 256]
+                fill = np.isnan(blk) & ~np.isnan(h)
+                blk[fill] = h[fill]
+                n5 += kind == "5a"
+                n10 += kind == "10"
+    print(f"gsi dem: {n5} DEM5A tiles, {n10} 10 m tiles; {100 * np.isnan(a).mean():.1f}% of cells empty")
+    # remaining holes are water: sea level
+    a = np.where(np.isnan(a), 0.0, a).astype(np.float32)
+    Image.fromarray(a).save(os.path.join(raw, "dem.tif"))
+    span = 2 * E / 2 ** z
+    return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
+
+
 def main():
     city, _ = city_args(__doc__.splitlines()[0])
     city.ensure_dirs()
@@ -119,6 +155,8 @@ def main():
     tc = cfg["terrain"]
     if tc["type"] == "arcgis_image":
         mbbox, size = dem_arcgis(bbox, tc, city.raw)
+    elif tc["type"] == "gsi_dem_png":
+        mbbox, size = dem_gsi(tc, city.raw, bbox)
     elif tc["type"] == "terrarium":
         mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
     else:

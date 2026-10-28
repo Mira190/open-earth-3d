@@ -1,0 +1,946 @@
+{
+  "id": "tokyo",
+  "name": "Tokyo",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Marunouchi to Tokyo Tower from open data, lit by the real sun. Every building height is a PLATEAU survey value, and every shadow is computed.",
+  "bbox": [
+    139.7405,
+    35.6475,
+    139.7775,
+    35.6925
+  ],
+  "origin": [
+    139.759,
+    35.67
+  ],
+  "extent_m": [
+    -1600,
+    1600,
+    -2400,
+    2400
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback_url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)",
+    "exclude": [
+      {
+        "at": [
+          139.745433,
+          35.658581
+        ],
+        "radius_m": 60,
+        "name": "Tokyo Tower"
+      }
+    ]
+  },
+  "water": {
+    "classes": [
+      "ocean",
+      "bay",
+      "water",
+      "river",
+      "canal",
+      "lake",
+      "pond"
+    ],
+    "min_area_m2": 3000
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "labels": {
+    "東京タワー": "Tokyo Tower 東京タワー",
+    "東京駅丸の内駅舎": "Tokyo Station 東京駅",
+    "国会議事堂": "National Diet 国会議事堂",
+    "歌舞伎座": "Kabuki-za 歌舞伎座",
+    "虎ノ門ヒルズ ステーションタワー": "Toranomon Hills Station Tower",
+    "虎ノ門ヒルズ森タワー": "Toranomon Hills 虎ノ門ヒルズ",
+    "汐留シティセンター": "Shiodome City Center",
+    "電通本社ビル": "Dentsu 電通本社",
+    "Tokiwabashi Tower": "Tokiwabashi Tower 常盤橋タワー",
+    "JPタワー": "JP Tower / KITTE",
+    "新丸の内ビルディング": "Shin-Marunouchi 新丸ビル",
+    "丸の内ビルディング": "Marunouchi Building 丸ビル",
+    "東京国際フォーラム": "Tokyo International Forum",
+    "和光": "Wako 和光 (Ginza 4-chome)",
+    "日本テレビタワー": "Nippon TV Tower",
+    "東京ポートシティー竹芝オフィスタワー": "Tokyo Portcity Takeshiba",
+    "世界貿易センタービルディング南館": "World Trade Center Building",
+    "グラントウキョウノースタワー": "Gran Tokyo North Tower",
+    "帝国ホテル": "Imperial Hotel 帝国ホテル",
+    "The Okura Prestige Tower": "Okura Prestige Tower"
+  },
+  "minor_labels": [
+    "和光",
+    "東京国際フォーラム",
+    "帝国ホテル",
+    "歌舞伎座",
+    "国会議事堂"
+  ],
+  "place_labels": [
+    "Hibiya Park 日比谷公園",
+    "Imperial Palace Plaza 皇居前広場",
+    "Kokyo Gaien 皇居外苑",
+    "Hamarikyu Gardens 浜離宮",
+    "Wadakura Fountain Park",
+    "Marunouchi Central Plaza",
+    "Shiba Park 芝公園",
+    "Diet Front Garden"
+  ],
+  "protection": {
+    "title": "No sun-access rule: a lunch-hour test",
+    "summary": "Tokyo has no rule that protects sun on parks and plazas. The windows here are a thought experiment for this project: what would a new tower cost the lunch hour?",
+    "source_note": "Windows are our own choice (noon to 13:00, all year), not law. Tokyo's shadow rule, 日影規制 (Building Standards Act, art. 56-2), limits hours of shadow on neighbouring land in designated residential-type zones; it does not cover public places and does not apply in commercial districts such as Marunouchi. Check the ward's zoning before relying on this.",
+    "reading_note": "Tokyo keeps standard time all year (no daylight saving), so the clock and the sun agree all year. Baseline: the test compares against today's PLATEAU model, which is surveyed to 2020-ish, so towers built since are missing from 76% of the footprint area's heights unless Overture or OSM has them.",
+    "default_time_basis": "clock",
+    "tip": "Tip: try the block south-west of Hibiya Park, or between the Marunouchi towers and the Palace.",
+    "unprotected_label": "no rule"
+  },
+  "places": [
+    {
+      "name": "日比谷公園",
+      "label": "Hibiya Park 日比谷公園",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": true
+    },
+    {
+      "name": "皇居前広場",
+      "label": "Imperial Palace Plaza 皇居前広場",
+      "class": "plaza",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": true
+    },
+    {
+      "name": "丸の内中央広場",
+      "label": "Marunouchi Central Plaza",
+      "class": "pedestrian",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": true
+    },
+    {
+      "name": "和田倉噴水公園",
+      "label": "Wadakura Fountain Park",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "浜離宮恩賜庭園",
+      "label": "Hamarikyu Gardens 浜離宮",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "芝公園",
+      "label": "Shiba Park 芝公園",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "国会前庭",
+      "label": "Diet Front Garden",
+      "class": "garden",
+      "protected": false
+    },
+    {
+      "name": "皇居外苑",
+      "label": "Kokyo Gaien 皇居外苑",
+      "class": "park",
+      "protected": false
+    }
+  ],
+  "analysis_region": [
+    -400,
+    1200,
+    300,
+    1700
+  ],
+  "sun_hours_region": [
+    -500,
+    1300,
+    100,
+    1800
+  ],
+  "check_points": {
+    "Tokyo Station": [
+      139.7671,
+      35.6812
+    ],
+    "Hibiya Park": [
+      139.7556,
+      35.6738
+    ],
+    "Tokyo Tower": [
+      139.7454,
+      35.6586
+    ],
+    "Hamarikyu": [
+      139.7634,
+      35.6598
+    ]
+  },
+  "start": {
+    "date": [
+      3,
+      21
+    ],
+    "time": "08:30",
+    "cam": [
+      2400,
+      -2700,
+      1500
+    ],
+    "tgt": [
+      250,
+      350,
+      40
+    ]
+  },
+  "tour": [
+    {
+      "title": "Marunouchi to Tokyo Tower, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height that Project PLATEAU surveyed, on GSI 5 m laser-scanned bare earth under GSI aerial photos.",
+      "cam": [
+        2400,
+        -2700,
+        1500
+      ],
+      "tgt": [
+        250,
+        350,
+        40
+      ],
+      "date": [
+        3,
+        21
+      ],
+      "from": "08:30",
+      "to": "09:30",
+      "hold": 8
+    },
+    {
+      "title": "Tokyo Station and the air above it",
+      "text": "Tokyo Station's red-brick Marunouchi building was restored in 2012. The unused floor area above it was sold to the towers around it, so the old station stays low while Marunouchi grows tall. Compare it with JP Tower, behind it, at 200 m.",
+      "cam": [
+        980,
+        520,
+        210
+      ],
+      "tgt": [
+        560,
+        1230,
+        25
+      ],
+      "date": [
+        3,
+        21
+      ],
+      "from": "15:00",
+      "to": "15:40",
+      "hold": 9
+    },
+    {
+      "title": "Hibiya Park at lunch",
+      "place": "Hibiya Park 日比谷公園",
+      "date": [
+        12,
+        22
+      ],
+      "from": "11:30",
+      "to": "13:30",
+      "hold": 10,
+      "text": "On the winter solstice, {sun:Hibiya Park 日比谷公園|12-22|12:00}% of Hibiya Park is in direct sun at noon, and {sun:Hibiya Park 日比谷公園|12-22|13:00}% at 13:00. On 21 June at noon it is {sun:Hibiya Park 日比谷公園|6-21|12:00}%. No rule protects either."
+    },
+    {
+      "title": "Where the heights come from",
+      "provenance": true,
+      "date": [
+        9,
+        22
+      ],
+      "from": "15:00",
+      "to": "15:30",
+      "hold": 9,
+      "cam": [
+        2300,
+        -2200,
+        1300
+      ],
+      "tgt": [
+        -100,
+        200,
+        40
+      ],
+      "text": "Blue: surveyed height (PLATEAU or OpenStreetMap). Orange: floor count. Green: estimated. In the model, PLATEAU's roof surveys give every tower in Marunouchi, Shiodome and Toranomon its real massing, podium and all."
+    },
+    {
+      "title": "Tokyo Tower at sunset",
+      "text": "333 m, painted in bands of International Orange and white because aircraft must see it. The lattice is built from published dimensions, anchored at the tower's published coordinates.",
+      "cam": [
+        -300,
+        -2150,
+        110
+      ],
+      "tgt": [
+        -1228,
+        -1268,
+        130
+      ],
+      "date": [
+        11,
+        22
+      ],
+      "from": "16:10",
+      "to": "16:45",
+      "hold": 10
+    },
+    {
+      "title": "After dark",
+      "text": "Windows light from the same facade grid that shades them by day. Drag to explore, or open Sun access to test a tower of your own.",
+      "cam": [
+        2000,
+        -1500,
+        800
+      ],
+      "tgt": [
+        -150,
+        0,
+        40
+      ],
+      "date": [
+        11,
+        22
+      ],
+      "from": "17:15",
+      "to": "18:00",
+      "hold": 10
+    }
+  ],
+  "renders": [
+    {
+      "name": "overview",
+      "cam": [
+        2400,
+        -2700,
+        1500
+      ],
+      "tgt": [
+        250,
+        350,
+        40
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
+      "time": "08:50"
+    },
+    {
+      "name": "station",
+      "cam": [
+        980,
+        520,
+        210
+      ],
+      "tgt": [
+        560,
+        1230,
+        25
+      ],
+      "date": [
+        2026,
+        3,
+        21
+      ],
+      "time": "15:20"
+    },
+    {
+      "name": "tower",
+      "cam": [
+        -300,
+        -2150,
+        110
+      ],
+      "tgt": [
+        -1228,
+        -1268,
+        130
+      ],
+      "date": [
+        2026,
+        11,
+        22
+      ],
+      "time": "16:25"
+    },
+    {
+      "name": "winter",
+      "cam": [
+        -1400,
+        -300,
+        500
+      ],
+      "tgt": [
+        -300,
+        400,
+        20
+      ],
+      "date": [
+        2026,
+        12,
+        22
+      ],
+      "time": "12:00"
+    }
+  ],
+  "sources": {
+    "landmarks": "Tokyo Tower: parametric from published dimensions (333 m; decks at 150 m and 250 m; 80 m base), anchored at its published coordinates"
+  },
+  "game": {
+    "title": "Tokyo on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "Tokyo Bay",
+    "greeting": "こんにちは。",
+    "shade_landmarks": [
+      "tower_"
+    ],
+    "start": {
+      "at": [
+        530,
+        1085
+      ],
+      "facing": [
+        632,
+        1248
+      ],
+      "time": "live"
+    },
+    "wharves": [
+      {
+        "id": "hamarikyu",
+        "name": "Hamarikyu 浜離宮",
+        "terminal": "水上バス乗り場"
+      },
+      {
+        "id": "hinode",
+        "name": "Hinode Pier 日の出桟橋",
+        "terminal": "日の出桟橋"
+      },
+      {
+        "id": "takeshiba",
+        "name": "Takeshiba Pier 竹芝桟橋",
+        "terminal": "竹芝桟橋"
+      },
+      {
+        "id": "harumi",
+        "name": "Harumi 晴海",
+        "terminal": "晴海五丁目船着場"
+      }
+    ],
+    "ferries": [
+      {
+        "route": "Water Bus 水上バス",
+        "stops": [
+          "hamarikyu",
+          "hinode",
+          "takeshiba"
+        ],
+        "vessels": [
+          "Himiko 卑弥呼",
+          "Hotaluna ホタルナ",
+          "Emeraldas エメラルダス"
+        ]
+      },
+      {
+        "route": "Bay Line",
+        "stops": [
+          "hinode",
+          "harumi",
+          "hamarikyu"
+        ],
+        "vessels": [
+          "Tokyo Mizube",
+          "Sakura"
+        ]
+      }
+    ],
+    "ferry_note": "Piers are from OpenStreetMap via Overture. Routes are generated through open water; the stops follow the real water-bus piers, but the timetable is not real, and the vessel names are those of Tokyo Cruise boats. Boats run at 1.5 times their real speed and wait 20 s at each pier. At a pier you can skip the wait.",
+    "helipads": [
+      {
+        "id": "hibiya-pad",
+        "name": "Hibiya Park pad (game)",
+        "at": [
+          -330,
+          330
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 520,
+      "cars": 190,
+      "radius_m": 450,
+      "style": "tokyo"
+    },
+    "npcs": [
+      {
+        "id": "haruka",
+        "name": "Haruka 遥",
+        "role": "Station attendant 駅員",
+        "at": [
+          548,
+          1100
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f0c7aa",
+          "hair": "#17120f",
+          "top": "#1d2b4a",
+          "legs": "#1d2b4a",
+          "shirt": "#1d2b4a",
+          "pants": "#1d2b4a"
+        },
+        "idle": [
+          "指差呼称 (shisa kanko): we point at every signal and say it aloud, even when no train is coming. Fewer mistakes, they say, by a lot.",
+          "Trains here run to the second. If one is 20 seconds late, we apologise. {time} now."
+        ]
+      },
+      {
+        "id": "kenji",
+        "name": "Kenji 健二",
+        "role": "Salaryman サラリーマン",
+        "at": [
+          368,
+          1118
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#e9bf9d",
+          "hair": "#141010",
+          "top": "#1f2328",
+          "legs": "#1b1d22",
+          "shirt": "#1f2328",
+          "pants": "#1b1d22"
+        },
+        "idle": [
+          "Until 1963 Tokyo capped buildings at 31 m, a hundred shaku. Then floor-area ratios replaced the cap.",
+          "I eat at my desk or in Hibiya Park, if the sun's out. {sun_line}"
+        ]
+      },
+      {
+        "id": "daichi",
+        "name": "Daichi 大地",
+        "role": "Palace runner 皇居ランナー",
+        "at": [
+          -150,
+          1060
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e3b08d",
+          "hair": "#1b1512",
+          "top": "#e8541c",
+          "legs": "#24384f",
+          "shirt": "#e8541c",
+          "pants": "#24384f"
+        },
+        "idle": [
+          "Five kilometres round the Palace, always counter-clockwise. 反時計回り. Nobody told me; everybody does it.",
+          "Evening is busiest. By 18:00 you queue at the lockers."
+        ]
+      },
+      {
+        "id": "sachiko",
+        "name": "Sachiko 幸子",
+        "role": "Hibiya Park regular",
+        "at": [
+          -290,
+          360
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#f0c7aa",
+          "hair": "#cfcac4",
+          "top": "#7a4e8f",
+          "legs": "#4b5563",
+          "shirt": "#7a4e8f",
+          "pants": "#4b5563"
+        },
+        "idle": [
+          "Hibiya Park opened in 1903, Japan's first Western-style park. My grandmother walked in it in a kimono.",
+          "The pigeons know my bag. {sun_line}"
+        ]
+      },
+      {
+        "id": "yui",
+        "name": "Yui 結衣",
+        "role": "Office worker OL",
+        "at": [
+          520,
+          200
+        ],
+        "look": {
+          "character": "W_Suit",
+          "skin": "#f0c7aa",
+          "hair": "#2a1d17",
+          "top": "#c9c6bd",
+          "legs": "#2b2f3a",
+          "shirt": "#c9c6bd",
+          "pants": "#2b2f3a"
+        },
+        "idle": [
+          "Ginza at lunch: the main street closes to cars on weekend afternoons. 歩行者天国, the pedestrian paradise.",
+          "Lunch is 12:00 to 13:00. Everyone in Marunouchi comes out at once."
+        ]
+      },
+      {
+        "id": "ishikawa",
+        "name": "Ishikawa-san 石川",
+        "role": "Yakitori master 焼き鳥",
+        "at": [
+          258,
+          508
+        ],
+        "look": {
+          "character": "M_Worker",
+          "skin": "#e0b392",
+          "hair": "#1b1512",
+          "top": "#f2f0ea",
+          "legs": "#1d2330",
+          "shirt": "#f2f0ea",
+          "pants": "#1d2330"
+        },
+        "idle": [
+          "いらっしゃいませ! Under the tracks since 1985. The trains overhead? That's the seasoning.",
+          "Brick arches from 1910, and every arch is somebody's bar."
+        ]
+      },
+      {
+        "id": "aoki",
+        "name": "Captain Aoki 青木船長",
+        "role": "Water-bus captain 船長",
+        "at": [
+          745,
+          -1080
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#d9a27e",
+          "hair": "#8c8580",
+          "top": "#14284a",
+          "legs": "#14284a",
+          "shirt": "#14284a",
+          "pants": "#14284a"
+        },
+        "idle": [
+          "Edo's shogun hunted ducks at Hamarikyu. Now the ducks watch Shiodome's towers.",
+          "The Sumida River ends here, and the bay begins. {sun_line}"
+        ]
+      },
+      {
+        "id": "hayashi",
+        "name": "Hayashi 林",
+        "role": "Helicopter pilot 機長",
+        "at": [
+          -318,
+          318
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e3b08d",
+          "hair": "#141010",
+          "top": "#2f3b4a",
+          "legs": "#2f3b4a",
+          "shirt": "#2f3b4a",
+          "pants": "#2f3b4a"
+        },
+        "idle": [
+          "The cabin's warm. Keep clear of the Tokyo Tower lattice: 333 m of steel, and it does not move."
+        ]
+      },
+      {
+        "id": "ren",
+        "name": "Ren 蓮",
+        "role": "Tokyo Tower guide",
+        "at": [
+          -1228,
+          -1218
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#e8541c",
+          "legs": "#f1efe9",
+          "shirt": "#e8541c",
+          "pants": "#f1efe9"
+        },
+        "idle": [
+          "Tokyo Tower opened in 1958, at 333 m, 13 m taller than the Eiffel Tower. That was the point.",
+          "The orange-and-white paint is for aircraft. It repaints every five years."
+        ]
+      },
+      {
+        "id": "mei",
+        "name": "Mei 芽依",
+        "role": "Schoolgirl 女子高生",
+        "at": [
+          -70,
+          990
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#1d2b4a",
+          "legs": "#3a4358",
+          "shirt": "#1d2b4a",
+          "pants": "#3a4358"
+        },
+        "idle": [
+          "Navy blazer, a ribbon, and a long walk to school. I love the autumn light on the moat.",
+          "My cram school is in Otemachi. It's {time}. {sun_line}"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "eki",
+        "giver": "haruka",
+        "title": "Welcome to Tokyo Station",
+        "stamp": "Tokyo Station",
+        "talk": [
+          "ようこそ。Welcome. You're the new surveyor? This city is rebuilt from open data: {buildings} buildings, laser-scanned terrain, the real sun.",
+          "This is the Marunouchi side: red brick, built 1914, restored 2012. Behind it, the glass towers. Kenji works in one of them, on Marunouchi Naka-dori.",
+          "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "kenji",
+            "text": "Meet Kenji on Marunouchi Naka-dori"
+          }
+        ]
+      },
+      {
+        "id": "air",
+        "giver": "kenji",
+        "title": "The air above the station",
+        "stamp": "Marunouchi",
+        "talk": [
+          "Look at the station: a few storeys of brick. Look at the towers: 200 m of glass. Why does Marunouchi look like that?",
+          "Because the station owner sold its unused floor area, its 空中権 (air rights), to the towers nearby. The brick stays low and the money restored it.",
+          "Here every building carries the source of its height. {share:plateau}% of the footprint area comes from PLATEAU's roof surveys. Aim at a building and press Q to use the survey lens. Find a surveyed one, a floor-count one and an estimate."
+        ],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": [
+              "plateau",
+              "floors",
+              "estimate"
+            ],
+            "text": "Survey lens (Q): a PLATEAU, a floor-count and an estimated height"
+          },
+          {
+            "type": "talk",
+            "npc": "daichi",
+            "text": "Find Daichi on the Palace plaza"
+          }
+        ]
+      },
+      {
+        "id": "loop",
+        "giver": "daichi",
+        "title": "Round the Palace",
+        "stamp": "Imperial Palace",
+        "talk": [
+          "Cooling down. This gravel plaza is the Kokyo Gaien; the moat is Edo Castle's. Edo became Tokyo in 1868.",
+          "Yui says lunch is the best hour in Hibiya Park, if the sun's out. Winter, though. In December the sun sits low, and the towers matter. Ask Sachiko."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "sachiko",
+            "text": "Find Sachiko in Hibiya Park"
+          }
+        ]
+      },
+      {
+        "id": "sun",
+        "giver": "sachiko",
+        "title": "A bench in the sun",
+        "stamp": "Hibiya Park",
+        "talk": [
+          "Winter lunch in Hibiya Park: that's my favourite hour. On 22 December at noon, {sun:Hibiya Park 日比谷公園|12-22|12:00}% of the park is in direct sun. On 21 June it's {sun:Hibiya Park 日比谷公園|6-21|12:00}%.",
+          "No rule protects it, you know. A new tower could take it away. Find a sunny spot for me at lunchtime on the winter solstice. Watch the sun meter under the map. It ray-casts from where you stand."
+        ],
+        "choices": [
+          {
+            "text": "Show me 22 December at 12:30",
+            "action": "set_time",
+            "date": [
+              12,
+              22
+            ],
+            "time": "12:30"
+          },
+          {
+            "text": "I'll set the time myself"
+          }
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "Hibiya Park 日比谷公園",
+            "date": [
+              12,
+              22
+            ],
+            "window": [
+              "12:00",
+              "13:00"
+            ],
+            "text": "Stand in direct sun in Hibiya Park, 12:00 to 13:00 on 22 December"
+          },
+          {
+            "type": "talk",
+            "npc": "yui",
+            "text": "Meet Yui in Ginza"
+          }
+        ]
+      },
+      {
+        "id": "ginza",
+        "giver": "yui",
+        "title": "Lunch in Ginza",
+        "stamp": "Ginza",
+        "talk": [
+          "Finally, someone who counts shadows! Ginza's main street keeps its wall at 56 m under the Ginza Rules (銀座ルール). Check it with Q.",
+          "Skip the department store, though. Ishikawa-san grills under the tracks at Yurakucho, and his yakitori is the real lunch."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "ishikawa",
+            "text": "Find Ishikawa-san under the Yurakucho tracks"
+          }
+        ]
+      },
+      {
+        "id": "water",
+        "giver": "ishikawa",
+        "title": "Water bus",
+        "stamp": "Water bus",
+        "talk": [
+          "いらっしゃい! Eat. Tokyo is a city of water: the Palace moat, the canals, and the bay out there. Most people forget.",
+          "Walk down to Hamarikyu, the shogun's garden. The water bus leaves from the pier. Ride it to Hinode Pier, and tell Captain Aoki I sent you."
+        ],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "hamarikyu",
+            "to": "hinode",
+            "text": "Take the water bus from Hamarikyu to Hinode Pier"
+          },
+          {
+            "type": "talk",
+            "npc": "aoki",
+            "text": "Find Captain Aoki at Hinode Pier"
+          }
+        ]
+      },
+      {
+        "id": "heli",
+        "giver": "aoki",
+        "title": "Tokyo Tower from the air",
+        "stamp": "Tokyo by air",
+        "talk": [
+          "From the water the city is a wall. Go up. Hayashi's helicopter is on the pad in Hibiya Park.",
+          "Fly south-west to Tokyo Tower and land in Shiba Park below it. Space to climb, C to descend, W and S for forward and back, A and D to turn. V is the bird's-eye view. E gets you out once you've landed."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "hayashi",
+            "text": "Meet Hayashi at the Hibiya Park helipad"
+          },
+          {
+            "type": "land",
+            "place": "Shiba Park 芝公園",
+            "text": "Land in Shiba Park, below Tokyo Tower"
+          },
+          {
+            "type": "talk",
+            "npc": "ren",
+            "text": "Find Ren at the foot of Tokyo Tower"
+          }
+        ]
+      },
+      {
+        "id": "tower",
+        "giver": "ren",
+        "title": "333 metres",
+        "stamp": "Tokyo Tower",
+        "talk": [
+          "You flew in? Then you've seen it: {landmark:tokyo_tower.height} m, and the main deck at {landmark:tokyo_tower.main_deck} m. The model builds the lattice from those figures, not from a scan.",
+          "Not everything is a scan, anyway. {share:plateau}% of the buildings you passed were surveyed by PLATEAU; the rest are estimates from their neighbours.",
+          "Report back to Haruka at the station. The survey is nearly done."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "haruka",
+            "text": "Report back to Haruka at Tokyo Station"
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "giver": "haruka",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": [
+          "お疲れ様でした。That's the full survey: the station, the air above it, the Palace, the sun, the water and the tower.",
+          "Now you know where the numbers come from. The city is yours. Change the time of day, take the water bus, or fly anywhere."
+        ],
+        "steps": []
+      }
+    ]
+  }
+}
