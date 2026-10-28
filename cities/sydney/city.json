@@ -267,6 +267,13 @@
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Routes are generated through open water, and the stops follow the inner-harbour services, but the timetable is not real. Ferries run at 1.5 times their real speed (9 m/s) and wait 20 s at each wharf. The vessel names are those of the First Fleet class ferries. At a wharf you can skip the wait.",
     "helipads": [{"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}],
+    "viewpoints": [
+      {"id": "bridge-arch", "name": "Harbour Bridge, mid-arch", "at": [-76.2, 1077.8]},
+      {"id": "observatory-hill", "name": "Observatory Hill", "at": [-546.2, 307.6]},
+      {"id": "barangaroo-reserve", "name": "Barangaroo Reserve", "at": [-891.4, 568.9]},
+      {"id": "mrs-macquaries-chair", "name": "Mrs Macquarie's Chair", "at": [1015.2, 252.3]},
+      {"id": "opera-steps", "name": "Opera House steps", "at": [305.6, 462.0]}
+    ],
     "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
     "npcs": [
       {
@@ -275,7 +282,8 @@
         "role": "Survey lead",
         "at": [128, 216],
         "look": {"character": "W_Casual", "skin": "#c68a64", "hair": "#2a1d17", "top": "#f2c230", "legs": "#2b3a4a", "shirt": "#f2c230", "pants": "#2b3a4a"},
-        "idle": ["The whole model is open data. If something looks wrong, it probably is wrong in the data, so tell me."]
+        "idle": ["The whole model is open data. If something looks wrong, it probably is wrong in the data, so tell me.",
+        "There are five trig stations round the harbour, a triangle on the map for each. Climb up to one and survey the view."]
       },
       {
         "id": "marco",
@@ -315,7 +323,8 @@
         "role": "Height detective",
         "at": [-46, -1262],
         "look": {"character": "M_Adventurer", "skin": "#f0c4a0", "hair": "#7a4b2a", "top": "#3d7a4f", "legs": "#4a3b2c", "shirt": "#3d7a4f", "pants": "#4a3b2c"},
-        "idle": ["A floor count times a storey height beats a machine-learning guess most of the time. Not always."]
+        "idle": ["A floor count times a storey height beats a machine-learning guess most of the time. Not always.",
+        "Think you can judge a height by eye? Aim at a building and press G. Then see how good the data is."]
       },
       {
         "id": "noor",
