@@ -53,14 +53,14 @@ export async function init(ctx) {
   // falls in the first half of October the spawning is split, with a second period a lunar month later
   // (Willis et al. 1985, researchonline.jcu.edu.au/24208). The moon's age is env.js's own (setSun).
   const whenMs = q.get('time') ? Date.parse(q.get('time')) : Date.now(), tClock = performance.now();
-  const nowMs = () => ctx.clockMs ? ctx.clockMs() : whenMs + (performance.now() - tClock);
+  const nowMs = () => ctx.clockMs ? ctx.clockMs() : whenMs + (performance.now() - tClock);   // main.js keeps the model clock
   const SYN = 29.530588, lat = ctx.S.origin[1], lon = ctx.S.origin[0], tz = ctx.S.timezone;
   const moonAge = ms => { const JD = ms / 86400000 + 2440587.5; return ((JD - 2451550.1) / SYN % 1 + 1) % 1; };
   const local = ms => window.Sun.utcToLocal(ms, tz);
   const dayNo = l => Date.UTC(l.y, l.m - 1, l.d) / 86400000;
   const spawning = { active: false, nightsAfterFullMoon: null, fullMoon: null, window: [1, 7], split: false, dark: false };
-  function spawnState(ms) {
-    const sinceFull = ((moonAge(ms) - 0.5 + 1) % 1) * SYN, full = ms - sinceFull * 86400000;
+  function spawnState(ms, age = moonAge(ms)) {
+    const sinceFull = ((age - 0.5 + 1) % 1) * SYN, full = ms - sinceFull * 86400000;
     const lf = local(full), ln = local(ms - 12 * 3600e3);          // the night belongs to the evening it began on
     const nights = Math.round(dayNo(ln) - dayNo(lf));
     // October full moon, or November when October's fell in the first half of the month (split spawning)
@@ -71,7 +71,9 @@ export async function init(ctx) {
     return { active: q.get('spawn') === '1' || (season && nights >= spawning.window[0] && nights <= spawning.window[1] && dark),
       nightsAfterFullMoon: nights, fullMoon: new Date(full), window: spawning.window, split: lf.m === 11 && season, dark };
   }
-  Object.assign(spawning, spawnState(nowMs()));
+  // the moon's age as env.js computed it for the model clock (ctx.sun, refreshed every 2 s), else the same formula here
+  const spawnNow = () => { const ms = nowMs(); return spawnState(ms, ctx.sun && ctx.sun.moonAge !== undefined ? ctx.sun.moonAge : moonAge(ms)); };
+  Object.assign(spawning, spawnNow());
   let spawnT = 0;
 
   const byId = id => SPECIES.find(s => s.id === id) || null;
@@ -86,14 +88,13 @@ export async function init(ctx) {
     reef.update(cam, first);
     fauna.update(dt, t, cam, env.u.night.value, first);
     flora.update(cam, first);
-    if ((spawnT -= dt) < 0) { spawnT = 5; Object.assign(spawning, spawnState(nowMs())); }
+    if ((spawnT -= dt) < 0) { spawnT = 5; Object.assign(spawning, spawnNow()); }
     drift.update(cam, spawning.active && under, dt);
-    if (camAim && window.__reef) { window.__reef.set(camAim); camAim = null; }
     first = false;
   }
 
   // test hook: ?lifecam=<species id>[,dist] puts the fly camera next to the nearest one of them
-  let lifecam = q.get('lifecam'), camAim = null;
+  let lifecam = q.get('lifecam');
   function lookAt(spec) {
     const [sp, dd] = spec.split(','), d0 = Number(dd || 2.5), c = camera.position;
     let best = null, bd = 1e18;
@@ -101,9 +102,13 @@ export async function init(ctx) {
     lifecam = null;
     if (!best) { console.warn('[life] lifecam: no', sp, 'near the camera'); return; }
     const side = best.yaw + Math.PI / 2;
-    c.set(best.x + Math.cos(side) * d0, Math.min(best.y + 0.4 * d0 * 0.3, env.u.tide.value - 0.3), best.z - Math.sin(side) * d0);
+    c.set(best.x + Math.cos(side) * d0, 0, best.z - Math.sin(side) * d0);
+    c.y = Math.min(Math.max(best.y + 0.12 * d0, ground.height(c.x, -c.z) + 0.45), env.u.tide.value - 0.3);
     const dx = best.x - c.x, dy = best.y - c.y, dz = best.z - c.z, L = Math.hypot(dx, dy, dz);
-    camAim = { yaw: Math.atan2(-dx, -dz), pitch: Math.asin(dy / L) };
+    // hold the view with a controller (a test camera: the fly keys are off while it is set; the player module replaces it)
+    const yaw = Math.atan2(-dx, -dz), pitch = Math.asin(dy / L), e = new THREE.Euler(pitch, yaw, 0, 'YXZ');
+    camera.quaternion.setFromEuler(e);
+    if (!ctx.controller) ctx.controller = { update() { camera.quaternion.setFromEuler(e); } };
     first = true; update(0, 0);            // everything again around the new spot, before the first frame
   }
   function counts() {
@@ -117,7 +122,7 @@ export async function init(ctx) {
   }
   function stats() {
     let calls = 0, inst = 0, tris = 0;
-    root.traverse(o => { if (o.isMesh && o.visible && o.geometry.instanceCount) { calls++; inst += o.geometry.instanceCount; tris += o.geometry.instanceCount * (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; } });
+    root.traverse(o => { if (o.isMesh && o.geometry.instanceCount) { calls++; inst += o.geometry.instanceCount; tris += o.geometry.instanceCount * (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; } });
     return { calls, instances: inst, triangles: Math.round(tris) };
   }
   // the animal nearest to a point (local frame), for a fish survey; giant clams count, corals do not
@@ -142,6 +147,8 @@ export async function init(ctx) {
   ctx.life = life; window.__life = life;
   update(0, 0);
   if (lifecam) lookAt(lifecam);
+  // build every herd's shader now rather than when the first of a kind swims into view
+  try { await ctx.renderer.compileAsync(root, camera, scene); } catch (e) { console.warn('[life] compile', e); }
   if (q.get('lifeinfo')) console.log('[life] init', (performance.now() - t0).toFixed(0), 'ms', JSON.stringify(counts()), JSON.stringify(stats()));
   return life;
 }

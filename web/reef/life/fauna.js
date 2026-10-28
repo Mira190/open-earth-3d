@@ -17,7 +17,7 @@ const CELL = 128, R_SIM = 120;
 // per species: model, scale range (m: body length, ray span, turtle carapace), colours, speeds
 export const FAUNA = {
   chromis: { geo: () => G.fish({ small: true, depth: 0.38, width: 0.13, tail: 0.6, tailShape: 'fork', dorsal: [0.2, 0.7, 0.3], anal: [0.55, 0.72, 0.28] }), mat: 'fish', cap: 1600, len: [0.06, 0.09],
-    cols: [[[0.3, 0.62, 0.55], [0.55, 0.85, 0.78]], [[0.25, 0.55, 0.6], [0.5, 0.8, 0.85]]], cruise: 0.15 },
+    cols: [[[0.16, 0.5, 0.36], [0.4, 0.78, 0.72]], [[0.14, 0.42, 0.5], [0.36, 0.72, 0.8]]], cruise: 0.15 },
   humbug: { geo: () => G.fish({ small: true, depth: 0.55, width: 0.15, tail: 0.45, tailShape: 'fork', dorsal: [0.15, 0.72, 0.35], anal: [0.5, 0.72, 0.35], spiky: true }), mat: 'fish', cap: 700, len: [0.05, 0.08],
     cols: [[[0.85, 0.86, 0.85], [0.03, 0.03, 0.03]]], cruise: 0.12 },
   fusilier: { geo: () => G.fish({ small: true, depth: 0.26, width: 0.11, tail: 0.75, tailShape: 'fork', dorsal: [0.25, 0.68, 0.18], anal: [0.55, 0.72, 0.15], snout: 0.5 }), mat: 'fish', cap: 700, len: [0.18, 0.27],

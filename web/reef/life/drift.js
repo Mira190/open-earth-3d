@@ -33,7 +33,7 @@ export function createDrift(ctx, torch, reef, ground) {
   const size = seed.w.mul(seed.w).mul(0.012).add(0.003);
   pm.positionNode = centre.add(right.mul(aux.x.mul(size))).add(up.mul(aux.y.mul(size)));
   const dist = length(centre.sub(cameraPosition));
-  pm.colorNode = vec3(0.75, 0.8, 0.72).mul(u.white.mul(0.9).add(0.02));
+  pm.colorNode = vec3(0.75, 0.8, 0.72).mul(u.white.mul(0.9));     // unlit, so scaled by the (adapted) light of a white surface
   pm.opacityNode = Fn(() => {
     const disc = float(1).sub(smoothstep(0.35, 1.0, length(vec3(aux.x, aux.y, 0))));
     const under = select(centre.y.lessThan(u.tide.sub(0.05)), float(1), float(0)).mul(select(cameraPosition.y.lessThan(u.tide), float(1), float(0)));
@@ -44,7 +44,7 @@ export function createDrift(ctx, torch, reef, ground) {
   group.add(plankton);
 
   // ---------------------------------------------------------------- spawning: bundles rising from hard corals
-  const NB = 6000, HARD = ['branching', 'table', 'boulder', 'brain'];
+  const NB = 12000, HARD = ['branching', 'table', 'boulder', 'brain'];
   const bundles = new Herd('spawn', G.speck(), null, NB, { order: 22 });
   const A = attribute('iA', 'vec4'), B = attribute('iB', 'vec4'), C = attribute('iC', 'vec4');
   const on = uniform(0);
@@ -72,12 +72,12 @@ export function createDrift(ctx, torch, reef, ground) {
     if (k === srcKey) return; srcKey = k;
     const tide = u.tide.value, S = [];
     for (const t of reef.active()) {
-      if (t.dist > 11) continue;
+      if (t.dist > 9) continue;
       for (const kind of HARD) {
         const a = t.items[kind]; if (!a) continue;
         for (let i = 0; i < a.length; i += 16) {
           const dx = a[i] - cam.x, dz = a[i + 2] - cam.z;
-          if (dx * dx + dz * dz > 11 * 11) continue;
+          if (dx * dx + dz * dz > 9 * 9) continue;
           // not every colony spawns on the same night: about half of them, the same half every time
           if (hash(Math.round(a[i] * 10), Math.round(a[i + 2] * 10), 5) > 0.55) continue;
           S.push([a[i], a[i + 1] + a[i + 3] * (kind === 'table' ? 0.3 * a[i + 11] : kind === 'branching' ? 0.45 * a[i + 11] : 0.45 * a[i + 11]), a[i + 2], a[i + 3]]);
@@ -86,11 +86,12 @@ export function createDrift(ctx, torch, reef, ground) {
     }
     let n = 0;
     if (S.length) {
-      const per = Math.max(4, Math.min(160, Math.floor(NB / S.length)));
+      const per = Math.max(4, Math.min(300, Math.floor(NB / S.length)));
       const R2 = rng(0.71);
       for (const s of S) for (let j = 0; j < per && n < NB; j++) {
-        const H = Math.max(0.5, tide - s[1]), col = R2() < 0.55 ? [0.95, 0.42, 0.52] : R2() < 0.6 ? [0.98, 0.58, 0.3] : [0.95, 0.8, 0.62];
-        const size = 0.006 + R2() * 0.004;                                   // several times a real bundle (about a millimetre), to be seen at all
+        // most bundles are still close above their colony (released over the last hour or so), some on their way to the surface
+        const H = Math.max(0.5, R2() < 0.7 ? Math.min(tide - s[1], 1.2 + R2() * 1.5) : tide - s[1]), col = R2() < 0.55 ? [0.95, 0.42, 0.52] : R2() < 0.6 ? [0.98, 0.58, 0.3] : [0.95, 0.8, 0.62];
+        const size = 0.011 + R2() * 0.007;                                   // drawn far larger than a real bundle (a millimetre or so) so the eye can find them
         bundles.put(n++, s[0], s[1], s[2], size, 0.012 + R2() * 0.02, R2(), H, R2() * 50, col[0], col[1], col[2], s[3] * 0.8, 0, 0, 0, 0);
       }
     }
@@ -99,10 +100,10 @@ export function createDrift(ctx, torch, reef, ground) {
   function update(cam, spawning, dt) {
     const camR = ctx.camera;
     right.value.setFromMatrixColumn(camR.matrixWorld, 0); up.value.setFromMatrixColumn(camR.matrixWorld, 1);
-    plankton.visible = cam.y < u.tide.value + 0.2;
+    pg.instanceCount = cam.y < u.tide.value + 0.2 ? NP : 0;
     on.value = spawning ? 1 : 0;
-    bundles.mesh.visible = spawning && bundles.n > 0;
+    if (!spawning && bundles.n) bundles.commit(0);
     if (spawning) sources(cam); else srcKey = '';
   }
-  return { group, update, plankton, bundles, counts: () => ({ plankton: plankton.visible ? NP : 0, bundles: bundles.mesh.visible ? bundles.n : 0 }) };
+  return { group, update, plankton, bundles, counts: () => ({ plankton: pg.instanceCount, bundles: bundles.n }) };
 }

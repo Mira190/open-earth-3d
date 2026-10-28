@@ -43,9 +43,11 @@ export function createMats(env, torch) {
   coral.table = (() => {
     const m = pose(std({ rough: 0.8, side: THREE.DoubleSide }), { squash: vec3(1, C.w, 1) });
     const c = Fn(() => {
+      // the plate is a lattice of radiating branchlets ending in upturned corallites: radial ribs, dots, a pale growing edge
       const ang = atan(pg.z, pg.x), rad = length(vec2(pg.x, pg.z));
-      const lines = sin(ang.mul(140).add(n3(pg, 9).mul(5))).mul(0.5).add(0.5);
-      let col = mix(C.rgb, D.rgb, smoothstep(0.78, 1.0, aux.x)).mul(lines.mul(0.18).add(0.88)).mul(n3(pg, 35).mul(0.12).add(1));
+      const lines = smoothstep(0.2, 0.8, sin(ang.mul(rad.mul(260).add(40)).add(n3(pg, 9).mul(4))).mul(0.5).add(0.5));
+      const dots = smoothstep(0.12, 0.04, mx_worley_noise_float(vec3(pg.x, 0, pg.z).mul(70)));
+      let col = mix(C.rgb, D.rgb, smoothstep(0.75, 1.0, aux.x).max(dots.mul(0.5))).mul(lines.mul(0.35).add(0.7)).mul(n3(pg, 6).mul(0.2).add(1));
       col = col.mul(select(aux.w.greaterThan(0.5), float(0.55), float(1)));
       return col.mul(smoothstep(0.0, 0.2, rad).mul(0.25).add(0.75));
     })();

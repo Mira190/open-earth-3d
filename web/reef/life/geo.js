@@ -69,19 +69,19 @@ function lumpy(detail, lumps, amp, seed, cutY = -0.08, flat = 0.06) {
 // staghorn / bushy Acropora: primary branches fanning up and out, each with a few secondaries
 export function branching(lod) {
   // grown, not placed: arched branches that turn upward as they grow and fork, as tubes with shared rings
-  const b = new Build(), r = rng(hash(101, lod)), sides = lod ? 5 : 3, up = new V(0, 1, 0);
+  const b = new Build(), r = rng(hash(101, lod)), sides = lod ? 4 : 3, up = new V(0, 1, 0);
   const rnd3 = () => new V(r() - 0.5, r() - 0.5, r() - 0.5);
   const grow = (p0, d0, len, r0, level, t0) => {
-    const n = lod ? 3 : 2, pts = [p0.clone()], rad = [r0], d = d0.clone();
+    const n = lod && level === 0 ? 3 : 2, pts = [p0.clone()], rad = [r0], d = d0.clone();
     for (let i = 1; i <= n; i++) {
       d.addScaledVector(up, 0.35).addScaledVector(rnd3(), 0.35).normalize();
       pts.push(pts[i - 1].clone().addScaledVector(d, len / n)); rad.push(r0 * (1 - 0.42 * i / n));
     }
     const t1 = level >= (lod ? 2 : 1) ? 1 : t0 + 0.35;
     tube(b, pts, rad, sides, k => [t0 + (t1 - t0) * k / n, 1, 0, 0]);
-    if (lod) { const e = pts[n], de = e.clone().sub(pts[n - 1]).normalize(); b.add(new THREE.SphereGeometry(rad[n], sides, 2, 0, TAU, 0, Math.PI / 2), new THREE.Matrix4().compose(e, new THREE.Quaternion().setFromUnitVectors(Y, de), new V(1, 1.6, 1)), () => [1, 1, 0, 0]); }
+    if (lod) { const e = pts[n], de = e.clone().sub(pts[n - 1]).normalize(); b.add(new THREE.SphereGeometry(rad[n], sides, 1, 0, TAU, 0, Math.PI / 2), new THREE.Matrix4().compose(e, new THREE.Quaternion().setFromUnitVectors(Y, de), new V(1, 1.6, 1)), () => [1, 1, 0, 0]); }
     if (level >= (lod ? 2 : 1)) return;
-    const kids = level === 0 ? 2 + Math.floor(r() * 2) : 1 + Math.floor(r() * 2);
+    const kids = !lod ? 1 : level === 0 ? 2 + Math.floor(r() * 2) : 1 + Math.floor(r() * 2);
     for (let c = 0; c < kids; c++) {
       const at = 1 + Math.floor(r() * (n - 1)), dir = d0.clone().lerp(d, at / n).normalize();
       const side = new V().crossVectors(dir, rnd3()).normalize();
@@ -210,12 +210,14 @@ export function anemone() {
   const b = new Build(), r = rng(hash(105));
   b.add(new THREE.CylinderGeometry(0.24, 0.2, 0.1, 16, 1, true), at(0, 0.05, 0), () => [0, 8, 0, 1]);
   b.add(new THREE.CircleGeometry(0.24, 16), at(0, 0.1, 0, -Math.PI / 2), () => [0, 8, 0, 0]);
-  const N = 90;
+  // a dense mop of finger-like tentacles (more than 8 cm long), leaning outward and curling at the tips
+  const N = 150;
   for (let k = 0; k < N; k++) {
-    const rr = 0.235 * Math.sqrt((k + 0.5) / N), t = k * 2.39996;
-    const p = new V(Math.cos(t) * rr, 0.1, Math.sin(t) * rr), out = rr / 0.235;
-    const dir = new V(Math.cos(t) * out * 0.9, 1, Math.sin(t) * out * 0.9).normalize(), len = 0.09 + r() * 0.05;
-    b.add(new THREE.CylinderGeometry(0.008, 0.014, len, 4, 1, false), between(p, p.clone().addScaledVector(dir, len)), v => { const s = THREE.MathUtils.clamp(v.distanceTo(p) / len, 0, 1); return [s, 8, s, 2]; });
+    const rr = 0.24 * Math.sqrt((k + 0.5) / N), t = k * 2.39996;
+    const p = new V(Math.cos(t) * rr, 0.1, Math.sin(t) * rr), out = rr / 0.24, len = 0.1 + r() * 0.06;
+    const d = new V(Math.cos(t) * out * 1.1 + (r() - 0.5) * 0.4, 1, Math.sin(t) * out * 1.1 + (r() - 0.5) * 0.4).normalize();
+    const m = p.clone().addScaledVector(d, len * 0.55), e = m.clone().addScaledVector(d.clone().add(new V(Math.cos(t) * out, -0.3, Math.sin(t) * out)).normalize(), len * 0.45);
+    tube(b, [p, m, e], [0.011, 0.009, 0.006], 3, i => [i / 2, 8, i / 2, 2]);
   }
   return b.geometry();
 }
@@ -460,14 +462,15 @@ export function mangrove(lod) {
 }
 // any tree far away: a coarse spindle, stretched per instance (crown width, height) and coloured per species
 export function farTree() {
-  const b = new Build();
-  b.add(new THREE.IcosahedronGeometry(0.5, 0), at(0, 0.64, 0, 0, 0, 0, 1, 0.72, 1), v => [v.y, 0, 0, 0]);
-  b.add(new THREE.CylinderGeometry(0.03, 0.05, 0.3, 3, 1, true), at(0, 0.15, 0), v => [v.y, 0, 0, 1]);
+  // ten triangles: a pentagonal crown, rounded at the top; no trunk (it is a few pixels away)
+  const b = new Build(), ring = [], top = b.vert(0, 1, 0, 0, 1, 0, [1, 0, 0, 0]), bot = b.vert(0, 0.25, 0, 0, -1, 0, [0.3, 0, 0, 0]);
+  for (let k = 0; k < 5; k++) { const a = k / 5 * TAU, x = Math.cos(a) * 0.5, z = Math.sin(a) * 0.5; ring.push(b.vert(x, 0.62, z, x, 0.35, z, [0.62, 0, 0, 0])); }
+  for (let k = 0; k < 5; k++) { b.tri(top, ring[(k + 1) % 5], ring[k]); b.tri(bot, ring[k], ring[(k + 1) % 5]); }
   return b.geometry();
 }
 
 // ================================================================ particles
-export function speck() { const b = new Build(); b.add(new THREE.IcosahedronGeometry(0.5, 0), new THREE.Matrix4(), () => [0, 0, 0, 0]); return b.geometry(); }
+export function speck() { const b = new Build(); b.add(new THREE.OctahedronGeometry(0.5, 0), new THREE.Matrix4(), () => [0, 0, 0, 0]); return b.geometry(); }
 export function quad() {
   const b = new Build();
   const ids = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => b.vert(x, y, 0, 0, 0, 1, [x, y, 0, 0]));

@@ -10,7 +10,7 @@ import * as G from './geo.js';
 
 const TT = 64, CELL = 7;
 const R0 = 160, R1 = 650, R2 = 2600;
-const KEEP1 = 0.75, KEEP2 = 0.22;         // share of trees drawn in the middle and far rings (by a per-tree rank)
+const KEEP1 = 0.75, KEEP2 = 0.2;         // share of trees drawn in the middle and far rings (by a per-tree rank)
 
 // model height (m) of each geometry, per-instance scale range, colours (linear albedo), far spindle width/height
 export const TREES = {
@@ -53,7 +53,7 @@ export function createFlora(ctx, ground, mats) {
   const key = (tx, ty) => (tx + 32768) * 65536 + (ty + 32768);
   const gc = [0, 0, 0];
   function generate(tx, ty) {
-    const x0 = tx * TT, n0 = ty * TT, tide = env.u.tide.value;
+    const x0 = tx * TT, n0 = ty * TT, tide = 0;            // heights above mean sea level: the same trees at any tide
     const t = { tx, ty, x0, n0, list: [] };
     const [, hi] = ground.maxIn(x0, n0, x0 + TT, n0 + TT);
     if (hi < tide + 0.2) return t;
@@ -129,7 +129,6 @@ export function createFlora(ctx, ground, mats) {
   let first = true;
   function update(cam, isFirst) {
     first = isFirst;
-    const tide = env.u.tide.value;
     const kN = `${Math.round(cam.x / 12)},${Math.round(cam.z / 12)}`, kF = `${Math.round(cam.x / 64)},${Math.round(cam.z / 64)}`;
     const wasPending = pending; pending = false;
     if (kN !== keyNear || wasPending) { keyNear = kN; fill(cam, true); }

@@ -85,7 +85,9 @@ export class Herd {
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 1e5);
     this.tris = (geo.index ? geo.index.count : geo.attributes.position.count) / 3;
     const m = this.mesh = new THREE.Mesh(g, mat);
-    m.name = 'life:' + name; m.frustumCulled = false; m.visible = false; m.renderOrder = order;
+    // always 'visible': an empty herd draws nothing (instanceCount 0), but its pipeline is built up front, so a
+    // species does not pop in a few frames late while its shader compiles the first time it appears
+    m.name = 'life:' + name; m.frustumCulled = false; m.renderOrder = order;
     m.matrixAutoUpdate = false;
   }
   // write instance i: position, scale, yaw, pitch, roll, phase, colour A + w, colour B + w
@@ -101,7 +103,7 @@ export class Herd {
   }
   commit(n) {
     this.n = Math.min(n, this.cap);
-    this.geo.instanceCount = this.n; this.mesh.visible = this.n > 0;
+    this.geo.instanceCount = this.n;
     if (this.n > 0) { this.ib.clearUpdateRanges(); this.ib.addUpdateRange(0, this.n * 16); this.ib.needsUpdate = true; }
   }
 }

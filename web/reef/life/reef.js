@@ -8,7 +8,7 @@ import { Herd, hash, rng, vnoise } from './kit.js';
 import * as G from './geo.js';
 
 const TS = 32;                    // tile size, m
-const R_DETAIL = 15, R_NEAR = 48, R_FAR = 115;   // detailed shapes within R_DETAIL, coarse ones to R_NEAR, then only big shallow colonies to R_FAR
+const R_NEAR = 48, R_FAR = 115;   // coarse shapes to R_NEAR (detailed within each kind's `detail`), then only big shallow colonies to R_FAR
 const FAR_DEPTH = 9;              // coarse colonies only this shallow: deeper ones are lost in the water from above
 
 // colours are albedos (linear) from photographs of Whitsunday and GBR inshore corals: browns, olives,
@@ -29,15 +29,15 @@ const PAL = {
 // (1 sand, 2 reef and rock, 3 seagrass and algae, 4 rubble), depth range, size range (m), and the
 // species id each kind stands for in ctx.life.species
 export const KINDS = {
-  branching: { sp: 'staghorn', spacing: 1.7, dens: { 2: 0.6, 4: 0.1, 1: 0.01 }, depth: [0.4, 14], size: [0.5, 1.7], far: true, hard: true, cap: [9000, 5000] },
-  table: { sp: 'table-coral', spacing: 3.4, dens: { 2: 0.4, 4: 0.05 }, depth: [0.8, 13], size: [0.8, 2.4], far: true, hard: true, cap: [2500, 2500] },
-  boulder: { sp: 'porites', spacing: 2.2, dens: { 2: 0.45, 4: 0.09, 1: 0.02, 3: 0.01 }, depth: [0.2, 26], size: [0.3, 2.2], far: true, hard: true, cap: [6000, 4000] },
-  brain: { sp: 'brain-coral', spacing: 2.6, dens: { 2: 0.35, 4: 0.05 }, depth: [0.5, 22], size: [0.3, 1.3], far: true, hard: true, cap: [3000, 2000] },
-  leather: { sp: 'leather-coral', spacing: 2.6, dens: { 2: 0.35, 4: 0.08, 1: 0.008 }, depth: [1.2, 26], size: [0.35, 1.1], nearR: 36, cap: [3500, 0] },
-  clam: { sp: 'giant-clam', spacing: 9, dens: { 2: 0.25, 4: 0.12, 1: 0.03 }, depth: [0.6, 20], size: [0.25, 1.1], nearR: 48, cap: [400, 0] },
-  anemone: { sp: 'anemone', spacing: 13, dens: { 2: 0.42 }, depth: [1, 12], size: [0.45, 0.9], nearR: 48, cap: [300, 0] },
-  rubble: { sp: null, spacing: 2.1, dens: { 4: 0.6, 2: 0.1 }, depth: [0.2, 30], size: [0.7, 1.3], nearR: 30, cap: [8000, 0] },
-  seagrass: { sp: 'seagrass', spacing: 0.42, dens: { 3: 0.9, 1: 0.02 }, depth: [0.3, 20], size: [0.75, 1.0], nearR: 18, itemR: true, cap: [8000, 0] }
+  branching: { sp: 'staghorn', detail: 11, spacing: 1.45, dens: { 2: 0.6, 4: 0.1, 1: 0.01 }, depth: [0.4, 14], size: [0.5, 1.7], far: true, hard: true, cap: [9000, 5000] },
+  table: { sp: 'table-coral', detail: 18, spacing: 3.4, dens: { 2: 0.4, 4: 0.05 }, depth: [0.8, 13], size: [0.8, 2.4], far: true, hard: true, cap: [2500, 2500] },
+  boulder: { sp: 'porites', detail: 14, spacing: 1.6, dens: { 2: 0.45, 4: 0.09, 1: 0.02, 3: 0.01 }, depth: [0.2, 26], size: [0.22, 2.2], sizePow: 3.4, far: true, hard: true, cap: [6000, 4000] },
+  brain: { sp: 'brain-coral', detail: 14, spacing: 2.2, sizePow: 2.6, dens: { 2: 0.35, 4: 0.05 }, depth: [0.5, 22], size: [0.3, 1.3], far: true, hard: true, cap: [3000, 2000] },
+  leather: { sp: 'leather-coral', detail: 12, spacing: 2.6, dens: { 2: 0.35, 4: 0.08, 1: 0.008 }, depth: [1.2, 26], size: [0.35, 1.1], far: false, cap: [1500, 3000] },
+  clam: { sp: 'giant-clam', detail: 48, spacing: 9, dens: { 2: 0.25, 4: 0.12, 1: 0.03 }, depth: [0.6, 20], size: [0.25, 1.1], nearR: 48, cap: [400, 0] },
+  anemone: { sp: 'anemone', detail: 40, spacing: 13, dens: { 2: 0.42 }, depth: [1, 12], size: [0.45, 0.9], nearR: 48, cap: [300, 0] },
+  rubble: { sp: null, detail: 30, spacing: 2.1, dens: { 4: 0.6, 2: 0.1 }, depth: [0.2, 30], size: [0.7, 1.3], nearR: 30, cap: [8000, 0] },
+  seagrass: { sp: 'seagrass', detail: 18, spacing: 0.42, dens: { 3: 0.9, 1: 0.02 }, depth: [0.3, 20], size: [0.75, 1.0], nearR: 18, cap: [8000, 0] }
 };
 const ORDER = Object.keys(KINDS);
 
@@ -46,7 +46,7 @@ export function createReef(ctx, ground, mats) {
   const herds = {};
   const geos = {
     branching: [G.branching(0), G.branching(1)], table: [G.table(0), G.table(1)], boulder: [G.boulder(0), G.boulder(1)], brain: [G.brain(0), G.brain(1)],
-    leather: [null, G.leather(1)], clam: [null, G.clam()], anemone: [null, G.anemone()], rubble: [null, G.rubble()], seagrass: [null, G.seagrass()]
+    leather: [G.leather(0), G.leather(1)], clam: [null, G.clam()], anemone: [null, G.anemone()], rubble: [null, G.rubble()], seagrass: [null, G.seagrass()]
   };
   const group = new THREE.Group(); group.name = 'life:reef';
   for (const k of ORDER) {
@@ -64,7 +64,9 @@ export function createReef(ctx, ground, mats) {
   function generate(tx, ty) {
     const x0 = tx * TS, n0 = ty * TS;                 // south-west corner, local metres
     const [lo, hi] = ground.maxIn(x0, n0, x0 + TS, n0 + TS);
-    const tide = env.u.tide.value;
+    // placement is by depth below mean sea level, not the tide of the moment, so the reef is the same at any
+    // hour (reef flats do dry at spring lows here, and the corals on them with it)
+    const tide = 0;
     const t = { tx, ty, x0, n0, items: {}, sites: [], clams: [], meanY: (lo + hi) / 2, empty: lo > tide - 0.2 || hi < tide - 32 };
     if (t.empty) return t;
     const present = new Set();
@@ -85,7 +87,10 @@ export function createReef(ctx, ground, mats) {
         const dz = Math.min((depth - K.depth[0]) / 1.2, (K.depth[1] - depth) / (0.3 * (K.depth[1] - K.depth[0])), 1);
         const patch = 0.3 + 1.2 * Math.sqrt(vnoise(x, north, 17, salt) * vnoise(x, north, 6, salt + 9));   // reefs are patchy at several scales
         if (hash(gx, gy, salt, 5) > dens * dz * patch) continue;
-        out.push(make(k, x, north, h, depth, hash(gx, gy, salt, 6), hash(gx, gy, salt, 7), hash(gx, gy, salt, 8), hash(gx, gy, salt, 9)));
+        const it = make(k, x, north, h, depth, hash(gx, gy, salt, 6), hash(gx, gy, salt, 7), hash(gx, gy, salt, 8), hash(gx, gy, salt, 9));
+        // a clam or an anemone needs its own patch of reef, clear of the colonies already there
+        if ((k === 'clam' || k === 'anemone') && crowded(t, it.rec)) continue;
+        out.push(it);
       }
       out.sort((a, b) => a.rank - b.rank);
       const arr = new Float32Array(out.length * 16);
@@ -96,11 +101,18 @@ export function createReef(ctx, ground, mats) {
     }
     return t;
   }
+  function crowded(t, r) {
+    for (const k of ['branching', 'table', 'boulder', 'brain', 'leather']) {
+      const a = t.items[k]; if (!a) continue;
+      for (let o = 0; o < a.length; o += 16) { const dx = a[o] - r[0], dz = a[o + 2] - r[2], m = (a[o + 3] + r[3]) * 0.45; if (dx * dx + dz * dz < m * m) return true; }
+    }
+    return false;
+  }
   // one colony: position on the floor, size, a lean with the slope, colours from the kind's palette
   function make(k, x, north, h, depth, r1, r2, r3, r4) {
     const K = KINDS[k], pal = PAL[k][Math.floor(r1 * PAL[k].length)], rec = new Float32Array(16);
     // sizes: many small, few large (a power law, as colony sizes are)
-    let s = K.size[0] + (K.size[1] - K.size[0]) * Math.pow(r2, 2.2);
+    let s = K.size[0] + (K.size[1] - K.size[0]) * Math.pow(r2, K.sizePow || 2.2);
     if (k === 'boulder' && depth > 3 && r3 > 0.9) s *= 1.7;                  // the odd Porites bommie, metres across
     // tilt with the slope: the floor's gradient seen in the model's own frame (x forward, z right) after its yaw
     const yaw = r3 * Math.PI * 2, [gx, gn] = ground.slope(x, north), c = Math.cos(yaw), sn = Math.sin(yaw);
@@ -147,24 +159,21 @@ export function createReef(ctx, ground, mats) {
         tmpList.push(t); t.dist = dist;
       }
     }
-    // fill the herds
+    // fill the herds: per colony, detailed shapes within the kind's detail radius (3D distance to the eye),
+    // coarse ones out to R_NEAR, then only big colonies in shallow water to R_FAR
+    const cy = cam.y;
     for (const k of ORDER) {
-      const near = herds[k][1], far = herds[k][0];
+      const K = KINDS[k], near = herds[k][1], far = herds[k][0], rD = K.detail, rD2 = rD * rD, rN = far ? R_NEAR : K.nearR, rN2 = rN * rN;
       let nn = 0, nf = 0;
-      const nearR = far ? R_DETAIL : KINDS[k].nearR;
       for (const t of tmpList) {
         const a = t.items[k]; if (!a || !a.length) continue;
-        if (t.dist < nearR && near) {
-          if (KINDS[k].itemR) {                       // small things: only the ones actually within reach
-            for (let o = 0; o < a.length && nn < near.cap; o += 16) { const dx = a[o] - cam.x, dz = a[o + 2] - cam.z; if (dx * dx + dz * dz < nearR * nearR) { near.data.set(a.subarray(o, o + 16), nn * 16); nn++; } }
-            continue;
+        if (t.dist < rN) {
+          for (let o = 0; o < a.length; o += 16) {
+            const dx = a[o] - cam.x, dy = a[o + 1] - cy, dz = a[o + 2] - cam.z, d2 = dx * dx + dy * dy + dz * dz;
+            if (d2 < rD2 && near) { if (nn < near.cap) { near.data.set(a.subarray(o, o + 16), nn * 16); nn++; } }
+            else if (d2 < rN2 && far && a[o + 3] * a[o + 3] > d2 * 1.5e-4) { if (nf < far.cap) { far.data.set(a.subarray(o, o + 16), nf * 16); nf++; } }   // skip what would be a few pixels
           }
-          const m = Math.min(a.length / 16, near.cap - nn);
-          near.data.set(a.subarray(0, m * 16), nn * 16); nn += m;
-        } else if (t.dist < R_NEAR && far) {
-          const m = Math.min(a.length / 16, far.cap - nf);
-          far.data.set(a.subarray(0, m * 16), nf * 16); nf += m;
-        } else if (far) {
+        } else if (far && K.far) {
           // shallow and big enough to read through the surface; fewer with distance
           const keep = THREE.MathUtils.clamp(1.2 - t.dist / R_FAR, 0.15, 1), m = a.length / 16;
           for (let i = 0; i < m && nf < far.cap; i++) {
