@@ -379,5 +379,10 @@
         "dir": -1
       }
     ]
+  },
+  "tide": {
+    "gauge": "Shute Harbour",
+    "years": {"2025": "f42838b7-9ab4-4e66-be1d-8153fc1efcc8", "2026": "0cde2f64-1684-4cc1-bbde-abe97871b862"},
+    "note": "Shute Harbour is on the mainland 25 km west of Whitehaven Beach, across the Whitsunday Passage; the tide on the islands' eastern shores differs from it by some minutes and centimetres."
   }
 }

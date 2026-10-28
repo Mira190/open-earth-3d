@@ -38,7 +38,9 @@ export function createPost(renderer, scene, camera, env) {
       const sunHere = exp(u.K.mul(dS.mul(u.lightPath).add(t)).negate());
       acc.addAssign(sunHere.mul(lit).mul(step));
     });
-    return acc.mul(phase).mul(0.035).mul(u.white).mul(u.sunCol).mul(smoothstep(0.02, 0.3, u.sunDir.y)).mul(select(under, float(1), float(0)));
+    // select, not a multiply by 0: above the water the march can overflow, and 0 x inf is a NaN that bloom-free
+    // pixels show as black (a full row at the screen's middle)
+    return select(under, acc.mul(phase).mul(0.035).mul(u.white).mul(u.sunCol).mul(smoothstep(0.02, 0.3, u.sunDir.y)), vec3(0));
   });
 
   const vignette = Fn(() => {
@@ -48,7 +50,10 @@ export function createPost(renderer, scene, camera, env) {
     return float(1).sub(smoothstep(0.55, 0.95, r).mul(0.45).mul(under));
   });
 
-  const base = color.add(bloomPass).add(shafts());
+  const q = new URLSearchParams(location.search);
+  let base = color;
+  if (q.get('bloom') !== '0') base = base.add(bloomPass);
+  if (q.get('shafts') !== '0') base = base.add(shafts());
   post.outputNode = base.mul(vignette());
   return post;
 }

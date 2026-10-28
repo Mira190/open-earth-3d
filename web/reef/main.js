@@ -5,6 +5,7 @@ import { createOcean } from './ocean.js';
 import { createShore } from './shore.js';
 import { createPost } from './post.js';
 import { createRipples } from './ripples.js';
+import { loadTide } from './tide.js';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -15,7 +16,7 @@ addEventListener('unhandledrejection', e => fail(e.reason));
 
 async function main() {
   const base = `../data/${CITY}/`;
-  const d = await loadScene(base);
+  const [d, tide] = await Promise.all([loadScene(base), loadTide(base)]);
   const S = d.scene;
   document.title = `Open Earth 3D: ${S.name}`;
   $('load-title').textContent = S.name;
@@ -36,7 +37,13 @@ async function main() {
   const ripples = createRipples(renderer, windDir);
   const env = createEnv(scene, S.optics, waves, ripples);
   env.u.wind.value = Number(q.get('wind') ?? 0.6);
-  env.u.tide.value = Number(q.get('tide') ?? 0);
+  // the clock: the model's own time (?time= or now), running on from the page load
+  const when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now();
+  const clockMs = () => when + (performance.now() - perf0);
+  // the tide: ?tide= fixes it (m about MSL); otherwise the site's predicted tide for the clock (tide.js)
+  const tideFixed = q.get('tide') !== null ? Number(q.get('tide')) : null;
+  const tideNow = () => tideFixed ?? (tide ? tide.at(clockMs()) : 0);
+  env.u.tide.value = tideNow();
 
   const sunL = new THREE.DirectionalLight(0xfff2dd, 2.8);
   const hemi = new THREE.HemisphereLight(0x9cc4ff, 0xd9c9a0, 0.9);
@@ -60,8 +67,6 @@ async function main() {
   dome.frustumCulled = false; dome.renderOrder = -1;
   scene.add(dome);
 
-  // clock: the model's own time, in the city's time zone
-  const when = q.get('time') ? Date.parse(q.get('time')) : Date.now();
   function lights(sun) {
     const day = sun.day;
     sunL.intensity = 2.8 * Math.max(Math.min(1, Math.sin(sun.alt) * 3), 0);
@@ -93,6 +98,7 @@ async function main() {
     depth: (x, north) => env.u.tide.value - terrainHeight(d, x, north), // water depth, m (negative on land)
     toScene: (x, up, north) => new THREE.Vector3(x, up, -north),      // local frame (east, up, north) -> three.js
     decks: [],                                                        // (x, north) -> deck height or null: pontoons, jetties (boats.js)
+    clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
   for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
     try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }
@@ -117,6 +123,7 @@ async function main() {
     } else ctx.controller.update(dt, now / 1000);
     for (const u of ctx.updaters) u(dt, now / 1000);
     env.u.time.value = (q.get('freeze') ? Number(q.get('freeze')) : now / 1000);
+    env.u.tide.value = tideNow();
     ripples.update(env.u.time.value);
     terrain.update(camera.position);
     ocean.update(camera.position);
@@ -125,7 +132,8 @@ async function main() {
     if (post) post.render(); else renderer.render(scene, camera);
     if (++frames === 3) { $('load').classList.add('done'); window.__ready = true; }
     const gx = terrainHeight(d, camera.position.x, -camera.position.z);
-    $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}°`;
+    const tz = env.u.tide.value;
+    $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}° · tide ${tz >= 0 ? '+' : ''}${tz.toFixed(2)} m${tide && tideFixed === null ? (tide.rising(clockMs()) ? ' rising' : ' falling') : ''}`;
   };
   if (q.get('still')) { frame(1000); frame(1016); $('load').classList.add('done'); window.__ready = true; }  // for tests: one settled frame
   else renderer.setAnimationLoop(frame);
