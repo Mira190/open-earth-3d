@@ -1,9 +1,11 @@
 """Is the terrain right? Compare the city's DEM with an independent elevation
 source (city.json "terrain_check") at open land points: an ArcGIS identify endpoint
 sampled on a grid ("arcgis_identify"), surveyed spot heights from an ArcGIS
-feature layer ("arcgis_points", e.g. Vicmap Elevation for Melbourne), or GSI PNG
-tiles ("gsi_dem_png", a coarser, older Japanese DEM). Photogrammetric DEMs can be biased in street canyons, which
-would mis-set every building base and every shadow on the ground.
+feature layer ("arcgis_points", e.g. Vicmap Elevation for Melbourne), GSI PNG
+tiles ("gsi_dem_png", a coarser, older Japanese DEM) or GSI's elevation lookup
+("gsi_elevation_api", the 1 m laser DEM where flown). Photogrammetric DEMs can be
+biased in street canyons, which would mis-set every building base and every shadow
+on the ground.
 
     python analysis/dem_check.py --city sydney      # -> cities/<city>/analysis/dem_check.json
 """
@@ -24,6 +26,14 @@ from fetch_tiles import gsi_decode  # noqa: E402
 
 
 def identify(cfg, lon, lat):
+    if cfg["type"] == "gsi_elevation_api":  # GSI's own lookup, best source at each point (1 m laser where flown)
+        for _ in range(3):
+            try:
+                v = requests.get(cfg["url"], params=dict(lon=lon, lat=lat, outtype="JSON"), timeout=60).json().get("elevation")
+                return float(v) if isinstance(v, (int, float)) else None
+            except (requests.RequestException, ValueError):
+                continue
+        return None
     p = dict(geometry=f"{lon},{lat}", geometryType="esriGeometryPoint", sr=4326, layers="all", tolerance=0,
              mapExtent=f"{lon - 0.001},{lat - 0.001},{lon + 0.001},{lat + 0.001}", imageDisplay="100,100,96", returnGeometry="false", f="json")
     for _ in range(3):
@@ -78,8 +88,8 @@ def gsi_value(cfg, lon, lat):
 def main():
     C, _ = city_args(__doc__.splitlines()[0])
     chk = C.cfg.get("terrain_check")
-    if not chk or chk.get("type") not in ("arcgis_identify", "arcgis_points", "gsi_dem_png"):
-        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify, arcgis_points or gsi_dem_png in city.json")
+    if not chk or chk.get("type") not in ("arcgis_identify", "arcgis_points", "gsi_dem_png", "gsi_elevation_api"):
+        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify, arcgis_points, gsi_dem_png or gsi_elevation_api in city.json")
     dem = load_dem(C)
     B = json.load(open(os.path.join(C.out, "buildings.json")))
     img = Image.new("L", (dem.shape[1], dem.shape[0]), 0)

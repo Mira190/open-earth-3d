@@ -1,18 +1,15 @@
-"""Measured building heights and footprints from Project PLATEAU (MLIT, Japan's
-open 3D city models, CC BY 4.0 / PLATEAU site policy), for the 3rd-mesh files of
-the national CityGML archive that cover a city's bbox.
+"""PLATEAU CityGML backend for pipeline/fetch_plateau.py (city.json plateau.citygml): measured
+building heights, footprints, use and storeys from the 3rd-mesh files of a city's CityGML
+archive (MLIT Project PLATEAU, CC BY 4.0 / PLATEAU site policy) that cover the bbox.
 
-    python pipeline/fetch_plateau_citygml.py --city osaka        # -> data/raw/osaka/plateau_bldg.json
+The archive is over a gigabyte, so this reads only the mesh files inside the bbox out of the
+zip with HTTP range requests (pipeline/rangezip.py), and caches each one's buildings in
+data/raw/<city>/plateau/<mesh>.json.
 
-The CityGML archive is over a gigabyte, so this reads only the mesh files inside the
-bbox out of the zip with HTTP range requests (pipeline/rangezip.py).
-
-city.json:  "plateau": {"url": "<citygml zip>", "dataset": "...", "year": 2017, "licence": "..."}
-
-Each building row: [plateau_id, name, usage_code, measured_height_m, storeys, ground_z,
-solid_height_m, structure_code, survey_year, [lon, lat, lon, lat, ...]]
-measured_height_m is PLATEAU's measuredHeight where surveyed (else None); solid_height_m
-is the top of its LOD1 block above the ground, which every building has.
+A cached row: [plateau_id, name, usage_code, measured_height_m, storeys, ground_z,
+solid_height_m, structure_code, survey_year, [lon, lat, lon, lat, ...]]. measured_height_m is
+PLATEAU's measuredHeight where surveyed (else None); solid_height_m is the top of its LOD1
+block above the ground, which every building has.
 """
 import json
 import os
@@ -21,7 +18,6 @@ import time
 import zipfile
 from multiprocessing import Pool
 
-from cityctx import city_args
 from rangezip import RangeFile
 
 B = re.compile(r"<bldg:Building gml:id=.*?</bldg:Building>", re.S)
@@ -76,29 +72,33 @@ def one(args):
     return path, len(rows)
 
 
-def main():
-    C, _ = city_args(__doc__.splitlines()[0])
-    C.ensure_dirs()
-    cfg = C.cfg["plateau"]
-    w, s, e, n = C.cfg["bbox"]
-    z = zipfile.ZipFile(RangeFile(cfg["url"]))
+def feature(r):
+    """A cached row as a plateau.json feature: the surveyed height, else the LOD1 block's
+    (measured: false); None for a building with neither."""
+    pid, name, usage, mh, storeys, z0, lod1, _struct, year, ring = r
+    h = mh if mh is not None else lod1 if lod1 and lod1 > 2 else None
+    if h is None or len(ring) < 8:
+        return None
+    f = {"h": h, "rings": [[ring[k:k + 2] for k in range(0, len(ring), 2)]], "measured": mh is not None, "ground": z0}
+    f.update({k: v for k, v in (("id", pid), ("name", name), ("usage", usage), ("storeys", storeys), ("year", year)) if v})
+    return f
+
+
+def read(city, cfg):
+    w, s, e, n = city.cfg["bbox"]
+    z = zipfile.ZipFile(RangeFile(cfg["citygml"]))
     todo = []
     for info in z.infolist():
         if "/udx/bldg/" in info.filename and info.filename.endswith(".gml"):
             a = mesh_bounds(os.path.basename(info.filename)[:8])
             if a[0] < e and a[2] > w and a[1] < n and a[3] > s:
                 todo.append(info.filename)
-    cache = os.path.join(C.raw, "plateau")
+    cache = os.path.join(city.raw, "plateau")
     os.makedirs(cache, exist_ok=True)
     print(f"{len(todo)} mesh files cover the bbox")
-    jobs = [(cfg["url"], f, os.path.join(cache, os.path.basename(f)[:8] + ".json")) for f in todo]
+    jobs = [(cfg["citygml"], f, os.path.join(cache, os.path.basename(f)[:8] + ".json")) for f in todo]
     with Pool(4) as pool:
         done = pool.map(one, jobs, chunksize=1)
     rows = [r for p, _ in done for r in json.load(open(p))]
-    json.dump({"source": cfg.get("dataset"), "rows": rows}, open(os.path.join(C.raw, "plateau_bldg.json"), "w"), separators=(",", ":"), ensure_ascii=False)
-    got = sum(1 for r in rows if r[3] is not None)
-    print(f"plateau: {len(rows)} buildings, {got} with a measured height")
-
-
-if __name__ == "__main__":
-    main()
+    print(f"plateau: {len(rows)} buildings, {sum(1 for r in rows if r[3] is not None)} with a measured height")
+    return [f for f in map(feature, rows) if f]

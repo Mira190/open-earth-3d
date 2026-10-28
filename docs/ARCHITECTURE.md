@@ -28,7 +28,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Step | Script | Output |
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
-| Measured heights | `fetch_plateau_citygml.py` | `data/raw/<id>/plateau_bldg.json`: PLATEAU footprints with measured heights, from the mesh files of the national CityGML archive that cover the bbox (HTTP range reads, no full download) |
+| Measured heights | `fetch_plateau.py` (backends `plateau_citygml.py`, `plateau_3dtiles.py`, vector tiles) | `data/raw/<id>/plateau.json`: Project PLATEAU footprints with measured heights, from a city's CityGML or 3D Tiles zip (HTTP range reads of the parts inside the bbox, no full download) or a vector-tile mirror of the LOD2 roof faces |
 | Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer or an OGC WCS), and Terrarium tiles for the radar check |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |

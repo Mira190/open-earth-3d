@@ -30,6 +30,15 @@
       "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
     },
     {
+      "id": "kyoto",
+      "name": "Kyoto",
+      "country": "Japan",
+      "lat": 35.003,
+      "lon": 135.7625,
+      "status": "live",
+      "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people."
+    },
+    {
       "id": "new-york",
       "name": "New York",
       "country": "United States",
@@ -69,10 +78,10 @@
       "id": "tokyo",
       "name": "Tokyo",
       "country": "Japan",
-      "lat": 35.6812,
-      "lon": 139.7671,
-      "status": "planned",
-      "data": "Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles."
+      "lat": 35.67,
+      "lon": 139.759,
+      "status": "live",
+      "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower."
     },
     {
       "id": "hong-kong",

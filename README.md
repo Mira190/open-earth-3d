@@ -76,11 +76,12 @@ card, or go to `#play-osaka`.
 | **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
 | **Osaka**, Japan | **Live** | 73,280 buildings across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
+| **Kyoto**, Japan | **Live** | 65,749 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU. GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
+| **Tokyo**, Japan | **Live** | About 15,400 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
 | Paris, France | Planned | IGN RGE ALTI, BD ORTHO and BD TOPO heights |
 | Amsterdam, Netherlands | Planned | AHN LiDAR, PDOK imagery, 3D BAG heights |
-| Tokyo, Japan | Planned | Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles |
 | Hong Kong, China | Planned | Lands Department 3D spatial data and LiDAR DTM |
 | Singapore | Planned | OSM heights; open bare-earth DEM and imagery still to find |
 

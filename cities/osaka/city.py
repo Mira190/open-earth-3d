@@ -169,7 +169,7 @@ def adjust_building(b, cls, g, geoms, ctx):
         # the parametric batter, so people and helicopters collide with it
         c, ang, long_, short_ = rect_of(g)
         pl = ctx.plateau.named("大阪城天守閣")       # ground 31.7 m T.P. under the keep, surveyed for PLATEAU
-        z0 = float(pl[5]) if pl else ctx.ground(*c)
+        z0 = float(pl["ground"]) if pl and pl.get("ground") is not None else ctx.ground(*c)
         lm["castle"] = {"centroid": [round(c[0], 1), round(c[1], 1)], "axis_deg": round(math.degrees(ang), 2), "ground_m": round(z0, 1),
                         "osm_long_m": round(long_, 1), "osm_short_m": round(short_, 1)}
         inner = g.minimum_rotated_rectangle.buffer(-3.0)

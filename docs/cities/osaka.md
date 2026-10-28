@@ -48,7 +48,7 @@ neighbourhoods, boats and people that belong to it.
 | Part | How |
 |---|---|
 | Footprints | Overture Maps, release 2026-10-21.0 (OpenStreetMap, ODbL) |
-| Heights | Project PLATEAU, Osaka City 2020 CityGML (survey year 2017), read by `pipeline/fetch_plateau_citygml.py` |
+| Heights | Project PLATEAU, Osaka City 2020 CityGML (survey year 2017), read by `pipeline/fetch_plateau.py` (the `citygml` backend, `pipeline/plateau_citygml.py`) |
 | Terrain | GSI DEM5A, 5 m airborne laser, bare earth; the 10 m DEM fills gaps |
 | Imagery | GSI seamless aerial photographs, zoom 17 |
 | Landmarks | `cities/osaka/city.py`, from published figures |
@@ -63,7 +63,7 @@ per-city game flavour.
 
 The national CityGML archive for Osaka is 1.3 GB. A city only needs a few of
 its 3,900 mesh files: 48 here. `pipeline/rangezip.py` reads a
-zip over HTTP range requests, so `fetch_plateau_citygml.py` fetches the central
+zip over HTTP range requests, so `plateau_citygml.py` fetches the central
 directory, picks the 3rd-mesh files whose bounds meet the bbox, and parses
 each building's footprint, `measuredHeight`, storey count and LOD1 block with
 regular expressions (a 50 MB XML file in about 7 s). It runs in about a
@@ -288,7 +288,7 @@ test hook.
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
   python pipeline/fetch_overture.py --city osaka
 python pipeline/fetch_tiles.py --city osaka
-python pipeline/fetch_plateau_citygml.py --city osaka
+python pipeline/fetch_plateau.py --city osaka
 python pipeline/build_scene.py --city osaka
 python pipeline/landmarks.py --city osaka
 python analysis/heights.py --city osaka

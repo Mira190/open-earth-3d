@@ -44,9 +44,9 @@
     "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey, with the 10 m DEM where it has gaps (GSI terms of use, compatible with CC BY 4.0)"
   },
   "plateau": {
-    "url": "https://gsic-opendata.s3.ap-northeast-1.amazonaws.com/national-gov/mlit/city-bureau/3d-city-model/2020/plateau-27100-osaka-shi-2020/27100_osaka-shi_2020_citygml_4_op.zip",
-    "dataset": "Project PLATEAU, Osaka City 3D city model 2020 (MLIT; CityGML v2; building survey 2017)",
-    "licence": "PLATEAU site policy (compatible with CC BY 4.0)"
+    "citygml": "https://gsic-opendata.s3.ap-northeast-1.amazonaws.com/national-gov/mlit/city-bureau/3d-city-model/2020/plateau-27100-osaka-shi-2020/27100_osaka-shi_2020_citygml_4_op.zip",
+    "attribution": "Project PLATEAU, Osaka City 3D city model 2020 (MLIT; CityGML v2; building survey 2017), PLATEAU site policy (compatible with CC BY 4.0)",
+    "add_min_m2": 8
   },
   "water": {
     "classes": [
@@ -1154,7 +1154,7 @@
     ],
     "blurb": "Walk Dotonbori, Kuromon and Shinsekai, take the Tombori River Cruise and the Aqua Liner, climb to the keep of Osaka Castle and fly over Umeda. Talk to the people who know the city. Every fact they tell you comes from the model.",
     "local_name": "Osakan",
-    "water_name": "canal"
+    "water_name": "the canal"
   },
   "storey_note": "Calibrated on Project PLATEAU: 118,782 non-residential and 11,163 residential buildings with a storey count and a measured height have a median of 3.4 m and 3.6 m a floor, with no constant term.",
   "night_ambient": 0.5

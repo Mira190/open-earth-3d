@@ -34,6 +34,17 @@
   "game": true
  },
  {
+  "id": "kyoto",
+  "name": "Kyoto",
+  "country": "Japan",
+  "lat": 35.003,
+  "lon": 135.7625,
+  "status": "live",
+  "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
+  "built": true,
+  "game": true
+ },
+ {
   "id": "new-york",
   "name": "New York",
   "country": "United States",
@@ -81,12 +92,12 @@
   "id": "tokyo",
   "name": "Tokyo",
   "country": "Japan",
-  "lat": 35.6812,
-  "lon": 139.7671,
-  "status": "planned",
-  "data": "Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles.",
-  "built": false,
-  "game": false
+  "lat": 35.67,
+  "lon": 139.759,
+  "status": "live",
+  "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower.",
+  "built": true,
+  "game": true
  },
  {
   "id": "hong-kong",

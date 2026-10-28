@@ -20,6 +20,27 @@ window.OEPeople = (function () {
   // how common each character is in a city crowd
   const WEIGHT = { M_Casual2: 3, M_Hoodie: 2, M_Suit: 2, M_Worker: 0.8, M_Beach: 1, M_Adventurer: 1, M_Punk: 0.4,
     W_Casual: 3, W_Formal: 1.5, W_Suit: 2, W_Worker: 0.8, W_Adventurer: 1, W_Punk: 0.4 };
+  // named crowd styles (city.json game.crowd.style: "tokyo"): skin, hair and clothes palettes and
+  // how common each character is. HAIR holds nine natural colours, then the greys and dyes that
+  // 15% of people wear; a style's own hair list is drawn from as it is.
+  const STYLES = {
+    tokyo: {
+      skin: ['#f6d8c6', '#f3cfb5', '#f0c7aa', '#efc6a8', '#e9bf9d', '#e9bf9d', '#e3b08d', '#d49c76', '#c18661', '#8f5b3d'],
+      hair: ['#141010', '#141010', '#17120f', '#1b1512', '#1b1512', '#231915', '#231915', '#33241b', '#4a3222', '#8c8580', '#cfcac4', '#8d6339', '#b48a52'],
+      // dark suits, navy school blazers, white shirts, beige trench coats: Tokyo dresses quietly
+      tops: ['#1f2328', '#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#c9c6bd', '#355c7d', '#4a4f57', '#7a4e8f', '#c94f3d', '#e4b7b2'],
+      legs: ['#1b1d22', '#1b1d22', '#1d1f24', '#2b3440', '#24384f', '#33415c', '#4b5563', '#c7b89a', '#3a3026'],
+      weights: { M_Casual2: 2, M_Hoodie: 1.5, M_Suit: 4.5, M_Worker: 0.7, M_Beach: 0.2, M_Adventurer: 0.8, M_Punk: 0.15,
+        W_Casual: 3, W_Formal: 2.5, W_Suit: 3.5, W_Worker: 0.6, W_Adventurer: 0.8, W_Punk: 0.15 },
+    },
+  };
+  STYLES.kyoto = Object.assign({}, STYLES.tokyo, {
+    tops: ['#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#46604f', '#8a2f39', '#5b6b7a', '#c9c2b5', '#7a4e8f'],
+  });
+  let STYLE = null;
+  const styleOf = s => (typeof s === 'string' ? STYLES[s] || null : s || null);
+  // the city's crowd style (a preset's name or a style object), for every look drawn without its own
+  function setStyle(s) { STYLE = styleOf(s); }
   const CLS = { keep: 0, skin: 1, hair: 2, brows: 3, top: 4, legs: 5 };
 
   // ------------------------------------------------------------ local flavour: patterns and accessories
@@ -132,11 +153,12 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   }
 
   // a random look for a character: skin, hair, clothes and height
-  // style (optional, per city): { skin, hair, tops, legs: [hex], weights: {name: n}, scale: [min, max],
-  // patterns: {tiger: p, leopard: p, ...}, acc: {mask: p, ...} }; every field is optional
+  // style (optional, per city): a preset's name (STYLES) or { skin, hair, tops, legs: [hex], weights: {name: n},
+  // scale: [min, max], patterns: {tiger: p, leopard: p, ...}, acc: {mask: p, ...} }; every field is optional.
+  // Without one, the style setStyle() chose.
   const PAT_TOP = { tiger: '#f6c500', leopard: '#c9a66b', kuidaore: '#d9262c', pinstripe: '#23262e', plaid: '#6e3a2a' };
   function randomLook(lib, name, style) {
-    const ch = lib.info.characters[name], w = ch.pack === 'W', st = style || {};
+    const ch = lib.info.characters[name], w = ch.pack === 'W', st = styleOf(style) || STYLE || {};
     const skin = st.skin || SKIN, hair = st.hair || HAIR;
     const look = { character: name, skin: pick(skin), hair: st.hair ? pick(hair) : rnd() < 0.15 ? pick(HAIR.slice(8)) : pick(HAIR.slice(0, 9)), top: pick(st.tops || TOPS), legs: pick(st.legs || LEGS),
       scale: st.scale ? st.scale[0] + rnd() * (st.scale[1] - st.scale[0]) - (w ? 0.055 : 0) : (w ? 0.885 : 0.94) + rnd() * 0.06 };
@@ -148,9 +170,10 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     return look;
   }
   function pickCharacter(lib, style) {
-    const names = lib.names, wt = (style && style.weights) || WEIGHT, tot = names.reduce((a, n) => a + (wt[n] != null ? wt[n] : (style && style.weights ? 0 : 1)), 0);
+    const st = styleOf(style) || STYLE, own = !!(st && st.weights), wt = own ? st.weights : WEIGHT;
+    const names = lib.names, tot = names.reduce((a, n) => a + (wt[n] != null ? wt[n] : own ? 0 : 1), 0);
     let r = rnd() * tot;
-    for (const n of names) { r -= wt[n] != null ? wt[n] : (style && style.weights ? 0 : 1); if (r <= 0) return n; }
+    for (const n of names) { r -= wt[n] != null ? wt[n] : own ? 0 : 1; if (r <= 0) return n; }
     return names[0];
   }
 
@@ -453,5 +476,5 @@ transformed = crowdPose(transformed, false);`);
     return { begin, place, hide, end, meshes, active };
   }
 
-  return { load, person, randomLook, pickCharacter, crowdRenderer, colours };
+  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle };
 })();

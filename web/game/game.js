@@ -40,8 +40,8 @@ window.OpenEarthGame = async function game(cityId) {
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
   $('#gt-title').textContent = G.title;
-  $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
   if (G.blurb) $('#gt-blurb').textContent = G.blurb;
+  $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
   const stage = $('#game-stage'), canvas = $('#game-gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -189,12 +189,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   let lib = null;
   try {
     lib = await OEPeople.load('assets/people/');
+    if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
     await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
   const CR = G.crowd || {};
-  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style || (CR.palette || CR.weights ? Object.assign({}, CR.palette, { weights: CR.weights }) : undefined) })));
+  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })));
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100);
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
@@ -216,7 +217,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     world.add(rig.root);
     const f = nav.floorAt(n.at[0], n.at[1], 200);
     const o = Object.assign({}, n, { rig, x: n.at[0], y: n.at[1], z: f ? f.z : 0, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
-      marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", sans-serif' }) });
+      marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
     o.marker.position.set(0, 2.45, 0);
     rig.root.add(o.marker);
@@ -298,7 +299,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     const w = G.wharves.reduce((a, q) => (Math.hypot(q.terminal[0] - x, q.terminal[1] - y) < (a ? Math.hypot(a.terminal[0] - x, a.terminal[1] - y) : 400) ? q : a), null);
     if (w) { const e = nextFerry(w.id); if (e) opts.push(`The next ferry from ${w.name} is ${e.v.name}, ${e.t < 5 ? 'boarding now' : `in ${fmtSec(e.t)}`}.`); }
-    opts.push(...(G.smalltalk || ['G\'day.', 'Lovely spot, isn\'t it?']));
+    opts.push(...(G.smalltalk || [G.greeting || 'G\'day.', 'Lovely spot, isn\'t it?']));
     return opts[Math.floor(Math.random() * opts.length)];
   }
 
@@ -995,7 +996,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
-      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in the ${G.water_name || 'water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
+      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in ${G.water_name || 'the water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
     }
     if (!moved) player.speed *= 0.5;
     const f = nav.floorAt(player.x, player.y, player.z);

@@ -256,7 +256,7 @@
   "game": {
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
-    "water_name": "harbour",
+    "water_name": "the harbour",
     "under_bridge_note": "49 m of clearance, and you used it.",
     "shade_landmarks": ["opera", "sydney_tower"],
     "ferry_style": {"length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
