@@ -19,7 +19,24 @@
   "status": "live",
   "viewer": "reef/index.html",
   "summary": "The Whitsunday Islands and the inner Great Barrier Reef: 30 m survey bathymetry, a Sentinel-2 sea floor, caustics, wet sand and a swash line. Walk Whitehaven Beach, snorkel, dive.",
-  "built": true
+  "group": "Great Barrier Reef",
+  "tagline": "Whitehaven Beach, Hill Inlet and the Whitsunday Passage",
+  "built": true,
+  "game": false
+ },
+ {
+  "id": "hardy-reef",
+  "name": "Hardy Reef",
+  "country": "Australia",
+  "lat": -19.76,
+  "lon": 149.2,
+  "status": "live",
+  "viewer": "reef/index.html",
+  "group": "Great Barrier Reef",
+  "tagline": "Heart Reef and the Reefworld pontoon, outer reef",
+  "summary": "Hardy Reef on the outer Great Barrier Reef: Heart Reef, the Reefworld pontoon on the channel wall, and Hook, Line and Bait reefs, from 30 m survey bathymetry and Sentinel-2. No land: start in the water by the pontoon and dive the wall.",
+  "built": true,
+  "game": false
  },
  {
   "id": "melbourne",

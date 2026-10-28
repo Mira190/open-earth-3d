@@ -42,6 +42,8 @@ WORLDCOVER = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map
 # classes in habitat.png
 HABITAT = {0: "deep water", 1: "sand", 2: "reef and rock", 3: "seagrass and algae", 4: "rubble",
            10: "forest", 11: "shrub", 12: "grass", 13: "beach and bare", 14: "mangrove", 15: "built", 16: "wetland"}
+# mean blue and green sand albedo of the Whitsundays fit, where the habitat thresholds were set
+SAND_REF = (0.11692885860398156 + 0.1754119184624704) / 2
 
 
 def reproj(path, dst_tf, shape, crs, resampling, nodata=None, band=1):
@@ -115,6 +117,8 @@ def main():
     px = float(s2["pixel_m"])
     tf10 = from_origin(city.x0, city.y1, px, px)
     bathy = os.path.join(city.raw, "bathy.tif")
+    with rasterio.open(bathy) as b:
+        grid_letter = b.tags().get("GBR_GRID")  # fetch_gbr_bathy.py tags the crop with its source grid
 
     # ---- terrain at 30 m, in the local frame
     cell = cfg["terrain"]["pixel_m"]
@@ -197,7 +201,13 @@ def main():
     # ---- habitat: an inference from the floor's colour and depth, not a survey. Dark floors in
     # shallow water are hard substrate with coral and algae; bright ones are sand; a green cast on
     # a mid-tone floor is seagrass or algae. The Allen Coral Atlas maps this properly.
-    bright = (A_r + A_g + A_b) / 3
+    # The thresholds were set on the Whitsundays floors. Where the inverted floor reads brighter or darker
+    # overall (other water, a carbonate reef flat instead of mud and silica sand), they are scaled by the
+    # scene's own fitted sand albedo, so a class boundary stays at the same share of sand brightness:
+    # k = 1 for the Whitsundays, about 1.4 at Hardy Reef, where the unscaled thresholds left 1% of the
+    # shallow floor as reef.
+    k_hab = (optics["blue"]["sand_albedo"] + optics["green"]["sand_albedo"]) / 2 / SAND_REF
+    bright = (A_r + A_g + A_b) / 3 / k_hab
     gb = A_g / (A_b + 1e-3)
     hab = np.zeros((H, W), np.uint8)
     sea = water & (depth < 25)
@@ -214,7 +224,7 @@ def main():
     hab[sandy_land] = 13
     Image.fromarray(hab).save(os.path.join(city.out, "habitat.png"), optimize=True)
     share = {HABITAT[k]: round(float((hab == k).mean()), 4) for k in HABITAT if (hab == k).any()}
-    print("habitat share", share)
+    print("habitat share", share, "thresholds scaled by %.3f" % k_hab)
 
     # ---- a check the inversion has to pass: the brightest floor (sand) should have the same
     # albedo at every depth once the water is taken out. Raw reflectance falls with depth;
@@ -234,7 +244,7 @@ def main():
                     "spread_inverted_pct": float(100 * (max(inv) - min(inv)) / np.mean(inv))}
         print(k, "sand brightness spread across 1-15 m: raw %.0f%% -> inverted %.0f%%" % (check[k]["spread_raw_pct"], check[k]["spread_inverted_pct"]))
     json.dump({"band": optics, "g": G, "scenes": json.loads(str(s2["scenes"])),
-               "depth_check": check, "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
+               "depth_check": check, "habitat_scale": k_hab, "habitat_share": share, "terrain_grid": grid_letter, "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
               open(os.path.join(city.analysis, "optics.json"), "w"), indent=1)
     scene = {
         "id": city.id, "name": cfg["name"], "kind": "marine", "origin": cfg["origin"], "timezone": cfg["timezone"],
