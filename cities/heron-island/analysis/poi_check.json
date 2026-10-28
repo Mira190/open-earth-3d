@@ -1,0 +1,118 @@
+{
+ "note": "POIs sampled on the built 30 m terrain and 10 m habitat (pipeline/check_marine.py)",
+ "rows": [
+  {
+   "id": "heron-island",
+   "kind": "island",
+   "src": "osm",
+   "x": -10,
+   "y": 1399,
+   "ok": true,
+   "note": "ground 3.0 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "heron-beach",
+   "kind": "beach",
+   "src": "osm",
+   "x": 0,
+   "y": 1532,
+   "ok": true,
+   "note": "ground 1.1 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "heron-jetty",
+   "kind": "marina",
+   "src": "osm",
+   "x": -475,
+   "y": 1433,
+   "ok": true,
+   "note": "height -3.0 m, within 300 m -7.8..3.0 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "heron-helipad",
+   "kind": "helipad",
+   "src": "osm",
+   "x": -360,
+   "y": 1465,
+   "ok": true,
+   "note": "ground 2.4 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "protector-wreck",
+   "kind": "cultural",
+   "src": "osm",
+   "x": -636,
+   "y": 1336,
+   "ok": true,
+   "note": "height -3.4 m",
+   "habitat": "seagrass and algae"
+  },
+  {
+   "id": "research-station",
+   "kind": "cultural",
+   "src": "osm",
+   "x": -138,
+   "y": 1360,
+   "ok": true,
+   "note": "height 3.0 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "heron-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": 4248,
+   "y": 470,
+   "ok": true,
+   "note": "depth 2.3 m, 90 m around 1.9..4.0 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "wistari-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": -3387,
+   "y": -1645,
+   "ok": true,
+   "note": "depth 3.4 m, 90 m around 2.2..3.5 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "heron-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -483,
+   "y": 1025,
+   "ok": true,
+   "note": "depth 8.1 m",
+   "habitat": "reef and rock",
+   "boats_go_to": [
+    -483,
+    1025,
+    0
+   ]
+  },
+  {
+   "id": "south-west-gate",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -9000,
+   "y": -6500,
+   "ok": true,
+   "note": "depth 29.3 m",
+   "habitat": "deep water"
+  },
+  {
+   "id": "spawn",
+   "kind": "spawn",
+   "x": 0,
+   "y": 1518,
+   "ok": true,
+   "note": "ground 1.9 m, heading 0"
+  }
+ ]
+}

@@ -35,6 +35,42 @@
       "summary": "Hardy Reef on the outer Great Barrier Reef: Heart Reef, the Reefworld pontoon on the channel wall, and Hook, Line and Bait reefs, from 30 m survey bathymetry and Sentinel-2. No land: start in the water by the pontoon and dive the wall."
     },
     {
+      "id": "green-island",
+      "name": "Green Island",
+      "country": "Australia",
+      "lat": -16.759,
+      "lon": 145.974,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "Coral cay off Cairns, with Arlington Reef and Michaelmas Cay",
+      "summary": "Green Island, a coral cay 27 km off Cairns, with Arlington Reef, Upolu Cay and Michaelmas Cay: survey bathymetry, a seam-free Sentinel-2 sea floor and MSQ's tide. Walk the beach by the jetty, snorkel the reef flat."
+    },
+    {
+      "id": "heron-island",
+      "name": "Heron Island",
+      "country": "Australia",
+      "lat": -23.442,
+      "lon": 151.915,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "Coral cay on the Tropic of Capricorn, with Wistari Reef",
+      "summary": "Heron Island and Heron and Wistari reefs in the southern Great Barrier Reef: the cay rebuilt from its mapped outline, the reef flat drying at low tide, the research station and the wreck of HMCS Protector at the channel."
+    },
+    {
+      "id": "lady-elliot-island",
+      "name": "Lady Elliot Island",
+      "country": "Australia",
+      "lat": -24.113,
+      "lon": 152.715,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "The southernmost coral cay of the reef",
+      "summary": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef: its platform reef in open water, the airstrip and old lighthouse, from survey bathymetry and Sentinel-2. Start on the western beach."
+    },
+    {
       "id": "melbourne",
       "name": "Melbourne",
       "country": "Australia",
