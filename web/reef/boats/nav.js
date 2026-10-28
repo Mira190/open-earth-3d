@@ -33,14 +33,31 @@ export function createNav(ctx, CELL = (ctx.S.harbour && ctx.S.harbour.nav_cell) 
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) nav[j * nx + i] = (ok(i, j) && ok(i + 1, j) && ok(i - 1, j) && ok(i, j + 1) && ok(i, j - 1)) ? 1 : 0;
   const cell = (x, n) => [Math.floor((x - x0) / CELL), Math.floor((y1 - n) / CELL)];
   const isNav = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && nav[j * nx + i] === 1;
+  // the open water: the largest 8-connected body of navigable cells; a pocket cut off from it (a lagoon behind a reef
+  // edge, a hole the tide opens) is no place to start or end a route
+  const comp = new Int32Array(nx * ny).fill(-1), sizes = [];
+  for (let k0 = 0; k0 < nx * ny; k0++) {
+    if (!nav[k0] || comp[k0] >= 0) continue;
+    const id = sizes.length, stack = [k0]; comp[k0] = id; let n = 0;
+    while (stack.length) {
+      const k = stack.pop(), i = k % nx, j = (k - i) / nx; n++;
+      for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+        const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= nx || b >= ny) continue;
+        const kk = b * nx + a; if (nav[kk] && comp[kk] < 0) { comp[kk] = id; stack.push(kk); }
+      }
+    }
+    sizes.push(n);
+  }
+  const main = sizes.length ? sizes.indexOf(Math.max(...sizes)) : -1;
+  const isOpen = (i, j) => isNav(i, j) && comp[j * nx + i] === main;
 
-  // nearest navigable cell centre to a point (spiral ring search)
+  // nearest navigable cell centre to a point (spiral ring search), in the open water
   function snap(x, n, maxR = 60) {
     const [ci, cj] = cell(x, n);
     for (let r = 0; r <= maxR; r++) {
       let best = null, bd = 1e18;
       for (let j = cj - r; j <= cj + r; j++) for (let i = ci - r; i <= ci + r; i++) {
-        if (Math.max(Math.abs(i - ci), Math.abs(j - cj)) !== r || !isNav(i, j)) continue;
+        if (Math.max(Math.abs(i - ci), Math.abs(j - cj)) !== r || !isOpen(i, j)) continue;
         const d = (cx(i) - x) ** 2 + (cy(j) - n) ** 2; if (d < bd) { bd = d; best = [cx(i), cy(j)]; }
       }
       if (best) return best;
