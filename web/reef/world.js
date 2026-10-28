@@ -12,8 +12,15 @@ export async function loadScene(base) {
   const raw = new Int16Array(await (await fetch(base + t.file)).arrayBuffer());
   const heights = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) heights[i] = raw[i] * t.units_m;
-  const img = await new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = base + scene.ground.file; });
-  return { scene, heights, img };
+  const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
+  const img = await loadImg(base + scene.ground.file);
+  // the habitat classes: one byte per ground pixel, read back from the PNG
+  const hi = await loadImg(base + scene.habitat.file);
+  const cv = document.createElement('canvas'); cv.width = hi.width; cv.height = hi.height;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(hi, 0, 0);
+  const px = cx.getImageData(0, 0, hi.width, hi.height).data, habitat = new Uint8Array(hi.width * hi.height);
+  for (let i = 0; i < habitat.length; i++) habitat[i] = px[i * 4];
+  return { scene, heights, img, habitat };
 }
 
 // the local frame (x east, y north, z up) is drawn at (x, z, -y)
@@ -143,4 +150,11 @@ export function createTerrain(d, env, renderer) {
   abyss.position.y = -150;
   mesh.add(abyss);
   return { group: mesh, update, material: mat };
+}
+
+// the habitat class under a point (local frame: x east, north); see HABITAT in pipeline/build_marine.py
+export function habitatAt(d, x, north) {
+  const g = d.scene.ground, i = Math.floor((x - d.scene.terrain.x0) / g.px_m), j = Math.floor((d.scene.terrain.y1 - north) / g.px_m);
+  if (i < 0 || j < 0 || i >= g.w || j >= g.h) return 0;
+  return d.habitat[j * g.w + i];
 }

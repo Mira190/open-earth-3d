@@ -192,6 +192,28 @@ def main():
     img = (srgb(rgb) * 255 + 0.5).astype(np.uint8)
     Image.fromarray(img).save(os.path.join(city.out, "ground.jpg"), quality=88, optimize=True)
 
+    # ---- habitat: an inference from the floor's colour and depth, not a survey. Dark floors in
+    # shallow water are hard substrate with coral and algae; bright ones are sand; a green cast on
+    # a mid-tone floor is seagrass or algae. The Allen Coral Atlas maps this properly.
+    bright = (A_r + A_g + A_b) / 3
+    gb = A_g / (A_b + 1e-3)
+    hab = np.zeros((H, W), np.uint8)
+    sea = water & (depth < 25)
+    hab[sea] = 4
+    hab[sea & (bright >= 0.105)] = 1
+    hab[sea & (bright < 0.10) & (bright >= 0.06) & (gb > 1.45)] = 3
+    hab[sea & (bright < 0.06)] = 2
+    hab[water & (depth >= 25)] = 0
+    hab = ndimage.median_filter(hab, size=3)
+    lc = {10: 10, 20: 11, 30: 12, 40: 12, 50: 15, 60: 13, 90: 16, 95: 14, 100: 11}
+    for k, v in lc.items():
+        hab[~water & (wc == k)] = v
+    sandy_land = ~water & (srgb(land_rgb).mean(-1) > 0.62) & (z10 < 5)
+    hab[sandy_land] = 13
+    Image.fromarray(hab).save(os.path.join(city.out, "habitat.png"), optimize=True)
+    share = {HABITAT[k]: round(float((hab == k).mean()), 4) for k in HABITAT if (hab == k).any()}
+    print("habitat share", share)
+
     json.dump({"band": optics, "g": G, "scenes": json.loads(str(s2["scenes"])),
                "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
               open(os.path.join(city.analysis, "optics.json"), "w"), indent=1)
@@ -200,6 +222,7 @@ def main():
         "extent_m": cfg["extent_m"], "vertical_datum": cfg.get("vertical_datum"),
         "terrain": {"file": "terrain.bin", "w": tw, "h": th, "cell_m": cell, "x0": city.x0, "y1": city.y1, "units_m": 0.1},
         "ground": {"file": "ground.jpg", "w": W, "h": H, "px_m": px},
+        "habitat": {"file": "habitat.png", "classes": HABITAT},
         "optics": {"K": [kd["red"], kd["green"], kd["blue"]],
                    "Rinf": [float(np.median(rinf[k])) for k in ("red", "green", "blue")], "g": G},
         "sources": {"terrain": cfg["terrain"]["attribution"], "imagery": cfg["imagery"]["attribution"],

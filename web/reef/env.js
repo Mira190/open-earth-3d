@@ -8,7 +8,7 @@
 // Rinf and K come from the Sentinel-2 imagery, so a render from above reproduces the satellite.
 import * as THREE from 'three/webgpu';
 import { Fn, uniform, float, vec2, vec3, vec4, exp, max, min, abs, mix, length, normalize, dot, select,
-  sin, cos, pow, clamp, smoothstep, sqrt, positionWorld, cameraPosition, texture } from 'three/tsl';
+  sin, cos, pow, clamp, smoothstep, sqrt, positionWorld, cameraPosition, texture, mx_noise_float } from 'three/tsl';
 
 const TAU = Math.PI * 2;
 let seed = 7;
@@ -20,8 +20,8 @@ export function makeWaves(windDeg = 120, sheltered = 0.5) {
   seed = 7;
   const bands = [
     { n: 4, l: [38, 90], slope: [0.010, 0.018], spread: 25, disp: true },   // swell (sheltered inside the outer reef)
-    { n: 8, l: [4, 18], slope: [0.035, 0.060], spread: 45, disp: true },    // wind chop
-    { n: 10, l: [0.25, 1.6], slope: [0.07, 0.13], spread: 80, disp: false } // ripples: normals, caustics, glitter
+    { n: 9, l: [3, 18], slope: [0.035, 0.060], spread: 60, disp: true },    // wind chop
+    { n: 16, l: [0.3, 2.2], slope: [0.05, 0.10], spread: 150, disp: false } // ripples: normals, caustics, glitter
   ];
   const waves = [];
   for (const b of bands) {
@@ -69,6 +69,31 @@ export function createEnv(scene, optics, waves) {
     return c.mul(float(1).sub(u.night.mul(0.97)));
   });
 
+  // ---- caustics: the sun's light focused by the wave field. A ray that crosses the surface where the
+  // water's curvature is positive is bent toward its neighbours; the density of rays on the floor is
+  // 1 / |det J|, with J = I - c D H (H the Hessian of the surface height, D the depth, c = 1 - 1/n).
+  // The same wave bank as the surface, so the pattern follows the visible ripples and sharpens
+  // with depth until the web of lines smears out.
+  const caustic = Fn(([P]) => {
+    const D = u.tide.sub(P.y).max(0);
+    const slant = sqrt(max(float(1).sub(u.sunDir.y.mul(u.sunDir.y)), 1e-4)).div(max(u.sunDir.y, 0.15)).mul(0.75); // tan of the refracted ray
+    const sxz = vec2(u.sunDir.x, u.sunDir.z).div(sqrt(max(float(1).sub(u.sunDir.y.mul(u.sunDir.y)), 1e-4)));
+    const xs = vec2(P.x, P.z).add(sxz.mul(D.mul(slant)));
+    let hxx = float(0), hzz = float(0), hxz = float(0);
+    for (const w of waves) {
+      if (w.lam > 20) continue;
+      const ph = xs.x.mul(w.dx * w.k).add(xs.y.mul(w.dz * w.k)).sub(u.time.mul(w.w)).add(w.ph);
+      const m = sin(ph).mul(float(-w.a * w.k * w.k).mul(w.disp ? u.wind : float(1)));
+      hxx = hxx.add(m.mul(w.dx * w.dx)); hzz = hzz.add(m.mul(w.dz * w.dz)); hxz = hxz.add(m.mul(w.dx * w.dz));
+    }
+    const cD = D.mul(0.25);
+    const det = float(1).sub(cD.mul(hxx)).mul(float(1).sub(cD.mul(hzz))).sub(cD.mul(cD).mul(hxz).mul(hxz));
+    const I = clamp(float(1).div(abs(det).add(0.3)), 0, 3.2);
+    const fadeD = exp(D.negate().div(11)).mul(smoothstep(0.0, 0.25, D));
+    const sunUp = smoothstep(0.02, 0.25, u.sunDir.y);
+    return mix(float(1), I.mul(0.62), fadeD.mul(0.85).mul(sunUp));
+  });
+
   // ---- water column
   // returns the colour of `col`, seen from the camera, after the air and the water between
   const medium = Fn(([col, P]) => {
@@ -88,7 +113,10 @@ export function createEnv(scene, optics, waves) {
     const g = float(1).add(u.lightPath.mul(nu)).max(0.15);
     const veil = u.Rinf.mul(u.white).mul(exp(u.K.mul(dC.mul(u.lightPath)).negate())).mul(float(1).sub(exp(u.K.mul(Lw).mul(g).negate())));
     // sunlit caustic modulation lives in the materials; the water only dims and veils
-    let out = col.mul(lightAtt).mul(T).add(veil.mul(select(frac.greaterThan(0), float(1), float(0)))).toVar();
+    // looking along the water the sea is brighter than the nadir reflectance the satellite sees:
+    // the radiance just under the surface is n^2 higher, and sideways light is about twice nadir
+    const boost = select(dC.greaterThan(0), float(3.6), float(1));
+    let out = col.mul(lightAtt).mul(T).mul(mix(float(1), caustic(P), select(dP.greaterThan(0), float(1), float(0)))).add(veil.mul(boost).mul(select(frac.greaterThan(0), float(1), float(0)))).toVar();
     // air: aerial perspective toward the sky colour
     const a = float(1).sub(exp(La.mul(u.haze).negate()));
     out.assign(mix(out, sky(normalize(d).mul(vec3(1, 0.4, 1)).normalize()).mul(0.9), a.mul(select(frac.lessThan(1), float(1), float(0)))));
@@ -97,7 +125,7 @@ export function createEnv(scene, optics, waves) {
 
   // the last reach of the swash: a little above the tide, breathing with the sets of waves
   const swash = u.tide.add(0.35).add(sin(u.time.mul(0.62)).mul(0.12)).add(sin(u.time.mul(0.23).add(1.3)).mul(0.1));
-  return { u, sky, medium, waves, scene, swash };
+  return { u, sky, medium, caustic, waves, scene, swash };
 }
 
 // ---- the sun for the model's own clock

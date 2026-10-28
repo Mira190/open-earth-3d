@@ -29,6 +29,23 @@
   "h": 3320,
   "px_m": 10.0
  },
+ "habitat": {
+  "file": "habitat.png",
+  "classes": {
+   "0": "deep water",
+   "1": "sand",
+   "2": "reef and rock",
+   "3": "seagrass and algae",
+   "4": "rubble",
+   "10": "forest",
+   "11": "shrub",
+   "12": "grass",
+   "13": "beach and bare",
+   "14": "mangrove",
+   "15": "built",
+   "16": "wetland"
+  }
+ },
  "optics": {
   "K": [
    0.4,

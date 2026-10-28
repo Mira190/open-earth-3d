@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { loadScene, createTerrain, heightTexture, terrainHeight } from './world.js';
+import { loadScene, createTerrain, heightTexture, terrainHeight, habitatAt } from './world.js';
 import { makeWaves, createEnv, setSun } from './env.js';
 import { createOcean } from './ocean.js';
 
@@ -73,10 +73,22 @@ async function main() {
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
+  // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
+  const ctx = { THREE, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null,
+    height: (x, north) => terrainHeight(d, x, north),                 // sea-floor / ground elevation, m above datum
+    habitat: (x, north) => habitatAt(d, x, north),                    // class under a point, see HABITAT
+    depth: (x, north) => env.u.tide.value - terrainHeight(d, x, north), // water depth, m (negative on land)
+    toScene: (x, up, north) => new THREE.Vector3(x, up, -north) };   // local frame (east, up, north) -> three.js
+  for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
+    try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }
+    catch (e) { if (!/Failed to fetch|Cannot find|404|Unexpected token '<'/.test(String(e))) fail(e); else console.warn('module', name, 'not available'); }
+  }
+
   let last = performance.now(), frames = 0;
   window.__reef = { camera, env, renderer, d, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
     const dt = Math.min((now - last) / 1000, 0.1); last = now;
+    if (!ctx.controller) {
     const sp = (keys.has('ShiftLeft') ? 60 : 12) * (camera.position.y > 200 ? 8 : 1);
     const fwd = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
     const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
@@ -87,6 +99,8 @@ async function main() {
     if (keys.has('KeyE')) camera.position.y += sp * dt;
     if (keys.has('KeyQ')) camera.position.y -= sp * dt;
     camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+    } else ctx.controller.update(dt, now / 1000);
+    for (const u of ctx.updaters) u(dt, now / 1000);
     env.u.time.value = (q.get('freeze') ? Number(q.get('freeze')) : now / 1000);
     terrain.update(camera.position);
     ocean.update(camera.position);
