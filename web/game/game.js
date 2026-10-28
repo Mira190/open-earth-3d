@@ -45,7 +45,7 @@ window.OpenEarthGame = async function game(cityId) {
   const stage = $('#game-stage'), canvas = $('#game-gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 40000);
+  const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
@@ -242,6 +242,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);
   const wharfById = id => G.wharves.find(w => w.id === id);
 
+  // ------------------------------------------------------------ trig stations: survey points with a view
+  // Hilltops, a headland and the bridge deck (game.json "viewpoints"). Each has a concrete
+  // trig pillar; surveying it turns the camera once round you and names what is in sight.
+  const pillarGeo = new THREE.CylinderGeometry(0.22, 0.34, 1.25, 4, 1).rotateY(Math.PI / 4).translate(0, 0.625, 0);
+  const pillarMat = new THREE.MeshStandardMaterial({ color: lin('#e9e6dc'), roughness: 0.85 });
+  const plateMat = new THREE.MeshStandardMaterial({ color: lin('#b08a3a'), roughness: 0.4, metalness: 0.6 });
+  const VP = (G.viewpoints || []).map(v => {
+    const f = nav.floorAt(v.at[0], v.at[1], v.z_ref ?? 400);
+    const o = Object.assign({}, v, { x: v.at[0], y: v.at[1], z: f ? f.z : Math.max(0, nav.terrain(v.at[0], v.at[1])) });
+    const g = new THREE.Group();
+    const pillar = new THREE.Mesh(pillarGeo, pillarMat), plate = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 12).translate(0, 1.27, 0), plateMat);
+    pillar.castShadow = pillar.receiveShadow = true;
+    g.add(pillar, plate);
+    g.position.copy(W(o.x + 1.6, o.y, o.z)); // beside the spot you stand on
+    world.add(g);
+    return o;
+  });
+  const trigDone = () => qs.trig || (qs.trig = {});
+
   // ------------------------------------------------------------ objective marker and GPS route in the world
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 90, 12, 1, true).translate(0, 45, 0),
     new THREE.MeshBasicMaterial({ color: lin('#ffc23d'), transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
@@ -409,8 +428,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   function completeQuest() {
     const q = quest();
     qs.stamps.push({ id: q.id, stamp: q.stamp, title: q.title, at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
-    A.chime();
-    H.toast(`<span class="eyebrow">Passport stamp</span><b>${q.stamp}</b><span>${q.title}</span>`, 'stamp');
+    A.chime(); A.thump();
+    H.stamp(q.stamp, q.title);
     qs.qi++; qs.started = false; qs.si = -1; qs.inspected = []; qs.rideFrom = null;
     renderPassport();
     save();
@@ -466,7 +485,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#gp-stamps').innerHTML = Q.map(q => {
       const got = qs.stamps.find(s => s.id === q.id);
       return `<li class="${got ? 'got' : ''}"><span class="stamp">${got ? q.stamp : '?'}</span><span><b>${got ? q.title : 'Not yet'}</b><span class="note">${got ? got.at : ''}</span></span></li>`;
-    }).join('') + (qs.stamps.some(s => s.id === 'ferry-master') ? '<li class="got"><span class="stamp">Ferry master</span><span><b>Docked by hand</b></span></li>' : '');
+    }).join('') + (qs.stamps.some(s => s.id === 'ferry-master') ? '<li class="got"><span class="stamp">Ferry master</span><span><b>Docked by hand</b></span></li>' : '')
+      + (VP.length ? (() => { const n = VP.filter(v => trigDone()[v.id]).length; return `<li class="${n === VP.length ? 'got' : ''}"><span class="stamp">${n === VP.length ? 'Trig master' : `△ ${n}/${VP.length}`}</span>`
+        + `<span><b>Trig stations</b><span class="note">${n ? VP.filter(v => trigDone()[v.id]).map(v => v.name).join(', ') : 'Survey the view from each one'}</span></span></li>`; })() : '');
     $('#g-pass-count').textContent = `${qs.stamps.filter(s => Q.some(q => q.id === s.id)).length}/${Q.length}`;
   }
   // labels: landmarks, wharves, the helipad, NPC names
@@ -475,12 +496,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   for (const [name, p] of Object.entries(scene.labels || {})) addLabel(name, () => W(p[0], p[1], p[2] + 6), 1400);
   for (const w of G.wharves) addLabel(`<span class="tag f">F</span>${w.name}`, () => W(w.terminal[0], w.terminal[1], 6), 300, 'wharf');
   for (const h of G.helipads) addLabel(`<span class="tag h">H</span>${h.name}`, () => W(h.at[0], h.at[1], h.at[2] + 6), 400, 'wharf');
+  for (const v of VP) addLabel(`<span class="tag t">△</span>${v.name}`, () => W(v.x, v.y, v.z + 3.2), 260, 'wharf');
   for (const n of npcs) addLabel(`${n.name}<span class="role">${n.role}</span>`, () => W(n.x, n.y, n.z + (n.marker.visible ? 3.0 : 2.15)), 40, 'npc');
   const tmpV = new THREE.Vector3();
   function updateLabels() {
     const w = stage.clientWidth, h = stage.clientHeight, placed = [];
     const far = player.mode === 'heli' ? 2.2 : 1;
     for (const l of labels) {
+      if (surveyLabels.length && !l.survey) { l.el.hidden = true; continue; } // during a survey, only what is in sight
       const p = l.get();
       tmpV.copy(p).project(camera);
       const d = camera.position.distanceTo(p);
@@ -568,6 +591,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const keys = new Set();
   const settings = { route: true, density: 'normal' };
   const cam = { yaw: 0, pitch: 0.36, dist: 7.5, lastInput: -10, mode: 'chase', birdAlt: 320 };
+  const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden;
   const k = c => keys.has(c);
   on(window, 'keydown', e => {
@@ -577,6 +601,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (e.repeat) { keys.add(c); return; }
     keys.add(c);
     if (!$('#g-title').hidden) { if (c === 'Enter') $('#gt-play').click(); return; }
+    if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape') { if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) { if (c === 'KeyM') toggleMap(); return; }
     if (dlg.open) {
@@ -587,6 +612,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (c === 'KeyE' || c === 'KeyF' && !(player.mode === 'ferry')) interact();
     else if (c === 'KeyF' && player.mode === 'ferry') skip = !skip;
     else if (c === 'KeyQ') lens();
+    else if (c === 'KeyG') guessStart();
+    else if (c === 'Enter' && guess.bi >= 0 && !guess.revealed) guessCheck();
     else if (c === 'KeyV') { cam.mode = cam.mode === 'bird' ? 'chase' : 'bird'; H.toast(cam.mode === 'bird' ? "Bird's-eye view: scroll to change height" : 'Chase view'); }
     else if (c === 'KeyM') toggleMap();
     else if (c === 'KeyP') togglePass();
@@ -597,7 +624,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on(window, 'keyup', e => keys.delete(e.code));
   on(window, 'blur', () => keys.clear());
   let drag = null;
-  on(canvas, 'pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); A.start(); });
+  on(canvas, 'pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); A.start(); if (cine.active) cine.skip(); });
   on(canvas, 'pointermove', e => {
     if (!drag || drag.id !== e.pointerId) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -628,7 +655,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const hold = (id, down, up) => { on($(id), 'pointerdown', e => { e.preventDefault(); down(); }); on($(id), 'pointerup', up || (() => {})); on($(id), 'pointercancel', up || (() => {})); };
     hold('#gt-act', () => (dlg.open ? dlg.next(false) : interact()));
     hold('#gt-jump', () => { if (player.mode === 'heli') touchLift = 1; else keys.add('Space'); }, () => { touchLift = 0; keys.delete('Space'); });
-    hold('#gt-down', () => { touchLift = -1; }, () => { touchLift = 0; });
+    hold('#gt-down', () => { if (player.mode === 'heli') touchLift = -1; else guessStart(); }, () => { touchLift = 0; }); // Down in the air, Guess on foot
     hold('#gt-run', () => { keys.has('ShiftLeft') ? keys.delete('ShiftLeft') : keys.add('ShiftLeft'); $('#gt-run').setAttribute('aria-pressed', String(keys.has('ShiftLeft'))); });
     hold('#gt-cam', () => { cam.mode = cam.mode === 'bird' ? 'chase' : 'bird'; });
     hold('#gt-lens', () => lens());
@@ -649,7 +676,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return best;
   }
   function currentAction() {
-    if (dlg.open || uiOpen()) return null;
+    if (dlg.open || uiOpen() || cine.active) return null;
     if (player.mode === 'heli') {
       if (heli.st.landed && heli.st.speed < 1) return { key: 'E', text: 'Get out', act: exitHeli };
       return null;
@@ -664,6 +691,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (d < bd && Math.abs(n.z - player.z) < 2) { bd = d; bn = n; } }
     if (bn) return { key: 'E', text: `Talk to ${bn.name}`, act: () => talkTo(bn) };
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Fly the helicopter', act: enterHeli };
+    const tv = VP.find(v => Math.hypot(v.x - player.x, v.y - player.y) < 7 && Math.abs(v.z - player.z) < 3);
+    if (tv) return { key: 'E', text: `${trigDone()[tv.id] ? 'Survey again' : 'Survey the view'} from ${tv.name}`, act: () => survey(tv) };
     const w = nearWharf(player.x, player.y);
     if (w) {
       const toward = rideTarget(w.id);
@@ -748,14 +777,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // survey lens: what is this building, and where does its height come from?
   const ray = new THREE.Raycaster();
   ray.firstHitOnly = true;
-  function lens() {
-    if (player.mode !== 'foot') return;
+  function aimed() { // the building under the reticle, within 600 m
     camera.updateMatrixWorld();
     ray.setFromCamera({ x: 0, y: 0.08 }, camera);
     ray.far = 600;
     const hit = ray.intersectObject(Wd.buildings)[0];
+    return hit ? { bi: Wd.bGeo.attributes.bid.getX(hit.face.a), distance: hit.distance } : null;
+  }
+  function lens() {
+    if (player.mode !== 'foot') return;
+    guess.bi = -1;
+    const hit = aimed();
     if (!hit) { H.toast('Aim at a building and press Q.'); return; }
-    const bi = Wd.bGeo.attributes.bid.getX(hit.face.a), m = B.b[bi];
+    const bi = hit.bi, m = B.b[bi];
     U.uSel.value = bi;
     const name = m[0] || (m[1] ? `Unnamed ${m[1].replace(/_/g, ' ')}` : 'Unnamed building');
     const osm = m[6] && /^[wr]\d+$/.test(m[6]) ? `<a href="https://www.openstreetmap.org/${m[6][0] === 'w' ? 'way' : 'relation'}/${m[6].slice(1)}" target="_blank" rel="noopener">${m[6]}</a>` : '–';
@@ -767,6 +801,155 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     lens.t = setTimeout(() => { $('#g-lens').hidden = true; U.uSel.value = -1; }, 6000);
     const s = step();
     if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !qs.inspected.includes(m[4])) { qs.inspected.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${qs.inspected.length}/${s.sources.length})`); checkSteps(); }
+  }
+
+  // ------------------------------------------------------------ height challenge: guess, then see how good the data is
+  // Aim at a building and press G. Your guess is scored against the model's height, and
+  // set beside the error of the data itself: a floor-count height is good to about ±20%,
+  // an estimate much less, so a guess can be as good as the open data.
+  const guess = { bi: -1, revealed: false };
+  const sigmaOf = src => (D.UNC && D.UNC.sigma && D.UNC.sigma[src]) || { mapped: 0.03, reference: 0.03, verified: 0.02 }[src] || 0.2;
+  const sliderH = v => 3 * Math.pow(320 / 3, v / 1000); // a log scale, 3 to 320 m
+  function guessStart() {
+    if (player.mode !== 'foot') return;
+    const hit = aimed();
+    if (!hit) { H.toast('Aim at a building and press G to guess its height.'); return; }
+    const m = B.b[hit.bi];
+    if (m[4] === 'parametric') { H.toast('That one is built from its published dimensions. Try another building.'); return; }
+    Object.assign(guess, { bi: hit.bi, revealed: false });
+    U.uSel.value = hit.bi;
+    clearTimeout(lens.t);
+    const name = m[0] || (m[1] ? `Unnamed ${m[1].replace(/_/g, ' ')}` : 'Unnamed building');
+    $('#g-lens').innerHTML = `<span class="eyebrow">Height challenge · ${Math.round(hit.distance)} m away</span><b>${name}</b>
+      <span class="note">How tall is it, ground to roof?</span>
+      <label class="g-guess"><input type="range" id="gg-range" min="0" max="1000" value="${Math.round(1000 * Math.log(30 / 3) / Math.log(320 / 3))}" aria-label="Your guess, in metres"><output id="gg-val" class="num"></output></label>
+      <div class="row"><button class="btn primary" id="gg-go">Check <kbd>Enter</kbd></button><button class="btn" id="gg-no">Not now</button></div>`;
+    $('#g-lens').hidden = false;
+    const show = () => { $('#gg-val').textContent = `${Math.round(sliderH(+$('#gg-range').value))} m`; };
+    show();
+    $('#gg-range').addEventListener('input', show);
+    $('#gg-range').addEventListener('keydown', e => { if (e.key === 'Enter') guessCheck(); });
+    $('#gg-go').addEventListener('click', guessCheck);
+    $('#gg-no').addEventListener('click', guessClose);
+  }
+  function guessClose() { guess.bi = -1; $('#g-lens').hidden = true; U.uSel.value = -1; }
+  function guessCheck() {
+    if (guess.bi < 0 || guess.revealed) return;
+    guess.revealed = true;
+    const m = B.b[guess.bi], h = m[2], g = Math.round(sliderH(+$('#gg-range').value));
+    const err = Math.log(g / h), pts = Math.max(0, Math.round(100 * (1 - Math.abs(err) / Math.LN2))); // 0 points at twice or half
+    const sig = sigmaOf(m[4]), lo = h * Math.exp(-1.645 * sig), hi = h * Math.exp(1.645 * sig), inside = g >= lo && g <= hi;
+    const rec = qs.guesses || (qs.guesses = { n: 0, pts: 0, inside: 0 });
+    rec.n++; rec.pts += pts; rec.inside += inside ? 1 : 0;
+    save();
+    const off = Math.round(100 * (g / h - 1));
+    $('#g-lens').innerHTML = `<span class="eyebrow">Height challenge</span><b>${m[0] || 'This building'}: ${h.toFixed(1)} m</b>
+      <span class="verdict">${pts} points${inside ? ' · as good as the data' : ''}</span>
+      <span>Your guess, ${g} m, is ${off === 0 ? 'spot on' : `${Math.abs(off)}% ${off > 0 ? 'high' : 'low'}`}. ${SRC_TEXT[m[4]] ? SRC_TEXT[m[4]][0].toUpperCase() + SRC_TEXT[m[4]].slice(1) : 'Its height comes from the open data'},
+      good to ${Math.round(lo)}–${Math.round(hi)} m nine times in ten.${inside ? ' Your guess is inside that range.' : ''}</span>
+      <span class="note">${rec.n} guess${rec.n > 1 ? 'es' : ''}, ${Math.round(rec.pts / rec.n)} points on average; ${rec.inside} as good as the data. G for another.</span>`;
+    if (inside) A.chime();
+    clearTimeout(lens.t);
+    lens.t = setTimeout(guessClose, 12000);
+  }
+
+  // ------------------------------------------------------------ surveying from a trig station
+  // What can you see from here? A straight line of sight through the 2 m surface model
+  // (with the Opera House shells and the bridge deck in it) to a point just under each
+  // roof: the tallest part of every building within range.
+  const roofs = (() => {
+    const r = B.b.map(() => null);
+    for (const sd of B.s) {
+      const top = (sd[1] + sd[3]) / 10, ring = sd[4];
+      if (r[sd[0]] && r[sd[0]][2] >= top) continue;
+      let x = 0, y = 0;
+      for (let k = 0; k < ring.length; k += 2) { x += ring[k]; y += ring[k + 1]; }
+      r[sd[0]] = [x / (ring.length / 2) / 10, y / (ring.length / 2) / 10, top];
+    }
+    return r;
+  })();
+  function viewshed(ex, ey, ez, range) {
+    const seen = [], { nx, ny, cell, x0, y1, data, ids } = DSM;
+    for (let b = 0; b < roofs.length; b++) {
+      const t = roofs[b];
+      if (!t) continue;
+      const dx = t[0] - ex, dy = t[1] - ey, d = Math.hypot(dx, dy);
+      if (d > range || d < 4) continue;
+      const tz = t[2] - 0.5, n = Math.ceil(d / 1.5);
+      let ok = true;
+      for (let i = 1; i < n; i++) {
+        const f = i / n, c = Math.floor((ex + dx * f - x0) / cell), r = Math.floor((y1 - ey - dy * f) / cell);
+        if (c < 0 || r < 0 || c >= nx || r >= ny) continue;
+        const k = r * nx + c;
+        if (data[k] > ez + (tz - ez) * f + 0.2) { ok = ids[k] === b; break; }
+      }
+      if (ok) seen.push(b);
+    }
+    return seen;
+  }
+  const SRC_GROUP = { mapped: 'surveyed', reference: 'surveyed', verified: 'surveyed', floors: 'floors', ml: 'estimated', estimate: 'estimated' };
+  let surveyLabels = [], surveyFov = BASE_FOV;
+  function survey(vp) {
+    const ez = player.z + 1.6, seen = viewshed(player.x, player.y, ez, 3000);
+    // label what is in sight: the named landmarks, then the tallest named buildings
+    const named = seen.filter(b => B.b[b][0]).sort((a, b) => roofs[b][2] - roofs[a][2]);
+    const marks = Object.entries(scene.labels || {}).map(([n, p]) => ({ n, p, b: named.find(b => B.b[b][0].startsWith(n)) })).filter(m => m.b != null);
+    const extra = named.filter(b => !marks.some(m => m.b === b)).slice(0, 6).map(b => ({ n: B.b[b][0], p: roofs[b], b }));
+    for (const m of [...marks, ...extra]) {
+      // a parametric landmark's row is only its base; its label point carries its published height
+      const row = B.b[m.b], para = row[4] === 'parametric', el = document.createElement('div');
+      el.className = 'lbl npc survey';
+      el.innerHTML = `${para ? m.n : row[0]}<span class="role">${para ? `${Math.round(m.p[2])} m · built from published dimensions`
+        : `${Math.round(row[2])} m · ${{ surveyed: 'surveyed', floors: 'from floors', estimated: 'estimated' }[SRC_GROUP[row[4]]]}`}</span>`;
+      el.hidden = true;
+      labelsEl.appendChild(el);
+      const at = para ? W(m.p[0], m.p[1], m.p[2] + 4) : W(roofs[m.b][0], roofs[m.b][1], roofs[m.b][2] + 4);
+      surveyLabels.push({ el, get: () => at, maxD: 3200, survey: true });
+    }
+    labels.unshift(...surveyLabels);
+    stage.classList.add('letterbox');
+    A.chime();
+    // You turn once round on the spot and the camera turns with you, over your right
+    // shoulder with a longer lens, the horizon at eye level, then settles back into the
+    // chase camera.
+    cam.yaw = player.h;
+    const c = head(), h0 = player.h, p0 = chasePolar(), pos = new THREE.Vector3(), lk = new THREE.Vector3();
+    const round = k => {
+      const b = Math.pow(Math.sin(Math.PI * k), 0.5), az = h0 + 2 * Math.PI * OECine.ease.inOut(k);
+      player.h = az;
+      OECine.around(c, az + Math.PI - 0.32 * b, OECine.lerp(p0.dist, 6, b), OECine.lerp(p0.h, 1, b), pos);
+      OECine.around(c, az, 300 * b, -8 * b, lk); // the skyline ahead, just below eye level
+      surveyFov = OECine.lerp(BASE_FOV, 34, b);
+      return { pos, look: lk };
+    };
+    cine.play(OECine.mix(round, () => live, k => handOver(k, 0.92)), 11, { label: 'survey', onEnd: () => {
+      player.h = cam.yaw = h0;
+      stage.classList.remove('letterbox');
+      for (const l of surveyLabels) { l.el.remove(); labels.splice(labels.indexOf(l), 1); }
+      surveyLabels = [];
+      fieldNotes(vp, ez, seen);
+    } });
+  }
+  function fieldNotes(vp, ez, seen) {
+    const first = !trigDone()[vp.id];
+    trigDone()[vp.id] = true;
+    const done = VP.filter(v => trigDone()[v.id]).length, all = done === VP.length;
+    const lines = [`${vp.name}: your eyes are ${Math.round(ez)} m above sea level, and ${seen.length.toLocaleString()} buildings are in sight within 3 km.`];
+    const top = seen.filter(b => B.b[b][0] && B.b[b][4] !== 'parametric').sort((a, b) => B.b[b][2] - B.b[a][2])[0];
+    if (top != null) lines.push(`The tallest in sight is ${B.b[top][0]}, ${Math.round(B.b[top][2])} m tall: ${SRC_TEXT[B.b[top][4]] || 'its height comes from the open data'}.`);
+    const n = { surveyed: 0, floors: 0, estimated: 0 };
+    for (const b of seen) if (SRC_GROUP[B.b[b][4]]) n[SRC_GROUP[B.b[b][4]]]++;
+    const tot = n.surveyed + n.floors + n.estimated;
+    if (tot) lines.push(`Of the heights in sight, ${Math.round(100 * n.surveyed / tot)}% are surveyed or published, ${Math.round(100 * n.floors / tot)}% come from floor counts and ${Math.round(100 * n.estimated / tot)}% are estimated.`);
+    lines.push(all ? `That's every trig station: ${done} of ${done}. The Trig master stamp is yours.` : `Trig stations surveyed: ${done} of ${VP.length}.`);
+    if (first && all && !qs.stamps.some(s => s.id === 'trig-master')) {
+      qs.stamps.push({ id: 'trig-master', stamp: 'Trig master', title: 'Every trig station surveyed', at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
+      A.chime(); A.thump();
+      H.stamp('Trig master', 'Every trig station surveyed');
+    }
+    renderPassport();
+    save();
+    dlg.show({ name: 'Field notes', role: vp.name, color: '#a8740b', pitch: 330 }, lines);
   }
 
   // ------------------------------------------------------------ menus, map, passport
@@ -795,6 +978,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const icon = (ic, x, y) => H.drawIcon(g, ic, x / dpr, y / dpr);
     for (const w of G.wharves) icon({ kind: 'wharf' }, ...P2(...w.terminal));
     for (const h of G.helipads) icon({ kind: 'pad' }, ...P2(h.at[0], h.at[1]));
+    for (const v of VP) icon({ kind: 'trig', done: !!trigDone()[v.id] }, ...P2(v.x, v.y));
     for (const v of fer.vessels) icon({ kind: 'ferry' }, ...P2(v.x, v.y));
     if (player.mode !== 'heli') icon({ kind: 'heli' }, ...P2(heli.st.x, heli.st.y));
     const q = quest();
@@ -823,7 +1007,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const b = e.target.closest('button');
     if (!b || player.mode !== 'foot') { if (b) H.toast('Fast travel works on foot.'); return; }
     const [x, y] = b.dataset.at.split(',').map(Number), p = placeNear(x, y, 3);
-    if (p) { [player.x, player.y, player.z] = p; $('#g-bigmap').hidden = true; H.toast(`You took a taxi to ${b.textContent}.`); }
+    if (p) { $('#g-bigmap').hidden = true; hopTo(p[0], p[1], p[2], b.textContent); }
   });
   on($('#g-map-btn'), 'click', toggleMap);
   on($('#g-pass-btn'), 'click', togglePass);
@@ -886,6 +1070,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;
+    craneIn();
     renderPassport();
     if (!cont) H.toast(`Find ${npcById(Q[0] ? Q[0].giver : npcs[0].id).name}: follow the gold route, or press <kbd>M</kbd> for the map.`);
   };
@@ -894,12 +1079,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
   $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
-  $('#g-loader').hidden = true;
+  $('#g-loader').classList.add('out');
+  setTimeout(() => { $('#g-loader').hidden = true; }, reduced ? 0 : 700);
   renderPassport();
 
   // ------------------------------------------------------------ the loop
   let last = performance.now(), clockT = 0, sunTimer = 0, sunState = 'sun', fpsAcc = [0, 0], fpsWarned = false, stepPhase = 0, bumpT = -9, waterT = -99;
-  const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camLook = new THREE.Vector3(), camSmooth = new THREE.Vector3();
+  const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camSmooth = new THREE.Vector3();
   let running = true;
   function frame(now) {
     if (!running) return;
@@ -923,8 +1109,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     if (!paused) simulate(dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
-    else if (titleOn) { cam.yaw += dt * 0.05; }
+    if (titleOn) titleYaw += dt * 0.05;
     updateCamera(dt, titleOn);
+    stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
     Wd.tick(now, camera);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
@@ -938,12 +1125,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (target) { const f = nav.floorAt(target[0], target[1], 300); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
     $('#gq-title').textContent = ob ? ob.title : (Q.length && qs.qi >= Q.length ? 'Free roam' : '');
-    $('#gq-step').textContent = ob ? ob.text : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
+    const trigLeft = VP.filter(v => !trigDone()[v.id]).length;
+    $('#gq-step').textContent = ob ? ob.text : trigLeft ? `The city is yours. ${trigLeft} trig station${trigLeft > 1 ? 's' : ''} still to survey (△ on the map), or change the time and fly anywhere.`
+      : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
     $('#gq-dist').textContent = target ? `${Math.round(Math.hypot(target[0] - me.x, target[1] - me.y))} m` : '';
     if (!titleOn) {
       const icons = [];
       for (const w of G.wharves) icons.push({ kind: 'wharf', x: w.terminal[0], y: w.terminal[1] });
       for (const h of G.helipads) icons.push({ kind: 'pad', x: h.at[0], y: h.at[1] });
+      for (const v of VP) icons.push({ kind: 'trig', x: v.x, y: v.y, done: !!trigDone()[v.id] });
       for (const v of fer.vessels) icons.push({ kind: 'ferry', x: v.x, y: v.y });
       if (player.mode !== 'heli') icons.push({ kind: 'heli', x: heli.st.x, y: heli.st.y });
       const q = quest();
@@ -969,7 +1159,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   function simulate(dt) {
     const fwd = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
     const side = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x;
-    if (player.mode === 'foot') walkStep(dt, dlg.open ? 0 : fwd, dlg.open ? 0 : side);
+    const held = dlg.open || cine.label === 'hop' || cine.label === 'survey';
+    if (player.mode === 'foot') walkStep(dt, held ? 0 : fwd, held ? 0 : side);
     else if (player.mode === 'heli') {
       const lift = (k('Space') ? 1 : 0) - (k('KeyC') || k('ShiftLeft') || k('ShiftRight') ? 1 : 0) + touchLift;
       const events = [];
@@ -1075,24 +1266,47 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     stepPhase = ph;
   }
 
+  // The camera: the title orbit, then the rig (chase or bird's-eye) unless a shot is
+  // playing. Shots get the rig's live pose, so they can land exactly where it is.
+  const titleLook = new THREE.Vector3(), live = { pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), half: 170 };
+  let titleYaw = 0;
   function updateCamera(dt, titleOn) {
-    const k2 = Math.min(1, dt * 6);
-    if (titleOn) { // slow orbit around the start for the title screen
-      camTarget.copy(W(player.x + 120, player.y + 160, player.z + 20));
-      camPos.copy(camTarget).add(new THREE.Vector3(Math.sin(cam.yaw) * -420, 210, Math.cos(cam.yaw) * 420));
-      camera.position.copy(camPos); camera.lookAt(camTarget);
-      Wd.fitShadow(camTarget, 600);
+    if (titleOn) { // slow orbit near the start for the title screen
+      titleLook.copy(W(player.x + 120, player.y + 160, player.z + 20));
+      camera.up.set(0, 1, 0);
+      camera.position.copy(titleLook).add(new THREE.Vector3(Math.sin(titleYaw) * -420, 210, Math.cos(titleYaw) * 420));
+      camera.lookAt(titleLook);
+      live.pos.copy(camera.position);
+      Wd.fitShadow(titleLook, 600);
       return;
     }
+    rig(dt);
+    const shot = cine.step(clockT), fov = shot && cine.label === 'survey' ? surveyFov : BASE_FOV;
+    if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
+    if (shot) {
+      camera.up.set(0, 1, 0);
+      camera.position.copy(shot.pos);
+      camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3); // never inside a building
+      camera.lookAt(shot.look);
+      Wd.fitShadow(shot.look, THREE.MathUtils.clamp(camera.position.distanceTo(shot.look) * 1.2, live.half, 1600));
+      return;
+    }
+    camera.up.copy(live.up);
+    camera.position.copy(live.pos);
+    camera.lookAt(live.look);
+    Wd.fitShadow(live.look, live.half);
+  }
+  function rig(dt) {
+    const k2 = Math.min(1, dt * 6);
     if (player.mode === 'heli' && cam.mode === 'bird') {
       const st = heli.st, g = nav.groundBelow(st.x, st.y, st.z);
-      camera.position.lerp(W(st.x, st.y, Math.max(st.z, g) + cam.birdAlt), k2);
-      camera.up.set(Math.sin(st.h), 0, -Math.cos(st.h));
-      camera.lookAt(W(st.x, st.y, st.z));
-      Wd.fitShadow(W(st.x, st.y, st.z), Math.min(2400, cam.birdAlt * 1.4));
+      live.pos.lerp(W(st.x, st.y, Math.max(st.z, g) + cam.birdAlt), k2);
+      live.up.set(Math.sin(st.h), 0, -Math.cos(st.h));
+      live.look.copy(W(st.x, st.y, st.z));
+      live.half = Math.min(2400, cam.birdAlt * 1.4);
       return;
     }
-    camera.up.set(0, 1, 0);
+    live.up.set(0, 1, 0);
     let tx, ty, tz, follow;
     if (player.mode === 'heli') { tx = heli.st.x; ty = heli.st.y; tz = heli.st.z + 2.5; follow = heli.st.h; }
     else if (player.mode === 'ferry') { tx = player.vehicle.x; ty = player.vehicle.y; tz = 5; follow = null; }
@@ -1121,10 +1335,65 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
     }
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
-    camera.position.copy(camPos);
-    camLook.copy(camTarget);
-    camera.lookAt(camLook);
-    Wd.fitShadow(camTarget, player.mode === 'heli' ? 520 : player.mode === 'ferry' ? 320 : 170);
+    live.pos.copy(camPos);
+    live.look.copy(camTarget);
+    live.half = player.mode === 'heli' ? 520 : player.mode === 'ferry' ? 320 : 170;
+  }
+
+  // ------------------------------------------------------------ camera shots (cine.js)
+  // the highest surface (roof, deck or ground) within a cell of (x, y), and along a line in 16 m blocks
+  function roofBelow(x, y) {
+    const c = Math.floor((x - DSM.x0) / DSM.cell), r = Math.floor((DSM.y1 - y) / DSM.cell);
+    let top = 0;
+    for (let i = r - 1; i <= r + 1; i++) for (let j = c - 1; j <= c + 1; j++) if (i >= 0 && j >= 0 && i < DSM.ny && j < DSM.nx) top = Math.max(top, DSM.data[i * DSM.nx + j]);
+    return top;
+  }
+  function roofAlong(x0, y0, x1, y1) {
+    const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 12), bs = 8 * DSM.cell;
+    let top = 0;
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n, bc = Math.floor((x - DSM.x0) / bs), br = Math.floor((DSM.y1 - y) / bs);
+      if (bc >= 0 && br >= 0 && bc < DSM.bx && br < DSM.by) top = Math.max(top, DSM.M[br * DSM.bx + bc]);
+    }
+    return top;
+  }
+  // the chase camera's bearing, distance and height from the player's head
+  const head = () => W(player.x, player.y, player.z + 1.55);
+  const chasePolar = () => ({ az: cam.yaw + Math.PI, dist: Math.cos(cam.pitch) * cam.dist, h: Math.sin(cam.pitch) * cam.dist });
+  const handOver = (k, from = 0.8) => OECine.ease.smooth(OECine.span(k, from, 1)); // weight of the live rig at the end of a shot
+  // Start: from the title orbit, close in over the player at height, drop down beside
+  // them and swing in behind, then hand over to the chase camera. Moving is allowed.
+  function craneIn() {
+    const look0 = titleLook.clone(), p0 = OECine.polar(head(), camera.position);
+    cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5;
+    camSmooth.set(0, 0, 0);
+    const p1 = chasePolar(), lk = new THREE.Vector3();
+    const path = OECine.spiral({ center: head, az: [p0.az, p0.az + OECine.turn(p0.az, p1.az)], dist: [p0.dist, p1.dist], h: [p0.h, p1.h],
+      look: k => lk.lerpVectors(look0, head(), OECine.ease.inOut(Math.min(1, k * 1.4))), e: { dist: 'out', h: 'in' } });
+    cine.play(OECine.mix(path, () => live, k => handOver(k)), 3.2, { label: 'crane' });
+  }
+  // Fast travel: rise over the player, fly across the city at a height that grows with
+  // the distance, and come down behind them facing the way they flew. The player moves
+  // at the top of the climb, out of sight.
+  function hopTo(x, y, z, name) {
+    const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
+    const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
+    const alt = Math.max(THREE.MathUtils.clamp(140 + span * 0.12, 180, 520), roofs + 110), top = { dist: alt * 0.3, h: alt }, az = bearing + Math.PI;
+    const A = head(), B = W(x, y, z + 1.55), p0 = OECine.polar(A, camera.position), c = new THREE.Vector3();
+    const rise = OECine.spiral({ center: A, az: [p0.az, p0.az + OECine.turn(p0.az, az)], dist: [p0.dist, top.dist], h: [p0.h, top.h], e: { dist: 'inOut', h: 'out' } });
+    const cross = OECine.spiral({ center: k => c.lerpVectors(A, B, k), az, dist: top.dist, h: top.h });
+    const fall = OECine.spiral({ center: head, az, dist: [top.dist, Math.cos(0.36) * 7.5], h: [top.h, Math.sin(0.36) * 7.5], e: { dist: 'out', h: 'in' } });
+    const a = 0.26, b = 0.66;
+    const path = k => (k < a ? rise(OECine.span(k, 0, a)) : k < b ? cross(OECine.ease.inOut(OECine.span(k, a, b))) : fall(OECine.span(k, b, 1)));
+    cine.play(OECine.mix(path, () => live, k => handOver(k, 0.86)), Math.min(4.6, 2.4 + span / 1500), { label: 'hop',
+      cues: [[a, () => {
+        [player.x, player.y, player.z] = [x, y, z];
+        player.h = bearing; player.speed = 0; player.vz = 0; player.ground = true;
+        cam.mode = 'chase'; cam.yaw = bearing; cam.pitch = 0.36; cam.dist = 7.5;
+        groundLod(x, y);
+        save();
+      }]],
+      onEnd: () => H.toast(`You're at ${name}.`) });
   }
 
   function onFerryEvent(ev) {
@@ -1139,14 +1408,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       lastDock = sc;
       H.toast(`<b>Made fast!</b> Docking score ${sc}/100.`, 'stamp');
       A.chime();
-      if (sc >= 60 && !qs.stamps.some(s => s.id === 'ferry-master')) { qs.stamps.push({ id: 'ferry-master', stamp: 'Ferry master', title: 'Docked by hand', at: fmtMin(clock.min) }); renderPassport(); save(); }
+      if (sc >= 60 && !qs.stamps.some(s => s.id === 'ferry-master')) { qs.stamps.push({ id: 'ferry-master', stamp: 'Ferry master', title: 'Docked by hand', at: fmtMin(clock.min) }); renderPassport(); save(); A.thump(); H.stamp('Ferry master', 'Docked by hand'); }
     }
     if (ev.type === 'helm' && mine) v.helm.started = clockT;
   }
 
   function vehicleHud() {
     const el = $('#g-vhud');
-    if (touch) { $('#gt-down').hidden = player.mode !== 'heli'; $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : 'Jump'; }
+    if (touch) { $('#gt-down').hidden = player.mode === 'ferry'; $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : 'Guess'; $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : 'Jump'; }
     if (player.mode === 'heli') {
       const st = heli.st, g = nav.groundBelow(st.x, st.y, st.z);
       el.hidden = false;
@@ -1171,6 +1440,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       clockT += 1 / 30; U.uTime.value = clockT;
       if (!clock.frozen) { clock.min += clock.scale / 60 / 30; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
       simulate(1 / 30);
+      if (cine.active) cine.step(clockT);
       fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
       if (i % 8 === 0) { sunTimer = 0; applySun(); const px = player.mode === 'heli' ? heli.st.x : player.x, py = player.mode === 'heli' ? heli.st.y : player.y;
         sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, player.mode === 'heli' ? heli.st.z + 1 : player.z + 1.6, sun) ? 'sun' : 'shade'; checkSteps(); }
@@ -1181,7 +1451,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { footNet, benches, sunWant, benchTalk, advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { footNet, benches, sunWant, benchTalk, advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys, cine, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
