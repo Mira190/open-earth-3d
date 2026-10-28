@@ -1,0 +1,221 @@
+{
+ "rows": [
+  {
+   "place": "Hyde Park",
+   "month": 1,
+   "clock_time": 98.8,
+   "standard_time": 99.1,
+   "diff_pp": 0.3
+  },
+  {
+   "place": "Hyde Park",
+   "month": 2,
+   "clock_time": 98.4,
+   "standard_time": 98.6,
+   "diff_pp": 0.2
+  },
+  {
+   "place": "Hyde Park",
+   "month": 3,
+   "clock_time": 98.1,
+   "standard_time": 97.7,
+   "diff_pp": -0.4
+  },
+  {
+   "place": "Hyde Park",
+   "month": 10,
+   "clock_time": 98.7,
+   "standard_time": 98.1,
+   "diff_pp": -0.6
+  },
+  {
+   "place": "Hyde Park",
+   "month": 11,
+   "clock_time": 99,
+   "standard_time": 98.8,
+   "diff_pp": -0.2
+  },
+  {
+   "place": "Hyde Park",
+   "month": 12,
+   "clock_time": 99,
+   "standard_time": 99.1,
+   "diff_pp": 0.1
+  },
+  {
+   "place": "Martin Place",
+   "month": 1,
+   "clock_time": 74.6,
+   "standard_time": 79.1,
+   "diff_pp": 4.5
+  },
+  {
+   "place": "Martin Place",
+   "month": 2,
+   "clock_time": 49.6,
+   "standard_time": 55.1,
+   "diff_pp": 5.6
+  },
+  {
+   "place": "Martin Place",
+   "month": 3,
+   "clock_time": 20.7,
+   "standard_time": 23.8,
+   "diff_pp": 3.1
+  },
+  {
+   "place": "Martin Place",
+   "month": 10,
+   "clock_time": 52,
+   "standard_time": 58.7,
+   "diff_pp": 6.7
+  },
+  {
+   "place": "Martin Place",
+   "month": 11,
+   "clock_time": 76.5,
+   "standard_time": 81.4,
+   "diff_pp": 4.9
+  },
+  {
+   "place": "Martin Place",
+   "month": 12,
+   "clock_time": 84.3,
+   "standard_time": 87.8,
+   "diff_pp": 3.5
+  },
+  {
+   "place": "Macquarie Place",
+   "month": 1,
+   "clock_time": 46.2,
+   "standard_time": 90.5,
+   "diff_pp": 44.4
+  },
+  {
+   "place": "Macquarie Place",
+   "month": 2,
+   "clock_time": 65.8,
+   "standard_time": 98.4,
+   "diff_pp": 32.6
+  },
+  {
+   "place": "Macquarie Place",
+   "month": 3,
+   "clock_time": 83.8,
+   "standard_time": 98.8,
+   "diff_pp": 15
+  },
+  {
+   "place": "Macquarie Place",
+   "month": 10,
+   "clock_time": 86.1,
+   "standard_time": 100,
+   "diff_pp": 13.9
+  },
+  {
+   "place": "Macquarie Place",
+   "month": 11,
+   "clock_time": 64.8,
+   "standard_time": 99.5,
+   "diff_pp": 34.7
+  },
+  {
+   "place": "Macquarie Place",
+   "month": 12,
+   "clock_time": 56.4,
+   "standard_time": 96.6,
+   "diff_pp": 40.1
+  },
+  {
+   "place": "Wynyard Park",
+   "month": 1,
+   "clock_time": 97.8,
+   "standard_time": 99.8,
+   "diff_pp": 2
+  },
+  {
+   "place": "Wynyard Park",
+   "month": 2,
+   "clock_time": 92.9,
+   "standard_time": 98.2,
+   "diff_pp": 5.3
+  },
+  {
+   "place": "Wynyard Park",
+   "month": 3,
+   "clock_time": 81.2,
+   "standard_time": 93.4,
+   "diff_pp": 12.2
+  },
+  {
+   "place": "Wynyard Park",
+   "month": 10,
+   "clock_time": 97.4,
+   "standard_time": 97.2,
+   "diff_pp": -0.2
+  },
+  {
+   "place": "Wynyard Park",
+   "month": 11,
+   "clock_time": 99.8,
+   "standard_time": 99.1,
+   "diff_pp": -0.6
+  },
+  {
+   "place": "Wynyard Park",
+   "month": 12,
+   "clock_time": 99.3,
+   "standard_time": 99.7,
+   "diff_pp": 0.5
+  },
+  {
+   "place": "Lang Park",
+   "month": 1,
+   "clock_time": 100,
+   "standard_time": 99.4,
+   "diff_pp": -0.6
+  },
+  {
+   "place": "Lang Park",
+   "month": 2,
+   "clock_time": 100,
+   "standard_time": 98.9,
+   "diff_pp": -1.1
+  },
+  {
+   "place": "Lang Park",
+   "month": 3,
+   "clock_time": 100,
+   "standard_time": 99,
+   "diff_pp": -1
+  },
+  {
+   "place": "Lang Park",
+   "month": 10,
+   "clock_time": 100,
+   "standard_time": 93.8,
+   "diff_pp": -6.2
+  },
+  {
+   "place": "Lang Park",
+   "month": 11,
+   "clock_time": 100,
+   "standard_time": 95.3,
+   "diff_pp": -4.7
+  },
+  {
+   "place": "Lang Park",
+   "month": 12,
+   "clock_time": 100,
+   "standard_time": 98.3,
+   "diff_pp": -1.7
+  }
+ ],
+ "worst": {
+  "place": "Macquarie Place",
+  "month": 1,
+  "clock_time": 46.2,
+  "standard_time": 90.5,
+  "diff_pp": 44.4
+ }
+}

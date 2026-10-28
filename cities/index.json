@@ -1,0 +1,86 @@
+{
+  "note": "Cities on the globe. status: live (built and in web/data/<id>) or planned. Planned entries list the open data to check first; none of them has been verified for this project yet.",
+  "cities": [
+    {
+      "id": "sydney",
+      "name": "Sydney",
+      "country": "Australia",
+      "lat": -33.862,
+      "lon": 151.2115,
+      "status": "live",
+      "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places."
+    },
+    {
+      "id": "melbourne",
+      "name": "Melbourne",
+      "country": "Australia",
+      "lat": -37.8136,
+      "lon": 144.9631,
+      "status": "planned",
+      "data": "Elevation LiDAR via ELVIS; City of Melbourne open 3D massing; OSM footprints."
+    },
+    {
+      "id": "new-york",
+      "name": "New York",
+      "country": "United States",
+      "lat": 40.7075,
+      "lon": -74.0113,
+      "status": "planned",
+      "data": "NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM; NYS orthoimagery."
+    },
+    {
+      "id": "london",
+      "name": "London",
+      "country": "United Kingdom",
+      "lat": 51.5155,
+      "lon": -0.0922,
+      "status": "planned",
+      "data": "Environment Agency 1 m LiDAR DTM (OGL); OSM heights; open aerial imagery still to find."
+    },
+    {
+      "id": "paris",
+      "name": "Paris",
+      "country": "France",
+      "lat": 48.8566,
+      "lon": 2.3522,
+      "status": "planned",
+      "data": "IGN RGE ALTI and BD ORTHO (open licence); BD TOPO building heights."
+    },
+    {
+      "id": "amsterdam",
+      "name": "Amsterdam",
+      "country": "Netherlands",
+      "lat": 52.3731,
+      "lon": 4.8922,
+      "status": "planned",
+      "data": "AHN LiDAR; PDOK aerial imagery; 3D BAG building heights."
+    },
+    {
+      "id": "tokyo",
+      "name": "Tokyo",
+      "country": "Japan",
+      "lat": 35.6812,
+      "lon": 139.7671,
+      "status": "planned",
+      "data": "Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles."
+    },
+    {
+      "id": "hong-kong",
+      "name": "Hong Kong",
+      "country": "China",
+      "lat": 22.2819,
+      "lon": 114.1589,
+      "status": "planned",
+      "data": "Lands Department 3D spatial data and LiDAR DTM; open orthophotos."
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "country": "Singapore",
+      "lat": 1.284,
+      "lon": 103.851,
+      "status": "planned",
+      "data": "OSM footprints and heights; open bare-earth DEM and imagery still to find."
+    }
+  ]
+}

@@ -1,0 +1,229 @@
+{
+  "id": "sydney",
+  "name": "Sydney",
+  "country": "Australia",
+  "country_code": "AU",
+  "timezone": "Australia/Sydney",
+  "locale": "en-AU",
+  "description": "Central Sydney from open data, lit by the real sun. Every shadow is computed, and every height is traceable to its source.",
+  "bbox": [151.195, -33.884, 151.228, -33.84],
+  "origin": [151.2115, -33.862],
+  "extent_m": [-1500, 1500, -2400, 2400],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m AHD",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Imagery/MapServer/tile/{z}/{y}/{x}",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "NSW Spatial Services NSW_Imagery (CC BY 4.0; includes (c) AAM and (c) Jacobs imagery)"
+  },
+  "terrain": {
+    "type": "arcgis_image",
+    "url": "https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_5M_Elevation/ImageServer/exportImage",
+    "pixel_m": 4.0,
+    "bare_earth": true,
+    "attribution": "NSW Spatial Services NSW_5M_Elevation, 5 m bare earth from stereo imagery (CC BY 4.0)"
+  },
+  "terrain_check": {
+    "type": "arcgis_identify",
+    "url": "https://services.ga.gov.au/gis/rest/services/DEM_LiDAR_5m_2025/MapServer/identify",
+    "field": "Stretch.Pixel Value",
+    "name": "Geoscience Australia 5 m LiDAR DEM"
+  },
+  "water": {
+    "classes": ["ocean", "bay", "water"],
+    "min_area_m2": 5000,
+    "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads."
+  },
+  "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "labels": {
+    "Sydney Tower": "Sydney Tower",
+    "Salesforce Tower": "Salesforce Tower",
+    "Crown Sydney Hotel Resort": "Crown Sydney",
+    "Governor Phillip Tower": "Governor Phillip Tower",
+    "Australia Square": "Australia Square",
+    "Quay Quarter Tower": "Quay Quarter Tower",
+    "Queen Victoria Building": "Queen Victoria Building",
+    "Sydney Town Hall": "Town Hall",
+    "Customs House": "Customs House",
+    "St Mary's Cathedral": "St Mary's Cathedral",
+    "Tower 1": "One Sydney Harbour",
+    "Chifley Tower": "Chifley Tower"
+  },
+  "minor_labels": ["Customs House", "Queen Victoria Building", "Town Hall", "St Mary's Cathedral"],
+  "place_labels": ["Hyde Park", "Martin Place", "Barangaroo Reserve", "Royal Botanic Garden", "Wynyard Park", "The Domain"],
+  "protection": {
+    "title": "Sydney LEP 2012, clause 6.18",
+    "summary": "Development may not add to the total shadow on these public places across their protected hours.",
+    "source_note": "Protected windows as amended by Amendment No 64. The NSW legislation site refused automated access, so they were transcribed from secondary sources; check the official text before relying on them. Places without a verified window show sun now but are not tested.",
+    "reading_note": "Two readings matter more than any data error. Times: the Standard Time Act 1987 is reported to read times in legal instruments as standard time, which during daylight saving is an hour later on the clock; for Macquarie Place that changes the sun in its window by up to 44 points. Baseline: the clause compares against buildings existing at a fixed date, while this test compares against today's model.",
+    "default_time_basis": "standard",
+    "tip": "Tip: try the block west of Hyde Park, or just north of Martin Place.",
+    "unprotected_label": "not LEP-listed"
+  },
+  "places": [
+    {"name": "Hyde Park", "class": "park", "period": "all", "from": "10:00", "to": "14:00", "protected": true},
+    {
+      "name": "Martin Place",
+      "class": "pedestrian",
+      "period": "09-01..05-31",
+      "from": "12:00",
+      "to": "14:00",
+      "protected": true
+    },
+    {
+      "name": "Macquarie Place",
+      "class": "park",
+      "period": "09-01..05-31",
+      "from": "10:00",
+      "to": "12:00",
+      "protected": true
+    },
+    {
+      "name": "Wynyard Park",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "14:00",
+      "protected": true
+    },
+    {"name": "Lang Park", "class": "park", "period": "all", "from": "12:00", "to": "14:00", "protected": true},
+    {"name": "Pitt Street Mall", "class": "pedestrian", "protected": true},
+    {"name": "Belmore Park", "class": "park", "protected": true},
+    {"name": "The Domain", "class": "park", "protected": true},
+    {"name": "Royal Botanic Garden", "class": "garden", "protected": true},
+    {"name": "Barangaroo Reserve", "class": "park", "protected": false}
+  ],
+  "analysis_region": [-1100, 700, -1800, 900],
+  "sun_hours_region": [-1150, 750, -1750, 1000],
+  "reference_heights": {"file": "reference_heights.csv", "source": "Wikipedia, List of tallest buildings in Sydney (October 2026)"},
+  "verified_heights": "verified_heights.csv",
+  "start": {
+    "date": [3, 21],
+    "time": "08:40",
+    "cam": [2600, 3200, 1700],
+    "tgt": [-180, -380, 30]
+  },
+  "tour": [
+    {
+      "title": "Central Sydney from open data",
+      "text": "{buildings} buildings from OpenStreetMap via Overture Maps, standing on NSW 5 m bare-earth terrain under NSW aerial imagery.",
+      "cam": [1750, 2250, 1150],
+      "tgt": [-180, -380, 30],
+      "date": [3, 21],
+      "from": "08:40",
+      "to": "09:40",
+      "hold": 8
+    },
+    {
+      "title": "Sydney Opera House",
+      "text": "Each shell is a spherical triangle cut from one sphere of radius 75.2 m, the rule Utzon settled on in 1961. The highest shell stands 67 m above sea level.",
+      "cam": [135.4, 717.1, 70],
+      "tgt": [335.4, 542.1, 24],
+      "date": [3, 21],
+      "from": "17:25",
+      "to": "17:55",
+      "hold": 8
+    },
+    {
+      "title": "Sydney Harbour Bridge",
+      "text": "Arch span 503 m, crown 134 m above sea level, 28 panels. The alignment comes from the two pylon footprints in OpenStreetMap, {landmark:harbour_bridge.bearing_deg}° east of north.",
+      "cam": [-616.3, 1017.9, 95],
+      "tgt": [-76.3, 1077.9, 70],
+      "date": [3, 21],
+      "from": "18:05",
+      "to": "18:25",
+      "hold": 8
+    },
+    {
+      "title": "A winter day on the towers",
+      "text": "21 June, 8 am to 4 pm. The sun never climbs above 32.7° here, so at noon a 200 m tower casts a shadow over 310 m long.",
+      "cam": [-1750, -1650, 760],
+      "tgt": [-260, -620, 40],
+      "date": [6, 21],
+      "from": "08:00",
+      "to": "16:00",
+      "hold": 12
+    },
+    {
+      "title": "Martin Place at lunchtime",
+      "place": "Martin Place",
+      "date": [6, 21],
+      "from": "12:30",
+      "to": "13:15",
+      "hold": 9,
+      "text": "On 21 June at 12:30, {sun:Martin Place|6-21|12:30}% of Martin Place gets direct sun; on 21 December, {sun:Martin Place|12-21|12:30}%. The plan protects it only from 1 September to 31 May, 12:00–14:00."
+    },
+    {
+      "title": "Hyde Park in its protected hours",
+      "place": "Hyde Park",
+      "date": [6, 21],
+      "from": "10:00",
+      "to": "14:00",
+      "hold": 10,
+      "text": "Protected all year from 10:00 to 14:00. On the winter solstice, sun on the park falls from {sun:Hyde Park|6-21|10:00}% at 10:00 to {sun:Hyde Park|6-21|14:00}% at 14:00 as the towers to the west take over."
+    },
+    {
+      "title": "Where the heights come from",
+      "provenance": true,
+      "date": [9, 22],
+      "from": "15:00",
+      "to": "15:30",
+      "hold": 9,
+      "cam": [-1200, -1900, 900],
+      "tgt": [-250, -500, 40],
+      "text": "Blue: surveyed, published or verified height. Orange: floor count × storey height. Green: estimated. Against {acc:matched} published tower heights the median error is {acc:median_abs_error_pct}%."
+    },
+    {
+      "title": "After dark",
+      "text": "Windows light from the same facade grid that shades them by day. Drag to explore, or open Sun access to test a tower of your own.",
+      "cam": [900, 1900, 700],
+      "tgt": [-200, -350, 40],
+      "date": [9, 22],
+      "from": "19:05",
+      "to": "19:50",
+      "hold": 10
+    }
+  ],
+  "renders": [
+    {
+      "name": "overview",
+      "cam": [1750, 2250, 1150],
+      "tgt": [-180, -380, 30],
+      "date": [2026, 3, 21],
+      "time": "08:50"
+    },
+    {
+      "name": "opera",
+      "cam": [135.4, 717.1, 70],
+      "tgt": [335.4, 542.1, 24],
+      "date": [2026, 3, 21],
+      "time": "17:35"
+    },
+    {
+      "name": "bridge",
+      "cam": [-616.3, 1017.9, 95],
+      "tgt": [-76.3, 1077.9, 70],
+      "date": [2026, 3, 21],
+      "time": "18:10"
+    },
+    {
+      "name": "winter",
+      "cam": [-1750, -1650, 760],
+      "tgt": [-260, -620, 40],
+      "date": [2026, 6, 21],
+      "time": "12:00"
+    }
+  ],
+  "check_points": {
+    "Martin Place": [151.2093, -33.8677],
+    "Sydney Tower base": [151.20929, -33.87048],
+    "Hyde Park": [151.211, -33.8735],
+    "Observatory Hill": [151.2046, -33.8597],
+    "Circular Quay": [151.2112, -33.8613]
+  },
+  "radar_test_building": "Quay Quarter Tower",
+  "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"}
+}

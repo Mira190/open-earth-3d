@@ -1,0 +1,7 @@
+osm_id,name,floors,height_m,source,note
+w1095401680,Gallipoli Memorial Club,3,,https://www.commercialrealestate.com.au/news/amp-capital-buys-air-space-above-gallipoli-memorial-club-for-nearly-11m-but-it-cant-be-developed-59043/,heritage-listed three-storey building; open-data estimate was 40.9 m
+w195460154,Strand Arcade,3,,https://en.wikipedia.org/wiki/The_Strand_Arcade,three storeys (NSW State Heritage Register no. 1864); open-data estimate was 82.7 m
+w1095401681,18 Loftus Street,13,41.7,https://www.skyscrapercenter.com/building/18-loftus-street/45805,open-data estimate was 40.9 m
+w386563351,60 Martin Place,33,137.1,https://www.skyscrapercenter.com/building/sixty-martin-place/18683,completed 2019; OSM carries fixme=levels; open-data estimate was 23.6 m
+w1095401667,9-15 Young Street,11,,https://archello.com/project/9-15-young-street-quay-quarter-lanes,three commercial levels below eight apartment levels; open-data estimate was 26.6 m
+w471985479,St Philip's Church,,31,https://apps.environment.nsw.gov.au/dpcheritageapp/ViewHeritageItemDetails.aspx?ID=2423855,bell tower over 31 m at the west end; the nave is lower so this is an upper bound for the footprint; open-data estimate was 73.9 m

@@ -1,0 +1,9 @@
+# pipeline and analyses (Python 3.11+)
+duckdb>=1.1
+shapely>=2.0
+pyproj>=3.6
+numpy>=1.26
+scipy>=1.11
+pillow>=10.0
+requests>=2.31
+# optional, for blender/build_scene.py (needs Python 3.13): pip install bpy==5.2.3

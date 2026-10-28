@@ -1,0 +1,8 @@
+# raw downloads: re-created by pipeline/fetch_*.py
+data/raw/
+__pycache__/
+*.pyc
+*.blend
+*.blend1
+node_modules/
+.DS_Store

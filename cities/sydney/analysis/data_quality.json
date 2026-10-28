@@ -1,0 +1,57 @@
+{
+ "ml_heights": {
+  "buildings": 8460,
+  "with_height": 1104,
+  "height_is_ml": 1009,
+  "ml_with_floor_count": 304,
+  "median_ml_over_floor_height": 0.48,
+  "share_ml_below_half": 0.56,
+  "towers_15_floors_plus": 16,
+  "towers_median_ml_over_floor_height": 0.26
+ },
+ "terrain": {
+  "region_m": [
+   -1100,
+   700,
+   -1800,
+   900
+  ],
+  "land": {
+   "samples": 7350,
+   "median_excess_m": 8.7,
+   "p90_excess_m": 45.8
+  },
+  "under_buildings": {
+   "samples": 2335,
+   "median_excess_m": 16.9,
+   "p90_excess_m": 52.7
+  },
+  "open_ground": {
+   "samples": 5015,
+   "median_excess_m": 6.6,
+   "p90_excess_m": 38.6
+  },
+  "points": {
+   "Martin Place": {
+    "terrarium_m": 64.9,
+    "dem_m": 19.1
+   },
+   "Sydney Tower base": {
+    "terrarium_m": 80.4,
+    "dem_m": 21.1
+   },
+   "Hyde Park": {
+    "terrarium_m": 43.3,
+    "dem_m": 27.8
+   },
+   "Observatory Hill": {
+    "terrarium_m": 44.1,
+    "dem_m": 43.0
+   },
+   "Circular Quay": {
+    "terrarium_m": 13.7,
+    "dem_m": 2.2
+   }
+  }
+ }
+}

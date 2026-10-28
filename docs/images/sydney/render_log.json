@@ -1,0 +1,52 @@
+{
+ "city": "sydney",
+ "blender": "5.2.3 LTS",
+ "views": {
+  "overview": {
+   "date": "2026-3-21",
+   "time": "08:50",
+   "sun_altitude": 21.98,
+   "sun_azimuth": 74.12,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 75.0
+  },
+  "opera": {
+   "date": "2026-3-21",
+   "time": "17:35",
+   "sun_altitude": 17.84,
+   "sun_azimuth": 282.81,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 65.4
+  },
+  "bridge": {
+   "date": "2026-3-21",
+   "time": "18:10",
+   "sun_altitude": 10.68,
+   "sun_azimuth": 277.61,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 58.8
+  },
+  "winter": {
+   "date": "2026-6-21",
+   "time": "12:00",
+   "sun_altitude": 32.7,
+   "sun_azimuth": 359.15,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 81.3
+  }
+ },
+ "build_s": 2.3,
+ "objects": 18,
+ "triangles": 601339,
+ "buildings": 7962,
+ "trees": 6096,
+ "total_s": 282.8
+}

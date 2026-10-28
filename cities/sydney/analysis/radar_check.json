@@ -1,0 +1,66 @@
+{
+ "note": "SRTM (Feb 2000) surface excess over the bare-earth DEM vs block-mean model height, analysis region, land blocks only",
+ "test_building": "Quay Quarter Tower",
+ "scales": [
+  {
+   "block_m": 100.0,
+   "blocks": 445,
+   "model": {
+    "r": 0.747,
+    "slope": 0.773,
+    "intercept_m": 6.2,
+    "rmse_m": 11.5,
+    "test_block_residual_m": -4.1,
+    "test_block_rank": 283
+   },
+   "model_with_test_missing": {
+    "r": 0.745,
+    "slope": 0.777,
+    "intercept_m": 6.3,
+    "rmse_m": 11.5,
+    "test_block_residual_m": 11.5,
+    "test_block_rank": 65
+   }
+  },
+  {
+   "block_m": 150.0,
+   "blocks": 194,
+   "model": {
+    "r": 0.866,
+    "slope": 0.987,
+    "intercept_m": 3.4,
+    "rmse_m": 8.5,
+    "test_block_residual_m": -13.4,
+    "test_block_rank": 187
+   },
+   "model_with_test_missing": {
+    "r": 0.864,
+    "slope": 0.993,
+    "intercept_m": 3.5,
+    "rmse_m": 8.6,
+    "test_block_residual_m": 4.1,
+    "test_block_rank": 47
+   }
+  },
+  {
+   "block_m": 200.0,
+   "blocks": 112,
+   "model": {
+    "r": 0.892,
+    "slope": 1.021,
+    "intercept_m": 2.9,
+    "rmse_m": 7.4,
+    "test_block_residual_m": -7.0,
+    "test_block_rank": 106
+   },
+   "model_with_test_missing": {
+    "r": 0.891,
+    "slope": 1.03,
+    "intercept_m": 2.9,
+    "rmse_m": 7.4,
+    "test_block_residual_m": 9.8,
+    "test_block_rank": 9
+   }
+  }
+ ]
+}

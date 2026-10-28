@@ -1,0 +1,823 @@
+{
+ "note": "Reference heights are architectural (incl. spires); model heights are roof/top of the tallest solid.",
+ "summary": {
+  "reference": 39,
+  "matched": 35,
+  "median_abs_error_pct": 4.5,
+  "median_error_m": -7.2,
+  "within_10pct": 23,
+  "within_20pct": 30,
+  "gross_short": 3,
+  "by_source": {
+   "mapped": {
+    "n": 16,
+    "median_abs_error_pct": 0.2
+   },
+   "estimate": {
+    "n": 1,
+    "median_abs_error_pct": 96.7
+   },
+   "floors": {
+    "n": 18,
+    "median_abs_error_pct": 6.1
+   }
+  }
+ },
+ "rows": [
+  {
+   "name": "Sydney Tower",
+   "ref_m": 309.0,
+   "ref_floors": null,
+   "year": "1981",
+   "address": "100 Market Street",
+   "xy": [
+    -238.4,
+    -943.9
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4784,
+   "model_name": "Westfield Sydney",
+   "model_m": 309.0,
+   "model_floors": 0,
+   "height_src": "floors",
+   "osm_id": "w214485654",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Crown Sydney",
+   "ref_m": 271.0,
+   "ref_floors": 75,
+   "year": "2020",
+   "address": "1-11 Barangaroo Avenue",
+   "xy": [
+    -962.8,
+    -44.8
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 432,
+   "model_name": "Crown Sydney Hotel Resort",
+   "model_m": 271.0,
+   "model_floors": 4,
+   "height_src": "mapped",
+   "osm_id": "w581013658",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Salesforce Tower",
+   "ref_m": 263.0,
+   "ref_floors": 56,
+   "year": "2022",
+   "address": "180 George Street",
+   "xy": [
+    -245.9,
+    -39.0
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5102,
+   "model_name": "Salesforce Tower",
+   "model_m": 263.0,
+   "model_floors": 55,
+   "height_src": "mapped",
+   "osm_id": "w1116329930",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "One Sydney Harbour (Tower 1)",
+   "ref_m": 247.0,
+   "ref_floors": 72,
+   "year": "2024",
+   "address": "88 Barangaroo Avenue",
+   "xy": [
+    -905.4,
+    -76.5
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 364,
+   "model_name": "Tower 1",
+   "model_m": 247.0,
+   "model_floors": 0,
+   "height_src": "mapped",
+   "osm_id": "w1068760240",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Chifley Tower",
+   "ref_m": 244.0,
+   "ref_floors": 50,
+   "year": "1992",
+   "address": "2 Chifley Square",
+   "xy": [
+    23.1,
+    -434.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4580,
+   "model_name": "Chifley Tower",
+   "model_m": 217.0,
+   "model_floors": 5,
+   "height_src": "mapped",
+   "osm_id": "w544269333",
+   "error_m": -27.0,
+   "error_pct": -11.1
+  },
+  {
+   "name": "Citigroup Centre",
+   "ref_m": 243.0,
+   "ref_floors": 50,
+   "year": "2000",
+   "address": "2 Park Street",
+   "xy": [
+    -365.0,
+    -1188.6
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4848,
+   "model_name": "The Galeries",
+   "model_m": 206.0,
+   "model_floors": 4,
+   "height_src": "mapped",
+   "osm_id": "w270316691",
+   "error_m": -37.0,
+   "error_pct": -15.2
+  },
+  {
+   "name": "Deutsche Bank Place",
+   "ref_m": 240.0,
+   "ref_floors": 39,
+   "year": "2005",
+   "address": "126 Phillip Street",
+   "xy": [
+    16.9,
+    -547.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4604,
+   "model_name": "Deutsche Bank Plaza",
+   "model_m": 160.0,
+   "model_floors": 39,
+   "height_src": "mapped",
+   "osm_id": "w232513268",
+   "error_m": -80.0,
+   "error_pct": -33.3
+  },
+  {
+   "name": "Greenland Centre",
+   "ref_m": 237.0,
+   "ref_floors": 67,
+   "year": "2021",
+   "address": "115 Bathurst Street",
+   "xy": [
+    -381.3,
+    -1407.5
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4858,
+   "model_name": "",
+   "model_m": 200.8,
+   "model_floors": 66,
+   "height_src": "floors",
+   "osm_id": "w387741744",
+   "error_m": -36.2,
+   "error_pct": -15.3
+  },
+  {
+   "name": "One Sydney Harbour (Tower 2)",
+   "ref_m": 230.0,
+   "ref_floors": 68,
+   "year": "2024",
+   "address": "88 Barangaroo Avenue",
+   "xy": [
+    -905.4,
+    -76.5
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 364,
+   "model_name": "Tower 1",
+   "model_m": 247.0,
+   "model_floors": 0,
+   "height_src": "mapped",
+   "osm_id": "w1068760240",
+   "error_m": 17.0,
+   "error_pct": 7.4,
+   "why": "shares 88 Barangaroo Avenue with Tower 1, which the address resolves to"
+  },
+  {
+   "name": "Meriton World Tower",
+   "ref_m": 230.0,
+   "ref_floors": 75,
+   "year": "2004",
+   "address": "85 Liverpool Street",
+   "xy": [
+    -339.1,
+    -1624.0
+   ],
+   "match": "address",
+   "how": "nearest",
+   "building": 2378,
+   "model_name": "",
+   "model_m": 70.2,
+   "model_floors": 18,
+   "height_src": "floors",
+   "osm_id": "w477593567",
+   "error_m": -159.8,
+   "error_pct": -69.5
+  },
+  {
+   "name": "25 Martin Place",
+   "ref_m": 228.0,
+   "ref_floors": 60,
+   "year": "1977",
+   "address": "19 Martin Place",
+   "xy": [
+    -201.0,
+    -748.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4751,
+   "model_name": "25 Martin Place",
+   "model_m": 228.0,
+   "model_floors": 2,
+   "height_src": "floors",
+   "osm_id": "w548822770",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Governor Phillip Tower",
+   "ref_m": 227.0,
+   "ref_floors": 61,
+   "year": "1993",
+   "address": "1 Farrer Place",
+   "xy": [
+    -14.7,
+    -252.8
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4559,
+   "model_name": "Governor Phillip Tower",
+   "model_m": 227.0,
+   "model_floors": 62,
+   "height_src": "mapped",
+   "osm_id": "w232511784",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Latitude",
+   "ref_m": 222.0,
+   "ref_floors": 45,
+   "year": "2004",
+   "address": "680 George Street",
+   "xy": [
+    -480.9,
+    -1711.3
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 2320,
+   "model_name": "",
+   "model_m": 183.3,
+   "model_floors": 7,
+   "height_src": "floors",
+   "osm_id": "w547012466",
+   "error_m": -38.7,
+   "error_pct": -17.4
+  },
+  {
+   "name": "Aurora Place",
+   "ref_m": 219.0,
+   "ref_floors": 41,
+   "year": "2000",
+   "address": "88 Phillip Street",
+   "xy": [
+    40.0,
+    -312.8
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4578,
+   "model_name": "Aurora Place",
+   "model_m": 218.0,
+   "model_floors": 41,
+   "height_src": "mapped",
+   "osm_id": "w232505741",
+   "error_m": -1.0,
+   "error_pct": -0.5
+  },
+  {
+   "name": "International Tower 1",
+   "ref_m": 217.0,
+   "ref_floors": 50,
+   "year": "2016",
+   "address": "100 Barangaroo Avenue",
+   "xy": [
+    -865.2,
+    -199.0
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 368,
+   "model_name": "International Tower One",
+   "model_m": 217.0,
+   "model_floors": 3,
+   "height_src": "mapped",
+   "osm_id": "w468557019",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Quay Quarter Tower",
+   "ref_m": 216.0,
+   "ref_floors": 54,
+   "year": "2022",
+   "address": "50 Bridge Street",
+   "xy": [
+    1.6,
+    -87.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4570,
+   "model_name": "Quay Quarter Tower",
+   "model_m": 7.2,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w312373859",
+   "error_m": -208.8,
+   "error_pct": -96.7
+  },
+  {
+   "name": "ANZ Tower",
+   "ref_m": 195.0,
+   "ref_floors": 46,
+   "year": "2013",
+   "address": "161 Castlereagh Street",
+   "xy": [
+    -234.2,
+    -1141.0
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4842,
+   "model_name": "ANZ Bank Centre",
+   "model_m": 187.2,
+   "model_floors": 46,
+   "height_src": "floors",
+   "osm_id": "w387742502",
+   "error_m": -7.8,
+   "error_pct": -4.0
+  },
+  {
+   "name": "259 George Street",
+   "ref_m": 193.0,
+   "ref_floors": 48,
+   "year": "1982",
+   "address": "259 George Street",
+   "xy": [
+    -411.6,
+    -209.1
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 5186,
+   "model_name": "",
+   "model_m": 127.0,
+   "model_floors": 31,
+   "height_src": "mapped",
+   "osm_id": "w26303656",
+   "error_m": -66.0,
+   "error_pct": -34.2
+  },
+  {
+   "name": "Century Tower",
+   "ref_m": 183.0,
+   "ref_floors": 50,
+   "year": "1997",
+   "address": "343 Pitt Street",
+   "xy": [
+    -362.4,
+    -1492.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4860,
+   "model_name": "Century Tower",
+   "model_m": 170.8,
+   "model_floors": 52,
+   "height_src": "floors",
+   "osm_id": "w232507341",
+   "error_m": -12.2,
+   "error_pct": -6.7
+  },
+  {
+   "name": "Grosvenor Place",
+   "ref_m": 180.0,
+   "ref_floors": 45,
+   "year": "1988",
+   "address": "225 George Street",
+   "xy": [
+    -409.9,
+    -89.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5182,
+   "model_name": "Grosvenor Place",
+   "model_m": 180.0,
+   "model_floors": 44,
+   "height_src": "mapped",
+   "osm_id": "w26303621",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "International Tower 2",
+   "ref_m": 178.0,
+   "ref_floors": 43,
+   "year": "2015",
+   "address": "200 Barangaroo Avenue",
+   "xy": [
+    -867.2,
+    -274.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 412,
+   "model_name": "International Tower Two",
+   "model_m": 178.0,
+   "model_floors": 3,
+   "height_src": "mapped",
+   "osm_id": "w423824985",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "1 Elizabeth",
+   "ref_m": 174.0,
+   "ref_floors": 38,
+   "year": "2024",
+   "address": "1 Elizabeth Street",
+   "xy": [
+    -111.2,
+    -531.2
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4596,
+   "model_name": "1Elizabeth",
+   "model_m": 152.1,
+   "model_floors": 39,
+   "height_src": "floors",
+   "osm_id": "w1241501338",
+   "error_m": -21.9,
+   "error_pct": -12.6
+  },
+  {
+   "name": "Capita Centre",
+   "ref_m": 173.0,
+   "ref_floors": 31,
+   "year": "1989",
+   "address": "9 Castlereagh Street",
+   "xy": [
+    -181.9,
+    -517.5
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 5045,
+   "model_name": "",
+   "model_m": 158.0,
+   "model_floors": 31,
+   "height_src": "mapped",
+   "osm_id": "w232507334",
+   "error_m": -15.0,
+   "error_pct": -8.7
+  },
+  {
+   "name": "Australia Square Tower",
+   "ref_m": 170.0,
+   "ref_floors": 46,
+   "year": "1967",
+   "address": "264 George Street",
+   "xy": [
+    -328.0,
+    -327.0
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5082,
+   "model_name": "Australia Square",
+   "model_m": 170.0,
+   "model_floors": 0,
+   "height_src": "mapped",
+   "osm_id": "w685763567",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Meriton Tower",
+   "ref_m": 170.0,
+   "ref_floors": 48,
+   "year": "2006",
+   "address": "551 George Street",
+   "match": "address not found"
+  },
+  {
+   "name": "The Peak",
+   "ref_m": 168.0,
+   "ref_floors": 46,
+   "year": "1996",
+   "address": "2 Quay Street",
+   "xy": [
+    -765.0,
+    -2015.3
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 828,
+   "model_name": "Paddy's Markets",
+   "model_m": 175.5,
+   "model_floors": 4,
+   "height_src": "floors",
+   "osm_id": "w173170862",
+   "error_m": 7.5,
+   "error_pct": 4.5
+  },
+  {
+   "name": "International Tower 3",
+   "ref_m": 168.0,
+   "ref_floors": 40,
+   "year": "2016",
+   "address": "300 Barangaroo Avenue",
+   "xy": [
+    -860.4,
+    -346.7
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 409,
+   "model_name": "International Tower Three",
+   "model_m": 169.0,
+   "model_floors": 3,
+   "height_src": "mapped",
+   "osm_id": "w423824984",
+   "error_m": 1.0,
+   "error_pct": 0.6
+  },
+  {
+   "name": "1 O'Connell Street",
+   "ref_m": 166.0,
+   "ref_floors": 36,
+   "year": "1991",
+   "address": "1 O'Connell Street",
+   "xy": [
+    -148.7,
+    -290.2
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 5067,
+   "model_name": "",
+   "model_m": 171.6,
+   "model_floors": 5,
+   "height_src": "floors",
+   "osm_id": "w453932579",
+   "error_m": 5.6,
+   "error_pct": 3.4
+  },
+  {
+   "name": "Westpac Place",
+   "ref_m": 166.0,
+   "ref_floors": 35,
+   "year": "2005",
+   "address": "275 Kent Street",
+   "xy": [
+    -710.1,
+    -442.9
+   ],
+   "match": "address",
+   "how": "nearest",
+   "building": 397,
+   "model_name": "",
+   "model_m": 78.0,
+   "model_floors": 20,
+   "height_src": "floors",
+   "osm_id": "w544300934",
+   "error_m": -88.0,
+   "error_pct": -53.0
+  },
+  {
+   "name": "201 Elizabeth Street",
+   "ref_m": 165.0,
+   "ref_floors": 40,
+   "year": "1978",
+   "address": "201 Elizabeth Street",
+   "xy": [
+    -189.9,
+    -1309.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4801,
+   "model_name": "201 Elizabeth Street",
+   "model_m": 156.0,
+   "model_floors": 40,
+   "height_src": "floors",
+   "osm_id": "w548828451",
+   "error_m": -9.0,
+   "error_pct": -5.5
+  },
+  {
+   "name": "Gateway Plaza",
+   "ref_m": 164.0,
+   "ref_floors": 46,
+   "year": "1989",
+   "address": "1 Macquarie Place",
+   "xy": [
+    -150.4,
+    -3.0
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 5141,
+   "model_name": "Gateway Sydney",
+   "model_m": 160.0,
+   "model_floors": 47,
+   "height_src": "mapped",
+   "osm_id": "w335687879",
+   "error_m": -4.0,
+   "error_pct": -2.4
+  },
+  {
+   "name": "HSBC Centre",
+   "ref_m": 162.0,
+   "ref_floors": 37,
+   "year": "1988",
+   "address": "580 George Street",
+   "xy": [
+    -408.2,
+    -1429.4
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4862,
+   "model_name": "Pavilion on George",
+   "model_m": 156.0,
+   "model_floors": 3,
+   "height_src": "floors",
+   "osm_id": "w569944414",
+   "error_m": -6.0,
+   "error_pct": -3.7
+  },
+  {
+   "name": "Hordern Towers",
+   "ref_m": 156.0,
+   "ref_floors": 48,
+   "year": "1999",
+   "address": "401 Pitt Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Parkline Place",
+   "ref_m": 155.0,
+   "ref_floors": 39,
+   "year": "2024",
+   "address": "175-185 Castlereagh Street",
+   "xy": [
+    -239.6,
+    -1195.7
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4839,
+   "model_name": "Parkline Place",
+   "model_m": 152.1,
+   "model_floors": 39,
+   "height_src": "floors",
+   "osm_id": "w530462789",
+   "error_m": -2.9,
+   "error_pct": -1.9
+  },
+  {
+   "name": "EY Centre",
+   "ref_m": 155.0,
+   "ref_floors": 40,
+   "year": "2015",
+   "address": "200 George Street",
+   "xy": [
+    -326.0,
+    -71.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5097,
+   "model_name": "EY Centre",
+   "model_m": 144.3,
+   "model_floors": 37,
+   "height_src": "floors",
+   "osm_id": "w537523565",
+   "error_m": -10.7,
+   "error_pct": -6.9
+  },
+  {
+   "name": "Angel Place",
+   "ref_m": 152.0,
+   "ref_floors": 35,
+   "year": "2000",
+   "address": "123 Pitt Street",
+   "xy": [
+    -317.2,
+    -516.8
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5032,
+   "model_name": "Angel Place",
+   "model_m": 136.5,
+   "model_floors": 35,
+   "height_src": "floors",
+   "osm_id": "w409035198",
+   "error_m": -15.5,
+   "error_pct": -10.2
+  },
+  {
+   "name": "Sydney Central",
+   "ref_m": 152.0,
+   "ref_floors": 31,
+   "year": "1992",
+   "address": "477 Pitt Street",
+   "xy": [
+    -479.6,
+    -2055.1
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2273,
+   "model_name": "Sydney Central",
+   "model_m": 128.7,
+   "model_floors": 3,
+   "height_src": "floors",
+   "osm_id": "w485291596",
+   "error_m": -23.3,
+   "error_pct": -15.3
+  },
+  {
+   "name": "85 Castlereagh Street",
+   "ref_m": 151.0,
+   "ref_floors": 32,
+   "year": "2011",
+   "address": "85 Castlereagh Street",
+   "xy": [
+    -216.4,
+    -901.1
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 4784,
+   "model_name": "Westfield Sydney",
+   "model_m": 309.0,
+   "model_floors": 0,
+   "height_src": "floors",
+   "osm_id": "w214485654",
+   "error_m": 158.0,
+   "error_pct": 104.6,
+   "why": "the address point falls inside the Westfield Sydney block, which includes Sydney Tower"
+  },
+  {
+   "name": "Lumi\u00e8re Residences",
+   "ref_m": 151.0,
+   "ref_floors": 47,
+   "year": "2007",
+   "address": "487 George Street",
+   "xy": [
+    -479.3,
+    -1423.4
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4873,
+   "model_name": "L\u00f9miere Residences",
+   "model_m": 143.8,
+   "model_floors": 47,
+   "height_src": "floors",
+   "osm_id": "w538108143",
+   "error_m": -7.2,
+   "error_pct": -4.8
+  }
+ ]
+}

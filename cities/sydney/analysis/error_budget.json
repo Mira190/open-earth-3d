@@ -1,0 +1,95 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Hyde Park",
+   "prod": 95.51,
+   "finer_samples": 95.51,
+   "finer_dsm": 95.41,
+   "finer_time": 95.7,
+   "reference": 95.6,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.09,
+   "seconds": 47.284
+  },
+  {
+   "place": "Martin Place",
+   "prod": 43.38,
+   "finer_samples": 43.34,
+   "finer_dsm": 42.65,
+   "finer_time": 43.23,
+   "reference": 42.48,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.9,
+   "seconds": 1.908
+  },
+  {
+   "place": "Macquarie Place",
+   "prod": 76.52,
+   "finer_samples": 76.42,
+   "finer_dsm": 76.29,
+   "finer_time": 77.29,
+   "reference": 77.1,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.58,
+   "seconds": 0.498
+  },
+  {
+   "place": "Wynyard Park",
+   "prod": 86.36,
+   "finer_samples": 86.83,
+   "finer_dsm": 85.99,
+   "finer_time": 87.35,
+   "reference": 87.38,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -1.02,
+   "seconds": 2.826
+  },
+  {
+   "place": "Lang Park",
+   "prod": 98.97,
+   "finer_samples": 98.98,
+   "finer_dsm": 98.84,
+   "finer_time": 99.19,
+   "reference": 99.09,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.12,
+   "seconds": 1.44
+  },
+  {
+   "place": "Pitt Street Mall",
+   "prod": 52.68,
+   "finer_samples": 52.15,
+   "finer_dsm": 52.34,
+   "finer_time": 53.63,
+   "reference": 52.83,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.15,
+   "seconds": 2.317
+  },
+  {
+   "place": "Belmore Park",
+   "prod": 88.56,
+   "finer_samples": 88.54,
+   "finer_dsm": 88.42,
+   "finer_time": 88.64,
+   "reference": 88.49,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.07,
+   "seconds": 16.651
+  },
+  {
+   "place": "Barangaroo Reserve",
+   "prod": 99.25,
+   "finer_samples": 99.23,
+   "finer_dsm": 99.29,
+   "finer_time": 99.29,
+   "reference": 99.28,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.03,
+   "seconds": 21.57
+  }
+ ],
+ "max_abs_numerical_error_pp": 1.02
+}

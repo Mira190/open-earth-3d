@@ -1,0 +1,1274 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "Hyde Park",
+   "period": "all",
+   "window": "10:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 4.5,
+   "catchment_buildings": 20,
+   "shade_by_height_source_pct": {
+    "floors": 81.7,
+    "mapped": 12.1,
+    "estimate": 6.2
+   },
+   "top_blockers": [
+    {
+     "building": 4718,
+     "name": "Federal Law Courts",
+     "height_m": 117,
+     "source": "floors",
+     "osm_id": "w16749246",
+     "share_pct": 23.8
+    },
+    {
+     "building": 4801,
+     "name": "201 Elizabeth Street",
+     "height_m": 156,
+     "source": "floors",
+     "osm_id": "w548828451",
+     "share_pct": 17.6
+    },
+    {
+     "building": 2589,
+     "name": "Anzac Memorial",
+     "height_m": 22,
+     "source": "mapped",
+     "osm_id": "w182821636",
+     "share_pct": 12
+    },
+    {
+     "building": 4784,
+     "name": "Westfield Sydney",
+     "height_m": 309,
+     "source": "floors",
+     "osm_id": "w214485654",
+     "share_pct": 7.5
+    },
+    {
+     "building": 4751,
+     "name": "25 Martin Place",
+     "height_m": 228,
+     "source": "floors",
+     "osm_id": "w548822770",
+     "share_pct": 6.5
+    },
+    {
+     "building": 2636,
+     "name": "Hyde Park Residences",
+     "height_m": 92.8,
+     "source": "floors",
+     "osm_id": "w538108145",
+     "share_pct": 5.6
+    }
+   ],
+   "base_by_month": [
+    98.8,
+    98.4,
+    98.1,
+    94.3,
+    89.8,
+    87.8,
+    90.7,
+    94.5,
+    97,
+    98.7,
+    99,
+    99
+   ],
+   "p05_by_month": [
+    98.3,
+    97.9,
+    97,
+    91.5,
+    85.9,
+    83.4,
+    87.3,
+    91.7,
+    95.4,
+    98.2,
+    98.6,
+    98.7
+   ],
+   "p95_by_month": [
+    99,
+    98.6,
+    98.4,
+    95.1,
+    90.9,
+    88.8,
+    91.9,
+    95.4,
+    97.3,
+    98.9,
+    99.2,
+    99.2
+   ],
+   "window_mean": {
+    "base": 95.5,
+    "p05": 93.9,
+    "p95": 96
+   },
+   "max_halfwidth_pp": 2.7
+  },
+  {
+   "name": "Martin Place",
+   "period": "09-01..05-31",
+   "window": "12:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 56.6,
+   "catchment_buildings": 17,
+   "shade_by_height_source_pct": {
+    "verified": 13.5,
+    "estimate": 1.4,
+    "floors": 80.2,
+    "mapped": 4.8
+   },
+   "top_blockers": [
+    {
+     "building": 5038,
+     "name": "ANZ Bank",
+     "height_m": 74.1,
+     "source": "floors",
+     "osm_id": "w386563341",
+     "share_pct": 14.5
+    },
+    {
+     "building": 4613,
+     "name": "60 Martin Place",
+     "height_m": 137.1,
+     "source": "verified",
+     "osm_id": "w386563351",
+     "share_pct": 13.5
+    },
+    {
+     "building": 4597,
+     "name": "unnamed office",
+     "height_m": 54.6,
+     "source": "floors",
+     "osm_id": "w386563356",
+     "share_pct": 12.4
+    },
+    {
+     "building": 5030,
+     "name": "Challis House",
+     "height_m": 46.8,
+     "source": "floors",
+     "osm_id": "w544415842",
+     "share_pct": 12.4
+    },
+    {
+     "building": 5043,
+     "name": "MLC Building",
+     "height_m": 46.8,
+     "source": "floors",
+     "osm_id": "w386563349",
+     "share_pct": 8.7
+    },
+    {
+     "building": 4599,
+     "name": "unnamed office",
+     "height_m": 35.1,
+     "source": "floors",
+     "osm_id": "w618200548",
+     "share_pct": 7.6
+    }
+   ],
+   "base_by_month": [
+    74.6,
+    49.6,
+    20.7,
+    7.6,
+    2.3,
+    23,
+    52,
+    76.5,
+    84.3
+   ],
+   "p05_by_month": [
+    69.7,
+    42,
+    18.6,
+    4.7,
+    1.7,
+    18.5,
+    44.1,
+    70.8,
+    80.3
+   ],
+   "p95_by_month": [
+    76.8,
+    53.3,
+    25.9,
+    9.1,
+    4.2,
+    28,
+    55.7,
+    78.5,
+    85.7
+   ],
+   "window_mean": {
+    "base": 43.4,
+    "p05": 39.8,
+    "p95": 45.8
+   },
+   "max_halfwidth_pp": 5.8
+  },
+  {
+   "name": "Macquarie Place",
+   "period": "09-01..05-31",
+   "window": "10:00-12:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 23.5,
+   "catchment_buildings": 5,
+   "shade_by_height_source_pct": {
+    "reference": 61.6,
+    "mapped": 13.3,
+    "verified": 21.8,
+    "estimate": 3.2,
+    "floors": 0.1
+   },
+   "top_blockers": [
+    {
+     "building": 4570,
+     "name": "Quay Quarter Tower",
+     "height_m": 216,
+     "source": "reference",
+     "osm_id": "w312373859",
+     "share_pct": 61.6
+    },
+    {
+     "building": 4554,
+     "name": "18 Loftus Street",
+     "height_m": 41.7,
+     "source": "verified",
+     "osm_id": "w1095401681",
+     "share_pct": 21.8
+    },
+    {
+     "building": 4553,
+     "name": "Bridgeport",
+     "height_m": 54,
+     "source": "mapped",
+     "osm_id": "w387782067",
+     "share_pct": 10.5
+    },
+    {
+     "building": 4557,
+     "name": "unnamed building",
+     "height_m": 25,
+     "source": "estimate",
+     "osm_id": "w841971467",
+     "share_pct": 3.1
+    },
+    {
+     "building": 5141,
+     "name": "Gateway Sydney",
+     "height_m": 160,
+     "source": "mapped",
+     "osm_id": "w335687879",
+     "share_pct": 2.8
+    },
+    {
+     "building": 5124,
+     "name": "unnamed office",
+     "height_m": 50.7,
+     "source": "floors",
+     "osm_id": "w841971462",
+     "share_pct": 0.1
+    }
+   ],
+   "base_by_month": [
+    46.2,
+    65.8,
+    83.8,
+    96.1,
+    90.9,
+    98.6,
+    86.1,
+    64.8,
+    56.4
+   ],
+   "p05_by_month": [
+    45.1,
+    64.4,
+    70.3,
+    76,
+    70,
+    83.7,
+    84.6,
+    63.7,
+    55
+   ],
+   "p95_by_month": [
+    48.5,
+    66.4,
+    84.4,
+    96.6,
+    95.7,
+    98.9,
+    86.6,
+    67.5,
+    59.7
+   ],
+   "window_mean": {
+    "base": 76.5,
+    "p05": 69.8,
+    "p95": 77.4
+   },
+   "max_halfwidth_pp": 12.9
+  },
+  {
+   "name": "Wynyard Park",
+   "period": "all",
+   "window": "12:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 13.6,
+   "catchment_buildings": 12,
+   "shade_by_height_source_pct": {
+    "estimate": 3.7,
+    "floors": 96.3,
+    "mapped": 0
+   },
+   "top_blockers": [
+    {
+     "building": 4994,
+     "name": "unnamed building",
+     "height_m": 58.5,
+     "source": "floors",
+     "osm_id": "w85690920",
+     "share_pct": 43
+    },
+    {
+     "building": 387,
+     "name": "The York",
+     "height_m": 80.8,
+     "source": "floors",
+     "osm_id": "w85690897",
+     "share_pct": 18.2
+    },
+    {
+     "building": 4992,
+     "name": "Transport House",
+     "height_m": 50.7,
+     "source": "floors",
+     "osm_id": "w85690918",
+     "share_pct": 8.8
+    },
+    {
+     "building": 4995,
+     "name": "unnamed building",
+     "height_m": 148.2,
+     "source": "floors",
+     "osm_id": "w1113583127",
+     "share_pct": 7.6
+    },
+    {
+     "building": 4997,
+     "name": "Brookfield Place",
+     "height_m": 136.5,
+     "source": "floors",
+     "osm_id": "w1093306607",
+     "share_pct": 4.6
+    },
+    {
+     "building": 4986,
+     "name": "unnamed service",
+     "height_m": 11.7,
+     "source": "estimate",
+     "osm_id": "w1363069681",
+     "share_pct": 3.4
+    }
+   ],
+   "base_by_month": [
+    97.8,
+    92.9,
+    81.2,
+    83.1,
+    70.8,
+    64.7,
+    73.1,
+    83.6,
+    92.7,
+    97.4,
+    99.8,
+    99.3
+   ],
+   "p05_by_month": [
+    90.5,
+    80.1,
+    68.6,
+    75.1,
+    58,
+    50.5,
+    61.1,
+    75.4,
+    86.1,
+    92.6,
+    97.1,
+    96.3
+   ],
+   "p95_by_month": [
+    99.2,
+    95.5,
+    87,
+    85.9,
+    76.1,
+    71.5,
+    77.8,
+    86.3,
+    94.9,
+    98.8,
+    99.8,
+    99.8
+   ],
+   "window_mean": {
+    "base": 86.4,
+    "p05": 80.4,
+    "p95": 88.1
+   },
+   "max_halfwidth_pp": 10.5
+  },
+  {
+   "name": "Lang Park",
+   "period": "all",
+   "window": "12:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 1,
+   "catchment_buildings": 4,
+   "shade_by_height_source_pct": {
+    "estimate": 12.4,
+    "floors": 87.6
+   },
+   "top_blockers": [
+    {
+     "building": 349,
+     "name": "Observatory Tower",
+     "height_m": 110.8,
+     "source": "floors",
+     "osm_id": "w538095830",
+     "share_pct": 38.1
+    },
+    {
+     "building": 5214,
+     "name": "unnamed apartments",
+     "height_m": 77.8,
+     "source": "floors",
+     "osm_id": "w544430613",
+     "share_pct": 33.9
+    },
+    {
+     "building": 374,
+     "name": "Emirates House",
+     "height_m": 97.5,
+     "source": "floors",
+     "osm_id": "w85690888",
+     "share_pct": 15.6
+    },
+    {
+     "building": 5205,
+     "name": "unnamed building",
+     "height_m": 14.6,
+     "source": "estimate",
+     "osm_id": "w1480093064",
+     "share_pct": 12.4
+    }
+   ],
+   "base_by_month": [
+    100,
+    100,
+    100,
+    99.6,
+    97.5,
+    93.2,
+    99.5,
+    99.8,
+    98,
+    100,
+    100,
+    100
+   ],
+   "p05_by_month": [
+    100,
+    100,
+    98,
+    91.2,
+    84.5,
+    77.1,
+    86.2,
+    91.6,
+    93,
+    99.7,
+    99.6,
+    99.9
+   ],
+   "p95_by_month": [
+    100,
+    100,
+    100,
+    99.8,
+    99.2,
+    98.4,
+    99.6,
+    99.9,
+    98.2,
+    100,
+    100,
+    100
+   ],
+   "window_mean": {
+    "base": 99,
+    "p05": 93.7,
+    "p95": 99.4
+   },
+   "max_halfwidth_pp": 10.7
+  },
+  {
+   "name": "Pitt Street Mall",
+   "period": null,
+   "window": "10:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 47.3,
+   "catchment_buildings": 18,
+   "shade_by_height_source_pct": {
+    "floors": 97.8,
+    "estimate": 0.8,
+    "verified": 1.4
+   },
+   "top_blockers": [
+    {
+     "building": 4784,
+     "name": "Westfield Sydney",
+     "height_m": 309,
+     "source": "floors",
+     "osm_id": "w214485654",
+     "share_pct": 20.6
+    },
+    {
+     "building": 4749,
+     "name": "135 on King",
+     "height_m": 124.8,
+     "source": "floors",
+     "osm_id": "w542856711",
+     "share_pct": 19.1
+    },
+    {
+     "building": 4759,
+     "name": "unnamed building",
+     "height_m": 89.7,
+     "source": "floors",
+     "osm_id": "w544415838",
+     "share_pct": 12
+    },
+    {
+     "building": 4766,
+     "name": "unnamed building",
+     "height_m": 19.5,
+     "source": "floors",
+     "osm_id": "w621342725",
+     "share_pct": 7.4
+    },
+    {
+     "building": 4930,
+     "name": "Westfield Sydney Central Plaza",
+     "height_m": 140.4,
+     "source": "floors",
+     "osm_id": "w214485734",
+     "share_pct": 6.6
+    },
+    {
+     "building": 4755,
+     "name": "unnamed building",
+     "height_m": 66.3,
+     "source": "floors",
+     "osm_id": "w386564452",
+     "share_pct": 6.2
+    }
+   ],
+   "base_by_month": [
+    61.7,
+    57.3,
+    52.7,
+    47.6,
+    38.2,
+    33.6,
+    37.5,
+    47.3,
+    59.7,
+    64.4,
+    66.4,
+    65.8
+   ],
+   "p05_by_month": [
+    56,
+    49,
+    42.2,
+    32,
+    24.7,
+    21.7,
+    24.2,
+    31.9,
+    45.3,
+    56,
+    60.4,
+    60.3
+   ],
+   "p95_by_month": [
+    65.3,
+    61.2,
+    55.2,
+    51.4,
+    42.8,
+    38.3,
+    42,
+    51.2,
+    62.7,
+    67.4,
+    69.5,
+    69.8
+   ],
+   "window_mean": {
+    "base": 52.7,
+    "p05": 42.6,
+    "p95": 55.9
+   },
+   "max_halfwidth_pp": 9.7
+  },
+  {
+   "name": "Belmore Park",
+   "period": null,
+   "window": "10:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 11.4,
+   "catchment_buildings": 7,
+   "shade_by_height_source_pct": {
+    "estimate": 4.5,
+    "floors": 93.9,
+    "mapped": 1.7
+   },
+   "top_blockers": [
+    {
+     "building": 2449,
+     "name": "Central Square",
+     "height_m": 93.6,
+     "source": "floors",
+     "osm_id": "w173175338",
+     "share_pct": 62.3
+    },
+    {
+     "building": 2268,
+     "name": "Belmore Park Zone substation",
+     "height_m": 54.6,
+     "source": "floors",
+     "osm_id": "w476441265",
+     "share_pct": 21.1
+    },
+    {
+     "building": 2273,
+     "name": "Sydney Central",
+     "height_m": 128.7,
+     "source": "floors",
+     "osm_id": "w485291596",
+     "share_pct": 8.7
+    },
+    {
+     "building": 2450,
+     "name": "unnamed building",
+     "height_m": 7.2,
+     "source": "estimate",
+     "osm_id": "w809336369",
+     "share_pct": 4.5
+    },
+    {
+     "building": 2341,
+     "name": "Roden Cutler House",
+     "height_m": 108,
+     "source": "mapped",
+     "osm_id": "w232513270",
+     "share_pct": 1.7
+    },
+    {
+     "building": 2351,
+     "name": "Campbell Tower",
+     "height_m": 92.8,
+     "source": "floors",
+     "osm_id": "w173175331",
+     "share_pct": 0.7
+    }
+   ],
+   "base_by_month": [
+    99.6,
+    96.7,
+    91.1,
+    83.2,
+    75.7,
+    71,
+    75.2,
+    83,
+    91,
+    96.9,
+    99.6,
+    99.7
+   ],
+   "p05_by_month": [
+    96.9,
+    92,
+    85.9,
+    74.4,
+    63.2,
+    55.8,
+    62.6,
+    74,
+    84.6,
+    92.8,
+    96.9,
+    98.7
+   ],
+   "p95_by_month": [
+    99.9,
+    97.9,
+    93,
+    85.6,
+    77.9,
+    72.1,
+    77.3,
+    85.4,
+    93.3,
+    98.1,
+    99.9,
+    99.9
+   ],
+   "window_mean": {
+    "base": 88.6,
+    "p05": 82.3,
+    "p95": 89.9
+   },
+   "max_halfwidth_pp": 8.1
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "Lang Park",
+   "building": 5214,
+   "name": "unnamed apartments",
+   "osm_id": "w544430613",
+   "height_m": 77.8,
+   "source": "floors",
+   "plausible_m": [
+    66,
+    102
+   ],
+   "sun_change_pp": [
+    -3.4,
+    1
+   ],
+   "swing_pp": 4.4
+  },
+  {
+   "place": "Macquarie Place",
+   "building": 4557,
+   "name": "unnamed building",
+   "osm_id": "w841971467",
+   "height_m": 25,
+   "source": "estimate",
+   "plausible_m": [
+    10,
+    67
+   ],
+   "sun_change_pp": [
+    -4.3,
+    0
+   ],
+   "swing_pp": 4.3
+  },
+  {
+   "place": "Belmore Park",
+   "building": 2449,
+   "name": "Central Square",
+   "osm_id": "w173175338",
+   "height_m": 93.6,
+   "source": "floors",
+   "plausible_m": [
+    79,
+    122
+   ],
+   "sun_change_pp": [
+    -2.6,
+    1.4
+   ],
+   "swing_pp": 4
+  },
+  {
+   "place": "Wynyard Park",
+   "building": 387,
+   "name": "The York",
+   "osm_id": "w85690897",
+   "height_m": 80.8,
+   "source": "floors",
+   "plausible_m": [
+    68,
+    106
+   ],
+   "sun_change_pp": [
+    -2.2,
+    0.9
+   ],
+   "swing_pp": 3.2
+  },
+  {
+   "place": "Pitt Street Mall",
+   "building": 4784,
+   "name": "Westfield Sydney",
+   "osm_id": "w214485654",
+   "height_m": 309,
+   "source": "floors",
+   "plausible_m": [
+    261,
+    404
+   ],
+   "sun_change_pp": [
+    -1.5,
+    1
+   ],
+   "swing_pp": 2.5
+  },
+  {
+   "place": "Macquarie Place",
+   "building": 5120,
+   "name": "unnamed building",
+   "osm_id": "w841971466",
+   "height_m": 25,
+   "source": "estimate",
+   "plausible_m": [
+    10,
+    67
+   ],
+   "sun_change_pp": [
+    -2.5,
+    0
+   ],
+   "swing_pp": 2.5
+  },
+  {
+   "place": "Macquarie Place",
+   "building": 4556,
+   "name": "unnamed building",
+   "osm_id": "w1095401678",
+   "height_m": 21.8,
+   "source": "estimate",
+   "plausible_m": [
+    9,
+    58
+   ],
+   "sun_change_pp": [
+    -2.2,
+    0
+   ],
+   "swing_pp": 2.2
+  },
+  {
+   "place": "Wynyard Park",
+   "building": 4994,
+   "name": "unnamed building",
+   "osm_id": "w85690920",
+   "height_m": 58.5,
+   "source": "floors",
+   "plausible_m": [
+    49,
+    76
+   ],
+   "sun_change_pp": [
+    -1.4,
+    0.8
+   ],
+   "swing_pp": 2.2
+  },
+  {
+   "place": "Wynyard Park",
+   "building": 4995,
+   "name": "unnamed building",
+   "osm_id": "w1113583127",
+   "height_m": 148.2,
+   "source": "floors",
+   "plausible_m": [
+    125,
+    194
+   ],
+   "sun_change_pp": [
+    -1.4,
+    0.8
+   ],
+   "swing_pp": 2.2
+  },
+  {
+   "place": "Wynyard Park",
+   "building": 4992,
+   "name": "Transport House",
+   "osm_id": "w85690918",
+   "height_m": 50.7,
+   "source": "floors",
+   "plausible_m": [
+    43,
+    66
+   ],
+   "sun_change_pp": [
+    -1.5,
+    0.6
+   ],
+   "swing_pp": 2.1
+  },
+  {
+   "place": "Pitt Street Mall",
+   "building": 4749,
+   "name": "135 on King",
+   "osm_id": "w542856711",
+   "height_m": 124.8,
+   "source": "floors",
+   "plausible_m": [
+    106,
+    163
+   ],
+   "sun_change_pp": [
+    -1.4,
+    0.6
+   ],
+   "swing_pp": 2.1
+  },
+  {
+   "place": "Pitt Street Mall",
+   "building": 4755,
+   "name": "unnamed building",
+   "osm_id": "w386564452",
+   "height_m": 66.3,
+   "source": "floors",
+   "plausible_m": [
+    56,
+    87
+   ],
+   "sun_change_pp": [
+    -1.4,
+    0.7
+   ],
+   "swing_pp": 2.1
+  },
+  {
+   "place": "Belmore Park",
+   "building": 2268,
+   "name": "Belmore Park Zone substation",
+   "osm_id": "w476441265",
+   "height_m": 54.6,
+   "source": "floors",
+   "plausible_m": [
+    46,
+    71
+   ],
+   "sun_change_pp": [
+    -1.4,
+    0.7
+   ],
+   "swing_pp": 2.1
+  },
+  {
+   "place": "Martin Place",
+   "building": 5030,
+   "name": "Challis House",
+   "osm_id": "w544415842",
+   "height_m": 46.8,
+   "source": "floors",
+   "plausible_m": [
+    40,
+    61
+   ],
+   "sun_change_pp": [
+    -1.1,
+    0.7
+   ],
+   "swing_pp": 1.8
+  },
+  {
+   "place": "Martin Place",
+   "building": 4597,
+   "name": "unnamed office",
+   "osm_id": "w386563356",
+   "height_m": 54.6,
+   "source": "floors",
+   "plausible_m": [
+    46,
+    71
+   ],
+   "sun_change_pp": [
+    -0.9,
+    0.8
+   ],
+   "swing_pp": 1.7
+  },
+  {
+   "place": "Martin Place",
+   "building": 5043,
+   "name": "MLC Building",
+   "osm_id": "w386563349",
+   "height_m": 46.8,
+   "source": "floors",
+   "plausible_m": [
+    40,
+    61
+   ],
+   "sun_change_pp": [
+    -0.8,
+    0.8
+   ],
+   "swing_pp": 1.6
+  },
+  {
+   "place": "Macquarie Place",
+   "building": 4554,
+   "name": "18 Loftus Street",
+   "osm_id": "w1095401681",
+   "height_m": 41.7,
+   "source": "verified",
+   "plausible_m": [
+    39,
+    44
+   ],
+   "sun_change_pp": [
+    -1,
+    0.6
+   ],
+   "swing_pp": 1.6
+  },
+  {
+   "place": "Pitt Street Mall",
+   "building": 4759,
+   "name": "unnamed building",
+   "osm_id": "w544415838",
+   "height_m": 89.7,
+   "source": "floors",
+   "plausible_m": [
+    76,
+    117
+   ],
+   "sun_change_pp": [
+    -1.3,
+    0.2
+   ],
+   "swing_pp": 1.5
+  },
+  {
+   "place": "Wynyard Park",
+   "building": 4997,
+   "name": "Brookfield Place",
+   "osm_id": "w1093306607",
+   "height_m": 136.5,
+   "source": "floors",
+   "plausible_m": [
+    115,
+    178
+   ],
+   "sun_change_pp": [
+    -0.8,
+    0.4
+   ],
+   "swing_pp": 1.2
+  },
+  {
+   "place": "Lang Park",
+   "building": 5205,
+   "name": "unnamed building",
+   "osm_id": "w1480093064",
+   "height_m": 14.6,
+   "source": "estimate",
+   "plausible_m": [
+    6,
+    39
+   ],
+   "sun_change_pp": [
+    -1,
+    0.1
+   ],
+   "swing_pp": 1.1
+  },
+  {
+   "place": "Hyde Park",
+   "building": 4718,
+   "name": "Federal Law Courts",
+   "osm_id": "w16749246",
+   "height_m": 117,
+   "source": "floors",
+   "plausible_m": [
+    99,
+    153
+   ],
+   "sun_change_pp": [
+    -0.7,
+    0.3
+   ],
+   "swing_pp": 0.9
+  },
+  {
+   "place": "Lang Park",
+   "building": 349,
+   "name": "Observatory Tower",
+   "osm_id": "w538095830",
+   "height_m": 110.8,
+   "source": "floors",
+   "plausible_m": [
+    94,
+    145
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0.5
+   ],
+   "swing_pp": 0.9
+  },
+  {
+   "place": "Belmore Park",
+   "building": 2273,
+   "name": "Sydney Central",
+   "osm_id": "w485291596",
+   "height_m": 128.7,
+   "source": "floors",
+   "plausible_m": [
+    109,
+    168
+   ],
+   "sun_change_pp": [
+    -0.6,
+    0.3
+   ],
+   "swing_pp": 0.9
+  },
+  {
+   "place": "Martin Place",
+   "building": 5038,
+   "name": "ANZ Bank",
+   "osm_id": "w386563341",
+   "height_m": 74.1,
+   "source": "floors",
+   "plausible_m": [
+    63,
+    97
+   ],
+   "sun_change_pp": [
+    -0.6,
+    0.3
+   ],
+   "swing_pp": 0.8
+  },
+  {
+   "place": "Pitt Street Mall",
+   "building": 4766,
+   "name": "unnamed building",
+   "osm_id": "w621342725",
+   "height_m": 19.5,
+   "source": "floors",
+   "plausible_m": [
+    16,
+    25
+   ],
+   "sun_change_pp": [
+    -0.6,
+    0.2
+   ],
+   "swing_pp": 0.8
+  }
+ ],
+ "seconds": 171.022,
+ "sigma": {
+  "floors": 0.119,
+  "estimate": 0.179,
+  "ml": 0.28
+ }
+}

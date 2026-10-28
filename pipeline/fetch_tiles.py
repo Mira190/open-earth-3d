@@ -1,0 +1,132 @@
+"""Aerial imagery and terrain for a city, from the providers in its city.json.
+
+  imagery  "xyz": any slippy-map tile service ({z}, {x}, {y} in the URL), Web Mercator
+  terrain  "arcgis_image": an ArcGIS ImageServer exportImage of float elevations
+           "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
+                        fallback, and in city centres it is a surface model that
+                        includes buildings (Sydney: median 37 m too high), so use a
+                        bare-earth source wherever one is open.
+
+Terrarium tiles are always downloaded as well: analysis/radar_check.py uses them
+as an independent check of building mass.
+
+    python pipeline/fetch_tiles.py --city sydney
+
+Writes data/raw/<city>/imagery/<z>/<x>_<y>.<ext>, terrarium/15/..., dem.tif and dem.json.
+"""
+import json
+import math
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+import numpy as np
+import requests
+from PIL import Image
+
+from cityctx import city_args
+
+E = 20037508.342789
+TERRARIUM = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
+UA = {"User-Agent": "open-earth-3d research prototype"}
+
+
+def tile_xy(lon, lat, z):
+    n = 2 ** z
+    return (lon + 180) / 360 * n, (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n
+
+
+def merc(lon, lat):
+    return lon * E / 180, math.log(math.tan((90 + lat) * math.pi / 360)) * 6378137
+
+
+def tile_range(bbox, z, pad=1):
+    w, s, e, n = bbox
+    x0, y0 = tile_xy(w, n, z)
+    x1, y1 = tile_xy(e, s, z)
+    return range(int(x0) - pad, int(x1) + pad + 1), range(int(y0) - pad, int(y1) + pad + 1)
+
+
+def get(url, path):
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        return True
+    for attempt in range(5):
+        try:
+            r = requests.get(url, timeout=60, headers=UA)
+            if r.status_code == 200:
+                with open(path, "wb") as f:
+                    f.write(r.content)
+                return True
+            if r.status_code == 404:
+                return False
+        except requests.RequestException:
+            pass
+        time.sleep(2 ** attempt)
+    raise RuntimeError(f"failed: {url}")
+
+
+def fetch_xyz(bbox, tmpl, z, ext, out):
+    os.makedirs(out, exist_ok=True)
+    xs, ys = tile_range(bbox, z)
+    jobs = [(tmpl.format(z=z, x=x, y=y), os.path.join(out, f"{x}_{y}.{ext}")) for x in xs for y in ys]
+    with ThreadPoolExecutor(8) as ex:
+        ok = sum(ex.map(lambda j: get(*j), jobs))
+    return ok, len(jobs), (xs, ys)
+
+
+def dem_arcgis(bbox, cfg, raw):
+    """One float32 GeoTIFF over the bbox in Web Mercator."""
+    w, s, e, n = bbox
+    x0, y0 = merc(w - 0.002, s - 0.002)
+    x1, y1 = merc(e + 0.002, n + 0.002)
+    px = cfg.get("pixel_m", 4.0)
+    size = (round((x1 - x0) / px), round((y1 - y0) / px))
+    r = requests.get(cfg["url"], timeout=300, headers=UA, params=dict(
+        bbox=f"{x0},{y0},{x1},{y1}", bboxSR=3857, imageSR=3857, size=f"{size[0]},{size[1]}", format="tiff",
+        pixelType="F32", interpolation="RSP_BilinearInterpolation", f="image"))
+    r.raise_for_status()
+    with open(os.path.join(raw, "dem.tif"), "wb") as f:
+        f.write(r.content)
+    return [x0, y0, x1, y1], size
+
+
+def dem_terrarium(raw, z, xs, ys):
+    """Stitch Terrarium tiles into a float32 Web Mercator grid."""
+    tiles = os.path.join(raw, "terrarium", str(z))
+    a = np.zeros(((ys[-1] - ys[0] + 1) * 256, (xs[-1] - xs[0] + 1) * 256), np.float32)
+    for tx in xs:
+        for ty in ys:
+            p = os.path.join(tiles, f"{tx}_{ty}.png")
+            if os.path.exists(p):
+                rgb = np.asarray(Image.open(p).convert("RGB")).astype(np.float32)
+                a[(ty - ys[0]) * 256:(ty - ys[0] + 1) * 256, (tx - xs[0]) * 256:(tx - xs[0] + 1) * 256] = \
+                    rgb[..., 0] * 256 + rgb[..., 1] + rgb[..., 2] / 256 - 32768
+    Image.fromarray(a).save(os.path.join(raw, "dem.tif"))
+    span = 2 * E / 2 ** z
+    return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
+
+
+def main():
+    city, _ = city_args(__doc__.splitlines()[0])
+    city.ensure_dirs()
+    bbox, cfg = city.cfg["bbox"], city.cfg
+    im = cfg["imagery"]
+    t = time.time()
+    ok, n, _ = fetch_xyz(bbox, im["url"], im["zoom"], im.get("format", "jpg"), os.path.join(city.raw, "imagery", str(im["zoom"])))
+    print(f"imagery: z{im['zoom']}, {ok}/{n} tiles in {time.time() - t:.0f} s")
+    ok, n, (xs, ys) = fetch_xyz(bbox, TERRARIUM, 15, "png", os.path.join(city.raw, "terrarium", "15"))
+    print(f"terrarium: z15, {ok}/{n} tiles")
+    tc = cfg["terrain"]
+    if tc["type"] == "arcgis_image":
+        mbbox, size = dem_arcgis(bbox, tc, city.raw)
+    elif tc["type"] == "terrarium":
+        mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
+    else:
+        raise SystemExit(f"unknown terrain type {tc['type']}")
+    json.dump({"crs": "EPSG:3857", "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
+              open(os.path.join(city.raw, "dem.json"), "w"))
+    print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
+
+
+if __name__ == "__main__":
+    main()
