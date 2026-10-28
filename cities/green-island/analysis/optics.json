@@ -2,39 +2,49 @@
  "band": {
   "blue": {
    "Rinf_median": 0.030399998649954796,
-   "Kd_fit": 0.05391963847728143,
-   "Kd": 0.05391963847728143,
-   "sand_albedo": 0.1972397878117705,
-   "fit_resid_sd_ln": 0.12552358903237099,
+   "Kd_fit": 0.05414780958786282,
+   "Kd_qaa": 0.05634839312860593,
+   "sand_albedo": 0.2019544652979471,
+   "fit_resid_sd_ln": 0.11904017974685083,
    "depth_bins": 36,
    "fit_depth_m": [
     2,
     20
-   ]
+   ],
+   "depth_check_fit_pct": 27.4,
+   "depth_check_qaa_pct": 24.7,
+   "Kd_choice": "qaa",
+   "Kd": 0.05634839312860593
   },
   "green": {
-   "Rinf_median": 0.01447307039052248,
-   "Kd_fit": 0.09904657726134951,
-   "Kd": 0.09904657726134951,
-   "sand_albedo": 0.323097160861309,
-   "fit_resid_sd_ln": 0.07054109192307052,
+   "Rinf_median": 0.01446845754981041,
+   "Kd_fit": 0.09808348775068235,
+   "Kd_qaa": 0.089883695477156,
+   "sand_albedo": 0.32752185287934593,
+   "fit_resid_sd_ln": 0.061784605312123826,
    "depth_bins": 20,
    "fit_depth_m": [
     2,
     12
-   ]
+   ],
+   "depth_check_fit_pct": 19.5,
+   "depth_check_qaa_pct": 18.3,
+   "Kd_choice": "qaa",
+   "Kd": 0.089883695477156
   },
   "red": {
-   "Rinf_median": 0.006336566060781479,
-   "Kd_fit": 0.20944161964896785,
-   "Kd": 0.4,
-   "sand_albedo": 0.12585103958263705,
-   "fit_resid_sd_ln": 0.2232140207418425,
+   "Rinf_median": 0.0063367183320224285,
+   "Kd_fit": 0.19902146300309098,
+   "Kd_qaa": 0.2988690992172411,
+   "sand_albedo": 0.12140475482500043,
+   "fit_resid_sd_ln": 0.2171235960321441,
    "depth_bins": 7,
    "fit_depth_m": [
     0.5,
     4
-   ]
+   ],
+   "Kd_choice": "pure-water floor",
+   "Kd": 0.4
   }
  },
  "g": 2.2,
@@ -76,36 +86,36 @@
       1,
       3
      ],
-     "raw_reflectance": 0.19339999556541443,
-     "inverted_albedo": 0.2414734656107343
+     "raw_reflectance": 0.19290000200271606,
+     "inverted_albedo": 0.24346336087557685
     },
     {
      "depth_m": [
       3,
       6
      ],
-     "raw_reflectance": 0.17019999027252197,
-     "inverted_albedo": 0.2536951082192024
+     "raw_reflectance": 0.17189998924732208,
+     "inverted_albedo": 0.2620022858696476
     },
     {
      "depth_m": [
       6,
       10
      ],
-     "raw_reflectance": 0.10249999910593033,
-     "inverted_albedo": 0.20039159926396954
+     "raw_reflectance": 0.10459999740123749,
+     "inverted_albedo": 0.2141564662881198
     },
     {
      "depth_m": [
       10,
       15
      ],
-     "raw_reflectance": 0.0729999989271164,
-     "inverted_albedo": 0.19227893633575005
+     "raw_reflectance": 0.07369999587535858,
+     "inverted_albedo": 0.2050149903823389
     }
    ],
-   "spread_raw_pct": 89.33407548913007,
-   "spread_inverted_pct": 27.669955617479296
+   "spread_raw_pct": 87.79231045734768,
+   "spread_inverted_pct": 24.652826617834428
   },
   "green": {
    "bins": [
@@ -114,50 +124,93 @@
       1,
       3
      ],
-     "raw_reflectance": 0.210999995470047,
-     "inverted_albedo": 0.32304716647642573
+     "raw_reflectance": 0.21059998869895935,
+     "inverted_albedo": 0.3103343608719484
     },
     {
      "depth_m": [
       3,
       6
      ],
-     "raw_reflectance": 0.15889999270439148,
-     "inverted_albedo": 0.31850951366772706
+     "raw_reflectance": 0.1605999916791916,
+     "inverted_albedo": 0.30251060921915496
     },
     {
      "depth_m": [
       6,
       10
      ],
-     "raw_reflectance": 0.07559999823570251,
-     "inverted_albedo": 0.27953061074734253
+     "raw_reflectance": 0.07759999483823776,
+     "inverted_albedo": 0.2572248207893793
     },
     {
      "depth_m": [
       10,
       15
      ],
-     "raw_reflectance": 0.04490000009536743,
-     "inverted_albedo": 0.35343584763193836
+     "raw_reflectance": 0.04529999941587448,
+     "inverted_albedo": 0.2913055091396907
     }
    ],
-   "spread_raw_pct": 135.48123975962943,
-   "spread_inverted_pct": 23.194631670702144
+   "spread_raw_pct": 133.81906316114294,
+   "spread_inverted_pct": 18.2919475148633
   }
  },
- "habitat_scale": 1.7668311925883857,
+ "habitat_scale": 1.7272406941705132,
  "habitat_share": {
-  "deep water": 0.7179,
-  "sand": 0.1292,
-  "reef and rock": 0.0435,
-  "seagrass and algae": 0.0509,
-  "rubble": 0.0582,
+  "deep water": 0.7178,
+  "sand": 0.123,
+  "reef and rock": 0.0487,
+  "seagrass and algae": 0.0232,
+  "rubble": 0.0872,
   "forest": 0.0001,
   "grass": 0.0,
   "beach and bare": 0.0001,
   "built": 0.0
  },
  "terrain_grid": "A",
- "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."
+ "qaa": {
+  "lambda0": 560,
+  "eta": 1.880372335731619,
+  "bbp0": 0.003362923696895899,
+  "sun_zenith": 33.760238047051246,
+  "note": [],
+  "band": {
+   "443": {
+    "Rrs": 0.010536057232683473,
+    "a": 0.03578576223106253,
+    "bb": 0.007669939048469429,
+    "Kd": 0.06255958328357819
+   },
+   "492": {
+    "Rrs": 0.0082123950635418,
+    "a": 0.03477645030588599,
+    "bb": 0.00584359426860179,
+    "Kd": 0.05634839312860593
+   },
+   "560": {
+    "Rrs": 0.0030876058959827695,
+    "a": 0.06559217058714904,
+    "bb": 0.004251123111263941,
+    "Kd": 0.089883695477156
+   },
+   "665": {
+    "Rrs": 0.0005411268065124442,
+    "a": 0.24586126050859916,
+    "bb": 0.002857081369783345,
+    "Kd": 0.2988690992172411
+   }
+  },
+  "deep_px": 2992227,
+  "deep_m": 40.0,
+  "R_median": {
+   "coastal": 0.037700000000000004,
+   "blue": 0.0304,
+   "green": 0.0143,
+   "red": 0.0063,
+   "nir": 0.0046
+  },
+  "nir_offset": 0.0046
+ },
+ "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation. Kd_fit: from how the brightest floor darkens with depth (2-20 m blue, 2-12 m green, 0.5-4 m red). Kd_qaa: from the deep water's colour, QAA_v6 and Lee et al. 2005 (qaa.py). Kd: QAA unless the fit passes the quality test (residual sd of ln(R - Rinf) at most 0.06 and depth check at most 20%); red keeps the pure-water floor 0.40 (QAA red recorded). depth_check_*_pct: the sand brightness spread across 1-15 m after inversion with that Kd."
 }

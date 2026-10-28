@@ -20,8 +20,10 @@ web/data/<id>/:
 Water-column model (Maritorena et al. 1994): the reflectance seen from above a floor of
 albedo A at depth z is  R = A e^(-g Kd z) + Rinf (1 - e^(-g Kd z)),  with Rinf the reflectance
 of optically deep water, Kd the diffuse attenuation, and g about 2.2 for the sun's down path
-plus the sensor's up path. Rinf comes from the deepest water in the scene; Kd from how the
-brightest (sandy) floor darkens with depth, one band at a time.
+plus the sensor's up path. Rinf comes from the deepest water in the scene. Kd comes from the
+colour of that deep water through Lee's quasi-analytical algorithm (qaa.py), unless the site's
+own fit of how the brightest (sandy) floor darkens with depth passes a quality test; both are
+recorded in optics.json.
 """
 import json
 import math
@@ -36,6 +38,7 @@ from scipy import ndimage
 
 from cityctx import city_args
 from marine_meta import meta
+from qaa import WAVE, deep_water_kd
 
 G = 2.2
 WORLDCOVER = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif"
@@ -72,6 +75,17 @@ def worldcover(bbox, dst_tf, shape, crs):
                           dst_transform=dst_tf, dst_crs=crs, resampling=Resampling.nearest)
         out = np.where(tmp > 0, tmp.astype(np.uint8), out)
     return out
+
+
+def fill_nodata(z, below=-9000.0):
+    """Cells the survey grid does not cover come out of the reprojection at its no-data value
+    (-9999; the Whitsundays' westmost column, where the box meets the bbox edge, read -3200 m once
+    clipped). They take the value of the nearest covered cell. Returns (z, number filled)."""
+    bad = ~np.isfinite(z) | (z < below)
+    if not bad.any() or bad.all():
+        return z, 0
+    idx = ndimage.distance_transform_edt(bad, return_distances=False, return_indices=True)
+    return z[tuple(idx)], int(bad.sum())
 
 
 def cays(city, cfg, z, tf):
@@ -173,6 +187,21 @@ def fit_kd(depth, refl, rinf, nir, water, lo, hi, pct=90, min_px=800, floor=0.0)
     return -p[0] / G, float(math.exp(p[1])), float(res.std()), len(xs)
 
 
+def sand_spread(refl, rinf, kd, water, depth, nir):
+    """The depth check for one band and one Kd: the spread (max - min over the mean, %) of the
+    brightest floor's inverted albedo in four depth bins across 1-15 m. A Kd that takes the water
+    out correctly leaves the same sand equally bright at every depth."""
+    vals = []
+    for z0, z1 in ((1, 3), (3, 6), (6, 10), (10, 15)):
+        m = water & (depth >= z0) & (depth < z1) & (nir < 0.01)
+        if m.sum() < 50:
+            continue
+        top = m & (refl >= np.percentile(refl[m], 90))
+        tr = np.exp(-G * kd * depth[top])
+        vals.append(float(np.median((refl[top] - rinf[top] * (1 - tr)) / np.maximum(tr, 1e-3))))
+    return round(100 * (max(vals) - min(vals)) / np.mean(vals), 1) if len(vals) > 1 else None
+
+
 def srgb(x):
     x = np.clip(x, 0, 1)
     return np.where(x <= 0.0031308, 12.92 * x, 1.055 * np.power(x, 1 / 2.4) - 0.055)
@@ -195,9 +224,11 @@ def main():
     cell = cfg["terrain"]["pixel_m"]
     tw, th = int(math.ceil((city.x1 - city.x0) / cell)), int(math.ceil((city.y1 - city.y0) / cell))
     tf30 = from_origin(city.x0, city.y1, cell, cell)
-    z30 = reproj(bathy, tf30, (th, tw), city.proj, Resampling.bilinear, nodata=-9999)
+    z30, gaps = fill_nodata(reproj(bathy, tf30, (th, tw), city.proj, Resampling.bilinear, nodata=-9999))
     # and at 10 m for the colour work
-    z10 = reproj(bathy, tf10, (H, W), city.proj, Resampling.bilinear, nodata=-9999)
+    z10, _ = fill_nodata(reproj(bathy, tf10, (H, W), city.proj, Resampling.bilinear, nodata=-9999))
+    if gaps:
+        print(f"terrain: {gaps} cells outside the survey grid filled from the nearest covered cell")
     cay_cfg = cfg["terrain"].get("cays")
     if cay_cfg:
         z30, cay_report = cays(city, cay_cfg, z30, tf30)
@@ -219,14 +250,42 @@ def main():
     # brightest floor gets brighter with depth (Lady Elliot Island: a dark reef flat ringed by a pale sand apron),
     # and the sand albedo is then the intercept at the floor's slope
     kd_floor = {"blue": 0.0150, "green": 0.0619, "red": 0.40}
+    # The depth fit reads a change of floor type with depth as attenuation. qaa.py derives Kd from water too
+    # deep to show its floor (Lee's QAA_v6 and Kd model). Rule, per band: QAA, unless the site's own depth fit
+    # passes a quality test, in which case the fit (measured on the site's floor) is kept. The test: the
+    # bright-floor profile is straight (residual sd of ln(R - Rinf) at most 0.06) and the inversion with the
+    # fit leaves the sand's brightness within 20% across 1-15 m (the depth check below). Without QAA (too
+    # little deep water, no coastal band) the fit, held at the floor. Red keeps the pure-water floor: its fit is
+    # too weak to test, and QAA's red rests on an Rrs(665) of a few 1e-4 /sr that the atmospheric correction's
+    # residual dominates (0.30-1.16 /m across the five sites); QAA's red is recorded.
+    q = deep_water_kd(s2, depth)
+    q_kd = {k: q["band"][WAVE[k]]["Kd"] for k in bands} if q else {}
     kd, optics = {}, {}
+    num = lambda v: None if v != v else v   # a failed fit (nan) is written as null
     for k, (lo, hi) in bands.items():
         fit, sand, sd, n = fit_kd(depth, refl[k], rinf[k], refl["nir"], water, lo, hi, floor=0.0 if k == "red" else kd_floor[k])
-        kd[k] = max(fit, kd_floor[k]) if fit == fit else kd_floor[k]
-        num = lambda v: None if v != v else v   # a failed fit (nan) is written as null
-        optics[k] = {"Rinf_median": float(np.median(rinf[k])), "Kd_fit": num(fit), "Kd": kd[k], "sand_albedo": sand,
-                     "fit_resid_sd_ln": num(sd), "depth_bins": n, "fit_depth_m": [lo, hi]}
-        print(k, "Rinf %.4f  Kd fit %.3f used %.3f /m  sand albedo %.3f" % (optics[k]["Rinf_median"], fit, kd[k], sand), "resid", round(sd, 3))
+        o = {"Rinf_median": float(np.median(rinf[k])), "Kd_fit": num(fit), "Kd_qaa": q_kd.get(k), "sand_albedo": sand,
+             "fit_resid_sd_ln": num(sd), "depth_bins": n, "fit_depth_m": [lo, hi]}
+        if k != "red" and fit == fit:
+            o["depth_check_fit_pct"] = sand_spread(refl[k], rinf[k], max(fit, kd_floor[k]), water, depth, refl["nir"])
+            if k in q_kd:
+                o["depth_check_qaa_pct"] = sand_spread(refl[k], rinf[k], q_kd[k], water, depth, refl["nir"])
+        passes = k != "red" and fit == fit and fit >= kd_floor[k] and sd <= 0.06 and o.get("depth_check_fit_pct", 1e9) <= 20
+        if k == "red":
+            kd[k], o["Kd_choice"] = kd_floor[k], "pure-water floor"
+        elif passes:
+            kd[k], o["Kd_choice"] = fit, "fit (passes the test)"
+        elif k in q_kd:
+            kd[k], o["Kd_choice"] = max(q_kd[k], kd_floor[k]), "qaa"
+        elif fit == fit:
+            kd[k], o["Kd_choice"] = max(fit, kd_floor[k]), "fit (no QAA)"
+        else:
+            kd[k], o["Kd_choice"] = kd_floor[k], "pure-water floor"
+        o["Kd"] = kd[k]
+        optics[k] = o
+        print(k, "Rinf %.4f  Kd fit %.3f  QAA %s  used %.3f /m (%s)  resid %.3f" % (
+            o["Rinf_median"], fit, "%.3f" % q_kd[k] if k in q_kd else "-", kd[k], o["Kd_choice"], sd),
+            "  depth check fit %s / QAA %s" % (o.get("depth_check_fit_pct"), o.get("depth_check_qaa_pct")))
 
     # ---- invert the water column: the floor's own colour
     albedo, valid = {}, {}
@@ -328,7 +387,8 @@ def main():
                     "spread_inverted_pct": float(100 * (max(inv) - min(inv)) / np.mean(inv))}
         print(k, "sand brightness spread across 1-15 m: raw %.0f%% -> inverted %.0f%%" % (check[k]["spread_raw_pct"], check[k]["spread_inverted_pct"]))
     json.dump({"band": optics, "g": G, "scenes": json.loads(str(s2["scenes"])),
-               "depth_check": check, "habitat_scale": k_hab, "habitat_share": share, "terrain_grid": grid_letter, "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
+               "depth_check": check, "habitat_scale": k_hab, "habitat_share": share, "terrain_grid": grid_letter, "qaa": q,
+               "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation. Kd_fit: from how the brightest floor darkens with depth (2-20 m blue, 2-12 m green, 0.5-4 m red). Kd_qaa: from the deep water's colour, QAA_v6 and Lee et al. 2005 (qaa.py). Kd: QAA unless the fit passes the quality test (residual sd of ln(R - Rinf) at most 0.06 and depth check at most 20%); red keeps the pure-water floor 0.40 (QAA red recorded). depth_check_*_pct: the sand brightness spread across 1-15 m after inversion with that Kd."},
               open(os.path.join(city.analysis, "optics.json"), "w"), indent=1)
     scene = {
         "id": city.id, "name": cfg["name"], "kind": "marine", "origin": cfg["origin"], "timezone": cfg["timezone"],

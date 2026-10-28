@@ -117,7 +117,10 @@ def main():
     import rasterio
     from rasterio.windows import from_bounds
     with rasterio.open(grid) as src:
-        win = from_bounds(w, s, e, n, src.transform)
+        # two pixels beyond the bbox on every side: the city's frame is a rectangle in metres, whose corners
+        # can reach a pixel past a crop cut exactly at the bbox (Heron Island's east column was left empty)
+        pad = 2 * abs(src.transform.a)
+        win = from_bounds(w - pad, s - pad, e + pad, n + pad, src.transform).round_offsets().round_lengths()
         arr = src.read(1, window=win)
         prof = src.profile
         prof.update(driver="GTiff", height=arr.shape[0], width=arr.shape[1],

@@ -3,11 +3,8 @@
 Viewer: `web/reef/index.html?city=hardy-reef`. Config: `cities/hardy-reef/city.json`. Checks:
 `cities/hardy-reef/analysis/` (`optics.json`, `poi_check.json`).
 
-![Reefworld from the water at the spawn](../images/reef/site-hardy-reef-pontoon.jpg)
+![Reefworld from the water off its south end](../images/reef/site-hardy-reef-pontoon.jpg)
 ![The Reefworld pontoon on the channel wall, Hardy Reef to the right](../images/reef/site-hardy-reef-channel.jpg)
-
-Both screenshots use the two viewer changes proposed below (`harbour.pontoon.exact`, `harbour.nav_cell`); without
-them the pontoon sits 620 m away on the other side of the channel.
 
 ## Area
 
@@ -18,40 +15,43 @@ open water 40-80 m deep; the box was moved north and west to take in all of Line
 ## Data
 
 - Terrain: AusSeabed GBR 30 m (2020), grid C (148-154 E, 18-24 S, read from the COG header), cached in
-  `data/raw/_gbr/C.tif` and shared with the Whitsundays and Heron Island. Range -84.3 to +1.5 m MSL, no no-data.
+  `data/raw/_gbr/C.tif` and shared with the Whitsundays and Heron Island. Range -84.3 to +1.5 m MSL, no no-data. The
+  crop is now cut on whole grid pixels with two pixels to spare; the first crop's transform carried a fractional
+  offset, which shifted the model by up to half a pixel (Reefworld's spot reads 8.6 m now, 7.0 m before).
 - Imagery: 14 Sentinel-2 L2A scenes, all MGRS tile 55KGU (one tile covers the box, so no seam), 1 Oct 2025 to
-  6 Oct 2026, cloud 0-8.4% (`optics.json` lists the product ids). No-data share 0.
+  6 Oct 2026, mean solar zenith 33.4 degrees (`optics.json` lists the product ids). Bands B1-B4 and B8.
 - Tide: MSQ predictions for Bugatti Reef Outer, 2025 and 2026, fitted to 0.8 and 0.7 cm RMS (largest error 3.7 cm);
   range -1.52 to +1.87 m about MSL. Bugatti Reef is on the outer reef 120 km east-south-east; it was chosen over
   Shute Harbour (73 km south-west, on the mainland) because MSQ's 2026 tidal planes give the outer reef a smaller tide
   (spring range 2.08 m at Bugatti, 2.4 m at Hook Island, 2.77 m at Shute Harbour). MSQ publishes nothing for Hardy Reef.
 
-## Optics (compared with the Whitsundays)
+## Optics
 
-| | Hardy Reef | Whitsundays |
-|---|---|---|
-| Rinf blue / green / red | 0.0279 / 0.0141 / 0.0055 | 0.0264 / 0.0156 / 0.0013 |
-| Kd blue / green (fit) | 0.063 / 0.076 /m | 0.054 / 0.080 /m |
-| Kd red (fit, used) | 0.209, 0.40 | 0.193, 0.40 |
-| sand albedo blue / green | 0.202 / 0.205 | 0.117 / 0.175 |
-| sand brightness spread 1-15 m, raw to inverted | blue 62 to 31%, green 113 to 15% | blue 103 to 43%, green 136 to 29% |
+Kd comes from two independent estimates (`pipeline/qaa.py`, `build_marine.py`): the depth fit (how the brightest floor
+darkens with depth) and QAA (Lee's quasi-analytical algorithm on water deeper than 40 m, with Lee et al. 2005 for Kd).
+QAA is used unless the fit passes a quality test (residual sd of ln(R - Rinf) at most 0.06 and the inverted sand
+brightness within 20% across 1-15 m); red keeps the pure-water floor, 0.40 /m.
 
-- Rinf is plausible and bluer offshore: blue:green 1.98 against 1.69, green lower. Red Rinf (0.0055) is high for clear
-  deep water; it is probably residual glint or an atmospheric offset in L2A over the open sea.
-- Green Kd is lower than in the Whitsundays (0.076 against 0.080) and close to pure sea water, as expected offshore.
-- **Blue Kd is not plausible** (0.063, higher than the inner Whitsundays). The bright-floor blue reflectance is flat from
-  1 to 5 m (0.094-0.098) and only then falls: the reef flat has little bare sand, so the brightest floor changes with
-  depth and the fit reads substrate as attenuation. Fitted over 2-8 m blue gives 0.034-0.038 /m, over 4-16 m 0.062. The
-  method is left as it is; a substrate-independent estimate (Lyzenga's ratio method on sand patches, or a fixed
-  blue:green ratio) is the fix.
-- Habitat: with the Whitsundays thresholds only 0.9% of the shallow floor came out as reef, because the inverted floor
-  is brighter here. `build_marine.py` now scales the thresholds by the brightness of the scene's bright floor (90th
-  percentile of the albedo 1-10 m deep: 1.153 here, 1.0 for the Whitsundays). Shallow floor (under 25 m): sand 45%,
-  rubble 51%, reef 3%, seagrass and algae 1%; the reef class sits on reef crests and the patch reefs of Hook Reef's
-  lagoon. Still inferred, not surveyed; the Hardy reef flat probably carries more live coral than this.
+| Kd /m | fit | QAA | used | sand spread 1-15 m: raw, with fit, with QAA |
+|---|---|---|---|---|
+| blue (492 nm) | 0.063 (sd 0.118) | 0.063 | 0.063 QAA | 60%, 33%, 33% |
+| green (560 nm) | 0.076 (sd 0.047) | 0.092 | 0.076 fit, passes | 112%, 16%, 27% |
+| red (665 nm) | 0.245 | 0.337 | 0.40 floor | |
+
+The Whitsundays for comparison (QAA computed from a fresh composite, not rebuilt): fit 0.054 / 0.080, QAA 0.090 / 0.108,
+and QAA brings their sand spread from 47% to 18% (blue) and 37% to 29% (green). So, QAA against QAA, Hardy's water is
+clearer than the inner Whitsundays' in both bands, as expected offshore; the depth fits had said otherwise because the
+Whitsundays' fit is biased low by their pale shallow sand.
+
+- QAA inputs: deep-water reflectance 0.0320 / 0.0274 / 0.0137 / 0.0053 at 443 / 492 / 560 / 665 nm less a near-infrared
+  offset of 0.0037 (water absorbs the near infrared, so that is the atmospheric correction's residual or glint), giving
+  Rrs 0.0090 / 0.0075 / 0.0032 / 0.0005 /sr. Without that offset Rrs(665) passes QAA's 0.0015 /sr switch to the turbid
+  branch and Kd(492) comes out 0.29, so the offset matters. QAA: a(492) 0.039 /m, bb(560) 0.0045 /m, eta 1.80.
+- Rinf (the inversion's deep-water reflectance, offset included) 0.0279 / 0.0141 / 0.0055.
+- Habitat (thresholds scaled by 1.178): shallow floor sand 43%, rubble 52%, reef 4%, seagrass and algae 1%. Inferred, not
+  surveyed; the Hardy reef flat probably carries more live coral than this.
 - `ground.jpg` and `habitat.png` (previews checked): no seam (one tile), no cloud residue or glint visible on the reefs;
-  the deep floor is the smoothed fill with its usual rings. Heart Reef is a 2-3 pixel bright speck in its pool in the
-  composite and is not resolved as a heart.
+  the deep floor is the smoothed fill. Heart Reef is a 2-3 pixel bright speck in its pool and is not resolved as a heart.
 
 ## Places
 
@@ -60,39 +60,28 @@ All positions are OpenStreetMap objects (Nominatim, also in Overture 2026-10-21.
 
 | POI | kind | depth on the 30 m model |
 |---|---|---|
-| Reefworld (node 2360082104, man_made=pier, floating=yes) | pontoon | 7 m on the wall top; 0.8-38 m within 90 m |
-| Heart Reef (node 3502863694) | reef | 4.9 m |
-| Hardy, Hook, Line, Bait reefs (ways) | reef | 1.8-4.5 m |
-| Bait Reef, west side (nominal) | anchorage | 6.9 m |
+| Reefworld (node 2360082104, man_made=pier, floating=yes) | pontoon | 8.6 m on the wall top; 32 m 60 m to the west |
+| Heart Reef (node 3502863694) | reef | about 5 m |
+| Hardy, Hook, Line, Bait reefs (ways) | reef | 2-5 m |
+| Bait Reef, west side (nominal) | anchorage | 5-9 m |
 | Toward Airlie Beach (nominal) | gate | 70 m |
 
 Not mapped: the channel and the lagoon have no name in OSM or Overture. OSM also has 'Hardy Reef Pontoon' (node
 5611360021, tourism=attraction) 1 km east on the reef flat; which pontoon it stands for is not stated, so it is left out.
 
-Spawn: in the water, 12 m deep, 30 m off the south end of the pontoon, facing north to it (the site has no land). Start:
-260 m up south-east of Heart Reef looking north-west over its pool toward the channel.
+Spawn: on the pontoon's deck with the dive kit (`spawn.deck`, viewer 782bbd9); the fallback is in the water off the
+pontoon's south end, about 15 m deep. Start: 260 m up south-east of Heart Reef looking north-west over its pool.
 
-## Harbour layout (checked with `window.__boats` in the viewer)
+## Harbour layout (checked with `window.__boats`, viewer 782bbd9)
 
-- Current viewer: the pontoon search for 9-18 m water with 60 m of room cannot use the wall (7 to 32 m within 60 m), so
-  it puts Reefworld 620 m west on Hook Reef's side; the day cruise and the dive tender are dropped (the 300 m channel has
-  no cell left in the 120 m navigation grid after erosion). Fleet at Bait Reef, yacht traffic, 6 public moorings and the
-  scenic helicopter and seaplane work.
-- With the two proposed changes: pontoon, helipad, helicopter, seaplane and docked day cat on the mapped position;
-  day cruise (22.3 km, 5 waypoints) and dive tender (15.4 km) routes found. The pontoon's own shuttle is still dropped:
-  it routes through `moorings.slice(-2)`, the last two public moorings (on Hardy's far side), not the pontoon's.
-
-## Viewer changes this site needs
-
-1. `harbour.pontoon.exact` (boats.js, pontoon placement): `const p = pt.exact ? [best.x, best.n] : (nav.anchorage(...) || ...)`.
-2. `harbour.nav_cell` (boats/nav.js): `createNav(ctx, CELL = ctx.S.harbour?.nav_cell || 120)` with the clearance
-   samples at `Math.round(CELL * 5 / 12)` (50 m at 120 m, so the Whitsundays grid is unchanged). Hardy uses 60.
-3. The pontoon shuttle should use the moorings made around the pontoon, not the last two in the list.
-4. The gear crate is placed on the sea floor under the spawn (12 m down); at a site without land it belongs on the
-   pontoon deck.
+The pontoon sits on its mapped spot (`harbour.pontoon.exact`) with its helipad, helicopter, seaplane, docked day cat
+and its own dive moorings; the navigation grid is 60 m (`harbour.nav_cell`), so the day cruise, the dive tender, the
+yacht to Bait Reef and the pontoon's shuttle all connect; two yachts at Bait Reef; the scenic helicopter and seaplane.
+The player starts walking on the deck.
 
 ## Known problems
 
-- Aerial views above about 150 m are dominated by the ocean's ring moire (software WebGL2); the reef shows through it.
 - Under water there is no coral or fish yet (`life.js`); the floor is the inverted Sentinel-2 colour with caustics.
-- Blue Kd (above). The 30 m model smooths the channel wall; the real wall is steeper.
+- QAA rests on Sentinel-2 L2A over water, which keeps some sky reflection; the near-infrared offset takes out a flat
+  part of it. Green Kd from QAA (0.092) is probably on the high side; the fit (0.076) is used here.
+- The 30 m model smooths the channel wall; the real wall is steeper.

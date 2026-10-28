@@ -28,7 +28,7 @@
    "x": -475,
    "y": 1433,
    "ok": true,
-   "note": "height -3.0 m, within 300 m -7.8..3.0 m",
+   "note": "height -3.1 m, within 300 m -9.0..3.0 m",
    "habitat": "rubble"
   },
   {
@@ -48,7 +48,7 @@
    "x": -636,
    "y": 1336,
    "ok": true,
-   "note": "height -3.4 m",
+   "note": "height -3.5 m",
    "habitat": "seagrass and algae"
   },
   {
@@ -68,7 +68,7 @@
    "x": 4248,
    "y": 470,
    "ok": true,
-   "note": "depth 2.3 m, 90 m around 1.9..4.0 m",
+   "note": "depth 2.3 m, 90 m around 1.9..3.9 m",
    "habitat": "sand"
   },
   {
@@ -78,7 +78,7 @@
    "x": -3387,
    "y": -1645,
    "ok": true,
-   "note": "depth 3.4 m, 90 m around 2.2..3.5 m",
+   "note": "depth 3.3 m, 90 m around 2.3..3.5 m",
    "habitat": "sand"
   },
   {
@@ -88,7 +88,7 @@
    "x": -483,
    "y": 1025,
    "ok": true,
-   "note": "depth 8.1 m",
+   "note": "depth 8.9 m",
    "habitat": "reef and rock",
    "boats_go_to": [
     -483,
