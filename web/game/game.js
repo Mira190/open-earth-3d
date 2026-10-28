@@ -619,6 +619,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (e.repeat) { keys.add(c); return; }
     keys.add(c);
     if (!$('#g-title').hidden) { if (c === 'Enter') $('#gt-play').click(); return; }
+    if (photo.on) { // photo mode: move with WASD (read in photoCamera), Enter saves, Esc or O leaves
+      if (c === 'Enter') snapPhoto(); else if (c === 'Escape' || c === 'KeyO') photoMode(false);
+      return;
+    }
     if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape') { if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) { if (c === 'KeyM') toggleMap(); return; }
@@ -632,6 +636,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyG') guessStart();
     else if (c === 'KeyT') cycleTrack();
+    else if (c === 'KeyO') photoMode(true);
     else if (c === 'Enter' && guess.bi >= 0 && !guess.revealed) guessCheck();
     else if (c === 'KeyV') { cam.mode = cam.mode === 'bird' ? 'chase' : 'bird'; H.toast(cam.mode === 'bird' ? "Bird's-eye view: scroll to change height" : 'Chase view'); }
     else if (c === 'KeyM') toggleMap();
@@ -648,12 +653,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (!drag || drag.id !== e.pointerId) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
+    if (photo.on) { photo.az += dx * 0.006; photo.pitch = Math.max(-0.35, Math.min(1.5, photo.pitch + dy * 0.005)); photoSync(); return; }
     cam.yaw += dx * 0.006; cam.pitch = Math.max(-0.25, Math.min(1.35, cam.pitch + dy * 0.005));
     cam.lastInput = clockT;
   });
   on(canvas, 'pointerup', e => { if (drag && drag.moved < 6 && dlg.open) dlg.next(false); drag = null; });
   on(canvas, 'wheel', e => {
     e.preventDefault();
+    if (photo.on) { photo.dist = Math.max(1.5, Math.min(400, photo.dist * (e.deltaY > 0 ? 1.1 : 0.91))); photoSync(); return; }
     if (player.mode === 'heli' && cam.mode === 'bird') cam.birdAlt = Math.max(120, Math.min(1200, cam.birdAlt * (e.deltaY > 0 ? 1.12 : 0.89)));
     else cam.dist = Math.max(2.5, Math.min(player.mode === 'foot' ? 30 : 120, cam.dist * (e.deltaY > 0 ? 1.12 : 0.89)));
   }, { passive: false });
@@ -972,6 +979,104 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     dlg.show({ name: 'Field notes', role: vp.name, color: '#a8740b', pitch: 330 }, lines);
   }
 
+  // ------------------------------------------------------------ photo mode
+  // The world holds still and the HUD goes. Orbit the camera round a focus that starts on
+  // you: drag to turn, scroll (or Distance) to come closer, WASD and Space/C to move the
+  // focus up to 300 m away. Time sets the sun for the photo (the clock stays there when
+  // you leave); Lens is the field of view, shown as a 35 mm focal length. Saving draws a
+  // caption with the place, the time and the sun's height into the corner.
+  const photo = { on: false, focus: new THREE.Vector3(), anchor: new THREE.Vector3(), az: 0, pitch: 0.3, dist: 8, fov: BASE_FOV, turn: false };
+  const distOf = v => 1.5 * Math.pow(400 / 1.5, v / 1000), distTo = d => Math.round(1000 * Math.log(d / 1.5) / Math.log(400 / 1.5)); // a log slider, 1.5 to 400 m
+  const focal = fov => Math.round(12 / Math.tan(fov * RAD / 2)); // a full-frame 35 mm camera, 24 mm tall
+  function photoMode(on) {
+    if (on === photo.on || !$('#g-title').hidden) return;
+    if (on && dlg.open) { H.toast('Finish the conversation first.'); return; }
+    if (on && cine.active) cine.skip();
+    photo.on = on;
+    stage.classList.toggle('photo', on);
+    $('#g-photo').hidden = !on;
+    if (on) {
+      const p = OECine.polar(live.look, camera.position);
+      photo.focus.copy(live.look); photo.anchor.copy(live.look);
+      Object.assign(photo, { az: p.az, pitch: Math.atan2(p.h, Math.max(0.1, p.dist)), dist: Math.max(6, camera.position.distanceTo(live.look)), fov: camera.fov, turn: false });
+      $('#ph-turn').setAttribute('aria-pressed', 'false');
+      photoSync();
+    } else {
+      player.rig.root.visible = true;
+      $('#ph-me').setAttribute('aria-pressed', 'true');
+      stage.classList.remove('grid'); $('#ph-grid').setAttribute('aria-pressed', 'false');
+      // back to the chase camera without a jump
+      const from = { pos: camera.position.clone(), look: photo.focus.clone() };
+      cine.play(OECine.mix(() => from, () => live, k => OECine.ease.smooth(k)), 0.9, { label: 'crane' });
+    }
+  }
+  function photoSync() { // the sliders follow the camera and the clock
+    $('#ph-time').value = String(Math.round(clock.min));
+    $('#ph-time-v').textContent = `${fmtMin(clock.min)} · sun ${sun.altitude.toFixed(0)}°`;
+    $('#ph-fov').value = String(Math.round(photo.fov));
+    $('#ph-fov-v').textContent = `${focal(photo.fov)} mm`;
+    $('#ph-dist').value = String(distTo(photo.dist));
+    $('#ph-dist-v').textContent = `${photo.dist < 20 ? photo.dist.toFixed(1) : Math.round(photo.dist)} m`;
+  }
+  function photoCamera(dt) {
+    const p = photo, f = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y,
+      sd = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x, up = (k('Space') ? 1 : 0) - (k('KeyC') ? 1 : 0);
+    const h = p.az + Math.PI, sp = Math.max(4, p.dist * 0.7) * dt; // the way the camera looks; faster when further out
+    p.focus.x += (Math.sin(h) * f + Math.cos(h) * sd) * sp;
+    p.focus.z += (-Math.cos(h) * f + Math.sin(h) * sd) * sp;
+    p.focus.y += up * sp;
+    const off = Math.hypot(p.focus.x - p.anchor.x, p.focus.z - p.anchor.z);
+    if (off > 300) { p.focus.x = p.anchor.x + (p.focus.x - p.anchor.x) * 300 / off; p.focus.z = p.anchor.z + (p.focus.z - p.anchor.z) * 300 / off; }
+    p.focus.y = Math.min(Math.max(p.focus.y, nav.terrain(p.focus.x, -p.focus.z) + 0.3), p.anchor.y + 300);
+    if (p.turn) p.az += dt * 2 * Math.PI / 45;
+    OECine.around(p.focus, p.az, p.dist * Math.cos(p.pitch), p.dist * Math.sin(p.pitch), camera.position);
+    camera.position.y = Math.max(camera.position.y, nav.groundBelow(camera.position.x, -camera.position.z, camera.position.y) + 0.4);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(p.focus);
+    if (camera.fov !== p.fov) { camera.fov = p.fov; camera.updateProjectionMatrix(); }
+    Wd.fitShadow(p.focus, THREE.MathUtils.clamp(p.dist * 1.6, 150, 1600));
+    if (f || sd || up || p.turn) photoSync();
+  }
+  // render once more and read the canvas back in the same task (it keeps no copy), then caption it
+  function snapPhoto() {
+    renderer.render(world, camera);
+    const w = canvas.width, h = canvas.height, out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const g = out.getContext('2d');
+    g.drawImage(canvas, 0, 0);
+    const loc = S.utcToLocal(S.localToUtc(clock.y, clock.m, clock.d, clock.min)), fs = Math.max(12, Math.round(h * 0.017)), pad = Math.round(fs * 0.9);
+    const lines = [`${CITY.name} · ${clock.d} ${MONTHS[clock.m - 1]} ${clock.y}, ${fmtMin(clock.min)} ${loc.zone} · sun ${sun.altitude.toFixed(1)}° up`,
+      'Open Earth 3D · buildings and streets © OpenStreetMap contributors, via Overture Maps'];
+    g.font = `600 ${fs}px "Public Sans", sans-serif`;
+    const tw = Math.max(...lines.map(t => g.measureText(t).width));
+    g.fillStyle = 'rgba(8, 16, 24, 0.55)';
+    g.fillRect(0, h - pad * 2 - fs * 2.3, tw + pad * 2, pad * 2 + fs * 2.3);
+    g.fillStyle = '#ffffff'; g.textBaseline = 'bottom';
+    g.fillText(lines[0], pad, h - pad - fs * 1.2);
+    g.font = `400 ${Math.round(fs * 0.8)}px "Public Sans", sans-serif`; g.fillStyle = 'rgba(255, 255, 255, 0.82)';
+    g.fillText(lines[1], pad, h - pad);
+    A.shutter();
+    stage.classList.remove('flash'); void stage.offsetWidth; stage.classList.add('flash');
+    const name = `open-earth-3d-${cityId}-${clock.y}${String(clock.m).padStart(2, '0')}${String(clock.d).padStart(2, '0')}-${fmtMin(clock.min).replace(':', '')}.png`;
+    // encode now, inside the click or key press: a download started later (toBlob's callback) can
+    // outlive the user's gesture and be blocked
+    const a = document.createElement('a');
+    try { a.href = out.toDataURL('image/png'); } catch (e) { H.toast('Could not save the photo.'); return null; }
+    a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    H.toast(`Saved <b>${name}</b>`);
+    return name;
+  }
+  on($('#ph-time'), 'input', e => { setClock(clock.y, clock.m, clock.d, +e.target.value); photoSync(); });
+  on($('#ph-fov'), 'input', e => { photo.fov = +e.target.value; photoSync(); });
+  on($('#ph-dist'), 'input', e => { photo.dist = distOf(+e.target.value); photoSync(); });
+  on($('#ph-turn'), 'click', e => { photo.turn = !photo.turn; e.currentTarget.setAttribute('aria-pressed', String(photo.turn)); });
+  on($('#ph-grid'), 'click', e => { const g = !stage.classList.contains('grid'); stage.classList.toggle('grid', g); e.currentTarget.setAttribute('aria-pressed', String(g)); });
+  on($('#ph-me'), 'click', e => { const v = !player.rig.root.visible; player.rig.root.visible = v; e.currentTarget.setAttribute('aria-pressed', String(v)); });
+  on($('#ph-snap'), 'click', snapPhoto);
+  on($('#ph-done'), 'click', () => photoMode(false));
+  on($('#g-photo-btn'), 'click', () => photoMode(true));
+
   // ------------------------------------------------------------ menus, map, passport
   function toggleMenu() { $('#g-menu').hidden = !$('#g-menu').hidden; }
   function togglePass() { renderPassport(); $('#g-pass').hidden = !$('#g-pass').hidden; }
@@ -1113,7 +1218,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now; clockT += dt;
     U.uTime.value = clockT;
-    const titleOn = !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden;
+    const titleOn = !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on;
     stage.classList.toggle('titled', titleOn);
     // time of day
     if (!clock.frozen && !paused) { clock.min += dt * clock.scale / 60; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
@@ -1131,7 +1236,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (!paused) simulate(dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn) titleYaw += dt * 0.05;
-    updateCamera(dt, titleOn);
+    if (photo.on) photoCamera(dt); else updateCamera(dt, titleOn);
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
     Wd.tick(now, camera);
@@ -1151,7 +1256,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#gq-step').textContent = ob ? ob.text : trigLeft ? `The city is yours. ${trigLeft} trig station${trigLeft > 1 ? 's' : ''} still to survey (△ on the map), or change the time and fly anywhere.`
       : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
     $('#gq-dist').textContent = target ? `${Math.round(Math.hypot(target[0] - me.x, target[1] - me.y))} m` : '';
-    if (!titleOn) {
+    if (photo.on) { beam.visible = false; if (routeLine) routeLine.visible = false; }
+    else if (routeLine) routeLine.visible = true;
+    if (!titleOn && !photo.on) {
       const icons = [];
       for (const w of G.wharves) icons.push({ kind: 'wharf', x: w.terminal[0], y: w.terminal[1] });
       for (const h of G.helipads) icons.push({ kind: 'pad', x: h.at[0], y: h.at[1] });
@@ -1468,7 +1575,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { advance, dlg, cine, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { advance, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
