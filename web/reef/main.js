@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import { loadScene, createTerrain, heightTexture, terrainHeight, habitatAt } from './world.js';
 import { makeWaves, createEnv, setSun } from './env.js';
 import { createOcean } from './ocean.js';
+import { createShore } from './shore.js';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -41,6 +42,8 @@ async function main() {
   scene.add(terrain.group);
   const ocean = createOcean(d, env, hTex);
   scene.add(ocean.mesh);
+  const shore = createShore(d, env, hTex, terrain);
+  scene.add(shore.mesh);
 
   // sky dome
   const { Fn, vec3, vec4, positionWorld, cameraPosition, normalize } = await import('three/tsl');
@@ -104,6 +107,7 @@ async function main() {
     env.u.time.value = (q.get('freeze') ? Number(q.get('freeze')) : now / 1000);
     terrain.update(camera.position);
     ocean.update(camera.position);
+    shore.update(camera.position);
     lights(sun);
     renderer.render(scene, camera);
     if (++frames === 3) { $('load').classList.add('done'); window.__ready = true; }

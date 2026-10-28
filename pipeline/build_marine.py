@@ -183,7 +183,7 @@ def main():
 
     # ---- ground colour: floor albedo under water, surface reflectance on land
     land = ~water
-    gain = 2.0  # satellite surface reflectance reads dark; lift it to a photographic exposure
+    gain = 1.6  # satellite surface reflectance reads dark; lift it to a photographic exposure
     land_rgb = np.stack([refl["red"], refl["green"], refl["blue"]], -1) * gain
     sea_rgb = np.stack([A_r, A_g, A_b], -1)
     # the 0.2 m intertidal margin blends between the two

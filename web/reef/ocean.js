@@ -36,7 +36,7 @@ export function createOcean(d, env, heightTex) {
     let dy = float(0), dx = float(0), dz = float(0);
     let hx = float(0), hz = float(0);
     let jxx = float(0), jzz = float(0), jxz = float(0);
-    const shoal = float(1).add(float(0.7).mul(smoothstep(6, 0.6, depth)));            // steepen toward shore
+    const shoal = float(1).add(float(0.7).mul(float(1).sub(smoothstep(0.6, 6, depth))));            // steepen toward shore
     const gate = smoothstep(0.0, 0.7, depth);                                        // gone on dry sand
     const Q = 0.85;
     for (const w of waves) {
@@ -91,9 +91,9 @@ export function createOcean(d, env, heightTex) {
     const edge = smoothstep(0.0, 0.07, wl);              // water thins to nothing on the sand
     // foam: compression, plus a lace line where the swash meets the sand, plus the break zone
     const lace = mx_noise_float(vec3(P.x.mul(0.7), P.z.mul(0.7), u.time.mul(0.2)));
-    const comp = smoothstep(0.62, 0.3, f.jac).mul(smoothstep(0.1, 1.0, depth)).mul(u.wind.mul(1.2));
+    const comp = float(1).sub(smoothstep(0.3, 0.62, f.jac)).mul(smoothstep(0.1, 1.0, depth)).mul(u.wind.mul(1.2));
     const swashFoam = smoothstep(0.0, 0.02, wl).mul(float(1).sub(smoothstep(0.05, 0.22, wl))).mul(smoothstep(-0.2, 0.5, lace.add(0.25)));
-    const brk = smoothstep(1.6, 0.4, depth).mul(smoothstep(0.1, 0.5, depth)).mul(smoothstep(0.1, 0.9, lace.mul(2).add(sin(depth.mul(6).sub(u.time.mul(1.4))).mul(0.5))));
+    const brk = float(1).sub(smoothstep(0.4, 1.6, depth)).mul(smoothstep(0.1, 0.5, depth)).mul(smoothstep(0.1, 0.9, lace.mul(2).add(sin(depth.mul(6).sub(u.time.mul(1.4))).mul(0.5))));
     const foam = clamp(comp.add(swashFoam.mul(0.95)).add(brk.mul(0.55).mul(u.wind)), 0, 1);
 
     const Fr = (n, v) => float(0.02).add(float(0.98).mul(pow(float(1).sub(max(dot(n, v), 0)), 5)));
