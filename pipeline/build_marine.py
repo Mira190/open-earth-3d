@@ -247,7 +247,6 @@ def main():
                     "landcover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)"},
     }
     json.dump(scene, open(os.path.join(city.out, "scene.json"), "w"), indent=1)
-    np.savez_compressed("/tmp/q/benthic.npz", A_r=A_r, A_g=A_g, A_b=A_b, depth=depth, wc=wc)
     print("scene.json written")
 
 
