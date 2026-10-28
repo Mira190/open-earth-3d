@@ -19,7 +19,7 @@ export const SOURCES = {
     says: 'the red, orange and yellow wavelengths of light are absorbed, so the light left is green, cyan and blue' },
   // ---- computed from the model
   'model-terrain': { title: 'Depths and heights in this model', model: true, what: 'the site\'s survey grid (scene.json terrain; for the Great Barrier Reef sites the AusSeabed 30 m bathymetry), sampled where you are' },
-  'model-optics': { title: 'Light in the water', model: true, what: 'env.u.K, the diffuse attenuation per metre in red, green and blue fitted to the Sentinel-2 imagery (cities/<site>/analysis/optics.json), and env.u.lightPath, the sun\'s slant under water after Snell\'s law; the same numbers the renderer uses (env.js medium)' },
+  'model-optics': { title: 'Light in the water', model: true, what: 'env.u.K, the diffuse attenuation per metre in red, green and blue derived from the Sentinel-2 imagery: from the deep water\'s colour (QAA, Lee et al.), or a fit of the floor\'s darkening with depth where that passes a quality test (cities/<site>/analysis/optics.json), and env.u.lightPath, the sun\'s slant under water after Snell\'s law; the same numbers the renderer uses (env.js medium)' },
   'model-sun': { title: 'Sun and clock', model: true, what: 'web/sun.js (NOAA solar position equations) for the site\'s time zone and the viewer\'s clock' },
   'model-pois': { title: 'Place names and positions', model: true, what: 'scene.json pois: OpenStreetMap contributors (ODbL) read through Overture Maps, projected to the local frame' },
   'model-dive': { title: 'Dive computer', model: true, what: 'web/reef/dive.js: the water temperature by month and depth the player\'s HUD shows' },

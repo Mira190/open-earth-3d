@@ -1,71 +1,105 @@
-# Handoff: Whitsundays and the Great Barrier Reef
+# Handoff: the Great Barrier Reef sites (Whitsundays and four more)
 
-Branch `claude/laughing-mccarthy-fxznj8` (pushed). A marine world, separate from the city viewer: `web/reef/`,
-three.js r186 (vendored in `web/vendor/three`), WebGPU with automatic WebGL2 fallback, all materials in TSL.
-**The water is the hard part and the part most worth a stronger model.** Read "Water: what is real and what is a hack" first.
+Branch `claude/zen-albattani-ywr26e` (pushed), which grew from `claude/laughing-mccarthy-fxznj8` with `main` merged in.
+A marine world separate from the city viewer: `web/reef/`, three.js r186 (vendored in `web/vendor/three`), WebGPU
+with an automatic WebGL2 fallback, all materials in TSL. **WebGPU is still untested**: everything was verified on
+software WebGL2 in a headless browser. The first job on a machine with a GPU is to open each site in Chrome and
+check the WebGPU path (TSL `Loop`, `select`, `.level()` in the vertex stage, `fwidth`, the viewport textures).
 
-## Run it
+## Sites
+
+| id | What | Tide gauge (MSQ) | Notes |
+|---|---|---|---|
+| `whitsundays` | Whitehaven Beach, Hill Inlet, Whitsunday Passage, Hamilton Island; 33 × 33 km | Shute Harbour | [docs/cities/whitsundays.md](cities/whitsundays.md) |
+| `hardy-reef` | Heart Reef, the Reefworld pontoon on the channel wall, Hook/Line/Bait reefs; no land | Bugatti Reef Outer | player spawns on the pontoon deck |
+| `green-island` | the cay off Cairns, Arlington Reef, Michaelmas Cay | Cairns Beacon C1 | jetty on its mapped OSM line |
+| `heron-island` | the cay on the Tropic of Capricorn, Wistari Reef | Bundaberg port | reef flat dries at low tide |
+| `lady-elliot-island` | the southernmost coral cay | Waddy Point (K'gari) | no aircraft (land planes only) |
+
+All five are in `cities/index.json` and `web/data/cities.json` with `group: "Great Barrier Reef"`; the globe shows
+one marker that opens a list of them.
+
+## Run and test
 ```bash
 cd web && python3 -m http.server 8800
-# http://localhost:8800/reef/index.html?city=whitsundays      (WASD + drag; player module spawns on Whitehaven)
-# headless: NODE_PATH=$(npm root -g) node tools/reef_shot.js "still=1&gl=1&freeze=5&x=900&y=450&z=-2&pitch=-14&yaw=70" out.png
+# http://localhost:8800/reef/index.html?city=whitsundays
+# headless: NODE_PATH=$(npm root -g) node tools/reef_shot.js "still=1&gl=1&freeze=5&x=900&y=450&z=60&pitch=-8&yaw=70" out.png
+# state:    NODE_PATH=$(npm root -g) node tools/page_eval.js "reef/index.html?..." "<expression>"   (PORT= for another server)
 ```
-Query: `gl=1` force WebGL2, `still=1` two frames then stop, `freeze=<s>` fixed wave clock, `time=<ISO>` sun/moon, `exp`, `wind` 0..1,
-`tide` m, `mods=` comma list (default `life,boats,player,game`), `post=0`. Coordinates: x east, y north, z up (z<0 under water);
-yaw 90 looks west. **WebGPU cannot be tested in the sandbox** (SwiftShader loses the device); everything was verified on software
-WebGL2 only. First job on a machine with a GPU: open it in Chrome and check the WebGPU path (TSL `Loop`, `select`, `.level(0)` in vertex stage).
+- `?player=1&autotest=1` → `window.__autotest` (39 checks; holds the tide at MSL while it runs).
+- `?gametest=1` → `window.__gametest` (Whitsundays 64; every other site 30-39); `lifestub=1`, `life=0`, `gamesite=generic`.
+- Query keys: `gl=1`, `still=1`, `freeze=<s>` (wave clock), `time=<ISO>` (the model clock: sun, moon, tide), `tide=<m>`
+  (fixes the tide), `wind=0..1`, `exp`, `post=0`, `bloom=0`, `shafts=0`, `mods=` (default `life,boats,player,game`),
+  `odbg=1..7` (ocean debug: glitter, foam, refracted frame, slope variance, normal, height, reflection),
+  `lifecam=<species>`, `boatcam=<name>`, `gameshot=...`. Coordinates: x east, y north, z up (z < 0 under water);
+  yaw 90 looks west.
 
-## Data pipeline (`pipeline/`, config in `cities/whitsundays/city.json`)
-1. `fetch_gbr_bathy.py` AusSeabed GBR 30 m (zip of 4 COGs, each deflated whole: streams ~780 MB, crops). Includes land elevation.
-2. `fetch_sentinel.py` Sentinel-2 L2A from Earth Search, 28 scenes, per pixel the darkest 60% in NIR (glint/cloud), median. Cached stack in `data/raw`.
-3. `fetch_overture.py` (existing) water/land/buildings: fetched but **not yet used** by the marine build.
-4. `build_marine.py` writes `web/data/<id>/`: `terrain.bin` (int16 dm, 30 m), `ground.jpg` (10 m), `habitat.png`, `scene.json`; `cities/<id>/analysis/optics.json`.
-   - Inverts the water column (Maritorena 1994) to get the sea floor's own colour. Rinf is a smoothed local map of deep water; Kd per band fitted on sand vs depth.
-   - Measured: Kd blue 0.054, green 0.080 /m. Red fit (0.19) is unreliable, so **0.40 (pure-water a_w(665 nm)) is used as a floor**. Sand-brightness depth spread: blue 103% raw to 43% inverted, green 136% to 29%. Not solved, only reduced.
-   - Habitat classes are **inferred** from floor colour + depth (thresholds in the script), not surveyed. Allen Coral Atlas would be the right source (site reachable, API not tried).
-   - Land colour gain 1.6; deep floor beyond ~25 m is filled with smoothed colour (invisible anyway).
-5. `hardy-reef` (outer reef, Heart Reef, 70 km off) is configured in `cities/hardy-reef/`; raw bathymetry and Sentinel-2 are downloaded in `data/raw/hardy-reef` (git-ignored) but **`build_marine.py --city hardy-reef` has not been run** and the viewer has no start view/POIs for it.
+## Data pipeline (`pipeline/`, config in `cities/<id>/city.json`)
+1. `fetch_gbr_bathy.py <id>`: AusSeabed GBR 30 m; grid extents from the COG headers, one inflated grid cached in
+   `data/raw/_gbr/<letter>.tif` per grid and shared, resumable.
+2. `fetch_sentinel.py --city <id>`: Sentinel-2 L2A from Earth Search, whole passes that cover every tile (no seam
+   from mixed dates), per pixel the darkest in the near infrared; B1-B4 and B8, and each scene's sun angle.
+3. `build_marine.py --city <id>`: terrain (no-data filled from the nearest cell), the floor colour inverted through
+   the water column, habitat, optics, cays rebuilt from their OSM outlines; calls `marine_meta.py`.
+   **Kd** comes from QAA (Lee et al. 2002/2014; Kd from Lee et al. 2005) on the deep water's colour, unless the depth fit
+   passes a quality test (`qaa.py`); red is held at pure water's 0.40. Both are in `analysis/optics.json`.
+4. `marine_meta.py --city <id>`: POIs, spawn and the harbour layout into `scene.json`, no raw data needed.
+5. `fetch_tide.py --city <id>`: Maritime Safety Queensland's 10-minute predictions through the Queensland open data
+   portal's **datastore API** (the CSV downloads are behind a bot check: do not try to get round it), fitted to 60
+   constituents per year → `tide.json`. Time base AEST, checked against NASA GOT4.10c (M2 phase).
+6. `check_marine.py --city <id>`: POIs, pontoon and spawn against the built terrain.
 
-## Viewer files (`web/reef/`)
+`city.json` blocks for a marine site: `pois` (`lonlat` or nominal `xy`, `kind`, `src`), `poi_sources`, `spawn`
+(`poi` or `x`/`y`, `heading`, `deck: "pontoon"`), `harbour` (`fleets`, `marina` {`at`, `from`, `fingers`, `boats`},
+`pontoon` {`at`, `exact`, `heading`, `name`}, `parked`, `moorings`, `traffic` routes by POI id, `scenic`, `nav_cell`),
+`tide` {`gauge`, `years`: resource ids, `note`}.
+
+## Viewer (`web/reef/`)
 | File | Role |
 |---|---|
-| `main.js` | renderer, scene, modules via `ctx` (`init(ctx)` returns `{update}`), fly camera, `?still` test mode |
-| `env.js` | wave bank (3 bands), sky/moon/stars, **`medium()` = water column, installed as `scene.fogNode`**, `caustic()`, sun from `window.Sun` |
-| `ocean.js` | radial mesh around camera, Gerstner displacement, foam from compression + shore, Snell's window from below |
-| `world.js` | 30 m terrain chunks with LOD + skirts, height half-float texture, habitat lookup |
-| `shore.js` | 2 m detail patch (bicubic + dunes), sand ripple normals, wet sand |
-| `post.js` | bloom, underwater light shafts (14-step march), vignette |
-| `boats.js` + `boats/` | merged from `claude/reef-boats`: vessels, buoyancy, wake, AI traffic, drivable boats/aircraft |
-| `player.js` `people.js` `looks.js` `gear.js` `dive.js` `hud.js` `fx.js` | merged from `claude/reef-player`: Quaternius people on r186, snorkel/freedive/scuba with dive tables, HUD, `?autotest=1` (35 pass) |
-| `life.js` | **not merged**: corals, fish, turtles, trees, plankton. Agent `a060886d9f1a6916b` was still running at handoff; its branch will be a `worktree-agent-a060886d9f1a6916b` or similar; check `git branch -r` |
-| `game.js` | **not written**: NPCs, quests, dialogue (see below) |
+| `main.js` | renderer, modules via `ctx` (`init(ctx)` returns `{update}`), the model clock (`ctx.clockMs`), the tide (`ctx.tide`), light and the eye's adaptation, the torch, fly camera |
+| `env.js` | sky, wave bank (swell + chop), `medium()` = the water column (installed as `scene.fogNode`) with the directional light field under water, caustics, the torch (`env.torch`) |
+| `ripples.js` | periodic wave tiles rendered each frame to mipmapped gradient/Hessian textures: ripples (0.3-2.4 m) and the chop's shading at range (3-24 m) |
+| `ocean.js` | radial mesh, Gerstner displacement, Cox-Munk sun and moon glitter with Smith masking, refraction, foam (whitecaps by wind, breakers by H/d), Snell's window |
+| `world.js` | terrain chunks with LOD and far 4 × 4 blocks, water heights (hollows the sea cannot reach are dry), habitat |
+| `shore.js` | 2 m detail patch near the camera |
+| `post.js` | bloom, light shafts, vignette, night vision (Purkinje shift, kept in bright pixels and the torch beam) |
+| `tide.js` | the tide from `tide.json`: `at(ms)`, `turns(ms, n)`, `rising(ms)` |
+| `boats.js` + `boats/` | vessels, wakes, AI traffic over the open water (A*, 120 m cells or `nav_cell`, routes planned for the lowest tide), drivable boats and aircraft, `deckAt` for walkable decks, far LOD |
+| `player.js` `people.js` `looks.js` `gear.js` `dive.js` `hud.js` `fx.js` | the player (walk, wade, swim, snorkel, free-dive, scuba; decks; climb out), Quaternius people, HUD |
+| `life.js` + `life/` | corals, seagrass, fish, sharks, rays, turtles, the manta, island trees, plankton, coral spawning; `ctx.life` API (header of life.js) |
+| `game.js` + `game/` | people, dialogue, quests, journal (J), map and travel (T), boarding; one content file per site; every line computed or cited ([docs/GAME_REEF.md](GAME_REEF.md)) |
 
-## Water: what is real and what is a hack
-Real (physically derived, keep):
-- Seen-through-water floor: `R = A e^(-K(Lw+m z)) + Rinf(1-e^(-K(Lw+m z)))`, same formula the build inverts, so the surface view should reproduce the satellite. `m` = sun slant after Snell (n 1.34). Veil is the closed-form single-scatter integral (`env.js` medium).
-- Caustics = 1/|det(I - 0.25 D H)| from the Hessian of the same wave bank, sun-direction shifted, fading with depth (`env.caustic`).
-- Foam from the Jacobian of the Gerstner horizontal displacement; Fresnel; Snell's window and TIR from below.
+## What is real and what is still a hack
+Real (derived, keep): the water-column model and its inversion; Kd from QAA; caustics from the wave Hessian; glitter
+as the Cox-Munk distribution of the slope variance a pixel cannot show (mips and faded waves feed it); whitecap cover
+(Monahan) and breaking (McCowan); the radiance distribution under water (Lee's rrs conversion, clear-water ratios);
+the moon (Allen's phase law) and twilight; the tide (MSQ, 1-3 cm RMS); the sea reaching only connected hollows.
 
-Hacks / known weak spots (where to spend effort):
-1. **Underwater veil boost 3.6x and an eye-adaptation 2.4x** in `medium()`: tuned by eye so horizontal views are not black. Needs a proper radiance-distribution model (radiance ~ nadir x ~2 sideways, x n^2 under the surface).
-2. **No refraction**: the floor seen through the surface is not displaced by waves; only caustics carry the wave signal. A screen-space refraction pass would fix it; careful with the depth-based medium.
-3. **Wave count is small (33 sines), not FFT.** Tidewater's idea (3-band cascaded FFT + Gerstner swell) needs WebGPU compute; keep the sine bank as the WebGL2 fallback. Radial ring mesh shows moire at distance; per-wave fade helps, not solved.
-4. **Foam has no memory** (no persistence/advection); shore foam is analytic bands on the swash, not a simulation. The boats' wake foam is a separate texture (`boats/wake.js`; hooked by wrapping ocean materials, see its header; a native hook in `ocean.js` is cleaner).
-5. **Tide**: `env.u.tide` is a manual uniform (default 0). Whitsunday tides are ~3-4 m spring range and Hill Inlet's swirl depends on it. No tide model yet (needs verified constituents for Shute Harbour / Hamilton; do not invent).
-6. **30 m terrain** limits shorelines; `shore.js` fakes detail near the camera. The water's depth lookup uses the coarse texture, so water edge and detail sand can disagree by tens of cm.
-7. Kd is **one scene-wide value**; the sea is clearer offshore (Rinf varies, Kd does not). Sentinel-2 vertical seam at the MGRS tile overlap is reduced but visible in `ground.jpg`.
-8. Ripple/glitter aliasing at range; sun glitter uses a huge power term. Night is very dark (moon only brightens the hemisphere light).
-9. Habitat map -> coral placement depends on thresholds that were not validated.
+Weak spots, in order of value:
+1. **WebGPU untested** (above).
+2. **The swell is four waves**: their interference is regular; a cascaded FFT ocean (WebGPU compute) with the sine bank
+   kept for WebGL2 is the right next step. The chop and ripples are tiles already.
+3. **Foam has no memory** (no advection or persistence); the wake field (`boats/wake.js`) is the only foam with history.
+4. **One Kd per site**, and QAA's green Kd is probably high (surface reflectance keeps some sky glint); habitat is inferred
+   from colour and depth, not surveyed (the Allen Coral Atlas is the right source). The Whitsundays' `ground.jpg` has a
+   few fill discs in 6-7 m water north-west of Whitsunday Island.
+5. **30 m terrain**: shorelines rely on `shore.js`; tidal flats at Hill Inlet are right in kind, not in detail.
+6. **Night**: the adaptation curve and the torch strength are judged by eye; coral spawning colours are physically
+   absorbed by the water beyond a metre or two.
+7. **Life**: shapes, colours, densities and behaviours are approximations (life.js header lists what is sourced).
+   Island vegetation is being made per site (coral cays have Pisonia forest, not hoop pine).
+8. **Performance**: about 230 objects in view at the start view after the vessel and herd LOD; the terrain chunks
+   near the camera and the vessels are the next targets; mobile is untested.
 
-## Remaining plan
-1. Merge `life.js` branch; check `?mods=life` frame time and that corals look right under the water column (red is gone below ~5 m; colours rely on blue/teal/yellow).
-2. `game.js`: NPCs near spawn (skipper, ranger, Ngaro Elder, dive instructor), quest journal. Player API: `ctx.spawnPerson(role, {x, north, heading})`, `ctx.player.addInteractable({x, north, radius, label, action})`, `ctx.hud.say/prompt`, `ctx.player.onChange`, `life.nearestCreature` / `life.species` for a fish-ID survey. Lines should be **computed from the model** (e.g. share of red left at 8 m from `env.u.K` and `lightPath`).
-   Verified facts only (Wikipedia, fetched): 74 continental islands; Whitsunday Island 109 km2; Cook named the passage 3 June 1770; Ngaro and Gia are the Traditional Owners ("canoe people"); Whitehaven 7 km, 98% silica, stays cool underfoot; GBR 2,300 km, 2,900 reefs, ~400 coral species, 1,500+ fish species, six turtle species; mass bleaching 1998, 2002, 2006, 2016, 2017, 2020, 2022; inner reefs spawn the week after the October full moon (late Oct 2026 is that week). Stinger season Oct to May is from general knowledge, not yet cited. **Anything about Ngaro history beyond that needs a Traditional Owner or a primary source; do not invent quotes or ceremony.**
-3. Build `hardy-reef` (add `start`, pontoon site, Heart Reef) and give the globe a second marker.
-4. Check on WebGPU; add `docs/cities/whitsundays.md` (method, optics.json numbers, checks), README row + screenshots in `docs/images/reef/`.
-5. Performance pass: draw calls (terrain chunks), per-frame allocations, mobile.
+## Open items
+- Per-site flora and fauna for the cays (in progress at handoff: a `life` block in `city.json` read by life.js).
+- QPWS pages (Ngaro Sea Trail, Nara Inlet cultural site) are behind Cloudflare; read them in a normal browser before
+  adding Ngaro content beyond the mapped lookout names. **Do not invent Ngaro history, quotes or ceremony.**
+- Fix the Chalkies anchorage nominal spot (boats find depth 570 m away); OSM beach markers at South Whitehaven, Chance Bay
+  and Catseye sit behind the sand (`check_marine.py` lists them).
 
 ## Repo notes
-- Shared files touched: `web/globe.js` (opens `c.viewer` pages), `cities/index.json` and `web/data/cities.json` (whitsundays entry). `.gitignore` ignores `.claude/worktrees/`.
+- Commits: author Mira190, subject and body only, no trailers (AGENTS.md).
+- Shared files touched: `web/globe.js` and `web/index.html` (grouped markers), `cities/index.json`, `web/data/cities.json`, README.
 - `web/vendor/three/` is three r186 + a few addons; extend with files from `npm i three@0.186.1`.
-- Commits end with the Co-Authored-By / Claude-Session lines the harness asks for.
