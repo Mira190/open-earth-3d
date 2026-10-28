@@ -350,7 +350,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)
-  function sprite(text, { bg = 'rgba(18,32,42,0.82)', fg = '#ffffff', size = 44, pad = 16, font = '600 40px "Public Sans", sans-serif' } = {}) {
+  function sprite(text, { bg = 'rgba(18,32,42,0.82)', fg = '#ffffff', size = 44, pad = 16, font = '600 40px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' } = {}) {
     const c = document.createElement('canvas'), g = c.getContext('2d');
     g.font = font;
     const w = Math.ceil(g.measureText(text).width) + pad * 2;

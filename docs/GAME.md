@@ -204,6 +204,26 @@ pipeline writes. The only city-specific code is landmark geometry in
   - ferry engine and horn;
   - dialogue beeps.
 
+## Per-city flavour
+
+Everything a city's game says and wears is in `cities/<id>/city.json`, not in code.
+[Osaka on Foot](cities/osaka.md#8-osaka-on-foot) is the example:
+- **People.** An NPC's `look` takes a character, skin, hair and clothes, plus a
+  `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) painted on the
+  top in the shader, and `acc`, a list of accessories attached to bones (`visor`,
+  `hachimaki`, `jingasa`, `mask`, `lanyard`, `tako_tray`, `umbrella`, `flag`, `drum`, and
+  more in `web/game/people.js`).
+- **Crowd.** `crowd.style` gives the crowd's skin, hair, top and leg colours, the
+  weight of each character, and the share who wear a pattern, a mask or an umbrella.
+- **Words.** `blurb`, `smalltalk` and `passerby` replace the Sydney defaults, and quest
+  text takes the same `{...}` tokens (`{share:plateau}`, `{landmark:castle.ground_m}`,
+  `{sun:Place|M-D|HH:MM}`) so numbers come from the model.
+- **Boats.** A route is a list of landings. Make each route two or three stops long and
+  put the landings a quest uses at the ends, so the boat at a landing is the one that goes
+  where the quest wants.
+- **Night.** `night_ambient` lifts the light after dark, and a landmark material can carry
+  `emissive` and `glow` so signs light up.
+
 ## Testing
 
 The game exposes a test hook (`window.__game.advance(seconds, keys)`) that runs

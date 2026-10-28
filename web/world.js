@@ -217,7 +217,7 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     // ------------------------------------------------------------ buildings
     loadMsg(`Extruding ${B.b.length.toLocaleString()} buildings`, 0.5);
     await idle();
-    const SRC = { mapped: 0, reference: 0, verified: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
+    const SRC = { mapped: 0, reference: 0, verified: 0, plateau: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
     // flat roofs sit this far below the wall tops, behind a parapet, so the outline keeps
     // the building's stated height
     const PARAPET = 0.5;
@@ -435,8 +435,8 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     }
     // meshes marked floodlit glow after dark
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
-    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin('#ffe2b8'), emissiveIntensity: 0,
-      onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
+    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin(LM.materials[k].emissive || '#ffe2b8'), emissiveIntensity: 0,
+      onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines), userData: { glow: LM.materials[k].glow || 0.32 } }));
     for (const m of LM.meshes || []) {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
@@ -467,10 +467,10 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
         sunLight.visible = sp.altitude > -0.5;
         sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
-        hemi.intensity = Math.PI * (0.07 + 0.25 * day);
+        hemi.intensity = Math.PI * (0.07 + 0.25 * day + ((D.scene.city && D.scene.city.night_ambient) || 0) * (1 - day));   // a city's own night glow (neon, street light)
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
-        for (const m of Object.values(floodMats)) m.emissiveIntensity = 0.32 * U.uNight.value;
+        for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`;
