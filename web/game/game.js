@@ -188,6 +188,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     lib = await OEPeople.load('assets/people/');
     await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
+  if (lib && G.crowd) { lib.palette = G.crowd.palette; lib.weights = G.crowd.weights; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
   const CR = G.crowd || {};
@@ -282,7 +283,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     });
   }
   const sampleCache = {};
-  const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours',
+  const SRC_TEXT = { plateau: 'its height was measured from aerial survey by Project PLATEAU', mapped: 'its height is surveyed in OpenStreetMap', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours',
     ml: 'its height is a machine-learning estimate, bias-corrected', reference: 'its height is the published figure (the open data was far too short)', verified: 'its height was checked by hand against a cited source', parametric: 'it is built from its published dimensions' };
   function smalltalk(x, y) {
     const opts = [`It's ${fill('{time}')}. ${sunLine()}`];
@@ -295,7 +296,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     const w = G.wharves.reduce((a, q) => (Math.hypot(q.terminal[0] - x, q.terminal[1] - y) < (a ? Math.hypot(a.terminal[0] - x, a.terminal[1] - y) : 400) ? q : a), null);
     if (w) { const e = nextFerry(w.id); if (e) opts.push(`The next ferry from ${w.name} is ${e.v.name}, ${e.t < 5 ? 'boarding now' : `in ${fmtSec(e.t)}`}.`); }
-    opts.push('G\'day.', 'Lovely spot, isn\'t it?');
+    opts.push(...(G.smalltalk || ['G\'day.', 'Lovely spot, isn\'t it?']));
     return opts[Math.floor(Math.random() * opts.length)];
   }
 
@@ -622,7 +623,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const p = crowd.P[pi];
       p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y); p.wave = true;
       setTimeout(() => { p.face = null; }, 6000);
-      dlg.show({ name: 'Passer-by', role: 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
+      dlg.show({ name: 'Passer-by', role: G.passerby || 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
     } };
     return null;
   }
@@ -702,7 +703,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     U.uSel.value = bi;
     const name = m[0] || (m[1] ? `Unnamed ${m[1].replace(/_/g, ' ')}` : 'Unnamed building');
     const osm = m[6] && /^[wr]\d+$/.test(m[6]) ? `<a href="https://www.openstreetmap.org/${m[6][0] === 'w' ? 'way' : 'relation'}/${m[6].slice(1)}" target="_blank" rel="noopener">${m[6]}</a>` : '–';
-    const SRC = { mapped: 'Surveyed in OpenStreetMap', floors: 'Floor count × storey height', estimate: 'Estimated from neighbours', ml: 'ML estimate, bias-corrected', reference: 'Published height (corrected)', verified: 'Verified from a cited source', parametric: 'Parametric landmark' };
+    const SRC = { plateau: 'Measured by aerial survey (Project PLATEAU)', mapped: 'Surveyed in OpenStreetMap', floors: 'Floor count × storey height', estimate: 'Estimated from neighbours', ml: 'ML estimate, bias-corrected', reference: 'Published height (corrected)', verified: 'Verified from a cited source', parametric: 'Parametric landmark' };
     $('#g-lens').innerHTML = `<span class="eyebrow">Survey lens · ${Math.round(hit.distance)} m away</span><b>${name}</b>
       <dl class="kv"><dt>Height</dt><dd class="num">${m[2].toFixed(1)} m</dd><dt>Source</dt><dd>${SRC[m[4]] || m[4]}</dd>${m[3] ? `<dt>Floors</dt><dd class="num">${m[3]}</dd>` : ''}${m[4] === 'reference' ? `<dt>Open data said</dt><dd class="num">${m[9].toFixed(1)} m</dd>` : ''}<dt>OSM</dt><dd>${osm}</dd></dl>`;
     $('#g-lens').hidden = false;

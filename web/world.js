@@ -119,7 +119,7 @@ window.OEWorld = (function () {
     // ------------------------------------------------------------ buildings
     loadMsg(`Extruding ${B.b.length.toLocaleString()} buildings`, 0.5);
     await idle();
-    const SRC = { mapped: 0, reference: 0, verified: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
+    const SRC = { plateau: 0, mapped: 0, reference: 0, verified: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
     function extrude(solids, colourOf) {
       const pos = [], nrm = [], col = [], fac = [], bid = [], src = [], idx = [];
       let v = 0;

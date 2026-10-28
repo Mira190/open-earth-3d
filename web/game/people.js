@@ -50,15 +50,17 @@ window.OEPeople = (function () {
   }
 
   // a random look for a character: skin, hair, clothes and height
+  // lib.palette (from a city's game.crowd.palette) replaces the swatches: skin, hair, greyHair, tops, legs
   function randomLook(lib, name) {
-    const ch = lib.info.characters[name], w = ch.pack === 'W';
-    return { character: name, skin: pick(SKIN), hair: rnd() < 0.15 ? pick(HAIR.slice(8)) : pick(HAIR.slice(0, 9)), top: pick(TOPS), legs: pick(LEGS),
+    const ch = lib.info.characters[name], w = ch.pack === 'W', P = lib.palette || {};
+    const hairs = P.hair || HAIR.slice(0, 9), greys = P.greyHair || HAIR.slice(8);
+    return { character: name, skin: pick(P.skin || SKIN), hair: rnd() < (P.greyShare ?? 0.15) ? pick(greys) : pick(hairs), top: pick(P.tops || TOPS), legs: pick(P.legs || LEGS),
       scale: (w ? 0.885 : 0.94) + rnd() * 0.06 };
   }
   function pickCharacter(lib) {
-    const names = lib.names, tot = names.reduce((a, n) => a + (WEIGHT[n] || 1), 0);
+    const names = lib.names, wt = lib.weights || WEIGHT, tot = names.reduce((a, n) => a + (wt[n] || 1), 0);
     let r = rnd() * tot;
-    for (const n of names) { r -= WEIGHT[n] || 1; if (r <= 0) return n; }
+    for (const n of names) { r -= wt[n] || 1; if (r <= 0) return n; }
     return names[0];
   }
 

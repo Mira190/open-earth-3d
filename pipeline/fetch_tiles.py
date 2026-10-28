@@ -2,6 +2,9 @@
 
   imagery  "xyz": any slippy-map tile service ({z}, {x}, {y} in the URL), Web Mercator
   terrain  "arcgis_image": an ArcGIS ImageServer exportImage of float elevations
+           "gsi_dem_png": GSI (Japan) elevation tiles, PNG with elevation in 0.01 m steps
+                        (R*65536 + G*256 + B); dem5a_png at zoom 15 is a 5 m bare-earth
+                        laser DEM
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -106,6 +109,35 @@ def dem_terrarium(raw, z, xs, ys):
     return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
 
 
+def dem_gsi(raw, cfg, bbox):
+    """Stitch GSI elevation PNG tiles into a float32 Web Mercator grid. Pixels with no
+    data (value 2^23) are filled from the nearest valid pixel."""
+    from scipy import ndimage
+    z = cfg["zoom"]
+    out = os.path.join(raw, "gsi_dem", str(z))
+    ok, n, (xs, ys) = fetch_xyz(bbox, cfg["url"], z, "png", out)
+    print(f"gsi dem: z{z}, {ok}/{n} tiles")
+    xs, ys = list(xs), list(ys)
+    a = np.full(((ys[-1] - ys[0] + 1) * 256, (xs[-1] - xs[0] + 1) * 256), np.nan, np.float32)
+    for tx in xs:
+        for ty in ys:
+            p = os.path.join(out, f"{tx}_{ty}.png")
+            if os.path.exists(p):
+                rgb = np.asarray(Image.open(p).convert("RGB")).astype(np.int64)
+                v = rgb[..., 0] * 65536 + rgb[..., 1] * 256 + rgb[..., 2]
+                e = np.where(v < 2 ** 23, v, v - 2 ** 24).astype(np.float32) * 0.01
+                e[v == 2 ** 23] = np.nan
+                a[(ty - ys[0]) * 256:(ty - ys[0] + 1) * 256, (tx - xs[0]) * 256:(tx - xs[0] + 1) * 256] = e
+    bad = np.isnan(a)
+    print(f"gsi dem: {bad.mean() * 100:.2f}% of pixels without data, filled from the nearest")
+    if bad.any():
+        idx = ndimage.distance_transform_edt(bad, return_distances=False, return_indices=True)
+        a = a[tuple(idx)]
+    Image.fromarray(a).save(os.path.join(raw, "dem.tif"))
+    span = 2 * E / 2 ** z
+    return [xs[0] * span - E, E - (ys[-1] + 1) * span, (xs[-1] + 1) * span - E, E - ys[0] * span], (a.shape[1], a.shape[0])
+
+
 def main():
     city, _ = city_args(__doc__.splitlines()[0])
     city.ensure_dirs()
@@ -119,6 +151,8 @@ def main():
     tc = cfg["terrain"]
     if tc["type"] == "arcgis_image":
         mbbox, size = dem_arcgis(bbox, tc, city.raw)
+    elif tc["type"] == "gsi_dem_png":
+        mbbox, size = dem_gsi(city.raw, tc, bbox)
     elif tc["type"] == "terrarium":
         mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
     else:

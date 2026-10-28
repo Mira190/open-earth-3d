@@ -225,7 +225,7 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
     logh = np.log(np.maximum([m[2] for m in meta], 0.5))
     src = np.array([m[4] for m in meta])
     grp = np.array([group(m[1]) for m in meta])
-    ki = np.where(np.isin(src, ["mapped", "floors"]))[0]
+    ki = np.where(np.isin(src, ["mapped", "floors", "plateau"]))[0]
     if len(ki) < 20:
         print("height imputation skipped: fewer than 20 buildings with known heights")
         return {"known_buildings": int(len(ki)), "applied": {}, "residuals": {"estimate": [], "ml": []}, "cv": {}}
@@ -337,6 +337,86 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
             "residuals": {"estimate": np.round(res_est, 3).tolist(), "ml": np.round(res_ml, 3).tolist()}}
 
 
+# ---------------------------------------------------------------- measured heights (PLATEAU)
+
+def apply_plateau(C, meta, solids, first_solid, footprints, geo, ortho):
+    """Take heights from Project PLATEAU, whose buildings carry a measured height (aerial survey).
+
+    Each Overture footprint takes the height of the PLATEAU footprint it overlaps most (IoU of at
+    least 0.3, or 70% of the smaller one inside the larger). Before the height is replaced, the
+    height it had is compared with PLATEAU's, which measures how good the other sources are;
+    the comparison goes to cities/<id>/analysis/plateau_match.json. PLATEAU buildings inside the
+    extent with less than 30% of their footprint under an Overture building (mostly sheds and
+    small houses) are added as buildings of their own, with footprint source "P"."""
+    cfg = C.cfg.get("plateau")
+    path = os.path.join(C.raw, "plateau_bldg.parquet")
+    if not cfg or not os.path.exists(path):
+        return None
+    con = duckdb.connect()
+    con.execute("LOAD spatial")
+    P = rows(con, path)
+    pg = [swkb.loads(bytes(r["wkb"])) for r in P]
+    pg = [C.to_local(g) for g in pg]
+    ph = np.array([r["height"] for r in P])
+    tree = shapely.STRtree(pg)
+    n_match, ratios, used = 0, defaultdict(list), set()
+    for bi, g in footprints.items():
+        if g.is_empty or meta[bi][4] == "parametric":
+            continue
+        best, bscore = None, 0.0
+        for j in tree.query(g, predicate="intersects"):
+            inter = g.intersection(pg[j]).area
+            if inter <= 0:
+                continue
+            iou = inter / (g.area + pg[j].area - inter)
+            cont = inter / min(g.area, pg[j].area)
+            score = max(iou, cont - 0.4) if (iou >= 0.3 or cont >= 0.7) else 0.0
+            if score > bscore:
+                best, bscore = j, score
+        if best is None:
+            continue
+        used.add(best)
+        h = float(ph[best])
+        old, old_src = meta[bi][2], meta[bi][4]
+        if old_src in ("mapped", "floors", "ml"):
+            ratios[old_src].append(math.log(max(old, 0.5) / max(h, 0.5)))
+        f = h / max(meta[bi][2], 0.5)
+        for k in range(first_solid[bi], first_solid[bi + 1] if bi + 1 < len(meta) else len(solids)):
+            solids[k][3] = max(solids[k][2] + 10, round(solids[k][3] * f))
+        meta[bi][2], meta[bi][4] = round(h, 1), "plateau"
+        n_match += 1
+    cmp = {k: {"n": len(v), "median_factor": round(float(np.exp(np.median(np.abs(v)))), 3), "median_bias": round(float(np.median(v)), 3),
+               "p90_factor": round(float(np.exp(np.percentile(np.abs(v), 90))), 3)} for k, v in ratios.items() if len(v) >= 10}
+    ext = box(C.x0, C.y0, C.x1, C.y1)
+    otree = shapely.STRtree(list(footprints.values()))
+    ofp = list(footprints.values())
+    added = 0
+    for j, g in enumerate(pg):
+        if j in used or g.area < 8 or not ext.contains(g.centroid):
+            continue
+        hit = otree.query(g, predicate="intersects")
+        if len(hit) and shapely.union_all([ofp[i] for i in hit]).intersection(g).area / g.area >= 0.3:
+            continue
+        q = shapely.geometry.polygon.orient(g.simplify(0.15, preserve_topology=True), 1.0) if g.geom_type == "Polygon" else None
+        if q is None or q.is_empty or q.area < 2:
+            continue
+        bi, h = len(meta), float(ph[j])
+        cs = np.asarray(q.exterior.coords)
+        zb = max(float(np.min(sample(C, C.dem_land, cs[:, 0], cs[:, 1]))), 0.0)
+        first_solid[bi] = len(solids)
+        solids.append([bi, round(zb * 10), 0, round(h * 10), ring(q.exterior.coords)] + [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
+        geo[bi] = [q.area, q.centroid.x * q.area, q.centroid.y * q.area]
+        meta.append(["", "building", round(h, 1), 0, "plateau", "P", "", wall_colour({}, "building", h, j), roof_colour(C, ortho, q, h), round(h, 1)])
+        added += 1
+    unmatched = len(pg) - len(used)
+    res = {"plateau_buildings": len(pg), "overture_buildings": len(footprints), "matched_overture": n_match,
+           "plateau_added": added, "prior_height_vs_plateau": cmp,
+           "note": "median_factor is the median of max(a/b, b/a) between the height a building had before PLATEAU and its measured PLATEAU height; median_bias below 0 means the earlier source was too short."}
+    json.dump(res, open(os.path.join(C.analysis, "plateau_match.json"), "w"), indent=1)
+    print("PLATEAU:", res)
+    return res
+
+
 # ---------------------------------------------------------------- city hooks
 
 class Ctx:
@@ -409,7 +489,7 @@ def build(C):
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res = [], [], {}, {}, {}, []
+    meta, solids, first_solid, geo, ml_raw, floor_res, footprints = [], [], {}, {}, {}, [], {}
     for b in blds:
         if b["is_underground"]:
             continue
@@ -461,11 +541,14 @@ def build(C):
         meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
                      wall_colour(b, cls, top, seed), roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
         first_solid[bi] = first
+        footprints[bi] = g
         if b["height_src"] == "Microsoft ML Buildings" and b["height"]:
             ml_raw[bi] = float(b["height"])
         if b["height_src"] == "OpenStreetMap" and b["height"] and b["num_floors"] and not b["has_parts"]:
             floor_res.append(math.log(H.storey_height(cls, b["num_floors"]) / b["height"]))
 
+    C.dem_land = dem_land
+    plateau = apply_plateau(C, meta, solids, first_solid, footprints, geo, ortho)
     model = impute_heights(meta, solids, first_solid, geo, ml_raw)
     model["residuals"]["floors"] = np.round(floor_res, 3).tolist()
     if floor_res:
