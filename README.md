@@ -41,9 +41,10 @@ The model is also a game.
 
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
-computed from the model as you play. In free roam you can survey the view from
-Sydney's trig stations, or test your eye against the data by guessing building
-heights. Open **Play** on the globe, or go to
+computed from the model as you play. The survey runs as three lines you can take
+in any order. Photo mode stops the world for a picture, under the sun for the time
+you choose. In free roam you can survey the view from Sydney's trig stations, or
+test your eye against the data by guessing building heights. Open **Play** on the globe, or go to
 `#play-sydney` or `#play-melbourne`. [docs/GAME.md](docs/GAME.md) covers:
 - the controls;
 - what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the

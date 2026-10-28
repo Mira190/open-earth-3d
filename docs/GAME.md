@@ -140,6 +140,8 @@ listed at the end.
 | **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
 | **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
 | **GeoGuessr** | A guess scored against the answer. | Here the answer has error bars and the score shows them. For an estimated height, a good eye can be as good as the data. |
+| **Breath of the Wild** | After a short prologue, the main quests open together and can be done in any order. | Its quests end in invented places. Here each line ends in a fact about a real one. A step from one line completes while you follow another, because both are a position, a time or a sun angle in the same model. |
+| **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
 
 ## How it works
@@ -330,8 +332,10 @@ and the menus are checked in a phone-sized browser.
 - **Lines of sight:** trees are not in the surface model, so a building behind a
   tree still counts as in sight. Each building is sighted at one point, just under the
   roof of its tallest part.
-- **The edge of the model:** from high up, as on a fast-travel hop, you can see where
-  the model stops.
+- **The edge of the model:** the last few hundred metres fade into haze, so the city
+  does not end in a cliff over a flat sea. The haze hides the edge; it does not fill
+  it. There is nothing of the city beyond the frame, and the wharves and streets
+  near the frame look hazy from a distance.
 
 ## Sources
 

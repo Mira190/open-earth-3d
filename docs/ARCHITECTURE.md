@@ -160,7 +160,12 @@ The views switch in place, without reloading the page.
   - extruded buildings with facades, lit windows at night and the
     height-source colours;
   - landmarks with their surface patterns, trees, piers and water;
-  - sky, sun and shadows.
+  - sky, sun and shadows;
+  - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
+    the fog colour, and beyond the frame there is only haze. It is three.js's fog
+    chunks with the frame written in, so every fogged material takes it,
+    reflections included. Within about 150 m of the camera it is held off, unless
+    the camera itself is outside the model.
 
   Each building gets one of three facades, from its class and height:
   - a glass curtain wall for towers of 55 m and more: panes between mullions
