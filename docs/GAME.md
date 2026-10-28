@@ -143,6 +143,7 @@ listed at the end.
 | **Breath of the Wild** | After a short prologue, the main quests open together and can be done in any order. | Its quests end in invented places. Here each line ends in a fact about a real one. A step from one line completes while you follow another, because both are a position, a time or a sun angle in the same model. |
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
+| **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 
 ## How it works
@@ -218,11 +219,52 @@ pipeline writes. The only city-specific code is landmark geometry in
     matched to the ground speed, measured from how fast the planted foot slides
     in each clip, so feet don't skate. NPCs turn their heads to look at you and
     wave when you talk to them, and passers-by wave back when greeted.
+  - **Sitting:** there is no clip for it.
+    - The legs are bent over the idle pose: each thigh is aimed forward and
+      each shin straight down.
+    - The feet are IK targets in these rigs, so they are moved to the ends of
+      the shins, and the body is lowered until they touch the ground.
+    - The far copies bend their legs the same way in the vertex shader.
   - **Near and far:** the 14 nearest passers-by (6 on a phone) are fully
     skinned. Everyone further away is an instanced copy of the same character,
     simplified by vertex clustering. Its legs, knees and arms swing in the
     vertex shader, and the shadows move with them. That is one draw call per
     character for hundreds of people.
+- **Crowd** (`web/game/actors.js`):
+  - **Walking:** pedestrians follow the footways, keeping left.
+  - **Stepping aside:** each walker looks four seconds ahead for anyone it will
+    pass closer than 0.6 m, the player included.
+    - It steps aside within the footway's width, choosing the side by where the
+      other person is now. If both judged by where the other will be, each
+      would mirror the other's sidestep, and they would cross into each other.
+    - If it can't get round, it slows to the other person's pace.
+    - This is RVO and Detour Crowd confined to the footway.
+    - With 40 walkers on one footway, pairs walked through each other 2.8
+      times a tick before, and never now. People used to freeze when you stood
+      among them; now they walk round you.
+  - **Benches:** the benches are smart objects.
+    - 1,375 of Sydney's 1,862 benches and 891 of Melbourne's 1,181 can be
+      reached from a footway in a straight line that is clear of walls, water
+      and steps.
+    - Each faces its footway, or turns round to face the water when there is
+      water behind it. Each has a backrest and two seats.
+    - A walker passing a bench with a free seat may claim the seat, walk over,
+      sit for 25 to 75 seconds and walk on.
+  - **Sun or shade:** the game re-tests the benches near you against the sun,
+    about 60 a second, with the same ray cast as the sun meter.
+    - Whether people want the sun depends on the city's average daily top for
+      the month, against a comfortable 22 °C. That is the `climate` block in
+      `game.json`, from the Bureau of Meteorology.
+    - People lean towards the sun when it is low.
+    - Greet someone on a bench and they tell you when the sun reaches it or
+      leaves it today.
+
+    Around Martin Place:
+
+    | Time | Benches in sun | Sitters in sun |
+    |---|---|---|
+    | 21 June, 12:30 | 55% | 100% |
+    | 15 January, 14:00 | 92% | 21% |
 - **Traffic** (`web/game/actors.js`):
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
@@ -339,8 +381,13 @@ and the menus are checked in a phone-sized browser.
 - **No rigid-body physics:** walls are exact, but the landmarks (the Opera
   House shells, the bridge steel) still collide as 2 m boxes. The floor is found
   under the walker's centre, not under the whole capsule. There is no ragdoll or
-  car damage, and pedestrians don't avoid each other.
-  [ENGINES.md](ENGINES.md#roadmap) lists the next steps.
+  car damage. [ENGINES.md](ENGINES.md#roadmap) lists the next steps.
+- **Crowd:**
+  - Walkers avoid each other along the footway lines, not across open plazas,
+    and they don't avoid cars.
+  - Bench shade counts buildings and landmarks but not trees.
+  - Whether people want sun is a rule of thumb, the month's average top against
+    22 °C, not the day's weather.
 - **Ferry timetable:** the routes follow the inner-harbour services, but the
   timetable is invented. Ferries run at 1.5 times real speed.
 - **Vessels on the water:** a ferry rides the mean water level and does not

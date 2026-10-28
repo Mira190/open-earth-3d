@@ -521,6 +521,10 @@
     "title": "Melbourne on Foot",
     "local_name": "Melburnian",
     "water_name": "Yarra",
+    "climate": {
+      "mean_max_c": [26.8, 25.9, 24.3, 20.8, 17.6, 14.7, 14.5, 15.6, 18.0, 20.5, 22.2, 24.7],
+      "source": "Bureau of Meteorology, Melbourne (Olympic Park) 086338, mean maximum temperature since 2013"
+    },
     "start": {
       "at": [
         548,

@@ -1,6 +1,7 @@
 // People and cars. Pedestrians walk the city's footways (keeping left, as Australians
-// do) and cars drive the roads on the left, at the speed limit Overture gives or a
-// default for the road class. Cars are instanced meshes, a handful of draw calls for
+// do), step aside for each other and for the player, and stop to sit on benches. Cars
+// drive the roads on the left, at the speed limit Overture gives or a default for the
+// road class. Cars are instanced meshes, a handful of draw calls for
 // hundreds. People are drawn by people.js (realistic characters); the box-built rigs
 // here are the fallback when those files can't be loaded.
 'use strict';
@@ -14,6 +15,8 @@ window.OEActors = (function () {
   const PANTS = ['#2b3440', '#1d1f24', '#4b5563', '#3a3026', '#6b7280', '#24384f', '#c7b89a'];
   const SKIN = ['#f1c8a6', '#e0ac85', '#c68a64', '#a8714f', '#8d5a3c', '#6b4429'];
   const HAIR = ['#1b1311', '#3b2a20', '#6b4a2b', '#a37a45', '#c9a35b', '#8a8a8a', '#2a1d17'];
+  // footway widths by class (m), for drawing the streets and for how far walkers can step aside
+  const FOOTW = { pedestrian: 8, footway: 3, path: 2.5, steps: 3, cycleway: 2.5, living_street: 5 };
   const CARS = ['#f2f2f2', '#1c1c1e', '#8a9099', '#b3242b', '#1f4e8c', '#d8d3c8', '#2f3b33', '#c9a227', '#5a6470', '#7a1f2b'];
 
   // ------------------------------------------------------------ articulated person (player, NPCs)
@@ -220,12 +223,26 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return out;
     }
+    // the closest point on any line within maxD of (x, y): {line, s, x, y, z, d} or null
+    function nearest(x, y, maxD) {
+      let best = null;
+      for (const i of new Set(near(x, y, 0, maxD))) {
+        const l = L[i], n = l.pts.length / 3;
+        for (let k = 1; k < n; k++) {
+          const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], ex = l.pts[3 * k] - ax, ey = l.pts[3 * k + 1] - ay, L2 = ex * ex + ey * ey;
+          const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
+          const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(x - qx, y - qy);
+          if (d < maxD && (!best || d < best.d)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: l.pts[3 * k - 1] + (l.pts[3 * k + 2] - l.pts[3 * k - 1]) * t, d };
+        }
+      }
+      return best;
+    }
     function next(i, end) { // another line meeting line i's end (0 start, 1 end)
       const l = L[i], k = end ? l.pts.length / 3 - 1 : 0;
       const opts2 = (nodes.get(key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(o => o[0] !== i);
       return opts2.length ? opts2[Math.floor(rnd() * opts2.length)] : null;
     }
-    return { L, at, near, next };
+    return { L, at, near, nearest, next };
   }
 
   // ------------------------------------------------------------ the crowd
@@ -249,43 +266,189 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       end() { mesh.instanceMatrix.needsUpdate = true; A.aAnim.needsUpdate = true; },
     };
   }
-  function crowd(world, net, U, n, radius, makeRenderer) {
+  // ------------------------------------------------------------ benches: places to sit
+  // Each bench is a smart object in the sense of Unreal's Smart Objects (find, claim, use,
+  // release), placed from open data the way GTA V places its scenario points: two seats, a
+  // facing, and the point on a footway where a walker leaves the path for it. It advertises
+  // sun or shade, as objects advertise what they offer in The Sims; game.js keeps `lit` up to
+  // date and decides how much that matters today.
+  function benches(flat, net, nav) {
+    const list = [], byLine = new Map(), tmp = {};
+    const fwd = h => [Math.sin(h), Math.cos(h)];
+    const waterAhead = (x, y, h) => { const [fx, fy] = fwd(h); for (let d = 6; d <= 40; d += 4) if (nav.isWater(x + fx * d, y + fy * d)) return true; return false; };
+    // a facing is better with water ahead and a wall behind, and bad facing a wall
+    const score = (x, y, z, h) => {
+      const [fx, fy] = fwd(h);
+      return (waterAhead(x, y, h) ? 2 : 0) + (nav.walk(x - fx * 1.2, y - fy * 1.2, z).ok ? 0 : 0.5) - (nav.walk(x + fx * 1.2, y + fy * 1.2, z).ok ? 0 : 2);
+    };
+    // can a walker get from the footway to the seat without meeting a wall, the water or a step?
+    const wayClear = (q, st) => {
+      const d = Math.hypot(st.x - q.x, st.y - q.y), n = Math.max(1, Math.ceil(d / 0.5));
+      for (let k = 0; k <= n; k++) {
+        const w = nav.walk(q.x + (st.x - q.x) * k / n, q.y + (st.y - q.y) * k / n, st.z);
+        if (!w.ok || Math.abs(w.z - st.z) > 0.6) return false;
+      }
+      return true;
+    };
+    for (let i = 0; i < flat.length / 3; i++) {
+      const x = flat[3 * i] / 10, y = flat[3 * i + 1] / 10, z = flat[3 * i + 2] / 10, q = net.nearest(x, y, 12);
+      let h = (i * 2.399) % Math.PI; // nowhere near a footway: any way round
+      if (q) { // face the footway, or turn round to the view if there is water behind it
+        net.at(q.line, q.s, tmp);
+        const hp = q.d > 0.6 ? Math.atan2(q.x - x, q.y - y) : Math.atan2(tmp.hx, tmp.hy) + Math.PI / 2;
+        let best = -Infinity;
+        for (const [hh, base] of [[hp, q.d > 0.6 ? 1 : 0], [hp + Math.PI, 0]]) { const v = base + score(x, y, z, hh); if (v > best) { best = v; h = hh; } }
+      }
+      const [fx, fy] = fwd(h), b = { i, x, y, z, h, seats: [], line: -1, s: 0, lit: null };
+      for (const a of [-0.42, 0.42]) b.seats.push({ x: x + Math.cos(h) * a - fx * 0.08, y: y - Math.sin(h) * a - fy * 0.08, z, h, by: -1, bench: b });
+      if (q && b.seats.every(st => wayClear(q, st))) {
+        b.line = q.line; b.s = q.s;
+        if (!byLine.has(q.line)) byLine.set(q.line, []);
+        byLine.get(q.line).push(b);
+      }
+      list.push(b);
+    }
+    let cursor = 0;
+    // re-test what the benches within r of (cx, cy) offer, a few per call: test(bench) -> true (sun), false (shade) or null (night)
+    function refresh(test, cx, cy, r, budget) {
+      for (let k = 0; k < list.length && budget > 0; k++) {
+        const b = list[cursor = (cursor + 1) % list.length];
+        if (b.line < 0 || Math.abs(b.x - cx) > r || Math.abs(b.y - cy) > r) continue;
+        b.lit = test(b);
+        budget--;
+      }
+    }
+    return { list, byLine, refresh, usable: byLine.size ? [...byLine.values()].reduce((a, l) => a + l.length, 0) : 0 };
+  }
+
+  // ------------------------------------------------------------ walking, stepping aside, sitting down
+  // Walkers follow footway lines with a sideways offset, keeping left. They avoid each other
+  // and the player as RVO and Detour Crowd do, but on the lane: each looks ahead for whoever
+  // it will pass too close to within a few seconds, steps aside within the footway's width,
+  // and slows to match whoever it can't get round. A walker passing a bench with a free seat
+  // may claim it (benches(), and `sitChance`, which game.js sets), walk over, sit a while,
+  // and walk on.
+  const HORIZON = 4;   // seconds of look-ahead
+  const BODY = 0.6;    // two walkers closer than this are in each other's way (m, centre to centre)
+  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null } = {}) {
     const P = [], tmp = {};
-    for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16 });
+    for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, lat: null, dodge: 0, v: 0, vx: 0, vy: 0,
+      pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16, state: 'walk', mode: 'ground', seat: null, t: 0, rest: rnd() * 30 });
     const R = makeRenderer ? makeRenderer(P) : boxRenderer(world, U, P);
+    function release(p) { if (p.seat) { p.seat.by = -1; p.seat = null; } }
     function respawn(p, cx, cy, rMin) {
+      release(p);
+      p.state = 'walk'; p.mode = 'ground'; p.lat = null;
       const cand = net.near(cx, cy, rMin, radius);
       if (!cand.length) { p.line = -1; return; }
       p.line = cand[Math.floor(rnd() * cand.length)];
       p.s = rnd() * net.L[p.line].len;
       p.dir = rnd() < 0.5 ? 1 : -1;
     }
-    const api = { R, P, active: n };
+    const api = { R, P, active: n, benches: BN, sitChance: () => 0 };
+    // neighbours: a spatial hash of 3 m cells (bucket heads and a next-in-bucket chain)
+    const CELL = 3, NB = 4096, head = new Int32Array(NB), chain = new Int32Array(n);
+    const bucket = (cx, cy) => ((cx * 73856093) ^ (cy * 19349663)) & (NB - 1);
+    // what agent p does about another body at (ox, oy) moving at (ovx, ovy): sets push (sideways, + = left) and cap (speed)
+    let p = null, hx = 0, hy = 0, push = 0, cap = 0;
+    function see(ox, oy, ovx, ovy, rr, w) {
+      const dx = ox - p.x, dy = oy - p.y, d2 = dx * dx + dy * dy;
+      if (d2 > 36) return;
+      const wx = p.vx - ovx, wy = p.vy - ovy, w2 = wx * wx + wy * wy; // closing velocity
+      let t = w2 > 1e-4 ? (dx * wx + dy * wy) / w2 : 0;             // time of closest approach
+      if (t < 0) { if (d2 >= rr * rr) return; t = 0; }
+      t = Math.min(t, HORIZON); // someone gaining slowly is still in the way
+      const cx = dx - wx * t, cy = dy - wy * t, c = Math.hypot(cx, cy);
+      if (c >= rr) return;
+      const u = (1 - c / rr) * Math.min(1, 1.5 / (t + 0.5)) * w; // the sooner, the stronger
+      // step away from the side it is on now (judged by where it will be, both would mirror each
+      // other's sidestep and cross into each other); dead ahead, pass on the right
+      const now = dx * -hy + dy * hx, then = cx * -hy + cy * hx;
+      push += (Math.abs(now) > 0.05 ? now : then) > 0 ? -u : u;
+      const ahead = dx * hx + dy * hy;
+      if (ahead > 0) cap = Math.min(cap, Math.max(0, ovx * hx + ovy * hy) + Math.max(0, ahead - rr) * 0.8);
+    }
+    function backTo(q) { // the point on the footway a walker returns to from a bench
+      q.dir = rnd() < 0.5 ? 1 : -1;
+      net.at(q.line, q.s, tmp);
+      q.back = { x: tmp.x - tmp.hy * q.dir * q.side, y: tmp.y + tmp.hx * q.dir * q.side, z: tmp.z };
+    }
     function update(dt, cx, cy, t, player) {
       R.begin(dt, cx, cy, t, api.active);
+      head.fill(-1);
+      for (let i = 0; i < api.active; i++) {
+        const q = P[i];
+        if (q.line < 0) continue;
+        const k = bucket(Math.floor(q.x / CELL), Math.floor(q.y / CELL));
+        chain[i] = head[k]; head[k] = i;
+      }
+      const pvx = player ? Math.sin(player.h) * player.speed : 0, pvy = player ? Math.cos(player.h) * player.speed : 0;
       for (let i = 0; i < n; i++) {
-        const p = P[i];
-        if (i >= api.active) { R.hide(i); p.line = -1; continue; }
+        p = P[i];
+        if (i >= api.active) { R.hide(i); release(p); p.line = -1; continue; }
         if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
-        const l = net.L[p.line];
-        let moving = p.pause <= 0;
-        if (player && Math.hypot(p.x - player.x, p.y - player.y) < 1.3) moving = false; // let the player pass
-        if (moving) {
-          p.s += p.dir * p.speed * dt;
-          if (p.s < 0 || p.s > l.len) {
-            const nx = net.next(p.line, p.s > l.len ? 1 : 0);
-            if (nx && rnd() < 0.9) { p.line = nx[0]; p.dir = nx[1] === 0 ? 1 : -1; p.s = nx[1] === 0 ? 0 : net.L[p.line].len; }
-            else { p.dir = -p.dir; p.s = Math.max(0, Math.min(l.len, p.s)); }
+        if (p.pause > 0) p.pause -= dt;
+        if (p.state === 'walk') walk(i, dt, player, pvx, pvy);
+        else if (p.state === 'sit') {
+          p.v = p.vx = p.vy = 0;
+          if ((p.t -= dt) <= 0) { release(p); backTo(p); p.state = 'leave'; }
+        } else { // to a seat or back to the footway, in a straight line
+          const g = p.state === 'approach' ? p.seat : p.back, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy), st = Math.min(d, p.speed * 0.8 * dt);
+          if (d > 1e-3) { p.x += dx / d * st; p.y += dy / d * st; p.z += (g.z - p.z) * st / d; p.h = Math.atan2(dx, dy); }
+          p.v = dt > 0 ? st / dt : 0; p.vx = d > 1e-3 ? dx / d * p.v : 0; p.vy = d > 1e-3 ? dy / d * p.v : 0;
+          if (d - st < 0.02) {
+            if (p.state === 'approach') { p.state = 'sit'; p.x = g.x; p.y = g.y; p.z = g.z; p.h = g.h; p.t = 25 + rnd() * 50; }
+            else { p.state = 'walk'; p.lat = null; p.dodge = 0; p.rest = 40 + rnd() * 60; } // walk() picks up the new direction
           }
-        } else p.pause -= dt;
-        net.at(p.line, p.s, tmp);
-        const hx = tmp.hx * p.dir, hy = tmp.hy * p.dir;
-        p.x = tmp.x - hy * p.side; p.y = tmp.y + hx * p.side; p.z = tmp.z; // keep left
-        if (p.face != null) p.h = p.face; else p.h = Math.atan2(hx, hy);
-        R.place(i, p, moving);
+        }
+        p.mode = p.state === 'sit' ? 'sit' : 'ground';
+        R.place(i, p, p.state !== 'sit' && p.v > 0.05);
       }
       R.end();
+    }
+    function walk(i, dt, player, pvx, pvy) {
+      const l = net.L[p.line];
+      if (p.lat == null) { p.lat = p.side; p.v = p.speed; net.at(p.line, p.s, tmp); p.hx = tmp.hx * p.dir; p.hy = tmp.hy * p.dir; }
+      hx = p.hx; hy = p.hy; // the lane's direction where the walker is, from the last step
+      push = 0; cap = p.speed;
+      const c0 = Math.floor(p.x / CELL), r0 = Math.floor(p.y / CELL);
+      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) if (j !== i) { const o = P[j]; see(o.x, o.y, o.vx, o.vy, BODY, 1); }
+      }
+      if (player) see(player.x, player.y, pvx, pvy, BODY + 0.15, 1.6); // give the player a little more room
+      // sideways within the footway (a little past its edge for whoever keeps far left), and speed
+      const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
+      p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
+      const want = Math.max(-hw + 0.3, Math.min(Math.max(hw, p.side) + 0.2, p.side + p.dodge));
+      const dl = Math.max(-0.9 * dt, Math.min(0.9 * dt, want - p.lat));
+      p.lat += dl;
+      const target = p.pause > 0 ? 0 : Math.min(p.speed, cap);
+      p.v = Math.max(0, p.v + Math.max(-3 * dt, Math.min(1.2 * dt, target - p.v)));
+      const s0 = p.s;
+      p.s += p.dir * p.v * dt;
+      // a bench on this stretch with a free seat: maybe sit down
+      p.rest -= dt;
+      const here = BN && p.rest <= 0 && p.v > 0.3 ? BN.byLine.get(p.line) : null;
+      if (here) for (const b of here) {
+        if ((b.s - s0) * (b.s - p.s) > 0) continue;
+        const seat = b.seats.find(q => q.by < 0);
+        if (!seat || rnd() >= api.sitChance(b)) continue;
+        seat.by = i; p.seat = seat; p.state = 'approach';
+        return;
+      }
+      if (p.s < 0 || p.s > l.len) {
+        const nx = net.next(p.line, p.s > l.len ? 1 : 0);
+        if (nx && rnd() < 0.9) { p.line = nx[0]; p.dir = nx[1] === 0 ? 1 : -1; p.s = nx[1] === 0 ? 0 : net.L[p.line].len; }
+        else { p.dir = -p.dir; p.s = Math.max(0, Math.min(l.len, p.s)); }
+      }
+      net.at(p.line, p.s, tmp);
+      hx = p.hx = tmp.hx * p.dir; hy = p.hy = tmp.hy * p.dir;
+      p.x = tmp.x - hy * p.lat; p.y = tmp.y + hx * p.lat; p.z = tmp.z; // keep left
+      const lr = dt > 0 ? dl / dt : 0;
+      p.vx = hx * p.v - hy * lr; p.vy = hy * p.v + hx * lr;
+      if (p.face != null) p.h = p.face;
+      else if (p.v > 0.05) { const h = Math.atan2(p.vx, p.vy); p.h += Math.atan2(Math.sin(h - p.h), Math.cos(h - p.h)) * Math.min(1, dt * 8); }
     }
     function nearest(x, y, maxD) {
       let best = -1, bd = maxD;
@@ -369,5 +532,5 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     return s;
   }
 
-  return { makePerson, network, crowd, traffic, sprite, lin, rnd, pick };
+  return { makePerson, network, benches, crowd, traffic, sprite, boxes, lin, rnd, pick, FOOTW };
 })();

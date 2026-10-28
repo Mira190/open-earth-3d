@@ -20,6 +20,8 @@ Writes web/data/<city>/game.json:
   open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
+  climate   passed through from city.json: the monthly mean daily maximum, which decides
+            whether the crowd looks for sun or shade on the benches
 """
 import base64
 import json
@@ -347,7 +349,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks", "ferry_style") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks", "ferry_style", "climate") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},

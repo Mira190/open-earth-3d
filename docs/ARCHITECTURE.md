@@ -259,7 +259,8 @@ The views switch in place, without reloading the page.
   - navigation;
   - people (`people.js`): skinned characters near the player, instanced crowd
     copies further away, all recoloured from one palette per character;
-  - traffic;
+  - crowd and traffic (`actors.js`): walkers who step aside for each other and
+    sit on benches in the sun or the shade, and cars on the left;
   - helicopter and ferries, built from `kit.js`, a kit of parts at real
     dimensions: a double-ended ferry in the city's livery (`game.ferry_style`)
     and a light helicopter;

@@ -53,14 +53,14 @@ hook, so it can be checked in Playwright without a GPU.
 | Helicopter | Assisted flight, as in Sketchbook. A 3.2 m circle slides along walls. | `vehicles.js` |
 | Ferries | Routes found by the pipeline, docking by hand | `vehicles.js` |
 | Camera | Third-person orbit. It rises over walls, then a 0.25 m probe sphere pulls it in. | `game.js` `updateCamera`, `nav.clearFraction` |
-| Characters | Rigged glTF characters (CC0) with an `AnimationMixer`. Idle, walk, run, wave and sit, cross-faded by speed. Head turns towards a look target. | `people.js` |
-| Crowd | 360 pedestrians on footway lines, keeping left. Skinned near the player (14 nearest), instanced far. They stop when the player is within 1.3 m. They don't avoid each other. | `actors.js`, `people.js` |
+| Characters | Rigged glTF characters (CC0) with an `AnimationMixer`. Idle, walk, run and wave, cross-faded by speed. Sitting is a procedural pose (section 5). Head turns towards a look target. | `people.js` |
+| Crowd | 360 pedestrians on footway lines, keeping left. Skinned near the player (14 nearest), instanced far. They step aside for each other and for the player, and sit on benches in the sun or the shade (section 5). | `actors.js`, `people.js` |
 | Traffic | 150 cars on road lines at Overture speed limits, braking for whatever is ahead | `actors.js` |
 | NPCs | 8 people placed by the city config. They face and look at the player, and talk in typewriter dialogue. | `game.js`, `hud.js`, `city.json` |
 | Interaction | One `currentAction()` picks the nearest NPC, vehicle, wharf or passer-by by distance. It doesn't check facing or line of sight. | `game.js` |
 | Quests | Seven step types (`talk`, `ride`, `surface`, `under_bridge`, `land`, `sun`, `inspect`), checked in code | `game.js`, `city.json` |
 | Input | Key codes read directly (`k('KeyW')`) wherever they are needed, plus a touch joystick | `game.js` |
-| Street furniture | 1,862 benches and 963 street lamps from OpenStreetMap. Lamps light at night. Benches are props at a random rotation, and nobody sits on them. | `game.js`, `game.json` |
+| Street furniture | 1,862 benches and 963 street lamps from OpenStreetMap. Lamps light at night. Benches face their footway or the water, and the crowd sits on them. | `game.js`, `actors.js`, `game.json` |
 | Time | A 30× clock. Variable `dt` (up to 50 ms) in play, a fixed 30 Hz in tests. | `game.js` |
 
 ## 1. Movement and collision (built)
@@ -83,7 +83,7 @@ cell is wider than a pavement, so walls were found up to a metre early or late.
 **Now.** `web/game/collision.js` is a small physics scene for this world:
 
 - **Prisms.** Every solid is a vertical prism: a footprint extruded between two
-  heights. That covers the 8,308 building solids as published (with holes and
+  heights. In Sydney that covers the 8,308 building solids as published (with holes and
   raised parts), and the landmark and deck cells from `nav.js` as boxes. Walls are
   bucketed in an 8 m grid.
 - **Capsule sweep.** A circle is swept in plan against the walls whose height range
@@ -223,8 +223,10 @@ target, which is a small IK.
 3. **Distance-matched stops.** When the input stops, choose a deceleration that
    ends on a planted foot.
 4. **Turn in place** before walking off at more than 90° from the facing.
-5. **Sitting.** The `sit` mode exists but is only used on the ferry. It is the
-   animation half of section 5's smart objects.
+5. **Sitting** (built). There is no clip, so the pose is procedural: the thighs are
+   aimed forward and the shins down over the idle pose, in world space. The feet are
+   IK targets in these rigs, so they are moved to the ends of the shins. The
+   helicopter pilot uses the same pose.
 
 ## 5. Crowds and traffic
 
@@ -257,44 +259,78 @@ find, claim, use, release.
 - people near the player are skinned and people further away are instanced;
 - cars brake for what is ahead.
 
-What is missing:
+**Built: avoidance.** Walkers already sat on a line with a sideways offset
+(`side`, keeping left), so avoidance stays one-dimensional and cheap:
+- Each tick, `actors.js` puts the walkers in a spatial hash of 3 m cells.
+- Each walker looks four seconds ahead for anyone it will pass closer than 0.6 m,
+  the player included, and steps aside within the footway's width. If it can't
+  get round, it slows to the other person's pace.
+- The side to step to is judged from where the other person is now. Judged from
+  where they will be, two walkers each extrapolate the other's sidestep, mirror
+  it, and cross into each other: the first version did exactly that.
+- The player is avoided the same way, with a little more room, instead of the
+  old "stop within 1.3 m".
 
-- **Avoidance.** Pedestrians walk through each other. Agents already sit on a line
-  with a lateral offset (`side`, keeping left), so avoidance can stay
-  one-dimensional and cheap:
-  - each tick, look up neighbours in a spatial hash;
-  - for each one ahead on the same line within the time horizon, shift the offset
-    away and ease the speed. This is RVO restricted to the footway width.
-  - Do the same for the player instead of the current "stop within 1.3 m".
+Measured with 40 walkers on one footway, old code against new:
 
-  360 agents with a hash cost far less than a millisecond. The full RVO2 algorithm
-  (Apache-2.0) can be ported later for plazas such as Martin Place, where people
-  aren't on lines.
-- **Scenario points from open data.** The pipeline already reads OpenStreetMap
-  benches. It could also emit points for:
-  - viewpoints (`tourism=viewpoint`);
+| | Before | After |
+|---|---|---|
+| Pairs walking through each other (closer than 0.45 m), per tick: player standing among them | 2.81 | **0** |
+| Same, player walking against the flow | 2.16 | **0** |
+| Walker-ticks frozen beside the standing player | 1,678 | **0** |
+| Crowd update per 30 Hz tick, whole city | 0.48 ms | 0.64–0.78 ms (two runs) |
+
+**Built: benches as smart objects.** `OEActors.benches` turns the OpenStreetMap
+benches into places to sit:
+- **Seats:** each bench has two seats.
+- **Facing:** each bench faces its footway. It turns round if there is water behind
+  it, and avoids facing a wall.
+- **Reachability:** each bench has the point on a footway where a walker leaves the
+  path for it. That is kept only if the straight way from there is clear of walls,
+  water and steps. This holds for 1,375 of Sydney's 1,862 benches and 891 of
+  Melbourne's 1,181.
+- **Use:** a walker passing a free seat may claim it, walk over, sit, release it
+  and walk on (find, claim, use, release).
+- **Sitting pose:** there is no sitting clip, so the pose is procedural. The thighs
+  are aimed forward and the shins down, and the feet (IK targets in these rigs) are
+  moved to the ends of the shins. The far copies do the same in the vertex shader.
+
+**Built: sun-aware choice.**
+- **What a bench offers:** each bench near the player is re-tested against the sun
+  with `Sun.sunlit`, about 60 benches a second.
+- **What people want:** whether people want the sun comes from the city's monthly
+  mean daily maximum (`climate` in `game.json`, from the Bureau of Meteorology)
+  against a comfortable 22 °C. A low sun leans them towards it.
+- **The choice:** a sunny bench is up to 19 times as likely to be taken as a shaded
+  one when people want sun, and the other way round when they want shade.
+- **Dialogue:** greet someone on a bench and they say when the sun reaches or leaves
+  it today, computed by stepping the sun forward.
+
+| Place and time | Benches in sun | Sitters in sun |
+|---|---|---|
+| Martin Place, 21 June 12:30 | 55% | **100%** |
+| Martin Place, 15 January 14:00 | 92% | **21%** |
+| Melbourne start, 21 June 12:30 | 59% | **100%** |
+| Melbourne start, 15 January 14:00 | 88% | **14%** |
+
+So the planning rule's subject, sun on public places in winter, shows in where
+people sit.
+
+**Still to do:**
+- **Plazas.** Martin Place and Federation Square are areas, not lines. Full RVO2
+  (Apache-2.0) would let people cross them freely.
+- **More scenario points from open data:**
+  - viewpoints (`tourism=viewpoint`, stop and look);
   - bus stops (`highway=bus_stop`, wait for the bus);
   - café seating (`amenity=cafe` + `outdoor_seating`);
-  - artworks (`tourism=artwork`, stop and look);
+  - artworks (`tourism=artwork`);
   - the wharves (wait for the ferry).
-
-  Each point gets a type, a facing (a bench faces the footway or the water), a time
-  window and a probability, as GTA's do. Walkers claim a free point, walk to it,
-  play `sit` or `idle`, and release it. The pipeline should give benches their real
-  facing too: today they are drawn at a random rotation.
-- **Sun-aware choices.** This is something no other city game can do. A point can
-  advertise "sun" or "shade". The sun model already answers whether a spot is lit
-  (`Sun.sunlit` through the surface model). So on a winter lunchtime people take
-  the sunny benches in Martin Place, and on a summer afternoon the shaded ones,
-  using the same computation as the sun-access analysis. It also makes the
-  analysis visible: you can see the planning rule at work in where people sit.
+- **Trees.** Bench shade counts buildings and landmarks. The trees are in
+  `places.json` and could be added as shade.
 - **Density by place and time.** Make the 450 m spawn radius an "active area" in
   the sense of Left 4 Dead's director, which populates the areas around the players
   and deletes wanderers that leave. Weight spawns by footfall: more at Circular
   Quay at 8:30 and 17:30, and on the Opera House steps at sunset.
-
-Files: `pipeline/game_data.py` (scenario points, bench facing), `actors.js`
-(avoidance, claims), `people.js` (sitting and idles in the crowd renderer).
 
 ## 6. NPCs and interaction
 
@@ -453,10 +489,10 @@ more.
 |---|---|---|---|---|
 | 1 | ✅ Capsule sweep, wall slide, depenetration, exact floors, camera probe, helicopter slide | Unreal CMC, SpringArm | `collision.js`, `nav.js`, `game.js`, `vehicles.js` | done |
 | 2 | Commit the Playwright survey and collision tests | Unreal functional tests | `tests/` | S |
-| 3 | Crowd avoidance on lanes, and around the player | RVO, Detour Crowd | `actors.js` | S–M |
+| 3 | ✅ Crowd avoidance on lanes, and around the player | RVO, Detour Crowd | `actors.js` | done |
 | 4 | Interaction scoring with line of sight | Lyra, EQS | `game.js` → `interact.js` | S |
 | 5 | Input actions, mapping contexts, gamepad, hold to exit | Enhanced Input | `input.js` | S–M |
-| 6 | Scenario points from OSM, with bench facing and sun-aware choice | GTA scenarios, The Sims, Smart Objects | `game_data.py`, `actors.js`, `people.js` | M |
+| 6 | ✅ Benches as smart objects, with real facings, sitting and a sun-aware choice. Still to do: viewpoints, bus stops, café seating and tree shade. | GTA scenarios, The Sims, Smart Objects | `actors.js`, `people.js`, `game.js` | done; the rest M |
 | 7 | Fixed timestep and a module split | Unreal framework, physics sub-stepping | `game.js` | M |
 | 8 | NPC routines over the day | StateTree, AI Perception | `npc.js`, `city.json` | M |
 | 9 | Quests as tag conditions | Gameplay Tags | `quests.js`, `city.json` | M |
@@ -518,6 +554,12 @@ Checked in October 2026. Unreal's online documentation serves 5.8.
   [Ubisoft](https://www.ubisoft.com/en-us/game/assassins-creed/news/6ogkWkxq1HusqpqGtQvCpn/assassins-creed-shadows-summer-roadmap-update).
   Spider-Man photo mode:
   [PlayStation Blog](https://blog.playstation.com/2018/09/07/marvels-spider-man-swings-into-stores/).
+- Climate for the bench choice, monthly mean daily maximum temperatures from the
+  Bureau of Meteorology:
+  [Sydney (Observatory Hill) 066062](https://www.bom.gov.au/climate/averages/tables/cw_066062.shtml),
+  1859–2020;
+  [Melbourne (Olympic Park) 086338](https://www.bom.gov.au/climate/averages/tables/cw_086338.shtml),
+  since 2013. That is a short record, but it is the current central-Melbourne station.
 - Microsoft Flight Simulator 2024 career:
   [Xbox Wire](https://news.xbox.com/en-us/2024/11/15/microsoft-flight-simulator-2024-creating-career-mode-for-all-players/).
 - Libraries:
