@@ -60,7 +60,7 @@ async function main() {
   function lights(sun) {
     const day = sun.day;
     sunL.intensity = 2.8 * Math.max(Math.min(1, Math.sin(sun.alt) * 3), 0);
-    hemi.intensity = 0.06 + 0.84 * day;
+    hemi.intensity = 0.06 + 0.84 * day + 0.05 * sun.moonLit * Math.max(Math.sin(sun.moonAlt), 0) * (1 - day);
     sunL.position.copy(camera.position).addScaledVector(sun.dir, 800);
     sunL.target.position.copy(camera.position);
     env.u.white.value = (sunL.intensity * Math.max(Math.sin(sun.alt), 0) + hemi.intensity) / Math.PI;

@@ -214,8 +214,25 @@ def main():
     share = {HABITAT[k]: round(float((hab == k).mean()), 4) for k in HABITAT if (hab == k).any()}
     print("habitat share", share)
 
+    # ---- a check the inversion has to pass: the brightest floor (sand) should have the same
+    # albedo at every depth once the water is taken out. Raw reflectance falls with depth;
+    # the inverted albedo should not.
+    check = {}
+    for k, A in (("blue", albedo["blue"]), ("green", albedo["green"])):
+        rows = []
+        for z0, z1 in ((1, 3), (3, 6), (6, 10), (10, 15)):
+            m = water & (depth >= z0) & (depth < z1) & (refl["nir"] < 0.01)
+            thr = np.percentile(refl[k][m], 90)
+            top = m & (refl[k] >= thr)
+            rows.append({"depth_m": [z0, z1], "raw_reflectance": float(np.median(refl[k][top])),
+                         "inverted_albedo": float(np.median(A[top]))})
+        raw = [r["raw_reflectance"] for r in rows]
+        inv = [r["inverted_albedo"] for r in rows]
+        check[k] = {"bins": rows, "spread_raw_pct": float(100 * (max(raw) - min(raw)) / np.mean(raw)),
+                    "spread_inverted_pct": float(100 * (max(inv) - min(inv)) / np.mean(inv))}
+        print(k, "sand brightness spread across 1-15 m: raw %.0f%% -> inverted %.0f%%" % (check[k]["spread_raw_pct"], check[k]["spread_inverted_pct"]))
     json.dump({"band": optics, "g": G, "scenes": json.loads(str(s2["scenes"])),
-               "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
+               "depth_check": check, "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
               open(os.path.join(city.analysis, "optics.json"), "w"), indent=1)
     scene = {
         "id": city.id, "name": cfg["name"], "kind": "marine", "origin": cfg["origin"], "timezone": cfg["timezone"],

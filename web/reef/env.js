@@ -51,6 +51,8 @@ export function createEnv(scene, optics, waves) {
     horizon: uniform(new THREE.Color(0.62, 0.76, 0.88)),
     sunCol: uniform(new THREE.Color(1, 0.95, 0.85)),
     night: uniform(0),
+    moonDir: uniform(new THREE.Vector3(0, -1, 0)),
+    moonLit: uniform(0),
     wind: uniform(0.5),
     caustic: uniform(1)
   };
@@ -66,7 +68,15 @@ export function createEnv(scene, optics, waves) {
     // warm band near the sun when it is low
     const low = float(1).sub(clamp(u.sunAlt.mul(4), 0, 1));
     c.addAssign(vec3(1.0, 0.45, 0.2).mul(pow(mu, 4).mul(low).mul(0.9).mul(g.add(0.2))));
-    return c.mul(float(1).sub(u.night.mul(0.97)));
+    c = c.mul(float(1).sub(u.night.mul(0.97))).toVar();
+    // the moon: a disc and a halo, as bright as its phase; the sea mirrors it like the sun
+    const mm = max(dot(dir, u.moonDir), 0);
+    c.addAssign(vec3(0.85, 0.9, 1.0).mul(pow(mm, 1500).mul(3).add(pow(mm, 40).mul(0.05)).mul(u.moonLit)).mul(smoothstep(-0.05, 0.1, u.moonDir.y)));
+    // a few stars on a clear night
+    const sp = dir.mul(160);
+    const star = pow(max(mx_noise_float(sp.mul(1.0)).mul(0.5).add(0.5), 0), 40).mul(smoothstep(0.05, 0.4, dir.y));
+    c.addAssign(vec3(0.9, 0.95, 1).mul(star.mul(u.night).mul(1.6)));
+    return c;
   });
 
   // ---- caustics: the sun's light focused by the wave field. A ray that crosses the surface where the
@@ -143,8 +153,15 @@ export function setSun(env, utcMs, lat, lon) {
   u.sunCol.value.setRGB(1, 0.96 - 0.35 * warm, 0.88 - 0.6 * warm);
   u.zenith.value.setRGB(0.10, 0.27, 0.62).multiplyScalar(0.25 + 0.75 * day);
   u.horizon.value.setRGB(0.60, 0.74, 0.86).lerp(new THREE.Color(0.95, 0.55, 0.35), warm * 0.55).multiplyScalar(0.2 + 0.8 * day);
+  // the moon, to a few degrees: it trails the sun's hour angle by its phase (age/29.53 of a day)
+  const SYN = 29.530588, JD = utcMs / 86400000 + 2440587.5;
+  const age = ((JD - 2451550.1) / SYN % 1 + 1) % 1;                    // 0 new, 0.5 full
+  const M = window.Sun.position(utcMs - age * 86400000, lat, lon);
+  const ma = M.altitude * Math.PI / 180, maz = M.azimuth * Math.PI / 180;
+  u.moonDir.value.set(Math.sin(maz) * Math.cos(ma), Math.sin(ma), -Math.cos(maz) * Math.cos(ma));
+  u.moonLit.value = 0.5 - 0.5 * Math.cos(age * TAU);
   // light slant under water: Snell's law, n = 1.34
   const sinT = Math.cos(alt) / 1.34, cosR = Math.sqrt(1 - sinT * sinT);
   u.lightPath.value = 1 / Math.max(cosR, 0.3);
-  return { alt, az, dir, day };
+  return { alt, az, dir, day, moonAlt: ma, moonLit: u.moonLit.value, moonAge: age };
 }

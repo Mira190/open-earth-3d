@@ -104,7 +104,10 @@ export function createOcean(d, env, heightTex) {
     const sunRefl = env.sky(R);
     const foamCol = vec3(0.92, 0.95, 0.96).mul(u.white.mul(0.85).add(0.1));
     const haze = float(1).sub(exp(dist.mul(u.haze).negate()));
-    let above_c = mix(sunRefl, env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6));
+    // light scattered back out of the swell: turquoise glow in thin crests and the shallows
+    const crest = smoothstep(0.0, 0.5, f.dy.mul(1.6)).mul(u.wind).mul(smoothstep(1.0, 4.0, depth));
+    const glow = vec3(0.02, 0.18, 0.2).mul(u.white).mul(crest);
+    let above_c = mix(sunRefl.mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6)).add(glow);
     above_c = mix(above_c, foamCol, foam);
     const above_a = clamp(F.add(foam).mul(edge).max(float(0.0)), 0, 1).max(float(1).sub(edge).mul(0.0));
     // ---- from below: Snell's window and total internal reflection (n = 1.34)

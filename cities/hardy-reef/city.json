@@ -1,0 +1,42 @@
+{
+  "id": "hardy-reef",
+  "name": "Hardy Reef",
+  "country": "Australia",
+  "country_code": "AU",
+  "kind": "marine",
+  "timezone": "Australia/Brisbane",
+  "locale": "en-AU",
+  "description": "Hardy Reef and Heart Reef on the outer Great Barrier Reef, 70 km off the Whitsundays: a coral platform rising from open ocean, rebuilt from 30 m survey bathymetry and Sentinel-2.",
+  "bbox": [
+    149.08,
+    -19.92,
+    149.3,
+    -19.68
+  ],
+  "origin": [
+    149.19,
+    -19.8
+  ],
+  "extent_m": [
+    -10500,
+    10500,
+    -12500,
+    14000
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m MSL",
+  "year": 2026,
+  "imagery": {
+    "type": "sentinel2",
+    "pixel_m": 10,
+    "since": "2025-10-01",
+    "max_cloud": 12,
+    "attribution": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS"
+  },
+  "terrain": {
+    "type": "gbr_bathy",
+    "pixel_m": 30,
+    "bare_earth": true,
+    "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)"
+  }
+}

@@ -68,5 +68,83 @@
   "S2B_55KGT_20251031_0_L2A",
   "S2B_55KGT_20261006_0_L2A"
  ],
+ "depth_check": {
+  "blue": {
+   "bins": [
+    {
+     "depth_m": [
+      1,
+      3
+     ],
+     "raw_reflectance": 0.1467999964952469,
+     "inverted_albedo": 0.1782808158527997
+    },
+    {
+     "depth_m": [
+      3,
+      6
+     ],
+     "raw_reflectance": 0.1022999957203865,
+     "inverted_albedo": 0.15146307228958947
+    },
+    {
+     "depth_m": [
+      6,
+      10
+     ],
+     "raw_reflectance": 0.07329999655485153,
+     "inverted_albedo": 0.14447960533701082
+    },
+    {
+     "depth_m": [
+      10,
+      15
+     ],
+     "raw_reflectance": 0.05049999803304672,
+     "inverted_albedo": 0.11560570793828308
+    }
+   ],
+   "spread_raw_pct": 103.29847344611183,
+   "spread_inverted_pct": 42.50390300369934
+  },
+  "green": {
+   "bins": [
+    {
+     "depth_m": [
+      1,
+      3
+     ],
+     "raw_reflectance": 0.16189999878406525,
+     "inverted_albedo": 0.2158836894343637
+    },
+    {
+     "depth_m": [
+      3,
+      6
+     ],
+     "raw_reflectance": 0.09789999574422836,
+     "inverted_albedo": 0.18195648572858575
+    },
+    {
+     "depth_m": [
+      6,
+      10
+     ],
+     "raw_reflectance": 0.06459999829530716,
+     "inverted_albedo": 0.20158049472186323
+    },
+    {
+     "depth_m": [
+      10,
+      15
+     ],
+     "raw_reflectance": 0.03830000013113022,
+     "inverted_albedo": 0.16088236047126758
+    }
+   ],
+   "spread_raw_pct": 136.3110019893071,
+   "spread_inverted_pct": 28.93653018183384
+  }
+ },
  "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."
 }
