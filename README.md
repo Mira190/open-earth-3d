@@ -90,6 +90,29 @@ card, or go to `#play-osaka`.
 |---|---|---|
 | ![](docs/images/osaka/game-daisuke.jpg) | ![](docs/images/osaka/game-fumi.jpg) | ![](docs/images/osaka/people.jpg) |
 
+## Dive it: the Great Barrier Reef
+
+Five Queensland reef sites are marine worlds of their own (`web/reef/`, three.js r186 with WebGPU and a WebGL2
+fallback): the Whitsunday Islands with Whitehaven Beach and Hill Inlet, Heart Reef and the Reefworld pontoon on Hardy
+Reef, Green Island off Cairns, Heron Island and Lady Elliot Island. Each is rebuilt from survey bathymetry, a
+Sentinel-2 composite inverted through the water column, mapped places and Maritime Safety Queensland's tide, under
+the real sun and moon. Walk the beach, wade, snorkel, free-dive or scuba dive among corals, fish, turtles and
+rays; ride the boats, fly the helicopter or the seaplane; talk to a ranger, a skipper, a guide and a dive instructor,
+whose every line is computed from the model or cited. Open **Great Barrier Reef** on the globe, or
+`reef/index.html?city=whitsundays`.
+
+- The water: waves, Cox-Munk sun and moon glitter, caustics, refraction, Snell's window, a light field that
+  differs by direction under water, the official tide, twilight and moonlight with an adapting eye.
+  [docs/cities/whitsundays.md](docs/cities/whitsundays.md)
+- The game: quests, a journal, the map and travel between the sites. [docs/GAME_REEF.md](docs/GAME_REEF.md)
+- The handoff for whoever works on it next: [docs/HANDOFF_WHITSUNDAYS.md](docs/HANDOFF_WHITSUNDAYS.md)
+
+| Hill Inlet as the tide falls | On the reef | Talking to the ranger |
+|---|---|---|
+| ![](docs/images/reef/water-hill-inlet.jpg) | ![](docs/images/reef/life-reef.jpg) | ![](docs/images/reef/game-dialogue.jpg) |
+| **The Reefworld pontoon, Hardy Reef** | **A moonlit beach** | **Green Island from the air** |
+| ![](docs/images/reef/site-hardy-reef-pontoon.jpg) | ![](docs/images/reef/water-moon.jpg) | ![](docs/images/reef/site-green-island-aerial.jpg) |
+
 ## Cities
 
 | City | Status | What's in it |
@@ -99,6 +122,11 @@ card, or go to `#play-osaka`.
 | **Osaka**, Japan | **Live** | 73,280 buildings across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,749 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU. GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | About 15,400 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
+| **Whitsundays**, Australia | **Live** (reef) | 33 × 33 km of the Whitsunday Islands and the inner Great Barrier Reef: AusSeabed 30 m survey bathymetry, a 28-scene Sentinel-2 composite inverted through the water column, 33 mapped places, Maritime Safety Queensland's Shute Harbour tide (fitted to 2.4 cm RMS). [Case study](docs/cities/whitsundays.md) |
+| **Hardy Reef**, Australia | **Live** (reef) | Heart Reef, the Reefworld pontoon on the channel wall, Hook, Line and Bait reefs; the tide from the outer-reef gauge at Bugatti Reef. [Notes](docs/cities/hardy-reef.md) |
+| **Green Island**, Australia | **Live** (reef) | The coral cay off Cairns with Arlington Reef and Michaelmas Cay; the jetty on its mapped line. [Notes](docs/cities/green-island.md) |
+| **Heron Island**, Australia | **Live** (reef) | The cay on the Tropic of Capricorn, its reef flat drying at low tide, and Wistari Reef. [Notes](docs/cities/heron-island.md) |
+| **Lady Elliot Island**, Australia | **Live** (reef) | The southernmost coral cay of the reef. [Notes](docs/cities/lady-elliot-island.md) |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
 | Paris, France | Planned | IGN RGE ALTI, BD ORTHO and BD TOPO heights |
@@ -168,11 +196,23 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 
 ## Run it
 
-The built Sydney and Melbourne scenes are in the repository, so the viewer runs straight away:
+The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney or #melbourne for a 3D model, #play-sydney or #play-melbourne for a game
+# open http://localhost:8000 for the globe, #sydney (or #melbourne, #osaka, #kyoto, #tokyo) for a 3D model,
+# #play-sydney (and so on) for a game,
+# reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
+```
+
+A reef site is rebuilt with the marine pipeline (raw downloads are a few GB):
+
+```bash
+python pipeline/fetch_gbr_bathy.py whitsundays              # AusSeabed GBR 30 m, one grid streamed and cached
+python pipeline/fetch_sentinel.py --city whitsundays        # Sentinel-2 L2A passes, the darkest in the near infrared
+python pipeline/build_marine.py --city whitsundays          # terrain, inverted floor colour, habitat, optics (QAA)
+python pipeline/fetch_tide.py --city whitsundays            # MSQ predictions -> harmonic constituents
+python pipeline/check_marine.py --city whitsundays          # places, pontoon and spawn against the built terrain
 ```
 
 To rebuild a city from the raw data (about 2 minutes for Sydney), run:
@@ -257,6 +297,7 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
 | `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores), `buildings.js` (walls, roofs, facades and rooftops), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people and vehicles every city shares in `web/assets/` |
+| `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter and ferry) |
 | `tools/` | `city_shot.js`: screenshots of the model viewer from listed views, for checking changes |
@@ -275,7 +316,8 @@ Data tab. The shared sources are:
 - **Vehicles in the game:** modelled from code in this repository
   (`blender/build_vehicles.py` and `web/game/kit.js`), with no third-party assets.
 - **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
-  modules from a CDN.
+  modules from a CDN, for the city viewer and its game; three.js r186 (MIT),
+  vendored in `web/vendor/three`, for the reef sites.
 - **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular
   Women (CC0 1.0, public domain).
 - **Water:** the wave spectrum and FFT are ported from Tidewater by Daniel
@@ -283,6 +325,14 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
+
+The reef sites also use these sources:
+- AusSeabed / Geoscience Australia, *Great Barrier Reef Bathymetry 2020* 30 m (not for navigation).
+- Copernicus Sentinel-2 L2A (Copernicus open licence), via Earth Search on AWS; ESA WorldCover 10 m 2021 (CC BY 4.0).
+- Maritime Safety Queensland tide predictions (CC BY 4.0), Queensland Government open data portal.
+- Places from OpenStreetMap (ODbL) via Overture Maps; Wikipedia and other cited pages for the facts in the game
+  and the species notes (listed in `docs/GAME_REEF.md` and `web/reef/life/species.js`).
+- People: Quaternius character packs (CC0).
 
 Sydney also uses these sources:
 - NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).

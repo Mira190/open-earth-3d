@@ -1,0 +1,195 @@
+{
+  "id": "hardy-reef",
+  "name": "Hardy Reef",
+  "country": "Australia",
+  "country_code": "AU",
+  "kind": "marine",
+  "timezone": "Australia/Brisbane",
+  "locale": "en-AU",
+  "description": "Hardy Reef on the outer Great Barrier Reef off the Whitsundays, with Heart Reef, the Reefworld pontoon and the neighbouring Hook, Line and Bait reefs, rebuilt from 30 m survey bathymetry and Sentinel-2. The site has no land: you start in the water beside the pontoon.",
+  "bbox": [149.03, -19.87, 149.3, -19.62],
+  "area_note": "Hardy Reef with the reefs around it: Hook Reef across the channel, Line Reef to the north and Bait Reef to the west. The first config ran 6 km further south over open water 40-80 m deep; it now stops 3 km south of Hook Reef and takes in all of Line Reef and Bait Reef instead.",
+  "origin": [149.165, -19.745],
+  "extent_m": [-14100, 14100, -13800, 13800],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m MSL",
+  "year": 2026,
+  "imagery": {
+    "type": "sentinel2",
+    "pixel_m": 10,
+    "since": "2025-10-01",
+    "max_cloud": 12,
+    "attribution": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS"
+  },
+  "terrain": {
+    "type": "gbr_bathy",
+    "pixel_m": 30,
+    "bare_earth": true,
+    "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)"
+  },
+  "start": {
+    "x": 9300,
+    "y": -4300,
+    "z": 260,
+    "yaw": 44,
+    "pitch": -22,
+    "date": null,
+    "note": "over Hardy Reef south-east of Heart Reef, looking north-west across Heart Reef's pool toward the channel and Reefworld; Heart Reef itself is two or three pixels of the 10 m imagery and is not resolved as a heart"
+  },
+  "spawn": {
+    "x": 1890,
+    "y": -95,
+    "heading": 0,
+    "water": true,
+    "note": "the site has no land: on the deck of the Reefworld pontoon (the viewer puts the player there; x, y are the fallback in the water off its south end, about 15 m deep on the 30 m model)",
+    "deck": "pontoon"
+  },
+  "pois": [
+    {
+      "id": "reefworld",
+      "name": "Reefworld",
+      "kind": "pontoon",
+      "lonlat": [149.18311, -19.74546],
+      "src": "osm",
+      "osm": "node 2360082104",
+      "note": "tour pontoon permanently moored at Hardy Reef (Cruise Whitsundays); on the 30 m model it sits on the top of the reef wall, 8.6 m deep, with 32 m of water 60 m to the west"
+    },
+    {
+      "id": "heart-reef",
+      "name": "Heart Reef",
+      "kind": "reef",
+      "lonlat": [149.24866, -19.77799],
+      "src": "osm",
+      "osm": "node 3502863694",
+      "note": "a heart-shaped coral formation within Hardy Reef, first spotted by a local pilot in 1975; protected, no swimming or snorkelling at the formation; best seen from the air."
+    },
+    {
+      "id": "hardy-reef",
+      "name": "Hardy Reef",
+      "kind": "reef",
+      "lonlat": [149.24496, -19.76477],
+      "src": "osm",
+      "osm": "way 224369852"
+    },
+    {
+      "id": "hook-reef",
+      "name": "Hook Reef",
+      "kind": "reef",
+      "lonlat": [149.20333, -19.80664],
+      "src": "osm",
+      "osm": "way 343453459"
+    },
+    {
+      "id": "line-reef",
+      "name": "Line Reef",
+      "kind": "reef",
+      "lonlat": [149.19956, -19.68193],
+      "src": "osm",
+      "osm": "way 224369854"
+    },
+    {
+      "id": "bait-reef",
+      "name": "Bait Reef",
+      "kind": "reef",
+      "lonlat": [149.07391, -19.80376],
+      "src": "osm",
+      "osm": "way 224369262"
+    },
+    {
+      "id": "bait-anchorage",
+      "name": "Bait Reef, west side",
+      "kind": "anchorage",
+      "xy": [-10450, -5860],
+      "src": "nominal"
+    },
+    {
+      "id": "south-west-gate",
+      "name": "Toward Airlie Beach and the Whitsunday Islands",
+      "kind": "gate",
+      "xy": [-13500, -13200],
+      "src": "nominal"
+    }
+  ],
+  "poi_sources": {
+    "osm": "OpenStreetMap contributors (ODbL): the point Nominatim returns for the object, which for a reef way is a point on its surface (read 2026-10-28; the same objects are in Overture Maps 2026-10-21.0 base land and infrastructure). The `osm` field names the object.",
+    "nominal": "chosen for the viewer; the boats search near it for water 5-9 m deep",
+    "not mapped": "the channel between Hardy and Hook reefs and the lagoon inside Hardy Reef have no name in OpenStreetMap or Overture, so they are not POIs. OSM also has a node 'Hardy Reef Pontoon' (node 5611360021, tourism=attraction) 1 km east of Reefworld on the reef flat (2-3 m deep); which pontoon it stands for is not stated, so it is left out."
+  },
+  "harbour": {
+    "fleets": [{"at": "bait-anchorage", "n": 2}],
+    "marina": null,
+    "pontoon": {
+      "at": "reefworld",
+      "exact": true,
+      "name": "Reefworld",
+      "heading": 180,
+      "note": "exact: put the pontoon on its mapped position instead of searching for 9-18 m water (the reef wall drops from 9 to 32 m within 60 m, so the search finds nothing on this side of the channel). heading 180: long side along the north-south reef wall, day boat on the starboard (west) side over the channel, helipad astern to the north"
+    },
+    "parked": [],
+    "moorings": 6,
+    "nav_cell": 60,
+    "traffic": [
+      {
+        "kind": "daycat",
+        "name": "Reef day cruise",
+        "route": ["south-west-gate", "reefworld"],
+        "loop": "pingpong",
+        "dwell": 120,
+        "vmax": 14
+      },
+      {
+        "kind": "yacht",
+        "route": ["south-west-gate", "bait-anchorage"],
+        "loop": "pingpong",
+        "dwell": 60,
+        "vmax": 4.2
+      },
+      {
+        "kind": "tinnie",
+        "name": "Dive tender",
+        "route": ["reefworld", "bait-anchorage"],
+        "loop": "pingpong",
+        "dwell": 40,
+        "vmax": 11
+      }
+    ],
+    "scenic": [
+      {
+        "kind": "helicopter",
+        "name": "Heart Reef scenic flight",
+        "around": "heart-reef",
+        "r": 450,
+        "alt": 150,
+        "v": 32,
+        "dir": 1
+      },
+      {
+        "kind": "seaplane",
+        "name": "Reef scenic flight",
+        "around": "hardy-reef",
+        "dx": -2500,
+        "dy": -1500,
+        "r": 4500,
+        "alt": 300,
+        "v": 45,
+        "dir": -1
+      }
+    ]
+  },
+  "tide": {
+    "gauge": "Bugatti Reef Outer",
+    "years": {"2025": "0fe49c9d-aec7-4dad-9c64-48aeb41d0640", "2026": "e7a8d347-340c-483a-b783-02a03ef17436"},
+    "note": "Bugatti Reef (MSQ standard port, 20 05 S 150 18 E) is on the outer reef about 120 km east-south-east of Reefworld; MSQ publishes no tide for Hardy Reef. It is used rather than Shute Harbour (73 km south-west, on the mainland) because Hardy, like Bugatti, is an outer reef in open water: MSQ's 2026 tidal planes give a spring range (MHWS - MLWS) of 2.08 m at Bugatti Reef, 2.77 m at Shute Harbour and 2.4 m at Hook Island, the nearest listed place (44 km south-west of Hardy, inside the island group). Times and heights at Hardy Reef differ from Bugatti's by amounts MSQ does not publish."
+  },
+  "life": {
+    "note": "No land: no plants. Spawning: an outer reef of the central Great Barrier Reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+    "flora": {"forest": {}, "coast": {}},
+    "spawning": {"lag": 1}
+  },
+  "sources": {
+    "heart_reef": "https://www.tourismwhitsundays.com.au/blog/how-to-see-heart-reef (Tourism Whitsundays: within Hardy Reef; first spotted by a local pilot in 1975; no swimming or snorkelling at the formation; best seen from the air)",
+    "reefworld": "https://travelweekly.com.au/cruise-whitsundays-reopens-reefworld-as-overnight-pontoon/ (Travel Weekly, 5 August 2026: Reefworld, Cruise Whitsundays' pontoon permanently moored at Hardy Reef on the outer Great Barrier Reef; underwater observatory and semi-submarine)",
+    "tide": "https://www.msq.qld.gov.au/_/media/tmronline/msqinternet/msqfiles/home/tides/tidal-planes/2026-semidiurnal-tidal-planes.pdf (MSQ 2026 semidiurnal tidal planes: positions and planes of Bugatti Reef, Shute Harbour, Hook Island); predictions: https://www.data.qld.gov.au/dataset/bugatti-reef-outer-tide-gauge-predicted-interval-data",
+    "osm": "https://www.openstreetmap.org/node/2360082104 (Reefworld Pontoon, man_made=pier, floating=yes), https://www.openstreetmap.org/node/3502863694 (Heart Reef), https://www.openstreetmap.org/way/224369852 (Hardy Reef)"
+  }
+}

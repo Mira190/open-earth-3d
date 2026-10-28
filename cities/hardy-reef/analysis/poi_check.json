@@ -1,0 +1,106 @@
+{
+ "note": "POIs sampled on the built 30 m terrain and 10 m habitat (pipeline/check_marine.py)",
+ "rows": [
+  {
+   "id": "reefworld",
+   "kind": "pontoon",
+   "src": "osm",
+   "x": 1898,
+   "y": -51,
+   "ok": true,
+   "note": "depth 8.6 m, 90 m around 0.9..38.3 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "heart-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": 8767,
+   "y": -3654,
+   "ok": true,
+   "note": "depth 5.0 m, 90 m around 1.0..5.3 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "hardy-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": 8380,
+   "y": -2191,
+   "ok": true,
+   "note": "depth 3.6 m, 90 m around 1.1..4.5 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "hook-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": 4016,
+   "y": -6824,
+   "ok": true,
+   "note": "depth 4.2 m, 90 m around 2.4..5.7 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "line-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": 3624,
+   "y": 6982,
+   "ok": true,
+   "note": "depth 1.9 m, 90 m around 1.7..2.7 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "bait-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": -9544,
+   "y": -6507,
+   "ok": true,
+   "note": "depth 1.8 m, 90 m around 1.7..5.3 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "bait-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -10450,
+   "y": -5860,
+   "ok": true,
+   "note": "depth 7.8 m",
+   "habitat": "rubble",
+   "boats_go_to": [
+    -10450,
+    -5860,
+    0
+   ]
+  },
+  {
+   "id": "south-west-gate",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -13500,
+   "y": -13200,
+   "ok": true,
+   "note": "depth 70.3 m",
+   "habitat": "deep water"
+  },
+  {
+   "id": "pontoon (viewer)",
+   "kind": "pontoon",
+   "x": 1898,
+   "y": -51,
+   "ok": true,
+   "note": "exact: on reefworld, depth 8.6 m; a viewer without exact support: the viewer's 9-18 m search puts it 640 m from reefworld, at (1299, -276), 9.8 m deep"
+  },
+  {
+   "id": "spawn",
+   "kind": "spawn",
+   "x": 1890,
+   "y": -95,
+   "ok": true,
+   "note": "depth 15.1 m, heading 0"
+  }
+ ]
+}

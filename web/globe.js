@@ -118,7 +118,16 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
   // ------------------------------------------------------------ markers and city list
   const live = cities.filter(c => c.built), planned = cities.filter(c => !c.built);
   const markersEl = $('#markers'), markers = [];
-  for (const c of [...planned, ...live]) {
+  // live sites that share a `group` (the Queensland reef sites, a few hundred km apart) would sit on one dot:
+  // they get one marker that opens a short list of the sites
+  const groups = new Map();
+  for (const c of live) if (c.group) groups.set(c.group, [...(groups.get(c.group) || []), c]);
+  const grouped = new Set([...groups.values()].filter(g => g.length > 1).flat());
+  const pop = document.createElement('div');
+  pop.className = 'marker-pop'; pop.hidden = true; pop.setAttribute('role', 'menu');
+  let popAt = null;
+  const closePop = () => { pop.hidden = true; popAt = null; };
+  for (const c of [...planned, ...live.filter(c => !grouped.has(c))]) {
     const b = document.createElement('button');
     b.className = `marker ${c.built ? 'live' : 'planned'}`;
     b.setAttribute('aria-label', c.built ? `Open ${c.name} in 3D` : `${c.name}: planned`);
@@ -128,6 +137,28 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     markersEl.appendChild(b);
     markers.push({ el: b, c, p: ll(c.lat, c.lon, 1.002) });
   }
+  for (const [name, cs] of groups) {
+    if (cs.length < 2) continue;
+    const lat = cs.reduce((a, c) => a + c.lat, 0) / cs.length, lon = cs.reduce((a, c) => a + c.lon, 0) / cs.length;
+    const b = document.createElement('button');
+    b.className = 'marker live group';
+    b.setAttribute('aria-label', `${name}: ${cs.length} sites`); b.setAttribute('aria-haspopup', 'menu');
+    b.innerHTML = `<i></i><span>${name} <small>${cs.length}</small></span>`;
+    b.dataset.ids = cs.map(c => c.id).join(' ');
+    const m = { el: b, c: { id: name, name, lat, lon, built: true }, p: ll(lat, lon, 1.002), members: cs };
+    b.onclick = e => {
+      e.stopPropagation();
+      if (popAt === m) return closePop();
+      pop.innerHTML = `<b>${name}</b>` + cs.map(c => `<button data-id="${c.id}" role="menuitem"><span>${c.name}</span><small>${c.tagline || ''}</small></button>`).join('');
+      pop.hidden = false; popAt = m;
+    };
+    markersEl.appendChild(b);
+    markers.push(m);
+  }
+  markersEl.appendChild(pop);
+  pop.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { closePop(); open(cities.find(c => c.id === b.dataset.id)); } });
+  addEventListener('keydown', e => { if (e.key === 'Escape') closePop(); });
+  canvas.addEventListener('pointerdown', closePop);
   const sunEl = document.createElement('div');
   sunEl.className = 'subsolar';
   sunEl.setAttribute('aria-hidden', 'true');
@@ -149,7 +180,7 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     $(list).addEventListener('pointerover', e => { const b = e.target.closest('button'); hilite(b ? b.dataset.id : null); });
     $(list).addEventListener('pointerleave', () => hilite(null));
   }
-  function hilite(id) { for (const m of markers) m.el.classList.toggle('hot', m.c.id === id); }
+  function hilite(id) { for (const m of markers) m.el.classList.toggle('hot', m.c.id === id || !!(m.members && m.members.some(c => c.id === id))); }
 
   // ------------------------------------------------------------ flights
   let running = true;
@@ -172,7 +203,8 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     $('#globe-notice').textContent = `${c.name} is planned. Open data to start from: ${c.data || 'to be surveyed'}`;
     $('#globe-notice').hidden = false;
   }
-  function open(c, play) { flyTo(c, 1.9, () => { location.hash = play ? `play-${c.id}` : c.id; }); }
+  // a city with its own viewer (the marine worlds) opens that page instead of the in-page model
+  function open(c, play) { flyTo(c, 1.9, () => { if (c.viewer) location.href = `${c.viewer}?city=${c.id}`; else location.hash = play ? `play-${c.id}` : c.id; }); }
   canvas.addEventListener('pointerdown', () => { controls.autoRotate = false; flight = null; touched = true; });
   canvas.addEventListener('wheel', () => { controls.autoRotate = false; touched = true; }, { passive: true });
 
@@ -193,6 +225,14 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     };
     for (const m of markers) put(m.el, m.p);
     put(sunEl, ll(sub.lat, sub.lon, 1.002));
+    if (popAt) {
+      if (popAt.el.hidden) closePop();
+      else {
+        const r = popAt.el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), up = r.top - sr.top > h - pop.offsetHeight - 40;
+        pop.style.transform = popAt.el.style.transform + (up ? ' translateY(-100%)' : '');
+        pop.classList.toggle('left', r.left - sr.left > w - 320); pop.classList.toggle('up', up);
+      }
+    }
     // a label that would overlap one already placed (live cities first) is hidden; its dot stays
     const placed = [];
     for (const m of [...markers].reverse()) {

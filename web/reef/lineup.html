@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reef people lineup</title>
+<style>html,body{margin:0;height:100%;background:#9fc6dd;overflow:hidden}canvas{display:block}#err{position:fixed;top:8px;left:8px;color:#a00;white-space:pre-wrap;font:12px monospace}</style>
+<script type="importmap">
+{ "imports": { "three": "../vendor/three/three.webgpu.js", "three/webgpu": "../vendor/three/three.webgpu.js",
+  "three/tsl": "../vendor/three/three.tsl.js", "three/addons/": "../vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="err"></div>
+<script type="module">
+// Dev page: a row of reef people on a flat floor, no world. Query: roles=a,b,c | chars=all | gear=snorkel,scuba,... |
+// cx,cy,cz = camera, tx,ty,tz = target, fov, pose=swim|crawl|none, still=1, gl=1
+import * as THREE from 'three/webgpu';
+import * as P from './people.js';
+const q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+addEventListener('error', e => { $('err').textContent += String(e.error && e.error.stack || e.message); });
+addEventListener('unhandledrejection', e => { $('err').textContent += String(e.reason && e.reason.stack || e.reason); });
+(async () => {
+  const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: q.get('gl') === '1' });
+  renderer.setSize(innerWidth, innerHeight); renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  document.body.prepend(renderer.domElement); await renderer.init();
+  const scene = new THREE.Scene(); scene.background = new THREE.Color(0x9fc6dd);
+  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0xd9c9a0, 1.6));
+  const sun = new THREE.DirectionalLight(0xfff0d8, 3.2); sun.position.set(-3, 6, 4); scene.add(sun);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardNodeMaterial({ color: 0xe8d9b4, roughness: 1 }));
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  const camera = new THREE.PerspectiveCamera(Number(q.get('fov') || 35), innerWidth / innerHeight, 0.05, 200);
+  const roles = (q.get('roles') || 'player,skipper,guide,ranger,traditionalOwner,diveInstructor,tourist').split(',');
+  let list = [];
+  if (q.get('chars')) {
+    await P.loadLibrary();
+    list = Object.keys((await P.loadLibrary()).info.characters).map(c => ({ look: { character: c, skin: '#d6a47a', scale: 1, accessories: [] } }));
+  } else if (q.get('sets')) {
+    list = q.get('sets').split('/').map(() => ({ look: P.makeLook(roles[0].split(':')[0], { gender: roles[0].split(':')[1] || 'M', seed: 5 }) }));
+  } else list = roles.map((r, i) => ({ look: P.makeLook(r.split(':')[0], { gender: r.split(':')[1] || (i % 2 ? 'W' : 'M'), seed: i + Number(q.get('seed') || 3) }) }));
+  const gear = (q.get('gear') || '').split(',').filter(Boolean);
+  const rigs = [];
+  for (let i = 0; i < list.length; i++) {
+    const rig = await P.createPerson(list[i].look);
+    rig.group.position.set((i - (list.length - 1) / 2) * Number(q.get('gap') || 1.1), 0, 0);
+    rig.group.rotation.y = Number(q.get('ry') || 0) ;
+    const sets = q.get('sets') ? q.get('sets').split('/')[i].split(',').filter(Boolean) : gear;
+    for (const g of sets) rig.show(g, true);
+    if (q.get('pose')) { rig.group.position.y = 1.0; rig.setSwim(1, { mode: q.get('pose'), amp: 1, phase: 0.8 + i, fin: gear.includes('fins') ? 1.6 : 1 }); }
+    scene.add(rig.group); rigs.push(rig);
+    rig.update(0.05);
+  }
+  window.rigs = rigs; window.P = P; window.THREE = THREE;
+  const t = new THREE.Vector3(Number(q.get('tx') || 0), Number(q.get('ty') || 0.95), Number(q.get('tz') || 0));
+  camera.position.set(Number(q.get('cx') || 0), Number(q.get('cy') || 1.3), Number(q.get('cz') || 9));
+  camera.lookAt(t);
+  for (const r of rigs) r.update(0.05);
+  let last = performance.now();
+  const frame = () => { const n = performance.now(), dt = (n - last) / 1000; last = n; if (!q.get('still')) rigs.forEach(r => r.update(dt)); renderer.render(scene, camera); };
+  frame(); frame(); window.__ready = true;
+  if (!q.get('still')) renderer.setAnimationLoop(frame);
+})();
+</script>
+</body>
+</html>

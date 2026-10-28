@@ -11,6 +11,15 @@
       "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places, and a game: walk it, ride the ferries, fly under the bridge."
     },
     {
+      "id": "melbourne",
+      "name": "Melbourne",
+      "country": "Australia",
+      "lat": -37.8136,
+      "lon": 144.9631,
+      "status": "live",
+      "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
+    },
+    {
       "id": "osaka",
       "name": "Osaka",
       "country": "Japan",
@@ -21,15 +30,6 @@
       "timezone": "Asia/Tokyo"
     },
     {
-      "id": "melbourne",
-      "name": "Melbourne",
-      "country": "Australia",
-      "lat": -37.8136,
-      "lon": 144.9631,
-      "status": "live",
-      "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
-    },
-    {
       "id": "kyoto",
       "name": "Kyoto",
       "country": "Japan",
@@ -37,6 +37,75 @@
       "lon": 135.7625,
       "status": "live",
       "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people."
+    },
+    {
+      "id": "tokyo",
+      "name": "Tokyo",
+      "country": "Japan",
+      "lat": 35.67,
+      "lon": 139.759,
+      "status": "live",
+      "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower."
+    },
+    {
+      "id": "whitsundays",
+      "name": "Whitsundays",
+      "country": "Australia",
+      "lat": -20.28,
+      "lon": 149.03,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "summary": "The Whitsunday Islands and the inner Great Barrier Reef: 30 m survey bathymetry, a Sentinel-2 sea floor, caustics, wet sand and a swash line. Walk Whitehaven Beach, snorkel, dive.",
+      "group": "Great Barrier Reef",
+      "tagline": "Whitehaven Beach, Hill Inlet and the Whitsunday Passage"
+    },
+    {
+      "id": "hardy-reef",
+      "name": "Hardy Reef",
+      "country": "Australia",
+      "lat": -19.76,
+      "lon": 149.2,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "Heart Reef and the Reefworld pontoon, outer reef",
+      "summary": "Hardy Reef on the outer Great Barrier Reef: Heart Reef, the Reefworld pontoon on the channel wall, and Hook, Line and Bait reefs, from 30 m survey bathymetry and Sentinel-2. No land: start on the pontoon's deck and dive the wall."
+    },
+    {
+      "id": "green-island",
+      "name": "Green Island",
+      "country": "Australia",
+      "lat": -16.759,
+      "lon": 145.974,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "Coral cay off Cairns, with Arlington Reef and Michaelmas Cay",
+      "summary": "Green Island, a coral cay 27 km off Cairns, with Arlington Reef, Upolu Cay and Michaelmas Cay: survey bathymetry, a seam-free Sentinel-2 sea floor and MSQ's tide. Walk the beach by the jetty, snorkel the reef flat."
+    },
+    {
+      "id": "heron-island",
+      "name": "Heron Island",
+      "country": "Australia",
+      "lat": -23.442,
+      "lon": 151.915,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "Coral cay on the Tropic of Capricorn, with Wistari Reef",
+      "summary": "Heron Island and Heron and Wistari reefs in the southern Great Barrier Reef: the cay rebuilt from its mapped outline, the reef flat drying at low tide, the research station and the wreck of HMCS Protector at the channel."
+    },
+    {
+      "id": "lady-elliot-island",
+      "name": "Lady Elliot Island",
+      "country": "Australia",
+      "lat": -24.113,
+      "lon": 152.715,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "group": "Great Barrier Reef",
+      "tagline": "The southernmost coral cay of the reef",
+      "summary": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef: its platform reef in open water, the airstrip and old lighthouse, from survey bathymetry and Sentinel-2. Start on the western beach."
     },
     {
       "id": "new-york",
@@ -73,15 +142,6 @@
       "lon": 4.8922,
       "status": "planned",
       "data": "AHN LiDAR; PDOK aerial imagery; 3D BAG building heights."
-    },
-    {
-      "id": "tokyo",
-      "name": "Tokyo",
-      "country": "Japan",
-      "lat": 35.67,
-      "lon": 139.759,
-      "status": "live",
-      "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower."
     },
     {
       "id": "hong-kong",

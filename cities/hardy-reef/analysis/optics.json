@@ -1,0 +1,199 @@
+{
+ "band": {
+  "blue": {
+   "Rinf_median": 0.02790917456150055,
+   "Kd_fit": 0.06276073763624988,
+   "Kd_qaa": 0.06255003647448229,
+   "sand_albedo": 0.20462549915366798,
+   "fit_resid_sd_ln": 0.11847522318589518,
+   "depth_bins": 36,
+   "fit_depth_m": [
+    2,
+    20
+   ],
+   "depth_check_fit_pct": 32.7,
+   "depth_check_qaa_pct": 32.5,
+   "Kd_choice": "qaa",
+   "Kd": 0.06255003647448229
+  },
+  "green": {
+   "Rinf_median": 0.01407090574502945,
+   "Kd_fit": 0.07627237619390884,
+   "Kd_qaa": 0.09201114343975839,
+   "sand_albedo": 0.2086391843591934,
+   "fit_resid_sd_ln": 0.04669683754884608,
+   "depth_bins": 20,
+   "fit_depth_m": [
+    2,
+    12
+   ],
+   "depth_check_fit_pct": 16.5,
+   "depth_check_qaa_pct": 26.8,
+   "Kd_choice": "fit (passes the test)",
+   "Kd": 0.07627237619390884
+  },
+  "red": {
+   "Rinf_median": 0.005548777990043163,
+   "Kd_fit": 0.24465365777798745,
+   "Kd_qaa": 0.33744953502888997,
+   "sand_albedo": 0.11870209752818926,
+   "fit_resid_sd_ln": 0.08782451631312828,
+   "depth_bins": 7,
+   "fit_depth_m": [
+    0.5,
+    4
+   ],
+   "Kd_choice": "pure-water floor",
+   "Kd": 0.4
+  }
+ },
+ "g": 2.2,
+ "scenes": [
+  "S2B_55KGU_20260529_0_L2A",
+  "S2C_55KGU_20260713_0_L2A",
+  "S2C_55KGU_20260812_0_L2A",
+  "S2B_55KGU_20260916_0_L2A",
+  "S2A_55KGU_20260327_0_L2A",
+  "S2C_55KGU_20251026_0_L2A",
+  "S2B_55KGU_20251031_0_L2A",
+  "S2B_55KGU_20261006_0_L2A",
+  "S2B_55KGU_20260906_0_L2A",
+  "S2B_55KGU_20251120_0_L2A",
+  "S2A_55KGU_20251207_0_L2A",
+  "S2C_55KGU_20260703_0_L2A",
+  "S2B_55KGU_20251001_0_L2A",
+  "S2C_55KGU_20260822_0_L2A"
+ ],
+ "depth_check": {
+  "blue": {
+   "bins": [
+    {
+     "depth_m": [
+      1,
+      3
+     ],
+     "raw_reflectance": 0.14139999449253082,
+     "inverted_albedo": 0.17376798391342163
+    },
+    {
+     "depth_m": [
+      3,
+      6
+     ],
+     "raw_reflectance": 0.1388999968767166,
+     "inverted_albedo": 0.2358528971672058
+    },
+    {
+     "depth_m": [
+      6,
+      10
+     ],
+     "raw_reflectance": 0.10839999467134476,
+     "inverted_albedo": 0.24544213712215424
+    },
+    {
+     "depth_m": [
+      10,
+      15
+     ],
+     "raw_reflectance": 0.07189999520778656,
+     "inverted_albedo": 0.22656625509262085
+    }
+   ],
+   "spread_raw_pct": 60.35605915256549,
+   "spread_inverted_pct": 32.51895343303428
+  },
+  "green": {
+   "bins": [
+    {
+     "depth_m": [
+      1,
+      3
+     ],
+     "raw_reflectance": 0.1525000035762787,
+     "inverted_albedo": 0.19958928754007493
+    },
+    {
+     "depth_m": [
+      3,
+      6
+     ],
+     "raw_reflectance": 0.11800000071525574,
+     "inverted_albedo": 0.23055691626197705
+    },
+    {
+     "depth_m": [
+      6,
+      10
+     ],
+     "raw_reflectance": 0.07669999450445175,
+     "inverted_albedo": 0.21653794599329396
+    },
+    {
+     "depth_m": [
+      10,
+      15
+     ],
+     "raw_reflectance": 0.0429999977350235,
+     "inverted_albedo": 0.19584920270999798
+    }
+   ],
+   "spread_raw_pct": 112.25013512531191,
+   "spread_inverted_pct": 16.47778735347284
+  }
+ },
+ "habitat_scale": 1.1784709033576595,
+ "habitat_share": {
+  "deep water": 0.732,
+  "sand": 0.1155,
+  "reef and rock": 0.0095,
+  "seagrass and algae": 0.0033,
+  "rubble": 0.1396,
+  "beach and bare": 0.0
+ },
+ "terrain_grid": "C",
+ "qaa": {
+  "lambda0": 560,
+  "eta": 1.8029731033634744,
+  "bbp0": 0.003577714008475858,
+  "sun_zenith": 33.40684996155865,
+  "note": [],
+  "band": {
+   "443": {
+    "Rrs": 0.009008169779001277,
+    "a": 0.04298087864497643,
+    "bb": 0.007903747628048408,
+    "Kd": 0.07239801494111106
+   },
+   "492": {
+    "Rrs": 0.007543944302555839,
+    "a": 0.03925060826361024,
+    "bb": 0.006072083640256812,
+    "Kd": 0.06255003647448229
+   },
+   "560": {
+    "Rrs": 0.003183098861837907,
+    "a": 0.06688530265508329,
+    "bb": 0.0044659134228439,
+    "Kd": 0.09201114343975839
+   },
+   "665": {
+    "Rrs": 0.0005092958178940651,
+    "a": 0.2785172895777567,
+    "bb": 0.0030472390618826355,
+    "Kd": 0.33744953502888997
+   }
+  },
+  "deep_px": 5111256,
+  "deep_m": 40.0,
+  "R_median": {
+   "coastal": 0.032,
+   "blue": 0.0274,
+   "green": 0.0137,
+   "red": 0.0053,
+   "nir": 0.0037
+  },
+  "nir_offset": 0.0037
+ },
+ "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation. Kd_fit: from how the brightest floor darkens with depth (2-20 m blue, 2-12 m green, 0.5-4 m red). Kd_qaa: from the deep water's colour, QAA_v6 and Lee et al. 2005 (qaa.py). Kd: QAA unless the fit passes the quality test (residual sd of ln(R - Rinf) at most 0.06 and depth check at most 20%); red keeps the pure-water floor 0.40 (QAA red recorded). depth_check_*_pct: the sand brightness spread across 1-15 m after inversion with that Kd."
+}
