@@ -188,6 +188,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     lib = await OEPeople.load('assets/people/');
     await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
+  if (G.blurb) { const b = document.getElementById('g-blurb'); if (b) b.textContent = G.blurb; const k = document.getElementById('g-keyE'); if (k && !G.wharves.length) k.textContent = 'Talk, fly the helicopter'; }
   if (lib && G.crowd) { lib.palette = G.crowd.palette; lib.weights = G.crowd.weights; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
@@ -881,7 +882,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (target) { const f = nav.floorAt(target[0], target[1], 300); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
     $('#gq-title').textContent = ob ? ob.title : (Q.length && qs.qi >= Q.length ? 'Free roam' : '');
-    $('#gq-step').textContent = ob ? ob.text : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
+    $('#gq-step').textContent = ob ? ob.text : (G.wharves.length ? 'The city is yours. Change the time, ride the ferries, fly anywhere.' : 'The city is yours. Change the time, or fly anywhere.');
     $('#gq-dist').textContent = target ? `${Math.round(Math.hypot(target[0] - me.x, target[1] - me.y))} m` : '';
     if (!titleOn) {
       const icons = [];

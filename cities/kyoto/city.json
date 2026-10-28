@@ -659,7 +659,8 @@
         ],
         "steps": []
       }
-    ]
+    ],
+    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, from the monks of Higashi Honganji to a salaryman up from Tokyo, and fly over the grid Kyoto was laid out on in 794. Every fact they tell you about the model comes from the model."
   },
   "terrain_check": {
     "type": "gsi_elevation_api",

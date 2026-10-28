@@ -336,7 +336,7 @@ def main():
         "helipads": helipads,
         "props": props,
         "crowd": gcfg.get("crowd", {"pedestrians": 300, "cars": 120, "radius_m": 450}),
-        "smalltalk": gcfg.get("smalltalk"), "passerby": gcfg.get("passerby"),
+        "blurb": gcfg.get("blurb"), "smalltalk": gcfg.get("smalltalk"), "passerby": gcfg.get("passerby"),
         "npcs": npcs,
         "quests": gcfg.get("quests", []),
         "start": dict(gcfg.get("start", {}), at=[round(sx, 1), round(sy, 1)]),
