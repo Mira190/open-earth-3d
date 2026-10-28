@@ -343,23 +343,59 @@
         "idle": ["Bream under the bridge in the mornings. {sun_line}"]
       }
     ],
+    "lines": [
+      {"id": "start", "title": "Welcome"},
+      {
+        "id": "harbour",
+        "title": "The harbour",
+        "after": ["start"]
+      },
+      {
+        "id": "air",
+        "title": "The air",
+        "after": ["start"]
+      },
+      {
+        "id": "ground",
+        "title": "The ground",
+        "after": ["start"]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": ["harbour", "air", "ground"],
+        "on_open": "<b>All three surveys done.</b> Report back to Ava at Circular Quay."
+      }
+    ],
     "quests": [
       {
         "id": "quay",
+        "line": "start",
         "giver": "ava",
         "title": "Welcome to the Quay",
         "stamp": "Circular Quay",
-        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "Before we check anything, get your bearings. Marco is on the Opera House forecourt. Walk over and say hello.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk."],
-        "steps": [{"type": "talk", "npc": "marco", "text": "Meet Marco on the Opera House forecourt"}]
+        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "There are three surveys to do, in any order. The harbour: Marco at the Opera House, then the ferry and the bridge. The air: Sam flies from the Kirribilli helipad, across the water. The ground: Priya, in Martin Place, on sun and heights.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.", "Which first?"],
+        "choices": [
+          {"text": "The harbour: Marco, at the Opera House", "action": "track", "line": "harbour"},
+          {"text": "The air: Sam, at the Kirribilli helipad", "action": "track", "line": "air"},
+          {"text": "The ground: Priya, in Martin Place", "action": "track", "line": "ground"}
+        ],
+        "steps": []
       },
       {
         "id": "shells",
+        "line": "harbour",
         "giver": "marco",
         "title": "Shells from one sphere",
         "stamp": "Sydney Opera House",
         "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.", "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
         "steps": [
-          {"type": "surface", "surface": "Opera House steps", "u": [-6, 1], "text": "Climb the Monumental Steps to the podium"},
+          {
+            "type": "surface",
+            "surface": "Opera House steps",
+            "u": [-6, 1],
+            "text": "Climb the Monumental Steps to the podium"
+          },
           {
             "type": "ride",
             "from": "circular-quay",
@@ -371,34 +407,35 @@
       },
       {
         "id": "arch",
+        "line": "harbour",
         "giver": "lena",
         "title": "Over the arch",
         "stamp": "Sydney Harbour Bridge",
-        "talk": ["Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.", "The deck in this model rises on its approach viaducts until it meets the ground. Walk up from here to the middle of the arch."],
+        "talk": ["Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.", "The deck in this model rises on its approach viaducts until it meets the ground. Walk up from here to the middle of the arch.", "That's the harbour surveyed once you're up there. Sam keeps a helicopter at the Kirribilli helipad, along the shore, if you want to see it from above."],
         "steps": [
           {
             "type": "surface",
             "surface": "Sydney Harbour Bridge deck",
             "u": [-30, 30],
             "text": "Walk up onto the bridge and reach the middle of the arch"
-          },
-          {"type": "talk", "npc": "sam", "text": "Meet Sam at the Kirribilli helipad"}
+          }
         ]
       },
       {
         "id": "under",
+        "line": "air",
         "giver": "sam",
         "title": "Under the bridge",
         "stamp": "Harbour by air",
-        "talk": ["Lena said you'd come. Hop in. The helicopter's on the pad.", "Fly under the bridge deck. It clears the water by 49 m, so stay below 45. Then set down in the Domain. Priya's waiting near Martin Place.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
+        "talk": ["Ava said you'd come. Hop in. The helicopter's on the pad.", "Fly under the bridge deck. It clears the water by 49 m, so stay below 45. Then set down in the Domain.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
         "steps": [
           {"type": "under_bridge", "text": "Fly under the Harbour Bridge deck"},
-          {"type": "land", "place": "The Domain", "text": "Land in the Domain"},
-          {"type": "talk", "npc": "priya", "text": "Find Priya in Martin Place"}
+          {"type": "land", "place": "The Domain", "text": "Land in the Domain"}
         ]
       },
       {
         "id": "sun",
+        "line": "ground",
         "giver": "priya",
         "title": "A place in the sun",
         "stamp": "Martin Place",
@@ -425,6 +462,7 @@
       },
       {
         "id": "lens",
+        "line": "ground",
         "giver": "tom",
         "title": "Where heights come from",
         "stamp": "Hyde Park",
@@ -434,12 +472,12 @@
             "type": "inspect",
             "sources": ["mapped", "floors", "estimate"],
             "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
-          },
-          {"type": "talk", "npc": "ava", "text": "Report back to Ava at Circular Quay"}
+          }
         ]
       },
       {
         "id": "done",
+        "line": "finale",
         "giver": "ava",
         "title": "Survey complete",
         "stamp": "Surveyor",
