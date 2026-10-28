@@ -172,7 +172,8 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     $('#globe-notice').textContent = `${c.name} is planned. Open data to start from: ${c.data || 'to be surveyed'}`;
     $('#globe-notice').hidden = false;
   }
-  function open(c, play) { flyTo(c, 1.9, () => { location.hash = play ? `play-${c.id}` : c.id; }); }
+  // a city with its own viewer (the marine worlds) opens that page instead of the in-page model
+  function open(c, play) { flyTo(c, 1.9, () => { if (c.viewer) location.href = `${c.viewer}?city=${c.id}`; else location.hash = play ? `play-${c.id}` : c.id; }); }
   canvas.addEventListener('pointerdown', () => { controls.autoRotate = false; flight = null; touched = true; });
   canvas.addEventListener('wheel', () => { controls.autoRotate = false; touched = true; }, { passive: true });
 

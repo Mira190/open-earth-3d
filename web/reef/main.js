@@ -3,6 +3,7 @@ import { loadScene, createTerrain, heightTexture, terrainHeight, habitatAt } fro
 import { makeWaves, createEnv, setSun } from './env.js';
 import { createOcean } from './ocean.js';
 import { createShore } from './shore.js';
+import { createPost } from './post.js';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -76,6 +77,8 @@ async function main() {
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
+  const post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env);
+
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
   const ctx = { THREE, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null,
     height: (x, north) => terrainHeight(d, x, north),                 // sea-floor / ground elevation, m above datum
@@ -109,7 +112,7 @@ async function main() {
     ocean.update(camera.position);
     shore.update(camera.position);
     lights(sun);
-    renderer.render(scene, camera);
+    if (post) post.render(); else renderer.render(scene, camera);
     if (++frames === 3) { $('load').classList.add('done'); window.__ready = true; }
     const gx = terrainHeight(d, camera.position.x, -camera.position.z);
     $('hud').textContent = `${renderer.backend && renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2'} · alt ${camera.position.y.toFixed(1)} m · floor ${gx.toFixed(1)} m · sun ${(sun.alt * 57.3).toFixed(0)}°`;

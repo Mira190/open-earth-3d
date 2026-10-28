@@ -11,6 +11,16 @@
       "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places, and a game: walk it, ride the ferries, fly under the bridge."
     },
     {
+      "id": "whitsundays",
+      "name": "Whitsundays",
+      "country": "Australia",
+      "lat": -20.28,
+      "lon": 149.03,
+      "status": "live",
+      "viewer": "reef/index.html",
+      "summary": "The Whitsunday Islands and the inner Great Barrier Reef: 30 m survey bathymetry, a Sentinel-2 sea floor, caustics, wet sand and a swash line. Walk Whitehaven Beach, snorkel, dive."
+    },
+    {
       "id": "melbourne",
       "name": "Melbourne",
       "country": "Australia",

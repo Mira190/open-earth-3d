@@ -1,0 +1,54 @@
+// Post-processing: bloom for sun glitter and foam, and, under water, the light shafts. The shafts
+// march along each pixel's ray, and at every step ask the wave field how much sun gets through
+// the surface above that point (the same caustic focusing the sea floor shows), then scatter it
+// toward the eye through the water's own attenuation. A mask-edge vignette comes with it.
+import * as THREE from 'three/webgpu';
+import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, length, normalize, dot, pow, select, smoothstep,
+  clamp, screenUV, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
+import { bloom } from 'three/addons/tsl/display/BloomNode.js';
+
+export function createPost(renderer, scene, camera, env) {
+  const u = env.u;
+  const post = new THREE.RenderPipeline(renderer);
+  const scenePass = pass(scene, camera);
+  const color = scenePass.getTextureNode('output');
+  const depth = scenePass.getTextureNode('depth');
+  const bloomPass = bloom(color, 0.35, 0.55, 0.92);
+
+  const STEPS = 14;
+  const shafts = Fn(() => {
+    const view = getViewPosition(screenUV, depth.r, cameraProjectionMatrixInverse);
+    const world = cameraWorldMatrix.mul(vec4(view, 1)).xyz;
+    const toP = world.sub(cameraPosition);
+    const L = min(length(toP), 70);
+    const dir = toP.div(max(length(toP), 1e-3));
+    const under = cameraPosition.y.lessThan(u.tide);
+    const jitter = interleavedGradientNoise(screenUV.mul(vec2(1280, 720)));
+    const acc = vec3(0).toVar();
+    // the part of the ray that is under water (the camera is, so it runs to the surface at most)
+    const toSurface = select(dir.y.greaterThan(0.001), u.tide.sub(cameraPosition.y).div(dir.y), float(1e4));
+    const span = min(L, toSurface);
+    const step = span.div(STEPS);
+    const phase = float(0.18).add(pow(max(dot(dir, u.sunDir), 0), 5).mul(1.2));  // forward scattering toward the sun
+    Loop(STEPS, ({ i }) => {
+      const t = float(i).add(jitter).mul(step);
+      const S = cameraPosition.add(dir.mul(t));
+      const lit = env.caustic(S);                       // sun reaching this point through the waves
+      const dS = u.tide.sub(S.y).max(0);
+      const sunHere = exp(u.K.mul(dS.mul(u.lightPath).add(t)).negate());
+      acc.addAssign(sunHere.mul(lit).mul(step));
+    });
+    return acc.mul(phase).mul(0.035).mul(u.white).mul(u.sunCol).mul(smoothstep(0.02, 0.3, u.sunDir.y)).mul(select(under, float(1), float(0)));
+  });
+
+  const vignette = Fn(() => {
+    const c = screenUV.sub(0.5);
+    const r = length(c.mul(vec2(1.0, 0.8)));
+    const under = select(cameraPosition.y.lessThan(u.tide), float(1), float(0));
+    return float(1).sub(smoothstep(0.55, 0.95, r).mul(0.45).mul(under));
+  });
+
+  const base = color.add(bloomPass).add(shafts());
+  post.outputNode = base.mul(vignette());
+  return post;
+}

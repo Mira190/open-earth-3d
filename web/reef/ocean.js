@@ -117,7 +117,10 @@ export function createOcean(d, env, heightTex) {
     const window = smoothstep(0.0, 0.04, k);
     const Fb = Fr(nd, V.negate().negate()).mul(0.0).add(float(0.02));
     const skyT = env.sky(normalize(T)).mul(float(1).sub(Fb));
-    const under_rgb = env.medium(mix(vec3(0), skyT, window), P);
+    // beyond the window the surface is a mirror: it shows the water itself, at the camera's depth
+    const dC = u.tide.sub(cameraPosition.y).max(0);
+    const bodyCol = u.Rinf.mul(u.white).mul(exp(u.K.mul(dC.mul(u.lightPath)).negate())).mul(3.6);
+    const under_rgb = mix(bodyCol, env.medium(skyT, P), window);
     return select(above, vec4(above_c, above_a), vec4(under_rgb, float(1)));
   })();
 

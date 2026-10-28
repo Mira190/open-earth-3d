@@ -11,6 +11,17 @@
   "game": true
  },
  {
+  "id": "whitsundays",
+  "name": "Whitsundays",
+  "country": "Australia",
+  "lat": -20.28,
+  "lon": 149.03,
+  "status": "live",
+  "viewer": "reef/index.html",
+  "summary": "The Whitsunday Islands and the inner Great Barrier Reef: 30 m survey bathymetry, a Sentinel-2 sea floor, caustics, wet sand and a swash line. Walk Whitehaven Beach, snorkel, dive.",
+  "built": true
+ },
+ {
   "id": "melbourne",
   "name": "Melbourne",
   "country": "Australia",
