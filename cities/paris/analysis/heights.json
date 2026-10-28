@@ -1,0 +1,71 @@
+{
+ "note": "Reference heights are architectural (incl. spires); model heights are roof/top of the tallest solid.",
+ "summary": {
+  "reference": 3,
+  "matched": 3,
+  "median_abs_error_pct": 2.6,
+  "median_error_m": -2.3,
+  "within_10pct": 3,
+  "within_20pct": 3,
+  "gross_short": 0,
+  "by_source": {
+   "lidar": {
+    "n": 3,
+    "median_abs_error_pct": 2.6
+   }
+  }
+ },
+ "rows": [
+  {
+   "name": "Tour Montparnasse",
+   "ref_m": 210.0,
+   "ref_floors": 58,
+   "year": "1973",
+   "address": "33 Avenue du Maine",
+   "match": "address",
+   "how": "name",
+   "building": 11847,
+   "model_name": "Tour Montparnasse",
+   "model_m": 211.0,
+   "model_floors": 59,
+   "height_src": "lidar",
+   "osm_id": "w16406633",
+   "error_m": 1.0,
+   "error_pct": 0.5
+  },
+  {
+   "name": "Tour Panorama",
+   "ref_m": 100.0,
+   "ref_floors": 31,
+   "year": "1974",
+   "address": "",
+   "match": "address",
+   "how": "name",
+   "building": 239,
+   "model_name": "Tour Panorama",
+   "model_m": 94.4,
+   "model_floors": 33,
+   "height_src": "lidar",
+   "osm_id": "w115878678",
+   "error_m": -5.6,
+   "error_pct": -5.6
+  },
+  {
+   "name": "Tour Zamansky",
+   "ref_m": 90.0,
+   "ref_floors": 24,
+   "year": "1970",
+   "address": "4 Place Jussieu",
+   "match": "address",
+   "how": "name",
+   "building": 18104,
+   "model_name": "Tour Zamansky",
+   "model_m": 87.7,
+   "model_floors": 29,
+   "height_src": "lidar",
+   "osm_id": "w16924888",
+   "error_m": -2.3,
+   "error_pct": -2.6
+  }
+ ]
+}

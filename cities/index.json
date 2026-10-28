@@ -129,10 +129,10 @@
       "id": "paris",
       "name": "Paris",
       "country": "France",
-      "lat": 48.8566,
-      "lon": 2.3522,
-      "status": "planned",
-      "data": "IGN RGE ALTI and BD ORTHO (open licence); BD TOPO building heights."
+      "lat": 48.8585,
+      "lon": 2.3225,
+      "status": "live",
+      "summary": "Central Paris from the Eiffel Tower to the Île Saint-Louis: every roof measured by IGN's airborne LiDAR, zinc mansards with their dormers and chimney stacks, the Seine's bridges, and a game: ride the Batobus and fly under the Eiffel Tower."
     },
     {
       "id": "amsterdam",

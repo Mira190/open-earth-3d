@@ -11,6 +11,17 @@
   "game": true
  },
  {
+  "id": "melbourne",
+  "name": "Melbourne",
+  "country": "Australia",
+  "lat": -37.8136,
+  "lon": 144.9631,
+  "status": "live",
+  "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects.",
+  "built": true,
+  "game": true
+ },
+ {
   "id": "osaka",
   "name": "Osaka",
   "country": "Japan",
@@ -19,6 +30,28 @@
   "status": "live",
   "summary": "Umeda to Shinsekai along Midosuji, with Osaka Castle: 73,000 buildings, 89% of the roof area with a height measured for Project PLATEAU, the Dotonbori neon, a winter-sun study of the parks, and a game with Osaka people.",
   "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true
+ },
+ {
+  "id": "kyoto",
+  "name": "Kyoto",
+  "country": "Japan",
+  "lat": 35.003,
+  "lon": 135.7625,
+  "status": "live",
+  "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
+  "built": true,
+  "game": true
+ },
+ {
+  "id": "tokyo",
+  "name": "Tokyo",
+  "country": "Japan",
+  "lat": 35.67,
+  "lon": 139.759,
+  "status": "live",
+  "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower.",
   "built": true,
   "game": true
  },
@@ -93,28 +126,6 @@
   "game": false
  },
  {
-  "id": "melbourne",
-  "name": "Melbourne",
-  "country": "Australia",
-  "lat": -37.8136,
-  "lon": 144.9631,
-  "status": "live",
-  "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects.",
-  "built": true,
-  "game": true
- },
- {
-  "id": "kyoto",
-  "name": "Kyoto",
-  "country": "Japan",
-  "lat": 35.003,
-  "lon": 135.7625,
-  "status": "live",
-  "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
-  "built": true,
-  "game": true
- },
- {
   "id": "new-york",
   "name": "New York",
   "country": "United States",
@@ -140,12 +151,12 @@
   "id": "paris",
   "name": "Paris",
   "country": "France",
-  "lat": 48.8566,
-  "lon": 2.3522,
-  "status": "planned",
-  "data": "IGN RGE ALTI and BD ORTHO (open licence); BD TOPO building heights.",
-  "built": false,
-  "game": false
+  "lat": 48.8585,
+  "lon": 2.3225,
+  "status": "live",
+  "summary": "Central Paris from the Eiffel Tower to the \u00cele Saint-Louis: every roof measured by IGN's airborne LiDAR, zinc mansards with their dormers and chimney stacks, the Seine's bridges, and a game: ride the Batobus and fly under the Eiffel Tower.",
+  "built": true,
+  "game": true
  },
  {
   "id": "amsterdam",
@@ -157,17 +168,6 @@
   "data": "AHN LiDAR; PDOK aerial imagery; 3D BAG building heights.",
   "built": false,
   "game": false
- },
- {
-  "id": "tokyo",
-  "name": "Tokyo",
-  "country": "Japan",
-  "lat": 35.67,
-  "lon": 139.759,
-  "status": "live",
-  "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower.",
-  "built": true,
-  "game": true
  },
  {
   "id": "hong-kong",

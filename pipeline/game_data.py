@@ -39,7 +39,7 @@ from shapely import wkb as swkb
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
-from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, write_index
+from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
 from shore import depth_at, from_png
 from cityctx import city_args, polygons
 
@@ -100,10 +100,7 @@ def main():
     sm = from_png(os.path.join(C.out, "shore.png"), C.x0, C.y1, cfg)
     gy, gx = np.mgrid[0:ny, 0:nx]
     gx, gy = C.x0 + (gx + 0.5) * DEM_CELL, C.y1 - (gy + 0.5) * DEM_CELL
-    wcfg = cfg.get("water", {})
-    wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
-    seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
-    sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
+    sea = water_polygons(C, con, raw, extent)
     water = raster_mask(sea, nx, ny, DEM_CELL, C.x0, C.y1)
     piers = [Polygon(np.asarray(r, float).reshape(-1, 2) / 10) for r in places["piers"]]
     pier_mask = raster_mask([p.buffer(3) for p in piers], nx, ny, DEM_CELL, C.x0, C.y1)
@@ -364,6 +361,7 @@ def main():
         "props": props,
         "crowd": gcfg.get("crowd", {"pedestrians": 300, "cars": 120, "radius_m": 450}),
         "npcs": npcs,
+        "lines": gcfg.get("lines", []),
         "quests": gcfg.get("quests", []),
         "start": dict(gcfg.get("start", {}), at=[round(sx, 1), round(sy, 1)]),
         # liveries, registration and logo for the shared vehicles (web/assets/vehicles); empty means the defaults

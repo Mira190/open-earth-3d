@@ -1,0 +1,64 @@
+{
+ "note": "How good is open data where a laser has measured every roof? For a city with IGN's LiDAR HD (city.json \"ign\"), compare each Overture building's open-data height with its LiDAR top (the 95th percentile inside the footprint, pipeline/measured.py): OpenStreetMap height tags, floor counts times the city's storey height, Microsoft ML heights and BD TOPO's surveyed eaves. Then score the LiDAR roof classifier against the roof shapes mappers recorded.",
+ "lidar": "IGN LiDAR HD MNH, 0.5 m; the top is the 95th percentile inside the footprint inset 0.6 m",
+ "vs_lidar": {
+  "ml_height": {
+   "n": 577,
+   "median_factor": 1.383,
+   "p90_factor": 2.127,
+   "median_ratio": 0.755,
+   "within_10pct": 0.128
+  },
+  "osm_floors": {
+   "n": 16781,
+   "median_factor": 1.109,
+   "p90_factor": 1.36,
+   "median_ratio": 1.013,
+   "within_10pct": 0.464
+  },
+  "bdtopo_eaves": {
+   "n": 24292,
+   "median_factor": 1.177,
+   "p90_factor": 1.545,
+   "median_ratio": 0.866,
+   "within_10pct": 0.285
+  },
+  "bdtopo_floors": {
+   "n": 6734,
+   "median_factor": 1.111,
+   "p90_factor": 2.575,
+   "median_ratio": 1.037,
+   "within_10pct": 0.453
+  },
+  "osm_height": {
+   "n": 210,
+   "median_factor": 1.375,
+   "p90_factor": 5.107,
+   "median_ratio": 0.729,
+   "within_10pct": 0.186
+  }
+ },
+ "roof_over_eaves_m": {
+  "n": 24292,
+  "p10": -1.24,
+  "median": 2.94,
+  "p90": 7.24
+ },
+ "roof_classifier": {
+  "n": 485,
+  "families": "flat; broken (mansard, gambrel); other pitched",
+  "family_accuracy": 0.454,
+  "flat_vs_pitched_accuracy": 0.693,
+  "confusion": {
+   "flat -> flat": 38,
+   "flat -> broken": 45,
+   "flat -> pitched": 30,
+   "broken -> flat": 32,
+   "broken -> broken": 83,
+   "broken -> pitched": 51,
+   "pitched -> flat": 42,
+   "pitched -> broken": 65,
+   "pitched -> pitched": 99
+  }
+ }
+}

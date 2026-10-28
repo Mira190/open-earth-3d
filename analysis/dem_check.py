@@ -2,8 +2,9 @@
 source (city.json "terrain_check") at open land points: an ArcGIS identify endpoint
 sampled on a grid ("arcgis_identify"), surveyed spot heights from an ArcGIS
 feature layer ("arcgis_points", e.g. Vicmap Elevation for Melbourne), GSI PNG
-tiles ("gsi_dem_png", a coarser, older Japanese DEM) or GSI's elevation lookup
-("gsi_elevation_api", the 1 m laser DEM where flown). Photogrammetric DEMs can be
+tiles ("gsi_dem_png", a coarser, older Japanese DEM), GSI's elevation lookup
+("gsi_elevation_api", the 1 m laser DEM where flown) or a float raster from an OGC
+WMS ("wms_bil", e.g. IGN's RGE ALTI against Paris's LiDAR HD terrain). Photogrammetric DEMs can be
 biased in street canyons, which would mis-set every building base and every shadow
 on the ground.
 
@@ -23,6 +24,29 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 from build_scene import DEM_CELL, load_dem, sample  # noqa: E402
 from cityctx import city_args  # noqa: E402
 from fetch_tiles import gsi_decode  # noqa: E402
+
+
+class WmsRaster:
+    """An independent DEM over the city's bbox from a WMS that serves float32 BIL (fetch_ign.wms_bil),
+    downloaded once to data/raw/<city>/check_dem.tif and sampled bilinearly."""
+
+    def __init__(self, C, cfg):
+        from fetch_ign import lambert_bbox, wms_bil
+        from pyproj import Transformer
+        path = os.path.join(C.raw, "check_dem.tif")
+        crs = cfg.get("crs", "EPSG:2154")
+        self.bbox, size = wms_bil(cfg["layer"], crs, lambert_bbox(C.cfg["bbox"], crs=crs), cfg.get("pixel_m", 2.0), path, url=cfg["url"])
+        self.a = np.asarray(Image.open(path), dtype=np.float32)
+        self.t = Transformer.from_crs("EPSG:4326", crs, always_xy=True)
+
+    def __call__(self, lon, lat):
+        x, y = self.t.transform(lon, lat)
+        x0, y0, x1, y1 = self.bbox
+        h, w = self.a.shape
+        c, r = (x - x0) / (x1 - x0) * w - 0.5, (y1 - y) / (y1 - y0) * h - 0.5
+        from scipy.ndimage import map_coordinates
+        v = float(map_coordinates(self.a, [[r], [c]], order=1, mode="nearest")[0])
+        return v if v > -1000 else None
 
 
 def identify(cfg, lon, lat):
@@ -88,9 +112,10 @@ def gsi_value(cfg, lon, lat):
 def main():
     C, _ = city_args(__doc__.splitlines()[0])
     chk = C.cfg.get("terrain_check")
-    if not chk or chk.get("type") not in ("arcgis_identify", "arcgis_points", "gsi_dem_png", "gsi_elevation_api"):
-        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify, arcgis_points, gsi_dem_png or gsi_elevation_api in city.json")
-    dem = load_dem(C)
+    if not chk or chk.get("type") not in ("arcgis_identify", "arcgis_points", "gsi_dem_png", "gsi_elevation_api", "wms_bil"):
+        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify, arcgis_points, gsi_dem_png, gsi_elevation_api or wms_bil in city.json")
+    dem = load_dem(C, absolute=True)
+    off = C.cfg.get("datum_offset_m", 0.0)  # land is above the water plane, in the scene's datum
     B = json.load(open(os.path.join(C.out, "buildings.json")))
     img = Image.new("L", (dem.shape[1], dem.shape[0]), 0)
     d = ImageDraw.Draw(img)
@@ -104,7 +129,7 @@ def main():
         for lon, lat, v in spot_heights(chk, C.cfg["bbox"]):
             x, y = C.fwd.transform(lon, lat)
             r, c = int((C.y1 - y) / DEM_CELL), int((x - C.x0) / DEM_CELL)
-            if not (0 <= r < dem.shape[0] and 0 <= c < dem.shape[1]) or built[r, c] or dem[r, c] < 0.5:
+            if not (0 <= r < dem.shape[0] and 0 <= c < dem.shape[1]) or built[r, c] or dem[r, c] - off < 0.5:
                 continue  # outside, on a footprint, or on water
             z = float(sample(C, dem, x, y)[0])
             diffs.append(z - v)
@@ -112,11 +137,14 @@ def main():
         report(C, chk, diffs, out)
         return
     rows, cols = np.mgrid[10:dem.shape[0] - 10:24, 10:dem.shape[1] - 10:24]  # every 120 m
-    pts = [(r, c) for r, c in zip(rows.ravel(), cols.ravel()) if dem[r, c] > 1.0 and not built[r, c]]
+    pts = [(r, c) for r, c in zip(rows.ravel(), cols.ravel()) if dem[r, c] - off > 1.0 and not built[r, c]]
     xy = [(C.x0 + c * DEM_CELL, C.y1 - r * DEM_CELL) for r, c in pts]
     lonlat = [C.inv.transform(x, y) for x, y in xy]
     if chk["type"] == "gsi_dem_png":
         vals = [gsi_value(chk, *ll) for ll in lonlat]   # tiles are cached, so no threads
+    elif chk["type"] == "wms_bil":
+        ras = WmsRaster(C, chk)
+        vals = [ras(*ll) for ll in lonlat]
     else:
         with ThreadPoolExecutor(4) as ex:
             vals = list(ex.map(lambda ll: identify(chk, *ll), lonlat))

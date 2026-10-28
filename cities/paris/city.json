@@ -1,0 +1,1011 @@
+{
+  "id": "paris",
+  "name": "Paris",
+  "country": "France",
+  "country_code": "FR",
+  "timezone": "Europe/Paris",
+  "locale": "fr-FR",
+  "description": "Central Paris from the Eiffel Tower to the Île Saint-Louis, from open data and the real sun. Every roof was measured by IGN's airborne LiDAR in March 2023, and every shadow is computed.",
+  "bbox": [
+    2.2835,
+    48.84,
+    2.3615,
+    48.877
+  ],
+  "origin": [
+    2.3225,
+    48.8585
+  ],
+  "extent_m": [
+    -2800,
+    2800,
+    -2000,
+    2000
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m above the Seine (NGF-IGN69 26.9 m)",
+  "datum_offset_m": 26.9,
+  "datum_note": "The scene's 0 m is the Seine's level on the LiDAR HD flight of 2 and 3 March 2023, 26.9 m in NGF-IGN69 (the hydro-flattened LiDAR terrain over the river: the median of its 985,000 one-metre cells, islands cut out). The viewer's water plane is at 0, so every height in the scene is above the river; add 26.9 m for an altitude.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}&FORMAT=image/jpeg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "IGN BD ORTHO aerial photographs via the Géoplateforme (Licence Ouverte / Etalab 2.0)"
+  },
+  "terrain": {
+    "type": "wms_bil",
+    "url": "https://data.geopf.fr/wms-r/wms",
+    "layer": "IGNF_LIDAR-HD_MNT_ELEVATION.ELEVATIONGRIDCOVERAGE.LAMB93",
+    "crs": "EPSG:2154",
+    "pixel_m": 2.0,
+    "bare_earth": true,
+    "attribution": "IGN LiDAR HD bare earth (MNT), flown 2-3 March 2023, via the Géoplateforme (Licence Ouverte / Etalab 2.0)"
+  },
+  "terrain_check": {
+    "type": "wms_bil",
+    "url": "https://data.geopf.fr/wms-r/wms",
+    "layer": "ELEVATION.ELEVATIONGRIDCOVERAGE.HIGHRES",
+    "crs": "EPSG:2154",
+    "pixel_m": 2.0,
+    "name": "IGN RGE ALTI 1 m, an earlier bare-earth model (Licence Ouverte / Etalab 2.0)"
+  },
+  "ign": {
+    "bdtopo": {
+      "layer": "BDTOPO_V3:batiment"
+    },
+    "lidar": {
+      "layers": [
+        "mnh",
+        "mnt"
+      ],
+      "pixel_m": {
+        "mnh": 0.5,
+        "mnt": 1.0
+      }
+    },
+    "exclude": [
+      {
+        "at": [
+          2.29448,
+          48.85826
+        ],
+        "radius_m": 75,
+        "why": "the Eiffel Tower is a parametric landmark"
+      }
+    ],
+    "attribution": "Heights measured by IGN LiDAR HD (2-3 March 2023) over IGN BD TOPO eaves and footprints (Licence Ouverte / Etalab 2.0)"
+  },
+  "architecture": "paris",
+  "water": {
+    "classes": [
+      "river"
+    ],
+    "min_area_m2": 2000,
+    "note": "The Seine. Overture's river polygon holds the Île de la Cité and the Île Saint-Louis without holes; the islands mapped as islets are cut out.",
+    "waves": {
+      "wind_ms": 4.5,
+      "wind_from_deg": 225,
+      "fetch_km": 1.2,
+      "depth_m": 5,
+      "cascades_m": [
+        33.3,
+        7.1,
+        1.7
+      ],
+      "choppiness": 0.6,
+      "note": "A light south-westerly, the prevailing wind, along a river 110-160 m wide between stone quays; the navigation channel is kept 3.4 m deep or more. Chosen values, not a measurement."
+    },
+    "colour": "#3f4a3a",
+    "shallow_colour": "#5a6449",
+    "clarity_m": 0.9,
+    "colour_note": "The Seine in Paris is green-brown with silt and algae; visibility is about a metre in summer."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      3.4
+    ],
+    "non": [
+      3.6,
+      2.0
+    ]
+  },
+  "storey_note": "BD TOPO's eaves height per floor is 3.0 m at the median over 25,000 buildings with both, and the LiDAR top adds 2.8 m of roof.",
+  "labels": {
+    "Cathédrale Notre-Dame de Paris": "Notre-Dame",
+    "Palais du Louvre": "Louvre",
+    "Musée d'Orsay": "Musée d'Orsay",
+    "Grand Palais": "Grand Palais",
+    "Panthéon": "Panthéon",
+    "Église du Dôme": "Les Invalides",
+    "Opéra Garnier": "Opéra Garnier",
+    "Tour Montparnasse": "Tour Montparnasse",
+    "Centre Georges Pompidou": "Centre Pompidou",
+    "Hôtel de Ville": "Hôtel de Ville",
+    "Palais du Luxembourg": "Palais du Luxembourg",
+    "Palais Bourbon": "Assemblée nationale",
+    "Église Saint-Sulpice": "Saint-Sulpice",
+    "Palais de Chaillot": "Palais de Chaillot",
+    "Église de la Madeleine": "La Madeleine",
+    "Palais de Justice de Paris": "Palais de Justice",
+    "Petit Palais, Musée des beaux-arts de la Ville de Paris": "Petit Palais",
+    "Église Saint-Eustache": "Saint-Eustache",
+    "La Samaritaine": "La Samaritaine",
+    "Institut de France": "Institut de France",
+    "Tour Zamansky": "Tour Zamansky"
+  },
+  "minor_labels": [
+    "Palais de Justice",
+    "Petit Palais",
+    "Saint-Eustache",
+    "La Samaritaine",
+    "Institut de France",
+    "Tour Zamansky",
+    "Palais du Luxembourg",
+    "Assemblée nationale",
+    "La Madeleine",
+    "Palais de Chaillot",
+    "Centre Pompidou",
+    "Hôtel de Ville"
+  ],
+  "place_labels": [
+    "Champ de Mars",
+    "Jardin des Tuileries",
+    "Jardin du Luxembourg",
+    "Place de la Concorde",
+    "Jardins du Trocadéro",
+    "Jardin du Palais Royal"
+  ],
+  "protection": {
+    "title": "No statutory sun rule for public places",
+    "summary": "Paris protects its skyline with height ceilings and protected views in its local plan (the Plan local d'urbanisme bioclimatique, adopted in 2024), not with sun windows on its parks. Sun on these places is measured for information, not tested against a rule.",
+    "source_note": "No legal window is transcribed for these places, so each is shown for 10:00-14:00 and none is marked protected.",
+    "reading_note": "Heights come from IGN's LiDAR HD, flown on 2 and 3 March 2023, so buildings finished since then fall back to IGN's surveyed eaves.",
+    "default_time_basis": "clock",
+    "tip": "Tip: try a tall plot on the Rue de Rivoli side of the Tuileries in December.",
+    "unprotected_label": "no rule"
+  },
+  "places": [
+    {
+      "name": "Jardin du Luxembourg",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Jardin des Tuileries",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Champ de Mars",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Place de la Concorde",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Jardin du Palais Royal",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Place Vendôme",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Parvis Notre-Dame - Place Jean-Paul II",
+      "label": "Parvis Notre-Dame",
+      "class": "pedestrian",
+      "protected": false
+    }
+  ],
+  "analysis_region": [
+    -1500,
+    2400,
+    -1500,
+    1300
+  ],
+  "sun_hours_region": [
+    -2400,
+    2600,
+    -1700,
+    1700
+  ],
+  "reference_heights": {
+    "file": "reference_heights.csv",
+    "source": "Wikipedia, List of tallest buildings in the Paris region (revision 1376070561), and the towers' own articles"
+  },
+  "check_points": {
+    "Parvis Notre-Dame": [
+      2.3488,
+      48.8533
+    ],
+    "Place de la Concorde": [
+      2.3212,
+      48.8656
+    ],
+    "Champ de Mars": [
+      2.2984,
+      48.8556
+    ],
+    "Jardin du Luxembourg": [
+      2.3372,
+      48.8468
+    ],
+    "Place du Panthéon": [
+      2.3455,
+      48.8463
+    ]
+  },
+  "start": {
+    "date": [
+      6,
+      21
+    ],
+    "time": "19:30",
+    "cam": [
+      3200,
+      -2900,
+      1500
+    ],
+    "tgt": [
+      -200,
+      0,
+      60
+    ]
+  },
+  "tour": [
+    {
+      "title": "Paris from open data",
+      "text": "{buildings} buildings from OpenStreetMap and IGN's BD TOPO, on IGN's LiDAR terrain under IGN's aerial photographs. For {share:lidar}% of the roof area the height is not a guess: IGN's laser measured it from the air on 2 and 3 March 2023.",
+      "cam": [
+        3200,
+        -2900,
+        1500
+      ],
+      "tgt": [
+        -200,
+        0,
+        60
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "19:00",
+      "to": "20:00",
+      "hold": 8
+    },
+    {
+      "title": "The Eiffel Tower",
+      "text": "{landmark:eiffel_tower.height_m} m to the tip of its antenna, on four legs that stand on a square 125 m a side. The first floor is at 57 m, the second at 116 m and the top at 276 m. The model builds it from those published figures, in the iron's own brown, and lights it after dark.",
+      "cam": [
+        -1300,
+        -700,
+        220
+      ],
+      "tgt": [
+        -2056,
+        -26,
+        130
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "21:30",
+      "to": "22:30",
+      "hold": 9
+    },
+    {
+      "title": "A city of mansards",
+      "text": "A Paris block is six or seven floors of limestone under a zinc mansard. The measured roofs say so: {landmark:roofs.mansard_pct}% of the pitched roofs the LiDAR profiled are mansards, and the median roof rises {landmark:roofs.median_roof_m} m over its eaves.",
+      "cam": [
+        380,
+        -350,
+        70
+      ],
+      "tgt": [
+        760,
+        -620,
+        22
+      ],
+      "date": [
+        10,
+        15
+      ],
+      "from": "10:00",
+      "to": "11:00",
+      "hold": 9
+    },
+    {
+      "title": "The 1859 cornice",
+      "text": "Haussmann's decree of 1859 let a building on a street 20 m wide or more rise 20 m to its cornice, then a roof inside a 45-degree line. Of the {landmark:haussmann.n} buildings dated 1850 to 1914, the median eaves height IGN surveyed is {landmark:haussmann.eaves_median_m} m.",
+      "cam": [
+        380,
+        1380,
+        120
+      ],
+      "tgt": [
+        667,
+        1420,
+        25
+      ],
+      "date": [
+        10,
+        15
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 9
+    },
+    {
+      "title": "The islands",
+      "text": "The Île de la Cité and the Île Saint-Louis, with Notre-Dame, reopened in December 2024, and the Sainte-Chapelle. The Seine here is held at about {landmark:seine.level_m} m above sea level by the weirs downstream.",
+      "cam": [
+        2650,
+        -1250,
+        260
+      ],
+      "tgt": [
+        1900,
+        -450,
+        20
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "19:30",
+      "to": "20:30",
+      "hold": 9
+    },
+    {
+      "title": "Jardin du Luxembourg, 21 December",
+      "text": "Midwinter: at noon the sun is only 18 degrees high in Paris. {sun:Jardin du Luxembourg|12-21|12:00}% of the garden is in direct sun at noon.",
+      "place": "Jardin du Luxembourg",
+      "date": [
+        12,
+        21
+      ],
+      "from": "10:00",
+      "to": "14:00",
+      "hold": 9
+    },
+    {
+      "title": "Where the heights come from",
+      "text": "Coloured by height source: LiDAR-measured in the darkest shade. Where OpenStreetMap has a height tag, it is within 15% of the laser for half the buildings.",
+      "cam": [
+        2400,
+        -2600,
+        1300
+      ],
+      "tgt": [
+        0,
+        0,
+        40
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "12:00",
+      "to": "13:00",
+      "hold": 9,
+      "provenance": true
+    }
+  ],
+  "renders": [
+    {
+      "name": "overview",
+      "cam": [
+        3200,
+        -2900,
+        1500
+      ],
+      "tgt": [
+        -200,
+        0,
+        60
+      ],
+      "date": [
+        2026,
+        6,
+        21
+      ],
+      "time": "19:30"
+    },
+    {
+      "name": "eiffel",
+      "cam": [
+        -1300,
+        -700,
+        220
+      ],
+      "tgt": [
+        -2056,
+        -26,
+        130
+      ],
+      "date": [
+        2026,
+        6,
+        21
+      ],
+      "time": "20:30"
+    },
+    {
+      "name": "cite",
+      "cam": [
+        2650,
+        -1250,
+        260
+      ],
+      "tgt": [
+        1900,
+        -450,
+        20
+      ],
+      "date": [
+        2026,
+        6,
+        21
+      ],
+      "time": "19:30"
+    }
+  ],
+  "sources": {
+    "landmarks": "Eiffel Tower dimensions: Société d'Exploitation de la Tour Eiffel (toureiffel.paris) and Wikipedia; Seine bridges from their OpenStreetMap outlines",
+    "buildings_ign": "IGN BD TOPO buildings (eaves heights, floors, dates, use, materials from the Fichiers fonciers) and LiDAR HD heights, via the Géoplateforme (Licence Ouverte / Etalab 2.0)"
+  },
+  "game": {
+    "title": "Paris on Foot",
+    "local_name": "Parisian",
+    "water_name": "the Seine",
+    "greeting": "Bonjour !",
+    "blurb": "Walk the quays, the islands and the Left Bank, ride the Batobus on the Seine, and fly between the legs of the Eiffel Tower. Talk to the people who know the city. Every fact they tell you comes from the model.",
+    "start": {
+      "at": [
+        1103,
+        -60
+      ],
+      "facing": [
+        1103,
+        60
+      ],
+      "time": "live"
+    },
+    "wharves": [
+      {
+        "id": "tour-eiffel",
+        "name": "Tour Eiffel",
+        "terminal": "Tour-Eiffel"
+      },
+      {
+        "id": "orsay",
+        "name": "Musée d'Orsay",
+        "terminal": "Musée d'Orsay"
+      },
+      {
+        "id": "saint-germain",
+        "name": "Saint-Germain-des-Prés",
+        "terminal": "Saint-Germain-des-Prés"
+      },
+      {
+        "id": "notre-dame",
+        "name": "Notre-Dame",
+        "terminal": "Notre-Dame"
+      },
+      {
+        "id": "hotel-de-ville",
+        "name": "Hôtel de Ville",
+        "terminal": "Hôtel-de-Ville"
+      },
+      {
+        "id": "louvre",
+        "name": "Louvre",
+        "terminal": "Louvre"
+      },
+      {
+        "id": "concorde",
+        "name": "Place de la Concorde",
+        "terminal": "Place de la Concorde"
+      }
+    ],
+    "ferries": [
+      {
+        "route": "Batobus (Left Bank)",
+        "stops": [
+          "tour-eiffel",
+          "orsay",
+          "saint-germain",
+          "notre-dame"
+        ],
+        "vessels": [
+          "Notre-Dame",
+          "Tour Eiffel"
+        ]
+      },
+      {
+        "route": "Batobus (Right Bank)",
+        "stops": [
+          "hotel-de-ville",
+          "louvre",
+          "concorde"
+        ],
+        "vessels": [
+          "Louvre",
+          "Concorde"
+        ]
+      }
+    ],
+    "ferry_note": "The landings are the Batobus stops mapped in OpenStreetMap (via Overture). The real Batobus runs one loop of nine stops; here it is two lines inside the model, routed through open water. The timetable is not real and the vessel names are invented. Boats run at 1.5 times real speed and wait 20 s at each landing. At a landing you can skip the wait.",
+    "ferry_speed_ms": 6.0,
+    "ferry_style": {
+      "length_m": 30,
+      "beam_m": 7,
+      "hull": "#26323c",
+      "trim": "#c9a227",
+      "upper": "#e9ecee",
+      "flag": "#1d3f8f",
+      "note": "A glazed river shuttle; the colours are chosen, not the operator's livery."
+    },
+    "vehicles": {
+      "note": "The shared helicopter and ferry (web/assets/vehicles). The river livery is chosen, not a real operator's.",
+      "helicopter": {
+        "livery": "survey"
+      },
+      "ferry": {
+        "livery": "river"
+      }
+    },
+    "helipads": [
+      {
+        "id": "champ-de-mars",
+        "name": "Champ de Mars pad (game)",
+        "at": [
+          -1600,
+          -420
+        ]
+      }
+    ],
+    "viewpoints": [
+      {
+        "id": "trocadero",
+        "name": "Trocadéro esplanade",
+        "at": [
+          -2500,
+          380
+        ]
+      },
+      {
+        "id": "pont-alexandre",
+        "name": "Pont Alexandre III",
+        "at": [
+          -655,
+          581
+        ]
+      },
+      {
+        "id": "pont-des-arts",
+        "name": "Pont des Arts",
+        "at": [
+          1103,
+          -18
+        ]
+      },
+      {
+        "id": "vert-galant",
+        "name": "Square du Vert-Galant",
+        "at": [
+          1333,
+          -124
+        ]
+      },
+      {
+        "id": "pantheon",
+        "name": "Place du Panthéon",
+        "at": [
+          1660,
+          -1370
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 480,
+      "cars": 170,
+      "radius_m": 450,
+      "style": "paris"
+    },
+    "smalltalk": [
+      "Bonjour.",
+      "Pardon !",
+      "Il fait beau, hein ?",
+      "Bonne journée !",
+      "Excusez-moi."
+    ],
+    "shade_landmarks": [
+      "eiffel_"
+    ],
+    "npcs": [
+      {
+        "id": "camille",
+        "name": "Camille",
+        "role": "Survey lead",
+        "at": [
+          1103,
+          -45
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#efcfb5",
+          "hair": "#3b2a20",
+          "top": "#f2efe8",
+          "shirt": "#f2efe8",
+          "legs": "#23314a",
+          "pants": "#23314a",
+          "pattern": "mariniere",
+          "pattern2": "#1d2b4a"
+        },
+        "idle": [
+          "Every roof in this model was measured by a laser from an aeroplane, IGN's LiDAR HD, flown here on the 2nd and 3rd of March 2023.",
+          "There are five trig stations along the river, a triangle on the map for each. Climb up to one and survey the view."
+        ]
+      },
+      {
+        "id": "bernard",
+        "name": "Bernard",
+        "role": "Bouquiniste",
+        "at": [
+          1236,
+          -88
+        ],
+        "look": {
+          "character": "M_Adventurer",
+          "skin": "#e8c2a4",
+          "hair": "#c9c4be",
+          "top": "#3c4a3e",
+          "shirt": "#3c4a3e",
+          "legs": "#4a3b2c",
+          "pants": "#4a3b2c",
+          "acc": [
+            "beret",
+            "glasses"
+          ]
+        },
+        "idle": [
+          "Green boxes on the parapet, open when the weather is kind. We have been selling books on these quays since the sixteenth century.",
+          "The rule is four boxes, two metres each, painted wagon green. The city sets the colour."
+        ]
+      },
+      {
+        "id": "lea",
+        "name": "Léa",
+        "role": "Carpenter, Notre-Dame roof",
+        "at": [
+          1899,
+          -560
+        ],
+        "look": {
+          "character": "W_Worker",
+          "skin": "#e9c1a1",
+          "hair": "#6a4529",
+          "top": "#2a3644",
+          "shirt": "#2a3644",
+          "legs": "#2a3644",
+          "pants": "#2a3644",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "The forest, we call it: the oak frame under the lead. Hand-hewn again, with axes, the way it was done in the thirteenth century.",
+          "The spire is back: 96 metres, to Viollet-le-Duc's drawings of 1859."
+        ]
+      },
+      {
+        "id": "karim",
+        "name": "Karim",
+        "role": "Café waiter, Saint-Germain",
+        "at": [
+          770,
+          -470
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#c99572",
+          "hair": "#16110e",
+          "top": "#141414",
+          "shirt": "#f4f1ea",
+          "legs": "#141414",
+          "pants": "#141414",
+          "acc": [
+            "apron",
+            "cafe_tray"
+          ],
+          "apron": "#f4f1ea"
+        },
+        "idle": [
+          "Un café, c'est un express. If you want milk, you ask for a crème, and after eleven you do not ask at all.",
+          "Every chair on the terrace faces the street. In the afternoon they all turn to the sun."
+        ]
+      },
+      {
+        "id": "simone",
+        "name": "Simone",
+        "role": "Retired senator, chess player",
+        "at": [
+          1078,
+          -1250
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f1d3bd",
+          "hair": "#d8d3cc",
+          "top": "#5b2c3a",
+          "shirt": "#5b2c3a",
+          "legs": "#2b2b30",
+          "pants": "#2b2b30",
+          "acc": [
+            "glasses"
+          ]
+        },
+        "idle": [
+          "The Senate sits in the Palais du Luxembourg, behind me. The garden is the Senate's too; it opens to everyone.",
+          "In December the sun clears the south terrace roofs only around noon. Choose your chair."
+        ]
+      },
+      {
+        "id": "henri",
+        "name": "Henri",
+        "role": "Painter of the Eiffel Tower",
+        "at": [
+          -1985,
+          -95
+        ],
+        "look": {
+          "character": "M_Worker",
+          "skin": "#e6bb98",
+          "hair": "#4a3222",
+          "top": "#5a3b2a",
+          "shirt": "#5a3b2a",
+          "legs": "#3b2f26",
+          "pants": "#3b2f26",
+          "acc": [
+            "beret"
+          ]
+        },
+        "idle": [
+          "Every seven years or so we paint her again, by hand, with brushes. About sixty tonnes of paint.",
+          "The colour is Eiffel Tower brown, three shades, darker at the bottom, so she looks the same colour all the way up against the sky."
+        ]
+      },
+      {
+        "id": "nadia",
+        "name": "Nadia",
+        "role": "Boulangère, Rue du Bac",
+        "at": [
+          410,
+          -230
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#d7a57f",
+          "hair": "#1d1512",
+          "top": "#e9e2d4",
+          "shirt": "#e9e2d4",
+          "legs": "#3b3a3a",
+          "pants": "#3b3a3a",
+          "acc": [
+            "apron",
+            "baguette"
+          ],
+          "apron": "#f4f1ea"
+        },
+        "idle": [
+          "A baguette de tradition: flour, water, salt and yeast, nothing else. That is the law, since 1993.",
+          "Up at four, first batch at six. The street smells of it by seven."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "river",
+        "title": "The river",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "left-bank",
+        "title": "The Left Bank",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "tower",
+        "title": "The tower",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "river",
+          "left-bank",
+          "tower"
+        ],
+        "on_open": "<b>All three surveys done.</b> Report back to Camille on the Pont des Arts."
+      }
+    ],
+    "quests": [
+      {
+        "id": "arts",
+        "giver": "camille",
+        "title": "Welcome to the Pont des Arts",
+        "stamp": "Pont des Arts",
+        "talk": [
+          "Bonjour ! You're the new surveyor? This is the Pont des Arts, between the Louvre and the Institut de France.",
+          "The model around you is open data: {buildings} buildings on IGN's laser-scanned terrain, under IGN's aerial photographs. For {share:lidar}% of the roof area, the height was measured by LiDAR, not guessed.",
+          "Three surveys today, in any order. The river, with Bernard at the green boxes on the Quai de Conti. The Left Bank, with Simone in the Luxembourg. And the tower: Henri paints it, and he wants someone with a helicopter."
+        ],
+        "steps": [],
+        "line": "start",
+        "choices": [
+          {
+            "text": "The river: Bernard, on the Quai de Conti",
+            "action": "track",
+            "line": "river"
+          },
+          {
+            "text": "The Left Bank: Simone, in the Jardin du Luxembourg",
+            "action": "track",
+            "line": "left-bank"
+          },
+          {
+            "text": "The tower: Henri, at the foot of the Eiffel Tower",
+            "action": "track",
+            "line": "tower"
+          }
+        ]
+      },
+      {
+        "id": "quais",
+        "giver": "bernard",
+        "title": "Read a roof",
+        "stamp": "Bouquinistes",
+        "talk": [
+          "Ah, the surveyor. Camille sent you? Then you must learn to read Paris, and Paris is written on its roofs.",
+          "Zinc, grey-blue, with the dormers of the old maids' rooms, the chambres de bonne. A mansard: steep below, nearly flat on top. Mansart did not invent it, but Paris made it law.",
+          "Aim at a building and press Q for the survey lens. Find one whose height the laser measured, and one where IGN only surveyed the eaves. Then take the Batobus from Saint-Germain-des-Prés to Notre-Dame. Léa works on the cathedral roof; she will show you the rest."
+        ],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": [
+              "lidar",
+              "bdtopo"
+            ],
+            "text": "Survey lens (Q): one LiDAR-measured height, and one from the surveyed eaves"
+          },
+          {
+            "type": "ride",
+            "from": "saint-germain",
+            "to": "notre-dame",
+            "text": "Ride the Batobus from Saint-Germain-des-Prés to Notre-Dame"
+          }
+        ],
+        "line": "river"
+      },
+      {
+        "id": "foret",
+        "giver": "lea",
+        "title": "The forest",
+        "stamp": "Notre-Dame",
+        "talk": [
+          "Salut. You came by boat? Good, it is the best view of the apse.",
+          "In April 2019 the roof burned, and the spire fell through the vault. We rebuilt the frame in oak, as it was. The cathedral reopened in December 2024.",
+          "The towers are 69 metres and the spire 96. The laser saw the towers in March 2023, and only scaffolding where the spire stands now. The model draws the spire from its drawings."
+        ],
+        "steps": [],
+        "line": "river"
+      },
+      {
+        "id": "luco",
+        "giver": "simone",
+        "title": "A chair in the sun",
+        "stamp": "Jardin du Luxembourg",
+        "talk": [
+          "You found me. Sit. Not that chair, it is in the shade. In winter we follow the sun from chair to chair.",
+          "On the 21st of December the sun is 18 degrees high at noon. The palace and the trees cut most of the garden off. Find me a place in the sun.",
+          "Then go down to Saint-Germain. Karim serves at the café on the boulevard. He knows where the light falls in the afternoon."
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "Jardin du Luxembourg",
+            "date": [
+              12,
+              21
+            ],
+            "window": [
+              "10:00",
+              "14:00"
+            ],
+            "text": "Stand in direct sun in the Jardin du Luxembourg, 10:00 to 14:00 on 21 December"
+          }
+        ],
+        "line": "left-bank"
+      },
+      {
+        "id": "terrasse",
+        "giver": "karim",
+        "title": "Une baguette, s'il vous plaît",
+        "stamp": "Saint-Germain-des-Prés",
+        "talk": [
+          "Bonjour, monsieur-dame. A table on the terrace? They all face the street, like a theatre.",
+          "You are hungry, I can see it. Nadia has the best tradition on the Rue du Bac. Go before the evening queue.",
+          "Bring her my regards. Then you can tell Camille the Left Bank is surveyed."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "nadia",
+            "text": "Find Nadia, the baker, on the Rue du Bac"
+          }
+        ],
+        "line": "left-bank"
+      },
+      {
+        "id": "dame-de-fer",
+        "giver": "henri",
+        "title": "Under the Iron Lady",
+        "stamp": "Eiffel Tower",
+        "talk": [
+          "You fly? Then do me a favour and look at my paint from up close.",
+          "The first floor is 57 metres up. The arches between the legs are decoration, Eiffel added them for the look, and there is room under them for a helicopter.",
+          "Take the helicopter from the Champ de Mars, go under the first floor, and land on the Trocadéro side."
+        ],
+        "steps": [
+          {
+            "type": "under_bridge",
+            "surface": "Eiffel Tower first floor",
+            "text": "Fly the helicopter under the Eiffel Tower's first floor"
+          },
+          {
+            "type": "land",
+            "place": "Jardins du Trocadéro",
+            "text": "Land in the Jardins du Trocadéro"
+          }
+        ],
+        "line": "tower"
+      },
+      {
+        "id": "done",
+        "line": "finale",
+        "giver": "camille",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": [
+          "You're back. The river, the Left Bank and the tower: that is Paris read from the air.",
+          "Every roof you looked at was measured, and every shadow comes from the sun's real position. If something looks wrong, it is probably wrong in the data. Tell IGN, or fix OpenStreetMap.",
+          "Bonne continuation, surveyor. The city is yours to walk."
+        ],
+        "steps": []
+      }
+    ]
+  }
+}
