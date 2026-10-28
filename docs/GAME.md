@@ -28,6 +28,8 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
 | **Surveying from the trig station at mid-arch** | **The height challenge** |
 | ![](images/sydney/game-trig.jpg) | ![](images/sydney/game-guess.jpg) |
+| **Photo mode: a saved picture, captioned with the time and the sun** | |
+| ![](images/sydney/game-photo.jpg) | |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
@@ -44,6 +46,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which survey line the route and the beam follow |
+| <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
@@ -107,6 +110,19 @@ Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
 
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
+
+**Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
+people, the traffic and the ferries hold still, and the HUD goes. You control the
+camera and the shot:
+- **Camera:** drag to turn round the focus and scroll to come closer. <kbd>W A S D</kbd>
+  and <kbd>Space</kbd>/<kbd>C</kbd> move the focus up to 300 m from you.
+- **Time:** moves the sun for the picture, and the clock stays there when you leave.
+- **Lens:** the field of view, shown as a full-frame focal length.
+- **Extras:** Turntable circles slowly, Grid shows the thirds, and Show me hides
+  your surveyor.
+
+**Save photo** (<kbd>Enter</kbd>) writes a PNG. Its caption gives the place, the
+date and time, the sun's height and the data credit.
 
 ## What we took from other games, and where this one is different
 
