@@ -46,8 +46,8 @@ export function createMats(env, torch) {
       // the plate is a lattice of radiating branchlets ending in upturned corallites: radial ribs, dots, a pale growing edge
       const ang = atan(pg.z, pg.x), rad = length(vec2(pg.x, pg.z));
       // the fine lattice aliases into moire beyond a few metres: it fades into its mean with distance (per plate size)
-      const near = smoothstep(A.w.mul(9), A.w.mul(2.5), length(positionWorld.sub(cameraPosition)));
-      const lines = smoothstep(0.2, 0.8, sin(ang.mul(rad.mul(260).add(40)).add(n3(pg, 9).mul(4))).mul(0.5).add(0.5)).sub(0.5).mul(near).add(0.5);
+      const near = smoothstep(A.w.mul(5), A.w.mul(1.2), length(positionWorld.sub(cameraPosition)));
+      const lines = smoothstep(0.2, 0.8, sin(ang.mul(rad.mul(110).add(24)).add(n3(pg, 9).mul(3))).mul(0.5).add(0.5)).sub(0.5).mul(near).add(0.5);
       const dots = smoothstep(0.12, 0.04, mx_worley_noise_float(vec3(pg.x, 0, pg.z).mul(70))).mul(near);
       let col = mix(C.rgb, D.rgb, smoothstep(0.75, 1.0, aux.x).max(dots.mul(0.5))).mul(lines.mul(0.35).add(0.7)).mul(n3(pg, 6).mul(0.2).add(1));
       col = col.mul(select(aux.w.greaterThan(0.5), float(0.55), float(1)));
