@@ -18,6 +18,7 @@
 //   vessel.setSails('sail'|'motor'|'furled')   hoist / motor / furl the sails of a yacht or cat
 //   surfaceAt(x, z, t)  CPU copy of the ocean: { h, nx, ny, nz } at scene x, z (z = -north)
 //   wake               the wake field; wake.wakeNode(worldXZ) -> { height, foam } is a TSL node for ocean.js
+//   deckAt(x, north)   height of a walkable deck (pontoon, helipad, jetty) at a point, or null; also pushed to ctx.decks
 //   nav                depth-grid router: route([x, north], [x, north]) -> waypoints, anchorage(), shoreFrom()
 //
 // The wake field is hooked into ocean.js's material here (positionNode + outputNode are wrapped) unless
@@ -272,6 +273,31 @@ export async function init(ctx) {
   // initial state for sails of anchored yachts: furled
   for (const v of vessels) { v.snapSails(); }
 
+  // ---- decks the player can stand on: the pontoon, its helipad and the marina jetty (ctx.decks; player.js) ----
+  // deckAt(x, north) -> the deck's height (m) at that point, or null
+  const _m = new THREE.Matrix4(), _p = new THREE.Vector3();
+  const localOf = (obj, x, y, north) => { obj.updateMatrix(); _m.copy(obj.matrix).invert(); return _p.set(x, y, -north).applyMatrix4(_m); };
+  const worldY = (obj, lx, ly, lz) => _p.set(lx, ly, lz).applyMatrix4(obj.matrix).y;
+  function deckAt(x, north) {
+    let best = null;
+    const take = y => { if (best === null || y > best) best = y; };
+    if (pontoon && Math.hypot(pontoon.x - x, -pontoon.z - north) < 20) {
+      const l = localOf(pontoon.root, x, pontoon.y, north);
+      if (Math.abs(l.x) < 14.6 && Math.abs(l.z) < 5.1) take(worldY(pontoon.root, l.x, 0.55, l.z));
+    }
+    for (const p of pads) if (Math.hypot(p.x - x, -p.z - north) < 8) {
+      const l = localOf(p.root, x, p.y, north);
+      if (l.x * l.x + l.z * l.z < 49) take(worldY(p.root, l.x, 0.46, l.z));
+    }
+    if (jetty) {
+      const g = jetty.group, l = localOf(g, x, g.position.y, north), w = jetty.w;
+      if (l.x > -0.5 && l.x < jetty.len && Math.abs(l.z) < w / 2) take(g.position.y + 1.77);
+      for (const fx of jetty.fingers) if (Math.abs(l.x - fx) < 0.65 && l.z > w / 2 + 0.2 && l.z < w / 2 + 12.2) take(g.position.y + 0.4);
+    }
+    return best;
+  }
+  if (ctx.decks) ctx.decks.push(deckAt);
+
   // ---- lookup and boarding ----
   const byName = (s) => { s = String(s).toLowerCase(); return vessels.find(v => v.name.toLowerCase() === s || v.id === s) || vessels.find(v => v.name.toLowerCase().includes(s)) || null; };
   const refOf = (id) => typeof id === 'string' ? byName(id) : (typeof id === 'object' ? id : vessels[id]);
@@ -369,7 +395,7 @@ export async function init(ctx) {
   // settle buoyancy and sails before the first frame, then optionally run ?warm=<s> seconds so wakes have built up
   { const w = windNow(); for (let k = 0; k < 2; k++) for (const v of vessels) if (v.mode !== 'orbit' && v.kind !== 'helicopter') { v.buoyancy(6, true); v.rig(6, w); v.place(); } }
   for (let i = 0, n = Number(q.get('warm') ?? 0) * 30; i < n; i++) step(1 / 30);
-  const API = { update, vessels, board, leave, wake, byName, seaplane: seaplaneApi, helicopter: helicopterApi, nav, surfaceAt: surf.surfaceAt, wakeNode: wake.wakeNode, windInfo: wind, pads, jetty, pontoon, moorings, hooked };
+  const API = { update, vessels, board, leave, wake, byName, deckAt, seaplane: seaplaneApi, helicopter: helicopterApi, nav, surfaceAt: surf.surfaceAt, wakeNode: wake.wakeNode, windInfo: wind, pads, jetty, pontoon, moorings, hooked };
   API.ctx = ctx; API.initMs = Math.round(performance.now() - tInit);
   window.__boats = ctx.boats = API;
   return API;

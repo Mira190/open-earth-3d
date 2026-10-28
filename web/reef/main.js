@@ -92,6 +92,7 @@ async function main() {
     habitat: (x, north) => habitatAt(d, x, north),                    // class under a point, see HABITAT
     depth: (x, north) => env.u.tide.value - terrainHeight(d, x, north), // water depth, m (negative on land)
     toScene: (x, up, north) => new THREE.Vector3(x, up, -north),      // local frame (east, up, north) -> three.js
+    decks: [],                                                        // (x, north) -> deck height or null: pontoons, jetties (boats.js)
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
   for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
     try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }
