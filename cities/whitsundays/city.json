@@ -1,0 +1,29 @@
+{
+  "id": "whitsundays",
+  "name": "Whitsundays",
+  "country": "Australia",
+  "country_code": "AU",
+  "kind": "marine",
+  "timezone": "Australia/Brisbane",
+  "locale": "en-AU",
+  "description": "The Whitsunday Islands and the inner Great Barrier Reef, rebuilt from open data: 30 m survey bathymetry, a Sentinel-2 composite and the real sun.",
+  "bbox": [148.88, -20.42, 149.20, -20.12],
+  "origin": [149.03, -20.28],
+  "extent_m": [-15700, 17700, -15500, 17700],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m MSL",
+  "year": 2026,
+  "imagery": {
+    "type": "sentinel2",
+    "pixel_m": 10,
+    "since": "2025-10-01",
+    "max_cloud": 12,
+    "attribution": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS"
+  },
+  "terrain": {
+    "type": "gbr_bathy",
+    "pixel_m": 30,
+    "bare_earth": true,
+    "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)"
+  }
+}
