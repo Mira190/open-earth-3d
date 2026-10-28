@@ -232,7 +232,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const npcById = id => npcs.find(n => n.id === id);
 
   // ------------------------------------------------------------ vehicles
-  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer };
+  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea };
   const padAt = (G.helipads[0] || { at: [G.start.at[0] + 20, G.start.at[1], 2] }).at;
   const heli = OEVehicles.helicopter(world, nav, padAt, vopts);
   const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);

@@ -450,6 +450,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         r.scale.set(rad, 1, rad);
         r.material.opacity = wash * (water ? 0.42 : 0.18) * Math.pow(1 - ph, 1.4) * Math.min(1, ph * 8) * light;
         r.material.color.copy(lin(water ? '#ffffff' : '#c9b79a'));
+        // on the water the rings are foam in the water's own field; on land, dust in the air
+        if (water) onWake(r, opts); else r.layers.set(0);
       }
     }
     return { group: g, seat, door, animate };
@@ -658,6 +660,10 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       animate: (dt, t, o) => { animateLamps(o.night); animate(dt, t, o); } };
   }
 
+  // where the water draws its own foam field (water.js on r186: opts.water), the wakes, hull
+  // foam and downwash rings are drawn into it from above and leave the main view, so the foam
+  // rides the waves; otherwise they lie on the water as meshes
+  function onWake(mesh, opts) { if (opts.water && opts.water.wakeLayer != null) mesh.layers.set(opts.water.wakeLayer); }
   // the wake: a ribbon of foam behind the trailing end that spreads at the Kelvin angle
   // (tan 19.47 deg = 0.354) and fades; the bow wave and propeller wash ride a skirt of foam
   // round the waterline
@@ -667,7 +673,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   // across the wake: the two arms of the V at its edges, calm water inside them, and the
   // churned propeller wash down the middle, which narrows and fades sooner
   const K = 7;
-  function ribbon(world) {
+  function ribbon(world, w0 = 4.4) {
     const N = WAKE_N, pos = new Float32Array(N * K * 3), col = new Float32Array(N * K * 3), uv = new Float32Array(N * K * 2), idx = [];
     for (let i = 0; i < N - 1; i++) for (let k = 0; k < K - 1; k++) { const a = i * K + k, b = a + K; idx.push(a, b, a + 1, a + 1, b, b + 1); }
     const geo = new THREE.BufferGeometry();
@@ -689,7 +695,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         let ax = prv.x - nxt.x, ay = prv.y - nxt.y;
         const al = Math.hypot(ax, ay) || 1;
         ax /= al; ay /= al;
-        const w = 4.4 + 0.354 * d, age = t - p.t, arm = 1.2 + 0.05 * d, wash = Math.min(w - arm, 2.8 + 0.07 * d);
+        const w = w0 + 0.354 * d, age = t - p.t, arm = 1.2 + 0.05 * d, wash = Math.min(w - arm, w0 * 0.64 + 0.07 * d);
         const f = (i < pts.length ? 1 : 0) * Math.exp(-d / 110) * Math.exp(-Math.max(0, age) / 45) * (p.w ?? 1) * light;
         const offs = [-w, -(w - arm), -wash, 0, wash, w - arm, w];
         const lum = [0, 0.5 * f, 0.05 * f, 0.7 * f * Math.exp(-d / 50), 0.05 * f, 0.5 * f, 0];
@@ -706,7 +712,10 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     return { mesh, draw };
   }
   function ferryEffects(world, M, I, opts) {
-    const live = ribbon(world), ghost = ribbon(world);
+    // the wake starts as wide as the hull (4.4 m each side for the harbour ferry)
+    const w0 = I && I.beam_m ? I.beam_m / 2 * (M.length && I.length_m ? M.length / I.length_m : 1) - 0.4 : 4.4;
+    const live = ribbon(world, w0), ghost = ribbon(world, w0);
+    onWake(live.mesh, opts); onWake(ghost.mesh, opts);
     let S = [], left = [], arc = 0, lastLead = 0; // samples of the trailing end, newest first; `left` is the wake left behind on reversing
     // foam round the hull at the waterline
     const wl = I ? I.waterline : null;
@@ -736,6 +745,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       skirt.material.map.wrapS = skirt.material.map.wrapT = THREE.RepeatWrapping;
       skirt.material.map.needsUpdate = true;
       skirt.renderOrder = 1;
+      onWake(skirt, opts);
       M.g.add(skirt);
     }
     const half = M.length ? M.length / 2 - 1 : 16;

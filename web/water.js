@@ -12,6 +12,10 @@
 //              faded out where the grid is too coarse for it; shading on the scene's own
 //              lights (MeshPhysicalMaterial, ior 1.33): sun glints, sky and a planar
 //              reflection of the city, unresolved slope as roughness (Cox-Munk)
+//   wakes      a top-down foam field round the camera, 1 m a texel at street level: each
+//              frame an overhead camera draws the meshes on the wake layer (ferry wakes,
+//              the foam round hulls, a helicopter's downwash rings) into it, and the
+//              surface turns it into lacy, churned foam that rides the waves
 //   shore      a signed distance to the shoreline with beach and rock masks
 //              (shore.png, written by pipeline/build_scene.py): waves calm towards the
 //              shore, foam runs along it, shallow water shows the bottom, and the ground
@@ -285,12 +289,21 @@ void main() {
       uDeep: { value: lin(cfg.colour || '#0f2b33') }, uShallow: { value: lin(cfg.shallow_colour || '#2f6b66') },
       uClarity: { value: cfg.clarity_m ?? 4 }, uSlopes: { value: new THREE.Vector3(...['sand', 'rock', 'built'].map(k => (shore && shore.slopes || {})[k] ?? { sand: 0.04, rock: 0.25, built: 1 }[k])) },
       uFloor: { value: shore && shore.floor_m || 4 },
-      uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 }
+      uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 },
+      uWake: { value: null }, uWakeBox: { value: new THREE.Vector4(0, 0, 1, 0) }
     };
     const C = sizes.length;
     const COMMON = `
 uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind;
 uniform vec4 uShoreBox; uniform vec3 uDeep, uShallow, uSlopes; uniform sampler2D uRefl; uniform mat4 uReflMat;
+uniform sampler2D uWake; uniform vec4 uWakeBox;
+// the wake field (x, z of its centre, its size, on): foam drawn by passing vessels
+float wakeAt(vec2 xz) {
+  if (uWakeBox.w < 0.5) return 0.0;
+  vec2 uv = vec2((xz.x - uWakeBox.x) / uWakeBox.z + 0.5, (uWakeBox.y - xz.y) / uWakeBox.z + 0.5);
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
+  return texture(uWake, uv).r;
+}
 // shore.png: r signed distance to the shoreline (0.5 m per level, 128 = shore, water positive),
 // g sand, b rock; outside the map it is open water
 vec4 shoreAt(vec2 xz) {
@@ -338,6 +351,10 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   float calm = smoothstep(1.0, 14.0, sh0.x);
   // near the shore the heights calm (so the sea never climbs the land) but the ripples stay
   vec2 slope = sl.xy / max(vec2(1.0 + sl.z, 1.0 + sl.w), vec2(0.2)) * mix(0.75, 1.0, calm);
+  // churned water in a wake: broken, tumbling ripples under lacy foam
+  float wk = wakeAt(vXZ);
+  vec2 churn = vec2(wNoise(vXZ * 2.1 + uTime * 1.3), wNoise(vXZ.yx * 2.3 - uTime * 1.1)) - 0.5;
+  slope += churn * 0.5 * smoothstep(0.0, 0.5, wk);
   wN = normalize(vec3(-slope.x, 1.0, -slope.y));
   // shore foam, by the kind of shore and the size of the waves: a faint broken lap against a
   // seawall, splash patches off rock, and lines of swash running in on a beach
@@ -350,7 +367,9 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   float swash = sh0.y * smoothstep(band, 0.2 * band, sh0.x) * smoothstep(0.72, 0.95, runIn) * (0.5 + 0.5 * lace);
   // a line thinner than a pixel covers only part of it
   float shoreFoam = sh0.w * clamp(lap + splash + swash, 0.0, 1.0) * clamp((0.4 + 3.0 * uHs) / fp, 0.15, 1.0);
-  wFoam = clamp(smoothstep(0.25, 1.0, foam) + shoreFoam, 0.0, 1.0);
+  float wakeLace = 0.4 + 0.6 * smoothstep(0.3, 0.75, wNoise(vXZ * 1.6 + vec2(uTime * 0.35, -uTime * 0.2)) * 0.6 + wNoise(vXZ * 5.3 - uTime * 0.5) * 0.4);
+  float wakeFoam = smoothstep(0.05, 0.7, wk) * wakeLace;
+  wFoam = clamp(smoothstep(0.25, 1.0, foam) + shoreFoam + wakeFoam, 0.0, 1.0);
   // the modelled depth of pipeline/shore.py (no bathymetry), through which the bottom shows:
   // the distance to the shore times the slope for its kind (sand, rock or built), to a floor
   float wd = sh0.w > 0.5 ? min(uFloor, max(sh0.x, 0.0) * mix(mix(uSlopes.z, uSlopes.y, sh0.z), uSlopes.x, sh0.y)) : 30.0;
@@ -360,7 +379,10 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   // murky water hides the bottom off seawalls and mostly off rock; beaches show their sand
   wAlpha = max(wAlpha, mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y) * sh0.w);
   wAlpha = max(wAlpha, wFoam);
-  diffuseColor.rgb = mix(uShallow, uDeep, smoothstep(0.0, uFloor, wd)) * 0.12;
+  // light scattered back out of the water column: a clear harbour gives back little and reads
+  // dark; silt and clay in a turbid river (under 2 m of visibility) scatter it back, so the
+  // river shows the brown of the aerial photo its colours were picked from
+  diffuseColor.rgb = mix(uShallow, uDeep, smoothstep(0.0, uFloor, wd)) * mix(0.12, 1.0, clamp((2.0 - uClarity) / 1.6, 0.0, 1.0));
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.82), wFoam);
   // crests catch light through the water (a cheap subsurface term)
   diffuseColor.rgb += uShallow * 0.06 * clamp(vWave.y / max(uHs, 0.05), 0.0, 1.5);`)
@@ -407,6 +429,39 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
       refl.updateMatrixWorld();
       u.uRefl.value = refl.getRenderTarget().texture;
     }
+    // the wake field: an overhead orthographic camera that sees only the wake layer
+    const WAKE_LAYER = 5, WAKE_RES = small || soft ? 512 : 1024;
+    const wakeRT = new THREE.WebGLRenderTarget(WAKE_RES, WAKE_RES, { depthBuffer: false });
+    const wakeCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 1, 400);
+    wakeCam.up.set(0, 0, -1);
+    wakeCam.layers.set(WAKE_LAYER);
+    u.uWake.value = wakeRT.texture;
+    const clearC = new THREE.Color(), fwd = new THREE.Vector3();
+    function drawWakes(camera, world) {
+      // a window 1 m a texel at street level, wider from the air, reaching ahead of the camera
+      const size = Math.min(3000, Math.max(WAKE_RES, camera.position.y * 6)), px = size / WAKE_RES;
+      camera.getWorldDirection(fwd);
+      const fl = Math.hypot(fwd.x, fwd.z) || 1;
+      const cx = Math.round((camera.position.x + fwd.x / fl * size * 0.3) / (px * 8)) * px * 8;
+      const cz = Math.round((camera.position.z + fwd.z / fl * size * 0.3) / (px * 8)) * px * 8;
+      wakeCam.left = wakeCam.bottom = -size / 2; wakeCam.right = wakeCam.top = size / 2;
+      wakeCam.updateProjectionMatrix();
+      wakeCam.position.set(cx, 200, cz);
+      wakeCam.lookAt(cx, 0, cz);
+      wakeCam.updateMatrixWorld();
+      const prev = renderer.getRenderTarget(), alpha = renderer.getClearAlpha(), shadows = renderer.shadowMap.autoUpdate;
+      renderer.getClearColor(clearC);
+      renderer.shadowMap.autoUpdate = false; // the shadows are the main view's; this pass has none
+      renderer.setRenderTarget(wakeRT);
+      renderer.setClearColor(0x000000, 1);
+      renderer.clear(true, false, false);
+      renderer.render(world, wakeCam);
+      renderer.setRenderTarget(prev);
+      renderer.setClearColor(clearC, alpha);
+      renderer.shadowMap.autoUpdate = shadows;
+      u.uWakeBox.value.set(cx, cz, size, 1);
+    }
+
     const inv = new THREE.Matrix4(), snap = 4;
     let last = null;
     function update(tMs, camera, world) {
@@ -416,6 +471,7 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
       for (let c = 0; c < C; c++) { u.uDisp.value[c] = fft.disp(c); u.uDeriv.value[c] = fft.deriv(c); }
       u.uTime.value = t;
       mesh.position.set(Math.round(camera.position.x / snap) * snap, 0, Math.round(camera.position.z / snap) * snap);
+      if (world) drawWakes(camera, world);
       u.uReflOn.value = 0;
       if (refl && camera.position.y > 0.3) {
         const sz = new THREE.Vector2();
@@ -457,8 +513,8 @@ vec4 shoreAt(vec2 xz) {
   roughnessFactor = mix(roughnessFactor, 0.25, max(wet, swash) * 0.8);`);
     }
 
-    function dispose() { fft.dispose(); geo.dispose(); mat.dispose(); if (refl) { refl.getRenderTarget().dispose(); refl.material.dispose(); } }
-    return { mesh, material: mat, update, patchGround, dispose, Hs, fft, uniforms: u, reflections: !!refl, N };
+    function dispose() { fft.dispose(); geo.dispose(); mat.dispose(); wakeRT.dispose(); if (refl) { refl.getRenderTarget().dispose(); refl.material.dispose(); } }
+    return { mesh, material: mat, update, patchGround, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER };
   }
 
   // a software rasteriser (SwiftShader, llvmpipe): smaller FFTs, a coarser grid, no reflection
