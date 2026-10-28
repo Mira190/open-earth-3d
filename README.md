@@ -10,9 +10,9 @@ shadow comes from ray casting rather than a render. The result is a model you
 can check, as well as look at.
 
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
-Sydney" demos: the same city, rebuilt so that it can be checked. It grows from
-there one city at a time. Each new city is a config file and a few checks, not
-a new codebase.
+Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
+next. It grows from there one city at a time. Each new city is a config file
+and a few checks, not a new codebase.
 
 ![The globe landing page: live and planned cities, with today's day and night](docs/images/globe.jpg)
 
@@ -22,22 +22,35 @@ a new codebase.
 
 ![Cycles render of Sydney from the Blender script](docs/images/sydney/overview.jpg)
 
-## Play it: Sydney on Foot
+| Melbourne in the browser | Testing a tower against DDO10 | Cycles render of Melbourne |
+|---|---|---|
+| ![](docs/images/melbourne/screenshot-overview.jpg) | ![](docs/images/melbourne/screenshot-tower.jpg) | ![](docs/images/melbourne/overview.jpg) |
 
-The model is also a game. You walk central Sydney as a surveyor, talk to the
-people who know it, ride the Cross Harbour ferry, walk up onto the Harbour
-Bridge with the traffic, fly a helicopter under its deck, and find a sunny spot
-in Martin Place on the winter solstice. Everything the characters tell you is
+## Play it: Sydney on Foot and Melbourne on Foot
+
+The model is also a game.
+- **Sydney:** you walk the city centre as a surveyor and talk to the people who
+  know it. You climb the Opera House's Monumental Steps, ride the Cross Harbour
+  ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
+  helicopter under its deck, and find a sunny spot in Martin Place on the
+  winter solstice.
+- **Melbourne:** you check the midwinter sun on Federation Square, take a
+  shuttle down the Yarra, and fly past the Arts Centre spire.
+
+The people are rigged, animated characters from open (CC0) packs, recoloured so
+that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. Open **Play** on the globe, or go to
-`#play-sydney`. [docs/GAME.md](docs/GAME.md) covers:
+`#play-sydney` or `#play-melbourne`. [docs/GAME.md](docs/GAME.md) covers:
 - the controls;
 - what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
   Discovery Tour;
 - where this game does better than they do.
 
-| Under the Harbour Bridge | The Cross Harbour ferry | Talking to the Opera House guide |
+| Under the Harbour Bridge | The Opera House's Monumental Steps | Talking to the Opera House guide |
 |---|---|---|
-| ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-ferry.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
+| ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-steps.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
+| **Melbourne: a planner explains DDO10 in City Square** | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
+| ![](docs/images/melbourne/game-dialogue.jpg) | ![](docs/images/melbourne/game-river.jpg) | ![](docs/images/melbourne/game-heli.jpg) |
 
 **Osaka on Foot** is the same game in another city: Dotonbori at dusk, the Tombori
 River Cruise, a kushikatsu chef in Shinsekai, a leopard-print obachan with candy in the
@@ -55,8 +68,8 @@ card, or go to `#play-osaka`.
 | City | Status | What's in it |
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House and Harbour Bridge are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
+| **Melbourne**, Australia | **Live** | 13,050 buildings and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
 | **Osaka**, Japan | **Live** | 73,280 buildings across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
-| Melbourne, Australia | Planned | ELVIS LiDAR; City of Melbourne open 3D massing |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
 | Paris, France | Planned | IGN RGE ALTI, BD ORTHO and BD TOPO heights |
@@ -83,7 +96,9 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   Every estimator is cross-validated, and missing heights are corrected for not
   being missing at random. The viewer can colour buildings by source.
 - **Bare-earth terrain and aerial imagery** from the best open source for the
-  place, checked against an independent elevation service where one exists.
+  place, checked against an independent elevation source where one exists.
+  Where no imagery is openly licensed, the ground is drawn from the map data
+  instead of borrowed.
 - **The real sun.** The NOAA solar position (about 0.01°) is computed in the
   city's own time zone, with daylight saving taken from the platform's time
   zone database. The viewer adds live shadow maps, a sky model and lit windows
@@ -102,11 +117,11 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 
 ## Run it
 
-The built Sydney scene is in the repository, so the viewer runs straight away:
+The built Sydney and Melbourne scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney for the 3D model, #play-sydney for the game
+# open http://localhost:8000 for the globe, #sydney or #melbourne for a 3D model, #play-sydney or #play-melbourne for a game
 ```
 
 To rebuild a city from the raw data (about 2 minutes for Sydney), run:
@@ -126,6 +141,7 @@ python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landm
 python analysis/heights.py --city sydney              # published heights vs model
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
+python pipeline/fetch_people.py                       # the game's characters (once; Quaternius CC0 packs)
 ```
 
 `heights.py` reads the built scene, and `build_scene.py` uses its name matches
@@ -203,7 +219,10 @@ Data tab. The shared sources are:
   Buildings (ODbL). A derived database must stay under ODbL.
 - **The globe's base map:** Natural Earth (public domain).
 - **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono).
-- **3D library:** three.js r128 (MIT), loaded from a CDN.
+- **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
+  modules from a CDN.
+- **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular
+  Women (CC0 1.0, public domain).
 
 Sydney also uses these sources:
 - NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).
@@ -213,6 +232,15 @@ Sydney also uses these sources:
 - Sydney LEP 2012 cl. 6.18, for the protected places. Their windows were
   transcribed from secondary sources, so check the official text before
   relying on them.
+
+Melbourne also uses these sources:
+- Geoscience Australia's 5 m LiDAR DEM (CC BY 4.0), for the terrain.
+- Vicmap Elevation spot heights (CC BY 4.0), for the terrain check.
+- Wikipedia's *List of tallest buildings in Melbourne* (CC BY-SA), for
+  reference heights.
+- The Melbourne Planning Scheme (DDO10 and clause 15.01-1L-03), read from the
+  Victorian government's planning API.
+- No aerial imagery: none covering the city is openly licensed.
 
 No licence has been chosen for the code yet. Until one is added, the default
 copyright applies.

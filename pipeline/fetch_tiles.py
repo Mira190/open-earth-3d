@@ -1,9 +1,14 @@
 """Aerial imagery and terrain for a city, from the providers in its city.json.
 
   imagery  "xyz": any slippy-map tile service ({z}, {x}, {y} in the URL), Web Mercator
+           "synth": none; build_scene.py draws the ground from the vector data instead
+           (for cities with no openly licensed aerial imagery)
   terrain  "arcgis_image": an ArcGIS ImageServer exportImage of float elevations
            "gsi_dem_png": GSI (Japan) DEM tiles: 5 m airborne-LiDAR bare earth (dem5a_png, zoom 15),
                         with an optional coarser "fallback" tile set (dem_png, zoom 14) for gaps
+           "wcs": an OGC WCS 1.0.0 GetCoverage of float elevations in geographic
+                  coordinates (`crs`, e.g. EPSG:4283 for GDA94); pits deeper than
+                  `fill_below_m` (voids in the source) are filled from their neighbours
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -92,6 +97,31 @@ def dem_arcgis(bbox, cfg, raw):
     return [x0, y0, x1, y1], size
 
 
+def dem_wcs(bbox, cfg, raw):
+    """One float32 GeoTIFF over the bbox in geographic coordinates, voids filled."""
+    w, s, e, n = bbox[0] - 0.002, bbox[1] - 0.002, bbox[2] + 0.002, bbox[3] + 0.002
+    px = cfg.get("pixel_deg", 5.5e-5)
+    size = (round((e - w) / px), round((n - s) / px))
+    r = requests.get(cfg["url"], timeout=300, headers=UA, params=dict(
+        SERVICE="WCS", VERSION="1.0.0", REQUEST="GetCoverage", COVERAGE=cfg.get("coverage", "1"), CRS=cfg.get("crs", "EPSG:4283"),
+        BBOX=f"{w},{s},{e},{n}", WIDTH=size[0], HEIGHT=size[1], FORMAT="GeoTIFF"))
+    r.raise_for_status()
+    if not r.headers.get("content-type", "").startswith("image/tiff"):
+        raise SystemExit(f"WCS returned {r.headers.get('content-type')}: {r.text[:300]}")
+    path = os.path.join(raw, "dem.tif")
+    with open(path, "wb") as f:
+        f.write(r.content)
+    a = np.asarray(Image.open(path), dtype=np.float32).copy()
+    bad = a < cfg.get("fill_below_m", -1e9)
+    if bad.any():
+        from scipy.ndimage import distance_transform_edt
+        idx = distance_transform_edt(bad, return_distances=False, return_indices=True)
+        a = a[tuple(idx)]
+        Image.fromarray(a).save(path)
+    print(f"dem: {bad.sum()} void pixels filled, range {a.min():.1f} to {a.max():.1f} m")
+    return [w, s, e, n], size
+
+
 def dem_terrarium(raw, z, xs, ys):
     """Stitch Terrarium tiles into a float32 Web Mercator grid."""
     tiles = os.path.join(raw, "terrarium", str(z))
@@ -162,8 +192,11 @@ def main():
     bbox, cfg = city.cfg["bbox"], city.cfg
     im = cfg["imagery"]
     t = time.time()
-    ok, n, _ = fetch_xyz(bbox, im["url"], im["zoom"], im.get("format", "jpg"), os.path.join(city.raw, "imagery", str(im["zoom"])))
-    print(f"imagery: z{im['zoom']}, {ok}/{n} tiles in {time.time() - t:.0f} s")
+    if im["type"] == "xyz":
+        ok, n, _ = fetch_xyz(bbox, im["url"], im["zoom"], im.get("format", "jpg"), os.path.join(city.raw, "imagery", str(im["zoom"])))
+        print(f"imagery: z{im['zoom']}, {ok}/{n} tiles in {time.time() - t:.0f} s")
+    else:
+        print(f"imagery: {im['type']}, nothing to download")
     ok, n, (xs, ys) = fetch_xyz(bbox, TERRARIUM, 15, "png", os.path.join(city.raw, "terrarium", "15"))
     print(f"terrarium: z15, {ok}/{n} tiles")
     tc = cfg["terrain"]
@@ -173,9 +206,11 @@ def main():
         mbbox, size = dem_gsi(bbox, tc, city.raw)
     elif tc["type"] == "terrarium":
         mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
+    elif tc["type"] == "wcs":
+        mbbox, size = dem_wcs(bbox, tc, city.raw)
     else:
         raise SystemExit(f"unknown terrain type {tc['type']}")
-    json.dump({"crs": "EPSG:3857", "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
+    json.dump({"crs": tc.get("crs", "EPSG:4283") if tc["type"] == "wcs" else "EPSG:3857", "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
               open(os.path.join(city.raw, "dem.json"), "w"))
     print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
 

@@ -362,7 +362,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     g.fillStyle = fg; g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillText(text, w / 2, r + 2);
     const tex = new THREE.CanvasTexture(c);
-    tex.encoding = THREE.sRGBEncoding;
+    tex.colorSpace = THREE.SRGBColorSpace;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
     s.scale.set(w / (size + pad) * 0.42, 0.42, 1);
     s.renderOrder = 10;

@@ -29,13 +29,30 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
 | Measured heights | `fetch_plateau_citygml.py` | `data/raw/<id>/plateau_bldg.json`: PLATEAU footprints with measured heights, from the mesh files of the national CityGML archive that cover the bbox (HTTP range reads, no full download) |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`), and Terrarium tiles for the radar check |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer or an OGC WCS), and Terrarium tiles for the radar check |
+| People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, ground tiles; `cities/<id>/analysis/height_model.json` |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
+
+### Ground
+
+The ground tiles are the aerial photo, resampled into the local frame at 1 m
+per pixel, where the city has openly licensed imagery. Where it has none
+(Melbourne), the build draws them from the vector data instead:
+- land use and land cover;
+- water;
+- roads with their kerbs and footpaths;
+- footways, cycleways and rail;
+- piers;
+- footprints, with contact shading and fine noise so the surface reads at
+  street level.
+
+Roofs then get neutral colours rather than a sampled photo.
 
 ### Heights: the ladder
 
@@ -97,7 +114,15 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 ## Viewer
 
-`web/index.html` is one page with three views. A route script picks one:
+`web/index.html` is one page with three views. three.js r186 loads as ES modules
+through an import map (cdnjs for the core, jsDelivr for the addons and
+three-mesh-bvh), and a small module exposes them as the global `THREE` the app's
+scripts use. Colour management is left off: the scripts convert their sRGB
+colours to linear themselves, as they did on r128. The sky keeps r128's output too:
+r183 made the Sky shader's radiance linear and its sun disc far brighter, and the
+environment map turned that disc into a second sun, over-lighting noon and
+darkening dawn. With r128's tone curve and disc restored, a game frame differs
+from r128's by 5 levels in 255 at the mean. A route script picks a view:
 - `#<id>` opens a built city's 3D model;
 - `#play-<id>` opens its game;
 - anything else shows the globe.
@@ -119,7 +144,9 @@ The views switch in place, without reloading the page.
   sphere and hidden on the far side. Each live city shows its local time and
   sun altitude.
 - **`city.js`** is the model viewer. It drives everything city-specific from
-  `scene.city`. It also builds a 2 m
+  `scene.city`. Picking a building goes through a bounding-volume hierarchy
+  (three-mesh-bvh) over the extruded buildings. One ray against Sydney's 178,683
+  building triangles takes 0.04 ms instead of 13 ms. It also builds a 2 m
   surface model for ray casting, so the panel's numbers do not depend on the
   shadow map's resolution.
 - **`sun.js`** works in the browser and in Node, so the viewer and the
@@ -131,9 +158,20 @@ The views switch in place, without reloading the page.
 
   Ray casting skips empty space with 8-cell block maxima.
 
+- **`sun-gpu.js`** is the same ray caster as a WebGL2 fragment shader. Each
+  output pixel is one ground point, and it counts the sun positions that point
+  sees. The surface model and the block maxima are float textures, so the result
+  matches `sun.js` ray for ray: 87,000 of 87,000 test rays agree. The viewer uses
+  it for the sun-hours map, with 2 m cells every 10 minutes, against 8 m every 20
+  minutes on the CPU. A software renderer (SwiftShader, llvmpipe) is slower than
+  `sun.js`, so it gets the CPU path, as does any GPU whose texture limit is
+  smaller than the surface model.
+
 - **`game/`** is the game; [GAME.md](GAME.md) describes it:
   - navigation;
-  - people and traffic;
+  - people (`people.js`): skinned characters near the player, instanced crowd
+    copies further away, all recoloured from one palette per character;
+  - traffic;
   - helicopter and ferries;
   - HUD;
   - sound.

@@ -1,0 +1,4 @@
+osm_id,name,floors,height_m,source,note
+w1498379398,Melbourne Quarter Tower,34,155.2,https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Melbourne,MQT in OSM (completed 2024); open-data floor-count estimate was 191.1 m
+w191018149,Abode318,57,187.3,https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Melbourne,Abode 318 Apartments in OSM (completed 2015); open-data estimate was 12.9 m
+w307229424,Meriton Suites King Street,58,188.0,https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Melbourne,140 King Street (completed 2023); OSM still maps 3 levels on this site and the tower is assumed to fill it; open-data estimate was 11.7 m

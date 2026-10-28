@@ -99,7 +99,7 @@ window.OEVehicles = (function () {
         const below = nz + 3.8 < d.z - 3.0;
         if (Math.abs(d.v) > d.s.half_width + 4) {
           const side = Math.sign(d.v);
-          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge' });
+          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge', name: d.s.label || d.s.name });
           st.under = { side, ok: true };
         } else if (st.under && !below) st.under.ok = false;
       } else st.under = null;
@@ -157,16 +157,16 @@ window.OEVehicles = (function () {
     return { g, flag };
   }
 
-  const foamTex = (() => {
+  let foam = null; // made on first use (three.js may load after this file)
+  const foamTex = () => foam || (foam = (() => {
     const c = document.createElement('canvas'); c.width = 64; c.height = 256;
     const g = c.getContext('2d');
     for (let i = 0; i < 260; i++) {
       const y = Math.random() * 256, x = 32 + (Math.random() - 0.5) * (8 + y * 0.22), a = (1 - y / 256) * 0.55;
       g.fillStyle = `rgba(255,255,255,${a})`; g.fillRect(x, y, 1 + Math.random() * 2.5, 2 + Math.random() * 7);
     }
-    const t = new THREE.CanvasTexture(c);
-    return t;
-  })();
+    return new THREE.CanvasTexture(c);
+  })());
   function wake() {
     const geo = new THREE.PlaneGeometry(1, 1, 1, 1);
     geo.rotateX(-Math.PI / 2);
@@ -174,7 +174,7 @@ window.OEVehicles = (function () {
     for (let i = 0; i < p.count; i++) { const back = p.getZ(i) > 0; p.setX(i, p.getX(i) * (back ? 46 : 9)); p.setZ(i, back ? 98 : 18); }
     const uv = geo.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setY(i, p.getZ(i) > 50 ? 0 : 1);
-    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: foamTex, transparent: true, depthWrite: false, opacity: 0 }));
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: foamTex(), transparent: true, depthWrite: false, opacity: 0 }));
     m.position.y = 0.06;
     m.renderOrder = 1;
     return m;

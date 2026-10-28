@@ -1152,9 +1152,9 @@
         "steps": []
       }
     ],
-    "water_hint": "No swimming in the canal, Osaka-style or not. Boats leave from the landings marked F.",
     "blurb": "Walk Dotonbori, Kuromon and Shinsekai, take the Tombori River Cruise and the Aqua Liner, climb to the keep of Osaka Castle and fly over Umeda. Talk to the people who know the city. Every fact they tell you comes from the model.",
-    "passerby": "Osakan"
+    "local_name": "Osakan",
+    "water_name": "canal"
   },
   "storey_note": "Calibrated on Project PLATEAU: 118,782 non-residential and 11,163 residential buildings with a storey count and a measured height have a median of 3.4 m and 3.6 m a floor, with no constant term.",
   "night_ambient": 0.5

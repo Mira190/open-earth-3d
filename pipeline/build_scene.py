@@ -23,6 +23,7 @@ import numpy as np
 import shapely
 from PIL import Image, ImageDraw
 from scipy.ndimage import map_coordinates
+from pyproj import Transformer
 from scipy.spatial import cKDTree
 from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
@@ -64,10 +65,13 @@ def load_dem(C, cell=DEM_CELL):
     nx, ny = int((C.x1 - C.x0) / cell) + 1, int((C.y1 - C.y0) / cell) + 1
     gx, gy = np.meshgrid(C.x0 + np.arange(nx) * cell, C.y1 - np.arange(ny) * cell)
     lon, lat = C.inv.transform(gx.ravel(), gy.ravel())
-    mx = np.asarray(lon) * 20037508.342789 / 180
-    my = np.log(np.tan((90 + np.asarray(lat)) * np.pi / 360)) * 6378137
-    col = (mx - mx0) / (mx1 - mx0) * w - 0.5
-    row = (my1 - my) / (my1 - my0) * h - 0.5
+    if meta.get("crs", "EPSG:3857") == "EPSG:3857":
+        mx = np.asarray(lon) * 20037508.342789 / 180
+        my = np.log(np.tan((90 + np.asarray(lat)) * np.pi / 360)) * 6378137
+    else:  # geographic: the local frame is WGS84, taken as GDA2020 (within 0.5 m), converted to the DEM's datum
+        mx, my = Transformer.from_crs("EPSG:7844", meta["crs"], always_xy=True).transform(np.asarray(lon), np.asarray(lat))
+    col = (np.asarray(mx) - mx0) / (mx1 - mx0) * w - 0.5
+    row = (my1 - np.asarray(my)) / (my1 - my0) * h - 0.5
     return map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx)
 
 
@@ -124,15 +128,130 @@ def ground_tiles(C):
     return tiles, ortho
 
 
+# the ground drawn from the vector data, for cities without open aerial imagery
+SYNTH = {
+    "base": "#cdc8bd", "lawn": "#9db37a", "garden": "#8fab6e", "pitch": "#8db36a", "paving": "#dad4c7", "ballast": "#8e8a83",
+    "dirt": "#b7a68c", "wood": "#6f8c58", "sand": "#d9c9a0", "wetland": "#7d9474", "rock": "#a29c92", "water": "#456a78",
+    "kerb": "#bdb7ac", "asphalt": "#55595e", "service": "#6a6e72", "foot": "#d6cfc2", "cycle": "#c4b4a2", "rail": "#6d655e",
+    "building": "#8f8b84", "pier": "#a08f76",
+}
+LANDUSE_FILL = {"park": "lawn", "grass": "lawn", "meadow": "lawn", "recreation_ground": "lawn", "village_green": "lawn", "cemetery": "lawn",
+                "garden": "garden", "flowerbed": "garden", "allotments": "garden", "plant_nursery": "garden", "pitch": "pitch",
+                "pedestrian": "paving", "plaza": "paving", "railway": "ballast", "construction": "dirt", "brownfield": "dirt", "greenfield": "dirt"}
+LAND_FILL = {"forest": "wood", "wood": "wood", "scrub": "wood", "shrub": "wood", "heath": "wood", "grass": "lawn", "grassland": "lawn",
+             "sand": "sand", "beach": "sand", "wetland": "wetland", "rock": "rock", "scree": "rock", "bare_rock": "rock"}
+ROAD_W = {"motorway": 16, "trunk": 14, "primary": 13, "secondary": 11, "tertiary": 9, "residential": 7, "unclassified": 7,
+          "living_street": 6, "service": 4, "unknown": 5}
+FOOT_W = {"footway": 2.5, "pedestrian": 4, "path": 2, "steps": 3, "cycleway": 2, "track": 3}
+
+
+def synth_ground(C, con, raw, extent):
+    """Ground tiles drawn from land use, land, water, roads, footways, rail and footprints,
+    with fine noise and contact shading around buildings so it reads as a surface."""
+    from PIL import ImageFilter
+    w, h = int((C.x1 - C.x0) / IMG_M), int((C.y1 - C.y0) / IMG_M)
+    img = Image.new("RGB", (w, h), SYNTH["base"])
+    d = ImageDraw.Draw(img)
+    P = lambda cs: [((x - C.x0) / IMG_M, (C.y1 - y) / IMG_M) for x, y in cs]
+
+    def fill(geom, colour):
+        for p in polygons(geom.intersection(extent)):
+            if p.is_empty or len(p.exterior.coords) < 4:
+                continue
+            d.polygon(P(p.exterior.coords), fill=colour)
+            for r in p.interiors:
+                d.polygon(P(r.coords), fill=SYNTH["base"])
+
+    def stroke(geom, colour, width):
+        for ln in getattr(geom, "geoms", [geom]):
+            if ln.geom_type == "LineString" and len(ln.coords) > 1:
+                d.line(P(ln.coords), fill=colour, width=max(1, int(round(width / IMG_M))), joint="curve")
+    local = lambda r: C.to_local(swkb.loads(bytes(r["wkb"])))
+    lu = sorted(rows(con, raw("land_use")), key=lambda r: -swkb.loads(bytes(r["wkb"])).area)  # small ones on top
+    for r in lu:
+        if r["class"] in LANDUSE_FILL:
+            fill(local(r), SYNTH[LANDUSE_FILL[r["class"]]])
+    for r in rows(con, raw("land")):
+        if r["class"] in LAND_FILL:
+            g = local(r)
+            if g.geom_type in ("Polygon", "MultiPolygon"):
+                fill(g, SYNTH[LAND_FILL[r["class"]]])
+    for r in rows(con, raw("water")):
+        g = local(r)
+        if g.geom_type in ("Polygon", "MultiPolygon") and r["class"] not in ("strait", "sea", "ocean"):
+            fill(g, SYNTH["water"])
+    segs = rows(con, raw("segment"), "class, subtype, road_flags, wkb")
+    tunnel = lambda r: any("is_tunnel" in (f.get("values") or []) and (f.get("between") or [0, 1]) == [0, 1] for f in (r["road_flags"] or []))
+    roads = [(local(r), r) for r in segs if r["subtype"] == "road" and not tunnel(r)]
+    for g, r in roads:  # footpaths and kerbs either side of the carriageway first
+        if r["class"] in ROAD_W and r["class"] != "service":
+            stroke(g, SYNTH["kerb"], ROAD_W[r["class"]] + 5)
+    for g, r in roads:
+        if r["class"] in FOOT_W:
+            stroke(g, SYNTH["cycle" if r["class"] == "cycleway" else "foot"], FOOT_W[r["class"]])
+    for g, r in sorted(roads, key=lambda q: ROAD_W.get(q[1]["class"], 0)):
+        if r["class"] in ROAD_W:
+            stroke(g, SYNTH["service" if r["class"] == "service" else "asphalt"], ROAD_W[r["class"]])
+    for r in segs:
+        if r["subtype"] == "rail" and not tunnel(r):
+            stroke(local(r), SYNTH["rail"], 1.5)
+    for r in rows(con, raw("infrastructure")):
+        if r["class"] == "pier":
+            g = local(r)
+            if g.geom_type in ("Polygon", "MultiPolygon"):
+                fill(g, SYNTH["pier"])
+    # footprints, and contact shading around them
+    mask = Image.new("L", (w, h), 0)
+    md = ImageDraw.Draw(mask)
+    for r in rows(con, raw("building"), "is_underground, wkb"):
+        if r["is_underground"]:
+            continue
+        for p in polygons(local(r).intersection(extent)):
+            if p.is_empty or len(p.exterior.coords) < 4:
+                continue
+            d.polygon(P(p.exterior.coords), fill=SYNTH["building"])
+            md.polygon(P(p.exterior.coords), fill=255)
+    a = np.asarray(img).astype(np.float32)
+    ao = np.asarray(mask.filter(ImageFilter.GaussianBlur(4 / IMG_M))).astype(np.float32) / 255
+    a *= (1 - 0.22 * ao)[..., None]
+    rng = np.random.default_rng(7)
+    coarse = np.asarray(Image.fromarray(rng.normal(0, 1, (h // 16 + 1, w // 16 + 1)).astype(np.float32)).resize((w, h), Image.BILINEAR))
+    a *= (1 + 0.035 * coarse)[..., None]
+    a += rng.normal(0, 3.0, (h, w, 1))
+    ortho = np.asarray(Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.5)))
+    tiles = []
+    for j, ty0 in enumerate(np.arange(C.y1, C.y0, -TILE_H)):
+        for i, tx0 in enumerate(np.arange(C.x0, C.x1, TILE_W)):
+            tw, th = int(TILE_W / IMG_M), int(TILE_H / IMG_M)
+            tile = np.full((th, tw, 3), 128, np.uint8)
+            part = ortho[j * th:(j + 1) * th, i * tw:(i + 1) * tw]
+            tile[:part.shape[0], :part.shape[1]] = part
+            name = f"ground_{i}_{j}.jpg"
+            Image.fromarray(tile).save(os.path.join(C.out, name), quality=80, optimize=True)
+            tiles.append({"file": name, "x0": float(tx0), "x1": float(tx0 + TILE_W), "y0": float(ty0 - TILE_H), "y1": float(ty0)})
+    return tiles, ortho
+
+
 FACADE = {"brick": "#9c6b52", "glass": "#7d93a3", "plaster": "#d9d2c3", "concrete": "#b4b0a8", "stone": "#c9ad7f",
           "metal": "#9aa1a6", "timber_framing": "#8a6a4d"}
 HERITAGE = {"church", "cathedral", "public", "government", "train_station", "university", "college", "civic", "museum"}
 
 
+def muted(hex_colour):
+    """A mapped colour as a facade would show it. OSM colours are often names
+    turned into pure hues ("blue" -> #0000ff); real cladding is far less
+    saturated, so cap saturation at 0.35 and brightness at 0.8 (hue kept)."""
+    import colorsys
+    r, g, b = (int(hex_colour[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    r, g, b = colorsys.hsv_to_rgb(h, min(s, 0.35), min(v, 0.8))
+    return "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
+
+
 def wall_colour(b, cls, top, seed):
-    """Overture facade colour or material when mapped, else a class palette."""
+    """Overture facade colour (muted) or material when mapped, else a class palette."""
     if b.get("facade_color") and str(b["facade_color"]).startswith("#") and len(b["facade_color"]) == 7:
-        return b["facade_color"]
+        return muted(b["facade_color"])
     if b.get("facade_material") in FACADE:
         return FACADE[b["facade_material"]]
     if cls in HERITAGE:
@@ -146,9 +265,15 @@ def wall_colour(b, cls, top, seed):
     return pal[seed % len(pal)]
 
 
+ROOFS = ["#8d8f8f", "#9a9690", "#7f8285", "#a39d93", "#6f7275", "#a6a29a"]
+
+
 def roof_colour(C, ortho, geom, top):
     """Median aerial-photo colour inside the footprint; tall towers lean in a
-    non-true orthophoto, so they get a neutral roof instead."""
+    non-true orthophoto, so they get a neutral roof instead (as does every roof
+    when the ground is drawn rather than photographed)."""
+    if C.cfg["imagery"]["type"] != "xyz":
+        return ROOFS[int(abs(geom.centroid.x * 7 + geom.centroid.y * 13)) % len(ROOFS)]
     if top > 40:
         return "#8d8f8f"
     x0, y0, x1, y1 = geom.bounds
@@ -451,7 +576,7 @@ def build(C):
     dem[water] = -4.0
     ctx = Ctx(C, dem_land)
 
-    tiles, ortho = ground_tiles(C)
+    tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
 
     # piers and wharves as thin decks just above high water
     piers = []
@@ -621,6 +746,8 @@ def build(C):
         for r in json.load(open(ref_path))["rows"]:
             if r.get("how") == "name" and r.get("error_pct", 0) < -40 and r.get("osm_id") in by_osm:
                 bi = by_osm[r["osm_id"]]
+                if meta[bi][4] == "verified":  # a cited lookup outranks a list
+                    continue
                 tallest = max(own(bi), key=lambda k: solids[k][3])
                 solids[tallest][3] = round(r["ref_m"] * 10)
                 fixes.append(f'{r["name"]}: {meta[bi][9]} -> {r["ref_m"]} m')
@@ -642,17 +769,26 @@ def build(C):
     # labels the landmark hook adds go first: the viewer hides a label that would overlap an earlier one
     ctx.labels = {k: v for k, v in ctx.labels.items() if k not in before} | {k: v for k, v in ctx.labels.items() if k in before}
 
-    # public places named in the config (largest polygon of that name and class)
-    lu = rows(con, raw("land_use"))
+    # public places named in the config: the largest land-use polygon of that name and class,
+    # or for "source": "water" (a river corridor) every water polygon of that name, widened by buffer_m
+    lu, wat = rows(con, raw("land_use")), None
     places = []
     for pc in cfg.get("places", []):
-        cands = [r for r in lu if (r["name"] or "").startswith(pc["name"]) and r["class"] == pc.get("class", r["class"])]
+        if pc.get("source") == "water":
+            wat = wat or rows(con, raw("water"))
+            cands = [r for r in wat if (r["name"] or "").startswith(pc["name"]) and r["class"] == pc.get("class", r["class"])]
+        else:
+            cands = [r for r in lu if (r["name"] or "").startswith(pc["name"]) and r["class"] == pc.get("class", r["class"])]
         if not cands:
             print("place not found:", pc["name"])
             continue
-        geom = max((C.to_local(swkb.loads(bytes(r["wkb"]))) for r in cands), key=lambda q: q.area).intersection(extent)
+        geoms = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in cands]
+        if pc.get("source") == "water":
+            geom = shapely.union_all(geoms).buffer(pc.get("buffer_m", 0.0)).intersection(extent)
+        else:
+            geom = max(geoms, key=lambda q: q.area).intersection(extent)
         polys = [p.simplify(0.5) for p in polygons(geom) if p.area > 50]
-        places.append({"name": pc["name"], "lep": pc.get("protected", False), "period": pc.get("period"), "from": pc.get("from"),
+        places.append({"name": pc.get("label", pc["name"]), "lep": pc.get("protected", False), "period": pc.get("period"), "from": pc.get("from"),
                        "to": pc.get("to"), "area_m2": round(sum(p.area for p in polys)),
                        "polygons": [[ring(p.exterior.coords)] + [ring(r.coords) for r in p.interiors] for p in polys]})
 

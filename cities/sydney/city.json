@@ -228,6 +228,10 @@
   "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
   "game": {
     "title": "Sydney on Foot",
+    "local_name": "Sydneysider",
+    "water_name": "harbour",
+    "under_bridge_note": "49 m of clearance, and you used it.",
+    "shade_landmarks": ["opera"],
     "start": {
       "at": [120, 205],
       "facing": [298, 432],
@@ -330,7 +334,7 @@
         "giver": "ava",
         "title": "Welcome to the Quay",
         "stamp": "Circular Quay",
-        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "Before we check anything, get your bearings. Marco is on the Opera House forecourt. Walk over and say hello.", "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."],
+        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "Before we check anything, get your bearings. Marco is on the Opera House forecourt. Walk over and say hello.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk."],
         "steps": [{"type": "talk", "npc": "marco", "text": "Meet Marco on the Opera House forecourt"}]
       },
       {
@@ -338,8 +342,9 @@
         "giver": "marco",
         "title": "Shells from one sphere",
         "stamp": "Sydney Opera House",
-        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "Next, see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
+        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.", "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
         "steps": [
+          {"type": "surface", "surface": "Opera House steps", "u": [-6, 1], "text": "Climb the Monumental Steps to the podium"},
           {
             "type": "ride",
             "from": "circular-quay",

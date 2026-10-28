@@ -1,0 +1,749 @@
+{
+ "note": "Reference heights are architectural (incl. spires); model heights are roof/top of the tallest solid.",
+ "summary": {
+  "reference": 42,
+  "matched": 21,
+  "median_abs_error_pct": 0.2,
+  "median_error_m": 0.0,
+  "within_10pct": 15,
+  "within_20pct": 16,
+  "gross_short": 4,
+  "by_source": {
+   "floors": {
+    "n": 2,
+    "median_abs_error_pct": 58.5
+   },
+   "mapped": {
+    "n": 16,
+    "median_abs_error_pct": 0.1
+   },
+   "estimate": {
+    "n": 3,
+    "median_abs_error_pct": 92.0
+   }
+  }
+ },
+ "rows": [
+  {
+   "name": "Australia 108",
+   "ref_m": 316.7,
+   "ref_floors": 100,
+   "year": "2020",
+   "address": "70 Southbank Boulevard",
+   "xy": [
+    113.0,
+    -623.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2764,
+   "model_name": "Australia 108",
+   "model_m": 317.0,
+   "model_floors": 3,
+   "height_src": "mapped",
+   "osm_id": "w540885940",
+   "error_m": 0.3,
+   "error_pct": 0.1
+  },
+  {
+   "name": "Eureka Tower",
+   "ref_m": 297.3,
+   "ref_floors": 91,
+   "year": "2006",
+   "address": "7 Riverside Quay",
+   "xy": [
+    193.5,
+    -425.7
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2783,
+   "model_name": "Eureka Tower",
+   "model_m": 298.0,
+   "model_floors": 6,
+   "height_src": "mapped",
+   "osm_id": "w13307317",
+   "error_m": 0.7,
+   "error_pct": 0.2
+  },
+  {
+   "name": "Aurora Melbourne Central",
+   "ref_m": 270.5,
+   "ref_floors": 85,
+   "year": "2019",
+   "address": "250 La Trobe Street",
+   "match": "address not found"
+  },
+  {
+   "name": "West Side Place Tower A",
+   "ref_m": 268.7,
+   "ref_floors": 81,
+   "year": "2021",
+   "address": "250 Spencer Street",
+   "xy": [
+    -893.1,
+    327.8
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 2421,
+   "model_name": "",
+   "model_m": 33.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w1548510877",
+   "error_m": -235.7,
+   "error_pct": -87.7,
+   "why": "250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+  },
+  {
+   "name": "120 Collins Street",
+   "ref_m": 266.6,
+   "ref_floors": 52,
+   "year": "1991",
+   "address": "120 Collins Street",
+   "xy": [
+    569.9,
+    376.5
+   ],
+   "match": "ambiguous",
+   "how": "nearest",
+   "building": 3220,
+   "model_name": "St Michael's Uniting Church",
+   "model_m": 31.2,
+   "model_floors": 0,
+   "height_src": "floors",
+   "osm_id": "w22931009",
+   "error_m": -235.4,
+   "error_pct": -88.3,
+   "why": "the address point resolves to St Michael's Uniting Church next door; the model's 120 Collins is mapped at 266 m"
+  },
+  {
+   "name": "101 Collins Street",
+   "ref_m": 260.0,
+   "ref_floors": 50,
+   "year": "1991",
+   "address": "101 Collins Street",
+   "xy": [
+    715.5,
+    303.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4026,
+   "model_name": "101 Collins Street",
+   "model_m": 260.0,
+   "model_floors": 57,
+   "height_src": "mapped",
+   "osm_id": "w140834631",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Prima Pearl",
+   "ref_m": 254.0,
+   "ref_floors": 72,
+   "year": "2014",
+   "address": "31-49 Queensbridge Square",
+   "match": "address not found"
+  },
+  {
+   "name": "Queens Place North Tower",
+   "ref_m": 252.8,
+   "ref_floors": 79,
+   "year": "2021",
+   "address": "350 Queen Street",
+   "xy": [
+    -314.8,
+    784.2
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 3509,
+   "model_name": "",
+   "model_m": 66.3,
+   "model_floors": 3,
+   "height_src": "floors",
+   "osm_id": "w307236348",
+   "error_m": -186.5,
+   "error_pct": -73.8,
+   "why": "the address point falls on the shared podium; the model's Queens Place tower is mapped at 253 m"
+  },
+  {
+   "name": "Rialto Towers",
+   "ref_m": 251.1,
+   "ref_floors": 63,
+   "year": "1986",
+   "address": "525 Collins Street",
+   "xy": [
+    -437.7,
+    -127.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2543,
+   "model_name": "Rialto Towers",
+   "model_m": 20.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w14665796",
+   "error_m": -231.1,
+   "error_pct": -92.0
+  },
+  {
+   "name": "Victoria One",
+   "ref_m": 246.8,
+   "ref_floors": 76,
+   "year": "2018",
+   "address": "452 Elizabeth Street",
+   "xy": [
+    -175.0,
+    1068.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 10395,
+   "model_name": "Victoria One",
+   "model_m": 246.8,
+   "model_floors": 76,
+   "height_src": "mapped",
+   "osm_id": "w390215549",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Premier Tower",
+   "ref_m": 245.7,
+   "ref_floors": 78,
+   "year": "2021",
+   "address": "134-160 Spencer Street",
+   "xy": [
+    -776.3,
+    5.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2514,
+   "model_name": "Premier Tower",
+   "model_m": 246.0,
+   "model_floors": 78,
+   "height_src": "mapped",
+   "osm_id": "w168069183",
+   "error_m": 0.3,
+   "error_pct": 0.1
+  },
+  {
+   "name": "West Side Place Tower D",
+   "ref_m": 239.0,
+   "ref_floors": 72,
+   "year": "2023",
+   "address": "250 Spencer Street",
+   "xy": [
+    -893.1,
+    327.8
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 2421,
+   "model_name": "",
+   "model_m": 33.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w1548510877",
+   "error_m": -206.0,
+   "error_pct": -86.2,
+   "why": "250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+  },
+  {
+   "name": "Swanston Central",
+   "ref_m": 236.7,
+   "ref_floors": 71,
+   "year": "2020",
+   "address": "168 Victoria Street",
+   "xy": [
+    -52.1,
+    1239.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 10369,
+   "model_name": "Swanston Central",
+   "model_m": 237.0,
+   "model_floors": 71,
+   "height_src": "mapped",
+   "osm_id": "w31152559",
+   "error_m": 0.3,
+   "error_pct": 0.1
+  },
+  {
+   "name": "Shangri-La by the Gardens",
+   "ref_m": 231.7,
+   "ref_floors": 59,
+   "year": "2023",
+   "address": "308 Exhibition Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Melbourne Square Tower 1",
+   "ref_m": 231.0,
+   "ref_floors": 70,
+   "year": "2021",
+   "address": "93-119 Kavanagh Street",
+   "match": "address not found"
+  },
+  {
+   "name": "West Side Place Tower C",
+   "ref_m": 230.0,
+   "ref_floors": 70,
+   "year": "2023",
+   "address": "250 Spencer Street",
+   "xy": [
+    -893.1,
+    327.8
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 2421,
+   "model_name": "",
+   "model_m": 33.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w1548510877",
+   "error_m": -197.0,
+   "error_pct": -85.7,
+   "why": "250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+  },
+  {
+   "name": "Vision Apartments",
+   "ref_m": 229.0,
+   "ref_floors": 70,
+   "year": "2016",
+   "address": "500 Elizabeth Street",
+   "xy": [
+    -200.8,
+    1139.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 10354,
+   "model_name": "Vision Apartments",
+   "model_m": 229.0,
+   "model_floors": 70,
+   "height_src": "mapped",
+   "osm_id": "w326172387",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "568 Collins Street",
+   "ref_m": 224.0,
+   "ref_floors": 68,
+   "year": "2015",
+   "address": "568 Collins Street",
+   "xy": [
+    -618.7,
+    -107.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2530,
+   "model_name": "568 Collins Street",
+   "model_m": 224.0,
+   "model_floors": 69,
+   "height_src": "mapped",
+   "osm_id": "w50523289",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Bourke Place",
+   "ref_m": 224.0,
+   "ref_floors": 49,
+   "year": "1991",
+   "address": "600 Bourke Street",
+   "xy": [
+    -544.1,
+    167.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2474,
+   "model_name": "Bourke Place",
+   "model_m": 223.0,
+   "model_floors": 0,
+   "height_src": "mapped",
+   "osm_id": "w49887159",
+   "error_m": -1.0,
+   "error_pct": -0.4
+  },
+  {
+   "name": "380 Melbourne",
+   "ref_m": 221.2,
+   "ref_floors": 67,
+   "year": "2021",
+   "address": "380 Lonsdale Street",
+   "xy": [
+    -119.8,
+    589.7
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 3443,
+   "model_name": "Voco",
+   "model_m": 217.5,
+   "model_floors": 67,
+   "height_src": "mapped",
+   "osm_id": "w48530800",
+   "error_m": -3.7,
+   "error_pct": -1.7
+  },
+  {
+   "name": "Sapphire by the Gardens",
+   "ref_m": 218.8,
+   "ref_floors": 57,
+   "year": "2022",
+   "address": "308 Exhibition Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Light House Melbourne",
+   "ref_m": 218.0,
+   "ref_floors": 69,
+   "year": "2017",
+   "address": "450 Elizabeth Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Telstra Corporate Centre",
+   "ref_m": 218.0,
+   "ref_floors": 47,
+   "year": "1992",
+   "address": "242 Exhibition Street",
+   "xy": [
+    645.5,
+    852.1
+   ],
+   "match": "ambiguous",
+   "how": "nearest",
+   "building": 10533,
+   "model_name": "",
+   "model_m": 11.7,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w1528704427",
+   "error_m": -206.3,
+   "error_pct": -94.6,
+   "why": "the address point resolves to a low building; the model's 242 Exhibition Street is mapped at 193 m, the published roof height"
+  },
+  {
+   "name": "Melbourne Central",
+   "ref_m": 211.0,
+   "ref_floors": 53,
+   "year": "1991",
+   "address": "350 Elizabeth Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Aspire Melbourne",
+   "ref_m": 210.6,
+   "ref_floors": 65,
+   "year": "2023",
+   "address": "299 King Street",
+   "xy": [
+    -748.1,
+    471.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2398,
+   "model_name": "Aspire",
+   "model_m": 33.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w168117466",
+   "error_m": -177.6,
+   "error_pct": -84.3
+  },
+  {
+   "name": "UNO Melbourne",
+   "ref_m": 210.0,
+   "ref_floors": 65,
+   "year": "2023",
+   "address": "111 A'Beckett Street",
+   "match": "address not found"
+  },
+  {
+   "name": "The Queensbridge",
+   "ref_m": 209.0,
+   "ref_floors": 66,
+   "year": "2025",
+   "address": "84-88 Queensbridge Street",
+   "match": "address not found"
+  },
+  {
+   "name": "West Side Place Tower B",
+   "ref_m": 206.0,
+   "ref_floors": 65,
+   "year": "2021",
+   "address": "250 Spencer Street",
+   "xy": [
+    -893.1,
+    327.8
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 2421,
+   "model_name": "",
+   "model_m": 33.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w1548510877",
+   "error_m": -173.0,
+   "error_pct": -84.0,
+   "why": "250 Spencer Street serves four towers and its address point falls on the shared podium; the model has them by name (West Side Place Tower 1 to 4, mapped)"
+  },
+  {
+   "name": "Freshwater Place North",
+   "ref_m": 205.0,
+   "ref_floors": 63,
+   "year": "2005",
+   "address": "1 Queensbridge Square",
+   "xy": [
+    -2.5,
+    -447.8
+   ],
+   "match": "ambiguous",
+   "how": "nearest",
+   "building": 2779,
+   "model_name": "Red Stair Amphitheatre",
+   "model_m": 33.0,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w989034007",
+   "error_m": -172.0,
+   "error_pct": -83.9,
+   "why": "the address point resolves to the Red Stair Amphitheatre; the model's Freshwater Place is mapped at 205 m"
+  },
+  {
+   "name": "Eq. Tower",
+   "ref_m": 202.0,
+   "ref_floors": 63,
+   "year": "2017",
+   "address": "127-141 A'Beckett Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Empire Melbourne",
+   "ref_m": 198.4,
+   "ref_floors": 62,
+   "year": "2017",
+   "address": "398 Elizabeth Street",
+   "xy": [
+    -113.9,
+    901.9
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 10428,
+   "model_name": "Empire Melbourne",
+   "model_m": 198.0,
+   "model_floors": 62,
+   "height_src": "mapped",
+   "osm_id": "w306474048",
+   "error_m": -0.4,
+   "error_pct": -0.2
+  },
+  {
+   "name": "Home Southbank",
+   "ref_m": 198.0,
+   "ref_floors": 60,
+   "year": "2022",
+   "address": "258 City Road",
+   "xy": [
+    -252.6,
+    -932.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5290,
+   "model_name": "Home Southbank",
+   "model_m": 198.0,
+   "model_floors": 58,
+   "height_src": "mapped",
+   "osm_id": "w1235311519",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Melbourne Grand",
+   "ref_m": 198.0,
+   "ref_floors": 57,
+   "year": "2020",
+   "address": "556-558 Lonsdale Street",
+   "xy": [
+    -590.5,
+    397.1
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2388,
+   "model_name": "Melbourne Grand",
+   "model_m": 12.9,
+   "model_floors": 0,
+   "height_src": "estimate",
+   "osm_id": "w738054850",
+   "error_m": -185.1,
+   "error_pct": -93.5
+  },
+  {
+   "name": "405 Bourke Street",
+   "ref_m": 194.9,
+   "ref_floors": 43,
+   "year": "2021",
+   "address": "405 Bourke Street",
+   "xy": [
+    -50.8,
+    295.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 3090,
+   "model_name": "405 Bourke Street",
+   "model_m": 173.0,
+   "model_floors": 39,
+   "height_src": "mapped",
+   "osm_id": "w48207810",
+   "error_m": -21.9,
+   "error_pct": -11.2
+  },
+  {
+   "name": "Collins House",
+   "ref_m": 190.0,
+   "ref_floors": 59,
+   "year": "2019",
+   "address": "466 Collins Street",
+   "match": "address not found"
+  },
+  {
+   "name": "80 Collins South",
+   "ref_m": 188.4,
+   "ref_floors": 41,
+   "year": "2020",
+   "address": "80 Collins Street",
+   "xy": [
+    735.1,
+    440.1
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4016,
+   "model_name": "80 Collins South",
+   "model_m": 188.0,
+   "model_floors": 44,
+   "height_src": "mapped",
+   "osm_id": "r12318198",
+   "error_m": -0.4,
+   "error_pct": -0.2
+  },
+  {
+   "name": "Meriton Suites",
+   "ref_m": 188.0,
+   "ref_floors": 58,
+   "year": "2023",
+   "address": "140 King Street",
+   "xy": [
+    -557.4,
+    80.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 2504,
+   "model_name": "Meriton Suites King Street",
+   "model_m": 11.7,
+   "model_floors": 58,
+   "height_src": "floors",
+   "osm_id": "w307229424",
+   "error_m": -176.3,
+   "error_pct": -93.8
+  },
+  {
+   "name": "Sofitel Hotel at Collins Place",
+   "ref_m": 188.0,
+   "ref_floors": 50,
+   "year": "1980",
+   "address": "35 Collins Street",
+   "xy": [
+    906.8,
+    371.9
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 3987,
+   "model_name": "",
+   "model_m": 188.0,
+   "model_floors": 50,
+   "height_src": "mapped",
+   "osm_id": "w22931324",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "ANZ Tower at Collins Place",
+   "ref_m": 188.0,
+   "ref_floors": 46,
+   "year": "1978",
+   "address": "55 Collins Street",
+   "xy": [
+    835.6,
+    368.4
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4033,
+   "model_name": "ANZ Tower",
+   "model_m": 188.0,
+   "model_floors": 46,
+   "height_src": "mapped",
+   "osm_id": "w24530656",
+   "error_m": 0.0,
+   "error_pct": 0.0
+  },
+  {
+   "name": "Abode318",
+   "ref_m": 187.3,
+   "ref_floors": 57,
+   "year": "2015",
+   "address": "312-318 Russell Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Victoria Police Centre Tower 2",
+   "ref_m": 180.0,
+   "ref_floors": 40,
+   "year": "2020",
+   "address": "311 Spencer Street",
+   "match": "address not found"
+  },
+  {
+   "name": "Melbourne Quarter Tower",
+   "ref_m": 155.2,
+   "ref_floors": 34,
+   "year": "2024",
+   "address": "695 Collins Street",
+   "xy": [
+    -880.4,
+    -336.3
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 2726,
+   "model_name": "MQT",
+   "model_m": 191.1,
+   "model_floors": 34,
+   "height_src": "floors",
+   "osm_id": "w1498379398",
+   "error_m": 35.9,
+   "error_pct": 23.1
+  }
+ ]
+}

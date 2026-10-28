@@ -22,7 +22,10 @@ Start with the data, not the skyline.
   state DEM service first.
 - **Imagery** must be an XYZ tile service whose licence allows reuse. 1 m per
   pixel or better (zoom 17 at mid latitudes) is enough for ground and roof
-  colour.
+  colour. Many cities have none: Melbourne's aerial tiles are licensed and
+  paid. Then set `imagery.type` to `synth`, and the build draws the ground from
+  the vector data instead (section 2). Don't fall back on a commercial basemap
+  whose terms forbid redistribution: the tiles end up in the repository.
 - **An independent check** for the terrain (a LiDAR identify service) and for
   heights (a list of published tower heights with street addresses) is what
   turns a model into one you can check.
@@ -47,17 +50,17 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `overture_release` | yes | An Overture release, for example `2026-10-21.0` |
 | `vertical_datum` | no | A label for heights, such as `m AHD` |
 | `year` | no | Year for dates in the viewer and analyses (default: this year) |
-| `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}` |
-| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "gsi_dem_png", url, zoom, fallback: {url, zoom}, bare_earth, attribution}` for GSI (Japan) elevation tiles, 5 m laser DEM with the 10 m DEM filling gaps; or `{type: "terrarium"}` as a last resort |
-| `terrain_check` | no | `{type: "arcgis_identify", url, field, name}`: an independent elevation service for `analysis/dem_check.py`; or `{type: "gsi_dem_png", url, zoom, name}` for GSI PNG tiles (a coarser, older Japanese DEM) |
+| `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}`. Or `{type: "synth", attribution}`: no imagery, and the ground is drawn from Overture land use, land, water, roads, footways, rail and footprints |
+| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "wcs", url, coverage, crs, pixel_deg, fill_below_m, bare_earth, attribution}` for an OGC WCS 1.0.0 `GetCoverage` in geographic coordinates (GDA94 is converted from GDA2020, about 1.5 m); `{type: "gsi_dem_png", url, zoom, fallback: {url, zoom}, bare_earth, attribution}` for GSI (Japan) elevation tiles, 5 m laser DEM with the 10 m DEM filling gaps; or `{type: "terrarium"}` as a last resort |
+| `terrain_check` | no | An independent elevation source for `analysis/dem_check.py`: `{type: "arcgis_identify", url, field, name}` (a raster service sampled on a grid) or `{type: "arcgis_points", url, field, name}` (surveyed spot heights from a feature layer); or `{type: "gsi_dem_png", url, zoom, name}` for GSI PNG tiles (a coarser, older Japanese DEM) |
 | `plateau` | no | `{url, dataset, licence}`: Project PLATEAU's national CityGML archive. `pipeline/fetch_plateau_citygml.py` reads only the mesh files inside the bbox out of the zip with HTTP range requests, and `build_scene.py` takes every matched building's measured height from it (heights source `plateau`; `plateau_lod1` for a building with only a block height). PLATEAU buildings Overture lacks are added |
 | `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
 | `minor_labels` | no | Labels drawn in the lighter style |
 | `place_labels` | no | Names from `places` to label on the ground |
-| `places` | no | Public places: `{name, class, protected, period, from, to}`. `name` is matched to the start of an Overture land-use name with that `class`. `period` is `all` or `MM-DD..MM-DD`, and `from` and `to` are local `HH:MM`. A place with a period is tested by "test a new tower" |
-| `protection` | no | The rule behind the places: `{title, summary, source_note, reading_note, default_time_basis: "standard" or "clock", tip, unprotected_label}` |
+| `places` | no | Public places: `{name, class, protected, period, from, to}`. `name` is matched to the start of an Overture land-use name with that `class`. With `source: "water"`, every water polygon of that name is joined and widened by `buffer_m` (a river corridor), and `label` renames it. `period` is `all`, a range `MM-DD..MM-DD`, a single day `MM-DD`, or a comma-separated list of those (`04-22,09-22`); `from` and `to` are local `HH:MM`. A protected place with a period is tested by "test a new tower" |
+| `protection` | no | The rule behind the places: `{title, summary, source_note, reading_note, default_time_basis: "standard" or "clock", test_dates, tip, unprotected_label}`. `test_dates` (`[[M, D], ...]`) are the days the tower test samples; by default, the solstices and equinoxes. Set it when the rule names its own days |
 | `analysis_region` | no | `[x0, x1, y0, y1]`: the dense core, used by the data-quality and radar checks |
 | `sun_hours_region` | no | `[x0, x1, y0, y1]`: the area of the viewer's sun-hours map |
 | `reference_heights` | no | `{file, source}`: published heights; see below. A `match_name` column in the CSV (the building's name as mapped) finds a building without a street address |
@@ -68,7 +71,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `helipads`; `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See Sydney's config and [GAME.md](GAME.md). Optional flavour keys: `blurb` (title-screen text), `smalltalk` (a list of crowd lines), `passerby` (the role shown for crowd members), `player_looks`, `water_hint`; `crowd.style` (`skin`, `hair`, `tops`, `legs`, `weights`, `scale`, `patterns`, `acc`: the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`). See Osaka's config |
+| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) Flavour keys: `blurb` (title-screen text), `smalltalk` (a list of crowd lines), `player_looks`; `crowd.style` (`skin`, `hair`, `tops`, `legs`, `weights`, `scale`, `patterns`, `acc`: the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`). See Osaka's config |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -105,9 +108,13 @@ def landmark_meshes(scene):
 ```python
 def game_surfaces(scene):
     """Called by pipeline/game_data.py. Walkable surfaces above the terrain, such as
-    a bridge deck: [{name, type: "strip", origin, axis, half_width, profile:
-    [[u, z], ...], thickness}]. People and cars use them, and the helicopter
-    collides with their underside."""
+    a bridge deck or a flight of steps: [{name, type: "strip", origin, axis,
+    half_width, profile: [[u, z], ...], thickness, mesh, fly_under, drape, label}].
+    People and cars use them, and the helicopter collides with their underside.
+    mesh: the landmark mesh (name prefix) the surface stands for, which the game
+    walks on as the strip rather than as a solid; fly_under: a span the
+    helicopter can be flown under (a quest step); drape: every footway crossing
+    the surface is put onto it (steps); label: a short name for messages."""
 ```
 
 `ctx.ground(x, y)` gives the bare-earth height. `ctx.polygons(geom)` splits
@@ -143,6 +150,8 @@ python analysis/heights.py --city <id>            # if there is a reference tabl
 python pipeline/build_scene.py --city <id>        # applies reference corrections
 python analysis/data_quality.py --city <id>
 python analysis/dem_check.py --city <id>          # if there is a terrain_check
+node analysis/error_budget.js --city <id>
+node analysis/time_basis.js --city <id>
 python analysis/radar_check.py --city <id>        # unless the terrain is Terrarium
 node analysis/sun_access.js --city <id>
 node analysis/uncertainty.js --city <id> 40       # writes the viewer's uncertainty ranges
