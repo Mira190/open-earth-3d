@@ -17,8 +17,8 @@ function railLine(K, M, a, b, y, h = 1.0, step = 1.2) {
 // ~30 m twin-hull day boat: white hulls with a blue stripe, two enclosed decks and a bridge, bow ramp
 export function buildDayCat(o = {}) {
   const M = materials(), K = new Kit(), group = new THREE.Group();
-  const blue = 0x0e4a8a;
-  const hullMat = M.hull({ band: blue, bandY: [1.0, 1.55], boot: [0.0, 0.1], anti: 0x16314d });
+  const blue = 0x1565c0;
+  const hullMat = M.hull({ band: blue, bandY: [0.75, 1.6], boot: [0.0, 0.1], anti: 0x16314d });
   const L = 30, S = 3.2;
   const h = hull({ L, B: 2.7, dh: 1.0, fbMid: 1.95, fbBow: 2.8, fbStern: 2.0, pn: 3.4, pm: 0.5, tw: 0.9, eMid: 0.82, eBow: 1.0, rake: 1.6, kpos: 0.6, kp: 1.6, nS: 54, sternDraft: 0.25 });
   for (const sd of [-1, 1]) {

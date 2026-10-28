@@ -30,7 +30,7 @@ export function materials() {
   M.tube = solid(0x4b5257, 0.7);
   M.alu = solid(0xc9ced1, 0.38);
   M.chrome = solid(0xdfe3e6, 0.25);
-  M.blue = solid(0x0c3f7c, 0.35);
+  M.blue = fill(solid(0x1565c0, 0.35), 0x1565c0, 0.14);
   M.navy = solid(0x0a2347, 0.4);
   M.red = solid(0xb01f1f, 0.4);
   M.yellow = solid(0xf2c21a, 0.45);

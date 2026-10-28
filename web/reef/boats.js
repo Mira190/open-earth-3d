@@ -5,7 +5,27 @@
 // - a world-locked wake field plus ribbon trails (boats/wake.js)
 // - AI traffic over A* routes on the depth grid (boats/nav.js, boats/vessel.js)
 // - rideable boats and flyable aircraft (boats/control.js)
-// Test cameras: ?boatcam=<name|id|kind>&bd=<m>&baz=<deg from bow>&bel=<deg>&bh=<look height>.
+//
+// API (all on the returned object, also window.__boats):
+//   vessels            array of Vessel { id, name, kind, x, z (=-north), y, hdg (compass rad), speed, mode, root, desc }
+//                      kinds: yacht cat daycat tinnie seaplane helicopter pontoon helipad mooring
+//   byName(s)          exact or partial name, or id ('yacht-3')
+//   board(id, player)  drive a boat (tinnie, yacht, cat, day cat) or fly the aircraft; installs ctx.controller and
+//                      restores the previous one on leave(); `player` (optional) gets .boarded, .group.visible=false, onBoard/onLeave
+//   leave()            WASD drive: W/S throttle, A/D steer, R sails (yachts), drag to look, F leave
+//   seaplane / helicopter  { vessel, enter(player), exit() } for the parked aircraft at the reef pontoon
+//   vessel.setSails('sail'|'motor'|'furled')   hoist / motor / furl the sails of a yacht or cat
+//   surfaceAt(x, z, t)  CPU copy of the ocean: { h, nx, ny, nz } at scene x, z (z = -north)
+//   wake               the wake field; wake.wakeNode(worldXZ) -> { height, foam } is a TSL node for ocean.js
+//   nav                depth-grid router: route([x, north], [x, north]) -> waypoints, anchorage(), shoreFrom()
+//
+// The wake field is hooked into ocean.js's material here (positionNode + outputNode are wrapped) unless
+// ctx.ocean.wakeHooked is already true or ?wakehook=0. To do it natively in ocean.js instead, read `ctx.wake.wakeNode`
+// after the modules load: add `.height` to the vertex y and mix white by `.foam` over the Fresnel alpha, and set
+// ocean.wakeHooked = true so this module leaves the material alone.
+//
+// Test cameras: ?boatcam=<name|id|kind>&bd=<m>&baz=<deg from bow>&bel=<deg>&bh=<look height>&bsail=sail|motor|furled
+//   &warm=<s> (let wakes build before the first frame) &noribbon=1 (field only) &wakehook=0 (ribbons only).
 import * as THREE from 'three/webgpu';
 import { Fn, vec3, vec4, float, mix, max, select, smoothstep, mx_noise_float, positionWorld, cameraPosition } from 'three/tsl';
 import { shared, materials, sstep } from './boats/kit.js';
@@ -29,6 +49,7 @@ export async function init(ctx) {
   materials();
   const surf = makeSurface(ctx);
   const wake = createWakeField(ctx);
+  ctx.wake = wake; ctx.surfaceAt = surf.surfaceAt;     // for other modules (divers, ocean.js)
   const nav = createNav(ctx);
   const vessels = [];
   const dtr = Math.PI / 180;
