@@ -13,6 +13,15 @@ export async function loadScene(base) {
   const raw = new Int16Array(await (await fetch(base + t.file)).arrayBuffer());
   const heights = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) heights[i] = raw[i] * t.units_m;
+  // the sea only reaches hollows it is connected to: a flood fill from the edges through everything below the
+  // highest tide; a hollow it cannot reach (a creek bed, a swamp, a DEM pit) is land to the water (water heights)
+  const waterHeights = Float32Array.from(heights), W = t.w, H = t.h, LIM = 2.6, seen = new Uint8Array(W * H), q = new Int32Array(W * H);
+  let qn = 0;
+  const push = k => { if (!seen[k] && heights[k] < LIM) { seen[k] = 1; q[qn++] = k; } };
+  for (let j = 0; j < H; j++) { push(j * W); push(j * W + W - 1); }
+  for (let i = 0; i < W; i++) { push(i); push((H - 1) * W + i); }
+  for (let h = 0; h < qn; h++) { const k = q[h], i = k % W; if (i > 0) push(k - 1); if (i < W - 1) push(k + 1); if (k >= W) push(k - W); if (k < (H - 1) * W) push(k + W); }
+  for (let k = 0; k < W * H; k++) if (!seen[k] && heights[k] < LIM) waterHeights[k] = LIM;
   const loadImg = src => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = src; });
   const img = await loadImg(base + scene.ground.file);
   // the habitat classes: one byte per ground pixel, read back from the PNG
@@ -21,22 +30,24 @@ export async function loadScene(base) {
   const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(hi, 0, 0);
   const px = cx.getImageData(0, 0, hi.width, hi.height).data, habitat = new Uint8Array(hi.width * hi.height);
   for (let i = 0; i < habitat.length; i++) habitat[i] = px[i * 4];
-  return { scene, heights, img, habitat };
+  return { scene, heights, waterHeights, img, habitat };
 }
 
 // the local frame (x east, y north, z up) is drawn at (x, z, -y)
-export function terrainHeight(d, x, north) {
+export function terrainHeight(d, x, north, hs = d.heights) {
   const t = d.scene.terrain, W = t.w, H = t.h;
   const fx = (x - t.x0) / t.cell_m - 0.5, fy = (t.y1 - north) / t.cell_m - 0.5;
   const ix = Math.floor(fx), iy = Math.floor(fy), ax = fx - ix, ay = fy - iy;
-  const g = (i, j) => d.heights[Math.min(H - 1, Math.max(0, j)) * W + Math.min(W - 1, Math.max(0, i))];
+  const g = (i, j) => hs[Math.min(H - 1, Math.max(0, j)) * W + Math.min(W - 1, Math.max(0, i))];
   return (g(ix, iy) * (1 - ax) + g(ix + 1, iy) * ax) * (1 - ay) + (g(ix, iy + 1) * (1 - ax) + g(ix + 1, iy + 1) * ax) * ay;
 }
+// the bed as the sea sees it: hollows the sea cannot reach are raised above the highest tide
+export const waterBed = (d, x, north) => terrainHeight(d, x, north, d.waterHeights);
 
-export function heightTexture(d) {
+export function heightTexture(d, hs = d.waterHeights) {
   const t = d.scene.terrain;
-  const half = new Uint16Array(d.heights.length);
-  for (let i = 0; i < half.length; i++) half[i] = THREE.DataUtils.toHalfFloat(d.heights[i]);
+  const half = new Uint16Array(hs.length);
+  for (let i = 0; i < half.length; i++) half[i] = THREE.DataUtils.toHalfFloat(hs[i]);
   const tex = new THREE.DataTexture(half, t.w, t.h, THREE.RedFormat, THREE.HalfFloatType);
   tex.magFilter = tex.minFilter = THREE.LinearFilter;
   tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping;

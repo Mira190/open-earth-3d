@@ -1,5 +1,5 @@
 import * as THREE from 'three/webgpu';
-import { loadScene, createTerrain, heightTexture, terrainHeight, habitatAt } from './world.js';
+import { loadScene, createTerrain, heightTexture, terrainHeight, waterBed, habitatAt } from './world.js';
 import { makeWaves, createEnv, setSun } from './env.js';
 import { createOcean } from './ocean.js';
 import { createShore } from './shore.js';
@@ -60,7 +60,7 @@ async function main() {
   scene.add(terrain.group);
   const ocean = createOcean(d, env, hTex);
   scene.add(ocean.mesh);
-  const shore = createShore(d, env, hTex, terrain);
+  const shore = createShore(d, env, heightTexture(d, d.heights), terrain);   // the ground's own heights, hollows and all
   scene.add(shore.mesh);
 
   // sky dome
@@ -137,7 +137,7 @@ async function main() {
   const ctx = { THREE, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null,
     height: (x, north) => terrainHeight(d, x, north),                 // sea-floor / ground elevation, m above datum
     habitat: (x, north) => habitatAt(d, x, north),                    // class under a point, see HABITAT
-    depth: (x, north) => env.u.tide.value - terrainHeight(d, x, north), // water depth, m (negative on land)
+    depth: (x, north) => env.u.tide.value - waterBed(d, x, north),    // water depth, m (negative on land and in hollows the sea cannot reach)
     toScene: (x, up, north) => new THREE.Vector3(x, up, -north),      // local frame (east, up, north) -> three.js
     decks: [],                                                        // (x, north) -> deck height or null: pontoons, jetties (boats.js)
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
