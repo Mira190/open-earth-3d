@@ -187,7 +187,7 @@ window.OpenEarthCity = async function main(cityId) {
     const utc = S.localToUtc(state.y, state.m, state.d, state.min);
     const sp = S.position(utc);
     sunPos = sp;
-    Wd.setSun(sp);
+    Wd.setSun(sp, state.min);
     sunDir = Wd.sunDir;
     const loc = S.utcToLocal(utc);
     $('#clock').textContent = `${fmtMin(state.min)} ${loc.zone}`;
@@ -411,6 +411,11 @@ window.OpenEarthCity = async function main(cityId) {
     if (m[4] === 'reference') rows.push(['Open data said', `<span class="num">${m[9].toFixed(1)} m</span>`]);
     if (m[3]) rows.push(['Floors', `<span class="num">${m[3]}</span>`]);
     if (m[1]) rows.push(['Type', m[1].replace(/_/g, ' ')]);
+    if (B.styles && typeof m[10] === 'number') {
+      const how = ['ruled by size and type', "drawn from the region's mapped roofs", 'mapped in OpenStreetMap'][m[16]] || '';
+      rows.push(['Roof', `${(B.roof_shapes[m[15]] || 'flat').replace(/_/g, ' ')}, ${B.roof_materials[m[13]] || ''} <span class="note">(${how})</span>`],
+        ['Facade', `${B.styles[m[10]]}, ${m[11]} m storeys`]);
+    }
     rows.push(['Footprint', m[5] === 'O' ? 'OpenStreetMap' : 'Microsoft ML'], ['OSM record', osm]);
     $('#insp-kv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     $('#inspector').hidden = false;

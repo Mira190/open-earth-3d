@@ -17,7 +17,7 @@
   {
    "place": "Hyde Park",
    "month": 3,
-   "clock_time": 98.1,
+   "clock_time": 98.2,
    "standard_time": 97.7,
    "diff_pp": -0.4
   },
@@ -52,22 +52,22 @@
   {
    "place": "Martin Place",
    "month": 2,
-   "clock_time": 49.6,
-   "standard_time": 55.1,
-   "diff_pp": 5.6
+   "clock_time": 49.7,
+   "standard_time": 55.2,
+   "diff_pp": 5.5
   },
   {
    "place": "Martin Place",
    "month": 3,
-   "clock_time": 20.7,
-   "standard_time": 23.8,
-   "diff_pp": 3.1
+   "clock_time": 20.8,
+   "standard_time": 23.9,
+   "diff_pp": 3.2
   },
   {
    "place": "Martin Place",
    "month": 10,
-   "clock_time": 52,
-   "standard_time": 58.7,
+   "clock_time": 52.1,
+   "standard_time": 58.8,
    "diff_pp": 6.7
   },
   {

@@ -1,7 +1,7 @@
 // Open Earth 3D world: the city scene that the model viewer (city.js) and the game
-// (game/*.js) share: terrain under aerial imagery, water, extruded buildings with a
-// facade shader (windows, lights at night, height-source colours), piers, trees,
-// parametric landmarks, sky and sun. Local frame: x east, y north, z up; three.js is
+// (game/*.js) share: terrain under aerial imagery, water, the buildings (buildings.js:
+// walls, LOD2 roofs, facades with windows by floor, lights at night, height-source
+// colours), piers, trees, parametric landmarks, sky and sun. Local frame: x east, y north, z up; three.js is
 // y-up, so a local point (x, y, z) is drawn at (x, z, -y).
 'use strict';
 window.OEWorld = (function () {
@@ -21,6 +21,7 @@ window.OEWorld = (function () {
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null)]);
     const CITY = scene.city;
     S.site({ lat: CITY.lat, lon: CITY.lon, tz: CITY.timezone, locale: CITY.locale });
+    S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);
     const T = { data: Float32Array.from(ti, v => v * scene.terrain.scale), nx: scene.terrain.nx, ny: scene.terrain.ny,
       cell: scene.terrain.cell, x0: scene.frame.x[0], y1: scene.frame.y[1] };
@@ -117,7 +118,7 @@ window.OEWorld = (function () {
     world.add(water);
 
     // ------------------------------------------------------------ buildings
-    loadMsg(`Extruding ${B.b.length.toLocaleString()} buildings`, 0.5);
+    loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
     await idle();
     const SRC = { mapped: 0, reference: 0, verified: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
     function extrude(solids, colourOf) {
@@ -185,47 +186,14 @@ window.OEWorld = (function () {
       }
       return c;
     };
-    const U = { uNight: { value: 0 }, uSel: { value: -1 }, uMode: { value: 0 },
+    const U = { uNight: { value: 0 }, uSel: { value: -1 }, uMode: { value: 0 }, uHour: { value: 12 },
       uC0: { value: lin(css('--s1') || '#2a78d6') }, uC1: { value: lin(css('--s2') || '#eb6834') }, uC2: { value: lin(css('--s3') || '#1baf7a') } };
-    function facadeMaterial() {
-      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
-      mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, U);
-        sh.vertexShader = sh.vertexShader
-          .replace('#include <common>', `#include <common>
-  attribute vec2 fac; attribute float bid; attribute float srcCode;
-  varying vec2 vFac; varying float vBid; varying float vSrc;`)
-          .replace('#include <begin_vertex>', `#include <begin_vertex>
-  vFac = fac; vBid = bid; vSrc = srcCode;`);
-        sh.fragmentShader = sh.fragmentShader
-          .replace('#include <common>', `#include <common>
-  uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
-  varying vec2 vFac; varying float vBid; varying float vSrc;
-  float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
-          .replace('#include <color_fragment>', `#include <color_fragment>
-  float win = 0.0; vec2 cell = vec2(0.0);
-  if (vFac.y >= 0.0) {
-    vec2 q = vec2(vFac.x / 3.4, vFac.y / 3.6);
-    cell = floor(q); vec2 f = fract(q);
-    win = step(0.14, f.x) * step(f.x, 0.86) * step(0.3, f.y) * step(f.y, 0.86) * step(3.0, vFac.y);
-  }
-  if (uMode > 0.5) {
-    diffuseColor.rgb = vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8)));
-    win = 0.0;
-  } else {
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.4 + vec3(0.012, 0.018, 0.026), win * 0.72);
-  }
-  if (abs(vBid - uSel) < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.42, 0.12), 0.6);`)
-          .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  float lit = step(0.6, hash21(cell + vec2(vBid * 0.173, vBid * 0.311)));
-  totalEmissiveRadiance += win * lit * uNight * vec3(1.0, 0.72, 0.4) * 1.5;`);
-      };
-      return mat;
-    }
-    const bGeo = extrude(B.s, bColour);
-    const buildings = new THREE.Mesh(bGeo, facadeMaterial());
-    buildings.castShadow = buildings.receiveShadow = true;
-    world.add(buildings);
+    // walls, LOD2 roofs, facades and rooftop plant (buildings.js)
+    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small });
+    const bGeo = BLD.geometry, buildings = BLD.mesh;
+    const fr = scene.frame;
+    U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
+    world.add(buildings, BLD.props);
 
     // piers and wharves: 2.2 m concrete decks
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
@@ -282,8 +250,9 @@ window.OEWorld = (function () {
     const api = {
       world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
-      // light the scene for a sun position {altitude, azimuth}; returns the daylight factor 0..1
-      setSun(sp) {
+      // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
+      // clock time in minutes; returns the daylight factor 0..1
+      setSun(sp, minutes) {
         const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
         api.sunDir = new THREE.Vector3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
         su.sunPosition.value.copy(api.sunDir);
@@ -295,6 +264,8 @@ window.OEWorld = (function () {
         hemi.intensity = 0.07 + 0.25 * day;
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
+        // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
+        U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = 0.32 * U.uNight.value;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());

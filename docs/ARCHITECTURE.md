@@ -30,7 +30,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
 | Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`), and Terrarium tiles for the radar check |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
-| Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, ground tiles; `cities/<id>/analysis/height_model.json` |
+| Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
+| Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
@@ -68,11 +69,30 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 - `buildings.json`
   - `b`: one row per building, `[name, class, top_m, floors, height_src,
-    footprint_src, osm_id, wall_colour, roof_colour, open_data_top_m]`.
+    footprint_src, osm_id, wall_colour, roof_colour, open_data_top_m, style,
+    storey_m, ground_floor_m, roof_material, seed, roof_shape, roof_src]`.
+    The last seven are integer codes: `styles`, `roof_materials`,
+    `roof_shapes` and `roof_sources` list them.
   - `s`: one row per solid, `[building, base_dm, min_dm, top_dm, ring_dm,
     ...holes_dm]`.
+  - `r`: one row per solid with a pitched roof, `[solid, top_dm, eave_dm,
+    shape, x0_dm, y0_dm, xyz, triangles, roof_triangles]`.
+    - `xyz` is int16 little-endian, base64: `(x - x0, y - y0, z above the
+      solid's base)` in decimetres.
+    - `triangles` are vertex indices, base64: uint8 under 256 vertices, else
+      uint16.
+    - The first `roof_triangles` triangles are roof. The rest are gable
+      walls and soffits.
+    - The solid's walls stop at `eave_dm`. `Sun.unpackRoof` (`sun.js`)
+      decodes a row.
+  - `f`: shopfront edges, `[solid, edge, flags, ...]`. Flag 1 is a shopfront
+    and flag 2 an awning; the edge is counted along the outer ring.
+  - `p`: rooftop plant, `[solid, kind, x_dm, y_dm, w_dm, d_dm, h_dm,
+    angle_cdeg]`. Kind 0 is a plant box, 1 a plant room and 2 a water tank.
 
-  A building with OSM parts has several solids.
+  A building with OSM parts has several solids. Viewers and Blender treat a
+  file without `r`, `f`, `p` or the style fields as flat-roofed and guess
+  styles from class and height.
 - `places.json`
   - `places`: `{name, lep, period, from, to, area_m2, polygons}`. `lep` means
     "protected by the city's rule".
@@ -100,8 +120,11 @@ The views switch in place, without reloading the page.
 
 - **`world.js`** builds the city scene the model viewer and the game share:
   - terrain tiles under the imagery;
-  - extruded buildings, with a facade shader for windows, lit windows at night
-    and the height-source colours;
+  - the buildings from **`buildings.js`**: walls in runs of whole bays, LOD2
+    roofs with eaves, parapets, awnings and instanced rooftop plant, in one
+    mesh. Its facade shader draws floors, windows, curtain walls,
+    shopfronts, glass with a room behind it, lights by the local hour, and
+    the height-source colours ([BUILDINGS.md](BUILDINGS.md));
   - landmarks, trees, piers and water;
   - sky, sun and shadows.
 
@@ -120,7 +143,9 @@ The views switch in place, without reloading the page.
   analyses share it:
   - solar position (the NOAA equations);
   - local time for any IANA time zone, via `Intl`;
-  - the surface model (`buildDSM`, with building ids for shade attribution);
+  - the surface model (`buildDSM`, with building ids for shade attribution).
+    Solids with a pitched roof rise to their eaves and then follow the roof's
+    triangles (`roofs(B)` once per city);
   - ray casting (`castRay`, `sunlit`, `blocker`, `fractionSunlit`, `litMask`).
 
   Ray casting skips empty space with 8-cell block maxima.
@@ -164,7 +189,9 @@ All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
 `blender/build_scene.py` imports `bpy` and reads the same `web/data/<id>`
 files. It builds the same scene:
 - terrain tiles with the imagery;
-- one building mesh with face-corner colours;
+- the buildings from `blender/buildings.py`: the same walls, roofs, parapets,
+  awnings and plant, with a node facade shader (windows by floor and bay, lit
+  at night);
 - trees, piers and landmarks;
 - a water plane.
 

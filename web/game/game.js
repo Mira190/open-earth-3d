@@ -309,7 +309,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   function applySun() {
     sun = S.position(S.localToUtc(clock.y, clock.m, clock.d, clock.min));
-    Wd.setSun(sun);
+    Wd.setSun(sun, clock.min);
     const night = U.uNight.value;
     headMat.emissiveIntensity = 1.6 * night;
     glowMat.opacity = 0.85 * night;

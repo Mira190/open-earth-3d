@@ -4,25 +4,25 @@
  "rows": [
   {
    "place": "Hyde Park",
-   "prod": 95.51,
-   "finer_samples": 95.51,
-   "finer_dsm": 95.41,
+   "prod": 95.52,
+   "finer_samples": 95.52,
+   "finer_dsm": 95.42,
    "finer_time": 95.7,
-   "reference": 95.6,
+   "reference": 95.61,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.09,
-   "seconds": 47.284
+   "seconds": 40.484
   },
   {
    "place": "Martin Place",
-   "prod": 43.38,
-   "finer_samples": 43.34,
-   "finer_dsm": 42.65,
-   "finer_time": 43.23,
-   "reference": 42.48,
+   "prod": 43.43,
+   "finer_samples": 43.39,
+   "finer_dsm": 42.69,
+   "finer_time": 43.28,
+   "reference": 42.51,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 0.9,
-   "seconds": 1.908
+   "prod_minus_reference": 0.92,
+   "seconds": 1.612
   },
   {
    "place": "Macquarie Place",
@@ -33,7 +33,7 @@
    "reference": 77.1,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.58,
-   "seconds": 0.498
+   "seconds": 0.42
   },
   {
    "place": "Wynyard Park",
@@ -44,7 +44,7 @@
    "reference": 87.38,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -1.02,
-   "seconds": 2.826
+   "seconds": 2.669
   },
   {
    "place": "Lang Park",
@@ -55,40 +55,40 @@
    "reference": 99.09,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.12,
-   "seconds": 1.44
+   "seconds": 1.103
   },
   {
    "place": "Pitt Street Mall",
-   "prod": 52.68,
-   "finer_samples": 52.15,
-   "finer_dsm": 52.34,
-   "finer_time": 53.63,
-   "reference": 52.83,
+   "prod": 52.84,
+   "finer_samples": 52.27,
+   "finer_dsm": 52.43,
+   "finer_time": 53.79,
+   "reference": 52.93,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.15,
-   "seconds": 2.317
+   "prod_minus_reference": -0.09,
+   "seconds": 2.113
   },
   {
    "place": "Belmore Park",
-   "prod": 88.56,
-   "finer_samples": 88.54,
-   "finer_dsm": 88.42,
-   "finer_time": 88.64,
-   "reference": 88.49,
+   "prod": 88.68,
+   "finer_samples": 88.66,
+   "finer_dsm": 88.52,
+   "finer_time": 88.76,
+   "reference": 88.59,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 0.07,
-   "seconds": 16.651
+   "prod_minus_reference": 0.09,
+   "seconds": 13.93
   },
   {
    "place": "Barangaroo Reserve",
-   "prod": 99.25,
-   "finer_samples": 99.23,
-   "finer_dsm": 99.29,
-   "finer_time": 99.29,
-   "reference": 99.28,
+   "prod": 99.28,
+   "finer_samples": 99.25,
+   "finer_dsm": 99.32,
+   "finer_time": 99.31,
+   "reference": 99.3,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.03,
-   "seconds": 21.57
+   "prod_minus_reference": -0.02,
+   "seconds": 18.572
   }
  ],
  "max_abs_numerical_error_pp": 1.02

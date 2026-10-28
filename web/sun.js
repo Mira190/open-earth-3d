@@ -7,8 +7,9 @@
 // few degrees of the horizon).
 //
 // Shadows: a 2 m digital surface model (terrain + buildings) rasterised from
-// the same footprints the 3D view extrudes. A ground point is in sun when the
-// ray towards the sun clears every cell of the model.
+// the same footprints the 3D view extrudes, and the same pitched roofs: a solid
+// with a roof rises to its eaves and then follows the roof's triangles. A ground
+// point is in sun when the ray towards the sun clears every cell of the model.
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.Sun = factory();
@@ -134,8 +135,50 @@
     }
   }
 
+  // max-fill a triangle (three [x, y, z] in metres) into the raster, z interpolated;
+  // with floor, only cells already at least that high (the solid's own footprint)
+  function fillTri(G, a, b, c, id, floor = -Infinity) {
+    const { nx, ny, cell, x0, y1, data, ids } = G;
+    const det = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]);
+    if (Math.abs(det) < 1e-9) return; // a vertical face
+    const c0 = Math.max(0, Math.floor((Math.min(a[0], b[0], c[0]) - x0) / cell)), c1 = Math.min(nx - 1, Math.floor((Math.max(a[0], b[0], c[0]) - x0) / cell));
+    const r0 = Math.max(0, Math.floor((y1 - Math.max(a[1], b[1], c[1])) / cell)), r1 = Math.min(ny - 1, Math.floor((y1 - Math.min(a[1], b[1], c[1])) / cell));
+    for (let r = r0; r <= r1; r++) {
+      const y = y1 - (r + 0.5) * cell;
+      for (let col = c0; col <= c1; col++) {
+        const x = x0 + (col + 0.5) * cell;
+        const l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / det;
+        const l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / det, l3 = 1 - l1 - l2;
+        if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+        const z = l1 * a[2] + l2 * b[2] + l3 * c[2], i = r * nx + col;
+        if (data[i] < z && data[i] >= floor) { data[i] = z; if (ids) ids[i] = id; }
+      }
+    }
+  }
+
+  // pitched roofs (buildings.json "r") by the solid's outer ring, so solids copied or
+  // filtered for a scenario keep theirs; set once per city with roofs(B)
+  let ROOFS = null;
+  function roofs(B) {
+    if (B && B.r) for (const r of B.r) unpackRoof(r);
+    ROOFS = B && B.r ? new Map(B.r.map(r => [B.s[r[0]][4], r])) : null;
+    return ROOFS;
+  }
+  // a roof row as shipped ([solid, top, eave, shape, x0, y0, xyz b64, triangles b64, n_roof]) to the
+  // working form [solid, top, eave, shape, xyz (absolute dm), triangles, n_roof]; idempotent
+  const b64 = s => typeof atob === 'function' ? Uint8Array.from(atob(s), c => c.charCodeAt(0)) : new Uint8Array(Buffer.from(s, 'base64'));
+  function unpackRoof(r) {
+    if (r.length !== 9 || typeof r[6] !== 'string') return r;
+    const raw = b64(r[6]), q = new Int16Array(raw.buffer, raw.byteOffset, raw.length / 2), pos = new Int32Array(q.length);
+    for (let i = 0; i < q.length; i += 3) { pos[i] = q[i] + r[4]; pos[i + 1] = q[i + 1] + r[5]; pos[i + 2] = q[i + 2]; }
+    const ib = b64(r[7]), tri = pos.length / 3 > 255 ? new Uint16Array(ib.buffer.slice(ib.byteOffset, ib.byteOffset + ib.length)) : ib;
+    r.splice(4, 5, pos, tri, r[8]);
+    return r;
+  }
+
   // solids: [building, base_dm, min_dm, top_dm, ring_dm, ...holes_dm]
-  // opt.ids keeps a raster of the building on top of each cell (-1 = ground)
+  // opt.ids keeps a raster of the building on top of each cell (-1 = ground);
+  // opt.roofs: false rasterises every solid flat to its top
   function buildDSM(terrain, solids, opt = {}) {
     const cell = opt.cell || 2, x0 = opt.x0, x1 = opt.x1, y0 = opt.y0, y1 = opt.y1;
     const nx = Math.round((x1 - x0) / cell), ny = Math.round((y1 - y0) / cell);
@@ -143,9 +186,15 @@
     const G = { nx, ny, cell, x0, y1, data, max: 0, ids: opt.ids ? new Int32Array(nx * ny).fill(-1) : null };
     for (let r = 0; r < ny; r++) for (let c = 0; c < nx; c++)
       data[r * nx + c] = Math.max(0, terrainAt(terrain, x0 + (c + 0.5) * cell, y1 - (r + 0.5) * cell)); // water surface at 0
+    const RF = opt.roofs === false ? null : ROOFS;
     for (const s of solids) {
-      const z = (s[1] + s[3]) / 10;
-      fillMax(G, s.slice(4).map(r => r.map(v => v / 10)), z, s[0]);
+      const r = RF && RF.get(s[4]);
+      if (!r) { fillMax(G, s.slice(4).map(q => q.map(v => v / 10)), (s[1] + s[3]) / 10, s[0]); continue; }
+      // a scenario that scales the solid's height scales its roof with it
+      const k = s[3] / r[1], g0 = s[1] / 10, pos = r[4], tri = r[5], eave = g0 + r[2] * k / 10;
+      fillMax(G, s.slice(4).map(q => q.map(v => v / 10)), eave, s[0]);
+      const V = i => [pos[3 * i] / 10, pos[3 * i + 1] / 10, g0 + pos[3 * i + 2] * k / 10];
+      for (let t = 0; t < r[6]; t++) fillTri(G, V(tri[3 * t]), V(tri[3 * t + 1]), V(tri[3 * t + 2]), s[0], eave - 1e-3);
     }
     G.ground = (x, y) => Math.max(0, terrainAt(terrain, x, y));
     return pyramid(G);
@@ -264,6 +313,6 @@
   }
   const hm = s => { const [h, mm] = s.split(':').map(Number); return h * 60 + mm; };
 
-  return { RAD, site, position, subsolar, dayLimits, offsetHours, standardOffset, localToUtc, utcToLocal, terrainAt, buildDSM, cloneDSM, fillMax, addSolid, pyramid,
-    castRay, sunlit, blocker, samplePlace, fractionSunlit, litMask, inPeriod, hm };
+  return { RAD, site, position, subsolar, dayLimits, offsetHours, standardOffset, localToUtc, utcToLocal, terrainAt, buildDSM, cloneDSM, fillMax, fillTri,
+    roofs, unpackRoof, addSolid, pyramid, castRay, sunlit, blocker, samplePlace, fractionSunlit, litMask, inPeriod, hm };
 });

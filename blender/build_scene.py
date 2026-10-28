@@ -1,5 +1,7 @@
 """Rebuild a city's web scene in Blender, headless, from the same data files, and
-render it with Cycles: no hand modelling, no stock assets, one command.
+render it with Cycles: no hand modelling, no stock assets, one command. The
+buildings (walls, pitched roofs, facades, rooftops) are built by buildings.py
+from the same buildings.json the browser reads.
 
     pip install bpy==5.2.3        # Blender as a Python module (Python 3.13)
     python blender/build_scene.py --city sydney --samples 48
@@ -25,6 +27,8 @@ import bpy
 import numpy as np
 from mathutils import Vector
 from mathutils.geometry import tessellate_polygon
+
+from buildings import add_buildings, set_lighting
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -153,35 +157,12 @@ def build(data):
         counts["objects"] += 1
         counts["triangles"] += 2 * len(faces)
 
-    # buildings: one mesh, colours per face corner
-    verts, faces, cols = [], [], []
-    for s in B["s"]:
-        m = B["b"][s[0]]
-        g0, zb, zt = s[1] / 10, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10
-        wall, roof = srgb_to_linear(m[7]) + [1], srgb_to_linear(m[8]) + [1]
-        rings = [np.asarray(r, float).reshape(-1, 2) / 10 for r in s[4:]]
-        for r in rings:
-            n = len(r)
-            for k in range(n):
-                a, b = r[k], r[(k + 1) % n]
-                v = len(verts)
-                verts += [(a[0], a[1], zb), (b[0], b[1], zb), (b[0], b[1], zt), (a[0], a[1], zt)]
-                cols += [wall] * 4
-                faces.append((v, v + 1, v + 2, v + 3))
-        loops = [[Vector((p[0], p[1], zt)) for p in r] for r in rings]
-        base = len(verts)
-        flat = [p for loop in loops for p in loop]
-        verts += [tuple(p) for p in flat]
-        cols += [roof] * len(flat)
-        for tri in tessellate_polygon(loops):
-            a, b, c = (flat[i] for i in tri)
-            ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0
-            faces.append((base + tri[0], base + tri[1], base + tri[2]) if ccw else (base + tri[0], base + tri[2], base + tri[1]))
-    bmat = principled("buildings", rough=0.75, vcol="col")
-    mesh_object("buildings", verts, faces, bmat, colors=cols)
-    counts["objects"] += 1
-    counts["triangles"] += sum(2 if len(f) == 4 else 1 for f in faces)
+    # buildings: walls with the facade grid, LOD2 roofs, parapets, awnings and rooftop plant (buildings.py)
+    bc = add_buildings(B, scene)
+    counts["objects"] += 4
+    counts["triangles"] += 2 * bc["wall_faces"] + bc["roof_faces"] + 2 * bc["trim_faces"] + 10 * bc["plant_boxes"]
     counts["buildings"] = len(B["b"])
+    counts["roofs"] = len(B.get("r", []))
 
     # piers
     pv, pf = [], []
@@ -286,13 +267,14 @@ def main():
     ap.add_argument("--samples", type=int, default=48)
     ap.add_argument("--res", default="1600x900")
     ap.add_argument("--blend", action="store_true")
+    ap.add_argument("--out", help="output folder (default docs/images/<city>)")
     a = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:])
     cfg = json.load(open(os.path.join(ROOT, "cities", a.city, "city.json"), encoding="utf8"))
     lon, lat = cfg["origin"]
     views = {v["name"]: v for v in cfg.get("renders", [])}
     if not views:
         raise SystemExit(f"{a.city}: no renders in city.json")
-    data, out = os.path.join(ROOT, "web", "data", a.city), os.path.join(ROOT, "docs", "images", a.city)
+    data, out = os.path.join(ROOT, "web", "data", a.city), a.out or os.path.join(ROOT, "docs", "images", a.city)
     os.makedirs(out, exist_ok=True)
     log = {"city": a.city, "blender": bpy.app.version_string, "views": {}}
     t0 = time.time()
@@ -327,6 +309,8 @@ def main():
             bpy.data.objects.remove(ob)
         add_sun(alt, az)
         sky = set_sky(alt, az, alt < -4)
+        hh, mm = map(int, v["time"].split(":"))
+        set_lighting(hh + mm / 60, alt < -4)
         p, t = v["cam"], v["tgt"]
         cam.location = p
         cam.rotation_euler = (Vector(t) - Vector(p)).to_track_quat("-Z", "Y").to_euler()

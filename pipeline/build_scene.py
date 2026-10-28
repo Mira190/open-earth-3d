@@ -21,12 +21,16 @@ from collections import Counter, defaultdict
 import duckdb
 import numpy as np
 import shapely
+import shapely.affinity
 from PIL import Image, ImageDraw
 from scipy.ndimage import map_coordinates
 from scipy.spatial import cKDTree
 from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
+from shapely.ops import polylabel
 
+import roofs
+import typology
 from cityctx import ROOT, City, city_args, polygons
 
 DEM_CELL = 5.0       # m, building bases and analysis
@@ -351,6 +355,286 @@ class Ctx:
         return float(sample(self.city, self.dem_land, x, y)[0])
 
 
+# ---------------------------------------------------------------- roofs, facades, rooftops
+
+PARAPET_STYLES = {"office", "glass", "apartment", "heritage", "retail", "civic", "mixed", "industrial"}
+
+
+def road_index(C, con, path):
+    """road sample points every 3 m with their directions, for shopfront frontages and ridge lines"""
+    if not os.path.exists(path):
+        return None
+    pts, dirs, main = [], [], []
+    for r in rows(con, path, "class, subtype, wkb"):
+        if r["subtype"] != "road" or r["class"] in ("footway", "path", "steps", "cycleway", "bridleway", "track", "unknown", None):
+            continue
+        g = C.to_local(swkb.loads(bytes(r["wkb"])))
+        for line in (g.geoms if hasattr(g, "geoms") else [g]):
+            if line.length < 1:
+                continue
+            for d in np.arange(0, line.length, 3.0):
+                a, b2 = line.interpolate(d), line.interpolate(min(d + 1.0, line.length))
+                v = np.array([b2.x - a.x, b2.y - a.y])
+                n = np.hypot(*v)
+                if n > 1e-6:
+                    pts.append((a.x, a.y))
+                    dirs.append(v / n)
+                    main.append(r["class"] in ("primary", "secondary", "tertiary", "pedestrian", "living_street", "trunk"))
+    if not pts:
+        return None
+    pts = np.array(pts)
+    return cKDTree(pts), np.array(dirs), pts, np.array(main)
+
+
+ROOF_SRC = ["rule", "prior", "mapped"]
+
+
+def pack_roof(pos, idx):
+    """a roof mesh as [x0_dm, y0_dm, positions, indices]: positions int16 little-endian
+    (x - x0, y - y0, z), indices uint8 when there are fewer than 256 vertices, else uint16,
+    both base64 (the terrain grid's encoding)"""
+    q = np.asarray(pos, np.int64).reshape(-1, 3)
+    x0, y0 = int(q[0, 0]), int(q[0, 1])
+    q[:, 0] -= x0
+    q[:, 1] -= y0
+    ib = np.asarray(idx, "<u2" if len(q) > 255 else "u1")
+    return [x0, y0, base64.b64encode(q.astype("<i2").tobytes()).decode(), base64.b64encode(ib.tobytes()).decode()]
+
+
+NO_TAGS = {"roof_shape": None, "roof_height": None, "roof_direction": None, "roof_orientation": None, "roof_material": None,
+           "num_floors": None, "parametric": False, "part": False}
+
+
+def pad_records(meta, solids, sinfo, bextra):
+    """roof tags and facade data for buildings and solids added after the main loop
+    (a city hook, a surveyed source): none mapped, a seed from the index"""
+    sinfo += [dict(NO_TAGS, parametric=solids[k][0] < len(meta) and meta[solids[k][0]][4] == "parametric")
+              for k in range(len(sinfo), len(solids))]
+    bextra += [{"seed": (bi * 2654435761) & 0xFFFFFF, "facade_color": None, "facade_material": None} for bi in range(len(bextra), len(meta))]
+
+
+def dress_buildings(C, meta, solids, sinfo, bextra, roads):
+    """Roof meshes, facade styles, storeys, wall colours, shopfront frontages and
+    rooftop plant for the finished buildings. Returns (roof rows, frontage rows,
+    prop rows, a summary for height_model.json)."""
+    pad_records(meta, solids, sinfo, bextra)
+    R = typology.region(C.cfg)
+    overrides = C.cfg.get("building_styles", {})
+    by_b = defaultdict(list)
+    for k, s in enumerate(solids):
+        by_b[s[0]].append(k)
+    roof_rows, front_rows, prop_rows = [], [], []
+    roofed = set()
+    stat = Counter()
+    for bi, m in enumerate(meta):
+        ks = by_b.get(bi, [])
+        if not ks:
+            continue
+        cls, floors, seed = m[1], int(m[3] or 0), bextra[bi]["seed"]
+        polys = {k: Polygon(np.array(solids[k][4]).reshape(-1, 2) / 10,
+                            [np.array(h).reshape(-1, 2) / 10 for h in solids[k][5:]]) for k in ks}
+        area_b = sum(p.area for p in polys.values())
+        top_b = max((solids[k][3] - solids[k][2]) / 10 + solids[k][2] / 10 for k in ks)
+        parametric = any(sinfo[k]["parametric"] for k in ks)
+        _, long_b, short_b = roofs.long_axis(np.array(solids[ks[0]][4]).reshape(-1, 2) / 10)
+        narrow = short_b <= 7.0 and long_b >= 2.5 * short_b
+        style = "plain" if parametric else typology.facade_style(R, cls, top_b, floors, area_b, bextra[bi]["facade_material"], m[0], seed,
+                                                            overrides, narrow)
+        main_shape, main_src, main_mat = "flat", "rule", None
+        eave_main = top_b
+        for k in ks:
+            s, info, poly = solids[k], sinfo[k], polys[k]
+            if parametric:
+                continue
+            h0, top = s[2] / 10, s[3] / 10
+            mapped = info["roof_shape"]
+            if mapped:
+                shape, src = mapped.replace("half_hipped", "half-hipped"), "mapped"
+            elif len(ks) > 1 and not (top_b < 12 and area_b < 600):
+                shape, src = "flat", "rule"  # parts of a larger building keep flat roofs unless mapped
+            else:
+                shape, src = typology.infer_roof(R, cls, floors, top_b, area_b, seed + k)
+            if shape in ("flat", "sawtooth") or shape not in roofs.CODES and shape not in ("spherical",):
+                if shape not in ("flat",):
+                    stat["unsupported:" + shape] += 1
+                shape = "flat"
+            mat = typology.roof_material(R, shape, info["roof_material"], m[8], top, seed, typology.roof_group(cls, floors, top_b, area_b))
+            if shape != "flat":
+                rings = [np.array(s[4]).reshape(-1, 2) / 10] + [np.array(h).reshape(-1, 2) / 10 for h in s[5:]]
+                room = top - h0
+                cap = min(R["roof_cap_m"] if shape not in ("dome", "onion", "spherical") else 60.0,
+                          room - (2.0 if cls in typology.SMALL else 2.4))
+                axis, across = None, info["roof_orientation"] == "across"
+                gable = shape in ("gabled", "half-hipped", "gambrel", "round", "saltbox")
+                if gable and not info["roof_orientation"]:
+                    _, long_side, short_side = roofs.long_axis(rings[0])
+                    if cls in R.get("ridge_follows_street", ()) and roads is not None:
+                        dist, j = roads[0].query(np.array(poly.centroid.coords[0]))
+                        if dist < 30:
+                            axis = roads[1][j]
+                    # a narrow, deep house (a terrace, a machiya) carries its ridge across, along the street
+                    if axis is None and short_side < 7.5 and long_side > 1.8 * short_side:
+                        across = True
+                rm, built, rh = None, "flat", 0.0
+                if cap >= 0.8:
+                    pitch = R.get("pitch_by_group", {}).get(typology.roof_group(cls, floors, top_b, area_b), R["pitch"].get(mat, 25))
+                    mh = float(info["roof_height"]) if info["roof_height"] else None
+                    for attempt in (0, 1):
+                        rr = rings if attempt == 0 else [np.asarray(Polygon(rings[0]).simplify(0.6).exterior.coords)[:-1]]
+                        if attempt and len(rr[0]) < 3:
+                            break
+                        rm, built, rh = roofs.roof_mesh(rr, shape, pitch=pitch, cap=cap, height=min(mh, cap) if mh else None,
+                                                        direction=info["roof_direction"], across=across, axis=axis,
+                                                        overhang=typology.OVERHANG.get(style, 0.0) if not info["part"] else 0.0)
+                        if rm is not None and roofs.check(rm, rr, rh, built):
+                            break
+                        rm = None
+                if rm is None or rh < 0.5:
+                    stat["fallback_flat"] += rm is None and cap >= 0.8
+                    stat["too_low"] += cap < 0.8 or (rm is not None and rh < 0.5)
+                    shape = "flat"
+                else:
+                    eave = top - rh
+                    v = np.asarray(rm.v)
+                    q = np.c_[np.round(v[:, :2] * 10), np.round((eave + v[:, 2]) * 10)].astype(int)
+                    uniq, remap = {}, []
+                    for p_ in q.tolist():  # shared corners once
+                        remap.append(uniq.setdefault(tuple(p_), len(uniq)))
+                    pos = [c for p_ in uniq for c in p_]
+                    idx = [remap[i] for t in rm.roof + rm.wall for i in t]
+                    roof_rows.append([k, s[3], round(eave * 10), roofs.CODES[built]] + pack_roof(pos, idx) + [len(rm.roof)])
+                    roofed.add(k)
+                    shape = built
+                    if top >= top_b - 0.01:
+                        eave_main = eave
+            stat[f"{src}:{shape}"] += 1
+            if top >= top_b - 0.01 or main_mat is None:
+                main_shape, main_src, main_mat = shape, src, mat
+        # facade: storeys over the wall height, shopfronts on street frontages
+        storefront_ok = style in typology.STOREFRONT_STYLES and (cls in R["storefront_classes"] or (not cls and top_b >= 12))
+        # flats and unclassed buildings have shops only on main streets
+        main_only = cls in typology.FLATS or not cls
+        fronts = {}
+        if storefront_ok and roads is not None:
+            for k in ks:
+                if solids[k][2] == 0:
+                    e = typology.frontages(np.array(solids[k][4]).reshape(-1, 2) / 10, roads, main_only=main_only)
+                    if e:
+                        fronts[k] = e
+        awning = bool(fronts) and typology.unit(seed, 21) < R["awning"]
+        if style == "machiya" and roads is not None:  # the street pent roof (hisashi) over a machiya front
+            for k in ks:
+                e = typology.frontages(np.array(solids[k][4]).reshape(-1, 2) / 10, roads)
+                if e:
+                    fronts[k] = e
+            awning = bool(fronts)
+        for k, es in fronts.items():
+            flag = (2 if awning else 0) + (0 if style == "machiya" else 1)
+            front_rows.append([k] + [v for e in es for v in (e, flag)])
+        wall_h = max(eave_main - min(solids[k][2] for k in ks) / 10, 2.4)
+        storey, ground = typology.storeys(style, wall_h, floors, bool(fronts))
+        pal = R.get("palettes", {}).get(style) or typology.PALETTES[style]
+        fc, fmat = bextra[bi]["facade_color"], bextra[bi]["facade_material"]
+        if fc and str(fc).startswith("#") and len(fc) == 7:
+            wall = fc
+        elif fmat in FACADE:
+            wall = typology.jitter(FACADE[fmat], seed)
+        else:
+            wall = typology.jitter(pal[seed % len(pal)], seed)
+        m[7] = wall
+        if main_shape != "flat" and main_mat:  # the roof's colour leans towards its material's
+            m[8] = typology.roof_colour(R, main_mat, m[8], seed, typology.colour_says(R, m[8]))
+        m += [typology.STYLE_CODE[style], storey, ground, typology.ROOF_MATERIALS.index(main_mat or "membrane"), seed & 0xFFFF,
+              roofs.CODES.get(main_shape, 0), ROOF_SRC.index(main_src)]
+        # rooftop plant on flat roofs
+        if style in PARAPET_STYLES and not parametric:
+            for k in ks:
+                if k in roofed:
+                    continue
+                prop_rows += rooftop(k, solids[k], polys[k], style, seed, top_b, floors, R)
+    return roof_rows, front_rows, prop_rows, dict(stat)
+
+
+def validate_roof_rules(C, meta, solids, sinfo, bextra):
+    """predict every mapped roof shape with the rules alone and score it"""
+    R = typology.region(C.cfg)
+    first = {}
+    for k, s in enumerate(solids):
+        first.setdefault(s[0], k)
+    conf, n = Counter(), 0
+    for bi, m in enumerate(meta):
+        k = first.get(bi)
+        if k is None or not sinfo[k]["roof_shape"] or sinfo[k]["part"]:
+            continue
+        truth = sinfo[k]["roof_shape"]
+        area = Polygon(np.array(solids[k][4]).reshape(-1, 2) / 10).area
+        pred, _ = typology.infer_roof(R, m[1], int(m[3] or 0), m[2], area, bextra[bi]["seed"] + k)
+        pitched = lambda x: x not in ("flat",)
+        conf[(pitched(truth), pitched(pred))] += 1
+        conf["exact"] += truth == pred
+        n += 1
+    if not n:
+        return {"n": 0}
+    tp, tn = conf[(True, True)], conf[(False, False)]
+    return {"n": n, "flat_vs_pitched_accuracy": round((tp + tn) / n, 3), "exact_shape_accuracy": round(conf["exact"] / n, 3),
+            "pitched_recall": round(tp / max(1, tp + conf[(True, False)]), 3), "flat_recall": round(tn / max(1, tn + conf[(False, True)]), 3),
+            "confusion_pitched": {"true_pitched_pred_pitched": tp, "true_pitched_pred_flat": conf[(True, False)],
+                                  "true_flat_pred_flat": tn, "true_flat_pred_pitched": conf[(False, True)]}}
+
+
+def rooftop(k, s, poly, style, seed, top_b, floors, R):
+    """deterministic plant on a flat roof: a plant room on towers, boxes elsewhere,
+    water tanks where the region has them. Rows: [solid, kind, x, y, w, d, h (dm), angle (centidegrees)]"""
+    top = s[3] / 10
+    if top < 6 or poly.area < 60:
+        return []
+    inner = poly.buffer(-2.0)
+    if inner.is_empty or inner.area < 8:
+        return []
+    inner = max(polygons(inner), key=lambda p: p.area)
+    ax, _, _ = roofs.long_axis(np.asarray(poly.exterior.coords)[:-1])
+    ang = math.degrees(math.atan2(ax[1], ax[0]))
+    perp = np.array([-ax[1], ax[0]])
+    out, placed = [], []
+    rng = np.random.default_rng(seed * 7919 + k)
+
+    def fits(cx, cy, w, d):
+        q = shapely.affinity.rotate(box(cx - w / 2, cy - d / 2, cx + w / 2, cy + d / 2), ang, origin=(cx, cy))
+        if not inner.contains(q) or any(q.intersects(p) for p in placed):
+            return False
+        placed.append(q.buffer(0.8))
+        return True
+
+    x0, y0, x1, y1 = inner.bounds
+    if top >= 30:  # plant room / lift overrun
+        c = polylabel(inner, 0.5)
+        L = np.asarray(inner.exterior.coords) @ ax
+        Wd = np.asarray(inner.exterior.coords) @ perp
+        w, d = min(np.ptp(L) * 0.45, 22.0), min(np.ptp(Wd) * 0.45, 16.0)
+        h = 2.6 + 1.6 * rng.random()
+        for f in (1.0, 0.75, 0.55):
+            if w * f > 3 and d * f > 3 and fits(c.x, c.y, w * f, d * f):
+                out.append([k, 1, round(c.x * 10), round(c.y * 10), round(w * f * 10), round(d * f * 10), round(h * 10), round(ang * 100)])
+                break
+    n = int(min(10, poly.area / (350 if style not in ("apartment",) else 700)))
+    if R.get("water_tanks") and 4 <= (floors or top / 3.2) <= 15 and typology.unit(seed, 31) < R["water_tanks"]:
+        for _ in range(20):
+            cx, cy = x0 + (x1 - x0) * rng.random(), y0 + (y1 - y0) * rng.random()
+            w = 2.0 + rng.random() * 1.5
+            if fits(cx, cy, w, w * 0.8):
+                out.append([k, 2, round(cx * 10), round(cy * 10), round(w * 10), round(w * 8), round((2.2 + rng.random()) * 10), round(ang * 100)])
+                break
+    tries = 0
+    while n > 0 and tries < 60:
+        tries += 1
+        cx, cy = x0 + (x1 - x0) * rng.random(), y0 + (y1 - y0) * rng.random()
+        w, d = 1.4 + rng.random() * 2.6, 1.1 + rng.random() * 1.8
+        if fits(cx, cy, w, d):
+            out.append([k, 0, round(cx * 10), round(cy * 10), round(w * 10), round(d * 10), round((0.9 + rng.random() * 1.2) * 10), round(ang * 100)])
+            n -= 1
+    return out
+
+
 # ---------------------------------------------------------------- main
 
 def build(C):
@@ -409,7 +693,7 @@ def build(C):
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res = [], [], {}, {}, {}, []
+    meta, solids, first_solid, geo, ml_raw, floor_res, sinfo, bextra = [], [], {}, {}, {}, [], [], []
     for b in blds:
         if b["is_underground"]:
             continue
@@ -426,17 +710,17 @@ def build(C):
                     continue
                 pg = C.to_local(swkb.loads(bytes(p["wkb"])))
                 h, src = H.resolve(p, cls, parent=top_b)
-                geoms += [[q, H.min_height(p, cls), h, src, p["name"]] for q in polygons(pg)]
+                geoms += [[q, H.min_height(p, cls), h, src, p["name"], p] for q in polygons(pg)]
         else:
-            geoms = [[q, H.min_height(b, cls), top_b[0], top_b[1], None] for q in polygons(g)]
+            geoms = [[q, H.min_height(b, cls), top_b[0], top_b[1], None, b] for q in polygons(g)]
         if adjust:
             geoms = adjust(b, cls, g, geoms, ctx)
-        for q, h0, h1, src, pname in geoms:
+        for q, h0, h1, src, pname, *_ in geoms:
             if pname in labels_cfg and labels_cfg[pname] not in ctx.labels:
                 c = q.centroid
                 ctx.labels[labels_cfg[pname]] = [round(c.x, 1), round(c.y, 1), round(ctx.ground(c.x, c.y) + h1, 1)]
         top, srcs, first = 0.0, Counter(), len(solids)
-        for q, h0, h1, src, _ in geoms:
+        for q, h0, h1, src, _, *rec in geoms:
             q = q.simplify(0.15, preserve_topology=True)
             if q.is_empty or q.area < 2 or h1 <= h0:
                 continue
@@ -445,6 +729,9 @@ def build(C):
             zb = max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
             solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10), ring(q.exterior.coords)] +
                           [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
+            r0 = rec[0] if rec else b  # roof tags of the part, else of the building
+            sinfo.append({k: r0.get(k) for k in ("roof_shape", "roof_height", "roof_direction", "roof_orientation", "roof_material", "num_floors")}
+                         | {"parametric": src == "parametric", "part": bool(rec) and r0 is not b})
             top = max(top, h1)
             srcs[src] += q.area
             a0 = geo.setdefault(bi, [0.0, 0.0, 0.0])
@@ -459,7 +746,8 @@ def build(C):
         rid = b["record_id"] or ""
         seed = int(b["id"].replace("-", "")[:8], 16)
         meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
-                     wall_colour(b, cls, top, seed), roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
+                     None, roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
+        bextra.append({"seed": seed & 0xFFFFFF, "facade_color": b.get("facade_color"), "facade_material": b.get("facade_material")})
         first_solid[bi] = first
         if b["height_src"] == "Microsoft ML Buildings" and b["height"]:
             ml_raw[bi] = float(b["height"])
@@ -512,6 +800,18 @@ def build(C):
                 if labels_cfg.get(meta[bi][0]) in ctx.labels:
                     ctx.labels[labels_cfg[meta[bi][0]]][2] = round(solids[tallest][1] / 10 + r["ref_m"], 1)
     print("reference corrections:", fixes)
+
+    # roofs, facades and rooftops on the finished heights
+    roads = road_index(C, con, raw("segment"))
+    roof_rows, front_rows, prop_rows, roof_stat = dress_buildings(C, meta, solids, sinfo, bextra, roads)
+    roof_check = validate_roof_rules(C, meta, solids, sinfo, bextra)
+    json.dump({"note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. "
+                       "The check predicts each mapped roof as if it were not mapped.",
+               "counts": roof_stat, "check": roof_check, "roofs_built": len(roof_rows), "rooftop_props": len(prop_rows),
+               "frontage_solids": len(front_rows), "skeleton_failures": roofs.FAILS},
+              open(os.path.join(C.analysis, "roof_model.json"), "w"), indent=1)
+    print(f"roofs: {len(roof_rows)} built; {roof_stat}")
+    print("roof rules vs mapped roofs:", roof_check)
     src_count = Counter(m[4] for m in meta)
     share = Counter()
     for i, m in enumerate(meta):
@@ -547,10 +847,11 @@ def build(C):
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
 
-    keep = ("id", "name", "country", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
+    keep = ("id", "name", "country", "country_code", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
             "minor_labels", "place_labels", "sun_hours_region", "renders")
     scene = {
-        "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0},
+        "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0, "architecture": typology.region_name(cfg),
+                                                         "signage": typology.region(cfg)["signage"]},
         "frame": {"proj": C.proj, "lon0": C.lon0, "lat0": C.lat0, "x": [C.x0, C.x1], "y": [C.y0, C.y1], "units": f"m, z = {cfg.get('vertical_datum', 'm')}"},
         "terrain": {"file": "terrain.json", "nx": tg.shape[1], "ny": tg.shape[0], "cell": TERRAIN_CELL, "scale": 0.1,
                     "origin": "north-west, row-major, rows go south", "bare_earth": cfg["terrain"].get("bare_earth", False)},
@@ -573,8 +874,19 @@ def build(C):
         scene["accuracy"] = {"summary": acc["summary"], "note": acc["note"], "source": cfg.get("reference_heights", {}).get("source"),
                              "rows": [[r["name"], r["ref_m"], r.get("model_m"), r.get("error_pct"), r["match"], r.get("how")] for r in acc["rows"]]}
     json.dump(scene, open(os.path.join(C.out, "scene.json"), "w"), separators=(",", ":"))
-    json.dump({"fields": ["name", "class", "top_m", "floors", "height_src", "footprint_src", "osm_id", "wall", "roof", "open_data_top_m"], "b": meta,
-               "s_fields": ["building", "base_dm", "min_dm", "top_dm", "ring_dm", "...holes_dm"], "s": solids},
+    json.dump({"fields": ["name", "class", "top_m", "floors", "height_src", "footprint_src", "osm_id", "wall", "roof", "open_data_top_m",
+                          "style (index in styles)", "storey_m", "ground_floor_m", "roof_material (index)", "seed", "roof_shape (index)",
+                          "roof_src (index)"], "b": meta,
+               "s_fields": ["building", "base_dm", "min_dm", "top_dm", "ring_dm", "...holes_dm"], "s": solids,
+               "styles": typology.STYLES, "roof_shapes": list(roofs.CODES), "roof_materials": typology.ROOF_MATERIALS,
+               "roof_sources": ROOF_SRC,
+               "r_fields": ["solid", "top_dm", "eave_dm", "shape", "x0_dm", "y0_dm",
+                            "xyz: int16le base64, (x - x0, y - y0, z above the solid's base) in dm",
+                            "triangles: base64 vertex indices, uint8 below 256 vertices else uint16le",
+                            "roof_triangles (the rest are walls and soffits)"],
+               "r": roof_rows,
+               "f_fields": ["solid", "edge, flags (1 shopfront, 2 awning) ..."], "f": front_rows,
+               "p_fields": ["solid", "kind (0 plant box, 1 plant room, 2 water tank)", "x_dm", "y_dm", "w_dm", "d_dm", "h_dm", "angle_cdeg"], "p": prop_rows},
               open(os.path.join(C.out, "buildings.json"), "w"), separators=(",", ":"))
     json.dump({"piers": piers, "places": places, "trees": trees}, open(os.path.join(C.out, "places.json"), "w"), separators=(",", ":"))
     write_index()

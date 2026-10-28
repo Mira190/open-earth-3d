@@ -38,6 +38,8 @@
     "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads."
   },
   "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "architecture": "sydney",
+  "building_styles": {"Sydney Harbour Bridge - South Pylons": "stone", "Sydney Harbour Bridge - North Pylons": "stone"},
   "labels": {
     "Sydney Tower": "Sydney Tower",
     "Salesforce Tower": "Salesforce Tower",
@@ -215,6 +217,27 @@
       "tgt": [-260, -620, 40],
       "date": [2026, 6, 21],
       "time": "12:00"
+    },
+    {
+      "name": "terraces",
+      "cam": [-640, 330, 95],
+      "tgt": [-760, 440, 15],
+      "date": [2026, 3, 21],
+      "time": "15:00"
+    },
+    {
+      "name": "towers",
+      "cam": [380, -1250, 260],
+      "tgt": [-180, -560, 60],
+      "date": [2026, 3, 21],
+      "time": "15:30"
+    },
+    {
+      "name": "towers_night",
+      "cam": [600, -200, 220],
+      "tgt": [-250, -500, 80],
+      "date": [2026, 3, 21],
+      "time": "20:15"
     }
   ],
   "check_points": {

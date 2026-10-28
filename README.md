@@ -22,6 +22,12 @@ a new codebase.
 
 ![Cycles render of Sydney from the Blender script](docs/images/sydney/overview.jpg)
 
+Buildings get LOD2 roofs, facades, shopfronts, parapets and rooftops, inferred
+where the open data is silent and checked where it is not
+([docs/BUILDINGS.md](docs/BUILDINGS.md)):
+
+![Before and after: Ultimo's houses and flats, and towers in the CBD](docs/images/sydney/buildings-compare.jpg)
+
 ## Play it: Sydney on Foot
 
 The model is also a game. You walk central Sydney as a surveyor, talk to the
@@ -43,7 +49,7 @@ computed from the model as you play. Open **Play** on the globe, or go to
 
 | City | Status | What's in it |
 |---|---|---|
-| **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House and Harbour Bridge are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
+| **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House and Harbour Bridge are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | Melbourne, Australia | Planned | ELVIS LiDAR; City of Melbourne open 3D massing |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
@@ -60,6 +66,14 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 
 ## What every city gets
 
+- **Buildings that look like their city.**
+  - LOD2 roofs come from a straight skeleton, with eaves. The shape is mapped,
+    or ruled, or drawn from the roof shapes mapped across the metro area, and
+    scored against the mapped ones.
+  - Facades have floors, windows, curtain walls, shopfronts and awnings, glass
+    with a room behind it, and lights by the local hour.
+  - Flat roofs get parapets and rooftop plant.
+  - Each region has its own rules (Sydney, Japan). See [docs/BUILDINGS.md](docs/BUILDINGS.md).
 - **Buildings with provenance.** Each height has a source:
   - verified from a cited source;
   - published;
@@ -175,11 +189,12 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 | Path | What |
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
-| `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, landmark meshes |
-| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
+| `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
+| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `buildings.js` (walls, roofs, facades and rooftops), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
-| `blender/` | Headless Blender rebuild and Cycles renders |
-| `docs/` | Architecture, the game, adding a city, per-city case studies, images |
+| `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings) |
+| `tools/` | `city_shot.js`: screenshots of the model viewer from listed views, for checking changes |
+| `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
 ## Data and licences
 
@@ -212,9 +227,13 @@ copyright applies.
   converts to a height within 6% (median, against published tower heights).
   The remaining 14% is estimated, with a measured error. Other cities will
   differ, and the share is the first thing to check.
-- **Footprints are extrusions.** Setbacks, podiums and roof shapes appear only
-  where OpenStreetMap maps building parts. Landmarks need hand-written geometry
-  from published dimensions.
+- **Roof shapes and facades are inferred.** About 97% of buildings have no
+  mapped roof shape, so it is ruled or drawn from measured priors. Sydney's
+  rules get flat or pitched right for 69% of the mapped roofs: they find 85%
+  of the flat ones but miss many pitched heritage roofs. Facade styles come
+  from class, height and size.
+- **Setbacks and podiums appear only where OpenStreetMap maps building parts.**
+  Landmarks need hand-written geometry from published dimensions.
 - **Rules are transcribed, not interpreted.** A sun-access rule is encoded as
   places, periods and windows. How a court reads it (clock or standard time,
   which baseline) is reported as a range, not decided.

@@ -52,6 +52,9 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `terrain_check` | no | `{type: "arcgis_identify", url, field, name}`: an independent elevation service for `analysis/dem_check.py` |
 | `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
+| `architecture` | no | The rules that dress the buildings (roof-shape priors, pitches, wall palettes, window grids, shopfronts, awnings, signs): `sydney`, `japan` or `default`. Without it the city takes its `country_code`'s rules (AU, JP), else `default`. See [BUILDINGS.md](BUILDINGS.md) |
+| `architecture_overrides` | no | Changes to those rules for this city, such as `{"awning": 0.5, "signage": 0.3, "machiya": true, "roofs": {"house": {"gabled": 0.7, "hipped": 0.3}}}` |
+| `building_styles` | no | `{"OSM building name": "style"}` for buildings the rules would get wrong, such as a bridge pylon (`stone`) |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
 | `minor_labels` | no | Labels drawn in the lighter style |
 | `place_labels` | no | Names from `places` to label on the ground |
@@ -149,6 +152,13 @@ python pipeline/game_data.py --city <id>          # if the city has a game block
 ```
 
 Then open `web/` with `python -m http.server` and go to `#<id>`.
+
+`build_scene.py` also writes `cities/<id>/analysis/roof_model.json`. It holds the
+roof shapes it built and how it chose them, and a check: every mapped roof shape
+predicted by the rules alone. If the flat-or-pitched score is poor, adjust the
+region's priors in `architecture_overrides`. To look at the buildings up close
+from the command line, use `tools/city_shot.js`; it screenshots views that you
+list in a JSON file.
 
 ## 6. Mark it live
 
