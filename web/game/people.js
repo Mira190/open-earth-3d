@@ -103,11 +103,26 @@ varying vec3 vPal;`)
   }
 
   const up = new THREE.Vector3(0, 1, 0), tv = new THREE.Vector3(), tq = new THREE.Quaternion(), tq2 = new THREE.Quaternion(), hp = new THREE.Vector3();
+  const sa = new THREE.Vector3(), sb = new THREE.Vector3(), sd = new THREE.Vector3(), sd2 = new THREE.Vector3(), fw = new THREE.Vector3(), sq = new THREE.Quaternion(), sq2 = new THREE.Quaternion();
+  // turn bone b so that it points in direction dir (world space): towards its child, or along
+  // its own +y axis (the way the bone points, as Blender exports it) when there is none
+  function aim(b, child, dir) {
+    if (child) { b.getWorldPosition(sa); child.getWorldPosition(sb); sd.subVectors(sb, sa).normalize(); }
+    else sd.set(0, 1, 0).applyQuaternion(b.getWorldQuaternion(sq));
+    sq.setFromUnitVectors(sd, dir);
+    b.getWorldQuaternion(sq2);
+    sq.multiply(sq2);
+    b.parent.getWorldQuaternion(sq2).invert();
+    b.quaternion.copy(sq2.multiply(sq));
+    b.updateMatrixWorld(true);
+  }
   function person(lib, look) {
     const T = lib.tpl[look.character], speeds = lib.info.ground_speed[T.pack];
     const model = THREE.SkeletonUtils.clone(T.scene);
     let mesh = null, head = null;
-    model.traverse(o => { if (o.isSkinnedMesh) mesh = o; if (o.isBone && o.name === 'Head') head = o; });
+    const bone = {};
+    model.traverse(o => { if (o.isSkinnedMesh) mesh = o; if (o.isBone) bone[o.name] = o; });
+    head = bone.Head || null;
     mesh.material = paletteMaterial(colours(T.extras, look));
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.frustumCulled = false;
@@ -136,11 +151,36 @@ varying vec3 vPal;`)
       model.scale.setScalar(look.scale || 1);
     };
     rig.setLook({});
+    // sitting has no clip: bend the legs over the idle pose, thighs forward and shins down (an aim
+    // per bone in world space, so it doesn't depend on how the bones' axes are set up). The feet
+    // are IK targets under Root in these rigs, not children of the shins, so they are moved to
+    // the ends of the shins; then the body is lowered until they are back on the ground.
+    const B = name => bone[THREE.PropertyBinding.sanitizeNodeName(name)]; // the loader drops the dots: Foot.L is FootL
+    const legs = ['L', 'R'].map(side => ({ ul: B('UpperLeg.' + side), ll: B('LowerLeg.' + side), ft: B('Foot.' + side), shin: 0, y0: 0 }));
+    const seated = legs.every(l => l.ul && l.ll && l.ft);
+    function seat() {
+      if (!seated) return;
+      model.position.y = 0;
+      root.updateMatrixWorld(true);
+      fw.set(0, 0, 1).applyQuaternion(root.getWorldQuaternion(sq));
+      for (const l of legs) { l.y0 = l.ft.getWorldPosition(sa).y; l.shin = sa.distanceTo(l.ll.getWorldPosition(sb)); }
+      let drop = 0;
+      for (const l of legs) {
+        aim(l.ul, l.ll, sd2.copy(fw));
+        const down = sd2.set(0, -1, 0).addScaledVector(fw, 0.12).normalize();
+        aim(l.ll, null, down);
+        const ankle = l.ll.getWorldPosition(sa).addScaledVector(down, l.shin);
+        drop = Math.min(drop, l.y0 - ankle.y);
+        l.ft.parent.updateMatrixWorld(true);
+        l.ft.position.copy(l.ft.parent.worldToLocal(ankle));
+      }
+      model.position.y = drop / (root.parent ? root.parent.getWorldScale(sb).y : 1);
+    }
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
       const s = look.scale || 1;
-      model.position.y = mode === 'sit' ? -0.42 : 0;
+      model.position.y = 0;
       if (mode !== 'talk') talked = false;
       const waving = t < waveUntil && speed < 0.3 && mode !== 'sit' && mode !== 'air';
       if (mode === 'talk' && !talked) { talked = true; rig.wave(t); }   // a wave hello, then listen
@@ -152,6 +192,7 @@ varying vec3 vPal;`)
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(1.9, speed / (speeds.Run * s))));
       mixer.update(dt);
+      if (mode === 'sit') seat();
       // the walk cycle as a phase, two steps per cycle (footsteps)
       const d = cur.getClip().duration, tt = cur.time / d;
       if (tt < lastT) cycles++;
@@ -188,16 +229,18 @@ varying vec3 vPal;`)
 attribute float mat; attribute float part; attribute vec3 aAnim;
 uniform float uTime; uniform vec2 uHip; uniform vec2 uKnee; uniform vec2 uShoulder;
 mat3 rx(float a) { float c = cos(a), s = sin(a); return mat3(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c); }
-// legs swing from the hips with the knee bending on the back swing; arms swing from the shoulders
+// legs swing from the hips with the knee bending on the back swing; arms swing from the shoulders.
+// A negative amplitude means sitting: thighs forward, shins down.
 vec3 crowdPose(vec3 p, bool isNormal) {
-  float ph = uTime * aAnim.y + aAnim.x, sw = sin(ph) * aAnim.z;
+  bool sit = aAnim.z < -0.5;
+  float amp = max(aAnim.z, 0.0), ph = uTime * aAnim.y + aAnim.x, sw = sin(ph) * amp;
   float side = (part > 0.5 && part < 1.5) || (part > 2.5 && part < 3.5) || (part > 4.5 && part < 5.5) ? 1.0 : -1.0;
   bool leg = (part > 0.5 && part < 2.5) || part > 4.5, shin = part > 4.5, arm = part > 2.5 && part < 4.5;
   vec3 piv;
-  if (shin) { float k = max(0.0, -cos(ph) * side) * aAnim.z * 1.3; piv = vec3(0.0, uKnee); p = isNormal ? rx(k) * p : rx(k) * (p - piv) + piv; }
-  if (leg) { piv = vec3(0.0, uHip); p = isNormal ? rx(sw * side) * p : rx(sw * side) * (p - piv) + piv; }
+  if (shin) { float k = sit ? 1.5708 : max(0.0, -cos(ph) * side) * amp * 1.3; piv = vec3(0.0, uKnee); p = isNormal ? rx(k) * p : rx(k) * (p - piv) + piv; }
+  if (leg) { float a = sit ? -1.5708 : sw * side; piv = vec3(0.0, uHip); p = isNormal ? rx(a) * p : rx(a) * (p - piv) + piv; }
   if (arm) { piv = vec3(0.0, uShoulder); p = isNormal ? rx(-sw * side * 0.8) * p : rx(-sw * side * 0.8) * (p - piv) + piv; }
-  if (!isNormal) p.y += abs(cos(ph)) * 0.035 * aAnim.z;
+  if (!isNormal) p.y += abs(cos(ph)) * 0.035 * amp;
   return p;
 }`;
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0 });
@@ -238,8 +281,9 @@ transformed = crowdPose(transformed, false);`);
     const groups = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), zero = new THREE.Matrix4().makeScale(0, 0, 0);
     for (const p of P) {
       p.look = randomLook(lib, pickCharacter(lib));
-      const gs = lib.info.ground_speed[lib.info.characters[p.look.character].pack].Walk;
+      const gs = lib.info.ground_speed[lib.info.characters[p.look.character].pack].Walk, ex = lib.lod[p.look.character].extras;
       p.speed = gs * p.look.scale * (0.95 + rnd() * 0.25);
+      p.thigh = (ex.hip[0] - ex.knee[0]) * p.look.scale; // how far the body drops when sitting
       (groups[p.look.character] = groups[p.look.character] || []).push(p);
     }
     const meshes = [];
@@ -286,15 +330,20 @@ transformed = crowdPose(transformed, false);`);
         r.root.position.copy(W(p.x, p.y, p.z));
         r.root.rotation.y = Math.PI - p.h;
         if (p.wave) { p.wave = false; r.wave(tNow); }
-        r.animate(dtNow, moving ? p.speed : 0, 'ground', tNow);
+        r.animate(dtNow, moving ? p.v ?? p.speed : 0, p.mode === 'sit' ? 'sit' : 'ground', tNow);
         return;
       }
       p.wave = false;
+      const sit = p.mode === 'sit';
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI - p.h);
       sc.setScalar(p.look.scale);
-      m4.compose(W(p.x, p.y, p.z), q, sc);
+      m4.compose(W(p.x, p.y, p.z - (sit ? p.thigh : 0)), q, sc);
       p.mesh.setMatrixAt(p.slot, m4);
-      p.mesh.geometry.attributes.aAnim.setXYZ(p.slot, p.phase, 4.5 * p.speed / p.look.scale, moving ? 0.42 : 0);
+      // the cadence follows the speed; when it changes, shift the phase so the stride doesn't jump
+      const f = moving ? 4.5 * (p.v ?? p.speed) / p.look.scale : p.animF ?? 4.5 * p.speed / p.look.scale;
+      if (p.animF == null) { p.animF = f; p.animO = p.phase; }
+      else if (Math.abs(f - p.animF) > 0.02 * p.animF) { p.animO += (p.animF - f) * tNow; p.animF = f; }
+      p.mesh.geometry.attributes.aAnim.setXYZ(p.slot, p.animO, p.animF, sit ? -1 : moving ? 0.42 : 0);
     }
     function hide(i) {
       const p = P[i];

@@ -146,7 +146,8 @@ The views switch in place, without reloading the page.
   - navigation;
   - people (`people.js`): skinned characters near the player, instanced crowd
     copies further away, all recoloured from one palette per character;
-  - traffic;
+  - crowd and traffic (`actors.js`): walkers who step aside for each other and
+    sit on benches in the sun or the shade, and cars on the left;
   - helicopter and ferries;
   - HUD;
   - sound.

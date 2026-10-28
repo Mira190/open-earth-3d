@@ -17,6 +17,8 @@ Writes web/data/<city>/game.json:
             and piers, then smoothed
   helipads, props (benches and street lamps), npcs and quests (positions snapped to
   open ground)
+  climate   passed through from city.json: the monthly mean daily maximum, which decides
+            whether the crowd looks for sun or shade on the benches
 """
 import base64
 import json
@@ -333,7 +335,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks", "climate") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(np.where(water, np.where(ndimage.binary_dilation(~water), 0.0, -4.0), dem) * 10).astype("<i2").tobytes()).decode()},
