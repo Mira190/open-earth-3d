@@ -94,7 +94,7 @@ async function main() {
   let last = performance.now(), frames = 0;
   window.__reef = { camera, env, renderer, d, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
-    const dt = Math.min((now - last) / 1000, 0.1); last = now;
+    const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {
     const sp = (keys.has('ShiftLeft') ? 60 : 12) * (camera.position.y > 200 ? 8 : 1);
     const fwd = new THREE.Vector3(-Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), -Math.cos(yaw) * Math.cos(pitch));
