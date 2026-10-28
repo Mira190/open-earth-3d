@@ -979,20 +979,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const dir = cam.yaw + Math.atan2(side, fwd);
       player.h += angDiff(dir, player.h) * Math.min(1, dt * 10);
     }
-    // move, sliding along walls
+    // move as Unreal's CharacterMovementComponent does: sweep the capsule and slide along the
+    // walls it meets, then check the floor where it ends up (water, a drop). At the seawall,
+    // where the floor check fails, try one axis at a time.
     const sx = Math.sin(player.h) * player.speed * dt, sy = Math.cos(player.h) * player.speed * dt;
-    let moved = false;
+    let moved = 0;
     for (const [mx, my] of [[sx, sy], [sx, 0], [0, sy]]) {
       if (!mx && !my) continue;
-      const w = nav.walk(player.x + mx, player.y + my, player.z);
+      const m = nav.slide(player.x, player.y, player.z, mx, my), w = nav.walk(m.x, m.y, player.z);
       if (w.ok) {
-        player.x += mx; player.y += my; moved = true;
+        moved = Math.hypot(m.x - player.x, m.y - player.y);
+        player.x = m.x; player.y = m.y;
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
       } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast('No swimming in the harbour. Ferries leave from the wharves marked F.'); }
     }
-    if (!moved) player.speed *= 0.5;
+    if (dt > 0) player.speed = Math.min(player.speed, moved / dt); // the speed is what the move achieved, so the walk cycle slows against a wall
     const f = nav.floorAt(player.x, player.y, player.z);
     const floorZ = f ? f.z : player.z;
     if (f) player.floor = f.kind;
