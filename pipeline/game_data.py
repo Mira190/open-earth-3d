@@ -110,6 +110,10 @@ def main():
         hs = [h for s in surfaces if (h := strip_height(s, x, y)) is not None]
         return max(hs) if hs else None
 
+    def drape_z(x, y):  # surfaces every footway crossing them is put onto (steps)
+        hs = [h for s in surfaces if s.get("drape") and (h := strip_height(s, x, y)) is not None]
+        return max(hs) if hs else None
+
     # ---------------------------------------------------------- paths
     foot, roads, n_tunnel, n_bridge = [], [], 0, 0
     for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, wkb"):
@@ -146,7 +150,10 @@ def main():
                     on_bridge = any(ba <= t <= bb for ba, bb in bridges)
                     lv = level_of(r["level_rules"], t)
                     sz = surface_z(q.x, q.y)
-                    if sz is not None and (on_bridge or lv >= 1):
+                    if r["class"] in FOOT and drape_z(q.x, q.y) is not None:
+                        z = drape_z(q.x, q.y)
+                        n_bridge += 1
+                    elif sz is not None and (on_bridge or lv >= 1):
                         z = sz
                         n_bridge += 1
                     elif water[cell(q.x, q.y)] and not on_bridge:

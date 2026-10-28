@@ -29,7 +29,7 @@ Open it from the globe (**Play** on the Sydney card), from the 3D model (the
 | Keys | What they do |
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
-| <kbd>Shift</kbd> · <kbd>Space</kbd> | Run · jump |
+| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
 | <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |

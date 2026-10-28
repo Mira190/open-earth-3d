@@ -58,6 +58,7 @@ window.OEVehicles = (function () {
     // near the main span: position across the deck (v) and the deck height on the axis
     const deckBottomAt = (x, y) => {
       for (const s of nav.strips) {
+        if (!s.fly_under) continue;
         const [u, v] = nav.stripUV(s, x, y);
         if (Math.abs(u) < 240 && Math.abs(v) < 250) return { u, v, s, z: nav.stripHeight(s, s.origin[0] + s.axis[0] * u, s.origin[1] + s.axis[1] * u) };
       }

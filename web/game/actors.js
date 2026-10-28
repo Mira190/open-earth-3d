@@ -1,8 +1,8 @@
-// People and cars. The player and the named NPCs are articulated rigs built from
-// boxes; the crowd and the traffic are instanced meshes animated in the vertex
-// shader, so a few hundred of each cost a handful of draw calls. Pedestrians walk
-// the city's footways (keeping left, as Australians do) and cars drive the roads on
-// the left, at the speed limit Overture gives or a default for the road class.
+// People and cars. Pedestrians walk the city's footways (keeping left, as Australians
+// do) and cars drive the roads on the left, at the speed limit Overture gives or a
+// default for the road class. Cars are instanced meshes, a handful of draw calls for
+// hundreds. People are drawn by people.js (realistic characters); the box-built rigs
+// here are the fallback when those files can't be loaded.
 'use strict';
 window.OEActors = (function () {
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
@@ -229,14 +229,30 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   }
 
   // ------------------------------------------------------------ the crowd
-  function crowd(world, net, U, n, radius) {
-    const mesh = instanced(PERSON(), toneMaterial(U), n);
+  // the box-built crowd, for when the realistic people can't be loaded
+  function boxRenderer(world, U, P) {
+    const n = P.length, mesh = instanced(PERSON(), toneMaterial(U), n), A = mesh.geometry.attributes;
+    const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), zero = new THREE.Matrix4().makeScale(0, 0, 0);
     world.add(mesh);
-    const A = mesh.geometry.attributes, P = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
-    for (let i = 0; i < n; i++) {
-      setC(A.aC0, i, pick(SHIRTS)); setC(A.aC1, i, pick(PANTS)); setC(A.aC2, i, pick(SKIN)); setC(A.aC3, i, pick(HAIR));
-      P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16 });
-    }
+    for (let i = 0; i < n; i++) { setC(A.aC0, i, pick(SHIRTS)); setC(A.aC1, i, pick(PANTS)); setC(A.aC2, i, pick(SKIN)); setC(A.aC3, i, pick(HAIR)); }
+    return {
+      meshes: [mesh],
+      begin() {},
+      hide(i) { mesh.setMatrixAt(i, zero); },
+      place(i, p, moving) {
+        q.setFromAxisAngle(up, Math.PI - p.h); // models face +z; local heading is clockwise from north
+        m4.compose(W(p.x, p.y, p.z), q, new THREE.Vector3(p.scale, p.scale, p.scale));
+        mesh.setMatrixAt(i, m4);
+        A.aAnim.setXYZ(i, p.phase, 2.2 + p.speed * 1.6, moving ? 0.5 : 0);
+        p.wave = false;
+      },
+      end() { mesh.instanceMatrix.needsUpdate = true; A.aAnim.needsUpdate = true; },
+    };
+  }
+  function crowd(world, net, U, n, radius, makeRenderer) {
+    const P = [], tmp = {};
+    for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16 });
+    const R = makeRenderer ? makeRenderer(P) : boxRenderer(world, U, P);
     function respawn(p, cx, cy, rMin) {
       const cand = net.near(cx, cy, rMin, radius);
       if (!cand.length) { p.line = -1; return; }
@@ -244,13 +260,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       p.s = rnd() * net.L[p.line].len;
       p.dir = rnd() < 0.5 ? 1 : -1;
     }
-    const api = { mesh, P, active: n };
+    const api = { R, P, active: n };
     function update(dt, cx, cy, t, player) {
+      R.begin(dt, cx, cy, t, api.active);
       for (let i = 0; i < n; i++) {
         const p = P[i];
-        if (i >= api.active) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); p.line = -1; continue; }
+        if (i >= api.active) { R.hide(i); p.line = -1; continue; }
         if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
-        if (p.line < 0) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); continue; }
+        if (p.line < 0) { R.hide(i); continue; }
         const l = net.L[p.line];
         let moving = p.pause <= 0;
         if (player && Math.hypot(p.x - player.x, p.y - player.y) < 1.3) moving = false; // let the player pass
@@ -266,13 +283,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const hx = tmp.hx * p.dir, hy = tmp.hy * p.dir;
         p.x = tmp.x - hy * p.side; p.y = tmp.y + hx * p.side; p.z = tmp.z; // keep left
         if (p.face != null) p.h = p.face; else p.h = Math.atan2(hx, hy);
-        q.setFromAxisAngle(up, Math.PI - p.h); // models face +z; local heading is clockwise from north
-        m4.compose(W(p.x, p.y, p.z), q, new THREE.Vector3(p.scale, p.scale, p.scale));
-        mesh.setMatrixAt(i, m4);
-        A.aAnim.setXYZ(i, p.phase, 2.2 + p.speed * 1.6, moving ? 0.5 : 0);
+        R.place(i, p, moving);
       }
-      mesh.instanceMatrix.needsUpdate = true;
-      A.aAnim.needsUpdate = true;
+      R.end();
     }
     function nearest(x, y, maxD) {
       let best = -1, bd = maxD;

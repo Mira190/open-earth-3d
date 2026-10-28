@@ -614,13 +614,14 @@ a { color: var(--accent); }
         <div class="g-settings">
           <div class="field"><span class="note">Time of day</span><div class="seg" id="gm-time"><button data-t="live">Now</button><button data-t="morning">9 am</button><button data-t="noon">Noon</button><button data-t="golden">Golden hour</button><button data-t="night">Night</button></div></div>
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
+          <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
           <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gm-route" checked> Show the route to the objective</label>
           <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gm-sound" checked> Sound</label>
         </div>
         <table class="gt-keys"><tbody>
           <tr><td><kbd>W A S D</kbd> or arrows</td><td>Walk, relative to the camera; drag to look around, scroll to zoom</td></tr>
-          <tr><td><kbd>Shift</kbd> · <kbd>Space</kbd></td><td>Run · jump</td></tr>
+          <tr><td><kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd></td><td>Sprint · walk instead of jog · jump</td></tr>
           <tr><td><kbd>E</kbd></td><td>Talk, board, fly, get out</td></tr>
           <tr><td><kbd>Q</kbd></td><td>Survey lens: the building in front of you and where its height comes from</td></tr>
           <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
@@ -659,12 +660,15 @@ a { color: var(--accent); }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/utils/SkeletonUtils.js"></script>
 <script src="sun.js"></script>
 <script src="globe.js"></script>
 <script src="world.js"></script>
 <script src="city.js"></script>
 <script src="game/nav.js"></script>
 <script src="game/actors.js"></script>
+<script src="game/people.js"></script>
 <script src="game/vehicles.js"></script>
 <script src="game/audio.js"></script>
 <script src="game/hud.js"></script>

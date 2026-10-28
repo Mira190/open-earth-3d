@@ -177,20 +177,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   world.add(benchMesh, poleMesh, headMesh, glows);
 
   // ------------------------------------------------------------ people and traffic
+  // realistic characters (people.js); the box-built rigs are the fallback if their files can't be loaded
+  const PLAYER_KEY = 'oe3d-player', PLAYER_LOOKS = {
+    W_Worker: { character: 'W_Worker', skin: '#d49c76', hair: '#33241b', scale: 0.92 },
+    M_Worker: { character: 'M_Worker', skin: '#e3b08d', hair: '#4a3222', scale: 0.97 } };
+  let playerChar = 'W_Worker';
+  try { if (PLAYER_LOOKS[localStorage.getItem(PLAYER_KEY)]) playerChar = localStorage.getItem(PLAYER_KEY); } catch (e) { /* storage blocked */ }
+  let lib = null;
+  try {
+    lib = await OEPeople.load('assets/people/');
+    await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
+  } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
+  const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
   const CR = G.crowd || {};
-  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450);
+  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14 })));
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100);
   const density = { low: 0.35, normal: 1, high: 1 };
-  const player = { rig: OEActors.makePerson({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, { vest: true }),
-    x: 0, y: 0, z: 0, h: 0, vz: 0, speed: 0, ground: true, floor: 'ground', mode: 'foot', vehicle: null, auto: null };
+  const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
+  const player = { rig: makeRig(playerLook(), { vest: true }),
+    x: 0, y: 0, z: 0, h: 0, vz: 0, speed: 0, ground: true, floor: 'ground', mode: 'foot', vehicle: null, auto: null, walking: false };
   world.add(player.rig.root);
+  function setPlayerCharacter(name) { // swap the player's character in place
+    if (!lib || !PLAYER_LOOKS[name]) return;
+    playerChar = name;
+    try { localStorage.setItem(PLAYER_KEY, name); } catch (e) { /* storage blocked */ }
+    const old = player.rig, parent = old.root.parent, rig = makeRig(playerLook(), { vest: true });
+    rig.root.position.copy(old.root.position); rig.root.rotation.copy(old.root.rotation);
+    if (parent) { parent.remove(old.root); parent.add(rig.root); }
+    player.rig = rig;
+  }
   const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const npcs = G.npcs.map(n => {
-    const rig = OEActors.makePerson(n.look);
+    const rig = makeRig(Object.assign({ scale: (n.look.character || '')[0] === 'W' ? 0.91 : 0.96 }, n.look));
     world.add(rig.root);
     const f = nav.floorAt(n.at[0], n.at[1], 200);
-    const o = Object.assign({}, n, { rig, x: n.at[0], y: n.at[1], z: f ? f.z : 0, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.shirt,
+    const o = Object.assign({}, n, { rig, x: n.at[0], y: n.at[1], z: f ? f.z : 0, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
     o.marker.position.set(0, 2.45, 0);
@@ -514,6 +536,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     else if (c === 'KeyP') togglePass();
     else if (c === 'KeyH' && player.mode === 'ferry') takeHelm();
     else if (c === 'KeyR' && player.mode === 'foot') unstuck();
+    else if (c === 'KeyX' && player.mode === 'foot') { player.walking = !player.walking; H.toast(player.walking ? 'Walking. X to jog.' : 'Jogging. X to walk.'); }
   });
   on(window, 'keyup', e => keys.delete(e.code));
   on(window, 'blur', () => keys.clear());
@@ -597,7 +620,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const pi = crowd.nearest(player.x, player.y, 2.4);
     if (pi >= 0) return { key: 'E', text: 'Say hello', act: () => {
       const p = crowd.P[pi];
-      p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y);
+      p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y); p.wave = true;
       setTimeout(() => { p.face = null; }, 6000);
       dlg.show({ name: 'Passer-by', role: 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
     } };
@@ -765,12 +788,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $$('#gm-density button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-route'), 'change', e => { settings.route = e.target.checked; });
+  if (!lib) $('#gm-who').closest('.field').hidden = true;
+  $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.c === playerChar)));
+  on($('#gm-who'), 'click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setPlayerCharacter(b.dataset.c);
+    $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  });
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
   on($('#gm-reset'), 'click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } qs = { qi: 0, started: false, si: -1, stamps: [], visited: {}, inspected: [], rideFrom: null }; renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true; });
 
   // ------------------------------------------------------------ start
-  function spawn(pos, zRef) { // at ground level unless a height is given
-    const at = pos || G.start.at, f = nav.floorAt(at[0], at[1], zRef ?? Math.max(0, nav.terrain(at[0], at[1])) + 1);
+  function spawn(pos, zRef) { // at ground level (or on steps built on it) unless a height is given
+    const at = pos || G.start.at;
+    let z0 = Math.max(0, nav.terrain(at[0], at[1]));
+    for (const st of nav.strips) { const h = st.drape ? nav.stripHeight(st, at[0], at[1]) : null; if (h != null && h > z0) z0 = h; }
+    const f = nav.floorAt(at[0], at[1], zRef ?? z0 + 1);
     player.x = at[0]; player.y = at[1]; player.z = f ? f.z : 2;
     const fa = G.start.facing || [at[0], at[1] + 10];
     player.h = Math.atan2(fa[0] - at[0], fa[1] - at[1]);
@@ -909,12 +943,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     if (player.mode !== 'heli') { player.rig.root.position.copy(W(player.x, player.y, player.z)); player.rig.root.rotation.y = Math.PI - player.h; }
     // NPCs: face the player when close, idle otherwise
+    let gaze = null;
     for (const n of npcs) {
       const d = Math.hypot(player.x - n.x, player.y - n.y);
       if (d < 5 && player.mode === 'foot') n.h += angDiff(Math.atan2(player.x - n.x, player.y - n.y), n.h) * Math.min(1, dt * 4);
       n.rig.root.rotation.y = Math.PI - n.h;
+      // look at the player when close; the player looks at whoever they are talking to
+      n.rig.lookTarget = d < 9 && player.mode === 'foot' ? n.eyes.copy(W(player.x, player.y, player.z + 1.55)) : null;
+      if (n.talking) gaze = W(n.x, n.y, n.z + 1.55);
       n.rig.animate(dt, 0, n.talking ? 'talk' : 'ground', clockT + n.pitch);
     }
+    player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
     crowd.update(dt, cx, cy, clockT, player.mode === 'foot' ? player : null);
     cars.update(dt, cx, cy, clockT, player.mode === 'foot' ? [player] : []);
@@ -934,7 +973,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     const m = Math.min(1, Math.hypot(fwd, side));
     const run = k('ShiftLeft') || k('ShiftRight');
-    const target = m > 0.05 ? (run ? 6.2 : 2.6) * m : 0;
+    const target = m > 0.05 ? (run ? 5.4 : player.walking ? 1.35 : 2.8) * m : 0; // jog, walk (X) or sprint (Shift)
     player.speed += (target - player.speed) * Math.min(1, dt * (target > player.speed ? 6 : 10));
     if (m > 0.05) {
       const dir = cam.yaw + Math.atan2(side, fwd);
@@ -1013,7 +1052,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (camSmooth.lengthSq() === 0 || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos); // after a teleport
     camSmooth.lerp(camPos, player.mode === 'foot' ? Math.min(1, dt * 10) : 1);
     camPos.copy(camSmooth);
-    const gz = nav.terrain(camPos.x, -camPos.z);
+    let gz = nav.terrain(camPos.x, -camPos.z);
+    for (const st of nav.strips) { // steps and decks below the player's head lift the camera too
+      const h = nav.stripHeight(st, camPos.x, -camPos.z);
+      if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
+    }
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
     camera.position.copy(camPos);
     camLook.copy(camTarget);

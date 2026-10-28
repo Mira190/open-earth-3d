@@ -23,7 +23,7 @@ window.OENav = (function () {
     // ---------------------------------------------------------- piers (2 m grid, deck height)
     const pier = { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny).fill(-99) };
     for (const r of D.P.piers || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2);
-    // ---------------------------------------------------------- strip surfaces (bridge decks)
+    // ---------------------------------------------------------- strip surfaces (bridge decks, steps)
     const strips = (G.surfaces || []).filter(s => s.type === 'strip').map(s => Object.assign({}, s, {
       us: s.profile.map(p => p[0]), zs: s.profile.map(p => p[1]) }));
     function stripUV(s, x, y) {
@@ -44,7 +44,7 @@ window.OENav = (function () {
     const solid = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     for (const m of D.LM.meshes || []) {
-      if (m.name === 'bridge_deck') continue; // the deck is the strip surface; its slab is added below
+      if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
       const p = m.position, idx = m.index, mine = new Map();
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
@@ -63,7 +63,7 @@ window.OENav = (function () {
       tops[m.name] = new Map([...mine].map(([k, q]) => [k, q[1]]));
       for (const [k, q] of mine) { const l = solid.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid.set(k, [q[0] - 0.3, q[1] + 0.3]); }
     }
-    for (const s of strips) { // deck slabs: solid from (surface - thickness) to the surface
+    for (const s of strips) { // slabs: solid from (surface - thickness) to the surface
       const th = s.thickness || 3;
       for (let r = 0; r < DSM.ny; r++) {
         const y = y1 - (r + 0.5) * DSM.cell;

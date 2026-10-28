@@ -1,0 +1,632 @@
+{
+ "source": "Quaternius, Ultimate Modular Men and Ultimate Modular Women (CC0 1.0)",
+ "urls": [
+  "https://quaternius.com/packs/ultimatemodularcharacters.html",
+  "https://quaternius.com/packs/ultimatemodularwomen.html"
+ ],
+ "animations": [
+  "Idle",
+  "Idle_Neutral",
+  "Walk",
+  "Run",
+  "Wave",
+  "Interact"
+ ],
+ "anims": {
+  "M": "anims_M.glb",
+  "W": "anims_W.glb"
+ },
+ "crowd": "crowd.glb",
+ "ground_speed": {
+  "M": {
+   "Walk": 1.283,
+   "Run": 3.006
+  },
+  "W": {
+   "Walk": 1.026,
+   "Run": 2.405
+  }
+ },
+ "classes": [
+  "keep",
+  "skin",
+  "hair",
+  "brows",
+  "top",
+  "legs"
+ ],
+ "characters": {
+  "M_Casual2": {
+   "pack": "M",
+   "triangles": 5776,
+   "crowd_triangles": 1579,
+   "height_m": 1.86,
+   "palette": [
+    "Body/Skin",
+    "Body/LightBrown",
+    "Feet/Red_Dark",
+    "Feet/White",
+    "Head/Skin",
+    "Head/Skin_Darker",
+    "Head/Eyebrows",
+    "Head/Hair",
+    "Head/Eye",
+    "Legs/LightBlue"
+   ],
+   "classes": [
+    "skin",
+    "top",
+    "keep",
+    "keep",
+    "skin",
+    "skin",
+    "brows",
+    "hair",
+    "keep",
+    "legs"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "M_Hoodie": {
+   "pack": "M",
+   "triangles": 6206,
+   "crowd_triangles": 1773,
+   "height_m": 1.87,
+   "palette": [
+    "Body/Skin",
+    "Body/Purple",
+    "Feet/Purple",
+    "Feet/White",
+    "Head/Skin",
+    "Head/Eyebrows",
+    "Head/Eye",
+    "Head/Hair",
+    "Legs/Skin",
+    "Legs/LightBlue"
+   ],
+   "classes": [
+    "skin",
+    "top",
+    "keep",
+    "keep",
+    "skin",
+    "brows",
+    "keep",
+    "hair",
+    "skin",
+    "legs"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "M_Suit": {
+   "pack": "M",
+   "triangles": 6634,
+   "crowd_triangles": 1522,
+   "height_m": 1.86,
+   "palette": [
+    "Body/Skin",
+    "Body/Tie",
+    "Body/Suit",
+    "Body/White",
+    "Feet/Black",
+    "Head/Skin",
+    "Head/Eyebrows",
+    "Head/Hair",
+    "Head/Eye",
+    "Legs/Suit"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "brows",
+    "hair",
+    "keep",
+    "keep"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "M_Worker": {
+   "pack": "M",
+   "triangles": 5240,
+   "crowd_triangles": 1586,
+   "height_m": 1.86,
+   "palette": [
+    "Body/Skin",
+    "Body/Worker_Yellow",
+    "Body/Worker_Vest",
+    "Body/LightBrown",
+    "Feet/Grey",
+    "Feet/Black",
+    "Head/Skin",
+    "Head/Eyebrows",
+    "Head/Worker_Yellow",
+    "Head/Moustache",
+    "Head/Eye",
+    "Legs/Brown",
+    "Legs/Brown2"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "brows",
+    "keep",
+    "brows",
+    "keep",
+    "keep",
+    "keep"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "M_Beach": {
+   "pack": "M",
+   "triangles": 6578,
+   "crowd_triangles": 1629,
+   "height_m": 1.88,
+   "palette": [
+    "Body/Skin",
+    "Body/LightBrown",
+    "Feet/Skin",
+    "Feet/Red_Dark",
+    "Head/Skin",
+    "Head/Eyebrows",
+    "Head/Eye",
+    "Head/Hair",
+    "Head/Earrings",
+    "Legs/Skin",
+    "Legs/Red_Dark",
+    "Legs/White"
+   ],
+   "classes": [
+    "skin",
+    "top",
+    "skin",
+    "keep",
+    "skin",
+    "brows",
+    "keep",
+    "hair",
+    "keep",
+    "skin",
+    "legs",
+    "keep"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "M_Adventurer": {
+   "pack": "M",
+   "triangles": 10202,
+   "crowd_triangles": 2253,
+   "height_m": 1.86,
+   "palette": [
+    "Body/Skin",
+    "Body/Green",
+    "Body/LightGreen",
+    "Feet/Grey",
+    "Feet/Black",
+    "Head/Skin",
+    "Head/Eyebrows",
+    "Head/Hair",
+    "Head/Eye",
+    "Legs/Brown",
+    "Legs/Brown2",
+    "Backpack/Brown",
+    "Backpack/LightGreen",
+    "Backpack/Gold",
+    "Backpack/Green"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "brows",
+    "hair",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "M_Punk": {
+   "pack": "M",
+   "triangles": 5500,
+   "crowd_triangles": 1536,
+   "height_m": 1.97,
+   "palette": [
+    "Body/Skin",
+    "Body/White",
+    "Body/Black",
+    "Feet/Skin",
+    "Feet/Black",
+    "Head/Skin",
+    "Head/Eye",
+    "Head/Eyebrows",
+    "Head/Red_Dark",
+    "Head/Red",
+    "Head/Earrings",
+    "Legs/Skin",
+    "Legs/LightBlue"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "skin",
+    "keep",
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "keep"
+   ],
+   "hip": [
+    0.956,
+    0.0455
+   ],
+   "knee": [
+    0.5301,
+    0.1236
+   ],
+   "shoulder": [
+    1.4237,
+    0.0636
+   ]
+  },
+  "W_Casual": {
+   "pack": "W",
+   "triangles": 6424,
+   "crowd_triangles": 1603,
+   "height_m": 1.84,
+   "palette": [
+    "Body/Skin",
+    "Body/White",
+    "Feet/Skin",
+    "Feet/Grey",
+    "Head/Skin",
+    "Head/Hair_Brown",
+    "Head/Brown",
+    "Head/Hair_Blond",
+    "Legs/Orange"
+   ],
+   "classes": [
+    "skin",
+    "top",
+    "skin",
+    "keep",
+    "skin",
+    "brows",
+    "keep",
+    "hair",
+    "legs"
+   ],
+   "hip": [
+    1.0292,
+    0.0451
+   ],
+   "knee": [
+    0.5539,
+    0.1241
+   ],
+   "shoulder": [
+    1.4389,
+    0.0622
+   ]
+  },
+  "W_Formal": {
+   "pack": "W",
+   "triangles": 6108,
+   "crowd_triangles": 1342,
+   "height_m": 1.84,
+   "palette": [
+    "Head/Skin",
+    "Head/Brown",
+    "Head/Red",
+    "Body/Skin",
+    "Body/LimeGreen",
+    "Body/Gold",
+    "Feet/Skin",
+    "Feet/Red",
+    "Legs/Skin",
+    "Legs/LimeGreen"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "hair",
+    "skin",
+    "top",
+    "keep",
+    "skin",
+    "keep",
+    "skin",
+    "top"
+   ],
+   "hip": [
+    1.0292,
+    0.0451
+   ],
+   "knee": [
+    0.5539,
+    0.1241
+   ],
+   "shoulder": [
+    1.4389,
+    0.0622
+   ]
+  },
+  "W_Suit": {
+   "pack": "W",
+   "triangles": 6482,
+   "crowd_triangles": 1633,
+   "height_m": 1.84,
+   "palette": [
+    "Body/Skin",
+    "Body/Black",
+    "Body/White",
+    "Feet/Skin",
+    "Feet/Black",
+    "Head/Skin",
+    "Head/Hair_Brown",
+    "Head/Brown",
+    "Head/Hair_Blond",
+    "Legs/Black"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "skin",
+    "keep",
+    "skin",
+    "brows",
+    "keep",
+    "hair",
+    "keep"
+   ],
+   "hip": [
+    1.0292,
+    0.0451
+   ],
+   "knee": [
+    0.5539,
+    0.1241
+   ],
+   "shoulder": [
+    1.4389,
+    0.0622
+   ]
+  },
+  "W_Worker": {
+   "pack": "W",
+   "triangles": 6112,
+   "crowd_triangles": 1549,
+   "height_m": 1.86,
+   "palette": [
+    "Body/Skin",
+    "Body/Worker_Vest",
+    "Body/White",
+    "Body/Worker_Yellow",
+    "Feet/Skin",
+    "Feet/Black",
+    "Head/Skin",
+    "Head/DarkBrown",
+    "Head/Brown",
+    "Head/Worker_Yellow",
+    "Legs/Brown_02",
+    "Legs/Brown2"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "keep",
+    "skin",
+    "hair",
+    "keep",
+    "keep",
+    "keep",
+    "keep"
+   ],
+   "hip": [
+    1.0292,
+    0.0451
+   ],
+   "knee": [
+    0.5539,
+    0.1241
+   ],
+   "shoulder": [
+    1.4389,
+    0.0622
+   ]
+  },
+  "W_Adventurer": {
+   "pack": "W",
+   "triangles": 6812,
+   "crowd_triangles": 1725,
+   "height_m": 1.83,
+   "palette": [
+    "Body/Skin",
+    "Body/White",
+    "Body/Brown2",
+    "Body/LightGreen",
+    "Body/Gold",
+    "Body/Green",
+    "Feet/Brown_02",
+    "Feet/Brown2",
+    "Head/Skin",
+    "Head/Hair_Brown",
+    "Head/Brown",
+    "Legs/Skin",
+    "Legs/Brown_02",
+    "Legs/White",
+    "Legs/Brown2",
+    "Legs/LightGreen",
+    "Legs/Gold"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "hair",
+    "keep",
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "keep"
+   ],
+   "hip": [
+    1.0292,
+    0.0451
+   ],
+   "knee": [
+    0.5539,
+    0.1241
+   ],
+   "shoulder": [
+    1.4389,
+    0.0622
+   ]
+  },
+  "W_Punk": {
+   "pack": "W",
+   "triangles": 5956,
+   "crowd_triangles": 1566,
+   "height_m": 1.96,
+   "palette": [
+    "Body/Skin",
+    "Body/Pink",
+    "Body/Black",
+    "Feet/Black",
+    "Feet/Grey",
+    "Head/Skin",
+    "Head/Pink",
+    "Head/Black",
+    "Head/Hair_Brown",
+    "Head/Brown",
+    "Legs/Skin",
+    "Legs/Black"
+   ],
+   "classes": [
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "keep",
+    "keep",
+    "keep",
+    "keep",
+    "skin",
+    "keep"
+   ],
+   "hip": [
+    1.0292,
+    0.0451
+   ],
+   "knee": [
+    0.5539,
+    0.1241
+   ],
+   "shoulder": [
+    1.4389,
+    0.0622
+   ]
+  }
+ }
+}
