@@ -13,7 +13,11 @@ class Heap {
 export function createNav(ctx) {
   const t = ctx.d.scene.terrain, x0 = t.x0, y1 = t.y1, x1 = t.x0 + t.w * t.cell_m, y0 = t.y1 - t.h * t.cell_m;
   const nx = Math.ceil((x1 - x0) / CELL), ny = Math.ceil((y1 - y0) / CELL);
-  const depthAt = (x, n) => ctx.depth(x, n);
+  // routes and anchorages are planned for the lowest water of the year (the tide's fitted range), so a route
+  // laid at high tide does not cross a bank that dries at the next spring low; the shore search uses the water now
+  const low = ctx.tide ? Math.min(...ctx.tide.check.map(c => c.low_m)) : null;
+  const depthAt = low === null ? (x, n) => ctx.depth(x, n) : (x, n) => low - ctx.height(x, n);
+  const depthNow = (x, n) => ctx.depth(x, n);
   const clear = new Float32Array(nx * ny);                 // min depth in the cell and its surroundings
   const cx = i => x0 + (i + 0.5) * CELL, cy = j => y1 - (j + 0.5) * CELL;
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
@@ -110,12 +114,12 @@ export function createNav(ctx) {
     let best = null;
     for (let r = 20; r <= maxR && !best; r += 20) for (let a = 0; a < 48; a++) {
       const th = a / 48 * Math.PI * 2, px = x + Math.cos(th) * r, py = n + Math.sin(th) * r;
-      if (depthAt(px, py) < -0.3) { best = [px, py, th]; break; }
+      if (depthNow(px, py) < -0.3) { best = [px, py, th]; break; }
     }
     if (!best) return null;
     // refine to the waterline along the ray back toward (x, n)
     let [px, py, th] = best, dx = -Math.cos(th), dy = -Math.sin(th);
-    for (let k = 0; k < 60 && depthAt(px, py) < 0.4; k++) { px += dx * 2; py += dy * 2; }
+    for (let k = 0; k < 60 && depthNow(px, py) < 0.4; k++) { px += dx * 2; py += dy * 2; }
     return { x: px, n: py, dirX: dx, dirN: dy };
   }
   return { route, snap, anchorage, shoreFrom, segClear, nav, clear, nx, ny, CELL, isNav, cell, depthAt };
