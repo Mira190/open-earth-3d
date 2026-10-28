@@ -13,7 +13,8 @@ web/data/<id>/:
                  water column (below) to get the floor's own colour, and the viewer puts the
                  water back with the same optics. A render from above reproduces the satellite.
 - `habitat.png`  one class per 10 m pixel (see HABITAT in this file).
-- `scene.json`   the frame, grids, water optics (measured from the imagery) and provenance.
+- `scene.json`   the frame, grids, water optics (measured from the imagery) and provenance,
+                 plus the POIs, spawn and harbour layout from city.json (marine_meta.py).
 - `analysis/optics.json` in cities/<id>/: the numbers behind the optics, so they can be checked.
 
 Water-column model (Maritorena et al. 1994): the reflectance seen from above a floor of
@@ -34,6 +35,7 @@ from rasterio.warp import Resampling, reproject
 from scipy import ndimage
 
 from cityctx import city_args
+from marine_meta import meta
 
 G = 2.2
 WORLDCOVER = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map/ESA_WorldCover_10m_2021_v200_{tile}_Map.tif"
@@ -246,6 +248,7 @@ def main():
         "sources": {"terrain": cfg["terrain"]["attribution"], "imagery": cfg["imagery"]["attribution"],
                     "landcover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)"},
     }
+    scene.update(meta(city))
     json.dump(scene, open(os.path.join(city.out, "scene.json"), "w"), indent=1)
     print("scene.json written")
 

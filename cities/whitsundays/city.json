@@ -7,22 +7,9 @@
   "timezone": "Australia/Brisbane",
   "locale": "en-AU",
   "description": "The Whitsunday Islands and the inner Great Barrier Reef, rebuilt from open data: 30 m survey bathymetry, a Sentinel-2 composite and the real sun.",
-  "bbox": [
-    148.88,
-    -20.42,
-    149.2,
-    -20.12
-  ],
-  "origin": [
-    149.03,
-    -20.28
-  ],
-  "extent_m": [
-    -15700,
-    17700,
-    -15500,
-    17700
-  ],
+  "bbox": [148.88, -20.42, 149.2, -20.12],
+  "origin": [149.03, -20.28],
+  "extent_m": [-15700, 17700, -15500, 17700],
   "overture_release": "2026-10-21.0",
   "vertical_datum": "m MSL",
   "year": 2026,
@@ -39,12 +26,358 @@
     "bare_earth": true,
     "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)"
   },
-  "start": {
-    "x": 900,
-    "y": 450,
-    "z": 60,
-    "yaw": 70,
-    "pitch": -8,
-    "date": null
+  "start": {"x": 900, "y": 450, "z": 60, "yaw": 70, "pitch": -8, "date": null},
+  "spawn": {
+    "poi": "whitehaven",
+    "x": 505,
+    "y": 445,
+    "heading": 90,
+    "note": "on the sand of Whitehaven Beach, facing the sea"
+  },
+  "pois": [
+    {
+      "id": "whitehaven",
+      "name": "Whitehaven Beach",
+      "kind": "beach",
+      "lonlat": [149.0352, -20.2764],
+      "src": "osm"
+    },
+    {
+      "id": "whitehaven-south",
+      "name": "South Whitehaven Beach",
+      "kind": "beach",
+      "lonlat": [149.0545, -20.2945],
+      "src": "osm"
+    },
+    {
+      "id": "hill-inlet",
+      "name": "Hill Inlet",
+      "kind": "inlet",
+      "lonlat": [149.0208, -20.2605],
+      "src": "osm"
+    },
+    {
+      "id": "hill-inlet-lookout",
+      "name": "Hill Inlet Lookout",
+      "kind": "lookout",
+      "lonlat": [149.0205, -20.2459],
+      "src": "osm"
+    },
+    {
+      "id": "bettys-beach",
+      "name": "Betty's Beach",
+      "kind": "beach",
+      "lonlat": [149.0241, -20.2431],
+      "src": "osm"
+    },
+    {
+      "id": "tongue-bay",
+      "name": "Tongue Bay",
+      "kind": "bay",
+      "lonlat": [149.014, -20.2427],
+      "src": "osm"
+    },
+    {
+      "id": "tongue-point",
+      "name": "Tongue Point",
+      "kind": "lookout",
+      "lonlat": [149.027, -20.2348],
+      "src": "osm"
+    },
+    {
+      "id": "chalkies",
+      "name": "Chalkies Beach",
+      "kind": "beach",
+      "lonlat": [149.075, -20.281],
+      "src": "overture-places"
+    },
+    {
+      "id": "chance-bay",
+      "name": "Chance Bay",
+      "kind": "beach",
+      "lonlat": [149.0418, -20.3026],
+      "src": "osm"
+    },
+    {
+      "id": "cid-harbour",
+      "name": "Cid Harbour",
+      "kind": "bay",
+      "lonlat": [148.9484, -20.2451],
+      "src": "osm"
+    },
+    {
+      "id": "nara-inlet",
+      "name": "Nara Inlet",
+      "kind": "inlet",
+      "lonlat": [148.9121, -20.1374],
+      "src": "osm"
+    },
+    {
+      "id": "border-island",
+      "name": "Border Island",
+      "kind": "island",
+      "lonlat": [149.034, -20.1631],
+      "src": "osm"
+    },
+    {
+      "id": "esk-island",
+      "name": "Esk Island",
+      "kind": "island",
+      "lonlat": [149.0416, -20.2331],
+      "src": "osm"
+    },
+    {
+      "id": "haslewood-island",
+      "name": "Haslewood Island",
+      "kind": "island",
+      "lonlat": [149.0849, -20.2825],
+      "src": "osm"
+    },
+    {
+      "id": "whitsunday-island",
+      "name": "Whitsunday Island",
+      "kind": "island",
+      "lonlat": [148.9819, -20.2609],
+      "src": "osm"
+    },
+    {
+      "id": "whitsunday-peak",
+      "name": "Whitsunday Peak",
+      "kind": "peak",
+      "lonlat": [148.9546, -20.2668],
+      "src": "osm"
+    },
+    {
+      "id": "whitsunday-cairn",
+      "name": "Whitsunday Cairn",
+      "kind": "peak",
+      "lonlat": [148.9667, -20.1698],
+      "src": "osm"
+    },
+    {
+      "id": "bari-dhili-lookout",
+      "name": "Bari Dhili (Rock eye) Lookout",
+      "kind": "lookout",
+      "lonlat": [149.0292, -20.3028],
+      "src": "osm"
+    },
+    {
+      "id": "murmuru-bari-lookout",
+      "name": "Murmuru bari (Rock rock) Lookout",
+      "kind": "lookout",
+      "lonlat": [149.0095, -20.2798],
+      "src": "osm"
+    },
+    {
+      "id": "bilbili-dhili-lookout",
+      "name": "Bilbili dhili (chest eye) Lookout",
+      "kind": "lookout",
+      "lonlat": [149.0142, -20.3027],
+      "src": "osm"
+    },
+    {
+      "id": "hamilton-island",
+      "name": "Hamilton Island",
+      "kind": "island",
+      "lonlat": [148.9612, -20.3536],
+      "src": "osm"
+    },
+    {
+      "id": "hamilton-marina",
+      "name": "Hamilton Island Marina",
+      "kind": "marina",
+      "lonlat": [148.9476, -20.3454],
+      "src": "osm",
+      "note": "the Yacht Club building on the marina"
+    },
+    {
+      "id": "hamilton-airport",
+      "name": "Great Barrier Reef Airport, Hamilton Island",
+      "kind": "airport",
+      "lonlat": [148.9512, -20.3568],
+      "src": "osm"
+    },
+    {
+      "id": "catseye-beach",
+      "name": "Catseye Beach",
+      "kind": "beach",
+      "lonlat": [148.9579, -20.3465],
+      "src": "osm"
+    },
+    {
+      "id": "one-tree-hill",
+      "name": "One Tree Hill",
+      "kind": "lookout",
+      "lonlat": [148.9529, -20.3388],
+      "src": "osm"
+    },
+    {
+      "id": "passage-peak",
+      "name": "Passage Peak",
+      "kind": "peak",
+      "lonlat": [148.9763, -20.3478],
+      "src": "osm"
+    },
+    {
+      "id": "whitehaven-helipad",
+      "name": "Whitehaven Beach helipad",
+      "kind": "helipad",
+      "lonlat": [149.0356, -20.2781],
+      "src": "osm"
+    },
+    {
+      "id": "cid-anchorage",
+      "name": "Cid Harbour anchorage",
+      "kind": "anchorage",
+      "lonlat": [148.944, -20.247],
+      "src": "nominal"
+    },
+    {
+      "id": "tongue-anchorage",
+      "name": "Tongue Bay anchorage",
+      "kind": "anchorage",
+      "lonlat": [149.017, -20.24],
+      "src": "nominal"
+    },
+    {
+      "id": "whitehaven-anchorage",
+      "name": "South Whitehaven anchorage",
+      "kind": "anchorage",
+      "lonlat": [149.05, -20.293],
+      "src": "nominal"
+    },
+    {
+      "id": "chalkies-anchorage",
+      "name": "Chalkies anchorage",
+      "kind": "anchorage",
+      "lonlat": [149.071, -20.28],
+      "src": "nominal"
+    },
+    {
+      "id": "nara-anchorage",
+      "name": "Nara Inlet anchorage",
+      "kind": "anchorage",
+      "lonlat": [148.9121, -20.1418],
+      "src": "nominal"
+    },
+    {
+      "id": "west-gate",
+      "name": "Whitsunday Passage, toward Shute Harbour and Airlie Beach",
+      "kind": "gate",
+      "xy": [-15150, -1500],
+      "src": "nominal"
+    }
+  ],
+  "poi_sources": {
+    "osm": "OpenStreetMap contributors (ODbL), read through Overture Maps 2026-10-21.0 base and infrastructure themes",
+    "overture-places": "Overture Maps places theme (two records agree to 50 m)",
+    "nominal": "chosen for the viewer; the boats search near it for water 5-9 m deep"
+  },
+  "harbour": {
+    "fleets": [
+      {"at": "cid-anchorage", "n": 5, "cat": 2},
+      {"at": "tongue-anchorage", "n": 3},
+      {"at": "whitehaven-anchorage", "n": 3, "cat": 1},
+      {"at": "chalkies-anchorage", "n": 3},
+      {"at": "nara-anchorage", "n": 2}
+    ],
+    "marina": {"at": "hamilton-marina"},
+    "pontoon": null,
+    "parked": [
+      {"kind": "helicopter", "name": "Scenic helicopter", "at": "whitehaven-helipad"},
+      {"kind": "seaplane", "name": "Reef Air amphibian", "at": "whitehaven-anchorage"}
+    ],
+    "moorings": 8,
+    "traffic": [
+      {
+        "kind": "daycat",
+        "name": "Island Express",
+        "route": ["west-gate", "hamilton-marina", "cid-anchorage", "west-gate"],
+        "loop": "repeat",
+        "dwell": 8,
+        "vmax": 15
+      },
+      {
+        "kind": "daycat",
+        "name": "Coral Sea Cruiser",
+        "route": ["west-gate", "whitehaven-anchorage", "tongue-anchorage"],
+        "loop": "pingpong",
+        "dwell": 40,
+        "vmax": 14
+      },
+      {
+        "kind": "yacht",
+        "route": ["cid-anchorage", "whitehaven-anchorage"],
+        "loop": "pingpong",
+        "dwell": 60,
+        "vmax": 4.2
+      },
+      {
+        "kind": "yacht",
+        "route": ["whitehaven-anchorage", "hamilton-marina"],
+        "loop": "pingpong",
+        "dwell": 60,
+        "vmax": 4.2
+      },
+      {
+        "kind": "cat",
+        "route": ["hamilton-marina", "tongue-anchorage"],
+        "loop": "pingpong",
+        "dwell": 90,
+        "vmax": 5
+      },
+      {
+        "kind": "yacht",
+        "route": ["west-gate", "cid-anchorage"],
+        "loop": "pingpong",
+        "dwell": 40,
+        "vmax": 4.2
+      },
+      {
+        "kind": "yacht",
+        "route": ["west-gate", "chalkies-anchorage"],
+        "loop": "pingpong",
+        "dwell": 40,
+        "vmax": 4.2
+      },
+      {
+        "kind": "tinnie",
+        "name": "Dive boat Nemo",
+        "route": ["tongue-anchorage", "whitehaven-anchorage"],
+        "loop": "pingpong",
+        "dwell": 25,
+        "vmax": 12
+      },
+      {
+        "kind": "tinnie",
+        "name": "Water taxi",
+        "route": ["hamilton-marina", "cid-anchorage"],
+        "loop": "pingpong",
+        "dwell": 25,
+        "vmax": 13
+      }
+    ],
+    "scenic": [
+      {
+        "kind": "helicopter",
+        "name": "Scenic flight",
+        "around": "hill-inlet",
+        "r": 1400,
+        "alt": 160,
+        "v": 38,
+        "dir": 1
+      },
+      {
+        "kind": "seaplane",
+        "name": "Whitsunday Air",
+        "around": "hamilton-island",
+        "dx": 2500,
+        "dy": 3000,
+        "r": 3200,
+        "alt": 260,
+        "v": 45,
+        "dir": -1
+      }
+    ]
   }
 }

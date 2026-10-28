@@ -24,11 +24,11 @@ const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t
 const damp = (a, b, k, dt) => a + (b - a) * (1 - Math.exp(-k * dt));
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
-const SPAWN = { x: 505, north: 445, heading: 90 };
 const WADE_FROM = 0.15, SWIM_ENTER = 1.35, SWIM_EXIT = 1.0, MAX_SLOPE = 0.95, FREEDIVE_MAX = 10, BODY_FLOAT = 0.15;
 
 export async function init(ctx) {
   const { scene, camera, env, q } = ctx;
+  const sp = ctx.S.spawn || {}, SPAWN = { x: sp.x ?? 0, north: sp.y ?? 0, heading: sp.heading ?? 0 };   // scene.json spawn (city.json)
   const hud = createHud();
   { const h0 = document.getElementById('hud'); if (h0) Object.assign(h0.style, { left: 'auto', right: '12px', bottom: 'auto', top: '62px', fontSize: '11px', padding: '4px 8px', opacity: '.7', display: matchMedia('(pointer: coarse)').matches ? 'none' : '' }); }   // the viewer's debug line makes room for ours
   const fx = createFx(ctx);

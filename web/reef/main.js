@@ -16,6 +16,8 @@ async function main() {
   const base = `../data/${CITY}/`;
   const d = await loadScene(base);
   const S = d.scene;
+  document.title = `Open Earth 3D: ${S.name}`;
+  $('load-title').textContent = S.name;
   window.Sun.site({ lat: S.origin[1], lon: S.origin[0], tz: S.timezone });
 
   const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: q.get('gl') === '1' });
@@ -85,7 +87,8 @@ async function main() {
     height: (x, north) => terrainHeight(d, x, north),                 // sea-floor / ground elevation, m above datum
     habitat: (x, north) => habitatAt(d, x, north),                    // class under a point, see HABITAT
     depth: (x, north) => env.u.tide.value - terrainHeight(d, x, north), // water depth, m (negative on land)
-    toScene: (x, up, north) => new THREE.Vector3(x, up, -north) };   // local frame (east, up, north) -> three.js
+    toScene: (x, up, north) => new THREE.Vector3(x, up, -north),      // local frame (east, up, north) -> three.js
+    site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
   for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
     try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }
     catch (e) { if (!/Failed to fetch|Cannot find|404|Unexpected token '<'/.test(String(e))) fail(e); else console.warn('module', name, 'not available'); }
