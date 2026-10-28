@@ -1,0 +1,204 @@
+{
+ "id": "lady-elliot-island",
+ "name": "Lady Elliot Island",
+ "kind": "marine",
+ "origin": [
+  152.715,
+  -24.115
+ ],
+ "timezone": "Australia/Brisbane",
+ "extent_m": [
+  -6000,
+  6000,
+  -6000,
+  6000
+ ],
+ "vertical_datum": "m MSL",
+ "terrain": {
+  "file": "terrain.bin",
+  "w": 400,
+  "h": 400,
+  "cell_m": 30,
+  "x0": -6000,
+  "y1": 6000,
+  "units_m": 0.1
+ },
+ "ground": {
+  "file": "ground.jpg",
+  "w": 1200,
+  "h": 1200,
+  "px_m": 10.0
+ },
+ "habitat": {
+  "file": "habitat.png",
+  "classes": {
+   "0": "deep water",
+   "1": "sand",
+   "2": "reef and rock",
+   "3": "seagrass and algae",
+   "4": "rubble",
+   "10": "forest",
+   "11": "shrub",
+   "12": "grass",
+   "13": "beach and bare",
+   "14": "mangrove",
+   "15": "built",
+   "16": "wetland"
+  }
+ },
+ "start": {
+  "x": -700,
+  "y": -420,
+  "z": 140,
+  "yaw": -50,
+  "pitch": -15,
+  "date": null,
+  "note": "south-west of the island over the reef edge, looking north-east across the cay and its airstrip"
+ },
+ "optics": {
+  "K": [
+   0.4,
+   0.0619,
+   0.015
+  ],
+  "Rinf": [
+   0.006525691132992506,
+   0.012108450755476952,
+   0.02591003105044365
+  ],
+  "g": 2.2
+ },
+ "sources": {
+  "terrain": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
+  "imagery": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS",
+  "landcover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)"
+ },
+ "pois": [
+  {
+   "id": "lady-elliot-island",
+   "name": "Lady Elliot Island",
+   "kind": "island",
+   "lonlat": [
+    152.71452,
+    -24.11323
+   ],
+   "src": "osm",
+   "osm": "way 15703996",
+   "x": -49,
+   "y": 196
+  },
+  {
+   "id": "lei-beach",
+   "name": "Lady Elliot Island, western beach",
+   "kind": "beach",
+   "lonlat": [
+    152.71122,
+    -24.11486
+   ],
+   "src": "osm",
+   "osm": "relation 13651843",
+   "note": "a point on the island's mapped beach (unnamed in OSM) below the old lighthouse",
+   "x": -384,
+   "y": 16
+  },
+  {
+   "id": "lei-airstrip",
+   "name": "Lady Elliot Island airstrip",
+   "kind": "airport",
+   "lonlat": [
+    152.71544,
+    -24.11289
+   ],
+   "src": "osm",
+   "osm": "way 582781803 (aerodrome), way 33686280 (runway)",
+   "x": 45,
+   "y": 234
+  },
+  {
+   "id": "lei-lighthouse",
+   "name": "Old Lady Elliot Lighthouse",
+   "kind": "cultural",
+   "lonlat": [
+    152.71155,
+    -24.1146
+   ],
+   "src": "osm",
+   "osm": "way 437359875",
+   "x": -351,
+   "y": 44
+  },
+  {
+   "id": "lei-reef",
+   "name": "Lady Elliot Island reef",
+   "kind": "reef",
+   "lonlat": [
+    152.72017,
+    -24.11306
+   ],
+   "src": "osm",
+   "osm": "relation 6492561",
+   "note": "the cay's platform reef (unnamed in OSM)",
+   "x": 526,
+   "y": 215
+  },
+  {
+   "id": "lei-anchorage",
+   "name": "West side, off the reef edge",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -520,
+   "y": -280
+  },
+  {
+   "id": "south-west-gate",
+   "name": "Toward Bundaberg",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -5500,
+   "y": -5500
+  }
+ ],
+ "spawn": {
+  "poi": "lei-beach",
+  "x": -363,
+  "y": 26,
+  "heading": 255,
+  "note": "on the upper sand of the western beach below the old lighthouse, about 1.55 m above mean sea level (the highest astronomical tide is 1.41 m), facing the sea"
+ },
+ "harbour": {
+  "fleets": [
+   {
+    "at": "lei-anchorage",
+    "n": 2
+   }
+  ],
+  "marina": null,
+  "pontoon": null,
+  "parked": [],
+  "moorings": 4,
+  "traffic": [
+   {
+    "kind": "yacht",
+    "route": [
+     "south-west-gate",
+     "lei-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 60,
+    "vmax": 4.2
+   },
+   {
+    "kind": "tinnie",
+    "name": "Dive boat",
+    "route": [
+     "lei-anchorage",
+     "south-west-gate"
+    ],
+    "loop": "pingpong",
+    "dwell": 40,
+    "vmax": 10
+   }
+  ],
+  "scenic": []
+ }
+}

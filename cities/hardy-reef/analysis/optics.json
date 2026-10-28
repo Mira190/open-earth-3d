@@ -1,0 +1,146 @@
+{
+ "band": {
+  "blue": {
+   "Rinf_median": 0.027904601767659187,
+   "Kd_fit": 0.06269872977717607,
+   "Kd": 0.06269872977717607,
+   "sand_albedo": 0.2022185177515653,
+   "fit_resid_sd_ln": 0.11466189515343281,
+   "depth_bins": 36,
+   "fit_depth_m": [
+    2,
+    20
+   ]
+  },
+  "green": {
+   "Rinf_median": 0.014071974903345108,
+   "Kd_fit": 0.07588230927093192,
+   "Kd": 0.07588230927093192,
+   "sand_albedo": 0.20451950112227366,
+   "fit_resid_sd_ln": 0.04347819130656783,
+   "depth_bins": 20,
+   "fit_depth_m": [
+    2,
+    12
+   ]
+  },
+  "red": {
+   "Rinf_median": 0.005547883454710245,
+   "Kd_fit": 0.20855498198501984,
+   "Kd": 0.4,
+   "sand_albedo": 0.10740400431031467,
+   "fit_resid_sd_ln": 0.11188391076998896,
+   "depth_bins": 7,
+   "fit_depth_m": [
+    0.5,
+    4
+   ]
+  }
+ },
+ "g": 2.2,
+ "scenes": [
+  "S2B_55KGU_20260529_0_L2A",
+  "S2C_55KGU_20260713_0_L2A",
+  "S2C_55KGU_20260812_0_L2A",
+  "S2B_55KGU_20260916_0_L2A",
+  "S2A_55KGU_20260327_0_L2A",
+  "S2C_55KGU_20251026_0_L2A",
+  "S2B_55KGU_20251031_0_L2A",
+  "S2B_55KGU_20261006_0_L2A",
+  "S2B_55KGU_20260906_0_L2A",
+  "S2B_55KGU_20251120_0_L2A",
+  "S2A_55KGU_20251207_0_L2A",
+  "S2C_55KGU_20260703_0_L2A",
+  "S2B_55KGU_20251001_0_L2A",
+  "S2C_55KGU_20260822_0_L2A"
+ ],
+ "depth_check": {
+  "blue": {
+   "bins": [
+    {
+     "depth_m": [
+      1,
+      3
+     ],
+     "raw_reflectance": 0.142099991440773,
+     "inverted_albedo": 0.17486815259384275
+    },
+    {
+     "depth_m": [
+      3,
+      6
+     ],
+     "raw_reflectance": 0.13759998977184296,
+     "inverted_albedo": 0.23323265946982533
+    },
+    {
+     "depth_m": [
+      6,
+      10
+     ],
+     "raw_reflectance": 0.10669999569654465,
+     "inverted_albedo": 0.24177003828414567
+    },
+    {
+     "depth_m": [
+      10,
+      15
+     ],
+     "raw_reflectance": 0.07119999825954437,
+     "inverted_albedo": 0.22465447372945135
+    }
+   ],
+   "spread_raw_pct": 61.97552187811172,
+   "spread_inverted_pct": 30.600319441128992
+  },
+  "green": {
+   "bins": [
+    {
+     "depth_m": [
+      1,
+      3
+     ],
+     "raw_reflectance": 0.15199999511241913,
+     "inverted_albedo": 0.19916512968551667
+    },
+    {
+     "depth_m": [
+      3,
+      6
+     ],
+     "raw_reflectance": 0.11659999936819077,
+     "inverted_albedo": 0.22487526425790277
+    },
+    {
+     "depth_m": [
+      6,
+      10
+     ],
+     "raw_reflectance": 0.07580000162124634,
+     "inverted_albedo": 0.21035063122814734
+    },
+    {
+     "depth_m": [
+      10,
+      15
+     ],
+     "raw_reflectance": 0.0429999977350235,
+     "inverted_albedo": 0.19314899530130775
+    }
+   ],
+   "spread_raw_pct": 112.54517203042768,
+   "spread_inverted_pct": 15.335219166060849
+  }
+ },
+ "habitat_scale": 1.152967813884344,
+ "habitat_share": {
+  "deep water": 0.732,
+  "sand": 0.1198,
+  "reef and rock": 0.0081,
+  "seagrass and algae": 0.0031,
+  "rubble": 0.1371,
+  "beach and bare": 0.0
+ },
+ "terrain_grid": "C",
+ "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."
+}

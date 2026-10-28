@@ -1,0 +1,173 @@
+{
+ "note": "POIs sampled on the built 30 m terrain and 10 m habitat (pipeline/check_marine.py)",
+ "rows": [
+  {
+   "id": "green-island",
+   "kind": "island",
+   "src": "osm",
+   "x": -4397,
+   "y": -7965,
+   "ok": true,
+   "note": "ground 3.0 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "green-beach",
+   "kind": "beach",
+   "src": "osm",
+   "x": -4681,
+   "y": -7957,
+   "ok": true,
+   "note": "ground 0.9 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "green-jetty",
+   "kind": "marina",
+   "src": "osm",
+   "x": -4880,
+   "y": -7807,
+   "ok": true,
+   "note": "height -4.5 m, within 300 m -6.1..3.0 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "green-helipad",
+   "kind": "helipad",
+   "src": "osm",
+   "x": -4591,
+   "y": -8059,
+   "ok": true,
+   "note": "ground 0.6 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "green-lookout",
+   "kind": "lookout",
+   "src": "osm",
+   "x": -4124,
+   "y": -8078,
+   "ok": true,
+   "note": "ground 1.2 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "green-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": -3670,
+   "y": -8270,
+   "ok": true,
+   "note": "depth 1.4 m, 90 m around 1.1..1.5 m",
+   "habitat": "reef and rock"
+  },
+  {
+   "id": "green-snorkel",
+   "kind": "dive",
+   "src": "nominal",
+   "x": -4670,
+   "y": -7825,
+   "ok": true,
+   "note": "depth 1.4 m, 90 m around -2.8..2.2 m",
+   "habitat": "reef and rock"
+  },
+  {
+   "id": "arlington-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": -4322,
+   "y": -338,
+   "ok": true,
+   "note": "depth 3.5 m, 90 m around 2.6..3.6 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "upolu-cay",
+   "kind": "island",
+   "src": "osm",
+   "x": -8669,
+   "y": 1478,
+   "ok": true,
+   "note": "ground 1.6 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "vlasoff-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": -2108,
+   "y": 3742,
+   "ok": true,
+   "note": "depth 4.0 m, 90 m around 2.0..5.0 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "michaelmas-reef",
+   "kind": "reef",
+   "src": "osm",
+   "x": 757,
+   "y": 11355,
+   "ok": true,
+   "note": "depth 2.1 m, 90 m around 2.1..2.4 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "michaelmas-cay",
+   "kind": "island",
+   "src": "osm",
+   "x": -4376,
+   "y": 8981,
+   "ok": true,
+   "note": "ground 1.6 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "green-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -5210,
+   "y": -8020,
+   "ok": true,
+   "note": "depth 8.8 m",
+   "habitat": "rubble",
+   "boats_go_to": [
+    -5210,
+    -8020,
+    0
+   ]
+  },
+  {
+   "id": "michaelmas-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -4940,
+   "y": 8670,
+   "ok": true,
+   "note": "depth 7.5 m",
+   "habitat": "reef and rock",
+   "boats_go_to": [
+    -4940,
+    8670,
+    0
+   ]
+  },
+  {
+   "id": "south-west-gate",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -12800,
+   "y": -16300,
+   "ok": true,
+   "note": "depth 14.3 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "spawn",
+   "kind": "spawn",
+   "x": -4667,
+   "y": -7954,
+   "ok": true,
+   "note": "ground 1.8 m, heading 270"
+  }
+ ]
+}

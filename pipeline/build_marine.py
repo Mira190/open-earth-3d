@@ -42,6 +42,9 @@ WORLDCOVER = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map
 # classes in habitat.png
 HABITAT = {0: "deep water", 1: "sand", 2: "reef and rock", 3: "seagrass and algae", 4: "rubble",
            10: "forest", 11: "shrub", 12: "grass", 13: "beach and bare", 14: "mangrove", 15: "built", 16: "wetland"}
+# 90th percentile of the floor albedo 1-10 m deep (mean of red, green, blue) in the Whitsundays, where the
+# habitat thresholds were set; read back from web/data/whitsundays/ground.jpg and terrain.bin
+BRIGHT_REF = 0.1593
 
 
 def reproj(path, dst_tf, shape, crs, resampling, nodata=None, band=1):
@@ -71,6 +74,67 @@ def worldcover(bbox, dst_tf, shape, crs):
     return out
 
 
+def cays(city, cfg, z, tf):
+    """Rebuild the land of low coral cays from their mapped outlines.
+
+    The survey model's land on a vegetated cay is a surface model: the forest canopy, 10-20 m above
+    the sea on islands whose ground is a few metres high (Heron Island's highest point is 3.6 m). Its
+    30 m cells also smear that canopy over the beach and the reef flat around it. For each cay named
+    in city.json (terrain.cays.islands) this takes the island outline and its beach from OpenStreetMap
+    (Overture base land, fetch_overture.py --only land) and rebuilds the ground: the beach rises from
+    0 m (MSL) at the mapped waterline to `hat_m` (the highest astronomical tide above MSL, from MSQ's
+    tidal planes) at the vegetation line, the vegetated interior from there to `top_m` within 40 m;
+    an islet without a beach ring is sand up to `hat_m`. Within 60 m outside the waterline the sea
+    floor is held below -0.3 m, easing to the median depth of the reef flat 60-150 m out.
+    Returns (z, report)."""
+    import duckdb
+    import shapely
+    from rasterio.features import rasterize
+    con = duckdb.connect()
+    con.execute("INSTALL spatial; LOAD spatial;")
+    rows = con.execute(f"SELECT name, class, ST_AsWKB(ST_GeomFromWKB(wkb)) FROM '{os.path.join(city.raw, 'overture_land.parquet')}'"
+                       " WHERE class IN ('islet', 'island', 'beach')").fetchall()
+    geoms = [(n, c, city.to_local(shapely.from_wkb(bytes(g)))) for n, c, g in rows]
+    px = tf.a
+    hat, top = cfg["hat_m"], cfg["top_m"]
+    z = z.copy()
+    report = {}
+    for name in cfg["islands"]:
+        isl = [g for n, c, g in geoms if n == name and c in ("islet", "island")]
+        if not isl:
+            raise SystemExit(f"cay {name!r} is not in overture_land.parquet; run fetch_overture.py --only land")
+        isl = shapely.union_all(isl)
+        # the beach ring around the vegetation; a 'beach' that covers the island's middle as well is an outline of the
+        # whole cay (Lady Elliot has one), not its beach, and is left out
+        mid = isl.representative_point()
+        beach = shapely.union_all([g for n, c, g in geoms if c == "beach" and g.intersects(isl.buffer(30)) and not g.contains(mid)]
+                                  or [shapely.Polygon()])
+        ras = lambda geom: rasterize([geom], out_shape=z.shape, transform=tf, all_touched=False).astype(bool) if not geom.is_empty \
+            else np.zeros(z.shape, bool)
+        inside = ras(isl.union(beach) if not beach.is_empty else isl)
+        if not inside.any():   # smaller than a cell: take the cell under its centre
+            c = isl.representative_point()
+            i, j = int((c.x - tf.c) / px), int((tf.f - c.y) / px)
+            inside[j, i] = True
+        veg = inside & ~ras(beach) if not beach.is_empty else np.zeros(z.shape, bool)
+        d_in = ndimage.distance_transform_edt(inside) * px                    # from the waterline, inland
+        d_out = ndimage.distance_transform_edt(~inside) * px                  # from the waterline, seaward
+        if veg.any():
+            d_veg = ndimage.distance_transform_edt(veg) * px                  # inside the vegetation, from its edge
+            to_veg = ndimage.distance_transform_edt(~veg) * px                # on the beach, to the vegetation
+            new = np.where(veg, hat + (top - hat) * np.clip(d_veg / 40, 0, 1), hat * d_in / np.maximum(d_in + to_veg, 1e-3))
+        else:
+            new = hat * np.clip(d_in / 30, 0, 1)
+        z = np.where(inside, new, z)
+        ring = (d_out > 60) & (d_out < 150) & (z < 0)
+        flat = float(np.median(z[ring])) if ring.any() else -1.0
+        near = (d_out > 0) & (d_out <= 60)
+        cap = -0.3 + (flat + 0.3) * d_out / 60
+        z = np.where(near, np.minimum(z, cap), z)
+        report[name] = {"cells": int(inside.sum()), "vegetated": int(veg.sum()), "reef_flat_m": round(flat, 2)}
+    return z, report
+
+
 def rinf_map(refl, deep, sigma_px=120, step=4):
     """Rinf varies across a scene (clear offshore water, greener inshore), so it is the
     reflectance of the deep water (>40 m, where the floor is invisible) smoothed over about
@@ -82,20 +146,29 @@ def rinf_map(refl, deep, sigma_px=120, step=4):
     return ndimage.zoom(m, step, order=1)[:refl.shape[0], :refl.shape[1]].astype(np.float32)
 
 
-def fit_kd(depth, refl, rinf, nir, water, lo, hi, pct=90):
+def fit_kd(depth, refl, rinf, nir, water, lo, hi, pct=90, min_px=800, floor=0.0):
     """Kd from the brightest 10% of pixels in each half-metre of depth (sandy floor): the log of
-    (R - Rinf) falls linearly with depth, at slope -g Kd."""
+    (R - Rinf) falls linearly with depth, at slope -g Kd. A depth bin needs `min_px` pixels; a small
+    site (one cay and its reef) has too few, so with fewer than 6 bins the fit retries with 200."""
     xs, ys = [], []
     a = refl - rinf
     for z0 in np.arange(lo, hi, 0.5):
         m = water & (depth >= z0) & (depth < z0 + 0.5) & (nir < 0.01)
-        if m.sum() < 800:
+        if m.sum() < min_px:
             continue
         v = a[m]
         v = v[v >= np.percentile(v, pct)]
         xs.append(z0 + 0.25)
         ys.append(math.log(max(float(np.median(v)), 1e-5)))
+    if len(xs) < 6 and min_px > 200:
+        return fit_kd(depth, refl, rinf, nir, water, lo, hi, pct, 200, floor)
+    if len(xs) < 2:
+        return float("nan"), float("nan"), float("nan"), len(xs)
     p = np.polyfit(xs, ys, 1)
+    if -p[0] / G < floor:   # held at the floor's slope, with the intercept that fits best with it
+        q = [-G * floor, float(np.mean(np.array(ys) + G * floor * np.array(xs)))]
+        res = np.array(ys) - np.polyval(q, xs)
+        return float(-p[0] / G), float(math.exp(q[1])), float(res.std()), len(xs)
     res = np.array(ys) - np.polyval(p, xs)
     return -p[0] / G, float(math.exp(p[1])), float(res.std()), len(xs)
 
@@ -115,14 +188,22 @@ def main():
     px = float(s2["pixel_m"])
     tf10 = from_origin(city.x0, city.y1, px, px)
     bathy = os.path.join(city.raw, "bathy.tif")
+    with rasterio.open(bathy) as b:
+        grid_letter = b.tags().get("GBR_GRID")  # fetch_gbr_bathy.py tags the crop with its source grid
 
     # ---- terrain at 30 m, in the local frame
     cell = cfg["terrain"]["pixel_m"]
     tw, th = int(math.ceil((city.x1 - city.x0) / cell)), int(math.ceil((city.y1 - city.y0) / cell))
-    z30 = reproj(bathy, from_origin(city.x0, city.y1, cell, cell), (th, tw), city.proj, Resampling.bilinear, nodata=-9999)
-    (np.round(z30 * 10).clip(-32000, 32000).astype("<i2")).tofile(os.path.join(city.out, "terrain.bin"))
+    tf30 = from_origin(city.x0, city.y1, cell, cell)
+    z30 = reproj(bathy, tf30, (th, tw), city.proj, Resampling.bilinear, nodata=-9999)
     # and at 10 m for the colour work
     z10 = reproj(bathy, tf10, (H, W), city.proj, Resampling.bilinear, nodata=-9999)
+    cay_cfg = cfg["terrain"].get("cays")
+    if cay_cfg:
+        z30, cay_report = cays(city, cay_cfg, z30, tf30)
+        z10, _ = cays(city, cay_cfg, z10, tf10)
+        print("cays rebuilt:", cay_report)
+    (np.round(z30 * 10).clip(-32000, 32000).astype("<i2")).tofile(os.path.join(city.out, "terrain.bin"))
     depth = -z10
     wc = worldcover(cfg["bbox"], tf10, (H, W), city.proj)
 
@@ -132,15 +213,19 @@ def main():
     deep = (depth > 40) & water & (refl["blue"] > 0)
     rinf = {k: rinf_map(refl[k], deep) for k in ("blue", "green", "red")}
     bands = {"blue": (2, 20), "green": (2, 12), "red": (0.5, 4)}
-    # red is absorbed by the water itself (a_w(665 nm) = 0.41 /m, Pope & Fry 1997); the
-    # imagery's red band is too weak and too noisy to fit, so red uses that as a floor
-    kd_floor = {"red": 0.40}
+    # Kd cannot be lower than the water's own absorption (Pope & Fry 1997: a_w = 0.0150 /m at 490 nm, 0.0619 at
+    # 560 nm, 0.429 at 665 nm, where 0.40 has always been used). Red is too weak and noisy to fit anywhere, so it
+    # always takes its floor; blue and green take theirs where the fit falls below it, which happens when the
+    # brightest floor gets brighter with depth (Lady Elliot Island: a dark reef flat ringed by a pale sand apron),
+    # and the sand albedo is then the intercept at the floor's slope
+    kd_floor = {"blue": 0.0150, "green": 0.0619, "red": 0.40}
     kd, optics = {}, {}
     for k, (lo, hi) in bands.items():
-        fit, sand, sd, n = fit_kd(depth, refl[k], rinf[k], refl["nir"], water, lo, hi)
-        kd[k] = max(fit, kd_floor.get(k, 0))
-        optics[k] = {"Rinf_median": float(np.median(rinf[k])), "Kd_fit": fit, "Kd": kd[k], "sand_albedo": sand,
-                     "fit_resid_sd_ln": sd, "depth_bins": n, "fit_depth_m": [lo, hi]}
+        fit, sand, sd, n = fit_kd(depth, refl[k], rinf[k], refl["nir"], water, lo, hi, floor=0.0 if k == "red" else kd_floor[k])
+        kd[k] = max(fit, kd_floor[k]) if fit == fit else kd_floor[k]
+        num = lambda v: None if v != v else v   # a failed fit (nan) is written as null
+        optics[k] = {"Rinf_median": float(np.median(rinf[k])), "Kd_fit": num(fit), "Kd": kd[k], "sand_albedo": sand,
+                     "fit_resid_sd_ln": num(sd), "depth_bins": n, "fit_depth_m": [lo, hi]}
         print(k, "Rinf %.4f  Kd fit %.3f used %.3f /m  sand albedo %.3f" % (optics[k]["Rinf_median"], fit, kd[k], sand), "resid", round(sd, 3))
 
     # ---- invert the water column: the floor's own colour
@@ -197,7 +282,14 @@ def main():
     # ---- habitat: an inference from the floor's colour and depth, not a survey. Dark floors in
     # shallow water are hard substrate with coral and algae; bright ones are sand; a green cast on
     # a mid-tone floor is seagrass or algae. The Allen Coral Atlas maps this properly.
+    # The thresholds were set on the Whitsundays floors. Where the inverted floor reads brighter or darker
+    # overall (other water, a carbonate reef flat instead of mud and silica sand), they are scaled by the
+    # brightness of the scene's own bright floor, the 90th percentile of the floor albedo 1-10 m deep, so a
+    # class boundary stays at the same share of it: k = 1 for the Whitsundays (to within the JPEG rounding of
+    # the reference), 1.15 at Hardy Reef, where the unscaled thresholds left 1% of the shallow floor as reef.
     bright = (A_r + A_g + A_b) / 3
+    k_hab = float(np.percentile(bright[water & (depth > 1) & (depth < 10)], 90)) / BRIGHT_REF
+    bright = bright / k_hab
     gb = A_g / (A_b + 1e-3)
     hab = np.zeros((H, W), np.uint8)
     sea = water & (depth < 25)
@@ -212,9 +304,11 @@ def main():
         hab[~water & (wc == k)] = v
     sandy_land = ~water & (srgb(land_rgb).mean(-1) > 0.62) & (z10 < 5)
     hab[sandy_land] = 13
+    # land that WorldCover calls water or leaves out (a sand cay, an intertidal bank) is bare ground, not deep water
+    hab[~water & (hab == 0)] = 13
     Image.fromarray(hab).save(os.path.join(city.out, "habitat.png"), optimize=True)
     share = {HABITAT[k]: round(float((hab == k).mean()), 4) for k in HABITAT if (hab == k).any()}
-    print("habitat share", share)
+    print("habitat share", share, "thresholds scaled by %.3f" % k_hab)
 
     # ---- a check the inversion has to pass: the brightest floor (sand) should have the same
     # albedo at every depth once the water is taken out. Raw reflectance falls with depth;
@@ -234,7 +328,7 @@ def main():
                     "spread_inverted_pct": float(100 * (max(inv) - min(inv)) / np.mean(inv))}
         print(k, "sand brightness spread across 1-15 m: raw %.0f%% -> inverted %.0f%%" % (check[k]["spread_raw_pct"], check[k]["spread_inverted_pct"]))
     json.dump({"band": optics, "g": G, "scenes": json.loads(str(s2["scenes"])),
-               "depth_check": check, "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
+               "depth_check": check, "habitat_scale": k_hab, "habitat_share": share, "terrain_grid": grid_letter, "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."},
               open(os.path.join(city.analysis, "optics.json"), "w"), indent=1)
     scene = {
         "id": city.id, "name": cfg["name"], "kind": "marine", "origin": cfg["origin"], "timezone": cfg["timezone"],
