@@ -13,38 +13,37 @@ with a height measured from aerial survey, as CityGML and as 3D Tiles.
 
 | | Sydney | Kyoto |
 |---|---|---|
-| Buildings | 7,962 | 68,431 |
-| Footprint area with a surveyed or measured height | see [Sydney](sydney.md) | **93.6%** (PLATEAU) |
+| Buildings | 7,962 | 65,749 |
+| Footprint area with a surveyed or measured height | see [Sydney](sydney.md) | **93.4%** (PLATEAU) |
 | Terrain | NSW 5 m bare earth (stereo) | GSI DEM5A, 5 m bare earth (airborne laser) |
 | Imagery | NSW Imagery | GSI seamless aerial photographs, zoom 17 |
 
-PLATEAU also gives a free test of the other sources. Where an Overture footprint matches a
-PLATEAU one (58,161 buildings), the height it would otherwise have had can be compared with
-the measured one (`cities/kyoto/analysis/plateau_match.json`):
-
-- OpenStreetMap `height` tags (107 buildings): median factor 1.01.
-- OpenStreetMap floor counts × the calibrated storey height (3,129 buildings): median factor
-  1.13 (the model's guess is off by 13% at the median, 53% at the 90th percentile).
-
-So a floor count is a decent height here, and a measured one is better.
+PLATEAU also gives a test of the other sources. Against the 29 buildings of 20 m and taller
+that OpenStreetMap contributors gave a `height` (`analysis/plateau_check.py`, output in
+`cities/kyoto/analysis/heights.json`), PLATEAU is taller by a median of 6.6 m (21%), and 8 of
+the 29 are more than 40% taller. Many of the OSM values are exactly 31 m, the figure usually
+quoted as Kyoto's height cap, so they may have been tagged from the rule rather than measured;
+PLATEAU may also include rooftop plant. We have not checked which is right for any of these
+buildings, so on the tallest blocks the model's heights could be too high by several metres.
 
 ## 2. How PLATEAU gets in
 
-1. `pipeline/fetch_plateau.py` downloads the city's 3D Tiles zip (1.8 GB, once), reads the
-   `b3dm` tiles that touch the bounding box, decodes their Draco meshes with DracoPy, takes
-   each building's footprint from its upward-facing triangles and its `bldg:measuredHeight`
-   from the batch table, and writes `data/raw/kyoto/plateau_bldg.parquet` (80,870 buildings).
-2. `build_scene.py` matches each Overture footprint to the PLATEAU footprint it overlaps
-   most (IoU ≥ 0.3, or 70% of the smaller one inside the larger) and takes the measured
-   height, source `plateau`. PLATEAU buildings with less than 30% of their footprint under an
-   Overture building (3,960, mostly sheds and small houses) are added with footprint source `P`.
+1. `pipeline/fetch_plateau.py` (the `zip` backend, `pipeline/plateau_3dtiles.py`) downloads the
+   city's 3D Tiles zip (1.8 GB, once), reads the `b3dm` tiles that touch the bounding box,
+   decodes their Draco meshes with DracoPy, takes each building's footprint from its
+   upward-facing triangles and its `bldg:measuredHeight` from the batch table, and writes
+   `data/raw/kyoto/plateau.json` (80,867 footprints). Tokyo uses the same file from a
+   vector-tile mirror.
+2. `build_scene.py`'s `Plateau` class cuts each Overture footprint along the PLATEAU faces and
+   gives every piece the measured height (source `plateau`). PLATEAU buildings that no Overture
+   footprint covers (1,278) are added as buildings of their own.
 3. A parametric landmark is never overwritten: PLATEAU records Kyoto Tower and the
    9-storey building under it as one 130.5 m building, which would have extruded the whole
    hotel block to 131 m. `cities/kyoto/city.py` cuts the block to 31 m and builds the tower
    from its published figures (131 m to the spire, observation deck at 100 m).
 
-PLATEAU's survey is from 2020–2021, so newer buildings are missing or low: 6,184 Overture
-buildings (5.7% of the footprint area) match nothing and fall back to neighbour estimates.
+PLATEAU's survey is from 2020–2021, so newer buildings are missing or low: 6,938 Overture
+buildings (5.8% of the footprint area) match nothing and fall back to neighbour estimates.
 
 ## 3. Terrain
 
@@ -79,6 +78,6 @@ verified for this project.
 
 - The 31 m height cap in the tour is the figure usually quoted for the busiest districts under
   Kyoto's 2007 landscape policy; the district map was not checked. The counts of buildings
-  above 31 m (1,304) and 45 m (62) are from the model.
+  above 31 m (1,340) and 45 m (65) are from the model, and inherit the PLATEAU question in section 1.
 - The Kyoto Tower radii and observation-deck shape are an approximation.
-- No published-height table was compiled, so there is no `accuracy` panel.
+- The `accuracy` panel compares PLATEAU with OSM-mapped heights, not with published tower heights.

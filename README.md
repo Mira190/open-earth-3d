@@ -44,7 +44,7 @@ computed from the model as you play. Open **Play** on the globe, or go to
 | City | Status | What's in it |
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House and Harbour Bridge are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
-| **Kyoto**, Japan | **Live** | 68,431 buildings across 3.0 × 5.0 km, 94% of the footprint area with a height measured from the air by Project PLATEAU. GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
+| **Kyoto**, Japan | **Live** | 65,749 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU. GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | Melbourne, Australia | Planned | ELVIS LiDAR; City of Melbourne open 3D massing |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
