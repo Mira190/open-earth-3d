@@ -185,7 +185,8 @@ export function createFauna(ctx, ground, mats, reef) {
     const dx = tx - a.x, dy = ty - a.y, dz = tz - a.z, dh = Math.hypot(dx, dz);
     const want = Math.atan2(-dz, dx), dyaw = clamp(angDiff(a.yaw, want), -turn * dt, turn * dt);
     a.yaw += dyaw; a.roll += (clamp(-dyaw / Math.max(dt, 1e-3) * 0.35, -0.5, 0.5) - a.roll) * Math.min(1, dt * 3);
-    a.pitch += (clamp(Math.atan2(dy, Math.max(dh, 0.5)), -0.7, 0.7) - a.pitch) * Math.min(1, dt * 2);
+    const mp = a.sp === 'green-turtle' || a.sp === 'hawksbill' ? 0.42 : 0.7;      // turtles climb and dive at a shallow angle
+    a.pitch += (clamp(Math.atan2(dy, Math.max(dh, 0.5)), -mp, mp) - a.pitch) * Math.min(1, dt * 2);
     a.speed += (speed - a.speed) * Math.min(1, dt * 1.5);
     move(a, dt);
     return dh;

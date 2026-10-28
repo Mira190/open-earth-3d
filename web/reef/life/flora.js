@@ -113,7 +113,9 @@ export function createFlora(ctx, ground, mats) {
           const lod = dd < R0 ? 1 : 0;
           if (lod === 0 && o.rank > KEEP1) continue;
           const H = herds[o.sp][lod], k = n[o.sp][lod]; if (k >= H.cap) continue;
-          H.put(k, o.x, o.y, o.z, o.s, o.yaw, 0, o.lean, o.rank * 6.283, o.leaf[0], o.leaf[1], o.leaf[2], 1, o.bark[0], o.bark[1], o.bark[2], 1);
+          // the middle ring has fewer trees: wider crowns keep the canopy closed, and the boles darken into its shade
+          const w = lod ? 1 : 1.3, bk = lod ? 1 : 0.5;
+          H.put(k, o.x, o.y, o.z, o.s, o.yaw, 0, o.lean, o.rank * 6.283, o.leaf[0], o.leaf[1], o.leaf[2], w, o.bark[0] * bk, o.bark[1] * bk, o.bark[2] * bk, 1);
           n[o.sp][lod] = k + 1;
         } else {
           if (dd <= R1 || dd > R2 || o.rank > KEEP2 || nf >= far.cap) continue;

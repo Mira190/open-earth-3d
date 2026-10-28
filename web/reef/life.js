@@ -5,8 +5,11 @@
 //
 // Everything is seeded from the tile or cell it lives in, so the same reef, trees and animals are in
 // the same places on every load; only what is near the camera is instanced and only animals within
-// ~120 m are simulated. Placement reads the real data: ctx.habitat (10 m classes), ctx.depth / the
-// 30 m survey grid (read bicubically, as shore.js draws it), the wave bank (surge) and the sun and moon.
+// ~120 m are simulated. Placement reads the real data: ctx.habitat (10 m classes), the 30 m survey grid
+// (read bicubically, as shore.js draws it) by depth below mean sea level (so the reef does not move with
+// the tide), the wave bank (surge), the sun and the moon. Files: life/kit.js (instancing, ground, torch),
+// geo.js (procedural shapes), mats.js (TSL materials), reef.js, fauna.js, flora.js, drift.js, species.js.
+// Under water at night a dive torch lights this module's things (kit.js makeTorch); see the note there.
 //
 // API (on ctx.life, also window.__life):
 //   species                 [{ id, common, scientific, group, depth: [min, max] m, facts: [{ text, source }] }]
@@ -14,12 +17,15 @@
 //                           depth is negative for land plants (metres above the sea)
 //   byId(id)                one species record
 //   nearestCreature(x, north, up, maxDist = 12) -> { species, id, position: Vector3 (scene), distance } | null
-//                           animals only (fish, shark, ray, turtle, clam); local frame in, scene position out
-//   counts()                { [speciesId]: n } instanced right now (corals and trees by colony / tree)
-//   spawning                { active, nightsAfterFullMoon, fullMoon: Date, window: [first, last] nights }
-//   animals                 the simulated animals near the camera: { sp, id, x, y, z (scene), yaw, speed, ... }
-//   stats()                 draw calls, instances and triangles of this module's herds
-// Query: life=0 skips the module; lifeinfo=1 logs counts; spawn=1 forces the spawning on (for tests).
+//                           animals only (fish, shark, ray, turtle, giant clam); local frame in, scene position out;
+//                           ids are stable across loads (e.g. 'parrotfish-39_42_0', 'giant-clam-39_42_3')
+//   counts()                { [speciesId]: n } instanced right now (corals and trees by colony / tree; plus
+//                           'trees-far', 'plankton', 'spawn-bundles')
+//   spawning                { active, nightsAfterFullMoon, fullMoon: Date, window: [first, last] nights, split, dark }
+//   animals                 the simulated animals near the camera: { sp, id, x, y, z (scene), yaw, speed, len, ... }
+//   stats()                 { calls, instances, triangles } of this module's herds
+// Query: life=0 skips the module; lifeinfo=1 logs counts; spawn=1 forces the spawning on;
+//   lifecam=<species>[,dist][,elev][,azim] puts the fly camera beside the nearest one (screenshots).
 import * as THREE from 'three/webgpu';
 import { makeGround, makeTorch } from './life/kit.js';
 import { createMats } from './life/mats.js';
@@ -93,17 +99,17 @@ export async function init(ctx) {
     first = false;
   }
 
-  // test hook: ?lifecam=<species id>[,dist] puts the fly camera next to the nearest one of them
+  // test hook: ?lifecam=<species id>[,dist m][,elevation deg][,azimuth deg from its side] puts the fly camera by the nearest one
   let lifecam = q.get('lifecam');
   function lookAt(spec) {
-    const [sp, dd] = spec.split(','), d0 = Number(dd || 2.5), c = camera.position;
+    const [sp, dd, el, az] = spec.split(','), d0 = Number(dd || 2.5), e0 = Number(el || 7) * Math.PI / 180, c = camera.position;
     let best = null, bd = 1e18;
     for (const a of fauna.animals) { if (a.sp !== sp) continue; const d = (a.x - c.x) ** 2 + (a.z - c.z) ** 2; if (d < bd) { bd = d; best = a; } }
     lifecam = null;
     if (!best) { console.warn('[life] lifecam: no', sp, 'near the camera'); return; }
-    const side = best.yaw + Math.PI / 2;
-    c.set(best.x + Math.cos(side) * d0, 0, best.z - Math.sin(side) * d0);
-    c.y = Math.min(Math.max(best.y + 0.12 * d0, ground.height(c.x, -c.z) + 0.45), env.u.tide.value - 0.3);
+    const side = best.yaw + Math.PI / 2 + Number(az || 0) * Math.PI / 180, h0 = Math.cos(e0) * d0;
+    c.set(best.x + Math.cos(side) * h0, 0, best.z - Math.sin(side) * h0);
+    c.y = Math.min(Math.max(best.y + Math.sin(e0) * d0, ground.height(c.x, -c.z) + 0.45), env.u.tide.value - 0.3);
     const dx = best.x - c.x, dy = best.y - c.y, dz = best.z - c.z, L = Math.hypot(dx, dy, dz);
     // hold the view with a controller (a test camera: the fly keys are off while it is set; the player module replaces it)
     const yaw = Math.atan2(-dx, -dz), pitch = Math.asin(dy / L), e = new THREE.Euler(pitch, yaw, 0, 'YXZ');

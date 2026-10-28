@@ -360,7 +360,7 @@ export function turtle(o = {}) {
   b.add(new THREE.SphereGeometry(0.1, 10, 6), at(0.55, 0.02, 0, 0, 0, -0.15 - beak, 1.3, 0.85, 0.85), v => [0, 0, 0, 2]);
   b.add(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 8, 1, true), at(0.47, 0.0, 0, 0, 0, Math.PI / 2), v => [0, 0, 0, 2]);
   for (const s of [1, -1]) {
-    b.add(new THREE.SphereGeometry(0.5, 10, 4), at(0.2, -0.02, s * 0.42, 0, -s * 0.6, 0, 0.17, 0.03, 0.5), v => [0, s, Math.abs(v.z) - 0.2, 3]);
+    b.add(new THREE.SphereGeometry(0.5, 12, 4), at(0.2, -0.02, s * 0.5, 0, -s * 0.55, 0, 0.22, 0.035, 0.62), v => [0, s, Math.abs(v.z) - 0.2, 3]);
     b.add(new THREE.SphereGeometry(0.5, 8, 3), at(-0.45, -0.02, s * 0.22, 0, -s * 0.8, 0, 0.12, 0.025, 0.26), v => [0, s, Math.abs(v.z) - 0.15, 4]);
   }
   return b.geometry();
@@ -395,7 +395,7 @@ export function eucalypt(lod) {
 export function hoopPine(lod) {
   const b = new Build(), r = rng(hash(203, lod)), H = 30;
   b.add(new THREE.CylinderGeometry(0.15, 0.5, H, lod === 2 ? 6 : 4, 1, true), at(0, H / 2, 0), trunkAux(H));
-  if (lod === 0) { b.add(new THREE.ConeGeometry(3.4, 18, 6, 1, true), at(0, H - 8.5, 0), leafAux(H)); return b.geometry(); }
+  if (lod < 2) { b.add(new THREE.ConeGeometry(3.6, 19, 7, 1, true), at(0, H - 9, 0), leafAux(H)); b.add(new THREE.CircleGeometry(3.6, 7), at(0, H - 18.5, 0, Math.PI / 2), leafAux(H)); return b.geometry(); }
   const tiers = lod === 2 ? 9 : 5;
   for (let k = 0; k < tiers; k++) {
     const f = k / (tiers - 1), y = 13 + f * (H - 13.5), reach = (1 - f) * 3.6 + 0.9, arms = lod === 2 ? 4 : 3;
@@ -470,7 +470,8 @@ export function farTree() {
 }
 
 // ================================================================ particles
-export function speck() { const b = new Build(); b.add(new THREE.OctahedronGeometry(0.5, 0), new THREE.Matrix4(), () => [0, 0, 0, 0]); return b.geometry(); }
+// a bead: an icosahedron with radial (smooth) normals, round enough at the size of a spawn bundle
+export function speck() { const g = new Build().add(new THREE.IcosahedronGeometry(0.5, 0), new THREE.Matrix4(), () => [0, 0, 0, 0]).geometry(), p = g.attributes.position, n = g.attributes.normal; for (let i = 0; i < p.count; i++) { _v.fromBufferAttribute(p, i).normalize(); n.setXYZ(i, _v.x, _v.y, _v.z); } return g; }
 export function quad() {
   const b = new Build();
   const ids = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => b.vert(x, y, 0, 0, 0, 1, [x, y, 0, 0]));

@@ -44,7 +44,7 @@ export function createDrift(ctx, torch, reef, ground) {
   group.add(plankton);
 
   // ---------------------------------------------------------------- spawning: bundles rising from hard corals
-  const NB = 12000, HARD = ['branching', 'table', 'boulder', 'brain'];
+  const NB = 9000, HARD = ['branching', 'table', 'boulder', 'brain'];
   const bundles = new Herd('spawn', G.speck(), null, NB, { order: 22 });
   const A = attribute('iA', 'vec4'), B = attribute('iB', 'vec4'), C = attribute('iC', 'vec4');
   const on = uniform(0);
@@ -61,7 +61,7 @@ export function createDrift(ctx, torch, reef, ground) {
   const bc = bpos();
   bm.positionNode = positionGeometry.mul(A.w.mul(on)).add(bc);
   bm.colorNode = C.rgb;
-  bm.emissiveNode = torch.light(C.rgb).mul(1.6);
+  bm.emissiveNode = torch.light(C.rgb).mul(0.55);          // pale bundles are bright in a torch beam; kept below white so the pink and orange survive the tone curve
   bundles.mesh.material = bm;
   group.add(bundles.mesh);
 

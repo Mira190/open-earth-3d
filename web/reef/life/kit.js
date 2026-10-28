@@ -149,7 +149,7 @@ export function makeTorch(env) {
     const fall = float(1).div(L.mul(L).mul(0.12).add(1));
     const dP = max(u.tide.sub(positionWorld.y), 0);
     const comp = exp(u.K.mul(min(dP.mul(u.lightPath), 30).sub(L)));
-    return alb.mul(on.mul(cone).mul(fall).mul(3.0)).mul(comp);
+    return alb.mul(on.mul(cone).mul(fall).mul(2.2)).mul(comp);
   });
   return { on, fwd, light };
 }

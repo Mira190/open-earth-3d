@@ -276,7 +276,7 @@ export function createMats(env, torch) {
     return alb.mul(u.sunI.mul(0.09)).mul(pow(mu, 3)).mul(select(aux.w.lessThan(0.5), float(1), float(0))).mul(smoothstep(0.0, 0.1, u.sunDir.y));
   });
   const tree = (() => {
-    const m = pose(std({ rough: 0.9, side: THREE.DoubleSide }), { post: treeSway, flatten: 0.35, twoSided: true });
+    const m = pose(std({ rough: 0.9, side: THREE.DoubleSide }), { post: treeSway, flatten: 0.35, twoSided: true, squash: vec3(C.w, D.w, C.w) });
     const c = treeColour();
     return finish(m, c, { glow: transmit(c) });
   })();
