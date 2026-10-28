@@ -49,7 +49,7 @@ computed from the model as you play. Open **Play** on the globe, or go to
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
 | Paris, France | Planned | IGN RGE ALTI, BD ORTHO and BD TOPO heights |
 | Amsterdam, Netherlands | Planned | AHN LiDAR, PDOK imagery, 3D BAG heights |
-| Tokyo, Japan | Planned | Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles |
+| **Tokyo**, Japan | **Live** | About 15,400 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
 | Hong Kong, China | Planned | Lands Department 3D spatial data and LiDAR DTM |
 | Singapore | Planned | OSM heights; open bare-earth DEM and imagery still to find |
 

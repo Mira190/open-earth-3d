@@ -197,7 +197,7 @@ def main():
     print("wharves:", {k: v["dist_m"] for k, v in wharves.items()})
     helipads = []
     for r in infra:
-        if r["class"] == "helipad":
+        if r["class"] == "helipad" and gcfg.get("helipads_from_data", True):
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q):
                 helipads.append({"id": "kirribilli-pad" if not helipads else f"helipad-{len(helipads)}", "name": r["name"] or "Helipad",
@@ -324,7 +324,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "shade_landmarks") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "shade_landmarks", "blurb") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(np.where(water, np.where(ndimage.binary_dilation(~water), 0.0, -4.0), dem) * 10).astype("<i2").tobytes()).decode()},

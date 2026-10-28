@@ -1,0 +1,1372 @@
+{
+ "note": "PLATEAU's surveyed roof heights against heights mapped in OpenStreetMap, for buildings of 20 m and taller that carry both.",
+ "method": "that carry both a PLATEAU height and a height tag in OpenStreetMap (an independent source), 20 m and taller",
+ "summary": {
+  "reference": 135,
+  "matched": 135,
+  "median_abs_error_pct": 2.8,
+  "median_error_m": -0.6,
+  "within_10pct": 96,
+  "within_20pct": 110,
+  "gross_short": 10,
+  "gross_tall": 10,
+  "by_source": {
+   "plateau": {
+    "n": 135,
+    "median_abs_error_pct": 2.8
+   }
+  }
+ },
+ "rows": [
+  {
+   "name": "汐留シティセンター",
+   "ref_m": 215.75,
+   "model_m": 225.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 10.1,
+   "error_pct": 4.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "電通本社ビル",
+   "ref_m": 210.09,
+   "model_m": 215.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 5.6,
+   "error_pct": 2.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "アークヒルズ仙石山森タワー",
+   "ref_m": 207.0,
+   "model_m": 201.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": -5.1,
+   "error_pct": -2.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "グラントウキョウサウスタワー",
+   "ref_m": 207.0,
+   "model_m": 208.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 1.2,
+   "error_pct": 0.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "赤坂インターシティAIR",
+   "ref_m": 205.08,
+   "model_m": 205.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.3,
+   "error_pct": 0.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "Otemachi One タワー",
+   "ref_m": 200.0,
+   "model_m": 197.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.5,
+   "error_pct": -1.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本テレビタワー",
+   "ref_m": 192.8,
+   "model_m": 201.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 8.4,
+   "error_pct": 4.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "The Okura Prestige Tower",
+   "ref_m": 188.65,
+   "model_m": 188.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.6,
+   "error_pct": -0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "虎ノ門ヒルズビジネスタワー",
+   "ref_m": 185.415,
+   "model_m": 181.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.7,
+   "error_pct": -2.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町タワー",
+   "ref_m": 185.0,
+   "model_m": 195.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": 10.4,
+   "error_pct": 5.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸の内トラストタワー本館",
+   "ref_m": 183.0,
+   "model_m": 177.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": -5.9,
+   "error_pct": -3.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東京日本橋タワー",
+   "ref_m": 180.04,
+   "model_m": 180.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.8,
+   "error_pct": 0.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 180.0,
+   "model_m": 179.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.4,
+   "error_pct": -0.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "神谷町トラストタワー",
+   "ref_m": 179.95,
+   "model_m": 180.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.1,
+   "error_pct": 0.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "Kachidoki The Tower",
+   "ref_m": 178.78,
+   "model_m": 174.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.3,
+   "error_pct": -2.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町プレイスウエストタワー",
+   "ref_m": 178.0,
+   "model_m": 177.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.5,
+   "error_pct": -0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本橋高島屋三井ビルディング・日本橋髙島屋S.C.新館",
+   "ref_m": 176.66,
+   "model_m": 171.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": -5.2,
+   "error_pct": -2.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町フィナンシャルシティサウスタワー",
+   "ref_m": 176.0,
+   "model_m": 177.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 1.7,
+   "error_pct": 1.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "中央合同庁舎第7号館西館",
+   "ref_m": 173.0,
+   "model_m": 176.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 3.0,
+   "error_pct": 1.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "汐留タワー",
+   "ref_m": 172.0,
+   "model_m": 180.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": 8.3,
+   "error_pct": 4.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 170.37,
+   "model_m": 167.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.9,
+   "error_pct": -1.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸の内パークビルディング",
+   "ref_m": 170.0,
+   "model_m": 170.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.8,
+   "error_pct": 0.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "サピアタワー",
+   "ref_m": 169.0,
+   "model_m": 165.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.0,
+   "error_pct": -2.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "グランキューブ",
+   "ref_m": 168.28,
+   "model_m": 167.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.5,
+   "error_pct": -0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町プレイスイーストタワー",
+   "ref_m": 163.0,
+   "model_m": 163.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.5,
+   "error_pct": 0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "Mitsui & Co.",
+   "ref_m": 158.0,
+   "model_m": 151.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -6.7,
+   "error_pct": -4.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本生命浜松町クレアタワー",
+   "ref_m": 156.0,
+   "model_m": 151.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.3,
+   "error_pct": -2.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "中央合同庁舎第7号館東館",
+   "ref_m": 155.0,
+   "model_m": 152.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.0,
+   "error_pct": -1.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本経済新聞社",
+   "ref_m": 155.0,
+   "model_m": 156.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 1.0,
+   "error_pct": 0.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "パシフィックセンチュリープレイス丸の内",
+   "ref_m": 153.0,
+   "model_m": 150.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.6,
+   "error_pct": -1.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸の内永楽ビルディング",
+   "ref_m": 150.0,
+   "model_m": 149.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.0,
+   "error_pct": -0.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "三井住友銀行東館",
+   "ref_m": 150.0,
+   "model_m": 153.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": 3.4,
+   "error_pct": 2.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "みずほ丸の内タワー",
+   "ref_m": 149.7,
+   "model_m": 149.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.4,
+   "error_pct": -0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ミュージアムタワー京橋",
+   "ref_m": 149.56,
+   "model_m": 144.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -5.0,
+   "error_pct": -3.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町フィナンシャルシティノースタワー",
+   "ref_m": 149.0,
+   "model_m": 152.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": 3.6,
+   "error_pct": 2.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "霞が関ビルディング",
+   "ref_m": 147.0,
+   "model_m": 150.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": 3.4,
+   "error_pct": 2.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "浜松町ビルディング",
+   "ref_m": 145.0,
+   "model_m": 165.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 20.0,
+   "error_pct": 13.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "飯野ビル",
+   "ref_m": 144.0,
+   "model_m": 140.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.6,
+   "error_pct": -2.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "太陽生命日本橋ビル",
+   "ref_m": 143.29,
+   "model_m": 142.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.0,
+   "error_pct": -0.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東京サンケイビル",
+   "ref_m": 142.0,
+   "model_m": 145.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 3.7,
+   "error_pct": 2.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本橋室町三井タワー [COREDO室町テラス]",
+   "ref_m": 141.16,
+   "model_m": 139.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.5,
+   "error_pct": -1.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "パークコート浜離宮ザ・タワー",
+   "ref_m": 139.9,
+   "model_m": 137.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.7,
+   "error_pct": -1.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "クレストプライムタワー芝",
+   "ref_m": 138.0,
+   "model_m": 136.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.9,
+   "error_pct": -1.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "アーバンネット内幸町ビル",
+   "ref_m": 136.84,
+   "model_m": 135.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.4,
+   "error_pct": -1.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "汐留ビルディング",
+   "ref_m": 130.0,
+   "model_m": 127.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.4,
+   "error_pct": -1.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "住友不動産御成門タワー",
+   "ref_m": 128.07,
+   "model_m": 125.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.1,
+   "error_pct": -2.4,
+   "height_src": "plateau"
+  },
+  {
+   "name": "武田グローバル本社",
+   "ref_m": 123.79,
+   "model_m": 123.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.8,
+   "error_pct": -0.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 123.0,
+   "model_m": 119.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.3,
+   "error_pct": -2.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 122.0,
+   "model_m": 121.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.2,
+   "error_pct": -0.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本橋一丁目三井ビルディング",
+   "ref_m": 121.0,
+   "model_m": 120.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.0,
+   "error_pct": -0.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "WATERS takesiba タワー棟",
+   "ref_m": 119.86,
+   "model_m": 120.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.3,
+   "error_pct": 0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東京虎ノ門グローバルスクエア",
+   "ref_m": 119.65,
+   "model_m": 117.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.5,
+   "error_pct": -2.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ブリリアタワー浜離宮",
+   "ref_m": 117.22,
+   "model_m": 20.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -97.0,
+   "error_pct": -82.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 116.15,
+   "model_m": 118.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": 2.4,
+   "error_pct": 2.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 115.2,
+   "model_m": 115.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.1,
+   "error_pct": -0.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 115.0,
+   "model_m": 114.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.7,
+   "error_pct": -0.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本生命大手町ビル",
+   "ref_m": 115.0,
+   "model_m": 115.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.7,
+   "error_pct": 0.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸紅ビル",
+   "ref_m": 111.9,
+   "model_m": 111.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.0,
+   "error_pct": 0.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "有楽町イトシア",
+   "ref_m": 110.0,
+   "model_m": 107.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.7,
+   "error_pct": -2.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "イトシアプラザ",
+   "ref_m": 110.0,
+   "model_m": 30.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": -79.9,
+   "error_pct": -72.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日比谷パークフロント",
+   "ref_m": 108.975,
+   "model_m": 106.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.0,
+   "error_pct": -2.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸の内トラストタワーN館",
+   "ref_m": 103.0,
+   "model_m": 98.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.8,
+   "error_pct": -4.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手センタービル",
+   "ref_m": 100.0,
+   "model_m": 100.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.3,
+   "error_pct": 0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "鉄鋼ビルディング南館",
+   "ref_m": 99.45,
+   "model_m": 100.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.8,
+   "error_pct": 0.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "読売新聞ビル",
+   "ref_m": 94.0,
+   "model_m": 200.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": 106.3,
+   "error_pct": 113.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日鉄日本橋ビル",
+   "ref_m": 91.66,
+   "model_m": 91.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.5,
+   "error_pct": -0.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ローレルタワールネ浜松町",
+   "ref_m": 88.69,
+   "model_m": 87.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.1,
+   "error_pct": -1.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "住友不動産汐留ウイング",
+   "ref_m": 82.0,
+   "model_m": 41.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": -40.3,
+   "error_pct": -49.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "気象庁・港区立教育センター合同庁舎",
+   "ref_m": 81.29,
+   "model_m": 68.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -12.7,
+   "error_pct": -15.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "特許庁総合庁舎",
+   "ref_m": 80.95,
+   "model_m": 85.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 4.8,
+   "error_pct": 6.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "国立がん研究センター新研究棟",
+   "ref_m": 80.0,
+   "model_m": 78.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.0,
+   "error_pct": -2.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東京スクエアガーデン",
+   "ref_m": 80.0,
+   "model_m": 125.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 45.2,
+   "error_pct": 56.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ザ・パークハウス三田タワー",
+   "ref_m": 78.76,
+   "model_m": 59.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -19.5,
+   "error_pct": -24.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸の内中央ビル",
+   "ref_m": 77.0,
+   "model_m": 69.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": -7.1,
+   "error_pct": -9.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "The Okura Heritage Wing",
+   "ref_m": 75.05,
+   "model_m": 76.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": 1.5,
+   "error_pct": 2.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "新虎通りCORE",
+   "ref_m": 74.7,
+   "model_m": 74.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.2,
+   "error_pct": 0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "オンワードパークビルディング",
+   "ref_m": 74.0,
+   "model_m": 72.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.7,
+   "error_pct": -2.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "スカイグランデ汐留",
+   "ref_m": 72.0,
+   "model_m": 72.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.2,
+   "error_pct": 0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東京ポートシティー竹芝レジデンスタワー",
+   "ref_m": 70.0,
+   "model_m": 61.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -8.8,
+   "error_pct": -12.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ヒューリックスクエア東京",
+   "ref_m": 68.05,
+   "model_m": 67.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.5,
+   "error_pct": -0.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "OVOL",
+   "ref_m": 68.0,
+   "model_m": 67.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.2,
+   "error_pct": -0.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "私立 東京女子学園中学校 高等学校",
+   "ref_m": 67.4,
+   "model_m": 36.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": -30.7,
+   "error_pct": -45.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ホテルグランバッハ東京銀座",
+   "ref_m": 66.0,
+   "model_m": 6.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -59.8,
+   "error_pct": -90.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "GINZA SIX",
+   "ref_m": 66.0,
+   "model_m": 66.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.7,
+   "error_pct": 1.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東急プラザ銀座",
+   "ref_m": 66.0,
+   "model_m": 64.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.2,
+   "error_pct": -1.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ACホテル・バイ・マリオット東京銀座",
+   "ref_m": 65.844,
+   "model_m": 64.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -1.0,
+   "error_pct": -1.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "住友芝大門ビル",
+   "ref_m": 65.0,
+   "model_m": 58.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -6.8,
+   "error_pct": -10.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "HARUMI FLAG PARK VILLAGE B棟",
+   "ref_m": 64.66,
+   "model_m": 60.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.3,
+   "error_pct": -6.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "HARUMI FLAG PARK VILLAGE",
+   "ref_m": 64.45,
+   "model_m": 67.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 2.8,
+   "error_pct": 4.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "HARUMI FLAG SUN VILLAGE E棟",
+   "ref_m": 64.41,
+   "model_m": 59.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": -5.2,
+   "error_pct": -8.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "HARUMI FLAG SUN VILLAGE F棟",
+   "ref_m": 64.31,
+   "model_m": 60.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.5,
+   "error_pct": -5.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "竹橋合同ビル",
+   "ref_m": 63.0,
+   "model_m": 65.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 2.0,
+   "error_pct": 3.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "パイロット阪急阪神グリーンビル",
+   "ref_m": 63.0,
+   "model_m": 60.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.4,
+   "error_pct": -3.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "HARUMI FLAG PORT VILLAGE A棟",
+   "ref_m": 62.82,
+   "model_m": 59.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.8,
+   "error_pct": -6.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "住友不動産麻布十番ビル",
+   "ref_m": 62.13,
+   "model_m": 57.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.3,
+   "error_pct": -7.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "東京都済生会中央病院",
+   "ref_m": 62.08,
+   "model_m": 32.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -29.3,
+   "error_pct": -47.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "コナミクリエイティブセンター銀座",
+   "ref_m": 62.0,
+   "model_m": 62.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.9,
+   "error_pct": 1.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "HARUMI FLAG SEA VILLAGE A棟",
+   "ref_m": 60.12,
+   "model_m": 61.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 1.6,
+   "error_pct": 2.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "京阪神虎ノ門ビル",
+   "ref_m": 60.0,
+   "model_m": 1.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -58.2,
+   "error_pct": -97.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町合同庁舎3号館",
+   "ref_m": 60.0,
+   "model_m": 65.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 5.8,
+   "error_pct": 9.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大和地所レジデンス虎ノ門ビル",
+   "ref_m": 59.99,
+   "model_m": 48.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -11.4,
+   "error_pct": -19.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "Cornes House",
+   "ref_m": 59.95,
+   "model_m": 36.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -23.2,
+   "error_pct": -38.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "三甲新橋ビル",
+   "ref_m": 59.9,
+   "model_m": 57.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.3,
+   "error_pct": -3.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "パークホームズ浜松町",
+   "ref_m": 59.56,
+   "model_m": 23.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": -35.7,
+   "error_pct": -59.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "銀泉西新橋ビル",
+   "ref_m": 58.5,
+   "model_m": 3.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -55.5,
+   "error_pct": -94.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "芝パークビル",
+   "ref_m": 57.0,
+   "model_m": 63.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": 6.1,
+   "error_pct": 10.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "第一中央ビル",
+   "ref_m": 55.7,
+   "model_m": 31.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": -23.9,
+   "error_pct": -42.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "Akasaka Enoki-Zaka Bldg.",
+   "ref_m": 52.0,
+   "model_m": 56.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 4.2,
+   "error_pct": 8.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "新虎ノ門実業会館",
+   "ref_m": 52.0,
+   "model_m": 44.3,
+   "match": "address",
+   "how": "osm",
+   "error_m": -7.7,
+   "error_pct": -14.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 52.0,
+   "model_m": 49.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": -2.5,
+   "error_pct": -4.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "損保ジャパン日本興亜日本橋ビル",
+   "ref_m": 52.0,
+   "model_m": 57.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": 5.5,
+   "error_pct": 10.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 50.0,
+   "model_m": 49.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.6,
+   "error_pct": -1.2,
+   "height_src": "plateau"
+  },
+  {
+   "name": "新幹線総合指令所",
+   "ref_m": 50.0,
+   "model_m": 51.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": 1.9,
+   "error_pct": 3.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ユニクロ",
+   "ref_m": 48.0,
+   "model_m": 63.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": 15.4,
+   "error_pct": 32.1,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ベイサイド竹芝",
+   "ref_m": 46.0,
+   "model_m": 66.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": 20.1,
+   "error_pct": 43.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 45.0,
+   "model_m": 49.4,
+   "match": "address",
+   "how": "osm",
+   "error_m": 4.4,
+   "error_pct": 9.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "住友不動産芝ビル3号館",
+   "ref_m": 44.0,
+   "model_m": 40.9,
+   "match": "address",
+   "how": "osm",
+   "error_m": -3.1,
+   "error_pct": -7.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 40.0,
+   "model_m": 57.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 17.0,
+   "error_pct": 42.5,
+   "height_src": "plateau"
+  },
+  {
+   "name": "日本橋三洋グループビルディング",
+   "ref_m": 40.0,
+   "model_m": 52.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 12.8,
+   "error_pct": 32.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "丸の内仲通りビル",
+   "ref_m": 38.0,
+   "model_m": 42.5,
+   "match": "address",
+   "how": "osm",
+   "error_m": 4.5,
+   "error_pct": 11.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "銀行会館",
+   "ref_m": 36.0,
+   "model_m": 31.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -5.0,
+   "error_pct": -13.9,
+   "height_src": "plateau"
+  },
+  {
+   "name": "明治屋京橋ビル",
+   "ref_m": 36.0,
+   "model_m": 30.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -6.0,
+   "error_pct": -16.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "ヒューリック虎ノ門ビル",
+   "ref_m": 35.0,
+   "model_m": 53.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 18.8,
+   "error_pct": 53.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "鉄鋼ビルディング",
+   "ref_m": 35.0,
+   "model_m": 130.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 95.2,
+   "error_pct": 272.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 32.0,
+   "model_m": 89.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 57.2,
+   "error_pct": 178.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "大手町ビルヂング",
+   "ref_m": 32.0,
+   "model_m": 43.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 11.7,
+   "error_pct": 36.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "Tokiwa",
+   "ref_m": 30.0,
+   "model_m": 25.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.4,
+   "error_pct": -14.7,
+   "height_src": "plateau"
+  },
+  {
+   "name": "第一三共日本橋ビル",
+   "ref_m": 30.0,
+   "model_m": 45.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": 15.6,
+   "error_pct": 52.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 30.0,
+   "model_m": 32.2,
+   "match": "address",
+   "how": "osm",
+   "error_m": 2.2,
+   "error_pct": 7.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 28.0,
+   "model_m": 32.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": 4.0,
+   "error_pct": 14.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 28.0,
+   "model_m": 41.8,
+   "match": "address",
+   "how": "osm",
+   "error_m": 13.8,
+   "error_pct": 49.3,
+   "height_src": "plateau"
+  },
+  {
+   "name": "NBF虎ノ門ビル",
+   "ref_m": 24.0,
+   "model_m": 43.1,
+   "match": "address",
+   "how": "osm",
+   "error_m": 19.1,
+   "error_pct": 79.6,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 22.0,
+   "model_m": 21.6,
+   "match": "address",
+   "how": "osm",
+   "error_m": -0.4,
+   "error_pct": -1.8,
+   "height_src": "plateau"
+  },
+  {
+   "name": "三解脱門",
+   "ref_m": 21.0,
+   "model_m": 17.0,
+   "match": "address",
+   "how": "osm",
+   "error_m": -4.0,
+   "error_pct": -19.0,
+   "height_src": "plateau"
+  },
+  {
+   "name": "(unnamed)",
+   "ref_m": 20.0,
+   "model_m": 20.7,
+   "match": "address",
+   "how": "osm",
+   "error_m": 0.7,
+   "error_pct": 3.5,
+   "height_src": "plateau"
+  }
+ ]
+}
