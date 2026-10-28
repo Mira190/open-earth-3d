@@ -437,6 +437,7 @@
     "local_name": "Tokyoite",
     "water_name": "Tokyo Bay",
     "greeting": "こんにちは。",
+    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the water bus, and fly to Tokyo Tower. Every fact they tell you comes from the model.",
     "shade_landmarks": [
       "tower_"
     ],
@@ -501,6 +502,7 @@
       }
     ],
     "ferry_note": "Piers are from OpenStreetMap via Overture. Routes are generated through open water; the stops follow the real water-bus piers, but the timetable is not real, and the vessel names are those of Tokyo Cruise boats. Boats run at 1.5 times their real speed and wait 20 s at each pier. At a pier you can skip the wait.",
+    "helipads_from_data": false,
     "helipads": [
       {
         "id": "hibiya-pad",

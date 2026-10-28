@@ -40,6 +40,7 @@ window.OpenEarthGame = async function game(cityId) {
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
   $('#gt-title').textContent = G.title;
+  if (G.blurb) $('#gt-blurb').textContent = G.blurb;
   $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
   const stage = $('#game-stage'), canvas = $('#game-gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
