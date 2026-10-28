@@ -86,7 +86,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const fineTiles = scene.ground.map(() => null);
   // streets drawn from the footway and road data at 0.5 m per pixel, for the tiles near the player
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
-  const FOOTW = { pedestrian: 8, footway: 3, path: 2.5, steps: 3, cycleway: 2.5, living_street: 5 };
+  const FOOTW = OEActors.FOOTW;
   function streetTexture(i) {
     const t = scene.ground[i], PX = 0.5, w = Math.round((t.x1 - t.x0) / PX), h = Math.round((t.y1 - t.y0) / PX);
     const cv = document.createElement('canvas');
@@ -157,9 +157,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   loadMsg('People, traffic, ferries', 0.86);
   await idle();
   const lin = OEWorld.lin, dummy = new THREE.Object3D();
-  const benches = G.props.bench || [], lamps = G.props.street_lamp || [];
-  const benchMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.45, 0.55).translate(0, 0.45, 0), new THREE.MeshStandardMaterial({ color: lin('#6e5a44'), roughness: 0.9 }), benches.length / 3);
-  for (let i = 0; i < benches.length / 3; i++) { dummy.position.copy(W(benches[3 * i] / 10, benches[3 * i + 1] / 10, benches[3 * i + 2] / 10)); dummy.rotation.y = (i * 2.399) % Math.PI; dummy.updateMatrix(); benchMesh.setMatrixAt(i, dummy.matrix); }
+  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
+  // benches face their footway, or the water behind it; each has two seats the crowd can use
+  const benches = OEActors.benches(G.props.bench || [], footNet, nav), lamps = G.props.street_lamp || [];
+  const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z
+    [1.7, 0.06, 0.42, 0, 0.42, 0.03, 0, 0], [1.7, 0.34, 0.05, 0, 0.66, -0.2, 0, 0], [0.07, 0.42, 0.44, 0.72, 0.21, 0, 0, 0], [0.07, 0.42, 0.44, -0.72, 0.21, 0, 0, 0]]),
+  new THREE.MeshStandardMaterial({ color: lin('#6e5a44'), roughness: 0.9 }), benches.list.length);
+  benches.list.forEach((b, i) => { dummy.position.copy(W(b.x, b.y, b.z)); dummy.rotation.y = Math.PI - b.h; dummy.updateMatrix(); benchMesh.setMatrixAt(i, dummy.matrix); });
   benchMesh.castShadow = benchMesh.receiveShadow = true;
   const nl = lamps.length / 3;
   const poleMesh = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.07, 0.1, 6.5, 6).translate(0, 3.25, 0), new THREE.MeshStandardMaterial({ color: lin('#3b4248'), roughness: 0.6, metalness: 0.4 }), nl);
@@ -193,9 +197,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
-  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
   const CR = G.crowd || {};
-  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })));
+  // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
+  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
+    { benches: lib ? benches : null });
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100);
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
@@ -321,6 +326,49 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#g-time').textContent = `${fmtMin(clock.min)} ${loc.zone}`;
     $('#g-date').textContent = `${clock.d} ${MONTHS[clock.m - 1]}${clock.frozen ? ' · paused' : clock.scale === 1 ? ' · real time' : ''}`;
   }
+
+  // ------------------------------------------------------------ benches in the sun
+  // People take the sun when it's cool and the shade when it's hot. The guide is the city's
+  // average daily top for the month (game.json "climate") against a comfortable 22 °C, and a
+  // low sun is gentler, so mornings and evenings lean towards the sun.
+  const CLIMATE = G.climate && G.climate.mean_max_c;
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function sunWant() { // -1 looks for shade .. +1 looks for sun
+    if (!CLIMATE || !sun || sun.altitude <= 0) return 0;
+    const month = Math.max(-1, Math.min(1, (22 - CLIMATE[clock.m - 1]) / 4));
+    return Math.max(-1, Math.min(1, month + 0.8 * (1 - Math.min(1, sun.altitude / 50))));
+  }
+  const benchLit = b => (sun && sun.altitude > 0 ? S.sunlit(DSM, b.x, b.y, b.z + 1, sun) : null);
+  let benchBudget = 0;
+  // how likely a passer-by is to take a free seat on a bench: what it offers against what people want
+  crowd.sitChance = b => {
+    if (!sun || sun.altitude <= 0) return 0.06; // a few still sit out after dark
+    if (b.lit == null) return 0.25;
+    const w = sunWant();
+    return 0.25 * (b.lit ? 1 + 0.9 * w : 1 - 0.9 * w);
+  };
+  // what someone on a bench says: when the sun comes to it or leaves it today, and why that suits
+  function benchTalk(b) {
+    if (!sun || sun.altitude <= 0) return 'Quiet out here after dark. I like it.';
+    const lit = benchLit(b), w = sunWant(), tmax = CLIMATE ? `${Math.round(CLIMATE[clock.m - 1])}°` : null;
+    let at = null, sets = false;
+    for (let m = Math.ceil((clock.min + 1) / 10) * 10; m < 1440; m += 10) {
+      const sp = S.position(S.localToUtc(clock.y, clock.m, clock.d, m));
+      if (sp.altitude <= 0) { sets = true; at = m; break; }
+      if (S.sunlit(DSM, b.x, b.y, b.z + 1, sp) !== lit) { at = m; break; }
+    }
+    const when = at == null ? null : fmtMin(at), month = MONTH_NAMES[clock.m - 1];
+    if (lit) {
+      const until = sets ? `until the sun goes down at about ${when}` : when ? `until about ${when}` : 'for the rest of the day';
+      if (w > 0.3) return `This bench has the sun ${until}.${tmax ? ` On a ${tmax} ${month} day, that's what you want.` : ''}`;
+      if (w < -0.3) return `Bit hot in the sun, honestly. It's on this bench ${until}.`;
+      return `This bench has the sun ${until}.`;
+    }
+    const comes = when && !sets ? `The sun gets to this bench at about ${when}.` : 'The sun won\'t get to this bench again today.';
+    if (w < -0.3) return `${tmax ? `${month} averages ${tmax} here. ` : ''}${when && !sets ? `This bench is in the shade until about ${when}.` : 'This bench is in the shade for the rest of the day.'}`;
+    return `Shady here. ${comes}`;
+  }
+
   function presetTime(kind) {
     const now = S.utcToLocal(Date.now());
     clock.scale = clock.scale === 1 ? 1 : 30;
@@ -626,7 +674,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const p = crowd.P[pi];
       p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y); p.wave = true;
       setTimeout(() => { p.face = null; }, 6000);
-      dlg.show({ name: 'Passer-by', role: G.local_name || 'Local', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
+      dlg.show({ name: 'Passer-by', role: G.local_name || 'Local', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [p.state === 'sit' && p.seat ? benchTalk(p.seat.bench) : smalltalk(p.x, p.y)]);
     } };
     return null;
   }
@@ -962,6 +1010,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
     crowd.update(dt, cx, cy, clockT, player.mode === 'foot' ? player : null);
+    benchBudget += dt * 60; // keep what the benches near the player offer up to date, about 60 a second
+    if (benchBudget >= 1) { benches.refresh(benchLit, cx, cy, CR.radius_m || 450, Math.floor(benchBudget)); benchBudget -= Math.floor(benchBudget); }
     cars.update(dt, cx, cy, clockT, player.mode === 'foot' ? [player] : []);
   }
 
@@ -985,20 +1035,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const dir = cam.yaw + Math.atan2(side, fwd);
       player.h += angDiff(dir, player.h) * Math.min(1, dt * 10);
     }
-    // move, sliding along walls
+    // move as Unreal's CharacterMovementComponent does: sweep the capsule and slide along the
+    // walls it meets, then check the floor where it ends up (water, a drop). At the seawall,
+    // where the floor check fails, try one axis at a time.
     const sx = Math.sin(player.h) * player.speed * dt, sy = Math.cos(player.h) * player.speed * dt;
-    let moved = false;
+    let moved = 0;
     for (const [mx, my] of [[sx, sy], [sx, 0], [0, sy]]) {
       if (!mx && !my) continue;
-      const w = nav.walk(player.x + mx, player.y + my, player.z);
+      const m = nav.slide(player.x, player.y, player.z, mx, my), w = nav.walk(m.x, m.y, player.z);
       if (w.ok) {
-        player.x += mx; player.y += my; moved = true;
+        moved = Math.hypot(m.x - player.x, m.y - player.y);
+        player.x = m.x; player.y = m.y;
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
       } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in ${G.water_name || 'the water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
     }
-    if (!moved) player.speed *= 0.5;
+    if (dt > 0) player.speed = Math.min(player.speed, moved / dt); // the speed is what the move achieved, so the walk cycle slows against a wall
     const f = nav.floorAt(player.x, player.y, player.z);
     const floorZ = f ? f.z : player.z;
     if (f) player.floor = f.kind;
@@ -1124,7 +1177,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { footNet, benches, sunWant, benchTalk, advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
