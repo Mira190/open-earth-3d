@@ -103,7 +103,7 @@ function ribbonMaterial() {
   const wk = attribute('wk', 'vec2');                // x: strength (speed), y: age 0..1
   const u = uv().x;                                  // -1..1 across the ribbon
   const env = shared.env;
-  m.colorNode = Fn(() => vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.85).add(0.1)))();
+  m.colorNode = Fn(() => vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.95)))();
   m.opacityNode = Fn(() => {
     const age = wk.y, str = wk.x, au = abs(u);
     const P = positionWorld;

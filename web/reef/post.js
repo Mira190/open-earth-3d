@@ -3,7 +3,7 @@
 // the surface above that point (the same caustic focusing the sea floor shows), then scatter it
 // toward the eye through the water's own attenuation. A mask-edge vignette comes with it.
 import * as THREE from 'three/webgpu';
-import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, length, normalize, dot, pow, select, smoothstep,
+import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, log, length, normalize, dot, pow, select, smoothstep,
   clamp, screenUV, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
@@ -33,12 +33,14 @@ export function createPost(renderer, scene, camera, env) {
     Loop(STEPS, ({ i }) => {
       const t = float(i).add(jitter).mul(step);
       const S = cameraPosition.add(dir.mul(t));
-      const lit = env.caustic(S);                       // sun reaching this point through the waves
+      const lit = env.causticSoft(S);                   // sun reaching this point through the waves
       const dS = u.tide.sub(S.y).max(0);
       const sunHere = exp(u.K.mul(dS.mul(u.lightPath).add(t)).negate());
       acc.addAssign(sunHere.mul(lit).mul(step));
     });
-    return acc.mul(phase).mul(0.035).mul(u.white).mul(u.sunCol).mul(smoothstep(0.02, 0.3, u.sunDir.y)).mul(select(under, float(1), float(0)));
+    // select, not a multiply by 0: above the water the march can overflow, and 0 x inf is a NaN that bloom-free
+    // pixels show as black (a full row at the screen's middle)
+    return select(under, acc.mul(phase).mul(0.035).mul(u.white).mul(u.sunCol).mul(smoothstep(0.02, 0.3, u.sunDir.y)), vec3(0));
   });
 
   const vignette = Fn(() => {
@@ -48,7 +50,13 @@ export function createPost(renderer, scene, camera, env) {
     return float(1).sub(smoothstep(0.55, 0.95, r).mul(0.45).mul(under));
   });
 
-  const base = color.add(bloomPass).add(shafts());
-  post.outputNode = base.mul(vignette());
+  const q = new URLSearchParams(location.search);
+  let base = color.rgb;
+  if (q.get('bloom') !== '0') base = base.add(bloomPass.rgb);
+  if (q.get('shafts') !== '0') base = base.add(shafts());
+  // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift)
+  const scot = smoothstep(2.3, 4.3, log(u.adapt).div(2.302585)).mul(0.75);
+  const lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
+  post.outputNode = vec4(mix(base, vec3(0.72, 0.86, 1.12).mul(lum), scot).mul(vignette()), 1);
   return post;
 }

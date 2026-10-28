@@ -145,7 +145,7 @@ export function createTerrain(d, env, renderer) {
   }
   // beyond the survey: a flat abyss to the horizon so the water has a floor everywhere
   const abyssMat = new THREE.MeshBasicNodeMaterial();
-  abyssMat.colorNode = vec3(0.16, 0.17, 0.15);
+  abyssMat.colorNode = vec3(0.16, 0.17, 0.15).mul(env.u.white);
   const abyss = new THREE.Mesh(new THREE.CircleGeometry(80000, 48).rotateX(-Math.PI / 2), abyssMat);
   abyss.position.y = -150;
   mesh.add(abyss);

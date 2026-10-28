@@ -13,10 +13,12 @@
 //   board(id, player)  drive a boat (tinnie, yacht, cat, day cat) or fly the aircraft; installs ctx.controller and
 //                      restores the previous one on leave(); `player` (optional) gets .boarded, .group.visible=false, onBoard/onLeave
 //   leave()            WASD drive: W/S throttle, A/D steer, R sails (yachts), drag to look, F leave
-//   seaplane / helicopter  { vessel, enter(player), exit() } for the parked aircraft at the reef pontoon
+//   seaplane / helicopter  { vessel, enter(player), exit() } for the parked aircraft (at the reef pontoon, or where harbour.parked puts them)
+//   Also set as ctx.boats. Where things go comes from the site: scene.json `pois` and `harbour` (see pipeline/marine_meta.py).
 //   vessel.setSails('sail'|'motor'|'furled')   hoist / motor / furl the sails of a yacht or cat
 //   surfaceAt(x, z, t)  CPU copy of the ocean: { h, nx, ny, nz } at scene x, z (z = -north)
 //   wake               the wake field; wake.wakeNode(worldXZ) -> { height, foam } is a TSL node for ocean.js
+//   deckAt(x, north)   height of a walkable deck (pontoon, helipad, jetty) at a point, or null; also pushed to ctx.decks
 //   nav                depth-grid router: route([x, north], [x, north]) -> waypoints, anchorage(), shoreFrom()
 //
 // The wake field is hooked into ocean.js's material here (positionNode + outputNode are wrapped) unless
@@ -96,16 +98,16 @@ export async function init(ctx) {
   }
 
   // ======================================================================================================
-  // places (local metres east, north). Anchorages are searched for real water depth near the nominal spot.
-  const SPOTS = {
-    cid: [-10300, 3300, 'Cid Harbour'], tongue: [1900, 4700, 'Tongue Bay'], hill: [900, 5300, 'Hill Inlet entrance'], chalkies: [7000, 700, 'Chalkies Beach'],
-    whitehaven: [1000, 1200, 'Whitehaven Beach'], hamilton: [-9000, -9500, 'Hamilton Island Marina'], hook: [800, 11500, 'Hook Island'], west: [-15150, -1500, 'Shute Harbour gate']
-  };
-  const spot = {};
-  for (const [k, [x, n]] of Object.entries(SPOTS)) spot[k] = nav.snap(x, n) || [x, n];
+  // places come from the site's scene.json (cities/<id>/city.json, pipeline/marine_meta.py): POIs in local metres
+  // east and north, and a harbour block naming which POIs hold anchored fleets, the marina, a reef pontoon, parked
+  // aircraft and the traffic routes. Anchorages are searched for real water depth near the nominal spot.
+  const H = ctx.S.harbour || {};
+  const POI = new Map((ctx.S.pois || []).map(p => [p.id, p]));
+  const at = id => { const p = POI.get(id); return p ? [p.x, p.y] : null; };
+  const spot = id => { const p = at(id); return p ? (nav.snap(p[0], p[1]) || p) : null; };
   const avoid = [];
-  const placeAnchor = (key, i = 0, spread = 220) => {
-    const [x0, n0] = SPOTS[key];
+  const placeAnchor = (id, spread = 220) => {
+    const [x0, n0] = at(id);
     for (let tries = 0; tries < 10; tries++) {
       const p = nav.anchorage(x0 + (rnd() - 0.5) * spread * (tries + 1) * 0.3, n0 + (rnd() - 0.5) * spread * (tries + 1) * 0.3, 4.8, 9, 1500, 30, avoid);
       if (p) { avoid.push([p[0], p[1], 55]); return p; }
@@ -123,18 +125,24 @@ export async function init(ctx) {
 
   // ---- anchored fleets ----
   const anchored = [];
-  const fleet = (key, n, catAt = -1) => { for (let i = 0; i < n; i++) { const p = placeAnchor(key); if (!p) continue; const o = { x: p[0], z: -p[1], hdg: 0, swing: (rnd() - 0.5) * 0.5, mode: 'anchored' }; anchored.push(i === catAt ? cat(o) : yacht(o)); } };
-  fleet('cid', 5, 2); fleet('tongue', 3); fleet('hill', 3, 1); fleet('chalkies', 3);
+  for (const f of H.fleets || []) {
+    if (!POI.has(f.at)) continue;
+    for (let i = 0; i < f.n; i++) {
+      const p = placeAnchor(f.at); if (!p) continue;
+      const o = { x: p[0], z: -p[1], hdg: 0, swing: (rnd() - 0.5) * 0.5, mode: 'anchored' };
+      anchored.push(i === f.cat ? cat(o) : yacht(o));
+    }
+  }
   // tenders near anchored yachts
-  for (const v of anchored.slice(0, 3)) { const t = tinnie(`${v.name} tender`, { x: v.x + 14, z: v.z + 9, hdg: rnd() * 6, mode: 'anchored', swing: 1 }); }
+  for (const v of anchored.slice(0, 3)) tinnie(`${v.name} tender`, { x: v.x + 14, z: v.z + 9, hdg: rnd() * 6, mode: 'anchored', swing: 1 });
 
-  // ---- Hamilton Island marina: a jetty reaching out from the shore, finger pontoons, moored boats ----
+  // ---- marina: a jetty reaching out from the nearest shore, finger pontoons, moored boats ----
   let jetty = null;
-  {
-    const sh = nav.shoreFrom(...spot.hamilton, 2500);
+  if (H.marina && POI.has(H.marina.at)) {
+    const sh = nav.shoreFrom(...spot(H.marina.at), 2500);
     if (sh) {
-      // the model's water edge is a good bit off the real marina; push the jetty seaward so it reaches water > 3 m
-      const jd = buildJetty({ len: 90, fingers: 5, deckY: 1.7 });
+      // the 30 m model's water edge can sit a good bit off the real marina; push the jetty seaward so it reaches water > 3 m
+      const jd = buildJetty({ len: H.marina.len || 90, fingers: H.marina.fingers || 5, deckY: 1.7 });
       const psi = Math.atan2(sh.dirN, sh.dirX);
       jd.group.position.set(sh.x - sh.dirX * 8, 0, -(sh.n - sh.dirN * 8)); jd.group.rotation.y = psi;
       scene.add(jd.group); jetty = jd; jd.psi = psi;
@@ -152,55 +160,70 @@ export async function init(ctx) {
     }
   }
 
-  // ---- reef pontoon (Hardy Reef style), its helipad, parked seaplane and helicopter, and moorings ----
+  // ---- reef pontoon (Hardy Reef style) with its helipad, seaplane, day boat and dive moorings, where the site has one ----
   let pontoon = null, helipad = null, seaplane = null, helicopter = null, berthDay = null;
   const moorings = [];
-  {
-    // the pontoon sits on the edge of an offshore reef: find a reef cell far from the coast, then deep water beside it
-    let best = null;
-    const cx = 8500, cn = 9700;
-    for (let dx = -2500; dx <= 2500; dx += 60) for (let dn = -2500; dn <= 2500; dn += 60) {
-      const x = cx + dx, n = cn + dn;
-      if (ctx.habitat(x, n) !== 2) continue;
-      const d = ctx.depth(x, n); if (d < 1.0 || d > 7) continue;
-      const sc = Math.hypot(dx, dn); if (!best || sc < best.sc) best = { x, n, sc };
+  const pt = H.pontoon;
+  if (pt) {
+    // at a POI, or on the edge of an offshore reef found near [x, north] within r: a reef cell 1-7 m deep, then deep water beside it
+    let best = pt.at && at(pt.at) ? { x: at(pt.at)[0], n: at(pt.at)[1] } : null;
+    if (!best && pt.search) {
+      const [cx, cn, R] = pt.search;
+      for (let dx = -R; dx <= R; dx += 60) for (let dn = -R; dn <= R; dn += 60) {
+        const x = cx + dx, n = cn + dn;
+        if (ctx.habitat(x, n) !== 2) continue;
+        const d = ctx.depth(x, n); if (d < 1.0 || d > 7) continue;
+        const sc = Math.hypot(dx, dn); if (!best || sc < best.sc) best = { x, n, sc };
+      }
     }
-    if (!best) { best = { x: 1500, n: 1100 }; }
-    const p = nav.anchorage(best.x, best.n, 9, 18, 900, 20) || [best.x, best.n];
-    const pd = buildPontoon(), hd = buildHelipad();
-    const hdg = 20 * dtr;
-    pontoon = add('pontoon', 'Reef pontoon', pd, { x: p[0], z: -p[1], hdg, mode: 'static' });
-    const toLocal = (lx, lz) => { const c = Math.cos(hdg), s = Math.sin(hdg); return [pontoon.x + lx * s + lz * c, pontoon.z - lx * c + lz * s]; };
-    const hp = toLocal(-23, 0);
-    helipad = add('helipad', 'Reef helipad', hd, { x: hp[0], z: hp[1], hdg, mode: 'static' }); pads.push(helipad);
-    const sp = toLocal(6, -(5.5 + 0.7 + 1.5 + 0.6));
-    seaplane = add('seaplane', 'Reef Air amphibian', buildSeaplane(), { x: sp[0], z: sp[1], hdg, mode: 'docked' });
-    helicopter = add('helicopter', 'Scenic helicopter', buildHeli(), { x: hp[0], z: hp[1], hdg, mode: 'static' });
-    helicopter.air = helipad.y + 0.46;
-    const bp = toLocal(0, 5.5 + 0.7 + 4.5);
-    berthDay = add('daycat', 'Reef Explorer', buildDayCat(), { x: bp[0], z: bp[1], hdg, mode: 'docked' });
-    pontoon.berthWorld = bp;
-    // mooring buoys: GBRMPA public moorings at reef edges around the model
-    const taken = [[p[0], p[1], 800]];
-    const cands = [];
-    for (let x = -14000; x < 16000; x += 90) for (let n = -14000; n < 16000; n += 90) {
+    if (best) {
+      const p = nav.anchorage(best.x, best.n, 9, 18, 900, 20) || [best.x, best.n];
+      const pd = buildPontoon(), hd = buildHelipad();
+      const hdg = (pt.heading ?? 20) * dtr;
+      pontoon = add('pontoon', pt.name || 'Reef pontoon', pd, { x: p[0], z: -p[1], hdg, mode: 'static' });
+      const toLocal = (lx, lz) => { const c = Math.cos(hdg), s = Math.sin(hdg); return [pontoon.x + lx * s + lz * c, pontoon.z - lx * c + lz * s]; };
+      const hp = toLocal(-23, 0);
+      helipad = add('helipad', 'Reef helipad', hd, { x: hp[0], z: hp[1], hdg, mode: 'static' }); pads.push(helipad);
+      const sp = toLocal(6, -(5.5 + 0.7 + 1.5 + 0.6));
+      seaplane = add('seaplane', 'Reef Air amphibian', buildSeaplane(), { x: sp[0], z: sp[1], hdg, mode: 'docked' });
+      helicopter = add('helicopter', 'Scenic helicopter', buildHeli(), { x: hp[0], z: hp[1], hdg, mode: 'static' });
+      helicopter.pad = helipad; helicopter.air = helipad.y + 0.46;
+      const bp = toLocal(0, 5.5 + 0.7 + 4.5);
+      berthDay = add('daycat', pt.boat || 'Reef Explorer', buildDayCat(), { x: bp[0], z: bp[1], hdg, mode: 'docked' });
+      pontoon.berthWorld = bp;
+      // moorings around the pontoon reef (dive sites)
+      for (const [dx, dn] of [[260, 140], [-180, 300]]) { const m = nav.anchorage(p[0] + dx, p[1] + dn, 6, 14, 300, 15); if (m) moorings.push(add('mooring', `Mooring ${moorings.length + 1}`, buildMooring(ctx.depth(m[0], m[1])), { x: m[0], z: -m[1], hdg: 0, mode: 'static' })); }
+    }
+  }
+  // ---- aircraft parked away from a pontoon: a helicopter on a land pad, a seaplane on its mooring ----
+  for (const a of H.parked || []) {
+    const p = at(a.at); if (!p) continue;
+    if (a.kind === 'helicopter' && !helicopter) {
+      helicopter = add('helicopter', a.name || 'Scenic helicopter', buildHeli(), { x: p[0], z: -p[1], hdg: (a.heading ?? 0) * dtr, mode: 'static' });
+      helicopter.groundY = Math.max(ctx.height(p[0], p[1]), env.u.tide.value + 0.4); helicopter.air = helicopter.groundY;
+    } else if (a.kind === 'seaplane' && !seaplane) {
+      const m = nav.anchorage(p[0], p[1], 2.5, 8, 600, 20, avoid) || p; avoid.push([m[0], m[1], 40]);
+      seaplane = add('seaplane', a.name || 'Reef Air amphibian', buildSeaplane(), { x: m[0], z: -m[1], hdg: (a.heading ?? 135) * dtr, mode: 'docked' });
+    }
+  }
+  // ---- GBRMPA-style public moorings at reef edges around the model ----
+  {
+    const taken = pontoon ? [[pontoon.x, -pontoon.z, 800]] : [];
+    const cands = [], S = ctx.S.terrain, X0 = S.x0, X1 = S.x0 + S.w * S.cell_m, Y1 = S.y1, Y0 = S.y1 - S.h * S.cell_m;
+    for (let x = X0 + 1500; x < X1 - 1500; x += 90) for (let n = Y0 + 1500; n < Y1 - 1500; n += 90) {
       if (ctx.habitat(x, n) !== 2) continue; const d = ctx.depth(x, n); if (d < 2 || d > 8) continue; cands.push([x, n]);
     }
-    for (let i = 0; i < 8 && cands.length; i++) {
+    for (let i = 0; i < (H.moorings ?? 8) && cands.length; i++) {
       const c = cands.splice(Math.floor(rnd() * cands.length), 1)[0];
       if (taken.some(t => Math.hypot(t[0] - c[0], t[1] - c[1]) < 1800)) { i--; if (cands.length < 5) break; continue; }
       const m = nav.anchorage(c[0], c[1], 7, 16, 400, 20, []); if (!m) continue;
       taken.push([m[0], m[1], 400]);
-      const md = buildMooring(ctx.depth(m[0], m[1]));
-      moorings.push(add('mooring', `Mooring ${moorings.length + 1}`, md, { x: m[0], z: -m[1], hdg: rnd() * 6, mode: 'static' }));
+      moorings.push(add('mooring', `Mooring ${moorings.length + 1}`, buildMooring(ctx.depth(m[0], m[1])), { x: m[0], z: -m[1], hdg: rnd() * 6, mode: 'static' }));
     }
-    // nearby moorings around the pontoon reef (dive sites)
-    for (const [dx, dn] of [[260, 140], [-180, 300]]) { const m = nav.anchorage(p[0] + dx, p[1] + dn, 6, 14, 300, 15); if (m) moorings.push(add('mooring', `Mooring ${moorings.length + 1}`, buildMooring(ctx.depth(m[0], m[1])), { x: m[0], z: -m[1], hdg: 0, mode: 'static' })); }
   }
 
   // ---- AI traffic ----
-  const routeBetween = (a, b) => nav.route(a, b);
-  const chain = (...pts) => { const out = []; for (let i = 0; i < pts.length - 1; i++) { const r = routeBetween(pts[i], pts[i + 1]); if (!r) return null; out.push(...(i ? r.slice(1) : r)); } return out; };
+  const chain = (...pts) => { const out = []; for (let i = 0; i < pts.length - 1; i++) { const r = nav.route(pts[i], pts[i + 1]); if (!r) return null; out.push(...(i ? r.slice(1) : r)); } return out; };
   function traffic(v, pts, o = {}) {
     if (!pts || pts.length < 2) { v.dispose(); vessels.splice(vessels.indexOf(v), 1); return null; }
     v.setRoute(pts, o);
@@ -219,29 +242,19 @@ export async function init(ctx) {
     }
     return v;
   }
-  {
-    const P = spot;
-    const westGate = P.west, wh = P.whitehaven, ham = P.hamilton, hook = P.hook, hill = P.hill, tong = P.tongue, cid = P.cid;
-    // day-tour catamarans on the commuter and island-hop runs
-    traffic(add('daycat', 'Island Express', buildDayCat(), { mode: 'ai' }), chain(westGate, ham, cid, westGate), { loop: 'repeat', dwell: 8, hide: false, vmax: 15 });
-    traffic(add('daycat', 'Coral Sea Cruiser', buildDayCat(), { mode: 'ai' }), chain(westGate, wh, hill), { loop: 'pingpong', dwell: 40, vmax: 14 });
-    // the Hardy-Reef style day boat circulates between the pontoon, the moorings and back
-    if (pontoon && moorings.length) {
-      const pp = [pontoon.x + 450, -pontoon.z + 300];
-      const pr = nav.snap(pp[0], pp[1]) || pp;
-      const stops = [pr, ...moorings.slice(-2).map(m => [m.x, -m.z])].filter(Boolean);
-      const hop = chain(...stops, pr);
-      traffic(add('daycat', 'Hardy Looper', buildDayCat(), { mode: 'ai' }), hop, { loop: 'repeat', dwell: 30, vmax: 9 });
-    }
-    // yachts under sail between anchorages
-    traffic(yacht({ mode: 'ai' }), chain(cid, wh), { loop: 'pingpong', dwell: 60, vmax: 4.2 });
-    traffic(yacht({ mode: 'ai' }), chain(wh, ham), { loop: 'pingpong', dwell: 60, vmax: 4.2 });
-    traffic(cat({ mode: 'ai' }), chain(ham, hill), { loop: 'pingpong', dwell: 90, vmax: 5 });
-    traffic(yacht({ mode: 'ai' }), chain(westGate, cid), { loop: 'pingpong', dwell: 40, vmax: 4.2 });
-    traffic(yacht({ mode: 'ai' }), chain(hook, tong), { loop: 'pingpong', dwell: 40, vmax: 4.2 });
-    // tinnie shuttles
-    traffic(tinnie('Dive boat Nemo', { mode: 'ai' }), chain(tong, wh), { loop: 'pingpong', dwell: 25, vmax: 12 });
-    traffic(tinnie('Water taxi', { mode: 'ai' }), chain(ham, cid), { loop: 'pingpong', dwell: 25, vmax: 13 });
+  const make = (kind, name) => kind === 'daycat' ? add('daycat', name || 'Day cruiser', buildDayCat(), { mode: 'ai' }) : kind === 'cat' ? cat({ mode: 'ai' })
+    : kind === 'tinnie' ? tinnie(name || 'Tinnie', { mode: 'ai' }) : yacht({ mode: 'ai' });
+  for (const r of H.traffic || []) {
+    const pts = r.route.map(spot); if (pts.some(p => !p)) continue;
+    const v = make(r.kind, r.name); if (r.name && r.kind !== 'tinnie' && r.kind !== 'daycat') v.name = r.name;
+    traffic(v, chain(...pts), { loop: r.loop || 'pingpong', dwell: r.dwell ?? 40, vmax: r.vmax, hide: false });
+  }
+  // the pontoon's own day boat circulates between the pontoon, the moorings and back
+  if (pontoon && moorings.length) {
+    const pp = [pontoon.x + 450, -pontoon.z + 300];
+    const pr = nav.snap(pp[0], pp[1]) || pp;
+    const stops = [pr, ...moorings.slice(-2).map(m => [m.x, -m.z])].filter(Boolean);
+    traffic(add('daycat', pt.looper || 'Reef shuttle', buildDayCat(), { mode: 'ai' }), chain(...stops, pr), { loop: 'repeat', dwell: 30, vmax: 9 });
   }
   // aircraft on scenic loops
   const aero = [];
@@ -251,11 +264,39 @@ export async function init(ctx) {
     a.propRpm = kind === 'seaplane' ? 60 : 40;
     aero.push(a); return a;
   }
-  orbiter('helicopter', 'Scenic flight', buildHeli({ livery: 0xc23a1c }), spot.whitehaven[0], spot.whitehaven[1] + 1500, 1400, 160, 38, 1);
-  orbiter('seaplane', 'Whitsunday Air', buildSeaplane({ livery: 0xc23a1c }), spot.hamilton[0] + 2500, spot.hamilton[1] + 3200, 3200, 260, 45, -1);
+  for (const s of H.scenic || []) {
+    const c = at(s.around); if (!c) continue;
+    const desc = s.kind === 'helicopter' ? buildHeli({ livery: 0xc23a1c }) : buildSeaplane({ livery: 0xc23a1c });
+    orbiter(s.kind, s.name, desc, c[0] + (s.dx || 0), c[1] + (s.dy || 0), s.r, s.alt, s.v, s.dir ?? 1);
+  }
 
   // initial state for sails of anchored yachts: furled
   for (const v of vessels) { v.snapSails(); }
+
+  // ---- decks the player can stand on: the pontoon, its helipad and the marina jetty (ctx.decks; player.js) ----
+  // deckAt(x, north) -> the deck's height (m) at that point, or null
+  const _m = new THREE.Matrix4(), _p = new THREE.Vector3();
+  const localOf = (obj, x, y, north) => { obj.updateMatrix(); _m.copy(obj.matrix).invert(); return _p.set(x, y, -north).applyMatrix4(_m); };
+  const worldY = (obj, lx, ly, lz) => _p.set(lx, ly, lz).applyMatrix4(obj.matrix).y;
+  function deckAt(x, north) {
+    let best = null;
+    const take = y => { if (best === null || y > best) best = y; };
+    if (pontoon && Math.hypot(pontoon.x - x, -pontoon.z - north) < 20) {
+      const l = localOf(pontoon.root, x, pontoon.y, north);
+      if (Math.abs(l.x) < 14.6 && Math.abs(l.z) < 5.1) take(worldY(pontoon.root, l.x, 0.55, l.z));
+    }
+    for (const p of pads) if (Math.hypot(p.x - x, -p.z - north) < 8) {
+      const l = localOf(p.root, x, p.y, north);
+      if (l.x * l.x + l.z * l.z < 49) take(worldY(p.root, l.x, 0.46, l.z));
+    }
+    if (jetty) {
+      const g = jetty.group, l = localOf(g, x, g.position.y, north), w = jetty.w;
+      if (l.x > -0.5 && l.x < jetty.len && Math.abs(l.z) < w / 2) take(g.position.y + 1.77);
+      for (const fx of jetty.fingers) if (Math.abs(l.x - fx) < 0.65 && l.z > w / 2 + 0.2 && l.z < w / 2 + 12.2) take(g.position.y + 0.4);
+    }
+    return best;
+  }
+  if (ctx.decks) ctx.decks.push(deckAt);
 
   // ---- lookup and boarding ----
   const byName = (s) => { s = String(s).toLowerCase(); return vessels.find(v => v.name.toLowerCase() === s || v.id === s) || vessels.find(v => v.name.toLowerCase().includes(s)) || null; };
@@ -280,7 +321,7 @@ export async function init(ctx) {
       mat.outputNode = Fn(() => {
         const o = outN, w = wake.wakeNode(positionWorld.xz);
         const above = select(cameraPosition.y.greaterThan(env.u.tide), float(1), float(0));
-        const fc = vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.85).add(0.1));
+        const fc = vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.95));
         // broken up with noise so the field reads as foam streaks, not a soft glow
         const n = mx_noise_float(vec3(positionWorld.x.mul(0.9), positionWorld.z.mul(0.9), env.u.time.mul(0.25)));
         const n2 = mx_noise_float(vec3(positionWorld.x.mul(3.1), positionWorld.z.mul(3.1), env.u.time.mul(0.4)));
@@ -336,7 +377,7 @@ export async function init(ctx) {
         default: break;
       }
       if (v.mode !== 'orbit' && v.mode !== 'player') {
-        if (v.kind === 'helicopter') { v.y = (v.mode === 'static' ? helipad.y + 0.46 : v.y); v.place(); }
+        if (v.kind === 'helicopter') { v.y = (v.mode === 'static' ? (v.pad ? v.pad.y + 0.46 : v.groundY ?? v.y) : v.y); v.place(); }
         else { v.buoyancy(dt, near); v.rig(dt, wnd); v.place(); }
       } else if (v.mode === 'player') { if (v.kind === 'yacht' || v.kind === 'cat') { v.rig(dt, wnd); } if (v.kind !== 'seaplane' && v.kind !== 'helicopter') { v.buoyancy(dt, true); v.place(); } }
       // propellers and rotors
@@ -354,8 +395,8 @@ export async function init(ctx) {
   // settle buoyancy and sails before the first frame, then optionally run ?warm=<s> seconds so wakes have built up
   { const w = windNow(); for (let k = 0; k < 2; k++) for (const v of vessels) if (v.mode !== 'orbit' && v.kind !== 'helicopter') { v.buoyancy(6, true); v.rig(6, w); v.place(); } }
   for (let i = 0, n = Number(q.get('warm') ?? 0) * 30; i < n; i++) step(1 / 30);
-  const API = { update, vessels, board, leave, wake, byName, seaplane: seaplaneApi, helicopter: helicopterApi, nav, surfaceAt: surf.surfaceAt, wakeNode: wake.wakeNode, windInfo: wind, pads, jetty, pontoon, moorings, hooked };
+  const API = { update, vessels, board, leave, wake, byName, deckAt, seaplane: seaplaneApi, helicopter: helicopterApi, nav, surfaceAt: surf.surfaceAt, wakeNode: wake.wakeNode, windInfo: wind, pads, jetty, pontoon, moorings, hooked };
   API.ctx = ctx; API.initMs = Math.round(performance.now() - tInit);
-  window.__boats = API;
+  window.__boats = ctx.boats = API;
   return API;
 }

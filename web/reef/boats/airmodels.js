@@ -2,13 +2,13 @@
 // Local frame as the boats: +X nose, +Y up, +Z right. Seaplane origin at the float waterline; helicopter origin at the skid soles.
 import * as THREE from 'three/webgpu';
 import { Fn, vec3, float, smoothstep, uv, mix } from 'three/tsl';
-import { Kit, box, cyl, rod, ellipsoid, rrect, slab, fin, tube, hull, materials, lamp } from './kit.js';
+import { Kit, box, cyl, rod, ellipsoid, rrect, slab, fin, tube, hull, materials, lamp, shared } from './kit.js';
 
 const lathe = (prof, seg = 20) => new THREE.LatheGeometry(prof.map(([x, r]) => new THREE.Vector2(r, x)), seg).rotateZ(-Math.PI / 2);  // axis along +X
 
 function rotorDisc(radius) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide });
-  m.colorNode = vec3(0.12, 0.13, 0.14);
+  m.colorNode = vec3(0.12, 0.13, 0.14).mul(shared.env.u.white);
   m.opacityNode = Fn(() => float(1).sub(smoothstep(0.55, 1.0, uv().sub(0.5).length().mul(2))).mul(smoothstep(0.08, 0.2, uv().sub(0.5).length().mul(2))).mul(0.3))();
   const g = new THREE.Mesh(new THREE.CircleGeometry(radius, 40).rotateX(-Math.PI / 2), m);
   m.fog = true;

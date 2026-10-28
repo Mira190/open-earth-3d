@@ -2,12 +2,15 @@
 // from wading, kicking and clearing the snorkel. Plain CPU pools drawn as two InstancedMeshes
 // (one draw call each); the scene's fogNode tints them like everything else in the water.
 import * as THREE from 'three/webgpu';
+import { vec3 } from 'three/tsl';
 
 export function createFx(ctx) {
   const { scene } = ctx;
   const dummy = new THREE.Object3D();
   const mk = (geo, color, opacity, max, fog = true) => {
-    const m = new THREE.MeshBasicNodeMaterial({ color, transparent: true, opacity, depthWrite: false });
+    const m = new THREE.MeshBasicNodeMaterial({ transparent: true, opacity, depthWrite: false });
+    const c = new THREE.Color(color);
+    m.colorNode = vec3(c.r, c.g, c.b).mul(ctx.env.u.white.mul(0.95));   // lit like a white surface: day, dusk and moonlight
     m.fog = fog;
     const im = new THREE.InstancedMesh(geo, m, max);
     im.frustumCulled = false; im.count = 0; im.renderOrder = 20;

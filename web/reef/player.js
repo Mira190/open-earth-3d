@@ -24,11 +24,11 @@ const sm = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t
 const damp = (a, b, k, dt) => a + (b - a) * (1 - Math.exp(-k * dt));
 const angDiff = (a, b) => Math.atan2(Math.sin(b - a), Math.cos(b - a));
 
-const SPAWN = { x: 505, north: 445, heading: 90 };
 const WADE_FROM = 0.15, SWIM_ENTER = 1.35, SWIM_EXIT = 1.0, MAX_SLOPE = 0.95, FREEDIVE_MAX = 10, BODY_FLOAT = 0.15;
 
 export async function init(ctx) {
   const { scene, camera, env, q } = ctx;
+  const sp = ctx.S.spawn || {}, SPAWN = { x: sp.x ?? 0, north: sp.y ?? 0, heading: sp.heading ?? 0 };   // scene.json spawn (city.json)
   const hud = createHud();
   { const h0 = document.getElementById('hud'); if (h0) Object.assign(h0.style, { left: 'auto', right: '12px', bottom: 'auto', top: '62px', fontSize: '11px', padding: '4px 8px', opacity: '.7', display: matchMedia('(pointer: coarse)').matches ? 'none' : '' }); }   // the viewer's debug line makes room for ours
   const fx = createFx(ctx);
@@ -226,12 +226,37 @@ export async function init(ctx) {
     dress();
     return true;
   }
+  interactables.push({ id: 'climb', radius: 1, get x() { return S.pos.x; }, get north() { return -S.pos.z; }, label: 'E: climb out',
+    enabled: () => S.water && S.depthBody < 0.6 && !!deckNear(), action: () => {
+      const p = deckNear(); if (!p) return;
+      S.water = false; S.dive = false; S.vy = 0; S.grounded = true; S.vel.set(0, 0, 0);
+      S.pos.set(p[0], p[2], -p[1]); S.floor = p[2]; S.dep = env.u.tide.value - p[2]; setState('walk');
+      splashAtFeet(8, 1.5);
+    } });
   interactables.push({ id: 'kit', object: gearCrate, radius: 2.4, key: 'E', get label() { return S.gear.scuba ? 'E: take the scuba kit off' : S.gear.snorkel ? 'E: swap to the scuba kit' : 'E: put on mask, snorkel and fins'; }, action: cycleGear });
 
   // ------------------------------------------------------------ simulation
   const fwdV = new V3(), rightV = new V3(), tmp = new V3(), tmp2 = new V3();
+  // the ground under a point: the terrain, or a deck (pontoon, jetty; ctx.decks) the body is above or can step onto
+  const decks = ctx.decks || [];
+  let onDeck = false;
+  function groundAt(x, north, y = Infinity) {
+    let h = ctx.height(x, north); onDeck = false;
+    for (const f of decks) { const d = f(x, north); if (d !== null && d > h && y > d - 0.7) { h = d; onDeck = true; } }
+    return h;
+  }
+  // a deck edge within reach of a swimmer: [x, north, height] or null
+  function deckNear(reach = 1.6) {
+    if (!decks.length) return null;
+    const x = S.pos.x, north = -S.pos.z;
+    for (let r = 0.5; r <= reach; r += 0.55) for (let a = 0; a < 12; a++) {
+      const px = x + Math.sin(a * Math.PI / 6) * r, pn = north + Math.cos(a * Math.PI / 6) * r;
+      for (const f of decks) { const d = f(px, pn); if (d !== null && d - S.surf < 1.9 && d > S.surf - 0.3) return [px, pn, d]; }
+    }
+    return null;
+  }
   function teleport(x, north, up, heading) {
-    const h = ctx.height(x, north), dep = env.u.tide.value - h;
+    const h = groundAt(x, north, up ?? Infinity), dep = env.u.tide.value - h;
     S.vel.set(0, 0, 0); S.vy = 0; S.dive = false; S.emergency = false;
     if (heading !== undefined) { S.camYaw = S.bodyYaw = THREE.MathUtils.degToRad(heading); }
     S.pos.set(x, h, -north); S.grounded = true; S.water = false;
@@ -249,7 +274,7 @@ export async function init(ctx) {
   function simulate(dt, inp) {
     S.time += dt;
     const x = S.pos.x, z = S.pos.z, north = -z;
-    S.floor = ctx.height(x, north);
+    S.floor = groundAt(x, north, S.water ? S.pos.y : S.pos.y + 0.45);
     S.dep = env.u.tide.value - S.floor;
     S.surf = surfaceAt(x, z);
     const g = S.gear;
@@ -280,8 +305,8 @@ export async function init(ctx) {
     S.vel.x = damp(S.vel.x, wish.x * vmax, 9, dt); S.vel.z = damp(S.vel.z, wish.z * vmax, 9, dt);
     // move with a slope limit: blocked steps slide along one axis
     const step = (nx, nz) => {
-      const h0 = ctx.height(S.pos.x, -S.pos.z), h1 = ctx.height(nx, -nz), d = Math.hypot(nx - S.pos.x, nz - S.pos.z);
-      return d < 1e-6 || (h1 - h0) / d < MAX_SLOPE || h1 < h0;
+      const h0 = groundAt(S.pos.x, -S.pos.z, S.pos.y + 0.45), h1 = groundAt(nx, -nz, S.pos.y + 0.45), d = Math.hypot(nx - S.pos.x, nz - S.pos.z);
+      return d < 1e-6 || (h1 - h0) / d < MAX_SLOPE || h1 < h0 || (onDeck && h1 - S.pos.y < 0.45);   // a deck is a step up, not a slope
     };
     const nx = S.pos.x + S.vel.x * dt, nz = S.pos.z + S.vel.z * dt;
     if (step(nx, nz)) { S.pos.x = nx; S.pos.z = nz; }
@@ -289,14 +314,21 @@ export async function init(ctx) {
     else if (step(S.pos.x, nz)) { S.pos.z = nz; S.vel.x = 0; }
     else { S.vel.x = S.vel.z = 0; }
     S.speed = Math.hypot(S.vel.x, S.vel.z);
-    const h = ctx.height(S.pos.x, -S.pos.z), dep = env.u.tide.value - h;
-    S.dep = dep;
+    const h = groundAt(S.pos.x, -S.pos.z, S.pos.y + 0.45), dep = env.u.tide.value - h;
+    S.dep = dep; S.onDeck = onDeck;
+    // stepping off a deck's edge: fall
+    if (S.grounded && h < S.pos.y - 0.5) { S.grounded = false; S.vy = 0; }
     // ground following, jumping
     if (S.grounded) {
       S.pos.y = damp(S.pos.y, h, 30, dt); if (Math.abs(S.pos.y - h) < 0.002) S.pos.y = h;
       if (inp.up && dep < 0.9) { S.grounded = false; S.vy = 4.1 * (dep > WADE_FROM ? 0.75 : 1); }
     } else {
       S.vy -= 9.8 * dt; S.pos.y += S.vy * dt;
+      // falling (or jumping) into water deep enough to swim in
+      const sea = surfaceAt(S.pos.x, S.pos.z);
+      if (S.pos.y <= sea && env.u.tide.value - ctx.height(S.pos.x, -S.pos.z) >= SWIM_ENTER && !onDeck) {
+        const v = S.vy; enterWater(); S.pos.y = sea - BODY_FLOAT - Math.min(1.2, -v * 0.25); splashAtFeet(24, 3.2 + Math.min(3, -v * 0.4)); return;
+      }
       if (S.pos.y <= h) { S.pos.y = h; S.grounded = true; S.vy = 0; audio.step(dep > WADE_FROM ? 'water' : 'sand', 1.3); if (dep > WADE_FROM) splashAtFeet(6, 2); }
     }
     // body heading follows the way we move
@@ -636,6 +668,7 @@ async function autotest(api, T) {
     S.camYaw = Math.PI / 2;
     run(120, V({ f: 1 }), () => player.state === 'swim');
     must(seen.has('wade'), 'wade state entered'); must(maxSplash > 0, 'wading throws spray', String(maxSplash)); must(player.state === 'swim', 'swim state entered', `${player.state} depth=${S.dep.toFixed(2)} x=${S.pos.x.toFixed(0)}`);
+    run(1.5, V({}));                                     // let the body settle onto the water before measuring it
     must(Math.abs(S.pos.y - (S.surf - 0.15)) < 0.3, 'floats at the surface', `y=${S.pos.y.toFixed(2)} surf=${S.surf.toFixed(2)}`);
     // 2. snorkel and duck-dive
     let spot = null;
@@ -665,7 +698,7 @@ async function autotest(api, T) {
     run(2, V());
     // a diver's trim: an integral on the vertical speed finds the BCD volume that holds the depth
     for (let i = 0; i < 1200; i++) { S.virt = V(); S.bcd.n = Math.max(0, S.bcd.n - S.vy * 12 * dt * (1 + S.depthBody / 10)); T.simulate(dt, S.virt); T.animate(dt); }
-    const d2 = S.depthBody; run(6, V()); const d3 = S.depthBody;
+    const d2 = S.depthBody; run(2 * Math.PI / 1.4, V()); const d3 = S.depthBody;     // one breath (lung volume follows sin 1.4 t)
     must(Math.abs(d3 - d2) < 1.5, 'neutral buoyancy can be held', `${d2.toFixed(1)} -> ${d3.toFixed(1)} m  (n=${S.bcd.n.toFixed(1)})`);
     must(api.fx.bubbleCount > 0, 'regulator bubbles exist', String(api.fx.bubbleCount));
     must(api.diver.ndl < 99 && api.diver.ndl > 0, 'no-deco time is computed', api.diver.ndl.toFixed(0) + ' min');
@@ -706,6 +739,25 @@ async function autotest(api, T) {
     // 5. views, interaction hooks
     for (const v of ['first', 'shoulder', 'third']) { S.view = v; run(0.3, V()); }
     must(typeof player.addInteractable === 'function' && typeof api.spawnPerson === 'function', 'API present');
+    // 6. a deck: stand on the marina jetty, step off its open side into the sea, climb back out
+    const jt = ctx.boats && ctx.boats.jetty;
+    if (jt) {
+      T.equip('none');
+      const g = jt.group, at = (lx, lz) => new THREE.Vector3(lx, 0, lz).applyMatrix4(g.matrix);
+      g.updateMatrix();
+      const on = at(jt.len - 4, 0), off = at(jt.len - 4, -6);
+      T.teleport(on.x, -on.z, undefined, 0);
+      run(0.5, V());
+      must(S.onDeck && Math.abs(S.pos.y - (g.position.y + 1.77)) < 0.1 && player.state === 'walk', 'stands on the jetty deck', `y=${S.pos.y.toFixed(2)} deck=${(g.position.y + 1.77).toFixed(2)} ${player.state}`);
+      S.camYaw = Math.atan2(off.x - on.x, -(off.z - on.z));
+      run(4, V({ f: 1 }), () => S.water);
+      must(S.water, 'steps off the jetty into the sea', `${player.state} y=${S.pos.y.toFixed(2)}`);
+      run(1, V());
+      const climb = api.interactables.find(i => i.id === 'climb');
+      must(climb.enabled(player), 'a swimmer by the jetty can climb out', `${player.state}`);
+      climb.action(player); run(0.5, V());
+      must(!S.water && S.onDeck, 'climbs back onto the deck', `${player.state} y=${S.pos.y.toFixed(2)}`);
+    }
     must(S.state && Number.isFinite(S.pos.x) && Number.isFinite(S.pos.y), 'no NaNs in the player state');
   } catch (e) { out(false, 'exception', String(e && e.stack || e)); }
   S.auto = false; S.virt = null;
