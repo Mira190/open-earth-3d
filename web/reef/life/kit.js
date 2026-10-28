@@ -31,10 +31,30 @@ export function vnoise(x, y, cell, salt = 0) {
   return (a * (1 - sx) + b * sx) * (1 - sy) + (c * (1 - sx) + d * sx) * sy;
 }
 
+// MaterialX Perlin noise (three's mx_noise_float, the same hash and gradients), so the CPU knows the dunes
+// shore.js draws on dry land
+const rotl = (x, k) => ((x << k) | (x >>> (32 - k))) >>> 0;
+function bjfinal(a, b, c) {
+  c = ((c ^ b) - rotl(b, 14)) >>> 0; a = ((a ^ c) - rotl(c, 11)) >>> 0; b = ((b ^ a) - rotl(a, 25)) >>> 0;
+  c = ((c ^ b) - rotl(b, 16)) >>> 0; a = ((a ^ c) - rotl(c, 4)) >>> 0; b = ((b ^ a) - rotl(a, 14)) >>> 0;
+  return ((c ^ b) - rotl(b, 24)) >>> 0;
+}
+const SEED3 = (0xdeadbeef + (3 << 2) + 13) >>> 0;
+const mxHash = (x, y, z) => bjfinal((SEED3 + (x >>> 0)) >>> 0, (SEED3 + (y >>> 0)) >>> 0, (SEED3 + (z >>> 0)) >>> 0);
+const mxGrad = (h, x, y, z) => { h &= 15; const u = h < 8 ? x : y, v = h < 4 ? y : (h === 12 || h === 14 ? x : z); return ((h & 1) ? -u : u) + ((h & 2) ? -v : v); };
+const fade = t => t * t * t * (t * (t * 6 - 15) + 10);
+export function mxNoise3(x, y, z) {
+  const X = Math.floor(x), Y = Math.floor(y), Z = Math.floor(z), fx = x - X, fy = y - Y, fz = z - Z;
+  const s = fade(fx), t = fade(fy), r = fade(fz), s1 = 1 - s, t1 = 1 - t, r1 = 1 - r;
+  const g = (i, j, k) => mxGrad(mxHash(X + i, Y + j, Z + k), fx - i, fy - j, fz - k);
+  return 0.982 * (r1 * (t1 * (g(0, 0, 0) * s1 + g(1, 0, 0) * s) + t * (g(0, 1, 0) * s1 + g(1, 1, 0) * s)) + r * (t1 * (g(0, 0, 1) * s1 + g(1, 0, 1) * s) + t * (g(0, 1, 1) * s1 + g(1, 1, 1) * s)));
+}
+const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
 // ---------------------------------------------------------------- the ground, as the near-camera patch draws it
 // shore.js reads the 30 m grid with Catmull-Rom (16 taps) around the camera; under water it adds no relief,
-// so this is where the sea floor actually is, to the centimetre. (On dry land shore.js adds dunes of up
-// to ~0.6 m from GPU noise: trees there are sunk by that much instead.)
+// so height() is where the sea floor actually is, to the centimetre. On dry land it adds dunes from GPU
+// noise that fade in above the live tide; land(x, north, tide) adds the same dunes (relief()).
 export function makeGround(d) {
   const t = d.scene.terrain, W = t.w, H = t.h, hs = d.heights;
   const cr = (f, k) => { const f2 = f * f, f3 = f2 * f; return k === 0 ? -0.5 * f3 + f2 - 0.5 * f : k === 1 ? 1.5 * f3 - 2.5 * f2 + 1 : k === 2 ? -1.5 * f3 + 2 * f2 + 0.5 * f : 0.5 * f3 - 0.5 * f2; };
@@ -64,7 +84,13 @@ export function makeGround(d) {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const v = hs[j * W + i]; if (v > m) m = v; if (v < lo) lo = v; }
     return [lo, m];
   }
-  return { height, slope, maxIn };
+  // shore.js's dunes: up to ~0.6 m on dry sand, fading in from 0.1 to 1.2 m above the tide and out up the hill
+  function relief(x, north, h, tide = 0) {
+    const z = -north, dune = mxNoise3(x * 0.045, 0, z * 0.045) * 0.45 + mxNoise3(x * 0.2, 0, z * 0.2) * 0.12;
+    return dune * sstep(tide + 0.1, tide + 1.2, h) * (1 - sstep(3, 14, h));
+  }
+  function land(x, north, tide = 0) { const h = height(x, north); return h + relief(x, north, h, tide); }
+  return { height, slope, maxIn, relief, land };
 }
 
 // ---------------------------------------------------------------- herds: instanced geometry with a 16-float record per instance

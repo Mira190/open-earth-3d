@@ -200,5 +200,91 @@
    }
   ],
   "scenic": []
+ },
+ "life": {
+  "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Wikipedia, Lady Elliot Island: guano mining (1863-1873) removed virtually all the trees; revegetation from 1966; Pisonia grandis grows on the island; manta rays are abundant, attracted to the plankton (manta: in the water all the time, p per 128 m cell not sourced); green and loggerhead turtles nest between November and March (their shares here are not sourced). NPAQ, 'Lady Elliot Island: an example of effective habitat restoration' (S. Cooper, 2023): habitat zones 'coastal zone with casuarina/pandanus and octopus bush' and 'pisonia forest', Pisonia now covering 30% of the island; the 2021 land cover shows much of the replanted ground as grass, so grass gets young Pisonia and octopus bush at a low density. The grass airstrip (OSM way 33686280, runway 17/35) and 20 m either side of it stay clear. Spawning: a southern reef (Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+  "flora": {
+   "minAbove": 1.45,
+   "cell": 5,
+   "coastR": [
+    14,
+    26
+   ],
+   "coastMaxAbove": 6,
+   "forest": {
+    "pisonia": 1
+   },
+   "coast": {
+    "casuarina": 0.4,
+    "octopus-bush": 0.35,
+    "pandanus": 0.25
+   },
+   "grass": {
+    "pisonia": 0.5,
+    "octopus-bush": 0.5
+   },
+   "density": {
+    "10": 0.92,
+    "12": 0.35,
+    "16": 0.35,
+    "coast": 0.8
+   },
+   "clear": [
+    {
+     "id": "lei-runway",
+     "src": "OpenStreetMap way 33686280 (aeroway=runway, ref 17/35)",
+     "pad": 20,
+     "xy": [
+      [
+       61.9,
+       -88.3
+      ],
+      [
+       -23.1,
+       -81.0
+      ],
+      [
+       -2.2,
+       158.5
+      ],
+      [
+       32.8,
+       562.9
+      ],
+      [
+       117.8,
+       555.6
+      ],
+      [
+       83.4,
+       156.2
+      ]
+     ]
+    }
+   ]
+  },
+  "fauna": {
+   "manta": {
+    "p": 0.6,
+    "share": 1
+   }
+  },
+  "nesting": {
+   "months": [
+    11,
+    12,
+    1,
+    2,
+    3
+   ],
+   "species": {
+    "green-turtle": 0.5,
+    "loggerhead": 0.5
+   },
+   "perKm": 25
+  },
+  "spawning": {
+   "lag": 1
+  }
  }
 }

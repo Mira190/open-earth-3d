@@ -35,13 +35,16 @@ export const FAUNA = {
   blacktip: { geo: () => G.sharkGeo(), mat: 'shark', cap: 12, len: [1.0, 1.6], cols: [[[0.42, 0.38, 0.32], [0, 0, 0]]], cruise: 1.0 },
   ribbontail: { geo: () => G.batoid('ribbon'), mat: 'ribbontail', cap: 50, len: [0.2, 0.33], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.4 },
   'eagle-ray': { geo: () => G.batoid('eagle'), mat: 'eagle', cap: 6, len: [0.75, 1.1], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 1.0 },
-  manta: { geo: () => G.batoid('manta'), mat: 'manta', cap: 3, len: [1.5, 1.8], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.8 },
+  manta: { geo: () => G.batoid('manta'), mat: 'manta', cap: 6, len: [1.9, 2.25], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.8 },
   'green-turtle': { geo: () => G.turtle(), mat: 'green', cap: 16, len: [0.8, 1.1], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.4 },
-  hawksbill: { geo: () => G.turtle({ beak: 0.25 }), mat: 'hawksbill', cap: 12, len: [0.6, 0.85], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.35 }
+  hawksbill: { geo: () => G.turtle({ beak: 0.25 }), mat: 'hawksbill', cap: 12, len: [0.6, 0.85], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.35 },
+  loggerhead: { geo: () => G.turtle({ head: 1.35 }), mat: 'loggerhead', cap: 8, len: [0.85, 1.0], cols: [[[1, 1, 1], [0, 0, 0]]], cruise: 0.35 }
 };
+const TURTLE = new Set(['green-turtle', 'hawksbill', 'loggerhead']);
 
-export function createFauna(ctx, ground, mats, reef) {
+export function createFauna(ctx, ground, mats, reef, profile = { fauna: {}, flora: { minAbove: 2.2 } }) {
   const { env, camera } = ctx;
+  const PF = profile.fauna || {}, mul = id => PF[id] === undefined ? 1 : typeof PF[id] === 'number' ? PF[id] : (PF[id].mul ?? 1);
   const group = new THREE.Group(); group.name = 'life:fauna';
   const herds = {};
   for (const [id, F] of Object.entries(FAUNA)) {
@@ -142,15 +145,96 @@ export function createFauna(ctx, ground, mats, reef) {
     const one = (sp, mode, yOff) => {
       const a = animal(sp, `${sp}-c${cx}_${cy}_${out.length}`, x, 0, -n, R);
       a.y = clamp(ground.height(x, n) + yOff, ground.height(x, n) + 0.5, tide() - 0.4);
+      if (sp === 'manta') a.y = clamp(tide() - 2 - a.ph, ground.height(x, n) + 1.5, tide() - 1.2);      // up in the plankton
       return { kind: 'solo', sp, mode, members: [a], home: [x, -n], range: 55 };
     };
-    // green turtles graze seagrass, hawksbills keep to the reef
-    if (d < 22 && R() < 0.4) out.push(one(cls === 3 || (cls !== 2 && R() < 0.6) ? 'green-turtle' : 'hawksbill', 'turtle', 1));
-    if (d < 14 && R() < 0.14) out.push(one('blacktip', 'patrol', 1.5));
-    if (d > 3 && R() < 0.05) out.push(one('eagle-ray', 'glide', 3));
-    if (d > 6 && R() < 0.025) out.push(one('manta', 'visit', 4));
-    if (d > 5 && R() < 0.06) out.push(school('trevally', `trevally-c${cx}_${cy}`, x, n, 20 + Math.floor(R() * 25), R, [3, 8]));
+    // green turtles graze seagrass, hawksbills keep to the reef; a site's profile can make any of them commoner
+    const mG = mul('green-turtle'), mH = mul('hawksbill'), mL = mul('loggerhead') === 1 && PF.loggerhead === undefined ? 0 : mul('loggerhead');
+    if (mG === 1 && mH === 1 && !mL) { if (d < 22 && R() < 0.4) out.push(one(cls === 3 || (cls !== 2 && R() < 0.6) ? 'green-turtle' : 'hawksbill', 'turtle', 1)); }
+    else {
+      const k = Math.max(mG, mH, mL), r1 = R(), r2 = R();
+      for (let i = 0; i < Math.ceil(k * 0.4); i++) if (d < 22 && (i === 0 ? r1 : R()) < Math.min(0.95, 0.4 * k - i)) {
+        const wG = (cls === 3 ? 1 : cls !== 2 ? 0.6 : 0.1) * mG, wH = (cls === 2 ? 1 : 0.4) * mH, wL = 0.3 * mL, r = (i === 0 ? r2 : R()) * (wG + wH + wL);
+        out.push(one(r < wG ? 'green-turtle' : r < wG + wH ? 'hawksbill' : 'loggerhead', 'turtle', 1));
+      }
+    }
+    if (d < 14 && R() < Math.min(0.9, 0.14 * mul('blacktip'))) out.push(one('blacktip', 'patrol', 1.5));
+    if (d > 3 && R() < Math.min(0.9, 0.05 * mul('eagle-ray'))) out.push(one('eagle-ray', 'glide', 3));
+    const pm = PF.manta && PF.manta.p !== undefined ? PF.manta.p : 0.025 * mul('manta');
+    if (d > 6 && R() < pm) out.push(one('manta', 'visit', 4));
+    if (d > 5 && R() < Math.min(0.9, 0.06 * mul('trevally'))) out.push(school('trevally', `trevally-c${cx}_${cy}`, x, n, 20 + Math.floor(R() * 25), R, [3, 8]));
     return out;
+  }
+
+  // ---------------------------------------------------------------- turtles nesting on the beach (profile.nesting)
+  // On a night in the season a few turtles come up the upper beach, dig a body pit and a nest at the foot of the
+  // vegetation, lay, cover it and go back to the sea. Each has its own spot and start time that night (seeded by
+  // the night), so the beach is the same if you come back; the timing is the model clock's.
+  const NEST = profile.nesting, minAbove = (profile.flora && profile.flora.minAbove) || 2.2, TT = 64;
+  const nestState = { on: false, night: 0, start: 0, checked: -1e18 };
+  const sp0 = NEST ? Object.entries(NEST.species || { 'green-turtle': 1 }) : [];
+  function nestSync(cam, want) {
+    if (!NEST || !window.Sun) return;
+    const ms = ctx.clockMs ? ctx.clockMs() : Date.now(), S = ctx.S;
+    if (Math.abs(ms - nestState.checked) > 6e4) {
+      nestState.checked = ms;
+      const L = window.Sun.utcToLocal(ms - 12 * 3600e3, S.timezone), alt = window.Sun.position(ms, S.origin[1], S.origin[0]).altitude;
+      const lm = window.Sun.utcToLocal(ms, S.timezone).m;
+      nestState.on = (NEST.months || []).includes(lm) && alt < -6;
+      nestState.night = Date.UTC(L.y, L.m - 1, L.d) / 864e5;
+      nestState.start = window.Sun.localToUtc(L.y, L.m, L.d, 19 * 60, S.timezone);   // the evening the night began
+    }
+    if (!nestState.on) return;
+    const tx0 = Math.floor(cam.x / TT), ty0 = Math.floor(-cam.z / TT);
+    for (let j = -3; j <= 3; j++) for (let i = -3; i <= 3; i++) {
+      const tx = tx0 + i, ty = ty0 + j, x0 = tx * TT, n0 = ty * TT;
+      const dx = Math.max(x0 - cam.x, 0, cam.x - x0 - TT), dn = Math.max(n0 + cam.z, 0, -cam.z - n0 - TT);
+      if (Math.hypot(dx, dn) > 180) continue;
+      const k = 'n' + tx + '_' + ty + '_' + nestState.night; want.add(k);
+      if (!groups.has(k)) groups.set(k, nestGroups(tx, ty));
+    }
+  }
+  function nestGroups(tx, ty) {
+    const out = [], x0 = tx * TT, n0 = ty * TT, [, hi] = ground.maxIn(x0, n0, x0 + TT, n0 + TT), night = nestState.night;
+    if (hi < minAbove - 0.9) return out;
+    const S = 6, p = Math.min(1, (NEST.perKm || 30) * S / 1000), ar = NEST.around;
+    for (let j = 0; j < TT / S; j++) for (let i = 0; i < TT / S; i++) {
+      const gx = Math.round(x0 / S) + i, gy = Math.round(n0 / S) + j, x = (gx + hash(gx, gy, 61)) * S, n = (gy + hash(gx, gy, 62)) * S;
+      if (ar && Math.hypot(x - ar[0], n - ar[1]) > ar[2]) continue;
+      const h = ground.height(x, n);
+      if (h < minAbove - 0.9 || h > minAbove + 0.15 || ctx.habitat(x, n) !== 13) continue;
+      if (hash(gx, gy, night, 63) > p) continue;
+      // the way down to the water, straight downhill
+      let wx = x, wn = n;
+      for (let s = 0; s < 30; s++) {
+        const [sx, sn] = ground.slope(wx, wn, 2), L = Math.hypot(sx, sn) || 1;
+        wx -= sx / L * 1.5; wn -= sn / L * 1.5;
+        if (ground.height(wx, wn) < -0.2) break;
+      }
+      const R = rng(hash(gx, gy, night, 64));
+      let r = R(), sp = sp0[0][0];
+      for (const [id, w] of sp0) { if (r < w) { sp = id; break; } r -= w; }
+      const a = animal(sp, `${sp}-nest-${gx}_${gy}_${night}`, wx, 0, -wn, R);
+      a.len = FAUNA[sp].len[0] + (FAUNA[sp].len[1] - FAUNA[sp].len[0]) * R();
+      out.push({ kind: 'nest', sp, members: [a], N: [x, n], W: [wx, wn], t0: nestState.start + R() * 8.5 * 3600e3 });
+    }
+    return out;
+  }
+  // crawl up (20 min), body pit, nest, eggs, covering (80 min), back to the sea (18 min); then gone
+  function updateNest(g) {
+    const a = g.members[0], t = ((ctx.clockMs ? ctx.clockMs() : Date.now()) - g.t0) / 6e4;
+    a.hidden = t < 0 || t > 118;
+    if (a.hidden) return;
+    const e = f => f * f * (3 - 2 * f);
+    const f = t < 20 ? e(t / 20) : t < 100 ? 1 : 1 - e((t - 100) / 18);
+    a.state = t < 20 ? 1 : t < 100 ? 2 : 3;
+    const x = g.W[0] + (g.N[0] - g.W[0]) * f, n = g.W[1] + (g.N[1] - g.W[1]) * f;
+    const up = Math.atan2(g.N[1] - g.W[1], g.N[0] - g.W[0]);
+    a.yaw = a.state === 3 ? up + Math.PI : up;
+    const g0 = ground.land(x, n, tide()), g1 = ground.land(x + Math.cos(a.yaw) * 0.5, n + Math.sin(a.yaw) * 0.5, tide());
+    a.pitch = Math.atan2(g1 - g0, 0.5); a.roll = 0;
+    a.x = x; a.z = -n; a.y = g0 + 0.06 * a.len - (a.state === 2 ? 0.18 * Math.min(1, (t - 20) / 10) : 0);
+    a.speed = a.state === 2 ? 0 : 0.02;
   }
 
   // ---------------------------------------------------------------- what is in range
@@ -173,6 +257,7 @@ export function createFauna(ctx, ground, mats, reef) {
       want.add(k);
       if (!groups.has(k)) groups.set(k, cellGroups(cx, cy));
     }
+    nestSync(cam, want);
     for (const k of groups.keys()) if (!want.has(k)) groups.delete(k);
     animals.length = 0;
     for (const gs of groups.values()) for (const g of gs) for (const a of g.members) animals.push(a);
@@ -185,7 +270,7 @@ export function createFauna(ctx, ground, mats, reef) {
     const dx = tx - a.x, dy = ty - a.y, dz = tz - a.z, dh = Math.hypot(dx, dz);
     const want = Math.atan2(-dz, dx), dyaw = clamp(angDiff(a.yaw, want), -turn * dt, turn * dt);
     a.yaw += dyaw; a.roll += (clamp(-dyaw / Math.max(dt, 1e-3) * 0.35, -0.5, 0.5) - a.roll) * Math.min(1, dt * 3);
-    const mp = a.sp === 'green-turtle' || a.sp === 'hawksbill' ? 0.42 : 0.7;      // turtles climb and dive at a shallow angle
+    const mp = TURTLE.has(a.sp) ? 0.42 : 0.7;      // turtles climb and dive at a shallow angle
     a.pitch += (clamp(Math.atan2(dy, Math.max(dh, 0.5)), -mp, mp) - a.pitch) * Math.min(1, dt * 2);
     a.speed += (speed - a.speed) * Math.min(1, dt * 1.5);
     move(a, dt);
@@ -196,7 +281,7 @@ export function createFauna(ctx, ground, mats, reef) {
     a.vx = Math.cos(a.yaw) * cp * a.speed; a.vz = -Math.sin(a.yaw) * cp * a.speed; a.vy = Math.sin(a.pitch) * a.speed;
     a.x += a.vx * dt; a.y += a.vy * dt; a.z += a.vz * dt;
     const f = floorAt(a.x, a.z) + 0.15, s = tide() - 0.25;
-    if (a.y < f) a.y = f; if (a.y > s && a.sp !== 'green-turtle' && a.sp !== 'hawksbill') a.y = s;
+    if (a.y < f) a.y = f; if (a.y > s && !TURTLE.has(a.sp)) a.y = s;
   }
   // how much an animal wants to get away from the diver: close, and the diver moving fast
   function fear(a, R) {
@@ -214,6 +299,10 @@ export function createFauna(ctx, ground, mats, reef) {
 
   function updateCloud(g, dt) {
     const s = g.site, hide = night > 0.5 ? 0.25 : 1;
+    // at low tide a reef flat can be all but dry: the site's fish have gone to deeper water until it floods again
+    const gone = tide() - g.top < 0.45;
+    for (const a of g.members) a.hidden = gone;
+    if (gone) return;
     // fish over a coral head drop into it when a diver comes close quickly; the anemone's clowns stay
     let scare = 0;
     for (const a of g.members) scare = Math.max(scare, fear(a, g.sp === 'clownfish' ? 1.2 : 4));
@@ -274,6 +363,8 @@ export function createFauna(ctx, ground, mats, reef) {
   }
   function updateSolo(g, dt) {
     const a = g.members[0], sp = g.sp;
+    a.hidden = !TURTLE.has(sp) && tide() - floorAt(a.x, a.z) < 0.35;          // left the drying flat for deeper water
+    if (a.hidden) return;
     a.timer -= dt;
     const fr = fear(a, sp === 'blacktip' ? 7 : sp === 'manta' ? 4 : 5);   // blacktips are timid and skittish
     if (g.mode === 'graze') {
@@ -294,7 +385,11 @@ export function createFauna(ctx, ground, mats, reef) {
     } else if (g.mode === 'patrol' || g.mode === 'glide' || g.mode === 'visit') {
       // sharks patrol low over the reef flat; eagle rays fly mid-water; a manta passes through when it visits
       const lo = g.mode === 'patrol' ? 0.6 : 2, hi = g.mode === 'patrol' ? 3 : 7;
-      if (seek(a, a.tx, a.ty, a.tz, a.cruise * (1 + fr), g.mode === 'patrol' ? 0.55 : 0.3, dt) < 4 || a.timer < 0) { a.timer = 40; newTarget(a, g, 0, lo, hi); }
+      if (seek(a, a.tx, a.ty, a.tz, a.cruise * (1 + fr), g.mode === 'patrol' ? 0.55 : 0.3, dt) < 4 || a.timer < 0) {
+        a.timer = 40; newTarget(a, g, 0, lo, hi);
+        // a manta feeds on plankton in the upper water, a few metres down, wherever the floor is
+        if (sp === 'manta') a.ty = clamp(tide() - 1.5 - a.r() * 5, floorAt(a.tx, a.tz) + 1.5, tide() - 1.2);
+      }
       if (fr > 0.3 && a.state === 0) { fleeTarget(a, 15); a.state = 1; } else if (fr === 0) a.state = 0;
     } else if (g.mode === 'turtle') {
       // turtles: swim, rest on the bottom, rise to breathe at the surface, go back down
@@ -314,29 +409,32 @@ export function createFauna(ctx, ground, mats, reef) {
   // ---------------------------------------------------------------- per frame
   const counts = {};
   let syncT = 0, mantaGate = 0;
+  const mantaShare = PF.manta && PF.manta.share !== undefined ? PF.manta.share : 1 / 3, mantaK = Math.sin(Math.PI * (0.5 - Math.min(Math.max(mantaShare, 0), 1))) - 1e-6;
   function update(dt, t, cam, nightNow, first) {
     T = t; night = nightNow;
     // the diver: the player when there is one, else the camera
     const P = ctx.player && ctx.player.position ? ctx.player.position : cam;
-    if (isNaN(diver.px)) { diver.px = P.x; diver.py = P.y; diver.pz = P.z; }
+    if (isNaN(diver.px) || first) { diver.px = P.x; diver.py = P.y; diver.pz = P.z; diver.speed = 0; }
     diver.vx = (P.x - diver.px) / dt; diver.vy = (P.y - diver.py) / dt; diver.vz = (P.z - diver.pz) / dt;
     diver.px = P.x; diver.py = P.y; diver.pz = P.z; diver.x = P.x; diver.y = P.y; diver.z = P.z;
     diver.speed += (Math.min(Math.hypot(diver.vx, diver.vy, diver.vz), 6) - diver.speed) * Math.min(1, dt * 4);
     syncT -= dt;
     if (first || syncT < 0) { sync(cam); syncT = 0.5; }
-    // a manta is an occasional visitor: in the water for about a quarter of each hour (deterministic in the model clock)
-    mantaGate = Math.sin((ctx.clockMs ? ctx.clockMs() : Date.now()) / 3.6e6 * TAU) > 0.5 ? 1 : 0;
+    // a manta is an occasional visitor, in the water a third of each hour (deterministic in the model clock); where
+    // mantas gather (profile fauna.manta.share) they stay longer, or all the time
+    mantaGate = Math.sin((ctx.clockMs ? ctx.clockMs() : Date.now()) / 3.6e6 * TAU) > mantaK ? 1 : 0;
     for (const id in herds) counts[id] = 0;
     const steps = first ? 30 : 1, h = first ? 0.1 : dt;     // settle the schools before the first frame
     for (let k = 0; k < steps; k++) for (const gs of groups.values()) for (const g of gs) {
       if (g.sp === 'manta' && !mantaGate) continue;
-      if (g.kind === 'cloud' || g.kind === 'hover') updateCloud(g, h); else if (g.kind === 'school') updateSchool(g, h); else updateSolo(g, h);
+      if (g.kind === 'cloud' || g.kind === 'hover') updateCloud(g, h); else if (g.kind === 'school') updateSchool(g, h); else if (g.kind === 'nest') updateNest(g); else updateSolo(g, h);
     }
     // write the herds
     for (const gs of groups.values()) for (const g of gs) {
       if (g.sp === 'manta' && !mantaGate) continue;
       const H = herds[g.sp], F = FAUNA[g.sp];
       for (const a of g.members) {
+        if (a.hidden) continue;
         const i = counts[g.sp]; if (i >= H.cap) break;
         const dx = a.x - cam.x, dz = a.z - cam.z;
         if (dx * dx + dz * dz > R_SIM * R_SIM) continue;
@@ -344,7 +442,8 @@ export function createFauna(ctx, ground, mats, reef) {
         const rel = a.speed / a.len;
         let amp, freq;
         if (F.mat === 'fish' || F.mat === 'shark') { amp = (F.mat === 'shark' ? 0.06 : 0.09) + 0.08 * Math.min(1, rel / 3); freq = TAU * (F.mat === 'shark' ? 0.5 + 0.4 * Math.min(rel, 2) : 1.2 + 1.2 * Math.min(rel, 5)); }
-        else if (g.sp === 'green-turtle' || g.sp === 'hawksbill') { amp = a.speed > 0.05 ? 0.7 : 0.15; freq = a.speed > 0.05 ? 2.4 : 0.8; }
+        else if (g.kind === 'nest') { amp = a.state === 1 ? 0.55 : a.state === 2 ? 0.35 : 0.08; freq = a.state === 1 ? 1.4 : a.state === 2 ? 0.7 : 0.5; }
+        else if (TURTLE.has(g.sp)) { amp = a.speed > 0.05 ? 0.7 : 0.15; freq = a.speed > 0.05 ? 2.4 : 0.8; }
         else if (g.sp === 'ribbontail') { amp = a.speed > 0.05 ? 0.06 : 0.01; freq = a.speed > 0.05 ? 7 : 2; }
         else { amp = 0.22; freq = g.sp === 'manta' ? 1.5 : 2.2; }
         const s = F.mat === 'eagle' ? a.len / 0.95 : F.mat === 'manta' ? a.len / 1.27 : F.mat === 'ribbontail' ? a.len / 0.6 : a.len;

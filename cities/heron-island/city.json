@@ -189,6 +189,22 @@
     "years": {"2025": "aedc7fc4-b2cf-44e3-80de-af3de15a1677", "2026": "da055fda-5176-46a7-941d-176904d94610"},
     "note": "MSQ lists Heron Island as a secondary place of Gladstone (80 km west-south-west, in the Port Curtis harbour) with high and low water 33 minutes earlier and 0.71 of its range. Bundaberg's standard port gauge at Burnett Heads (24 46 S 152 23 E, 153 km south-south-east) is used instead because its tide is closer to Heron's in both respects: MSQ's 2026 tidal planes put spring high and low water at +1.21 and -1.09 m about mean sea level at Heron Island, +1.16 and -1.17 m at Burnett Heads and +1.62 and -1.62 m at Gladstone, and in the 2026 fits Burnett Heads' M2 runs about 43 minutes ahead of Gladstone's, so about 10 minutes ahead of Heron's where Gladstone's lags by 33. Neither is an offshore gauge; times and heights at Heron Island differ from Burnett Heads' by those amounts. (The portal's 2024 and 2025 resources of the separate 'Burnett Heads' storm-surge gauge hold Bugatti Reef Outer's file, so they are not used.)"
   },
+  "life": {
+    "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Plants, from Wikipedia, Heron Island (Queensland): Pisonia grandis forest dominates the centre and south (most trees 6-8 m, some 10-11 m); north of it a band of open shrubland of octopus bush (Heliotropium foertherianum) and sea cabbage (Scaevola taccada) with Pandanus and Casuarina equisetifolia ssp. incana; the eastern end and the dune ridges Casuarina, Scaevola and Heliotropium with some Pandanus. Not drawn: Celtis, Ficus, Pipturus, Cordia, Suriana and the herbs. Turtles nesting: the same page (green 98%, loggerhead 2% of the nesters; the nesting area is the central part of the north shore, `around`); the months, November to March, are the ones Wikipedia gives for Lady Elliot Island in the same Capricorn-Bunker group (no Heron-specific source for the months was found); perKm is not sourced. Spawning: UQ News, 25 November 2003, 'Coral puts on show at Heron Island' (news.uq.edu.au/2003-11-25-coral-puts-show-heron-island): usually five to eight nights after the November full moon, one lunation after the inshore reefs' October (lag 1).",
+    "flora": {
+      "minAbove": 1.85,
+      "cell": 5,
+      "coastR": [14, 28],
+      "coastMaxAbove": 6,
+      "forest": {"pisonia": 1},
+      "coast": {"octopus-bush": 0.32, "scaevola": 0.3, "casuarina": 0.2, "pandanus": 0.18},
+      "grass": {"octopus-bush": 0.45, "scaevola": 0.4, "pandanus": 0.15},
+      "density": {"10": 0.92, "12": 0.8, "coast": 0.85}
+    },
+    "fauna": {"green-turtle": 1.5, "loggerhead": 0.1},
+    "nesting": {"months": [11, 12, 1, 2, 3], "species": {"green-turtle": 0.98, "loggerhead": 0.02}, "perKm": 40, "around": [130, 1530, 230]},
+    "spawning": {"lag": 1, "window": [5, 8]}
+  },
   "sources": {
     "heron_island": "https://en.wikipedia.org/wiki/Heron_Island_(Queensland) (coral cay near the Tropic of Capricorn; 87 km north-east of Gladstone; about 800 m long and 300 m wide; highest point 3.6 m; research station; green turtle nesting ground; artificial channel and jetty on the western shore; HMCS Protector wreck towed there in 1945)",
     "tide": "https://www.msq.qld.gov.au/_/media/tmronline/msqinternet/msqfiles/home/tides/tidal-planes/2026-semidiurnal-tidal-planes.pdf (MSQ: Heron Island as a secondary place of Gladstone, its planes and HAT; Burnett Heads and Gladstone planes)"

@@ -352,12 +352,12 @@ export function batoid(kind) {
 
 // a sea turtle: domed carapace, plastron, head, long front flippers (aux.w = 3) and short rear ones (4)
 export function turtle(o = {}) {
-  const b = new Build(), beak = o.beak ?? 0;
+  const b = new Build(), beak = o.beak ?? 0, hd = o.head ?? 1;
   const top = new THREE.SphereGeometry(0.5, 20, 8, 0, TAU, 0, Math.PI / 2);
   b.add(top, at(0, 0, 0, 0, 0, 0, 1, 0.34, 0.8), v => [0.5 - v.x, 0, 0, 0]);
   const bot = new THREE.SphereGeometry(0.5, 20, 4, 0, TAU, Math.PI / 2, Math.PI / 2);
   b.add(bot, at(0, 0, 0, 0, 0, 0, 0.96, 0.1, 0.74), v => [0.5 - v.x, 0, 0, 1]);
-  b.add(new THREE.SphereGeometry(0.1, 10, 6), at(0.55, 0.02, 0, 0, 0, -0.15 - beak, 1.3, 0.85, 0.85), v => [0, 0, 0, 2]);
+  b.add(new THREE.SphereGeometry(0.1, 10, 6), at(0.55 + (hd - 1) * 0.06, 0.02, 0, 0, 0, -0.15 - beak, 1.3 * hd, 0.85 * hd, 0.85 * hd), v => [0, 0, 0, 2]);
   b.add(new THREE.CylinderGeometry(0.07, 0.08, 0.12, 8, 1, true), at(0.47, 0.0, 0, 0, 0, Math.PI / 2), v => [0, 0, 0, 2]);
   for (const s of [1, -1]) {
     b.add(new THREE.SphereGeometry(0.5, 12, 4), at(0.2, -0.02, s * 0.5, 0, -s * 0.55, 0, 0.22, 0.035, 0.62), v => [0, s, Math.abs(v.z) - 0.2, 3]);
@@ -460,6 +460,50 @@ export function mangrove(lod) {
   }
   return b.geometry();
 }
+// ---------------------------------------------------------------- coral cay plants
+// Pisonia grandis: soft, pale, often several leaning stems from the base, and a broad, dense, low crown
+// (on Heron Island mostly 6-8 m high, a few to 10-11 m)
+export function pisonia(lod) {
+  const b = new Build(), r = rng(hash(211, lod)), H = 9;
+  const stems = lod === 2 ? 3 : 1, tops = [];
+  for (let k = 0; k < stems; k++) {
+    const a = k / stems * TAU + r() * 0.7, lean = stems === 1 ? 0 : 0.9 + r() * 1.2, top = new V(Math.cos(a) * lean, 4.6 + r() * 1.2, Math.sin(a) * lean);
+    b.add(new THREE.CylinderGeometry(0.16, 0.34, top.length(), lod === 2 ? 6 : 4, 1, true), between(new V(Math.cos(a) * 0.2, 0, Math.sin(a) * 0.2), top), trunkAux(H));
+    tops.push(top);
+  }
+  const n = lod === 2 ? 9 : 3;
+  for (let k = 0; k < n; k++) {
+    const t = tops[k % tops.length], a = r() * TAU, rr = (lod === 2 ? 1.2 : 1.6) + r() * 2.2, y = 6.2 + r() * 1.6 - rr * 0.25;
+    const s = lod === 2 ? 2.2 + r() * 1.0 : 3.2 + r() * 0.8;
+    b.add(blob(lod === 2 ? 1 : 0, hash(212, k, lod), 0.22), at(t.x * 0.6 + Math.cos(a) * rr, y, t.z * 0.6 + Math.sin(a) * rr, 0, r() * TAU, 0, s * 2.1, s * 1.05, s * 2.1), leafAux(H));
+  }
+  return b.geometry();
+}
+// octopus bush (Heliotropium arboreum): a shrub or small tree about 3.6 m high and 5 m across, crooked stems,
+// silvery leaves in rosettes at the branch ends
+export function octopusBush(lod) {
+  const b = new Build(), r = rng(hash(213, lod)), H = 3.6;
+  // low, spreading: the crown comes down to within a metre of the sand
+  const n = lod === 2 ? 7 : 3;
+  for (let k = 0; k < n; k++) {
+    const a = k / n * TAU + r() * 0.6, rr = k === 0 ? 0.2 : 0.9 + r() * 1.2, tip = new V(Math.cos(a) * rr, (k === 0 ? 2.3 : 1.3) + r() * 0.7, Math.sin(a) * rr);
+    if (lod === 2) b.add(new THREE.CylinderGeometry(0.04, 0.1, tip.length(), 4, 1, true), between(new V(0, 0, 0), tip), trunkAux(H));
+    const s = (lod === 2 ? 0.95 + r() * 0.35 : 1.35 + r() * 0.3) * (k === 0 ? 1.15 : 1);
+    b.add(blob(lod === 2 ? 1 : 0, hash(214, k, lod), 0.2), at(tip.x, tip.y, tip.z, 0, r() * TAU, 0, s * 1.9, s * 1.25, s * 1.9), leafAux(H));
+  }
+  return b.geometry();
+}
+// sea lettuce / beach cabbage (Scaevola taccada): a dense mound of fleshy yellowish-green leaves from the sand
+export function scaevola(lod) {
+  const b = new Build(), r = rng(hash(215, lod)), H = 2.4;
+  const n = lod === 2 ? 6 : 3;
+  for (let k = 0; k < n; k++) {
+    const a = k / n * TAU + r(), rr = k === 0 ? 0 : 0.7 + r() * 0.9, s = (k === 0 ? 1.4 : 0.9 + r() * 0.4) * (lod === 2 ? 1 : 1.15);
+    b.add(blob(lod === 2 ? 1 : 0, hash(216, k, lod), 0.16), at(Math.cos(a) * rr, s * 0.75, Math.sin(a) * rr, 0, r() * TAU, 0, s * 2.0, s * 1.5, s * 2.0), leafAux(H));
+  }
+  return b.geometry();
+}
+
 // any tree far away: a coarse spindle, stretched per instance (crown width, height) and coloured per species
 export function farTree() {
   // ten triangles: a pentagonal crown, rounded at the top; no trunk (it is a few pixels away)
