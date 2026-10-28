@@ -42,7 +42,7 @@ The model is also a game.
   ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
   helicopter under its deck, and find a sunny spot in Martin Place on the
   winter solstice.
-  After the survey, you survey the view from the trig stations round the
+  In free roam you can survey the view from the trig stations round the
   harbour, or test your eye against the data by guessing building heights.
 - **Melbourne:** you check the midwinter sun on Federation Square, take a
   shuttle down the Yarra, and fly past the Arts Centre spire.

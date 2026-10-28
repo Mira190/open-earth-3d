@@ -401,73 +401,146 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     setClock(now.y, now.m, now.d, min);
   }
 
-  // ------------------------------------------------------------ quests
+  // ------------------------------------------------------------ quests, in parallel lines
+  // A city's quests come in lines (game.json "lines", from city.json): each line is a
+  // chain of quests that runs on its own, and a line opens once the lines it comes
+  // after are finished. A prologue opens the others and a finale waits for them. Every
+  // open line's current step can complete, tracked or not; the HUD, the route and the
+  // beam follow the tracked line. Without "lines", all the quests make one line.
   const Q = G.quests || [];
-  let qs = { qi: 0, started: false, si: -1, stamps: [], visited: {}, inspected: [], rideFrom: null, docked: false };
-  const quest = () => Q[qs.qi];
-  const step = () => (qs.started && quest() ? quest().steps[qs.si] : null);
-  function objective() {
-    const q = quest();
+  const LINES = (G.lines && G.lines.length ? G.lines : [{ id: 'main', title: '' }]).map(l => Object.assign({ after: [] }, l));
+  for (const l of LINES) l.quests = Q.filter(q => (q.line || LINES[0].id) === l.id);
+  const lineById = id => LINES.find(l => l.id === id);
+  const freshQs = () => ({ lines: {}, track: LINES[0].id, stamps: [], visited: {}, docked: false });
+  let qs = freshQs();
+  const ls = l => qs.lines[l.id] || (qs.lines[l.id] = { qi: 0, started: false, si: -1, inspected: [], rideFrom: null });
+  const lineDone = l => ls(l).qi >= l.quests.length;
+  const lineOpen = l => l.after.every(id => lineById(id) && lineDone(lineById(id)));
+  const openLines = () => LINES.filter(l => lineOpen(l) && !lineDone(l));
+  function tracked() { // the tracked line, or the first open one when it is finished or shut
+    let l = lineById(qs.track);
+    if (!l || !lineOpen(l) || lineDone(l)) { l = openLines()[0] || null; if (l) qs.track = l.id; }
+    return l;
+  }
+  const questOf = l => (l ? l.quests[ls(l).qi] : null);
+  const stepOf = l => (l && ls(l).started && questOf(l) ? questOf(l).steps[ls(l).si] : null);
+  const quest = () => questOf(tracked());
+  const step = () => stepOf(tracked());
+  function objective(l = tracked()) {
+    const q = questOf(l);
     if (!q) return null;
-    if (!qs.started) { const n = npcById(q.giver); return { text: `Talk to ${n.name} (${n.role})`, at: [n.x, n.y], title: q.title }; }
-    const s = step();
+    if (!ls(l).started) { const n = npcById(q.giver); return { text: `Talk to ${n.name} (${n.role})`, at: [n.x, n.y], title: q.title, line: l }; }
+    const s = stepOf(l);
     if (!s) return null;
-    const out = { text: s.text, title: q.title };
+    const out = { text: s.text, title: q.title, line: l };
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
     else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.terminal; }
     else if (s.type === 'surface' || s.type === 'under_bridge') { const st = nav.strips.find(x => x.name === (s.surface || x.name)); if (st) out.at = st.origin.slice(); }
     else if (s.type === 'land' || s.type === 'sun') { const pl = placeByName(s.place); if (pl) out.at = centroid(pl); }
-    if (s.type === 'inspect') out.text += ` (${qs.inspected.length}/${s.sources.length})`;
+    if (s.type === 'inspect') out.text += ` (${ls(l).inspected.length}/${s.sources.length})`;
     return out;
   }
-  function completeStep() {
-    qs.si++;
-    if (qs.si >= quest().steps.length) completeQuest();
-    else { H.toast(`<b>Next:</b> ${quest().steps[qs.si].text}`); save(); }
+  function completeStep(l) {
+    const st = ls(l);
+    st.si++;
+    if (st.si >= questOf(l).steps.length) completeQuest(l);
+    else { H.toast(`<b>Next:</b> ${questOf(l).steps[st.si].text}`); save(); }
   }
-  function completeQuest() {
-    const q = quest();
+  function completeQuest(l = tracked()) {
+    const q = questOf(l), wasOpen = new Set(openLines());
     qs.stamps.push({ id: q.id, stamp: q.stamp, title: q.title, at: `${clock.d} ${MONTHS[clock.m - 1]} ${fmtMin(clock.min)}` });
     A.chime(); A.thump();
     H.stamp(q.stamp, q.title);
-    qs.qi++; qs.started = false; qs.si = -1; qs.inspected = []; qs.rideFrom = null;
+    Object.assign(ls(l), { qi: ls(l).qi + 1, started: false, si: -1, inspected: [], rideFrom: null });
+    if (lineDone(l)) { // lines this one was holding back open now
+      const opened = openLines().filter(x => !wasOpen.has(x));
+      for (const x of opened) if (x.on_open) setTimeout(() => H.toast(x.on_open), 2600);
+      if (opened.length === 1) qs.track = opened[0].id;
+    }
     renderPassport();
     save();
   }
-  function startQuest(q) {
-    qs.started = true; qs.si = 0;
-    if (!q.steps.length) completeQuest();
+  function startQuest(l, q) {
+    Object.assign(ls(l), { started: true, si: 0 });
+    qs.track = l.id;
+    if (!q.steps.length) completeQuest(l);
     else { H.toast(`<b>${q.title}</b><span>${q.steps[0].text}</span>`); save(); }
   }
   function talkTo(n) {
-    const q = quest(), s = step();
     n.talking = true;
     const finish = () => { n.talking = false; };
-    if (s && s.type === 'talk' && s.npc === n.id) {
-      completeStep();
-      const nq = quest();
-      if (nq && nq.giver === n.id && !qs.started) return giveQuest(n, nq);
+    // a line waiting to talk to this person moves on, and may hand over its next quest
+    for (const l of openLines()) {
+      const s = stepOf(l);
+      if (!s || s.type !== 'talk' || s.npc !== n.id) continue;
+      completeStep(l);
+      const nq = questOf(l);
+      if (nq && nq.giver === n.id && !ls(l).started && lineOpen(l)) return giveQuest(n, l, nq);
     }
-    if (q && !qs.started && q.giver === n.id) return giveQuest(n, q);
+    const ready = openLines().find(l => questOf(l).giver === n.id && !ls(l).started);
+    if (ready) return giveQuest(n, ready, questOf(ready));
     dlg.show(n, [fill(n.idle[Math.floor(Math.random() * n.idle.length)] || smalltalk(n.x, n.y))], null, finish);
   }
-  function giveQuest(n, q) {
+  function giveQuest(n, l, q) {
     dlg.show(n, q.talk.map(fill), q.choices, c => {
       n.talking = false;
       if (c && c.action === 'set_time') { const [m, d] = c.date; setClock(clock.y, m, d, S.hm(c.time)); H.toast(`Time set to ${c.time}, ${d} ${MONTHS[m - 1]}`); }
-      startQuest(q);
+      startQuest(l, q);
+      if (c && c.action === 'track' && lineById(c.line)) { qs.track = c.line; save(); } // the prologue lets you pick where to start
     });
   }
+  // track the next open line (T, or a tap on its name in the quest card)
+  function cycleTrack(id) {
+    const open = openLines();
+    if (!open.length) return;
+    const cur = tracked(), next = id ? lineById(id) : open[(open.indexOf(cur) + 1) % open.length];
+    if (!next || !open.includes(next)) return;
+    qs.track = next.id;
+    routeFor = '';
+    if (open.length > 1 || id) H.toast(`Tracking <b>${next.title || questOf(next).title}</b>`);
+    save();
+  }
   function checkSteps() {
-    const s = step();
-    if (!s) return;
-    if (s.type === 'surface' && player.mode === 'foot' && player.floor === s.surface) {
-      const st = nav.strips.find(x => x.name === s.surface), [u] = nav.stripUV(st, player.x, player.y);
-      if (u >= s.u[0] && u <= s.u[1]) completeStep();
-    } else if (s.type === 'land' && player.mode === 'heli' && heli.st.landed && inPlace(placeByName(s.place), heli.st.x, heli.st.y)) completeStep();
-    else if (s.type === 'sun' && player.mode === 'foot' && sunState === 'sun' && clock.m === s.date[0] && clock.d === s.date[1] &&
-      clock.min >= S.hm(s.window[0]) && clock.min <= S.hm(s.window[1]) && inPlace(placeByName(s.place), player.x, player.y)) completeStep();
-    else if (s.type === 'inspect' && s.sources.every(k => qs.inspected.includes(k))) completeStep();
+    for (const l of openLines()) {
+      const s = stepOf(l);
+      if (!s) continue;
+      if (s.type === 'surface' && player.mode === 'foot' && player.floor === s.surface) {
+        const st = nav.strips.find(x => x.name === s.surface), [u] = nav.stripUV(st, player.x, player.y);
+        if (u >= s.u[0] && u <= s.u[1]) completeStep(l);
+      } else if (s.type === 'land' && player.mode === 'heli' && heli.st.landed && inPlace(placeByName(s.place), heli.st.x, heli.st.y)) completeStep(l);
+      else if (s.type === 'sun' && player.mode === 'foot' && sunState === 'sun' && clock.m === s.date[0] && clock.d === s.date[1] &&
+        clock.min >= S.hm(s.window[0]) && clock.min <= S.hm(s.window[1]) && inPlace(placeByName(s.place), player.x, player.y)) completeStep(l);
+      else if (s.type === 'inspect' && s.sources.every(k => ls(l).inspected.includes(k))) completeStep(l);
+    }
+  }
+  // who an open line wants to talk to, and where the lines you are not tracking lead
+  const wantsTalk = n => openLines().some(l => { const s = stepOf(l); return ls(l).started ? s && s.type === 'talk' && s.npc === n.id : questOf(l).giver === n.id; });
+  const sideObjectives = () => openLines().filter(l => l !== tracked()).map(l => objective(l)).filter(o => o && o.at);
+  // the quest card's row of open lines: tap one to track it
+  let linesKey = '';
+  function renderLines() {
+    const open = openLines().filter(l => l.quests.length), cur = tracked();
+    const key = open.map(l => `${l.id}:${ls(l).qi}`).join('|') + `>${cur ? cur.id : ''}`;
+    if (key === linesKey) return;
+    linesKey = key;
+    const el = $('#gq-lines');
+    el.hidden = open.length < 2;
+    el.innerHTML = open.map(l => `<button data-line="${l.id}" aria-pressed="${l === cur}" title="Track this survey">${l.title || questOf(l).title}<span class="num">${ls(l).qi}/${l.quests.length}</span></button>`).join('')
+      + (touch ? '' : '<span class="key"><kbd>T</kbd> switch</span>');
+  }
+  // a save from before the lines (one chain, qs.qi): the stamps say which quests are done
+  function migrate(old) {
+    if (!old || old.lines) return old;
+    const out = Object.assign(freshQs(), { stamps: old.stamps || [], visited: old.visited || {}, docked: !!old.docked, trig: old.trig, guesses: old.guesses });
+    const done = new Set(out.stamps.map(x => x.id)), cur = Q[old.qi];
+    for (const l of LINES) {
+      const st = out.lines[l.id] = { qi: 0, started: false, si: -1, inspected: [], rideFrom: null };
+      while (st.qi < l.quests.length && done.has(l.quests[st.qi].id)) st.qi++;
+      const q = l.quests[st.qi];
+      if (q && cur && cur.id === q.id && old.started) Object.assign(st, { started: true, si: Math.min(old.si, q.steps.length - 1), inspected: old.inspected || [], rideFrom: old.rideFrom || null });
+      if (q && cur && cur.id === q.id) out.track = l.id;
+    }
+    return out;
   }
 
   // ------------------------------------------------------------ save (this browser only)
@@ -482,7 +555,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const drawMini = H.minimap($('#g-minimap'), base);
   const dlg = H.dialogue(A);
   function renderPassport() {
-    $('#gp-stamps').innerHTML = Q.map(q => {
+    $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
       const got = qs.stamps.find(s => s.id === q.id);
       return `<li class="${got ? 'got' : ''}"><span class="stamp">${got ? q.stamp : '?'}</span><span><b>${got ? q.title : 'Not yet'}</b><span class="note">${got ? got.at : ''}</span></span></li>`;
     }).join('') + (qs.stamps.some(s => s.id === 'ferry-master') ? '<li class="got"><span class="stamp">Ferry master</span><span><b>Docked by hand</b></span></li>' : '')
@@ -613,6 +686,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     else if (c === 'KeyF' && player.mode === 'ferry') skip = !skip;
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyG') guessStart();
+    else if (c === 'KeyT') cycleTrack();
     else if (c === 'Enter' && guess.bi >= 0 && !guess.revealed) guessCheck();
     else if (c === 'KeyV') { cam.mode = cam.mode === 'bird' ? 'chase' : 'bird'; H.toast(cam.mode === 'bird' ? "Bird's-eye view: scroll to change height" : 'Chase view'); }
     else if (c === 'KeyM') toggleMap();
@@ -669,7 +743,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const v of fer.vessels) if (v.stops.includes(wid) && (!toward || v.stops.includes(toward))) { const t = fer.eta(v, wid); if (!best || t < best.t) best = { v, t }; }
     return best;
   }
-  const rideTarget = wid => { const s = step(); return s && s.type === 'ride' && s.from === wid ? s.to : null; };
+  const rideSteps = () => [tracked(), ...openLines()].filter(Boolean).map(l => [l, stepOf(l)]).filter(([, s]) => s && s.type === 'ride');
+  const rideTarget = wid => { const r = rideSteps().find(([, s]) => s.from === wid); return r ? r[1].to : null; };
   function nearWharf(x, y, r = 30) {
     let best = null, bd = r;
     for (const w of G.wharves) { const d = Math.min(Math.hypot(w.terminal[0] - x, w.terminal[1] - y), Math.hypot(w.berth[0] - x, w.berth[1] - y)); if (d < bd) { bd = d; best = w; } }
@@ -716,8 +791,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   function board(v, w) {
     player.mode = 'ferry'; player.vehicle = v; v.rider = true;
     qs.visited[w.id] = true;
-    const s = step();
-    if (s && s.type === 'ride' && s.from === w.id) qs.rideFrom = w.id;
+    for (const [l, s] of rideSteps()) if (s.from === w.id) ls(l).rideFrom = w.id;
     cam.yaw = v.h + 0.9; cam.dist = 42; cam.pitch = 0.32;
     H.toast(`Aboard ${v.name}, ${v.route}. Next stop: ${wharfById(fer.nextStop(v)).name}. <kbd>F</kbd> to skip ahead, <kbd>H</kbd> to take the helm.`);
     A.engine(0.5);
@@ -738,8 +812,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     player.mode = 'foot'; player.vehicle = null;
     [player.x, player.y, player.z] = p;
     qs.visited[here] = true;
-    const s = step();
-    if (s && s.type === 'ride' && qs.rideFrom === s.from && here === s.to) completeStep();
+    for (const [l, s] of new Map(rideSteps())) if (ls(l).rideFrom === s.from && here === s.to) completeStep(l);
     A.engine(0);
     save();
   }
@@ -799,8 +872,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#g-lens').hidden = false;
     clearTimeout(lens.t);
     lens.t = setTimeout(() => { $('#g-lens').hidden = true; U.uSel.value = -1; }, 6000);
-    const s = step();
-    if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !qs.inspected.includes(m[4])) { qs.inspected.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${qs.inspected.length}/${s.sources.length})`); checkSteps(); }
+    for (const l of openLines()) {
+      const s = stepOf(l), got = ls(l).inspected;
+      if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !got.includes(m[4])) { got.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${got.length}/${s.sources.length})`); checkSteps(); }
+    }
   }
 
   // ------------------------------------------------------------ height challenge: guess, then see how good the data is
@@ -981,8 +1056,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const v of VP) icon({ kind: 'trig', done: !!trigDone()[v.id] }, ...P2(v.x, v.y));
     for (const v of fer.vessels) icon({ kind: 'ferry' }, ...P2(v.x, v.y));
     if (player.mode !== 'heli') icon({ kind: 'heli' }, ...P2(heli.st.x, heli.st.y));
-    const q = quest();
-    for (const n of npcs) icon({ kind: 'npc', color: q && (!qs.started ? q.giver === n.id : step() && step().npc === n.id) ? '#e0a21a' : '#5b6b77', label: n.name[0] }, ...P2(n.x, n.y));
+    for (const n of npcs) icon({ kind: 'npc', color: wantsTalk(n) ? '#e0a21a' : '#5b6b77', label: n.name[0] }, ...P2(n.x, n.y));
+    for (const o of sideObjectives()) icon({ kind: 'quest2' }, ...P2(...o.at));
     const ob = objective();
     if (ob && ob.at) icon({ kind: 'quest' }, ...P2(...ob.at));
     if (waypoint) icon({ kind: 'waypoint' }, ...P2(...waypoint));
@@ -1010,6 +1085,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (p) { $('#g-bigmap').hidden = true; hopTo(p[0], p[1], p[2], b.textContent); }
   });
   on($('#g-map-btn'), 'click', toggleMap);
+  on($('#gq-lines'), 'click', e => { const b = e.target.closest('button'); if (b) cycleTrack(b.dataset.line); });
   on($('#g-pass-btn'), 'click', togglePass);
   on($('#g-menu-btn'), 'click', toggleMenu);
   for (const id of ['#g-bigmap-close', '#g-pass-close', '#g-menu-close']) on($(id), 'click', () => { $(id).closest('.g-overlay').hidden = true; });
@@ -1038,7 +1114,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
-  on($('#gm-reset'), 'click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } qs = { qi: 0, started: false, si: -1, stamps: [], visited: {}, inspected: [], rideFrom: null }; renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true; });
+  on($('#gm-reset'), 'click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } qs = freshQs(); renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true; });
 
   // ------------------------------------------------------------ start
   function spawn(pos, zRef) { // at ground level (or on steps built on it) unless a height is given
@@ -1063,7 +1139,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const startGame = cont => {
     A.start();
     if (cont && saved) {
-      qs = Object.assign(qs, saved.qs);
+      qs = Object.assign(qs, migrate(saved.qs));
       spawn(saved.pos);
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
@@ -1072,7 +1148,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#g-title').hidden = true;
     craneIn();
     renderPassport();
-    if (!cont) H.toast(`Find ${npcById(Q[0] ? Q[0].giver : npcs[0].id).name}: follow the gold route, or press <kbd>M</kbd> for the map.`);
+    if (!cont) H.toast(`Find ${npcById(quest() ? quest().giver : npcs[0].id).name}: follow the gold route, or press <kbd>M</kbd> for the map.`);
   };
   on($('#gt-play'), 'click', () => startGame(false));
   on($('#gt-continue'), 'click', () => startGame(true));
@@ -1124,7 +1200,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     beam.visible = !!target && !titleOn && Math.hypot(target[0] - (player.mode === 'heli' ? heli.st.x : player.x), target[1] - (player.mode === 'heli' ? heli.st.y : player.y)) > 45;
     if (target) { const f = nav.floorAt(target[0], target[1], 300); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
-    $('#gq-title').textContent = ob ? ob.title : (Q.length && qs.qi >= Q.length ? 'Free roam' : '');
+    $('#gq-title').textContent = ob ? ob.title : (Q.length && LINES.every(lineDone) ? 'Free roam' : '');
+    if (!titleOn) renderLines();
     const trigLeft = VP.filter(v => !trigDone()[v.id]).length;
     $('#gq-step').textContent = ob ? ob.text : trigLeft ? `The city is yours. ${trigLeft} trig station${trigLeft > 1 ? 's' : ''} still to survey (△ on the map), or change the time and fly anywhere.`
       : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
@@ -1136,8 +1213,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       for (const v of VP) icons.push({ kind: 'trig', x: v.x, y: v.y, done: !!trigDone()[v.id] });
       for (const v of fer.vessels) icons.push({ kind: 'ferry', x: v.x, y: v.y });
       if (player.mode !== 'heli') icons.push({ kind: 'heli', x: heli.st.x, y: heli.st.y });
-      const q = quest();
-      for (const n of npcs) { const hot = q && (!qs.started ? q.giver === n.id : step() && step().npc === n.id); n.marker.visible = !!hot && !dlg.open; if (hot) icons.push({ kind: 'npc', x: n.x, y: n.y, color: '#e0a21a', pin: true }); }
+      for (const n of npcs) { const hot = wantsTalk(n); n.marker.visible = hot && !dlg.open; if (hot) icons.push({ kind: 'npc', x: n.x, y: n.y, color: '#e0a21a', pin: true }); }
+      for (const o of sideObjectives()) icons.push({ kind: 'quest2', x: o.at[0], y: o.at[1] });
       if (ob && ob.at) icons.push({ kind: 'quest', x: ob.at[0], y: ob.at[1], pin: true });
       if (waypoint) icons.push({ kind: 'waypoint', x: waypoint[0], y: waypoint[1], pin: true });
       drawMini({ x: me.x, y: me.y, yaw: cam.mode === 'bird' && player.mode === 'heli' ? heli.st.h : cam.yaw, heading: player.mode === 'heli' ? heli.st.h : player.mode === 'ferry' ? player.vehicle.h : player.h,
@@ -1166,7 +1243,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const events = [];
       heli.update(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), lift: Math.max(-1, Math.min(1, lift)) }, events);
       for (const ev of events) {
-        if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); const s = step(); if (s && s.type === 'under_bridge') completeStep(); }
+        if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'under_bridge') completeStep(l); } }
         if (ev.type === 'bump' && clockT - bumpT > 2) { bumpT = clockT; H.toast('Careful! That was a building.'); }
       }
       A.rotor(heli.st.rotor, Math.abs(lift) + Math.abs(fwd) * 0.5);
@@ -1451,7 +1528,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { footNet, benches, sunWant, benchTalk, advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys, cine, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest };
+  window.__game = { footNet, benches, sunWant, benchTalk, advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys, cine, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

@@ -364,6 +364,7 @@ def main():
         "props": props,
         "crowd": gcfg.get("crowd", {"pedestrians": 300, "cars": 120, "radius_m": 450}),
         "npcs": npcs,
+        "lines": gcfg.get("lines", []),
         "quests": gcfg.get("quests", []),
         "start": dict(gcfg.get("start", {}), at=[round(sx, 1), round(sy, 1)]),
         # liveries, registration and logo for the shared vehicles (web/assets/vehicles); empty means the defaults

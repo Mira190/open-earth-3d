@@ -265,6 +265,14 @@ a { color: var(--accent); }
   display: grid; gap: 2px; border-left: 3px solid var(--sun); }
 .g-quest b { font: 700 14.5px/1.25 var(--f-display); font-stretch: 92%; }
 .g-quest .mono { font-size: 11px; color: var(--muted); }
+.gq-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; align-items: center; }
+.gq-lines button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 8px; font: 600 11px/1.45 var(--f-body); cursor: pointer; color: var(--ink-2);
+  display: inline-flex; gap: 5px; align-items: baseline; }
+.gq-lines button .num { font-size: 10px; color: var(--muted); }
+.gq-lines button:hover { border-color: var(--sun); }
+.gq-lines button[aria-pressed="true"] { background: var(--sun); border-color: var(--sun); color: #1b1408; }
+.gq-lines button[aria-pressed="true"] .num { color: #3d2a05; }
+.gq-lines .key { font-size: 10.5px; color: var(--muted); margin-left: 2px; }
 .g-right { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; display: grid; gap: 8px; justify-items: end; }
 #g-minimap { width: 210px; height: 210px; border-radius: 50%; box-shadow: var(--shadow); }
 .g-clock { padding: 6px 11px; display: flex; gap: 8px; align-items: baseline; }
@@ -274,7 +282,7 @@ a { color: var(--accent); }
 .g-sun[data-s="shade"] i { background: var(--shade); box-shadow: 0 0 0 3px color-mix(in srgb, var(--shade) 30%, transparent); }
 .g-sun[data-s="night"] i { background: #2b3550; box-shadow: none; }
 .g-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.g-btns .chip-btn kbd, .g-prompt kbd, .gd-choices kbd, .g-toast kbd, .gt-keys kbd, .g-panel kbd { font: 600 10.5px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--surface); color: var(--ink); }
+.g-btns .chip-btn kbd, .g-prompt kbd, .gq-lines kbd, .gd-choices kbd, .g-toast kbd, .gt-keys kbd, .g-panel kbd { font: 600 10.5px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--surface); color: var(--ink); }
 .g-toasts { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(460px, calc(100% - 520px)); min-width: 260px; }
 .g-toast { background: var(--hud); backdrop-filter: blur(6px); border-radius: var(--r); box-shadow: var(--shadow); padding: 8px 13px; font-size: 12.5px; text-align: center; transition: opacity .5s, transform .5s; }
 .g-toast.out { opacity: 0; transform: translateY(-6px); }
@@ -635,7 +643,7 @@ a { color: var(--accent); }
     <div class="labels g-labels" id="g-labels"></div>
     <div class="g-reticle" aria-hidden="true"></div>
     <div class="g-bars" aria-hidden="true"></div>
-    <div class="g-hud g-quest" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span></div>
+    <div class="g-hud g-quest" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span><div class="gq-lines" id="gq-lines" hidden></div></div>
     <div class="g-right">
       <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
@@ -691,6 +699,7 @@ a { color: var(--accent); }
           <tr><td>△ on the map</td><td>Trig stations: stand at one and press <kbd>E</kbd> to survey the view</td></tr>
           <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
           <tr><td>Ferry</td><td><kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm into the next wharf</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Switch the survey line the route follows (or tap its name in the quest card)</td></tr>
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
         <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>

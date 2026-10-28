@@ -109,6 +109,9 @@ window.OEHud = (function () {
     } else if (ic.kind === 'npc') {
       g.fillStyle = col; g.beginPath(); g.arc(0, 0, 6, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#fff'; g.font = '800 10px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ic.label || '!', 0, 0.5);
+    } else if (ic.kind === 'quest2') { // where a line you are not tracking leads
+      g.fillStyle = '#ffffff'; g.strokeStyle = css('--sun'); g.lineWidth = 1.8;
+      g.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? 3 : 6.5; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill(); g.stroke();
     } else if (ic.kind === 'trig') { // a trig station: hollow until surveyed
       g.fillStyle = ic.done ? css('--sun') : '#ffffff'; g.strokeStyle = ic.done ? '#ffffff' : '#8a6d1d'; g.lineWidth = 1.8;
       g.beginPath(); g.moveTo(0, -7.5); g.lineTo(7, 5); g.lineTo(-7, 5); g.closePath(); g.fill(); g.stroke();
