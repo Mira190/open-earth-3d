@@ -321,7 +321,7 @@ export async function init(ctx) {
       mat.outputNode = Fn(() => {
         const o = outN, w = wake.wakeNode(positionWorld.xz);
         const above = select(cameraPosition.y.greaterThan(env.u.tide), float(1), float(0));
-        const fc = vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.85).add(0.1));
+        const fc = vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.95));
         // broken up with noise so the field reads as foam streaks, not a soft glow
         const n = mx_noise_float(vec3(positionWorld.x.mul(0.9), positionWorld.z.mul(0.9), env.u.time.mul(0.25)));
         const n2 = mx_noise_float(vec3(positionWorld.x.mul(3.1), positionWorld.z.mul(3.1), env.u.time.mul(0.4)));

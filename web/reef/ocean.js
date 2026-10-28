@@ -133,7 +133,7 @@ export function createOcean(d, env, heightTex) {
     const R = reflect(V.negate(), N).toVar();
     R.assign(vec3(R.x, abs(R.y), R.z));
     const F = Fr(N, V);
-    const foamCol = vec3(0.92, 0.95, 0.96).mul(u.white.mul(0.85).add(0.1));
+    const foamCol = vec3(0.92, 0.95, 0.96).mul(u.white.mul(0.95));
     const haze = float(1).sub(exp(dist.mul(u.haze).negate()));
     // light scattered back out of the swell: turquoise glow in thin crests and the shallows
     // (the wind waves' thin crests close by: the long, low swell does not light up like this)
@@ -143,14 +143,23 @@ export function createOcean(d, env, heightTex) {
     // sun glitter (Cox and Munk 1954): the facets that send the sun to the eye have the half-vector as their
     // normal; their share is the Gaussian slope density of what the pixel cannot resolve, around the slope it can.
     // radiance = E_sun F p / (4 cos(view) cos^4(facet tilt))
-    const Hh = normalize(V.add(u.sunDir));
-    const need = vec2(Hh.x, Hh.z).div(Hh.y.max(0.05)).negate(), have = vec2(N.x, N.z).div(N.y).negate();
+    const have = vec2(N.x, N.z).div(N.y).negate();
     const sig2 = f.v.add(env.rippleAmp.mul(env.rippleAmp).mul(0.002)).max(1.5e-4);
-    const dd = need.sub(have);
-    const pS = exp(dot(dd, dd).div(sig2).negate()).div(sig2.mul(3.14159));
-    const hy = Hh.y.max(0.05);
-    const glint = u.sunCol.mul(u.sunI).mul(Fr(Hh, V)).mul(pS).div(V.y.max(0.03).mul(4).mul(hy.mul(hy).mul(hy).mul(hy)))
-      .mul(smoothstep(-0.02, 0.04, u.sunDir.y)).mul(float(1).sub(haze));
+    // Smith masking for the same slopes (Beckmann, Walter et al. 2007's rational fit): facets hide each other at grazing angles
+    const G1 = cosT => {
+      const c = cosT.clamp(0.02, 1), a = c.div(sqrt(float(1).sub(c.mul(c)).max(1e-6)).mul(sqrt(sig2.mul(0.5))));
+      const lam = float(1).sub(a.mul(1.259)).add(a.mul(a).mul(0.396)).div(a.mul(3.535).add(a.mul(a).mul(2.181)));
+      return select(a.lessThan(1.6), float(1).div(lam.add(1)), float(1));
+    };
+    const glintOf = (L, E, col, up) => {
+      const Hh = normalize(V.add(L));
+      const need = vec2(Hh.x, Hh.z).div(Hh.y.max(0.05)).negate(), dd = need.sub(have);
+      const hy = Hh.y.max(0.05);
+      const p = exp(dot(dd, dd).div(sig2).negate()).div(sig2.mul(3.14159));
+      return col.mul(E).mul(Fr(Hh, V)).mul(p).mul(G1(V.y).mul(G1(up))).div(V.y.max(0.03).mul(4).mul(hy.mul(hy).mul(hy).mul(hy))).mul(smoothstep(-0.02, 0.04, up)).mul(float(1).sub(haze));
+    };
+    // the sun's glitter, and the moon's: the same law at 2.3e-6 of the light, which the adapted eye sees as a path of silver
+    const glint = glintOf(u.sunDir, u.sunI, u.sunCol, u.sunDir.y).add(glintOf(u.moonDir, u.moonI, vec3(0.85, 0.9, 1.0), u.moonDir.y));
     // the floor through the water, bent by the surface: resample the frame behind along the view-space normal,
     // by an amount that grows with the water the ray crosses; keep the straight sample where the bent one
     // would pick up something in front of the water (a hull, a swimmer)

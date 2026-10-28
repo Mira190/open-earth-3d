@@ -115,7 +115,7 @@ export function materials() {
       const cloud = mx_noise_float(vec3(ab.x.mul(5), ab.y.mul(9), 3.1)).mul(0.03);
       return vec3(0.97, 0.95, 0.89).mul(seam.add(cloud));
     })();
-    m.emissiveNode = vec3(0.30, 0.28, 0.24).mul(0.28);        // light through the cloth
+    m.emissiveNode = vec3(0.30, 0.28, 0.24).mul(0.28).mul(shared.env.u.white);        // light through the cloth
     const aLuff = attribute('aLuff', 'vec3'), aChord = attribute('aChord', 'vec3');
     // uni: { furl, raise, bill, side } uniforms. luff point + a * chord, chord shortened by furl,
     // gathered toward the foot when lowered, bellied to leeward in proportion to the wind

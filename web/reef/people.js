@@ -309,7 +309,8 @@ export async function createPerson(lookIn, opts = {}) {
     cx.fillStyle = '#f2f7f8'; cx.textBaseline = 'top';
     lines.forEach((l, i) => cx.fillText(l, pad, pad + i * lh));
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-    const sp = new THREE.Sprite(new THREE.SpriteNodeMaterial({ map: tex, transparent: true, depthWrite: false, fog: false }));
+    const spm = new THREE.SpriteNodeMaterial({ map: tex, transparent: true, depthWrite: false, fog: false });
+    const sp = new THREE.Sprite(spm);
     sp.center.set(0.5, 0); sp.renderOrder = 30;
     sp.userData.w = 1.5; sp.userData.h = 1.5 * cv.height / W;
     sp.position.y = tpl.height * (look.scale || 1) + 0.45;

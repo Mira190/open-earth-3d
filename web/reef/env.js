@@ -56,7 +56,10 @@ export function createEnv(scene, optics, waves, ripples, chop) {
     moonLit: uniform(0),
     wind: uniform(0.5),
     caustic: uniform(1),
-    sunI: uniform(2.8)            // the sun's irradiance on a surface facing it, in the lights' units
+    sunI: uniform(2.8),           // the sun's irradiance on a surface facing it, in the lights' units
+    moonI: uniform(0),            // the same for the moon (2.3e-6 of the sun when full and overhead)
+    skyScale: uniform(1),         // the sky's brightness relative to a clear day (twilight, night)
+    adapt: uniform(1)             // the eye's adaptation, already in the lights (main.js); post.js reads it for night vision
   };
   // the ripples scale with the wind as the Cox-Munk slope variance does (unity at wind 0.6)
   const c0 = coxMunk(windSpeed(0.6));
@@ -76,11 +79,11 @@ export function createEnv(scene, optics, waves, ripples, chop) {
     // warm band near the sun when it is low
     const low = float(1).sub(clamp(u.sunAlt.mul(4), 0, 1));
     c.addAssign(vec3(1.0, 0.45, 0.2).mul(pow(mu, 4).mul(low).mul(0.9).mul(g.add(0.2))));
-    c = c.mul(float(1).sub(u.night.mul(0.97))).toVar();
-    // the moon: a disc and a halo, as bright as its phase; the sea mirrors it like the sun
+    // the sky's light through twilight to night, in true proportion and adapted (main.js); the moonlit sky a dim blue
+    c = c.mul(u.skyScale).add(vec3(0.10, 0.16, 0.30).mul(u.moonI).mul(0.25).mul(smoothstep(-0.05, 0.2, u.moonDir.y))).toVar();
+    // the moon (disc and halo) and the stars as an adapted eye sees them
     const mm = max(dot(dir, u.moonDir), 0);
-    c.addAssign(vec3(0.85, 0.9, 1.0).mul(pow(mm, 1500).mul(3).add(pow(mm, 40).mul(0.05)).mul(u.moonLit)).mul(smoothstep(-0.05, 0.1, u.moonDir.y)));
-    // a few stars on a clear night
+    c.addAssign(vec3(0.85, 0.9, 1.0).mul(pow(mm, 1500).mul(disc ? 3 : 1.2).add(pow(mm, 40).mul(0.05)).mul(u.moonLit)).mul(smoothstep(-0.05, 0.1, u.moonDir.y)));
     const sp = dir.mul(160);
     const star = pow(max(mx_noise_float(sp.mul(1.0)).mul(0.5).add(0.5), 0), 40).mul(smoothstep(0.05, 0.4, dir.y));
     c.addAssign(vec3(0.9, 0.95, 1).mul(star.mul(u.night).mul(1.6)));

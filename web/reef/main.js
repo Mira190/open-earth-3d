@@ -50,8 +50,9 @@ async function main() {
   env.u.tide.value = tideNow();
 
   const sunL = new THREE.DirectionalLight(0xfff2dd, 2.8);
+  const moonL = new THREE.DirectionalLight(0xc9d6ff, 0);
   const hemi = new THREE.HemisphereLight(0x9cc4ff, 0xd9c9a0, 0.9);
-  scene.add(sunL, sunL.target, hemi);
+  scene.add(sunL, sunL.target, moonL, moonL.target, hemi);
   scene.fogNode = (({ Fn, vec4, output, positionWorld }) => Fn(() => vec4(env.medium(output.rgb, positionWorld), output.a))())(await import('three/tsl'));
 
   const hTex = heightTexture(d);
@@ -71,17 +72,54 @@ async function main() {
   dome.frustumCulled = false; dome.renderOrder = -1;
   scene.add(dome);
 
+  // ---- light, in the units where the overhead sun is 2.8: the sun, the moon and the sky, each in its true
+  // proportion, and an eye that adapts to them. The adaptation scales the light itself (so the frame stays in a
+  // range half floats hold well), and display-referred things (lamps, the moon's disc, stars, speech) need nothing
+  // the sky's own light on a horizontal surface, relative to a clear day's, through twilight to starlight
+  // (horizontal illuminance about 10 000 lux of skylight by day, a few lux at the end of civil twilight, 0.002 lux on a moonless night)
+  const SKY = [[-18, 2e-7], [-12, 1.2e-6], [-6, 3e-4], [0, 0.08], [10, 1]];
+  const skyLight = deg => {
+    if (deg >= 10) return 1; if (deg <= -18) return 2e-7;
+    for (let i = 1; i < SKY.length; i++) if (deg <= SKY[i][0]) { const [a, la] = SKY[i - 1], [b, lb] = SKY[i]; return la * Math.pow(lb / la, (deg - a) / (b - a)); }
+    return 1;
+  };
+  // the full moon at the zenith gives about 2.3e-6 of the sun's illuminance; away from full it fades faster than its
+  // lit fraction (Allen: m = -12.73 + 0.026 |phase| + 4e-9 phase^4)
+  const moonRel = age => { const ph = Math.abs(180 - age * 360); return 2.3e-6 * Math.pow(10, -0.4 * (0.026 * ph + 4e-9 * ph ** 4)); };
+  // how bright a white horizontal surface is shown, by log10 of its true radiance (a clear day is about 1.1)
+  const SEEN = [[-7.5, 0.012], [-6.2, 0.07], [-4, 0.09], [-1, 0.1]];
+  const seen = x => {
+    if (x >= -1) return Math.pow(10, x); if (x <= SEEN[0][0]) return SEEN[0][1];
+    for (let i = 1; i < SEEN.length; i++) if (x <= SEEN[i][0]) { const [a, la] = SEEN[i - 1], [b, lb] = SEEN[i]; return la * Math.pow(lb / la, (x - a) / (b - a)); }
+    return 0.1;
+  };
+  const baseExp = Number(q.get('exp') || 1.0);
+  let adapt = 1;
+  renderer.toneMappingExposure = baseExp;
   function lights(sun) {
-    const day = sun.day;
-    sunL.intensity = 2.8 * Math.max(Math.min(1, Math.sin(sun.alt) * 3), 0);
-    env.u.sunI.value = sunL.intensity;
-    hemi.intensity = 0.06 + 0.84 * day + 0.05 * sun.moonLit * Math.max(Math.sin(sun.moonAlt), 0) * (1 - day);
+    const sa = Math.sin(sun.alt), sm = Math.max(Math.sin(sun.moonAlt), 0), deg = sun.alt * 180 / Math.PI;
+    const sunI = 2.8 * Math.max(Math.min(1, sa * 3), 0);
+    const moonI = 2.8 * moonRel(sun.moonAge) * smoothUp(sun.moonAlt);
+    const hemiI = 0.9 * skyLight(deg) + 0.34 * moonI * sm;
+    const white = (sunI * Math.max(sa, 0) + moonI * sm + hemiI) / Math.PI;
+    // adaptation: none down to sunset light; through dusk the eye holds a white surface near a tenth of its daylight
+    // brightness, under the moon a little less, under starlight less again (night stays darker than day, as it looks)
+    adapt = Math.min(Math.max(seen(Math.log10(Math.max(white, 1e-10))) / white, 1), 3e5);
+    sunL.intensity = sunI * adapt; moonL.intensity = moonI * adapt; hemi.intensity = hemiI * adapt;
+    env.u.sunI.value = sunI * adapt; env.u.moonI.value = moonI * adapt;
+    env.u.white.value = white * adapt;
+    env.u.skyScale.value = skyLight(deg) * adapt;
+    env.u.adapt.value = adapt;
     sunL.position.copy(camera.position).addScaledVector(sun.dir, 800);
     sunL.target.position.copy(camera.position);
-    env.u.white.value = (sunL.intensity * Math.max(Math.sin(sun.alt), 0) + hemi.intensity) / Math.PI;
+    moonL.position.copy(camera.position).addScaledVector(env.u.moonDir.value, 800);
+    moonL.target.position.copy(camera.position);
   }
+  const smoothUp = a => THREE.MathUtils.smoothstep(Math.sin(a), -0.02, 0.05);
+  let post = null;
   const sun = setSun(env, when, S.origin[1], S.origin[0]);
   lights(sun);
+  let sunT = 0;                                          // the sun and moon follow the model clock (every 2 s)
 
   // camera: local frame (east, north, up) -> three (x, up, -north)
   const st = S.start || {};
@@ -93,7 +131,7 @@ async function main() {
   renderer.domElement.addEventListener('pointermove', e => { if (e.buttons) { yaw -= e.movementX * 0.003; pitch = THREE.MathUtils.clamp(pitch - e.movementY * 0.003, -1.5, 1.5); } });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 
-  const post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env);
+  post = q.get('post') === '0' ? null : createPost(renderer, scene, camera, env);
 
   // modules plug in through a shared context; each exports init(ctx) and may return { update(dt, t) }
   const ctx = { THREE, renderer, scene, camera, env, d, S, q, terrain, ocean, sunL, hemi, sun, updaters: [], controller: null,
@@ -132,6 +170,7 @@ async function main() {
     terrain.update(camera.position);
     ocean.update(camera.position);
     shore.update(camera.position);
+    if (now - sunT > 2000) { sunT = now; Object.assign(sun, setSun(env, clockMs(), S.origin[1], S.origin[0])); }
     lights(sun);
     if (post) post.render(); else renderer.render(scene, camera);
     if (++frames === 3) { $('load').classList.add('done'); window.__ready = true; }

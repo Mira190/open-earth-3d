@@ -3,7 +3,7 @@
 // the surface above that point (the same caustic focusing the sea floor shows), then scatter it
 // toward the eye through the water's own attenuation. A mask-edge vignette comes with it.
 import * as THREE from 'three/webgpu';
-import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, length, normalize, dot, pow, select, smoothstep,
+import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, log, length, normalize, dot, pow, select, smoothstep,
   clamp, screenUV, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
@@ -51,9 +51,12 @@ export function createPost(renderer, scene, camera, env) {
   });
 
   const q = new URLSearchParams(location.search);
-  let base = color;
-  if (q.get('bloom') !== '0') base = base.add(bloomPass);
+  let base = color.rgb;
+  if (q.get('bloom') !== '0') base = base.add(bloomPass.rgb);
   if (q.get('shafts') !== '0') base = base.add(shafts());
-  post.outputNode = base.mul(vignette());
+  // night vision: as the eye adapts past a few hundred times, colour fades and shifts blue (the Purkinje shift)
+  const scot = smoothstep(2.3, 4.3, log(u.adapt).div(2.302585)).mul(0.75);
+  const lum = dot(base, vec3(0.2126, 0.7152, 0.0722));
+  post.outputNode = vec4(mix(base, vec3(0.72, 0.86, 1.12).mul(lum), scot).mul(vignette()), 1);
   return post;
 }
