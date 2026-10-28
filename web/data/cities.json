@@ -6,8 +6,9 @@
   "lat": -33.862,
   "lon": 151.2115,
   "status": "live",
-  "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places.",
-  "built": true
+  "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places, and a game: walk it, ride the ferries, fly under the bridge.",
+  "built": true,
+  "game": true
  },
  {
   "id": "melbourne",
@@ -17,7 +18,8 @@
   "lon": 144.9631,
   "status": "planned",
   "data": "Elevation LiDAR via ELVIS; City of Melbourne open 3D massing; OSM footprints.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "new-york",
@@ -27,7 +29,8 @@
   "lon": -74.0113,
   "status": "planned",
   "data": "NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM; NYS orthoimagery.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "london",
@@ -37,7 +40,8 @@
   "lon": -0.0922,
   "status": "planned",
   "data": "Environment Agency 1 m LiDAR DTM (OGL); OSM heights; open aerial imagery still to find.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "paris",
@@ -47,7 +51,8 @@
   "lon": 2.3522,
   "status": "planned",
   "data": "IGN RGE ALTI and BD ORTHO (open licence); BD TOPO building heights.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "amsterdam",
@@ -57,7 +62,8 @@
   "lon": 4.8922,
   "status": "planned",
   "data": "AHN LiDAR; PDOK aerial imagery; 3D BAG building heights.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "tokyo",
@@ -67,7 +73,8 @@
   "lon": 139.7671,
   "status": "planned",
   "data": "Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "hong-kong",
@@ -77,7 +84,8 @@
   "lon": 114.1589,
   "status": "planned",
   "data": "Lands Department 3D spatial data and LiDAR DTM; open orthophotos.",
-  "built": false
+  "built": false,
+  "game": false
  },
  {
   "id": "singapore",
@@ -87,6 +95,7 @@
   "lon": 103.851,
   "status": "planned",
   "data": "OSM footprints and heights; open bare-earth DEM and imagery still to find.",
-  "built": false
+  "built": false,
+  "game": false
  }
 ]

@@ -133,16 +133,17 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
   sunEl.setAttribute('aria-hidden', 'true');
   markersEl.appendChild(sunEl);
 
-  $('#live-list').innerHTML = live.map(c => `<li><button class="city-card" data-id="${c.id}">
+  $('#live-list').innerHTML = live.map(c => `<li class="city-card" data-id="${c.id}">
       <span class="city-head"><b>${c.name}</b><span class="note">${c.country}</span></span>
       <span class="city-sum">${c.summary || ''}</span>
-      <span class="city-foot"><span class="mono note" data-clock="${c.id}"></span><span class="go">Open in 3D →</span></span></button></li>`).join('');
+      <span class="city-foot"><span class="mono note" data-clock="${c.id}"></span>
+        <span class="city-go"><button class="btn" data-go="model" data-id="${c.id}">Open in 3D</button>${c.game ? `<button class="btn primary" data-go="play" data-id="${c.id}">Play</button>` : ''}</span></span></li>`).join('');
   $('#planned-list').innerHTML = planned.map(c => `<li><button class="plan-row" data-id="${c.id}"><b>${c.name}</b><span class="note">${c.country}</span>
       <span class="plan-data">${c.data || ''}</span></button></li>`).join('');
   $('#live-count').textContent = String(live.length);
   $('#planned-count').textContent = String(planned.length);
   const byId = id => cities.find(c => c.id === id);
-  $('#live-list').addEventListener('click', e => { const b = e.target.closest('button'); if (b) open(byId(b.dataset.id)); });
+  $('#live-list').addEventListener('click', e => { const b = e.target.closest('button'); if (b) open(byId(b.dataset.id), b.dataset.go === 'play'); });
   $('#planned-list').addEventListener('click', e => { const b = e.target.closest('button'); if (b) focus(byId(b.dataset.id)); });
   for (const list of ['#live-list', '#planned-list']) {
     $(list).addEventListener('pointerover', e => { const b = e.target.closest('button'); hilite(b ? b.dataset.id : null); });
@@ -171,7 +172,7 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     $('#globe-notice').textContent = `${c.name} is planned. Open data to start from: ${c.data || 'to be surveyed'}`;
     $('#globe-notice').hidden = false;
   }
-  function open(c) { flyTo(c, 1.9, () => { location.hash = c.id; }); }
+  function open(c, play) { flyTo(c, 1.9, () => { location.hash = play ? `play-${c.id}` : c.id; }); }
   canvas.addEventListener('pointerdown', () => { controls.autoRotate = false; flight = null; touched = true; });
   canvas.addEventListener('wheel', () => { controls.autoRotate = false; touched = true; }, { passive: true });
 

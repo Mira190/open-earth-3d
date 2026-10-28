@@ -39,6 +39,7 @@
   --r: 8px;
   --g-ocean: #b7cad5; --g-land: #f3f0e8; --g-coast: #8fa5b1; --g-border: #c6c0b3; --g-grid: rgba(18, 32, 42, 0.07);
   --g-night: #1b2a38; --g-night-mix: 0.62; --g-atmo: #8cc4dc;
+  --gm-land: #ece8de; --gm-water: #9fbccc; --gm-park: #c9dbb2; --gm-road: #ffffff; --gm-bldg: #b9b3a6; --gm-pier: #d6cfbf;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -48,6 +49,7 @@
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 20px rgba(0, 0, 0, 0.4);
     --g-ocean: #12303f; --g-land: #34454f; --g-coast: #4f6773; --g-border: #4a5a63; --g-grid: rgba(226, 233, 237, 0.05);
     --g-night: #03070b; --g-night-mix: 0.55; --g-atmo: #3a8db0;
+    --gm-land: #26323a; --gm-water: #0f2a38; --gm-park: #2c4030; --gm-road: #46545e; --gm-bldg: #4d5a63; --gm-pier: #3b464e;
     color-scheme: dark;
   }
 }
@@ -58,6 +60,7 @@
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.45), 0 6px 20px rgba(0, 0, 0, 0.4);
   --g-ocean: #12303f; --g-land: #34454f; --g-coast: #4f6773; --g-border: #4a5a63; --g-grid: rgba(226, 233, 237, 0.05);
   --g-night: #03070b; --g-night-mix: 0.55; --g-atmo: #3a8db0;
+  --gm-land: #26323a; --gm-water: #0f2a38; --gm-park: #2c4030; --gm-road: #46545e; --gm-bldg: #4d5a63; --gm-pier: #3b464e;
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -99,6 +102,8 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
   padding: 6px 12px; cursor: pointer; box-shadow: var(--shadow); font-weight: 600; font-size: 12px; }
 .chip-btn:hover { border-color: var(--accent); }
 .chip-btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+a.chip-btn { text-decoration: none; color: var(--ink); }
+.play-chip { background: var(--sun); color: #1b1408 !important; border-color: var(--sun); }
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 600 11px/1 var(--f-body);
   color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7), 0 0 6px rgba(0,0,0,.45); padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.7); }
@@ -213,7 +218,121 @@ a { color: var(--accent); }
   .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
   .hud-btns { top: auto; bottom: calc(100% - 52px); }
 }
-@media (prefers-reduced-motion: reduce) { .loader .track i { transition: none; } }
+
+/* ---------- game ---------- */
+.game-app { height: 100%; }
+.game-stage { position: relative; height: 100%; overflow: hidden; background: #9fb4c2; user-select: none; -webkit-user-select: none; }
+.game-stage canvas#game-gl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+.game-stage canvas#game-gl:active { cursor: grabbing; }
+.game-stage.titled .g-quest, .game-stage.titled .g-right, .game-stage.titled .g-reticle, .game-stage.titled .g-prompt, .game-stage.titled .g-labels { display: none; }
+.g-hud { background: var(--hud); backdrop-filter: blur(6px); border-radius: var(--r); box-shadow: var(--shadow); }
+.g-labels .lbl { left: 0; top: 0; transform: none; }
+.g-labels .lbl.npc { border-bottom: 0; font-size: 12px; text-align: center; }
+.g-labels .lbl .role { display: block; font-weight: 400; font-size: 10.5px; opacity: .85; }
+.g-labels .lbl.wharf { border-bottom: 0; font-weight: 600; }
+.g-labels .tag { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; font-size: 9px; font-weight: 800; margin-right: 5px; text-shadow: none; }
+.g-labels .tag.f { background: #24577a; } .g-labels .tag.h { background: #c62d2a; }
+.g-quest { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); top: 14px; max-width: min(380px, calc(100% - 270px)); padding: 10px 13px;
+  display: grid; gap: 2px; border-left: 3px solid var(--sun); }
+.g-quest b { font: 700 14.5px/1.25 var(--f-display); font-stretch: 92%; }
+.g-quest .mono { font-size: 11px; color: var(--muted); }
+.g-right { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; display: grid; gap: 8px; justify-items: end; }
+#g-minimap { width: 210px; height: 210px; border-radius: 50%; box-shadow: var(--shadow); }
+.g-clock { padding: 6px 11px; display: flex; gap: 8px; align-items: baseline; }
+.g-clock b { font-size: 15px; } .g-clock span { color: var(--muted); font-size: 11.5px; }
+.g-sun { padding: 5px 11px 5px 8px; display: flex; gap: 7px; align-items: center; font-size: 12px; font-weight: 600; }
+.g-sun i { width: 14px; height: 14px; border-radius: 50%; background: var(--sun-soft); box-shadow: 0 0 0 3px color-mix(in srgb, var(--sun) 30%, transparent); }
+.g-sun[data-s="shade"] i { background: var(--shade); box-shadow: 0 0 0 3px color-mix(in srgb, var(--shade) 30%, transparent); }
+.g-sun[data-s="night"] i { background: #2b3550; box-shadow: none; }
+.g-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.g-btns .chip-btn kbd, .g-prompt kbd, .gd-choices kbd, .g-toast kbd, .gt-keys kbd, .g-panel kbd { font: 600 10.5px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--surface); color: var(--ink); }
+.g-toasts { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(460px, calc(100% - 520px)); min-width: 260px; }
+.g-toast { background: var(--hud); backdrop-filter: blur(6px); border-radius: var(--r); box-shadow: var(--shadow); padding: 8px 13px; font-size: 12.5px; text-align: center; transition: opacity .5s, transform .5s; }
+.g-toast.out { opacity: 0; transform: translateY(-6px); }
+.g-toast b { font-weight: 700; } .g-toast span { display: block; color: var(--ink-2); }
+.g-toast.stamp { border: 2px solid var(--sun); padding: 10px 18px; }
+.g-toast.stamp b { font: 760 20px/1.1 var(--f-display); font-stretch: 85%; color: var(--sun); display: block; }
+.g-prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: var(--hud); backdrop-filter: blur(6px);
+  border-radius: 999px; padding: 7px 14px 7px 8px; box-shadow: var(--shadow); font-weight: 600; font-size: 13px; white-space: nowrap; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; }
+.g-prompt kbd { font-size: 12px; padding: 3px 7px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.g-vhud { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 14px; padding: 10px 12px; display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; max-width: calc(100% - 28px); }
+.g-vhud div { display: grid; } .g-vhud b { font-size: 15px; } .g-vhud span { color: var(--muted); font-size: 11px; }
+.g-vhud .note { grid-column: 1 / -1; margin: 4px 0 0; }
+.g-lens { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); top: 120px; width: 270px; padding: 11px 13px; display: grid; gap: 3px; border-left: 3px solid var(--accent); }
+.g-lens b { font: 700 15px/1.2 var(--f-display); font-stretch: 90%; }
+.g-reticle { position: absolute; left: 50%; top: 46%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,.85); box-shadow: 0 0 0 1.5px rgba(0,0,0,.35); pointer-events: none; }
+.g-dialog { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(640px, calc(100% - 28px)); background: var(--surface); border-radius: 12px;
+  box-shadow: var(--shadow); padding: 14px 18px 12px; border-top: 4px solid var(--npc, var(--accent)); cursor: pointer; }
+.gd-head { display: flex; gap: 10px; align-items: baseline; }
+.gd-head b { font: 760 18px/1.1 var(--f-display); font-stretch: 88%; color: var(--npc, var(--ink)); }
+.gd-head span { color: var(--muted); font-size: 12px; }
+.g-dialog p { margin: 6px 0 4px; font-size: 15px; line-height: 1.5; min-height: 3em; color: var(--ink); }
+.gd-choices { display: grid; gap: 6px; margin-top: 6px; }
+.gd-choices button { text-align: left; border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 8px 10px; cursor: pointer; font-weight: 600; display: flex; gap: 8px; align-items: center; }
+.gd-choices button:hover { border-color: var(--accent); }
+.gd-hint { display: block; text-align: right; font: 400 10.5px/1 var(--f-mono); color: var(--muted); min-height: 1em; }
+.g-overlay { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(3px); display: grid; place-items: center; padding: 16px; z-index: 6; }
+.g-panel { background: var(--surface); border-radius: 12px; box-shadow: var(--shadow); width: min(560px, 100%); max-height: calc(100% - 8px); overflow: auto; padding: 16px 18px 18px; display: grid; gap: 14px; align-content: start; }
+.g-panel header { display: flex; align-items: baseline; gap: 10px; }
+.g-panel header h2 { font: 760 20px/1.1 var(--f-display); font-stretch: 88%; flex: 1; }
+.g-panel .x { border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); }
+.g-panel h3 { font: 600 12px/1.2 var(--f-body); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0; }
+.g-mapwrap { width: min(1100px, 100%); height: min(860px, 100%); grid-template-rows: auto minmax(0, 1fr); }
+.g-mapbody { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 14px; min-height: 0; }
+.g-mapcanvas { position: relative; min-height: 300px; background: var(--gm-water); border-radius: 8px; overflow: hidden; }
+.g-mapcanvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.g-mapbody aside { display: grid; gap: 10px; align-content: start; overflow: auto; }
+.g-legend { display: grid; gap: 5px; font-size: 12px; }
+.g-legend div { display: flex; gap: 7px; align-items: center; }
+.g-legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 800 8.5px/1 var(--f-body); font-style: normal; }
+#g-travel { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#g-travel button { width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 9px; cursor: pointer; font-size: 12.5px; }
+#g-travel button:hover { border-color: var(--accent); }
+.g-stamps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.g-stamps li { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 10px 8px; border-radius: 10px; background: var(--surface-2); }
+.g-stamps .stamp { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 10px; border: 2.5px dashed var(--line);
+  font: 760 13px/1.05 var(--f-display); font-stretch: 85%; color: var(--muted); }
+.g-stamps li.got .stamp { border: 3px double var(--sun); color: var(--sun); transform: rotate(-8deg); background: color-mix(in srgb, var(--sun) 8%, var(--surface)); }
+.g-stamps li > span:last-child { display: grid; font-size: 12px; }
+.g-settings { display: grid; gap: 12px; }
+.g-settings .field { display: grid; gap: 5px; }
+.gt-keys { width: 100%; border-collapse: collapse; font-size: 12px; }
+.gt-keys td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.gt-keys td:first-child { white-space: nowrap; color: var(--ink-2); }
+.g-title { position: absolute; inset: 0; display: flex; align-items: center; padding: 18px max(18px, env(safe-area-inset-left, 0px)); z-index: 7;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 82%, transparent) 0%, color-mix(in srgb, var(--bg) 40%, transparent) 46%, transparent 70%); overflow: auto; }
+.gt-card { width: min(470px, 100%); display: grid; gap: 14px; }
+.gt-card h1 { font: 800 clamp(40px, 6vw, 68px)/0.9 var(--f-display); font-stretch: 78%; letter-spacing: -0.015em; }
+.gt-card h1::after { content: ""; display: block; width: 64px; height: 6px; background: var(--sun); margin-top: 12px; border-radius: 3px; }
+.gt-card > p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 46ch; }
+.gt-card .btn.primary { font-size: 15px; padding: 10px 18px; }
+.gt-time { display: grid; gap: 5px; }
+.g-touch { position: absolute; inset: auto 0 0 0; height: 190px; pointer-events: none; }
+.g-touch > * { pointer-events: auto; }
+#gt-joy { position: absolute; left: max(18px, env(safe-area-inset-left, 0px)); bottom: 24px; width: 120px; height: 120px; border-radius: 50%; background: color-mix(in srgb, var(--surface) 45%, transparent);
+  border: 2px solid color-mix(in srgb, var(--ink) 20%, transparent); touch-action: none; }
+#gt-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px; border-radius: 50%; background: var(--hud); box-shadow: var(--shadow); }
+.gt-btns { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); bottom: 20px; display: grid; grid-template-columns: repeat(3, 56px); gap: 8px; }
+.gt-btns button { width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--hud); box-shadow: var(--shadow); font: 700 12px/1 var(--f-body); color: var(--ink); touch-action: none; }
+.gt-btns button#gt-act { background: var(--accent); color: var(--accent-ink); }
+.gt-btns button[aria-pressed="true"] { background: var(--sun-soft); }
+@media (max-width: 860px) {
+  #g-minimap { width: 132px; height: 132px; }
+  .g-quest { max-width: calc(100% - 175px); padding: 8px 10px; }
+  .g-quest b { font-size: 13px; }
+  .g-btns .chip-btn { padding: 5px 9px; font-size: 11px; }
+  .g-btns kbd { display: none; }
+  .g-toasts { top: auto; bottom: 200px; width: calc(100% - 28px); min-width: 0; }
+  .g-prompt { bottom: 200px; }
+  .g-dialog { bottom: 8px; }
+  .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
+  .g-vhud .note { display: none; }
+  .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
+  .g-reticle { display: none; }
+  .gt-keys { display: none; }
+  .g-title { background: color-mix(in srgb, var(--bg) 78%, transparent); align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast { transition: none; } }
 
 /* ---------- globe ---------- */
 .globe-app { display: grid; grid-template-columns: minmax(0, 1fr) 392px; height: 100%; }
@@ -255,14 +374,13 @@ a { color: var(--accent); }
 .globe-panel h2 { font: 700 16px/1.2 var(--f-display); font-stretch: 90%; display: flex; align-items: baseline; gap: 8px; }
 .globe-panel h2 .count { font: 500 11px/1 var(--f-mono); color: var(--muted); }
 .city-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.city-card { width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 13px;
-  cursor: pointer; display: grid; gap: 6px; box-shadow: inset 3px 0 0 var(--sun); }
-.city-card:hover { border-color: var(--accent); }
+.city-card { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r); padding: 12px 13px;
+  display: grid; gap: 6px; box-shadow: inset 3px 0 0 var(--sun); }
+.city-go { display: flex; gap: 6px; }
 .city-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .city-head b { font: 750 19px/1.1 var(--f-display); font-stretch: 88%; }
 .city-sum { color: var(--ink-2); font-size: 12.5px; }
 .city-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
-.city-foot .go { font-weight: 600; color: var(--accent); font-size: 12.5px; }
 .plan-row { width: 100%; text-align: left; border: 0; background: none; border-radius: 6px; padding: 8px 10px; cursor: pointer;
   display: grid; grid-template-columns: auto 1fr; gap: 1px 8px; align-items: baseline; }
 .plan-row:hover { background: var(--surface-2); }
@@ -331,6 +449,7 @@ a { color: var(--accent); }
     <div class="hud-btns">
       <button class="chip-btn" id="btn-tour" aria-pressed="true">Tour</button>
       <button class="chip-btn" id="btn-prov" aria-pressed="false" title="Colour buildings by where their height comes from">Height sources</button>
+      <a class="chip-btn play-chip" id="btn-play" href="#" hidden>Play</a>
     </div>
     <div class="caption" id="caption">
       <span class="step" id="cap-step">1 / 7</span>
@@ -448,19 +567,117 @@ a { color: var(--accent); }
   </aside>
 </div>
 
+<div class="game-app" id="game-app" hidden>
+  <section class="game-stage" id="game-stage" aria-label="Game: explore the city on foot, by ferry and by helicopter">
+    <canvas id="game-gl"></canvas>
+    <div class="labels g-labels" id="g-labels"></div>
+    <div class="g-reticle" aria-hidden="true"></div>
+    <div class="g-hud g-quest" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span></div>
+    <div class="g-right">
+      <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
+      <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
+      <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
+      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
+    </div>
+    <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
+    <div class="g-prompt" id="g-prompt" hidden><kbd id="gp-key">E</kbd><span id="gp-text"></span></div>
+    <div class="g-hud g-vhud" id="g-vhud" hidden></div>
+    <aside class="g-hud g-lens" id="g-lens" hidden></aside>
+    <div class="g-dialog" id="gd" hidden role="dialog" aria-live="polite"><div class="gd-head"><b id="gd-name"></b><span id="gd-role"></span></div><p id="gd-text"></p><div class="gd-choices" id="gd-choices"></div><span class="gd-hint" id="gd-hint"></span></div>
+
+    <div class="g-overlay" id="g-bigmap" hidden>
+      <div class="g-panel g-mapwrap">
+        <header><h2>Map</h2><span class="note">Click the map to set a waypoint</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
+        <div class="g-mapbody">
+          <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas></div>
+          <aside>
+            <h3>Legend</h3>
+            <div class="g-legend">
+              <div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
+              <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
+              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
+            </div>
+            <h3>Fast travel</h3>
+            <ul id="g-travel"></ul>
+            <p class="note">A taxi to the start or to any wharf you have used.</p>
+          </aside>
+        </div>
+      </div>
+    </div>
+    <div class="g-overlay" id="g-pass" hidden>
+      <div class="g-panel"><header><h2>Survey passport</h2><button class="x" id="g-pass-close" aria-label="Close the passport">×</button></header>
+        <p class="note">One stamp for each part of the survey. Stamps are saved in this browser.</p>
+        <ol class="g-stamps" id="gp-stamps"></ol></div>
+    </div>
+    <div class="g-overlay" id="g-menu" hidden>
+      <div class="g-panel"><header><h2>Paused</h2><button class="x" id="g-menu-close" aria-label="Resume">×</button></header>
+        <div class="g-settings">
+          <div class="field"><span class="note">Time of day</span><div class="seg" id="gm-time"><button data-t="live">Now</button><button data-t="morning">9 am</button><button data-t="noon">Noon</button><button data-t="golden">Golden hour</button><button data-t="night">Night</button></div></div>
+          <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
+          <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
+          <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gm-route" checked> Show the route to the objective</label>
+          <label class="note" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="gm-sound" checked> Sound</label>
+        </div>
+        <table class="gt-keys"><tbody>
+          <tr><td><kbd>W A S D</kbd> or arrows</td><td>Walk, relative to the camera; drag to look around, scroll to zoom</td></tr>
+          <tr><td><kbd>Shift</kbd> · <kbd>Space</kbd></td><td>Run · jump</td></tr>
+          <tr><td><kbd>E</kbd></td><td>Talk, board, fly, get out</td></tr>
+          <tr><td><kbd>Q</kbd></td><td>Survey lens: the building in front of you and where its height comes from</td></tr>
+          <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
+          <tr><td>Ferry</td><td><kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm into the next wharf</td></tr>
+          <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
+        </tbody></table>
+        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>
+      </div>
+    </div>
+
+    <div class="g-title" id="g-title">
+      <div class="gt-card">
+        <span class="eyebrow">Open Earth 3D · <span id="gt-city">City</span></span>
+        <h1 id="gt-title">On Foot</h1>
+        <p>Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the ferries, and fly under the Harbour Bridge. Every fact they tell you comes from the model.</p>
+        <div class="gt-time"><span class="note">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button><button data-t="morning">9 am</button><button data-t="golden">Golden hour</button><button data-t="night">Night</button></div></div>
+        <div class="row"><button class="btn primary" id="gt-play">Start the survey</button><button class="btn" id="gt-continue" hidden>Continue</button></div>
+        <table class="gt-keys"><tbody>
+          <tr><td><kbd>W A S D</kbd> · drag</td><td>Walk · look around</td></tr>
+          <tr><td><kbd>E</kbd></td><td>Talk, board the ferry, fly the helicopter</td></tr>
+          <tr><td><kbd>Q</kbd> · <kbd>M</kbd> · <kbd>Esc</kbd></td><td>Survey lens · map · menu</td></tr>
+        </tbody></table>
+        <p class="note"><a href="#globe">Back to the globe</a></p>
+      </div>
+    </div>
+
+    <div class="g-touch" id="g-touch" hidden>
+      <div id="gt-joy" aria-label="Move"><div id="gt-knob"></div></div>
+      <div class="gt-btns"><button id="gt-lens">Lens</button><button id="gt-cam">View</button><button id="gt-run" aria-pressed="false">Run</button>
+        <button id="gt-down">Down</button><button id="gt-jump">Jump</button><button id="gt-act">E</button></div>
+    </div>
+    <div class="loader" id="g-loader"><div><b id="g-load-title">Loading the city</b><div class="track"><i id="g-load-bar"></i></div><small id="g-load-msg">Loading</small></div></div>
+  </section>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/objects/Sky.js"></script>
 <script src="sun.js"></script>
 <script src="globe.js"></script>
+<script src="world.js"></script>
 <script src="city.js"></script>
+<script src="game/nav.js"></script>
+<script src="game/actors.js"></script>
+<script src="game/vehicles.js"></script>
+<script src="game/audio.js"></script>
+<script src="game/hud.js"></script>
+<script src="game/game.js"></script>
 <script>
-// Router: "#<city id>" opens that city's 3D model, anything else shows the globe.
-// Views switch in place, without reloading the page: the old view stops, and a
-// view shown before gets a fresh copy of its markup so no old listeners remain.
+// Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game,
+// anything else shows the globe. Views switch in place, without reloading the page:
+// the old view stops, and a view shown before gets a fresh copy of its markup so no
+// old listeners remain.
 (async function route() {
   const $ = id => document.getElementById(id);
-  const fresh = { 'globe-app': $('globe-app').cloneNode(true), 'city-app': $('city-app').cloneNode(true) };
+  const ids = ['globe-app', 'city-app', 'game-app'];
+  const fresh = Object.fromEntries(ids.map(id => [id, $(id).cloneNode(true)]));
   const used = new Set();
   const pane = id => {
     if (used.has(id)) { const el = fresh[id].cloneNode(true); $(id).replaceWith(el); }
@@ -472,15 +689,22 @@ a { color: var(--accent); }
   const hashId = () => decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   let current = null;
   async function show() {
-    const id = hashId(), city = cities.find(c => c.id === id && c.built);
+    const id = hashId(), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
+    const city = cities.find(c => c.id === cid && c.built && (!play || c.game));
     const prev = current;
     current = null;
     if (prev) { const ctl = await prev; if (ctl) ctl.stop(); }
-    $('globe-app').hidden = $('city-app').hidden = true;
-    if (city) {
+    for (const x of ids) $(x).hidden = true;
+    if (city && play) {
+      pane('game-app').hidden = false;
+      $('g-load-title').textContent = `Loading ${city.name}`;
+      $('gm-model').href = `#${city.id}`;
+      current = window.OpenEarthGame(city.id);
+    } else if (city) {
       const el = pane('city-app');
       el.hidden = false;
       $('load-title').textContent = `Building ${city.name}`;
+      if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);
     } else {
       pane('globe-app').hidden = false;

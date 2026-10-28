@@ -7,6 +7,7 @@ Microsoft ML estimates (height_src says which). Base water, land, land use and
 infrastructure are OSM-derived; addresses come from Overture's address theme.
 
     python pipeline/fetch_overture.py --city sydney
+    python pipeline/fetch_overture.py --city sydney --only segment
 
 If your environment injects AWS credentials, unset them first, e.g.
     env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN python ...
@@ -36,12 +37,14 @@ def queries(root):
         "land_use": f"SELECT {simple} FROM {base('base/type=land_use')}",
         "infrastructure": f"SELECT {simple} FROM {base('base/type=infrastructure')}",
         "address": f"SELECT id, number, street, unit, postcode, ST_AsWKB(geometry) AS wkb FROM {base('addresses/type=address')}",
-        "segment": f"SELECT {simple} FROM {base('transportation/type=segment')}",
+        # road flags (is_bridge, is_tunnel, ...) and levels place traffic on bridges and hide it in tunnels
+        "segment": f"""SELECT {simple}, road_flags, level_rules, speed_limits[1].max_speed.value AS max_speed_kmh
+            FROM {base('transportation/type=segment')}""",
     }
 
 
 def main():
-    city, _ = city_args(__doc__.splitlines()[0])
+    city, a = city_args(__doc__.splitlines()[0], lambda ap: ap.add_argument("--only", nargs="+", help="fetch only these layers"))
     city.ensure_dirs()
     root = f"s3://overturemaps-us-west-2/release/{city.cfg['overture_release']}"
     con = duckdb.connect()
@@ -51,6 +54,8 @@ def main():
     # intersects the bbox (not contained): edge features are clipped later
     where = f" WHERE bbox.xmax > {w} AND bbox.xmin < {e} AND bbox.ymax > {s} AND bbox.ymin < {n}"
     for name, q in queries(root).items():
+        if a.only and name not in a.only:
+            continue
         t = time.time()
         extra = " AND (subtype IN ('road', 'rail'))" if name == "segment" else ""
         path = os.path.join(city.raw, f"overture_{name}.parquet")

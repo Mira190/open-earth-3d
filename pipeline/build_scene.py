@@ -587,6 +587,7 @@ def write_index():
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
     for c in idx["cities"]:
         c["built"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "scene.json"))
+        c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

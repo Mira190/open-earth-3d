@@ -22,6 +22,23 @@ a new codebase.
 
 ![Cycles render of Sydney from the Blender script](docs/images/sydney/overview.jpg)
 
+## Play it: Sydney on Foot
+
+The model is also a game. You walk central Sydney as a surveyor, talk to the
+people who know it, ride the Cross Harbour ferry, walk up onto the Harbour
+Bridge with the traffic, fly a helicopter under its deck, and find a sunny spot
+in Martin Place on the winter solstice. Everything the characters tell you is
+computed from the model as you play. Open **Play** on the globe, or go to
+`#play-sydney`. [docs/GAME.md](docs/GAME.md) covers:
+- the controls;
+- what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
+  Discovery Tour;
+- where this game does better than they do.
+
+| Under the Harbour Bridge | The Cross Harbour ferry | Talking to the Opera House guide |
+|---|---|---|
+| ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-ferry.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
+
 ## Cities
 
 | City | Status | What's in it |
@@ -77,7 +94,7 @@ The built Sydney scene is in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, or http://localhost:8000/#sydney for the city
+# open http://localhost:8000 for the globe, #sydney for the 3D model, #play-sydney for the game
 ```
 
 To rebuild a city from the raw data (about 2 minutes for Sydney), run:
@@ -96,6 +113,7 @@ python pipeline/build_scene.py --city sydney          # -> web/data/sydney
 python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landmarks.json
 python analysis/heights.py --city sydney              # published heights vs model
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
+python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
 ```
 
 `heights.py` reads the built scene, and `build_scene.py` uses its name matches
@@ -142,7 +160,7 @@ The globe picks it up from `web/data/cities.json`.
 
 ```
 cities/<id>/city.json ─┐
-Overture Maps ─────────┼─► pipeline/ ─► web/data/<id>/ ─┬─► web/  (globe + three.js city viewer, sun.js)
+Overture Maps ─────────┼─► pipeline/ ─► web/data/<id>/ ─┬─► web/  (globe, 3D model viewer, game; world.js, sun.js)
 imagery + terrain ─────┘                                ├─► analysis/  (Python and Node checks)
                                                         └─► blender/   (bpy + Cycles)
 ```
@@ -158,10 +176,10 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, landmark meshes |
-| `web/` | `index.html` (globe and city views), `globe.js`, `city.js`, `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
+| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders |
-| `docs/` | Architecture, adding a city, per-city case studies, images |
+| `docs/` | Architecture, the game, adding a city, per-city case studies, images |
 
 ## Data and licences
 

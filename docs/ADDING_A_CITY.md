@@ -67,6 +67,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
+| `game` | no | The game, if the city has one: `title`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `helipads`; `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See Sydney's config and [GAME.md](GAME.md) |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -98,6 +99,14 @@ def landmark_meshes(scene):
     """Called by pipeline/landmarks.py with the built scene.json.
     Return (materials, meshes): materials {key: {color, roughness, metalness}},
     meshes a list of meshkit.Mesh (set floodlit=True to light it after dark)."""
+```
+
+```python
+def game_surfaces(scene):
+    """Called by pipeline/game_data.py. Walkable surfaces above the terrain, such as
+    a bridge deck: [{name, type: "strip", origin, axis, half_width, profile:
+    [[u, z], ...], thickness}]. People and cars use them, and the helicopter
+    collides with their underside."""
 ```
 
 `ctx.ground(x, y)` gives the bare-earth height. `ctx.polygons(geom)` splits
@@ -136,6 +145,7 @@ python analysis/radar_check.py --city <id>        # unless the terrain is Terrar
 node analysis/sun_access.js --city <id>
 node analysis/uncertainty.js --city <id> 40       # writes the viewer's uncertainty ranges
 python blender/build_scene.py --city <id>         # if renders are configured
+python pipeline/game_data.py --city <id>          # if the city has a game block
 ```
 
 Then open `web/` with `python -m http.server` and go to `#<id>`.

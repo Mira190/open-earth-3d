@@ -91,21 +91,29 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 ## Viewer
 
-`web/index.html` is one page with two views. A route script picks one: `#<id>`
-opens a built city, and anything else shows the globe.
+`web/index.html` is one page with three views. A route script picks one:
+- `#<id>` opens a built city's 3D model;
+- `#play-<id>` opens its game;
+- anything else shows the globe.
+
+The views switch in place, without reloading the page.
+
+- **`world.js`** builds the city scene the model viewer and the game share:
+  - terrain tiles under the imagery;
+  - extruded buildings, with a facade shader for windows, lit windows at night
+    and the height-source colours;
+  - landmarks, trees, piers and water;
+  - sky, sun and shadows.
+
+  `setSun()` lights the scene for any sun position.
 
 - **`globe.js`** draws the Natural Earth map onto an equirectangular canvas.
   It textures a sphere with it and shades day and night from the subsolar
   point (`Sun.subsolar`). City markers are HTML buttons projected onto the
   sphere and hidden on the far side. Each live city shows its local time and
   sun altitude.
-- **`city.js`** loads `data/<id>/` and builds the scene:
-  - terrain tiles under the imagery;
-  - extruded buildings, with a facade shader for windows, lit windows at
-    night and the height-source colours;
-  - landmarks, trees, piers and water.
-
-  It drives everything city-specific from `scene.city`. It also builds a 2 m
+- **`city.js`** is the model viewer. It drives everything city-specific from
+  `scene.city`. It also builds a 2 m
   surface model for ray casting, so the panel's numbers do not depend on the
   shadow map's resolution.
 - **`sun.js`** works in the browser and in Node, so the viewer and the
@@ -116,6 +124,13 @@ opens a built city, and anything else shows the globe.
   - ray casting (`castRay`, `sunlit`, `blocker`, `fractionSunlit`, `litMask`).
 
   Ray casting skips empty space with 8-cell block maxima.
+
+- **`game/`** is the game; [GAME.md](GAME.md) describes it:
+  - navigation;
+  - people and traffic;
+  - helicopter and ferries;
+  - HUD;
+  - sound.
 
 ### "Test a new tower"
 

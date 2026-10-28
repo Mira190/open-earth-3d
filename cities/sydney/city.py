@@ -78,11 +78,52 @@ def finalize(ctx):
             "approach_ground_south": round(ctx.ground(*(s - u * 120)), 1),
             "approach_ground_north": round(ctx.ground(*(n + u * 120)), 1),
         }
+        ctx.landmarks["harbour_bridge"]["deck_profile"] = deck_profile(ctx, (s + n) / 2, u, float(np.linalg.norm(d)) / 2)
         m = (s + n) / 2
         ctx.labels["Sydney Harbour Bridge"] = [round(float(m[0]), 1), round(float(m[1]), 1), 142.0]
     if "opera_house" in ctx.landmarks:
         c = ctx.landmarks["opera_house"]["centroid"]
         ctx.labels["Sydney Opera House"] = [c[0], c[1], 72.0]
+
+
+def deck_profile(ctx, mid, ax, half_pylons):
+    """Road deck height along the bridge axis, [[u, z], ...] from south to north: level
+    across the arch and the pylons, then down the approach viaducts at 5% until it meets
+    the ground (the real approaches run on to the Cahill Expressway and North Sydney)."""
+    flat = half_pylons + 40.0
+    prof = {}
+    for sign in (-1, 1):
+        pts = [(flat, BRIDGE_DECK_TOP)]
+        u = flat
+        while u < flat + 900:
+            u += 10.0
+            z = BRIDGE_DECK_TOP - 0.05 * (u - flat)
+            g = ctx.ground(*(mid + ax * sign * u))
+            if z <= g + 0.5:
+                pts.append((u, round(g, 1)))
+                break
+            pts.append((u, round(z, 1)))
+        prof[sign] = pts
+    south = [[-u, z] for u, z in reversed(prof[-1])]
+    return south + [[u, z] for u, z in prof[1]]
+
+
+def deck_at(profile, u):
+    us = [p[0] for p in profile]
+    return float(np.interp(u, us, [p[1] for p in profile]))
+
+
+def game_surfaces(scene):
+    """Walkable and drivable surfaces above the terrain, for the game (pipeline/game_data.py)."""
+    h = scene["landmarks"].get("harbour_bridge")
+    if not h or "deck_profile" not in h:
+        return []
+    s, n = np.array(h["south_pylons"], float), np.array(h["north_pylons"], float)
+    m = (s + n) / 2
+    ax = (n - s) / np.linalg.norm(n - s)
+    return [{"name": "Sydney Harbour Bridge deck", "type": "strip", "origin": [round(m[0], 1), round(m[1], 1)],
+             "axis": [round(ax[0], 5), round(ax[1], 5)], "half_width": h["deck_width_m"] / 2,
+             "profile": h["deck_profile"], "thickness": 3.0}]
 
 
 def landmark_meshes(scene):
@@ -217,18 +258,25 @@ def harbour_bridge(h):
         steel.box(P(u0, -tsp, top(u0)), P(u1, tsp, top(u1)), 0.9, 0.9)
         steel.box(P(u0, tsp, top(u0)), P(u1, -tsp, top(u1)), 0.9, 0.9)
         steel.box(P(u0, -tsp, top(u0)), P(u0, tsp, top(u0)), 1.0, 1.0)
-    # deck: main span plus approach spans to just beyond the pylons
-    reach = np.linalg.norm(n - s) / 2 + 190
+    # deck: level across the arch and pylons, then the approach viaducts down to the ground
     w = h["deck_width_m"] / 2
-    a0, a1 = P(-reach, -w, deck_top), P(reach, -w, deck_top)
-    b0, b1 = P(-reach, w, deck_top), P(reach, w, deck_top)
-    under = lambda p: p - np.array([0, 0, deck_top - deck_under])
-    deck.quad(a0, b0, b1, a1)
-    deck.quad(under(a1), under(b1), under(b0), under(a0))
-    deck.quad(a0, a1, under(a1), under(a0))
-    deck.quad(b1, b0, under(b0), under(b1))
+    prof = h.get("deck_profile") or [[-np.linalg.norm(n - s) / 2 - 190, deck_top], [np.linalg.norm(n - s) / 2 + 190, deck_top]]
+    for (u0, z0), (u1, z1) in zip(prof[:-1], prof[1:]):
+        a0, a1, b0, b1 = P(u0, -w, z0), P(u1, -w, z1), P(u0, w, z0), P(u1, w, z1)
+        under = lambda p: p - np.array([0, 0, deck_top - deck_under])
+        deck.quad(a0, b0, b1, a1)
+        deck.quad(under(a1), under(b1), under(b0), under(a0))
+        deck.quad(a0, a1, under(a1), under(a0))
+        deck.quad(b1, b0, under(b0), under(b1))
+    deck.quad(P(prof[0][0], w, prof[0][1]), P(prof[0][0], -w, prof[0][1]),
+              P(prof[0][0], -w, prof[0][1] - 3), P(prof[0][0], w, prof[0][1] - 3))
+    deck.quad(P(prof[-1][0], -w, prof[-1][1]), P(prof[-1][0], w, prof[-1][1]),
+              P(prof[-1][0], w, prof[-1][1] - 3), P(prof[-1][0], -w, prof[-1][1] - 3))
+    half_pyl = np.linalg.norm(n - s) / 2
     for sign, g in ((-1, h["approach_ground_south"]), (1, h["approach_ground_north"])):  # approach piers
-        for u in np.arange(np.linalg.norm(n - s) / 2 + 40, reach, 45):
+        end = abs(prof[0][0] if sign < 0 else prof[-1][0])
+        for u in np.arange(half_pyl + 40, end - 15, 45):
+            zt = deck_at(prof, sign * u) - 3.0
             for v in (-w + 4, w - 4):
-                steel.box(P(sign * u, v, g - 5), P(sign * u, v, deck_under), 4.0, 4.0)
+                steel.box(P(sign * u, v, g - 5), P(sign * u, v, zt), 4.0, 4.0)
     return [steel, deck]

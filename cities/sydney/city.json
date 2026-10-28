@@ -225,5 +225,207 @@
     "Circular Quay": [151.2112, -33.8613]
   },
   "radar_test_building": "Quay Quarter Tower",
-  "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"}
+  "sources": {"landmarks": "Sydney Opera House and Sydney Harbour Bridge published dimensions"},
+  "game": {
+    "title": "Sydney on Foot",
+    "start": {
+      "at": [120, 205],
+      "facing": [298, 432],
+      "time": "live"
+    },
+    "wharves": [
+      {"id": "circular-quay", "name": "Circular Quay, Wharf 4", "terminal": "Circular Quay 4A"},
+      {"id": "milsons-point", "name": "Milsons Point", "terminal": "Milsons Point Wharf"},
+      {"id": "mcmahons-point", "name": "McMahons Point", "terminal": "McMahons Point Wharf"},
+      {"id": "barangaroo", "name": "Barangaroo, Wharf 1", "terminal": "Barangaroo, Wharf 1"},
+      {"id": "pyrmont-bay", "name": "Pyrmont Bay", "terminal": "Pyrmont Bay Wharf"},
+      {"id": "kirribilli", "name": "Kirribilli", "terminal": "Kirribilli"},
+      {"id": "north-sydney", "name": "North Sydney (High Street)", "terminal": "North Sydney"},
+      {"id": "neutral-bay", "name": "Neutral Bay", "terminal": "Neutral Bay"}
+    ],
+    "ferries": [
+      {
+        "route": "Cross Harbour West",
+        "stops": ["circular-quay", "milsons-point", "mcmahons-point", "barangaroo", "pyrmont-bay"],
+        "vessels": ["Sirius", "Supply", "Golden Grove"]
+      },
+      {
+        "route": "Cross Harbour East",
+        "stops": ["circular-quay", "kirribilli", "north-sydney", "neutral-bay"],
+        "vessels": ["Charlotte", "Friendship"]
+      }
+    ],
+    "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Routes are generated through open water, and the stops follow the inner-harbour services, but the timetable is not real. Ferries run at 1.5 times their real speed (9 m/s) and wait 20 s at each wharf. The vessel names are those of the First Fleet class ferries. At a wharf you can skip the wait.",
+    "helipads": [{"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}],
+    "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
+    "npcs": [
+      {
+        "id": "ava",
+        "name": "Ava",
+        "role": "Survey lead",
+        "at": [128, 216],
+        "look": {"shirt": "#f2c230", "pants": "#2b3a4a", "skin": "#c68a64", "hair": "#2a1d17"},
+        "idle": ["The whole model is open data. If something looks wrong, it probably is wrong in the data, so tell me."]
+      },
+      {
+        "id": "marco",
+        "name": "Marco",
+        "role": "Opera House guide",
+        "at": [298, 432],
+        "look": {"shirt": "#2d5d8a", "pants": "#1e1e22", "skin": "#e0b392", "hair": "#4a3426"},
+        "idle": ["Each shell is a triangle cut from one sphere, 75.2 m in radius. Utzon's 'spherical solution', 1961."]
+      },
+      {
+        "id": "lena",
+        "name": "Lena",
+        "role": "Bridge climber",
+        "at": [-70, 1430],
+        "look": {"shirt": "#5b6e7a", "pants": "#3b4a52", "skin": "#f1c8a6", "hair": "#c9a35b"},
+        "idle": ["The arch spans 503 m. The deck is {landmark:harbour_bridge.deck_width_m} m wide and 49 m above the water."]
+      },
+      {
+        "id": "sam",
+        "name": "Sam",
+        "role": "Helicopter pilot",
+        "at": [728, 1160],
+        "look": {"shirt": "#1f2a33", "pants": "#1f2a33", "skin": "#8d5a3c", "hair": "#111111"},
+        "idle": ["Under the deck, keep it below 45 m. The rotor needs the room."]
+      },
+      {
+        "id": "priya",
+        "name": "Priya",
+        "role": "Planner",
+        "at": [-204, -632],
+        "look": {"shirt": "#b0413e", "pants": "#26303a", "skin": "#a8714f", "hair": "#1b1311"},
+        "idle": ["Martin Place is protected from 1 September to 31 May, 12:00 to 14:00. Winter isn't covered."]
+      },
+      {
+        "id": "tom",
+        "name": "Tom",
+        "role": "Height detective",
+        "at": [-46, -1262],
+        "look": {"shirt": "#3d7a4f", "pants": "#4a3b2c", "skin": "#f0c4a0", "hair": "#7a4b2a"},
+        "idle": ["A floor count times a storey height beats a machine-learning guess most of the time. Not always."]
+      },
+      {
+        "id": "noor",
+        "name": "Noor",
+        "role": "Barista",
+        "at": [-905, 230],
+        "look": {"shirt": "#e8e2d6", "pants": "#3a2f2a", "skin": "#9b6a4c", "hair": "#120d0b"},
+        "idle": ["Barangaroo Reserve was a container wharf until 2015. Now it's sandstone and fig trees.", "It's {time} here. {sun_line}"]
+      },
+      {
+        "id": "kev",
+        "name": "Kev",
+        "role": "Fisherman",
+        "at": [-262, 905],
+        "look": {"shirt": "#6b8f3a", "pants": "#4b4b40", "skin": "#d9a27e", "hair": "#9a9a9a"},
+        "idle": ["Bream under the bridge in the mornings. {sun_line}"]
+      }
+    ],
+    "quests": [
+      {
+        "id": "quay",
+        "giver": "ava",
+        "title": "Welcome to the Quay",
+        "stamp": "Circular Quay",
+        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "Before we check anything, get your bearings. Marco is on the Opera House forecourt. Walk over and say hello.", "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."],
+        "steps": [{"type": "talk", "npc": "marco", "text": "Meet Marco on the Opera House forecourt"}]
+      },
+      {
+        "id": "shells",
+        "giver": "marco",
+        "title": "Shells from one sphere",
+        "stamp": "Sydney Opera House",
+        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "Next, see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "circular-quay",
+            "to": "milsons-point",
+            "text": "Take a ferry from Circular Quay to Milsons Point"
+          },
+          {"type": "talk", "npc": "lena", "text": "Find Lena at Milsons Point"}
+        ]
+      },
+      {
+        "id": "arch",
+        "giver": "lena",
+        "title": "Over the arch",
+        "stamp": "Sydney Harbour Bridge",
+        "talk": ["Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.", "The deck in this model rises on its approach viaducts until it meets the ground. Walk up from here to the middle of the arch."],
+        "steps": [
+          {
+            "type": "surface",
+            "surface": "Sydney Harbour Bridge deck",
+            "u": [-30, 30],
+            "text": "Walk up onto the bridge and reach the middle of the arch"
+          },
+          {"type": "talk", "npc": "sam", "text": "Meet Sam at the Kirribilli helipad"}
+        ]
+      },
+      {
+        "id": "under",
+        "giver": "sam",
+        "title": "Under the bridge",
+        "stamp": "Harbour by air",
+        "talk": ["Lena said you'd come. Hop in. The helicopter's on the pad.", "Fly under the bridge deck. It clears the water by 49 m, so stay below 45. Then set down in the Domain. Priya's waiting near Martin Place.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
+        "steps": [
+          {"type": "under_bridge", "text": "Fly under the Harbour Bridge deck"},
+          {"type": "land", "place": "The Domain", "text": "Land in the Domain"},
+          {"type": "talk", "npc": "priya", "text": "Find Priya in Martin Place"}
+        ]
+      },
+      {
+        "id": "sun",
+        "giver": "priya",
+        "title": "A place in the sun",
+        "stamp": "Martin Place",
+        "talk": ["The planning rule says new towers may not add shadow to Martin Place between 12:00 and 14:00, from September to May.", "Winter isn't protected. On 21 June at 12:30, only {sun:Martin Place|6-21|12:30}% of the place gets direct sun. On 21 December it's {sun:Martin Place|12-21|12:30}%.", "Find a sunny spot here at lunchtime on 21 June. Watch the sun meter under the map. It ray-casts from where you stand."],
+        "choices": [
+          {
+            "text": "Show me 21 June at 12:30",
+            "action": "set_time",
+            "date": [6, 21],
+            "time": "12:30"
+          },
+          {"text": "I'll set the time myself"}
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "Martin Place",
+            "date": [6, 21],
+            "window": ["12:00", "14:00"],
+            "text": "Stand in direct sun in Martin Place, 12:00 to 14:00 on 21 June"
+          },
+          {"type": "talk", "npc": "tom", "text": "Meet Tom at the north end of Hyde Park"}
+        ]
+      },
+      {
+        "id": "lens",
+        "giver": "tom",
+        "title": "Where heights come from",
+        "stamp": "Hyde Park",
+        "talk": ["Every building here carries the source of its height. {share:floors}% of the footprint area comes from a floor count, {share:mapped}% from a surveyed height, and the rest is estimated.", "Aim at a building and press Q to use the survey lens. Find one with a surveyed height, one from a floor count and one that's estimated."],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": ["mapped", "floors", "estimate"],
+            "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
+          },
+          {"type": "talk", "npc": "ava", "text": "Report back to Ava at Circular Quay"}
+        ]
+      },
+      {
+        "id": "done",
+        "giver": "ava",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": ["That's the full tour: the water, the bridge, the air, the sun and the data underneath it all.", "{acc:matched} towers have been checked against their published heights, with a median error of {acc:median_abs_error_pct}%. Now you know where the other numbers come from.", "The city is yours. Change the time of day, take any ferry, or fly anywhere."],
+        "steps": []
+      }
+    ]
+  }
 }
