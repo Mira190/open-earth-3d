@@ -217,7 +217,8 @@
   "marina": {
    "at": "heron-jetty",
    "len": 90,
-   "fingers": 2
+   "fingers": 2,
+   "boats": false
   },
   "pontoon": null,
   "parked": [

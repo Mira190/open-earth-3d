@@ -200,11 +200,12 @@ export async function init(ctx) {
   const cycleGear = () => { const g = S.gear; equip(g.scuba ? 'none' : g.snorkel ? 'scuba' : 'snorkel'); };
   // keeps the object itself (not a copy), so getters such as a moving x/north stay live
   function addInteractable(o) { if (o.radius === undefined) o.radius = 2.4; if (!o.key) o.key = 'E'; interactables.push(o); return o; }
+  const itPos = new V3();
   function nearest() {
     let best = null, bd = 1e9;
     for (const it of interactables) {
       if (it.enabled && !it.enabled(player)) continue;
-      const p = it.x !== undefined ? { x: it.x, z: -it.north } : it.object ? it.object.position : S.pos;
+      const p = it.x !== undefined ? { x: it.x, z: -it.north } : it.object ? it.object.getWorldPosition(itPos) : S.pos;
       const d = Math.hypot(p.x - S.pos.x, (p.z) - S.pos.z);
       if (d < it.radius && d < bd) { bd = d; best = it; }
     }
@@ -559,8 +560,17 @@ export async function init(ctx) {
   player.interactables = interactables;
 
   // ---- spawn: Whitehaven Beach, facing the sea
-  teleport(SPAWN.x, SPAWN.north, undefined, SPAWN.heading);
-  placeCrate(SPAWN.x - 7, SPAWN.north - 5);
+  // a site with no land (Hardy Reef) starts on its pontoon's deck, with the dive kit carried on the deck
+  const pont = sp.deck === 'pontoon' && ctx.boats && ctx.boats.pontoon;
+  if (pont) {
+    pont.root.updateMatrixWorld(true);
+    const w = new V3(-4, 0.6, 1.5).applyMatrix4(pont.root.matrixWorld);
+    teleport(w.x, -w.z, undefined, SPAWN.heading);
+    pont.root.add(gearCrate); gearCrate.position.set(-7.5, 0.55, 2.6); gearCrate.rotation.set(0, 0.3, 0);
+  } else {
+    teleport(SPAWN.x, SPAWN.north, undefined, SPAWN.heading);
+    placeCrate(SPAWN.x - 7, SPAWN.north - 5);
+  }
   for (const k of ['equip', 'snorkel', 'scuba', 'gear']) { const v = q.get(k); if (v) equip(k === 'equip' || k === 'gear' ? v : k); }
   if (q.get('x') !== null && q.get('y') !== null && q.get('player') === '1') teleport(Number(q.get('x')), Number(q.get('y')), q.get('z') !== null ? Number(q.get('z')) : undefined, q.get('yaw') !== null ? Number(q.get('yaw')) : undefined);
   if (q.get('view')) S.view = q.get('view');

@@ -163,7 +163,8 @@ export async function gametest(api, ctx) {
         run(1.4); await new Promise(r => setTimeout(r, 50)); run(0.2);
         must(G.dialogue() && G.dialogue().who.id === 'edge', 'edge of the model offers travel', G.dialogue() && G.dialogue().pages[0].t);
         key('Escape');
-        h.x = G.poi('whitehaven-helipad').x; h.z = -G.poi('whitehaven-helipad').north;
+        const pad = G.poi('whitehaven-helipad') || ctx.pois.find(p => p.kind === 'helipad' || p.kind === 'beach');   // other sites: any pad or beach
+        if (pad) { h.x = pad.x; h.z = -(pad.north ?? pad.y); }
         ctx.boats.leave(); run(0.3);
         const d = Math.hypot(player.position.x - h.x, player.position.z - h.z);
         must(ctx.controller === playerCtl && d < 16 && ['walk', 'wade', 'run'].includes(player.state), 'stepped off the helicopter onto the ground', `${d.toFixed(1)} m ${player.state}`);

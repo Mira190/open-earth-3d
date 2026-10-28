@@ -176,7 +176,8 @@
   "y": -95,
   "heading": 0,
   "water": true,
-  "note": "the site has no land: in the water (about 12 m deep on the 30 m model) off the south end of the Reefworld pontoon, facing north toward it"
+  "note": "the site has no land: on the deck of the Reefworld pontoon (the viewer puts the player there; x, y are the fallback in the water off its south end, about 12 m deep on the 30 m model)",
+  "deck": "pontoon"
  },
  "harbour": {
   "fleets": [

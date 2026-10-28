@@ -102,6 +102,19 @@
    "y": -7957
   },
   {
+   "id": "green-jetty-root",
+   "name": "Green Island jetty, shore end",
+   "kind": "marina",
+   "lonlat": [
+    145.97134,
+    -16.75892
+   ],
+   "src": "osm",
+   "note": "the island end of OSM way 144064542 (man_made=pier)",
+   "x": -4655,
+   "y": -7904
+  },
+  {
    "id": "green-jetty",
    "name": "Green Island jetty",
    "kind": "marina",
@@ -275,8 +288,8 @@
   ],
   "marina": {
    "at": "green-jetty",
-   "len": 250,
-   "fingers": 2
+   "fingers": 2,
+   "from": "green-jetty-root"
   },
   "pontoon": null,
   "parked": [

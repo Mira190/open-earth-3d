@@ -1,7 +1,7 @@
 // Navigation over the depth grid: a 120 m clearance grid (water deeper than `MIN` metres, eroded a little so hulls
 // keep off the reef), A* with a preference for deeper water, and line-of-sight smoothing. Positions are in the local
 // frame (x east, north), metres.
-const CELL = 120, MIN = 4.5;
+const MIN = 4.5;
 
 class Heap {
   constructor() { this.a = []; }
@@ -10,7 +10,8 @@ class Heap {
   get size() { return this.a.length; }
 }
 
-export function createNav(ctx) {
+// the cell is 120 m unless the site's harbour asks for a finer one (Hardy Reef: a 300 m channel needs 60 m)
+export function createNav(ctx, CELL = (ctx.S.harbour && ctx.S.harbour.nav_cell) || 120) {
   const t = ctx.d.scene.terrain, x0 = t.x0, y1 = t.y1, x1 = t.x0 + t.w * t.cell_m, y0 = t.y1 - t.h * t.cell_m;
   const nx = Math.ceil((x1 - x0) / CELL), ny = Math.ceil((y1 - y0) / CELL);
   // routes and anchorages are planned for the lowest water of the year (the tide's fitted range), so a route
@@ -22,7 +23,8 @@ export function createNav(ctx) {
   const cx = i => x0 + (i + 0.5) * CELL, cy = j => y1 - (j + 0.5) * CELL;
   for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
     let m = 1e9; const x = cx(i), n = cy(j);
-    for (const [ox, oy] of [[0, 0], [50, 0], [-50, 0], [0, 50], [0, -50]]) m = Math.min(m, depthAt(x + ox, n + oy));
+    const o = Math.round(CELL * 5 / 12);
+    for (const [ox, oy] of [[0, 0], [o, 0], [-o, 0], [0, o], [0, -o]]) m = Math.min(m, depthAt(x + ox, n + oy));
     clear[j * nx + i] = m;
   }
   const ok = (i, j) => i >= 0 && j >= 0 && i < nx && j < ny && clear[j * nx + i] > MIN;

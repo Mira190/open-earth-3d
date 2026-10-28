@@ -7,23 +7,10 @@
   "timezone": "Australia/Brisbane",
   "locale": "en-AU",
   "description": "Green Island, a coral cay 27 km off Cairns in the Great Barrier Reef Marine Park and Green Island National Park, with the reefs of the Cairns day trips around it: Arlington Reef, Upolu Cay and Michaelmas Cay. Rebuilt from 30 m survey bathymetry and Sentinel-2; the cays' ground is rebuilt from their mapped outlines.",
-  "bbox": [
-    145.89,
-    -16.84,
-    146.14,
-    -16.535
-  ],
+  "bbox": [145.89, -16.84, 146.14, -16.535],
   "area_note": "Green Island and its reef with the Arlington reef complex to the north (Arlington Reef, Upolu Cay, Vlasoff Reef, Michaelmas Reef and Cay): the offshore reefs of the Cairns day trips, 26.6 x 33.6 km. The Cairns waterfront, 27 km south-west, is left out: taking it in as well would need about 45 km, and its 20 km of turbid inshore water would bias the scene-wide water optics (one Kd for the scene) that the reefs are inverted with; the town would also be flat, with no buildings in this pipeline. Boats from Cairns enter through a gate in the south-west corner.",
-  "origin": [
-    146.015,
-    -16.6875
-  ],
-  "extent_m": [
-    -13300,
-    13300,
-    -16800,
-    16800
-  ],
+  "origin": [146.015, -16.6875],
+  "extent_m": [-13300, 13300, -16800, 16800],
   "overture_release": "2026-10-21.0",
   "vertical_datum": "m MSL",
   "year": 2026,
@@ -40,11 +27,7 @@
     "bare_earth": true,
     "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
     "cays": {
-      "islands": [
-        "Green Island",
-        "Michaelmas Cay",
-        "Upolu Cay"
-      ],
+      "islands": ["Green Island", "Michaelmas Cay", "Upolu Cay"],
       "hat_m": 1.56,
       "hat_src": "MSQ 2026 semidiurnal tidal planes, Green Island: HAT 3.1 m and MSL 1.54 m above LAT",
       "top_m": 3.0,
@@ -73,10 +56,7 @@
       "id": "green-island",
       "name": "Green Island",
       "kind": "island",
-      "lonlat": [
-        145.97376,
-        -16.75947
-      ],
+      "lonlat": [145.97376, -16.75947],
       "src": "osm",
       "osm": "way 104227384"
     },
@@ -84,22 +64,24 @@
       "id": "green-beach",
       "name": "Green Island, western beach",
       "kind": "beach",
-      "lonlat": [
-        145.9711,
-        -16.7594
-      ],
+      "lonlat": [145.9711, -16.7594],
       "src": "osm",
       "osm": "relation 9767809",
       "note": "a point on the island's mapped beach (unnamed in OSM) south of the jetty"
     },
     {
+      "id": "green-jetty-root",
+      "name": "Green Island jetty, shore end",
+      "kind": "marina",
+      "lonlat": [145.97134, -16.75892],
+      "src": "osm",
+      "note": "the island end of OSM way 144064542 (man_made=pier)"
+    },
+    {
       "id": "green-jetty",
       "name": "Green Island jetty",
       "kind": "marina",
-      "lonlat": [
-        145.96923,
-        -16.75804
-      ],
+      "lonlat": [145.96923, -16.75804],
       "src": "osm",
       "osm": "way 144064542, node 5877123720",
       "note": "the outer end of the jetty, where OSM maps the ferry terminal"
@@ -108,10 +90,7 @@
       "id": "green-helipad",
       "name": "Green Island helipad",
       "kind": "helipad",
-      "lonlat": [
-        145.97194,
-        -16.76032
-      ],
+      "lonlat": [145.97194, -16.76032],
       "src": "osm",
       "osm": "way 700778220"
     },
@@ -119,10 +98,7 @@
       "id": "green-lookout",
       "name": "Viewpoint, south-east shore",
       "kind": "lookout",
-      "lonlat": [
-        145.97632,
-        -16.76049
-      ],
+      "lonlat": [145.97632, -16.76049],
       "src": "osm",
       "osm": "node 6221607877"
     },
@@ -130,10 +106,7 @@
       "id": "green-reef",
       "name": "Green Island reef",
       "kind": "reef",
-      "lonlat": [
-        145.98058,
-        -16.76223
-      ],
+      "lonlat": [145.98058, -16.76223],
       "src": "osm",
       "osm": "relation 14074188",
       "note": "the cay's reef (unnamed in OSM)"
@@ -142,10 +115,7 @@
       "id": "green-snorkel",
       "name": "Snorkelling beside the jetty",
       "kind": "dive",
-      "xy": [
-        -4670,
-        -7825
-      ],
+      "xy": [-4670, -7825],
       "src": "nominal",
       "note": "nominal: on the reef flat north of the jetty root, 1.4 m deep on the model. QPWS: the day-use area runs along the shore on both sides of the jetty, with clear shallow water for snorkelling"
     },
@@ -153,10 +123,7 @@
       "id": "arlington-reef",
       "name": "Arlington Reef",
       "kind": "reef",
-      "lonlat": [
-        145.97448,
-        -16.69055
-      ],
+      "lonlat": [145.97448, -16.69055],
       "src": "osm",
       "osm": "way 219702961"
     },
@@ -164,10 +131,7 @@
       "id": "upolu-cay",
       "name": "Upolu Cay",
       "kind": "island",
-      "lonlat": [
-        145.93373,
-        -16.67413
-      ],
+      "lonlat": [145.93373, -16.67413],
       "src": "osm",
       "osm": "way 219702957"
     },
@@ -175,10 +139,7 @@
       "id": "vlasoff-reef",
       "name": "Vlasoff Reef",
       "kind": "reef",
-      "lonlat": [
-        145.99524,
-        -16.65369
-      ],
+      "lonlat": [145.99524, -16.65369],
       "src": "osm",
       "osm": "relation 9197774"
     },
@@ -186,10 +147,7 @@
       "id": "michaelmas-reef",
       "name": "Michaelmas Reef",
       "kind": "reef",
-      "lonlat": [
-        146.02209,
-        -16.58489
-      ],
+      "lonlat": [146.02209, -16.58489],
       "src": "osm",
       "osm": "relation 9197775"
     },
@@ -197,10 +155,7 @@
       "id": "michaelmas-cay",
       "name": "Michaelmas Cay",
       "kind": "island",
-      "lonlat": [
-        145.97399,
-        -16.60634
-      ],
+      "lonlat": [145.97399, -16.60634],
       "src": "osm",
       "osm": "way 9051875"
     },
@@ -208,30 +163,21 @@
       "id": "green-anchorage",
       "name": "Green Island, west side",
       "kind": "anchorage",
-      "xy": [
-        -5210,
-        -8020
-      ],
+      "xy": [-5210, -8020],
       "src": "nominal"
     },
     {
       "id": "michaelmas-anchorage",
       "name": "Michaelmas Cay, south-west side",
       "kind": "anchorage",
-      "xy": [
-        -4940,
-        8670
-      ],
+      "xy": [-4940, 8670],
       "src": "nominal"
     },
     {
       "id": "south-west-gate",
       "name": "Toward Cairns",
       "kind": "gate",
-      "xy": [
-        -12800,
-        -16300
-      ],
+      "xy": [-12800, -16300],
       "src": "nominal"
     }
   ],
@@ -241,44 +187,19 @@
     "not mapped": "no snorkel or dive sites are mapped in OSM or Overture around Green Island; the beach and the cay's reef are mapped without names, so they carry descriptive names here"
   },
   "harbour": {
-    "fleets": [
-      {
-        "at": "green-anchorage",
-        "n": 3,
-        "cat": 1
-      },
-      {
-        "at": "michaelmas-anchorage",
-        "n": 2
-      }
-    ],
-    "marina": {
-      "at": "green-jetty",
-      "len": 250,
-      "fingers": 2
-    },
+    "fleets": [{"at": "green-anchorage", "n": 3, "cat": 1}, {"at": "michaelmas-anchorage", "n": 2}],
+    "marina": {"at": "green-jetty", "fingers": 2, "from": "green-jetty-root"},
     "pontoon": null,
     "parked": [
-      {
-        "kind": "helicopter",
-        "name": "Scenic helicopter",
-        "at": "green-helipad"
-      },
-      {
-        "kind": "seaplane",
-        "name": "Seaplane",
-        "at": "green-jetty"
-      }
+      {"kind": "helicopter", "name": "Scenic helicopter", "at": "green-helipad"},
+      {"kind": "seaplane", "name": "Seaplane", "at": "green-jetty"}
     ],
     "moorings": 6,
     "traffic": [
       {
         "kind": "daycat",
         "name": "Green Island ferry",
-        "route": [
-          "south-west-gate",
-          "green-jetty"
-        ],
+        "route": ["south-west-gate", "green-jetty"],
         "loop": "pingpong",
         "dwell": 120,
         "vmax": 14
@@ -286,30 +207,21 @@
       {
         "kind": "daycat",
         "name": "Michaelmas Cay cruise",
-        "route": [
-          "south-west-gate",
-          "michaelmas-anchorage"
-        ],
+        "route": ["south-west-gate", "michaelmas-anchorage"],
         "loop": "pingpong",
         "dwell": 90,
         "vmax": 12
       },
       {
         "kind": "yacht",
-        "route": [
-          "south-west-gate",
-          "green-anchorage"
-        ],
+        "route": ["south-west-gate", "green-anchorage"],
         "loop": "pingpong",
         "dwell": 60,
         "vmax": 4.2
       },
       {
         "kind": "yacht",
-        "route": [
-          "green-anchorage",
-          "michaelmas-anchorage"
-        ],
+        "route": ["green-anchorage", "michaelmas-anchorage"],
         "loop": "pingpong",
         "dwell": 60,
         "vmax": 4.2
@@ -317,10 +229,7 @@
       {
         "kind": "tinnie",
         "name": "Dive tender",
-        "route": [
-          "green-jetty",
-          "michaelmas-anchorage"
-        ],
+        "route": ["green-jetty", "michaelmas-anchorage"],
         "loop": "pingpong",
         "dwell": 30,
         "vmax": 12
@@ -351,10 +260,7 @@
   },
   "tide": {
     "gauge": "Cairns Beacon C1",
-    "years": {
-      "2025": "42223dec-e335-4b0a-af5f-c19bacfd16d4",
-      "2026": "d2247aa1-3312-4ce3-b684-bfac26320c50"
-    },
+    "years": {"2025": "42223dec-e335-4b0a-af5f-c19bacfd16d4", "2026": "d2247aa1-3312-4ce3-b684-bfac26320c50"},
     "note": "Cairns Beacon C1 (16 49 S 145 49 E in MSQ's 2026 tide tables) stands in open water in Trinity Bay, 18 km west-south-west of Green Island. MSQ lists Green Island as a secondary place of the Cairns standard port (16 55 S 145 46 E, in Trinity Inlet) with high and low water 6 minutes earlier and a similar range (MHWS-MLWS 1.9 m against 1.85 m); the beacon's tide runs about 6 minutes ahead of the inlet gauge's (M2 phase 3 degrees earlier in the 2026 fit) with 4% less M2, so the open-water gauge is the closer match. Times and heights at Green Island still differ by a few minutes and centimetres."
   },
   "sources": {
