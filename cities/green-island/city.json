@@ -263,6 +263,21 @@
     "years": {"2025": "42223dec-e335-4b0a-af5f-c19bacfd16d4", "2026": "d2247aa1-3312-4ce3-b684-bfac26320c50"},
     "note": "Cairns Beacon C1 (16 49 S 145 49 E in MSQ's 2026 tide tables) stands in open water in Trinity Bay, 18 km west-south-west of Green Island. MSQ lists Green Island as a secondary place of the Cairns standard port (16 55 S 145 46 E, in Trinity Inlet) with high and low water 6 minutes earlier and a similar range (MHWS-MLWS 1.9 m against 1.85 m); the beacon's tide runs about 6 minutes ahead of the inlet gauge's (M2 phase 3 degrees earlier in the 2026 fit) with 4% less M2, so the open-water gauge is the closer match. Times and heights at Green Island still differ by a few minutes and centimetres."
   },
+  "life": {
+    "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Plants: Wikipedia, Green Island National Park: the island is covered in tropical vine forest; Wikipedia, Green Island (Queensland): dry coastal/beach plants and a vine thicket rain forest. No species list of the island's plants could be read (the QPWS management plan was not reachable), so they are drawn as 'vine-forest' and 'beach-scrub', without species. Turtles: green and hawksbill turtles are seen offshore (Wikipedia, Green Island National Park); sea turtles feed on the seagrass in the shallows (greatadventures.com.au/about-green-island): green turtles 2.5 and hawksbills 1.5 times as common as by default (multipliers not sourced). Spawning: an offshore reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+    "flora": {
+      "minAbove": 1.6,
+      "cell": 5,
+      "coastR": [12, 22],
+      "coastMaxAbove": 6,
+      "forest": {"vine-forest": 1},
+      "coast": {"beach-scrub": 1},
+      "grass": {"beach-scrub": 1},
+      "density": {"10": 0.95, "12": 0.5, "coast": 0.85}
+    },
+    "fauna": {"green-turtle": 2.5, "hawksbill": 1.5},
+    "spawning": {"lag": 1}
+  },
   "sources": {
     "green_island": "https://en.wikipedia.org/wiki/Green_Island_(Queensland) (coral cay 27 km offshore from Cairns; Great Barrier Reef Marine Park; Green Island National Park; formed about 6,000 years ago; named by Cook on 10 June 1770; the Gungganyji name Dabuukji; 45-minute catamaran ride from Cairns)",
     "snorkelling": "https://parks.qld.gov.au/parks/green-island/attractions/green-island-day-use-area (QPWS: snorkelling in the shallow water on both sides of the jetty; read through a search summary, the page refuses automated requests)",

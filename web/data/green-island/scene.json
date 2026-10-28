@@ -382,5 +382,38 @@
     "dir": -1
    }
   ]
+ },
+ "life": {
+  "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Plants: Wikipedia, Green Island National Park: the island is covered in tropical vine forest; Wikipedia, Green Island (Queensland): dry coastal/beach plants and a vine thicket rain forest. No species list of the island's plants could be read (the QPWS management plan was not reachable), so they are drawn as 'vine-forest' and 'beach-scrub', without species. Turtles: green and hawksbill turtles are seen offshore (Wikipedia, Green Island National Park); sea turtles feed on the seagrass in the shallows (greatadventures.com.au/about-green-island): green turtles 2.5 and hawksbills 1.5 times as common as by default (multipliers not sourced). Spawning: an offshore reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+  "flora": {
+   "minAbove": 1.6,
+   "cell": 5,
+   "coastR": [
+    12,
+    22
+   ],
+   "coastMaxAbove": 6,
+   "forest": {
+    "vine-forest": 1
+   },
+   "coast": {
+    "beach-scrub": 1
+   },
+   "grass": {
+    "beach-scrub": 1
+   },
+   "density": {
+    "10": 0.95,
+    "12": 0.5,
+    "coast": 0.85
+   }
+  },
+  "fauna": {
+   "green-turtle": 2.5,
+   "hawksbill": 1.5
+  },
+  "spawning": {
+   "lag": 1
+  }
  }
 }

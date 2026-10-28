@@ -45,8 +45,10 @@ export function createMats(env, torch) {
     const c = Fn(() => {
       // the plate is a lattice of radiating branchlets ending in upturned corallites: radial ribs, dots, a pale growing edge
       const ang = atan(pg.z, pg.x), rad = length(vec2(pg.x, pg.z));
-      const lines = smoothstep(0.2, 0.8, sin(ang.mul(rad.mul(260).add(40)).add(n3(pg, 9).mul(4))).mul(0.5).add(0.5));
-      const dots = smoothstep(0.12, 0.04, mx_worley_noise_float(vec3(pg.x, 0, pg.z).mul(70)));
+      // the fine lattice aliases into moire beyond a few metres: it fades into its mean with distance (per plate size)
+      const near = smoothstep(A.w.mul(9), A.w.mul(2.5), length(positionWorld.sub(cameraPosition)));
+      const lines = smoothstep(0.2, 0.8, sin(ang.mul(rad.mul(260).add(40)).add(n3(pg, 9).mul(4))).mul(0.5).add(0.5)).sub(0.5).mul(near).add(0.5);
+      const dots = smoothstep(0.12, 0.04, mx_worley_noise_float(vec3(pg.x, 0, pg.z).mul(70))).mul(near);
       let col = mix(C.rgb, D.rgb, smoothstep(0.75, 1.0, aux.x).max(dots.mul(0.5))).mul(lines.mul(0.35).add(0.7)).mul(n3(pg, 6).mul(0.2).add(1));
       col = col.mul(select(aux.w.greaterThan(0.5), float(0.55), float(1)));
       return col.mul(smoothstep(0.0, 0.2, rad).mul(0.25).add(0.75));
@@ -255,7 +257,8 @@ export function createMats(env, torch) {
   };
   const turtle = {
     green: turtleMat([0.3, 0.27, 0.15], [0.12, 0.1, 0.06], [0.38, 0.36, 0.3], 0.8),
-    hawksbill: turtleMat([0.55, 0.36, 0.14], [0.1, 0.06, 0.03], [0.4, 0.33, 0.25], 1.0)
+    hawksbill: turtleMat([0.55, 0.36, 0.14], [0.1, 0.06, 0.03], [0.4, 0.33, 0.25], 1.0),
+    loggerhead: turtleMat([0.42, 0.2, 0.08], [0.22, 0.1, 0.04], [0.52, 0.42, 0.24], 0.5)    // a reddish-brown shell, yellow-brown skin
   };
 
   // ---------------------------------------------------------------- island trees

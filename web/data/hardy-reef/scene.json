@@ -253,5 +253,15 @@
     "dir": -1
    }
   ]
+ },
+ "life": {
+  "note": "No land: no plants. Spawning: an outer reef of the central Great Barrier Reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+  "flora": {
+   "forest": {},
+   "coast": {}
+  },
+  "spawning": {
+   "lag": 1
+  }
  }
 }

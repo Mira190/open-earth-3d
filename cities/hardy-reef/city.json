@@ -181,6 +181,11 @@
     "years": {"2025": "0fe49c9d-aec7-4dad-9c64-48aeb41d0640", "2026": "e7a8d347-340c-483a-b783-02a03ef17436"},
     "note": "Bugatti Reef (MSQ standard port, 20 05 S 150 18 E) is on the outer reef about 120 km east-south-east of Reefworld; MSQ publishes no tide for Hardy Reef. It is used rather than Shute Harbour (73 km south-west, on the mainland) because Hardy, like Bugatti, is an outer reef in open water: MSQ's 2026 tidal planes give a spring range (MHWS - MLWS) of 2.08 m at Bugatti Reef, 2.77 m at Shute Harbour and 2.4 m at Hook Island, the nearest listed place (44 km south-west of Hardy, inside the island group). Times and heights at Hardy Reef differ from Bugatti's by amounts MSQ does not publish."
   },
+  "life": {
+    "note": "No land: no plants. Spawning: an outer reef of the central Great Barrier Reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+    "flora": {"forest": {}, "coast": {}},
+    "spawning": {"lag": 1}
+  },
   "sources": {
     "heart_reef": "https://www.tourismwhitsundays.com.au/blog/how-to-see-heart-reef (Tourism Whitsundays: within Hardy Reef; first spotted by a local pilot in 1975; no swimming or snorkelling at the formation; best seen from the air)",
     "reefworld": "https://travelweekly.com.au/cruise-whitsundays-reopens-reefworld-as-overnight-pontoon/ (Travel Weekly, 5 August 2026: Reefworld, Cruise Whitsundays' pontoon permanently moored at Hardy Reef on the outer Great Barrier Reef; underwater observatory and semi-submarine)",

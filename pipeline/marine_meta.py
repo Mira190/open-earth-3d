@@ -64,6 +64,23 @@ def meta(city):
     out = {"pois": pois, "spawn": spawn or None, "harbour": harbour, "start": cfg.get("start")}
     if cfg.get("region"):
         out["region"] = cfg["region"]
+    if cfg.get("life"):
+        out["life"] = life(city, cfg["life"])
+    return out
+
+
+def life(city, block):
+    """The site's life profile for web/reef/life.js (see web/reef/life/profile.js), passed through as it is,
+    except that a `clear` polygon given as `lonlat` (an airstrip to keep bare) is projected to `xy` and grown
+    by `pad` metres."""
+    from shapely.geometry import Polygon
+    out = json.loads(json.dumps(block))
+    for c in (out.get("flora") or {}).get("clear", []):
+        if "lonlat" in c:
+            poly = Polygon([city.fwd.transform(lon, lat) for lon, lat in c.pop("lonlat")])
+            if c.get("pad"):
+                poly = poly.buffer(c["pad"], join_style=2)
+            c["xy"] = [[round(float(x), 1), round(float(y), 1)] for x, y in poly.exterior.coords[:-1]]
     return out
 
 

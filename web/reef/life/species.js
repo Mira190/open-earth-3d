@@ -1,9 +1,11 @@
-// The species of the Whitsunday reef and islands as this module draws them. `depth` is the depth range
-// (m) the cited page gives where it gives one, otherwise where the module places the species; it is
-// negative for land plants (metres above the sea). Facts are quoted or closely paraphrased from the
-// cited page, read when this file was written (October 2026); anything that could not be checked was
-// left out. Numbers in the facts are the sources' own.
+// The species of the reef and the islands as this module draws them. `depth` is the depth range (m) the
+// cited page gives where it gives one, otherwise where the module places the species; it is negative for
+// land plants (metres above the sea). Facts are quoted or closely paraphrased from the cited page, read when
+// this file was written (October 2026); anything that could not be checked was left out. Numbers in the facts
+// are the sources' own. A fact with `site` is about that site only (life.js keeps the current site's).
 const W = t => 'https://en.wikipedia.org/wiki/' + t;
+const HERON = W('Heron_Island_(Queensland)'), LEI = W('Lady_Elliot_Island'), GINP = W('Green_Island_National_Park'),
+  NPAQ = 'https://npaq.org.au/lady-elliot-island-an-example-of-effective-habitat-restoration/', GA = 'https://greatadventures.com.au/about-green-island';
 
 export const SPECIES = [
   // ---------------------------------------------------------------- fish
@@ -56,17 +58,25 @@ export const SPECIES = [
   { id: 'manta', common: 'Reef manta ray', scientific: 'Mobula alfredi', group: 'ray', depth: [3, 40], facts: [
     { text: 'Typically 3 to 3.5 m across, up to about 5.5 m.', source: W('Reef_manta_ray') },
     { text: 'Described in 1868 by Gerard Krefft of the Australian Museum and named for Alfred, Duke of Edinburgh.', source: W('Reef_manta_ray') },
-    { text: 'Lives in shallower, more coastal waters than the giant oceanic manta; individuals can be recognised by their markings.', source: W('Reef_manta_ray') }] },
+    { text: 'Lives in shallower, more coastal waters than the giant oceanic manta; individuals can be recognised by their markings.', source: W('Reef_manta_ray') },
+    { text: 'Manta rays are abundant around Lady Elliot Island, attracted to the plankton there.', source: LEI, site: 'lady-elliot-island' }] },
   // ---------------------------------------------------------------- turtles
   { id: 'green-turtle', common: 'Green sea turtle', scientific: 'Chelonia mydas', group: 'turtle', depth: [0, 25], facts: [
     { text: 'Named for the green fat beneath its shell, not the shell itself, which is olive to black.', source: W('Green_sea_turtle') },
     { text: 'The only sea turtle that is herbivorous as an adult, feeding mostly on seagrasses.', source: W('Green_sea_turtle') },
     { text: 'Sea turtles spend almost all their lives submerged but must surface to breathe air.', source: W('Green_sea_turtle') },
-    { text: 'May live to 90 years in the wild.', source: W('Green_sea_turtle') }] },
+    { text: 'May live to 90 years in the wild.', source: W('Green_sea_turtle') },
+    { text: 'Heron Island is a major nesting site for green and loggerhead turtles; about 98% of the turtles that nest there are green turtles.', source: HERON, site: 'heron-island' },
+    { text: 'Every year between November and March green and loggerhead turtles come up the same beach on Lady Elliot Island to nest, up to nine times a season, 80 to 120 eggs a clutch.', source: LEI, site: 'lady-elliot-island' },
+    { text: 'Hatchlings leave their nests about eight to twelve weeks later, from January to April.', source: LEI, site: 'lady-elliot-island' },
+    { text: 'Green and hawksbill turtles are seen offshore of Green Island.', source: GINP, site: 'green-island' },
+    { text: 'Large sea turtles and dugong feed on the seagrass beds in the shallows around Green Island (the island\'s cruise operator).', source: GA, site: 'green-island' }] },
   { id: 'hawksbill', common: 'Hawksbill sea turtle', scientific: 'Eretmochelys imbricata', group: 'turtle', depth: [0, 25], facts: [
     { text: 'Recognised by its sharp, curving beak and the saw-like edges of its shell.', source: W('Hawksbill_sea_turtle') },
     { text: 'The only reptile that feeds mainly on sponges; it lives mostly in shallow lagoons and on coral reefs.', source: W('Hawksbill_sea_turtle') },
-    { text: 'Critically endangered; its shell was the main source of tortoiseshell.', source: W('Hawksbill_sea_turtle') }] },
+    { text: 'Critically endangered; its shell was the main source of tortoiseshell.', source: W('Hawksbill_sea_turtle') },
+    { text: 'Hawksbills are seen on Heron Reef but do not breed on the island.', source: HERON, site: 'heron-island' },
+    { text: 'Green and hawksbill turtles are seen offshore of Green Island.', source: GINP, site: 'green-island' }] },
   // ---------------------------------------------------------------- reef builders and other sessile life
   { id: 'giant-clam', common: 'Giant clam', scientific: 'Tridacna gigas', group: 'clam', depth: [0.5, 20], facts: [
     { text: 'The largest living bivalve: up to 120 cm across and more than 200 kg, living over 100 years.', source: W('Giant_clam') },
@@ -111,12 +121,50 @@ export const SPECIES = [
   { id: 'pandanus', common: 'Pandanus (screwpine)', scientific: 'Pandanus tectorius', group: 'tree', depth: [-30, -2], facts: [
     { text: 'Native to eastern Australia from Port Macquarie to northern Queensland; it grows in coastal lowlands near the edge of the ocean.', source: W('Pandanus_tectorius') },
     { text: 'Held up by prop roots; its leaves, 90 to 150 cm long, are spirally arranged at the ends of the branches.', source: W('Pandanus_tectorius') },
-    { text: 'Australian Aboriginal peoples ate its seeds and fruit, an important food.', source: W('Pandanus_tectorius') }] },
+    { text: 'Australian Aboriginal peoples ate its seeds and fruit, an important food.', source: W('Pandanus_tectorius') },
+    { text: 'Pandanus are the main trees of the open shrubland north of Heron Island\'s Pisonia forest.', source: HERON, site: 'heron-island' },
+    { text: 'Lady Elliot Island\'s restored coastal zone has casuarina, pandanus and octopus bush.', source: NPAQ, site: 'lady-elliot-island' }] },
   { id: 'casuarina', common: 'Coastal she-oak', scientific: 'Casuarina equisetifolia', group: 'tree', depth: [-30, -2], facts: [
     { text: 'Grows near the sea, behind beaches and near estuaries, sometimes on rocky headlands.', source: W('Casuarina_equisetifolia') },
     { text: 'What look like needles are drooping branchlets; the true leaves are tiny scales in whorls of 7 or 8.', source: W('Casuarina_equisetifolia') },
-    { text: 'Typically 6 to 12 m tall, sometimes 35 m.', source: W('Casuarina_equisetifolia') }] },
+    { text: 'Typically 6 to 12 m tall, sometimes 35 m.', source: W('Casuarina_equisetifolia') },
+    { text: 'On Heron Island the she-oak (subspecies incana) grows with Scaevola and octopus bush at the eastern end and along the dune ridges.', source: HERON, site: 'heron-island' },
+    { text: 'Lady Elliot Island\'s restored coastal zone has casuarina, pandanus and octopus bush.', source: NPAQ, site: 'lady-elliot-island' }] },
   { id: 'mangrove', common: 'Spotted (stilt-root) mangrove', scientific: 'Rhizophora stylosa', group: 'tree', depth: [-2, 1.2], facts: [
     { text: 'A small to medium evergreen tree up to 15 m tall, native to Queensland and New South Wales among many Pacific coasts.', source: W('Rhizophora_stylosa') },
-    { text: 'Grows on sandy beaches and coral terraces on seashores.', source: W('Rhizophora_stylosa') }] }
+    { text: 'Grows on sandy beaches and coral terraces on seashores.', source: W('Rhizophora_stylosa') }] },
+  // ---------------------------------------------------------------- coral cays
+  { id: 'loggerhead', common: 'Loggerhead sea turtle', scientific: 'Caretta caretta', group: 'turtle', depth: [0, 25], facts: [
+    { text: 'Named for its large head; it crushes its prey with large, powerful jaws.', source: W('Loggerhead_sea_turtle') },
+    { text: 'Adults average about 90 cm in shell length; the shell is typically reddish brown.', source: W('Loggerhead_sea_turtle') },
+    { text: 'Eastern Australia and Japan are its major nesting areas, and the Great Barrier Reef an important one.', source: W('Loggerhead_sea_turtle') },
+    { text: 'Rated vulnerable by the IUCN.', source: W('Loggerhead_sea_turtle') },
+    { text: 'About 2% of the turtles that nest on Heron Island are loggerheads (the Indo-Pacific subspecies).', source: HERON, site: 'heron-island' },
+    { text: 'Green and loggerhead turtles nest on Lady Elliot Island every year between November and March.', source: LEI, site: 'lady-elliot-island' }] },
+  { id: 'pisonia', common: 'Pisonia (birdlime tree)', scientific: 'Pisonia grandis', group: 'tree', depth: [-4, -1.4], facts: [
+    { text: 'Grows in dense stands up to 20 m tall on the coral cays of the Indian and Pacific Oceans.', source: W('Pisonia_grandis') },
+    { text: 'Its sticky seeds spread on birds\' feathers, and Pisonia forests are a common nesting site for seabirds.', source: W('Pisonia_grandis') },
+    { text: 'The wood is weak and soft and decays fast when a tree falls.', source: W('Pisonia_grandis') },
+    { text: 'Rich forests of Pisonia dominate the centre and south of Heron Island; most trees are 6-8 m high, some 10-11 m.', source: HERON, site: 'heron-island' },
+    { text: 'Guano mining (1863-1873) removed virtually every tree on Lady Elliot Island; revegetation began in 1966.', source: LEI, site: 'lady-elliot-island' },
+    { text: 'After five years of planting Pisonia covers 30% of Lady Elliot Island (2023).', source: NPAQ, site: 'lady-elliot-island' }] },
+  { id: 'octopus-bush', common: 'Octopus bush (tree heliotrope)', scientific: 'Heliotropium arboreum (syn. H. foertherianum, Argusia argentea)', group: 'tree', depth: [-4, -1.4], facts: [
+    { text: 'A shrub or small tree of the shoreline, about 3.6 m high and 5 m across.', source: W('Heliotropium_arboreum') },
+    { text: 'Its leaves are light green, silvery in sheen and silky in texture.', source: W('Heliotropium_arboreum') },
+    { text: 'Used on many Pacific islands as a traditional medicine for ciguatera fish poisoning; its roots help hold the shore.', source: W('Heliotropium_arboreum') },
+    { text: 'With sea cabbage (Scaevola) it forms the main bush cover of the open shrubland north of Heron Island\'s forest.', source: HERON, site: 'heron-island' },
+    { text: 'Lady Elliot Island\'s restored coastal zone has casuarina, pandanus and octopus bush.', source: NPAQ, site: 'lady-elliot-island' }] },
+  { id: 'scaevola', common: 'Beach cabbage (sea lettuce)', scientific: 'Scaevola taccada', group: 'tree', depth: [-4, -1.4], facts: [
+    { text: 'A shrub of the shoreline, exposed to salt spray, with slightly succulent, yellowish-green leaves.', source: W('Scaevola_taccada') },
+    { text: 'Its white flowers open on one side only, which gives it the name fanflower or half flower.', source: W('Scaevola_taccada') },
+    { text: 'A pioneer of new sandbanks in the tropics; its fruit floats in seawater.', source: W('Scaevola_taccada') },
+    { text: 'It gives female green turtles a shady place when they come ashore to lay.', source: W('Scaevola_taccada') },
+    { text: 'With octopus bush it forms the main bush cover of the open shrubland north of Heron Island\'s forest.', source: HERON, site: 'heron-island' }] },
+  { id: 'vine-forest', common: 'Tropical vine forest (many species)', scientific: 'mixed species', group: 'tree', depth: [-4, -1.6], facts: [
+    { text: 'Green Island is covered in tropical vine forest, which supports a diversity of birds and insects.', source: GINP, site: 'green-island' },
+    { text: 'Green Island became a national park in 1937; the park covers its 12 ha.', source: GINP, site: 'green-island' },
+    { text: 'A few steps inland from the beach the vegetation changes abruptly to dense, shady vine-thicket rainforest; the island has over 120 species of native plants (the island\'s cruise operator).', source: GA, site: 'green-island' }] },
+  { id: 'beach-scrub', common: 'Beach scrub (dry coastal plants)', scientific: 'mixed species', group: 'tree', depth: [-3, -1.6], facts: [
+    { text: 'The island supports dry coastal and beach plants as well as vine thicket rainforest; all of it relies on rainwater and a small freshwater lens.', source: W('Green_Island_(Queensland)'), site: 'green-island' },
+    { text: 'The coastline is ringed by coastal vegetation that can survive drier conditions (the island\'s cruise operator).', source: GA, site: 'green-island' }] }
 ];
