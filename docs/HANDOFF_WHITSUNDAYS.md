@@ -52,7 +52,7 @@ cd web && python3 -m http.server 8800
 `city.json` blocks for a marine site: `pois` (`lonlat` or nominal `xy`, `kind`, `src`), `poi_sources`, `spawn`
 (`poi` or `x`/`y`, `heading`, `deck: "pontoon"`), `harbour` (`fleets`, `marina` {`at`, `from`, `fingers`, `boats`},
 `pontoon` {`at`, `exact`, `heading`, `name`}, `parked`, `moorings`, `traffic` routes by POI id, `scenic`, `nav_cell`),
-`tide` {`gauge`, `years`: resource ids, `note`}.
+`tide` {`gauge`, `years`: resource ids, `note`}, `life` (flora, fauna, nesting, spawning; see `web/reef/life/profile.js`).
 
 ## Viewer (`web/reef/`)
 | File | Role |
@@ -67,7 +67,7 @@ cd web && python3 -m http.server 8800
 | `tide.js` | the tide from `tide.json`: `at(ms)`, `turns(ms, n)`, `rising(ms)` |
 | `boats.js` + `boats/` | vessels, wakes, AI traffic over the open water (A*, 120 m cells or `nav_cell`, routes planned for the lowest tide), drivable boats and aircraft, `deckAt` for walkable decks, far LOD |
 | `player.js` `people.js` `looks.js` `gear.js` `dive.js` `hud.js` `fx.js` | the player (walk, wade, swim, snorkel, free-dive, scuba; decks; climb out), Quaternius people, HUD |
-| `life.js` + `life/` | corals, seagrass, fish, sharks, rays, turtles, the manta, island trees, plankton, coral spawning; `ctx.life` API (header of life.js) |
+| `life.js` + `life/` | corals, seagrass, fish, sharks, rays, turtles (and nesting), the manta, island plants, plankton, coral spawning; per-site profiles (`life/profile.js`, `city.json` `life`); `ctx.life` API (header of life.js) |
 | `game.js` + `game/` | people, dialogue, quests, journal (J), map and travel (T), boarding; one content file per site; every line computed or cited ([docs/GAME_REEF.md](GAME_REEF.md)) |
 
 ## What is real and what is still a hack
@@ -88,12 +88,14 @@ Weak spots, in order of value:
 6. **Night**: the adaptation curve and the torch strength are judged by eye; coral spawning colours are physically
    absorbed by the water beyond a metre or two.
 7. **Life**: shapes, colours, densities and behaviours are approximations (life.js header lists what is sourced).
-   Island vegetation is being made per site (coral cays have Pisonia forest, not hoop pine).
+   Each site has a `life` profile in `city.json` (`web/reef/life/profile.js` documents it): the cays have Pisonia forest
+   and octopus bush, Lady Elliot's mantas are resident, Heron and Lady Elliot have nesting turtles, offshore reefs spawn a
+   lunar month after the inshore ones. Green Island's plants are generic 'vine forest' and 'beach scrub' (the QPWS species
+   list could not be read); Heron's nesting months and several multipliers are not sourced.
 8. **Performance**: about 230 objects in view at the start view after the vessel and herd LOD; the terrain chunks
    near the camera and the vessels are the next targets; mobile is untested.
 
 ## Open items
-- Per-site flora and fauna for the cays (in progress at handoff: a `life` block in `city.json` read by life.js).
 - QPWS pages (Ngaro Sea Trail, Nara Inlet cultural site) are behind Cloudflare; read them in a normal browser before
   adding Ngaro content beyond the mapped lookout names. **Do not invent Ngaro history, quotes or ceremony.**
 - Fix the Chalkies anchorage nominal spot (boats find depth 570 m away); OSM beach markers at South Whitehaven, Chance Bay
