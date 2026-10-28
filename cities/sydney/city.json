@@ -41,6 +41,7 @@
     "colour": "#0e2b31", "shallow_colour": "#2d6862", "clarity_m": 3.5,
     "colour_note": "Harbour water is green-brown with a few metres of visibility; the colours were picked from the NSW aerial photo."
   },
+  "trees": {"mix": {"plane": 0.3, "fig": 0.18, "gum": 0.2, "jacaranda": 0.14, "palm": 0.13, "elm": 0.05}, "note": "Species are not mapped; the mix is a guess at the city's street and park trees: plane trees on the streets, Moreton Bay figs and palms in the parks and the Domain, jacarandas, eucalypts."},
   "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
   "labels": {
     "Sydney Tower": "Sydney Tower",

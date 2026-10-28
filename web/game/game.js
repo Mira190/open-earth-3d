@@ -45,17 +45,21 @@ window.OpenEarthGame = async function game(cityId) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   const camera = new THREE.PerspectiveCamera(55, 1, 0.3, 40000);
+  let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    if (atmos) atmos.setSize(w, h);
   }
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
   resize();
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
   const world = Wd.world, U = Wd.U;
+  atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {} }) : null;
+  if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
   U.uTime = { value: 0 };
   // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
@@ -306,15 +310,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
 
   // ------------------------------------------------------------ clock: 30 times real time by default, as in GTA
   const clock = { y: CITY.year || new Date().getFullYear(), m: 3, d: 21, min: 600, scale: 30, frozen: false };
-  let sun = null;
+  let sun = null, clockUtc = Date.now();
   function setClock(y, m, d, min) {
     const t = new Date(Date.UTC(y, m - 1, d) + Math.floor(min / 1440) * 864e5);
     Object.assign(clock, { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), min: ((min % 1440) + 1440) % 1440 });
     applySun();
   }
   function applySun() {
-    sun = S.position(S.localToUtc(clock.y, clock.m, clock.d, clock.min));
+    clockUtc = S.localToUtc(clock.y, clock.m, clock.d, clock.min);
+    sun = S.position(clockUtc);
     Wd.setSun(sun);
+    Wd.setSeason(clock.m, clock.d);
     const night = U.uNight.value;
     headMat.emissiveIntensity = 1.6 * night;
     glowMat.opacity = 0.85 * night;
@@ -876,6 +882,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(dt, titleOn);
     // world clocks and fades
     Wd.tick(now, camera);
+    if (atmos) atmos.update(clockUtc, now / 1000, U);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     dlg.tick(dt);
@@ -910,7 +917,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // a low frame rate is worth a hint (slowroads does the same)
     fpsAcc[0] += dt; fpsAcc[1]++;
     if (fpsAcc[0] > 6) { if (!fpsWarned && fpsAcc[1] / fpsAcc[0] < 22 && !titleOn) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); } fpsAcc = [0, 0]; }
-    renderer.render(world, camera);
+    if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     updateLabels();
     requestAnimationFrame(frame);
   }
@@ -1125,8 +1132,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { advance, atmos, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
 };

@@ -67,6 +67,7 @@
     "clarity_m": 0.6,
     "colour_note": "The Yarra is turbid with suspended clay, brown-green with well under a metre of visibility."
   },
+  "trees": {"mix": {"elm": 0.34, "plane": 0.3, "gum": 0.2, "palm": 0.06, "fig": 0.05, "jacaranda": 0.05}, "note": "Species are not mapped; the mix is a guess: the elm and plane avenues of the CBD and parks, eucalypts along the river."},
   "storey": {
     "res": [
       3.0,
