@@ -256,7 +256,7 @@ ${PAT_GLSL}`)
     root.add(model);
     const mixer = new THREE.AnimationMixer(model), act = {};
     for (const c of lib.clips[T.pack]) act[c.name] = mixer.clipAction(c);
-    let cur = null, cycles = 0, lastT = 0, waveUntil = -1, lookW = 0, talked = false;
+    let cur = null, cycles = 0, lastT = 0, waveUntil = -Infinity, lookW = 0, talked = false;
     const rig = { root, model, mixer, look, phase: 0, lookTarget: null, character: look.character };
     // reference pose for accessories: the first frame of Idle, in the model's own space
     const bones = {}, ref = {};
@@ -345,7 +345,8 @@ ${PAT_GLSL}`)
       model.position.y = drop / (root.parent ? root.parent.getWorldScale(sb).y : 1);
     }
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
-    // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock
+    // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
+    // root is the seat's surface: thighs forward, shins down, hips on the cushion
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
       const s = look.scale || 1;
       model.position.y = 0;

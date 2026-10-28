@@ -242,6 +242,13 @@
       "tgt": [-250, -500, 80],
       "date": [2026, 3, 21],
       "time": "20:15"
+    },
+    {
+      "name": "harbour",
+      "cam": [-105, 395, 14],
+      "tgt": [-25, 600, 16],
+      "date": [2026, 3, 21],
+      "time": "17:20"
     }
   ],
   "check_points": {
@@ -294,6 +301,11 @@
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Routes are generated through open water, and the stops follow the inner-harbour services, but the timetable is not real. Ferries run at 1.5 times their real speed (9 m/s) and wait 20 s at each wharf. The vessel names are those of the First Fleet class ferries. At a wharf you can skip the wait.",
     "helipads": [{"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}],
+    "vehicles": {
+      "note": "The helicopter and ferries are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). Pick a livery from vehicles.json or give your own colours; the registration defaults to the country's.",
+      "helicopter": {"livery": "survey"},
+      "ferry": {"livery": "harbour"}
+    },
     "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
     "npcs": [
       {

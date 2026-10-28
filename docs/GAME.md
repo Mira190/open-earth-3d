@@ -213,16 +213,14 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
   - **Headlights:** come on after sunset.
-- **Vehicles** (`web/game/vehicles.js`), built from `web/game/kit.js`. The
-  kit has lofted hulls, lathes, slabs, fins, rods and tubes at real
-  dimensions, merged into one mesh per material. It is adapted from the vessel
-  kit of an earlier reef scene, with classic materials so the city's lights and
-  shadows fall on it.
-  - **Helicopter:** a light scenic type. It has a bubble cabin with its glass,
-    an engine deck, a tail boom with a fin and stabiliser, skids, and a rotor
-    that blurs into a disc at speed. It flies the assisted model, with
-    collisions against buildings and landmark solids. It slides along a wall
-    it meets at a glancing angle and bounces off a hard hit.
+- **Vehicles** (`web/game/vehicles.js`): one helicopter and one ferry that
+  every city shares, modelled in Blender. They are described in
+  [the vehicles](#the-vehicles) below. If their files cannot load, models built
+  from `web/game/kit.js` stand in: lofted hulls, lathes, slabs, fins, rods and
+  tubes at real dimensions, the ferry in the city's `ferry_style`.
+  - **Helicopter:** the assisted model, with collisions against buildings and
+    landmark solids. It slides along a wall it meets at a glancing angle and
+    bounces off a hard hit.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The size and livery come from the city's `ferry_style`: Sydney Ferries'
     green and cream with a gold band, and an invented navy shuttle on the Yarra.
@@ -261,6 +259,72 @@ pipeline writes. The only city-specific code is landmark geometry in
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+
+## The vehicles
+
+| The helicopter (Cycles render) | The ferry (Cycles render) |
+|---|---|
+| ![](images/vehicles/helicopter.jpg) | ![](images/vehicles/ferry.jpg) |
+| **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
+| ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
+
+Both are modelled in Blender from code by `blender/build_vehicles.py`, with no
+hand modelling and no stock assets. The script bakes their ambient occlusion in
+Cycles and writes `web/assets/vehicles/`. Every city's game loads the same two
+files, and `blender/build_scene.py` places them in the city's Cycles renders where
+the game puts them.
+
+- **Helicopter:** a light twin-engine helicopter in the H135 class.
+  - 10.7 m long, with a 10.2 m four-blade main rotor and a ducted tail fan.
+  - The fuselage is a parametric surface. Its windows are cut along the
+    surface, with rubber gaskets, and a lined cabin sits behind them. Inside are
+    seats, an instrument panel with screens and the controls. You can see
+    yourself at the controls.
+  - Details: skids with steps, twin exhausts, a camera turret, a searchlight,
+    wire-strike cutters, antennas and lights.
+  - About 100,000 triangles up close and 12,000 beyond 90 m.
+- **Ferry:** a double-ended harbour ferry, 34 m long with a 9.6 m beam.
+  - A glazed main cabin with rows of seats, an open upper deck with benches,
+    railings, lifebuoys and life rafts, a wheelhouse and a radar mast.
+  - About 35,000 triangles up close and 6,000 beyond 260 m.
+- **What the game adds:**
+  - **Paint:** the livery is repainted from the city's config. The paint has a
+    clear coat that reflects the real sky.
+  - **Names:** the registration on the tail boom (by country, so `VH-` in
+    Australia and `JA` in Japan) and each vessel's name on its hull are drawn
+    at load time.
+  - **Rotor:** the blades droop at rest, spin up with the engine, cone as they
+    lift and blur into a disc. The disc tilts with the controls.
+  - **Lights:** position lights, a flashing beacon and strobes, and after dark a
+    searchlight that lights the ground. The ferries' sidelights swap ends when
+    they reverse, so red is always to port. Their cabins light up after dark.
+  - **Water:** the helicopter's downwash throws a ring of spray off the water
+    (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
+    ship makes in deep water, with churned water down the middle and a bow
+    wave at the leading end.
+
+A city chooses its look in `game.vehicles` in `city.json`. Every key is
+optional, and a city with no config gets the defaults:
+
+```json
+"vehicles": {
+  "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
+  "ferry": {"livery": "harbour"}
+}
+```
+
+- **Liveries:** `vehicles.json` lists them: `survey`, `rescue`, `news` and
+  `executive` for the helicopter, and `harbour`, `bay`, `river` and `commuter`
+  for the ferry. A city can also give its own colours, such as
+  `{"livery": {"hull": "#f08c1e", "band": "#1f2328"}}`.
+- **Registration:** defaults to the country's nationality mark.
+
+To change the models for every city, edit `blender/build_vehicles.py` and run:
+
+```bash
+pip install bpy==5.2.3
+python blender/build_vehicles.py            # about 5 minutes; --render also renders the two images above
+```
 
 ## Per-city flavour
 
@@ -332,6 +396,9 @@ and the menus are checked in a phone-sized browser.
 - **Vessels on the water:** a ferry rides the mean water level and does not
   pitch or roll on the waves. Its wake is a fan of foam drawn on the water, not
   waves of its own.
+- **One ferry for every city:** the ferry is a Sydney-style double-ended vessel
+  in each city's livery. A city whose boats look different, such as river buses
+  or catamarans, still gets this hull.
 - **Interiors:** buildings have no interiors you can enter; the rooms seen
   through their windows are drawn by the shader. You walk on roofs as the
   surface model has them, so a pitched roof is a slope in steps of one cell.

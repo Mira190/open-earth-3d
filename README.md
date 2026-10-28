@@ -46,7 +46,17 @@ The model is also a game.
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. Open **Play** on the globe, or go to
-`#play-sydney` or `#play-melbourne`. [docs/GAME.md](docs/GAME.md) covers:
+`#play-sydney` or `#play-melbourne`, and the Japanese cities' games at `#play-osaka`, `#play-kyoto` and `#play-tokyo`.
+
+The helicopter and the ferries are modelled in Blender from code, with ambient
+occlusion baked in Cycles. Every city's game shares them, in its own livery (the kit-built models in `web/game/kit.js` stand in if they cannot load), and
+the Blender twin of each city places them where the game does.
+
+| The helicopter | The ferry | In the Blender twin of Sydney |
+|---|---|---|
+| ![](docs/images/vehicles/helicopter.jpg) | ![](docs/images/vehicles/ferry.jpg) | ![](docs/images/sydney/harbour.jpg) |
+
+[docs/GAME.md](docs/GAME.md) covers:
 - the controls;
 - what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
   Discovery Tour;
@@ -197,6 +207,7 @@ To render in Blender (Python 3.13):
 ```bash
 pip install bpy==5.2.3
 python blender/build_scene.py --city sydney --samples 48   # views from city.json -> docs/images/sydney
+python blender/build_vehicles.py --render                 # the shared helicopter and ferry -> web/assets/vehicles
 ```
 
 ## Add a city
@@ -235,9 +246,9 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
-| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores), `buildings.js` (walls, roofs, facades and rooftops), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
+| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores), `buildings.js` (walls, roofs, facades and rooftops), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people and vehicles every city shares in `web/assets/` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
-| `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings) |
+| `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter and ferry) |
 | `tools/` | `city_shot.js`: screenshots of the model viewer from listed views, for checking changes |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
@@ -251,6 +262,8 @@ Data tab. The shared sources are:
   Buildings (ODbL). A derived database must stay under ODbL.
 - **The globe's base map:** Natural Earth (public domain).
 - **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono).
+- **Vehicles in the game:** modelled from code in this repository
+  (`blender/build_vehicles.py` and `web/game/kit.js`), with no third-party assets.
 - **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
   modules from a CDN.
 - **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular

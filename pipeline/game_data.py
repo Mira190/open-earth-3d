@@ -363,6 +363,8 @@ def main():
         "npcs": npcs,
         "quests": gcfg.get("quests", []),
         "start": dict(gcfg.get("start", {}), at=[round(sx, 1), round(sy, 1)]),
+        # liveries, registration and logo for the shared vehicles (web/assets/vehicles); empty means the defaults
+        "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
     out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks") if k in gcfg}
