@@ -97,6 +97,7 @@ export async function init(ctx) {
     if ((spawnT -= dt) < 0) { spawnT = 5; Object.assign(spawning, spawnNow()); }
     drift.update(cam, spawning.active && under, dt);
     first = false;
+    for (const m of herds) m.visible = m.geometry.instanceCount > 0;     // an empty herd costs no draw call
   }
 
   // test hook: ?lifecam=<species id>[,dist m][,elevation deg][,azimuth deg from its side] puts the fly camera by the nearest one
@@ -148,6 +149,7 @@ export async function init(ctx) {
     return { species: byId(best.sp), id: best.id, position: new THREE.Vector3(best.x, best.y, best.z), distance: Math.sqrt(bd) };
   }
 
+  const herds = []; root.traverse(o => { if (o.isMesh && o.geometry.instanceCount !== undefined) herds.push(o); });
   const life = { update, species: SPECIES, byId, nearestCreature, counts, stats, root, reef, fauna, flora, drift, ground, animals: fauna.animals,
     spawning, spawnState, nowMs };
   ctx.life = life; window.__life = life;

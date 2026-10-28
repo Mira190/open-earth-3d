@@ -94,6 +94,12 @@ export async function init(ctx) {
     const v = new Vessel(api, id, name, desc, o);
     scene.add(v.root);
     vessels.push(v);
+    // level of detail: far off, a vessel draws only its three largest parts (hull, cabin, sails); props, rotors and
+    // lamps keep their own switches
+    const own = new Set(); for (const g of [desc.prop, desc.tail]) if (g) g.traverse(o => own.add(o));
+    const parts = []; v.root.traverse(o => { if (o.isMesh && !own.has(o)) { if (!o.geometry.boundingSphere) o.geometry.computeBoundingSphere(); parts.push(o); } });
+    parts.sort((a, b) => b.geometry.boundingSphere.radius - a.geometry.boundingSphere.radius);
+    v.detail = parts.slice(3); v.far = false;
     return v;
   }
 
@@ -372,6 +378,8 @@ export async function init(ctx) {
     for (const v of vessels) {
       const dist = Math.hypot(v.x - cam.x, v.z - cam.z);
       const near = dist < 1600 || v.mode === 'player';
+      const far = dist > 650 && v.mode !== 'player';
+      if (far !== v.far) { v.far = far; for (const m of v.detail) m.visible = !far; }
       if (v.lampsOn !== lampsOn) { v.lampsOn = lampsOn; for (const l of v.desc.lamps || []) l.visible = lampsOn; }
       switch (v.mode) {
         case 'ai': v.aiStep(dt, wnd); break;
