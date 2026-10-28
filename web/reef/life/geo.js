@@ -377,7 +377,7 @@ export function eucalypt(lod) {
   // a clear bole for about half the height, a few limbs, and an open, irregular crown of foliage clumps
   const b = new Build(), r = rng(hash(201, lod)), H = 20, seg = lod === 2 ? 6 : 4;
   b.add(new THREE.CylinderGeometry(0.2, 0.38, 10.5, seg, 1, true), at(0, 5.25, 0), trunkAux(H));
-  const limbs = lod === 2 ? 4 : 3, n = lod === 2 ? 11 : 4;
+  const limbs = lod === 2 ? 4 : 3, n = lod === 2 ? 11 : 3;
   const ends = [];
   for (let k = 0; k < limbs; k++) {
     const t = (k / limbs) * TAU + r() * 0.8, rr = 2 + r() * 2.2, e = new V(Math.cos(t) * rr, 14 + r() * 3, Math.sin(t) * rr);

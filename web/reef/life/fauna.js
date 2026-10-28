@@ -215,12 +215,14 @@ export function createFauna(ctx, ground, mats, reef) {
     const s = g.site, hide = night > 0.5 ? 0.25 : 1;
     // fish over a coral head drop into it when a diver comes close quickly; the anemone's clowns stay
     let scare = 0;
-    for (const a of g.members) scare = Math.max(scare, fear(a, g.sp === 'clownfish' ? 1.2 : 3.5));
-    const spread = Math.min(hide, 1 - scare * 0.75);
+    for (const a of g.members) scare = Math.max(scare, fear(a, g.sp === 'clownfish' ? 1.2 : 4));
+    // once startled they stay down in the branches for a while before drifting back up
+    g.scare = Math.max((g.scare || 0) * Math.exp(-dt / 5), Math.min(1, scare * 2));
+    const spread = Math.min(hide, 1 - g.scare * 0.85);
     for (const a of g.members) {
-      const w = T * (g.kind === 'hover' ? 0.15 : 0.6) + a.ph;
-      const tx = s.x + a.ox * spread + Math.sin(w * 1.3) * g.radius * 0.25, tz = s.z + a.oz * spread + Math.cos(w * 1.1) * g.radius * 0.25;
-      const ty = g.top + a.oy * spread + Math.sin(w * 0.7) * 0.06;
+      const w = T * (g.kind === 'hover' ? 0.15 : 0.6) + a.ph, wob = g.radius * 0.25 * spread;
+      const tx = s.x + a.ox * spread + Math.sin(w * 1.3) * wob, tz = s.z + a.oz * spread + Math.cos(w * 1.1) * wob;
+      const ty = g.top - (1 - spread) * 0.15 + a.oy * spread + Math.sin(w * 0.7) * 0.06;
       const k = 1 - Math.exp(-dt * (2 + scare * 6));
       const nx = a.x + (tx - a.x) * k, ny = a.y + (ty - a.y) * k, nz = a.z + (tz - a.z) * k;
       a.vx = (nx - a.x) / dt; a.vy = (ny - a.y) / dt; a.vz = (nz - a.z) / dt; a.x = nx; a.y = ny; a.z = nz;

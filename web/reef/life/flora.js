@@ -10,7 +10,7 @@ import * as G from './geo.js';
 
 const TT = 64, CELL = 7;
 const R0 = 160, R1 = 650, R2 = 2600;
-const KEEP1 = 0.75, KEEP2 = 0.2;         // share of trees drawn in the middle and far rings (by a per-tree rank)
+const KEEP1 = 0.6, KEEP2 = 0.2;         // share of trees drawn in the middle and far rings (by a per-tree rank)
 
 // model height (m) of each geometry, per-instance scale range, colours (linear albedo), far spindle width/height
 export const TREES = {
@@ -68,12 +68,12 @@ export function createFlora(ctx, ground, mats) {
       const rS = hash(gx, gy, 33);
       if (cls === 14) { if (above > -1.2 && above < 3) { sp = 'mangrove'; dens = 0.85; } }
       else {
-        if (above < 2.2 || (cls === 13 && above < 3.5)) continue;
+        if (above < 2.2 || cls === 13) continue;                    // open beach sand stays open
         // near the sea: is there water within ~30 m?
         let coast = false;
         for (let k = 0; k < 12 && !coast; k++) { const a = k * 1.047 + rS, rr = k < 6 ? 25 : 55, c2 = ctx.habitat(x + Math.cos(a) * rr, n + Math.sin(a) * rr); if (c2 < 10 || c2 === 13) coast = true; }
         const [sx, sn] = ground.slope(x, n, 6), steep = Math.hypot(sx, sn);
-        dens = cls === 10 ? 0.85 : cls === 11 ? 0.5 : cls === 16 ? 0.35 : cls === 13 ? 0.12 : 0.14;
+        dens = cls === 10 ? 0.85 : cls === 11 ? 0.5 : cls === 16 ? 0.35 : 0.14;
         const r = hash(gx, gy, 34);
         if (coast && above < 14) sp = r < 0.36 ? 'pandanus' : r < 0.72 ? 'casuarina' : r < 0.9 ? 'carbeen' : 'hoop-pine';
         else sp = r < 0.12 + Math.min(0.35, steep * 0.45) + (above > 120 ? 0.1 : 0) ? 'hoop-pine' : 'carbeen';
@@ -126,11 +126,15 @@ export function createFlora(ctx, ground, mats) {
     if (near) for (const id of IDS) { herds[id][0].commit(n[id][0]); herds[id][1].commit(n[id][1]); counts[id] = n[id][0] + n[id][1]; }
     else { far.commit(nf); counts.far = nf; }
   }
-  let first = true;
+  let first = true, wasDeep = false;
   function update(cam, isFirst) {
     first = isFirst;
     const kN = `${Math.round(cam.x / 12)},${Math.round(cam.z / 12)}`, kF = `${Math.round(cam.x / 64)},${Math.round(cam.z / 64)}`;
     const wasPending = pending; pending = false;
+    // a diver more than a couple of metres down sees the land only through Snell's window, not tree by tree
+    const deep = cam.y < env.u.tide.value - 2.5;
+    if (deep !== wasDeep) { wasDeep = deep; keyNear = keyFar = ''; }
+    if (deep) { if (keyNear !== 'deep') { keyNear = keyFar = 'deep'; for (const id of IDS) { herds[id][0].commit(0); herds[id][1].commit(0); counts[id] = 0; } far.commit(0); counts.far = 0; } first = false; return; }
     if (kN !== keyNear || wasPending) { keyNear = kN; fill(cam, true); }
     if (kF !== keyFar || wasPending) { keyFar = kF; fill(cam, false); }
     if (tiles.size > 20000) for (const [k, t] of tiles) { const dx = t.x0 - cam.x, dn = t.n0 + cam.z; if (dx * dx + dn * dn > (R2 + 600) ** 2) tiles.delete(k); }

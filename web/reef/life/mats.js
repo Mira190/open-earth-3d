@@ -4,7 +4,7 @@
 // at 5 m and a blue clam mantle still glows at 10 m: that is the water, not the palette.
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, sin, cos, exp, pow, length, smoothstep, clamp, select, fract, floor, atan,
-  positionGeometry, positionWorld, mx_noise_float, mx_worley_noise_float, uniform, dot, normalize } from 'three/tsl';
+  positionGeometry, positionWorld, cameraPosition, mx_noise_float, mx_worley_noise_float, uniform, dot, normalize } from 'three/tsl';
 import { I, pose } from './kit.js';
 
 export function createMats(env, torch) {
@@ -270,9 +270,15 @@ export function createMats(env, torch) {
     const f = C.rgb.mul(clump.mul(0.45).add(0.65)).mul(fine.mul(0.3).add(0.8)).mul(aux.x.mul(0.35).add(0.7));
     return select(leaf, f, D.rgb.mul(fine.mul(0.2).add(0.85)));
   });
+  // leaves let light through: looking toward the sun, a crown glows a little with transmitted light
+  const transmit = Fn(([alb]) => {
+    const v = normalize(positionWorld.sub(cameraPosition)), mu = max(dot(v, u.sunDir), 0);
+    return alb.mul(u.sunI.mul(0.09)).mul(pow(mu, 3)).mul(select(aux.w.lessThan(0.5), float(1), float(0))).mul(smoothstep(0.0, 0.1, u.sunDir.y));
+  });
   const tree = (() => {
     const m = pose(std({ rough: 0.9, side: THREE.DoubleSide }), { post: treeSway, flatten: 0.35, twoSided: true });
-    return finish(m, treeColour());
+    const c = treeColour();
+    return finish(m, c, { glow: transmit(c) });
   })();
   const farTree = (() => {
     const m = pose(std({ rough: 0.95 }), { squash: vec3(C.w, D.w, C.w), flatten: 0.6 });

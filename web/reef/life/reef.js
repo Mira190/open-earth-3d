@@ -135,7 +135,9 @@ export function createReef(ctx, ground, mats) {
   const counts = {};
   function update(cam, first = false) {
     const tide = env.u.tide.value, alt = cam.y - tide;
-    const k8 = `${Math.round(cam.x / 6)},${Math.round(cam.z / 6)},${Math.round(Math.min(alt, 300) / 10)}`;
+    // under water nothing beyond ~40 m survives the veil, so the coarse ring shrinks and the shallow far ring is skipped
+    const under = alt < -0.5, rNear = under ? 40 : R_NEAR;
+    const k8 = `${Math.round(cam.x / 6)},${Math.round(cam.z / 6)},${Math.round(Math.min(alt, 300) / 10)},${under}`;
     if (k8 === lastKey && !pending) return false;
     lastKey = k8; pending = false;
     const cx = cam.x, cn = -cam.z;
@@ -163,7 +165,7 @@ export function createReef(ctx, ground, mats) {
     // coarse ones out to R_NEAR, then only big colonies in shallow water to R_FAR
     const cy = cam.y;
     for (const k of ORDER) {
-      const K = KINDS[k], near = herds[k][1], far = herds[k][0], rD = K.detail, rD2 = rD * rD, rN = far ? R_NEAR : K.nearR, rN2 = rN * rN;
+      const K = KINDS[k], near = herds[k][1], far = herds[k][0], rD = K.detail, rD2 = rD * rD, rN = far ? rNear : K.nearR, rN2 = rN * rN;
       let nn = 0, nf = 0;
       for (const t of tmpList) {
         const a = t.items[k]; if (!a || !a.length) continue;
@@ -173,7 +175,7 @@ export function createReef(ctx, ground, mats) {
             if (d2 < rD2 && near) { if (nn < near.cap) { near.data.set(a.subarray(o, o + 16), nn * 16); nn++; } }
             else if (d2 < rN2 && far && a[o + 3] * a[o + 3] > d2 * 1.5e-4) { if (nf < far.cap) { far.data.set(a.subarray(o, o + 16), nf * 16); nf++; } }   // skip what would be a few pixels
           }
-        } else if (far && K.far) {
+        } else if (far && K.far && !under) {
           // shallow and big enough to read through the surface; fewer with distance
           const keep = THREE.MathUtils.clamp(1.2 - t.dist / R_FAR, 0.15, 1), m = a.length / 16;
           for (let i = 0; i < m && nf < far.cap; i++) {
