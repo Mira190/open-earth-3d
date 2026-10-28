@@ -30,7 +30,7 @@ export function makeWaves(windDeg = 120, sheltered = 0.5) {
       const lam = b.l[0] * Math.pow(b.l[1] / b.l[0], t);
       const k = TAU / lam, ang = (windDeg + (rnd() * 2 - 1) * b.spread) * Math.PI / 180;
       const s = (b.slope[0] + rnd() * (b.slope[1] - b.slope[0])) * (b.disp ? sheltered * 2 : 1);
-      waves.push({ dx: Math.sin(ang), dz: Math.cos(ang), k, w: Math.sqrt(9.81 * k), a: s / k, ph: rnd() * TAU, disp: b.disp, lam });
+      waves.push({ dx: -Math.sin(ang), dz: Math.cos(ang), k, w: Math.sqrt(9.81 * k), a: s / k, ph: rnd() * TAU, disp: b.disp, lam });
     }
   }
   return waves;
