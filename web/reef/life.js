@@ -132,7 +132,7 @@ export async function init(ctx) {
     const side = best.yaw + Math.PI / 2 + Number(az || 0) * Math.PI / 180, h0 = Math.cos(e0) * d0;
     c.set(best.x + Math.cos(side) * h0, 0, best.z - Math.sin(side) * h0);
     const top = best.y < env.u.tide.value && !best.id.includes('-nest-') ? env.u.tide.value - 0.3 : 1e9;      // under water for a fish, in the air for a turtle on the beach
-    c.y = Math.min(Math.max(best.y + Math.sin(e0) * d0, ground.land(c.x, -c.z, env.u.tide.value) + 0.45), top);
+    c.y = Math.min(Math.max(best.y + Math.sin(e0) * d0, ground.land(c.x, -c.z, env.u.dryLine.value) + 0.45), top);
     const dx = best.x - c.x, dy = best.y - c.y, dz = best.z - c.z, L = Math.hypot(dx, dy, dz);
     // hold the view with a controller (a test camera: the fly keys are off while it is set; the player module replaces it)
     const yaw = Math.atan2(-dx, -dz), pitch = Math.asin(dy / L), e = new THREE.Euler(pitch, yaw, 0, 'YXZ');

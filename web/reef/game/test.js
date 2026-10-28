@@ -246,7 +246,7 @@ export async function gametest(api, ctx) {
       const sp0 = G.spawn(), cam = ctx.camera.position, keep = cam.clone(), w = { x: sp0.x + 250, north: sp0.north };
       found: for (let r = 50; r < 1500; r += 25) for (let a = 0; a < 6.28; a += 0.3) { const x = sp0.x + Math.cos(a) * r, n = sp0.north + Math.sin(a) * r, d = G.depth(x, n); if (d > 3 && d < 15) { w.x = x; w.north = n; break found; } }
       if (life.update) { cam.set(w.x, ctx.env.u.tide.value - 2, -w.north); for (let i = 0; i < 3; i++) life.update(0.1, i * 0.1); }
-      const c = life.nearestCreature(w.x, w.north, ctx.env.u.tide.value - 1, 600);
+      const c = life.nearestCreature(w.x, w.north, ctx.env.u.tide.value - 1, 600, 1.4);   // in water deep enough to snorkel
       cam.copy(keep);
       must(!!c, 'life.nearestCreature finds an animal near the spawn', c && c.species && c.species.common);
       if (c) {

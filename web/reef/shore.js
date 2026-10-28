@@ -39,7 +39,7 @@ export function createShore(d, env, heightTex, terrain) {
 
   // ---- relief the grid cannot hold: dunes behind the beach, nothing in the water
   const relief = (wx, wz, h) => {
-    const dry = smoothstep(u.tide.add(0.1), u.tide.add(1.2), h);
+    const dry = smoothstep(u.dryLine.add(0.1), u.dryLine.add(1.2), h);   // above the highest tide, so the beach keeps its shape all day
     const dune = mx_noise_float(vec3(wx.mul(0.045), 0, wz.mul(0.045))).mul(0.45)
       .add(mx_noise_float(vec3(wx.mul(0.2), 0, wz.mul(0.2))).mul(0.12));
     const low = float(1).sub(smoothstep(3, 14, h));                 // dunes, not mountains: fade out up the hill

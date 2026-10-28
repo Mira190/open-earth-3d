@@ -108,7 +108,7 @@ export function createFlora(ctx, ground, mats, profile) {
       if (tint) { tint(x, n, gc); for (let k = 0; k < 3; k++) leaf[k] = leaf[k] * 0.8 + Math.min(gc[k], leaf[k] * 2) * 0.2; }
       const lean = sp === 'pandanus' || sp === 'casuarina' ? (r3 - 0.5) * 0.16 : 0;
       // on the shore patch the ground carries shore.js's dunes: stand on them (at mean sea level), and a little in
-      const y = ground.land(x, n, 0) - T.sink - (h < 5 ? 0.15 : 0);
+      const y = ground.land(x, n, env.u.dryLine.value) - T.sink - (h < 5 ? 0.15 : 0);
       t.list.push({ sp, rank: hash(gx, gy, 38), x, y, z: -n, s, yaw: rS * 6.283, lean, leaf, bark: T.bark });
     }
     t.list.sort((a, b) => a.rank - b.rank);

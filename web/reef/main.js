@@ -48,6 +48,7 @@ async function main() {
   const tideFixed = q.get('tide') !== null ? Number(q.get('tide')) : null;
   const tideNow = () => tideFixed ?? (tide ? tide.at(clockMs()) : 0);
   env.u.tide.value = tideNow();
+  env.u.dryLine.value = tide ? Math.max(...tide.check.map(c => c.high_m)) : 0;
 
   const sunL = new THREE.DirectionalLight(0xfff2dd, 2.8);
   const moonL = new THREE.DirectionalLight(0xc9d6ff, 0);

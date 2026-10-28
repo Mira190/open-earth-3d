@@ -60,7 +60,8 @@ export function createEnv(scene, optics, waves, ripples, chop) {
     moonI: uniform(0),            // the same for the moon (2.3e-6 of the sun when full and overhead)
     skyScale: uniform(1),         // the sky's brightness relative to a clear day (twilight, night)
     adapt: uniform(1),            // the eye's adaptation, already in the lights (main.js); post.js reads it for night vision
-    torchOn: uniform(0), torchFwd: uniform(new THREE.Vector3(0, 0, -1))   // a diver's torch at night (main.js)
+    torchOn: uniform(0), torchFwd: uniform(new THREE.Vector3(0, 0, -1)),  // a diver's torch at night (main.js)
+    dryLine: uniform(0)           // dunes rise above this: the highest tide of the site's record (main.js; shore.js, life)
   };
   // the ripples scale with the wind as the Cox-Munk slope variance does (unity at wind 0.6)
   const c0 = coxMunk(windSpeed(0.6));

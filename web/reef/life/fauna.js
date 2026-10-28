@@ -231,7 +231,7 @@ export function createFauna(ctx, ground, mats, reef, profile = { fauna: {}, flor
     const x = g.W[0] + (g.N[0] - g.W[0]) * f, n = g.W[1] + (g.N[1] - g.W[1]) * f;
     const up = Math.atan2(g.N[1] - g.W[1], g.N[0] - g.W[0]);
     a.yaw = a.state === 3 ? up + Math.PI : up;
-    const g0 = ground.land(x, n, tide()), g1 = ground.land(x + Math.cos(a.yaw) * 0.5, n + Math.sin(a.yaw) * 0.5, tide());
+    const dl = env.u.dryLine.value, g0 = ground.land(x, n, dl), g1 = ground.land(x + Math.cos(a.yaw) * 0.5, n + Math.sin(a.yaw) * 0.5, dl);
     a.pitch = Math.atan2(g1 - g0, 0.5); a.roll = 0;
     a.x = x; a.z = -n; a.y = g0 + 0.06 * a.len - (a.state === 2 ? 0.18 * Math.min(1, (t - 20) / 10) : 0);
     a.speed = a.state === 2 ? 0 : 0.02;

@@ -54,7 +54,7 @@ const sstep = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a)
 // ---------------------------------------------------------------- the ground, as the near-camera patch draws it
 // shore.js reads the 30 m grid with Catmull-Rom (16 taps) around the camera; under water it adds no relief,
 // so height() is where the sea floor actually is, to the centimetre. On dry land it adds dunes from GPU
-// noise that fade in above the live tide; land(x, north, tide) adds the same dunes (relief()).
+// noise that fade in above the site's dry line (env.u.dryLine, the highest tide); land(x, north, dryLine) adds the same dunes.
 export function makeGround(d) {
   const t = d.scene.terrain, W = t.w, H = t.h, hs = d.heights;
   const cr = (f, k) => { const f2 = f * f, f3 = f2 * f; return k === 0 ? -0.5 * f3 + f2 - 0.5 * f : k === 1 ? 1.5 * f3 - 2.5 * f2 + 1 : k === 2 ? -1.5 * f3 + 2 * f2 + 0.5 * f : 0.5 * f3 - 0.5 * f2; };
@@ -84,7 +84,7 @@ export function makeGround(d) {
     for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const v = hs[j * W + i]; if (v > m) m = v; if (v < lo) lo = v; }
     return [lo, m];
   }
-  // shore.js's dunes: up to ~0.6 m on dry sand, fading in from 0.1 to 1.2 m above the tide and out up the hill
+  // shore.js's dunes: up to ~0.6 m on dry sand, fading in from 0.1 to 1.2 m above the dry line and out up the hill
   function relief(x, north, h, tide = 0) {
     const z = -north, dune = mxNoise3(x * 0.045, 0, z * 0.045) * 0.45 + mxNoise3(x * 0.2, 0, z * 0.2) * 0.12;
     return dune * sstep(tide + 0.1, tide + 1.2, h) * (1 - sstep(3, 14, h));
