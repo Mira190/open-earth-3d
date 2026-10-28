@@ -37,7 +37,7 @@ export function makeWaves(windDeg = 120, sheltered = 0.5) {
   return waves;
 }
 
-export function createEnv(scene, optics, waves, ripples) {
+export function createEnv(scene, optics, waves, ripples, chop) {
   const u = {
     time: uniform(0),
     sunDir: uniform(new THREE.Vector3(0.3, 0.8, 0.5).normalize()),
@@ -63,6 +63,7 @@ export function createEnv(scene, optics, waves, ripples) {
   const rippleAmp = coxMunk(windSpeed(0)) / c0, rippleAmpW = 0.00512 * 11 / c0;
   const fw = sqrt(u.wind.mul(rippleAmpW).add(rippleAmp));
   const ripple = (xz, opts) => ripples.sample(xz, fw, opts);
+  const chopTile = chop ? (xz => chop.sample(xz, u.wind, { hess: false })) : null;
 
   // ---- sky: gradient, sun glow, tropical cumulus; the same function colours the dome and the
   // reflection on the water
@@ -158,7 +159,7 @@ export function createEnv(scene, optics, waves, ripples) {
 
   // the last reach of the swash: a little above the tide, breathing with the sets of waves
   const swash = u.tide.add(0.35).add(sin(u.time.mul(0.62)).mul(0.12)).add(sin(u.time.mul(0.23).add(1.3)).mul(0.1));
-  return { u, sky, skyRefl, medium, radiance, waterBg, caustic, causticSoft, ripple, rippleAmp: fw, waves, ripples, scene, swash };
+  return { u, sky, skyRefl, medium, radiance, waterBg, caustic, causticSoft, ripple, rippleAmp: fw, chopTile, waves, ripples, scene, swash };
 }
 
 // ---- the sun for the model's own clock

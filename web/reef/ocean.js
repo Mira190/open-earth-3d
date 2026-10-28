@@ -11,7 +11,7 @@
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, smoothstep, clamp, texture, positionLocal, positionWorld,
   cameraPosition, normalize, dot, reflect, sin, cos, pow, exp, sqrt, select, length, mx_noise_float, uniform, frontFacing,
-  screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
+  fwidth, screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
 import { gridUV } from './world.js';
 
 export function createOcean(d, env, heightTex) {
@@ -40,28 +40,41 @@ export function createOcean(d, env, heightTex) {
   // returns { dy, dx, dz: displacement, n: normal, jac: compression, v: slope variance the pixel cannot show },
   // with the swell and chop growing as the water shoals and dying where it breaks
   const field = (x, z, depth, includeRipples, dist) => {
-    let dy = float(0), dx = float(0), dz = float(0);
+    let dy = float(0), dx = float(0), dz = float(0), dyc = float(0);
     let hx = float(0), hz = float(0), lost = float(0);
     let jxx = float(0), jzz = float(0), jxz = float(0);
     const shoal = float(1).add(float(0.7).mul(float(1).sub(smoothstep(0.6, 6, depth))));            // steepen toward shore
     const gate = smoothstep(0.0, 0.7, depth);                                        // gone on dry sand
     const Q = 0.85;
+    // in the fragment the chop's slopes hand over from the nine waves that move the surface to the chop tile
+    // (env.chopTile) between 40 and 200 m: the same slope statistics, but broadband, and mipmapped with range
+    const tileW = includeRipples && env.chopTile ? smoothstep(40, 200, dist) : float(0);
     for (const w of waves) {
       if (!w.disp) continue;
       const ph = x.mul(w.dx * w.k).add(z.mul(w.dz * w.k)).sub(u.time.mul(w.w)).add(w.ph);
       const s = sin(ph), c = cos(ph);
-      // a wave is only drawn while the pixel is smaller than its wavelength: it fades out with distance,
-      // and the slope it carried goes into the variance the glitter spreads over
-      const fade = clamp(float(1).sub(dist.div(w.lam * 1400)), 0, 1);
+      // a wave is only drawn while it is resolved: in the mesh while the rings (about 0.07 r apart) sample it
+      // at least twice; in the shading while its phase moves less than about a radian from one pixel to the
+      // next (fwidth: right at any distance and any grazing angle). The slope it carried then goes into the
+      // variance the glitter spreads over
+      const fade = includeRipples ? clamp(float(1.6).sub(fwidth(ph).mul(0.55)), 0, 1) : clamp(float(1).sub(dist.div(w.lam * 7)), 0, 1);
       const full = float(w.a).mul(shoal).mul(gate).mul(u.wind), amp = full.mul(fade);
-      if (includeRipples) lost = lost.add(full.mul(w.k).pow(2).mul(float(1).sub(fade.mul(fade))).mul(0.5));
+      const chop = includeRipples && env.chopTile && w.lam < 20;
+      if (includeRipples && !chop) lost = lost.add(full.mul(w.k).pow(2).mul(float(1).sub(fade.mul(fade))).mul(0.5));
+      const ns = chop ? amp.mul(float(1).sub(tileW)) : amp;
       dy = dy.add(amp.mul(s));
-      hx = hx.add(amp.mul(w.k * w.dx).mul(c));
-      hz = hz.add(amp.mul(w.k * w.dz).mul(c));
+      if (w.lam < 20) dyc = dyc.add(amp.mul(s));
+      hx = hx.add(ns.mul(w.k * w.dx).mul(c));
+      hz = hz.add(ns.mul(w.k * w.dz).mul(c));
       const qa = amp.mul(Q);
       dx = dx.add(qa.mul(c).mul(w.dx)); dz = dz.add(qa.mul(c).mul(w.dz));
       const qk = qa.mul(w.k).mul(s);
       jxx = jxx.add(qk.mul(w.dx * w.dx)); jzz = jzz.add(qk.mul(w.dz * w.dz)); jxz = jxz.add(qk.mul(w.dx * w.dz));
+    }
+    if (includeRipples && env.chopTile) {
+      const C = env.chopTile(vec2(x, z)), cw = tileW.mul(shoal).mul(gate);
+      hx = hx.add(C.g.x.mul(cw)); hz = hz.add(C.g.y.mul(cw));
+      lost = lost.add(C.v.mul(cw.mul(cw)));
     }
     if (includeRipples) {
       const R = env.ripple(vec2(x, z)), rg = gate.max(0.35);
@@ -69,7 +82,7 @@ export function createOcean(d, env, heightTex) {
       lost = lost.add(R.v.mul(rg.mul(rg)));
     }
     const jac = float(1).sub(jxx).mul(float(1).sub(jzz)).sub(jxz.mul(jxz));
-    return { dy, dx, dz, n: normalize(vec3(hx.negate(), 1, hz.negate())), jac, v: lost };
+    return { dy, dyc, dx, dz, n: normalize(vec3(hx.negate(), 1, hz.negate())), jac, v: lost };
   };
 
   const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: true });
@@ -123,7 +136,8 @@ export function createOcean(d, env, heightTex) {
     const foamCol = vec3(0.92, 0.95, 0.96).mul(u.white.mul(0.85).add(0.1));
     const haze = float(1).sub(exp(dist.mul(u.haze).negate()));
     // light scattered back out of the swell: turquoise glow in thin crests and the shallows
-    const crest = smoothstep(0.0, 0.5, f.dy.mul(1.6)).mul(u.wind).mul(smoothstep(1.0, 4.0, depth));
+    // (the wind waves' thin crests close by: the long, low swell does not light up like this)
+    const crest = smoothstep(0.0, 0.5, f.dyc.mul(1.6)).mul(u.wind).mul(smoothstep(1.0, 4.0, depth)).mul(smoothstep(250, 60, dist));
     const glow = vec3(0.02, 0.18, 0.2).mul(u.white).mul(crest);
     const refl = mix(env.skyRefl(R).mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6));
     // sun glitter (Cox and Munk 1954): the facets that send the sun to the eye have the half-vector as their
@@ -168,8 +182,8 @@ export function createOcean(d, env, heightTex) {
     const Rm = reflect(I, nd);                               // the mirrored ray, down into the water
     const mirror = env.medium(env.waterBg(dC, Rm.y.min(0)), P);
     const under_rgb = mix(mirror, env.medium(skyT, P), window);
-    // ?odbg=1 glitter, 2 foam, 3 the refracted frame, 4 the unresolved slope variance (x 20)
-    const dbg = { 1: glint, 2: vec3(foam), 3: behind, 4: vec3(f.v.mul(20)) }[new URLSearchParams(location.search).get('odbg')];
+    // ?odbg=1 glitter, 2 foam, 3 the refracted frame, 4 the unresolved slope variance (x 20), 5 normal, 6 height, 7 reflection
+    const dbg = { 1: glint, 2: vec3(foam), 3: behind, 4: vec3(f.v.mul(20)), 5: N.mul(0.5).add(0.5), 6: vec3(f.dy.mul(2).add(0.5)), 7: refl.mul(F) }[new URLSearchParams(location.search).get('odbg')];
     if (dbg) return vec4(dbg, 1);
     return select(above, vec4(above_c, float(1)), vec4(under_rgb, float(1)));
   })();

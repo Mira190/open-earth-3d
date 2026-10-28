@@ -13,7 +13,6 @@ import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, uv, uniform, sin, cos, texture } from 'three/tsl';
 
 const TAU = Math.PI * 2;
-export const TILE = 16, RES = 256;
 // the two copies: scale, rotation, weight (weights^2 sum to 1, so the slope variance is the tile's)
 const COPIES = [{ s: 1, rot: 0, w: Math.SQRT1_2 }, { s: 0.61, rot: 0.72, w: Math.SQRT1_2 }];
 
@@ -23,15 +22,18 @@ const COPIES = [{ s: 1, rot: 0, w: Math.SQRT1_2 }, { s: 0.61, rot: 0.72, w: Math
 export const coxMunk = U => 0.003 + 0.00512 * U;
 export const windSpeed = w => 3 + 11 * w;
 
-export function createRipples(renderer, windDeg = 120) {
-  let seed = 11;
+// cfg: tile (m), res (px), lam [min, max] (m), spread (deg either side of the wind), target slope variance, seed.
+// The defaults are the ripple band; ocean.js makes a second, coarser tile for the wind chop's normals at range.
+export function createRipples(renderer, windDeg = 120, cfg = {}) {
+  const TILE = cfg.tile ?? 16, RES = cfg.res ?? 256, LAM = cfg.lam ?? [0.3, 2.4], SPREAD = cfg.spread ?? 150;
+  let seed = cfg.seed ?? 11;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-  const N = 32, waves = [], used = new Set();
-  const TARGET = 0.045;                        // tile slope variance at wind 0.6, as the old ripple band
+  const N = cfg.n ?? 32, waves = [], used = new Set();
+  const TARGET = cfg.target ?? 0.045;          // tile slope variance at wind 0.6 (ripples: as the old ripple band)
   for (let i = 0; waves.length < N && i < 400; i++) {
     const t = (waves.length + rnd() * 0.8) / N;
-    const lam = 0.3 * Math.pow(2.4 / 0.3, t);
-    const ang = (windDeg + (rnd() * 2 - 1) * 150) * Math.PI / 180;
+    const lam = LAM[0] * Math.pow(LAM[1] / LAM[0], t);
+    const ang = (windDeg + (rnd() * 2 - 1) * SPREAD) * Math.PI / 180;
     // snap the wave vector to the tile's lattice so the field is periodic
     const m = Math.round(TILE / lam * -Math.sin(ang)), n = Math.round(TILE / lam * Math.cos(ang));
     if (!m && !n || used.has(m + ',' + n)) continue;
@@ -72,7 +74,7 @@ export function createRipples(renderer, windDeg = 120) {
     time.value = t;
     const prev = renderer.getRenderTarget();
     renderer.setRenderTarget(gradRT); gradQ.render(renderer);
-    renderer.setRenderTarget(hessRT); hessQ.render(renderer);
+    if (cfg.hess !== false) { renderer.setRenderTarget(hessRT); hessQ.render(renderer); }
     renderer.setRenderTarget(prev);
   }
 

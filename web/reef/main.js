@@ -35,7 +35,11 @@ async function main() {
   const windDir = Number(q.get('wind_dir') || 125);
   const waves = makeWaves(windDir);
   const ripples = createRipples(renderer, windDir);
-  const env = createEnv(scene, S.optics, waves, ripples);
+  // the wind chop's normals at range: a coarser tile with the chop's slope variance, so distant water is
+  // broadband instead of the interference stripes of the nine chop waves that move the surface
+  const chopVar = waves.filter(w => w.disp && w.lam < 20).reduce((a, w) => a + (w.a * w.k) ** 2 / 2, 0);
+  const chop = createRipples(renderer, windDir, { tile: 192, res: 256, lam: [3, 24], spread: 70, target: chopVar, seed: 23, hess: false });
+  const env = createEnv(scene, S.optics, waves, ripples, chop);
   env.u.wind.value = Number(q.get('wind') ?? 0.6);
   // the clock: the model's own time (?time= or now), running on from the page load
   const when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now();
@@ -124,7 +128,7 @@ async function main() {
     for (const u of ctx.updaters) u(dt, now / 1000);
     env.u.time.value = (q.get('freeze') ? Number(q.get('freeze')) : now / 1000);
     env.u.tide.value = tideNow();
-    ripples.update(env.u.time.value);
+    ripples.update(env.u.time.value); chop.update(env.u.time.value);
     terrain.update(camera.position);
     ocean.update(camera.position);
     shore.update(camera.position);
