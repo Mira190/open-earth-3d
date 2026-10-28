@@ -7,7 +7,7 @@
 // - rideable boats and flyable aircraft (boats/control.js)
 // Test cameras: ?boatcam=<name|id|kind>&bd=<m>&baz=<deg from bow>&bel=<deg>&bh=<look height>.
 import * as THREE from 'three/webgpu';
-import { Fn, vec3, vec4, float, mix, max, select, positionWorld, cameraPosition } from 'three/tsl';
+import { Fn, vec3, vec4, float, mix, max, select, smoothstep, mx_noise_float, positionWorld, cameraPosition } from 'three/tsl';
 import { shared, materials, sstep } from './boats/kit.js';
 import { makeSurface } from './boats/surface.js';
 import { createWakeField } from './boats/wake.js';
@@ -260,8 +260,11 @@ export async function init(ctx) {
         const o = outN, w = wake.wakeNode(positionWorld.xz);
         const above = select(cameraPosition.y.greaterThan(env.u.tide), float(1), float(0));
         const fc = vec3(0.93, 0.96, 0.97).mul(env.u.white.mul(0.85).add(0.1));
-        const f = w.foam.mul(above);
-        return vec4(mix(o.rgb, fc, f.mul(0.85)), max(o.a, f.mul(0.9)));
+        // broken up with noise so the field reads as foam streaks, not a soft glow
+        const n = mx_noise_float(vec3(positionWorld.x.mul(0.9), positionWorld.z.mul(0.9), env.u.time.mul(0.25)));
+        const n2 = mx_noise_float(vec3(positionWorld.x.mul(3.1), positionWorld.z.mul(3.1), env.u.time.mul(0.4)));
+        const f = smoothstep(0.12, 0.62, w.foam.mul(1.15).add(n.mul(0.22)).add(n2.mul(0.12)).sub(0.12)).mul(above);
+        return vec4(mix(o.rgb, fc, f.mul(0.8)), max(o.a, f.mul(0.85)));
       })();
       mat.needsUpdate = true; ctx.ocean.wakeHooked = true; return true;
     } catch (e) { console.warn('wake hook failed', e); return false; }

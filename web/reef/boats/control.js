@@ -54,6 +54,11 @@ export function createControl(ctx, api) {
     const p = st.player; st.player = null;
     if (p) { if (p.group) p.group.visible = true; p.boarded = null; if (p.onLeave) p.onLeave(v); }
     setHud('');
+    // hand the camera back to free-fly without a jump: main.js keeps its own yaw/pitch
+    if (!ctx.controller && window.__reef && window.__reef.set) {
+      const d = new THREE.Vector3(); camera.getWorldDirection(d);
+      window.__reef.set({ yaw: Math.atan2(-d.x, -d.z), pitch: Math.asin(Math.max(-1, Math.min(1, d.y))) });
+    }
     v.mode = a.ctl.after || 'anchored'; v.speed = Math.min(v.speed, 1);
     if (a.ctl.onEnd) a.ctl.onEnd();
     return true;

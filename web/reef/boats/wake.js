@@ -109,14 +109,14 @@ function ribbonMaterial() {
     const P = positionWorld;
     const n1 = mx_noise_float(vec3(P.x.mul(0.55), P.z.mul(0.55), env.u.time.mul(0.35)));
     const n2 = mx_noise_float(vec3(P.x.mul(2.2), P.z.mul(2.2), env.u.time.mul(0.6)));
-    const lace = smoothstep(-0.35, 0.45, n1.mul(0.7).add(n2.mul(0.5)).add(float(0.35).sub(age.mul(0.6))));
+    const lace = smoothstep(-0.25, 0.5, n1.mul(0.7).add(n2.mul(0.75)).add(float(0.3).sub(age.mul(0.7))));
     const life = float(1).sub(age);
     const core = exp(au.mul(au).mul(-7.0)).mul(pow(life, 1.3)).mul(float(0.25).add(str.mul(0.7)));
     const arms = smoothstep(0.55, 0.88, au).mul(float(1).sub(smoothstep(0.88, 1.0, au))).mul(pow(life, 0.8)).mul(str.mul(0.75));
     const fill = float(1).sub(smoothstep(0.0, 0.95, au)).mul(life.mul(life)).mul(str.mul(0.18));
     const head = smoothstep(0.0, 0.015, age);
     const edge = float(1).sub(smoothstep(0.82, 1.0, au));
-    return clamp(core.add(arms.mul(float(0.55).add(lace.mul(0.6)))).add(fill).mul(lace.mul(0.7).add(0.45)).mul(head).mul(edge.mul(0.5).add(0.5)), 0, 0.92);
+    return clamp(core.add(arms.mul(float(0.55).add(lace.mul(0.6)))).add(fill).mul(lace.mul(0.85).add(0.2)).mul(head).mul(edge.mul(0.5).add(0.5)), 0, 0.85);
   })();
   m.fog = true;
   ribbonMat = m;
