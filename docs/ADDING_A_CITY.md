@@ -70,7 +70,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `ferry_style` `{length_m, beam_m, hull, trim, upper, flag, note}` sizes the ferry and gives it the city's livery. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) |
+| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `ferry_style` `{length_m, beam_m, hull, trim, upper, flag, note}` sizes the ferry and gives it the city's livery. `vehicles` (`helicopter`: `livery`, `registration`, `logo`) picks the look of the shared helicopter; the ferries take `ferry_style`'s colours. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -83,6 +83,12 @@ Tour text can hold tokens that the viewer fills in from the model:
 
 Write tour text that the model can back up. If a stop quotes a number, prefer
 a token, so that the number changes when the data does.
+
+The game's helicopter and ferries are shared by every city: the models are in
+`web/assets/vehicles`, built by `blender/build_vehicles.py`. Don't add models
+for one city. Choose a livery, a registration and a logo in `game.vehicles`, or
+improve the shared models for every city. See
+[the vehicles](GAME.md#the-vehicles).
 
 ## 3. Optional: `cities/<id>/city.py`
 
