@@ -4,6 +4,81 @@
 // light went at your depth. Every line is computed from the model or cites game/sources.js.
 const BUSTARD_HEADS_LAT = -24.02;      // SLSQ's stinger range runs from Bustard Heads (north of Bundaberg) northward
 
+// ---- the tide now and its next turn, from the site's tide model (main.js ctx.tide; the gauge's predictions)
+export function tidePage(G, src = 'model-tide') {
+  const T = G.tide(); if (!T) return null;
+  const z = G.tideNow(), n = G.tideTurns(1)[0], f = v => `${v >= 0 ? '+' : ''}${v.toFixed(1)} m`;
+  return { t: `It's ${G.clock()}. The tide is ${f(z)} and ${T.rising(G.nowMs()) ? 'rising' : 'falling'}${n ? `; ${n.high ? 'high' : 'low'} water ${f(n.z)} at ${G.time(n.t)}` : ''}, by the ${T.gauge || 'nearest gauge'} predictions.`, src: [src, 'model-sun'], note: false };
+}
+
+// ---- the land around a point above mean sea level: a flood fill over the terrain grid (the cays are rebuilt from their
+// mapped outlines, so this is the mapped island's area), in hectares; null if the point is not on land
+export function landArea(G, x, n) {
+  const d = G.ctx.d, t = d.scene.terrain, hs = d.heights, W = t.w, H = t.h;
+  const i0 = Math.floor((x - t.x0) / t.cell_m), j0 = Math.floor((t.y1 - n) / t.cell_m);
+  if (i0 < 0 || j0 < 0 || i0 >= W || j0 >= H || hs[j0 * W + i0] <= 0) return null;
+  const seen = new Uint8Array(W * H), stack = [j0 * W + i0]; seen[stack[0]] = 1;
+  let cells = 0;
+  while (stack.length && cells < 200000) {
+    const k = stack.pop(); cells++;
+    const i = k % W, j = (k - i) / W;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const a = i + di, b = j + dj; if (a < 0 || b < 0 || a >= W || b >= H) continue;
+      const kk = b * W + a; if (!seen[kk] && hs[kk] > 0) { seen[kk] = 1; stack.push(kk); }
+    }
+  }
+  return cells * t.cell_m * t.cell_m / 1e4;
+}
+
+// ---- other sites' water optics (their scene.json), for comparing the water here with elsewhere
+export function loadOptics(G, ids) {
+  G._optics = G._optics || {};
+  for (const id of ids) if (!(id in G._optics)) {
+    G._optics[id] = null;
+    fetch(new URL(`../../data/${id}/scene.json`, import.meta.url)).then(r => r.ok ? r.json() : null).then(s => { if (s && s.optics) G._optics[id] = { name: s.name, optics: s.optics }; }).catch(() => {});
+  }
+}
+// the deep water's colour seen from the satellite (Rinf, blue over green) at another site, and the optics in use here
+// (env.u.K and env.u.Rinf, what the renderer draws with) in the same [red, green, blue] form as scene.json
+export function blueness(o) { return o && o.Rinf ? o.Rinf[2] / o.Rinf[1] : null; }
+export function opticsHere(G) { const K = G.env.u.K.value, R = G.env.u.Rinf.value; return { K: [K.x, K.y, K.z], Rinf: [R.x, R.y, R.z] }; }
+
+// ---- what you can see from a spot: named places of the given kinds within `range`, with a clear line over the model's
+// terrain and the Earth's curve (an island or peak is aimed at the highest ground within 300 m of its point, the rest at
+// 2 m above the ground or the sea), nearest first
+const SHOW = new Set(['beach', 'bay', 'inlet', 'island', 'peak', 'lookout', 'marina']);
+export function inSight(G, from, skip, o = {}) {
+  const kinds = o.kinds || SHOW, out = [];
+  for (const raw of G.S.pois || []) {
+    const p = G.poi(raw.id);
+    if (!kinds.has(p.kind) || p.id === skip || (o.exclude && o.exclude.includes(p.id))) continue;
+    const d = G.dist(from, p); if (d < (o.min ?? 150) || d > (o.range ?? 7000)) continue;
+    let up = 2;
+    if (p.kind === 'island' || p.kind === 'peak') { const h0 = Math.max(G.height(p.x, p.north), G.tideNow()); let top = h0; for (let r = 50; r <= 300; r += 50) for (let a = 0; a < 6.283; a += 0.785) top = Math.max(top, G.height(p.x + Math.cos(a) * r, p.north + Math.sin(a) * r)); up = top - h0 + 2; }
+    if (G.lineOfSight(from, p, 1.6, up)) out.push({ p, d });
+  }
+  out.sort((a, b) => a.d - b.d);
+  return out.slice(0, o.max ?? 4).map(x => `${x.p.name}, ${G.km(x.d)} ${G.dirName(G.bearing(from, x.p))}`);
+}
+
+// ---- standing room: dry land near a point, else the site's pontoon deck, else afloat at the surface (no-land sites)
+// people stay dry through the tide: above the highest water the site's tide model gives over the next fortnight (computed
+// once, hourly), or 0.6 m above mean sea level where there is no tide model
+export function highWater(G) {
+  if (G._highWater !== undefined) return G._highWater;
+  const T = G.tide(); let hi = null;
+  if (T) { const t0 = G.nowMs(); hi = -1e9; for (let h = 0; h < 15 * 24; h++) hi = Math.max(hi, T.at(t0 + h * 3600e3)); }
+  return (G._highWater = hi);
+}
+export function standNear(G, x, n, o = {}) {
+  const hw = highWater(G), dry = hw === null ? 0.6 : hw + 0.15;
+  const p = G.landSpot(x, n, Object.assign({ msl: true, minH: dry, maxH: dry + 6, maxSlope: 0.3, maxR: 80, orNull: true }, o));
+  if (p) return { x: p.x, north: p.north };
+  const pt = G.boats && G.boats.pontoon;
+  if (pt) return { vessel: pt, local: o.deck || [12.5, 0.55, -2.8] };
+  return { x: x + 3, north: n + 3, up: G.tideNow() - 0.3, depth: 0.3, swim: true };
+}
+
 // ---- the model in numbers, computed once per site from the terrain grid
 export function siteStats(G) {
   if (G._stats) return G._stats;
@@ -30,7 +105,7 @@ export function slatePages(G, depth) {
 export const reefPages = [
   { t: 'Mass bleaching from marine heatwaves hit the Great Barrier Reef in the summers of 1998, 2002, 2006, 2016, 2017 and 2020, and another mass bleaching was confirmed in March 2022.', src: ['wiki-gbr'] },
   { t: 'In 2024 the Reef Snapshot from the Reef Authority, AIMS and CSIRO recorded bleaching on 73 per cent of the surveyed reefs in the Marine Park: the fifth widespread bleaching since 2016.', src: ['csiro-2024'] },
-  { t: 'The reef is over 2,900 reefs and 900 islands along 2,300 km, with about 400 species of coral and more than 1,500 species of fish.', src: ['wiki-gbr'] }
+  { t: 'The Great Barrier Reef is over 2,900 reefs and 900 islands along 2,300 km, with about 400 species of coral and more than 1,500 species of fish.', src: ['wiki-gbr'] }
 ];
 
 // ---- stingers by Surf Life Saving Queensland's dates (November to May), where their range applies
@@ -43,15 +118,18 @@ export function slsqPages(G) {
   ];
 }
 
-// ---- the fish ID survey: log species you get within a few metres of, with a mask on
+// ---- the fish ID survey: log species you get within a few metres of, with a mask on. Only animals can be logged
+// (life.js nearestCreature returns fish, sharks, rays, turtles and giant clams), so the count comes from those
+export const animals = G => G.species().filter(s => !s.group || /^(fish|shark|ray|turtle|clam)$/.test(s.group));
+export const surveySize = (G, max = 5) => Math.min(max, animals(G).length);
 export function surveyQuest(o = {}) {
   const giver = o.giver || 'ranger', max = o.max || 5;
   const kit = G => { const k = G.player && G.player.kit; return k ? { x: k.position.x, north: -k.position.z, name: 'Dive kit' } : null; };
   return {
     id: 'survey', title: 'Fish ID survey', summary: G => `Logged ${G.logged()} species for the survey.`, hint: `Ask the ${o.giverName || 'ranger'} about the fish ID survey.`,
-    available: G => G.species().length > 0, unavailable: 'Marine life is not in this build of the model yet, so there is nothing to survey.',
+    available: G => animals(G).length > 0, unavailable: 'Marine life is not in this build of the model yet, so there is nothing to survey.',
     steps: [
-      { text: 'Put a mask on: E at the dive kit', target: kit, enter: (G, d) => { d.n = Math.min(max, G.species().length); }, check: G => G.player.S.gear.mask },
+      { text: 'Put a mask on: E at the dive kit', target: kit, enter: (G, d) => { d.n = surveySize(G, max); }, check: G => G.player.S.gear.mask },
       { text: (G, d) => `Snorkel and log ${d.n} species: get within a few metres, E (${G.logged()}/${d.n})`, check: (G, d) => G.logged() >= d.n },
       { text: `Tell ${o.giverName || 'the ranger'} what you found`, target: `npc:${giver}`, talkTo: giver, node: 'surveyDone' }
     ]
@@ -70,16 +148,16 @@ export function ranger(G, o = {}) {
   const st = siteStats(G);
   const hasLife = G2 => G2.species().length > 0;
   return {
-    id: 'ranger', role: 'ranger', name: o.name || 'Alex', title: 'Marine park ranger', gender: o.gender || 'W',
+    id: 'ranger', role: o.role || 'ranger', name: o.name || 'Alex', title: o.title || 'Marine park ranger', gender: o.gender || 'W',
     at: o.at || (G2 => {
       const s = G2.spawn(), h = s.heading * Math.PI / 180, fx = Math.sin(h), fn = Math.cos(h), rx = Math.cos(h), rn = -Math.sin(h);
       const want = { x: s.x + fx * 6 + rx * 3, north: s.north + fn * 6 + rn * 3 };
-      const p = G2.landSpot(want.x, want.north, { msl: true, minH: 0.6, maxH: 6, maxSlope: 0.3, maxR: 60, toward: want });
-      return { x: p.x, north: p.north, heading: G2.bearing(p, s) };
+      const p = standNear(G2, want.x, want.north, { toward: want });
+      return Object.assign(p, { heading: p.vessel ? 0 : G2.bearing(p, s) });
     }),
     nodes: Object.assign({
       hello: { say: G2 => [
-        { t: `${G2.greet()}! I'm ${o.name || 'Alex'}, the ranger here. Welcome to ${G2.S.name}.`, src: null },
+        { t: `${G2.greet()}! I'm ${o.name || 'Alex'}, the ranger here. Welcome to ${G2.S.name}.`, src: null }, tidePage(G2),
         { t: `This model is ${st.wKm.toFixed(0)} by ${st.hKm.toFixed(0)} km. At this tide ${st.wetPct}% of it is sea, down to ${st.deepest} m, and the highest ground is ${st.highest} m.`, src: ['model-terrain'] }],
         choices: [
           { text: 'Is it safe to swim?', go: 'swim', when: slsqApplies },
@@ -88,12 +166,37 @@ export function ranger(G, o = {}) {
           { text: 'Where else can I go?', go: 'travel' }] },
       swim: { say: G2 => slsqPages(G2), next: 'hello' },
       reef: { say: reefPages, next: 'hello' },
-      survey: { say: G2 => [{ t: `Yes please. Put a mask on, snorkel over the reef and log ${Math.min(5, G2.species().length)} species you can get within a few metres of. E when you're close.`, src: ['model-life'] }],
+      survey: { say: G2 => [{ t: `Yes please. Put a mask on, snorkel over the reef and log ${surveySize(G2)} species you can get within a few metres of. E when you're close.`, src: ['model-life'] }],
         do: G2 => G2.start('survey'), next: 'end' },
       surveyDone: surveyDoneNode(),
       travel: { say: 'The other Queensland reef sites are on the map: T, or the Map button.', do: null, choices: [{ text: 'Open the map', do: G2 => G2.openPanel('map'), go: 'end' }, { text: 'Thanks', go: 'end' }] }
     }, o.nodes || {})
   };
+}
+
+// ---- a guided dive: the instructor waits under water at `depth`, the slate works out the light left there, then you
+// come up. o: { id, title, summary, hint, giver (npc id), giverName, gender, depth, point(G) -> { x, north, name },
+// extra(G, depth) -> more slate pages }. resume(G) puts the instructor back under water after a reload mid-dive.
+export function diveQuest(o) {
+  const diverId = `${o.giver}-diving`, depth = o.depth || 8;
+  const spawnDiver = G => {
+    if (G.npc(diverId)) return;
+    const d = o.point(G); if (!d) return;
+    G.spawnNpc({ id: diverId, role: 'diveInstructor', name: o.giverName, gender: o.gender || 'M', talk: false,
+      at: () => ({ x: d.x, north: d.north, up: G.tideNow() - (depth - 0.4), depth: depth - 0.4, swim: true, heading: 0 }) });
+  };
+  const quest = {
+    id: o.id, title: o.title, summary: o.summary, hint: o.hint,
+    steps: [
+      { text: `Dive to ${depth} m and meet ${o.giverName}`, target: G => o.point(G), enter: G => spawnDiver(G),
+        check: G => G.player.state === 'scuba' && G.player.depth >= depth - 0.6 && G.dist(G.here(), o.point(G)) < 60 },
+      { text: 'Read the slate, then come up slowly: safety stop at 5 m', enter: G => {
+        G.openDialogue({ name: o.giverName, role: 'Dive instructor, writing on a slate', id: 'slate' },
+          { slate: { say: G2 => [...slatePages(G2, G2.player.depth), ...(o.extra ? o.extra(G2, G2.player.depth) : []), { t: 'Thumbs up: up we go, slowly. Three minutes at 5 metres.', src: null }], next: 'end' } }, 'slate');
+      }, check: G => G.player.depth < 0.4 && !G.dialogue() }],
+    onDone: G => G.hideNpc(G.npc(diverId), true)
+  };
+  return { quest, spawnDiver, resume: G => { if (G.isActive(o.id) && G.stepIndex(o.id) === 0) spawnDiver(G); } };
 }
 
 export default function site(G) {

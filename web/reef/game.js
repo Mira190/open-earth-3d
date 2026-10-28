@@ -70,7 +70,8 @@ export async function init(ctx) {
   const slope = (x, n) => Math.hypot(ctx.height(x + 3, n) - ctx.height(x - 3, n), ctx.height(x, n + 3) - ctx.height(x, n - 3)) / 6;
   // nearest point (spiral search) with the ground between minH and maxH above the tide (or above mean sea level with
   // `msl: true`, for people who must stay dry through the tide) and gentle enough to stand on; `toward` breaks ties
-  // toward a target, `wet` asks for water at least that deep within 30 m (a beach a boat can reach)
+  // toward a target, `wet` asks for water at least that deep within 30 m (a beach a boat can reach). With `orNull`
+  // it returns null when nothing qualifies (a site with no land), else the starting point
   function landSpot(x, n, o = {}) {
     const minH = o.minH ?? 0.25, maxH = o.maxH ?? 2.5, maxS = o.maxSlope ?? 0.3, maxR = o.maxR ?? 900, tide = o.msl ? 0 : env.u.tide.value;
     const wetNear = (xx, nn) => { for (let a = 0; a < 6.28; a += 0.52) if (ctx.depth(xx + Math.cos(a) * 30, nn + Math.sin(a) * 30) > o.wet) return true; return false; };
@@ -86,14 +87,18 @@ export async function init(ctx) {
       }
       if (best) return best;
     }
-    return { x, north: n };
+    return o.orNull ? null : { x, north: n };
   }
-  // can you see b from a? The model's terrain along the line, eyes `eye` m above a
+  // can you see b from a? The model's terrain along the line, eyes `eye` m above a, on a curved Earth: heights drop by
+  // s^2 / 2R below the observer's horizontal, with R the Earth's radius stretched by standard refraction (k = 0.13)
+  const R_EFF = 6371000 / (1 - 0.13), drop = s => s * s / (2 * R_EFF);
   function lineOfSight(a, b, eye = 1.6, bUp = 2) {
-    const ha = ctx.height(a.x, a.north) + eye, hb = Math.max(ctx.height(b.x, b.north), env.u.tide.value) + bUp, d = dist(a, b), n = Math.max(4, Math.ceil(d / 30));
-    for (let i = 1; i < n; i++) { const f = i / n; if (ctx.height(a.x + (b.x - a.x) * f, a.north + (b.north - a.north) * f) > ha + (hb - ha) * f) return false; }
+    const ha = Math.max(ctx.height(a.x, a.north), env.u.tide.value) + eye, d = dist(a, b), hb = Math.max(ctx.height(b.x, b.north), env.u.tide.value) + bUp - drop(d), n = Math.max(4, Math.ceil(d / 30));
+    for (let i = 1; i < n; i++) { const f = i / n, h = Math.max(ctx.height(a.x + (b.x - a.x) * f, a.north + (b.north - a.north) * f), env.u.tide.value) - drop(d * f); if (h > ha + (hb - ha) * f) return false; }
     return true;
   }
+  // how far the sea horizon is from eyes `eye` m above the ground at a point (same curved Earth)
+  const horizonM = (a, eye = 1.6) => Math.sqrt(2 * R_EFF * Math.max(0.1, Math.max(ctx.height(a.x, a.north), env.u.tide.value) - env.u.tide.value + eye));
 
   // ------------------------------------------------------------ the model's sun, light and water, for the lines
   const sunNow = () => { const s = ctx.sun || {}; return { alt: (s.alt || 0) / RAD, az: (s.az || 0) / RAD }; };   // the sun the scene is lit by
@@ -138,6 +143,7 @@ export async function init(ctx) {
 
   // ------------------------------------------------------------ sources and notes
   const sources = Object.assign({}, SOURCES);
+  if (ctx.tide) sources['model-tide'] = { title: `Tide: ${ctx.tide.gauge || 'the gauge'} predictions, fitted in tide.json`, model: true, what: `${ctx.tide.source || ''}${ctx.tide.note ? '. ' + ctx.tide.note : ''}` };
   const srcOf = id => sources[id] || (typeof id === 'string' && /^https?:/.test(id) ? { title: id.replace(/^https?:\/\/(www\.)?/, '').slice(0, 60), publisher: 'Source', url: id } : null);
   function note(key, text, src, who) {
     if (!text || st.notes.some(n => n.k === key)) return;
@@ -204,7 +210,7 @@ export async function init(ctx) {
     const npc = ctx.spawnPerson(def.role, { x: onBoat ? at.vessel.x : at.x, north: onBoat ? -at.vessel.z : at.north, up: at.up, heading: at.heading ?? 0, gender: def.gender, name: def.name, look: def.look, animation: def.animation || 'Idle', timeOffset: Math.random() * 2 });
     const rec = { def, npc, vessel: at.vessel || null, local: at.local ? new THREE.Vector3(...at.local) : null, home: at, idleT: 0, swim: !!at.swim, depth: at.depth ?? 0 };
     NPCS.set(def.id, rec); NPC_LIST.push(rec);
-    if (onBoat) followVessel(rec);
+    if (onBoat) { followVessel(rec); npc.ready.then(() => faceThePlayer(rec)); }
     if (at.swim) npc.ready.then(() => swimPose(rec));
     if (def.talk !== false) rec.it = addIt({ npcId: def.id, get x() { return npc.group.position.x; }, get north() { return -npc.group.position.z; },
       radius: def.radius ?? (onBoat ? 7 : 2.8), label: def.label || `E: talk to ${def.name}${def.title ? ` (${def.title.toLowerCase()})` : ''}`,
@@ -428,7 +434,7 @@ export async function init(ctx) {
   // ------------------------------------------------------------ the public game API (site files and tests use it)
   const G = {
     ctx, THREE, S, env, player, hud, ui, travel, st: () => st, sources, srcOf,
-    here, poi, dist, bearing, dirName, dirShort, km, landSpot, lineOfSight, slope, height: (x, n) => ctx.height(x, n), depth: (x, n) => ctx.depth(x, n),
+    here, poi, dist, bearing, dirName, dirShort, km, landSpot, lineOfSight, horizonM, slope, height: (x, n) => ctx.height(x, n), depth: (x, n) => ctx.depth(x, n),
     spawn: () => { const s = S.spawn || {}, t = S.start || {}; return { x: s.x ?? t.x ?? 0, north: s.y ?? t.y ?? 0, heading: s.heading ?? 0 }; },
     // "2.6 km south-east"
     where(t, from) { const p = resolveTarget(t); if (!p) return ''; const a = from || here(); return `${km(dist(a, p))} ${dirName(bearing(a, p))}`; },
@@ -446,7 +452,7 @@ export async function init(ctx) {
     flag(k, v) { if (v === undefined) return st.flags[k]; st.flags[k] = v; saveSoon(); return v; },
     note, emit, on(fn) { listeners.push(fn); },
     // people, signs, talk
-    npc: id => NPCS.get(id) || null, sign: id => SIGNS.get(id) || null, spawnNpc, hideNpc, followVessel, swimPose,
+    npc: id => NPCS.get(id) || null, npcIds: () => [...NPCS.keys()], sign: id => SIGNS.get(id) || null, spawnNpc, hideNpc, followVessel, swimPose,
     talk: id => { const r = NPCS.get(id); if (r) talk(r); return !!r; }, openDialogue, show, choose, advance, closeDialogue, dialogue: () => D,
     readSign: id => { const s = SIGNS.get(id); if (s) readSign(s); return !!s; },
     transfer, say: (t, o) => hud && hud.say(t, o),

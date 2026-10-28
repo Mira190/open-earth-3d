@@ -21,7 +21,7 @@ export function createLifeStub(ctx) {
   const sp = ctx.S.spawn || {}, X = sp.x ?? 0, N = sp.y ?? 0;
   // water 2-5 m deep, nearest the spawn first
   const spots = [];
-  for (let r = 20; r < 400 && spots.length < 12; r += 6) for (let a = 0; a < 6.283; a += 0.5) {
+  for (let r = 20; r < 2500 && spots.length < 12; r += 6) for (let a = 0; a < 6.283; a += 0.5) {   // out past a wide reef flat (Heron) if need be
     const x = X + Math.cos(a) * r, n = N + Math.sin(a) * r, d = ctx.depth(x, n);
     if (d > 2.2 && d < 5 && !spots.some(s => Math.hypot(s[0] - x, s[1] - n) < 9)) { spots.push([x, n, d]); if (spots.length >= 12) break; }
   }

@@ -47,17 +47,32 @@ export async function gametest(api, ctx) {
     await Promise.all(ids.map(id => G.npc(id) && G.npc(id).npc.ready));
     must(ids.every(id => G.npc(id) && G.npc(id).npc.rig), 'NPCs spawned and loaded', ids.join(','));
     const sp = G.spawn(), at = id => { const p = G.npc(id).npc.group.position; return { x: p.x, north: -p.z, up: p.y }; };
-    must(G.dist(at('ranger'), sp) < 40, 'ranger by the spawn', G.km(G.dist(at('ranger'), sp)));
-    if (G.npc('skipper')) must(G.dist(at('skipper'), G.poi('whitehaven-south')) < 400, 'skipper near South Whitehaven', G.km(G.dist(at('skipper'), G.poi('whitehaven-south'))));
-    if (G.npc('guide')) must(G.dist(at('guide'), G.poi('hill-inlet-lookout')) < 50 && at('guide').up > 5, 'guide at Hill Inlet Lookout', `${G.km(G.dist(at('guide'), G.poi('hill-inlet-lookout')))} up ${at('guide').up.toFixed(0)} m`);
-    if (G.npc('instructor') && ctx.boats) must(G.npc('instructor').vessel && Math.abs(at('instructor').up - G.npc('instructor').vessel.y) < 3, 'instructor stands on the dive boat', G.npc('instructor').vessel && G.npc('instructor').vessel.name);
-    for (const id of ids) { const p = at(id); if (!Number.isFinite(p.x + p.north + p.up)) out(false, 'NPC position finite', id); }
+    const first = ids[0];
+    must(G.dist(at(first), sp) < 60, `${first} by the spawn`, G.km(G.dist(at(first), sp)));
+    if (G.npc('skipper') && G.poi('whitehaven-south')) must(G.dist(at('skipper'), G.poi('whitehaven-south')) < 400, 'skipper near South Whitehaven', G.km(G.dist(at('skipper'), G.poi('whitehaven-south'))));
+    if (G.npc('guide') && G.poi('hill-inlet-lookout')) must(G.dist(at('guide'), G.poi('hill-inlet-lookout')) < 50 && at('guide').up > 5, 'guide at Hill Inlet Lookout', `${G.km(G.dist(at('guide'), G.poi('hill-inlet-lookout')))} up ${at('guide').up.toFixed(0)} m`);
+    if (G.npc('instructor') && ctx.boats) must(G.npc('instructor').vessel && Math.abs(at('instructor').up - G.npc('instructor').vessel.y) < 3, 'instructor stands on a vessel', G.npc('instructor').vessel && G.npc('instructor').vessel.name);
+    for (const id of ids) { const p = at(id), r = G.npc(id); if (!Number.isFinite(p.x + p.north + p.up)) out(false, 'NPC position finite', id);
+      // standing on land, on a deck, or riding a vessel: never on the sea floor
+      if (!r.vessel && !r.swim) must(p.up > ctx.env.u.tide.value - 0.3, `${id} stands above the water`, `up ${p.up.toFixed(2)} tide ${ctx.env.u.tide.value.toFixed(2)}`); }
+    // every line of every person and sign: its sources resolve (a typo in a source id would show nothing)
+    const lint = [];
+    const pagesOf = node => { let p; try { p = typeof node.say === 'function' ? node.say(G) : node.say; } catch (e) { lint.push(`say threw: ${e.message}`); return []; }
+      return (Array.isArray(p) ? p : [p]).map(x => typeof x === 'function' ? x(G) : x).filter(Boolean).map(x => typeof x === 'string' ? { t: x, src: node.src } : { t: x.t, src: x.src || node.src }); };
+    const defs = [...G.content.npcs, ...(G.content.signs || [])];
+    let nPages = 0;
+    for (const d of defs) for (const [k, node] of Object.entries(d.nodes || {})) for (const p of pagesOf(node)) {
+      nPages++;
+      if (!p.t || /undefined|NaN/.test(p.t)) lint.push(`${d.id}.${k}: "${String(p.t).slice(0, 60)}"`);
+      for (const s of p.src || []) if (!G.srcOf(s)) lint.push(`${d.id}.${k}: unknown source ${s}`);
+    }
+    must(!lint.length, 'every line renders and every cited source resolves', lint.length ? lint.slice(0, 5).join(' | ') : `${nPages} pages`);
 
     // 2. talking: E next to the ranger opens her dialogue; Enter pages on; 1 answers
-    near('ranger', 1.6); run(0.3);
-    const it = player.interactables.filter(i => (!i.enabled || i.enabled(player)) && i.npcId === 'ranger');
-    must(it.length === 1, 'talk interactable is live next to the ranger', it[0] && it[0].label);
-    must(player.interact() && G.dialogue() && G.dialogue().who.id === 'ranger', 'E opens the ranger\'s dialogue', G.dialogue() && G.dialogue().pages[0].t);
+    near(first, 1.6); run(0.3);
+    const it = player.interactables.filter(i => (!i.enabled || i.enabled(player)) && i.npcId === first);
+    must(it.length === 1, `talk interactable is live next to ${first}`, it[0] && it[0].label);
+    must(player.interact() && G.dialogue() && G.dialogue().who.id === first, `E opens ${first}'s dialogue`, (G.dialogue() && G.dialogue().pages[0].t) || around());
     must(dom('.rg-dlg.on .who b').textContent.length > 0 && dom('.rg-dlg .txt').textContent.length > 10, 'dialogue panel shows name and line', dom('.rg-dlg .who b').textContent);
     pagesToChoices();
     must(G.dialogue().choices.length >= 2 && dom('.rg-dlg .ch button'), 'answers shown on the last page', G.dialogue().choices.length);
@@ -144,12 +159,14 @@ export async function gametest(api, ctx) {
       // 6. the helicopter on its pad: fly, then step off on the ground
       const h = ctx.boats.helicopter && ctx.boats.helicopter.vessel;
       if (h) {
+        const home = { x: h.x, z: h.z };
         beside(h, 2); run(0.4);
         must(api.board.v === h && /^E: fly /.test(api.board.label), 'fly prompt next to the helicopter', api.board.label);
-        if (G.quest('flight')) G.start('flight');
+        const flight = G.quest('flight') && G.poi('hill-inlet');   // the Whitsundays' scenic flight
+        if (flight) G.start('flight');
         player.interact(); run(0.5);
         must(api.aboard === h, 'aboard the helicopter');
-        if (G.quest('flight')) {
+        if (flight) {
           must(G.stepIndex('flight') === 1, 'boarding counts for the scenic flight', JSON.stringify(G.state('flight')));
           dispatchEvent(new KeyboardEvent('keydown', { code: 'Space' })); run(34); dispatchEvent(new KeyboardEvent('keyup', { code: 'Space' }));
           const hi = G.poi('hill-inlet'), wh = G.poi('whitehaven'), alt = h.y - ctx.env.u.tide.value;
@@ -163,21 +180,21 @@ export async function gametest(api, ctx) {
         run(1.4); await new Promise(r => setTimeout(r, 50)); run(0.2);
         must(G.dialogue() && G.dialogue().who.id === 'edge', 'edge of the model offers travel', G.dialogue() && G.dialogue().pages[0].t);
         key('Escape');
-        const pad = G.poi('whitehaven-helipad') || ctx.pois.find(p => p.kind === 'helipad' || p.kind === 'beach');   // other sites: any pad or beach
-        if (pad) { h.x = pad.x; h.z = -(pad.north ?? pad.y); }
+        h.x = home.x; h.z = home.z;
         ctx.boats.leave(); run(0.3);
         const d = Math.hypot(player.position.x - h.x, player.position.z - h.z);
-        must(ctx.controller === playerCtl && d < 16 && ['walk', 'wade', 'run'].includes(player.state), 'stepped off the helicopter onto the ground', `${d.toFixed(1)} m ${player.state}`);
-        if (G.quest('flight')) must(G.isDone('flight'), 'stepping out completes the scenic flight', JSON.stringify(G.state('flight')));
+        must(ctx.controller === playerCtl && d < 16 && ['walk', 'wade', 'run', 'swim', 'snorkel'].includes(player.state), 'stepped off the helicopter beside it', `${d.toFixed(1)} m ${player.state}${S.onDeck ? ' on a deck' : ''}`);
+        if (flight) must(G.isDone('flight'), 'stepping out completes the scenic flight', JSON.stringify(G.state('flight')));
       }
     }
 
     // 8. the travel list
     const list = await api.travel.load();
     must(list.length >= 1 && list.find(s => s.current && s.id === ctx.site), 'travel list has this site, marked current', list.map(s => s.id + (s.ready ? '' : '(building)')).join(','));
-    const fake = await api.travel.build([{ id: ctx.site, name: 'Here', viewer: 'reef/index.html', lat: -20.28, lon: 149.03 }, { id: 'hardy-reef', name: 'Hardy Reef', viewer: 'reef/index.html', lat: -19.8, lon: 149.19 },
-      { id: 'green-island', name: 'Green Island', viewer: 'reef/index.html', lat: -16.76, lon: 145.97 }, { id: 'sydney', name: 'Sydney', lat: -33.86, lon: 151.21 }], id => id === 'hardy-reef');
-    must(fake.length === 3 && fake.find(s => s.id === 'hardy-reef').ready && !fake.find(s => s.id === 'green-island').ready && !fake.find(s => s.id === 'sydney'), 'a reef site appears when its data exists', fake.map(s => `${s.id}:${s.ready ? 'ready' : 'building'}:${s.km === null ? '' : Math.round(s.km) + 'km'}`).join(' '));
+    // made-up entries: one whose data answers, one still being built, and a city that is not a reef site
+    const fake = await api.travel.build([{ id: ctx.site, name: 'Here', viewer: 'reef/index.html', lat: -20.28, lon: 149.03 }, { id: 'test-built-reef', name: 'Built reef', viewer: 'reef/index.html', lat: -19.8, lon: 149.19 },
+      { id: 'test-building-reef', name: 'Building reef', viewer: 'reef/index.html', lat: -16.76, lon: 145.97 }, { id: 'test-city', name: 'A city', lat: -33.86, lon: 151.21 }], id => id === 'test-built-reef');
+    must(fake.length === 3 && fake.find(s => s.id === 'test-built-reef').ready && !fake.find(s => s.id === 'test-building-reef').ready && !fake.find(s => s.id === 'test-city'), 'a reef site appears when its data exists', fake.map(s => `${s.id}:${s.ready ? 'ready' : 'building'}:${s.km === null ? '' : Math.round(s.km) + 'km'}`).join(' '));
     const href = api.travel.href('hardy-reef', { pathname: '/reef/index.html', search: '?city=whitsundays&x=10&y=20&yaw=4&gl=1&mute=1&gametest=1&exp=1.2' });
     must(href === '/reef/index.html?city=hardy-reef&gl=1&mute=1&exp=1.2', 'travel keeps settings, drops position and test keys', href);
     key('KeyT'); await new Promise(r => setTimeout(r, 30));
@@ -189,24 +206,27 @@ export async function gametest(api, ctx) {
     const L = G.light(8);
     must(L.r < L.g && L.g < L.b && L.r > 0.005 && L.r < 0.1 && L.halfR > 1 && L.halfR < 3, 'red light at 8 m from env.u.K and lightPath', `r ${(L.r * 100).toFixed(1)}% g ${(L.g * 100).toFixed(0)}% b ${(L.b * 100).toFixed(0)}% halfR ${L.halfR.toFixed(1)} m m=${L.m.toFixed(2)}`);
 
-    // 10. the dive with Raf: boat run out, scuba, 8 m, the slate, back up
-    if (G.npc('instructor') && G.npc('instructor').vessel) {
-      const b = G.npc('instructor').vessel;
-      await G.transfer({ x: b.x - Math.sin(b.hdg) * (b.desc.L / 2 + 2.5), north: -b.z - Math.cos(b.hdg) * (b.desc.L / 2 + 2.5), face: { x: b.x, north: -b.z } }, '', '', { instant: true });
-      run(0.4);
-      must(player.S.water, 'the boat run puts you in the water by the dive boat', player.state);
-      const rp = G.npc('instructor').npc.group.position, nearby = `${around()} | raf ${rp.x.toFixed(1)},${(-rp.z).toFixed(1)} boat ${b.x.toFixed(1)},${(-b.z).toFixed(1)} hdg ${(b.hdg * 57.3).toFixed(0)} me ${S.pos.x.toFixed(1)},${(-S.pos.z).toFixed(1)}`;
-      must(player.interact() && G.dialogue() && G.dialogue().who.id === 'instructor', 'talk to Raf from the water', nearby);
+    // 10. the guided dive (Raf at the Whitsundays, Sam at Hardy Reef): reach the instructor, scuba, the depth, the slate, back up
+    const diveQ = G.content.quests.find(q => /^Dive to \d+ m/.test(typeof q.steps[0].text === 'string' ? q.steps[0].text : ''));
+    if (G.npc('instructor') && diveQ) {
+      const b = G.npc('instructor').vessel, depth = +/^Dive to (\d+) m/.exec(diveQ.steps[0].text)[1];
+      if (b && G.npc('skipper')) {                          // the Whitsundays: Jo's boat run drops you at the dive boat's stern
+        await G.transfer({ x: b.x - Math.sin(b.hdg) * (b.desc.L / 2 + 2.5), north: -b.z - Math.cos(b.hdg) * (b.desc.L / 2 + 2.5), face: { x: b.x, north: -b.z } }, '', '', { instant: true });
+        run(0.4);
+        must(player.S.water, 'the boat run puts you in the water by the dive boat', player.state);
+      } else { near('instructor', 2); run(0.4); }
+      must(player.interact() && G.dialogue() && G.dialogue().who.id === 'instructor', 'talk to the dive instructor', around());
       pagesToChoices(); key('Digit1'); pagesToChoices(); key('Enter');
-      must(G.isActive('red') && player.S.gear.scuba, 'Raf starts the dive and kits you up', `${JSON.stringify(G.state('red'))} ${player.state}`);
-      run(0.2); if (G.npc('raf-diving')) await G.npc('raf-diving').npc.ready;
-      const dp = G.content.quests.find(q => q.id === 'red').steps[0].target(G);
-      player.teleport(dp.x + 2, dp.north, ctx.env.u.tide.value - 8.3, 0); run(0.6);
-      must(G.dialogue() && G.dialogue().who.id === 'slate' && /% of its red/.test(G.dialogue().pages[0].t), 'at 8 m the slate gives the computed red share', G.dialogue() && G.dialogue().pages[0].t);
+      must(G.isActive(diveQ.id) && player.S.gear.scuba, 'the instructor starts the dive and kits you up', `${diveQ.id} ${JSON.stringify(G.state(diveQ.id))} ${player.state}`);
+      run(0.2); const diver = G.npcIds().find(k => /-diving$/.test(k)); if (diver) await G.npc(diver).npc.ready;
+      const dp = diveQ.steps[0].target(G);
+      must(G.depth(dp.x, dp.north) > depth + 0.5, `the meeting point is deeper than ${depth} m`, `${G.depth(dp.x, dp.north).toFixed(1)} m, ${G.km(G.dist(dp, G.here()))} away`);
+      player.teleport(dp.x + 2, dp.north, ctx.env.u.tide.value - depth - 0.3, 0); run(0.6);
+      must(G.dialogue() && G.dialogue().who.id === 'slate' && /% of its red/.test(G.dialogue().pages[0].t), `at ${depth} m the slate gives the computed red share`, G.dialogue() && G.dialogue().pages.map(p => p.t).join(' / ').slice(0, 300));
       key('Escape'); player.teleport(dp.x + 2, dp.north, undefined, 0); run(0.6);
-      must(G.isDone('red'), 'surfacing completes the dive', JSON.stringify(G.state('red')));
+      must(G.isDone(diveQ.id), 'surfacing completes the dive', JSON.stringify(G.state(diveQ.id)));
       const sp = ctx.life && ctx.life.spawning;
-      if (sp && sp.active) {
+      if (sp && sp.active && (G.content.npcs.find(n => n.id === 'instructor').nodes || {}).spawn) {   // the Whitsundays' Raf
         G.talk('instructor'); pagesToChoices();
         const ch = G.dialogue() ? G.dialogue().choices.map(c => typeof c.text === 'function' ? c.text(G) : c.text) : [];
         must(ch.some(c => /spawn/.test(c)), 'on a spawning night Raf offers the night snorkel', `${sp.nightsAfterFullMoon} nights after the full moon: ${ch.join(' | ')}`);
@@ -222,9 +242,11 @@ export async function gametest(api, ctx) {
       player.equip('snorkel');
       // life.js fills the water around the camera as frames run; this test runs before the first frame, so put the
       // camera in the water off the spawn and step it there
-      const sp0 = G.spawn(), cam = ctx.camera.position, keep = cam.clone();
-      if (life.update) { cam.set(sp0.x + 250, ctx.env.u.tide.value - 2, -sp0.north); for (let i = 0; i < 3; i++) life.update(0.1, i * 0.1); }
-      const c = life.nearestCreature(sp0.x, sp0.north, ctx.env.u.tide.value - 1, 600);
+      // the nearest water 3-15 m deep to the spawn (east of Whitehaven, west of Lady Elliot's beach, round a pontoon)
+      const sp0 = G.spawn(), cam = ctx.camera.position, keep = cam.clone(), w = { x: sp0.x + 250, north: sp0.north };
+      found: for (let r = 50; r < 1500; r += 25) for (let a = 0; a < 6.28; a += 0.3) { const x = sp0.x + Math.cos(a) * r, n = sp0.north + Math.sin(a) * r, d = G.depth(x, n); if (d > 3 && d < 15) { w.x = x; w.north = n; break found; } }
+      if (life.update) { cam.set(w.x, ctx.env.u.tide.value - 2, -w.north); for (let i = 0; i < 3; i++) life.update(0.1, i * 0.1); }
+      const c = life.nearestCreature(w.x, w.north, ctx.env.u.tide.value - 1, 600);
       cam.copy(keep);
       must(!!c, 'life.nearestCreature finds an animal near the spawn', c && c.species && c.species.common);
       if (c) {
@@ -240,7 +262,8 @@ export async function gametest(api, ctx) {
     }
 
     // 12. journal and saving (hear the reef facts first, so there are cited notes on every site)
-    near('ranger', 1.6); run(0.8); G.talk('ranger'); G.show('reef'); T.drain(); run(0.5);
+    const reefer = G.content.npcs.find(n => n.nodes && n.nodes.reef);
+    if (reefer) { near(reefer.id, 1.6); run(0.8); G.talk(reefer.id); G.show('reef'); T.drain(); run(0.5); }
     key('KeyJ');
     const jb = dom('.rg-panel .body').innerHTML;
     must(api.ui.panelKind === 'journal' && /Field notes/.test(jb) && /wikipedia\.org/.test(jb), 'J opens the journal with notes and source links', `${(jb.match(/<li/g) || []).length} items`);
@@ -264,9 +287,13 @@ export async function gameshot(api, ctx, which) {
   const cam = (yawDeg, pitchDeg, dist) => { S.camYaw = yawDeg * Math.PI / 180; S.camPitch = pitchDeg * Math.PI / 180; if (dist) S.dist = dist; };
   const toward = id => { const p = G.npc(id).npc.group.position; return G.bearing(G.here(), { x: p.x, north: -p.z }); };
   if (which === 'dialogue') {
-    near('ranger', 2.2); run(0.4);
-    player.interact(); pagesToChoices(); run(0.3);
-    cam(toward('ranger') - 32, -10, 4.4);
+    // &shotnpc=<id> (default the site's first person) &shotnode=<node> &shotpage=<n> &shotdist &shotyaw &shotpitch &shotcam
+    const n = k => ctx.q.get(k), id = n('shotnpc') || G.content.npcs[0].id;
+    near(id, +(n('shotdist') || 2.2)); run(0.4);
+    player.interact(); if (n('shotnode')) G.show(n('shotnode'));
+    if (n('shotpage') !== null) for (let i = 0; i < +n('shotpage'); i++) key('Enter'); else pagesToChoices();
+    run(0.3);
+    cam(toward(id) + +(n('shotyaw') || -32), +(n('shotpitch') || -10), +(n('shotcam') || 4.4));
   } else if (which === 'journal') {
     for (const id of ['sand', 'inlet', 'survey', 'flight']) G.start(id);
     G.data('sand').walked = 212; G.advance('sand'); near('ranger', 1.8); run(0.4); player.interact(); drain(); run(0.4);

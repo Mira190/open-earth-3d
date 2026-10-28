@@ -8,7 +8,7 @@
 //   Signs at the three lookouts on Whitsunday Island that carry Ngaro names, as signed and mapped.
 // Ngaro and Gia content is limited to what the cited pages say and to the mapped names; nobody here speaks for
 // Traditional Owners. Every number is computed while you play or cited (sources below and game/sources.js).
-import { ranger, surveyQuest, surveyDoneNode, slatePages, reefPages } from './generic.js';
+import { ranger, surveyQuest, surveyDoneNode, slatePages, reefPages, inSight as sightOf } from './generic.js';
 
 const SOURCES = {
   'wiki-whitehaven': { title: 'Whitehaven Beach', publisher: 'Wikipedia', url: 'https://en.wikipedia.org/wiki/Whitehaven_Beach', checked: '2026-10-28',
@@ -23,7 +23,6 @@ const SOURCES = {
 };
 
 const NGARO_LOOKOUTS = ['bari-dhili-lookout', 'bilbili-dhili-lookout', 'murmuru-bari-lookout'];
-const SHOW = new Set(['beach', 'bay', 'inlet', 'island', 'peak', 'lookout', 'marina']);   // what a sign lists as in sight
 
 // ---- places that depend on the running model (the boats are placed by boats.js; the tide moves the shore)
 const diveBoat = G => {
@@ -67,18 +66,8 @@ function inlet(G, R = 900) {
   return { R, km2: hs.length * 900 / 1e6, wet };
 }
 
-// what you can see from a spot: named places within 7 km with a clear line over the model's terrain
-function inSight(G, from, skip) {
-  const out = [];
-  for (const raw of G.S.pois || []) {
-    const p = G.poi(raw.id);
-    if (!SHOW.has(p.kind) || p.id === skip || NGARO_LOOKOUTS.includes(p.id)) continue;
-    const d = G.dist(from, p); if (d < 150 || d > 7000) continue;
-    if (G.lineOfSight(from, p, 1.6, p.kind === 'island' || p.kind === 'peak' ? 25 : 2)) out.push({ p, d });
-  }
-  out.sort((a, b) => a.d - b.d);
-  return out.slice(0, 4).map(o => `${o.p.name}, ${G.km(o.d)} ${G.dirName(G.bearing(from, o.p))}`);
-}
+// what you can see from a spot: named places within 7 km with a clear line over the model's terrain (generic.js)
+const inSight = (G, from, skip) => sightOf(G, from, skip, { exclude: NGARO_LOOKOUTS });
 
 const tideLine = G => {
   const T = G.tide(); if (!T) return null;
@@ -243,7 +232,8 @@ export default function whitsundays(G) {
           { t: `I'll wait for you at 8 m, ${G.where(d)} of here, where the bottom is ${Math.round(G.tideNow() - G.height(d.x, d.north))} m down at this tide. G lets air out of the BCD, Q equalises your ears. Come up slowly.`, src: ['model-terrain'] }];
       }, do: G => { G.player.equip('scuba'); G.start('red'); }, next: 'end' },
       spawn: { say: G => {
-        const sp = G.life().spawning, s = G.sunset().set, rise = G.moonrise(s - 3 * 3600e3), gap = rise && rise > s ? Math.round((rise - s) / 60000) : 0;
+        const sp = (G.life() || {}).spawning; if (!sp) return [];
+        const s = G.sunset().set, rise = G.moonrise(s - 3 * 3600e3), gap = rise && rise > s ? Math.round((rise - s) / 60000) : 0;
         return [{ t: `The inner reefs spawn in the week after the October full moon. By the model it's ${sp.nightsAfterFullMoon} night${sp.nightsAfterFullMoon === 1 ? '' : 's'} since the full moon.`, src: ['wiki-gbr', 'model-life'] },
           { t: `It comes in the evening or at night, and the cue seems to be the dark between sunset and moonrise. Tonight the sun sets at ${G.time(s)}${rise ? `, and by the model's moon it rises at ${G.time(rise)}${gap ? `: ${Math.floor(gap / 60)} h ${gap % 60} min of dark` : ', before the sun is down'}` : ''}.`, src: ['wiki-coral', 'model-sun'] },
           { t: 'Snorkel over the reef then, mask on.', src: null }];
