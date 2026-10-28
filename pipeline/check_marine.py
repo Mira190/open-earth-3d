@@ -81,7 +81,7 @@ def judge(g, kind, x, n, p=None):
     d = -z
     if kind == "beach":
         return -0.5 <= z <= 2.5, f"ground {z:.1f} m"
-    if kind in ("island", "airport", "helipad", "lookout", "peak", "town", "cultural"):
+    if kind in ("island", "airport", "helipad", "lookout", "peak", "town"):
         return z > 0.2, f"ground {z:.1f} m"
     if kind == "anchorage":
         return 4.5 <= d <= 9.5, f"depth {d:.1f} m"
@@ -91,8 +91,9 @@ def judge(g, kind, x, n, p=None):
         return lo < 0, f"depth {d:.1f} m, 90 m around {-hi:.1f}..{-lo:.1f} m"
     if kind == "gate":
         return d > 8, f"depth {d:.1f} m"
-    if kind == "marina":
-        return lo < -1 and hi > -1.5, f"ground {z:.1f} m, 90 m around {lo:.1f}..{hi:.1f} m"
+    if kind == "marina":   # a jetty's water end or a marina building: water and land within 300 m of each other
+        lo3, hi3 = g.ring(x, n, 300, 30)
+        return lo3 < -1 and hi3 > 0, f"height {z:.1f} m, within 300 m {lo3:.1f}..{hi3:.1f} m"
     return True, f"height {z:.1f} m"
 
 

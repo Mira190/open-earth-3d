@@ -132,13 +132,14 @@
    "spread_inverted_pct": 15.335219166060849
   }
  },
- "habitat_scale": 1.3913146942938563,
+ "habitat_scale": 1.152967813884344,
  "habitat_share": {
   "deep water": 0.732,
-  "sand": 0.0418,
-  "reef and rock": 0.0313,
-  "seagrass and algae": 0.0035,
-  "rubble": 0.1914
+  "sand": 0.1198,
+  "reef and rock": 0.0081,
+  "seagrass and algae": 0.0031,
+  "rubble": 0.1371,
+  "beach and bare": 0.0
  },
  "terrain_grid": "C",
  "note": "Rinf: reflectance of deep water (>40 m), smoothed. Kd: diffuse attenuation, from how the brightest floor darkens with depth; red uses the pure-water absorption as a floor."

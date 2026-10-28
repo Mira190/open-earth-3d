@@ -29,7 +29,7 @@
    "y": -2191,
    "ok": true,
    "note": "depth 3.6 m, 90 m around 1.3..4.7 m",
-   "habitat": "rubble"
+   "habitat": "sand"
   },
   {
    "id": "hook-reef",
@@ -49,7 +49,7 @@
    "y": 6982,
    "ok": true,
    "note": "depth 2.0 m, 90 m around 1.7..2.7 m",
-   "habitat": "rubble"
+   "habitat": "sand"
   },
   {
    "id": "bait-reef",
@@ -59,7 +59,7 @@
    "y": -6507,
    "ok": true,
    "note": "depth 1.8 m, 90 m around 1.7..6.5 m",
-   "habitat": "rubble"
+   "habitat": "sand"
   },
   {
    "id": "bait-anchorage",

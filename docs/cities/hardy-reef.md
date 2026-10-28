@@ -45,9 +45,10 @@ open water 40-80 m deep; the box was moved north and west to take in all of Line
   method is left as it is; a substrate-independent estimate (Lyzenga's ratio method on sand patches, or a fixed
   blue:green ratio) is the fix.
 - Habitat: with the Whitsundays thresholds only 0.9% of the shallow floor came out as reef, because the inverted floor
-  is brighter here. `build_marine.py` now scales the thresholds by the scene's fitted sand albedo (factor 1.391; 1.0 for
-  the Whitsundays, whose output is unchanged). Reef is now 11% of the shallow floor (3.1% of the box), on reef crests
-  and Hook Reef's patch reefs; sand 15%, rubble 70%. Still inferred, not surveyed.
+  is brighter here. `build_marine.py` now scales the thresholds by the brightness of the scene's bright floor (90th
+  percentile of the albedo 1-10 m deep: 1.153 here, 1.0 for the Whitsundays). Shallow floor (under 25 m): sand 45%,
+  rubble 51%, reef 3%, seagrass and algae 1%; the reef class sits on reef crests and the patch reefs of Hook Reef's
+  lagoon. Still inferred, not surveyed; the Hardy reef flat probably carries more live coral than this.
 - `ground.jpg` and `habitat.png` (previews checked): no seam (one tile), no cloud residue or glint visible on the reefs;
   the deep floor is the smoothed fill with its usual rings. Heart Reef is a 2-3 pixel bright speck in its pool in the
   composite and is not resolved as a heart.
