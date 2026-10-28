@@ -1,0 +1,1082 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "大阪城公園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 25.1,
+   "catchment_buildings": 26,
+   "shade_by_height_source_pct": {
+    "plateau": 50.5,
+    "estimate": 6.1,
+    "mapped": 2.7,
+    "terrain": 39.7,
+    "parametric": 1,
+    "floors": 0
+   },
+   "top_blockers": [
+    {
+     "name": "terrain",
+     "share_pct": 39.7
+    },
+    {
+     "building": 42152,
+     "name": "大阪城 ホール",
+     "height_m": 20.9,
+     "source": "plateau",
+     "osm_id": "w176303041",
+     "share_pct": 5.8
+    },
+    {
+     "building": 45928,
+     "name": "KKRホテル大阪",
+     "height_m": 69.8,
+     "source": "plateau",
+     "osm_id": "w161623692",
+     "share_pct": 3.9
+    },
+    {
+     "building": 45929,
+     "name": "unnamed hotel",
+     "height_m": 67.1,
+     "source": "plateau",
+     "osm_id": "w1381030668",
+     "share_pct": 3.2
+    },
+    {
+     "building": 42617,
+     "name": "大阪府警察本部",
+     "height_m": 81.4,
+     "source": "plateau",
+     "osm_id": "r3252574",
+     "share_pct": 2.4
+    },
+    {
+     "building": 45963,
+     "name": "メゾン・ド・ヴィレ大阪城公園前",
+     "height_m": 85.4,
+     "source": "plateau",
+     "osm_id": "w241874701",
+     "share_pct": 2.1
+    }
+   ],
+   "base_by_month": [
+    74.9
+   ],
+   "p05_by_month": [
+    74.3
+   ],
+   "p95_by_month": [
+    74.9
+   ],
+   "window_mean": {
+    "base": 74.9,
+    "p05": 74.3,
+    "p95": 74.9
+   },
+   "max_halfwidth_pp": 0.3
+  },
+  {
+   "name": "西の丸庭園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 12.1,
+   "catchment_buildings": 19,
+   "shade_by_height_source_pct": {
+    "plateau": 70.3,
+    "mapped": 3.8,
+    "terrain": 12.2,
+    "estimate": 13.5,
+    "parametric": 0.1
+   },
+   "top_blockers": [
+    {
+     "building": 42533,
+     "name": "大阪迎賓館",
+     "height_m": 7.6,
+     "source": "plateau",
+     "osm_id": "w176301507",
+     "share_pct": 17.8
+    },
+    {
+     "name": "terrain",
+     "share_pct": 12.2
+    },
+    {
+     "building": 42617,
+     "name": "大阪府警察本部",
+     "height_m": 81.4,
+     "source": "plateau",
+     "osm_id": "r3252574",
+     "share_pct": 12
+    },
+    {
+     "building": 42555,
+     "name": "unnamed building",
+     "height_m": 9.7,
+     "source": "estimate",
+     "osm_id": "",
+     "share_pct": 9.9
+    },
+    {
+     "building": 42562,
+     "name": "千貫櫓",
+     "height_m": 17.5,
+     "source": "plateau",
+     "osm_id": "w48123162",
+     "share_pct": 6
+    },
+    {
+     "building": 42532,
+     "name": "茶室（豊松庵）",
+     "height_m": 3.5,
+     "source": "plateau",
+     "osm_id": "w176301498",
+     "share_pct": 5.7
+    }
+   ],
+   "base_by_month": [
+    87.9
+   ],
+   "p05_by_month": [
+    86.4
+   ],
+   "p95_by_month": [
+    88.3
+   ],
+   "window_mean": {
+    "base": 87.9,
+    "p05": 86.4,
+    "p95": 88.3
+   },
+   "max_halfwidth_pp": 0.9
+  },
+  {
+   "name": "難波宮跡公園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 30.4,
+   "catchment_buildings": 24,
+   "shade_by_height_source_pct": {
+    "plateau": 52.4,
+    "mapped": 33.2,
+    "estimate": 12,
+    "floors": 2.4
+   },
+   "top_blockers": [
+    {
+     "building": 24460,
+     "name": "シエリア大阪上町台パークタワー",
+     "height_m": 100,
+     "source": "mapped",
+     "osm_id": "w241883288",
+     "share_pct": 29.6
+    },
+    {
+     "building": 24438,
+     "name": "unnamed apartments",
+     "height_m": 100.1,
+     "source": "plateau",
+     "osm_id": "w236254272",
+     "share_pct": 10
+    },
+    {
+     "building": 24513,
+     "name": "unnamed building",
+     "height_m": 54.1,
+     "source": "plateau",
+     "osm_id": "w246138086",
+     "share_pct": 6
+    },
+    {
+     "building": 46061,
+     "name": "難波宮大極殿跡",
+     "height_m": 9.7,
+     "source": "estimate",
+     "osm_id": "w44506726",
+     "share_pct": 5.9
+    },
+    {
+     "building": 46058,
+     "name": "難波宮大極殿後殿跡",
+     "height_m": 9.7,
+     "source": "estimate",
+     "osm_id": "w44506725",
+     "share_pct": 4.5
+    },
+    {
+     "building": 22107,
+     "name": "グランドメゾン上町台ザ・タワー",
+     "height_m": 107.7,
+     "source": "plateau",
+     "osm_id": "w241732615",
+     "share_pct": 3.6
+    }
+   ],
+   "base_by_month": [
+    69.6
+   ],
+   "p05_by_month": [
+    68.8
+   ],
+   "p95_by_month": [
+    70.1
+   ],
+   "window_mean": {
+    "base": 69.6,
+    "p05": 68.8,
+    "p95": 70.1
+   },
+   "max_halfwidth_pp": 0.6
+  },
+  {
+   "name": "靱公園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 50.5,
+   "catchment_buildings": 39,
+   "shade_by_height_source_pct": {
+    "estimate": 17.5,
+    "plateau": 78.1,
+    "mapped": 4.4,
+    "floors": 0,
+    "terrain": 0
+   },
+   "top_blockers": [
+    {
+     "building": 68432,
+     "name": "unnamed building",
+     "height_m": 5.9,
+     "source": "plateau",
+     "osm_id": "",
+     "share_pct": 14.4
+    },
+    {
+     "building": 37684,
+     "name": "靱パークサイドコーポ",
+     "height_m": 52.8,
+     "source": "plateau",
+     "osm_id": "w291545472",
+     "share_pct": 11.8
+    },
+    {
+     "building": 38023,
+     "name": "unnamed building",
+     "height_m": 16.5,
+     "source": "estimate",
+     "osm_id": "",
+     "share_pct": 8.9
+    },
+    {
+     "building": 43665,
+     "name": "近畿富山会館",
+     "height_m": 42,
+     "source": "plateau",
+     "osm_id": "w249113131",
+     "share_pct": 4.6
+    },
+    {
+     "building": 43833,
+     "name": "プレミストタワー靱本町",
+     "height_m": 122.8,
+     "source": "mapped",
+     "osm_id": "w254340558",
+     "share_pct": 4.4
+    },
+    {
+     "building": 37786,
+     "name": "unnamed building",
+     "height_m": 7.2,
+     "source": "estimate",
+     "osm_id": "",
+     "share_pct": 4.1
+    }
+   ],
+   "base_by_month": [
+    49.5
+   ],
+   "p05_by_month": [
+    48.4
+   ],
+   "p95_by_month": [
+    50.3
+   ],
+   "window_mean": {
+    "base": 49.5,
+    "p05": 48.4,
+    "p95": 50.3
+   },
+   "max_halfwidth_pp": 0.9
+  },
+  {
+   "name": "天王寺公園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 34.5,
+   "catchment_buildings": 33,
+   "shade_by_height_source_pct": {
+    "plateau": 69.9,
+    "terrain": 18,
+    "estimate": 10.9,
+    "mapped": 1.1,
+    "floors": 0.1
+   },
+   "top_blockers": [
+    {
+     "name": "terrain",
+     "share_pct": 18
+    },
+    {
+     "building": 2077,
+     "name": "大阪市立美術館",
+     "height_m": 30.1,
+     "source": "plateau",
+     "osm_id": "w173693696",
+     "share_pct": 17.7
+    },
+    {
+     "building": 1661,
+     "name": "チンパンジー舎",
+     "height_m": 6.8,
+     "source": "plateau",
+     "osm_id": "w219784591",
+     "share_pct": 3.2
+    },
+    {
+     "building": 1475,
+     "name": "アイファー（爬虫類生態館）",
+     "height_m": 5.8,
+     "source": "plateau",
+     "osm_id": "w219782486",
+     "share_pct": 3.2
+    },
+    {
+     "building": 1657,
+     "name": "unnamed building",
+     "height_m": 6.8,
+     "source": "estimate",
+     "osm_id": "w765953873",
+     "share_pct": 3
+    },
+    {
+     "building": 2084,
+     "name": "unnamed building",
+     "height_m": 4.6,
+     "source": "estimate",
+     "osm_id": "w765953874",
+     "share_pct": 2.9
+    }
+   ],
+   "base_by_month": [
+    65.5
+   ],
+   "p05_by_month": [
+    64.7
+   ],
+   "p95_by_month": [
+    66
+   ],
+   "window_mean": {
+    "base": 65.5,
+    "p05": 64.7,
+    "p95": 66
+   },
+   "max_halfwidth_pp": 0.6
+  },
+  {
+   "name": "扇町公園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 30.3,
+   "catchment_buildings": 40,
+   "shade_by_height_source_pct": {
+    "mapped": 13.7,
+    "plateau": 83.8,
+    "estimate": 1.5,
+    "terrain": 1
+   },
+   "top_blockers": [
+    {
+     "building": 47528,
+     "name": "扇町プール",
+     "height_m": 13.5,
+     "source": "plateau",
+     "osm_id": "w162174196",
+     "share_pct": 14.4
+    },
+    {
+     "building": 52413,
+     "name": "unnamed building",
+     "height_m": 38,
+     "source": "mapped",
+     "osm_id": "w1212814393",
+     "share_pct": 11.3
+    },
+    {
+     "building": 47526,
+     "name": "unnamed building",
+     "height_m": 10.3,
+     "source": "plateau",
+     "osm_id": "w602055074",
+     "share_pct": 8
+    },
+    {
+     "building": 47711,
+     "name": "関西テレビ放送",
+     "height_m": 97.9,
+     "source": "plateau",
+     "osm_id": "w160444453",
+     "share_pct": 7.4
+    },
+    {
+     "building": 52155,
+     "name": "扇町 センター ビル",
+     "height_m": 52.6,
+     "source": "plateau",
+     "osm_id": "w180203183",
+     "share_pct": 5.9
+    },
+    {
+     "building": 52412,
+     "name": "HONDA",
+     "height_m": 45.6,
+     "source": "plateau",
+     "osm_id": "w180184402",
+     "share_pct": 4.6
+    }
+   ],
+   "base_by_month": [
+    69.7
+   ],
+   "p05_by_month": [
+    68.6
+   ],
+   "p95_by_month": [
+    69.9
+   ],
+   "window_mean": {
+    "base": 69.7,
+    "p05": 68.6,
+    "p95": 69.9
+   },
+   "max_halfwidth_pp": 0.7
+  },
+  {
+   "name": "うめきた公園 サウスパーク",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 83.6,
+   "catchment_buildings": 15,
+   "shade_by_height_source_pct": {
+    "mapped": 11.3,
+    "estimate": 33.1,
+    "plateau": 16.5,
+    "floors": 39.1
+   },
+   "top_blockers": [
+    {
+     "building": 47113,
+     "name": "unnamed building",
+     "height_m": 10.2,
+     "source": "estimate",
+     "osm_id": "w1222888642",
+     "share_pct": 22.9
+    },
+    {
+     "building": 46765,
+     "name": "南館 パークタワー",
+     "height_m": 175,
+     "source": "floors",
+     "osm_id": "w1147394026",
+     "share_pct": 19.4
+    },
+    {
+     "building": 68452,
+     "name": "unnamed building",
+     "height_m": 9.2,
+     "source": "plateau",
+     "osm_id": "",
+     "share_pct": 14.1
+    },
+    {
+     "building": 46759,
+     "name": "イノゲート大阪",
+     "height_m": 121.6,
+     "source": "mapped",
+     "osm_id": "w1147394005",
+     "share_pct": 11.1
+    },
+    {
+     "building": 46764,
+     "name": "南館 ゲートタワー",
+     "height_m": 64.6,
+     "source": "floors",
+     "osm_id": "w1347368433",
+     "share_pct": 7.6
+    },
+    {
+     "building": 47129,
+     "name": "unnamed roof",
+     "height_m": 3.8,
+     "source": "estimate",
+     "osm_id": "w1327431427",
+     "share_pct": 3.1
+    }
+   ],
+   "base_by_month": [
+    16.4
+   ],
+   "p05_by_month": [
+    14
+   ],
+   "p95_by_month": [
+    20.2
+   ],
+   "window_mean": {
+    "base": 16.4,
+    "p05": 14,
+    "p95": 20.2
+   },
+   "max_halfwidth_pp": 3.1
+  },
+  {
+   "name": "桜之宮公園",
+   "period": "12-01..12-31",
+   "window": "08:00-16:00",
+   "months": [
+    12
+   ],
+   "shaded_share_pct": 22.9,
+   "catchment_buildings": 44,
+   "shade_by_height_source_pct": {
+    "plateau": 78.6,
+    "mapped": 2.6,
+    "terrain": 2.7,
+    "estimate": 2.7,
+    "floors": 13.4
+   },
+   "top_blockers": [
+    {
+     "building": 51982,
+     "name": "帝国ホテル大阪",
+     "height_m": 128,
+     "source": "floors",
+     "osm_id": "w1071278816",
+     "share_pct": 9.9
+    },
+    {
+     "building": 51694,
+     "name": "OAPプラザ",
+     "height_m": 195.9,
+     "source": "plateau",
+     "osm_id": "w176161820",
+     "share_pct": 9.3
+    },
+    {
+     "building": 41820,
+     "name": "ザ・ガーデンオリエンタル・大阪",
+     "height_m": 10.8,
+     "source": "plateau",
+     "osm_id": "w176306967",
+     "share_pct": 3.8
+    },
+    {
+     "building": 55324,
+     "name": "ドン・キホーテ",
+     "height_m": 41.5,
+     "source": "plateau",
+     "osm_id": "w161553558",
+     "share_pct": 2.7
+    },
+    {
+     "name": "terrain",
+     "share_pct": 2.7
+    },
+    {
+     "building": 48585,
+     "name": "ロイヤルアーク花水都OSAKA",
+     "height_m": 48.1,
+     "source": "plateau",
+     "osm_id": "w220966350",
+     "share_pct": 2.5
+    }
+   ],
+   "base_by_month": [
+    77.1
+   ],
+   "p05_by_month": [
+    76.2
+   ],
+   "p95_by_month": [
+    77.3
+   ],
+   "window_mean": {
+    "base": 77.1,
+    "p05": 76.2,
+    "p95": 77.3
+   },
+   "max_halfwidth_pp": 0.5
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "うめきた公園 サウスパーク",
+   "building": 47113,
+   "name": "unnamed building",
+   "osm_id": "w1222888642",
+   "height_m": 10.2,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    27
+   ],
+   "sun_change_pp": [
+    -2.9,
+    1.4
+   ],
+   "swing_pp": 4.3
+  },
+  {
+   "place": "うめきた公園 サウスパーク",
+   "building": 46764,
+   "name": "南館 ゲートタワー",
+   "osm_id": "w1347368433",
+   "height_m": 64.6,
+   "source": "floors",
+   "plausible_m": [
+    44,
+    89
+   ],
+   "sun_change_pp": [
+    -1.4,
+    1.5
+   ],
+   "swing_pp": 2.9
+  },
+  {
+   "place": "西の丸庭園",
+   "building": 42555,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 9.7,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    25
+   ],
+   "sun_change_pp": [
+    -1.5,
+    0.6
+   ],
+   "swing_pp": 2.1
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 46061,
+   "name": "難波宮大極殿跡",
+   "osm_id": "w44506726",
+   "height_m": 9.7,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    25
+   ],
+   "sun_change_pp": [
+    -0.8,
+    0.4
+   ],
+   "swing_pp": 1.3
+  },
+  {
+   "place": "靱公園",
+   "building": 37786,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 7.2,
+   "source": "estimate",
+   "plausible_m": [
+    3,
+    19
+   ],
+   "sun_change_pp": [
+    -0.6,
+    0.4
+   ],
+   "swing_pp": 1
+  },
+  {
+   "place": "うめきた公園 サウスパーク",
+   "building": 47114,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 9.2,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    24
+   ],
+   "sun_change_pp": [
+    -0.8,
+    0.3
+   ],
+   "swing_pp": 1
+  },
+  {
+   "place": "天王寺公園",
+   "building": 1657,
+   "name": "unnamed building",
+   "osm_id": "w765953873",
+   "height_m": 6.8,
+   "source": "estimate",
+   "plausible_m": [
+    3,
+    18
+   ],
+   "sun_change_pp": [
+    -0.6,
+    0.3
+   ],
+   "swing_pp": 0.9
+  },
+  {
+   "place": "天王寺公園",
+   "building": 2084,
+   "name": "unnamed building",
+   "osm_id": "w765953874",
+   "height_m": 4.6,
+   "source": "estimate",
+   "plausible_m": [
+    2,
+    12
+   ],
+   "sun_change_pp": [
+    -0.6,
+    0.4
+   ],
+   "swing_pp": 0.9
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 46058,
+   "name": "難波宮大極殿後殿跡",
+   "osm_id": "w44506725",
+   "height_m": 9.7,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    25
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0.5
+   ],
+   "swing_pp": 0.8
+  },
+  {
+   "place": "桜之宮公園",
+   "building": 51982,
+   "name": "帝国ホテル大阪",
+   "osm_id": "w1071278816",
+   "height_m": 128,
+   "source": "floors",
+   "plausible_m": [
+    87,
+    176
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0.5
+   ],
+   "swing_pp": 0.8
+  },
+  {
+   "place": "靱公園",
+   "building": 37684,
+   "name": "靱パークサイドコーポ",
+   "osm_id": "w291545472",
+   "height_m": 52.8,
+   "source": "plateau",
+   "plausible_m": [
+    50,
+    56
+   ],
+   "sun_change_pp": [
+    -0.4,
+    0.3
+   ],
+   "swing_pp": 0.7
+  },
+  {
+   "place": "靱公園",
+   "building": 38023,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 16.5,
+   "source": "estimate",
+   "plausible_m": [
+    7,
+    43
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.6
+   ],
+   "swing_pp": 0.6
+  },
+  {
+   "place": "西の丸庭園",
+   "building": 42617,
+   "name": "大阪府警察本部",
+   "osm_id": "r3252574",
+   "height_m": 81.4,
+   "source": "plateau",
+   "plausible_m": [
+    77,
+    86
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0.2
+   ],
+   "swing_pp": 0.5
+  },
+  {
+   "place": "西の丸庭園",
+   "building": 42944,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 9.7,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    25
+   ],
+   "sun_change_pp": [
+    -0.4,
+    0
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 24438,
+   "name": "unnamed apartments",
+   "osm_id": "w236254272",
+   "height_m": 100.1,
+   "source": "plateau",
+   "plausible_m": [
+    94,
+    106
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.2
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 46060,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 6.7,
+   "source": "estimate",
+   "plausible_m": [
+    3,
+    17
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0.1
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 45598,
+   "name": "unnamed building",
+   "osm_id": "r3259922",
+   "height_m": 16.5,
+   "source": "estimate",
+   "plausible_m": [
+    7,
+    43
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "靱公園",
+   "building": 37561,
+   "name": "unnamed building",
+   "osm_id": "w647924653",
+   "height_m": 12.2,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    32
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "天王寺公園",
+   "building": 2077,
+   "name": "大阪市立美術館",
+   "osm_id": "w173693696",
+   "height_m": 30.1,
+   "source": "plateau",
+   "plausible_m": [
+    28,
+    32
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.2
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "扇町公園",
+   "building": 52155,
+   "name": "扇町 センター ビル",
+   "osm_id": "w180203183",
+   "height_m": 52.6,
+   "source": "plateau",
+   "plausible_m": [
+    49,
+    56
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.2
+   ],
+   "swing_pp": 0.4
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 24513,
+   "name": "unnamed building",
+   "osm_id": "w246138086",
+   "height_m": 54.1,
+   "source": "plateau",
+   "plausible_m": [
+    51,
+    57
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.2
+   ],
+   "swing_pp": 0.3
+  },
+  {
+   "place": "靱公園",
+   "building": 37784,
+   "name": "unnamed building",
+   "osm_id": "",
+   "height_m": 7,
+   "source": "estimate",
+   "plausible_m": [
+    3,
+    18
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.1
+   ],
+   "swing_pp": 0.3
+  },
+  {
+   "place": "うめきた公園 サウスパーク",
+   "building": 46765,
+   "name": "南館 パークタワー",
+   "osm_id": "w1147394026",
+   "height_m": 175,
+   "source": "floors",
+   "plausible_m": [
+    119,
+    240
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.2
+   ],
+   "swing_pp": 0.3
+  },
+  {
+   "place": "難波宮跡公園",
+   "building": 22107,
+   "name": "グランドメゾン上町台ザ・タワー",
+   "osm_id": "w241732615",
+   "height_m": 107.7,
+   "source": "plateau",
+   "plausible_m": [
+    101,
+    114
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.1
+   ],
+   "swing_pp": 0.2
+  },
+  {
+   "place": "扇町公園",
+   "building": 47528,
+   "name": "扇町プール",
+   "osm_id": "w162174196",
+   "height_m": 13.5,
+   "source": "plateau",
+   "plausible_m": [
+    13,
+    14
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.1
+   ],
+   "swing_pp": 0.2
+  }
+ ],
+ "seconds": 919.121,
+ "sigma": {
+  "floors": 0.132,
+  "estimate": 0.421,
+  "ml": null
+ }
+}

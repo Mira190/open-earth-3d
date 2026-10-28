@@ -11,6 +11,16 @@
       "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places, and a game: walk it, ride the ferries, fly under the bridge."
     },
     {
+      "id": "osaka",
+      "name": "Osaka",
+      "country": "Japan",
+      "lat": 34.679,
+      "lon": 135.513,
+      "status": "live",
+      "summary": "Umeda to Shinsekai along Midosuji, with Osaka Castle: 70,000 buildings, 90% of the roof area with a height measured for Project PLATEAU, the Dotonbori neon, a winter-sun study of the parks, and a game with Osaka people.",
+      "timezone": "Asia/Tokyo"
+    },
+    {
       "id": "melbourne",
       "name": "Melbourne",
       "country": "Australia",

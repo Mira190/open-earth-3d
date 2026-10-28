@@ -52,12 +52,24 @@ computed from the model as you play. Open **Play** on the globe, or go to
 | **Melbourne: a planner explains DDO10 in City Square** | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
 | ![](docs/images/melbourne/game-dialogue.jpg) | ![](docs/images/melbourne/game-river.jpg) | ![](docs/images/melbourne/game-heli.jpg) |
 
+**Osaka on Foot** is the same game in another city: Dotonbori at dusk, the Tombori
+River Cruise, a kushikatsu chef in Shinsekai, a leopard-print obachan with candy in the
+Kuromon Market, a Tigers fan, two manzai comedians, the Aqua Liner to the castle keep,
+and a helicopter over Umeda. The people wear what Osakans wear (patterns and accessories
+are procedural, in `web/game/people.js`) and talk like them. Open **Play** on the Osaka
+card, or go to `#play-osaka`.
+
+| Dotonbori, with shop signs | Fumi, Kuromon Market | The cast |
+|---|---|---|
+| ![](docs/images/osaka/game-daisuke.jpg) | ![](docs/images/osaka/game-fumi.jpg) | ![](docs/images/osaka/people.jpg) |
+
 ## Cities
 
 | City | Status | What's in it |
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
+| **Osaka**, Japan | **Live** | 70,397 buildings across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 90% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
 | Paris, France | Planned | IGN RGE ALTI, BD ORTHO and BD TOPO heights |
