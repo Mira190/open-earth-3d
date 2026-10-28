@@ -118,10 +118,10 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 | City | Status | What's in it |
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
-| **Melbourne**, Australia | **Live** | 13,050 buildings and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
-| **Osaka**, Japan | **Live** | 73,280 buildings across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
-| **Kyoto**, Japan | **Live** | 65,749 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU. GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
-| **Tokyo**, Japan | **Live** | About 15,400 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
+| **Melbourne**, Australia | **Live** | 13,050 buildings (4,601 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
+| **Osaka**, Japan | **Live** | 73,267 buildings (32,959 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
+| **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (46,239 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
+| **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
 | **Whitsundays**, Australia | **Live** (reef) | 33 × 33 km of the Whitsunday Islands and the inner Great Barrier Reef: AusSeabed 30 m survey bathymetry, a 28-scene Sentinel-2 composite inverted through the water column, 33 mapped places, Maritime Safety Queensland's Shute Harbour tide (fitted to 2.4 cm RMS). [Case study](docs/cities/whitsundays.md) |
 | **Hardy Reef**, Australia | **Live** (reef) | Heart Reef, the Reefworld pontoon on the channel wall, Hook, Line and Bait reefs; the tide from the outer-reef gauge at Bugatti Reef. [Notes](docs/cities/hardy-reef.md) |
 | **Green Island**, Australia | **Live** (reef) | The coral cay off Cairns with Arlington Reef and Michaelmas Cay; the jetty on its mapped line. [Notes](docs/cities/green-island.md) |
@@ -142,9 +142,10 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 ## What every city gets
 
 - **Buildings that look like their city.**
-  - LOD2 roofs come from a straight skeleton, with eaves. The shape is mapped,
-    or ruled, or drawn from the roof shapes mapped across the metro area, and
-    scored against the mapped ones.
+  - LOD2 roofs come from a straight skeleton, with eaves. The shape is mapped;
+    measured from a LOD2 model where one is open (Kyoto's 79,889 PLATEAU
+    buildings); ruled; or drawn from the roof shapes mapped across the metro
+    area. The rules are scored against the mapped and the measured roofs.
   - Facades have floors, windows, curtain walls, shopfronts and awnings, glass
     with a room behind it, and lights by the local hour.
   - Flat roofs get parapets and rooftop plant.
@@ -300,7 +301,7 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 | `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter and ferry) |
-| `tools/` | `city_shot.js`: screenshots of the model viewer from listed views, for checking changes |
+| `tools/` | `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `reef_shot.js` and `page_shot.js` for the reef sites |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
 ## Data and licences

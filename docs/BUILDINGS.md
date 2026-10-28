@@ -14,8 +14,9 @@ above 9 m. This page covers what replaced that:
 |---|---|---|
 | LOD2 roofs: hipped, gabled, half-hipped, pyramidal, skillion, mansard, gambrel, barrel, dome and onion, with eaves | `pipeline/roofs.py` | Every Sydney footprint (8,441) is built and validated: area, bounds and height |
 | Roof shape when none is mapped (97% of buildings) | `pipeline/typology.py` | Mapped roofs predicted by the rules alone: `cities/<id>/analysis/roof_model.json` |
+| Roof shape measured from Project PLATEAU's LOD2 meshes (Kyoto: 79,889 buildings) | `pipeline/plateau_3dtiles.py` | Against the 324 roofs also mapped in OSM: flat or pitched agrees 89%, shape family 85% |
 | Facade style, storeys and ground floor, shopfronts, awnings, wall and roof colours, rooftop plant | `pipeline/typology.py`, `build_scene.py` | Screenshots from street level to overview (`tools/city_shot.js`) |
-| The facade drawn in the shader: windows by floor and bay, curtain walls, glass, rooms behind the glass, lights by the hour | `web/buildings.js` | three.js r128 and r186 (a merge with the r186 branch, tested) |
+| The facade drawn in the shader: windows by floor and bay, curtain walls, glass, rooms behind the glass, lights by the hour | `web/buildings.js` | three.js r186 in the integrated build, and r128; all five cities and their games run headless (`tools/city_shot.js`, `tools/game_check.js`) |
 | Shadows from the same roofs | `web/sun.js` | All sun analyses re-run |
 | The same buildings in Blender | `blender/buildings.py` | Cycles renders of the same views |
 
@@ -55,8 +56,9 @@ What this project took from them:
 
 Each solid takes the first of these that applies:
 1. **Mapped.** A `roof_shape` on the building part, or on the building.
-2. **Flat by rule.** Five or more floors, a top of 20 m or more, or a footprint of 2,000 m² or more. Also commercial or industrial buildings over 600 m², and parts of a larger building.
-3. **Drawn from the region's prior** for the building's group:
+2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto.
+3. **Flat by rule.** Five or more floors, a top of 20 m or more, or a footprint of 2,000 m² or more. Also commercial or industrial buildings over 600 m², and parts of a larger building.
+4. **Drawn from the region's prior** for the building's group:
    - house, semi-detached, terrace;
    - low flats, small structures, places of worship, civic, low commercial;
    - unclassed.
@@ -80,18 +82,52 @@ under 7.5 m wide and more than 1.8 times as deep. Sydney's terraces and Kyoto's
 machiya are built this way.
 
 **The check.** Every mapped roof shape is predicted by the rules alone, as if it
-were not mapped.
+were not mapped. Shape family counts gabled and gabled across as one, and hipped,
+half-hipped and pyramidal as one.
 
-| City | Mapped roofs scored | Flat or pitched correct | Exact shape | Flat roofs found | Pitched roofs found |
+| City | Roofs scored | Flat or pitched correct | Shape family | Flat roofs found | Pitched roofs found |
 |---|---|---|---|---|---|
-| Sydney | 201 | 68.7% | 40.8% | 84.7% | 62.0% |
-| Kyoto (preview build) | 338 | 77.2% | 59.8% | 80.6% | 75.9% |
+| Sydney | 201 mapped | 68.7% | 41.3% | 84.7% | 62.0% |
+| Melbourne | 51 mapped | 51.0% | 43.1% | 75.0% | 21.7% |
+| Osaka | 137 mapped | 62.8% | 59.1% | 78.0% | 40.0% |
+| Kyoto | 337 mapped | 74.2% | 51.9% | 78.3% | 72.7% |
+| Kyoto | 59,505 measured | 67.3% | 49.4% | 55.0% | 72.5% |
+| Tokyo | 111 mapped | 85.6% | 81.1% | 98.9% | 37.5% |
 
-The Kyoto build was a preview without PLATEAU heights, on its branch. Most of
-Sydney's misses are large heritage offices and colleges with pitched roofs that
-the area rule makes flat. Mapped roofs are not a random sample, because mappers
-tag the interesting ones. So these scores are a floor, not an estimate of the
-error on unmapped buildings.
+Most of Sydney's misses are large heritage offices and colleges with pitched roofs
+that the area rule makes flat. Melbourne uses Sydney's rules, and its CBD's pitched
+roofs are mostly on large old buildings the rules make flat. Mapped roofs are not
+a random sample, because mappers tag the interesting ones. Kyoto's measured roofs
+are close to a census, and against them the rules get 67% of flat-or-pitched
+right. That is about what a draw from the right mix can do without seeing the
+building: in a group that is 78% pitched, a random draw from that mix is right
+66% of the time.
+
+### Measured roofs
+
+Project PLATEAU publishes LOD2 building models, with real roof surfaces, for the
+central wards of many Japanese cities. `plateau_3dtiles.py` reads Kyoto's LOD2
+tiles (2,135 Draco-compressed b3dm tiles inside the bbox, out of a 1.8 GB zip by
+HTTP range requests) and measures each building's roof from its triangles:
+
+- **Roof and walls.** Triangles facing up and under 75° are roof; near-vertical ones are walls.
+- **Flat** when over 70% of the roof's plan area slopes under 6°.
+- **Skillion** when the sloped area's normals add up to one direction.
+- **Gable or hip.** A gable stands as a wall above the eave. The wall area above the eave is set against the triangle that a gable on the short side would make: over 0.55 is gabled, 0.2–0.55 half-hipped, under that hipped.
+- **Ridge direction.** Gabled across when most of the sloped area faces the ends of the footprint's long axis.
+- **Pitch and height.** The area-weighted median slope, and the height from the eave (10th percentile of the sloped faces' low points) to the ridge.
+
+79,889 of Kyoto's 80,870 PLATEAU buildings get a measured roof: 25,668 gabled
+across, 12,801 gabled, 1,124 half-hipped, 1,085 hipped, 1,183 skillion and
+19,260 flat among the solids built. The median pitch is 20.7°, and half lie
+between 17° and 25°: close to the 4/10 slope (21.8°) of kawara roofs. Two checks:
+
+- **Against OSM.** On the 324 buildings whose roof is both measured and mapped, the two agree on flat or pitched for 89% and on the shape family for 85%. The classifier finds 88% of the mapped gables and 90% of the flat roofs, but only 9 of 18 hips.
+- **The ridge rule.** The rule that a narrow, deep house carries its ridge across holds: measured gables under 7.5 m wide and more than 1.8 times as deep run across 73–82% of the time. Wider buildings mostly run along.
+
+Kyoto's measured mix is not used as the prior for Osaka and Tokyo. Kyoto is a
+city of gabled machiya: 76% of its houses are gabled and 5% hipped, where Tokyo's
+mapped houses are 31% hipped.
 
 ### Geometry
 
@@ -196,7 +232,7 @@ Sources for these numbers:
 
 ## 6. One model, three consumers
 
-- **The browser.** Walls, roofs, parapets, coping and awnings are one mesh with packed attributes, so raycasts and the inspector still work by building. Rooftop plant is instanced. The inspector shows each building's roof and how it was chosen: ruled, drawn from the region's mix, or mapped. It also shows the facade style.
+- **The browser.** Walls, roofs, parapets, coping and awnings are one mesh with packed attributes, so raycasts and the inspector still work by building. Rooftop plant is instanced. The inspector shows each building's roof and how it was chosen: ruled, drawn from the region's mix, mapped, or measured. It also shows the facade style.
 - **The surface model** that ray-casts the sun (`sun.js`, `buildDSM`). A solid with a roof rises to its eaves and then follows the roof's triangles. A scenario that scales a building's height scales its roof with it.
   - In Sydney this removes 1.36 million m³ that the flat prisms counted as building (192,000 cells of 2 m, lower by 1.8 m on average).
   - The protected places barely move: Pitt Street Mall changes by +0.02 points of sun, Belmore Park's shaded share by −0.1 points, and the 90% ranges by up to ±0.8 points.
@@ -225,8 +261,8 @@ Small screens skip parapets, awnings and rooftop plant.
 
 ## 8. What is next
 
-- **PLATEAU LOD2 roofs for Japan.** Where PLATEAU publishes LOD2 `RoofSurface` geometry, it should replace inferred roofs. Its pitches could also calibrate the Japanese priors. Tokyo and Kyoto need a pipeline re-run after merging to get roofs and Japanese styles at all.
-- **A roof classifier on imagery.** Inputs: footprint shape, class and height, plus luminance asymmetry across the ridge in the aerial photo. Training data: about 5,800 mapped roofs in Greater Sydney and 21,000 in Kyoto. This is what Mapbox and Microsoft Flight Simulator do, but here it would be scored like everything else.
+- **More measured roofs.** Osaka's 2020 CityGML is LOD1 only and Tokyo's vector tiles carry heights, not roof faces. Newer PLATEAU releases with LOD2 for those wards would replace their inferred roofs the same way.
+- **A roof classifier on imagery.** Inputs: footprint shape, class and height, plus luminance asymmetry across the ridge in the aerial photo. Training data: about 5,800 mapped roofs in Greater Sydney, and Kyoto's 79,889 measured roofs. This is what Mapbox and Microsoft Flight Simulator do, but here it would be scored like everything else.
 - **Rendering on r186.** Cascaded shadow maps (`CSM`), and screen-space ambient occlusion (`GTAOPass` or N8AO). The baked openness term covers ambient light at street scale today.
 - **Sydney terrace street parapets.** These hide the roof on about 40% of Victorian terraces. Also rake overhangs on two-plane gables.
 - **Headless test renders.** These use SwiftShader. Its software shadow filtering shows dotted shadow edges that a GPU does not.

@@ -487,7 +487,9 @@ class Plateau:
     face of a building (the LOD2 vector tiles, where a podium and its tower are separate faces).
     A footprint is cut along the features over it, tallest first, so each piece takes the height
     of the feature above it. Pieces smaller than a few per cent of the footprint are rooftop
-    plant and are absorbed by the main piece. A footprint that the features cover less than half
+    plant and are absorbed by the main piece. A whole building counts only where most of it lies
+    in the footprint, or most of the footprint in it, so a neighbour's overlapping edge does not
+    become a tier of its own. A footprint that the features cover less than half
     of keeps its other height source. PLATEAU buildings that no Overture footprint covers (newer
     or missing in OSM) are added as buildings of their own."""
     MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
@@ -495,6 +497,7 @@ class Plateau:
     def __init__(self, C):
         self.tree, self.polys, self.feats, self.roofs = None, [], [], False
         self.cfg = C.cfg.get("plateau") or {}
+        self.faces = "tiles" in self.cfg  # the vector tiles hold roof faces; the archives whole buildings
         path = os.path.join(C.raw, "plateau.json")
         if not self.cfg or not os.path.exists(path):
             return
@@ -554,7 +557,9 @@ class Plateau:
         cand = []
         for i in self.tree.query(q):
             x = q.intersection(self.polys[i])
-            if x.area >= self.MIN_PIECE_M2:
+            # a whole building (not a roof face) counts only if most of it lies in q or most of q in it:
+            # the sliver where a neighbour's outline overlaps q's is misregistration, not a taller tier
+            if x.area >= self.MIN_PIECE_M2 and (self.faces or x.area >= 0.5 * min(self.polys[i].area, q.area)):
                 cand.append((self.h[i], x, i))
         if not cand or shapely.union_all([x for _, x, _ in cand]).area < 0.5 * q.area:
             return None
@@ -570,7 +575,7 @@ class Plateau:
         main = max(out, key=lambda t: t[1].area)
         # rooftop plant is small and only a few metres above the roof; a small face that stands
         # well above the main roof is a spire or a dome (the Diet's tower, Tokyo Station's domes)
-        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (t[0] >= main[0] + 8.0 and t[1].area >= 25.0)]
+        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (self.faces and t[0] >= main[0] + 8.0 and t[1].area >= 25.0)]
         rest = q.difference(shapely.union_all([t[1] for t in out]))
         out.sort(key=lambda t: -t[0])
         merged = []
@@ -1292,6 +1297,9 @@ def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
     for c in idx["cities"]:
+        own = os.path.join(ROOT, "cities", c["id"], "city.json")
+        if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
+            c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
         c["built"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "scene.json"))
         c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)

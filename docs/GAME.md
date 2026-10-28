@@ -169,7 +169,9 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
-    of the water.
+    of the water. The walking ground is interpolated over the land points only,
+    so a quay or a river walk keeps its own height instead of sagging towards
+    the modelled bottom beside it.
   - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
     walkable strip.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
@@ -434,6 +436,12 @@ A Melbourne script plays its six stamps the same way: the sun step at
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
 flight to Birrarung Marr. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
+
+`tools/game_check.js <city>` is the smoke test for every city's game. It starts
+the game, walks for four seconds, talks to the first quest giver, flies the
+helicopter up and lets the ferries run for 40 s, with a screenshot after each
+step. It fails on any page error. Sydney, Melbourne, Osaka, Kyoto and Tokyo all
+pass it in the integrated build.
 
 ## Limitations
 

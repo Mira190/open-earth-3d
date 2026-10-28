@@ -118,13 +118,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return tex;
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
-    const t = scene.ground[i], w = t.x1 - t.x0, h = t.y1 - t.y0, coarse = Wd.groundMeshes[i];
-    const g = new THREE.PlaneGeometry(w, h, Math.round(w / T.cell), Math.round(h / T.cell));
-    g.rotateX(-Math.PI / 2);
-    g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
-    const p = g.attributes.position;
-    for (let k = 0; k < p.count; k++) p.setY(k, S.terrainAt(T, p.getX(k), -p.getZ(k)));
-    g.computeVertexNormals();
+    const g = Wd.tileGeometry(scene.ground[i], T), coarse = Wd.groundMeshes[i];
     const m = new THREE.Mesh(g, coarse.material);
     m.receiveShadow = true;
     world.add(m);

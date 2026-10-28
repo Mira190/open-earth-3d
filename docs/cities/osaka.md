@@ -36,8 +36,8 @@ neighbourhoods, boats and people that belong to it.
   with 1,400 shop-sign sites on street facades in the Dotonbori, Shinsekai and
   Umeda neon districts.
 - **Sun.** A winter-solstice study of eight parks, from 8:00 to 16:00. Utsubo
-  Park gets 49% of its area in direct sun, Umekita South Park 16% and Osaka
-  Castle Park 75%. The window is borrowed from Japan's shadow rule, which
+  Park gets 49% of its area in direct sun, Umekita South Park 17% and Osaka
+  Castle Park 76%. The window is borrowed from Japan's shadow rule, which
   does not apply to these parks; see section 7.
 - **Game.** *Osaka on Foot*: ten stamps, twelve people who talk like Osakans,
   two river routes (the Tombori River Cruise and the Aqua Liner) and a
@@ -197,14 +197,19 @@ Share of each park in direct sun, averaged over 8:00 to 16:00 on 21 December
 
 | Park | Share in sun |
 |---|---:|
-| 西の丸庭園 Nishinomaru Garden | 88% |
-| 桜之宮公園 Sakuranomiya Park | 77% |
-| 大阪城公園 Osaka Castle Park | 75% |
+| 西の丸庭園 Nishinomaru Garden | 89% |
+| 大阪城公園 Osaka Castle Park | 76% |
+| 桜之宮公園 Sakuranomiya Park | 76% |
 | 難波宮跡公園 Naniwa Palace Ruins Park | 70% |
-| 扇町公園 Ogimachi Park | 69% |
-| 天王寺公園 Tennoji Park | 65% |
+| 扇町公園 Ogimachi Park | 70% |
+| 天王寺公園 Tennoji Park | 66% |
 | 靱公園 Utsubo Park | 49% |
-| うめきた公園 サウスパーク Umekita South Park | 16% |
+| うめきた公園 サウスパーク Umekita South Park | 17% |
+
+The surface model follows the buildings' pitched roofs (32,959 of them,
+[BUILDINGS.md](../BUILDINGS.md)), which lowers it under every ridge. Against
+the flat-topped blocks of the first build that moves no park by more than
+1 point.
 
 Umekita South Park, between the new Umeda towers, is the place where a
 new tower would matter most. The ranked fix list of
