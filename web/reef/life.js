@@ -88,9 +88,24 @@ export async function init(ctx) {
     flora.update(cam, first);
     if ((spawnT -= dt) < 0) { spawnT = 5; Object.assign(spawning, spawnState(nowMs())); }
     drift.update(cam, spawning.active && under, dt);
+    if (camAim && window.__reef) { window.__reef.set(camAim); camAim = null; }
     first = false;
   }
 
+  // test hook: ?lifecam=<species id>[,dist] puts the fly camera next to the nearest one of them
+  let lifecam = q.get('lifecam'), camAim = null;
+  function lookAt(spec) {
+    const [sp, dd] = spec.split(','), d0 = Number(dd || 2.5), c = camera.position;
+    let best = null, bd = 1e18;
+    for (const a of fauna.animals) { if (a.sp !== sp) continue; const d = (a.x - c.x) ** 2 + (a.z - c.z) ** 2; if (d < bd) { bd = d; best = a; } }
+    lifecam = null;
+    if (!best) { console.warn('[life] lifecam: no', sp, 'near the camera'); return; }
+    const side = best.yaw + Math.PI / 2;
+    c.set(best.x + Math.cos(side) * d0, Math.min(best.y + 0.4 * d0 * 0.3, env.u.tide.value - 0.3), best.z - Math.sin(side) * d0);
+    const dx = best.x - c.x, dy = best.y - c.y, dz = best.z - c.z, L = Math.hypot(dx, dy, dz);
+    camAim = { yaw: Math.atan2(-dx, -dz), pitch: Math.asin(dy / L) };
+    first = true; update(0, 0);            // everything again around the new spot, before the first frame
+  }
   function counts() {
     const out = {};
     for (const [k, K] of Object.entries(KINDS)) if (K.sp) out[K.sp] = (out[K.sp] || 0) + (reef.counts[k] || 0);
@@ -126,6 +141,7 @@ export async function init(ctx) {
     spawning, spawnState, nowMs };
   ctx.life = life; window.__life = life;
   update(0, 0);
+  if (lifecam) lookAt(lifecam);
   if (q.get('lifeinfo')) console.log('[life] init', (performance.now() - t0).toFixed(0), 'ms', JSON.stringify(counts()), JSON.stringify(stats()));
   return life;
 }

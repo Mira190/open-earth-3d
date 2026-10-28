@@ -2,7 +2,7 @@
 //   reef residents hang on the reef tiles' sites: chromis and humbugs over branching colonies, clownfish
 //   in anemones, sweetlips under table corals, parrotfish grazing, the odd Maori wrasse, ribbontail rays
 //   resting on the floor between colonies, fusilier schools over the slope;
-//   wanderers belong to 256 m cells of open water: turtles (they surface to breathe), blacktip reef
+//   wanderers belong to 128 m cells of open water: turtles (they surface to breathe), blacktip reef
 //   sharks, eagle rays, trevally schools, and a manta that only visits now and then.
 // Every group is seeded from its tile or cell, so the same animals live in the same places each load.
 // Steering is a few lines per animal (boids-lite for schools): no allocations per frame.
@@ -12,7 +12,7 @@ import * as G from './geo.js';
 
 const TAU = Math.PI * 2, clamp = THREE.MathUtils.clamp;
 const angDiff = (a, b) => { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
-const CELL = 256, R_SIM = 120;
+const CELL = 128, R_SIM = 120;
 
 // per species: model, scale range (m: body length, ray span, turtle carapace), colours, speeds
 export const FAUNA = {
@@ -142,14 +142,14 @@ export function createFauna(ctx, ground, mats, reef) {
     const one = (sp, mode, yOff) => {
       const a = animal(sp, `${sp}-c${cx}_${cy}_${out.length}`, x, 0, -n, R);
       a.y = clamp(ground.height(x, n) + yOff, ground.height(x, n) + 0.5, tide() - 0.4);
-      return { kind: 'solo', sp, mode, members: [a], home: [x, -n], range: 90 };
+      return { kind: 'solo', sp, mode, members: [a], home: [x, -n], range: 55 };
     };
-    if (d < 22 && R() < 0.45) out.push(one(cls === 3 || R() < 0.5 ? 'green-turtle' : 'hawksbill', 'turtle', 1));
-    if (d < 22 && R() < 0.25) out.push(one(R() < 0.6 ? 'green-turtle' : 'hawksbill', 'turtle', 1));
-    if (d < 14 && R() < 0.3) out.push(one('blacktip', 'patrol', 1.5));
-    if (d > 3 && R() < 0.12) out.push(one('eagle-ray', 'glide', 3));
-    if (d > 6 && R() < 0.05) out.push(one('manta', 'visit', 4));
-    if (d > 5 && R() < 0.15) out.push(school('trevally', `trevally-c${cx}_${cy}`, x, n, 20 + Math.floor(R() * 25), R, [3, 8]));
+    // green turtles graze seagrass, hawksbills keep to the reef
+    if (d < 22 && R() < 0.4) out.push(one(cls === 3 || (cls !== 2 && R() < 0.6) ? 'green-turtle' : 'hawksbill', 'turtle', 1));
+    if (d < 14 && R() < 0.14) out.push(one('blacktip', 'patrol', 1.5));
+    if (d > 3 && R() < 0.05) out.push(one('eagle-ray', 'glide', 3));
+    if (d > 6 && R() < 0.025) out.push(one('manta', 'visit', 4));
+    if (d > 5 && R() < 0.06) out.push(school('trevally', `trevally-c${cx}_${cy}`, x, n, 20 + Math.floor(R() * 25), R, [3, 8]));
     return out;
   }
 
@@ -166,10 +166,10 @@ export function createFauna(ctx, ground, mats, reef) {
       }
     }
     const cx0 = Math.floor(cam.x / CELL), cy0 = Math.floor(-cam.z / CELL);
-    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+    for (let j = -2; j <= 2; j++) for (let i = -2; i <= 2; i++) {
       const cx = cx0 + i, cy = cy0 + j, k = 'c' + cx + '_' + cy;
       const dx = Math.max(cx * CELL - cam.x, 0, cam.x - (cx + 1) * CELL), dn = Math.max(cy * CELL + cam.z, 0, -cam.z - (cy + 1) * CELL);
-      if (Math.hypot(dx, dn) > 180) continue;
+      if (Math.hypot(dx, dn) > 160) continue;
       want.add(k);
       if (!groups.has(k)) groups.set(k, cellGroups(cx, cy));
     }
