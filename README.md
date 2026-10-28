@@ -19,6 +19,8 @@ a new codebase.
 | Sydney in the browser | Height sources | Testing a tower against the planning rule |
 |---|---|---|
 | ![](docs/images/sydney/screenshot-overview.jpg) | ![](docs/images/sydney/screenshot-provenance.jpg) | ![](docs/images/sydney/screenshot-tower.jpg) |
+| **The flyover as the city opens** | **Flying round a tower** | **In the game: surveying from a trig station** |
+| ![](docs/images/sydney/flyover.jpg) | ![](docs/images/sydney/orbit.jpg) | ![](docs/images/sydney/game-trig.jpg) |
 
 ![Cycles render of Sydney from the Blender script](docs/images/sydney/overview.jpg)
 
@@ -28,7 +30,9 @@ The model is also a game. You walk central Sydney as a surveyor, talk to the
 people who know it, ride the Cross Harbour ferry, walk up onto the Harbour
 Bridge with the traffic, fly a helicopter under its deck, and find a sunny spot
 in Martin Place on the winter solstice. Everything the characters tell you is
-computed from the model as you play. Open **Play** on the globe, or go to
+computed from the model as you play. After the survey, survey the view from the
+trig stations round the harbour, or test your eye against the data by guessing
+building heights. Open **Play** on the globe, or go to
 `#play-sydney`. [docs/GAME.md](docs/GAME.md) covers:
 - the controls;
 - what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
@@ -85,6 +89,10 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   place, and ranks the heights worth verifying next.
 - **A guided tour** written in the city's config, with numbers filled in from
   the model.
+- **A flyover.** When a city opens, the camera comes down from above the whole
+  model onto the first tour stop. It is shorter on later visits, and any key or
+  click skips it. Click a landmark's name to fly round it, or turn on **Orbit** to
+  circle whatever you are looking at.
 - **A Blender twin.** `blender/build_scene.py` rebuilds the same scene
   headless with `bpy` from the same files, and renders it in Cycles.
 

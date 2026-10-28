@@ -109,6 +109,9 @@ window.OEHud = (function () {
     } else if (ic.kind === 'npc') {
       g.fillStyle = col; g.beginPath(); g.arc(0, 0, 6, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#fff'; g.font = '800 10px "Public Sans", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(ic.label || '!', 0, 0.5);
+    } else if (ic.kind === 'trig') { // a trig station: hollow until surveyed
+      g.fillStyle = ic.done ? css('--sun') : '#ffffff'; g.strokeStyle = ic.done ? '#ffffff' : '#8a6d1d'; g.lineWidth = 1.8;
+      g.beginPath(); g.moveTo(0, -7.5); g.lineTo(7, 5); g.lineTo(-7, 5); g.closePath(); g.fill(); g.stroke();
     } else if (ic.kind === 'ferry' || ic.kind === 'heli' || ic.kind === 'wharf' || ic.kind === 'pad' || ic.kind === 'waypoint') {
       const bg = { ferry: '#1e5b3a', heli: '#c62d2a', wharf: '#24577a', pad: '#c62d2a', waypoint: css('--accent') }[ic.kind];
       g.fillStyle = bg; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
@@ -186,5 +189,19 @@ window.OEHud = (function () {
     setTimeout(() => el.remove(), kind === 'stamp' ? 4800 : 3400);
   }
 
-  return { baseMap, minimap, dialogue, toast, drawIcon };
+  // ------------------------------------------------------------ a passport stamp comes down, then flies to the Passport button
+  function stamp(text, sub) {
+    const el = document.createElement('div');
+    el.className = 'g-stampfx';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `<span class="stamp">${text}</span><span class="sub">${sub}</span>`;
+    $('#game-stage').appendChild(el);
+    const to = $('#g-pass-btn').getBoundingClientRect(), me = el.querySelector('.stamp').getBoundingClientRect();
+    el.style.setProperty('--fx', `${to.left + to.width / 2 - (me.left + me.width / 2)}px`);
+    el.style.setProperty('--fy', `${to.top + to.height / 2 - (me.top + me.height / 2)}px`);
+    setTimeout(() => el.classList.add('fly'), 2300);
+    setTimeout(() => el.remove(), 3200);
+  }
+
+  return { baseMap, minimap, dialogue, toast, drawIcon, stamp };
 })();
