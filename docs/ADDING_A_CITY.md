@@ -48,8 +48,9 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `vertical_datum` | no | A label for heights, such as `m AHD` |
 | `year` | no | Year for dates in the viewer and analyses (default: this year) |
 | `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}` |
-| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`, or `{type: "terrarium"}` as a last resort |
-| `terrain_check` | no | `{type: "arcgis_identify", url, field, name}`: an independent elevation service for `analysis/dem_check.py` |
+| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "gsi_dem_png", url, zoom, fallback: {url, zoom}, bare_earth, attribution}` for GSI (Japan) elevation tiles, 5 m laser DEM with the 10 m DEM filling gaps; or `{type: "terrarium"}` as a last resort |
+| `terrain_check` | no | `{type: "arcgis_identify", url, field, name}`: an independent elevation service for `analysis/dem_check.py`; or `{type: "gsi_dem_png", url, zoom, name}` for GSI PNG tiles (a coarser, older Japanese DEM) |
+| `plateau` | no | `{url, dataset, licence}`: Project PLATEAU's national CityGML archive. `pipeline/fetch_plateau_citygml.py` reads only the mesh files inside the bbox out of the zip with HTTP range requests, and `build_scene.py` takes every matched building's measured height from it (heights source `plateau`; `plateau_lod1` for a building with only a block height). PLATEAU buildings Overture lacks are added |
 | `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
@@ -59,7 +60,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `protection` | no | The rule behind the places: `{title, summary, source_note, reading_note, default_time_basis: "standard" or "clock", tip, unprotected_label}` |
 | `analysis_region` | no | `[x0, x1, y0, y1]`: the dense core, used by the data-quality and radar checks |
 | `sun_hours_region` | no | `[x0, x1, y0, y1]`: the area of the viewer's sun-hours map |
-| `reference_heights` | no | `{file, source}`: published heights; see below |
+| `reference_heights` | no | `{file, source}`: published heights; see below. A `match_name` column in the CSV (the building's name as mapped) finds a building without a street address |
 | `verified_heights` | no | A CSV of heights verified one by one, each with its source |
 | `check_points` | no | `{name: [lon, lat]}`: points where terrain sources are compared |
 | `radar_test_building` | no | The building `radar_check.py` removes to test detection (default: the largest reference correction) |
@@ -67,7 +68,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `helipads`; `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See Sydney's config and [GAME.md](GAME.md) |
+| `game` | no | The game, if the city has one: `title`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `helipads`; `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See Sydney's config and [GAME.md](GAME.md). Optional flavour keys: `blurb` (title-screen text), `smalltalk` (a list of crowd lines), `passerby` (the role shown for crowd members), `player_looks`, `water_hint`; `crowd.style` (`skin`, `hair`, `tops`, `legs`, `weights`, `scale`, `patterns`, `acc`: the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`). See Osaka's config |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -135,6 +136,7 @@ the answers most. Cite a source for every row.
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
   python pipeline/fetch_overture.py --city <id>
 python pipeline/fetch_tiles.py --city <id>
+python pipeline/fetch_plateau_citygml.py --city <id>   # if the city has a plateau block
 python pipeline/build_scene.py --city <id>
 python pipeline/landmarks.py --city <id>
 python analysis/heights.py --city <id>            # if there is a reference table

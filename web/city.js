@@ -398,7 +398,8 @@ window.OpenEarthCity = async function main(cityId) {
     if (!hit) { closeInspector(); return; }
     inspect(bGeo.attributes.bid.getX(hit.face.a));
   });
-  const SRC_LABEL = { mapped: 'Surveyed height (OpenStreetMap)', reference: 'Published height (corrected)',
+  const SRC_LABEL = { mapped: 'Surveyed height (OpenStreetMap)', plateau: 'Measured height (Project PLATEAU, airborne survey)',
+    plateau_lod1: 'Block height from Project PLATEAU (LOD1 model, no survey record)', reference: 'Published height (corrected)',
     verified: 'Verified from a cited source (it moves a sun-access result)', floors: 'Floor count × storey height',
     ml: 'Microsoft ML height, bias-corrected and blended with neighbours', estimate: 'Estimated from nearby known heights and footprint size',
     parametric: 'Parametric landmark model' };
@@ -411,7 +412,7 @@ window.OpenEarthCity = async function main(cityId) {
     if (m[4] === 'reference') rows.push(['Open data said', `<span class="num">${m[9].toFixed(1)} m</span>`]);
     if (m[3]) rows.push(['Floors', `<span class="num">${m[3]}</span>`]);
     if (m[1]) rows.push(['Type', m[1].replace(/_/g, ' ')]);
-    rows.push(['Footprint', m[5] === 'O' ? 'OpenStreetMap' : 'Microsoft ML'], ['OSM record', osm]);
+    rows.push(['Footprint', m[5] === 'O' ? 'OpenStreetMap' : m[5] === 'P' ? 'Project PLATEAU' : 'Microsoft ML'], ['OSM record', osm]);
     $('#insp-kv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     $('#inspector').hidden = false;
   }

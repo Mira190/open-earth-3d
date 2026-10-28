@@ -340,6 +340,8 @@ def main():
         "quests": gcfg.get("quests", []),
         "start": dict(gcfg.get("start", {}), at=[round(sx, 1), round(sy, 1)]),
     }
+    # a city's own flavour: crowd small talk, the passer-by's role, the player's look, the water hint
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "passerby", "player_looks", "water_hint") if k in gcfg}
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")

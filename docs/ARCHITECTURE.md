@@ -28,6 +28,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Step | Script | Output |
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
+| Measured heights | `fetch_plateau_citygml.py` | `data/raw/<id>/plateau_bldg.json`: PLATEAU footprints with measured heights, from the mesh files of the national CityGML archive that cover the bbox (HTTP range reads, no full download) |
 | Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`), and Terrarium tiles for the radar check |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, ground tiles; `cities/<id>/analysis/height_model.json` |
@@ -44,6 +45,11 @@ height, and the viewer shows it.
 1. **verified**: a cited, one-by-one lookup (`verified_heights.csv`).
 2. **reference**: a published height, used when the open data is more than
    40% short and the match is by name (`heights.json`).
+2b. **plateau** (cities with a `plateau` block): the height Project PLATEAU measured
+   from the air. It replaces an OSM height or floor count, unless OSM has the building
+   more than 30% (plus 6 m) taller than the survey, which means the building is newer than
+   the survey and OSM keeps it. **plateau_lod1** is PLATEAU's block height for a building
+   with no survey record.
 3. **mapped**: an OpenStreetMap `height`.
 4. **floors**: OSM `building:levels` × the calibrated storey height, plus any
    roof height.

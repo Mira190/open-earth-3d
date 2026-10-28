@@ -41,6 +41,7 @@ window.OpenEarthGame = async function game(cityId) {
   document.title = `${G.title} · Open Earth 3D`;
   $('#gt-title').textContent = G.title;
   $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
+  if (G.blurb) $('#gt-blurb').textContent = G.blurb;
   const stage = $('#game-stage'), canvas = $('#game-gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -181,6 +182,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const PLAYER_KEY = 'oe3d-player', PLAYER_LOOKS = {
     W_Worker: { character: 'W_Worker', skin: '#d49c76', hair: '#33241b', scale: 0.92 },
     M_Worker: { character: 'M_Worker', skin: '#e3b08d', hair: '#4a3222', scale: 0.97 } };
+  for (const [k, v] of Object.entries(G.player_looks || {})) if (PLAYER_LOOKS[k]) Object.assign(PLAYER_LOOKS[k], v); // a city's own look for the player
   let playerChar = 'W_Worker';
   try { if (PLAYER_LOOKS[localStorage.getItem(PLAYER_KEY)]) playerChar = localStorage.getItem(PLAYER_KEY); } catch (e) { /* storage blocked */ }
   let lib = null;
@@ -191,7 +193,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
   const CR = G.crowd || {};
-  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14 })));
+  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style || (CR.palette || CR.weights ? Object.assign({}, CR.palette, { weights: CR.weights }) : undefined) })));
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100);
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
@@ -282,7 +284,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     });
   }
   const sampleCache = {};
-  const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours',
+  const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours', plateau: 'its height was measured from the air for Project PLATEAU', plateau_lod1: 'its height is the block height in Project PLATEAU (no survey record)',
     ml: 'its height is a machine-learning estimate, bias-corrected', reference: 'its height is the published figure (the open data was far too short)', verified: 'its height was checked by hand against a cited source', parametric: 'it is built from its published dimensions' };
   function smalltalk(x, y) {
     const opts = [`It's ${fill('{time}')}. ${sunLine()}`];
@@ -295,7 +297,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     const w = G.wharves.reduce((a, q) => (Math.hypot(q.terminal[0] - x, q.terminal[1] - y) < (a ? Math.hypot(a.terminal[0] - x, a.terminal[1] - y) : 400) ? q : a), null);
     if (w) { const e = nextFerry(w.id); if (e) opts.push(`The next ferry from ${w.name} is ${e.v.name}, ${e.t < 5 ? 'boarding now' : `in ${fmtSec(e.t)}`}.`); }
-    opts.push('G\'day.', 'Lovely spot, isn\'t it?');
+    opts.push(...(G.smalltalk || ['G\'day.', 'Lovely spot, isn\'t it?']));
     return opts[Math.floor(Math.random() * opts.length)];
   }
 
@@ -622,7 +624,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const p = crowd.P[pi];
       p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y); p.wave = true;
       setTimeout(() => { p.face = null; }, 6000);
-      dlg.show({ name: 'Passer-by', role: 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
+      dlg.show({ name: 'Passer-by', role: G.passerby || 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
     } };
     return null;
   }
@@ -702,7 +704,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     U.uSel.value = bi;
     const name = m[0] || (m[1] ? `Unnamed ${m[1].replace(/_/g, ' ')}` : 'Unnamed building');
     const osm = m[6] && /^[wr]\d+$/.test(m[6]) ? `<a href="https://www.openstreetmap.org/${m[6][0] === 'w' ? 'way' : 'relation'}/${m[6].slice(1)}" target="_blank" rel="noopener">${m[6]}</a>` : '–';
-    const SRC = { mapped: 'Surveyed in OpenStreetMap', floors: 'Floor count × storey height', estimate: 'Estimated from neighbours', ml: 'ML estimate, bias-corrected', reference: 'Published height (corrected)', verified: 'Verified from a cited source', parametric: 'Parametric landmark' };
+    const SRC = { plateau: 'Measured by aerial survey (Project PLATEAU)', plateau_lod1: 'Block height in Project PLATEAU (no survey record)', mapped: 'Surveyed in OpenStreetMap', floors: 'Floor count × storey height', estimate: 'Estimated from neighbours', ml: 'ML estimate, bias-corrected', reference: 'Published height (corrected)', verified: 'Verified from a cited source', parametric: 'Parametric landmark' };
     $('#g-lens').innerHTML = `<span class="eyebrow">Survey lens · ${Math.round(hit.distance)} m away</span><b>${name}</b>
       <dl class="kv"><dt>Height</dt><dd class="num">${m[2].toFixed(1)} m</dd><dt>Source</dt><dd>${SRC[m[4]] || m[4]}</dd>${m[3] ? `<dt>Floors</dt><dd class="num">${m[3]}</dd>` : ''}${m[4] === 'reference' ? `<dt>Open data said</dt><dd class="num">${m[9].toFixed(1)} m</dd>` : ''}<dt>OSM</dt><dd>${osm}</dd></dl>`;
     $('#g-lens').hidden = false;
@@ -990,7 +992,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
-      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast('No swimming in the harbour. Ferries leave from the wharves marked F.'); }
+      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(G.water_hint || 'No swimming in the harbour. Ferries leave from the wharves marked F.'); }
     }
     if (!moved) player.speed *= 0.5;
     const f = nav.floorAt(player.x, player.y, player.z);
