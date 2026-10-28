@@ -655,7 +655,7 @@ window.OpenEarthCity = async function main(cityId) {
       const bs = acc.by_source;
       const fixed = B.b.filter(m => m[4] === 'reference');
       const fixNote = fixed.length ? ` ${fixed.length === 1 ? 'One tower' : `${fixed.length} towers`} the open data had far too short ${fixed.length === 1 ? 'is' : 'are'} corrected from the published figure${fixed.length === 1 ? '' : 's'}: ${fixed.map(m => `${m[0]}, ${Math.round(m[9])} m → ${Math.round(m[2])} m`).join('; ')}.` : '';
-      $('#acc-note').textContent = `${acc.matched} of ${CITY.name}'s tallest buildings, matched by street address. Surveyed heights: median error ${bs.mapped ? bs.mapped.median_abs_error_pct : '–'}%; floor-count heights: ${bs.floors ? bs.floors.median_abs_error_pct : '–'}%. Published heights include spires, so a short model is not always wrong.${fixNote}`;
+      $('#acc-note').textContent = `${acc.matched} of ${CITY.name}'s tallest buildings, matched by street address or building name. Surveyed heights: median error ${bs.mapped ? bs.mapped.median_abs_error_pct : '–'}%; floor-count heights: ${bs.floors ? bs.floors.median_abs_error_pct : '–'}%. Published heights include spires, so a short model is not always wrong.${fixNote}`;
     } else $('#acc-group').hidden = true;
     if (!UNC || !UNC.fix_list || !UNC.fix_list.length) $('#fix-group').hidden = true;
     if (UNC && UNC.fix_list) $('#fix-list tbody').innerHTML = UNC.fix_list.map(f => `<tr><td>${f.name}<br><span class="note">${f.source === 'estimate' ? 'estimated' : f.source === 'floors' ? 'floor count' : f.source}</span></td>
