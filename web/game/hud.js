@@ -17,7 +17,7 @@ window.OEHud = (function () {
     g.fillStyle = css('--gm-land'); g.fillRect(0, 0, w, h);
     // water from the 5 m mask
     const wm = G.water, bytes = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0)), img = g.getImageData(0, 0, w, h);
-    const wc = new THREE.Color(css('--gm-water'));
+    const wc = new THREE.Color().setStyle(css('--gm-water'), THREE.LinearSRGBColorSpace);
     const s = wm.cell / PX;
     for (let r = 0; r < wm.ny; r++) for (let c = 0; c < wm.nx; c++) {
       const k = r * wm.nx + c;

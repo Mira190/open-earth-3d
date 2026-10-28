@@ -6,7 +6,9 @@
 'use strict';
 window.OEWorld = (function () {
   const S = window.Sun, RAD = Math.PI / 180;
-  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  // colours the scene was tuned with as display values written straight to the output (no conversion)
+  const raw = hex => (typeof hex === 'number' ? new THREE.Color().setHex(hex, THREE.LinearSRGBColorSpace) : new THREE.Color().setStyle(hex, THREE.LinearSRGBColorSpace));
+  const lin = hex => new THREE.Color(hex); // three.js colour management turns an sRGB hex into linear
   const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   const idle = () => new Promise(r => setTimeout(r, 0));
@@ -31,11 +33,11 @@ window.OEWorld = (function () {
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
-    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.6;
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     const SHADOW = renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048;
 
     const world = new THREE.Scene();
@@ -50,8 +52,12 @@ window.OEWorld = (function () {
     envScene.add(envSky);
     const pmrem = new THREE.PMREMGenerator(renderer);
     let envRT = null, envKey = '';
+    // three.js r155+ lights are physical (no hidden factor of pi), and r186's image-based light is stronger
+    // than r128's: these two are tuned so a scene looks as it did on r128
+    const ENV_INTENSITY = 0.32;
 
-    const sunLight = new THREE.DirectionalLight(0xffffff, 2);
+    const HEMI_K = 0.9;
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2 * Math.PI);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(SHADOW, SHADOW);
     sunLight.shadow.bias = -0.0003;
@@ -59,9 +65,9 @@ window.OEWorld = (function () {
     const shCam = sunLight.shadow.camera;
     shCam.near = 10; shCam.far = 9000;
     world.add(sunLight, sunLight.target);
-    const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25);
+    const hemi = new THREE.HemisphereLight(raw(0xc3d6e6), raw(0x4d463a), 0.25 * HEMI_K);
     world.add(hemi);
-    world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
+    world.fog = new THREE.Fog(raw(0xc6d3dc), 6000, 26000);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -77,7 +83,7 @@ window.OEWorld = (function () {
       for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(T, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
       const tex = texLoader.load(D.DATA + t.file);
-      tex.encoding = THREE.sRGBEncoding;
+      tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       m.receiveShadow = true;
@@ -278,7 +284,7 @@ window.OEWorld = (function () {
     }
 
     // ------------------------------------------------------------ sun
-    const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
+    const warm = raw('#ffb070'), noonC = raw('#fff3e0');
     const api = {
       world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
@@ -290,20 +296,21 @@ window.OEWorld = (function () {
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
         sunLight.visible = sp.altitude > -0.5;
-        sunLight.intensity = 2.4 * smooth(-0.5, 10, sp.altitude);
+        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
-        hemi.intensity = 0.07 + 0.25 * day;
-        hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
+        hemi.intensity = HEMI_K * (0.07 + 0.25 * day);
+        hemi.color.copy(raw(day > 0.3 ? 0xc3d6e6 : 0x5d6f92));
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         for (const m of Object.values(floodMats)) m.emissiveIntensity = 0.32 * U.uNight.value;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
-        world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
+        world.fog.color.copy(day > 0.5 ? raw(0xc6d3dc) : raw(0x0c1420).lerp(raw(0xd2b49c), day * 2));
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`;
         if (key !== envKey) {
           envKey = key;
           if (envRT) envRT.dispose();
           envRT = pmrem.fromScene(envScene);
           world.environment = envRT.texture;
+          world.environmentIntensity = ENV_INTENSITY;
         }
         return day;
       },

@@ -12,7 +12,7 @@
 // the last stretch into a wharf and dock by hand.
 'use strict';
 window.OEVehicles = (function () {
-  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  const lin = hex => new THREE.Color(hex); // three.js colour management turns an sRGB hex into linear
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const mat = (c, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: lin(c), roughness: 0.55, metalness: 0.1 }, o));
   const mesh = (geo, m, x = 0, y = 0, z = 0) => { const k = new THREE.Mesh(geo, m); k.position.set(x, y, z); k.castShadow = true; k.receiveShadow = true; return k; };

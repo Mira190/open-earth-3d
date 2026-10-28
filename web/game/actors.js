@@ -5,7 +5,7 @@
 // here are the fallback when those files can't be loaded.
 'use strict';
 window.OEActors = (function () {
-  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  const lin = hex => new THREE.Color(hex); // three.js colour management turns an sRGB hex into linear
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   let seed = 12345;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
@@ -362,7 +362,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     g.fillStyle = fg; g.textBaseline = 'middle'; g.textAlign = 'center';
     g.fillText(text, w / 2, r + 2);
     const tex = new THREE.CanvasTexture(c);
-    tex.encoding = THREE.sRGBEncoding;
+    tex.colorSpace = THREE.SRGBColorSpace;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true }));
     s.scale.set(w / (size + pad) * 0.42, 0.42, 1);
     s.renderOrder = 10;

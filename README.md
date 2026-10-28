@@ -191,7 +191,7 @@ Data tab. The shared sources are:
   Buildings (ODbL). A derived database must stay under ODbL.
 - **The globe's base map:** Natural Earth (public domain).
 - **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono).
-- **3D library:** three.js r128 (MIT), loaded from a CDN.
+- **3D library:** three.js r186 (MIT), loaded from a CDN as ES modules through an import map (`web/boot.js`). The app scripts still read a global `THREE`, which `boot.js` builds from the core and the addons they use.
 
 Sydney also uses these sources:
 - NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).

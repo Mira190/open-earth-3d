@@ -6,7 +6,7 @@
 // files in web/assets/people.
 'use strict';
 window.OEPeople = (function () {
-  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  const lin = hex => new THREE.Color(hex); // three.js colour management turns an sRGB hex into linear
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const N = 24; // palette size in the shaders
   let seed = 4242;

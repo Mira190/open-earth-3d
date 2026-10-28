@@ -16,7 +16,7 @@ window.OpenEarthCity = async function main(cityId) {
   const ease = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
+  const lin = hex => new THREE.Color(hex); // three.js colour management turns an sRGB hex into linear
   const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const idle = () => new Promise(r => setTimeout(r, 0));
 
@@ -101,7 +101,7 @@ window.OpenEarthCity = async function main(cityId) {
     }
     return Object.assign({}, pl, { c: [cx / n, cy / n], bbox: [xmin, ymin, xmax, ymax], tested: !!pl.period });
   });
-  const outlineMat = new THREE.LineBasicMaterial({ color: 0xffd36b, transparent: true, opacity: 0.9, depthTest: true });
+  const outlineMat = new THREE.LineBasicMaterial({ color: new THREE.Color().setHex(0xffd36b, THREE.LinearSRGBColorSpace), transparent: true, opacity: 0.9, depthTest: true });
   for (const pl of placeInfo) {
     if (!pl.lep) continue;
     for (const poly of pl.polygons) {
@@ -552,7 +552,7 @@ window.OpenEarthCity = async function main(cityId) {
   let heatMesh = null;
   const rampAt = f => {
     const x = Math.max(0, Math.min(1, f)) * (RAMP.length - 1), i = Math.min(RAMP.length - 2, Math.floor(x)), k = x - i;
-    const a = new THREE.Color(RAMP[i]), b = new THREE.Color(RAMP[i + 1]);
+    const a = new THREE.Color().setStyle(RAMP[i], THREE.LinearSRGBColorSpace), b = new THREE.Color().setStyle(RAMP[i + 1], THREE.LinearSRGBColorSpace);
     return a.lerp(b, k);
   };
   $('#heat-run').onclick = async () => {
@@ -587,7 +587,7 @@ window.OpenEarthCity = async function main(cityId) {
     }
     ctx.putImageData(img, 0, 0);
     const tex = new THREE.CanvasTexture(cv);
-    tex.encoding = THREE.sRGBEncoding;
+    tex.colorSpace = THREE.SRGBColorSpace;
     tex.magFilter = THREE.NearestFilter;
     if (heatMesh) { world.remove(heatMesh); heatMesh.geometry.dispose(); }
     const w = HEAT.x1 - HEAT.x0, h = HEAT.y1 - HEAT.y0;

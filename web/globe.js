@@ -42,6 +42,7 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
   let flight = null;
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.LinearSRGBColorSpace; // the globe shaders write display colours themselves
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
   const controls = new THREE.OrbitControls(camera, canvas);
@@ -58,7 +59,7 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
 
   const tex = new THREE.CanvasTexture(cv);
   tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-  const uni = { map: { value: tex }, sunDir: { value: new THREE.Vector3(1, 0, 0) }, night: { value: new THREE.Color(css('--g-night')) },
+  const uni = { map: { value: tex }, sunDir: { value: new THREE.Vector3(1, 0, 0) }, night: { value: new THREE.Color().setStyle(css('--g-night'), THREE.LinearSRGBColorSpace) },
     nightMix: { value: parseFloat(css('--g-night-mix')) || 0.62 } };
   const globeMat = new THREE.ShaderMaterial({
     uniforms: uni,
@@ -83,7 +84,7 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
   // thin atmosphere: a back-facing shell, brightest at the limb
   // (seen from inside the shell, the normal and the view ray agree near the globe and part at the shell's rim)
   const atmo = new THREE.Mesh(new THREE.SphereGeometry(1.04, 96, 48), new THREE.ShaderMaterial({
-    uniforms: { glow: { value: new THREE.Color(css('--g-atmo')) } }, side: THREE.BackSide, transparent: true, depthWrite: false,
+    uniforms: { glow: { value: new THREE.Color().setStyle(css('--g-atmo'), THREE.LinearSRGBColorSpace) } }, side: THREE.BackSide, transparent: true, depthWrite: false,
     vertexShader: 'varying vec3 vN; varying vec3 vV; void main() { vN = normalize(normalMatrix * normal); vec4 mv = modelViewMatrix * vec4(position, 1.0); vV = normalize(mv.xyz); gl_Position = projectionMatrix * mv; }',
     fragmentShader: 'uniform vec3 glow; varying vec3 vN; varying vec3 vV; void main() { float f = smoothstep(0.0, 0.3, dot(vN, vV)); gl_FragColor = vec4(glow, f * f * 0.75); }',
   }));
