@@ -1,0 +1,1161 @@
+{
+  "id": "osaka",
+  "name": "Osaka",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Umeda to Shinsekai along Midosuji, with Osaka Castle, from open data: every building height is a Project PLATEAU measurement, lit by the real sun.",
+  "bbox": [
+    135.4866,
+    34.6478,
+    135.5383,
+    34.708
+  ],
+  "origin": [
+    135.513,
+    34.679
+  ],
+  "extent_m": [
+    -2300,
+    2200,
+    -3300,
+    3100
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P. (Tokyo Peil)",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "bare_earth": true,
+    "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey, with the 10 m DEM where it has gaps (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "plateau": {
+    "url": "https://gsic-opendata.s3.ap-northeast-1.amazonaws.com/national-gov/mlit/city-bureau/3d-city-model/2020/plateau-27100-osaka-shi-2020/27100_osaka-shi_2020_citygml_4_op.zip",
+    "dataset": "Project PLATEAU, Osaka City 3D city model 2020 (MLIT; CityGML v2; building survey 2017)",
+    "licence": "PLATEAU site policy (compatible with CC BY 4.0)"
+  },
+  "water": {
+    "classes": [
+      "river",
+      "moat",
+      "pond",
+      "water",
+      "reservoir",
+      "lake",
+      "canal",
+      "stream",
+      "drain",
+      "ditch"
+    ],
+    "min_area_m2": 800
+  },
+  "storey": {
+    "res": [
+      3.6,
+      0.0
+    ],
+    "non": [
+      3.4,
+      0.0
+    ]
+  },
+  "start": {
+    "date": [
+      12,
+      21
+    ],
+    "time": "09:30",
+    "cam": [
+      -4200,
+      -6200,
+      2600
+    ],
+    "tgt": [
+      -300,
+      -100,
+      10
+    ]
+  },
+  "tour": [
+    {
+      "title": "Osaka from open data",
+      "text": "{buildings} buildings from Project PLATEAU, OpenStreetMap and Overture Maps, on GSI's 5 m laser terrain under GSI aerial photos, from Umeda in the north to Shinsekai in the south.",
+      "cam": [
+        -4200,
+        -6200,
+        2600
+      ],
+      "tgt": [
+        -300,
+        -100,
+        10
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "09:30",
+      "to": "10:30",
+      "hold": 8
+    },
+    {
+      "title": "Osaka Castle",
+      "text": "The keep stands on a 13.3 m stone base and rises 39.4 m above it: five roofs outside, eight floors inside. The ground under it, {landmark:castle.ground_m} m above Tokyo Peil, is from PLATEAU's survey.",
+      "cam": [
+        1330,
+        1060,
+        120
+      ],
+      "tgt": [
+        1178,
+        929,
+        48
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "10:30",
+      "to": "11:30",
+      "hold": 8
+    },
+    {
+      "title": "Nakanoshima, the island in the river",
+      "text": "Between the Dojima and Tosabori rivers: the Central Public Hall in red brick, the City Hall, and the Festival Towers at 199 m. The rivers are water in the model, so boats can sail them.",
+      "cam": [
+        320,
+        1450,
+        150
+      ],
+      "tgt": [
+        -1000,
+        1600,
+        25
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "11:30",
+      "to": "12:30",
+      "hold": 8
+    },
+    {
+      "title": "Umeda",
+      "text": "Osaka Station, the Umeda Sky Building at 173 m and the red wheel of HEP FIVE, 106 m above the street. Several of these towers are newer than PLATEAU's 2017 survey, so their heights come from OpenStreetMap.",
+      "cam": [
+        -700,
+        1900,
+        420
+      ],
+      "tgt": [
+        -1700,
+        2700,
+        70
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "13:30",
+      "to": "14:30",
+      "hold": 8
+    },
+    {
+      "title": "Dotonbori at dusk",
+      "text": "The Glico runner, the Kani Doraku crab and the canal that Yasui Doton began digging in 1612. The sign and the crab are indicative models placed by their published positions.",
+      "cam": [
+        -1060,
+        -880,
+        55
+      ],
+      "tgt": [
+        -1060,
+        -1130,
+        28
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "17:15",
+      "to": "18:15",
+      "hold": 8
+    },
+    {
+      "title": "Tsutenkaku",
+      "text": "The tower of Shinsekai: {landmark:tsutenkaku.published_m} m, {landmark:tsutenkaku.with_rod_m} m with the lightning rod, rebuilt in 1956. The gold observatory is on the fifth floor at {landmark:tsutenkaku.observatory_m} m.",
+      "cam": [
+        -900,
+        -3300,
+        130
+      ],
+      "tgt": [
+        -613,
+        -2935,
+        55
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "14:00",
+      "to": "15:00",
+      "hold": 8
+    },
+    {
+      "title": "Where every height comes from",
+      "text": "Colour shows the source of each height. Almost all are PLATEAU measurements. The warm colours are buildings newer than the survey (OpenStreetMap floor counts) and the ones nobody measured, which the model estimates from their neighbours.",
+      "cam": [
+        -2600,
+        -3400,
+        1700
+      ],
+      "tgt": [
+        -200,
+        400,
+        10
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "11:00",
+      "to": "12:00",
+      "hold": 9,
+      "provenance": true
+    },
+    {
+      "title": "Winter sun in Utsubo Park",
+      "text": "The study asks how much of each park stays in direct sun between 8:00 and 16:00 on the winter solstice. Utsubo Park, boxed in by towers, gets {sun:靱公園|12-21|12:00}% of its area at noon.",
+      "place": "靱公園",
+      "date": [
+        12,
+        21
+      ],
+      "from": "10:00",
+      "to": "14:00",
+      "hold": 9
+    }
+  ],
+  "reference_heights": {
+    "file": "reference_heights.csv",
+    "source": "Wikipedia, List of tallest buildings in Osaka (October 2026), architectural heights; heights are as published, so spires and rooftop plant count"
+  },
+  "terrain_check": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+    "zoom": 14,
+    "name": "GSI 10 m DEM (DEM10B, an older and coarser survey than the 5 m laser DEM)"
+  },
+  "labels": {
+    "梅田スカイビル": "梅田スカイビル Umeda Sky Building",
+    "中之島フェスティバルタワーウエスト": "Festival Tower West",
+    "関電ビルディング": "関電ビル KEPCO",
+    "大阪市中央公会堂": "中央公会堂 Central Public Hall",
+    "大阪市役所": "市役所 City Hall",
+    "なんばスカイオ": "Namba SkyO",
+    "なんばパークス": "Namba Parks",
+    "ヨドバシ梅田タワー": "Yodobashi Umeda",
+    "大丸 心斎橋店 本館": "大丸 Daimaru",
+    "国立文楽劇場": "国立文楽劇場 Bunraku Theatre",
+    "スパワールド": "Spa World",
+    "大阪府庁舎": "大阪府庁 Prefectural Office",
+    "大阪市立科学館": "科学館 Science Museum",
+    "OMMビル": "OMM",
+    "大阪駅": "大阪駅 Osaka Station",
+    "OBP キャッスル タワー": "OBP Castle Tower",
+    "ザ・タワー大阪": "The Tower Osaka",
+    "かに道楽": "かに道楽 Kani Doraku",
+    "大阪城 ホール": "大阪城ホール"
+  },
+  "minor_labels": [
+    "大阪市役所",
+    "大阪市中央公会堂",
+    "国立文楽劇場",
+    "スパワールド",
+    "大阪市立科学館",
+    "大阪府庁舎",
+    "かに道楽",
+    "大丸 心斎橋店 本館",
+    "なんばパークス",
+    "OMMビル",
+    "大阪城 ホール"
+  ],
+  "place_labels": [
+    "大阪城公園",
+    "靱公園",
+    "難波宮跡公園",
+    "天王寺公園",
+    "扇町公園",
+    "うめきた公園 サウスパーク",
+    "とんぼりリバーウォーク"
+  ],
+  "places": [
+    {
+      "name": "大阪城公園",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "西の丸庭園",
+      "class": "garden",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "難波宮跡公園",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "靱公園",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "天王寺公園",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "扇町公園",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "うめきた公園 サウスパーク",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "桜之宮公園",
+      "class": "park",
+      "period": "12-01..12-31",
+      "from": "08:00",
+      "to": "16:00",
+      "protected": true
+    },
+    {
+      "name": "とんぼりリバーウォーク",
+      "class": "pedestrian",
+      "protected": false
+    }
+  ],
+  "protection": {
+    "title": "Winter-solstice sun study (a study rule, not Osaka law)",
+    "summary": "Japan's shadow rule (日影規制, Building Standards Act art. 56-2) limits the hours of winter-solstice shade a new building may cast on neighbouring land between 8:00 and 16:00, but only in the zones a local authority lists, and, as we read it, not in commercial zones, which is most of this model. Osaka's parks have no such rule, so this study applies the same date and window to them as a test, not as law.",
+    "source_note": "The 8:00 to 16:00 window and the exclusion of commercial zones are our reading of the Act and secondary sources; check the text before relying on them. The choice of parks and the use of the window for them is this project's own.",
+    "reading_note": "Japan has no daylight saving, so clock time and standard time are the same here. The baseline is today's model, not the buildings of a fixed date.",
+    "default_time_basis": "clock",
+    "tip": "Tip: try the blocks beside Utsubo Park, or south of Osaka Castle Park.",
+    "unprotected_label": "not in the study"
+  },
+  "analysis_region": [
+    -2000,
+    300,
+    -2000,
+    3000
+  ],
+  "sun_hours_region": [
+    -1800,
+    600,
+    -1200,
+    2000
+  ],
+  "check_points": {
+    "Osaka Castle keep": [
+      135.5258,
+      34.6873
+    ],
+    "Tsutenkaku base": [
+      135.5063,
+      34.6525
+    ],
+    "Dotonbori Ebisu-bashi": [
+      135.5013,
+      34.6687
+    ],
+    "Osaka Station": [
+      135.4959,
+      34.7025
+    ],
+    "Utsubo Park": [
+      135.4945,
+      34.6845
+    ]
+  },
+  "sources": {
+    "landmarks": "Osaka Castle keep (Osaka Prefecture fact sheet; Bunshun), Tsutenkaku (Osaka City leaflet), HEP FIVE wheel: published dimensions; the Glico sign and Kani Doraku crab are indicative"
+  },
+  "verified_heights": "verified_heights.csv",
+  "game": {
+    "title": "Osaka on Foot",
+    "start": {
+      "at": [
+        -1005,
+        -1100
+      ],
+      "facing": [
+        -1065,
+        -1135
+      ],
+      "time": "live"
+    },
+    "wharves": [
+      {
+        "id": "minatomachi",
+        "name": "Minatomachi River Place",
+        "terminal": "湊町船着場"
+      },
+      {
+        "id": "taizaemon",
+        "name": "Taizaemon-bashi (Dotonbori)",
+        "terminal": "太左衛門橋船着場"
+      },
+      {
+        "id": "nipponbashi",
+        "name": "Nipponbashi (Dotonbori)",
+        "terminal": "日本橋船着場"
+      },
+      {
+        "id": "hachikenya",
+        "name": "Hachikenyahama",
+        "terminal": "八軒家浜船着場"
+      },
+      {
+        "id": "osakajo",
+        "name": "Osaka-jo Port",
+        "terminal": "大阪城港"
+      },
+      {
+        "id": "yodoyabashi",
+        "name": "Yodoyabashi Port",
+        "terminal": "淀屋橋港"
+      },
+      {
+        "id": "dojimahama",
+        "name": "Dojimahama",
+        "terminal": "堂島浜船着場"
+      }
+    ],
+    "ferries": [
+      {
+        "route": "Tombori River Cruise (west)",
+        "stops": [
+          "minatomachi",
+          "taizaemon"
+        ],
+        "vessels": [
+          "Ebisu Maru"
+        ]
+      },
+      {
+        "route": "Tombori River Cruise (east)",
+        "stops": [
+          "taizaemon",
+          "nipponbashi"
+        ],
+        "vessels": [
+          "Tombori Maru",
+          "Namba Maru"
+        ]
+      },
+      {
+        "route": "Aqua Liner to the Castle",
+        "stops": [
+          "hachikenya",
+          "osakajo"
+        ],
+        "vessels": [
+          "Aqua Liner Hachiken",
+          "Aqua Liner Joto"
+        ]
+      },
+      {
+        "route": "Aqua Liner Nakanoshima",
+        "stops": [
+          "hachikenya",
+          "yodoyabashi",
+          "dojimahama"
+        ],
+        "vessels": [
+          "Aqua Liner Naniwa"
+        ]
+      }
+    ],
+    "ferry_note": "Landings are the ferry terminals mapped in OpenStreetMap (via Overture). Routes are generated through open water, and the stops follow the Tombori River Cruise and the Aqua Liner, but the timetable and the vessel names are invented. Boats run at 1.5 times real speed (9 m/s) and wait 20 s at each landing. At a landing you can skip the wait.",
+    "helipads": [
+      {
+        "id": "naniwa-pad",
+        "name": "Naniwa-no-miya Park helipad",
+        "at": [
+          930,
+          70
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 460,
+      "cars": 150,
+      "radius_m": 450,
+      "style": {
+        "skin": [
+          "#f6dccb",
+          "#f0cdb3",
+          "#e9bf9f",
+          "#e3b592",
+          "#d9a583"
+        ],
+        "hair": [
+          "#141010",
+          "#1a1512",
+          "#231915",
+          "#2a1e17",
+          "#33241b",
+          "#4a3222",
+          "#6a4529",
+          "#8c8580",
+          "#cfcac4"
+        ],
+        "tops": [
+          "#1f2328",
+          "#2f3a4d",
+          "#e9e6df",
+          "#f2f0ea",
+          "#3d4a5c",
+          "#6b7a8c",
+          "#c94f3d",
+          "#8c2f39",
+          "#d7c6a5",
+          "#1f2d4d",
+          "#3c4a3e",
+          "#9aa3a8",
+          "#e4b7b2",
+          "#355c7d"
+        ],
+        "legs": [
+          "#1d1f24",
+          "#2b3440",
+          "#24384f",
+          "#33415c",
+          "#4b5563",
+          "#3a3026",
+          "#c7b89a"
+        ],
+        "weights": {
+          "M_Casual2": 3,
+          "M_Hoodie": 2,
+          "M_Suit": 2.6,
+          "W_Casual": 3.2,
+          "W_Formal": 1.6,
+          "W_Suit": 2.2
+        },
+        "patterns": {
+          "tiger": 0.035,
+          "leopard": 0.035,
+          "pinstripe": 0.05
+        },
+        "acc": {
+          "mask": 0.14,
+          "umbrella": 0.08,
+          "tigers_cap": 0.02,
+          "backpack": 0.05
+        },
+        "scale": [
+          0.9,
+          0.97
+        ]
+      }
+    },
+    "player_looks": {
+      "W_Worker": {
+        "skin": "#ecc9ad",
+        "hair": "#1c1613",
+        "scale": 0.9
+      },
+      "M_Worker": {
+        "skin": "#e9c3a5",
+        "hair": "#1a1512",
+        "scale": 0.95
+      }
+    },
+    "smalltalk": [
+      "Maido.",
+      "Ookini.",
+      "Meccha ee tenki ya naa. Lovely weather, isn't it?",
+      "Honma ni? Really?"
+    ],
+    "npcs": [
+      {
+        "id": "mei",
+        "name": "Mei",
+        "role": "Survey lead",
+        "at": [
+          -1000,
+          -1085
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#efcbb0",
+          "hair": "#1c1613",
+          "top": "#f08a2c",
+          "shirt": "#f08a2c",
+          "legs": "#2b3440",
+          "pants": "#2b3440",
+          "scale": 0.9
+        },
+        "idle": [
+          "Dotonbori is a canal that Yasui Doton began digging in 1612. Everything on its banks is newer than the water.",
+          "Almost every height you see here was measured from the air for Project PLATEAU. {share:plateau}% of the roof area. We didn't have to guess much."
+        ]
+      },
+      {
+        "id": "daisuke",
+        "name": "Daisuke",
+        "role": "Takoyaki master",
+        "at": [
+          -955,
+          -1138
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#eac3a4",
+          "hair": "#1a1512",
+          "top": "#f4f1ea",
+          "shirt": "#f4f1ea",
+          "legs": "#232a3a",
+          "pants": "#232a3a",
+          "acc": [
+            "hachimaki",
+            "apron",
+            "tako_tray"
+          ],
+          "apron": "#f1efe8"
+        },
+        "idle": [
+          "Maido! Eight to a tray. Mind the heat, the inside is lava.",
+          "Flip it fast, flip it again. The octopus is just the excuse; it's the batter that matters."
+        ]
+      },
+      {
+        "id": "taro",
+        "name": "Kuidaore Taro",
+        "role": "Dotonbori mascot",
+        "at": [
+          -978,
+          -1146
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#f6e3d2",
+          "hair": "#1a1512",
+          "top": "#d9262c",
+          "shirt": "#d9262c",
+          "legs": "#f4f1ea",
+          "pants": "#f4f1ea",
+          "pattern": "kuidaore",
+          "acc": [
+            "clown_hat",
+            "drum"
+          ]
+        },
+        "idle": [
+          "Kuidaore! Eat until you drop. In Kyoto they dress until they drop. In Osaka we eat.",
+          "Bon bon, bon bon. I drum while you decide between the crab and the takoyaki. Decide quickly."
+        ]
+      },
+      {
+        "id": "kenta",
+        "name": "Kenta",
+        "role": "Tigers fan",
+        "at": [
+          -1042,
+          -1090
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#ebc6a8",
+          "hair": "#201813",
+          "top": "#f2c500",
+          "shirt": "#f2c500",
+          "legs": "#2a3a55",
+          "pants": "#2a3a55",
+          "pattern": "tiger",
+          "acc": [
+            "tigers_cap"
+          ]
+        },
+        "idle": [
+          "Rokko oroshi ni sassoto! Hanshin Tigers, 2023 Japan Series champions. Thirty-eight years we waited.",
+          "Back in 1985 the fans threw a Colonel Sanders statue off this bridge. They found him again in 2009. Don't throw anything off this bridge."
+        ]
+      },
+      {
+        "id": "sato",
+        "name": "Officer Sato",
+        "role": "Koban police",
+        "at": [
+          -890,
+          -1085
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e9c3a5",
+          "hair": "#16110e",
+          "top": "#1f2d4d",
+          "shirt": "#1f2d4d",
+          "legs": "#1f2d4d",
+          "pants": "#1f2d4d",
+          "acc": [
+            "police_cap"
+          ]
+        },
+        "idle": [
+          "Lost? The koban on this corner has handed back more umbrellas than you've had lunches.",
+          "On the escalators in Osaka we stand on the right and walk on the left. In Tokyo it is the other way round. People get very serious about it."
+        ]
+      },
+      {
+        "id": "fumi",
+        "name": "Fumi",
+        "role": "Kuromon Market",
+        "at": [
+          -584,
+          -1852
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#ecc9ad",
+          "hair": "#8c8580",
+          "top": "#c28a3a",
+          "shirt": "#c28a3a",
+          "legs": "#1f1f24",
+          "pants": "#1f1f24",
+          "pattern": "leopard",
+          "acc": [
+            "visor",
+            "umbrella"
+          ],
+          "scale": 0.88
+        },
+        "idle": [
+          "Maido, maido! Ame-chan? Take two. We give candy to strangers here. It's how we say hello.",
+          "Mokarimakka? That's how merchants here greet each other: are you making money? The answer is always 'bochi bochi', so-so."
+        ]
+      },
+      {
+        "id": "kenji",
+        "name": "Taisho Kenji",
+        "role": "Kushikatsu chef",
+        "at": [
+          -640,
+          -2990
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e8c0a0",
+          "hair": "#1a1512",
+          "top": "#f4f1ea",
+          "shirt": "#f4f1ea",
+          "legs": "#232a3a",
+          "pants": "#232a3a",
+          "acc": [
+            "hachimaki",
+            "apron"
+          ],
+          "apron": "#1f2d4d"
+        },
+        "idle": [
+          "Nidozuke kinshi! No double-dipping in the sauce. There's a cabbage on the table for the scooping. Use it.",
+          "Pork, shrimp, lotus root, quail egg. Everything on a stick, everything in the fryer. Shinsekai has always been like this."
+        ]
+      },
+      {
+        "id": "yoshitaka",
+        "name": "Yoshi & Taka",
+        "role": "Manzai comedians",
+        "at": [
+          -872,
+          -1418
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#ecc7aa",
+          "hair": "#17120f",
+          "acc": [
+            "glasses"
+          ]
+        },
+        "idle": [
+          "Yoshi: We are the best manzai duo in Namba. Taka: Who said that? Yoshi: My mother. Taka: Nandeyanen!",
+          "Taka: Why is the tower so tall? Yoshi: So I can see you from far away. Taka: Nandeyanen!"
+        ]
+      },
+      {
+        "id": "tanaka",
+        "name": "Tanaka",
+        "role": "Salaryman, Yodoyabashi",
+        "at": [
+          -1062,
+          1440
+        ],
+        "look": {
+          "character": "M_Hoodie",
+          "skin": "#ebc5a6",
+          "hair": "#15110e",
+          "top": "#2a3244",
+          "shirt": "#2a3244",
+          "legs": "#2a3244",
+          "pants": "#2a3244",
+          "pattern": "pinstripe",
+          "acc": [
+            "lanyard",
+            "mask"
+          ]
+        },
+        "idle": [
+          "Ohayo gozaimasu. I take Midosuji every morning: five stops from Umeda to Namba, and I have never once been late.",
+          "The underground at Umeda is a dungeon. I've lived here forty years and I still ask the staff for directions."
+        ]
+      },
+      {
+        "id": "nishida",
+        "name": "Captain Nishida",
+        "role": "Aqua Liner, Hachikenyahama",
+        "at": [
+          268,
+          1262
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e5b894",
+          "hair": "#2a2420",
+          "top": "#1f4a74",
+          "shirt": "#1f4a74",
+          "legs": "#1c2736",
+          "pants": "#1c2736",
+          "acc": [
+            "police_cap"
+          ]
+        },
+        "idle": [
+          "Osaka is called the City of Water. The rivers and canals were the roads here long before the trains.",
+          "They used to say Osaka had 808 bridges, hachihyaku-ya-bashi. It's a figure of speech, but I've stopped counting under the first twenty."
+        ]
+      },
+      {
+        "id": "ichiro",
+        "name": "Ichiro",
+        "role": "Castle guide",
+        "at": [
+          1180,
+          858
+        ],
+        "look": {
+          "character": "M_Adventurer",
+          "skin": "#e9c1a2",
+          "hair": "#17120f",
+          "acc": [
+            "jingasa",
+            "flag"
+          ]
+        },
+        "idle": [
+          "Hideyoshi began this castle in 1583. The keep you see is from 1931, built with donations from the people of Osaka. It's concrete under the copper.",
+          "From the stone base to the top of the shachi the keep is {landmark:castle.height_m} m. PLATEAU measured 54.6, so the model and the survey agree."
+        ]
+      },
+      {
+        "id": "ryo",
+        "name": "Ryo",
+        "role": "Helicopter pilot",
+        "at": [
+          905,
+          92
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e8bf9e",
+          "hair": "#16110e",
+          "top": "#34465f",
+          "shirt": "#34465f",
+          "legs": "#1c2230",
+          "pants": "#1c2230",
+          "acc": [
+            "glasses"
+          ]
+        },
+        "idle": [
+          "This was the Naniwa Palace in the seventh century. The only thing flying here now is me.",
+          "Space to climb, C to descend. Don't land on the Sky Building. They get upset."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "ebisu",
+        "giver": "mei",
+        "title": "Welcome to Dotonbori",
+        "stamp": "Ebisu-bashi",
+        "talk": [
+          "Okaeri. Well, welcome. I'm Mei, from the survey. This is Dotonbori, the canal Yasui Doton began digging in 1612.",
+          "The model around you is open data: {buildings} buildings, GSI's 5 m laser terrain and GSI's aerial photos. For {share:plateau}% of the roof area, the height was measured from the air for Project PLATEAU, not guessed.",
+          "Look up at the Glico runner, then find Daisuke on the Dotonbori street. He's the one with the headband. He has opinions about octopus."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "daisuke",
+            "text": "Find Daisuke, the takoyaki master, on the Dotonbori street"
+          }
+        ]
+      },
+      {
+        "id": "takoyaki",
+        "giver": "daisuke",
+        "title": "Eat until you drop",
+        "stamp": "Takoyaki",
+        "talk": [
+          "Maido! Takoyaki: flour batter, a piece of octopus, tenkasu, red ginger, and you turn it with a pick, quick, quick. They say Tomekichi Endo started it in 1935, not far from here.",
+          "We have a word for this city: kuidaore. Eat until you drop. In Kyoto they say they dress until they drop.",
+          "Take the Tombori River Cruise from Taizaemon-bashi to Nipponbashi. The canal looks different from the water. Then find Fumi at the Kuromon Market and tell her Daisuke sent you."
+        ],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "taizaemon",
+            "to": "nipponbashi",
+            "text": "Ride the Tombori River Cruise from Taizaemon-bashi to Nipponbashi"
+          },
+          {
+            "type": "talk",
+            "npc": "fumi",
+            "text": "Find Fumi in the Kuromon Market"
+          }
+        ]
+      },
+      {
+        "id": "kuromon",
+        "giver": "fumi",
+        "title": "Read a building",
+        "stamp": "Kuromon Market",
+        "talk": [
+          "Maido, maido! Daisuke sent you? Ame-chan, take two. That's how we say hello.",
+          "They call this market Osaka's kitchen. You, you're measuring the city. Fine. Show me you can read a building.",
+          "Aim at a building and press Q for the survey lens. Find one whose height was measured for PLATEAU, and one that nobody measured, so the model estimated it from its neighbours. Then go and eat kushikatsu in Shinsekai. Kenji is the best."
+        ],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": [
+              "plateau",
+              "estimate"
+            ],
+            "text": "Survey lens (Q): one measured height and one estimated"
+          },
+          {
+            "type": "talk",
+            "npc": "kenji",
+            "text": "Find Kenji, the kushikatsu chef, in Shinsekai"
+          }
+        ]
+      },
+      {
+        "id": "shinsekai",
+        "giver": "kenji",
+        "title": "Under the tower",
+        "stamp": "Tsutenkaku",
+        "talk": [
+          "Nidozuke kinshi! One dip only. Good. Eat.",
+          "That's Tsutenkaku above you. The first tower came down in 1943; this one went up in 1956. Published height {landmark:tsutenkaku.published_m} m, or {landmark:tsutenkaku.with_rod_m} m with the lightning rod. The model draws both.",
+          "The lights at the top tell tomorrow's weather: white for fair, orange for cloudy, blue for rain. Now go to Namba and find the two guys outside the Grand Kagetsu theatre. They'll tell you the rest."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "yoshitaka",
+            "text": "Find the manzai comedians near Namba Grand Kagetsu"
+          }
+        ]
+      },
+      {
+        "id": "manzai",
+        "giver": "yoshitaka",
+        "title": "Nandeyanen!",
+        "stamp": "Namba Grand Kagetsu",
+        "talk": [
+          "Yoshi: We measure towers, you know. Taka: Nobody asked you. Yoshi: It's a hundred and three metres. Taka: Nandeyanen! The map says a hundred and eight! Yoshi: With the lightning rod. Taka: ...fine.",
+          "Taka: Seriously, your Mr Tanaka is waiting at Yodoyabashi. Middle of Midosuji. Takes the subway every day. Yoshi: He has never laughed once. Taka: Get him to laugh. Nandeyanen!"
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "tanaka",
+            "text": "Find Mr Tanaka at Yodoyabashi on Midosuji"
+          }
+        ]
+      },
+      {
+        "id": "midosuji",
+        "giver": "tanaka",
+        "title": "A place in the winter sun",
+        "stamp": "Midosuji",
+        "talk": [
+          "Ohayo gozaimasu. Midosuji: the boulevard from Umeda to Namba, one-way, gingko trees on both sides. In the evening in December they light them. You should see it.",
+          "Stand on the right on the escalators here. In Tokyo it's the left. We are not Tokyo.",
+          "Utsubo Park, west of here, is boxed in by towers. On 21 December at noon the model puts {sun:靱公園|12-21|12:00}% of the park in direct sun. Go and stand in the sun there at midday on the winter solstice. Then take the Aqua Liner: Captain Nishida is at Hachikenyahama."
+        ],
+        "choices": [
+          {
+            "text": "Show me 21 December at 12:00",
+            "action": "set_time",
+            "date": [
+              12,
+              21
+            ],
+            "time": "12:00"
+          },
+          {
+            "text": "I'll set the time myself"
+          }
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "靱公園",
+            "date": [
+              12,
+              21
+            ],
+            "window": [
+              "10:00",
+              "14:00"
+            ],
+            "text": "Stand in direct sun in Utsubo Park, 10:00 to 14:00 on 21 December"
+          },
+          {
+            "type": "talk",
+            "npc": "nishida",
+            "text": "Find Captain Nishida at Hachikenyahama"
+          }
+        ]
+      },
+      {
+        "id": "water",
+        "giver": "nishida",
+        "title": "The City of Water",
+        "stamp": "Aqua Liner",
+        "talk": [
+          "Welcome aboard, or nearly. Osaka is the City of Water: the rivers and canals were the roads here long before the trains.",
+          "Take the Aqua Liner from Hachikenyahama to Osaka-jo Port. Ichiro is waiting at the keep. Mind the bridges."
+        ],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "hachikenya",
+            "to": "osakajo",
+            "text": "Ride the Aqua Liner from Hachikenyahama to Osaka-jo Port"
+          },
+          {
+            "type": "talk",
+            "npc": "ichiro",
+            "text": "Climb up to the keep and find Ichiro"
+          }
+        ]
+      },
+      {
+        "id": "castle",
+        "giver": "ichiro",
+        "title": "The keep",
+        "stamp": "Osaka Castle",
+        "talk": [
+          "Hideyoshi began this castle in 1583. The keep you see is from 1931, paid for by the people of Osaka. Concrete and steel under the copper.",
+          "It stands on a stone base 13.3 m high and rises 39.4 m above it: five roofs outside, eight floors inside. The model builds the keep from those figures, and the ground under it, {landmark:castle.ground_m} m above Tokyo Peil, is from PLATEAU's survey.",
+          "Now go to Naniwa-no-miya Park. Ryo's helicopter is waiting there."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "ryo",
+            "text": "Walk to Naniwa-no-miya Park and find Ryo"
+          }
+        ]
+      },
+      {
+        "id": "fly",
+        "giver": "ryo",
+        "title": "Umeda from the air",
+        "stamp": "Umeda by air",
+        "talk": [
+          "Ryo here. Hop in. The helicopter's on the pad.",
+          "Fly to Umeda and set down in Umekita Park, the new park beside the station. It's three kilometres north-west. Stay clear of the towers. The Umeda Sky Building alone is 173 m. Don't hit it.",
+          "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."
+        ],
+        "steps": [
+          {
+            "type": "land",
+            "place": "うめきた公園 サウスパーク",
+            "text": "Land in Umekita Park (South Park)"
+          },
+          {
+            "type": "talk",
+            "npc": "mei",
+            "text": "Report back to Mei at Ebisu-bashi"
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "giver": "mei",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": [
+          "That's the full tour: the canal, the market, the tower, the river, the keep and the air.",
+          "{acc:matched} towers have been checked against their published heights, with a median error of {acc:median_abs_error_pct}%. Where the survey and the published figure differ, it's usually the rooftop plant: PLATEAU measures to the top of the machinery.",
+          "The city is yours. Change the time of day, take any boat, or fly anywhere. Go and see the Glico sign at night."
+        ],
+        "steps": []
+      }
+    ],
+    "water_hint": "No swimming in the canal, Osaka-style or not. Boats leave from the landings marked F.",
+    "blurb": "Walk Dotonbori, Kuromon and Shinsekai, take the Tombori River Cruise and the Aqua Liner, climb to the keep of Osaka Castle and fly over Umeda. Talk to the people who know the city. Every fact they tell you comes from the model.",
+    "passerby": "Osakan"
+  },
+  "storey_note": "Calibrated on Project PLATEAU: 118,782 non-residential and 11,163 residential buildings with a storey count and a measured height have a median of 3.4 m and 3.6 m a floor, with no constant term.",
+  "night_ambient": 0.5
+}
