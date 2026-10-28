@@ -72,8 +72,16 @@ window.OEAudio = (function () {
     s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.08);
   }
   function horn() { blip(196, 1.3, 'sawtooth', 0.06); blip(247, 1.3, 'sawtooth', 0.04); }
+  function thump() { // a rubber stamp on paper: a short low knock and a slap of noise
+    if (!ctx || muted) return;
+    blip(95, 0.18, 'sine', 0.22);
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime;
+    s.buffer = noise; f.type = 'lowpass'; f.frequency.value = 1400;
+    g.gain.setValueAtTime(0.16, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.14);
+  }
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, beep, step, horn, chime, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, beep, step, horn, chime, thump, setMuted, stop, get muted() { return muted; } };
 })();

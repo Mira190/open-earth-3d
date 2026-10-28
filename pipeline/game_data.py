@@ -18,6 +18,8 @@ Writes web/data/<city>/game.json:
             and piers, then smoothed
   helipads, props (benches and street lamps), npcs and quests (positions snapped to
   open ground)
+  viewpoints  trig stations to survey the view from, as given in city.json (not
+            snapped: one stands on the bridge deck)
 """
 import base64
 import json
@@ -356,6 +358,7 @@ def main():
         "ferries": ferries, "ferry_note": gcfg.get("ferry_note", ""),
         "ferry_speed_ms": gcfg.get("ferry_speed_ms", 9.0), "ferry_dwell_s": gcfg.get("ferry_dwell_s", 20.0),
         "helipads": helipads,
+        "viewpoints": gcfg.get("viewpoints", []),
         "props": props,
         "crowd": gcfg.get("crowd", {"pedestrians": 300, "cars": 120, "radius_m": 450}),
         "npcs": npcs,
