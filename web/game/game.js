@@ -143,8 +143,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const FRAME = { cell: 2, x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] };
   const DSM = S.buildDSM(T, B.s, Object.assign({ ids: true }, FRAME));
   const nav = OENav.create(D, DSM);
-  // the Opera House shells and the bridge deck shade the ground too
-  for (const [name, m] of Object.entries(nav.tops)) if (/^opera/.test(name)) for (const [k, z] of m) if (z > DSM.data[k]) DSM.data[k] = z;
+  // landmark solids (the Opera House shells) and walkable strips (the bridge deck) shade the ground too
+  for (const [name, m] of Object.entries(nav.tops)) if ((G.shade_landmarks || []).some(p => name.startsWith(p))) for (const [k, z] of m) if (z > DSM.data[k]) DSM.data[k] = z;
   for (const s of nav.strips) for (let i = 0; i < s.us.length - 1; i++) {
     const a = s.us[i], b = s.us[i + 1], w = s.half_width, P2 = (u, v) => [s.origin[0] + s.axis[0] * u - s.axis[1] * v, s.origin[1] + s.axis[1] * u + s.axis[0] * v];
     S.fillMax(DSM, [[...P2(a, -w), ...P2(b, -w), ...P2(b, w), ...P2(a, w)]], Math.max(s.zs[i], s.zs[i + 1]), -3);
@@ -622,7 +622,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const p = crowd.P[pi];
       p.pause = 6; p.face = Math.atan2(player.x - p.x, player.y - p.y); p.wave = true;
       setTimeout(() => { p.face = null; }, 6000);
-      dlg.show({ name: 'Passer-by', role: 'Sydneysider', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
+      dlg.show({ name: 'Passer-by', role: G.local_name || 'Local', pitch: 180 + (pi * 37) % 160, color: '#5b7f99' }, [smalltalk(p.x, p.y)]);
     } };
     return null;
   }
@@ -917,7 +917,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const events = [];
       heli.update(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), lift: Math.max(-1, Math.min(1, lift)) }, events);
       for (const ev of events) {
-        if (ev.type === 'under_bridge') { H.toast('<b>Under the Harbour Bridge!</b> 49 m of clearance, and you used it.'); A.chime(); const s = step(); if (s && s.type === 'under_bridge') completeStep(); }
+        if (ev.type === 'under_bridge') { H.toast(`<b>Under the ${ev.name || 'bridge'}!</b> ${G.under_bridge_note || ''}`); A.chime(); const s = step(); if (s && s.type === 'under_bridge') completeStep(); }
         if (ev.type === 'bump' && clockT - bumpT > 2) { bumpT = clockT; H.toast('Careful! That was a building.'); }
       }
       A.rotor(heli.st.rotor, Math.abs(lift) + Math.abs(fwd) * 0.5);
@@ -990,7 +990,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
-      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast('No swimming in the harbour. Ferries leave from the wharves marked F.'); }
+      } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in the ${G.water_name || 'water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
     }
     if (!moved) player.speed *= 0.5;
     const f = nav.floorAt(player.x, player.y, player.z);

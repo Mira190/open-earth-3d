@@ -16,10 +16,10 @@
   "country": "Australia",
   "lat": -37.8136,
   "lon": 144.9631,
-  "status": "planned",
-  "data": "Elevation LiDAR via ELVIS; City of Melbourne open 3D massing; OSM footprints.",
-  "built": false,
-  "game": false
+  "status": "live",
+  "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects.",
+  "built": true,
+  "game": true
  },
  {
   "id": "new-york",

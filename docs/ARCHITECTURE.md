@@ -28,13 +28,30 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Step | Script | Output |
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`), and Terrarium tiles for the radar check |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer or an OGC WCS), and Terrarium tiles for the radar check |
+| People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, ground tiles; `cities/<id>/analysis/height_model.json` |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
+
+### Ground
+
+The ground tiles are the aerial photo, resampled into the local frame at 1 m
+per pixel, where the city has openly licensed imagery. Where it has none
+(Melbourne), the build draws them from the vector data instead:
+- land use and land cover;
+- water;
+- roads with their kerbs and footpaths;
+- footways, cycleways and rail;
+- piers;
+- footprints, with contact shading and fine noise so the surface reads at
+  street level.
+
+Roofs then get neutral colours rather than a sampled photo.
 
 ### Heights: the ladder
 
@@ -127,7 +144,9 @@ The views switch in place, without reloading the page.
 
 - **`game/`** is the game; [GAME.md](GAME.md) describes it:
   - navigation;
-  - people and traffic;
+  - people (`people.js`): skinned characters near the player, instanced crowd
+    copies further away, all recoloured from one palette per character;
+  - traffic;
   - helicopter and ferries;
   - HUD;
   - sound.

@@ -15,6 +15,9 @@ from the data:
                       (UNESCO); their extent here, 90 m wide and 40 m from the podium edge
                       to the forecourt, is measured on the NSW aerial photo. Risers are
                       15 cm, in two flights with a landing between and a landing at the top.
+                      A 12 m forecourt apron ramps up to the first tread: the 5 m DEM
+                      dips up to 2 m at the foot, where the vehicle concourse runs in
+                      under the forecourt, which would leave the first riser a wall.
   Harbour Bridge      arch span 503 m between bearings, crown 134 m above sea level,
                       28 panels, trusses 30 m apart, deck 49 m wide with 49 m
                       clearance; alignment from the two pylon footprints in OSM.
@@ -40,7 +43,7 @@ MATERIALS = {
 }
 # Monumental Steps, measured on the aerial photo: width, depth from the podium edge to the
 # forecourt, top landing depth, middle landing depth, lateral offset from the podium axis
-STEPS = {"width": 90.0, "depth": 40.0, "top_landing": 12.0, "mid_landing": 5.0, "lateral": -3.0, "riser": 0.15}
+STEPS = {"width": 90.0, "depth": 40.0, "top_landing": 12.0, "mid_landing": 5.0, "lateral": -3.0, "riser": 0.15, "apron": 12.0}
 
 
 # ---------------------------------------------------------------- build_scene hooks
@@ -124,12 +127,15 @@ def monumental_steps(ctx, o):
     risers = [-STEPS["depth"] + k * tread for k in range(n)]
     risers += [-STEPS["depth"] + flight + STEPS["mid_landing"] + k * tread for k in range(n)]
     rise = (z_top - z_foot) / len(risers)
-    out = [[-STEPS["depth"] - 0.5, z_foot]]
+    a0 = top - f * (STEPS["depth"] + STEPS["apron"])
+    z_apron = min(z_foot, max(0.5, min(ctx.ground(*(a0 + l * v)) for v in np.linspace(-hw, hw, 9))))  # the lowest forecourt
+    out = [[-STEPS["depth"] - STEPS["apron"], round(z_apron, 3)], [-STEPS["depth"] - 0.02, z_foot]]  # the apron ramp, then the first riser
     for j, u in enumerate(risers):
         out += [[round(u, 2), round(z_foot + j * rise, 3)], [round(u + 0.02, 2), round(z_foot + (j + 1) * rise, 3)]]
     out.append([1.0, round(z_top, 3)])
+    low = min(ctx.ground(*(top + f * u + l * v)) for u in np.arange(-STEPS["depth"] - STEPS["apron"], 1, 4.0) for v in np.linspace(-hw, hw, 9))
     return {"origin": [round(top[0], 1), round(top[1], 1)], "axis": [round(f[0], 5), round(f[1], 5)], "half_width": hw,
-            "z_foot": round(z_foot, 2), "z_top": round(z_top, 2), "risers": len(risers), "profile": out}
+            "z_foot": round(z_foot, 2), "z_top": round(z_top, 2), "base_m": round(min(low, z_foot) - 0.5, 2), "risers": len(risers), "profile": out}
 
 
 def deck_profile(ctx, mid, ax, half_pylons):
@@ -172,11 +178,11 @@ def game_surfaces(scene):
         ax = (n - s) / np.linalg.norm(n - s)
         out.append({"name": "Sydney Harbour Bridge deck", "type": "strip", "origin": [round(m[0], 1), round(m[1], 1)],
                     "axis": [round(ax[0], 5), round(ax[1], 5)], "half_width": h["deck_width_m"] / 2,
-                    "profile": h["deck_profile"], "thickness": 3.0, "mesh": "bridge_deck", "fly_under": True})
+                    "profile": h["deck_profile"], "thickness": 3.0, "mesh": "bridge_deck", "fly_under": True, "label": "Harbour Bridge"})
     st = (scene["landmarks"].get("opera_house") or {}).get("steps")
     if st:
         out.append({"name": "Opera House steps", "type": "strip", "origin": st["origin"], "axis": st["axis"],
-                    "half_width": st["half_width"], "profile": st["profile"], "thickness": round(st["z_top"] - st["z_foot"] + 1, 1),
+                    "half_width": st["half_width"], "profile": st["profile"], "thickness": round(st["z_top"] - st.get("base_m", st["z_foot"] - 1), 1),
                     "mesh": "opera_steps", "drape": True})
     return out
 
@@ -263,7 +269,7 @@ def opera_house(o, podium_top):
 def steps_mesh(st):
     """Solid granite steps from the profile: treads, then risers and the two side walls."""
     o, f = np.array(st["origin"], float), np.array(st["axis"], float)
-    l, hw, base = np.array([f[1], -f[0]]), st["half_width"], st["z_foot"] - 0.5
+    l, hw, base = np.array([f[1], -f[0]]), st["half_width"], st.get("base_m", st["z_foot"] - 0.5)
     treads, risers = Mesh("opera_steps", "granite", False), Mesh("opera_steps_risers", "granite_riser", False)
 
     def P(u, v, z):
@@ -280,10 +286,10 @@ def steps_mesh(st):
         u1 = min(u1, 0.0)  # the podium takes over at its edge
         if u1 <= u0:
             continue
-        if abs(z1 - z0) < 1e-6:  # a tread or landing, with the side walls below it
-            face(P(u0, -hw, z0), P(u1, -hw, z0), P(u1, hw, z0), P(u0, hw, z0), up, treads)
-            face(P(u0, hw, base), P(u1, hw, base), P(u1, hw, z0), P(u0, hw, z0), east, risers)
-            face(P(u0, -hw, base), P(u1, -hw, base), P(u1, -hw, z0), P(u0, -hw, z0), -east, risers)
+        if abs(z1 - z0) < 1e-6 or u1 - u0 > 1.0:  # a tread, a landing or the apron ramp, with the side walls below it
+            face(P(u0, -hw, z0), P(u1, -hw, z1), P(u1, hw, z1), P(u0, hw, z0), up, treads)
+            face(P(u0, hw, base), P(u1, hw, base), P(u1, hw, z1), P(u0, hw, z0), east, risers)
+            face(P(u0, -hw, base), P(u1, -hw, base), P(u1, -hw, z1), P(u0, -hw, z0), -east, risers)
         else:  # a riser
             face(P(u0, -hw, z0), P(u0, hw, z0), P(u1, hw, z1), P(u1, -hw, z1), south, risers)
     face(P(prof[0][0], -hw, base), P(prof[0][0], hw, base), P(prof[0][0], hw, prof[0][1]), P(prof[0][0], -hw, prof[0][1]), south, risers)

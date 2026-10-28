@@ -211,7 +211,8 @@ window.OpenEarthCity = async function main(cityId) {
   // ------------------------------------------------------------ sun access table
   const fmtPeriod = p => {
     if (!p.period) return '<span class="note">window not verified</span>';
-    const per = p.period === 'all' ? 'All year' : p.period.split('..').map(s => { const [m, d] = s.split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; }).join(' – ');
+    const day = s => { const [m, d] = s.trim().split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; };
+    const per = p.period === 'all' ? 'All year' : p.period.split(',').map(part => part.split('..').map(day).join(' – ')).join(', ');
     return `${per}<br><span class="note mono">${p.from}–${p.to}</span>`;
   };
   const tbody = $('#places tbody');
@@ -451,10 +452,11 @@ window.OpenEarthCity = async function main(cityId) {
     $('#tw-result').innerHTML = '';
   });
   // The clause: a place fails if its total shadow across the protected hours is greater after
-  // the development. Sampled on the solstice and equinox dates in each period, every 15 minutes;
+  // the development. Sampled on the rule's dates (or the solstices and equinoxes) in each period, every 15 minutes;
   // total shadow is shaded area x time. The tower replaces the buildings whose footprint centre
   // is on its site, so a redevelopment can also remove shadow.
-  const DATES = [[3, 21], [6, 21], [9, 22], [12, 21]];
+  const DATES = PROT.test_dates || [[3, 21], [6, 21], [9, 22], [12, 21]]; // a rule's own dates where it names them
+  if (PROT.test_dates) $('#tw-dates').textContent = `the rule's own dates (${PROT.test_dates.map(([m, d]) => `${d} ${MONTHS[m - 1]}`).join(', ')})`;
   let basis = PROT.default_time_basis || 'clock';
   $$('#tw-basis button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.b === basis)));
   $('#tw-basis').addEventListener('click', e => {
@@ -540,7 +542,8 @@ window.OpenEarthCity = async function main(cityId) {
     $('#tw-msg').textContent = `${w} × ${w} m tower, ${h} m tall${replaced.size ? `, replacing ${replaced.size} building${replaced.size > 1 ? 's' : ''}` : ''}; ${instants} instants, ${basis} time.`;
     $('#tw-result').innerHTML = `<table><thead><tr><th>Place</th><th class="r">Change in total shadow</th><th>Result</th></tr></thead><tbody>${res.map((r, i) => `<tr><td>${r.p.name}</td>
       <td class="r"><span class="num">${fmtArea(r.net)} m²·h</span><br><span class="note mono">${r.before ? `${(100 * r.net / r.before).toFixed(1)}% of ${Math.round(r.before).toLocaleString()}` : 'no shadow before'}</span>${r.worst.area ? `<br><span class="note mono">most added ${Math.round(r.worst.area).toLocaleString()} m², ${r.worst.d} ${MONTHS[r.worst.m - 1]} ${fmtMin(r.worst.t)}</span>` : ''}</td>
-      <td>${r.net > 0 ? '<span class="pill fail">More shadow</span>' : '<span class="pill pass">No more shadow</span>'}<br><span class="note">same in ${holds[i]}/${SCEN} height scenarios</span></td></tr>`).join('')}</tbody></table>`;
+      <td>${r.p.lep ? (r.net > 0 ? '<span class="pill fail">More shadow</span>' : '<span class="pill pass">No more shadow</span>')
+        : `<span class="pill na">${r.net > 0 ? 'More shadow' : 'No more shadow'}</span><br><span class="note">${PROT.unprotected_label || 'not protected'}: a judgement, not a test</span>`}<br><span class="note">same in ${holds[i]}/${SCEN} height scenarios</span></td></tr>`).join('')}</tbody></table>`;
     btn.disabled = false;
   };
 

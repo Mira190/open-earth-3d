@@ -1,0 +1,848 @@
+{
+  "id": "melbourne",
+  "name": "Melbourne",
+  "country": "Australia",
+  "country_code": "AU",
+  "timezone": "Australia/Melbourne",
+  "locale": "en-AU",
+  "description": "Central Melbourne from open data, from Docklands to the Shrine, lit by the real sun. Every shadow is computed, and every height is traceable to its source.",
+  "bbox": [
+    144.935,
+    -37.835,
+    144.99,
+    -37.8
+  ],
+  "origin": [
+    144.9625,
+    -37.8175
+  ],
+  "extent_m": [
+    -2400,
+    2400,
+    -1950,
+    1950
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m AHD",
+  "year": 2026,
+  "imagery": {
+    "type": "synth",
+    "attribution": "No open aerial imagery covers central Melbourne, so the ground is drawn from Overture Maps land use, land, water and transport (OpenStreetMap contributors, ODbL)"
+  },
+  "terrain": {
+    "type": "wcs",
+    "url": "https://services.ga.gov.au/gis/services/DEM_LiDAR_5m_2025/MapServer/WCSServer",
+    "coverage": "1",
+    "crs": "EPSG:4283",
+    "pixel_deg": 5.5e-05,
+    "fill_below_m": -3.0,
+    "bare_earth": true,
+    "attribution": "Geoscience Australia DEM_LiDAR_5m_2025, 5 m bare earth from LiDAR (CC BY 4.0)"
+  },
+  "terrain_check": {
+    "type": "arcgis_points",
+    "url": "https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/arcgis/rest/services/Vicmap_Elevation_METRO_1_to_5_metre/FeatureServer/0/query",
+    "field": "altitude",
+    "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
+  },
+  "water": {
+    "classes": [
+      "river",
+      "bay",
+      "canal"
+    ],
+    "min_area_m2": 2000,
+    "note": "The Yarra and Victoria Harbour; the GA DEM flattens the river to 0 m."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "labels": {
+    "Australia 108": "Australia 108",
+    "Eureka Tower": "Eureka Tower",
+    "Rialto Towers": "Rialto Towers",
+    "120 Collins": "120 Collins Street",
+    "101 Collins Street": "101 Collins Street",
+    "Aurora Melbourne Central": "Aurora Melbourne Central",
+    "West Side Place Tower 1": "West Side Place",
+    "Saint Paul's Cathedral": "St Paul's Cathedral",
+    "Royal Exhibition Building": "Royal Exhibition Building",
+    "State Library Victoria": "State Library Victoria",
+    "Melbourne Town Hall": "Town Hall",
+    "Parliament House": "Parliament House",
+    "Shrine of Remembrance": "Shrine of Remembrance",
+    "Southern Cross": "Southern Cross Station",
+    "Crown Melbourne": "Crown"
+  },
+  "minor_labels": [
+    "Town Hall",
+    "Parliament House",
+    "State Library Victoria",
+    "Crown",
+    "Southern Cross Station"
+  ],
+  "place_labels": [
+    "Federation Square",
+    "Birrarung Marr",
+    "Flagstaff Gardens",
+    "Treasury Gardens",
+    "Fitzroy Gardens",
+    "Kings Domain",
+    "Carlton Gardens"
+  ],
+  "protection": {
+    "title": "Melbourne Planning Scheme, DDO10 and clause 15.01-1L-03",
+    "summary": "A permit must not be granted for buildings and works that cast any additional shadow on these public spaces in their protected hours (DDO10, Table 1).",
+    "source_note": "Read from the live Melbourne Planning Scheme (version VC314, 28 October 2026) through the Victorian government's planning API: DDO10 section 2.3, Tables 1 and 2, and clause 15.01-1L-03. Table 2 spaces get a discretionary test (no unreasonable prejudice to their amenity), so they show sun but are not tested. The State Library forecourt and the Shrine of Remembrance's northern forecourt are in Table 1 but are not mapped as named spaces in the open data. The Royal Botanic Gardens (DDO15) and Fitzroy Gardens (DDO13, DDO20, DDO21) windows were not checked against the scheme text.",
+    "reading_note": "Every DDO10 window falls between 22 April and 22 September, outside daylight saving, so clock time and standard time agree. The 22 March windows for the Royal Botanic Gardens and Fitzroy Gardens fall in daylight saving; which time they mean is not settled here. Baseline: the scheme compares against the buildings standing when a permit is decided, while this test compares against today's model.",
+    "default_time_basis": "clock",
+    "test_dates": [
+      [
+        4,
+        22
+      ],
+      [
+        6,
+        22
+      ],
+      [
+        9,
+        22
+      ]
+    ],
+    "tip": "Tip: try a site just north of Federation Square, or west of City Square.",
+    "unprotected_label": "discretionary or unlisted"
+  },
+  "places": [
+    {
+      "name": "Federation Square",
+      "class": "plaza",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "15:00",
+      "protected": true
+    },
+    {
+      "name": "City Square",
+      "class": "plaza",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "15:00",
+      "protected": true
+    },
+    {
+      "name": "Bourke Street Mall",
+      "class": "pedestrian",
+      "period": "04-22,09-22",
+      "from": "12:00",
+      "to": "14:00",
+      "protected": true
+    },
+    {
+      "name": "Boyd Community Park",
+      "class": "park",
+      "period": "04-22,09-22",
+      "from": "12:00",
+      "to": "14:00",
+      "protected": true
+    },
+    {
+      "name": "Yarra River",
+      "label": "Yarra River corridor",
+      "source": "water",
+      "class": "river",
+      "buffer_m": 15,
+      "period": "06-22",
+      "from": "11:00",
+      "to": "14:00",
+      "protected": true
+    },
+    {
+      "name": "Parliament Gardens",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "15:00"
+    },
+    {
+      "name": "Treasury Gardens",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "15:00"
+    },
+    {
+      "name": "Gordon Reserve",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "15:00"
+    },
+    {
+      "name": "Batman Park",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Birrarung Marr",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Sturt Street Reserve",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Grant Street Reserve",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Dodds St Linear Park",
+      "class": "park",
+      "period": "04-22..09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Flagstaff Gardens",
+      "class": "park",
+      "period": "06-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Fitzroy Gardens",
+      "class": "park",
+      "period": "03-22,09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Royal Botanic Gardens",
+      "class": "garden",
+      "period": "03-22,09-22",
+      "from": "11:00",
+      "to": "14:00"
+    },
+    {
+      "name": "Carlton Gardens",
+      "class": "park"
+    },
+    {
+      "name": "Kings Domain",
+      "class": "park"
+    },
+    {
+      "name": "Queen Victoria Gardens",
+      "class": "park"
+    },
+    {
+      "name": "Alexandra Gardens",
+      "class": "park"
+    }
+  ],
+  "analysis_region": [
+    -1500,
+    1700,
+    -1500,
+    1300
+  ],
+  "sun_hours_region": [
+    -1600,
+    1800,
+    -1600,
+    1400
+  ],
+  "reference_heights": {
+    "file": "reference_heights.csv",
+    "source": "Wikipedia, List of tallest buildings in Melbourne (revision 1382111188, 26 October 2026)"
+  },
+  "start": {
+    "date": [
+      6,
+      22
+    ],
+    "time": "12:30",
+    "cam": [
+      1900,
+      -2300,
+      1200
+    ],
+    "tgt": [
+      250,
+      0,
+      40
+    ]
+  },
+  "tour": [
+    {
+      "title": "Central Melbourne from open data",
+      "text": "{buildings} buildings from OpenStreetMap via Overture Maps, standing on Geoscience Australia's 5 m LiDAR terrain. No openly licensed aerial photo covers the city, so the ground is drawn from the open map data: parks, plazas, streets, laneways and tram tracks.",
+      "cam": [
+        1900,
+        -2300,
+        1200
+      ],
+      "tgt": [
+        250,
+        0,
+        40
+      ],
+      "date": [
+        6,
+        22
+      ],
+      "from": "11:30",
+      "to": "12:30",
+      "hold": 8
+    },
+    {
+      "title": "Federation Square, 22 June",
+      "text": "Melbourne's planning scheme forbids any new shadow on Federation Square from 11 am to 3 pm between 22 April and 22 September. At midwinter the sun stands only 29° above the northern horizon at noon.",
+      "cam": [
+        760,
+        -420,
+        140
+      ],
+      "tgt": [
+        520,
+        -120,
+        10
+      ],
+      "date": [
+        6,
+        22
+      ],
+      "from": "11:00",
+      "to": "15:00",
+      "hold": 10
+    },
+    {
+      "title": "Southbank's towers",
+      "text": "Australia 108 (317 m) and Eureka Tower (297 m), both mapped in OpenStreetMap to within a metre of their published heights. Their winter shadows fall south, away from the river.",
+      "cam": [
+        -520,
+        -1250,
+        360
+      ],
+      "tgt": [
+        160,
+        -520,
+        140
+      ],
+      "date": [
+        6,
+        22
+      ],
+      "from": "09:30",
+      "to": "11:30",
+      "hold": 9
+    },
+    {
+      "title": "The Hoddle Grid at noon",
+      "text": "Robert Hoddle's 1837 grid is turned about 20° from the compass: Collins, Bourke and Lonsdale Streets run at a bearing of 70°. The Bourke Street Mall is protected from noon to 2 pm on 22 April and 22 September.",
+      "cam": [
+        -300,
+        1700,
+        900
+      ],
+      "tgt": [
+        100,
+        250,
+        20
+      ],
+      "date": [
+        9,
+        22
+      ],
+      "from": "12:00",
+      "to": "14:00",
+      "hold": 9
+    },
+    {
+      "title": "The Arts Centre spire",
+      "text": "162 m of lattice above the Theatres Building, rebuilt taller in 1996. OpenStreetMap maps it as a thin block; here it is a parametric model, lit at night.",
+      "cam": [
+        760,
+        -760,
+        140
+      ],
+      "tgt": [
+        522,
+        -444,
+        80
+      ],
+      "date": [
+        6,
+        22
+      ],
+      "from": "17:20",
+      "to": "18:20",
+      "hold": 9
+    }
+  ],
+  "renders": [
+    {
+      "name": "overview",
+      "cam": [
+        1900,
+        -2300,
+        1200
+      ],
+      "tgt": [
+        250,
+        0,
+        40
+      ],
+      "date": [
+        2026,
+        6,
+        22
+      ],
+      "time": "12:00"
+    },
+    {
+      "name": "fedsquare",
+      "cam": [
+        760,
+        -420,
+        140
+      ],
+      "tgt": [
+        520,
+        -120,
+        10
+      ],
+      "date": [
+        2026,
+        6,
+        22
+      ],
+      "time": "12:30"
+    },
+    {
+      "name": "southbank",
+      "cam": [
+        -520,
+        -1250,
+        360
+      ],
+      "tgt": [
+        160,
+        -520,
+        140
+      ],
+      "date": [
+        2026,
+        6,
+        22
+      ],
+      "time": "10:30"
+    },
+    {
+      "name": "spire",
+      "cam": [
+        760,
+        -760,
+        140
+      ],
+      "tgt": [
+        522,
+        -444,
+        80
+      ],
+      "date": [
+        2026,
+        6,
+        22
+      ],
+      "time": "16:20"
+    }
+  ],
+  "verified_heights": "verified_heights.csv",
+  "check_points": {
+    "Federation Square": [
+      144.969,
+      -37.818
+    ],
+    "City Square": [
+      144.9668,
+      -37.8155
+    ],
+    "Bourke Street Mall": [
+      144.9638,
+      -37.8137
+    ],
+    "Flagstaff Gardens": [
+      144.9545,
+      -37.8105
+    ],
+    "Southbank": [
+      144.964,
+      -37.8205
+    ]
+  },
+  "radar_test_building": "Eureka Tower",
+  "sources": {
+    "landmarks": "Arts Centre Melbourne spire height (Wikipedia)",
+    "planning": "Melbourne Planning Scheme via api.app.planning.vic.gov.au (VC314, 28 October 2026)"
+  },
+  "game": {
+    "title": "Melbourne on Foot",
+    "local_name": "Melburnian",
+    "water_name": "Yarra",
+    "start": {
+      "at": [
+        548,
+        -18
+      ],
+      "facing": [
+        405,
+        174
+      ],
+      "time": "live"
+    },
+    "wharves": [
+      {
+        "id": "federation-wharf",
+        "name": "Federation Wharf",
+        "terminal": "Berth 4"
+      },
+      {
+        "id": "southgate",
+        "name": "Southgate",
+        "terminal": "Southgate Landing - Berth 1"
+      },
+      {
+        "id": "crown",
+        "name": "Crown Landing",
+        "terminal": "Crown Landing"
+      }
+    ],
+    "ferries": [
+      {
+        "route": "Yarra River Shuttle",
+        "stops": [
+          "federation-wharf",
+          "southgate",
+          "crown"
+        ],
+        "vessels": [
+          "Kingfisher",
+          "Pelican"
+        ]
+      }
+    ],
+    "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Melbourne has no regular ferry through the city, only river cruises and the Port Phillip Ferries from Docklands, so this river shuttle and its vessel names are invented. Victoria Harbour meets the Yarra just west of the model, so the shuttle stops short of Docklands. Routes are generated through the river, and boats run at 1.5 times a cruise boat's speed. At a wharf you can skip the wait.",
+    "ferry_speed_ms": 6.0,
+    "helipads": [
+      {
+        "id": "city-helipad",
+        "name": "Melbourne City Helipad",
+        "from_data": true,
+        "near": [
+          -505,
+          -530
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 400,
+      "cars": 160,
+      "radius_m": 450
+    },
+    "npcs": [
+      {
+        "id": "mia",
+        "name": "Mia",
+        "role": "Survey lead",
+        "at": [
+          556,
+          -10
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#e3b08d",
+          "hair": "#4a3222",
+          "top": "#2e7d6b",
+          "legs": "#2b3440",
+          "shirt": "#2e7d6b",
+          "pants": "#2b3440"
+        },
+        "idle": [
+          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model."
+        ]
+      },
+      {
+        "id": "hannah",
+        "name": "Hannah",
+        "role": "Planner",
+        "at": [
+          400,
+          168
+        ],
+        "look": {
+          "character": "W_Suit",
+          "skin": "#c18661",
+          "hair": "#141010",
+          "top": "#1f2328",
+          "legs": "#1f2328",
+          "shirt": "#1f2328",
+          "pants": "#1f2328"
+        },
+        "idle": [
+          "Table 1 spaces get a hard rule: no additional shadow, full stop. Table 2 spaces only get a judgement call."
+        ]
+      },
+      {
+        "id": "arjun",
+        "name": "Arjun",
+        "role": "River skipper",
+        "at": [
+          602,
+          -138
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#8f5b3d",
+          "hair": "#141010",
+          "top": "#1f4e79",
+          "legs": "#2b3440",
+          "shirt": "#1f4e79",
+          "pants": "#2b3440"
+        },
+        "idle": [
+          "The Yarra here is flattened to 0 m in the terrain data. Tides and all, that's close enough."
+        ]
+      },
+      {
+        "id": "sophie",
+        "name": "Sophie",
+        "role": "Helicopter pilot",
+        "at": [
+          -492,
+          -548
+        ],
+        "look": {
+          "character": "W_Adventurer",
+          "skin": "#f0c7aa",
+          "hair": "#b48a52",
+          "shirt": "#5b6e7a",
+          "pants": "#3b4a52"
+        },
+        "idle": [
+          "Australia 108 tops out at 317 m. Give it a wide berth."
+        ]
+      },
+      {
+        "id": "jun",
+        "name": "Jun",
+        "role": "Height detective",
+        "at": [
+          960,
+          -150
+        ],
+        "look": {
+          "character": "M_Hoodie",
+          "skin": "#e3b08d",
+          "hair": "#141010",
+          "top": "#6b4c9a",
+          "legs": "#33415c",
+          "shirt": "#6b4c9a",
+          "pants": "#33415c"
+        },
+        "idle": [
+          "Rialto Towers is mapped at 20 m in OpenStreetMap. The real thing is 251 m. Open data needs checking."
+        ]
+      },
+      {
+        "id": "leo",
+        "name": "Leo",
+        "role": "Tram fan",
+        "at": [
+          -1500,
+          90
+        ],
+        "look": {
+          "character": "M_Beach",
+          "skin": "#d49c76",
+          "hair": "#8c8580",
+          "top": "#3d6b4a",
+          "legs": "#4b5563",
+          "shirt": "#3d6b4a",
+          "pants": "#4b5563"
+        },
+        "idle": [
+          "Free trams run all through the CBD. Not in this game yet, sadly. Walk or take the river shuttle."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "welcome",
+        "giver": "mia",
+        "title": "Welcome to Fed Square",
+        "stamp": "Federation Square",
+        "talk": [
+          "You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings on Geoscience Australia's LiDAR terrain, under the real sun.",
+          "There's no open aerial photo of Melbourne, so the ground you're standing on is drawn from the map data: streets, laneways, parks and tram tracks.",
+          "Hannah is in City Square, up Swanston Street. Go and say hello.",
+          "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "hannah",
+            "text": "Meet Hannah in City Square"
+          }
+        ]
+      },
+      {
+        "id": "sun",
+        "giver": "hannah",
+        "title": "Winter sun",
+        "stamp": "DDO10",
+        "talk": [
+          "Melbourne's planning scheme lists the spaces no new building may shade. Federation Square is protected from 11 am to 3 pm, every day from 22 April to 22 September.",
+          "On 22 June at 12:30, {sun:Federation Square|6-22|12:30}% of the square gets direct sun. The sun is only 29° up at noon in midwinter.",
+          "Go back down to Federation Square and find a sunny spot at lunchtime on 22 June. The sun meter under the map ray-casts from where you stand."
+        ],
+        "choices": [
+          {
+            "text": "Show me 22 June at 12:30",
+            "action": "set_time",
+            "date": [
+              6,
+              22
+            ],
+            "time": "12:30"
+          },
+          {
+            "text": "I'll set the time myself"
+          }
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "Federation Square",
+            "date": [
+              6,
+              22
+            ],
+            "window": [
+              "11:00",
+              "15:00"
+            ],
+            "text": "Stand in direct sun on Federation Square, 11:00 to 15:00 on 22 June"
+          },
+          {
+            "type": "talk",
+            "npc": "arjun",
+            "text": "Find Arjun at Federation Wharf"
+          }
+        ]
+      },
+      {
+        "id": "river",
+        "giver": "arjun",
+        "title": "Down the Yarra",
+        "stamp": "Yarra River",
+        "talk": [
+          "The planning scheme protects the river too: no new shadow across the Yarra corridor from 11 to 2 on 22 June.",
+          "Take the shuttle downriver to Crown Landing. Sophie keeps the helicopter at the city helipad, just across the water."
+        ],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "federation-wharf",
+            "to": "crown",
+            "text": "Take the river shuttle from Federation Wharf to Crown Landing"
+          },
+          {
+            "type": "talk",
+            "npc": "sophie",
+            "text": "Meet Sophie at the Melbourne City Helipad"
+          }
+        ]
+      },
+      {
+        "id": "air",
+        "giver": "sophie",
+        "title": "Over the spire",
+        "stamp": "Arts Centre spire",
+        "talk": [
+          "Ready? The Arts Centre spire is 162 m of steel lattice. In OpenStreetMap it's a thin block; here it's built from its published height.",
+          "Fly upriver past the spire and set down in Birrarung Marr. Jun is waiting there.",
+          "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."
+        ],
+        "steps": [
+          {
+            "type": "land",
+            "place": "Birrarung Marr",
+            "text": "Land in Birrarung Marr"
+          },
+          {
+            "type": "talk",
+            "npc": "jun",
+            "text": "Find Jun in Birrarung Marr"
+          }
+        ]
+      },
+      {
+        "id": "lens",
+        "giver": "jun",
+        "title": "Where heights come from",
+        "stamp": "Birrarung Marr",
+        "talk": [
+          "Every building here carries the source of its height. {share:mapped}% of the footprint area has a surveyed height and {share:floors}% a floor count; the rest is estimated.",
+          "Aim at a building and press Q to use the survey lens. Find one with a surveyed height, one from a floor count and one that's estimated."
+        ],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": [
+              "mapped",
+              "floors",
+              "estimate"
+            ],
+            "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
+          },
+          {
+            "type": "talk",
+            "npc": "mia",
+            "text": "Report back to Mia at Federation Square"
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "giver": "mia",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": [
+          "That's the full tour: the square, the river, the air and the data underneath it all.",
+          "{acc:matched} towers have been checked against their published heights, with a median error of {acc:median_abs_error_pct}%. Now you know where the other numbers come from.",
+          "The city is yours. Change the time of day, take the shuttle, or fly anywhere."
+        ],
+        "steps": []
+      }
+    ]
+  }
+}

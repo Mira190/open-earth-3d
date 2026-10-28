@@ -99,7 +99,7 @@ window.OEVehicles = (function () {
         const below = nz + 3.8 < d.z - 3.0;
         if (Math.abs(d.v) > d.s.half_width + 4) {
           const side = Math.sign(d.v);
-          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge' });
+          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge', name: d.s.label || d.s.name });
           st.under = { side, ok: true };
         } else if (st.under && !below) st.under.ok = false;
       } else st.under = null;

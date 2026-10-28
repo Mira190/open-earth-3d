@@ -525,7 +525,7 @@ a { color: var(--accent); }
       <p class="note" id="shade-now">Select a place to see which buildings shade it.</p>
       <div class="group" id="tower-group">
         <span class="eyebrow">Test a new tower</span>
-        <p>Place a tower, then check it against every protected window: the four solstice and equinox dates that fall in each period, every 15 minutes. As in the clause, a place fails if its total shadow across the protected hours goes up.</p>
+        <p>Place a tower, then check it against every protected window: <span id="tw-dates">the four solstice and equinox dates</span> that fall in each period, every 15 minutes. As in the clause, a place fails if its total shadow across the protected hours goes up.</p>
         <div class="row"><button class="btn primary" id="tw-place">Place a tower</button><button class="btn" id="tw-check" disabled>Check overshadowing</button><button class="btn" id="tw-remove" hidden>Remove</button></div>
         <div class="field"><label for="tw-h"><span>Height</span><span class="num" id="tw-h-v">180 m</span></label><input type="range" id="tw-h" min="20" max="320" step="5" value="180"></div>
         <div class="field"><label for="tw-w"><span>Footprint</span><span class="num" id="tw-w-v">40 × 40 m</span></label><input type="range" id="tw-w" min="15" max="90" step="5" value="40"></div>

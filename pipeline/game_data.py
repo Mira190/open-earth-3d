@@ -200,9 +200,18 @@ def main():
         if r["class"] == "helipad":
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q):
-                helipads.append({"id": "kirribilli-pad" if not helipads else f"helipad-{len(helipads)}", "name": r["name"] or "Helipad",
+                first = next((h["id"] for h in gcfg.get("helipads", []) if h.get("from_data")), "helipad")
+                helipads.append({"id": first if not helipads else f"helipad-{len(helipads)}", "name": r["name"] or "Helipad",
                                  "at": [round(q.x, 1), round(q.y, 1), round(ground(q.x, q.y), 1)]})
     for h in gcfg.get("helipads", []):
+        if h.get("from_data") and "near" in h and helipads:  # the mapped pad nearest a point, first in the list
+            k = min(range(len(helipads)), key=lambda i: math.hypot(helipads[i]["at"][0] - h["near"][0], helipads[i]["at"][1] - h["near"][1]))
+            hp = helipads.pop(k)
+            for other in helipads:
+                if other["id"] == h["id"]:
+                    other["id"] = hp["id"]
+            hp["id"] = h["id"]
+            helipads.insert(0, hp)
         for hp in helipads:
             if hp["id"] == h["id"]:
                 hp["name"] = h.get("name", hp["name"])
@@ -324,6 +333,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
+        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(np.where(water, np.where(ndimage.binary_dilation(~water), 0.0, -4.0), dem) * 10).astype("<i2").tobytes()).decode()},

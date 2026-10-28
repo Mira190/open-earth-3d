@@ -10,7 +10,7 @@
    "sky": "MULTIPLE_SCATTERING",
    "samples": 48,
    "resolution": "1600x900",
-   "render_s": 75.0
+   "render_s": 86.9
   },
   "opera": {
    "date": "2026-3-21",
@@ -20,7 +20,7 @@
    "sky": "MULTIPLE_SCATTERING",
    "samples": 48,
    "resolution": "1600x900",
-   "render_s": 65.4
+   "render_s": 106.4
   },
   "bridge": {
    "date": "2026-3-21",
@@ -30,7 +30,7 @@
    "sky": "MULTIPLE_SCATTERING",
    "samples": 48,
    "resolution": "1600x900",
-   "render_s": 58.8
+   "render_s": 104.8
   },
   "winter": {
    "date": "2026-6-21",
@@ -40,13 +40,13 @@
    "sky": "MULTIPLE_SCATTERING",
    "samples": 48,
    "resolution": "1600x900",
-   "render_s": 81.3
+   "render_s": 154.8
   }
  },
- "build_s": 2.3,
- "objects": 18,
- "triangles": 601339,
+ "build_s": 2.8,
+ "objects": 20,
+ "triangles": 602383,
  "buildings": 7962,
  "trees": 6096,
- "total_s": 282.8
+ "total_s": 455.7
 }
