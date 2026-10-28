@@ -47,7 +47,7 @@ brightness within 20% across 1-15 m); red keeps the pure-water floor, 0.40 /m.
 | green (560 nm) | 0.098 (sd 0.062) | 0.090 | 0.090 QAA | 134%, 20%, 18% |
 | red (665 nm) | 0.199 | 0.299 | 0.40 floor | |
 
-The Whitsundays for comparison (QAA from a fresh composite, not rebuilt): fit 0.054 / 0.080, QAA 0.090 / 0.108. QAA
+The Whitsundays for comparison (QAA from a fresh composite; rebuilt with it since): fit 0.054 / 0.080, QAA 0.090 / 0.108. QAA
 against QAA, the water here is clearer than the inner Whitsundays' in both bands. The depth fit had green higher (0.098):
 the brightest shallow floors are the cays' white sand and the reef-flat sand while the floors at 8-12 m are darker lagoon
 and seagrass, so it read substrate as attenuation; QAA also flattens the sand slightly better (18% against 20%).

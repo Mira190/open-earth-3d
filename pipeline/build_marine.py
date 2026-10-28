@@ -46,7 +46,8 @@ WORLDCOVER = "https://esa-worldcover.s3.eu-central-1.amazonaws.com/v200/2021/map
 HABITAT = {0: "deep water", 1: "sand", 2: "reef and rock", 3: "seagrass and algae", 4: "rubble",
            10: "forest", 11: "shrub", 12: "grass", 13: "beach and bare", 14: "mangrove", 15: "built", 16: "wetland"}
 # 90th percentile of the floor albedo 1-10 m deep (mean of red, green, blue) in the Whitsundays, where the
-# habitat thresholds were set; read back from web/data/whitsundays/ground.jpg and terrain.bin
+# habitat thresholds were set; read back from that build's ground.jpg and terrain.bin (its Kd from the depth
+# fit, 0.054 blue and 0.080 green). The Whitsundays rebuilt with QAA's Kd read 1.23 times it.
 BRIGHT_REF = 0.1593
 
 
@@ -344,8 +345,11 @@ def main():
     # The thresholds were set on the Whitsundays floors. Where the inverted floor reads brighter or darker
     # overall (other water, a carbonate reef flat instead of mud and silica sand), they are scaled by the
     # brightness of the scene's own bright floor, the 90th percentile of the floor albedo 1-10 m deep, so a
-    # class boundary stays at the same share of it: k = 1 for the Whitsundays (to within the JPEG rounding of
-    # the reference), 1.15 at Hardy Reef, where the unscaled thresholds left 1% of the shallow floor as reef.
+    # class boundary stays at the same share of it: k = 1 for the Whitsundays' first build (to within the JPEG
+    # rounding of the reference) and 1.23 for its rebuild with QAA's Kd, 1.18 at Hardy Reef. The green-cast
+    # test (green over blue) is not scaled: a Kd that rises more in blue than in green makes the deeper floor
+    # read bluer, which took the Whitsundays' seagrass class from 4.1% to 1.4% (most of what it lost lay
+    # 11-23 m deep, where the floor colour is mostly the fill, not a seen floor).
     bright = (A_r + A_g + A_b) / 3
     k_hab = float(np.percentile(bright[water & (depth > 1) & (depth < 10)], 90)) / BRIGHT_REF
     bright = bright / k_hab
