@@ -38,7 +38,7 @@ brightness within 20% across 1-15 m); red keeps the pure-water floor, 0.40 /m.
 | green (560 nm) | 0.076 (sd 0.047) | 0.092 | 0.076 fit, passes | 112%, 16%, 27% |
 | red (665 nm) | 0.245 | 0.337 | 0.40 floor | |
 
-The Whitsundays for comparison (QAA computed from a fresh composite, not rebuilt): fit 0.054 / 0.080, QAA 0.090 / 0.108,
+The Whitsundays for comparison (QAA from a fresh composite; rebuilt with it since): fit 0.054 / 0.080, QAA 0.090 / 0.108,
 and QAA brings their sand spread from 47% to 18% (blue) and 37% to 29% (green). So, QAA against QAA, Hardy's water is
 clearer than the inner Whitsundays' in both bands, as expected offshore; the depth fits had said otherwise because the
 Whitsundays' fit is biased low by their pale shallow sand.

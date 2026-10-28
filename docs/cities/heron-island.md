@@ -45,7 +45,7 @@ brightness within 20% across 1-15 m); red keeps the pure-water floor, 0.40 /m.
 | green (560 nm) | 0.099 (sd 0.193) | 0.091 | 0.091 QAA | 128%, 52%, 44% |
 | red (665 nm) | 0.189 | 0.341 | 0.40 floor | |
 
-- The Whitsundays for comparison (QAA from a fresh composite, not rebuilt): fit 0.054 / 0.080, QAA 0.090 / 0.108. QAA
+- The Whitsundays for comparison (QAA from a fresh composite; rebuilt with it since): fit 0.054 / 0.080, QAA 0.090 / 0.108. QAA
   against QAA, Heron's water is clearer in both bands. The depth fit read the bright reef-flat sand at 0-3 m over the
   darker floors at 8-20 m as attenuation; QAA flattens the sand better in both bands.
 - Green is still the weakest check of the sites (44%): the 6-10 m bin inverts to 0.64, too bright for real sand, so green
