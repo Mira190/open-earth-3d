@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 import duckdb
 import numpy as np
 import shapely
+import shapely.prepared
 from PIL import Image, ImageDraw
 from scipy.ndimage import map_coordinates
 from scipy.spatial import cKDTree
@@ -179,6 +180,8 @@ class Heights:
         """(height above ground, source) for a building or part, best evidence first."""
         if rec.get("height") and rec.get("height_src") == "OpenStreetMap":
             return float(rec["height"]), "mapped"
+        if rec.get("height") and rec.get("height_src") == "PLATEAU":
+            return float(rec["height"]), "plateau"
         if rec.get("num_floors"):
             return self.storey_height(cls, rec["num_floors"]) + float(rec.get("roof_height") or 0), "floors"
         if rec.get("height"):
@@ -339,82 +342,95 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
 
 # ---------------------------------------------------------------- measured heights (PLATEAU)
 
-def apply_plateau(C, meta, solids, first_solid, footprints, geo, ortho):
-    """Take heights from Project PLATEAU, whose buildings carry a measured height (aerial survey).
+class Plateau:
+    """Surveyed building heights from a city's `plateau` block (see pipeline/fetch_plateau.py).
 
-    Each Overture footprint takes the height of the PLATEAU footprint it overlaps most (IoU of at
-    least 0.3, or 70% of the smaller one inside the larger). Before the height is replaced, the
-    height it had is compared with PLATEAU's, which measures how good the other sources are;
-    the comparison goes to cities/<id>/analysis/plateau_match.json. PLATEAU buildings inside the
-    extent with less than 30% of their footprint under an Overture building (mostly sheds and
-    small houses) are added as buildings of their own, with footprint source "P"."""
-    cfg = C.cfg.get("plateau")
-    path = os.path.join(C.raw, "plateau_bldg.parquet")
-    if not cfg or not os.path.exists(path):
-        return None
-    con = duckdb.connect()
-    con.execute("LOAD spatial")
-    P = rows(con, path)
-    pg = [swkb.loads(bytes(r["wkb"])) for r in P]
-    pg = [C.to_local(g) for g in pg]
-    ph = np.array([r["height"] for r in P])
-    tree = shapely.STRtree(pg)
-    n_match, ratios, used = 0, defaultdict(list), set()
-    for bi, g in footprints.items():
-        if g.is_empty or meta[bi][4] == "parametric":
-            continue
-        best, bscore = None, 0.0
-        for j in tree.query(g, predicate="intersects"):
-            inter = g.intersection(pg[j]).area
-            if inter <= 0:
+    PLATEAU's LOD2 outlines are roof faces: one building is several faces at different heights
+    (a podium and its tower, a penthouse). A footprint is cut along those faces, tallest first,
+    so each piece takes the surveyed height of the face above it. Faces smaller than a few
+    per cent of the footprint are rooftop plant, and are absorbed by the main piece. A footprint
+    that fewer than half the faces cover keeps its other height source. PLATEAU buildings that no
+    Overture footprint covers (newer or missing in OSM) are added as their own buildings."""
+    MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
+
+    def __init__(self, C):
+        path = os.path.join(C.raw, "plateau.json")
+        self.tree = None
+        if not C.cfg.get("plateau") or not os.path.exists(path):
+            return
+        self.polys, self.h = [], []
+        # footprints inside these discs belong to a parametric landmark (a lattice tower), not to a building
+        holes = [(C.fwd.transform(*e["at"]), e["radius_m"]) for e in C.cfg["plateau"].get("exclude", [])]
+        for f in json.load(open(path)):
+            g = C.to_local(Polygon(f["rings"][0], f["rings"][1:]))
+            if any(math.hypot(g.centroid.x - c[0], g.centroid.y - c[1]) < r for c, r in holes):
                 continue
-            iou = inter / (g.area + pg[j].area - inter)
-            cont = inter / min(g.area, pg[j].area)
-            score = max(iou, cont - 0.4) if (iou >= 0.3 or cont >= 0.7) else 0.0
-            if score > bscore:
-                best, bscore = j, score
-        if best is None:
-            continue
-        used.add(best)
-        h = float(ph[best])
-        old, old_src = meta[bi][2], meta[bi][4]
-        if old_src in ("mapped", "floors", "ml"):
-            ratios[old_src].append(math.log(max(old, 0.5) / max(h, 0.5)))
-        f = h / max(meta[bi][2], 0.5)
-        for k in range(first_solid[bi], first_solid[bi + 1] if bi + 1 < len(meta) else len(solids)):
-            solids[k][3] = max(solids[k][2] + 10, round(solids[k][3] * f))
-        meta[bi][2], meta[bi][4] = round(h, 1), "plateau"
-        n_match += 1
-    cmp = {k: {"n": len(v), "median_factor": round(float(np.exp(np.median(np.abs(v)))), 3), "median_bias": round(float(np.median(v)), 3),
-               "p90_factor": round(float(np.exp(np.percentile(np.abs(v), 90))), 3)} for k, v in ratios.items() if len(v) >= 10}
-    ext = box(C.x0, C.y0, C.x1, C.y1)
-    otree = shapely.STRtree(list(footprints.values()))
-    ofp = list(footprints.values())
-    added = 0
-    for j, g in enumerate(pg):
-        if j in used or g.area < 8 or not ext.contains(g.centroid):
-            continue
-        hit = otree.query(g, predicate="intersects")
-        if len(hit) and shapely.union_all([ofp[i] for i in hit]).intersection(g).area / g.area >= 0.3:
-            continue
-        q = shapely.geometry.polygon.orient(g.simplify(0.15, preserve_topology=True), 1.0) if g.geom_type == "Polygon" else None
-        if q is None or q.is_empty or q.area < 2:
-            continue
-        bi, h = len(meta), float(ph[j])
-        cs = np.asarray(q.exterior.coords)
-        zb = max(float(np.min(sample(C, C.dem_land, cs[:, 0], cs[:, 1]))), 0.0)
-        first_solid[bi] = len(solids)
-        solids.append([bi, round(zb * 10), 0, round(h * 10), ring(q.exterior.coords)] + [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
-        geo[bi] = [q.area, q.centroid.x * q.area, q.centroid.y * q.area]
-        meta.append(["", "building", round(h, 1), 0, "plateau", "P", "", wall_colour({}, "building", h, j), roof_colour(C, ortho, q, h), round(h, 1)])
-        added += 1
-    unmatched = len(pg) - len(used)
-    res = {"plateau_buildings": len(pg), "overture_buildings": len(footprints), "matched_overture": n_match,
-           "plateau_added": added, "prior_height_vs_plateau": cmp,
-           "note": "median_factor is the median of max(a/b, b/a) between the height a building had before PLATEAU and its measured PLATEAU height; median_bias below 0 means the earlier source was too short."}
-    json.dump(res, open(os.path.join(C.analysis, "plateau_match.json"), "w"), indent=1)
-    print("PLATEAU:", res)
-    return res
+            if not g.is_valid:
+                g = g.buffer(0)
+            if not g.is_empty and f["h"] > 0.5:
+                self.polys.append(g)
+                self.h.append(f["h"])
+        self.tree = shapely.STRtree(self.polys)
+        print(f"plateau: {len(self.polys)} footprints indexed")
+
+    def pieces(self, q):
+        """[(polygon, height)] covering q, or None if PLATEAU does not cover at least half of it."""
+        if self.tree is None or q.area < 1:
+            return None
+        cand = []
+        for i in self.tree.query(q):
+            x = q.intersection(self.polys[i])
+            if x.area >= self.MIN_PIECE_M2:
+                cand.append((self.h[i], x))
+        if not cand or shapely.union_all([x for _, x in cand]).area < 0.5 * q.area:
+            return None
+        cand.sort(key=lambda t: -t[0])
+        taken, out = Polygon(), []
+        for h, x in cand:  # tallest first, so a tower is not buried under its podium's face
+            x = x.difference(taken)
+            if x.area >= self.MIN_PIECE_M2:
+                out.append([h, x])
+                taken = taken.union(x)
+        main = max(out, key=lambda t: t[1].area)
+        # rooftop plant is small and only a few metres above the roof; a small face that stands
+        # well above the main roof is a spire or a dome (the Diet's tower, Tokyo Station's domes)
+        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (t[0] >= main[0] + 8.0 and t[1].area >= 25.0)]
+        taken = shapely.union_all([t[1] for t in out])
+        rest = q.difference(taken)
+        out.sort(key=lambda t: -t[0])
+        merged = []
+        for h, x in out:  # faces within MERGE_M of each other become one solid
+            for m in merged:
+                if abs(m[0] - h) < self.MERGE_M:
+                    m[1] = m[1].union(x)
+                    break
+            else:
+                merged.append([h, x])
+        if rest.area > 0:  # uncovered remainder (walls, overhang): the height of the main piece
+            m = min(merged, key=lambda t: abs(t[0] - main[0]))
+            m[1] = m[1].union(rest)
+        return [(g, round(h, 1)) for h, x in merged for g in polygons(x) if g.area >= 1]
+
+    def additions(self, covered, min_area=40.0):
+        """PLATEAU footprints that the Overture buildings (union `covered`) do not cover."""
+        if self.tree is None:
+            return []
+        # the union is one huge multipolygon in a big city: test each footprint against its neighbours only
+        parts = polygons(covered)
+        ptree = shapely.STRtree(parts)
+        out, kept_ix = [], set()
+        for i in sorted(range(len(self.polys)), key=lambda i: -self.polys[i].area):
+            p = self.polys[i]
+            if p.area < min_area:
+                continue
+            near = ptree.query(p, predicate="intersects")
+            if len(near) and shapely.union_all([parts[k] for k in near]).intersection(p).area > 0.25 * p.area:
+                continue
+            if any(p.intersection(q).area > 0.4 * p.area for q in (self.polys[j] for j in self.tree.query(p) if j in kept_ix)):
+                continue
+            out.append((p, self.h[i]))
+            kept_ix.add(i)
+        return out
 
 
 # ---------------------------------------------------------------- city hooks
@@ -485,11 +501,21 @@ def build(C):
     # buildings: parts replace their outline (Overture/OSM convention)
     labels_cfg = cfg.get("labels", {})
     adjust = C.hook("adjust_building")
+    plateau = Plateau(C)
     blds = rows(con, raw("building"))
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res, footprints = [], [], {}, {}, {}, [], {}
+    meta, solids, first_solid, geo, ml_raw, floor_res = [], [], {}, {}, {}, []
+    if plateau.tree is not None:  # surveyed buildings that Overture lacks
+        covered = shapely.union_all([C.to_local(swkb.loads(bytes(b["wkb"]))).buffer(0) for b in blds])
+        extra = [(q, h) for q, h in plateau.additions(covered) if extent.contains(q.centroid)]
+        for k, (q, h) in enumerate(extra):
+            ll = shapely.transform(q, lambda c: np.column_stack(C.inv.transform(c[:, 0], c[:, 1])))
+            blds.append({"id": f"{k:08x}-plateau", "name": None, "class": None, "subtype": None, "height": h, "min_height": None,
+                         "num_floors": None, "min_floor": None, "roof_height": None, "is_underground": False, "has_parts": False,
+                         "src": "PLATEAU", "record_id": None, "height_src": "PLATEAU", "wkb": shapely.to_wkb(ll)})
+        print(f"plateau: {len(extra)} buildings added that Overture does not have")
     for b in blds:
         if b["is_underground"]:
             continue
@@ -511,6 +537,12 @@ def build(C):
             geoms = [[q, H.min_height(b, cls), top_b[0], top_b[1], None] for q in polygons(g)]
         if adjust:
             geoms = adjust(b, cls, g, geoms, ctx)
+        # a surveyed height beats every other source, except a landmark's own model
+        cut = []
+        for gm in geoms:
+            pc = plateau.pieces(gm[0]) if gm[3] != "parametric" else None
+            cut += [[q, gm[1], max(h, gm[1] + 1.0), "plateau", gm[4]] for q, h in pc] if pc else [gm]
+        geoms = cut
         for q, h0, h1, src, pname in geoms:
             if pname in labels_cfg and labels_cfg[pname] not in ctx.labels:
                 c = q.centroid
@@ -541,14 +573,11 @@ def build(C):
         meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
                      wall_colour(b, cls, top, seed), roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
         first_solid[bi] = first
-        footprints[bi] = g
         if b["height_src"] == "Microsoft ML Buildings" and b["height"]:
             ml_raw[bi] = float(b["height"])
         if b["height_src"] == "OpenStreetMap" and b["height"] and b["num_floors"] and not b["has_parts"]:
             floor_res.append(math.log(H.storey_height(cls, b["num_floors"]) / b["height"]))
 
-    C.dem_land = dem_land
-    plateau = apply_plateau(C, meta, solids, first_solid, footprints, geo, ortho)
     model = impute_heights(meta, solids, first_solid, geo, ml_raw)
     model["residuals"]["floors"] = np.round(floor_res, 3).tolist()
     if floor_res:
@@ -619,7 +648,7 @@ def build(C):
             continue
         geom = max((C.to_local(swkb.loads(bytes(r["wkb"]))) for r in cands), key=lambda q: q.area).intersection(extent)
         polys = [p.simplify(0.5) for p in polygons(geom) if p.area > 50]
-        places.append({"name": pc["name"], "lep": pc.get("protected", False), "period": pc.get("period"), "from": pc.get("from"),
+        places.append({"name": pc.get("label", pc["name"]), "lep": pc.get("protected", False), "period": pc.get("period"), "from": pc.get("from"),
                        "to": pc.get("to"), "area_m2": round(sum(p.area for p in polys)),
                        "polygons": [[ring(p.exterior.coords)] + [ring(r.coords) for r in p.interiors] for p in polys]})
 
@@ -643,6 +672,7 @@ def build(C):
         "landmarks": ctx.landmarks,
         "labels": ctx.labels,
         "sources": {
+            **({"heights": cfg["plateau"]["attribution"]} if cfg.get("plateau") else {}),
             "buildings": f"Overture Maps Foundation, release {cfg['overture_release']} (OpenStreetMap contributors, ODbL; Microsoft ML Buildings, ODbL)",
             "terrain": cfg["terrain"].get("attribution", cfg["terrain"]["type"]),
             "imagery": cfg["imagery"].get("attribution", ""),
@@ -653,7 +683,7 @@ def build(C):
     if os.path.exists(ref_path):
         acc = json.load(open(ref_path))
         scene["sources"]["reference_heights"] = cfg.get("reference_heights", {}).get("source", "published heights")
-        scene["accuracy"] = {"summary": acc["summary"], "note": acc["note"], "source": cfg.get("reference_heights", {}).get("source"),
+        scene["accuracy"] = {"summary": acc["summary"], "note": acc["note"], "method": acc.get("method"), "source": cfg.get("reference_heights", {}).get("source"),
                              "rows": [[r["name"], r["ref_m"], r.get("model_m"), r.get("error_pct"), r["match"], r.get("how")] for r in acc["rows"]]}
     json.dump(scene, open(os.path.join(C.out, "scene.json"), "w"), separators=(",", ":"))
     json.dump({"fields": ["name", "class", "top_m", "floors", "height_src", "footprint_src", "osm_id", "wall", "roof", "open_data_top_m"], "b": meta,

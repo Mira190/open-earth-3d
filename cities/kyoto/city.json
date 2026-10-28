@@ -41,6 +41,7 @@
   },
   "plateau": {
     "zip": "https://assets.cms.plateau.reearth.io/assets/3c/f912d5-980d-4c10-a037-6a9e87874a4e/26100_kyoto-shi_2022_3dtiles-mvt_1_op.zip",
+    "attribution": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0): building heights measured from aerial survey",
     "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)"
   },
   "water": {
@@ -312,72 +313,8 @@
       "pedestrians": 380,
       "cars": 120,
       "radius_m": 450,
-      "palette": {
-        "skin": [
-          "#f6dcc4",
-          "#f0cfb0",
-          "#e8c29f",
-          "#deb48f"
-        ],
-        "hair": [
-          "#141010",
-          "#1c1411",
-          "#231915",
-          "#2a1d17",
-          "#33241b",
-          "#4a3222"
-        ],
-        "greyHair": [
-          "#8c8580",
-          "#cfcac4",
-          "#e6e2dc"
-        ],
-        "greyShare": 0.12,
-        "tops": [
-          "#1f2328",
-          "#e9e6df",
-          "#2f3a4c",
-          "#3a3f47",
-          "#f2f0ea",
-          "#5b6b7a",
-          "#8a2f39",
-          "#c9c2b5",
-          "#1f2a44",
-          "#46604f",
-          "#d7c6a5"
-        ],
-        "legs": [
-          "#1d1f24",
-          "#23262b",
-          "#2b3440",
-          "#33415c",
-          "#4b4f5c",
-          "#6b6d70"
-        ]
-      },
-      "weights": {
-        "M_Suit": 4,
-        "W_Suit": 3,
-        "W_Formal": 3,
-        "M_Casual2": 3,
-        "W_Casual": 3,
-        "M_Hoodie": 1.5,
-        "M_Worker": 0.6,
-        "W_Worker": 0.4,
-        "M_Adventurer": 1,
-        "W_Adventurer": 1,
-        "M_Beach": 0.3,
-        "M_Punk": 0.1,
-        "W_Punk": 0.1
-      }
+      "style": "kyoto"
     },
-    "smalltalk": [
-      "Konnichiwa.",
-      "Sumimasen, excuse me.",
-      "It is a lovely day for Kyoto.",
-      "Are you going to Kiyomizu-dera too? It is crowded."
-    ],
-    "passerby": "Kyoto local",
     "npcs": [
       {
         "id": "haruka",
@@ -660,7 +597,10 @@
         "steps": []
       }
     ],
-    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, from the monks of Higashi Honganji to a salaryman up from Tokyo, and fly over the grid Kyoto was laid out on in 794. Every fact they tell you about the model comes from the model."
+    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, from the monks of Higashi Honganji to a salaryman up from Tokyo, and fly over the grid Kyoto was laid out on in 794. Every fact they tell you about the model comes from the model.",
+    "local_name": "Kyoto local",
+    "greeting": "Konnichiwa.",
+    "water_name": "the Kamo River"
   },
   "terrain_check": {
     "type": "gsi_elevation_api",
