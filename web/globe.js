@@ -227,7 +227,11 @@ window.OpenEarthGlobe = async function globe(cities, notice) {
     put(sunEl, ll(sub.lat, sub.lon, 1.002));
     if (popAt) {
       if (popAt.el.hidden) closePop();
-      else { pop.style.transform = popAt.el.style.transform; const r = popAt.el.getBoundingClientRect(), sr = stage.getBoundingClientRect(); pop.classList.toggle('left', r.left - sr.left > w - 320); }
+      else {
+        const r = popAt.el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), up = r.top - sr.top > h - pop.offsetHeight - 40;
+        pop.style.transform = popAt.el.style.transform + (up ? ' translateY(-100%)' : '');
+        pop.classList.toggle('left', r.left - sr.left > w - 320); pop.classList.toggle('up', up);
+      }
     }
     // a label that would overlap one already placed (live cities first) is hidden; its dot stays
     const placed = [];

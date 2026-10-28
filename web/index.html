@@ -363,8 +363,9 @@ a { color: var(--accent); }
 .marker.planned.hot i, .marker.planned:hover i { border-color: var(--accent); }
 .marker.group span small { font: 600 10.5px/1 var(--f-mono); color: var(--bg); background: var(--sun); border-radius: 999px; padding: 2px 6px; margin-left: 3px; text-shadow: none; }
 .marker-pop { position: absolute; left: 0; top: 0; margin: 14px 0 0 -8px; pointer-events: auto; min-width: 210px; max-width: min(300px, 80vw); display: grid; gap: 2px;
-  background: var(--hud); backdrop-filter: blur(8px); border-radius: var(--r); box-shadow: var(--shadow); padding: 8px; font-size: 12.5px; }
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); padding: 8px; font-size: 12.5px; z-index: 2; }
 .marker-pop.left { margin-left: -290px; }
+.marker-pop.up { margin-top: -14px; }
 .marker-pop > b { font: 700 12px/1.2 var(--f-display); padding: 2px 6px 6px; color: var(--ink-2); }
 .marker-pop button { display: grid; gap: 1px; text-align: left; border: 0; background: none; color: var(--ink); padding: 7px 8px; border-radius: 8px; cursor: pointer; font: inherit; }
 .marker-pop button span { font-weight: 700; }
