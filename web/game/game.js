@@ -224,9 +224,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const npcById = id => npcs.find(n => n.id === id);
 
   // ------------------------------------------------------------ vehicles
+  // the helicopter and ferry models every city shares (vehicles.js); the box-built ones if they can't be loaded
+  let vlib = null;
+  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
+  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer };
   const padAt = (G.helipads[0] || { at: [G.start.at[0] + 20, G.start.at[1], 2] }).at;
-  const heli = OEVehicles.helicopter(world, nav, padAt);
-  const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }));
+  const heli = OEVehicles.helicopter(world, nav, padAt, vopts);
+  const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);
   const wharfById = id => G.wharves.find(w => w.id === id);
 
   // ------------------------------------------------------------ objective marker and GPS route in the world
@@ -846,7 +850,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   let running = true;
   function frame(now) {
     if (!running) return;
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
     last = now; clockT += dt;
     U.uTime.value = clockT;
     const titleOn = !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden;
@@ -936,9 +940,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const here = waitFerry && fer.vessels.find(q => fer.stopOf(q) === waitFerry && (!wantTo || q.stops.includes(wantTo)));
     if (here) { waitFerry = null; H.toast(`${here.name} is alongside. <kbd>E</kbd> to board.`); }
     fer.update(dt, skip ? 8 : 1, clockT, waitFerry ? 25 : 1);
-    if (player.mode === 'ferry') { // stand on the bow deck
-      const v = player.vehicle, c = Math.cos(v.h), s = Math.sin(v.h);
-      player.x = v.x + s * 5 + c * 2.2; player.y = v.y + c * 5 - s * 2.2; player.z = 4.33; player.h = v.h;
+    if (player.mode === 'ferry') { // stand on the upper deck
+      const v = player.vehicle, c = Math.cos(v.h), s = Math.sin(v.h), D = fer.deck;
+      player.x = v.x + s * D.fwd + c * D.right; player.y = v.y + c * D.fwd - s * D.right; player.z = D.up; player.h = v.h;
       if (v.phase === 'dwell') skip = false;
     }
     if (player.mode !== 'heli') { player.rig.root.position.copy(W(player.x, player.y, player.z)); player.rig.root.rotation.y = Math.PI - player.h; }

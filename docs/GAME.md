@@ -110,7 +110,8 @@ geometry in `cities/sydney/city.py`.
   - **Spawning:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
   - **Headlights:** come on after sunset.
-- **Vehicles** (`web/game/vehicles.js`):
+- **Vehicles** (`web/game/vehicles.js`): one helicopter and one ferry that
+  every city shares. They are described in [the vehicles](#the-vehicles) below.
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
@@ -137,6 +138,72 @@ geometry in `cities/sydney/city.py`.
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+
+## The vehicles
+
+| The helicopter (Cycles render) | The ferry (Cycles render) |
+|---|---|
+| ![](images/vehicles/helicopter.jpg) | ![](images/vehicles/ferry.jpg) |
+| **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
+| ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
+
+Both are modelled in Blender from code by `blender/build_vehicles.py`, with no
+hand modelling and no stock assets. The script bakes their ambient occlusion in
+Cycles and writes `web/assets/vehicles/`. Every city's game loads the same two
+files, and `blender/build_scene.py` places them in the city's Cycles renders where
+the game puts them.
+
+- **Helicopter:** a light twin-engine helicopter in the H135 class.
+  - 10.7 m long, with a 10.2 m four-blade main rotor and a ducted tail fan.
+  - The fuselage is a parametric surface. Its windows are cut along the
+    surface, with rubber gaskets, and a lined cabin sits behind them. Inside are
+    seats, an instrument panel with screens and the controls. You can see
+    yourself at the controls.
+  - Details: skids with steps, twin exhausts, a camera turret, a searchlight,
+    wire-strike cutters, antennas and lights.
+  - About 100,000 triangles up close and 12,000 beyond 90 m.
+- **Ferry:** a double-ended harbour ferry, 34 m long with a 9.6 m beam.
+  - A glazed main cabin with rows of seats, an open upper deck with benches,
+    railings, lifebuoys and life rafts, a wheelhouse and a radar mast.
+  - About 35,000 triangles up close and 6,000 beyond 260 m.
+- **What the game adds:**
+  - **Paint:** the livery is repainted from the city's config. The paint has a
+    clear coat that reflects the real sky.
+  - **Names:** the registration on the tail boom (by country, so `VH-` in
+    Australia and `JA` in Japan) and each vessel's name on its hull are drawn
+    at load time.
+  - **Rotor:** the blades droop at rest, spin up with the engine, cone as they
+    lift and blur into a disc. The disc tilts with the controls.
+  - **Lights:** position lights, a flashing beacon and strobes, and after dark a
+    searchlight that lights the ground. The ferries' sidelights swap ends when
+    they reverse, so red is always to port. Their cabins light up after dark.
+  - **Water:** the helicopter's downwash throws a ring of spray off the water
+    (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
+    ship makes in deep water, with churned water down the middle and a bow
+    wave at the leading end.
+
+A city chooses its look in `game.vehicles` in `city.json`. Every key is
+optional, and a city with no config gets the defaults:
+
+```json
+"vehicles": {
+  "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
+  "ferry": {"livery": "harbour"}
+}
+```
+
+- **Liveries:** `vehicles.json` lists them: `survey`, `rescue`, `news` and
+  `executive` for the helicopter, and `harbour`, `bay`, `river` and `commuter`
+  for the ferry. A city can also give its own colours, such as
+  `{"livery": {"hull": "#f08c1e", "band": "#1f2328"}}`.
+- **Registration:** defaults to the country's nationality mark.
+
+To change the models for every city, edit `blender/build_vehicles.py` and run:
+
+```bash
+pip install bpy==5.2.3
+python blender/build_vehicles.py            # about 5 minutes; --render also renders the two images above
+```
 
 ## Testing
 
@@ -173,6 +240,9 @@ and the menus are checked in a phone-sized browser.
   is no ragdoll or car damage, and pedestrians don't avoid each other.
 - **Ferry timetable:** the routes follow the inner-harbour services, but the
   timetable is invented. Ferries run at 1.5 times real speed.
+- **One ferry for every city:** the ferry is a Sydney-style double-ended vessel
+  in each city's livery. A city whose boats look different, such as river buses
+  or catamarans, still gets this hull.
 - **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
   except where OpenStreetMap maps building parts.
 

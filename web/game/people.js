@@ -103,11 +103,26 @@ varying vec3 vPal;`)
   }
 
   const up = new THREE.Vector3(0, 1, 0), tv = new THREE.Vector3(), tq = new THREE.Quaternion(), tq2 = new THREE.Quaternion(), hp = new THREE.Vector3();
+  // turn a bone so the direction to its child joint points along `dir` (world space)
+  const aimA = new THREE.Vector3(), aimB = new THREE.Vector3(), aimQ = new THREE.Quaternion(), aimW = new THREE.Quaternion(), aimP = new THREE.Quaternion();
+  function aim(b, child, dir) {
+    b.getWorldPosition(aimA);
+    child.getWorldPosition(aimB);
+    aimQ.setFromUnitVectors(aimB.sub(aimA).normalize(), dir);
+    b.getWorldQuaternion(aimW).premultiply(aimQ);
+    b.parent.getWorldQuaternion(aimP).invert();
+    b.quaternion.copy(aimP.multiply(aimW));
+    b.updateMatrixWorld(true);
+  }
+  const thigh = new THREE.Vector3(), shin = new THREE.Vector3();
   function person(lib, look) {
     const T = lib.tpl[look.character], speeds = lib.info.ground_speed[T.pack];
     const model = THREE.SkeletonUtils.clone(T.scene);
     let mesh = null, head = null;
-    model.traverse(o => { if (o.isSkinnedMesh) mesh = o; if (o.isBone && o.name === 'Head') head = o; });
+    const bones = {};
+    model.traverse(o => { if (o.isSkinnedMesh) mesh = o; if (o.isBone) bones[o.name.replace(/[^A-Za-z]/g, '')] = o; });
+    head = bones.Head || null;
+    const legs = ['L', 'R'].map(k => [bones['UpperLeg' + k], bones['LowerLeg' + k], bones['Foot' + k]]).filter(l => l.every(Boolean));
     mesh.material = paletteMaterial(colours(T.extras, look));
     mesh.castShadow = mesh.receiveShadow = true;
     mesh.frustumCulled = false;
@@ -115,7 +130,7 @@ varying vec3 vPal;`)
     root.add(model);
     const mixer = new THREE.AnimationMixer(model), act = {};
     for (const c of lib.clips[T.pack]) act[c.name] = mixer.clipAction(c);
-    let cur = null, cycles = 0, lastT = 0, waveUntil = -1, lookW = 0, talked = false;
+    let cur = null, cycles = 0, lastT = 0, waveUntil = -Infinity, lookW = 0, talked = false;
     const rig = { root, model, mixer, look, phase: 0, lookTarget: null, character: look.character };
     function play(name, fade = 0.25, once = false) {
       const a = act[name];
@@ -137,10 +152,11 @@ varying vec3 vPal;`)
     };
     rig.setLook({});
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
-    // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock
+    // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
+    // root is the seat's surface: thighs forward, shins down, hips on the cushion
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
       const s = look.scale || 1;
-      model.position.y = mode === 'sit' ? -0.42 : 0;
+      model.position.y = mode === 'sit' && !(legs.length && bones.Hips) ? -0.42 : 0;
       if (mode !== 'talk') talked = false;
       const waving = t < waveUntil && speed < 0.3 && mode !== 'sit' && mode !== 'air';
       if (mode === 'talk' && !talked) { talked = true; rig.wave(t); }   // a wave hello, then listen
@@ -152,6 +168,16 @@ varying vec3 vPal;`)
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(1.9, speed / (speeds.Run * s))));
       mixer.update(dt);
+      if (mode === 'sit' && legs.length && bones.Hips) {
+        root.updateMatrixWorld(true);
+        root.getWorldQuaternion(tq2);
+        thigh.set(0, -0.2, 1).normalize().applyQuaternion(tq2);
+        shin.set(0, -1, 0.18).normalize().applyQuaternion(tq2);
+        for (const [a, b, c] of legs) { aim(a, b, thigh); aim(b, c, shin); }
+        bones.Hips.getWorldPosition(hp);
+        root.worldToLocal(hp);
+        model.position.y = 0.1 - hp.y;
+      }
       // the walk cycle as a phase, two steps per cycle (footsteps)
       const d = cur.getClip().duration, tt = cur.time / d;
       if (tt < lastT) cycles++;

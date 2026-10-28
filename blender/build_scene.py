@@ -1,5 +1,7 @@
 """Rebuild a city's web scene in Blender, headless, from the same data files, and
-render it with Cycles: no hand modelling, no stock assets, one command.
+render it with Cycles: no hand modelling, no stock assets, one command. If the city
+has a game, the helicopter and ferries it shares with every city are placed where the
+game puts them (--no-vehicles leaves them out).
 
     pip install bpy==5.2.3        # Blender as a Python module (Python 3.13)
     python blender/build_scene.py --city sydney --samples 48
@@ -242,6 +244,66 @@ def build(data):
     return scene, counts
 
 
+def add_vehicles(data, counts):
+    """The game's helicopter and ferries, which every city shares (web/assets/vehicles,
+    from blender/build_vehicles.py), in the city's livery: the helicopter on the first
+    helipad, and a ferry a third of the way along the first leg of each route."""
+    vdir = os.path.join(ROOT, "web", "assets", "vehicles")
+    gpath = os.path.join(data, "game.json")
+    if not (os.path.exists(gpath) and os.path.exists(os.path.join(vdir, "vehicles.json"))):
+        return
+    G = json.load(open(gpath, encoding="utf8"))
+    info = json.load(open(os.path.join(vdir, "vehicles.json")))
+
+    def livery(kind):
+        I, spec = info[kind], (G.get("vehicles") or {}).get(kind, {}).get("livery")
+        base = I["liveries"][I["default_livery"]]
+        if isinstance(spec, str):
+            return I["liveries"].get(spec, base)
+        return dict(base, **(spec or {}))
+
+    def place(kind, x, y, z, heading):
+        before = set(o.name for o in bpy.data.objects)
+        bpy.ops.import_scene.gltf(filepath=os.path.join(vdir, info[kind]["file"]))
+        new = [o for o in bpy.data.objects if o.name not in before]
+        root = bpy.data.objects.new(kind, None)
+        bpy.context.collection.objects.link(root)
+        colours, paint = livery(kind), info[kind]["paint"]
+        for o in new:
+            if o.name.startswith("Body_LOD1"):
+                bpy.data.objects.remove(o)
+                continue
+            if o.parent is None:
+                o.parent = root
+            for m in (o.data.materials if o.type == "MESH" else []):
+                b = m.node_tree.nodes.get("Principled BSDF") if m.node_tree else None
+                key = m.name.split(".")[0]
+                if b is None:
+                    continue
+                if key in paint and paint[key] in colours:
+                    b.inputs["Base Color"].default_value = (*srgb_to_linear(colours[paint[key]]), 1)
+                if key.startswith("Decal_"):     # names are drawn by the game
+                    b.inputs["Alpha"].default_value = 0
+            if o.type == "MESH":
+                counts["objects"] += 1
+                counts["triangles"] += sum(len(p.vertices) - 2 for p in o.data.polygons)
+        # model forward is -y; a heading is clockwise from north
+        root.location = (x, y, z)
+        root.rotation_euler = (0, 0, math.pi - heading)
+
+    if G.get("helipads"):
+        hx, hy, hz = G["helipads"][0]["at"]
+        place("helicopter", hx, hy, hz, 0.6)
+    for r in G.get("ferries", []):
+        p = r["legs"][0]["path"]
+        cum = np.concatenate([[0], np.cumsum(np.hypot(*np.diff(np.asarray(p, float), axis=0).T))])
+        s = cum[-1] / 3
+        i = int(np.searchsorted(cum, s))
+        (ax, ay), (bx, by) = p[i - 1], p[i]
+        t = (s - cum[i - 1]) / max(1e-6, cum[i] - cum[i - 1])
+        place("ferry", ax + (bx - ax) * t, ay + (by - ay) * t, 0, math.atan2(bx - ax, by - ay))
+
+
 def set_sky(alt, az, night):
     world = bpy.data.worlds.new("sky")
     bpy.context.scene.world = world
@@ -286,6 +348,7 @@ def main():
     ap.add_argument("--samples", type=int, default=48)
     ap.add_argument("--res", default="1600x900")
     ap.add_argument("--blend", action="store_true")
+    ap.add_argument("--no-vehicles", action="store_true", help="leave out the game's helicopter and ferries")
     a = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:])
     cfg = json.load(open(os.path.join(ROOT, "cities", a.city, "city.json"), encoding="utf8"))
     lon, lat = cfg["origin"]
@@ -298,6 +361,8 @@ def main():
     t0 = time.time()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene, counts = build(data)
+    if not a.no_vehicles:
+        add_vehicles(data, counts)
     log["build_s"] = round(time.time() - t0, 1)
     log.update(counts)
     print(f"scene built in {log['build_s']} s: {counts}")

@@ -41,12 +41,22 @@
    "samples": 48,
    "resolution": "1600x900",
    "render_s": 81.3
+  },
+  "harbour": {
+   "date": "2026-3-21",
+   "time": "17:20",
+   "sun_altitude": 20.86,
+   "sun_azimuth": 285.16,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 48,
+   "resolution": "1600x900",
+   "render_s": 78.9
   }
  },
- "build_s": 2.3,
- "objects": 18,
- "triangles": 601339,
+ "build_s": 3.9,
+ "objects": 36,
+ "triangles": 774627,
  "buildings": 7962,
  "trees": 6096,
- "total_s": 282.8
+ "total_s": 82.8
 }
