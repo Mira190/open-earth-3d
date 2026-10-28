@@ -1,6 +1,7 @@
 // Terrain for the reef viewer: the 30 m survey grid as chunked, level-of-detail meshes under the
 // ground colour, plus the height texture the water reads to know how deep it is.
 import * as THREE from 'three/webgpu';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { Fn, uniform, float, vec2, vec3, vec4, mix, max, min, smoothstep, clamp, texture, positionWorld, normalWorld,
   mx_noise_float, sin, abs, select } from 'three/tsl';
 
@@ -136,11 +137,28 @@ export function createTerrain(d, env, renderer) {
     mesh.add(m); chunks.push(m);
   }
   const RANGE = [900, 2600, 6500]; // metres at which a chunk drops to the next level
+  // far away, 4 x 4 chunks at the coarsest level are one mesh: one draw call instead of sixteen
+  const B = 4, FAR = RANGE[1] + 400, blocks = [];
+  for (let by = 0; by < ch; by += B) for (let bx = 0; bx < cw; bx += B) {
+    const members = chunks.filter(m => m.userData.cx >= bx && m.userData.cx < bx + B && m.userData.cy >= by && m.userData.cy < by + B);
+    const geo = mergeGeometries(members.map(m => getGeo(m.userData.cx, m.userData.cy, 3)), false);
+    const bm = new THREE.Mesh(geo, mat); bm.receiveShadow = true; bm.visible = false;
+    const x0 = t.x0 + bx * CHUNK * t.cell_m, x1 = t.x0 + Math.min(cw, bx + B) * CHUNK * t.cell_m;
+    const z0 = -(t.y1 - by * CHUNK * t.cell_m), z1 = -(t.y1 - Math.min(ch, by + B) * CHUNK * t.cell_m);
+    bm.userData.box = [Math.min(x0, x1), Math.max(x0, x1), Math.min(z0, z1), Math.max(z0, z1)];
+    mesh.add(bm); blocks.push({ mesh: bm, members, far: null });
+  }
   function update(cam) {
-    for (const m of chunks) {
-      const c = m.userData.centre, dd = Math.hypot(cam.x - c.x, cam.z - c.z);
-      const lod = dd < RANGE[0] ? 0 : dd < RANGE[1] ? 1 : dd < RANGE[2] ? 2 : 3;
-      if (lod !== m.userData.lod) { m.userData.lod = lod; m.geometry = getGeo(m.userData.cx, m.userData.cy, lod); }
+    for (const b of blocks) {
+      const [x0, x1, z0, z1] = b.mesh.userData.box;
+      const far = Math.hypot(cam.x - Math.min(Math.max(cam.x, x0), x1), cam.z - Math.min(Math.max(cam.z, z0), z1)) > FAR;
+      if (far !== b.far) { b.far = far; b.mesh.visible = far; for (const m of b.members) m.visible = !far; }
+      if (far) continue;
+      for (const m of b.members) {
+        const c = m.userData.centre, dd = Math.hypot(cam.x - c.x, cam.z - c.z);
+        const lod = dd < RANGE[0] ? 0 : dd < RANGE[1] ? 1 : dd < RANGE[2] ? 2 : 3;
+        if (lod !== m.userData.lod) { m.userData.lod = lod; m.geometry = getGeo(m.userData.cx, m.userData.cy, lod); }
+      }
     }
   }
   // beyond the survey: a flat abyss to the horizon so the water has a floor everywhere
