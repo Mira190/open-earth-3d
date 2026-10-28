@@ -4,6 +4,7 @@ import { makeWaves, createEnv, setSun } from './env.js';
 import { createOcean } from './ocean.js';
 import { createShore } from './shore.js';
 import { createPost } from './post.js';
+import { createRipples } from './ripples.js';
 
 const q = new URLSearchParams(location.search);
 const $ = id => document.getElementById(id);
@@ -30,8 +31,10 @@ async function main() {
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 90000);
-  const waves = makeWaves(Number(q.get('wind_dir') || 125));
-  const env = createEnv(scene, S.optics, waves);
+  const windDir = Number(q.get('wind_dir') || 125);
+  const waves = makeWaves(windDir);
+  const ripples = createRipples(renderer, windDir);
+  const env = createEnv(scene, S.optics, waves, ripples);
   env.u.wind.value = Number(q.get('wind') ?? 0.6);
   env.u.tide.value = Number(q.get('tide') ?? 0);
 
@@ -62,6 +65,7 @@ async function main() {
   function lights(sun) {
     const day = sun.day;
     sunL.intensity = 2.8 * Math.max(Math.min(1, Math.sin(sun.alt) * 3), 0);
+    env.u.sunI.value = sunL.intensity;
     hemi.intensity = 0.06 + 0.84 * day + 0.05 * sun.moonLit * Math.max(Math.sin(sun.moonAlt), 0) * (1 - day);
     sunL.position.copy(camera.position).addScaledVector(sun.dir, 800);
     sunL.target.position.copy(camera.position);
@@ -112,6 +116,7 @@ async function main() {
     } else ctx.controller.update(dt, now / 1000);
     for (const u of ctx.updaters) u(dt, now / 1000);
     env.u.time.value = (q.get('freeze') ? Number(q.get('freeze')) : now / 1000);
+    ripples.update(env.u.time.value);
     terrain.update(camera.position);
     ocean.update(camera.position);
     shore.update(camera.position);

@@ -33,7 +33,7 @@ export function createPost(renderer, scene, camera, env) {
     Loop(STEPS, ({ i }) => {
       const t = float(i).add(jitter).mul(step);
       const S = cameraPosition.add(dir.mul(t));
-      const lit = env.caustic(S);                       // sun reaching this point through the waves
+      const lit = env.causticSoft(S);                   // sun reaching this point through the waves
       const dS = u.tide.sub(S.y).max(0);
       const sunHere = exp(u.K.mul(dS.mul(u.lightPath).add(t)).negate());
       acc.addAssign(sunHere.mul(lit).mul(step));

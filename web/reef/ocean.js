@@ -4,14 +4,21 @@
 // whitecaps form where crests squeeze the water, not where a texture says), and a shore: waves
 // slow and steepen as the water shoals, break into foam lines, and run up the sand.
 // Seen from below it is Snell's window and total internal reflection.
+// The ripples (ripples.js) are a mipmapped tile: their slopes below the pixel are kept as a variance, and
+// the sun glitter is the Cox-Munk slope distribution of what is left, so it stays right from a metre to
+// the horizon. From above, the floor is refracted: the frame behind the water is resampled along each
+// pixel's normal, by an amount that grows with how much water the ray crosses.
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, smoothstep, clamp, texture, positionLocal, positionWorld,
-  cameraPosition, normalize, dot, reflect, sin, cos, pow, exp, sqrt, select, length, mx_noise_float, uniform, frontFacing } from 'three/tsl';
+  cameraPosition, normalize, dot, reflect, sin, cos, pow, exp, sqrt, select, length, mx_noise_float, uniform, frontFacing,
+  screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
 import { gridUV } from './world.js';
 
 export function createOcean(d, env, heightTex) {
   const u = env.u, waves = env.waves;
   const centre = uniform(new THREE.Vector3());
+  // significant wave height of the bank at wind 1: 4 x the standard deviation of the surface
+  const Hs = 4 * Math.sqrt(waves.filter(w => w.disp).reduce((a, w) => a + w.a * w.a / 2, 0));
   const depthAt = (wx, wz) => u.tide.sub(texture(heightTex, gridUV(d, wx, wz)).level(0).r);
 
   // radial mesh: rings spaced geometrically so detail sits where the camera is
@@ -30,34 +37,39 @@ export function createOcean(d, env, heightTex) {
   geo.setIndex(idx);
 
   // ---- the wave field, evaluated at a horizontal position
-  // returns { off: vec3 displacement, n: vec3 normal, jac: compression }, with the swell and chop
-  // growing as the water shoals and dying where it breaks
+  // returns { dy, dx, dz: displacement, n: normal, jac: compression, v: slope variance the pixel cannot show },
+  // with the swell and chop growing as the water shoals and dying where it breaks
   const field = (x, z, depth, includeRipples, dist) => {
     let dy = float(0), dx = float(0), dz = float(0);
-    let hx = float(0), hz = float(0);
+    let hx = float(0), hz = float(0), lost = float(0);
     let jxx = float(0), jzz = float(0), jxz = float(0);
     const shoal = float(1).add(float(0.7).mul(float(1).sub(smoothstep(0.6, 6, depth))));            // steepen toward shore
     const gate = smoothstep(0.0, 0.7, depth);                                        // gone on dry sand
     const Q = 0.85;
     for (const w of waves) {
-      if (!w.disp && !includeRipples) continue;
+      if (!w.disp) continue;
       const ph = x.mul(w.dx * w.k).add(z.mul(w.dz * w.k)).sub(u.time.mul(w.w)).add(w.ph);
       const s = sin(ph), c = cos(ph);
-      // a wave is only drawn while the pixel is smaller than its wavelength: it fades out with distance
-      const fade = clamp(float(1).sub(dist.div(w.lam * (w.disp ? 1400 : 380))), 0, 1);
-      const amp = w.disp ? float(w.a).mul(shoal).mul(gate).mul(u.wind).mul(fade) : float(w.a).mul(fade.mul(fade)).mul(gate.max(0.35));
+      // a wave is only drawn while the pixel is smaller than its wavelength: it fades out with distance,
+      // and the slope it carried goes into the variance the glitter spreads over
+      const fade = clamp(float(1).sub(dist.div(w.lam * 1400)), 0, 1);
+      const full = float(w.a).mul(shoal).mul(gate).mul(u.wind), amp = full.mul(fade);
+      if (includeRipples) lost = lost.add(full.mul(w.k).pow(2).mul(float(1).sub(fade.mul(fade))).mul(0.5));
       dy = dy.add(amp.mul(s));
       hx = hx.add(amp.mul(w.k * w.dx).mul(c));
       hz = hz.add(amp.mul(w.k * w.dz).mul(c));
-      if (w.disp) {
-        const qa = amp.mul(Q);
-        dx = dx.add(qa.mul(c).mul(w.dx)); dz = dz.add(qa.mul(c).mul(w.dz));
-        const qk = qa.mul(w.k).mul(s);
-        jxx = jxx.add(qk.mul(w.dx * w.dx)); jzz = jzz.add(qk.mul(w.dz * w.dz)); jxz = jxz.add(qk.mul(w.dx * w.dz));
-      }
+      const qa = amp.mul(Q);
+      dx = dx.add(qa.mul(c).mul(w.dx)); dz = dz.add(qa.mul(c).mul(w.dz));
+      const qk = qa.mul(w.k).mul(s);
+      jxx = jxx.add(qk.mul(w.dx * w.dx)); jzz = jzz.add(qk.mul(w.dz * w.dz)); jxz = jxz.add(qk.mul(w.dx * w.dz));
+    }
+    if (includeRipples) {
+      const R = env.ripple(vec2(x, z)), rg = gate.max(0.35);
+      hx = hx.add(R.g.x.mul(rg)); hz = hz.add(R.g.y.mul(rg));
+      lost = lost.add(R.v.mul(rg.mul(rg)));
     }
     const jac = float(1).sub(jxx).mul(float(1).sub(jzz)).sub(jxz.mul(jxz));
-    return { dy, dx, dz, n: normalize(vec3(hx.negate(), 1, hz.negate())), jac };
+    return { dy, dx, dz, n: normalize(vec3(hx.negate(), 1, hz.negate())), jac, v: lost };
   };
 
   const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, side: THREE.DoubleSide, depthWrite: true });
@@ -91,9 +103,16 @@ export function createOcean(d, env, heightTex) {
     const edge = smoothstep(0.0, 0.07, wl);              // water thins to nothing on the sand
     // foam: compression, plus a lace line where the swash meets the sand, plus the break zone
     const lace = mx_noise_float(vec3(P.x.mul(0.7), P.z.mul(0.7), u.time.mul(0.2)));
-    const comp = float(1).sub(smoothstep(0.3, 0.62, f.jac)).mul(smoothstep(0.1, 1.0, depth)).mul(u.wind.mul(1.2));
+    // whitecaps: where the crests compress the water most, streaked by noise; the threshold follows the wind so the
+    // covered share stays near Monahan and O'Muircheartaigh's (1980) 3.84e-6 U^3.41 (about 1% at 10 m/s)
+    const streak = smoothstep(0.15, 0.75, mx_noise_float(vec3(P.x.mul(0.35), P.z.mul(1.1), u.time.mul(0.15))).mul(0.5).add(0.5));
+    const comp = float(1).sub(smoothstep(u.wind.mul(0.25).sub(0.05), u.wind.mul(0.25).add(0.12), f.jac)).mul(streak).mul(smoothstep(0.1, 1.0, depth)).mul(smoothstep(0.15, 0.5, u.wind));
     const swashFoam = smoothstep(0.0, 0.02, wl).mul(float(1).sub(smoothstep(0.05, 0.22, wl))).mul(smoothstep(-0.2, 0.5, lace.add(0.25)));
-    const brk = float(1).sub(smoothstep(0.4, 1.6, depth)).mul(smoothstep(0.1, 0.5, depth)).mul(smoothstep(0.1, 0.9, lace.mul(2).add(sin(depth.mul(6).sub(u.time.mul(1.4))).mul(0.5))));
+    // breakers: a wave breaks once its height passes 0.78 of the depth (McCowan 1894); the foam rides the crests
+    // that have broken (where the surface stands high), so it moves in with the waves instead of sitting still
+    const Hl = float(Hs).mul(u.wind).mul(1.7), Hb = Hl.div(0.78);
+    const crestUp = smoothstep(Hl.mul(0.12), Hl.mul(0.4), f.dy);
+    const brk = float(1).sub(smoothstep(Hb.mul(0.6), Hb, depth)).mul(smoothstep(0.05, 0.2, depth)).mul(crestUp).mul(smoothstep(-0.3, 0.6, lace));
     const foam = clamp(comp.add(swashFoam.mul(0.95)).add(brk.mul(0.55).mul(u.wind)), 0, 1);
 
     const Fr = (n, v) => float(0.02).add(float(0.98).mul(pow(float(1).sub(max(dot(n, v), 0)), 5)));
@@ -101,15 +120,37 @@ export function createOcean(d, env, heightTex) {
     const R = reflect(V.negate(), N).toVar();
     R.assign(vec3(R.x, abs(R.y), R.z));
     const F = Fr(N, V);
-    const sunRefl = env.sky(R);
     const foamCol = vec3(0.92, 0.95, 0.96).mul(u.white.mul(0.85).add(0.1));
     const haze = float(1).sub(exp(dist.mul(u.haze).negate()));
     // light scattered back out of the swell: turquoise glow in thin crests and the shallows
     const crest = smoothstep(0.0, 0.5, f.dy.mul(1.6)).mul(u.wind).mul(smoothstep(1.0, 4.0, depth));
     const glow = vec3(0.02, 0.18, 0.2).mul(u.white).mul(crest);
-    let above_c = mix(sunRefl.mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6)).add(glow);
-    above_c = mix(above_c, foamCol, foam);
-    const above_a = clamp(F.add(foam).mul(edge).max(float(0.0)), 0, 1).max(float(1).sub(edge).mul(0.0));
+    const refl = mix(env.skyRefl(R).mul(0.85), env.sky(normalize(vec3(V.x.negate(), 0.04, V.z.negate()))), haze.mul(0.6));
+    // sun glitter (Cox and Munk 1954): the facets that send the sun to the eye have the half-vector as their
+    // normal; their share is the Gaussian slope density of what the pixel cannot resolve, around the slope it can.
+    // radiance = E_sun F p / (4 cos(view) cos^4(facet tilt))
+    const Hh = normalize(V.add(u.sunDir));
+    const need = vec2(Hh.x, Hh.z).div(Hh.y.max(0.05)).negate(), have = vec2(N.x, N.z).div(N.y).negate();
+    const sig2 = f.v.add(env.rippleAmp.mul(env.rippleAmp).mul(0.002)).max(1.5e-4);
+    const dd = need.sub(have);
+    const pS = exp(dot(dd, dd).div(sig2).negate()).div(sig2.mul(3.14159));
+    const hy = Hh.y.max(0.05);
+    const glint = u.sunCol.mul(u.sunI).mul(Fr(Hh, V)).mul(pS).div(V.y.max(0.03).mul(4).mul(hy.mul(hy).mul(hy).mul(hy)))
+      .mul(smoothstep(-0.02, 0.04, u.sunDir.y)).mul(float(1).sub(haze));
+    // the floor through the water, bent by the surface: resample the frame behind along the view-space normal,
+    // by an amount that grows with the water the ray crosses; keep the straight sample where the bent one
+    // would pick up something in front of the water (a hull, a swimmer)
+    const Nv = cameraViewMatrix.mul(vec4(N, 0)).xyz;
+    const zS = positionView.z;
+    const zB0 = perspectiveDepthToViewZ(viewportDepthTexture(screenUV).x, cameraNear, cameraFar);
+    const thick = zS.sub(zB0).max(0);
+    const shift = vec2(Nv.x, Nv.y).mul(clamp(thick, 0, 4).mul(0.11).div(zS.negate().max(1))).clamp(-0.04, 0.04);
+    const uvR = screenUV.add(shift);
+    const zB = perspectiveDepthToViewZ(viewportDepthTexture(uvR).x, cameraNear, cameraFar);
+    const uvB = select(zB.lessThan(zS), uvR, screenUV);
+    const behind = viewportSharedTexture(uvB).rgb;
+    let above_c = mix(behind, refl, F.mul(edge)).add(glint.mul(edge)).add(glow.mul(edge)).toVar();
+    above_c.assign(mix(above_c, foamCol, foam.mul(edge)));
     // ---- from below: Snell's window and total internal reflection (n = 1.34)
     const nd = N.negate();
     const I = V.negate();
@@ -117,14 +158,20 @@ export function createOcean(d, env, heightTex) {
     const eta = float(1.34);
     const k = float(1).sub(eta.mul(eta).mul(float(1).sub(cosi.mul(cosi))));
     const T = I.mul(eta).add(nd.mul(eta.mul(cosi).sub(sqrt(max(k, 0)))));
-    const window = smoothstep(0.0, 0.04, k);
-    const Fb = Fr(nd, V.negate().negate()).mul(0.0).add(float(0.02));
-    const skyT = env.sky(normalize(T)).mul(float(1).sub(Fb));
-    // beyond the window the surface is a mirror: it shows the water itself, at the camera's depth
+    // the window's edge is as ragged as the slopes the pixel averages over
+    const ww = sqrt(f.v).mul(1.5).add(0.04);
+    const window = smoothstep(ww.negate().mul(0.5), ww, k);
+    const skyT = env.sky(normalize(T)).mul(0.98);
+    // beyond the window the surface is a mirror of the water below it: it shows the light field looking
+    // down along the mirrored ray, dimmer the steeper that ray (env.waterBg)
     const dC = u.tide.sub(cameraPosition.y).max(0);
-    const bodyCol = u.Rinf.mul(u.white).mul(exp(u.K.mul(dC.mul(u.lightPath)).negate())).mul(3.6);
-    const under_rgb = mix(bodyCol, env.medium(skyT, P), window);
-    return select(above, vec4(above_c, above_a), vec4(under_rgb, float(1)));
+    const Rm = reflect(I, nd);                               // the mirrored ray, down into the water
+    const mirror = env.medium(env.waterBg(dC, Rm.y.min(0)), P);
+    const under_rgb = mix(mirror, env.medium(skyT, P), window);
+    // ?odbg=1 glitter, 2 foam, 3 the refracted frame, 4 the unresolved slope variance (x 20)
+    const dbg = { 1: glint, 2: vec3(foam), 3: behind, 4: vec3(f.v.mul(20)) }[new URLSearchParams(location.search).get('odbg')];
+    if (dbg) return vec4(dbg, 1);
+    return select(above, vec4(above_c, float(1)), vec4(under_rgb, float(1)));
   })();
 
   const mesh = new THREE.Mesh(geo, mat);

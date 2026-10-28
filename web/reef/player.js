@@ -636,6 +636,7 @@ async function autotest(api, T) {
     S.camYaw = Math.PI / 2;
     run(120, V({ f: 1 }), () => player.state === 'swim');
     must(seen.has('wade'), 'wade state entered'); must(maxSplash > 0, 'wading throws spray', String(maxSplash)); must(player.state === 'swim', 'swim state entered', `${player.state} depth=${S.dep.toFixed(2)} x=${S.pos.x.toFixed(0)}`);
+    run(1.5, V({}));                                     // let the body settle onto the water before measuring it
     must(Math.abs(S.pos.y - (S.surf - 0.15)) < 0.3, 'floats at the surface', `y=${S.pos.y.toFixed(2)} surf=${S.surf.toFixed(2)}`);
     // 2. snorkel and duck-dive
     let spot = null;
@@ -665,7 +666,7 @@ async function autotest(api, T) {
     run(2, V());
     // a diver's trim: an integral on the vertical speed finds the BCD volume that holds the depth
     for (let i = 0; i < 1200; i++) { S.virt = V(); S.bcd.n = Math.max(0, S.bcd.n - S.vy * 12 * dt * (1 + S.depthBody / 10)); T.simulate(dt, S.virt); T.animate(dt); }
-    const d2 = S.depthBody; run(6, V()); const d3 = S.depthBody;
+    const d2 = S.depthBody; run(2 * Math.PI / 1.4, V()); const d3 = S.depthBody;     // one breath (lung volume follows sin 1.4 t)
     must(Math.abs(d3 - d2) < 1.5, 'neutral buoyancy can be held', `${d2.toFixed(1)} -> ${d3.toFixed(1)} m  (n=${S.bcd.n.toFixed(1)})`);
     must(api.fx.bubbleCount > 0, 'regulator bubbles exist', String(api.fx.bubbleCount));
     must(api.diver.ndl < 99 && api.diver.ndl > 0, 'no-deco time is computed', api.diver.ndl.toFixed(0) + ' min');

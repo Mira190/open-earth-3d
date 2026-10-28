@@ -7,6 +7,7 @@
 // with Lw the view path inside the water, z the floor's depth and m the sun's slant factor.
 // Rinf and K come from the Sentinel-2 imagery, so a render from above reproduces the satellite.
 import * as THREE from 'three/webgpu';
+import { coxMunk, windSpeed } from './ripples.js';
 import { Fn, uniform, float, vec2, vec3, vec4, exp, max, min, abs, mix, length, normalize, dot, select,
   sin, cos, pow, clamp, smoothstep, sqrt, positionWorld, cameraPosition, texture, mx_noise_float } from 'three/tsl';
 
@@ -14,14 +15,14 @@ const TAU = Math.PI * 2;
 let seed = 7;
 const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
 
-// ---- the wave spectrum: three bands, as in a cascaded ocean (swell, wind chop, ripples).
+// ---- the wave spectrum: swell and wind chop as a sum of Gerstner waves (these move the surface,
+// the boats and the swimmer); the ripples are a periodic tile in ripples.js.
 // Each wave is a direction, a wavelength and a slope (a k); the amplitude follows from them.
 export function makeWaves(windDeg = 120, sheltered = 0.5) {
   seed = 7;
   const bands = [
     { n: 4, l: [38, 90], slope: [0.010, 0.018], spread: 25, disp: true },   // swell (sheltered inside the outer reef)
-    { n: 9, l: [3, 18], slope: [0.035, 0.060], spread: 60, disp: true },    // wind chop
-    { n: 16, l: [0.3, 2.2], slope: [0.05, 0.10], spread: 150, disp: false } // ripples: normals, caustics, glitter
+    { n: 9, l: [3, 18], slope: [0.035, 0.060], spread: 60, disp: true }     // wind chop
   ];
   const waves = [];
   for (const b of bands) {
@@ -36,7 +37,7 @@ export function makeWaves(windDeg = 120, sheltered = 0.5) {
   return waves;
 }
 
-export function createEnv(scene, optics, waves) {
+export function createEnv(scene, optics, waves, ripples) {
   const u = {
     time: uniform(0),
     sunDir: uniform(new THREE.Vector3(0.3, 0.8, 0.5).normalize()),
@@ -54,17 +55,23 @@ export function createEnv(scene, optics, waves) {
     moonDir: uniform(new THREE.Vector3(0, -1, 0)),
     moonLit: uniform(0),
     wind: uniform(0.5),
-    caustic: uniform(1)
+    caustic: uniform(1),
+    sunI: uniform(2.8)            // the sun's irradiance on a surface facing it, in the lights' units
   };
+  // the ripples scale with the wind as the Cox-Munk slope variance does (unity at wind 0.6)
+  const c0 = coxMunk(windSpeed(0.6));
+  const rippleAmp = coxMunk(windSpeed(0)) / c0, rippleAmpW = 0.00512 * 11 / c0;
+  const fw = sqrt(u.wind.mul(rippleAmpW).add(rippleAmp));
+  const ripple = (xz, opts) => ripples.sample(xz, fw, opts);
 
   // ---- sky: gradient, sun glow, tropical cumulus; the same function colours the dome and the
   // reflection on the water
-  const sky = Fn(([dir]) => {
+  const skyFn = disc => Fn(([dir]) => {
     const up = clamp(dir.y, 0, 1);
     const g = pow(float(1).sub(up), 3.2);
     let c = mix(u.zenith, u.horizon, g).toVar();
     const mu = max(dot(dir, u.sunDir), 0);
-    c.addAssign(u.sunCol.mul(pow(mu, 8).mul(0.18).add(pow(mu, 200).mul(2.5)).add(pow(mu, 3000).mul(40))));
+    c.addAssign(u.sunCol.mul(disc ? pow(mu, 8).mul(0.18).add(pow(mu, 200).mul(2.5)).add(pow(mu, 3000).mul(40)) : pow(mu, 8).mul(0.18).add(pow(mu, 200).mul(0.6))));
     // warm band near the sun when it is low
     const low = float(1).sub(clamp(u.sunAlt.mul(4), 0, 1));
     c.addAssign(vec3(1.0, 0.45, 0.2).mul(pow(mu, 4).mul(low).mul(0.9).mul(g.add(0.2))));
@@ -78,22 +85,25 @@ export function createEnv(scene, optics, waves) {
     c.addAssign(vec3(0.9, 0.95, 1).mul(star.mul(u.night).mul(1.6)));
     return c;
   });
+  // the dome; and the sky as the sea reflects it, whose sun is the glitter in ocean.js
+  const sky = skyFn(true), skyRefl = skyFn(false);
 
   // ---- caustics: the sun's light focused by the wave field. A ray that crosses the surface where the
   // water's curvature is positive is bent toward its neighbours; the density of rays on the floor is
   // 1 / |det J|, with J = I - c D H (H the Hessian of the surface height, D the depth, c = 1 - 1/n).
   // The same wave bank as the surface, so the pattern follows the visible ripples and sharpens
   // with depth until the web of lines smears out.
-  const caustic = Fn(([P]) => {
+  const causticAt = level => Fn(([P]) => {
     const D = u.tide.sub(P.y).max(0);
     const slant = sqrt(max(float(1).sub(u.sunDir.y.mul(u.sunDir.y)), 1e-4)).div(max(u.sunDir.y, 0.15)).mul(0.75); // tan of the refracted ray
     const sxz = vec2(u.sunDir.x, u.sunDir.z).div(sqrt(max(float(1).sub(u.sunDir.y.mul(u.sunDir.y)), 1e-4)));
     const xs = vec2(P.x, P.z).add(sxz.mul(D.mul(slant)));
-    let hxx = float(0), hzz = float(0), hxz = float(0);
+    const R = ripple(xs, level === undefined ? {} : { level });
+    let hxx = R.H.x, hzz = R.H.y, hxz = R.H.z;
     for (const w of waves) {
-      if (w.lam > 20) continue;
+      if (w.lam > 20 || !w.disp) continue;
       const ph = xs.x.mul(w.dx * w.k).add(xs.y.mul(w.dz * w.k)).sub(u.time.mul(w.w)).add(w.ph);
-      const m = sin(ph).mul(float(-w.a * w.k * w.k).mul(w.disp ? u.wind : float(1)));
+      const m = sin(ph).mul(float(-w.a * w.k * w.k).mul(u.wind));
       hxx = hxx.add(m.mul(w.dx * w.dx)); hzz = hzz.add(m.mul(w.dz * w.dz)); hxz = hxz.add(m.mul(w.dx * w.dz));
     }
     const cD = D.mul(0.25);
@@ -103,6 +113,19 @@ export function createEnv(scene, optics, waves) {
     const sunUp = smoothstep(0.02, 0.25, u.sunDir.y);
     return mix(float(1), I.mul(0.62), fadeD.mul(0.85).mul(sunUp));
   });
+  // per pixel (mip level from the screen), and at a fixed blur for the light-shaft march
+  const caustic = causticAt(), causticSoft = causticAt(2.5);
+
+  // ---- the light field under water, by direction. The satellite's Rinf is the water-leaving radiance seen
+  // from above, as a fraction of a white surface (u.white). Just under the surface the upwelling radiance is
+  // higher by the refraction and transmission of the surface: rrs = Rrs / (0.52 + 1.7 Rrs) (Lee et al. 2002),
+  // about 1.9x for clear water. And the radiance is far from the same in every direction: in clear water the
+  // horizontal radiance is roughly three times the nadir and the zenith (outside the sun) some tens of times
+  // (the asymptotic distributions measured by Tyler 1960 and later). radiance(y) / nadir is fitted through
+  // 1 at y = -1, 3 at y = 0 and 40 at y = +1 (y the sine of the elevation of the line of sight).
+  const radiance = y => exp(float(1.1).add(y.mul(1.845)).add(y.mul(y).mul(0.745))).mul(1.9);
+  // the background the water shows at depth d (m) along a direction with elevation sine y
+  const waterBg = (d, y) => u.Rinf.mul(u.white).mul(exp(u.K.mul(d.mul(u.lightPath)).negate())).mul(radiance(y));
 
   // ---- water column
   // returns the colour of `col`, seen from the camera, after the air and the water between
@@ -123,9 +146,9 @@ export function createEnv(scene, optics, waves) {
     const g = float(1).add(u.lightPath.mul(nu)).max(0.15);
     const veil = u.Rinf.mul(u.white).mul(exp(u.K.mul(dC.mul(u.lightPath)).negate())).mul(float(1).sub(exp(u.K.mul(Lw).mul(g).negate())));
     // sunlit caustic modulation lives in the materials; the water only dims and veils
-    // looking along the water the sea is brighter than the nadir reflectance the satellite sees:
-    // the radiance just under the surface is n^2 higher, and sideways light is about twice nadir
-    const boost = select(dC.greaterThan(0), float(3.6), float(1));
+    // from under water the path radiance follows the light field's direction (radiance above); from
+    // above the water it is what the satellite sees, so a render from above reproduces the imagery
+    const boost = select(dC.greaterThan(0), radiance(d.y.div(L)), float(1));
     let out = col.mul(lightAtt).mul(T).mul(mix(float(1), caustic(P), select(dP.greaterThan(0), float(1), float(0)))).add(veil.mul(boost).mul(select(frac.greaterThan(0), float(1), float(0)))).toVar();
     // air: aerial perspective toward the sky colour
     const a = float(1).sub(exp(La.mul(u.haze).negate()));
@@ -135,7 +158,7 @@ export function createEnv(scene, optics, waves) {
 
   // the last reach of the swash: a little above the tide, breathing with the sets of waves
   const swash = u.tide.add(0.35).add(sin(u.time.mul(0.62)).mul(0.12)).add(sin(u.time.mul(0.23).add(1.3)).mul(0.1));
-  return { u, sky, medium, caustic, waves, scene, swash };
+  return { u, sky, skyRefl, medium, radiance, waterBg, caustic, causticSoft, ripple, rippleAmp: fw, waves, ripples, scene, swash };
 }
 
 // ---- the sun for the model's own clock
