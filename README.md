@@ -39,10 +39,38 @@ computed from the model as you play. Open **Play** on the globe, or go to
 |---|---|---|
 | ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-ferry.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
 
+## Dive it: the Great Barrier Reef
+
+Five Queensland reef sites are marine worlds of their own (`web/reef/`, three.js r186 with WebGPU and a WebGL2
+fallback): the Whitsunday Islands with Whitehaven Beach and Hill Inlet, Heart Reef and the Reefworld pontoon on Hardy
+Reef, Green Island off Cairns, Heron Island and Lady Elliot Island. Each is rebuilt from survey bathymetry, a
+Sentinel-2 composite inverted through the water column, mapped places and Maritime Safety Queensland's tide, under
+the real sun and moon. Walk the beach, wade, snorkel, free-dive or scuba dive among corals, fish, turtles and
+rays; ride the boats, fly the helicopter or the seaplane; talk to a ranger, a skipper, a guide and a dive instructor,
+whose every line is computed from the model or cited. Open **Great Barrier Reef** on the globe, or
+`reef/index.html?city=whitsundays`.
+
+- The water: waves, Cox-Munk sun and moon glitter, caustics, refraction, Snell's window, a light field that
+  differs by direction under water, the official tide, twilight and moonlight with an adapting eye.
+  [docs/cities/whitsundays.md](docs/cities/whitsundays.md)
+- The game: quests, a journal, the map and travel between the sites. [docs/GAME_REEF.md](docs/GAME_REEF.md)
+- The handoff for whoever works on it next: [docs/HANDOFF_WHITSUNDAYS.md](docs/HANDOFF_WHITSUNDAYS.md)
+
+| Hill Inlet as the tide falls | On the reef | Talking to the ranger |
+|---|---|---|
+| ![](docs/images/reef/water-hill-inlet.jpg) | ![](docs/images/reef/life-reef.jpg) | ![](docs/images/reef/game-dialogue.jpg) |
+| **The Reefworld pontoon, Hardy Reef** | **A moonlit beach** | **Green Island from the air** |
+| ![](docs/images/reef/site-hardy-reef-pontoon.jpg) | ![](docs/images/reef/water-moon.jpg) | ![](docs/images/reef/site-green-island-aerial.jpg) |
+
 ## Cities
 
 | City | Status | What's in it |
 |---|---|---|
+| **Whitsundays**, Australia | **Live** (reef) | 33 × 33 km of the Whitsunday Islands and the inner Great Barrier Reef: AusSeabed 30 m survey bathymetry, a 28-scene Sentinel-2 composite inverted through the water column, 33 mapped places, Maritime Safety Queensland's Shute Harbour tide (fitted to 2.4 cm RMS). [Case study](docs/cities/whitsundays.md) |
+| **Hardy Reef**, Australia | **Live** (reef) | Heart Reef, the Reefworld pontoon on the channel wall, Hook, Line and Bait reefs; the tide from the outer-reef gauge at Bugatti Reef. [Notes](docs/cities/hardy-reef.md) |
+| **Green Island**, Australia | **Live** (reef) | The coral cay off Cairns with Arlington Reef and Michaelmas Cay; the jetty on its mapped line. [Notes](docs/cities/green-island.md) |
+| **Heron Island**, Australia | **Live** (reef) | The cay on the Tropic of Capricorn, its reef flat drying at low tide, and Wistari Reef. [Notes](docs/cities/heron-island.md) |
+| **Lady Elliot Island**, Australia | **Live** (reef) | The southernmost coral cay of the reef. [Notes](docs/cities/lady-elliot-island.md) |
 | **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House and Harbour Bridge are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | Melbourne, Australia | Planned | ELVIS LiDAR; City of Melbourne open 3D massing |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
@@ -90,11 +118,22 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 
 ## Run it
 
-The built Sydney scene is in the repository, so the viewer runs straight away:
+The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney for the 3D model, #play-sydney for the game
+# open http://localhost:8000 for the globe, #sydney for the 3D model, #play-sydney for the game,
+# reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
+```
+
+A reef site is rebuilt with the marine pipeline (raw downloads are a few GB):
+
+```bash
+python pipeline/fetch_gbr_bathy.py whitsundays              # AusSeabed GBR 30 m, one grid streamed and cached
+python pipeline/fetch_sentinel.py --city whitsundays        # Sentinel-2 L2A passes, the darkest in the near infrared
+python pipeline/build_marine.py --city whitsundays          # terrain, inverted floor colour, habitat, optics (QAA)
+python pipeline/fetch_tide.py --city whitsundays            # MSQ predictions -> harmonic constituents
+python pipeline/check_marine.py --city whitsundays          # places, pontoon and spawn against the built terrain
 ```
 
 To rebuild a city from the raw data (about 2 minutes for Sydney), run:
@@ -177,6 +216,7 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, landmark meshes |
 | `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
+| `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders |
 | `docs/` | Architecture, the game, adding a city, per-city case studies, images |
@@ -191,7 +231,16 @@ Data tab. The shared sources are:
   Buildings (ODbL). A derived database must stay under ODbL.
 - **The globe's base map:** Natural Earth (public domain).
 - **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono).
-- **3D library:** three.js r128 (MIT), loaded from a CDN.
+- **3D library:** three.js r128 (MIT), loaded from a CDN, for the city viewer and its game; three.js r186 (MIT),
+  vendored in `web/vendor/three`, for the reef sites.
+
+The reef sites also use these sources:
+- AusSeabed / Geoscience Australia, *Great Barrier Reef Bathymetry 2020* 30 m (not for navigation).
+- Copernicus Sentinel-2 L2A (Copernicus open licence), via Earth Search on AWS; ESA WorldCover 10 m 2021 (CC BY 4.0).
+- Maritime Safety Queensland tide predictions (CC BY 4.0), Queensland Government open data portal.
+- Places from OpenStreetMap (ODbL) via Overture Maps; Wikipedia and other cited pages for the facts in the game
+  and the species notes (listed in `docs/GAME_REEF.md` and `web/reef/life/species.js`).
+- People: Quaternius character packs (CC0).
 
 Sydney also uses these sources:
 - NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).
