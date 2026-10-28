@@ -6,8 +6,9 @@ and where the city's NPCs, wharves, helipads and ferry routes are.
 Writes web/data/<city>/game.json:
   water     5 m mask (1 = water), bit-packed rows from the north-west corner
   terrain   5 m bare-earth grid for walking and the ground mesh: land keeps its DEM
-            height, water next to land sits at 0 m and open water at -4 m, so the
-            ground drops at the seawall instead of sloping across a 10 m cell
+            height, and under the water the bottom is modelled from the distance to
+            the nearest shore and its kind (pipeline/shore.py, from shore.png): a
+            beach shelves gently, rock steeply, a seawall drops to 4 m at once
   paths     footways for pedestrians and roads for traffic, as 3D polylines in
             decimetres with their class; bridge parts follow the city's deck surfaces, tunnel parts
             are dropped (Overture road flags and levels)
@@ -35,6 +36,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, write_index
+from shore import depth_at, from_png
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -91,6 +93,9 @@ def main():
     # ---------------------------------------------------------- water and land
     dem = load_dem(C)
     ny, nx = dem.shape
+    sm = from_png(os.path.join(C.out, "shore.png"), C.x0, C.y1, cfg)
+    gy, gx = np.mgrid[0:ny, 0:nx]
+    gx, gy = C.x0 + (gx + 0.5) * DEM_CELL, C.y1 - (gy + 0.5) * DEM_CELL
     wcfg = cfg.get("water", {})
     wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
     seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
@@ -330,13 +335,20 @@ def main():
         npcs.append(dict(n, at=[round(x, 1), round(y, 1)]))
     sx, sy, _ = snap(*gcfg.get("start", {}).get("at", [0, 0]))
 
+    # the walking ground: the DEM on land, the modelled bottom under the water, except where a
+    # helipad stands on the water (a floating pad): there it keeps the pad's own height
+    ground_grid = np.where(water, -depth_at(sm, gx, gy, C.x0, C.y1), dem)
+    for hp in helipads:
+        x, y, z = hp["at"]
+        near = water & (np.hypot(gx - x, gy - y) < 14.0)
+        ground_grid[near] = np.maximum(ground_grid[near], max(z, 0.0))
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks", "ferry_style") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
-                "data": base64.b64encode(np.round(np.where(water, np.where(ndimage.binary_dilation(~water), 0.0, -4.0), dem) * 10).astype("<i2").tobytes()).decode()},
+                "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
         "pier_deck_m": PIER_DECK,
         "surfaces": surfaces,
         "paths": {"foot": foot, "road": roads},

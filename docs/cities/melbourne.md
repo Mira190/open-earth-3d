@@ -117,6 +117,19 @@ Thirteen addresses are not in Overture's address points at all.
   label is placed at the station's published coordinates. No authoritative
   heights for its dome or clock tower were found, so it is left as mapped.
 
+### The river
+
+The Yarra uses the same water as Sydney Harbour (`web/water.js`), with its own
+settings in `city.json`:
+- **Waves:** a light 4 m/s northerly across a river 100–150 m wide gives
+  short-fetch ripples, with a significant height of 5 cm. The wind is a chosen
+  typical value, not a measurement.
+- **Colour:** the river is turbid with suspended clay, so it is brown-green
+  with 0.6 m of clarity, and its bottom never shows.
+- **Shores:** 98% of the river's edge in the model is built, so the foam is
+  mostly a faint lap against the walls. Rock lines the other 2%. Overture's 19
+  sand polygons here are sports fields away from the river.
+
 ## 4. Sun on the protected spaces
 
 The rules are DDO10's tables, read from the live scheme. Table 1 is a hard
@@ -180,7 +193,8 @@ Six people and six stamps, all on the same model:
 - **The survey lens:** Jun sends you to find three height sources.
 
 The river shuttle is invented: there is no regular ferry through the city. It
-stops at Crown Landing, because Victoria Harbour meets the Yarra just west of
+is smaller than a harbour ferry (22 m), in a navy and gold livery that is
+invented too. It stops at Crown Landing, because Victoria Harbour meets the Yarra just west of
 the model. The test script `melflow.js` plays all of it headless; see
 [GAME.md](../GAME.md).
 

@@ -22,9 +22,9 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-dialogue.jpg) | ![](images/sydney/game-bridge.jpg) |
 | **Under the Harbour Bridge** | **Bird's-eye view from the helicopter** |
 | ![](images/sydney/game-heli.jpg) | ![](images/sydney/game-birdseye.jpg) |
-| **Cross Harbour ferry, Opera House behind** | **The map, with live ferries and fast travel** |
+| **The Cross Harbour ferry leaving Circular Quay** | **The map, with live ferries and fast travel** |
 | ![](images/sydney/game-ferry.jpg) | ![](images/sydney/game-map.jpg) |
-| **Martin Place, 21 June, 12:30: the sun meter** | **After dark: lit windows and street lamps** |
+| **Martin Place, 21 June, 12:30: the sun meter** | **After dark from Bennelong Point: the city's lights in the harbour** |
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
@@ -156,12 +156,32 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
   - **Headlights:** come on after sunset.
-- **Vehicles** (`web/game/vehicles.js`):
-  - **Helicopter:** the assisted model, with collisions against buildings and
-    landmark solids.
+- **Vehicles** (`web/game/vehicles.js`), built from `web/game/kit.js`. The
+  kit has lofted hulls, lathes, slabs, fins, rods and tubes at real
+  dimensions, merged into one mesh per material. It is adapted from the vessel
+  kit of an earlier reef scene, with classic materials so the city's lights and
+  shadows fall on it.
+  - **Helicopter:** a light scenic type. It has a bubble cabin with its glass,
+    an engine deck, a tail boom with a fin and stabiliser, skids, and a rotor
+    that blurs into a disc at speed. It flies the assisted model, with
+    collisions against buildings and landmark solids.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
-    Each slows into its wharf and waits. You can take the helm into a wharf by
-    hand.
+    The size and livery come from the city's `ferry_style`: Sydney Ferries'
+    green and cream with a gold band, and an invented navy shuttle on the Yarra.
+    Each one has:
+    - a lofted hull with antifouling, a boot stripe and a sheer band;
+    - a rubbing strake;
+    - a windowed saloon;
+    - an upper deck with rails, benches and lifebuoys;
+    - a wheelhouse at each end;
+    - a mast and flag;
+    - navigation and deck lights that come on after dark.
+
+    Each ferry slows into its wharf and waits. You can take the helm into a
+    wharf by hand.
+- **Water:** the same `web/water.js` sea as the model viewer. The waves follow
+  the city's wind, the shore foam follows the kind of shore, and the city
+  shows in the water. The ground gets a wet band at the waterline.
 - **Sun and time:**
   - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
     title screen offers 9 am first.
@@ -223,6 +243,9 @@ and the menus are checked in a phone-sized browser.
   is no ragdoll or car damage, and pedestrians don't avoid each other.
 - **Ferry timetable:** the routes follow the inner-harbour services, but the
   timetable is invented. Ferries run at 1.5 times real speed.
+- **Vessels on the water:** a ferry rides the mean water level and does not
+  pitch or roll on the waves. Its wake is a fan of foam drawn on the water, not
+  waves of its own.
 - **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
   except where OpenStreetMap maps building parts.
 

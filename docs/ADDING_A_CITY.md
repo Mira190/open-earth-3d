@@ -53,7 +53,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}`. Or `{type: "synth", attribution}`: no imagery, and the ground is drawn from Overture land use, land, water, roads, footways, rail and footprints |
 | `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "wcs", url, coverage, crs, pixel_deg, fill_below_m, bare_earth, attribution}` for an OGC WCS 1.0.0 `GetCoverage` in geographic coordinates (GDA94 is converted from GDA2020, about 1.5 m); or `{type: "terrarium"}` as a last resort |
 | `terrain_check` | no | An independent elevation source for `analysis/dem_check.py`: `{type: "arcgis_identify", url, field, name}` (a raster service sampled on a grid) or `{type: "arcgis_points", url, field, name}` (surveyed spot heights from a feature layer) |
-| `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water |
+| `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water. Also how the water looks (`web/water.js`): `waves` `{wind_ms, wind_from_deg, fetch_km, depth_m, cascades_m, choppiness}` for a typical wind over the water's longest reach; optionally `swell_m`, `swell_from_deg` and `swell_wind_ms` for an ocean swell; `colour` and `shallow_colour` (sRGB hex); `clarity_m` (how far you see into the water); `shore_slopes` `{sand, rock, built}` to override the modelled bottom's depth per metre from each kind of shore (default 0.04, 0.25, 1.0). The waves and colours are chosen values, so say so in a `note` |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
 | `minor_labels` | no | Labels drawn in the lighter style |
@@ -70,7 +70,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) |
+| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `ferry_style` `{length_m, beam_m, hull, trim, upper, flag, note}` sizes the ferry and gives it the city's livery. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -100,8 +100,9 @@ def finalize(ctx):
 
 def landmark_meshes(scene):
     """Called by pipeline/landmarks.py with the built scene.json.
-    Return (materials, meshes): materials {key: {color, roughness, metalness}},
-    meshes a list of meshkit.Mesh (set floodlit=True to light it after dark)."""
+    Return (materials, meshes): materials {key: {color, roughness, metalness,
+    pattern}}, meshes a list of meshkit.Mesh (set floodlit=True to light it after
+    dark, uv=True to keep texture coordinates for a patterned material)."""
 ```
 
 ```python
@@ -116,10 +117,42 @@ def game_surfaces(scene):
     the surface is put onto it (steps); label: a short name for messages."""
 ```
 
+The game turns each landmark mesh into one height interval per 2 m cell, so
+keep parts at different heights in separate meshes. Steel inside a deck merged
+with an arch above it would become a solid block between them. Give every
+part that sits inside a walkable surface's slab that surface's `mesh` prefix:
+Sydney's deck furniture and the steel under its deck are `bridge_deck_*`. The
+game then covers them with the slab and walks on the surface.
+
 `ctx.ground(x, y)` gives the bare-earth height. `ctx.polygons(geom)` splits
 any geometry into polygons. Labels that `finalize` adds take priority in the
 viewer. Build landmarks from published dimensions, and place them with anchors
 measured from the data (footprint centroids, bearings), never from guesses.
+
+`pipeline/meshkit.py` has the parts landmarks are made of:
+- `box`, `tube`, `lathe` (a surface of revolution), `sweep` (a section along a
+  path), `panel` (a strip for a cut-out pattern) and `rails`;
+- `grid`, `quad` and `tri` for anything else.
+
+Every part takes metres. Build the small parts too: the railings, lamps,
+mullions and deck markings are what make a structure read as built, and they
+cost little when each material is one mesh.
+
+A material's `pattern` is drawn by the browser from the mesh's UVs
+(`web/world.js` `PATTERNS`). Its settings sit next to it in the material:
+- `chevron_tiles` with `lid_m` and `chevron_m`: a tiled shell. u counts the
+  bays between ribs, and v is metres along a rib.
+- `deck_zones` with `zones: [[width_m, kind], ...]`: lanes (`lanes6`,
+  `lanes2`), `rail`, `cycleway`, `footway`, `barrier` and `parapet` across a
+  deck. u is metres along it, and v is metres across.
+- `railing` with `bar_m` and `rails_m: [bottom, top]`: bars cut out of a
+  `panel`.
+
+When a landmark replaces the solids OSM maps for it, as Sydney Tower does, keep
+the solids and call `ctx.hide(solid)` on each of them (entries of `geoms`) in
+`adjust_building`. The surface
+model and the analyses still see their shadow. The renderers skip them
+(`hidden_solids` in `scene.json`) and draw the landmark instead.
 
 ## 4. Optional: reference tables
 

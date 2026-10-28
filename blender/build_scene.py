@@ -164,8 +164,10 @@ def build(data):
 
     # buildings: one mesh, colours per face corner
     verts, faces, cols = [], [], []
-    seen = set()
-    for s in B["s"]:
+    seen, hidden = set(), set(scene.get("hidden_solids", []))  # drawn by a parametric landmark instead
+    for si, s in enumerate(B["s"]):
+        if si in hidden:
+            continue
         m = B["b"][s[0]]
         g0, zb, zt = s[1] / 10, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10
         # OSM sometimes maps one tower twice; Cycles shades coincident faces black

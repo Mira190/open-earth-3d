@@ -29,6 +29,7 @@ from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
 
 from cityctx import ROOT, City, city_args, polygons
+from shore import FLOOR_M, SHORE_CELL, depth_at, shore_map
 
 DEM_CELL = 5.0       # m, building bases and analysis
 TERRAIN_CELL = 10.0  # m, shipped mesh grid
@@ -471,6 +472,12 @@ class Ctx:
         self.city, self.dem_land = C, dem_land
         self.landmarks, self.labels = {}, {}
         self.polygons = polygons
+        # parts a parametric landmark draws instead: kept in the surface model for the sun
+        # analyses, skipped by the renderers (scene.json "hidden_solids")
+        self.hidden = set()
+
+    def hide(self, part):
+        self.hidden.add(id(part[0]))
 
     def ground(self, x, y):
         return float(sample(self.city, self.dem_land, x, y)[0])
@@ -495,7 +502,11 @@ def build(C):
     sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
     water = raster_mask(sea, dem.shape[1], dem.shape[0], DEM_CELL, C.x0, C.y1)
     dem_land = dem.copy()
-    dem[water] = -4.0
+    # the bottom under the water, modelled from the distance to each kind of shore (shore.py)
+    sm = shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg)
+    wr, wc = np.nonzero(water)
+    dem[water] = -depth_at(sm, C.x0 + (wc + 0.5) * DEM_CELL, C.y1 - (wr + 0.5) * DEM_CELL, C.x0, C.y1)
+    sm["image"].save(os.path.join(C.out, "shore.png"), optimize=True)
     ctx = Ctx(C, dem_land)
 
     tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
@@ -534,7 +545,7 @@ def build(C):
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res = [], [], {}, {}, {}, []
+    meta, solids, first_solid, geo, ml_raw, floor_res, hidden_solids = [], [], {}, {}, {}, [], []
     for b in blds:
         if b["is_underground"]:
             continue
@@ -562,9 +573,12 @@ def build(C):
                 ctx.labels[labels_cfg[pname]] = [round(c.x, 1), round(c.y, 1), round(ctx.ground(c.x, c.y) + h1, 1)]
         top, srcs, first = 0.0, Counter(), len(solids)
         for q, h0, h1, src, _ in geoms:
+            hidden = id(q) in ctx.hidden
             q = q.simplify(0.15, preserve_topology=True)
             if q.is_empty or q.area < 2 or h1 <= h0:
                 continue
+            if hidden:
+                hidden_solids.append(len(solids))
             q = shapely.geometry.polygon.orient(q, 1.0)
             cs = np.asarray(q.exterior.coords)
             zb = max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
@@ -691,6 +705,11 @@ def build(C):
         "terrain": {"file": "terrain.json", "nx": tg.shape[1], "ny": tg.shape[0], "cell": TERRAIN_CELL, "scale": 0.1,
                     "origin": "north-west, row-major, rows go south", "bare_earth": cfg["terrain"].get("bare_earth", False)},
         "ground": tiles,
+        "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
+                  "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
+                  "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
+        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m")},
+        "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),
         "landmarks": ctx.landmarks,

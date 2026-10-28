@@ -56,7 +56,7 @@ computed from the model as you play. Open **Play** on the globe, or go to
 
 | City | Status | What's in it |
 |---|---|---|
-| **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House and Harbour Bridge are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
+| **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
@@ -98,6 +98,17 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 - **Uncertainty.** A Monte Carlo over the measured height errors gives a 90%
   range for each place's sun. It also names the buildings that shade each
   place, and ranks the heights worth verifying next.
+- **Water that moves with the wind.** Each city's sea or river has FFT waves
+  from its own wind, fetch and depth, after Daniel Greenheck's Tidewater. The
+  water reflects the city and shows the bottom where it is shallow. Foam
+  follows the kind of shore: a lap against seawalls, splash off rock and swash
+  on beaches. The shoreline and the modelled bottom come from the city's own
+  map data.
+- **Landmarks and buildings at their real dimensions.** Landmarks are built in
+  code from published dimensions. Small parts like railings, lamps, mullions,
+  roof tiles and deck markings make them read as built. Every other building
+  gets a curtain-wall, ribbon or punched-window facade from its class and
+  height, with a parapet and its mapped storeys.
 - **A guided tour** written in the city's config, with numbers filled in from
   the model.
 - **A Blender twin.** `blender/build_scene.py` rebuilds the same scene
@@ -192,7 +203,7 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, landmark meshes |
-| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
+| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders |
 | `docs/` | Architecture, the game, adding a city, per-city case studies, images |
@@ -211,6 +222,11 @@ Data tab. The shared sources are:
   modules from a CDN.
 - **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular
   Women (CC0 1.0, public domain).
+- **Water:** the wave spectrum and FFT are ported from Tidewater by Daniel
+  Greenheck (github.com/dgreenheck/tidewater, MIT, © 2026 DRG Software
+  Solutions LLC). Its licence notice is at the top of `web/water.js`.
+- **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
+  through `pipeline/shore.py`.
 
 Sydney also uses these sources:
 - NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).

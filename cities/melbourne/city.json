@@ -52,7 +52,20 @@
       "canal"
     ],
     "min_area_m2": 2000,
-    "note": "The Yarra and Victoria Harbour; the GA DEM flattens the river to 0 m."
+    "note": "The Yarra and Victoria Harbour; the GA DEM flattens the river to 0 m.",
+    "waves": {
+      "wind_ms": 4.0,
+      "wind_from_deg": 0,
+      "fetch_km": 0.5,
+      "depth_m": 5,
+      "cascades_m": [33.3, 7.1, 1.7],
+      "choppiness": 0.6,
+      "note": "A light northerly across a river 100-150 m wide: short-fetch ripples. Chosen values, not a measurement."
+    },
+    "colour": "#3a3424",
+    "shallow_colour": "#5c5338",
+    "clarity_m": 0.6,
+    "colour_note": "The Yarra is turbid with suspended clay, brown-green with well under a metre of visibility."
   },
   "storey": {
     "res": [
@@ -552,6 +565,15 @@
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Melbourne has no regular ferry through the city, only river cruises and the Port Phillip Ferries from Docklands, so this river shuttle and its vessel names are invented. Victoria Harbour meets the Yarra just west of the model, so the shuttle stops short of Docklands. Routes are generated through the river, and boats run at 1.5 times a cruise boat's speed. At a wharf you can skip the wait.",
     "ferry_speed_ms": 6.0,
+    "ferry_style": {
+      "length_m": 22,
+      "beam_m": 6.5,
+      "hull": "#1d3557",
+      "trim": "#e9c46a",
+      "upper": "#f1f1ec",
+      "flag": "#1d3557",
+      "note": "An invented river shuttle, smaller than a harbour ferry."
+    },
     "helipads": [
       {
         "id": "city-helipad",

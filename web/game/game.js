@@ -59,6 +59,7 @@ window.OpenEarthGame = async function game(cityId) {
   U.uTime = { value: 0 };
   // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
+    if (Wd.sea) Wd.sea.patchGround(sh); // the wet band and swash along the shore
     sh.uniforms.uStreet = m.material.userData.street = m.material.userData.street || { value: null };
     sh.uniforms.uStreetOn = m.material.userData.streetOn = m.material.userData.streetOn || { value: 0 };
     sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWP;')
@@ -710,7 +711,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     clearTimeout(lens.t);
     lens.t = setTimeout(() => { $('#g-lens').hidden = true; U.uSel.value = -1; }, 6000);
     const s = step();
-    if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !qs.inspected.includes(m[4])) { qs.inspected.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${qs.inspected.length}/${s.sources.length})`); }
+    if (s && s.type === 'inspect' && s.sources.includes(m[4]) && !qs.inspected.includes(m[4])) { qs.inspected.push(m[4]); A.chime(); H.toast(`Found one: ${SRC[m[4]]} (${qs.inspected.length}/${s.sources.length})`); checkSteps(); }
   }
 
   // ------------------------------------------------------------ menus, map, passport
@@ -870,7 +871,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     else if (titleOn) { cam.yaw += dt * 0.05; }
     updateCamera(dt, titleOn);
     // world clocks and fades
-    Wd.tick(now);
+    Wd.tick(now, camera);
+    if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     dlg.tick(dt);
     // HUD

@@ -27,6 +27,80 @@ window.OEWorld = (function () {
     return { id: cityId, DATA, scene, B, P, LM, UNC, G, CITY, T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
   }
 
+  // surface patterns for parametric landmark materials (landmarks.json "pattern"), drawn
+  // from the meshes' texture coordinates in metres; each fades to its average colour where
+  // a pixel covers more than a few repeats, so it never shimmers at a distance
+  const PATTERNS = {
+    // the Opera House roof tiles: chevron lids between the ribs, glossy white tiles inside a
+    // lid and matte cream along its joints (u counts rib bays, v is metres along a rib)
+    chevron_tiles(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uLid: { value: m.lid_m || 2.6 }, uChev: { value: m.chevron_m || 1.8 },
+          uGloss: { value: lin('#f5f3ed') }, uCream: { value: lin('#ece4d2') } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uLid, uChev; uniform vec3 uGloss, uCream; float pCream;')
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float bay = fract(vUv.x) - 0.5, c = vUv.y - abs(bay) * uChev, lid = fract(c / uLid);
+    float edge = min(lid, 1.0 - lid) * uLid, fw = fwidth(c);
+    float cream = max(1.0 - smoothstep(0.07, 0.16, edge), 1.0 - smoothstep(0.02, 0.06, (0.5 - abs(bay)) * uChev));
+    float grout = 1.0 - smoothstep(0.0, 0.02 + fw, edge);
+    float near = 1.0 - smoothstep(0.08, 0.5, fw);
+    pCream = mix(0.18, cream, near);
+    diffuseColor.rgb = mix(uGloss, uCream, pCream) * (1.0 - 0.06 * grout * near); }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.14, 0.6, pCream);');
+      };
+    },
+    // a bridge or road deck in strips across its width (v metres from one edge): lanes with
+    // dashed lines, a railway bed with sleepers, a cycleway, a footway, concrete between
+    deck_zones(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      const kinds = { parapet: 0, barrier: 0, cycleway: 1, rail: 2, lanes6: 3, lanes2: 4, footway: 5 }, ends = [], ks = [], lanes = [];
+      let v = 0;
+      for (const [w, k] of m.zones) { v += w; ends.push(v); ks.push(kinds[k] ?? 0); lanes.push(k === 'lanes6' ? 6 : k === 'lanes2' ? 2 : 1); }
+      while (ends.length < 16) { ends.push(1e9); ks.push(0); lanes.push(1); }
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uEnds: { value: ends }, uKinds: { value: ks }, uLanes: { value: lanes },
+          uAsphalt: { value: lin('#3b3d40') }, uConcrete: { value: lin('#a9a59d') }, uBallast: { value: lin('#5c544b') }, uPaint: { value: lin('#e9e6dc') } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcrete, uBallast, uPaint; float pRough;`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float u = vUv.x, v = vUv.y, z0 = 0.0, z1 = 0.0, kind = 0.0, n = 1.0;
+    for (int i = 0; i < 16; i++) { if (v < uEnds[i]) { z1 = uEnds[i]; kind = uKinds[i]; n = uLanes[i]; break; } z0 = uEnds[i]; }
+    float fw = max(fwidth(u), fwidth(v)), near = 1.0 - smoothstep(0.15, 0.8, fw);
+    vec3 col = uConcrete; pRough = 0.85;
+    if (kind > 2.5 && kind < 4.5) { // traffic lanes: dashed lines between, solid at the edges
+      float x = (v - z0) / (z1 - z0) * n, d = min(fract(x), 1.0 - fract(x)) * (z1 - z0) / n;
+      float dash = step(fract(u / 12.0), 0.35), edgeLine = step(x, 0.06) + step(n - 0.06, x);
+      float paint = (1.0 - smoothstep(0.06, 0.06 + fw, d)) * max(dash, edgeLine) * near;
+      col = mix(uAsphalt, uPaint, paint); pRough = 0.9;
+    } else if (kind > 1.5 && kind < 2.5) { // the railway bed: ballast and sleepers
+      float sl = 1.0 - smoothstep(0.12, 0.12 + fw, abs(fract(u / 0.65) - 0.5) * 0.65);
+      col = mix(uBallast, uBallast * 0.55, sl * near); pRough = 0.95;
+    } else if (kind > 0.5 && kind < 1.5) { col = mix(uAsphalt, uConcrete, 0.25); pRough = 0.9; }
+    else if (kind > 4.5) { // footway: concrete flags
+      float j = 1.0 - smoothstep(0.02, 0.02 + fw, min(abs(fract(u / 1.8) - 0.5), abs(fract((v - z0) / 1.6) - 0.5)) * 1.7);
+      col = uConcrete * (1.0 - 0.15 * j * near);
+    }
+    diffuseColor.rgb = col; }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = pRough;');
+      };
+    },
+    // railing bars cut out of a strip (u metres along, v metres up): bars, a top and a bottom rail
+    railing(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      const [r0, r1] = m.rails_m || [0.08, 1.25];
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uBar: { value: m.bar_m || 0.13 }, uR0: { value: r0 }, uR1: { value: r1 } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uBar, uR0, uR1;')
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float fw = fwidth(vUv.x), bar = abs(fract(vUv.x / uBar) - 0.5) * uBar;
+    float keep = max(step(bar, 0.012 + 0.5 * fw), max(step(abs(vUv.y - uR0), 0.04), step(abs(vUv.y - uR1), 0.05)));
+    keep = max(keep, step(0.25, fw / uBar)); // too far to resolve the bars: a solid, see-through-ish strip
+    if (keep < 0.5 || (fw / uBar > 0.25 && fract(dot(gl_FragCoord.xy, vec2(0.5, 0.25))) < 0.5)) discard; }`);
+      };
+    }
+  };
+
   // build the scene into a new THREE.Scene; the caller owns the renderer and camera
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
@@ -93,7 +167,22 @@ window.OEWorld = (function () {
       groundMeshes.push(m);
     }
 
-    // water: a slightly see-through sheet at sea level with procedural ripples; on land the terrain covers it
+    // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
+    // the old see-through sheet with ripples. On land the terrain covers it either way.
+    let sea = null, shoreTex = null;
+    if (scene.shore) {
+      shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
+      if (shoreTex) { shoreTex.colorSpace = THREE.NoColorSpace; shoreTex.generateMipmaps = false; shoreTex.minFilter = THREE.LinearFilter; shoreTex.flipY = false; }
+    }
+    const quality = (new URLSearchParams(location.search)).get('water') || 'auto';
+    if (window.OEWater && quality !== 'flat' && renderer.capabilities.isWebGL2 &&
+        (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'))) {
+      try {
+        const sh = scene.shore;
+        sea = OEWater.create(renderer, scene.water || {}, shoreTex && { texture: shoreTex, x0: sh.x0, y1: sh.y1, w: sh.nx * sh.cell, h: sh.ny * sh.cell, slopes: sh.slopes, floor_m: sh.floor_m },
+          { small, software: OEWater.software(renderer), quality });
+      } catch (e) { console.warn('water: falling back to the flat sheet', e); sea = null; }
+    }
     function rippleTexture() {
       const n = 128, c = document.createElement('canvas');
       c.width = c.height = n;
@@ -120,24 +209,43 @@ window.OEWorld = (function () {
       opacity: 0.84, normalMap: rippleTexture(), normalScale: new THREE.Vector2(0.25, 0.25) });
     const waterGeo = new THREE.PlaneGeometry(80000, 80000);
     waterGeo.rotateX(-Math.PI / 2);
-    const water = new THREE.Mesh(waterGeo, waterMat);
+    const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
     world.add(water);
+    if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => sea.patchGround(sh);
 
     // ------------------------------------------------------------ buildings
     loadMsg(`Extruding ${B.b.length.toLocaleString()} buildings`, 0.5);
     await idle();
     const SRC = { mapped: 0, reference: 0, verified: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
+    // flat roofs sit this far below the wall tops, behind a parapet, so the outline keeps
+    // the building's stated height
+    const PARAPET = 0.5;
     function extrude(solids, colourOf) {
-      const pos = [], nrm = [], col = [], fac = [], bid = [], src = [], idx = [];
-      let v = 0;
+      const pos = [], nrm = [], col = [], fac = [], bid = [], src = [], sty = [], idx = [];
+      let v = 0, style = [3, 3.5];
       const push = (x, y, z, n, c, u, h, b, s) => {
-        pos.push(x, z, -y); nrm.push(n[0], n[1], n[2]); col.push(c.r, c.g, c.b); fac.push(u, h); bid.push(b); src.push(s);
+        pos.push(x, z, -y); nrm.push(n[0], n[1], n[2]); col.push(c.r, c.g, c.b); fac.push(u, h); bid.push(b); src.push(s); sty.push(style[0], style[1]);
       };
       for (const s of solids) {
         const bi = s[0], g0 = s[1] / 10, zb = g0 + s[2] / 10, zt = g0 + s[3] / 10;
-        const { wall, roof, code, windows } = colourOf(bi);
+        const { wall, roof, code, windows, facade = 3, storey = 3.5 } = colourOf(bi);
+        style = [windows ? facade : 3, storey];
+        const recess = windows && zt - zb > 4 ? PARAPET : 0, zr = zt - recess;
         const rings = s.slice(4).map(r => r.map(q => q / 10));
+        if (recess) for (const r of rings) { // the parapet's inner face, above the recessed roof
+          const n = r.length / 2;
+          for (let k = 0; k < n; k++) {
+            const ax = r[2 * k], ay = r[2 * k + 1], j = (k + 1) % n, bx = r[2 * j], by = r[2 * j + 1];
+            const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+            if (L < 0.05) continue;
+            const nn = [-dy / L, 0, -dx / L];
+            push(bx, by, zr, nn, wall, 0, -1, bi, code); push(ax, ay, zr, nn, wall, 0, -1, bi, code);
+            push(ax, ay, zt, nn, wall, 0, -1, bi, code); push(bx, by, zt, nn, wall, 0, -1, bi, code);
+            idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
+            v += 4;
+          }
+        }
         for (const r of rings) {
           const n = r.length / 2;
           let u = 0;
@@ -165,7 +273,7 @@ window.OEWorld = (function () {
         let faces;
         try { faces = THREE.ShapeUtils.triangulateShape(contour, holes); } catch (e) { faces = []; }
         const all = contour.concat(...holes), base = v;
-        for (const p of all) { push(p.x, p.y, zt, [0, 1, 0], roof, -1, -1, bi, code); v++; }
+        for (const p of all) { push(p.x, p.y, zr, [0, 1, 0], roof, -1, -1, bi, code); v++; }
         for (const f of faces) {
           const a = all[f[0]], b = all[f[1]], c = all[f[2]];
           const ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0;
@@ -179,16 +287,23 @@ window.OEWorld = (function () {
       g.setAttribute('fac', new THREE.Float32BufferAttribute(fac, 2));
       g.setAttribute('bid', new THREE.Float32BufferAttribute(bid, 1));
       g.setAttribute('srcCode', new THREE.Float32BufferAttribute(src, 1));
+      g.setAttribute('sty', new THREE.Float32BufferAttribute(sty, 2));
       g.setIndex(idx);
       g.computeBoundingSphere();
       return g;
     }
+    const RESIDENTIAL_CLASSES = new Set(['apartments', 'residential', 'house', 'hotel', 'dormitory', 'terrace', 'semidetached_house', 'detached', 'bungalow']);
     const colourCache = new Map();
     const bColour = bi => {
       let c = colourCache.get(bi);
       if (!c) {
         const m = B.b[bi];
-        c = { wall: lin(m[7]), roof: lin(m[8]), code: SRC[m[4]] ?? 2, windows: m[2] >= 9 && m[1] !== 'roof' && m[4] !== 'parametric' };
+        // facade style: 2 a glass curtain wall (towers), 1 ribbon windows (offices and shops),
+        // 0 punched windows; the storey height from the floor count where it is mapped
+        const res = RESIDENTIAL_CLASSES.has(m[1]), top = m[2];
+        const storey = m[3] > 0 ? Math.min(5, Math.max(2.7, top / m[3])) : res ? 3.0 : 3.9;
+        c = { wall: lin(m[7]), roof: lin(m[8]), code: SRC[m[4]] ?? 2, windows: top >= 9 && m[1] !== 'roof' && m[4] !== 'parametric',
+          facade: top >= 55 ? 2 : !res && top >= 15 ? 1 : 0, storey };
         colourCache.set(bi, c);
       }
       return c;
@@ -201,36 +316,78 @@ window.OEWorld = (function () {
         Object.assign(sh.uniforms, U);
         sh.vertexShader = sh.vertexShader
           .replace('#include <common>', `#include <common>
-  attribute vec2 fac; attribute float bid; attribute float srcCode;
-  varying vec2 vFac; varying float vBid; varying float vSrc;`)
+  attribute vec2 fac; attribute float bid; attribute float srcCode; attribute vec2 sty;
+  varying vec2 vFac; varying float vBid; varying float vSrc; varying vec2 vSty;`)
           .replace('#include <begin_vertex>', `#include <begin_vertex>
-  vFac = fac; vBid = bid; vSrc = srcCode;`);
+  vFac = fac; vBid = bid; vSrc = srcCode; vSty = sty;`);
         sh.fragmentShader = sh.fragmentShader
           .replace('#include <common>', `#include <common>
   uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
-  varying vec2 vFac; varying float vBid; varying float vSrc;
-  float hash21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }`)
+  varying vec2 vFac; varying float vBid; varying float vSrc; varying vec2 vSty;
+  // an integer hash of (bay, storey, building): exact, so interpolation noise in the inputs
+  // cannot turn into per-pixel speckle the way a float hash of large numbers does
+  float ihash(vec2 cell, float b, uint salt) {
+    uint h = uint(max(cell.x, 0.0)) * 73856093u ^ uint(max(cell.y, 0.0)) * 19349663u ^ uint(floor(b + 0.5)) * 83492791u ^ salt;
+    h = (h ^ (h >> 13u)) * 1274126177u; h ^= h >> 16u;
+    return float(h & 65535u) / 65535.0;
+  }
+  // a soft-edged band lo..hi of x, antialiased by w
+  float band(float x, float lo, float hi, float w) { return smoothstep(lo - w, lo + w, x) * (1.0 - smoothstep(hi - w, hi + w, x)); }
+  float gRough, gMetal;`)
           .replace('#include <color_fragment>', `#include <color_fragment>
-  float win = 0.0; vec2 cell = vec2(0.0);
-  if (vFac.y >= 0.0) {
-    vec2 q = vec2(vFac.x / 3.4, vFac.y / 3.6);
-    cell = floor(q); vec2 f = fract(q);
-    win = step(0.14, f.x) * step(f.x, 0.86) * step(0.3, f.y) * step(f.y, 0.86) * step(3.0, vFac.y);
+  // facades: glazing by storey (vSty.y m) in the style vSty.x; the pattern fades to its
+  // average where a storey is only a few pixels, so distant towers do not shimmer
+  float win = 0.0; vec2 cell = vec2(0.0); gRough = 0.8; gMetal = 0.05;
+  vec3 wallC = diffuseColor.rgb;
+  if (vFac.y >= 0.0 && vSty.x < 2.5) {
+    float st = vSty.y, h = vFac.y, u = vFac.x, lvl = floor(h / st), fy = fract(h / st);
+    float px = max(fwidth(h), fwidth(u)) + 1e-4, far = smoothstep(0.08, 0.35, px / st), aw = px * 0.75;
+    float glaze = 0.0, frame = 0.0, bay = 1.6;
+    if (vSty.x > 1.5) { // curtain wall: glass between mullions, an opaque spandrel at each slab
+      bay = 1.5;
+      float fx = fract(u / bay), mull = 1.0 - band(fx, 0.05, 0.95, aw / bay);
+      glaze = band(fy, 0.2, 1.0, aw / st) * (1.0 - mull);
+      frame = mull * band(fy, 0.2, 1.0, aw / st);
+    } else if (vSty.x > 0.5) { // ribbon windows: a band of glass each storey, mullions every 1.8 m
+      bay = 1.8;
+      float fx = fract(u / bay);
+      glaze = band(fy, 0.34, 0.86, aw / st) * band(fx, 0.04, 0.96, aw / bay);
+    } else { // punched windows with a sill
+      bay = 3.4;
+      float fx = fract(u / bay);
+      glaze = band(fx, 0.16, 0.84, aw / bay) * band(fy, 0.3, 0.84, aw / st);
+      frame = band(fx, 0.12, 0.88, aw / bay) * band(fy, 0.24, 0.3, aw / st);
+    }
+    glaze *= step(2.5, h);
+    // the ground floor of offices and towers is a shopfront
+    if (vSty.x > 0.5 && lvl < 0.5) { float fx = fract(u / 3.0); glaze = band(fy, 0.06, 0.82, aw / st) * band(fx, 0.03, 0.97, aw / 3.0); frame = 0.0; }
+    cell = vec2(floor(u / bay), lvl);
+    float tone = ihash(cell, vBid, 17u);
+    vec3 glass = mix(wallC * 0.22 + vec3(0.010, 0.016, 0.024), wallC * 0.35, vSty.x > 1.5 ? 0.5 : 0.0) * (0.85 + 0.3 * tone);
+    vec3 detailed = mix(mix(wallC, wallC * 1.12, frame), glass, glaze);
+    vec3 average = mix(wallC, glass, vSty.x > 1.5 ? 0.7 : vSty.x > 0.5 ? 0.45 : 0.3);
+    diffuseColor.rgb = mix(detailed, average, far);
+    win = mix(glaze, vSty.x > 1.5 ? 0.7 : 0.3, far);
+    gRough = mix(0.8, vSty.x > 1.5 ? 0.12 : 0.2, win);
+    gMetal = mix(0.05, vSty.x > 1.5 ? 0.35 : 0.1, win);
   }
   if (uMode > 0.5) {
     diffuseColor.rgb = vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8)));
-    win = 0.0;
-  } else {
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.4 + vec3(0.012, 0.018, 0.026), win * 0.72);
+    win = 0.0; gRough = 0.8; gMetal = 0.05;
   }
   if (abs(vBid - uSel) < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.42, 0.12), 0.6);`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = gRough;')
+          .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = gMetal;')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  float lit = step(0.6, hash21(cell + vec2(vBid * 0.173, vBid * 0.311)));
-  totalEmissiveRadiance += win * lit * uNight * vec3(1.0, 0.72, 0.4) * 1.5;`);
+  float lit = step(0.6, ihash(cell, vBid, 101u));
+  vec3 lamp = mix(vec3(1.0, 0.72, 0.4), vec3(0.85, 0.9, 1.0), step(0.75, ihash(cell, vBid, 211u)));
+  totalEmissiveRadiance += win * lit * uNight * lamp * 1.5;`);
       };
       return mat;
     }
-    const bGeo = extrude(B.s, bColour);
+    // parts a parametric landmark draws instead stay in B.s (and the surface model), not on screen
+    const hiddenSolids = new Set(scene.hidden_solids || []);
+    const bGeo = extrude(hiddenSolids.size ? B.s.filter((_, i) => !hiddenSolids.has(i)) : B.s, bColour);
     const buildings = new THREE.Mesh(bGeo, facadeMaterial());
     if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
       bGeo.boundsTree = new THREE.MeshBVH(bGeo);
@@ -272,19 +429,25 @@ window.OEWorld = (function () {
     loadMsg('Building the landmarks', 0.65);
     await idle();
     const lmMats = {}, floodMats = {};
-    for (const [k, m] of Object.entries(LM.materials || {}))
+    for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
+      if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
+    }
     // meshes marked floodlit glow after dark
-    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin('#ffe2b8'), emissiveIntensity: 0 }));
+    // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
+    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin('#ffe2b8'), emissiveIntensity: 0,
+      onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
     for (const m of LM.meshes || []) {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
       g.setIndex(m.index);
+      if (m.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
       g.computeVertexNormals();
       const mesh = new THREE.Mesh(g, m.floodlit ? floodlit(m.material) : lmMats[m.material]);
       mesh.castShadow = mesh.receiveShadow = true;
+      if ((LM.materials[m.material] || {}).pattern === 'railing') mesh.castShadow = false; // a cut-out strip; its shadow would be solid
       mesh.name = m.name;
       world.add(mesh);
     }
@@ -292,7 +455,7 @@ window.OEWorld = (function () {
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, sea, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth}; returns the daylight factor 0..1
       setSun(sp) {
@@ -325,8 +488,9 @@ window.OEWorld = (function () {
         sunLight.target.position.copy(target);
         sunLight.position.copy(target).addScaledVector(api.sunDir, 4500);
       },
-      tick(t) { waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025); },
-      dispose() { if (envRT) envRT.dispose(); pmrem.dispose(); },
+      // per frame, before the render: the waves (and their reflection) for this camera
+      tick(t, camera) { if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025); },
+      dispose() { if (envRT) envRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); },
     };
     return api;
   }

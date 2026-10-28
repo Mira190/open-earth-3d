@@ -18,9 +18,22 @@ from the data:
                       A 12 m forecourt apron ramps up to the first tread: the 5 m DEM
                       dips up to 2 m at the foot, where the vehicle concourse runs in
                       under the forecourt, which would leave the first riser a wall.
+                      The shells carry "a subtle chevron pattern composed of 1,056,006
+                      tiles in two colours: glossy white and matte cream", laid in sheets
+                      on the ground (Wikipedia, Sydney Opera House, revision 1382109423);
+                      the pattern's lid size here is an approximation.
   Harbour Bridge      arch span 503 m between bearings, crown 134 m above sea level,
                       28 panels, trusses 30 m apart, deck 49 m wide with 49 m
-                      clearance; alignment from the two pylon footprints in OSM.
+                      clearance; alignment from the two pylon footprints in OSM. The deck
+                      carries, west to east, the cycleway, the North Shore railway, the six
+                      original lanes, lanes 7 and 8 (the former tram tracks) and the
+                      footway (Wikipedia, Sydney Harbour Bridge, revision 1381717237); the
+                      widths of those strips are approximations that add up to 48.8 m.
+  Sydney Tower        309 m to the top of the lightning rod, with a golden turret
+                      (Wikipedia, Sydney Tower, revision 1381960211); the shaft, turret and
+                      mast take their sizes and heights from the OSM parts they replace.
+                      The cable stays form a hyperboloid as photographed; their number here
+                      is not from a cited source.
 """
 import math
 
@@ -32,15 +45,29 @@ OPERA = "Sydney Opera House"
 PYLONS = ("Sydney Harbour Bridge - South Pylons", "Sydney Harbour Bridge - North Pylons")
 BRIDGE_DECK_TOP = 52.0  # 49 m clearance plus the deck structure
 R_SHELL = 75.2
+# the deck from its western edge: (width m, kind); see the docstring
+DECK_ZONES = [(0.5, "parapet"), (3.5, "cycleway"), (0.4, "barrier"), (10.0, "rail"), (0.6, "barrier"), (20.4, "lanes6"),
+              (0.6, "barrier"), (6.8, "lanes2"), (0.6, "barrier"), (4.9, "footway"), (0.5, "parapet")]
 MATERIALS = {
-    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0},
+    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.6, "chevron_m": 1.8},
+    "tile_edge": {"color": "#ddd6c6", "roughness": 0.7, "metalness": 0.0},
     "glass": {"color": "#2a2622", "roughness": 0.08, "metalness": 0.6},
+    "mullion": {"color": "#3b342c", "roughness": 0.5, "metalness": 0.6},
     "podium": {"color": "#c9a77e", "roughness": 0.9, "metalness": 0.0},
     "steel": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4},
-    "deck": {"color": "#5e6164", "roughness": 0.85, "metalness": 0.1},
+    "deck": {"color": "#5e6164", "roughness": 0.85, "metalness": 0.1, "pattern": "deck_zones", "zones": DECK_ZONES},
+    "rail": {"color": "#55504a", "roughness": 0.4, "metalness": 0.8},
+    "railing": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4, "pattern": "railing", "bar_m": 0.13, "rails_m": [0.08, 1.25]},
+    "barrier": {"color": "#b9b4aa", "roughness": 0.85, "metalness": 0.0},
+    "lamp": {"color": "#d9d4c8", "roughness": 0.4, "metalness": 0.2},
     "granite": {"color": "#cbb7a4", "roughness": 0.8, "metalness": 0.0},
     "granite_riser": {"color": "#a8968a", "roughness": 0.85, "metalness": 0.0},  # darker, so the steps read
+    "tower": {"color": "#c9cdd0", "roughness": 0.6, "metalness": 0.1},
+    "turret": {"color": "#c9a04a", "roughness": 0.25, "metalness": 0.85},
+    "turret_glass": {"color": "#6e5524", "roughness": 0.1, "metalness": 0.7},
+    "cable": {"color": "#a3aaaf", "roughness": 0.45, "metalness": 0.6},
 }
+SYDNEY_TOWER = "Sydney Tower"  # the turret part's name; the shaft and mast are unnamed parts above 200 m beside it
 # Monumental Steps, measured on the aerial photo: width, depth from the podium edge to the
 # forecourt, top landing depth, middle landing depth, lateral offset from the podium axis
 STEPS = {"width": 90.0, "depth": 40.0, "top_landing": 12.0, "mid_landing": 5.0, "lateral": -3.0, "riser": 0.15, "apron": 12.0}
@@ -63,6 +90,20 @@ def adjust_building(b, cls, g, geoms, ctx):
             "ground_m": round(min(ctx.ground(x, y) for x, y in np.asarray(g.exterior.coords)), 1) if g.geom_type == "Polygon" else None,
         }
         return [[p, 0.0, 6.0, "parametric", None] for p in ctx.polygons(g)]
+    turret = next((q for q in geoms if q[4] == SYDNEY_TOWER), None)
+    if turret is not None:  # the shaft, turret and mast become one parametric tower
+        c = turret[0].centroid
+        near = [q for q in geoms if q[2] > 200 and q[0].centroid.distance(c) < 12]
+        rest = [q for q in geoms if q not in near]
+        shaft = max((q for q in near if q[4] != SYDNEY_TOWER and q[0].area > 50), key=lambda q: q[0].area)
+        g0 = ctx.ground(c.x, c.y)
+        podium = max((q[2] for q in rest if q[0].contains(c)), default=0.0)
+        ctx.landmarks["sydney_tower"] = {"at": [round(c.x, 1), round(c.y, 1)], "ground_m": round(g0, 1), "podium_m": round(g0 + podium, 1),
+                                         "shaft_r": round(math.sqrt(shaft[0].area / math.pi), 2), "turret_r": round(math.sqrt(turret[0].area / math.pi), 2),
+                                         "turret_m": [round(g0 + turret[1], 1), round(g0 + turret[2], 1)], "top_m": round(g0 + max(q[2] for q in near), 1)}
+        for q in near:  # still in the surface model: the tower's shadow counts in the analyses
+            ctx.hide(q)
+        return geoms
     if b["name"] in PYLONS:
         ctx.landmarks.setdefault("bridge_pylons", {})[b["name"].split(" - ")[1].split()[0].lower()] = \
             [round(g.centroid.x, 1), round(g.centroid.y, 1)]
@@ -94,6 +135,9 @@ def finalize(ctx):
         ctx.landmarks["harbour_bridge"]["deck_profile"] = deck_profile(ctx, (s + n) / 2, u, float(np.linalg.norm(d)) / 2)
         m = (s + n) / 2
         ctx.labels["Sydney Harbour Bridge"] = [round(float(m[0]), 1), round(float(m[1]), 1), 142.0]
+    if "sydney_tower" in ctx.landmarks:
+        t = ctx.landmarks["sydney_tower"]
+        ctx.labels["Sydney Tower"] = [t["at"][0], t["at"][1], t["top_m"] - 30.0]
     if "opera_house" in ctx.landmarks:
         o = ctx.landmarks["opera_house"]
         ctx.labels["Sydney Opera House"] = [o["centroid"][0], o["centroid"][1], 72.0]
@@ -197,6 +241,8 @@ def landmark_meshes(scene):
             meshes += steps_mesh(lm["opera_house"]["steps"])
     if "harbour_bridge" in lm:
         meshes += harbour_bridge(lm["harbour_bridge"])
+    if "sydney_tower" in lm:
+        meshes += sydney_tower(lm["sydney_tower"])
     return MATERIALS, meshes
 
 
@@ -239,7 +285,8 @@ def opera_house(o, podium_top):
         xy = c + f * fw + l * lat
         return np.array([xy[0], xy[1], z])
 
-    shells, glass = Mesh("opera_shells", "tile", True, floodlit=True), Mesh("opera_glass", "glass", False)
+    shells = Mesh("opera_shells", "tile", True, floodlit=True, uv=True)
+    rims, glass, mullions = Mesh("opera_shell_rims", "tile_edge", False), Mesh("opera_glass", "glass", False), Mesh("opera_mullions", "mullion", False)
     # (lateral centre, pedestal along-axis, tip along-axis, tip height AHD, half-width, facing)
     # facing +1 opens to the harbour (north), -1 to the forecourt (south)
     halls = {
@@ -257,13 +304,36 @@ def opera_house(o, podium_top):
                 d = P(fd, lat0 + side * hw, podium_top)
                 inward = P((fa + fb) / 2, lat0, podium_top - 30) - (a + b + d) / 3  # below the hall centreline
                 ctr = sphere_centre(a, b, d, R_SHELL, inward)
-                shells.grid(spherical_triangle(a, b, d, ctr))
-                # glazed mouth: fan from the foot of the tip down to the arc b..d
+                pts = spherical_triangle(a, b, d, ctr)
+                shells.grid(pts, shell_uv(pts))
+                # the shell's thickness along its free edge: precast ribs under the tiled panels
+                arc = pts[-1]
+                inner = [q - (q - ctr) / np.linalg.norm(q - ctr) * 1.1 for q in arc]
+                for k in range(len(arc) - 1):
+                    rims.quad(arc[k], arc[k + 1], inner[k + 1], inner[k]) if side > 0 else rims.quad(arc[k + 1], arc[k], inner[k], inner[k + 1])
+                # glazed mouth: fan from the foot of the tip down to the arc b..d, with mullions
                 foot = P(fd, lat0, podium_top)
-                arc = spherical_triangle(a, b, d, ctr)[-1]
                 for k in range(len(arc) - 1):
                     glass.tri(foot, arc[k], arc[k + 1]) if side > 0 else glass.tri(foot, arc[k + 1], arc[k])
-    return [shells, glass]
+                for k in range(1, len(arc) - 1, 2):
+                    mullions.box(foot, arc[k] - (arc[k] - foot) * 0.01, 0.16, 0.24)
+    return [shells, rims, glass, mullions]
+
+
+def shell_uv(pts):
+    """Texture coordinates for one spherical triangle from spherical_triangle(): u counts the
+    rib bays across the shell (the ribs fan out from the pedestal), v is metres along a rib."""
+    rows, cols = len(pts), len(pts[0])
+    edge = sum(np.linalg.norm(pts[-1][j + 1] - pts[-1][j]) for j in range(cols - 1))
+    bays = max(3, round(edge / 4.2))
+    uv = [[[0.0, 0.0] for _ in range(cols)] for _ in range(rows)]
+    for j in range(cols):
+        v = 0.0
+        for r in range(rows):
+            if r:
+                v += np.linalg.norm(pts[r][j] - pts[r - 1][j])
+            uv[r][j] = [bays * j / (cols - 1), v]
+    return uv
 
 
 def steps_mesh(st):
@@ -322,7 +392,9 @@ def harbour_bridge(h):
         z_end = z_bear + end_depth
         return z_end + (z_crown - z_end) * (1 - (u / half) ** 2)
 
-    steel, deck = Mesh("bridge_steel", "steel", False), Mesh("bridge_deck", "deck", False)
+    steel, deck = Mesh("bridge_steel", "steel", False), Mesh("bridge_deck", "deck", False, uv=True)
+    # the steel inside the deck's depth; named under the deck strip, whose slab the game uses for it
+    under_steel = Mesh("bridge_deck_steel", "steel", False)
     us = np.linspace(-half, half, panels + 1)
     for v in (-h["truss_spacing_m"] / 2, h["truss_spacing_m"] / 2):
         for k in range(panels):
@@ -349,22 +421,110 @@ def harbour_bridge(h):
     # deck: level across the arch and pylons, then the approach viaducts down to the ground
     w = h["deck_width_m"] / 2
     prof = h.get("deck_profile") or [[-np.linalg.norm(n - s) / 2 - 190, deck_top], [np.linalg.norm(n - s) / 2 + 190, deck_top]]
+    slab = 0.5  # the deck slab; under it, inside the deck's depth, the steel that carries it
+    run = 0.0  # metres along the deck, for the lane markings
     for (u0, z0), (u1, z1) in zip(prof[:-1], prof[1:]):
         a0, a1, b0, b1 = P(u0, -w, z0), P(u1, -w, z1), P(u0, w, z0), P(u1, w, z1)
         under = lambda p: p - np.array([0, 0, deck_top - deck_under])
-        deck.quad(a0, b0, b1, a1)
-        deck.quad(under(a1), under(b1), under(b0), under(a0))
+        soffit = lambda p: p - np.array([0, 0, slab])
+        seg = float(np.linalg.norm(a1 - a0))
+        deck.quad(a0, b0, b1, a1, [[run, 0], [run, 2 * w], [run + seg, 2 * w], [run + seg, 0]])
+        run += seg
+        under_steel.quad(soffit(a1), soffit(b1), soffit(b0), soffit(a0))
         deck.quad(a0, a1, under(a1), under(a0))
         deck.quad(b1, b0, under(b0), under(b1))
+    # the deck's steel, seen from below: edge girders behind the fascias, stringers along the
+    # deck, and a cross girder at every panel point (the hangers' spacing) along its length
+    depth = deck_top - deck_under - slab
+    along = lambda v: [P(u, v, z - slab) for u, z in prof]
+    for v in (-w + 0.35, w - 0.35):
+        under_steel.sweep(along(v), [(-0.3, -depth), (0.3, -depth), (0.3, 0.0), (-0.3, 0.0)])
+    for v in np.linspace(-w + 5, w - 5, 7):
+        under_steel.sweep(along(v), [(-0.22, -1.2), (0.22, -1.2), (0.22, 0.0), (-0.22, 0.0)])
+    panel = h["span_m"] / panels
+    for u in np.arange(np.ceil(prof[0][0] / panel) * panel, prof[-1][0], panel):
+        zc = deck_at(prof, u) - slab - depth / 2
+        under_steel.box(P(u, -w + 0.65, zc), P(u, w - 0.65, zc), 0.7, depth)
     deck.quad(P(prof[0][0], w, prof[0][1]), P(prof[0][0], -w, prof[0][1]),
               P(prof[0][0], -w, prof[0][1] - 3), P(prof[0][0], w, prof[0][1] - 3))
     deck.quad(P(prof[-1][0], -w, prof[-1][1]), P(prof[-1][0], w, prof[-1][1]),
               P(prof[-1][0], w, prof[-1][1] - 3), P(prof[-1][0], -w, prof[-1][1] - 3))
     half_pyl = np.linalg.norm(n - s) / 2
+    furniture = deck_furniture(P, prof, w)
     for sign, g in ((-1, h["approach_ground_south"]), (1, h["approach_ground_north"])):  # approach piers
         end = abs(prof[0][0] if sign < 0 else prof[-1][0])
         for u in np.arange(half_pyl + 40, end - 15, 45):
             zt = deck_at(prof, sign * u) - 3.0
             for v in (-w + 4, w - 4):
                 steel.box(P(sign * u, v, g - 5), P(sign * u, v, zt), 4.0, 4.0)
-    return [steel, deck]
+    return [steel, deck, under_steel] + furniture
+
+
+def deck_furniture(P, prof, w):
+    """On the deck: the railway's two tracks, the concrete barriers between the strips, a
+    railing along both edges and lamp standards; P(u, v, z) with v from the deck's centre
+    (east positive), prof the deck profile [[u, z]], w the half width."""
+    # named under the deck strip ("bridge_deck"), so the game walks them as part of the deck
+    rails, barriers, railings, lamps, heads = (Mesh("bridge_deck_rails", "rail", False), Mesh("bridge_deck_barriers", "barrier", False),
+                                              Mesh("bridge_deck_railings", "railing", False, uv=True), Mesh("bridge_deck_lamps", "lamp", False),
+                                              Mesh("bridge_deck_lamp_heads", "lamp", False, floodlit=True))
+    edges, v = [], 0.0
+    for width, kind in DECK_ZONES:
+        edges.append((v - w, v + width - w, kind))
+        v += width
+    along = lambda vv, dz: [P(u, vv, z + dz) for u, z in prof]
+    for v0, v1, kind in edges:
+        if kind == "rail":  # standard gauge, two tracks
+            for tc in (v0 + (v1 - v0) * 0.25, v0 + (v1 - v0) * 0.75):
+                for r in (-0.7175, 0.7175):
+                    rails.sweep(along(tc + r, 0.0), [(-0.035, 0.0), (0.035, 0.0), (0.035, 0.16), (-0.035, 0.16)])
+        if kind == "barrier":  # a New Jersey profile, 0.9 m high
+            hw = (v1 - v0) / 2
+            barriers.sweep(along((v0 + v1) / 2, 0.0), [(-hw, 0.0), (hw, 0.0), (hw * 0.55, 0.3), (hw * 0.3, 0.9), (-hw * 0.3, 0.9), (-hw * 0.55, 0.3)])
+    for vv in (-w + 0.25, w - 0.25):  # railings: a strip with the bars cut out by the material
+        railings.panel(along(vv, 0.0), 1.3)
+    # lamps on the barriers either side of the six lanes, every 36 m along the deck
+    lane = next(e for e in edges if e[2] == "lanes6")
+    for vb, side in ((lane[0] - 0.3, 1), (lane[1] + 0.3, -1)):
+        run = 0.0
+        for (u0, z0), (u1, z1) in zip(prof[:-1], prof[1:]):
+            L = math.hypot(u1 - u0, z1 - z0)
+            for t in np.arange((-run) % 36.0, L, 36.0):
+                u, z = u0 + (u1 - u0) * t / L, z0 + (z1 - z0) * t / L
+                base, top = P(u, vb, z + 0.9), P(u, vb, z + 9.0)
+                lamps.box(base, top, 0.22, 0.22)
+                end = P(u, vb + side * 2.2, z + 9.3)
+                lamps.box(top, end, 0.14, 0.14)
+                heads.box(end - np.array([0, 0, 0.2]), end + np.array([0, 0, 0.05]), 0.7, 0.35)
+            run += L
+    return [rails, barriers, railings, lamps, heads]
+
+
+# ---------------------------------------------------------------- Sydney Tower
+
+def sydney_tower(t):
+    """Shaft, golden turret, mast and the cable stays, on the replaced OSM parts' sizes."""
+    cx, cy = t["at"]
+    z_pod, (z_t0, z_t1), z_top = t["podium_m"], t["turret_m"], t["top_m"]
+    rs, rt = t["shaft_r"], t["turret_r"]
+    shaft, turret, glazing, mast, cables = (Mesh("sydney_tower_shaft", "tower", True), Mesh("sydney_tower_turret", "turret", True, floodlit=True),
+                                            Mesh("sydney_tower_glazing", "turret_glass", True), Mesh("sydney_tower_mast", "tower", True),
+                                            Mesh("sydney_tower_cables", "cable", False))
+    shaft.lathe([(z_pod - 1.0, rs), (z_t0 + 1.0, rs)], (cx, cy), 28)
+    h = z_t1 - z_t0
+    # the turret: a flared underside, two glazed bands of levels between gold bands, and a cap
+    prof = [(z_t0, rs), (z_t0 + 0.18 * h, rt * 0.94), (z_t0 + 0.24 * h, rt), (z_t0 + 0.30 * h, rt), (z_t0 + 0.52 * h, rt),
+            (z_t0 + 0.58 * h, rt * 1.01), (z_t0 + 0.80 * h, rt * 1.01), (z_t0 + 0.86 * h, rt * 0.97), (z_t1, rt * 0.55), (z_t1 + 0.6, rs * 0.4)]
+    turret.lathe(prof, (cx, cy), 48)
+    for z0, z1 in ((z_t0 + 0.31 * h, z_t0 + 0.51 * h), (z_t0 + 0.59 * h, z_t0 + 0.79 * h)):
+        glazing.lathe([(z0, rt * 1.012), (z1, rt * 1.012)], (cx, cy), 48)
+    # the mast with the lightning rod, tapering to the published 309 m
+    mast.lathe([(z_t1 + 0.5, rs * 0.32), (z_t1 + 0.55 * (z_top - z_t1), 0.9), (z_top - 4.0, 0.35), (z_top, 0.08)], (cx, cy), 12)
+    # cable stays from under the turret down to the podium roof, twisted into a hyperboloid
+    n, twist, r_top, r_bot, z_c = 36, math.radians(55), rs + 0.6, rs + 16.0, z_t0 - 12.0
+    for k in range(n):
+        a = 2 * math.pi * k / n
+        top = (cx + r_top * math.cos(a), cy + r_top * math.sin(a), z_c)
+        bot = (cx + r_bot * math.cos(a + twist), cy + r_bot * math.sin(a + twist), z_pod + 0.5)
+        cables.tube([top, bot], 0.12, 4)
+    return [shaft, turret, glazing, mast, cables]

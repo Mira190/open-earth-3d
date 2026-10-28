@@ -732,7 +732,7 @@ window.OpenEarthCity = async function main(cityId) {
     stepFlight(t);
     controls.update();
     fitShadow();
-    Wd.tick(t);
+    Wd.tick(t, camera);
     refreshPlaces();
     renderer.render(world, camera);
     updateLabels();
