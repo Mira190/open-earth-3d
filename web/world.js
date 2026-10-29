@@ -203,10 +203,13 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     // r183 also made the sky's output linear and its sun disc ~60,000 times the sky, which the
     // environment map turns into a second sun. Keep r128's tone curve and disc, the light this
     // app's exposure and materials were tuned under.
-    sky.material.fragmentShader = sky.material.fragmentShader
+    // With the sun a few degrees down the Preetham sky is all but black, while the real sky stays a deep blue through
+    // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
+    su.twilight = { value: new THREE.Color(0, 0, 0) };
+    sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
       .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
-      .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ), 1.0 );');
+      .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );');
     const envScene = new THREE.Scene();
     const envSky = new THREE.Mesh(sky.geometry, sky.material);
     envSky.scale.setScalar(50); // inside the PMREM cube camera's far plane
@@ -224,6 +227,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     world.add(sunLight, sunLight.target);
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
+    const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
     edgeHaze(scene.frame);
 
@@ -495,8 +499,12 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
         sunLight.visible = sp.altitude > -0.5;
         sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
-        hemi.intensity = Math.PI * (0.07 + 0.25 * day + ((D.scene.city && D.scene.city.night_ambient) || 0) * (1 - day));   // a city's own night glow (neon, street light)
+        // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
+        const tw = smooth(-11, -4, sp.altitude) * (1 - smooth(-2, 3, sp.altitude));
+        su.twilight.value.copy(TWI_SKY).multiplyScalar(tw);
+        hemi.intensity = Math.PI * (0.07 + 0.25 * day + 0.1 * tw * (1 - day) + ((D.scene.city && D.scene.city.night_ambient) || 0) * (1 - day));   // a city's own night glow (neon, street light)
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
+        if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
@@ -504,7 +512,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
         LM_NIGHT.value = U.uNight.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
-        world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
+        world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(TWI_FOG, tw * 0.7).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`;
         if (key !== envKey) {
           envKey = key;

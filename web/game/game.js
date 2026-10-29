@@ -412,13 +412,31 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return `Shady here. ${comes}`;
   }
 
+  // the time of day: now, or one of sun.js's presets (sunrise, morning, noon, golden hour, sunset, blue hour,
+  // night), worked out from the sun on the clock's date, so a quest's date stays when you change the hour
   function presetTime(kind) {
-    const now = S.utcToLocal(Date.now());
     clock.scale = clock.scale === 1 ? 1 : 30;
-    if (kind === 'live') return setClock(now.y, now.m, now.d, now.minutes);
-    const L = S.dayLimits(now.y, now.m, now.d);
-    const min = { morning: 9 * 60, noon: L.noon, golden: L.sunset - 50, night: 21 * 60 }[kind] ?? 600;
-    setClock(now.y, now.m, now.d, min);
+    if (kind === 'live') { const now = S.utcToLocal(Date.now()); return setClock(now.y, now.m, now.d, now.minutes); }
+    setClock(clock.y, clock.m, clock.d, S.presetTime(kind, clock.y, clock.m, clock.d) ?? 600);
+  }
+  // the buttons for those, each with its clock time on the clock's date (the title's choice and the menu's row)
+  function fillTimes(box) {
+    const was = box.querySelector('[aria-pressed="true"]'), pick = was ? was.dataset.t : null, now = box.querySelector('[data-t="live"]');
+    box.querySelectorAll('[data-t]:not([data-t="live"])').forEach(b => b.remove());
+    for (const [k, label] of S.PRESETS) {
+      const b = document.createElement('button');
+      b.dataset.t = k; b.dataset.label = label;
+      b.innerHTML = `${label}<span class="num">${fmtMin(S.presetTime(k, clock.y, clock.m, clock.d))}</span>`;
+      if (pick) b.setAttribute('aria-pressed', String(k === pick));
+      box.insertBefore(b, null);
+    }
+    if (now) { now.dataset.label = 'Now'; box.insertBefore(now, box.firstChild); }
+  }
+  function menuSync() { // the menu's slider and date follow the clock
+    $('#gm-clock').value = String(Math.round(clock.min));
+    $('#gm-clock-v').textContent = `${fmtMin(clock.min)} · sun ${sun.altitude.toFixed(0)}°`;
+    $('#gm-date').value = `${clock.y}-${pad(clock.m)}-${pad(clock.d)}`;
+    fillTimes($('#gm-time'));
   }
 
   // ------------------------------------------------------------ quests, in parallel lines
@@ -1190,7 +1208,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#g-photo-btn'), 'click', () => photoMode(true));
 
   // ------------------------------------------------------------ menus, map, passport
-  function toggleMenu() { $('#g-menu').hidden = !$('#g-menu').hidden; }
+  function toggleMenu() { $('#g-menu').hidden = !$('#g-menu').hidden; if (!$('#g-menu').hidden) menuSync(); }
   function togglePass() { renderPassport(); $('#g-pass').hidden = !$('#g-pass').hidden; }
   const bigCanvas = $('#g-bigmap-c');
   let bigView = null, waypoint = null;
@@ -1252,7 +1270,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#g-pass-btn'), 'click', togglePass);
   on($('#g-menu-btn'), 'click', toggleMenu);
   for (const id of ['#g-bigmap-close', '#g-pass-close', '#g-menu-close']) on($(id), 'click', () => { $(id).closest('.g-overlay').hidden = true; });
-  on($('#gm-time'), 'click', e => { const b = e.target.closest('button'); if (b) { presetTime(b.dataset.t); H.toast(`Time: ${b.textContent}`); } });
+  on($('#gm-time'), 'click', e => { const b = e.target.closest('button'); if (b) { presetTime(b.dataset.t); menuSync(); H.toast(`Time: ${b.dataset.label || b.textContent}, ${fmtMin(clock.min)}`); } });
+  on($('#gm-clock'), 'input', e => { setClock(clock.y, clock.m, clock.d, +e.target.value); menuSync(); });
+  on($('#gm-date'), 'change', e => { const [y, m, d] = e.target.value.split('-').map(Number); if (y && m && d) { setClock(y, m, d, clock.min); menuSync(); } });
   on($('#gm-speed'), 'click', e => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -1293,7 +1313,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   spawn();
   presetTime('live');
-  if (sun.altitude < -2) { // arriving at night shows little; offer nine in the morning first
+  fillTimes($('#gt-timechoice'));
+  if (sun.altitude < -2) { // arriving at night shows little; offer the morning first
     presetTime('morning');
     $$('#gt-timechoice button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.t === 'morning')));
   }

@@ -289,6 +289,37 @@ export async function init(ctx) {
   // initial state for sails of anchored yachts: furled
   for (const v of vessels) { v.snapSails(); }
 
+  // ---- lamplight: the deck lights of the pontoon and the jetty light the deck under them once the sun is low. A few
+  // downlights (spots aimed straight down, so a roof over the lamp stays dark) go to the casters nearest the camera;
+  // their number is fixed when the site loads, so the materials never recompile. ?lamplight=0 leaves them out.
+  const casters = [];
+  for (const v of vessels) for (const c of v.desc.casters || []) casters.push(c);
+  if (jetty) for (const c of jetty.casters || []) casters.push(c);
+  const pool = [];
+  if (q.get('lamplight') !== '0') for (let i = 0; i < Math.min(4, casters.length); i++) {
+    const l = new THREE.SpotLight(0xffe2a8, 0, 14, 1.35, 0.3, 1);   // falling off as 1/d, not a bare bulb's 1/d^2: a deck light is a row of fittings
+    scene.add(l, l.target); pool.push(l);
+  }
+  const _c = new THREE.Vector3();
+  let poolT = 0;
+  function lamplight(dt) {
+    if (!pool.length) return;
+    const on = shared.lamp.value;
+    if ((poolT -= dt) <= 0) {   // which casters: re-sorted twice a second
+      poolT = 0.5;
+      const cam = camera.position;
+      for (const c of casters) { c.getWorldPosition(_c); c.userData.d = _c.distanceToSquared(cam); }
+      casters.sort((a, b) => a.userData.d - b.userData.d);
+    }
+    for (let i = 0; i < pool.length; i++) {
+      const l = pool[i], c = casters[i], k = c.userData.cast;
+      c.getWorldPosition(l.position);
+      l.target.position.copy(l.position); l.target.position.y -= 6;
+      l.color.copy(k.color); l.distance = k.range;
+      l.intensity = on * k.intensity * (c.userData.d < 250 * 250 ? 1 : 0);
+    }
+  }
+
   // ---- decks the player can stand on: the pontoon, its helipad and the marina jetty (ctx.decks; player.js) ----
   // deckAt(x, north) -> the deck's height (m) at that point, or null
   const _m = new THREE.Matrix4(), _p = new THREE.Vector3();
@@ -407,6 +438,7 @@ export async function init(ctx) {
       else for (const tr of v.trails) tr.mesh.visible = false;
     }
     wake.update(dt, t);
+    lamplight(dt);
     testCam();
   }
   // the 'player' camera swing on a still: camera placed before the first frame

@@ -179,6 +179,8 @@ window.OpenEarthCity = async function main(cityId) {
     $('#sun-stats').innerHTML = [
       [fmtMin(L.sunrise), 'Sunrise'], [`${L.noonAltitude.toFixed(1)}°`, `Noon sun, ${fmtMin(L.noon)}`], [fmtMin(L.sunset), 'Sunset']
     ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
+    // the times of day worth seeing on this date (sun.js presets), each with its clock time
+    $('#time-presets').innerHTML = S.PRESETS.map(([k, l]) => `<button data-t="${k}">${l}<span class="num">${fmtMin(S.presetTime(k, y, m, d))}</span></button>`).join('');
     applySun();
     refreshPlaces(true);
   }
@@ -823,6 +825,13 @@ window.OpenEarthCity = async function main(cityId) {
   });
   $('#time').addEventListener('input', e => { setTourPlaying(false); setTime(+e.target.value); });
   $('#time').addEventListener('change', () => refreshPlaces(true));
+  $('#time-presets').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setTourPlaying(false);
+    setTime(S.presetTime(b.dataset.t, state.y, state.m, state.d));
+    refreshPlaces(true);
+  });
   $('#date').addEventListener('change', e => { const [y, m, d] = e.target.value.split('-').map(Number); if (y) { setTourPlaying(false); setDate(y, m, d); } });
   $('#date-chips').addEventListener('click', e => {
     const b = e.target.closest('button');

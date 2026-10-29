@@ -1,6 +1,6 @@
 // The game's own HUD layer, over hud.js and in its style (the same glass, edge and type): a dialogue panel
-// with numbered answers (keys 1-4, or tap), a journal and a travel map as centred panels, two buttons for
-// touch (Journal J, Map T), the objective line under the compass with a marker on the compass strip,
+// with numbered answers (keys 1-4, or tap), a journal, a travel map and the time of day as centred panels, three
+// buttons for touch (Journal J, Map T, Time K), the objective line under the compass with a marker on the compass strip,
 // toasts for quest steps, and a fade for skip-the-trip transfers. Plain DOM; game.js decides what goes in.
 const CSS = `
 .rg { position: fixed; inset: 0; pointer-events: none; z-index: 6; font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #e8f4f6;
@@ -67,6 +67,19 @@ const CSS = `
 .rg-map .legend { display: block; margin-top: 4px; font-size: 11px; color: var(--ink2); } .rg-map .legend i { font-style: normal; margin: 0 2px 0 8px; }
 .rg-map .legend i:first-child { margin-left: 0; } .rg-map .me, .rg-map .tg { color: var(--warn); } .rg-map .np { color: var(--accent); } .rg-map .sg { color: #d9cfae; }
 @media (max-width: 640px) { .rg-map { grid-template-columns: 1fr; } .rg-map canvas { max-width: 300px; margin: 0 auto; } }
+.rg-time .now { display: flex; align-items: baseline; gap: 10px; margin-top: 10px; } .rg-time .now b { font-size: 26px; font-variant-numeric: tabular-nums; }
+.rg-time .now small { color: var(--ink2); }
+.rg-time .pre { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.rg-time .pre button { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--edge); background: rgba(255,255,255,.06);
+  color: inherit; font: 600 13px system-ui, sans-serif; text-align: left; cursor: pointer; }
+.rg-time .pre button small { font-weight: 400; font-size: 11px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.rg-time .pre button:hover, .rg-time .pre button:focus-visible { background: rgba(111,211,230,.18); border-color: var(--accent); outline: none; }
+.rg-time .pre button.on { border-color: var(--warn); }
+@media (pointer: coarse) { .rg-time .pre button { min-height: 44px; } }
+.rg-time input[type=range] { width: 100%; margin: 6px 0 0; accent-color: var(--accent); }
+.rg-time .ticks { display: flex; justify-content: space-between; font-size: 10px; color: var(--ink2); font-variant-numeric: tabular-nums; }
+.rg-time .day { position: relative; height: 6px; margin-top: 2px; border-radius: 3px; background: rgba(255,255,255,.08); }
+.rg-time .day i { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: linear-gradient(90deg, #f0a92a, #f5c868 50%, #f0a92a); opacity: .7; }
 .rg-toast { position: absolute; top: 92px; left: 50%; transform: translateX(-50%) translateY(-6px); padding: 7px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--good);
   font-size: 13px; text-align: center; opacity: 0; transition: opacity .35s, transform .35s; max-width: min(90vw, 460px); }
 .rg-toast.on { opacity: 1; transform: translateX(-50%); } .rg-toast small { display: block; font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--good); }
@@ -85,7 +98,7 @@ export function createUI(on) {
   const el = document.createElement('div');
   el.className = 'rg';
   el.innerHTML = `
-  <div class="rg-btns"><button class="bj" title="Journal (J)"><kbd>J</kbd>Journal<b></b></button><button class="bm" title="Reef sites (T)"><kbd>T</kbd>Map</button></div>
+  <div class="rg-btns"><button class="bj" title="Journal (J)"><kbd>J</kbd>Journal<b></b></button><button class="bm" title="Reef sites (T)"><kbd>T</kbd>Map</button><button class="bk" title="Time of day (K)"><kbd>K</kbd>Time</button></div>
   <div class="rg-obj"></div><div class="rg-mark">◆</div><div class="rg-toast"></div>
   <div class="rg-dlg" role="dialog" aria-live="polite"><div class="who"><b></b><small></small><em></em><button class="x" aria-label="Close (Esc)">✕</button></div><div class="txt"></div><div class="src"></div><div class="ch"></div><div class="more"></div></div>
   <div class="rg-panel" role="dialog"><header><h2></h2><small></small><button aria-label="Close">✕</button></header><div class="body"></div></div>
@@ -95,6 +108,7 @@ export function createUI(on) {
   const dlg = $('.rg-dlg'), panel = $('.rg-panel'), obj = $('.rg-obj'), mark = $('.rg-mark'), toastEl = $('.rg-toast'), fadeEl = $('.rg-fade');
   $('.bj').addEventListener('click', e => { e.currentTarget.blur(); on.journal(); });
   $('.bm').addEventListener('click', e => { e.currentTarget.blur(); on.map(); });
+  $('.bk').addEventListener('click', e => { e.currentTarget.blur(); on.time(); });
   panel.querySelector('header button').addEventListener('click', () => on.closePanel());
   panel.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && !b.disabled) on.panelAct(b.dataset.act, b.dataset.arg, b); });
   // tapping the dialogue (not an answer) moves it on, like E
@@ -114,14 +128,14 @@ export function createUI(on) {
       dlg.classList.add('on');
     },
     get dialogOpen() { return dlg.classList.contains('on'); },
-    // a centred panel: the journal or the map
+    // a centred panel: the journal, the map or the time of day
     panel(kind, title, sub, html) {
-      if (!kind) { panel.classList.remove('on'); el.classList.remove('panel-on'); panel.dataset.kind = ''; $('.bj').classList.remove('on'); $('.bm').classList.remove('on'); return; }
+      if (!kind) { panel.classList.remove('on'); el.classList.remove('panel-on'); panel.dataset.kind = ''; for (const b of ['.bj', '.bm', '.bk']) $(b).classList.remove('on'); return; }
       el.classList.add('panel-on');
       panel.dataset.kind = kind; panel.querySelector('h2').textContent = title; panel.querySelector('header small').textContent = sub || '';
       const body = panel.querySelector('.body'), keep = panel.classList.contains('on') ? body.scrollTop : 0;
       body.innerHTML = html; body.scrollTop = keep;
-      panel.classList.add('on'); $('.bj').classList.toggle('on', kind === 'journal'); $('.bm').classList.toggle('on', kind === 'map');
+      panel.classList.add('on'); $('.bj').classList.toggle('on', kind === 'journal'); $('.bm').classList.toggle('on', kind === 'map'); $('.bk').classList.toggle('on', kind === 'time');
     },
     get panelKind() { return panel.classList.contains('on') ? panel.dataset.kind : ''; },
     // keep the tracker clear of hud.js's dive gauge (top left while diving)

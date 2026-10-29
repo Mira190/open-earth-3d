@@ -58,7 +58,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which survey line the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
-| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |
+| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -405,7 +405,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     curve, a light grade and a vignette.
 - **Sun and time:**
   - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
-    title screen offers 9 am first.
+    title screen offers the morning first. The title screen and the menu offer:
+    - the time now;
+    - sunrise, morning, noon, golden hour, sunset, blue hour and night, each shown
+      with its clock time on the day. These are worked out from the sun, so a blue
+      hour is a blue hour in Paris in June and in Sydney in winter
+      (`Sun.presetTime` in `web/sun.js`).
+
+    The menu also has a slider for any time of the day and a date. Changing the
+    hour keeps a quest's date.
   - **Sun meter:** ray-casts from where you stand four times a second through
     the same surface model the sun-access analysis uses. The Opera House shells
     and the bridge deck are added so they shade you too.
