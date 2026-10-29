@@ -3,7 +3,7 @@
 // H.264 MP4 and a VP9 WebM (for browsers without H.264), with a poster frame. The loader plays it while the city downloads and builds,
 // and the live title screen takes over from its last frame (web/flyover.js).
 //   cd web && python3 -m http.server 8800 &
-//   node tools/flyover.js kyoto [seconds=14] [render_fps=8] [time=10:30] [date=2026-04-15]
+//   xvfb-run -a node tools/flyover.js kyoto [seconds=14] [render_fps=8] [time=10:30] [date=2026-04-15]
 // A software renderer takes many seconds per frame over a whole city, so frames are rendered at
 // render_fps and ffmpeg interpolates them to 30 fps (a smooth camera over a still scene).
 // WIDTH and HEIGHT set the render and video size (default 960 x 540; about 2 MB for 14 s).
@@ -21,7 +21,10 @@ const out = path.join(__dirname, '..', 'web', 'data', city);
 const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
 
 (async () => {
-  const b = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
+  const b = await chromium.launch(process.env.DISPLAY
+    ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
+    : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: W, height: H } });
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
