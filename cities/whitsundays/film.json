@@ -8,7 +8,7 @@
   ],
   "year": 2026,
   "exposure": 1,
-  "poster": 27.5,
+  "poster": 24.5,
   "credit": "Rendered live from the open-data reef model by tools/city_film.js; nothing in it is stock footage.",
   "score": {
     "root": 45,
@@ -285,5 +285,6 @@
       },
       "ev": 0.2
     }
-  ]
+  ],
+  "crf": 29
 }
