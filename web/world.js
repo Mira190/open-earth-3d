@@ -102,12 +102,12 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
 uniform float uBay, uBarW, uSpark, uSparkT, uSparkOn; float pSpark;
 float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); return fract(p.x * p.y); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
-  { vec2 q = vUv / uBay, f = fract(q); float fw = max(fwidth(q.x), fwidth(q.y)), b = uBarW / uBay;
-    float strut = step(f.y, b * 0.7 + fw) + step(1.0 - b * 0.7 - fw, f.y);
-    float diag = step(abs(f.x - f.y), b + fw) + step(abs(f.x + f.y - 1.0), b + fw);
-    float post = step(f.x, b * 0.5 + fw) + step(1.0 - b * 0.5 - fw, f.x);
-    float keep = min(1.0, strut + diag + post);
-    if (fw > 0.35) keep = step(0.45, fract(dot(gl_FragCoord.xy, vec2(0.5, 0.25)))); // too far for the bars: a stipple
+  { vec2 q = vUv / uBay, f = fract(q); float fw = max(fwidth(q.x), fwidth(q.y)), hb = 0.5 * uBarW / uBay;
+    // distance (in bays) to the strut at the top of the bay and to its two diagonals; a bar is kept
+    // out to its half-width, anti-aliased over a pixel, so about a third of the bay is iron
+    float d = min(min(f.y, 1.0 - f.y), min(abs(f.x - f.y), abs(f.x + f.y - 1.0)) * 0.7071);
+    float keep = 1.0 - smoothstep(hb, hb + fw, d);
+    if (fw > 0.35) keep = step(0.6, fract(dot(gl_FragCoord.xy, vec2(0.5, 0.25)))); // too far for the bars: a stipple as open as the iron
     if (keep < 0.5) discard;
     vec2 cell = floor(vUv / 1.3);
     pSpark = uSpark * uSparkOn * step(0.93, lh(cell + floor(uSparkT * 9.0 + lh(cell) * 7.0))); }`)

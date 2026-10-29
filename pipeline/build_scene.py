@@ -514,6 +514,7 @@ class Plateau:
     MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
     key, label, footprint = "plateau", "PLATEAU", "P"
     keep_newer_osm = True  # PLATEAU was surveyed in 2017-2021: an OSM height far above it is usually a newer tower
+    cut_parts = False      # a building's parts are re-cut only where its roof faces differ in height
 
     def __init__(self, C):
         self.tree, self.polys, self.feats = None, [], []
@@ -855,8 +856,8 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
 
 def mansard_props(k, s, eave, top, nb, roads, seed):
     """A Paris mansard's dormers and chimney stacks, as rooftop rows with an absolute base (dm).
-    Dormers (kind 3): one row per edge that faces a street, a dormer every 2.9 m bay set back
-    0.6 m on the steep lower slope; the row is the first dormer plus a count, a step (dm) and a
+    Dormers (kind 3): one row per edge that faces a street, a dormer every 2.9 m bay, its face
+    0.25 m behind the facade so it stands proud of the steep lower slope; the row is the first dormer plus a count, a step (dm) and a
     bitmask of the bays left without one. Stacks (kind 4): a masonry stack on each long wall
     shared with the next building, rising 2.2 m over the roof, where the flues are gathered."""
     tree, fps = nb
@@ -880,8 +881,8 @@ def mansard_props(k, s, eave, top, nb, roads, seed):
                 continue
             gaps = sum(1 << j for j in range(bays) if typology.unit(seed + e, 40 + j) < 0.12)  # bays without a dormer
             step = (L - 1.2) / bays
-            c = a + u * (0.6 + step / 2) - nrm * 0.6
-            out.append([k, 3, round(c[0] * 10), round(c[1] * 10), 11, 9, 17, ang, round((base + eave + 0.2) * 10), bays, round(step * 10), gaps])
+            c = a + u * (0.6 + step / 2) - nrm * 0.75
+            out.append([k, 3, round(c[0] * 10), round(c[1] * 10), 12, 10, 21, ang, round((base + eave + 0.3) * 10), bays, round(step * 10), gaps])
             continue
         mid = (a + b) / 2
         probe = shapely.geometry.Point(*(mid + nrm * 0.8))
@@ -1085,7 +1086,7 @@ def build(C):
                 pg = C.to_local(swkb.loads(bytes(p["wkb"])))
                 h, src = H.resolve(p, cls, parent=top_b)
                 geoms += [[q, H.min_height(p, cls), h, src, p["name"], p] for q in polygons(pg)]
-            if pcs and len({h for _, h, _ in pcs}) > 1:
+            if pcs and (len({h for _, h, _ in pcs}) > 1 or plateau.cut_parts):
                 # roof faces at several heights (a podium and its tower): each part is cut along the faces over it
                 cut = []
                 for gm in geoms:

@@ -91,6 +91,20 @@ The Melbourne survey has six:
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
 
+The Paris survey has seven stamps, written as three lines after a welcome on the
+Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
+- **The river:** Bernard, a bouquiniste, and the survey lens on a LiDAR-measured
+  roof; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
+  on the cathedral's roof.
+- **The Left Bank:** a chair in the sun in the Luxembourg at noon on 21 December;
+  Karim's café and Nadia's bakery.
+- **The tower:** fly under the Eiffel Tower's first floor and land in the
+  Tuileries.
+- **Report back** to Camille.
+
+On the Seine the helicopter takes the nearest span to fly under, and a step can
+name its span (`"surface"`).
+
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 ## What we took from other games, and where this one is different
@@ -409,7 +423,9 @@ the whole survey this way. It checks:
 
 A Melbourne script plays its six stamps the same way: the sun step at
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
-flight to Birrarung Marr.
+flight to Birrarung Marr. A Paris script plays its seven: the Batobus to
+Notre-Dame, the winter sun in the Luxembourg, and the flight under the Eiffel
+Tower's first floor to the Tuileries.
 
 The camera shots were checked the same way:
 - the start: it lands on the chase camera;

@@ -56,6 +56,8 @@ class IGNHeights:
     # the LiDAR is recent (2023) and BD TOPO carries what was built since: an OSM height far above
     # both is a spire or a chimney counted as the building's top, not a newer tower
     keep_newer_osm = False
+    # the LiDAR covers every part: each mapped building part takes its own measured top
+    cut_parts = True
     INSET_M = 0.6
     GAP_M = 3.0             # levels are split where no more than 0.5% of the heights fall in a 3 m band
     MIN_PIECE_M2, MIN_PIECE_SHARE = 30.0, 0.05

@@ -305,7 +305,7 @@
     },
     {
       "title": "A city of mansards",
-      "text": "A Paris block is six or seven floors of limestone under a zinc mansard. The measured roofs say so: {landmark:roofs.mansard_pct}% of the pitched roofs the LiDAR profiled are mansards, and the median roof rises {landmark:roofs.median_roof_m} m over its eaves.",
+      "text": "A Paris block is six or seven floors of limestone under a zinc mansard. The measured roofs say so: {landmark:roofs.mansard_pct}% of the pitched roofs the LiDAR profiled are mansards, and the median pitched roof rises {landmark:roofs.median_roof_m} m over its eaves.",
       "cam": [
         380,
         -350,
@@ -472,12 +472,12 @@
     "blurb": "Walk the quays, the islands and the Left Bank, ride the Batobus on the Seine, and fly between the legs of the Eiffel Tower. Talk to the people who know the city. Every fact they tell you comes from the model.",
     "start": {
       "at": [
-        1103,
-        -60
+        1110,
+        -102
       ],
       "facing": [
-        1103,
-        60
+        1130,
+        67
       ],
       "time": "live"
     },
@@ -639,8 +639,8 @@
         "name": "Camille",
         "role": "Survey lead",
         "at": [
-          1103,
-          -45
+          1110,
+          -100
         ],
         "look": {
           "character": "W_Casual",
@@ -663,8 +663,8 @@
         "name": "Bernard",
         "role": "Bouquiniste",
         "at": [
-          1236,
-          -88
+          1200,
+          -176
         ],
         "look": {
           "character": "M_Adventurer",
@@ -714,8 +714,8 @@
         "name": "Karim",
         "role": "Café waiter, Saint-Germain",
         "at": [
-          770,
-          -470
+          743,
+          -493
         ],
         "look": {
           "character": "M_Suit",
@@ -791,8 +791,8 @@
         "name": "Nadia",
         "role": "Boulangère, Rue du Bac",
         "at": [
-          410,
-          -230
+          123,
+          -440
         ],
         "look": {
           "character": "W_Casual",
@@ -890,16 +890,15 @@
         "talk": [
           "Ah, the surveyor. Camille sent you? Then you must learn to read Paris, and Paris is written on its roofs.",
           "Zinc, grey-blue, with the dormers of the old maids' rooms, the chambres de bonne. A mansard: steep below, nearly flat on top. Mansart did not invent it, but Paris made it law.",
-          "Aim at a building and press Q for the survey lens. Find one whose height the laser measured, and one where IGN only surveyed the eaves. Then take the Batobus from Saint-Germain-des-Prés to Notre-Dame. Léa works on the cathedral roof; she will show you the rest."
+          "Aim at a building and press Q for the survey lens. Find one whose height the laser measured, and read what it says about the roof. Then take the Batobus from Saint-Germain-des-Prés to Notre-Dame. Léa works on the cathedral roof; she will show you the rest."
         ],
         "steps": [
           {
             "type": "inspect",
             "sources": [
-              "lidar",
-              "bdtopo"
+              "lidar"
             ],
-            "text": "Survey lens (Q): one LiDAR-measured height, and one from the surveyed eaves"
+            "text": "Survey lens (Q): a building whose height and roof the LiDAR measured"
           },
           {
             "type": "ride",
@@ -977,7 +976,7 @@
         "talk": [
           "You fly? Then do me a favour and look at my paint from up close.",
           "The first floor is 57 metres up. The arches between the legs are decoration, Eiffel added them for the look, and there is room under them for a helicopter.",
-          "Take the helicopter from the Champ de Mars, go under the first floor, and land on the Trocadéro side."
+          "Take the helicopter from the Champ de Mars, go under the first floor, then follow the river to the Louvre and land in the Tuileries. You will see every bridge on the way."
         ],
         "steps": [
           {
@@ -987,8 +986,8 @@
           },
           {
             "type": "land",
-            "place": "Jardins du Trocadéro",
-            "text": "Land in the Jardins du Trocadéro"
+            "place": "Jardin des Tuileries",
+            "text": "Land in the Jardin des Tuileries"
           }
         ],
         "line": "tower"

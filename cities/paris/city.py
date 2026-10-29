@@ -78,6 +78,7 @@ MATERIALS = {
     "stone_dark": {"color": "#b9ad97", "roughness": 0.9, "metalness": 0.0},
     "asphalt": {"color": "#55585b", "roughness": 0.9, "metalness": 0.0},
     "bridge_steel": {"color": "#6f7a78", "roughness": 0.5, "metalness": 0.55},
+    "timber_deck": {"color": "#8a6b4f", "roughness": 0.85, "metalness": 0.0},
     "gilt": {"color": "#d4a63a", "roughness": 0.3, "metalness": 0.9},
     "balustrade": {"color": "#d0c6b0", "roughness": 0.85, "metalness": 0.0, "pattern": "railing", "bar_m": 0.32, "rails_m": [0.12, 0.95]},
     "lead": {"color": "#5b6066", "roughness": 0.5, "metalness": 0.5},
@@ -334,7 +335,7 @@ def bridge(b):
     us, zs = np.array([p[0] for p in prof]), np.array([p[1] for p in prof])
     deck_z = lambda u: float(np.interp(u, us, zs))
     P = lambda u, v, z: (float(cx + ax[0] * u + nx[0] * v), float(cy + ax[1] * u + nx[1] * v), float(z))
-    deck = Mesh("bridge_deck", "asphalt" if not b["foot"] else "bridge_steel", False)
+    deck = Mesh("bridge_deck", "asphalt" if not b["foot"] else "timber_deck", False)
     side = Mesh("bridge_side", "bridge_steel" if b["steel"] else "stone", False, floodlit=not b["steel"])
     rail = Mesh("bridge_rail", "balustrade", False, uv=True)
     piers = Mesh("bridge_piers", "stone_dark", False)
@@ -360,16 +361,23 @@ def bridge(b):
         crown = min(deck_z((u0 + u1) / 2) - 1.8, spring + (0.32 if not b["steel"] else 0.12) * span)
         ts = np.linspace(0, 1, 13)
         arc = [(u0 + (u1 - u0) * t, spring + (crown - spring) * math.sin(math.pi * t) ** (0.8 if not b["steel"] else 1.0)) for t in ts]
-        for (ua, za), (ub, zb) in zip(arc[:-1], arc[1:]):
-            # the soffit (intrados) across the width, and the spandrel walls from the arch up to the deck on both faces
-            side.quad(P(ua, -hw + 0.4, za), P(ua, hw - 0.4, za), P(ub, hw - 0.4, zb), P(ub, -hw + 0.4, zb))
-            for v in (-hw + 0.4, hw - 0.4):
-                side.quad(P(ua, v, za), P(ub, v, zb), P(ub, v, deck_z(ub) - 1.6), P(ua, v, deck_z(ua) - 1.6))
+        if b["steel"]:
+            # open steelwork: an arch rib under each edge of the deck, posts from the rib up to the deck
+            for v in (-hw + 0.6, hw - 0.6):
+                for (ua, za), (ub, zb) in zip(arc[:-1], arc[1:]):
+                    side.box(P(ua, v, za), P(ub, v, zb), 0.5, 0.9)
+                for ua, za in arc[2:-2:2]:
+                    side.box(P(ua, v, za), P(ua, v, deck_z(ua) - 1.6), 0.25, 0.25)
+        else:
+            for (ua, za), (ub, zb) in zip(arc[:-1], arc[1:]):
+                # the soffit (intrados) across the width, and the spandrel walls from the arch up to the deck on both faces
+                side.quad(P(ua, -hw + 0.4, za), P(ua, hw - 0.4, za), P(ub, hw - 0.4, zb), P(ub, -hw + 0.4, zb))
+                for v in (-hw + 0.4, hw - 0.4):
+                    side.quad(P(ua, v, za), P(ub, v, zb), P(ub, v, deck_z(ub) - 1.6), P(ua, v, deck_z(ua) - 1.6))
         if k < n - 1 and pier_t:
             um = u1 + pier_t / 2
             # a pier from the riverbed to the springing, with pointed cutwaters up- and downstream
             top = spring + 0.6
-            piers.box(P(um, -hw - 1.5, -4.0), P(um, hw + 1.5, -4.0), pier_t, 0.01)
             for z0, z1 in ((-4.0, top),):
                 pts = [(-pier_t / 2, -hw), (pier_t / 2, -hw), (pier_t / 2, hw), (-pier_t / 2, hw)]
                 for (a0, b0), (a1, b1) in zip(pts, pts[1:] + pts[:1]):

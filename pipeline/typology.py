@@ -274,7 +274,7 @@ ROOF_COLOURS = {
     "kawara": [("#6d6d6d", 0.5), ("#474848", 0.3), ("#5a5c5e", 0.2)],
     "copper": [("#4c8479", 1.0)],
     # rolled zinc, weathered to its blue-grey patina; Paris roofers' slate is Angers blue-black
-    "zinc": [("#7f8a90", 0.35), ("#8d979c", 0.3), ("#6f7a80", 0.2), ("#9aa2a5", 0.15)],
+    "zinc": [("#6f7a80", 0.35), ("#7d878c", 0.3), ("#636d73", 0.2), ("#8a9296", 0.15)],
 }
 JAPAN_METAL = [("#3c3c3c", 0.35), ("#606060", 0.25), ("#4f463e", 0.2), ("#939393", 0.2)]
 
