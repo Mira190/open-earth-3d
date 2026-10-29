@@ -1451,6 +1451,9 @@ def write_index():
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
             model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
+        if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
+            fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
+            c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

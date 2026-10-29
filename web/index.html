@@ -130,6 +130,16 @@ a.chip-btn { text-decoration: none; color: var(--ink); }
 .loader small { display: block; margin-top: 8px; color: var(--muted); }
 .loader { transition: opacity .6s ease; }
 .loader.out { opacity: 0; pointer-events: none; }
+/* the loading flyover (flyover.js): the video fills the loader and the progress sits over it, low down */
+.loader video.flyover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.loader.has-flyover { place-items: end center; background: #0d1418; }
+.loader.has-flyover > div { position: relative; margin-bottom: max(7vh, 24px); padding: 12px 16px 14px; border-radius: 10px;
+  background: rgb(12 18 24 / .58); color: #f2f5f7; backdrop-filter: blur(8px); }
+.loader.has-flyover small { color: #c9d3d9; }
+.loader.has-flyover .track { background: rgb(255 255 255 / .22); }
+.flyover-start { margin-top: 10px; padding: 7px 18px; border: 0; border-radius: 999px; background: var(--accent); color: #fff; font: 600 14px/1 var(--f-body, inherit); cursor: pointer; }
+.flyover-start:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.loader.ready .track::after { animation: none; opacity: 0; }
 /* the establishing shot: a lower-third title over the city while the camera comes down */
 .title-card, .hud-btns, .caption, .inspector { transition: opacity .6s ease; }
 .stage.intro .title-card, .stage.intro .hud-btns, .stage.intro .caption, .stage.intro .inspector { opacity: 0; pointer-events: none; }
@@ -814,6 +824,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="sun-gpu.js"></script>
 <script src="cine.js"></script>
 <script src="globe.js"></script>
+<script src="flyover.js"></script>
 <script src="water.js"></script>
 <script src="buildings.js"></script>
 <script src="trees.js"></script>
@@ -862,12 +873,14 @@ window.dispatchEvent(new Event('three-ready'));
     if (city && play) {
       pane('game-app').hidden = false;
       $('g-load-title').textContent = `Loading ${city.name}`;
+      OEFlyover.play($('g-loader'), city);
       $('gm-model').href = `#${city.id}`;
       current = window.OpenEarthGame(city.id);
     } else if (city) {
       const el = pane('city-app');
       el.hidden = false;
       $('load-title').textContent = `Building ${city.name}`;
+      OEFlyover.play($('loader'), city);
       if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);
     } else {

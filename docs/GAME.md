@@ -51,7 +51,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | Keys | What they do |
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
-| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
+| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint while held (7 m/s) · switch between running (4.5 m/s) and walking (1.4 m/s) · jump. A chip under the sun indicator shows the gait. |
 | <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
@@ -66,6 +66,17 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 
 On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
 survey) end at once on any key or drag.
+
+While a city loads, the loader shows how much of its data has arrived and names
+each step. For the cities that have one (Tokyo, Osaka and Kyoto so far), a
+recorded flyover plays behind it: a 14 s spiral from high over the whole model
+down to the title screen's camera, so when it ends the live title screen takes
+over from its last frame. If the city is ready first, **Start** (or any key)
+goes straight in. `tools/flyover.js <city>` records it in the game itself, at
+8 frames a second interpolated to 30, as an H.264 MP4 and a VP9 WebM with a
+poster; `web/flyover.js` plays it. A visitor who prefers reduced motion gets
+the plain loader. The model viewer plays the same video, then its short
+establishing shot.
 
 The survey comes in lines. After a welcome, three surveys run side by side, in
 any order, and a report back waits for all three. The Sydney survey has seven
@@ -636,8 +647,7 @@ and the menus are checked in a phone-sized browser.
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
 the game, walks for four seconds, talks to the first quest giver, flies the
 helicopter up and lets the ferries run for 40 s, with a screenshot after each
-step. It fails on any page error. Sydney, Melbourne, Osaka, Kyoto and Tokyo all
-pass it in the integrated build.
+step. It fails on any page error. All eight cities pass it.
 
 ## Limitations
 

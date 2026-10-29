@@ -483,9 +483,9 @@ window.OpenEarthCity = async function main(cityId) {
   const cine = OECine.director({ reduced });
   const INTRO_KEY = `oe3d-intro-${cityId}`;
   const ac = new AbortController();
-  function playIntro() {
-    let seen = false;
-    try { seen = !!localStorage.getItem(INTRO_KEY); localStorage.setItem(INTRO_KEY, '1'); } catch (e) { /* storage blocked */ }
+  function playIntro(short = false) {
+    let seen = short;
+    try { seen = seen || !!localStorage.getItem(INTRO_KEY); localStorage.setItem(INTRO_KEY, '1'); } catch (e) { /* storage blocked */ }
     const s = TOUR[0], v = stopView(s);
     if (state.m !== s.date[0] || state.d !== s.date[1]) setDate(state.y, s.date[0], s.date[1]);
     setTime(s.from);
@@ -866,9 +866,12 @@ window.OpenEarthCity = async function main(cityId) {
   controls.target.copy(W(...st0.tgt));
   controls.update();
   loadMsg('Ready', 1);
-  $('#loader').classList.add('out');
-  setTimeout(() => { $('#loader').hidden = true; }, reduced ? 0 : 700);
-  playIntro();
+  // after a loading flyover the city has been seen from the air, so the establishing shot is the short one
+  OEFlyover.finish($('#loader')).then(flew => {
+    $('#loader').classList.add('out');
+    setTimeout(() => { $('#loader').hidden = true; OEFlyover.stop($('#loader')); }, reduced ? 0 : 700);
+    playIntro(flew);
+  });
 
   let last = performance.now(), running = true;
   function frame(t) {

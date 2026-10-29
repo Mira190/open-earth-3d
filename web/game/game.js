@@ -1332,8 +1332,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
   $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
-  $('#g-loader').classList.add('out');
-  setTimeout(() => { $('#g-loader').hidden = true; }, reduced ? 0 : 700);
+  // the loading flyover, if it played, ends on the title camera; the orbit starts from there as the loader fades
+  OEFlyover.finish($('#g-loader')).then(flew => {
+    if (flew) titleYaw = 0;
+    $('#g-loader').classList.add('out');
+    setTimeout(() => { $('#g-loader').hidden = true; OEFlyover.stop($('#g-loader')); }, reduced ? 0 : 700);
+  });
   renderPassport();
 
   // ------------------------------------------------------------ the loop
@@ -1555,8 +1559,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // The camera: the title orbit, then the rig (chase or bird's-eye) unless a shot is
   // playing. Shots get the rig's live pose, so they can land exactly where it is.
   const titleLook = new THREE.Vector3(), live = { pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), half: 170 };
-  let titleYaw = 0;
+  let titleYaw = 0, flyCam = null;
+  // the title orbit's centre and its first camera position (local frame); the loading flyover
+  // (tools/flyover.js) ends here, so the live title screen picks up where the video stops
+  const titlePose = () => ({ look: [player.x + 120, player.y + 160, player.z + 20], cam: [player.x + 120, player.y + 160 - 420, player.z + 20 + 210] });
   function updateCamera(dt, titleOn) {
+    if (titleOn && flyCam) { // a scripted camera over the title screen, for recording the flyover
+      camera.up.set(0, 1, 0);
+      camera.position.copy(flyCam.pos);
+      camera.lookAt(flyCam.look);
+      live.pos.copy(camera.position);
+      Wd.fitShadow(flyCam.look, flyCam.shadow);
+      return;
+    }
     if (titleOn) { // slow orbit near the start for the title screen
       titleLook.copy(W(player.x + 120, player.y + 160, player.z + 20));
       camera.up.set(0, 1, 0);
@@ -1744,7 +1759,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  // the recorder's handles: the title pose, a scripted title camera, and the orbit restarted from its first position
+  const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => { titleYaw = 0; } };
+  window.__game = { flyover, colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
