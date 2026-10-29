@@ -64,7 +64,8 @@ window.OEVehicles = (function () {
     return Object.assign({}, typeof spec.base === 'string' && I.liveries[spec.base] || base, spec);
   }
   const luma = hex => { const c = new THREE.Color(hex); return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; };
-  // text on a decal patch (u along, v up): a canvas texture
+  // text on a decal patch (u along, v up in Blender): a canvas texture. The glTF export turns v
+  // over (its images start at the top), so the canvas goes on unflipped, as glTF textures do
   function decalTexture(text, { w = 1024, h = 160, color = '#ffffff', font = 'Bricolage Grotesque, Public Sans, sans-serif', weight = 800, fill = 0.72, spacing = 0.06 } = {}) {
     const [c, g] = canvas(w, h);
     let px = Math.round(h * fill);
@@ -75,6 +76,7 @@ window.OEVehicles = (function () {
     g.fillStyle = color;
     g.fillText(text, w / 2, h / 2 + px * 0.04);
     const t = srgb(new THREE.CanvasTexture(c));
+    t.flipY = false;
     t.anisotropy = 8;
     return t;
   }
