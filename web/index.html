@@ -170,6 +170,11 @@ a.chip-btn { text-decoration: none; color: var(--ink); }
 .seg button { border: 0; background: var(--surface); padding: 6px 9px; cursor: pointer; font-size: 12px; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+/* a segmented row that wraps onto more lines: separate chips (the time-of-day choices) */
+.seg.wrap { display: flex; flex-wrap: wrap; gap: 4px; border: 0; overflow: visible; }
+.seg.wrap button, .seg.wrap button + button { border: 1px solid var(--line); border-radius: 6px; }
+.seg.wrap button .num { color: var(--muted); font-size: 11px; margin-left: 3px; }
+.seg.wrap button[aria-pressed="true"] .num { color: inherit; opacity: .8; }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .stat { background: var(--surface-2); border-radius: 6px; padding: 8px 10px; }
 .stat b { display: block; font: 600 17px/1.1 var(--f-mono); }
@@ -565,8 +570,8 @@ a { color: var(--accent); }
       <div class="date-chips" id="date-chips"></div>
       <div class="dial">
         <div class="daylight"><i id="daylight"></i></div>
-        <input type="range" id="time" min="240" max="1320" step="1" value="720" aria-label="Time of day, local clock time">
-        <div class="hours"><span>04</span><span>08</span><span>12</span><span>16</span><span>20</span><span>22</span></div>
+        <input type="range" id="time" min="0" max="1439" step="1" value="720" aria-label="Time of day, local clock time">
+        <div class="hours"><span>00</span><span>03</span><span>06</span><span>09</span><span>12</span><span>15</span><span>18</span><span>21</span><span>24</span></div>
       </div>
       <div class="readout"><b id="clock">12:00</b><span id="sun-read">sun 32.7° · az 0°</span></div>
     </div>
@@ -593,6 +598,7 @@ a { color: var(--accent); }
       <div class="group">
         <span class="eyebrow">Date and time</span>
         <div class="row"><input type="date" id="date" aria-label="Date"><div class="seg" id="speed"><button data-s="30">1×</button><button data-s="90" aria-pressed="true">3×</button><button data-s="240">8×</button></div></div>
+        <div class="seg wrap" id="time-presets" role="group" aria-label="Times of day"></div>
         <p class="note" id="tz-note">Local clock time.</p>
       </div>
       <div class="stats" id="sun-stats"></div>
@@ -668,7 +674,7 @@ a { color: var(--accent); }
     <div class="g-grid" aria-hidden="true"></div>
     <div class="g-hud g-photo" id="g-photo" hidden role="group" aria-label="Photo mode">
       <div class="gph-sliders">
-        <label><span>Time <output class="num" id="ph-time-v"></output></span><input type="range" id="ph-time" min="240" max="1320" step="1"></label>
+        <label><span>Time <output class="num" id="ph-time-v"></output></span><input type="range" id="ph-time" min="0" max="1439" step="1"></label>
         <label><span>Lens <output class="num" id="ph-fov-v"></output></span><input type="range" id="ph-fov" min="10" max="90" step="1" dir="rtl"></label>
         <label><span>Distance <output class="num" id="ph-dist-v"></output></span><input type="range" id="ph-dist" min="0" max="1000" step="1"></label>
       </div>
@@ -721,7 +727,9 @@ a { color: var(--accent); }
     <div class="g-overlay" id="g-menu" hidden>
       <div class="g-panel"><header><h2>Paused</h2><button class="x" id="g-menu-close" aria-label="Resume">×</button></header>
         <div class="g-settings">
-          <div class="field"><span class="note">Time of day</span><div class="seg" id="gm-time"><button data-t="live">Now</button><button data-t="morning">9 am</button><button data-t="noon">Noon</button><button data-t="golden">Golden hour</button><button data-t="night">Night</button></div></div>
+          <div class="field"><span class="note">Time of day</span><div class="seg wrap" id="gm-time"><button data-t="live">Now</button></div></div>
+          <div class="field"><label for="gm-clock"><span>Any time</span><output class="num" id="gm-clock-v"></output></label><input type="range" id="gm-clock" min="0" max="1439" step="1" aria-label="Time of day, local clock time"></div>
+          <div class="field"><label for="gm-date"><span>Date</span></label><input type="date" id="gm-date" aria-label="Date"></div>
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
@@ -751,7 +759,7 @@ a { color: var(--accent); }
         <span class="eyebrow">Open Earth 3D · <span id="gt-city">City</span></span>
         <h1 id="gt-title">On Foot</h1>
         <p id="gt-blurb">Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the ferries, and fly under the Harbour Bridge. Every fact they tell you comes from the model.</p>
-        <div class="gt-time"><span class="note">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button><button data-t="morning">9 am</button><button data-t="golden">Golden hour</button><button data-t="night">Night</button></div></div>
+        <div class="gt-time"><span class="note">Start at</span><div class="seg wrap" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button></div></div>
         <div class="row"><button class="btn primary" id="gt-play">Start the survey</button><button class="btn" id="gt-continue" hidden>Continue</button></div>
         <table class="gt-keys"><tbody>
           <tr><td><kbd>W A S D</kbd> · drag</td><td>Walk · look around</td></tr>

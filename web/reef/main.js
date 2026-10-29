@@ -41,8 +41,9 @@ async function main() {
   const chop = createRipples(renderer, windDir, { tile: 192, res: 256, lam: [3, 24], spread: 70, target: chopVar, seed: 23, hess: false });
   const env = createEnv(scene, S.optics, waves, ripples, chop);
   env.u.wind.value = Number(q.get('wind') ?? 0.6);
-  // the clock: the model's own time (?time= or now), running on from the page load
-  const when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now();
+  // the clock: the model's own time (?time= or now), running on from the page load, or from a time chosen in the
+  // game's time panel (setClock below)
+  let when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now(), live = !q.get('time');
   const clockMs = () => when + (performance.now() - perf0);
   // the tide: ?tide= fixes it (m about MSL); otherwise the site's predicted tide for the clock (tide.js)
   const tideFixed = q.get('tide') !== null ? Number(q.get('tide')) : null;
@@ -121,6 +122,20 @@ async function main() {
   const sun = setSun(env, when, S.origin[1], S.origin[0]);
   lights(sun);
   let sunT = 0;                                          // the sun and moon follow the model clock (every 2 s)
+  // set the model clock to `ms` (UTC), or back to now with null; it runs on in real time from there. The sun, moon,
+  // tide, lamps and wildlife all read the clock, so they follow at once. The address keeps ?time= so a reload or
+  // a trip to another site comes back to the same time of day
+  function setClock(ms) {
+    live = ms == null;
+    when = live ? Date.now() : ms; perf0 = performance.now();
+    Object.assign(sun, setSun(env, clockMs(), S.origin[1], S.origin[0])); sunT = performance.now();
+    lights(sun);
+    try {
+      const p = new URLSearchParams(location.search);
+      if (live) p.delete('time'); else p.set('time', new Date(when).toISOString());
+      history.replaceState(history.state, '', `${location.pathname}${p.toString() ? '?' + p : ''}${location.hash}`);
+    } catch (_) { /* a sandboxed page: the clock still changes */ }
+  }
 
   // camera: local frame (east, north, up) -> three (x, up, -north)
   const st = S.start || {};
@@ -142,6 +157,7 @@ async function main() {
     toScene: (x, up, north) => new THREE.Vector3(x, up, -north),      // local frame (east, up, north) -> three.js
     decks: [],                                                        // (x, north) -> deck height or null: pontoons, jetties (boats.js)
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
+    setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
   for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
     try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }

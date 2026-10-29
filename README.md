@@ -77,8 +77,14 @@ The model is also a game.
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. The survey runs as three lines you can take
-in any order. Photo mode stops the world for a picture, under the sun for the time
-you choose. In free roam you can survey the view from Sydney's trig stations, or
+in any order. Every city and every reef site lets you pick the time of day:
+- now;
+- sunrise, morning, noon, golden hour, sunset, blue hour or night, worked out
+  from the sun on the day;
+- any minute of the day, on a slider.
+
+Photo mode stops the world for a picture, under the sun for the time you choose.
+In free roam you can survey the view from Sydney's trig stations, or
 test your eye against the data by guessing building heights. Open **Play** on the
 globe, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto` and

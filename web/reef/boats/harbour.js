@@ -2,7 +2,7 @@
 // jetty with finger pontoons for the marinas, and GBRMPA-style mooring buoys.
 // Floating things return { group, float: { pts, k } } so boats.js can heave them with the swell; the jetty is fixed.
 import * as THREE from 'three/webgpu';
-import { Kit, box, cyl, rod, ellipsoid, rrect, slab, tube, materials, lamp, shared } from './kit.js';
+import { Kit, box, cyl, rod, ellipsoid, rrect, slab, tube, materials, lamp, caster, shared } from './kit.js';
 
 // a half-pipe trough swept along a path, open at the top: the pontoon slide
 function halfPipe(path, r = 0.55, seg = 60, arc = 14) {
@@ -68,8 +68,10 @@ export function buildPontoon() {
   for (let i = 0; i < 5; i++) for (const sd of [-1, 1]) K.add(M.white, box(0.7, 0.12, 1.8, -13 + i * 1.0, 0.7, sd * 0.0 - 0.0 + (sd > 0 ? 3.6 : -3.6)).translate(0, 0, 0));
   K.add(M.alu, rod([-14, 0.5, -4.5], [-14, 6.5, -4.5], 0.05, 0.04)); K.add(M.blue, box(0.02, 0.6, 1.0, -14, 6.2, -4.0));
   group.add(K.build(new THREE.Group()));
-  const lamps = [[-10, 3.0, 3.7], [0, 3.0, 3.7], [10, 3.0, 3.7], [-10, 3.0, -3.7], [0, 3.0, -3.7], [10, 3.0, -3.7]].map(([x, y, z]) => lamp(group, 0xffe2a8, x, y, z, 2.2));
-  return { group, kind: 'pontoon', W, D, float: { pts: [[-12, -4], [-12, 4], [12, -4], [12, 4]], k: 0.7 }, lamps, berth: { z: D / 2 + 0.7 } };
+  // deck lights under the roof beams; each pair across the deck lights it as one downlight on the centre line
+  const lamps = [[-10, 3.0, 3.7], [0, 3.0, 3.7], [10, 3.0, 3.7], [-10, 3.0, -3.7], [0, 3.0, -3.7], [10, 3.0, -3.7]].map(([x, y, z]) => lamp(group, 0xffe2a8, x, y, z, 0.9));
+  const casters = [-10, 0, 10].map(x => caster(group, 0xffe2a8, x, 3.0, 0, 3, 16));
+  return { group, kind: 'pontoon', W, D, float: { pts: [[-12, -4], [-12, 4], [12, -4], [12, 4]], k: 0.7 }, lamps, casters, berth: { z: D / 2 + 0.7 } };
 }
 
 export function buildHelipad() {
@@ -82,7 +84,7 @@ export function buildHelipad() {
   for (let i = 0; i < 12; i++) { const a = i / 12 * Math.PI * 2; K.add(M.orange, cyl(0.2, 0.2, 0.5).translate(Math.cos(a) * 7.5, 0.0, Math.sin(a) * 7.5)); }
   group.add(K.build(new THREE.Group()));
   const lamps = [];
-  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; lamps.push(lamp(group, 0x6dd6ff, Math.cos(a) * 7.0, 0.7, Math.sin(a) * 7.0, 1.0)); }
+  for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; lamps.push(lamp(group, 0x6dd6ff, Math.cos(a) * 7.0, 0.62, Math.sin(a) * 7.0, 0.45)); }   // perimeter lights, low on the rim
   return { group, kind: 'helipad', float: { pts: [[5, 0], [-5, 0], [0, 5], [0, -5]], k: 0.9 }, lamps, radius: 7 };
 }
 
@@ -95,7 +97,8 @@ export function buildJetty({ len = 70, fingers = 4, deckY = 1.5 } = {}) {
   K.add(M.pile, box(len, 0.2, 0.22, len / 2, deckY - 0.18, w / 2 - 0.3)); K.add(M.pile, box(len, 0.2, 0.22, len / 2, deckY - 0.18, -w / 2 + 0.3));
   for (const sd of [-1, 1]) { K.add(M.woodRail, box(len, 0.06, 0.07, len / 2, deckY + 1.0, sd * (w / 2 - 0.05))); for (let x = 0.5; x < len; x += 3.5) K.add(M.woodRail, box(0.08, 1.0, 0.08, x, deckY + 0.5, sd * (w / 2 - 0.05))); }
   const lamps = [];
-  for (let x = 6; x < len; x += 14) { K.add(M.alu, rod([x, deckY, -w / 2], [x, deckY + 3.0, -w / 2], 0.05, 0.04, 6)); K.add(M.white, ellipsoid(0.18, 0.18, 0.18), x, deckY + 3.1, -w / 2); lamps.push(lamp(group, 0xffe2a8, x, deckY + 3.1, -w / 2, 1.6)); }
+  const casters = [];
+  for (let x = 6; x < len; x += 14) { K.add(M.alu, rod([x, deckY, -w / 2], [x, deckY + 3.0, -w / 2], 0.05, 0.04, 6)); K.add(M.white, ellipsoid(0.18, 0.18, 0.18), x, deckY + 3.1, -w / 2); lamps.push(lamp(group, 0xffe2a8, x, deckY + 3.1, -w / 2, 1.1)); casters.push(caster(group, 0xffe2a8, x, deckY + 2.95, -w / 2 + 0.3, 2.5, 14)); }
   for (let x = 4; x < len; x += 12) K.add(M.black, cyl(0.14, 0.14, 0.35).translate(x, deckY + 0.25, w / 2 - 0.2));
   // finger pontoons: floating timber-decked fingers with a white float, berths between them
   const fing = [];
@@ -109,7 +112,7 @@ export function buildJetty({ len = 70, fingers = 4, deckY = 1.5 } = {}) {
     K.add(M.black, cyl(0.1, 0.1, 0.3).translate(x, 0.55, w / 2 + 11.5));
   }
   group.add(K.build(new THREE.Group()));
-  return { group, kind: 'jetty', len, w, fingers: fing, lamps };
+  return { group, kind: 'jetty', len, w, fingers: fing, lamps, casters };
 }
 
 // a GBRMPA public mooring: yellow float, black band, pick-up pennant and a chain down to the bottom (floats with the sea)
