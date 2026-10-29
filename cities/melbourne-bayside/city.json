@@ -1,0 +1,720 @@
+{
+  "id": "melbourne-bayside",
+  "name": "Melbourne Bayside",
+  "country": "Australia",
+  "country_code": "AU",
+  "timezone": "Australia/Melbourne",
+  "locale": "en-AU",
+  "description": "Port Phillip Bay from St Kilda to Brighton: the pier and the breakwater's little penguins, Luna Park, the Elwood foreshore and the Brighton bathing boxes, from open data under the real sun.",
+  "bbox": [
+    144.956,
+    -37.928,
+    144.995,
+    -37.855
+  ],
+  "origin": [
+    144.9755,
+    -37.8918
+  ],
+  "extent_m": [
+    -1620,
+    1620,
+    -3850,
+    3850
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m AHD",
+  "year": 2026,
+  "imagery": {
+    "type": "synth",
+    "attribution": "No openly licensed aerial imagery covers Melbourne's bayside, so the ground is drawn from Overture Maps land use, land, water and transport (OpenStreetMap contributors, ODbL)"
+  },
+  "terrain": {
+    "type": "wcs",
+    "url": "https://services.ga.gov.au/gis/services/DEM_LiDAR_5m_2025/MapServer/WCSServer",
+    "coverage": "1",
+    "crs": "EPSG:4283",
+    "pixel_deg": 5.5e-05,
+    "fill_below_m": -3.0,
+    "bare_earth": true,
+    "attribution": "Geoscience Australia DEM_LiDAR_5m_2025, 5 m bare earth from LiDAR (CC BY 4.0)",
+    "fill_above_m": 60.0,
+    "raise": [
+      {
+        "class": "breakwater",
+        "crest_m": 2.5,
+        "slope_m": 6.0,
+        "note": "The LiDAR DEM flattens the breakwaters to the water. They are raised from their mapped outlines to a 2.5 m crest: a chosen height, not a measurement."
+      }
+    ]
+  },
+  "terrain_check": {
+    "type": "arcgis_points",
+    "url": "https://services-ap1.arcgis.com/P744lA0wf4LlBZ84/arcgis/rest/services/Vicmap_Elevation_METRO_1_to_5_metre/FeatureServer/0/query",
+    "field": "altitude",
+    "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
+  },
+  "water": {
+    "classes": [
+      "bay",
+      "ocean",
+      "strait",
+      "water",
+      "canal"
+    ],
+    "min_area_m2": 2000,
+    "note": "Port Phillip Bay, and the Elwood Canal.",
+    "waves": {
+      "wind_ms": 6.0,
+      "wind_from_deg": 225,
+      "fetch_km": 30.0,
+      "depth_m": 6,
+      "cascades_m": [
+        157,
+        33.3,
+        7.1
+      ],
+      "choppiness": 0.9,
+      "note": "A typical afternoon south-westerly across Port Phillip Bay, whose reach to St Kilda is about 30 km; chosen values, not a measurement."
+    },
+    "colour": "#1d4c55",
+    "shallow_colour": "#4f9a8f",
+    "clarity_m": 3.0,
+    "colour_note": "Port Phillip is green-blue over sand near the shore; chosen colours, not measured."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "labels": {
+    "Palais Theatre": "Palais Theatre",
+    "St Kilda Sea Baths": "St Kilda Sea Baths",
+    "Middle Brighton Sea Baths and Gymnasium": "Middle Brighton Baths",
+    "Elwood Bathers": "Elwood Bathers",
+    "West Beach Bathers Pavillion": "West Beach Pavilion"
+  },
+  "place_labels": [
+    "St Kilda Beach",
+    "Elwood Beach",
+    "Dendy Street Beach",
+    "St Kilda Botanic Gardens",
+    "Point Ormond Reserve"
+  ],
+  "places": [
+    {
+      "name": "St Kilda Beach",
+      "source": "land",
+      "class": "beach"
+    },
+    {
+      "name": "Elwood Beach",
+      "source": "land",
+      "class": "beach"
+    },
+    {
+      "name": "Sandown Street Beach",
+      "source": "land",
+      "class": "beach"
+    },
+    {
+      "name": "Middle Brighton Beach",
+      "source": "land",
+      "class": "beach"
+    },
+    {
+      "name": "Dendy Street Beach",
+      "source": "land",
+      "class": "beach"
+    },
+    {
+      "name": "Luna Park",
+      "class": "theme_park"
+    },
+    {
+      "name": "O'Donnell Gardens",
+      "class": "park"
+    },
+    {
+      "name": "Lower Esplanade Reserve",
+      "class": "park"
+    },
+    {
+      "name": "St Kilda Botanic Gardens",
+      "class": "park"
+    },
+    {
+      "name": "Point Ormond Reserve",
+      "class": "park"
+    },
+    {
+      "name": "Elwood Park",
+      "class": "park"
+    },
+    {
+      "name": "Brighton Coastal Reserve",
+      "class": "park"
+    },
+    {
+      "name": "Brighton Beach Gardens",
+      "class": "park"
+    }
+  ],
+  "analysis_region": [
+    -900,
+    1300,
+    1900,
+    3850
+  ],
+  "sun_hours_region": [
+    -900,
+    1300,
+    1900,
+    3850
+  ],
+  "check_points": {
+    "St Kilda Pier": [
+      144.9713,
+      -37.8638
+    ],
+    "Luna Park": [
+      144.9767,
+      -37.868
+    ],
+    "Elwood Beach": [
+      144.9813,
+      -37.8869
+    ],
+    "Middle Brighton Pier": [
+      144.9845,
+      -37.9085
+    ],
+    "Dendy Street Beach": [
+      144.9869,
+      -37.9203
+    ]
+  },
+  "start": {
+    "date": [
+      1,
+      15
+    ],
+    "time": "16:30",
+    "cam": [
+      -3300,
+      -2300,
+      2400
+    ],
+    "tgt": [
+      300,
+      500,
+      0
+    ]
+  },
+  "sources": {
+    "landmarks": "Brighton bathing boxes: Heritage Victoria assessment (2017), Brighton Bathing Box Association; Luna Park Scenic Railway: Luna Park"
+  },
+  "game": {
+    "title": "Bayside on Foot",
+    "local_name": "Melburnian",
+    "water_name": "bay",
+    "blurb": "Walk Port Phillip's shore from St Kilda Pier to the Brighton bathing boxes, rebuilt from open data under the real sun. Stay on the pier after sunset and the little penguins come ashore. Every fact you hear comes from the model or a cited source.",
+    "climate": {
+      "mean_max_c": [
+        26.8,
+        25.9,
+        24.3,
+        20.8,
+        17.6,
+        14.7,
+        14.5,
+        15.6,
+        18.0,
+        20.5,
+        22.2,
+        24.7
+      ],
+      "source": "Bureau of Meteorology, Melbourne (Olympic Park) 086338, mean maximum temperature since 2013; the St Kilda Harbour station records wind only"
+    },
+    "start": {
+      "at": [
+        -393,
+        3043
+      ],
+      "facing": [
+        -441,
+        3036
+      ],
+      "time": "live"
+    },
+    "wharves": [],
+    "ferries": [],
+    "ferry_note": "No ferry runs along this shore, so there are none here. There is no helipad on the bayside foreshore either: the pad on the Elwood soccer pitch is invented, so that you can fly the coast.",
+    "helipads": [
+      {
+        "id": "elwood-pad",
+        "name": "Elwood (invented pad)",
+        "at": [
+          1074,
+          189
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 340,
+      "cars": 140,
+      "radius_m": 450
+    },
+    "boardwalks": [
+      {
+        "name": "Penguin Viewing Platform",
+        "width_m": 3.0
+      },
+      {
+        "name": "St Kilda Pier approach",
+        "line": [
+          [
+            -460.8,
+            3032.5
+          ],
+          [
+            -441.9,
+            3036.1
+          ],
+          [
+            -398.0,
+            3044.7
+          ]
+        ],
+        "width_m": 6.5,
+        "note": "The pier's mapped walkway (Overture path 2f344d0d) runs on over the sand to the promenade, but the pier is mapped only over the water and the bare-earth DEM shows the sand under the walkway. The walkway is carried at deck height along the path, extended 10 m to where the ground is within a step of the deck, and as wide as the mapped pier."
+      }
+    ],
+    "wildlife": [
+      {
+        "kind": "little_penguin",
+        "name": "St Kilda breakwater",
+        "on": "breakwater",
+        "colony_near": [
+          -1069,
+          3213
+        ],
+        "within_m": 80,
+        "seaward_bearing_deg": [
+          170,
+          320
+        ],
+        "count": 1400,
+        "show": 160,
+        "height_m": 0.33,
+        "ashore_after_sunset_min": [
+          20,
+          120
+        ],
+        "leave_before_sunrise_min": [
+          30,
+          90
+        ],
+        "day_ashore_share": 0.05,
+        "viewing": "Penguin Viewing Platform",
+        "viewing_note": "Penguin viewing: no flash, no bright lights, no phone torches. The real platform is free but booked, two sessions a night after sunset.",
+        "keep_off_note": "The breakwater rocks are the penguins' home. Stay on the pier and the viewing platform.",
+        "note": "About 1,400 little penguins live in the breakwater (Parks Victoria; Earthcare St Kilda). They come ashore just after sunset, the rafts about 30 minutes after it (Earthcare), and are on land only at night. The game shows 160 of them; when each comes ashore, between 20 minutes and two hours after sunset, and when it leaves, 30 to 90 minutes before sunrise, are chosen values. A few stay ashore by day, as nesting and moulting birds do.",
+        "source": "Parks Victoria, St Kilda Pier and Breakwater; Earthcare St Kilda; Phillip Island Nature Parks"
+      }
+    ],
+    "travel": [
+      {
+        "id": "st-kilda-pier",
+        "name": "St Kilda Pier",
+        "at": [
+          -425,
+          3030
+        ]
+      },
+      {
+        "id": "luna-park",
+        "name": "Luna Park",
+        "at": [
+          112,
+          2738
+        ]
+      },
+      {
+        "id": "point-ormond",
+        "name": "Point Ormond",
+        "at": [
+          106,
+          1194
+        ]
+      },
+      {
+        "id": "elwood-beach",
+        "name": "Elwood Beach",
+        "at": [
+          540,
+          560
+        ]
+      },
+      {
+        "id": "middle-brighton",
+        "name": "Middle Brighton Baths",
+        "at": [
+          880,
+          -2030
+        ]
+      },
+      {
+        "id": "bathing-boxes",
+        "name": "Brighton bathing boxes",
+        "at": [
+          1028,
+          -3005
+        ]
+      }
+    ],
+    "links": [
+      {
+        "id": "melbourne",
+        "name": "Central Melbourne",
+        "how": "Route 96 runs between St Kilda and the city."
+      }
+    ],
+    "npcs": [
+      {
+        "id": "kim",
+        "name": "Kim",
+        "role": "Survey lead",
+        "at": [
+          -415,
+          3030
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#e3b08d",
+          "hair": "#3b2a20",
+          "top": "#2a9d8f",
+          "legs": "#2b3440",
+          "shirt": "#2a9d8f",
+          "pants": "#2b3440"
+        },
+        "idle": [
+          "Most heights here are machine-learning estimates. OpenStreetMap maps the heights of only a few buildings in these suburbs. Your survey lens (Q) shows where each one comes from."
+        ]
+      },
+      {
+        "id": "tash",
+        "name": "Tash",
+        "role": "Earthcare St Kilda volunteer",
+        "at": [
+          -432,
+          3048
+        ],
+        "look": {
+          "character": "W_Adventurer",
+          "skin": "#c18661",
+          "hair": "#2a1d17",
+          "top": "#3d6b4a",
+          "legs": "#24384f",
+          "shirt": "#3d6b4a",
+          "pants": "#24384f"
+        },
+        "idle": [
+          "The sun sets at {sunset} today. The first penguins usually come ashore about half an hour after."
+        ]
+      },
+      {
+        "id": "luca",
+        "name": "Luca",
+        "role": "Luna Park",
+        "at": [
+          104,
+          2740
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#d49c76",
+          "hair": "#1b1311",
+          "top": "#c94f3d",
+          "legs": "#1d1f24",
+          "shirt": "#c94f3d",
+          "pants": "#1d1f24"
+        },
+        "idle": [
+          "Mr Moon has stood at the gate since 1912. The face you see now was rebuilt in fibreglass in 1999."
+        ]
+      },
+      {
+        "id": "grace",
+        "name": "Grace",
+        "role": "Bathing box owner",
+        "at": [
+          1030,
+          -3012
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f0c7aa",
+          "hair": "#8c8580",
+          "top": "#e77fa6",
+          "legs": "#2b3440",
+          "shirt": "#e77fa6",
+          "pants": "#2b3440"
+        },
+        "idle": [
+          "No water, no power, no renting out. Just a box on the beach."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "bay",
+        "giver": "kim",
+        "title": "St Kilda to Brighton",
+        "stamp": "Bayside",
+        "talk": [
+          "This is Melbourne's bayside, rebuilt from open data: {buildings} buildings from St Kilda to Brighton, on Geoscience Australia's 5 m LiDAR terrain.",
+          "Start with the pier. It was rebuilt and reopened in December 2024, about 450 metres out to the breakwater. The kiosk at its end was built in 1904, burnt in 2003 and rebuilt to the old plans."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -855,
+              3005
+            ],
+            "radius": 25,
+            "text": "Walk out along St Kilda Pier to the kiosk"
+          },
+          {
+            "type": "talk",
+            "npc": "tash",
+            "text": "Back at the foot of the pier, find Tash from Earthcare St Kilda"
+          }
+        ]
+      },
+      {
+        "id": "penguins",
+        "giver": "tash",
+        "title": "Penguins at dusk",
+        "stamp": "Little penguin",
+        "talk": [
+          "About 1,400 little penguins live in the rocks of the breakwater. It was built for the sailing at the 1956 Olympics. When Earthcare first counted the birds, in 1986, there were 57.",
+          "Today the sun sets at {sunset}. They wait offshore in rafts until it's dark, and come ashore from about {penguins_from}.",
+          "Watch from the platform at the end of the pier. No flash, no bright lights, no phone torches."
+        ],
+        "choices": [
+          {
+            "text": "Take me to this evening's sunset",
+            "action": "dusk"
+          },
+          {
+            "text": "I'll wait for dark"
+          }
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -920,
+              3011
+            ],
+            "radius": 25,
+            "after_dark": true,
+            "text": "After sunset, go out to the penguin viewing platform at the end of the pier"
+          },
+          {
+            "type": "penguins",
+            "count": 5,
+            "radius": 40,
+            "text": "Watch the penguins come ashore on the breakwater"
+          },
+          {
+            "type": "talk",
+            "npc": "tash",
+            "text": "Tell Tash what you saw"
+          }
+        ]
+      },
+      {
+        "id": "luna",
+        "giver": "luca",
+        "title": "Mr Moon",
+        "stamp": "Scenic Railway",
+        "talk": [
+          "Luna Park opened in December 1912, and so did the Scenic Railway. It's the oldest roller coaster in the world that has run without a break: 967 metres of track, 16 metres high, and a brakeman rides on every train.",
+          "Walk in through Mr Moon's mouth."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              112.6,
+              2718
+            ],
+            "radius": 3,
+            "text": "Walk in through Mr Moon's mouth"
+          }
+        ]
+      },
+      {
+        "id": "boxes",
+        "giver": "grace",
+        "title": "The bathing boxes",
+        "stamp": "Bathing box",
+        "talk": [
+          "There are 96 boxes on Dendy Street Beach. They've stood on this spot since 1934, and there were boxes on this coast by the 1880s.",
+          "They're timber, with corrugated-iron gable roofs. Owners hold a licence from the council each year. They used to be white and green; the bright colours started in the 1970s.",
+          "Walk the row, from the first box to the last."
+        ],
+        "choices": [
+          {
+            "text": "Show me a summer afternoon",
+            "action": "set_time",
+            "date": [
+              1,
+              15
+            ],
+            "time": "17:30"
+          },
+          {
+            "text": "Let's go"
+          }
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              967.5,
+              -2857.8
+            ],
+            "radius": 8,
+            "text": "Go to the first box, at the north end of the row"
+          },
+          {
+            "type": "visit",
+            "at": [
+              1024.5,
+              -3322.7
+            ],
+            "radius": 8,
+            "text": "Walk the row to the last box, at the south end"
+          }
+        ]
+      }
+    ]
+  },
+  "tour": [
+    {
+      "title": "Port Phillip, St Kilda to Brighton",
+      "text": "{buildings} buildings from OpenStreetMap via Overture Maps along 7 km of shore, on Geoscience Australia's 5 m LiDAR terrain. No openly licensed aerial photo covers the bayside, so the ground is drawn from the open map data.",
+      "cam": [
+        -3300,
+        -2300,
+        2400
+      ],
+      "tgt": [
+        300,
+        500,
+        0
+      ],
+      "date": [
+        1,
+        15
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 8
+    },
+    {
+      "title": "St Kilda Pier and the breakwater",
+      "text": "The pier was rebuilt and reopened in December 2024. The breakwater beyond it was built for the sailing at the 1956 Olympics, and about 1,400 little penguins now live in its rocks. They come ashore after sunset.",
+      "cam": [
+        -1180,
+        2780,
+        140
+      ],
+      "tgt": [
+        -850,
+        3060,
+        0
+      ],
+      "date": [
+        10,
+        28
+      ],
+      "from": "19:20",
+      "to": "20:20",
+      "hold": 10
+    },
+    {
+      "title": "Luna Park",
+      "text": "Opened in December 1912 with the Scenic Railway, the oldest roller coaster in the world that has run without a break: 967 m of track, 16 m high. Mr Moon's face stands at the gate.",
+      "cam": [
+        310,
+        2860,
+        95
+      ],
+      "tgt": [
+        110,
+        2650,
+        8
+      ],
+      "date": [
+        1,
+        15
+      ],
+      "from": "17:00",
+      "to": "18:00",
+      "hold": 9
+    },
+    {
+      "title": "Where the heights come from",
+      "text": "OpenStreetMap maps the height of only a few buildings in these suburbs, so most here are Microsoft's machine-learning estimates, corrected for their measured bias, or estimates from neighbours. The colours show each building's source.",
+      "cam": [
+        1300,
+        1500,
+        900
+      ],
+      "tgt": [
+        500,
+        500,
+        0
+      ],
+      "date": [
+        1,
+        15
+      ],
+      "from": "12:00",
+      "to": "13:00",
+      "hold": 9,
+      "provenance": true
+    },
+    {
+      "title": "The Brighton bathing boxes",
+      "text": "96 boxes on Dendy Street Beach, on the Victorian Heritage Register since 2018. Each is built here on its own mapped footprint, facing the bay; the paint schemes are illustrative.",
+      "cam": [
+        860,
+        -3170,
+        55
+      ],
+      "tgt": [
+        1020,
+        -3040,
+        2
+      ],
+      "date": [
+        1,
+        15
+      ],
+      "from": "17:30",
+      "to": "18:30",
+      "hold": 9
+    }
+  ]
+}

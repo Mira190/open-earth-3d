@@ -20,6 +20,15 @@ Writes web/data/<city>/game.json:
   open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
+  boardwalks  walkways at deck height over rocks, water or sand: mapped lines found by
+            name, or lines given in the local frame, buffered to their width
+  wildlife  a colony on a mapped class of infrastructure (the St Kilda breakwater):
+            burrows on it, landing places on its seaward edge with open water beyond,
+            and the line of its viewing platform
+  nogo      the colony's rocks, which walkers keep off (footways across them are dropped)
+  travel    fast-travel points, on the ground; links to neighbouring cities
+  climate   passed through from city.json: the monthly mean daily maximum, which decides
+            whether the crowd looks for sun or shade on the benches
 """
 import base64
 import json
@@ -38,7 +47,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, write_index
-from shore import depth_at, from_png
+from shore import depth_at, from_png, without_raised
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -102,6 +111,7 @@ def main():
     wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
     seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
     sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
+    sea = without_raised(C, con, raw("infrastructure"), rows, sea)
     water = raster_mask(sea, nx, ny, DEM_CELL, C.x0, C.y1)
     piers = [Polygon(np.asarray(r, float).reshape(-1, 2) / 10) for r in places["piers"]]
     pier_mask = raster_mask([p.buffer(3) for p in piers], nx, ny, DEM_CELL, C.x0, C.y1)
@@ -225,6 +235,75 @@ def main():
                 hp["name"] = h.get("name", hp["name"])
         if not h.get("from_data") and "at" in h:
             helipads.append({"id": h["id"], "name": h["name"], "at": h["at"] + [round(ground(*h["at"]), 1)]})
+
+    # ---------------------------------------------------------- boardwalks: mapped walkways (lines) over rocks or water, as decks
+    boardwalks = []
+    for bw in gcfg.get("boardwalks", []):
+        if "line" in bw:  # given in the local frame, e.g. a mapped path extended to where the ground meets the deck
+            lines = [LineString(bw["line"])]
+        else:
+            lines = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in infra if r["name"] == bw["name"]]
+        lines = [g for g in lines if g.geom_type in ("LineString", "MultiLineString")]
+        if not lines:
+            print("boardwalk not found:", bw["name"])
+            continue
+        deck = shapely.union_all(lines).buffer(bw.get("width_m", 3.0) / 2, cap_style="flat").intersection(extent)
+        for q in polygons(deck):
+            boardwalks.append([round(v * 10) for xy in q.simplify(0.3).exterior.coords[:-1] for v in xy])
+    print("boardwalks:", len(boardwalks))
+
+    # ---------------------------------------------------------- wildlife: a colony on mapped rocks (a breakwater), where its birds
+    # come ashore (the colony's edge with open water beyond it, on the seaward bearings) and where they nest
+    wildlife, nogo = [], []
+    for wc in gcfg.get("wildlife", []):
+        near = Point(*wc["colony_near"])
+        rocks = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in infra if r["class"] == wc.get("on", "breakwater")]
+        rocks = [g for g in rocks if g.geom_type in ("Polygon", "MultiPolygon") and g.distance(near) < wc.get("within_m", 60)]
+        if not rocks:
+            print("colony not found:", wc["name"])
+            continue
+        colony = shapely.union_all(rocks).intersection(extent)
+        walk = shapely.union_all([Polygon(np.asarray(r, float).reshape(-1, 2) / 10) for r in boardwalks]).buffer(1.0) if boardwalks else Polygon()
+        b0, b1 = wc.get("seaward_bearing_deg", [0, 360])
+        landings = []
+        for poly in polygons(colony):
+            ring = poly.exterior
+            for d in np.arange(0, ring.length, 3.0):
+                p, q = ring.interpolate(d), ring.interpolate(d + 0.5)
+                tx, ty = q.x - p.x, q.y - p.y
+                L = math.hypot(tx, ty) or 1
+                nxo, nyo = ty / L, -tx / L  # one side; flip to face out of the rocks
+                if poly.contains(Point(p.x + nxo, p.y + nyo)):
+                    nxo, nyo = -nxo, -nyo
+                bearing = math.degrees(math.atan2(nxo, nyo)) % 360
+                if not (b0 <= bearing <= b1) or walk.distance(p) < 4:
+                    continue
+                if all(water[cell(p.x + nxo * k, p.y + nyo * k)] for k in (6, 20, 40)):  # open water beyond
+                    landings.append([round(p.x, 1), round(p.y, 1), round(bearing)])
+        rng = np.random.default_rng(7)
+        inner = colony.buffer(-1.0).difference(walk.buffer(2.0))
+        x0, y0, x1, y1 = inner.bounds
+        burrows = []
+        while len(burrows) < wc.get("show", 150) and inner.area > 0:
+            x, y = rng.uniform(x0, x1), rng.uniform(y0, y1)
+            if inner.contains(Point(x, y)):
+                burrows.append([round(x, 1), round(y, 1), round(ground(x, y), 1)])
+        view = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in infra if r["name"] == wc.get("viewing")]
+        wildlife.append({k: wc[k] for k in wc if k not in ("colony_near", "within_m", "on", "seaward_bearing_deg")} | {
+            "landings": landings, "burrows": burrows,
+            "viewing": [[round(c, 1) for c in xy] for g in view for xy in (g.coords if g.geom_type == "LineString" else g.exterior.coords)]})
+        for q in polygons(colony.difference(walk)):  # the rocks are the birds': walkers keep to the boardwalk
+            nogo.append([round(v * 10) for xy in q.simplify(0.5).exterior.coords[:-1] for v in xy])
+        print(f"wildlife {wc['name']}: {len(landings)} landing points, {len(burrows)} burrows")
+    if nogo:  # the crowd keeps off the colony too: drop footways that cross it
+        from shapely.prepared import prep
+        keep_off = prep(shapely.union_all([Polygon(np.asarray(r, float).reshape(-1, 2) / 10) for r in nogo]))
+        n0 = len(foot)
+        foot = [f for f in foot if not any(keep_off.contains(Point(f["p"][k] / 10, f["p"][k + 1] / 10)) for k in range(0, len(f["p"]), 3))]
+        print(f"footways crossing no-go areas dropped: {n0 - len(foot)}")
+
+    # ---------------------------------------------------------- places to travel to once visited, with the ground under them
+    travel = [dict(t, at=[t["at"][0], t["at"][1], round(ground(*t["at"]), 1)]) for t in gcfg.get("travel", [])]
 
     # ---------------------------------------------------------- ferry routes through open water
     rr, cc = np.nonzero(nav)
@@ -426,7 +505,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "under_bridge_note", "shade_landmarks", "ferry_style") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
@@ -438,6 +517,11 @@ def main():
         "ferry_speed_ms": gcfg.get("ferry_speed_ms", 9.0), "ferry_dwell_s": gcfg.get("ferry_dwell_s", 20.0),
         "helipads": helipads,
         "viewpoints": gcfg.get("viewpoints", []),
+        "boardwalks": boardwalks,
+        "wildlife": wildlife,
+        "nogo": nogo,
+        "travel": travel,
+        **{k: gcfg[k] for k in ("links",) if k in gcfg},
         **({"rail": rail} if rail else {}),
         "props": props,
         "crowd": gcfg.get("crowd", {"pedestrians": 300, "cars": 120, "radius_m": 450}),

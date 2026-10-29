@@ -453,6 +453,14 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
+    // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
+    const walks = (D.G && D.G.boardwalks) || [];
+    if (walks.length) {
+      const top = Math.round((D.G.pier_deck_m || 2.2) * 10), timber = { wall: lin('#6f5a44'), roof: lin('#8a7258'), code: 3, windows: false };
+      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), piers.material);
+      deck.castShadow = deck.receiveShadow = true;
+      world.add(deck);
+    }
 
     // trees mapped in OSM: low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
     const TR = P.trees || [], nT = TR.length / 4;

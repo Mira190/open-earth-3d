@@ -3,8 +3,9 @@
 // Helicopter: an assisted flight model, as in Sketchbook. The rotor cancels gravity,
 // so it hovers with no input; it levels itself; horizontal speed decays with drag. It
 // can't lift off until the rotor has spooled up, it lands wherever the ground below
-// is reached gently, and it collides with buildings and with the landmark solids. It
-// can fly under the Harbour Bridge deck but not through its steel.
+// is reached gently, and it collides with buildings and with the landmark solids,
+// sliding along a wall it meets at a glancing angle. It can fly under the Harbour
+// Bridge deck but not through its steel.
 //
 // Ferries: double-ended, like Sydney's, so they reverse at the end of a route without
 // turning. They follow the routes in game.json (found through open water by the
@@ -117,11 +118,16 @@ window.OEVehicles = (function () {
       st.vz += (vzTarget - st.vz) * Math.min(1, dt * 3);
       if (!st.on && !st.landed) st.vz -= 6 * dt; // no power: settle
       let nx = st.x + st.vx * dt, ny = st.y + st.vy * dt, nz = Math.min(900, st.z + st.vz * dt);
-      if (!nav.free(nx, ny, st.z + 0.3, st.z + 3.6, 3.2)) { // sideways into something
-        const hard = Math.hypot(st.vx, st.vy) > 12;
-        nx = st.x; ny = st.y; st.vx *= -0.3; st.vy *= -0.3;
-        if (hard) events.push({ type: 'bump' });
+      const m = nav.col.slide(st.x, st.y, nx - st.x, ny - st.y, 3.2, st.z + 0.3, st.z + 3.6);
+      if (m.hit) { // sideways into something: slide along it, losing the speed into it (a hard hit bounces off)
+        const vn = st.vx * m.hit.nx + st.vy * m.hit.ny;
+        if (vn < 0) {
+          const hard = vn < -10, k = hard ? 1.3 : 1;
+          st.vx -= m.hit.nx * vn * k; st.vy -= m.hit.ny * vn * k;
+          if (hard) events.push({ type: 'bump' });
+        }
       }
+      nx = m.x; ny = m.y;
       if (nz > st.z && !nav.free(nx, ny, nz + 0.3, nz + 3.6, 3.2)) { nz = st.z; st.vz = Math.min(0, st.vz); } // up into something
       const floor = nav.groundBelow(nx, ny, nz);
       if (nz <= floor + 0.02) {

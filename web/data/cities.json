@@ -22,6 +22,17 @@
   "game": true
  },
  {
+  "id": "melbourne-bayside",
+  "name": "Melbourne Bayside",
+  "country": "Australia",
+  "lat": -37.8918,
+  "lon": 144.9755,
+  "status": "live",
+  "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset.",
+  "built": true,
+  "game": true
+ },
+ {
   "id": "new-york",
   "name": "New York",
   "country": "United States",

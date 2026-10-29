@@ -1,12 +1,15 @@
-# The game: Sydney, Melbourne and Hong Kong on Foot
+# The game: Sydney, Melbourne, the bayside and Hong Kong on foot
 
 The city model becomes a place you can be in. In Sydney you walk the centre as
 a surveyor, talk to the people who know it, climb the Opera House steps, catch
 the ferry, and fly a helicopter under the Harbour Bridge. In Melbourne you check
 the winter sun on Federation Square, take a river shuttle down the Yarra, and
-fly past the Arts Centre spire. In Hong Kong you cross the harbour on the Star
-Ferry, ride the Peak Tram and dodge the double-deck trams. The world is the same
-open-data model as the viewer. In Sydney that means:
+fly past the Arts Centre spire. On Melbourne's bayside you wait on the St Kilda
+Pier viewing platform after the real sunset while little penguins come ashore,
+walk into Luna Park through Mr Moon's mouth, and walk the row of Brighton
+bathing boxes. In Hong Kong you cross the harbour on the Star Ferry, ride the
+Peak Tram and dodge the double-deck trams. The world is the same open-data
+model as the viewer. In Sydney that means:
 
 - 7,962 buildings from OpenStreetMap;
 - the NSW bare-earth terrain;
@@ -16,8 +19,8 @@ Everything the characters tell you about the city is computed from the model
 while you play.
 
 Open it from the globe (**Play** on a city card), from the 3D model (the
-**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne` or
-`#play-hong-kong`.
+**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
+`#play-melbourne-bayside` or `#play-hong-kong`.
 
 | Talking to an NPC | On the bridge deck at golden hour |
 |---|---|
@@ -36,6 +39,10 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
 | ![](images/melbourne/game-river.jpg) | ![](images/melbourne/game-heli.jpg) |
+| **The bayside: the Brighton bathing boxes** | **From the St Kilda Pier viewing platform at night: penguins on the breakwater** |
+| ![](images/melbourne-bayside/game-boxes.jpg) | ![](images/melbourne-bayside/game-penguins.jpg) |
+| **Mr Moon's gate at Luna Park** | **The pier's approach over the sand** |
+| ![](images/melbourne-bayside/game-luna-park.jpg) | ![](images/melbourne-bayside/game-pier.jpg) |
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
 | ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
@@ -114,6 +121,17 @@ The Melbourne survey has the same shape and six stamps:
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
 
+The bayside survey is one line of four stamps, taken in order:
+1. Walk out along St Kilda Pier to the kiosk.
+2. Hear from Tash, an Earthcare volunteer, about the colony, then wait on the
+   viewing platform after sunset until penguins come ashore near you. One
+   choice in the dialogue sets the clock to ten minutes before today's sunset.
+3. Walk into Luna Park through Mr Moon's mouth.
+4. Walk the row of Brighton bathing boxes, from the first to the last.
+
+The bayside has no ferries and no real helipad. The pad at Elwood is invented
+and says so. Places you have visited become fast-travel stops on the map.
+
 The Hong Kong survey has six:
 1. Take the Star Ferry from Central's Pier 7 to Tsim Sha Tsui.
 2. Find a surveyed and a LiDAR-measured height with the survey lens at the
@@ -162,6 +180,8 @@ listed at the end.
 | **Breath of the Wild** | After a short prologue, the main quests open together and can be done in any order. | Its quests end in invented places. Here each line ends in a fact about a real one. A step from one line completes while you follow another, because both are a position, a time or a sun angle in the same model. |
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
+| **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
+| **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 
 ## How it works
 
@@ -169,7 +189,8 @@ All of this is driven by `cities/<id>/city.json` (`game` block) and the files th
 pipeline writes. The only city-specific code is landmark geometry in
 `cities/<id>/city.py`:
 - Sydney's bridge, Opera House and steps;
-- Melbourne's spire.
+- Melbourne's spire and Flinders Street Station;
+- the bayside's bathing boxes, Scenic Railway and Mr Moon.
 
 - **Game data** (`pipeline/game_data.py` writes `web/data/<city>/game.json`):
   - **Water mask:** 5 m.
@@ -192,6 +213,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     monotonic (bridging the dips under its viaducts), and the piece left over
     beside it is its passing loop.
   - **NPCs:** snapped to open ground.
+  - **Boardwalks:** walkways at deck height over rocks, water or sand. They
+    are mapped lines found by name, or lines given in the local frame, buffered
+    to their width. The game draws them as timber decks.
+  - **Wildlife:** a colony on a mapped class of infrastructure. It has burrows
+    on the rocks, and landing places on their seaward edge with open water 6, 20
+    and 40 m out. Its rocks are a no-go area, and footways across them are
+    dropped.
+  - **Travel points and links:** fast-travel points on the ground, and
+    neighbouring cities named in the menu.
 - **Opera House steps** (`city.py`): the Monumental Steps are 90 m wide and run
   40 m from the forecourt to the podium, as measured on the NSW aerial photo.
   They climb in two flights of 15 cm risers, with a landing between them and
@@ -212,15 +242,31 @@ pipeline writes. The only city-specific code is landmark geometry in
   they pull away. A funicular's two cars hang on one cable: one climbs while the
   other comes down, and they pass at the loop. You ride it like a ferry, from
   station to station, and the HUD shows your height and the gradient.
-- **Navigation** (`web/game/nav.js`): the 2 m surface model (terrain plus
-  buildings, with building ids) does three jobs:
-  - walls;
-  - low roofs you can step onto;
-  - the sun meter.
-
-  Piers are 2.2 m decks, and the bridge deck is a walkable strip. The landmark
-  meshes are rasterised as height intervals, so the helicopter can pass under
-  the deck but not through the arch.
+- **Navigation** (`web/game/nav.js`):
+  - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
+    runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
+    of the water.
+  - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
+    walkable strip.
+  - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
+    cells, so the helicopter can pass under the deck but not through the arch.
+  - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
+    the city's note. A boardwalk across them stays walkable.
+- **Collision** (`web/game/collision.js`): every building solid is a prism, its
+  published footprint between two heights, and each landmark cell is a box.
+  - **Walking:** the walker is a 0.35 m capsule, moved the way Unreal's
+    CharacterMovementComponent moves one:
+    - it is swept against the walls between knee and head;
+    - it slides along what it hits and stops in a corner;
+    - it is pushed out if it starts inside;
+    - anything lower than a 0.75 m step is left to the floor, which also comes
+      from the exact footprints.
+  - **Camera:** a 0.25 m probe sphere is swept from the player to the camera
+    against walls, roofs and soffits, as Unreal's SpringArm does.
+  - **Measured against the old 2 m grid:** 120 walks into walls at random
+    angles ended inside a footprint 50 times before and never now. The closest
+    approach is now the capsule radius. See
+    [ENGINES.md](ENGINES.md#1-movement-and-collision-built).
 - **People** (`web/game/people.js`, assets from `pipeline/fetch_people.py`):
   - **Characters:** 13 rigged characters from Quaternius's Ultimate Modular Men
     and Women packs (CC0): office workers, a suit, a hoodie, beachwear,
@@ -233,11 +279,64 @@ pipeline writes. The only city-specific code is landmark geometry in
     matched to the ground speed, measured from how fast the planted foot slides
     in each clip, so feet don't skate. NPCs turn their heads to look at you and
     wave when you talk to them, and passers-by wave back when greeted.
+  - **Sitting:** there is no clip for it.
+    - The legs are bent over the idle pose: each thigh is aimed forward and
+      each shin straight down.
+    - The feet are IK targets in these rigs, so they are moved to the ends of
+      the shins, and the body is lowered until they touch the ground.
+    - The far copies bend their legs the same way in the vertex shader.
   - **Near and far:** the 14 nearest passers-by (6 on a phone) are fully
     skinned. Everyone further away is an instanced copy of the same character,
     simplified by vertex clustering. Its legs, knees and arms swing in the
     vertex shader, and the shadows move with them. That is one draw call per
     character for hundreds of people.
+- **Crowd** (`web/game/actors.js`):
+  - **Walking:** pedestrians follow the footways, keeping left.
+  - **Stepping aside:** each walker looks four seconds ahead for anyone it will
+    pass closer than 0.6 m, the player included.
+    - It steps aside within the footway's width, choosing the side by where the
+      other person is now. If both judged by where the other will be, each
+      would mirror the other's sidestep, and they would cross into each other.
+    - If it can't get round, it slows to the other person's pace.
+    - This is RVO and Detour Crowd confined to the footway.
+    - With 40 walkers on one footway, pairs walked through each other 2.8
+      times a tick before, and never now. People used to freeze when you stood
+      among them; now they walk round you.
+  - **Benches:** the benches are smart objects.
+    - 1,375 of Sydney's 1,862 benches and 891 of Melbourne's 1,181 can be
+      reached from a footway in a straight line that is clear of walls, water
+      and steps.
+    - Each faces its footway, or turns round to face the water when there is
+      water behind it. Each has a backrest and two seats.
+    - A walker passing a bench with a free seat may claim the seat, walk over,
+      sit for 25 to 75 seconds and walk on.
+  - **Sun or shade:** the game re-tests the benches near you against the sun,
+    about 60 a second, with the same ray cast as the sun meter.
+    - Whether people want the sun depends on the city's average daily top for
+      the month, against a comfortable 22 °C. That is the `climate` block in
+      `game.json`, from the Bureau of Meteorology.
+    - People lean towards the sun when it is low.
+    - Greet someone on a bench and they tell you when the sun reaches it or
+      leaves it today.
+
+    Around Martin Place:
+
+    | Time | Benches in sun | Sitters in sun |
+    |---|---|---|
+    | 21 June, 12:30 | 55% | 100% |
+    | 15 January, 14:00 | 92% | 21% |
+- **Penguins** (`web/game/penguins.js`): one instanced mesh draws the colony.
+  - **Day:** all but a few birds (5% at St Kilda) are at sea.
+  - **Dusk:** after sunset, rafts of neighbours gather off the landing place
+    nearest their burrows. Each raft swims in at its own time, between 20 and
+    120 minutes after sunset, and the birds waddle home at 0.35 m/s.
+  - **Night:** birds near you call, a bray synthesised in `audio.js`. They catch
+    a little of the platform's low light.
+  - **Dawn:** each bird leaves for the sea 30 to 90 minutes before sunrise.
+  - **Clock jumps:** when the clock jumps rather than runs, each bird is placed
+    where it would be by then.
+  - **Quest step:** a `penguins` step completes when enough birds are ashore
+    near you.
 - **Traffic** (`web/game/actors.js`):
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
@@ -250,7 +349,8 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Helicopter:** a light scenic type. It has a bubble cabin with its glass,
     an engine deck, a tail boom with a fin and stabiliser, skids, and a rotor
     that blurs into a disc at speed. It flies the assisted model, with
-    collisions against buildings and landmark solids.
+    collisions against buildings and landmark solids. It slides along a wall it
+    meets at a glancing angle and bounces off a hard hit.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The size and livery come from the city's `ferry_style`: Sydney Ferries'
     green and cream with a gold band, and an invented navy shuttle on the Yarra.
@@ -341,7 +441,22 @@ the landing in Tamar Park, the sun step in Statue Square on 21 December, the
 five-minute Peak Tram ride (boarding, the climb to 397 m, getting off at the
 Peak) and the last talk at the lookout. A Melbourne script plays its six stamps the same way: the sun step at
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
-flight to Birrarung Marr. A further script docks a ferry by hand. Phone layout, the routes into the game
+flight to Birrarung Marr.
+
+A bayside script walks all four stamps on foot:
+- **The pier:** it walks up the approach from the promenade and along the pier
+  to the kiosk. It checks that the breakwater rocks refuse a walker and the
+  viewing platform does not.
+- **The penguins:** it takes the dusk choice and walks out to the platform. It
+  checks that the step waits for dark, then sets the clock to 100 minutes after
+  sunset, when 14 birds are ashore within 40 m.
+- **Luna Park:** it walks in through Mr Moon's mouth.
+- **The boxes:** it walks the row of boxes on the sand.
+
+It found three faults, each now fixed:
+- the pier could not be reached from the shore;
+- the Scenic Railway's trestles blocked the gate;
+- birds walked hundreds of metres from a random landing place. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
 
 ## Limitations
@@ -353,13 +468,27 @@ and the menus are checked in a phone-sized browser.
   base bodies. Distant walkers swing rigid legs and arms instead of playing the
   full animation. The box-built figures return if the character files cannot
   be loaded.
-- **No physics engine:** collisions use the surface model, which is 2 m. There
-  is no ragdoll or car damage, and pedestrians don't avoid each other.
+- **No rigid-body physics:** walls are exact, but the landmarks (the Opera
+  House shells, the bridge steel) still collide as 2 m boxes. The floor is found
+  under the walker's centre, not under the whole capsule. There is no ragdoll or
+  car damage. [ENGINES.md](ENGINES.md#roadmap) lists the next steps.
+- **Crowd:**
+  - Walkers avoid each other along the footway lines, not across open plazas,
+    and they don't avoid cars.
+  - Bench shade counts buildings and landmarks but not trees.
+  - Whether people want sun is a rule of thumb, the month's average top against
+    22 °C, not the day's weather.
 - **Ferry timetable:** the routes follow the inner-harbour services, but the
   timetable is invented. Ferries run at 1.5 times real speed.
 - **Vessels on the water:** a ferry rides the mean water level and does not
   pitch or roll on the waves. Its wake is a fan of foam drawn on the water, not
   waves of its own.
+- **Penguins:** the birds walk straight from the water's edge to their burrows,
+  through each other. The burrows are spread over the mapped rocks, not at the
+  colony's real nest boxes, which are not mapped. The game shows 160 of about
+  1,400 birds.
+- **Piers:** the passers-by keep to the shore, because footways over water are
+  dropped unless they are flagged as bridges.
 - **Trams and the funicular:** the trams are ambient: you can't ride them.
   The Peak Tram skips its intermediate stops, and both of its cars face uphill.
 - **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
@@ -373,6 +502,9 @@ and the menus are checked in a phone-sized browser.
   near the frame look hazy from a distance.
 
 ## Sources
+
+- Unreal Engine's CharacterMovementComponent and SpringArm: see
+  [ENGINES.md](ENGINES.md#sources).
 
 - Microsoft Flight Simulator buildings and the Melbourne tower:
   [TechCrunch](https://techcrunch.com/2020/08/17/meet-the-startup-that-helped-microsoft-build-the-world-of-flight-simulator),

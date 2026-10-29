@@ -22,6 +22,7 @@ import duckdb
 import numpy as np
 import shapely
 from PIL import Image, ImageDraw
+from scipy import ndimage
 from scipy.ndimage import map_coordinates
 from pyproj import Transformer
 from scipy.spatial import cKDTree
@@ -29,7 +30,7 @@ from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
 
 from cityctx import ROOT, City, city_args, polygons
-from shore import FLOOR_M, SHORE_CELL, depth_at, shore_map
+from shore import FLOOR_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
 DEM_CELL = 5.0       # m, building bases and analysis
@@ -76,7 +77,28 @@ def load_dem(C, cell=DEM_CELL, name="dem"):
         mx, my = Transformer.from_crs(meta.get("frame_crs", "EPSG:7844"), meta["crs"], always_xy=True).transform(np.asarray(lon), np.asarray(lat))
     col = (np.asarray(mx) - mx0) / (mx1 - mx0) * w - 0.5
     row = (my1 - np.asarray(my)) / (my1 - my0) * h - 0.5
-    return map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx)
+    dem = map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx)
+    return raise_mapped(C, dem, cell)
+
+
+def raise_mapped(C, dem, cell):
+    """Structures a bare-earth DEM flattens to the water, raised from their mapped outlines
+    (terrain.raise: [{class, crest_m, slope_m}], Overture infrastructure classes such as a
+    breakwater): the ground climbs from the outline to crest_m, slope_m in from it."""
+    rules = C.cfg.get("terrain", {}).get("raise", [])
+    path = os.path.join(C.raw, "overture_infrastructure.parquet")
+    if not rules or not os.path.exists(path):
+        return dem
+    ny, nx = dem.shape
+    con = duckdb.connect()
+    for rule in rules:
+        polys = [p for r in rows(con, path) if r["class"] == rule["class"]
+                 for p in polygons(C.to_local(swkb.loads(bytes(r["wkb"]))))]
+        inside = raster_mask(polys, nx, ny, cell, C.x0, C.y1)
+        d = ndimage.distance_transform_edt(inside) * cell
+        dem = np.where(inside, np.maximum(dem, rule["crest_m"] * np.minimum(1.0, d / rule.get("slope_m", 4.0))), dem)
+    return dem
+
 
 
 def raster_mask(polys, nx, ny, cell, x0, y1):
@@ -199,11 +221,12 @@ def synth_ground(C, con, raw, extent):
     for r in segs:
         if r["subtype"] == "rail" and not tunnel(r):
             stroke(local(r), SYNTH["rail"], 1.5)
+    rock_classes = raised_classes(C.cfg)
     for r in rows(con, raw("infrastructure")):
-        if r["class"] == "pier":
+        if r["class"] == "pier" or r["class"] in rock_classes:
             g = local(r)
             if g.geom_type in ("Polygon", "MultiPolygon"):
-                fill(g, SYNTH["pier"])
+                fill(g, SYNTH["pier" if r["class"] == "pier" else "rock"])
     # footprints, and contact shading around them
     mask = Image.new("L", (w, h), 0)
     md = ImageDraw.Draw(mask)
@@ -503,6 +526,7 @@ def build(C):
     wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
     seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
     sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
+    sea = without_raised(C, con, raw("infrastructure"), rows, sea)
     water = raster_mask(sea, dem.shape[1], dem.shape[0], DEM_CELL, C.x0, C.y1)
     dem_land = dem.copy()
     # the bottom under the water, modelled from the distance to each kind of shore (shore.py)
@@ -691,13 +715,17 @@ def build(C):
     ctx.labels = {k: v for k, v in ctx.labels.items() if k not in before} | {k: v for k, v in ctx.labels.items() if k in before}
 
     # public places named in the config: the largest land-use polygon of that name and class,
+    # with "source": "land" the largest land-cover polygon instead (a beach),
     # or for "source": "water" (a river corridor) every water polygon of that name, widened by buffer_m
-    lu, wat = rows(con, raw("land_use")), None
+    lu, wat, land = rows(con, raw("land_use")), None, None
     places = []
     for pc in cfg.get("places", []):
         if pc.get("source") == "water":
             wat = wat or rows(con, raw("water"))
             cands = [r for r in wat if (r["name"] or "").startswith(pc["name"]) and r["class"] == pc.get("class", r["class"])]
+        elif pc.get("source") == "land":
+            land = land or rows(con, raw("land"))
+            cands = [r for r in land if (r["name"] or "").startswith(pc["name"]) and r["class"] == pc.get("class", r["class"])]
         else:
             cands = [r for r in lu if (r["name"] or "").startswith(pc["name"]) and r["class"] == pc.get("class", r["class"])]
         if not cands:
