@@ -56,6 +56,7 @@ window.OpenEarthGame = async function game(cityId) {
   resize();
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
   const world = Wd.world, U = Wd.U;
+  const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   U.uTime = { value: 0 };
   // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
@@ -229,6 +230,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const heli = OEVehicles.helicopter(world, nav, padAt);
   const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }));
   const wharfById = id => G.wharves.find(w => w.id === id);
+  // street trams and a funicular, where the city has them (rail.js)
+  const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
+  const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
 
   // ------------------------------------------------------------ objective marker and GPS route in the world
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 90, 12, 1, true).translate(0, 45, 0),
@@ -272,6 +276,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (kind === 'sun_line') return sunLine();
       if (kind === 'share') return String(areaShare[arg] || 0);
       if (kind === 'acc') return acc && acc[arg] != null ? String(acc[arg]) : '–';
+      if (kind === 'lidar') { const v = (arg.includes('.') ? arg : `survey.${arg}`).split('.').reduce((o, k) => (o == null ? o : o[k]), scene.lidar_check); return v == null ? '–' : String(v); }
       if (kind === 'landmark') { const v = arg.split('.').reduce((o, k) => (o == null ? o : o[k]), scene.landmarks); return typeof v === 'number' ? String(Math.round(v * 10) / 10) : String(v ?? '–'); }
       if (kind === 'sun') {
         const [name, md, hhmm] = arg.split('|'), pl = placeByName(name), [m, d] = md.split('-').map(Number);
@@ -283,7 +288,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     });
   }
   const sampleCache = {};
-  const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours',
+  const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', survey: 'its top level is surveyed by the mapping agency', lidar: 'its roof is measured from an airborne LiDAR scan', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours',
     ml: 'its height is a machine-learning estimate, bias-corrected', reference: 'its height is the published figure (the open data was far too short)', verified: 'its height was checked by hand against a cited source', parametric: 'it is built from its published dimensions' };
   function smalltalk(x, y) {
     const opts = [`It's ${fill('{time}')}. ${sunLine()}`];
@@ -311,6 +316,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   function applySun() {
     sun = S.position(S.localToUtc(clock.y, clock.m, clock.d, clock.min));
     Wd.setSun(sun);
+    if (show) show.setClock(clock.min);
     const night = U.uNight.value;
     headMat.emissiveIntensity = 1.6 * night;
     glowMat.opacity = 0.85 * night;
@@ -341,6 +347,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const out = { text: s.text, title: q.title };
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
     else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.terminal; }
+    else if (s.type === 'rail' && rail) { const st = rail.stations.find(o => o.id === (player.mode === 'rail' ? s.to : s.from)); if (st) out.at = [st.x, st.y]; }
     else if (s.type === 'surface' || s.type === 'under_bridge') { const st = nav.strips.find(x => x.name === (s.surface || x.name)); if (st) out.at = st.origin.slice(); }
     else if (s.type === 'land' || s.type === 'sun') { const pl = placeByName(s.place); if (pl) out.at = centroid(pl); }
     if (s.type === 'inspect') out.text += ` (${qs.inspected.length}/${s.sources.length})`;
@@ -529,8 +536,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (/^Digit[1-9]$/.test(c)) dlg.choose(+c.slice(5) - 1);
       return;
     }
-    if (c === 'KeyE' || c === 'KeyF' && !(player.mode === 'ferry')) interact();
-    else if (c === 'KeyF' && player.mode === 'ferry') skip = !skip;
+    if (c === 'KeyE' || c === 'KeyF' && !(player.mode === 'ferry' || player.mode === 'rail')) interact();
+    else if (c === 'KeyF' && (player.mode === 'ferry' || player.mode === 'rail')) skip = !skip;
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyV') { cam.mode = cam.mode === 'bird' ? 'chase' : 'bird'; H.toast(cam.mode === 'bird' ? "Bird's-eye view: scroll to change height" : 'Chase view'); }
     else if (c === 'KeyM') toggleMap();
@@ -604,11 +611,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (here) return { key: 'E', text: `Get off at ${wharfById(here).name}`, act: alight };
       return null;
     }
+    if (player.mode === 'rail') {
+      const here = rail.stationOf(player.vehicle.id);
+      if (here && player.vehicle.moved) return { key: 'E', text: `Get off at ${here.name}`, act: alightRail };
+      return null;
+    }
     if (player.auto) return null;
     let bn = null, bd = 3.2;
     for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (d < bd && Math.abs(n.z - player.z) < 2) { bd = d; bn = n; } }
     if (bn) return { key: 'E', text: `Talk to ${bn.name}`, act: () => talkTo(bn) };
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Fly the helicopter', act: enterHeli };
+    const st = railStation(player.x, player.y);
+    if (st && rail.cars.length) {
+      const car = rail.cars.find(c => rail.stationOf(c.id) === st), other = rail.stations.find(o => o !== st);
+      if (car) return { key: 'E', text: `Board the ${G.rail.funicular.name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
+      return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
+    }
     const w = nearWharf(player.x, player.y);
     if (w) {
       const toward = rideTarget(w.id);
@@ -637,6 +655,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     cam.yaw = v.h + 0.9; cam.dist = 42; cam.pitch = 0.32;
     H.toast(`Aboard ${v.name}, ${v.route}. Next stop: ${wharfById(fer.nextStop(v)).name}. <kbd>F</kbd> to skip ahead, <kbd>H</kbd> to take the helm.`);
     A.engine(0.5);
+  }
+  function boardRail(car, st) {
+    player.mode = 'rail'; player.vehicle = car; car.rider = true; car.moved = false; car.from = st.id;
+    cam.yaw = car.h + 1.4; cam.dist = 30; cam.pitch = 0.3;
+    H.toast(`Aboard the ${G.rail.funicular.name || 'funicular'}. ${G.rail.funicular.note || ''} <kbd>F</kbd> to skip ahead.`);
+  }
+  function alightRail() {
+    const car = player.vehicle, here = rail.stationOf(car.id);
+    const p = placeNear(here.x, here.y, here.z + 1) || placeNear(car.x, car.y, car.z + 1);
+    if (!p) { H.toast('No safe way off here.'); return; }
+    car.rider = false; skip = false;
+    player.mode = 'foot'; player.vehicle = null;
+    [player.x, player.y, player.z] = p;
+    qs.visited[here.id] = true;
+    const s = step();
+    if (s && s.type === 'rail' && car.from === s.from && here.id === s.to) completeStep();
+    save();
   }
   function placeNear(x, y, z0) { // a walkable spot close to (x, y)
     for (let r = 0; r < 45; r += 1.5) for (let a = 0; a < 6.28; a += r ? 0.5 / Math.max(1, r / 3) : 7) {
@@ -704,7 +739,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     U.uSel.value = bi;
     const name = m[0] || (m[1] ? `Unnamed ${m[1].replace(/_/g, ' ')}` : 'Unnamed building');
     const osm = m[6] && /^[wr]\d+$/.test(m[6]) ? `<a href="https://www.openstreetmap.org/${m[6][0] === 'w' ? 'way' : 'relation'}/${m[6].slice(1)}" target="_blank" rel="noopener">${m[6]}</a>` : '–';
-    const SRC = { mapped: 'Surveyed in OpenStreetMap', floors: 'Floor count × storey height', estimate: 'Estimated from neighbours', ml: 'ML estimate, bias-corrected', reference: 'Published height (corrected)', verified: 'Verified from a cited source', parametric: 'Parametric landmark' };
+    const SRC = { mapped: 'Surveyed in OpenStreetMap', survey: 'Surveyed by the mapping agency', lidar: 'Measured by airborne LiDAR', floors: 'Floor count × storey height', estimate: 'Estimated from neighbours', ml: 'ML estimate, bias-corrected', reference: 'Published height (corrected)', verified: 'Verified from a cited source', parametric: 'Parametric landmark' };
     $('#g-lens').innerHTML = `<span class="eyebrow">Survey lens · ${Math.round(hit.distance)} m away</span><b>${name}</b>
       <dl class="kv"><dt>Height</dt><dd class="num">${m[2].toFixed(1)} m</dd><dt>Source</dt><dd>${SRC[m[4]] || m[4]}</dd>${m[3] ? `<dt>Floors</dt><dd class="num">${m[3]}</dd>` : ''}${m[4] === 'reference' ? `<dt>Open data said</dt><dd class="num">${m[9].toFixed(1)} m</dd>` : ''}<dt>OSM</dt><dd>${osm}</dd></dl>`;
     $('#g-lens').hidden = false;
@@ -872,6 +907,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(dt, titleOn);
     // world clocks and fades
     Wd.tick(now, camera);
+    if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     dlg.tick(dt);
@@ -926,6 +962,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       A.rotor(heli.st.rotor, Math.abs(lift) + Math.abs(fwd) * 0.5);
       A.wind(Math.min(1, heli.st.speed / 60));
       player.rig.animate(dt, 0, 'sit', clockT);
+    } else if (player.mode === 'rail') {
+      player.rig.animate(dt, 0, 'ground', clockT);
     } else if (player.mode === 'ferry') {
       const v = player.vehicle;
       if (v.helm) v.helm.input = { fwd, turn: side };
@@ -938,7 +976,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const wantTo = waitFerry && rideTarget(waitFerry);
     const here = waitFerry && fer.vessels.find(q => fer.stopOf(q) === waitFerry && (!wantTo || q.stops.includes(wantTo)));
     if (here) { waitFerry = null; H.toast(`${here.name} is alongside. <kbd>E</kbd> to board.`); }
-    fer.update(dt, skip ? 8 : 1, clockT, waitFerry ? 25 : 1);
+    fer.update(dt, skip && player.mode === 'ferry' ? 8 : 1, clockT, waitFerry ? 25 : 1);
+    if (rail) {
+      rail.update(dt, clockT, [player.mode === 'foot' ? player : null, ...npcs], player.mode === 'rail' && skip);
+      for (const ev of rail.events.splice(0)) {
+        if (player.mode !== 'rail') continue;
+        const car = player.vehicle;
+        if (ev.type === 'depart') car.moved = true;
+        if (ev.type === 'arrive' && car.moved) { skip = false; H.toast(`${rail.stationOf(car.id).name}. <kbd>E</kbd> to get off.`); }
+      }
+      if (player.mode === 'rail') { // standing in the car, by the downhill window
+        const c = player.vehicle;
+        player.x = c.x + Math.sin(c.h) * 3; player.y = c.y + Math.cos(c.h) * 3; player.z = c.z + 0.6 + Math.sin(c.pitch) * 3; player.h = c.h + Math.PI;
+      }
+    }
     if (player.mode === 'ferry') { // stand on the bow deck
       const v = player.vehicle, c = Math.cos(v.h), s = Math.sin(v.h);
       player.x = v.x + s * 5 + c * 2.2; player.y = v.y + c * 5 - s * 2.2; player.z = 4.33; player.h = v.h;
@@ -1036,10 +1087,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     let tx, ty, tz, follow;
     if (player.mode === 'heli') { tx = heli.st.x; ty = heli.st.y; tz = heli.st.z + 2.5; follow = heli.st.h; }
     else if (player.mode === 'ferry') { tx = player.vehicle.x; ty = player.vehicle.y; tz = 5; follow = null; }
+    else if (player.mode === 'rail') { tx = player.vehicle.x; ty = player.vehicle.y; tz = player.vehicle.z + 3; follow = null; }
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
     // drift behind the direction of travel when the player is not steering the camera
     if (follow != null && clockT - cam.lastInput > 1.6 && (player.mode === 'heli' ? heli.st.speed > 3 : player.speed > 1)) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (player.mode === 'heli' ? 1.6 : 0.9));
-    const dist = player.mode === 'heli' ? Math.max(14, cam.dist) : player.mode === 'ferry' ? Math.max(25, cam.dist) : cam.dist;
+    const dist = player.mode === 'heli' ? Math.max(14, cam.dist) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : cam.dist;
     camTarget.lerp(W(tx, ty, tz), player.mode === 'foot' ? 1 : k2);
     // keep the camera out of walls: first rise over them (look down on the player), then come closer
     let best = null;
@@ -1100,6 +1152,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       el.innerHTML = `<div><b>${v.name}</b><span>${v.route}</span></div><div><b>${v.phase === 'dwell' ? 'Departs' : nxt.name}</b><span>${v.phase === 'dwell' ? `in ${fmtSec(t)}` : `in ${fmtSec(t)}`}</span></div>
         <div><b class="num">${(Math.abs(v.speed) * 1.94).toFixed(0)}</b><span>knots</span></div>${v.helm && v.helm.manual ? `<div><b class="num">${Math.round(v.helm.dist || 0)} m</b><span>to berth</span></div>` : ''}
         <p class="note">${v.phase === 'dwell' ? 'E get off · ' : ''}F ${skip ? 'normal speed' : 'skip ahead'} · H take the helm · drag to look around</p>`;
+    } else if (player.mode === 'rail') {
+      const c = player.vehicle, F = rail.funicular, here = rail.stationOf(c.id);
+      el.hidden = false;
+      el.innerHTML = `<div><b>${G.rail.funicular.name || 'Funicular'}</b><span>${c.name}</span></div><div><b class="num">${Math.round(c.z)} m</b><span>above the datum</span></div>
+        <div><b class="num">${Math.round(Math.tan(Math.abs(c.pitch)) * 100)}%</b><span>gradient</span></div><div><b class="num">${(c.speed * 3.6).toFixed(0)}</b><span>km/h</span></div>
+        <p class="note">${here ? (c.moved ? 'E get off · ' : `Departs in ${fmtSec(F.cyc.t)} · `) : ''}F ${skip ? 'normal speed' : 'skip ahead'} · drag to look around</p>`;
     } else el.hidden = true;
   }
 
@@ -1121,7 +1179,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { advance, dlg, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

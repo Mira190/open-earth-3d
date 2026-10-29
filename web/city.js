@@ -90,6 +90,7 @@ window.OpenEarthCity = async function main(cityId) {
   // ------------------------------------------------------------ the shared world (world.js)
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
+  const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
 
   // ------------------------------------------------------------ places
   const placeInfo = P.places.map(pl => {
@@ -188,6 +189,7 @@ window.OpenEarthCity = async function main(cityId) {
     const sp = S.position(utc);
     sunPos = sp;
     Wd.setSun(sp);
+    if (show) show.setClock(state.min);
     sunDir = Wd.sunDir;
     const loc = S.utcToLocal(utc);
     $('#clock').textContent = `${fmtMin(state.min)} ${loc.zone}`;
@@ -307,9 +309,17 @@ window.OpenEarthCity = async function main(cityId) {
   // ------------------------------------------------------------ tour
   // stops come from city.json; text may hold tokens filled from the model:
   //   {buildings}  {sun:Place|M-D|HH:MM}  {landmark:key.field}  {acc:field}
+  //   {lidar:field} (the surveyed heights against the LiDAR, or a path in scene.lidar_check)  {share:source}
   const byName = n => placeInfo.find(p => p.name === n);
   const pctAt = (p, m, d, min) => Math.round(100 * S.fractionSunlit(DSM, samples.get(p.name), S.position(S.localToUtc(state.y, m, d, min))));
   const acc = scene.accuracy && scene.accuracy.summary;
+  const lidarStat = (sc, arg) => { const v = (arg.includes('.') ? arg : `survey.${arg}`).split('.').reduce((o, k) => (o == null ? o : o[k]), sc.lidar_check); return v == null ? '–' : String(v); };
+  const shareOf = (() => { // per cent of the footprint area by height source
+    const a = {};
+    let tot = 0;
+    for (const s of B.s) { const r = s[4]; let q = 0; for (let k = 0, n = r.length / 2; k < n; k++) { const j = (k + 1) % n; q += r[2 * k] * r[2 * j + 1] - r[2 * j] * r[2 * k + 1]; } q = Math.abs(q); a[B.b[s[0]][4]] = (a[B.b[s[0]][4]] || 0) + q; tot += q; }
+    return k => Math.round(1000 * (a[k] || 0) / tot) / 10;
+  })();
   const fill = text => (text || '').replace(/\{([a-z]+)(?::([^}]+))?\}/g, (all, kind, arg) => {
     if (kind === 'buildings') return B.b.length.toLocaleString();
     if (kind === 'sun') {
@@ -321,6 +331,8 @@ window.OpenEarthCity = async function main(cityId) {
       return typeof v === 'number' ? v.toFixed(1) : String(v ?? '–');
     }
     if (kind === 'acc') return acc && acc[arg] != null ? String(acc[arg]) : '–';
+    if (kind === 'lidar') return lidarStat(scene, arg);
+    if (kind === 'share') return String(shareOf(arg));
     return all;
   });
   const TOUR = (CITY.tour || []).filter(s => !s.place || byName(s.place)).map(s => Object.assign({}, s,
@@ -400,7 +412,7 @@ window.OpenEarthCity = async function main(cityId) {
     if (!hit) { closeInspector(); return; }
     inspect(bGeo.attributes.bid.getX(hit.face.a));
   });
-  const SRC_LABEL = { mapped: 'Surveyed height (OpenStreetMap)', reference: 'Published height (corrected)',
+  const SRC_LABEL = { mapped: 'Surveyed height (OpenStreetMap)', survey: 'Surveyed top level (the mapping agency\'s building record)', lidar: 'Measured from an airborne LiDAR surface model', reference: 'Published height (corrected)',
     verified: 'Verified from a cited source (it moves a sun-access result)', floors: 'Floor count × storey height',
     ml: 'Microsoft ML height, bias-corrected and blended with neighbours', estimate: 'Estimated from nearby known heights and footprint size',
     parametric: 'Parametric landmark model' };
@@ -646,7 +658,7 @@ window.OpenEarthCity = async function main(cityId) {
     const pct = k => ((area[k] || 0) / total.v * 100).toFixed(1);
     const st = scene.storey || { non: { per_floor_m: 3.9, plus_m: 0 }, res: { per_floor_m: 3, plus_m: 2.8 } };
     const fmtSt = q => `${q.per_floor_m} m${q.plus_m ? ` + ${q.plus_m} m` : ''}`;
-    $('#src-note').innerHTML = `Share of building footprint area. Only ${pct(0)}% has a surveyed or published height; ${pct(1)}% comes from floor counts times a calibrated storey height (${fmtSt(st.non)} offices, ${fmtSt(st.res)} homes). Turn on <b>Height sources</b> above the view to see them on the buildings.`;
+    $('#src-note').innerHTML = `Share of building footprint area. ${+pct(0) >= 50 ? '' : 'Only '}${pct(0)}% has a surveyed or published height; ${pct(1)}% comes from floor counts times a calibrated storey height (${fmtSt(st.non)} offices, ${fmtSt(st.res)} homes). Turn on <b>Height sources</b> above the view to see them on the buildings.`;
     $('#src-legend').innerHTML = cats.map(([k, l, c]) => `<div><i style="background:${c}"></i><span>${l}</span><span class="num">${((area[k] || 0) / total.v * 100).toFixed(1)}%</span></div>`).join('');
     if (acc) {
       $('#acc-stats').innerHTML = [[`${acc.median_abs_error_pct}%`, 'median error'], [`${acc.within_10pct}/${acc.matched}`, 'within 10%'], [`${acc.gross_short}`, 'over 40% short']]
@@ -733,6 +745,7 @@ window.OpenEarthCity = async function main(cityId) {
     controls.update();
     fitShadow();
     Wd.tick(t, camera);
+    if (show) show.tick(t);
     refreshPlaces();
     renderer.render(world, camera);
     updateLabels();

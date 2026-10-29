@@ -1,0 +1,552 @@
+{
+  "id": "hong-kong",
+  "name": "Hong Kong",
+  "country": "China",
+  "country_code": "HK",
+  "timezone": "Asia/Hong_Kong",
+  "locale": "en-HK",
+  "description": "Victoria Harbour from open data: Central, Admiralty and Wan Chai, Tsim Sha Tsui and the Peak, every building at the height the Lands Department surveyed, on the government's LiDAR terrain and under the real sun.",
+  "bbox": [114.143, 22.2635, 114.184, 22.3085],
+  "origin": [114.1635, 22.286],
+  "extent_m": [-2000, 2000, -2400, 2400],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "mPD",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/imagery/WGS84/{z}/{x}/{y}.png",
+    "zoom": 18,
+    "format": "png",
+    "attribution": "Aerial photograph from Lands Department, (c) The Government of the Hong Kong SAR, through the Lands Department Map API (GeoData Store)"
+  },
+  "terrain": {
+    "type": "tile_index",
+    "index": "https://portal.csdi.gov.hk/csdi-webpage/file-api?dataset_id=cedd_rcd_1629267205233_87895&format=geojson&layer_name=DTM_2020",
+    "url_field": "URL",
+    "crs": "EPSG:2326",
+    "frame_crs": "EPSG:4326",
+    "pixel_m": 1.0,
+    "bare_earth": true,
+    "attribution": "Civil Engineering and Development Department, territory-wide airborne LiDAR digital terrain model, 0.5 m, flown December 2019 to February 2020; Hong Kong 1980 Grid, mPD (CSDI, (c) The Government of the Hong Kong SAR)"
+  },
+  "surface_check": {
+    "type": "tile_index",
+    "index": "https://portal.csdi.gov.hk/csdi-webpage/file-api?dataset_id=cedd_rcd_1629267205233_87895&format=geojson&layer_name=DSM_2020",
+    "url_field": "URL",
+    "crs": "EPSG:2326",
+    "frame_crs": "EPSG:4326",
+    "pixel_m": 1.0,
+    "name": "CEDD territory-wide airborne LiDAR digital surface model, 0.5 m, flown December 2019 to February 2020",
+    "flown": "20 December 2019 to 2 February 2020, by helicopter (CSDI dataset record)",
+    "flown_ms": 1580601600000
+  },
+  "survey": {
+    "type": "arcgis_features",
+    "url": "https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637211194312_35158/FeatureServer/0",
+    "fields": {
+      "top": "TopHeight",
+      "base": "BaseHeight",
+      "floors": "Storeys",
+      "name": "BuildingNameEN",
+      "name_local": "BuildingNameTC",
+      "kind": "BuildingBlockType",
+      "status": "Status",
+      "date": "DateCreate"
+    },
+    "keep_status": ["Active"],
+    "skip_kinds": ["Temporary Structure"],
+    "absolute": true,
+    "attribution": "Lands Department, Building dataset (building block outlines with surveyed top and base levels in mPD, and storeys), CSDI portal, (c) The Government of the Hong Kong SAR"
+  },
+  "water": {
+    "classes": ["ocean", "bay", "strait"],
+    "min_area_m2": 5000,
+    "note": "Victoria Harbour is OpenStreetMap's coastline polygon (Overture 'ocean') plus the typhoon shelters. Water is drawn at 0 mPD, about the lowest tide: mean sea level is about 1.3 mPD.",
+    "waves": {
+      "wind_ms": 6.0,
+      "wind_from_deg": 90,
+      "fetch_km": 6.0,
+      "depth_m": 14,
+      "cascades_m": [157, 33.3, 7.1],
+      "choppiness": 1.0,
+      "note": "The prevailing easterly blowing down the harbour from Lei Yue Mun, over about 6 km of open water, 12-15 m deep. Chosen values, not a measurement; the harbour's real chop comes as much from ferry wakes."
+    },
+    "colour": "#1d3a3c",
+    "shallow_colour": "#3a5e55",
+    "clarity_m": 2.0,
+    "colour_note": "Victoria Harbour is green-grey and turbid, with a couple of metres of visibility; colours picked from the Lands Department aerial photo."
+  },
+  "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "labels": {
+    "環球貿易廣場 International Commerce Centre": "ICC",
+    "國際金融中心二期 Two International Finance Centre": "Two IFC",
+    "中環廣場 Central Plaza": "Central Plaza",
+    "中銀大廈 Bank of China Tower": "Bank of China Tower",
+    "中環中心 The Center": "The Center",
+    "滙豐總行大廈 HSBC Main Building": "HSBC Main Building",
+    "長江集團中心 Cheung Kong Center": "Cheung Kong Center",
+    "怡和大廈 Jardine House": "Jardine House",
+    "合和中心 Hopewell Centre": "Hopewell Centre",
+    "力寶中心第二座 Lippo Centre Tower 2": "Lippo Centre",
+    "交易廣場第二座 Two Exchange Square": "Exchange Square",
+    "尖沙咀鐘樓 Tsim Sha Tsui Clock Tower": "Clock Tower",
+    "香港文化中心 Hong Kong Cultural Centre": "Cultural Centre",
+    "凌霄閣 Peak Tower": "Peak Tower",
+    "立法會綜合大樓 Legislative Council Complex": "Legislative Council",
+    "終審法院 The Court of Final Appeal": "Court of Final Appeal",
+    "海運大廈 Ocean Terminal": "Ocean Terminal",
+    "中環天星碼頭 Central Star Ferry Pier": "Central Star Ferry Pier",
+    "尖沙咀天星碼頭 Tsim Sha Tsui Star Ferry Pier": "TST Star Ferry Pier",
+    "戲曲中心 Xiqu Centre": "Xiqu Centre",
+    "M+": "M+"
+  },
+  "minor_labels": ["Legislative Council", "Court of Final Appeal", "Ocean Terminal", "Central Star Ferry Pier", "TST Star Ferry Pier", "Xiqu Centre", "M+", "Cultural Centre", "Jardine House", "Exchange Square", "Lippo Centre", "Hopewell Centre", "The Center", "Cheung Kong Center"],
+  "places": [
+    {"name": "皇后像廣場 Statue Square", "label": "Statue Square", "class": "park"},
+    {"name": "遮打花園 Chater Garden", "label": "Chater Garden", "class": "garden"},
+    {"name": "香港公園 Hong Kong Park", "label": "Hong Kong Park", "class": "park"},
+    {"name": "添馬公園 Tamar Park", "label": "Tamar Park", "class": "park"},
+    {
+      "name": "中環海濱活動空間 Central Harbourfront Event Space",
+      "label": "Central Harbourfront Event Space",
+      "class": "recreation_ground"
+    },
+    {"name": "愛丁堡廣場 Edinburgh Place", "label": "Edinburgh Place", "class": "plaza"},
+    {"name": "夏慤花園 Harcourt Garden", "label": "Harcourt Garden", "class": "garden"},
+    {"name": "九龍公園 Kowloon Park", "label": "Kowloon Park", "class": "park"},
+    {"name": "尖沙咀海濱花園 Tsim Sha Tsui Promenade", "label": "Tsim Sha Tsui Promenade", "class": "park"},
+    {"name": "梳士巴利花園二期 Salisbury Garden Phase II", "label": "Salisbury Garden Phase II", "class": "garden"},
+    {"name": "市政局百周年紀念花園 Centenary Garden", "label": "Centenary Garden", "class": "garden"},
+    {"name": "中山紀念公園 Sun Yat Sen Memorial Park", "label": "Sun Yat Sen Memorial Park", "class": "park"},
+    {
+      "name": "灣仔臨時海濱花園 Wan Chai Temporary Promenade",
+      "label": "Wan Chai Temporary Promenade",
+      "class": "park"
+    },
+    {"name": "山頂公園 Victoria Peak Garden", "label": "Victoria Peak Garden", "class": "park"},
+    {"name": "卜公花園 Blake Garden", "label": "Blake Garden", "class": "park"}
+  ],
+  "place_labels": ["Statue Square", "Hong Kong Park", "Tamar Park", "Kowloon Park", "Tsim Sha Tsui Promenade", "Victoria Peak Garden", "Chater Garden"],
+  "start": {
+    "date": [11, 15],
+    "time": "14:30",
+    "cam": [-1450, -2150, 700],
+    "tgt": [-150, 250, 60]
+  },
+  "analysis_region": [-1400, 1400, -1300, 1500],
+  "sun_hours_region": [-1500, 1500, -1400, 1600],
+  "game": {
+    "title": "Hong Kong on Foot",
+    "local_name": "Hongkonger",
+    "water_name": "harbour",
+    "start": {
+      "at": [-262, 92],
+      "facing": [513, 839],
+      "time": "live"
+    },
+    "wharves": [
+      {
+        "id": "central",
+        "name": "Central, Pier 7",
+        "terminal": "中環 Central",
+        "near": [-249, 124]
+      },
+      {"id": "tst", "name": "Tsim Sha Tsui", "terminal": "尖沙咀天星碼頭 Tsim Sha Tsui Star Ferry Pier"},
+      {"id": "wan-chai", "name": "Wan Chai", "terminal": "灣仔碼頭 Wan Chai Pier"}
+    ],
+    "ferries": [
+      {
+        "route": "Central – Tsim Sha Tsui",
+        "stops": ["central", "tst"],
+        "vessels": ["Morning Star", "Night Star", "Solar Star"]
+      },
+      {
+        "route": "Wan Chai – Tsim Sha Tsui",
+        "stops": ["wan-chai", "tst"],
+        "vessels": ["Meridian Star", "World Star"]
+      }
+    ],
+    "ferry_note": "Piers, berths and the heliport are from OpenStreetMap via Overture. The Star Ferry's two routes are real; the vessel names are from its fleet, but which vessel runs which route, and the timetable, are not. Ferries run at 1.5 times their service speed and wait 20 s at each pier. At a pier you can skip the wait.",
+    "ferry_speed_ms": 6.5,
+    "ferry_style": {
+      "length_m": 40,
+      "beam_m": 9,
+      "hull": "#1f5e3b",
+      "trim": "#f3f3ee",
+      "upper": "#f3f3ee",
+      "flag": "#c8102e",
+      "note": "The Star Ferry's green hull and white upper deck; the dimensions are approximate."
+    },
+    "helipads": [
+      {
+        "id": "hkcec",
+        "name": "Hong Kong Convention and Exhibition Centre heliport",
+        "from_data": true,
+        "near": [1120, -137]
+      }
+    ],
+    "crowd": {"pedestrians": 520, "cars": 170, "radius_m": 420},
+    "rail": {
+      "tram": {
+        "class": "tram",
+        "keep": "left",
+        "gauge_m": 1.067,
+        "length_m": 8.9,
+        "width_m": 2.0,
+        "height_m": 4.5,
+        "speed_ms": 6.0,
+        "spacing_m": 230,
+        "stop_every_m": 250,
+        "liveries": ["#0f6b3a", "#0f6b3a", "#0f6b3a", "#b5202e", "#1d4f91", "#e8a317", "#6a2c91", "#f2f2ee"],
+        "note": "Hong Kong Tramways' double-deck cars on the tracks OpenStreetMap maps. A car is about 8.9 m long, 2.0 m wide and 4.5 m tall (CPTDB; a 1967 report gives 29 ft by 14 ft 9 in); the running speed and stop spacing are approximate, the colours a mix of the green livery and advertising wraps.",
+        "min_length_m": 300
+      },
+      "funicular": {
+        "class": "funicular",
+        "climb": true,
+        "name": "Peak Tram",
+        "stations": [{"id": "garden-road", "name": "Garden Road"}, {"id": "the-peak", "name": "The Peak"}],
+        "gauge_m": 1.524,
+        "length_m": 33,
+        "width_m": 2.8,
+        "height_m": 3.3,
+        "livery": "#8e1b1b",
+        "trim": "#efe3c4",
+        "speed_ms": 6.0,
+        "dwell_s": 40,
+        "car_names": ["Car 1", "Car 2"],
+        "note": "1,277 m of track climbing 358 m since the 2022 rebuild, at 6 m/s (Peak Tramways via ropeways.net); the line is the one OpenStreetMap maps, on the LiDAR terrain. The car is about 33 m long (the 2018 plan); its width is a guess."
+      }
+    },
+    "npcs": [
+      {
+        "id": "kayan",
+        "name": "Ka-yan",
+        "role": "Survey lead",
+        "at": [-268, 80],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#e2b48f",
+          "hair": "#14100e",
+          "top": "#d6402f",
+          "legs": "#2b3440",
+          "shirt": "#d6402f",
+          "pants": "#2b3440"
+        },
+        "idle": ["Every building here has a surveyed top level from the Lands Department, and a LiDAR scan from 2020 to check it against. Not many cities can say that."]
+      },
+      {
+        "id": "wing",
+        "name": "Wing",
+        "role": "Height detective",
+        "at": [612, 812],
+        "look": {
+          "character": "M_Hoodie",
+          "skin": "#d8a47e",
+          "hair": "#121010",
+          "top": "#2f5d8a",
+          "legs": "#2a2f36",
+          "shirt": "#2f5d8a",
+          "pants": "#2a2f36"
+        },
+        "idle": ["A survey says how tall a building is. A laser says how tall it looked from a helicopter in January 2020. When they disagree, one of them is out of date."]
+      },
+      {
+        "id": "leung",
+        "name": "Mr Leung",
+        "role": "Star Ferry deckhand",
+        "at": [530, 820],
+        "look": {
+          "character": "M_Worker",
+          "skin": "#c98d68",
+          "hair": "#2a2a2a",
+          "top": "#1d3557",
+          "legs": "#1d3557",
+          "shirt": "#1d3557",
+          "pants": "#1d3557"
+        },
+        "idle": ["Central to Tsim Sha Tsui, about a kilometre of harbour. Mind the gangway."]
+      },
+      {
+        "id": "grace",
+        "name": "Grace",
+        "role": "Helicopter pilot",
+        "at": [1098, -150],
+        "look": {
+          "character": "W_Adventurer",
+          "skin": "#e9bf9c",
+          "hair": "#3a2a20",
+          "top": "#5b6e7a",
+          "legs": "#3b4a52",
+          "shirt": "#5b6e7a",
+          "pants": "#3b4a52"
+        },
+        "idle": ["The International Commerce Centre tops out at 484 m. Give it a wide berth."]
+      },
+      {
+        "id": "mei",
+        "name": "Mei",
+        "role": "Planner",
+        "at": [-372, -530],
+        "look": {
+          "character": "W_Suit",
+          "skin": "#e3b896",
+          "hair": "#0f0c0a",
+          "top": "#24323f",
+          "legs": "#24323f",
+          "shirt": "#24323f",
+          "pants": "#24323f"
+        },
+        "idle": ["Hong Kong has no rule that protects the sun on its squares. The planning guidelines protect a view instead: a band of green below the Peak's ridgeline, seen from the harbour."]
+      },
+      {
+        "id": "keung",
+        "name": "Ah Keung",
+        "role": "Tram fan",
+        "at": [-430, -470],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#c99470",
+          "hair": "#5a5a5a",
+          "top": "#3d6b4a",
+          "legs": "#4b5563",
+          "shirt": "#3d6b4a",
+          "pants": "#4b5563"
+        },
+        "idle": ["Ding ding! The trams have run along this shore since 1904. The sea used to come right up to Des Voeux Road."]
+      },
+      {
+        "id": "siu",
+        "name": "Siu-man",
+        "role": "Peak Tram guide",
+        "at": [-398, -905],
+        "look": {
+          "character": "W_Worker",
+          "skin": "#d9a882",
+          "hair": "#1a1412",
+          "top": "#8e1b1b",
+          "legs": "#2b2b30",
+          "shirt": "#8e1b1b",
+          "pants": "#2b2b30"
+        },
+        "idle": ["The Peak Tram climbs some 360 metres from Garden Road. Stand at the back and the towers lean the wrong way."]
+      },
+      {
+        "id": "fong",
+        "name": "Mrs Fong",
+        "role": "Lookout regular",
+        "at": [-1215, -1595],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#e6b994",
+          "hair": "#9a9a9a",
+          "top": "#4f6d5a",
+          "legs": "#3a3a40",
+          "shirt": "#4f6d5a",
+          "pants": "#3a3a40"
+        },
+        "idle": ["It's {time} up here. {sun_line}"]
+      }
+    ],
+    "quests": [
+      {
+        "id": "harbour",
+        "giver": "kayan",
+        "title": "Across the harbour",
+        "stamp": "Star Ferry",
+        "talk": ["You're the new surveyor? Good. This is Victoria Harbour from open data: {buildings} buildings, almost every one at the height the Lands Department surveyed, on the government's own LiDAR terrain.", "Take the Star Ferry over to Tsim Sha Tsui. Wing is waiting by the Clock Tower.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, or to wait for the ferry."],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "central",
+            "to": "tst",
+            "text": "Take the Star Ferry from Central to Tsim Sha Tsui"
+          },
+          {"type": "talk", "npc": "wing", "text": "Meet Wing at the Clock Tower"}
+        ]
+      },
+      {
+        "id": "lens",
+        "giver": "wing",
+        "title": "Two measurements",
+        "stamp": "Clock Tower",
+        "talk": ["{share:survey}% of the footprint area has a surveyed top level, and {share:lidar}% is measured from the 2020 LiDAR scan where the survey falls short. Only {share:estimate}% is estimated.", "Aim at a building and press Q to use the survey lens. Find one with a surveyed height and one measured by LiDAR.", "Then take the ferry to Wan Chai. Grace keeps a helicopter at the Convention Centre."],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": ["survey", "lidar"],
+            "text": "Survey lens (Q): a surveyed and a LiDAR-measured height"
+          },
+          {
+            "type": "ride",
+            "from": "tst",
+            "to": "wan-chai",
+            "text": "Take the Star Ferry from Tsim Sha Tsui to Wan Chai"
+          },
+          {"type": "talk", "npc": "grace", "text": "Meet Grace at the Convention Centre heliport"}
+        ]
+      },
+      {
+        "id": "air",
+        "giver": "grace",
+        "title": "Between the towers",
+        "stamp": "Victoria Harbour",
+        "talk": ["Ready? Two IFC stands 412 m on the Central waterfront, and the ICC 484 m across the water. Both are in the model at their surveyed tops.", "Fly west along the shore and set down in Tamar Park, by the Government Headquarters. Mei will meet you in Statue Square.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
+        "steps": [
+          {"type": "land", "place": "Tamar Park", "text": "Land in Tamar Park"},
+          {"type": "talk", "npc": "mei", "text": "Meet Mei in Statue Square"}
+        ]
+      },
+      {
+        "id": "sun",
+        "giver": "mei",
+        "title": "Winter sun on Statue Square",
+        "stamp": "Statue Square",
+        "talk": ["Statue Square sits among the bank towers: HSBC to the south, the Bank of China behind it. At midwinter the sun is only 44° up at noon, and it comes from the south, over them.", "On 21 December at noon, {sun:Statue Square|12-21|12:00}% of the square is in direct sun. Go and find a sunny spot.", "Nothing in Hong Kong's rules protects that sun. The model can still measure it."],
+        "choices": [
+          {
+            "text": "Show me 21 December at noon",
+            "action": "set_time",
+            "date": [12, 21],
+            "time": "12:00"
+          },
+          {"text": "I'll set the time myself"}
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "Statue Square",
+            "date": [12, 21],
+            "window": ["11:00", "14:00"],
+            "text": "Stand in direct sun in Statue Square, 11:00 to 14:00 on 21 December"
+          },
+          {"type": "talk", "npc": "siu", "text": "Find Siu-man at the Peak Tram's Garden Road terminus"}
+        ]
+      },
+      {
+        "id": "peak",
+        "giver": "siu",
+        "title": "Up the Peak",
+        "stamp": "Peak Tram",
+        "talk": ["The Peak Tram has climbed from Garden Road to the Peak since 1888. The line here is the one OpenStreetMap maps, laid on the LiDAR terrain.", "Ride it to the top. Mrs Fong is up there every evening; she'll show you the view."],
+        "steps": [
+          {
+            "type": "rail",
+            "from": "garden-road",
+            "to": "the-peak",
+            "text": "Ride the Peak Tram from Garden Road to the Peak"
+          },
+          {"type": "talk", "npc": "fong", "text": "Find Mrs Fong at the lookout by the Peak Tram terminus"}
+        ]
+      },
+      {
+        "id": "done",
+        "giver": "fong",
+        "title": "The view",
+        "stamp": "Victoria Peak",
+        "talk": ["That's the whole harbour: the ferry, the towers, the trams and the hill.", "Every height you can see has a source, and {lidar:within_2m_pct}% of the surveyed roofs agree with the laser to within 2 m.", "Stay for the evening. At eight the towers light up for the Symphony of Lights."],
+        "choices": [
+          {
+            "text": "Show me 8 pm",
+            "action": "set_time",
+            "date": [11, 15],
+            "time": "19:58"
+          },
+          {"text": "Not now"}
+        ],
+        "steps": []
+      }
+    ]
+  },
+  "reference_heights": {
+    "file": "reference_heights.csv",
+    "source": "Wikipedia, List of tallest buildings in Hong Kong (accessed 28 October 2026), with its coordinates; buildings of 180 m and more inside the model"
+  },
+  "terrain_check": {
+    "type": "arcgis_points",
+    "url": "https://portal.csdi.gov.hk/server/rest/services/common/landsd_rcd_1637226129981_91080/FeatureServer/1/query",
+    "field": "HKPD_m",
+    "name": "Lands Department Geodetic Survey Control Station Database: levelling bench marks, mPD (CSDI)",
+    "note": "Bench marks are staples and rods set in kerbs, walls and steps, levelled to the Hong Kong Principal Datum; the traverse stations in the same database mostly carry no levelled height (0), so they are not used."
+  },
+  "tour": [
+    {
+      "title": "Victoria Harbour from open data",
+      "text": "{buildings} buildings from OpenStreetMap and the Lands Department, standing on the government's 2020 LiDAR terrain under the real sun. {share:survey}% of the footprint area has a surveyed top level, and {share:lidar}% more is measured from the LiDAR.",
+      "cam": [-1450, -2150, 700],
+      "tgt": [-150, 250, 60],
+      "date": [11, 15],
+      "from": "14:00",
+      "to": "15:00",
+      "hold": 9
+    },
+    {
+      "title": "Heights you can check",
+      "text": "Blue is a measured height. The Lands Department surveys the top level of every building block; where its blocks miss a footprint, the 2020 LiDAR scan measures the roof. Against the laser, the surveyed roofs agree to {lidar:median_abs_m} m at the median; against the published list of tallest buildings, to {acc:median_abs_error_pct}%.",
+      "cam": [500, -1500, 950],
+      "tgt": [-300, -300, 80],
+      "date": [11, 15],
+      "from": "11:00",
+      "to": "12:00",
+      "hold": 10,
+      "provenance": true
+    },
+    {
+      "title": "Bank of China Tower",
+      "text": "I. M. Pei's tower is a 52 m square cut along its diagonals into four triangular shafts that stop at four heights, the lowest on the harbour side, the last at the 315 m roof. Its faces are turned {landmark:bank_of_china.bearing_deg}° from north, measured on its footprint. The masts reach 367.4 m.",
+      "cam": [300, -1000, 330],
+      "tgt": [-199, -745, 190],
+      "date": [11, 15],
+      "from": "10:30",
+      "to": "11:30",
+      "hold": 9
+    },
+    {
+      "title": "Statue Square at midwinter",
+      "text": "On 21 December the noon sun stands 44° above the southern horizon, behind the bank towers. {sun:Statue Square|12-21|12:00}% of Statue Square is in direct sun at noon. Hong Kong has no rule that protects the sun on its public squares; the model can still measure it.",
+      "place": "Statue Square",
+      "date": [12, 21],
+      "from": "11:00",
+      "to": "14:00",
+      "hold": 10
+    },
+    {
+      "title": "The Star Ferry crossing",
+      "text": "About a kilometre of harbour between Central's Pier 7 and Tsim Sha Tsui. The water moves with an easterly blowing down the harbour; the piers and the shoreline are OpenStreetMap's.",
+      "cam": [150, 350, 140],
+      "tgt": [520, 840, 8],
+      "date": [11, 15],
+      "from": "15:30",
+      "to": "16:30",
+      "hold": 9
+    },
+    {
+      "title": "Two IFC and the ICC",
+      "text": "The two tallest buildings in the model face each other across the harbour: Two IFC at 412 m and the ICC at 484 m, built to their published heights and crowns. The Lands Department's survey puts their main roofs 11 m and 1 m from those figures.",
+      "cam": [900, 600, 320],
+      "tgt": [-400, 800, 220],
+      "date": [11, 15],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 9
+    },
+    {
+      "title": "The Peak at dusk",
+      "text": "The Peak Tram climbs some 360 m from Garden Road to the Peak Tower, whose crescent roof stands 428 m above the datum. After dark the towers' windows light up across the water.",
+      "cam": [-1250, -1400, 500],
+      "tgt": [-250, 300, 90],
+      "date": [11, 15],
+      "from": "17:15",
+      "to": "18:30",
+      "hold": 11
+    }
+  ],
+  "light_show": {
+    "name": "A Symphony of Lights",
+    "start": "20:00",
+    "minutes": 10,
+    "beams": ["bank_of_china", "hsbc", "ifc2", "central_plaza", "icc"],
+    "lasers": [["icc", "ifc2"], ["icc", "bank_of_china"], ["icc", "central_plaza"]],
+    "note": "A Symphony of Lights has run at 8 pm nightly since 2004, with lights on some 40 buildings on both sides of the harbour (Wikipedia; Tourism Commission). In February 2026 the government said it would be retired in the second half of 2026 (Hong Kong Free Press, 27 February 2026); it was still running in September. The beams, lasers and colours here are illustrative, not the show's choreography."
+  }
+}

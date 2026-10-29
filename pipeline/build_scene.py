@@ -30,8 +30,10 @@ from shapely.geometry import Polygon, box
 
 from cityctx import ROOT, City, city_args, polygons
 from shore import FLOOR_M, SHORE_CELL, depth_at, shore_map
+from survey import Survey
 
 DEM_CELL = 5.0       # m, building bases and analysis
+LIDAR_CELL = 1.0     # m, a LiDAR surface model sampled under footprints
 TERRAIN_CELL = 10.0  # m, shipped mesh grid
 TILE_W, TILE_H, IMG_M = 1000, 1200, 1.0  # ground tiles: metres and metres per pixel
 
@@ -57,10 +59,11 @@ def ring(coords):
 
 # ---------------------------------------------------------------- terrain
 
-def load_dem(C, cell=DEM_CELL):
-    """The city's DEM resampled to the local frame; row 0 is the north edge."""
-    meta = json.load(open(os.path.join(C.raw, "dem.json")))
-    im = np.asarray(Image.open(os.path.join(C.raw, "dem.tif")), dtype=np.float32)
+def load_dem(C, cell=DEM_CELL, name="dem"):
+    """The city's DEM (or another raster fetch_tiles.py wrote, such as a LiDAR surface model "dsm")
+    resampled to the local frame; row 0 is the north edge."""
+    meta = json.load(open(os.path.join(C.raw, f"{name}.json")))
+    im = np.asarray(Image.open(os.path.join(C.raw, f"{name}.tif")), dtype=np.float32)
     mx0, my0, mx1, my1 = meta["bbox"]
     h, w = im.shape
     nx, ny = int((C.x1 - C.x0) / cell) + 1, int((C.y1 - C.y0) / cell) + 1
@@ -69,8 +72,8 @@ def load_dem(C, cell=DEM_CELL):
     if meta.get("crs", "EPSG:3857") == "EPSG:3857":
         mx = np.asarray(lon) * 20037508.342789 / 180
         my = np.log(np.tan((90 + np.asarray(lat)) * np.pi / 360)) * 6378137
-    else:  # geographic: the local frame is WGS84, taken as GDA2020 (within 0.5 m), converted to the DEM's datum
-        mx, my = Transformer.from_crs("EPSG:7844", meta["crs"], always_xy=True).transform(np.asarray(lon), np.asarray(lat))
+    else:  # the local frame's WGS84, taken in frame_crs (GDA2020 in Australia, within 0.5 m), converted to the DEM's CRS
+        mx, my = Transformer.from_crs(meta.get("frame_crs", "EPSG:7844"), meta["crs"], always_xy=True).transform(np.asarray(lon), np.asarray(lat))
     col = (np.asarray(mx) - mx0) / (mx1 - mx0) * w - 0.5
     row = (my1 - np.asarray(my)) / (my1 - my0) * h - 0.5
     return map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx)
@@ -241,11 +244,11 @@ HERITAGE = {"church", "cathedral", "public", "government", "train_station", "uni
 def muted(hex_colour):
     """A mapped colour as a facade would show it. OSM colours are often names
     turned into pure hues ("blue" -> #0000ff); real cladding is far less
-    saturated, so cap saturation at 0.35 and brightness at 0.8 (hue kept)."""
+    saturated, so cap saturation at 0.35 and brightness between 0.2 and 0.8 (hue kept)."""
     import colorsys
     r, g, b = (int(hex_colour[i:i + 2], 16) / 255 for i in (1, 3, 5))
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    r, g, b = colorsys.hsv_to_rgb(h, min(s, 0.35), min(v, 0.8))
+    r, g, b = colorsys.hsv_to_rgb(h, min(s, 0.35), min(max(v, 0.2), 0.8))  # and "black" is dark grey glass, not a hole
     return "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
 
 
@@ -351,7 +354,7 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
     logh = np.log(np.maximum([m[2] for m in meta], 0.5))
     src = np.array([m[4] for m in meta])
     grp = np.array([group(m[1]) for m in meta])
-    ki = np.where(np.isin(src, ["mapped", "floors"]))[0]
+    ki = np.where(np.isin(src, ["mapped", "floors", "survey", "lidar"]))[0]
     if len(ki) < 20:
         print("height imputation skipped: fewer than 20 buildings with known heights")
         return {"known_buildings": int(len(ki)), "applied": {}, "residuals": {"estimate": [], "ml": []}, "cv": {}}
@@ -546,9 +549,26 @@ def build(C):
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
     meta, solids, first_solid, geo, ml_raw, floor_res, hidden_solids = [], [], {}, {}, {}, [], []
+    # surveyed heights (survey.py): blocks cut the footprints; blocks missing from the open data are added
+    lidar = None  # a LiDAR surface model measures the buildings the survey misses (survey.py)
+    if cfg.get("surface_check") and os.path.exists(os.path.join(C.raw, "dsm.json")):
+        lidar = load_dem(C, LIDAR_CELL, "dsm")
+    survey = Survey(C, lambda x, y: sample(C, dem_land, x, y), lidar, LIDAR_CELL)
+    if survey.tree is not None:
+        covered = shapely.union_all([C.to_local(swkb.loads(bytes(b["wkb"]))).buffer(0) for b in blds if not b["is_underground"]])
+        extra = survey.additions(covered, extent)
+        for k, (q, r) in enumerate(extra):
+            ll = shapely.transform(q, lambda c: np.column_stack(C.inv.transform(c[:, 0], c[:, 1])))
+            blds.append({"id": f"{k:08x}-survey", "name": r.get("name") or r.get("name_local"), "class": None, "subtype": None, "height": None,
+                         "min_height": None, "num_floors": r.get("floors"), "min_floor": None, "roof_height": None, "is_underground": False,
+                         "has_parts": False, "src": "survey", "record_id": None, "height_src": None, "wkb": shapely.to_wkb(ll)})
+        print(f"survey: {len(extra)} blocks added that Overture does not have")
+    survey.claim([(b["id"], C.to_local(swkb.loads(bytes(b["wkb"])))) for b in blds if not b["is_underground"]])
     for b in blds:
         if b["is_underground"]:
             continue
+        # ids of solids a hook hid: only this building's, since Python reuses the ids of freed objects
+        ctx.hidden.clear()
         g = C.to_local(swkb.loads(bytes(b["wkb"])))
         if not extent.contains(g.centroid):
             continue
@@ -565,6 +585,8 @@ def build(C):
                 geoms += [[q, H.min_height(p, cls), h, src, p["name"]] for q in polygons(pg)]
         else:
             geoms = [[q, H.min_height(b, cls), top_b[0], top_b[1], None] for q in polygons(g)]
+        # measured heights first, so a city's hooks see (and may hide) the measured solids
+        geoms, s_floors = survey.apply(geoms, ctx.hidden, b["id"])
         if adjust:
             geoms = adjust(b, cls, g, geoms, ctx)
         for q, h0, h1, src, pname in geoms:
@@ -597,7 +619,7 @@ def build(C):
             ctx.labels[labels_cfg[b["name"]]] = [round(c.x, 1), round(c.y, 1), round(ctx.ground(c.x, c.y) + top, 1)]
         rid = b["record_id"] or ""
         seed = int(b["id"].replace("-", "")[:8], 16)
-        meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
+        meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or s_floors or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
                      wall_colour(b, cls, top, seed), roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
         first_solid[bi] = first
         if b["height_src"] == "Microsoft ML Buildings" and b["height"]:
@@ -642,7 +664,8 @@ def build(C):
     ref_path = os.path.join(C.analysis, "heights.json")
     if os.path.exists(ref_path):
         for r in json.load(open(ref_path))["rows"]:
-            if r.get("how") == "name" and r.get("error_pct", 0) < -40 and r.get("osm_id") in by_osm:
+            # by name, and not a row excluded as ambiguous (its address or point cannot pick the building)
+            if r.get("how") == "name" and r.get("match") == "address" and r.get("error_pct", 0) < -40 and r.get("osm_id") in by_osm:
                 bi = by_osm[r["osm_id"]]
                 if meta[bi][4] == "verified":  # a cited lookup outranks a list
                     continue
@@ -697,7 +720,7 @@ def build(C):
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
 
-    keep = ("id", "name", "country", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
+    keep = ("id", "name", "country", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection", "light_show",
             "minor_labels", "place_labels", "sun_hours_region", "renders")
     scene = {
         "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0},
@@ -712,9 +735,12 @@ def build(C):
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),
+        **({"survey": survey.summary()} if survey.tree is not None or lidar is not None else {}),
         "landmarks": ctx.landmarks,
         "labels": ctx.labels,
         "sources": {
+            **({"heights": cfg["survey"]["attribution"]} if survey.tree is not None else {}),
+            **({"lidar_heights": f'{cfg["surface_check"]["name"]}: the median roof inside each footprint the survey misses'} if lidar is not None else {}),
             "buildings": f"Overture Maps Foundation, release {cfg['overture_release']} (OpenStreetMap contributors, ODbL; Microsoft ML Buildings, ODbL)",
             "terrain": cfg["terrain"].get("attribution", cfg["terrain"]["type"]),
             "imagery": cfg["imagery"].get("attribution", ""),
@@ -727,6 +753,11 @@ def build(C):
         scene["sources"]["reference_heights"] = cfg.get("reference_heights", {}).get("source", "published heights")
         scene["accuracy"] = {"summary": acc["summary"], "note": acc["note"], "source": cfg.get("reference_heights", {}).get("source"),
                              "rows": [[r["name"], r["ref_m"], r.get("model_m"), r.get("error_pct"), r["match"], r.get("how")] for r in acc["rows"]]}
+    lid_path = os.path.join(C.analysis, "lidar_heights.json")  # analysis/lidar_heights.py
+    if os.path.exists(lid_path):
+        lh = json.load(open(lid_path, encoding="utf8"))
+        scene["lidar_check"] = {"source": lh.get("lidar"), "survey": lh["model_vs_lidar_m"].get("survey"), "towers_100m": lh.get("towers_100m_vs_lidar"),
+                                "open_data_vs_survey": lh.get("open_data_vs_survey")}
     json.dump(scene, open(os.path.join(C.out, "scene.json"), "w"), separators=(",", ":"))
     json.dump({"fields": ["name", "class", "top_m", "floors", "height_src", "footprint_src", "osm_id", "wall", "roof", "open_data_top_m"], "b": meta,
                "s_fields": ["building", "base_dm", "min_dm", "top_dm", "ring_dm", "...holes_dm"], "s": solids},

@@ -1,0 +1,172 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Statue Square",
+   "prod": 65.9,
+   "finer_samples": 65.82,
+   "finer_dsm": 63.16,
+   "finer_time": 66.27,
+   "reference": 63.51,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 2.39,
+   "seconds": 3.407
+  },
+  {
+   "place": "Chater Garden",
+   "prod": 64.77,
+   "finer_samples": 64.77,
+   "finer_dsm": 63.98,
+   "finer_time": 64.96,
+   "reference": 64.2,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.57,
+   "seconds": 6.151
+  },
+  {
+   "place": "Hong Kong Park",
+   "prod": 77.11,
+   "finer_samples": 77.27,
+   "finer_dsm": 76.01,
+   "finer_time": 77.4,
+   "reference": 76.32,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.79,
+   "seconds": 16.483
+  },
+  {
+   "place": "Tamar Park",
+   "prod": 56.8,
+   "finer_samples": 56.75,
+   "finer_dsm": 56.53,
+   "finer_time": 57.09,
+   "reference": 56.67,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.13,
+   "seconds": 7.538
+  },
+  {
+   "place": "Central Harbourfront Event Space",
+   "prod": 98.97,
+   "finer_samples": 98.97,
+   "finer_dsm": 98.49,
+   "finer_time": 99,
+   "reference": 98.51,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.46,
+   "seconds": 29.535
+  },
+  {
+   "place": "Edinburgh Place",
+   "prod": 90.4,
+   "finer_samples": 90.55,
+   "finer_dsm": 90.15,
+   "finer_time": 90.33,
+   "reference": 90.24,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.16,
+   "seconds": 2.28
+  },
+  {
+   "place": "Harcourt Garden",
+   "prod": 70.76,
+   "finer_samples": 70.76,
+   "finer_dsm": 68.21,
+   "finer_time": 71.36,
+   "reference": 68.79,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 1.97,
+   "seconds": 8.713
+  },
+  {
+   "place": "Kowloon Park",
+   "prod": 79.73,
+   "finer_samples": 79.84,
+   "finer_dsm": 77.63,
+   "finer_time": 79.93,
+   "reference": 77.9,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 1.83,
+   "seconds": 30.929
+  },
+  {
+   "place": "Tsim Sha Tsui Promenade",
+   "prod": 96.41,
+   "finer_samples": 96.52,
+   "finer_dsm": 96.17,
+   "finer_time": 96.58,
+   "reference": 96.43,
+   "lit_rays_leaving_extent_low_pct": 7.45,
+   "prod_minus_reference": -0.02,
+   "seconds": 7.429
+  },
+  {
+   "place": "Salisbury Garden Phase II",
+   "prod": 80.86,
+   "finer_samples": 81.04,
+   "finer_dsm": 78.01,
+   "finer_time": 81.13,
+   "reference": 78.08,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 2.78,
+   "seconds": 7.286
+  },
+  {
+   "place": "Centenary Garden",
+   "prod": 79.25,
+   "finer_samples": 79.18,
+   "finer_dsm": 78.58,
+   "finer_time": 79.62,
+   "reference": 78.87,
+   "lit_rays_leaving_extent_low_pct": 0.66,
+   "prod_minus_reference": 0.38,
+   "seconds": 19.362
+  },
+  {
+   "place": "Sun Yat Sen Memorial Park",
+   "prod": 87.01,
+   "finer_samples": 87.07,
+   "finer_dsm": 85.96,
+   "finer_time": 87.1,
+   "reference": 86.08,
+   "lit_rays_leaving_extent_low_pct": 16.5,
+   "prod_minus_reference": 0.93,
+   "seconds": 30.993
+  },
+  {
+   "place": "Wan Chai Temporary Promenade",
+   "prod": 96.21,
+   "finer_samples": 96.17,
+   "finer_dsm": 95.66,
+   "finer_time": 96.29,
+   "reference": 95.66,
+   "lit_rays_leaving_extent_low_pct": 13.84,
+   "prod_minus_reference": 0.55,
+   "seconds": 17.989
+  },
+  {
+   "place": "Victoria Peak Garden",
+   "prod": 99.54,
+   "finer_samples": 99.48,
+   "finer_dsm": 99.46,
+   "finer_time": 99.57,
+   "reference": 99.48,
+   "lit_rays_leaving_extent_low_pct": 3.03,
+   "prod_minus_reference": 0.06,
+   "seconds": 4.247
+  },
+  {
+   "place": "Blake Garden",
+   "prod": 73.34,
+   "finer_samples": 73.37,
+   "finer_dsm": 72.86,
+   "finer_time": 73.67,
+   "reference": 73.17,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.17,
+   "seconds": 3.828
+  }
+ ],
+ "max_abs_numerical_error_pp": 2.78
+}

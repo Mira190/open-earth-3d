@@ -1,0 +1,36 @@
+{
+ "ml_heights": {
+  "buildings": 7732,
+  "with_height": 249,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -1400,
+   1400,
+   -1300,
+   1500
+  ],
+  "land": {
+   "samples": 11508,
+   "median_excess_m": 3.4,
+   "p90_excess_m": 52.6
+  },
+  "under_buildings": {
+   "samples": 2760,
+   "median_excess_m": 31.4,
+   "p90_excess_m": 64.2
+  },
+  "open_ground": {
+   "samples": 8748,
+   "median_excess_m": -1.0,
+   "p90_excess_m": 43.9
+  },
+  "points": {}
+ }
+}

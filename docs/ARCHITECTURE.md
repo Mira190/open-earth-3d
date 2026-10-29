@@ -28,7 +28,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Step | Script | Output |
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer or an OGC WCS), and Terrarium tiles for the radar check |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS or a GeoJSON index of GeoTIFF tiles), a LiDAR surface model where the city has one (`dsm.tif`), and Terrarium tiles for the radar check |
+| Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` |
@@ -61,12 +62,22 @@ height, and the viewer shows it.
 1. **verified**: a cited, one-by-one lookup (`verified_heights.csv`).
 2. **reference**: a published height, used when the open data is more than
    40% short and the match is by name (`heights.json`).
-3. **mapped**: an OpenStreetMap `height`.
-4. **floors**: OSM `building:levels` × the calibrated storey height, plus any
+3. **survey** and **lidar**, where the city publishes them (`survey.py`):
+   - a mapping agency's surveyed top level. Each footprint is cut along the
+     agency's building blocks, tallest first, and each block goes to the
+     footprint it fits best, so a tower's block is not cut into a podium
+     mapped round it;
+   - the median roof of a LiDAR surface model, for footprints the survey
+     covers less than half of, and for surveyed pieces the laser saw far
+     lower on blocks surveyed before the flight.
+
+   These replace the open-data heights below them.
+4. **mapped**: an OpenStreetMap `height`.
+5. **floors**: OSM `building:levels` × the calibrated storey height, plus any
    roof height.
-5. **ml**: the Microsoft ML height. Its measured bias is removed, and it is
+6. **ml**: the Microsoft ML height. Its measured bias is removed, and it is
    blended with the neighbour estimate.
-6. **estimate**: the weighted median of known heights within 60 m. Neighbours
+7. **estimate**: the weighted median of known heights within 60 m. Neighbours
    of a similar footprint and the same building type weigh more.
 
 Missing heights are not missing at random: mappers tag the prominent towers
@@ -215,6 +226,12 @@ The views switch in place, without reloading the page.
 
   `setSun()` lights the scene for any sun position.
 
+- **`lights.js`** is a city's nightly light show, where its config has one
+  (`light_show`): searchlights from the landmarks' published tops, lasers
+  between them and the floodlit landmarks cycling through colours, for a few
+  minutes from the show's start time after dark. The viewer and the game share
+  it.
+
 - **`globe.js`** draws the Natural Earth map onto an equirectangular canvas.
   It textures a sphere with it and shades day and night from the subsolar
   point (`Sun.subsolar`). City markers are HTML buttons projected onto the
@@ -252,6 +269,8 @@ The views switch in place, without reloading the page.
   - helicopter and ferries, built from `kit.js`, a kit of parts at real
     dimensions: a double-ended ferry in the city's livery (`game.ferry_style`)
     and a light helicopter;
+  - rail (`rail.js`), where the city has it: street trams and a funicular on
+    the rail lines OpenStreetMap maps;
   - HUD;
   - sound.
 

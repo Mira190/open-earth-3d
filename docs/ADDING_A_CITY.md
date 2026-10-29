@@ -14,8 +14,11 @@ Start with the data, not the skyline.
   carry an OpenStreetMap `height` or `building:levels` tag: this is the single
   biggest factor in accuracy (see the [Sydney study](cities/sydney.md)). If the
   city publishes measured heights (LiDAR roof heights, a 3D cadastre, PLATEAU,
-  3D BAG), plan to bring them in as a reference table, or as a new height
-  source in `build_scene.py`.
+  3D BAG), plan to bring them in as a reference table, or as a `survey`
+  block (an ArcGIS feature service of building outlines with surveyed top
+  levels, as Hong Kong's Lands Department publishes). A LiDAR surface model
+  (`surface_check`) measures the buildings a survey misses and checks every
+  roof (`analysis/lidar_heights.py`).
 - **Terrain must be bare earth.** The global fallback, AWS Terrarium, is a
   surface model over many city centres. It includes the buildings, which would
   float every building and double-count its height. Look for the national or
@@ -51,7 +54,9 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `vertical_datum` | no | A label for heights, such as `m AHD` |
 | `year` | no | Year for dates in the viewer and analyses (default: this year) |
 | `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}`. Or `{type: "synth", attribution}`: no imagery, and the ground is drawn from Overture land use, land, water, roads, footways, rail and footprints |
-| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "wcs", url, coverage, crs, pixel_deg, fill_below_m, bare_earth, attribution}` for an OGC WCS 1.0.0 `GetCoverage` in geographic coordinates (GDA94 is converted from GDA2020, about 1.5 m); or `{type: "terrarium"}` as a last resort |
+| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "wcs", url, coverage, crs, pixel_deg, fill_below_m, bare_earth, attribution}` for an OGC WCS 1.0.0 `GetCoverage` in geographic coordinates (GDA94 is converted from GDA2020, about 1.5 m); `{type: "tile_index", index, url_field, crs, frame_crs, pixel_m, bare_earth, attribution}` for zipped GeoTIFF tiles in a projected CRS listed in a GeoJSON index, mosaicked at `pixel_m` (Hong Kong's LiDAR); or `{type: "terrarium"}` as a last resort. `frame_crs` is the datum the local frame's coordinates are taken in when converting to `crs` (default GDA2020, `EPSG:7844`; `EPSG:4326` elsewhere) |
+| `survey` | no | Surveyed building heights: `{type: "arcgis_features", url, fields: {top, base, floors, name, name_local, kind, status, date}, keep_status, skip_kinds, absolute, attribution}`, an ArcGIS FeatureServer layer of building outlines (`pipeline/fetch_survey.py`). `absolute: true` when `top` is a level in the vertical datum rather than a height. The build cuts footprints along these blocks (`pipeline/survey.py`) |
+| `surface_check` | no | A LiDAR surface model, fetched like a `tile_index` terrain: `{type, index, url_field, crs, frame_crs, pixel_m, name, flown, flown_ms}`. It measures footprints the survey misses, lowers surveyed pieces the laser saw far lower on blocks surveyed before `flown_ms`, and checks every roof (`analysis/lidar_heights.py`) |
 | `terrain_check` | no | An independent elevation source for `analysis/dem_check.py`: `{type: "arcgis_identify", url, field, name}` (a raster service sampled on a grid) or `{type: "arcgis_points", url, field, name}` (surveyed spot heights from a feature layer) |
 | `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water. Also how the water looks (`web/water.js`): `waves` `{wind_ms, wind_from_deg, fetch_km, depth_m, cascades_m, choppiness}` for a typical wind over the water's longest reach; optionally `swell_m`, `swell_from_deg` and `swell_wind_ms` for an ocean swell; `colour` and `shallow_colour` (sRGB hex); `clarity_m` (how far you see into the water); `shore_slopes` `{sand, rock, built}` to override the modelled bottom's depth per metre from each kind of shore (default 0.04, 0.25, 1.0). The waves and colours are chosen values, so say so in a `note` |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
@@ -63,6 +68,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `analysis_region` | no | `[x0, x1, y0, y1]`: the dense core, used by the data-quality and radar checks |
 | `sun_hours_region` | no | `[x0, x1, y0, y1]`: the area of the viewer's sun-hours map |
 | `reference_heights` | no | `{file, source}`: published heights; see below |
+| `light_show` | no | A nightly light show (`web/lights.js`): `{name, start: "HH:MM", minutes, beams: [landmark keys], lasers: [[key, key], ...], note}`. Searchlights rise from the landmarks' published tops, lasers join them and the floodlit landmarks cycle through colours |
 | `verified_heights` | no | A CSV of heights verified one by one, each with its source |
 | `check_points` | no | `{name: [lon, lat]}`: points where terrain sources are compared |
 | `radar_test_building` | no | The building `radar_check.py` removes to test detection (default: the largest reference correction) |
@@ -70,7 +76,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `ferry_style` `{length_m, beam_m, hull, trim, upper, flag, note}` sizes the ferry and gives it the city's livery. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) |
+| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun` and `inspect`. `ferry_style` `{length_m, beam_m, hull, trim, upper, flag, note}` sizes the ferry and gives it the city's livery. A wharf whose terminal name several berths share takes `near` `[x, y]`: the berth nearest it. `rail` `{tram: {class, keep, gauge_m, length_m, width_m, height_m, speed_ms, spacing_m, stop_every_m, liveries, min_length_m, note}, funicular: {class, climb: true, name, stations, gauge_m, length_m, width_m, height_m, livery, trim, speed_ms, dwell_s, car_names, note}}` runs trams and a funicular on the Overture rail lines of those classes (`web/game/rail.js`); a `rail` step `{from, to}` rides the funicular between its stations. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}` and `{share:source}`. See the Sydney and Melbourne configs and [GAME.md](GAME.md) |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -157,12 +163,13 @@ model and the analyses still see their shadow. The renderers skip them
 ## 4. Optional: reference tables
 
 `reference_heights.csv` has the columns `name, height_m, floors, year, address,
-exclude`. `analysis/heights.py` finds each address in Overture's address
-points, takes the tallest building within 30 m, and scores the open-data
+exclude`, and optionally `lon, lat`. `analysis/heights.py` finds each address
+in Overture's address points (or takes the point, where the list gives
+coordinates), matches the tallest building at it, and scores the open-data
 height. A reason in `exclude` keeps a row out of the summary: use it when an
 address cannot identify its building, for example two towers on one address.
 Rows that match by name and are more than 40% short are corrected in the next
-build.
+build, unless they are excluded.
 
 `verified_heights.csv` has the columns `osm_id, name, floors, height_m,
 source, note`. Give a height, or a floor count to multiply by the storey
@@ -175,12 +182,14 @@ the answers most. Cite a source for every row.
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
   python pipeline/fetch_overture.py --city <id>
 python pipeline/fetch_tiles.py --city <id>
+python pipeline/fetch_survey.py --city <id>       # if there is a survey block
 python pipeline/build_scene.py --city <id>
 python pipeline/landmarks.py --city <id>
 python analysis/heights.py --city <id>            # if there is a reference table
 python pipeline/build_scene.py --city <id>        # applies reference corrections
 python analysis/data_quality.py --city <id>
 python analysis/dem_check.py --city <id>          # if there is a terrain_check
+python analysis/lidar_heights.py --city <id>      # if there is a surface_check
 node analysis/error_budget.js --city <id>
 node analysis/time_basis.js --city <id>
 python analysis/radar_check.py --city <id>        # unless the terrain is Terrarium

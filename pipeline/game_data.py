@@ -190,7 +190,8 @@ def main():
         if not hits:
             print("wharf not found:", w["terminal"])
             continue
-        p = hits[0]
+        # several terminals can share a name (each berth of Central's piers is "Central"): the one nearest `near`
+        p = min(hits, key=lambda q: math.hypot(q.x - w["near"][0], q.y - w["near"][1])) if "near" in w else hits[0]
         # berth: the nearest navigable cell with 6 m of clearance
         rr, cc = np.nonzero(clear >= 6.0)
         r0, c0 = cell(p.x, p.y)
@@ -316,6 +317,84 @@ def main():
                 props[r["class"]] += [round(q.x * 10), round(q.y * 10), round(ground(q.x, q.y) * 10)]
     print("props:", {k: len(v) // 3 for k, v in props.items()})
 
+    # ---------------------------------------------------------- rail: trams in the street, a funicular up the hill
+    # Overture rail segments of the classes the city's game names (game.rail). OpenStreetMap breaks a
+    # track at every junction, so pieces are chained into through routes, each continuing along the
+    # straightest piece that meets its end. A funicular climbs: its route starts at the lower end and
+    # its profile is the ground made monotonic, which bridges the dips under its viaducts. A piece
+    # left over whose ends both meet the route is the funicular's passing loop.
+    def chain(lines, tol=2.5):
+        unit = lambda v: v / (np.linalg.norm(v) or 1)
+        used, routes = set(), []
+        for i0 in sorted(range(len(lines)), key=lambda i: -lines[i].length):
+            if i0 in used:
+                continue
+            used.add(i0)
+            pts = [tuple(c[:2]) for c in lines[i0].coords]
+            for _ in range(2):  # extend the far end, then (reversed) the near end
+                while True:
+                    tip, d0, best = np.array(pts[-1]), unit(np.array(pts[-1]) - np.array(pts[-2])), None
+                    for j, l in enumerate(lines):
+                        if j in used:
+                            continue
+                        cs = [tuple(c[:2]) for c in l.coords]
+                        for seq in (cs, cs[::-1]):
+                            if np.linalg.norm(np.array(seq[0]) - tip) < tol:
+                                c = float(np.dot(d0, unit(np.array(seq[1]) - np.array(seq[0]))))
+                                if c > 0.7 and (best is None or c > best[0]):
+                                    best = (c, j, seq)
+                    if best is None:
+                        break
+                    used.add(best[1])
+                    pts += best[2][1:]
+                pts.reverse()
+            routes.append(LineString(pts))
+        return routes
+
+    rail = {}
+    for kind, rc in gcfg.get("rail", {}).items():
+        segs = []
+        for r in rows(con, raw("segment"), "class, subtype, road_flags, wkb"):
+            if r["subtype"] != "rail" or r["class"] != rc.get("class", kind):
+                continue
+            if any(a <= 0.0 and b >= 1.0 for a, b in flag_ranges(r["road_flags"], "is_tunnel")):
+                continue
+            g = C.to_local(swkb.loads(bytes(r["wkb"]))).intersection(extent)
+            segs += [ln for ln in getattr(g, "geoms", [g]) if ln.geom_type == "LineString" and ln.length > 1]
+        merged = shapely.line_merge(shapely.union_all(segs)) if segs else None
+        pieces = [ln for ln in getattr(merged, "geoms", [merged]) if ln is not None and ln.length > 1]
+        routes = chain(pieces)
+        if rc.get("climb") and routes:  # one route, from the bottom up, and its passing loop
+            routes.sort(key=lambda l: -l.length)
+            main = routes[0]
+            if ground(*main.coords[0][:2]) > ground(*main.coords[-1][:2]):
+                main = LineString(main.coords[::-1])
+            loop = None
+            for o in routes[1:]:
+                if main.distance(Point(o.coords[0][:2])) < 3 and main.distance(Point(o.coords[-1][:2])) < 3 and o.length > 50:
+                    s0, s1 = sorted([main.project(Point(o.coords[0][:2])), main.project(Point(o.coords[-1][:2]))])
+                    mid_o, mid_m = o.interpolate(0.5, normalized=True), main.interpolate((s0 + s1) / 2)
+                    ahead = main.interpolate(min(main.length, (s0 + s1) / 2 + 5))
+                    hx, hy = ahead.x - mid_m.x, ahead.y - mid_m.y
+                    side = (-hy * (mid_o.x - mid_m.x) + hx * (mid_o.y - mid_m.y)) / (math.hypot(hx, hy) or 1)  # + = left of the climb
+                    loop = [round(s0, 1), round(s1, 1), round(side, 1)]
+            routes = [main]
+        out_lines = []
+        for ln in routes:
+            if ln.length < rc.get("min_length_m", 60):
+                continue
+            n = max(2, int(ln.length / 4) + 1)
+            pts = [ln.interpolate(k / (n - 1), normalized=True) for k in range(n)]
+            z = np.array([ground(q.x, q.y) for q in pts])
+            if rc.get("climb"):
+                z = np.maximum.accumulate(z)
+            out_lines.append({"length_m": round(ln.length, 1), "p": [v for q, h in zip(pts, z) for v in (round(q.x * 10), round(q.y * 10), round(h * 10))]})
+        out_lines.sort(key=lambda l: -l["length_m"])
+        rail[kind] = dict({k: v for k, v in rc.items() if k not in ("class", "min_length_m")}, lines=out_lines)
+        if rc.get("climb") and loop:
+            rail[kind]["passing_loop"] = loop
+        print(f"rail {kind}: {len(out_lines)} routes, {sum(l['length_m'] for l in out_lines):.0f} m" + (f"; passing loop {loop}" if rc.get("climb") else ""))
+
     # ---------------------------------------------------------- NPCs: snap to open ground
     og_r, og_c = np.nonzero(open_ground)
 
@@ -356,6 +435,7 @@ def main():
         "ferries": ferries, "ferry_note": gcfg.get("ferry_note", ""),
         "ferry_speed_ms": gcfg.get("ferry_speed_ms", 9.0), "ferry_dwell_s": gcfg.get("ferry_dwell_s", 20.0),
         "helipads": helipads,
+        **({"rail": rail} if rail else {}),
         "props": props,
         "crowd": gcfg.get("crowd", {"pedestrians": 300, "cars": 120, "radius_m": 450}),
         "npcs": npcs,

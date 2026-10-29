@@ -7,6 +7,9 @@
            "wcs": an OGC WCS 1.0.0 GetCoverage of float elevations in geographic
                   coordinates (`crs`, e.g. EPSG:4283 for GDA94); pits deeper than
                   `fill_below_m` (voids in the source) are filled from their neighbours
+           "tile_index": a GeoJSON index of zipped GeoTIFF tiles in a projected CRS
+                         (`index`, `url_field`, `crs`), mosaicked at `pixel_m`; Hong
+                         Kong's 2020 LiDAR terrain is published this way
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -120,6 +123,68 @@ def dem_wcs(bbox, cfg, raw):
     return [w, s, e, n], size
 
 
+def read_geotiff(path):
+    """A single-band float GeoTIFF in a projected CRS: (array, x0, y1, pixel) from its tie point and
+    pixel scale tags; nodata becomes NaN."""
+    im = Image.open(path)
+    tie, scale = im.tag_v2[33922], im.tag_v2[33550]
+    a = np.asarray(im, dtype=np.float32).copy()
+    nodata = im.tag_v2.get(42113)
+    if nodata is not None:
+        a[a == float(str(nodata).strip("\x00"))] = np.nan
+    a[a < -1000] = np.nan
+    return a, tie[3] - tie[0] * scale[0], tie[4] + tie[1] * scale[1], scale[0]
+
+
+def dem_tile_index(bbox, cfg, raw, name="dem"):
+    """Tiles listed in a GeoJSON index, each a zipped GeoTIFF in a projected CRS (`crs`), downloaded
+    once into data/raw/<city>/<name>_tiles/ and mosaicked at `pixel_m` by block means. Holes
+    (voids, water the survey left blank) are filled from the nearest valid pixel."""
+    import io
+    import zipfile
+    w, s, e, n = bbox[0] - 0.002, bbox[1] - 0.002, bbox[2] + 0.002, bbox[3] + 0.002
+    idx = requests.get(cfg["index"], timeout=300, headers=UA).json()
+    urls = []
+    for f in idx["features"]:
+        cs = [c for ring in f["geometry"]["coordinates"] for c in ring]
+        if max(c[0] for c in cs) > w and min(c[0] for c in cs) < e and max(c[1] for c in cs) > s and min(c[1] for c in cs) < n:
+            urls.append(f["properties"][cfg.get("url_field", "URL")])
+    d = os.path.join(raw, f"{name}_tiles")
+    os.makedirs(d, exist_ok=True)
+    jobs = [(u, os.path.join(d, u.rsplit("/", 1)[-1])) for u in urls]
+    with ThreadPoolExecutor(6) as ex:
+        list(ex.map(lambda j: get(*j), jobs))
+    tiles = []
+    for _, p in jobs:
+        with zipfile.ZipFile(p) as z:
+            tif = next(m for m in z.namelist() if m.lower().endswith((".tif", ".tiff")))
+            tiles.append(read_geotiff(io.BytesIO(z.read(tif))))
+    px = cfg.get("pixel_m", 1.0)
+    X0 = min(t[1] for t in tiles)
+    Y1 = max(t[2] for t in tiles)
+    X1 = max(t[1] + t[0].shape[1] * t[3] for t in tiles)
+    Y0 = min(t[2] - t[0].shape[0] * t[3] for t in tiles)
+    W, Hh = int(round((X1 - X0) / px)), int(round((Y1 - Y0) / px))
+    acc, cnt = np.zeros((Hh, W), np.float64), np.zeros((Hh, W), np.int32)
+    for a, x0, y1, sc in tiles:
+        f = int(round(px / sc))
+        h, ww = a.shape[0] // f * f, a.shape[1] // f * f
+        b = a[:h, :ww].reshape(h // f, f, ww // f, f)
+        ok = np.isfinite(b)
+        sm, ct = np.where(ok, b, 0).sum(axis=(1, 3)), ok.sum(axis=(1, 3))
+        r0, c0 = int(round((Y1 - y1) / px)), int(round((x0 - X0) / px))
+        acc[r0:r0 + sm.shape[0], c0:c0 + sm.shape[1]] += sm
+        cnt[r0:r0 + sm.shape[0], c0:c0 + sm.shape[1]] += ct
+    out = np.where(cnt > 0, acc / np.maximum(cnt, 1), np.nan).astype(np.float32)
+    bad = ~np.isfinite(out)
+    if bad.any():
+        from scipy.ndimage import distance_transform_edt
+        out = out[tuple(distance_transform_edt(bad, return_distances=False, return_indices=True))]
+    Image.fromarray(out).save(os.path.join(raw, f"{name}.tif"))
+    print(f"{name}: {len(tiles)} tiles at {px} m, {bad.mean() * 100:.1f}% filled, range {out.min():.1f} to {out.max():.1f} m")
+    return [X0, Y0, X1, Y1], (W, Hh)
+
+
 def dem_terrarium(raw, z, xs, ys):
     """Stitch Terrarium tiles into a float32 Web Mercator grid."""
     tiles = os.path.join(raw, "terrarium", str(z))
@@ -156,11 +221,21 @@ def main():
         mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
     elif tc["type"] == "wcs":
         mbbox, size = dem_wcs(bbox, tc, city.raw)
+    elif tc["type"] == "tile_index":
+        mbbox, size = dem_tile_index(bbox, tc, city.raw)
     else:
         raise SystemExit(f"unknown terrain type {tc['type']}")
-    json.dump({"crs": tc.get("crs", "EPSG:4283") if tc["type"] == "wcs" else "EPSG:3857", "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
+    # frame_crs: the datum the local frame's longitudes and latitudes are taken in when converting to
+    # the DEM's CRS (GDA2020 for the Australian cities, within 0.5 m of WGS84 there)
+    json.dump({"crs": tc.get("crs", "EPSG:4283") if tc["type"] in ("wcs", "tile_index") else "EPSG:3857", "frame_crs": tc.get("frame_crs", "EPSG:7844"),
+               "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
               open(os.path.join(city.raw, "dem.json"), "w"))
     print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
+    sc = cfg.get("surface_check")  # a LiDAR surface model, for analysis/lidar_heights.py
+    if sc and sc["type"] == "tile_index":
+        mbbox, size = dem_tile_index(bbox, sc, city.raw, "dsm")
+        json.dump({"crs": sc["crs"], "frame_crs": sc.get("frame_crs", "EPSG:7844"), "bbox": mbbox, "size": list(size), "source": sc["type"]},
+                  open(os.path.join(city.raw, "dsm.json"), "w"))
 
 
 if __name__ == "__main__":

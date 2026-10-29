@@ -11,7 +11,8 @@ can check, as well as look at.
 
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
 Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
-next. It grows from there one city at a time. Each new city is a config file
+next, then Hong Kong, the first city whose heights are measured rather than
+mapped. It grows from there one city at a time. Each new city is a config file
 and a few checks, not a new codebase.
 
 ![The globe landing page: live and planned cities, with today's day and night](docs/images/globe.jpg)
@@ -26,7 +27,11 @@ and a few checks, not a new codebase.
 |---|---|---|
 | ![](docs/images/melbourne/screenshot-overview.jpg) | ![](docs/images/melbourne/screenshot-tower.jpg) | ![](docs/images/melbourne/overview.jpg) |
 
-## Play it: Sydney on Foot and Melbourne on Foot
+| Hong Kong from the Peak | The Bank of China Tower and Central | A Symphony of Lights |
+|---|---|---|
+| ![](docs/images/hong-kong/overview.jpg) | ![](docs/images/hong-kong/towers.jpg) | ![](docs/images/hong-kong/night.jpg) |
+
+## Play it: Sydney, Melbourne and Hong Kong on Foot
 
 The model is also a game.
 - **Sydney:** you walk the city centre as a surveyor and talk to the people who
@@ -36,11 +41,15 @@ The model is also a game.
   winter solstice.
 - **Melbourne:** you check the midwinter sun on Federation Square, take a
   shuttle down the Yarra, and fly past the Arts Centre spire.
+- **Hong Kong:** you cross the harbour on the Star Ferry, read surveyed and
+  LiDAR heights at the Clock Tower, fly between the towers, find the winter sun
+  in Statue Square and ride the Peak Tram to the lookout for the 8 pm light
+  show. Double-deck trams run along the north shore and stop for you.
 
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. Open **Play** on the globe, or go to
-`#play-sydney` or `#play-melbourne`. [docs/GAME.md](docs/GAME.md) covers:
+`#play-sydney`, `#play-melbourne` or `#play-hong-kong`. [docs/GAME.md](docs/GAME.md) covers:
 - the controls;
 - what we took from Flight Simulator, Sketchbook, GTA, Ship Simulator and the
   Discovery Tour;
@@ -51,6 +60,8 @@ computed from the model as you play. Open **Play** on the globe, or go to
 | ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-steps.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
 | **Melbourne: a planner explains DDO10 in City Square** | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
 | ![](docs/images/melbourne/game-dialogue.jpg) | ![](docs/images/melbourne/game-river.jpg) | ![](docs/images/melbourne/game-heli.jpg) |
+| **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** | **Trams on the north shore** |
+| ![](docs/images/hong-kong/game-ferry.jpg) | ![](docs/images/hong-kong/game-peak-tram.jpg) | ![](docs/images/hong-kong/game-tram.jpg) |
 
 ## Cities
 
@@ -58,12 +69,12 @@ computed from the model as you play. Open **Play** on the globe, or go to
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
+| **Hong Kong**, China | **Live** | 7,513 buildings across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
 | Paris, France | Planned | IGN RGE ALTI, BD ORTHO and BD TOPO heights |
 | Amsterdam, Netherlands | Planned | AHN LiDAR, PDOK imagery, 3D BAG heights |
 | Tokyo, Japan | Planned | Project PLATEAU 3D city models (CC BY 4.0); GSI elevation tiles |
-| Hong Kong, China | Planned | Lands Department 3D spatial data and LiDAR DTM |
 | Singapore | Planned | OSM heights; open bare-earth DEM and imagery still to find |
 
 The planned list is a roadmap. None of those data sources has been verified
@@ -75,6 +86,8 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 
 - **Buildings with provenance.** Each height has a source:
   - verified from a cited source;
+  - surveyed by the city's mapping agency, or measured by airborne LiDAR,
+    where the city publishes them (Hong Kong);
   - published;
   - surveyed in OpenStreetMap;
   - a floor count times a calibrated storey height;
@@ -116,11 +129,11 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
 
 ## Run it
 
-The built Sydney and Melbourne scenes are in the repository, so the viewer runs straight away:
+The built Sydney, Melbourne and Hong Kong scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney or #melbourne for a 3D model, #play-sydney or #play-melbourne for a game
+# open http://localhost:8000 for the globe, #sydney, #melbourne or #hong-kong for a 3D model, #play-<id> for its game
 ```
 
 To rebuild a city from the raw data (about 2 minutes for Sydney), run:
@@ -141,6 +154,15 @@ python analysis/heights.py --city sydney              # published heights vs mod
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
 python pipeline/fetch_people.py                       # the game's characters (once; Quaternius CC0 packs)
+```
+
+A city whose mapping agency publishes surveyed building heights (Hong Kong)
+fetches them before the build, and can check every roof against a LiDAR
+surface model after it:
+
+```bash
+python pipeline/fetch_survey.py --city hong-kong      # surveyed building blocks (city.json survey)
+python analysis/lidar_heights.py --city hong-kong     # every roof against the LiDAR; what OSM alone would give
 ```
 
 `heights.py` reads the built scene, and `build_scene.py` uses its name matches
@@ -236,6 +258,17 @@ Sydney also uses these sources:
 - Sydney LEP 2012 cl. 6.18, for the protected places. Their windows were
   transcribed from secondary sources, so check the official text before
   relying on them.
+
+Hong Kong also uses these sources (Hong Kong government open data, with
+attribution):
+- the Lands Department's *Building* dataset: surveyed block outlines with top
+  and base levels in mPD;
+- CEDD's 2020 airborne LiDAR terrain and surface models (0.5 m);
+- the Lands Department's geodetic bench marks, for the terrain check;
+- the Lands Department Map API's aerial photograph. Its terms ask for the
+  Lands Department logo and a copyright notice on the map face;
+- Wikipedia's *List of tallest buildings in Hong Kong* (CC BY-SA), with its
+  coordinates.
 
 Melbourne also uses these sources:
 - Geoscience Australia's 5 m LiDAR DEM (CC BY 4.0), for the terrain.
