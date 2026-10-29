@@ -58,7 +58,7 @@ rendering and the tiers.
 
 | Shibuya & Shinjuku: the 男坂 of Suga Shrine | SHIBUYA SKY, 229 m up | Kabukicho after dark |
 |---|---|---|
-| ![](docs/images/shibuya/suga-stairs-mid.jpg) | ![](docs/images/shibuya/sky-aerial.jpg) | ![](docs/images/shibuya/kabukicho-night.jpg) |
+| ![](docs/images/shibuya/cycles-suga-stairs.jpg) | ![](docs/images/shibuya/cycles-shibuya-sky.jpg) | ![](docs/images/shibuya/cycles-kabukicho.jpg) |
 
 Buildings get LOD2 roofs, facades, shopfronts, parapets and rooftops, inferred
 where the open data is silent and checked where it is not

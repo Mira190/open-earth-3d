@@ -2002,10 +2002,12 @@ def sky_building(b, g, geoms, ctx):
         p = main[0].difference(pit.buffer(0.3, join_style=2)) if q is main else q[0]
         if q is main or (q[2] > deck - 12.0 and p.intersection(rect).area > 0.5 * p.area):
             q = [p, q[1], up_to(p, z_dm), q[3], q[4], *q[5:]]
+            ctx.bare_roof(q)   # the deck's furniture is SHIBUYA SKY's (sky_meshes), not generated plant
         elif round(q[2], 1) > deck:
             q = [p, q[1], deck, q[3], q[4], *q[5:]]
         out.append(q)
     out.append([pit, 0.0, up_to(pit, z_dm - round(SKY["floor_46_below_m"] * 10)), main[3], None, *main[5:]])
+    ctx.bare_roof(out[-1])
     ctx.landmarks["_sky"] = {"ring": ring, "roof_top_m": top, "deck_m": deck, "ground_m": ground, "deck_z": z_dm / 10,
                              "toward": [round(float(toward[0]), 1), round(float(toward[1]), 1)]}
     return out

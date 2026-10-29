@@ -3,12 +3,16 @@
   "json": "films/amsterdam.json",
   "duration": 36
  },
- "melbourne": {
-  "json": "films/melbourne.json",
-  "duration": 36
+ "great-barrier-reef": {
+  "json": "films/great-barrier-reef.json",
+  "duration": 35.5
  },
  "melbourne-bayside": {
   "json": "films/melbourne-bayside.json",
+  "duration": 36
+ },
+ "melbourne": {
+  "json": "films/melbourne.json",
   "duration": 36
  },
  "osaka": {

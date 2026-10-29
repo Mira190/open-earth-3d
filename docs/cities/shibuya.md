@@ -12,6 +12,12 @@ in `pipeline/` and `analysis/` run with `--city shibuya`; outputs are in
 
 ![Sangenjaya to Shinjuku from the south-east, with Yoyogi Park and Meiji Jingu](../images/shibuya/overview.jpg)
 
+| The 男坂 at dusk, rendered in Cycles (`blender/build_scene.py`) | Kabukicho's arch at night, in Cycles |
+|---|---|
+| ![](../images/shibuya/cycles-suga-stairs.jpg) | ![](../images/shibuya/cycles-kabukicho.jpg) |
+
+![SHIBUYA SKY's roof in Cycles: GEO COMPASS, the deck, the hammocks, the escalator's well and SKY EDGE's light lines](../images/shibuya/cycles-shibuya-sky.jpg)
+
 | The 男坂 from the lane at its foot, late afternoon | Halfway up: red rails on both sides and down the middle |
 |---|---|
 | ![](../images/shibuya/suga-stairs.jpg) | ![](../images/shibuya/suga-stairs-mid.jpg) |
