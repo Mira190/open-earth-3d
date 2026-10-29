@@ -1,6 +1,6 @@
 // Sound, synthesised with Web Audio (no audio files): harbour ambience, footsteps,
 // the helicopter rotor, the ferry engine and horn, dialogue voice beeps with a
-// pitch per character, and little penguins braying in the dark. Browsers allow
+// pitch per character, little penguins braying in the dark and silver gulls. Browsers allow
 // sound only after a click, so start() is called from the Play button.
 'use strict';
 window.OEAudio = (function () {
@@ -102,10 +102,22 @@ window.OEAudio = (function () {
     }
     o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + n * 0.16 + 0.05);
   }
+  // a silver gull's call: a harsh, falling "kee-ar", sometimes two; level 0..1 with distance
+  function gull(level = 1) {
+    if (!ctx || muted || level <= 0) return;
+    const t = ctx.currentTime, n = Math.random() < 0.4 ? 2 : 1, f0 = 1500 + Math.random() * 500;
+    for (let k = 0; k < n; k++) {
+      const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), a = t + k * 0.32;
+      o.type = 'square'; f.type = 'bandpass'; f.frequency.value = 2200; f.Q.value = 2.5;
+      o.frequency.setValueAtTime(f0, a); o.frequency.linearRampToValueAtTime(f0 * 1.15, a + 0.05); o.frequency.exponentialRampToValueAtTime(f0 * 0.62, a + 0.26);
+      g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.045 * level, a + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.28);
+      o.connect(f); f.connect(g); g.connect(master); o.start(a); o.stop(a + 0.3);
+    }
+  }
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
   // a tram's foot gong, struck twice ("ding ding")
   function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, beep, step, horn, chime, bell, thump, shutter, penguin, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, beep, step, horn, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

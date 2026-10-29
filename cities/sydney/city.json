@@ -312,7 +312,19 @@
       {"id": "observatory-hill", "name": "Observatory Hill", "at": [-546.2, 307.6]},
       {"id": "barangaroo-reserve", "name": "Barangaroo Reserve", "at": [-891.4, 568.9]},
       {"id": "mrs-macquaries-chair", "name": "Mrs Macquarie's Chair", "at": [1015.2, 252.3]},
-      {"id": "opera-steps", "name": "Opera House steps", "at": [305.6, 462.0]}
+      {"id": "opera-steps", "name": "Opera House steps", "at": [306.5, 465.8]}
+    ],
+    "flocks": [
+      {
+        "id": "opera-bar-gulls",
+        "kind": "silver_gull",
+        "name": "Silver gulls",
+        "at": [243, 458],
+        "count": 9,
+        "perch_m": 14,
+        "note": "Silver gulls (Chroicocephalus novaehollandiae) are common throughout Australia: 40 to 45 cm long, with a white head, tail and underparts, a light grey back and black-tipped wings, and in adults a bright orange-red bill, legs and eye-ring. They readily pester people for scraps and pilfer from unattended food (Australian Museum). Juveniles have brown patterns on their wings and a dark bill (Wikipedia). The flock, its box of hot chips and where it works the broadwalk by the Opera Bar are a game scene, not a survey.",
+        "source": "Australian Museum, Silver Gull; Wikipedia, Silver gull"
+      }
     ],
     "crowd": {"pedestrians": 360, "cars": 150, "radius_m": 450},
     "npcs": [
@@ -331,7 +343,8 @@
         "role": "Opera House guide",
         "at": [298, 432],
         "look": {"character": "M_Suit", "skin": "#e0b392", "hair": "#4a3426", "top": "#2d5d8a", "legs": "#1e1e22", "shirt": "#2d5d8a", "pants": "#1e1e22"},
-        "idle": ["Each shell is a triangle cut from one sphere, 75.2 m in radius. Utzon's 'spherical solution', 1961."]
+        "idle": ["Each shell is a triangle cut from one sphere, 75.2 m in radius. Utzon's 'spherical solution', 1961.",
+        "Mind your chips on the broadwalk. The gulls by the Opera Bar will have them out of your hand."]
       },
       {
         "id": "lena",
@@ -381,6 +394,14 @@
         "at": [-262, 905],
         "look": {"character": "M_Beach", "skin": "#d9a27e", "hair": "#9a9a9a", "top": "#6b8f3a", "legs": "#4b4b40", "shirt": "#6b8f3a", "pants": "#4b4b40"},
         "idle": ["Bream under the bridge in the mornings. {sun_line}"]
+      },
+      {
+        "id": "jess",
+        "name": "Jess",
+        "role": "Opera Bar waiter",
+        "at": [239, 444],
+        "look": {"character": "W_Casual", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#1f1f22", "legs": "#2c2c30", "shirt": "#1f1f22", "pants": "#2c2c30"},
+        "idle": ["Forty to forty-five centimetres of gull, and every one of them knows where the chips are.", "It's {time} here. {sun_line}"]
       }
     ],
     "lines": [
@@ -398,6 +419,11 @@
       {
         "id": "ground",
         "title": "The ground",
+        "after": ["start"]
+      },
+      {
+        "id": "locals",
+        "title": "The locals",
         "after": ["start"]
       },
       {
@@ -512,6 +538,22 @@
             "type": "inspect",
             "sources": ["mapped", "floors", "estimate"],
             "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
+          }
+        ]
+      },
+      {
+        "id": "chips",
+        "line": "locals",
+        "giver": "jess",
+        "title": "Hot chips at the Quay",
+        "stamp": "Silver gull",
+        "talk": ["Watch your chips! See that lot down by the water? Silver gulls. Everyone calls them seagulls.", "White head and tail, a light grey back, black-tipped wings, and the bill, legs and eye-ring a bright orange-red. The ones with brown on their wings and a dark bill are young.", "Someone's dropped a box of hot chips on the broadwalk, so that's lunch for the whole flock. The Australian Museum says they're 'readily pestering humans for handouts of scraps'. Look away and they're in your box.", "Go and have a look. Just don't feed them."],
+        "steps": [
+          {
+            "type": "visit",
+            "flock": "opera-bar-gulls",
+            "radius": 3.5,
+            "text": "Walk up to the gulls fighting over the chips by the water"
           }
         ]
       },

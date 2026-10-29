@@ -115,6 +115,11 @@ window.OEHud = (function () {
     } else if (ic.kind === 'trig') { // a trig station: hollow until surveyed
       g.fillStyle = ic.done ? css('--sun') : '#ffffff'; g.strokeStyle = ic.done ? '#ffffff' : '#8a6d1d'; g.lineWidth = 1.8;
       g.beginPath(); g.moveTo(0, -7.5); g.lineTo(7, 5); g.lineTo(-7, 5); g.closePath(); g.fill(); g.stroke();
+    } else if (ic.kind === 'gull') { // a flock of gulls: a gull in flight on a pale disc
+      g.fillStyle = '#ffffff'; g.strokeStyle = '#6d8796'; g.lineWidth = 1.5;
+      g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); g.fill(); g.stroke();
+      g.strokeStyle = '#33424c'; g.lineWidth = 1.6; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-4.4, 0.4); g.quadraticCurveTo(-2.2, -2.6, 0, 0.8); g.quadraticCurveTo(2.2, -2.6, 4.4, 0.4); g.stroke();
     } else if (ic.kind === 'ferry' || ic.kind === 'heli' || ic.kind === 'wharf' || ic.kind === 'pad' || ic.kind === 'waypoint') {
       const bg = { ferry: '#1e5b3a', heli: '#c62d2a', wharf: '#24577a', pad: '#c62d2a', waypoint: css('--accent') }[ic.kind];
       g.fillStyle = bg; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
