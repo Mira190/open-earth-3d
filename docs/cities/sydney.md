@@ -92,10 +92,25 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
     awnings on the edges that face a street.
 - **Landmarks** (`cities/sydney/city.py`, with the kit in
   `pipeline/meshkit.py`), each from its published dimensions:
-  - **The Opera House:** its shells carry the chevron pattern of glossy white
-    and matte cream tiles, with tile lids between the ribs. The glass walls
-    are fanned between radial mullions. The Monumental Steps run down to the
-    forecourt.
+  - **The Opera House:** OpenStreetMap maps its roof in detail, with a
+    maintenance walkway along every shell's ridge. Those walkways place the
+    shells: four over the Concert Hall on a ridge line 124 m long, four over the
+    Joan Sutherland Theatre, turned 22° from it, and the Bennelong restaurant's
+    back-to-back pair. Each shell is two spherical triangles of Utzon's 75.2 m
+    sphere, mirror images that share the ridge, with their ribs fanning out
+    from the pedestals where the legs of the shell's arch stand. Side shells,
+    with glass under them, roof the flanks between the shells that stand back
+    to back. How wide each shell spans is measured from the outline of the OSM
+    roof parts. The shells carry the chevron pattern of glossy white and matte
+    cream tiles, with tile lids between the ribs. The glass walls hang from the
+    arches in pleats of topaz glass on bronze mullions, and glow warm at night.
+  - **The podium and the Monumental Steps:** the podium is clad in pink granite
+    panels, on two levels. The Monumental Steps climb from the forecourt to a
+    landing. They are measured on the aerial photo: 85 m wide, three flights of
+    0.39 m treads between landings 1.6 m deep. A flight in front of each hall
+    climbs from the landing to the upper podium, which the halls stand on. Each
+    tread has a pale nosing that overhangs a darker riser, so the steps read
+    as steps from any side.
   - **The Harbour Bridge:** the deck is laid out in its real strips, west to
     east:
     - the cycleway;
@@ -146,7 +161,7 @@ tour:
 | View | Sydney time | Sun (altitude, azimuth) | Cycles render |
 |---|---|---|---:|
 | Overview from Milsons Point | 21 Mar, 08:50 | 22.0° at 74° | 130 s |
-| Opera House | 21 Mar, 17:35 | 17.8° at 283° | 92 s |
+| Opera House | 21 Mar, 17:35 | 17.8° at 283° | 74 s |
 | Harbour Bridge | 21 Mar, 18:10 | 10.7° at 278° | 53 s |
 | CBD at winter noon | 21 Jun, 12:00 | 32.7° at 359° | 73 s |
 
@@ -343,10 +358,10 @@ it can only show a picture of it.
   models, street furniture, and an artist's eye on composition. Our facades
   follow a grammar per style, and our roofs are inferred where they are not
   mapped. Our trees are still low-poly blobs.
-- **Unmapped detail.** Things OSM does not hold, such as the Opera House's
-  real shell layout, ornament and each building's actual elevation. The tile
-  pattern and the bridge deck are now built from published descriptions, but
-  at approximate sizes.
+- **Unmapped detail.** Things OSM does not hold, such as ornament and each
+  building's actual elevation. The tile pattern and the bridge deck are now
+  built from published descriptions, and the Opera House's shells stand on the
+  ridges OSM maps, but at approximate sizes.
 
 The sensible combination is to use our scene as the **ground truth layer**
 (footprints, heights, terrain, sun) and let Opus and Blender dress it. Load
@@ -360,10 +375,13 @@ numbers stay valid because the geometry they depend on is unchanged.
 
 ## 8. Limitations
 
-- **Opera House shell layout.** The sphere radius and the 67 m height are
-  published. The positions, sizes and orientations of the individual shells
-  are our approximation, not survey data. The podium is a 6 m extrusion of the
-  OSM outline.
+- **Opera House shell layout.** The sphere radius and the Concert Hall's 67 m
+  are published, and the Joan Sutherland Theatre's 61 m was measured with
+  LiDAR by others. The ridges are OSM traces of an aerial photo that is not a
+  true orthophoto, so the tall shells' tips may lean a few metres. The other
+  tips, how high the back-to-back shells meet, and the side shells come from
+  a photograph. The podium's two levels follow from an assumed 15 cm riser:
+  the landing at 10.1 m and the upper podium at 14.4 m.
 - **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
   guessed heights of 7–14 m. They are not in the shadow analysis, so parks
   read sunnier than they feel. Roof shapes are mapped for 3% of buildings;

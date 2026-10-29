@@ -57,20 +57,35 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   await shot('talk');
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(true); g.advance(0.2); } });
 
-  // the helicopter: board, spool up, climb
+  // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
     const g = window.__game;
     if (!g.heli) return { none: true };
     const d = g.heli.doorAt();
     g.player.x = d.x; g.player.y = d.y; g.player.z = g.heli.st.z;
     g.enterHeli();
-    g.advance(3);
-    const z0 = g.heli.st.z;
+    g.advance(0.4);
+    const open = g.heli.st.door;
+    g.advance(2.6);
+    const shut = g.heli.st.door, z0 = g.heli.st.z;
     g.advance(8, ['Space']);
-    return { mode: g.player.mode, climbed: g.heli.st.z - z0 };
+    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut };
   });
+  check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(heli.climbed || 0).toFixed(1)} m)`);
   await shot('heli');
+
+  // back down, and out the same way
+  const out = await p.evaluate(() => {
+    const g = window.__game;
+    if (!g.heli) return { none: true };
+    for (let i = 0; i < 40 && !g.heli.st.landed; i++) g.advance(0.5, ['KeyC']);
+    g.advance(1);
+    g.exitHeli();
+    g.advance(2);
+    return { landed: g.heli.st.landed, mode: g.player.mode, door: g.heli.st.door, near: Math.hypot(g.player.x - g.heli.st.x, g.player.y - g.heli.st.y) };
+  });
+  check(out.none || (out.mode === 'foot' && out.door === 0 && out.near < 6), out.none ? 'no helicopter' : `lands and climbs out (${out.mode}, ${(out.near || 0).toFixed(1)} m from it)`);
 
   // the ferries run their routes
   const ferry = await p.evaluate(() => {

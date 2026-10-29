@@ -41,6 +41,15 @@
       "zoom": 14
     },
     "bare_earth": true,
+    "level": [
+      {
+        "name": "Osaka Castle's honmaru round the keep",
+        "ring": [[135.525441, 34.686643], [135.527187, 34.686643], [135.527187, 34.687851], [135.526096, 34.687851], [135.526008, 34.687743], [135.525441, 34.687743]],
+        "z_m": 31.2,
+        "feather_m": 8,
+        "note": "DEM5A interpolates a false terrace up to 40.5 m east of the keep, where the laser points were filtered out with the keep and its stone base. The 10 m DEM reads 31.5 to 32.6 m there and PLATEAU puts the ground under the keep at 30.9 to 31.7 m, so the honmaru is levelled to 31.2 m, DEM5A's median over the open plaza just south of it."
+      }
+    ],
     "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey, with the 10 m DEM where it has gaps (GSI terms of use, compatible with CC BY 4.0)"
   },
   "plateau": {
@@ -115,7 +124,7 @@
     },
     {
       "title": "Osaka Castle",
-      "text": "The keep stands on a 13.3 m stone base and rises 39.4 m above it: five roofs outside, eight floors inside. The ground under it, {landmark:castle.ground_m} m above Tokyo Peil, is from PLATEAU's survey.",
+      "text": "The keep stands on a 13.3 m stone base and rises 39.4 m above it: five roofs outside, eight floors inside. Each tier's plan, its eaves and its gables are measured from PLATEAU's 3D model of the keep. The small keep platform in front carries the Kinmeisui well house of 1626.",
       "cam": [
         1330,
         1060,
@@ -421,7 +430,7 @@
     ]
   },
   "sources": {
-    "landmarks": "Osaka Castle keep (Osaka Prefecture fact sheet; Bunshun), Tsutenkaku (Osaka City leaflet), HEP FIVE wheel: published dimensions; the Glico sign and Kani Doraku crab are indicative"
+    "landmarks": "Osaka Castle keep (Osaka Prefecture fact sheet; Bunshun; tier plans, eaves and gables from PLATEAU's 2025 LOD2 model of the keep, 27100-bldg-328870), the small keep platform and the Kinmeisui well house (PLATEAU 2025), Tsutenkaku (Osaka City leaflet; observatory and deck heights from tourist sources), HEP FIVE wheel: published dimensions; the Glico sign and Kani Doraku crab are indicative"
   },
   "verified_heights": "verified_heights.csv",
   "game": {
@@ -899,7 +908,7 @@
         },
         "idle": [
           "Hideyoshi began this castle in 1583. The keep you see is from 1931, built with donations from the people of Osaka. It's concrete under the copper.",
-          "From the stone base to the top of the shachi the keep is {landmark:castle.height_m} m. PLATEAU measured 54.6, so the model and the survey agree."
+          "From the foot of the stone base to the top of the shachi the keep is {landmark:castle.height_m} m. PLATEAU measured 54.6, so the model and the survey agree."
         ]
       },
       {
@@ -1107,7 +1116,7 @@
         "stamp": "Osaka Castle",
         "talk": [
           "Hideyoshi began this castle in 1583. The keep you see is from 1931, paid for by the people of Osaka. Concrete and steel under the copper.",
-          "It stands on a stone base 13.3 m high and rises 39.4 m above it: five roofs outside, eight floors inside. The model builds the keep from those figures, and the ground under it, {landmark:castle.ground_m} m above Tokyo Peil, is from PLATEAU's survey.",
+          "It stands on a stone base 13.3 m high and rises 39.4 m above it: five roofs outside, eight floors inside. The model builds the keep from those figures, with the plan of each tier and the gables on each face measured from PLATEAU's 3D model. The ground under it, {landmark:castle.ground_m} m above Tokyo Peil, is GSI's laser survey of the honmaru.",
           "Now go to Naniwa-no-miya Park. Ryo's helicopter is waiting there."
         ],
         "steps": [

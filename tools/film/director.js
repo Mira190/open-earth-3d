@@ -161,13 +161,18 @@ window.OEFilmDirector = (function () {
     G.setClock(s.year || year, date[0], date[1], min);
     shotPose(s, k);
     fov = ch(s.fov ?? 40, k, EASE[s.ease || 'glide']);
-    G.camera.updateProjectionMatrix(); // the game only updates it when its own fov changes
+    G.camera.updateProjectionMatrix(); // the game re-applies its own fov only when it changes, so set the film's here
     // exposure follows the game's own for the light, trimmed by the shot
     const L = lens.uniforms;
     L.uExposure.value = renderer().toneMappingExposure * (spec.exposure ?? 1.1) * Math.pow(2, s.ev || 0);
     const tint = s.tint || spec.tint || [1, 1, 1];
     L.uTint.value.set(tint[0], tint[1], tint[2]);
     L.uSat.value = s.sat ?? spec.sat ?? 1;
+    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
+    // at night the city keeps its blacks: less lift, a firmer curve
+    const night = clamp((-sp.altitude - 2) / 8);
+    L.uLift.value = 1 - 0.7 * night;
+    L.uContrast.value = 0.1 + 0.18 * night;
     L.uAspect.value = innerWidth / innerHeight;
     L.uTime.value = t;
     // fades: in from space black at the head of the film and of a shot that asks, out at the tail
@@ -176,7 +181,6 @@ window.OEFilmDirector = (function () {
     if (s.fadeOut) f = Math.min(f, EASE.smooth(clamp((s.t0 + s.dur - t) / s.fadeOut)));
     L.uFade.value = f;
     // the flare, when the sun is in shot and not behind a building
-    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
     const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
     const dir = new V3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
     probe.fov = fov; probe.aspect = innerWidth / innerHeight; probe.updateProjectionMatrix();
@@ -224,7 +228,7 @@ window.OEFilmDirector = (function () {
       g.beginPath();
       for (let j = 0; j <= 12; j++) {
         const k = j / 12;
-        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 1); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
+        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 0); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
         shotPose(s, k);
         const px_ = pose.pos.x, py_ = -pose.pos.z, pz = pose.pos.y, lx = pose.look.x, ly = -pose.look.z, lz = pose.look.y;
         j ? g.lineTo(X(px_), Y(py_)) : g.moveTo(X(px_), Y(py_));
