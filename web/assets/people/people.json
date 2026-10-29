@@ -628,5 +628,78 @@
     0.0622
    ]
   }
+ },
+ "heroes": {
+  "note": "The main characters, built by blender/build_people.py from Microsoft Rocketbox avatars and their motion-captured clips. Textured, so not recoloured per look.",
+  "source": "Microsoft Rocketbox (MIT, (c) 2020 Microsoft): avatars and animations; see LICENSE-Rocketbox.txt",
+  "bones": {
+   "Head": "Bip01_Head",
+   "Chest": "Bip01_Spine2",
+   "Abdomen": "Bip01_Spine",
+   "WristR": "Bip01_R_Hand",
+   "WristL": "Bip01_L_Hand",
+   "UpperLeg.L": "Bip01_L_Thigh",
+   "LowerLeg.L": "Bip01_L_Calf",
+   "Foot.L": "Bip01_L_Foot",
+   "UpperLeg.R": "Bip01_R_Thigh",
+   "LowerLeg.R": "Bip01_R_Calf",
+   "Foot.R": "Bip01_R_Foot",
+   "UpperArm.L": "Bip01_L_UpperArm",
+   "LowerArm.L": "Bip01_L_Forearm",
+   "Wrist.L": "Bip01_L_Hand",
+   "UpperArm.R": "Bip01_R_UpperArm",
+   "LowerArm.R": "Bip01_R_Forearm",
+   "Wrist.R": "Bip01_R_Hand"
+  },
+  "characters": {
+   "H_Surveyor_W": {
+    "file": "H_Surveyor_W.glb",
+    "label": "Surveyor (woman)",
+    "avatar": "Professions/Construction_Female_01",
+    "ground_speed": {
+     "Walk": 1.214,
+     "Run": 5.379,
+     "Sprint": 5.379
+    },
+    "height_m": 1.772,
+    "triangles": 8662,
+    "clips": [
+     "Idle",
+     "Idle_Neutral",
+     "Walk",
+     "Run",
+     "Sprint",
+     "Wave",
+     "Talk",
+     "Listen",
+     "Nod",
+     "Interact"
+    ]
+   },
+   "H_Surveyor_M": {
+    "file": "H_Surveyor_M.glb",
+    "label": "Surveyor (man)",
+    "avatar": "Professions/Construction_Male_08",
+    "ground_speed": {
+     "Walk": 1.012,
+     "Run": 5.839,
+     "Sprint": 5.839
+    },
+    "height_m": 1.832,
+    "triangles": 8474,
+    "clips": [
+     "Idle",
+     "Idle_Neutral",
+     "Walk",
+     "Run",
+     "Sprint",
+     "Wave",
+     "Talk",
+     "Listen",
+     "Nod",
+     "Interact"
+    ]
+   }
+  }
  }
 }

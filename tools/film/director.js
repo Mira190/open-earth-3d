@@ -10,7 +10,8 @@
 //   track  {ferry: {route, from, to, s}, az, dist, h}  alongside a ferry under way; az is relative to its course
 // Any of dist, h and fov may be a number or [from, to]. Positions are local metres [x east,
 // y north, z up]. A shot can run the clock (time: ["17:40", "18:30"] is a time-lapse), put the
-// crowd round a point (people: [x, y]), shake like a hand-held camera (hand: 1), fade, and
+// crowd round a point (people: [x, y], crowd_r, crowd_n of them, none within crowd_clear m of the
+// camera), shake like a hand-held camera (hand: 1), fade, and
 // take its own exposure (ev), white balance (tint: [r, g, b]) and saturation (sat).
 'use strict';
 window.OEFilmDirector = (function () {
@@ -72,19 +73,26 @@ window.OEFilmDirector = (function () {
     return s;
   }
 
-  // put the crowd on the footways round (x, y), as if they had been walking there all along
-  function crowdAround(x, y, r) {
+  // put the crowd on the footways round (x, y), as if they had been walking there all along: n of
+  // them (the rest stay off), none closer than `clear` metres to the camera at (cx, cy), so a crowd
+  // reads as the city's life at a few paces rather than as figures pressed against the lens
+  function crowdAround(x, y, r, n, cx, cy, clear) {
     const C = G.crowd, net = G.footNet, cand = net.near(x, y, 0, r), tmp = {};
     if (!cand.length) return;
     let seed = Math.floor(x * 31 + y * 17) >>> 0;
     const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-    for (const p of C.P) {
+    C.active = Math.min(C.P.length, n || C.P.length);
+    for (const p of C.P.slice(0, C.active)) {
       if (p.seat) { p.seat.by = -1; p.seat = null; }
       p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.pause = 0; p.dodge = 0;
-      p.line = cand[Math.floor(rnd() * cand.length)];
-      p.s = rnd() * net.L[p.line].len;
+      for (let tries = 0; tries < 12; tries++) {
+        p.line = cand[Math.floor(rnd() * cand.length)];
+        p.s = rnd() * net.L[p.line].len;
+        net.at(p.line, p.s, tmp);
+        if (Math.hypot(tmp.x - cx, tmp.y - cy) >= clear) break;
+      }
+      // walking away from the camera or across it, not into the lens
       p.dir = rnd() < 0.5 ? 1 : -1;
-      net.at(p.line, p.s, tmp);
       p.x = tmp.x; p.y = tmp.y; p.z = tmp.z;
     }
   }
@@ -107,7 +115,10 @@ window.OEFilmDirector = (function () {
     const a = s.people || s.anchor || (s.vessel ? [s.vessel.x, s.vessel.y] : (s.at || s.look || s.to || s.from).slice(0, 2));
     G.spawn([a[0], a[1]]);
     G.player.speed = 0;
-    if (s.people) crowdAround(a[0], a[1], s.crowd_r || 140);
+    if (s.people) {
+      const c0 = (s.from || s.at || a);
+      crowdAround(a[0], a[1], s.crowd_r || 140, s.crowd_n, c0[0], c0[1], s.crowd_clear ?? 8);
+    } else G.crowd.active = G.crowd.P.length;
   }
 
   // put a ferry where the shot needs it: under way on a leg of its route, s metres out
@@ -241,7 +252,7 @@ window.OEFilmDirector = (function () {
       g.beginPath();
       for (let j = 0; j <= 12; j++) {
         const k = j / 12;
-        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 0); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
+        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 1); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
         shotPose(s, k);
         const px_ = pose.pos.x, py_ = -pose.pos.z, pz = pose.pos.y, lx = pose.look.x, ly = -pose.look.z, lz = pose.look.y;
         j ? g.lineTo(X(px_), Y(py_)) : g.moveTo(X(px_), Y(py_));

@@ -46,13 +46,17 @@ window.OEPenguins = (function () {
     return g;
   }
 
-  // colony: one game.json "wildlife" entry; audio: OEAudio, for their calls
-  function create(world, colony, audio) {
+  // colony: one game.json "wildlife" entry; audio: OEAudio, for their calls; ground(x, y): the
+  // height of the rocks, so the birds come up out of the water onto them and walk over them
+  function create(world, colony, audio, ground) {
     const C = colony, burrows = C.burrows, landings = C.landings;
     if (!burrows.length || !landings.length) return null;
     const n = burrows.length, [a0, a1] = C.ashore_after_sunset_min, [l0, l1] = C.leave_before_sunrise_min;
     // after dark they catch a little of the viewing platform's low light, or nobody would see them
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.6, emissive: 0xffffff, emissiveIntensity: 0 });
+    // the glow takes each part's own colour: white fronts catch the light, slate-blue backs stay dark
+    mat.onBeforeCompile = sh => { sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= vColor.rgb;'); };
+    const groundAt = (x, y) => (ground ? Math.max(0, ground(x, y)) : 0.2);
     const mesh = new THREE.InstancedMesh(bird(C.height_m || 0.33), mat, n);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     mesh.frustumCulled = false;
@@ -66,7 +70,7 @@ window.OEPenguins = (function () {
     for (let i = 0; i < n;) {
       const size = Math.min(n - i, 4 + Math.floor(rnd() * 14)), land = landings[order[Math.min(n - 1, i + (size >> 1))][0]], arrive = a0 + rnd() * (a1 - a0);
       for (let k = 0; k < size; k++, i++) {
-        B.push({ burrow: order[i][1], land, arrive: arrive + rnd() * 3, leave: l0 + rnd() * (l1 - l0), day: rnd() < (C.day_ashore_share || 0), lane: (rnd() - 0.5) * 6,
+        B.push({ burrow: order[i][1], land, landZ: groundAt(land[0], land[1]), arrive: arrive + rnd() * 3, leave: l0 + rnd() * (l1 - l0), day: rnd() < (C.day_ashore_share || 0), lane: (rnd() - 0.5) * 6,
           state: 'sea', x: land[0], y: land[1], z: 0, h: 0, phase: rnd() * 6.28, call: 5 + rnd() * 40 });
       }
     }
@@ -83,7 +87,7 @@ window.OEPenguins = (function () {
     let ashore = 0, lastT = null;
     // tod: {min, sunset, sunrise} in local minutes; dt: real seconds; dark: 0 by day .. 1 at night
     function update(dt, tod, px, py, dark = 0) {
-      mat.emissiveIntensity = 0.18 * dark;
+      mat.emissiveIntensity = 0.3 * dark;
       // minutes since sunset, running through midnight; daytime is negative (minutes until sunset)
       const night = tod.sunrise + 1440 - tod.sunset;
       let t = tod.min >= tod.sunset ? tod.min - tod.sunset : tod.min < tod.sunrise ? tod.min + 1440 - tod.sunset : tod.min - tod.sunset;
@@ -109,12 +113,19 @@ window.OEPenguins = (function () {
           if (b.state !== 'raft') { b.state = 'raft'; b.x = ox; b.y = oy; b.z = -0.06; }
           toward(b, ox, oy, -0.06, SWIM, dt);
         } else if (want === 'ashore') {
-          if (b.state === 'raft' || b.state === 'sea') { b.state = 'land'; if (Math.hypot(b.x - b.land[0], b.y - b.land[1]) > 40) { [b.x, b.y] = offshore(b, 12); b.z = -0.06; } }
-          if (b.state === 'land' && toward(b, b.land[0], b.land[1], 0.2, SWIM, dt)) b.state = 'walk'; // out of the water at the rocks' edge
+          if (b.state === 'raft' || b.state === 'sea') {
+            // straight in from the sea (the clock jumped): a few metres out, each in its own lane
+            if (b.state === 'sea') { [b.x, b.y] = offshore(b, 5); b.z = -0.06; }
+            else if (Math.hypot(b.x - b.land[0], b.y - b.land[1]) > 40) { [b.x, b.y] = offshore(b, 12); b.z = -0.06; }
+            b.state = 'land';
+          }
+          if (b.state === 'land' && toward(b, b.land[0], b.land[1], b.landZ, SWIM, dt)) b.state = 'walk'; // out of the water at the rocks' edge
           if (b.state === 'walk' && toward(b, b.burrow[0], b.burrow[1], bz, WALK, dt)) b.state = 'home';
+          if (b.state === 'walk' && ground) b.z = Math.max(b.z, groundAt(b.x, b.y)); // over the rocks, not through them
         } else if (want === 'out') {
           if (b.state === 'home' || b.state === 'walk') b.state = 'leaving';
-          if (b.state === 'leaving' && toward(b, b.land[0], b.land[1], 0, WALK, dt)) b.state = 'gone';
+          if (b.state === 'leaving' && toward(b, b.land[0], b.land[1], b.landZ, WALK, dt)) b.state = 'gone';
+          if (b.state === 'leaving' && ground) b.z = Math.max(b.z, groundAt(b.x, b.y));
           if (b.state === 'gone') { const [ox, oy] = offshore(b, 200); toward(b, ox, oy, -0.06, SWIM, dt); }
         }
         // draw: hidden at sea; swimming low in the water; upright on the rocks, waddling when on the move
