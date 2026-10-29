@@ -165,10 +165,17 @@ window.OENav = (function () {
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
       return { ok: true, z: f.z, kind: f.kind };
     }
-    // move a walker whose feet are at z by (dx, dy), sliding along walls: {x, y, hit}
+    // move a walker whose feet are at z by (dx, dy), sliding along walls and round the cars
+    // in `movers` (the traffic, which sets it): {x, y, hit}
     function slide(x, y, z, dx, dy) {
-      const f = floorAt(x, y, z);
-      return col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, passes(z, !!f && isDeck(f.kind)));
+      const f = floorAt(x, y, z), skip = passes(z, !!f && isDeck(f.kind));
+      const m = col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, skip);
+      if (!api.movers) return m;
+      const o = api.movers.pushOut(m.x, m.y, R);
+      if (o.x === m.x && o.y === m.y) return m;
+      // pushed out of a car's side: keep that, unless it puts the walker in a wall
+      if (!col.overlap(o.x, o.y, R, z + KNEE, z + HEAD, skip)) return { x: o.x, y: o.y, hit: m.hit };
+      return { x, y, hit: m.hit };
     }
     // lowest height a flying or floating body may occupy at (x, y): what is directly below
     function groundBelow(x, y, z) {
@@ -187,7 +194,8 @@ window.OENav = (function () {
     // how far along the segment a -> b (three.js world coordinates) the camera probe gets
     // before touching a building or landmark: a fraction 0..1, or 1 when clear
     function clearFraction(a, b) { return col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE); }
-    return { isWater, floorAt, walk, slide, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP };
+    const api = { isWater, floorAt, walk, slide, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, movers: null };
+    return api;
   }
   return { create };
 })();
