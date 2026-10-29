@@ -114,8 +114,33 @@ Thirteen addresses are not in Overture's address points at all.
 - **St Paul's Cathedral** is mapped at 96 m, which matches the 95 m central
   spire.
 - **Flinders Street Station** has no name on any footprint in Overture, so its
-  label is placed at the station's published coordinates. No authoritative
-  heights for its dome or clock tower were found, so it is left as mapped.
+  label is placed at the station's published coordinates. OpenStreetMap maps
+  its outline, 310 m long, at 20 m. The mapped parts are:
+  - a dome from 20 m to 30 m;
+  - the Elizabeth Street clock tower at 35 m;
+  - two 24 m blocks.
+
+  By the OpenStreetMap convention the parts replace the outline. That dropped
+  the station's long body from the model and left the dome standing on
+  nothing. `cities/melbourne/city.py` now restores the body: the outline minus
+  the ground-standing parts, at the outline's 20 m.
+
+  On top of the body it adds:
+  - the dome drawn as a copper dome on a drum;
+  - clock faces near the top of the tower;
+  - the row of clocks over the main entrance;
+  - the 1910 colour scheme that the 2018–2020 repaint restored: cream,
+    terracotta and dark green.
+
+  The hex values are approximate conversions of the published Munsell
+  references, and the heights of the terracotta bands are chosen.
+
+  Restoring the body adds one solid. It also changes one estimate: the
+  station's roof part `w271939466` drops from an estimated 19 m to 15.7 m.
+
+  In the error budget, Birrarung Marr's production figure moves from 91.48% to
+  91.69%, and Batman Park's by 0.02 points. The other eighteen protected places
+  and the sun-access results are unchanged.
 
 ### The river
 

@@ -1,11 +1,14 @@
-# The game: Sydney on Foot and Melbourne on Foot
+# The game: Sydney, Melbourne and the bayside on foot
 
 The city model becomes a place you can be in. In Sydney you walk the centre as
 a surveyor, talk to the people who know it, climb the Opera House steps, catch
 the ferry, and fly a helicopter under the Harbour Bridge. In Melbourne you check
 the winter sun on Federation Square, take a river shuttle down the Yarra, and
-fly past the Arts Centre spire. The world is the same open-data model as the
-viewer. In Sydney that means:
+fly past the Arts Centre spire. On Melbourne's bayside you wait on the St Kilda
+Pier viewing platform after the real sunset while little penguins come ashore,
+walk into Luna Park through Mr Moon's mouth, and walk the row of Brighton
+bathing boxes. The world is the same open-data model as the viewer. In Sydney
+that means:
 
 - 7,962 buildings from OpenStreetMap;
 - the NSW bare-earth terrain;
@@ -15,7 +18,8 @@ Everything the characters tell you about the city is computed from the model
 while you play.
 
 Open it from the globe (**Play** on a city card), from the 3D model (the
-**Play** chip), or directly at `web/index.html#play-sydney` or `#play-melbourne`.
+**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne` or
+`#play-melbourne-bayside`.
 
 | Talking to an NPC | On the bridge deck at golden hour |
 |---|---|
@@ -34,6 +38,10 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
 | ![](images/melbourne/game-river.jpg) | ![](images/melbourne/game-heli.jpg) |
+| **The bayside: the Brighton bathing boxes** | **From the St Kilda Pier viewing platform at night: penguins on the breakwater** |
+| ![](images/melbourne-bayside/game-boxes.jpg) | ![](images/melbourne-bayside/game-penguins.jpg) |
+| **Mr Moon's gate at Luna Park** | **The pier's approach over the sand** |
+| ![](images/melbourne-bayside/game-luna-park.jpg) | ![](images/melbourne-bayside/game-pier.jpg) |
 
 ## Playing
 
@@ -109,6 +117,17 @@ The Melbourne survey has the same shape and six stamps:
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
 
+The bayside survey is one line of four stamps, taken in order:
+1. Walk out along St Kilda Pier to the kiosk.
+2. Hear from Tash, an Earthcare volunteer, about the colony, then wait on the
+   viewing platform after sunset until penguins come ashore near you. One
+   choice in the dialogue sets the clock to ten minutes before today's sunset.
+3. Walk into Luna Park through Mr Moon's mouth.
+4. Walk the row of Brighton bathing boxes, from the first to the last.
+
+The bayside has no ferries and no real helipad. The pad at Elwood is invented
+and says so. Places you have visited become fast-travel stops on the map.
+
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 **Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
@@ -152,7 +171,8 @@ All of this is driven by `cities/<id>/city.json` (`game` block) and the files th
 pipeline writes. The only city-specific code is landmark geometry in
 `cities/<id>/city.py`:
 - Sydney's bridge, Opera House and steps;
-- Melbourne's spire.
+- Melbourne's spire and Flinders Street Station;
+- the bayside's bathing boxes, Scenic Railway and Mr Moon.
 
 - **Game data** (`pipeline/game_data.py` writes `web/data/<city>/game.json`):
   - **Water mask:** 5 m.
@@ -170,6 +190,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     - Smoothed only as far as the route still stays at least 4 m from land.
   - **Benches and street lamps:** from OpenStreetMap.
   - **NPCs:** snapped to open ground.
+  - **Boardwalks:** walkways at deck height over rocks, water or sand. They
+    are mapped lines found by name, or lines given in the local frame, buffered
+    to their width. The game draws them as timber decks.
+  - **Wildlife:** a colony on a mapped class of infrastructure. It has burrows
+    on the rocks, and landing places on their seaward edge with open water 6, 20
+    and 40 m out. Its rocks are a no-go area, and footways across them are
+    dropped.
+  - **Travel points and links:** fast-travel points on the ground, and
+    neighbouring cities named in the menu.
 - **Opera House steps** (`city.py`): the Monumental Steps are 90 m wide and run
   40 m from the forecourt to the podium, as measured on the NSW aerial photo.
   They climb in two flights of 15 cm risers, with a landing between them and
@@ -192,6 +221,8 @@ pipeline writes. The only city-specific code is landmark geometry in
     walkable strip.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
     cells, so the helicopter can pass under the deck but not through the arch.
+  - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
+    the city's note. A boardwalk across them stays walkable.
 - **Collision** (`web/game/collision.js`): every building solid is a prism, its
   published footprint between two heights, and each landmark cell is a box.
   - **Walking:** the walker is a 0.35 m capsule, moved the way Unreal's
@@ -265,6 +296,18 @@ pipeline writes. The only city-specific code is landmark geometry in
     |---|---|---|
     | 21 June, 12:30 | 55% | 100% |
     | 15 January, 14:00 | 92% | 21% |
+- **Penguins** (`web/game/penguins.js`): one instanced mesh draws the colony.
+  - **Day:** all but a few birds (5% at St Kilda) are at sea.
+  - **Dusk:** after sunset, rafts of neighbours gather off the landing place
+    nearest their burrows. Each raft swims in at its own time, between 20 and
+    120 minutes after sunset, and the birds waddle home at 0.35 m/s.
+  - **Night:** birds near you call, a bray synthesised in `audio.js`. They catch
+    a little of the platform's low light.
+  - **Dawn:** each bird leaves for the sea 30 to 90 minutes before sunrise.
+  - **Clock jumps:** when the clock jumps rather than runs, each bird is placed
+    where it would be by then.
+  - **Quest step:** a `penguins` step completes when enough birds are ashore
+    near you.
 - **Traffic** (`web/game/actors.js`):
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** brake for the cars ahead and for the player.
@@ -366,7 +409,22 @@ The camera shots were checked the same way:
 
 A Melbourne script plays its six stamps the same way: the sun step at
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
-flight to Birrarung Marr. A further script docks a ferry by hand. Phone layout, the routes into the game
+flight to Birrarung Marr.
+
+A bayside script walks all four stamps on foot:
+- **The pier:** it walks up the approach from the promenade and along the pier
+  to the kiosk. It checks that the breakwater rocks refuse a walker and the
+  viewing platform does not.
+- **The penguins:** it takes the dusk choice and walks out to the platform. It
+  checks that the step waits for dark, then sets the clock to 100 minutes after
+  sunset, when 14 birds are ashore within 40 m.
+- **Luna Park:** it walks in through Mr Moon's mouth.
+- **The boxes:** it walks the row of boxes on the sand.
+
+It found three faults, each now fixed:
+- the pier could not be reached from the shore;
+- the Scenic Railway's trestles blocked the gate;
+- birds walked hundreds of metres from a random landing place. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
 
 ## Limitations
@@ -393,6 +451,12 @@ and the menus are checked in a phone-sized browser.
 - **Vessels on the water:** a ferry rides the mean water level and does not
   pitch or roll on the waves. Its wake is a fan of foam drawn on the water, not
   waves of its own.
+- **Penguins:** the birds walk straight from the water's edge to their burrows,
+  through each other. The burrows are spread over the mapped rocks, not at the
+  colony's real nest boxes, which are not mapped. The game shows 160 of about
+  1,400 birds.
+- **Piers:** the passers-by keep to the shore, because footways over water are
+  dropped unless they are flagged as bridges.
 - **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
   except where OpenStreetMap maps building parts.
 - **Lines of sight:** trees are not in the surface model, so a building behind a

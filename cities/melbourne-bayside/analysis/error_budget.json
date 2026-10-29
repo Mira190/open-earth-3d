@@ -1,0 +1,150 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "St Kilda Beach",
+   "prod": 99.96,
+   "finer_samples": 99.96,
+   "finer_dsm": 99.96,
+   "finer_time": 99.97,
+   "reference": 99.97,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.01,
+   "seconds": 15.397
+  },
+  {
+   "place": "Elwood Beach",
+   "prod": 99.91,
+   "finer_samples": 99.92,
+   "finer_dsm": 99.9,
+   "finer_time": 99.92,
+   "reference": 99.92,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.01,
+   "seconds": 13.309
+  },
+  {
+   "place": "Sandown Street Beach",
+   "prod": 100,
+   "finer_samples": 100,
+   "finer_dsm": 100,
+   "finer_time": 100,
+   "reference": 100,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0,
+   "seconds": 8.87
+  },
+  {
+   "place": "Middle Brighton Beach",
+   "prod": 100,
+   "finer_samples": 100,
+   "finer_dsm": 100,
+   "finer_time": 100,
+   "reference": 100,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0,
+   "seconds": 19.3
+  },
+  {
+   "place": "Dendy Street Beach",
+   "prod": 92.82,
+   "finer_samples": 93.01,
+   "finer_dsm": 89.98,
+   "finer_time": 92.87,
+   "reference": 90.39,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 2.43,
+   "seconds": 9.409
+  },
+  {
+   "place": "Luna Park",
+   "prod": 76.9,
+   "finer_samples": 76.77,
+   "finer_dsm": 73.69,
+   "finer_time": 76.99,
+   "reference": 73.73,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 3.17,
+   "seconds": 5.277
+  },
+  {
+   "place": "O'Donnell Gardens",
+   "prod": 99.92,
+   "finer_samples": 99.94,
+   "finer_dsm": 99.92,
+   "finer_time": 99.93,
+   "reference": 99.95,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.03,
+   "seconds": 3.974
+  },
+  {
+   "place": "Lower Esplanade Reserve",
+   "prod": 97.34,
+   "finer_samples": 97.34,
+   "finer_dsm": 97.35,
+   "finer_time": 97.47,
+   "reference": 97.45,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.11,
+   "seconds": 4.277
+  },
+  {
+   "place": "St Kilda Botanic Gardens",
+   "prod": 98.48,
+   "finer_samples": 98.43,
+   "finer_dsm": 98.27,
+   "finer_time": 98.49,
+   "reference": 98.27,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.21,
+   "seconds": 12.489
+  },
+  {
+   "place": "Point Ormond Reserve",
+   "prod": 99.74,
+   "finer_samples": 99.73,
+   "finer_dsm": 99.64,
+   "finer_time": 99.74,
+   "reference": 99.65,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.09,
+   "seconds": 25.758
+  },
+  {
+   "place": "Elwood Park",
+   "prod": 97.98,
+   "finer_samples": 98,
+   "finer_dsm": 97.63,
+   "finer_time": 97.99,
+   "reference": 97.64,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.34,
+   "seconds": 32.272
+  },
+  {
+   "place": "Brighton Coastal Reserve",
+   "prod": 100,
+   "finer_samples": 100,
+   "finer_dsm": 100,
+   "finer_time": 100,
+   "reference": 100,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0,
+   "seconds": 1.864
+  },
+  {
+   "place": "Brighton Beach Gardens",
+   "prod": 100,
+   "finer_samples": 100,
+   "finer_dsm": 100,
+   "finer_time": 100,
+   "reference": 100,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0,
+   "seconds": 8.772
+  }
+ ],
+ "max_abs_numerical_error_pp": 3.17
+}

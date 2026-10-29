@@ -707,7 +707,7 @@
     8,
     9
    ],
-   "shaded_share_pct": 49.3,
+   "shaded_share_pct": 49.2,
    "catchment_buildings": 7,
    "shade_by_height_source_pct": {
     "mapped": 72.5,
@@ -764,9 +764,9 @@
     }
    ],
    "base_by_month": [
-    32,
-    20.8,
-    32,
+    32.1,
+    20.9,
+    32.1,
     71.3,
     97.4
    ],
@@ -785,7 +785,7 @@
     98
    ],
    "window_mean": {
-    "base": 50.7,
+    "base": 50.8,
     "p05": 47.2,
     "p95": 52.1
    },
@@ -802,13 +802,13 @@
     8,
     9
    ],
-   "shaded_share_pct": 8.5,
+   "shaded_share_pct": 8.3,
    "catchment_buildings": 7,
    "shade_by_height_source_pct": {
-    "terrain": 5.1,
-    "ml": 10,
-    "mapped": 59.6,
-    "estimate": 25.3
+    "terrain": 2.1,
+    "ml": 10.2,
+    "mapped": 61.7,
+    "estimate": 26
    },
    "top_blockers": [
     {
@@ -817,7 +817,7 @@
      "height_m": 165,
      "source": "mapped",
      "osm_id": "w52050591",
-     "share_pct": 33.8
+     "share_pct": 34.7
     },
     {
      "building": 2883,
@@ -825,7 +825,7 @@
      "height_m": 11.7,
      "source": "estimate",
      "osm_id": "r18687788",
-     "share_pct": 25.3
+     "share_pct": 26
     },
     {
      "building": 4025,
@@ -833,7 +833,7 @@
      "height_m": 260,
      "source": "mapped",
      "osm_id": "w140834631",
-     "share_pct": 20.3
+     "share_pct": 21.2
     },
     {
      "building": 2884,
@@ -841,11 +841,7 @@
      "height_m": 9.4,
      "source": "ml",
      "osm_id": "w233836125",
-     "share_pct": 10
-    },
-    {
-     "name": "terrain",
-     "share_pct": 5.1
+     "share_pct": 10.2
     },
     {
      "building": 4009,
@@ -853,34 +849,38 @@
      "height_m": 266,
      "source": "mapped",
      "osm_id": "w66210449",
-     "share_pct": 4.3
+     "share_pct": 4.5
+    },
+    {
+     "name": "terrain",
+     "share_pct": 2.1
     }
    ],
    "base_by_month": [
-    88.5,
-    84.6,
-    89.1,
+    88.9,
+    84.9,
+    89.5,
     96.9,
     98.3
    ],
    "p05_by_month": [
-    79.9,
-    71,
-    79.7,
+    80.3,
+    71.3,
+    80.1,
     90.7,
     95
    ],
    "p95_by_month": [
-    89.1,
-    85,
-    89.7,
+    89.5,
+    85.3,
+    90.1,
     97.6,
     98.9
    ],
    "window_mean": {
-    "base": 91.5,
-    "p05": 84.5,
-    "p95": 91.9
+    "base": 91.7,
+    "p05": 84.7,
+    "p95": 92.1
    },
    "max_halfwidth_pp": 7
   },
@@ -1442,7 +1442,7 @@
     46
    ],
    "sun_change_pp": [
-    -5.1,
+    -5.2,
     1.1
    ],
    "swing_pp": 6.2
@@ -1737,7 +1737,7 @@
    "swing_pp": 1.9
   }
  ],
- "seconds": 375.927,
+ "seconds": 507.561,
  "sigma": {
   "floors": 0.365,
   "estimate": 0.199,

@@ -29,6 +29,10 @@ window.OENav = (function () {
     // ---------------------------------------------------------- piers (2 m grid, deck height)
     const pier = { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny).fill(-99) };
     for (const r of D.P.piers || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2);
+    for (const r of G.boardwalks || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2); // walkways over rocks and water
+    // places walkers keep out of (a colony's rocks): a 2 m mask
+    const nogo = (G.nogo || []).length ? { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny) } : null;
+    for (const r of G.nogo || []) S.fillMax(nogo, [r.map(v => v / 10)], 1);
     // ---------------------------------------------------------- strip surfaces (bridge decks, steps)
     const strips = (G.surfaces || []).filter(s => s.type === 'strip').map(s => Object.assign({}, s, {
       us: s.profile.map(p => p[0]), zs: s.profile.map(p => p[1]) }));
@@ -144,6 +148,7 @@ window.OENav = (function () {
       const f = floorAt(x, y, z);
       if (!f) return { ok: false, why: isWater(x, y) ? 'water' : 'wall' };
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
+      if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
       return { ok: true, z: f.z, kind: f.kind };
     }

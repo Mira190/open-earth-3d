@@ -41,6 +41,9 @@ window.OpenEarthGame = async function game(cityId) {
   document.title = `${G.title} · Open Earth 3D`;
   $('#gt-title').textContent = G.title;
   $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
+  if (G.blurb) $('#g-title p').textContent = G.blurb;
+  // neighbouring areas you can go on to, such as the bayside from the city (game.links)
+  $('#gm-links').innerHTML = (G.links || []).map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   const stage = $('#game-stage'), canvas = $('#game-gl');
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
@@ -254,6 +257,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   });
   const trigDone = () => qs.trig || (qs.trig = {});
 
+  // ------------------------------------------------------------ wildlife: little penguins on their colony's rocks (penguins.js)
+  const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A)).filter(Boolean);
+  let dayLim = null; // sunrise and sunset for the game's date, worked out once a day
+  const dayLimits = () => { const k = `${clock.y}-${clock.m}-${clock.d}`; if (!dayLim || dayLim.k !== k) dayLim = Object.assign({ k }, S.dayLimits(clock.y, clock.m, clock.d)); return dayLim; };
+  let viewingNoted = false;
+
   // ------------------------------------------------------------ objective marker and GPS route in the world
   const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 90, 12, 1, true).translate(0, 45, 0),
     new THREE.MeshBasicMaterial({ color: lin('#ffc23d'), transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
@@ -294,6 +303,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (kind === 'buildings') return B.b.length.toLocaleString();
       if (kind === 'time') return `${fmtMin(clock.min)} ${S.utcToLocal(S.localToUtc(clock.y, clock.m, clock.d, clock.min)).zone}`;
       if (kind === 'sun_line') return sunLine();
+      if (kind === 'sunset') return fmtMin(dayLimits().sunset);
+      if (kind === 'penguins_from' || kind === 'penguins_to') { // when the first and the last rafts come in tonight
+        const c = colonies[0] && colonies[0].colony;
+        return c ? fmtMin(dayLimits().sunset + c.ashore_after_sunset_min[kind === 'penguins_from' ? 0 : 1]) : '–';
+      }
       if (kind === 'share') return String(areaShare[arg] || 0);
       if (kind === 'acc') return acc && acc[arg] != null ? String(acc[arg]) : '–';
       if (kind === 'landmark') { const v = arg.split('.').reduce((o, k) => (o == null ? o : o[k]), scene.landmarks); return typeof v === 'number' ? String(Math.round(v * 10) / 10) : String(v ?? '–'); }
@@ -429,7 +443,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
     else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.terminal; }
     else if (s.type === 'surface' || s.type === 'under_bridge') { const st = nav.strips.find(x => x.name === (s.surface || x.name)); if (st) out.at = st.origin.slice(); }
-    else if (s.type === 'land' || s.type === 'sun') { const pl = placeByName(s.place); if (pl) out.at = centroid(pl); }
+    else if (s.type === 'land' || s.type === 'sun' || (s.type === 'visit' && s.place)) { const pl = placeByName(s.place); if (pl) out.at = centroid(pl); }
+    else if (s.type === 'visit' || s.type === 'penguins') out.at = s.at || (colonies[0] && colonies[0].colony.viewing[0]);
+    if (s.type === 'visit' && s.after_dark && sun.altitude >= -0.5) out.text += ` (after dark: sunset is ${fmtMin(dayLimits().sunset)})`;
+    if (s.type === 'penguins') { const n = colonies.reduce((a, c) => a + c.near(player.x, player.y, s.radius || 40), 0); out.text += ` (${n} ashore near you)`; }
     if (s.type === 'inspect') out.text += ` (${ls(l).inspected.length}/${s.sources.length})`;
     return out;
   }
@@ -478,6 +495,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     dlg.show(n, q.talk.map(fill), q.choices, c => {
       n.talking = false;
       if (c && c.action === 'set_time') { const [m, d] = c.date; setClock(clock.y, m, d, S.hm(c.time)); H.toast(`Time set to ${c.time}, ${d} ${MONTHS[m - 1]}`); }
+      if (c && c.action === 'dusk') { const t = Math.round(dayLimits().sunset) - 10; setClock(clock.y, clock.m, clock.d, t); H.toast(`Time set to ${fmtMin(t)}, ten minutes before sunset`); }
       startQuest(l, q);
       if (c && c.action === 'track' && lineById(c.line)) { qs.track = c.line; save(); } // the prologue lets you pick where to start
     });
@@ -504,6 +522,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       else if (s.type === 'sun' && player.mode === 'foot' && sunState === 'sun' && clock.m === s.date[0] && clock.d === s.date[1] &&
         clock.min >= S.hm(s.window[0]) && clock.min <= S.hm(s.window[1]) && inPlace(placeByName(s.place), player.x, player.y)) completeStep(l);
       else if (s.type === 'inspect' && s.sources.every(k => ls(l).inspected.includes(k))) completeStep(l);
+      else if (s.type === 'visit' && player.mode === 'foot' && (!s.after_dark || sun.altitude < -0.5) &&
+        (s.place ? inPlace(placeByName(s.place), player.x, player.y) : Math.hypot(player.x - s.at[0], player.y - s.at[1]) < (s.radius || 25))) completeStep(l);
+      else if (s.type === 'penguins' && player.mode === 'foot' && colonies.some(c => c.near(player.x, player.y, s.radius || 40) >= (s.count || 5))) completeStep(l);
     }
   }
   // who an open line wants to talk to, and where the lines you are not tracking lead
@@ -1165,7 +1186,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.stroke();
     g.restore();
     // fast travel to wharves you have used, the helipad and the start
-    const dest = [{ id: 'start', name: 'Where you started', at: G.start.at }].concat(G.wharves.filter(w => qs.visited[w.id]).map(w => ({ id: w.id, name: w.name, at: w.terminal })));
+    const dest = [{ id: 'start', name: 'Where you started', at: G.start.at }].concat(G.wharves.filter(w => qs.visited[w.id]).map(w => ({ id: w.id, name: w.name, at: w.terminal })),
+      (G.travel || []).filter(t => qs.visited[t.id]).map(t => ({ id: t.id, name: t.name, at: t.at.slice(0, 2) })));
     $('#g-travel').innerHTML = dest.map(d => `<li><button data-at="${d.at.join(',')}">${d.name}</button></li>`).join('');
   }
   on(bigCanvas, 'click', e => {
@@ -1382,6 +1404,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
     crowd.update(dt, cx, cy, clockT, player.mode === 'foot' ? player : null);
+    if (colonies.length) {
+      const L = dayLimits();
+      for (const c of colonies) c.update(dt, { min: clock.min, sunset: L.sunset, sunrise: L.sunrise }, cx, cy, U.uNight.value);
+      // on the viewing platform after dark, the colony's rule for visitors
+      const c0 = colonies[0].colony;
+      if (!viewingNoted && player.mode === 'foot' && player.floor === 'pier' && sun && sun.altitude < 0 && c0.viewing_note && c0.viewing.some(p => Math.hypot(p[0] - player.x, p[1] - player.y) < 40)) { viewingNoted = true; H.toast(c0.viewing_note); }
+    }
+    for (const t of G.travel || []) if (!qs.visited[t.id] && player.mode === 'foot' && Math.hypot(t.at[0] - player.x, t.at[1] - player.y) < 30) {
+      qs.visited[t.id] = true; H.toast(`<b>${t.name}</b> is on your map now: open it (M) to come back here.`);
+    }
     benchBudget += dt * 60; // keep what the benches near the player offer up to date, about 60 a second
     if (benchBudget >= 1) { benches.refresh(benchLit, cx, cy, CR.radius_m || 450, Math.floor(benchBudget)); benchBudget -= Math.floor(benchBudget); }
     cars.update(dt, cx, cy, clockT, player.mode === 'foot' ? [player] : []);
@@ -1421,6 +1453,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         if (player.ground && w.z < player.z - 0.6) player.ground = false; // stepped off an edge: fall
         player.floorZ = w.z; player.floor = w.kind;
         break;
+      } else if (w.why === 'nogo' && clockT - waterT > 20) { waterT = clockT; H.toast(colonies[0] ? colonies[0].colony.keep_off_note : 'Keep out.');
       } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in the ${G.water_name || 'water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
     }
     if (dt > 0) player.speed = Math.min(player.speed, moved / dt); // the speed is what the move achieved, so the walk cycle slows against a wall
@@ -1628,7 +1661,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { footNet, benches, sunWant, benchTalk, advance, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

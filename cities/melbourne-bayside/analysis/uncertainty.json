@@ -1,0 +1,17 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [],
+ "fix_list": [],
+ "seconds": 7.301,
+ "sigma": {
+  "floors": 0.104,
+  "estimate": 0,
+  "ml": 0.227
+ }
+}
