@@ -322,36 +322,230 @@
   "models": {
    "Car_Sedan": {
     "weight": 0.3,
-    "triangles": 23978,
-    "lod1_triangles": 5248,
-    "lod2_triangles": 1031
+    "length_m": 4.8,
+    "width_m": 1.82,
+    "height_m": 1.45,
+    "axles_m": [
+     1.45,
+     -1.35
+    ],
+    "wheel_r_m": 0.33,
+    "track_m": 1.56,
+    "steering": [
+     -0.38,
+     0.9,
+     0.31
+    ],
+    "steering_tilt": 0.42,
+    "seats": {
+     "driver": [
+      -0.38,
+      0.5,
+      -0.22
+     ],
+     "passenger": [
+      0.38,
+      0.5,
+      -0.22
+     ],
+     "rear_left": [
+      0.36,
+      0.5,
+      -1.08
+     ],
+     "rear_right": [
+      -0.36,
+      0.5,
+      -1.08
+     ]
+    },
+    "cabin": "Car_Sedan_Cabin",
+    "triangles": 24654,
+    "lod1_triangles": 5396,
+    "lod2_triangles": 1052,
+    "cabin_triangles": 2312
    },
    "Car_Hatch": {
     "weight": 0.25,
-    "triangles": 21921,
-    "lod1_triangles": 4811,
-    "lod2_triangles": 938
+    "length_m": 4.15,
+    "width_m": 1.76,
+    "height_m": 1.47,
+    "axles_m": [
+     1.27,
+     -1.27
+    ],
+    "wheel_r_m": 0.31,
+    "track_m": 1.52,
+    "steering": [
+     -0.38,
+     0.89,
+     0.21
+    ],
+    "steering_tilt": 0.42,
+    "seats": {
+     "driver": [
+      -0.38,
+      0.49,
+      -0.32
+     ],
+     "passenger": [
+      0.38,
+      0.49,
+      -0.32
+     ],
+     "rear_left": [
+      0.36,
+      0.49,
+      -1.18
+     ],
+     "rear_right": [
+      -0.36,
+      0.49,
+      -1.18
+     ]
+    },
+    "cabin": "Car_Hatch_Cabin",
+    "triangles": 22497,
+    "lod1_triangles": 4939,
+    "lod2_triangles": 948,
+    "cabin_triangles": 2312
    },
    "Car_SUV": {
     "weight": 0.25,
-    "triangles": 23702,
-    "lod1_triangles": 5204,
-    "lod2_triangles": 1018
+    "length_m": 4.7,
+    "width_m": 1.88,
+    "height_m": 1.76,
+    "axles_m": [
+     1.38,
+     -1.32
+    ],
+    "wheel_r_m": 0.38,
+    "track_m": 1.62,
+    "steering": [
+     -0.38,
+     0.97,
+     0.26
+    ],
+    "steering_tilt": 0.42,
+    "seats": {
+     "driver": [
+      -0.38,
+      0.57,
+      -0.27
+     ],
+     "passenger": [
+      0.38,
+      0.57,
+      -0.27
+     ],
+     "rear_left": [
+      0.36,
+      0.57,
+      -1.13
+     ],
+     "rear_right": [
+      -0.36,
+      0.57,
+      -1.13
+     ]
+    },
+    "cabin": "Car_SUV_Cabin",
+    "triangles": 24790,
+    "lod1_triangles": 5443,
+    "lod2_triangles": 1054,
+    "cabin_triangles": 2312
    },
    "Car_Van": {
     "weight": 0.08,
-    "triangles": 23580,
-    "lod1_triangles": 5187,
-    "lod2_triangles": 1015
+    "length_m": 5.1,
+    "width_m": 1.95,
+    "height_m": 2.08,
+    "axles_m": [
+     1.62,
+     -1.6
+    ],
+    "wheel_r_m": 0.36,
+    "track_m": 1.68,
+    "steering": [
+     -0.38,
+     0.95,
+     1.3
+    ],
+    "steering_tilt": 0.42,
+    "seats": {
+     "driver": [
+      -0.38,
+      0.55,
+      0.77
+     ],
+     "passenger": [
+      0.38,
+      0.55,
+      0.77
+     ]
+    },
+    "cabin": "Car_Van_Cabin",
+    "triangles": 25078,
+    "lod1_triangles": 5517,
+    "lod2_triangles": 1073,
+    "cabin_triangles": 1772
    },
    "Car_Taxi": {
     "taxi": true,
-    "triangles": 24342,
-    "lod1_triangles": 5329,
-    "lod2_triangles": 1041
+    "length_m": 4.8,
+    "width_m": 1.82,
+    "height_m": 1.62,
+    "axles_m": [
+     1.45,
+     -1.35
+    ],
+    "wheel_r_m": 0.33,
+    "track_m": 1.56,
+    "steering": [
+     -0.38,
+     0.9,
+     0.31
+    ],
+    "steering_tilt": 0.42,
+    "seats": {
+     "driver": [
+      -0.38,
+      0.5,
+      -0.22
+     ],
+     "passenger": [
+      0.38,
+      0.5,
+      -0.22
+     ],
+     "rear_left": [
+      0.36,
+      0.5,
+      -1.08
+     ],
+     "rear_right": [
+      -0.36,
+      0.5,
+      -1.08
+     ]
+    },
+    "cabin": "Car_Taxi_Cabin",
+    "triangles": 25018,
+    "lod1_triangles": 5476,
+    "lod2_triangles": 1063,
+    "cabin_triangles": 2312
    },
    "Bus": {
     "bus": true,
+    "length_m": 12.0,
+    "width_m": 2.5,
+    "height_m": 3.05,
+    "axles_m": [
+     3.45,
+     -2.45
+    ],
+    "wheel_r_m": 0.5,
+    "track_m": 2.08,
     "triangles": 23708,
     "lod1_triangles": 5214,
     "lod2_triangles": 1039
@@ -390,6 +584,7 @@
   "tones": {
    "Paint": 0,
    "Paint2": 1,
+   "Seat": 2,
    "Glass": 4,
    "Tyre": 5,
    "Light_Head": 6,
@@ -400,7 +595,8 @@
    "Plate": 11,
    "Sign": 12,
    "Light_Amber": 13,
-   "Seam": 8
+   "Seam": 8,
+   "Dash": 8
   },
   "file": "cars.glb",
   "lod1_m": 35,

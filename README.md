@@ -70,7 +70,12 @@ that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. The survey runs as three lines you can take
 in any order. Photo mode stops the world for a picture, under the sun for the time
 you choose. In free roam you can survey the view from Sydney's trig stations, or
-test your eye against the data by guessing building heights. Open **Play** on the
+test your eye against the data by guessing building heights. In every city you
+can also go by road: drive your own car (arcade handling, a handbrake drift, a view
+from the driver's seat), raise your hand at the kerb for a taxi, or order a ride on
+your phone, as GTA VI's Ryde Me app does. The driver takes you along the real
+streets, keeping to the city's side of the road, and talks about what you pass.
+Open **Play** on the
 globe, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto` and
 `#play-tokyo`, and Paris at `#play-paris`.
@@ -110,6 +115,8 @@ its steps are built:
 | ![](docs/images/melbourne-bayside/game-boxes.jpg) | ![](docs/images/melbourne-bayside/game-luna-park.jpg) | ![](docs/images/melbourne-bayside/game-penguins.jpg) |
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** | **Trams on the north shore** |
 | ![](docs/images/hong-kong/game-ferry.jpg) | ![](docs/images/hong-kong/game-peak-tram.jpg) | ![](docs/images/hong-kong/game-tram.jpg) |
+| **Driving your car in Sydney** | **A taxi pulls in at the kerb** | **From the back seat** |
+| ![](docs/images/sydney/game-drive.jpg) | ![](docs/images/sydney/game-taxi.jpg) | ![](docs/images/sydney/game-backseat.jpg) |
 
 **Osaka on Foot** is the same game in another city: Dotonbori at dusk, the Tombori
 River Cruise, a kushikatsu chef in Shinsekai, a leopard-print obachan with candy in the

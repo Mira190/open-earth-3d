@@ -21,8 +21,15 @@ writes:
   the passenger spot and the lights.
 
 Both have a `Body_LOD1`, a decimated copy of the body for distance.
+- `ferry_river.glb`: a double-ended river shuttle, 22 m, with the ferry's nodes.
+- `cars.glb`: the traffic (a sedan, a taxi, a hatchback, an SUV, a van and a city bus),
+  each with two decimated copies (`_LOD1`, `_LOD2`) and its occlusion in the vertex
+  colours. Each car but the bus has a cabin seen through its glass (`<name>_Cabin`:
+  seats, a dashboard, and the steering wheel `<name>_Steering`, which turns about its
+  local +z), for the cars people get into (web/game/cars.js).
 - `vehicles.json`: liveries, registrations by country, which material takes which
-  livery colour, sizes and triangle counts.
+  livery colour, sizes and triangle counts, and each car's length, width, height,
+  axles, wheels, seats and steering wheel.
 
 Model axes (glTF, as three.js reads them): +z forward, +y up, +x to the left; the
 helicopter's origin is under the rotor mast at the bottom of the skids, the ferry's
@@ -368,8 +375,8 @@ class Surface:
                 q = [P(i, j), P(i + 1, j), P(i + 1, j2), P(i, j2)]
                 a, b, c = (Vector(mesh.v[q[k]]) for k in (0, 1, 3))
                 n = (b - a).cross(c - a)
-                if n.length < 1e-12:
-                    n = (Vector(mesh.v[q[2]]) - b).cross(Vector(mesh.v[q[2]]) - c)
+                if n.length < 1e-12:  # a cell that closes to a point (a car's tail): the diagonals still give its facing
+                    n = (Vector(mesh.v[q[2]]) - a).cross(c - b)
                 o = self.out(um, vm, self.S(um, vm))
                 if (n.dot(o) < 0) != flip:
                     q.reverse()
@@ -1325,6 +1332,8 @@ def car_materials():
     material("Plate", "#f2f2ec", 0.5)
     material("Sign", "#f6e9a8", 0.4, emit="#ffe9a0")
     material("Seam", "#2a2c2e", 0.6)
+    material("Seat", "#3b3d41", 0.85)
+    material("Dash", "#1d1f22", 0.6)
 
 
 def car_surface(c):
@@ -1427,9 +1436,32 @@ def build_car(kind, taxi=False):
     body, trim = Mesh(), Mesh()
     r, track = c["r"], c["track"]
     arches = [(ax, r + 0.05) for ax in c["axles"]]
+    # the glass: windscreen, rear window and the side windows, in (x, theta) on the surface
+    ws0, ws1 = c["ws"]
+    corner = 0.80
+    panes = [[(ws0, corner), (ws1, corner), (ws1, math.pi - corner), (ws0, math.pi - corner)]]
+    if c["rw"][0] < c["rw"][1] - 0.05:
+        rw0, rw1 = c["rw"]
+        panes.append([(rw1, corner), (rw0, corner), (rw0, math.pi - corner), (rw1, math.pi - corner)])
+    # the side glass: up the A-pillar, along under the roof, down the C-pillar, and back along the
+    # beltline (followed point by point: theta at the belt changes along the car, so a straight
+    # edge in (x, theta) would leave a sliver under the roof)
+    f0, f1, r1, r0 = c["dlo"]
+    sill = [(x, theta_at(F, x, belt(x) + 0.03)) for x in np.linspace(r0, f0, 16)]
+    for side in (1, -1):
+        dlo = [sill[-1], (f1, corner - 0.08), (r1, corner - 0.08)] + sill[:-1]
+        panes.append(dlo if side > 0 else mirror(dlo)[::-1])
+    panes = [chaikin(p, 2) for p in panes]
+    # the body is open behind the glass (a cell wholly inside a pane), so the cabin shows through
+    # it; a cell under the edge of a pane is black, as the ceramic band round real glass is, and
+    # what is left of the steps hides under the frame
+    dx, dth = 0.03, TAU / 144
 
     def cut(x, th):
         p = F(x, th)
+        for pane in panes:
+            if inside(pane, x, th):
+                return None if all(inside(pane, x + sx * dx, th + st * dth) for sx in (-1, 1) for st in (-1, 1)) else "Trim"
         if abs(p.y) < c["W"] / 2 * 0.55:
             return "Paint"
         for ax, ra in arches:
@@ -1460,21 +1492,12 @@ def build_car(kind, taxi=False):
                 a = k * TAU / 5
                 box(body, "Chrome", (0.035, 0.012, r * 0.55), T((ax + math.sin(a) * r * 0.36, yw + side * 0.103, r + math.cos(a) * r * 0.36), (0, a, 0)))
 
-    # glass: windscreen, rear window and the side windows, each framed in black
-    ws0, ws1 = c["ws"]
-    corner = 0.80
-    panes = [[(ws0, corner), (ws1, corner), (ws1, math.pi - corner), (ws0, math.pi - corner)]]
-    if c["rw"][0] < c["rw"][1] - 0.05:
-        rw0, rw1 = c["rw"]
-        panes.append([(rw1, corner), (rw0, corner), (rw0, math.pi - corner), (rw1, math.pi - corner)])
-    f0, f1, r1, r0 = c["dlo"]
-    for side in (1, -1):
-        b0, b1 = theta_at(F, f0, belt(f0) + 0.03), theta_at(F, r0, belt(r0) + 0.03)
-        dlo = [(f0, b0), (f1, corner - 0.08), (r1, corner - 0.08), (r0, b1)]
-        panes.append(dlo if side > 0 else mirror(dlo)[::-1])
+    # the glass in the openings, each pane framed in black outside and in (the inner frame covers
+    # the steps the cut leaves, seen from a seat)
     for pane in panes:
-        outline = patch(trim, F, chaikin(pane, 2), "Glass", offset=0.005)
+        outline = patch(trim, F, pane, "Glass", offset=0.005)
         F.band(trim, outline, 0.022, "Trim", offset=0.007, across=2, closed=True, step=0.03)
+        F.band(trim, outline, 0.06, "Trim", offset=-0.012, across=2, closed=True, step=0.03)
     if c.get("bpillar") is not None:
         for side in (1, -1):
             x = c["bpillar"]
@@ -1514,7 +1537,66 @@ def build_car(kind, taxi=False):
         for side in (1, -1):
             M = T((-0.35, side * 0.362, zt + 0.09), (HALF, 0, HALF if side < 0 else -HALF))
             text_mesh(trim, "TAXI", "Trim", 0.11, M)
-    return body, trim
+    cabin, wheel, hub, seats = build_cabin(c, belt)
+    gl = lambda p: [round(p[1], 3), round(p[2], 3), round(p[0], 3)]  # vehicle frame -> glTF (left, up, forward)
+    dims = {"length_m": L, "width_m": c["W"], "height_m": round(max(z for _, z in c["roof"]) + (0.17 if taxi else 0), 2),
+            "axles_m": list(c["axles"]), "wheel_r_m": r, "track_m": track, "steering": gl(hub), "steering_tilt": STEER_TILT,
+            "seats": {k: gl(p) for k, p in seats.items()}}
+    return body, trim, cabin, wheel, dims
+
+
+STEER_TILT = 0.42  # the steering column's rake, radians from horizontal
+
+
+def build_cabin(c, belt):
+    """Seats, a dashboard and a steering wheel, seen through the glass of a car someone rides in
+    or drives (the traffic, with dark glass, leaves them out). Laid out from the windscreen
+    back, for right-hand drive: the game mirrors the cabin where traffic keeps right. The wheel
+    is its own object, centred on its hub and raked back along the column, which the game turns
+    about the column (its local +z in glTF). Returns the meshes, the hub and the seats (the top
+    of each cushion, where the game sits a person)."""
+    cab, wheel = Mesh(), Mesh()
+    fl, W, ws0 = c["floor"], c["W"], c["ws"][0]
+    xf = ws0 - 1.15                     # the front seats' hip point, a long arm from the wheel
+    zs = fl + 0.33                      # the top of the cushions
+    drv = -0.38                         # the driver sits on the right
+    van = c["rw"][1] - c["rw"][0] < 0.1  # a panel van: two seats and a bulkhead behind them
+
+    def seat(x, y, w=0.50):
+        box(cab, "Seat", (0.50, w, 0.12), T((x + 0.02, y, zs - 0.06)), bevel=0.04)
+        box(cab, "Seat", (0.11, w, 0.60), T((x - 0.27, y, zs + 0.30), (0, -0.20, 0)), bevel=0.04)
+        box(cab, "Seat", (0.08, min(0.26, w * 0.5), 0.16), T((x - 0.36, y, zs + 0.70), (0, -0.20, 0)), bevel=0.03)
+        box(cab, "Dash", (0.40, w * 0.8, zs - fl - 0.21), T((x + 0.02, y, (fl + zs) / 2 - 0.015)))
+    seats = {"driver": (xf, drv, zs), "passenger": (xf, -drv, zs)}
+    for y in seats.values():
+        seat(xf, y[1])
+    if van:
+        box(cab, "Dash", (0.04, W - 0.30, 1.30), T((xf - 0.48, 0, fl + 0.75)))
+    else:
+        xr = xf - 0.86
+        seat(xr, 0.0, w=W - 0.72)
+        for k in (-1, 1):
+            box(cab, "Seat", (0.08, 0.26, 0.16), T((xr - 0.36, k * 0.36, zs + 0.70), (0, -0.20, 0)), bevel=0.03)
+        seats.update({"rear_left": (xr, 0.36, zs), "rear_right": (xr, -0.36, zs)})
+    # the dashboard under the windscreen, the carpet, the instrument binnacle, the centre stack and console
+    xd = ws0 - 0.20
+    zd = belt(xd) + 0.02
+    x0 = xf - 0.45 if van else xr - 0.30
+    box(cab, "Dash", (xd - 0.10 - x0, W - 0.30, 0.03), T(((xd - 0.10 + x0) / 2, 0, fl + 0.09)))
+    box(cab, "Dash", (0.46, W - 0.34, 0.26), T((xd, 0, zd - 0.13)), bevel=0.05)
+    box(cab, "Dash", (0.16, 0.36, 0.07), T((xd - 0.18, drv, zd + 0.01)), bevel=0.03)
+    box(cab, "Dash", (0.24, 0.26, 0.34), T((xd - 0.22, 0, zd - 0.30)), bevel=0.03)
+    box(cab, "Dash", (0.70, 0.20, 0.16), T((xf + 0.20, 0, fl + 0.20)), bevel=0.04)
+    # the wheel: rim, three spokes, the boss and the column, about its hub
+    hub = Vector((ws0 - 0.62, drv, zs + 0.40))
+    R = 0.185
+    rim = [hub + Vector((0, R * math.cos(a), R * math.sin(a))) for a in np.linspace(0, TAU, 33)]
+    tube(wheel, "Dash", rim, 0.018, segs=8, caps=False)
+    cyl(wheel, "Dash", 0.05, 0.06, T(hub, (0, HALF, 0)), segs=16)
+    for a in (0.0, math.pi, -HALF):
+        box(wheel, "Dash", (0.016, 0.15, 0.035), T(hub + Vector((0, math.cos(a) * 0.105, math.sin(a) * 0.105)), (a, 0, 0)))
+    cyl(wheel, "Dash", 0.03, 0.30, T(hub + Vector((0.15, 0, 0)), (0, HALF, 0)), segs=10)
+    return cab, wheel, hub, seats
 
 
 def build_bus():
@@ -1577,18 +1659,24 @@ def build_bus():
             box(trim, m, (0.02, 0.32, 0.16), T((poly[0], side * 0.95, poly[1])))
     box(body, "Plate", (0.02, 0.5, 0.12), T((half + 0.01, 0, 0.55)))
     box(body, "Plate", (0.02, 0.5, 0.12), T((-half - 0.01, 0, 0.75)))
-    return body, trim
+    return body, trim, {"length_m": c["L"], "width_m": c["W"], "height_m": 3.05, "axles_m": list(c["axles"]), "wheel_r_m": c["r"],
+                        "track_m": c["track"]}
 
 
 def build_cars():
     car_materials()
-    objs = {}
+    objs, cabins, dims = {}, {}, {}
     for name, kind, taxi in (("Car_Sedan", "sedan", False), ("Car_Taxi", "sedan", True), ("Car_Hatch", "hatch", False),
                              ("Car_SUV", "suv", False), ("Car_Van", "van", False)):
-        b, t = build_car(kind, taxi)
+        b, t, cab, wheel, dims[name] = build_car(kind, taxi)
         b.merge(t)
         objs[name] = b.build(name)
-    b, t = build_bus()
+        # the cabin is its own node beside the car (<name>_Cabin), with the wheel under it (<name>_Steering)
+        cabins[name] = cab.build(f"{name}_Cabin")
+        hub = [dims[name]["steering"][k] for k in (2, 0, 1)]  # back to the vehicle frame
+        w = wheel.build(f"{name}_Steering", origin=hub, parent=cabins[name])
+        w.rotation_euler = (STEER_TILT, 0, 0)
+    b, t, dims["Bus"] = build_bus()
     b.merge(t)
     objs["Bus"] = b.build("Bus")
     # the end sections close to a point: weld those rings
@@ -1599,16 +1687,22 @@ def build_cars():
         bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-6)
         bm.to_mesh(ob.data)
         bm.free()
-    # spread them out so the bake sees each on its own
+    # spread them out so the bake sees each on its own, each cabin in its car
     for k, (name, ob) in enumerate(objs.items()):
         ob.location = to_blender((0, k * 6.0 - 15, 0))
+        if name in cabins:
+            cabins[name].location = ob.location
     info = {"models": {"Car_Sedan": {"weight": CARS["sedan"]["weight"]}, "Car_Hatch": {"weight": CARS["hatch"]["weight"]},
                        "Car_SUV": {"weight": CARS["suv"]["weight"]}, "Car_Van": {"weight": CARS["van"]["weight"]},
                        "Car_Taxi": {"taxi": True}, "Bus": {"bus": True}},
             "liveries": CAR_LIVERIES,
-            "tones": {"Paint": 0, "Paint2": 1, "Glass": 4, "Tyre": 5, "Light_Head": 6, "Light_Tail": 7, "Trim": 8, "Chrome": 9,
-                      "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8}}
-    return objs, info
+            "tones": {"Paint": 0, "Paint2": 1, "Seat": 2, "Glass": 4, "Tyre": 5, "Light_Head": 6, "Light_Tail": 7, "Trim": 8, "Chrome": 9,
+                      "Rim": 10, "Plate": 11, "Sign": 12, "Light_Amber": 13, "Seam": 8, "Dash": 8}}
+    for name, d in dims.items():
+        info["models"][name].update(d)
+        if name in cabins:
+            info["models"][name]["cabin"] = f"{name}_Cabin"
+    return objs, cabins, info
 
 
 # ------------------------------------------------------------ the shared pipeline: AO bake, LOD, export
@@ -1859,7 +1953,9 @@ def main():
         print(kind)
         bpy.ops.wm.read_factory_settings(use_empty=True)
         MAT.clear()
-        objs, info = builders[kind]()
+        built = builders[kind]()
+        objs, info = built[0], built[-1]
+        cabins = built[1] if kind == "cars" else {}
         if a.preview:
             os.makedirs(a.preview, exist_ok=True)
             stage(kind, min(a.samples, 24), (960, 540))
@@ -1868,17 +1964,21 @@ def main():
                 render(os.path.join(a.preview, f"{kind}_{name}.jpg"))
             continue
         if kind == "cars":
-            # ambient occlusion per vertex, two decimated copies of each for distance, one file for all
-            bake_vertex_ao(list(objs.values()), 0.6, a.bake_samples)
+            # ambient occlusion per vertex, two decimated copies of each body for distance (the cabins are
+            # only seen close to), one file for all
+            inner = [o for cab in cabins.values() for o in (cab, *cab.children)]
+            bake_vertex_ao(list(objs.values()) + inner, 0.6, a.bake_samples)
             for name in list(objs):
                 lo, far = lod_copy(objs[name], f"{name}_LOD1", 0.22), lod_copy(objs[name], f"{name}_LOD2", 0.045)
                 info["models"][name].update({"triangles": triangles([objs[name]]), "lod1_triangles": triangles([lo]),
                                              "lod2_triangles": triangles([far])})
+                if name in cabins:
+                    info["models"][name]["cabin_triangles"] = triangles([o for o in inner if o.name.startswith(name + "_")])
                 objs[f"{name}_LOD1"], objs[f"{name}_LOD2"] = lo, far
-            for ob in objs.values():
+            for ob in list(objs.values()) + list(cabins.values()):
                 ob.location = (0, 0, 0)
             path = os.path.join(OUT, "cars.glb")
-            select(list(objs.values()))
+            select(list(objs.values()) + inner)
             bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_vertex_color="ACTIVE",
                                       export_materials="EXPORT", export_cameras=False, export_lights=False, export_animations=False)
             print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
@@ -1893,6 +1993,8 @@ def main():
                 for k, name in enumerate(paints):
                     ob = objs[name]
                     ob.location = to_blender((0, k * 6.0 - 15, 0))
+                    if name in cabins:
+                        cabins[name].location = ob.location
                     for i, slot in enumerate(ob.material_slots):
                         if slot.material and slot.material.name in ("Paint", "Paint2"):
                             m = slot.material.copy()

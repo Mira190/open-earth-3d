@@ -1,7 +1,8 @@
 // People and cars. Pedestrians walk the city's footways (keeping left, as Australians
 // do), step aside for each other and for the player, and stop to sit on benches. Cars
-// drive the roads on the left, at the speed limit Overture gives or a default for the
-// road class. Cars are instanced meshes, a handful of draw calls for
+// drive the roads on the city's side (the left unless it keeps right), at the speed limit
+// Overture gives or a default for the road class, and swing out round a car pulled in at
+// the kerb. Cars are instanced meshes, a handful of draw calls for
 // hundreds. People are drawn by people.js (realistic characters); the box-built rigs
 // here are the fallback when those files can't be loaded.
 'use strict';
@@ -108,7 +109,9 @@ window.OEActors = (function () {
   // part: 0 rigid, 1/2 left/right leg (pivot at hips), 3/4 left/right arm (pivot at shoulders)
   function toneMaterial(U, { cars = false } = {}) {
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0.05 });
-    if (cars) mat.defines = Object.assign({}, mat.defines, { TONE_CARS: '' });
+    // a car is drawn on both sides, its inside dark: where a far copy (or an arch) leaves a gap,
+    // it reads as the shadowed inside of a car, not as a hole through it
+    if (cars) { mat.defines = Object.assign({}, mat.defines, { TONE_CARS: '' }); mat.side = THREE.DoubleSide; }
     mat.onBeforeCompile = sh => {
       sh.uniforms.uTime = U.uTime; sh.uniforms.uNight = U.uNight;
       sh.vertexShader = sh.vertexShader
@@ -141,6 +144,7 @@ varying float vAO; varying float vTone;
         .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4( vCol, opacity );
 #ifdef TONE_CARS
 diffuseColor.rgb *= mix(1.0, vAO, 0.45);
+if (!gl_FrontFacing) diffuseColor.rgb = vec3(0.02);
 #endif`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
 #ifdef TONE_CARS
@@ -209,6 +213,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const out = {};
     gltf.scene.updateMatrixWorld(true);
     for (const node of gltf.scene.children) {
+      if (/_Cabin$/.test(node.name)) continue; // seats and wheel, for the cars people get into (cars.js)
       const parts = [];
       node.traverse(o => { if (o.isMesh) parts.push(o); });
       const pos = [], nrm = [], tone = [], ao = [], idx = [];
@@ -284,16 +289,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return out;
     }
-    // the closest point on any line within maxD of (x, y): {line, s, x, y, z, d} or null
-    function nearest(x, y, maxD) {
+    // the closest point on any line within maxD of (x, y): {line, s, x, y, z, d} or null; with z,
+    // only where the line is within dz of that height (the street you are on, not the flyover above it)
+    function nearest(x, y, maxD, z = null, dz = 3) {
       let best = null;
       for (const i of new Set(near(x, y, 0, maxD))) {
         const l = L[i], n = l.pts.length / 3;
         for (let k = 1; k < n; k++) {
           const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], ex = l.pts[3 * k] - ax, ey = l.pts[3 * k + 1] - ay, L2 = ex * ex + ey * ey;
           const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
-          const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(x - qx, y - qy);
-          if (d < maxD && (!best || d < best.d)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: l.pts[3 * k - 1] + (l.pts[3 * k + 2] - l.pts[3 * k - 1]) * t, d };
+          const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(x - qx, y - qy), qz = l.pts[3 * k - 1] + (l.pts[3 * k + 2] - l.pts[3 * k - 1]) * t;
+          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
         }
       }
       return best;
@@ -477,7 +483,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
         for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) if (j !== i) { const o = P[j]; see(o.x, o.y, o.vx, o.vy, BODY, 1); }
       }
-      if (player) see(player.x, player.y, pvx, pvy, BODY + 0.15, 1.6); // give the player a little more room
+      if (player) see(player.x, player.y, pvx, pvy, BODY + (player.r || 0.15), 1.6); // give the player a little more room (a car more)
       // sideways within the footway (a little past its edge for whoever keeps far left), and speed
       const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
       p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
@@ -519,11 +525,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     return Object.assign(api, { update, nearest });
   }
 
-  // ------------------------------------------------------------ traffic (drives on the left)
+  // ------------------------------------------------------------ traffic (drives on the left, or on the right)
   // With the shared Blender cars (opts.lib from OEVehicles.load) each slot drives one model
   // (sedans, hatches, SUVs, vans, the city's taxis and buses), drawn near, mid or far by
-  // distance from opts.eye; without them, one box car for all.
-  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null } = {}) {
+  // distance from opts.eye; without them, one box car for all. Each knows its size, for
+  // collisions (hl, hw: half length and width; top: height).
+  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left' } = {}) {
+    const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
     let mesh = null, fleet = null;
     if (I) {
@@ -535,9 +543,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) {
         let r = rnd(), k = names[names.length - 1];
         for (const name of names) { if ((r -= share(name)) < 0) { k = name; break; } }
-        const M = I.models[k], box = geos[k][0].boundingBox;
-        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, model: k, half: (box.max.z - box.min.z) / 2,
-          c0: lin(M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours)), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
+        const M = I.models[k], box = geos[k][0].boundingBox, hex = M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours);
+        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, model: k, half: (box.max.z - box.min.z) / 2, hw: (box.max.x - box.min.x) / 2, top: box.max.y,
+          taxi: !!M.taxi, hex, c0: lin(hex), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
       }
       const mat = toneMaterial(U, { cars: true });
       fleet = {};
@@ -550,8 +558,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       mesh = instanced(CAR(), toneMaterial(U), n);
       world.add(mesh);
       for (let i = 0; i < n; i++) {
-        setC(mesh.geometry.attributes.aC0, i, pick(CARS));
-        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, half: 2.2 });
+        const hex = pick(CARS);
+        setC(mesh.geometry.attributes.aC0, i, hex);
+        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, half: 2.2, hw: 0.9, top: 1.5, hex });
       }
     }
     const at = new THREE.Vector3();
@@ -571,6 +580,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       c.v = net.L[c.line].v * 0.7;
     }
     const api = { mesh, fleet, C, active: n };
+    // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
+    function take(c) { c.line = -1; c.v = 0; }
+    // blockers: { x, y, half (half length), hw (half width), parked } (the player on foot, your
+    // car, a ride); a parked one beside the lane is passed by swinging out round it
     function update(dt, cx, cy, t, blockers) {
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       for (let i = 0; i < n; i++) {
@@ -582,10 +595,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // brake for anything ahead in the lane: other cars, the player, pedestrians in the road;
         // the gap is bumper to bumper, so a bus keeps its length back
         const fx = Math.sin(c.h), fy = Math.cos(c.h);
-        let gap = 40;
+        let gap = 40, swerve = 0;
         const look = (x, y, half) => { const dx = x - c.x, dy = y - c.y, a = dx * fx + dy * fy, b = Math.abs(-dx * fy + dy * fx); if (a > 0 && b < 1.6 && a - half - c.half < gap) gap = a - half - c.half; };
         for (let j = 0; j < api.active; j++) if (j !== i && C[j].line >= 0) look(C[j].x, C[j].y, C[j].half);
-        for (const b of blockers) look(b.x, b.y, 0.4);
+        for (const b of blockers) {
+          if (b.parked) { // side by side with a hand's width between, or round it if that is a short swing out
+            const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx, need = (c.hw || 0.9) + (b.hw || 0.9) + 0.3;
+            if (a < -b.half - c.half || a > 45 || Math.abs(w) >= need) continue;
+            if (need - Math.abs(w) < 1.6 && Math.abs(w) > 0.4) { const s = -(need - Math.abs(w)) * Math.sign(w); if (Math.abs(s) > Math.abs(swerve)) swerve = s; continue; }
+          }
+          look(b.x, b.y, b.half || 0.4);
+        }
+        c.off += (swerve - c.off) * Math.min(1, dt * 1.6);
         const want = gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9);
         c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         c.s += c.dir * c.v * dt;
@@ -596,7 +617,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         net.at(c.line, c.s, tmp);
         const hx = tmp.hx * c.dir, hy = tmp.hy * c.dir;
-        c.x = tmp.x - hy * 1.7; c.y = tmp.y + hx * 1.7; c.z = tmp.z; // left lane
+        const lane = 1.7 * side + c.off;
+        c.x = tmp.x - hy * lane; c.y = tmp.y + hx * lane; c.z = tmp.z; // the lane on the keep side, and any swing out
         const h = Math.atan2(hx, hy);
         let dh = h - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
         c.h += dh * Math.min(1, dt * 8);
@@ -610,7 +632,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
       }
     }
-    return Object.assign(api, { update });
+    return Object.assign(api, { update, take });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)
