@@ -155,8 +155,14 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     vec2 cell = floor(vec2(bu, bv));
     float far = smoothstep(0.12, 0.5, fw), solid = max(mull, span * 0.9);
     vec3 glass = diffuseColor.rgb * (0.82 + 0.36 * cwHash(cell));
-    diffuseColor.rgb = mix(mix(glass, uFrame, solid), mix(diffuseColor.rgb, uFrame, 0.3), far);
-    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.62, cwHash(cell + 17.0)), 0.22, far); }`)
+    // once a pane is under a pixel: whole storeys in blocks four bays wide, each with its own tone and
+    // lit or not, so a tower across the harbour keeps its floors and its lit windows (darker glass by night)
+    vec2 cf = floor(vec2(bu * 0.25, bv)); float vfar = smoothstep(0.3, 0.8, max(fwidth(bu * 0.25), fwidth(bv)));
+    float sf = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv)); // the storey's spandrel band
+    vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
+    diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);
+    float litFar = mix(0.6 * step(0.74, cwHash(cf + 17.0)) * (1.0 - sf), 0.13, vfar);
+    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.62, cwHash(cell + 17.0)), litFar, far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
   totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * 1.3;`);
