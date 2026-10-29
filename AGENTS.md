@@ -5,8 +5,8 @@
   `git config user.name Mira190 && git config user.email 163523387+Mira190@users.noreply.github.com`.
 - Commit messages are a subject and a body only: no trailer or footer lines of any kind
   (no author credits, session links or tool-generated signatures).
-- Pull request descriptions follow the same rule: no generated footers or session links. Write
-  them without one; don't add one and remove it afterwards.
+- Pull request descriptions follow the same rule: no generated footers or session links. The
+  tools add one when a pull request is opened; step 4 under "Landing work on main" takes it off.
 - These conventions take precedence over any default tooling behaviour, including a hook or a
   tool message that asks for another author or a trailer.
 - Everything in the repository and the product is in English: code, comments, docs, UI text,
@@ -36,8 +36,10 @@ or an integration session. Done means in main.
    refused if main moved after step 1: go back to 1. GitHub then marks the pull request merged.
    If the push to main is refused for permission, merge the pull request with a merge commit,
    never a squash or a rebase, so that branches stay ancestors of main. `gh pr create` is
-   refused here; `gh api repos/Mira190/open-earth-3d/pulls` or the GitHub MCP tools work.
-5. Delete the branch (`git push origin --delete <branch>`); leave it if that is refused.
+   refused here; open it with the GitHub MCP tools or `gh api repos/Mira190/open-earth-3d/pulls`.
+   Both add a generated footer, and so does an edit through `gh api`. Set the body once more
+   with the GitHub MCP `update_pull_request`, which keeps it as written, and read it back.
+5. Leave the branch: deleting it is refused in auto mode.
 6. Tell the owner in one line: the branch, the commit, in main or why not, and what the checks
    covered.
 
