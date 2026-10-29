@@ -41,7 +41,7 @@ window.OEWorld = (function () {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, { uLid: { value: m.lid_m || 2.6 }, uChev: { value: m.chevron_m || 1.8 },
-          uGloss: { value: lin('#f5f3ed') }, uCream: { value: lin('#ece4d2') } });
+          uGloss: { value: lin('#f5f3ed') }, uCream: { value: lin('#e8ddc6') } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uLid, uChev; uniform vec3 uGloss, uCream; float pCream;')
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bay = fract(vUv.x) - 0.5, c = vUv.y - abs(bay) * uChev, lid = fract(c / uLid);
@@ -52,6 +52,32 @@ window.OEWorld = (function () {
     pCream = mix(0.18, cream, near);
     diffuseColor.rgb = mix(uGloss, uCream, pCream) * (1.0 - 0.06 * grout * near); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.14, 0.6, pCream);');
+      };
+    },
+    // reconstituted granite (u, v metres): the aggregate's speckle and the joints between slabs
+    // every joints_m [across, along] (0: none). On a stair, "tread" pales the worn nosing at its
+    // front (v = 0), and "riser" (v from its foot, 0, to its top, 1) darkens the shadow under the
+    // nosing above and the line where it meets the tread below, so steps read as steps from any side
+    granite(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      const [ju, jv] = m.joints_m || [0, 0];
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uJoint: { value: new THREE.Vector2(ju, jv) }, uStair: { value: { tread: 1, riser: 2 }[m.stair] || 0 } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform vec2 uJoint; uniform float uStair;
+float gnH(vec2 p) { p = fract(p * vec2(234.34, 435.345)); p += dot(p, p + 34.23); return fract(p.x * p.y); }`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { vec2 q = vUv; float fw = max(fwidth(q.x), fwidth(q.y));
+    float k = 1.0 + (gnH(floor(q * 40.0)) - 0.5) * 0.1 * (1.0 - smoothstep(0.004, 0.014, fw)); // aggregate a few cm across
+    float jn = 1.0 - smoothstep(0.03, 0.15, fw), joint = 0.0;
+    if (uJoint.x > 0.0) joint = max(joint, 1.0 - smoothstep(0.004, 0.012 + fw, abs(fract(q.x / uJoint.x + 0.5) - 0.5) * uJoint.x));
+    if (uJoint.y > 0.0 && uStair < 0.5) joint = max(joint, 1.0 - smoothstep(0.004, 0.012 + fw, abs(fract(q.y / uJoint.y + 0.5) - 0.5) * uJoint.y));
+    k *= 1.0 - 0.28 * joint * jn;
+    if (uStair > 1.5) {
+      float sv = fwidth(q.y), sh = mix(1.0, 0.5, smoothstep(0.62, 0.95, q.y)) * mix(0.72, 1.0, smoothstep(0.0, 0.1, q.y));
+      k *= mix(sh, 0.8, smoothstep(0.3, 0.8, sv));
+    } else if (uStair > 0.5) k *= 1.0 + 0.14 * (1.0 - smoothstep(0.0, 0.04 + fw, q.y)) * jn;
+    diffuseColor.rgb *= k; }`);
       };
     },
     // a bridge or road deck in strips across its width (v metres from one edge): lanes with
@@ -513,6 +539,7 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
+      if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
     }
     // meshes marked floodlit glow after dark
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)

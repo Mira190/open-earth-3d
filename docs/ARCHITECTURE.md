@@ -38,7 +38,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
-| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -176,8 +176,13 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   `uv` (metres) where its material has a surface pattern. Materials are
   `{color, roughness, metalness}`, optionally with a `pattern`:
   - `chevron_tiles`: the Opera House roof;
+  - `granite`: reconstituted granite, its slab joints, and on a stair the
+    nosing of each tread and the shadow under it on each riser;
   - `deck_zones`: a deck in strips across its width;
   - `railing`: bars cut out of a strip.
+
+  A material with `decal: true` is paving laid over a roof: it is drawn in
+  front of the roof, and the game does not count it as a solid.
 
   The meshes are built with `pipeline/meshkit.py`, the landmarks' counterpart
   of the vehicles' `web/game/kit.js`: boxes, tubes, lathes, swept sections,
@@ -338,6 +343,8 @@ The views switch in place, without reloading the page.
   - wildlife (`penguins.js`): a colony of little penguins in one instanced
     mesh. They are out at sea by day, come ashore in rafts after the real
     sunset and walk to burrows on the mapped rocks (`game.wildlife`);
+  - gulls (`gulls.js`): a flock of silver gulls round a box of chips, which
+    goes up when you walk into it (`game.flocks`);
   - rail (`rail.js`), where the city has it: street trams and a funicular on
     the rail lines OpenStreetMap maps;
   - HUD;

@@ -55,7 +55,8 @@ The model is also a game.
   know it. You climb the Opera House's Monumental Steps, ride the Cross Harbour
   ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
   helicopter under its deck, and find a sunny spot in Martin Place on the
-  winter solstice.
+  winter solstice. By the Opera Bar, silver gulls fight over a dropped box of
+  hot chips, and go up in a cloud when you walk into them.
 - **Melbourne:** you check the midwinter sun on Federation Square, take a
   shuttle down the Yarra, and fly past the Arts Centre spire.
 - **Melbourne's bayside:** you walk out along St Kilda Pier and wait on the
@@ -173,7 +174,7 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 
 | City | Status | What's in it |
 |---|---|---|
-| **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
+| **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House stands on the shell ridges OpenStreetMap maps for its roof, and the Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
 | **Melbourne Bayside**, Australia | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
 | **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep (each tier, its eaves and its gables measured from PLATEAU's own 3D model of it), Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |

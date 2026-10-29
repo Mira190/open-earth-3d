@@ -37,6 +37,8 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-photo.jpg) | ![](images/sydney/game-drive.jpg) |
 | **A taxi pulls in at the kerb** | **From the back seat, the driver at the wheel** |
 | ![](images/sydney/game-taxi.jpg) | ![](images/sydney/game-backseat.jpg) |
+| **Silver gulls fighting over a box of chips by the Opera Bar** | |
+| ![](images/sydney/game-gulls.jpg) | |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
@@ -109,7 +111,7 @@ Kong, and the right in Paris, where the cars are left-hand drive.
 
 The survey comes in lines. After a welcome, three surveys run side by side, in
 any order, and a report back waits for all three. The Sydney survey has seven
-stamps:
+stamps, and an eighth for the locals:
 - **Welcome** (Ava, at Circular Quay): she sets out the three surveys and asks
   which you want to start with.
 - **The harbour** (Marco, at the Opera House), two stamps:
@@ -123,6 +125,8 @@ stamps:
   - then, with Tom, use the survey lens on three buildings whose heights come from
     different sources.
 - **Report back** (Ava): opens once the three surveys are done.
+- **The locals** (Jess, a waiter at the Opera Bar), on the side: walk up to the
+  silver gulls fighting over a box of hot chips by the water.
 
 A step counts whether its line is tracked or not. If you stand in the sun in Martin
 Place on the way to the ferry, the ground survey moves on. <kbd>T</kbd>, or a tap
@@ -292,16 +296,24 @@ pipeline writes. The only city-specific code is landmark geometry in
     on the rocks, and landing places on their seaward edge with open water 6, 20
     and 40 m out. Its rocks are a no-go area, and footways across them are
     dropped.
+  - **Flocks:** a spot snapped to open ground, with places on the seawall
+    within `perch_m` where the birds stand. A quest step that visits a flock is
+    given its position.
   - **Travel points and links:** fast-travel points on the ground, and
     neighbouring cities named in the menu.
-- **Opera House steps** (`city.py`): the Monumental Steps are 90 m wide and run
-  40 m from the forecourt to the podium, as measured on the NSW aerial photo.
-  They climb in two flights of 15 cm risers, with a landing between them and
-  one at the top. A short ramp at the foot meets the forecourt, where the 5 m
-  terrain dips up to 2 m into the vehicle concourse entrance. They are a walkable strip whose profile follows every riser,
-  so feet land on the treads. Footways that cross them are draped onto them,
-  so the crowd uses them too. The risers are a darker granite, so the steps
-  read from a distance.
+- **Opera House steps** (`city.py`): the Monumental Steps are 85 m wide and run
+  17.6 m from the forecourt to a landing, as measured on the NSW aerial photo:
+  three flights of 0.39 m treads and 15 cm risers, between landings 1.6 m deep.
+  A short ramp at the foot meets the forecourt, where the 5 m terrain dips up
+  to 2 m into the vehicle concourse entrance. From the landing, a flight in
+  front of each hall climbs 11.6 m to the upper podium. Each flight is a
+  walkable strip whose profile follows every riser, so feet land on the
+  treads, and the landing is one too. Footways that cross them are draped onto
+  them, so the crowd uses them too. Each tread has a pale nosing over a darker
+  riser, with the shadow under the nosing drawn on it, so the steps read as
+  steps from any side and any distance. A strip's slab stops at the lowest
+  point of its surface in each 2 m cell, so a walker on a stair never meets a
+  lip above the knee.
 - **Bridge deck** (`city.py`):
   - The deck runs level across the arch and pylons.
   - The approach viaducts then descend at 5% until they meet the ground, the
@@ -443,6 +455,19 @@ pipeline writes. The only city-specific code is landmark geometry in
     where it would be by then.
   - **Quest step:** a `penguins` step completes when enough birds are ashore
     near you.
+- **Gulls** (`web/game/gulls.js`): a flock of silver gulls works a spot on the
+  ground (`game.flocks`), Sydney's round a dropped box of hot chips by the Opera
+  Bar. Four instanced meshes draw them: bodies, legs and each wing.
+  - **On the ground:** they peck at the chips, squabble over them with their
+    wings up, and now and then make off with one. A few stand on the seawall
+    beside the spot, looking out over the water.
+  - **In the air:** they circle, flapping and gliding, hang in the wind over the
+    chips before they land, and cast their shadows on the broadwalk.
+  - **You:** walk into them and they go up, the rest of the flock a moment
+    after; they come back once you have moved on. Their calls are synthesised
+    in `audio.js`.
+  - **The map:** a gull marks the flock on the map and the minimap, and a label
+    names it in the street. A `visit` step with `flock` goes to it.
 - **Traffic** (`web/game/actors.js`):
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** sedans, hatchbacks, SUVs, vans, the city's taxis and its buses,
