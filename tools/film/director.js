@@ -150,8 +150,20 @@ window.OEFilmDirector = (function () {
     }
   }
 
+  // the game's guides (the objective's beam of light and the dashed route to it) are for the player, not the film
+  let guides = 0;
+  function hideGuides() {
+    G.atmos.composer.passes[0].scene.traverse(o => {
+      const m = o.material;
+      if (!m || !m.visible) return;
+      const beam = o.isMesh && m.blending === THREE.AdditiveBlending && o.geometry.parameters && o.geometry.parameters.height === 90;
+      if (beam || m.isLineDashedMaterial) { m.visible = false; guides++; }
+    });
+  }
+
   // set the frame at film time t; the game's next frame draws it
   function apply(t) {
+    if (guides < 2) hideGuides();
     const s = shotAt(t);
     if (s !== cur) { cur = s; enter(s); }
     const k = clamp((t - s.t0) / s.dur);
