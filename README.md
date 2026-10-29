@@ -57,6 +57,18 @@ where the open data is silent and checked where it is not
 
 ![Before and after: Ultimo's houses and flats, and towers in the CBD](docs/images/sydney/buildings-compare.jpg)
 
+## Watch it: a film of each city
+
+Choose a city on the title screen and its card plays a film of its highlights:
+about 36 seconds, one day from sunrise to the blue hour, cut like a trailer.
+It is filmed in the city's own model and game, with its crowds, ferries,
+traffic, sky and lights, under the real sun for each shot's date and hour,
+through the title screen's lens, with a score in the title's voice. The titles
+are set over the picture as type, from the facts in the model and its sources.
+Each film is directed as a shot list (`cities/<id>/film.json`) and rendered
+frame by frame by `tools/city_film.js`; [docs/FILMS.md](docs/FILMS.md) is the
+director's guide.
+
 ## Play it: every city on foot
 
 The model is also a game.

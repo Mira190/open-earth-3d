@@ -293,6 +293,13 @@ The views switch in place, without reloading the page.
   card and the menu. A destination's beacon, reticle and card show its local time
   and sun, and the dive to it hands over to the model's loader. `score.js` is its
   synthesised sound. [TITLE.md](TITLE.md) has the details.
+- **`lens.js`** is the title screen's lens as a pass: the tone curve, grade,
+  flare, grain and vignette. The model viewer, the game and the city films end
+  their frame on it, so every city is seen as the Earth is on the title.
+- **`film.js`** plays a city's film (`films/<id>.mp4`, rendered from the city's
+  own game by `tools/city_film.js`): a silent teaser in the destination card and
+  a theatre with titles set as type from the film's cue sheet. [FILMS.md](FILMS.md)
+  has the details.
 - **`city.js`** is the model viewer. It drives everything city-specific from
   `scene.city`. Picking a building goes through a bounding-volume hierarchy
   (three-mesh-bvh) over the extruded buildings. One ray against Sydney's 178,683
