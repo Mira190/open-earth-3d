@@ -154,6 +154,40 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     keep = max(keep, step(0.25, fw / uBar)); // too far to resolve the bars: a solid, see-through-ish strip
     if (keep < 0.5 || (fw / uBar > 0.25 && fract(dot(gl_FragCoord.xy, vec2(0.5, 0.25))) < 0.5)) discard; }`);
       };
+    },
+    // a roof of round tiles in rows (u metres along the eaves, v metres up the slope): a lit crown
+    // and a shaded channel every bay_m, the lap of each course every course_m; far away, the mean
+    roof_tiles(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 0.33 }, uCourse: { value: m.course_m || 0.3 } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uBay, uCourse;')
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float x = vUv.x / uBay, y = vUv.y / uCourse, fw = max(fwidth(x), fwidth(y));
+    float crown = 0.5 + 0.5 * cos(6.2832 * x), lap = smoothstep(0.0, 0.18 + fw, fract(y));
+    float near = 1.0 - smoothstep(0.3, 0.9, fw);
+    diffuseColor.rgb *= mix(0.9, 0.7 + 0.38 * crown * mix(0.8, 1.0, lap), near); }`);
+      };
+    },
+    // dressed stone in courses (u metres along the wall, v metres up): each course its own height
+    // of block, each block its own length and tone, the joints dark; far away, the mean
+    ashlar(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform float uCourse, uBlock;
+float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.743); }`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float row = floor(vUv.y / uCourse), fy = fract(vUv.y / uCourse);
+    float len = uBlock * (0.65 + 0.7 * ashHash(vec2(row, 3.1)));
+    float x = vUv.x / len + ashHash(vec2(row, 7.7)), fx = fract(x);
+    float fw = max(fwidth(vUv.x), fwidth(vUv.y));
+    float joint = 1.0 - smoothstep(0.02, 0.04 + fw, min(min(fx, 1.0 - fx) * len, min(fy, 1.0 - fy) * uCourse));
+    float near = 1.0 - smoothstep(0.08, 0.35, fw);
+    float tone = 0.84 + 0.28 * ashHash(vec2(row, floor(x)));
+    diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near); }`);
+      };
     }
   };
 
