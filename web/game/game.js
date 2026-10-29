@@ -33,9 +33,17 @@ window.OpenEarthGame = async function game(cityId) {
   if (D.G.terrain) {
     const t = D.G.terrain, raw = Uint8Array.from(atob(t.data), c => c.charCodeAt(0)), v = new Int16Array(raw.buffer);
     Tfine = { data: Float32Array.from(v, q => q * t.scale), nx: t.nx, ny: t.ny, cell: t.cell, x0: D.scene.frame.x[0], y1: D.scene.frame.y[1] };
+    // land below the level of the sea (behind Osaka's river walls, in an underpass) would be drawn
+    // under the water, which lies level everywhere: keep it just above
+    const wm = D.G.water;
+    if (wm && wm.nx === t.nx && wm.ny === t.ny) {
+      const bits = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0)), d = Tfine.data;
+      for (let i = 0; i < d.length; i++) if (d[i] < 0.15 && !((bits[i >> 3] >> (7 - (i & 7))) & 1)) d[i] = 0.15;
+    }
     const nx = Math.ceil(t.nx / 2), ny = Math.ceil(t.ny / 2), c = new Float32Array(nx * ny);
     for (let r = 0; r < ny; r++) for (let k = 0; k < nx; k++) c[r * nx + k] = Tfine.data[(2 * r) * t.nx + 2 * k];
     D.T = { data: c, nx, ny, cell: t.cell * 2, x0: Tfine.x0, y1: Tfine.y1 };
+    D.Tfine = Tfine; // the walls of the buildings reach down to whichever ground is drawn
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
@@ -153,7 +161,40 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const a = s.us[i], b = s.us[i + 1], w = s.half_width, P2 = (u, v) => [s.origin[0] + s.axis[0] * u - s.axis[1] * v, s.origin[1] + s.axis[1] * u + s.axis[0] * v];
     S.fillMax(DSM, [[...P2(a, -w), ...P2(b, -w), ...P2(b, w), ...P2(a, w)]], Math.max(s.zs[i], s.zs[i + 1]), -3);
   }
+  // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded
+  let vlib = null;
+  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}) }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
+  // decks under the mapped bridges and viaducts (decks.js): drawn, walked, and in the shade model. A
+  // bridge over a ferry's course clears the boats with someone standing on the upper deck
+  const FI = vlib && vlib.ferryInfo, fstyle = G.ferry_style || {};
+  const boatTop = (FI ? FI.upper_deck_m * (fstyle.length_m ? fstyle.length_m / FI.length_m : 1) : 4.2) + 2.2;
+  const deckPlan = OEDecks.plan(G.paths, nav, FRAME, { boats: (G.ferries || []).flatMap(f => (f.legs || []).map(l => l.path)), clear: boatTop });
+  nav.addDecks(deckPlan.segs);
+  for (const d of deckPlan.segs) {
+    const L = Math.hypot(d.bx - d.ax, d.by - d.ay) || 1, nx = -(d.by - d.ay) / L * d.hw, ny = (d.bx - d.ax) / L * d.hw;
+    S.fillMax(DSM, [[d.ax + nx, d.ay + ny, d.bx + nx, d.by + ny, d.bx - nx, d.by - ny, d.ax - nx, d.ay - ny]], Math.max(d.az, d.bz), -3);
+  }
+  world.add(OEDecks.mesh(deckPlan.runs, OEWorld.lin));
   S.pyramid(DSM);
+  // benches, street lamps and trees on the ground drawn under them (their heights in the data are
+  // from the survey grid, which the drawn ground between its points can be below or above): on a
+  // deck or pier at their height, else on the ground, else, on the bank of the water, a step back
+  // from it; a tree the drawn ground would put under the water is not drawn
+  const seat = (x, y, z) => {
+    let on = Math.abs(nav.surfaceAt(x, y) - z) < 0.5;
+    nav.decksAt(x, y, h => { if (Math.abs(h - z) < 0.5) on = true; });
+    if (on) return [x, y, z];
+    if (!nav.offGround(x, y)) return [x, y, nav.terrain(x, y)];
+    const p = nav.stand(x, y, z, { rMax: 8 });
+    return p ? [p.x, p.y, p.z] : [x, y, z];
+  };
+  for (const flat of Object.values(G.props || {})) for (let i = 0; i < flat.length; i += 3) {
+    const q = seat(flat[i] / 10, flat[i + 1] / 10, flat[i + 2] / 10);
+    for (let k = 0; k < 3; k++) flat[i + k] = Math.round(q[k] * 10);
+  }
+  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 ? g : null; });
+  // where someone or a car beside a mapped line stands: its deck, or the ground drawn there (null on the bank of the water)
+  const lineGround = (x, y, at) => (at.deck ? at.z : nav.offGround(x, y) ? null : nav.terrain(x, y));
 
   // ------------------------------------------------------------ street furniture: benches, lamps that light at night
   loadMsg('People, traffic, ferries', 0.86);
@@ -199,17 +240,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
-  // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded
-  let vlib = null;
-  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}) }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
   const CR = G.crowd || {};
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
-    { benches: lib ? benches : null });
+    { benches: lib ? benches : null, ground: lineGround });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
-  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP });
+  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
   const player = { rig: makeRig(playerLook(), { vest: true }),
@@ -225,19 +263,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     player.rig = rig;
   }
   const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  const npcs = G.npcs.map(n => {
+  const npcs = [];
+  for (const n of G.npcs) {
     const rig = makeRig(Object.assign({ scale: (n.look.character || '')[0] === 'W' ? 0.91 : 0.96 }, n.look));
     world.add(rig.root);
-    const f = nav.floorAt(n.at[0], n.at[1], Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1)); // on the ground, or a deck or roof below 200 m
-    const o = Object.assign({}, n, { rig, x: n.at[0], y: n.at[1], z: f ? f.z : 0, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
+    // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over); off a bank sloping
+    // into the water, and not on someone else's toes
+    let f = nav.floorAt(n.at[0], n.at[1], Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1));
+    if (f && f.kind === 'deck') f = nav.floorAt(n.at[0], n.at[1], nav.terrain(n.at[0], n.at[1]) + 1);
+    const p = nav.stand(n.at[0], n.at[1], f ? f.z + 0.5 : Math.max(0, nav.terrain(n.at[0], n.at[1])) + 1,
+      { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
+    const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
     o.marker.position.set(0, 2.45, 0);
     rig.root.add(o.marker);
     rig.root.position.copy(W(o.x, o.y, o.z));
     rig.root.rotation.y = Math.PI - o.h;
-    return o;
-  });
+    npcs.push(o);
+  }
   const npcById = id => npcs.find(n => n.id === id);
 
   // ------------------------------------------------------------ vehicles
@@ -246,6 +290,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const heli = OEVehicles.helicopter(world, nav, padAt, vopts);
   const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);
   const wharfById = id => G.wharves.find(w => w.id === id);
+  // where you stand to board at each wharf: by its terminal, or the nearest place on foot to it where
+  // the terminal is mapped out on the water
+  for (const w of G.wharves) { const p = nav.stand(w.terminal[0], w.terminal[1], 2, { rMax: 90, room: 100 }); w.landing = p ? [p.x, p.y] : w.terminal.slice(); }
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
   const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
@@ -655,7 +702,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const pillarMat = new THREE.MeshStandardMaterial({ color: lin('#e9e6dc'), roughness: 0.85 });
   const plateMat = new THREE.MeshStandardMaterial({ color: lin('#b08a3a'), roughness: 0.4, metalness: 0.6 });
   const VP = (G.viewpoints || []).map(v => {
-    const f = nav.floorAt(v.at[0], v.at[1], v.z_ref ?? 400);
+    let f = nav.floorAt(v.at[0], v.at[1], v.z_ref ?? 400);
+    if (f && f.kind === 'deck' && v.z_ref == null) f = nav.floorAt(v.at[0], v.at[1], Math.max(0, nav.terrain(v.at[0], v.at[1])) + 1); // not up on a viaduct
     const o = Object.assign({}, v, { x: v.at[0], y: v.at[1], z: f ? f.z : Math.max(0, nav.terrain(v.at[0], v.at[1])) });
     const g = new THREE.Group();
     const pillar = new THREE.Mesh(pillarGeo, pillarMat), plate = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 12).translate(0, 1.27, 0), plateMat);
@@ -873,7 +921,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (!s) return null;
     const out = { text: s.text, title: q.title, line: l };
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
-    else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.terminal; }
+    else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.landing; }
     else if (s.type === 'rail' && rail) { const st = rail.stations.find(o => o.id === (player.mode === 'rail' ? s.to : s.from)); if (st) out.at = [st.x, st.y]; }
     else if (s.type === 'surface' || s.type === 'under_bridge') { const st = nav.strips.find(x => x.name === (s.surface || x.name)); if (st) out.at = st.origin.slice(); }
     else if (s.type === 'land' || s.type === 'sun' || (s.type === 'visit' && s.place)) { const pl = placeByName(s.place); if (pl) out.at = centroid(pl); }
@@ -995,7 +1043,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const KEY = `oe3d-game-${cityId}`;
   function save() {
     const car = myCar && [myCar.D.st.x, myCar.D.st.y, myCar.D.st.z, myCar.D.st.h].map(v => Math.round(v * 100) / 100);
-    try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y], car, clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale } })); } catch (e) { /* storage blocked */ }
+    try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y, player.z], car, clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale } })); } catch (e) { /* storage blocked */ }
   }
   function loadSave() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
 
@@ -1048,6 +1096,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const node = (x, y) => { const k = `${Math.round(x / 3)},${Math.round(y / 3)}`; if (!nodes.has(k)) { nodes.set(k, xy.length); xy.push([x, y]); adj.push([]); } return nodes.get(k); };
     const lines = [];
     for (const net of [footNet, roadNet]) for (const l of net.L) {
+      if (l.c === 'motorway') continue; // no one walks the expressway
       const n = l.pts.length / 3, a = node(l.pts[0], l.pts[1]), b = node(l.pts[3 * n - 3], l.pts[3 * n - 2]);
       const li = lines.push(l) - 1;
       adj[a].push([b, l.len, li, 0]); adj[b].push([a, l.len, li, 1]);
@@ -1237,7 +1286,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const rideTarget = wid => { const r = rideSteps().find(([, s]) => s.from === wid); return r ? r[1].to : null; };
   function nearWharf(x, y, r = 30) {
     let best = null, bd = r;
-    for (const w of G.wharves) { const d = Math.min(Math.hypot(w.terminal[0] - x, w.terminal[1] - y), Math.hypot(w.berth[0] - x, w.berth[1] - y)); if (d < bd) { bd = d; best = w; } }
+    for (const w of G.wharves) { const d = Math.min(Math.hypot(w.terminal[0] - x, w.terminal[1] - y), Math.hypot(w.berth[0] - x, w.berth[1] - y), Math.hypot(w.landing[0] - x, w.landing[1] - y)); if (d < bd) { bd = d; best = w; } }
     return best;
   }
   function currentAction() {
@@ -1321,16 +1370,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     save();
   }
-  function placeNear(x, y, z0, avoid = null) { // a walkable spot close to (x, y), not inside any of the boxes in avoid (cars)
+  // a walkable spot close to (x, y), on the floor reached from z0 (the ground there if not given),
+  // not inside any of the boxes in avoid (cars)
+  function placeNear(x, y, z0, avoid = null) {
+    if (z0 == null) z0 = Math.max(0, nav.terrain(x, y));
     for (let r = 0; r < 45; r += 1.5) for (let a = 0; a < 6.28; a += r ? 0.5 / Math.max(1, r / 3) : 7) {
-      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.walk(px, py, z0 + 3);
-      if (f.ok && !(avoid && OECars.pushOut(px, py, f.z, 0.4, avoid).hit)) return [px, py, f.z];
+      const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.floorAt(px, py, z0 + 3), w = f && nav.walk(px, py, f.z);
+      if (w && w.ok && !(avoid && OECars.pushOut(px, py, w.z, 0.4, avoid).hit)) return [px, py, w.z];
     }
     return null;
   }
   function alight() {
     const v = player.vehicle, here = fer.stopOf(v), w = wharfById(here);
-    const p = placeNear(w.terminal[0], w.terminal[1], 2) || placeNear(w.berth[0], w.berth[1], 2);
+    const p = placeNear(w.landing[0], w.landing[1]) || placeNear(w.berth[0], w.berth[1], 2);
     if (!p) { H.toast('No safe way off here.'); return; }
     v.rider = false; skip = false;
     if (v.helm) fer.finishHelm(v);
@@ -1439,7 +1491,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     save();
   }
   function unstuck() {
-    const p = placeNear(player.x, player.y, player.z) || placeNear(G.start.at[0], G.start.at[1], 3);
+    const p = placeNear(player.x, player.y, player.z) || placeNear(G.start.at[0], G.start.at[1]);
     if (p) { [player.x, player.y, player.z] = p; player.vz = 0; H.toast('Back on your feet.'); }
   }
   // survey lens: what is this building, and where does its height come from?
@@ -1782,7 +1834,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.stroke();
     g.restore();
     // fast travel to wharves you have used, the helipad and the start
-    const dest = [{ id: 'start', name: 'Where you started', at: G.start.at }].concat(G.wharves.filter(w => qs.visited[w.id]).map(w => ({ id: w.id, name: w.name, at: w.terminal })),
+    const dest = [{ id: 'start', name: 'Where you started', at: G.start.at }].concat(G.wharves.filter(w => qs.visited[w.id]).map(w => ({ id: w.id, name: w.name, at: w.landing })),
       (G.travel || []).filter(t => qs.visited[t.id]).map(t => ({ id: t.id, name: t.name, at: t.at.slice(0, 2) })));
     $('#g-travel').innerHTML = dest.map(d => `<li><button data-at="${d.at.join(',')}">${d.name}</button></li>`).join('');
   }
@@ -1797,7 +1849,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#g-travel'), 'click', e => {
     const b = e.target.closest('button');
     if (!b || player.mode !== 'foot') { if (b) H.toast('Fast travel works on foot.'); return; }
-    const [x, y] = b.dataset.at.split(',').map(Number), p = placeNear(x, y, 3);
+    const [x, y] = b.dataset.at.split(',').map(Number), p = placeNear(x, y);
     if (p) { $('#g-bigmap').hidden = true; hopTo(p[0], p[1], p[2], b.textContent); }
   });
   on($('#g-map-btn'), 'click', toggleMap);
@@ -1844,10 +1896,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const at = pos || G.start.at;
     let z0 = Math.max(0, nav.terrain(at[0], at[1]));
     for (const st of nav.strips) { const h = st.drape ? nav.stripHeight(st, at[0], at[1]) : null; if (h != null && h > z0) z0 = h; }
-    const f = nav.floorAt(at[0], at[1], zRef ?? z0 + 1);
-    player.x = at[0]; player.y = at[1]; player.z = f ? f.z : 2;
+    // the nearest firm spot: not over the water or on the bank going down to it, not inside an NPC,
+    // and not cut off (on a pier fragment below the quay, in a yard closed in by walls); at the start,
+    // with a few steps clear towards the view (not at the very edge of the quay, facing the water)
     const fa = G.start.facing || [at[0], at[1] + 10];
-    player.h = Math.atan2(fa[0] - at[0], fa[1] - at[1]);
+    const ahead = (x, y) => {
+      const h = Math.atan2(fa[0] - x, fa[1] - y), f = nav.floorAt(x, y, Math.max(zRef ?? z0 + 1, nav.terrain(x, y) + 1));
+      let z = f ? f.z : 0;
+      for (let d = 0.5; d <= 4 && f; d += 0.5) { const w = nav.walk(x + Math.sin(h) * d, y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
+      return !!f;
+    };
+    const ok = (x, y) => !npcs.some(n => Math.hypot(n.x - x, n.y - y) < 1.4), okStart = (x, y) => ok(x, y) && (pos || ahead(x, y));
+    const p = nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok: okStart, room: 100 }) || nav.stand(at[0], at[1], zRef ?? z0 + 1, { ok });
+    player.x = p ? p.x : at[0]; player.y = p ? p.y : at[1]; player.z = p ? p.z : z0;
+    player.vz = 0; player.ground = true;
+    player.h = Math.atan2(fa[0] - player.x, fa[1] - player.y);
     cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5;
     if (typeof groundLod === 'function' && Wd.groundMeshes[0].material.userData.street) groundLod(player.x, player.y);
   }
@@ -1864,7 +1927,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     A.start();
     if (cont && saved) {
       qs = Object.assign(qs, migrate(saved.qs));
-      spawn(saved.pos);
+      spawn(saved.pos, saved.pos[2] != null ? saved.pos[2] + 0.5 : undefined); // back on the deck or roof where you left off
       if (saved.car && myCar && nav.floorAt(saved.car[0], saved.car[1], saved.car[2] + 1)) parkMyCar({ x: saved.car[0], y: saved.car[1], z: saved.car[2], h: saved.car[3] });
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
@@ -2215,11 +2278,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (camSmooth.lengthSq() === 0 || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos); // after a teleport
     camSmooth.lerp(camPos, close ? Math.min(1, dt * 10) : veh ? Math.min(1, dt * 16) : 1);
     camPos.copy(camSmooth);
-    let gz = nav.terrain(camPos.x, -camPos.z);
+    let gz = Math.max(0, nav.terrain(camPos.x, -camPos.z)); // over the water, its surface
     for (const st of nav.strips) { // steps and decks below the player's head lift the camera too
       const h = nav.stripHeight(st, camPos.x, -camPos.z);
       if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
     }
+    nav.decksAt(camPos.x, -camPos.z, h => { if (h < camTarget.y + 0.5 && h > gz) gz = h; });
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
     live.pos.copy(camPos);
     live.look.copy(camTarget);

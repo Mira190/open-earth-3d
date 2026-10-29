@@ -437,7 +437,9 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
       uC0: { value: lin(css('--s1') || '#2a78d6') }, uC1: { value: lin(css('--s2') || '#eb6834') }, uC2: { value: lin(css('--s3') || '#1baf7a') } };
     // walls, LOD2 roofs, facades and rooftop plant (buildings.js); parts a parametric landmark
     // draws instead (scene.json hidden_solids) stay in B.s and the surface model, not on screen
-    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small });
+    // the walls reach the ground drawn round them: the tiles (and in the game the finer ones near the player)
+    const foot = (x, y) => Math.min(S.terrainTri(T, x, y), D.Tfine ? S.terrainTri(D.Tfine, x, y) : Infinity);
+    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small, foot });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
@@ -447,9 +449,23 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     }
     world.add(buildings, BLD.props);
 
-    // piers and wharves: 2.2 m concrete decks
+    // piers and wharves: 2.2 m concrete decks, or level with the quay they meet where that is up to
+    // 4 m higher (a seawall promenade), so that stepping down onto a pier is never a step you can't
+    // climb back (D.pierZ: the game walks on the same decks)
+    const DECK = (D.G && D.G.pier_deck_m) || 2.2, ground = D.Tfine || T;
+    D.pierZ = (P.piers || []).map(r => {
+      let top = -Infinity;
+      for (let k = 0, n = r.length / 2; k < n; k++) {
+        const j = (k + 1) % n, ax = r[2 * k] / 10, ay = r[2 * k + 1] / 10, bx = r[2 * j] / 10, by = r[2 * j + 1] / 10, L = Math.hypot(bx - ax, by - ay) || 1;
+        for (let i = 0, m = Math.ceil(L / 2); i < m; i++) for (const o of [-1.5, 1.5]) { // just inside and just outside the edge
+          const x = ax + (bx - ax) * i / m - (by - ay) / L * o, y = ay + (by - ay) * i / m + (bx - ax) / L * o;
+          top = Math.max(top, S.terrainTri(ground, x, y));
+        }
+      }
+      return top > DECK + 0.5 && top <= DECK + 4 ? top : DECK;
+    });
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
-    const pierGeo = extrude((P.piers || []).map(r => [-1, 0, 0, 22, r]), () => pierColour);
+    const pierGeo = extrude((P.piers || []).map((r, i) => [-1, 0, 0, Math.round(D.pierZ[i] * 10), r]), () => pierColour);
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);

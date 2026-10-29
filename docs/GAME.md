@@ -317,11 +317,43 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
-    of the water. The walking ground is interpolated over the land points only,
-    so a quay or a river walk keeps its own height instead of sagging towards
-    the modelled bottom beside it.
-  - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
-    walkable strip.
+    of the water.
+  - **The ground you stand on is the ground that is drawn:** the same two
+    triangles per 5 m cell as the terrain tiles, so feet never float over a
+    slope or sink into it. Beside the water the drawn ground goes down the bank
+    to the modelled bottom. A walker stops at the waterline, or at the top of a
+    bank steeper than 40° (a quay wall, a castle moat's stone side).
+  - **Starting places:** the start, NPCs, getting off a ferry and fast travel
+    take the nearest firm spot: not on the bank, not inside someone else. The
+    start also needs room to walk away, and a few steps clear towards its
+    view, so you never begin shut in or at the very edge of a quay.
+  - **Piers and decks:** piers are 2.2 m decks, or level with the quay they
+    meet where that is higher, so stepping down onto a pier is never a step you
+    can't climb back. The bridge deck is a walkable strip.
+  - **Wharves:** each wharf has a landing, the nearest place on foot to its
+    terminal. You board from there where the mapped terminal is out on the
+    water (Circular Quay's wharves, Central Pier 7).
+  - **Bridges and viaducts** (`web/game/decks.js`): a mapped footway or road
+    that crosses the water, or runs more than 2.5 m above the ground drawn
+    under it, is on a deck.
+    - The deck is drawn as a concrete slab with parapets, with columns under
+      the high spans.
+    - A bridge over the water is laid between its banks, slightly crowned. The
+      data lifts a bridge one level (6 m), which over a canal is a hump in the
+      air. Where a ferry's course passes under it, the span rises to clear the
+      boats.
+    - Viaducts (an expressway, several levels up) keep their mapped height.
+      Stubs that end over the water at nothing are cut back to the bank.
+    - The crowd and the traffic keep to the decks, the sun meter sees their
+      shade, and you can walk them (but not the expressways). In Osaka this is
+      what joins the city across its rivers: from the start on the Dotonbori,
+      every NPC can now be reached on foot.
+  - **Everything else on the ground:** passers-by, cars, trees, benches and
+    street lamps stand on the ground drawn under them, not on the heights of
+    the survey grid. Walls reach down to the ground drawn round them, where a
+    slope or a moat's edge falls below the building's base. Land below the
+    level of the sea (behind Osaka's river walls, in an underpass) is kept just
+    above the water, which lies level everywhere.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
     cells, so the helicopter can pass under the deck but not through the arch.
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with

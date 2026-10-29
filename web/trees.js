@@ -138,6 +138,17 @@ vAO = tc.r;`;
         camera.getWorldPosition(cam);
         if (cam.distanceToSquared(last) > 144) { last.copy(cam); sort(cam); }
       },
+      // stand each tree on the ground at its foot: ground(x, y, z) for the height the data gives
+      // (the game's finer terrain, which the survey grid's heights can be above or below), or null
+      // for a tree not to draw
+      reseat(ground) {
+        for (let i = 0; i < n; i++) {
+          const z = ground(list[4 * i] / 10, list[4 * i + 1] / 10, list[4 * i + 2] / 10);
+          if (z == null) { M.fill(0, 16 * i, 16 * i + 15); M[16 * i + 15] = 1; continue; } // shrunk to a point
+          M[16 * i + 13] = z - 0.05; pos[3 * i + 1] = z + 4;
+        }
+        last.set(1e9, 0, 0); // sorted again at the next update
+      },
       // jacarandas flower from mid October to November in the south, May and June in the north
       setSeason(month, day) {
         const doy = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 864e5);
