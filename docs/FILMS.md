@@ -117,7 +117,8 @@ Under `xvfb-run` Chromium draws through Mesa's llvmpipe, about four times faster
 than SwiftShader on the same cores (2–3 s a frame at 1920 × 804 on four cores,
 so a film takes about 40 minutes); without a display the tool falls back to
 SwiftShader. Frames are taken from the WebGL canvas, so the game's HUD never
-shows. Each film is about 8–12 MB at 1920 × 804 (H.264, CRF 21).
+shows. Each film is about 8–10 MB at 1920 × 804 (H.264, CRF 27 with adaptive quantisation, which
+holds the dark water and the night sky; at 100 % it is indistinguishable from the frames).
 
 ## How it works
 

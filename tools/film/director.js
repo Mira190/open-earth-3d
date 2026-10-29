@@ -167,6 +167,11 @@ window.OEFilmDirector = (function () {
     const tint = s.tint || spec.tint || [1, 1, 1];
     L.uTint.value.set(tint[0], tint[1], tint[2]);
     L.uSat.value = s.sat ?? spec.sat ?? 1;
+    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
+    // at night the city keeps its blacks: less lift, a firmer curve
+    const night = clamp((-sp.altitude - 2) / 8);
+    L.uLift.value = 1 - 0.7 * night;
+    L.uContrast.value = 0.1 + 0.18 * night;
     L.uAspect.value = innerWidth / innerHeight;
     L.uTime.value = t;
     // fades: in from space black at the head of the film and of a shot that asks, out at the tail
@@ -175,7 +180,6 @@ window.OEFilmDirector = (function () {
     if (s.fadeOut) f = Math.min(f, EASE.smooth(clamp((s.t0 + s.dur - t) / s.fadeOut)));
     L.uFade.value = f;
     // the flare, when the sun is in shot and not behind a building
-    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
     const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
     const dir = new V3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
     probe.fov = fov; probe.aspect = innerWidth / innerHeight; probe.updateProjectionMatrix();

@@ -129,6 +129,7 @@ window.OEFilm = (function () {
         <p class="fm-credit">${esc(c.credit || '')}</p>
       </div>`;
     host.append(el);
+    host.classList.add('film-open'); // the title stops drawing the Earth behind the film
     el.querySelector('.fm-grain').style.backgroundImage = `url(${grainUrl()})`;
     const v = el.querySelector('video'), titles = el.querySelector('.fm-titles'), endEl = el.querySelector('.fm-end');
     const prevFocus = document.activeElement;
@@ -239,6 +240,7 @@ window.OEFilm = (function () {
     ac.abort();
     v.pause();
     el.classList.remove('on');
+    if (el.parentElement) el.parentElement.classList.remove('film-open');
     setTimeout(() => { v.removeAttribute('src'); v.load(); el.remove(); }, reduced ? 0 : 450);
     if (window.OEScore && titleSound) OEScore.setMuted(false);
     if (prevFocus && prevFocus.isConnected) prevFocus.focus({ preventScroll: true });

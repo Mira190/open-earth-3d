@@ -575,6 +575,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (!running) return;
     if (manual && force !== true) return;
     if (!manual) raf = requestAnimationFrame(frame);
+    if (app.classList.contains('film-open') && force !== true) return; // a city's film covers the Earth: don't draw it (film.js)
     const now = clock();
     const dt = Math.min(0.1, Math.max(0, now - lastT));
     lastT = now;

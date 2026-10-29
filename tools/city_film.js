@@ -142,7 +142,7 @@ async function encode() {
   const mp4 = path.join(OUT, `${city}.mp4`);
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(FRAMES, 'f%05d.jpg'), '-i', wavFile,
     '-af', `afade=t=out:st=${(DURATION - 1.2).toFixed(2)}:d=1.2`, '-t', DURATION.toFixed(3),
-    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(spec.crf || 21), '-profile:v', 'high', '-pix_fmt', 'yuv420p',
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(spec.crf || 27), '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-x264-params', 'aq-mode=3',
     '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', mp4]);
   // the poster: the frame the film is remembered by
   const pf = Math.min(NF - 1, Math.round((spec.poster != null ? spec.poster : DURATION * 0.3) * FPS));
