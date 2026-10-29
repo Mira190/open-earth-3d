@@ -46,6 +46,8 @@ const CSS = `
 .rh-btns button { height: 58px; border-radius: 50%; border: 1px solid rgba(255,255,255,.35); background: rgba(8,38,51,.55); color: #fff; font: 600 13px system-ui; touch-action: none; }
 .rh-btns button:active, .rh-btns button.d { background: rgba(255,255,255,.35); }
 @media (max-width: 940px) { .rh-gauge { top: 64px; } }
+@media (max-width: 940px) and (max-height: 500px) { .rh-gauge { grid-template-columns: repeat(4, auto); } }
+@media (pointer: coarse) { .rh-help { display: none; } }
 @media (max-width: 640px) { .rh { font-size: 12px; } .rh-gauge .big { font-size: 24px; } .rh-help { display: none; } .rh-tr { padding: 4px 8px; } .rh-gauge { padding: 6px 9px; } .rh-bot { bottom: 170px; } }
 `;
 
