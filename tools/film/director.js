@@ -150,20 +150,21 @@ window.OEFilmDirector = (function () {
     }
   }
 
-  // the game's guides (the objective's beam of light and the dashed route to it) are for the player, not the film
-  let guides = 0;
+  // the game's own guides stay out of the film: the objective's beam, the gold route on the
+  // ground and the markers over the people who have a quest (the game shows them again each frame)
   function hideGuides() {
-    G.atmos.composer.passes[0].scene.traverse(o => {
+    for (const o of G.atmos.composer.passes[0].scene.children) {
       const m = o.material;
-      if (!m || !m.visible) return;
-      const beam = o.isMesh && m.blending === THREE.AdditiveBlending && o.geometry.parameters && o.geometry.parameters.height === 90;
-      if (beam || m.isLineDashedMaterial) { m.visible = false; guides++; }
-    });
+      if (!m) continue;
+      const p = o.geometry && o.geometry.parameters;
+      if (m.isLineDashedMaterial || (p && p.height === 90 && m.blending === THREE.AdditiveBlending)) m.visible = false;
+    }
+    for (const n of G.npcs || []) if (n.marker) n.marker.traverse(q => { if (q.material) q.material.visible = false; });
   }
 
   // set the frame at film time t; the game's next frame draws it
   function apply(t) {
-    if (guides < 2) hideGuides();
+    hideGuides();
     const s = shotAt(t);
     if (s !== cur) { cur = s; enter(s); }
     const k = clamp((t - s.t0) / s.dur);
