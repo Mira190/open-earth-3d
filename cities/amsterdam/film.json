@@ -121,13 +121,13 @@
       "chapter": "On foot",
       "dur": 4.5,
       "type": "move",
-      "from": [640, -1058, 3.6],
-      "to": [652, -1054, 3.65],
+      "from": [640, -1058, 4.2],
+      "to": [652, -1054, 4.25],
       "look": [760, -1018, 5],
       "fov": 28,
       "time": ["20:20"],
-      "people": [650, -1054],
-      "crowd_r": 55,
+      "people": [690, -1042],
+      "crowd_r": 60,
       "hand": 1,
       "title": {
         "kind": "lower",
@@ -136,7 +136,9 @@
         "eyebrow": "The Magere Brug, King's Day",
         "head": "Walk it",
         "text": "Find a step, a neck and a bell gable, cross the IJ on the F3, hear the Westertoren's carillon."
-      }
+      },
+      "crowd_n": 50,
+      "crowd_clear": 12
     },
     {
       "id": "night",

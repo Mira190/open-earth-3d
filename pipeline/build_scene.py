@@ -1519,15 +1519,23 @@ def write_index():
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
-        scene = os.path.join(ROOT, "web", "data", c["id"], "scene.json")
+        data = os.path.join(ROOT, "web", "data", c["id"])
+        scene = os.path.join(data, "scene.json")
         c["built"] = os.path.exists(scene)
-        c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
+        c["game"] = os.path.exists(os.path.join(data, "game.json"))
         if c["built"]:  # the title screen's figures: buildings and the extent of the model
             sc = json.load(open(scene, encoding="utf8"))
             if "height_sources" in sc:
                 c["buildings"] = sum(sc["height_sources"].values())
             x0, x1, y0, y1 = sc["extent_m"] if "extent_m" in sc else (*sc["frame"]["x"], *sc["frame"]["y"])
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
+        if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
+            size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
+            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
+        if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
+            fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
+            c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

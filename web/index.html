@@ -141,6 +141,25 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .loader.err small { margin-top: 30px; max-width: 42ch; font: 400 13px/1.6 var(--f-body); letter-spacing: 0; text-transform: none; color: var(--ink-2); }
 .loader.err .ld-err { display: flex; }
 .loader.out { opacity: 0; pointer-events: none; }
+/* a glint that keeps crossing the track, so a long step never looks stuck (drawn by the compositor) */
+.loader .track { position: relative; }
+.loader .track::after { content: ""; position: absolute; inset: 0; width: 30%; background: linear-gradient(90deg, transparent, var(--accent-2), transparent);
+  animation: glint 1.4s ease-in-out infinite; }
+@keyframes glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+.loader.ready .track::after { animation: none; opacity: 0; }
+/* the loading flyover (flyover.js): the video fills the loader, and the progress sits over it, low down, on glass */
+.loader video.flyover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.loader.has-flyover { place-items: end center; background: var(--bg); }
+.loader.has-flyover > div { position: relative; margin-bottom: max(7vh, 24px); padding: 18px 28px 20px; background: var(--hud);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
+.loader.has-flyover .wm { display: none; }
+.loader.has-flyover .ld-mode { margin-top: 0; }
+.loader.has-flyover > div > b { margin-top: 10px; font-size: clamp(20px, 2.6vw, 30px); }
+.loader.has-flyover .track { margin-top: 20px; }
+.flyover-start { margin-top: 16px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: var(--r); padding: 11px 22px; cursor: pointer;
+  font: 400 10px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; transition: background 0.3s, border-color 0.3s; }
+.flyover-start:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.flyover-start:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
 /* labels over the 3D view: set like the title's place marks */
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 500 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
@@ -378,6 +397,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-sun i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .g-sun[data-s="shade"] i { background: var(--shade); box-shadow: 0 0 10px var(--shade); }
 .g-sun[data-s="night"] i { background: #3a4558; box-shadow: none; }
+/* the gait on foot (walk, run, sprint), under the sun chip */
+.g-gait { padding: 8px 12px; display: flex; gap: 10px; align-items: center; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
+.g-gait b { font-weight: 400; color: #fff; }
+.g-gait span { color: var(--muted); letter-spacing: 0.1em; }
+.g-gait kbd { font-size: 9px; padding: 1px 4px; }
+.g-gait[data-g="sprint"] b { color: var(--accent); }
 .g-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .g-toasts { position: absolute; left: 50%; top: 16px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(460px, calc(100% - 520px)); min-width: 260px; }
 .g-toast { background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r);
@@ -557,7 +582,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .gt-go .btn { flex: 1; min-width: 0; }
 }
 @media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
-@media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after, .tour-list button::before, .tour-list b { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .loader .track::after { animation: none; opacity: 0; }
+  .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after, .tour-list button::before, .tour-list b { transition: none; } }
 </style>
 </head>
 <body>
@@ -805,6 +831,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
       <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
+      <div class="g-hud g-gait" id="g-gait" data-g="run" hidden></div>
       <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
@@ -852,7 +879,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         </div>
         <table class="gt-keys"><tbody>
           <tr><td><kbd>W A S D</kbd> or arrows</td><td>Walk, relative to the camera; drag to look around, scroll to zoom</td></tr>
-          <tr><td><kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd></td><td>Sprint · walk instead of jog · jump</td></tr>
+          <tr><td><kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd></td><td>Sprint while held · switch between walking and running · jump</td></tr>
           <tr><td><kbd>E</kbd></td><td>Talk, board, fly, drive your car, get in a taxi, get out</td></tr>
           <tr><td><kbd>Y</kbd> · <kbd>N</kbd></td><td>Raise your hand at the kerb for a taxi · the phone: order a ride, bring your car</td></tr>
           <tr><td>Car</td><td><kbd>W</kbd>/<kbd>S</kbd> drive, brake, reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> from the seat, <kbd>R</kbd> back on the road</td></tr>
@@ -941,6 +968,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="score.js"></script>
 <script src="title.js"></script>
 <script src="film.js"></script>
+<script src="flyover.js"></script>
 <script src="water.js"></script>
 <script src="buildings.js"></script>
 <script src="trees.js"></script>
@@ -979,6 +1007,7 @@ window.dispatchEvent(new Event('three-ready'));
   };
   let cities = [];
   try { cities = await fetch('data/cities.json').then(r => r.json()); } catch (e) { cities = []; }
+  window.OE_CITIES = cities; // the loader reads each city's download size from it
   const hashId = () => decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   let current = null, lastId = null;
   // the city's name in its own script, as on the title's destination card
@@ -1000,6 +1029,7 @@ window.dispatchEvent(new Event('three-ready'));
       pane('game-app').hidden = false;
       $('g-load-title').textContent = city.name;
       native($('g-load-native'), city);
+      OEFlyover.play($('g-loader'), city); // the loading flyover, where the city has one
       $('gm-model').href = `#${city.id}`;
       current = window.OpenEarthGame(city.id);
     } else if (city) {
@@ -1009,6 +1039,7 @@ window.dispatchEvent(new Event('three-ready'));
       native($('load-native'), city);
       native($('city-native'), city);
       $('city-coords').textContent = fmtLL(city);
+      OEFlyover.play($('loader'), city);
       if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);
     } else {

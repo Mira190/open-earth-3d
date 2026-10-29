@@ -1,0 +1,116 @@
+{
+ "id": "melbourne-bayside",
+ "name": "Melbourne Bayside",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/melbourne-bayside.mp4",
+ "poster": "films/melbourne-bayside.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "boxes",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "Dendy Street Beach"
+  },
+  {
+   "id": "luna",
+   "t0": 15,
+   "t1": 19.5,
+   "chapter": "Luna Park"
+  },
+  {
+   "id": "foreshore",
+   "t0": 19.5,
+   "t1": 24,
+   "chapter": "On foot"
+  },
+  {
+   "id": "penguins",
+   "t0": 24,
+   "t1": 29,
+   "chapter": "The breakwater"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "37.87°S 144.97°E",
+    "Sunrise over Port Phillip · 06:24 AEDT",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Melbourne Bayside",
+   "sub": "Australia",
+   "figures": "9,335 buildings · 7 km of shore · St Kilda to Brighton"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Dendy Street Beach, Brighton",
+   "head": "The bathing boxes",
+   "text": "96 boxes, each on its own mapped footprint, on the Victorian Heritage Register since 2018."
+  },
+  {
+   "t0": 15.5,
+   "t1": 19.2,
+   "kind": "lower",
+   "eyebrow": "The Lower Esplanade, St Kilda",
+   "head": "Mr Moon and the Scenic Railway",
+   "text": "Open since December 1912: 967 m of track, 16 m high, the oldest roller coaster still running."
+  },
+  {
+   "t0": 20,
+   "t1": 23.7,
+   "kind": "lower",
+   "eyebrow": "The St Kilda foreshore",
+   "head": "Walk it",
+   "text": "Talk to the people who know the bay, walk the pier, wait for the penguins after dark."
+  },
+  {
+   "t0": 24.6,
+   "t1": 28.6,
+   "kind": "lower",
+   "eyebrow": "St Kilda breakwater",
+   "head": "The little penguins",
+   "text": "About 1,400 live in the rocks of the 1956 Olympic breakwater and come ashore after sunset."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Melbourne Bayside",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}

@@ -1,0 +1,116 @@
+{
+ "id": "amsterdam",
+ "name": "Amsterdam",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/amsterdam.mp4",
+ "poster": "films/amsterdam.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "canal",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The canal ring"
+  },
+  {
+   "id": "ferry",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "The IJ"
+  },
+  {
+   "id": "westertoren",
+   "t0": 20,
+   "t1": 24.5,
+   "chapter": "The Westertoren"
+  },
+  {
+   "id": "walk",
+   "t0": 24.5,
+   "t1": 29,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "52.37°N 4.89°E",
+    "Sunrise over the canals · 06:18 CEST",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Amsterdam",
+   "sub": "The Netherlands",
+   "figures": "35,479 buildings · 4.0 × 4.05 km · 95.8% of the footprint area measured by laser"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "The Prinsengracht",
+   "head": "A gable for every century",
+   "text": "4,303 canal house fronts end in the gable of the year the register gives them: step, neck, bell or cornice."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Centraal Station to Buiksloterweg",
+   "head": "The F3 across the IJ",
+   "text": "The IJ and the canals are both held 40 cm below NAP, the zero of every height in the model."
+  },
+  {
+   "t0": 20.5,
+   "t1": 24.2,
+   "kind": "lower",
+   "eyebrow": "The Prinsengracht",
+   "head": "The Westertoren",
+   "text": "Hendrick de Keyser's tower, finished in 1638: 85 m, the tallest church tower in the city."
+  },
+  {
+   "t0": 25,
+   "t1": 28.7,
+   "kind": "lower",
+   "eyebrow": "The Magere Brug, King's Day",
+   "head": "Walk it",
+   "text": "Find a step, a neck and a bell gable, cross the IJ on the F3, hear the Westertoren's carillon."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Amsterdam",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}

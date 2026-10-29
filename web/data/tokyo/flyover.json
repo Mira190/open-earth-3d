@@ -1,0 +1,14 @@
+{
+ "video": "flyover.mp4",
+ "poster": "flyover.jpg",
+ "seconds": 14,
+ "fps": 30,
+ "date": "2026-04-15",
+ "time": "10:30",
+ "note": "Rendered by tools/flyover.js; the last frame is the game title camera at the start of its orbit.",
+ "webm": "flyover.webm",
+ "size": [
+  960,
+  540
+ ]
+}

@@ -1,0 +1,164 @@
+{
+  "name": "Melbourne Bayside",
+  "date": [1, 24],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 30.5,
+  "score": {
+    "root": 52,
+    "scale": [0, 2, 4, 5, 7, 9, 11],
+    "chords": [[0, 2, 4], [3, 5, 0], [5, 0, 2], [4, 6, 1]],
+    "motif": [2, 4, 3, 1, 0],
+    "tempo": 72,
+    "voice": "bell",
+    "air": "harbour",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [-1150, 3110, 5],
+      "to": [-1125, 3098, 5.5],
+      "look": [-861, 3006, 8],
+      "fov": 22,
+      "time": ["06:18", "06:26"],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": ["37.87°S 144.97°E", "Sunrise over Port Phillip · 06:24 AEDT", "The real sun, for the day you watch"]
+      },
+      "tint": [1.06, 1.0, 0.92],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-700, 3550, 20],
+      "to": [-800, 3700, 120],
+      "look": [850, 1400, 90],
+      "fov": 28,
+      "time": ["07:05"],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Melbourne Bayside",
+        "sub": "Australia",
+        "figures": "9,335 buildings · 7 km of shore · St Kilda to Brighton"
+      },
+      "tint": [1.04, 1.0, 0.95]
+    },
+    {
+      "id": "boxes",
+      "chapter": "Dendy Street Beach",
+      "dur": 5,
+      "type": "move",
+      "from": [985, -3095, 2.2],
+      "to": [991, -3085, 2.2],
+      "look": [1035, -2985, 3],
+      "fov": 24,
+      "time": ["19:25"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Dendy Street Beach, Brighton",
+        "head": "The bathing boxes",
+        "text": "96 boxes, each on its own mapped footprint, on the Victorian Heritage Register since 2018."
+      }
+    },
+    {
+      "id": "luna",
+      "chapter": "Luna Park",
+      "dur": 4.5,
+      "type": "move",
+      "from": [165, 2790, 26],
+      "to": [150, 2792, 25],
+      "look": [100, 2690, 8],
+      "fov": 28,
+      "time": ["19:55"],
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "The Lower Esplanade, St Kilda",
+        "head": "Mr Moon and the Scenic Railway",
+        "text": "Open since December 1912: 967 m of track, 16 m high, the oldest roller coaster still running."
+      }
+    },
+    {
+      "id": "foreshore",
+      "chapter": "On foot",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-380, 3040, 1.65],
+      "to": [-390, 3038, 1.7],
+      "look": [-861, 3006, 6],
+      "fov": 28,
+      "time": ["20:36"],
+      "people": [-388, 3039],
+      "crowd_r": 35,
+      "hand": 1,
+      "agl": true,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "The St Kilda foreshore",
+        "head": "Walk it",
+        "text": "Talk to the people who know the bay, walk the pier, wait for the penguins after dark."
+      }
+    },
+    {
+      "id": "penguins",
+      "chapter": "The breakwater",
+      "dur": 5,
+      "type": "move",
+      "from": [-1005.5, 3082.2, 3.0],
+      "to": [-1005.8, 3083.6, 3.0],
+      "look": [-1026, 3080.5, 2.7],
+      "fov": 10,
+      "time": ["21:45"],
+      "ev": 1.0,
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "St Kilda breakwater",
+        "head": "The little penguins",
+        "text": "About 1,400 live in the rocks of the 1956 Olympic breakwater and come ashore after sunset."
+      }
+    },
+    {
+      "id": "night",
+      "chapter": "After dark",
+      "dur": 7,
+      "type": "move",
+      "from": [70, 2772, 9.5],
+      "to": [88, 2770, 9.5],
+      "look": [112.6, 2725, 11.5],
+      "fov": 24,
+      "time": ["20:48", "21:12"],
+      "timeEase": "inOut",
+      "fadeOut": 1.6,
+      "ev": 0.7,
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Melbourne Bayside",
+        "line": "The model, the sun and the city: open them."
+      }
+    }
+  ]
+}

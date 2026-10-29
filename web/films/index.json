@@ -1,4 +1,16 @@
 {
+ "amsterdam": {
+  "json": "films/amsterdam.json",
+  "duration": 36
+ },
+ "melbourne": {
+  "json": "films/melbourne.json",
+  "duration": 36
+ },
+ "melbourne-bayside": {
+  "json": "films/melbourne-bayside.json",
+  "duration": 36
+ },
  "paris": {
   "json": "films/paris.json",
   "duration": 36
