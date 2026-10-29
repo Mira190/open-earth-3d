@@ -7,7 +7,7 @@
 //   NODE_PATH=$(npm root -g) node tools/city_film.js sydney --part 1/2      # every other shot (run 2/2 alongside)
 //   NODE_PATH=$(npm root -g) node tools/city_film.js sydney --encode        # score and encode the frames on disk
 // Options: --size 1920x804 (2.39:1), --fps 24, --shots id,id, --frames <dir> (kept between runs, so
-// an interrupted render resumes), PORT (8800).
+// an interrupted render resumes), --quality high (the picture tier, quality.js), PORT (8800).
 // Writes web/films/<id>.mp4, <id>.jpg (the poster), <id>.json (the cue sheet the player reads:
 // shots, titles and chapters) and adds the film to web/films/index.json.
 // Under xvfb-run the frames are drawn by Mesa's llvmpipe (about 1-2 s a frame on four cores; a 36 s
@@ -30,6 +30,10 @@ const FPS = +opt('fps', spec.fps || 24);
 const FRAMES = opt('frames', path.join(os.tmpdir(), `oe3d-film-${city}-${W}x${H}`));
 const OUT = path.join(ROOT, 'web', 'films');
 const PORT = process.env.PORT || 8800;
+// the tier a desktop GPU gets: a software renderer would otherwise pick 'low' for itself, which
+// leaves out the shopfronts, parapets, awnings, rooftop plant and the water's reflection, and draws
+// at 0.9x the film's size
+const QUALITY = opt('quality', spec.quality || 'high');
 fs.mkdirSync(FRAMES, { recursive: true });
 fs.mkdirSync(OUT, { recursive: true });
 
@@ -51,9 +55,11 @@ async function open() {
   const errs = [];
   p.on('pageerror', e => errs.push(String(e).slice(0, 400)));
   await p.addInitScript({ path: path.join(__dirname, 'film', 'clock.js') });
+  await p.addInitScript(q => { try { localStorage.setItem('oe3d-quality', q); } catch (e) { /* storage blocked */ } }, QUALITY);
   await p.goto(`http://localhost:${PORT}/index.html#play-${city}`);
   console.log('WebGL:', await p.evaluate(() => { const gl = document.createElement('canvas').getContext('webgl2'); const d = gl && gl.getExtension('WEBGL_debug_renderer_info'); return gl ? gl.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : 'none'; }));
   await p.waitForFunction(() => window.__game && document.getElementById('g-loader') && document.getElementById('g-loader').classList.contains('out'), null, { timeout: 900000, polling: 1000 });
+  console.log('Tier:', await p.evaluate(() => { const q = OEQuality.city(), c = document.getElementById('game-gl'); return `${q.name}, ${c.width}x${c.height}`; }));
   for (const f of ['lens.js']) await p.addScriptTag({ path: path.join(ROOT, 'web', f) });
   for (const f of ['director.js', 'score.js']) await p.addScriptTag({ path: path.join(__dirname, 'film', f) });
   await p.evaluate(s => OEFilmDirector.setup(s), Object.assign({}, spec, { size: [W, H] }));
