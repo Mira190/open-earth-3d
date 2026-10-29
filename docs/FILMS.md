@@ -171,7 +171,8 @@ not the city game, so the tool takes another path.
   and sails it along the line (its wake is built up for a few seconds first);
   `animal: {species, near}` follows the nearest animal of a species (or of any in a
   list) that `life.js` is simulating near the camera. `under: true` keeps the lens below
-  the surface, otherwise it stays `clear` (1.2 m) above the waves.
+  the surface and above the floor (with `minPitch`, the least it looks up or down, in degrees), otherwise it
+  stays `clear` (1.2 m) above the waves.
 - **The look is the reef's own**: its post (bloom, light shafts, the night's Purkinje
   shift) and ACES. The title lens is not used. White balance (`tint`), saturation
   (`sat`), a light vignette and the fades are applied as the frame is taken from the

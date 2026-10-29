@@ -12,8 +12,10 @@
 //   orbit  {at, az: [from, to], dist, h}               round a point; az is the compass bearing of the camera from it
 //   track  {boat: {vessel, from, to, speed} | animal: {species, near}, az, dist, h}
 //          beside a boat the director sails from `from` to `to` (az relative to its course), or an animal
-//          of `species`, the nearest to `near` when the shot starts (az relative to its heading)
-// Other fields: under (keep the lens below the surface), clear (m above the waves, default 1.2), lookUp,
+//          of `species`, the nearest to `near` when the shot starts (az relative to its heading; low: true
+//          takes the lowest within 60 m, resting on the floor)
+// Other fields: under (keep the lens below the surface and above the floor), minPitch (keep the view this many
+// degrees off level, up or down), clear (m above the waves, default 1.2), lookUp,
 // lookAhead, hand, ease, fov, time (["HH:MM"] or a time-lapse ["HH:MM", "HH:MM"], local), date, fadeIn,
 // fadeOut, ev, tint, sat.
 // The grade is applied as the frame is taken from the canvas: exposure (ev, through the renderer's
@@ -96,13 +98,16 @@ window.OEReefDirector = (function () {
   }
 
   // the nearest animal of a species (or of any of a list) to a point, among those the life module simulates round the camera
-  function findAnimal(sp, near) {
+  // (low: the lowest within 60 m of it instead, one resting on the floor rather than rising to breathe)
+  function findAnimal(sp, near, low) {
     const L = ctx.life;
     if (!L || !L.animals) return null;
     const c = W(near);
     const want = [].concat(sp);
     let best = null, bd = Infinity;
-    for (const a of L.animals) { if (!want.includes(a.sp) || a.hidden) continue; const d = (a.x - c.x) ** 2 + (a.y - c.y) ** 2 + (a.z - c.z) ** 2; if (d < bd) { bd = d; best = a; } }
+    for (const a of L.animals) { if (!want.includes(a.sp) || a.hidden) continue; let d = (a.x - c.x) ** 2 + (a.y - c.y) ** 2 + (a.z - c.z) ** 2;
+      if (low) { if (d > 3600) continue; d = a.y - ctx.height(a.x, -a.z); }
+      if (d < bd) { bd = d; best = a; } }
     return best;
   }
 
@@ -120,7 +125,7 @@ window.OEReefDirector = (function () {
       let cx, cy, cz, hd;
       if (s.vessel) { cx = s.vessel.x; cy = s.vessel.y; cz = s.vessel.z; hd = s.vessel.hdg; }
       else {
-        if (!s.prey) s.prey = findAnimal(s.animal.species, s.animal.near);
+        if (!s.prey) s.prey = findAnimal(s.animal.species, s.animal.near, s.animal.low);
         const a = s.prey;
         if (!a) { const c = W(s.animal.near); cx = c.x; cy = c.y; cz = c.z; hd = 0; }
         else {
@@ -143,8 +148,14 @@ window.OEReefDirector = (function () {
     }
     // under water, keep the lens clear of the surface; above it, clear of the waves
     const tide = ctx.env.u.tide.value;
-    if (s.under) pos.y = Math.min(pos.y, tide - 0.35);
+    if (s.under) pos.y = Math.max(Math.min(pos.y, tide - 0.35), ctx.height(pos.x, -pos.z) + 0.3);
     else if (s.over !== false && pos.y > tide - 0.5) pos.y = Math.max(pos.y, tide + (s.clear ?? 1.2));
+    // minPitch: keep the view at least this many degrees off level, up or down whichever way it already leans
+    // (under water, the surface's far edge draws a line at the horizon)
+    if (s.minPitch) {
+      const hz = Math.hypot(look.x - pos.x, look.z - pos.z), m = hz * Math.tan(s.minPitch * RAD), dy = look.y - pos.y;
+      if (Math.abs(dy) < m) look.y = pos.y + (dy > 0 ? m : -m);
+    }
   }
 
   // set the frame at film time t; the viewer's next frame draws it
