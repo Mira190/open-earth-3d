@@ -133,7 +133,7 @@ export async function init(ctx) {
   const travel = createTravel(ctx);
   const ui = createUI({
     choose: i => choose(i), advance: () => advance(), closeDialog: () => closeDialogue(), journal: () => togglePanel('journal'), map: () => togglePanel('map'), time: () => togglePanel('time'), closePanel: () => closePanel(),
-    panelAct: (act, arg) => panelAct(act, arg)
+    panelAct: (act, arg) => panelAct(act, arg), globe: () => toGlobe()
   });
   const touch = q.get('touch') === '1' || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
   const FREEZE = { f: 0, r: 0, up: 0, down: 0, run: 0, inflate: 0, deflate: 0 };
@@ -506,10 +506,12 @@ export async function init(ctx) {
   }
   function closePanel() { ui.panel(null); freeze(!!D); }
   function togglePanel(kind) { if (ui.panelKind === kind) closePanel(); else openPanel(kind); }
+  function toGlobe() { save(); location.href = travel.globeHref(); }
   function panelAct(act, arg) {
     if (act === 'track') { G.track(arg); openPanel('journal'); }
     else if (act === 'travel') { const s = (travel.list || []).find(x => x.id === arg); if (s && s.ready && !s.current) { save(); location.href = siteAt(arg); } }
     else if (act === 'time') setTime(arg);
+    else if (act === 'globe') toGlobe();
     else if (act === 'reset') { if (confirm('Forget all progress on this site?')) { st = fresh(); save(); for (const r of NPCS.values()) hideNpc(r, false); openPanel('journal'); refreshObjective(true); } }
   }
   const srcHtml = ids => (ids || []).map(srcOf).filter(Boolean).map(s => s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(srcLabel(s))}</a>` : esc(srcLabel(s))).join(' · ');
@@ -596,7 +598,7 @@ export async function init(ctx) {
     return `<div class="rg-map"><div><h3>${esc(S.name || ctx.site)} at this tide</h3><canvas width="300" height="300" aria-label="Map of the site"></canvas>
       <small class="legend"><i class="me">▲</i> you <i class="np">●</i> people <i class="sg">■</i> signs <i class="tg">◆</i> objective</small></div>
       <div><h3>Queensland reef sites</h3><ul class="rg-sites">${sitesHtml(travel.list)}</ul>
-      <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span></div>
+      <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span><button class="act" data-act="globe">Back to the globe</button></div>
       <h3>Named places near you</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
   }
   // the nearest named places (OpenStreetMap names in scene.json), with distance and bearing from you
@@ -636,7 +638,7 @@ export async function init(ctx) {
     else { objBearing = null; markTarget = null; }
     objText = t;
     // under the dive gauge when it shows
-    if (gaugeEl) ui.objectiveTop(gaugeEl.classList.contains('on') ? gaugeEl.offsetTop + gaugeEl.offsetHeight + 8 : 10);
+    if (gaugeEl) ui.objectiveTop(gaugeEl.classList.contains('on') ? gaugeEl.offsetTop + gaugeEl.offsetHeight + 8 : null);
   }
   const camDir = new THREE.Vector3();
   function heading() {
