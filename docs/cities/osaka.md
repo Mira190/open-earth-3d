@@ -69,6 +69,14 @@ each building's footprint, `measuredHeight`, storey count and LOD1 block with
 regular expressions (a 50 MB XML file in about 7 s). It runs in about a
 minute. (Osaka's 2020 release has no building 3D Tiles to read instead.)
 
+`fetch_plateau.py` writes the buildings to `plateau.json`, in the format that
+Kyoto's 3D Tiles and Tokyo's vector tiles are written to as well, and one
+`Plateau` class in `build_scene.py` reads all three. It cuts each footprint into
+tiers along the PLATEAU buildings over it. A whole building counts only where
+most of it lies in the footprint, or most of the footprint in it. A building
+that OSM maps much taller than the survey keeps its OSM height. The PLATEAU
+use and storey count fill in what Overture lacks.
+
 ## 3. Heights
 
 ### 3.1 The ladder in Osaka
@@ -112,17 +120,31 @@ list of Osaka's tallest buildings (`cities/osaka/reference_heights.csv`).
 
 | Height source | n | Median absolute error |
 |---|---:|---:|
-| `mapped` (OSM) | 3 | 0.0% |
-| `floors` | 8 | 1.0% |
-| `plateau` | 7 | 4.8% |
+| `mapped` (OSM) | 2 | 0.1% |
+| `floors` | 6 | 0.4% |
+| `plateau` | 10 | 5.5% |
 
 The `plateau` rows are the independent ones, and every one of them reads taller
-than the published figure, by 0.2% to 11.3% (OAP Tower +11.3%, Nakanoshima Dai
-Building +9.6%, OBP Castle Tower +6.3%). That fits a survey
-that measures the top of the roof structure against an architectural height
-that stops lower, but we have not checked the roofs one by one. The `mapped` and `floors` rows are
+than the published figure, by 0.2% to 13.7% (Yodobashi Umeda Tower +13.7%, OAP
+Tower +11.3%, Nakanoshima Dai Building +9.6%). That fits a survey that measures
+the top of the roof structure against an architectural height that stops lower,
+but we have not checked the roofs one by one. The `mapped` and `floors` rows are
 almost circular, since mappers took them from the same published lists.
-Median over all 18: 1.8%; the worst is OAP Tower at +11.3%.
+Median over all 18: 3.2%.
+
+The three Japanese cities now share one PLATEAU class, which cuts each footprint
+into tiers along the PLATEAU buildings over it (section 2.1). Three towers changed
+source with it:
+- **City Tower Osaka:** 174.2 m from PLATEAU instead of 180 m from its floor count
+  (170 m published).
+- **Osaka Umeda Twin Towers North:** 199.0 m from PLATEAU instead of 184.4 m from
+  floors (187 m published).
+- **Yodobashi Umeda Tower:** 170.6 m from PLATEAU instead of OSM's 149.3 m (150 m
+  published). Its footprint holds two PLATEAU records, the 65.2 m Yodobashi Camera
+  building of the 2017 survey and a 170.6 m tower record with no survey year. The
+  old matching took only the larger, judged OSM's height newer than the survey,
+  and kept it. The tiers take the tower record. Which of the two is right for
+  the roof has not been checked.
 
 ### 3.5 Storey height
 
@@ -145,7 +167,7 @@ and 0.03 for a measured height.
 |---|---|
 | GSI DEM5A (used) | bare earth, 5 m |
 | AWS Terrarium, zoom 15 | median 6.7 m above DEM5A, 90th percentile 15.6 m |
-| GSI 10 m DEM | median absolute difference 0.72 m, 90th percentile 2.3 m (810 open-ground points); 61.5% within 1 m |
+| GSI 10 m DEM | median absolute difference 0.72 m, 90th percentile 2.3 m (782 open-ground points); 62% within 1 m |
 
 Terrarium is a surface model here, as it was in Sydney. The 10 m check is
 older and coarser than DEM5A, not independent of it in method (both are GSI
@@ -206,7 +228,7 @@ Share of each park in direct sun, averaged over 8:00 to 16:00 on 21 December
 | 靱公園 Utsubo Park | 49% |
 | うめきた公園 サウスパーク Umekita South Park | 17% |
 
-The surface model follows the buildings' pitched roofs (32,959 of them,
+The surface model follows the buildings' pitched roofs (32,955 of them,
 [BUILDINGS.md](../BUILDINGS.md)), which lowers it under every ridge. Against
 the flat-topped blocks of the first build that moves no park by more than
 1 point.

@@ -11,7 +11,7 @@
    "reference": 95.61,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.09,
-   "seconds": 40.484
+   "seconds": 38.727
   },
   {
    "place": "Martin Place",
@@ -22,7 +22,7 @@
    "reference": 42.51,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.92,
-   "seconds": 1.612
+   "seconds": 1.472
   },
   {
    "place": "Macquarie Place",
@@ -33,7 +33,7 @@
    "reference": 77.1,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.58,
-   "seconds": 0.42
+   "seconds": 0.421
   },
   {
    "place": "Wynyard Park",
@@ -44,7 +44,7 @@
    "reference": 87.38,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -1.02,
-   "seconds": 2.669
+   "seconds": 2.313
   },
   {
    "place": "Lang Park",
@@ -55,7 +55,7 @@
    "reference": 99.09,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.12,
-   "seconds": 1.103
+   "seconds": 1.067
   },
   {
    "place": "Pitt Street Mall",
@@ -66,7 +66,7 @@
    "reference": 52.93,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.09,
-   "seconds": 2.113
+   "seconds": 1.842
   },
   {
    "place": "Belmore Park",
@@ -77,18 +77,18 @@
    "reference": 88.59,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.09,
-   "seconds": 13.93
+   "seconds": 13.712
   },
   {
    "place": "Barangaroo Reserve",
-   "prod": 99.28,
-   "finer_samples": 99.25,
-   "finer_dsm": 99.32,
-   "finer_time": 99.31,
-   "reference": 99.3,
+   "prod": 99.3,
+   "finer_samples": 99.29,
+   "finer_dsm": 99.34,
+   "finer_time": 99.34,
+   "reference": 99.34,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.02,
-   "seconds": 18.572
+   "prod_minus_reference": -0.04,
+   "seconds": 17.501
   }
  ],
  "max_abs_numerical_error_pp": 1.02

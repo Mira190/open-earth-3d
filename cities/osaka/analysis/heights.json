@@ -3,23 +3,23 @@
  "summary": {
   "reference": 18,
   "matched": 18,
-  "median_abs_error_pct": 1.8,
-  "median_error_m": 2.1,
-  "within_10pct": 17,
+  "median_abs_error_pct": 3.2,
+  "median_error_m": 5.6,
+  "within_10pct": 16,
   "within_20pct": 18,
   "gross_short": 0,
   "by_source": {
-   "mapped": {
-    "n": 3,
-    "median_abs_error_pct": 0.0
+   "plateau": {
+    "n": 10,
+    "median_abs_error_pct": 5.5
    },
    "floors": {
-    "n": 8,
-    "median_abs_error_pct": 1.0
+    "n": 6,
+    "median_abs_error_pct": 0.4
    },
-   "plateau": {
-    "n": 7,
-    "median_abs_error_pct": 4.8
+   "mapped": {
+    "n": 2,
+    "median_abs_error_pct": 0.1
    }
   }
  },
@@ -136,12 +136,12 @@
    "how": "name",
    "building": 47140,
    "model_name": "\u5927\u962a\u6885\u7530\u30c4\u30a4\u30f3\u30bf\u30ef\u30fc\u30ba\u30fb\u30ce\u30fc\u30b9",
-   "model_m": 184.4,
+   "model_m": 199.0,
    "model_floors": 41,
-   "height_src": "floors",
+   "height_src": "plateau",
    "osm_id": "w588689735",
-   "error_m": -2.6,
-   "error_pct": -1.4
+   "error_m": 12.0,
+   "error_pct": 6.4
   },
   {
    "name": "The Tower Osaka",
@@ -204,12 +204,12 @@
    "how": "name",
    "building": 43384,
    "model_name": "\u30b7\u30c6\u30a3\u30bf\u30ef\u30fc\u5927\u962a",
-   "model_m": 180.0,
+   "model_m": 174.2,
    "model_floors": 50,
-   "height_src": "floors",
+   "height_src": "plateau",
    "osm_id": "w235840424",
-   "error_m": 10.0,
-   "error_pct": 5.9
+   "error_m": 4.2,
+   "error_pct": 2.5
   },
   {
    "name": "OBP Castle Tower",
@@ -306,12 +306,12 @@
    "how": "name",
    "building": 46922,
    "model_name": "\u30e8\u30c9\u30d0\u30b7\u6885\u7530\u30bf\u30ef\u30fc",
-   "model_m": 150.0,
+   "model_m": 170.6,
    "model_floors": 35,
-   "height_src": "mapped",
+   "height_src": "plateau",
    "osm_id": "w788888925",
-   "error_m": 0.0,
-   "error_pct": 0.0
+   "error_m": 20.6,
+   "error_pct": 13.7
   },
   {
    "name": "Osaka Station North Gate Building",

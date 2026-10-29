@@ -8,10 +8,10 @@
  },
  "places": [],
  "fix_list": [],
- "seconds": 14.001,
+ "seconds": 14.67,
  "sigma": {
   "floors": 0.166,
-  "estimate": 0.27,
+  "estimate": 0.256,
   "ml": null
  }
 }

@@ -22,12 +22,12 @@
    "p90_excess_m": 8.3
   },
   "under_buildings": {
-   "samples": 10946,
+   "samples": 10903,
    "median_excess_m": 4.0,
    "p90_excess_m": 8.4
   },
   "open_ground": {
-   "samples": 6334,
+   "samples": 6377,
    "median_excess_m": 3.7,
    "p90_excess_m": 8.1
   },

@@ -1,65 +1,35 @@
 {
  "note": "SRTM (Feb 2000) surface excess over the bare-earth DEM vs block-mean model height, analysis region, land blocks only",
- "test_building": "\u5927\u962a\u6885\u7530\u30c4\u30a4\u30f3\u30bf\u30ef\u30fc\u30ba\u30fb\u30b5\u30a6\u30b9",
+ "test_building": null,
  "scales": [
   {
    "block_m": 100.0,
-   "blocks": 2359,
+   "blocks": 956,
    "model": {
-    "r": 0.624,
-    "slope": 0.33,
-    "intercept_m": 3.3,
-    "rmse_m": 4.3,
-    "test_block_residual_m": -15.2,
-    "test_block_rank": 2348
-   },
-   "model_with_test_missing": {
-    "r": 0.624,
-    "slope": 0.33,
-    "intercept_m": 3.3,
-    "rmse_m": 4.3,
-    "test_block_residual_m": -34.0,
-    "test_block_rank": 2359
+    "r": 0.485,
+    "slope": 0.217,
+    "intercept_m": 6.9,
+    "rmse_m": 4.6
    }
   },
   {
    "block_m": 150.0,
-   "blocks": 1017,
+   "blocks": 414,
    "model": {
-    "r": 0.683,
-    "slope": 0.385,
-    "intercept_m": 2.6,
-    "rmse_m": 3.7,
-    "test_block_residual_m": -9.6,
-    "test_block_rank": 1007
-   },
-   "model_with_test_missing": {
-    "r": 0.683,
-    "slope": 0.385,
-    "intercept_m": 2.6,
-    "rmse_m": 3.7,
-    "test_block_residual_m": -27.3,
-    "test_block_rank": 1018
+    "r": 0.496,
+    "slope": 0.239,
+    "intercept_m": 6.4,
+    "rmse_m": 4.2
    }
   },
   {
    "block_m": 200.0,
-   "blocks": 569,
+   "blocks": 236,
    "model": {
-    "r": 0.765,
-    "slope": 0.437,
-    "intercept_m": 1.9,
-    "rmse_m": 3.1,
-    "test_block_residual_m": -2.6,
-    "test_block_rank": 491
-   },
-   "model_with_test_missing": {
-    "r": 0.765,
-    "slope": 0.437,
-    "intercept_m": 1.9,
-    "rmse_m": 3.1,
-    "test_block_residual_m": -8.9,
-    "test_block_rank": 565
+    "r": 0.666,
+    "slope": 0.361,
+    "intercept_m": 4.2,
+    "rmse_m": 3.3
    }
   }
  ]

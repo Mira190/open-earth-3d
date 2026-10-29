@@ -5,7 +5,7 @@
   "prior:hipped": 2005,
   "prior:flat": 1724,
   "prior:gabled_across": 446,
-  "rule:flat": 2319,
+  "rule:flat": 2315,
   "fallback_flat": 35,
   "too_low": 81,
   "prior:skillion": 390,
@@ -24,6 +24,7 @@
   "n": 201,
   "flat_vs_pitched_accuracy": 0.687,
   "exact_shape_accuracy": 0.408,
+  "family_accuracy": 0.413,
   "pitched_recall": 0.62,
   "flat_recall": 0.847,
   "confusion_pitched": {
@@ -31,6 +32,14 @@
    "true_pitched_pred_flat": 54,
    "true_flat_pred_flat": 50,
    "true_flat_pred_pitched": 9
+  },
+  "truth": {
+   "gabled": 81,
+   "flat": 59,
+   "hipped": 42,
+   "skillion": 13,
+   "round": 5,
+   "mansard": 1
   }
  },
  "roofs_built": 4190,

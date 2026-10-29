@@ -13,8 +13,8 @@ with a height measured from aerial survey, as CityGML and as 3D Tiles.
 
 | | Sydney | Kyoto |
 |---|---|---|
-| Buildings | 7,962 | 65,749 |
-| Footprint area with a surveyed or measured height | see [Sydney](sydney.md) | **93.4%** (PLATEAU) |
+| Buildings | 7,962 | 65,738 |
+| Footprint area with a surveyed or measured height | see [Sydney](sydney.md) | **92.8%** (PLATEAU) |
 | Terrain | NSW 5 m bare earth (stereo) | GSI DEM5A, 5 m bare earth (airborne laser) |
 | Imagery | NSW Imagery | GSI seamless aerial photographs, zoom 17 |
 
@@ -43,8 +43,8 @@ buildings, so on the tallest blocks the model's heights could be too high by sev
    hotel block to 131 m. `cities/kyoto/city.py` cuts the block to 31 m and builds the tower
    from its published figures (131 m to the spire, observation deck at 100 m).
 
-PLATEAU's survey is from 2020–2021, so newer buildings are missing or low: 6,938 Overture
-buildings (5.8% of the footprint area) match nothing and fall back to neighbour estimates.
+PLATEAU's survey is from 2020–2021, so newer buildings are missing or low: 7,256 Overture
+buildings (6.3% of the footprint area) match nothing and fall back to neighbour estimates.
 
 ## 2a. Roofs, measured
 
@@ -55,13 +55,13 @@ footprint, hipped, half-hipped or skillion, with the pitch and the height from e
 ([BUILDINGS.md](../BUILDINGS.md#measured-roofs) has the method). 79,889 of the 80,870
 PLATEAU buildings get one, and a measured roof outranks the rules:
 
-- 46,239 solids carry a pitched roof. Ridges mostly run across the footprint (25,668) rather
-  than along it (12,801), as the narrow, deep lots of machiya would have it.
+- 45,866 solids carry a pitched roof. Ridges mostly run across the footprint (25,297) rather
+  than along it (12,651), as the narrow, deep lots of machiya would have it.
 - The median pitch is 20.7°, close to the 4/10 slope of kawara.
-- On the 324 buildings that OSM also maps, the two agree on flat or pitched for 89%, and on
+- On the 323 buildings that OSM also maps, the two agree on flat or pitched for 90%, and on
   the shape family for 85%.
 - Against the measured roofs, the inference rules that dress Osaka and Tokyo get flat or
-  pitched right 67% of the time (59,505 buildings), and the shape family 49%.
+  pitched right 68% of the time (59,308 buildings), and the shape family 49%.
 
 ## 3. Terrain
 
