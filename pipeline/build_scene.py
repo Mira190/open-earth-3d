@@ -33,6 +33,7 @@ from shapely.ops import polylabel
 
 import roofs
 import typology
+from measured import IGNHeights
 from cityctx import ROOT, City, city_args, polygons
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
 
@@ -62,8 +63,11 @@ def ring(coords):
 
 # ---------------------------------------------------------------- terrain
 
-def load_dem(C, cell=DEM_CELL):
-    """The city's DEM resampled to the local frame; row 0 is the north edge."""
+def load_dem(C, cell=DEM_CELL, absolute=False):
+    """The city's DEM resampled to the local frame; row 0 is the north edge. Heights are in the
+    scene's datum: the source's minus the city's `datum_offset_m` (0 for a coastal city; an inland
+    city puts its river's normal level at 0, where the viewer's water plane is). absolute=True
+    keeps the source's datum, for comparisons with other elevation sources."""
     meta = json.load(open(os.path.join(C.raw, "dem.json")))
     im = np.asarray(Image.open(os.path.join(C.raw, "dem.tif")), dtype=np.float32)
     mx0, my0, mx1, my1 = meta["bbox"]
@@ -74,12 +78,14 @@ def load_dem(C, cell=DEM_CELL):
     if meta.get("crs", "EPSG:3857") == "EPSG:3857":
         mx = np.asarray(lon) * 20037508.342789 / 180
         my = np.log(np.tan((90 + np.asarray(lat)) * np.pi / 360)) * 6378137
-    else:  # geographic: the local frame is WGS84, taken as GDA2020 (within 0.5 m), converted to the DEM's datum
-        mx, my = Transformer.from_crs("EPSG:7844", meta["crs"], always_xy=True).transform(np.asarray(lon), np.asarray(lat))
+    else:  # the local frame is WGS84, taken as the DEM's own realisation (frame_crs: GDA2020 in Australia, within
+        # 0.5 m; RGF93 in France), converted to the DEM's CRS
+        mx, my = Transformer.from_crs(meta.get("frame_crs", "EPSG:7844"), meta["crs"], always_xy=True).transform(np.asarray(lon), np.asarray(lat))
     col = (np.asarray(mx) - mx0) / (mx1 - mx0) * w - 0.5
     row = (my1 - np.asarray(my)) / (my1 - my0) * h - 0.5
-    dem = map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx)
-    return raise_mapped(C, dem, cell)
+    z = map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx) - C.cfg.get("datum_offset_m", 0.0)
+    z = raise_mapped(C, z, cell)
+    return z + C.cfg.get("datum_offset_m", 0.0) if absolute else z
 
 
 def raise_mapped(C, dem, cell):
@@ -100,6 +106,20 @@ def raise_mapped(C, dem, cell):
         dem = np.where(inside, np.maximum(dem, rule["crest_m"] * np.minimum(1.0, d / rule.get("slope_m", 4.0))), dem)
     return dem
 
+
+def water_polygons(C, con, raw, extent):
+    """The city's water bodies in the local frame: Overture water of the configured classes and
+    size, less the islands mapped in them (a river polygon can enclose its islands)."""
+    wcfg = C.cfg.get("water", {})
+    wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
+    seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
+    sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
+    isles = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("land"), "class, wkb") if r["class"] in ("island", "islet")]
+    isles = [g for g in isles if g.geom_type in ("Polygon", "MultiPolygon") and g.intersects(extent)]
+    if isles:
+        land = shapely.union_all(isles)
+        sea = [p for g in sea for p in polygons(g.difference(land)) if p.area > wmin]
+    return without_raised(C, con, raw("infrastructure"), rows, sea)  # less the breakwaters the terrain raises
 
 
 def raster_mask(polys, nx, ny, cell, x0, y1):
@@ -380,7 +400,7 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
     logh = np.log(np.maximum([m[2] for m in meta], 0.5))
     src = np.array([m[4] for m in meta])
     grp = np.array([group(m[1]) for m in meta])
-    ki = np.where(np.isin(src, ["mapped", "floors", "plateau", "plateau_lod1"]))[0]
+    ki = np.where(np.isin(src, ["mapped", "floors", "plateau", "plateau_lod1", "lidar", "bdtopo"]))[0]
     if len(ki) < 20:
         print("height imputation skipped: fewer than 20 buildings with known heights")
         return {"known_buildings": int(len(ki)), "applied": {}, "residuals": {"estimate": [], "ml": []}, "cv": {}}
@@ -516,6 +536,9 @@ class Plateau:
     of keeps its other height source. PLATEAU buildings that no Overture footprint covers (newer
     or missing in OSM) are added as buildings of their own."""
     MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
+    key, label, footprint = "plateau", "PLATEAU", "P"
+    keep_newer_osm = True  # PLATEAU was surveyed in 2017-2021: an OSM height far above it is usually a newer tower
+    cut_parts = False      # a building's parts are re-cut only where its roof faces differ in height
 
     def __init__(self, C):
         self.tree, self.polys, self.feats, self.roofs = None, [], [], False
@@ -548,7 +571,7 @@ class Plateau:
         """The PLATEAU feature with this exact name, or None (for city.py hooks)."""
         return next((f for f in self.feats if f.get("name") == name), None)
 
-    def roof_at(self, q):
+    def roof_at(self, q, *_):
         """The roof PLATEAU's LOD2 model measured over most of footprint q, {roof, pitch, roof_h},
         or None (fetch_plateau.py measures them with plateau.roofs)."""
         if not self.roofs:
@@ -730,6 +753,12 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
     roof_rows, front_rows, prop_rows = [], [], []
     roofed = set()
     stat = Counter()
+    # Paris roofs carry dormers on the street and chimney stacks on the party walls: both need
+    # every footprint, to tell a street front from a wall shared with the next building
+    nb = None
+    if R.get("haussmann"):
+        fps = [Polygon(np.array(s[4]).reshape(-1, 2) / 10) for s in solids]
+        nb = (shapely.STRtree(fps), fps)
     for bi, m in enumerate(meta):
         ks = by_b.get(bi, [])
         if not ks:
@@ -774,7 +803,7 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                 if shape == "gabled_across":  # measured: the ridge runs across the long axis
                     shape, across = "gabled", True
                 gable = shape in ("gabled", "half-hipped", "gambrel", "round", "saltbox")
-                if gable and not info["roof_orientation"] and src != "measured":
+                if gable and not info["roof_orientation"] and (src != "measured" or not meas.get("oriented", True)):
                     _, long_side, short_side = roofs.long_axis(rings[0])
                     if cls in R.get("ridge_follows_street", ()) and roads is not None:
                         dist, j = roads[0].query(np.array(poly.centroid.coords[0]))
@@ -787,6 +816,10 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                 if cap >= 0.8:
                     pitch = R.get("pitch_by_group", {}).get(typology.roof_group(cls, floors, top_b, area_b), R["pitch"].get(mat, 25))
                     mh = float(info["roof_height"]) if info["roof_height"] else None
+                    if R.get("roof_simplify_m"):  # a region's footprints with jogs too small to roof
+                        q_ = Polygon(rings[0], rings[1:]).simplify(R["roof_simplify_m"])
+                        if q_.geom_type == "Polygon" and len(q_.exterior.coords) > 3:
+                            rings = [np.asarray(q_.exterior.coords)[:-1]] + [np.asarray(h.coords)[:-1] for h in q_.interiors if len(h.coords) > 3]
                     if src == "measured":
                         pitch, mh = min(max(meas.get("pitch") or pitch, 5.0), 60.0), meas.get("roof_h") or mh
                     for attempt in (0, 1):
@@ -795,7 +828,7 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                             break
                         rm, built, rh = roofs.roof_mesh(rr, shape, pitch=pitch, cap=cap, height=min(mh, cap) if mh else None,
                                                         direction=info["roof_direction"], across=across, axis=axis,
-                                                        overhang=typology.OVERHANG.get(style, 0.0) if not info["part"] else 0.0)
+                                                        overhang=typology.OVERHANG.get(style, 0.0) * R.get("overhang_scale", 1.0) if not info["part"] else 0.0)
                         if rm is not None and roofs.check(rm, rr, rh, built):
                             break
                         rm = None
@@ -814,6 +847,9 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                     idx = [remap[i] for t in rm.roof + rm.wall for i in t]
                     roof_rows.append([k, s[3], round(eave * 10), roofs.CODES[built]] + pack_roof(pos, idx) + [len(rm.roof)])
                     roofed.add(k)
+                    # dormers light the attic floor of a mansard, and of any roof tall enough to hold one
+                    if nb is not None and not info["part"] and (built in ("mansard", "gambrel") or built in ("gabled", "hipped") and rh >= 2.6):
+                        prop_rows += mansard_props(k, s, eave, top, nb, roads, seed)
                     shape = built
                     if top >= top_b - 0.01:
                         eave_main = eave
@@ -863,6 +899,48 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                     continue
                 prop_rows += rooftop(k, solids[k], polys[k], style, seed, top_b, floors, R)
     return roof_rows, front_rows, prop_rows, dict(stat)
+
+
+def mansard_props(k, s, eave, top, nb, roads, seed):
+    """A Paris mansard's dormers and chimney stacks, as rooftop rows with an absolute base (dm).
+    Dormers (kind 3): one row per edge that faces a street, a dormer every 2.9 m bay, its face
+    0.25 m behind the facade so it stands proud of the steep lower slope; the row is the first dormer plus a count, a step (dm) and a
+    bitmask of the bays left without one. Stacks (kind 4): a masonry stack on each long wall
+    shared with the next building, rising 2.2 m over the roof, where the flues are gathered."""
+    tree, fps = nb
+    ring = np.array(s[4]).reshape(-1, 2) / 10
+    base = s[1] / 10
+    n = len(ring)
+    front = set(typology.frontages(ring, roads)) if roads is not None else set()
+    out = []
+    for e in range(n):
+        a, b = ring[e], ring[(e + 1) % n]
+        d = b - a
+        L = math.hypot(*d)
+        if L < 3.0:
+            continue
+        u = d / L
+        nrm = np.array([u[1], -u[0]])  # outward for an anticlockwise ring
+        ang = round(math.degrees(math.atan2(u[1], u[0])) * 100)
+        if e in front:
+            bays = min(int((L - 1.2) / 2.9), 30)
+            if bays < 1:
+                continue
+            gaps = sum(1 << j for j in range(bays) if typology.unit(seed + e, 40 + j) < 0.12)  # bays without a dormer
+            step = (L - 1.2) / bays
+            c = a + u * (0.6 + step / 2) - nrm * 0.75
+            out.append([k, 3, round(c[0] * 10), round(c[1] * 10), 12, 10, 21, ang, round((base + eave + 0.3) * 10), bays, round(step * 10), gaps])
+            continue
+        mid = (a + b) / 2
+        probe = shapely.geometry.Point(*(mid + nrm * 0.8))
+        shared = [j for j in tree.query(probe, predicate="intersects") if fps[j].area > 30]
+        if not shared or L < 5.0:
+            continue
+        c = mid - nrm * 0.4
+        w = min(4.2, 0.35 * L)
+        out.append([k, 4, round(c[0] * 10), round(c[1] * 10), round(w * 10), 7, round((top - eave + 2.2) * 10), ang,
+                    round((base + eave + 0.4) * 10)])
+    return out
 
 
 FAMILY = {"gabled_across": "gabled", "saltbox": "gabled", "half-hipped": "hipped", "pyramidal": "hipped"}
@@ -983,11 +1061,7 @@ def build(C):
 
     # terrain and water (water sits below a water plane at 0 m)
     dem = load_dem(C)
-    wcfg = cfg.get("water", {})
-    wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
-    seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
-    sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
-    sea = without_raised(C, con, raw("infrastructure"), rows, sea)
+    sea = water_polygons(C, con, raw, extent)
     water = raster_mask(sea, dem.shape[1], dem.shape[0], DEM_CELL, C.x0, C.y1)
     dem_land = dem.copy()
     # the bottom under the water, modelled from the distance to each kind of shore (shore.py)
@@ -1033,7 +1107,8 @@ def build(C):
     # buildings: parts replace their outline (Overture/OSM convention)
     labels_cfg = cfg.get("labels", {})
     adjust = C.hook("adjust_building")
-    plateau = Plateau(C)
+    # a measured source: PLATEAU (Japan), or BD TOPO with LiDAR HD (France); same interface
+    plateau = IGNHeights(C) if cfg.get("ign") else Plateau(C)
     ctx.plateau = plateau
     blds = rows(con, raw("building"))
     parts = defaultdict(list)
@@ -1046,11 +1121,11 @@ def build(C):
         extra = [(q, f) for q, f in plateau.additions(covered) if extent.contains(q.centroid)]
         for k, (q, f) in enumerate(extra):
             ll = shapely.transform(q, lambda c: np.column_stack(C.inv.transform(c[:, 0], c[:, 1])))
-            blds.append({"id": f"{k:08x}-plateau", "name": f.get("name"), "class": PLATEAU_USAGE.get(f.get("usage")), "subtype": None,
-                         "height": f["h"], "min_height": None, "num_floors": f.get("storeys"), "min_floor": None, "roof_height": None,
-                         "is_underground": False, "has_parts": False, "src": "PLATEAU", "record_id": None, "height_src": "PLATEAU",
+            blds.append({"id": f"{k:08x}-{plateau.key}", "name": f.get("name"), "class": f.get("class") or PLATEAU_USAGE.get(f.get("usage")),
+                         "subtype": None, "height": f["h"], "min_height": None, "num_floors": f.get("storeys"), "min_floor": None, "roof_height": None,
+                         "is_underground": False, "has_parts": False, "src": plateau.label, "record_id": None, "height_src": plateau.label,
                          "wkb": shapely.to_wkb(ll)})
-        print(f"plateau: {len(extra)} buildings added that Overture does not have")
+        print(f"{plateau.key}: {len(extra)} buildings added that Overture does not have")
     for b in blds:
         if b["is_underground"]:
             continue
@@ -1059,8 +1134,8 @@ def build(C):
             continue
         cls = b["class"] or b["subtype"] or ""
         pl = plateau.match(g)
-        if pl is not None:  # PLATEAU's record of the building: its use and storeys where Overture has none
-            cls = cls or PLATEAU_USAGE.get(pl.get("usage"), "")
+        if pl is not None:  # the survey's record of the building: its use and storeys where Overture has none
+            cls = cls or pl.get("class") or PLATEAU_USAGE.get(pl.get("usage"), "")
             if not b["num_floors"] and pl.get("storeys"):
                 b["num_floors"] = pl["storeys"]
         top_b = H.resolve(b, cls)
@@ -1071,7 +1146,7 @@ def build(C):
         pcs = plateau.pieces(g)
         if pcs:
             top_p = max(h for _, h, _ in pcs)
-            if top_b[1] in ("mapped", "floors") and top_b[0] > 1.3 * top_p + 6:
+            if top_b[1] in ("mapped", "floors") and top_b[0] > 1.3 * top_p + 6 and plateau.keep_newer_osm:
                 n_newer += 1
                 pcs = None
             else:
@@ -1087,7 +1162,7 @@ def build(C):
                 pg = C.to_local(swkb.loads(bytes(p["wkb"])))
                 h, src = H.resolve(p, cls, parent=top_b)
                 geoms += [[q, H.min_height(p, cls), h, src, p["name"], p] for q in polygons(pg)]
-            if pcs and len({h for _, h, _ in pcs}) > 1:
+            if pcs and (len({h for _, h, _ in pcs}) > 1 or plateau.cut_parts):
                 # roof faces at several heights (a podium and its tower): each part is cut along the faces over it
                 cut = []
                 for gm in geoms:
@@ -1129,7 +1204,9 @@ def build(C):
             r0 = rec[0] if rec else b  # roof tags of the part, else of the building
             sinfo.append({k: r0.get(k) for k in ("roof_shape", "roof_height", "roof_direction", "roof_orientation", "roof_material", "num_floors")}
                          | {"parametric": src == "parametric", "part": bool(rec) and r0 is not b,
-                            "measured": plateau.roof_at(q) if src != "parametric" else None})
+                            "measured": plateau.roof_at(q, src, pl, h0, h1) if src != "parametric" and not hidden else None})
+            if src == "lidar" and not hidden and sinfo[-1]["measured"] and not sinfo[-1]["roof_material"]:
+                sinfo[-1]["roof_material"] = sinfo[-1]["measured"].get("material")  # the land tax files' roof material
             top = max(top, h1)
             srcs[src] += q.area
             a0 = geo.setdefault(bi, [0.0, 0.0, 0.0])
@@ -1153,7 +1230,7 @@ def build(C):
             floor_res.append(math.log(H.storey_height(cls, b["num_floors"]) / b["height"]))
 
     if plateau.tree is not None:
-        print(f"plateau: {n_newer} OSM buildings are much taller than the survey and kept (built since)")
+        print(f"{plateau.key}: {n_newer} OSM buildings are much taller than the survey and kept (built since)")
     model = impute_heights(meta, solids, first_solid, geo, ml_raw)
     model["residuals"]["floors"] = np.round(floor_res, 3).tolist()
     if floor_res:
@@ -1161,10 +1238,10 @@ def build(C):
                                              "median_bias": round(float(np.median(floor_res)), 3)}
     if plateau_vs_osm:
         r = np.array(plateau_vs_osm)
-        model["cv"]["osm_vs_plateau"] = {"n": len(r), "median_factor": round(float(np.exp(np.median(np.abs(r)))), 3),
-                                         "p90_factor": round(float(np.exp(np.percentile(np.abs(r), 90))), 3),
-                                         "median_bias": round(float(np.median(r)), 3)}
-        model["residuals"]["osm_vs_plateau"] = np.round(r, 3).tolist()
+        model["cv"][f"osm_vs_{plateau.key}"] = {"n": len(r), "median_factor": round(float(np.exp(np.median(np.abs(r)))), 3),
+                                                "p90_factor": round(float(np.exp(np.percentile(np.abs(r), 90))), 3),
+                                                "median_bias": round(float(np.median(r)), 3)}
+        model["residuals"][f"osm_vs_{plateau.key}"] = np.round(r, 3).tolist()
     json.dump(model, open(os.path.join(C.analysis, "height_model.json"), "w"), indent=1)
     print("height imputation:", {k: v for k, v in model.items() if k not in ("residuals", "missing_correction")})
 
@@ -1229,6 +1306,9 @@ def build(C):
     print("footprint area share by height source:", {k: round(v / tot, 3) for k, v in share.items()})
 
     before = set(ctx.labels)
+    # the finished buildings, for a hook that reports on them
+    ctx.meta, ctx.solids, ctx.roof_rows = meta, solids, roof_rows
+    ctx.roof_shapes, ctx.roof_sources = list(roofs.CODES), ROOF_SRC
     if C.hook("finalize"):
         C.hook("finalize")(ctx)
     # labels the landmark hook adds go first: the viewer hides a label that would overlap an earlier one
@@ -1289,6 +1369,7 @@ def build(C):
         "labels": ctx.labels,
         "sources": {
             **({"heights": cfg["plateau"]["attribution"]} if cfg.get("plateau") else {}),
+            **({"heights": cfg["ign"]["attribution"]} if cfg.get("ign", {}).get("attribution") else {}),
             "buildings": f"Overture Maps Foundation, release {cfg['overture_release']} (OpenStreetMap contributors, ODbL; Microsoft ML Buildings, ODbL)",
             "terrain": cfg["terrain"].get("attribution", cfg["terrain"]["type"]),
             "imagery": cfg["imagery"].get("attribution", ""),
@@ -1314,7 +1395,9 @@ def build(C):
                             "roof_triangles (the rest are walls and soffits)"],
                "r": roof_rows,
                "f_fields": ["solid", "edge, flags (1 shopfront, 2 awning) ..."], "f": front_rows,
-               "p_fields": ["solid", "kind (0 plant box, 1 plant room, 2 water tank)", "x_dm", "y_dm", "w_dm", "d_dm", "h_dm", "angle_cdeg"], "p": prop_rows},
+               "p_fields": ["solid", "kind (0 plant box, 1 plant room, 2 water tank, 3 dormers, 4 chimney stack)", "x_dm", "y_dm", "w_dm", "d_dm",
+                            "h_dm", "angle_cdeg", "base_dm (absolute; else the solid's deck)",
+                            "dormers: count, step_dm along the angle, bitmask of bays left empty"], "p": prop_rows},
               open(os.path.join(C.out, "buildings.json"), "w"), separators=(",", ":"))
     json.dump({"piers": piers, "places": places, "trees": trees}, open(os.path.join(C.out, "places.json"), "w"), separators=(",", ":"))
     write_index()

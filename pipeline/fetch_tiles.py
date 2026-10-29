@@ -12,6 +12,8 @@
                   coordinates (`crs`, e.g. EPSG:4283 for GDA94); pits deeper than
                   `fill_below_m`, spikes higher than `fill_above_m` (voids in the source)
                   and non-finite values are filled from their neighbours
+           "wms_bil": an OGC WMS GetMap of float32 BIL rasters (`layer`, a projected `crs`,
+                      `pixel_m`), e.g. IGN's LiDAR HD bare earth in Lambert-93 (France)
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -217,9 +219,14 @@ def main():
         mbbox, size = dem_terrarium(city.raw, 15, list(xs), list(ys))
     elif tc["type"] == "wcs":
         mbbox, size = dem_wcs(bbox, tc, city.raw)
+    elif tc["type"] == "wms_bil":
+        from fetch_ign import lambert_bbox, wms_bil
+        mbbox, size = wms_bil(tc["layer"], tc["crs"], lambert_bbox(bbox, crs=tc["crs"]), tc.get("pixel_m", 2.0), os.path.join(city.raw, "dem.tif"), url=tc["url"])
     else:
         raise SystemExit(f"unknown terrain type {tc['type']}")
-    json.dump({"crs": tc.get("crs", "EPSG:4283") if tc["type"] == "wcs" else "EPSG:3857", "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
+    crs = tc.get("crs", "EPSG:4283") if tc["type"] in ("wcs", "wms_bil") else "EPSG:3857"
+    json.dump({"crs": crs, "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)}
+              | ({"frame_crs": "EPSG:4326"} if tc["type"] == "wms_bil" else {}),
               open(os.path.join(city.raw, "dem.json"), "w"))
     print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
 

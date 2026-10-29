@@ -17,21 +17,21 @@
 'use strict';
 window.OEBuildings = (function () {
   const STYLES = ['plain', 'house', 'terrace', 'apartment', 'office', 'glass', 'heritage', 'retail', 'industrial', 'civic',
-    'machiya', 'mixed', 'stone'];
+    'machiya', 'mixed', 'stone', 'haussmann'];
   const SI = Object.fromEntries(STYLES.map((s, i) => [s, i]));
   // per style: bay width m, window width (share of a bay), sill and head (shares of a storey)
   const GRID = {
     plain: [0, 0, 0, 0], house: [3.3, 0.42, 0.3, 0.8], terrace: [2.8, 0.44, 0.24, 0.86], apartment: [3.0, 0.5, 0.27, 0.86],
     office: [3.0, 0.68, 0.25, 0.9], glass: [1.5, 1.0, 0.0, 1.0], heritage: [3.6, 0.4, 0.22, 0.84], retail: [4.2, 0.42, 0.34, 0.8],
     industrial: [6.0, 0.72, 0.64, 0.88], civic: [3.6, 0.88, 0.32, 0.8], machiya: [1.8, 0.72, 0.3, 0.76], mixed: [2.8, 0.7, 0.22, 0.86],
-    stone: [0, 0, 0, 0],
+    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82],
   };
   // per style: interior depth (bays), frame darkness, glass reflectance (metalness), wall roughness
   const LOOK = {
     plain: [1, 0, 0, 0.9], house: [1.2, 0.55, 0.15, 0.88], terrace: [1.4, 0.6, 0.15, 0.85], apartment: [1.4, 0.45, 0.2, 0.8],
     office: [1.6, 0.4, 0.25, 0.7], glass: [2.6, 0.3, 0.55, 0.45], heritage: [1.3, 0.6, 0.15, 0.9], retail: [1.8, 0.4, 0.15, 0.8],
     industrial: [3, 0.5, 0.1, 0.75], civic: [1.8, 0.4, 0.25, 0.75], machiya: [1, 0.7, 0.02, 0.9], mixed: [1.5, 0.45, 0.2, 0.75],
-    stone: [1, 0, 0, 0.95],
+    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88],
   };
   // regional grids: Japan builds on the 910 mm module (sliding units of 1,690 mm on 1,820 mm bays),
   // machiya fronts are three bays of 1.97 m
@@ -39,8 +39,8 @@ window.OEBuildings = (function () {
     japan: { house: [1.82, 0.62, 0.3, 0.8], terrace: [1.82, 0.7, 0.28, 0.82], apartment: [3.6, 0.76, 0.02, 0.86],
       office: [3.2, 0.7, 0.22, 0.88], mixed: [2.8, 0.74, 0.2, 0.86], machiya: [1.97, 0.86, 0.3, 0.82] },
   };
-  const PARAPET = { office: 1.1, glass: 1.2, apartment: 1.0, heritage: 1.3, retail: 0.9, civic: 1.0, mixed: 1.0, industrial: 0.5 };
-  const ROOF_MAT = ['membrane', 'gravel', 'concrete', 'tile', 'metal', 'slate', 'kawara', 'copper', 'glass', 'green'];
+  const PARAPET = { office: 1.1, glass: 1.2, apartment: 1.0, heritage: 1.3, retail: 0.9, civic: 1.0, mixed: 1.0, industrial: 0.5, haussmann: 1.0 };
+  const ROOF_MAT = ['membrane', 'gravel', 'concrete', 'tile', 'metal', 'slate', 'kawara', 'copper', 'glass', 'green', 'zinc'];
   const CURVED = new Set([8, 9, 10]); // round, dome, onion: smooth shading
   // kinds of surface in the 'inf' attribute
   const K_FACADE = 0, K_WALL = 1, K_ROOF = 2, K_DECK = 3, K_TRIM = 4, K_SOFFIT = 5;
@@ -457,6 +457,73 @@ window.OEBuildings = (function () {
       });
     }
 
+    // ------------------------------------------------------------ Paris mansards: dormers and chimney stacks
+    // rows with an absolute base (p[8]); dormers face the street (+z after the row's rotation)
+    const PA = PR.filter(p => p.length > 8 && (p[1] === 3 || p[1] === 4) && !hidden.has(p[0]));
+    if (PA.length && !small) {
+      const dummy = new THREE.Object3D(), col = new THREE.Color();
+      const place = (im, p, i, sx, sy, sz, dx = 0, dy = 0, dz = 0) => {
+        const a = p[7] / 100 * Math.PI / 180, c = Math.cos(a), s_ = Math.sin(a);
+        // offset (dx along the edge, dz outward) in the row's frame
+        dummy.position.set(p[2] / 10 + dx * c + dz * s_, p[8] / 10 + dy, -(p[3] / 10 + dx * s_ - dz * c));
+        dummy.rotation.set(0, a, 0);
+        dummy.scale.set(sx, sy, sz);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      };
+      // a dormer row: the first dormer, then count, step (dm) along the row's angle and a bitmask of empty bays
+      const dorm = [];
+      for (const p of PA) if (p[1] === 3) {
+        const a = p[7] / 100 * Math.PI / 180, n = p[9] || 1, st = p[10] || 0;
+        for (let j = 0; j < n; j++) if (!((p[11] || 0) & (1 << j)))
+          dorm.push([p[0], 3, p[2] + Math.cos(a) * st * j, p[3] + Math.sin(a) * st * j, p[4], p[5], p[6], p[7], p[8]]);
+      }
+      const stacks = PA.filter(p => p[1] === 4);
+      if (dorm.length) {
+        // a zinc dormer: cheeks, a gabled cap, a painted frame and the glass
+        const g = new THREE.BufferGeometry(), P = [], N = [], C = [];
+        const zinc = [0.24, 0.27, 0.29], paint = [0.78, 0.76, 0.72], glass = [0.012, 0.015, 0.02];
+        const quad = (a, b, c2, d, n, k) => { for (const v of [a, b, c2, a, c2, d]) { P.push(...v); N.push(...n); C.push(...k); } };
+        quad([-0.5, 0, -0.5], [-0.5, 0, 0.5], [-0.5, 0.7, 0.5], [-0.5, 0.7, -0.5], [-1, 0, 0], zinc);
+        quad([0.5, 0, 0.5], [0.5, 0, -0.5], [0.5, 0.7, -0.5], [0.5, 0.7, 0.5], [1, 0, 0], zinc);
+        quad([-0.55, 0.68, -0.5], [-0.55, 0.68, 0.55], [0, 1, 0.55], [0, 1, -0.5], [-0.53, 0.85, 0], zinc);
+        quad([0, 1, -0.5], [0, 1, 0.55], [0.55, 0.68, 0.55], [0.55, 0.68, -0.5], [0.53, 0.85, 0], zinc);
+        for (const [y0, y1, x0, x1, k, z] of [[0, 0.7, -0.5, 0.5, paint, 0.5], [0.1, 0.62, -0.33, 0.33, glass, 0.505]])
+          quad([x0, y0, z], [x1, y0, z], [x1, y1, z], [x0, y1, z], [0, 0, 1], k);
+        for (const v of [[-0.55, 0.68, 0.55], [0.55, 0.68, 0.55], [0, 1, 0.55]]) { P.push(...v); N.push(0, 0, 1); C.push(...paint); }
+        g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+        g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+        g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+        const im = new THREE.InstancedMesh(g, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.3 }), dorm.length);
+        dorm.forEach((p, i) => place(im, p, i, p[4] / 10, p[6] / 10, p[5] / 10));
+        im.castShadow = im.receiveShadow = true;
+        props.add(im);
+      }
+      if (stacks.length) {
+        // a rendered masonry stack under a stone cap, a row of terracotta pots on top
+        const box = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+        const body = new THREE.InstancedMesh(box, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), stacks.length * 2);
+        const pots = [];
+        stacks.forEach((p, i) => {
+          const w = p[4] / 10, d = p[5] / 10, h = p[6] / 10;
+          place(body, p, 2 * i, w, h, d);
+          place(body, p, 2 * i + 1, w + 0.14, 0.12, d + 0.14, 0, h);
+          const v = hash1(p[2] * 17 + p[3]);
+          body.setColorAt(2 * i, col.copy(lin(v < 0.62 ? '#d9cbb3' : v < 0.85 ? '#c9b391' : '#a9715a')));
+          body.setColorAt(2 * i + 1, col.copy(lin('#cfc5b4')));
+          const n = Math.max(1, Math.floor(w / 0.42));
+          for (let j = 0; j < n; j++) pots.push([p, (j + 0.5) * w / n - w / 2, h + 0.12]);
+        });
+        body.castShadow = body.receiveShadow = true;
+        props.add(body);
+        const potIm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.1, 0.13, 1, 8).translate(0, 0.5, 0),
+          new THREE.MeshStandardMaterial({ color: lin('#b0644a'), roughness: 0.85 }), pots.length);
+        pots.forEach(([p, dx, dy], i) => place(potIm, p, i, 1, 0.45 + 0.25 * hash1(dx * 13 + p[2]), 1, dx, dy));
+        potIm.castShadow = true;
+        props.add(potIm);
+      }
+    }
+
     // ------------------------------------------------------------ the aerial photo for flat roofs
     if (photoOK) loadPhoto(scene, renderer).then(tex => {
       if (!tex) return;
@@ -599,6 +666,28 @@ window.OEBuildings = (function () {
       }
       // offices: panel joints at each floor
       if (style > 3.5 && style < 4.5) diffuseColor.rgb *= 1.0 - 0.1 * band(fy, 0.0, 0.025, fw.y);
+      // Haussmann (Paris, 1853-1914): ashlar courses, a rusticated base, and wrought iron: a balcony
+      // along the whole front on the second and top floors, a railing across each French window
+      // on the others
+      if (style > 12.5 && style < 13.5) {
+        float fwc = max(fwidth(h / 0.45), 1e-4);
+        float course = band(fract(h / 0.45), 0.0, 0.07, fwc * 1.5) * (1.0 - far);
+        diffuseColor.rgb *= 1.0 - (fl < 0.5 ? 0.17 : 0.05) * course;
+        if (fl < 0.5) diffuseColor.rgb *= 1.0 - 0.12 * band(fract(s * 1.6 + step(0.5, fract(h / 0.9)) * 0.5), 0.0, 0.05, fw.x * 1.6) * (1.0 - far);
+        float topF = floorsIn - 1.0;
+        float filant = (abs(fl - 2.0) < 0.5 || (abs(fl - topF) < 0.5 && topF > 3.5)) ? 1.0 : 0.0;
+        float bars = 0.5 + 0.5 * band(fract(s * 14.0), 0.0, 0.32, fw.x * 14.0);
+        float rail = band(fy, sill + 0.01, sill + 0.29, fw.y) * band(fy, 0.0, 0.31, fw.y) * step(0.5, fl) * step(fl, topF + 0.5)
+          * mix(band(fx, 0.5 - wx - 0.04, 0.5 + wx + 0.04, fw.x), 1.0, filant);
+        float slab = band(fy, 0.0, sill + 0.01, fw.y) * filant * step(0.5, fl);
+        diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.1 + 0.02, slab);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.03, 0.035, 0.04), rail * bars * 0.92 * (1.0 - 0.6 * far));
+        win *= 1.0 - rail * bars * 0.8;
+        frame *= 1.0 - rail * bars;
+        // the cornice: a lit moulding over a shadow, above the top floor
+        float attic = step(topF + 0.5, fl);
+        diffuseColor.rgb *= 1.0 - attic * (0.22 * band(fy, 0.0, 0.18, fw.y) - 0.08 * band(fy, 0.18, 0.4, fw.y));
+      }
       // shopfront fascia band
     }
     if (shop > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.35, band(fy, 0.82, 1.0, fw.y) * 0.6);
@@ -676,7 +765,7 @@ window.OEBuildings = (function () {
     }
     // far windows at night: average glow instead of rooms
     float glowFar = lit * uNight * far;
-    vec3 frameC = (style > 0.5 && style < 3.5) || (style > 5.5 && style < 6.5) ? mix(vec3(0.78, 0.76, 0.7), diffuseColor.rgb, 0.25 + 0.5 * step(0.6, seed))
+    vec3 frameC = (style > 0.5 && style < 3.5) || (style > 5.5 && style < 6.5) || style > 12.5 ? mix(vec3(0.78, 0.76, 0.7), diffuseColor.rgb, 0.25 + 0.5 * step(0.6, seed))
       : diffuseColor.rgb * (1.0 - vLook.y);
     vec3 blindC = mix(vec3(0.82, 0.8, 0.74), vec3(0.6, 0.62, 0.6), rnd);
     if (style > 4.5 && style < 5.5) {
@@ -717,7 +806,7 @@ window.OEBuildings = (function () {
     aoW *= mix(0.75, 1.0, smoothstep(0.0, 3.0, vFac.y));
   } else if (kind < 2.5) {
     // ---------------------------------------------------------------- pitched roof
-    float m = vExt.z; // 3 tile, 4 metal, 5 slate, 6 kawara, 7 copper
+    float m = vExt.z; // 3 tile, 4 metal, 5 slate, 6 kawara, 7 copper, 10 zinc
     vec2 r = vFac;
     vec2 fwr = max(fwidth(r), vec2(1e-4));
     float fade = 1.0 - smoothstep(0.08, 0.25, max(fwr.x, fwr.y));
@@ -743,6 +832,11 @@ window.OEBuildings = (function () {
       pat = 0.7 + 0.3 * pow(abs(sin(r.x / 0.3 * 3.1416)), 0.6);
       pat *= 0.9 + 0.1 * smoothstep(0.0, 0.2, fract(r.y / 0.28));
       roughB = 0.45; metalB = 0.1;
+    } else if (m > 9.5 && m < 10.5) { // rolled zinc: standing seams every 0.65 m down the slope
+      float seam = band(fract(r.x / 0.65), 0.0, 0.05, fwr.x / 0.65 * 1.5);
+      pat = 0.93 + 0.1 * vnoise(r * vec2(0.3, 1.7) + bidH) + 0.16 * seam * fade;
+      pat *= mix(1.0, 0.82, smoothstep(0.35, 0.15, abs(N.y))); // the steep brisis reads darker than the terrasson
+      metalB = 0.4; roughB = 0.4;
     } else if (m > 6.5 && m < 7.5) { // copper patina
       base = mix(base, vec3(0.22, 0.42, 0.36), 0.6);
       pat = 0.85 + 0.25 * vnoise(r * 1.5);
@@ -786,7 +880,7 @@ window.OEBuildings = (function () {
   reflectedLight.indirectSpecular *= mix(aoW, 1.0, glass * 0.5);
   reflectedLight.directDiffuse *= mix(1.0, aoW, 0.35);`);
     };
-    mat.customProgramCacheKey = () => 'oe-facade-2';
+    mat.customProgramCacheKey = () => 'oe-facade-3';
     return mat;
   }
 

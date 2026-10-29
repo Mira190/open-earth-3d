@@ -16,12 +16,12 @@ from mathutils import Vector
 from mathutils.geometry import tessellate_polygon
 
 STYLES = ["plain", "house", "terrace", "apartment", "office", "glass", "heritage", "retail", "industrial", "civic",
-          "machiya", "mixed", "stone"]
+          "machiya", "mixed", "stone", "haussmann"]
 # bay width m, window width (share of a bay), sill and head (shares of a storey)
 GRID = {"plain": (0, 0, 0, 0), "house": (3.3, 0.42, 0.3, 0.8), "terrace": (2.8, 0.44, 0.24, 0.86), "apartment": (3.0, 0.5, 0.27, 0.86),
         "office": (3.0, 0.68, 0.25, 0.9), "glass": (1.5, 1.0, 0.0, 1.0), "heritage": (3.6, 0.4, 0.22, 0.84), "retail": (4.2, 0.42, 0.34, 0.8),
         "industrial": (6.0, 0.72, 0.64, 0.88), "civic": (3.6, 0.88, 0.32, 0.8), "machiya": (1.8, 0.72, 0.3, 0.76),
-        "mixed": (2.8, 0.7, 0.22, 0.86), "stone": (0, 0, 0, 0)}
+        "mixed": (2.8, 0.7, 0.22, 0.86), "stone": (0, 0, 0, 0), "haussmann": (2.9, 0.44, 0.06, 0.82)}
 REGION_GRID = {"japan": {"house": (1.82, 0.62, 0.3, 0.8), "terrace": (1.82, 0.7, 0.28, 0.82), "apartment": (3.6, 0.76, 0.02, 0.86),
                          "office": (3.2, 0.7, 0.22, 0.88), "mixed": (2.8, 0.74, 0.2, 0.86), "machiya": (1.97, 0.86, 0.3, 0.82)}}
 PARAPET = {"office": 1.1, "glass": 1.2, "apartment": 1.0, "heritage": 1.3, "retail": 0.9, "civic": 1.0, "mixed": 1.0, "industrial": 0.5}

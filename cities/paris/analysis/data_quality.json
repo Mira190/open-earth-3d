@@ -1,0 +1,57 @@
+{
+ "ml_heights": {
+  "buildings": 30967,
+  "with_height": 1140,
+  "height_is_ml": 774,
+  "ml_with_floor_count": 281,
+  "median_ml_over_floor_height": 0.75,
+  "share_ml_below_half": 0.08,
+  "towers_15_floors_plus": 2,
+  "towers_median_ml_over_floor_height": 0.4
+ },
+ "terrain": {
+  "region_m": [
+   -1500,
+   2400,
+   -1500,
+   1300
+  ],
+  "land": {
+   "samples": 17472,
+   "median_excess_m": 9.8,
+   "p90_excess_m": 14.4
+  },
+  "under_buildings": {
+   "samples": 8750,
+   "median_excess_m": 11.4,
+   "p90_excess_m": 14.9
+  },
+  "open_ground": {
+   "samples": 8722,
+   "median_excess_m": 7.3,
+   "p90_excess_m": 13.5
+  },
+  "points": {
+   "Parvis Notre-Dame": {
+    "terrarium_m": 40.5,
+    "dem_m": 35.1
+   },
+   "Place de la Concorde": {
+    "terrarium_m": 34.1,
+    "dem_m": 33.0
+   },
+   "Champ de Mars": {
+    "terrarium_m": 36.9,
+    "dem_m": 35.4
+   },
+   "Jardin du Luxembourg": {
+    "terrarium_m": 48.5,
+    "dem_m": 44.8
+   },
+   "Place du Panth\u00e9on": {
+    "terrarium_m": 67.2,
+    "dem_m": 59.9
+   }
+  }
+ }
+}

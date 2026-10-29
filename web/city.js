@@ -312,8 +312,25 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ tour
   // stops come from city.json; text may hold tokens filled from the model:
-  //   {buildings}  {sun:Place|M-D|HH:MM}  {landmark:key.field}  {acc:field}
+  //   {buildings}  {sun:Place|M-D|HH:MM}  {landmark:key.field}  {acc:field}  {share:source} (% of footprint area)
   const byName = n => placeInfo.find(p => p.name === n);
+  let shareOf = null;
+  const share = src => {
+    if (!shareOf) {
+      shareOf = {};
+      let tot = 0;
+      for (const s of B.s) {
+        const r = s[4];
+        let q = 0;
+        for (let k = 0, n = r.length / 2; k < n; k++) { const j = (k + 1) % n; q += r[2 * k] * r[2 * j + 1] - r[2 * j] * r[2 * k + 1]; }
+        q = Math.abs(q);
+        shareOf[B.b[s[0]][4]] = (shareOf[B.b[s[0]][4]] || 0) + q;
+        tot += q;
+      }
+      for (const k in shareOf) shareOf[k] = Math.round(1000 * shareOf[k] / tot) / 10;
+    }
+    return String(shareOf[src] || 0);
+  };
   const pctAt = (p, m, d, min) => Math.round(100 * S.fractionSunlit(DSM, samples.get(p.name), S.position(S.localToUtc(state.y, m, d, min))));
   const acc = scene.accuracy && scene.accuracy.summary;
   const fill = text => (text || '').replace(/\{([a-z]+)(?::([^}]+))?\}/g, (all, kind, arg) => {
@@ -327,6 +344,7 @@ window.OpenEarthCity = async function main(cityId) {
       return typeof v === 'number' ? v.toFixed(1) : String(v ?? '–');
     }
     if (kind === 'acc') return acc && acc[arg] != null ? String(acc[arg]) : '–';
+    if (kind === 'share') return share(arg);
     return all;
   });
   const TOUR = (CITY.tour || []).filter(s => !s.place || byName(s.place)).map(s => Object.assign({}, s,
@@ -519,7 +537,9 @@ window.OpenEarthCity = async function main(cityId) {
     inspect(bGeo.attributes.bid.getX(hit.face.a));
   });
   const SRC_LABEL = { mapped: 'Surveyed height (OpenStreetMap)', plateau: 'Measured height (Project PLATEAU, airborne survey)',
-    plateau_lod1: 'Block height from Project PLATEAU (LOD1 model, no survey record)', reference: 'Published height (corrected)',
+    plateau_lod1: 'Block height from Project PLATEAU (LOD1 model, no survey record)', lidar: 'Measured by airborne LiDAR (IGN LiDAR HD)',
+    bdtopo: 'Surveyed eaves (IGN BD TOPO) plus the median measured roof',
+    reference: 'Published height (corrected)',
     verified: 'Verified from a cited source (it moves a sun-access result)', floors: 'Floor count × storey height',
     ml: 'Microsoft ML height, bias-corrected and blended with neighbours', estimate: 'Estimated from nearby known heights and footprint size',
     parametric: 'Parametric landmark model' };
@@ -533,11 +553,11 @@ window.OpenEarthCity = async function main(cityId) {
     if (m[3]) rows.push(['Floors', `<span class="num">${m[3]}</span>`]);
     if (m[1]) rows.push(['Type', m[1].replace(/_/g, ' ')]);
     if (B.styles && typeof m[10] === 'number') {
-      const how = ['ruled by size and type', "drawn from the region's mapped roofs", 'mapped in OpenStreetMap', "measured from Project PLATEAU's LOD2 model"][m[16]] || '';
+      const how = ['ruled by size and type', "drawn from the region's mapped roofs", 'mapped in OpenStreetMap', m[4] === 'lidar' ? 'measured: LiDAR HD over the surveyed eaves' : "measured from Project PLATEAU's LOD2 model"][m[16]] || '';
       rows.push(['Roof', `${(B.roof_shapes[m[15]] || 'flat').replace(/_/g, ' ')}, ${B.roof_materials[m[13]] || ''} <span class="note">(${how})</span>`],
         ['Facade', `${B.styles[m[10]]}, ${m[11]} m storeys`]);
     }
-    rows.push(['Footprint', m[5] === 'O' ? 'OpenStreetMap' : m[5] === 'P' ? 'Project PLATEAU' : 'Microsoft ML'], ['OSM record', osm]);
+    rows.push(['Footprint', m[5] === 'O' ? 'OpenStreetMap' : m[5] === 'P' ? 'Project PLATEAU' : m[5] === 'B' ? 'IGN BD TOPO (cadastre)' : 'Microsoft ML'], ['OSM record', osm]);
     $('#insp-kv').innerHTML = rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('');
     $('#inspector').hidden = false;
   }

@@ -29,7 +29,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
 | Measured heights | `fetch_plateau.py` (backends `plateau_citygml.py`, `plateau_3dtiles.py`, vector tiles) | `data/raw/<id>/plateau.json`: Project PLATEAU footprints with measured heights, from a city's CityGML or 3D Tiles zip (HTTP range reads of the parts inside the bbox, no full download) or a vector-tile mirror of the LOD2 roof faces |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer or an OGC WCS), and Terrarium tiles for the radar check |
+| Measured heights (France) | `fetch_ign.py` | `data/raw/<id>/bdtopo_batiment.json` (IGN BD TOPO buildings over WFS) and `lidar_mnh.tif`, `lidar_mnt.tif` (IGN LiDAR HD over WMS-R, float32 BIL in tiles); read by `measured.py` behind the PLATEAU interface |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS or an OGC WMS serving float BIL), and Terrarium tiles for the radar check |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
@@ -68,6 +69,11 @@ height, and the viewer shows it.
    more than 30% (plus 6 m) taller than the survey, which means the building is newer than
    the survey and OSM keeps it. **plateau_lod1** is PLATEAU's block height for a building
    with no survey record.
+2c. **lidar** (cities with an `ign` block): the 95th percentile of IGN's LiDAR HD
+   inside the footprint, every part measured on its own and footprints cut into
+   levels where the laser sees them; **bdtopo** where the LiDAR is blank, BD TOPO's
+   surveyed eaves plus the median measured roof. An OSM height far above the laser
+   is a spire, not a newer building, so the laser wins.
 3. **mapped**: an OpenStreetMap `height`.
 4. **floors**: OSM `building:levels` × the calibrated storey height, plus any
    roof height.
