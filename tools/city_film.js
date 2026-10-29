@@ -23,7 +23,8 @@ const city = argv[0];
 const opt = (name, def) => { const i = argv.indexOf(`--${name}`); return i < 0 ? def : argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? true : argv[i + 1]; };
 if (!city) { console.error('usage: node tools/city_film.js <city> [--stills] [--part i/n] [--encode]'); process.exit(1); }
 const ROOT = path.join(__dirname, '..');
-const spec = JSON.parse(fs.readFileSync(path.join(ROOT, 'cities', city, 'film.json'), 'utf8'));
+const SPEC = path.join(ROOT, 'cities', city, 'film.json');
+const spec = fs.existsSync(SPEC) ? JSON.parse(fs.readFileSync(SPEC, 'utf8')) : { shots: [] };
 const [W, H] = String(opt('size', spec.size || '1920x804')).split('x').map(Number);
 const FPS = +opt('fps', spec.fps || 24);
 const FRAMES = opt('frames', path.join(os.tmpdir(), `oe3d-film-${city}-${W}x${H}`));
@@ -173,8 +174,35 @@ async function planView() {
   console.log(`plan: ${file}`);
 }
 
+// what a director needs to plan a city's film: its frame, landmarks, wharves and ferry legs,
+// viewpoints, the tour's cameras, and the sun through the film's day
+function brief() {
+  const scene = JSON.parse(fs.readFileSync(path.join(ROOT, 'web', 'data', city, 'scene.json'), 'utf8'));
+  const cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'cities', city, 'city.json'), 'utf8'));
+  const g = cfg.game || {}, f = scene.frame, r = v => Math.round(v);
+  console.log(`${cfg.name}: frame x ${f.x.join('..')} y ${f.y.join('..')} (m, x east, y north)`);
+  console.log('\nlandmarks [x, y, top]');
+  for (const [k, v] of Object.entries(scene.labels || {})) console.log(`  ${k}: [${v.map(r).join(', ')}]`);
+  console.log('\nwharves'); for (const w of g.wharves || []) console.log(`  ${w.id}: ${w.name} ${JSON.stringify(w.at || w.berth || w.terminal)}`);
+  console.log('ferry routes'); for (const fr of g.ferries || []) console.log(`  ${fr.route}: ${fr.stops.join(' > ')} (${fr.vessels.join(', ')})`);
+  if (g.rail) console.log('rail', JSON.stringify(g.rail).slice(0, 300));
+  console.log('viewpoints'); for (const v of g.viewpoints || []) console.log(`  ${v.id}: ${v.name} [${(v.at || []).map(r)}]`);
+  console.log('helipads'); for (const h of g.helipads || []) console.log(`  ${h.id}: ${h.name} ${JSON.stringify(h.at || '')}`);
+  console.log('start', JSON.stringify(g.start));
+  console.log('\ntour cameras'); for (const t of cfg.tour || []) console.log(`  ${t.title}: cam ${JSON.stringify(t.cam)} tgt ${JSON.stringify(t.tgt)} ${t.place ? 'place ' + t.place : ''}\n    ${t.text}`);
+  const S = require(path.join(ROOT, 'web', 'sun.js'));
+  S.site({ lat: scene.frame.lat0, lon: scene.frame.lon0, tz: cfg.timezone });
+  const [m, d] = spec.date || [6, 21], y = spec.year || 2026, L = S.dayLimits(y, m, d), hm = x => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(Math.round(x % 60)).padStart(2, '0')}`;
+  console.log(`\nsun on ${y}-${m}-${d}: sunrise ${hm(L.sunrise)}, sunset ${hm(L.sunset)}, noon ${L.noonAltitude.toFixed(1)}°`);
+  for (const k of [-25, 0, 10, 30, 90, 180]) for (const base of ['sunrise', 'sunset']) {
+    const min = base === 'sunrise' ? L.sunrise + k : L.sunset - k; const p = S.position(S.localToUtc(y, m, d, min));
+    console.log(`  ${hm(min)} alt ${p.altitude.toFixed(1)} az ${p.azimuth.toFixed(0)}`);
+  }
+}
+
 (async () => {
-  if (opt('plan', false)) await planView();
+  if (opt('brief', false)) brief();
+  else if (opt('plan', false)) await planView();
   else if (opt('stills', false)) await stills();
   else if (opt('encode', false)) await encode();
   else { await render(); if (!opt('part', false) && !opt('shots', false)) await encode(); }
