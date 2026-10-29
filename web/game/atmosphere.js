@@ -3,8 +3,9 @@
 // clear sky for its analysis). After dark the stars come out where they really are for the
 // city and the time (bright named stars, the Southern Cross among them, and a scatter of
 // fainter ones), and the moon rises in its place in its real phase. The frame goes through
-// a post stack: HDR bloom (lamps at night, glints on the water by day), the world's own
-// tone curve, a slight grade and a vignette.
+// a post stack: HDR bloom (lamps at night, glints on the water by day), then the title
+// screen's lens (lens.js: its tone curve, grade, grain and vignette), or without it the
+// world's own tone curve, a slight grade and a vignette.
 'use strict';
 window.OEAtmos = (function () {
   const RAD = Math.PI / 180;
@@ -135,7 +136,7 @@ window.OEAtmos = (function () {
     const S = stars(), M = moon();
     world.add(S, M);
     // the post stack, where the GPU renders to half-float targets with multisampling
-    let composer = null, bloom = null, grade = null;
+    let composer = null, bloom = null, grade = null, lens = null;
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false;
     if (canPost) {
       const size = renderer.getSize(new THREE.Vector2());
@@ -144,14 +145,23 @@ window.OEAtmos = (function () {
       composer.addPass(new THREE.RenderPass(world, camera));
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
       composer.addPass(bloom);
-      composer.addPass(new THREE.OutputPass());
-      grade = new THREE.ShaderPass(GRADE);
-      composer.addPass(grade);
+      if (window.OELens && sky.lens !== false) {
+        // the title screen's lens (lens.js): its tone curve, grade, grain and vignette, so the city
+        // looks as the Earth does on the title and as the city does in its film
+        lens = new THREE.ShaderPass(OELens.shader());
+        Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
+        lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
+        composer.addPass(lens);
+      } else {
+        composer.addPass(new THREE.OutputPass());
+        grade = new THREE.ShaderPass(GRADE);
+        composer.addPass(grade);
+      }
     }
     const q = new THREE.Quaternion();
     let night = 0;
     const api = {
-      composer, stars: S, moon: M,
+      composer, lens, stars: S, moon: M,
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
       update(utcMs, tSec, U) {
         night = U.uNight.value;
@@ -173,8 +183,16 @@ window.OEAtmos = (function () {
         M.material.uniforms.uSun.value.copy(Wd.sunDir).applyQuaternion(q);
         M.material.uniforms.uOpacity.value = 0.25 + 0.75 * night;
         if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
+        if (lens) {
+          const L = lens.uniforms;
+          L.uExposure.value = renderer.toneMappingExposure * 1.1; // the world's exposure, set for ACES, a little brighter under the film curve
+          L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
+          L.uContrast.value = 0.1 + 0.18 * night;
+          L.uSat.value = 1.06;
+          L.uTime.value = tSec;
+        }
       },
-      setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } },
+      setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
       // draw the frame: through the post stack, or plainly
       render(scene, cam) { if (composer) composer.render(); else renderer.render(scene, cam); },
       dispose() { if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },

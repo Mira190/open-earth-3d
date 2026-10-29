@@ -78,11 +78,13 @@ window.OpenEarthCity = async function main(cityId) {
   controls.maxDistance = 9000;
   controls.screenSpacePanning = false;
 
+  let post = null, lens = null; // the title screen's lens over the model, once the world is built
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    if (post) { post.setPixelRatio(renderer.getPixelRatio()); post.setSize(w, h); lens.uniforms.uAspect.value = w / Math.max(1, h); }
   }
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
@@ -92,6 +94,17 @@ window.OpenEarthCity = async function main(cityId) {
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
+  // the title screen's lens (lens.js): the model in the same tone curve, grade, grain and vignette
+  // as the Earth on the title, the game and the city's film; plain tone mapping without WebGL 2
+  if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2) {
+    post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 }));
+    post.addPass(new THREE.RenderPass(world, camera));
+    post.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0));
+    lens = new THREE.ShaderPass(OELens.shader());
+    Object.assign(lens.uniforms, { uGrain: { value: 0.025 }, uCA: { value: 0.12 }, uVignette: { value: 0.16 } });
+    post.addPass(lens);
+    resize();
+  }
 
   // ------------------------------------------------------------ places
   const placeInfo = P.places.map(pl => {
@@ -893,7 +906,12 @@ window.OpenEarthCity = async function main(cityId) {
     Wd.tick(t, camera);
     if (show) show.tick(t);
     refreshPlaces();
-    renderer.render(world, camera);
+    if (post) {
+      const L = lens.uniforms, night = U.uNight.value;
+      L.uExposure.value = renderer.toneMappingExposure * 1.1; L.uLift.value = 1 - 0.7 * night; L.uContrast.value = 0.1 + 0.18 * night;
+      L.uSat.value = 1.06; L.uTime.value = t / 1000;
+      post.render();
+    } else renderer.render(world, camera);
     updateLabels();
     requestAnimationFrame(frame);
   }
@@ -902,6 +920,6 @@ window.OpenEarthCity = async function main(cityId) {
     cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour };
   // the router calls stop() before it shows another view
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); renderer.dispose(); Wd.dispose(); window.__city = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); if (post) { post.renderTarget1.dispose(); post.renderTarget2.dispose(); } renderer.dispose(); Wd.dispose(); window.__city = null; },
   };
 };

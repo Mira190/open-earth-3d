@@ -84,8 +84,9 @@ window.OELens = (function () {
   }
 
   // where the sun is on screen for this camera, 0..1 uv, and whether it is in front of it
-  const tmp = new THREE.Vector3();
+  let tmp = null; // made on first use: this script runs before the three.js module has loaded
   function sunOnScreen(camera, sunDir) {
+    tmp = tmp || new THREE.Vector3();
     tmp.copy(camera.position).addScaledVector(sunDir, 10000).project(camera);
     return { u: tmp.x * 0.5 + 0.5, v: tmp.y * 0.5 + 0.5, front: tmp.z < 1 && sunDir.dot(camera.getWorldDirection(new THREE.Vector3())) > 0 };
   }
