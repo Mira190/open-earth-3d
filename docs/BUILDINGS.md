@@ -56,7 +56,7 @@ What this project took from them:
 
 Each solid takes the first of these that applies:
 1. **Mapped.** A `roof_shape` on the building part, or on the building.
-2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto. Paris measures its roofs from LiDAR over surveyed eaves instead (shape, height and material, but not the ridge's direction, so its gables still follow the street; see [the Paris case study](cities/paris.md#3-roofs)).
+2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto. Paris measures its roofs from LiDAR over surveyed eaves instead (shape, height and material, but not the ridge's direction, so its gables still follow the street; see [the Paris case study](cities/paris.md#3-roofs)). Amsterdam's come from the 3DBAG's LOD2.2 models, measured with the same classifier as Kyoto's ([the Amsterdam case study](cities/amsterdam.md#3-roofs)).
 3. **Flat by rule.** Five or more floors, a top of 20 m or more, or a footprint of 2,000 m² or more. Also commercial or industrial buildings over 600 m², and parts of a larger building.
 4. **Drawn from the region's prior** for the building's group:
    - house, semi-detached, terrace;
@@ -243,6 +243,22 @@ region's own rules:
 - dormers on the street side of mansards and tall attics, and chimney stacks on
   the party walls (rooftop kinds 3 and 4, with an absolute base);
 - limestone palettes, and awnings over 45% of shopfronts.
+
+**Amsterdam** (`amsterdam`, country NL) measures its roofs from the 3DBAG's LOD2.2
+models, roof tier by roof tier. The region's own rules:
+- a `grachtenpand` (canal house) facade style for a house of the canal era (built
+  before 1880 by the BAG's year, or of no known year) on a lot at most 13 m wide:
+  brick in courses, tall sash windows with glazing bars and a stone lintel each,
+  a raised ground floor over the basement;
+- a gable on each street front where the roof ends in one (the ridge runs back
+  from the street), drawn from the house's year of construction on the
+  Grachtenmuseum's dates: step gables to c. 1665, spout gables c. 1620-1720
+  (warehouses), neck gables c. 1640-1770, bell gables c. 1660-1790, then the
+  cornice (`typology.gable_type`). Each is a slab in the plane of the front, cut to
+  its outline, with sandstone trims, attic windows, the loading door and its
+  hoisting beam (rooftop kind 5, instanced per type in `web/buildings.js`);
+- no eaves past the walls; red and glazed black pantiles, and slate;
+- brick palettes, dark red-brown to purple-brown, a fifth of the fronts painted.
 
 Sources for these numbers:
 - Woollahra DCP C1 Paddington and the City of Sydney terrace guidelines;

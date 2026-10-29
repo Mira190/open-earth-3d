@@ -113,10 +113,15 @@ def raise_mapped(C, dem, cell):
 
 def water_polygons(C, con, raw, extent):
     """The city's water bodies in the local frame: Overture water of the configured classes and
-    size, less the islands mapped in them (a river polygon can enclose its islands)."""
+    size, less the islands mapped in them (a river polygon can enclose its islands) and any
+    body whose centre falls in an `exclude` box ([west, south, east, north]: water kept at
+    another level than the scene's, such as a polder's ponds)."""
     wcfg = C.cfg.get("water", {})
     wclasses, wmin = set(wcfg.get("classes", ["ocean", "bay", "water"])), wcfg.get("min_area_m2", 5000)
-    seas = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("water")) if r["class"] in wclasses]
+    boxes = [shapely.box(*e["box"]) for e in wcfg.get("exclude", [])]
+    seas = [g for g in (swkb.loads(bytes(r["wkb"])) for r in rows(con, raw("water")) if r["class"] in wclasses)
+            if not any(b.contains(g.centroid) for b in boxes)]
+    seas = [C.to_local(g) for g in seas]
     sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
     isles = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("land"), "class, wkb") if r["class"] in ("island", "islet")]
     isles = [g for g in isles if g.geom_type in ("Polygon", "MultiPolygon") and g.intersects(extent)]
@@ -404,7 +409,7 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
     logh = np.log(np.maximum([m[2] for m in meta], 0.5))
     src = np.array([m[4] for m in meta])
     grp = np.array([group(m[1]) for m in meta])
-    ki = np.where(np.isin(src, ["mapped", "floors", "plateau", "plateau_lod1", "lidar", "bdtopo", "survey"]))[0]
+    ki = np.where(np.isin(src, ["mapped", "floors", "plateau", "plateau_lod1", "lidar", "bdtopo", "survey", "3dbag"]))[0]
     if len(ki) < 20:
         print("height imputation skipped: fewer than 20 buildings with known heights")
         return {"known_buildings": int(len(ki)), "applied": {}, "residuals": {"estimate": [], "ml": []}, "cv": {}}
@@ -540,15 +545,17 @@ class Plateau:
     of keeps its other height source. PLATEAU buildings that no Overture footprint covers (newer
     or missing in OSM) are added as buildings of their own."""
     MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
+    SPIRE_M2 = 25.0  # a roof face this large standing 8 m or more over the main roof is a tower, not plant
     key, label, footprint = "plateau", "PLATEAU", "P"
     keep_newer_osm = True  # PLATEAU was surveyed in 2017-2021: an OSM height far above it is usually a newer tower
     cut_parts = False      # a building's parts are re-cut only where its roof faces differ in height
+    CFG, FILE, TIERS = "plateau", "plateau.json", False  # the city.json block, the data file, features are roof tiers
 
     def __init__(self, C):
         self.tree, self.polys, self.feats, self.roofs = None, [], [], False
-        self.cfg = C.cfg.get("plateau") or {}
-        self.faces = "tiles" in self.cfg  # the vector tiles hold roof faces; the archives whole buildings
-        path = os.path.join(C.raw, "plateau.json")
+        self.cfg = C.cfg.get(self.CFG) or {}
+        self.faces = self.TIERS or "tiles" in self.cfg  # the vector tiles hold roof faces; the archives whole buildings
+        path = os.path.join(C.raw, self.FILE)
         if not self.cfg or not os.path.exists(path):
             return
         # footprints inside these discs belong to a parametric landmark (a lattice tower), not to a building
@@ -565,7 +572,7 @@ class Plateau:
         self.h = [f["h"] for f in self.feats]
         self.roofs = any("roof" in f for f in self.feats)
         self.tree = shapely.STRtree(self.polys)
-        print(f"plateau: {len(self.polys)} footprints indexed")
+        print(f"{self.key}: {len(self.polys)} footprints indexed")
 
     def source(self, i):
         """'plateau' for a surveyed height, 'plateau_lod1' for a block height without a survey record."""
@@ -586,7 +593,7 @@ class Plateau:
                 a = q.intersection(self.polys[i]).area
                 if a > best_a:
                     best, best_a = i, a
-        return None if best is None else {k: self.feats[best].get(k) for k in ("roof", "pitch", "roof_h")}
+        return None if best is None else {k: self.feats[best].get(k) for k in ("roof", "pitch", "roof_h", "direction")}
 
     def match(self, g):
         """The PLATEAU feature of the building that is the same as footprint g (at least half of
@@ -625,7 +632,7 @@ class Plateau:
         main = max(out, key=lambda t: t[1].area)
         # rooftop plant is small and only a few metres above the roof; a small face that stands
         # well above the main roof is a spire or a dome (the Diet's tower, Tokyo Station's domes)
-        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (self.faces and t[0] >= main[0] + 8.0 and t[1].area >= 25.0)]
+        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (self.faces and t[0] >= main[0] + 8.0 and t[1].area >= self.SPIRE_M2)]
         rest = q.difference(shapely.union_all([t[1] for t in out]))
         out.sort(key=lambda t: -t[0])
         merged = []
@@ -663,6 +670,23 @@ class Plateau:
             out.append((p, self.feats[i]))
             kept_ix.add(i)
         return out
+
+
+class BAG3D(Plateau):
+    """Measured buildings from the 3DBAG (data/raw/<id>/3dbag.json, written by
+    pipeline/fetch_3dbag.py from the city's `bag3d` block): one feature per LOD1.3 roof level
+    of each building in the Netherlands' cadastral register, its top measured by the national
+    airborne LiDAR (AHN3 to AHN5), with the roof its LOD2.2 model has over it. The tiers cut a
+    footprint as PLATEAU's roof faces do."""
+    key, label, footprint = "3dbag", "3DBAG", "D"
+    keep_newer_osm = False  # the BAG and AHN (2014-2023) are newer and better than OSM's height tags here
+    CFG, FILE, TIERS = "bag3d", "3dbag.json", True
+    # the 3DBAG draws a tower or a spire as a stack of small tiers (a few m2 each): keep those that
+    # stand 8 m or more over the main roof, where chimneys and dormers never reach
+    MIN_PIECE_M2, SPIRE_M2 = 4.0, 6.0
+
+    def source(self, i):
+        return "3dbag"
 
 
 # ---------------------------------------------------------------- city hooks
@@ -775,8 +799,9 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
         parametric = any(sinfo[k]["parametric"] for k in ks)
         _, long_b, short_b = roofs.long_axis(np.array(solids[ks[0]][4]).reshape(-1, 2) / 10)
         narrow = short_b <= 7.0 and long_b >= 2.5 * short_b
+        year = bextra[bi].get("year")
         style = "plain" if parametric else typology.facade_style(R, cls, top_b, floors, area_b, bextra[bi]["facade_material"], m[0], seed,
-                                                            overrides, narrow)
+                                                            overrides, narrow, year=year, width=short_b)
         main_shape, main_src, main_mat = "flat", "rule", None
         eave_main = top_b
         for k in ks:
@@ -831,7 +856,8 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                         if attempt and len(rr[0]) < 3:
                             break
                         rm, built, rh = roofs.roof_mesh(rr, shape, pitch=pitch, cap=cap, height=min(mh, cap) if mh else None,
-                                                        direction=info["roof_direction"], across=across, axis=axis,
+                                                        direction=info["roof_direction"] if info["roof_direction"] is not None or src != "measured" else meas.get("direction"),
+                                                        across=across, axis=axis,
                                                         overhang=typology.OVERHANG.get(style, 0.0) * R.get("overhang_scale", 1.0) if not info["part"] else 0.0)
                         if rm is not None and roofs.check(rm, rr, rh, built):
                             break
@@ -854,6 +880,11 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
                     # dormers light the attic floor of a mansard, and of any roof tall enough to hold one
                     if nb is not None and not info["part"] and (built in ("mansard", "gambrel") or built in ("gabled", "hipped") and rh >= 2.6):
                         prop_rows += mansard_props(k, s, eave, top, nb, roads, seed)
+                    # Amsterdam: a canal house's street front ends in the gable of its century
+                    if style == "grachtenpand" and roads is not None and not info["part"] and built in ("gabled", "gabled_across", "half-hipped", "gambrel"):
+                        ax, _, _ = roofs.long_axis(rr[0])
+                        rdir = np.asarray(axis, float) if axis is not None else np.array([-ax[1], ax[0]]) if across or built == "gabled_across" else ax
+                        prop_rows += gable_props(k, s, eave, rh, rdir, roads, year, seed, cls == "warehouse" or "pakhuis" in (m[0] or "").lower())
                     shape = built
                     if top >= top_b - 0.01:
                         eave_main = eave
@@ -944,6 +975,31 @@ def mansard_props(k, s, eave, top, nb, roads, seed):
         w = min(4.2, 0.35 * L)
         out.append([k, 4, round(c[0] * 10), round(c[1] * 10), round(w * 10), 7, round((top - eave + 2.2) * 10), ang,
                     round((base + eave + 0.4) * 10)])
+    return out
+
+
+def gable_props(k, s, eave, rh, rdir, roads, year, seed, warehouse):
+    """A canal house's gables, as rooftop rows with an absolute base (dm): on each street front
+    where the roof ends in a gable (the ridge runs back from the street), a slab in the plane of
+    the front from the eaves to 0.9 m over the ridge, cut to the outline of the gable its year
+    calls for (typology.gable_type; a cornice front is the eaves wall raised 0.5-2.3 m).
+    Rows (kind 5): [k, 5, x, y, width, thickness, height (dm), angle (centidegrees), base (dm), type]."""
+    ring = np.array(s[4]).reshape(-1, 2) / 10
+    n = len(ring)
+    out = []
+    for e in typology.frontages(ring, roads):
+        a, b = ring[e], ring[(e + 1) % n]
+        L = math.hypot(*(b - a))
+        u = (b - a) / L
+        if not 3.0 <= L <= 14.0 or abs(u @ rdir) > 0.35:  # too wide or narrow, or an eaves front
+            continue
+        t = typology.gable_type(year, seed + 7 * e, warehouse)
+        if t is None:
+            continue
+        H = rh + 0.9 if t != "cornice" else min(rh, 1.8) + 0.5
+        c = (a + b) / 2 + np.array([u[1], -u[0]]) * 0.03  # just proud of the front
+        out.append([k, 5, round(c[0] * 10), round(c[1] * 10), round(L * 10), 4, round(H * 10),
+                    round(math.degrees(math.atan2(u[1], u[0])) * 100), round((s[1] / 10 + eave) * 10), typology.GABLES.index(t)])
     return out
 
 
@@ -1068,6 +1124,7 @@ def build(C):
     sea = water_polygons(C, con, raw, extent)
     water = raster_mask(sea, dem.shape[1], dem.shape[0], DEM_CELL, C.x0, C.y1)
     dem_land = dem.copy()
+    floating = set(cfg.get("water", {}).get("floating", []))
     # the bottom under the water, modelled from the distance to each kind of shore (shore.py)
     sm = shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg)
     wr, wc = np.nonzero(water)
@@ -1112,7 +1169,7 @@ def build(C):
     labels_cfg = cfg.get("labels", {})
     adjust = C.hook("adjust_building")
     # a measured source: PLATEAU (Japan), or BD TOPO with LiDAR HD (France); same interface
-    plateau = IGNHeights(C) if cfg.get("ign") else Plateau(C)
+    plateau = IGNHeights(C) if cfg.get("ign") else BAG3D(C) if cfg.get("bag3d") else Plateau(C)
     ctx.plateau = plateau
     blds = rows(con, raw("building"))
     parts = defaultdict(list)
@@ -1221,7 +1278,9 @@ def build(C):
                 hidden_solids.append(len(solids))
             q = shapely.geometry.polygon.orient(q, 1.0)
             cs = np.asarray(q.exterior.coords)
-            zb = max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
+            # a building of a class that floats (water.floating: Amsterdam's houseboats) sits on the
+            # water; others stand on the lowest ground under them
+            zb = 0.0 if cls in floating else max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
             solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10), ring(q.exterior.coords)] +
                           [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
             r0 = rec[0] if rec else b  # roof tags of the part, else of the building
@@ -1245,7 +1304,8 @@ def build(C):
         seed = int(b["id"].replace("-", "")[:8], 16)
         meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or s_floors or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
                      None, roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
-        bextra.append({"seed": seed & 0xFFFFFF, "facade_color": b.get("facade_color"), "facade_material": b.get("facade_material")})
+        bextra.append({"seed": seed & 0xFFFFFF, "facade_color": b.get("facade_color"), "facade_material": b.get("facade_material"),
+                       "year": (pl or {}).get("year")})
         first_solid[bi] = first
         if b["height_src"] == "Microsoft ML Buildings" and b["height"]:
             ml_raw[bi] = float(b["height"])
@@ -1331,7 +1391,7 @@ def build(C):
 
     before = set(ctx.labels)
     # the finished buildings, for a hook that reports on them
-    ctx.meta, ctx.solids, ctx.roof_rows = meta, solids, roof_rows
+    ctx.meta, ctx.solids, ctx.roof_rows, ctx.prop_rows = meta, solids, roof_rows, prop_rows
     ctx.roof_shapes, ctx.roof_sources = list(roofs.CODES), ROOF_SRC
     if C.hook("finalize"):
         C.hook("finalize")(ctx)

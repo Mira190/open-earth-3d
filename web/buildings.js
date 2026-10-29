@@ -17,21 +17,21 @@
 'use strict';
 window.OEBuildings = (function () {
   const STYLES = ['plain', 'house', 'terrace', 'apartment', 'office', 'glass', 'heritage', 'retail', 'industrial', 'civic',
-    'machiya', 'mixed', 'stone', 'haussmann'];
+    'machiya', 'mixed', 'stone', 'haussmann', 'grachtenpand'];
   const SI = Object.fromEntries(STYLES.map((s, i) => [s, i]));
   // per style: bay width m, window width (share of a bay), sill and head (shares of a storey)
   const GRID = {
     plain: [0, 0, 0, 0], house: [3.3, 0.42, 0.3, 0.8], terrace: [2.8, 0.44, 0.24, 0.86], apartment: [3.0, 0.5, 0.27, 0.86],
     office: [3.0, 0.68, 0.25, 0.9], glass: [1.5, 1.0, 0.0, 1.0], heritage: [3.6, 0.4, 0.22, 0.84], retail: [4.2, 0.42, 0.34, 0.8],
     industrial: [6.0, 0.72, 0.64, 0.88], civic: [3.6, 0.88, 0.32, 0.8], machiya: [1.8, 0.72, 0.3, 0.76], mixed: [2.8, 0.7, 0.22, 0.86],
-    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82],
+    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82], grachtenpand: [2.3, 0.5, 0.12, 0.86],
   };
   // per style: interior depth (bays), frame darkness, glass reflectance (metalness), wall roughness
   const LOOK = {
     plain: [1, 0, 0, 0.9], house: [1.2, 0.55, 0.15, 0.88], terrace: [1.4, 0.6, 0.15, 0.85], apartment: [1.4, 0.45, 0.2, 0.8],
     office: [1.6, 0.4, 0.25, 0.7], glass: [2.6, 0.3, 0.55, 0.45], heritage: [1.3, 0.6, 0.15, 0.9], retail: [1.8, 0.4, 0.15, 0.8],
     industrial: [3, 0.5, 0.1, 0.75], civic: [1.8, 0.4, 0.25, 0.75], machiya: [1, 0.7, 0.02, 0.9], mixed: [1.5, 0.45, 0.2, 0.75],
-    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88],
+    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88], grachtenpand: [1.2, 0.3, 0.18, 0.9],
   };
   // regional grids: Japan builds on the 910 mm module (sliding units of 1,690 mm on 1,820 mm bays),
   // machiya fronts are three bays of 1.97 m
@@ -524,6 +524,94 @@ window.OEBuildings = (function () {
       }
     }
 
+    // ------------------------------------------------------------ Amsterdam: canal-house gables
+    // rows [k, 5, x, y, width, thickness, height (dm), angle, base (dm, absolute), type]: a slab in
+    // the plane of the street front, its face at local z = 0 and its depth behind, cut to the
+    // outline of its type (spout, step, neck, bell, cornice); x across the front (-0.5..0.5) and
+    // y up from the eaves (0..1) in the row's units. The body takes the house's wall colour; white
+    // sandstone trims, the attic's hoisting door and its beam are a second mesh in fixed colours.
+    const GA = PR.filter(p => p[1] === 5 && p.length > 9 && !hidden.has(p[0]));
+    if (GA.length && !small) {
+      const dummy = new THREE.Object3D(), col = new THREE.Color();
+      const stoneC = [0.85, 0.83, 0.77], darkC = [0.09, 0.08, 0.07], doorC = [0.13, 0.17, 0.14];
+      const mirror = half => half.concat(half.slice().reverse().map(([x, y]) => [-x, y]));
+      const steps = [[-0.5, 0]], bell = [[-0.5, 0]];
+      for (let k = 0; k < 4; k++) steps.push([-0.5 + k * 0.1025, 0.2 + 0.18 * k], [-0.5 + (k + 1) * 0.1025, 0.2 + 0.18 * k]);
+      steps.push([-0.09, 1.0]);
+      for (let i = 0; i <= 12; i++) { const t = i / 12; bell.push([-(0.5 - 0.33 * (3 * t * t - 2 * t * t * t)), 0.25 + 0.6 * t]); }
+      for (let i = 1; i < 6; i++) { const a = Math.PI - i / 6 * Math.PI / 2; bell.push([0.17 * Math.cos(a), 0.85 + 0.15 * Math.sin(a)]); }
+      const BODY = [
+        [[-0.5, 0], [0.5, 0], [0.5, 0.08], [0.12, 0.92], [0.12, 1], [-0.12, 1], [-0.12, 0.92], [-0.5, 0.08]],
+        mirror(steps).reverse(),
+        [[-0.5, 0], [0.5, 0], [0.5, 0.3], [0.2, 0.3], [0.2, 0.86], [0.24, 0.86], [0, 1], [-0.24, 0.86], [-0.2, 0.86], [-0.2, 0.3], [-0.5, 0.3]],
+        [[0.5, 0]].concat(mirror(bell.slice(1)).reverse(), [[-0.5, 0]]),
+        [[-0.5, 0], [0.5, 0], [0.5, 1], [-0.5, 1]],
+      ];
+      const rect = (x0, y0, x1, y1) => [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+      const claw = s => { const p = [[0.2 * s, 0.3]]; for (let i = 0; i <= 8; i++) { const a = i / 8 * Math.PI / 2; p.push([s * (0.2 + 0.24 * Math.cos(a)), 0.3 + 0.32 * Math.sin(a)]); } return s > 0 ? p : p.reverse(); };
+      // a window in the gable: a white frame round dark glass; a loading door: green shutters
+      const glassC = [0.07, 0.085, 0.1];
+      const win = (x, y0, y1, w) => [[rect(x - w / 2 - 0.015, y0 - 0.012, x + w / 2 + 0.015, y1 + 0.012), stoneC, 0, 0.04], [rect(x - w / 2, y0, x + w / 2, y1), glassC, 0, 0.05]];
+      const door = (y0, y1) => [[rect(-0.08, y0, 0.08, y1), doorC, 0, 0.06]];
+      const beam = y => [[rect(-0.025, y, 0.025, y + 0.05), darkC, 0, 2.0]];
+      const row = (xs, y0, y1, w) => xs.flatMap(x => win(x, y0, y1, w));
+      // [outline, colour, z0, z1] in the slab's units (its depth is 1)
+      const TRIM = [
+        [[rect(-0.15, 0.98, 0.15, 1.03), stoneC, -0.9, 0.1], ...door(0.1, 0.3), ...door(0.38, 0.56), ...door(0.62, 0.78), ...beam(0.84)],
+        [...[0, 1, 2, 3].flatMap(k => [-1, 1].map(sg => { const x0 = -0.5 + k * 0.1025, x1 = x0 + 0.1025, y = 0.2 + 0.18 * k;
+          return [rect(sg < 0 ? x0 - 0.01 : -x1, y - 0.02, sg < 0 ? x1 : -x0 + 0.01, y + 0.015), stoneC, -0.9, 0.1]; })),
+          [rect(-0.1, 0.98, 0.1, 1.02), stoneC, -0.9, 0.1], ...row([-0.29, 0, 0.29], 0.04, 0.16, 0.13), ...row([-0.14, 0.14], 0.24, 0.35, 0.11),
+          ...win(0, 0.42, 0.53, 0.11), ...door(0.6, 0.72), ...beam(0.77)],
+        [[claw(1), stoneC, -0.6, 0.08], [claw(-1), stoneC, -0.6, 0.08], [[[-0.26, 0.85], [0.26, 0.85], [0, 1.0]], stoneC, 0.02, 0.12],
+          [rect(-0.22, 0.83, 0.22, 0.86), stoneC, 0, 0.12], ...row([-0.3, 0, 0.3], 0.05, 0.23, 0.13), ...win(0, 0.36, 0.52, 0.15),
+          ...door(0.6, 0.76), ...beam(0.79)],
+        [[BODY[3].map(([x, y]) => [x * 1.06, y * 1.03]), stoneC, -0.95, -0.15], [rect(-0.19, 0.83, 0.19, 0.87), stoneC, 0, 0.1],
+          ...row([-0.28, 0, 0.28], 0.05, 0.21, 0.12), ...row([-0.12, 0.12], 0.34, 0.5, 0.11), ...door(0.58, 0.74), ...beam(0.78)],
+        [[rect(-0.51, 0.7, 0.51, 0.92), stoneC, 0, 0.8], [rect(-0.5, 0.92, 0.5, 1.0), stoneC, 0, 0.1]],
+      ];
+      const extrude = (pts, z0, z1) => {
+        const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+        const g = new THREE.ExtrudeGeometry(sh, { depth: z1 - z0, bevelEnabled: false, curveSegments: 1 });
+        g.translate(0, 0, z0);
+        return g.index ? g.toNonIndexed() : g;
+      };
+      const merged = parts => { // [[geometry, rgb]] -> one geometry with vertex colours
+        const P = [], N = [], C = [];
+        for (const [g, c] of parts) {
+          P.push(...g.attributes.position.array); N.push(...g.attributes.normal.array);
+          for (let i = 0; i < g.attributes.position.count; i++) C.push(...c);
+        }
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
+        g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
+        g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+        return g;
+      };
+      const place = (im, p, i) => {
+        const a = p[7] / 100 * Math.PI / 180;
+        dummy.position.set(p[2] / 10, p[8] / 10, -p[3] / 10);
+        dummy.rotation.set(0, a, 0);
+        dummy.scale.set(p[4] / 10, p[6] / 10, p[5] / 10);
+        dummy.updateMatrix();
+        im.setMatrixAt(i, dummy.matrix);
+      };
+      const brick = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+      const trimM = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 });
+      BODY.forEach((outline, t) => {
+        const rows = GA.filter(p => p[9] === t);
+        if (!rows.length) return;
+        const body = new THREE.InstancedMesh(extrude(outline, -1, 0), brick, rows.length);
+        const trim = new THREE.InstancedMesh(merged(TRIM[t].map(([pts, c, z0, z1]) => [extrude(pts, z0, z1), c])), trimM, rows.length);
+        rows.forEach((p, i) => {
+          place(body, p, i);
+          place(trim, p, i);
+          body.setColorAt(i, col.copy(lin(meta[B.s[p[0]][0]][7])).multiplyScalar(0.95 + 0.1 * hash1(p[2] * 7 + p[3])));
+        });
+        body.castShadow = body.receiveShadow = trim.castShadow = trim.receiveShadow = true;
+        props.add(body, trim);
+      });
+    }
+
     // ------------------------------------------------------------ the aerial photo for flat roofs
     if (photoOK) loadPhoto(scene, renderer).then(tex => {
       if (!tex) return;
@@ -687,6 +775,23 @@ window.OEBuildings = (function () {
         // the cornice: a lit moulding over a shadow, above the top floor
         float attic = step(topF + 0.5, fl);
         diffuseColor.rgb *= 1.0 - attic * (0.22 * band(fy, 0.0, 0.18, fw.y) - 0.08 * band(fy, 0.18, 0.4, fw.y));
+      }
+      // Amsterdam canal house (grachtenpand): brick in courses with staggered joints, a stone
+      // lintel over each tall sash window, and glazing bars: two uprights, a meeting rail and a
+      // bar across each sash
+      if (style > 13.5 && style < 14.5) {
+        float bh = h / 0.065, bx = s * vGrid.x / 0.22 + 0.5 * mod(floor(bh), 2.0);
+        vec2 fb = max(fwidth(vec2(bx, bh)), vec2(1e-4));
+        float joint = max(band(fract(bh), 0.0, 0.17, fb.y * 1.5), band(fract(bx), 0.0, 0.05, fb.x * 1.5));
+        diffuseColor.rgb *= 1.0 - 0.16 * joint * (1.0 - smoothstep(0.25, 0.6, max(fb.x, fb.y)));
+        float lintel = band(fy, head + 0.02, head + 0.08, fw.y) * band(fx, 0.5 - wx - 0.05, 0.5 + wx + 0.05, fw.x);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.84, 0.82, 0.76), lintel * (1.0 - 0.6 * far));
+        float wxr = (fx - 0.5 + wx) / max(2.0 * wx, 1e-3), wyr = (fy - sill) / max(head - sill, 1e-3);
+        vec2 fr = max(fwidth(vec2(wxr, wyr)), vec2(1e-4));
+        float bars = max(band(abs(fract(wxr * 3.0 + 0.5) - 0.5), 0.0, 0.06, fr.x * 3.0),
+                         band(abs(fract(wyr * 4.0 + 0.5) - 0.5), 0.0, 0.05, fr.y * 4.0)) * (1.0 - far);
+        frame = max(frame, win * bars);
+        win *= 1.0 - bars;
       }
       // shopfront fascia band
     }
@@ -880,7 +985,7 @@ window.OEBuildings = (function () {
   reflectedLight.indirectSpecular *= mix(aoW, 1.0, glass * 0.5);
   reflectedLight.directDiffuse *= mix(1.0, aoW, 0.35);`);
     };
-    mat.customProgramCacheKey = () => 'oe-facade-3';
+    mat.customProgramCacheKey = () => 'oe-facade-4';
     return mat;
   }
 

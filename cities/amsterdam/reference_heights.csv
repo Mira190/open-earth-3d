@@ -1,0 +1,12 @@
+name,height_m,floors,year,address,match_name,exclude,source
+Westertoren,85,,1638,Prinsengracht 281,Westertoren,,"westerkerk.nl: 85 m, 87 m with the weathercock"
+Zuidertoren,68,,1614,Zuiderkerkhof 72,Zuiderkerk,,"nl.wikipedia, Zuiderkerkstoren (Amsterdam)"
+Oudekerkstoren,67,,1566,Oudekerksplein 23,Oude Kerk,,"oudekerk.nl: 67 m (nl.wikipedia gives 70 m)"
+Montelbaanstoren,48,,1606,Oudeschans 2,Montelbaanstoren,,"nl.wikipedia, Montelbaanstoren"
+Munttoren,35,,1620,Muntplein,Munttoren,,"nl.wikipedia, Munttoren (Amsterdam): 35 m (a tourist site gives 41 m)"
+Royal Palace,60,,1665,Dam,Koninklijk Paleis,,"paleisamsterdam.nl: about 60 m to the top of the weathervane"
+Rijksmuseum,52.9,,1885,Museumstraat 1,Rijksmuseumgebouw,,"nl.wikipedia, Rijksmuseumgebouw: the highest towers 52.90 m"
+De Krijtberg,50,,1883,Singel 448,Sint-Franciscus Xaveriuskerk,,"amsterdam-monumentenstad.nl: two towers fifty metres high"
+Centraal Station,45,,1889,Stationsplein,Centraal Station,,"Ons Amsterdam: two towers 45 m high"
+Beurs van Berlage,40,,1903,Damrak 243,Beurs van Berlage,,"en.wikipedia, Beurs van Berlage: a 40 m clock tower"
+A'DAM Toren,100,22,1971,Overhoeksplein 1,A'DAM Toren,,"nl.wikipedia, A'DAM Toren: about 100 m with the mast (80 m to the roof)"

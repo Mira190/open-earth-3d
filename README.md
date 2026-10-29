@@ -11,7 +11,8 @@ can check, as well as look at.
 
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
 Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
-next, then Melbourne's bayside, Osaka, Kyoto, Tokyo, Paris and Hong Kong. It
+next, then Melbourne's bayside, Osaka, Kyoto, Tokyo, Paris, Hong Kong and
+Amsterdam. It
 grows from there one city at a time. Each new city is a config file and a few
 checks, not a new codebase.
 
@@ -36,6 +37,10 @@ checks, not a new codebase.
 | Paris: every roof measured by LiDAR | The Île de la Cité | The Eiffel Tower sparkling at 23:01 |
 |---|---|---|
 | ![](docs/images/paris/overview.jpg) | ![](docs/images/paris/cite.jpg) | ![](docs/images/paris/eiffel-night.jpg) |
+
+| Amsterdam: every building from the 3DBAG | The canal ring | Gables of three centuries |
+|---|---|---|
+| ![](docs/images/amsterdam/overview.jpg) | ![](docs/images/amsterdam/canals.jpg) | ![](docs/images/amsterdam/gables.jpg) |
 
 Buildings get LOD2 roofs, facades, shopfronts, parapets and rooftops, inferred
 where the open data is silent and checked where it is not
@@ -64,6 +69,10 @@ The model is also a game.
 - **Paris:** a bouquiniste teaches you to read a roof, you take the Batobus to
   Notre-Dame, find a chair in the winter sun in the Luxembourg, buy a baguette,
   and fly a helicopter under the Eiffel Tower's first floor.
+- **Amsterdam:** a building historian sends you down the canals to find a step,
+  a neck and a bell gable, each dated by the year in the register. You hear the
+  Westertoren's carillon, take the free ferry across the IJ, and find the
+  December sun on the Rembrandtplein.
 
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
@@ -73,7 +82,7 @@ you choose. In free roam you can survey the view from Sydney's trig stations, or
 test your eye against the data by guessing building heights. Open **Play** on the
 globe, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto` and
-`#play-tokyo`, and Paris at `#play-paris`.
+`#play-tokyo`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -157,6 +166,7 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
+| **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |
 | **Whitsundays**, Australia | **Live** (reef) | 33 × 33 km of the Whitsunday Islands and the inner Great Barrier Reef: AusSeabed 30 m survey bathymetry, a 28-scene Sentinel-2 composite inverted through the water column, 33 mapped places, Maritime Safety Queensland's Shute Harbour tide (fitted to 2.4 cm RMS). [Case study](docs/cities/whitsundays.md) |
 | **Hardy Reef**, Australia | **Live** (reef) | Heart Reef, the Reefworld pontoon on the channel wall, Hook, Line and Bait reefs; the tide from the outer-reef gauge at Bugatti Reef. [Notes](docs/cities/hardy-reef.md) |
 | **Green Island**, Australia | **Live** (reef) | The coral cay off Cairns with Arlington Reef and Michaelmas Cay; the jetty on its mapped line. [Notes](docs/cities/green-island.md) |
@@ -164,7 +174,6 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 | **Lady Elliot Island**, Australia | **Live** (reef) | The southernmost coral cay of the reef. [Notes](docs/cities/lady-elliot-island.md) |
 | New York, United States | Planned | NYC Open Data footprints with LiDAR roof heights; USGS 3DEP 1 m DEM |
 | London, United Kingdom | Planned | Environment Agency 1 m LiDAR DTM; open imagery still to find |
-| Amsterdam, Netherlands | Planned | AHN LiDAR, PDOK imagery, 3D BAG heights |
 | Singapore | Planned | OSM heights; open bare-earth DEM and imagery still to find |
 
 The planned list is a roadmap. None of those data sources has been verified
@@ -185,15 +194,17 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   - Each region has its own rules (Sydney, Japan). See [docs/BUILDINGS.md](docs/BUILDINGS.md).
 - **Buildings with provenance.** Each height has a source:
   - verified from a cited source;
-  - measured from the air: for Project PLATEAU (the Japanese cities), or by
-    IGN's LiDAR HD (Paris);
+  - measured from the air: for Project PLATEAU (the Japanese cities), by
+    IGN's LiDAR HD (Paris), or by the AHN for the 3DBAG (Amsterdam);
   - surveyed by the city's mapping agency, or measured by airborne LiDAR where
     the survey has none (Hong Kong);
   - published;
   - surveyed in OpenStreetMap;
   - a floor count times a calibrated storey height;
   - a bias-corrected ML height blended with its neighbours;
-  - or an estimate from nearby known heights.
+  - an estimate from nearby known heights;
+  - or, where nothing nearby says anything about it, a typical height for its
+    kind (Amsterdam's houseboats).
 
   Every estimator is cross-validated, and missing heights are corrected for not
   being missing at random. The viewer can colour buildings by source.
@@ -386,6 +397,15 @@ Ouverte / Etalab 2.0:
 - BD ORTHO aerial photographs, and RGE ALTI 1 m for the terrain check.
 - Wikipedia's *List of tallest buildings in the Paris region* (CC BY-SA), for
   reference heights; the Eiffel Tower's dimensions from its operator.
+
+Amsterdam also uses these sources:
+- The 3DBAG (TU Delft 3D geoinformation group and 3DGI, CC BY 4.0), release
+  v2025.09.03: the BAG's footprints and construction years, with heights,
+  LOD1.3 roof tiers and LOD2.2 roofs from the AHN.
+- AHN bare earth (DTM 0.5 m, CC0) and Beeldmateriaal Nederland's aerial
+  photographs (CC BY 4.0), both via PDOK.
+- The Grachtenmuseum's dates for the gable types; Dutch Wikipedia and the
+  buildings' own sites for the reference heights.
 
 The reef sites also use these sources:
 - AusSeabed / Geoscience Australia, *Great Barrier Reef Bathymetry 2020* 30 m (not for navigation).

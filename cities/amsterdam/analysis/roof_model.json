@@ -1,0 +1,107 @@
+{
+ "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
+ "counts": {
+  "measured:flat": 27931,
+  "measured:skillion": 2375,
+  "measured:gabled_across": 3535,
+  "prior:flat": 1907,
+  "prior:gabled_across": 268,
+  "rule:flat": 1058,
+  "measured:gabled": 9573,
+  "prior:gabled": 154,
+  "fallback_flat": 1368,
+  "too_low": 1296,
+  "prior:skillion": 188,
+  "measured:half-hipped": 124,
+  "mapped:mansard": 24,
+  "mapped:flat": 908,
+  "mapped:pyramidal": 146,
+  "mapped:gabled": 443,
+  "mapped:gabled_across": 1398,
+  "mapped:saltbox": 375,
+  "mapped:hipped": 136,
+  "prior:hipped": 2,
+  "mapped:skillion": 144,
+  "measured:hipped": 23,
+  "mapped:gambrel": 6,
+  "mapped:round": 8,
+  "mapped:half-hipped": 1,
+  "mapped:dome": 15
+ },
+ "check": {
+  "n": 2154,
+  "flat_vs_pitched_accuracy": 0.455,
+  "exact_shape_accuracy": 0.174,
+  "family_accuracy": 0.325,
+  "pitched_recall": 0.384,
+  "flat_recall": 0.779,
+  "confusion_pitched": {
+   "true_pitched_pred_pitched": 678,
+   "true_pitched_pred_flat": 1087,
+   "true_flat_pred_flat": 303,
+   "true_flat_pred_pitched": 86
+  },
+  "truth": {
+   "gabled": 1594,
+   "flat": 389,
+   "hipped": 117,
+   "skillion": 30,
+   "mansard": 15,
+   "gambrel": 6,
+   "round": 3
+  },
+  "vs_measured": {
+   "n": 32115,
+   "flat_vs_pitched_accuracy": 0.506,
+   "exact_shape_accuracy": 0.45,
+   "family_accuracy": 0.467,
+   "pitched_recall": 0.204,
+   "flat_recall": 0.783,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 3136,
+    "true_pitched_pred_flat": 12234,
+    "true_flat_pred_flat": 13116,
+    "true_flat_pred_pitched": 3629
+   },
+   "truth": {
+    "flat": 16745,
+    "gabled": 13855,
+    "skillion": 1339,
+    "hipped": 176
+   }
+  },
+  "measured_vs_mapped": {
+   "n": 2066,
+   "flat_vs_pitched_accuracy": 0.541,
+   "exact_shape_accuracy": 0.275,
+   "family_accuracy": 0.456,
+   "pitched_recall": 0.473,
+   "flat_recall": 0.921,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 828,
+    "true_pitched_pred_flat": 923,
+    "true_flat_pred_flat": 290,
+    "true_flat_pred_pitched": 25
+   },
+   "truth": {
+    "gabled": 1587,
+    "flat": 315,
+    "hipped": 114,
+    "skillion": 27,
+    "mansard": 14,
+    "gambrel": 6,
+    "round": 3
+   }
+  }
+ },
+ "roofs_built": 18938,
+ "rooftop_props": 5953,
+ "frontage_solids": 3661,
+ "skeleton_failures": {
+  "spike": 2101,
+  "active": 1146,
+  "steps": 906,
+  "short": 232,
+  "time": 4
+ }
+}
