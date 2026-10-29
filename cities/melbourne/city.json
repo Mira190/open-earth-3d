@@ -522,7 +522,7 @@
     "title": "Melbourne on Foot",
     "blurb": "Walk central Melbourne rebuilt from open data and lit by the real sun. Talk to the people who know it, take the river shuttle down the Yarra, and fly past the Arts Centre spire. Every fact they tell you comes from the model.",
     "local_name": "Melburnian",
-    "water_name": "Yarra",
+    "water_name": "the Yarra",
     "climate": {
       "mean_max_c": [26.8, 25.9, 24.3, 20.8, 17.6, 14.7, 14.5, 15.6, 18.0, 20.5, 22.2, 24.7],
       "source": "Bureau of Meteorology, Melbourne (Olympic Park) 086338, mean maximum temperature since 2013"

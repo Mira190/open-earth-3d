@@ -9,13 +9,13 @@
   "within_20pct": 37,
   "gross_short": 0,
   "by_source": {
-   "survey": {
-    "n": 38,
-    "median_abs_error_pct": 4.3
-   },
    "lidar": {
     "n": 2,
     "median_abs_error_pct": 18.9
+   },
+   "survey": {
+    "n": 38,
+    "median_abs_error_pct": 4.3
    }
   }
  },

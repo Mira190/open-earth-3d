@@ -46,8 +46,8 @@
    "block_m": 200.0,
    "blocks": 194,
    "model": {
-    "r": 0.596,
-    "slope": 0.328,
+    "r": 0.595,
+    "slope": 0.327,
     "intercept_m": 6.7,
     "rmse_m": 5.8,
     "test_block_residual_m": -4.2,

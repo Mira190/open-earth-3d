@@ -1,0 +1,95 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "prod": 86.3,
+   "finer_samples": 86.32,
+   "finer_dsm": 85.87,
+   "finer_time": 86.38,
+   "reference": 86.05,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.25,
+   "seconds": 12.472
+  },
+  {
+   "place": "Imperial Palace Plaza 皇居前広場",
+   "prod": 99.84,
+   "finer_samples": 99.81,
+   "finer_dsm": 99.8,
+   "finer_time": 99.84,
+   "reference": 99.74,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.1,
+   "seconds": 5.657
+  },
+  {
+   "place": "Marunouchi Central Plaza",
+   "prod": 70.56,
+   "finer_samples": 70.61,
+   "finer_dsm": 70.35,
+   "finer_time": 70.33,
+   "reference": 70.21,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.35,
+   "seconds": 1.286
+  },
+  {
+   "place": "Wadakura Fountain Park",
+   "prod": 91.34,
+   "finer_samples": 91.31,
+   "finer_dsm": 90.94,
+   "finer_time": 91.41,
+   "reference": 91.06,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.28,
+   "seconds": 13.68
+  },
+  {
+   "place": "Hamarikyu Gardens 浜離宮",
+   "prod": 97.5,
+   "finer_samples": 97.44,
+   "finer_dsm": 97.23,
+   "finer_time": 97.58,
+   "reference": 97.33,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.17,
+   "seconds": 85.88
+  },
+  {
+   "place": "Shiba Park 芝公園",
+   "prod": 74.05,
+   "finer_samples": 74.07,
+   "finer_dsm": 73.09,
+   "finer_time": 74.18,
+   "reference": 73.2,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.85,
+   "seconds": 16.406
+  },
+  {
+   "place": "Diet Front Garden",
+   "prod": 82.71,
+   "finer_samples": 82.77,
+   "finer_dsm": 82.48,
+   "finer_time": 82.78,
+   "reference": 82.51,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.2,
+   "seconds": 28.19
+  },
+  {
+   "place": "Kokyo Gaien 皇居外苑",
+   "prod": 97.06,
+   "finer_samples": 97.07,
+   "finer_dsm": 96.87,
+   "finer_time": 97.13,
+   "reference": 96.97,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.09,
+   "seconds": 152.722
+  }
+ ],
+ "max_abs_numerical_error_pp": 0.85
+}

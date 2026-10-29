@@ -1,0 +1,212 @@
+{
+  "id": "heron-island",
+  "name": "Heron Island",
+  "country": "Australia",
+  "country_code": "AU",
+  "kind": "marine",
+  "timezone": "Australia/Brisbane",
+  "locale": "en-AU",
+  "description": "Heron Island, a coral cay near the Tropic of Capricorn in the southern Great Barrier Reef, 87 km north-east of Gladstone: about 800 m long and 300 m wide, with the University of Queensland's research station, a green turtle nesting ground and the wreck of HMCS Protector at the entrance to its boat channel. With Heron Reef and Wistari Reef, rebuilt from 30 m survey bathymetry and Sentinel-2; the cay's ground is rebuilt from its mapped outline.",
+  "bbox": [151.82, -23.52, 152.01, -23.39],
+  "area_note": "19.4 x 14.3 km: Heron Reef with the cay at its western end, Wistari Reef across the channel to the south-west, and the open water around them.",
+  "origin": [151.915, -23.455],
+  "extent_m": [-9700, 9700, -7200, 7100],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m MSL",
+  "year": 2026,
+  "imagery": {
+    "type": "sentinel2",
+    "pixel_m": 10,
+    "since": "2025-10-01",
+    "max_cloud": 12,
+    "attribution": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS"
+  },
+  "terrain": {
+    "type": "gbr_bathy",
+    "pixel_m": 30,
+    "bare_earth": true,
+    "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
+    "cays": {
+      "islands": ["Heron Island"],
+      "hat_m": 1.81,
+      "hat_src": "MSQ 2026 semidiurnal tidal planes, Heron Island: HAT 3.33 m and MSL 1.52 m above LAT",
+      "top_m": 3.0,
+      "top_src": "Wikipedia, Heron Island (Queensland): the highest point, near the western tip, is 3.6 m above sea level, the dune ridge along the southern shore about 3 m and the north-eastern dunes about 1 m; 3.0 m is used for the interior. The survey model's up to 11.6 m there is the forest canopy",
+      "note": "pipeline/build_marine.py cays(): the cay is rebuilt from its OpenStreetMap outline (Overture base land)"
+    }
+  },
+  "start": {
+    "x": -900,
+    "y": 1900,
+    "z": 130,
+    "yaw": -125,
+    "pitch": -14,
+    "date": null,
+    "note": "north-west of the cay over the reef edge, looking south-east across the island and Heron Reef"
+  },
+  "spawn": {
+    "poi": "heron-beach",
+    "x": 0,
+    "y": 1518,
+    "heading": 0,
+    "note": "on the upper sand of the north shore, about 1.9 m above mean sea level (the highest astronomical tide is 1.81 m), facing the sea"
+  },
+  "pois": [
+    {
+      "id": "heron-island",
+      "name": "Heron Island",
+      "kind": "island",
+      "lonlat": [151.9149, -23.44237],
+      "src": "osm",
+      "osm": "way 723708198"
+    },
+    {
+      "id": "heron-beach",
+      "name": "Heron Island beach, north shore",
+      "kind": "beach",
+      "lonlat": [151.915, -23.44117],
+      "src": "osm",
+      "osm": "relation 10558459",
+      "note": "a point on the island's mapped beach"
+    },
+    {
+      "id": "heron-jetty",
+      "name": "Heron Island jetty",
+      "kind": "marina",
+      "lonlat": [151.91035, -23.44206],
+      "src": "osm",
+      "osm": "node 4058359824 (ferry terminal), way 1023505426 (pier)",
+      "note": "Wikipedia: a small artificial channel and wooden jetty on the western shore"
+    },
+    {
+      "id": "heron-helipad",
+      "name": "Heron Island Helipad",
+      "kind": "helipad",
+      "lonlat": [151.91148, -23.44177],
+      "src": "osm",
+      "osm": "way 544294114"
+    },
+    {
+      "id": "protector-wreck",
+      "name": "Wreck of HMCS Protector",
+      "kind": "cultural",
+      "lonlat": [151.90878, -23.44294],
+      "src": "osm",
+      "osm": "way 569784277",
+      "note": "Wikipedia: the rusted wreck lies at the entrance to the channel; it was towed there in 1945 to form a breakwater"
+    },
+    {
+      "id": "research-station",
+      "name": "Heron Island Research Station",
+      "kind": "cultural",
+      "lonlat": [151.91365, -23.44272],
+      "src": "osm",
+      "osm": "way 1218662882",
+      "note": "the University of Queensland's research station"
+    },
+    {
+      "id": "heron-reef",
+      "name": "Heron Reef",
+      "kind": "reef",
+      "lonlat": [151.95657, -23.45075],
+      "src": "osm",
+      "osm": "relation 10033046",
+      "note": "the cay's reef (unnamed in OSM)"
+    },
+    {
+      "id": "wistari-reef",
+      "name": "Wistari Reef",
+      "kind": "reef",
+      "lonlat": [151.88185, -23.46985],
+      "src": "osm",
+      "osm": "way 403368963"
+    },
+    {
+      "id": "heron-anchorage",
+      "name": "West of the cay, off the channel",
+      "kind": "anchorage",
+      "xy": [-483, 1025],
+      "src": "nominal"
+    },
+    {
+      "id": "south-west-gate",
+      "name": "Toward Gladstone",
+      "kind": "gate",
+      "xy": [-9000, -6500],
+      "src": "nominal"
+    }
+  ],
+  "poi_sources": {
+    "osm": "OpenStreetMap contributors (ODbL): Nominatim for the wreck and the research station, otherwise Overture Maps 2026-10-21.0 base land and infrastructure; for areas a point on the surface. The `osm` field names the object.",
+    "nominal": "chosen for the viewer; the boats search near it for water 5-9 m deep",
+    "not mapped": "Heron Reef is mapped without a name; no dive or snorkel sites are mapped in OSM or Overture around the island"
+  },
+  "harbour": {
+    "fleets": [{"at": "heron-anchorage", "n": 2}],
+    "marina": {"at": "heron-jetty", "len": 90, "fingers": 2, "boats": false},
+    "pontoon": null,
+    "parked": [{"kind": "helicopter", "name": "Helicopter", "at": "heron-helipad"}],
+    "moorings": 6,
+    "traffic": [
+      {
+        "kind": "daycat",
+        "name": "Island launch",
+        "route": ["south-west-gate", "heron-jetty"],
+        "loop": "pingpong",
+        "dwell": 120,
+        "vmax": 14
+      },
+      {
+        "kind": "yacht",
+        "route": ["south-west-gate", "heron-anchorage"],
+        "loop": "pingpong",
+        "dwell": 60,
+        "vmax": 4.2
+      },
+      {
+        "kind": "tinnie",
+        "name": "Dive boat",
+        "route": ["heron-jetty", "heron-anchorage"],
+        "loop": "pingpong",
+        "dwell": 30,
+        "vmax": 10
+      }
+    ],
+    "scenic": [
+      {
+        "kind": "helicopter",
+        "name": "Scenic flight",
+        "around": "heron-island",
+        "r": 900,
+        "alt": 160,
+        "v": 35,
+        "dir": 1
+      }
+    ]
+  },
+  "tide": {
+    "gauge": "Bundaberg (Burnett Heads port gauge)",
+    "years": {"2025": "aedc7fc4-b2cf-44e3-80de-af3de15a1677", "2026": "da055fda-5176-46a7-941d-176904d94610"},
+    "note": "MSQ lists Heron Island as a secondary place of Gladstone (80 km west-south-west, in the Port Curtis harbour) with high and low water 33 minutes earlier and 0.71 of its range. Bundaberg's standard port gauge at Burnett Heads (24 46 S 152 23 E, 153 km south-south-east) is used instead because its tide is closer to Heron's in both respects: MSQ's 2026 tidal planes put spring high and low water at +1.21 and -1.09 m about mean sea level at Heron Island, +1.16 and -1.17 m at Burnett Heads and +1.62 and -1.62 m at Gladstone, and in the 2026 fits Burnett Heads' M2 runs about 43 minutes ahead of Gladstone's, so about 10 minutes ahead of Heron's where Gladstone's lags by 33. Neither is an offshore gauge; times and heights at Heron Island differ from Burnett Heads' by those amounts. (The portal's 2024 and 2025 resources of the separate 'Burnett Heads' storm-surge gauge hold Bugatti Reef Outer's file, so they are not used.)"
+  },
+  "life": {
+    "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Plants, from Wikipedia, Heron Island (Queensland): Pisonia grandis forest dominates the centre and south (most trees 6-8 m, some 10-11 m); north of it a band of open shrubland of octopus bush (Heliotropium foertherianum) and sea cabbage (Scaevola taccada) with Pandanus and Casuarina equisetifolia ssp. incana; the eastern end and the dune ridges Casuarina, Scaevola and Heliotropium with some Pandanus. Not drawn: Celtis, Ficus, Pipturus, Cordia, Suriana and the herbs. Turtles nesting: the same page (green 98%, loggerhead 2% of the nesters; the nesting area is the central part of the north shore, `around`); the months, November to March, are the ones Wikipedia gives for Lady Elliot Island in the same Capricorn-Bunker group (no Heron-specific source for the months was found); perKm is not sourced. Spawning: UQ News, 25 November 2003, 'Coral puts on show at Heron Island' (news.uq.edu.au/2003-11-25-coral-puts-show-heron-island): usually five to eight nights after the November full moon, one lunation after the inshore reefs' October (lag 1).",
+    "flora": {
+      "minAbove": 1.85,
+      "cell": 5,
+      "coastR": [14, 28],
+      "coastMaxAbove": 6,
+      "forest": {"pisonia": 1},
+      "coast": {"octopus-bush": 0.32, "scaevola": 0.3, "casuarina": 0.2, "pandanus": 0.18},
+      "grass": {"octopus-bush": 0.45, "scaevola": 0.4, "pandanus": 0.15},
+      "density": {"10": 0.92, "12": 0.8, "coast": 0.85}
+    },
+    "fauna": {"green-turtle": 1.5, "loggerhead": 0.1},
+    "nesting": {"months": [11, 12, 1, 2, 3], "species": {"green-turtle": 0.98, "loggerhead": 0.02}, "perKm": 40, "around": [130, 1530, 230]},
+    "spawning": {"lag": 1, "window": [5, 8]}
+  },
+  "sources": {
+    "heron_island": "https://en.wikipedia.org/wiki/Heron_Island_(Queensland) (coral cay near the Tropic of Capricorn; 87 km north-east of Gladstone; about 800 m long and 300 m wide; highest point 3.6 m; research station; green turtle nesting ground; artificial channel and jetty on the western shore; HMCS Protector wreck towed there in 1945)",
+    "tide": "https://www.msq.qld.gov.au/_/media/tmronline/msqinternet/msqfiles/home/tides/tidal-planes/2026-semidiurnal-tidal-planes.pdf (MSQ: Heron Island as a secondary place of Gladstone, its planes and HAT; Burnett Heads and Gladstone planes)"
+  }
+}

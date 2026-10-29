@@ -164,7 +164,7 @@ tests. `sun_access.js` reports a 10 am–2 pm window on the 21st of each month.
 |---|---|---|
 | St Kilda, Elwood, Sandown Street and Middle Brighton beaches | 100% all year | Nothing tall stands on the foreshore |
 | Dendy Street Beach | 88% in June, 98% in December | The shade is the bathing boxes' own |
-| Luna Park | 68% in June, 87% in December | The buildings in and around the park |
+| Luna Park | 69% in June, 87% in December | The buildings in and around the park |
 | Lower Esplanade Reserve | 87% in June, 100% from September to March | Shaded only when the winter sun is low |
 | St Kilda Botanic Gardens, Elwood Park | 97–99% | Tree heights are not mapped, so the trees cast no shade in this analysis |
 

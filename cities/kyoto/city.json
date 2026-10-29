@@ -1,0 +1,612 @@
+{
+  "id": "kyoto",
+  "name": "Kyoto",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "en-JP",
+  "description": "Central Kyoto from open data: Kyoto Station to the Imperial Palace, lit by the real sun, with measured building heights from Project PLATEAU.",
+  "bbox": [
+    135.745,
+    34.981,
+    135.78,
+    35.029
+  ],
+  "origin": [
+    135.7625,
+    35.003
+  ],
+  "extent_m": [
+    -1500,
+    1500,
+    -2300,
+    2700
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P. (Tokyo Peil)",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "plateau": {
+    "zip": "https://assets.cms.plateau.reearth.io/assets/3c/f912d5-980d-4c10-a037-6a9e87874a4e/26100_kyoto-shi_2022_3dtiles-mvt_1_op.zip",
+    "attribution": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0): building heights measured from aerial survey",
+    "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
+    "roofs": true
+  },
+  "water": {
+    "classes": [],
+    "min_area_m2": 5000,
+    "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
+  },
+  "trees": {"mix": {"elm": 0.6, "plane": 0.4}, "note": "Species are not mapped, and the shared trees have no ginkgo, cherry or maple, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and temple grounds, plane trees for the street planes and ginkgos. A guess, not a survey."},
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "labels": {
+    "京都ホテルオークラ": "Hotel Okura Kyoto",
+    "ヨドバシカメラ": "Yodobashi Kyoto",
+    "南座": "Minamiza",
+    "京都BAL": "Kyoto BAL",
+    "八坂の塔": "Yasaka Pagoda",
+    "京都経済センター": "Kyoto Economic Center"
+  },
+  "minor_labels": [
+    "南座",
+    "八坂の塔",
+    "京都BAL",
+    "京都経済センター"
+  ],
+  "place_labels": [
+    "京都御苑",
+    "鴨川公園",
+    "梅小路公園",
+    "円山公園",
+    "渉成園",
+    "西本願寺"
+  ],
+  "protection": {
+    "title": "No statutory sun rule for public places",
+    "summary": "Kyoto protects its skyline with height limits (a cap of 31 m in the busiest districts) and Japan limits shadows on homes with the Building Standards Act, but neither protects sun on parks. Sun on these places is measured for information, not tested against a rule.",
+    "source_note": "No legal window is transcribed for these places, so each is shown for 10:00-14:00 and none is marked protected.",
+    "reading_note": "Heights come from Project PLATEAU, measured from aerial survey in 2020-2021, so buildings finished since are missing or low.",
+    "default_time_basis": "clock",
+    "tip": "Tip: try a plot just south of the Imperial Gardens in winter.",
+    "unprotected_label": "no rule"
+  },
+  "places": [
+    {
+      "name": "京都御苑",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "鴨川公園",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "梅小路公園",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "円山公園",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "渉成園",
+      "class": "garden",
+      "protected": false
+    }
+  ],
+  "analysis_region": [
+    -1200,
+    1200,
+    -2100,
+    2400
+  ],
+  "sun_hours_region": [
+    -1400,
+    1400,
+    -2200,
+    2600
+  ],
+  "start": {
+    "date": [
+      11,
+      15
+    ],
+    "time": "15:10",
+    "cam": [
+      -1900,
+      -3300,
+      1000
+    ],
+    "tgt": [
+      0,
+      -200,
+      30
+    ]
+  },
+  "tour": [
+    {
+      "title": "Kyoto from open data",
+      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs. The grid is Heian-kyo's: streets laid out in the year 794.",
+      "cam": [
+        1900,
+        -3000,
+        1300
+      ],
+      "tgt": [
+        -100,
+        -200,
+        30
+      ],
+      "date": [
+        11,
+        15
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 8
+    },
+    {
+      "title": "Kyoto Tower",
+      "text": "131 m to the spire, with the observation deck at 100 m: a steel tube with no frame inside it, finished in 1964. The model draws it from those figures; PLATEAU gives its footprint block as {landmark:kyoto_tower.plateau_m} m because it records the tower and the hotel below it as one building.",
+      "cam": [
+        100,
+        -1990,
+        130
+      ],
+      "tgt": [
+        -278,
+        -1722,
+        70
+      ],
+      "date": [
+        11,
+        15
+      ],
+      "from": "15:30",
+      "to": "16:20",
+      "hold": 8
+    },
+    {
+      "title": "Higashi Honganji",
+      "text": "The Founder's Hall, the Goei-do, is one of the largest wooden buildings in the world. It stands among low roofs: most of this city is under 10 m.",
+      "cam": [
+        -330,
+        -1620,
+        80
+      ],
+      "tgt": [
+        -365,
+        -1331,
+        20
+      ],
+      "date": [
+        11,
+        15
+      ],
+      "from": "14:30",
+      "to": "15:30",
+      "hold": 8
+    },
+    {
+      "title": "A city that stays low",
+      "text": "{buildings} buildings, the median measured at 8.4 m. Only 1,340 reach above 31 m and 65 above 45 m. Kyoto's skyline rules hold the centre down, so Kyoto Tower and the station stand out.",
+      "cam": [
+        -1100,
+        -900,
+        430
+      ],
+      "tgt": [
+        300,
+        300,
+        30
+      ],
+      "date": [
+        11,
+        15
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 10
+    },
+    {
+      "title": "A winter day on the roofs",
+      "text": "21 December, 8 am to 4 pm. The sun never climbs above 31.6° here, so even a 20 m block throws a shadow of 33 m at noon.",
+      "cam": [
+        -1500,
+        -1700,
+        520
+      ],
+      "tgt": [
+        0,
+        0,
+        30
+      ],
+      "date": [
+        12,
+        21
+      ],
+      "from": "08:00",
+      "to": "16:00",
+      "hold": 12
+    },
+    {
+      "title": "Imperial Gardens in winter",
+      "text": "On 21 December at noon, {sun:京都御苑|12-21|12:00}% of the Kyoto Gyoen gets direct sun; on 21 June, {sun:京都御苑|6-21|12:00}%.",
+      "date": [
+        12,
+        21
+      ],
+      "from": "11:30",
+      "to": "12:30",
+      "hold": 9,
+      "place": "京都御苑"
+    },
+    {
+      "title": "Kamo River at dusk",
+      "text": "Autumn, 4:20 pm. The sun sets behind the western hills and the river valley fills with shadow before the streets do.",
+      "cam": [
+        1500,
+        -500,
+        150
+      ],
+      "tgt": [
+        700,
+        400,
+        30
+      ],
+      "date": [
+        11,
+        15
+      ],
+      "from": "16:20",
+      "to": "17:10",
+      "hold": 8
+    }
+  ],
+  "game": {
+    "title": "Kyoto on Foot",
+    "start": {
+      "at": [
+        -322,
+        -1815
+      ],
+      "facing": [
+        -278,
+        -1722
+      ],
+      "time": "live"
+    },
+    "helipads": [
+      {
+        "id": "umekoji",
+        "name": "Umekoji Park helipad (game)",
+        "at": [
+          -1380,
+          -1760
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 380,
+      "cars": 120,
+      "radius_m": 450,
+      "style": "kyoto"
+    },
+    "npcs": [
+      {
+        "id": "haruka",
+        "name": "Haruka",
+        "role": "Survey lead",
+        "at": [
+          -318,
+          -1812
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#f0cfb0",
+          "hair": "#1c1411",
+          "top": "#e8e2d6",
+          "legs": "#2b3a4a",
+          "shirt": "#e8e2d6",
+          "pants": "#2b3a4a"
+        },
+        "idle": [
+          "The whole model is open data. If a building looks wrong here, tell me. Kyoto Tower is the easy one: 131 m, and nothing else comes close."
+        ]
+      },
+      {
+        "id": "sozen",
+        "name": "Brother Sozen",
+        "role": "Monk, Higashi Honganji",
+        "at": [
+          -365,
+          -1360
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e8c29f",
+          "hair": "#e8c29f",
+          "top": "#33363b",
+          "legs": "#2a2c30",
+          "shirt": "#33363b",
+          "pants": "#2a2c30"
+        },
+        "idle": [
+          "The wooden hall behind me is among the largest in the world. Please do not run in the temple grounds.",
+          "It is {time}. {sun_line}"
+        ]
+      },
+      {
+        "id": "tanaka",
+        "name": "Mr. Tanaka",
+        "role": "Salaryman from Tokyo",
+        "at": [
+          -319,
+          150
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#f0cfb0",
+          "hair": "#141010",
+          "top": "#202328",
+          "legs": "#202328",
+          "shirt": "#202328",
+          "pants": "#202328"
+        },
+        "idle": [
+          "I came down from Tokyo on the Nozomi this morning, about two hours and a quarter. Meetings all day, then the last train back.",
+          "Tokyo has towers everywhere. Here the roofs stay low, and I think I like it more."
+        ]
+      },
+      {
+        "id": "obaasan",
+        "name": "Mrs. Nakamura",
+        "role": "Pickle seller, Nishiki Market",
+        "at": [
+          192,
+          232
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#e8c29f",
+          "hair": "#cfcac4",
+          "top": "#f2f0ea",
+          "legs": "#4b4f5c",
+          "shirt": "#f2f0ea",
+          "pants": "#4b4f5c"
+        },
+        "idle": [
+          "Tsukemono, fresh today! The market has fed Kyoto for about four hundred years.",
+          "Kyoto houses are narrow at the street and very deep behind. We call them eel's beds."
+        ]
+      },
+      {
+        "id": "ken",
+        "name": "Ken",
+        "role": "Nijo Castle guide",
+        "at": [
+          -1300,
+          1205
+        ],
+        "look": {
+          "character": "M_Worker",
+          "skin": "#f0cfb0",
+          "hair": "#1b1613",
+          "top": "#2d4a5c",
+          "legs": "#2d4a5c",
+          "shirt": "#2d4a5c",
+          "pants": "#2d4a5c"
+        },
+        "idle": [
+          "Tokugawa Ieyasu built Nijo Castle in 1603. Walk the corridors of the Ninomaru Palace and the floorboards sing like nightingales, to warn of intruders."
+        ]
+      },
+      {
+        "id": "yui",
+        "name": "Yui",
+        "role": "Student on a school trip from Tokyo",
+        "at": [
+          140,
+          2160
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f6dcc4",
+          "hair": "#1c1411",
+          "top": "#1f2a44",
+          "legs": "#1f2a44",
+          "shirt": "#1f2a44",
+          "pants": "#1f2a44"
+        },
+        "idle": [
+          "Shugaku ryoko! Everyone in Japan comes to Kyoto in their school uniform, once. We have a bus at four, so I need to be quick.",
+          "My class is from Setagaya. Tokyo is so tall, and I did not expect Kyoto to feel so flat."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "station",
+        "giver": "haruka",
+        "title": "Welcome to Kyoto Station",
+        "stamp": "Kyoto Station",
+        "talk": [
+          "You are the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, laser terrain, the real sun, and building heights that were measured from the air.",
+          "Before we check anything, get your bearings. Kyoto Tower is right behind me. Brother Sozen is at Higashi Honganji, a short walk north. Say hello.",
+          "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "sozen",
+            "text": "Meet Brother Sozen at Higashi Honganji"
+          }
+        ]
+      },
+      {
+        "id": "hall",
+        "giver": "sozen",
+        "title": "The wooden hall",
+        "stamp": "Higashi Honganji",
+        "talk": [
+          "Welcome. This is the Founder's Hall, the Goei-do. It was rebuilt in 1895 and is among the largest wooden buildings in the world.",
+          "Look at the roofs around it. Kyoto has always been low. Mr. Tanaka is in the office streets near Karasuma and Shijo, a long walk north. He can tell you what the city measures."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "tanaka",
+            "text": "Walk north to Mr. Tanaka at Karasuma-Shijo"
+          }
+        ]
+      },
+      {
+        "id": "low",
+        "giver": "tanaka",
+        "title": "A city that stays low",
+        "stamp": "Karasuma-Shijo",
+        "talk": [
+          "A surveyor! I am in from Tokyo. Look around: very few buildings here pass 31 m, and the rules want it that way.",
+          "Every building in this model carries the source of its height. Here most are measured from the air by Project PLATEAU: {share:plateau}% of the footprint area. Floor counts cover {share:floors}%, and {share:estimate}% is estimated.",
+          "Aim at a building and press Q for the survey lens. Find a measured one, a floor-count one and an estimated one."
+        ],
+        "steps": [
+          {
+            "type": "inspect",
+            "sources": [
+              "plateau",
+              "floors",
+              "estimate"
+            ],
+            "text": "Survey lens (Q): a measured, a floor-count and an estimated height"
+          },
+          {
+            "type": "talk",
+            "npc": "obaasan",
+            "text": "Find Mrs. Nakamura in Nishiki Market"
+          }
+        ]
+      },
+      {
+        "id": "market",
+        "giver": "obaasan",
+        "title": "Eel's beds",
+        "stamp": "Nishiki Market",
+        "talk": [
+          "Ah, the surveyor! Try a pickle. Look how narrow the shops are: three or four metres wide, and very deep. That is how Kyoto was taxed, by the width of your front.",
+          "Ken at Nijo Castle knows even older things. Go west and north, past the Imperial Gardens' south side, and tell him I sent you."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "ken",
+            "text": "Walk to Ken at Nijo Castle"
+          }
+        ]
+      },
+      {
+        "id": "castle",
+        "giver": "ken",
+        "title": "Nightingale floors",
+        "stamp": "Nijo Castle",
+        "talk": [
+          "Welcome to Nijo Castle. Ieyasu had it built in 1603 as the Tokugawa shogun's Kyoto residence.",
+          "From here, go to the Imperial Gardens: Yui is there on her school trip. She wanted to know whether the sun reaches the gravel in winter."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "yui",
+            "text": "Find Yui in the Kyoto Imperial Gardens"
+          }
+        ]
+      },
+      {
+        "id": "sun",
+        "giver": "yui",
+        "title": "A place in the sun",
+        "stamp": "Kyoto Imperial Gardens",
+        "talk": [
+          "Konnichiwa! Is it true the sun stays so low in winter? Tokyo feels dark between the buildings.",
+          "On 21 December at noon, {sun:京都御苑|12-21|12:00}% of the Kyoto Gyoen gets direct sun. On 21 June it is {sun:京都御苑|6-21|12:00}%. There is no rule that protects it, we just measure.",
+          "Find a sunny spot in the gardens at noon on 21 December. Watch the sun meter under the map. It ray-casts from where you stand."
+        ],
+        "choices": [
+          {
+            "text": "Show me 21 December at noon",
+            "action": "set_time",
+            "date": [
+              12,
+              21
+            ],
+            "time": "12:00"
+          },
+          {
+            "text": "I'll set the time myself"
+          }
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "京都御苑",
+            "date": [
+              12,
+              21
+            ],
+            "window": [
+              "12:00",
+              "14:00"
+            ],
+            "text": "Stand in direct sun in the Kyoto Imperial Gardens, 12:00 to 14:00 on 21 December"
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "giver": "yui",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": [
+          "Arigato! That's Kyoto, from the station to the Palace.",
+          "{acc:matched} towers have been checked against published heights, and the rest are measured or estimated as you saw. Take the helicopter from Umekoji Park if you want to see how flat it really is.",
+          "The city is yours. Change the time of day, or fly anywhere."
+        ],
+        "steps": []
+      }
+    ],
+    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, from the monks of Higashi Honganji to a salaryman up from Tokyo, and fly over the grid Kyoto was laid out on in 794. Every fact they tell you about the model comes from the model.",
+    "local_name": "Kyoto local",
+    "greeting": "Konnichiwa.",
+    "water_name": "the Kamo River"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  }
+}

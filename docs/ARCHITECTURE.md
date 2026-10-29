@@ -28,11 +28,13 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Step | Script | Output |
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
+| Measured heights | `fetch_plateau.py` (backends `plateau_citygml.py`, `plateau_3dtiles.py`, vector tiles) | `data/raw/<id>/plateau.json`: Project PLATEAU footprints with measured heights, from a city's CityGML or 3D Tiles zip (HTTP range reads of the parts inside the bbox, no full download) or a vector-tile mirror of the LOD2 roof faces |
 | Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS or a GeoJSON index of GeoTIFF tiles), a LiDAR surface model where the city has one (`dsm.tif`), and Terrarium tiles for the radar check |
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
-| Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` |
+| Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
+| Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
 
@@ -62,7 +64,12 @@ height, and the viewer shows it.
 1. **verified**: a cited, one-by-one lookup (`verified_heights.csv`).
 2. **reference**: a published height, used when the open data is more than
    40% short and the match is by name (`heights.json`).
-3. **survey** and **lidar**, where the city publishes them (`survey.py`):
+2b. **plateau** (cities with a `plateau` block): the height Project PLATEAU measured
+   from the air. It replaces an OSM height or floor count, unless OSM has the building
+   more than 30% (plus 6 m) taller than the survey, which means the building is newer than
+   the survey and OSM keeps it. **plateau_lod1** is PLATEAU's block height for a building
+   with no survey record.
+2c. **survey** and **lidar**, where the city publishes them (`survey.py`):
    - a mapping agency's surveyed top level. Each footprint is cut along the
      agency's building blocks, tallest first, and each block goes to the
      footprint it fits best, so a tower's block is not cut into a podium
@@ -72,12 +79,12 @@ height, and the viewer shows it.
      lower on blocks surveyed before the flight.
 
    These replace the open-data heights below them.
-4. **mapped**: an OpenStreetMap `height`.
-5. **floors**: OSM `building:levels` × the calibrated storey height, plus any
+3. **mapped**: an OpenStreetMap `height`.
+4. **floors**: OSM `building:levels` × the calibrated storey height, plus any
    roof height.
-6. **ml**: the Microsoft ML height. Its measured bias is removed, and it is
+5. **ml**: the Microsoft ML height. Its measured bias is removed, and it is
    blended with the neighbour estimate.
-7. **estimate**: the weighted median of known heights within 60 m. Neighbours
+6. **estimate**: the weighted median of known heights within 60 m. Neighbours
    of a similar footprint and the same building type weigh more.
 
 Missing heights are not missing at random: mappers tag the prominent towers
@@ -96,11 +103,30 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 - `buildings.json`
   - `b`: one row per building, `[name, class, top_m, floors, height_src,
-    footprint_src, osm_id, wall_colour, roof_colour, open_data_top_m]`.
+    footprint_src, osm_id, wall_colour, roof_colour, open_data_top_m, style,
+    storey_m, ground_floor_m, roof_material, seed, roof_shape, roof_src]`.
+    The last seven are integer codes: `styles`, `roof_materials`,
+    `roof_shapes` and `roof_sources` list them.
   - `s`: one row per solid, `[building, base_dm, min_dm, top_dm, ring_dm,
     ...holes_dm]`.
+  - `r`: one row per solid with a pitched roof, `[solid, top_dm, eave_dm,
+    shape, x0_dm, y0_dm, xyz, triangles, roof_triangles]`.
+    - `xyz` is int16 little-endian, base64: `(x - x0, y - y0, z above the
+      solid's base)` in decimetres.
+    - `triangles` are vertex indices, base64: uint8 under 256 vertices, else
+      uint16.
+    - The first `roof_triangles` triangles are roof. The rest are gable
+      walls and soffits.
+    - The solid's walls stop at `eave_dm`. `Sun.unpackRoof` (`sun.js`)
+      decodes a row.
+  - `f`: shopfront edges, `[solid, edge, flags, ...]`. Flag 1 is a shopfront
+    and flag 2 an awning; the edge is counted along the outer ring.
+  - `p`: rooftop plant, `[solid, kind, x_dm, y_dm, w_dm, d_dm, h_dm,
+    angle_cdeg]`. Kind 0 is a plant box, 1 a plant room and 2 a water tank.
 
-  A building with OSM parts has several solids.
+  A building with OSM parts has several solids. Viewers and Blender treat a
+  file without `r`, `f`, `p` or the style fields as flat-roofed and guess
+  styles from class and height.
 - `places.json`
   - `places`: `{name, lep, period, from, to, area_m2, polygons}`. `lep` means
     "protected by the city's rule".
@@ -122,6 +148,9 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   - 0.25 off rock;
   - 1.0 off a seawall or any other built edge.
 
+  The first grid point out from the land is at most 0.3 m deep (a shelf), so on
+  the 5 m grid the waterline falls at the quay's edge rather than up to a cell
+  inland. Without it Osaka's river walk along the Dotonbori went under the water.
   The water shader uses the same slopes for how much of the bottom shows.
   Sydney's map holds 25 sand and 220 rock polygons from Overture's land cover.
   Melbourne's sand is sports fields, away from the river.
@@ -168,8 +197,11 @@ The views switch in place, without reloading the page.
 
 - **`world.js`** builds the city scene the model viewer and the game share:
   - terrain tiles under the imagery;
-  - extruded buildings with facades, lit windows at night and the
-    height-source colours;
+  - the buildings from **`buildings.js`**: walls in runs of whole bays, LOD2
+    roofs with eaves, parapets, awnings and instanced rooftop plant, in one
+    mesh. Its facade shader draws floors, windows, curtain walls,
+    shopfronts, glass with a room behind it, lights by the local hour, and
+    the height-source colours ([BUILDINGS.md](BUILDINGS.md));
   - landmarks with their surface patterns, piers and water;
   - trees (`trees.js`): the six species of `blender/build_trees.py`, in the
     city's mix, instanced per species and per distance (full within 130 m,
@@ -182,21 +214,14 @@ The views switch in place, without reloading the page.
     reflections included. Within about 150 m of the camera it is held off, unless
     the camera itself is outside the model.
 
-  Each building gets one of three facades, from its class and height:
-  - a glass curtain wall for towers of 55 m and more: panes between mullions
-    every 1.5 m, an opaque spandrel at each slab, glossy enough to reflect the
-    sky;
-  - ribbon windows for other non-residential buildings of 15 m and more;
-  - punched windows with sills for the rest.
-
-  Storeys come from the mapped floor count where there is one. The ground floor
-  of offices and towers is a shopfront. Every pattern fades to its average
-  colour where a storey covers only a few pixels, so distant facades do not
-  shimmer. Pane tones and lit windows come from an integer hash of bay, storey
-  and building, which interpolation noise cannot turn into speckle.
-
-  Flat roofs sit 0.5 m below their walls' tops, behind a parapet, so the
-  outline keeps each building's stated height.
+  Each building gets one of 13 facade styles from `typology.py` (terrace,
+  machiya, curtain wall, ribbon office and others), with its storeys, a
+  ground floor and shopfronts on the edges that face a street. Patterns fade
+  to their average colour where a storey covers only a few pixels, and every
+  hash is keyed by integer bay, storey and building id, so distant facades
+  neither shimmer nor speckle. Flat roofs sit behind a parapet and coping;
+  pitched roofs come as meshes in `buildings.json` `r`, carved inside the
+  building's stated height, so the outline keeps it.
 
 - **`water.js`** is the sea and the river for every city, after Tidewater
   (github.com/dgreenheck/tidewater, MIT), ported from WebGPU compute to WebGL2:
@@ -271,7 +296,9 @@ The views switch in place, without reloading the page.
   analyses share it:
   - solar position (the NOAA equations);
   - local time for any IANA time zone, via `Intl`;
-  - the surface model (`buildDSM`, with building ids for shade attribution);
+  - the surface model (`buildDSM`, with building ids for shade attribution).
+    Solids with a pitched roof rise to their eaves and then follow the roof's
+    triangles (`roofs(B)` once per city);
   - ray casting (`castRay`, `sunlit`, `blocker`, `fractionSunlit`, `litMask`).
 
   Ray casting skips empty space with 8-cell block maxima.
@@ -341,7 +368,9 @@ All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
 `blender/build_scene.py` imports `bpy` and reads the same `web/data/<id>`
 files. It builds the same scene:
 - terrain tiles with the imagery;
-- one building mesh with face-corner colours;
+- the buildings from `blender/buildings.py`: the same walls, roofs, parapets,
+  awnings and plant, with a node facade shader (windows by floor and bay, lit
+  at night);
 - trees, piers and landmarks, with the same geometry as the browser (the
   surface patterns are the browser's only);
 - a water plane, 10 cm above sea level so that it does not share a plane with

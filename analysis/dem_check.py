@@ -1,8 +1,11 @@
 """Is the terrain right? Compare the city's DEM with an independent elevation
 source (city.json "terrain_check") at open land points: an ArcGIS identify endpoint
-sampled on a grid ("arcgis_identify"), or surveyed spot heights from an ArcGIS
-feature layer ("arcgis_points", e.g. Vicmap Elevation for Melbourne). Photogrammetric DEMs can be biased in street canyons, which
-would mis-set every building base and every shadow on the ground.
+sampled on a grid ("arcgis_identify"), surveyed spot heights from an ArcGIS
+feature layer ("arcgis_points", e.g. Vicmap Elevation for Melbourne), GSI PNG
+tiles ("gsi_dem_png", a coarser, older Japanese DEM) or GSI's elevation lookup
+("gsi_elevation_api", the 1 m laser DEM where flown). Photogrammetric DEMs can be
+biased in street canyons, which would mis-set every building base and every shadow
+on the ground.
 
     python analysis/dem_check.py --city sydney      # -> cities/<city>/analysis/dem_check.json
 """
@@ -19,9 +22,18 @@ from PIL import Image, ImageDraw
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pipeline"))
 from build_scene import DEM_CELL, load_dem, sample  # noqa: E402
 from cityctx import city_args  # noqa: E402
+from fetch_tiles import gsi_decode  # noqa: E402
 
 
 def identify(cfg, lon, lat):
+    if cfg["type"] == "gsi_elevation_api":  # GSI's own lookup, best source at each point (1 m laser where flown)
+        for _ in range(3):
+            try:
+                v = requests.get(cfg["url"], params=dict(lon=lon, lat=lat, outtype="JSON"), timeout=60).json().get("elevation")
+                return float(v) if isinstance(v, (int, float)) else None
+            except (requests.RequestException, ValueError):
+                continue
+        return None
     p = dict(geometry=f"{lon},{lat}", geometryType="esriGeometryPoint", sr=4326, layers="all", tolerance=0,
              mapExtent=f"{lon - 0.001},{lat - 0.001},{lon + 0.001},{lat + 0.001}", imageDisplay="100,100,96", returnGeometry="false", f="json")
     for _ in range(3):
@@ -49,11 +61,35 @@ def spot_heights(cfg, bbox):
         offset += len(fs)
 
 
+_tiles = {}
+
+
+def gsi_value(cfg, lon, lat):
+    """Elevation from GSI PNG tiles (a different, coarser dataset than the city's DEM): bilinear in the tile."""
+    import io
+    import math
+    z = cfg["zoom"]
+    n = 2 ** z
+    fx, fy = (lon + 180) / 360 * n, (1 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2 * n
+    tx, ty = int(fx), int(fy)
+    if (tx, ty) not in _tiles:
+        r = requests.get(cfg["url"].format(z=z, x=tx, y=ty), timeout=60)
+        _tiles[(tx, ty)] = gsi_decode(io.BytesIO(r.content)) if r.status_code == 200 else None
+    t = _tiles[(tx, ty)]
+    if t is None:
+        return None
+    px, py = (fx - tx) * 256 - 0.5, (fy - ty) * 256 - 0.5
+    x0, y0 = int(np.clip(math.floor(px), 0, 254)), int(np.clip(math.floor(py), 0, 254))
+    wx, wy = min(max(px - x0, 0), 1), min(max(py - y0, 0), 1)
+    v = (t[y0, x0] * (1 - wx) * (1 - wy) + t[y0, x0 + 1] * wx * (1 - wy) + t[y0 + 1, x0] * (1 - wx) * wy + t[y0 + 1, x0 + 1] * wx * wy)
+    return None if np.isnan(v) else float(v)
+
+
 def main():
     C, _ = city_args(__doc__.splitlines()[0])
     chk = C.cfg.get("terrain_check")
-    if not chk or chk.get("type") not in ("arcgis_identify", "arcgis_points"):
-        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify or arcgis_points in city.json")
+    if not chk or chk.get("type") not in ("arcgis_identify", "arcgis_points", "gsi_dem_png", "gsi_elevation_api"):
+        raise SystemExit(f"{C.id}: no terrain_check of type arcgis_identify, arcgis_points, gsi_dem_png or gsi_elevation_api in city.json")
     dem = load_dem(C)
     B = json.load(open(os.path.join(C.out, "buildings.json")))
     img = Image.new("L", (dem.shape[1], dem.shape[0]), 0)
@@ -79,8 +115,11 @@ def main():
     pts = [(r, c) for r, c in zip(rows.ravel(), cols.ravel()) if dem[r, c] > 1.0 and not built[r, c]]
     xy = [(C.x0 + c * DEM_CELL, C.y1 - r * DEM_CELL) for r, c in pts]
     lonlat = [C.inv.transform(x, y) for x, y in xy]
-    with ThreadPoolExecutor(4) as ex:
-        vals = list(ex.map(lambda ll: identify(chk, *ll), lonlat))
+    if chk["type"] == "gsi_dem_png":
+        vals = [gsi_value(chk, *ll) for ll in lonlat]   # tiles are cached, so no threads
+    else:
+        with ThreadPoolExecutor(4) as ex:
+            vals = list(ex.map(lambda ll: identify(chk, *ll), lonlat))
     diffs, out = [], []
     for (r, c), (x, y), v in zip(pts, xy, vals):
         if v is None:

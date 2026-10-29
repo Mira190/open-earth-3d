@@ -1,0 +1,578 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "Hibiya Park 日比谷公園",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 13.7,
+   "catchment_buildings": 37,
+   "shade_by_height_source_pct": {
+    "estimate": 14.9,
+    "plateau": 84.8,
+    "floors": 0.1,
+    "mapped": 0.2
+   },
+   "top_blockers": [
+    {
+     "building": 4732,
+     "name": "日比谷公会堂",
+     "height_m": 33.4,
+     "source": "plateau",
+     "osm_id": "w137309791",
+     "share_pct": 23.9
+    },
+    {
+     "building": 4740,
+     "name": "unnamed building",
+     "height_m": 26.9,
+     "source": "plateau",
+     "osm_id": "w137309790",
+     "share_pct": 14.8
+    },
+    {
+     "building": 4744,
+     "name": "unnamed building",
+     "height_m": 16.3,
+     "source": "plateau",
+     "osm_id": "w137309792",
+     "share_pct": 5.9
+    },
+    {
+     "building": 4754,
+     "name": "日比谷パークフロント",
+     "height_m": 106,
+     "source": "plateau",
+     "osm_id": "w145403154",
+     "share_pct": 5.5
+    },
+    {
+     "building": 4734,
+     "name": "富国生命ビル",
+     "height_m": 122.4,
+     "source": "plateau",
+     "osm_id": "w145403181",
+     "share_pct": 5
+    },
+    {
+     "building": 4743,
+     "name": "unnamed building",
+     "height_m": 13.9,
+     "source": "plateau",
+     "osm_id": "w145409065",
+     "share_pct": 4.1
+    }
+   ],
+   "base_by_month": [
+    78.8,
+    84,
+    88.8,
+    91,
+    92.3,
+    92.8,
+    92.5,
+    91.3,
+    88.7,
+    83.3,
+    77.2,
+    74.9
+   ],
+   "p05_by_month": [
+    72.7,
+    79,
+    86.4,
+    89.9,
+    91.5,
+    92.1,
+    91.8,
+    90.1,
+    86.4,
+    79,
+    71,
+    67.8
+   ],
+   "p95_by_month": [
+    78.4,
+    83.8,
+    88.7,
+    91.2,
+    92.4,
+    92.9,
+    92.6,
+    91.4,
+    88.7,
+    82.9,
+    76.9,
+    74.3
+   ],
+   "window_mean": {
+    "base": 86.3,
+    "p05": 83.5,
+    "p95": 86
+   },
+   "max_halfwidth_pp": 3.3
+  },
+  {
+   "name": "Imperial Palace Plaza 皇居前広場",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 0.2,
+   "catchment_buildings": 3,
+   "shade_by_height_source_pct": {
+    "estimate": 95.1,
+    "plateau": 4.9
+   },
+   "top_blockers": [
+    {
+     "building": 2511,
+     "name": "unnamed building",
+     "height_m": 8.3,
+     "source": "estimate",
+     "osm_id": "",
+     "share_pct": 50.8
+    },
+    {
+     "building": 2778,
+     "name": "unnamed guardhouse",
+     "height_m": 30.4,
+     "source": "estimate",
+     "osm_id": "w145402355",
+     "share_pct": 44.4
+    },
+    {
+     "building": 2512,
+     "name": "桜田門",
+     "height_m": 16.4,
+     "source": "plateau",
+     "osm_id": "w145400030",
+     "share_pct": 4.5
+    },
+    {
+     "building": 2823,
+     "name": "unnamed toilets",
+     "height_m": 4.5,
+     "source": "plateau",
+     "osm_id": "w145402308",
+     "share_pct": 0.4
+    }
+   ],
+   "base_by_month": [
+    99.7,
+    99.8,
+    99.8,
+    99.9,
+    99.9,
+    99.9,
+    99.9,
+    99.9,
+    99.8,
+    99.8,
+    99.8,
+    99.7
+   ],
+   "p05_by_month": [
+    97.1,
+    98.9,
+    99.3,
+    99.6,
+    99.7,
+    99.8,
+    99.8,
+    99.6,
+    98.8,
+    98.8,
+    97.7,
+    96.6
+   ],
+   "p95_by_month": [
+    99.9,
+    99.9,
+    99.9,
+    99.9,
+    100,
+    100,
+    100,
+    100,
+    99.9,
+    99.9,
+    99.8,
+    99.8
+   ],
+   "window_mean": {
+    "base": 99.8,
+    "p05": 99.1,
+    "p95": 99.9
+   },
+   "max_halfwidth_pp": 1.6
+  },
+  {
+   "name": "Marunouchi Central Plaza",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 29.4,
+   "catchment_buildings": 6,
+   "shade_by_height_source_pct": {
+    "estimate": 7.7,
+    "plateau": 92.3
+   },
+   "top_blockers": [
+    {
+     "building": 11053,
+     "name": "JPタワー",
+     "height_m": 200,
+     "source": "plateau",
+     "osm_id": "w145394391",
+     "share_pct": 86.6
+    },
+    {
+     "building": 11277,
+     "name": "unnamed roof",
+     "height_m": 10.8,
+     "source": "estimate",
+     "osm_id": "w1304672773",
+     "share_pct": 6.3
+    },
+    {
+     "building": 11054,
+     "name": "東京ビルディング",
+     "height_m": 166.3,
+     "source": "plateau",
+     "osm_id": "w145394396",
+     "share_pct": 2.7
+    },
+    {
+     "building": 11035,
+     "name": "丸の内ビルディング",
+     "height_m": 178.3,
+     "source": "plateau",
+     "osm_id": "w145394394",
+     "share_pct": 2.1
+    },
+    {
+     "building": 11044,
+     "name": "unnamed building",
+     "height_m": 8,
+     "source": "estimate",
+     "osm_id": "w1304672772",
+     "share_pct": 1.4
+    },
+    {
+     "building": 11011,
+     "name": "丸の内パークビルディング",
+     "height_m": 170.8,
+     "source": "plateau",
+     "osm_id": "w363563886",
+     "share_pct": 0.7
+    }
+   ],
+   "base_by_month": [
+    43.3,
+    46.4,
+    85.1,
+    97.2,
+    97.3,
+    98.5,
+    98.5,
+    98.1,
+    85.1,
+    37.4,
+    31.4,
+    28.4
+   ],
+   "p05_by_month": [
+    35.1,
+    38.7,
+    75.6,
+    89.7,
+    91.1,
+    93.1,
+    92.8,
+    91,
+    76.2,
+    32.3,
+    24.8,
+    20.2
+   ],
+   "p95_by_month": [
+    44.8,
+    49.6,
+    89.8,
+    98.1,
+    98,
+    99.1,
+    99.2,
+    98.8,
+    89.9,
+    40.3,
+    32.1,
+    31
+   ],
+   "window_mean": {
+    "base": 70.6,
+    "p05": 65.1,
+    "p95": 71.6
+   },
+   "max_halfwidth_pp": 7.1
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "Marunouchi Central Plaza",
+   "building": 11053,
+   "name": "JPタワー",
+   "osm_id": "w145394391",
+   "height_m": 200,
+   "source": "plateau",
+   "plausible_m": [
+    188,
+    212
+   ],
+   "sun_change_pp": [
+    -2.5,
+    3.3
+   ],
+   "swing_pp": 5.8
+  },
+  {
+   "place": "Marunouchi Central Plaza",
+   "building": 11277,
+   "name": "unnamed roof",
+   "osm_id": "w1304672773",
+   "height_m": 10.8,
+   "source": "estimate",
+   "plausible_m": [
+    3,
+    34
+   ],
+   "sun_change_pp": [
+    -2.3,
+    0.6
+   ],
+   "swing_pp": 3
+  },
+  {
+   "place": "Marunouchi Central Plaza",
+   "building": 11054,
+   "name": "東京ビルディング",
+   "osm_id": "w145394396",
+   "height_m": 166.3,
+   "source": "plateau",
+   "plausible_m": [
+    156,
+    176
+   ],
+   "sun_change_pp": [
+    -1.1,
+    0.9
+   ],
+   "swing_pp": 2
+  },
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "building": 4722,
+   "name": "unnamed building",
+   "osm_id": "w145409093",
+   "height_m": 22.1,
+   "source": "estimate",
+   "plausible_m": [
+    6,
+    70
+   ],
+   "sun_change_pp": [
+    -0.4,
+    0.2
+   ],
+   "swing_pp": 0.6
+  },
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "building": 4734,
+   "name": "富国生命ビル",
+   "osm_id": "w145403181",
+   "height_m": 122.4,
+   "source": "plateau",
+   "plausible_m": [
+    115,
+    130
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.1
+   ],
+   "swing_pp": 0.3
+  },
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "building": 4723,
+   "name": "unnamed building",
+   "osm_id": "w145409033",
+   "height_m": 22.1,
+   "source": "estimate",
+   "plausible_m": [
+    6,
+    70
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.1
+   ],
+   "swing_pp": 0.3
+  },
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "building": 4754,
+   "name": "日比谷パークフロント",
+   "osm_id": "w145403154",
+   "height_m": 106,
+   "source": "plateau",
+   "plausible_m": [
+    100,
+    112
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.1
+   ],
+   "swing_pp": 0.2
+  },
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "building": 4736,
+   "name": "unnamed building",
+   "osm_id": "w1277708643",
+   "height_m": 15.8,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    50
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0
+   ],
+   "swing_pp": 0.2
+  },
+  {
+   "place": "Hibiya Park 日比谷公園",
+   "building": 2786,
+   "name": "unnamed building",
+   "osm_id": "w145409074",
+   "height_m": 19.1,
+   "source": "estimate",
+   "plausible_m": [
+    5,
+    60
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0
+   ],
+   "swing_pp": 0.2
+  },
+  {
+   "place": "Marunouchi Central Plaza",
+   "building": 11035,
+   "name": "丸の内ビルディング",
+   "osm_id": "w145394394",
+   "height_m": 178.3,
+   "source": "plateau",
+   "plausible_m": [
+    168,
+    189
+   ],
+   "sun_change_pp": [
+    -0.1,
+    0.1
+   ],
+   "swing_pp": 0.2
+  },
+  {
+   "place": "Marunouchi Central Plaza",
+   "building": 11044,
+   "name": "unnamed building",
+   "osm_id": "w1304672772",
+   "height_m": 8,
+   "source": "estimate",
+   "plausible_m": [
+    2,
+    25
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0
+   ],
+   "swing_pp": 0.2
+  },
+  {
+   "place": "Marunouchi Central Plaza",
+   "building": 11047,
+   "name": "unnamed roof",
+   "osm_id": "w1304672779",
+   "height_m": 8,
+   "source": "estimate",
+   "plausible_m": [
+    2,
+    25
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0
+   ],
+   "swing_pp": 0.2
+  }
+ ],
+ "seconds": 148.707,
+ "sigma": {
+  "floors": 0.187,
+  "estimate": 0.448,
+  "ml": null
+ }
+}

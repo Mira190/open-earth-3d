@@ -42,6 +42,7 @@ def without_raised(C, con, path, rows, sea):
     return [q for p in sea for q in polygons(p.difference(cut)) if q.area > 1]
 SLOPES = {"sand": 0.04, "rock": 0.25, "built": 1.0}  # depth per metre from the shore
 FLOOR_M = 4.0
+QUAY_SHELF_M = 0.3  # the terrain's first point out from the land is at most this deep (build_scene.py, game_data.py)
 
 
 def shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg):

@@ -20,7 +20,7 @@ import duckdb
 from cityctx import city_args
 
 COMMON = """id, names.primary AS name, height, min_height, num_floors, min_floor, roof_shape, roof_height,
-  roof_direction, roof_color, roof_material, facade_color, facade_material, is_underground,
+  roof_direction, roof_orientation, roof_color, roof_material, facade_color, facade_material, is_underground,
   sources[1].dataset AS src, sources[1].record_id AS record_id,
   coalesce(list_filter(sources, lambda s: s.property = '/properties/height')[1].dataset, sources[1].dataset) AS height_src,
   ST_AsWKB(geometry) AS wkb"""

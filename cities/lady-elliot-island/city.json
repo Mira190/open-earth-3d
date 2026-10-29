@@ -1,0 +1,218 @@
+{
+  "id": "lady-elliot-island",
+  "name": "Lady Elliot Island",
+  "country": "Australia",
+  "country_code": "AU",
+  "kind": "marine",
+  "timezone": "Australia/Brisbane",
+  "locale": "en-AU",
+  "description": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef, 85 km north-east of Bundaberg in a Green Zone of the Marine Park, with its reef and the open water around it. Manta rays are drawn to the plankton around the island. Rebuilt from 30 m survey bathymetry and Sentinel-2; the cay's ground is rebuilt from its mapped outline.",
+  "bbox": [
+    152.655,
+    -24.17,
+    152.775,
+    -24.06
+  ],
+  "area_note": "12 x 12 km centred on the island: its platform reef (about 1.3 km across) and the open shelf around it, mostly 30-55 m deep. There is no other reef within the box; Lady Musgrave Island, the nearest, is 40 km north-west.",
+  "origin": [
+    152.715,
+    -24.115
+  ],
+  "extent_m": [
+    -6000,
+    6000,
+    -6000,
+    6000
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m MSL",
+  "year": 2026,
+  "imagery": {
+    "type": "sentinel2",
+    "pixel_m": 10,
+    "since": "2025-10-01",
+    "max_cloud": 12,
+    "attribution": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS"
+  },
+  "terrain": {
+    "type": "gbr_bathy",
+    "pixel_m": 30,
+    "bare_earth": true,
+    "attribution": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
+    "cays": {
+      "islands": [
+        "Lady Elliot Island"
+      ],
+      "hat_m": 1.41,
+      "hat_src": "MSQ 2026 semidiurnal tidal planes, Lady Elliot Island: HAT 2.66 m and MSL 1.25 m above LAT",
+      "top_m": 3.0,
+      "top_src": "assumed: no published survey height of the island was found; the survey model's up to 9 m there is the tree canopy",
+      "note": "pipeline/build_marine.py cays(): the cay is rebuilt from its OpenStreetMap outline (Overture base land)"
+    }
+  },
+  "start": {
+    "x": -700,
+    "y": -420,
+    "z": 140,
+    "yaw": -50,
+    "pitch": -15,
+    "date": null,
+    "note": "south-west of the island over the reef edge, looking north-east across the cay and its airstrip"
+  },
+  "spawn": {
+    "poi": "lei-beach",
+    "x": -363,
+    "y": 26,
+    "heading": 255,
+    "note": "on the upper sand of the western beach below the old lighthouse, about 1.55 m above mean sea level (the highest astronomical tide is 1.41 m), facing the sea"
+  },
+  "pois": [
+    {
+      "id": "lady-elliot-island",
+      "name": "Lady Elliot Island",
+      "kind": "island",
+      "lonlat": [
+        152.71452,
+        -24.11323
+      ],
+      "src": "osm",
+      "osm": "way 15703996"
+    },
+    {
+      "id": "lei-beach",
+      "name": "Lady Elliot Island, western beach",
+      "kind": "beach",
+      "lonlat": [
+        152.71122,
+        -24.11486
+      ],
+      "src": "osm",
+      "osm": "relation 13651843",
+      "note": "a point on the island's mapped beach (unnamed in OSM) below the old lighthouse"
+    },
+    {
+      "id": "lei-airstrip",
+      "name": "Lady Elliot Island airstrip",
+      "kind": "airport",
+      "lonlat": [
+        152.71544,
+        -24.11289
+      ],
+      "src": "osm",
+      "osm": "way 582781803 (aerodrome), way 33686280 (runway)"
+    },
+    {
+      "id": "lei-lighthouse",
+      "name": "Old Lady Elliot Lighthouse",
+      "kind": "cultural",
+      "lonlat": [
+        152.71155,
+        -24.1146
+      ],
+      "src": "osm",
+      "osm": "way 437359875"
+    },
+    {
+      "id": "lei-reef",
+      "name": "Lady Elliot Island reef",
+      "kind": "reef",
+      "lonlat": [
+        152.72017,
+        -24.11306
+      ],
+      "src": "osm",
+      "osm": "relation 6492561",
+      "note": "the cay's platform reef (unnamed in OSM)"
+    },
+    {
+      "id": "lei-anchorage",
+      "name": "West side, off the reef edge",
+      "kind": "anchorage",
+      "xy": [
+        -490,
+        -280
+      ],
+      "src": "nominal"
+    },
+    {
+      "id": "south-west-gate",
+      "name": "Toward Bundaberg",
+      "kind": "gate",
+      "xy": [
+        -5500,
+        -5500
+      ],
+      "src": "nominal"
+    }
+  ],
+  "poi_sources": {
+    "osm": "OpenStreetMap contributors (ODbL): Nominatim for the old lighthouse, otherwise Overture Maps 2026-10-21.0 base land and infrastructure; for areas a point on the surface. The `osm` field names the object.",
+    "nominal": "chosen for the viewer; the boats search near it for water 5-9 m deep",
+    "not mapped": "no dive or snorkel sites are mapped in OSM or Overture at Lady Elliot Island; the beach and the reef are mapped without names, so they carry descriptive names here"
+  },
+  "harbour": {
+    "fleets": [
+      {
+        "at": "lei-anchorage",
+        "n": 2
+      }
+    ],
+    "marina": null,
+    "pontoon": null,
+    "parked": [],
+    "moorings": 4,
+    "traffic": [
+      {
+        "kind": "yacht",
+        "route": [
+          "south-west-gate",
+          "lei-anchorage"
+        ],
+        "loop": "pingpong",
+        "dwell": 60,
+        "vmax": 4.2
+      },
+      {
+        "kind": "tinnie",
+        "name": "Dive boat",
+        "route": [
+          "lei-anchorage",
+          "south-west-gate"
+        ],
+        "loop": "pingpong",
+        "dwell": 40,
+        "vmax": 10
+      }
+    ],
+    "scenic": []
+  },
+  "tide": {
+    "gauge": "Waddy Point (K'gari)",
+    "years": {
+      "2025": "246eb6f9-169c-457b-89cb-0b7238d5eb40",
+      "2026": "2f26705c-14d0-49e3-9869-ad93b8fb311e"
+    },
+    "note": "Waddy Point (24 58 S 153 21 E) is on the open-ocean coast of K'gari, 114 km south-south-east. MSQ lists Lady Elliot Island as a secondary place of Bundaberg (Burnett Heads, 80 km south-south-west, at the mouth of the Burnett River) with high water 24 and low water 33 minutes earlier and 0.74 of its range. Waddy Point's tide runs about 25 minutes ahead of Burnett Heads' (M2 phase 12 degrees earlier in the 2026 fit), the same as Lady Elliot's, and its spring range about mean sea level (MHWS +0.63, MLWS -0.62 m) is closer to Lady Elliot's (+0.87, -0.86 m) than Burnett Heads' (+1.16, -1.17 m), so the open-coast gauge is the closer match. Heights at the island are still about a third larger than Waddy Point's."
+  },
+  "life": {
+    "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Wikipedia, Lady Elliot Island: guano mining (1863-1873) removed virtually all the trees; revegetation from 1966; Pisonia grandis grows on the island; manta rays are abundant, attracted to the plankton (manta: in the water all the time, p per 128 m cell not sourced); green and loggerhead turtles nest between November and March (their shares here are not sourced). NPAQ, 'Lady Elliot Island: an example of effective habitat restoration' (S. Cooper, 2023): habitat zones 'coastal zone with casuarina/pandanus and octopus bush' and 'pisonia forest', Pisonia now covering 30% of the island; the 2021 land cover shows much of the replanted ground as grass, so grass gets young Pisonia and octopus bush at a low density. The grass airstrip (OSM way 33686280, runway 17/35) and 20 m either side of it stay clear. Spawning: a southern reef (Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+    "flora": {
+      "minAbove": 1.45,
+      "cell": 5,
+      "coastR": [14, 26],
+      "coastMaxAbove": 6,
+      "forest": {"pisonia": 1},
+      "coast": {"casuarina": 0.4, "octopus-bush": 0.35, "pandanus": 0.25},
+      "grass": {"pisonia": 0.5, "octopus-bush": 0.5},
+      "density": {"10": 0.92, "12": 0.35, "16": 0.35, "coast": 0.8},
+      "clear": [{"id": "lei-runway", "src": "OpenStreetMap way 33686280 (aeroway=runway, ref 17/35)", "pad": 20, "lonlat": [[152.7154305, -24.1156021], [152.7149863, -24.1155671], [152.7151742, -24.1135849], [152.7155017, -24.110113], [152.715946, -24.110148], [152.7156243, -24.113574]]}]
+    },
+    "fauna": {"manta": {"p": 0.6, "share": 1}},
+    "nesting": {"months": [11, 12, 1, 2, 3], "species": {"green-turtle": 0.5, "loggerhead": 0.5}, "perKm": 25},
+    "spawning": {"lag": 1}
+  },
+  "sources": {
+    "lady_elliot_island": "https://en.wikipedia.org/wiki/Lady_Elliot_Island (southernmost coral cay of the Great Barrier Reef; 85 km north-east of Bundaberg; in the Green Zone of the Marine Park; manta rays attracted to the plankton; airstrip with daily flights)",
+    "tide": "https://www.msq.qld.gov.au/_/media/tmronline/msqinternet/msqfiles/home/tides/tidal-planes/2026-semidiurnal-tidal-planes.pdf (MSQ: Lady Elliot Island as a secondary place of Bundaberg (Burnett Heads), its planes and HAT; Waddy Point and Burnett Heads planes)"
+  }
+}

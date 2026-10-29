@@ -183,7 +183,7 @@ class Survey:
         return None
 
     def apply(self, geoms, hidden=(), key=None):
-        """Cut every solid in geoms ([polygon, min_height, height, source, part_name]) along the blocks,
+        """Cut every solid in geoms ([polygon, min_height, height, source, part_name, record]) along the blocks,
         or measure it from the LiDAR surface model, except a landmark's own parts (parametric, or
         hidden for a landmark to draw instead). Returns (new geoms, the surveyed storeys of the
         largest piece or None)."""
@@ -198,16 +198,16 @@ class Survey:
                     lo = self.lower(g, h, i)
                     if lo is not None and lo > gm[1] + 1.0:
                         self.lowered.append([self.rec[i].get("name"), round(h, 1), lo])
-                        out.append([g, gm[1], lo, "lidar", gm[4]])
+                        out.append([g, gm[1], lo, "lidar", *gm[4:]])
                         continue
-                    out.append([g, gm[1], max(h, gm[1] + 1.0), "survey", gm[4]])
+                    out.append([g, gm[1], max(h, gm[1] + 1.0), "survey", *gm[4:]])
                     if g.area > best[0]:
                         best = (g.area, self.rec[i].get("floors"))
                 continue
             h = self.measured(gm[0]) if not own and gm[3] not in ("verified", "reference") else None
             if h is not None and h > gm[1] + 1.0:
                 self.lidar_n += 1
-                out.append([gm[0], gm[1], h, "lidar", gm[4]])
+                out.append([gm[0], gm[1], h, "lidar", *gm[4:]])
             else:
                 out.append(gm)
         return out, best[1]

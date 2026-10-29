@@ -91,7 +91,20 @@ window.OENav = (function () {
       const c = Math.floor((x - x0) / DSM.cell), r = Math.floor((y1 - y) / DSM.cell);
       return c < 0 || r < 0 || c >= DSM.nx || r >= DSM.ny ? -1 : r * DSM.nx + c;
     };
-    const terrain = (x, y) => S.terrainAt(T, x, y);
+    // the ground under a walker: bilinear over the land corners only, so a quay or a river walk
+    // keeps its own height instead of sagging towards the modelled bottom beside it
+    const landOnly = wm.nx === T.nx && wm.ny === T.ny;
+    function terrain(x, y) {
+      if (!landOnly) return S.terrainAt(T, x, y);
+      const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell)), r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
+      const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
+      let s = 0, w = 0, k;
+      if ((k = (1 - fc) * (1 - fr)) > 0 && !isWaterCell(r0, c0)) { s += D[i] * k; w += k; }
+      if ((k = fc * (1 - fr)) > 0 && !isWaterCell(r0, c0 + 1)) { s += D[i + 1] * k; w += k; }
+      if ((k = (1 - fc) * fr) > 0 && !isWaterCell(r0 + 1, c0)) { s += D[i + T.nx] * k; w += k; }
+      if ((k = fc * fr) > 0 && !isWaterCell(r0 + 1, c0 + 1)) { s += D[i + T.nx + 1] * k; w += k; }
+      return w > 1e-6 ? s / w : S.terrainAt(T, x, y);
+    }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
     for (const s of D.B.s) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);

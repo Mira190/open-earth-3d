@@ -51,7 +51,7 @@ window.OELights = (function () {
       lasers.push(l);
     }
     const flood = Object.values(Wd.floodMats || {});
-    const warm = new THREE.Color('#ffe2b8');
+    const own = flood.map(m => m.emissive.clone()); // each floodlight's colour, for after the show
     let minute = 0, on = false;
     const api = {
       cfg,
@@ -62,7 +62,7 @@ window.OELights = (function () {
         on = Wd.U.uNight.value > 0.5 && min >= start && min < start + len;
         minute = min;
         group.visible = on;
-        if (was && !on) for (const m of flood) m.emissive.copy(warm);
+        if (was && !on) flood.forEach((m, i) => m.emissive.copy(own[i]));
       },
       tick(t) {
         if (!on) return;

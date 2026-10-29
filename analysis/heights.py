@@ -64,12 +64,37 @@ def main():
         if num and street:
             addr.setdefault((num.split("-")[0].strip(), street_key(street)), []).append(swkb.loads(bytes(w)))
 
+    def finish(row, r, bi, how):
+        meta = list(B["b"][bi])
+        meta[2] = meta[9]  # score the open-data height, before any reference correction
+        if meta[4] in ("reference", "verified"):
+            meta[4] = "floors" if meta[3] else "estimate"
+        row.update({"match": "address", "how": how, "building": bi, "model_name": meta[0], "model_m": meta[2], "model_floors": meta[3],
+                    "height_src": meta[4], "osm_id": meta[6]})
+        row["error_m"] = round(meta[2] - row["ref_m"], 1)
+        row["error_pct"] = round(100 * (meta[2] - row["ref_m"]) / row["ref_m"], 1)
+        if r.get("exclude"):
+            row["match"], row["why"] = "ambiguous", r["exclude"]
+
     rows = []
     ref = C.cfg.get("reference_heights", {}).get("file", "reference_heights.csv")
     for r in csv.DictReader(open(C.file(ref), encoding="utf8")):
-        m = re.match(r"(\d+)(?:-\d+)?\s+(.*)", r["address"])
+        m = re.match(r"(\d+)(?:-\d+)?\s+(.*)", r["address"] or "")
         row = {"name": r["name"], "ref_m": float(r["height_m"]), "ref_floors": int(r["floors"]) if r["floors"] else None,
                "year": r["year"], "address": r["address"]}
+        # a "match_name" column (the building's name as the map has it) finds the building without an address;
+        # the tallest building with exactly that name, else one whose name contains it
+        mn = (r.get("match_name") or "").strip()
+        if mn:
+            hit = [i for i, b in enumerate(B["b"]) if b[0] == mn] or [i for i, b in enumerate(B["b"]) if b[0] and mn in b[0]]
+            if not hit:
+                row["match"] = "name not found"
+                rows.append(row)
+                continue
+            bi = max(hit, key=lambda i: B["b"][i][9])
+            finish(row, r, bi, "name")
+            rows.append(row)
+            continue
         if r.get("lon") and r.get("lat"):  # the list's own coordinates, where it gives them instead of an address
             pts = [Point(float(r["lon"]), float(r["lat"]))]
         else:
@@ -100,16 +125,7 @@ def main():
         pool = named or cand
         at = [i for i in pool if dist[i] <= AT_M]
         bi = max(at, key=lambda i: B["b"][i][9]) if at else min(pool, key=lambda i: dist[i])
-        meta = list(B["b"][bi])
-        meta[2] = meta[9]  # score the open-data height, before any reference correction
-        if meta[4] in ("reference", "verified"):
-            meta[4] = "floors" if meta[3] else "estimate"
-        row.update({"match": "address", "how": how, "building": bi, "model_name": meta[0], "model_m": meta[2], "model_floors": meta[3],
-                    "height_src": meta[4], "osm_id": meta[6]})
-        row["error_m"] = round(meta[2] - row["ref_m"], 1)
-        row["error_pct"] = round(100 * (meta[2] - row["ref_m"]) / row["ref_m"], 1)
-        if r.get("exclude"):
-            row["match"], row["why"] = "ambiguous", r["exclude"]
+        finish(row, r, bi, how)
         rows.append(row)
 
     ok = [r for r in rows if r["match"] == "address"]

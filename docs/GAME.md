@@ -245,7 +245,9 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
-    of the water.
+    of the water. The walking ground is interpolated over the land points only,
+    so a quay or a river walk keeps its own height instead of sagging towards
+    the modelled bottom beside it.
   - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
     walkable strip.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
@@ -543,6 +545,26 @@ Moreton Bay fig, jacaranda and Canary Island date palm.
 - **Mix:** OpenStreetMap rarely says what species a tree is, so each city
   sets a mix in `city.json` (`"trees": {"mix": {"plane": 0.3, ...}}`).
 
+## Per-city flavour
+
+Everything a city's game says and wears is in `cities/<id>/city.json`, not in code.
+[Osaka on Foot](cities/osaka.md#8-osaka-on-foot) is the example:
+- **People.** An NPC's `look` takes a character, skin, hair and clothes, plus a
+  `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) painted on the
+  top in the shader, and `acc`, a list of accessories attached to bones (`visor`,
+  `hachimaki`, `jingasa`, `mask`, `lanyard`, `tako_tray`, `umbrella`, `flag`, `drum`, and
+  more in `web/game/people.js`).
+- **Crowd.** `crowd.style` gives the crowd's skin, hair, top and leg colours, the
+  weight of each character, and the share who wear a pattern, a mask or an umbrella.
+- **Words.** `blurb`, `smalltalk` and `passerby` replace the Sydney defaults, and quest
+  text takes the same `{...}` tokens (`{share:plateau}`, `{landmark:castle.ground_m}`,
+  `{sun:Place|M-D|HH:MM}`) so numbers come from the model.
+- **Boats.** A route is a list of landings. Make each route two or three stops long and
+  put the landings a quest uses at the ends, so the boat at a landing is the one that goes
+  where the quest wants.
+- **Night.** `night_ambient` lifts the light after dark, and a landmark material can carry
+  `emissive` and `glow` so signs light up.
+
 ## Testing
 
 The game exposes a test hook (`window.__game.advance(seconds, keys)`) that runs
@@ -595,6 +617,12 @@ It found three faults, each now fixed:
 - birds walked hundreds of metres from a random landing place. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
 
+`tools/game_check.js <city>` is the smoke test for every city's game. It starts
+the game, walks for four seconds, talks to the first quest giver, flies the
+helicopter up and lets the ferries run for 40 s, with a screenshot after each
+step. It fails on any page error. Sydney, Melbourne, Osaka, Kyoto and Tokyo all
+pass it in the integrated build.
+
 ## Limitations
 
 - **Tree species:** guessed from a mix per city, since the data rarely names
@@ -635,8 +663,12 @@ and the menus are checked in a phone-sized browser.
   dropped unless they are flagged as bridges.
 - **Trams and the funicular:** the trams are ambient: you can't ride them.
   The Peak Tram skips its intermediate stops, and both of its cars face uphill.
-- **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
-  except where OpenStreetMap maps building parts.
+- **One ferry for every city:** the ferry is a Sydney-style double-ended vessel
+  in each city's livery. A city whose boats look different, such as river buses
+  or catamarans, still gets this hull.
+- **Interiors:** buildings have no interiors you can enter; the rooms seen
+  through their windows are drawn by the shader. You walk on roofs as the
+  surface model has them, so a pitched roof is a slope in steps of one cell.
 - **Lines of sight:** trees are not in the surface model, so a building behind a
   tree still counts as in sight. Each building is sighted at one point, just under the
   roof of its tallest part.

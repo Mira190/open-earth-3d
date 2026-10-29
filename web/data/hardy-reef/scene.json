@@ -1,0 +1,267 @@
+{
+ "id": "hardy-reef",
+ "name": "Hardy Reef",
+ "kind": "marine",
+ "origin": [
+  149.165,
+  -19.745
+ ],
+ "timezone": "Australia/Brisbane",
+ "extent_m": [
+  -14100,
+  14100,
+  -13800,
+  13800
+ ],
+ "vertical_datum": "m MSL",
+ "terrain": {
+  "file": "terrain.bin",
+  "w": 940,
+  "h": 920,
+  "cell_m": 30,
+  "x0": -14100,
+  "y1": 13800,
+  "units_m": 0.1
+ },
+ "ground": {
+  "file": "ground.jpg",
+  "w": 2820,
+  "h": 2760,
+  "px_m": 10.0
+ },
+ "habitat": {
+  "file": "habitat.png",
+  "classes": {
+   "0": "deep water",
+   "1": "sand",
+   "2": "reef and rock",
+   "3": "seagrass and algae",
+   "4": "rubble",
+   "10": "forest",
+   "11": "shrub",
+   "12": "grass",
+   "13": "beach and bare",
+   "14": "mangrove",
+   "15": "built",
+   "16": "wetland"
+  }
+ },
+ "start": {
+  "x": 9300,
+  "y": -4300,
+  "z": 260,
+  "yaw": 44,
+  "pitch": -22,
+  "date": null,
+  "note": "over Hardy Reef south-east of Heart Reef, looking north-west across Heart Reef's pool toward the channel and Reefworld; Heart Reef itself is two or three pixels of the 10 m imagery and is not resolved as a heart"
+ },
+ "optics": {
+  "K": [
+   0.4,
+   0.07627237619390884,
+   0.06255003647448229
+  ],
+  "Rinf": [
+   0.005548777990043163,
+   0.01407090574502945,
+   0.02790917456150055
+  ],
+  "g": 2.2
+ },
+ "sources": {
+  "terrain": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
+  "imagery": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS",
+  "landcover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)"
+ },
+ "pois": [
+  {
+   "id": "reefworld",
+   "name": "Reefworld",
+   "kind": "pontoon",
+   "lonlat": [
+    149.18311,
+    -19.74546
+   ],
+   "src": "osm",
+   "osm": "node 2360082104",
+   "note": "tour pontoon permanently moored at Hardy Reef (Cruise Whitsundays); on the 30 m model it sits on the top of the reef wall, 8.6 m deep, with 32 m of water 60 m to the west",
+   "x": 1898,
+   "y": -51
+  },
+  {
+   "id": "heart-reef",
+   "name": "Heart Reef",
+   "kind": "reef",
+   "lonlat": [
+    149.24866,
+    -19.77799
+   ],
+   "src": "osm",
+   "osm": "node 3502863694",
+   "note": "a heart-shaped coral formation within Hardy Reef, first spotted by a local pilot in 1975; protected, no swimming or snorkelling at the formation; best seen from the air.",
+   "x": 8767,
+   "y": -3654
+  },
+  {
+   "id": "hardy-reef",
+   "name": "Hardy Reef",
+   "kind": "reef",
+   "lonlat": [
+    149.24496,
+    -19.76477
+   ],
+   "src": "osm",
+   "osm": "way 224369852",
+   "x": 8380,
+   "y": -2191
+  },
+  {
+   "id": "hook-reef",
+   "name": "Hook Reef",
+   "kind": "reef",
+   "lonlat": [
+    149.20333,
+    -19.80664
+   ],
+   "src": "osm",
+   "osm": "way 343453459",
+   "x": 4016,
+   "y": -6824
+  },
+  {
+   "id": "line-reef",
+   "name": "Line Reef",
+   "kind": "reef",
+   "lonlat": [
+    149.19956,
+    -19.68193
+   ],
+   "src": "osm",
+   "osm": "way 224369854",
+   "x": 3624,
+   "y": 6982
+  },
+  {
+   "id": "bait-reef",
+   "name": "Bait Reef",
+   "kind": "reef",
+   "lonlat": [
+    149.07391,
+    -19.80376
+   ],
+   "src": "osm",
+   "osm": "way 224369262",
+   "x": -9544,
+   "y": -6507
+  },
+  {
+   "id": "bait-anchorage",
+   "name": "Bait Reef, west side",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -10450,
+   "y": -5860
+  },
+  {
+   "id": "south-west-gate",
+   "name": "Toward Airlie Beach and the Whitsunday Islands",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -13500,
+   "y": -13200
+  }
+ ],
+ "spawn": {
+  "x": 1890,
+  "y": -95,
+  "heading": 0,
+  "water": true,
+  "note": "the site has no land: on the deck of the Reefworld pontoon (the viewer puts the player there; x, y are the fallback in the water off its south end, about 15 m deep on the 30 m model)",
+  "deck": "pontoon"
+ },
+ "harbour": {
+  "fleets": [
+   {
+    "at": "bait-anchorage",
+    "n": 2
+   }
+  ],
+  "marina": null,
+  "pontoon": {
+   "at": "reefworld",
+   "exact": true,
+   "name": "Reefworld",
+   "heading": 180,
+   "note": "exact: put the pontoon on its mapped position instead of searching for 9-18 m water (the reef wall drops from 9 to 32 m within 60 m, so the search finds nothing on this side of the channel). heading 180: long side along the north-south reef wall, day boat on the starboard (west) side over the channel, helipad astern to the north"
+  },
+  "parked": [],
+  "moorings": 6,
+  "nav_cell": 60,
+  "traffic": [
+   {
+    "kind": "daycat",
+    "name": "Reef day cruise",
+    "route": [
+     "south-west-gate",
+     "reefworld"
+    ],
+    "loop": "pingpong",
+    "dwell": 120,
+    "vmax": 14
+   },
+   {
+    "kind": "yacht",
+    "route": [
+     "south-west-gate",
+     "bait-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 60,
+    "vmax": 4.2
+   },
+   {
+    "kind": "tinnie",
+    "name": "Dive tender",
+    "route": [
+     "reefworld",
+     "bait-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 40,
+    "vmax": 11
+   }
+  ],
+  "scenic": [
+   {
+    "kind": "helicopter",
+    "name": "Heart Reef scenic flight",
+    "around": "heart-reef",
+    "r": 450,
+    "alt": 150,
+    "v": 32,
+    "dir": 1
+   },
+   {
+    "kind": "seaplane",
+    "name": "Reef scenic flight",
+    "around": "hardy-reef",
+    "dx": -2500,
+    "dy": -1500,
+    "r": 4500,
+    "alt": 300,
+    "v": 45,
+    "dir": -1
+   }
+  ]
+ },
+ "life": {
+  "note": "No land: no plants. Spawning: an outer reef of the central Great Barrier Reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+  "flora": {
+   "forest": {},
+   "coast": {}
+  },
+  "spawning": {
+   "lag": 1
+  }
+ }
+}

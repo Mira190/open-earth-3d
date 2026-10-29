@@ -4,36 +4,36 @@
  "rows": [
   {
    "place": "Federation Square",
-   "prod": 43.52,
-   "finer_samples": 43.5,
-   "finer_dsm": 42.22,
-   "finer_time": 43.71,
-   "reference": 42.58,
+   "prod": 44.66,
+   "finer_samples": 44.62,
+   "finer_dsm": 43.13,
+   "finer_time": 44.85,
+   "reference": 43.5,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 0.94,
-   "seconds": 19.96
+   "prod_minus_reference": 1.16,
+   "seconds": 13.047
   },
   {
    "place": "City Square",
-   "prod": 42.8,
-   "finer_samples": 43.12,
-   "finer_dsm": 43.05,
-   "finer_time": 43.28,
-   "reference": 43.85,
+   "prod": 43.1,
+   "finer_samples": 43.44,
+   "finer_dsm": 43.41,
+   "finer_time": 43.57,
+   "reference": 44.14,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -1.05,
-   "seconds": 2.01
+   "prod_minus_reference": -1.04,
+   "seconds": 1.274
   },
   {
    "place": "Bourke Street Mall",
-   "prod": 25.42,
-   "finer_samples": 25.23,
-   "finer_dsm": 25.54,
-   "finer_time": 25.57,
-   "reference": 25.75,
+   "prod": 25.47,
+   "finer_samples": 25.27,
+   "finer_dsm": 25.55,
+   "finer_time": 25.6,
+   "reference": 25.77,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.33,
-   "seconds": 0.502
+   "prod_minus_reference": -0.3,
+   "seconds": 0.309
   },
   {
    "place": "Boyd Community Park",
@@ -44,7 +44,7 @@
    "reference": 40.64,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 1.16,
-   "seconds": 0.486
+   "seconds": 0.295
   },
   {
    "place": "Yarra River corridor",
@@ -55,7 +55,7 @@
    "reference": 79.26,
    "lit_rays_leaving_extent_low_pct": 3.99,
    "prod_minus_reference": -0.09,
-   "seconds": 9.682
+   "seconds": 6.796
   },
   {
    "place": "Parliament Gardens",
@@ -66,7 +66,7 @@
    "reference": 56.16,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.36,
-   "seconds": 4.933
+   "seconds": 2.962
   },
   {
    "place": "Treasury Gardens",
@@ -77,7 +77,7 @@
    "reference": 93.98,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.15,
-   "seconds": 54.763
+   "seconds": 34.469
   },
   {
    "place": "Gordon Reserve",
@@ -88,29 +88,29 @@
    "reference": 99.21,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.48,
-   "seconds": 3.635
+   "seconds": 2.26
   },
   {
    "place": "Batman Park",
-   "prod": 50.75,
-   "finer_samples": 50.69,
-   "finer_dsm": 50.45,
-   "finer_time": 50.57,
-   "reference": 50.18,
+   "prod": 50.78,
+   "finer_samples": 50.71,
+   "finer_dsm": 50.47,
+   "finer_time": 50.6,
+   "reference": 50.21,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.57,
-   "seconds": 5.831
+   "seconds": 3.972
   },
   {
    "place": "Birrarung Marr",
-   "prod": 91.69,
-   "finer_samples": 91.77,
-   "finer_dsm": 91.67,
-   "finer_time": 91.83,
-   "reference": 91.88,
+   "prod": 91.8,
+   "finer_samples": 91.83,
+   "finer_dsm": 91.73,
+   "finer_time": 91.94,
+   "reference": 91.91,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.19,
-   "seconds": 16.852
+   "prod_minus_reference": -0.11,
+   "seconds": 11.354
   },
   {
    "place": "Sturt Street Reserve",
@@ -121,7 +121,7 @@
    "reference": 97.2,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.19,
-   "seconds": 2.972
+   "seconds": 1.945
   },
   {
    "place": "Grant Street Reserve",
@@ -132,7 +132,7 @@
    "reference": 100,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0,
-   "seconds": 2.051
+   "seconds": 1.322
   },
   {
    "place": "Dodds St Linear Park",
@@ -143,7 +143,7 @@
    "reference": 89.35,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.87,
-   "seconds": 0.944
+   "seconds": 0.625
   },
   {
    "place": "Flagstaff Gardens",
@@ -154,40 +154,40 @@
    "reference": 96.66,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.01,
-   "seconds": 3.741
+   "seconds": 2.492
   },
   {
    "place": "Fitzroy Gardens",
-   "prod": 98.29,
-   "finer_samples": 98.24,
-   "finer_dsm": 98.14,
-   "finer_time": 98.3,
-   "reference": 98.14,
+   "prod": 98.36,
+   "finer_samples": 98.32,
+   "finer_dsm": 98.19,
+   "finer_time": 98.37,
+   "reference": 98.21,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.15,
-   "seconds": 12.863
+   "seconds": 9.158
   },
   {
    "place": "Royal Botanic Gardens",
-   "prod": 96.37,
-   "finer_samples": 96.44,
-   "finer_dsm": 96.22,
-   "finer_time": 96.38,
-   "reference": 96.2,
+   "prod": 96.42,
+   "finer_samples": 96.48,
+   "finer_dsm": 96.25,
+   "finer_time": 96.43,
+   "reference": 96.25,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.17,
-   "seconds": 19.757
+   "seconds": 13.717
   },
   {
    "place": "Carlton Gardens",
-   "prod": 98.44,
-   "finer_samples": 98.43,
-   "finer_dsm": 98.4,
-   "finer_time": 98.47,
-   "reference": 98.42,
-   "lit_rays_leaving_extent_low_pct": 22.43,
-   "prod_minus_reference": 0.02,
-   "seconds": 64.563
+   "prod": 98.6,
+   "finer_samples": 98.59,
+   "finer_dsm": 98.57,
+   "finer_time": 98.63,
+   "reference": 98.59,
+   "lit_rays_leaving_extent_low_pct": 22.39,
+   "prod_minus_reference": 0.01,
+   "seconds": 45.076
   },
   {
    "place": "Kings Domain",
@@ -198,29 +198,29 @@
    "reference": 98.56,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.28,
-   "seconds": 109.873
+   "seconds": 76.275
   },
   {
    "place": "Queen Victoria Gardens",
-   "prod": 99.67,
-   "finer_samples": 99.68,
-   "finer_dsm": 99.59,
-   "finer_time": 99.67,
-   "reference": 99.6,
+   "prod": 99.82,
+   "finer_samples": 99.84,
+   "finer_dsm": 99.75,
+   "finer_time": 99.82,
+   "reference": 99.75,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.07,
-   "seconds": 67.347
+   "seconds": 46.48
   },
   {
    "place": "Alexandra Gardens",
-   "prod": 92.09,
-   "finer_samples": 92.13,
-   "finer_dsm": 91.78,
-   "finer_time": 92.11,
-   "reference": 91.83,
+   "prod": 92.23,
+   "finer_samples": 92.27,
+   "finer_dsm": 91.9,
+   "finer_time": 92.25,
+   "reference": 91.94,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 0.26,
-   "seconds": 41.131
+   "prod_minus_reference": 0.29,
+   "seconds": 28.523
   }
  ],
  "max_abs_numerical_error_pp": 1.16

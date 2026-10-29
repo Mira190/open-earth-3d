@@ -1,0 +1,106 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "大阪城公園",
+   "prod": 76.3,
+   "finer_samples": 76.19,
+   "finer_dsm": 76.14,
+   "finer_time": 76.93,
+   "reference": 76.63,
+   "lit_rays_leaving_extent_low_pct": 5.19,
+   "prod_minus_reference": -0.33,
+   "seconds": 105.301
+  },
+  {
+   "place": "西の丸庭園",
+   "prod": 88.58,
+   "finer_samples": 88.53,
+   "finer_dsm": 88.39,
+   "finer_time": 89.32,
+   "reference": 88.95,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.37,
+   "seconds": 6.469
+  },
+  {
+   "place": "難波宮跡公園",
+   "prod": 70.25,
+   "finer_samples": 70.19,
+   "finer_dsm": 69.62,
+   "finer_time": 71.15,
+   "reference": 70.5,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.25,
+   "seconds": 6.697
+  },
+  {
+   "place": "靱公園",
+   "prod": 49.5,
+   "finer_samples": 49.58,
+   "finer_dsm": 48.97,
+   "finer_time": 50.19,
+   "reference": 49.69,
+   "lit_rays_leaving_extent_low_pct": 15.39,
+   "prod_minus_reference": -0.19,
+   "seconds": 6.24
+  },
+  {
+   "place": "天王寺公園",
+   "prod": 66.03,
+   "finer_samples": 66.34,
+   "finer_dsm": 65.4,
+   "finer_time": 66.67,
+   "reference": 65.91,
+   "lit_rays_leaving_extent_low_pct": 92.68,
+   "prod_minus_reference": 0.12,
+   "seconds": 6.965
+  },
+  {
+   "place": "扇町公園",
+   "prod": 69.58,
+   "finer_samples": 69.69,
+   "finer_dsm": 69.1,
+   "finer_time": 70.66,
+   "reference": 70.25,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.67,
+   "seconds": 6.837
+  },
+  {
+   "place": "うめきた公園 サウスパーク",
+   "prod": 17.38,
+   "finer_samples": 17.37,
+   "finer_dsm": 17.08,
+   "finer_time": 17.7,
+   "reference": 17.43,
+   "lit_rays_leaving_extent_low_pct": 14.66,
+   "prod_minus_reference": -0.05,
+   "seconds": 2.719
+  },
+  {
+   "place": "桜之宮公園",
+   "prod": 76.47,
+   "finer_samples": 76.42,
+   "finer_dsm": 76.11,
+   "finer_time": 77.29,
+   "reference": 76.99,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.52,
+   "seconds": 24.119
+  },
+  {
+   "place": "とんぼりリバーウォーク",
+   "prod": 95.91,
+   "finer_samples": 95.97,
+   "finer_dsm": 95.86,
+   "finer_time": 96.07,
+   "reference": 96.09,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.18,
+   "seconds": 0.296
+  }
+ ],
+ "max_abs_numerical_error_pp": 0.67
+}

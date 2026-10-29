@@ -20,10 +20,11 @@ Open it from the globe, or at `web/index.html#hong-kong`. The game is at
 
 ## 1. What is different
 
-Hong Kong is the first city whose heights are measured rather than mapped.
-Sydney and Melbourne lean on OpenStreetMap floor counts and estimates; here the
-government publishes the top level of every building block, and a LiDAR scan
-of the whole territory to check it against. Six things are new to the pipeline:
+Hong Kong's heights are measured rather than mapped, as the Japanese cities'
+are (Project PLATEAU). Sydney and Melbourne lean on OpenStreetMap floor counts
+and estimates; here the government publishes the top level of every building
+block. It is also the first city where an independent LiDAR scan of the whole
+territory checks every roof. Six things are new to the pipeline:
 
 1. **Surveyed heights** (`survey`, `pipeline/fetch_survey.py`,
    `pipeline/survey.py`). The Lands Department's *Building* dataset draws each
@@ -115,6 +116,15 @@ Its 2,616 floor counts are not: times the default storey heights (3.0 m plus
 more than 40% short. Many count the floors of a tower above its podium, or
 were mapped before a building was finished. A city with only OpenStreetMap
 would need its storey heights calibrated, and its podiums mapped as parts.
+
+**Roofs.** Anything of five floors or 20 m and more is ruled flat
+(`pipeline/typology.py`), which covers the towers. Below that, 261 solids have
+a mapped roof shape; the rest are drawn from the roof shapes mapped across the
+SAR (7,844 buildings inside its land boundary, region `hong_kong`). Low flats
+and semis are almost all flat, village houses gabled, and small structures
+flat, curved or lean-to. 842 solids get pitched roofs. Scored against the 62
+mapped roofs in the scene, the rules get flat or pitched right 76% of the time,
+against 73% with the default priors (`analysis/roof_model.json`).
 
 ## 4. Terrain
 

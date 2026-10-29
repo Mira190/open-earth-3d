@@ -138,7 +138,9 @@
   "game": {
     "title": "Hong Kong on Foot",
     "local_name": "Hongkonger",
-    "water_name": "harbour",
+    "greeting": "Néih hóu.",
+    "smalltalk": ["Néih hóu.", "Sihk jó faahn meih a? Have you eaten yet?", "Mh gōi. Thanks.", "Nice view of the harbour, isn't it?"],
+    "water_name": "Victoria Harbour",
     "start": {
       "at": [-262, 92],
       "facing": [513, 839],
@@ -199,7 +201,34 @@
         "near": [1120, -137]
       }
     ],
-    "crowd": {"pedestrians": 520, "cars": 170, "radius_m": 420},
+    "crowd": {
+      "pedestrians": 520,
+      "cars": 170,
+      "radius_m": 420,
+      "style": {
+        "skin": ["#f6d8c6", "#f3cfb5", "#f0c7aa", "#efc6a8", "#e9bf9d", "#e3b08d", "#d49c76", "#c18661", "#8f5b3d"],
+        "hair": ["#141010", "#141010", "#17120f", "#1b1512", "#1b1512", "#231915", "#33241b", "#4a3222", "#8c8580", "#cfcac4", "#8d6339"],
+        "tops": ["#f2f0ea", "#e9e6df", "#e9e6df", "#cfdbe6", "#9fb7cc", "#1f2328", "#1d2b4a", "#2b2f3a", "#9aa3a8", "#d7c6a5", "#c94f3d", "#355c7d", "#e4b7b2", "#46604f"],
+        "legs": ["#1b1d22", "#1d1f24", "#2b3440", "#24384f", "#33415c", "#4b5563", "#c7b89a", "#3a3026"],
+        "weights": {
+          "M_Casual2": 3,
+          "M_Hoodie": 1,
+          "M_Suit": 3.5,
+          "M_Worker": 0.8,
+          "M_Beach": 0.4,
+          "M_Adventurer": 0.8,
+          "M_Punk": 0.2,
+          "W_Casual": 3.2,
+          "W_Formal": 2.2,
+          "W_Suit": 2.8,
+          "W_Worker": 0.7,
+          "W_Adventurer": 0.8,
+          "W_Punk": 0.2
+        },
+        "acc": {"umbrella": 0.06, "mask": 0.05, "backpack": 0.06},
+        "note": "Central's office crowd: shirts and suits in light colours for the heat, a few umbrellas against the sun and masks (approximate)."
+      }
+    },
     "rail": {
       "tram": {
         "class": "tram",

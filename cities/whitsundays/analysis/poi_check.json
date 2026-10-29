@@ -1,0 +1,368 @@
+{
+ "note": "POIs sampled on the built 30 m terrain and 10 m habitat (pipeline/check_marine.py)",
+ "rows": [
+  {
+   "id": "whitehaven",
+   "kind": "beach",
+   "src": "osm",
+   "x": 543,
+   "y": 399,
+   "ok": true,
+   "note": "ground 0.8 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "whitehaven-south",
+   "kind": "beach",
+   "src": "osm",
+   "x": 2559,
+   "y": -1605,
+   "ok": false,
+   "note": "ground 9.3 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "hill-inlet",
+   "kind": "inlet",
+   "src": "osm",
+   "x": -961,
+   "y": 2159,
+   "ok": true,
+   "note": "height -0.8 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "hill-inlet-lookout",
+   "kind": "lookout",
+   "src": "osm",
+   "x": -993,
+   "y": 3775,
+   "ok": true,
+   "note": "ground 26.8 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "bettys-beach",
+   "kind": "beach",
+   "src": "osm",
+   "x": -616,
+   "y": 4085,
+   "ok": true,
+   "note": "ground 0.2 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "tongue-bay",
+   "kind": "bay",
+   "src": "osm",
+   "x": -1672,
+   "y": 4129,
+   "ok": true,
+   "note": "height -3.7 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "tongue-point",
+   "kind": "point",
+   "src": "osm",
+   "x": -313,
+   "y": 5004,
+   "ok": true,
+   "note": "height -19.6 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "chalkies",
+   "kind": "beach",
+   "src": "overture-places",
+   "x": 4701,
+   "y": -111,
+   "ok": false,
+   "note": "ground -1.6 m",
+   "habitat": "rubble"
+  },
+  {
+   "id": "chance-bay",
+   "kind": "beach",
+   "src": "osm",
+   "x": 1232,
+   "y": -2502,
+   "ok": false,
+   "note": "ground 9.2 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "cid-harbour",
+   "kind": "bay",
+   "src": "osm",
+   "x": -8526,
+   "y": 3862,
+   "ok": true,
+   "note": "height -3.3 m",
+   "habitat": "seagrass and algae"
+  },
+  {
+   "id": "nara-inlet",
+   "kind": "inlet",
+   "src": "osm",
+   "x": -12327,
+   "y": 15782,
+   "ok": true,
+   "note": "height -8.3 m",
+   "habitat": "sand"
+  },
+  {
+   "id": "border-island",
+   "kind": "island",
+   "src": "osm",
+   "x": 418,
+   "y": 12942,
+   "ok": true,
+   "note": "ground 128.5 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "esk-island",
+   "kind": "island",
+   "src": "osm",
+   "x": 1212,
+   "y": 5192,
+   "ok": true,
+   "note": "ground 23.0 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "haslewood-island",
+   "kind": "island",
+   "src": "osm",
+   "x": 5735,
+   "y": -278,
+   "ok": true,
+   "note": "ground 94.2 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "whitsunday-island",
+   "kind": "island",
+   "src": "osm",
+   "x": -5025,
+   "y": 2114,
+   "ok": true,
+   "note": "ground 94.5 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "whitsunday-peak",
+   "kind": "peak",
+   "src": "osm",
+   "x": -7877,
+   "y": 1460,
+   "ok": true,
+   "note": "ground 414.4 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "whitsunday-cairn",
+   "kind": "peak",
+   "src": "osm",
+   "x": -6617,
+   "y": 12199,
+   "ok": true,
+   "note": "ground 337.5 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "bari-dhili-lookout",
+   "kind": "lookout",
+   "src": "osm",
+   "x": -84,
+   "y": -2524,
+   "ok": true,
+   "note": "ground 114.8 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "murmuru-bari-lookout",
+   "kind": "lookout",
+   "src": "osm",
+   "x": -2141,
+   "y": 22,
+   "ok": true,
+   "note": "ground 62.8 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "bilbili-dhili-lookout",
+   "kind": "lookout",
+   "src": "osm",
+   "x": -1650,
+   "y": -2513,
+   "ok": true,
+   "note": "ground 230.0 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "hamilton-island",
+   "kind": "island",
+   "src": "osm",
+   "x": -7184,
+   "y": -8150,
+   "ok": true,
+   "note": "ground 112.7 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "hamilton-marina",
+   "kind": "marina",
+   "src": "osm",
+   "x": -8604,
+   "y": -7242,
+   "ok": true,
+   "note": "height 1.2 m, within 300 m -28.0..53.7 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "hamilton-airport",
+   "kind": "airport",
+   "src": "osm",
+   "x": -8227,
+   "y": -8504,
+   "ok": true,
+   "note": "ground 4.8 m",
+   "habitat": "built"
+  },
+  {
+   "id": "catseye-beach",
+   "kind": "beach",
+   "src": "osm",
+   "x": -7528,
+   "y": -7364,
+   "ok": false,
+   "note": "ground 4.7 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "one-tree-hill",
+   "kind": "lookout",
+   "src": "osm",
+   "x": -8051,
+   "y": -6512,
+   "ok": true,
+   "note": "ground 88.2 m",
+   "habitat": "grass"
+  },
+  {
+   "id": "passage-peak",
+   "kind": "peak",
+   "src": "osm",
+   "x": -5607,
+   "y": -7507,
+   "ok": true,
+   "note": "ground 206.1 m",
+   "habitat": "forest"
+  },
+  {
+   "id": "whitehaven-helipad",
+   "kind": "helipad",
+   "src": "osm",
+   "x": 585,
+   "y": 210,
+   "ok": true,
+   "note": "ground 5.8 m",
+   "habitat": "beach and bare"
+  },
+  {
+   "id": "cid-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -8986,
+   "y": 3651,
+   "ok": true,
+   "note": "depth 5.4 m",
+   "habitat": "sand",
+   "boats_go_to": [
+    -8986,
+    3651,
+    0
+   ]
+  },
+  {
+   "id": "tongue-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -1358,
+   "y": 4428,
+   "ok": true,
+   "note": "depth 4.6 m",
+   "habitat": "rubble",
+   "boats_go_to": [
+    -1351,
+    4488,
+    60
+   ]
+  },
+  {
+   "id": "whitehaven-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": 2204,
+   "y": -1284,
+   "ok": true,
+   "note": "depth 4.8 m",
+   "habitat": "sand",
+   "boats_go_to": [
+    2234,
+    -1284,
+    30
+   ]
+  },
+  {
+   "id": "chalkies-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": 4283,
+   "y": -1,
+   "ok": false,
+   "note": "depth 40.6 m",
+   "habitat": "deep water",
+   "boats_go_to": [
+    4589,
+    480,
+    570
+   ]
+  },
+  {
+   "id": "nara-anchorage",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -12327,
+   "y": 15295,
+   "ok": true,
+   "note": "depth 7.3 m",
+   "habitat": "sand",
+   "boats_go_to": [
+    -12327,
+    15295,
+    0
+   ]
+  },
+  {
+   "id": "west-gate",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -15150,
+   "y": -1500,
+   "ok": true,
+   "note": "depth 48.4 m",
+   "habitat": "deep water"
+  },
+  {
+   "id": "spawn",
+   "kind": "spawn",
+   "x": 505,
+   "y": 445,
+   "ok": true,
+   "note": "ground 2.1 m, heading 90"
+  }
+ ]
+}
