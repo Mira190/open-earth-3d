@@ -28,6 +28,10 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-ferry.jpg) | ![](images/sydney/game-map.jpg) |
 | **Martin Place, 21 June, 12:30: the sun meter** | **After dark from Bennelong Point: the city's lights in the harbour** |
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
+| **Surveying from the trig station at mid-arch** | **The height challenge** |
+| ![](images/sydney/game-trig.jpg) | ![](images/sydney/game-guess.jpg) |
+| **Photo mode: a saved picture, captioned with the time and the sun** | |
+| ![](images/sydney/game-photo.jpg) | |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
@@ -43,35 +47,69 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
 | <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
+| <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
+| <kbd>E</kbd> at a △ | Survey the view from a trig station |
+| <kbd>T</kbd> | Switch which survey line the route and the beam follow |
+| <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
 | Funicular | <kbd>E</kbd> board at a station and get off at the other end, <kbd>F</kbd> skip ahead |
 
-On a phone you get a joystick and buttons.
+On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
+survey) end at once on any key or drag.
 
-The Sydney survey has seven stamps:
-1. Get your bearings at Circular Quay.
-2. Hear how the Opera House shells are cut from one sphere, and climb the
-   Monumental Steps to the podium.
-3. Ride the ferry to Milsons Point.
-4. Walk up the bridge approach to the middle of the arch.
-5. Fly under the deck and land in the Domain.
-6. Find a spot in Martin Place that gets sun at lunchtime on the winter solstice.
-7. Use the survey lens on three buildings whose heights come from different sources.
+The survey comes in lines. After a welcome, three surveys run side by side, in
+any order, and a report back waits for all three. The Sydney survey has seven
+stamps:
+- **Welcome** (Ava, at Circular Quay): she sets out the three surveys and asks
+  which you want to start with.
+- **The harbour** (Marco, at the Opera House), two stamps:
+  - hear how the shells are cut from one sphere, and climb the Monumental Steps;
+  - ride the ferry to Milsons Point, then walk up the bridge approach to the
+    middle of the arch.
+- **The air** (Sam, at the Kirribilli helipad): fly under the deck and land in the
+  Domain.
+- **The ground** (Priya, in Martin Place), two stamps:
+  - find a spot that gets sun at lunchtime on the winter solstice;
+  - then, with Tom, use the survey lens on three buildings whose heights come from
+    different sources.
+- **Report back** (Ava): opens once the three surveys are done.
 
-Docking a ferry by hand earns an extra stamp. After the survey, the city is
-free roam.
+A step counts whether its line is tracked or not. If you stand in the sun in Martin
+Place on the way to the ferry, the ground survey moves on. <kbd>T</kbd>, or a tap
+on a survey's name in the quest card, chooses the line that the route, the beam and
+the minimap's star follow. The other lines show as hollow stars.
 
-The Melbourne survey has six:
-1. Meet Mia at Federation Square.
-2. Hear from Hannah in City Square how DDO10 protects public spaces from new
-   shadow.
-3. Find a sunny spot on Federation Square at lunchtime on 22 June.
-4. Take the river shuttle from Federation Wharf to Crown Landing.
-5. Fly from the Yarra helipad past the Arts Centre spire to Birrarung Marr.
-6. Use the survey lens on three height sources.
+Docking a ferry by hand earns an extra stamp. After the survey, the city is free
+roam, with two things to do in it at any time:
+
+- **Trig stations.** Five survey points round the harbour, each a △ on the map: the
+  bridge at mid-arch, Observatory Hill, Barangaroo Reserve, Mrs Macquarie's Chair and
+  the Opera House steps. At one, <kbd>E</kbd> turns you once round on the spot. The
+  camera turns with you, and the buildings in sight are named with their heights and
+  sources. Your field notes then give:
+  - how many buildings are in sight within 3 km;
+  - the tallest of them, and where its height comes from;
+  - how the heights in sight were measured.
+
+  Surveying all five earns the Trig master stamp.
+- **Height challenge.** Aim at a building, press <kbd>G</kbd>, and guess its height.
+  The answer comes with the data's own error: a floor-count height is good to about
+  ±20% nine times in ten, and an estimate to much less. A guess inside that range is
+  as good as the data, and the score says so.
+
+The Melbourne survey has the same shape and six stamps:
+- **Welcome** (Mia, at Federation Square).
+- **The square** (Hannah, in City Square): how DDO10 protects public spaces from
+  new shadow, and a sunny spot on Federation Square at lunchtime on 22 June.
+- **The river** (Arjun, at Federation Wharf), two stamps:
+  - the river shuttle to Crown Landing;
+  - Sophie's helicopter past the Arts Centre spire to Birrarung Marr.
+- **The heights** (Jun, in Birrarung Marr): the survey lens on three height
+  sources.
+- **Report back** (Mia).
 
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
@@ -92,6 +130,19 @@ route are not.
 
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
+**Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
+people, the traffic and the ferries hold still, and the HUD goes. You control the
+camera and the shot:
+- **Camera:** drag to turn round the focus and scroll to come closer. <kbd>W A S D</kbd>
+  and <kbd>Space</kbd>/<kbd>C</kbd> move the focus up to 300 m from you.
+- **Time:** moves the sun for the picture, and the clock stays there when you leave.
+- **Lens:** the field of view, shown as a full-frame focal length.
+- **Extras:** Turntable circles slowly, Grid shows the thirds, and Show me hides
+  your surveyor.
+
+**Save photo** (<kbd>Enter</kbd>) writes a PNG. Its caption gives the place, the
+date and time, the sun's height and the data credit.
+
 ## What we took from other games, and where this one is different
 
 A research pass looked at the games people compare this to. The sources are
@@ -105,6 +156,11 @@ listed at the end.
 | **Ship Simulator Extremes** | Docking as the skill moment: the ferry runs on autopilot across open water, then you bring her alongside and are scored. | Reviewers found its long cruises boring. Here the open-water legs can be skipped, and docking is optional. |
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
+| **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
+| **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
+| **GeoGuessr** | A guess scored against the answer. | Here the answer has error bars and the score shows them. For an estimated height, a good eye can be as good as the data. |
+| **Breath of the Wild** | After a short prologue, the main quests open together and can be done in any order. | Its quests end in invented places. Here each line ends in a fact about a real one. A step from one line completes while you follow another, because both are a position, a time or a sun angle in the same model. |
+| **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
 
 ## How it works
@@ -227,6 +283,23 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **GPS route:** Dijkstra over the footway and road graph.
   - **Dialogue:** typewriter text.
   - **Stamps:** saved in the browser.
+- **Camera shots** (`web/cine.js`, shared with the model viewer):
+  - **How they work:** a shot maps progress (0 to 1) to a camera pose. The director
+    plays one at a time on the game clock. A key or a drag skips it, and a skipped
+    shot still does what it was for (a skipped fast travel still moves you). With
+    reduced motion, every shot is a cut.
+  - **Start:** from the title orbit, the camera closes in over the player at height,
+    drops down beside them and swings in behind. It ends exactly on the chase camera,
+    and you can walk while it moves.
+  - **Fast travel:** the camera rises over the player and crosses the city. It cruises
+    110 m above the tallest roof on the route, read from the surface model's 16 m block
+    maxima. It comes down behind the player, who faces the way they flew.
+  - **Trig stations:** one turn on the spot, over the player's shoulder with a longer
+    lens. The names are the result of a line of sight through the 2 m surface model to
+    just under each roof within 3 km. The surface model includes the Opera House
+    shells and the bridge deck.
+  - **Buildings:** no shot puts the camera inside one. Each pose is kept 3 m above the
+    surface model under it.
 - **Sound** (`web/game/audio.js`): synthesised with Web Audio, with no files.
   - harbour ambience;
   - footsteps on the walk cycle;
@@ -254,6 +327,14 @@ the whole survey this way. It checks:
    - **Survey lens:** it finds a surveyed, a floor-count and an estimated
      height.
 4. All seven stamps are awarded.
+
+The camera shots were checked the same way:
+- the start: it lands on the chase camera;
+- a fast-travel hop: the player arrives, and also arrives when the hop is skipped
+  with a key;
+- a survey at the bridge and at Observatory Hill: the right buildings are named, and
+  the field notes are written;
+- the height challenge: the guess is scored against the band of the height's source.
 
 A Hong Kong script plays its six stamps the same way: both Star Ferry routes,
 the landing in Tamar Park, the sun step in Statue Square on 21 December, the
@@ -283,6 +364,13 @@ and the menus are checked in a phone-sized browser.
   The Peak Tram skips its intermediate stops, and both of its cars face uphill.
 - **Interiors:** buildings are extrusions with no interiors. Roofs are flat,
   except where OpenStreetMap maps building parts.
+- **Lines of sight:** trees are not in the surface model, so a building behind a
+  tree still counts as in sight. Each building is sighted at one point, just under the
+  roof of its tallest part.
+- **The edge of the model:** the last few hundred metres fade into haze, so the city
+  does not end in a cliff over a flat sea. The haze hides the edge; it does not fill
+  it. There is nothing of the city beyond the frame, and the wharves and streets
+  near the frame look hazy from a distance.
 
 ## Sources
 

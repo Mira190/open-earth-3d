@@ -171,7 +171,12 @@ The views switch in place, without reloading the page.
   - extruded buildings with facades, lit windows at night and the
     height-source colours;
   - landmarks with their surface patterns, trees, piers and water;
-  - sky, sun and shadows.
+  - sky, sun and shadows;
+  - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
+    the fog colour, and beyond the frame there is only haze. It is three.js's fog
+    chunks with the frame written in, so every fogged material takes it,
+    reflections included. Within about 150 m of the camera it is held off, unless
+    the camera itself is outside the model.
 
   Each building gets one of three facades, from its class and height:
   - a glass curtain wall for towers of 55 m and more: panes between mullions
@@ -243,6 +248,12 @@ The views switch in place, without reloading the page.
   building triangles takes 0.04 ms instead of 13 ms. It also builds a 2 m
   surface model for ray casting, so the panel's numbers do not depend on the
   shadow map's resolution.
+- **`cine.js`** holds the camera moves the viewer and the game share. A shot maps
+  progress (0 to 1) to a camera pose, as a spiral round a centre that may move. The
+  director plays one shot at a time and fires its cues; a skipped shot still fires
+  them. The moves are:
+  - the viewer's flyover, from above the model onto the first tour stop;
+  - the game's start, fast travel and trig-station surveys.
 - **`sun.js`** works in the browser and in Node, so the viewer and the
   analyses share it:
   - solar position (the NOAA equations);

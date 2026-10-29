@@ -72,10 +72,27 @@ window.OEAudio = (function () {
     s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.08);
   }
   function horn() { blip(196, 1.3, 'sawtooth', 0.06); blip(247, 1.3, 'sawtooth', 0.04); }
+  function shutter() { // a focal-plane shutter: two short clicks
+    if (!ctx || muted) return;
+    for (const [at, f] of [[0, 3200], [0.06, 2400]]) {
+      const s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime + at;
+      s.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 1.2;
+      g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      s.connect(bp); bp.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.05);
+    }
+  }
+  function thump() { // a rubber stamp on paper: a short low knock and a slap of noise
+    if (!ctx || muted) return;
+    blip(95, 0.18, 'sine', 0.22);
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime;
+    s.buffer = noise; f.type = 'lowpass'; f.frequency.value = 1400;
+    g.gain.setValueAtTime(0.16, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.14);
+  }
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
   // a tram's foot gong, struck twice ("ding ding")
   function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, beep, step, horn, chime, bell, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, beep, step, horn, chime, bell, thump, shutter, setMuted, stop, get muted() { return muted; } };
 })();
