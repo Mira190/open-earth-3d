@@ -1,0 +1,117 @@
+{
+ "id": "shibuya",
+ "name": "Shibuya & Shinjuku",
+ "duration": 36.5,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/shibuya.mp4",
+ "poster": "films/shibuya.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "stairs",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The stairs"
+  },
+  {
+   "id": "scramble",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "The scramble"
+  },
+  {
+   "id": "sky",
+   "t0": 20,
+   "t1": 25,
+   "chapter": "SHIBUYA SKY"
+  },
+  {
+   "id": "kabukicho",
+   "t0": 25,
+   "t1": 29.5,
+   "chapter": "After dark"
+  },
+  {
+   "id": "night",
+   "t0": 29.5,
+   "t1": 36.5,
+   "chapter": null
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "35.69°N 139.69°E",
+    "Sunrise behind Nishi-Shinjuku · 06:21 JST",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Shibuya & Shinjuku",
+   "native": "渋谷・新宿",
+   "sub": "Japan",
+   "figures": "90,304 buildings · 5.4 × 6.2 km · 86% of heights surveyed by PLATEAU"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Suga Shrine, Yotsuya",
+   "head": "The 男坂",
+   "text": "Fifty-two stone steps between red handrails: the stairs at the end of Your Name, ten years old this year."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Shibuya Station, Hachiko exit",
+   "head": "The scramble",
+   "text": "Every light turns green at once, the diagonals too: up to 3,000 people a crossing at the evening peak."
+  },
+  {
+   "t0": 20.6,
+   "t1": 24.6,
+   "kind": "lower",
+   "eyebrow": "Shibuya Scramble Square, 2019",
+   "head": "SHIBUYA SKY",
+   "text": "Shibuya Scramble Square's open roof, 229 m above the crossing: the highest open-air deck in Japan."
+  },
+  {
+   "t0": 25.6,
+   "t1": 29.2,
+   "kind": "lower",
+   "eyebrow": "Shinjuku",
+   "head": "Kabukicho Ichibangai",
+   "text": "The red arch has lit the way in since 1969, to a kabuki theatre that was never built."
+  },
+  {
+   "t0": 32.7,
+   "t1": 36.5,
+   "kind": "end",
+   "name": "Shibuya & Shinjuku",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}

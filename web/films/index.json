@@ -31,6 +31,10 @@
   "json": "films/paris.json",
   "duration": 36
  },
+ "shibuya": {
+  "json": "films/shibuya.json",
+  "duration": 36.5
+ },
  "sydney": {
   "json": "films/sydney.json",
   "duration": 36
