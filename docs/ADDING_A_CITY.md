@@ -198,7 +198,9 @@ When a landmark replaces the solids OSM maps for it, as Sydney Tower does, keep
 the solids and call `ctx.hide(solid)` on each of them (entries of `geoms`) in
 `adjust_building`. The surface
 model and the analyses still see their shadow. The renderers skip them
-(`hidden_solids` in `scene.json`) and draw the landmark instead.
+(`hidden_solids` in `scene.json`) and draw the landmark instead. A roof that a landmark
+furnishes itself, such as an observation deck, takes `ctx.bare_roof(solid)`: the
+build then adds no generated plant rooms or boxes to it.
 
 ## 4. Optional: reference tables
 

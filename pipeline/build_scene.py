@@ -704,9 +704,14 @@ class Ctx:
         # parts a parametric landmark draws instead: kept in the surface model for the sun
         # analyses, skipped by the renderers (scene.json "hidden_solids")
         self.hidden = set()
+        # parts whose roof a landmark furnishes itself (a roof deck): no generated plant on them
+        self.bare = set()
 
     def hide(self, part):
         self.hidden.add(id(part[0]))
+
+    def bare_roof(self, part):
+        self.bare.add(id(part[0]))
 
     def ground(self, x, y):
         return float(sample(self.city, self.dem_land, x, y)[0])
@@ -770,7 +775,7 @@ def pad_records(meta, solids, sinfo, bextra):
     bextra += [{"seed": (bi * 2654435761) & 0xFFFFFF, "facade_color": None, "facade_material": None} for bi in range(len(bextra), len(meta))]
 
 
-def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
+def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=(), bare=()):
     """Roof meshes, facade styles, storeys, wall colours, shopfront frontages and
     rooftop plant for the finished buildings. Returns (roof rows, frontage rows,
     prop rows, a summary for height_model.json)."""
@@ -932,7 +937,7 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
         # rooftop plant on flat roofs
         if style in PARAPET_STYLES and not parametric:
             for k in ks:
-                if k in roofed:
+                if k in roofed or k in bare:  # a roof deck a landmark furnishes (city.py: ctx.bare_roof)
                     continue
                 prop_rows += rooftop(k, solids[k], polys[k], style, seed, top_b, floors, R)
     return roof_rows, front_rows, prop_rows, dict(stat)
@@ -1177,7 +1182,7 @@ def build(C):
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res, sinfo, bextra, hidden_solids = [], [], {}, {}, {}, [], [], [], []
+    meta, solids, first_solid, geo, ml_raw, floor_res, sinfo, bextra, hidden_solids, bare_solids = [], [], {}, {}, {}, [], [], [], [], set()
     plateau_vs_osm, n_newer = [], 0
     if plateau.tree is not None:  # surveyed buildings that Overture lacks
         covered = shapely.union_all([C.to_local(swkb.loads(bytes(b["wkb"]))).buffer(0) for b in blds])
@@ -1209,6 +1214,7 @@ def build(C):
             continue
         # ids of solids a hook hid: only this building's, since Python reuses the ids of freed objects
         ctx.hidden.clear()
+        ctx.bare.clear()
         g = C.to_local(swkb.loads(bytes(b["wkb"])))
         if not extent.contains(g.centroid):
             continue
@@ -1272,12 +1278,14 @@ def build(C):
                 ctx.labels[labels_cfg[pname]] = [round(c.x, 1), round(c.y, 1), round(ctx.ground(c.x, c.y) + h1, 1)]
         top, srcs, first = 0.0, Counter(), len(solids)
         for q, h0, h1, src, _, *rec in geoms:
-            hidden = id(q) in ctx.hidden
+            hidden, bare = id(q) in ctx.hidden, id(q) in ctx.bare
             q = q.simplify(0.15, preserve_topology=True)
             if q.is_empty or q.area < 2 or h1 <= h0:
                 continue
             if hidden:
                 hidden_solids.append(len(solids))
+            if bare:
+                bare_solids.add(len(solids))
             q = shapely.geometry.polygon.orient(q, 1.0)
             cs = np.asarray(q.exterior.coords)
             # a building of a class that floats (water.floating: Amsterdam's houseboats) sits on the
@@ -1374,7 +1382,7 @@ def build(C):
 
     # roofs, facades and rooftops on the finished heights
     roads = road_index(C, con, raw("segment"))
-    roof_rows, front_rows, prop_rows, roof_stat = dress_buildings(C, meta, solids, sinfo, bextra, roads, set(hidden_solids))
+    roof_rows, front_rows, prop_rows, roof_stat = dress_buildings(C, meta, solids, sinfo, bextra, roads, set(hidden_solids), bare_solids)
     roof_check = validate_roof_rules(C, meta, solids, sinfo, bextra)
     json.dump({"note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. "
                        "The check predicts each mapped roof as if it were not mapped.",
