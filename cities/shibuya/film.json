@@ -128,7 +128,7 @@
         "name": "Shibuya & Shinjuku",
         "native": "渋谷・新宿",
         "sub": "Japan",
-        "figures": "90,300 buildings · 5.4 × 6.2 km · 70% of heights surveyed by PLATEAU"
+        "figures": "90,304 buildings · 5.4 × 6.2 km · 86% of heights surveyed by PLATEAU"
       },
       "tint": [
         1.04,
@@ -141,23 +141,22 @@
       "chapter": "The stairs",
       "dur": 5,
       "type": "move",
-      "agl": true,
       "from": [
-        2472,
-        1878,
-        1.7
+        2442,
+        1854,
+        23.9
       ],
       "to": [
-        2466,
-        1872,
-        1.7
+        2440,
+        1851.5,
+        23.85
       ],
       "look": [
         2426,
-        1832,
-        26
+        1833,
+        29.6
       ],
-      "fov": 30,
+      "fov": 32,
       "time": [
         "08:40"
       ],
@@ -176,31 +175,31 @@
       "dur": 5,
       "type": "move",
       "from": [
-        318,
-        -942,
-        38
+        385,
+        -1036,
+        2.3
       ],
       "to": [
-        326,
-        -950,
-        36
+        382,
+        -1032,
+        2.3
       ],
       "look": [
-        372,
-        -1008,
-        15
+        351,
+        -961,
+        9
       ],
-      "fov": 34,
+      "fov": 32,
       "time": [
         "16:05"
       ],
       "people": [
-        370,
-        -1002
+        366,
+        -995
       ],
-      "crowd_r": 45,
-      "crowd_n": 220,
-      "crowd_clear": 10,
+      "crowd_r": 35,
+      "crowd_n": 300,
+      "crowd_clear": 12,
       "title": {
         "kind": "lower",
         "at": 0.6,
@@ -208,7 +207,8 @@
         "eyebrow": "Shibuya Station, Hachiko exit",
         "head": "The scramble",
         "text": "Every light turns green at once, the diagonals too: up to 3,000 people a crossing at the evening peak."
-      }
+      },
+      "agl": true
     },
     {
       "id": "sky",
@@ -216,23 +216,23 @@
       "dur": 5,
       "type": "move",
       "from": [
-        300,
-        -1020,
-        300
+        690,
+        -1012,
+        238
       ],
       "to": [
-        330,
-        -1000,
-        296
+        705,
+        -995,
+        234
       ],
       "look": [
-        520,
+        518,
         -1124,
-        244
+        236
       ],
-      "fov": 30,
+      "fov": 26,
       "time": [
-        "16:28"
+        "16:24"
       ],
       "title": {
         "kind": "lower",
@@ -240,7 +240,7 @@
         "until": 4.6,
         "eyebrow": "Shibuya Scramble Square, 2019",
         "head": "SHIBUYA SKY",
-        "text": "An open roof 229 m over the crossing, the sun going down behind Mount Fuji's side of the sky."
+        "text": "Shibuya Scramble Square's open roof, 229 m above the crossing: the highest open-air deck in Japan."
       }
     },
     {
@@ -248,21 +248,20 @@
       "chapter": "After dark",
       "dur": 4.5,
       "type": "move",
-      "agl": true,
       "from": [
-        396,
-        2752,
-        2.3
+        404,
+        2780,
+        35.3
       ],
       "to": [
-        398,
-        2760,
-        2.3
+        405,
+        2788,
+        35.3
       ],
       "look": [
         409,
         2830,
-        7
+        39
       ],
       "fov": 30,
       "time": [
@@ -270,7 +269,7 @@
       ],
       "people": [
         408,
-        2800
+        2810
       ],
       "crowd_r": 40,
       "crowd_n": 140,

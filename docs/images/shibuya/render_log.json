@@ -1,0 +1,43 @@
+{
+ "city": "shibuya",
+ "blender": "5.2.3 LTS",
+ "views": {
+  "suga-stairs": {
+   "date": "2026-10-29",
+   "time": "16:40",
+   "sun_altitude": 1.02,
+   "sun_azimuth": 252.55,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 32,
+   "resolution": "1600x900",
+   "render_s": 97.5
+  },
+  "shibuya-sky": {
+   "date": "2026-10-29",
+   "time": "16:20",
+   "sun_altitude": 4.86,
+   "sun_azimuth": 249.57,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 32,
+   "resolution": "1600x900",
+   "render_s": 83.8
+  },
+  "kabukicho": {
+   "date": "2026-10-29",
+   "time": "19:10",
+   "sun_altitude": -29.08,
+   "sun_azimuth": 274.01,
+   "sky": "MULTIPLE_SCATTERING",
+   "samples": 32,
+   "resolution": "1600x900",
+   "render_s": 193.4
+  }
+ },
+ "build_s": 95.7,
+ "objects": 113,
+ "triangles": 6287482,
+ "buildings": 90304,
+ "roofs": 52732,
+ "trees": 3207,
+ "total_s": 470.3
+}
