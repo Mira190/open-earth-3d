@@ -1886,6 +1886,29 @@ def main():
                          "note": "Paint takes each car's colour, Paint2 a second (a taxi's or bus's band); 'tones' maps materials to the "
                                  "traffic shader's slots"})
             manifest[kind] = info
+            if a.render:
+                # the full models in a row, each in a colour of its own, as the game paints them
+                paints = {"Car_Sedan": "#1f4e8c", "Car_Taxi": "#f4c20d", "Car_Hatch": "#b3242b", "Car_SUV": "#8a9099", "Car_Van": "#f2f2f2",
+                          "Bus": "#eef0ef"}
+                for k, name in enumerate(paints):
+                    ob = objs[name]
+                    ob.location = to_blender((0, k * 6.0 - 15, 0))
+                    for i, slot in enumerate(ob.material_slots):
+                        if slot.material and slot.material.name in ("Paint", "Paint2"):
+                            m = slot.material.copy()
+                            colour = paints[name] if slot.material.name == "Paint" else "#1f5fa8" if name == "Bus" else "#1c1d1f"
+                            m.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*lin(colour), 1)
+                            ob.material_slots[i].material = m
+                for name, ob in objs.items():
+                    ob.hide_render = "_LOD" in name
+                os.makedirs(DOCS, exist_ok=True)
+                stage(kind, a.samples, (1600, 900))
+                # gloss paint in full sun: a neutral view transform holds the paint colours
+                bpy.context.scene.view_settings.view_transform = "Khronos PBR Neutral"
+                bpy.context.scene.view_settings.look = "None"
+                bpy.context.scene.view_settings.exposure = -1.3
+                camera("Cam", (9.5, -25, 2.4), (0, -5.5, 0.9), 38)
+                render(os.path.join(DOCS, "cars.jpg"))
             continue
         meshes = [o for k, o in objs.items() if o.type == "MESH" and k not in ("Trim", "Flag")]
         bake_ao(meshes, [objs["Trim"]], 2048, 1.0 if kind == "helicopter" else 2.5, a.bake_samples)

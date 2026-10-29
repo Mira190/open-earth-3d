@@ -568,6 +568,8 @@ def preview(objs, folder):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--preview", help="render previews into this folder instead of exporting")
+    ap.add_argument("--render", action="store_true", help="also render docs/images/trees/trees.jpg")
+    ap.add_argument("--samples", type=int, default=96)
     a = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:])
     bpy.ops.wm.read_factory_settings(use_empty=True)
     os.makedirs(OUT, exist_ok=True)
@@ -583,7 +585,6 @@ def main():
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_vertex_color="ACTIVE", export_normals=True,
                               export_materials="EXPORT", export_image_format="AUTO", export_cameras=False, export_lights=False,
                               export_animations=False)
-    os.remove(atlas)        # it travels inside the GLB
     print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
     manifest = {
         "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient "
@@ -597,6 +598,20 @@ def main():
         json.dump(manifest, f, indent=1)
         f.write("\n")
     print(os.path.join(OUT, "trees.json"))
+    if a.render:
+        # the full trees in a row, a little apart
+        names = list(SPECIES)
+        for ob in objs.values():
+            name, lod = ob.name.rsplit("_LOD", 1)
+            ob.hide_render = lod != "0"
+            ob.location = (names.index(name) * 19.0 - 47, 0, 0)
+        os.makedirs(DOCS, exist_ok=True)
+        setup_render(a.samples, (1600, 900), sun=(34, 150), strength=0.6)
+        ground_plane("Ground", 400, material("Grass", "#4d5a33", 0.95))
+        sun_lamp(34, 150, energy=2.2)
+        camera("Cam", (72, -6, 3.5), (0, 2, 8.5), 24)
+        render(os.path.join(DOCS, "trees.jpg"))
+    os.remove(atlas)        # it travels inside the GLB
 
 
 if __name__ == "__main__":

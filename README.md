@@ -42,13 +42,18 @@ that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. Open **Play** on the globe, or go to
 `#play-sydney` or `#play-melbourne`.
 
-The helicopter, the ferries and the cars are modelled in Blender from code, with
-ambient occlusion baked in Cycles. Every city's game shares them, in its own
-livery, and the Blender twin of each city places them where the game does.
+The helicopter, the ferries, the cars and the trees are modelled in Blender
+from code, with ambient occlusion baked in Cycles. Every city shares them, in
+its own liveries and its own mix of trees, and the Blender twin of each city
+places the helicopter and ferries where the game does. The ferries' wakes and
+the rotor wash are foam on the moving sea, the night sky has the real stars and
+the moon in its phase, and jacarandas flower in late spring.
 
-| The helicopter | The ferry | In the Blender twin of Sydney |
+| The helicopter | The harbour ferry | In the Blender twin of Sydney |
 |---|---|---|
 | ![](docs/images/vehicles/helicopter.jpg) | ![](docs/images/vehicles/ferry.jpg) | ![](docs/images/sydney/harbour.jpg) |
+| **The river shuttle** | **The traffic** | **The trees** |
+| ![](docs/images/vehicles/ferry_river.jpg) | ![](docs/images/vehicles/cars.jpg) | ![](docs/images/trees/trees.jpg) |
 
 [docs/GAME.md](docs/GAME.md) covers:
 - the controls;
@@ -175,7 +180,8 @@ To render in Blender (Python 3.13):
 ```bash
 pip install bpy==5.2.3
 python blender/build_scene.py --city sydney --samples 48   # views from city.json -> docs/images/sydney
-python blender/build_vehicles.py --render                 # the shared helicopter and ferry -> web/assets/vehicles
+python blender/build_vehicles.py --render                 # the shared helicopter, ferries and cars -> web/assets/vehicles
+python blender/build_trees.py --render                    # the shared trees -> web/assets/trees
 ```
 
 ## Add a city
@@ -214,9 +220,9 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, landmark meshes |
-| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people and vehicles every city shares in `web/assets/` |
+| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `trees.js` (the shared trees), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
-| `blender/` | Headless Blender rebuild and Cycles renders; `build_vehicles.py` models the game's helicopter and ferry |
+| `blender/` | Headless Blender rebuild and Cycles renders; `build_vehicles.py` models the game's helicopter, ferries and cars, `build_trees.py` grows the trees |
 | `docs/` | Architecture, the game, adding a city, per-city case studies, images |
 
 ## Data and licences
@@ -238,8 +244,9 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
-- **Vehicles in the game:** modelled from code in this repository
-  (`blender/build_vehicles.py`), with no third-party assets.
+- **Vehicles and trees:** modelled from code in this repository
+  (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
+  third-party assets; the leaf atlas is drawn by the script.
 
 Sydney also uses these sources:
 - NSW Spatial Services imagery and 5 m elevation (CC BY 4.0).

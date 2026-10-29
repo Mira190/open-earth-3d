@@ -24,7 +24,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-heli.jpg) | ![](images/sydney/game-birdseye.jpg) |
 | **The Cross Harbour ferry leaving Circular Quay** | **The map, with live ferries and fast travel** |
 | ![](images/sydney/game-ferry.jpg) | ![](images/sydney/game-map.jpg) |
-| **Martin Place, 21 June, 12:30: the sun meter** | **After dark from Bennelong Point: the city's lights in the harbour** |
+| **Martin Place, 21 June, 12:30: the sun meter** | **After dark over the harbour: the moon in its real phase, the stars and the north shore's lights** |
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
@@ -154,8 +154,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     character for hundreds of people.
 - **Traffic** (`web/game/actors.js`):
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
-  - **Cars:** brake for the cars ahead and for the player.
-  - **Headlights:** come on after sunset.
+  - **Cars:** sedans, hatchbacks, SUVs, vans, the city's taxis and its buses,
+    all modelled in Blender (see [the vehicles](#the-vehicles)). Each model is
+    instanced three times, full detail within 35 m, a fifth of the triangles to
+    110 m and about 1,000 beyond, so a street of 150 cars costs a few draw
+    calls. Paint is glossy, glass is dark, wheels and trim are metal, and the
+    occlusion baked in Blender darkens the wheel arches and the underside.
+  - **Driving:** they keep left, brake for the cars ahead and for the player,
+    and keep bumper-to-bumper gaps, so a bus queues its full length back.
+  - **After dark:** headlights, tail lights and the taxis' roof signs light up.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
   shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
   files can't be loaded, stand-ins built from `web/game/kit.js` take their
@@ -165,22 +172,35 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
-    The size and livery come from the city's `ferry_style`: Sydney Ferries'
-    green and cream with a gold band, and an invented navy shuttle on the Yarra.
-    Each one has:
-    - a lofted hull with antifouling, a boot stripe and a sheer band;
-    - a rubbing strake;
-    - a windowed saloon;
-    - an upper deck with rails, benches and lifebuoys;
-    - a wheelhouse at each end;
-    - a mast and flag;
-    - navigation and deck lights that come on after dark.
-
-    Each ferry slows into its wharf and waits. You can take the helm into a
-    wharf by hand.
+    The city's `ferry_style` picks the model (`"model": "harbour"` or
+    `"river"`, else by its length) and the livery: Sydney Ferries' green and
+    cream with a gold band on the 34 m harbour ferry, and an invented navy
+    shuttle on the Yarra, the 22 m river model. Navigation and deck lights come
+    on after dark. Each ferry slows into its wharf and waits. You can take the
+    helm into a wharf by hand.
 - **Water:** the same `web/water.js` sea as the model viewer. The waves follow
   the city's wind, the shore foam follows the kind of shore, and the city
   shows in the water. The ground gets a wet band at the waterline.
+  - **Wakes:** the sea keeps a foam field round the camera, 1 m a texel at
+    street level. Each frame an overhead camera draws the ferries' wakes, the
+    foam round their hulls and the helicopter's downwash into it, and the
+    surface turns it into lacy, churned foam that rides the waves.
+  - **Turbid water:** a muddy river scatters light back, so the Yarra reads
+    brown from above, as in the aerial photo its colours come from. A clear
+    harbour reads dark.
+- **Trees** (`web/trees.js`): every mapped tree, grown in Blender by
+  `blender/build_trees.py` (see [the trees](#the-trees)).
+- **Sky and light** (`web/game/atmosphere.js`):
+  - **Clouds:** the sky's own cloud layer drifts over the city.
+  - **Night sky:** the stars stand where they are for the city and the time:
+    the brightest named stars (the Southern Cross and the Pointers among them)
+    and a scatter of fainter ones crowding the Milky Way. They turn with the
+    sidereal time.
+  - **Moon:** placed by a low-precision lunar ephemeris (to about a degree) and
+    lit from the sun's direction, so it shows its real phase.
+  - **Post stack:** the frame goes through three.js's own effect passes: an HDR
+    bloom (lamps and lit windows after dark, glints by day), the world's tone
+    curve, a light grade and a vignette.
 - **Sun and time:**
   - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
     title screen offers 9 am first.
@@ -208,14 +228,16 @@ pipeline writes. The only city-specific code is landmark geometry in
 | The helicopter (Cycles render) | The ferry (Cycles render) |
 |---|---|
 | ![](images/vehicles/helicopter.jpg) | ![](images/vehicles/ferry.jpg) |
+| **The river shuttle** | **The traffic: sedan, taxi, hatchback, SUV, van and bus** |
+| ![](images/vehicles/ferry_river.jpg) | ![](images/vehicles/cars.jpg) |
 | **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
 | ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
 
-Both are modelled in Blender from code by `blender/build_vehicles.py`, with no
-hand modelling and no stock assets. The script bakes their ambient occlusion in
-Cycles and writes `web/assets/vehicles/`. Every city's game loads the same two
-files, and `blender/build_scene.py` places them in the city's Cycles renders where
-the game puts them.
+All of them are modelled in Blender from code by `blender/build_vehicles.py`,
+with no hand modelling and no stock assets. The script bakes their ambient
+occlusion in Cycles and writes `web/assets/vehicles/`. Every city's game loads
+the same files, and `blender/build_scene.py` places the helicopter and ferries
+in the city's Cycles renders where the game puts them.
 
 - **Helicopter:** a light twin-engine helicopter in the H135 class.
   - 10.7 m long, with a 10.2 m four-blade main rotor and a ducted tail fan.
@@ -230,6 +252,22 @@ the game puts them.
   - A glazed main cabin with rows of seats, an open upper deck with benches,
     railings, lifebuoys and life rafts, a wheelhouse and a radar mast.
   - About 35,000 triangles up close and 6,000 beyond 260 m.
+- **River shuttle:** a double-ended river boat, 22 m long with a 6.6 m beam.
+  - A low freeboard for the river walls, with a second rubbing strake.
+  - One long saloon glazed from a low sill to the roof, with seats facing the
+    windows and a door near each end on both sides.
+  - Open decks at both ends with railings, benches, bollards and lifebuoys;
+    a railed roof with life rafts and a small wheelhouse amidships.
+  - About 27,000 triangles up close and 4,600 beyond 260 m.
+- **Cars:** a sedan, a taxi (the sedan with a roof sign), a hatchback, an SUV,
+  a van and a 12 m low-floor bus.
+  - Each body is one parametric surface: the roof and floor lines are curves
+    along the car, and each section is a rounded box that narrows above the
+    beltline. Glazing, lamps and trim lie on that surface and are framed in
+    black, so no edge is ever cut; the wheel arches are cut and lined.
+  - About 24,000 triangles each up close, with two decimated copies for
+    distance. The occlusion is baked into the vertex colours, since the
+    instanced traffic has no textures.
 - **What the game adds:**
   - **Paint:** the livery is repainted from the city's config. The paint has a
     clear coat that reflects the real sky.
@@ -243,8 +281,9 @@ the game puts them.
     they reverse, so red is always to port. Their cabins light up after dark.
   - **Water:** the helicopter's downwash throws a ring of spray off the water
     (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
-    ship makes in deep water, with churned water down the middle and a bow
-    wave at the leading end.
+    ship makes in deep water, as wide as the hull at the start, with churned
+    water down the middle and a bow wave at the leading end. All of it is foam
+    in the sea's wake field, so it rides the waves.
 
 A city chooses its look in `game.vehicles` in `city.json`. Every key is
 optional, and a city with no config gets the defaults:
@@ -252,22 +291,54 @@ optional, and a city with no config gets the defaults:
 ```json
 "vehicles": {
   "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
-  "ferry": {"livery": "harbour"}
+  "ferry": {"livery": "harbour"},
+  "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}}
 }
 ```
 
 - **Liveries:** `vehicles.json` lists them: `survey`, `rescue`, `news` and
   `executive` for the helicopter, and `harbour`, `bay`, `river` and `commuter`
   for the ferry. A city can also give its own colours, such as
-  `{"livery": {"hull": "#f08c1e", "band": "#1f2328"}}`.
+  `{"livery": {"hull": "#f08c1e", "band": "#1f2328"}}`. Without a ferry
+  livery, the ferries take `ferry_style`'s colours.
 - **Registration:** defaults to the country's nationality mark.
+- **Cars:** the taxis' colours and their share of the traffic, the buses'
+  colour and band, and optionally `colours` for private cars. Sydney's taxis
+  come in any colour, mostly white, silver or black; Melbourne's are yellow
+  and its buses carry the PTV orange.
 
 To change the models for every city, edit `blender/build_vehicles.py` and run:
 
 ```bash
 pip install bpy==5.2.3
-python blender/build_vehicles.py            # about 5 minutes; --render also renders the two images above
+python blender/build_vehicles.py            # about 6 minutes; --render also renders the images above
+python blender/build_vehicles.py --only cars  # one kind: helicopter, ferry, ferry_river or cars
 ```
+
+## The trees
+
+| The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
+|---|---|
+| ![](images/trees/trees.jpg) | ![](images/sydney/game-traffic.jpg) |
+
+`blender/build_trees.py` grows six species: London plane, elm, eucalyptus,
+Moreton Bay fig, jacaranda and Canary Island date palm.
+- **Growth:** points are scattered through the shell of the species' crown
+  shape (an ellipsoid, a vase, clumps, a dome or an umbrella), clustered into
+  limbs and twigs, and branches grow from the trunk out to each cluster. Each
+  point carries a card with a spray of leaves from a leaf atlas that the
+  script also draws. The cards' normals point out of the crown, so it lights
+  as one mass.
+- **Detail:** the full tree (1,500–2,800 triangles) within 130 m, a sparse one
+  with bigger cards to 520 m, and a trunk with a crown hull beyond.
+- **In the game and the model:** `web/trees.js` draws every mapped tree,
+  instanced per species and distance. Each tree takes a species from the
+  city's mix by a hash of its position, a size from its height and a turn of
+  its own. The wind sways the crowns and flutters the leaves, the leaf cards
+  cut out their shadows, and jacarandas flower from mid October to November
+  in the south (May and June in the north).
+- **Mix:** OpenStreetMap rarely says what species a tree is, so each city
+  sets a mix in `city.json` (`"trees": {"mix": {"plane": 0.3, ...}}`).
 
 ## Testing
 
@@ -296,6 +367,11 @@ flight to Birrarung Marr. A further script docks a ferry by hand. Phone layout, 
 and the menus are checked in a phone-sized browser.
 
 ## Limitations
+
+- **Tree species:** guessed from a mix per city, since the data rarely names
+  them; a tree's height is a 7–14 m spread.
+- **Night sky:** the bright stars are real, the faint ones are a random
+  scatter, and the moon's place is good to about a degree.
 
 - **Close-up ground:** at street level the aerial imagery is still the weak
   point. The drawn streets help on paths and roads. Plazas and courtyards that

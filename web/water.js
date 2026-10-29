@@ -471,7 +471,7 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
       for (let c = 0; c < C; c++) { u.uDisp.value[c] = fft.disp(c); u.uDeriv.value[c] = fft.deriv(c); }
       u.uTime.value = t;
       mesh.position.set(Math.round(camera.position.x / snap) * snap, 0, Math.round(camera.position.z / snap) * snap);
-      if (world) drawWakes(camera, world);
+      if (world && api.wakes) drawWakes(camera, world);
       u.uReflOn.value = 0;
       if (refl && camera.position.y > 0.3) {
         const sz = new THREE.Vector2();
@@ -514,7 +514,9 @@ vec4 shoreAt(vec2 xz) {
     }
 
     function dispose() { fft.dispose(); geo.dispose(); mat.dispose(); wakeRT.dispose(); if (refl) { refl.getRenderTarget().dispose(); refl.material.dispose(); } }
-    return { mesh, material: mat, update, patchGround, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER };
+    // wakes: set by whatever puts meshes on the wake layer, so a scene without any skips the pass
+    const api = { mesh, material: mat, update, patchGround, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false };
+    return api;
   }
 
   // a software rasteriser (SwiftShader, llvmpipe): smaller FFTs, a coarser grid, no reflection
