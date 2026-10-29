@@ -14,7 +14,11 @@
   "extent_km": [
    3.0,
    4.8
-  ]
+  ],
+  "load_bytes": {
+   "model": 6870695,
+   "game": 9824689
+  }
  },
  {
   "id": "melbourne",
@@ -31,7 +35,11 @@
   "extent_km": [
    4.8,
    3.9
-  ]
+  ],
+  "load_bytes": {
+   "model": 5254349,
+   "game": 9433371
+  }
  },
  {
   "id": "melbourne-bayside",
@@ -48,7 +56,11 @@
   "extent_km": [
    3.2,
    7.7
-  ]
+  ],
+  "load_bytes": {
+   "model": 4938330,
+   "game": 8441551
+  }
  },
  {
   "id": "osaka",
@@ -66,7 +78,17 @@
   "extent_km": [
    4.5,
    6.4
-  ]
+  ],
+  "load_bytes": {
+   "model": 29028968,
+   "game": 35457890
+  },
+  "flyover": {
+   "video": "flyover.mp4",
+   "webm": "flyover.webm",
+   "poster": "flyover.jpg",
+   "seconds": 14
+  }
  },
  {
   "id": "kyoto",
@@ -84,7 +106,17 @@
   "extent_km": [
    3.0,
    5.0
-  ]
+  ],
+  "load_bytes": {
+   "model": 26212085,
+   "game": 29169678
+  },
+  "flyover": {
+   "video": "flyover.mp4",
+   "webm": "flyover.webm",
+   "poster": "flyover.jpg",
+   "seconds": 14
+  }
  },
  {
   "id": "tokyo",
@@ -102,7 +134,17 @@
   "extent_km": [
    3.2,
    4.8
-  ]
+  ],
+  "load_bytes": {
+   "model": 5260372,
+   "game": 8638836
+  },
+  "flyover": {
+   "video": "flyover.mp4",
+   "webm": "flyover.webm",
+   "poster": "flyover.jpg",
+   "seconds": 14
+  }
  },
  {
   "id": "whitsundays",
@@ -236,7 +278,11 @@
   "extent_km": [
    5.6,
    4.0
-  ]
+  ],
+  "load_bytes": {
+   "model": 24700698,
+   "game": 30810801
+  }
  },
  {
   "id": "amsterdam",
@@ -253,7 +299,11 @@
   "extent_km": [
    4.0,
    4.0
-  ]
+  ],
+  "load_bytes": {
+   "model": 16104955,
+   "game": 19286187
+  }
  },
  {
   "id": "hong-kong",
@@ -271,7 +321,11 @@
   "extent_km": [
    4.0,
    4.8
-  ]
+  ],
+  "load_bytes": {
+   "model": 3562250,
+   "game": 7098923
+  }
  },
  {
   "id": "singapore",
