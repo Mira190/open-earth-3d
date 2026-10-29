@@ -78,6 +78,13 @@ Each film is directed as a shot list (`cities/<id>/film.json`) and rendered
 frame by frame by `tools/city_film.js`; [docs/FILMS.md](docs/FILMS.md) is the
 director's guide.
 
+There are eleven: Sydney, Melbourne, Melbourne Bayside, Hong Kong, Tokyo,
+Shibuya & Shinjuku, Osaka, Kyoto, Paris, Amsterdam and the Great Barrier Reef,
+whose five sites share one film shot in the reef viewer. Each has its contact
+sheet in [docs/images/films](docs/images/films).
+
+![Sydney's film, one frame from each shot](docs/images/films/sydney.jpg)
+
 ## Play it: every city on foot
 
 The model is also a game.
