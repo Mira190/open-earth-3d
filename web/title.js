@@ -395,9 +395,10 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
-    card.classList.remove('on');
+    card.classList.remove('on', 'has-film');
     void card.offsetWidth;
     card.classList.add('on');
+    if (window.OEFilm && !d.sites) OEFilm.card(card, d.c, { go: play => dive(d, play) }); // the city's film, if it has one (film.js)
   }
   on(card, 'click', e => {
     const b = e.target.closest('button');
@@ -422,6 +423,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (state === 'dive' || (state !== 'menu' && state !== 'open')) return;
     if (state === 'open') skip();
     state = 'dive';
+    if (window.OEFilm) OEFilm.stopPreview();
     app.classList.add('diving');
     A.confirm();
     A.whoosh(reduced ? 0.4 : 1.7);
@@ -496,6 +498,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'enter' && sel >= 0 && !e.target.closest('.ts-card, .ts-top, .ts-foot')) { e.preventDefault(); const d = dests[sel]; if (d.sites) card.querySelector('[data-site]').focus(); else dive(d, false); }
     else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
+    else if (k === 'f' && sel >= 0 && window.OEFilm && OEFilm.hasReel()) OEFilm.openReel();
     else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); orb.tdist = fitDist(); for (const d of dests) d.mark.classList.remove('hot'); }
   });
   // Enter starts with the sound the visitor chose last time; the small button, the other way

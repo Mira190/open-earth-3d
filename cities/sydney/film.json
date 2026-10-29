@@ -1,0 +1,166 @@
+{
+  "name": "Sydney",
+  "date": [11, 15],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 31.5,
+  "score": {
+    "root": 50,
+    "scale": [0, 2, 4, 7, 9],
+    "chords": [[0, 2, 3], [4, 5, 7], [1, 3, 5], [3, 5, 6]],
+    "motif": [4, 2, 3, 1, 0],
+    "tempo": 76,
+    "voice": "bell",
+    "air": "harbour",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [-780, 1250, 9],
+      "to": [-720, 1215, 11],
+      "look": [167, 855, 14],
+      "fov": 24,
+      "time": ["05:50", "05:57"],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": ["33.86°S 151.21°E", "Sunrise over Port Jackson · 05:50 AEDT", "The real sun, for the day you watch"]
+      },
+      "tint": [1.06, 1.0, 0.92],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-450, 1350, 25],
+      "to": [-540, 1520, 280],
+      "look": [-150, -250, 110],
+      "fov": 34,
+      "time": ["06:25"],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Sydney",
+        "sub": "Australia",
+        "figures": "7,962 buildings · 3.0 × 4.8 km · heights from 35 published towers"
+      },
+      "tint": [1.04, 1.0, 0.95]
+    },
+    {
+      "id": "opera",
+      "chapter": "The Opera House",
+      "dur": 5,
+      "type": "move",
+      "fov": 26,
+      "time": ["07:50"],
+      "people": [305, 462],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Bennelong Point",
+        "head": "Sydney Opera House",
+        "text": "Every shell is cut from one sphere, 75.2 m in radius: the rule Utzon settled on in 1961."
+      },
+      "from": [650, 385, 7],
+      "to": [655, 470, 8],
+      "look": [335, 545, 32]
+    },
+    {
+      "id": "ferry",
+      "chapter": "The harbour",
+      "dur": 5,
+      "type": "track",
+      "ferry": {"route": "Cross Harbour West", "from": "circular-quay", "to": "milsons-point", "s": 700, "speed": 6.5},
+      "az": [150, 118],
+      "dist": [70, 82],
+      "h": [16, 24],
+      "fov": 36,
+      "time": ["16:40"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Circular Quay to Milsons Point",
+        "head": "Under the Bridge",
+        "text": "The Cross Harbour ferries run on the timetable's legs, wharf to wharf, with their wakes on the moving sea."
+      }
+    },
+    {
+      "id": "bridge",
+      "chapter": "The Bridge",
+      "dur": 4.5,
+      "type": "move",
+      "from": [430, 1010, 12],
+      "to": [330, 1000, 14],
+      "look": [-260, 1050, 60],
+      "fov": 30,
+      "time": ["19:02", "19:06"],
+      "flare": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "Dawes Point to Milsons Point",
+        "head": "Sydney Harbour Bridge",
+        "text": "An arch of 503 m, its crown 134 m above the sea, set out from the two pylons' footprints."
+      }
+    },
+    {
+      "id": "steps",
+      "chapter": "On foot",
+      "dur": 4.5,
+      "type": "move",
+      "from": [260, 402, 1.65],
+      "to": [268, 413, 1.7],
+      "look": [333, 540, 24],
+      "fov": 26,
+      "time": ["19:22"],
+      "people": [268, 410],
+      "crowd_r": 45,
+      "hand": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "The Monumental Steps",
+        "head": "Walk it",
+        "text": "Talk to the people who know the city, ride the ferries, fly under the Bridge."
+      },
+      "agl": true
+    },
+    {
+      "id": "night",
+      "chapter": "After dark",
+      "dur": 7,
+      "type": "move",
+      "from": [1080, 290, 34],
+      "to": [990, 330, 38],
+      "look": [-60, 820, 60],
+      "fov": 30,
+      "time": ["19:44", "20:40"],
+      "timeEase": "inOut",
+      "fadeOut": 1.6,
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Sydney",
+        "line": "The model, the sun and the city: open them."
+      },
+      "ev": 0.45
+    }
+  ]
+}

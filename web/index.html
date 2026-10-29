@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zalando+Sans+Expanded:wght@200..500&family=Inter+Tight:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500&family=Noto+Serif+TC:wght@500&text=%E5%A4%A7%E9%98%AA%E4%BA%AC%E9%83%BD%E6%9D%B1%E9%A6%99%E6%B8%AF&display=swap">
 <link rel="stylesheet" href="title.css">
+<link rel="stylesheet" href="film.css">
 <style>
 /* Layout: a survey plate. Globe: the Earth on the left, the city register on the right.
    City: full-bleed 3D stage, a working panel on the right, a sun dial dock along the bottom. */
@@ -448,7 +449,7 @@ a { color: var(--accent); }
     <nav class="ts-menu" aria-label="Destinations">
       <p class="ts-eyebrow">Destinations · in the order the sun reaches them</p>
       <ol class="ts-list" id="ts-list"></ol>
-      <p class="ts-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · drag to turn the Earth</p>
+      <p class="ts-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · <kbd>F</kbd> film · drag to turn the Earth</p>
     </nav>
     <section class="ts-card" id="ts-card" aria-live="polite"></section>
     <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button></footer>
@@ -765,6 +766,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="earth.js"></script>
 <script src="score.js"></script>
 <script src="title.js"></script>
+<script src="film.js"></script>
 <script src="water.js"></script>
 <script src="buildings.js"></script>
 <script src="trees.js"></script>
