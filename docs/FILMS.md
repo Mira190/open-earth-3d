@@ -118,9 +118,18 @@ xvfb-run -a node tools/city_film.js tokyo                             # the film
   shots between two processes and `--encode` assembles the result.
 
 Under `xvfb-run` Chromium draws through Mesa's llvmpipe, about four times faster
-than SwiftShader on the same cores (2–3 s a frame at 1920 × 804 on four cores,
-so a film takes about 40 minutes); without a display the tool falls back to
-SwiftShader. Frames are taken from the WebGL canvas, so the game's HUD never
+than SwiftShader on the same cores; without a display the tool falls back to
+SwiftShader. Either way `quality.js` would take the software renderer for a phone
+and pick the low tier, which leaves out the shopfronts, awnings, parapets,
+rooftop plant and the water's reflection, turns off antialiasing and draws at
+0.9× the film's size. So the tool sets the tier before the page loads
+(`--quality`, default `high`, the tier a desktop GPU gets) and logs the tier and
+the canvas it got: check that the first lines read `Tier: high, 1920x804`. On
+the high tier a frame takes 2–5 s on four cores (up to 9 s for a long lens across
+Paris), so a film takes 30 minutes to two hours; render a city's two films on two
+machines rather than one after the other. Delete a film's frames folder before
+rendering it on a different tier or build, since a resumed render keeps every
+frame already on disk. Frames are taken from the WebGL canvas, so the game's HUD never
 shows. Each film is about 8–10 MB at 1920 × 804 (H.264, CRF 27 with adaptive quantisation, which
 holds the dark water and the night sky; at 100 % it is indistinguishable from the frames).
 
