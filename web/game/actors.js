@@ -102,16 +102,22 @@ window.OEActors = (function () {
   }
 
   // ------------------------------------------------------------ instanced bodies, animated in the shader
-  // tone: 0..3 take per-instance colours aC0..aC3; 4 glass, 5 tyre, 6 headlight, 7 tail light.
+  // tone: 0..3 take per-instance colours aC0..aC3; 4 glass, 5 tyre, 6 headlight, 7 tail light;
+  // the Blender cars add 8 trim, 9 chrome, 10 wheel, 11 number plate, 12 taxi sign, 13 indicator,
+  // and (with `cars`) their baked occlusion and a finish per tone: gloss paint, glass, metal.
   // part: 0 rigid, 1/2 left/right leg (pivot at hips), 3/4 left/right arm (pivot at shoulders)
-  function toneMaterial(U) {
+  function toneMaterial(U, { cars = false } = {}) {
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.75, metalness: 0.05 });
+    if (cars) mat.defines = Object.assign({}, mat.defines, { TONE_CARS: '' });
     mat.onBeforeCompile = sh => {
       sh.uniforms.uTime = U.uTime; sh.uniforms.uNight = U.uNight;
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
 attribute float tone; attribute float part; attribute vec3 aC0; attribute vec3 aC1; attribute vec3 aC2; attribute vec3 aC3; attribute vec3 aAnim;
 uniform float uTime; varying vec3 vCol; varying float vEmit;
+#ifdef TONE_CARS
+attribute float ao; varying float vAO; varying float vTone;
+#endif
 mat3 rx(float a) { float c = cos(a), s = sin(a); return mat3(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c); }`)
         .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
 float sw = sin(uTime * aAnim.y + aAnim.x) * aAnim.z;
@@ -120,12 +126,34 @@ float piv = part < 2.5 ? 0.94 : 1.49;
 objectNormal = rx(ang) * objectNormal;`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
 transformed.y -= piv; transformed = rx(ang) * transformed; transformed.y += piv;
-vCol = tone < 0.5 ? aC0 : tone < 1.5 ? aC1 : tone < 2.5 ? aC2 : tone < 3.5 ? aC3 : tone < 4.5 ? vec3(0.03, 0.045, 0.06) : tone < 5.5 ? vec3(0.02) : tone < 6.5 ? vec3(0.9, 0.88, 0.8) : vec3(0.5, 0.02, 0.02);
-vEmit = tone > 5.5 ? (tone < 6.5 ? 1.0 : 0.7) : 0.0;`);
+vCol = tone < 0.5 ? aC0 : tone < 1.5 ? aC1 : tone < 2.5 ? aC2 : tone < 3.5 ? aC3 : tone < 4.5 ? vec3(0.03, 0.045, 0.06) : tone < 5.5 ? vec3(0.02) : tone < 6.5 ? vec3(0.9, 0.88, 0.8) : tone < 7.5 ? vec3(0.5, 0.02, 0.02)
+  : tone < 8.5 ? vec3(0.03) : tone < 9.5 ? vec3(0.8) : tone < 10.5 ? vec3(0.42, 0.43, 0.45) : tone < 11.5 ? vec3(0.78, 0.78, 0.72) : tone < 12.5 ? vec3(0.9, 0.8, 0.42) : vec3(0.7, 0.32, 0.02);
+vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.6 : 0.0;
+#ifdef TONE_CARS
+vAO = ao; vTone = tone;
+#endif`);
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
-uniform float uNight; varying vec3 vCol; varying float vEmit;`)
-        .replace('vec4 diffuseColor = vec4( diffuse, opacity );', 'vec4 diffuseColor = vec4( vCol, opacity );')
+uniform float uNight; varying vec3 vCol; varying float vEmit;
+#ifdef TONE_CARS
+varying float vAO; varying float vTone;
+#endif`)
+        .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `vec4 diffuseColor = vec4( vCol, opacity );
+#ifdef TONE_CARS
+diffuseColor.rgb *= mix(1.0, vAO, 0.45);
+#endif`)
+        .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+#ifdef TONE_CARS
+roughnessFactor = vTone < 1.5 ? 0.28 : vTone < 3.5 ? roughnessFactor : vTone < 4.5 ? 0.05 : vTone < 5.5 ? 0.9 : vTone < 7.5 ? 0.2 : vTone < 8.5 ? 0.6 : vTone < 9.5 ? 0.12 : vTone < 10.5 ? 0.32 : 0.45;
+#endif`)
+        .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
+#ifdef TONE_CARS
+metalnessFactor = vTone > 8.5 && vTone < 10.5 ? 0.9 : 0.0;
+#endif`)
+        .replace('#include <aomap_fragment>', `#include <aomap_fragment>
+#ifdef TONE_CARS
+reflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;
+#endif`)
         .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
 totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     };
@@ -174,6 +202,39 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     return m;
   }
   const setC = (attr, i, hex) => { const c = lin(hex); attr.setXYZ(i, c.r, c.g, c.b); };
+
+  // the shared Blender cars (assets/vehicles/cars.glb): one geometry per model and distance,
+  // the materials folded into tone slots and the baked occlusion into 'ao'
+  function carGeometries(gltf, tones) {
+    const out = {};
+    gltf.scene.updateMatrixWorld(true);
+    for (const node of gltf.scene.children) {
+      const parts = [];
+      node.traverse(o => { if (o.isMesh) parts.push(o); });
+      const pos = [], nrm = [], tone = [], ao = [], idx = [];
+      for (const m of parts) {
+        const g = m.geometry.clone().applyMatrix4(m.matrixWorld), P = g.attributes.position, N = g.attributes.normal, C = g.attributes.color;
+        const name = m.material.name.replace(/\.\d+$/, ''), t = name in tones ? tones[name] : 8, base = pos.length / 3;
+        for (let i = 0; i < P.count; i++) {
+          pos.push(P.getX(i), P.getY(i), P.getZ(i)); nrm.push(N.getX(i), N.getY(i), N.getZ(i));
+          tone.push(t); ao.push(C ? C.getX(i) : 1);
+        }
+        if (g.index) for (const i of g.index.array) idx.push(base + i);
+        else for (let i = 0; i < P.count; i++) idx.push(base + i);
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+      g.setAttribute('tone', new THREE.Float32BufferAttribute(tone, 1));
+      g.setAttribute('part', new THREE.Float32BufferAttribute(new Float32Array(pos.length / 3), 1));
+      g.setAttribute('ao', new THREE.Float32BufferAttribute(ao, 1));
+      g.setIndex(idx);
+      g.computeBoundingBox();
+      const [model, lod] = node.name.split('_LOD');
+      (out[model] = out[model] || [])[lod ? +lod : 0] = g;
+    }
+    return out;
+  }
 
   // ------------------------------------------------------------ polyline networks (footways, roads)
   function network(lines, opts = {}) {
@@ -459,13 +520,47 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   }
 
   // ------------------------------------------------------------ traffic (drives on the left)
-  function traffic(world, net, U, n, radius) {
-    const mesh = instanced(CAR(), toneMaterial(U), n);
-    world.add(mesh);
-    const A = mesh.geometry.attributes, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
-    for (let i = 0; i < n; i++) {
-      setC(A.aC0, i, pick(CARS));
-      C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0 });
+  // With the shared Blender cars (opts.lib from OEVehicles.load) each slot drives one model
+  // (sedans, hatches, SUVs, vans, the city's taxis and buses), drawn near, mid or far by
+  // distance from opts.eye; without them, one box car for all.
+  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null } = {}) {
+    const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
+    let mesh = null, fleet = null;
+    if (I) {
+      const geos = carGeometries(lib.cars, I.tones), names = Object.keys(I.models).filter(k => geos[k] && geos[k].length === 3);
+      const taxi = Object.assign({}, I.liveries.taxi, cfg.taxi), bus = Object.assign({}, I.liveries.bus, cfg.bus);
+      const own = names.filter(k => !I.models[k].taxi && !I.models[k].bus), sum = own.reduce((a, k) => a + I.models[k].weight, 0);
+      const share = k => (I.models[k].taxi ? taxi.share : I.models[k].bus ? bus.share : (1 - taxi.share - bus.share) * I.models[k].weight / sum);
+      const colours = cfg.colours || I.liveries.colours;
+      for (let i = 0; i < n; i++) {
+        let r = rnd(), k = names[names.length - 1];
+        for (const name of names) { if ((r -= share(name)) < 0) { k = name; break; } }
+        const M = I.models[k], box = geos[k][0].boundingBox;
+        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, model: k, half: (box.max.z - box.min.z) / 2,
+          c0: lin(M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours)), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
+      }
+      const mat = toneMaterial(U, { cars: true });
+      fleet = {};
+      for (const k of names) {
+        const cap = C.filter(c => c.model === k).length;
+        if (!cap) continue;
+        fleet[k] = geos[k].map(g => { const m = instanced(g, mat, cap); m.count = 0; world.add(m); return m; });
+      }
+    } else {
+      mesh = instanced(CAR(), toneMaterial(U), n);
+      world.add(mesh);
+      for (let i = 0; i < n; i++) {
+        setC(mesh.geometry.attributes.aC0, i, pick(CARS));
+        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, half: 2.2 });
+      }
+    }
+    const at = new THREE.Vector3();
+    function place(i, c) { // into the box mesh's slot, or the next free slot of the model's mesh for this distance
+      if (!fleet) { mesh.setMatrixAt(i, m4); return; }
+      const d = eye ? eye.position.distanceTo(at.setFromMatrixPosition(m4)) : 0;
+      const M = fleet[c.model][d < I.lod1_m ? 0 : d < I.lod2_m ? 1 : 2], j = M.count++, A = M.geometry.attributes;
+      M.setMatrixAt(j, m4);
+      A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
     }
     function respawn(c, cx, cy, rMin) {
       const cand = net.near(cx, cy, rMin, radius);
@@ -475,21 +570,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       c.dir = rnd() < 0.5 ? 1 : -1;
       c.v = net.L[c.line].v * 0.7;
     }
-    const api = { mesh, C, active: n };
+    const api = { mesh, fleet, C, active: n };
     function update(dt, cx, cy, t, blockers) {
+      if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       for (let i = 0; i < n; i++) {
         const c = C[i];
-        if (i >= api.active) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); c.line = -1; continue; }
+        if (i >= api.active) { c.line = -1; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         if (c.line < 0 || Math.hypot(c.x - cx, c.y - cy) > radius * 1.15) respawn(c, cx, cy, c.line < 0 && t < 1 ? 0 : radius * 0.6);
-        if (c.line < 0) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); continue; }
+        if (c.line < 0) { if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         const l = net.L[c.line];
-        // brake for anything ahead in the lane: other cars, the player, pedestrians in the road
+        // brake for anything ahead in the lane: other cars, the player, pedestrians in the road;
+        // the gap is bumper to bumper, so a bus keeps its length back
         const fx = Math.sin(c.h), fy = Math.cos(c.h);
         let gap = 40;
-        const look = (x, y) => { const dx = x - c.x, dy = y - c.y, a = dx * fx + dy * fy, b = Math.abs(-dx * fy + dy * fx); if (a > 0 && b < 1.6 && a < gap) gap = a; };
-        for (let j = 0; j < api.active; j++) if (j !== i && C[j].line >= 0) look(C[j].x, C[j].y);
-        for (const b of blockers) look(b.x, b.y);
-        const want = gap < 7 ? 0 : Math.min(l.v, (gap - 7) * 0.9);
+        const look = (x, y, half) => { const dx = x - c.x, dy = y - c.y, a = dx * fx + dy * fy, b = Math.abs(-dx * fy + dy * fx); if (a > 0 && b < 1.6 && a - half - c.half < gap) gap = a - half - c.half; };
+        for (let j = 0; j < api.active; j++) if (j !== i && C[j].line >= 0) look(C[j].x, C[j].y, C[j].half);
+        for (const b of blockers) look(b.x, b.y, 0.4);
+        const want = gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9);
         c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         c.s += c.dir * c.v * dt;
         if (c.s < 0 || c.s > l.len) {
@@ -505,9 +602,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.h += dh * Math.min(1, dt * 8);
         q.setFromAxisAngle(up, Math.PI - c.h);
         m4.compose(W(c.x, c.y, c.z), q, one);
-        mesh.setMatrixAt(i, m4);
+        place(i, c);
       }
-      mesh.instanceMatrix.needsUpdate = true;
+      if (mesh) mesh.instanceMatrix.needsUpdate = true;
+      if (fleet) for (const k in fleet) for (const M of fleet[k]) {
+        M.instanceMatrix.needsUpdate = true;
+        M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
+      }
     }
     return Object.assign(api, { update });
   }

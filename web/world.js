@@ -207,21 +207,14 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     await idle();
     const texLoader = new THREE.TextureLoader();
     const groundMeshes = [];
-    // an inland city (scene.water.sea false) has no sea past its edge; its tiles stop at the model's
-    // frame, where the land skirt below takes over, and keep their texture coordinates on the whole tile
-    const inland = !!(scene.water && scene.water.sea === false), FR = scene.frame;
+    // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
     function tileGeometry(t, Tg) {
-      const x0 = inland ? Math.max(t.x0, FR.x[0]) : t.x0, x1 = inland ? Math.max(x0 + 0.01, Math.min(t.x1, FR.x[1])) : t.x1;
-      const y0 = inland ? Math.max(t.y0, FR.y[0]) : t.y0, y1 = inland ? Math.max(y0 + 0.01, Math.min(t.y1, FR.y[1])) : t.y1;
-      const w = x1 - x0, h = y1 - y0;
-      const g = new THREE.PlaneGeometry(w, h, Math.max(1, Math.round(w / Tg.cell)), Math.max(1, Math.round(h / Tg.cell)));
+      const w = t.x1 - t.x0, h = t.y1 - t.y0;
+      const g = new THREE.PlaneGeometry(w, h, Math.round(w / Tg.cell), Math.round(h / Tg.cell));
       g.rotateX(-Math.PI / 2);
-      g.translate((x0 + x1) / 2, 0, -(y0 + y1) / 2);
-      const p = g.attributes.position, uv = g.attributes.uv;
-      for (let i = 0; i < p.count; i++) {
-        p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
-        uv.setXY(i, (p.getX(i) - t.x0) / (t.x1 - t.x0), (-p.getZ(i) - t.y0) / (t.y1 - t.y0));
-      }
+      g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
       return g;
     }
@@ -234,40 +227,6 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
       m.receiveShadow = true;
       world.add(m);
       groundMeshes.push(m);
-    }
-
-    // past an inland city's edge, the edge's own ground runs on outwards in rings, easing to the
-    // edge's median height, in a plain colour the fog takes
-    if (inland) {
-      const X0 = FR.x[0], X1 = FR.x[1], Y0 = FR.y[0], Y1 = FR.y[1], step = 50;
-      const ground = (x, y) => S.terrainAt(T, Math.min(X1 - 1, Math.max(X0 + 1, x)), Math.min(Y1 - 1, Math.max(Y0 + 1, y)));
-      const per = [];  // the edge, anticlockwise from the south-west corner, with each point's outward direction
-      const side = (ax, ay, bx, by, nx, ny) => {
-        const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / step));
-        for (let k = 0; k < n; k++) per.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n, nx, ny]);
-      };
-      side(X0, Y0, X1, Y0, 0, -1); side(X1, Y0, X1, Y1, 1, 0); side(X1, Y1, X0, Y1, 0, 1); side(X0, Y1, X0, Y0, -1, 0);
-      // corners push out along both sides, so every ring is a rectangle
-      for (const q of per) {
-        if ((q[0] === X0 || q[0] === X1) && (q[1] === Y0 || q[1] === Y1)) { q[2] = q[0] === X0 ? -1 : 1; q[3] = q[1] === Y0 ? -1 : 1; }
-      }
-      const hs = per.map(q => ground(q[0], q[1])), mid = [...hs].sort((a, b) => a - b)[hs.length >> 1];
-      const rings = [0, 150, 600, 2000, 7000, 30000], pos = [], idx = [], np = per.length;
-      for (const d of rings) {
-        const t = Math.min(1, d / 7000), ease = t * t * (3 - 2 * t);
-        per.forEach((q, i) => pos.push(q[0] + q[2] * d, hs[i] + (mid - hs[i]) * ease - (d ? 0.05 : 0), -(q[1] + q[3] * d)));
-      }
-      for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < np; i++) {
-        const a = r * np + i, b = r * np + (i + 1) % np, c = a + np, e = b + np;
-        idx.push(a, c, b, b, c, e);
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      g.setIndex(idx);
-      g.computeVertexNormals();
-      const skirt = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: lin('#9b998f'), roughness: 1, metalness: 0, side: THREE.DoubleSide }));
-      skirt.receiveShadow = true;
-      world.add(skirt);
     }
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
@@ -310,9 +269,8 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     }
     const waterMat = new THREE.MeshStandardMaterial({ color: lin('#1d3a4b'), roughness: 0.08, metalness: 0.0, transparent: true,
       opacity: 0.84, normalMap: rippleTexture(), normalScale: new THREE.Vector2(0.25, 0.25) });
-    const wf = scene.frame, waterGeo = inland ? new THREE.PlaneGeometry(wf.x[1] - wf.x[0], wf.y[1] - wf.y[0]) : new THREE.PlaneGeometry(80000, 80000);
+    const waterGeo = new THREE.PlaneGeometry(80000, 80000);
     waterGeo.rotateX(-Math.PI / 2);
-    if (inland) waterGeo.translate((wf.x[0] + wf.x[1]) / 2, 0, -(wf.y[0] + wf.y[1]) / 2);
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
     world.add(water);
@@ -441,9 +399,15 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
       world.add(deck);
     }
 
-    // trees mapped in OSM: low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
+    // trees mapped in OSM: the shared Blender species (trees.js) in the city's mix, else
+    // low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
     const TR = P.trees || [], nT = TR.length / 4;
-    if (nT) {
+    let trees = null;
+    if (nT && window.OETrees) {
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, south: D.CITY.lat < 0 }); }
+      catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
+    }
+    if (nT && !trees) {
       const crownGeo = new THREE.IcosahedronGeometry(1, 1);
       const trunkGeo = new THREE.CylinderGeometry(0.2, 0.28, 1, 5);
       trunkGeo.translate(0, 0.5, 0);
@@ -493,7 +457,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, tileGeometry, water, waterMat, sea, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -530,8 +494,14 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
         sunLight.target.position.copy(target);
         sunLight.position.copy(target).addScaledVector(api.sunDir, 4500);
       },
-      // per frame, before the render: the waves (and their reflection) for this camera
-      tick(t, camera) { SPARKLE.t.value = t * 0.001; if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025); },
+      // the date, for what flowers when (local month and day)
+      setSeason(month, day) { if (trees) trees.setSeason(month, day); },
+      // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
+      tick(t, camera) {
+        SPARKLE.t.value = t * 0.001;
+        if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
+        if (trees && camera) trees.update(camera, t / 1000);
+      },
       dispose() { if (envRT) envRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); },
     };
     return api;

@@ -82,8 +82,11 @@ Yurakucho tracks, a water-bus captain, a helicopter pilot, a Tokyo Tower guide
 and a schoolgirl. The crowd takes its palette from `OEPeople` style `tokyo`: dark
 suits, navy blazers, black hair, many office workers. Names and place labels are
 bilingual. The water-bus piers are real (OpenStreetMap), the vessel names are
-Tokyo Cruise's, and the timetable is invented. The helipad in Hibiya Park is a
-game device; no real heliport is in the area.
+Tokyo Cruise's, and the timetable is invented. The boats are the shared harbour
+ferry in an approximate white and navy. The trees are stand-ins too: elms for
+the zelkovas and plane trees for the planes and ginkgos, since the shared trees
+have no ginkgo or cherry. The helipad in Hibiya Park is a game device; no real
+heliport is in the area.
 
 ## 7. Limits
 

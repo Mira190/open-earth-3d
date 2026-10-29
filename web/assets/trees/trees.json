@@ -1,0 +1,129 @@
+{
+ "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient occlusion, green how far the wind moves a vertex, blue a phase for the leaves' flutter. A city picks its mix of species in city.json 'trees'.",
+ "file": "trees.glb",
+ "lod_m": [
+  130,
+  520
+ ],
+ "atlas": {
+  "cells": {
+   "gum": 0,
+   "plane": 1,
+   "elm": 2,
+   "fig": 3,
+   "jacaranda": 4,
+   "bloom": 5,
+   "palm": 6
+  },
+  "columns": 4,
+  "rows": 2
+ },
+ "mix": {
+  "plane": 0.3,
+  "gum": 0.25,
+  "elm": 0.15,
+  "fig": 0.1,
+  "jacaranda": 0.1,
+  "palm": 0.1
+ },
+ "species": {
+  "plane": {
+   "height_m": 17.0,
+   "crown": [
+    10.6,
+    6.6,
+    6.4
+   ],
+   "colour": "#557f37",
+   "bark": "#9a957c",
+   "triangles": [
+    2335,
+    435,
+    103
+   ],
+   "note": "London plane: the street tree of both cities"
+  },
+  "elm": {
+   "height_m": 16.0,
+   "crown": [
+    3.2,
+    16.0,
+    1.2,
+    7.4
+   ],
+   "colour": "#4f7a32",
+   "bark": "#5a4c40",
+   "triangles": [
+    2038,
+    363,
+    103
+   ],
+   "note": "English elm: Melbourne's avenues"
+  },
+  "gum": {
+   "height_m": 18.0,
+   "crown": [
+    12.5,
+    5.6,
+    5.0
+   ],
+   "colour": "#73906d",
+   "bark": "#ddd5c6",
+   "triangles": [
+    1468,
+    317,
+    103
+   ],
+   "note": "Eucalyptus: pale bark, open crown in clumps"
+  },
+  "fig": {
+   "height_m": 15.0,
+   "crown": [
+    8.6,
+    10.5,
+    6.4
+   ],
+   "colour": "#335f2c",
+   "bark": "#6e665c",
+   "triangles": [
+    2776,
+    510,
+    103
+   ],
+   "note": "Moreton Bay fig: a broad dark dome on buttresses"
+  },
+  "jacaranda": {
+   "height_m": 11.0,
+   "crown": [
+    7.2,
+    6.2,
+    3.8
+   ],
+   "colour": "#5f8a3d",
+   "bark": "#5c4e42",
+   "triangles": [
+    1793,
+    351,
+    103
+   ],
+   "note": "Jacaranda: purple in late spring (cards swap to the bloom cell with the season)",
+   "bloom_colour": "#9177c9"
+  },
+  "palm": {
+   "height_m": 11.0,
+   "crown": [
+    9.0,
+    4.2,
+    2.6
+   ],
+   "colour": "#62803e",
+   "bark": "#86745c",
+   "triangles": [
+    330,
+    72,
+    116
+   ],
+   "note": "Canary Island date palm"
+  }
+ }
+}

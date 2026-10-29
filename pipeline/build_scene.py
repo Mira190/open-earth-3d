@@ -24,7 +24,7 @@ import shapely
 import shapely.affinity
 from PIL import Image, ImageDraw
 from scipy import ndimage
-from scipy.ndimage import binary_dilation, map_coordinates
+from scipy.ndimage import map_coordinates
 from pyproj import Transformer
 from scipy.spatial import cKDTree
 from shapely import wkb as swkb
@@ -1070,7 +1070,7 @@ def build(C):
     dem[water] = -depth_at(sm, C.x0 + (wc + 0.5) * DEM_CELL, C.y1 - (wr + 0.5) * DEM_CELL, C.x0, C.y1)
     # the first point out from a quay stays just under the surface, so on the 5 m grid the waterline
     # falls at the quay's edge and not up to a cell inland (a river walk beside a canal would go under)
-    edge = water & binary_dilation(~water)
+    edge = water & ndimage.binary_dilation(~water)
     dem[edge] = np.maximum(dem[edge], -QUAY_SHELF_M)
     sm["image"].save(os.path.join(C.out, "shore.png"), optimize=True)
     ctx = Ctx(C, dem_land)
@@ -1360,7 +1360,8 @@ def build(C):
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
-        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "sea")},
+        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m")},
+        "trees": cfg.get("trees", {}),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),

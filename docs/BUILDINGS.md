@@ -88,7 +88,8 @@ half-hipped and pyramidal as one.
 | City | Roofs scored | Flat or pitched correct | Shape family | Flat roofs found | Pitched roofs found |
 |---|---|---|---|---|---|
 | Sydney | 201 mapped | 68.7% | 41.3% | 84.7% | 62.0% |
-| Melbourne | 51 mapped | 51.0% | 43.1% | 75.0% | 21.7% |
+| Melbourne | 51 mapped | 54.9% | 45.1% | 78.6% | 26.1% |
+| Melbourne Bayside | 12 mapped | 83.3% | 41.7% | 50.0% | 90.0% |
 | Osaka | 137 mapped | 67.9% | 59.9% | 85.4% | 41.8% |
 | Kyoto | 337 mapped | 76.3% | 58.5% | 82.6% | 73.9% |
 | Kyoto | 59,308 measured | 67.6% | 49.4% | 54.5% | 73.1% |
@@ -271,12 +272,11 @@ on a CPU, SwiftShader):
 | City | `buildings.json` before → after (gzip) | Pitched roofs | Mesh | Built in |
 |---|---|---|---|---|
 | Sydney | 1.51 → 3.47 MB (0.46 → 1.35) | 4,190 | 1.07 M vertices, 0.53 M triangles | about 1 s |
-| Melbourne | 2.22 → 4.19 MB (1.43) | 4,530 | 1.41 M vertices, 0.73 M triangles | 1.0 s |
-| Melbourne Bayside | 1.42 → 3.60 MB (1.34) | 6,561 | 0.82 M vertices, 0.33 M triangles | 0.6 s |
+| Melbourne | 2.22 → 4.19 MB | 4,530 | 1.41 M vertices, 0.73 M triangles | 1.1 s |
+| Melbourne Bayside | 1.42 → 3.60 MB | 6,561 | 0.82 M vertices, 0.33 M triangles | 0.7 s |
 | Tokyo | 3.07 → 4.63 MB | 3,130 | 1.90 M vertices, 1.17 M triangles | 2.0 s |
 | Kyoto | 9.81 → 25.71 MB (2.67 → 8.90) | 45,866, most of them measured | 5.77 M vertices, 2.46 M triangles | 4.4 s |
 | Osaka | 11.12 → 24.60 MB (3.27 → 8.62) | 32,955 | 6.33 M vertices, 3.12 M triangles | 4.9 s |
-| Paris | new: 21.40 MB (8.71) | 24,291, 20,000 of them measured by LiDAR | 5.47 M vertices, 2.76 M triangles | 4.1 s |
 
 The roof meshes are most of the growth: 14.6 MB of Kyoto's file, about 320 bytes
 a roof. Delta-encoding their vertices would save only 2–11% after gzip, so the

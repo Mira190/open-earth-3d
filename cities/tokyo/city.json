@@ -71,6 +71,7 @@
     ],
     "min_area_m2": 3000
   },
+  "trees": {"mix": {"elm": 0.55, "plane": 0.45}, "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki, of the elm family) of the avenues and parks, plane trees for the London planes and the ginkgo rows. A guess, not a survey."},
   "storey": {
     "res": [
       3.0,
@@ -478,6 +479,7 @@
         "terminal": "晴海五丁目船着場"
       }
     ],
+    "ferry_style": {"model": "harbour", "length_m": 32, "beam_m": 9, "hull": "#f2f2ee", "trim": "#123b6d", "upper": "#f7f7f4", "flag": "#123b6d", "note": "The shared harbour ferry stands in for the water buses and the bay boats; the white and navy are approximate."},
     "ferries": [
       {
         "route": "Water Bus 水上バス",

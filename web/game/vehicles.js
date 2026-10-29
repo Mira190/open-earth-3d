@@ -4,20 +4,19 @@
 // ambient occlusion into web/assets/vehicles (helicopter.glb, ferry.glb, vehicles.json).
 // A city picks its liveries, the helicopter's registration and its vessel names in its
 // config (game.vehicles in city.json, copied into game.json); a city with no config
-// gets the defaults in vehicles.json. If the files can't be loaded, the models built
-// from web/game/kit.js at the end of this file stand in, the ferry in the city's
-// game.ferry_style.
+// gets the defaults in vehicles.json. If the files can't be loaded, the box-built
+// models at the end of this file stand in.
 //
 // Helicopter: an assisted flight model, as in Sketchbook. The rotor cancels gravity,
 // so it hovers with no input; it levels itself; horizontal speed decays with drag. It
 // can't lift off until the rotor has spooled up, it lands wherever the ground below
 // is reached gently, and it collides with buildings and with the landmark solids,
 // sliding along a wall it meets at a glancing angle. It can fly under the Harbour
-// Bridge deck but not through its steel. On top of that the
-// look: clear-coat paint that reflects the sky, a glazed cockpit with the pilot in it,
-// blades that droop at rest, cone as they lift and blur into a disc, a ducted tail
-// fan, position lights, beacons and strobes, a searchlight after dark, and downwash
-// that ripples and sprays the water (dust on land).
+// Bridge deck but not through its steel. On top of that the look: clear-coat paint
+// that reflects the sky, a glazed cockpit with the pilot in it, blades that droop at
+// rest, cone as they lift and blur into a disc, a ducted tail fan, position lights,
+// beacons and strobes, a searchlight after dark, and downwash that ripples and
+// sprays the water (dust on land).
 //
 // Ferries: double-ended, like Sydney's, so they reverse at the end of a route without
 // turning. They follow the routes in game.json (found through open water by the
@@ -28,14 +27,13 @@
 // of travel, so red is always to port.
 'use strict';
 window.OEVehicles = (function () {
-  // three.js r152+ manages colour (sRGB hex converts itself, textures carry a colour
-  // space) and r155+ lights are physical; r128 does neither. These keep both right.
-  // (read on first use: three.js may load after this file)
-  const cm = () => !!(THREE.ColorManagement && THREE.ColorManagement.enabled);
-  const phys = () => +THREE.REVISION >= 155;
-  const lin = hex => (cm() ? new THREE.Color(hex) : new THREE.Color(hex).convertSRGBToLinear());
+  // three.js loads after this file (an ES module), so nothing here touches THREE until it is
+  // used. With colour management on, an sRGB hex converts itself; off (r128, or this app on
+  // r186), it is converted here. r155+ lights are physical. These keep every version right.
+  const lin = hex => (THREE.ColorManagement && THREE.ColorManagement.enabled ? new THREE.Color(hex) : new THREE.Color(hex).convertSRGBToLinear());
   const srgb = t => { if ('colorSpace' in t) t.colorSpace = THREE.SRGBColorSpace; else t.encoding = THREE.sRGBEncoding; return t; };
-  const once = f => { let v = null; return () => v || (v = f()); };
+  const PHYS = () => +THREE.REVISION >= 155;
+  const once = make => { let v = null; return () => v || (v = make()); };
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
   const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
@@ -43,13 +41,20 @@ window.OEVehicles = (function () {
   const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; };
 
   // ------------------------------------------------------------ loading and liveries
-  async function load(base = 'assets/vehicles/', { ferry = true } = {}) {
+  // ferry: false for a city without ferries, else its ferry_style, which picks the model:
+  // 'model': 'river' (the 22 m shuttle) or 'harbour' (the 34 m ferry), else by its length
+  async function load(base = 'assets/vehicles/', { ferry = true, cars = true } = {}) {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
     const L = new THREE.GLTFLoader();
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
     const info = await (await fetch(base + 'vehicles.json')).json();
-    const [heli, fer] = await Promise.all([get(info.helicopter.file), ferry ? get(info.ferry.file) : null]);
-    return { info, heli, ferry: fer };
+    const style = typeof ferry === 'object' ? ferry : {};
+    const river = style.model ? style.model === 'river' : style.length_m < 28;
+    const ferryInfo = ferry ? (river && info.ferry_river) || info.ferry : null;
+    // the traffic's cars are optional: without them the streets keep their box cars
+    const car = cars && info.cars ? get(info.cars.file).catch(e => { console.warn('Car models unavailable:', e); return null; }) : null;
+    const [heli, fer, carLib] = await Promise.all([get(info.helicopter.file), ferryInfo ? get(ferryInfo.file) : null, car]);
+    return { info, heli, ferry: fer, ferryInfo, cars: carLib };
   }
   // a livery by name, or the city's own colours over the default
   function livery(I, spec) {
@@ -354,7 +359,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     spot('Landing_Light', '#fff3da', 2.2); spot('Searchlight', '#fff3da', 2.6);
     // the searchlight: a real spot light (kept in the scene all the time so no shader
     // recompiles when it switches) and a faint beam you can see in the night air
-    const sl = new THREE.SpotLight(lin('#fff1d6'), 0, 420, 0.2, 0.55, phys() ? 2 : 1);
+    const sl = new THREE.SpotLight(lin('#fff1d6'), 0, 420, 0.2, 0.55, PHYS() ? 2 : 1);
     sl.position.copy(p('Searchlight'));
     sl.target.position.copy(p('Searchlight')).add(new THREE.Vector3(0, -0.72, 0.7).multiplyScalar(20));
     src.add(sl, sl.target);
@@ -422,7 +427,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       const agl = st.z - nav.groundBelow(st.x, st.y, st.z);
       const search = powered && flying && night > 0.25 ? 1 : 0, landing = powered && night > 0.25 && agl < 80 ? 1 : 0;
       show('Searchlight', search, 1); show('Landing_Light', landing, 1);
-      sl.intensity = search * (phys() ? 25000 : 2.2);
+      sl.intensity = search * (PHYS() ? 25000 : 2.2);
       beam.material.opacity = search * 0.035 * night;
       for (const [n, ms] of Object.entries(lamps)) for (const m of ms) {
         m.emissiveIntensity = n === 'Screen' ? (powered ? 0.6 + night : 0.15) : n === 'Light_Lens' ? (search || landing ? 3 : 0)
@@ -457,6 +462,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         r.scale.set(rad, 1, rad);
         r.material.opacity = wash * (water ? 0.42 : 0.18) * Math.pow(1 - ph, 1.4) * Math.min(1, ph * 8) * light;
         r.material.color.copy(lin(water ? '#ffffff' : '#c9b79a'));
+        // on the water the rings are foam in the water's own field; on land, dust in the air
+        if (water) onWake(r, opts); else r.layers.set(0);
       }
     }
     return { group: g, seat, door, animate };
@@ -479,7 +486,9 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       return out;
     };
     const tmp = {};
-    const I = lib && lib.info.ferry, colours = I ? livery(I, cfg.livery) : null;
+    const I = lib && (lib.ferryInfo || lib.info.ferry), style = G.ferry_style || {};
+    // a livery named in game.vehicles, else the colours of the city's ferry_style, else the default
+    const colours = I ? livery(I, cfg.livery || (style.hull && { hull: style.hull, band: style.trim, cabin: style.upper, trim: style.upper, flag: style.flag })) : null;
     let shared = null; // materials shared by every vessel in the city's livery
     for (const r of G.ferries || []) {
       // the route as a sequence of legs, out and back
@@ -492,7 +501,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       for (const l of legs) cycle.push({ leg: l, rev: false });
       for (let i = legs.length - 1; i >= 0; i--) cycle.push({ leg: legs[i], rev: true });
       r.vessels.forEach((name, k) => {
-        const M = lib ? ferryModel(lib, name, colours, shared, opts) : kitFerry(G.ferry_style);
+        const M = lib ? glbFerry(lib, name, colours, shared, opts, style.length_m ? style.length_m / I.length_m : 1) : kitFerry(style);
         if (lib && !shared) shared = M.shared;
         world.add(M.g);
         const fx = ferryEffects(world, M, I, opts);
@@ -596,8 +605,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     return { vessels, update, eta, stopOf, nextStop, wharf, finishHelm, deck };
   }
 
-  function ferryModel(lib, name, colours, shared, opts) {
-    const I = lib.info.ferry, src = lib.ferry.scene.clone(true), node = n => src.getObjectByName(n);
+  function glbFerry(lib, name, colours, shared, opts, scale = 1) {
+    const I = lib.ferryInfo || lib.info.ferry, src = lib.ferry.scene.clone(true), node = n => src.getObjectByName(n);
     const decal = decalTexture(name.toUpperCase(), { w: 1024, h: 150, color: colours.band, fill: 0.62, weight: 700, spacing: 0.1 });
     const lamps = {};
     let mats;
@@ -657,10 +666,16 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       const win = shared.mats.get('Window|false');
       if (win) { win.emissiveIntensity = 0.55 * night; win.opacity = 0.62 + 0.25 * night; }
     };
-    return { g, labelY: 12.2, shared, deck: { fwd: dp.z, right: -dp.x, up: dp.y },
+    // the city's ferry_style may ask for a longer or shorter vessel: the whole model scales
+    g.scale.setScalar(scale);
+    return { g, labelY: (I.label_m || 12.2) * scale, shared, length: I.length_m * scale, deck: { fwd: dp.z * scale, right: -dp.x * scale, up: dp.y * scale },
       animate: (dt, t, o) => { animateLamps(o.night); animate(dt, t, o); } };
   }
 
+  // where the water draws its own foam field (water.js on r186: opts.water), the wakes, hull
+  // foam and downwash rings are drawn into it from above and leave the main view, so the foam
+  // rides the waves; otherwise they lie on the water as meshes
+  function onWake(mesh, opts) { if (opts.water && opts.water.wakeLayer != null) { mesh.layers.set(opts.water.wakeLayer); opts.water.wakes = true; } }
   // the wake: a ribbon of foam behind the trailing end that spreads at the Kelvin angle
   // (tan 19.47 deg = 0.354) and fades; the bow wave and propeller wash ride a skirt of foam
   // round the waterline
@@ -670,7 +685,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   // across the wake: the two arms of the V at its edges, calm water inside them, and the
   // churned propeller wash down the middle, which narrows and fades sooner
   const K = 7;
-  function ribbon(world) {
+  function ribbon(world, w0 = 4.4) {
     const N = WAKE_N, pos = new Float32Array(N * K * 3), col = new Float32Array(N * K * 3), uv = new Float32Array(N * K * 2), idx = [];
     for (let i = 0; i < N - 1; i++) for (let k = 0; k < K - 1; k++) { const a = i * K + k, b = a + K; idx.push(a, b, a + 1, a + 1, b, b + 1); }
     const geo = new THREE.BufferGeometry();
@@ -692,7 +707,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         let ax = prv.x - nxt.x, ay = prv.y - nxt.y;
         const al = Math.hypot(ax, ay) || 1;
         ax /= al; ay /= al;
-        const w = 4.4 + 0.354 * d, age = t - p.t, arm = 1.2 + 0.05 * d, wash = Math.min(w - arm, 2.8 + 0.07 * d);
+        const w = w0 + 0.354 * d, age = t - p.t, arm = 1.2 + 0.05 * d, wash = Math.min(w - arm, w0 * 0.64 + 0.07 * d);
         const f = (i < pts.length ? 1 : 0) * Math.exp(-d / 110) * Math.exp(-Math.max(0, age) / 45) * (p.w ?? 1) * light;
         const offs = [-w, -(w - arm), -wash, 0, wash, w - arm, w];
         const lum = [0, 0.5 * f, 0.05 * f, 0.7 * f * Math.exp(-d / 50), 0.05 * f, 0.5 * f, 0];
@@ -709,7 +724,10 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     return { mesh, draw };
   }
   function ferryEffects(world, M, I, opts) {
-    const live = ribbon(world), ghost = ribbon(world);
+    // the wake starts as wide as the hull (4.4 m each side for the harbour ferry)
+    const w0 = I && I.beam_m ? I.beam_m / 2 * (M.length && I.length_m ? M.length / I.length_m : 1) - 0.4 : 4.4;
+    const live = ribbon(world, w0), ghost = ribbon(world, w0);
+    onWake(live.mesh, opts); onWake(ghost.mesh, opts);
     let S = [], left = [], arc = 0, lastLead = 0; // samples of the trailing end, newest first; `left` is the wake left behind on reversing
     // foam round the hull at the waterline
     const wl = I ? I.waterline : null;
@@ -739,9 +757,10 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       skirt.material.map.wrapS = skirt.material.map.wrapT = THREE.RepeatWrapping;
       skirt.material.map.needsUpdate = true;
       skirt.renderOrder = 1;
+      onWake(skirt, opts);
       M.g.add(skirt);
     }
-    const half = I ? I.length_m / 2 - 1 : 16;
+    const half = M.length ? M.length / 2 - 1 : 16;
     function update(dt, t, v, { night, lead, speed }) {
       const light = (0.2 + 0.8 * (1 - night)) * 0.9;
       // the trailing end, on the water; a double-ended ferry swaps ends when she reverses
@@ -772,7 +791,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     return { update, skirt };
   }
 
-  // ------------------------------------------------------------ kit-built stand-ins
+  // ------------------------------------------------------------ stand-ins built from kit.js parts
+  // (when the Blender models can't be loaded)
   // the blur of two spinning blades: they sweep a share of each ring that falls as 1/r (dense at
   // the hub, faint at the rim), with a band where the painted tips pass
   const rotorDisc = (() => {
@@ -791,7 +811,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   // a light scenic helicopter (R44 / AS350 style), the design of the reef scene's one
   // (see kit.js) ported to this app: built in that scene's frame (+x nose, +z right) inside
   // a group turned to ours (+z nose)
-  function kitHeliModel(livery = '#c62d2a') {
+  function helicopterModel(livery = '#c62d2a') {
     const K = OEKit, M = K.materials(), kit = new K.Kit(), g = new THREE.Group(), body = new THREE.Group();
     body.rotation.y = -Math.PI / 2;
     g.add(body);
@@ -839,7 +859,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   }
 
   function kitHeli() {
-    const { g, rotor, tail, blur, tailAxis } = kitHeliModel();
+    const { g, rotor, tail, blur, tailAxis } = helicopterModel();
     return { group: g, seat: new THREE.Vector3(0.45, 0.9, 0.6), door: { x: 1.8, y: 0.3 },
       animate(dt, st) {
         rotor.rotation.y += st.rotor * dt * 42;
@@ -852,7 +872,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   // game config ("ferry_style"): a lofted hull with its antifouling, boot stripe and sheer
   // band, a rubbing strake, a windowed saloon, an upper deck with rails and lifebuoys, a
   // wheelhouse at each end, a mast, and navigation and deck lights
-  function kitFerryModel(style = {}) {
+  function ferryModel(style = {}) {
     const K = OEKit, M = K.materials(), kit = new K.Kit(), g = new THREE.Group();
     const L = style.length_m || 36, B = style.beam_m || 10, fb = 1.6;
     const colour = (c, d, o = {}) => new THREE.MeshStandardMaterial(Object.assign({ color: lin(c || d), roughness: 0.45 }, o));
@@ -912,8 +932,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   }
 
   function kitFerry(style) {
-    const { g, flag } = kitFerryModel(style);
-    return { g, labelY: 9.4, deck: { fwd: 5, right: 2.2, up: 4.33 }, animate(dt, t) { flag.rotation.y = Math.sin(t * 3) * 0.3; } };
+    const { g, flag } = ferryModel(style);
+    return { g, labelY: 9.4, deck: { fwd: 5, right: 2.2, up: 4.2 }, animate(dt, t) { flag.rotation.y = Math.sin(t * 3) * 0.3; } };
   }
 
   return { load, helicopter, ferries, livery };

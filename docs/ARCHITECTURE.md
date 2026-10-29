@@ -197,7 +197,11 @@ The views switch in place, without reloading the page.
     mesh. Its facade shader draws floors, windows, curtain walls,
     shopfronts, glass with a room behind it, lights by the local hour, and
     the height-source colours ([BUILDINGS.md](BUILDINGS.md));
-  - landmarks with their surface patterns, trees, piers and water;
+  - landmarks with their surface patterns, piers and water;
+  - trees (`trees.js`): the six species of `blender/build_trees.py`, in the
+    city's mix, instanced per species and per distance (full within 130 m,
+    sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
+    cut-out leaf shadows and jacarandas that flower in season;
   - sky, sun and shadows;
   - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
     the fog colour, and beyond the frame there is only haze. It is three.js's fog
@@ -244,10 +248,15 @@ The views switch in place, without reloading the page.
     The ground gets a wet band at the waterline and the swash on sand.
     `?water=flat` restores the old flat sheet, which is also the fallback
     where the GPU cannot render to float targets.
-  - **Inland cities** (`water.sea: false`: Osaka, Kyoto): no sea is drawn past
-    the model's edge. The ground tiles stop at the frame, and a land skirt
-    carries the edge's own heights outwards in rings to 30 km, easing to the
-    edge's median height, in a plain colour that the fog takes.
+  - **Wakes:** a foam field round the camera, 1 m a texel at street level and
+    wider from the air. Each frame an orthographic camera looking straight down
+    draws everything on the wake layer (layer 5) into it: the ferries' wake
+    ribbons, the foam round their hulls and the helicopter's downwash rings.
+    The surface samples it at each point's rest position and turns it into
+    lacy, churned foam that rides the waves.
+  - **Turbid water:** where `clarity_m` is under 2 m the water column scatters
+    light back, so a muddy river shows the colour picked from its aerial photo
+    instead of reading black from above.
 
   Sydney's settings (a 5 m/s north-easterly over 4 km) give a significant wave
   height of 0.19 m, close to the fetch-limited estimate of 0.16 m. The Yarra's
@@ -297,10 +306,17 @@ The views switch in place, without reloading the page.
   - people (`people.js`): skinned characters near the player, instanced crowd
     copies further away, all recoloured from one palette per character;
   - crowd and traffic (`actors.js`): walkers who step aside for each other and
-    sit on benches in the sun or the shade, and cars on the left;
-  - helicopter and ferries, built from `kit.js`, a kit of parts at real
-    dimensions: a double-ended ferry in the city's livery (`game.ferry_style`)
-    and a light helicopter;
+    sit on benches in the sun or the shade, and the shared Blender cars, taxis
+    and buses of `web/assets/vehicles/cars.glb` on the left, one instanced mesh
+    per model and distance, with a tone shader that paints each car and lights
+    its lamps after dark (box cars where the models can't be loaded);
+  - helicopter and ferries (`vehicles.js`): the shared Blender models in the
+    city's liveries, the harbour ferry or the river shuttle as `ferry_style`
+    asks, with stand-ins built from `kit.js`, a kit of parts at real
+    dimensions, where the models can't be loaded;
+  - sky and light (`atmosphere.js`): clouds, the stars and the moon in their
+    real places, and the post stack (three.js's EffectComposer: HDR bloom,
+    the output tone curve, a grade and a vignette);
   - wildlife (`penguins.js`): a colony of little penguins in one instanced
     mesh. They are out at sea by day, come ashore in rafts after the real
     sunset and walk to burrows on the mapped rocks (`game.wildlife`);
@@ -353,3 +369,12 @@ Cycles shades coincident faces black.
 It lights the scene with a sun lamp placed by the same NOAA equations, in the
 city's time zone, and a physical sky. It renders each view in `city.json`
 `renders` with Cycles, and writes `render_log.json` with timings and counts.
+
+Two more scripts build what every city shares, from code, with no stock assets:
+- `blender/build_vehicles.py`: the helicopter, the harbour ferry, the river
+  shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
+  ambient occlusion baked in Cycles and decimated copies for distance, into
+  `web/assets/vehicles/` with a manifest, `vehicles.json`.
+- `blender/build_trees.py`: six tree species grown from points in their crown
+  shapes, with a leaf atlas it draws itself, in three levels of detail, into
+  `web/assets/trees/` with `trees.json`.

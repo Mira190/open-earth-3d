@@ -11,8 +11,9 @@ can check, as well as look at.
 
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
 Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
-next, then Melbourne's bayside. It grows from there one city at a time. Each new city is a config file
-and a few checks, not a new codebase.
+next, then Melbourne's bayside, Osaka, Kyoto and Tokyo. It grows from there one
+city at a time. Each new city is a config file and a few checks, not a new
+codebase.
 
 ![The globe landing page: live and planned cities, with today's day and night](docs/images/globe.jpg)
 
@@ -38,7 +39,7 @@ where the open data is silent and checked where it is not
 
 ![Before and after: Ultimo's houses and flats, and towers in the CBD](docs/images/sydney/buildings-compare.jpg)
 
-## Play it: Sydney, Melbourne, the bayside, Japan and Paris on foot
+## Play it: every city on foot
 
 The model is also a game.
 - **Sydney:** you walk the city centre as a surveyor and talk to the people who
@@ -46,8 +47,6 @@ The model is also a game.
   ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
   helicopter under its deck, and find a sunny spot in Martin Place on the
   winter solstice.
-  In free roam you can survey the view from the trig stations round the
-  harbour, or test your eye against the data by guessing building heights.
 - **Melbourne:** you check the midwinter sun on Federation Square, take a
   shuttle down the Yarra, and fly past the Arts Centre spire.
 - **Melbourne's bayside:** you walk out along St Kilda Pier and wait on the
@@ -63,18 +62,23 @@ that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. The survey runs as three lines you can take
 in any order. Photo mode stops the world for a picture, under the sun for the time
 you choose. In free roam you can survey the view from Sydney's trig stations, or
-test your eye against the data by guessing building heights. Open **Play** on the globe, or go to
-`#play-sydney`, `#play-melbourne` or `#play-melbourne-bayside`, the Japanese cities' games at
-`#play-osaka`, `#play-kyoto` and `#play-tokyo`, and Paris at `#play-paris`.
+test your eye against the data by guessing building heights. Open **Play** on the
+globe, or go to `#play-sydney`, `#play-melbourne` or `#play-melbourne-bayside`, the Japanese
+cities' games at `#play-osaka`, `#play-kyoto` and `#play-tokyo`, and Paris at
+`#play-paris`.
 
-The helicopter and the ferries are modelled in Blender from code, with ambient
-occlusion baked in Cycles. Every city's game shares them, in its own livery
-(the kit-built models in `web/game/kit.js` stand in if they cannot load), and
-the Blender twin of each city places them where the game does.
+The helicopter, the ferries, the cars and the trees are modelled in Blender
+from code, with ambient occlusion baked in Cycles. Every city shares them, in
+its own liveries and its own mix of trees, and the Blender twin of each city
+places the helicopter and ferries where the game does. The ferries' wakes and
+the rotor wash are foam on the moving sea, the night sky has the real stars and
+the moon in its phase, and jacarandas flower in late spring.
 
-| The helicopter | The ferry | In the Blender twin of Sydney |
+| The helicopter | The harbour ferry | In the Blender twin of Sydney |
 |---|---|---|
 | ![](docs/images/vehicles/helicopter.jpg) | ![](docs/images/vehicles/ferry.jpg) | ![](docs/images/sydney/harbour.jpg) |
+| **The river shuttle** | **The traffic** | **The trees** |
+| ![](docs/images/vehicles/ferry_river.jpg) | ![](docs/images/vehicles/cars.jpg) | ![](docs/images/trees/trees.jpg) |
 
 [docs/GAME.md](docs/GAME.md) covers:
 - the controls;
@@ -136,7 +140,7 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 | City | Status | What's in it |
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
-| **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. Flinders Street Station is kit-built: dome, clocks and the 1910 colours. [City notes](docs/cities/melbourne.md) |
+| **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
 | **Melbourne Bayside**, Australia | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
 | **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
@@ -220,8 +224,7 @@ The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #paris)
-# for a 3D model,
+# open http://localhost:8000 for the globe, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo) for a 3D model,
 # #play-sydney (and so on) for a game,
 # reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
 ```
@@ -278,7 +281,8 @@ To render in Blender (Python 3.13):
 ```bash
 pip install bpy==5.2.3
 python blender/build_scene.py --city sydney --samples 48   # views from city.json -> docs/images/sydney
-python blender/build_vehicles.py --render                 # the shared helicopter and ferry -> web/assets/vehicles
+python blender/build_vehicles.py --render                 # the shared helicopter, ferries and cars -> web/assets/vehicles
+python blender/build_trees.py --render                    # the shared trees -> web/assets/trees
 ```
 
 ## Add a city
@@ -317,10 +321,10 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
-| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores), `buildings.js` (walls, roofs, facades and rooftops), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people and vehicles every city shares in `web/assets/` |
+| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `buildings.js` (walls, roofs, facades and rooftops), `trees.js` (the shared trees), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
 | `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
-| `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter and ferry) |
+| `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter, ferries and cars; `build_trees.py` grows the trees) |
 | `tools/` | `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `reef_shot.js` and `page_shot.js` for the reef sites |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
@@ -346,6 +350,9 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
+- **Vehicles and trees:** modelled from code in this repository
+  (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
+  third-party assets; the leaf atlas is drawn by the script.
 
 Paris also uses these sources, all from IGN's Géoplateforme under the Licence
 Ouverte / Etalab 2.0:

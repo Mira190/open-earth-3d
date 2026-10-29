@@ -72,10 +72,10 @@ and the projection are right, not that the survey is. Terrarium (a surface model
 includes buildings) is used by `radar_check.py` as the independent test of building mass.
 
 Kyoto is 25–80 m above sea level, and the viewer's water plane is at 0 m, so rivers and ponds
-are left to the aerial photograph (`water.classes` is empty) and `water.sea` is false: no sea
-is drawn past the model's edge. Where the 5 m laser DEM has no data (1% of the stitched
-tiles, mostly the river beds), the nearest cell fills it. The branch that added Kyoto set
-those cells to sea level, 25–80 m below the ground around them.
+are left to the aerial photograph (`water.classes` is empty); past the model's edge there is
+only haze. Where the 5 m laser DEM has no data (1% of the stitched tiles, mostly the river
+beds), the nearest cell fills it. The branch that added Kyoto set those cells to sea level,
+25–80 m below the ground around them.
 
 ## 4. Sun on public places
 
@@ -103,3 +103,5 @@ verified for this project.
   above 31 m (1,340) and 45 m (65) are from the model, and inherit the PLATEAU question in section 1.
 - The Kyoto Tower radii and observation-deck shape are an approximation.
 - The `accuracy` panel compares PLATEAU with OSM-mapped heights, not with published tower heights.
+- The trees are stand-ins: the shared trees have no ginkgo, cherry or maple, so the zelkovas
+  are drawn as elms and the street planes and ginkgos as plane trees (`trees.mix`).

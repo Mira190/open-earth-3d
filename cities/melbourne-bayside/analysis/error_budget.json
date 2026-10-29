@@ -11,7 +11,7 @@
    "reference": 99.97,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.01,
-   "seconds": 9.977
+   "seconds": 10.936
   },
   {
    "place": "Elwood Beach",
@@ -22,7 +22,7 @@
    "reference": 99.92,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.01,
-   "seconds": 8.528
+   "seconds": 9.177
   },
   {
    "place": "Sandown Street Beach",
@@ -33,7 +33,7 @@
    "reference": 100,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0,
-   "seconds": 5.324
+   "seconds": 6.102
   },
   {
    "place": "Middle Brighton Beach",
@@ -44,7 +44,7 @@
    "reference": 100,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0,
-   "seconds": 11.615
+   "seconds": 13.438
   },
   {
    "place": "Dendy Street Beach",
@@ -55,7 +55,7 @@
    "reference": 90.39,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 2.43,
-   "seconds": 6.001
+   "seconds": 6.642
   },
   {
    "place": "Luna Park",
@@ -66,7 +66,7 @@
    "reference": 74.01,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 3.23,
-   "seconds": 3.187
+   "seconds": 3.764
   },
   {
    "place": "O'Donnell Gardens",
@@ -77,7 +77,7 @@
    "reference": 99.95,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.03,
-   "seconds": 2.305
+   "seconds": 2.643
   },
   {
    "place": "Lower Esplanade Reserve",
@@ -88,7 +88,7 @@
    "reference": 97.45,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.11,
-   "seconds": 2.61
+   "seconds": 3.112
   },
   {
    "place": "St Kilda Botanic Gardens",
@@ -99,7 +99,7 @@
    "reference": 98.4,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.23,
-   "seconds": 7.486
+   "seconds": 8.725
   },
   {
    "place": "Point Ormond Reserve",
@@ -110,7 +110,7 @@
    "reference": 99.68,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.08,
-   "seconds": 15.727
+   "seconds": 18.048
   },
   {
    "place": "Elwood Park",
@@ -121,7 +121,7 @@
    "reference": 97.67,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.35,
-   "seconds": 19.806
+   "seconds": 22.738
   },
   {
    "place": "Brighton Coastal Reserve",
@@ -132,7 +132,7 @@
    "reference": 100,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0,
-   "seconds": 1.116
+   "seconds": 1.301
   },
   {
    "place": "Brighton Beach Gardens",
@@ -143,7 +143,7 @@
    "reference": 100,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0,
-   "seconds": 5.468
+   "seconds": 6.269
   }
  ],
  "max_abs_numerical_error_pp": 3.23
