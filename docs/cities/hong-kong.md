@@ -21,10 +21,10 @@ Open it from the globe, or at `web/index.html#hong-kong`. The game is at
 ## 1. What is different
 
 Hong Kong's heights are measured rather than mapped, as the Japanese cities'
-are (Project PLATEAU). Sydney and Melbourne lean on OpenStreetMap floor counts
-and estimates; here the government publishes the top level of every building
-block. It is also the first city where an independent LiDAR scan of the whole
-territory checks every roof. Six things are new to the pipeline:
+(Project PLATEAU) and Paris's (IGN's LiDAR) are. Sydney and Melbourne lean on
+OpenStreetMap floor counts and estimates; here the government publishes the top
+level of every building block, and a LiDAR scan of the whole territory, separate
+from that survey, checks every roof. Six things are new to the pipeline:
 
 1. **Surveyed heights** (`survey`, `pipeline/fetch_survey.py`,
    `pipeline/survey.py`). The Lands Department's *Building* dataset draws each
