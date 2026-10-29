@@ -101,13 +101,13 @@
       "chapter": "On foot",
       "dur": 4.5,
       "type": "move",
-      "from": [-380, 3040, 1.65],
-      "to": [-390, 3038, 1.7],
+      "from": [-380, 3040, 2.3],
+      "to": [-390, 3038, 2.35],
       "look": [-861, 3006, 6],
       "fov": 28,
       "time": ["20:36"],
-      "people": [-388, 3039],
-      "crowd_r": 35,
+      "people": [-418, 3037],
+      "crowd_r": 40,
       "hand": 1,
       "agl": true,
       "title": {
@@ -117,7 +117,9 @@
         "eyebrow": "The St Kilda foreshore",
         "head": "Walk it",
         "text": "Talk to the people who know the bay, walk the pier, wait for the penguins after dark."
-      }
+      },
+      "crowd_n": 80,
+      "crowd_clear": 12
     },
     {
       "id": "penguins",

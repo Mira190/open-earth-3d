@@ -124,13 +124,13 @@
       "chapter": "On foot",
       "dur": 4.5,
       "type": "move",
-      "from": [292, -286, 1.65],
-      "to": [282, -287, 1.7],
+      "from": [292, -286, 2.3],
+      "to": [282, -287, 2.35],
       "look": [60, -292, 7],
       "fov": 28,
       "time": ["19:45"],
-      "people": [278, -287],
-      "crowd_r": 20,
+      "people": [258, -288],
+      "crowd_r": 45,
       "hand": 1,
       "agl": true,
       "title": {
@@ -140,7 +140,9 @@
         "eyebrow": "Southbank Promenade",
         "head": "Walk it",
         "text": "Talk to the people who know the city, ride the shuttle down the Yarra, fly past the spire."
-      }
+      },
+      "crowd_n": 160,
+      "crowd_clear": 12
     },
     {
       "id": "night",
