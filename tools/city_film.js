@@ -52,6 +52,7 @@ async function open() {
   p.on('pageerror', e => errs.push(String(e).slice(0, 400)));
   await p.addInitScript({ path: path.join(__dirname, 'film', 'clock.js') });
   await p.goto(`http://localhost:${PORT}/index.html#play-${city}`);
+  console.log('WebGL:', await p.evaluate(() => { const gl = document.createElement('canvas').getContext('webgl2'); const d = gl && gl.getExtension('WEBGL_debug_renderer_info'); return gl ? gl.getParameter(d ? d.UNMASKED_RENDERER_WEBGL : gl.RENDERER) : 'none'; }));
   await p.waitForFunction(() => window.__game && document.getElementById('g-loader') && document.getElementById('g-loader').classList.contains('out'), null, { timeout: 900000, polling: 1000 });
   for (const f of ['lens.js']) await p.addScriptTag({ path: path.join(ROOT, 'web', f) });
   for (const f of ['director.js', 'score.js']) await p.addScriptTag({ path: path.join(__dirname, 'film', f) });
