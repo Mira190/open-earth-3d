@@ -17,7 +17,7 @@ import numpy as np
 
 # facade styles; the viewer and Blender read the same codes
 STYLES = ["plain", "house", "terrace", "apartment", "office", "glass", "heritage", "retail", "industrial", "civic",
-          "machiya", "mixed", "stone", "haussmann"]
+          "machiya", "mixed", "stone", "haussmann", "grachtenpand"]
 STYLE_CODE = {s: i for i, s in enumerate(STYLES)}
 ROOF_MATERIALS = ["membrane", "gravel", "concrete", "tile", "metal", "slate", "kawara", "copper", "glass", "green", "zinc"]
 
@@ -184,9 +184,46 @@ REGIONS = {
             "house": ["#e6ddcc", "#d8c9ad", "#c2a17f", "#e3d6bd"],
         },
     },
+    # Amsterdam: the canal house (grachtenpand) of the 17th and 18th centuries: a brick front
+    # 6-8 m wide and three to five tall storeys deep into its lot, under a steep roof whose ridge
+    # runs back from the street, the front ending in a gable of its century (gable_type). Roofs
+    # are measured (3DBAG LOD2.2); the priors below only serve buildings it does not model.
+    # Roofs are red or glazed black pantiles, and slate.
+    "amsterdam": {
+        "pitch": {"tile": 50, "slate": 50, "metal": 30, "zinc": 35, "copper": 45},
+        "roof_cap_m": 9.0,
+        "roofs": {
+            "house": {"gabled": 0.6, "hipped": 0.15, "flat": 0.25},
+            "terrace": {"gabled": 0.55, "skillion": 0.15, "flat": 0.3},
+            "flats_low": {"flat": 0.6, "gabled": 0.25, "skillion": 0.15},
+            "small": {"flat": 0.6, "skillion": 0.25, "gabled": 0.15},
+            "worship": {"gabled": 0.8, "hipped": 0.2},
+            "civic_low": {"flat": 0.5, "gabled": 0.3, "hipped": 0.2},
+            "commercial_low": {"flat": 0.6, "gabled": 0.3, "skillion": 0.1},
+            "unknown_low": {"flat": 0.45, "gabled": 0.4, "skillion": 0.15},
+        },
+        "pitched_material": {"tile": 0.6, "slate": 0.4},
+        "awning": 0.3,
+        "storefront_classes": {"retail", "commercial", "office", "hotel", "supermarket"},
+        "canal_houses": True,
+        "overhang_scale": 0.0,
+        # brick, dark red-brown to purple-brown; a fifth of the fronts are painted (white, grey,
+        # black-green) or stuccoed; sandstone trims
+        "palettes": {
+            "grachtenpand": ["#6e3b2e", "#7c4536", "#5f3428", "#8a5242", "#6a4034", "#734033", "#e8e3d7", "#d4cec0",
+                             "#3f4440", "#9a6a52"],
+            "apartment": ["#7a4536", "#8a5444", "#6c3e30", "#9b6a54", "#a77a60", "#cfc6b6", "#86513f"],
+            "house": ["#7a4536", "#8a5444", "#6c3e30", "#e6e0d4"],
+            "terrace": ["#7a4536", "#8a5444", "#6c3e30", "#9b6a54"],
+            "heritage": ["#7b4636", "#8b5544", "#c9b892", "#6d3d30"],
+            "office": ["#8a5444", "#b5ab9c", "#cfc7b8", "#7a4536", "#9d978d"],
+            "civic": ["#7b4636", "#8b5544", "#c9b892"],
+            "retail": ["#7a4536", "#8a5444", "#cfc6b6"],
+        },
+    },
 }
 # a city without an "architecture" key takes its country's rules
-BY_COUNTRY = {"AU": "sydney", "JP": "japan", "HK": "hong_kong", "FR": "paris"}
+BY_COUNTRY = {"AU": "sydney", "JP": "japan", "HK": "hong_kong", "FR": "paris", "NL": "amsterdam"}
 # and some cities differ from their country: Kyoto keeps machiya and bans lit and rooftop
 # signs; Osaka's Minami is the most signed of the four
 BY_CITY = {"kyoto": {"machiya": True, "signage": 0.35}, "osaka": {"signage": 1.4}}
@@ -207,6 +244,7 @@ PALETTES = {
     "mixed": ["#d8d4cb", "#c2c3c0", "#e6e3dc", "#a9abaa", "#cfc9bd"],
     "stone": ["#b9ad9c", "#a99d8b"],
     "haussmann": ["#e4d8bf", "#dccfb3", "#d6c7a9", "#e6dcc7"],
+    "grachtenpand": ["#6e3b2e", "#7c4536", "#5f3428", "#8a5242", "#e8e3d7"],
 }
 
 
@@ -242,6 +280,31 @@ def draw(probs, u):
         if u < acc:
             return k
     return next(iter(probs))
+
+
+
+# Amsterdam's gables, in the order of web/buildings.js's gable meshes (rooftop kind 5)
+GABLES = ["spout", "step", "neck", "bell", "cornice"]
+
+
+def gable_type(year, seed, warehouse=False):
+    """The gable a canal house's street front ends in, drawn by its year of construction, on the
+    Grachtenmuseum's dates: step gables c. 1600-1665, spout gables c. 1620-1720 (mostly on
+    warehouses), neck gables c. 1640-1770, bell gables c. 1660-1790, raised cornices through the
+    18th century and the plain cornice after 1790 (grachten.museum, "Architecture in the canal
+    district"). A warehouse has a spout gable. None for a building of 1880 or later; an unknown
+    year draws from the canal era."""
+    if warehouse:
+        return "spout"
+    y = year if year else 1600 + 200 * unit(seed, 51)
+    if y >= 1880:
+        return None
+    ramp = lambda a, b: min(max((y - a) / (b - a), 0.0), 1.0)
+    tri = lambda a, m, b: ramp(a, m) if y < m else 1.0 - ramp(m, b)
+    w = {"step": 1.0 - ramp(1640, 1670), "spout": 0.2 if 1620 <= y < 1720 else 0.0, "neck": tri(1640, 1690, 1770),
+         "bell": tri(1660, 1720, 1790), "cornice": ramp(1690, 1760)}
+    tot = sum(w.values())
+    return draw({k: v / tot for k, v in w.items()}, unit(seed, 52))
 
 
 def roof_group(cls, floors, top, area):
@@ -363,12 +426,18 @@ def roof_height(R, shape, material, half_width, wall_room, mapped):
     return min(h, max(wall_room - 2.4, 0.0), R["roof_cap_m"] if shape not in ("dome", "onion", "spherical") else 1e9)
 
 
-def facade_style(R, cls, top, floors, area, facade_material, name, seed, overrides, narrow=False):
-    """the facade style; narrow: a footprint at most 7 m wide and at least 2.5 times as deep"""
+def facade_style(R, cls, top, floors, area, facade_material, name, seed, overrides, narrow=False, year=None, width=None):
+    """the facade style; narrow: a footprint at most 7 m wide and at least 2.5 times as deep;
+    year: the original year of construction, where the register has it; width: the short
+    side of the footprint's minimum rectangle"""
     if name and name in overrides:
         return overrides[name]
     if cls in NO_WINDOWS or (cls in SMALL and top < 6):
         return "plain"
+    # Amsterdam: a house of the canal era (or of no known date) on a narrow lot is a canal house
+    if R.get("canal_houses") and (year is None or year < 1880) and 6 <= top <= 28 and (width or 99) <= 13 and area <= 900 \
+            and (cls in FLATS | HOUSE | TERRACE | {"commercial", "retail", "office", "warehouse", ""} or not cls):
+        return "grachtenpand"
     if facade_material == "glass" or top >= 80 or (cls in {"office", "commercial"} and top >= 40 and unit(seed, 3) < 0.85):
         return "glass"
     # Paris: a stone block of five to eight floors on a street is a Haussmann building, whatever its use
@@ -417,15 +486,17 @@ def facade_style(R, cls, top, floors, area, facade_material, name, seed, overrid
 # eaves past the walls on pitched roofs, metres: Federation houses 0.45-0.6, shallow on
 # terraces between party walls, deep (0.6-0.9) on machiya
 OVERHANG = {"house": 0.45, "terrace": 0.25, "apartment": 0.35, "civic": 0.35, "heritage": 0.3, "office": 0.3, "retail": 0.3,
-            "industrial": 0.3, "plain": 0.15, "machiya": 0.75, "mixed": 0.3, "haussmann": 0.45}
+            "industrial": 0.3, "plain": 0.15, "machiya": 0.75, "mixed": 0.3, "haussmann": 0.45, "grachtenpand": 0.0}
 
 STOREY = {"plain": 3.0, "house": 2.9, "terrace": 3.2, "apartment": 3.0, "office": 3.8, "glass": 3.9, "heritage": 4.6,
-          "retail": 4.2, "industrial": 6.0, "civic": 4.0, "machiya": 2.9, "mixed": 3.3, "stone": 4.0, "haussmann": 3.05}
+          "retail": 4.2, "industrial": 6.0, "civic": 4.0, "machiya": 2.9, "mixed": 3.3, "stone": 4.0, "haussmann": 3.05,
+          "grachtenpand": 3.2}
 # the tallest storey a style takes from a floor count; above the top floor the rest of the
 # wall is attic or parapet (a residential floor-count height includes 2.8 m of roof)
 STOREY_MAX = {"plain": 6.0, "house": 3.3, "terrace": 3.5, "apartment": 3.3, "office": 4.4, "glass": 4.5, "heritage": 5.5,
-              "retail": 5.0, "industrial": 8.0, "civic": 5.0, "machiya": 3.2, "mixed": 3.8, "stone": 6.0, "haussmann": 3.4}
-STOREFRONT_STYLES = {"office", "glass", "retail", "apartment", "heritage", "mixed", "haussmann"}
+              "retail": 5.0, "industrial": 8.0, "civic": 5.0, "machiya": 3.2, "mixed": 3.8, "stone": 6.0, "haussmann": 3.4,
+              "grachtenpand": 4.2}
+STOREFRONT_STYLES = {"office", "glass", "retail", "apartment", "heritage", "mixed", "haussmann", "grachtenpand"}
 
 
 def storeys(style, wall_h, floors, storefront):
@@ -434,6 +505,8 @@ def storeys(style, wall_h, floors, storefront):
     g_extra = 1.1 if storefront else (0.6 if style in ("office", "glass", "heritage", "civic") else 0.0)
     if style == "haussmann":  # the shop and its entresol share one tall stone base
         g_extra = 2.6 if storefront else 1.2
+    if style == "grachtenpand":  # a raised ground floor over the basement (souterrain), up a stoop
+        g_extra = 1.4 if storefront else 1.0
     if floors and floors > 0:
         if floors == 1:
             return round(min(max(wall_h, 2.6), 8.0), 2), round(min(max(wall_h, 2.6), 8.0), 2)

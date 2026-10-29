@@ -188,7 +188,8 @@
   "lon": 4.8922,
   "status": "planned",
   "data": "AHN LiDAR; PDOK aerial imagery; 3D BAG building heights.",
-  "built": false,
+  "timezone": "Europe/Amsterdam",
+  "built": true,
   "game": false
  },
  {

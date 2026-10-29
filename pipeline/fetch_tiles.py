@@ -11,7 +11,9 @@
            "wcs": an OGC WCS 1.0.0 GetCoverage of float elevations in geographic
                   coordinates (`crs`, e.g. EPSG:4283 for GDA94); pits deeper than
                   `fill_below_m`, spikes higher than `fill_above_m` (voids in the source)
-                  and non-finite values are filled from their neighbours
+                  and non-finite values are filled from their neighbours. With `pixel_m`
+                  the coverage is read in a projected `crs` instead, in tiles (the
+                  Netherlands' AHN in RD New, EPSG:28992)
            "tile_index": a GeoJSON index of zipped GeoTIFF tiles in a projected CRS
                          (`index`, `url_field`, `crs`), mosaicked at `pixel_m`; Hong
                          Kong's 2020 LiDAR terrain is published this way
@@ -29,6 +31,7 @@ as an independent check of building mass.
 
 Writes data/raw/<city>/imagery/<z>/<x>_<y>.<ext>, terrarium/15/..., dem.tif and dem.json.
 """
+import io
 import json
 import math
 import os
@@ -105,21 +108,50 @@ def dem_arcgis(bbox, cfg, raw):
     return [x0, y0, x1, y1], size
 
 
-def dem_wcs(bbox, cfg, raw):
-    """One float32 GeoTIFF over the bbox in geographic coordinates, voids filled."""
-    w, s, e, n = bbox[0] - 0.002, bbox[1] - 0.002, bbox[2] + 0.002, bbox[3] + 0.002
-    px = cfg.get("pixel_deg", 5.5e-5)
-    size = (round((e - w) / px), round((n - s) / px))
+def wcs_get(cfg, bbox, size, fmt="GeoTIFF"):
+    """One WCS 1.0.0 GetCoverage of `cfg`'s coverage over bbox (in its `crs`) as a float array."""
     r = requests.get(cfg["url"], timeout=300, headers=UA, params=dict(
         SERVICE="WCS", VERSION="1.0.0", REQUEST="GetCoverage", COVERAGE=cfg.get("coverage", "1"), CRS=cfg.get("crs", "EPSG:4283"),
-        BBOX=f"{w},{s},{e},{n}", WIDTH=size[0], HEIGHT=size[1], FORMAT="GeoTIFF"))
+        BBOX=",".join(f"{v:.6f}" for v in bbox), WIDTH=size[0], HEIGHT=size[1], FORMAT=cfg.get("format", fmt)))
     r.raise_for_status()
     if not r.headers.get("content-type", "").startswith("image/tiff"):
         raise SystemExit(f"WCS returned {r.headers.get('content-type')}: {r.text[:300]}")
+    return np.asarray(Image.open(io.BytesIO(r.content)), dtype=np.float32)
+
+
+def wcs_tiled(cfg, bbox, px, tile=2000):
+    """A float raster over bbox (projected `crs` units) at px per pixel, read in tiles of at most
+    `tile` pixels. Returns (array, bbox actually covered)."""
+    x0, y0, x1, y1 = bbox
+    w, h = int(math.ceil((x1 - x0) / px)), int(math.ceil((y1 - y0) / px))
+    x1, y1 = x0 + w * px, y0 + h * px
+    a = np.zeros((h, w), np.float32)
+
+    def one(job):
+        c, r = job
+        tw, th = min(tile, w - c), min(tile, h - r)
+        bx0, by1 = x0 + c * px, y1 - r * px
+        a[r:r + th, c:c + tw] = wcs_get(cfg, (bx0, by1 - th * px, bx0 + tw * px, by1), (tw, th))
+
+    with ThreadPoolExecutor(4) as ex:
+        list(ex.map(one, [(c, r) for r in range(0, h, tile) for c in range(0, w, tile)]))
+    return a, [x0, y0, x1, y1]
+
+
+def dem_wcs(bbox, cfg, raw):
+    """One float32 GeoTIFF over the bbox, voids filled: in geographic coordinates at `pixel_deg`,
+    or with `pixel_m` in the projected `crs`, read in tiles."""
     path = os.path.join(raw, "dem.tif")
-    with open(path, "wb") as f:
-        f.write(r.content)
-    a = np.asarray(Image.open(path), dtype=np.float32).copy()
+    if "pixel_m" in cfg:
+        from fetch_ign import lambert_bbox
+        a, mbbox = wcs_tiled(cfg, lambert_bbox(bbox, crs=cfg["crs"]), cfg["pixel_m"])
+        size = (a.shape[1], a.shape[0])
+    else:
+        w, s, e, n = mbbox = [bbox[0] - 0.002, bbox[1] - 0.002, bbox[2] + 0.002, bbox[3] + 0.002]
+        px = cfg.get("pixel_deg", 5.5e-5)
+        size = (round((e - w) / px), round((n - s) / px))
+        a = wcs_get(cfg, mbbox, size).copy()
+    Image.fromarray(a).save(path)
     # voids: pits below fill_below_m, spikes above fill_above_m (no-data values the service
     # passes through at the edge of its coverage) and anything not finite
     bad = ~np.isfinite(a) | (a < cfg.get("fill_below_m", -1e9)) | (a > cfg.get("fill_above_m", 1e9))
@@ -129,7 +161,7 @@ def dem_wcs(bbox, cfg, raw):
         a = a[tuple(idx)]
         Image.fromarray(a).save(path)
     print(f"dem: {bad.sum()} void pixels filled, range {a.min():.1f} to {a.max():.1f} m")
-    return [w, s, e, n], size
+    return mbbox, size
 
 
 def read_geotiff(path):

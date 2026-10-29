@@ -304,7 +304,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
     await idle();
-    const SRC = { mapped: 0, survey: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
+    const SRC = { mapped: 0, survey: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, '3dbag': 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
     // flat roofs sit this far below the wall tops, behind a parapet, so the outline keeps
     // the building's stated height
     const PARAPET = 0.5;

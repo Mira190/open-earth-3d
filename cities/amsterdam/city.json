@@ -1,0 +1,413 @@
+{
+  "id": "amsterdam",
+  "name": "Amsterdam",
+  "country": "Netherlands",
+  "country_code": "NL",
+  "timezone": "Europe/Amsterdam",
+  "locale": "nl-NL",
+  "description": "Central Amsterdam from the IJ to Museumplein, from open data and the real sun. Every building is the 3DBAG's model of it, measured by the national airborne LiDAR, and every canal house carries the gable of its century.",
+  "bbox": [
+    4.866,
+    52.352,
+    4.925,
+    52.389
+  ],
+  "origin": [
+    4.8925,
+    52.373
+  ],
+  "extent_m": [
+    -1800,
+    2200,
+    -2300,
+    1750
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m above the canals (NAP -0.40 m)",
+  "datum_offset_m": -0.4,
+  "datum_note": "The scene's 0 m is the water level of Amsterdam's canals and the IJ, NAP -0.40 m, which Waternet keeps. AHN removes water from its terrain, so the level is the published one, not a measurement. The viewer's water plane is at 0, so every height in the scene is above the canals; add -0.40 for NAP.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://service.pdok.nl/hwh/luchtfotorgb/wmts/v1_0/Actueel_orthoHR/EPSG:3857/{z}/{x}/{y}.jpeg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Beeldmateriaal Nederland aerial photographs (Actueel ortho HR) via PDOK, CC BY 4.0"
+  },
+  "terrain": {
+    "type": "wcs",
+    "url": "https://service.pdok.nl/rws/ahn/wcs/v1_0",
+    "coverage": "dtm_05m",
+    "crs": "EPSG:28992",
+    "frame_crs": "EPSG:4326",
+    "pixel_m": 1.0,
+    "format": "image/tiff",
+    "fill_above_m": 1000,
+    "fill_below_m": -20,
+    "bare_earth": true,
+    "attribution": "AHN (Actueel Hoogtebestand Nederland) bare-earth terrain (DTM 0.5 m) via PDOK, CC0; read at 1 m"
+  },
+  "bag3d": {
+    "release": "v20250903",
+    "index": "https://data.3dbag.nl/v20250903/tile_index.fgb",
+    "exclude": [],
+    "attribution": "3DBAG v2025.09.03 by the 3D geoinformation research group (TU Delft) and 3DGI, from BAG footprints and AHN LiDAR, CC BY 4.0"
+  },
+  "architecture": "amsterdam",
+  "water": {
+    "classes": [
+      "canal",
+      "river",
+      "water",
+      "moat"
+    ],
+    "min_area_m2": 300,
+    "sea": false,
+    "exclude": [
+      {
+        "box": [
+          4.855,
+          52.354,
+          4.8815,
+          52.3618
+        ],
+        "why": "the Vondelpark's ponds: the park is a polder, its water kept at NAP -2.45 m, two metres below the canals"
+      }
+    ],
+    "note": "The canals, the Amstel and the IJ, all kept at NAP -0.40 m (Ingenieursbureau Amsterdam and Waternet, 2019; Rijkswaterstaat's level decision for the IJ and the Noordzeekanaal). Ponds (class pond) are left to the aerial photo: they lie in parks and polders at levels of their own. Amsterdam is inland (sea false): past the model's edge is land.",
+    "floating": [
+      "houseboat"
+    ]
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.6,
+      "plane": 0.4
+    },
+    "note": "Species are not mapped; the mix is a guess. Elms line most of the canals, and plane trees the wider streets and squares."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      3.4
+    ],
+    "non": [
+      3.6,
+      2.0
+    ]
+  },
+  "labels": {
+    "Koninklijk Paleis": "Royal Palace",
+    "Centraal Station": "Centraal Station",
+    "Rijksmuseumgebouw": "Rijksmuseum",
+    "Beurs van Berlage": "Beurs van Berlage",
+    "Stopera": "Stopera",
+    "Concertgebouw": "Concertgebouw",
+    "Van Gogh Museum": "Van Gogh Museum",
+    "A'DAM Toren": "A'DAM Toren",
+    "Portugese Synagoge": "Portuguese Synagogue",
+    "Co-kathedrale Basiliek van Sint Nicolaas": "Sint-Nicolaasbasiliek",
+    "Waag": "Waag",
+    "Noorderkerk": "Noorderkerk",
+    "Sint-Franciscus Xaveriuskerk": "De Krijtberg"
+  },
+  "minor_labels": [
+    "Schreierstoren",
+    "Magna Plaza",
+    "De Bijenkorf",
+    "Stedelijk Museum Amsterdam",
+    "Heineken Brouwerij",
+    "Paleis van Justitie",
+    "Amstelhof",
+    "Joods Museum"
+  ],
+  "place_labels": [
+    "Dam",
+    "Museumplein",
+    "Westerpark",
+    "Rembrandtplein",
+    "Nieuwmarkt",
+    "Leidseplein"
+  ],
+  "protection": {
+    "title": "No sun rule for public places",
+    "summary": "Amsterdam has no sun window in law for its squares and parks. Sun on these places is measured for information, not tested against a rule.",
+    "source_note": "No legal window is transcribed for these places, so each is shown for 10:00-14:00 and none is marked protected.",
+    "reading_note": "Heights come from the 3DBAG: the national airborne LiDAR (AHN3 to AHN5, 2014-2023) over the cadastral footprints, roof by roof."
+  },
+  "places": [
+    {
+      "name": "Dam",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Museumplein",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Rembrandtplein",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Leidseplein",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Nieuwmarkt",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Spui",
+      "class": "plaza",
+      "protected": false
+    },
+    {
+      "name": "Westerpark",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Sarphatipark",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Wertheimpark",
+      "class": "park",
+      "protected": false
+    },
+    {
+      "name": "Waterlooplein",
+      "class": "pedestrian",
+      "protected": false
+    }
+  ],
+  "analysis_region": [
+    -1500,
+    1800,
+    -1900,
+    1300
+  ],
+  "sun_hours_region": [
+    -1750,
+    2150,
+    -2250,
+    1700
+  ],
+  "reference_heights": {
+    "file": "reference_heights.csv",
+    "source": "Wikipedia, List of tallest buildings in Amsterdam (EN and NL), SkyscraperPage, and the buildings' own sites"
+  },
+  "check_points": {
+    "Dam": [
+      4.8924,
+      52.3731
+    ],
+    "Museumplein": [
+      4.8816,
+      52.3574
+    ],
+    "Rembrandtplein": [
+      4.8966,
+      52.3661
+    ],
+    "Nieuwmarkt": [
+      4.9004,
+      52.3726
+    ],
+    "Leidseplein": [
+      4.8824,
+      52.3639
+    ]
+  },
+  "start": {
+    "date": [
+      6,
+      21
+    ],
+    "time": "17:30",
+    "cam": [
+      1900,
+      -2500,
+      1250
+    ],
+    "tgt": [
+      -150,
+      150,
+      0
+    ]
+  },
+  "tour": [
+    {
+      "title": "Amsterdam from open data",
+      "text": "{buildings} buildings, each the 3DBAG's model of a building in the national register, measured by the national airborne LiDAR. For {share:3dbag}% of the footprint area the height is not a guess.",
+      "cam": [
+        1900,
+        -2500,
+        1250
+      ],
+      "tgt": [
+        -150,
+        150,
+        0
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "17:00",
+      "to": "18:00",
+      "hold": 8
+    },
+    {
+      "title": "The canal ring",
+      "text": "{landmark:canal_houses.n} canal houses: brick fronts three windows wide on lots 6 to 8 m wide, under steep roofs whose ridges run back from the canal. {landmark:roofs.gabled_pct}% of the pitched roofs the 3DBAG measured are gabled.",
+      "cam": [
+        -130,
+        -560,
+        140
+      ],
+      "tgt": [
+        -420,
+        -150,
+        10
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "10:00",
+      "to": "11:00",
+      "hold": 9
+    },
+    {
+      "title": "A gable for every century",
+      "text": "Each house ends in the gable of the year it was built: step gables to the 1660s, then neck and bell gables, then the straight cornice. {landmark:canal_houses.gables} fronts carry one: {landmark:canal_houses.by_type.step} step, {landmark:canal_houses.by_type.neck} neck, {landmark:canal_houses.by_type.bell} bell, {landmark:canal_houses.by_type.cornice} cornice and {landmark:canal_houses.by_type.spout} spout.",
+      "cam": [
+        -470,
+        120,
+        26
+      ],
+      "tgt": [
+        -600,
+        240,
+        14
+      ],
+      "date": [
+        9,
+        21
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 10
+    },
+    {
+      "title": "The Westertoren",
+      "text": "Hendrick de Keyser's tower, finished in 1638: 85 m, the tallest church tower in the city. The laser cannot draw a spire, so the tower is built from its published height.",
+      "cam": [
+        -420,
+        40,
+        90
+      ],
+      "tgt": [
+        -611,
+        170,
+        50
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "19:30",
+      "to": "20:30",
+      "hold": 9
+    },
+    {
+      "title": "Below the water",
+      "text": "The canals are kept at 40 cm below NAP, the national datum, and so is the IJ. Most streets in the old city stand a metre or two above the water; the Vondelpark is a polder two metres lower still.",
+      "cam": [
+        900,
+        -1350,
+        60
+      ],
+      "tgt": [
+        681,
+        -1079,
+        2
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "11:00",
+      "to": "12:00",
+      "hold": 9
+    },
+    {
+      "title": "Dam, 21 December",
+      "text": "Midwinter: at noon the sun stands 14 degrees above the horizon in Amsterdam. {sun:Dam|12-21|12:38}% of the square is in direct sun at solar noon.",
+      "place": "Dam",
+      "date": [
+        12,
+        21
+      ],
+      "from": "10:00",
+      "to": "14:00",
+      "hold": 9
+    },
+    {
+      "title": "Where the heights come from",
+      "text": "Coloured by height source: measured by the 3DBAG in the darkest shade. The houseboats in the canals are not in the register, and their heights are a guess.",
+      "cam": [
+        1900,
+        -2500,
+        1250
+      ],
+      "tgt": [
+        -150,
+        150,
+        0
+      ],
+      "date": [
+        6,
+        21
+      ],
+      "from": "12:00",
+      "to": "13:00",
+      "hold": 9,
+      "provenance": true
+    }
+  ],
+  "renders": [
+    {
+      "name": "overview",
+      "cam": [
+        1900,
+        -2500,
+        1250
+      ],
+      "tgt": [
+        -150,
+        150,
+        0
+      ],
+      "date": [
+        2026,
+        6,
+        21
+      ],
+      "time": "17:30"
+    }
+  ],
+  "sources": {
+    "buildings_3dbag": "3DBAG v2025.09.03 (TU Delft 3D geoinformation group and 3DGI), CC BY 4.0: BAG footprints, AHN heights, LOD1.3 tiers and LOD2.2 roofs",
+    "landmarks": "Tower heights: westerkerk.nl, oudekerk.nl and the Dutch Wikipedia; canal bridges from their OpenStreetMap outlines",
+    "water_level": "Canals at NAP -0.40 m: Ingenieursbureau Amsterdam and Waternet, Grondwater effecten van onderkeldering in Amsterdam (2019); the IJ: Rijkswaterstaat's level decision for the Noordzeekanaal and Amsterdam-Rijnkanaal (ANW 92/5850)",
+    "gables": "Gable dates: Grachtenmuseum, Architecture in the canal district (grachten.museum)"
+  }
+}
