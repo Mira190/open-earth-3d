@@ -67,7 +67,11 @@ window.OEHud = (function () {
       g.scale(k, k);
       g.translate(-base.X(x), -base.Y(y));
       g.imageSmoothingEnabled = true;
-      g.drawImage(base.canvas, 0, 0);
+      // only the square of the map the turned minimap can show, not the whole city each frame
+      const cv = base.canvas, h = Math.ceil(radius / base.PX * Math.SQRT2) + 4;
+      const sx = Math.max(0, Math.floor(base.X(x) - h)), sy = Math.max(0, Math.floor(base.Y(y) - h));
+      const sw = Math.min(cv.width, Math.ceil(base.X(x) + h)) - sx, sh = Math.min(cv.height, Math.ceil(base.Y(y) + h)) - sy;
+      if (sw > 0 && sh > 0) g.drawImage(cv, sx, sy, sw, sh, sx, sy, sw, sh);
       if (route && route.length > 1) {
         g.strokeStyle = css('--sun'); g.lineWidth = 3.5 / k; g.lineJoin = g.lineCap = 'round';
         g.beginPath();

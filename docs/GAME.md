@@ -52,7 +52,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
 | <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
-| <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out |
+| <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out, take a lift, look at something up close |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
@@ -176,6 +176,21 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
 
 Amsterdam has no helicopter: no pad in the old city, and none is invented.
 
+**Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
+is a walk, not a survey: a welcome at Hachiko, then five lines in any order and a
+report back.
+- **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
+  lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
+- **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
+  and the triangle after dark.
+- **Your Name:** climb the 52 steps of Suga Shrine's 男坂 and read an ema.
+- **Shinjuku:** Kabukicho's arch after dark.
+- **Aoyama:** the ginkgo avenue at Jingu Gaien.
+
+Walking into a neighbourhood puts its name up on a station sign. <kbd>E</kbd> at a
+spot (an ema, a vending machine, a shop front) reads it. Conversations come up in
+bubbles as you pass.
+
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 **Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
@@ -211,6 +226,7 @@ listed at the end.
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
+| **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 
 ## How it works
@@ -451,6 +467,25 @@ pipeline writes. The only city-specific code is landmark geometry in
     shells and the bridge deck.
   - **Buildings:** no shot puts the camera inside one. Each pose is kept 3 m above the
     surface model under it.
+- **Neighbourhoods** (`web/game/places.js`, game.json `areas`, `spots`, `chatter`):
+  - **Areas:** a circle round a station. Walking in puts up its sign: the name, its
+    reading, the line's colour band and the stations either side. Where circles
+    overlap, the smaller one wins. A sign waits until a camera move ends.
+  - **Spots:** <kbd>E</kbd> within a few metres opens a few lines. A spot with
+    `"pick": 1` shows one of its lines at random (each ema on the rack is a
+    different wish). A quest step `{"type": "spot", "spot": id}` waits for one.
+  - **Chatter:** a conversation at a place, one line every few seconds in a bubble
+    over where it is said, once you are within earshot. It stays quiet for a while
+    after it ends.
+- **Lifts and escalators:**
+  - **Lifts** (game.json `lifts`): a list of stops, each a point with a height.
+    <kbd>E</kbd> at a stop takes you to the next one. The camera climbs the
+    building with you, and the time is shortened from the lift's own speed
+    (`m_per_min`). The player arrives facing the stop's `face`.
+  - **Escalators:** a walkable strip with `moving_ms` carries whoever stands on its
+    moving stretch (`moving_u`) along its axis. You can walk on it too.
+  - **High floors:** a travel point with a height (`[x, y, z]`) lands you on a roof.
+    `always: true` lists it on the map before you have been there.
 - **Sound** (`web/game/audio.js`): synthesised with Web Audio, with no files.
   - harbour ambience;
   - footsteps on the walk cycle;
@@ -594,6 +629,9 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
   where the quest wants.
 - **Night.** `night_ambient` lifts the light after dark, and a landmark material can carry
   `emissive` and `glow` so signs light up.
+- **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
+  `game`, or a city's `game_extras` hook returns them with positions measured from its
+  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage) is the example.
 
 ## Testing
 
@@ -651,6 +689,27 @@ It found three faults, each now fixed:
 - the Scenic Railway's trestles blocked the gate;
 - birds walked hundreds of metres from a random landing place. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
+
+A Shibuya script checks the walk's moving parts:
+- **SHIBUYA SKY:** <kbd>E</kbd> at the street door offers the lift, which lands
+  you on 46F at the escalator's foot; standing still, the escalator carries you
+  5.5 m up to the deck in 20 s; you then walk out across the roof.
+- **The 男坂:** from the lane at its foot you walk onto the first step and up all
+  52 to the approach, with your feet on each tread.
+- **Places:** the station sign comes up after the start, and every spot answers
+  <kbd>E</kbd> where it stands.
+
+It found four faults, each now fixed:
+- a strip's slab topped each 2 m cell at the surface's height at the cell's
+  centre, so on a 30° escalator the cell ahead stood above the knee and stopped
+  the rider halfway. A slab now tops out at the lowest point of the surface in
+  its cell;
+- each of the roof's solids stood on its own ground, a few centimetres off the
+  drawn deck, so at the escalator's foot the floor of its well was the higher
+  floor and the escalator never took you;
+- the cut that sets the stairs into the slope dug the lane at their foot by up to
+  0.8 m;
+- an NPC stood in the lift's door, so <kbd>E</kbd> talked to her instead.
 
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
 the game, walks for four seconds, talks to the first quest giver, flies the
@@ -714,6 +773,9 @@ pass it in the integrated build.
 
 ## Sources
 
+- Persona 5's Tokyo and the real places: [Kotaku](https://kotaku.com/persona-5s-in-game-locations-compared-to-the-real-world-1787125885),
+  [TheGamer](https://www.thegamer.com/persona-5-locations-visit-real-world-counterparts/),
+  [Megami Tensei Wiki: Yongen-Jaya](https://megatenwiki.com/wiki/Yongen-Jaya).
 - Unreal Engine's CharacterMovementComponent and SpringArm: see
   [ENGINES.md](ENGINES.md#sources).
 

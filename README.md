@@ -11,8 +11,8 @@ can check, as well as look at.
 
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
 Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
-next, then Melbourne's bayside, Osaka, Kyoto, Tokyo, Paris, Hong Kong and
-Amsterdam. It
+next, then Melbourne's bayside, Osaka, Kyoto, Tokyo, Shibuya and Shinjuku, Paris,
+Hong Kong and Amsterdam. It
 grows from there one city at a time. Each new city is a config file and a few
 checks, not a new codebase.
 
@@ -42,6 +42,10 @@ checks, not a new codebase.
 |---|---|---|
 | ![](docs/images/amsterdam/overview.jpg) | ![](docs/images/amsterdam/canals.jpg) | ![](docs/images/amsterdam/gables.jpg) |
 
+| Shibuya & Shinjuku: the 男坂 of Suga Shrine | SHIBUYA SKY, 229 m up | Kabukicho after dark |
+|---|---|---|
+| ![](docs/images/shibuya/suga-stairs-mid.jpg) | ![](docs/images/shibuya/sky-aerial.jpg) | ![](docs/images/shibuya/kabukicho-night.jpg) |
+
 Buildings get LOD2 roofs, facades, shopfronts, parapets and rooftops, inferred
 where the open data is silent and checked where it is not
 ([docs/BUILDINGS.md](docs/BUILDINGS.md)):
@@ -66,6 +70,11 @@ The model is also a game.
   LiDAR heights at the Clock Tower, fly between the towers, find the winter sun
   in Statue Square and ride the Peak Tram to the lookout for the 8 pm light
   show. Double-deck trams run along the north shore and stop for you.
+- **Shibuya and Shinjuku:** you cross the scramble, take the lift up Shibuya
+  Scramble Square and ride SHIBUYA SKY's escalator out onto the roof 229 m up,
+  climb the 52 steps of Suga Shrine's 男坂 and read the year's ema, walk
+  Sangenjaya's backstreets and see Kabukicho's arch after dark. Walking into a
+  neighbourhood puts its name up on a station sign.
 - **Paris:** a bouquiniste teaches you to read a roof, you take the Batobus to
   Notre-Dame, find a chair in the winter sun in the Luxembourg, buy a baguette,
   and fly a helicopter under the Eiffel Tower's first floor.
@@ -81,8 +90,8 @@ in any order. Photo mode stops the world for a picture, under the sun for the ti
 you choose. In free roam you can survey the view from Sydney's trig stations, or
 test your eye against the data by guessing building heights. Open **Play** on the
 globe, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
-`#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto` and
-`#play-tokyo`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
+`#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
+`#play-tokyo` and `#play-shibuya`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -131,6 +140,16 @@ card, or go to `#play-osaka`.
 |---|---|---|
 | ![](docs/images/osaka/game-daisuke.jpg) | ![](docs/images/osaka/game-fumi.jpg) | ![](docs/images/osaka/people.jpg) |
 
+**Tokyo Pilgrimage** walks Shibuya and Shinjuku ten years after a film and a game drew
+them: the stairs of *Your Name* at Suga Shrine, SHIBUYA SKY's roof (take the lift, ride the
+escalator out), Sangenjaya's backstreets and Kabukicho's arch. Walking into a
+neighbourhood puts its name up on a station sign; <kbd>E</kbd> reads an ema or a vending
+machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya`.
+
+| The stairs from the lane at their foot | Reading an ema, under Yotsuya-sanchome's station sign | Riding up SHIBUYA SKY's escalator |
+|---|---|---|
+| ![](docs/images/shibuya/suga-stairs.jpg) | ![](docs/images/shibuya/game-ema.jpg) | ![](docs/images/shibuya/sky-escalator.jpg) |
+
 ## Dive it: the Great Barrier Reef
 
 Five Queensland reef sites are marine worlds of their own (`web/reef/`, three.js r186 with WebGPU and a WebGL2
@@ -164,6 +183,7 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 | **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
+| **Shibuya & Shinjuku**, Japan | **Live** | 90,304 buildings across 5.4 × 6.2 km, from Sangenjaya to Shinjuku and Yotsuya. 86% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble, Center Gai, Sangenjaya's backstreets and Kabukicho's arch: the real places a film and a game drew. *Tokyo Pilgrimage*, a game in five walks. [Case study](docs/cities/shibuya.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
 | **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |
@@ -249,7 +269,7 @@ The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #hong-kong) for a 3D model,
+# open http://localhost:8000 for the globe, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #shibuya, #hong-kong) for a 3D model,
 # #play-sydney (and so on) for a game,
 # reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
 ```

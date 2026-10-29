@@ -73,15 +73,19 @@ window.OENav = (function () {
       tops[m.name] = new Map([...mine].map(([k, q]) => [k, q[1]]));
       for (const [k, q] of mine) { const l = solid.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid.set(k, [q[0] - 0.3, q[1] + 0.3]); }
     }
-    for (const s of strips) { // slabs: solid from (surface - thickness) to the surface
+    // slabs: solid from (surface - thickness) to the surface. A cell's slab tops out at the lowest point of the
+    // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee
+    const off = [-0.475, -0.2375, 0, 0.2375, 0.475], inCell = off.flatMap(a => off.map(b => [a * DSM.cell, b * DSM.cell]));
+    for (const s of strips) {
       const th = s.thickness || 3;
       for (let r = 0; r < DSM.ny; r++) {
         const y = y1 - (r + 0.5) * DSM.cell;
         for (let c = 0; c < DSM.nx; c++) {
           const x = x0 + (c + 0.5) * DSM.cell;
           if (Math.abs((x - s.origin[0]) * s.axis[0] + (y - s.origin[1]) * s.axis[1]) > 1000) continue;
-          const z = stripHeight(s, x, y);
+          let z = stripHeight(s, x, y);
           if (z == null) continue;
+          for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
           const k = r * DSM.nx + c, l = solid.get(k);
           if (l) l.push(z - th, z - 0.05); else solid.set(k, [z - th, z - 0.05]);
         }

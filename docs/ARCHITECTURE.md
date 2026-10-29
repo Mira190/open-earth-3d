@@ -37,8 +37,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
-| Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
-| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
+| Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques) |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -340,6 +340,9 @@ The views switch in place, without reloading the page.
     sunset and walk to burrows on the mapped rocks (`game.wildlife`);
   - rail (`rail.js`), where the city has it: street trams and a funicular on
     the rail lines OpenStreetMap maps;
+  - neighbourhoods (`places.js`), where the city names them: a station sign as
+    you walk into an area, things to look at up close, and conversations you
+    overhear in passing;
   - HUD;
   - sound.
 
