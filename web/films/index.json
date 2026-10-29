@@ -23,6 +23,10 @@
   "json": "films/melbourne.json",
   "duration": 36
  },
+ "osaka": {
+  "json": "films/osaka.json",
+  "duration": 36
+ },
  "paris": {
   "json": "films/paris.json",
   "duration": 36
