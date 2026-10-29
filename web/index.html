@@ -5,12 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Open Earth 3D</title>
 <meta name="description" content="The Earth in 3D, city by city, from open data and the real sun.">
+<meta name="theme-color" content="#04060b">
+<link rel="icon" href="favicon.png" sizes="32x32">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Open Earth 3D">
+<meta property="og:title" content="Open Earth 3D">
+<meta property="og:description" content="Real cities rebuilt in 3D from open data, under the real sun. Watch each city's film, explore the model, or walk it.">
+<meta property="og:url" content="https://mira190.github.io/open-earth-3d/">
+<meta property="og:image" content="https://mira190.github.io/open-earth-3d/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="628">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,500..800&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zalando+Sans+Expanded:wght@200..500&family=Inter+Tight:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500&family=Noto+Serif+TC:wght@500&text=%E5%A4%A7%E9%98%AA%E4%BA%AC%E9%83%BD%E6%9D%B1%E9%A6%99%E6%B8%AF&display=swap">
+<link rel="stylesheet" href="fonts.css">
 <link rel="stylesheet" href="title.css">
 <link rel="stylesheet" href="film.css">
 <style>
@@ -734,10 +742,9 @@ a { color: var(--accent); }
 </div>
 
 <script type="importmap">{"imports": {
-  "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.module.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.js": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.186.1/three.core.min.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/",
-  "three-mesh-bvh": "https://cdn.jsdelivr.net/npm/three-mesh-bvh@0.9.16/build/index.module.min.js"
+  "three": "./vendor/three/three.module.min.js",
+  "three/addons/": "./vendor/three/addons/",
+  "three-mesh-bvh": "./vendor/three-mesh-bvh/index.module.min.js"
 }}</script>
 <script type="module">
 // three.js r186 as ES modules, exposed as the global THREE the app's scripts use.
