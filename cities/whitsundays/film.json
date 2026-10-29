@@ -130,52 +130,10 @@
       }
     },
     {
-      "id": "heart",
-      "site": "hardy-reef",
-      "chapter": "Heart Reef",
-      "dur": 5,
-      "type": "orbit",
-      "at": [
-        8767,
-        -3654,
-        0
-      ],
-      "az": [
-        150,
-        175
-      ],
-      "dist": [
-        300,
-        200
-      ],
-      "h": [
-        2300,
-        1700
-      ],
-      "fov": 40,
-      "time": [
-        "08:20"
-      ],
-      "title": {
-        "kind": "lower",
-        "at": 0.5,
-        "until": 4.7,
-        "eyebrow": "Hardy Reef · 75 km offshore",
-        "head": "Heart Reef from the air",
-        "text": "First spotted by a local pilot in 1975; at Sentinel-2's 10 m it is a bright speck in its pool."
-      },
-      "tint": [
-        1.02,
-        1,
-        0.97
-      ],
-      "sat": 1.12
-    },
-    {
       "id": "reef",
       "site": "heron-island",
       "chapter": "Under water",
-      "dur": 5.5,
+      "dur": 8,
       "type": "track",
       "animal": {
         "species": [
@@ -189,10 +147,10 @@
         ]
       },
       "az": [
-        60,
-        100
+        50,
+        110
       ],
-      "dist": 2.6,
+      "dist": 2.2,
       "h": 1.2,
       "fov": 55,
       "under": true,
@@ -201,19 +159,19 @@
       ],
       "title": {
         "kind": "lower",
-        "at": 0.5,
-        "until": 5.2,
+        "at": 0.7,
+        "until": 7.4,
         "eyebrow": "Heron Reef · on the Tropic of Capricorn",
         "head": "Under water",
         "text": "On the reef flat, 3 m down, less than a third of the sun's red is left: the water is fitted to Sentinel-2."
       },
-      "lookUp": -0.3
+      "lookUp": -0.55
     },
     {
       "id": "sail",
       "site": "whitsundays",
       "chapter": "Golden hour",
-      "dur": 6,
+      "dur": 8.5,
       "type": "track",
       "boat": {
         "vessel": "Sundowner",
@@ -229,8 +187,8 @@
         "sails": "sail"
       },
       "az": [
-        80,
-        62
+        86,
+        58
       ],
       "dist": 40,
       "h": 3,
@@ -240,8 +198,8 @@
       ],
       "title": {
         "kind": "lower",
-        "at": 0.5,
-        "until": 5.6,
+        "at": 0.7,
+        "until": 7.6,
         "eyebrow": "Whitsunday Island",
         "head": "Whitehaven Beach",
         "text": "Seven kilometres of sand, 98% of it silica."
@@ -286,5 +244,5 @@
       "ev": 0.2
     }
   ],
-  "crf": 29
+  "crf": 30
 }
