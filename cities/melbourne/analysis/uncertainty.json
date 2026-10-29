@@ -82,25 +82,25 @@
     34.1,
     39.2,
     51,
-    59.4
+    59.3
    ],
    "p05_by_month": [
     28.7,
     23.9,
     28.6,
-    39.8,
+    39.7,
     49.3
    ],
    "p95_by_month": [
     40.4,
-    34.8,
+    34.7,
     39.9,
     53.8,
-    63
+    62.9
    ],
    "window_mean": {
     "base": 44.7,
-    "p05": 34.4,
+    "p05": 34.2,
     "p95": 46.3
    },
    "max_halfwidth_pp": 7
@@ -116,12 +116,12 @@
     8,
     9
    ],
-   "shaded_share_pct": 57.2,
+   "shaded_share_pct": 56.9,
    "catchment_buildings": 5,
    "shade_by_height_source_pct": {
-    "mapped": 50,
-    "floors": 9.4,
-    "estimate": 40.6
+    "mapped": 50.7,
+    "floors": 8.4,
+    "estimate": 40.8
    },
    "top_blockers": [
     {
@@ -130,7 +130,7 @@
      "height_m": 60,
      "source": "mapped",
      "osm_id": "w46206279",
-     "share_pct": 50
+     "share_pct": 50.7
     },
     {
      "building": 3152,
@@ -138,7 +138,7 @@
      "height_m": 28.6,
      "source": "estimate",
      "osm_id": "w1290599790",
-     "share_pct": 40.6
+     "share_pct": 40.8
     },
     {
      "building": 3151,
@@ -146,7 +146,7 @@
      "height_m": 3.9,
      "source": "floors",
      "osm_id": "w1455018314",
-     "share_pct": 6.9
+     "share_pct": 5.9
     },
     {
      "building": 3169,
@@ -154,7 +154,7 @@
      "height_m": 66.3,
      "source": "floors",
      "osm_id": "w46500443",
-     "share_pct": 1.2
+     "share_pct": 1.3
     },
     {
      "building": 3204,
@@ -174,32 +174,32 @@
     }
    ],
    "base_by_month": [
-    39.9,
-    36.5,
-    38.6,
-    45.3,
-    53.7
+    40.3,
+    36.8,
+    38.9,
+    45.6,
+    53.9
    ],
    "p05_by_month": [
-    25.5,
-    18.5,
-    24.7,
-    33.5,
-    43.8
+    25.8,
+    18.9,
+    25.1,
+    34.4,
+    44.2
    ],
    "p95_by_month": [
-    39.7,
+    40.5,
     37,
-    39,
-    47.6,
-    57
+    41.1,
+    48,
+    57.3
    ],
    "window_mean": {
-    "base": 42.8,
-    "p05": 30.9,
-    "p95": 43.4
+    "base": 43.1,
+    "p05": 31.2,
+    "p95": 43.8
    },
-   "max_halfwidth_pp": 9.3
+   "max_halfwidth_pp": 9.1
   },
   {
    "name": "Bourke Street Mall",
@@ -212,9 +212,9 @@
    "shaded_share_pct": 74.5,
    "catchment_buildings": 11,
    "shade_by_height_source_pct": {
-    "mapped": 74.2,
-    "estimate": 2.2,
-    "floors": 23.6
+    "mapped": 74.1,
+    "estimate": 2.1,
+    "floors": 23.7
    },
    "top_blockers": [
     {
@@ -247,7 +247,7 @@
      "height_m": 54.6,
      "source": "floors",
      "osm_id": "w117894666",
-     "share_pct": 7.6
+     "share_pct": 7.4
     },
     {
      "building": 3256,
@@ -263,7 +263,7 @@
      "height_m": 19.5,
      "source": "floors",
      "osm_id": "w47529542",
-     "share_pct": 3.8
+     "share_pct": 3.7
     }
    ],
    "base_by_month": [
@@ -275,15 +275,15 @@
     19.6
    ],
    "p95_by_month": [
-    26.1,
-    31.9
+    25.9,
+    31.8
    ],
    "window_mean": {
     "base": 25.5,
     "p05": 17.1,
     "p95": 28.5
    },
-   "max_halfwidth_pp": 6.3
+   "max_halfwidth_pp": 6.1
   },
   {
    "name": "Boyd Community Park",
@@ -293,7 +293,7 @@
     4,
     9
    ],
-   "shaded_share_pct": 56.9,
+   "shaded_share_pct": 58.2,
    "catchment_buildings": 4,
    "shade_by_height_source_pct": {
     "mapped": 100
@@ -305,7 +305,7 @@
      "height_m": 153,
      "source": "mapped",
      "osm_id": "w821682350",
-     "share_pct": 50.4
+     "share_pct": 48.9
     },
     {
      "building": 5287,
@@ -313,7 +313,7 @@
      "height_m": 17,
      "source": "mapped",
      "osm_id": "w225370260",
-     "share_pct": 46.4
+     "share_pct": 48
     },
     {
      "building": 2761,
@@ -329,27 +329,27 @@
      "height_m": 120,
      "source": "mapped",
      "osm_id": "w331322503",
-     "share_pct": 1.3
+     "share_pct": 1.2
     }
    ],
    "base_by_month": [
-    37.4,
-    48.8
+    36.1,
+    47.6
    ],
    "p05_by_month": [
-    28.3,
-    43.1
+    27.6,
+    42.2
    ],
    "p95_by_month": [
-    37.9,
-    49.6
+    36.5,
+    47.9
    ],
    "window_mean": {
-    "base": 43.1,
-    "p05": 36.7,
-    "p95": 43.7
+    "base": 41.9,
+    "p05": 35.7,
+    "p95": 42.2
    },
-   "max_halfwidth_pp": 4.8
+   "max_halfwidth_pp": 4.4
   },
   {
    "name": "Yarra River corridor",
@@ -424,14 +424,14 @@
     71.3
    ],
    "p95_by_month": [
-    78
+    78.4
    ],
    "window_mean": {
     "base": 79.2,
     "p05": 71.3,
-    "p95": 78
+    "p95": 78.4
    },
-   "max_halfwidth_pp": 3.4
+   "max_halfwidth_pp": 3.6
   },
   {
    "name": "Parliament Gardens",
@@ -617,7 +617,7 @@
     91.2,
     94,
     96.8,
-    97.4
+    97.3
    ],
    "window_mean": {
     "base": 93.8,
@@ -676,11 +676,11 @@
     100
    ],
    "p05_by_month": [
-    74.5,
-    70.2,
-    77.1,
-    83.9,
-    92.3
+    73.3,
+    68.8,
+    75.8,
+    83.8,
+    91.3
    ],
    "p95_by_month": [
     98.6,
@@ -691,10 +691,10 @@
    ],
    "window_mean": {
     "base": 98.7,
-    "p05": 81.2,
+    "p05": 80.2,
     "p95": 98.7
    },
-   "max_halfwidth_pp": 12.8
+   "max_halfwidth_pp": 13.5
   },
   {
    "name": "Batman Park",
@@ -899,11 +899,11 @@
     8,
     9
    ],
-   "shaded_share_pct": 2.4,
+   "shaded_share_pct": 2.6,
    "catchment_buildings": 2,
    "shade_by_height_source_pct": {
-    "estimate": 62,
-    "mapped": 38
+    "estimate": 64.8,
+    "mapped": 35.2
    },
    "top_blockers": [
     {
@@ -912,7 +912,7 @@
      "height_m": 3.9,
      "source": "estimate",
      "osm_id": "w991047939",
-     "share_pct": 62
+     "share_pct": 64.8
     },
     {
      "building": 5283,
@@ -920,34 +920,34 @@
      "height_m": 231,
      "source": "mapped",
      "osm_id": "w1058416315",
-     "share_pct": 38
+     "share_pct": 35.2
     }
    ],
    "base_by_month": [
-    98.3,
-    93.7,
-    98.3,
+    98.2,
+    93.3,
+    98.1,
     98.5,
-    99.1
+    98.9
    ],
    "p05_by_month": [
-    32.4,
-    21.2,
-    29,
-    58.1,
-    83.7
+    32.2,
+    20.8,
+    28.9,
+    58,
+    83.6
    ],
    "p95_by_month": [
     98.4,
-    95.5,
+    95.1,
     98.3,
-    98.9,
-    99.1
+    98.5,
+    99
    ],
    "window_mean": {
-    "base": 97.6,
-    "p05": 46.6,
-    "p95": 98
+    "base": 97.4,
+    "p05": 46.5,
+    "p95": 97.8
    },
    "max_halfwidth_pp": 37.2
   },
@@ -1156,9 +1156,9 @@
    "shaded_share_pct": 1.6,
    "catchment_buildings": 20,
    "shade_by_height_source_pct": {
-    "ml": 41.4,
-    "floors": 14.7,
-    "estimate": 43.9
+    "ml": 41.2,
+    "floors": 14.9,
+    "estimate": 43.8
    },
    "top_blockers": [
     {
@@ -1167,7 +1167,7 @@
      "height_m": 9.2,
      "source": "ml",
      "osm_id": "w321364601",
-     "share_pct": 13.8
+     "share_pct": 13.7
     },
     {
      "building": 4102,
@@ -1175,7 +1175,7 @@
      "height_m": 7,
      "source": "ml",
      "osm_id": "w713541830",
-     "share_pct": 10.2
+     "share_pct": 10.1
     },
     {
      "building": 4099,
@@ -1183,7 +1183,7 @@
      "height_m": 9.5,
      "source": "ml",
      "osm_id": "w321364602",
-     "share_pct": 10.1
+     "share_pct": 10
     },
     {
      "building": 3970,
@@ -1240,8 +1240,8 @@
    "shaded_share_pct": 3.6,
    "catchment_buildings": 39,
    "shade_by_height_source_pct": {
-    "estimate": 43.9,
-    "ml": 53.6,
+    "estimate": 43.8,
+    "ml": 53.9,
     "floors": 2.4
    },
    "top_blockers": [
@@ -1251,7 +1251,7 @@
      "height_m": 11.9,
      "source": "ml",
      "osm_id": "w399439190",
-     "share_pct": 13.1
+     "share_pct": 13.2
     },
     {
      "building": 5129,
@@ -1259,7 +1259,7 @@
      "height_m": 5.7,
      "source": "ml",
      "osm_id": "w338796309",
-     "share_pct": 8
+     "share_pct": 8.1
     },
     {
      "building": 5540,
@@ -1267,7 +1267,7 @@
      "height_m": 8.6,
      "source": "ml",
      "osm_id": "w38701073",
-     "share_pct": 7
+     "share_pct": 7.1
     },
     {
      "building": 5542,
@@ -1296,10 +1296,10 @@
    ],
    "base_by_month": [
     96.4,
-    96.4
+    96.5
    ],
    "p05_by_month": [
-    95.4,
+    95.5,
     95.7
    ],
    "p95_by_month": [
@@ -1307,7 +1307,7 @@
     96.5
    ],
    "window_mean": {
-    "base": 96.4,
+    "base": 96.5,
     "p05": 95.5,
     "p95": 96.4
    },
@@ -1327,10 +1327,10 @@
     123
    ],
    "sun_change_pp": [
-    -5.7,
+    -5.8,
     8.4
    ],
-   "swing_pp": 14.2
+   "swing_pp": 14.3
   },
   {
    "place": "Bourke Street Mall",
@@ -1345,9 +1345,9 @@
    ],
    "sun_change_pp": [
     -9.6,
-    1.6
+    1.4
    ],
-   "swing_pp": 11.2
+   "swing_pp": 11
   },
   {
    "place": "Federation Square",
@@ -1395,10 +1395,10 @@
     62
    ],
    "sun_change_pp": [
-    -8.2,
+    -8.1,
     0
    ],
-   "swing_pp": 8.2
+   "swing_pp": 8.1
   },
   {
    "place": "Dodds St Linear Park",
@@ -1520,6 +1520,23 @@
    "swing_pp": 5
   },
   {
+   "place": "Gordon Reserve",
+   "building": 3816,
+   "name": "unnamed building",
+   "osm_id": "w1222688338",
+   "height_m": 10,
+   "source": "estimate",
+   "plausible_m": [
+    4,
+    39
+   ],
+   "sun_change_pp": [
+    -4.4,
+    0
+   ],
+   "swing_pp": 4.4
+  },
+  {
    "place": "Federation Square",
    "building": 2932,
    "name": "Birrarung Building",
@@ -1535,23 +1552,6 @@
     2.5
    ],
    "swing_pp": 4
-  },
-  {
-   "place": "Gordon Reserve",
-   "building": 3816,
-   "name": "unnamed building",
-   "osm_id": "w1222688338",
-   "height_m": 10,
-   "source": "estimate",
-   "plausible_m": [
-    4,
-    39
-   ],
-   "sun_change_pp": [
-    -3.6,
-    0
-   ],
-   "swing_pp": 3.6
   },
   {
    "place": "Federation Square",
@@ -1633,10 +1633,10 @@
     15
    ],
    "sun_change_pp": [
-    -2.1,
-    0.9
+    -1.9,
+    1.1
    ],
-   "swing_pp": 2.9
+   "swing_pp": 3.1
   },
   {
    "place": "Treasury Gardens",
@@ -1704,7 +1704,24 @@
     -2.1,
     0.1
    ],
-   "swing_pp": 2.1
+   "swing_pp": 2.2
+  },
+  {
+   "place": "City Square",
+   "building": 3169,
+   "name": "Wales Corner",
+   "osm_id": "w46500443",
+   "height_m": 66.3,
+   "source": "floors",
+   "plausible_m": [
+    45,
+    119
+   ],
+   "sun_change_pp": [
+    -0.7,
+    1.2
+   ],
+   "swing_pp": 2
   },
   {
    "place": "Federation Square",
@@ -1722,26 +1739,9 @@
     0.9
    ],
    "swing_pp": 1.9
-  },
-  {
-   "place": "City Square",
-   "building": 3169,
-   "name": "Wales Corner",
-   "osm_id": "w46500443",
-   "height_m": 66.3,
-   "source": "floors",
-   "plausible_m": [
-    45,
-    119
-   ],
-   "sun_change_pp": [
-    -0.7,
-    1.2
-   ],
-   "swing_pp": 1.9
   }
  ],
- "seconds": 356.247,
+ "seconds": 325.922,
  "sigma": {
   "floors": 0.365,
   "estimate": 0.199,
