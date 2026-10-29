@@ -1,0 +1,625 @@
+{
+ "city": "hong-kong",
+ "lidar": "CEDD territory-wide airborne LiDAR digital surface model, 0.5 m, flown December 2019 to February 2020",
+ "model_vs_lidar_m": {
+  "estimate": {
+   "n": 29,
+   "median_abs_m": 5.26,
+   "p90_abs_m": 24.18,
+   "bias_m": 5.26,
+   "within_2m_pct": 31.0
+  },
+  "floors": {
+   "n": 3,
+   "median_abs_m": 1.89,
+   "p90_abs_m": 7.21,
+   "bias_m": 1.89,
+   "within_2m_pct": 66.7
+  },
+  "lidar": {
+   "n": 1033,
+   "median_abs_m": 0.04,
+   "p90_abs_m": 0.31,
+   "bias_m": 0.0,
+   "within_2m_pct": 98.3
+  },
+  "mapped": {
+   "n": 1,
+   "median_abs_m": 2.59,
+   "p90_abs_m": 2.59,
+   "bias_m": 2.59,
+   "within_2m_pct": 0.0
+  },
+  "survey": {
+   "n": 5808,
+   "median_abs_m": 1.16,
+   "p90_abs_m": 10.75,
+   "bias_m": 0.03,
+   "within_2m_pct": 61.0
+  }
+ },
+ "open_data_vs_survey": {
+  "osm_height_tags": {
+   "n": 177,
+   "median_abs_error_pct": 5.0,
+   "bias_pct": 1.2,
+   "within_10pct": 67.2,
+   "over_40pct_short": 13
+  },
+  "osm_floor_counts": {
+   "n": 2616,
+   "median_abs_error_pct": 17.8,
+   "bias_pct": -2.7,
+   "within_10pct": 28.1,
+   "over_40pct_short": 440
+  },
+  "storey": {
+   "res": [
+    3.0,
+    2.8
+   ],
+   "non": [
+    3.9,
+    0.0
+   ]
+  },
+  "note": "OpenStreetMap heights on buildings the survey covers, scored against the surveyed height of the tallest block on the footprint."
+ },
+ "worst_survey_vs_lidar": [
+  {
+   "name": "",
+   "osm_id": "w107497709",
+   "source": "survey",
+   "height_m": 198.3,
+   "model_m": 16.4,
+   "lidar_m": 203.0,
+   "error_m": -186.6
+  },
+  {
+   "name": "第一座 Tower 1",
+   "osm_id": "w1436362440",
+   "source": "survey",
+   "height_m": 187.0,
+   "model_m": 266.1,
+   "lidar_m": 85.1,
+   "error_m": 181.0
+  },
+  {
+   "name": "第二座 Tower 2",
+   "osm_id": "w1436362439",
+   "source": "survey",
+   "height_m": 181.5,
+   "model_m": 266.1,
+   "lidar_m": 90.3,
+   "error_m": 175.8
+  },
+  {
+   "name": "金鐘道政府合署 Queensway Government Offices",
+   "osm_id": "w1268261504",
+   "source": "survey",
+   "height_m": 202.8,
+   "model_m": 209.2,
+   "lidar_m": 39.1,
+   "error_m": 170.1
+  },
+  {
+   "name": "交易廣場 Exchange Square",
+   "osm_id": "w26434739",
+   "source": "survey",
+   "height_m": 182.2,
+   "model_m": 18.9,
+   "lidar_m": 185.6,
+   "error_m": -166.7
+  },
+  {
+   "name": "香港尖沙咀金普頓酒店 Kimpton Tsim Sha Tsui Hong Kong",
+   "osm_id": "w1430321985",
+   "source": "survey",
+   "height_m": 175.2,
+   "model_m": 183.5,
+   "lidar_m": 16.9,
+   "error_m": 166.6
+  },
+  {
+   "name": "力寶中心 Lippo Centre",
+   "osm_id": "w47174644",
+   "source": "survey",
+   "height_m": 10.7,
+   "model_m": 16.5,
+   "lidar_m": 159.1,
+   "error_m": -142.6
+  },
+  {
+   "name": "環球貿易廣場 International Commerce Centre",
+   "osm_id": "w25590249",
+   "source": "survey",
+   "height_m": 484.9,
+   "model_m": 490.0,
+   "lidar_m": 348.6,
+   "error_m": 141.4
+  },
+  {
+   "name": "合和中心 Hopewell Centre",
+   "osm_id": "w1381061198",
+   "source": "survey",
+   "height_m": 49.7,
+   "model_m": 56.3,
+   "lidar_m": 196.5,
+   "error_m": -140.2
+  },
+  {
+   "name": "Tower 1",
+   "osm_id": "w1500261134",
+   "source": "survey",
+   "height_m": 141.6,
+   "model_m": 147.6,
+   "lidar_m": 8.5,
+   "error_m": 139.1
+  },
+  {
+   "name": "",
+   "osm_id": "w1381619179",
+   "source": "survey",
+   "height_m": 33.2,
+   "model_m": 38.5,
+   "lidar_m": 165.3,
+   "error_m": -126.8
+  },
+  {
+   "name": "",
+   "osm_id": "w254652698",
+   "source": "survey",
+   "height_m": 15.7,
+   "model_m": 19.7,
+   "lidar_m": 143.1,
+   "error_m": -123.4
+  },
+  {
+   "name": "衡怡大廈 Henley Building",
+   "osm_id": "w107302752",
+   "source": "survey",
+   "height_m": 137.6,
+   "model_m": 16.9,
+   "lidar_m": 139.9,
+   "error_m": -123.0
+  },
+  {
+   "name": "One Continental",
+   "osm_id": "",
+   "source": "survey",
+   "height_m": 130.5,
+   "model_m": 135.4,
+   "lidar_m": 13.0,
+   "error_m": 122.4
+  },
+  {
+   "name": "",
+   "osm_id": "w295407326",
+   "source": "survey",
+   "height_m": 15.1,
+   "model_m": 19.0,
+   "lidar_m": 130.9,
+   "error_m": -111.9
+  },
+  {
+   "name": "",
+   "osm_id": "w40491153",
+   "source": "survey",
+   "height_m": 140.0,
+   "model_m": 32.4,
+   "lidar_m": 143.4,
+   "error_m": -111.0
+  },
+  {
+   "name": "",
+   "osm_id": "w295102741",
+   "source": "survey",
+   "height_m": 14.9,
+   "model_m": 18.5,
+   "lidar_m": 128.2,
+   "error_m": -109.7
+  },
+  {
+   "name": "One Hennessy",
+   "osm_id": "w200238637",
+   "source": "survey",
+   "height_m": 148.9,
+   "model_m": 18.9,
+   "lidar_m": 122.8,
+   "error_m": -103.9
+  },
+  {
+   "name": "",
+   "osm_id": "w1064828772",
+   "source": "survey",
+   "height_m": 376.7,
+   "model_m": 380.7,
+   "lidar_m": 279.3,
+   "error_m": 101.4
+  },
+  {
+   "name": "",
+   "osm_id": "w1044273325",
+   "source": "survey",
+   "height_m": 116.0,
+   "model_m": 121.5,
+   "lidar_m": 22.5,
+   "error_m": 99.0
+  },
+  {
+   "name": "",
+   "osm_id": "w1220174321",
+   "source": "survey",
+   "height_m": 17.7,
+   "model_m": 31.6,
+   "lidar_m": 129.0,
+   "error_m": -97.4
+  },
+  {
+   "name": "",
+   "osm_id": "w252500377",
+   "source": "survey",
+   "height_m": 39.3,
+   "model_m": 43.8,
+   "lidar_m": 140.4,
+   "error_m": -96.6
+  },
+  {
+   "name": "",
+   "osm_id": "w924792024",
+   "source": "survey",
+   "height_m": 13.7,
+   "model_m": 17.5,
+   "lidar_m": 112.9,
+   "error_m": -95.4
+  },
+  {
+   "name": "",
+   "osm_id": "w210395361",
+   "source": "survey",
+   "height_m": 16.1,
+   "model_m": 19.3,
+   "lidar_m": 113.9,
+   "error_m": -94.6
+  },
+  {
+   "name": "",
+   "osm_id": "w233135925",
+   "source": "survey",
+   "height_m": 19.1,
+   "model_m": 22.7,
+   "lidar_m": 117.0,
+   "error_m": -94.3
+  }
+ ],
+ "no_roof_in_lidar": [
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "survey",
+   "model_m": 234.6,
+   "lidar_m": 197.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 57.8,
+   "lidar_m": 55.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w448058515",
+   "source": "survey",
+   "model_m": 544.3,
+   "lidar_m": 542.1,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "山頂一號食水配水庫 Peak No.1 Fresh Water Service Reservoir",
+   "osm_id": "w448041650",
+   "source": "floors",
+   "model_m": 536.8,
+   "lidar_m": 534.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w448058513",
+   "source": "survey",
+   "model_m": 550.7,
+   "lidar_m": 548.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 552.8,
+   "lidar_m": 550.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "山頂二號食水抽水站 Peak No. 2 Fresh Water Pumping Station",
+   "osm_id": "w448058517",
+   "source": "estimate",
+   "model_m": 523.8,
+   "lidar_m": 520.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 523.7,
+   "lidar_m": 521.1,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "維多利亞山頂無線電台辦公室 Victoria Peak Radio Station Office",
+   "osm_id": "w448041649",
+   "source": "survey",
+   "model_m": 528.7,
+   "lidar_m": 523.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w829557877",
+   "source": "estimate",
+   "model_m": 399.5,
+   "lidar_m": 397.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 441.0,
+   "lidar_m": 425.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 475.1,
+   "lidar_m": 463.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 474.5,
+   "lidar_m": 464.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 449.0,
+   "lidar_m": 446.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "survey",
+   "model_m": 467.9,
+   "lidar_m": 465.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "7座 House 7",
+   "osm_id": "w1327451347",
+   "source": "survey",
+   "model_m": 456.0,
+   "lidar_m": 441.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 456.9,
+   "lidar_m": 446.0,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 435.1,
+   "lidar_m": 422.7,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 407.1,
+   "lidar_m": 394.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w758451481",
+   "source": "estimate",
+   "model_m": 151.7,
+   "lidar_m": 144.9,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 131.3,
+   "lidar_m": 119.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 141.2,
+   "lidar_m": 125.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 94.7,
+   "lidar_m": 73.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 81.3,
+   "lidar_m": 74.7,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 62.3,
+   "lidar_m": 45.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 75.4,
+   "lidar_m": 46.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "10 Wellington",
+   "osm_id": "w1156034920",
+   "source": "survey",
+   "model_m": 35.7,
+   "lidar_m": 16.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "FOCO",
+   "osm_id": "w1215615572",
+   "source": "survey",
+   "model_m": 120.0,
+   "lidar_m": 30.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 44.1,
+   "lidar_m": 22.6,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "One Central Place",
+   "osm_id": "w1056416061",
+   "source": "survey",
+   "model_m": 142.0,
+   "lidar_m": 21.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "The Unit SOHO",
+   "osm_id": "w1508070979",
+   "source": "survey",
+   "model_m": 139.0,
+   "lidar_m": 59.2,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 96.7,
+   "lidar_m": 77.3,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 110.5,
+   "lidar_m": 73.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 88.3,
+   "lidar_m": 81.9,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w1202611408",
+   "source": "survey",
+   "model_m": 160.3,
+   "lidar_m": 64.5,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w1459714847",
+   "source": "survey",
+   "model_m": 95.8,
+   "lidar_m": 95.8,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w1216944135",
+   "source": "estimate",
+   "model_m": 82.4,
+   "lidar_m": 61.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "w1216944136",
+   "source": "estimate",
+   "model_m": 82.0,
+   "lidar_m": 61.0,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "",
+   "osm_id": "",
+   "source": "estimate",
+   "model_m": 81.3,
+   "lidar_m": 58.4,
+   "note": "no roof in the 2020 LiDAR"
+  },
+  {
+   "name": "42 Tung St.",
+   "osm_id": "w818043390",
+   "source": "survey",
+   "model_m": 108.3,
+   "lidar_m": 28.0,
+   "note": "no roof in the 2020 LiDAR"
+  }
+ ],
+ "no_roof_in_lidar_n": 203,
+ "towers_100m_vs_lidar": {
+  "n": 384,
+  "median_abs_m": 1.6,
+  "p90_abs_m": 12.68,
+  "bias_m": 0.0,
+  "within_2m_pct": 55.5
+ }
+}

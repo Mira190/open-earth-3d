@@ -76,6 +76,8 @@ of the measurements:
 | Kyoto, houses | 82–89% gabled | Kyoto city, 21,188 |
 | Tokyo, houses | 60% gabled, 31% hipped | 23 wards, 5,142 |
 | Tokyo, 5+ floors | 90% or more flat | 23 wards, 5,142 |
+| Hong Kong, village houses | 85% gabled | the SAR, 7,844 |
+| Hong Kong, low flats and semis | 92% and 83% flat | the SAR, 7,844 |
 
 A narrow, deep house carries its ridge across the long axis, along the street:
 under 7.5 m wide and more than 1.8 times as deep. Sydney's terraces and Kyoto's
@@ -94,6 +96,7 @@ half-hipped and pyramidal as one.
 | Kyoto | 337 mapped | 76.3% | 58.5% | 82.6% | 73.9% |
 | Kyoto | 59,308 measured | 67.6% | 49.4% | 54.5% | 73.1% |
 | Tokyo | 111 mapped | 85.6% | 81.1% | 98.9% | 37.5% |
+| Hong Kong | 62 mapped | 75.8% | 69.4% | 88.1% | 50.0% |
 
 Most of Sydney's misses are large heritage offices and colleges with pitched roofs
 that the area rule makes flat. Melbourne uses Sydney's rules, and its CBD's pitched
@@ -213,9 +216,11 @@ and are not part of the shadow analysis.
 
 ## 5. Regions
 
-The city's `architecture` key picks the rules: `sydney`, `japan` or `default`.
-Without the key, the country decides (AU, JP). `architecture_overrides`
-adjusts the rules for one city, and Kyoto and Osaka have built-in adjustments:
+The city's `architecture` key picks the rules: `sydney`, `japan`, `hong_kong` or
+`default`. Without the key, the country decides (AU, JP, HK). Hong Kong's region
+sets only the roof priors, measured across the SAR; its walls and streets are the
+defaults. `architecture_overrides` adjusts the rules for one city, and Kyoto and
+Osaka have built-in adjustments:
 
 | | Sydney | Japan (Tokyo, Osaka, Kyoto) |
 |---|---|---|

@@ -6,9 +6,9 @@ The rules are per region (a city's "architecture" key in city.json picks one;
 "architecture_overrides" adjusts it). Roof-shape priors come from the roof
 shapes mapped in OpenStreetMap across each metro area (Overture roof_shape,
 measured in October 2026: Greater Sydney n = 5,762; Kyoto n = 21,188; Tokyo 23
-wards n = 5,142), so the mix of inferred roofs matches the mix that mappers
-record. Every choice that is drawn rather than ruled takes a fixed hash of the
-building's id, so a rebuild gives the same city.
+wards n = 5,142; the Hong Kong SAR n = 7,844), so the mix of inferred roofs
+matches the mix that mappers record. Every choice that is drawn rather than
+ruled takes a fixed hash of the building's id, so a rebuild gives the same city.
 """
 import colorsys
 import math
@@ -128,6 +128,22 @@ REGIONS = {
             "civic": ["#584338", "#e3e3e3", "#c8c8c8"],
         },
     },
+    # Hong Kong: the roof shapes mapped across the SAR (Overture roof_shape inside the SAR's
+    # land boundary, October 2026, n = 7,844). Village houses are gabled (85%), semis and
+    # low flats flat (83% and 92%); small structures flat, curved or lean-to. Unclassed,
+    # civic and commercial low buildings are pooled (n = 39): two thirds flat.
+    "hong_kong": {
+        "roofs": {
+            "house": {"gabled": 0.85, "flat": 0.14, "skillion": 0.01},
+            "semi": {"flat": 0.83, "gabled": 0.17},
+            "terrace": {"gabled": 0.85, "flat": 0.15},
+            "flats_low": {"flat": 0.92, "gabled": 0.08},
+            "small": {"flat": 0.41, "round": 0.29, "skillion": 0.22, "gabled": 0.08},
+            "civic_low": {"flat": 0.65, "gabled": 0.25, "skillion": 0.1},
+            "commercial_low": {"flat": 0.65, "gabled": 0.25, "skillion": 0.1},
+            "unknown_low": {"flat": 0.65, "gabled": 0.25, "skillion": 0.1},
+        },
+    },
     # Paris: the Haussmann block (building rules of 1859, 1884 and 1902): six or seven floors of
     # Lutetian limestone ashlar under a mansard of zinc over slate, shops and an entresol at street
     # level. Roofs over surveyed eaves are measured (LiDAR HD); the priors below only serve the
@@ -170,7 +186,7 @@ REGIONS = {
     },
 }
 # a city without an "architecture" key takes its country's rules
-BY_COUNTRY = {"AU": "sydney", "JP": "japan", "FR": "paris"}
+BY_COUNTRY = {"AU": "sydney", "JP": "japan", "HK": "hong_kong", "FR": "paris"}
 # and some cities differ from their country: Kyoto keeps machiya and bans lit and rooftop
 # signs; Osaka's Minami is the most signed of the four
 BY_CITY = {"kyoto": {"machiya": True, "signage": 0.35}, "osaka": {"signage": 1.4}}

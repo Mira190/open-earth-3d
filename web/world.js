@@ -31,6 +31,7 @@ window.OEWorld = (function () {
   // surface patterns for parametric landmark materials (landmarks.json "pattern"), drawn
   // from the meshes' texture coordinates in metres; each fades to its average colour where
   // a pixel covers more than a few repeats, so it never shimmers at a distance
+  const LM_NIGHT = { value: 0 }; // how dark it is, for landmark patterns with lit windows
   // the Eiffel Tower's sparkle: five minutes at the start of every hour after dark (setSun turns it on)
   const SPARKLE = { on: { value: 0 }, t: { value: 0 } };
   const PATTERNS = {
@@ -86,6 +87,30 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     }
     diffuseColor.rgb = col; }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = pRough;');
+      };
+    },
+    // a curtain wall (u metres along the facade, v metres up): panes between mullions every bay_m,
+    // a spandrel at the foot of each storey_m, pane tones that vary, and some panes lit after dark
+    curtain_wall(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: m.spandrel || 0.25 },
+          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform float uBay, uSty, uSpan, uMull, uLmNight; uniform vec3 uFrame; float pWin, pLit;
+float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
+    float eu = min(fract(bu), 1.0 - fract(bu)) * uBay, mull = 1.0 - smoothstep(uMull * 0.5, uMull * 0.5 + fwidth(vUv.x), eu);
+    float span = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv));
+    vec2 cell = floor(vec2(bu, bv));
+    float far = smoothstep(0.12, 0.5, fw), solid = max(mull, span * 0.9);
+    vec3 glass = diffuseColor.rgb * (0.82 + 0.36 * cwHash(cell));
+    diffuseColor.rgb = mix(mix(glass, uFrame, solid), mix(diffuseColor.rgb, uFrame, 0.3), far);
+    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.62, cwHash(cell + 17.0)), 0.22, far); }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
+          .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * 1.3;`);
       };
     },
     // a riveted iron lattice cut out of a panel (u metres across, v metres up): a strut at the
@@ -279,7 +304,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
     await idle();
-    const SRC = { mapped: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
+    const SRC = { mapped: 0, survey: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, lidar: 0, bdtopo: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
     // flat roofs sit this far below the wall tops, behind a parapet, so the outline keeps
     // the building's stated height
     const PARAPET = 0.5;
@@ -476,6 +501,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
+        LM_NIGHT.value = U.uNight.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());

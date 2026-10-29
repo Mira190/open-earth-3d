@@ -195,12 +195,13 @@
   "id": "hong-kong",
   "name": "Hong Kong",
   "country": "China",
-  "lat": 22.2819,
-  "lon": 114.1589,
-  "status": "planned",
-  "data": "Lands Department 3D spatial data and LiDAR DTM; open orthophotos.",
-  "built": false,
-  "game": false
+  "lat": 22.286,
+  "lon": 114.1635,
+  "status": "live",
+  "summary": "Victoria Harbour from Central to Tsim Sha Tsui and the Peak: 7,513 buildings, nearly all at the heights the Lands Department surveyed, checked against a 2020 LiDAR scan; the Bank of China Tower, HSBC and the Star Ferry; and a game: ride the ferry and the Peak Tram.",
+  "timezone": "Asia/Hong_Kong",
+  "built": true,
+  "game": true
  },
  {
   "id": "singapore",

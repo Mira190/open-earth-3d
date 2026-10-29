@@ -1,4 +1,4 @@
-# The game: Sydney, Melbourne and the bayside on foot
+# The game: Sydney, Melbourne, the bayside and Hong Kong on foot
 
 The city model becomes a place you can be in. In Sydney you walk the centre as
 a surveyor, talk to the people who know it, climb the Opera House steps, catch
@@ -7,8 +7,9 @@ the winter sun on Federation Square, take a river shuttle down the Yarra, and
 fly past the Arts Centre spire. On Melbourne's bayside you wait on the St Kilda
 Pier viewing platform after the real sunset while little penguins come ashore,
 walk into Luna Park through Mr Moon's mouth, and walk the row of Brighton
-bathing boxes. The world is the same open-data model as the viewer. In Sydney
-that means:
+bathing boxes. In Hong Kong you cross the harbour on the Star Ferry, ride the
+Peak Tram and dodge the double-deck trams. The world is the same open-data
+model as the viewer. In Sydney that means:
 
 - 7,962 buildings from OpenStreetMap;
 - the NSW bare-earth terrain;
@@ -18,8 +19,8 @@ Everything the characters tell you about the city is computed from the model
 while you play.
 
 Open it from the globe (**Play** on a city card), from the 3D model (the
-**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne` or
-`#play-melbourne-bayside`.
+**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
+`#play-melbourne-bayside` or `#play-hong-kong`.
 
 | Talking to an NPC | On the bridge deck at golden hour |
 |---|---|
@@ -42,6 +43,8 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/melbourne-bayside/game-boxes.jpg) | ![](images/melbourne-bayside/game-penguins.jpg) |
 | **Mr Moon's gate at Luna Park** | **The pier's approach over the sand** |
 | ![](images/melbourne-bayside/game-luna-park.jpg) | ![](images/melbourne-bayside/game-pier.jpg) |
+| **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** |
+| ![](images/hong-kong/game-ferry.jpg) | ![](images/hong-kong/game-peak-tram.jpg) |
 
 ## Playing
 
@@ -59,6 +62,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
+| Funicular | <kbd>E</kbd> board at a station and get off at the other end, <kbd>F</kbd> skip ahead |
 
 On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
 survey) end at once on any key or drag.
@@ -127,6 +131,20 @@ The bayside survey is one line of four stamps, taken in order:
 
 The bayside has no ferries and no real helipad. The pad at Elwood is invented
 and says so. Places you have visited become fast-travel stops on the map.
+
+The Hong Kong survey has six:
+1. Take the Star Ferry from Central's Pier 7 to Tsim Sha Tsui.
+2. Find a surveyed and a LiDAR-measured height with the survey lens at the
+   Clock Tower, then take the ferry on to Wan Chai.
+3. Fly from the Convention Centre heliport between the towers and land in
+   Tamar Park.
+4. Find a sunny spot in Statue Square at noon on 21 December, among the bank
+   towers.
+5. Ride the Peak Tram from Garden Road to the Peak.
+6. Meet Mrs Fong at the lookout, and stay for the 8 pm light show.
+
+The Star Ferry's routes are real; its timetable and which vessel runs which
+route are not.
 
 The Paris survey has seven stamps, written as three lines after a welcome on the
 Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
@@ -203,6 +221,11 @@ pipeline writes. The only city-specific code is landmark geometry in
       middle of the channel and away from piers.
     - Smoothed only as far as the route still stays at least 4 m from land.
   - **Benches and street lamps:** from OpenStreetMap.
+  - **Rail** (`game.rail`): the Overture rail lines of the configured classes,
+    chained across the junctions where OpenStreetMap breaks them into through
+    routes. A funicular's route runs from its lower end with its profile made
+    monotonic (bridging the dips under its viaducts), and the piece left over
+    beside it is its passing loop.
   - **NPCs:** snapped to open ground.
   - **Boardwalks:** walkways at deck height over rocks, water or sand. They
     are mapped lines found by name, or lines given in the local frame, buffered
@@ -227,6 +250,12 @@ pipeline writes. The only city-specific code is landmark geometry in
     way the real approaches continue to the Cahill Expressway and North Sydney.
   - People and cars use the same surface, so you can walk across with the
     traffic.
+- **Rail** (`web/game/rail.js`): double-deck trams on every through route,
+  keeping to the side of the road the city drives on (`keep`), stopping every
+  `stop_every_m` and for anyone on the track ahead, and ringing their gong as
+  they pull away. A funicular's two cars hang on one cable: one climbs while the
+  other comes down, and they pass at the loop. You ride it like a ferry, from
+  station to station, and the HUD shows your height and the gradient.
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
@@ -579,7 +608,10 @@ The camera shots were checked the same way:
   the field notes are written;
 - the height challenge: the guess is scored against the band of the height's source.
 
-A Melbourne script plays its six stamps the same way: the sun step at
+A Hong Kong script plays its six stamps the same way: both Star Ferry routes,
+the landing in Tamar Park, the sun step in Statue Square on 21 December, the
+five-minute Peak Tram ride (boarding, the climb to 397 m, getting off at the
+Peak) and the last talk at the lookout. A Melbourne script plays its six stamps the same way: the sun step at
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
 flight to Birrarung Marr. A Paris script plays its seven: the Batobus to
 Notre-Dame, the winter sun in the Luxembourg, and the flight under the Eiffel
@@ -645,6 +677,8 @@ pass it in the integrated build.
   1,400 birds.
 - **Piers:** the passers-by keep to the shore, because footways over water are
   dropped unless they are flagged as bridges.
+- **Trams and the funicular:** the trams are ambient: you can't ride them.
+  The Peak Tram skips its intermediate stops, and both of its cars face uphill.
 - **One ferry for every city:** the ferry is a Sydney-style double-ended vessel
   in each city's livery. A city whose boats look different, such as river buses
   or catamarans, still gets this hull.

@@ -30,7 +30,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
 | Measured heights | `fetch_plateau.py` (backends `plateau_citygml.py`, `plateau_3dtiles.py`, vector tiles) | `data/raw/<id>/plateau.json`: Project PLATEAU footprints with measured heights, from a city's CityGML or 3D Tiles zip (HTTP range reads of the parts inside the bbox, no full download) or a vector-tile mirror of the LOD2 roof faces |
 | Measured heights (France) | `fetch_ign.py` | `data/raw/<id>/bdtopo_batiment.json` (IGN BD TOPO buildings over WFS) and `lidar_mnh.tif`, `lidar_mnt.tif` (IGN LiDAR HD over WMS-R, float32 BIL in tiles); read by `measured.py` behind the PLATEAU interface |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS or an OGC WMS serving float BIL), and Terrarium tiles for the radar check |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS, an OGC WMS serving float BIL or a GeoJSON index of GeoTIFF tiles), a LiDAR surface model where the city has one (`dsm.tif`), and Terrarium tiles for the radar check |
+| Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
@@ -69,11 +70,21 @@ height, and the viewer shows it.
    more than 30% (plus 6 m) taller than the survey, which means the building is newer than
    the survey and OSM keeps it. **plateau_lod1** is PLATEAU's block height for a building
    with no survey record.
-2c. **lidar** (cities with an `ign` block): the 95th percentile of IGN's LiDAR HD
+2c. **lidar** and **bdtopo** (cities with an `ign` block): the 95th percentile of IGN's LiDAR HD
    inside the footprint, every part measured on its own and footprints cut into
    levels where the laser sees them; **bdtopo** where the LiDAR is blank, BD TOPO's
    surveyed eaves plus the median measured roof. An OSM height far above the laser
    is a spire, not a newer building, so the laser wins.
+2d. **survey** and **lidar** (cities with a `survey` or `surface_check` block, `survey.py`):
+   - a mapping agency's surveyed top level. Each footprint is cut along the
+     agency's building blocks, tallest first, and each block goes to the
+     footprint it fits best, so a tower's block is not cut into a podium
+     mapped round it;
+   - the median roof of a LiDAR surface model, for footprints the survey
+     covers less than half of, and for surveyed pieces the laser saw far
+     lower on blocks surveyed before the flight.
+
+   These replace the open-data heights below them.
 3. **mapped**: an OpenStreetMap `height`.
 4. **floors**: OSM `building:levels` × the calibrated storey height, plus any
    roof height.
@@ -264,6 +275,12 @@ The views switch in place, without reloading the page.
 
   `setSun()` lights the scene for any sun position.
 
+- **`lights.js`** is a city's nightly light show, where its config has one
+  (`light_show`): searchlights from the landmarks' published tops, lasers
+  between them and the floodlit landmarks cycling through colours, for a few
+  minutes from the show's start time after dark. The viewer and the game share
+  it.
+
 - **`globe.js`** draws the Natural Earth map onto an equirectangular canvas.
   It textures a sphere with it and shades day and night from the subsolar
   point (`Sun.subsolar`). City markers are HTML buttons projected onto the
@@ -320,6 +337,8 @@ The views switch in place, without reloading the page.
   - wildlife (`penguins.js`): a colony of little penguins in one instanced
     mesh. They are out at sea by day, come ashore in rafts after the real
     sunset and walk to burrows on the mapped rocks (`game.wildlife`);
+  - rail (`rail.js`), where the city has it: street trams and a funicular on
+    the rail lines OpenStreetMap maps;
   - HUD;
   - sound.
 

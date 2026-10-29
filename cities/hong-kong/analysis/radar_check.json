@@ -1,0 +1,36 @@
+{
+ "note": "SRTM (Feb 2000) surface excess over the bare-earth DEM vs block-mean model height, analysis region, land blocks only",
+ "test_building": null,
+ "scales": [
+  {
+   "block_m": 100.0,
+   "blocks": 693,
+   "model": {
+    "r": 0.621,
+    "slope": 0.845,
+    "intercept_m": 3.6,
+    "rmse_m": 19.8
+   }
+  },
+  {
+   "block_m": 150.0,
+   "blocks": 282,
+   "model": {
+    "r": 0.72,
+    "slope": 1.039,
+    "intercept_m": 0.5,
+    "rmse_m": 16.6
+   }
+  },
+  {
+   "block_m": 200.0,
+   "blocks": 171,
+   "model": {
+    "r": 0.763,
+    "slope": 1.136,
+    "intercept_m": -1.1,
+    "rmse_m": 14.6
+   }
+  }
+ ]
+}

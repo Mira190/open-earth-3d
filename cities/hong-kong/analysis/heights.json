@@ -1,0 +1,942 @@
+{
+ "note": "Reference heights are architectural (incl. spires); model heights are roof/top of the tallest solid.",
+ "summary": {
+  "reference": 44,
+  "matched": 40,
+  "median_abs_error_pct": 5.0,
+  "median_error_m": -11.1,
+  "within_10pct": 32,
+  "within_20pct": 37,
+  "gross_short": 0,
+  "by_source": {
+   "lidar": {
+    "n": 2,
+    "median_abs_error_pct": 18.9
+   },
+   "survey": {
+    "n": 38,
+    "median_abs_error_pct": 4.3
+   }
+  }
+ },
+ "rows": [
+  {
+   "name": "International Commerce Centre",
+   "ref_m": 484.0,
+   "ref_floors": 108,
+   "year": "2010",
+   "address": "",
+   "xy": [
+    -343.2,
+    1925.9
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4308,
+   "model_name": "\u74b0\u7403\u8cbf\u6613\u5ee3\u5834 International Commerce Centre",
+   "model_m": 484.9,
+   "model_floors": 118,
+   "height_src": "survey",
+   "osm_id": "w25590249",
+   "error_m": 0.9,
+   "error_pct": 0.2
+  },
+  {
+   "name": "Two International Finance Centre",
+   "ref_m": 412.0,
+   "ref_floors": 88,
+   "year": "2003",
+   "address": "",
+   "xy": [
+    -436.0,
+    -77.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4557,
+   "model_name": "\u570b\u969b\u91d1\u878d\u4e2d\u5fc3\u4e8c\u671f Two International Finance Centre",
+   "model_m": 401.1,
+   "model_floors": 90,
+   "height_src": "survey",
+   "osm_id": "w25589595",
+   "error_m": -10.9,
+   "error_pct": -2.6
+  },
+  {
+   "name": "Central Plaza",
+   "ref_m": 374.0,
+   "ref_floors": 78,
+   "year": "1992",
+   "address": "",
+   "xy": [
+    1042.0,
+    -664.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5783,
+   "model_name": "\u4e2d\u74b0\u5ee3\u5834 Central Plaza",
+   "model_m": 300.2,
+   "model_floors": 78,
+   "height_src": "lidar",
+   "osm_id": "w27087018",
+   "error_m": -73.8,
+   "error_pct": -19.7
+  },
+  {
+   "name": "Bank of China Tower",
+   "ref_m": 367.0,
+   "ref_floors": 70,
+   "year": "1990",
+   "address": "",
+   "xy": [
+    -217.6,
+    -756.6
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4464,
+   "model_name": "\u4e2d\u9280\u5927\u5ec8 Bank of China Tower",
+   "model_m": 300.2,
+   "model_floors": 65,
+   "height_src": "lidar",
+   "osm_id": "w25604760",
+   "error_m": -66.8,
+   "error_pct": -18.2
+  },
+  {
+   "name": "The Center",
+   "ref_m": 346.0,
+   "ref_floors": 73,
+   "year": "1998",
+   "address": "",
+   "xy": [
+    -933.3,
+    -141.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 782,
+   "model_name": "\u4e2d\u74b0\u4e2d\u5fc3 The Center",
+   "model_m": 312.5,
+   "model_floors": 73,
+   "height_src": "survey",
+   "osm_id": "w148228888",
+   "error_m": -33.5,
+   "error_pct": -9.7
+  },
+  {
+   "name": "Victoria Dockside",
+   "ref_m": 284.0,
+   "ref_floors": 65,
+   "year": "2017",
+   "address": "",
+   "xy": [
+    1266.3,
+    988.0
+   ],
+   "match": "ambiguous",
+   "how": "inside",
+   "building": 3229,
+   "model_name": "K11 Atelier",
+   "model_m": 259.6,
+   "model_floors": 66,
+   "height_src": "survey",
+   "osm_id": "w668219664",
+   "error_m": -24.4,
+   "error_pct": -8.6,
+   "why": "a complex: the point falls between K11 Atelier and the Rosewood tower"
+  },
+  {
+   "name": "Cheung Kong Centre",
+   "ref_m": 283.0,
+   "ref_floors": 63,
+   "year": "1999",
+   "address": "",
+   "xy": [
+    -332.1,
+    -726.0
+   ],
+   "match": "ambiguous",
+   "how": "name",
+   "building": 7018,
+   "model_name": "CHEUNG KONG CENTER",
+   "model_m": 10.8,
+   "model_floors": 4,
+   "height_src": "survey",
+   "osm_id": "",
+   "error_m": -272.2,
+   "error_pct": -96.2,
+   "why": "the only footprint carrying the name is a low building beside the tower, which OpenStreetMap leaves unnamed"
+  },
+  {
+   "name": "The Masterpiece",
+   "ref_m": 261.0,
+   "ref_floors": 64,
+   "year": "2008",
+   "address": "",
+   "xy": [
+    1070.5,
+    1273.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 3152,
+   "model_name": "\u540d\u9444 The Masterpiece",
+   "model_m": 245.6,
+   "model_floors": 64,
+   "height_src": "survey",
+   "osm_id": "w124697429",
+   "error_m": -15.4,
+   "error_pct": -5.9
+  },
+  {
+   "name": "Sorrento 1",
+   "ref_m": 256.0,
+   "ref_floors": 75,
+   "year": "2003",
+   "address": "",
+   "xy": [
+    -219.8,
+    2295.9
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4277,
+   "model_name": "\u7b2c1\u5ea7 Tower 1",
+   "model_m": 247.1,
+   "model_floors": 75,
+   "height_src": "survey",
+   "osm_id": "w200726103",
+   "error_m": -8.9,
+   "error_pct": -3.5
+  },
+  {
+   "name": "The Harbourside",
+   "ref_m": 251.0,
+   "ref_floors": 74,
+   "year": "2004",
+   "address": "",
+   "xy": [
+    -206.1,
+    1890.1
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4269,
+   "model_name": "\u7b2c3\u5ea7 Tower 3",
+   "model_m": 242.3,
+   "model_floors": 74,
+   "height_src": "survey",
+   "osm_id": "w1047822852",
+   "error_m": -8.7,
+   "error_pct": -3.5
+  },
+  {
+   "name": "Sorrento 2",
+   "ref_m": 236.0,
+   "ref_floors": 66,
+   "year": "2003",
+   "address": "",
+   "xy": [
+    -173.2,
+    2287.5
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4275,
+   "model_name": "\u7b2c2\u5ea7 Tower 2",
+   "model_m": 224.2,
+   "model_floors": 66,
+   "height_src": "survey",
+   "osm_id": "w200720178",
+   "error_m": -11.8,
+   "error_pct": -5.0
+  },
+  {
+   "name": "The Arch",
+   "ref_m": 231.0,
+   "ref_floors": 65,
+   "year": "2005",
+   "address": "",
+   "xy": [
+    -53.5,
+    1926.8
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4272,
+   "model_name": "\u5713\u65b9 Elements",
+   "model_m": 161.0,
+   "model_floors": 4,
+   "height_src": "survey",
+   "osm_id": "w1415166820",
+   "error_m": -70.0,
+   "error_pct": -30.3
+  },
+  {
+   "name": "Cosco Tower",
+   "ref_m": 228.0,
+   "ref_floors": 53,
+   "year": "1998",
+   "address": "",
+   "xy": [
+    -1072.9,
+    -63.0
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 907,
+   "model_name": "\u4e2d\u9060\u5927\u5ec8 Cosco Tower",
+   "model_m": 201.8,
+   "model_floors": 51,
+   "height_src": "survey",
+   "osm_id": "w148228836",
+   "error_m": -26.2,
+   "error_pct": -11.5
+  },
+  {
+   "name": "Hopewell Centre",
+   "ref_m": 222.0,
+   "ref_floors": 64,
+   "year": "1980",
+   "address": "",
+   "xy": [
+    834.8,
+    -1271.9
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5697,
+   "model_name": "\u5408\u548c\u4e2d\u5fc3 Hopewell Centre",
+   "model_m": 213.5,
+   "model_floors": 63,
+   "height_src": "survey",
+   "osm_id": "w88391069",
+   "error_m": -8.5,
+   "error_pct": -3.8
+  },
+  {
+   "name": "Sorrento 3",
+   "ref_m": 218.0,
+   "ref_floors": 64,
+   "year": "2003",
+   "address": "",
+   "xy": [
+    -105.0,
+    2259.6
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4250,
+   "model_name": "\u7b2c3\u5ea7 Tower 3",
+   "model_m": 206.4,
+   "model_floors": 64,
+   "height_src": "survey",
+   "osm_id": "w200720170",
+   "error_m": -11.6,
+   "error_pct": -5.3
+  },
+  {
+   "name": "Sun Hung Kai Centre",
+   "ref_m": 215.0,
+   "ref_floors": 56,
+   "year": "1981",
+   "address": "",
+   "xy": [
+    1385.8,
+    -639.8
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 6688,
+   "model_name": "",
+   "model_m": 198.3,
+   "model_floors": 2,
+   "height_src": "survey",
+   "osm_id": "w107497709",
+   "error_m": -16.7,
+   "error_pct": -7.8
+  },
+  {
+   "name": "Island Shangri-La",
+   "ref_m": 213.0,
+   "ref_floors": 57,
+   "year": "1991",
+   "address": "",
+   "xy": [
+    68.7,
+    -972.0
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4413,
+   "model_name": "\u592a\u53e4\u5ee3\u5834\u4e8c\u5ea7 Two Pacific Place",
+   "model_m": 206.5,
+   "model_floors": 57,
+   "height_src": "survey",
+   "osm_id": "w41498695",
+   "error_m": -6.5,
+   "error_pct": -3.1
+  },
+  {
+   "name": "One International Finance Centre",
+   "ref_m": 210.0,
+   "ref_floors": 38,
+   "year": "1998",
+   "address": "",
+   "xy": [
+    -684.7,
+    -94.8
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4576,
+   "model_name": "\u570b\u969b\u91d1\u878d\u4e2d\u5fc3\u4e00\u671f One International Finance Centre",
+   "model_m": 199.7,
+   "model_floors": 38,
+   "height_src": "survey",
+   "osm_id": "w148554945",
+   "error_m": -10.3,
+   "error_pct": -4.9
+  },
+  {
+   "name": "Sorrento 6",
+   "ref_m": 206.0,
+   "ref_floors": 60,
+   "year": "2003",
+   "address": "",
+   "xy": [
+    -26.1,
+    2229.4
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4257,
+   "model_name": "\u7b2c6\u5ea7 Tower 6",
+   "model_m": 194.7,
+   "model_floors": 60,
+   "height_src": "survey",
+   "osm_id": "w200720176",
+   "error_m": -11.3,
+   "error_pct": -5.5
+  },
+  {
+   "name": "Citibank Plaza",
+   "ref_m": 206.0,
+   "ref_floors": 47,
+   "year": "1992",
+   "address": "",
+   "xy": [
+    -288.6,
+    -808.4
+   ],
+   "match": "address",
+   "how": "nearest",
+   "building": 4517,
+   "model_name": "\u51a0\u541b\u5927\u5ec8 Champion Tower",
+   "model_m": 198.8,
+   "model_floors": 51,
+   "height_src": "survey",
+   "osm_id": "w85320726",
+   "error_m": -7.2,
+   "error_pct": -3.5
+  },
+  {
+   "name": "May House",
+   "ref_m": 206.0,
+   "ref_floors": 47,
+   "year": "2004",
+   "address": "",
+   "xy": [
+    459.7,
+    -800.0
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 5303,
+   "model_name": "\u9ad8\u5ea7 High Block",
+   "model_m": 186.6,
+   "model_floors": 47,
+   "height_src": "survey",
+   "osm_id": "w107358582",
+   "error_m": -19.4,
+   "error_pct": -9.4
+  },
+  {
+   "name": "Four Seasons Place",
+   "ref_m": 205.0,
+   "ref_floors": 55,
+   "year": "2005",
+   "address": "",
+   "xy": [
+    -687.1,
+    60.6
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4323,
+   "model_name": "",
+   "model_m": 203.3,
+   "model_floors": 45,
+   "height_src": "survey",
+   "osm_id": "w1097239635",
+   "error_m": -1.7,
+   "error_pct": -0.8
+  },
+  {
+   "name": "Hysan Place",
+   "ref_m": 204.0,
+   "ref_floors": 36,
+   "year": "2012",
+   "address": "",
+   "xy": [
+    2071.5,
+    -686.4
+   ],
+   "match": "outside scene"
+  },
+  {
+   "name": "China Online Centre",
+   "ref_m": 201.0,
+   "ref_floors": 52,
+   "year": "2000",
+   "address": "",
+   "xy": [
+    1531.6,
+    -751.7
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 6575,
+   "model_name": "",
+   "model_m": 188.9,
+   "model_floors": 3,
+   "height_src": "survey",
+   "osm_id": "w295779339",
+   "error_m": -12.1,
+   "error_pct": -6.0
+  },
+  {
+   "name": "Conrad Hong Kong Hotel",
+   "ref_m": 199.0,
+   "ref_floors": 61,
+   "year": "1991",
+   "address": "",
+   "xy": [
+    168.3,
+    -1025.0
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4378,
+   "model_name": "\u9999\u6e2f\u6e2f\u9e97\u9152\u5e97 Conrad Hong Kong",
+   "model_m": 182.7,
+   "model_floors": 62,
+   "height_src": "survey",
+   "osm_id": "w41498759",
+   "error_m": -16.3,
+   "error_pct": -8.2
+  },
+  {
+   "name": "Queensway Government Offices",
+   "ref_m": 199.0,
+   "ref_floors": 56,
+   "year": "1985",
+   "address": "",
+   "xy": [
+    40.1,
+    -910.5
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4415,
+   "model_name": "\u91d1\u9418\u9053\u653f\u5e9c\u5408\u7f72 Queensway Government Offices",
+   "model_m": 202.8,
+   "model_floors": 53,
+   "height_src": "survey",
+   "osm_id": "w1268261504",
+   "error_m": 3.8,
+   "error_pct": 1.9
+  },
+  {
+   "name": "Aigburth",
+   "ref_m": 196.0,
+   "ref_floors": 48,
+   "year": "1999",
+   "address": "",
+   "xy": [
+    -1077.0,
+    -1380.7
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 425,
+   "model_name": "\u8b7d\u7687\u5c45 Aigburth",
+   "model_m": 160.1,
+   "model_floors": 48,
+   "height_src": "survey",
+   "osm_id": "w539895767",
+   "error_m": -35.9,
+   "error_pct": -18.3
+  },
+  {
+   "name": "Times Square Natwest Tower",
+   "ref_m": 194.0,
+   "ref_floors": 48,
+   "year": "1993",
+   "address": "",
+   "xy": [
+    1977.3,
+    -856.8
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 6440,
+   "model_name": "\u4e00\u5ea7 Tower One",
+   "model_m": 194.1,
+   "model_floors": 47,
+   "height_src": "survey",
+   "osm_id": "w199045545",
+   "error_m": 0.1,
+   "error_pct": 0.1
+  },
+  {
+   "name": "39 Conduit Road",
+   "ref_m": 192.0,
+   "ref_floors": 42,
+   "year": "2009",
+   "address": "",
+   "xy": [
+    -1739.4,
+    -450.5
+   ],
+   "match": "ambiguous",
+   "how": "name",
+   "building": 7011,
+   "model_name": "39 CONDUIT ROAD",
+   "model_m": 44.2,
+   "model_floors": 8,
+   "height_src": "survey",
+   "osm_id": "",
+   "error_m": -147.8,
+   "error_pct": -77.0,
+   "why": "the list's coordinate falls on low neighbours; the tower (OpenStreetMap w538084225, surveyed 175 m above its lowest ground) is 10 m away"
+  },
+  {
+   "name": "The Henderson",
+   "ref_m": 190.0,
+   "ref_floors": 36,
+   "year": "2024",
+   "address": "",
+   "xy": [
+    -152.6,
+    -635.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4471,
+   "model_name": "The Henderson",
+   "model_m": 168.7,
+   "model_floors": 36,
+   "height_src": "survey",
+   "osm_id": "w26434768",
+   "error_m": -21.3,
+   "error_pct": -11.2
+  },
+  {
+   "name": "The Centrium",
+   "ref_m": 189.0,
+   "ref_floors": 41,
+   "year": "2001",
+   "address": "",
+   "xy": [
+    -908.0,
+    -585.6
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 562,
+   "model_name": "",
+   "model_m": 144.0,
+   "model_floors": 36,
+   "height_src": "survey",
+   "osm_id": "w1328036512",
+   "error_m": -45.0,
+   "error_pct": -23.8
+  },
+  {
+   "name": "One Exchange Square",
+   "ref_m": 188.0,
+   "ref_floors": 52,
+   "year": "1985",
+   "address": "",
+   "xy": [
+    -517.9,
+    -295.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4561,
+   "model_name": "\u4ea4\u6613\u5ee3\u5834\u7b2c\u4e00\u5ea7 One Exchange Square",
+   "model_m": 182.4,
+   "model_floors": 52,
+   "height_src": "survey",
+   "osm_id": "w32530560",
+   "error_m": -5.6,
+   "error_pct": -3.0
+  },
+  {
+   "name": "Two Exchange Square",
+   "ref_m": 188.0,
+   "ref_floors": 52,
+   "year": "1985",
+   "address": "",
+   "xy": [
+    -527.3,
+    -238.1
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4560,
+   "model_name": "\u4ea4\u6613\u5ee3\u5834\u7b2c\u4e8c\u5ea7 Two Exchange Square",
+   "model_m": 182.3,
+   "model_floors": 52,
+   "height_src": "survey",
+   "osm_id": "w148554953",
+   "error_m": -5.7,
+   "error_pct": -3.0
+  },
+  {
+   "name": "9 Queen's Road Central",
+   "ref_m": 187.0,
+   "ref_floors": 39,
+   "year": "1991",
+   "address": "",
+   "xy": [
+    -516.4,
+    -630.8
+   ],
+   "match": "address",
+   "how": "inside",
+   "building": 4689,
+   "model_name": "\u5609\u8ed2\u5ee3\u5834 The Galleria",
+   "model_m": 181.3,
+   "model_floors": 3,
+   "height_src": "survey",
+   "osm_id": "w295407307",
+   "error_m": -5.7,
+   "error_pct": -3.0
+  },
+  {
+   "name": "Entertainment Building",
+   "ref_m": 187.0,
+   "ref_floors": 33,
+   "year": "1993",
+   "address": "",
+   "xy": [
+    -718.5,
+    -498.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4644,
+   "model_name": "\u5a1b\u6a02\u884c Entertainment Building",
+   "model_m": 186.5,
+   "model_floors": 0,
+   "height_src": "survey",
+   "osm_id": "w233135905",
+   "error_m": -0.5,
+   "error_pct": -0.3
+  },
+  {
+   "name": "Lippo Centre II",
+   "ref_m": 186.0,
+   "ref_floors": 48,
+   "year": "1988",
+   "address": "",
+   "xy": [
+    -10.0,
+    -748.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4479,
+   "model_name": "\u529b\u5bf6\u4e2d\u5fc3\u7b2c\u4e8c\u5ea7 Lippo Centre Tower 2",
+   "model_m": 167.6,
+   "model_floors": 48,
+   "height_src": "survey",
+   "osm_id": "w107336263",
+   "error_m": -18.4,
+   "error_pct": -9.9
+  },
+  {
+   "name": "Standard Chartered Bank Building",
+   "ref_m": 185.0,
+   "ref_floors": 42,
+   "year": "1990",
+   "address": "",
+   "xy": [
+    -459.4,
+    -656.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4547,
+   "model_name": "\u6e23\u6253\u9280\u884c\u5927\u5ec8 Standard Chartered Bank Building",
+   "model_m": 185.8,
+   "model_floors": 37,
+   "height_src": "survey",
+   "osm_id": "w107303478",
+   "error_m": 0.8,
+   "error_pct": 0.4
+  },
+  {
+   "name": "Sino Plaza",
+   "ref_m": 185.0,
+   "ref_floors": 38,
+   "year": "1992",
+   "address": "",
+   "xy": [
+    1930.4,
+    -512.7
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 6716,
+   "model_name": "\u4fe1\u548c\u5ee3\u5834 Sino Plaza",
+   "model_m": 143.6,
+   "model_floors": 3,
+   "height_src": "survey",
+   "osm_id": "w198994695",
+   "error_m": -41.4,
+   "error_pct": -22.4
+  },
+  {
+   "name": "AIA Central",
+   "ref_m": 185.0,
+   "ref_floors": 40,
+   "year": "2005",
+   "address": "",
+   "xy": [
+    -174.6,
+    -526.0
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 4469,
+   "model_name": "\u53cb\u90a6\u91d1\u878d\u4e2d\u5fc3 AIA Central",
+   "model_m": 169.7,
+   "model_floors": 40,
+   "height_src": "survey",
+   "osm_id": "w107324767",
+   "error_m": -15.3,
+   "error_pct": -8.3
+  },
+  {
+   "name": "Three Pacific Place",
+   "ref_m": 182.0,
+   "ref_floors": 40,
+   "year": "2004",
+   "address": "",
+   "xy": [
+    480.1,
+    -1021.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5249,
+   "model_name": "\u592a\u53e4\u5ee3\u5834\u4e09\u5ea7 Three Pacific Place",
+   "model_m": 176.3,
+   "model_floors": 40,
+   "height_src": "survey",
+   "osm_id": "w88391081",
+   "error_m": -5.7,
+   "error_pct": -3.1
+  },
+  {
+   "name": "Branksome Crest",
+   "ref_m": 182.0,
+   "ref_floors": 47,
+   "year": "2003",
+   "address": "",
+   "xy": [
+    -859.1,
+    -1453.4
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 459,
+   "model_name": "Branksome Crest",
+   "model_m": 166.9,
+   "model_floors": 47,
+   "height_src": "survey",
+   "osm_id": "w539895772",
+   "error_m": -15.1,
+   "error_pct": -8.3
+  },
+  {
+   "name": "Convention Plaza Office",
+   "ref_m": 181.0,
+   "ref_floors": 50,
+   "year": "1990",
+   "address": "",
+   "xy": [
+    1080.4,
+    -590.3
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5797,
+   "model_name": "\u6703\u5c55\u5ee3\u5834\u8fa6\u516c\u5927\u6a13 Convention Plaza Office Tower",
+   "model_m": 181.3,
+   "model_floors": 51,
+   "height_src": "survey",
+   "osm_id": "w107497689",
+   "error_m": 0.3,
+   "error_pct": 0.2
+  },
+  {
+   "name": "Immigration Tower",
+   "ref_m": 181.0,
+   "ref_floors": 49,
+   "year": "1990",
+   "address": "",
+   "xy": [
+    984.8,
+    -695.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5770,
+   "model_name": "\u5165\u5883\u4e8b\u52d9\u5927\u6a13 Immigration Tower",
+   "model_m": 174.8,
+   "model_floors": 50,
+   "height_src": "survey",
+   "osm_id": "w510722228",
+   "error_m": -6.2,
+   "error_pct": -3.4
+  },
+  {
+   "name": "Revenue Tower",
+   "ref_m": 181.0,
+   "ref_floors": 49,
+   "year": "1990",
+   "address": "",
+   "xy": [
+    870.2,
+    -695.2
+   ],
+   "match": "address",
+   "how": "name",
+   "building": 5745,
+   "model_name": "\u7a05\u52d9\u5927\u6a13 Revenue Tower",
+   "model_m": 174.8,
+   "model_floors": 50,
+   "height_src": "survey",
+   "osm_id": "w27087037",
+   "error_m": -6.2,
+   "error_pct": -3.4
+  }
+ ]
+}

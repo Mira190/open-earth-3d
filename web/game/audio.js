@@ -103,7 +103,9 @@ window.OEAudio = (function () {
     o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + n * 0.16 + 0.05);
   }
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
+  // a tram's foot gong, struck twice ("ding ding")
+  function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, beep, step, horn, chime, thump, shutter, penguin, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, beep, step, horn, chime, bell, thump, shutter, penguin, setMuted, stop, get muted() { return muted; } };
 })();
