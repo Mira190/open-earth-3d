@@ -201,7 +201,7 @@
   ],
   "reference_heights": {
     "file": "reference_heights.csv",
-    "source": "Wikipedia, List of tallest buildings in Amsterdam (EN and NL), SkyscraperPage, and the buildings' own sites"
+    "source": "westerkerk.nl, oudekerk.nl, paleisamsterdam.nl, Ons Amsterdam, amsterdam-monumentenstad.nl, and the Dutch and English Wikipedia (each row's source column)"
   },
   "check_points": {
     "Dam": [
@@ -409,5 +409,538 @@
     "landmarks": "Tower heights: westerkerk.nl, oudekerk.nl and the Dutch Wikipedia; canal bridges from their OpenStreetMap outlines",
     "water_level": "Canals at NAP -0.40 m: Ingenieursbureau Amsterdam and Waternet, Grondwater effecten van onderkeldering in Amsterdam (2019); the IJ: Rijkswaterstaat's level decision for the Noordzeekanaal and Amsterdam-Rijnkanaal (ANW 92/5850)",
     "gables": "Gable dates: Grachtenmuseum, Architecture in the canal district (grachten.museum)"
+  },
+  "game": {
+    "title": "Amsterdam on Foot",
+    "local_name": "Amsterdammer",
+    "water_name": "the canals",
+    "greeting": "Hoi!",
+    "blurb": "Walk the canal ring and read its gables, take the free ferry across the IJ, and find the winter sun in the old city. Talk to the people who know it. Every fact they tell you comes from the model.",
+    "start": {
+      "at": [
+        25,
+        -5
+      ],
+      "facing": [
+        -79,
+        17
+      ],
+      "time": "live"
+    },
+    "wharves": [
+      {
+        "id": "centraal-f3",
+        "name": "Centraal Station (F3)",
+        "terminal": "Centraal Station",
+        "near": [
+          470,
+          860
+        ]
+      },
+      {
+        "id": "buiksloterweg",
+        "name": "Buiksloterweg",
+        "terminal": "Buiksloterweg"
+      },
+      {
+        "id": "centraal-f2",
+        "name": "Centraal Station (F2)",
+        "terminal": "Centraal Station",
+        "near": [
+          910,
+          630
+        ]
+      },
+      {
+        "id": "ijplein",
+        "name": "IJplein",
+        "terminal": "IJplein"
+      }
+    ],
+    "ferries": [
+      {
+        "route": "F3 Buiksloterweg",
+        "stops": [
+          "centraal-f3",
+          "buiksloterweg"
+        ],
+        "vessels": [
+          "IJveer 50",
+          "IJveer 51"
+        ]
+      },
+      {
+        "route": "F2 IJplein",
+        "stops": [
+          "centraal-f2",
+          "ijplein"
+        ],
+        "vessels": [
+          "IJveer 54"
+        ]
+      }
+    ],
+    "ferry_note": "Wharves are from OpenStreetMap via Overture. GVB's F3 to Buiksloterweg leaves every 6 minutes by day and crosses in under five, and F2 to IJplein every 15 minutes; both are free for walkers and cyclists (gvb.nl, eyefilm.nl). The game's timetable is not real, and the vessel names are invented.",
+    "ferry_speed_ms": 4.0,
+    "ferry_style": {
+      "model": "harbour",
+      "length_m": 34,
+      "beam_m": 12,
+      "hull": "#f2f2ee",
+      "trim": "#0b4c8c",
+      "upper": "#f5f5f2",
+      "flag": "#d9262c",
+      "note": "The shared double-ended harbour ferry stands in for GVB's IJ ferries, which are double-ended too; the white and blue are approximate."
+    },
+    "vehicles": {
+      "note": "The shared ferry (web/assets/vehicles) in ferry_style's white and blue; no helicopter flies over the old city."
+    },
+    "helipads": [],
+    "helipads_from_data": false,
+    "viewpoints": [
+      {
+        "id": "dam",
+        "name": "Dam, by the National Monument",
+        "at": [
+          62,
+          -4
+        ]
+      },
+      {
+        "id": "magere-brug",
+        "name": "Magere Brug",
+        "at": [
+          681,
+          -1079
+        ]
+      },
+      {
+        "id": "ij-boulevard",
+        "name": "IJ, behind Centraal Station",
+        "at": [
+          600,
+          820
+        ]
+      },
+      {
+        "id": "museumplein",
+        "name": "Museumplein",
+        "at": [
+          -700,
+          -1650
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 520,
+      "cars": 80,
+      "radius_m": 450,
+      "style": "amsterdam"
+    },
+    "smalltalk": [
+      "Hoi!",
+      "Dag!",
+      "Sorry!",
+      "Lekker weertje, hè?",
+      "Fijne dag!",
+      "Pas op voor de fietsers!"
+    ],
+    "shade_landmarks": [
+      "tower_"
+    ],
+    "npcs": [
+      {
+        "id": "sanne",
+        "name": "Sanne",
+        "role": "Survey lead",
+        "at": [
+          20,
+          0
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#f3d6c2",
+          "hair": "#d4b27a",
+          "top": "#1d2b4a",
+          "shirt": "#1d2b4a",
+          "legs": "#24384f",
+          "pants": "#24384f",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Every building here is in the national register, the BAG, and every one was measured by the national laser survey, the AHN. The 3DBAG puts the two together.",
+          "There are four trig stations, a triangle on the map for each. Climb up to one and survey the view."
+        ]
+      },
+      {
+        "id": "pieter",
+        "name": "Pieter",
+        "role": "Building historian",
+        "at": [
+          -385,
+          -452
+        ],
+        "look": {
+          "character": "M_Adventurer",
+          "skin": "#efcbb1",
+          "hair": "#cfcac4",
+          "top": "#2f4a3c",
+          "shirt": "#2f4a3c",
+          "legs": "#3a3026",
+          "pants": "#3a3026",
+          "acc": [
+            "glasses"
+          ]
+        },
+        "idle": [
+          "A canal house is three windows wide, because the city taxed the width of a front.",
+          "Look up. The gable tells you when a house was built, give or take a generation."
+        ]
+      },
+      {
+        "id": "femke",
+        "name": "Femke",
+        "role": "Carillon player, Westertoren",
+        "at": [
+          -585,
+          140
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f7dfcf",
+          "hair": "#8c6339",
+          "top": "#7a2e33",
+          "shirt": "#7a2e33",
+          "legs": "#141414",
+          "pants": "#141414"
+        },
+        "idle": [
+          "Fifty bells up there. I play them on Tuesdays at noon.",
+          "The crown on the tower is the imperial crown of Maximilian. The city has carried it in its arms since 1489."
+        ]
+      },
+      {
+        "id": "joost",
+        "name": "Joost",
+        "role": "Deckhand, GVB ferries",
+        "at": [
+          470,
+          845
+        ],
+        "look": {
+          "character": "M_Worker",
+          "skin": "#e8bd9e",
+          "hair": "#4a3222",
+          "top": "#0b4c8c",
+          "shirt": "#0b4c8c",
+          "legs": "#24384f",
+          "pants": "#24384f"
+        },
+        "idle": [
+          "The ferries across the IJ are free. Walk on, ride on, no ticket.",
+          "Every six minutes by day. You'll never wait long for the F3."
+        ]
+      },
+      {
+        "id": "noor",
+        "name": "Noor",
+        "role": "Film archivist, Eye",
+        "at": [
+          540,
+          1235
+        ],
+        "look": {
+          "character": "W_Adventurer",
+          "skin": "#c99470",
+          "hair": "#141010",
+          "top": "#e9e6df",
+          "shirt": "#e9e6df",
+          "legs": "#141414",
+          "pants": "#141414"
+        },
+        "idle": [
+          "North of the IJ was shipyards and oil tanks. Now it's the Eye, and the A'DAM tower.",
+          "From here the old city is a skyline of church towers. Count them."
+        ]
+      },
+      {
+        "id": "mei",
+        "name": "Mei",
+        "role": "Student, University of Amsterdam",
+        "at": [
+          281,
+          -768
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#efcbb1",
+          "hair": "#141010",
+          "top": "#f08a24",
+          "shirt": "#f08a24",
+          "legs": "#24384f",
+          "pants": "#24384f",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "In December the sun is up for seven and a half hours, and it never climbs above fifteen degrees.",
+          "In winter we all sit on the side of the square the sun reaches."
+        ]
+      },
+      {
+        "id": "fatima",
+        "name": "Fatima",
+        "role": "Stallholder, Albert Cuyp market",
+        "at": [
+          68,
+          -1935
+        ],
+        "look": {
+          "character": "W_Worker",
+          "skin": "#b07a55",
+          "hair": "#2a1e17",
+          "top": "#2f4a3c",
+          "shirt": "#2f4a3c",
+          "legs": "#2b3440",
+          "pants": "#2b3440",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#f4f1ea"
+        },
+        "idle": [
+          "Stroopwafels, fresh. The syrup has to run.",
+          "The market has been on this street since 1905."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "canals",
+        "title": "The canal ring",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "ij",
+        "title": "The IJ",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "sun",
+        "title": "The winter sun",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "canals",
+          "ij",
+          "sun"
+        ],
+        "on_open": "<b>All three surveys done.</b> Report back to Sanne on the Dam."
+      }
+    ],
+    "quests": [
+      {
+        "id": "dam",
+        "line": "start",
+        "giver": "sanne",
+        "title": "Welcome to the Dam",
+        "stamp": "Dam",
+        "talk": [
+          "Hoi! You're the new surveyor? Welcome to the Dam, where Amsterdam began: a dam in the Amstel, around 1270.",
+          "The model around you is open data: {buildings} buildings from the 3DBAG, on the national laser-scanned terrain, under the national aerial photographs. For {share:3dbag}% of the footprint area the height was measured, not guessed.",
+          "Three surveys today, in any order. The canal ring, with Pieter on the Herengracht. The IJ, with Joost at the ferries behind Centraal Station. And the winter sun, with Mei on the Rembrandtplein."
+        ],
+        "steps": [],
+        "choices": [
+          {
+            "text": "The canal ring: Pieter, on the Herengracht",
+            "action": "track",
+            "line": "canals"
+          },
+          {
+            "text": "The IJ: Joost, at the ferries behind Centraal Station",
+            "action": "track",
+            "line": "ij"
+          },
+          {
+            "text": "The winter sun: Mei, on the Rembrandtplein",
+            "action": "track",
+            "line": "sun"
+          }
+        ]
+      },
+      {
+        "id": "gevels",
+        "line": "canals",
+        "giver": "pieter",
+        "title": "Read a gable",
+        "stamp": "Grachtengordel",
+        "talk": [
+          "Ah, the surveyor. Sanne said you'd come. The canal ring was dug from 1613, and most of these houses were built in the hundred years after.",
+          "Each front ends in the gable of its day. Step gables until the 1660s, then the neck gable, then the bell, and from the 1700s the straight cornice. This model draws each house's gable from the year the register gives for it.",
+          "Aim at a house and press Q for the survey lens. Find me a step gable, a neck gable and a bell gable. Then go up to the Westertoren; Femke plays its bells."
+        ],
+        "steps": [
+          {
+            "type": "gable",
+            "kinds": [
+              "step",
+              "neck",
+              "bell"
+            ],
+            "text": "Survey lens (Q): find a step gable, a neck gable and a bell gable"
+          },
+          {
+            "type": "talk",
+            "npc": "femke",
+            "text": "Find Femke at the foot of the Westertoren"
+          }
+        ]
+      },
+      {
+        "id": "toren",
+        "line": "canals",
+        "giver": "femke",
+        "title": "The Westertoren",
+        "stamp": "Westertoren",
+        "talk": [
+          "Hello. You found the tallest church tower in the city: 85 metres, 87 with the weathercock. Hendrick de Keyser designed it, and it was finished in 1638.",
+          "A laser over a ten-metre footprint can't draw a spire, so the model builds it from its published height, with Maximilian's crown on top.",
+          "Two doors down the Prinsengracht is number 263, the Anne Frank House. Anne could hear these bells from the Secret Annex, every quarter of an hour. Walk past it, then tell Sanne the canal ring is surveyed."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -579,
+              245
+            ],
+            "radius": 22,
+            "text": "Walk to the Anne Frank House, Prinsengracht 263"
+          }
+        ]
+      },
+      {
+        "id": "pont",
+        "line": "ij",
+        "giver": "joost",
+        "title": "Across the IJ",
+        "stamp": "IJveer",
+        "talk": [
+          "Morning! Off to the north bank? The F3 goes to Buiksloterweg, the Eye is right there.",
+          "It's free, it runs day and night, and it takes less than five minutes. The IJ is kept at the same level as the canals, 40 centimetres below NAP.",
+          "When you're over, find Noor at the Eye. She knows the north bank."
+        ],
+        "steps": [
+          {
+            "type": "ride",
+            "from": "centraal-f3",
+            "to": "buiksloterweg",
+            "text": "Ride the F3 from Centraal Station to Buiksloterweg"
+          },
+          {
+            "type": "talk",
+            "npc": "noor",
+            "text": "Find Noor at the Eye Filmmuseum"
+          }
+        ]
+      },
+      {
+        "id": "noord",
+        "line": "ij",
+        "giver": "noor",
+        "title": "The north bank",
+        "stamp": "Overhoeks",
+        "talk": [
+          "Welcome to Noord. That tower is the A'DAM Toren, Shell's offices from 1971. Now there's a swing on the roof.",
+          "The laser's highest point on it is {landmark:adam_toren.height_m} m above the street. Published, it's 80 m to the roof and about 100 m to the top of the mast: the laser caught the mast.",
+          "Walk to its foot and look up. Then you can tell Sanne the IJ is surveyed."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              665,
+              1201
+            ],
+            "radius": 30,
+            "text": "Walk to the foot of the A'DAM Toren"
+          }
+        ]
+      },
+      {
+        "id": "zon",
+        "line": "sun",
+        "giver": "mei",
+        "title": "Sun in December",
+        "stamp": "Rembrandtplein",
+        "talk": [
+          "Hi! You're the surveyor? Perfect. I'm writing about the sun in the city in winter.",
+          "On the 21st of December the sun stands 14 degrees above the horizon at noon, which is at 12:38 here. The houses round this square are 15 to 20 metres tall, so their shadows are 60 to 80 metres long.",
+          "Find me a spot on the Rembrandtplein in direct sun between 10 and 2 on the 21st. Then go to the Albert Cuyp market and buy a stroopwafel from Fatima. I'll pay you back."
+        ],
+        "steps": [
+          {
+            "type": "sun",
+            "place": "Rembrandtplein",
+            "date": [
+              12,
+              21
+            ],
+            "window": [
+              "10:00",
+              "14:00"
+            ],
+            "text": "Stand in direct sun on the Rembrandtplein, 10:00 to 14:00 on 21 December"
+          },
+          {
+            "type": "talk",
+            "npc": "fatima",
+            "text": "Find Fatima at the Albert Cuyp market"
+          }
+        ]
+      },
+      {
+        "id": "markt",
+        "line": "sun",
+        "giver": "fatima",
+        "title": "A stroopwafel",
+        "stamp": "Albert Cuyp",
+        "talk": [
+          "Goedemiddag! A stroopwafel? Wait, I'll make it fresh. Two thin waffles, syrup in between, warm so it runs.",
+          "Mei sent you? Then it's on her. Tell her the sun is surveyed, and tell Sanne too."
+        ],
+        "steps": []
+      },
+      {
+        "id": "klaar",
+        "line": "finale",
+        "giver": "sanne",
+        "title": "Survey complete",
+        "stamp": "Surveyor",
+        "talk": [
+          "You're back. The canal ring, the IJ and the winter sun: that's Amsterdam, read from the register and the laser.",
+          "Every house you looked at was measured, and every shadow comes from the sun's real position. If something looks wrong, it is probably wrong in the data. Tell the 3DBAG, or fix OpenStreetMap.",
+          "Doei, surveyor. The city is yours to walk."
+        ],
+        "steps": []
+      }
+    ]
   }
 }

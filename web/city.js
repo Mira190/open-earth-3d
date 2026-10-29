@@ -548,7 +548,7 @@ window.OpenEarthCity = async function main(cityId) {
     reference: 'Published height (corrected)',
     verified: 'Verified from a cited source (it moves a sun-access result)', floors: 'Floor count × storey height',
     ml: 'Microsoft ML height, bias-corrected and blended with neighbours', estimate: 'Estimated from nearby known heights and footprint size',
-    parametric: 'Parametric landmark model' };
+    typical: 'Typical height for its kind (no height mapped)', parametric: 'Parametric landmark model' };
   function inspect(bi) {
     const m = B.b[bi];
     U.uSel.value = bi;

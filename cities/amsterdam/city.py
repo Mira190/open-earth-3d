@@ -72,13 +72,42 @@ def _frac(x, y):
 
 # ---------------------------------------------------------------- build_scene hooks
 
+_SITES = None
+
+
+def tower_sites(ctx):
+    """The towers' own footprints (OpenStreetMap), read once, as (name, outline): the 3DBAG can
+    register a church and its tower as one building, and the church's footprint then takes some
+    of the tower's tiers; the tower draws them instead."""
+    global _SITES
+    if _SITES is None:
+        import duckdb
+        C = ctx.city
+        path = os.path.join(C.raw, "overture_building.parquet")
+        names = "', '".join(n.replace("'", "''") for n in TOWERS)
+        _SITES = [(n, C.to_local(swkb.loads(bytes(w)))) for n, w in
+                  duckdb.connect().execute(f"SELECT name, wkb FROM '{path}' WHERE name IN ('{names}')").fetchall()]
+    return _SITES
+
+
 def adjust_building(b, cls, g, geoms, ctx):
     name = b.get("name")
+    if name not in TOWERS:
+        for tname, site in tower_sites(ctx):
+            if site.distance(g) < 6.0:
+                for gm in geoms:  # a piece against the tower and over 60% of its height is the tower's
+                    if gm[2] > 0.6 * TOWERS[tname]["height"] and site.distance(gm[0].centroid) < 6.0:
+                        ctx.hide(gm)
     if cls == "houseboat":
+        # an ark is a flat-roofed box on a concrete hull: a height or floor count mapped for the boat
+        # stands, otherwise it takes the typical 2.6-3.5 m (source "typical", which the neighbour
+        # estimate leaves alone: the houses on the quay say nothing about the boats)
         c = g.centroid
         h = round(2.6 + 0.9 * _frac(c.x, c.y), 1)
         for gm in geoms:
-            gm[1], gm[2] = 0.0, h
+            gm[1] = 0.0
+            if gm[3] not in ("mapped", "floors"):
+                gm[2], gm[3] = h, "typical"
         return geoms
     if name in TOWERS:
         t = TOWERS[name]
@@ -178,6 +207,9 @@ def stats(ctx):
     mi = ctx.roof_sources.index("measured")
     measured = [m for m in meta if len(m) > 16 and m[16] == mi]
     pitched = [m for m in measured if ctx.roof_shapes[m[15]] != "flat"]
+    adam = next((m for m in meta if m[0] == "A'DAM Toren"), None)
+    if adam:  # the tallest building in the model, for the game's north bank
+        ctx.landmarks["adam_toren"] = {"height_m": adam[2], "source": adam[4], "published_m": 80.0}
     ctx.landmarks["roofs"] = {"measured": len(measured), "measured_pitched": len(pitched),
                               "gabled_pct": round(100 * sum(ctx.roof_shapes[m[15]] in ("gabled", "gabled_across") for m in pitched) / max(1, len(pitched)), 1)}
 

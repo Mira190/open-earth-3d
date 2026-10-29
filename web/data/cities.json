@@ -184,13 +184,13 @@
   "id": "amsterdam",
   "name": "Amsterdam",
   "country": "Netherlands",
-  "lat": 52.3731,
-  "lon": 4.8922,
-  "status": "planned",
-  "data": "AHN LiDAR; PDOK aerial imagery; 3D BAG building heights.",
+  "lat": 52.373,
+  "lon": 4.8925,
+  "status": "live",
+  "summary": "Central Amsterdam from the IJ to Museumplein: every building the 3DBAG's model of it, measured by the national LiDAR, canal houses with the gable of their century, the church towers, and a game: read the gables, cross the IJ on the free ferry, find the winter sun.",
   "timezone": "Europe/Amsterdam",
   "built": true,
-  "game": false
+  "game": true
  },
  {
   "id": "hong-kong",

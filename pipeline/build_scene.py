@@ -545,6 +545,7 @@ class Plateau:
     of keeps its other height source. PLATEAU buildings that no Overture footprint covers (newer
     or missing in OSM) are added as buildings of their own."""
     MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
+    SPIRE_M2 = 25.0  # a roof face this large standing 8 m or more over the main roof is a tower, not plant
     key, label, footprint = "plateau", "PLATEAU", "P"
     keep_newer_osm = True  # PLATEAU was surveyed in 2017-2021: an OSM height far above it is usually a newer tower
     cut_parts = False      # a building's parts are re-cut only where its roof faces differ in height
@@ -631,7 +632,7 @@ class Plateau:
         main = max(out, key=lambda t: t[1].area)
         # rooftop plant is small and only a few metres above the roof; a small face that stands
         # well above the main roof is a spire or a dome (the Diet's tower, Tokyo Station's domes)
-        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (self.faces and t[0] >= main[0] + 8.0 and t[1].area >= 25.0)]
+        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (self.faces and t[0] >= main[0] + 8.0 and t[1].area >= self.SPIRE_M2)]
         rest = q.difference(shapely.union_all([t[1] for t in out]))
         out.sort(key=lambda t: -t[0])
         merged = []
@@ -680,6 +681,9 @@ class BAG3D(Plateau):
     key, label, footprint = "3dbag", "3DBAG", "D"
     keep_newer_osm = False  # the BAG and AHN (2014-2023) are newer and better than OSM's height tags here
     CFG, FILE, TIERS = "bag3d", "3dbag.json", True
+    # the 3DBAG draws a tower or a spire as a stack of small tiers (a few m2 each): keep those that
+    # stand 8 m or more over the main roof, where chimneys and dormers never reach
+    MIN_PIECE_M2, SPIRE_M2 = 4.0, 6.0
 
     def source(self, i):
         return "3dbag"

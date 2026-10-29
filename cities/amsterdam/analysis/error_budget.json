@@ -1,0 +1,117 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Dam",
+   "prod": 44.34,
+   "finer_samples": 44.27,
+   "finer_dsm": 43.75,
+   "finer_time": 44.45,
+   "reference": 43.96,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.38,
+   "seconds": 9.618
+  },
+  {
+   "place": "Museumplein",
+   "prod": 88.07,
+   "finer_samples": 87.98,
+   "finer_dsm": 87.67,
+   "finer_time": 88.26,
+   "reference": 87.9,
+   "lit_rays_leaving_extent_low_pct": 1.22,
+   "prod_minus_reference": 0.17,
+   "seconds": 25.136
+  },
+  {
+   "place": "Rembrandtplein",
+   "prod": 46.86,
+   "finer_samples": 46.92,
+   "finer_dsm": 46.02,
+   "finer_time": 47.09,
+   "reference": 46.4,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.46,
+   "seconds": 5.377
+  },
+  {
+   "place": "Leidseplein",
+   "prod": 62.64,
+   "finer_samples": 62.51,
+   "finer_dsm": 62.58,
+   "finer_time": 62.83,
+   "reference": 62.72,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.08,
+   "seconds": 5.399
+  },
+  {
+   "place": "Nieuwmarkt",
+   "prod": 62.27,
+   "finer_samples": 62.16,
+   "finer_dsm": 61.65,
+   "finer_time": 62.39,
+   "reference": 62.05,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.22,
+   "seconds": 6.273
+  },
+  {
+   "place": "Spui",
+   "prod": 37.17,
+   "finer_samples": 37.32,
+   "finer_dsm": 37.27,
+   "finer_time": 37.25,
+   "reference": 37.47,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.3,
+   "seconds": 1.921
+  },
+  {
+   "place": "Westerpark",
+   "prod": 92.17,
+   "finer_samples": 92.25,
+   "finer_dsm": 92.06,
+   "finer_time": 92.25,
+   "reference": 92.14,
+   "lit_rays_leaving_extent_low_pct": 1.26,
+   "prod_minus_reference": 0.03,
+   "seconds": 59.374
+  },
+  {
+   "place": "Sarphatipark",
+   "prod": 91.93,
+   "finer_samples": 91.92,
+   "finer_dsm": 91.7,
+   "finer_time": 92.11,
+   "reference": 91.88,
+   "lit_rays_leaving_extent_low_pct": 29.65,
+   "prod_minus_reference": 0.05,
+   "seconds": 24.448
+  },
+  {
+   "place": "Wertheimpark",
+   "prod": 94.7,
+   "finer_samples": 94.71,
+   "finer_dsm": 94.54,
+   "finer_time": 95,
+   "reference": 94.83,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.13,
+   "seconds": 5.087
+  },
+  {
+   "place": "Waterlooplein",
+   "prod": 61.36,
+   "finer_samples": 61.12,
+   "finer_dsm": 61.09,
+   "finer_time": 61.44,
+   "reference": 60.85,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.51,
+   "seconds": 3.912
+  }
+ ],
+ "max_abs_numerical_error_pp": 0.51
+}

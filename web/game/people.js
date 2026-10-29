@@ -45,6 +45,19 @@ window.OEPeople = (function () {
     weights: { M_Casual2: 3, M_Hoodie: 1.2, M_Suit: 2.5, M_Worker: 0.6, M_Beach: 0.3, M_Adventurer: 1, M_Punk: 0.3,
       W_Casual: 3, W_Formal: 2.5, W_Suit: 2.2, W_Worker: 0.5, W_Adventurer: 1, W_Punk: 0.3 },
   };
+  // Amsterdam: the tallest people in the world (a Dutch man averages 1.83 m), dressed for rain and a
+  // bicycle: navy, black, grey and olive parkas, jeans, white trainers; the odd bunch of tulips
+  STYLES.amsterdam = {
+    skin: ['#f7dfcf', '#f3d6c2', '#efcbb1', '#e8bd9e', '#ddab88', '#c99470', '#b07a55', '#8f5b3d', '#6e4430', '#4f3022'],
+    hair: ['#e3c58e', '#d4b27a', '#c9a46c', '#b48a52', '#8c6339', '#6a4529', '#4a3222', '#2a1e17', '#141010', '#cfcac4', '#8c8580'],
+    tops: ['#1d2b4a', '#1d2b4a', '#141414', '#141414', '#3a3d42', '#56604a', '#6b6f75', '#2f4a3c', '#7a2e33', '#e9e6df', '#c2a378',
+      '#f08a24', '#9aa3a8', '#4a5a6e', '#d7c6a5'],
+    legs: ['#24384f', '#24384f', '#2b3440', '#1b1d22', '#33415c', '#141414', '#4b5563', '#3a3026'],
+    scale: [0.97, 1.04],
+    acc: { backpack: 0.18, tulips: 0.025 },
+    weights: { M_Casual2: 3, M_Hoodie: 1.6, M_Suit: 1.6, M_Worker: 0.6, M_Beach: 0.2, M_Adventurer: 1.2, M_Punk: 0.2,
+      W_Casual: 3, W_Formal: 1.6, W_Suit: 1.4, W_Worker: 0.5, W_Adventurer: 1.2, W_Punk: 0.2 },
+  };
   STYLES.kyoto = Object.assign({}, STYLES.tokyo, {
     tops: ['#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#46604f', '#8a2f39', '#5b6b7a', '#c9c2b5', '#7a4e8f'],
   });
@@ -141,6 +154,12 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     cafe_tray: { bone: 'WristL', build: (M, h) => {
       const out = [M(geo('ctray', () => new THREE.CylinderGeometry(0.17, 0.17, 0.012, 22)), '#b9bcbf', h.clone().add(V3(0, 0.08, 0.05)))];
       for (let i = 0; i < 3; i++) out.push(M(geo('cup', () => new THREE.CylinderGeometry(0.03, 0.025, 0.06, 10)), i ? '#f4f1ea' : '#7a2e33', h.clone().add(V3(-0.07 + 0.07 * i, 0.12, 0.05 + 0.03 * (i % 2)))));
+      return out; } },
+    tulips: { bone: 'WristR', build: (M, h, c, look) => {
+      // a paper cone of tulips from the flower market, carried head down
+      const out = [M(geo('tcone', () => new THREE.ConeGeometry(0.07, 0.36, 10, 1, true)), '#efe8da', h.clone().add(V3(0, -0.1, 0.05)))];
+      const cols = ['#d9262c', '#f2c12e', '#e8577a', '#f08a24', '#f4f1ea'], k = cols.indexOf(look.tulip) >= 0 ? cols.indexOf(look.tulip) : 0;
+      for (let i = 0; i < 5; i++) out.push(M(geo('tulip', () => new THREE.SphereGeometry(0.03, 8, 6)), cols[(k + i) % 5], h.clone().add(V3(-0.04 + 0.02 * i, -0.3, 0.04 + 0.015 * (i % 2)))));
       return out; } },
     flag: { bone: 'WristR', build: (M, h) => [
       M(geo('pole', () => new THREE.CylinderGeometry(0.012, 0.012, 1.3, 6)), '#8a8a8a', h.clone().add(V3(0, 0.3, 0.0))),

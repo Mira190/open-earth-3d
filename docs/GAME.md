@@ -160,6 +160,22 @@ Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
 On the Seine the helicopter takes the nearest span to fly under, and a step can
 name its span (`"surface"`).
 
+The Amsterdam survey has eight stamps, written as three lines after a welcome on
+the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)):
+- **The canal ring:** Pieter, a building historian on the Herengracht, sends you
+  to find a step gable, a neck gable and a bell gable with the survey lens (a
+  `gable` step: the lens names a house's gable and when that type was built);
+  Femke plays the Westertoren's carillon, and the Anne Frank House is two doors
+  down.
+- **The IJ:** Joost puts you on GVB's free F3 ferry to Buiksloterweg; Noor at the
+  Eye shows you the A'DAM Toren.
+- **The winter sun:** a spot in direct sun on the Rembrandtplein between 10:00
+  and 14:00 on 21 December, when the sun stands 14 degrees high at noon; then a
+  stroopwafel at the Albert Cuyp market.
+- **Report back** to Sanne on the Dam.
+
+Amsterdam has no helicopter: no pad in the old city, and none is invented.
+
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 **Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
@@ -615,7 +631,10 @@ Peak) and the last talk at the lookout. A Melbourne script plays its six stamps 
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
 flight to Birrarung Marr. A Paris script plays its seven: the Batobus to
 Notre-Dame, the winter sun in the Luxembourg, and the flight under the Eiffel
-Tower's first floor to the Tuileries.
+Tower's first floor to the Tuileries. An Amsterdam script plays its eight: it
+finds the three gables through the lens itself, from 14 m out in front of each
+house, rides the F3 across the IJ and finds the December sun on the
+Rembrandtplein.
 
 A bayside script walks all four stamps on foot:
 - **The pier:** it walks up the approach from the promenade and along the pier
