@@ -127,7 +127,7 @@
       "fov": 28,
       "time": ["20:20"],
       "people": [650, -1054],
-      "crowd_r": 55,
+      "crowd_r": 80,
       "hand": 1,
       "title": {
         "kind": "lower",
