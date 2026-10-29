@@ -6,7 +6,7 @@ modelled by hand except the landmarks. Those are code, and their dimensions
 come from published figures.
 
 ```
-cities/<id>/city.json ──┐                                      ┌─► web/          globe.js, city.js, sun.js
+cities/<id>/city.json ──┐                                      ┌─► web/          title.js, city.js, sun.js
 cities/<id>/city.py ────┤                                      │
 Overture Maps (S3) ─────┼─► pipeline/fetch_*.py ─► data/raw/<id>/ ─► pipeline/build_scene.py ─► web/data/<id>/ ─┼─► analysis/     *.py, *.js
 imagery, terrain ───────┘                                      ▲               │                  │
@@ -294,11 +294,24 @@ The views switch in place, without reloading the page.
   minutes from the show's start time after dark. The viewer and the game share
   it.
 
-- **`globe.js`** draws the Natural Earth map onto an equirectangular canvas.
-  It textures a sphere with it and shades day and night from the subsolar
-  point (`Sun.subsolar`). City markers are HTML buttons projected onto the
-  sphere and hidden on the far side. Each live city shows its local time and
-  sun altitude.
+- **`earth.js`** draws the title screen's Earth, its air and the sky, and the lens.
+  By day it shows this month's Blue Marble, by night the Black Marble's lights.
+  The clouds cast shadows, and the air scatters the sun (`Sun.subsolar`) by single
+  scattering through a shell. The Milky Way and the Yale catalogue's stars are
+  turned by the sidereal time, and bloom, a flare and the Neutral tone curve
+  finish the frame.
+- **`title.js`** directs the title screen: the boot and the sound gate, then a
+  cold open planned on the real sky (a night pass towards the sunrise), the title
+  card and the menu. A destination's beacon, reticle and card show its local time
+  and sun, and the dive to it hands over to the model's loader. `score.js` is its
+  synthesised sound. [TITLE.md](TITLE.md) has the details.
+- **`lens.js`** is the title screen's lens as a pass: the tone curve, grade,
+  flare, grain and vignette. The model viewer, the game and the city films end
+  their frame on it, so every city is seen as the Earth is on the title.
+- **`film.js`** plays a city's film (`films/<id>.mp4`, rendered from the city's
+  own game by `tools/city_film.js`): a silent teaser in the destination card and
+  a theatre with titles set as type from the film's cue sheet. [FILMS.md](FILMS.md)
+  has the details.
 - **`city.js`** is the model viewer. It drives everything city-specific from
   `scene.city`. Picking a building goes through a bounding-volume hierarchy
   (three-mesh-bvh) over the extruded buildings. One ray against Sydney's 178,683

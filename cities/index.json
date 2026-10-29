@@ -31,6 +31,7 @@
     {
       "id": "osaka",
       "name": "Osaka",
+      "native": "大阪",
       "country": "Japan",
       "lat": 34.679,
       "lon": 135.513,
@@ -41,6 +42,7 @@
     {
       "id": "kyoto",
       "name": "Kyoto",
+      "native": "京都",
       "country": "Japan",
       "lat": 35.003,
       "lon": 135.7625,
@@ -50,6 +52,7 @@
     {
       "id": "tokyo",
       "name": "Tokyo",
+      "native": "東京",
       "country": "Japan",
       "lat": 35.67,
       "lon": 139.759,
@@ -155,6 +158,7 @@
     {
       "id": "hong-kong",
       "name": "Hong Kong",
+      "native": "香港",
       "country": "China",
       "lat": 22.286,
       "lon": 114.1635,
