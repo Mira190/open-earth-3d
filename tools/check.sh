@@ -16,7 +16,7 @@ cd "$(dirname "$0")/.."
 PORT=${PORT:-8870}
 OUT=${CHECK_OUT:-/tmp/oe-check}
 JOBS=${CHECK_JOBS:-3}
-rm -rf "$OUT" && mkdir -p "$OUT"
+mkdir -p "$OUT"
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
 
 CITIES=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
