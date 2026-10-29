@@ -32,7 +32,7 @@ window.OEFilmDirector = (function () {
   // smooth value noise for a hand-held camera
   const nz = (t, seed) => { let v = 0, a = 1; for (let o = 0; o < 3; o++) { v += Math.sin(t * (0.9 + o * 1.7) * (1 + seed * 0.13) + seed * 7.1 + o * 2.3) * a; a *= 0.5; } return v / 1.75; };
 
-  let G, spec, lens, cur = null, fov = 40, year = 2026;
+  let G, spec, lens, cur = null, fov = 40, year = 2026, world = null, routeHidden = false;
   const pose = { pos: new V3(), look: new V3() };
   const probe = new THREE.PerspectiveCamera(40, 1, 1, 50000);
 
@@ -54,6 +54,8 @@ window.OEFilmDirector = (function () {
     while (comp.passes.length > bloomAt + 1) comp.removePass(comp.passes[comp.passes.length - 1]);
     lens = new THREE.ShaderPass(OELens.shader());
     comp.addPass(lens);
+    // the quest's marker beam (a 90 m open cylinder) is the player's, not the city's: keep it off camera
+    comp.passes[0].scene.traverse(o => { const p = o.geometry && o.geometry.parameters; if (p && p.height === 90 && p.openEnded) { o.material.visible = false; world = o.parent; } });
     lens.uniforms.uGrain.value = s.grain ?? 0;      // grain goes on in the player, not into the encoder
     lens.uniforms.uCA.value = s.ca ?? 0.18;
     lens.uniforms.uVignette.value = s.vignette ?? 0.2;
@@ -191,6 +193,8 @@ window.OEFilmDirector = (function () {
     L.uSunVis.value = vis * (s.flare ?? 1);
     L.uFlareTint.value.setRGB(1, 0.62 + 0.25 * clamp(sp.altitude / 20), 0.42 + 0.4 * clamp(sp.altitude / 25));
     G.player.rig.root.visible = false;
+    // and its GPS route, a dashed line the game draws once it has a path (its material is shared)
+    if (world && !routeHidden) for (const o of world.children) if (o.isLine && o.material.isLineDashedMaterial) { o.material.visible = false; routeHidden = true; }
     return { shot: s.id, k };
   }
   const renderer = () => G.atmos.composer.renderer;
