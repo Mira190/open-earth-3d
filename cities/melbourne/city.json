@@ -520,8 +520,13 @@
   },
   "game": {
     "title": "Melbourne on Foot",
+    "blurb": "Walk central Melbourne rebuilt from open data and lit by the real sun. Talk to the people who know it, take the river shuttle down the Yarra, and fly past the Arts Centre spire. Every fact they tell you comes from the model.",
     "local_name": "Melburnian",
     "water_name": "Yarra",
+    "climate": {
+      "mean_max_c": [26.8, 25.9, 24.3, 20.8, 17.6, 14.7, 14.5, 15.6, 18.0, 20.5, 22.2, 24.7],
+      "source": "Bureau of Meteorology, Melbourne (Olympic Park) 086338, mean maximum temperature since 2013"
+    },
     "start": {
       "at": [
         548,
@@ -570,6 +575,13 @@
       "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). The river shuttle takes its colours and length from ferry_style; the cars' taxis and buses take the city's colours.",
       "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}, "note": "Melbourne's metropolitan taxis are yellow; the buses carry the PTV orange (approximate)."}
     },
+    "links": [
+      {
+        "id": "melbourne-bayside",
+        "name": "St Kilda and Brighton",
+        "how": "Route 96 runs from the city to St Kilda, where the little penguins come ashore after dark."
+      }
+    ],
     "ferry_style": {
       "model": "river",
       "length_m": 22,
@@ -615,7 +627,8 @@
           "pants": "#2b3440"
         },
         "idle": [
-          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model."
+          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model.",
+          "Route 96 runs from the city to St Kilda. After dark the little penguins come ashore on the breakwater there: open St Kilda and Brighton from the menu (Esc)."
         ]
       },
       {
@@ -722,28 +735,79 @@
         ]
       }
     ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "square",
+        "title": "The square",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "river",
+        "title": "The river",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "heights",
+        "title": "The heights",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "square",
+          "river",
+          "heights"
+        ],
+        "on_open": "<b>All three surveys done.</b> Report back to Mia at Federation Square."
+      }
+    ],
     "quests": [
       {
         "id": "welcome",
+        "line": "start",
         "giver": "mia",
         "title": "Welcome to Fed Square",
         "stamp": "Federation Square",
         "talk": [
           "You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings on Geoscience Australia's LiDAR terrain, under the real sun.",
           "There's no open aerial photo of Melbourne, so the ground you're standing on is drawn from the map data: streets, laneways, parks and tram tracks.",
-          "Hannah is in City Square, up Swanston Street. Go and say hello.",
-          "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk."
+          "There are three surveys to do, in any order. The square: Hannah, in City Square up Swanston Street, on the planning rule for sun. The river: Arjun runs the shuttle from Federation Wharf, and Sophie flies from across the water. The heights: Jun, in Birrarung Marr.",
+          "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.",
+          "Which first?"
         ],
-        "steps": [
+        "choices": [
           {
-            "type": "talk",
-            "npc": "hannah",
-            "text": "Meet Hannah in City Square"
+            "text": "The square: Hannah, in City Square",
+            "action": "track",
+            "line": "square"
+          },
+          {
+            "text": "The river: Arjun, at Federation Wharf",
+            "action": "track",
+            "line": "river"
+          },
+          {
+            "text": "The heights: Jun, in Birrarung Marr",
+            "action": "track",
+            "line": "heights"
           }
-        ]
+        ],
+        "steps": []
       },
       {
         "id": "sun",
+        "line": "square",
         "giver": "hannah",
         "title": "Winter sun",
         "stamp": "DDO10",
@@ -779,16 +843,12 @@
               "15:00"
             ],
             "text": "Stand in direct sun on Federation Square, 11:00 to 15:00 on 22 June"
-          },
-          {
-            "type": "talk",
-            "npc": "arjun",
-            "text": "Find Arjun at Federation Wharf"
           }
         ]
       },
       {
         "id": "river",
+        "line": "river",
         "giver": "arjun",
         "title": "Down the Yarra",
         "stamp": "Yarra River",
@@ -812,12 +872,13 @@
       },
       {
         "id": "air",
+        "line": "river",
         "giver": "sophie",
         "title": "Over the spire",
         "stamp": "Arts Centre spire",
         "talk": [
           "Ready? The Arts Centre spire is 162 m of steel lattice. In OpenStreetMap it's a thin block; here it's built from its published height.",
-          "Fly upriver past the spire and set down in Birrarung Marr. Jun is waiting there.",
+          "Fly upriver past the spire and set down in Birrarung Marr.",
           "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."
         ],
         "steps": [
@@ -825,16 +886,12 @@
             "type": "land",
             "place": "Birrarung Marr",
             "text": "Land in Birrarung Marr"
-          },
-          {
-            "type": "talk",
-            "npc": "jun",
-            "text": "Find Jun in Birrarung Marr"
           }
         ]
       },
       {
         "id": "lens",
+        "line": "heights",
         "giver": "jun",
         "title": "Where heights come from",
         "stamp": "Birrarung Marr",
@@ -851,16 +908,12 @@
               "estimate"
             ],
             "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
-          },
-          {
-            "type": "talk",
-            "npc": "mia",
-            "text": "Report back to Mia at Federation Square"
           }
         ]
       },
       {
         "id": "done",
+        "line": "finale",
         "giver": "mia",
         "title": "Survey complete",
         "stamp": "Surveyor",

@@ -107,6 +107,8 @@ a.chip-btn { text-decoration: none; color: var(--ink); }
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 600 11px/1 var(--f-body);
   color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.7), 0 0 6px rgba(0,0,0,.45); padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,.7); }
+.lbl.pick { pointer-events: auto; cursor: pointer; background: none; border-width: 0 0 1px; border-style: solid; border-color: rgba(255,255,255,.7); border-radius: 0; margin: 0; padding: 0 0 4px; }
+.lbl.pick:hover, .lbl.pick:focus-visible { color: var(--sun-soft); border-color: var(--sun-soft); }
 .lbl.place { border-bottom: 0; font-weight: 500; font-style: italic; }
 .inspector { position: absolute; right: 14px; top: 54px; width: 270px; background: var(--hud); backdrop-filter: blur(6px);
   border-radius: var(--r); box-shadow: var(--shadow); padding: 12px 14px; }
@@ -121,6 +123,24 @@ a.chip-btn { text-decoration: none; color: var(--ink); }
 .loader .track { height: 4px; background: var(--line); border-radius: 4px; margin-top: 10px; overflow: hidden; }
 .loader .track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
 .loader small { display: block; margin-top: 8px; color: var(--muted); }
+.loader { transition: opacity .6s ease; }
+.loader.out { opacity: 0; pointer-events: none; }
+/* the establishing shot: a lower-third title over the city while the camera comes down */
+.title-card, .hud-btns, .caption, .inspector { transition: opacity .6s ease; }
+.stage.intro .title-card, .stage.intro .hud-btns, .stage.intro .caption, .stage.intro .inspector { opacity: 0; pointer-events: none; }
+.stage::after { content: ""; position: absolute; inset: auto 0 0 0; height: 46%; pointer-events: none; opacity: 0; transition: opacity .8s ease;
+  background: linear-gradient(transparent, rgba(6, 14, 22, 0.5)); z-index: 1; }
+.stage.intro::after { opacity: 1; }
+.intro-card { position: absolute; left: max(22px, env(safe-area-inset-left, 0px)); bottom: 30px; max-width: min(640px, calc(100% - 44px)); z-index: 2;
+  color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5), 0 0 18px rgba(0,0,0,.3); opacity: 0; pointer-events: none; }
+.intro-card .eyebrow { color: rgba(255,255,255,.88); }
+.intro-card h2 { font: 800 clamp(46px, 7.4vw, 92px)/0.9 var(--f-display); font-stretch: 78%; letter-spacing: -0.015em; margin-top: 8px; }
+.intro-card h2::after { content: ""; display: block; width: 64px; height: 6px; background: var(--sun); margin-top: 14px; border-radius: 3px; }
+.intro-card p { margin: 12px 0 0; font-size: 12.5px; }
+.intro-skip { pointer-events: auto; margin-top: 14px; border: 1px solid rgba(255,255,255,.45); background: rgba(6,14,22,.35); color: #fff; border-radius: 999px;
+  padding: 5px 12px; font: 600 12px/1.2 var(--f-body); cursor: pointer; text-shadow: none; backdrop-filter: blur(4px); }
+.intro-skip:hover { border-color: #fff; }
+.insp-actions { margin-top: 10px; }
 
 /* ---------- panel ---------- */
 .tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 10px; gap: 2px; flex-wrap: wrap; }
@@ -213,6 +233,7 @@ a { color: var(--accent); }
   .title-card { padding: 9px 11px; }
   .title-card h1 { font-size: 18px; }
   .title-card p { display: none; }
+  .stage.intro .labels { opacity: 0; } /* no room for both the names and the title card */
   .caption { bottom: 10px; grid-template-columns: minmax(0, 1fr) auto; }
   .caption .step { display: none; }
   .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
@@ -224,18 +245,52 @@ a { color: var(--accent); }
 .game-stage { position: relative; height: 100%; overflow: hidden; background: #9fb4c2; user-select: none; -webkit-user-select: none; }
 .game-stage canvas#game-gl { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
 .game-stage canvas#game-gl:active { cursor: grabbing; }
-.game-stage.titled .g-quest, .game-stage.titled .g-right, .game-stage.titled .g-reticle, .game-stage.titled .g-prompt, .game-stage.titled .g-labels { display: none; }
+/* the HUD fades out for the title and for camera shots (fast travel, surveys) and back in as play resumes */
+.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens { transition: opacity .7s ease, visibility .7s; }
+.game-stage.titled :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels),
+.game-stage.cine :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-vhud, .g-lens) { opacity: 0; visibility: hidden; }
+.g-bars { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
+.g-bars::before, .g-bars::after { content: ""; position: absolute; left: 0; right: 0; height: 0; background: #05090d; transition: height .6s ease; }
+.g-bars::before { top: 0; } .g-bars::after { bottom: 0; }
+.game-stage.letterbox .g-bars::before, .game-stage.letterbox .g-bars::after { height: 8.5vh; }
+/* photo mode: the world holds still, the HUD goes, a panel of controls comes up */
+.game-stage.photo :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens, .g-touch, .g-dialog) { display: none !important; }
+.g-photo { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(780px, calc(100% - 28px)); padding: 11px 14px 9px; display: grid; gap: 9px; z-index: 4; }
+.gph-sliders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.gph-sliders label { display: grid; gap: 3px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.gph-sliders label span { display: flex; justify-content: space-between; gap: 8px; }
+.gph-sliders output { font-size: 11.5px; font-weight: 500; color: var(--ink); }
+.gph-sliders input { margin: 0; }
+.gph-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.gph-actions .btn.primary { margin-left: auto; }
+.gph-actions .btn kbd, .g-photo .note kbd { font: 600 10px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 4px; background: var(--surface); color: var(--ink); }
+.g-photo .note { margin: 0; font-size: 11.5px; }
+.g-grid { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 3;
+  background: linear-gradient(to right, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(200% / 3 + 0.5px), transparent 0),
+    linear-gradient(to bottom, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(200% / 3 + 0.5px), transparent 0); }
+.game-stage.photo.grid .g-grid { display: block; }
+.game-stage.flash::after { content: ""; position: absolute; inset: 0; background: #fff; pointer-events: none; z-index: 8; animation: shutter .4s ease-out forwards; }
+@keyframes shutter { from { opacity: .75; } to { opacity: 0; } }
 .g-hud { background: var(--hud); backdrop-filter: blur(6px); border-radius: var(--r); box-shadow: var(--shadow); }
 .g-labels .lbl { left: 0; top: 0; transform: none; }
 .g-labels .lbl.npc { border-bottom: 0; font-size: 12px; text-align: center; }
 .g-labels .lbl .role { display: block; font-weight: 400; font-size: 10.5px; opacity: .85; }
 .g-labels .lbl.wharf { border-bottom: 0; font-weight: 600; }
 .g-labels .tag { display: inline-grid; place-items: center; width: 15px; height: 15px; border-radius: 50%; font-size: 9px; font-weight: 800; margin-right: 5px; text-shadow: none; }
-.g-labels .tag.f { background: #24577a; } .g-labels .tag.h { background: #c62d2a; }
+.g-labels .tag.f { background: #24577a; } .g-labels .tag.h { background: #c62d2a; } .g-labels .tag.t { background: #8a6d1d; }
+.g-labels .lbl.survey { font-size: 13px; border-bottom: 1px solid rgba(255,255,255,.7); padding-bottom: 3px; }
 .g-quest { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); top: 14px; max-width: min(380px, calc(100% - 270px)); padding: 10px 13px;
   display: grid; gap: 2px; border-left: 3px solid var(--sun); }
 .g-quest b { font: 700 14.5px/1.25 var(--f-display); font-stretch: 92%; }
 .g-quest .mono { font-size: 11px; color: var(--muted); }
+.gq-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; align-items: center; }
+.gq-lines button { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 8px; font: 600 11px/1.45 var(--f-body); cursor: pointer; color: var(--ink-2);
+  display: inline-flex; gap: 5px; align-items: baseline; }
+.gq-lines button .num { font-size: 10px; color: var(--muted); }
+.gq-lines button:hover { border-color: var(--sun); }
+.gq-lines button[aria-pressed="true"] { background: var(--sun); border-color: var(--sun); color: #1b1408; }
+.gq-lines button[aria-pressed="true"] .num { color: #3d2a05; }
+.gq-lines .key { font-size: 10.5px; color: var(--muted); margin-left: 2px; }
 .g-right { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); top: 14px; display: grid; gap: 8px; justify-items: end; }
 #g-minimap { width: 210px; height: 210px; border-radius: 50%; box-shadow: var(--shadow); }
 .g-clock { padding: 6px 11px; display: flex; gap: 8px; align-items: baseline; }
@@ -245,7 +300,7 @@ a { color: var(--accent); }
 .g-sun[data-s="shade"] i { background: var(--shade); box-shadow: 0 0 0 3px color-mix(in srgb, var(--shade) 30%, transparent); }
 .g-sun[data-s="night"] i { background: #2b3550; box-shadow: none; }
 .g-btns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-.g-btns .chip-btn kbd, .g-prompt kbd, .gd-choices kbd, .g-toast kbd, .gt-keys kbd, .g-panel kbd { font: 600 10.5px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--surface); color: var(--ink); }
+.g-btns .chip-btn kbd, .g-prompt kbd, .gq-lines kbd, .gd-choices kbd, .g-toast kbd, .gt-keys kbd, .g-panel kbd { font: 600 10.5px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--surface); color: var(--ink); }
 .g-toasts { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); display: grid; gap: 6px; justify-items: center; pointer-events: none; width: min(460px, calc(100% - 520px)); min-width: 260px; }
 .g-toast { background: var(--hud); backdrop-filter: blur(6px); border-radius: var(--r); box-shadow: var(--shadow); padding: 8px 13px; font-size: 12.5px; text-align: center; transition: opacity .5s, transform .5s; }
 .g-toast.out { opacity: 0; transform: translateY(-6px); }
@@ -288,6 +343,21 @@ a { color: var(--accent); }
 #g-travel { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
 #g-travel button { width: 100%; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 9px; cursor: pointer; font-size: 12.5px; }
 #g-travel button:hover { border-color: var(--accent); }
+.g-stampfx { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 10px; pointer-events: none; z-index: 5; }
+.g-stampfx .stamp { width: 168px; height: 168px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 18px;
+  border: 5px double var(--sun); color: var(--sun); background: color-mix(in srgb, var(--surface) 88%, transparent); box-shadow: var(--shadow);
+  font: 800 25px/1 var(--f-display); font-stretch: 82%; text-transform: uppercase; letter-spacing: .01em; transform: rotate(-8deg); }
+.g-stampfx .sub { background: var(--hud); backdrop-filter: blur(6px); border-radius: 999px; padding: 5px 12px; font-weight: 600; font-size: 13px; box-shadow: var(--shadow); }
+.g-stampfx.fly .stamp { animation: none; transform: translate(var(--fx), var(--fy)) scale(0.12) rotate(-8deg); opacity: 0; transition: transform .8s cubic-bezier(.6, 0, .9, .5), opacity .8s ease-in; }
+.g-stampfx.fly .sub { opacity: 0; transition: opacity .3s; }
+@media (prefers-reduced-motion: no-preference) {
+  .g-stampfx .stamp { animation: slam .55s cubic-bezier(.2, .9, .3, 1.25) both; }
+  @keyframes slam { 0% { transform: scale(2.6) rotate(-22deg); opacity: 0; } 55% { opacity: 1; } 100% { transform: scale(1) rotate(-8deg); opacity: 1; } }
+}
+.g-guess { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; margin: 6px 0 2px; }
+.g-guess output { font: 600 16px/1 var(--f-mono); min-width: 58px; text-align: right; }
+.g-lens .row { margin-top: 4px; }
+.g-lens .verdict { font: 760 18px/1.1 var(--f-display); font-stretch: 88%; color: var(--sun); }
 .g-stamps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .g-stamps li { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 10px 8px; border-radius: 10px; background: var(--surface-2); }
 .g-stamps .stamp { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 10px; border: 2.5px dashed var(--line);
@@ -329,10 +399,14 @@ a { color: var(--accent); }
   .g-vhud .note { display: none; }
   .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
   .g-reticle { display: none; }
+  .gph-sliders { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .gph-actions kbd { display: none; }
+  .g-photo .note { display: none; }
   .gt-keys { display: none; }
   .g-title { background: color-mix(in srgb, var(--bg) 78%, transparent); align-items: flex-start; }
 }
-@media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
+@media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after { transition: none; } }
 
 /* ---------- globe ---------- */
 .globe-app { display: grid; grid-template-columns: minmax(0, 1fr) 392px; height: 100%; }
@@ -449,6 +523,7 @@ a { color: var(--accent); }
     <div class="hud-btns">
       <button class="chip-btn" id="btn-tour" aria-pressed="true">Tour</button>
       <button class="chip-btn" id="btn-prov" aria-pressed="false" title="Colour buildings by where their height comes from">Height sources</button>
+      <button class="chip-btn" id="btn-orbit" aria-pressed="false" title="Circle slowly round what you are looking at. Click a landmark's name to fly round it.">Orbit</button>
       <a class="chip-btn play-chip" id="btn-play" href="#" hidden>Play</a>
     </div>
     <div class="caption" id="caption">
@@ -461,7 +536,14 @@ a { color: var(--accent); }
       <button class="x" id="insp-close" aria-label="Close">×</button>
       <h3 id="insp-name"></h3>
       <dl class="kv" id="insp-kv"></dl>
+      <div class="row insp-actions"><button class="btn" id="insp-orbit">Fly round it</button></div>
     </aside>
+    <div class="intro-card" id="intro" hidden>
+      <span class="eyebrow" id="intro-eyebrow"></span>
+      <h2 id="intro-name"></h2>
+      <p class="mono" id="intro-facts"></p>
+      <button class="intro-skip" id="intro-skip">Skip the flyover</button>
+    </div>
     <div class="loader" id="loader"><div><b id="load-title">Building the city</b><div class="track"><i id="load-bar"></i></div><small id="load-msg">Loading footprints</small></div></div>
   </section>
 
@@ -572,12 +654,29 @@ a { color: var(--accent); }
     <canvas id="game-gl"></canvas>
     <div class="labels g-labels" id="g-labels"></div>
     <div class="g-reticle" aria-hidden="true"></div>
-    <div class="g-hud g-quest" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span></div>
+    <div class="g-bars" aria-hidden="true"></div>
+    <div class="g-grid" aria-hidden="true"></div>
+    <div class="g-hud g-photo" id="g-photo" hidden role="group" aria-label="Photo mode">
+      <div class="gph-sliders">
+        <label><span>Time <output class="num" id="ph-time-v"></output></span><input type="range" id="ph-time" min="240" max="1320" step="1"></label>
+        <label><span>Lens <output class="num" id="ph-fov-v"></output></span><input type="range" id="ph-fov" min="10" max="90" step="1" dir="rtl"></label>
+        <label><span>Distance <output class="num" id="ph-dist-v"></output></span><input type="range" id="ph-dist" min="0" max="1000" step="1"></label>
+      </div>
+      <div class="gph-actions">
+        <button class="chip-btn" id="ph-turn" aria-pressed="false" title="Circle slowly round the focus">Turntable</button>
+        <button class="chip-btn" id="ph-grid" aria-pressed="false" title="Rule-of-thirds grid">Grid</button>
+        <button class="chip-btn" id="ph-me" aria-pressed="true">Show me</button>
+        <button class="btn primary" id="ph-snap">Save photo <kbd>Enter</kbd></button>
+        <button class="btn" id="ph-done">Done <kbd>Esc</kbd></button>
+      </div>
+      <p class="note">Drag to turn · scroll to come closer · <kbd>W A S D</kbd> move · <kbd>Space</kbd>/<kbd>C</kbd> up and down</p>
+    </div>
+    <div class="g-hud g-quest" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span><div class="gq-lines" id="gq-lines" hidden></div></div>
     <div class="g-right">
       <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
       <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
-      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
+      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
     <div class="g-prompt" id="g-prompt" hidden><kbd id="gp-key">E</kbd><span id="gp-text"></span></div>
@@ -595,7 +694,7 @@ a { color: var(--accent); }
             <div class="g-legend">
               <div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
-              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
+              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
             </div>
             <h3>Fast travel</h3>
             <ul id="g-travel"></ul>
@@ -624,10 +723,15 @@ a { color: var(--accent); }
           <tr><td><kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd></td><td>Sprint · walk instead of jog · jump</td></tr>
           <tr><td><kbd>E</kbd></td><td>Talk, board, fly, get out</td></tr>
           <tr><td><kbd>Q</kbd></td><td>Survey lens: the building in front of you and where its height comes from</td></tr>
+          <tr><td><kbd>G</kbd></td><td>Height challenge: guess a building's height, then see how good the data is</td></tr>
+          <tr><td>△ on the map</td><td>Trig stations: stand at one and press <kbd>E</kbd> to survey the view</td></tr>
           <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
           <tr><td>Ferry</td><td><kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm into the next wharf</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Switch the survey line the route follows (or tap its name in the quest card)</td></tr>
+          <tr><td><kbd>O</kbd></td><td>Photo mode: the world holds still; set the sun, the lens and the angle, and save a picture</td></tr>
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
+        <div class="row" id="gm-links"></div>
         <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>
       </div>
     </div>
@@ -642,7 +746,7 @@ a { color: var(--accent); }
         <table class="gt-keys"><tbody>
           <tr><td><kbd>W A S D</kbd> · drag</td><td>Walk · look around</td></tr>
           <tr><td><kbd>E</kbd></td><td>Talk, board the ferry, fly the helicopter</td></tr>
-          <tr><td><kbd>Q</kbd> · <kbd>M</kbd> · <kbd>Esc</kbd></td><td>Survey lens · map · menu</td></tr>
+          <tr><td><kbd>Q</kbd> · <kbd>G</kbd> · <kbd>M</kbd> · <kbd>Esc</kbd></td><td>Survey lens · guess a height · map · menu</td></tr>
         </tbody></table>
         <p class="note"><a href="#globe">Back to the globe</a></p>
       </div>
@@ -686,17 +790,20 @@ window.dispatchEvent(new Event('three-ready'));
 </script>
 <script src="sun.js"></script>
 <script src="sun-gpu.js"></script>
+<script src="cine.js"></script>
 <script src="globe.js"></script>
 <script src="water.js"></script>
 <script src="trees.js"></script>
 <script src="world.js"></script>
 <script src="city.js"></script>
+<script src="game/collision.js"></script>
 <script src="game/nav.js"></script>
 <script src="game/actors.js"></script>
 <script src="game/people.js"></script>
 <script src="game/kit.js"></script>
 <script src="game/vehicles.js"></script>
 <script src="game/atmosphere.js"></script>
+<script src="game/penguins.js"></script>
 <script src="game/audio.js"></script>
 <script src="game/hud.js"></script>
 <script src="game/game.js"></script>

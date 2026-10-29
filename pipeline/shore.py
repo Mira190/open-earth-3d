@@ -13,12 +13,33 @@ shore (gentle off a beach, steep off rock, a sheer wall off a seawall or a built
 down to a floor of 4 m. The water shader uses the same slopes to decide how much of the
 bottom shows through.
 """
+import os
+
 import numpy as np
+import shapely
 from PIL import Image
 from scipy import ndimage
 from shapely import wkb as swkb
 
+from cityctx import polygons
+
 SHORE_CELL = 2.5  # m
+
+
+def raised_classes(cfg):
+    """Infrastructure classes the terrain raises (breakwaters, city.json terrain.raise): drawn
+    and shored as rock."""
+    return {r["class"] for r in cfg.get("terrain", {}).get("raise", [])}
+
+
+def without_raised(C, con, path, rows, sea):
+    """The water polygons with the structures the terrain raises (breakwaters) cut out: the
+    water theme often runs straight over them."""
+    classes = raised_classes(C.cfg)
+    if not classes or not os.path.exists(path):
+        return sea
+    cut = shapely.union_all([C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, path) if r["class"] in classes])
+    return [q for p in sea for q in polygons(p.difference(cut)) if q.area > 1]
 SLOPES = {"sand": 0.04, "rock": 0.25, "built": 1.0}  # depth per metre from the shore
 FLOOR_M = 4.0
 
@@ -36,6 +57,9 @@ def shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg):
             g = g.buffer(2.0)
         if g.intersects(extent):
             (sand if r["subtype"] == "sand" else rock).extend(polygons(g.intersection(extent)))
+    # structures the terrain raises (breakwaters) are rock armour
+    rock += [p for r in rows(con, raw("infrastructure")) if r["class"] in raised_classes(cfg)
+             for p in polygons(C.to_local(swkb.loads(bytes(r["wkb"]))).intersection(extent))]
     S = raster_mask(sand, nx, ny, SHORE_CELL, C.x0, C.y1) & ~wet
     R = raster_mask(rock, nx, ny, SHORE_CELL, C.x0, C.y1) & ~wet & ~S
     # distances between pixel centres; the shoreline is half a pixel from either side

@@ -22,6 +22,7 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ load
   const loadMsg = (t, f) => { $('#load-msg').textContent = t; $('#load-bar').style.width = `${Math.round(f * 100)}%`; };
+  $('#stage').classList.add('intro'); // the HUD stays out of the establishing shot
   let D;
   try {
     D = await OEWorld.load(cityId, { onMsg: loadMsg });
@@ -117,20 +118,22 @@ window.OpenEarthCity = async function main(cityId) {
   }
 
   // ------------------------------------------------------------ labels
+  // landmark and place labels are buttons: click one to fly round it
   const labelsEl = $('#labels'), labels = [];
-  const addLabel = (text, x, y, z, cls = '') => {
-    const el = document.createElement('div');
-    el.className = `lbl ${cls}`;
+  const addLabel = (text, x, y, z, cls = '', pick = null) => {
+    const el = document.createElement(pick ? 'button' : 'div');
+    el.className = `lbl ${cls}${pick ? ' pick' : ''}`;
     el.textContent = text;
+    if (pick) { el.type = 'button'; el.title = `Fly round ${text}`; el.addEventListener('click', pick); }
     labelsEl.appendChild(el);
     labels.push({ el, p: W(x, y, z) });
   };
   const minor = new Set(CITY.minor_labels || []), placeLabels = new Set(CITY.place_labels || []);
   for (const [name, p] of Object.entries(scene.labels || {})) {
-    if (minor.has(name)) addLabel(name, p[0], p[1], p[2] + 4, 'place');
-    else addLabel(name, p[0], p[1], p[2] + 6);
+    if (minor.has(name)) addLabel(name, p[0], p[1], p[2] + 4, 'place', () => orbitLandmark(name, p));
+    else addLabel(name, p[0], p[1], p[2] + 6, '', () => orbitLandmark(name, p));
   }
-  for (const pl of placeInfo) if (placeLabels.has(pl.name)) addLabel(pl.name, pl.c[0], pl.c[1], ground(pl.c[0], pl.c[1]) + 3, 'place');
+  for (const pl of placeInfo) if (placeLabels.has(pl.name)) addLabel(pl.name, pl.c[0], pl.c[1], ground(pl.c[0], pl.c[1]) + 3, 'place', () => orbitPlace(pl));
   const tmpV = new THREE.Vector3();
   // labels in priority order (landmarks first); one that would overlap a placed label is hidden
   function updateLabels() {
@@ -284,11 +287,13 @@ window.OpenEarthCity = async function main(cityId) {
   }
 
   // ------------------------------------------------------------ camera flights
+  // cam and tgt are local [x, y, z] or three.js vectors; done runs when the camera arrives
   let flight = null;
-  function flyTo(cam, tgt, dur = 3.2) {
-    const to = { p: W(...cam), t: W(...tgt) };
-    if (reduced || dur === 0) { camera.position.copy(to.p); controls.target.copy(to.t); controls.update(); flight = null; return; }
-    flight = { from: { p: camera.position.clone(), t: controls.target.clone() }, to, t0: performance.now(), dur: dur * 1000 };
+  function flyTo(cam, tgt, dur = 3.2, done = null) {
+    const V = a => (Array.isArray(a) ? W(...a) : a.clone());
+    const to = { p: V(cam), t: V(tgt) };
+    if (reduced || dur === 0) { camera.position.copy(to.p); controls.target.copy(to.t); controls.update(); flight = null; if (done) done(); return; }
+    flight = { from: { p: camera.position.clone(), t: controls.target.clone() }, to, t0: performance.now(), dur: dur * 1000, done };
   }
   function stepFlight(t) {
     if (!flight) return;
@@ -297,7 +302,7 @@ window.OpenEarthCity = async function main(cityId) {
     // lift the path a little so long flights do not graze the towers
     camera.position.y += Math.sin(Math.PI * e) * Math.min(400, flight.from.p.distanceTo(flight.to.p) * 0.15);
     controls.target.lerpVectors(flight.from.t, flight.to.t, e);
-    if (k >= 1) flight = null;
+    if (k >= 1) { const d = flight.done; flight = null; if (d) d(); }
   }
   const placeView = p => {
     const g = ground(p.c[0], p.c[1]), span = Math.max(p.bbox[2] - p.bbox[0], p.bbox[3] - p.bbox[1]);
@@ -333,21 +338,24 @@ window.OpenEarthCity = async function main(cityId) {
   if (!placeInfo.some(p => p.tested)) $('#tower-group').hidden = true;
   $('#tour-list').innerHTML = TOUR.map((s, i) => `<li><button data-i="${i}"><span class="n">${pad(i + 1)}</span><span><b>${s.title}</b><span>${s.date[1]} ${MONTHS[s.date[0] - 1]}, ${fmtMin(s.from)}</span></span></button></li>`).join('');
   const tour = { i: -1, playing: true, phase: 'idle', t0: 0 };
-  function startStop(i) {
+  const stopView = s => (s.place ? placeView(byName(s.place)) : s);
+  // here: the camera is already at the stop (the establishing shot ends there), so no flight
+  function startStop(i, here = false) {
     tour.i = (i + TOUR.length) % TOUR.length;
     const s = TOUR[tour.i];
     if (state.m !== s.date[0] || state.d !== s.date[1]) setDate(state.y, s.date[0], s.date[1]);
     setTime(s.from);
     setProvenance(!!s.provenance);
     clearSamples();
-    let view = s;
-    if (s.place) { const p = byName(s.place); view = placeView(p); focusPlace = p.name; }
-    flyTo(view.cam, view.tgt);
+    setOrbit(false);
+    const view = stopView(s);
+    if (s.place) focusPlace = s.place;
+    if (!here) flyTo(view.cam, view.tgt);
     $('#cap-step').textContent = `${tour.i + 1} / ${TOUR.length}`;
     $('#cap-title').textContent = s.title;
     $('#cap-text').textContent = typeof s.text === 'function' ? s.text() : s.text;
     $$('#tour-list button').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === tour.i)));
-    tour.t0 = performance.now();
+    tour.t0 = performance.now() - (here && !reduced ? 3200 : 0);
     if (focusPlace) refreshPlaces(true);
   }
   function stepTour(t) {
@@ -361,6 +369,7 @@ window.OpenEarthCity = async function main(cityId) {
   }
   function setTourPlaying(on) {
     tour.playing = on;
+    if (on) setOrbit(false);
     $('#btn-tour').setAttribute('aria-pressed', String(on));
     $('#tour-play').textContent = on ? 'Pause tour' : 'Resume tour';
     $('#caption').hidden = !on;
@@ -373,8 +382,116 @@ window.OpenEarthCity = async function main(cityId) {
   $('#tour-restart').onclick = () => { setTourPlaying(true); startStop(0); };
   $('#btn-tour').onclick = () => { if (tour.i < 0) { setTourPlaying(true); startStop(0); } else setTourPlaying(!tour.playing); };
   $('#cap-skip').onclick = () => { if (!tour.playing) setTourPlaying(true); else startStop(tour.i + 1); };
-  canvas.addEventListener('pointerdown', () => { if (tour.playing) setTourPlaying(false); flight = null; });
+  canvas.addEventListener('pointerdown', () => { if (tour.playing) setTourPlaying(false); flight = null; setOrbit(false, 0, true); });
   canvas.addEventListener('wheel', () => { if (tour.playing) setTourPlaying(false); flight = null; }, { passive: true });
+
+  // ------------------------------------------------------------ orbit: circle what you are looking at
+  // Time-based (OrbitControls' autoRotate turns by a fixed angle per frame, so its speed
+  // depends on the frame rate). It eases in and out; grabbing the view stops it at once.
+  const orbit = { on: false, rate: 2 * Math.PI / 90, w: 0 };
+  function setOrbit(on, rate = 0, grabbed = false) {
+    orbit.on = on;
+    if (rate) orbit.rate = rate;
+    if (grabbed) orbit.w = 0;
+    if (on && tour.playing) setTourPlaying(false);
+    $('#btn-orbit').setAttribute('aria-pressed', String(on));
+  }
+  function stepOrbit(dt) {
+    orbit.w += ((orbit.on ? orbit.rate : 0) - orbit.w) * Math.min(1, dt * 1.2);
+    if (Math.abs(orbit.w) < 1e-4 || flight) return;
+    const p = OECine.polar(controls.target, camera.position);
+    OECine.around(controls.target, p.az + orbit.w * dt, p.dist, p.h, camera.position);
+  }
+  $('#btn-orbit').onclick = () => setOrbit(!orbit.on, 2 * Math.PI / 90);
+  // fly to a three-quarter view of a point (three.js vector) and circle it; size (m) sets the distance
+  function orbitAround(look, size) {
+    setTourPlaying(false);
+    setOrbit(false);
+    const d = THREE.MathUtils.clamp(size * 2.9, 220, 2800), pitch = 22 * RAD;
+    const az = OECine.polar(look, camera.position).az; // keep the bearing so the flight is short
+    flyTo(OECine.around(look, az, d * Math.cos(pitch), d * Math.sin(pitch)), look, 2.6, () => setOrbit(true, 2 * Math.PI / 60));
+  }
+  // a building's footprint box and top, over all its solids (b: one id or a list)
+  function buildingBox(b) {
+    const set = new Set([].concat(b));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, top = 0;
+    for (const s of B.s) {
+      if (!set.has(s[0])) continue;
+      const r = s[4];
+      for (let k = 0; k < r.length; k += 2) { x0 = Math.min(x0, r[k] / 10); x1 = Math.max(x1, r[k] / 10); y0 = Math.min(y0, r[k + 1] / 10); y1 = Math.max(y1, r[k + 1] / 10); }
+      top = Math.max(top, (s[1] + s[3]) / 10);
+    }
+    if (!isFinite(x0)) return null;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    return { cx, cy, r: Math.hypot(x1 - x0, y1 - y0) / 2, top, g: ground(cx, cy) };
+  }
+  function orbitBuilding(bi) {
+    const b = buildingBox(bi);
+    if (b) orbitAround(W(b.cx, b.cy, b.g + (b.top - b.g) * 0.45), Math.max(b.top - b.g, b.r * 1.6, 50));
+  }
+  // a landmark label: frame every building named after it (both bridge pylons, say), and
+  // open the inspector on the one under the label
+  function orbitLandmark(name, p) {
+    const named = B.b.map((m, i) => (m[0] && m[0].startsWith(name) ? i : -1)).filter(i => i >= 0 && Math.hypot(centroids[i][0] - p[0], centroids[i][1] - p[1]) < 600);
+    const box = named.length ? buildingBox(named) : null, g = ground(p[0], p[1]);
+    const top = Math.max(p[2], box ? box.top : 0), size = Math.max(top - g, box ? box.r * 1.6 : 0, 60);
+    orbitAround(W(box ? box.cx : p[0], box ? box.cy : p[1], g + (top - g) * 0.45), size);
+    const c = Math.floor((p[0] - DSM.x0) / DSM.cell), r = Math.floor((DSM.y1 - p[1]) / DSM.cell), under = DSM.ids[r * DSM.nx + c];
+    const bi = B.b.findIndex(m => m[0] === name);
+    const pick = bi >= 0 ? bi : under >= 0 && (B.b[under][0] || '').startsWith(name) ? under : -1;
+    if (pick >= 0) inspect(pick); else closeInspector();
+  }
+  function orbitPlace(pl) {
+    const i = placeInfo.indexOf(pl);
+    if (pl.lep && i >= 0) { // a protected place: its row in Sun access shows the sun on it
+      $('[data-tab="access"]').click();
+      tbody.querySelectorAll('tr')[i].click();
+      if (flight) flight.done = () => setOrbit(true, 2 * Math.PI / 60);
+      return;
+    }
+    const span = Math.max(pl.bbox[2] - pl.bbox[0], pl.bbox[3] - pl.bbox[1]);
+    orbitAround(W(pl.c[0], pl.c[1], ground(pl.c[0], pl.c[1])), span * 0.7);
+  }
+
+  // ------------------------------------------------------------ the establishing shot
+  // From high over the city the camera spirals down onto the first tour stop, so the
+  // whole model is seen once before the tour starts and the tour picks up where the
+  // shot ends. It is long the first time and short after that; any click or key skips it.
+  const cine = OECine.director({ reduced });
+  const INTRO_KEY = `oe3d-intro-${cityId}`;
+  const ac = new AbortController();
+  function playIntro() {
+    let seen = false;
+    try { seen = !!localStorage.getItem(INTRO_KEY); localStorage.setItem(INTRO_KEY, '1'); } catch (e) { /* storage blocked */ }
+    const s = TOUR[0], v = stopView(s);
+    if (state.m !== s.date[0] || state.d !== s.date[1]) setDate(state.y, s.date[0], s.date[1]);
+    setTime(s.from);
+    const look = W(...v.tgt), end = OECine.polar(look, W(...v.cam));
+    const f = scene.frame, ext = Math.max(f.x[1] - f.x[0], f.y[1] - f.y[0]);
+    const h0 = Math.max(end.h * 2.5, ext * 1.15), sweep = (seen ? 70 : 150) * RAD, dur = seen ? 4.5 : 9.5;
+    const shot = OECine.spiral({ center: look, az: [end.az - sweep, end.az], dist: [h0 * 0.12, end.dist], h: [h0, end.h], e: { h: 'out' } });
+    const L = S.utcToLocal(S.localToUtc(state.y, state.m, state.d, state.min)), f2 = n => n.toLocaleString(CITY.locale || undefined);
+    $('#intro-eyebrow').textContent = `Open Earth 3D · ${CITY.country || ''}`;
+    $('#intro-name').textContent = CITY.name;
+    $('#intro-facts').textContent = `${f2(B.b.length)} buildings · ${f2((P.trees || []).length / 4)} trees · ${((f.x[1] - f.x[0]) / 1000).toFixed(1)} × ${((f.y[1] - f.y[0]) / 1000).toFixed(1)} km · `
+      + `${state.d} ${MONTHS[state.m - 1]}, ${fmtMin(state.min)} ${L.zone}, sun ${sunPos.altitude.toFixed(0)}° up`;
+    $('#intro').hidden = false;
+    stage.classList.add('intro');
+    cine.play(shot, dur, { label: 'intro', onEnd() {
+      $('#intro').hidden = true;
+      stage.classList.remove('intro');
+      startStop(0, true);
+    } });
+  }
+  // anything the visitor does ends the shot first; a click on the view only skips it
+  const skipIntro = e => {
+    if (cine.label !== 'intro') return;
+    cine.skip();
+    if (e && e.type === 'pointerdown' && stage.contains(e.target)) e.stopPropagation();
+  };
+  document.addEventListener('pointerdown', skipIntro, { capture: true, signal: ac.signal });
+  addEventListener('keydown', skipIntro, { capture: true, signal: ac.signal });
+  stage.addEventListener('wheel', skipIntro, { capture: true, passive: true, signal: ac.signal });
 
   // ------------------------------------------------------------ provenance view
   function setProvenance(on) {
@@ -420,6 +537,7 @@ window.OpenEarthCity = async function main(cityId) {
   }
   function closeInspector() { $('#inspector').hidden = true; U.uSel.value = -1; }
   $('#insp-close').onclick = closeInspector;
+  $('#insp-orbit').onclick = () => { if (U.uSel.value >= 0) orbitBuilding(U.uSel.value); };
 
   // ------------------------------------------------------------ proposed tower
   const tower = { placing: false, x: 0, y: 0, mesh: null };
@@ -716,8 +834,9 @@ window.OpenEarthCity = async function main(cityId) {
   controls.target.copy(W(...st0.tgt));
   controls.update();
   loadMsg('Ready', 1);
-  $('#loader').hidden = true;
-  startStop(0);
+  $('#loader').classList.add('out');
+  setTimeout(() => { $('#loader').hidden = true; }, reduced ? 0 : 700);
+  playIntro();
 
   let last = performance.now(), running = true;
   function frame(t) {
@@ -731,7 +850,12 @@ window.OpenEarthCity = async function main(cityId) {
     }
     stepTour(t);
     stepFlight(t);
-    controls.update();
+    stepOrbit(dt);
+    const shot = cine.step(t / 1000);
+    if (shot) {
+      camera.position.copy(shot.pos); controls.target.copy(shot.look); camera.lookAt(shot.look);
+      if (cine.label === 'intro') $('#intro').style.opacity = String(Math.min(1, OECine.span(cine.k, 0.04, 0.16), 1 - OECine.span(cine.k, 0.82, 0.96)));
+    } else controls.update();
     fitShadow();
     Wd.tick(t, camera);
     refreshPlaces();
@@ -740,9 +864,10 @@ window.OpenEarthCity = async function main(cityId) {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower };
+  window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower,
+    cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour };
   // the router calls stop() before it shows another view
   return {
-    stop() { running = false; ro.disconnect(); controls.dispose(); renderer.dispose(); Wd.dispose(); window.__city = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); renderer.dispose(); Wd.dispose(); window.__city = null; },
   };
 };

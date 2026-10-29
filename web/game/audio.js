@@ -1,7 +1,7 @@
 // Sound, synthesised with Web Audio (no audio files): harbour ambience, footsteps,
-// the helicopter rotor, the ferry engine and horn, and dialogue voice beeps with a
-// pitch per character. Browsers allow sound only after a click, so start() is called
-// from the Play button.
+// the helicopter rotor, the ferry engine and horn, dialogue voice beeps with a
+// pitch per character, and little penguins braying in the dark. Browsers allow
+// sound only after a click, so start() is called from the Play button.
 'use strict';
 window.OEAudio = (function () {
   let ctx = null, master = null, noise = null, muted = false;
@@ -72,8 +72,38 @@ window.OEAudio = (function () {
     s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.08);
   }
   function horn() { blip(196, 1.3, 'sawtooth', 0.06); blip(247, 1.3, 'sawtooth', 0.04); }
+  function shutter() { // a focal-plane shutter: two short clicks
+    if (!ctx || muted) return;
+    for (const [at, f] of [[0, 3200], [0.06, 2400]]) {
+      const s = ctx.createBufferSource(), bp = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime + at;
+      s.buffer = noise; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 1.2;
+      g.gain.setValueAtTime(0.14, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+      s.connect(bp); bp.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.05);
+    }
+  }
+  function thump() { // a rubber stamp on paper: a short low knock and a slap of noise
+    if (!ctx || muted) return;
+    blip(95, 0.18, 'sine', 0.22);
+    const s = ctx.createBufferSource(), f = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime;
+    s.buffer = noise; f.type = 'lowpass'; f.frequency.value = 1400;
+    g.gain.setValueAtTime(0.16, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.14);
+  }
+  // a little penguin's bray: a run of nasal pulses, rising and falling; level 0..1 with distance
+  function penguin(level = 1) {
+    if (!ctx || muted || level <= 0) return;
+    const o = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain(), t = ctx.currentTime, n = 4 + Math.floor(Math.random() * 5), f0 = 700 + Math.random() * 300;
+    o.type = 'sawtooth'; f.type = 'bandpass'; f.frequency.value = 1400; f.Q.value = 3;
+    g.gain.value = 0;
+    for (let k = 0; k < n; k++) {
+      const a = t + k * 0.16, up = k < n / 2;
+      o.frequency.setValueAtTime(f0 * (up ? 1 + k * 0.08 : 1.3 - (k - n / 2) * 0.1), a);
+      g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.05 * level, a + 0.03); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.13);
+    }
+    o.connect(f); f.connect(g); g.connect(master); o.start(t); o.stop(t + n * 0.16 + 0.05);
+  }
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, beep, step, horn, chime, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, beep, step, horn, chime, thump, shutter, penguin, setMuted, stop, get muted() { return muted; } };
 })();

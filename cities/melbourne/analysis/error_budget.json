@@ -11,7 +11,7 @@
    "reference": 42.58,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.94,
-   "seconds": 13.633
+   "seconds": 19.96
   },
   {
    "place": "City Square",
@@ -22,7 +22,7 @@
    "reference": 43.85,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -1.05,
-   "seconds": 1.499
+   "seconds": 2.01
   },
   {
    "place": "Bourke Street Mall",
@@ -33,7 +33,7 @@
    "reference": 25.75,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.33,
-   "seconds": 0.336
+   "seconds": 0.502
   },
   {
    "place": "Boyd Community Park",
@@ -44,7 +44,7 @@
    "reference": 40.64,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 1.16,
-   "seconds": 0.318
+   "seconds": 0.486
   },
   {
    "place": "Yarra River corridor",
@@ -55,7 +55,7 @@
    "reference": 79.26,
    "lit_rays_leaving_extent_low_pct": 3.99,
    "prod_minus_reference": -0.09,
-   "seconds": 7.538
+   "seconds": 9.682
   },
   {
    "place": "Parliament Gardens",
@@ -66,7 +66,7 @@
    "reference": 56.16,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.36,
-   "seconds": 3.292
+   "seconds": 4.933
   },
   {
    "place": "Treasury Gardens",
@@ -77,7 +77,7 @@
    "reference": 93.98,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.15,
-   "seconds": 37.15
+   "seconds": 54.763
   },
   {
    "place": "Gordon Reserve",
@@ -88,29 +88,29 @@
    "reference": 99.21,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.48,
-   "seconds": 2.757
+   "seconds": 3.635
   },
   {
    "place": "Batman Park",
-   "prod": 50.73,
-   "finer_samples": 50.65,
-   "finer_dsm": 50.43,
-   "finer_time": 50.56,
-   "reference": 50.17,
+   "prod": 50.75,
+   "finer_samples": 50.69,
+   "finer_dsm": 50.45,
+   "finer_time": 50.57,
+   "reference": 50.18,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 0.56,
-   "seconds": 4.263
+   "prod_minus_reference": 0.57,
+   "seconds": 5.831
   },
   {
    "place": "Birrarung Marr",
-   "prod": 91.48,
-   "finer_samples": 91.68,
-   "finer_dsm": 91.55,
-   "finer_time": 91.63,
-   "reference": 91.8,
+   "prod": 91.69,
+   "finer_samples": 91.77,
+   "finer_dsm": 91.67,
+   "finer_time": 91.83,
+   "reference": 91.88,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.32,
-   "seconds": 11.598
+   "prod_minus_reference": -0.19,
+   "seconds": 16.852
   },
   {
    "place": "Sturt Street Reserve",
@@ -121,7 +121,7 @@
    "reference": 97.2,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.19,
-   "seconds": 2.042
+   "seconds": 2.972
   },
   {
    "place": "Grant Street Reserve",
@@ -132,7 +132,7 @@
    "reference": 100,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0,
-   "seconds": 1.319
+   "seconds": 2.051
   },
   {
    "place": "Dodds St Linear Park",
@@ -143,7 +143,7 @@
    "reference": 89.35,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.87,
-   "seconds": 0.701
+   "seconds": 0.944
   },
   {
    "place": "Flagstaff Gardens",
@@ -154,7 +154,7 @@
    "reference": 96.66,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": -0.01,
-   "seconds": 2.769
+   "seconds": 3.741
   },
   {
    "place": "Fitzroy Gardens",
@@ -165,7 +165,7 @@
    "reference": 98.14,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.15,
-   "seconds": 9.457
+   "seconds": 12.863
   },
   {
    "place": "Royal Botanic Gardens",
@@ -176,7 +176,7 @@
    "reference": 96.2,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.17,
-   "seconds": 14.428
+   "seconds": 19.757
   },
   {
    "place": "Carlton Gardens",
@@ -187,7 +187,7 @@
    "reference": 98.42,
    "lit_rays_leaving_extent_low_pct": 22.43,
    "prod_minus_reference": 0.02,
-   "seconds": 54.84
+   "seconds": 64.563
   },
   {
    "place": "Kings Domain",
@@ -198,7 +198,7 @@
    "reference": 98.56,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.28,
-   "seconds": 101.342
+   "seconds": 109.873
   },
   {
    "place": "Queen Victoria Gardens",
@@ -209,7 +209,7 @@
    "reference": 99.6,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.07,
-   "seconds": 58.654
+   "seconds": 67.347
   },
   {
    "place": "Alexandra Gardens",
@@ -220,7 +220,7 @@
    "reference": 91.83,
    "lit_rays_leaving_extent_low_pct": 0,
    "prod_minus_reference": 0.26,
-   "seconds": 31.994
+   "seconds": 41.131
   }
  ],
  "max_abs_numerical_error_pp": 1.16

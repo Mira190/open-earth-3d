@@ -33,7 +33,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
-| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, NPCs and quests |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -164,7 +164,12 @@ The views switch in place, without reloading the page.
     city's mix, instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
     cut-out leaf shadows and jacarandas that flower in season;
-  - sky, sun and shadows.
+  - sky, sun and shadows;
+  - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
+    the fog colour, and beyond the frame there is only haze. It is three.js's fog
+    chunks with the frame written in, so every fogged material takes it,
+    reflections included. Within about 150 m of the camera it is held off, unless
+    the camera itself is outside the model.
 
   Each building gets one of three facades, from its class and height:
   - a glass curtain wall for towers of 55 m and more: panes between mullions
@@ -239,6 +244,12 @@ The views switch in place, without reloading the page.
   building triangles takes 0.04 ms instead of 13 ms. It also builds a 2 m
   surface model for ray casting, so the panel's numbers do not depend on the
   shadow map's resolution.
+- **`cine.js`** holds the camera moves the viewer and the game share. A shot maps
+  progress (0 to 1) to a camera pose, as a spiral round a centre that may move. The
+  director plays one shot at a time and fires its cues; a skipped shot still fires
+  them. The moves are:
+  - the viewer's flyover, from above the model onto the first tour stop;
+  - the game's start, fast travel and trig-station surveys.
 - **`sun.js`** works in the browser and in Node, so the viewer and the
   analyses share it:
   - solar position (the NOAA equations);
@@ -261,10 +272,11 @@ The views switch in place, without reloading the page.
   - navigation;
   - people (`people.js`): skinned characters near the player, instanced crowd
     copies further away, all recoloured from one palette per character;
-  - traffic (`actors.js`): the shared Blender cars, taxis and buses of
-    `web/assets/vehicles/cars.glb`, one instanced mesh per model and distance,
-    with a tone shader that paints each car and lights its lamps after dark;
-    box cars where the models can't be loaded;
+  - crowd and traffic (`actors.js`): walkers who step aside for each other and
+    sit on benches in the sun or the shade, and the shared Blender cars, taxis
+    and buses of `web/assets/vehicles/cars.glb` on the left, one instanced mesh
+    per model and distance, with a tone shader that paints each car and lights
+    its lamps after dark (box cars where the models can't be loaded);
   - helicopter and ferries (`vehicles.js`): the shared Blender models in the
     city's liveries, the harbour ferry or the river shuttle as `ferry_style`
     asks, with stand-ins built from `kit.js`, a kit of parts at real
@@ -272,6 +284,9 @@ The views switch in place, without reloading the page.
   - sky and light (`atmosphere.js`): clouds, the stars and the moon in their
     real places, and the post stack (three.js's EffectComposer: HDR bloom,
     the output tone curve, a grade and a vignette);
+  - wildlife (`penguins.js`): a colony of little penguins in one instanced
+    mesh. They are out at sea by day, come ashore in rafts after the real
+    sunset and walk to burrows on the mapped rocks (`game.wildlife`);
   - HUD;
   - sound.
 
