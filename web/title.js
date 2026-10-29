@@ -262,8 +262,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const cue = (t, fn, { sound = false } = {}) => cues.push({ t, fn, sound, done: false });
   let soundOn = false;
   const wordEl = $('ts-word');
-  wordEl.setAttribute('aria-label', wordEl.textContent);
-  wordEl.innerHTML = wordEl.textContent.split('').map(ch => `<i>${ch === ' ' ? '&nbsp;' : ch}</i>`).join('');
+  // one span per letter for the reveal; screen readers get the word whole
+  wordEl.innerHTML = `<span class="ts-sr">${wordEl.textContent}</span>` + wordEl.textContent.split('').map(ch => `<i aria-hidden="true">${ch === ' ' ? '&nbsp;' : ch}</i>`).join('');
   const letters = [...wordEl.querySelectorAll('i')], titleEl = $('ts-title'), subEl = titleEl.querySelector('.s'), tallyEl = $('ts-tally');
   const capsEl = app.querySelector('.ts-caps'), barsEl = app.querySelector('.ts-bars');
   const expoOut = t => (t >= 1 ? 1 : 1 - Math.pow(2, -10 * clamp(t)));

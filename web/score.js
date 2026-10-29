@@ -81,7 +81,7 @@ window.OEScore = (function () {
     mix.connect(lp);
     droneV = voice(lp, { send: 0.5 });
     droneV.g.setValueAtTime(0, now());
-    droneV.g.linearRampToValueAtTime(0.32, now() + fadeIn);
+    droneV.g.linearRampToValueAtTime(0.45, now() + fadeIn);
   }
   // a riser of `dur` seconds ending at time t: noise sweeping up, a tone climbing under it
   function riser(t, dur) {
@@ -118,7 +118,7 @@ window.OEScore = (function () {
       const v = voice(o, { send: 0.85 });
       v.g.setValueAtTime(0, t); v.g.linearRampToValueAtTime(a, t + 0.04); v.g.exponentialRampToValueAtTime(a * 0.35, t + 2.5); v.g.exponentialRampToValueAtTime(0.0001, t + 8.5);
     }
-    if (droneV) { droneV.g.cancelScheduledValues(t); droneV.g.setValueAtTime(0.32, t); droneV.g.linearRampToValueAtTime(0.12, t + 4); }
+    if (droneV) { droneV.g.cancelScheduledValues(t); droneV.g.setValueAtTime(0.45, t); droneV.g.linearRampToValueAtTime(0.14, t + 4); }
     pad(t + 2.2);
   }
   // the menu's bed: a slow chord with its filter breathing
