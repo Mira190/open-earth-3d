@@ -1,6 +1,6 @@
 // The game's own HUD layer, over hud.js and in its style (the same glass, edge and type): a dialogue panel
-// with numbered answers (keys 1-4, or tap), a journal and a travel map as centred panels, two buttons for
-// touch (Journal J, Map T), the objective line under the compass with a marker on the compass strip,
+// with numbered answers (keys 1-4, or tap), a journal and a travel map as centred panels, three buttons (Globe,
+// Journal J, Map T), the objective line under the compass with a marker on the compass strip,
 // toasts for quest steps, and a fade for skip-the-trip transfers. Plain DOM; game.js decides what goes in.
 const CSS = `
 .rg { position: fixed; inset: 0; pointer-events: none; z-index: 6; font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif; color: #e8f4f6;
@@ -11,6 +11,7 @@ const CSS = `
 .rg-btns { position: absolute; top: 108px; right: 12px; display: flex; gap: 6px; pointer-events: auto; }
 .rg-btns button { display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; border-radius: 999px; background: var(--glass); border: 1px solid var(--edge); color: inherit; font: 600 12px system-ui, sans-serif; cursor: pointer; }
 .rg-btns button:hover, .rg-btns button.on { background: rgba(20,70,90,.85); }
+.rg-btns .bg { padding-left: 10px; min-height: 32px; }
 .rg-btns button b { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--warn); color: #082633; font-size: 10px; line-height: 16px; display: none; }
 .rg-btns button b.on { display: inline-block; }
 .rg-obj { position: absolute; top: 10px; left: 12px; width: min(42vw, 280px); padding: 6px 10px 7px; border-radius: 12px; background: var(--glass); border: 1px solid var(--edge);
@@ -59,7 +60,7 @@ const CSS = `
 .rg-panel .note { font-size: 13px; } .rg-panel .cite { font-size: 11px; color: var(--ink2); }
 .rg-panel .empty { color: var(--ink2); padding: 6px 2px; }
 .rg-panel .foot { margin-top: 14px; display: flex; gap: 8px; align-items: center; color: var(--ink2); font-size: 11px; }
-.rg-panel .foot button { margin-left: auto; }
+.rg-panel .foot button { margin-left: auto; flex: none; white-space: nowrap; }
 .rg-map { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 14px; align-items: start; }
 .rg-map canvas { display: block; width: 100%; height: auto; aspect-ratio: 1;   /* index.html sizes every canvas to the viewport */
   border-radius: 10px; border: 1px solid var(--edge); background: #0a2f4a; }
@@ -74,7 +75,7 @@ const CSS = `
 .rg-fade { position: absolute; inset: 0; background: #021018; opacity: 0; transition: opacity .55s; display: grid; place-content: center; text-align: center; padding: 20px; font-size: 15px; visibility: hidden; }
 .rg-fade.on { opacity: 1; visibility: visible; } .rg-fade small { display: block; margin-top: 6px; color: var(--ink2); font-size: 12px; }
 @media (max-width: 760px), (max-aspect-ratio: 1/1) { .rg-dlg { left: 50%; transform: translateX(-50%) translateY(8px); width: min(94vw, 560px); } .rg-dlg.on { transform: translateX(-50%); } }
-@media (max-width: 640px) { .rg-dlg { bottom: 176px; padding: 10px 12px; max-height: calc(100vh - 290px); } .rg-dlg .txt { font-size: 14px; } .rg-btns { top: 56px; } .rg-obj { width: 52vw; } .rg-toast { top: 108px; }
+@media (max-width: 640px) { .rg-dlg { bottom: 176px; padding: 10px 12px; max-height: calc(100vh - 290px); } .rg-dlg .txt { font-size: 14px; } .rg-btns { top: 56px; } .rg-btns .bg { position: absolute; top: 38px; right: 0; } .rg-obj { width: 52vw; } .rg-toast { top: 108px; }
   .rg-panel { width: 96vw; max-height: 80vh; top: 46%; } }
 `;
 
@@ -85,7 +86,7 @@ export function createUI(on) {
   const el = document.createElement('div');
   el.className = 'rg';
   el.innerHTML = `
-  <div class="rg-btns"><button class="bj" title="Journal (J)"><kbd>J</kbd>Journal<b></b></button><button class="bm" title="Reef sites (T)"><kbd>T</kbd>Map</button></div>
+  <div class="rg-btns"><button class="bg" title="Back to the globe, every city in Open Earth 3D">← Globe</button><button class="bj" title="Journal (J)"><kbd>J</kbd>Journal<b></b></button><button class="bm" title="Reef sites (T)"><kbd>T</kbd>Map</button></div>
   <div class="rg-obj"></div><div class="rg-mark">◆</div><div class="rg-toast"></div>
   <div class="rg-dlg" role="dialog" aria-live="polite"><div class="who"><b></b><small></small><em></em><button class="x" aria-label="Close (Esc)">✕</button></div><div class="txt"></div><div class="src"></div><div class="ch"></div><div class="more"></div></div>
   <div class="rg-panel" role="dialog"><header><h2></h2><small></small><button aria-label="Close">✕</button></header><div class="body"></div></div>
@@ -95,6 +96,7 @@ export function createUI(on) {
   const dlg = $('.rg-dlg'), panel = $('.rg-panel'), obj = $('.rg-obj'), mark = $('.rg-mark'), toastEl = $('.rg-toast'), fadeEl = $('.rg-fade');
   $('.bj').addEventListener('click', e => { e.currentTarget.blur(); on.journal(); });
   $('.bm').addEventListener('click', e => { e.currentTarget.blur(); on.map(); });
+  $('.bg').addEventListener('click', () => on.globe());
   panel.querySelector('header button').addEventListener('click', () => on.closePanel());
   panel.addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b && !b.disabled) on.panelAct(b.dataset.act, b.dataset.arg, b); });
   // tapping the dialogue (not an answer) moves it on, like E

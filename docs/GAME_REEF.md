@@ -18,13 +18,15 @@ computed from the model while you play, or carries a source you can open from th
 | <kbd>E</kbd> | Talk, read a sign, board a boat, fly the helicopter or the amphibian, log an animal for the survey; on a line, go on |
 | <kbd>1</kbd>–<kbd>4</kbd> · <kbd>Enter</kbd> · <kbd>Esc</kbd> | Answer · go on · close |
 | <kbd>J</kbd> | Journal: quests, the survey log, field notes with their sources |
-| <kbd>T</kbd> | Map: the site drawn from the model at the current tide, the reef sites, named places near you |
+| <kbd>T</kbd> | Map: the site drawn from the model at the current tide, the reef sites, named places near you, and the way back to the globe |
 | <kbd>F</kbd> | Step off a boat or out of a landed aircraft (the boats' own key) |
 
-The player's own keys are unchanged (WASD, Shift, Space, Ctrl/C, V, F/G, Q, B, H, M). On a phone, the
-Journal and Map buttons sit under the clock, you tap a line to go on and tap an answer. The tracked step
-shows top left (below the dive gauge when you are diving) with a marker on the compass and a diamond over
-the target. Progress is saved in the browser per site (`localStorage` key `oe3d-reef-game-<site>`).
+The player's own keys are unchanged (WASD, Shift, Space, Ctrl/C, V, F/G, Q, B, H, M). The Globe, Journal
+and Map buttons sit under the clock (on a phone, Globe drops below the other two, clear of the tracked step);
+Globe saves your progress and goes back to the globe with every city. On a phone you tap a line to go on and
+tap an answer. The tracked step shows top left (below the dive gauge when you are diving) with a marker on
+the compass and a diamond over the target. Progress is saved in the browser per site (`localStorage` key
+`oe3d-reef-game-<site>`).
 
 ## The Whitsundays
 

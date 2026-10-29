@@ -199,6 +199,9 @@ export async function gametest(api, ctx) {
     must(href === '/reef/index.html?city=hardy-reef&gl=1&mute=1&exp=1.2', 'travel keeps settings, drops position and test keys', href);
     key('KeyT'); await new Promise(r => setTimeout(r, 30));
     must(api.ui.panelKind === 'map' && /You are here/.test(dom('.rg-panel .body').innerHTML), 'T opens the map panel', api.ui.panelKind);
+    const globe = api.travel.globeHref();
+    must(/\/index\.html#globe$/.test(globe) && new URL(globe).pathname === new URL('../index.html', location.href).pathname && dom('.rg-btns .bg') && dom('.rg-panel .foot [data-act="globe"]'),
+      'a way back to the globe: the button and the map panel', globe);
     key('KeyT');
     must(!api.ui.panelKind, 'T again closes it');
 
