@@ -739,7 +739,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const trigDone = () => qs.trig || (qs.trig = {});
 
   // ------------------------------------------------------------ wildlife: little penguins on their colony's rocks (penguins.js)
-  const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A)).filter(Boolean);
+  const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A, nav.terrain)).filter(Boolean);
   // and silver gulls round a dropped box of chips by the water (gulls.js), marked on the map
   const flocks = (G.flocks || []).map(f => OEGulls.create(world, f, A, nav));
   let dayLim = null; // sunrise and sunset for the game's date, worked out once a day
