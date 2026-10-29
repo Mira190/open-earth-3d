@@ -6,7 +6,7 @@
 //   node tools/flyover.js kyoto [seconds=14] [render_fps=8] [time=10:30] [date=2026-04-15]
 // A software renderer takes many seconds per frame over a whole city, so frames are rendered at
 // render_fps and ffmpeg interpolates them to 30 fps (a smooth camera over a still scene).
-// WIDTH and HEIGHT set the render size (default 1280 x 720).
+// WIDTH and HEIGHT set the render and video size (default 960 x 540; about 2 MB for 14 s).
 // Writes web/data/<city>/flyover.mp4, flyover.webm, flyover.jpg and flyover.json; then run
 // `python -c "import sys; sys.path.insert(0, 'pipeline'); import build_scene; build_scene.write_index()"`
 // so cities.json lists it.
@@ -16,7 +16,7 @@ const os = require('os');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const [,, city = 'kyoto', seconds = '14', fps = '8', time = '10:30', date = '2026-04-15'] = process.argv;
-const W = +(process.env.WIDTH || 1280), H = +(process.env.HEIGHT || 720), N = Math.round(+seconds * +fps) + 1, OUT_FPS = 30;
+const W = +(process.env.WIDTH || 960), H = +(process.env.HEIGHT || 540), N = Math.round(+seconds * +fps) + 1, OUT_FPS = 30;
 const out = path.join(__dirname, '..', 'web', 'data', city);
 const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
 
@@ -65,11 +65,11 @@ const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
   await b.close();
   fs.mkdirSync(out, { recursive: true });
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', fps, '-i', path.join(frames, 'f%04d.jpg'),
-    '-filter_complex', `[0]minterpolate=fps=${OUT_FPS}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,scale=1280:720:flags=lanczos,split=2[a][b]`,
-    '-map', '[a]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '26', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, 'flyover.mp4'),
-    '-map', '[b]', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '38', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', '-pix_fmt', 'yuv420p', path.join(out, 'flyover.webm')]);
+    '-filter_complex', `[0]minterpolate=fps=${OUT_FPS}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,split=2[a][b]`,
+    '-map', '[a]', '-c:v', 'libx264', '-preset', 'slow', '-crf', '30', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', path.join(out, 'flyover.mp4'),
+    '-map', '[b]', '-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', '44', '-row-mt', '1', '-deadline', 'good', '-cpu-used', '2', '-pix_fmt', 'yuv420p', path.join(out, 'flyover.webm')]);
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', path.join(frames, 'f0000.jpg'), '-vf', 'scale=960:-2', '-q:v', '5', path.join(out, 'flyover.jpg')]);
-  fs.writeFileSync(path.join(out, 'flyover.json'), JSON.stringify({ video: 'flyover.mp4', webm: 'flyover.webm', poster: 'flyover.jpg', seconds: (N - 1) / +fps, fps: OUT_FPS,
+  fs.writeFileSync(path.join(out, 'flyover.json'), JSON.stringify({ video: 'flyover.mp4', webm: 'flyover.webm', poster: 'flyover.jpg', size: [W, H], seconds: (N - 1) / +fps, fps: OUT_FPS,
     date, time, note: 'Rendered by tools/flyover.js; the last frame is the game title camera at the start of its orbit.' }, null, 1) + '\n');
   fs.rmSync(frames, { recursive: true, force: true });
   const mb = f => (fs.statSync(path.join(out, f)).size / 1e6).toFixed(2);

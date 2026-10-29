@@ -61,6 +61,12 @@
   "load_bytes": {
    "model": 27386106,
    "game": 33811796
+  },
+  "flyover": {
+   "video": "flyover.mp4",
+   "webm": "flyover.webm",
+   "poster": "flyover.jpg",
+   "seconds": 14
   }
  },
  {
@@ -77,6 +83,12 @@
   "load_bytes": {
    "model": 26212085,
    "game": 29169678
+  },
+  "flyover": {
+   "video": "flyover.mp4",
+   "webm": "flyover.webm",
+   "poster": "flyover.jpg",
+   "seconds": 14
   }
  },
  {
@@ -93,6 +105,12 @@
   "load_bytes": {
    "model": 5260372,
    "game": 8638836
+  },
+  "flyover": {
+   "video": "flyover.mp4",
+   "webm": "flyover.webm",
+   "poster": "flyover.jpg",
+   "seconds": 14
   }
  },
  {
