@@ -20,6 +20,15 @@
       "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
     },
     {
+      "id": "melbourne-bayside",
+      "name": "Melbourne Bayside",
+      "country": "Australia",
+      "lat": -37.8918,
+      "lon": 144.9755,
+      "status": "live",
+      "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset."
+    },
+    {
       "id": "osaka",
       "name": "Osaka",
       "country": "Japan",
