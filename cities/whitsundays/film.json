@@ -1,0 +1,290 @@
+{
+  "id": "great-barrier-reef",
+  "name": "Great Barrier Reef",
+  "engine": "reef",
+  "date": [
+    11,
+    26
+  ],
+  "year": 2026,
+  "exposure": 1,
+  "poster": 24.5,
+  "credit": "Rendered live from the open-data reef model by tools/city_film.js; nothing in it is stock footage.",
+  "score": {
+    "root": 45,
+    "scale": [
+      0,
+      2,
+      4,
+      7,
+      9
+    ],
+    "chords": [
+      [
+        0,
+        2,
+        4
+      ],
+      [
+        3,
+        5,
+        7
+      ],
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        4,
+        6,
+        8
+      ]
+    ],
+    "motif": [
+      2,
+      4,
+      3,
+      1,
+      0
+    ],
+    "tempo": 68,
+    "voice": "bell",
+    "air": "harbour",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.8
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "site": "whitsundays",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [
+        900,
+        520,
+        4
+      ],
+      "to": [
+        1010,
+        480,
+        5
+      ],
+      "look": [
+        10100,
+        -3400,
+        40
+      ],
+      "fov": 26,
+      "time": [
+        "05:08",
+        "05:21"
+      ],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": [
+          "20.28°S 149.03°E",
+          "Sunrise over the Whitsunday Islands · 05:15 AEST",
+          "The real sun, moon and tide, for the day you watch"
+        ]
+      }
+    },
+    {
+      "id": "title",
+      "site": "whitsundays",
+      "dur": 5.5,
+      "type": "move",
+      "from": [
+        -1100,
+        3330,
+        220
+      ],
+      "to": [
+        -1150,
+        3520,
+        430
+      ],
+      "look": [
+        -800,
+        1900,
+        0
+      ],
+      "fov": 34,
+      "time": [
+        "06:40"
+      ],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 5.3,
+        "name": "Great Barrier Reef",
+        "sub": "Australia",
+        "figures": "Five reef sites · survey bathymetry at 30 m · Sentinel-2 at 10 m · the official tide"
+      }
+    },
+    {
+      "id": "heart",
+      "site": "hardy-reef",
+      "chapter": "Heart Reef",
+      "dur": 5,
+      "type": "orbit",
+      "at": [
+        8767,
+        -3654,
+        0
+      ],
+      "az": [
+        150,
+        175
+      ],
+      "dist": [
+        300,
+        200
+      ],
+      "h": [
+        2300,
+        1700
+      ],
+      "fov": 40,
+      "time": [
+        "08:20"
+      ],
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.7,
+        "eyebrow": "Hardy Reef · 75 km offshore",
+        "head": "Heart Reef from the air",
+        "text": "First spotted by a local pilot in 1975; at Sentinel-2's 10 m it is a bright speck in its pool."
+      },
+      "tint": [
+        1.02,
+        1,
+        0.97
+      ],
+      "sat": 1.12
+    },
+    {
+      "id": "reef",
+      "site": "heron-island",
+      "chapter": "Under water",
+      "dur": 5.5,
+      "type": "track",
+      "animal": {
+        "species": [
+          "green-turtle",
+          "hawksbill"
+        ],
+        "near": [
+          -800,
+          2000,
+          -0.5
+        ]
+      },
+      "az": [
+        60,
+        100
+      ],
+      "dist": 2.6,
+      "h": 1.2,
+      "fov": 55,
+      "under": true,
+      "time": [
+        "09:30"
+      ],
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 5.2,
+        "eyebrow": "Heron Reef · on the Tropic of Capricorn",
+        "head": "Under water",
+        "text": "On the reef flat, 3 m down, less than a third of the sun's red is left: the water is fitted to Sentinel-2."
+      },
+      "lookUp": -0.3
+    },
+    {
+      "id": "sail",
+      "site": "whitsundays",
+      "chapter": "Golden hour",
+      "dur": 6,
+      "type": "track",
+      "boat": {
+        "vessel": "Sundowner",
+        "from": [
+          1650,
+          -300
+        ],
+        "to": [
+          1700,
+          150
+        ],
+        "speed": 3.6,
+        "sails": "sail"
+      },
+      "az": [
+        80,
+        62
+      ],
+      "dist": 40,
+      "h": 3,
+      "fov": 30,
+      "time": [
+        "17:58"
+      ],
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 5.6,
+        "eyebrow": "Whitsunday Island",
+        "head": "Whitehaven Beach",
+        "text": "Seven kilometres of sand, 98% of it silica."
+      },
+      "ev": -0.3
+    },
+    {
+      "id": "night",
+      "site": "heron-island",
+      "chapter": "After dark",
+      "dur": 8,
+      "type": "move",
+      "from": [
+        -190,
+        1568,
+        3.4
+      ],
+      "to": [
+        -130,
+        1578,
+        3.6
+      ],
+      "look": [
+        1500,
+        1450,
+        5
+      ],
+      "fov": 36,
+      "time": [
+        "18:25",
+        "19:30"
+      ],
+      "timeEase": "inOut",
+      "fadeOut": 1.8,
+      "title": {
+        "kind": "end",
+        "at": 3.8,
+        "until": 8,
+        "name": "Great Barrier Reef",
+        "line": "The reef, the sun, the moon and the tide: open them."
+      },
+      "ev": 0.2
+    }
+  ],
+  "crf": 29
+}
