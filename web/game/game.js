@@ -225,7 +225,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const npcs = G.npcs.map(n => {
     const rig = makeRig(Object.assign({ scale: (n.look.character || '')[0] === 'W' ? 0.91 : 0.96 }, n.look));
     world.add(rig.root);
-    const f = nav.floorAt(n.at[0], n.at[1], 200);
+    const f = nav.floorAt(n.at[0], n.at[1], Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1)); // on the ground, or a deck or roof below 200 m
     const o = Object.assign({}, n, { rig, x: n.at[0], y: n.at[1], z: f ? f.z : 0, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
     o.marker.scale.multiplyScalar(1.4);
@@ -1363,7 +1363,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const target = waypoint || (ob && ob.at);
     updateRoute(clockT, player.mode === 'foot' ? target : null);
     beam.visible = !!target && !titleOn && Math.hypot(target[0] - (player.mode === 'heli' ? heli.st.x : player.x), target[1] - (player.mode === 'heli' ? heli.st.y : player.y)) > 45;
-    if (target) { const f = nav.floorAt(target[0], target[1], 300); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
+    if (target) { const f = nav.floorAt(target[0], target[1], Math.max(300, nav.terrain(target[0], target[1]) + 1)); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
     $('#gq-title').textContent = ob ? ob.title : (Q.length && LINES.every(lineDone) ? 'Free roam' : '');
     if (!titleOn) renderLines();
