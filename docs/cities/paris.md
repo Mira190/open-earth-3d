@@ -29,7 +29,7 @@ each roof's shape from the laser's profile over the surveyed eaves.
   street rise 20 m to its cornice. The 10,199 residential buildings of five floors
   or more that BD TOPO dates 1850 to 1914 have a median surveyed eaves height of
   20.1 m.
-- **Roofs are read from the laser.** 20,001 pitched roofs were profiled;
+- **Roofs are read from the laser.** 20,000 pitched roofs were profiled;
   50.2% are mansards or gambrels, and the median pitched roof rises
   4.8 m over its eaves. On the 485 roofs mappers tagged, the profile gets
   flat or pitched right 69% of the time, where the rules alone get 34%.
@@ -124,8 +124,11 @@ structures; the 95th percentile of its roof does not.
 
 ## 3. Roofs
 
-`IGNHeights.roof` reads each roof from the LiDAR over the surveyed eaves. It takes
-the median height in bands of distance from the walls:
+`IGNHeights.roof` reads each roof from the LiDAR over the surveyed eaves.
+`IGNHeights.roof_at` hands it to `build_scene.py` as a measured roof, the same path
+as the roofs measured from Project PLATEAU's LOD2 models in Kyoto. A roof shape
+mapped in OpenStreetMap still comes first. The profile takes the median height in
+bands of distance from the walls:
 - **flat:** the roof's core is less than 1 m above the eaves, whatever plant stands
   on it;
 - **mansard:** the roof gains 55% or more of its height within 2.6 m of the
@@ -141,14 +144,14 @@ of the buildings.
 
 | Measured roofs | Buildings |
 |---|---|
-| Gambrel (mansard with gables on party walls) | 7,693 |
+| Gambrel (mansard with gables on party walls) | 7,692 |
 | Gabled (343 with the ridge across) | 7,117 |
 | Flat | 6,519 |
 | Hipped | 2,845 |
 | Mansard | 2,346 |
-| **All buildings with a measured roof** | **26,520** |
+| **All buildings with a measured roof** | **26,519** |
 
-(The main roof of each building. Counted per solid, half of the 20,001 pitched
+(The main roof of each building. Counted per solid, half of the 20,000 pitched
 roofs are mansards or gambrels.)
 
 **The check.** On the 485 roofs that mappers tagged with a shape, the LiDAR profile
@@ -224,9 +227,8 @@ Paris on Foot sends a surveyor out from the Pont des Arts:
 - **The tower.** Henri paints the Eiffel Tower. Fly the helicopter under its first
   floor, then follow the river to the Louvre and land in the Tuileries.
 
-The survey is written in lines (`game.lines`), so it plays as three surveys side
-by side in the survey-lines engine. On the engine of this branch it plays as one
-chain.
+The survey is written in lines (`game.lines`). After Camille's prologue the river,
+the Left Bank and the tower open side by side, and her finale waits for all three.
 
 The Batobus runs on two lines through the seven Batobus landings mapped in
 OpenStreetMap, in the shared river-shuttle model. The crowd wears Paris colours,

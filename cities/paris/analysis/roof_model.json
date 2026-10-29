@@ -4,7 +4,7 @@
   "measured:hipped": 3774,
   "measured:flat": 7978,
   "measured:mansard": 2758,
-  "measured:gambrel": 8005,
+  "measured:gambrel": 8004,
   "measured:gabled": 7370,
   "fallback_flat": 64,
   "too_low": 260,
@@ -22,7 +22,7 @@
   "mapped:saltbox": 63,
   "mapped:gabled": 301,
   "mapped:gabled_across": 108,
-  "mapped:hipped": 317,
+  "mapped:hipped": 316,
   "prior:gabled_across": 18,
   "mapped:half-hipped": 2,
   "mapped:onion": 46,
@@ -34,6 +34,7 @@
   "n": 528,
   "flat_vs_pitched_accuracy": 0.333,
   "exact_shape_accuracy": 0.21,
+  "family_accuracy": 0.21,
   "pitched_recall": 0.173,
   "flat_recall": 0.897,
   "confusion_pitched": {
@@ -41,10 +42,67 @@
    "true_pitched_pred_flat": 340,
    "true_flat_pred_flat": 105,
    "true_flat_pred_pitched": 12
+  },
+  "truth": {
+   "gambrel": 136,
+   "flat": 117,
+   "gabled": 108,
+   "hipped": 85,
+   "mansard": 31,
+   "skillion": 31,
+   "round": 9,
+   "dome": 8,
+   "onion": 3
+  },
+  "vs_measured": {
+   "n": 26918,
+   "flat_vs_pitched_accuracy": 0.285,
+   "exact_shape_accuracy": 0.219,
+   "family_accuracy": 0.219,
+   "pitched_recall": 0.105,
+   "flat_recall": 0.858,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 2160,
+    "true_pitched_pred_flat": 18348,
+    "true_flat_pred_flat": 5502,
+    "true_flat_pred_pitched": 908
+   },
+   "truth": {
+    "gambrel": 7937,
+    "gabled": 6963,
+    "flat": 6410,
+    "hipped": 3042,
+    "mansard": 2566
+   }
+  },
+  "measured_vs_mapped": {
+   "n": 505,
+   "flat_vs_pitched_accuracy": 0.683,
+   "exact_shape_accuracy": 0.236,
+   "family_accuracy": 0.293,
+   "pitched_recall": 0.8,
+   "flat_recall": 0.287,
+   "confusion_pitched": {
+    "true_pitched_pred_pitched": 312,
+    "true_pitched_pred_flat": 78,
+    "true_flat_pred_flat": 33,
+    "true_flat_pred_pitched": 82
+   },
+   "truth": {
+    "gambrel": 135,
+    "flat": 115,
+    "gabled": 107,
+    "hipped": 77,
+    "mansard": 28,
+    "skillion": 28,
+    "round": 8,
+    "dome": 4,
+    "onion": 3
+   }
   }
  },
- "roofs_built": 24293,
- "rooftop_props": 69162,
+ "roofs_built": 24291,
+ "rooftop_props": 69165,
  "frontage_solids": 11259,
  "skeleton_failures": {
   "active": 141,
