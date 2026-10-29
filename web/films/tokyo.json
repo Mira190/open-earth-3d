@@ -1,0 +1,117 @@
+{
+ "id": "tokyo",
+ "name": "Tokyo",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/tokyo.mp4",
+ "poster": "films/tokyo.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "station",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "Tokyo Station"
+  },
+  {
+   "id": "ferry",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "The water bus"
+  },
+  {
+   "id": "tower",
+   "t0": 20,
+   "t1": 24.5,
+   "chapter": "Tokyo Tower"
+  },
+  {
+   "id": "ginza",
+   "t0": 24.5,
+   "t1": 29,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "35.67°N 139.76°E",
+    "Sunrise over Marunouchi · 06:21 JST",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Tokyo",
+   "native": "東京",
+   "sub": "Japan",
+   "figures": "15,400 buildings · 3.2 × 4.8 km · 76% of heights surveyed by PLATEAU"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Marunouchi",
+   "head": "Tokyo Station",
+   "text": "The red-brick station of 1914, restored in 2012, sold the air above it to the towers around it."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Hamarikyu to Hinode Pier",
+   "head": "The water bus",
+   "text": "Himiko, Hotaluna and Emeraldas run the Sumida's mouth on the timetable's legs."
+  },
+  {
+   "t0": 20.5,
+   "t1": 24.2,
+   "kind": "lower",
+   "eyebrow": "Shiba Park",
+   "head": "Tokyo Tower",
+   "text": "333 m, painted International Orange and white so that aircraft see it."
+  },
+  {
+   "t0": 25,
+   "t1": 28.7,
+   "kind": "lower",
+   "eyebrow": "Ginza 4-chome",
+   "head": "Walk it",
+   "text": "Talk to the people who know the city, ride the water bus, fly over Marunouchi."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Tokyo",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}
