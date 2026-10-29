@@ -146,6 +146,20 @@ The Hong Kong survey has six:
 The Star Ferry's routes are real; its timetable and which vessel runs which
 route are not.
 
+The Paris survey has seven stamps, written as three lines after a welcome on the
+Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
+- **The river:** Bernard, a bouquiniste, and the survey lens on a LiDAR-measured
+  roof; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
+  on the cathedral's roof.
+- **The Left Bank:** a chair in the sun in the Luxembourg at noon on 21 December;
+  Karim's café and Nadia's bakery.
+- **The tower:** fly under the Eiffel Tower's first floor and land in the
+  Tuileries.
+- **Report back** to Camille.
+
+On the Seine the helicopter takes the nearest span to fly under, and a step can
+name its span (`"surface"`).
+
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 **Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
@@ -599,7 +613,9 @@ the landing in Tamar Park, the sun step in Statue Square on 21 December, the
 five-minute Peak Tram ride (boarding, the climb to 397 m, getting off at the
 Peak) and the last talk at the lookout. A Melbourne script plays its six stamps the same way: the sun step at
 Federation Square on 22 June, the river shuttle to Crown Landing, and the
-flight to Birrarung Marr.
+flight to Birrarung Marr. A Paris script plays its seven: the Batobus to
+Notre-Dame, the winter sun in the Luxembourg, and the flight under the Eiffel
+Tower's first floor to the Tuileries.
 
 A bayside script walks all four stamps on foot:
 - **The pier:** it walks up the approach from the promenade and along the pier

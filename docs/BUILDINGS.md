@@ -56,7 +56,7 @@ What this project took from them:
 
 Each solid takes the first of these that applies:
 1. **Mapped.** A `roof_shape` on the building part, or on the building.
-2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto.
+2. **Measured.** The shape, pitch and height that a LOD2 model shows for the footprint (see [Measured roofs](#measured-roofs)). Today that is Kyoto. Paris measures its roofs from LiDAR over surveyed eaves instead (shape, height and material, but not the ridge's direction, so its gables still follow the street; see [the Paris case study](cities/paris.md#3-roofs)).
 3. **Flat by rule.** Five or more floors, a top of 20 m or more, or a footprint of 2,000 m² or more. Also commercial or industrial buildings over 600 m², and parts of a larger building.
 4. **Drawn from the region's prior** for the building's group:
    - house, semi-detached, terrace;
@@ -230,6 +230,20 @@ Osaka have built-in adjustments:
 | Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, backlit at night |
 | City adjustments | | Kyoto: machiya, signs at 0.35 (no rooftop or flashing signs by ordinance). Osaka: signs at 1.4 |
 
+**Paris** (`paris`, country FR) measures its roofs instead of drawing them. IGN's
+LiDAR over BD TOPO's surveyed eaves gives each roof its height and its shape
+(flat, mansard, hipped; gambrel or gabled where a third of the outline is party
+wall), with the land tax files' material; roof source `measured`
+(`pipeline/measured.py`, [the Paris case study](cities/paris.md#3-roofs)). The
+region's own rules:
+- roofs flush behind the cornice, ridges along the street, standing-seam zinc;
+- a `haussmann` facade style for stone blocks of four to eight floors: ashlar
+  courses, a rusticated base under a shop and its entresol, balconies along the
+  second and top floors, railings across the other French windows, a cornice;
+- dormers on the street side of mansards and tall attics, and chimney stacks on
+  the party walls (rooftop kinds 3 and 4, with an absolute base);
+- limestone palettes, and awnings over 45% of shopfronts.
+
 Sources for these numbers:
 - Woollahra DCP C1 Paddington and the City of Sydney terrace guidelines;
 - BlueScope's COLORBOND colour values;
@@ -268,6 +282,7 @@ on a CPU, SwiftShader):
 | Tokyo | 3.07 → 4.63 MB | 3,130 | 1.90 M vertices, 1.17 M triangles | 2.0 s |
 | Kyoto | 9.81 → 25.71 MB (2.67 → 8.90) | 45,866, most of them measured | 5.77 M vertices, 2.46 M triangles | 4.4 s |
 | Osaka | 11.12 → 24.60 MB (3.27 → 8.62) | 32,955 | 6.33 M vertices, 3.12 M triangles | 4.9 s |
+| Paris | new: 21.40 MB (8.71) | 24,294, 20,002 of them measured by LiDAR | 6.31 M vertices, 3.17 M triangles | 4.6 s |
 
 The roof meshes are most of the growth: 14.6 MB of Kyoto's file, about 320 bytes
 a roof. Delta-encoding their vertices would save only 2–11% after gzip, so the

@@ -34,6 +34,17 @@ window.OEPeople = (function () {
         W_Casual: 3, W_Formal: 2.5, W_Suit: 3.5, W_Worker: 0.6, W_Adventurer: 0.8, W_Punk: 0.15 },
     },
   };
+  // Paris: navy, black, grey and camel, white shirts, trench coats and the odd marinière; a city of
+  // many origins, so the widest range of skin
+  STYLES.paris = {
+    skin: ['#f6dccb', '#f1d1bb', '#ecc6aa', '#e3b592', '#d9a583', '#c68f6a', '#b07a55', '#8f5b3d', '#6e4430', '#4f3022'],
+    hair: ['#141010', '#1b1512', '#2a1e17', '#3b2a20', '#4a3222', '#6a4529', '#8c6339', '#b48a52', '#c9b48a', '#8c8580', '#cfcac4'],
+    tops: ['#1d2b4a', '#1d2b4a', '#141414', '#141414', '#3a3d42', '#6b6f75', '#c2a378', '#b8925e', '#f2efe8', '#e9e6df', '#7a2e33',
+      '#2f4a3c', '#9aa3a8', '#d7c6a5', '#4a3a2c', '#5b6b7a'],
+    legs: ['#1b1d22', '#1b1d22', '#23314a', '#2b3440', '#3a3d42', '#4b5563', '#c7b89a', '#5a4632', '#141414'],
+    weights: { M_Casual2: 3, M_Hoodie: 1.2, M_Suit: 2.5, M_Worker: 0.6, M_Beach: 0.3, M_Adventurer: 1, M_Punk: 0.3,
+      W_Casual: 3, W_Formal: 2.5, W_Suit: 2.2, W_Worker: 0.5, W_Adventurer: 1, W_Punk: 0.3 },
+  };
   STYLES.kyoto = Object.assign({}, STYLES.tokyo, {
     tops: ['#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#46604f', '#8a2f39', '#5b6b7a', '#c9c2b5', '#7a4e8f'],
   });
@@ -48,7 +59,7 @@ window.OEPeople = (function () {
   // stays on the body while it animates: leopard (tan with rosettes), tiger (yellow and black bands, a
   // Hanshin Tigers jersey), kuidaore (red and white bands), pinstripe, plaid. look.pattern2 overrides the
   // second colour. look.acc lists accessory ids, built from primitives and attached to bones.
-  const PAT = { leopard: 1, tiger: 2, kuidaore: 3, pinstripe: 4, plaid: 5 };
+  const PAT = { leopard: 1, tiger: 2, kuidaore: 3, pinstripe: 4, plaid: 5, mariniere: 6 };
   const PAT_GLSL = `
 vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   if (id < 0.5) return base;
@@ -61,6 +72,7 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   if (id < 2.5) return mix(base, c2.r < 0.0 ? vec3(0.012) : c2, step(0.55, fract(p.y * 8.0)));
   if (id < 3.5) return mix(base, c2.r < 0.0 ? vec3(0.75) : c2, step(0.5, fract(p.y * 7.0)));
   if (id < 4.5) return mix(base, c2.r < 0.0 ? vec3(0.45) : c2, 0.8 * step(0.86, fract(p.x * 55.0)));
+  if (id > 5.5) return mix(base, c2.r < 0.0 ? vec3(0.015, 0.024, 0.07) : c2, step(0.58, fract(p.y * 26.0))); // marinière: Breton stripes
   float a = step(0.78, fract(p.x * 28.0)), b = step(0.78, fract(p.y * 18.0));
   return base * (1.0 - 0.5 * a) * (1.0 - 0.5 * b) + (c2.r < 0.0 ? vec3(0.12, 0.02, 0.02) : c2) * a * b;
 }`;
@@ -120,6 +132,16 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     umbrella: { bone: 'WristR', build: (M, h) => [
       M(geo('umb', () => new THREE.CylinderGeometry(0.018, 0.028, 1.0, 8)), '#222a44', h.clone().add(V3(0, -0.4, 0.02))),
       M(geo('umbh', () => new THREE.CylinderGeometry(0.014, 0.014, 0.14, 6)), '#6a4a2a', h.clone().add(V3(0, 0.0, 0)))] },
+    beret: { bone: 'Head', build: (M, h, c, look) => [
+      M(geo('beret', () => new THREE.CylinderGeometry(0.14, 0.13, 0.04, 20)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, 0.15, -0.01)), null, null, 0.18),
+      M(geo('beretc', () => new THREE.CylinderGeometry(0.008, 0.008, 0.025, 6)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, 0.18, -0.01)))] },
+    baguette: { bone: 'WristR', build: (M, h) => [
+      M(geo('bag', () => new THREE.CylinderGeometry(0.028, 0.028, 0.62, 10).rotateZ(1.2)), '#c98a3e', h.clone().add(V3(0.02, 0.02, 0.06))),
+      M(geo('bagw', () => new THREE.BoxGeometry(0.075, 0.2, 0.065)), '#efe8da', h.clone().add(V3(0.0, -0.02, 0.06)))] },
+    cafe_tray: { bone: 'WristL', build: (M, h) => {
+      const out = [M(geo('ctray', () => new THREE.CylinderGeometry(0.17, 0.17, 0.012, 22)), '#b9bcbf', h.clone().add(V3(0, 0.08, 0.05)))];
+      for (let i = 0; i < 3; i++) out.push(M(geo('cup', () => new THREE.CylinderGeometry(0.03, 0.025, 0.06, 10)), i ? '#f4f1ea' : '#7a2e33', h.clone().add(V3(-0.07 + 0.07 * i, 0.12, 0.05 + 0.03 * (i % 2)))));
+      return out; } },
     flag: { bone: 'WristR', build: (M, h) => [
       M(geo('pole', () => new THREE.CylinderGeometry(0.012, 0.012, 1.3, 6)), '#8a8a8a', h.clone().add(V3(0, 0.3, 0.0))),
       M(geo('flag', () => new THREE.BoxGeometry(0.01, 0.2, 0.3)), '#d9262c', h.clone().add(V3(0, 0.85, -0.16)))] },

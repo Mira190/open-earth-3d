@@ -28,6 +28,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__city && document.getElementById("loader").hidden', null, { timeout: 300000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`, JSON.stringify(await p.evaluate(() => window.__buildings || null)));
+  await p.keyboard.press('Shift'); // a key skips the establishing shot, which would otherwise hold the camera
   fs.mkdirSync(outDir, { recursive: true });
   for (const v of views) {
     const ms = await p.evaluate(async v => {

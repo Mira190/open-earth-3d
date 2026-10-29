@@ -1,0 +1,84 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Jardin du Luxembourg",
+   "prod": 91.75,
+   "finer_samples": 91.78,
+   "finer_dsm": 91.47,
+   "finer_time": 91.87,
+   "reference": 91.58,
+   "lit_rays_leaving_extent_low_pct": 9.44,
+   "prod_minus_reference": 0.17,
+   "seconds": 81.56
+  },
+  {
+   "place": "Jardin des Tuileries",
+   "prod": 96.42,
+   "finer_samples": 96.42,
+   "finer_dsm": 96.27,
+   "finer_time": 96.46,
+   "reference": 96.27,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.15,
+   "seconds": 93.754
+  },
+  {
+   "place": "Champ de Mars",
+   "prod": 94.49,
+   "finer_samples": 94.43,
+   "finer_dsm": 94.25,
+   "finer_time": 94.56,
+   "reference": 94.26,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.23,
+   "seconds": 116.543
+  },
+  {
+   "place": "Place de la Concorde",
+   "prod": 99.08,
+   "finer_samples": 99.06,
+   "finer_dsm": 99.03,
+   "finer_time": 99.11,
+   "reference": 99.06,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.02,
+   "seconds": 30.344
+  },
+  {
+   "place": "Jardin du Palais Royal",
+   "prod": 78.49,
+   "finer_samples": 78.54,
+   "finer_dsm": 78.61,
+   "finer_time": 78.77,
+   "reference": 78.9,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.41,
+   "seconds": 19.148
+  },
+  {
+   "place": "Place Vendôme",
+   "prod": 62.75,
+   "finer_samples": 62.76,
+   "finer_dsm": 63.03,
+   "finer_time": 62.99,
+   "reference": 63.24,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.49,
+   "seconds": 12.633
+  },
+  {
+   "place": "Parvis Notre-Dame",
+   "prod": 78.59,
+   "finer_samples": 78.64,
+   "finer_dsm": 78.23,
+   "finer_time": 78.85,
+   "reference": 78.54,
+   "lit_rays_leaving_extent_low_pct": 0.31,
+   "prod_minus_reference": 0.05,
+   "seconds": 8.324
+  }
+ ],
+ "max_abs_numerical_error_pp": 0.49
+}

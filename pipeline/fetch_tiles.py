@@ -15,6 +15,8 @@
            "tile_index": a GeoJSON index of zipped GeoTIFF tiles in a projected CRS
                          (`index`, `url_field`, `crs`), mosaicked at `pixel_m`; Hong
                          Kong's 2020 LiDAR terrain is published this way
+           "wms_bil": an OGC WMS GetMap of float32 BIL rasters (`layer`, a projected `crs`,
+                      `pixel_m`), e.g. IGN's LiDAR HD bare earth in Lambert-93 (France)
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -284,12 +286,16 @@ def main():
         mbbox, size = dem_wcs(bbox, tc, city.raw)
     elif tc["type"] == "tile_index":
         mbbox, size = dem_tile_index(bbox, tc, city.raw)
+    elif tc["type"] == "wms_bil":
+        from fetch_ign import lambert_bbox, wms_bil
+        mbbox, size = wms_bil(tc["layer"], tc["crs"], lambert_bbox(bbox, crs=tc["crs"]), tc.get("pixel_m", 2.0), os.path.join(city.raw, "dem.tif"), url=tc["url"])
     else:
         raise SystemExit(f"unknown terrain type {tc['type']}")
     # frame_crs: the datum the local frame's longitudes and latitudes are taken in when converting to
-    # the DEM's CRS (GDA2020 for the Australian cities, within 0.5 m of WGS84 there)
-    json.dump({"crs": tc.get("crs", "EPSG:4283") if tc["type"] in ("wcs", "tile_index") else "EPSG:3857", "frame_crs": tc.get("frame_crs", "EPSG:7844"),
-               "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
+    # the DEM's CRS (GDA2020 for the Australian cities, within 0.5 m of WGS84 there; WGS84 for IGN's)
+    crs = tc.get("crs", "EPSG:4283") if tc["type"] in ("wcs", "tile_index", "wms_bil") else "EPSG:3857"
+    frame = tc.get("frame_crs", "EPSG:4326" if tc["type"] == "wms_bil" else "EPSG:7844")
+    json.dump({"crs": crs, "frame_crs": frame, "bbox": mbbox, "size": list(size), "source": tc["type"], "bare_earth": tc.get("bare_earth", False)},
               open(os.path.join(city.raw, "dem.json"), "w"))
     print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
     sc = cfg.get("surface_check")  # a LiDAR surface model, for analysis/lidar_heights.py

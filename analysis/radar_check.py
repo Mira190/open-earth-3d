@@ -77,10 +77,10 @@ def main():
     if json.load(open(os.path.join(C.raw, "dem.json"))).get("source") == "terrarium":
         raise SystemExit(f"{C.id}: terrain is Terrarium itself, so there is no independent excess to measure")
     B = json.load(open(os.path.join(C.out, "buildings.json")))
-    dem = load_dem(C)
+    dem = load_dem(C, absolute=True)
     ny, nx = dem.shape
     excess = terrarium_grid(C, nx, ny) - dem
-    land = dem > 1.0
+    land = dem - C.cfg.get("datum_offset_m", 0.0) > 1.0  # above the water plane
     h, owner = model_grid(C, nx, ny, B)
     tb = test_building(C, B)
     variants = [("model", h)]

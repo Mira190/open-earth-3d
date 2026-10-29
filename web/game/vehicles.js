@@ -236,14 +236,19 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     world.add(g);
     const st = { x: pad[0], y: pad[1], z: pad[2], h: 0.6, vx: 0, vy: 0, vz: 0, yawRate: 0, pitch: 0, roll: 0, rotor: 0, on: false, landed: true,
       speed: 0, under: null, side: 0, fwd: 0, lift: 0 };
-    // near the main span: position across the deck (v) and the deck height on the axis
+    // the nearest span that can be flown under (a city may have many bridges close together):
+    // position across the deck (v) and the deck height on the axis
     const deckBottomAt = (x, y) => {
+      let best = null, bestD = Infinity;
       for (const s of nav.strips) {
         if (!s.fly_under) continue;
-        const [u, v] = nav.stripUV(s, x, y);
-        if (Math.abs(u) < 240 && Math.abs(v) < 250) return { u, v, s, z: nav.stripHeight(s, s.origin[0] + s.axis[0] * u, s.origin[1] + s.axis[1] * u) };
+        const [u, v] = nav.stripUV(s, x, y), p = s.profile, u0 = p[0][0], u1 = p[p.length - 1][0];
+        if (u < u0 - 40 || u > u1 + 40 || Math.abs(v) > 250) continue;
+        const d = Math.max(0, u0 - u, u - u1) + Math.max(0, Math.abs(v) - s.half_width);
+        if (d < bestD) { bestD = d; best = { u: Math.min(Math.max(u, u0), u1), v, s }; }
       }
-      return null;
+      if (best) best.z = nav.stripHeight(best.s, best.s.origin[0] + best.s.axis[0] * best.u, best.s.origin[1] + best.s.axis[1] * best.u);
+      return best;
     };
     function update(dt, inp, events) {
       const spool = st.on ? 1 : 0;
@@ -282,11 +287,12 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       // under the bridge: a crossing from one side of the deck to the other while below it
       const d = deckBottomAt(nx, ny);
       if (d && d.z != null) {
-        const below = nz + 3.8 < d.z - 3.0;
+        const below = nz + 3.8 < d.z - (d.s.thickness || 3.0);
+        if (st.under && st.under.s !== d.s) st.under = null;
         if (Math.abs(d.v) > d.s.half_width + 4) {
           const side = Math.sign(d.v);
-          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge', name: d.s.label || d.s.name });
-          st.under = { side, ok: true };
+          if (st.under && st.under.side !== side && st.under.ok) events.push({ type: 'under_bridge', name: d.s.label || d.s.name, surface: d.s.name });
+          st.under = { side, ok: true, s: d.s };
         } else if (st.under && !below) st.under.ok = false;
       } else st.under = null;
       st.x = nx; st.y = ny; st.z = nz;

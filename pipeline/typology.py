@@ -17,9 +17,9 @@ import numpy as np
 
 # facade styles; the viewer and Blender read the same codes
 STYLES = ["plain", "house", "terrace", "apartment", "office", "glass", "heritage", "retail", "industrial", "civic",
-          "machiya", "mixed", "stone"]
+          "machiya", "mixed", "stone", "haussmann"]
 STYLE_CODE = {s: i for i, s in enumerate(STYLES)}
-ROOF_MATERIALS = ["membrane", "gravel", "concrete", "tile", "metal", "slate", "kawara", "copper", "glass", "green"]
+ROOF_MATERIALS = ["membrane", "gravel", "concrete", "tile", "metal", "slate", "kawara", "copper", "glass", "green", "zinc"]
 
 HOUSE = {"house", "detached", "semidetached_house", "bungalow", "cabin", "farm", "static_caravan"}
 TERRACE = {"terrace"}
@@ -144,9 +144,49 @@ REGIONS = {
             "unknown_low": {"flat": 0.65, "gabled": 0.25, "skillion": 0.1},
         },
     },
+    # Paris: the Haussmann block (building rules of 1859, 1884 and 1902): six or seven floors of
+    # Lutetian limestone ashlar under a mansard of zinc over slate, shops and an entresol at street
+    # level. Roofs over surveyed eaves are measured (LiDAR HD); the priors below only serve the
+    # few buildings the LiDAR does not see. Zinc covers about 80% of Paris roofs (APUR); the
+    # land tax files give the material of half the buildings.
+    "paris": {
+        "pitch": {"zinc": 40, "slate": 45, "tile": 35, "metal": 30, "copper": 40},
+        "roof_cap_m": 9.0,
+        "roofs": {
+            "house": {"mansard": 0.35, "gabled": 0.35, "hipped": 0.3},
+            "terrace": {"mansard": 0.5, "gabled": 0.3, "flat": 0.2},
+            "flats_low": {"mansard": 0.55, "flat": 0.3, "gabled": 0.15},
+            "small": {"flat": 0.5, "skillion": 0.35, "gabled": 0.15},
+            "worship": {"gabled": 0.8, "hipped": 0.2},
+            "civic_low": {"mansard": 0.4, "flat": 0.4, "hipped": 0.2},
+            "commercial_low": {"flat": 0.6, "mansard": 0.25, "skillion": 0.15},
+            "unknown_low": {"mansard": 0.4, "flat": 0.35, "gabled": 0.25},
+        },
+        "pitched_material": {"zinc": 0.7, "slate": 0.25, "tile": 0.05},
+        "material_by_group": {"worship": {"slate": 0.6, "copper": 0.2, "zinc": 0.2}, "small": {"zinc": 0.8, "tile": 0.2}},
+        "awning": 0.45,
+        "storefront_classes": {"retail", "commercial", "office", "hotel", "supermarket", "apartments"},
+        "haussmann": True,
+        # roofs slope to the street and the courtyard between party walls; they sit behind the
+        # cornice with no eaves past the wall; cadastral outlines carry jogs of a few centimetres
+        "ridge_follows_street": {"apartments", "residential", "commercial", "retail", "office", "hotel", "house", "terrace", ""},
+        "overhang_scale": 0.0,
+        "roof_simplify_m": 0.25,
+        # Lutetian limestone, fresh to weathered; painted render on the older faubourg houses;
+        # millstone grit (meulière) and brick are rare inside the boulevards
+        "palettes": {
+            "haussmann": ["#e4d8bf", "#dccfb3", "#e9dfca", "#d6c7a9", "#cfc0a3", "#ded3bd", "#e6dcc7", "#d2c4a8"],
+            "apartment": ["#e1d6c1", "#d8ccb4", "#e8e0cf", "#cdbfa6", "#e5ded2", "#d3c7b2", "#bfae92"],
+            "heritage": ["#d9cbac", "#cfbf9e", "#e0d4b9", "#c9b893"],
+            "office": ["#d8cfbf", "#c9c2b5", "#e0d8c8", "#bfb7a8", "#a9a49a"],
+            "civic": ["#ddd1b8", "#d2c5a9", "#e3d9c4"],
+            "retail": ["#e1d6c1", "#d8ccb4", "#e6dcc7"],
+            "house": ["#e6ddcc", "#d8c9ad", "#c2a17f", "#e3d6bd"],
+        },
+    },
 }
 # a city without an "architecture" key takes its country's rules
-BY_COUNTRY = {"AU": "sydney", "JP": "japan", "HK": "hong_kong"}
+BY_COUNTRY = {"AU": "sydney", "JP": "japan", "HK": "hong_kong", "FR": "paris"}
 # and some cities differ from their country: Kyoto keeps machiya and bans lit and rooftop
 # signs; Osaka's Minami is the most signed of the four
 BY_CITY = {"kyoto": {"machiya": True, "signage": 0.35}, "osaka": {"signage": 1.4}}
@@ -166,6 +206,7 @@ PALETTES = {
     "machiya": ["#4a3b2e", "#5a4a3a", "#3f342b"],
     "mixed": ["#d8d4cb", "#c2c3c0", "#e6e3dc", "#a9abaa", "#cfc9bd"],
     "stone": ["#b9ad9c", "#a99d8b"],
+    "haussmann": ["#e4d8bf", "#dccfb3", "#d6c7a9", "#e6dcc7"],
 }
 
 
@@ -248,6 +289,8 @@ ROOF_COLOURS = {
     "slate": [("#404857", 0.5), ("#4a4f5a", 0.3), ("#3d434c", 0.2)],
     "kawara": [("#6d6d6d", 0.5), ("#474848", 0.3), ("#5a5c5e", 0.2)],
     "copper": [("#4c8479", 1.0)],
+    # rolled zinc, weathered to its blue-grey patina; Paris roofers' slate is Angers blue-black
+    "zinc": [("#6f7a80", 0.35), ("#7d878c", 0.3), ("#636d73", 0.2), ("#8a9296", 0.15)],
 }
 JAPAN_METAL = [("#3c3c3c", 0.35), ("#606060", 0.25), ("#4f463e", 0.2), ("#939393", 0.2)]
 
@@ -278,7 +321,7 @@ def roof_material(R, shape, mapped_material, roof_hex, top, seed, group=None):
     out to tell sheet metal from weathered tile."""
     m = {"roof_tiles": "tile", "tile": "tile", "metal": "metal", "slate": "slate", "concrete": "concrete",
          "glass": "glass", "grass": "green", "copper": "copper", "gravel": "gravel", "tar_paper": "membrane",
-         "asphalt": "membrane", "eternit": "slate", "stone": "slate", "plants": "green", "thatch": "tile"}.get(mapped_material or "")
+         "asphalt": "membrane", "eternit": "slate", "stone": "slate", "plants": "green", "thatch": "tile", "zinc": "zinc"}.get(mapped_material or "")
     japan = "kawara" in R["pitched_material"]
     if m:
         return "kawara" if japan and m == "tile" else m  # roof tiles in Japan are kawara, not terracotta
@@ -328,6 +371,10 @@ def facade_style(R, cls, top, floors, area, facade_material, name, seed, overrid
         return "plain"
     if facade_material == "glass" or top >= 80 or (cls in {"office", "commercial"} and top >= 40 and unit(seed, 3) < 0.85):
         return "glass"
+    # Paris: a stone block of five to eight floors on a street is a Haussmann building, whatever its use
+    if R.get("haussmann") and (cls in FLATS | {"commercial", "retail", "office", ""} or not cls) and 13 <= top <= 38 \
+            and (floors or round(top / 3.2)) >= 4 and facade_material in (None, "stone", "plaster") and area >= 80:
+        return "haussmann"
     if facade_material in ("stone", "brick") and cls in HERITAGE | {"", None} and top <= 50:
         return "heritage"
     if cls in {"church", "cathedral", "chapel", "synagogue", "temple", "shrine", "mosque"}:
@@ -370,21 +417,23 @@ def facade_style(R, cls, top, floors, area, facade_material, name, seed, overrid
 # eaves past the walls on pitched roofs, metres: Federation houses 0.45-0.6, shallow on
 # terraces between party walls, deep (0.6-0.9) on machiya
 OVERHANG = {"house": 0.45, "terrace": 0.25, "apartment": 0.35, "civic": 0.35, "heritage": 0.3, "office": 0.3, "retail": 0.3,
-            "industrial": 0.3, "plain": 0.15, "machiya": 0.75, "mixed": 0.3}
+            "industrial": 0.3, "plain": 0.15, "machiya": 0.75, "mixed": 0.3, "haussmann": 0.45}
 
 STOREY = {"plain": 3.0, "house": 2.9, "terrace": 3.2, "apartment": 3.0, "office": 3.8, "glass": 3.9, "heritage": 4.6,
-          "retail": 4.2, "industrial": 6.0, "civic": 4.0, "machiya": 2.9, "mixed": 3.3, "stone": 4.0}
+          "retail": 4.2, "industrial": 6.0, "civic": 4.0, "machiya": 2.9, "mixed": 3.3, "stone": 4.0, "haussmann": 3.05}
 # the tallest storey a style takes from a floor count; above the top floor the rest of the
 # wall is attic or parapet (a residential floor-count height includes 2.8 m of roof)
 STOREY_MAX = {"plain": 6.0, "house": 3.3, "terrace": 3.5, "apartment": 3.3, "office": 4.4, "glass": 4.5, "heritage": 5.5,
-              "retail": 5.0, "industrial": 8.0, "civic": 5.0, "machiya": 3.2, "mixed": 3.8, "stone": 6.0}
-STOREFRONT_STYLES = {"office", "glass", "retail", "apartment", "heritage", "mixed"}
+              "retail": 5.0, "industrial": 8.0, "civic": 5.0, "machiya": 3.2, "mixed": 3.8, "stone": 6.0, "haussmann": 3.4}
+STOREFRONT_STYLES = {"office", "glass", "retail", "apartment", "heritage", "mixed", "haussmann"}
 
 
 def storeys(style, wall_h, floors, storefront):
     """(storey height, ground-floor height) that fit the wall height and floor count"""
     s0 = STOREY[style]
     g_extra = 1.1 if storefront else (0.6 if style in ("office", "glass", "heritage", "civic") else 0.0)
+    if style == "haussmann":  # the shop and its entresol share one tall stone base
+        g_extra = 2.6 if storefront else 1.2
     if floors and floors > 0:
         if floors == 1:
             return round(min(max(wall_h, 2.6), 8.0), 2), round(min(max(wall_h, 2.6), 8.0), 2)

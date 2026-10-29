@@ -46,7 +46,7 @@ def terrarium_vs_dem(C):
     meta = json.load(open(os.path.join(C.raw, "dem.json")))
     if meta.get("source") == "terrarium":
         return {"skipped": "the city's terrain is Terrarium itself; there is no bare-earth DEM to compare with"}
-    dem = load_dem(C)
+    dem = load_dem(C, absolute=True)
     tiles = {}
 
     def terr_at(lon, lat, z=15):

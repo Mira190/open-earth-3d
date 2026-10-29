@@ -29,7 +29,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 |---|---|---|
 | Vector data | `fetch_overture.py` | Buildings, building parts, water, land, land use, infrastructure, addresses and road segments in the bbox (DuckDB, anonymous S3) |
 | Measured heights | `fetch_plateau.py` (backends `plateau_citygml.py`, `plateau_3dtiles.py`, vector tiles) | `data/raw/<id>/plateau.json`: Project PLATEAU footprints with measured heights, from a city's CityGML or 3D Tiles zip (HTTP range reads of the parts inside the bbox, no full download) or a vector-tile mirror of the LOD2 roof faces |
-| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS or a GeoJSON index of GeoTIFF tiles), a LiDAR surface model where the city has one (`dsm.tif`), and Terrarium tiles for the radar check |
+| Measured heights (France) | `fetch_ign.py` | `data/raw/<id>/bdtopo_batiment.json` (IGN BD TOPO buildings over WFS) and `lidar_mnh.tif`, `lidar_mnt.tif` (IGN LiDAR HD over WMS-R, float32 BIL in tiles); read by `measured.py` behind the PLATEAU interface |
+| Rasters | `fetch_tiles.py` | Imagery tiles, the DEM (`dem.tif` + `dem.json`, from an ArcGIS ImageServer, an OGC WCS, an OGC WMS serving float BIL or a GeoJSON index of GeoTIFF tiles), a LiDAR surface model where the city has one (`dsm.tif`), and Terrarium tiles for the radar check |
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
@@ -69,7 +70,12 @@ height, and the viewer shows it.
    more than 30% (plus 6 m) taller than the survey, which means the building is newer than
    the survey and OSM keeps it. **plateau_lod1** is PLATEAU's block height for a building
    with no survey record.
-2c. **survey** and **lidar**, where the city publishes them (`survey.py`):
+2c. **lidar** and **bdtopo** (cities with an `ign` block): the 95th percentile of IGN's LiDAR HD
+   inside the footprint, every part measured on its own and footprints cut into
+   levels where the laser sees them; **bdtopo** where the LiDAR is blank, BD TOPO's
+   surveyed eaves plus the median measured roof. An OSM height far above the laser
+   is a spire, not a newer building, so the laser wins.
+2d. **survey** and **lidar** (cities with a `survey` or `surface_check` block, `survey.py`):
    - a mapping agency's surveyed top level. Each footprint is cut along the
      agency's building blocks, tallest first, and each block goes to the
      footprint it fits best, so a tower's block is not cut into a podium
