@@ -462,9 +462,15 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
       world.add(deck);
     }
 
-    // trees mapped in OSM: low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
+    // trees mapped in OSM: the shared Blender species (trees.js) in the city's mix, else
+    // low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
     const TR = P.trees || [], nT = TR.length / 4;
-    if (nT) {
+    let trees = null;
+    if (nT && window.OETrees) {
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, south: D.CITY.lat < 0 }); }
+      catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
+    }
+    if (nT && !trees) {
       const crownGeo = new THREE.IcosahedronGeometry(1, 1);
       const trunkGeo = new THREE.CylinderGeometry(0.2, 0.28, 1, 5);
       trunkGeo.translate(0, 0.5, 0);
@@ -514,7 +520,7 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, sea, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth}; returns the daylight factor 0..1
       setSun(sp) {
@@ -548,8 +554,13 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
         sunLight.target.position.copy(target);
         sunLight.position.copy(target).addScaledVector(api.sunDir, 4500);
       },
-      // per frame, before the render: the waves (and their reflection) for this camera
-      tick(t, camera) { if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025); },
+      // the date, for what flowers when (local month and day)
+      setSeason(month, day) { if (trees) trees.setSeason(month, day); },
+      // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
+      tick(t, camera) {
+        if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
+        if (trees && camera) trees.update(camera, t / 1000);
+      },
       dispose() { if (envRT) envRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); },
     };
     return api;

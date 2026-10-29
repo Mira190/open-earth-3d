@@ -192,6 +192,7 @@ window.OpenEarthCity = async function main(cityId) {
     const sp = S.position(utc);
     sunPos = sp;
     Wd.setSun(sp);
+    Wd.setSeason(state.m, state.d);
     if (show) show.setClock(state.min);
     sunDir = Wd.sunDir;
     const loc = S.utcToLocal(utc);

@@ -67,6 +67,7 @@
     "clarity_m": 0.6,
     "colour_note": "The Yarra is turbid with suspended clay, brown-green with well under a metre of visibility."
   },
+  "trees": {"mix": {"elm": 0.34, "plane": 0.3, "gum": 0.2, "palm": 0.06, "fig": 0.05, "jacaranda": 0.05}, "note": "Species are not mapped; the mix is a guess: the elm and plane avenues of the CBD and parks, eucalypts along the river."},
   "storey": {
     "res": [
       3.0,
@@ -570,6 +571,10 @@
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Melbourne has no regular ferry through the city, only river cruises and the Port Phillip Ferries from Docklands, so this river shuttle and its vessel names are invented. Victoria Harbour meets the Yarra just west of the model, so the shuttle stops short of Docklands. Routes are generated through the river, and boats run at 1.5 times a cruise boat's speed. At a wharf you can skip the wait.",
     "ferry_speed_ms": 6.0,
+    "vehicles": {
+      "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). The river shuttle takes its colours and length from ferry_style; the cars' taxis and buses take the city's colours.",
+      "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}, "note": "Melbourne's metropolitan taxis are yellow; the buses carry the PTV orange (approximate)."}
+    },
     "links": [
       {
         "id": "melbourne-bayside",
@@ -578,6 +583,7 @@
       }
     ],
     "ferry_style": {
+      "model": "river",
       "length_m": 22,
       "beam_m": 6.5,
       "hull": "#1d3557",

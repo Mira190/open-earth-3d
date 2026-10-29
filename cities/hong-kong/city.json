@@ -169,13 +169,27 @@
     "ferry_note": "Piers, berths and the heliport are from OpenStreetMap via Overture. The Star Ferry's two routes are real; the vessel names are from its fleet, but which vessel runs which route, and the timetable, are not. Ferries run at 1.5 times their service speed and wait 20 s at each pier. At a pier you can skip the wait.",
     "ferry_speed_ms": 6.5,
     "ferry_style": {
-      "length_m": 40,
-      "beam_m": 9,
+      "model": "harbour",
+      "length_m": 33.8,
+      "beam_m": 8.6,
       "hull": "#1f5e3b",
       "trim": "#f3f3ee",
       "upper": "#f3f3ee",
       "flag": "#c8102e",
-      "note": "The Star Ferry's green hull and white upper deck; the dimensions are approximate."
+      "note": "The Star Ferry's bottle-green hull and ivory upper deck; Shining Star is 33.76 m by 8.6 m (Star Ferry), the only vessel whose size is published."
+    },
+    "vehicles": {
+      "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). Hong Kong registers its aircraft B-H..., not under China's B- prefix. The ferries take their colours and length from ferry_style.",
+      "helicopter": {"livery": "survey", "registration": "B-HOE"},
+      "cars": {
+        "taxi": {
+          "colours": ["#c8102e"],
+          "band": "#c8102e",
+          "share": 0.16
+        },
+        "bus": {"colour": "#f2c500", "band": "#c8102e"},
+        "note": "The urban taxis are red, and common; Citybus's buses are yellow with a red band (approximate), and single-deck here, where most of Hong Kong's are double-deckers."
+      }
     },
     "helipads": [
       {
