@@ -433,7 +433,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     card.classList.remove('on', 'has-film');
     void card.offsetWidth;
     card.classList.add('on');
-    if (window.OEFilm && !d.sites) OEFilm.card(card, d.c, { go: play => dive(d, play) }); // the city's film, if it has one (film.js)
+    // the city's film, if it has one (film.js); a group of sites has one film, named after the group
+    if (window.OEFilm) OEFilm.card(card, d.sites ? { id: d.id.replace(/^group-/, '').toLowerCase().replace(/\W+/g, '-'), name: d.name, country: d.country, game: false } : d.c,
+      { go: play => (d.sites ? dive(d, false, d.sites[0]) : dive(d, play)) });
   }
   on(card, 'click', e => {
     const b = e.target.closest('button');

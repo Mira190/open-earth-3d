@@ -150,8 +150,21 @@ window.OEFilmDirector = (function () {
     }
   }
 
+  // the game's own guides stay out of the film: the objective's beam, the gold route on the
+  // ground and the markers over the people who have a quest (the game shows them again each frame)
+  function hideGuides() {
+    for (const o of G.atmos.composer.passes[0].scene.children) {
+      const m = o.material;
+      if (!m) continue;
+      const p = o.geometry && o.geometry.parameters;
+      if (m.isLineDashedMaterial || (p && p.height === 90 && m.blending === THREE.AdditiveBlending)) m.visible = false;
+    }
+    for (const n of G.npcs || []) if (n.marker) n.marker.traverse(q => { if (q.material) q.material.visible = false; });
+  }
+
   // set the frame at film time t; the game's next frame draws it
   function apply(t) {
+    hideGuides();
     const s = shotAt(t);
     if (s !== cur) { cur = s; enter(s); }
     const k = clamp((t - s.t0) / s.dur);
