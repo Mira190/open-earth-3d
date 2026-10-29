@@ -306,7 +306,10 @@ test hook.
 - **The boats are not real.** The two river routes follow the landings
   mapped in OpenStreetMap; the timetable, the speed (9 m/s) and the vessel
   names are invented. The Tombori River Cruise is split into two short routes
-  so that a boat at a landing always goes the way the quest wants.
+  so that a boat at a landing always goes the way the quest wants. Every boat
+  is the shared river shuttle, 20 m long, in an approximate white and blue.
+- **The trees are stand-ins.** The shared trees have no ginkgo or cherry, so
+  Midosuji's ginkgos are drawn as plane trees, and the zelkovas as elms.
 - **No Blender render** of Osaka has been made.
 
 ## 10. Reproducing it

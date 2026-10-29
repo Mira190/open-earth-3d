@@ -50,6 +50,7 @@
     "min_area_m2": 5000,
     "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
   },
+  "trees": {"mix": {"elm": 0.6, "plane": 0.4}, "note": "Species are not mapped, and the shared trees have no ginkgo, cherry or maple, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and temple grounds, plane trees for the street planes and ginkgos. A guess, not a survey."},
   "storey": {
     "res": [
       3.0,

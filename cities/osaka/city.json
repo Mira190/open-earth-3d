@@ -63,6 +63,7 @@
     ],
     "min_area_m2": 800
   },
+  "trees": {"mix": {"plane": 0.55, "elm": 0.45}, "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: plane trees for Midosuji's ginkgos and the London planes, elms for the zelkovas (keyaki). A guess, not a survey."},
   "storey": {
     "res": [
       3.6,
@@ -473,6 +474,7 @@
         "terminal": "堂島浜船着場"
       }
     ],
+    "ferry_style": {"model": "river", "length_m": 20, "beam_m": 6, "hull": "#f2f2ee", "trim": "#1f4e9c", "upper": "#f5f5f2", "flag": "#c8102e", "note": "The shared river shuttle, a little shorter, stands in for the Tombori cruise boats and the Aqua Liner; the white and blue are approximate."},
     "ferries": [
       {
         "route": "Tombori River Cruise (west)",

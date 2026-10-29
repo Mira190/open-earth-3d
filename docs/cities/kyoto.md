@@ -103,3 +103,5 @@ verified for this project.
   above 31 m (1,340) and 45 m (65) are from the model, and inherit the PLATEAU question in section 1.
 - The Kyoto Tower radii and observation-deck shape are an approximation.
 - The `accuracy` panel compares PLATEAU with OSM-mapped heights, not with published tower heights.
+- The trees are stand-ins: the shared trees have no ginkgo, cherry or maple, so the zelkovas
+  are drawn as elms and the street planes and ginkgos as plane trees (`trees.mix`).
