@@ -1,0 +1,1380 @@
+{
+  "id": "shibuya",
+  "name": "Shibuya & Shinjuku",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Sangenjaya to Shibuya, Shinjuku and Yotsuya from open data, lit by the real sun: Project PLATEAU's surveyed heights, the Shibuya scramble, the Suga Shrine stairs of Your Name, and the streets Persona 5 drew.",
+  "bbox": [
+    139.6655,
+    35.6395,
+    139.7275,
+    35.6975
+  ],
+  "origin": [
+    139.6965,
+    35.6685
+  ],
+  "extent_m": [
+    -2700,
+    2700,
+    -3100,
+    3100
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "classes": [],
+    "min_area_m2": 5000,
+    "sea": false,
+    "note": "No sea and no open river: the Shibuya River runs in a culvert under the station, and the ponds of Shinjuku Gyoen and Meiji Jingu are left to the aerial photo, since the viewer's water plane sits at sea level and the ground here is 20-45 m above it."
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.6,
+      "plane": 0.4
+    },
+    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Shibuya scramble": [
+      139.70046,
+      35.65949
+    ],
+    "Suga Shrine": [
+      139.72254,
+      35.68528
+    ],
+    "Sangenjaya": [
+      139.6702,
+      35.6437
+    ],
+    "Shinjuku Station": [
+      139.7006,
+      35.6896
+    ]
+  },
+  "start": {
+    "date": [
+      10,
+      29
+    ],
+    "time": "16:30",
+    "cam": [
+      2600,
+      -4300,
+      1900
+    ],
+    "tgt": [
+      300,
+      -300,
+      40
+    ]
+  },
+  "tour": [
+    {
+      "title": "Sangenjaya to Shinjuku, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height that Project PLATEAU surveyed, on GSI's laser-scanned bare earth under GSI aerial photographs.",
+      "cam": [
+        2600,
+        -4300,
+        1900
+      ],
+      "tgt": [
+        300,
+        -300,
+        40
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "15:30",
+      "to": "16:10",
+      "hold": 8
+    },
+    {
+      "title": "The scramble",
+      "text": "Four streets meet at Shibuya's scramble, and when the lights change every crossing goes green at once, the diagonal too. The white bars are drawn from OpenStreetMap's crosswalks. Hachiko sits on his granite to the south.",
+      "cam": [
+        208.7,
+        -1150.6,
+        120
+      ],
+      "tgt": [
+        368.7,
+        -1000.6,
+        16
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "17:10",
+      "to": "17:40",
+      "hold": 9
+    },
+    {
+      "title": "SHIBUYA SKY, 229 m",
+      "text": "On Scramble Square's roof (2019): about 2,500 m² of open deck at {landmark:shibuya_sky.deck_m} m, glass at the edge, GEO COMPASS in the middle and the escalator coming up out of the 46th floor.",
+      "cam": [
+        264.5,
+        -1052.1,
+        331.8
+      ],
+      "tgt": [
+        518.4,
+        -1124.3,
+        241.8
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "16:20",
+      "to": "16:50",
+      "hold": 9
+    },
+    {
+      "title": "The stairs of Suga Shrine",
+      "text": "{landmark:suga.otokozaka.steps} stone steps, three and a half metres wide, red iron handrails both sides and down the middle: the 男坂 of Suga Shrine, the stairs of Your Name. The film turns ten this year.",
+      "cam": [
+        2478.1,
+        1882.6,
+        44.7
+      ],
+      "tgt": [
+        2426.1,
+        1832.8,
+        29.5
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "16:35",
+      "to": "16:55",
+      "hold": 10
+    },
+    {
+      "title": "Sangenjaya's triangle",
+      "text": "Between Setagaya-dori and Route 246, the backstreets of Sangenjaya: a bathhouse, a snack bar, a meat shop open all night. A game drew its home town here and called it Yongen-Jaya.",
+      "cam": [
+        -2441.0,
+        -3014.5,
+        104.0
+      ],
+      "tgt": [
+        -2468.8,
+        -2858.9,
+        38.0
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "17:20",
+      "to": "17:50",
+      "hold": 9
+    },
+    {
+      "title": "Kabukicho after dark",
+      "text": "Kabukicho Ichibangai's red arch has lit the way in since 1969. The district is named for a kabuki theatre planned after the war that was never built.",
+      "cam": [
+        325.5,
+        2705.6,
+        92.9
+      ],
+      "tgt": [
+        419.4,
+        2844.4,
+        38.9
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "19:00",
+      "to": "19:30",
+      "hold": 10
+    },
+    {
+      "title": "Where the heights come from",
+      "provenance": true,
+      "text": "Blue: a surveyed height (PLATEAU or OpenStreetMap). Orange: a floor count. Green: an estimate from the neighbours. Towers finished since PLATEAU's survey, such as the Tokyu Kabukicho Tower, keep OpenStreetMap's height.",
+      "cam": [
+        2400,
+        -3800,
+        1600
+      ],
+      "tgt": [
+        200,
+        0,
+        40
+      ],
+      "date": [
+        10,
+        29
+      ],
+      "from": "13:00",
+      "to": "13:30",
+      "hold": 9
+    }
+  ],
+  "labels": {
+    "渋谷スクランブルスクエア": "Shibuya Scramble Square",
+    "渋谷ヒカリエ": "Shibuya Hikarie",
+    "渋谷ストリーム": "Shibuya Stream",
+    "Q-FRONT": "QFRONT",
+    "MAGNET SHIBUYA": "MAGNET by SHIBUYA109",
+    "Shibuya 109": "SHIBUYA109",
+    "西武渋谷店A館": "Seibu Shibuya",
+    "セルリアンタワー": "Cerulean Tower",
+    "キャロットタワー": "Carrot Tower キャロットタワー",
+    "東京都庁舎 第一本庁舎": "Tokyo Metropolitan Government 都庁",
+    "新宿パークタワー": "Shinjuku Park Tower",
+    "モード学園コクーンタワー": "Mode Gakuen Cocoon Tower",
+    "東急歌舞伎町タワー": "Tokyu Kabukicho Tower",
+    "新宿東宝ビル": "Shinjuku Toho Building",
+    "東京オペラシティ": "Tokyo Opera City",
+    "恵比寿ガーデンプレイス": "Yebisu Garden Place",
+    "代々木第一体育館": "Yoyogi National Gymnasium",
+    "表参道ヒルズ": "Omotesando Hills",
+    "ラフォーレ原宿": "Laforet Harajuku",
+    "伊勢丹 新宿店本館": "Isetan Shinjuku",
+    "新宿ダイビル（新宿アルタ）": "Studio Alta",
+    "明治神宮聖徳記念絵画館": "Meiji Memorial Picture Gallery"
+  },
+  "minor_labels": [
+    "Seibu Shibuya",
+    "Isetan Shinjuku",
+    "Studio Alta",
+    "Laforet Harajuku",
+    "Omotesando Hills",
+    "QFRONT",
+    "MAGNET by SHIBUYA109",
+    "Meiji Memorial Picture Gallery",
+    "Shinjuku Toho Building"
+  ],
+  "places": [
+    {
+      "name": "代々木公園",
+      "label": "Yoyogi Park 代々木公園",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": false
+    },
+    {
+      "name": "新宿御苑",
+      "label": "Shinjuku Gyoen 新宿御苑",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": false
+    },
+    {
+      "name": "宮下公園",
+      "label": "Miyashita Park 宮下公園",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": false
+    },
+    {
+      "name": "須賀公園",
+      "label": "Suga Park 須賀公園",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": false
+    },
+    {
+      "name": "神宮通公園",
+      "label": "Jingu-dori Park 神宮通公園",
+      "class": "park",
+      "period": "all",
+      "from": "12:00",
+      "to": "13:00",
+      "protected": false
+    }
+  ],
+  "place_labels": [
+    "Yoyogi Park 代々木公園",
+    "Shinjuku Gyoen 新宿御苑",
+    "Miyashita Park 宮下公園"
+  ],
+  "protection": {
+    "title": "No sun-access rule for public places",
+    "summary": "Tokyo protects no park's sunlight. The windows are a lunch-hour thought experiment for this project, as in the Marunouchi model.",
+    "source_note": "Windows are our own choice (noon to 13:00, all year), not law. The Building Standards Act's shadow rule (日影規制, art. 56-2) limits hours of shadow on neighbouring land in residential-type zones; it does not cover public places and does not apply in commercial districts such as Shibuya or Shinjuku.",
+    "reading_note": "Tokyo keeps standard time all year. Miyashita Park is a roof garden on a mall (2020): its sun here is read at the ground, so treat it with care.",
+    "default_time_basis": "clock",
+    "tip": "Tip: try a tower on the block south of Yoyogi Park, or beside Shinjuku Gyoen's west gate.",
+    "unprotected_label": "no rule"
+  },
+  "renders": [
+    {
+      "name": "overview",
+      "cam": [
+        2600,
+        -4300,
+        1900
+      ],
+      "tgt": [
+        300,
+        -300,
+        40
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "15:40"
+    },
+    {
+      "name": "suga-stairs",
+      "cam": [
+        2440.2,
+        1851.6,
+        24.3
+      ],
+      "tgt": [
+        2423.7,
+        1829.6,
+        31.7
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "16:40"
+    },
+    {
+      "name": "suga-torii",
+      "cam": [
+        2395.2,
+        1845.4,
+        31.8
+      ],
+      "tgt": [
+        2360.6,
+        1860.4,
+        35.2
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "14:30"
+    },
+    {
+      "name": "scramble",
+      "cam": [
+        425.3,
+        -1057.2,
+        46
+      ],
+      "tgt": [
+        368.7,
+        -1000.6,
+        16
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "16:10"
+    },
+    {
+      "name": "shibuya-sky",
+      "cam": [
+        579.3,
+        -1169.9,
+        266.8
+      ],
+      "tgt": [
+        489.5,
+        -1108.1,
+        241.8
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "16:20"
+    },
+    {
+      "name": "yongen-jaya",
+      "cam": [
+        -2480.8,
+        -2858.9,
+        35.7
+      ],
+      "tgt": [
+        -2468.8,
+        -2858.9,
+        36.5
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "18:10"
+    },
+    {
+      "name": "kabukicho",
+      "cam": [
+        400.5,
+        2781.2,
+        34.7
+      ],
+      "tgt": [
+        416.6,
+        2834.8,
+        39.9
+      ],
+      "date": [
+        2026,
+        10,
+        29
+      ],
+      "time": "19:10"
+    }
+  ],
+  "sources": {
+    "landmarks": "Suga Shrine's 男坂 from the Tokyo stairs database (52 steps, 3.6 m, 16 m, 27°, red iron handrails); its hall, torii and furniture placed from OpenStreetMap and photographs; SHIBUYA SKY from SHIBUYA SKY and Wikipedia (229 m, 2,500 m², 18 searchlights, 360 m/min lifts); the Docomo tower's clock (15 m, 150 m up; Tokyo tourism, TV Tokyo) and mast (272 m; SkyscraperPage); Kabukicho's arch (1969; Sanshin Shoji). Signs, screens and shop fronts are indicative.",
+    "fonts": "Ema, plaques and signs drawn with Google Fonts under the SIL Open Font License: Yomogi, Zen Kurenaido, Klee One, Yuji Syuku, Shippori Mincho, DotGothic16, RocknRoll One, Ma Shan Zheng, ZCOOL KuaiLe, Long Cang, LXGW WenKai TC, Nanum Pen Script, Caveat, Kalam"
+  },
+  "light_show": {
+    "name": "CROSSING LIGHT",
+    "start": "19:00",
+    "minutes": 30,
+    "beams": [
+      "shibuya_sky"
+    ],
+    "beam_m": 1800,
+    "spread": 0.005,
+    "opacity": 0.08,
+    "recolour": false,
+    "colours": [
+      "#eaf6ff",
+      "#bfe3ff",
+      "#ffffff",
+      "#9fd2ff"
+    ],
+    "note": "SHIBUYA SKY's 18 searchlights on the roof light after sunset with the seasons (Wikipedia). Their times and movement here are illustrative."
+  },
+  "night_ambient": 0.08,
+  "game": {
+    "title": "Tokyo Pilgrimage 東京巡礼",
+    "local_name": "Tokyoite",
+    "water_name": "the river",
+    "greeting": "こんにちは。",
+    "blurb": "Walk the real Shibuya and Shinjuku, rebuilt from open data and lit by the real sun: the scramble, SHIBUYA SKY 229 m up, Sangenjaya's backstreets, Kabukicho's arch and the stairs of Suga Shrine, ten years after a film and a game made them famous.",
+    "smalltalk": [
+      "すみません。",
+      "こんにちは。",
+      "いい天気ですね。",
+      "お疲れさまです。",
+      "Excuse me!",
+      "どうも。"
+    ],
+    "start": {
+      "at": [
+        371.9,
+        -1041.6
+      ],
+      "facing": [
+        368.7,
+        -1000.6
+      ],
+      "time": "live"
+    },
+    "helipads": [
+      {
+        "id": "yoyogi-pad",
+        "name": "Yoyogi Park pad (game)",
+        "at": [
+          -90.5,
+          332.9
+        ]
+      }
+    ],
+    "helipads_from_data": false,
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 640,
+      "cars": 200,
+      "radius_m": 450,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA26SB"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.2
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#b5121b"
+        }
+      }
+    },
+    "shade_landmarks": [
+      "suga_hall",
+      "sky_"
+    ],
+    "areas": [
+      {
+        "name": "渋谷",
+        "kana": "しぶや",
+        "romaji": "Shibuya",
+        "band": "#9acd32",
+        "left": "原宿",
+        "right": "恵比寿",
+        "at": [
+          461.8,
+          -1109.5
+        ],
+        "radius": 280,
+        "note": "Hachiko and Center Gai: a game's Station Square and Central Street"
+      },
+      {
+        "name": "三軒茶屋",
+        "kana": "さんげんぢゃや",
+        "romaji": "Sangen-jaya",
+        "band": "#20a288",
+        "left": "池尻大橋",
+        "right": "駒沢大学",
+        "at": [
+          -2372.9,
+          -2773.5
+        ],
+        "radius": 260,
+        "note": "Yongen-Jaya, in a game's Tokyo"
+      },
+      {
+        "name": "四谷三丁目",
+        "kana": "よつやさんちょうめ",
+        "romaji": "Yotsuya-sanchome",
+        "band": "#f62e36",
+        "left": "新宿御苑前",
+        "right": "四ツ谷",
+        "at": [
+          2263.0,
+          2008.5
+        ],
+        "radius": 300,
+        "note": "Suga Shrine and the stairs of Your Name"
+      },
+      {
+        "name": "新宿",
+        "kana": "しんじゅく",
+        "romaji": "Shinjuku",
+        "band": "#9acd32",
+        "left": "新大久保",
+        "right": "代々木",
+        "at": [
+          371.1,
+          2551.9
+        ],
+        "radius": 360,
+        "note": "Kabukicho, Golden Gai and the east exit"
+      },
+      {
+        "name": "新宿三丁目",
+        "kana": "しんじゅくさんちょうめ",
+        "romaji": "Shinjuku-sanchome",
+        "band": "#9c5e31",
+        "left": "東新宿",
+        "right": "北参道",
+        "at": [
+          905.1,
+          2441.0
+        ],
+        "radius": 200,
+        "note": "2-chome's bars, a street east"
+      },
+      {
+        "name": "代々木",
+        "kana": "よよぎ",
+        "romaji": "Yoyogi",
+        "band": "#9acd32",
+        "left": "新宿",
+        "right": "原宿",
+        "at": [
+          497.9,
+          1642.1
+        ],
+        "radius": 220,
+        "note": "The Docomo tower and its clock"
+      },
+      {
+        "name": "原宿",
+        "kana": "はらじゅく",
+        "romaji": "Harajuku",
+        "band": "#9acd32",
+        "left": "代々木",
+        "right": "渋谷",
+        "at": [
+          561.3,
+          188.6
+        ],
+        "radius": 240,
+        "note": "Takeshita-dori and the woods of Meiji Jingu"
+      },
+      {
+        "name": "表参道",
+        "kana": "おもてさんどう",
+        "romaji": "Omote-sando",
+        "band": "#ff9500",
+        "left": "渋谷",
+        "right": "外苑前",
+        "at": [
+          1430.6,
+          -366.0
+        ],
+        "radius": 220,
+        "note": "The zelkova avenue"
+      },
+      {
+        "name": "青山一丁目",
+        "kana": "あおやまいっちょうめ",
+        "romaji": "Aoyama-itchome",
+        "band": "#ff9500",
+        "left": "外苑前",
+        "right": "赤坂見附",
+        "at": [
+          2489.7,
+          466.4
+        ],
+        "radius": 220,
+        "note": "A game's school stop; the school is made up"
+      },
+      {
+        "name": "信濃町",
+        "kana": "しなのまち",
+        "romaji": "Shinanomachi",
+        "band": "#ffd400",
+        "left": "千駄ケ谷",
+        "right": "四ツ谷",
+        "at": [
+          2181.7,
+          1287.3
+        ],
+        "radius": 200,
+        "note": "The footbridge by the station, in Your Name"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-shibuya",
+        "name": "Shibuya: Hachiko 渋谷",
+        "at": [
+          372.2,
+          -1044.1
+        ]
+      },
+      {
+        "id": "t-sancha",
+        "name": "Sangenjaya 三軒茶屋",
+        "at": [
+          -2470.4,
+          -2864.7
+        ]
+      },
+      {
+        "id": "t-suga",
+        "name": "Suga Shrine 須賀神社",
+        "at": [
+          2391.7,
+          1847.3
+        ]
+      },
+      {
+        "id": "t-stairs",
+        "name": "The 男坂, at the foot",
+        "at": [
+          2437.5,
+          1848.0
+        ]
+      },
+      {
+        "id": "t-kabuki",
+        "name": "Kabukicho 歌舞伎町",
+        "at": [
+          405.1,
+          2796.5
+        ]
+      },
+      {
+        "id": "t-aoyama",
+        "name": "Aoyama-itchome 青山一丁目",
+        "at": [
+          2471.6,
+          477.4
+        ]
+      },
+      {
+        "id": "t-harajuku",
+        "name": "Harajuku 原宿",
+        "at": [
+          561.3,
+          221.9
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "aoi",
+        "name": "Aoi 葵",
+        "role": "Pilgrimage guide 聖地巡礼ガイド",
+        "at": [
+          372.2,
+          -1044.1
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#f2cdb4",
+          "hair": "#2a1d17",
+          "top": "#2f6b4f",
+          "legs": "#cdbf9f",
+          "shirt": "#2f6b4f",
+          "pants": "#cdbf9f"
+        },
+        "idle": [
+          "Ten years since a film and a game drew these streets. This October the pilgrims are everywhere.",
+          "Shibuya's scramble at {time}. {sun_line}"
+        ]
+      },
+      {
+        "id": "shun",
+        "name": "Shun 駿",
+        "role": "Vintage clothes shop 古着屋",
+        "at": [
+          342.1,
+          -978.4
+        ],
+        "look": {
+          "character": "M_Hoodie",
+          "skin": "#e9bf9d",
+          "hair": "#1b1512",
+          "top": "#e0742a",
+          "legs": "#2b3440",
+          "shirt": "#e0742a",
+          "pants": "#2b3440"
+        },
+        "idle": [
+          "Center Gai never sleeps. It does get quieter around five in the morning.",
+          "The arch is real, the burger bar isn't. People still ask."
+        ]
+      },
+      {
+        "id": "yuna",
+        "name": "Yuna 優奈",
+        "role": "SKY GATE staff",
+        "at": [
+          505.8,
+          -1088.9,
+          15.23
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f0c7aa",
+          "hair": "#17120f",
+          "top": "#1f2328",
+          "legs": "#1f2328",
+          "shirt": "#1f2328",
+          "pants": "#1f2328"
+        },
+        "idle": [
+          "Lifts from 14F to 45F at 360 metres a minute. Your ears may pop.",
+          "The roof closes in strong wind or lightning. Today: {sun_line}"
+        ]
+      },
+      {
+        "id": "taro",
+        "name": "Taro 太郎",
+        "role": "Photographer 写真家",
+        "at": [
+          492.3,
+          -1109.7,
+          241.8
+        ],
+        "look": {
+          "character": "M_Adventurer",
+          "skin": "#e3b08d",
+          "hair": "#141010",
+          "top": "#6b6a4a",
+          "legs": "#3a3026",
+          "shirt": "#6b6a4a",
+          "pants": "#3a3026"
+        },
+        "idle": [
+          "Golden hour at SKY EDGE: the towers go copper, then the scramble lights up.",
+          "{sun_line}"
+        ]
+      },
+      {
+        "id": "haru",
+        "name": "Haru 晴",
+        "role": "Sangenjaya local 三茶っ子",
+        "at": [
+          -2466.5,
+          -2861.8,
+          33.97
+        ],
+        "look": {
+          "character": "M_Casual2",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#3d4a5c",
+          "legs": "#24384f",
+          "shirt": "#3d4a5c",
+          "pants": "#24384f"
+        },
+        "idle": [
+          "Sancha, everybody calls it. Three tea houses on the Oyama road, once.",
+          "The Setagaya Line's little trams start from the Carrot Tower."
+        ]
+      },
+      {
+        "id": "tanaka",
+        "name": "Mr Tanaka 田中さん",
+        "role": "A regular at the sentō 常連",
+        "at": [
+          -2452.4,
+          -2868.8
+        ],
+        "look": {
+          "character": "M_Worker",
+          "skin": "#e0b392",
+          "hair": "#cfcac4",
+          "top": "#9aa3a8",
+          "legs": "#2f3a4d",
+          "shirt": "#9aa3a8",
+          "pants": "#2f3a4d"
+        },
+        "idle": [
+          "Forty years a regular. The water's hotter on the men's side, they say on the women's side.",
+          "A bath, then a cold milk from the machine. That's the rule."
+        ]
+      },
+      {
+        "id": "xiaoyu",
+        "name": "Xiaoyu 小雨",
+        "role": "A pilgrim from Shanghai",
+        "at": [
+          2438.4,
+          1846.9,
+          22.06
+        ],
+        "look": {
+          "character": "W_Casual",
+          "skin": "#f6d8c6",
+          "hair": "#141010",
+          "top": "#b23a48",
+          "legs": "#33415c",
+          "shirt": "#b23a48",
+          "pants": "#33415c"
+        },
+        "idle": [
+          "我第一次看是高中的时候。I first saw it in high school.",
+          "Count the steps with me: {landmark:suga.otokozaka.steps}."
+        ]
+      },
+      {
+        "id": "sato",
+        "name": "Mr Sato 佐藤さん",
+        "role": "Yotsuya resident",
+        "at": [
+          2390.4,
+          1849.6
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#e3b08d",
+          "hair": "#8c8580",
+          "top": "#5b4a3a",
+          "legs": "#3a3026",
+          "shirt": "#5b4a3a",
+          "pants": "#3a3026"
+        },
+        "idle": [
+          "I climb the 男坂 every morning. Fifty years, and nobody came. Now the world comes.",
+          "The film's tenth. The ema rack has never been so full."
+        ]
+      },
+      {
+        "id": "rin",
+        "name": "Rin 凛",
+        "role": "High-school student 高校生",
+        "at": [
+          2471.6,
+          477.4
+        ],
+        "look": {
+          "character": "W_Formal",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#1d2b4a",
+          "legs": "#4b5563",
+          "shirt": "#1d2b4a",
+          "pants": "#4b5563"
+        },
+        "idle": [
+          "My stop. A game put a school up that road. There isn't one, I checked.",
+          "{time}. I'm late. Again."
+        ]
+      },
+      {
+        "id": "mika",
+        "name": "Mika ミカ",
+        "role": "Bartender, Shinjuku 2-chome",
+        "at": [
+          1044.9,
+          2436.8,
+          34.14
+        ],
+        "look": {
+          "character": "W_Punk",
+          "skin": "#f0c7aa",
+          "hair": "#4a3222",
+          "top": "#5d2a6b",
+          "legs": "#1d1f24",
+          "shirt": "#5d2a6b",
+          "pants": "#1d1f24"
+        },
+        "idle": [
+          "2-chome: a few hundred bars, most the size of a living room.",
+          "Doors open at eight. Come back after dark."
+        ]
+      },
+      {
+        "id": "ono",
+        "name": "Officer Ono 小野巡査",
+        "role": "Kabukicho koban 交番",
+        "at": [
+          401.1,
+          2800.8
+        ],
+        "look": {
+          "character": "M_Suit",
+          "skin": "#e9bf9d",
+          "hair": "#141010",
+          "top": "#1d2b4a",
+          "legs": "#1d2b4a",
+          "shirt": "#1d2b4a",
+          "pants": "#1d2b4a"
+        },
+        "idle": [
+          "Touts are not allowed to follow you. If one does, come to the koban.",
+          "The arch went red in 1969. It's been red ever since."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "shibuya",
+        "title": "Shibuya",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "yongen",
+        "title": "Sangenjaya",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "suga",
+        "title": "Your Name",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "shinjuku",
+        "title": "Shinjuku",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "aoyama",
+        "title": "Aoyama",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "finale",
+        "title": "Report back",
+        "after": [
+          "shibuya",
+          "yongen",
+          "suga",
+          "shinjuku",
+          "aoyama"
+        ],
+        "on_open": "<b>Every walk done.</b> Report back to Aoi at Hachiko."
+      }
+    ],
+    "quests": [
+      {
+        "id": "hachi",
+        "line": "start",
+        "giver": "aoi",
+        "title": "Hachiko",
+        "stamp": "Hachiko",
+        "talk": [
+          "ようこそ渋谷へ! I'm Aoi. I guide pilgrims: people who come to stand where a story stood. This month it's ten years since a film and a game put these streets on the map.",
+          "This is the real Shibuya, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.",
+          "Hachiko has sat here since 1948. A game called this square Station Square. Walk out onto the scramble when the lights change."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              368.7,
+              -1000.6
+            ],
+            "radius": 10,
+            "text": "Walk out onto the scramble"
+          },
+          {
+            "type": "talk",
+            "npc": "shun",
+            "text": "Meet Shun at the mouth of Center Gai"
+          }
+        ]
+      },
+      {
+        "id": "gai",
+        "line": "shibuya",
+        "giver": "shun",
+        "title": "Center Gai",
+        "stamp": "Center Gai",
+        "talk": [
+          "Center Gai. A game called it Central Street and gave it a burger bar that doesn't exist. The arch is real: go and read it.",
+          "See the glass passage over the crossing, on the station side? Okamoto Taro's thirty-metre mural, Myth of Tomorrow, hangs inside. A game made that passage a hideout.",
+          "For the view everyone came for, go up SHIBUYA SKY on top of Scramble Square. Yuna works the door."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "center_gai",
+            "text": "Read the arch over Center Gai"
+          },
+          {
+            "type": "talk",
+            "npc": "yuna",
+            "text": "Find Yuna at SHIBUYA SKY's street door"
+          }
+        ]
+      },
+      {
+        "id": "sky",
+        "line": "shibuya",
+        "giver": "yuna",
+        "title": "SHIBUYA SKY",
+        "stamp": "229 m",
+        "talk": [
+          "SKY GATE: the lifts run from 14F to 45F at 360 metres a minute. From the 46th floor an escalator takes you out into the open air.",
+          "The roof is about 2,500 square metres. The glass is lowest at SKY EDGE, over the scramble. No bags past 46F: the wind takes them.",
+          "Press E by the lift door. Or open the map: the roof is on your list of places to go."
+        ],
+        "steps": [
+          {
+            "type": "surface",
+            "surface": "SHIBUYA SKY escalator",
+            "u": [
+              8.73,
+              13.2
+            ],
+            "text": "Ride the escalator out onto the roof"
+          },
+          {
+            "type": "visit",
+            "at": [
+              489.5,
+              -1108.1
+            ],
+            "radius": 9,
+            "text": "Stand at SKY EDGE, over the scramble"
+          },
+          {
+            "type": "talk",
+            "npc": "taro",
+            "text": "Talk to Taro, the photographer"
+          }
+        ]
+      },
+      {
+        "id": "edge",
+        "line": "shibuya",
+        "giver": "taro",
+        "title": "SKY EDGE",
+        "stamp": "SKY EDGE",
+        "talk": [
+          "From up here the scramble is a clock face: everyone waits, then everyone goes.",
+          "GEO COMPASS, the raised deck in the middle, points at places you can't see: Mt Fuji, Skytree, Suga Shrine, even Paris and Sydney.",
+          "After dark, CROSSING LIGHT: eighteen searchlights. {sun_line}"
+        ],
+        "steps": []
+      },
+      {
+        "id": "sancha",
+        "line": "yongen",
+        "giver": "haru",
+        "title": "Sangenjaya",
+        "stamp": "Sangenjaya",
+        "talk": [
+          "Sangenjaya, three tea houses. In a game it's Yongen-Jaya, four: the same backstreets with one more tea house.",
+          "The game's café has the front of a snack bar here, New Marina. The bathhouse is Chiyo-no-yu, across the lane.",
+          "Take it slow. These are people's homes and small shops."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "marina",
+            "text": "Find New Marina's front"
+          },
+          {
+            "type": "talk",
+            "npc": "tanaka",
+            "text": "Meet Mr Tanaka outside Chiyo-no-yu"
+          }
+        ]
+      },
+      {
+        "id": "sento",
+        "line": "yongen",
+        "giver": "tanaka",
+        "title": "Chiyo-no-yu",
+        "stamp": "Sentō",
+        "talk": [
+          "Forty years a regular. The curtain says ゆ: hot water. Men on one side, women on the other.",
+          "Coin laundry beside it, vending machines out front. Everything a backstreet needs.",
+          "Come back after dark. The signs light up the triangle between Setagaya-dori and Route 246."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              -2452.3,
+              -2867.1
+            ],
+            "radius": 45,
+            "after_dark": true,
+            "text": "Walk the triangle after dark"
+          }
+        ]
+      },
+      {
+        "id": "stairs",
+        "line": "suga",
+        "giver": "xiaoyu",
+        "title": "The stairs",
+        "stamp": "男坂",
+        "talk": [
+          "你好! I flew in from Shanghai for the tenth anniversary. These are the stairs from the poster: Suga Shrine's 男坂.",
+          "{landmark:suga.otokozaka.steps} steps, three and a half metres wide, red iron handrails on both sides and down the middle. Count them on the way up."
+        ],
+        "steps": [
+          {
+            "type": "surface",
+            "surface": "Suga Shrine 男坂",
+            "u": [
+              -0.6,
+              2.6
+            ],
+            "text": "Climb the 男坂"
+          },
+          {
+            "type": "talk",
+            "npc": "sato",
+            "text": "Find Mr Sato by the torii"
+          }
+        ]
+      },
+      {
+        "id": "suga",
+        "line": "suga",
+        "giver": "sato",
+        "title": "Suga Shrine",
+        "stamp": "Suga Shrine",
+        "talk": [
+          "Suga Shrine has watched over Yotsuya's eighteen towns since 1634. The hall burned in the 1945 raids; the parishioners rebuilt it.",
+          "The great torii went up in 1990. The ema rack is full this year: a lot of them are for the film's tenth.",
+          "Read a few. Then, if you like, wait for dusk: the light the film was made of."
+        ],
+        "choices": [
+          {
+            "text": "Show me dusk on the stairs",
+            "action": "dusk"
+          },
+          {
+            "text": "I'll read the ema first"
+          }
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "ema",
+            "text": "Read an ema on the rack"
+          },
+          {
+            "type": "visit",
+            "at": [
+              2436.9,
+              1847.2
+            ],
+            "radius": 8,
+            "text": "Stand at the foot of the stairs"
+          }
+        ]
+      },
+      {
+        "id": "nichome",
+        "line": "shinjuku",
+        "giver": "mika",
+        "title": "Shinjuku",
+        "stamp": "Shinjuku",
+        "talk": [
+          "Shinjuku 2-chome: a few hundred bars, most of them the size of a living room. A game put a bar here where a journalist drank.",
+          "Kabukicho's arch has been red since 1969. Go and see it after dark, and say hello to Officer Ono at the koban."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              407.9,
+              2806.1
+            ],
+            "radius": 15,
+            "after_dark": true,
+            "text": "See Kabukicho's arch after dark"
+          },
+          {
+            "type": "talk",
+            "npc": "ono",
+            "text": "Talk to Officer Ono"
+          }
+        ]
+      },
+      {
+        "id": "kabuki",
+        "line": "shinjuku",
+        "giver": "ono",
+        "title": "Kabukicho",
+        "stamp": "Kabukicho",
+        "talk": [
+          "Kabukicho is named for a kabuki theatre planned here after the war. It was never built; the name stayed.",
+          "From the south side of the station you can see the Docomo tower's clock: {landmark:docomo.clock_d_m} metres across, {landmark:docomo.clock_z_m} metres up. You may know it from a film."
+        ],
+        "steps": []
+      },
+      {
+        "id": "icho",
+        "line": "aoyama",
+        "giver": "rin",
+        "title": "Aoyama-itchome",
+        "stamp": "Ginkgo avenue",
+        "talk": [
+          "This is my stop. In a game a school stood up the road from here. There isn't one; I checked.",
+          "What's real: the ginkgo avenue of Meiji Jingu Gaien. 146 trees in four rows, nine metres apart, planted from 1908. They go yellow at the end of November."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              2155,
+              529
+            ],
+            "radius": 45,
+            "text": "Walk the ginkgo avenue at Jingu Gaien"
+          }
+        ]
+      },
+      {
+        "id": "done",
+        "line": "finale",
+        "giver": "aoi",
+        "title": "Pilgrim",
+        "stamp": "Tokyo pilgrim",
+        "talk": [
+          "お帰り! Stairs, a bathhouse, an arch, a roof 229 metres up. All of it real, all of it measured.",
+          "Ten years ago a film and a game drew these streets. Now you've walked them. Change the time, go up SHIBUYA SKY at night, or just wander."
+        ],
+        "steps": []
+      }
+    ]
+  }
+}

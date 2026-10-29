@@ -1,0 +1,88 @@
+{
+ "id": "great-barrier-reef",
+ "name": "Great Barrier Reef",
+ "duration": 35.5,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/great-barrier-reef.mp4",
+ "poster": "films/great-barrier-reef.jpg",
+ "credit": "Rendered live from the open-data reef model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 11,
+   "chapter": null
+  },
+  {
+   "id": "reef",
+   "t0": 11,
+   "t1": 19,
+   "chapter": "Under water"
+  },
+  {
+   "id": "sail",
+   "t0": 19,
+   "t1": 27.5,
+   "chapter": "Golden hour"
+  },
+  {
+   "id": "night",
+   "t0": 27.5,
+   "t1": 35.5,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "20.28°S 149.03°E",
+    "Sunrise over the Whitsunday Islands · 05:15 AEST",
+    "The real sun, moon and tide, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 10.8,
+   "kind": "main",
+   "name": "Great Barrier Reef",
+   "sub": "Australia",
+   "figures": "Five reef sites · survey bathymetry at 30 m · Sentinel-2 at 10 m · the official tide"
+  },
+  {
+   "t0": 11.7,
+   "t1": 18.4,
+   "kind": "lower",
+   "eyebrow": "Heron Reef · on the Tropic of Capricorn",
+   "head": "Under water",
+   "text": "On the reef flat, 3 m down, less than a third of the sun's red is left: the water is fitted to Sentinel-2."
+  },
+  {
+   "t0": 19.7,
+   "t1": 26.6,
+   "kind": "lower",
+   "eyebrow": "Whitsunday Island",
+   "head": "Whitehaven Beach",
+   "text": "Seven kilometres of sand, 98% of it silica."
+  },
+  {
+   "t0": 31.3,
+   "t1": 35.5,
+   "kind": "end",
+   "name": "Great Barrier Reef",
+   "line": "The reef, the sun, the moon and the tide: open them."
+  }
+ ]
+}

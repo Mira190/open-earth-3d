@@ -98,6 +98,41 @@ def principled(name, color=None, rough=0.6, metal=0.0, emission=None, image=None
     return mat
 
 
+def landmark_material(name, mt, image, floodlit):
+    """A landmark's material as the viewer draws it: its colour, or the image its city drew
+    (landmarks.json "map"), and after dark the glow of a floodlit mesh (in the image's own
+    colours with "emissive_map"), switched by the "lm_night" value that set_landmark_night sets."""
+    mat = principled(name, None if image else mt["color"], mt["roughness"], mt["metalness"], image=image)
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    tex = next((n for n in nt.nodes if n.type == "TEX_IMAGE"), None)
+    if tex is not None and mt.get("cutout"):
+        nt.links.new(tex.outputs["Alpha"], bsdf.inputs["Alpha"])
+    if mt.get("opacity", 1.0) < 1.0:  # glass and nets
+        bsdf.inputs["Alpha"].default_value = mt["opacity"]
+    if floodlit:
+        night = nt.nodes.new("ShaderNodeValue")
+        night.name = "lm_night"
+        night.outputs[0].default_value = 0.0
+        glow = nt.nodes.new("ShaderNodeMath")
+        glow.operation = "MULTIPLY"
+        glow.inputs[1].default_value = 4.0 * mt.get("glow", 0.32)
+        nt.links.new(night.outputs[0], glow.inputs[0])
+        if tex is not None and mt.get("emissive_map"):
+            nt.links.new(tex.outputs["Color"], bsdf.inputs["Emission Color"])
+        else:
+            bsdf.inputs["Emission Color"].default_value = (*srgb_to_linear(mt.get("emissive", "#ffe2b8")), 1)
+        nt.links.new(glow.outputs[0], bsdf.inputs["Emission Strength"])
+    return mat
+
+
+def set_landmark_night(night):
+    for mat in bpy.data.materials:
+        n = mat.node_tree.nodes.get("lm_night") if mat.node_tree else None
+        if n is not None:
+            n.outputs[0].default_value = 1.0 if night else 0.0
+
+
 def mesh_object(name, verts, faces, mat, uvs=None, colors=None, smooth=False):
     me = bpy.data.meshes.new(name)
     me.from_pydata(verts, [], faces)
@@ -212,8 +247,10 @@ def build(data):
         mt = LM["materials"][m["material"]]
         p = np.asarray(m["position"], float).reshape(-1, 3)
         idx = np.asarray(m["index"], int).reshape(-1, 3)
-        mat = principled(m["name"], mt["color"], mt["roughness"], mt["metalness"])
-        mesh_object(m["name"], [tuple(v) for v in p], [tuple(f) for f in idx], mat, smooth=m["smooth"])
+        image = os.path.join(data, mt["map"]) if mt.get("map") else None
+        mat = landmark_material(m["name"], mt, image, m.get("floodlit", False))
+        uvs = np.asarray(m["uv"], float).reshape(-1, 2) if image and "uv" in m else None
+        mesh_object(m["name"], [tuple(v) for v in p], [tuple(f) for f in idx], mat, uvs=uvs, smooth=m["smooth"])
         counts["objects"] += 1
         counts["triangles"] += len(idx)
 
@@ -250,6 +287,10 @@ def add_vehicles(data, counts):
     def livery(kind):
         I, spec = info[kind], (G.get("vehicles") or {}).get(kind, {}).get("livery")
         base = I["liveries"][I["default_livery"]]
+        style = G.get("ferry_style") or {}
+        if kind == "ferry" and spec is None and style.get("hull"):  # as the game does: the colours of the city's ferry_style
+            spec = {"hull": style["hull"], "band": style.get("trim"), "cabin": style.get("upper"), "trim": style.get("upper"), "flag": style.get("flag")}
+            spec = {k: v for k, v in spec.items() if v}
         if isinstance(spec, str):
             return I["liveries"].get(spec, base)
         return dict(base, **(spec or {}))
@@ -387,6 +428,7 @@ def main():
         sky = set_sky(alt, az, alt < -4)
         hh, mm = map(int, v["time"].split(":"))
         set_lighting(hh + mm / 60, alt < -4)
+        set_landmark_night(alt < -4)
         p, t = v["cam"], v["tgt"]
         cam.location = p
         cam.rotation_euler = (Vector(t) - Vector(p)).to_track_quat("-Z", "Y").to_euler()

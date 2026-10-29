@@ -1,0 +1,167 @@
+{
+  "name": "Hong Kong",
+  "date": [9, 25],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 31.5,
+  "score": {
+    "root": 49,
+    "scale": [0, 2, 4, 7, 9],
+    "chords": [[0, 2, 4], [5, 7, 9], [3, 5, 7], [1, 3, 6]],
+    "motif": [2, 4, 3, 1, 0],
+    "tempo": 84,
+    "voice": "bell",
+    "air": "harbour",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [-1250, 560, 8],
+      "to": [-1190, 545, 10],
+      "look": [400, 0, 100],
+      "fov": 26,
+      "time": ["06:12", "06:19"],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": ["22.29°N 114.16°E", "Sunrise over Victoria Harbour · 06:13 HKT", "The real sun, for the day you watch"]
+      },
+      "tint": [1.06, 1.0, 0.92],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "from": [250, 1250, 25],
+      "to": [150, 1450, 330],
+      "look": [-350, -500, 150],
+      "fov": 34,
+      "time": ["07:10"],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Hong Kong",
+        "native": "香港",
+        "sub": "China",
+        "figures": "7,513 buildings · 4.0 × 4.8 km · 98% of the heights measured"
+      },
+      "tint": [1.04, 1.0, 0.95]
+    },
+    {
+      "id": "ferry",
+      "chapter": "The Star Ferry",
+      "dur": 5,
+      "type": "track",
+      "ferry": {"route": "Central – Tsim Sha Tsui", "from": "central", "to": "tst", "s": 350, "speed": 6.5},
+      "az": [322, 302],
+      "dist": [72, 82],
+      "h": [8, 11],
+      "fov": 30,
+      "time": ["16:40"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Central to Tsim Sha Tsui",
+        "head": "The Star Ferry",
+        "text": "About a kilometre of harbour between Central's Pier 7 and Tsim Sha Tsui, wharf to wharf."
+      }
+    },
+    {
+      "id": "boc",
+      "chapter": "The Bank of China",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-330, 320, 40],
+      "to": [-250, 300, 44],
+      "look": [-199, -745, 230],
+      "fov": 20,
+      "time": ["17:05"],
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "Garden Road, Central",
+        "head": "Bank of China Tower",
+        "text": "A 52 m square cut along its diagonals into four triangular shafts; the masts reach 367.4 m."
+      }
+    },
+    {
+      "id": "icc",
+      "chapter": "Two towers",
+      "dur": 5,
+      "type": "move",
+      "from": [-120, 300, 12],
+      "to": [-40, 320, 14],
+      "look": [-337, 1924, 240],
+      "fov": 22,
+      "time": ["17:50"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "West Kowloon, from the harbour",
+        "head": "The ICC",
+        "text": "484 m, the tallest in the model; Two IFC, 412 m, faces it across the water."
+      }
+    },
+    {
+      "id": "promenade",
+      "chapter": "On foot",
+      "dur": 4.5,
+      "type": "move",
+      "agl": true,
+      "from": [694, 809, 2.3],
+      "to": [681, 812, 2.35],
+      "look": [400, 842, 30],
+      "fov": 40,
+      "time": ["18:06"],
+      "people": [650, 816],
+      "crowd_r": 60,
+      "crowd_n": 160,
+      "crowd_clear": 12,
+      "hand": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "Tsim Sha Tsui, the Clock Tower",
+        "head": "Walk it",
+        "text": "Talk to the people who know the city, cross on the Star Ferry, ride the Peak Tram."
+      }
+    },
+    {
+      "id": "night",
+      "chapter": "After dark",
+      "dur": 7,
+      "type": "move",
+      "from": [850, 200, 30],
+      "to": [780, 230, 34],
+      "look": [-350, -150, 140],
+      "fov": 26,
+      "time": ["18:40", "20:06"],
+      "timeEase": "inOut",
+      "fadeOut": 1.6,
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Hong Kong",
+        "line": "The model, the sun and the city: open them."
+      },
+      "ev": 0.45
+    }
+  ]
+}

@@ -1,10 +1,10 @@
 // Where things can stand, walk, sail and fly, from the same data the model is built
 // from: the 2 m surface model (terrain + buildings, with building ids), the 5 m water
-// mask, pier decks, walkable surfaces such as a bridge deck (game.json "surfaces"),
-// and the parametric landmarks, rasterised as height intervals so that a helicopter
-// can pass under the Harbour Bridge deck but not through its steel. Walls, roofs and the
-// camera use the exact building footprints through collision.js; the 2 m grids decide
-// water, piers and decks.
+// mask, pier decks, walkable surfaces such as a bridge deck (game.json "surfaces"), the
+// decks of the mapped bridges and viaducts (decks.js), and the parametric landmarks,
+// rasterised as height intervals so that a helicopter can pass under the Harbour Bridge
+// deck but not through its steel. Walls, roofs and the camera use the exact building
+// footprints through collision.js; the 2 m grids decide water, piers and decks.
 'use strict';
 window.OENav = (function () {
   const S = window.Sun;
@@ -28,7 +28,7 @@ window.OENav = (function () {
     }
     // ---------------------------------------------------------- piers (2 m grid, deck height)
     const pier = { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny).fill(-99) };
-    for (const r of D.P.piers || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2);
+    (D.P.piers || []).forEach((r, i) => S.fillMax(pier, [r.map(v => v / 10)], D.pierZ ? D.pierZ[i] : G.pier_deck_m || 2.2)); // as drawn (world.js)
     for (const r of G.boardwalks || []) S.fillMax(pier, [r.map(v => v / 10)], G.pier_deck_m || 2.2); // walkways over rocks and water
     // places walkers keep out of (a colony's rocks): a 2 m mask
     const nogo = (G.nogo || []).length ? { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny) } : null;
@@ -55,6 +55,7 @@ window.OENav = (function () {
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     for (const m of D.LM.meshes || []) {
       if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
+      if (((D.LM.materials || {})[m.material] || {}).decal) continue; // paving laid over a roof, which is the solid
       const p = m.position, idx = m.index, mine = new Map();
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
@@ -73,15 +74,19 @@ window.OENav = (function () {
       tops[m.name] = new Map([...mine].map(([k, q]) => [k, q[1]]));
       for (const [k, q] of mine) { const l = solid.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid.set(k, [q[0] - 0.3, q[1] + 0.3]); }
     }
-    for (const s of strips) { // slabs: solid from (surface - thickness) to the surface
+    // slabs: solid from (surface - thickness) to the surface. A cell's slab tops out at the lowest point of the
+    // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee
+    const off = [-0.475, -0.2375, 0, 0.2375, 0.475], inCell = off.flatMap(a => off.map(b => [a * DSM.cell, b * DSM.cell]));
+    for (const s of strips) {
       const th = s.thickness || 3;
       for (let r = 0; r < DSM.ny; r++) {
         const y = y1 - (r + 0.5) * DSM.cell;
         for (let c = 0; c < DSM.nx; c++) {
           const x = x0 + (c + 0.5) * DSM.cell;
           if (Math.abs((x - s.origin[0]) * s.axis[0] + (y - s.origin[1]) * s.axis[1]) > 1000) continue;
-          const z = stripHeight(s, x, y);
+          let z = stripHeight(s, x, y);
           if (z == null) continue;
+          for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
           const k = r * DSM.nx + c, l = solid.get(k);
           if (l) l.push(z - th, z - 0.05); else solid.set(k, [z - th, z - 0.05]);
         }
@@ -91,19 +96,41 @@ window.OENav = (function () {
       const c = Math.floor((x - x0) / DSM.cell), r = Math.floor((y1 - y) / DSM.cell);
       return c < 0 || r < 0 || c >= DSM.nx || r >= DSM.ny ? -1 : r * DSM.nx + c;
     };
-    // the ground under a walker: bilinear over the land corners only, so a quay or a river walk
-    // keeps its own height instead of sagging towards the modelled bottom beside it
-    const landOnly = wm.nx === T.nx && wm.ny === T.ny;
+    // the ground under a walker is the ground that is drawn: the terrain tiles are a grid of
+    // cells, each split from its south-west to its north-east corner (three.js PlaneGeometry),
+    // so the walker stands on the same two triangles, never above or below them
+    let tri = 0; // the last cell's triangle: its slope, rise over run
     function terrain(x, y) {
-      if (!landOnly) return S.terrainAt(T, x, y);
       const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell)), r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
       const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
-      let s = 0, w = 0, k;
-      if ((k = (1 - fc) * (1 - fr)) > 0 && !isWaterCell(r0, c0)) { s += D[i] * k; w += k; }
-      if ((k = fc * (1 - fr)) > 0 && !isWaterCell(r0, c0 + 1)) { s += D[i + 1] * k; w += k; }
-      if ((k = (1 - fc) * fr) > 0 && !isWaterCell(r0 + 1, c0)) { s += D[i + T.nx] * k; w += k; }
-      if ((k = fc * fr) > 0 && !isWaterCell(r0 + 1, c0 + 1)) { s += D[i + T.nx + 1] * k; w += k; }
-      return w > 1e-6 ? s / w : S.terrainAt(T, x, y);
+      const a = D[i], b = D[i + 1], d = D[i + T.nx], e = D[i + T.nx + 1];
+      if (fc + fr <= 1) { tri = Math.hypot(b - a, d - a) / T.cell; return a + fc * (b - a) + fr * (d - a); }
+      tri = Math.hypot(e - d, e - b) / T.cell;
+      return e + (1 - fc) * (d - e) + (1 - fr) * (b - e);
+    }
+    const slope = (x, y) => (terrain(x, y), tri);
+    // land beside the water: there the ground drawn goes down the bank (a quay wall, a moat's
+    // stone side, a beach) to the bottom modelled under the water, and a walker stops at the
+    // waterline or at the top of a bank too steep to walk
+    const WATERLINE = 0.1, BANK = 0.84; // m above the water; tan 40°
+    const shore = new Uint8Array(wm.nx * wm.ny);
+    for (let r = 0; r < wm.ny; r++) for (let c = 0; c < wm.nx; c++) {
+      if (isWaterCell(r, c)) continue;
+      for (let i = -1; i <= 1 && !shore[r * wm.nx + c]; i++) for (let j = -1; j <= 1; j++) {
+        const rr = r + i, cc = c + j;
+        if (rr >= 0 && cc >= 0 && rr < wm.ny && cc < wm.nx && isWaterCell(rr, cc)) { shore[r * wm.nx + c] = 1; break; }
+      }
+    }
+    function onShore(x, y) {
+      const c = Math.floor((x - x0) / wm.cell), r = Math.floor((y1 - y) / wm.cell);
+      return r >= 0 && c >= 0 && r < wm.ny && c < wm.nx && shore[r * wm.nx + c] === 1;
+    }
+    // can the ground at (x, y) be stood on? null if so, else why not ('water', or 'bank' at the top of a steep one)
+    function offGround(x, y) {
+      if (isWater(x, y)) return 'water';
+      if (!onShore(x, y)) return null;
+      if (terrain(x, y) < WATERLINE) return 'water';
+      return slope(x, y) > BANK ? 'bank' : null;
     }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
@@ -142,15 +169,43 @@ window.OENav = (function () {
       for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true;
       return false;
     }
+    // the highest surface already built at (x, y), a deck strip or a pier (-Infinity for none)
+    function surfaceAt(x, y) {
+      const k = cellOf(x, y);
+      let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
+      for (const s of strips) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; }
+      return h;
+    }
+    // ---------------------------------------------------------- decks of mapped bridges and viaducts (decks.js)
+    // straight pieces {ax, ay, az, bx, by, bz, hw, th, walk} (th: the slab's depth), found through a grid of 16 m cells
+    const decks = [], DG = 16, deckGrid = new Map();
+    function addDecks(list) {
+      for (const d of list) {
+        const i = decks.push(Object.assign({ L: Math.hypot(d.bx - d.ax, d.by - d.ay) }, d)) - 1;
+        const c0 = Math.floor((Math.min(d.ax, d.bx) - d.hw) / DG), c1 = Math.floor((Math.max(d.ax, d.bx) + d.hw) / DG);
+        const r0 = Math.floor((Math.min(d.ay, d.by) - d.hw) / DG), r1 = Math.floor((Math.max(d.ay, d.by) + d.hw) / DG);
+        for (let c = c0; c <= c1; c++) for (let r = r0; r <= r1; r++) { const k = c * 65536 + r, l = deckGrid.get(k); if (l) l.push(i); else deckGrid.set(k, [i]); }
+      }
+    }
+    // the decks at (x, y): calls fn(height, deck) for each
+    function decksAt(x, y, fn) {
+      const l = deckGrid.get(Math.floor(x / DG) * 65536 + Math.floor(y / DG));
+      if (l) for (const i of l) {
+        const d = decks[i], ex = (d.bx - d.ax) / d.L, ey = (d.by - d.ay) / d.L, dx = x - d.ax, dy = y - d.ay, u = dx * ex + dy * ey;
+        if (u < -0.3 || u > d.L + 0.3 || Math.abs(-dx * ey + dy * ex) > d.hw) continue;
+        fn(d.az + (d.bz - d.az) * Math.max(0, Math.min(1, u / d.L)), d);
+      }
+    }
     // the floor a walker at height z would stand on at (x, y): the highest surface no more
     // than a step above z. Returns {z, kind} or null (water or nothing reachable).
     function floorAt(x, y, z) {
       let best = null, kind = '';
       const take = (h, k) => { if (h <= z + STEP && (best === null || h > best)) { best = h; kind = k; } };
-      if (!isWater(x, y)) take(terrain(x, y), 'ground');
+      if (!offGround(x, y)) take(terrain(x, y), 'ground');
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of strips) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
+      decksAt(x, y, (h, d) => { if (d.walk) take(h, 'deck'); });
       const bt = col.topAt(x, y, z + STEP, BUILDING);
       if (bt > -Infinity) take(bt, 'roof');
       return best === null ? null : { z: best, kind };
@@ -159,16 +214,29 @@ window.OENav = (function () {
     // can a walker whose feet are at z stand at (x, y)? Returns the new floor or a reason.
     function walk(x, y, z) {
       const f = floorAt(x, y, z);
-      if (!f) return { ok: false, why: isWater(x, y) ? 'water' : 'wall' };
+      if (!f) return { ok: false, why: offGround(x, y) || 'wall' };
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
       if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
       return { ok: true, z: f.z, kind: f.kind };
     }
-    // move a walker whose feet are at z by (dx, dy), sliding along walls: {x, y, hit}
+    // move a walker whose feet are at z by (dx, dy), sliding along walls and round the cars
+    // in `movers` (the traffic, which sets it): {x, y, hit}
     function slide(x, y, z, dx, dy) {
+      const f = floorAt(x, y, z), skip = passes(z, !!f && isDeck(f.kind));
+      const m = col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, skip);
+      if (!api.movers) return m;
+      const o = api.movers.pushOut(m.x, m.y, R, z); // (the cars on this level)
+      if (o.x === m.x && o.y === m.y) return m;
+      // pushed out of a car's side: keep that, unless it puts the walker in a wall
+      if (!col.overlap(o.x, o.y, R, z + KNEE, z + HEAD, skip)) return { x: o.x, y: o.y, hit: m.hit };
+      return { x, y, hit: m.hit };
+    }
+    // push a circle of radius r whose bottom is at z out of the walls it overlaps, between knee
+    // height and z + top (a car's body: kerbs and low walls are the floor's business): {x, y}
+    function push(x, y, z, r, top = HEAD) {
       const f = floorAt(x, y, z);
-      return col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, passes(z, !!f && isDeck(f.kind)));
+      return col.depenetrate(x, y, r, z + KNEE, z + top, passes(z, !!f && isDeck(f.kind)));
     }
     // lowest height a flying or floating body may occupy at (x, y): what is directly below
     function groundBelow(x, y, z) {
@@ -178,16 +246,65 @@ window.OENav = (function () {
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > g) g = pier.data[k];
       for (const s of strips) { const h = stripHeight(s, x, y); if (h != null && h <= z + 0.5 && h > g) g = h; }
+      decksAt(x, y, h => { if (h <= z + 0.5 && h > g) g = h; });
       const l = solid.get(k);
       if (l) for (let i = 0; i < l.length; i += 2) if (l[i + 1] <= z + 0.5 && l[i + 1] > g) g = l[i + 1];
       return g;
     }
+    // can a walker get somewhere from (x, y), feet at z? A walk over a 2.5 m grid, in steps of a
+    // third, that reaches n places
+    function roomy(x, y, z, n, closed) {
+      const seen = new Set(['0,0']), q = [[0, 0, z]];
+      for (let h = 0; h < q.length && q.length < n; h++) {
+        const [i, j, zz] = q[h];
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const key = `${i + di},${j + dj}`;
+          if (seen.has(key)) continue;
+          let cz = zz, ok = true;
+          for (let k = 1; k <= 3 && ok; k++) { const w = walk(x + (i + di * k / 3) * 2.5, y + (j + dj * k / 3) * 2.5, cz); ok = w.ok; if (ok) cz = w.z; }
+          if (ok) { seen.add(key); q.push([i + di, j + dj, cz]); }
+        }
+      }
+      if (q.length < n && closed) for (const [i, j] of q) closed.add(`${Math.floor(x / 2.5) + i},${Math.floor(y / 2.5) + j}`); // a place shut in: no need to try its other spots
+      return q.length >= n;
+    }
+    // the nearest place to (x, y) where someone can stand, on the floor reached from z (or from
+    // the ground there, where that is higher: off a bank, up on the quay): not in a wall, on firm
+    // ground rather than a bank sloping into the water where one is near, and with room to walk
+    // away (room: places a walk from there must reach); ok(x, y) can turn spots down (beside
+    // someone already standing there). {x, y, z, kind} or null
+    function stand(x, y, z, { rMax = 30, ok = null, room = 0 } = {}) {
+      const closed = new Set();
+      for (const firm of [true, false]) for (let r = 0; r <= rMax; r += 0.5) {
+        const n = r ? Math.ceil(2 * Math.PI * r / 0.5) : 1;
+        for (let k = 0; k < n; k++) {
+          const a = 2 * Math.PI * k / n, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = floorAt(px, py, Math.max(z, terrain(px, py) + 1));
+          if (!f || (firm && f.kind === 'ground' && onShore(px, py) && slope(px, py) > 0.15) || (ok && !ok(px, py))) continue;
+          if (room && closed.has(`${Math.floor(px / 2.5)},${Math.floor(py / 2.5)}`)) continue;
+          const w = walk(px, py, f.z);
+          if (w.ok && (!room || roomy(px, py, w.z, room, closed))) return { x: px, y: py, z: w.z, kind: w.kind };
+        }
+      }
+      return null;
+    }
     // is a circle of radius r around (x, y) between za and zb free of buildings and landmark solids?
     function free(x, y, za, zb, r = 2) { return !col.overlap(x, y, r, za, zb); }
     // how far along the segment a -> b (three.js world coordinates) the camera probe gets
-    // before touching a building or landmark: a fraction 0..1, or 1 when clear
-    function clearFraction(a, b) { return col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE); }
-    return { isWater, floorAt, walk, slide, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP };
+    // before touching a building, a landmark or a deck's slab: a fraction 0..1, or 1 when clear
+    function clearFraction(a, b) {
+      const f = col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE);
+      if (!decks.length) return f;
+      const n = Math.ceil(f * a.distanceTo(b) / 0.5);
+      for (let i = 1; i <= n; i++) {
+        const t = f * i / n, x = a.x + (b.x - a.x) * t, y = -(a.z + (b.z - a.z) * t), z = a.y + (b.y - a.y) * t;
+        let hit = false;
+        decksAt(x, y, (h, d) => { if (z > h - d.th - PROBE && z < h + PROBE) hit = true; });
+        if (hit) return f * (i - 1) / n;
+      }
+      return f;
+    }
+    const api = { isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, push, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, movers: null };
+    return api;
   }
   return { create };
 })();

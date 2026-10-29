@@ -1,0 +1,326 @@
+{
+  "name": "Shibuya & Shinjuku",
+  "date": [
+    11,
+    20
+  ],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 21,
+  "score": {
+    "root": 49,
+    "scale": [
+      0,
+      3,
+      5,
+      7,
+      10
+    ],
+    "chords": [
+      [
+        0,
+        2,
+        4
+      ],
+      [
+        3,
+        5,
+        7
+      ],
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        2,
+        4,
+        6
+      ]
+    ],
+    "motif": [
+      2,
+      4,
+      3,
+      1,
+      0
+    ],
+    "tempo": 84,
+    "voice": "pluck",
+    "air": "city",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [
+        -1680,
+        2660,
+        115
+      ],
+      "to": [
+        -1620,
+        2650,
+        117
+      ],
+      "look": [
+        -433,
+        2330,
+        190
+      ],
+      "fov": 26,
+      "time": [
+        "06:20",
+        "06:30"
+      ],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": [
+          "35.69°N 139.69°E",
+          "Sunrise behind Nishi-Shinjuku · 06:21 JST",
+          "The real sun, for the day you watch"
+        ]
+      },
+      "tint": [
+        1.06,
+        1.0,
+        0.92
+      ],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "from": [
+        700,
+        -2500,
+        230
+      ],
+      "to": [
+        660,
+        -2750,
+        420
+      ],
+      "look": [
+        380,
+        900,
+        160
+      ],
+      "fov": 32,
+      "time": [
+        "07:30"
+      ],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Shibuya & Shinjuku",
+        "native": "渋谷・新宿",
+        "sub": "Japan",
+        "figures": "90,304 buildings · 5.4 × 6.2 km · 86% of heights surveyed by PLATEAU"
+      },
+      "tint": [
+        1.04,
+        1.0,
+        0.95
+      ]
+    },
+    {
+      "id": "stairs",
+      "chapter": "The stairs",
+      "dur": 5,
+      "type": "move",
+      "from": [
+        2442,
+        1854,
+        23.9
+      ],
+      "to": [
+        2440,
+        1851.5,
+        23.85
+      ],
+      "look": [
+        2426,
+        1833,
+        29.6
+      ],
+      "fov": 32,
+      "time": [
+        "08:40"
+      ],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Suga Shrine, Yotsuya",
+        "head": "The 男坂",
+        "text": "Fifty-two stone steps between red handrails: the stairs at the end of Your Name, ten years old this year."
+      }
+    },
+    {
+      "id": "scramble",
+      "chapter": "The scramble",
+      "dur": 5,
+      "type": "move",
+      "from": [
+        385,
+        -1036,
+        2.3
+      ],
+      "to": [
+        382,
+        -1032,
+        2.3
+      ],
+      "look": [
+        351,
+        -961,
+        9
+      ],
+      "fov": 32,
+      "time": [
+        "16:05"
+      ],
+      "people": [
+        366,
+        -995
+      ],
+      "crowd_r": 35,
+      "crowd_n": 300,
+      "crowd_clear": 12,
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Shibuya Station, Hachiko exit",
+        "head": "The scramble",
+        "text": "Every light turns green at once, the diagonals too: up to 3,000 people a crossing at the evening peak."
+      },
+      "agl": true
+    },
+    {
+      "id": "sky",
+      "chapter": "SHIBUYA SKY",
+      "dur": 5,
+      "type": "move",
+      "from": [
+        690,
+        -1012,
+        238
+      ],
+      "to": [
+        705,
+        -995,
+        234
+      ],
+      "look": [
+        518,
+        -1124,
+        236
+      ],
+      "fov": 26,
+      "time": [
+        "16:24"
+      ],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Shibuya Scramble Square, 2019",
+        "head": "SHIBUYA SKY",
+        "text": "Shibuya Scramble Square's open roof, 229 m above the crossing: the highest open-air deck in Japan."
+      }
+    },
+    {
+      "id": "kabukicho",
+      "chapter": "After dark",
+      "dur": 4.5,
+      "type": "move",
+      "from": [
+        404,
+        2780,
+        35.3
+      ],
+      "to": [
+        405,
+        2788,
+        35.3
+      ],
+      "look": [
+        409,
+        2830,
+        39
+      ],
+      "fov": 30,
+      "time": [
+        "20:10"
+      ],
+      "people": [
+        408,
+        2810
+      ],
+      "crowd_r": 40,
+      "crowd_n": 140,
+      "crowd_clear": 12,
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.2,
+        "eyebrow": "Shinjuku",
+        "head": "Kabukicho Ichibangai",
+        "text": "The red arch has lit the way in since 1969, to a kabuki theatre that was never built."
+      }
+    },
+    {
+      "id": "night",
+      "dur": 7,
+      "type": "move",
+      "from": [
+        1700,
+        1300,
+        260
+      ],
+      "to": [
+        1600,
+        1360,
+        270
+      ],
+      "look": [
+        -200,
+        2350,
+        160
+      ],
+      "fov": 28,
+      "time": [
+        "20:40",
+        "20:48"
+      ],
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Shibuya & Shinjuku",
+        "line": "The model, the sun and the city: open them."
+      },
+      "tint": [
+        0.94,
+        0.98,
+        1.08
+      ],
+      "sat": 1.12,
+      "ev": 0.3
+    }
+  ]
+}

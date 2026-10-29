@@ -1,16 +1,16 @@
 {
- "known_buildings": 68697,
+ "known_buildings": 68695,
  "applied": {
   "estimate": 4567
  },
  "missingness": [],
  "caps_m": {
-  "small_structures": 14.9,
+  "small_structures": 14.7,
   "untagged": 16.1
  },
  "capped": {
   "unknown": 458,
-  "small": 42
+  "small": 44
  },
  "missing_correction": {},
  "cv": {
@@ -18,13 +18,13 @@
    "median_factor": 1.493,
    "p90_factor": 3.37,
    "median_bias": -0.17,
-   "n": 68697
+   "n": 68695
   },
   "neighbours": {
    "median_factor": 1.313,
    "p90_factor": 2.496,
    "median_bias": 0.0,
-   "n": 68697
+   "n": 68695
   },
   "raw_ml": null,
   "ml_blend": null,
@@ -39832,9 +39832,7 @@
    -0.345,
    0.693,
    -0.236,
-   -2.665,
-   -2.665,
-   0.262,
+   0.236,
    -0.606,
    -0.108,
    -0.251,

@@ -25,6 +25,8 @@ Writes web/data/<city>/game.json:
   wildlife  a colony on a mapped class of infrastructure (the St Kilda breakwater):
             burrows on it, landing places on its seaward edge with open water beyond,
             and the line of its viewing platform
+  flocks    birds that work a spot on open ground (Sydney's gulls round a box of chips),
+            snapped to it, with places on the seawall beside it where they stand
   nogo      the colony's rocks, which walkers keep off (footways across them are dropped)
   travel    fast-travel points, on the ground; links to neighbouring cities
   climate   passed through from city.json: the monthly mean daily maximum, which decides
@@ -485,11 +487,41 @@ def main():
 
     npcs = []
     for n in gcfg.get("npcs", []):
+        if len(n["at"]) > 2:  # someone up on a roof or a deck: placed as given
+            npcs.append(n)
+            continue
         x, y, moved = snap(*n["at"])
         if moved > 0:
             print(f"  npc {n['id']} moved {moved:.1f} m to open ground")
         npcs.append(dict(n, at=[round(x, 1), round(y, 1)]))
     sx, sy, _ = snap(*gcfg.get("start", {}).get("at", [0, 0]))
+
+    # ---------------------------------------------------------- flocks: birds that work a spot on open ground (gulls round a box
+    # of chips by the water), and the seawall beside it: the edges of land cells within perch_m that face the water, where
+    # they stand and look out
+    flocks = []
+    for fc in gcfg.get("flocks", []):
+        x, y, moved = snap(*fc["at"])
+        r0, c0 = cell(x, y)
+        reach, perches = fc.get("perch_m", 14.0), []
+        cells = int(reach / DEM_CELL) + 1
+        for r in range(max(0, r0 - cells), min(ny, r0 + cells + 1)):
+            for c in range(max(0, c0 - cells), min(nx, c0 + cells + 1)):
+                if not open_ground[r, c]:
+                    continue
+                for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                    if 0 <= r + dr < ny and 0 <= c + dc < nx and water[r + dr, c + dc]:
+                        px, py = gx[r, c] + dc * 1.7, gy[r, c] - dr * 1.7  # about a metre in from the edge
+                        if math.hypot(px - x, py - y) <= reach and all(math.hypot(px - p[0], py - p[1]) > 3 for p in perches):
+                            perches.append([round(px, 1), round(py, 1), round(math.degrees(math.atan2(dc, -dr)) % 360)])
+        perches.sort(key=lambda p: math.hypot(p[0] - x, p[1] - y))
+        flocks.append(dict({k: v for k, v in fc.items() if k != "perch_m"}, at=[round(x, 1), round(y, 1)], perches=perches[:6]))
+        print(f"flock {fc['id']}: at {x:.1f}, {y:.1f} (moved {moved:.1f} m), {len(perches[:6])} places on the seawall")
+    for q in gcfg.get("quests", []):  # a quest step that visits a flock goes where it is
+        for st in q.get("steps", []):
+            f = next((f for f in flocks if f["id"] == st.get("flock")), None)
+            if f:
+                st["at"] = f["at"]
 
     # the walking ground: the DEM on land, the modelled bottom under the water, except where a
     # helipad stands on the water (a floating pad): there it keeps the pad's own height
@@ -517,6 +549,7 @@ def main():
         "viewpoints": gcfg.get("viewpoints", []),
         "boardwalks": boardwalks,
         "wildlife": wildlife,
+        "flocks": flocks,
         "nogo": nogo,
         "travel": travel,
         **{k: gcfg[k] for k in ("links",) if k in gcfg},
@@ -531,7 +564,11 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars") if k in gcfg}
+    # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
+    if C.hook("game_extras"):
+        for k, v in C.hook("game_extras")(scene).items():
+            out[k] = out.get(k, []) + v if isinstance(v, list) else v
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")

@@ -13,15 +13,22 @@ const CITY = q.get('city') || 'whitsundays';
 const fail = e => { console.error(e); $('err').textContent = String(e && e.stack || e); };
 addEventListener('error', e => fail(e.error || e.message));
 addEventListener('unhandledrejection', e => fail(e.reason));
+// the loader: what is happening and how far along, painted before each long step (a step blocks the page)
+const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style.width = `${Math.round(f * 100)}%`; };
+const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
+const STEPS = { life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
-  const [d, tide] = await Promise.all([loadScene(base), loadTide(base)]);
+  stage('Downloading the sea floor and the imagery', 0.03);
+  const [d, tide] = await Promise.all([loadScene(base, (got, want) => stage(`Downloading the sea floor and the imagery: ${(got / 1e6).toFixed(1)}${want ? ` of ${(want / 1e6).toFixed(1)}` : ''} MB`, 0.03 + 0.3 * (want ? Math.min(1, got / want) : 0))), loadTide(base)]);
   const S = d.scene;
   document.title = `Open Earth 3D: ${S.name}`;
   $('load-title').textContent = S.name;
   window.Sun.site({ lat: S.origin[1], lon: S.origin[0], tz: S.timezone });
 
+  stage('Starting the renderer', 0.36);
+  await paint();
   const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: q.get('gl') === '1' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
@@ -41,8 +48,9 @@ async function main() {
   const chop = createRipples(renderer, windDir, { tile: 192, res: 256, lam: [3, 24], spread: 70, target: chopVar, seed: 23, hess: false });
   const env = createEnv(scene, S.optics, waves, ripples, chop);
   env.u.wind.value = Number(q.get('wind') ?? 0.6);
-  // the clock: the model's own time (?time= or now), running on from the page load
-  const when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now();
+  // the clock: the model's own time (?time= or now), running on from the page load, or from a time chosen in the
+  // game's time panel (setClock below)
+  let when = q.get('time') ? Date.parse(q.get('time')) : Date.now(), perf0 = performance.now(), live = !q.get('time');
   const clockMs = () => when + (performance.now() - perf0);
   // the tide: ?tide= fixes it (m about MSL); otherwise the site's predicted tide for the clock (tide.js)
   const tideFixed = q.get('tide') !== null ? Number(q.get('tide')) : null;
@@ -56,6 +64,8 @@ async function main() {
   scene.add(sunL, sunL.target, moonL, moonL.target, hemi);
   scene.fogNode = (({ Fn, vec4, output, positionWorld }) => Fn(() => vec4(env.medium(output.rgb, positionWorld), output.a))())(await import('three/tsl'));
 
+  stage('Shaping the sea floor, the water and the shore', 0.45);
+  await paint();
   const hTex = heightTexture(d);
   const terrain = createTerrain(d, env, renderer);
   scene.add(terrain.group);
@@ -121,6 +131,20 @@ async function main() {
   const sun = setSun(env, when, S.origin[1], S.origin[0]);
   lights(sun);
   let sunT = 0;                                          // the sun and moon follow the model clock (every 2 s)
+  // set the model clock to `ms` (UTC), or back to now with null; it runs on in real time from there. The sun, moon,
+  // tide, lamps and wildlife all read the clock, so they follow at once. The address keeps ?time= so a reload or
+  // a trip to another site comes back to the same time of day
+  function setClock(ms) {
+    live = ms == null;
+    when = live ? Date.now() : ms; perf0 = performance.now();
+    Object.assign(sun, setSun(env, clockMs(), S.origin[1], S.origin[0])); sunT = performance.now();
+    lights(sun);
+    try {
+      const p = new URLSearchParams(location.search);
+      if (live) p.delete('time'); else p.set('time', new Date(when).toISOString());
+      history.replaceState(history.state, '', `${location.pathname}${p.toString() ? '?' + p : ''}${location.hash}`);
+    } catch (_) { /* a sandboxed page: the clock still changes */ }
+  }
 
   // camera: local frame (east, north, up) -> three (x, up, -north)
   const st = S.start || {};
@@ -142,14 +166,24 @@ async function main() {
     toScene: (x, up, north) => new THREE.Vector3(x, up, -north),      // local frame (east, up, north) -> three.js
     decks: [],                                                        // (x, north) -> deck height or null: pontoons, jetties (boats.js)
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
+    setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
+  const mods = (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean);
+  for (const [i, name] of mods.entries()) {
+    stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
+    await paint();
     try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }
     catch (e) { if (!/Failed to fetch|Cannot find|404|Unexpected token '<'/.test(String(e))) fail(e); else console.warn('module', name, 'not available'); }
   }
 
+  // compiling the shaders can take a while on a first visit; done here it shows on the loader, not as a frozen first frame
+  stage('Compiling the shaders (the first visit takes longest)', 0.9);
+  await paint();
+  if (renderer.compileAsync && !q.get('still')) { try { await renderer.compileAsync(scene, camera); } catch (e) { console.warn('shader precompile skipped:', e); } }
+  stage('First frames', 0.98);
   let last = performance.now(), frames = 0;
-  window.__reef = { camera, env, renderer, d, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
+  window.__reef = { camera, env, renderer, d, ctx, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
     const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {

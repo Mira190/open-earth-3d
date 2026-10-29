@@ -1,4 +1,4 @@
-# The game: Sydney, Melbourne, the bayside and Hong Kong on foot
+# The game: Sydney, Melbourne, the bayside and Hong Kong on foot, and by car
 
 The city model becomes a place you can be in. In Sydney you walk the centre as
 a surveyor, talk to the people who know it, climb the Opera House steps, catch
@@ -18,8 +18,8 @@ model as the viewer. In Sydney that means:
 Everything the characters tell you about the city is computed from the model
 while you play.
 
-Open it from the globe (**Play** on a city card), from the 3D model (the
-**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
+Open it from the title screen (**Play** on a destination's card), from the 3D
+model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
 `#play-melbourne-bayside` or `#play-hong-kong`.
 
 | Talking to an NPC | On the bridge deck at golden hour |
@@ -33,8 +33,12 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
 | **Surveying from the trig station at mid-arch** | **The height challenge** |
 | ![](images/sydney/game-trig.jpg) | ![](images/sydney/game-guess.jpg) |
-| **Photo mode: a saved picture, captioned with the time and the sun** | |
-| ![](images/sydney/game-photo.jpg) | |
+| **Photo mode: a saved picture, captioned with the time and the sun** | **Driving your car up a city street** |
+| ![](images/sydney/game-photo.jpg) | ![](images/sydney/game-drive.jpg) |
+| **A taxi pulls in at the kerb** | **From the back seat, the driver at the wheel** |
+| ![](images/sydney/game-taxi.jpg) | ![](images/sydney/game-backseat.jpg) |
+| **Silver gulls fighting over a box of chips by the Opera Bar** | |
+| ![](images/sydney/game-gulls.jpg) | |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
@@ -51,25 +55,74 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | Keys | What they do |
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
-| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
-| <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out |
+| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint while held (7 m/s) · switch between running (4.5 m/s) and walking (1.4 m/s) · jump. A chip under the sun indicator shows the gait. |
+| <kbd>E</kbd> | Talk, board a ferry or wait for one, board the helicopter, drive your car, get in a taxi, get out, take a lift, look at something up close |
+| <kbd>Y</kbd> · <kbd>N</kbd> | Raise your hand at the kerb and a taxi pulls in · the phone: order a ride, bring your car |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which survey line the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
-| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |
+| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
-| Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
+| Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
 | Funicular | <kbd>E</kbd> board at a station and get off at the other end, <kbd>F</kbd> skip ahead |
+| Your car | <kbd>W</kbd>/<kbd>S</kbd> drive, brake and (stopped) reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> from the driver's seat, <kbd>R</kbd> back on the road, <kbd>E</kbd> get out |
+| Taxi or ride | <kbd>F</kbd> skip the trip, <kbd>V</kbd> from the back seat, <kbd>E</kbd> get out when it has stopped |
 
 On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
 survey) end at once on any key or drag.
 
+While a city loads, the loader shows how much of its data has arrived and names
+each step. For the cities that have one (Tokyo, Osaka and Kyoto so far), a
+recorded flyover plays behind it: a 14 s spiral from high over the whole model
+down to the title screen's camera, so when it ends the live title screen takes
+over from its last frame. If the city is ready first, **Start** (or any key)
+goes straight in. `tools/flyover.js <city>` records it in the game itself, at
+8 frames a second interpolated to 30, as an H.264 MP4 and a VP9 WebM with a
+poster; `web/flyover.js` plays it. A visitor who prefers reduced motion gets
+the plain loader. The model viewer plays the same video, then its short
+establishing shot.
+
+### Cars, taxis and rides
+
+Every city's game has the same three ways to go by road:
+
+- **Your car** waits at the kerb near the start, marked **C** on the map, and stays
+  where you leave it. <kbd>E</kbd> beside it walks you round to the driver's door.
+  It handles like an arcade racer rather than a simulator. Steering lightens with
+  speed, and the tyres pull the car round to where it points up to about 1 g, so a
+  bend taken too fast runs wide. The handbrake lets the tail step out into a drift.
+  It pulls through five gears, to 100 km/h in about 5 s and on to 150. It stops
+  from 100 km/h in about 30 m, and holding <kbd>S</kbd> at a standstill reverses.
+  It hits buildings, the landmarks and other cars, stops for people, won't go over
+  the water's edge, and follows kerbs, ramps and bridge decks. In the driver's
+  seat (<kbd>V</kbd>) you see the dashboard and the wheel turning. The phone
+  brings it to the nearest kerb if you have walked far from it.
+- **A taxi:** stand at the kerb and press <kbd>Y</kbd>. You raise your hand, and
+  the nearest free taxi coming your way, by road, pulls in on your side of the
+  street with its hazard lights on. If none is close, one comes round the corner.
+  Get in with <kbd>E</kbd>. The driver asks where to: your waypoint, the next
+  step of the survey, your car, the nearest landmarks, the wharves you have used,
+  or where you started.
+- **A ride:** order one on the phone (<kbd>N</kbd>), as GTA VI's Ryde Me app does.
+  Choose where to go first, and a private-hire car is sent from a few hundred
+  metres away. The phone shows its driver, colour, model and number plate, and
+  how far away it is.
+
+The driver takes you by road, along a route over the street network, keeping to
+the lane, slowing for bends and for the traffic, and signalling into the kerb at
+the end. On the way they talk about what you are passing, as the people on the
+footways do, so each remark is a fact from the model, such as a building's height
+and where it comes from. <kbd>F</kbd> skips the trip, as in GTA V: the camera
+rises, crosses the city and comes down behind the car at the kerb. The traffic
+keeps to the city's side of the road: the left in Australia, Japan and Hong
+Kong, and the right in Paris, where the cars are left-hand drive.
+
 The survey comes in lines. After a welcome, three surveys run side by side, in
 any order, and a report back waits for all three. The Sydney survey has seven
-stamps:
+stamps, and an eighth for the locals:
 - **Welcome** (Ava, at Circular Quay): she sets out the three surveys and asks
   which you want to start with.
 - **The harbour** (Marco, at the Opera House), two stamps:
@@ -83,6 +136,8 @@ stamps:
   - then, with Tom, use the survey lens on three buildings whose heights come from
     different sources.
 - **Report back** (Ava): opens once the three surveys are done.
+- **The locals** (Jess, a waiter at the Opera Bar), on the side: walk up to the
+  silver gulls fighting over a box of hot chips by the water.
 
 A step counts whether its line is tracked or not. If you stand in the sun in Martin
 Place on the way to the ferry, the ground survey moves on. <kbd>T</kbd>, or a tap
@@ -176,6 +231,21 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
 
 Amsterdam has no helicopter: no pad in the old city, and none is invented.
 
+**Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
+is a walk, not a survey: a welcome at Hachiko, then five lines in any order and a
+report back.
+- **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
+  lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
+- **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
+  and the triangle after dark.
+- **Your Name:** climb the 52 steps of Suga Shrine's 男坂 and read an ema.
+- **Shinjuku:** Kabukicho's arch after dark.
+- **Aoyama:** the ginkgo avenue at Jingu Gaien.
+
+Walking into a neighbourhood puts its name up on a station sign. <kbd>E</kbd> at a
+spot (an ema, a vending machine, a shop front) reads it. Conversations come up in
+bubbles as you pass.
+
 The menu (<kbd>Esc</kbd>) lets you play as either surveyor.
 
 **Photo mode** (<kbd>O</kbd>, or **Photo** on a phone) stops the world: the
@@ -200,7 +270,9 @@ listed at the end.
 |---|---|---|
 | **Microsoft Flight Simulator** | Hand-built landmarks over generated filler; an assisted helicopter, since players find hovering hard. | Its buildings are generated, and it shipped errors that open data can contain. A two-storey building tagged as 212 floors in OpenStreetMap reached the sim as a Melbourne monolith. Sydney's Harbour Bridge was a flat auto-generated span until World Update VII. Here every height has a source, outliers are capped, the towers are checked against published heights, and the bridge is built to its published geometry. |
 | **Sketchbook** (three.js sandbox) | Assisted helicopter flight: the rotor cancels gravity so it hovers with no input, levels itself, damps drift and spools up before take-off. You walk to the door instead of teleporting in, and <kbd>E</kbd> to use. | Its world is an empty sandbox. Here the world is a real city with things to do. |
-| **GTA V** | A clock running 30 times real time, so a day lasts 48 minutes. A minimap with a GPS route along the street network. A waypoint you click on the map. A crowd and traffic density setting. Skip-the-trip travel. | Its city is a caricature. Here the streets, wharves and sun are real, the traffic drives on the left at Overture speed limits, and crowds keep left as Australians do. |
+| **GTA V** | A clock running 30 times real time, so a day lasts 48 minutes. A minimap with a GPS route along the street network, which in a car keeps to the roads. A waypoint you click on the map. A crowd and traffic density setting. Hailing a taxi at the kerb, telling the driver where to go, and skipping the trip. A view from the driver's seat. | Its city is a caricature. Here the streets, wharves and sun are real, the traffic keeps to the city's side of the road at Overture speed limits, and crowds keep left as Australians do. |
+| **GTA VI** (trailers and previews; it comes out on 19 November 2026) | Ryde Me, the ride-hailing app on the phone: say where, and a car comes for you. Cars with interiors you can see into, and bodies that move on their springs. | Its taxi driver can talk to you on the way. Here what the driver says is a fact about the street you are on, worked out from the model. |
+| **Arcade racers** (Need for Speed, Burnout, Forza Horizon) | Handling for fun rather than a tyre model: speed-sensitive steering, grip of about 1 g that bends the car's path round to where it points, a handbrake drift, a view that widens with speed, and an engine note that climbs through the gears. | They are set on closed roads. Here you drive the real streets, among traffic that keeps to its lane. |
 | **Ship Simulator Extremes** | Docking as the skill moment: the ferry runs on autopilot across open water, then you bring her alongside and are scored. | Reviewers found its long cruises boring. Here the open-water legs can be skipped, and docking is optional. |
 | **Assassin's Creed Discovery Tour** | Guided learning by place: each stop is a person who explains what is in front of you, with "behind the data" honesty. | Its narration was called dry. Here the lines are short and come from the model, such as the share of Martin Place in sun on 21 June at 12:30, computed while you stand there. |
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
@@ -211,6 +283,7 @@ listed at the end.
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
 | **Bruno Simon's portfolio, slowroads, Streets GL** | Instanced crowds, cars and street furniture. Detail only near the player. A hint to lower the density when the frame rate drops. | Streets GL needs a discrete GPU. This runs on a phone, with lower density there. |
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
+| **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
 
 ## How it works
@@ -250,16 +323,24 @@ pipeline writes. The only city-specific code is landmark geometry in
     on the rocks, and landing places on their seaward edge with open water 6, 20
     and 40 m out. Its rocks are a no-go area, and footways across them are
     dropped.
+  - **Flocks:** a spot snapped to open ground, with places on the seawall
+    within `perch_m` where the birds stand. A quest step that visits a flock is
+    given its position.
   - **Travel points and links:** fast-travel points on the ground, and
     neighbouring cities named in the menu.
-- **Opera House steps** (`city.py`): the Monumental Steps are 90 m wide and run
-  40 m from the forecourt to the podium, as measured on the NSW aerial photo.
-  They climb in two flights of 15 cm risers, with a landing between them and
-  one at the top. A short ramp at the foot meets the forecourt, where the 5 m
-  terrain dips up to 2 m into the vehicle concourse entrance. They are a walkable strip whose profile follows every riser,
-  so feet land on the treads. Footways that cross them are draped onto them,
-  so the crowd uses them too. The risers are a darker granite, so the steps
-  read from a distance.
+- **Opera House steps** (`city.py`): the Monumental Steps are 85 m wide and run
+  17.6 m from the forecourt to a landing, as measured on the NSW aerial photo:
+  three flights of 0.39 m treads and 15 cm risers, between landings 1.6 m deep.
+  A short ramp at the foot meets the forecourt, where the 5 m terrain dips up
+  to 2 m into the vehicle concourse entrance. From the landing, a flight in
+  front of each hall climbs 11.6 m to the upper podium. Each flight is a
+  walkable strip whose profile follows every riser, so feet land on the
+  treads, and the landing is one too. Footways that cross them are draped onto
+  them, so the crowd uses them too. Each tread has a pale nosing over a darker
+  riser, with the shadow under the nosing drawn on it, so the steps read as
+  steps from any side and any distance. A strip's slab stops at the lowest
+  point of its surface in each 2 m cell, so a walker on a stair never meets a
+  lip above the knee.
 - **Bridge deck** (`city.py`):
   - The deck runs level across the arch and pylons.
   - The approach viaducts then descend at 5% until they meet the ground, the
@@ -275,11 +356,43 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
-    of the water. The walking ground is interpolated over the land points only,
-    so a quay or a river walk keeps its own height instead of sagging towards
-    the modelled bottom beside it.
-  - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
-    walkable strip.
+    of the water.
+  - **The ground you stand on is the ground that is drawn:** the same two
+    triangles per 5 m cell as the terrain tiles, so feet never float over a
+    slope or sink into it. Beside the water the drawn ground goes down the bank
+    to the modelled bottom. A walker stops at the waterline, or at the top of a
+    bank steeper than 40° (a quay wall, a castle moat's stone side).
+  - **Starting places:** the start, NPCs, getting off a ferry and fast travel
+    take the nearest firm spot: not on the bank, not inside someone else. The
+    start also needs room to walk away, and a few steps clear towards its
+    view, so you never begin shut in or at the very edge of a quay.
+  - **Piers and decks:** piers are 2.2 m decks, or level with the quay they
+    meet where that is higher, so stepping down onto a pier is never a step you
+    can't climb back. The bridge deck is a walkable strip.
+  - **Wharves:** each wharf has a landing, the nearest place on foot to its
+    terminal. You board from there where the mapped terminal is out on the
+    water (Circular Quay's wharves, Central Pier 7).
+  - **Bridges and viaducts** (`web/game/decks.js`): a mapped footway or road
+    that crosses the water, or runs more than 2.5 m above the ground drawn
+    under it, is on a deck.
+    - The deck is drawn as a concrete slab with parapets, with columns under
+      the high spans.
+    - A bridge over the water is laid between its banks, slightly crowned. The
+      data lifts a bridge one level (6 m), which over a canal is a hump in the
+      air. Where a ferry's course passes under it, the span rises to clear the
+      boats.
+    - Viaducts (an expressway, several levels up) keep their mapped height.
+      Stubs that end over the water at nothing are cut back to the bank.
+    - The crowd and the traffic keep to the decks, the sun meter sees their
+      shade, and you can walk them (but not the expressways). In Osaka this is
+      what joins the city across its rivers: from the start on the Dotonbori,
+      every NPC can now be reached on foot.
+  - **Everything else on the ground:** passers-by, cars, trees, benches and
+    street lamps stand on the ground drawn under them, not on the heights of
+    the survey grid. Walls reach down to the ground drawn round them, where a
+    slope or a moat's edge falls below the building's base. Land below the
+    level of the sea (behind Osaka's river walls, in an underpass) is kept just
+    above the water, which lies level everywhere.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
     cells, so the helicopter can pass under the deck but not through the arch.
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
@@ -369,6 +482,19 @@ pipeline writes. The only city-specific code is landmark geometry in
     where it would be by then.
   - **Quest step:** a `penguins` step completes when enough birds are ashore
     near you.
+- **Gulls** (`web/game/gulls.js`): a flock of silver gulls works a spot on the
+  ground (`game.flocks`), Sydney's round a dropped box of hot chips by the Opera
+  Bar. Four instanced meshes draw them: bodies, legs and each wing.
+  - **On the ground:** they peck at the chips, squabble over them with their
+    wings up, and now and then make off with one. A few stand on the seawall
+    beside the spot, looking out over the water.
+  - **In the air:** they circle, flapping and gliding, hang in the wind over the
+    chips before they land, and cast their shadows on the broadwalk.
+  - **You:** walk into them and they go up, the rest of the flock a moment
+    after; they come back once you have moved on. Their calls are synthesised
+    in `audio.js`.
+  - **The map:** a gull marks the flock on the map and the minimap, and a label
+    names it in the street. A `visit` step with `flock` goes to it.
 - **Traffic** (`web/game/actors.js`):
   - **Pedestrians and cars:** both spawn within about 450 m of the player.
   - **Cars:** sedans, hatchbacks, SUVs, vans, the city's taxis and its buses,
@@ -389,6 +515,17 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
     bounces off a hard hit.
+  - **Getting in,** as in GTA and Sketchbook: <kbd>E</kbd> walks you round to
+    the pilot's door (round the nose from the far side). The door swings open
+    on its hinge, you step up onto the skid and slide into the seat, and the
+    door shuts at once. A line on screen says what is happening, the camera
+    swings round to watch, and the rotor spools up until it can lift at 90%.
+    Getting out is the same the other way round, once you have landed. The
+    moves are in the helicopter's own frame, so they work wherever it lands.
+  - **The cockpit view** (<kbd>V</kbd>): the pilot's eyes, pitching and
+    banking with the cabin, past the instrument panel and through the
+    windscreen. Drag to look round; in flight the view drifts back to
+    straight ahead.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The city's `ferry_style` picks the model (`"model": "harbour"` or
     `"river"`, else by its length) and the livery: Sydney Ferries' green and
@@ -418,10 +555,21 @@ pipeline writes. The only city-specific code is landmark geometry in
     lit from the sun's direction, so it shows its real phase.
   - **Post stack:** the frame goes through three.js's own effect passes: an HDR
     bloom (lamps and lit windows after dark, glints by day), the world's tone
-    curve, a light grade and a vignette.
+    curve, a light grade and a vignette. The scene renders into it with a reversed
+    32-bit float depth buffer where the GPU has `EXT_clip_control`, which resolves
+    millimetres at two kilometres, so distant walls and roofs do not fight over
+    pixels. The sky is given back its blue by day (`game.sky.saturation`).
 - **Sun and time:**
   - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
-    title screen offers 9 am first.
+    title screen offers the morning first. The title screen and the menu offer:
+    - the time now;
+    - sunrise, morning, noon, golden hour, sunset, blue hour and night, each shown
+      with its clock time on the day. These are worked out from the sun, so a blue
+      hour is a blue hour in Paris in June and in Sydney in winter
+      (`Sun.presetTime` in `web/sun.js`).
+
+    The menu also has a slider for any time of the day and a date. Changing the
+    hour keeps a quest's date.
   - **Sun meter:** ray-casts from where you stand four times a second through
     the same surface model the sun-access analysis uses. The Opera House shells
     and the bridge deck are added so they shade you too.
@@ -451,6 +599,25 @@ pipeline writes. The only city-specific code is landmark geometry in
     shells and the bridge deck.
   - **Buildings:** no shot puts the camera inside one. Each pose is kept 3 m above the
     surface model under it.
+- **Neighbourhoods** (`web/game/places.js`, game.json `areas`, `spots`, `chatter`):
+  - **Areas:** a circle round a station. Walking in puts up its sign: the name, its
+    reading, the line's colour band and the stations either side. Where circles
+    overlap, the smaller one wins. A sign waits until a camera move ends.
+  - **Spots:** <kbd>E</kbd> within a few metres opens a few lines. A spot with
+    `"pick": 1` shows one of its lines at random (each ema on the rack is a
+    different wish). A quest step `{"type": "spot", "spot": id}` waits for one.
+  - **Chatter:** a conversation at a place, one line every few seconds in a bubble
+    over where it is said, once you are within earshot. It stays quiet for a while
+    after it ends.
+- **Lifts and escalators:**
+  - **Lifts** (game.json `lifts`): a list of stops, each a point with a height.
+    <kbd>E</kbd> at a stop takes you to the next one. The camera climbs the
+    building with you, and the time is shortened from the lift's own speed
+    (`m_per_min`). The player arrives facing the stop's `face`.
+  - **Escalators:** a walkable strip with `moving_ms` carries whoever stands on its
+    moving stretch (`moving_u`) along its axis. You can walk on it too.
+  - **High floors:** a travel point with a height (`[x, y, z]`) lands you on a roof.
+    `always: true` lists it on the map before you have been there.
 - **Sound** (`web/game/audio.js`): synthesised with Web Audio, with no files.
   - harbour ambience;
   - footsteps on the walk cycle;
@@ -480,9 +647,16 @@ in the city's Cycles renders where the game puts them.
     surface, with rubber gaskets, and a lined cabin sits behind them. Inside are
     seats, an instrument panel with screens and the controls. You can see
     yourself at the controls.
+  - The pilot's door is a part of its own (`Door_Pilot`), cut from the skin and
+    the lining along its seam and hinged on an upright line ahead of its front
+    edge, so all of it swings out clear of the pillar. Grid points next to a
+    cut move onto the outline, so the door's edges and the windows' edges
+    follow their curves. A frame with a rubber seal lines the opening. The
+    model marks the way in: where to stand, the step, and the floor under the
+    pilot's hips, where a seated person's feet go.
   - Details: skids with steps, twin exhausts, a camera turret, a searchlight,
     wire-strike cutters, antennas and lights.
-  - About 100,000 triangles up close and 12,000 beyond 90 m.
+  - About 105,000 triangles up close and 12,000 beyond 90 m.
 - **Ferry:** a double-ended harbour ferry, 34 m long with a 9.6 m beam.
   - A glazed main cabin with rows of seats, an open upper deck with benches,
     railings, lifebuoys and life rafts, a wheelhouse and a radar mast.
@@ -498,11 +672,23 @@ in the city's Cycles renders where the game puts them.
   a van and a 12 m low-floor bus.
   - Each body is one parametric surface: the roof and floor lines are curves
     along the car, and each section is a rounded box that narrows above the
-    beltline. Glazing, lamps and trim lie on that surface and are framed in
-    black, so no edge is ever cut; the wheel arches are cut and lined.
-  - About 24,000 triangles each up close, with two decimated copies for
-    distance. The occlusion is baked into the vertex colours, since the
-    instanced traffic has no textures.
+    beltline. Lamps and trim lie on that surface. The wheel arches are cut and
+    lined, and so are the window openings: the glass sits in them, framed in
+    black outside and in.
+  - The side windows run from the beltline to the roof. Each car has a cabin
+    behind its glass: front seats, a rear bench (the van has a bulkhead
+    instead), a dashboard with its instruments and centre console, and a
+    steering wheel on its own node, raked back along the column, which the game
+    turns. The traffic's glass is dark, so the traffic leaves the cabins out.
+  - About 23,000 triangles each up close, with two decimated copies for
+    distance, and 2,300 for a cabin. The occlusion is baked into the vertex
+    colours, since the instanced traffic has no textures. `vehicles.json`
+    gives each car's length, width, height, axles, wheels, seats and steering
+    wheel, for collisions and for seating people.
+  - The tail of every car used to close inwards: where a section shrinks to a
+    point, the builder turned the last ring of faces the wrong way, so from
+    behind you could see into an empty shell. The faces now point out, and the
+    traffic draws the inside of a car dark, so a gap anywhere reads as shadow.
 - **What the game adds:**
   - **Paint:** the livery is repainted from the city's config. The paint has a
     clear coat that reflects the real sky.
@@ -514,6 +700,14 @@ in the city's Cycles renders where the game puts them.
   - **Lights:** position lights, a flashing beacon and strobes, and after dark a
     searchlight that lights the ground. The ferries' sidelights swap ends when
     they reverse, so red is always to port. Their cabins light up after dark.
+  - **Your car, taxis and rides** (`web/game/cars.js`): the wheels are split
+    off the body at load time, so they roll and steer. The body leans on its
+    springs, diving under braking and rolling out of turns. The brake lights
+    brighten when braking, the indicators blink when pulling in, and a taxi's
+    roof sign is lit while it is for hire. After dark the headlamps light the
+    road. People sit in the seats with their feet on the floor, and the driver's
+    hands are on the wheel. The inside of the shell is a dark lining, and the
+    cabin is mirrored where traffic keeps right.
   - **Water:** the helicopter's downwash throws a ring of spray off the water
     (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
     ship makes in deep water, as wide as the hull at the start, with churned
@@ -527,7 +721,8 @@ optional, and a city with no config gets the defaults:
 "vehicles": {
   "helicopter": {"livery": "survey", "registration": "VH-OEH", "logo": "OPEN EARTH 3D"},
   "ferry": {"livery": "harbour"},
-  "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}}
+  "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.1}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}},
+  "car": {"model": "Car_Hatch", "colour": "#c8372d", "seat": "#34363a"}
 }
 ```
 
@@ -540,7 +735,12 @@ optional, and a city with no config gets the defaults:
 - **Cars:** the taxis' colours and their share of the traffic, the buses'
   colour and band, and optionally `colours` for private cars. Sydney's taxis
   come in any colour, mostly white, silver or black; Melbourne's are yellow
-  and its buses carry the PTV orange.
+  and its buses carry the PTV orange. The taxis you hail are the taxis in the
+  traffic, so they come in the same colours.
+- **Your car:** `car` picks its model (`Car_Sedan`, `Car_Hatch`, `Car_SUV` or
+  `Car_Van`), its paint and its seats.
+- **The side of the road:** `game.keep` (`left` or `right`) sets it. Without
+  one, a city takes its trams' side, else its country's rule of the road.
 
 To change the models for every city, edit `blender/build_vehicles.py` and run:
 
@@ -548,6 +748,38 @@ To change the models for every city, edit `blender/build_vehicles.py` and run:
 pip install bpy==5.2.3
 python blender/build_vehicles.py            # about 6 minutes; --render also renders the images above
 python blender/build_vehicles.py --only cars  # one kind: helicopter, ferry, ferry_river or cars
+```
+
+## The main characters
+
+| The surveyors you play: standing, and mid-stride (Cycles) |
+|---|
+| ![](images/people/H_Surveyor_W_Idle.jpg) ![](images/people/H_Surveyor_W_Walk.jpg) ![](images/people/H_Surveyor_M_Idle.jpg) ![](images/people/H_Surveyor_M_Walk.jpg) |
+
+The two surveyors you play are Microsoft Rocketbox avatars (MIT, © 2020 Microsoft;
+`web/assets/people/LICENSE-Rocketbox.txt`): construction workers in hi-vis vests,
+hard hats, gloves and radios, made by artists and rigged on a 3ds Max Biped.
+`blender/build_people.py` builds them:
+- **Clips:** Rocketbox's own motion capture on the same skeleton: a neutral idle,
+  walk, fast run, wave, talking and listening gestures, a nod, and checking
+  documents. Each clip is copied onto the avatar bone by bone in world space,
+  because the avatars' bind pose and the clips' rest pose differ, so local
+  rotations would not carry over. The figure stands and moves as it was
+  captured.
+- **In place:** the walk and the run come with their root motion extracted onto
+  a helper, so they play in place; the helper gives each gait's ground speed,
+  and the game plays the cycle at the speed you move.
+- **Size:** about 8,500 triangles and 2.4 MB each, with WebP textures. The
+  exporter bakes every bone's channels on every frame; channels that only hold
+  a bone's rest value (the face, and every translation but the hips') are
+  dropped afterwards.
+
+The game loads the surveyor you play, and the other when you switch in the
+menu. If their files do not load, the earlier characters stand in.
+
+```
+python pipeline/fetch_rocketbox.py               # the avatars and clips, into data/raw (once)
+python blender/build_people.py --preview         # -> web/assets/people/H_*.glb, docs/images/people/
 ```
 
 ## The trees
@@ -594,6 +826,9 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
   where the quest wants.
 - **Night.** `night_ambient` lifts the light after dark, and a landmark material can carry
   `emissive` and `glow` so signs light up.
+- **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
+  `game`, or a city's `game_extras` hook returns them with positions measured from its
+  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage) is the example.
 
 ## Testing
 
@@ -652,11 +887,52 @@ It found three faults, each now fixed:
 - birds walked hundreds of metres from a random landing place. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
 
+A cars script drives each part of the new road travel, in Sydney and in Paris:
+- **Walking:** you stop at the side or the back of a parked or passing car (at
+  half its length plus your own radius), and the camera rises over a car rather
+  than ending up inside one.
+- **Your car:** you get in at the driver's door. It reaches 72 km/h in 3 s and
+  132 in 8, tops out near 155, and stops from 155 km/h in 68 m. Full lock at
+  60 km/h turns it 62° in 2 s without losing speed. A handbrake turn spins it
+  85° while it slides on the way it was going. It reverses, and its turning
+  circle is a 5 m radius.
+- **A taxi:** hailed from the kerb, the nearest one coming your way (400 to
+  700 m off by road in the runs) pulls in beside you. You get in, the driver offers seven places, drives off round
+  the car parked ahead of it, and arrives. A skipped trip arrives too, and the
+  taxi drives away once you get out.
+- **A ride:** ordered on the phone, it is sent with a driver, a model and a
+  plate, and set off from a few hundred metres away.
+- **Seats:** in a moving car the passenger's and the driver's hips stay on the
+  cushions (0.6 m up), the heads under the roof, and the driver's hands on the
+  wheel.
+- **Paris:** the traffic keeps right, the taxi's wheel is on the left, and you
+  sit behind the passenger, on the kerb side.
+
+A Shibuya script checks the walk's moving parts:
+- **SHIBUYA SKY:** <kbd>E</kbd> at the street door offers the lift, which lands
+  you on 46F at the escalator's foot; standing still, the escalator carries you
+  5.5 m up to the deck in 20 s; you then walk out across the roof.
+- **The 男坂:** from the lane at its foot you walk onto the first step and up all
+  52 to the approach, with your feet on each tread.
+- **Places:** the station sign comes up after the start, and every spot answers
+  <kbd>E</kbd> where it stands.
+
+It found four faults, each now fixed:
+- a strip's slab topped each 2 m cell at the surface's height at the cell's
+  centre, so on a 30° escalator the cell ahead stood above the knee and stopped
+  the rider halfway. A slab now tops out at the lowest point of the surface in
+  its cell;
+- each of the roof's solids stood on its own ground, a few centimetres off the
+  drawn deck, so at the escalator's foot the floor of its well was the higher
+  floor and the escalator never took you;
+- the cut that sets the stairs into the slope dug the lane at their foot by up to
+  0.8 m;
+- an NPC stood in the lift's door, so <kbd>E</kbd> talked to her instead.
+
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
 the game, walks for four seconds, talks to the first quest giver, flies the
 helicopter up and lets the ferries run for 40 s, with a screenshot after each
-step. It fails on any page error. Sydney, Melbourne, Osaka, Kyoto and Tokyo all
-pass it in the integrated build.
+step. It fails on any page error. All eight cities pass it.
 
 ## Limitations
 
@@ -676,6 +952,22 @@ pass it in the integrated build.
   House shells, the bridge steel) still collide as 2 m boxes. The floor is found
   under the walker's centre, not under the whole capsule. There is no ragdoll or
   car damage. [ENGINES.md](ENGINES.md#roadmap) lists the next steps.
+- **Driving:**
+  - Your car is three circles down its length against the walls, so its corners
+    can touch a wall before the circles do.
+  - Cars push you aside instead of knocking you down, and stop dead for people.
+  - The traffic keeps to its lane. It swings out round a car pulled in at the
+    kerb but never overtakes, so a car stopped in the lane holds up the queue
+    behind it.
+  - One-way streets and turn restrictions are not in the routes, and nothing
+    stops at junctions or lights.
+  - Only roads at about your height count as the kerb, so a taxi won't stop on
+    a flyover above you. A destination is reached at its nearest street, so a
+    landmark across a plaza is a short walk from where you get out.
+  - Seen from a seat, the edges of the window openings still step slightly,
+    because the body is cut cell by cell.
+  - You can't steal or hail a car from the traffic other than a taxi, and the
+    taxis have no fares.
 - **Crowd:**
   - Walkers avoid each other along the footway lines, not across open plazas,
     and they don't avoid cars.
@@ -714,6 +1006,9 @@ pass it in the integrated build.
 
 ## Sources
 
+- Persona 5's Tokyo and the real places: [Kotaku](https://kotaku.com/persona-5s-in-game-locations-compared-to-the-real-world-1787125885),
+  [TheGamer](https://www.thegamer.com/persona-5-locations-visit-real-world-counterparts/),
+  [Megami Tensei Wiki: Yongen-Jaya](https://megatenwiki.com/wiki/Yongen-Jaya).
 - Unreal Engine's CharacterMovementComponent and SpringArm: see
   [ENGINES.md](ENGINES.md#sources).
 
@@ -726,6 +1021,10 @@ pass it in the integrated build.
   [VGC](https://www.videogameschronicle.com/news/microsoft-flight-simulators-40th-anniversary-update-adds-helicopters-and-gliders).
 - GeoFS: [instructions](https://www.geo-fs.com/pages/instructions.php).
 - Sketchbook: [source](https://github.com/swift502/Sketchbook) (`Helicopter.ts`, `Character.ts`).
+- GTA VI's Ryde Me app and its cars:
+  [allthings.how](https://allthings.how/gta-6-ryde-me-how-the-taxi-app-handles-fast-travel-in-leonida/),
+  [Beebom](https://beebom.com/gta-6-taxi-app-lets-you-fast-travel-around-leonida/),
+  [Jalopnik](https://www.jalopnik.com/2246099/gta-6-race-track-new-details/).
 - GTA V time scale:
   [alt:V docs](https://docs.altv.mp/gta/articles/references/time-and-date.html).
 - GTA V GPS: [Grand Theft Wiki](https://www.grandtheftwiki.com/GPS).

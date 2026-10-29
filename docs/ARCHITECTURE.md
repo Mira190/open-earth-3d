@@ -6,7 +6,7 @@ modelled by hand except the landmarks. Those are code, and their dimensions
 come from published figures.
 
 ```
-cities/<id>/city.json ──┐                                      ┌─► web/          globe.js, city.js, sun.js
+cities/<id>/city.json ──┐                                      ┌─► web/          title.js, city.js, sun.js
 cities/<id>/city.py ────┤                                      │
 Overture Maps (S3) ─────┼─► pipeline/fetch_*.py ─► data/raw/<id>/ ─► pipeline/build_scene.py ─► web/data/<id>/ ─┼─► analysis/     *.py, *.js
 imagery, terrain ───────┘                                      ▲               │                  │
@@ -37,8 +37,8 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
-| Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
-| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
+| Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques) |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -176,8 +176,13 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   `uv` (metres) where its material has a surface pattern. Materials are
   `{color, roughness, metalness}`, optionally with a `pattern`:
   - `chevron_tiles`: the Opera House roof;
+  - `granite`: reconstituted granite, its slab joints, and on a stair the
+    nosing of each tread and the shadow under it on each riser;
   - `deck_zones`: a deck in strips across its width;
   - `railing`: bars cut out of a strip.
+
+  A material with `decal: true` is paving laid over a roof: it is drawn in
+  front of the roof, and the game does not count it as a solid.
 
   The meshes are built with `pipeline/meshkit.py`, the landmarks' counterpart
   of the vehicles' `web/game/kit.js`: boxes, tubes, lathes, swept sections,
@@ -187,7 +192,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 ## Viewer
 
-`web/index.html` is one page with three views. three.js r186 loads as ES modules
+`web/index.html` is one page with three views, in one look: the title screen's
+blue-black and off-white type, the sun's amber as the one accent, and glass and
+hairlines instead of boxes (`title.css` styles the title screen, the page's own
+stylesheet the model and the game). three.js r186 loads as ES modules
 through an import map (cdnjs for the core, jsDelivr for the addons and
 three-mesh-bvh), and a small module exposes them as the global `THREE` the app's
 scripts use. Colour management is left off: the scripts convert their sRGB
@@ -214,12 +222,19 @@ The views switch in place, without reloading the page.
     city's mix, instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
     cut-out leaf shadows and jacarandas that flower in season;
-  - sky, sun and shadows;
+  - the ground's aerial photos, with their haze taken out: the city's tiles are
+    measured as they load (the darkest 2% and the mean saturation), and the
+    shader takes back a share of that black level and restores some colour;
+  - sky, sun and shadows. The shadow map follows the camera in whole texels
+    along the sun's axes and changes size in steps, so shadow edges hold still
+    as the camera moves;
   - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
     the fog colour, and beyond the frame there is only haze. It is three.js's fog
     chunks with the frame written in, so every fogged material takes it,
     reflections included. Within about 150 m of the camera it is held off, unless
-    the camera itself is outside the model.
+    the camera itself is outside the model. In the game, the haze takes the sky's
+    colour at the horizon (read back from the sky when the sun moves) and the
+    sky's last few degrees fade into it, so the city meets the sky without a band.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -282,11 +297,24 @@ The views switch in place, without reloading the page.
   minutes from the show's start time after dark. The viewer and the game share
   it.
 
-- **`globe.js`** draws the Natural Earth map onto an equirectangular canvas.
-  It textures a sphere with it and shades day and night from the subsolar
-  point (`Sun.subsolar`). City markers are HTML buttons projected onto the
-  sphere and hidden on the far side. Each live city shows its local time and
-  sun altitude.
+- **`earth.js`** draws the title screen's Earth, its air and the sky, and the lens.
+  By day it shows this month's Blue Marble, by night the Black Marble's lights.
+  The clouds cast shadows, and the air scatters the sun (`Sun.subsolar`) by single
+  scattering through a shell. The Milky Way and the Yale catalogue's stars are
+  turned by the sidereal time, and bloom, a flare and the Neutral tone curve
+  finish the frame.
+- **`title.js`** directs the title screen: the boot and the sound gate, then a
+  cold open planned on the real sky (a night pass towards the sunrise), the title
+  card and the menu. A destination's beacon, reticle and card show its local time
+  and sun, and the dive to it hands over to the model's loader. `score.js` is its
+  synthesised sound. [TITLE.md](TITLE.md) has the details.
+- **`lens.js`** is the title screen's lens as a pass: the tone curve, grade,
+  flare, grain and vignette. The model viewer, the game and the city films end
+  their frame on it, so every city is seen as the Earth is on the title.
+- **`film.js`** plays a city's film (`films/<id>.mp4`, rendered from the city's
+  own game by `tools/city_film.js`): a silent teaser in the destination card and
+  a theatre with titles set as type from the film's cue sheet. [FILMS.md](FILMS.md)
+  has the details.
 - **`city.js`** is the model viewer. It drives everything city-specific from
   `scene.city`. Picking a building goes through a bounding-volume hierarchy
   (three-mesh-bvh) over the extruded buildings. One ray against Sydney's 178,683
@@ -338,8 +366,13 @@ The views switch in place, without reloading the page.
   - wildlife (`penguins.js`): a colony of little penguins in one instanced
     mesh. They are out at sea by day, come ashore in rafts after the real
     sunset and walk to burrows on the mapped rocks (`game.wildlife`);
+  - gulls (`gulls.js`): a flock of silver gulls round a box of chips, which
+    goes up when you walk into it (`game.flocks`);
   - rail (`rail.js`), where the city has it: street trams and a funicular on
     the rail lines OpenStreetMap maps;
+  - neighbourhoods (`places.js`), where the city names them: a station sign as
+    you walk into an area, things to look at up close, and conversations you
+    overhear in passing;
   - HUD;
   - sound.
 

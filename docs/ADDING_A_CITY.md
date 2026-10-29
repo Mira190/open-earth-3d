@@ -55,7 +55,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `datum_offset_m` | no | For an inland city: the height of the scene's 0 m in the terrain's datum. The viewer's water plane is at 0, so set it to the river's level (Paris: 26.9, the Seine in NGF-IGN69) and every height in the scene is above the river; `load_dem` subtracts it, and the elevation checks add it back. Say where the level comes from in a `datum_note` |
 | `year` | no | Year for dates in the viewer and analyses (default: this year) |
 | `imagery` | yes | `{type: "xyz", url, zoom, format, attribution}`; the URL uses `{z}`, `{x}` and `{y}`. Or `{type: "synth", attribution}`: no imagery, and the ground is drawn from Overture land use, land, water, roads, footways, rail and footprints |
-| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "wcs", url, coverage, crs, pixel_deg, fill_below_m, fill_above_m, bare_earth, attribution}` for an OGC WCS 1.0.0 `GetCoverage` in geographic coordinates (GDA94 is converted from GDA2020, about 1.5 m); with `pixel_m` (and `format`, such as `image/tiff`) the WCS is read in a projected `crs` instead, in tiles: the Netherlands' AHN in RD New (EPSG:28992); pixels below `fill_below_m` or above `fill_above_m`, and non-finite ones, are voids filled from their neighbours; `{type: "gsi_dem_png", url, zoom, fallback: {url, zoom}, bare_earth, attribution}` for GSI (Japan) elevation tiles, 5 m laser DEM with the 10 m DEM filling gaps (`holes: "sea_level"` where neither covers the sea, else the nearest cell); `{type: "wms_bil", url, layer, crs, pixel_m, bare_earth, attribution}` for an OGC WMS that serves float32 BIL in a projected CRS (IGN's LiDAR HD bare earth in Lambert-93 for France), read in tiles; `{type: "tile_index", index, url_field, crs, frame_crs, pixel_m, bare_earth, attribution}` for zipped GeoTIFF tiles in a projected CRS listed in a GeoJSON index, mosaicked at `pixel_m` (Hong Kong's LiDAR); or `{type: "terrarium"}` as a last resort. `frame_crs` is the datum the local frame's coordinates are taken in when converting to `crs` (default GDA2020, `EPSG:7844`; `EPSG:4326` elsewhere). `raise` `[{class, crest_m, slope_m, note}]` lifts the mapped outlines of an Overture infrastructure class that a bare-earth DEM flattens, such as a breakwater. Each rises from its edge to `crest_m` over `slope_m`, and the water polygon is cut back from it. The crest is a chosen height, so say so in the `note` |
+| `terrain` | yes | `{type: "arcgis_image", url, pixel_m, bare_earth, attribution}` for an ArcGIS ImageServer `exportImage`; `{type: "wcs", url, coverage, crs, pixel_deg, fill_below_m, fill_above_m, bare_earth, attribution}` for an OGC WCS 1.0.0 `GetCoverage` in geographic coordinates (GDA94 is converted from GDA2020, about 1.5 m); with `pixel_m` (and `format`, such as `image/tiff`) the WCS is read in a projected `crs` instead, in tiles: the Netherlands' AHN in RD New (EPSG:28992); pixels below `fill_below_m` or above `fill_above_m`, and non-finite ones, are voids filled from their neighbours; `{type: "gsi_dem_png", url, zoom, fallback: {url, zoom}, bare_earth, attribution}` for GSI (Japan) elevation tiles, 5 m laser DEM with the 10 m DEM filling gaps (`holes: "sea_level"` where neither covers the sea, else the nearest cell); `{type: "wms_bil", url, layer, crs, pixel_m, bare_earth, attribution}` for an OGC WMS that serves float32 BIL in a projected CRS (IGN's LiDAR HD bare earth in Lambert-93 for France), read in tiles; `{type: "tile_index", index, url_field, crs, frame_crs, pixel_m, bare_earth, attribution}` for zipped GeoTIFF tiles in a projected CRS listed in a GeoJSON index, mosaicked at `pixel_m` (Hong Kong's LiDAR); or `{type: "terrarium"}` as a last resort. `frame_crs` is the datum the local frame's coordinates are taken in when converting to `crs` (default GDA2020, `EPSG:7844`; `EPSG:4326` elsewhere). `raise` `[{class, crest_m, slope_m, note}]` lifts the mapped outlines of an Overture infrastructure class that a bare-earth DEM flattens, such as a breakwater. Each rises from its edge to `crest_m` over `slope_m`, and the water polygon is cut back from it. The crest is a chosen height, so say so in the `note`. `level` `[{name, ring, z_m, feather_m, note}]` levels the ground inside a ring of longitudes and latitudes to `z_m`, blended over `feather_m` inside its edge: for a false terrace that a laser DEM interpolated where its filter took out a large structure (Osaka Castle's honmaru). Give the evidence for `z_m` in the `note` |
 | `survey` | no | Surveyed building heights: `{type: "arcgis_features", url, fields: {top, base, floors, name, name_local, kind, status, date}, keep_status, skip_kinds, absolute, attribution}`, an ArcGIS FeatureServer layer of building outlines (`pipeline/fetch_survey.py`). `absolute: true` when `top` is a level in the vertical datum rather than a height. The build cuts footprints along these blocks (`pipeline/survey.py`) |
 | `surface_check` | no | A LiDAR surface model, fetched like a `tile_index` terrain: `{type, index, url_field, crs, frame_crs, pixel_m, name, flown, flown_ms}`. It measures footprints the survey misses, lowers surveyed pieces the laser saw far lower on blocks surveyed before `flown_ms`, and checks every roof (`analysis/lidar_heights.py`) |
 | `terrain_check` | no | An independent elevation source for `analysis/dem_check.py`: `{type: "arcgis_identify", url, field, name}` (a raster service sampled on a grid) or `{type: "arcgis_points", url, field, name}` (surveyed spot heights from a feature layer); `{type: "gsi_dem_png", url, zoom, name}` for GSI PNG tiles (a coarser, older Japanese DEM); `{type: "gsi_elevation_api", url, name}`, GSI's elevation lookup (the 1 m laser DEM where flown); or `{type: "wms_bil", url, layer, crs, pixel_m, name}`, another DEM from a WMS (IGN's RGE ALTI against Paris's LiDAR terrain) |
@@ -76,7 +76,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `analysis_region` | no | `[x0, x1, y0, y1]`: the dense core, used by the data-quality and radar checks |
 | `sun_hours_region` | no | `[x0, x1, y0, y1]`: the area of the viewer's sun-hours map |
 | `reference_heights` | no | `{file, source}`: published heights; see below. A `match_name` column in the CSV (the building's name as mapped) finds a building without a street address |
-| `light_show` | no | A nightly light show (`web/lights.js`): `{name, start: "HH:MM", minutes, beams: [landmark keys], lasers: [[key, key], ...], note}`. Searchlights rise from the landmarks' published tops, lasers join them and the floodlit landmarks cycle through colours |
+| `light_show` | no | A nightly light show (`web/lights.js`): `{name, start: "HH:MM", minutes, beams: [landmark keys], lasers: [[key, key], ...], note}`. Searchlights rise from the landmarks' published tops (or from a landmark's own `beams`, one each), lasers join them and the floodlit landmarks cycle through colours. Optional: `beam_m` (length), `spread` (how wide a beam opens, 0.035), `opacity` (0.22), `colours`, `recolour: false` (floodlights keep their colours) |
 | `verified_heights` | no | A CSV of heights verified one by one, each with its source |
 | `check_points` | no | `{name: [lon, lat]}`: points where terrain sources are compared |
 | `radar_test_building` | no | The building `radar_check.py` removes to test detection (default: the largest reference correction) |
@@ -84,7 +84,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `climate` (`mean_max_c`: the twelve monthly mean daily maximum temperatures in °C, and their `source`), which decides whether the crowd looks for sun or shade on the benches; `blurb` (the title screen's line); `boardwalks` (`name` of a mapped walkway line, or a `line` in the local frame, and `width_m`: walkable timber decks at the pier deck height); `wildlife` (a colony: `kind: "little_penguin"`, `name`, `on` (the infrastructure class it lives on), `colony_near`, `within_m`, `seaward_bearing_deg`, `count`, `show`, `height_m`, `ashore_after_sunset_min`, `leave_before_sunrise_min`, `day_ashore_share`, `viewing` (the name of its mapped viewing platform), `viewing_note`, `keep_off_note`, `note`, `source`); `travel` (`id`, `name`, `at`: fast-travel points, unlocked by visiting); `links` (`id`, `name`, `how`: neighbouring cities in the menu); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun`, `inspect`, `gable` (`kinds`: the survey lens finds a house with each of these gables, Amsterdam), `visit` (`at` and `radius`, or a `place`; with `after_dark: true` only once the sun is down) and `penguins` (`count` birds ashore within `radius`). A choice can carry an `action`: `set_time` (`date`, `time`) or `dusk` (ten minutes before today's sunset). `ferry_style` `{model, length_m, beam_m, hull, trim, upper, flag, note}` picks the shared ferry (`model`: `harbour` for the 34 m harbour ferry or `river` for the 22 m river shuttle; without it, by `length_m`), sizes it and gives it the city's livery. A wharf whose terminal name several berths share takes `near` `[x, y]`: the berth nearest it. `rail` `{tram: {class, keep, gauge_m, length_m, width_m, height_m, speed_ms, spacing_m, stop_every_m, liveries, min_length_m, note}, funicular: {class, climb: true, name, stations, gauge_m, length_m, width_m, height_m, livery, trim, speed_ms, dwell_s, car_names, note}}` runs trams and a funicular on the Overture rail lines of those classes (`web/game/rail.js`); a `rail` step `{from, to}` rides the funicular between its stations. `vehicles` picks the look of the shared vehicles: `helicopter` (`livery`, `registration`, `logo`), `ferry` (`livery`) and `cars` (`taxi`: `colours`, `share`; `bus`: `colour`, `band`; `colours` for private cars); without a ferry livery the ferries take `ferry_style`'s colours. `sky` `{clouds, cloud_density, post}` sets the game's cloud cover (0–1, default 0.3) and can turn the post stack off. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}`, `{share:source}`, `{sunset}`, and `{penguins_from}` and `{penguins_to}` (when tonight's first and last rafts come in). See the Sydney, Melbourne, Melbourne Bayside and Hong Kong configs and [GAME.md](GAME.md). Flavour keys: `greeting` or `smalltalk` (the crowd's lines), `player_looks`; `crowd.style`, a preset's name from `web/game/people.js` (`tokyo`, `kyoto`) or `{skin, hair, tops, legs, weights, scale, patterns, acc}` (the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`); see Osaka's config. |
+| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `climate` (`mean_max_c`: the twelve monthly mean daily maximum temperatures in °C, and their `source`), which decides whether the crowd looks for sun or shade on the benches; `blurb` (the title screen's line); `boardwalks` (`name` of a mapped walkway line, or a `line` in the local frame, and `width_m`: walkable timber decks at the pier deck height); `wildlife` (a colony: `kind: "little_penguin"`, `name`, `on` (the infrastructure class it lives on), `colony_near`, `within_m`, `seaward_bearing_deg`, `count`, `show`, `height_m`, `ashore_after_sunset_min`, `leave_before_sunrise_min`, `day_ashore_share`, `viewing` (the name of its mapped viewing platform), `viewing_note`, `keep_off_note`, `note`, `source`); `flocks` (birds round a spot on the ground: `id`, `kind: "silver_gull"`, `name`, `at`, `count`, `perch_m` (how far along the seawall they stand), `note`, `source`); `travel` (`id`, `name`, `at`: fast-travel points, unlocked by visiting); `links` (`id`, `name`, `how`: neighbouring cities in the menu); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character` from `web/assets/people/people.json` and recolours it: `skin`, `hair`, `top`, `legs` (sRGB hex). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun`, `inspect`, `gable` (`kinds`: the survey lens finds a house with each of these gables, Amsterdam), `visit` (`at` and `radius`, a `place`, or a `flock`; with `after_dark: true` only once the sun is down) and `penguins` (`count` birds ashore within `radius`). A choice can carry an `action`: `set_time` (`date`, `time`) or `dusk` (ten minutes before today's sunset). `ferry_style` `{model, length_m, beam_m, hull, trim, upper, flag, note}` picks the shared ferry (`model`: `harbour` for the 34 m harbour ferry or `river` for the 22 m river shuttle; without it, by `length_m`), sizes it and gives it the city's livery. A wharf whose terminal name several berths share takes `near` `[x, y]`: the berth nearest it. `rail` `{tram: {class, keep, gauge_m, length_m, width_m, height_m, speed_ms, spacing_m, stop_every_m, liveries, min_length_m, note}, funicular: {class, climb: true, name, stations, gauge_m, length_m, width_m, height_m, livery, trim, speed_ms, dwell_s, car_names, note}}` runs trams and a funicular on the Overture rail lines of those classes (`web/game/rail.js`); a `rail` step `{from, to}` rides the funicular between its stations. `vehicles` picks the look of the shared vehicles: `helicopter` (`livery`, `registration`, `logo`), `ferry` (`livery`) and `cars` (`taxi`: `colours`, `share`; `bus`: `colour`, `band`; `colours` for private cars); without a ferry livery the ferries take `ferry_style`'s colours. `sky` `{clouds, cloud_density, saturation, post}` sets the game's cloud cover (0–1, default 0.3) and the sky's colour (`saturation`, default 1.7; 1 is the model viewer's paler sky) and can turn the post stack off. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}`, `{share:source}`, `{sunset}`, and `{penguins_from}` and `{penguins_to}` (when tonight's first and last rafts come in). `lines` (`id`, `title`, `after`: lines that must be done first, `on_open`) groups the quests into lines that run side by side; a quest names its `line`. `areas` (`name`, `kana`, `romaji`, `band`, `left`, `right`, `at`, `radius`, `note`) are neighbourhoods with a station sign; `spots` (`id`, `name`, `at` with an optional height, `radius`, `verb`, `lines`, `pick`) are things to look at with E, and a step `{type: "spot", spot}` waits for one; `chatter` (`at`, `radius`, `lines`: `[who, text]`, `every`) are conversations overheard in passing; `lifts` (`id`, `name`, `line`, `m_per_min`, `stops`: `{name, at: [x, y, z], face}`) carry you between a street door and a floor high up. A `travel` point's `at` may carry a height, and `always: true` lists it before a visit. See the Sydney, Melbourne, Melbourne Bayside, Hong Kong and Shibuya configs and [GAME.md](GAME.md). Flavour keys: `greeting` or `smalltalk` (the crowd's lines), `player_looks`; `crowd.style`, a preset's name from `web/game/people.js` (`tokyo`, `kyoto`) or `{skin, hair, tops, legs, weights, scale, patterns, acc}` (the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`); see Osaka's config. |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -128,6 +128,15 @@ def landmark_meshes(scene):
     Return (materials, meshes): materials {key: {color, roughness, metalness,
     pattern}}, meshes a list of meshkit.Mesh (set floodlit=True to light it after
     dark, uv=True to keep texture coordinates for a patterned material)."""
+
+def landmark_assets(out_dir, scene):
+    """Called by pipeline/landmarks.py after landmark_meshes. Write files the
+    landmark materials use (a texture atlas) into out_dir; return their names."""
+
+def adjust_terrain(z, city, cell):
+    """Called by pipeline/build_scene.py on each DEM grid (the 5 m one and the
+    10 m one the browser gets), after the mapped corrections. Return the grid with
+    the city's own cuts: stairs set into a slope, a sunken approach."""
 ```
 
 ```python
@@ -139,7 +148,13 @@ def game_surfaces(scene):
     mesh: the landmark mesh (name prefix) the surface stands for, which the game
     walks on as the strip rather than as a solid; fly_under: a span the
     helicopter can be flown under (a quest step); drape: every footway crossing
-    the surface is put onto it (steps); label: a short name for messages."""
+    the surface is put onto it (steps); label: a short name for messages.
+    moving_ms and moving_u: [u0, u1] make it an escalator that carries walkers."""
+
+def game_extras(scene):
+    """Called by pipeline/game_data.py. Game content placed from the landmarks:
+    {"travel": [...], "lifts": [...], "spots": [...], "chatter": [...], ...}.
+    Lists are added to the config's lists of the same name."""
 ```
 
 The game turns each landmark mesh into one height interval per 2 m cell, so
@@ -163,6 +178,12 @@ Every part takes metres. Build the small parts too: the railings, lamps,
 mullions and deck markings are what make a structure read as built, and they
 cost little when each material is one mesh.
 
+A material can take an image instead: `map` names a file in the city's data
+folder (one atlas for every sign, written by `landmark_assets`), `cutout: true`
+cuts out its transparent pixels, `emissive_map: true` lights the image itself
+after dark on a floodlit mesh (signs, screens, lanterns), and `opacity` below 1
+makes glass. The meshes keep their UVs (`uv=True`). Blender reads the same keys.
+
 A material's `pattern` is drawn by the browser from the mesh's UVs
 (`web/world.js` `PATTERNS`). Its settings sit next to it in the material:
 - `chevron_tiles` with `lid_m` and `chevron_m`: a tiled shell. u counts the
@@ -172,12 +193,22 @@ A material's `pattern` is drawn by the browser from the mesh's UVs
   deck. u is metres along it, and v is metres across.
 - `railing` with `bar_m` and `rails_m: [bottom, top]`: bars cut out of a
   `panel`.
+- `granite` with `joints_m: [across, along]` and an optional `stair` (`tread` or
+  `riser`): reconstituted granite and its slab joints, u and v in metres. A
+  tread's v runs back from its nosing; a riser's v runs from its foot (0) to
+  its top (1), and the shadow under the nosing is drawn on it.
+
+`decal: true` marks paving laid over a building's roof, such as a podium's
+deck: the browser draws it in front of the roof, and the game walks on the roof
+under it rather than counting it as a solid.
 
 When a landmark replaces the solids OSM maps for it, as Sydney Tower does, keep
 the solids and call `ctx.hide(solid)` on each of them (entries of `geoms`) in
 `adjust_building`. The surface
 model and the analyses still see their shadow. The renderers skip them
-(`hidden_solids` in `scene.json`) and draw the landmark instead.
+(`hidden_solids` in `scene.json`) and draw the landmark instead. A roof that a landmark
+furnishes itself, such as an observation deck, takes `ctx.bare_roof(solid)`: the
+build then adds no generated plant rooms or boxes to it.
 
 ## 4. Optional: reference tables
 
@@ -231,11 +262,21 @@ region's priors in `architecture_overrides`. To look at the buildings up close
 from the command line, use `tools/city_shot.js`; it screenshots views that you
 list in a JSON file.
 
+A city with a game can have a loading flyover: `node tools/flyover.js <id>`
+(with `web/` served on port 8800) renders a spiral from high over the model
+down to the game's title camera, in the game itself, and writes
+`web/data/<id>/flyover.mp4`, `flyover.webm`, `flyover.jpg` and `flyover.json`.
+Run `write_index()` (the last step of `build_scene.py`) to list it in
+`cities.json`. A software renderer takes 15 to 25 s a frame over a whole city,
+so expect about 40 minutes.
+
 ## 6. Mark it live
 
 Add or update the city in `cities/index.json` with `"status": "live"` and a
-one-line `summary`. The build writes `web/data/cities.json`, which the globe
-reads. A city with no built scene stays on the globe as planned.
+one-line `summary`, and `native` for its name in the local script if that is not
+Latin (大阪). The build writes `web/data/cities.json`, which the title screen reads,
+with the building count and the model's extent for the destination card. A city
+with no built scene stays on the globe as planned.
 
 ## Checklist before a city goes live
 

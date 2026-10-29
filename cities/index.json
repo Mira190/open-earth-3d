@@ -31,6 +31,7 @@
     {
       "id": "osaka",
       "name": "Osaka",
+      "native": "大阪",
       "country": "Japan",
       "lat": 34.679,
       "lon": 135.513,
@@ -41,6 +42,7 @@
     {
       "id": "kyoto",
       "name": "Kyoto",
+      "native": "京都",
       "country": "Japan",
       "lat": 35.003,
       "lon": 135.7625,
@@ -50,11 +52,22 @@
     {
       "id": "tokyo",
       "name": "Tokyo",
+      "native": "東京",
       "country": "Japan",
       "lat": 35.67,
       "lon": 139.759,
       "status": "live",
       "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower."
+    },
+    {
+      "id": "shibuya",
+      "name": "Shibuya & Shinjuku",
+      "native": "渋谷・新宿",
+      "country": "Japan",
+      "lat": 35.6685,
+      "lon": 139.6965,
+      "status": "live",
+      "summary": "Sangenjaya to Shibuya, Shinjuku and Yotsuya: 90,000 buildings at PLATEAU-surveyed heights, the Shibuya scramble, SHIBUYA SKY's roof with its lift and escalator, the Suga Shrine stairs of Your Name with this year's ema, and the streets Persona 5 drew, from Sangenjaya's backstreets to Kabukicho."
     },
     {
       "id": "whitsundays",
@@ -155,6 +168,7 @@
     {
       "id": "hong-kong",
       "name": "Hong Kong",
+      "native": "香港",
       "country": "China",
       "lat": 22.286,
       "lon": 114.1635,

@@ -1,0 +1,629 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "Yoyogi Park 代々木公園",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 2.5,
+   "catchment_buildings": 36,
+   "shade_by_height_source_pct": {
+    "plateau": 97.9,
+    "estimate": 1.6,
+    "floors": 0.5
+   },
+   "top_blockers": [
+    {
+     "building": 52725,
+     "name": "unnamed building",
+     "height_m": 91.2,
+     "source": "plateau",
+     "osm_id": "w544210711",
+     "share_pct": 16
+    },
+    {
+     "building": 52417,
+     "name": "NHKホール",
+     "height_m": 29.1,
+     "source": "plateau",
+     "osm_id": "w102123743",
+     "share_pct": 11.2
+    },
+    {
+     "building": 52404,
+     "name": "unnamed building",
+     "height_m": 10.6,
+     "source": "plateau",
+     "osm_id": "w1332897596",
+     "share_pct": 7.2
+    },
+    {
+     "building": 52718,
+     "name": "unnamed building",
+     "height_m": 22.7,
+     "source": "plateau",
+     "osm_id": "w138695699",
+     "share_pct": 5.3
+    },
+    {
+     "building": 52423,
+     "name": "パークコート渋谷ザ・タワー",
+     "height_m": 140.9,
+     "source": "plateau",
+     "osm_id": "w740991257",
+     "share_pct": 4.8
+    },
+    {
+     "building": 52508,
+     "name": "unnamed building",
+     "height_m": 14.8,
+     "source": "plateau",
+     "osm_id": "w138695744",
+     "share_pct": 4.7
+    }
+   ],
+   "base_by_month": [
+    95.3,
+    97.1,
+    98.1,
+    98.8,
+    99.1,
+    99.3,
+    99.2,
+    98.8,
+    98.1,
+    97,
+    95.1,
+    94.2
+   ],
+   "p05_by_month": [
+    95,
+    97,
+    98.1,
+    98.7,
+    99.1,
+    99.2,
+    99.2,
+    98.8,
+    98.1,
+    96.8,
+    94.9,
+    93.9
+   ],
+   "p95_by_month": [
+    95.4,
+    97.2,
+    98.2,
+    98.8,
+    99.2,
+    99.3,
+    99.2,
+    98.8,
+    98.2,
+    97,
+    95.2,
+    94.3
+   ],
+   "window_mean": {
+    "base": 97.5,
+    "p05": 97.4,
+    "p95": 97.5
+   },
+   "max_halfwidth_pp": 0.2
+  },
+  {
+   "name": "Shinjuku Gyoen 新宿御苑",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 5.1,
+   "catchment_buildings": 54,
+   "shade_by_height_source_pct": {
+    "plateau": 85,
+    "estimate": 12.5,
+    "mapped": 2.5
+   },
+   "top_blockers": [
+    {
+     "building": 78539,
+     "name": "大温室",
+     "height_m": 15.6,
+     "source": "plateau",
+     "osm_id": "w228926578",
+     "share_pct": 11.8
+    },
+    {
+     "building": 78574,
+     "name": "unnamed greenhouse",
+     "height_m": 6.8,
+     "source": "plateau",
+     "osm_id": "w1322002390",
+     "share_pct": 5.1
+    },
+    {
+     "building": 60756,
+     "name": "レストランゆりのき",
+     "height_m": 22.7,
+     "source": "plateau",
+     "osm_id": "w149732542",
+     "share_pct": 3.7
+    },
+    {
+     "building": 60599,
+     "name": "環境省 新宿御苑 管理事務所",
+     "height_m": 8.3,
+     "source": "plateau",
+     "osm_id": "w229076834",
+     "share_pct": 3.3
+    },
+    {
+     "building": 60753,
+     "name": "インフォメーションセンター",
+     "height_m": 8.7,
+     "source": "plateau",
+     "osm_id": "w155785002",
+     "share_pct": 2.9
+    },
+    {
+     "building": 58331,
+     "name": "ゼニス南新宿",
+     "height_m": 57.9,
+     "source": "mapped",
+     "osm_id": "w153182955",
+     "share_pct": 2.5
+    }
+   ],
+   "base_by_month": [
+    92.5,
+    94.2,
+    95.3,
+    96.3,
+    97.1,
+    97.6,
+    97.3,
+    96.3,
+    95.2,
+    93.7,
+    91.9,
+    91.3
+   ],
+   "p05_by_month": [
+    92.3,
+    94,
+    95.2,
+    96.1,
+    97,
+    97.5,
+    97.2,
+    96.2,
+    95.1,
+    93.6,
+    91.6,
+    91
+   ],
+   "p95_by_month": [
+    92.5,
+    94.2,
+    95.3,
+    96.3,
+    97.2,
+    97.6,
+    97.3,
+    96.4,
+    95.3,
+    93.8,
+    91.9,
+    91.3
+   ],
+   "window_mean": {
+    "base": 94.9,
+    "p05": 94.7,
+    "p95": 94.9
+   },
+   "max_halfwidth_pp": 0.2
+  },
+  {
+   "name": "Miyashita Park 宮下公園",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 14.9,
+   "catchment_buildings": 6,
+   "shade_by_height_source_pct": {
+    "plateau": 100
+   },
+   "top_blockers": [
+    {
+     "building": 65226,
+     "name": "sequence MIYASHITA PARK",
+     "height_m": 82.4,
+     "source": "plateau",
+     "osm_id": "w1243122188",
+     "share_pct": 52
+    },
+    {
+     "building": 65228,
+     "name": "MIYASHITA PARK",
+     "height_m": 22.3,
+     "source": "plateau",
+     "osm_id": "r19370681",
+     "share_pct": 33.1
+    },
+    {
+     "building": 65227,
+     "name": "MIYASHITA PARK CENTER",
+     "height_m": 21.4,
+     "source": "plateau",
+     "osm_id": "w1074513113",
+     "share_pct": 8.8
+    },
+    {
+     "building": 88688,
+     "name": "unnamed building",
+     "height_m": 7.7,
+     "source": "plateau",
+     "osm_id": "",
+     "share_pct": 3.5
+    },
+    {
+     "building": 89234,
+     "name": "unnamed building",
+     "height_m": 7.6,
+     "source": "plateau",
+     "osm_id": "",
+     "share_pct": 1.9
+    },
+    {
+     "building": 89293,
+     "name": "unnamed building",
+     "height_m": 4.1,
+     "source": "plateau",
+     "osm_id": "",
+     "share_pct": 0.6
+    }
+   ],
+   "base_by_month": [
+    82.5,
+    84.5,
+    85.8,
+    87,
+    87.8,
+    88.2,
+    88.1,
+    86.9,
+    85.3,
+    83,
+    81.1,
+    80.9
+   ],
+   "p05_by_month": [
+    82.1,
+    84.4,
+    85.7,
+    86.9,
+    87.8,
+    88.1,
+    88.1,
+    86.9,
+    85.2,
+    82.8,
+    80.7,
+    80.6
+   ],
+   "p95_by_month": [
+    82.7,
+    84.7,
+    86,
+    87.1,
+    87.9,
+    88.2,
+    88.2,
+    87,
+    85.6,
+    83.2,
+    81.3,
+    81.2
+   ],
+   "window_mean": {
+    "base": 85.1,
+    "p05": 84.9,
+    "p95": 85.3
+   },
+   "max_halfwidth_pp": 0.3
+  },
+  {
+   "name": "Suga Park 須賀公園",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 20.2,
+   "catchment_buildings": 2,
+   "shade_by_height_source_pct": {
+    "plateau": 100
+   },
+   "top_blockers": [
+    {
+     "building": 84985,
+     "name": "unnamed building",
+     "height_m": 9.2,
+     "source": "plateau",
+     "osm_id": "w159499864",
+     "share_pct": 70.6
+    },
+    {
+     "building": 84966,
+     "name": "unnamed building",
+     "height_m": 9.5,
+     "source": "plateau",
+     "osm_id": "w159499968",
+     "share_pct": 29.4
+    }
+   ],
+   "base_by_month": [
+    45.6,
+    85.6,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    76.7,
+    26.7,
+    23.3
+   ],
+   "p05_by_month": [
+    38.9,
+    78.9,
+    96.7,
+    100,
+    100,
+    100,
+    100,
+    100,
+    97.7,
+    65.5,
+    23.3,
+    16.7
+   ],
+   "p95_by_month": [
+    55.6,
+    86.7,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    78.9,
+    34.4,
+    27.8
+   ],
+   "window_mean": {
+    "base": 79.8,
+    "p05": 76.7,
+    "p95": 81.9
+   },
+   "max_halfwidth_pp": 8.4
+  },
+  {
+   "name": "Jingu-dori Park 神宮通公園",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 7.2,
+   "catchment_buildings": 1,
+   "shade_by_height_source_pct": {
+    "plateau": 100
+   },
+   "top_blockers": [
+    {
+     "building": 65242,
+     "name": "ファミリエ神宮前",
+     "height_m": 32.4,
+     "source": "plateau",
+     "osm_id": "w138913773",
+     "share_pct": 100
+    }
+   ],
+   "base_by_month": [
+    78.7,
+    88.8,
+    96.7,
+    100,
+    100,
+    100,
+    100,
+    100,
+    97.2,
+    91.2,
+    84.2,
+    77.4
+   ],
+   "p05_by_month": [
+    77.1,
+    87.3,
+    95.7,
+    99.9,
+    100,
+    100,
+    100,
+    100,
+    96.4,
+    90.4,
+    83,
+    75.8
+   ],
+   "p95_by_month": [
+    80.4,
+    89.6,
+    97.2,
+    100,
+    100,
+    100,
+    100,
+    100,
+    97.6,
+    91.7,
+    84.9,
+    78.5
+   ],
+   "window_mean": {
+    "base": 92.9,
+    "p05": 92.1,
+    "p95": 93.3
+   },
+   "max_halfwidth_pp": 1.7
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "Suga Park 須賀公園",
+   "building": 84985,
+   "name": "unnamed building",
+   "osm_id": "w159499864",
+   "height_m": 9.2,
+   "source": "plateau",
+   "plausible_m": [
+    9,
+    10
+   ],
+   "sun_change_pp": [
+    -2.8,
+    1.1
+   ],
+   "swing_pp": 3.9
+  },
+  {
+   "place": "Suga Park 須賀公園",
+   "building": 84966,
+   "name": "unnamed building",
+   "osm_id": "w159499968",
+   "height_m": 9.5,
+   "source": "plateau",
+   "plausible_m": [
+    9,
+    10
+   ],
+   "sun_change_pp": [
+    -1.9,
+    0.3
+   ],
+   "swing_pp": 2.2
+  },
+  {
+   "place": "Jingu-dori Park 神宮通公園",
+   "building": 65242,
+   "name": "ファミリエ神宮前",
+   "osm_id": "w138913773",
+   "height_m": 32.4,
+   "source": "plateau",
+   "plausible_m": [
+    30,
+    34
+   ],
+   "sun_change_pp": [
+    -0.9,
+    0.7
+   ],
+   "swing_pp": 1.5
+  },
+  {
+   "place": "Miyashita Park 宮下公園",
+   "building": 65228,
+   "name": "MIYASHITA PARK",
+   "osm_id": "r19370681",
+   "height_m": 22.3,
+   "source": "plateau",
+   "plausible_m": [
+    21,
+    24
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.2
+   ],
+   "swing_pp": 0.4
+  }
+ ],
+ "seconds": 607.768,
+ "sigma": {
+  "floors": 0.182,
+  "estimate": 0.251,
+  "ml": null
+ }
+}

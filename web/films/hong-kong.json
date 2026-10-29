@@ -1,0 +1,117 @@
+{
+ "id": "hong-kong",
+ "name": "Hong Kong",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/hong-kong.mp4",
+ "poster": "films/hong-kong.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "ferry",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The Star Ferry"
+  },
+  {
+   "id": "boc",
+   "t0": 15,
+   "t1": 19.5,
+   "chapter": "The Bank of China"
+  },
+  {
+   "id": "icc",
+   "t0": 19.5,
+   "t1": 24.5,
+   "chapter": "Two towers"
+  },
+  {
+   "id": "promenade",
+   "t0": 24.5,
+   "t1": 29,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "22.29°N 114.16°E",
+    "Sunrise over Victoria Harbour · 06:13 HKT",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Hong Kong",
+   "native": "香港",
+   "sub": "China",
+   "figures": "7,513 buildings · 4.0 × 4.8 km · 98% of the heights measured"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Central to Tsim Sha Tsui",
+   "head": "The Star Ferry",
+   "text": "About a kilometre of harbour between Central's Pier 7 and Tsim Sha Tsui, wharf to wharf."
+  },
+  {
+   "t0": 15.5,
+   "t1": 19.2,
+   "kind": "lower",
+   "eyebrow": "Garden Road, Central",
+   "head": "Bank of China Tower",
+   "text": "A 52 m square cut along its diagonals into four triangular shafts; the masts reach 367.4 m."
+  },
+  {
+   "t0": 20.1,
+   "t1": 24.1,
+   "kind": "lower",
+   "eyebrow": "West Kowloon, from the harbour",
+   "head": "The ICC",
+   "text": "484 m, the tallest in the model; Two IFC, 412 m, faces it across the water."
+  },
+  {
+   "t0": 25,
+   "t1": 28.7,
+   "kind": "lower",
+   "eyebrow": "Tsim Sha Tsui, the Clock Tower",
+   "head": "Walk it",
+   "text": "Talk to the people who know the city, cross on the Star Ferry, ride the Peak Tram."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Hong Kong",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}

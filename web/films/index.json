@@ -1,0 +1,46 @@
+{
+ "amsterdam": {
+  "json": "films/amsterdam.json",
+  "duration": 36
+ },
+ "great-barrier-reef": {
+  "json": "films/great-barrier-reef.json",
+  "duration": 35.5
+ },
+ "hong-kong": {
+  "json": "films/hong-kong.json",
+  "duration": 36
+ },
+ "kyoto": {
+  "json": "films/kyoto.json",
+  "duration": 36.5
+ },
+ "melbourne-bayside": {
+  "json": "films/melbourne-bayside.json",
+  "duration": 36
+ },
+ "melbourne": {
+  "json": "films/melbourne.json",
+  "duration": 36
+ },
+ "osaka": {
+  "json": "films/osaka.json",
+  "duration": 36
+ },
+ "paris": {
+  "json": "films/paris.json",
+  "duration": 36
+ },
+ "shibuya": {
+  "json": "films/shibuya.json",
+  "duration": 36.5
+ },
+ "sydney": {
+  "json": "films/sydney.json",
+  "duration": 36
+ },
+ "tokyo": {
+  "json": "films/tokyo.json",
+  "duration": 36
+ }
+}

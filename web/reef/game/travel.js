@@ -1,8 +1,8 @@
-// Travel between the Queensland reef sites. The list is data: every entry of web/data/cities.json whose
-// `viewer` is this reef viewer, and a site counts as ready when its web/data/<id>/scene.json answers, so a
-// new site (Hardy Reef, Green Island, Lady Elliot Island ...) appears as soon as the pipeline writes it.
-// Travelling reloads the viewer with ?city=<id>, keeping the settings in the query (renderer, exposure,
-// sound, look) and dropping the ones that place you or script a test.
+// Travel between the Queensland reef sites, and back to the globe. The list is data: every entry of
+// web/data/cities.json whose `viewer` is this reef viewer, and a site counts as ready when its
+// web/data/<id>/scene.json answers, so a new site (Hardy Reef, Green Island, Lady Elliot Island ...) appears
+// as soon as the pipeline writes it. Travelling reloads the viewer with ?city=<id>, keeping the settings in
+// the query (renderer, exposure, sound, look) and dropping the ones that place you or script a test.
 const VIEWER = 'reef/index.html';
 // query keys that only make sense for the site you are leaving (positions, cameras, one-off test hooks)
 const DROP = ['city', 'x', 'y', 'z', 'yaw', 'pitch', 'player', 'cam', 'view', 'settle', 'hold', 'dive', 'still', 'freeze', 'demo', 'n',
@@ -29,6 +29,8 @@ export function siteHref(id, loc = location) {
   const keep = p.toString();
   return `${loc.pathname}?city=${encodeURIComponent(id)}${keep ? '&' + keep : ''}`;
 }
+// the globe, the landing page with every city (web/index.html)
+export const globeHref = () => new URL('../../index.html#globe', import.meta.url).href;
 
 export function createTravel(ctx) {
   const here = ctx.site;
@@ -59,5 +61,5 @@ export function createTravel(ctx) {
     const ahead = headingDeg === undefined ? others : others.filter(s => Math.cos(rad(s.bearing - headingDeg)) > 0);
     return (ahead.length ? ahead : others)[0] || null;
   }
-  return { load, build, nearest, href: siteHref, get list() { return list; } };
+  return { load, build, nearest, href: siteHref, globeHref, get list() { return list; } };
 }

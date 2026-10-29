@@ -3,8 +3,9 @@
 // clear sky for its analysis). After dark the stars come out where they really are for the
 // city and the time (bright named stars, the Southern Cross among them, and a scatter of
 // fainter ones), and the moon rises in its place in its real phase. The frame goes through
-// a post stack: HDR bloom (lamps at night, glints on the water by day), the world's own
-// tone curve, a slight grade and a vignette.
+// a post stack: HDR bloom (lamps at night, glints on the water by day), then the title
+// screen's lens (lens.js: its tone curve, grade, grain and vignette), or without it the
+// world's own tone curve, a slight grade and a vignette.
 'use strict';
 window.OEAtmos = (function () {
   const RAD = Math.PI / 180;
@@ -110,7 +111,7 @@ window.OEAtmos = (function () {
 
   // a grade and vignette after tone mapping (sRGB in, sRGB out)
   const GRADE = {
-    uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.22 }, uSat: { value: 1.06 }, uContrast: { value: 1.04 } },
+    uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.22 }, uSat: { value: 1.14 }, uContrast: { value: 1.08 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform sampler2D tDiffuse; uniform float uVignette; uniform float uSat; uniform float uContrast; varying vec2 vUv;
       void main() {
@@ -132,30 +133,48 @@ window.OEAtmos = (function () {
       su.cloudCoverage.value = clouds; su.cloudDensity.value = sky.cloud_density ?? 0.45;
       su.cloudScale.value = 0.00022; su.cloudSpeed.value = 0.00003; su.cloudElevation.value = 0.55;
     }
+    const skySat = sky.saturation ?? 1.7; // a blue sky rather than a white one (world.js)
     const S = stars(), M = moon();
     world.add(S, M);
-    // the post stack, where the GPU renders to half-float targets with multisampling
-    let composer = null, bloom = null, grade = null;
-    const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false;
+    // the post stack, where the GPU can render to half-float targets (measured by quality.js),
+    // with the tier's multisampling; elsewhere the scene goes straight to the screen
+    let composer = null, bloom = null, grade = null, lens = null;
+    const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
+    const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
     if (canPost) {
       const size = renderer.getSize(new THREE.Vector2());
-      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
+      // with the game's reversed depth buffer (game.js), a 32-bit float depth: it resolves a few
+      // millimetres at two kilometres, where 24 bits behind a 0.3 m near plane resolve a metre, so
+      // distant walls and roofs no longer fight over the same pixels as the camera moves
+      const deep = renderer.capabilities.reversedDepthBuffer ? new THREE.DepthTexture(size.x, size.y, THREE.FloatType) : null;
+      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples, depthTexture: deep });
+      if (deep) rt.resolveDepthBuffer = false; // only its format is wanted, not the texture
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(world, camera));
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
       composer.addPass(bloom);
-      composer.addPass(new THREE.OutputPass());
-      grade = new THREE.ShaderPass(GRADE);
-      composer.addPass(grade);
+      if (window.OELens && sky.lens !== false) {
+        // the title screen's lens (lens.js): its tone curve, grade, grain and vignette, so the city
+        // looks as the Earth does on the title and as the city does in its film
+        lens = new THREE.ShaderPass(OELens.shader());
+        Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
+        lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
+        composer.addPass(lens);
+      } else {
+        composer.addPass(new THREE.OutputPass());
+        grade = new THREE.ShaderPass(GRADE);
+        composer.addPass(grade);
+      }
     }
     const q = new THREE.Quaternion();
     let night = 0;
     const api = {
-      composer, stars: S, moon: M,
+      composer, lens, stars: S, moon: M,
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
       update(utcMs, tSec, U) {
         night = U.uNight.value;
         if (su.time) su.time.value = tSec;
+        if (su.uSkySat) su.uSkySat.value = 1 + (skySat - 1) * (1 - night); // not the night sky's red
         skyBasis(utcMs, city.lat, city.lon, basis);
         S.matrix.copy(basis).setPosition(camera.position);
         S.matrixWorldNeedsUpdate = true;
@@ -173,8 +192,16 @@ window.OEAtmos = (function () {
         M.material.uniforms.uSun.value.copy(Wd.sunDir).applyQuaternion(q);
         M.material.uniforms.uOpacity.value = 0.25 + 0.75 * night;
         if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
+        if (lens) {
+          const L = lens.uniforms;
+          L.uExposure.value = renderer.toneMappingExposure * 1.1; // the world's exposure, set for ACES, a little brighter under the film curve
+          L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
+          L.uContrast.value = 0.1 + 0.18 * night;
+          L.uSat.value = 1.06;
+          L.uTime.value = tSec;
+        }
       },
-      setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } },
+      setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
       // draw the frame: through the post stack, or plainly
       render(scene, cam) { if (composer) composer.render(); else renderer.render(scene, cam); },
       dispose() { if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },

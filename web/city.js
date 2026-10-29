@@ -28,6 +28,7 @@ window.OpenEarthCity = async function main(cityId) {
     D = await OEWorld.load(cityId, { onMsg: loadMsg });
   } catch (e) {
     loadMsg(`Could not load the model data (${e.message}). Reload the page to try again.`, 0);
+    $('#loader').classList.add('err');
     return;
   }
   const { scene, B, P, LM, UNC, T, CITY, ground } = D;
@@ -67,8 +68,9 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ renderer, camera
   const canvas = $('#gl'), stage = $('#stage');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries
+  const QC = window.OEQuality.city();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias, powerPreference: 'high-performance' });
   const camera = new THREE.PerspectiveCamera(38, 1, 3, 70000);
   const controls = new THREE.OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -78,20 +80,35 @@ window.OpenEarthCity = async function main(cityId) {
   controls.maxDistance = 9000;
   controls.screenSpacePanning = false;
 
+  let post = null, lens = null; // the title screen's lens over the model, once the world is built
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setPixelRatio(QC.pixelRatio(w, h));
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    if (post) { post.setPixelRatio(renderer.getPixelRatio()); post.setSize(w, h); lens.uniforms.uAspect.value = w / Math.max(1, h); }
   }
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
   resize();
 
   // ------------------------------------------------------------ the shared world (world.js)
-  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
+  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
+  // the title screen's lens (lens.js): the model in the same tone curve, grade, grain and vignette
+  // as the Earth on the title, the game and the city's film; plain tone mapping where the device's
+  // tier (quality.js) has no post stack
+  if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2 && QC.post) {
+    post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
+    post.addPass(new THREE.RenderPass(world, camera));
+    post.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0));
+    lens = new THREE.ShaderPass(OELens.shader());
+    Object.assign(lens.uniforms, { uGrain: { value: 0.025 }, uCA: { value: 0.12 }, uVignette: { value: 0.16 } });
+    post.addPass(lens);
+    resize();
+  }
 
   // ------------------------------------------------------------ places
   const placeInfo = P.places.map(pl => {
@@ -179,6 +196,8 @@ window.OpenEarthCity = async function main(cityId) {
     $('#sun-stats').innerHTML = [
       [fmtMin(L.sunrise), 'Sunrise'], [`${L.noonAltitude.toFixed(1)}°`, `Noon sun, ${fmtMin(L.noon)}`], [fmtMin(L.sunset), 'Sunset']
     ].map(([v, k]) => `<div class="stat"><b>${v}</b><span>${k}</span></div>`).join('');
+    // the times of day worth seeing on this date (sun.js presets), each with its clock time
+    $('#time-presets').innerHTML = S.PRESETS.map(([k, l]) => `<button data-t="${k}">${l}<span class="num">${fmtMin(S.presetTime(k, y, m, d))}</span></button>`).join('');
     applySun();
     refreshPlaces(true);
   }
@@ -374,7 +393,7 @@ window.OpenEarthCity = async function main(cityId) {
     const view = stopView(s);
     if (s.place) focusPlace = s.place;
     if (!here) flyTo(view.cam, view.tgt);
-    $('#cap-step').textContent = `${tour.i + 1} / ${TOUR.length}`;
+    $('#cap-step').textContent = `${pad(tour.i + 1)} / ${pad(TOUR.length)}`;
     $('#cap-title').textContent = s.title;
     $('#cap-text').textContent = typeof s.text === 'function' ? s.text() : s.text;
     $$('#tour-list button').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === tour.i)));
@@ -483,9 +502,9 @@ window.OpenEarthCity = async function main(cityId) {
   const cine = OECine.director({ reduced });
   const INTRO_KEY = `oe3d-intro-${cityId}`;
   const ac = new AbortController();
-  function playIntro() {
-    let seen = false;
-    try { seen = !!localStorage.getItem(INTRO_KEY); localStorage.setItem(INTRO_KEY, '1'); } catch (e) { /* storage blocked */ }
+  function playIntro(short = false) {
+    let seen = short;
+    try { seen = seen || !!localStorage.getItem(INTRO_KEY); localStorage.setItem(INTRO_KEY, '1'); } catch (e) { /* storage blocked */ }
     const s = TOUR[0], v = stopView(s);
     if (state.m !== s.date[0] || state.d !== s.date[1]) setDate(state.y, s.date[0], s.date[1]);
     setTime(s.from);
@@ -824,6 +843,13 @@ window.OpenEarthCity = async function main(cityId) {
   });
   $('#time').addEventListener('input', e => { setTourPlaying(false); setTime(+e.target.value); });
   $('#time').addEventListener('change', () => refreshPlaces(true));
+  $('#time-presets').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    setTourPlaying(false);
+    setTime(S.presetTime(b.dataset.t, state.y, state.m, state.d));
+    refreshPlaces(true);
+  });
   $('#date').addEventListener('change', e => { const [y, m, d] = e.target.value.split('-').map(Number); if (y) { setTourPlaying(false); setDate(y, m, d); } });
   $('#date-chips').addEventListener('click', e => {
     const b = e.target.closest('button');
@@ -867,9 +893,12 @@ window.OpenEarthCity = async function main(cityId) {
   controls.target.copy(W(...st0.tgt));
   controls.update();
   loadMsg('Ready', 1);
-  $('#loader').classList.add('out');
-  setTimeout(() => { $('#loader').hidden = true; }, reduced ? 0 : 700);
-  playIntro();
+  // after a loading flyover the city has been seen from the air, so the establishing shot is the short one
+  OEFlyover.finish($('#loader')).then(flew => {
+    $('#loader').classList.add('out');
+    setTimeout(() => { $('#loader').hidden = true; OEFlyover.stop($('#loader')); }, reduced ? 0 : 700);
+    playIntro(flew);
+  });
 
   let last = performance.now(), running = true;
   function frame(t) {
@@ -893,7 +922,12 @@ window.OpenEarthCity = async function main(cityId) {
     Wd.tick(t, camera);
     if (show) show.tick(t);
     refreshPlaces();
-    renderer.render(world, camera);
+    if (post) {
+      const L = lens.uniforms, night = U.uNight.value;
+      L.uExposure.value = renderer.toneMappingExposure * 1.1; L.uLift.value = 1 - 0.7 * night; L.uContrast.value = 0.1 + 0.18 * night;
+      L.uSat.value = 1.06; L.uTime.value = t / 1000;
+      post.render();
+    } else renderer.render(world, camera);
     updateLabels();
     requestAnimationFrame(frame);
   }
@@ -902,6 +936,6 @@ window.OpenEarthCity = async function main(cityId) {
     cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour };
   // the router calls stop() before it shows another view
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); renderer.dispose(); Wd.dispose(); window.__city = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); if (post) { post.renderTarget1.dispose(); post.renderTarget2.dispose(); } renderer.dispose(); Wd.dispose(); window.__city = null; },
   };
 };

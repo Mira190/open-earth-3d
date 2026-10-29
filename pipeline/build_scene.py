@@ -88,7 +88,9 @@ def load_dem(C, cell=DEM_CELL, name="dem", absolute=False):
     row = (my1 - np.asarray(my)) / (my1 - my0) * h - 0.5
     z = map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx) - C.cfg.get("datum_offset_m", 0.0)
     if name == "dem":
-        z = raise_mapped(C, z, cell)
+        z = level_areas(C, raise_mapped(C, z, cell), cell)
+        if C.hook("adjust_terrain") and not absolute:  # a city's own cuts (stairs set into a slope), not compared with checks
+            z = C.hook("adjust_terrain")(z, C, cell)
     return z + C.cfg.get("datum_offset_m", 0.0) if absolute else z
 
 
@@ -111,6 +113,20 @@ def raise_mapped(C, dem, cell):
     return dem
 
 
+def level_areas(C, dem, cell):
+    """Ground a bare-earth DEM gets wrong, levelled (terrain.level: [{ring, z_m, feather_m}], ring in
+    longitude and latitude): where a laser survey's filter took out a large structure and the gap
+    was interpolated into a false terrace. The ground inside the ring goes to z_m, blended with the
+    DEM over feather_m inside its edge."""
+    rules = C.cfg.get("terrain", {}).get("level", [])
+    ny, nx = dem.shape
+    for rule in rules:
+        inside = raster_mask([C.to_local(Polygon(rule["ring"]))], nx, ny, cell, C.x0, C.y1)
+        w = np.minimum(1.0, ndimage.distance_transform_edt(inside) * cell / rule.get("feather_m", 8.0))
+        dem = np.where(inside, dem + (rule["z_m"] - dem) * w, dem)
+    return dem
+
+
 def water_polygons(C, con, raw, extent):
     """The city's water bodies in the local frame: Overture water of the configured classes and
     size, less the islands mapped in them (a river polygon can enclose its islands) and any
@@ -124,7 +140,8 @@ def water_polygons(C, con, raw, extent):
     seas = [C.to_local(g) for g in seas]
     sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
     isles = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("land"), "class, wkb") if r["class"] in ("island", "islet")]
-    isles = [g for g in isles if g.geom_type in ("Polygon", "MultiPolygon") and g.intersects(extent)]
+    # an island that covers the model is the land the city stands on (Honshu, for Osaka), not one in its water
+    isles = [g for g in isles if g.geom_type in ("Polygon", "MultiPolygon") and g.intersects(extent) and g.intersection(extent).area < 0.9 * extent.area]
     if isles:
         land = shapely.union_all(isles)
         sea = [p for g in sea for p in polygons(g.difference(land)) if p.area > wmin]
@@ -702,9 +719,14 @@ class Ctx:
         # parts a parametric landmark draws instead: kept in the surface model for the sun
         # analyses, skipped by the renderers (scene.json "hidden_solids")
         self.hidden = set()
+        # parts whose roof a landmark furnishes itself (a roof deck): no generated plant on them
+        self.bare = set()
 
     def hide(self, part):
         self.hidden.add(id(part[0]))
+
+    def bare_roof(self, part):
+        self.bare.add(id(part[0]))
 
     def ground(self, x, y):
         return float(sample(self.city, self.dem_land, x, y)[0])
@@ -768,7 +790,7 @@ def pad_records(meta, solids, sinfo, bextra):
     bextra += [{"seed": (bi * 2654435761) & 0xFFFFFF, "facade_color": None, "facade_material": None} for bi in range(len(bextra), len(meta))]
 
 
-def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
+def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=(), bare=()):
     """Roof meshes, facade styles, storeys, wall colours, shopfront frontages and
     rooftop plant for the finished buildings. Returns (roof rows, frontage rows,
     prop rows, a summary for height_model.json)."""
@@ -930,7 +952,7 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
         # rooftop plant on flat roofs
         if style in PARAPET_STYLES and not parametric:
             for k in ks:
-                if k in roofed:
+                if k in roofed or k in bare:  # a roof deck a landmark furnishes (city.py: ctx.bare_roof)
                     continue
                 prop_rows += rooftop(k, solids[k], polys[k], style, seed, top_b, floors, R)
     return roof_rows, front_rows, prop_rows, dict(stat)
@@ -1175,7 +1197,7 @@ def build(C):
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res, sinfo, bextra, hidden_solids = [], [], {}, {}, {}, [], [], [], []
+    meta, solids, first_solid, geo, ml_raw, floor_res, sinfo, bextra, hidden_solids, bare_solids = [], [], {}, {}, {}, [], [], [], [], set()
     plateau_vs_osm, n_newer = [], 0
     if plateau.tree is not None:  # surveyed buildings that Overture lacks
         covered = shapely.union_all([C.to_local(swkb.loads(bytes(b["wkb"]))).buffer(0) for b in blds])
@@ -1207,6 +1229,7 @@ def build(C):
             continue
         # ids of solids a hook hid: only this building's, since Python reuses the ids of freed objects
         ctx.hidden.clear()
+        ctx.bare.clear()
         g = C.to_local(swkb.loads(bytes(b["wkb"])))
         if not extent.contains(g.centroid):
             continue
@@ -1270,12 +1293,14 @@ def build(C):
                 ctx.labels[labels_cfg[pname]] = [round(c.x, 1), round(c.y, 1), round(ctx.ground(c.x, c.y) + h1, 1)]
         top, srcs, first = 0.0, Counter(), len(solids)
         for q, h0, h1, src, _, *rec in geoms:
-            hidden = id(q) in ctx.hidden
+            hidden, bare = id(q) in ctx.hidden, id(q) in ctx.bare
             q = q.simplify(0.15, preserve_topology=True)
             if q.is_empty or q.area < 2 or h1 <= h0:
                 continue
             if hidden:
                 hidden_solids.append(len(solids))
+            if bare:
+                bare_solids.add(len(solids))
             q = shapely.geometry.polygon.orient(q, 1.0)
             cs = np.asarray(q.exterior.coords)
             # a building of a class that floats (water.floating: Amsterdam's houseboats) sits on the
@@ -1372,7 +1397,7 @@ def build(C):
 
     # roofs, facades and rooftops on the finished heights
     roads = road_index(C, con, raw("segment"))
-    roof_rows, front_rows, prop_rows, roof_stat = dress_buildings(C, meta, solids, sinfo, bextra, roads, set(hidden_solids))
+    roof_rows, front_rows, prop_rows, roof_stat = dress_buildings(C, meta, solids, sinfo, bextra, roads, set(hidden_solids), bare_solids)
     roof_check = validate_roof_rules(C, meta, solids, sinfo, bextra)
     json.dump({"note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. "
                        "The check predicts each mapped roof as if it were not mapped.",
@@ -1428,6 +1453,8 @@ def build(C):
     # terrain grid shipped to the browser (10 m): int16 decimetres, little-endian, base64 in JSON
     step = int(TERRAIN_CELL / DEM_CELL)
     tg = dem[::step, ::step]
+    if C.hook("adjust_terrain"):  # the city's cuts again, at the viewer's resolution
+        tg = C.hook("adjust_terrain")(tg.copy(), C, TERRAIN_CELL)
     json.dump({"encoding": "int16le-base64", "nx": tg.shape[1], "ny": tg.shape[0],
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
@@ -1504,8 +1531,23 @@ def write_index():
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
-        c["built"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "scene.json"))
-        c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
+        data = os.path.join(ROOT, "web", "data", c["id"])
+        scene = os.path.join(data, "scene.json")
+        c["built"] = os.path.exists(scene)
+        c["game"] = os.path.exists(os.path.join(data, "game.json"))
+        if c["built"]:  # the title screen's figures: buildings and the extent of the model
+            sc = json.load(open(scene, encoding="utf8"))
+            if "height_sources" in sc:
+                c["buildings"] = sum(sc["height_sources"].values())
+            x0, x1, y0, y1 = sc["extent_m"] if "extent_m" in sc else (*sc["frame"]["x"], *sc["frame"]["y"])
+            c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
+        if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
+            size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
+            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
+        if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
+            fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
+            c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 
