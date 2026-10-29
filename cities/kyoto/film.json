@@ -1,0 +1,174 @@
+{
+  "name": "Kyoto",
+  "date": [11, 22],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 25.0,
+  "score": {
+    "root": 50,
+    "scale": [0, 1, 5, 7, 8],
+    "chords": [[0, 2, 4], [3, 5, 7], [1, 3, 5], [2, 4, 6]],
+    "motif": [4, 3, 1, 2, 0],
+    "tempo": 66,
+    "voice": "koto",
+    "air": "wind",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [-930, -1540, 52],
+      "to": [-890, -1556, 55],
+      "look": [-278, -1722, 92],
+      "agl": true,
+      "fov": 15,
+      "time": ["06:40", "06:47"],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": ["35.00°N 135.76°E", "Sunrise over Kyoto · 06:38 JST", "The real sun, for the day you watch"]
+      },
+      "tint": [1.06, 1.0, 0.92],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "agl": true,
+      "from": [-600, -1900, 270],
+      "to": [-720, -2160, 430],
+      "look": [-330, -1350, 0],
+      "fov": 32,
+      "time": ["07:25"],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Kyoto",
+        "native": "京都",
+        "sub": "Japan",
+        "figures": "65,738 buildings · 3.0 × 5.0 km · heights measured by Project PLATEAU"
+      },
+      "tint": [1.04, 1.0, 0.95]
+    },
+    {
+      "id": "kamo",
+      "chapter": "The Kamo River",
+      "dur": 5,
+      "type": "move",
+      "agl": true,
+      "from": [832, 330, 30],
+      "to": [828, 235, 32],
+      "look": [745, -250, 12],
+      "fov": 26,
+      "time": ["15:45"],
+      "flare": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Shijo to Sanjo",
+        "head": "The Kamo River",
+        "text": "On its east bank at Shijo stands the Minamiza, the city's kabuki theatre, rebuilt in 1929."
+      }
+    },
+    {
+      "id": "low",
+      "chapter": "A city that stays low",
+      "dur": 5,
+      "type": "move",
+      "agl": true,
+      "from": [1300, 420, 36],
+      "to": [1290, 330, 38],
+      "look": [-700, -380, 90],
+      "fov": 18,
+      "time": ["16:08"],
+      "flare": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Across the centre, into the sun",
+        "head": "A city that stays low",
+        "text": "65,738 buildings, the median 8.4 m tall: only 65 of them reach above 45 m."
+      }
+    },
+    {
+      "id": "tower",
+      "chapter": "Kyoto Tower",
+      "dur": 5,
+      "type": "move",
+      "agl": true,
+      "from": [-255, -700, 22],
+      "to": [-255, -790, 24],
+      "look": [-278, -1722, 88],
+      "fov": 12,
+      "time": ["16:22"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Down Karasuma-dori",
+        "head": "Kyoto Tower",
+        "text": "131 m to the spire, the deck at 100 m: a steel tube with no frame inside it, finished in 1964."
+      }
+    },
+    {
+      "id": "shijo",
+      "chapter": "On foot",
+      "dur": 4.5,
+      "type": "move",
+      "agl": true,
+      "from": [722, 89, 2.3],
+      "to": [734, 89, 2.35],
+      "look": [960, 72, 12],
+      "fov": 30,
+      "time": ["16:30"],
+      "people": [790, 90],
+      "crowd_r": 50,
+      "crowd_n": 220,
+      "crowd_clear": 10,
+      "hand": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "Shijo Ohashi, toward the Minamiza",
+        "head": "Walk it",
+        "text": "Talk to the people who know the city, walk the quest to the Imperial Gardens, fly over the roofs."
+      }
+    },
+    {
+      "id": "night",
+      "chapter": "After dark",
+      "dur": 7,
+      "type": "move",
+      "agl": true,
+      "from": [-430, -1150, 40],
+      "to": [-390, -1190, 46],
+      "look": [-278, -1722, 80],
+      "fov": 20,
+      "time": ["16:52", "17:24"],
+      "timeEase": "inOut",
+      "fadeOut": 1.6,
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Kyoto",
+        "line": "The model, the sun and the city: open them."
+      },
+      "ev": 0.45
+    }
+  ]
+}
