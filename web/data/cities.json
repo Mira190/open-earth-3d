@@ -9,7 +9,12 @@
   "summary": "Central Sydney: 7,962 buildings, the Opera House and Harbour Bridge, sun access on protected public places, and a game: walk it, ride the ferries, fly under the bridge.",
   "timezone": "Australia/Sydney",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 7962,
+  "extent_km": [
+   3.0,
+   4.8
+  ]
  },
  {
   "id": "melbourne",
@@ -21,7 +26,12 @@
   "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects.",
   "timezone": "Australia/Melbourne",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 13050,
+  "extent_km": [
+   4.8,
+   3.9
+  ]
  },
  {
   "id": "melbourne-bayside",
@@ -33,11 +43,17 @@
   "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset.",
   "timezone": "Australia/Melbourne",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 9335,
+  "extent_km": [
+   3.2,
+   7.7
+  ]
  },
  {
   "id": "osaka",
   "name": "Osaka",
+  "native": "\u5927\u962a",
   "country": "Japan",
   "lat": 34.679,
   "lon": 135.513,
@@ -45,11 +61,17 @@
   "summary": "Umeda to Shinsekai along Midosuji, with Osaka Castle: 73,000 buildings, 89% of the roof area with a height measured for Project PLATEAU, the Dotonbori neon, a winter-sun study of the parks, and a game with Osaka people.",
   "timezone": "Asia/Tokyo",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 73267,
+  "extent_km": [
+   4.5,
+   6.4
+  ]
  },
  {
   "id": "kyoto",
   "name": "Kyoto",
+  "native": "\u4eac\u90fd",
   "country": "Japan",
   "lat": 35.003,
   "lon": 135.7625,
@@ -57,11 +79,17 @@
   "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
   "timezone": "Asia/Tokyo",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 65738,
+  "extent_km": [
+   3.0,
+   5.0
+  ]
  },
  {
   "id": "tokyo",
   "name": "Tokyo",
+  "native": "\u6771\u4eac",
   "country": "Japan",
   "lat": 35.67,
   "lon": 139.759,
@@ -69,7 +97,12 @@
   "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower.",
   "timezone": "Asia/Tokyo",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 15395,
+  "extent_km": [
+   3.2,
+   4.8
+  ]
  },
  {
   "id": "whitsundays",
@@ -84,7 +117,11 @@
   "tagline": "Whitehaven Beach, Hill Inlet and the Whitsunday Passage",
   "timezone": "Australia/Brisbane",
   "built": true,
-  "game": false
+  "game": false,
+  "extent_km": [
+   33.4,
+   33.2
+  ]
  },
  {
   "id": "hardy-reef",
@@ -99,7 +136,11 @@
   "summary": "Hardy Reef on the outer Great Barrier Reef: Heart Reef, the Reefworld pontoon on the channel wall, and Hook, Line and Bait reefs, from 30 m survey bathymetry and Sentinel-2. No land: start on the pontoon's deck and dive the wall.",
   "timezone": "Australia/Brisbane",
   "built": true,
-  "game": false
+  "game": false,
+  "extent_km": [
+   28.2,
+   27.6
+  ]
  },
  {
   "id": "green-island",
@@ -114,7 +155,11 @@
   "summary": "Green Island, a coral cay 27 km off Cairns, with Arlington Reef, Upolu Cay and Michaelmas Cay: survey bathymetry, a seam-free Sentinel-2 sea floor and MSQ's tide. Walk the beach by the jetty, snorkel the reef flat.",
   "timezone": "Australia/Brisbane",
   "built": true,
-  "game": false
+  "game": false,
+  "extent_km": [
+   26.6,
+   33.6
+  ]
  },
  {
   "id": "heron-island",
@@ -129,7 +174,11 @@
   "summary": "Heron Island and Heron and Wistari reefs in the southern Great Barrier Reef: the cay rebuilt from its mapped outline, the reef flat drying at low tide, the research station and the wreck of HMCS Protector at the channel.",
   "timezone": "Australia/Brisbane",
   "built": true,
-  "game": false
+  "game": false,
+  "extent_km": [
+   19.4,
+   14.3
+  ]
  },
  {
   "id": "lady-elliot-island",
@@ -144,7 +193,11 @@
   "summary": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef: its platform reef in open water, the airstrip and old lighthouse, from survey bathymetry and Sentinel-2. Start on the western beach.",
   "timezone": "Australia/Brisbane",
   "built": true,
-  "game": false
+  "game": false,
+  "extent_km": [
+   12.0,
+   12.0
+  ]
  },
  {
   "id": "new-york",
@@ -178,7 +231,12 @@
   "summary": "Central Paris from the Eiffel Tower to the \u00cele Saint-Louis: every roof measured by IGN's airborne LiDAR, zinc mansards with their dormers and chimney stacks, the Seine's bridges, and a game: ride the Batobus and fly under the Eiffel Tower.",
   "timezone": "Europe/Paris",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 29087,
+  "extent_km": [
+   5.6,
+   4.0
+  ]
  },
  {
   "id": "amsterdam",
@@ -194,6 +252,7 @@
  {
   "id": "hong-kong",
   "name": "Hong Kong",
+  "native": "\u9999\u6e2f",
   "country": "China",
   "lat": 22.286,
   "lon": 114.1635,
@@ -201,7 +260,12 @@
   "summary": "Victoria Harbour from Central to Tsim Sha Tsui and the Peak: 7,513 buildings, nearly all at the heights the Lands Department surveyed, checked against a 2020 LiDAR scan; the Bank of China Tower, HSBC and the Star Ferry; and a game: ride the ferry and the Peak Tram.",
   "timezone": "Asia/Hong_Kong",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 7513,
+  "extent_km": [
+   4.0,
+   4.8
+  ]
  },
  {
   "id": "singapore",

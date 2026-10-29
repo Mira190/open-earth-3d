@@ -228,8 +228,10 @@ list in a JSON file.
 ## 6. Mark it live
 
 Add or update the city in `cities/index.json` with `"status": "live"` and a
-one-line `summary`. The build writes `web/data/cities.json`, which the globe
-reads. A city with no built scene stays on the globe as planned.
+one-line `summary`, and `native` for its name in the local script if that is not
+Latin (大阪). The build writes `web/data/cities.json`, which the title screen reads,
+with the building count and the model's extent for the destination card. A city
+with no built scene stays on the globe as planned.
 
 ## Checklist before a city goes live
 

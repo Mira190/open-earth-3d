@@ -18,8 +18,8 @@ model as the viewer. In Sydney that means:
 Everything the characters tell you about the city is computed from the model
 while you play.
 
-Open it from the globe (**Play** on a city card), from the 3D model (the
-**Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
+Open it from the title screen (**Play** on a destination's card), from the 3D
+model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
 `#play-melbourne-bayside` or `#play-hong-kong`.
 
 | Talking to an NPC | On the bridge deck at golden hour |
