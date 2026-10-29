@@ -156,7 +156,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   S.pyramid(DSM);
 
   // ------------------------------------------------------------ street furniture: benches, lamps that light at night
-  loadMsg('People, traffic, ferries', 0.86);
+  loadMsg('People, traffic and ferries: downloading the models every city shares', 0.86);
   await idle();
   const lin = OEWorld.lin, dummy = new THREE.Object3D();
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);

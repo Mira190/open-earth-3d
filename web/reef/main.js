@@ -13,15 +13,22 @@ const CITY = q.get('city') || 'whitsundays';
 const fail = e => { console.error(e); $('err').textContent = String(e && e.stack || e); };
 addEventListener('error', e => fail(e.error || e.message));
 addEventListener('unhandledrejection', e => fail(e.reason));
+// the loader: what is happening and how far along, painted before each long step (a step blocks the page)
+const stage = (msg, f) => { $('load-msg').textContent = msg; $('load-bar').style.width = `${Math.round(f * 100)}%`; };
+const paint = () => new Promise(r => { let done = false; const go = () => { if (!done) { done = true; setTimeout(r, 0); } }; requestAnimationFrame(go); setTimeout(go, 60); });
+const STEPS = { life: 'Growing the reef: corals, fish and seagrass', boats: 'Mooring the boats', player: 'Kitting out the diver', game: 'Opening the field journal' };
 
 async function main() {
   const base = `../data/${CITY}/`;
-  const [d, tide] = await Promise.all([loadScene(base), loadTide(base)]);
+  stage('Downloading the sea floor and the imagery', 0.03);
+  const [d, tide] = await Promise.all([loadScene(base, (got, want) => stage(`Downloading the sea floor and the imagery: ${(got / 1e6).toFixed(1)}${want ? ` of ${(want / 1e6).toFixed(1)}` : ''} MB`, 0.03 + 0.3 * (want ? Math.min(1, got / want) : 0))), loadTide(base)]);
   const S = d.scene;
   document.title = `Open Earth 3D: ${S.name}`;
   $('load-title').textContent = S.name;
   window.Sun.site({ lat: S.origin[1], lon: S.origin[0], tz: S.timezone });
 
+  stage('Starting the renderer', 0.36);
+  await paint();
   const renderer = new THREE.WebGPURenderer({ antialias: true, forceWebGL: q.get('gl') === '1' });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   renderer.setSize(innerWidth, innerHeight);
@@ -56,6 +63,8 @@ async function main() {
   scene.add(sunL, sunL.target, moonL, moonL.target, hemi);
   scene.fogNode = (({ Fn, vec4, output, positionWorld }) => Fn(() => vec4(env.medium(output.rgb, positionWorld), output.a))())(await import('three/tsl'));
 
+  stage('Shaping the sea floor, the water and the shore', 0.45);
+  await paint();
   const hTex = heightTexture(d);
   const terrain = createTerrain(d, env, renderer);
   scene.add(terrain.group);
@@ -143,11 +152,19 @@ async function main() {
     decks: [],                                                        // (x, north) -> deck height or null: pontoons, jetties (boats.js)
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  for (const name of (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean)) {
+  const mods = (q.get('mods') ?? 'life,boats,player,game').split(',').filter(Boolean);
+  for (const [i, name] of mods.entries()) {
+    stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
+    await paint();
     try { const m = await import(`./${name}.js`); const r = await m.init(ctx); if (r && r.update) ctx.updaters.push(r.update); }
     catch (e) { if (!/Failed to fetch|Cannot find|404|Unexpected token '<'/.test(String(e))) fail(e); else console.warn('module', name, 'not available'); }
   }
 
+  // compiling the shaders can take a while on a first visit; done here it shows on the loader, not as a frozen first frame
+  stage('Compiling the shaders (the first visit takes longest)', 0.9);
+  await paint();
+  if (renderer.compileAsync && !q.get('still')) { try { await renderer.compileAsync(scene, camera); } catch (e) { console.warn('shader precompile skipped:', e); } }
+  stage('First frames', 0.98);
   let last = performance.now(), frames = 0;
   window.__reef = { camera, env, renderer, d, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {

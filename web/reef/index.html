@@ -11,6 +11,16 @@
   #hud { position: fixed; left: 16px; bottom: 16px; padding: 8px 12px; background: #04202ccc; border-radius: 8px; max-width: 46ch; }
   #load { position: fixed; inset: 0; display: grid; place-content: center; background: #04202c; text-align: center; transition: opacity .6s; }
   #load.done { opacity: 0; pointer-events: none; }
+  #load > div { width: min(340px, 80vw); }
+  #load b { font-size: 18px; }
+  #load small { display: block; margin-top: 8px; color: #9fc3cf; min-height: 2.8em; }
+  #load .track { position: relative; height: 4px; margin-top: 12px; border-radius: 4px; background: #ffffff22; overflow: hidden; }
+  #load .track i { display: block; height: 100%; width: 0; background: #5fd0e0; transition: width .3s; }
+  /* a glint that keeps crossing the track, so a long step never looks stuck */
+  #load .track::after { content: ""; position: absolute; inset: 0; width: 30%; background: linear-gradient(90deg, transparent, #ffffff88, transparent);
+    animation: glint 1.4s ease-in-out infinite; }
+  @keyframes glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+  @media (prefers-reduced-motion: reduce) { #load .track::after { animation: none; opacity: 0; } #load .track i { transition: none; } }
   #err { position: fixed; top: 12px; left: 12px; right: 12px; color: #ffb4a8; white-space: pre-wrap; }
 </style>
 <script type="importmap">
@@ -19,7 +29,7 @@
 </script>
 </head>
 <body>
-<div id="load"><div><b id="load-title">The Whitsundays</b><br><small id="load-msg">Loading the sea</small></div></div>
+<div id="load"><div><b id="load-title">The Whitsundays</b><div class="track"><i id="load-bar"></i></div><small id="load-msg">Loading the sea</small></div></div>
 <div id="hud"></div>
 <div id="err"></div>
 <script src="../sun.js"></script>

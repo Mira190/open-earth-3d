@@ -1444,8 +1444,13 @@ def write_index():
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
-        c["built"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "scene.json"))
-        c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
+        data = os.path.join(ROOT, "web", "data", c["id"])
+        c["built"] = os.path.exists(os.path.join(data, "scene.json"))
+        c["game"] = os.path.exists(os.path.join(data, "game.json"))
+        if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
+            size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
+            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

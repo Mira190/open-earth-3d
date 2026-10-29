@@ -14,8 +14,31 @@ window.OEWorld = (function () {
   // the city's data files; game.json too when asked for
   async function load(cityId, { game = false, onMsg = () => {} } = {}) {
     const DATA = `data/${cityId}/`;
-    const getJSON = u => fetch(DATA + u).then(r => { if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`); return r.json(); });
-    onMsg('Loading footprints, terrain and landmarks', 0.05);
+    // the download is most of the wait for a big city, so it is counted as it streams in, against
+    // the size cities.json gives for the model or the game (raw bytes, as the streams deliver them)
+    const entry = (window.OE_CITIES || []).find(c => c.id === cityId) || {};
+    const want = (entry.load_bytes || {})[game ? 'game' : 'model'] || 0, mb = b => (b / 1e6).toFixed(1);
+    let got = 0, shown = 0;
+    const report = () => {
+      const now = performance.now();
+      if (now - shown < 80) return;
+      shown = now;
+      onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
+        0.02 + 0.26 * (want ? Math.min(1, got / want) : 0));
+    };
+    const getJSON = async u => {
+      const r = await fetch(DATA + u);
+      if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
+      if (!r.body || !r.body.getReader) return r.json();
+      const reader = r.body.getReader(), parts = [];
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        parts.push(value); got += value.length; report();
+      }
+      return JSON.parse(await new Blob(parts).text());
+    };
+    onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
     const [scene, B, P, LM, terrBuf, UNC, G] = await Promise.all([getJSON('scene.json'), getJSON('buildings.json'), getJSON('places.json'),
       getJSON('landmarks.json'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null)]);

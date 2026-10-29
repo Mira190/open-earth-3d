@@ -121,7 +121,12 @@ a.chip-btn { text-decoration: none; color: var(--ink); }
 .loader div { width: min(320px, 80%); }
 .loader b { font: 700 18px/1.2 var(--f-display); }
 .loader .track { height: 4px; background: var(--line); border-radius: 4px; margin-top: 10px; overflow: hidden; }
+.loader .track { position: relative; }
 .loader .track i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+/* a glint that keeps crossing the track, so a long step never looks stuck */
+.loader .track::after { content: ""; position: absolute; inset: 0; width: 30%; background: linear-gradient(90deg, transparent, rgb(255 255 255 / .55), transparent);
+  animation: glint 1.4s ease-in-out infinite; }
+@keyframes glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 .loader small { display: block; margin-top: 8px; color: var(--muted); }
 .loader { transition: opacity .6s ease; }
 .loader.out { opacity: 0; pointer-events: none; }
@@ -406,7 +411,8 @@ a { color: var(--accent); }
   .g-title { background: color-mix(in srgb, var(--bg) 78%, transparent); align-items: flex-start; }
 }
 @media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
-@media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .loader .track::after { animation: none; opacity: 0; }
+  .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after { transition: none; } }
 
 /* ---------- globe ---------- */
 .globe-app { display: grid; grid-template-columns: minmax(0, 1fr) 392px; height: 100%; }
@@ -837,6 +843,7 @@ window.dispatchEvent(new Event('three-ready'));
   };
   let cities = [];
   try { cities = await fetch('data/cities.json').then(r => r.json()); } catch (e) { cities = []; }
+  window.OE_CITIES = cities; // the loader reads each city's download size from it
   const hashId = () => decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   let current = null;
   async function show() {
