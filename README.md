@@ -80,7 +80,9 @@ from code, with ambient occlusion baked in Cycles. Every city shares them, in
 its own liveries and its own mix of trees, and the Blender twin of each city
 places the helicopter and ferries where the game does. The ferries' wakes and
 the rotor wash are foam on the moving sea, the night sky has the real stars and
-the moon in its phase, and jacarandas flower in late spring.
+the moon in its phase, and jacarandas flower in late spring. You get into the
+helicopter through the pilot's door, which swings open on its hinge and shuts
+behind you, and you can fly it from the cockpit (<kbd>V</kbd>).
 
 | The helicopter | The harbour ferry | In the Blender twin of Sydney |
 |---|---|---|

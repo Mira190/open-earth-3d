@@ -16,7 +16,7 @@
 // that reflects the sky, a glazed cockpit with the pilot in it, blades that droop at
 // rest, cone as they lift and blur into a disc, a ducted tail fan, position lights,
 // beacons and strobes, a searchlight after dark, and downwash that ripples and
-// sprays the water (dust on land).
+// sprays the water (dust on land). The pilot's door opens on its hinge for getting in and out.
 //
 // Ferries: double-ended, like Sydney's, so they reverse at the end of a route without
 // turning. They follow the routes in game.json (found through open water by the
@@ -234,8 +234,9 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     const V = lib ? heliModel(world, lib, cfg, opts) : kitHeli();
     const g = V.group, seat = V.seat, door = V.door;
     world.add(g);
+    // door: how far the pilot's door is open (0 shut, 1 open) and where it is going
     const st = { x: pad[0], y: pad[1], z: pad[2], h: 0.6, vx: 0, vy: 0, vz: 0, yawRate: 0, pitch: 0, roll: 0, rotor: 0, on: false, landed: true,
-      speed: 0, under: null, side: 0, fwd: 0, lift: 0 };
+      speed: 0, under: null, side: 0, fwd: 0, lift: 0, door: 0, doorTo: 0 };
     // the nearest span that can be flown under (a city may have many bridges close together):
     // position across the deck (v) and the deck height on the axis
     const deckBottomAt = (x, y) => {
@@ -251,6 +252,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       return best;
     };
     function update(dt, inp, events) {
+      st.door += clamp(st.doorTo - st.door, -dt / 0.35, dt / 0.35); // a third of a second each way
       const spool = st.on ? 1 : 0;
       st.rotor += (spool - st.rotor) * Math.min(1, dt / 1.2);
       const ready = st.rotor > 0.9;
@@ -315,7 +317,11 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       const c = Math.cos(st.h), s = Math.sin(st.h);
       return { x: st.x + door.x * c + door.y * s, y: st.y - door.x * s + door.y * c };
     };
-    return { group: g, st, seat, update, doorAt };
+    // a point in the model's frame (+z forward, +y up, +x left) in the world's game coordinates
+    // and a point in the world's game coordinates in the model's frame
+    const toWorld = (v, out = new THREE.Vector3()) => { g.updateMatrixWorld(); out.copy(v).applyMatrix4(g.matrixWorld); return { x: out.x, y: -out.z, z: out.y }; };
+    const toLocal = (x, y, z) => { g.updateMatrixWorld(); return g.worldToLocal(W(x, y, z)); };
+    return { group: g, st, seat, update, doorAt, way: V.way, toWorld, toLocal };
   }
 
   function heliModel(world, lib, cfg, opts) {
@@ -384,14 +390,21 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       world.add(r);
       rings.push(r);
     }
+    // the way in, in the model's frame: beside the door, up on the step and on the floor under the
+    // pilot's hips (where a seated person's feet go); and the pilot's eyes, for the cockpit view
     const seat = p('Seat_Pilot').clone(), dp = p('Door');
     const door = { x: -dp.x, y: dp.z };
+    const way = { stand: dp.clone(), step: node('Step') ? p('Step').clone() : null, seat, eye: node('Eye_Pilot') ? p('Eye_Pilot').clone() : seat.clone().add(new THREE.Vector3(0, 1.1, 0.1)) };
+    // the pilot's door turns about an upright line through its node, outward as the angle grows
+    const DI = I.door || {}, doorNode = DI.node ? node(DI.node) : null;
+    const doorQ0 = doorNode && doorNode.quaternion.clone(), doorAxis = new THREE.Vector3().fromArray(DI.axis || [0, 1, 0]).normalize(), doorQ = new THREE.Quaternion();
     const tmpV = new THREE.Vector3(), flapQ = new THREE.Quaternion(), X = new THREE.Vector3(1, 0, 0);
     let t = 0, spin = 0, discSpin = 0;
     function animate(dt, st, nav) {
       t += dt;
       const night = opts.U ? opts.U.uNight.value : 0, day = 1 - night;
       const rpm = st.rotor;
+      if (doorNode) doorNode.quaternion.copy(doorQ0).premultiply(doorQ.setFromAxisAngle(doorAxis, smooth(0, 1, st.door) * (DI.open_deg || 70) * Math.PI / 180));
       spin -= rpm * 41.4 * dt; // 395 rpm, clockwise seen from above
       discSpin -= (0.6 + rpm * 2.2) * dt;
       // blades: true speed while spooling, then the blurred disc; droop at rest, cone with lift
@@ -437,6 +450,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       if (opts.camera) {
         const far = opts.camera.position.distanceTo(g.getWorldPosition(tmpV)) > (I.lod1_m || 90);
         body.visible = trim.visible = !far;
+        if (doorNode) doorNode.visible = !far; // the far model has the door in it, shut
         if (lod1) lod1.visible = far;
       }
       // downwash: strongest in a low hover, gone by 35 m above the surface
@@ -466,7 +480,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         if (water) onWake(r, opts); else r.layers.set(0);
       }
     }
-    return { group: g, seat, door, animate };
+    return { group: g, seat, door, way, animate };
   }
 
   // ------------------------------------------------------------ ferries
@@ -860,7 +874,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
 
   function kitHeli() {
     const { g, rotor, tail, blur, tailAxis } = helicopterModel();
-    return { group: g, seat: new THREE.Vector3(0.45, 0.9, 0.6), door: { x: 1.8, y: 0.3 },
+    const seat = new THREE.Vector3(0.45, 0.9, 0.6);
+    return { group: g, seat, door: { x: 1.8, y: 0.3 }, way: { stand: new THREE.Vector3(-1.8, 0, 0.3), step: null, seat, eye: new THREE.Vector3(0.45, 1.95, 0.7) },
       animate(dt, st) {
         rotor.rotation.y += st.rotor * dt * 42;
         tail.rotation[tailAxis] += st.rotor * dt * 60;

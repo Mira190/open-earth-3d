@@ -52,7 +52,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
 | <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
-| <kbd>E</kbd> | Talk, board a ferry or wait for one, fly the helicopter, get out |
+| <kbd>E</kbd> | Talk, board a ferry or wait for one, board the helicopter, get out |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
@@ -60,7 +60,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
-| Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
+| Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
 | Funicular | <kbd>E</kbd> board at a station and get off at the other end, <kbd>F</kbd> skip ahead |
 
@@ -373,6 +373,17 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
     bounces off a hard hit.
+  - **Getting in,** as in GTA and Sketchbook: <kbd>E</kbd> walks you round to
+    the pilot's door (round the nose from the far side). The door swings open
+    on its hinge, you step up onto the skid and slide into the seat, and the
+    door shuts at once. A line on screen says what is happening, the camera
+    swings round to watch, and the rotor spools up until it can lift at 90%.
+    Getting out is the same the other way round, once you have landed. The
+    moves are in the helicopter's own frame, so they work wherever it lands.
+  - **The cockpit view** (<kbd>V</kbd>): the pilot's eyes, pitching and
+    banking with the cabin, past the instrument panel and through the
+    windscreen. Drag to look round; in flight the view drifts back to
+    straight ahead.
   - **Ferries:** double-ended, like Sydney's, so they reverse without turning.
     The city's `ferry_style` picks the model (`"model": "harbour"` or
     `"river"`, else by its length) and the livery: Sydney Ferries' green and
@@ -464,9 +475,16 @@ in the city's Cycles renders where the game puts them.
     surface, with rubber gaskets, and a lined cabin sits behind them. Inside are
     seats, an instrument panel with screens and the controls. You can see
     yourself at the controls.
+  - The pilot's door is a part of its own (`Door_Pilot`), cut from the skin and
+    the lining along its seam and hinged on an upright line ahead of its front
+    edge, so all of it swings out clear of the pillar. Grid points next to a
+    cut move onto the outline, so the door's edges and the windows' edges
+    follow their curves. A frame with a rubber seal lines the opening. The
+    model marks the way in: where to stand, the step, and the floor under the
+    pilot's hips, where a seated person's feet go.
   - Details: skids with steps, twin exhausts, a camera turret, a searchlight,
     wire-strike cutters, antennas and lights.
-  - About 100,000 triangles up close and 12,000 beyond 90 m.
+  - About 105,000 triangles up close and 12,000 beyond 90 m.
 - **Ferry:** a double-ended harbour ferry, 34 m long with a 9.6 m beam.
   - A glazed main cabin with rows of seats, an open upper deck with benches,
     railings, lifebuoys and life rafts, a wheelhouse and a radar mast.

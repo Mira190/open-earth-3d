@@ -13,8 +13,10 @@ writes:
   10.2 m four-blade main rotor and a ducted tail fan. Glazed cockpit with seats,
   instruments and screens, sliding doors, skids, searchlight, camera turret and lights.
   Nodes the game drives: `MainRotor` (spins about +y) with `Blade_0..3` (flap about
-  their chord axis), `TailRotor` (spins about +x), and empties marking the pilot's seat,
-  the door, the lights and the searchlight.
+  their chord axis), `TailRotor` (spins about +x), the pilot's door `Door_Pilot` (it
+  turns about an upright line through its origin, with its trim `Trim_Door`), and
+  empties marking the way in (`Door`, `Step`, `Seat_Pilot`), the pilot's eyes, the
+  lights and the searchlight.
 - `ferry.glb`: a double-ended harbour ferry, 34 m long and 9.6 m in the beam, with a
   glazed main cabin and its seats, an open upper deck with railings and lifebuoys, a
   wheelhouse and a radar mast. Nodes: `Radar` (spins about +y), `Flag`, and empties for
@@ -344,16 +346,18 @@ class Surface:
             u, v = u + d[0], v + d[1]
         return u, v
 
-    def grid(self, mesh, us, vs, mat_of, period=None, offset=0.0, flip=False, smooth=True):
+    def grid(self, mesh, us, vs, mat_of, period=None, offset=0.0, flip=False, smooth=True, at=None):
         """Quads over the parameter grid us x vs (vs wraps if `period` is set). mat_of(u, v)
-        names each cell's material, or None for a hole. Faces point outward (inward if flip)."""
+        names each cell's material, or None for a hole. Faces point outward (inward if flip).
+        `at` moves grid points, {(i, j): (u, v)}, so that a cut can follow a curve."""
         ids = {}
 
         def P(i, j):
             if (i, j) not in ids:
-                p = self.S(us[i], vs[j])
+                u, v = at.get((i, j), (us[i], vs[j])) if at else (us[i], vs[j])
+                p = self.S(u, v)
                 if offset:
-                    p = p + self.normal(us[i], vs[j]) * offset
+                    p = p + self.normal(u, v) * offset
                 ids[(i, j)] = mesh.vert(p)
             return ids[(i, j)]
         nv = len(vs)
@@ -441,6 +445,33 @@ def inside(poly, x, y):
     return c
 
 
+def nearest_on(poly, x, y, ky=1.0):
+    """The point of a closed polyline nearest (x, y), measuring y in units of ky."""
+    best, out = None, None
+    for (ax, ay), (bx, by) in zip(poly, poly[1:] + poly[:1]):
+        dx, dy = bx - ax, (by - ay) * ky
+        t = min(1.0, max(0.0, ((x - ax) * dx + (y - ay) * ky * dy) / (dx * dx + dy * dy or 1)))
+        qx, qy = ax + dx * t, ay + (by - ay) * t
+        d = (qx - x) ** 2 + ((qy - y) * ky) ** 2
+        if best is None or d < best:
+            best, out = d, (qx, qy)
+    return out
+
+
+def split(mesh, keep):
+    """The faces of a mesh whose centre passes keep(centre), and the rest, as two meshes."""
+    parts = (Mesh(), Mesh())
+    maps = ({}, {})
+    for ids, m, s, uv in zip(mesh.f, mesh.m, mesh.s, mesh.uv):
+        k = 0 if keep(sum((Vector(mesh.v[i]) for i in ids), Vector()) / len(ids)) else 1
+        out, idx = parts[k], maps[k]
+        for i in ids:
+            if i not in idx:
+                idx[i] = out.vert(mesh.v[i])
+        out.face([idx[i] for i in ids], m, s, uv)
+    return parts
+
+
 def spaced(a, b, step):
     n = max(1, int(round(abs(b - a) / step)))
     return list(np.linspace(a, b, n + 1))
@@ -507,9 +538,10 @@ def nose_xs():
     return xs
 
 
-# glazing in (x, theta) for the right side; the left side mirrors theta -> pi - theta
+# glazing in (x, theta) for the right side; the left side mirrors theta -> pi - theta. The windscreen
+# stays two grid cells clear of the pilot's door, so their cuts never share a grid point
 WINDOWS = {
-    "windscreen": [(2.47, HALF - 0.035), (2.47, 1.02), (2.75, 0.55), (3.02, -0.06), (3.36, -0.30), (3.58, -0.30),
+    "windscreen": [(2.51, HALF - 0.035), (2.51, 1.02), (2.79, 0.55), (3.05, -0.06), (3.36, -0.30), (3.58, -0.30),
                    (3.70, 0.30), (3.74, HALF - 0.035)],
     "front_door": [(1.34, -0.04), (1.34, 0.97), (2.30, 0.97), (2.56, 0.52), (2.84, -0.04)],
     "chin": [(3.04, -0.66), (3.42, -0.52), (3.60, -0.62), (3.56, -0.98), (3.12, -1.10)],
@@ -546,6 +578,9 @@ def build_helicopter():
     material("Exhaust", "#5d5a55", 0.45, 0.85, cull=False)
     material("Rubber", "#1a1b1c", 0.8)
     material("Interior", "#34373b", 0.85, cull=False)
+    # the cabin's lining and the sides of its openings: the same, but left out of the AO bake, which
+    # smudges the narrow strips between the windows and the door (see bake_ao's `plain`)
+    material("Lining", "#34373b", 0.85, cull=False)
     material("Seat", "#24272b", 0.75)
     material("Panel", "#1d2024", 0.6, 0.1)
     material("Screen", "#0d2233", 0.25, emit="#2b8fc7")
@@ -578,18 +613,81 @@ def build_helicopter():
     pts = [F(1.2, t) for t in fine]
     arc = np.concatenate([[0], np.cumsum([(b - a).length for a, b in zip(pts[:-1], pts[1:])])])
     ths = list(np.interp(np.linspace(0, arc[-1], 124, endpoint=False), arc, fine))
-    body = Mesh()
-    F.grid(body, xs, ths, paint, period=TAU)
-
-    # the cabin lining, 3.5 cm inside the skin, and the bulkhead behind it. Its openings are a
-    # cell wider than the glass all round, so their stepped edges hide behind the painted skin
-    lin_xs = [x for x in xs if CABIN_X[0] <= x <= CABIN_X[1]]
     nt = len(ths)
-    mid = lambda i, j: ((lin_xs[i] + lin_xs[i + 1]) / 2, (ths[j] + (ths[j + 1] if j + 1 < nt else ths[0] + TAU)) / 2)
-    pane = {(i, j) for i in range(len(lin_xs) - 1) for j in range(nt) if glass(*mid(i, j))}
-    hole = {mid(i + di, (j + dj) % nt) for i, j in pane for di in (-1, 0, 1) for dj in (-1, 0, 1) if 0 <= i + di < len(lin_xs) - 1}
+
+    # Cells of the grid, and the grid points with cells of two kinds round them. Those points move
+    # onto the outline between the kinds, so the cuts follow the curves rather than the grid's steps.
+    cell = lambda i, j: ((xs[i] + xs[i + 1]) / 2, (ths[j] + (ths[j + 1] if j + 1 < nt else ths[0] + TAU)) / 2)
+    cells = [(i, j) for i in range(len(xs) - 1) for j in range(nt)]
+
+    def edge_points(member):
+        for i in range(len(xs)):
+            for j in range(nt):
+                near = [(i + di, (j + dj) % nt) for di in (-1, 0) for dj in (-1, 0) if 0 <= i + di < len(xs) - 1]
+                if 0 < sum(c in member for c in near) < len(near):
+                    yield i, j
+
+    def edges(member):
+        """The grid edges between a cell in `member` and one that is not: (cell, other, its two points)."""
+        for i, j in member:
+            for (ni, nj), ab in (((i - 1, j), ((i, j), (i, j + 1))), ((i + 1, j), ((i + 1, j), (i + 1, j + 1))),
+                                 ((i, j - 1), ((i, j), (i + 1, j))), ((i, j + 1), ((i, j + 1), (i + 1, j + 1)))):
+                if 0 <= ni < len(xs) - 1 and (ni, nj % nt) not in member:
+                    yield (i, j), (ni, nj % nt), ab
+
+    # the windows' edges: the glass, and the openings in the lining behind it, end on the outlines
+    panes = {c for c in cells if glass(*cell(*c))}
+    snap = {}
+    for i, j in edge_points(panes):
+        best = None
+        for poly in win.values():
+            for th in (ths[j], ths[j] - TAU):
+                q = nearest_on(poly, xs[i], th, 0.8)
+                d = (q[0] - xs[i]) ** 2 + ((q[1] - th) * 0.8) ** 2
+                if best is None or d < best[0]:
+                    best = (d, q)
+        snap[(i, j)] = best[1]
+
+    # The pilot's door (front right) is a part of its own, hinged at its front edge, so the game
+    # can open it: its cells come out of the skin and the lining, cut along its seam
+    door_poly = chaikin(SEAMS["front_door"][0], 2)
+
+    def in_door(x, th):
+        return inside(door_poly, x, (th + math.pi) % TAU - math.pi)
+
+    in_d = {c for c in cells if in_door(*cell(*c))}
+    door_edge = set(edge_points(in_d))
+    assert not door_edge & set(snap), "a window comes within a grid cell of the pilot's door: their cuts would tear each other"
+    for i, j in door_edge:
+        snap[(i, j)] = nearest_on(door_poly, xs[i], (ths[j] + math.pi) % TAU - math.pi, 0.8)
+    body, door = Mesh(), Mesh()
+    F.grid(body, xs, ths, lambda x, th: None if in_door(x, th) else paint(x, th), period=TAU, at=snap)
+    F.grid(door, xs, ths, lambda x, th: paint(x, th) if in_door(x, th) else None, period=TAU, at=snap)
+
+    # the cabin lining, 3.5 cm inside the skin, open behind the glass, and the bulkhead behind it
+    lin_xs = [x for x in xs if CABIN_X[0] <= x <= CABIN_X[1]]
     Fin = Surface(lambda x, th: F(x, th) - F.normal(x, th) * 0.035, F.out)
-    Fin.grid(body, lin_xs, ths, lambda x, th: None if (x, th) in hole else "Interior", period=TAU, flip=True)
+    i0 = xs.index(lin_xs[0])
+    lsnap = {(i - i0, j): p for (i, j), p in snap.items() if 0 <= i - i0 < len(lin_xs)}
+    lining = lambda x, th: None if glass(x, th) else "Lining"
+    Fin.grid(body, lin_xs, ths, lambda x, th: None if in_door(x, th) else lining(x, th), period=TAU, flip=True, at=lsnap)
+    Fin.grid(door, lin_xs, ths, lambda x, th: lining(x, th) if in_door(x, th) else None, period=TAU, flip=True, at=lsnap)
+
+    # the sides of the openings, from the skin to the lining: round each window, facing the glass;
+    # the door's edge, and the frame round its opening with a rubber seal
+    at = lambda i, j: snap.get((i, j % nt), (xs[i], ths[j % nt]))
+    centre = lambda c: F(*cell(*c))
+
+    def rim(mesh, a, b, mat, facing):
+        quad = [F(*at(*a)), F(*at(*b)), Fin(*at(*b)), Fin(*at(*a))]
+        q = [mesh.vert(p) for p in quad]
+        mesh.face(q if (quad[1] - quad[0]).cross(quad[3] - quad[0]).dot(facing) > 0 else q[::-1], mat, False)
+    for c, other, (a, b) in edges(panes):
+        if lin_xs[0] <= cell(*c)[0] <= lin_xs[-1]:
+            rim(door if c in in_d else body, a, b, "Lining", centre(c) - centre(other))
+    for c, other, (a, b) in edges(in_d):
+        rim(door, a, b, "Lining", centre(other) - centre(c))
+        rim(body, a, b, "Gasket", centre(c) - centre(other))
     ring = [body.vert(Fin(lin_xs[0], th)) for th in ths]
     c = body.vert(Vector((lin_xs[0], 0, params(lin_xs[0])[0])))
     for k in range(len(ring)):
@@ -639,7 +737,18 @@ def build_helicopter():
     def Sc(x, th):
         c, s = math.cos(th), math.sin(th)
         e = 2 / 2.6
-        return Vector((x, -cw(x) * math.copysign(abs(c) ** e, c), cz(x) + chh(x) * math.copysign(abs(s) ** e, s)))
+        return under_skin(Vector((x, -cw(x) * math.copysign(abs(c) ** e, c), cz(x) + chh(x) * math.copysign(abs(s) ** e, s))))
+
+    def under_skin(p):
+        """The cowling's flanks run down into the fuselage: held just under the roof's skin there,
+        above the cabin lining, so they don't hang into the cabin over the seats."""
+        zc, w, ht, hb, e_t, e_b = params(p.x)
+        e = 2 / (e_t if p.z >= zc else e_b)
+        k = ((abs(p.y) / w) ** (2 / e) + (abs(p.z - zc) / (ht if p.z >= zc else hb)) ** (2 / e)) ** (e / 2)  # 1 on the skin
+        if k >= 0.995:
+            return p
+        f = 0.995 / max(k, 1e-6)
+        return Vector((p.x, p.y * f, zc + (p.z - zc) * f))
     C = Surface(Sc, lambda x, th, p: Vector((0, p.y, p.z - cz(x) + 0.2)))
     cxs = spaced(-2.75, 2.42, 0.07)
     cths = list(np.linspace(-0.45, math.pi + 0.45, 40))
@@ -738,25 +847,43 @@ def build_helicopter():
                          [Vector((3.74 + a * 0.4, b * 0.4, 0.42)) for a, b in airfoil(0.2, 0.06)]])
     for y in (-0.18, 0.18):
         tube(body, "Metal", [(2.55, y, 2.02), (2.78, y, 2.06), (3.05, y, 2.07)], 0.011, segs=6)
-    # door handles and the sliding door rail
+    # door handles (the pilot's on the door) and the sliding door rail
     for side in (1, -1):
         for x in (1.42, -0.32):
             p = F(x, 0.02 if side > 0 else math.pi - 0.02)
-            box(body, "Metal_Dark", (0.16, 0.03, 0.035), T(p + F.normal(x, 0.02 if side > 0 else math.pi - 0.02) * 0.012), bevel=0.008)
+            box(door if side > 0 and x > 0 else body, "Metal_Dark", (0.16, 0.03, 0.035),
+                T(p + F.normal(x, 0.02 if side > 0 else math.pi - 0.02) * 0.012), bevel=0.008)
 
-    # trim: window gaskets, seams, livery stripes, decal patches (lifted off the skin, outside the AO bake)
-    # gaskets on both faces of the skin: they hide the panes' stepped edges from outside and in
+    # trim: window gaskets, seams, livery stripes, decal patches (lifted off the skin, outside the AO bake).
+    # What lies on the pilot's door goes with it: its window's gaskets, its seam and its part of the stripes
+    door_trim = Mesh()
+    door_x = (min(x for x, _ in door_poly), max(x for x, _ in door_poly))
+
+    def on_door(p):  # a point on the skin, or just off it: is it on the pilot's door?
+        if p.y > 0 or not door_x[0] - 0.2 < p.x < door_x[1] + 0.2:
+            return False
+        zc, w, ht, hb, e_t, e_b = params(p.x)
+        up = p.z >= zc
+        e = 2 / (e_t if up else e_b)
+        c = min(1.0, -p.y / w) ** (1 / e)
+        s = min(1.0, abs(p.z - zc) / (ht if up else hb)) ** (1 / e)
+        return in_door(p.x, math.atan2(s if up else -s, c))
+    # gaskets on both faces of the skin, framing the panes outside and in
     for name, poly in win.items():
         for off in (0.006, -0.006):
-            F.band(trim, poly, 0.036, "Gasket", offset=off, across=2, closed=True, step=0.025)
+            F.band(door_trim if name == "front_door" else trim, poly, 0.036, "Gasket", offset=off, across=2, closed=True, step=0.025)
     for name, (poly, closed) in SEAMS.items():
-        for pts in (poly, mirror(poly)):
-            F.band(trim, chaikin(pts, 2, closed) if closed and name != "tail_cone" else pts, 0.006, "Seam", offset=0.003, across=2,
-                   closed=closed, step=0.04)
+        for k, pts in enumerate((poly, mirror(poly))):
+            F.band(door_trim if name == "front_door" and k == 0 else trim, chaikin(pts, 2, closed) if closed and name != "tail_cone" else pts,
+                   0.006, "Seam", offset=0.003, across=2, closed=closed, step=0.04)
+    stripes = Mesh()
     for pts in (STRIPE, mirror(STRIPE)):
-        F.band(trim, chaikin(pts, 3, False), 0.06, "Stripe_Accent", offset=0.004, across=4, step=0.04)
+        F.band(stripes, chaikin(pts, 3, False), 0.06, "Stripe_Accent", offset=0.004, across=4, step=0.04)
     for pts in (PINSTRIPE, mirror(PINSTRIPE)):
-        F.band(trim, chaikin(pts, 3, False), 0.014, "Stripe_Accent", offset=0.004, across=2, step=0.05)
+        F.band(stripes, chaikin(pts, 3, False), 0.014, "Stripe_Accent", offset=0.004, across=2, step=0.05)
+    on, off = split(stripes, on_door)
+    door_trim.merge(on)
+    trim.merge(off)
     # registration on the tail boom, reading front to back on the left side and back to front on the right
     F.band(trim, [(-4.35, 0.10), (-2.95, 0.10)], 0.13, "Decal_Registration", offset=0.005, across=5, uv=True, step=0.05)
     F.band(trim, [(-2.95, math.pi - 0.10), (-4.35, math.pi - 0.10)], 0.13, "Decal_Registration", offset=0.005, across=5, uv=True, step=0.05)
@@ -764,7 +891,13 @@ def build_helicopter():
     C.band(trim, [(-1.85, 0.62), (-0.35, 0.62)], 0.10, "Decal_Logo", offset=0.005, across=4, uv=True, step=0.05)
     C.band(trim, [(-0.35, math.pi - 0.62), (-1.85, math.pi - 0.62)], 0.10, "Decal_Logo", offset=0.005, across=4, uv=True, step=0.05)
 
-    objs = {"Body": body.build("Body"), "Trim": trim.build("Trim")}
+    # the door's hinge line: upright, just ahead of and outboard of its front edge, so that every part
+    # of the door swings out and back as it opens, clear of the pillar in front of it
+    dv = [Vector(v) for v in door.v]
+    front = max(v.x for v in dv)
+    hinge = Vector((front + 0.01, min(v.y for v in dv if v.x > front - 0.35) - 0.015, min(v.z for v in dv)))
+    objs = {"Body": body.build("Body"), "Trim": trim.build("Trim"), "Door_Pilot": door.build("Door_Pilot", origin=hinge)}
+    objs["Trim_Door"] = door_trim.build("Trim_Door", origin=hinge, parent=objs["Door_Pilot"])
 
     # main rotor: hub, flexbeams, cuffs and pitch links turn with it; four blades
     hub_z = 3.30
@@ -819,12 +952,17 @@ def build_helicopter():
         box(fan, "Blade", (rd - 0.115, 0.012, 0.085), T((fc + math.cos(a) * mid, 0.04, fz + math.sin(a) * mid), (0, -a, 0)) @ T(rot=(0.5, 0, 0)))
     objs["TailRotor"] = fan.build("TailRotor", origin=(fc, 0.04, fz))
 
+    # the way in: stand by the door (Door), up onto the step on the front cross tube (Step), and sit
+    # down: Seat_Pilot is on the floor under the pilot's hips, where a seated person's feet rest
+    # (the seat's cushion is 38 cm above it), and Eye_Pilot is where the pilot's eyes are
     anchors = dict(lights)
-    anchors.update({"Seat_Pilot": (2.02, -0.40, 1.18), "Door": (1.80, -1.95, 0.0), "Searchlight": (1.38, -0.42, 0.54),
-                    "Landing_Light": (3.50, 0, 0.76)})
+    anchors.update({"Seat_Pilot": (1.93, -0.40, zf), "Eye_Pilot": (2.02, -0.40, 1.90), "Door": (1.45, -1.55, 0.0),
+                    "Step": (1.20, -0.90, 0.39), "Searchlight": (1.38, -0.42, 0.54), "Landing_Light": (3.50, 0, 0.76)})
     for k, p in anchors.items():
         objs[k] = empty(k, p)
-    info = {"length_m": 10.7, "rotor_radius_m": span1, "rotor_hub": [0, hub_z, 0], "tail_rotor": [0.04, fz, fc], "duct_radius_m": rd}
+    info = {"length_m": 10.7, "rotor_radius_m": span1, "rotor_hub": [0, hub_z, 0], "tail_rotor": [0.04, fz, fc], "duct_radius_m": rd,
+            # the pilot's door turns about an upright line through its node (model axes: +y up), outward as the angle grows
+            "door": {"node": "Door_Pilot", "axis": [0, 1, 0], "open_deg": 70}}
     return objs, info
 
 
@@ -1620,8 +1758,9 @@ def select(objs):
     bpy.context.view_layer.objects.active = objs[0]
 
 
-def bake_ao(meshes, hidden, size, distance, samples):
-    """One ambient-occlusion atlas for all `meshes`, wired into their materials as glTF occlusion."""
+def bake_ao(meshes, hidden, size, distance, samples, plain=()):
+    """One ambient-occlusion atlas for all `meshes`, wired into their materials as glTF occlusion
+    (except the materials named in `plain`, which bake into a scratch image and keep none)."""
     t = time.time()
     select(meshes)
     bpy.ops.object.mode_set(mode="EDIT")
@@ -1630,11 +1769,12 @@ def bake_ao(meshes, hidden, size, distance, samples):
     bpy.ops.uv.pack_islands(margin=0.004)
     bpy.ops.object.mode_set(mode="OBJECT")
     img = bpy.data.images.new("AO", size, size, alpha=False)
+    scratch = bpy.data.images.new("AO_scratch", 64, 64, alpha=False)
     mats = {m for o in meshes for m in o.data.materials}
     for m in mats:
         nt = m.node_tree
         n = nt.nodes.new("ShaderNodeTexImage")
-        n.image = img
+        n.image = scratch if m.name in plain else img
         nt.nodes.active = n
     for o in hidden:
         o.hide_render = True
@@ -1659,6 +1799,8 @@ def bake_ao(meshes, hidden, size, distance, samples):
         group = bpy.data.node_groups.new("glTF Material Output", "ShaderNodeTree")
         group.interface.new_socket("Occlusion", in_out="INPUT", socket_type="NodeSocketFloat")
     for m in mats:
+        if m.name in plain:
+            continue
         nt = m.node_tree
         tex = nt.nodes.active
         sep = nt.nodes.new("ShaderNodeSeparateColor")
@@ -1667,6 +1809,23 @@ def bake_ao(meshes, hidden, size, distance, samples):
         g.node_tree = group
         nt.links.new(sep.outputs["Red"], g.inputs["Occlusion"])
     print(f"  AO bake {size}px for {len(meshes)} meshes: {time.time() - t:.0f} s")
+
+
+def joined(objs, name):
+    """A copy of several objects as one mesh, each part where it is."""
+    copies = []
+    for o in objs:
+        c = o.copy()
+        c.data = o.data.copy()
+        c.parent = None
+        c.matrix_world = o.matrix_world.copy()
+        bpy.context.scene.collection.objects.link(c)
+        copies.append(c)
+    select(copies)
+    bpy.ops.object.join()
+    ob = bpy.context.view_layer.objects.active
+    ob.name = name
+    return ob
 
 
 def lod_copy(ob, name, ratio):
@@ -1910,10 +2069,14 @@ def main():
                 camera("Cam", (9.5, -25, 2.4), (0, -5.5, 0.9), 38)
                 render(os.path.join(DOCS, "cars.jpg"))
             continue
-        meshes = [o for k, o in objs.items() if o.type == "MESH" and k not in ("Trim", "Flag")]
-        bake_ao(meshes, [objs["Trim"]], 2048, 1.0 if kind == "helicopter" else 2.5, a.bake_samples)
-        # a decimated copy of the body for distance (the game swaps at 'lod1_m')
-        objs["Body_LOD1"] = lod_copy(objs["Body"], "Body_LOD1", 0.14 if kind == "helicopter" else 0.18)
+        trims = [o for k, o in objs.items() if k.startswith("Trim")]
+        meshes = [o for k, o in objs.items() if o.type == "MESH" and o not in trims and k != "Flag"]
+        bake_ao(meshes, trims, 2048, 1.0 if kind == "helicopter" else 2.5, a.bake_samples, plain=("Lining",))
+        # a decimated copy of the body for distance (the game swaps at 'lod1_m'), with the door shut in it
+        whole = joined([objs["Body"], objs["Door_Pilot"]], "Body_Whole") if "Door_Pilot" in objs else objs["Body"]
+        objs["Body_LOD1"] = lod_copy(whole, "Body_LOD1", 0.14 if kind == "helicopter" else 0.18)
+        if whole is not objs["Body"]:
+            bpy.data.objects.remove(whole)
         info["lod1_triangles"] = triangles([objs["Body_LOD1"]])
         info["lod1_m"] = 90 if kind == "helicopter" else 260
         info["triangles"] = triangles([o for k, o in objs.items() if k != "Body_LOD1"])

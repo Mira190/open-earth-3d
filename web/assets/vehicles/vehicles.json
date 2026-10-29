@@ -65,9 +65,18 @@
    -5.78
   ],
   "duct_radius_m": 0.46,
-  "lod1_triangles": 11883,
+  "door": {
+   "node": "Door_Pilot",
+   "axis": [
+    0,
+    1,
+    0
+   ],
+   "open_deg": 70
+  },
+  "lod1_triangles": 12442,
   "lod1_m": 90,
-  "triangles": 101352
+  "triangles": 105364
  },
  "ferry": {
   "file": "ferry.glb",
