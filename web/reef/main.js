@@ -165,7 +165,8 @@ async function main() {
   }
 
   let last = performance.now(), frames = 0;
-  window.__reef = { camera, env, renderer, d, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
+  // ctx for tools that drive the viewer from outside (tools/film/reef-director.js sets ctx.controller and the clock)
+  window.__reef = { camera, env, renderer, d, ctx, set(o) { if (o.yaw !== undefined) yaw = o.yaw; if (o.pitch !== undefined) pitch = o.pitch; } };
   const frame = now => {
     const dt = Math.max(Math.min((now - last) / 1000, 0.1), 0); last = now;
     if (!ctx.controller) {

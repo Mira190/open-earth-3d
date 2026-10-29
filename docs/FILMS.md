@@ -141,3 +141,44 @@ production.
   sun is in shot and not behind a building (ray cast through the city's surface
   model), and a vignette. Grain is added by the player, not baked into the video,
   which keeps the files small.
+
+## The reef
+
+The five Great Barrier Reef sites share one film, `great-barrier-reef`, which the
+group's card on the title screen plays. Its shot list is `cities/whitsundays/film.json`
+with `"id": "great-barrier-reef"` (the name the files are written under) and
+`"engine": "reef"`: the sites run in the reef viewer (`web/reef/`, three.js r186),
+not the city game, so the tool takes another path.
+
+- **One page per site.** Each shot names its `site`. The tool opens
+  `reef/index.html?city=<site>&mods=life,boats` (the sea, its life and its boats; no
+  player, game or HUD) once for each run of consecutive shots on a site, with
+  `sites.<id>` in the film adding query keys to that site's page.
+- **The director** (`tools/film/reef-director.js`) drives the viewer through
+  `window.__reef.ctx`: it takes the camera as `ctx.controller`, sets the model clock
+  with `ctx.setClock` for each frame's local time (so the sun, moon, tide and lamps
+  follow, and a time-lapse works as it does in a city), and the exposure through the
+  renderer's own tone mapping. The viewer's `setAnimationLoop` asks for frames through
+  `requestAnimationFrame`, so `tools/film/clock.js` drives it unchanged.
+- **Positions** are the site's local metres `[x east, y north, z up about mean sea
+  level]` (`web/data/<site>/scene.json` and its `pois`); `z < 0` is under water.
+  Shots are `move` and `orbit` as in a city, and `track` beside a boat or an animal:
+  `boat: {vessel, from, to, speed, sails}` takes one of the site's boats off its route
+  and sails it along the line (its wake is built up for a few seconds first);
+  `animal: {species, near}` follows the nearest animal of a species (or of any in a
+  list) that `life.js` is simulating near the camera. `under: true` keeps the lens below
+  the surface, otherwise it stays `clear` (1.2 m) above the waves.
+- **The look is the reef's own**: its post (bloom, light shafts, the night's Purkinje
+  shift) and ACES. The title lens is not used. White balance (`tint`), saturation
+  (`sat`), a light vignette and the fades are applied as the frame is taken from the
+  canvas, on a 2D canvas the size of the film.
+- **The tide is the real one** for the film's day, so the date is chosen for it: on
+  26 November 2026 the water at Whitehaven is 1.4 m below mean sea level at 06:00, and
+  Hill Inlet's sand banks are out for the title. That evening, the moon the viewer draws
+  rises at sunset, for the finale.
+- `--plan` is for cities only; check a reef film with `--stills`.
+
+Under water, avoid a level camera: the far edge of the surface draws a thin white line
+across the frame at the horizon. Look down at the floor or up at the surface.
+
+![The Great Barrier Reef film's contact sheet](images/films/great-barrier-reef.jpg)

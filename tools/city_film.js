@@ -9,7 +9,10 @@
 // Options: --size 1920x804 (2.39:1), --fps 24, --shots id,id, --frames <dir> (kept between runs, so
 // an interrupted render resumes), PORT (8800).
 // Writes web/films/<id>.mp4, <id>.jpg (the poster), <id>.json (the cue sheet the player reads:
-// shots, titles and chapters) and adds the film to web/films/index.json.
+// shots, titles and chapters) and adds the film to web/films/index.json. <id> is the film's own `id`
+// if it has one (a group's film: cities/whitsundays/film.json is the Great Barrier Reef's), else the city.
+// A film with "engine": "reef" is shot in the reef viewer (web/reef/), one page per run of shots on
+// one site (each shot names its `site`), directed by tools/film/reef-director.js.
 // Under xvfb-run the frames are drawn by Mesa's llvmpipe (about 1-2 s a frame on four cores; a 36 s
 // film is half an hour); without a display, by SwiftShader, about four times slower.
 const { chromium } = require('playwright');
@@ -27,7 +30,9 @@ const SPEC = path.join(ROOT, 'cities', city, 'film.json');
 const spec = fs.existsSync(SPEC) ? JSON.parse(fs.readFileSync(SPEC, 'utf8')) : { shots: [] };
 const [W, H] = String(opt('size', spec.size || '1920x804')).split('x').map(Number);
 const FPS = +opt('fps', spec.fps || 24);
-const FRAMES = opt('frames', path.join(os.tmpdir(), `oe3d-film-${city}-${W}x${H}`));
+const FILM = spec.id || city;
+const REEF = spec.engine === 'reef';
+const FRAMES = opt('frames', path.join(os.tmpdir(), `oe3d-film-${FILM}-${W}x${H}`));
 const OUT = path.join(ROOT, 'web', 'films');
 const PORT = process.env.PORT || 8800;
 fs.mkdirSync(FRAMES, { recursive: true });
@@ -43,7 +48,8 @@ const frameOf = i => path.join(FRAMES, `f${String(i).padStart(5, '0')}.jpg`);
 // With an X display (xvfb-run), Chromium draws through Mesa's llvmpipe, about four times faster
 // than its own SwiftShader on the same cores; without one it falls back to SwiftShader.
 const LLVMPIPE = !!process.env.DISPLAY && process.env.FILM_GL !== 'swiftshader';
-async function open() {
+async function open(site) {
+  if (REEF) return openReef(site);
   const b = await chromium.launch(LLVMPIPE
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox', '--autoplay-policy=no-user-gesture-required'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required'] });
@@ -62,8 +68,44 @@ async function open() {
   return { b, p, errs };
 }
 
+// the reef: one site's page, on the virtual clock, with the sea, its life and its boats (no player, no game, no HUD)
+async function openReef(site) {
+  const b = await chromium.launch(LLVMPIPE
+    ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
+    : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const p = await b.newPage({ viewport: { width: W, height: H } });
+  const errs = [];
+  p.on('pageerror', e => errs.push(String(e).slice(0, 400)));
+  await p.addInitScript({ path: path.join(__dirname, 'film', 'clock.js') });
+  const first = spec.shots.find(s => s.site === site), q = Object.assign({ city: site, mods: 'life,boats' }, (spec.sites || {})[site]);
+  await p.goto(`http://localhost:${PORT}/reef/index.html?${new URLSearchParams(q)}`);
+  await p.waitForFunction(() => window.__ready || document.getElementById('err').textContent, null, { timeout: 900000, polling: 1000 });
+  const err = await p.evaluate(() => document.getElementById('err').textContent);
+  if (err) throw new Error(`${site}: ${err}`);
+  await p.addScriptTag({ path: path.join(__dirname, 'film', 'reef-director.js') });
+  await p.evaluate(s => OEReefDirector.setup(s), Object.assign({}, spec, { size: [W, H] }));
+  await p.evaluate(() => __vt.start());
+  await p.waitForFunction(() => __vt.pending > 0, null, { timeout: 120000, polling: 100 });
+  // settle the first shot's place: the terrain's detail, the shore and the life round the camera
+  await p.evaluate(({ t, fps }) => { for (let i = 0; i < 6; i++) { OEReefDirector.apply(t); __vt.step(1000 / fps); } }, { t: first.t0, fps: FPS });
+  return { b, p, errs, site };
+}
+
+// the runs of consecutive shots on one site (a reef film), or the whole film on one page (a city)
+function runs(shots) {
+  const out = [];
+  for (const s of shots) { const key = REEF ? s.site : city; if (!out.length || out[out.length - 1].site !== key) out.push({ site: key, shots: [] }); out[out.length - 1].shots.push(s); }
+  return out;
+}
+
 // draw the frame at film time t; warm frames settle a new shot (the crowd, the ground's detail) and are thrown away
 async function frame(p, t, warm) {
+  if (REEF) return p.evaluate(({ t, fps, warm }) => {
+    for (let w = 0; w < warm; w++) { OEReefDirector.apply(t); __vt.step(1000 / fps); }
+    OEReefDirector.apply(t);
+    __vt.step(1000 / fps);
+    return OEReefDirector.grab(0.95);
+  }, { t, fps: FPS, warm });
   return p.evaluate(({ t, fps, warm }) => {
     for (let w = 0; w < warm; w++) { OEFilmDirector.apply(t); __vt.step(1000 / fps); }
     OEFilmDirector.apply(t);
@@ -74,21 +116,22 @@ async function frame(p, t, warm) {
 const save = (file, url) => fs.writeFileSync(file, Buffer.from(url.slice(url.indexOf(',') + 1), 'base64'));
 
 async function stills() {
-  const { b, p, errs } = await open();
   const only = opt('shots', '') ? String(opt('shots')).split(',') : null;
   const dir = path.join(FRAMES, 'stills');
   fs.mkdirSync(dir, { recursive: true });
-  for (const s of spec.shots) {
-    if (only && !only.includes(s.id)) continue;
-    const ks = opt('k', false) ? String(opt('k')).split(',').map(Number) : s.check || [0.05, 0.5, 0.95];
-    for (const k of ks) {
-      const t0 = Date.now();
-      save(path.join(dir, `${s.id}-${Math.round(k * 100)}.jpg`), await frame(p, s.t0 + k * s.dur, k === ks[0] ? 3 : 1));
-      console.log(`${s.id} @${k}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  for (const run of runs(spec.shots.filter(s => !only || only.includes(s.id)))) {
+    const { b, p, errs } = await open(run.site);
+    for (const s of run.shots) {
+      const ks = opt('k', false) ? String(opt('k')).split(',').map(Number) : s.check || [0.05, 0.5, 0.95];
+      for (const k of ks) {
+        const t0 = Date.now();
+        save(path.join(dir, `${s.id}-${Math.round(k * 100)}.jpg`), await frame(p, s.t0 + k * s.dur, k === ks[0] ? 3 : 1));
+        console.log(`${s.id} @${k}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+      }
     }
+    console.log(errs.slice(0, 8).join('\n'));
+    await b.close();
   }
-  console.log(errs.slice(0, 8).join('\n'));
-  await b.close();
   console.log(`stills in ${dir}`);
 }
 
@@ -96,22 +139,25 @@ async function render() {
   const [pi, pn] = String(opt('part', '1/1')).split('/').map(Number);
   const only = opt('shots', '') ? String(opt('shots')).split(',') : null;
   const mine = spec.shots.filter((s, i) => (i % pn) === (pi - 1) && (!only || only.includes(s.id)));
-  const { b, p, errs } = await open();
   const t0 = Date.now();
   let done = 0;
-  for (const s of mine) {
-    const a = Math.round(s.t0 * FPS), z = Math.round((s.t0 + s.dur) * FPS);
-    let warm = 3;
-    for (let i = a; i < z; i++) {
-      if (fs.existsSync(frameOf(i))) { warm = 3; continue; } // done in an earlier run
-      save(frameOf(i), await frame(p, i / FPS, warm));
-      warm = 0;
-      done++;
-      if (done % 24 === 0) console.log(`${s.id}: frame ${i}/${NF}, ${((Date.now() - t0) / 1000 / done).toFixed(2)} s a frame`);
+  for (const run of runs(mine)) {
+    if (run.shots.every(s => { for (let i = Math.round(s.t0 * FPS); i < Math.round((s.t0 + s.dur) * FPS); i++) if (!fs.existsSync(frameOf(i))) return false; return true; })) continue;
+    const { b, p, errs } = await open(run.site);
+    for (const s of run.shots) {
+      const a = Math.round(s.t0 * FPS), z = Math.round((s.t0 + s.dur) * FPS);
+      let warm = 3;
+      for (let i = a; i < z; i++) {
+        if (fs.existsSync(frameOf(i))) { warm = 3; continue; } // done in an earlier run
+        save(frameOf(i), await frame(p, i / FPS, warm));
+        warm = 0;
+        done++;
+        if (done % 24 === 0) console.log(`${s.id}: frame ${i}/${NF}, ${((Date.now() - t0) / 1000 / done).toFixed(2)} s a frame`);
+      }
     }
+    if (errs.length) console.log(errs.slice(0, 8).join('\n'));
+    await b.close();
   }
-  if (errs.length) console.log(errs.slice(0, 8).join('\n'));
-  await b.close();
 }
 
 async function encode() {
@@ -139,31 +185,32 @@ async function encode() {
   const wavFile = path.join(FRAMES, 'score.wav');
   fs.writeFileSync(wavFile, Buffer.concat([wav, raw]));
   // the picture: H.264 for every browser, the audio cut at the picture's end with a fade
-  const mp4 = path.join(OUT, `${city}.mp4`);
+  const mp4 = path.join(OUT, `${FILM}.mp4`);
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(FRAMES, 'f%05d.jpg'), '-i', wavFile,
     '-af', `afade=t=out:st=${(DURATION - 1.2).toFixed(2)}:d=1.2`, '-t', DURATION.toFixed(3),
     '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-preset', 'slow', '-crf', String(spec.crf || 27), '-profile:v', 'high', '-pix_fmt', 'yuv420p', '-x264-params', 'aq-mode=3',
     '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', mp4]);
   // the poster: the frame the film is remembered by
   const pf = Math.min(NF - 1, Math.round((spec.poster != null ? spec.poster : DURATION * 0.3) * FPS));
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', frameOf(pf), '-vf', 'scale=1280:-2', '-q:v', '4', path.join(OUT, `${city}.jpg`)]);
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', frameOf(pf), '-vf', 'scale=1280:-2', '-q:v', '4', path.join(OUT, `${FILM}.jpg`)]);
   // the cue sheet: shots, titles and chapters on the film's clock
   const cue = {
-    id: city, name: spec.name, duration: +DURATION.toFixed(3), fps: FPS, size: [W, H], video: `films/${city}.mp4`, poster: `films/${city}.jpg`,
+    id: FILM, name: spec.name, duration: +DURATION.toFixed(3), fps: FPS, size: [W, H], video: `films/${FILM}.mp4`, poster: `films/${FILM}.jpg`,
     credit: spec.credit || 'Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.',
     shots: spec.shots.map(s => ({ id: s.id, t0: +s.t0.toFixed(3), t1: +(s.t0 + s.dur).toFixed(3), chapter: s.chapter || null })),
     titles: spec.shots.filter(s => s.title).map(s => Object.assign({ t0: +(s.t0 + (s.title.at || 0)).toFixed(3), t1: +(s.t0 + (s.title.until != null ? s.title.until : s.dur)).toFixed(3) }, s.title, { at: undefined, until: undefined })),
   };
-  fs.writeFileSync(path.join(OUT, `${city}.json`), JSON.stringify(cue, null, 1) + '\n');
+  fs.writeFileSync(path.join(OUT, `${FILM}.json`), JSON.stringify(cue, null, 1) + '\n');
   const idx = path.join(OUT, 'index.json');
   const list = fs.existsSync(idx) ? JSON.parse(fs.readFileSync(idx, 'utf8')) : {};
-  list[city] = { json: `films/${city}.json`, duration: cue.duration };
+  list[FILM] = { json: `films/${FILM}.json`, duration: cue.duration };
   fs.writeFileSync(idx, JSON.stringify(Object.fromEntries(Object.entries(list).sort()), null, 1) + '\n');
   const mb = fs.statSync(mp4).size / 1e6;
   console.log(`${mp4}: ${NF} frames, ${DURATION.toFixed(1)} s, ${mb.toFixed(1)} MB`);
 }
 
 async function planView() {
+  if (REEF) { console.error('--plan draws a city from above; a reef film is checked with --stills'); process.exit(1); }
   const { b, p, errs } = await open();
   const r = await p.evaluate(() => OEFilmDirector.plan(1800));
   const file = path.join(FRAMES, 'plan.jpg');
