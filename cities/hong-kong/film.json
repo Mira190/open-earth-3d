@@ -128,8 +128,8 @@
       "look": [400, 842, 30],
       "fov": 40,
       "time": ["18:06"],
-      "people": [680, 820],
-      "crowd_r": 45,
+      "people": [684, 814],
+      "crowd_r": 35,
       "hand": 1,
       "title": {
         "kind": "lower",
