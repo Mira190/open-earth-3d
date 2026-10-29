@@ -25,6 +25,7 @@ window.OpenEarthGame = async function game(cityId) {
     D = await OEWorld.load(cityId, { game: true, onMsg: loadMsg });
   } catch (e) {
     loadMsg(`Could not load the game data (${e.message}). Reload the page to try again.`, 0);
+    $('#g-loader').classList.add('err');
     return null;
   }
   // the game walks on a 5 m terrain that drops at the seawall (game.json), not the viewer's 10 m grid
@@ -39,7 +40,10 @@ window.OpenEarthGame = async function game(cityId) {
   }
   const { scene, B, P, G, CITY } = D;
   document.title = `${G.title} · Open Earth 3D`;
-  $('#gt-title').textContent = G.title;
+  // "Paris on Foot": the place set large, "on foot" under it
+  const tm = /^(.+?)\s+(on foot)$/i.exec(G.title), gtTitle = $('#gt-title');
+  gtTitle.textContent = tm ? tm[1] : G.title;
+  if (tm) { const sm = document.createElement('small'); sm.textContent = tm[2]; gtTitle.append(sm); }
   if (G.blurb) $('#gt-blurb').textContent = G.blurb;
   $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
   if (G.blurb) $('#g-title p').textContent = G.blurb;
@@ -1246,7 +1250,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (waypoint) icon({ kind: 'waypoint' }, ...P2(...waypoint));
     const [px, py] = P2(player.mode === 'heli' ? heli.st.x : player.mode === 'ferry' ? player.vehicle.x : player.x, player.mode === 'heli' ? heli.st.y : player.mode === 'ferry' ? player.vehicle.y : player.y);
     g.translate(px / dpr, py / dpr); g.rotate(player.mode === 'heli' ? heli.st.h : player.h);
-    g.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--accent'); g.strokeStyle = '#fff'; g.lineWidth = 2;
+    g.fillStyle = '#ffffff'; g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg'); g.lineWidth = 2; // white on the gold route
     g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.stroke();
     g.restore();
     // fast travel to wharves you have used, the helipad and the start
@@ -1339,6 +1343,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
   $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
+  $('#g-title').hidden = false; // held back until now, so it never shows over the loader
   $('#g-loader').classList.add('out');
   setTimeout(() => { $('#g-loader').hidden = true; }, reduced ? 0 : 700);
   renderPassport();

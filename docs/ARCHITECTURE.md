@@ -187,7 +187,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 
 ## Viewer
 
-`web/index.html` is one page with three views. three.js r186 loads as ES modules
+`web/index.html` is one page with three views, in one look: the title screen's
+blue-black and off-white type, the sun's amber as the one accent, and glass and
+hairlines instead of boxes (`title.css` styles the title screen, the page's own
+stylesheet the model and the game). three.js r186 loads as ES modules
 through an import map (cdnjs for the core, jsDelivr for the addons and
 three-mesh-bvh), and a small module exposes them as the global `THREE` the app's
 scripts use. Colour management is left off: the scripts convert their sRGB

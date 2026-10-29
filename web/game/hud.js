@@ -88,7 +88,7 @@ window.OEHud = (function () {
       }
       // the player, at the centre
       g.rotate(heading - yaw);
-      g.fillStyle = css('--accent'); g.strokeStyle = '#fff'; g.lineWidth = 2;
+      g.fillStyle = '#ffffff'; g.strokeStyle = css('--bg'); g.lineWidth = 2; // white on the gold route
       g.beginPath(); g.moveTo(0, -9); g.lineTo(6.5, 7); g.lineTo(0, 3.5); g.lineTo(-6.5, 7); g.closePath(); g.fill(); g.stroke();
       g.restore();
       g.strokeStyle = css('--line'); g.lineWidth = 2;

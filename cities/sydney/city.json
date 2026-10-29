@@ -265,6 +265,7 @@
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
     "water_name": "the harbour",
+    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the ferries, and fly under the Harbour Bridge. Every fact they tell you comes from the model.",
     "under_bridge_note": "49 m of clearance, and you used it.",
     "shade_landmarks": ["opera", "sydney_tower"],
     "ferry_style": {"model": "harbour", "length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",

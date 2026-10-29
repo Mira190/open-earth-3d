@@ -28,6 +28,7 @@ window.OpenEarthCity = async function main(cityId) {
     D = await OEWorld.load(cityId, { onMsg: loadMsg });
   } catch (e) {
     loadMsg(`Could not load the model data (${e.message}). Reload the page to try again.`, 0);
+    $('#loader').classList.add('err');
     return;
   }
   const { scene, B, P, LM, UNC, T, CITY, ground } = D;
@@ -374,7 +375,7 @@ window.OpenEarthCity = async function main(cityId) {
     const view = stopView(s);
     if (s.place) focusPlace = s.place;
     if (!here) flyTo(view.cam, view.tgt);
-    $('#cap-step').textContent = `${tour.i + 1} / ${TOUR.length}`;
+    $('#cap-step').textContent = `${pad(tour.i + 1)} / ${pad(TOUR.length)}`;
     $('#cap-title').textContent = s.title;
     $('#cap-text').textContent = typeof s.text === 'function' ? s.text() : s.text;
     $$('#tour-list button').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === tour.i)));

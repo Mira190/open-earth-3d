@@ -386,9 +386,10 @@ Data tab. The shared sources are:
   (public domain).
 - **The title screen's sky:** the Milky Way panorama by ESO/S. Brunier (CC BY
   4.0); the Yale Bright Star Catalogue, 5th revised edition.
-- **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono;
-  on the title screen Zalando Sans Expanded, Inter Tight, Shippori Mincho and
-  Noto Serif TC).
+- **Fonts:** Google Fonts (Zalando Sans Expanded, Inter Tight and JetBrains Mono
+  for the interface, Shippori Mincho and Noto Serif TC for the cities' own names;
+  Bricolage Grotesque, Public Sans and Noto Sans JP for the names painted on the
+  vessels and the maps).
 - **Vehicles in the game:** modelled from code in this repository
   (`blender/build_vehicles.py` and `web/game/kit.js`), with no third-party assets.
 - **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
