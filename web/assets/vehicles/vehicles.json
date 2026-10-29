@@ -1,0 +1,659 @@
+{
+ "note": "The vehicles every city's game shares, built by blender/build_vehicles.py. A city picks a livery (by name, or its own colours) and a registration in game.vehicles; 'paint' says which material takes which livery colour.",
+ "axes": "+z forward, +y up, +x left; helicopter origin under the mast at the bottom of the skids, ferry origin at the waterline amidships",
+ "helicopter": {
+  "file": "helicopter.glb",
+  "default_livery": "survey",
+  "liveries": {
+   "survey": {
+    "primary": "#f3f4f1",
+    "secondary": "#15253b",
+    "accent": "#ff6a14"
+   },
+   "rescue": {
+    "primary": "#f4f3ee",
+    "secondary": "#c8102e",
+    "accent": "#ffcc00"
+   },
+   "news": {
+    "primary": "#1d4e89",
+    "secondary": "#f4f4f2",
+    "accent": "#e63946"
+   },
+   "executive": {
+    "primary": "#17191c",
+    "secondary": "#3a3f45",
+    "accent": "#c9a227"
+   }
+  },
+  "paint": {
+   "Paint_Primary": "primary",
+   "Paint_Secondary": "secondary",
+   "Stripe_Accent": "accent"
+  },
+  "registrations": {
+   "Australia": "VH-OEH",
+   "Japan": "JA03DE",
+   "United States": "N3DOE",
+   "United Kingdom": "G-OEHX",
+   "France": "F-HOEX",
+   "Netherlands": "PH-OEH",
+   "China": "B-73DE",
+   "Hong Kong": "B-HOE",
+   "Singapore": "9V-OEH",
+   "Germany": "D-HOEX",
+   "New Zealand": "ZK-OEH",
+   "Canada": "C-GOEH",
+   "Italy": "I-OEHX",
+   "Spain": "EC-OEH",
+   "South Korea": "HL93DE"
+  },
+  "registration_default": "OEH-3D",
+  "logo": "OPEN EARTH 3D",
+  "rotor_rpm": 395,
+  "tail_rotor_rpm": 3580,
+  "length_m": 10.7,
+  "rotor_radius_m": 5.1,
+  "rotor_hub": [
+   0,
+   3.3,
+   0
+  ],
+  "tail_rotor": [
+   0.04,
+   2.12,
+   -5.78
+  ],
+  "duct_radius_m": 0.46,
+  "lod1_triangles": 11883,
+  "lod1_m": 90,
+  "triangles": 101352
+ },
+ "ferry": {
+  "file": "ferry.glb",
+  "default_livery": "bay",
+  "liveries": {
+   "harbour": {
+    "hull": "#1d5a3b",
+    "band": "#e2b02a",
+    "cabin": "#efe6cc",
+    "trim": "#f5f0e1",
+    "deck": "#6d7068",
+    "boot": "#7b2b23"
+   },
+   "bay": {
+    "hull": "#f2f2ee",
+    "band": "#123b6d",
+    "cabin": "#f7f7f4",
+    "trim": "#123b6d",
+    "deck": "#7d8183",
+    "boot": "#2d3640"
+   },
+   "river": {
+    "hull": "#2e3a46",
+    "band": "#3fb8c9",
+    "cabin": "#d9dee2",
+    "trim": "#eef1f3",
+    "deck": "#5d646a",
+    "boot": "#1d2329"
+   },
+   "commuter": {
+    "hull": "#f08c1e",
+    "band": "#1f2328",
+    "cabin": "#f4efe6",
+    "trim": "#f9f6f0",
+    "deck": "#6a6d6f",
+    "boot": "#3a2a24"
+   }
+  },
+  "paint": {
+   "Hull": "hull",
+   "Band": "band",
+   "Cabin": "cabin",
+   "Bulwark": "cabin",
+   "Trim": "trim",
+   "Deck": "deck",
+   "Boot": "boot"
+  },
+  "length_m": 34.0,
+  "beam_m": 9.6,
+  "deck_m": 1.55,
+  "upper_deck_m": 4.18,
+  "label_m": 12.2,
+  "waterline": [
+   [
+    17.0,
+    0.0
+   ],
+   [
+    16.89,
+    1.0
+   ],
+   [
+    16.55,
+    1.7
+   ],
+   [
+    16.0,
+    2.29
+   ],
+   [
+    15.22,
+    2.82
+   ],
+   [
+    14.23,
+    3.28
+   ],
+   [
+    13.02,
+    3.68
+   ],
+   [
+    11.6,
+    4.02
+   ],
+   [
+    9.97,
+    4.3
+   ],
+   [
+    8.12,
+    4.52
+   ],
+   [
+    6.01,
+    4.67
+   ],
+   [
+    3.55,
+    4.77
+   ],
+   [
+    0.0,
+    4.8
+   ],
+   [
+    -3.55,
+    4.77
+   ],
+   [
+    -6.01,
+    4.67
+   ],
+   [
+    -8.12,
+    4.52
+   ],
+   [
+    -9.97,
+    4.3
+   ],
+   [
+    -11.6,
+    4.02
+   ],
+   [
+    -13.02,
+    3.68
+   ],
+   [
+    -14.23,
+    3.28
+   ],
+   [
+    -15.22,
+    2.82
+   ],
+   [
+    -16.0,
+    2.29
+   ],
+   [
+    -16.55,
+    1.7
+   ],
+   [
+    -16.89,
+    1.0
+   ],
+   [
+    -17.0,
+    0.0
+   ],
+   [
+    -16.89,
+    -1.0
+   ],
+   [
+    -16.55,
+    -1.7
+   ],
+   [
+    -16.0,
+    -2.29
+   ],
+   [
+    -15.22,
+    -2.82
+   ],
+   [
+    -14.23,
+    -3.28
+   ],
+   [
+    -13.02,
+    -3.68
+   ],
+   [
+    -11.6,
+    -4.02
+   ],
+   [
+    -9.97,
+    -4.3
+   ],
+   [
+    -8.12,
+    -4.52
+   ],
+   [
+    -6.01,
+    -4.67
+   ],
+   [
+    -3.55,
+    -4.77
+   ],
+   [
+    -0.0,
+    -4.8
+   ],
+   [
+    3.55,
+    -4.77
+   ],
+   [
+    6.01,
+    -4.67
+   ],
+   [
+    8.12,
+    -4.52
+   ],
+   [
+    9.97,
+    -4.3
+   ],
+   [
+    11.6,
+    -4.02
+   ],
+   [
+    13.02,
+    -3.68
+   ],
+   [
+    14.23,
+    -3.28
+   ],
+   [
+    15.22,
+    -2.82
+   ],
+   [
+    16.0,
+    -2.29
+   ],
+   [
+    16.55,
+    -1.7
+   ],
+   [
+    16.89,
+    -1.0
+   ]
+  ],
+  "lod1_triangles": 5907,
+  "lod1_m": 260,
+  "triangles": 35436
+ },
+ "cars": {
+  "models": {
+   "Car_Sedan": {
+    "weight": 0.3,
+    "triangles": 23978,
+    "lod1_triangles": 5248,
+    "lod2_triangles": 1031
+   },
+   "Car_Hatch": {
+    "weight": 0.25,
+    "triangles": 21921,
+    "lod1_triangles": 4811,
+    "lod2_triangles": 938
+   },
+   "Car_SUV": {
+    "weight": 0.25,
+    "triangles": 23702,
+    "lod1_triangles": 5204,
+    "lod2_triangles": 1018
+   },
+   "Car_Van": {
+    "weight": 0.08,
+    "triangles": 23580,
+    "lod1_triangles": 5187,
+    "lod2_triangles": 1015
+   },
+   "Car_Taxi": {
+    "taxi": true,
+    "triangles": 24342,
+    "lod1_triangles": 5329,
+    "lod2_triangles": 1041
+   },
+   "Bus": {
+    "bus": true,
+    "triangles": 23708,
+    "lod1_triangles": 5214,
+    "lod2_triangles": 1039
+   }
+  },
+  "liveries": {
+   "taxi": {
+    "colours": [
+     "#f3f3f0",
+     "#c9ccd0",
+     "#1c1d1f"
+    ],
+    "band": "#1c1d1f",
+    "share": 0.12
+   },
+   "bus": {
+    "colour": "#f2f2ef",
+    "band": "#1f5fa8",
+    "share": 0.04
+   },
+   "colours": [
+    "#f2f2f2",
+    "#1c1c1e",
+    "#8a9099",
+    "#b3242b",
+    "#1f4e8c",
+    "#d8d3c8",
+    "#2f3b33",
+    "#c9a227",
+    "#5a6470",
+    "#7a1f2b",
+    "#e7e5df",
+    "#3d4146"
+   ]
+  },
+  "tones": {
+   "Paint": 0,
+   "Paint2": 1,
+   "Glass": 4,
+   "Tyre": 5,
+   "Light_Head": 6,
+   "Light_Tail": 7,
+   "Trim": 8,
+   "Chrome": 9,
+   "Rim": 10,
+   "Plate": 11,
+   "Sign": 12,
+   "Light_Amber": 13,
+   "Seam": 8
+  },
+  "file": "cars.glb",
+  "lod1_m": 35,
+  "lod2_m": 110,
+  "note": "Paint takes each car's colour, Paint2 a second (a taxi's or bus's band); 'tones' maps materials to the traffic shader's slots"
+ },
+ "ferry_river": {
+  "file": "ferry_river.glb",
+  "default_livery": "river",
+  "liveries": {
+   "harbour": {
+    "hull": "#1d5a3b",
+    "band": "#e2b02a",
+    "cabin": "#efe6cc",
+    "trim": "#f5f0e1",
+    "deck": "#6d7068",
+    "boot": "#7b2b23"
+   },
+   "bay": {
+    "hull": "#f2f2ee",
+    "band": "#123b6d",
+    "cabin": "#f7f7f4",
+    "trim": "#123b6d",
+    "deck": "#7d8183",
+    "boot": "#2d3640"
+   },
+   "river": {
+    "hull": "#2e3a46",
+    "band": "#3fb8c9",
+    "cabin": "#d9dee2",
+    "trim": "#eef1f3",
+    "deck": "#5d646a",
+    "boot": "#1d2329"
+   },
+   "commuter": {
+    "hull": "#f08c1e",
+    "band": "#1f2328",
+    "cabin": "#f4efe6",
+    "trim": "#f9f6f0",
+    "deck": "#6a6d6f",
+    "boot": "#3a2a24"
+   }
+  },
+  "paint": {
+   "Hull": "hull",
+   "Band": "band",
+   "Cabin": "cabin",
+   "Bulwark": "cabin",
+   "Trim": "trim",
+   "Deck": "deck",
+   "Boot": "boot"
+  },
+  "length_m": 22.0,
+  "beam_m": 6.6,
+  "deck_m": 0.95,
+  "upper_deck_m": 3.17,
+  "label_m": 7.55,
+  "waterline": [
+   [
+    11.0,
+    0.0
+   ],
+   [
+    10.94,
+    0.85
+   ],
+   [
+    10.75,
+    1.34
+   ],
+   [
+    10.43,
+    1.74
+   ],
+   [
+    9.99,
+    2.08
+   ],
+   [
+    9.43,
+    2.37
+   ],
+   [
+    8.73,
+    2.62
+   ],
+   [
+    7.9,
+    2.83
+   ],
+   [
+    6.93,
+    3.0
+   ],
+   [
+    5.8,
+    3.13
+   ],
+   [
+    4.47,
+    3.22
+   ],
+   [
+    2.83,
+    3.28
+   ],
+   [
+    0.0,
+    3.3
+   ],
+   [
+    -2.83,
+    3.28
+   ],
+   [
+    -4.47,
+    3.22
+   ],
+   [
+    -5.8,
+    3.13
+   ],
+   [
+    -6.93,
+    3.0
+   ],
+   [
+    -7.9,
+    2.83
+   ],
+   [
+    -8.73,
+    2.62
+   ],
+   [
+    -9.43,
+    2.37
+   ],
+   [
+    -9.99,
+    2.08
+   ],
+   [
+    -10.43,
+    1.74
+   ],
+   [
+    -10.75,
+    1.34
+   ],
+   [
+    -10.94,
+    0.85
+   ],
+   [
+    -11.0,
+    0.0
+   ],
+   [
+    -10.94,
+    -0.85
+   ],
+   [
+    -10.75,
+    -1.34
+   ],
+   [
+    -10.43,
+    -1.74
+   ],
+   [
+    -9.99,
+    -2.08
+   ],
+   [
+    -9.43,
+    -2.37
+   ],
+   [
+    -8.73,
+    -2.62
+   ],
+   [
+    -7.9,
+    -2.83
+   ],
+   [
+    -6.93,
+    -3.0
+   ],
+   [
+    -5.8,
+    -3.13
+   ],
+   [
+    -4.47,
+    -3.22
+   ],
+   [
+    -2.83,
+    -3.28
+   ],
+   [
+    -0.0,
+    -3.3
+   ],
+   [
+    2.83,
+    -3.28
+   ],
+   [
+    4.47,
+    -3.22
+   ],
+   [
+    5.8,
+    -3.13
+   ],
+   [
+    6.93,
+    -3.0
+   ],
+   [
+    7.9,
+    -2.83
+   ],
+   [
+    8.73,
+    -2.62
+   ],
+   [
+    9.43,
+    -2.37
+   ],
+   [
+    9.99,
+    -2.08
+   ],
+   [
+    10.43,
+    -1.74
+   ],
+   [
+    10.75,
+    -1.34
+   ],
+   [
+    10.94,
+    -0.85
+   ]
+  ],
+  "lod1_triangles": 4604,
+  "lod1_m": 260,
+  "triangles": 27322
+ }
+}

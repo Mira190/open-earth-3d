@@ -82,6 +82,7 @@
     "clarity_m": 3.0,
     "colour_note": "Port Phillip is green-blue over sand near the shore; chosen colours, not measured."
   },
+  "trees": {"mix": {"palm": 0.3, "gum": 0.3, "fig": 0.15, "plane": 0.15, "elm": 0.1}, "note": "Species are not mapped; the mix is a guess: the Canary Island palms of the St Kilda foreshore and Catani Gardens, eucalypts and Moreton Bay figs in the parks, plane and elm street trees."},
   "storey": {
     "res": [
       3.0,
@@ -265,6 +266,10 @@
         ]
       }
     ],
+    "vehicles": {
+      "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py); the taxis and buses take Melbourne's colours.",
+      "cars": {"taxi": {"colours": ["#f4c20d"], "share": 0.08}, "bus": {"colour": "#eef0ef", "band": "#f08a00"}, "note": "Melbourne's metropolitan taxis are yellow; the buses carry the PTV orange (approximate)."}
+    },
     "crowd": {
       "pedestrians": 340,
       "cars": 140,

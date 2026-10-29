@@ -48,17 +48,21 @@ window.OpenEarthGame = async function game(cityId) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
+  let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
+    if (atmos) atmos.setSize(w, h);
   }
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
   resize();
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
   const world = Wd.world, U = Wd.U;
+  atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {} }) : null;
+  if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
   U.uTime = { value: 0 };
   // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
@@ -197,11 +201,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
+  // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded
+  let vlib = null;
+  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}) }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
   const CR = G.crowd || {};
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14 })),
     { benches: lib ? benches : null });
-  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100);
+  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
   const player = { rig: makeRig(playerLook(), { vest: true }),
@@ -233,9 +240,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const npcById = id => npcs.find(n => n.id === id);
 
   // ------------------------------------------------------------ vehicles
+  const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea };
   const padAt = (G.helipads[0] || { at: [G.start.at[0] + 20, G.start.at[1], 2] }).at;
-  const heli = OEVehicles.helicopter(world, nav, padAt);
-  const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }));
+  const heli = OEVehicles.helicopter(world, nav, padAt, vopts);
+  const fer = OEVehicles.ferries(world, G, nav, name => OEActors.sprite(name, { bg: 'rgba(30,91,58,0.9)' }), vopts);
   const wharfById = id => G.wharves.find(w => w.id === id);
 
   // ------------------------------------------------------------ trig stations: survey points with a view
@@ -340,15 +348,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
 
   // ------------------------------------------------------------ clock: 30 times real time by default, as in GTA
   const clock = { y: CITY.year || new Date().getFullYear(), m: 3, d: 21, min: 600, scale: 30, frozen: false };
-  let sun = null;
+  let sun = null, clockUtc = Date.now();
   function setClock(y, m, d, min) {
     const t = new Date(Date.UTC(y, m - 1, d) + Math.floor(min / 1440) * 864e5);
     Object.assign(clock, { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), min: ((min % 1440) + 1440) % 1440 });
     applySun();
   }
   function applySun() {
-    sun = S.position(S.localToUtc(clock.y, clock.m, clock.d, clock.min));
+    clockUtc = S.localToUtc(clock.y, clock.m, clock.d, clock.min);
+    sun = S.position(clockUtc);
     Wd.setSun(sun);
+    Wd.setSeason(clock.m, clock.d);
     const night = U.uNight.value;
     headMat.emissiveIntensity = 1.6 * night;
     glowMat.opacity = 0.85 * night;
@@ -1108,7 +1118,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   // render once more and read the canvas back in the same task (it keeps no copy), then caption it
   function snapPhoto() {
-    renderer.render(world, camera);
+    if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     const w = canvas.width, h = canvas.height, out = document.createElement('canvas');
     out.width = w; out.height = h;
     const g = out.getContext('2d');
@@ -1285,7 +1295,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   let running = true;
   function frame(now) {
     if (!running) return;
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
     last = now; clockT += dt;
     U.uTime.value = clockT;
     const titleOn = !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on;
@@ -1310,6 +1320,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
     Wd.tick(now, camera);
+    if (atmos) atmos.update(clockUtc, now / 1000, U);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
     dlg.tick(dt);
@@ -1350,7 +1361,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // a low frame rate is worth a hint (slowroads does the same)
     fpsAcc[0] += dt; fpsAcc[1]++;
     if (fpsAcc[0] > 6) { if (!fpsWarned && fpsAcc[1] / fpsAcc[0] < 22 && !titleOn) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); } fpsAcc = [0, 0]; }
-    renderer.render(world, camera);
+    if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     updateLabels();
     requestAnimationFrame(frame);
   }
@@ -1384,9 +1395,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const here = waitFerry && fer.vessels.find(q => fer.stopOf(q) === waitFerry && (!wantTo || q.stops.includes(wantTo)));
     if (here) { waitFerry = null; H.toast(`${here.name} is alongside. <kbd>E</kbd> to board.`); }
     fer.update(dt, skip ? 8 : 1, clockT, waitFerry ? 25 : 1);
-    if (player.mode === 'ferry') { // stand on the bow deck
-      const v = player.vehicle, c = Math.cos(v.h), s = Math.sin(v.h);
-      player.x = v.x + s * 5 + c * 2.2; player.y = v.y + c * 5 - s * 2.2; player.z = 4.33; player.h = v.h;
+    if (player.mode === 'ferry') { // stand on the upper deck
+      const v = player.vehicle, c = Math.cos(v.h), s = Math.sin(v.h), D = fer.deck;
+      player.x = v.x + s * D.fwd + c * D.right; player.y = v.y + c * D.fwd - s * D.right; player.z = D.up; player.h = v.h;
       if (v.phase === 'dwell') skip = false;
     }
     if (player.mode !== 'heli') { player.rig.root.position.copy(W(player.x, player.y, player.z)); player.rig.root.rotation.y = Math.PI - player.h; }
@@ -1661,8 +1672,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
 };
