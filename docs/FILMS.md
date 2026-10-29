@@ -120,6 +120,11 @@ SwiftShader. Frames are taken from the WebGL canvas, so the game's HUD never
 shows. Each film is about 8–10 MB at 1920 × 804 (H.264, CRF 27 with adaptive quantisation, which
 holds the dark water and the night sky; at 100 % it is indistinguishable from the frames).
 
+Python's `http.server` does not answer range requests, so locally a film plays
+from the start but cannot be scrubbed, and Safari will not play it at all. Any
+static host does (GitHub Pages, `npx http-server`); so does the site in
+production.
+
 ## How it works
 
 - **A virtual clock.** `tools/film/clock.js` replaces `performance.now` and
