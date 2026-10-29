@@ -1,0 +1,53 @@
+{
+ "ml_heights": {
+  "buildings": 16098,
+  "with_height": 335,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -400,
+   1200,
+   300,
+   1700
+  ],
+  "land": {
+   "samples": 3574,
+   "median_excess_m": 14.9,
+   "p90_excess_m": 29.2
+  },
+  "under_buildings": {
+   "samples": 1252,
+   "median_excess_m": 17.5,
+   "p90_excess_m": 30.8
+  },
+  "open_ground": {
+   "samples": 2322,
+   "median_excess_m": 13.0,
+   "p90_excess_m": 27.3
+  },
+  "points": {
+   "Tokyo Station": {
+    "terrarium_m": 8.9,
+    "dem_m": 3.6
+   },
+   "Hibiya Park": {
+    "terrarium_m": 22.8,
+    "dem_m": 4.3
+   },
+   "Tokyo Tower": {
+    "terrarium_m": 46.5,
+    "dem_m": 18.5
+   },
+   "Hamarikyu": {
+    "terrarium_m": 6.9,
+    "dem_m": 1.8
+   }
+  }
+ }
+}

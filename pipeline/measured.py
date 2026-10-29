@@ -290,6 +290,14 @@ class IGNHeights:
         return out
 
     # ------------------------------------------------------------ roofs
+    def roof_at(self, q, src, rec, h0, h1):
+        """The roof measured over solid q in the form build_scene takes from PLATEAU's LOD2 roofs,
+        {roof, pitch, roof_h}, plus the land tax files' material, or None: only where the LiDAR set
+        the solid's top. The ridge's direction is not measured ("oriented": False), so a gabled
+        roof still follows the street."""
+        r = self.roof(q, rec, h0, h1) if src == "lidar" else None
+        return r and {"roof": r[0], "pitch": None, "roof_h": r[1] or None, "material": r[2], "oriented": False}
+
     def roof(self, q, rec, h0, h1):
         """(shape, roof height, material) of a solid's roof from its LiDAR profile and the BD TOPO
         eaves: ("flat", 0, material) for a flat roof, None where the LiDAR does not see it.

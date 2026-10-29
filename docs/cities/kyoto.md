@@ -13,8 +13,8 @@ with a height measured from aerial survey, as CityGML and as 3D Tiles.
 
 | | Sydney | Kyoto |
 |---|---|---|
-| Buildings | 7,962 | 65,749 |
-| Footprint area with a surveyed or measured height | see [Sydney](sydney.md) | **93.4%** (PLATEAU) |
+| Buildings | 7,962 | 65,738 |
+| Footprint area with a surveyed or measured height | see [Sydney](sydney.md) | **92.8%** (PLATEAU) |
 | Terrain | NSW 5 m bare earth (stereo) | GSI DEM5A, 5 m bare earth (airborne laser) |
 | Imagery | NSW Imagery | GSI seamless aerial photographs, zoom 17 |
 
@@ -37,14 +37,31 @@ buildings, so on the tallest blocks the model's heights could be too high by sev
    vector-tile mirror.
 2. `build_scene.py`'s `Plateau` class cuts each Overture footprint along the PLATEAU faces and
    gives every piece the measured height (source `plateau`). PLATEAU buildings that no Overture
-   footprint covers (1,278) are added as buildings of their own.
+   footprint covers (1,267) are added as buildings of their own.
 3. A parametric landmark is never overwritten: PLATEAU records Kyoto Tower and the
    9-storey building under it as one 130.5 m building, which would have extruded the whole
    hotel block to 131 m. `cities/kyoto/city.py` cuts the block to 31 m and builds the tower
    from its published figures (131 m to the spire, observation deck at 100 m).
 
-PLATEAU's survey is from 2020–2021, so newer buildings are missing or low: 6,938 Overture
-buildings (5.8% of the footprint area) match nothing and fall back to neighbour estimates.
+PLATEAU's survey is from 2020–2021, so newer buildings are missing or low: 7,256 Overture
+buildings (6.3% of the footprint area) match nothing and fall back to neighbour estimates.
+
+## 2a. Roofs, measured
+
+The same zip has LOD2 meshes for the central wards, with real roof surfaces. With
+`plateau.roofs` set, `plateau_3dtiles.py` reads those tiles too (2,135 inside the bbox) and
+measures each building's roof from its triangles: flat, gabled along or across the
+footprint, hipped, half-hipped or skillion, with the pitch and the height from eave to ridge
+([BUILDINGS.md](../BUILDINGS.md#measured-roofs) has the method). 79,889 of the 80,870
+PLATEAU buildings get one, and a measured roof outranks the rules:
+
+- 45,866 solids carry a pitched roof. Ridges mostly run across the footprint (25,297) rather
+  than along it (12,651), as the narrow, deep lots of machiya would have it.
+- The median pitch is 20.7°, close to the 4/10 slope of kawara.
+- On the 323 buildings that OSM also maps, the two agree on flat or pitched for 90%, and on
+  the shape family for 85%.
+- Against the measured roofs, the inference rules that dress Osaka and Tokyo get flat or
+  pitched right 68% of the time (59,308 buildings), and the shape family 49%.
 
 ## 3. Terrain
 
@@ -55,7 +72,10 @@ and the projection are right, not that the survey is. Terrarium (a surface model
 includes buildings) is used by `radar_check.py` as the independent test of building mass.
 
 Kyoto is 25–80 m above sea level, and the viewer's water plane is at 0 m, so rivers and ponds
-are left to the aerial photograph (`water.classes` is empty).
+are left to the aerial photograph (`water.classes` is empty) and `water.sea` is false: no sea
+is drawn past the model's edge. Where the 5 m laser DEM has no data (1% of the stitched
+tiles, mostly the river beds), the nearest cell fills it. The branch that added Kyoto set
+those cells to sea level, 25–80 m below the ground around them.
 
 ## 4. Sun on public places
 
@@ -63,7 +83,8 @@ Kyoto has no statutory sun window for public places. The places listed (Kyoto Gy
 Park, Umekoji Park, Maruyama Park, Shosei-en) are measured for 10:00–14:00 and none is
 marked protected. Mean share in direct sun (trees are not modelled): the Imperial Gardens
 87% in January, 86% in December, 93% in June. Shosei-en is the most shaded of the five,
-at 74–77% in winter.
+at 77–79% in winter. The surface model follows the measured roofs, which lowers it under
+every ridge and moves the places by up to 3 points (Shosei-en) against flat blocks.
 
 ## 5. The game: Kyoto on Foot
 

@@ -143,6 +143,9 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   - 0.25 off rock;
   - 1.0 off a seawall or any other built edge.
 
+  The first grid point out from the land is at most 0.3 m deep (a shelf), so on
+  the 5 m grid the waterline falls at the quay's edge rather than up to a cell
+  inland. Without it Osaka's river walk along the Dotonbori went under the water.
   The water shader uses the same slopes for how much of the bottom shows.
   Sydney's map holds 25 sand and 220 rock polygons from Overture's land cover.
   Melbourne's sand is sports fields, away from the river.
@@ -236,6 +239,10 @@ The views switch in place, without reloading the page.
     The ground gets a wet band at the waterline and the swash on sand.
     `?water=flat` restores the old flat sheet, which is also the fallback
     where the GPU cannot render to float targets.
+  - **Inland cities** (`water.sea: false`: Osaka, Kyoto): no sea is drawn past
+    the model's edge. The ground tiles stop at the frame, and a land skirt
+    carries the edge's own heights outwards in rings to 30 km, easing to the
+    edge's median height, in a plain colour that the fog takes.
 
   Sydney's settings (a 5 m/s north-easterly over 4 km) give a significant wave
   height of 0.19 m, close to the fetch-limited estimate of 0.16 m. The Yarra's

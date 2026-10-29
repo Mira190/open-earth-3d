@@ -64,6 +64,13 @@ Plaza) carry a lunch-hour window of 12:00 to 13:00 that this project chose, so
 "test a new tower" answers what a rule would cost. It is not law. Tokyo keeps
 standard time all year.
 
+The integrated build runs the sun analysis for Tokyo for the first time
+(`analysis/sun_access.js`, `cities/tokyo/analysis/sun_access.json`). Mean share
+of each place in direct sun over the window, December and June: Hibiya Park 75%
+and 93%, Marunouchi Central Plaza 28% and 98%, Shiba Park 33% and 94%, the
+Palace plaza 100% in both. Between its towers, Marunouchi Central Plaza is the
+place where a new tower would matter most in winter.
+
 ## 6. The game
 
 **Tokyo on Foot** has nine stamps: Tokyo Station, Marunouchi, the Imperial

@@ -4,59 +4,59 @@
  "rows": [
   {
    "place": "京都御苑",
-   "prod": 89.56,
-   "finer_samples": 89.46,
-   "finer_dsm": 88.71,
-   "finer_time": 89.62,
-   "reference": 88.68,
+   "prod": 89.71,
+   "finer_samples": 89.61,
+   "finer_dsm": 88.89,
+   "finer_time": 89.77,
+   "reference": 88.84,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 0.88,
-   "seconds": 107.04
+   "prod_minus_reference": 0.87,
+   "seconds": 59.097
   },
   {
    "place": "鴨川公園",
-   "prod": 98.76,
-   "finer_samples": 98.8,
-   "finer_dsm": 98.69,
-   "finer_time": 98.83,
-   "reference": 98.81,
+   "prod": 98.94,
+   "finer_samples": 99,
+   "finer_dsm": 98.9,
+   "finer_time": 99.01,
+   "reference": 99.02,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": -0.05,
-   "seconds": 35.572
+   "prod_minus_reference": -0.08,
+   "seconds": 19.962
   },
   {
    "place": "梅小路公園",
-   "prod": 97.57,
-   "finer_samples": 97.59,
-   "finer_dsm": 97.21,
-   "finer_time": 97.59,
-   "reference": 97.26,
+   "prod": 97.9,
+   "finer_samples": 97.92,
+   "finer_dsm": 97.58,
+   "finer_time": 97.92,
+   "reference": 97.64,
    "lit_rays_leaving_extent_low_pct": 5.14,
-   "prod_minus_reference": 0.31,
-   "seconds": 24.144
+   "prod_minus_reference": 0.26,
+   "seconds": 13.775
   },
   {
    "place": "円山公園",
-   "prod": 93.43,
-   "finer_samples": 93.49,
-   "finer_dsm": 92.79,
-   "finer_time": 93.47,
-   "reference": 93.15,
-   "lit_rays_leaving_extent_low_pct": 11.64,
-   "prod_minus_reference": 0.28,
-   "seconds": 2.37
+   "prod": 93.68,
+   "finer_samples": 93.7,
+   "finer_dsm": 93.17,
+   "finer_time": 93.72,
+   "reference": 93.57,
+   "lit_rays_leaving_extent_low_pct": 11.87,
+   "prod_minus_reference": 0.11,
+   "seconds": 1.193
   },
   {
    "place": "渉成園",
-   "prod": 83.94,
-   "finer_samples": 83.96,
-   "finer_dsm": 82.53,
-   "finer_time": 84.09,
-   "reference": 82.8,
+   "prod": 85.84,
+   "finer_samples": 85.85,
+   "finer_dsm": 84.47,
+   "finer_time": 85.96,
+   "reference": 84.66,
    "lit_rays_leaving_extent_low_pct": 0,
-   "prod_minus_reference": 1.14,
-   "seconds": 18.159
+   "prod_minus_reference": 1.18,
+   "seconds": 9.424
   }
  ],
- "max_abs_numerical_error_pp": 1.14
+ "max_abs_numerical_error_pp": 1.18
 }

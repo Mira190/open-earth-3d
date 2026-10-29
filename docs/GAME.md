@@ -26,12 +26,12 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | ![](images/sydney/game-ferry.jpg) | ![](images/sydney/game-map.jpg) |
 | **Martin Place, 21 June, 12:30: the sun meter** | **After dark from Bennelong Point: the city's lights in the harbour** |
 | ![](images/sydney/game-martin-place.jpg) | ![](images/sydney/game-night.jpg) |
+| **Surveying from the trig station at mid-arch** | **The height challenge** |
+| ![](images/sydney/game-trig.jpg) | ![](images/sydney/game-guess.jpg) |
 | **The Opera House's Monumental Steps** | **Melbourne: Hannah explains DDO10 in City Square** |
 | ![](images/sydney/game-steps.jpg) | ![](images/melbourne/game-dialogue.jpg) |
 | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
 | ![](images/melbourne/game-river.jpg) | ![](images/melbourne/game-heli.jpg) |
-| **Surveying from the trig station at mid-arch** | **The height challenge** |
-| ![](images/sydney/game-trig.jpg) | ![](images/sydney/game-guess.jpg) |
 
 ## Playing
 
@@ -43,6 +43,7 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
+| <kbd>T</kbd> | Switch which survey line the route and the beam follow |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view |
@@ -51,15 +52,27 @@ Open it from the globe (**Play** on a city card), from the 3D model (the
 On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
 survey) end at once on any key or drag.
 
-The Sydney survey has seven stamps:
-1. Get your bearings at Circular Quay.
-2. Hear how the Opera House shells are cut from one sphere, and climb the
-   Monumental Steps to the podium.
-3. Ride the ferry to Milsons Point.
-4. Walk up the bridge approach to the middle of the arch.
-5. Fly under the deck and land in the Domain.
-6. Find a spot in Martin Place that gets sun at lunchtime on the winter solstice.
-7. Use the survey lens on three buildings whose heights come from different sources.
+The survey comes in lines. After a welcome, three surveys run side by side, in
+any order, and a report back waits for all three. The Sydney survey has seven
+stamps:
+- **Welcome** (Ava, at Circular Quay): she sets out the three surveys and asks
+  which you want to start with.
+- **The harbour** (Marco, at the Opera House), two stamps:
+  - hear how the shells are cut from one sphere, and climb the Monumental Steps;
+  - ride the ferry to Milsons Point, then walk up the bridge approach to the
+    middle of the arch.
+- **The air** (Sam, at the Kirribilli helipad): fly under the deck and land in the
+  Domain.
+- **The ground** (Priya, in Martin Place), two stamps:
+  - find a spot that gets sun at lunchtime on the winter solstice;
+  - then, with Tom, use the survey lens on three buildings whose heights come from
+    different sources.
+- **Report back** (Ava): opens once the three surveys are done.
+
+A step counts whether its line is tracked or not. If you stand in the sun in Martin
+Place on the way to the ferry, the ground survey moves on. <kbd>T</kbd>, or a tap
+on a survey's name in the quest card, chooses the line that the route, the beam and
+the minimap's star follow. The other lines show as hollow stars.
 
 Docking a ferry by hand earns an extra stamp. After the survey, the city is free
 roam, with two things to do in it at any time:
@@ -79,14 +92,16 @@ roam, with two things to do in it at any time:
   ±20% nine times in ten, and an estimate to much less. A guess inside that range is
   as good as the data, and the score says so.
 
-The Melbourne survey has six:
-1. Meet Mia at Federation Square.
-2. Hear from Hannah in City Square how DDO10 protects public spaces from new
-   shadow.
-3. Find a sunny spot on Federation Square at lunchtime on 22 June.
-4. Take the river shuttle from Federation Wharf to Crown Landing.
-5. Fly from the Yarra helipad past the Arts Centre spire to Birrarung Marr.
-6. Use the survey lens on three height sources.
+The Melbourne survey has the same shape and six stamps:
+- **Welcome** (Mia, at Federation Square).
+- **The square** (Hannah, in City Square): how DDO10 protects public spaces from
+  new shadow, and a sunny spot on Federation Square at lunchtime on 22 June.
+- **The river** (Arjun, at Federation Wharf), two stamps:
+  - the river shuttle to Crown Landing;
+  - Sophie's helicopter past the Arts Centre spire to Birrarung Marr.
+- **The heights** (Jun, in Birrarung Marr): the survey lens on three height
+  sources.
+- **Report back** (Mia).
 
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
@@ -168,7 +183,9 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Navigation** (`web/game/nav.js`):
   - **Grids:** the 2 m surface model (terrain plus buildings, with building ids)
     runs the sun meter and the survey lens. The 5 m water mask keeps walkers out
-    of the water.
+    of the water. The walking ground is interpolated over the land points only,
+    so a quay or a river walk keeps its own height instead of sagging towards
+    the modelled bottom beside it.
   - **Piers and decks:** piers are 2.2 m decks, and the bridge deck is a
     walkable strip.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
@@ -421,12 +438,6 @@ the whole survey this way. It checks:
      height.
 4. All seven stamps are awarded.
 
-A Melbourne script plays its six stamps the same way: the sun step at
-Federation Square on 22 June, the river shuttle to Crown Landing, and the
-flight to Birrarung Marr. A Paris script plays its seven: the Batobus to
-Notre-Dame, the winter sun in the Luxembourg, and the flight under the Eiffel
-Tower's first floor to the Tuileries.
-
 The camera shots were checked the same way:
 - the start: it lands on the chase camera;
 - a fast-travel hop: the player arrives, and also arrives when the hop is skipped
@@ -435,8 +446,18 @@ The camera shots were checked the same way:
   the field notes are written;
 - the height challenge: the guess is scored against the band of the height's source.
 
-A further script docks a ferry by hand. Phone layout, the routes into the game
+A Melbourne script plays its six stamps the same way: the sun step at
+Federation Square on 22 June, the river shuttle to Crown Landing, and the
+flight to Birrarung Marr. A Paris script plays its seven: the Batobus to
+Notre-Dame, the winter sun in the Luxembourg, and the flight under the Eiffel
+Tower's first floor to the Tuileries. A further script docks a ferry by hand. Phone layout, the routes into the game
 and the menus are checked in a phone-sized browser.
+
+`tools/game_check.js <city>` is the smoke test for every city's game. It starts
+the game, walks for four seconds, talks to the first quest giver, flies the
+helicopter up and lets the ferries run for 40 s, with a screenshot after each
+step. It fails on any page error. Sydney, Melbourne, Osaka, Kyoto and Tokyo all
+pass it in the integrated build.
 
 ## Limitations
 

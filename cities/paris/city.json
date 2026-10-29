@@ -83,7 +83,8 @@
       "river"
     ],
     "min_area_m2": 2000,
-    "note": "The Seine. Overture's river polygon holds the Île de la Cité and the Île Saint-Louis without holes; the islands mapped as islets are cut out.",
+    "sea": false,
+    "note": "The Seine. Overture's river polygon holds the Île de la Cité and the Île Saint-Louis without holes; the islands mapped as islets are cut out. Paris is inland (sea false): the scene's 0 m is the Seine, and past the model's edge is land.",
     "waves": {
       "wind_ms": 4.5,
       "wind_from_deg": 225,

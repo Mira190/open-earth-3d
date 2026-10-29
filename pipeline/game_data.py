@@ -40,7 +40,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
-from shore import depth_at, from_png
+from shore import QUAY_SHELF_M, depth_at, from_png
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -339,6 +339,8 @@ def main():
     # the walking ground: the DEM on land, the modelled bottom under the water, except where a
     # helipad stands on the water (a floating pad): there it keeps the pad's own height
     ground_grid = np.where(water, -depth_at(sm, gx, gy, C.x0, C.y1), dem)
+    edge = water & ndimage.binary_dilation(~water)  # just under the surface off a quay, as in the viewer's terrain
+    ground_grid[edge] = np.maximum(ground_grid[edge], -QUAY_SHELF_M)
     for hp in helipads:
         x, y, z = hp["at"]
         near = water & (np.hypot(gx - x, gy - y) < 14.0)

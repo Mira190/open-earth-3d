@@ -306,8 +306,9 @@ def roof_material(R, shape, mapped_material, roof_hex, top, seed, group=None):
     m = {"roof_tiles": "tile", "tile": "tile", "metal": "metal", "slate": "slate", "concrete": "concrete",
          "glass": "glass", "grass": "green", "copper": "copper", "gravel": "gravel", "tar_paper": "membrane",
          "asphalt": "membrane", "eternit": "slate", "stone": "slate", "plants": "green", "thatch": "tile", "zinc": "zinc"}.get(mapped_material or "")
+    japan = "kawara" in R["pitched_material"]
     if m:
-        return m
+        return "kawara" if japan and m == "tile" else m  # roof tiles in Japan are kawara, not terracotta
     if shape == "flat":
         u = unit(seed, 7)
         return "gravel" if u < 0.25 else "concrete" if u < 0.55 else "membrane"
@@ -315,7 +316,6 @@ def roof_material(R, shape, mapped_material, roof_hex, top, seed, group=None):
         return "copper"
     r, g, b = (int(roof_hex[i:i + 2], 16) / 255 for i in (1, 3, 5)) if roof_hex and len(roof_hex) == 7 else (0.5, 0.5, 0.5)
     h, s, v = colorsys.rgb_to_hsv(r, g, b)
-    japan = "kawara" in R["pitched_material"]
     if colour_says(R, roof_hex):
         return "tile" if not japan and s > 0.1 else "kawara" if japan else "slate"
     mix = R.get("material_by_group", {}).get(group) or R["pitched_material"]

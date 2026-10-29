@@ -140,10 +140,10 @@ spaces show sun but are not tested.
 
 | Space (Table 1) | Window | Sun on the rule's day (`sun_access.js`) |
 |---|---|---|
-| Federation Square | 11 am–3 pm, 22 April to 22 September | 33% on 21 June, 58% on 21 September |
+| Federation Square | 11 am–3 pm, 22 April to 22 September | 34% on 21 June, 59% on 21 September |
 | City Square | 11 am–3 pm, 22 April to 22 September | 37% on 21 June |
 | Bourke Street Mall | noon–2 pm, 22 April and 22 September | 21% in April, 29% in September |
-| Boyd Community Park | noon–2 pm, 22 April and 22 September | 36% in April, 47% in September |
+| Boyd Community Park | noon–2 pm, 22 April and 22 September | 38% in April, 48% in September |
 | Yarra River corridor | 11 am–2 pm, 22 June | 79% |
 
 Two spaces in Table 1 are not in the open data as named places: the State
@@ -164,10 +164,10 @@ building's height from the error measured for its height source.
 
 | Space | Sun (model) | 90% range | Where its shade comes from |
 |---|---|---|---|
-| Federation Square, 21 June | 33% | 23–34% | 60% from estimated heights, mostly the square's own buildings: the Ian Potter Centre and the Alfred Deakin Building have no height in the open data |
+| Federation Square, 21 June | 34% | 24–35% | 60% from estimated heights, mostly the square's own buildings: the Ian Potter Centre and the Alfred Deakin Building have no height in the open data |
 | City Square, 21 June | 37% | 19–37% | Half from one surveyed building, 41% from the new metro entrance, whose height is an estimate |
 | Bourke Street Mall, April | 21% | 14–26% | Three-quarters from surveyed heights (Myer, David Jones, the GPO) |
-| Boyd Community Park, April | 36% | 28–37% | All from surveyed heights |
+| Boyd Community Park, April | 37% | 28–38% | All from surveyed heights |
 | Yarra River corridor, 22 June | 79% | 71–78% | Two-thirds from surveyed heights |
 
 The fix list ranks the heights worth checking next, by how far they could move
@@ -200,8 +200,12 @@ the model. The test script `melflow.js` plays all of it headless; see
 
 ## 6. Limitations
 
-- **Ground:** drawn, not photographed. Roofs get neutral colours, since there
-  is no photo to sample.
+- **Ground:** drawn, not photographed. With no photo to sample, a roof's colour
+  leans from a neutral grey towards its material's palette (COLORBOND steel,
+  terracotta, slate). 4,601 solids get pitched roofs under Sydney's rules.
+  Against the 51 roofs mapped in OSM those rules get flat or pitched right only
+  51% of the time: they make the CBD's large old pitched buildings flat
+  ([BUILDINGS.md](../BUILDINGS.md)).
 - **Estimates:** 43% of the footprint area still has an estimated height, mostly
   low-rise. The uncertainty analysis (`uncertainty.js`) ranks the buildings
   worth checking next.
