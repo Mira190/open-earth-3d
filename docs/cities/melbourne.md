@@ -227,7 +227,7 @@ the model. The test script `melflow.js` plays all of it headless; see
 
 - **Ground:** drawn, not photographed. With no photo to sample, a roof's colour
   leans from a neutral grey towards its material's palette (COLORBOND steel,
-  terracotta, slate). 4,601 solids get pitched roofs under Sydney's rules.
+  terracotta, slate). 4,530 solids get pitched roofs under Sydney's rules.
   Against the 51 roofs mapped in OSM those rules get flat or pitched right only
   51% of the time: they make the CBD's large old pitched buildings flat
   ([BUILDINGS.md](../BUILDINGS.md)).
