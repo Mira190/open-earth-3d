@@ -48,9 +48,13 @@ the motif lands on each cut.
   Point wide shots inward, across the model, or keep the horizon low and let the
   sky fill the frame. Check every shot's stills for a hard grey band at the
   horizon.
-- **People and movement.** The life shot puts the crowd round the camera
-  (`people`, `crowd_r` 40–60) and keeps the camera at eye level (`agl: true`,
-  z 1.6–1.8) with `hand: 1`. Ferries are cast onto a leg of their route (`ferry`).
+- **People and movement.** The life shot puts the crowd a few paces out and
+  keeps the camera at eye level or a little above (`agl: true`, z 1.7–2.5) with
+  `hand: 1`. The crowd's figures are simple, so keep them at 8 m and more
+  (`crowd_clear`) and set how many (`crowd_n`, 30–80) for the street's width: a
+  narrow bridge with the whole crowd of 300 on it reads as a crush. Anchor
+  `people` 20–40 m ahead of the camera, where it looks. Ferries are cast onto a
+  leg of their route (`ferry`).
 - **Words.** Plain, factual, one sentence. Prefer a figure from the model or its
   cited sources (heights, spans, dates, counts) to an adjective. The title
   screen's voice: no exclamation marks, no "iconic", "stunning" or "vibrant".
@@ -77,7 +81,7 @@ are above the datum unless the shot says `"agl": true`.
 | `type` | `move` (`from`, `to`, and `look` or `lookFrom`/`lookTo`); `orbit` (`at`, `az` compass bearings of the camera from it, `dist`, `h`); `track` (`ferry: {route, from, to, s, speed}`, `az` relative to its course, `dist`, `h`) |
 | `dur`, `fov` | seconds; vertical field of view in degrees (a number, or `[from, to]` for a zoom) |
 | `date`, `time` | `[month, day]` (else the film's `date`); `["HH:MM"]` or `["HH:MM", "HH:MM"]` for a time-lapse over the shot, `timeEase` |
-| `people`, `crowd_r` | put the crowd on the footways within `crowd_r` metres of `[x, y]` |
+| `people`, `crowd_r`, `crowd_n`, `crowd_clear` | put `crowd_n` people (default all) on the footways within `crowd_r` metres of `[x, y]`, none within `crowd_clear` metres of the camera (default 8) |
 | `hand` | a hand-held float, 0–1 |
 | `ease` | `glide` (default), `linear`, `inOut`, `out`, `in`, `smooth` |
 | `fadeIn`, `fadeOut` | seconds, from and to space black |
