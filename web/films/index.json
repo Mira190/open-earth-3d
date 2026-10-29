@@ -2,5 +2,9 @@
  "sydney": {
   "json": "films/sydney.json",
   "duration": 36
+ },
+ "tokyo": {
+  "json": "films/tokyo.json",
+  "duration": 36
  }
 }
