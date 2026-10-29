@@ -1,0 +1,116 @@
+{
+ "id": "paris",
+ "name": "Paris",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/paris.mp4",
+ "poster": "films/paris.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "batobus",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The Seine"
+  },
+  {
+   "id": "notredame",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "Notre-Dame"
+  },
+  {
+   "id": "eiffel",
+   "t0": 20,
+   "t1": 24.5,
+   "chapter": "The tower"
+  },
+  {
+   "id": "walk",
+   "t0": 24.5,
+   "t1": 29,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "48.86°N 2.32°E",
+    "Sunrise over the Seine · 07:33 CEST",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Paris",
+   "sub": "France",
+   "figures": "29,087 buildings · 5.6 × 4.0 km · every roof measured by laser"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Tour Eiffel to the Musée d'Orsay",
+   "head": "The Batobus",
+   "text": "The river is held at 26.9 m above the sea, the zero of every height in the model."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Île de la Cité, from the Île Saint-Louis",
+   "head": "Notre-Dame de Paris",
+   "text": "Its spire stands 96 m again, rebuilt to Viollet-le-Duc's design; the cathedral reopened in December 2024."
+  },
+  {
+   "t0": 20.5,
+   "t1": 24.2,
+   "kind": "lower",
+   "eyebrow": "From the Pont de l'Alma",
+   "head": "The Eiffel Tower",
+   "text": "330 m to the tip of its antenna, its floors at 57.6, 115.7 and 276.1 m."
+  },
+  {
+   "t0": 25,
+   "t1": 28.7,
+   "kind": "lower",
+   "eyebrow": "The Pont des Arts",
+   "head": "Walk it",
+   "text": "Read the roofs with a surveyor's lens, ride the Batobus, fly under the Eiffel Tower."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Paris",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}

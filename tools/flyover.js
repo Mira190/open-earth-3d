@@ -26,6 +26,9 @@ const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: W, height: H } });
+  // the tier a desktop GPU gets (quality.js): a software renderer would pick 'low' for itself, with
+  // no antialiasing, no bloom and the small set of buildings' details
+  await p.addInitScript(q => { try { localStorage.setItem('oe3d-quality', q); } catch (e) { /* storage blocked */ } }, process.env.QUALITY || 'high');
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (t, o) { return get.call(this, t, /webgl/.test(t) ? Object.assign({}, o, { preserveDrawingBuffer: true }) : o); };

@@ -487,6 +487,9 @@ def main():
 
     npcs = []
     for n in gcfg.get("npcs", []):
+        if len(n["at"]) > 2:  # someone up on a roof or a deck: placed as given
+            npcs.append(n)
+            continue
         x, y, moved = snap(*n["at"])
         if moved > 0:
             print(f"  npc {n['id']} moved {moved:.1f} m to open ground")
@@ -561,7 +564,11 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars") if k in gcfg}
+    # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
+    if C.hook("game_extras"):
+        for k, v in C.hook("game_extras")(scene).items():
+            out[k] = out.get(k, []) + v if isinstance(v, list) else v
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")

@@ -2,6 +2,9 @@
 // city's landmarks, lasers between them and the landmarks' floodlights cycling through colours,
 // for a few minutes each night from the config's start time (city.json "light_show"). Hong Kong's
 // is A Symphony of Lights; the beams and colours here are illustrative, not its choreography.
+// A landmark with searchlights of its own ("beams" in landmarks) lights one from each; "spread" sets
+// how wide a beam opens and "opacity" how bright it is, and "recolour": false leaves the floodlights their
+// own colours (signs, lanterns).
 'use strict';
 window.OELights = (function () {
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -24,14 +27,14 @@ window.OELights = (function () {
     group.visible = false;
     world.add(group);
     const top = k => { const l = LM[k]; return l ? [l.at[0], l.at[1], l.published_top_m ? l.ground_m + l.published_top_m : l.top_m] : null; };
+    // a landmark with its own searchlights ("beams": [[x, y, z], ...]) lights one beam from each; others two from the top
+    const lamps = k => (LM[k] && LM[k].beams ? LM[k].beams.map(p => [p, 1]) : top(k) ? [[top(k), 2]] : []);
     const colours = (cfg.colours || ['#bfe3ff', '#7ff7ff', '#ff6bd5', '#8dff7a', '#ffffff']).map(c => new THREE.Color(c));
     const beams = [];
     const L = cfg.beam_m || 1600;
-    const geo = new THREE.CylinderGeometry(0.6, L * 0.035, L, 16, 1, true).translate(0, L / 2, 0);
-    (cfg.beams || []).forEach((k, i) => {
-      const p = top(k);
-      if (!p) return;
-      for (let j = 0; j < 2; j++) {
+    const geo = new THREE.CylinderGeometry(0.6, L * (cfg.spread || 0.035), L, 16, 1, true).translate(0, L / 2, 0);
+    (cfg.beams || []).flatMap(lamps).forEach(([p, n], i) => {
+      for (let j = 0; j < n; j++) {
         const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colours[(i * 2 + j) % colours.length], alphaMap: fade(), transparent: true,
           opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
         m.position.copy(W(p[0], p[1], p[2] - 4));
@@ -73,10 +76,10 @@ window.OELights = (function () {
           b.m.rotation.order = 'YXZ';
           b.m.rotation.y = az;
           b.m.rotation.x = Math.PI / 2 - el;
-          b.m.material.opacity = 0.22 * ramp * (0.75 + 0.25 * Math.sin(s * 3 + b.phase));
+          b.m.material.opacity = (cfg.opacity || 0.22) * ramp * (0.75 + 0.25 * Math.sin(s * 3 + b.phase));
         }
         lasers.forEach((l, i) => { l.material.opacity = ramp * (Math.sin(s * 2.2 + i * 1.3) > 0.2 ? 0.9 : 0.0); });
-        flood.forEach((m, i) => { m.emissive.setHSL((s * 0.06 + i * 0.17) % 1, 0.85, 0.55); m.emissiveIntensity = 0.75 * ramp; });
+        if (cfg.recolour !== false) flood.forEach((m, i) => { m.emissive.setHSL((s * 0.06 + i * 0.17) % 1, 0.85, 0.55); m.emissiveIntensity = 0.75 * ramp; });
       },
     };
     return api;
