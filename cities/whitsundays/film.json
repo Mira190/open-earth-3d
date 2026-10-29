@@ -150,9 +150,9 @@
         50,
         110
       ],
-      "dist": 2.2,
-      "h": 1.2,
-      "fov": 55,
+      "dist": 1.9,
+      "h": -1.2,
+      "fov": 50,
       "under": true,
       "time": [
         "09:30"
@@ -165,7 +165,7 @@
         "head": "Under water",
         "text": "On the reef flat, 3 m down, less than a third of the sun's red is left: the water is fitted to Sentinel-2."
       },
-      "lookUp": -0.55
+      "minPitch": 32
     },
     {
       "id": "sail",
