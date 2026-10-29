@@ -228,7 +228,7 @@ window.OEFilmDirector = (function () {
       g.beginPath();
       for (let j = 0; j <= 12; j++) {
         const k = j / 12;
-        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 0); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
+        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 1); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
         shotPose(s, k);
         const px_ = pose.pos.x, py_ = -pose.pos.z, pz = pose.pos.y, lx = pose.look.x, ly = -pose.look.z, lz = pose.look.y;
         j ? g.lineTo(X(px_), Y(py_)) : g.moveTo(X(px_), Y(py_));
