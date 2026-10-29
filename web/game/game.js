@@ -525,6 +525,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (open.length > 1 || id) H.toast(`Tracking <b>${next.title || questOf(next).title}</b>`);
     save();
   }
+  // the gait on foot, shown beside the sun chip with its keys (hidden off foot)
+  let gaitShown = '';
+  function gaitChip(g) {
+    const el = $('#g-gait');
+    if (!el) return;
+    const want = player.mode === 'foot' ? g : '';
+    if (want === gaitShown) return;
+    gaitShown = want;
+    el.hidden = !want;
+    if (!want) return;
+    el.dataset.g = want;
+    el.innerHTML = touch ? `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b>`
+      : `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b><span><kbd>X</kbd> ${want === 'walk' ? 'run' : 'walk'} · <kbd>Shift</kbd> sprint</span>`;
+  }
   function checkSteps() {
     for (const l of openLines()) {
       const s = stepOf(l);
@@ -726,7 +740,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     else if (c === 'KeyP') togglePass();
     else if (c === 'KeyH' && player.mode === 'ferry') takeHelm();
     else if (c === 'KeyR' && player.mode === 'foot') unstuck();
-    else if (c === 'KeyX' && player.mode === 'foot') { player.walking = !player.walking; H.toast(player.walking ? 'Walking. X to jog.' : 'Jogging. X to walk.'); }
+    else if (c === 'KeyX' && player.mode === 'foot') { player.walking = !player.walking; H.toast(player.walking ? 'Walking. <kbd>X</kbd> to run, hold <kbd>Shift</kbd> to sprint.' : 'Running. <kbd>X</kbd> to walk, hold <kbd>Shift</kbd> to sprint.'); }
   });
   on(window, 'keyup', e => keys.delete(e.code));
   on(window, 'blur', () => keys.clear());
@@ -1391,6 +1405,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       $('#g-prompt').hidden = !a;
       if (a) { $('#gp-key').textContent = a.key; $('#gp-key').hidden = !a.key; $('#gp-text').textContent = a.text; }
       vehicleHud();
+      if (player.mode !== 'foot') gaitChip('');
     }
     // a low frame rate is worth a hint (slowroads does the same)
     fpsAcc[0] += dt; fpsAcc[1]++;
@@ -1493,7 +1508,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     const m = Math.min(1, Math.hypot(fwd, side));
     const run = k('ShiftLeft') || k('ShiftRight');
-    const target = m > 0.05 ? (run ? 5.4 : player.walking ? 1.35 : 2.8) * m : 0; // jog, walk (X) or sprint (Shift)
+    const target = m > 0.05 ? (run ? 7 : player.walking ? 1.4 : 4.5) * m : 0; // run, walk (X) or sprint (hold Shift)
+    gaitChip(m > 0.05 ? (run ? 'sprint' : player.walking ? 'walk' : 'run') : player.walking ? 'walk' : 'run');
     player.speed += (target - player.speed) * Math.min(1, dt * (target > player.speed ? 6 : 10));
     if (m > 0.05) {
       const dir = cam.yaw + Math.atan2(side, fwd);

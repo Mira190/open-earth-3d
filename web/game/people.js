@@ -381,7 +381,7 @@ ${PAT_GLSL}`)
       else if (mode === 'air') play('Run', 0.15).setEffectiveTimeScale(0.3);
       else if (speed < 0.15) play('Idle', 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
-      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(1.9, speed / (speeds.Run * s))));
+      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 7 m/s sprint
       mixer.update(dt);
       if (mode === 'sit') seat();
       // the walk cycle as a phase, two steps per cycle (footsteps)
