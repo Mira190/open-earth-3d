@@ -19,24 +19,26 @@ neighbourhoods, boats and people that belong to it.
 ## 1. The short answer
 
 - **Scope.** 4.5 × 6.4 km along Midosuji, from Umeda in the north to
-  Shinsekai in the south, with Osaka Castle to the east: 73,280 buildings.
-  68,431 are Overture footprints and 4,849 are PLATEAU buildings Overture
+  Shinsekai in the south, with Osaka Castle to the east: 73,267 buildings.
+  68,431 are Overture footprints and 4,836 are PLATEAU buildings Overture
   lacks (mostly houses and sheds).
-- **Heights.** 89.2% of the footprint area has a PLATEAU measured height, and
-  another 1.2% a PLATEAU block height. 4.6% has an OpenStreetMap floor count,
-  2.0% an OSM height taller than the survey (a building newer than the survey),
-  and 3.0% is estimated from neighbours. Eighteen published tower heights are
-  matched to within a median of 1.8% (17 of 18 within 10%).
+- **Heights.** 89.3% of the footprint area has a PLATEAU measured height, and
+  another 1.0% a PLATEAU block height. 4.3% has an OpenStreetMap floor count,
+  1.7% an OSM height taller than the survey (a building newer than the survey),
+  and 3.5% is estimated from neighbours. Eighteen published tower heights are
+  matched to within a median of 3.2% (16 of 18 within 10%).
 - **Terrain.** GSI's 5 m airborne-laser DEM is bare earth. AWS's global
   Terrarium tiles read a median of 6.7 m too high over Osaka's land, because
   they are a surface model. A second, older GSI DEM (10 m) agrees with the
-  5 m one to a median of 0.7 m.
+  5 m one to a median of 0.7 m. One false terrace in the 5 m DEM, beside the
+  castle keep, is levelled (section 4).
 - **Landmarks.** The Osaka Castle keep, Tsutenkaku, the HEP FIVE wheel, the
   Glico runner and the Kani Doraku crab are built from published dimensions,
   with 1,400 shop-sign sites on street facades in the Dotonbori, Shinsekai and
-  Umeda neon districts.
+  Umeda neon districts. The keep's tiers, eaves and gables are measured from
+  PLATEAU's own 3D model of it.
 - **Sun.** A winter-solstice study of eight parks, from 8:00 to 16:00. Utsubo
-  Park gets 49% of its area in direct sun, Umekita South Park 17% and Osaka
+  Park gets 50% of its area in direct sun, Umekita South Park 17% and Osaka
   Castle Park 76%. The window is borrowed from Japan's shadow rule, which
   does not apply to these parks; see section 7.
 - **Game.** *Osaka on Foot*: ten stamps, twelve people who talk like Osakans,
@@ -83,11 +85,11 @@ use and storey count fill in what Overture lacks.
 
 | Source | Footprint area | Meaning |
 |---|---:|---|
-| `plateau` | 89.2% | The height Project PLATEAU measured from the air |
-| `plateau_lod1` | 1.2% | PLATEAU's block height for a building with no survey record |
-| `floors` | 4.6% | OSM floor count × a storey height calibrated on PLATEAU |
-| `mapped` | 2.0% | An OSM height more than 30% (plus 6 m) taller than the survey |
-| `estimate` | 3.0% | The weighted median of known heights within 60 m |
+| `plateau` | 89.3% | The height Project PLATEAU measured from the air |
+| `plateau_lod1` | 1.0% | PLATEAU's block height for a building with no survey record |
+| `floors` | 4.3% | OSM floor count × a storey height calibrated on PLATEAU |
+| `mapped` | 1.7% | An OSM height more than 30% (plus 6 m) taller than the survey |
+| `estimate` | 3.5% | The weighted median of known heights within 60 m |
 | `parametric` | 0.1% | Landmarks built from published figures |
 
 ### 3.2 OpenStreetMap is not an independent check here
@@ -101,7 +103,7 @@ good for the map and bad for anyone who wants to check PLATEAU against OSM.
 
 PLATEAU's building survey is from 2017. A tower built after that stands on a
 site that was empty or low then, and PLATEAU's footprint there carries the old
-height. 196 buildings have an OSM height more than 30% (plus 6 m) taller than
+height. 318 buildings have an OSM height more than 30% (plus 6 m) taller than
 the survey; they keep the OSM height. Without that rule, JP Tower Osaka
 (188 m, 2024) would be drawn at 137 m, Yodobashi Umeda Tower (150 m, 2019) at
 65 m and Osaka Umeda Twin Towers South (190 m, 2022) at 35 m. The rule is a
@@ -153,11 +155,26 @@ calibrated on PLATEAU: 118,782 non-residential and 11,163 residential
 buildings with both a storey count and a measured height have a median of
 3.4 m and 3.6 m a floor, with no constant term.
 
-### 3.6 The estimated buildings
+### 3.6 PLATEAU's outline of the keep
 
-4,056 buildings (3.0% of the area, mostly small ones) have no measurement.
+The 2017 survey drew one outline round the keep and the small keep platform
+(小天守台) to its south, 2,600 m² with the keep's 54.6 m. Two OpenStreetMap
+footprints on the platform, the platform itself and the Kinmeisui well house
+(金明水井戸屋形) of 1626, fell under that outline, so both took the keep's
+height and stood beside it as a 54.6 m white block. PLATEAU's 2025 model of
+Osaka draws them apart: the keep alone (1,750 m²), and the well house as a
+4.7 m building on ground 6.0 m above the keep's. `cities/osaka/city.py` now
+gives any footprint under the keep's outline that took its height those
+figures, and draws the platform as dressed stone and the well house with a
+roof of grey tiles. The later PLATEAU releases (2022, 2024 and 2025) keep the
+2017 survey's heights for almost every building, so the model still reads the
+2020 release and takes only the keep's figures from the 2025 one.
+
+### 3.7 The estimated buildings
+
+4,567 buildings (3.5% of the area, mostly small ones) have no measurement.
 Their heights come from neighbours within 60 m, with a leave-one-out error of a
-factor of 1.33 at the median and 2.6 at the 90th percentile. The Monte Carlo
+factor of 1.31 at the median and 2.5 at the 90th percentile. The Monte Carlo
 sigmas the sun study uses are 0.165 for `floors` and 0.43 for `estimate`,
 and 0.03 for a measured height.
 
@@ -173,10 +190,19 @@ Terrarium is a surface model here, as it was in Sydney. The 10 m check is
 older and coarser than DEM5A, not independent of it in method (both are GSI
 products), so it shows consistency and not independence.
 
+GSI's 5 m DEM has one false terrace in the model. Where the laser points were
+filtered out with Osaka Castle's keep and its stone base, the gap was
+interpolated into a level 40.5 m terrace east of the keep, 9 m above the
+honmaru around it. The 10 m DEM reads 31.5 to 32.6 m there, and PLATEAU puts
+the ground under the keep at 30.9 to 31.7 m. `terrain.level` in `city.json`
+levels the honmaru round the keep to 31.2 m, DEM5A's median over the open
+plaza just south of it, blended over 8 m at the edge; the stone walls of the
+honmaru outside it are untouched.
+
 The radar check of [Sydney §9.3](sydney.md#93-the-rejected-radar-surface-checks-the-building-mass)
 holds in Osaka as well. The surface excess of the SRTM-derived Terrarium over
-the bare-earth DEM tracks the building mass of the model: r = 0.62, 0.68 and
-0.77 at 100, 150 and 200 m blocks, with a slope of 0.33 to 0.44.
+the bare-earth DEM tracks the building mass of the model: r = 0.49, 0.50 and
+0.67 at 100, 150 and 200 m blocks, with a slope of 0.22 to 0.36.
 
 ## 5. Landmarks
 
@@ -187,11 +213,12 @@ or chosen by us.
 
 | Landmark | Figures used | Source |
 |---|---|---|
-| Osaka Castle keep | stone base 13.3 m, tower 39.4 m above it, total 52.7 m, 54.8 m with the golden shachi; five roofs outside, eight floors inside; ground 31.7 m T.P.*; tier plans* | Osaka Prefecture fact sheet, Bunshun, PLATEAU record 大阪城天守閣 (54.6 m) |
-| Tsutenkaku | 103 m (108 m with the lightning rod); gold observatory at 87.5 m, open deck at 94.5 m; the lattice and neon are schematic* | Osaka City leaflet and tourist sources |
-| HEP FIVE wheel | 75 m diameter, 106 m top, lowest point at the seventh floor (about 31 m); the building drawn at 47 m*, because PLATEAU's 107 m is the wheel | published dimensions |
-| Glico sign | a panel with a simplified runner, on the building nearest the published coordinates* | Wikipedia coordinates |
-| Kani Doraku crab | about 8 m across*, on the Dotonbori facade | indicative |
+| Osaka Castle keep | stone base 13.3 m, tower 39.4 m above it, total 52.7 m, 54.8 m with the golden shachi; five roofs outside, eight floors inside; white plaster on tiers one to four, the top tier black with gilded tigers, copper roofs formed as tiles, gilded gable fittings. The plan of each tier, the levels of its eaves and the gables on each face* are measured from PLATEAU's LOD2 model and scaled to the published heights; ground 31.2 m T.P.* (the levelled honmaru) | Osaka Prefecture fact sheet, Bunshun, PLATEAU 2025 model of 大阪城天守閣 (27100-bldg-328870) |
+| Small keep platform and Kinmeisui well house | the platform 6.0 m high on its OSM outline*, the well house 4.7 m on it | PLATEAU 2025 (27100-bldg-951272) |
+| Tsutenkaku | 103 m (108 m with the lightning rod); observatories at 84 m and 87.5 m (the gold one), the open deck at 94.5 m with its round gallery 8.5 m across, the third-floor deck at 22 m over the legs; the jutting deck*, the ceiling painting under the tower (an octagon 17 m across*), the legs, lattice, sign boards and weather light are schematic* | Osaka City leaflet, MLIT's multilingual guide, gltjp |
+| HEP FIVE wheel | 75 m diameter, 106 m top, lowest point at the seventh floor (about 31 m), 52 gondolas; the building drawn at 47 m*, because PLATEAU's 107 m is the wheel; the trusses are schematic* | published dimensions |
+| Glico sign | a lit board with the runner arms up on a track, on the building nearest the published coordinates* | Wikipedia coordinates |
+| Kani Doraku crab | about 9 m across* with its legs, on the Dotonbori facade | indicative |
 | Shop signs | 1,400 facades with a street in front of them, in three districts*; blades, banners and boards in six colours, lit at night | indicative, random |
 
 The Central Public Hall is coloured as red brick and the City Hall as
@@ -202,7 +229,8 @@ granite, from their names; they are not otherwise modelled.
 The viewer lights "floodlit" meshes after dark. For Osaka, materials can carry
 their own emissive colour and glow, and a city can add a night ambient light
 (`night_ambient`) so the streets are not pitch black. Shop signs, the Glico
-runner, the crab and the top of Tsutenkaku use them.
+runner, the crab and the top of Tsutenkaku use them, and the castle keep is
+floodlit after dark in its own colours.
 
 ## 7. Winter sun on the parks
 
@@ -225,7 +253,7 @@ Share of each park in direct sun, averaged over 8:00 to 16:00 on 21 December
 | 難波宮跡公園 Naniwa Palace Ruins Park | 70% |
 | 扇町公園 Ogimachi Park | 70% |
 | 天王寺公園 Tennoji Park | 66% |
-| 靱公園 Utsubo Park | 49% |
+| 靱公園 Utsubo Park | 50% |
 | うめきた公園 サウスパーク Umekita South Park | 17% |
 
 The surface model follows the buildings' pitched roofs (32,955 of them,
@@ -296,9 +324,10 @@ test hook.
 - **A PLATEAU height is the top of the roof structure.** Published heights
   stop lower, which is why `plateau` towers read taller than the published
   figure.
-- **The landmarks are approximate.** The tier plans of the keep, the lattice
-  of Tsutenkaku, the Glico runner and the Kani Doraku crab are indicative,
-  and the shop signs are random facades on streets, not the real signs.
+- **The landmarks are approximate.** The keep's plans, eaves and gables are
+  measured, but its windows, brackets, ornaments and tigers are indicative;
+  so are the lattice of Tsutenkaku, the Glico runner and the Kani Doraku crab.
+  The shop signs are random facades on streets, not the real signs.
 - **The castle hill is smooth.** A 5 m DEM does not resolve the stone walls
   (up to 30 m); they read as steep slopes.
 - **Ground level is the photo.** At street level the aerial image is blurred and
@@ -332,19 +361,24 @@ python pipeline/game_data.py --city osaka
 ```
 
 The whole pipeline takes about 20 minutes, 12 of them for the 40 uncertainty
-draws. The shipped data is 29 MB, of which `buildings.json` is 11 MB (3.3 MB
-gzipped) and `game.json` 6.4 MB (1.7 MB gzipped).
+draws. The shipped data is 44 MB, of which `buildings.json` is 25 MB (8.6 MB
+gzipped), `game.json` 6.4 MB (1.7 MB gzipped) and `landmarks.json` 3.5 MB
+(0.7 MB gzipped).
 
 ## Sources
 
 - Project PLATEAU, Osaka City 3D city model 2020 (MLIT; CityGML v2):
   [G-spatial Information Center](https://www.geospatial.jp/ckan/dataset/plateau-27100-osaka-shi-2020).
+  The keep, the small keep platform and the well house: the 2025 model (CityGML v5),
+  [G-spatial Information Center](https://www.geospatial.jp/ckan/dataset/plateau-27100-osaka-shi-2025).
 - Geospatial Information Authority of Japan: DEM5A, DEM10B and seamless
   aerial photographs ([tile service](https://maps.gsi.go.jp/development/ichiran.html)).
 - Overture Maps Foundation, release 2026-10-21.0 (OpenStreetMap contributors, ODbL).
 - Osaka Castle keep: [Osaka Prefecture fact sheet](https://www.pref.osaka.lg.jp/documents/140847/shousai_oskajyo.pdf);
   [Bunshun](https://bunshun.jp/articles/-/52).
-- Tsutenkaku: [Osaka City planning leaflet](https://www.city.osaka.lg.jp/toshiseibi/cmsfiles/contents/0000266/266754/TSUTENKAKU.pdf)
-  and [osaka-info.jp](https://osaka-info.jp/spot/tsutenkaku/).
+- Tsutenkaku: [Osaka City planning leaflet](https://www.city.osaka.lg.jp/toshiseibi/cmsfiles/contents/0000266/266754/TSUTENKAKU.pdf),
+  [osaka-info.jp](https://osaka-info.jp/spot/tsutenkaku/); the observatories at 84, 87.5 and 94.5 m from
+  [MLIT's multilingual guide](https://www.mlit.go.jp/tagengo-db/en/R4-00629.html), the 8.5 m gallery and the
+  22 m deck from [gltjp](https://www.gltjp.com/ja/directory/item/11772/).
 - Tower heights: [Wikipedia, List of tallest buildings in Osaka](https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Osaka).
 - Characters: Quaternius, Ultimate Modular Men and Women (CC0).
