@@ -290,10 +290,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   for (const n of G.npcs) {
     const rig = makeRig(Object.assign({ scale: (n.look.character || '')[0] === 'W' ? 0.91 : 0.96 }, n.look));
     world.add(rig.root);
-    // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over); off a bank sloping
-    // into the water, and not on someone else's toes
-    let f = nav.floorAt(n.at[0], n.at[1], Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1));
-    if (f && f.kind === 'deck') f = nav.floorAt(n.at[0], n.at[1], nav.terrain(n.at[0], n.at[1]) + 1);
+    // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or at the height given;
+    // off a bank sloping into the water, and not on someone else's toes
+    let f = nav.floorAt(n.at[0], n.at[1], n.at[2] != null ? n.at[2] + 1 : Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1));
+    if (f && f.kind === 'deck' && n.at[2] == null) f = nav.floorAt(n.at[0], n.at[1], nav.terrain(n.at[0], n.at[1]) + 1);
     const p = nav.stand(n.at[0], n.at[1], f ? f.z + 0.5 : Math.max(0, nav.terrain(n.at[0], n.at[1])) + 1,
       { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
     const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
@@ -319,6 +319,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
   const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
+  // neighbourhood signs, things to look at and conversations to overhear (places.js), and lifts between a
+  // street door and a floor high up (game.json "lifts", from the city's landmarks)
+  const places = window.OEPlaces ? OEPlaces.create({ G, W, camera, stage }) : null;
+  const lifts = G.lifts || [];
+  function liftStop(x, y, z) {
+    for (const l of lifts) for (let i = 0; i < l.stops.length; i++) {
+      const s = l.stops[i];
+      if (Math.hypot(s.at[0] - x, s.at[1] - y) < 3.0 && Math.abs(s.at[2] - z) < 2.5) return { l, i };
+    }
+    return null;
+  }
 
   // ------------------------------------------------------------ cars: your own, taxis and rides (cars.js)
   // Your car waits at the kerb near the start (game.vehicles.car: { model, colour, seat }) and
@@ -739,7 +750,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const trigDone = () => qs.trig || (qs.trig = {});
 
   // ------------------------------------------------------------ wildlife: little penguins on their colony's rocks (penguins.js)
-  const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A)).filter(Boolean);
+  const colonies = (G.wildlife || []).map(c => OEPenguins.create(world, c, A, nav.terrain)).filter(Boolean);
   // and silver gulls round a dropped box of chips by the water (gulls.js), marked on the map
   const flocks = (G.flocks || []).map(f => OEGulls.create(world, f, A, nav));
   let dayLim = null; // sunrise and sunset for the game's date, worked out once a day
@@ -946,6 +957,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (!s) return null;
     const out = { text: s.text, title: q.title, line: l };
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
+    else if (s.type === 'spot') { const sp = (G.spots || []).find(q => q.id === s.spot); if (sp) out.at = sp.at.slice(0, 2); }
     else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.landing; }
     else if (s.type === 'rail' && rail) { const st = rail.stations.find(o => o.id === (player.mode === 'rail' ? s.to : s.from)); if (st) out.at = [st.x, st.y]; }
     else if (s.type === 'surface' || s.type === 'under_bridge') { const st = nav.strips.find(x => x.name === (s.surface || x.name)); if (st) out.at = st.origin.slice(); }
@@ -1364,6 +1376,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (car) return { key: 'E', text: `Board the ${G.rail.funicular.name || 'funicular'} to ${other.name}`, act: () => boardRail(car, st) };
       return { key: '', text: `${st.name}: the next car is due in ${fmtSec(rail.eta())}` };
     }
+    const ls_ = liftStop(player.x, player.y, player.z);
+    if (ls_) { const to = (ls_.i + 1) % ls_.l.stops.length; return { key: 'E', text: `Take the lift to ${ls_.l.stops[to].name}`, act: () => rideLift(ls_.l, ls_.i, to) }; }
+    const sp = places && places.spotNear(player.x, player.y, player.z);
+    if (sp) return { key: 'E', text: sp.verb || `Look at ${sp.name}`, act: () => lookAt(sp) };
     const tv = VP.find(v => Math.hypot(v.x - player.x, v.y - player.y) < 7 && Math.abs(v.z - player.z) < 3);
     if (tv) return { key: 'E', text: `${trigDone()[tv.id] ? 'Survey again' : 'Survey the view'} from ${tv.name}`, act: () => survey(tv) };
     const w = nearWharf(player.x, player.y);
@@ -1385,6 +1401,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return null;
   }
   function interact() { const a = currentAction(); if (a && a.act) { A.start(); a.act(); } }
+  // a spot (places.js): its lines, and a step waiting for it ("spot": its id) moves on
+  function lookAt(sp) {
+    dlg.show({ name: sp.name, role: sp.role || '', color: sp.color || '#6d5a3a', pitch: sp.pitch || 260 }, places.lines(sp).map(fill));
+    for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); }
+  }
 
   function board(v, w) {
     player.mode = 'ferry'; player.vehicle = v; v.rider = true;
@@ -1878,7 +1899,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     g.restore();
     // fast travel to wharves you have used, the helipad and the start
     const dest = [{ id: 'start', name: 'Where you started', at: G.start.at }].concat(G.wharves.filter(w => qs.visited[w.id]).map(w => ({ id: w.id, name: w.name, at: w.landing })),
-      (G.travel || []).filter(t => qs.visited[t.id]).map(t => ({ id: t.id, name: t.name, at: t.at.slice(0, 2) })));
+      (G.travel || []).filter(t => t.always || qs.visited[t.id]).map(t => ({ id: t.id, name: t.name, at: t.at })));
     $('#g-travel').innerHTML = dest.map(d => `<li><button data-at="${d.at.join(',')}">${d.name}</button></li>`).join('');
   }
   on(bigCanvas, 'click', e => {
@@ -1892,7 +1913,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#g-travel'), 'click', e => {
     const b = e.target.closest('button');
     if (!b || player.mode !== 'foot') { if (b) H.toast('Fast travel works on foot.'); return; }
-    const [x, y] = b.dataset.at.split(',').map(Number), p = placeNear(x, y);
+    const [x, y, z] = b.dataset.at.split(',').map(Number), p = placeNear(x, y, Number.isFinite(z) ? z : null); // on a roof, or the ground
     if (p) { $('#g-bigmap').hidden = true; hopTo(p[0], p[1], p[2], b.textContent); }
   });
   on($('#g-map-btn'), 'click', toggleMap);
@@ -2159,7 +2180,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (!viewingNoted && player.mode === 'foot' && player.floor === 'pier' && sun && sun.altitude < 0 && c0.viewing_note && c0.viewing.some(p => Math.hypot(p[0] - player.x, p[1] - player.y) < 40)) { viewingNoted = true; H.toast(c0.viewing_note); }
     }
     for (const f of flocks) f.update(dt, cx, cy, player.mode === 'foot', U.uNight.value);
-    for (const t of G.travel || []) if (!qs.visited[t.id] && player.mode === 'foot' && Math.hypot(t.at[0] - player.x, t.at[1] - player.y) < 30) {
+    for (const t of G.travel || []) if (!qs.visited[t.id] && !t.always && player.mode === 'foot' && Math.hypot(t.at[0] - player.x, t.at[1] - player.y) < 30 && Math.abs((t.at[2] ?? player.z) - player.z) < 15) {
       qs.visited[t.id] = true; H.toast(`<b>${t.name}</b> is on your map now: open it (M) to come back here.`);
     }
     benchBudget += dt * 60; // keep what the benches near the player offer up to date, about 60 a second
@@ -2168,6 +2189,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const blockers = player.mode === 'foot' ? [player] : [];
     for (const o of [myCar, ride]) if (o) { const st = stOf(o); blockers.push({ x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && (o === ride || player.mode !== 'car') }); }
     cars.update(dt, cx, cy, clockT, blockers);
+    if (places) places.update(dt, player.x, player.y, player.z, player.mode === 'foot' && !cine.active);
   }
 
   function walkStep(dt, fwd, side) {
@@ -2219,6 +2241,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       }
     }
     if (dt > 0) player.speed = Math.min(player.speed, moved / dt); // the speed is what the move achieved, so the walk cycle slows against a wall
+    // an escalator (a surface with moving_ms) carries whoever stands on its moving stretch along its axis; the
+    // steps take you through whatever stands beside them (a well's rim, the floor you come up through)
+    const esc = player.ground && nav.strips.find(s => s.moving_ms && s.name === player.floor);
+    if (esc) {
+      const [u] = nav.stripUV(esc, player.x, player.y), mu = esc.moving_u || [-Infinity, Infinity];
+      if (u >= mu[0] && u <= mu[1]) {
+        const nx = player.x + esc.axis[0] * esc.moving_ms * dt, ny = player.y + esc.axis[1] * esc.moving_ms * dt;
+        if (nav.stripHeight(esc, nx, ny) != null) { player.x = nx; player.y = ny; }
+      }
+    }
     const f = nav.floorAt(player.x, player.y, player.z);
     const floorZ = f ? f.z : player.z;
     if (f) player.floor = f.kind;
@@ -2425,6 +2457,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       look: k => lk.lerpVectors(look0, head(), OECine.ease.inOut(Math.min(1, k * 1.4))), e: { dist: 'out', h: 'in' } });
     cine.play(OECine.mix(path, () => live, k => handOver(k)), 3.2, { label: 'crane' });
   }
+  // A lift: the camera climbs the tower's face (or comes down it) while the player rides, at the lift's own
+  // speed with the time shortened, and hands back to the chase camera at the far stop, facing on.
+  function rideLift(l, from, to) {
+    const a = l.stops[from], b = l.stops[to], dz = b.at[2] - a.at[2];
+    const realS = Math.abs(dz) / ((l.m_per_min || 240) / 60), dur = Math.min(9, Math.max(4.5, realS / 6));
+    const A = head(), B = W(b.at[0], b.at[1], b.at[2] + 1.55), c = new THREE.Vector3(), p0 = OECine.polar(A, camera.position);
+    const out = Math.max(70, Math.abs(dz) * 0.35), up = Math.max(p0.h, 12);
+    const path = OECine.spiral({ center: k => c.lerpVectors(A, B, OECine.ease.inOut(k)), az: [p0.az, p0.az + 1.1], dist: [Math.max(p0.dist, 20), out], h: [up, 18], e: { dist: 'out' } });
+    H.toast(`<b>${l.line || l.name}</b><span>${b.name}: ${Math.round(Math.abs(dz))} m in ${Math.round(realS)} s at ${l.m_per_min || 240} m a minute</span>`);
+    cine.play(OECine.mix(path, () => live, k => handOver(k, 0.8)), dur, { label: 'hop',
+      cues: [[0.5, () => {
+        [player.x, player.y, player.z] = b.at;
+        if (b.face) player.h = Math.atan2(b.face[0], b.face[1]);
+        player.speed = 0; player.vz = 0; player.ground = true;
+        cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.3; cam.dist = 6.5;
+        groundLod(player.x, player.y);
+        save();
+      }]],
+      onEnd: () => H.toast(`${b.name}.`) });
+  }
+
   // Fast travel: rise over the player, fly across the city at a height that grows with
   // the distance, and come down behind them facing the way they flew. The player moves
   // at the top of the climb, out of sight.
@@ -2534,7 +2587,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { flyover, Wd, colonies, flocks, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { flyover, Wd, colonies, flocks, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys, lifts, rideLift, places, lookAt };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

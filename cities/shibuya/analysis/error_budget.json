@@ -1,0 +1,62 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Yoyogi Park 代々木公園",
+   "prod": 97.51,
+   "finer_samples": 97.52,
+   "finer_dsm": 97.36,
+   "finer_time": 97.52,
+   "reference": 97.35,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.16,
+   "seconds": 73.847
+  },
+  {
+   "place": "Shinjuku Gyoen 新宿御苑",
+   "prod": 94.9,
+   "finer_samples": 95.04,
+   "finer_dsm": 94.57,
+   "finer_time": 94.92,
+   "reference": 94.51,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.39,
+   "seconds": 79.039
+  },
+  {
+   "place": "Miyashita Park 宮下公園",
+   "prod": 85.11,
+   "finer_samples": 85.31,
+   "finer_dsm": 84.17,
+   "finer_time": 85.12,
+   "reference": 84.72,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.39,
+   "seconds": 4.596
+  },
+  {
+   "place": "Suga Park 須賀公園",
+   "prod": 79.81,
+   "finer_samples": 79,
+   "finer_dsm": 78.8,
+   "finer_time": 79.49,
+   "reference": 78.13,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 1.68,
+   "seconds": 0.071
+  },
+  {
+   "place": "Jingu-dori Park 神宮通公園",
+   "prod": 92.85,
+   "finer_samples": 92.99,
+   "finer_dsm": 92.99,
+   "finer_time": 92.81,
+   "reference": 93.06,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.21,
+   "seconds": 0.818
+  }
+ ],
+ "max_abs_numerical_error_pp": 1.68
+}

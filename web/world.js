@@ -619,15 +619,22 @@ vec3 photoGrade(vec3 c) {
     // ------------------------------------------------------------ landmarks
     loadMsg('Building the landmarks', 0.65);
     await idle();
-    const lmMats = {}, floodMats = {};
+    const lmMats = {}, floodMats = {}, lmTex = {};
+    // an image the city's landmark_assets hook draws (signs, plaques, votive tablets), on texture coordinates 0..1
+    const imageTex = f => lmTex[f] || (lmTex[f] = Object.assign(texLoader.load(D.DATA + f),
+      { colorSpace: THREE.SRGBColorSpace, anisotropy: renderer.capabilities.getMaxAnisotropy() }));
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
+      if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
+      if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
     }
-    // meshes marked floodlit glow after dark
+    // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
-    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin(LM.materials[k].emissive || '#ffe2b8'), emissiveIntensity: 0,
+    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
+      emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
+      emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
       userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
     for (const m of LM.meshes || []) {
       const p = m.position, arr = new Float32Array(p.length);
@@ -640,6 +647,7 @@ vec3 photoGrade(vec3 c) {
       const mesh = new THREE.Mesh(g, m.floodlit ? floodlit(m.material) : lmMats[m.material]);
       mesh.castShadow = mesh.receiveShadow = true;
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
+      if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
       mesh.name = m.name;
       world.add(mesh);
     }

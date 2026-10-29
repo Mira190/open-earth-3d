@@ -89,6 +89,8 @@ def load_dem(C, cell=DEM_CELL, name="dem", absolute=False):
     z = map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx) - C.cfg.get("datum_offset_m", 0.0)
     if name == "dem":
         z = level_areas(C, raise_mapped(C, z, cell), cell)
+        if C.hook("adjust_terrain") and not absolute:  # a city's own cuts (stairs set into a slope), not compared with checks
+            z = C.hook("adjust_terrain")(z, C, cell)
     return z + C.cfg.get("datum_offset_m", 0.0) if absolute else z
 
 
@@ -1443,6 +1445,8 @@ def build(C):
     # terrain grid shipped to the browser (10 m): int16 decimetres, little-endian, base64 in JSON
     step = int(TERRAIN_CELL / DEM_CELL)
     tg = dem[::step, ::step]
+    if C.hook("adjust_terrain"):  # the city's cuts again, at the viewer's resolution
+        tg = C.hook("adjust_terrain")(tg.copy(), C, TERRAIN_CELL)
     json.dump({"encoding": "int16le-base64", "nx": tg.shape[1], "ny": tg.shape[0],
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
