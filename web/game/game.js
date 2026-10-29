@@ -511,9 +511,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return o;
   }
   // one setting out from somewhere a few hundred metres off by road, out of sight
-  function rideFromAround(kind, pickup, dest) {
+  function rideFromAround(kind, pickup, dest, r0 = 170, r1 = 340) {
     for (let k = 0; k < 8; k++) {
-      const pl = roads.around(pickup.x, pickup.y, 170, 340);
+      const pl = roads.around(pickup.x, pickup.y, r0, r1);
       const o = pl && newRide(kind, pl, pickup, dest);
       if (o && o.drv.path.len < 1400) return o;
       if (o) o.C.dispose();
@@ -533,9 +533,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const c of cars.C) {
       if (!c.taxi || c.line < 0) continue;
       const d = Math.hypot(c.x - player.x, c.y - player.y);
-      if (d > 280 || d < 12) continue;
-      const rt = roads.route({ line: c.line, s: c.s, dir: c.dir }, pickup, 800);
-      if (rt && rt.len < 800 && (!best || rt.len < best.len)) best = { c, len: rt.len };
+      if (d > 250 || d < 12) continue;
+      const rt = roads.route({ line: c.line, s: c.s, dir: c.dir }, pickup, 450);
+      if (rt && rt.len < 450 && (!best || rt.len < best.len)) best = { c, len: rt.len };
     }
     let o = null;
     if (best) {
@@ -543,8 +543,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup);
       if (o) { cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h }); }
     }
-    if (!o) o = rideFromAround('taxi', pickup);
+    if (!o) o = rideFromAround('taxi', pickup, null, 120, 250);
     if (!o) { H.toast('No taxis about. Try a busier street, or order a ride on your phone (N).'); return; }
+    if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
     A.honk();
     H.toast(best ? `A taxi has seen you: it'll pull in, about ${fmtSec(eta(o))} away.` : `A taxi is coming round the corner, about ${fmtSec(eta(o))} away.`);
@@ -557,6 +558,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
     const o = rideFromAround('hire', pickup, dest);
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
+    if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
     H.toast(`<b>${o.name}</b> is on the way in a ${rideCar(o)}, ${o.plate}: about ${fmtSec(eta(o))}.`);
   }
@@ -644,10 +646,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     hopTo(end.x, end.y, end.z, o.dest.name, { cue: () => o.drv.finish(), quiet: true });
   }
   // what a ride's driver looks out for (cars.js chauffeur): the traffic, your car, you on foot
+  // (one stopped for good, your car left in the lane or a car stuck in a jam, is driven round).
+  // Out of sight, beyond 120 m, nothing holds a driver up, as games keep the cars that come for you on time.
   function inTheWay(o) {
     const st = o.drv.st, out = [];
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c);
-    if (myCar) out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half });
+    if (Math.hypot(st.x - player.x, st.y - player.y) > 120) return out;
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true } : c);
+    if (myCar) out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: player.mode !== 'car' && myCar.D.st.speed < 0.3 });
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
   }

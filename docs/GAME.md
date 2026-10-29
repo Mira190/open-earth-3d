@@ -113,7 +113,10 @@ Every city's game has the same three ways to go by road:
 
 The driver takes you by road, along a route over the street network, keeping to
 the lane, slowing for bends and for the traffic, and signalling into the kerb at
-the end. On the way they talk about what you are passing, as the people on the
+the end. A car stopped in the lane, such as yours left in the road, is driven
+round over the centre line, by the driver and by the traffic. While the car coming
+for you is out of sight, more than 120 m off, the traffic doesn't hold it up, so it
+comes in good time, as it would in a game. On the way they talk about what you are passing, as the people on the
 footways do, so each remark is a fact from the model, such as a building's height
 and where it comes from. <kbd>F</kbd> skips the trip, as in GTA V: the camera
 rises, crosses the city and comes down behind the car at the kerb. The traffic
@@ -931,8 +934,13 @@ It found four faults, each now fixed:
 
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
 the game, walks for four seconds, talks to the first quest giver, flies the
-helicopter up and lets the ferries run for 40 s, with a screenshot after each
-step. It fails on any page error. All eight cities pass it.
+helicopter up and lets the ferries run for 40 s. Then it gets into your car at the
+driver's door, drives off, brakes to a stop and gets out. It hails a taxi from the
+kerb where the car was parked, gets in the back, picks the first place the driver
+offers, rides for 20 s, skips the trip and gets out, and orders a ride on the phone.
+Seated at the wheel and in the back, each head must be under the roof. There is a
+screenshot after each step, and it fails on any page error. `tools/check.sh` runs it
+for every city whenever the game changes.
 
 ## Limitations
 
