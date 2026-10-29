@@ -2295,7 +2295,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (shot) {
       camera.up.set(0, 1, 0);
       camera.position.copy(shot.pos);
-      camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3); // never inside a building
+      // never inside a building; a film's shots (tools/film) are checked against the surface model when
+      // they are planned, and go down to eye level among the crowd, so they are left where they are
+      if (cine.label !== 'film') camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
       camera.lookAt(shot.look);
       Wd.fitShadow(shot.look, THREE.MathUtils.clamp(camera.position.distanceTo(shot.look) * 1.2, live.half, 1600));
       return;
