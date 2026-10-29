@@ -11,8 +11,9 @@ can check, as well as look at.
 
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
 Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
-next. It grows from there one city at a time. Each new city is a config file
-and a few checks, not a new codebase.
+next, then Melbourne's bayside, Osaka, Kyoto and Tokyo. It grows from there one
+city at a time. Each new city is a config file and a few checks, not a new
+codebase.
 
 ![The globe landing page: live and planned cities, with today's day and night](docs/images/globe.jpg)
 
@@ -34,7 +35,7 @@ where the open data is silent and checked where it is not
 
 ![Before and after: Ultimo's houses and flats, and towers in the CBD](docs/images/sydney/buildings-compare.jpg)
 
-## Play it: Sydney on Foot and Melbourne on Foot
+## Play it: every city on foot
 
 The model is also a game.
 - **Sydney:** you walk the city centre as a surveyor and talk to the people who
@@ -42,16 +43,21 @@ The model is also a game.
   ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
   helicopter under its deck, and find a sunny spot in Martin Place on the
   winter solstice.
-  In free roam you can survey the view from the trig stations round the
-  harbour, or test your eye against the data by guessing building heights.
 - **Melbourne:** you check the midwinter sun on Federation Square, take a
   shuttle down the Yarra, and fly past the Arts Centre spire.
+- **Melbourne's bayside:** you walk out along St Kilda Pier and wait on the
+  viewing platform after sunset. The little penguins come ashore on the
+  breakwater and waddle to their burrows. You walk into Luna Park through
+  Mr Moon's mouth, and along the 96 Brighton bathing boxes.
 
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
-computed from the model as you play. Open **Play** on the globe, or go to
-`#play-sydney` or `#play-melbourne`, and the Japanese cities' games at
-`#play-osaka`, `#play-kyoto` and `#play-tokyo`.
+computed from the model as you play. The survey runs as three lines you can take
+in any order. Photo mode stops the world for a picture, under the sun for the time
+you choose. In free roam you can survey the view from Sydney's trig stations, or
+test your eye against the data by guessing building heights. Open **Play** on the
+globe, or go to `#play-sydney`, `#play-melbourne` or `#play-melbourne-bayside`, and the Japanese
+cities' games at `#play-osaka`, `#play-kyoto` and `#play-tokyo`.
 
 The helicopter and the ferries are modelled in Blender from code, with ambient
 occlusion baked in Cycles. Every city's game shares them, in its own livery
@@ -69,15 +75,19 @@ the Blender twin of each city places them where the game does.
 - where this game does better than they do.
 
 [docs/ENGINES.md](docs/ENGINES.md) studies what to take from Unreal Engine and
-other engines: movement, cameras, crowds, interaction and gameplay. Its first
-step is built: Unreal-style capsule collision against the exact building
-footprints.
+other engines: movement, cameras, crowds, interaction and gameplay. Three of
+its steps are built:
+- Unreal-style capsule collision against the exact building footprints;
+- a crowd that steers round each other and round you;
+- benches people sit on, choosing sun or shade by the season.
 
 | Under the Harbour Bridge | The Opera House's Monumental Steps | Talking to the Opera House guide |
 |---|---|---|
 | ![](docs/images/sydney/game-heli.jpg) | ![](docs/images/sydney/game-steps.jpg) | ![](docs/images/sydney/game-dialogue.jpg) |
 | **Melbourne: a planner explains DDO10 in City Square** | **The river shuttle on the Yarra** | **Past the Arts Centre spire** |
 | ![](docs/images/melbourne/game-dialogue.jpg) | ![](docs/images/melbourne/game-river.jpg) | ![](docs/images/melbourne/game-heli.jpg) |
+| **The bayside: the Brighton bathing boxes** | **Mr Moon and the Scenic Railway** | **Little penguins ashore at night** |
+| ![](docs/images/melbourne-bayside/game-boxes.jpg) | ![](docs/images/melbourne-bayside/game-luna-park.jpg) | ![](docs/images/melbourne-bayside/game-penguins.jpg) |
 
 **Osaka on Foot** is the same game in another city: Dotonbori at dusk, the Tombori
 River Cruise, a kushikatsu chef in Shinsekai, a leopard-print obachan with candy in the
@@ -118,7 +128,8 @@ whose every line is computed from the model or cited. Open **Great Barrier Reef*
 | City | Status | What's in it |
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
-| **Melbourne**, Australia | **Live** | 13,050 buildings (4,601 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
+| **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
+| **Melbourne Bayside**, Australia | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
 | **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
@@ -201,7 +212,7 @@ The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney (or #melbourne, #osaka, #kyoto, #tokyo) for a 3D model,
+# open http://localhost:8000 for the globe, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo) for a 3D model,
 # #play-sydney (and so on) for a game,
 # reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
 ```
@@ -352,6 +363,13 @@ Melbourne also uses these sources:
 - The Melbourne Planning Scheme (DDO10 and clause 15.01-1L-03), read from the
   Victorian government's planning API.
 - No aerial imagery: none covering the city is openly licensed.
+
+Melbourne's bayside uses the same terrain, terrain check and synthetic ground.
+It also uses:
+- the Bureau of Meteorology's mean maximum temperatures for Melbourne (Olympic
+  Park), so that people on benches choose sun or shade;
+- facts quoted from Heritage Victoria (the bathing boxes), Luna Park, Parks
+  Victoria and Earthcare St Kilda (the penguins), each cited where it is used.
 
 No licence has been chosen for the code yet. Until one is added, the default
 copyright applies.
