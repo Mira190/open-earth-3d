@@ -67,8 +67,9 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ renderer, camera
   const canvas = $('#gl'), stage = $('#stage');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries
+  const QC = window.OEQuality.city();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias, powerPreference: 'high-performance' });
   const camera = new THREE.PerspectiveCamera(38, 1, 3, 70000);
   const controls = new THREE.OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -80,6 +81,7 @@ window.OpenEarthCity = async function main(cityId) {
 
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setPixelRatio(QC.pixelRatio(w, h));
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
@@ -89,7 +91,7 @@ window.OpenEarthCity = async function main(cityId) {
   resize();
 
   // ------------------------------------------------------------ the shared world (world.js)
-  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
+  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
 

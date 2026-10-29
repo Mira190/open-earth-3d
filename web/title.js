@@ -1,12 +1,19 @@
 // Open Earth 3D's title screen, cut like a film's opening.
 //
 // Boot: the stars come up first, with a counter and the name of each file as it loads
-// (the Earth's textures are a few megabytes). Then the gate: Enter, with or without sound.
-// The cold open runs about nine seconds. The camera crosses the real night side of the
-// Earth, low over the brightest stretch of it that dawn is about to reach. It runs
-// towards the real sun until the sun clears the limb: a riser, then a hit, a flare, and
-// the title. Then the camera pulls back to the whole planet and the menu comes in. Any key
-// or click skips straight to the menu.
+// (the Earth's textures are a few megabytes). Then it starts on its own, without sound,
+// since browsers allow sound only after a click or a key; a Sound button brings the score in
+// where the shot has got to. The cold open runs about nine seconds. The camera crosses the
+// real night side of the Earth, low over the brightest stretch of city lights that the
+// terminator is about to reach: dawn's, or dusk's when the night before dawn is open ocean.
+// It runs towards the real sun until the sun clears the limb: a riser, then a hit, a flare,
+// and the title. Then the camera pulls back to the whole planet and the menu comes in. Any
+// key or click skips straight to the menu.
+//
+// The picture is as good as the device affords (quality.js). A frame of the sunlit side is
+// rendered and read back before the opening; if it comes out black the pipeline steps down,
+// and if it is still black, or the device has no WebGL 2, or the GPU drops the context twice,
+// the menu runs over a still picture of the Earth instead of a black screen.
 //
 // The menu lists the live destinations in the order the sun reaches them. Choosing one
 // turns the globe to it; a card gives its figures, local time and sun, and the camera dives
@@ -18,7 +25,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const E = window.OEEarth, A = window.OEScore, S = window.Sun, V3 = THREE.Vector3, RAD = Math.PI / 180;
   const app = $('globe-app'), stage = $('globe-stage'), canvas = $('globe-gl');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const small = Math.min(innerWidth, innerHeight) < 700;
+  // what this device can draw; why: what put it on the still picture, if anything did
+  const Q = window.OEQuality, tier = Q.tier();
+  let mode = tier.name, drawing = mode !== 'still', why = mode === 'still' && !Q.probe().gl2 ? 'this browser has no WebGL 2' : '';
   const narrow = () => stage.clientWidth < 860 || stage.clientWidth < stage.clientHeight;
   const store = {
     get(k, session) { try { return (session ? sessionStorage : localStorage).getItem(k); } catch (e) { return null; } },
@@ -42,7 +51,16 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
 
   // ------------------------------------------------------------ the earth
   const t0 = Date.now();
-  const earth = E.create({ canvas, month: new Date(t0).getUTCMonth() + 1, small, onProgress: loading });
+  let earth;
+  try {
+    earth = mode === 'still' ? E.still()
+      : E.create({ canvas, month: new Date(t0).getUTCMonth() + 1, q: tier.settings, onProgress: loading, onLost: contextLost, onRestored: contextRestored });
+  } catch (e) {
+    console.warn('title: the Earth cannot be drawn here', e);
+    mode = 'still'; drawing = false; why = 'WebGL failed to start';
+    earth = E.still();
+  }
+  if (mode === 'still') app.classList.add('fallback');
   const cam = earth.camera;
   let sun = earth.setTime(t0);
   const shift = { x: 0, y: 0, tx: 0, ty: 0 };
@@ -169,32 +187,43 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const T_RISE = 4.0, V_ARC = 2.1, TAU = 0.9, R0 = 1.165;
   const ramp = t => t - TAU * (1 - Math.exp(-t / TAU)); // starts still, settles to full speed
   let plan = null;
+  // The camera's path is a great circle through the sun's direction; P is where it crosses the
+  // terminator. Dawn is the idea (the earth's turn carries P into the sun), but when the night
+  // before the dawn line is open ocean the shot flies to dusk instead: flying from the night
+  // towards the terminator, the sun clears the limb ahead either way. Dusk has to be clearly
+  // brighter to win.
+  const DUSK_WINS = 1.5;
   function planOpen() {
     const Sd = earth.sun.clone();
     const n0 = Y.clone().addScaledVector(Sd, -Y.dot(Sd)).normalize();
-    let best = null;
+    const best = { dawn: null, dusk: null };
     for (let az = 0; az < 360; az += 5) {
       const P = n0.clone().applyAxisAngle(Sd, az * RAD); // where the camera's path crosses the terminator
-      if (new V3().crossVectors(Y, P).dot(Sd) < 0.2) continue; // dawn there: the earth's turn carries it into the sun
+      const turn = new V3().crossVectors(Y, P).dot(Sd);
+      if (Math.abs(turn) < 0.2) continue; // near the poles the terminator barely moves
+      const side = turn > 0 ? 'dawn' : 'dusk';
       const lat = E.latlon(P).lat;
       let score = 0;
       for (let th = 93; th <= 124; th += 1.5) {
-        for (const side of [-7, -3.5, 0, 3.5, 7]) {
-          const Q = arc(Sd, P, th).applyAxisAngle(Sd, side * RAD);
-          score += earth.lightsAt(Q) * (th < 104 ? 1.6 : 1);
+        for (const off of [-7, -3.5, 0, 3.5, 7]) {
+          const q = arc(Sd, P, th).applyAxisAngle(Sd, off * RAD);
+          score += earth.lightsAt(q) * (th < 104 ? 1.6 : 1);
         }
       }
       score *= 1 - 0.7 * smooth((Math.abs(lat) - 48) / 20);
-      if (!best || score > best.score) best = { P, score };
+      if (!best[side] || score > best[side].score) best[side] = { P, score };
     }
-    const P = best ? best.P : n0;
+    const dawnScore = best.dawn ? best.dawn.score : 0, duskScore = best.dusk ? best.dusk.score : 0;
+    const dusk = duskScore > DUSK_WINS * dawnScore;
+    const pick = dusk ? best.dusk : best.dawn;
+    const P = pick ? pick.P : n0;
     const r = t => R0 + 0.04 * smooth(t / 10);
     // the hit lands as the sun clears the dense air at the limb (about 40 km up)
     const crit = t => 180 - Math.asin(1.006 / r(t)) / RAD;
     const thRise = crit(T_RISE) - 0.4;
     const thHold = thRise + V_ARC * ramp(T_RISE);
     const nadir = arc(Sd, P, thHold);
-    return { S: Sd, P, r, thRise, thHold, nadir: E.latlon(nadir), dawn: E.latlon(P) };
+    return { S: Sd, P, r, thRise, thHold, nadir: E.latlon(nadir), dawn: E.latlon(P), dusk, dawnScore, duskScore };
   }
   // the camera crossing the night towards the sun: t seconds after Enter (negative: waiting at the gate)
   function nightPose(t, out = pose) {
@@ -254,6 +283,11 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     for (let m = 0; m <= 900; m += 2) if (S.position(t + m * 60000, lat, lon).altitude > -0.833) return m;
     return null;
   }
+  function minutesSinceSunset(lat, lon, t) {
+    for (let m = 0; m <= 900; m += 2) if (S.position(t - m * 60000, lat, lon).altitude > -0.833) return m;
+    return null;
+  }
+  const hm = m => `${m >= 60 ? `${Math.floor(m / 60)} h ` : ''}${m % 60} min`;
 
   // ------------------------------------------------------------ the sequence
   let state = 'boot', running = true, raf = 0, tBegin = 0, frozen = null, sel = -1, hot = -1, lastInput = performance.now();
@@ -305,22 +339,23 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (state !== 'gate') return;
     store.set('oe3d-title', '1', true);
     store.set('oe3d-sound', withSound ? 'on' : 'off');
-    soundOn = withSound && A.start(true);
-    if (!withSound) A.start(false);
+    soundOn = withSound && A.start(true); // without sound, no audio context until the visitor asks for one
     setSoundUi();
     state = 'open';
     menuStart();
     plan.nadir = E.latlon(arc(plan.S, plan.P, plan.thHold));
     plan.dawn = E.latlon(plan.P);
     app.classList.add('started', 'opening');
+    $('ts-hear').hidden = false;
     tBegin = clock();
     const at = A.now();
     if (soundOn && !reduced) { A.drone(2.2); A.riser(at + T_RISE, 3.2); A.hit(at + T_RISE + 0.03); }
     const d = new Date();
     cue(0.2, () => decode($('ts-cap1'), `Live · ${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} · ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`, 800));
-    const nd = plan.nadir, wait = minutesToSunrise(nd.lat, nd.lon, Date.now());
-    cue(1.3, () => decode($('ts-cap2'), `Night below · ${fmtLat(nd.lat)} ${fmtLon(nd.lon)}${wait != null ? ` · sunrise in ${wait >= 60 ? `${Math.floor(wait / 60)} h ` : ''}${wait % 60} min` : ''}`, 1100));
-    cue(T_RISE + 0.1, () => decode($('ts-cap3'), `Sunrise · ${fmtLat(plan.dawn.lat)} ${fmtLon(plan.dawn.lon)} · now`, 900));
+    const nd = plan.nadir, wait = plan.dusk ? minutesSinceSunset(nd.lat, nd.lon, Date.now()) : minutesToSunrise(nd.lat, nd.lon, Date.now());
+    const when = wait == null ? '' : plan.dusk ? ` · sunset ${hm(wait)} ago` : ` · sunrise in ${hm(wait)}`;
+    cue(1.3, () => decode($('ts-cap2'), `Night below · ${fmtLat(nd.lat)} ${fmtLon(nd.lon)}${when}`, 1100));
+    cue(T_RISE + 0.1, () => decode($('ts-cap3'), `${plan.dusk ? 'Sunset' : 'Sunrise'} · ${fmtLat(plan.dawn.lat)} ${fmtLon(plan.dawn.lon)} · now`, 900));
     cue(PULL_A + 1.3, () => showMenu());
     cue(PULL_A + PULL_D, () => { titleFx(PULL_A + PULL_D); state = 'menu'; app.classList.remove('opening'); });
     if (reduced) skip();
@@ -488,8 +523,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (!running || e.metaKey || e.ctrlKey || e.altKey) return;
     lastInput = performance.now();
     if (!$('ts-about').hidden) { if (e.key === 'Escape') toggleAbout(false); return; }
-    if (state === 'gate') { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); begin(soundPref); } return; }
-    if (state === 'open') { e.preventDefault(); skip(); return; }
+    if (state === 'open') { if (e.target.closest && e.target.closest('button')) return; e.preventDefault(); skip(); return; } // a key on Sound or Skip is that button's
     if (state !== 'menu') return;
     const k = e.key.toLowerCase();
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
@@ -498,17 +532,28 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
     else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); orb.tdist = fitDist(); for (const d of dests) d.mark.classList.remove('hot'); }
   });
-  // Enter starts with the sound the visitor chose last time; the small button, the other way
-  const soundPref = store.get('oe3d-sound') !== 'off';
-  on($('ts-enter'), 'click', () => begin(soundPref));
-  on($('ts-quiet'), 'click', () => begin(!soundPref));
   on($('ts-skip'), 'click', e => { e.stopPropagation(); skip(); });
+  // sound during the opening: the score joins the shot where it has got to
+  let scored = false;
+  on($('ts-hear'), 'click', e => {
+    e.stopPropagation();
+    if (A.on) { A.setMuted(true); store.set('oe3d-sound', 'off'); setSoundUi(); return; }
+    A.start(true); A.setMuted(false);
+    store.set('oe3d-sound', 'on');
+    const t = clock() - tBegin, at = A.now();
+    if (!scored && state === 'open' && t < T_RISE - 0.6 && !reduced) { A.drone(1.2); A.riser(at + T_RISE - t, Math.min(3.2, T_RISE - t)); A.hit(at + T_RISE - t + 0.03); }
+    else A.pad();
+    scored = soundOn = true;
+    setSoundUi();
+  });
   on(stage, 'pointerdown', e => { if (state === 'open' && !e.target.closest('button')) skip(); });
 
   // sound in the menu
   function setSoundUi() {
-    $('ts-sound').setAttribute('aria-pressed', String(A.on));
-    $('ts-sound-l').textContent = A.on ? 'Sound on' : 'Sound off';
+    for (const [b, l] of [['ts-sound', 'ts-sound-l'], ['ts-hear', 'ts-hear-l']]) {
+      $(b).setAttribute('aria-pressed', String(A.on));
+      $(l).textContent = A.on ? 'Sound on' : 'Sound off';
+    }
   }
   on($('ts-sound'), 'click', () => {
     if (!A.on) { A.start(true); A.setMuted(false); A.pad(); store.set('oe3d-sound', 'on'); }
@@ -541,18 +586,25 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const _v = new V3(), _n = new V3();
   function placeMarks() {
     const w = stage.clientWidth, h = stage.clientHeight;
-    const put = (el, p, always) => {
+    // project every label, read their widths in one go, then write: one layout a frame, not one a label
+    const all = [...dests.map(d => [d.mark, d.dir, true]), ...plannedMarks.map(m => [m.el, m.p, false])];
+    const at = all.map(([el, p]) => {
       _n.copy(p).normalize();
       const facing = _n.dot(_v.copy(cam.position).sub(p).normalize());
       _v.copy(p).project(cam);
-      const vis = facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05;
+      return { facing, x: (_v.x * 0.5 + 0.5) * w, y: (-_v.y * 0.5 + 0.5) * h, vis: facing > 0.12 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05 };
+    });
+    const widths = all.map(([el], i) => (at[i].vis ? el.offsetWidth : 0));
+    all.forEach(([el, , always], i) => {
+      const { facing, x, y, vis } = at[i];
       if (!vis) { if (!el.hidden) el.hidden = true; return; }
       el.hidden = false;
-      el.style.transform = `translate(${((_v.x * 0.5 + 0.5) * w).toFixed(1)}px, ${((-_v.y * 0.5 + 0.5) * h).toFixed(1)}px)`;
+      // a label that would run off the right edge goes on the other side of its point
+      const lw = widths[i], flip = x + lw + 10 > w - 12;
+      el.classList.toggle('flip', flip);
+      el.style.transform = `translate(${(flip ? x - lw - (el.classList.contains('plan') ? -6 : 20) : x).toFixed(1)}px, ${y.toFixed(1)}px)`;
       el.style.opacity = String(Math.min(always ? 1 : 0.9, (facing - 0.12) / 0.25));
-    };
-    for (const d of dests) put(d.mark, d.dir, true);
-    for (const m of plannedMarks) put(m.el, m.p, false);
+    });
     // a label that would overlap one already placed loses its text (its tick stays): the chosen
     // city first, then the live ones, then the planned
     const order = [...dests.map((d, i) => ({ el: d.mark, pri: i === sel ? 0 : i === hot ? 1 : 2 })), ...plannedMarks.map(m => ({ el: m.el, pri: 3 }))]
@@ -632,7 +684,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       shift.x += (shift.tx - shift.x) * kk; shift.y += (shift.ty - shift.y) * kk;
       applyShift();
       L.uExposure.value += (menuExposure() - L.uExposure.value) * (1 - Math.exp(-dt * 1.5));
-      L.uFlare.value += (0.3 - L.uFlare.value) * kk; // under the menu, a flare is a distraction
+      L.uFlare.value += (0.1 - L.uFlare.value) * kk; // under the menu a flare is a distraction, and its streak reads as a scratch
       earth.bloom.strength = lensBase.bloom;
       L.uFade.value = Math.min(1, L.uFade.value + dt * 0.7);
       L.uFlash.value = 0;
@@ -650,7 +702,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     });
     earth.earth.uFocus.value.copy(focusDir);
     earth.earth.uFocusAmt.value += ((sel >= 0 && state === 'menu' ? 1 : 0) - earth.earth.uFocusAmt.value) * Math.min(1, dt * 3);
-    earth.render(performance.now());
+    if (drawing) earth.render(performance.now());
     if (state === 'menu' || state === 'dive' || (state === 'open' && app.classList.contains('menu'))) placeMarks();
   }
   // a night view wants the eye open a little wider than a day one
@@ -658,6 +710,42 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const e = cam.position.clone().normalize().dot(earth.sun);
     return lerp(1.3, 0.95, smooth((e + 0.35) / 0.8));
   }
+
+  // ------------------------------------------------------------ the picture
+  // a still of the Earth behind the menu, for a device that cannot draw it live
+  function goStill(reason) {
+    mode = 'still'; drawing = false; why = reason;
+    app.classList.add('fallback');
+    renderPicture();
+  }
+  // a lost context (the GPU took its memory back) shows the still until three.js has it back,
+  // one step down; a second loss stays on the still
+  function contextLost(n) {
+    drawing = false;
+    app.classList.add('fallback');
+    if (n >= 2) goStill('the GPU dropped the picture twice');
+  }
+  function contextRestored() {
+    if (mode === 'still') return;
+    earth.degrade();
+    const st = earth.selfTest();
+    if (st.ok) { drawing = true; app.classList.remove('fallback'); } else goStill(`after a lost context the test frame came out ${st.why}`);
+    renderPicture();
+  }
+  function renderPicture() {
+    const c = Q.probe(), st = earth.stats();
+    const gpu = (c.renderer.match(/(Apple [^,)]*|Mali[^,)]*|Adreno[^,)]*|PowerVR[^,)]*|Intel[^,)]*|NVIDIA [^,(]*|GeForce[^,(]*|Radeon[^,(]*|AMD [^,(]*|SwiftShader|llvmpipe)/i) || [c.renderer || 'unknown GPU'])[0].trim();
+    $('ts-pic-now').textContent = mode === 'still'
+      ? `${Q.NAMES.still}${why ? ` · ${why}` : ''}`
+      : `${Q.NAMES[mode]}${tier.chosen ? '' : ', chosen for this device'} · ${gpu} · ${st.pixelRatio.toFixed(2)}× pixels · about ${st.gpuMB} MB of graphics memory`;
+    for (const b of $('ts-pic').querySelectorAll('button')) b.setAttribute('aria-pressed', String((b.dataset.q || null) === Q.override()));
+  }
+  on($('ts-pic'), 'click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    Q.setOverride(b.dataset.q || null);
+    location.reload();
+  });
 
   // ------------------------------------------------------------ start
   let bootAt = performance.now() / 1000;
@@ -669,11 +757,24 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const back = from && dests.find(d => d.id === from || (d.sites && d.sites.some(c => c.id === from)));
   try { await earth.load(); } catch (e) { console.warn('title: textures', e); }
   if (!running) return api();
+  if (mode !== 'still') {
+    if (earth.renderer.getContext().isContextLost()) {
+      // lost while the textures went up (memory runs short then): the still holds until the
+      // context comes back, and contextRestored() tests it; a context that stays away is given up
+      after(6000, () => { if (!drawing && mode !== 'still') goStill('the GPU did not give the picture back'); });
+    } else {
+      let st = earth.selfTest();
+      if (!st.ok && earth.degrade()) st = earth.selfTest();
+      if (!st.ok) goStill(`the test frame came out ${st.why}`);
+    }
+  }
+  renderPicture();
   plan = planOpen();
   earth.ready.value = 0;
   earth.lens.uFade.value = 0;
-  if (reduced || returning || back) {
-    // straight to the menu: from the city just left, or a pull-in from further out
+  if (reduced || returning || back || mode === 'still') {
+    // straight to the menu: from the city just left, or a pull-in from further out (over the
+    // still picture there is no shot to film)
     store.set('oe3d-title', '1', true);
     app.classList.add('started', 'menu');
     state = 'menu';
@@ -692,11 +793,10 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     setSoundUi();
     showMenu();
   } else {
+    // ready: it starts on its own (the film tool and the checks hold it here with __titleManual)
     state = 'gate';
     $('ts-loading').hidden = true;
-    $('ts-gate').hidden = false;
-    if (!soundPref) { $('ts-quiet').textContent = 'Enter with sound'; $('ts-gate').querySelector('small').textContent = 'Sound off, as you left it'; }
-    $('ts-enter').focus({ preventScroll: true });
+    if (!window.__titleManual) begin(false);
   }
   refreshTimes();
 
@@ -709,6 +809,9 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     // draw one frame at time t after Enter, and stop the page drawing on its own
     still(t) { manual = true; cancelAnimationFrame(raf); this.hold(t); frame(true); },
     timing: { T_RISE, PULL_A, PULL_D }, earth,
+    // the opening's plan for another moment (for checks across the day), and what is being drawn
+    plan(utcMs) { earth.setTime(utcMs); const p = planOpen(); earth.setTime(Date.now()); return { dusk: p.dusk, dawnScore: p.dawnScore, duskScore: p.duskScore, nadir: p.nadir, terminator: p.dawn }; },
+    get picture() { return { mode, why, auto: tier.auto, chosen: tier.chosen, caps: Q.probe(), stats: earth.stats() }; },
   };
 
   function api() {

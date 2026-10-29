@@ -134,12 +134,14 @@ window.OEAtmos = (function () {
     }
     const S = stars(), M = moon();
     world.add(S, M);
-    // the post stack, where the GPU renders to half-float targets with multisampling
+    // the post stack, where the GPU can render to half-float targets (measured by quality.js),
+    // with the tier's multisampling; elsewhere the scene goes straight to the screen
     let composer = null, bloom = null, grade = null;
-    const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false;
+    const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
+    const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
     if (canPost) {
       const size = renderer.getSize(new THREE.Vector2());
-      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
+      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples });
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(world, camera));
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
