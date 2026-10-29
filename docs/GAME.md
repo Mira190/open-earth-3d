@@ -528,7 +528,10 @@ pipeline writes. The only city-specific code is landmark geometry in
     lit from the sun's direction, so it shows its real phase.
   - **Post stack:** the frame goes through three.js's own effect passes: an HDR
     bloom (lamps and lit windows after dark, glints by day), the world's tone
-    curve, a light grade and a vignette.
+    curve, a light grade and a vignette. The scene renders into it with a reversed
+    32-bit float depth buffer where the GPU has `EXT_clip_control`, which resolves
+    millimetres at two kilometres, so distant walls and roofs do not fight over
+    pixels. The sky is given back its blue by day (`game.sky.saturation`).
 - **Sun and time:**
   - **Clock:** the game starts at Sydney's actual time. If it's dark there, the
     title screen offers the morning first. The title screen and the menu offer:

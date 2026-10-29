@@ -391,14 +391,16 @@ a { color: var(--accent); }
 .gt-keys { width: 100%; border-collapse: collapse; font-size: 12px; }
 .gt-keys td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .gt-keys td:first-child { white-space: nowrap; color: var(--ink-2); }
+/* the title over the live city: a scrim only behind the words, so the city behind stays in full colour */
 .g-title { position: absolute; inset: 0; display: flex; align-items: center; padding: 18px max(18px, env(safe-area-inset-left, 0px)); z-index: 7;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 82%, transparent) 0%, color-mix(in srgb, var(--bg) 40%, transparent) 46%, transparent 70%); overflow: auto; }
+  background: linear-gradient(90deg, color-mix(in srgb, var(--bg) 84%, transparent) 0%, color-mix(in srgb, var(--bg) 62%, transparent) 30%, transparent 54%); overflow: auto; }
 .gt-card { width: min(470px, 100%); display: grid; gap: 14px; }
 .gt-card h1 { font: 800 clamp(40px, 6vw, 68px)/0.9 var(--f-display); font-stretch: 78%; letter-spacing: -0.015em; }
 .gt-card h1::after { content: ""; display: block; width: 64px; height: 6px; background: var(--sun); margin-top: 12px; border-radius: 3px; }
 .gt-card > p { margin: 0; color: var(--ink-2); font-size: 14px; max-width: 46ch; }
 .gt-card .btn.primary { font-size: 15px; padding: 10px 18px; }
 .gt-time { display: grid; gap: 5px; }
+.gt-time .seg { justify-self: start; }
 .g-touch { position: absolute; inset: auto 0 0 0; height: 190px; pointer-events: none; }
 .g-touch > * { pointer-events: auto; }
 #gt-joy { position: absolute; left: max(18px, env(safe-area-inset-left, 0px)); bottom: 24px; width: 120px; height: 120px; border-radius: 50%; background: color-mix(in srgb, var(--surface) 45%, transparent);
@@ -426,7 +428,9 @@ a { color: var(--accent); }
   .gph-actions kbd { display: none; }
   .g-photo .note { display: none; }
   .gt-keys { display: none; }
-  .g-title { background: color-mix(in srgb, var(--bg) 78%, transparent); align-items: flex-start; }
+  .g-title { background: linear-gradient(180deg, color-mix(in srgb, var(--bg) 30%, transparent), transparent 60%); align-items: flex-start; }
+  .gt-card { background: color-mix(in srgb, var(--bg) 82%, transparent); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border-radius: var(--r); box-shadow: var(--shadow); padding: 16px 16px 14px; }
 }
 @media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
 @media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after { transition: none; } }

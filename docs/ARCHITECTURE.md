@@ -219,12 +219,19 @@ The views switch in place, without reloading the page.
     city's mix, instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
     cut-out leaf shadows and jacarandas that flower in season;
-  - sky, sun and shadows;
+  - the ground's aerial photos, with their haze taken out: the city's tiles are
+    measured as they load (the darkest 2% and the mean saturation), and the
+    shader takes back a share of that black level and restores some colour;
+  - sky, sun and shadows. The shadow map follows the camera in whole texels
+    along the sun's axes and changes size in steps, so shadow edges hold still
+    as the camera moves;
   - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
     the fog colour, and beyond the frame there is only haze. It is three.js's fog
     chunks with the frame written in, so every fogged material takes it,
     reflections included. Within about 150 m of the camera it is held off, unless
-    the camera itself is outside the model.
+    the camera itself is outside the model. In the game, the haze takes the sky's
+    colour at the horizon (read back from the sky when the sun moves) and the
+    sky's last few degrees fade into it, so the city meets the sky without a band.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
