@@ -16,7 +16,16 @@ Amsterdam. It
 grows from there one city at a time. Each new city is a config file and a few
 checks, not a new codebase.
 
-![The globe landing page: live and planned cities, with today's day and night](docs/images/globe.jpg)
+![The title screen: the real sun rising over the real night side, filmed live in the browser](docs/images/title/opening.jpg)
+
+It opens like a film. The camera crosses the night side of the Earth as it is
+this minute, over the city lights that dawn is about to reach, and runs into the
+real sun as it clears the limb. The title lands on the sunrise, with its own
+synthesised score. Then the camera pulls back to the planet and the destinations
+come up where they are, with their local time and sun. It is drawn live in
+three.js from NASA's Blue Marble and Black Marble and the Yale catalogue of the
+stars. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the references it
+draws on (Flight Simulator, Death Stranding, Hitman) and the rendering.
 
 | Sydney in the browser | Height sources | Testing a tower against the planning rule |
 |---|---|---|
@@ -79,8 +88,8 @@ that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. The survey runs as three lines you can take
 in any order. Photo mode stops the world for a picture, under the sun for the time
 you choose. In free roam you can survey the view from Sydney's trig stations, or
-test your eye against the data by guessing building heights. Open **Play** on the
-globe, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
+test your eye against the data by guessing building heights. Choose a destination
+on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto` and
 `#play-tokyo`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
@@ -139,7 +148,7 @@ Reef, Green Island off Cairns, Heron Island and Lady Elliot Island. Each is rebu
 Sentinel-2 composite inverted through the water column, mapped places and Maritime Safety Queensland's tide, under
 the real sun and moon. Walk the beach, wade, snorkel, free-dive or scuba dive among corals, fish, turtles and
 rays; ride the boats, fly the helicopter or the seaplane; talk to a ranger, a skipper, a guide and a dive instructor,
-whose every line is computed from the model or cited. Open **Great Barrier Reef** on the globe, or
+whose every line is computed from the model or cited. Choose **Great Barrier Reef** on the title screen, or
 `reef/index.html?city=whitsundays`.
 
 - The water: waves, Cox-Munk sun and moon glitter, caustics, refraction, Snell's window, a light field that
@@ -249,7 +258,7 @@ The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the globe, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #hong-kong) for a 3D model,
+# open http://localhost:8000 for the title screen, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #hong-kong) for a 3D model,
 # #play-sydney (and so on) for a game,
 # reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
 ```
@@ -273,7 +282,8 @@ pip install -r requirements.txt
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
   python pipeline/fetch_overture.py --city sydney
 python pipeline/fetch_tiles.py --city sydney         # imagery, terrain, Terrarium tiles
-python pipeline/fetch_world.py                        # the globe's base map (once)
+python pipeline/fetch_world.py                        # Natural Earth land and lakes (once)
+python pipeline/fetch_earth.py                        # the title screen's Earth and sky (once; NASA, ESO, Yale)
 
 # build
 python pipeline/build_scene.py --city sydney          # -> web/data/sydney
@@ -333,13 +343,13 @@ python blender/build_trees.py --render                    # the shared trees -> 
 3. Run the pipeline and the checks, and read what they say about the data.
 4. Mark the city `live` in `cities/index.json`.
 
-The globe picks it up from `web/data/cities.json`.
+The title screen picks it up from `web/data/cities.json`.
 
 ## How it fits together
 
 ```
 cities/<id>/city.json ─┐
-Overture Maps ─────────┼─► pipeline/ ─► web/data/<id>/ ─┬─► web/  (globe, 3D model viewer, game; world.js, sun.js)
+Overture Maps ─────────┼─► pipeline/ ─► web/data/<id>/ ─┬─► web/  (title screen, 3D model viewer, game; world.js, sun.js)
 imagery + terrain ─────┘                                ├─► analysis/  (Python and Node checks)
                                                         └─► blender/   (bpy + Cycles)
 ```
@@ -355,11 +365,11 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
-| `web/` | `index.html` (globe, model and game views), `globe.js`, `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `buildings.js` (walls, roofs, facades and rooftops), `trees.js` (the shared trees), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
+| `web/` | `index.html` (title screen, model and game views), `title.js` (the title sequence and the menu), `earth.js` (the Earth, its air and the sky, and the lens), `score.js` (the title's sound), `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `buildings.js` (walls, roofs, facades and rooftops), `trees.js` (the shared trees), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
 | `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter, ferries and cars; `build_trees.py` grows the trees) |
-| `tools/` | `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `reef_shot.js` and `page_shot.js` for the reef sites |
+| `tools/` | `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score) |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
 ## Data and licences
@@ -370,8 +380,15 @@ Data tab. The shared sources are:
 - **Buildings, land use, water, trees, piers, addresses:** Overture Maps
   Foundation. These are OpenStreetMap contributors (ODbL) and Microsoft ML
   Buildings (ODbL). A derived database must stay under ODbL.
-- **The globe's base map:** Natural Earth (public domain).
-- **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono).
+- **The title screen's Earth:** NASA Earth Observatory's Blue Marble Next
+  Generation (by month), Black Marble 2016 and cloud composite, and GEBCO_08
+  elevation via Blue Marble (public domain); Natural Earth land and lakes
+  (public domain).
+- **The title screen's sky:** the Milky Way panorama by ESO/S. Brunier (CC BY
+  4.0); the Yale Bright Star Catalogue, 5th revised edition.
+- **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono;
+  on the title screen Zalando Sans Expanded, Inter Tight, Shippori Mincho and
+  Noto Serif TC).
 - **Vehicles in the game:** modelled from code in this repository
   (`blender/build_vehicles.py` and `web/game/kit.js`), with no third-party assets.
 - **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES

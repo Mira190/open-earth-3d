@@ -1504,8 +1504,15 @@ def write_index():
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
-        c["built"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "scene.json"))
+        scene = os.path.join(ROOT, "web", "data", c["id"], "scene.json")
+        c["built"] = os.path.exists(scene)
         c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
+        if c["built"]:  # the title screen's figures: buildings and the extent of the model
+            sc = json.load(open(scene, encoding="utf8"))
+            if "height_sources" in sc:
+                c["buildings"] = sum(sc["height_sources"].values())
+            x0, x1, y0, y1 = sc["extent_m"] if "extent_m" in sc else (*sc["frame"]["x"], *sc["frame"]["y"])
+            c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 
