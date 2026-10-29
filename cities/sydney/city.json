@@ -43,6 +43,8 @@
   },
   "trees": {"mix": {"plane": 0.3, "fig": 0.18, "gum": 0.2, "jacaranda": 0.14, "palm": 0.13, "elm": 0.05}, "note": "Species are not mapped; the mix is a guess at the city's street and park trees: plane trees on the streets, Moreton Bay figs and palms in the parks and the Domain, jacarandas, eucalypts."},
   "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "architecture": "sydney",
+  "building_styles": {"Sydney Harbour Bridge - South Pylons": "stone", "Sydney Harbour Bridge - North Pylons": "stone"},
   "labels": {
     "Sydney Tower": "Sydney Tower",
     "Salesforce Tower": "Salesforce Tower",
@@ -222,6 +224,27 @@
       "time": "12:00"
     },
     {
+      "name": "terraces",
+      "cam": [-640, 330, 95],
+      "tgt": [-760, 440, 15],
+      "date": [2026, 3, 21],
+      "time": "15:00"
+    },
+    {
+      "name": "towers",
+      "cam": [380, -1250, 260],
+      "tgt": [-180, -560, 60],
+      "date": [2026, 3, 21],
+      "time": "15:30"
+    },
+    {
+      "name": "towers_night",
+      "cam": [600, -200, 220],
+      "tgt": [-250, -500, 80],
+      "date": [2026, 3, 21],
+      "time": "20:15"
+    },
+    {
       "name": "harbour",
       "cam": [-105, 395, 14],
       "tgt": [-25, 600, 16],
@@ -241,7 +264,7 @@
   "game": {
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
-    "water_name": "harbour",
+    "water_name": "the harbour",
     "under_bridge_note": "49 m of clearance, and you used it.",
     "shade_landmarks": ["opera", "sydney_tower"],
     "ferry_style": {"model": "harbour", "length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",

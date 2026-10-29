@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open Earth 3D: the Whitsundays</title>
+<style>
+  :root { color-scheme: dark; --ink:#e8f1f4; --sea:#0b3b4f; }
+  html, body { margin: 0; height: 100%; background: #04202c; color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  body > canvas { display: block; width: 100vw; height: 100vh; }
+  #hud { position: fixed; left: 16px; bottom: 16px; padding: 8px 12px; background: #04202ccc; border-radius: 8px; max-width: 46ch; }
+  #load { position: fixed; inset: 0; display: grid; place-content: center; background: #04202c; text-align: center; transition: opacity .6s; }
+  #load.done { opacity: 0; pointer-events: none; }
+  #err { position: fixed; top: 12px; left: 12px; right: 12px; color: #ffb4a8; white-space: pre-wrap; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "../vendor/three/three.webgpu.js", "three/webgpu": "../vendor/three/three.webgpu.js",
+  "three/tsl": "../vendor/three/three.tsl.js", "three/addons/": "../vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="load"><div><b id="load-title">The Whitsundays</b><br><small id="load-msg">Loading the sea</small></div></div>
+<div id="hud"></div>
+<div id="err"></div>
+<script src="../sun.js"></script>
+<script type="module" src="main.js"></script>
+</body>
+</html>

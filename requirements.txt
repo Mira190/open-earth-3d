@@ -6,4 +6,7 @@ numpy>=1.26
 scipy>=1.11
 pillow>=10.0
 requests>=2.31
+# PLATEAU (Japanese cities): mapbox-vector-tile for the vector tiles, DracoPy for 3D Tiles
+mapbox-vector-tile>=2.0
+DracoPy>=1.4
 # optional, for blender/build_scene.py (needs Python 3.13): pip install bpy==5.2.3

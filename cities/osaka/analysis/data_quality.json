@@ -1,0 +1,57 @@
+{
+ "ml_heights": {
+  "buildings": 78488,
+  "with_height": 46477,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -2000,
+   300,
+   -2000,
+   3000
+  ],
+  "land": {
+   "samples": 15972,
+   "median_excess_m": 10.5,
+   "p90_excess_m": 18.9
+  },
+  "under_buildings": {
+   "samples": 9605,
+   "median_excess_m": 11.0,
+   "p90_excess_m": 19.1
+  },
+  "open_ground": {
+   "samples": 6367,
+   "median_excess_m": 9.6,
+   "p90_excess_m": 18.4
+  },
+  "points": {
+   "Osaka Castle keep": {
+    "terrarium_m": 54.4,
+    "dem_m": 38.9
+   },
+   "Tsutenkaku base": {
+    "terrarium_m": 16.6,
+    "dem_m": 2.8
+   },
+   "Dotonbori Ebisu-bashi": {
+    "terrarium_m": 23.7,
+    "dem_m": 4.0
+   },
+   "Osaka Station": {
+    "terrarium_m": 5.5,
+    "dem_m": 0.4
+   },
+   "Utsubo Park": {
+    "terrarium_m": 9.5,
+    "dem_m": 0.9
+   }
+  }
+ }
+}

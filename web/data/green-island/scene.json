@@ -1,0 +1,419 @@
+{
+ "id": "green-island",
+ "name": "Green Island",
+ "kind": "marine",
+ "origin": [
+  146.015,
+  -16.6875
+ ],
+ "timezone": "Australia/Brisbane",
+ "extent_m": [
+  -13300,
+  13300,
+  -16800,
+  16800
+ ],
+ "vertical_datum": "m MSL",
+ "terrain": {
+  "file": "terrain.bin",
+  "w": 887,
+  "h": 1120,
+  "cell_m": 30,
+  "x0": -13300,
+  "y1": 16800,
+  "units_m": 0.1
+ },
+ "ground": {
+  "file": "ground.jpg",
+  "w": 2660,
+  "h": 3360,
+  "px_m": 10.0
+ },
+ "habitat": {
+  "file": "habitat.png",
+  "classes": {
+   "0": "deep water",
+   "1": "sand",
+   "2": "reef and rock",
+   "3": "seagrass and algae",
+   "4": "rubble",
+   "10": "forest",
+   "11": "shrub",
+   "12": "grass",
+   "13": "beach and bare",
+   "14": "mangrove",
+   "15": "built",
+   "16": "wetland"
+  }
+ },
+ "start": {
+  "x": -4950,
+  "y": -7420,
+  "z": 120,
+  "yaw": -132,
+  "pitch": -12,
+  "date": null,
+  "note": "north-west of Green Island over its reef, looking south-east along the jetty to the island"
+ },
+ "optics": {
+  "K": [
+   0.4,
+   0.089883695477156,
+   0.05634839312860593
+  ],
+  "Rinf": [
+   0.0063367183320224285,
+   0.01446845754981041,
+   0.030399998649954796
+  ],
+  "g": 2.2
+ },
+ "sources": {
+  "terrain": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
+  "imagery": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS",
+  "landcover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)"
+ },
+ "pois": [
+  {
+   "id": "green-island",
+   "name": "Green Island",
+   "kind": "island",
+   "lonlat": [
+    145.97376,
+    -16.75947
+   ],
+   "src": "osm",
+   "osm": "way 104227384",
+   "x": -4397,
+   "y": -7965
+  },
+  {
+   "id": "green-beach",
+   "name": "Green Island, western beach",
+   "kind": "beach",
+   "lonlat": [
+    145.9711,
+    -16.7594
+   ],
+   "src": "osm",
+   "osm": "relation 9767809",
+   "note": "a point on the island's mapped beach (unnamed in OSM) south of the jetty",
+   "x": -4681,
+   "y": -7957
+  },
+  {
+   "id": "green-jetty-root",
+   "name": "Green Island jetty, shore end",
+   "kind": "marina",
+   "lonlat": [
+    145.97134,
+    -16.75892
+   ],
+   "src": "osm",
+   "note": "the island end of OSM way 144064542 (man_made=pier)",
+   "x": -4655,
+   "y": -7904
+  },
+  {
+   "id": "green-jetty",
+   "name": "Green Island jetty",
+   "kind": "marina",
+   "lonlat": [
+    145.96923,
+    -16.75804
+   ],
+   "src": "osm",
+   "osm": "way 144064542, node 5877123720",
+   "note": "the outer end of the jetty, where OSM maps the ferry terminal",
+   "x": -4880,
+   "y": -7807
+  },
+  {
+   "id": "green-helipad",
+   "name": "Green Island helipad",
+   "kind": "helipad",
+   "lonlat": [
+    145.97194,
+    -16.76032
+   ],
+   "src": "osm",
+   "osm": "way 700778220",
+   "x": -4591,
+   "y": -8059
+  },
+  {
+   "id": "green-lookout",
+   "name": "Viewpoint, south-east shore",
+   "kind": "lookout",
+   "lonlat": [
+    145.97632,
+    -16.76049
+   ],
+   "src": "osm",
+   "osm": "node 6221607877",
+   "x": -4124,
+   "y": -8078
+  },
+  {
+   "id": "green-reef",
+   "name": "Green Island reef",
+   "kind": "reef",
+   "lonlat": [
+    145.98058,
+    -16.76223
+   ],
+   "src": "osm",
+   "osm": "relation 14074188",
+   "note": "the cay's reef (unnamed in OSM)",
+   "x": -3670,
+   "y": -8270
+  },
+  {
+   "id": "green-snorkel",
+   "name": "Snorkelling beside the jetty",
+   "kind": "dive",
+   "src": "nominal",
+   "note": "nominal: on the reef flat north of the jetty root, 1.4 m deep on the model. QPWS: the day-use area runs along the shore on both sides of the jetty, with clear shallow water for snorkelling",
+   "x": -4670,
+   "y": -7825
+  },
+  {
+   "id": "arlington-reef",
+   "name": "Arlington Reef",
+   "kind": "reef",
+   "lonlat": [
+    145.97448,
+    -16.69055
+   ],
+   "src": "osm",
+   "osm": "way 219702961",
+   "x": -4322,
+   "y": -338
+  },
+  {
+   "id": "upolu-cay",
+   "name": "Upolu Cay",
+   "kind": "island",
+   "lonlat": [
+    145.93373,
+    -16.67413
+   ],
+   "src": "osm",
+   "osm": "way 219702957",
+   "x": -8669,
+   "y": 1478
+  },
+  {
+   "id": "vlasoff-reef",
+   "name": "Vlasoff Reef",
+   "kind": "reef",
+   "lonlat": [
+    145.99524,
+    -16.65369
+   ],
+   "src": "osm",
+   "osm": "relation 9197774",
+   "x": -2108,
+   "y": 3742
+  },
+  {
+   "id": "michaelmas-reef",
+   "name": "Michaelmas Reef",
+   "kind": "reef",
+   "lonlat": [
+    146.02209,
+    -16.58489
+   ],
+   "src": "osm",
+   "osm": "relation 9197775",
+   "x": 757,
+   "y": 11355
+  },
+  {
+   "id": "michaelmas-cay",
+   "name": "Michaelmas Cay",
+   "kind": "island",
+   "lonlat": [
+    145.97399,
+    -16.60634
+   ],
+   "src": "osm",
+   "osm": "way 9051875",
+   "x": -4376,
+   "y": 8981
+  },
+  {
+   "id": "green-anchorage",
+   "name": "Green Island, west side",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -5180,
+   "y": -8020
+  },
+  {
+   "id": "michaelmas-anchorage",
+   "name": "Michaelmas Cay, south-west side",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -5200,
+   "y": 8670
+  },
+  {
+   "id": "south-west-gate",
+   "name": "Toward Cairns",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -12800,
+   "y": -16300
+  }
+ ],
+ "spawn": {
+  "poi": "green-beach",
+  "x": -4667,
+  "y": -7954,
+  "heading": 270,
+  "note": "on the upper sand of the western beach south of the jetty, about 1.75 m above mean sea level (the highest astronomical tide is 1.56 m), facing the sea"
+ },
+ "harbour": {
+  "fleets": [
+   {
+    "at": "green-anchorage",
+    "n": 3,
+    "cat": 1
+   },
+   {
+    "at": "michaelmas-anchorage",
+    "n": 2
+   }
+  ],
+  "marina": {
+   "at": "green-jetty",
+   "fingers": 2,
+   "from": "green-jetty-root"
+  },
+  "pontoon": null,
+  "parked": [
+   {
+    "kind": "helicopter",
+    "name": "Scenic helicopter",
+    "at": "green-helipad"
+   },
+   {
+    "kind": "seaplane",
+    "name": "Seaplane",
+    "at": "green-jetty"
+   }
+  ],
+  "moorings": 6,
+  "traffic": [
+   {
+    "kind": "daycat",
+    "name": "Green Island ferry",
+    "route": [
+     "south-west-gate",
+     "green-jetty"
+    ],
+    "loop": "pingpong",
+    "dwell": 120,
+    "vmax": 14
+   },
+   {
+    "kind": "daycat",
+    "name": "Michaelmas Cay cruise",
+    "route": [
+     "south-west-gate",
+     "michaelmas-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 90,
+    "vmax": 12
+   },
+   {
+    "kind": "yacht",
+    "route": [
+     "south-west-gate",
+     "green-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 60,
+    "vmax": 4.2
+   },
+   {
+    "kind": "yacht",
+    "route": [
+     "green-anchorage",
+     "michaelmas-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 60,
+    "vmax": 4.2
+   },
+   {
+    "kind": "tinnie",
+    "name": "Dive tender",
+    "route": [
+     "green-jetty",
+     "michaelmas-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 30,
+    "vmax": 12
+   }
+  ],
+  "scenic": [
+   {
+    "kind": "helicopter",
+    "name": "Scenic flight",
+    "around": "green-island",
+    "r": 700,
+    "alt": 150,
+    "v": 35,
+    "dir": 1
+   },
+   {
+    "kind": "seaplane",
+    "name": "Reef seaplane",
+    "around": "arlington-reef",
+    "dx": 3000,
+    "dy": 0,
+    "r": 5000,
+    "alt": 300,
+    "v": 45,
+    "dir": -1
+   }
+  ]
+ },
+ "life": {
+  "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Plants: Wikipedia, Green Island National Park: the island is covered in tropical vine forest; Wikipedia, Green Island (Queensland): dry coastal/beach plants and a vine thicket rain forest. No species list of the island's plants could be read (the QPWS management plan was not reachable), so they are drawn as 'vine-forest' and 'beach-scrub', without species. Turtles: green and hawksbill turtles are seen offshore (Wikipedia, Green Island National Park); sea turtles feed on the seagrass in the shallows (greatadventures.com.au/about-green-island): green turtles 2.5 and hawksbills 1.5 times as common as by default (multipliers not sourced). Spawning: an offshore reef (Willis et al. 1985 (researchonline.jcu.edu.au/24208): the offshore mass spawning period is one lunar month after the inshore one; Peter Harrison in Australian Geographic, 'Synchronised sex', 9 May 2016: the periods after the full moon in October and November for the inshore reefs, and November and December for the offshore and northern and southern reefs), lag 1.",
+  "flora": {
+   "minAbove": 1.6,
+   "cell": 5,
+   "coastR": [
+    12,
+    22
+   ],
+   "coastMaxAbove": 6,
+   "forest": {
+    "vine-forest": 1
+   },
+   "coast": {
+    "beach-scrub": 1
+   },
+   "grass": {
+    "beach-scrub": 1
+   },
+   "density": {
+    "10": 0.95,
+    "12": 0.5,
+    "coast": 0.85
+   }
+  },
+  "fauna": {
+   "green-turtle": 2.5,
+   "hawksbill": 1.5
+  },
+  "spawning": {
+   "lag": 1
+  }
+ }
+}

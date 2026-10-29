@@ -1,7 +1,9 @@
 """Rebuild a city's web scene in Blender, headless, from the same data files, and
-render it with Cycles: no hand modelling, no stock assets, one command. If the city
-has a game, the helicopter and ferries it shares with every city are placed where the
-game puts them (--no-vehicles leaves them out).
+render it with Cycles: no hand modelling, no stock assets, one command. The
+buildings (walls, pitched roofs, facades, rooftops) are built by buildings.py
+from the same buildings.json the browser reads. If the city has a game, the
+helicopter and ferries it shares with every city are placed where the game puts
+them (--no-vehicles leaves them out).
 
     pip install bpy==5.2.3        # Blender as a Python module (Python 3.13)
     python blender/build_scene.py --city sydney --samples 48
@@ -27,6 +29,8 @@ import bpy
 import numpy as np
 from mathutils import Vector
 from mathutils.geometry import tessellate_polygon
+
+from buildings import add_buildings, set_lighting
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -164,42 +168,12 @@ def build(data):
             out.append(tri if ccw else (tri[0], tri[2], tri[1]))
         return flat, out
 
-    # buildings: one mesh, colours per face corner
-    verts, faces, cols = [], [], []
-    seen, hidden = set(), set(scene.get("hidden_solids", []))  # drawn by a parametric landmark instead
-    for si, s in enumerate(B["s"]):
-        if si in hidden:
-            continue
-        m = B["b"][s[0]]
-        g0, zb, zt = s[1] / 10, (s[1] + s[2]) / 10, (s[1] + s[3]) / 10
-        # OSM sometimes maps one tower twice; Cycles shades coincident faces black
-        x, y = np.asarray(s[4], float).reshape(-1, 2).T / 10
-        cr = x * np.roll(y, -1) - np.roll(x, -1) * y
-        area = cr.sum() / 2 or 1e-9
-        key = (round((x + np.roll(x, -1)) @ cr / (6 * area)), round((y + np.roll(y, -1)) @ cr / (6 * area)), round(area / 20), round(zb), round(zt), len(s))
-        if key in seen:
-            continue
-        seen.add(key)
-        wall, roof = srgb_to_linear(m[7]) + [1], srgb_to_linear(m[8]) + [1]
-        rings = [np.asarray(r, float).reshape(-1, 2) / 10 for r in s[4:]]
-        for r in rings:
-            n = len(r)
-            for k in range(n):
-                a, b = r[k], r[(k + 1) % n]
-                v = len(verts)
-                verts += [(a[0], a[1], zb), (b[0], b[1], zb), (b[0], b[1], zt), (a[0], a[1], zt)]
-                cols += [wall] * 4
-                faces.append((v, v + 1, v + 2, v + 3))
-        base = len(verts)
-        flat, tris = up_tris([[Vector((p[0], p[1], zt)) for p in r] for r in rings])
-        verts += [tuple(p) for p in flat]
-        cols += [roof] * len(flat)
-        faces += [tuple(base + i for i in tri) for tri in tris]
-    bmat = principled("buildings", rough=0.75, vcol="col")
-    mesh_object("buildings", verts, faces, bmat, colors=cols)
-    counts["objects"] += 1
-    counts["triangles"] += sum(2 if len(f) == 4 else 1 for f in faces)
+    # buildings: walls with the facade grid, LOD2 roofs, parapets, awnings and rooftop plant (buildings.py)
+    bc = add_buildings(B, scene)
+    counts["objects"] += 4
+    counts["triangles"] += 2 * bc["wall_faces"] + bc["roof_faces"] + 2 * bc["trim_faces"] + 10 * bc["plant_boxes"]
     counts["buildings"] = len(B["b"])
+    counts["roofs"] = len(B.get("r", []))
 
     # piers
     pv, pf = [], []
@@ -366,6 +340,7 @@ def main():
     ap.add_argument("--samples", type=int, default=48)
     ap.add_argument("--res", default="1600x900")
     ap.add_argument("--blend", action="store_true")
+    ap.add_argument("--out", help="output folder (default docs/images/<city>)")
     ap.add_argument("--no-vehicles", action="store_true", help="leave out the game's helicopter and ferries")
     a = ap.parse_args(sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else sys.argv[1:])
     cfg = json.load(open(os.path.join(ROOT, "cities", a.city, "city.json"), encoding="utf8"))
@@ -373,7 +348,7 @@ def main():
     views = {v["name"]: v for v in cfg.get("renders", [])}
     if not views:
         raise SystemExit(f"{a.city}: no renders in city.json")
-    data, out = os.path.join(ROOT, "web", "data", a.city), os.path.join(ROOT, "docs", "images", a.city)
+    data, out = os.path.join(ROOT, "web", "data", a.city), a.out or os.path.join(ROOT, "docs", "images", a.city)
     os.makedirs(out, exist_ok=True)
     log = {"city": a.city, "blender": bpy.app.version_string, "views": {}}
     t0 = time.time()
@@ -410,6 +385,8 @@ def main():
             bpy.data.objects.remove(ob)
         add_sun(alt, az)
         sky = set_sky(alt, az, alt < -4)
+        hh, mm = map(int, v["time"].split(":"))
+        set_lighting(hh + mm / 60, alt < -4)
         p, t = v["cam"], v["tgt"]
         cam.location = p
         cam.rotation_euler = (Vector(t) - Vector(p)).to_track_quat("-Z", "Y").to_euler()

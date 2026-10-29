@@ -47,7 +47,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, write_index
-from shore import depth_at, from_png, without_raised
+from shore import QUAY_SHELF_M, depth_at, from_png, without_raised
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -214,7 +214,7 @@ def main():
     print("wharves:", {k: v["dist_m"] for k, v in wharves.items()})
     helipads = []
     for r in infra:
-        if r["class"] == "helipad":
+        if r["class"] == "helipad" and gcfg.get("helipads_from_data", True):
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q):
                 first = next((h["id"] for h in gcfg.get("helipads", []) if h.get("from_data")), "helipad")
@@ -419,6 +419,8 @@ def main():
     # the walking ground: the DEM on land, the modelled bottom under the water, except where a
     # helipad stands on the water (a floating pad): there it keeps the pad's own height
     ground_grid = np.where(water, -depth_at(sm, gx, gy, C.x0, C.y1), dem)
+    edge = water & ndimage.binary_dilation(~water)  # just under the surface off a quay, as in the viewer's terrain
+    ground_grid[edge] = np.maximum(ground_grid[edge], -QUAY_SHELF_M)
     for hp in helipads:
         x, y, z = hp["at"]
         near = water & (np.hypot(gx - x, gy - y) < 14.0)
@@ -426,7 +428,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate", "sky") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate", "sky") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
@@ -452,6 +454,8 @@ def main():
         # liveries, registration and logo for the shared vehicles (web/assets/vehicles); empty means the defaults
         "vehicles": gcfg.get("vehicles", {}),
     }
+    # a city's own flavour: the title-screen text, crowd small talk, the player's look
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks") if k in gcfg}
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")

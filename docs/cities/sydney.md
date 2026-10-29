@@ -24,9 +24,10 @@
   June? Would a 180 m tower west of Hyde Park break clause 6.18 of the Sydney
   LEP? The answers come in seconds, in a browser.
 - **Where the original still wins:** photorealism. Stock assets, hand-tuned
-  materials, trees and an hour of Cycles per frame beat our extruded footprints
-  and procedural windows as a still image. Section 7 shows how to combine the
-  two.
+  materials, trees and an hour of Cycles per frame still beat our procedural
+  buildings as a still image. Ours now have inferred LOD2 roofs, facades,
+  shopfronts and rooftops ([BUILDINGS.md](../BUILDINGS.md)). Section 7 shows
+  how to combine the two.
 - **Round two (section 9)** went looking for what we did not know we did not
   know, and rebuilt the method from what the answer actually depends on. The
   biggest uncertainty turned out to be legal, not geometric. Whether "12:00"
@@ -76,13 +77,19 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
   240–270 m turret and a spire to 309 m, all from data. Each building records:
   - its height and the source of that height;
   - its footprint source and OSM id, linked from the viewer's inspector;
-  - a wall colour, from the mapped facade material or else a class palette;
-  - a roof colour, the median aerial-photo colour inside the footprint.
-
-  The viewer gives each one a facade from its class and height: a curtain wall
-  for towers, ribbon windows for offices and shops, and punched windows for
-  the rest. Each has its mapped storeys, a shopfront at street level, and a
-  parapet.
+  - a wall colour, from the mapped facade material or else the region's
+    palette for its facade style (painted stucco and sandstock brick on
+    terraces, red face brick on Federation houses, sandstone on civic
+    buildings);
+  - a roof colour: the median aerial-photo colour inside the footprint,
+    leaned towards its material (terracotta, COLORBOND steel or slate);
+  - a roof shape. 214 are mapped; the rest are ruled flat or drawn from the
+    roof shapes mapped across Greater Sydney. 4,190 solids get pitched roofs
+    from a straight skeleton, with eaves, carved inside the building's
+    height. Scored against the mapped roofs, the rules get flat or pitched
+    right 69% of the time (`analysis/roof_model.json`);
+  - a facade style, storey and ground-floor heights, and shopfronts and
+    awnings on the edges that face a street.
 - **Landmarks** (`cities/sydney/city.py`, with the kit in
   `pipeline/meshkit.py`), each from its published dimensions:
   - **The Opera House:** its shells carry the chevron pattern of glossy white
@@ -332,13 +339,14 @@ it can only show a picture of it.
 
 ## 7. Where the Opus + Blender approach still wins
 
-- **Still-image realism.** Each building's own facade, real materials,
-  proper tree models, street furniture, and an artist's eye on composition.
-  Our facades are procedural, chosen from each building's class and height.
-  Our roofs are flat behind a parapet, and our trees are low-poly blobs.
+- **Still-image realism.** Facade detail, real materials, proper tree
+  models, street furniture, and an artist's eye on composition. Our facades
+  follow a grammar per style, and our roofs are inferred where they are not
+  mapped. Our trees are still low-poly blobs.
 - **Unmapped detail.** Things OSM does not hold, such as the Opera House's
-  real shell layout, cornices and awnings. The tile pattern and the bridge
-  deck are now built from published descriptions, but at approximate sizes.
+  real shell layout, ornament and each building's actual elevation. The tile
+  pattern and the bridge deck are now built from published descriptions, but
+  at approximate sizes.
 
 The sensible combination is to use our scene as the **ground truth layer**
 (footprints, heights, terrain, sun) and let Opus and Blender dress it. Load
@@ -358,8 +366,11 @@ numbers stay valid because the geometry they depend on is unchanged.
   OSM outline.
 - **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
   guessed heights of 7–14 m. They are not in the shadow analysis, so parks
-  read sunnier than they feel. Roof shapes are flat. Facades are chosen by class
-  and height, not taken from the buildings themselves.
+  read sunnier than they feel. Roof shapes are mapped for 3% of buildings;
+  the rest are inferred. Facades are a style per building, not the
+  building's own elevation. The surface model follows the pitched roofs.
+  Against flat prisms that removes 1.36 million m³, but moves no protected
+  place's sun by more than 0.1 points.
 - **Water.** The water comes from the Port Jackson and bay polygons. Overture's
   "ocean" polygon stops at the Heads and does not cover the harbour at all,
   which is another trap for a naive pipeline. There is no open bathymetry, so

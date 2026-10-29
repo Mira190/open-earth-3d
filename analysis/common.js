@@ -25,6 +25,7 @@ function load(id = cityArg()) {
     nx: scene.terrain.nx, ny: scene.terrain.ny, cell: scene.terrain.cell, x0: scene.frame.x[0], y1: scene.frame.y[1] };
   const frame = { x0: scene.frame.x[0], x1: scene.frame.x[1], y0: scene.frame.y[0], y1: scene.frame.y[1] };
   S.site({ lat: scene.city.lat, lon: scene.city.lon, tz: scene.city.timezone, locale: scene.city.locale });
+  S.roofs(B); // surface models follow the pitched roofs
   const out = path.join(ROOT, 'cities', id, 'analysis');
   fs.mkdirSync(out, { recursive: true });
   return { id, scene, cfg, B, P, T, frame, dataDir: D, outDir: out, year: scene.city.year || new Date().getFullYear() };

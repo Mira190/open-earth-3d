@@ -223,7 +223,7 @@
   "game": {
     "title": "Bayside on Foot",
     "local_name": "Melburnian",
-    "water_name": "bay",
+    "water_name": "the bay",
     "blurb": "Walk Port Phillip's shore from St Kilda Pier to the Brighton bathing boxes, rebuilt from open data under the real sun. Stay on the pier after sunset and the little penguins come ashore. Every fact you hear comes from the model or a cited source.",
     "climate": {
       "mean_max_c": [

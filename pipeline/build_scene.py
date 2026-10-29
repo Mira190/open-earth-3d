@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 import duckdb
 import numpy as np
 import shapely
+import shapely.affinity
 from PIL import Image, ImageDraw
 from scipy import ndimage
 from scipy.ndimage import map_coordinates
@@ -28,9 +29,12 @@ from pyproj import Transformer
 from scipy.spatial import cKDTree
 from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
+from shapely.ops import polylabel
 
+import roofs
+import typology
 from cityctx import ROOT, City, city_args, polygons
-from shore import FLOOR_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
+from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
 
 DEM_CELL = 5.0       # m, building bases and analysis
 TERRAIN_CELL = 10.0  # m, shipped mesh grid
@@ -328,6 +332,8 @@ class Heights:
         """(height above ground, source) for a building or part, best evidence first."""
         if rec.get("height") and rec.get("height_src") == "OpenStreetMap":
             return float(rec["height"]), "mapped"
+        if rec.get("height") and rec.get("height_src") == "PLATEAU":
+            return float(rec["height"]), "plateau"
         if rec.get("num_floors"):
             return self.storey_height(cls, rec["num_floors"]) + float(rec.get("roof_height") or 0), "floors"
         if rec.get("height"):
@@ -374,7 +380,7 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
     logh = np.log(np.maximum([m[2] for m in meta], 0.5))
     src = np.array([m[4] for m in meta])
     grp = np.array([group(m[1]) for m in meta])
-    ki = np.where(np.isin(src, ["mapped", "floors"]))[0]
+    ki = np.where(np.isin(src, ["mapped", "floors", "plateau", "plateau_lod1"]))[0]
     if len(ki) < 20:
         print("height imputation skipped: fewer than 20 buildings with known heights")
         return {"known_buildings": int(len(ki)), "applied": {}, "residuals": {"estimate": [], "ml": []}, "cv": {}}
@@ -486,6 +492,152 @@ def impute_heights(meta, solids, first_solid, geo, ml_raw):
             "residuals": {"estimate": np.round(res_est, 3).tolist(), "ml": np.round(res_ml, 3).tolist()}}
 
 
+# ---------------------------------------------------------------- measured heights (Project PLATEAU)
+
+# PLATEAU's building use (bldg:usage) as the Overture class the typology rules know, for the
+# buildings Overture leaves unclassed. Government offices (421) are modern offices here, and supply
+# and treatment plants (453) are industrial.
+PLATEAU_USAGE = {"401": "office", "402": "commercial", "403": "hotel", "404": "commercial", "411": "house", "412": "apartments",
+                 "413": "house", "414": "apartments", "415": "house", "421": "office", "422": "school", "431": "warehouse",
+                 "441": "industrial", "453": "industrial"}
+
+
+class Plateau:
+    """Measured building heights from Project PLATEAU (data/raw/<id>/plateau.json, written by
+    pipeline/fetch_plateau.py from the city's `plateau` block).
+
+    Each feature is a footprint with a height: a whole building (CityGML, 3D Tiles), or one roof
+    face of a building (the LOD2 vector tiles, where a podium and its tower are separate faces).
+    A footprint is cut along the features over it, tallest first, so each piece takes the height
+    of the feature above it. Pieces smaller than a few per cent of the footprint are rooftop
+    plant and are absorbed by the main piece. A whole building counts only where most of it lies
+    in the footprint, or most of the footprint in it, so a neighbour's overlapping edge does not
+    become a tier of its own. A footprint that the features cover less than half
+    of keeps its other height source. PLATEAU buildings that no Overture footprint covers (newer
+    or missing in OSM) are added as buildings of their own."""
+    MERGE_M, MIN_PIECE_M2, MIN_PIECE_SHARE = 1.5, 8.0, 0.04
+
+    def __init__(self, C):
+        self.tree, self.polys, self.feats, self.roofs = None, [], [], False
+        self.cfg = C.cfg.get("plateau") or {}
+        self.faces = "tiles" in self.cfg  # the vector tiles hold roof faces; the archives whole buildings
+        path = os.path.join(C.raw, "plateau.json")
+        if not self.cfg or not os.path.exists(path):
+            return
+        # footprints inside these discs belong to a parametric landmark (a lattice tower), not to a building
+        holes = [(C.fwd.transform(*e["at"]), e["radius_m"]) for e in self.cfg.get("exclude", [])]
+        for f in json.load(open(path)):
+            g = C.to_local(Polygon(f["rings"][0], f["rings"][1:]))
+            if any(math.hypot(g.centroid.x - c[0], g.centroid.y - c[1]) < r for c, r in holes):
+                continue
+            if not g.is_valid:
+                g = g.buffer(0)
+            if not g.is_empty and f["h"] > 0.5:
+                self.polys.append(g)
+                self.feats.append(f)
+        self.h = [f["h"] for f in self.feats]
+        self.roofs = any("roof" in f for f in self.feats)
+        self.tree = shapely.STRtree(self.polys)
+        print(f"plateau: {len(self.polys)} footprints indexed")
+
+    def source(self, i):
+        """'plateau' for a surveyed height, 'plateau_lod1' for a block height without a survey record."""
+        return "plateau" if self.feats[i].get("measured", True) else "plateau_lod1"
+
+    def named(self, name):
+        """The PLATEAU feature with this exact name, or None (for city.py hooks)."""
+        return next((f for f in self.feats if f.get("name") == name), None)
+
+    def roof_at(self, q):
+        """The roof PLATEAU's LOD2 model measured over most of footprint q, {roof, pitch, roof_h},
+        or None (fetch_plateau.py measures them with plateau.roofs)."""
+        if not self.roofs:
+            return None
+        best, best_a = None, 0.5 * q.area
+        for i in self.tree.query(q):
+            if "roof" in self.feats[i]:
+                a = q.intersection(self.polys[i]).area
+                if a > best_a:
+                    best, best_a = i, a
+        return None if best is None else {k: self.feats[best].get(k) for k in ("roof", "pitch", "roof_h")}
+
+    def match(self, g):
+        """The PLATEAU feature of the building that is the same as footprint g (at least half of
+        one lies in the other), or None: its storeys, use and name."""
+        if self.tree is None:
+            return None
+        best, best_a = None, 0.0
+        for j in self.tree.query(g):
+            a = g.intersection(self.polys[j]).area
+            if a > best_a and (a >= 0.5 * self.polys[j].area or a >= 0.5 * g.area):
+                best, best_a = j, a
+        return None if best is None else self.feats[best]
+
+    def pieces(self, q):
+        """[(polygon, height, source)] covering q, or None if PLATEAU does not cover at least half of it."""
+        if self.tree is None or q.area < 1:
+            return None
+        cand = []
+        for i in self.tree.query(q):
+            x = q.intersection(self.polys[i])
+            # a whole building (not a roof face) counts only if most of it lies in q or most of q in it:
+            # the sliver where a neighbour's outline overlaps q's is misregistration, not a taller tier
+            if x.area >= self.MIN_PIECE_M2 and (self.faces or x.area >= 0.5 * min(self.polys[i].area, q.area)):
+                cand.append((self.h[i], x, i))
+        if not cand or shapely.union_all([x for _, x, _ in cand]).area < 0.5 * q.area:
+            return None
+        cand.sort(key=lambda t: -t[0])
+        taken, out = Polygon(), []
+        for h, x, i in cand:  # tallest first, so a tower is not buried under its podium's face
+            x = x.difference(taken)
+            if x.area >= self.MIN_PIECE_M2:
+                out.append([h, x, i])
+                taken = taken.union(x)
+        if not out:
+            return None
+        main = max(out, key=lambda t: t[1].area)
+        # rooftop plant is small and only a few metres above the roof; a small face that stands
+        # well above the main roof is a spire or a dome (the Diet's tower, Tokyo Station's domes)
+        out = [t for t in out if t is main or t[1].area >= self.MIN_PIECE_SHARE * q.area or (self.faces and t[0] >= main[0] + 8.0 and t[1].area >= 25.0)]
+        rest = q.difference(shapely.union_all([t[1] for t in out]))
+        out.sort(key=lambda t: -t[0])
+        merged = []
+        for h, x, i in out:  # faces within MERGE_M of each other become one solid
+            for m in merged:
+                if abs(m[0] - h) < self.MERGE_M:
+                    m[1] = m[1].union(x)
+                    break
+            else:
+                merged.append([h, x, self.source(i)])
+        if rest.area > 0:  # uncovered remainder (walls, overhang): the height of the main piece
+            m = min(merged, key=lambda t: abs(t[0] - main[0]))
+            m[1] = m[1].union(rest)
+        return [(g, round(h, 1), src) for h, x, src in merged for g in polygons(x) if g.area >= 1]
+
+    def additions(self, covered):
+        """[(polygon, feature)]: PLATEAU footprints that the Overture buildings (union `covered`)
+        leave mostly uncovered, from `plateau.add_min_m2` (default 40 m²) up."""
+        if self.tree is None:
+            return []
+        min_area = self.cfg.get("add_min_m2", 40.0)
+        # the union is one huge multipolygon in a big city: test each footprint against its neighbours only
+        parts = polygons(covered)
+        ptree = shapely.STRtree(parts)
+        out, kept_ix = [], set()
+        for i in sorted(range(len(self.polys)), key=lambda i: -self.polys[i].area):
+            p = self.polys[i]
+            if p.area < min_area or self.h[i] < 2.0 or p.geom_type != "Polygon":
+                continue
+            near = ptree.query(p, predicate="intersects")
+            if len(near) and shapely.union_all([parts[k] for k in near]).intersection(p).area > 0.25 * p.area:
+                continue
+            if any(p.intersection(self.polys[j]).area > 0.4 * p.area for j in self.tree.query(p) if j in kept_ix):
+                continue
+            out.append((p, self.feats[i]))
+            kept_ix.add(i)
+        return out
+
+
 # ---------------------------------------------------------------- city hooks
 
 class Ctx:
@@ -494,6 +646,7 @@ class Ctx:
     def __init__(self, C, dem_land):
         self.city, self.dem_land = C, dem_land
         self.landmarks, self.labels = {}, {}
+        self.signs = []   # facade candidates a city hook may collect (cities/osaka/city.py)
         self.polygons = polygons
         # parts a parametric landmark draws instead: kept in the surface model for the sun
         # analyses, skipped by the renderers (scene.json "hidden_solids")
@@ -504,6 +657,317 @@ class Ctx:
 
     def ground(self, x, y):
         return float(sample(self.city, self.dem_land, x, y)[0])
+
+
+# ---------------------------------------------------------------- roofs, facades, rooftops
+
+PARAPET_STYLES = {"office", "glass", "apartment", "heritage", "retail", "civic", "mixed", "industrial"}
+
+
+def road_index(C, con, path):
+    """road sample points every 3 m with their directions, for shopfront frontages and ridge lines"""
+    if not os.path.exists(path):
+        return None
+    pts, dirs, main = [], [], []
+    for r in rows(con, path, "class, subtype, wkb"):
+        if r["subtype"] != "road" or r["class"] in ("footway", "path", "steps", "cycleway", "bridleway", "track", "unknown", None):
+            continue
+        g = C.to_local(swkb.loads(bytes(r["wkb"])))
+        for line in (g.geoms if hasattr(g, "geoms") else [g]):
+            if line.length < 1:
+                continue
+            for d in np.arange(0, line.length, 3.0):
+                a, b2 = line.interpolate(d), line.interpolate(min(d + 1.0, line.length))
+                v = np.array([b2.x - a.x, b2.y - a.y])
+                n = np.hypot(*v)
+                if n > 1e-6:
+                    pts.append((a.x, a.y))
+                    dirs.append(v / n)
+                    main.append(r["class"] in ("primary", "secondary", "tertiary", "pedestrian", "living_street", "trunk"))
+    if not pts:
+        return None
+    pts = np.array(pts)
+    return cKDTree(pts), np.array(dirs), pts, np.array(main)
+
+
+ROOF_SRC = ["rule", "prior", "mapped", "measured"]
+
+
+def pack_roof(pos, idx):
+    """a roof mesh as [x0_dm, y0_dm, positions, indices]: positions int16 little-endian
+    (x - x0, y - y0, z), indices uint8 when there are fewer than 256 vertices, else uint16,
+    both base64 (the terrain grid's encoding)"""
+    q = np.asarray(pos, np.int64).reshape(-1, 3)
+    x0, y0 = int(q[0, 0]), int(q[0, 1])
+    q[:, 0] -= x0
+    q[:, 1] -= y0
+    ib = np.asarray(idx, "<u2" if len(q) > 255 else "u1")
+    return [x0, y0, base64.b64encode(q.astype("<i2").tobytes()).decode(), base64.b64encode(ib.tobytes()).decode()]
+
+
+NO_TAGS = {"roof_shape": None, "roof_height": None, "roof_direction": None, "roof_orientation": None, "roof_material": None,
+           "num_floors": None, "parametric": False, "part": False, "measured": None}
+
+
+def pad_records(meta, solids, sinfo, bextra):
+    """roof tags and facade data for buildings and solids added after the main loop
+    (a city hook, a surveyed source): none mapped, a seed from the index"""
+    sinfo += [dict(NO_TAGS, parametric=solids[k][0] < len(meta) and meta[solids[k][0]][4] == "parametric")
+              for k in range(len(sinfo), len(solids))]
+    bextra += [{"seed": (bi * 2654435761) & 0xFFFFFF, "facade_color": None, "facade_material": None} for bi in range(len(bextra), len(meta))]
+
+
+def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=()):
+    """Roof meshes, facade styles, storeys, wall colours, shopfront frontages and
+    rooftop plant for the finished buildings. Returns (roof rows, frontage rows,
+    prop rows, a summary for height_model.json)."""
+    pad_records(meta, solids, sinfo, bextra)
+    R = typology.region(C.cfg)
+    overrides = C.cfg.get("building_styles", {})
+    by_b = defaultdict(list)
+    for k, s in enumerate(solids):
+        by_b[s[0]].append(k)
+    roof_rows, front_rows, prop_rows = [], [], []
+    roofed = set()
+    stat = Counter()
+    for bi, m in enumerate(meta):
+        ks = by_b.get(bi, [])
+        if not ks:
+            continue
+        cls, floors, seed = m[1], int(m[3] or 0), bextra[bi]["seed"]
+        polys = {k: Polygon(np.array(solids[k][4]).reshape(-1, 2) / 10,
+                            [np.array(h).reshape(-1, 2) / 10 for h in solids[k][5:]]) for k in ks}
+        area_b = sum(p.area for p in polys.values())
+        top_b = max((solids[k][3] - solids[k][2]) / 10 + solids[k][2] / 10 for k in ks)
+        parametric = any(sinfo[k]["parametric"] for k in ks)
+        _, long_b, short_b = roofs.long_axis(np.array(solids[ks[0]][4]).reshape(-1, 2) / 10)
+        narrow = short_b <= 7.0 and long_b >= 2.5 * short_b
+        style = "plain" if parametric else typology.facade_style(R, cls, top_b, floors, area_b, bextra[bi]["facade_material"], m[0], seed,
+                                                            overrides, narrow)
+        main_shape, main_src, main_mat = "flat", "rule", None
+        eave_main = top_b
+        for k in ks:
+            s, info, poly = solids[k], sinfo[k], polys[k]
+            if parametric or k in hidden:  # a landmark draws it; the analyses keep it as it is
+                continue
+            h0, top = s[2] / 10, s[3] / 10
+            mapped, meas = info["roof_shape"], info.get("measured")
+            if mapped:
+                shape, src = mapped.replace("half_hipped", "half-hipped"), "mapped"
+            elif meas:  # measured from a LOD2 model
+                shape, src = meas["roof"], "measured"
+            elif len(ks) > 1 and not (top_b < 12 and area_b < 600):
+                shape, src = "flat", "rule"  # parts of a larger building keep flat roofs unless mapped
+            else:
+                shape, src = typology.infer_roof(R, cls, floors, top_b, area_b, seed + k)
+            if shape in ("flat", "sawtooth") or shape not in roofs.CODES and shape not in ("spherical",):
+                if shape not in ("flat",):
+                    stat["unsupported:" + shape] += 1
+                shape = "flat"
+            mat = typology.roof_material(R, shape, info["roof_material"], m[8], top, seed, typology.roof_group(cls, floors, top_b, area_b))
+            if shape != "flat":
+                rings = [np.array(s[4]).reshape(-1, 2) / 10] + [np.array(h).reshape(-1, 2) / 10 for h in s[5:]]
+                room = top - h0
+                cap = min(R["roof_cap_m"] if shape not in ("dome", "onion", "spherical") else 60.0,
+                          room - (2.0 if cls in typology.SMALL else 2.4))
+                axis, across = None, info["roof_orientation"] == "across"
+                if shape == "gabled_across":  # measured: the ridge runs across the long axis
+                    shape, across = "gabled", True
+                gable = shape in ("gabled", "half-hipped", "gambrel", "round", "saltbox")
+                if gable and not info["roof_orientation"] and src != "measured":
+                    _, long_side, short_side = roofs.long_axis(rings[0])
+                    if cls in R.get("ridge_follows_street", ()) and roads is not None:
+                        dist, j = roads[0].query(np.array(poly.centroid.coords[0]))
+                        if dist < 30:
+                            axis = roads[1][j]
+                    # a narrow, deep house (a terrace, a machiya) carries its ridge across, along the street
+                    if axis is None and short_side < 7.5 and long_side > 1.8 * short_side:
+                        across = True
+                rm, built, rh = None, "flat", 0.0
+                if cap >= 0.8:
+                    pitch = R.get("pitch_by_group", {}).get(typology.roof_group(cls, floors, top_b, area_b), R["pitch"].get(mat, 25))
+                    mh = float(info["roof_height"]) if info["roof_height"] else None
+                    if src == "measured":
+                        pitch, mh = min(max(meas.get("pitch") or pitch, 5.0), 60.0), meas.get("roof_h") or mh
+                    for attempt in (0, 1):
+                        rr = rings if attempt == 0 else [np.asarray(Polygon(rings[0]).simplify(0.6).exterior.coords)[:-1]]
+                        if attempt and len(rr[0]) < 3:
+                            break
+                        rm, built, rh = roofs.roof_mesh(rr, shape, pitch=pitch, cap=cap, height=min(mh, cap) if mh else None,
+                                                        direction=info["roof_direction"], across=across, axis=axis,
+                                                        overhang=typology.OVERHANG.get(style, 0.0) if not info["part"] else 0.0)
+                        if rm is not None and roofs.check(rm, rr, rh, built):
+                            break
+                        rm = None
+                if rm is None or rh < 0.5:
+                    stat["fallback_flat"] += rm is None and cap >= 0.8
+                    stat["too_low"] += cap < 0.8 or (rm is not None and rh < 0.5)
+                    shape = "flat"
+                else:
+                    eave = top - rh
+                    v = np.asarray(rm.v)
+                    q = np.c_[np.round(v[:, :2] * 10), np.round((eave + v[:, 2]) * 10)].astype(int)
+                    uniq, remap = {}, []
+                    for p_ in q.tolist():  # shared corners once
+                        remap.append(uniq.setdefault(tuple(p_), len(uniq)))
+                    pos = [c for p_ in uniq for c in p_]
+                    idx = [remap[i] for t in rm.roof + rm.wall for i in t]
+                    roof_rows.append([k, s[3], round(eave * 10), roofs.CODES[built]] + pack_roof(pos, idx) + [len(rm.roof)])
+                    roofed.add(k)
+                    shape = built
+                    if top >= top_b - 0.01:
+                        eave_main = eave
+            stat[f"{src}:{shape}"] += 1
+            if top >= top_b - 0.01 or main_mat is None:
+                main_shape, main_src, main_mat = shape, src, mat
+        # facade: storeys over the wall height, shopfronts on street frontages
+        storefront_ok = style in typology.STOREFRONT_STYLES and (cls in R["storefront_classes"] or (not cls and top_b >= 12))
+        # flats and unclassed buildings have shops only on main streets
+        main_only = cls in typology.FLATS or not cls
+        fronts = {}
+        if storefront_ok and roads is not None:
+            for k in ks:
+                if solids[k][2] == 0:
+                    e = typology.frontages(np.array(solids[k][4]).reshape(-1, 2) / 10, roads, main_only=main_only)
+                    if e:
+                        fronts[k] = e
+        awning = bool(fronts) and typology.unit(seed, 21) < R["awning"]
+        if style == "machiya" and roads is not None:  # the street pent roof (hisashi) over a machiya front
+            for k in ks:
+                e = typology.frontages(np.array(solids[k][4]).reshape(-1, 2) / 10, roads)
+                if e:
+                    fronts[k] = e
+            awning = bool(fronts)
+        for k, es in fronts.items():
+            flag = (2 if awning else 0) + (0 if style == "machiya" else 1)
+            front_rows.append([k] + [v for e in es for v in (e, flag)])
+        wall_h = max(eave_main - min(solids[k][2] for k in ks) / 10, 2.4)
+        storey, ground = typology.storeys(style, wall_h, floors, bool(fronts))
+        pal = R.get("palettes", {}).get(style) or typology.PALETTES[style]
+        fc, fmat = bextra[bi]["facade_color"], bextra[bi]["facade_material"]
+        if fc and str(fc).startswith("#") and len(fc) == 7:
+            wall = fc
+        elif fmat in FACADE:
+            wall = typology.jitter(FACADE[fmat], seed)
+        else:
+            wall = typology.jitter(pal[seed % len(pal)], seed)
+        m[7] = wall
+        if main_shape != "flat" and main_mat:  # the roof's colour leans towards its material's
+            m[8] = typology.roof_colour(R, main_mat, m[8], seed, typology.colour_says(R, m[8]))
+        m += [typology.STYLE_CODE[style], storey, ground, typology.ROOF_MATERIALS.index(main_mat or "membrane"), seed & 0xFFFF,
+              roofs.CODES.get(main_shape, 0), ROOF_SRC.index(main_src)]
+        # rooftop plant on flat roofs
+        if style in PARAPET_STYLES and not parametric:
+            for k in ks:
+                if k in roofed:
+                    continue
+                prop_rows += rooftop(k, solids[k], polys[k], style, seed, top_b, floors, R)
+    return roof_rows, front_rows, prop_rows, dict(stat)
+
+
+FAMILY = {"gabled_across": "gabled", "saltbox": "gabled", "half-hipped": "hipped", "pyramidal": "hipped"}
+
+
+def score_roofs(pairs):
+    """[(truth, prediction)] -> flat-or-pitched and shape-family agreement"""
+    if not pairs:
+        return {"n": 0}
+    fam = lambda x: FAMILY.get(x, x)
+    pitched = lambda x: x != "flat"
+    conf = Counter((pitched(t), pitched(p)) for t, p in pairs)
+    n, tp, tn = len(pairs), conf[(True, True)], conf[(False, False)]
+    return {"n": n, "flat_vs_pitched_accuracy": round((tp + tn) / n, 3),
+            "exact_shape_accuracy": round(sum(t == p for t, p in pairs) / n, 3),
+            "family_accuracy": round(sum(fam(t) == fam(p) for t, p in pairs) / n, 3),
+            "pitched_recall": round(tp / max(1, tp + conf[(True, False)]), 3), "flat_recall": round(tn / max(1, tn + conf[(False, True)]), 3),
+            "confusion_pitched": {"true_pitched_pred_pitched": tp, "true_pitched_pred_flat": conf[(True, False)],
+                                  "true_flat_pred_flat": tn, "true_flat_pred_pitched": conf[(False, True)]},
+            "truth": dict(Counter(map(fam, (t for t, _ in pairs))).most_common())}
+
+
+def validate_roof_rules(C, meta, solids, sinfo, bextra):
+    """Predict every mapped roof shape, and every roof a LOD2 model measured, with the rules
+    alone and score them; and where a roof is both mapped and measured, how the two agree."""
+    R = typology.region(C.cfg)
+    first = {}
+    for k, s in enumerate(solids):
+        first.setdefault(s[0], k)
+    mapped, measured, both = [], [], []
+    for bi, m in enumerate(meta):
+        k = first.get(bi)
+        if k is None or sinfo[k]["part"] or sinfo[k]["parametric"]:
+            continue
+        truth, meas = sinfo[k]["roof_shape"], sinfo[k].get("measured")
+        truth = truth and truth.replace("half_hipped", "half-hipped")
+        if not truth and not meas:
+            continue
+        area = Polygon(np.array(solids[k][4]).reshape(-1, 2) / 10).area
+        pred, _ = typology.infer_roof(R, m[1], int(m[3] or 0), m[2], area, bextra[bi]["seed"] + k)
+        if truth:
+            mapped.append((truth, pred))
+        if meas:
+            measured.append((meas["roof"], pred))
+        if truth and meas:
+            both.append((truth, meas["roof"]))
+    out = score_roofs(mapped)
+    if measured:
+        out["vs_measured"] = score_roofs(measured)
+    if both:
+        out["measured_vs_mapped"] = score_roofs(both)
+    return out
+
+
+def rooftop(k, s, poly, style, seed, top_b, floors, R):
+    """deterministic plant on a flat roof: a plant room on towers, boxes elsewhere,
+    water tanks where the region has them. Rows: [solid, kind, x, y, w, d, h (dm), angle (centidegrees)]"""
+    top = s[3] / 10
+    if top < 6 or poly.area < 60:
+        return []
+    inner = poly.buffer(-2.0)
+    if inner.is_empty or inner.area < 8:
+        return []
+    inner = max(polygons(inner), key=lambda p: p.area)
+    ax, _, _ = roofs.long_axis(np.asarray(poly.exterior.coords)[:-1])
+    ang = math.degrees(math.atan2(ax[1], ax[0]))
+    perp = np.array([-ax[1], ax[0]])
+    out, placed = [], []
+    rng = np.random.default_rng(seed * 7919 + k)
+
+    def fits(cx, cy, w, d):
+        q = shapely.affinity.rotate(box(cx - w / 2, cy - d / 2, cx + w / 2, cy + d / 2), ang, origin=(cx, cy))
+        if not inner.contains(q) or any(q.intersects(p) for p in placed):
+            return False
+        placed.append(q.buffer(0.8))
+        return True
+
+    x0, y0, x1, y1 = inner.bounds
+    if top >= 30:  # plant room / lift overrun
+        c = polylabel(inner, 0.5)
+        L = np.asarray(inner.exterior.coords) @ ax
+        Wd = np.asarray(inner.exterior.coords) @ perp
+        w, d = min(np.ptp(L) * 0.45, 22.0), min(np.ptp(Wd) * 0.45, 16.0)
+        h = 2.6 + 1.6 * rng.random()
+        for f in (1.0, 0.75, 0.55):
+            if w * f > 3 and d * f > 3 and fits(c.x, c.y, w * f, d * f):
+                out.append([k, 1, round(c.x * 10), round(c.y * 10), round(w * f * 10), round(d * f * 10), round(h * 10), round(ang * 100)])
+                break
+    n = int(min(10, poly.area / (350 if style not in ("apartment",) else 700)))
+    if R.get("water_tanks") and 4 <= (floors or top / 3.2) <= 15 and typology.unit(seed, 31) < R["water_tanks"]:
+        for _ in range(20):
+            cx, cy = x0 + (x1 - x0) * rng.random(), y0 + (y1 - y0) * rng.random()
+            w = 2.0 + rng.random() * 1.5
+            if fits(cx, cy, w, w * 0.8):
+                out.append([k, 2, round(cx * 10), round(cy * 10), round(w * 10), round(w * 8), round((2.2 + rng.random()) * 10), round(ang * 100)])
+                break
+    tries = 0
+    while n > 0 and tries < 60:
+        tries += 1
+        cx, cy = x0 + (x1 - x0) * rng.random(), y0 + (y1 - y0) * rng.random()
+        w, d = 1.4 + rng.random() * 2.6, 1.1 + rng.random() * 1.8
+        if fits(cx, cy, w, d):
+            out.append([k, 0, round(cx * 10), round(cy * 10), round(w * 10), round(d * 10), round((0.9 + rng.random() * 1.2) * 10), round(ang * 100)])
+            n -= 1
+    return out
 
 
 # ---------------------------------------------------------------- main
@@ -530,6 +994,10 @@ def build(C):
     sm = shore_map(C, con, raw, rows, raster_mask, polygons, sea, extent, cfg)
     wr, wc = np.nonzero(water)
     dem[water] = -depth_at(sm, C.x0 + (wc + 0.5) * DEM_CELL, C.y1 - (wr + 0.5) * DEM_CELL, C.x0, C.y1)
+    # the first point out from a quay stays just under the surface, so on the 5 m grid the waterline
+    # falls at the quay's edge and not up to a cell inland (a river walk beside a canal would go under)
+    edge = water & ndimage.binary_dilation(~water)
+    dem[edge] = np.maximum(dem[edge], -QUAY_SHELF_M)
     sm["image"].save(os.path.join(C.out, "shore.png"), optimize=True)
     ctx = Ctx(C, dem_land)
 
@@ -565,11 +1033,24 @@ def build(C):
     # buildings: parts replace their outline (Overture/OSM convention)
     labels_cfg = cfg.get("labels", {})
     adjust = C.hook("adjust_building")
+    plateau = Plateau(C)
+    ctx.plateau = plateau
     blds = rows(con, raw("building"))
     parts = defaultdict(list)
     for p in rows(con, raw("building_part")):
         parts[p["building_id"]].append(p)
-    meta, solids, first_solid, geo, ml_raw, floor_res, hidden_solids = [], [], {}, {}, {}, [], []
+    meta, solids, first_solid, geo, ml_raw, floor_res, sinfo, bextra, hidden_solids = [], [], {}, {}, {}, [], [], [], []
+    plateau_vs_osm, n_newer = [], 0
+    if plateau.tree is not None:  # surveyed buildings that Overture lacks
+        covered = shapely.union_all([C.to_local(swkb.loads(bytes(b["wkb"]))).buffer(0) for b in blds])
+        extra = [(q, f) for q, f in plateau.additions(covered) if extent.contains(q.centroid)]
+        for k, (q, f) in enumerate(extra):
+            ll = shapely.transform(q, lambda c: np.column_stack(C.inv.transform(c[:, 0], c[:, 1])))
+            blds.append({"id": f"{k:08x}-plateau", "name": f.get("name"), "class": PLATEAU_USAGE.get(f.get("usage")), "subtype": None,
+                         "height": f["h"], "min_height": None, "num_floors": f.get("storeys"), "min_floor": None, "roof_height": None,
+                         "is_underground": False, "has_parts": False, "src": "PLATEAU", "record_id": None, "height_src": "PLATEAU",
+                         "wkb": shapely.to_wkb(ll)})
+        print(f"plateau: {len(extra)} buildings added that Overture does not have")
     for b in blds:
         if b["is_underground"]:
             continue
@@ -577,7 +1058,26 @@ def build(C):
         if not extent.contains(g.centroid):
             continue
         cls = b["class"] or b["subtype"] or ""
+        pl = plateau.match(g)
+        if pl is not None:  # PLATEAU's record of the building: its use and storeys where Overture has none
+            cls = cls or PLATEAU_USAGE.get(pl.get("usage"), "")
+            if not b["num_floors"] and pl.get("storeys"):
+                b["num_floors"] = pl["storeys"]
         top_b = H.resolve(b, cls)
+        # PLATEAU's measured height outranks OSM heights and floor counts (a block height without a
+        # survey record, plateau_lod1, is a coarser measurement). A building that OSM has much taller
+        # than the survey is newer than the survey (a tower built on a site that was empty or low),
+        # so OSM keeps it.
+        pcs = plateau.pieces(g)
+        if pcs:
+            top_p = max(h for _, h, _ in pcs)
+            if top_b[1] in ("mapped", "floors") and top_b[0] > 1.3 * top_p + 6:
+                n_newer += 1
+                pcs = None
+            else:
+                if b["height"] and b["height_src"] == "OpenStreetMap":
+                    plateau_vs_osm.append(math.log(b["height"] / top_p))
+                top_b = (top_p, next(src for _, h, src in pcs if h == top_p))
         bi = len(meta)
         if b["has_parts"] and parts.get(b["id"]):
             geoms = []
@@ -586,17 +1086,35 @@ def build(C):
                     continue
                 pg = C.to_local(swkb.loads(bytes(p["wkb"])))
                 h, src = H.resolve(p, cls, parent=top_b)
-                geoms += [[q, H.min_height(p, cls), h, src, p["name"]] for q in polygons(pg)]
+                geoms += [[q, H.min_height(p, cls), h, src, p["name"], p] for q in polygons(pg)]
+            if pcs and len({h for _, h, _ in pcs}) > 1:
+                # roof faces at several heights (a podium and its tower): each part is cut along the faces over it
+                cut = []
+                for gm in geoms:
+                    pc = plateau.pieces(gm[0])
+                    cut += [[q, gm[1], max(h, gm[1] + 1.0), src, gm[4], gm[5]] for q, h, src in pc] if pc else [gm]
+                geoms = cut
+            elif pcs and geoms:
+                # one surveyed height for the whole building: parts mapped with floor counts can miss
+                # it by 10% or more (the tower parts), so the parts of that tower scale up to it
+                m = max(g_[2] for g_ in geoms)
+                if m > 0 and top_b[0] > 1.05 * m:
+                    for g_ in geoms:
+                        if g_[2] >= 0.8 * m:
+                            g_[2], g_[3] = round(g_[2] * top_b[0] / m, 1), top_b[1]
+        elif pcs:
+            h0 = H.min_height(b, cls)
+            geoms = [[q, h0, max(h, h0 + 1.0), src, None, b] for q, h, src in pcs]
         else:
-            geoms = [[q, H.min_height(b, cls), top_b[0], top_b[1], None] for q in polygons(g)]
+            geoms = [[q, H.min_height(b, cls), top_b[0], top_b[1], None, b] for q in polygons(g)]
         if adjust:
             geoms = adjust(b, cls, g, geoms, ctx)
-        for q, h0, h1, src, pname in geoms:
+        for q, h0, h1, src, pname, *_ in geoms:
             if pname in labels_cfg and labels_cfg[pname] not in ctx.labels:
                 c = q.centroid
                 ctx.labels[labels_cfg[pname]] = [round(c.x, 1), round(c.y, 1), round(ctx.ground(c.x, c.y) + h1, 1)]
         top, srcs, first = 0.0, Counter(), len(solids)
-        for q, h0, h1, src, _ in geoms:
+        for q, h0, h1, src, _, *rec in geoms:
             hidden = id(q) in ctx.hidden
             q = q.simplify(0.15, preserve_topology=True)
             if q.is_empty or q.area < 2 or h1 <= h0:
@@ -608,6 +1126,10 @@ def build(C):
             zb = max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
             solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10), ring(q.exterior.coords)] +
                           [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
+            r0 = rec[0] if rec else b  # roof tags of the part, else of the building
+            sinfo.append({k: r0.get(k) for k in ("roof_shape", "roof_height", "roof_direction", "roof_orientation", "roof_material", "num_floors")}
+                         | {"parametric": src == "parametric", "part": bool(rec) and r0 is not b,
+                            "measured": plateau.roof_at(q) if src != "parametric" else None})
             top = max(top, h1)
             srcs[src] += q.area
             a0 = geo.setdefault(bi, [0.0, 0.0, 0.0])
@@ -622,18 +1144,27 @@ def build(C):
         rid = b["record_id"] or ""
         seed = int(b["id"].replace("-", "")[:8], 16)
         meta.append([b["name"] or "", cls, round(top, 1), b["num_floors"] or 0, srcs.most_common(1)[0][0], b["src"][0], rid.split("@")[0],
-                     wall_colour(b, cls, top, seed), roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
+                     None, roof_colour(C, ortho, g if isinstance(g, Polygon) else g.convex_hull, top), round(top, 1)])
+        bextra.append({"seed": seed & 0xFFFFFF, "facade_color": b.get("facade_color"), "facade_material": b.get("facade_material")})
         first_solid[bi] = first
         if b["height_src"] == "Microsoft ML Buildings" and b["height"]:
             ml_raw[bi] = float(b["height"])
         if b["height_src"] == "OpenStreetMap" and b["height"] and b["num_floors"] and not b["has_parts"]:
             floor_res.append(math.log(H.storey_height(cls, b["num_floors"]) / b["height"]))
 
+    if plateau.tree is not None:
+        print(f"plateau: {n_newer} OSM buildings are much taller than the survey and kept (built since)")
     model = impute_heights(meta, solids, first_solid, geo, ml_raw)
     model["residuals"]["floors"] = np.round(floor_res, 3).tolist()
     if floor_res:
         model["cv"]["floors_vs_surveyed"] = {"n": len(floor_res), "median_factor": round(float(np.exp(np.median(np.abs(floor_res)))), 3),
                                              "median_bias": round(float(np.median(floor_res)), 3)}
+    if plateau_vs_osm:
+        r = np.array(plateau_vs_osm)
+        model["cv"]["osm_vs_plateau"] = {"n": len(r), "median_factor": round(float(np.exp(np.median(np.abs(r)))), 3),
+                                         "p90_factor": round(float(np.exp(np.percentile(np.abs(r), 90))), 3),
+                                         "median_bias": round(float(np.median(r)), 3)}
+        model["residuals"]["osm_vs_plateau"] = np.round(r, 3).tolist()
     json.dump(model, open(os.path.join(C.analysis, "height_model.json"), "w"), indent=1)
     print("height imputation:", {k: v for k, v in model.items() if k not in ("residuals", "missing_correction")})
 
@@ -677,6 +1208,18 @@ def build(C):
                 if labels_cfg.get(meta[bi][0]) in ctx.labels:
                     ctx.labels[labels_cfg[meta[bi][0]]][2] = round(solids[tallest][1] / 10 + r["ref_m"], 1)
     print("reference corrections:", fixes)
+
+    # roofs, facades and rooftops on the finished heights
+    roads = road_index(C, con, raw("segment"))
+    roof_rows, front_rows, prop_rows, roof_stat = dress_buildings(C, meta, solids, sinfo, bextra, roads, set(hidden_solids))
+    roof_check = validate_roof_rules(C, meta, solids, sinfo, bextra)
+    json.dump({"note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. "
+                       "The check predicts each mapped roof as if it were not mapped.",
+               "counts": roof_stat, "check": roof_check, "roofs_built": len(roof_rows), "rooftop_props": len(prop_rows),
+               "frontage_solids": len(front_rows), "skeleton_failures": roofs.FAILS},
+              open(os.path.join(C.analysis, "roof_model.json"), "w"), indent=1)
+    print(f"roofs: {len(roof_rows)} built; {roof_stat}")
+    print("roof rules against mapped and measured roofs:", roof_check)
     src_count = Counter(m[4] for m in meta)
     share = Counter()
     for i, m in enumerate(meta):
@@ -725,10 +1268,11 @@ def build(C):
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
 
-    keep = ("id", "name", "country", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
-            "minor_labels", "place_labels", "sun_hours_region", "renders")
+    keep = ("id", "name", "country", "country_code", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
+            "minor_labels", "place_labels", "sun_hours_region", "renders", "night_ambient")
     scene = {
-        "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0},
+        "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0, "architecture": typology.region_name(cfg),
+                                                         "signage": typology.region(cfg)["signage"]},
         "frame": {"proj": C.proj, "lon0": C.lon0, "lat0": C.lat0, "x": [C.x0, C.x1], "y": [C.y0, C.y1], "units": f"m, z = {cfg.get('vertical_datum', 'm')}"},
         "terrain": {"file": "terrain.json", "nx": tg.shape[1], "ny": tg.shape[0], "cell": TERRAIN_CELL, "scale": 0.1,
                     "origin": "north-west, row-major, rows go south", "bare_earth": cfg["terrain"].get("bare_earth", False)},
@@ -744,6 +1288,7 @@ def build(C):
         "landmarks": ctx.landmarks,
         "labels": ctx.labels,
         "sources": {
+            **({"heights": cfg["plateau"]["attribution"]} if cfg.get("plateau") else {}),
             "buildings": f"Overture Maps Foundation, release {cfg['overture_release']} (OpenStreetMap contributors, ODbL; Microsoft ML Buildings, ODbL)",
             "terrain": cfg["terrain"].get("attribution", cfg["terrain"]["type"]),
             "imagery": cfg["imagery"].get("attribution", ""),
@@ -754,11 +1299,22 @@ def build(C):
     if os.path.exists(ref_path):
         acc = json.load(open(ref_path))
         scene["sources"]["reference_heights"] = cfg.get("reference_heights", {}).get("source", "published heights")
-        scene["accuracy"] = {"summary": acc["summary"], "note": acc["note"], "source": cfg.get("reference_heights", {}).get("source"),
+        scene["accuracy"] = {"summary": acc["summary"], "note": acc["note"], "method": acc.get("method"), "source": cfg.get("reference_heights", {}).get("source"),
                              "rows": [[r["name"], r["ref_m"], r.get("model_m"), r.get("error_pct"), r["match"], r.get("how")] for r in acc["rows"]]}
     json.dump(scene, open(os.path.join(C.out, "scene.json"), "w"), separators=(",", ":"))
-    json.dump({"fields": ["name", "class", "top_m", "floors", "height_src", "footprint_src", "osm_id", "wall", "roof", "open_data_top_m"], "b": meta,
-               "s_fields": ["building", "base_dm", "min_dm", "top_dm", "ring_dm", "...holes_dm"], "s": solids},
+    json.dump({"fields": ["name", "class", "top_m", "floors", "height_src", "footprint_src", "osm_id", "wall", "roof", "open_data_top_m",
+                          "style (index in styles)", "storey_m", "ground_floor_m", "roof_material (index)", "seed", "roof_shape (index)",
+                          "roof_src (index)"], "b": meta,
+               "s_fields": ["building", "base_dm", "min_dm", "top_dm", "ring_dm", "...holes_dm"], "s": solids,
+               "styles": typology.STYLES, "roof_shapes": list(roofs.CODES), "roof_materials": typology.ROOF_MATERIALS,
+               "roof_sources": ROOF_SRC,
+               "r_fields": ["solid", "top_dm", "eave_dm", "shape", "x0_dm", "y0_dm",
+                            "xyz: int16le base64, (x - x0, y - y0, z above the solid's base) in dm",
+                            "triangles: base64 vertex indices, uint8 below 256 vertices else uint16le",
+                            "roof_triangles (the rest are walls and soffits)"],
+               "r": roof_rows,
+               "f_fields": ["solid", "edge, flags (1 shopfront, 2 awning) ..."], "f": front_rows,
+               "p_fields": ["solid", "kind (0 plant box, 1 plant room, 2 water tank)", "x_dm", "y_dm", "w_dm", "d_dm", "h_dm", "angle_cdeg"], "p": prop_rows},
               open(os.path.join(C.out, "buildings.json"), "w"), separators=(",", ":"))
     json.dump({"piers": piers, "places": places, "trees": trees}, open(os.path.join(C.out, "places.json"), "w"), separators=(",", ":"))
     write_index()
@@ -770,6 +1326,9 @@ def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
     for c in idx["cities"]:
+        own = os.path.join(ROOT, "cities", c["id"], "city.json")
+        if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
+            c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
         c["built"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "scene.json"))
         c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)

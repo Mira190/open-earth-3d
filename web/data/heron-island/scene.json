@@ -1,0 +1,339 @@
+{
+ "id": "heron-island",
+ "name": "Heron Island",
+ "kind": "marine",
+ "origin": [
+  151.915,
+  -23.455
+ ],
+ "timezone": "Australia/Brisbane",
+ "extent_m": [
+  -9700,
+  9700,
+  -7200,
+  7100
+ ],
+ "vertical_datum": "m MSL",
+ "terrain": {
+  "file": "terrain.bin",
+  "w": 647,
+  "h": 477,
+  "cell_m": 30,
+  "x0": -9700,
+  "y1": 7100,
+  "units_m": 0.1
+ },
+ "ground": {
+  "file": "ground.jpg",
+  "w": 1940,
+  "h": 1430,
+  "px_m": 10.0
+ },
+ "habitat": {
+  "file": "habitat.png",
+  "classes": {
+   "0": "deep water",
+   "1": "sand",
+   "2": "reef and rock",
+   "3": "seagrass and algae",
+   "4": "rubble",
+   "10": "forest",
+   "11": "shrub",
+   "12": "grass",
+   "13": "beach and bare",
+   "14": "mangrove",
+   "15": "built",
+   "16": "wetland"
+  }
+ },
+ "start": {
+  "x": -900,
+  "y": 1900,
+  "z": 130,
+  "yaw": -125,
+  "pitch": -14,
+  "date": null,
+  "note": "north-west of the cay over the reef edge, looking south-east across the island and Heron Reef"
+ },
+ "optics": {
+  "K": [
+   0.4,
+   0.09137102476964631,
+   0.053538716359018884
+  ],
+  "Rinf": [
+   0.002099999925121665,
+   0.009099999442696571,
+   0.02449999935925007
+  ],
+  "g": 2.2
+ },
+ "sources": {
+  "terrain": "AusSeabed / Geoscience Australia, Great Barrier Reef Bathymetry 2020 30 m (not for navigation)",
+  "imagery": "Contains modified Copernicus Sentinel-2 data (ESA, Copernicus open licence), via Earth Search on AWS",
+  "landcover": "ESA WorldCover 10 m 2021 v200 (CC BY 4.0)"
+ },
+ "pois": [
+  {
+   "id": "heron-island",
+   "name": "Heron Island",
+   "kind": "island",
+   "lonlat": [
+    151.9149,
+    -23.44237
+   ],
+   "src": "osm",
+   "osm": "way 723708198",
+   "x": -10,
+   "y": 1399
+  },
+  {
+   "id": "heron-beach",
+   "name": "Heron Island beach, north shore",
+   "kind": "beach",
+   "lonlat": [
+    151.915,
+    -23.44117
+   ],
+   "src": "osm",
+   "osm": "relation 10558459",
+   "note": "a point on the island's mapped beach",
+   "x": 0,
+   "y": 1532
+  },
+  {
+   "id": "heron-jetty",
+   "name": "Heron Island jetty",
+   "kind": "marina",
+   "lonlat": [
+    151.91035,
+    -23.44206
+   ],
+   "src": "osm",
+   "osm": "node 4058359824 (ferry terminal), way 1023505426 (pier)",
+   "note": "Wikipedia: a small artificial channel and wooden jetty on the western shore",
+   "x": -475,
+   "y": 1433
+  },
+  {
+   "id": "heron-helipad",
+   "name": "Heron Island Helipad",
+   "kind": "helipad",
+   "lonlat": [
+    151.91148,
+    -23.44177
+   ],
+   "src": "osm",
+   "osm": "way 544294114",
+   "x": -360,
+   "y": 1465
+  },
+  {
+   "id": "protector-wreck",
+   "name": "Wreck of HMCS Protector",
+   "kind": "cultural",
+   "lonlat": [
+    151.90878,
+    -23.44294
+   ],
+   "src": "osm",
+   "osm": "way 569784277",
+   "note": "Wikipedia: the rusted wreck lies at the entrance to the channel; it was towed there in 1945 to form a breakwater",
+   "x": -636,
+   "y": 1336
+  },
+  {
+   "id": "research-station",
+   "name": "Heron Island Research Station",
+   "kind": "cultural",
+   "lonlat": [
+    151.91365,
+    -23.44272
+   ],
+   "src": "osm",
+   "osm": "way 1218662882",
+   "note": "the University of Queensland's research station",
+   "x": -138,
+   "y": 1360
+  },
+  {
+   "id": "heron-reef",
+   "name": "Heron Reef",
+   "kind": "reef",
+   "lonlat": [
+    151.95657,
+    -23.45075
+   ],
+   "src": "osm",
+   "osm": "relation 10033046",
+   "note": "the cay's reef (unnamed in OSM)",
+   "x": 4248,
+   "y": 470
+  },
+  {
+   "id": "wistari-reef",
+   "name": "Wistari Reef",
+   "kind": "reef",
+   "lonlat": [
+    151.88185,
+    -23.46985
+   ],
+   "src": "osm",
+   "osm": "way 403368963",
+   "x": -3387,
+   "y": -1645
+  },
+  {
+   "id": "heron-anchorage",
+   "name": "West of the cay, off the channel",
+   "kind": "anchorage",
+   "src": "nominal",
+   "x": -483,
+   "y": 1025
+  },
+  {
+   "id": "south-west-gate",
+   "name": "Toward Gladstone",
+   "kind": "gate",
+   "src": "nominal",
+   "x": -9000,
+   "y": -6500
+  }
+ ],
+ "spawn": {
+  "poi": "heron-beach",
+  "x": 0,
+  "y": 1518,
+  "heading": 0,
+  "note": "on the upper sand of the north shore, about 1.9 m above mean sea level (the highest astronomical tide is 1.81 m), facing the sea"
+ },
+ "harbour": {
+  "fleets": [
+   {
+    "at": "heron-anchorage",
+    "n": 2
+   }
+  ],
+  "marina": {
+   "at": "heron-jetty",
+   "len": 90,
+   "fingers": 2,
+   "boats": false
+  },
+  "pontoon": null,
+  "parked": [
+   {
+    "kind": "helicopter",
+    "name": "Helicopter",
+    "at": "heron-helipad"
+   }
+  ],
+  "moorings": 6,
+  "traffic": [
+   {
+    "kind": "daycat",
+    "name": "Island launch",
+    "route": [
+     "south-west-gate",
+     "heron-jetty"
+    ],
+    "loop": "pingpong",
+    "dwell": 120,
+    "vmax": 14
+   },
+   {
+    "kind": "yacht",
+    "route": [
+     "south-west-gate",
+     "heron-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 60,
+    "vmax": 4.2
+   },
+   {
+    "kind": "tinnie",
+    "name": "Dive boat",
+    "route": [
+     "heron-jetty",
+     "heron-anchorage"
+    ],
+    "loop": "pingpong",
+    "dwell": 30,
+    "vmax": 10
+   }
+  ],
+  "scenic": [
+   {
+    "kind": "helicopter",
+    "name": "Scenic flight",
+    "around": "heron-island",
+    "r": 900,
+    "alt": 160,
+    "v": 35,
+    "dir": 1
+   }
+  ]
+ },
+ "life": {
+  "note": "Coral cay profile for web/reef/life.js (format in web/reef/life/profile.js). Plants, from Wikipedia, Heron Island (Queensland): Pisonia grandis forest dominates the centre and south (most trees 6-8 m, some 10-11 m); north of it a band of open shrubland of octopus bush (Heliotropium foertherianum) and sea cabbage (Scaevola taccada) with Pandanus and Casuarina equisetifolia ssp. incana; the eastern end and the dune ridges Casuarina, Scaevola and Heliotropium with some Pandanus. Not drawn: Celtis, Ficus, Pipturus, Cordia, Suriana and the herbs. Turtles nesting: the same page (green 98%, loggerhead 2% of the nesters; the nesting area is the central part of the north shore, `around`); the months, November to March, are the ones Wikipedia gives for Lady Elliot Island in the same Capricorn-Bunker group (no Heron-specific source for the months was found); perKm is not sourced. Spawning: UQ News, 25 November 2003, 'Coral puts on show at Heron Island' (news.uq.edu.au/2003-11-25-coral-puts-show-heron-island): usually five to eight nights after the November full moon, one lunation after the inshore reefs' October (lag 1).",
+  "flora": {
+   "minAbove": 1.85,
+   "cell": 5,
+   "coastR": [
+    14,
+    28
+   ],
+   "coastMaxAbove": 6,
+   "forest": {
+    "pisonia": 1
+   },
+   "coast": {
+    "octopus-bush": 0.32,
+    "scaevola": 0.3,
+    "casuarina": 0.2,
+    "pandanus": 0.18
+   },
+   "grass": {
+    "octopus-bush": 0.45,
+    "scaevola": 0.4,
+    "pandanus": 0.15
+   },
+   "density": {
+    "10": 0.92,
+    "12": 0.8,
+    "coast": 0.85
+   }
+  },
+  "fauna": {
+   "green-turtle": 1.5,
+   "loggerhead": 0.1
+  },
+  "nesting": {
+   "months": [
+    11,
+    12,
+    1,
+    2,
+    3
+   ],
+   "species": {
+    "green-turtle": 0.98,
+    "loggerhead": 0.02
+   },
+   "perKm": 40,
+   "around": [
+    130,
+    1530,
+    230
+   ]
+  },
+  "spawning": {
+   "lag": 1,
+   "window": [
+    5,
+    8
+   ]
+  }
+ }
+}

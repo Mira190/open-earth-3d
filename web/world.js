@@ -1,7 +1,7 @@
 // Open Earth 3D world: the city scene that the model viewer (city.js) and the game
-// (game/*.js) share: terrain under aerial imagery, water, extruded buildings with a
-// facade shader (windows, lights at night, height-source colours), piers, trees,
-// parametric landmarks, sky and sun. Local frame: x east, y north, z up; three.js is
+// (game/*.js) share: terrain under aerial imagery, water, the buildings (buildings.js:
+// walls, LOD2 roofs, facades with windows by floor, lights at night, height-source
+// colours), piers, trees, parametric landmarks, sky and sun. Local frame: x east, y north, z up; three.js is
 // y-up, so a local point (x, y, z) is drawn at (x, z, -y).
 'use strict';
 window.OEWorld = (function () {
@@ -21,6 +21,7 @@ window.OEWorld = (function () {
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null)]);
     const CITY = scene.city;
     S.site({ lat: CITY.lat, lon: CITY.lon, tz: CITY.timezone, locale: CITY.locale });
+    S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);
     const T = { data: Float32Array.from(ti, v => v * scene.terrain.scale), nx: scene.terrain.nx, ny: scene.terrain.ny,
       cell: scene.terrain.cell, x0: scene.frame.x[0], y1: scene.frame.y[1] };
@@ -176,14 +177,19 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     await idle();
     const texLoader = new THREE.TextureLoader();
     const groundMeshes = [];
-    for (const t of scene.ground) {
+    // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
+    function tileGeometry(t, Tg) {
       const w = t.x1 - t.x0, h = t.y1 - t.y0;
-      const g = new THREE.PlaneGeometry(w, h, Math.round(w / T.cell), Math.round(h / T.cell));
+      const g = new THREE.PlaneGeometry(w, h, Math.round(w / Tg.cell), Math.round(h / Tg.cell));
       g.rotateX(-Math.PI / 2);
       g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
       const p = g.attributes.position;
-      for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(T, p.getX(i), -p.getZ(i)));
+      for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
+      return g;
+    }
+    for (const t of scene.ground) {
+      const g = tileGeometry(t, T);
       const tex = texLoader.load(D.DATA + t.file);
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -241,9 +247,9 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => sea.patchGround(sh);
 
     // ------------------------------------------------------------ buildings
-    loadMsg(`Extruding ${B.b.length.toLocaleString()} buildings`, 0.5);
+    loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
     await idle();
-    const SRC = { mapped: 0, reference: 0, verified: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
+    const SRC = { mapped: 0, reference: 0, verified: 0, plateau: 0, plateau_lod1: 0, floors: 1, ml: 2, estimate: 2, parametric: 3 };
     // flat roofs sit this far below the wall tops, behind a parapet, so the outline keeps
     // the building's stated height
     const PARAPET = 0.5;
@@ -334,93 +340,19 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
       }
       return c;
     };
-    const U = { uNight: { value: 0 }, uSel: { value: -1 }, uMode: { value: 0 },
+    const U = { uNight: { value: 0 }, uSel: { value: -1 }, uMode: { value: 0 }, uHour: { value: 12 },
       uC0: { value: lin(css('--s1') || '#2a78d6') }, uC1: { value: lin(css('--s2') || '#eb6834') }, uC2: { value: lin(css('--s3') || '#1baf7a') } };
-    function facadeMaterial() {
-      const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.8, metalness: 0.05 });
-      mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, U);
-        sh.vertexShader = sh.vertexShader
-          .replace('#include <common>', `#include <common>
-  attribute vec2 fac; attribute float bid; attribute float srcCode; attribute vec2 sty;
-  varying vec2 vFac; varying float vBid; varying float vSrc; varying vec2 vSty;`)
-          .replace('#include <begin_vertex>', `#include <begin_vertex>
-  vFac = fac; vBid = bid; vSrc = srcCode; vSty = sty;`);
-        sh.fragmentShader = sh.fragmentShader
-          .replace('#include <common>', `#include <common>
-  uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
-  varying vec2 vFac; varying float vBid; varying float vSrc; varying vec2 vSty;
-  // an integer hash of (bay, storey, building): exact, so interpolation noise in the inputs
-  // cannot turn into per-pixel speckle the way a float hash of large numbers does
-  float ihash(vec2 cell, float b, uint salt) {
-    uint h = uint(max(cell.x, 0.0)) * 73856093u ^ uint(max(cell.y, 0.0)) * 19349663u ^ uint(floor(b + 0.5)) * 83492791u ^ salt;
-    h = (h ^ (h >> 13u)) * 1274126177u; h ^= h >> 16u;
-    return float(h & 65535u) / 65535.0;
-  }
-  // a soft-edged band lo..hi of x, antialiased by w
-  float band(float x, float lo, float hi, float w) { return smoothstep(lo - w, lo + w, x) * (1.0 - smoothstep(hi - w, hi + w, x)); }
-  float gRough, gMetal;`)
-          .replace('#include <color_fragment>', `#include <color_fragment>
-  // facades: glazing by storey (vSty.y m) in the style vSty.x; the pattern fades to its
-  // average where a storey is only a few pixels, so distant towers do not shimmer
-  float win = 0.0; vec2 cell = vec2(0.0); gRough = 0.8; gMetal = 0.05;
-  vec3 wallC = diffuseColor.rgb;
-  if (vFac.y >= 0.0 && vSty.x < 2.5) {
-    float st = vSty.y, h = vFac.y, u = vFac.x, lvl = floor(h / st), fy = fract(h / st);
-    float px = max(fwidth(h), fwidth(u)) + 1e-4, far = smoothstep(0.08, 0.35, px / st), aw = px * 0.75;
-    float glaze = 0.0, frame = 0.0, bay = 1.6;
-    if (vSty.x > 1.5) { // curtain wall: glass between mullions, an opaque spandrel at each slab
-      bay = 1.5;
-      float fx = fract(u / bay), mull = 1.0 - band(fx, 0.05, 0.95, aw / bay);
-      glaze = band(fy, 0.2, 1.0, aw / st) * (1.0 - mull);
-      frame = mull * band(fy, 0.2, 1.0, aw / st);
-    } else if (vSty.x > 0.5) { // ribbon windows: a band of glass each storey, mullions every 1.8 m
-      bay = 1.8;
-      float fx = fract(u / bay);
-      glaze = band(fy, 0.34, 0.86, aw / st) * band(fx, 0.04, 0.96, aw / bay);
-    } else { // punched windows with a sill
-      bay = 3.4;
-      float fx = fract(u / bay);
-      glaze = band(fx, 0.16, 0.84, aw / bay) * band(fy, 0.3, 0.84, aw / st);
-      frame = band(fx, 0.12, 0.88, aw / bay) * band(fy, 0.24, 0.3, aw / st);
-    }
-    glaze *= step(2.5, h);
-    // the ground floor of offices and towers is a shopfront
-    if (vSty.x > 0.5 && lvl < 0.5) { float fx = fract(u / 3.0); glaze = band(fy, 0.06, 0.82, aw / st) * band(fx, 0.03, 0.97, aw / 3.0); frame = 0.0; }
-    cell = vec2(floor(u / bay), lvl);
-    float tone = ihash(cell, vBid, 17u);
-    vec3 glass = mix(wallC * 0.22 + vec3(0.010, 0.016, 0.024), wallC * 0.35, vSty.x > 1.5 ? 0.5 : 0.0) * (0.85 + 0.3 * tone);
-    vec3 detailed = mix(mix(wallC, wallC * 1.12, frame), glass, glaze);
-    vec3 average = mix(wallC, glass, vSty.x > 1.5 ? 0.7 : vSty.x > 0.5 ? 0.45 : 0.3);
-    diffuseColor.rgb = mix(detailed, average, far);
-    win = mix(glaze, vSty.x > 1.5 ? 0.7 : 0.3, far);
-    gRough = mix(0.8, vSty.x > 1.5 ? 0.12 : 0.2, win);
-    gMetal = mix(0.05, vSty.x > 1.5 ? 0.35 : 0.1, win);
-  }
-  if (uMode > 0.5) {
-    diffuseColor.rgb = vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8)));
-    win = 0.0; gRough = 0.8; gMetal = 0.05;
-  }
-  if (abs(vBid - uSel) < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.42, 0.12), 0.6);`)
-          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = gRough;')
-          .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = gMetal;')
-          .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  float lit = step(0.6, ihash(cell, vBid, 101u));
-  vec3 lamp = mix(vec3(1.0, 0.72, 0.4), vec3(0.85, 0.9, 1.0), step(0.75, ihash(cell, vBid, 211u)));
-  totalEmissiveRadiance += win * lit * uNight * lamp * 1.5;`);
-      };
-      return mat;
-    }
-    // parts a parametric landmark draws instead stay in B.s (and the surface model), not on screen
-    const hiddenSolids = new Set(scene.hidden_solids || []);
-    const bGeo = extrude(hiddenSolids.size ? B.s.filter((_, i) => !hiddenSolids.has(i)) : B.s, bColour);
-    const buildings = new THREE.Mesh(bGeo, facadeMaterial());
+    // walls, LOD2 roofs, facades and rooftop plant (buildings.js); parts a parametric landmark
+    // draws instead (scene.json hidden_solids) stay in B.s and the surface model, not on screen
+    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small });
+    const bGeo = BLD.geometry, buildings = BLD.mesh;
+    const fr = scene.frame;
+    U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
     if (THREE.MeshBVH) { // a bounding-volume hierarchy makes picking a building ~300x faster
       bGeo.boundsTree = new THREE.MeshBVH(bGeo);
       buildings.raycast = THREE.acceleratedRaycast;
     }
-    buildings.castShadow = buildings.receiveShadow = true;
-    world.add(buildings);
+    world.add(buildings, BLD.props);
 
     // piers and wharves: 2.2 m concrete decks
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
@@ -475,8 +407,8 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     }
     // meshes marked floodlit glow after dark
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
-    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin('#ffe2b8'), emissiveIntensity: 0,
-      onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
+    const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), { emissive: lin(LM.materials[k].emissive || '#ffe2b8'), emissiveIntensity: 0,
+      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
     for (const m of LM.meshes || []) {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
@@ -495,10 +427,11 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
-      // light the scene for a sun position {altitude, azimuth}; returns the daylight factor 0..1
-      setSun(sp) {
+      // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
+      // clock time in minutes; returns the daylight factor 0..1
+      setSun(sp, minutes) {
         const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
         api.sunDir = new THREE.Vector3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
         su.sunPosition.value.copy(api.sunDir);
@@ -507,10 +440,12 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
         sunLight.visible = sp.altitude > -0.5;
         sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
-        hemi.intensity = Math.PI * (0.07 + 0.25 * day);
+        hemi.intensity = Math.PI * (0.07 + 0.25 * day + ((D.scene.city && D.scene.city.night_ambient) || 0) * (1 - day));   // a city's own night glow (neon, street light)
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
-        for (const m of Object.values(floodMats)) m.emissiveIntensity = 0.32 * U.uNight.value;
+        // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
+        U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
+        for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`;
