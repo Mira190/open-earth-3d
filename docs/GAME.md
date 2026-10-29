@@ -545,6 +545,41 @@ python blender/build_vehicles.py            # about 6 minutes; --render also ren
 python blender/build_vehicles.py --only cars  # one kind: helicopter, ferry, ferry_river or cars
 ```
 
+## The main characters
+
+| The two surveyors you play (Cycles, mid-stride) |
+|---|
+| ![](images/people/H_Surveyor_W_Walk10.jpg) ![](images/people/H_Surveyor_M_Walk10.jpg) |
+
+The surveyors you play are built in Blender by `blender/build_people.py` from
+MakeHuman's CC0 data, with no MakeHuman or MPFB code running:
+- **Body:** the MakeHuman base mesh, shaped by its macro targets (gender, age,
+  muscle, weight, height, proportions and ancestry) combined as MakeHuman
+  combines them.
+- **Skeleton:** MPFB's game-engine rig (53 bones, Unreal-style names), each bone
+  placed at the centre of a joint cube on the shaped body, with its weights.
+- **Skin, eyes, brows, lashes, hair, clothes and shoes:** from the MakeHuman
+  system asset pack, fitted with their MHCLO references (three body vertices and
+  an offset per vertex). The body skin under the clothes is removed, so it
+  cannot show through when the body bends.
+- **Hi-vis vest:** lofted round the torso, ring by ring along the body's own
+  cross-section, with straight reflective bands.
+- **Hard hat:** a dome and brim sized to the head and carried by the head bone.
+- **Animation:** Mesh2Motion's CC0 clips (walk, jog, sprint, idle, greeting,
+  talking, listening, a nod, interact), retargeted: each bone's rest direction is
+  turned onto the source's, then it follows the source's rotation from rest.
+  The ground speed of each gait is measured from the planted foot, so the
+  game plays the cycle at the speed you move.
+
+Each is about 35,000 triangles and 2.4 MB with its textures (WebP). They are
+textured, so unlike the crowd they are not recoloured per look. If their files
+do not load, the game falls back to the previous characters.
+
+```
+python pipeline/fetch_makehuman.py               # the CC0 data, into data/raw (once)
+python blender/build_people.py --preview         # -> web/assets/people/H_*.glb, docs/images/people/
+```
+
 ## The trees
 
 | The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |

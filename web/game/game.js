@@ -196,7 +196,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   try {
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
-    await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
+    // the surveyors you play are the main characters made in Blender, when their files load
+    await Promise.all(Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' }).map(([k, h]) => lib.heroes[h] &&
+      lib.require(h).then(() => Object.assign(PLAYER_LOOKS[k], { character: h, scale: 1 })).catch(e => console.warn(`${h} unavailable:`, e))));
+    await Promise.all([...Object.values(PLAYER_LOOKS).map(l => l.character), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded

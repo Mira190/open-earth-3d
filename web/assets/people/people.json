@@ -628,5 +628,70 @@
     0.0622
    ]
   }
+ },
+ "heroes": {
+  "note": "The main characters: built by blender/build_people.py from MakeHuman's CC0 base mesh, targets, rig, skins, clothes and hair, with Mesh2Motion's CC0 animations retargeted. Textured, so not recoloured per look.",
+  "source": "MakeHuman (CC0 1.0): base mesh, targets, game-engine rig, system assets; Mesh2Motion (CC0 1.0): animations",
+  "bones": {
+   "Head": "head",
+   "Chest": "spine_03",
+   "Abdomen": "spine_01",
+   "WristR": "hand_r",
+   "WristL": "hand_l",
+   "UpperLeg.L": "thigh_l",
+   "LowerLeg.L": "calf_l",
+   "Foot.L": "foot_l",
+   "UpperLeg.R": "thigh_r",
+   "LowerLeg.R": "calf_r",
+   "Foot.R": "foot_r"
+  },
+  "characters": {
+   "H_Surveyor_W": {
+    "file": "H_Surveyor_W.glb",
+    "label": "Surveyor (woman)",
+    "ground_speed": {
+     "Walk": 0.967,
+     "Run": 3.245,
+     "Sprint": 6.914
+    },
+    "height_m": 1.723,
+    "triangles": 35244,
+    "clips": [
+     "Idle",
+     "Idle_Neutral",
+     "Walk",
+     "Run",
+     "Sprint",
+     "Wave",
+     "Talk",
+     "Listen",
+     "Nod",
+     "Interact"
+    ]
+   },
+   "H_Surveyor_M": {
+    "file": "H_Surveyor_M.glb",
+    "label": "Surveyor (man)",
+    "ground_speed": {
+     "Walk": 0.865,
+     "Run": 5.04,
+     "Sprint": 7.762
+    },
+    "height_m": 1.839,
+    "triangles": 35998,
+    "clips": [
+     "Idle",
+     "Idle_Neutral",
+     "Walk",
+     "Run",
+     "Sprint",
+     "Wave",
+     "Talk",
+     "Listen",
+     "Nod",
+     "Interact"
+    ]
+   }
+  }
  }
 }
