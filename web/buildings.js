@@ -161,7 +161,8 @@ window.OEBuildings = (function () {
     return Math.max(0.15, 1 - acc / DIRS.length);
   }
 
-  function create(D, { lin, U, renderer, SRC, small = false }) {
+  // foot(x, y): the height of the ground drawn there, so walls reach it where it is below a building's base
+  function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null }) {
     const t0 = performance.now();
     const { B, T, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
@@ -262,6 +263,30 @@ window.OEBuildings = (function () {
           }
           u += L[k];
         }
+      }
+    }
+
+    // a plain plinth under the walls, down to the lowest ground drawn along the footprint, where that
+    // is below the base: the base is the lowest survey point under the corners, and the ground
+    // drawn between them (a moat's edge, a slope, a quay) can be lower
+    function plinth(rings, bi, si, zb) {
+      let zf = Infinity;
+      for (const r of rings) for (let k = 0, n = r.length / 2; k < n; k++) {
+        const j = (k + 1) % n, ax = r[2 * k], ay = r[2 * k + 1], bx = r[2 * j], by = r[2 * j + 1], m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 2.5));
+        for (let i = 0; i < m; i++) zf = Math.min(zf, foot(ax + (bx - ax) * i / m, ay + (by - ay) * i / m));
+      }
+      if (!(zf < zb - 0.05)) return;
+      zf -= 0.2;
+      const P = BI[bi];
+      for (const r of rings) for (let k = 0, n = r.length / 2; k < n; k++) {
+        const j = (k + 1) % n, x0 = r[2 * k], y0 = r[2 * k + 1], x1 = r[2 * j], y1 = r[2 * j + 1], l = Math.hypot(x1 - x0, y1 - y0);
+        if (l < 0.05) continue;
+        const nx = (y1 - y0) / l, ny = -(x1 - x0) / l; // outward for an anticlockwise outer ring (holes are clockwise: also outward)
+        const a = buf.v(x0, y0, zf, nx, ny, 0, P.wall, 0, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        const b = buf.v(x1, y1, zf, nx, ny, 0, P.wall, l, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        const c = buf.v(x1, y1, zb, nx, ny, 0, P.wall, l, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        const d = buf.v(x0, y0, zb, nx, ny, 0, P.wall, 0, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        buf.idx.push(a, b, c, a, c, d);
       }
     }
 
@@ -375,6 +400,7 @@ window.OEBuildings = (function () {
       const r = roofOf.get(si), fronts = frontOf.get(si);
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
+      if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
       const par = PARAPET[P.style] && s[3] - s[2] >= 50 ? PARAPET[P.style] : 0;
@@ -412,7 +438,7 @@ window.OEBuildings = (function () {
     }
 
     const geometry = buf.geometry();
-    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0));
+    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = mesh.receiveShadow = true;
 
@@ -649,13 +675,14 @@ window.OEBuildings = (function () {
   }
 
   // ------------------------------------------------------------ the facade and roof shader
-  function facadeMaterial(U, renderer, GRIDS, signage) {
+  // photoGrade: GLSL for photoGrade(), the correction world.js gives the aerial photo on the ground
+  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade) {
     const grid = STYLES.map(s => new THREE.Vector4(...GRIDS[s])), look = STYLES.map(s => new THREE.Vector4(...LOOK[s]));
     while (grid.length < 16) { grid.push(new THREE.Vector4()); look.push(new THREE.Vector4(1, 0, 0, 0.9)); }
     Object.assign(U, {
       uGrid: { value: grid }, uLook: { value: look }, uHour: U.uHour || { value: 12 }, uSunW: U.uSunW || { value: new THREE.Vector3(0, 1, 0) },
       uPhoto: { value: new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1) }, uPhotoOn: { value: 0 },
-      uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage },
+      uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage }, uNudge: U.uNudge || { value: 4e-5 },
     });
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.0 });
     mat.extensions = Object.assign(mat.extensions || {}, { derivatives: true });
@@ -664,7 +691,7 @@ window.OEBuildings = (function () {
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>
   attribute vec2 fac; attribute vec4 inf; attribute vec3 ext; attribute float bid; attribute float srcCode;
-  uniform vec4 uGrid[16]; uniform vec4 uLook[16];
+  uniform vec4 uGrid[16]; uniform vec4 uLook[16]; uniform float uNudge;
   varying vec2 vFac; varying vec4 vInf; varying vec3 vExt; varying float vBid; varying float vSrc;
   varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vGrid; varying vec4 vLook;`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
@@ -674,19 +701,36 @@ window.OEBuildings = (function () {
   int styleI = int(mod(inf.x, 16.0) + 0.5);
   vGrid = uGrid[styleI]; vLook = uLook[styleI];
   vWPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
-  vWNrm = normalize(mat3(modelMatrix) * objectNormal);`);
+  vWNrm = normalize(mat3(modelMatrix) * objectNormal);`)
+        // Two sources can map the same building, so some solids overlap with their roofs in one
+        // plane, which the depth test cannot order: the roof speckles as the camera moves. Each
+        // building is drawn a tiny share of its distance nearer the camera (along the view ray, so
+        // it stays where it is on screen), its own share, and one of the two always wins.
+        .replace('#include <project_vertex>', `#include <project_vertex>
+  gl_Position = projectionMatrix * vec4(mvPosition.xyz * (1.0 - uNudge * fract(bid * 0.618034)), 1.0);`);
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
   uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
   uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns;
   varying vec2 vFac; varying vec4 vInf; varying vec3 vExt; varying float vBid; varying float vSrc;
   varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vGrid; varying vec4 vLook;
+  ${photoGrade || 'vec3 photoGrade(vec3 c) { return c; }'}
+  // a pixel's footprint along a coordinate: the length of its screen gradient (fwidth's sum of
+  // the two runs up to 1.4 times wider and would blur the windows more than they need)
+  float footprint(float x) { return max(length(vec2(dFdx(x), dFdy(x))), 1e-4); }
   float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
   float h31(vec3 p) { return h21(p.xy + p.z * 17.17); }
   float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
   // an anti-aliased box: 1 inside [a, b] on coordinate x, with a filter width w
   float band(float x, float a, float b, float w) { return clamp((x - a) / w + 0.5, 0.0, 1.0) * clamp((b - x) / w + 0.5, 0.0, 1.0); }
+  // the same box repeated in every unit period of x (a row of windows, slats, courses), averaged
+  // over a filter w wide: exact for any w, so a row too fine for its pixels settles on its mean
+  // coverage instead of shimmering (integrals taken from floor(x) to keep their precision)
+  float pulse(float x, float a, float b, float w) {
+    float d = clamp(b - a, 0.0, 1.0), t = x - a, c = floor(t), t0 = t - c - 0.5 * w, t1 = t - c + 0.5 * w;
+    return ((floor(t1) - floor(t0)) * d + min(fract(t1), d) - min(fract(t0), d)) / w;
+  }
   // occupancy: the share of rooms lit at this local hour, by style
   float occupancy(float style, float hr) {
     float evening = smoothstep(16.5, 19.0, hr) * (1.0 - smoothstep(22.5, 24.5, hr)) + (1.0 - smoothstep(0.0, 1.5, hr)) * 0.5;
@@ -710,71 +754,78 @@ window.OEBuildings = (function () {
     float h = vFac.y, s = vFac.x, nb = vExt.z;
     float q = h < ground ? h / ground : 1.0 + (h - ground) / storey; // continuous floor coordinate
     float fl = floor(q), fy = fract(q), bay = floor(s), fx = fract(s);
-    vec2 fw = max(fwidth(vec2(s, q)), vec2(1e-4));
-    // far away the grid averages out instead of shimmering
-    float far = smoothstep(0.35, 0.8, max(fw.x, fw.y));
+    // the pixel's footprint in bays and floors. The rows of windows, frames and slats are filtered
+    // over it (pulse), and what changes from one window to the next (blinds, rooms, lit windows,
+    // signs) settles on its average as the windows shrink to a few pixels, so a facade keeps its
+    // tone at any distance and does not sparkle as the camera moves.
+    vec2 fw = vec2(footprint(s), footprint(q));
+    float fwH = footprint(h);
+    float far = smoothstep(0.12, 0.4, max(fw.x, fw.y));
+    float crisp = 1.0 - smoothstep(0.05, 0.14, max(fw.x, fw.y)); // close enough to see into the rooms
     float inRun = band(s, 0.0, nb, fw.x);
-    float shop = (fl < 0.5 && mod(vExt.y, 2.0) > 0.5) ? 1.0 : 0.0;
-    float floorsIn = floor(vExt.y / 32.0 + 0.01);
+    float flags = floor(vExt.y + 0.5); // whole again: interpolated, 64 can arrive as 63.99999 and read as a shopfront
+    float shop = (fl < 0.5 && mod(flags, 2.0) > 0.5) ? 1.0 : 0.0;
+    float floorsIn = floor(flags / 32.0 + 0.01);
     float ww = vGrid.y, sill = vGrid.z, head = vGrid.w;
-    float win = 0.0, frame = 0.0, spandrel = 0.0;
+    float win = 0.0, frame = 0.0, spandrel = 0.0, py = 1.0, lintelY = 0.0;
     if (style > 4.5 && style < 5.5) {
       // curtain wall: mullions every module, an opaque spandrel at each slab
-      float mull = 1.0 - band(fx, 0.035, 0.965, fw.x);
-      spandrel = 1.0 - band(fy, 0.24, 0.985, fw.y);
+      float mull = 1.0 - pulse(s, 0.035, 0.965, fw.x);
+      spandrel = 1.0 - pulse(q, 0.24, 0.985, fw.y);
       win = (1.0 - mull) * (1.0 - spandrel);
       frame = mull * (1.0 - spandrel);
     } else if (shop > 0.5) {
-      win = band(fx, 0.05, 0.95, fw.x) * band(fy, 0.06, 0.8, fw.y);
-      frame = band(fx, 0.03, 0.97, fw.x) * band(fy, 0.04, 0.82, fw.y) - win;
-      float mullion = 1.0 - band(fract(fx * 2.0), 0.03, 0.97, fw.x * 2.0);
+      win = pulse(s, 0.05, 0.95, fw.x) * pulse(q, 0.06, 0.8, fw.y);
+      frame = pulse(s, 0.03, 0.97, fw.x) * pulse(q, 0.04, 0.82, fw.y) - win;
+      float mullion = 1.0 - pulse(s * 2.0, 0.03, 0.97, fw.x * 2.0);
       win *= 1.0 - mullion * 0.9;
     } else {
       float wx = 0.5 * ww;
       if (style > 5.5 && style < 6.5 && fl < 0.5) { wx *= 0.9; sill = 0.18; } // rusticated base, taller openings
       if (style > 0.5 && style < 2.5 && fl < 0.5 && mod(bay, 3.0) < 0.5) { wx = 0.2; sill = 0.0; head = 0.78; } // a door
-      win = band(fx, 0.5 - wx, 0.5 + wx, fw.x) * band(fy, sill, head, fw.y);
-      frame = band(fx, 0.5 - wx - 0.035, 0.5 + wx + 0.035, fw.x) * band(fy, sill - 0.04, head + 0.03, fw.y) - win;
+      py = pulse(q, sill, head, fw.y);
+      lintelY = pulse(q, head - 0.08, head, fw.y); // the top of the opening, in the lintel's shadow
+      win = pulse(s, 0.5 - wx, 0.5 + wx, fw.x) * py;
+      frame = pulse(s, 0.5 - wx - 0.035, 0.5 + wx + 0.035, fw.x) * pulse(q, sill - 0.04, head + 0.03, fw.y) - win;
       // heritage: round-headed windows and a string course at each floor
       if (style > 5.5 && style < 6.5) {
         float r = wx, cy = head - r * 0.9 * (storey > 0.0 ? 3.6 / storey : 1.0);
         float arch = step(cy, fy) * (1.0 - smoothstep(r * r * 0.95, r * r * 1.05, pow(fx - 0.5, 2.0) + pow((fy - cy) * storey / 3.6, 2.0)));
-        win *= mix(1.0, arch, step(cy, fy));
-        float course = band(fy, 0.0, 0.05, fw.y);
+        win *= mix(mix(1.0, arch, step(cy, fy)), 0.92, far);
+        float course = pulse(q, 0.0, 0.05, fw.y);
         diffuseColor.rgb *= 1.0 + 0.12 * course;
-        diffuseColor.rgb *= 1.0 - 0.06 * band(fract(h / 0.45), 0.0, 0.08, fw.y * 3.0) * step(fl, 0.5);
+        diffuseColor.rgb *= 1.0 - 0.06 * pulse(h / 0.45, 0.0, 0.08, fwH / 0.45) * step(fl, 0.5);
       }
       // apartments: slab edges and balcony balustrades on alternate buildings
       if (style > 2.5 && style < 3.5 && seed > 0.45 && fl > 0.5) {
-        float slab = band(fy, 0.0, 0.07, fw.y);
-        float rail = band(fy, 0.07, 0.36, fw.y) * band(fx, 0.04, 0.96, fw.x);
+        float slab = pulse(q, 0.0, 0.07, fw.y);
+        float rail = pulse(q, 0.07, 0.36, fw.y) * pulse(s, 0.04, 0.96, fw.x);
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.12 + 0.03, slab);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.065, 0.07), rail * 0.55);
         win *= 1.0 - rail * 0.6;
       }
       // offices: panel joints at each floor
-      if (style > 3.5 && style < 4.5) diffuseColor.rgb *= 1.0 - 0.1 * band(fy, 0.0, 0.025, fw.y);
+      if (style > 3.5 && style < 4.5) diffuseColor.rgb *= 1.0 - 0.1 * pulse(q, 0.0, 0.025, fw.y);
       // Haussmann (Paris, 1853-1914): ashlar courses, a rusticated base, and wrought iron: a balcony
       // along the whole front on the second and top floors, a railing across each French window
       // on the others
       if (style > 12.5 && style < 13.5) {
-        float fwc = max(fwidth(h / 0.45), 1e-4);
-        float course = band(fract(h / 0.45), 0.0, 0.07, fwc * 1.5) * (1.0 - far);
+        float course = pulse(h / 0.45, 0.0, 0.07, fwH / 0.45 * 1.5);
         diffuseColor.rgb *= 1.0 - (fl < 0.5 ? 0.17 : 0.05) * course;
         if (fl < 0.5) diffuseColor.rgb *= 1.0 - 0.12 * band(fract(s * 1.6 + step(0.5, fract(h / 0.9)) * 0.5), 0.0, 0.05, fw.x * 1.6) * (1.0 - far);
         float topF = floorsIn - 1.0;
         float filant = (abs(fl - 2.0) < 0.5 || (abs(fl - topF) < 0.5 && topF > 3.5)) ? 1.0 : 0.0;
-        float bars = 0.5 + 0.5 * band(fract(s * 14.0), 0.0, 0.32, fw.x * 14.0);
-        float rail = band(fy, sill + 0.01, sill + 0.29, fw.y) * band(fy, 0.0, 0.31, fw.y) * step(0.5, fl) * step(fl, topF + 0.5)
-          * mix(band(fx, 0.5 - wx - 0.04, 0.5 + wx + 0.04, fw.x), 1.0, filant);
-        float slab = band(fy, 0.0, sill + 0.01, fw.y) * filant * step(0.5, fl);
+        float bars = 0.5 + 0.5 * pulse(s * 14.0, 0.0, 0.32, fw.x * 14.0);
+        float rail = pulse(q, sill + 0.01, min(sill + 0.29, 0.31), fw.y) * step(0.5, fl) * step(fl, topF + 0.5)
+          * mix(pulse(s, 0.5 - wx - 0.04, 0.5 + wx + 0.04, fw.x), 1.0, filant);
+        float slab = pulse(q, 0.0, sill + 0.01, fw.y) * filant * step(0.5, fl);
         diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 1.1 + 0.02, slab);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.03, 0.035, 0.04), rail * bars * 0.92 * (1.0 - 0.6 * far));
         win *= 1.0 - rail * bars * 0.8;
         frame *= 1.0 - rail * bars;
         // the cornice: a lit moulding over a shadow, above the top floor
         float attic = step(topF + 0.5, fl);
-        diffuseColor.rgb *= 1.0 - attic * (0.22 * band(fy, 0.0, 0.18, fw.y) - 0.08 * band(fy, 0.18, 0.4, fw.y));
+        diffuseColor.rgb *= 1.0 - attic * (0.22 * pulse(q, 0.0, 0.18, fw.y) - 0.08 * pulse(q, 0.18, 0.4, fw.y));
       }
       // Amsterdam canal house (grachtenpand): brick in courses with staggered joints, a stone
       // lintel over each tall sash window, and glazing bars: two uprights, a meeting rail and a
@@ -795,17 +846,17 @@ window.OEBuildings = (function () {
       }
       // shopfront fascia band
     }
-    if (shop > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.35, band(fy, 0.82, 1.0, fw.y) * 0.6);
+    if (shop > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.35, pulse(q, 0.82, 1.0, fw.y) * 0.6);
     // machiya: a timber lattice (koshi) across the ground floor, plaster with slit windows above
     if (style > 9.5 && style < 10.5) {
       if (fl < 0.5) {
-        float slat = band(fract(fx * 22.0), 0.0, 0.42, fw.x * 22.0) * band(fy, 0.04, 0.84, fw.y);
+        float slat = pulse(s * 22.0, 0.0, 0.42, fw.x * 22.0) * pulse(q, 0.04, 0.84, fw.y);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.13, 0.1, 0.08), slat);
         win *= 1.0 - slat;
       } else {
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.85, 0.82), band(fy, 0.1, 0.95, fw.y) * 0.7);
-        float slit = band(fract(fx * 8.0), 0.35, 0.65, fw.x * 8.0) * band(fx, 0.2, 0.8, fw.x) * band(fy, 0.35, 0.72, fw.y);
-        win = slit * 0.9; frame = 0.0;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.85, 0.82), pulse(q, 0.1, 0.95, fw.y) * 0.7);
+        float slit = pulse(s * 8.0, 0.35, 0.65, fw.x * 8.0) * pulse(s, 0.2, 0.8, fw.x) * pulse(q, 0.35, 0.72, fw.y);
+        win = slit * 0.9; frame = 0.0; lintelY = 0.0;
       }
     }
     // Japanese mixed-use mid-rise: shop signs on some floors and a vertical sign on a corner bay, backlit at night
@@ -814,18 +865,17 @@ window.OEBuildings = (function () {
       float sr = h21(vec2(fl, floor(bay / 2.0)) + bidH * 1.7);
       float pane = step(sr, 0.22 * uSigns) * band(fy, 0.12, 0.88, fw.y) * band(fract(bay / 2.0) * 2.0 + fx, 0.08, 1.92, fw.x);
       float vert = step(0.45, seed) * step(bay, 0.5) * band(fx, 0.18, 0.82, fw.x);
-      sign = max(pane, vert) * (1.0 - far * 0.5);
       float hue = h21(vec2(floor(bay / 2.0), fl) * 1.3 + bidH);
       signC = hue < 0.3 ? vec3(0.85, 0.12, 0.1) : hue < 0.5 ? vec3(0.95, 0.8, 0.15) : hue < 0.7 ? vec3(0.92, 0.92, 0.9) : hue < 0.85 ? vec3(0.1, 0.35, 0.8) : vec3(0.1, 0.6, 0.3);
       if (vert > 0.5) signC = seed < 0.7 ? vec3(0.9, 0.9, 0.88) : vec3(0.85, 0.15, 0.12);
+      // far off: the signs' share of the wall in their mean colour
+      sign = mix(max(pane, vert), 0.15 * uSigns, far);
+      signC = mix(signC, vec3(0.66, 0.52, 0.41), far);
       win *= 1.0 - sign;
       frame *= 1.0 - sign;
     }
     float onFloor = step(fl + 0.5, floorsIn) * (1.0 - far) + far;
     win *= inRun * onFloor; frame *= inRun * onFloor;
-    float wwr = style > 4.5 && style < 5.5 ? 0.7 : ww * (head - sill);
-    win = mix(win, wwr * inRun, far);
-    frame = mix(frame, 0.0, far);
     // per window: lit at night, blinds, a room
     vec2 cellId = vec2(bay, fl);
     float rnd = h31(vec3(cellId, bidH + seed * 31.0));
@@ -833,9 +883,13 @@ window.OEBuildings = (function () {
     float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
     float lit = step(unitR, occupancy(style, uHour)) * step(0.12, rnd);
     if (shop > 0.5) lit = step(0.15, rnd) * step(0.0, occupancy(7.0, uHour) - 0.3);
+    // far off, the share of windows lit rather than which ones are: later than the rest, as a
+    // lit window reads as one whatever is behind it, down to a pixel or two
+    lit = mix(lit, (shop > 0.5 ? 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3) : 0.88 * occupancy(style, uHour)), smoothstep(0.45, 1.0, max(fw.x, fw.y)));
+    rnd = mix(rnd, 0.5, far);
     float blind = step(0.72, h31(vec3(cellId, bidH * 0.53 + 3.1))) * (style > 4.5 && style < 5.5 ? 0.0 : 1.0);
     float blindY = 0.55 + 0.4 * h21(cellId + bidH);
-    float isBlind = blind * step(blindY, fy) * (1.0 - far);
+    float isBlind = mix(blind * clamp((fy - blindY) / fw.y + 0.5, 0.0, 1.0), 0.07 * step(0.5, abs(style - 5.0)), far);
     // interior mapping: a room behind the glass, lit by day from outside and by its lamps at night
     vec3 room = vec3(0.0);
     if (win > 0.01) {
@@ -854,18 +908,19 @@ window.OEBuildings = (function () {
       vec3 wallC = mix(vec3(0.62, 0.58, 0.52), vec3(0.55, 0.6, 0.62), roomR);
       vec3 c;
       if (hitZ > 0.5) {
-        c = wallC * (0.8 + 0.2 * step(0.5, h21(floor(hp.xy * vec2(3.0, 2.0)) + roomR))) ;
-        c *= 1.0 - 0.5 * band(hp.y, 0.0, 0.42, 0.02) * step(0.45, roomR) * band(hp.x, 0.15, 0.75, 0.02); // furniture
+        c = wallC * (0.8 + 0.2 * mix(0.5, step(0.5, h21(floor(hp.xy * vec2(3.0, 2.0)) + roomR)), crisp));
+        c *= 1.0 - 0.5 * crisp * band(hp.y, 0.0, 0.42, 0.02) * step(0.45, roomR) * band(hp.x, 0.15, 0.75, 0.02); // furniture
       } else if (hitY > 0.5) {
         c = d.y > 0.0 ? vec3(0.8, 0.79, 0.76) : mix(vec3(0.42, 0.3, 0.2), vec3(0.35, 0.36, 0.38), roomR);
       } else c = wallC * 0.85;
       c *= mix(1.0, 0.45, clamp(hp.z / depth, 0.0, 1.0));
+      c = mix(c, vec3(0.36, 0.345, 0.32), far); // a room too small to see into: its mean
       // day: dim, lit by the window; night: the room's lamps when occupied
       float dayL = (style > 4.5 && style < 5.5 ? 0.06 : 0.2) * (1.0 - uNight);
       vec3 lampC = mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5));
       float lamp = lit * uNight * (0.3 + 0.3 * rnd);
-      float ceilingSpot = hitY > 0.5 && d.y > 0.0 ? 1.0 + 0.8 * exp(-8.0 * dot(hp.xz - vec2(0.5, depth * 0.5), hp.xz - vec2(0.5, depth * 0.5))) : 1.0;
-      room = c * (dayL + lamp * 1.0 * lampC * ceilingSpot * (0.75 + 0.5 * h21(vec2(fl, bidH))));
+      float ceilingSpot = mix(hitY > 0.5 && d.y > 0.0 ? 1.0 + 0.8 * exp(-8.0 * dot(hp.xz - vec2(0.5, depth * 0.5), hp.xz - vec2(0.5, depth * 0.5))) : 1.0, 1.1, far);
+      room = c * (dayL + lamp * 1.0 * lampC * ceilingSpot * (0.75 + 0.5 * mix(h21(vec2(fl, bidH)), 0.5, far)));
       room *= 1.0 - smoothstep(500.0, 900.0, dist) * 0.6;
     }
     // far windows at night: average glow instead of rooms
@@ -878,7 +933,7 @@ window.OEBuildings = (function () {
       // coated glass: a tinted mirror (F0 about 0.3) over a dim interior
       vec3 tint = seed < 0.3 ? vec3(0.26, 0.36, 0.42) : seed < 0.55 ? vec3(0.34, 0.37, 0.39) : seed < 0.75 ? vec3(0.2, 0.27, 0.34)
         : seed < 0.9 ? vec3(0.3, 0.38, 0.34) : vec3(0.38, 0.32, 0.26);
-      tint *= 0.9 + 0.2 * h21(vec2(bay, fl) * 0.37 + bidH);
+      tint *= 0.9 + 0.2 * mix(h21(vec2(bay, fl) * 0.37 + bidH), 0.5, far);
       diffuseColor.rgb = mix(diffuseColor.rgb, frameC * 0.8, frame);
       diffuseColor.rgb = mix(diffuseColor.rgb, tint, win);
       metalB = mix(0.25, 0.86, win);
@@ -894,71 +949,76 @@ window.OEBuildings = (function () {
     emitB += sign * signC * (0.05 + 1.1 * uNight * uSigns);
     roughB = mix(roughB, 0.35, sign);
     glass = win * (1.0 - isBlind);
-    if (style < 4.5 || style > 5.5) {
-      float reveal = 1.0 - smoothstep(head - 0.11, head - 0.03, fy) * (1.0 - far);
-      diffuseColor.rgb *= mix(1.0, 0.55, (1.0 - reveal) * win);
-    }
+    // the top of each opening in the lintel's shadow
+    diffuseColor.rgb *= 1.0 - 0.45 * win * min(1.0, lintelY / max(py, 1e-3));
+    // glass a few pixels across: its reflections widen a little, so the sun's glint glides
+    // over a facade instead of flashing from window to window
+    roughB = max(roughB, 0.16 * far);
     emitB += room * glass;
     emitB += win * isBlind * lit * uNight * vec3(1.0, 0.7, 0.42) * 0.35;
     emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * (0.22 + 0.2 * rnd);
     // ground contact: a darker plinth and less sky near the street
     aoW *= mix(0.72, 1.0, smoothstep(0.0, 3.0, h));
     // fine plaster noise up close
-    diffuseColor.rgb *= 0.94 + 0.12 * vnoise(vec2(s * 7.0 + bidH, h * 3.0)) * (1.0 - far);
+    diffuseColor.rgb *= 0.94 + 0.12 * mix(vnoise(vec2(s * 7.0 + bidH, h * 3.0)), 0.5, smoothstep(0.25, 0.6, max(fw.x * 7.0, fwH * 3.0)));
   } else if (kind < 1.5) {
     // ---------------------------------------------------------------- blank wall, gable, parapet
-    diffuseColor.rgb *= 0.95 + 0.1 * vnoise(vFac * vec2(1.3, 2.1) + bidH);
+    vec2 fwn = fwidth(vFac) * vec2(1.3, 2.1);
+    diffuseColor.rgb *= 0.95 + 0.1 * mix(vnoise(vFac * vec2(1.3, 2.1) + bidH), 0.5, smoothstep(0.25, 0.6, max(fwn.x, fwn.y)));
     aoW *= mix(0.75, 1.0, smoothstep(0.0, 3.0, vFac.y));
   } else if (kind < 2.5) {
     // ---------------------------------------------------------------- pitched roof
     float m = vExt.z; // 3 tile, 4 metal, 5 slate, 6 kawara, 7 copper, 10 zinc
     vec2 r = vFac;
     vec2 fwr = max(fwidth(r), vec2(1e-4));
-    float fade = 1.0 - smoothstep(0.08, 0.25, max(fwr.x, fwr.y));
+    // tiles and ribs a few centimetres across fade to their mean tone before they shrink below a pixel
+    float fade = 1.0 - smoothstep(0.035, 0.11, max(fwr.x, fwr.y));
     vec3 base = diffuseColor.rgb;
     if (uPhotoOn > 0.5) {
       vec2 uv = vec2((vWPos.x - uFrame.x) * uFrame.z, (-vWPos.z - uFrame.y) * uFrame.w);
-      vec3 ph = texture2D(uPhoto, uv).rgb;
+      vec3 ph = photoGrade(texture2D(uPhoto, uv).rgb);
       base = mix(base, ph * 0.9, 0.35);
     }
-    float pat = 1.0;
+    float pat = 1.0, mean = 1.0, slope = 1.0;
     if (m > 2.5 && m < 3.5) { // terracotta tile: courses down the slope, rounded pans across
       float course = fract(r.y / 0.34), pan = fract(r.x / 0.24 + 0.5 * step(0.5, fract(r.y / 0.68)));
       pat = 0.78 + 0.22 * smoothstep(0.0, 0.85, course) * (0.75 + 0.25 * sin(pan * 6.2832));
       pat *= 0.92 + 0.16 * h21(floor(vec2(r.x / 0.24, r.y / 0.34)) + bidH);
+      mean = 0.875;
     } else if (m > 3.5 && m < 4.5) { // corrugated steel: ribs running down the slope
-      pat = 0.88 + 0.12 * sin(r.x / 0.19 * 6.2832);
+      pat = 0.88 + 0.12 * sin(r.x / 0.19 * 6.2832); mean = 0.88;
       metalB = 0.35; roughB = 0.42;
     } else if (m > 4.5 && m < 5.5) { // slate
       float course = fract(r.y / 0.28), sl = fract(r.x / 0.3 + 0.5 * step(0.5, fract(r.y / 0.56)));
       pat = 0.85 + 0.15 * smoothstep(0.0, 0.9, course) * smoothstep(0.0, 0.06, sl) * smoothstep(1.0, 0.94, sl);
-      roughB = 0.6;
+      roughB = 0.6; mean = 0.92;
     } else if (m > 5.5 && m < 6.5) { // kawara: deep rounded rows and dark glaze
       pat = 0.7 + 0.3 * pow(abs(sin(r.x / 0.3 * 3.1416)), 0.6);
       pat *= 0.9 + 0.1 * smoothstep(0.0, 0.2, fract(r.y / 0.28));
-      roughB = 0.45; metalB = 0.1;
+      roughB = 0.45; metalB = 0.1; mean = 0.91;
     } else if (m > 9.5 && m < 10.5) { // rolled zinc: standing seams every 0.65 m down the slope
       float seam = band(fract(r.x / 0.65), 0.0, 0.05, fwr.x / 0.65 * 1.5);
-      pat = 0.93 + 0.1 * vnoise(r * vec2(0.3, 1.7) + bidH) + 0.16 * seam * fade;
-      pat *= mix(1.0, 0.82, smoothstep(0.35, 0.15, abs(N.y))); // the steep brisis reads darker than the terrasson
+      pat = 0.93 + 0.1 * vnoise(r * vec2(0.3, 1.7) + bidH) + 0.16 * seam; mean = 0.98;
+      slope = mix(1.0, 0.82, smoothstep(0.35, 0.15, abs(N.y))); // the steep brisis reads darker than the terrasson
       metalB = 0.4; roughB = 0.4;
     } else if (m > 6.5 && m < 7.5) { // copper patina
       base = mix(base, vec3(0.22, 0.42, 0.36), 0.6);
-      pat = 0.85 + 0.25 * vnoise(r * 1.5);
+      pat = 0.85 + 0.25 * vnoise(r * 1.5); mean = 0.975;
       roughB = 0.55; metalB = 0.25;
     } else roughB = 0.8;
-    diffuseColor.rgb = base * mix(1.0, pat, fade);
+    diffuseColor.rgb = base * mix(mean, pat, fade) * slope;
     aoW = 1.0;
   } else if (kind < 3.5) {
     // ---------------------------------------------------------------- flat deck
     vec3 base = diffuseColor.rgb;
-    if (uPhotoOn > 0.5 && mod(floor(vExt.y / 16.0), 2.0) > 0.5) {
+    if (uPhotoOn > 0.5 && mod(floor(vExt.y / 16.0 + 0.03), 2.0) > 0.5) { // (+0.03: 16 can arrive as 15.99999)
       vec2 uv = vec2((vWPos.x - uFrame.x) * uFrame.z, (-vWPos.z - uFrame.y) * uFrame.w);
       // the photo, a little softened and leaned towards the roof's median colour: close up a 1 m photo is noise
-      base = mix(base, texture2D(uPhoto, uv, 1.0).rgb * 0.92, 0.65);
+      base = mix(base, photoGrade(texture2D(uPhoto, uv, 1.0).rgb) * 0.92, 0.65);
     } else {
-      base *= 0.9 + 0.2 * vnoise(vFac * 0.35 + bidH);
-      base *= 1.0 - 0.08 * (1.0 - band(fract(vFac.x / 1.2), 0.02, 0.98, 0.02));
+      float fwd = max(fwidth(vFac.x), 1e-3);
+      base *= 0.9 + 0.2 * mix(vnoise(vFac * 0.35 + bidH), 0.5, smoothstep(0.7, 1.7, fwd));
+      base *= 1.0 - 0.08 * (1.0 - pulse(vFac.x / 1.2, 0.02, 0.98, max(fwd / 1.2, 0.02)));
     }
     diffuseColor.rgb = base;
     roughB = 0.88; aoW = 0.95;

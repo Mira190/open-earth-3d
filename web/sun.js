@@ -97,6 +97,36 @@
     return { sunrise: find(180, noon), noon, sunset: find(noon, 1320), noonAltitude: best - 0.833 };
   }
 
+  // the local time (minutes) at which the sun's centre passes `deg` degrees of altitude, rising in the morning or
+  // setting in the evening; null when it does not get that high (or that low) on the day
+  function altitudeTime(y, m, d, deg, evening) {
+    const noon = dayLimits(y, m, d).noon, alt = t => position(localToUtc(y, m, d, t)).altitude - deg;
+    let a = evening ? noon : 0, b = evening ? 1439 : noon;
+    if ((alt(a) < 0) === (alt(b) < 0)) return null;
+    for (let i = 0; i < 40; i++) { const c = (a + b) / 2; (alt(a) < 0) === (alt(c) < 0) ? a = c : b = c; }
+    return (a + b) / 2;
+  }
+
+  // times of day worth seeing, worked out from the sun on the date, so a blue hour in Paris in June and one on the
+  // reef in October both look like a blue hour. PRESETS lists them in the order of the day, with their labels;
+  // presetTime(kind, y, m, d) gives the local clock time (minutes) of one
+  const PRESETS = [['sunrise', 'Sunrise'], ['morning', 'Morning'], ['noon', 'Noon'], ['golden', 'Golden hour'],
+    ['sunset', 'Sunset'], ['blue', 'Blue hour'], ['night', 'Night']];
+  function presetTime(kind, y, m, d) {
+    const L = dayLimits(y, m, d);
+    const at = (deg, evening, fallback) => { const t = altitudeTime(y, m, d, deg, evening); return t == null ? fallback : t; };
+    switch (kind) {
+      case 'sunrise': return at(1, false, L.sunrise);                   // the whole disc just clear of the horizon
+      case 'morning': return Math.max(9 * 60, L.sunrise + 90);          // nine, or later where the sun is up late
+      case 'noon': return L.noon;
+      case 'golden': return at(6, true, L.sunset - 50);                 // the sun 6 degrees up: golden hour begins
+      case 'sunset': return at(1, true, L.sunset);
+      case 'blue': return at(-6, true, L.sunset + 30);                  // the middle of the blue hour (the sun 4 to 8 degrees down)
+      case 'night': return Math.min(1430, Math.max(21 * 60, at(-12, true, 21 * 60) + 15));   // dark, after nautical dusk
+      default: return null;
+    }
+  }
+
   // ------------------------------------------------------------ surface model
 
   // terrain: {data: Float32Array metres row-major from the north-west, nx, ny, cell, x0, y1}
@@ -106,6 +136,16 @@
     const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0;
     const D = T.data;
     return (D[i] * (1 - fc) + D[i + 1] * fc) * (1 - fr) + (D[i + T.nx] * (1 - fc) + D[i + T.nx + 1] * fc) * fr;
+  }
+
+  // the terrain as the ground tiles draw it (three.js PlaneGeometry): each cell is two triangles,
+  // split along the diagonal from its south-west to its north-east corner
+  function terrainTri(T, x, y) {
+    const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell));
+    const r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
+    const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
+    const a = D[i], b = D[i + 1], d = D[i + T.nx], e = D[i + T.nx + 1];
+    return fc + fr <= 1 ? a + fc * (b - a) + fr * (d - a) : e + (1 - fc) * (d - e) + (1 - fr) * (b - e);
   }
 
   // even-odd scanline fill of one polygon (rings of flat x,y arrays, metres) with max();
@@ -318,6 +358,6 @@
   }
   const hm = s => { const [h, mm] = s.split(':').map(Number); return h * 60 + mm; };
 
-  return { RAD, site, position, subsolar, dayLimits, offsetHours, standardOffset, localToUtc, utcToLocal, terrainAt, buildDSM, cloneDSM, fillMax, fillTri,
+  return { RAD, site, position, subsolar, dayLimits, altitudeTime, PRESETS, presetTime, offsetHours, standardOffset, localToUtc, utcToLocal, terrainAt, terrainTri, buildDSM, cloneDSM, fillMax, fillTri,
     roofs, unpackRoof, addSolid, pyramid, castRay, sunlit, blocker, samplePlace, fractionSunlit, litMask, inPeriod, hm };
 });

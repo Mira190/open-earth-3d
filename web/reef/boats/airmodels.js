@@ -24,10 +24,10 @@ export function buildSeaplane(o = {}) {
   K.add(M.white, lathe(prof, 24).scale(1, 1.08, 0.94), 0, 2.15, 0);
   K.add(stripe, lathe(prof.map(([x, r]) => [x, r * 1.005]).filter(([x]) => x < 2.7 && x > -4.6), 24).scale(1, 0.42, 0.945), 0, 1.6, 0);   // belly colour band
   // cabin glazing: windscreen and side windows
-  K.add(M.glass, new THREE.BoxGeometry(0.05, 0.5, 1.25).rotateZ(-0.5).translate(3.55, 2.62, 0));
+  K.add(M.canopy, new THREE.BoxGeometry(0.05, 0.5, 1.25).rotateZ(-0.5).translate(3.55, 2.62, 0));
   for (const sd of [-1, 1]) {
-    K.add(M.glass, box(4.6, 0.38, 0.03, 0.9, 2.45, sd * 0.84));
-    K.add(M.glass, box(1.0, 0.45, 0.03, 3.3, 2.5, sd * 0.69).rotateY(sd * 0.0));
+    K.add(M.canopy, box(4.6, 0.38, 0.03, 0.9, 2.45, sd * 0.84));
+    K.add(M.canopy, box(1.0, 0.45, 0.03, 3.3, 2.5, sd * 0.69).rotateY(sd * 0.0));
   }
   // engine cowl intake and the exhaust
   K.add(M.dark, ellipsoid(0.12, 0.2, 0.44), 5.5, 2.0, 0);
@@ -70,8 +70,8 @@ export function buildHeli(o = {}) {
   const orange = M.orange;
   // body: bubble cabin, engine deck, tail boom
   K.add(M.white, lathe([[1.7, 0.0], [1.6, 0.35], [1.2, 0.62], [0.5, 0.75], [-0.4, 0.76], [-1.2, 0.62], [-1.9, 0.34], [-2.1, 0.0]], 20).scale(1, 0.95, 0.88), 0, 1.15, 0);
-  K.add(M.glass, new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.62).scale(0.95, 0.72, 0.74), 1.0, 1.25, 0);
-  K.add(M.glass, box(1.0, 0.45, 0.02, -0.1, 1.55, 0.67)); K.add(M.glass, box(1.0, 0.45, 0.02, -0.1, 1.55, -0.67));
+  K.add(M.canopy, new THREE.SphereGeometry(1, 20, 12, 0, Math.PI * 2, 0, Math.PI * 0.62).scale(0.95, 0.72, 0.74), 1.0, 1.25, 0);
+  K.add(M.canopy, box(1.0, 0.45, 0.02, -0.1, 1.55, 0.67)); K.add(M.canopy, box(1.0, 0.45, 0.02, -0.1, 1.55, -0.67));
   K.add(stripe, lathe([[0.2, 0.0], [0.0, 0.7], [-0.9, 0.7], [-1.0, 0]].map(([x, r]) => [x, r * 1.0]), 8).scale(1, 0.12, 0.9).translate(0, 1.0, 0));
   K.add(M.white, rod([-1.6, 1.4, 0], [-6.0, 1.65, 0], 0.3, 0.09, 12));
   K.add(stripe, rod([-3.5, 1.52, 0], [-4.6, 1.58, 0], 0.202, 0.17, 12));

@@ -139,6 +139,7 @@
     "title": "Hong Kong on Foot",
     "local_name": "Hongkonger",
     "greeting": "Néih hóu.",
+    "blurb": "Cross the harbour on the Star Ferry, ride the Peak Tram up to the lookout for the 8 pm light show, and fly between the towers of Central. Talk to the people who know the city. Every fact they tell you comes from the model.",
     "smalltalk": ["Néih hóu.", "Sihk jó faahn meih a? Have you eaten yet?", "Mh gōi. Thanks.", "Nice view of the harbour, isn't it?"],
     "water_name": "Victoria Harbour",
     "start": {

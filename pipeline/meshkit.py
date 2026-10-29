@@ -75,10 +75,12 @@ class Mesh:
         self.quad(c1[0], c1[1], c1[2], c1[3], [[0, 0], [w, 0], [w, h], [0, h]])
 
     def tube(self, path, r, sides=6):
-        """A round section of radius r swept along a polyline (rails, cables, mullions)."""
+        """A round section of radius r swept along a polyline (rails, cables, mullions); r may
+        also be a list, one radius per point (a tapering body)."""
         P = [np.asarray(p, float) for p in path]
         if len(P) < 2:
             return
+        rs = list(r) if hasattr(r, "__len__") else [r] * len(P)
         rings, s = [], 0.0
         for k, p in enumerate(P):
             t = P[min(k + 1, len(P) - 1)] - P[max(k - 1, 0)]
@@ -89,8 +91,8 @@ class Mesh:
             v = np.cross(t, u)
             if k:
                 s += np.linalg.norm(p - P[k - 1])
-            rings.append(([p + r * (math.cos(a) * u + math.sin(a) * v) for a in np.linspace(0, 2 * math.pi, sides + 1)], s))
-        self.grid([rg for rg, _ in rings], [[[s, j * 2 * math.pi * r / sides] for j in range(sides + 1)] for _, s in rings])
+            rings.append(([p + rs[k] * (math.cos(a) * u + math.sin(a) * v) for a in np.linspace(0, 2 * math.pi, sides + 1)], s))
+        self.grid([rg for rg, _ in rings], [[[s, j * 2 * math.pi * max(rs) / sides] for j in range(sides + 1)] for _, s in rings])
 
     def lathe(self, profile, centre, segs=32):
         """A surface of revolution about the vertical through centre (x, y); profile is

@@ -250,6 +250,10 @@ def add_vehicles(data, counts):
     def livery(kind):
         I, spec = info[kind], (G.get("vehicles") or {}).get(kind, {}).get("livery")
         base = I["liveries"][I["default_livery"]]
+        style = G.get("ferry_style") or {}
+        if kind == "ferry" and spec is None and style.get("hull"):  # as the game does: the colours of the city's ferry_style
+            spec = {"hull": style["hull"], "band": style.get("trim"), "cabin": style.get("upper"), "trim": style.get("upper"), "flag": style.get("flag")}
+            spec = {k: v for k, v in spec.items() if v}
         if isinstance(spec, str):
             return I["liveries"].get(spec, base)
         return dict(base, **(spec or {}))

@@ -265,7 +265,7 @@ ${PAT_GLSL}`)
   }
 
   // scratch objects, made on first use (three.js may load after this file)
-  let up, tv, tq, tq2, hp, sa, sb, sd, sd2, fw, sq, sq2;
+  let up, tv, tq, tq2, hp, sa, sb, sd, sd2, fw, sq, sq2, rq, r1, r2, r3, r4;
   // turn bone b so that it points in direction dir (world space): towards its child, or along
   // its own +y axis (the way the bone points, as Blender exports it) when there is none
   function aim(b, child, dir) {
@@ -282,7 +282,8 @@ ${PAT_GLSL}`)
     if (!up) {
       up = new THREE.Vector3(0, 1, 0); tv = new THREE.Vector3(); tq = new THREE.Quaternion(); tq2 = new THREE.Quaternion(); hp = new THREE.Vector3();
       sa = new THREE.Vector3(); sb = new THREE.Vector3(); sd = new THREE.Vector3(); sd2 = new THREE.Vector3(); fw = new THREE.Vector3();
-      sq = new THREE.Quaternion(); sq2 = new THREE.Quaternion();
+      sq = new THREE.Quaternion(); sq2 = new THREE.Quaternion(); rq = new THREE.Quaternion();
+      r1 = new THREE.Vector3(); r2 = new THREE.Vector3(); r3 = new THREE.Vector3(); r4 = new THREE.Vector3();
     }
     const T = lib.tpl[look.character], speeds = lib.info.ground_speed[T.pack];
     const model = THREE.SkeletonUtils.clone(T.scene);
@@ -363,31 +364,55 @@ ${PAT_GLSL}`)
     // sitting has no clip: bend the legs over the idle pose, thighs forward and shins down (an aim
     // per bone in world space, so it doesn't depend on how the bones' axes are set up). The feet
     // are IK targets under Root in these rigs, not children of the shins, so they are moved to
-    // the ends of the shins; then the body is lowered until they are back on the ground.
+    // the ends of the shins; then the body is lowered until they are back on the ground. In a car
+    // (rig.legRake ~1) the shins reach forward to the pedals, and with rig.reach (a point in the
+    // world: the steering wheel's hub) the hands go to either side of it.
     const B = name => bone[THREE.PropertyBinding.sanitizeNodeName(name)]; // the loader drops the dots: Foot.L is FootL
     const legs = ['L', 'R'].map(side => ({ ul: B('UpperLeg.' + side), ll: B('LowerLeg.' + side), ft: B('Foot.' + side), shin: 0, y0: 0 }));
-    const seated = legs.every(l => l.ul && l.ll && l.ft);
+    const arms = ['L', 'R'].map(side => ({ ua: B('UpperArm.' + side), la: B('LowerArm.' + side), wr: B('Wrist.' + side), s: side === 'L' ? 1 : -1 }));
+    const seated = legs.every(l => l.ul && l.ll && l.ft), reaches = arms.every(a => a.ua && a.la && a.wr);
+    // The mixer only writes a bone whose value has changed, so under a still clip a foot moved
+    // here stays moved: put it back where the clip had it before measuring again (or standing up).
+    const feetBack = () => { for (const l of legs) if (l.moved) { if (l.ft.position.equals(l.set)) l.ft.position.copy(l.home); l.moved = false; } };
     function seat() {
       if (!seated) return;
       model.position.y = 0;
-      root.updateMatrixWorld(true);
+      feetBack();
+      root.updateWorldMatrix(true, true); // the parents too: in a moving car they have moved since they were drawn
       fw.set(0, 0, 1).applyQuaternion(root.getWorldQuaternion(sq));
+      // with the feet back where the clip has them, the shin's length and the ankle's height
       for (const l of legs) { l.y0 = l.ft.getWorldPosition(sa).y; l.shin = sa.distanceTo(l.ll.getWorldPosition(sb)); }
       let drop = 0;
       for (const l of legs) {
         aim(l.ul, l.ll, sd2.copy(fw));
-        const down = sd2.set(0, -1, 0).addScaledVector(fw, 0.12).normalize();
+        const down = sd2.set(0, -1, 0).addScaledVector(fw, rig.legRake ?? 0.12).normalize();
         aim(l.ll, null, down);
         const ankle = l.ll.getWorldPosition(sa).addScaledVector(down, l.shin);
         drop = Math.min(drop, l.y0 - ankle.y);
         l.ft.parent.updateMatrixWorld(true);
+        l.home = (l.home || new THREE.Vector3()).copy(l.ft.position);
         l.ft.position.copy(l.ft.parent.worldToLocal(ankle));
+        l.set = (l.set || new THREE.Vector3()).copy(l.ft.position);
+        l.moved = true;
       }
       model.position.y = drop / (root.parent ? root.parent.getWorldScale(sb).y : 1);
+      if (!rig.reach || !reaches) return;
+      // hands on the wheel: each elbow a little down and out from halfway, the hand at the rim
+      root.updateWorldMatrix(false, true);
+      const side = r1.set(1, 0, 0).applyQuaternion(root.getWorldQuaternion(rq));
+      for (const a of arms) {
+        const hand = r2.copy(rig.reach).addScaledVector(side, 0.16 * a.s), sh = a.ua.getWorldPosition(r3);
+        const elbow = r4.copy(sh).lerp(hand, 0.5).addScaledVector(side, 0.09 * a.s);
+        elbow.y -= 0.1;
+        aim(a.ua, a.la, elbow.sub(sh).normalize());
+        aim(a.la, a.wr, hand.sub(a.la.getWorldPosition(r3)).normalize());
+      }
     }
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
+    // a view through this person's eyes: the head, and whatever is on it, shrinks out of the way
+    rig.hideHead = on => { if (head) head.scale.setScalar(on ? 1e-3 : 1); };
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
-    // root is the seat's surface: thighs forward, shins down, hips on the cushion
+    // root is where the feet rest: thighs forward, shins down, the hips a chair's height above it
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
       const s = look.scale || 1;
       model.position.y = 0;
@@ -401,6 +426,7 @@ ${PAT_GLSL}`)
       else if (speed < 0.15) play('Idle', 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(1.9, speed / (speeds.Run * s))));
+      if (mode !== 'sit') feetBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
       // the walk cycle as a phase, two steps per cycle (footsteps)

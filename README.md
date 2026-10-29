@@ -24,8 +24,13 @@ real sun as it clears the limb. The title lands on the sunrise, with its own
 synthesised score. Then the camera pulls back to the planet and the destinations
 come up where they are, with their local time and sun. It is drawn live in
 three.js from NASA's Blue Marble and Black Marble and the Yale catalogue of the
-stars. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the references it
-draws on (Flight Simulator, Death Stranding, Hitman) and the rendering.
+stars. It draws what the device can afford: the tier is measured on the device
+(textures, MSAA, pixels, the steps through the air), a test frame catches a
+pipeline that draws nothing, and a device that cannot draw the Earth gets a
+still of it behind the same menu, never a black screen. The cities' model and
+game take the same tier. [docs/TITLE.md](docs/TITLE.md) covers the sequence, the
+references it draws on (Flight Simulator, Death Stranding, Hitman), the
+rendering and the tiers.
 
 | Sydney in the browser | Height sources | Testing a tower against the planning rule |
 |---|---|---|
@@ -57,6 +62,18 @@ where the open data is silent and checked where it is not
 
 ![Before and after: Ultimo's houses and flats, and towers in the CBD](docs/images/sydney/buildings-compare.jpg)
 
+## Watch it: a film of each city
+
+Choose a city on the title screen and its card plays a film of its highlights:
+about 36 seconds, one day from sunrise to the blue hour, cut like a trailer.
+It is filmed in the city's own model and game, with its crowds, ferries,
+traffic, sky and lights, under the real sun for each shot's date and hour,
+through the title screen's lens, with a score in the title's voice. The titles
+are set over the picture as type, from the facts in the model and its sources.
+Each film is directed as a shot list (`cities/<id>/film.json`) and rendered
+frame by frame by `tools/city_film.js`; [docs/FILMS.md](docs/FILMS.md) is the
+director's guide.
+
 ## Play it: every city on foot
 
 The model is also a game.
@@ -64,7 +81,8 @@ The model is also a game.
   know it. You climb the Opera House's Monumental Steps, ride the Cross Harbour
   ferry and walk onto the Harbour Bridge with the traffic. Then you fly a
   helicopter under its deck, and find a sunny spot in Martin Place on the
-  winter solstice.
+  winter solstice. By the Opera Bar, silver gulls fight over a dropped box of
+  hot chips, and go up in a cloud when you walk into them.
 - **Melbourne:** you check the midwinter sun on Federation Square, take a
   shuttle down the Yarra, and fly past the Arts Centre spire.
 - **Melbourne's bayside:** you walk out along St Kilda Pier and wait on the
@@ -86,9 +104,20 @@ The model is also a game.
 The people are rigged, animated characters from open (CC0) packs, recoloured so
 that every passer-by looks different. Everything the characters tell you is
 computed from the model as you play. The survey runs as three lines you can take
-in any order. Photo mode stops the world for a picture, under the sun for the time
-you choose. In free roam you can survey the view from Sydney's trig stations, or
-test your eye against the data by guessing building heights. Choose a destination
+in any order. Every city and every reef site lets you pick the time of day:
+- now;
+- sunrise, morning, noon, golden hour, sunset, blue hour or night, worked out
+  from the sun on the day;
+- any minute of the day, on a slider.
+
+Photo mode stops the world for a picture, under the sun for the time you choose.
+In free roam you can survey the view from Sydney's trig stations, or
+test your eye against the data by guessing building heights. In every city you
+can also go by road: drive your own car (arcade handling, a handbrake drift, a view
+from the driver's seat), raise your hand at the kerb for a taxi, or order a ride on
+your phone, as GTA VI's Ryde Me app does. The driver takes you along the real
+streets, keeping to the city's side of the road, and talks about what you pass.
+Choose a destination
 on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto` and
 `#play-tokyo`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
@@ -98,7 +127,9 @@ from code, with ambient occlusion baked in Cycles. Every city shares them, in
 its own liveries and its own mix of trees, and the Blender twin of each city
 places the helicopter and ferries where the game does. The ferries' wakes and
 the rotor wash are foam on the moving sea, the night sky has the real stars and
-the moon in its phase, and jacarandas flower in late spring.
+the moon in its phase, and jacarandas flower in late spring. You get into the
+helicopter through the pilot's door, which swings open on its hinge and shuts
+behind you, and you can fly it from the cockpit (<kbd>V</kbd>).
 
 | The helicopter | The harbour ferry | In the Blender twin of Sydney |
 |---|---|---|
@@ -128,6 +159,8 @@ its steps are built:
 | ![](docs/images/melbourne-bayside/game-boxes.jpg) | ![](docs/images/melbourne-bayside/game-luna-park.jpg) | ![](docs/images/melbourne-bayside/game-penguins.jpg) |
 | **Hong Kong: the Star Ferry at Tsim Sha Tsui** | **The Peak Tram** | **Trams on the north shore** |
 | ![](docs/images/hong-kong/game-ferry.jpg) | ![](docs/images/hong-kong/game-peak-tram.jpg) | ![](docs/images/hong-kong/game-tram.jpg) |
+| **Driving your car in Sydney** | **A taxi pulls in at the kerb** | **From the back seat** |
+| ![](docs/images/sydney/game-drive.jpg) | ![](docs/images/sydney/game-taxi.jpg) | ![](docs/images/sydney/game-backseat.jpg) |
 
 **Osaka on Foot** is the same game in another city: Dotonbori at dusk, the Tombori
 River Cruise, a kushikatsu chef in Shinsekai, a leopard-print obachan with candy in the
@@ -167,10 +200,10 @@ whose every line is computed from the model or cited. Choose **Great Barrier Ree
 
 | City | Status | What's in it |
 |---|---|---|
-| **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House, Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
+| **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House stands on the shell ridges OpenStreetMap maps for its roof, and the Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
 | **Melbourne Bayside**, Australia | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
-| **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep, Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
+| **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep (each tier, its eaves and its gables measured from PLATEAU's own 3D model of it), Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
@@ -365,11 +398,11 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 |---|---|
 | `cities/` | One folder per city: `city.json`, optional `city.py` hooks, reference tables, analysis outputs; `index.json` lists live and planned cities |
 | `pipeline/` | Downloads (Overture, imagery, terrain, Natural Earth), scene build, roofs (`roofs.py`) and building typology (`typology.py`), landmark meshes |
-| `web/` | `index.html` (title screen, model and game views), `title.js` (the title sequence and the menu), `earth.js` (the Earth, its air and the sky, and the lens), `score.js` (the title's sound), `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `buildings.js` (walls, roofs, facades and rooftops), `trees.js` (the shared trees), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
+| `web/` | `index.html` (title screen, model and game views), `title.js` (the title sequence and the menu), `earth.js` (the Earth, its air and the sky, and the lens), `score.js` (the title's sound), `quality.js` (the picture's tier, measured on the device), `world.js` (the city scene the model and the game share), `water.js` (waves, reflections, shores, wakes), `buildings.js` (walls, roofs, facades and rooftops), `trees.js` (the shared trees), `city.js` (model viewer), `game/` (the game), `sun.js` (solar position, time zones, surface model, ray casting), built data in `web/data/`, and the people, vehicles and trees every city shares in `web/assets/` |
 | `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter, ferries and cars; `build_trees.py` grows the trees) |
-| `tools/` | `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score) |
+| `tools/` | `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score), `title_check.js` (the title on a tablet, a phone and a desktop, and with WebGL faults injected) |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
 ## Data and licences
@@ -386,9 +419,10 @@ Data tab. The shared sources are:
   (public domain).
 - **The title screen's sky:** the Milky Way panorama by ESO/S. Brunier (CC BY
   4.0); the Yale Bright Star Catalogue, 5th revised edition.
-- **Fonts:** Google Fonts (Bricolage Grotesque, Public Sans, JetBrains Mono;
-  on the title screen Zalando Sans Expanded, Inter Tight, Shippori Mincho and
-  Noto Serif TC).
+- **Fonts:** Google Fonts (Zalando Sans Expanded, Inter Tight and JetBrains Mono
+  for the interface, Shippori Mincho and Noto Serif TC for the cities' own names;
+  Bricolage Grotesque, Public Sans and Noto Sans JP for the names painted on the
+  vessels and the maps).
 - **Vehicles in the game:** modelled from code in this repository
   (`blender/build_vehicles.py` and `web/game/kit.js`), with no third-party assets.
 - **3D library:** three.js r186 (MIT) and three-mesh-bvh (MIT), loaded as ES
