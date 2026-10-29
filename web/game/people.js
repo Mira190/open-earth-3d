@@ -322,6 +322,16 @@ ${PAT_GLSL}`)
     if (act.Idle) { act.Idle.play(); mixer.update(0); act.Idle.stop(); }
     model.updateMatrixWorld(true);
     const mInv = new THREE.Matrix4().copy(model.matrixWorld).invert();
+    // how far the top of the head (and a hat) stands over the hip joints, standing, at scale 1: what a
+    // seat has to leave under a car's roof (rig.headTop, below)
+    const thigh = bone[THREE.PropertyBinding.sanitizeNodeName(alias('UpperLeg.L'))];
+    let crown = 0;
+    if (thigh) {
+      const box = new THREE.Box3(), part = new THREE.Box3(), rel = new THREE.Matrix4();
+      // (a skinned mesh's vertices are already in the standing figure's frame; its node's transform is not what places them)
+      model.traverse(o => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(o.isSkinnedMesh ? o.geometry.boundingBox : part.copy(o.geometry.boundingBox).applyMatrix4(rel.multiplyMatrices(mInv, o.matrixWorld))); } });
+      crown = box.max.y - V3(0, 0, 0).setFromMatrixPosition(rel.multiplyMatrices(mInv, thigh.matrixWorld)).y;
+    }
     for (const n of ['Head', 'Chest', 'Abdomen', 'WristR', 'WristL']) {
       if (!bones[alias(n)]) continue;
       bones[n] = bones[alias(n)];
@@ -432,6 +442,8 @@ ${PAT_GLSL}`)
       }
     }
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
+    // the top of the head in the world as the rig is posed (seated, the body stays upright over the hips)
+    if (thigh && crown > 0) rig.headTop = (out = V3(0, 0, 0)) => thigh.getWorldPosition(out).add(sb.set(0, crown * model.getWorldScale(sa).y, 0));
     // a view through this person's eyes: the head, and whatever is on it, shrinks out of the way
     rig.hideHead = on => { if (head) head.scale.setScalar(on ? 1e-3 : 1); };
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the

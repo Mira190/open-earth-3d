@@ -156,7 +156,7 @@ window.OECars = (function () {
       at.add(steer); steer.add(spin); g.add(at);
       return { at, steer, spin, front: q.front };
     });
-    const lampAt = {}, own = []; // centroids of the lamps, each side, for the glows; this car's own geometry
+    const lampAt = {}, own = [], shell = []; // centroids of the lamps, each side, for the glows; this car's own geometry; its body
     for (const { geo, name: mn } of meshesOf(node)) {
       const parts = split(geo, hubs), mat = mats[mn] || mats.Trim;
       parts.forEach((pg, p) => {
@@ -165,6 +165,7 @@ window.OECars = (function () {
         const mesh = new THREE.Mesh(pg, mat);
         mesh.castShadow = !mat.transparent; mesh.receiveShadow = true;
         (p < hubs.length ? wheels[p].spin : body).add(mesh);
+        if (p === hubs.length) shell.push(mesh);
       });
       if (/^Light_(Head|Tail)$/.test(mn)) {
         const P = geo.attributes.position, acc = { 1: [0, 0, 0, 0], [-1]: [0, 0, 0, 0] };
@@ -204,6 +205,19 @@ window.OECars = (function () {
     for (const p of lampAt.Light_Tail || []) glow(p, '#ff2a1a', 0.75, 'tail');
     world.add(g);
     const qz = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1), hub = new THREE.Vector3();
+    // the underside of the roof over a seat, in the body's frame: straight down onto the body from above
+    const roofs = {}, ray = new THREE.Raycaster(), down = new THREE.Vector3();
+    function roofOver(p) {
+      const key = `${p.x.toFixed(2)},${p.z.toFixed(2)}`;
+      if (roofs[key] == null) {
+        body.updateWorldMatrix(true, true);
+        const from = body.localToWorld(new THREE.Vector3(p.x, M.height_m + 2, p.z));
+        ray.set(from, body.localToWorld(down.set(p.x, 0, p.z)).sub(from).normalize());
+        const hit = ray.intersectObjects(shell, false)[0];
+        roofs[key] = hit ? body.worldToLocal(hit.point).y - 0.04 : M.height_m - 0.08;
+      }
+      return roofs[key];
+    }
     let spin = 0, blink = 0, pitch = 0, roll = 0, pv = 0, ph = 0;
     const api = {
       group: g, body, name, info: M, half, hw, top: M.height_m, wheelbase: wb, seats, mats, lamp: null,
@@ -246,7 +260,8 @@ window.OECars = (function () {
         if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) : 0;
       },
       // a person in a seat, facing forward: the rig's root on the floor in front of the cushion
-      // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it
+      // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it. A
+      // tall person (or a hat) sinks into the seat until the head clears the roof.
       sit(rig, seat) {
         const p = seats[seat] || seats.driver;
         body.add(rig.root);
@@ -254,6 +269,11 @@ window.OECars = (function () {
         rig.root.rotation.set(0, 0, 0);
         rig.legRake = 1;
         rig.reach = seat === 'driver' && steering ? hub : null;
+        if (rig.headTop) {
+          rig.animate(0, 0, 'sit', 0);
+          const over = body.worldToLocal(rig.headTop()).y - roofOver(p);
+          if (over > 0) rig.root.position.y -= Math.min(0.3, over);
+        }
       },
       // the shared headlamp (a spot light kept in the scene, so no shader recompiles), on this car
       carry(light) {
