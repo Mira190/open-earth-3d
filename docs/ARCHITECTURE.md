@@ -33,7 +33,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
-| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, NPCs and quests |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -259,10 +259,14 @@ The views switch in place, without reloading the page.
   - navigation;
   - people (`people.js`): skinned characters near the player, instanced crowd
     copies further away, all recoloured from one palette per character;
-  - traffic;
+  - crowd and traffic (`actors.js`): walkers who step aside for each other and
+    sit on benches in the sun or the shade, and cars on the left;
   - helicopter and ferries, built from `kit.js`, a kit of parts at real
     dimensions: a double-ended ferry in the city's livery (`game.ferry_style`)
     and a light helicopter;
+  - wildlife (`penguins.js`): a colony of little penguins in one instanced
+    mesh. They are out at sea by day, come ashore in rafts after the real
+    sunset and walk to burrows on the mapped rocks (`game.wildlife`);
   - HUD;
   - sound.
 

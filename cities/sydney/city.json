@@ -238,6 +238,10 @@
     "shade_landmarks": ["opera", "sydney_tower"],
     "ferry_style": {"length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
                     "note": "Sydney Ferries' green and cream with a gold band; the dimensions are approximate."},
+    "climate": {
+      "mean_max_c": [26.0, 25.8, 24.8, 22.5, 19.5, 17.0, 16.4, 17.9, 20.1, 22.2, 23.7, 25.3],
+      "source": "Bureau of Meteorology, Sydney (Observatory Hill) 066062, mean maximum temperature 1859-2020"
+    },
     "start": {
       "at": [120, 205],
       "facing": [298, 432],

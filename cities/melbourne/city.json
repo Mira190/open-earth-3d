@@ -519,8 +519,13 @@
   },
   "game": {
     "title": "Melbourne on Foot",
+    "blurb": "Walk central Melbourne rebuilt from open data and lit by the real sun. Talk to the people who know it, take the river shuttle down the Yarra, and fly past the Arts Centre spire. Every fact they tell you comes from the model.",
     "local_name": "Melburnian",
     "water_name": "Yarra",
+    "climate": {
+      "mean_max_c": [26.8, 25.9, 24.3, 20.8, 17.6, 14.7, 14.5, 15.6, 18.0, 20.5, 22.2, 24.7],
+      "source": "Bureau of Meteorology, Melbourne (Olympic Park) 086338, mean maximum temperature since 2013"
+    },
     "start": {
       "at": [
         548,
@@ -565,6 +570,13 @@
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Melbourne has no regular ferry through the city, only river cruises and the Port Phillip Ferries from Docklands, so this river shuttle and its vessel names are invented. Victoria Harbour meets the Yarra just west of the model, so the shuttle stops short of Docklands. Routes are generated through the river, and boats run at 1.5 times a cruise boat's speed. At a wharf you can skip the wait.",
     "ferry_speed_ms": 6.0,
+    "links": [
+      {
+        "id": "melbourne-bayside",
+        "name": "St Kilda and Brighton",
+        "how": "Route 96 runs from the city to St Kilda, where the little penguins come ashore after dark."
+      }
+    ],
     "ferry_style": {
       "length_m": 22,
       "beam_m": 6.5,
@@ -609,7 +621,8 @@
           "pants": "#2b3440"
         },
         "idle": [
-          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model."
+          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model.",
+          "Route 96 runs from the city to St Kilda. After dark the little penguins come ashore on the breakwater there: open St Kilda and Brighton from the menu (Esc)."
         ]
       },
       {
