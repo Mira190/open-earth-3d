@@ -7,10 +7,20 @@ import { Fn, uniform, float, vec2, vec3, vec4, mix, max, min, smoothstep, clamp,
 
 export const CHUNK = 64;
 
-export async function loadScene(base) {
+export async function loadScene(base, onBytes = () => {}) {
   const scene = await (await fetch(base + 'scene.json')).json();
   const t = scene.terrain;
-  const raw = new Int16Array(await (await fetch(base + t.file)).arrayBuffer());
+  // the terrain is most of the download: counted as it streams in (2 bytes a cell), for the loader
+  const want = t.w * t.h * 2;
+  const res = await fetch(base + t.file);
+  let buf;
+  if (res.body && res.body.getReader) {
+    const reader = res.body.getReader(), parts = [];
+    let got = 0;
+    for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes(got, want); }
+    buf = await new Blob(parts).arrayBuffer();
+  } else buf = await res.arrayBuffer();
+  const raw = new Int16Array(buf);
   const heights = new Float32Array(raw.length);
   for (let i = 0; i < raw.length; i++) heights[i] = raw[i] * t.units_m;
   // the sea only reaches hollows it is connected to: a flood fill from the edges through everything below the

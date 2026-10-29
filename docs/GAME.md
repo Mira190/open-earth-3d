@@ -55,7 +55,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | Keys | What they do |
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
-| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint · walk instead of jog · jump |
+| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint while held (7 m/s) · switch between running (4.5 m/s) and walking (1.4 m/s) · jump. A chip under the sun indicator shows the gait. |
 | <kbd>E</kbd> | Talk, board a ferry or wait for one, board the helicopter, drive your car, get in a taxi, get out |
 | <kbd>Y</kbd> · <kbd>N</kbd> | Raise your hand at the kerb and a taxi pulls in · the phone: order a ride, bring your car |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
@@ -73,6 +73,17 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 
 On a phone you get a joystick and buttons. Camera moves (the start, fast travel, a
 survey) end at once on any key or drag.
+
+While a city loads, the loader shows how much of its data has arrived and names
+each step. For the cities that have one (Tokyo, Osaka and Kyoto so far), a
+recorded flyover plays behind it: a 14 s spiral from high over the whole model
+down to the title screen's camera, so when it ends the live title screen takes
+over from its last frame. If the city is ready first, **Start** (or any key)
+goes straight in. `tools/flyover.js <city>` records it in the game itself, at
+8 frames a second interpolated to 30, as an H.264 MP4 and a VP9 WebM with a
+poster; `web/flyover.js` plays it. A visitor who prefers reduced motion gets
+the plain loader. The model viewer plays the same video, then its short
+establishing shot.
 
 ### Cars, taxis and rides
 
@@ -704,6 +715,38 @@ python blender/build_vehicles.py            # about 6 minutes; --render also ren
 python blender/build_vehicles.py --only cars  # one kind: helicopter, ferry, ferry_river or cars
 ```
 
+## The main characters
+
+| The surveyors you play: standing, and mid-stride (Cycles) |
+|---|
+| ![](images/people/H_Surveyor_W_Idle.jpg) ![](images/people/H_Surveyor_W_Walk.jpg) ![](images/people/H_Surveyor_M_Idle.jpg) ![](images/people/H_Surveyor_M_Walk.jpg) |
+
+The two surveyors you play are Microsoft Rocketbox avatars (MIT, © 2020 Microsoft;
+`web/assets/people/LICENSE-Rocketbox.txt`): construction workers in hi-vis vests,
+hard hats, gloves and radios, made by artists and rigged on a 3ds Max Biped.
+`blender/build_people.py` builds them:
+- **Clips:** Rocketbox's own motion capture on the same skeleton: a neutral idle,
+  walk, fast run, wave, talking and listening gestures, a nod, and checking
+  documents. Each clip is copied onto the avatar bone by bone in world space,
+  because the avatars' bind pose and the clips' rest pose differ, so local
+  rotations would not carry over. The figure stands and moves as it was
+  captured.
+- **In place:** the walk and the run come with their root motion extracted onto
+  a helper, so they play in place; the helper gives each gait's ground speed,
+  and the game plays the cycle at the speed you move.
+- **Size:** about 8,500 triangles and 2.4 MB each, with WebP textures. The
+  exporter bakes every bone's channels on every frame; channels that only hold
+  a bone's rest value (the face, and every translation but the hips') are
+  dropped afterwards.
+
+The game loads the surveyor you play, and the other when you switch in the
+menu. If their files do not load, the earlier characters stand in.
+
+```
+python pipeline/fetch_rocketbox.py               # the avatars and clips, into data/raw (once)
+python blender/build_people.py --preview         # -> web/assets/people/H_*.glb, docs/images/people/
+```
+
 ## The trees
 
 | The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
@@ -830,8 +873,7 @@ A cars script drives each part of the new road travel, in Sydney and in Paris:
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
 the game, walks for four seconds, talks to the first quest giver, flies the
 helicopter up and lets the ferries run for 40 s, with a screenshot after each
-step. It fails on any page error. Sydney, Melbourne, Osaka, Kyoto and Tokyo all
-pass it in the integrated build.
+step. It fails on any page error. All eight cities pass it.
 
 ## Limitations
 

@@ -211,7 +211,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const lineGround = (x, y, at) => (at.deck ? at.z : nav.offGround(x, y) ? null : nav.terrain(x, y));
 
   // ------------------------------------------------------------ street furniture: benches, lamps that light at night
-  loadMsg('People, traffic, ferries', 0.86);
+  loadMsg('People, traffic and ferries: downloading the models every city shares', 0.86);
   await idle();
   const lin = OEWorld.lin, dummy = new THREE.Object3D();
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
@@ -251,7 +251,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   try {
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
-    await Promise.all([...Object.keys(PLAYER_LOOKS), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
+    // the surveyors you play are the main characters (blender/build_people.py): the one you play now
+    // loads here, the other when you switch; the old characters stand in if their files don't load
+    for (const [k, h] of Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' })) if (lib.heroes[h]) PLAYER_LOOKS[k].hero = h;
+    const pl = PLAYER_LOOKS[playerChar];
+    if (pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
+    await Promise.all([pl.character, ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const CR = G.crowd || {};
@@ -267,12 +272,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const player = { rig: makeRig(playerLook(), { vest: true }),
     x: 0, y: 0, z: 0, h: 0, vz: 0, speed: 0, ground: true, floor: 'ground', mode: 'foot', vehicle: null, auto: null, walking: false };
   world.add(player.rig.root);
-  function setPlayerCharacter(name) { // swap the player's character in place
+  async function setPlayerCharacter(name) { // swap the player's character in place
     if (!lib || !PLAYER_LOOKS[name]) return;
+    const pl = PLAYER_LOOKS[name];
+    if (pl.hero && pl.character !== pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
+    await lib.require(pl.character).catch(() => {});
     playerChar = name;
     try { localStorage.setItem(PLAYER_KEY, name); } catch (e) { /* storage blocked */ }
     const old = player.rig, parent = old.root.parent, rig = makeRig(playerLook(), { vest: true });
     rig.root.position.copy(old.root.position); rig.root.rotation.copy(old.root.rotation);
+    rig.legRake = old.legRake; rig.reach = old.reach; // in a seat, the same way
     if (parent) { parent.remove(old.root); parent.add(rig.root); }
     player.rig = rig;
   }
@@ -1008,6 +1017,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (open.length > 1 || id) H.toast(`Tracking <b>${next.title || questOf(next).title}</b>`);
     save();
   }
+  // the gait on foot, shown beside the sun chip with its keys (hidden off foot)
+  let gaitShown = '';
+  function gaitChip(g) {
+    const el = $('#g-gait');
+    if (!el) return;
+    const want = player.mode === 'foot' ? g : '';
+    if (want === gaitShown) return;
+    gaitShown = want;
+    el.hidden = !want;
+    if (!want) return;
+    el.dataset.g = want;
+    el.innerHTML = touch ? `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b>`
+      : `<b>${{ walk: 'Walking', run: 'Running', sprint: 'Sprinting' }[want]}</b><span><kbd>X</kbd> ${want === 'walk' ? 'run' : 'walk'} · <kbd>Shift</kbd> sprint</span>`;
+  }
   function checkSteps() {
     for (const l of openLines()) {
       const s = stepOf(l);
@@ -1190,6 +1213,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
 
   // ------------------------------------------------------------ input
   const keys = new Set();
+  let preTitle = true; // until the loader hands over to the title screen (after a loading flyover, when it ends)
   const settings = { route: true, density: 'normal' };
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
@@ -1203,6 +1227,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c)) e.preventDefault();
     if (e.repeat) { keys.add(c); return; }
     keys.add(c);
+    if (preTitle) return; // the loader is still up (a flyover playing)
     if (!$('#g-title').hidden) { if (c === 'Enter') $('#gt-play').click(); return; }
     if (photo.on) { // photo mode: move with WASD (read in photoCamera), Enter saves, Esc or O leaves
       if (c === 'Enter') snapPhoto(); else if (c === 'Escape' || c === 'KeyO') photoMode(false);
@@ -1235,7 +1260,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     else if (c === 'KeyP') togglePass();
     else if (c === 'KeyH' && player.mode === 'ferry') takeHelm();
     else if (c === 'KeyR' && player.mode === 'foot') unstuck();
-    else if (c === 'KeyX' && player.mode === 'foot') { player.walking = !player.walking; H.toast(player.walking ? 'Walking. X to jog.' : 'Jogging. X to walk.'); }
+    else if (c === 'KeyX' && player.mode === 'foot') { player.walking = !player.walking; H.toast(player.walking ? 'Walking. <kbd>X</kbd> to run, hold <kbd>Shift</kbd> to sprint.' : 'Running. <kbd>X</kbd> to walk, hold <kbd>Shift</kbd> to sprint.'); }
   });
   on(window, 'keyup', e => keys.delete(e.code));
   on(window, 'blur', () => keys.clear());
@@ -1961,9 +1986,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
   $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
-  $('#g-title').hidden = false; // held back until now, so it never shows over the loader
-  $('#g-loader').classList.add('out');
-  setTimeout(() => { $('#g-loader').hidden = true; }, reduced ? 0 : 700);
+  // the loading flyover, if it played, ends on the title orbit's first pose, so the orbit takes over from
+  // its last frame as the loader fades; the title card is held back until then, so it never shows over
+  // the loader, while the scene under it waits as on the title screen (preTitle)
+  OEFlyover.finish($('#g-loader')).then(flew => {
+    if (flew) fromFlyover();
+    preTitle = false;
+    $('#g-title').hidden = false;
+    $('#g-loader').classList.add('out');
+    setTimeout(() => { $('#g-loader').hidden = true; OEFlyover.stop($('#g-loader')); }, reduced ? 0 : 700);
+  });
   renderPassport();
 
   // ------------------------------------------------------------ the loop
@@ -1975,7 +2007,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // the first frame can be stamped before the loop started
     last = now; clockT += dt;
     U.uTime.value = clockT;
-    const titleOn = !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on;
+    const titleOn = preTitle || !$('#g-title').hidden, paused = titleOn || !$('#g-menu').hidden || photo.on;
     stage.classList.toggle('titled', titleOn);
     // time of day
     if (!clock.frozen && !paused) { clock.min += dt * clock.scale / 60; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
@@ -2040,6 +2072,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (a) { $('#gp-key').textContent = a.key; $('#gp-key').hidden = !a.key; $('#gp-text').textContent = a.text; }
       if (!phone.el.hidden && phone.view === 'ride' && clockT - phone.at > 0.5) { phone.at = clockT; phoneRender(); }
       vehicleHud();
+      if (player.mode !== 'foot') gaitChip('');
     }
     // a low frame rate is worth a hint (slowroads does the same)
     fpsAcc[0] += dt; fpsAcc[1]++;
@@ -2152,7 +2185,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     const m = Math.min(1, Math.hypot(fwd, side));
     const run = k('ShiftLeft') || k('ShiftRight');
-    const target = m > 0.05 ? (run ? 5.4 : player.walking ? 1.35 : 2.8) * m : 0; // jog, walk (X) or sprint (Shift)
+    const target = m > 0.05 ? (run ? 7 : player.walking ? 1.4 : 4.5) * m : 0; // run, walk (X) or sprint (hold Shift)
+    gaitChip(m > 0.05 ? (run ? 'sprint' : player.walking ? 'walk' : 'run') : player.walking ? 'walk' : 'run');
     player.speed += (target - player.speed) * Math.min(1, dt * (target > player.speed ? 6 : 10));
     if (m > 0.05) {
       const dir = cam.yaw + Math.atan2(side, fwd);
@@ -2207,7 +2241,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // The camera: the title orbit, then the rig (chase or bird's-eye) unless a shot is
   // playing. Shots get the rig's live pose, so they can land exactly where it is.
   const titleLook = new THREE.Vector3(), live = { pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), half: 170 };
-  let titleYaw = null;
+  // The title orbit, round a point near the start, ORBIT.r out and ORBIT.h up: from the bearing with
+  // the most open foreground (openYaw) or, after a loading flyover, from the video's last frame
+  // (FLY_END, where tools/flyover.js ends it: 420 m south and 210 m up, the orbit the videos were
+  // made under), easing out to the orbit's own radius and height.
+  const ORBIT = { r: 470, h: 150 }, FLY_END = { yaw: 0, r: 420, h: 210 };
+  let titleYaw = null, titleR = ORBIT.r, titleH = ORBIT.h, flyCam = null;
+  const titlePose = () => ({ look: [player.x + 120, player.y + 160, player.z + 20],
+    cam: [player.x + 120 - Math.sin(FLY_END.yaw) * FLY_END.r, player.y + 160 - Math.cos(FLY_END.yaw) * FLY_END.r, player.z + 20 + FLY_END.h] });
+  function fromFlyover() { titleYaw = FLY_END.yaw; titleR = FLY_END.r; titleH = FLY_END.h; }
   // where the title orbit starts: the bearing with the most open foreground (the least building
   // over the nearer part of the line of sight), so the title does not open on one big flat roof
   function openYaw(cx, cy, r) {
@@ -2221,11 +2263,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return best;
   }
   function updateCamera(dt, titleOn) {
+    if (titleOn && flyCam) { // a scripted camera over the title screen, for recording the flyover
+      camera.up.set(0, 1, 0);
+      camera.position.copy(flyCam.pos);
+      camera.lookAt(flyCam.look);
+      live.pos.copy(camera.position);
+      Wd.fitShadow(flyCam.look, flyCam.shadow);
+      return;
+    }
     if (titleOn) { // slow orbit near the start for the title screen, low enough to see the skyline against the sky
-      if (titleYaw == null) titleYaw = openYaw(player.x + 120, player.y + 160, 470);
+      if (titleYaw == null) titleYaw = openYaw(player.x + 120, player.y + 160, ORBIT.r);
+      const k = Math.min(1, dt * 0.4);
+      titleR += (ORBIT.r - titleR) * k; titleH += (ORBIT.h - titleH) * k;
       titleLook.copy(W(player.x + 120, player.y + 160, player.z + 20));
       camera.up.set(0, 1, 0);
-      camera.position.copy(titleLook).add(new THREE.Vector3(Math.sin(titleYaw) * -470, 150, Math.cos(titleYaw) * 470));
+      camera.position.copy(titleLook).add(new THREE.Vector3(Math.sin(titleYaw) * -titleR, titleH, Math.cos(titleYaw) * titleR));
       camera.lookAt(titleLook);
       live.pos.copy(camera.position);
       Wd.fitShadow(titleLook, 600);
@@ -2478,7 +2530,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { Wd, colonies, flocks, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
+  const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
+  window.__game = { flyover, Wd, colonies, flocks, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

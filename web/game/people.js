@@ -190,6 +190,18 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       return lib.tpl[name];
     }));
     lib.names = Object.keys(info.characters);
+    // the main characters (blender/build_people.py): textured, with their own clips and skeleton
+    const H = info.heroes || {}, plain = lib.require;
+    lib.heroes = H.characters || {};
+    lib.require = name => {
+      const h = lib.heroes[name];
+      if (!h) return plain(name);
+      return lib.loading[name] || (lib.loading[name] = get(h.file).then(g => {
+        lib.tpl[name] = { scene: g.scene, textured: true, clips: g.animations, speeds: h.ground_speed, bones: H.bones || {} };
+        if (onMsg) onMsg(name);
+        return lib.tpl[name];
+      }));
+    };
     return lib;
   }
 
@@ -285,19 +297,23 @@ ${PAT_GLSL}`)
       sq = new THREE.Quaternion(); sq2 = new THREE.Quaternion(); rq = new THREE.Quaternion();
       r1 = new THREE.Vector3(); r2 = new THREE.Vector3(); r3 = new THREE.Vector3(); r4 = new THREE.Vector3();
     }
-    const T = lib.tpl[look.character], speeds = lib.info.ground_speed[T.pack];
+    const T = lib.tpl[look.character], speeds = T.speeds || lib.info.ground_speed[T.pack];
+    const alias = n => (T.bones && T.bones[n]) || n; // the old characters' bone names on a main character's rig
     const model = THREE.SkeletonUtils.clone(T.scene);
     let mesh = null, head = null;
     const bone = {};
-    model.traverse(o => { if (o.isSkinnedMesh) mesh = o; if (o.isBone) bone[o.name] = o; });
-    head = bone.Head || null;
-    mesh.material = paletteMaterial(colours(T.extras, look), T.extras.classes.map(c => CLS[c] || 0));
-    mesh.castShadow = mesh.receiveShadow = true;
-    mesh.frustumCulled = false;
+    model.traverse(o => { if (o.isSkinnedMesh && !mesh) mesh = o; if (o.isBone) bone[o.name] = o; });
+    head = bone[alias('Head')] || null;
+    if (T.textured) model.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; o.frustumCulled = false; } });
+    else {
+      mesh.material = paletteMaterial(colours(T.extras, look), T.extras.classes.map(c => CLS[c] || 0));
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.frustumCulled = false;
+    }
     const root = new THREE.Group();
     root.add(model);
     const mixer = new THREE.AnimationMixer(model), act = {};
-    for (const c of lib.clips[T.pack]) act[c.name] = mixer.clipAction(c);
+    for (const c of T.clips || lib.clips[T.pack]) act[c.name] = mixer.clipAction(c);
     let cur = null, cycles = 0, lastT = 0, waveUntil = -Infinity, lookW = 0, talked = false;
     const rig = { root, model, mixer, look, phase: 0, lookTarget: null, character: look.character };
     // reference pose for accessories: the first frame of Idle, in the model's own space
@@ -307,7 +323,8 @@ ${PAT_GLSL}`)
     model.updateMatrixWorld(true);
     const mInv = new THREE.Matrix4().copy(model.matrixWorld).invert();
     for (const n of ['Head', 'Chest', 'Abdomen', 'WristR', 'WristL']) {
-      if (!bones[n]) continue;
+      if (!bones[alias(n)]) continue;
+      bones[n] = bones[alias(n)];
       const bm = new THREE.Matrix4().multiplyMatrices(mInv, bones[n].matrixWorld);
       ref[n] = { pos: V3(0, 0, 0).setFromMatrixPosition(bm), inv: bm.clone().invert() };
     }
@@ -354,9 +371,11 @@ ${PAT_GLSL}`)
     rig.setLook = l => {
       Object.assign(look, l);
       rig.character = look.character;
-      mesh.material.userData.pal.value = colours(T.extras, look);
-      mesh.material.userData.pat.value = PAT[look.pattern] || 0;
-      if (look.pattern2) { const c = lin(look.pattern2); mesh.material.userData.pat2.value.set(c.r, c.g, c.b); } else mesh.material.userData.pat2.value.set(-1, -1, -1);
+      if (!T.textured) { // a main character keeps its own textures
+        mesh.material.userData.pal.value = colours(T.extras, look);
+        mesh.material.userData.pat.value = PAT[look.pattern] || 0;
+        if (look.pattern2) { const c = lin(look.pattern2); mesh.material.userData.pat2.value.set(c.r, c.g, c.b); } else mesh.material.userData.pat2.value.set(-1, -1, -1);
+      }
       model.scale.setScalar(look.scale || 1);
       setAccessories();
     };
@@ -364,11 +383,14 @@ ${PAT_GLSL}`)
     // sitting has no clip: bend the legs over the idle pose, thighs forward and shins down (an aim
     // per bone in world space, so it doesn't depend on how the bones' axes are set up). The feet
     // are IK targets under Root in these rigs, not children of the shins, so they are moved to
-    // the ends of the shins; then the body is lowered until they are back on the ground. In a car
-    // (rig.legRake ~1) the shins reach forward to the pedals, and with rig.reach (a point in the
-    // world: the steering wheel's hub) the hands go to either side of it.
-    const B = name => bone[THREE.PropertyBinding.sanitizeNodeName(name)]; // the loader drops the dots: Foot.L is FootL
+    // the ends of the shins (a main character's feet hang from its shins, and follow them); then the
+    // body is lowered until they are back on the ground. In a car (rig.legRake ~1) the shins reach
+    // forward to the pedals, and with rig.reach (a point in the world: the steering wheel's hub) the
+    // hands go to either side of it. A main character's bones are found by their names on the old
+    // rigs (alias, people.json "heroes.bones").
+    const B = name => bone[THREE.PropertyBinding.sanitizeNodeName(alias(name))]; // the loader drops the dots: Foot.L is FootL
     const legs = ['L', 'R'].map(side => ({ ul: B('UpperLeg.' + side), ll: B('LowerLeg.' + side), ft: B('Foot.' + side), shin: 0, y0: 0 }));
+    for (const l of legs) l.hangs = !!l.ft && l.ft.parent === l.ll;
     const arms = ['L', 'R'].map(side => ({ ua: B('UpperArm.' + side), la: B('LowerArm.' + side), wr: B('Wrist.' + side), s: side === 'L' ? 1 : -1 }));
     const seated = legs.every(l => l.ul && l.ll && l.ft), reaches = arms.every(a => a.ua && a.la && a.wr);
     // The mixer only writes a bone whose value has changed, so under a still clip a foot moved
@@ -386,9 +408,10 @@ ${PAT_GLSL}`)
       for (const l of legs) {
         aim(l.ul, l.ll, sd2.copy(fw));
         const down = sd2.set(0, -1, 0).addScaledVector(fw, rig.legRake ?? 0.12).normalize();
-        aim(l.ll, null, down);
+        aim(l.ll, l.hangs ? l.ft : null, down); // (towards the foot where it hangs from the shin: those bones' axes differ)
         const ankle = l.ll.getWorldPosition(sa).addScaledVector(down, l.shin);
         drop = Math.min(drop, l.y0 - ankle.y);
+        if (l.hangs) continue; // it came with the shin
         l.ft.parent.updateMatrixWorld(true);
         l.home = (l.home || new THREE.Vector3()).copy(l.ft.position);
         l.ft.position.copy(l.ft.parent.worldToLocal(ankle));
@@ -420,12 +443,13 @@ ${PAT_GLSL}`)
       const waving = t < waveUntil && speed < 0.3 && mode !== 'sit' && mode !== 'air';
       if (mode === 'talk' && !talked) { talked = true; rig.wave(t); }   // a wave hello, then listen
       else if (waving) { /* let the wave finish */ }
-      else if (mode === 'talk') play('Idle', 0.35);
+      else if (mode === 'talk') play(act.Talk ? 'Talk' : 'Idle', 0.35);
       else if (mode === 'sit') play('Idle_Neutral', 0.2);
       else if (mode === 'air') play('Run', 0.15).setEffectiveTimeScale(0.3);
       else if (speed < 0.15) play('Idle', 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
-      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(1.9, speed / (speeds.Run * s))));
+      else if (act.Sprint && speed > 5.2) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
+      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 7 m/s sprint
       if (mode !== 'sit') feetBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
