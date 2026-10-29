@@ -104,7 +104,7 @@ window.OEGulls = (function () {
       C[i].home = [C[i].x, C[i].y];
     }
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), v3 = new THREE.Vector3(), one = new THREE.Vector3(1, 1, 1), zero = new THREE.Matrix4().makeScale(0, 0, 0);
-    const shoulder = new THREE.Matrix4(), flapM = new THREE.Matrix4(), base = new THREE.Matrix4();
+    const shoulder = new THREE.Matrix4(), flapM = new THREE.Matrix4(), base = new THREE.Matrix4(), bodyM = new THREE.Matrix4(), hip = new THREE.Matrix4(), tilt = new THREE.Matrix4();
     // the birds: on the ground (pecking, walking, squabbling, on the seawall) or in the air (circling, hanging in the wind, landing)
     const G = [];
     for (let i = 0; i < n; i++) {
@@ -178,9 +178,10 @@ window.OEGulls = (function () {
           }
           continue;
         }
-        // on the ground
+        // on the ground, which slopes towards the seawall
         g.t -= dt;
         g.roll *= Math.exp(-dt * 6);
+        g.z = zAt(g.x, g.y);
         if (g.task === 'perch') { // on the seawall, looking out over the water
           g.h = g.perch.h + Math.sin(lastT * 0.6 + g.i * 3) * 0.5;
           if (g.t < 0) { if (dark < 0.6 && rnd() < 0.5) takeOff(g); else { g.perch.taken = false; g.perch = null; g.task = 'walk'; g.tx = boxAt.x + (rnd() - 0.5) * 2; g.ty = boxAt.y + (rnd() - 0.5) * 2; } }
@@ -194,9 +195,9 @@ window.OEGulls = (function () {
             g.task = 'peck'; g.t = 2 + rnd() * 6;
           }
         } else if (g.task === 'squabble') { // wings up and a shout at a neighbour
-          g.wing = 1.05 + 0.25 * Math.sin(lastT * 14);
-          g.z = zAt(g.x, g.y) + Math.abs(Math.sin(lastT * 7)) * 0.08;
-          if (g.t < 0) { g.wing = 0; g.z = zAt(g.x, g.y); g.task = 'walk'; const a = rnd() * 6.28; g.tx = g.x + Math.sin(a) * 0.9; g.ty = g.y + Math.cos(a) * 0.9; }
+          g.wing = 0.7 + 0.35 * Math.sin(lastT * 16 + g.i);
+          g.z += Math.abs(Math.sin(lastT * 7)) * 0.08;
+          if (g.t < 0) { g.wing = 0; g.task = 'walk'; const a = rnd() * 6.28; g.tx = g.x + Math.sin(a) * 0.9; g.ty = g.y + Math.cos(a) * 0.9; }
         } else { // pecking at the chips
           g.peck += dt * (1.1 + g.i % 3 * 0.25);
           const ph = g.peck % 1;
@@ -221,20 +222,22 @@ window.OEGulls = (function () {
       const cnt = [0, 0];
       for (const g of G) {
         const ty = g.young ? 1 : 0, k = cnt[ty]++;
-        e.set(g.pitch, Math.PI - g.h, g.roll, 'YXZ'); q.setFromEuler(e);
+        e.set(0, Math.PI - g.h, g.roll, 'YXZ'); q.setFromEuler(e);
         base.compose(W(g.x, g.y, g.z), q, v3.set(g.k, g.k, g.k));
-        meshes.body[ty].setMatrixAt(k, base);
         meshes.legs[ty].setMatrixAt(k, g.air ? zero : base);
+        // the body pitches about the hips (pecking, or nose up in the air), the legs stay upright
+        bodyM.multiplyMatrices(base, hip.makeTranslation(0, 0.11, 0)).multiply(tilt.makeRotationX(g.pitch)).multiply(hip.makeTranslation(0, -0.11, 0));
+        meshes.body[ty].setMatrixAt(k, bodyM);
         const spread = g.air || g.wing > 0.01;
         for (const [m, s] of [[meshes.wingL, 1], [meshes.wingR, -1]]) {
           if (!spread) { m.setMatrixAt(g.i, zero); continue; }
           shoulder.makeTranslation(s * 0.05, 0.2, 0.035);
           flapM.makeRotationZ(s * g.wing).multiply(m4.makeScale(s, 1, 1));
-          m.setMatrixAt(g.i, m4.multiplyMatrices(base, shoulder).multiply(flapM));
+          m.setMatrixAt(g.i, m4.multiplyMatrices(bodyM, shoulder).multiply(flapM));
         }
         if (g.chip !== null) { // the chip in its bill
           const c = C[g.chip];
-          v3.set(0, 0.24, 0.2).applyMatrix4(base);
+          v3.set(0, 0.24, 0.2).applyMatrix4(bodyM);
           c.x = v3.x; c.y = -v3.z; c.z = v3.y; c.h = g.h + Math.PI / 2;
         }
       }

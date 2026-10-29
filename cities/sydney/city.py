@@ -109,7 +109,7 @@ SHELLS = {
     "joan_sutherland": [(-1, 39.1, 14.0, 11.3), (1, 61.1, 12.5, 19.4), (1, 47.0, 11.8, 21.5), (1, 38.0, 13.5, 18.2)],
     "restaurant": [(-1, 28.0, 19.0, 14.0), (1, 26.0, 10.6, 11.5)],
 }
-HALL_NAMES = {"concert": "Concert Hall", "joan_sutherland": "Joan Sutherland Theatre", "restaurant": "Bennelong"}
+HALL_NAMES = {"concert": "Concert Hall", "joan_sutherland": "Joan Sutherland Theatre"}
 RESTAURANT_SPLIT = 0.65  # how far along the restaurant's ridge its two shells meet, back to back
 JUNCTION_M = {"concert": 23.0, "joan_sutherland": 20.5, "restaurant": 8.0}  # how high above the podium the back-to-back shells' ridges meet
 SIDE_GLASS_M = {"concert": 6.0, "joan_sutherland": 5.5, "restaurant": 3.0}  # the glass under the side shells, at its highest
