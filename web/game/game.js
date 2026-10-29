@@ -46,7 +46,8 @@ window.OpenEarthGame = async function game(cityId) {
   // neighbouring areas you can go on to, such as the bayside from the city (game.links)
   $('#gm-links').innerHTML = (G.links || []).map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   const stage = $('#game-stage'), canvas = $('#game-gl');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+  // reversed depth (where the GPU has EXT_clip_control) with the post stack's float depth buffer (atmosphere.js)
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', reversedDepthBuffer: true });
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
@@ -65,6 +66,11 @@ window.OpenEarthGame = async function game(cityId) {
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {} }) : null;
   if (atmos) { const z = renderer.getSize(new THREE.Vector2()); atmos.setSize(z.x, z.y); }
+  if (atmos && atmos.composer) {
+    Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
+    Wd.world.fog.near = 1500; Wd.world.fog.far = 24000; // and a little of it over the far city, for depth
+    if (renderer.capabilities.reversedDepthBuffer) U.uNudge.value = 1.5e-5; // a float depth buffer needs less to order coplanar roofs (buildings.js)
+  }
   U.uTime = { value: 0 };
   // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
@@ -87,6 +93,7 @@ if (uStreetOn > 0.5) { // drawn streets near the camera: no blur, no shadows bak
 }
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
 diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
+    Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
   };
   loadMsg('Surface model for walking, flying and sunlight', 0.78);
   await idle();
@@ -1348,7 +1355,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     if (!paused) simulate(dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
-    if (titleOn) titleYaw += dt * 0.05;
+    if (titleOn && titleYaw != null) titleYaw += dt * 0.05;
     if (photo.on) photoCamera(dt); else updateCamera(dt, titleOn);
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
@@ -1539,12 +1546,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // The camera: the title orbit, then the rig (chase or bird's-eye) unless a shot is
   // playing. Shots get the rig's live pose, so they can land exactly where it is.
   const titleLook = new THREE.Vector3(), live = { pos: new THREE.Vector3(), look: new THREE.Vector3(), up: new THREE.Vector3(0, 1, 0), half: 170 };
-  let titleYaw = 0;
+  let titleYaw = null;
+  // where the title orbit starts: the bearing with the most open foreground (the least building
+  // over the nearer part of the line of sight), so the title does not open on one big flat roof
+  function openYaw(cx, cy, r) {
+    let best = 0, least = Infinity;
+    for (let k = 0; k < 24; k++) {
+      const a = k / 24 * 2 * Math.PI, x0 = cx - Math.sin(a) * r, y0 = cy - Math.cos(a) * r;
+      let h = 0;
+      for (let i = 1; i <= 12; i++) { const t = i / 12 * 0.7, x = x0 + (cx - x0) * t, y = y0 + (cy - y0) * t; h += roofBelow(x, y) - nav.terrain(x, y); }
+      if (h < least) { least = h; best = a; }
+    }
+    return best;
+  }
   function updateCamera(dt, titleOn) {
-    if (titleOn) { // slow orbit near the start for the title screen
+    if (titleOn) { // slow orbit near the start for the title screen, low enough to see the skyline against the sky
+      if (titleYaw == null) titleYaw = openYaw(player.x + 120, player.y + 160, 470);
       titleLook.copy(W(player.x + 120, player.y + 160, player.z + 20));
       camera.up.set(0, 1, 0);
-      camera.position.copy(titleLook).add(new THREE.Vector3(Math.sin(titleYaw) * -420, 210, Math.cos(titleYaw) * 420));
+      camera.position.copy(titleLook).add(new THREE.Vector3(Math.sin(titleYaw) * -470, 150, Math.cos(titleYaw) * 470));
       camera.lookAt(titleLook);
       live.pos.copy(camera.position);
       Wd.fitShadow(titleLook, 600);
@@ -1728,7 +1748,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { Wd, colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

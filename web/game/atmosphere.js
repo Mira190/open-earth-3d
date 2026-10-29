@@ -110,7 +110,7 @@ window.OEAtmos = (function () {
 
   // a grade and vignette after tone mapping (sRGB in, sRGB out)
   const GRADE = {
-    uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.22 }, uSat: { value: 1.06 }, uContrast: { value: 1.04 } },
+    uniforms: { tDiffuse: { value: null }, uVignette: { value: 0.22 }, uSat: { value: 1.14 }, uContrast: { value: 1.08 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
     fragmentShader: `uniform sampler2D tDiffuse; uniform float uVignette; uniform float uSat; uniform float uContrast; varying vec2 vUv;
       void main() {
@@ -132,6 +132,7 @@ window.OEAtmos = (function () {
       su.cloudCoverage.value = clouds; su.cloudDensity.value = sky.cloud_density ?? 0.45;
       su.cloudScale.value = 0.00022; su.cloudSpeed.value = 0.00003; su.cloudElevation.value = 0.55;
     }
+    const skySat = sky.saturation ?? 1.7; // a blue sky rather than a white one (world.js)
     const S = stars(), M = moon();
     world.add(S, M);
     // the post stack, where the GPU renders to half-float targets with multisampling
@@ -139,7 +140,12 @@ window.OEAtmos = (function () {
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false;
     if (canPost) {
       const size = renderer.getSize(new THREE.Vector2());
-      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4 });
+      // with the game's reversed depth buffer (game.js), a 32-bit float depth: it resolves a few
+      // millimetres at two kilometres, where 24 bits behind a 0.3 m near plane resolve a metre, so
+      // distant walls and roofs no longer fight over the same pixels as the camera moves
+      const deep = renderer.capabilities.reversedDepthBuffer ? new THREE.DepthTexture(size.x, size.y, THREE.FloatType) : null;
+      const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: 4, depthTexture: deep });
+      if (deep) rt.resolveDepthBuffer = false; // only its format is wanted, not the texture
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(world, camera));
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
@@ -156,6 +162,7 @@ window.OEAtmos = (function () {
       update(utcMs, tSec, U) {
         night = U.uNight.value;
         if (su.time) su.time.value = tSec;
+        if (su.uSkySat) su.uSkySat.value = 1 + (skySat - 1) * (1 - night); // not the night sky's red
         skyBasis(utcMs, city.lat, city.lon, basis);
         S.matrix.copy(basis).setPosition(camera.position);
         S.matrixWorldNeedsUpdate = true;

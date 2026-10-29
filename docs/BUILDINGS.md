@@ -201,12 +201,13 @@ In the browser, `buildings.js` builds the walls:
 - **Glass.** Glass gets per-pixel roughness of 0.04–0.12, so it reflects the sky (three.js's PMREM environment and GGX).
 - **Rooms.** A room behind each window, from a ray cast through a box one bay wide and one storey high: back wall, side walls, floor, ceiling and furniture. Blinds are drawn on 28% of punched windows.
 - **Lights at night.** Windows light on an occupancy schedule for the style and the local hour. Offices light whole groups of bays; homes light by unit. Homes are warm (2700–3000 K) and offices neutral (about 3500 K).
-- **Anti-aliasing.** Every edge is filtered by its screen-space derivative. Far away, the grid fades to its average window-to-wall ratio instead of shimmering.
+- **Anti-aliasing.** Every row of windows, frames, courses and slats is box-filtered over the pixel's footprint as a repeating pulse, so a row too fine for its pixels settles on its mean coverage instead of shimmering. What changes from one window to the next (blinds, rooms, signs, glass tint) settles on its average once a window is a few pixels across, and lit windows once it is a pixel or two. Glass widens its reflections a little as it shrinks, so the sun's glint glides over a facade instead of flashing between windows. Flags read back from per-vertex data are rounded to whole numbers first, since an interpolated 16 can arrive as 15.99999.
+- **Overlapping solids.** Two sources can map the same building, so some solids overlap with their roofs in one plane. Each building is drawn a tiny share of its distance nearer the camera, along the view ray, so one of the two always wins the depth test and the roof does not speckle.
 - **Openness.** Wall vertices carry a sky-openness term. It is the mean horizon height in five directions over a 4 m model of the building tops, so street canyons and party walls are darker in ambient light.
 
 ## 4. Rooftops
 
-- **Flat roofs:** a 0.3 m parapet, 0.5–1.3 m high by style. The deck inside shows the aerial photo, softened and leaned towards the roof's median colour.
+- **Flat roofs:** a 0.3 m parapet, 0.5–1.3 m high by style. The deck inside shows the aerial photo, softened and leaned towards the roof's median colour, with the same haze correction as the ground (ARCHITECTURE.md).
 - **Plant rooms:** buildings 30 m or taller get a plant room or lift overrun, aligned to the roof's long axis.
 - **Plant boxes:** smaller roofs get plant boxes placed without overlap.
 - **Water tanks (Japan):** on 30% of buildings of 4–15 floors.

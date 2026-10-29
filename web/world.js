@@ -183,6 +183,42 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     return fade;
   }
 
+  // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
+  // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
+  // photoGrade takes the haze back out (a black level, in linear light), deepens the mid-tones
+  // a little and restores the colour, by amounts measured from the city's own tiles (photoStats).
+  const PHOTO_GRADE = `uniform vec4 uPhotoGrade;
+vec3 photoGrade(vec3 c) {
+  c = pow(max(c - uPhotoGrade.x, 0.0) / (1.0 - uPhotoGrade.x), vec3(uPhotoGrade.y));
+  return max(mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, uPhotoGrade.z), 0.0);
+}`;
+  // a histogram of the tiles' luminance and their mean saturation, from a small copy of each
+  function photoStats() {
+    const S0 = { hist: new Float64Array(256), sat: 0, n: 0 }, cv = document.createElement('canvas');
+    cv.width = cv.height = 64;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    return {
+      add(img) {
+        try { g.drawImage(img, 0, 0, 64, 64); } catch (e) { return; }
+        const d = g.getImageData(0, 0, 64, 64).data;
+        for (let i = 0; i < d.length; i += 4) {
+          const r = d[i], gg = d[i + 1], b = d[i + 2], mx = Math.max(r, gg, b);
+          if (mx < 6) continue; // no data
+          S0.hist[Math.round(0.2126 * r + 0.7152 * gg + 0.0722 * b)]++;
+          S0.sat += (mx - Math.min(r, gg, b)) / mx; S0.n++;
+        }
+      },
+      // black level (linear), mid-tone gamma and saturation gain
+      grade() {
+        if (S0.n < 500) return null;
+        let acc = 0, p2 = 0;
+        for (let v = 0; v < 256; v++) { acc += S0.hist[v]; if (acc >= 0.02 * S0.n) { p2 = v; break; } }
+        const black = 0.45 * Math.pow(p2 / 255, 2.2), sat = S0.sat / S0.n;
+        return [Math.min(0.06, black), 1.08, THREE.MathUtils.clamp(0.16 / Math.max(sat, 0.01), 1, 1.3)];
+      },
+    };
+  }
+
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -204,9 +240,18 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     // environment map turns into a second sun. Keep r128's tone curve and disc, the light this
     // app's exposure and materials were tuned under.
     sky.material.fragmentShader = sky.material.fragmentShader
-      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;')
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
-      .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ), 1.0 );');
+      .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ), 1.0 );' +
+        // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
+        // (the game sets it, atmosphere.js), and the last few degrees above the horizon go into the
+        // haze the model's edge fades into (setSun)
+        '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
+        '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
+    Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 } });
+    // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
+    sky.material.vertexShader = sky.material.vertexShader
+      .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
     const envScene = new THREE.Scene();
     const envSky = new THREE.Mesh(sky.geometry, sky.material);
     envSky.scale.setScalar(50); // inside the PMREM cube camera's far plane
@@ -232,6 +277,19 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     await idle();
     const texLoader = new THREE.TextureLoader();
     const groundMeshes = [];
+    const PG = { value: new THREE.Vector4(0, 1, 1, 0) }, stats = photoStats();
+    let tilesLeft = scene.ground.length;
+    const tileLoaded = tex => {
+      stats.add(tex.image);
+      if (--tilesLeft > 0) return;
+      const gr = stats.grade();
+      if (gr) PG.value.set(gr[0], gr[1], gr[2], 1);
+    };
+    const gradePhoto = sh => {
+      sh.uniforms.uPhotoGrade = PG;
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
+        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);');
+    };
     // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
     function tileGeometry(t, Tg) {
       const w = t.x1 - t.x0, h = t.y1 - t.y0;
@@ -245,10 +303,11 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     }
     for (const t of scene.ground) {
       const g = tileGeometry(t, T);
-      const tex = texLoader.load(D.DATA + t.file);
+      const tex = texLoader.load(D.DATA + t.file, tileLoaded, undefined, () => tileLoaded({ image: null }));
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
+      m.material.onBeforeCompile = gradePhoto;
       m.receiveShadow = true;
       world.add(m);
       groundMeshes.push(m);
@@ -299,7 +358,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
     world.add(water);
-    if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => sea.patchGround(sh);
+    if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
 
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
@@ -399,7 +458,8 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
       uC0: { value: lin(css('--s1') || '#2a78d6') }, uC1: { value: lin(css('--s2') || '#eb6834') }, uC2: { value: lin(css('--s3') || '#1baf7a') } };
     // walls, LOD2 roofs, facades and rooftop plant (buildings.js); parts a parametric landmark
     // draws instead (scene.json hidden_solids) stay in B.s and the surface model, not on screen
-    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small });
+    U.uPhotoGrade = PG;
+    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small, photoGrade: PHOTO_GRADE });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
@@ -481,8 +541,37 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
 
     // ------------------------------------------------------------ sun
     const warm = new THREE.Color('#ffb070'), noonC = new THREE.Color('#fff3e0');
+    const shX = new THREE.Vector3(), shY = new THREE.Vector3(), shAt = new THREE.Vector3();
+    // The haze at the model's edge in the colour of the sky at the horizon (away from the sun's
+    // glare, read back from a few pixels of the sky), and the sky's last few degrees above the
+    // horizon in that haze: the city fades into the sky instead of ending in a grey band. Only
+    // where the fog is mixed in linear light before the tone curve (the game's post stack sets
+    // skyHaze); the viewer fogs after it and keeps its fixed colours.
+    let hazeRT = null, hazeOk = false;
+    const hazeCam = new THREE.PerspectiveCamera(8, 1, 0.1, 100), hazeC = new THREE.Color(), hazePx = new Float32Array(16);
+    function readHaze(az) {
+      try {
+        if (!hazeRT) hazeRT = new THREE.WebGLRenderTarget(2, 2, { type: THREE.FloatType });
+        const prev = renderer.getRenderTarget(), on = su.uHazeOn.value, el = 1.5 * RAD;
+        su.uHazeOn.value = 0;
+        let r = 0, g = 0, b = 0;
+        for (const turn of [0.5, 1, 1.5]) { // across from the sun and on either side
+          const a = az + turn * Math.PI;
+          hazeCam.lookAt(Math.sin(a) * Math.cos(el), Math.sin(el), -Math.cos(a) * Math.cos(el));
+          renderer.setRenderTarget(hazeRT);
+          renderer.render(envScene, hazeCam);
+          renderer.readRenderTargetPixels(hazeRT, 0, 0, 2, 2, hazePx);
+          for (let i = 0; i < 16; i += 4) { r += hazePx[i]; g += hazePx[i + 1]; b += hazePx[i + 2]; }
+        }
+        renderer.setRenderTarget(prev);
+        su.uHazeOn.value = on;
+        if (!(r + g + b > 0) || !isFinite(r + g + b)) return false;
+        hazeC.setRGB(r / 12, g / 12, b / 12);
+        return true;
+      } catch (e) { return false; }
+    }
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, gradePhoto, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -504,21 +593,46 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
         LM_NIGHT.value = U.uNight.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
-        world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`;
         if (key !== envKey) {
           envKey = key;
+          if (api.skyHaze) hazeOk = readHaze(az);
+          su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
           if (envRT) envRT.dispose();
+          const skySat = su.uSkySat.value;
+          su.uSkySat.value = 1; // the light from the sky as the materials were tuned under; only its look is bluer
           envRT = pmrem.fromScene(envScene);
+          su.uSkySat.value = skySat;
           world.environment = envRT.texture;
         }
+        world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
+        // by day the sky's own horizon; through dusk back to the night's blue, which the sky's red night horizon would not give
+        if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
+        su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is
         return day;
       },
-      // keep the shadow map centred on what the camera looks at, half metres on each side
+      // keep the shadow map centred on what the camera looks at, at least half metres on each
+      // side. A map that slides or stretches by a fraction of a texel every frame makes every
+      // shadow edge in the city crawl, so its size moves in steps of a tenth (and holds while the
+      // view is within about three steps of it) and its centre moves in whole texels along the
+      // light's axes.
       fitShadow(target, half) {
-        if (shCam.right !== half) { shCam.left = -half; shCam.right = half; shCam.top = half; shCam.bottom = -half; shCam.updateProjectionMatrix(); }
-        sunLight.target.position.copy(target);
-        sunLight.position.copy(target).addScaledVector(api.sunDir, 4500);
+        const cur = shCam.right;
+        if (!(half <= cur && half > cur / 1.3)) {
+          const q = Math.pow(1.1, Math.ceil(Math.log(half) / Math.log(1.1) - 1e-9));
+          shCam.left = -q; shCam.right = q; shCam.top = q; shCam.bottom = -q; shCam.updateProjectionMatrix();
+        }
+        const texel = 2 * shCam.right / sunLight.shadow.mapSize.x, z = api.sunDir;
+        shX.set(z.z, 0, -z.x); // up × z, the shadow camera's x axis
+        const l = shX.length();
+        if (l > 1e-6) {
+          shX.divideScalar(l);
+          shY.crossVectors(z, shX);
+          const snap = v => Math.round(v / texel) * texel;
+          shAt.copy(z).multiplyScalar(target.dot(z)).addScaledVector(shX, snap(target.dot(shX))).addScaledVector(shY, snap(target.dot(shY)));
+        } else shAt.copy(target);
+        sunLight.target.position.copy(shAt);
+        sunLight.position.copy(shAt).addScaledVector(z, 4500);
       },
       // the date, for what flowers when (local month and day)
       setSeason(month, day) { if (trees) trees.setSeason(month, day); },
@@ -528,7 +642,7 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
       },
-      dispose() { if (envRT) envRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); },
+      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); },
     };
     return api;
   }
