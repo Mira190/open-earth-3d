@@ -1,16 +1,16 @@
 {
  "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
  "counts": {
-  "measured:hipped": 3774,
+  "measured:hipped": 3775,
   "measured:flat": 7978,
   "measured:mansard": 2758,
-  "measured:gambrel": 8004,
+  "measured:gambrel": 8005,
   "measured:gabled": 7370,
   "fallback_flat": 64,
   "too_low": 260,
   "prior:flat": 368,
   "rule:flat": 1700,
-  "mapped:mansard": 82,
+  "mapped:mansard": 83,
   "prior:mansard": 185,
   "measured:gabled_across": 412,
   "mapped:skillion": 255,
@@ -55,7 +55,7 @@
    "onion": 3
   },
   "vs_measured": {
-   "n": 26918,
+   "n": 26921,
    "flat_vs_pitched_accuracy": 0.285,
    "exact_shape_accuracy": 0.219,
    "family_accuracy": 0.219,
@@ -63,27 +63,27 @@
    "flat_recall": 0.858,
    "confusion_pitched": {
     "true_pitched_pred_pitched": 2160,
-    "true_pitched_pred_flat": 18348,
+    "true_pitched_pred_flat": 18351,
     "true_flat_pred_flat": 5502,
     "true_flat_pred_pitched": 908
    },
    "truth": {
-    "gambrel": 7937,
+    "gambrel": 7938,
     "gabled": 6963,
     "flat": 6410,
-    "hipped": 3042,
+    "hipped": 3044,
     "mansard": 2566
    }
   },
   "measured_vs_mapped": {
-   "n": 505,
-   "flat_vs_pitched_accuracy": 0.683,
-   "exact_shape_accuracy": 0.236,
-   "family_accuracy": 0.293,
-   "pitched_recall": 0.8,
+   "n": 506,
+   "flat_vs_pitched_accuracy": 0.684,
+   "exact_shape_accuracy": 0.235,
+   "family_accuracy": 0.292,
+   "pitched_recall": 0.801,
    "flat_recall": 0.287,
    "confusion_pitched": {
-    "true_pitched_pred_pitched": 312,
+    "true_pitched_pred_pitched": 313,
     "true_pitched_pred_flat": 78,
     "true_flat_pred_flat": 33,
     "true_flat_pred_pitched": 82
@@ -93,7 +93,7 @@
     "flat": 115,
     "gabled": 107,
     "hipped": 77,
-    "mansard": 28,
+    "mansard": 29,
     "skillion": 28,
     "round": 8,
     "dome": 4,
@@ -101,8 +101,8 @@
    }
   }
  },
- "roofs_built": 24291,
- "rooftop_props": 69165,
+ "roofs_built": 24294,
+ "rooftop_props": 69170,
  "frontage_solids": 11259,
  "skeleton_failures": {
   "active": 141,

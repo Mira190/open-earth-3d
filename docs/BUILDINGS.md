@@ -277,6 +277,7 @@ on a CPU, SwiftShader):
 | Tokyo | 3.07 → 4.63 MB | 3,130 | 1.90 M vertices, 1.17 M triangles | 2.0 s |
 | Kyoto | 9.81 → 25.71 MB (2.67 → 8.90) | 45,866, most of them measured | 5.77 M vertices, 2.46 M triangles | 4.4 s |
 | Osaka | 11.12 → 24.60 MB (3.27 → 8.62) | 32,955 | 6.33 M vertices, 3.12 M triangles | 4.9 s |
+| Paris | new: 21.40 MB (8.71) | 24,294, 20,002 of them measured by LiDAR | 6.31 M vertices, 3.17 M triangles | 4.6 s |
 
 The roof meshes are most of the growth: 14.6 MB of Kyoto's file, about 320 bytes
 a roof. Delta-encoding their vertices would save only 2–11% after gzip, so the

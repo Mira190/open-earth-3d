@@ -103,6 +103,13 @@
     "clarity_m": 0.9,
     "colour_note": "The Seine in Paris is green-brown with silt and algae; visibility is about a metre in summer."
   },
+  "trees": {
+    "mix": {
+      "plane": 0.6,
+      "elm": 0.4
+    },
+    "note": "Species are not mapped; the mix is a guess. The plane tree is Paris's commonest street tree, along the boulevards and the quays; the horse chestnuts and limes of the gardens are drawn as elms, the nearest of the shared broadleaf species."
+  },
   "storey": {
     "res": [
       3.0,

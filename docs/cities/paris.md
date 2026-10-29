@@ -29,7 +29,7 @@ each roof's shape from the laser's profile over the surveyed eaves.
   street rise 20 m to its cornice. The 10,199 residential buildings of five floors
   or more that BD TOPO dates 1850 to 1914 have a median surveyed eaves height of
   20.1 m.
-- **Roofs are read from the laser.** 20,000 pitched roofs were profiled;
+- **Roofs are read from the laser.** 20,002 pitched roofs were profiled;
   50.2% are mansards or gambrels, and the median pitched roof rises
   4.8 m over its eaves. On the 485 roofs mappers tagged, the profile gets
   flat or pitched right 69% of the time, where the rules alone get 34%.
@@ -144,14 +144,14 @@ of the buildings.
 
 | Measured roofs | Buildings |
 |---|---|
-| Gambrel (mansard with gables on party walls) | 7,692 |
+| Gambrel (mansard with gables on party walls) | 7,693 |
 | Gabled (343 with the ridge across) | 7,117 |
 | Flat | 6,519 |
-| Hipped | 2,845 |
+| Hipped | 2,846 |
 | Mansard | 2,346 |
-| **All buildings with a measured roof** | **26,519** |
+| **All buildings with a measured roof** | **26,521** |
 
-(The main roof of each building. Counted per solid, half of the 20,000 pitched
+(The main roof of each building. Counted per solid, half of the 20,002 pitched
 roofs are mansards or gambrels.)
 
 **The check.** On the 485 roofs that mappers tagged with a shape, the LiDAR profile
@@ -173,6 +173,12 @@ to eight floors on a street the Haussmann facade: limestone ashlar with its
 courses, a rusticated base under a shop and its entresol, French windows with stone
 surrounds, a wrought-iron balcony along the whole front on the second and top
 floors and a railing across each window on the others, and a cornice.
+
+**Trees.** The 34,957 trees mapped in OpenStreetMap are drawn with the shared tree
+models, as plane trees (60%) and elms (40%) (`trees.mix` in `city.json`). Species are
+not mapped, so the mix is a guess: the plane is Paris's commonest street tree, and the
+horse chestnuts and limes of the gardens are drawn as elms, the nearest of the shared
+broadleaf species.
 
 ## 4. Terrain
 
