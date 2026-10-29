@@ -55,6 +55,7 @@ window.OENav = (function () {
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     for (const m of D.LM.meshes || []) {
       if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
+      if (((D.LM.materials || {})[m.material] || {}).decal) continue; // paving laid over a roof, which is the solid
       const p = m.position, idx = m.index, mine = new Map();
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
@@ -73,15 +74,16 @@ window.OENav = (function () {
       tops[m.name] = new Map([...mine].map(([k, q]) => [k, q[1]]));
       for (const [k, q] of mine) { const l = solid.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid.set(k, [q[0] - 0.3, q[1] + 0.3]); }
     }
-    for (const s of strips) { // slabs: solid from (surface - thickness) to the surface
-      const th = s.thickness || 3;
+    for (const s of strips) { // slabs: solid from (surface - thickness) to the surface's lowest point in the cell (a stair climbs a few risers across one)
+      const th = s.thickness || 3, h = DSM.cell / 2;
       for (let r = 0; r < DSM.ny; r++) {
         const y = y1 - (r + 0.5) * DSM.cell;
         for (let c = 0; c < DSM.nx; c++) {
           const x = x0 + (c + 0.5) * DSM.cell;
           if (Math.abs((x - s.origin[0]) * s.axis[0] + (y - s.origin[1]) * s.axis[1]) > 1000) continue;
-          const z = stripHeight(s, x, y);
-          if (z == null) continue;
+          if (stripHeight(s, x, y) == null) continue;
+          let z = Infinity;
+          for (const [dx, dy] of [[0, 0], [-h, -h], [h, -h], [-h, h], [h, h]]) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
           const k = r * DSM.nx + c, l = solid.get(k);
           if (l) l.push(z - th, z - 0.05); else solid.set(k, [z - th, z - 0.05]);
         }
