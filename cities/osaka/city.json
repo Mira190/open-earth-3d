@@ -61,8 +61,7 @@
       "drain",
       "ditch"
     ],
-    "min_area_m2": 800,
-    "sea": false
+    "min_area_m2": 800
   },
   "storey": {
     "res": [

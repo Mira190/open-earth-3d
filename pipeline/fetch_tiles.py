@@ -10,7 +10,8 @@
                         else it takes the nearest valid cell
            "wcs": an OGC WCS 1.0.0 GetCoverage of float elevations in geographic
                   coordinates (`crs`, e.g. EPSG:4283 for GDA94); pits deeper than
-                  `fill_below_m` (voids in the source) are filled from their neighbours
+                  `fill_below_m`, spikes higher than `fill_above_m` (voids in the source)
+                  and non-finite values are filled from their neighbours
            "terrarium": AWS Terrain Tiles (Mapzen Terrarium PNG). This is a global
                         fallback, and in city centres it is a surface model that
                         includes buildings (Sydney: median 37 m too high), so use a
@@ -114,7 +115,9 @@ def dem_wcs(bbox, cfg, raw):
     with open(path, "wb") as f:
         f.write(r.content)
     a = np.asarray(Image.open(path), dtype=np.float32).copy()
-    bad = a < cfg.get("fill_below_m", -1e9)
+    # voids: pits below fill_below_m, spikes above fill_above_m (no-data values the service
+    # passes through at the edge of its coverage) and anything not finite
+    bad = ~np.isfinite(a) | (a < cfg.get("fill_below_m", -1e9)) | (a > cfg.get("fill_above_m", 1e9))
     if bad.any():
         from scipy.ndimage import distance_transform_edt
         idx = distance_transform_edt(bad, return_distances=False, return_indices=True)

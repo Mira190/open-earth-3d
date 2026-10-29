@@ -72,10 +72,10 @@ and the projection are right, not that the survey is. Terrarium (a surface model
 includes buildings) is used by `radar_check.py` as the independent test of building mass.
 
 Kyoto is 25–80 m above sea level, and the viewer's water plane is at 0 m, so rivers and ponds
-are left to the aerial photograph (`water.classes` is empty) and `water.sea` is false: no sea
-is drawn past the model's edge. Where the 5 m laser DEM has no data (1% of the stitched
-tiles, mostly the river beds), the nearest cell fills it. The branch that added Kyoto set
-those cells to sea level, 25–80 m below the ground around them.
+are left to the aerial photograph (`water.classes` is empty); past the model's edge there is
+only haze. Where the 5 m laser DEM has no data (1% of the stitched tiles, mostly the river
+beds), the nearest cell fills it. The branch that added Kyoto set those cells to sea level,
+25–80 m below the ground around them.
 
 ## 4. Sun on public places
 

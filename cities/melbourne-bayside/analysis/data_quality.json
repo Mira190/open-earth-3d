@@ -1,0 +1,57 @@
+{
+ "ml_heights": {
+  "buildings": 10780,
+  "with_height": 7226,
+  "height_is_ml": 7218,
+  "ml_with_floor_count": 272,
+  "median_ml_over_floor_height": 0.54,
+  "share_ml_below_half": 0.36,
+  "towers_15_floors_plus": 2,
+  "towers_median_ml_over_floor_height": 0.18
+ },
+ "terrain": {
+  "region_m": [
+   -900,
+   1300,
+   1900,
+   3850
+  ],
+  "land": {
+   "samples": 4915,
+   "median_excess_m": 6.3,
+   "p90_excess_m": 8.6
+  },
+  "under_buildings": {
+   "samples": 2010,
+   "median_excess_m": 6.4,
+   "p90_excess_m": 8.5
+  },
+  "open_ground": {
+   "samples": 2905,
+   "median_excess_m": 6.3,
+   "p90_excess_m": 8.6
+  },
+  "points": {
+   "St Kilda Pier": {
+    "terrarium_m": 7.2,
+    "dem_m": 2.3
+   },
+   "Luna Park": {
+    "terrarium_m": 8.0,
+    "dem_m": 3.5
+   },
+   "Elwood Beach": {
+    "terrarium_m": 2.9,
+    "dem_m": -0.2
+   },
+   "Middle Brighton Pier": {
+    "terrarium_m": 0.9,
+    "dem_m": 0.0
+   },
+   "Dendy Street Beach": {
+    "terrarium_m": 3.5,
+    "dem_m": 0.0
+   }
+  }
+ }
+}

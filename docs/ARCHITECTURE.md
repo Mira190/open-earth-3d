@@ -35,7 +35,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook |
-| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, NPCs and quests |
+| Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife and no-go areas, travel points, NPCs and quests |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -192,7 +192,12 @@ The views switch in place, without reloading the page.
     shopfronts, glass with a room behind it, lights by the local hour, and
     the height-source colours ([BUILDINGS.md](BUILDINGS.md));
   - landmarks with their surface patterns, trees, piers and water;
-  - sky, sun and shadows.
+  - sky, sun and shadows;
+  - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
+    the fog colour, and beyond the frame there is only haze. It is three.js's fog
+    chunks with the frame written in, so every fogged material takes it,
+    reflections included. Within about 150 m of the camera it is held off, unless
+    the camera itself is outside the model.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -233,10 +238,6 @@ The views switch in place, without reloading the page.
     The ground gets a wet band at the waterline and the swash on sand.
     `?water=flat` restores the old flat sheet, which is also the fallback
     where the GPU cannot render to float targets.
-  - **Inland cities** (`water.sea: false`: Osaka, Kyoto): no sea is drawn past
-    the model's edge. The ground tiles stop at the frame, and a land skirt
-    carries the edge's own heights outwards in rings to 30 km, easing to the
-    edge's median height, in a plain colour that the fog takes.
 
   Sydney's settings (a 5 m/s north-easterly over 4 km) give a significant wave
   height of 0.19 m, close to the fetch-limited estimate of 0.16 m. The Yarra's
@@ -290,6 +291,9 @@ The views switch in place, without reloading the page.
   - helicopter and ferries, built from `kit.js`, a kit of parts at real
     dimensions: a double-ended ferry in the city's livery (`game.ferry_style`)
     and a light helicopter;
+  - wildlife (`penguins.js`): a colony of little penguins in one instanced
+    mesh. They are out at sea by day, come ashore in rafts after the real
+    sunset and walk to burrows on the mapped rocks (`game.wildlife`);
   - HUD;
   - sound.
 

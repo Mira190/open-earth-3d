@@ -103,6 +103,31 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
   };
 
   // build the scene into a new THREE.Scene; the caller owns the renderer and camera
+  // The edge of the model: where the open data stops, the ground, the buildings and the
+  // water fade into the haze over the last few hundred metres, and beyond the frame there
+  // is only haze, so the city does not end in a cliff over a flat sea. It is the scene's
+  // fog, anchored to the model's frame rather than to the camera: three.js's fog chunks,
+  // with the frame written in as constants, so every material that takes fog takes it,
+  // reflections included. The world position comes from the view matrix (rigid, so its
+  // inverse is its transpose). Things within about 150 m of the camera stay clear, so you
+  // can still stand near the edge.
+  let FOG0 = null;
+  function edgeHaze(frame, near = 150) {
+    const C = THREE.ShaderChunk;
+    if (!FOG0) FOG0 = { pv: C.fog_pars_vertex, v: C.fog_vertex, pf: C.fog_pars_fragment, f: C.fog_fragment };
+    const w = frame.x[1] - frame.x[0], h = frame.y[1] - frame.y[0], fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
+    const n = v => v.toFixed(1), last = (chunk, add) => chunk.replace(/#endif\s*$/, `\t${add}\n#endif`); // inside the outer USE_FOG block
+    C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;');
+    C.fog_vertex = last(FOG0.v, 'vEdgeXZ = ( transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) ).xz;');
+    C.fog_pars_fragment = last(FOG0.pf, 'varying vec2 vEdgeXZ;');
+    // how far out into the haze a point is (0 inside, 1 at the frame and beyond); the camera's own
+    // value lifts the near exemption when it is out there itself, so the sea in front of it hazes too
+    const out = p => `smoothstep( 0.0, ${n(fade)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfogFactor = max( fogFactor, ${out('vEdgeXZ')} * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
+	gl_FragColor.rgb`);
+    return fade;
+  }
+
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -145,27 +170,21 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     const hemi = new THREE.HemisphereLight(0xc3d6e6, 0x4d463a, 0.25 * Math.PI);
     world.add(hemi);
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
+    edgeHaze(scene.frame);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
     await idle();
     const texLoader = new THREE.TextureLoader();
     const groundMeshes = [];
-    // an inland city (scene.water.sea false) has no sea past its edge; its tiles stop at the model's
-    // frame, where the land skirt below takes over, and keep their texture coordinates on the whole tile
-    const inland = !!(scene.water && scene.water.sea === false), FR = scene.frame;
+    // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
     function tileGeometry(t, Tg) {
-      const x0 = inland ? Math.max(t.x0, FR.x[0]) : t.x0, x1 = inland ? Math.max(x0 + 0.01, Math.min(t.x1, FR.x[1])) : t.x1;
-      const y0 = inland ? Math.max(t.y0, FR.y[0]) : t.y0, y1 = inland ? Math.max(y0 + 0.01, Math.min(t.y1, FR.y[1])) : t.y1;
-      const w = x1 - x0, h = y1 - y0;
-      const g = new THREE.PlaneGeometry(w, h, Math.max(1, Math.round(w / Tg.cell)), Math.max(1, Math.round(h / Tg.cell)));
+      const w = t.x1 - t.x0, h = t.y1 - t.y0;
+      const g = new THREE.PlaneGeometry(w, h, Math.round(w / Tg.cell), Math.round(h / Tg.cell));
       g.rotateX(-Math.PI / 2);
-      g.translate((x0 + x1) / 2, 0, -(y0 + y1) / 2);
-      const p = g.attributes.position, uv = g.attributes.uv;
-      for (let i = 0; i < p.count; i++) {
-        p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
-        uv.setXY(i, (p.getX(i) - t.x0) / (t.x1 - t.x0), (-p.getZ(i) - t.y0) / (t.y1 - t.y0));
-      }
+      g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
+      const p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
       return g;
     }
@@ -178,40 +197,6 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
       m.receiveShadow = true;
       world.add(m);
       groundMeshes.push(m);
-    }
-
-    // past an inland city's edge, the edge's own ground runs on outwards in rings, easing to the
-    // edge's median height, in a plain colour the fog takes
-    if (inland) {
-      const X0 = FR.x[0], X1 = FR.x[1], Y0 = FR.y[0], Y1 = FR.y[1], step = 50;
-      const ground = (x, y) => S.terrainAt(T, Math.min(X1 - 1, Math.max(X0 + 1, x)), Math.min(Y1 - 1, Math.max(Y0 + 1, y)));
-      const per = [];  // the edge, anticlockwise from the south-west corner, with each point's outward direction
-      const side = (ax, ay, bx, by, nx, ny) => {
-        const n = Math.max(1, Math.round(Math.hypot(bx - ax, by - ay) / step));
-        for (let k = 0; k < n; k++) per.push([ax + (bx - ax) * k / n, ay + (by - ay) * k / n, nx, ny]);
-      };
-      side(X0, Y0, X1, Y0, 0, -1); side(X1, Y0, X1, Y1, 1, 0); side(X1, Y1, X0, Y1, 0, 1); side(X0, Y1, X0, Y0, -1, 0);
-      // corners push out along both sides, so every ring is a rectangle
-      for (const q of per) {
-        if ((q[0] === X0 || q[0] === X1) && (q[1] === Y0 || q[1] === Y1)) { q[2] = q[0] === X0 ? -1 : 1; q[3] = q[1] === Y0 ? -1 : 1; }
-      }
-      const hs = per.map(q => ground(q[0], q[1])), mid = [...hs].sort((a, b) => a - b)[hs.length >> 1];
-      const rings = [0, 150, 600, 2000, 7000, 30000], pos = [], idx = [], np = per.length;
-      for (const d of rings) {
-        const t = Math.min(1, d / 7000), ease = t * t * (3 - 2 * t);
-        per.forEach((q, i) => pos.push(q[0] + q[2] * d, hs[i] + (mid - hs[i]) * ease - (d ? 0.05 : 0), -(q[1] + q[3] * d)));
-      }
-      for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < np; i++) {
-        const a = r * np + i, b = r * np + (i + 1) % np, c = a + np, e = b + np;
-        idx.push(a, c, b, b, c, e);
-      }
-      const g = new THREE.BufferGeometry();
-      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-      g.setIndex(idx);
-      g.computeVertexNormals();
-      const skirt = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: lin('#9b998f'), roughness: 1, metalness: 0, side: THREE.DoubleSide }));
-      skirt.receiveShadow = true;
-      world.add(skirt);
     }
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
@@ -254,9 +239,8 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     }
     const waterMat = new THREE.MeshStandardMaterial({ color: lin('#1d3a4b'), roughness: 0.08, metalness: 0.0, transparent: true,
       opacity: 0.84, normalMap: rippleTexture(), normalScale: new THREE.Vector2(0.25, 0.25) });
-    const wf = scene.frame, waterGeo = inland ? new THREE.PlaneGeometry(wf.x[1] - wf.x[0], wf.y[1] - wf.y[0]) : new THREE.PlaneGeometry(80000, 80000);
+    const waterGeo = new THREE.PlaneGeometry(80000, 80000);
     waterGeo.rotateX(-Math.PI / 2);
-    if (inland) waterGeo.translate((wf.x[0] + wf.x[1]) / 2, 0, -(wf.y[0] + wf.y[1]) / 2);
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
     world.add(water);
@@ -376,6 +360,14 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
+    // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
+    const walks = (D.G && D.G.boardwalks) || [];
+    if (walks.length) {
+      const top = Math.round((D.G.pier_deck_m || 2.2) * 10), timber = { wall: lin('#6f5a44'), roof: lin('#8a7258'), code: 3, windows: false };
+      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), piers.material);
+      deck.castShadow = deck.receiveShadow = true;
+      world.add(deck);
+    }
 
     // trees mapped in OSM: low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
     const TR = P.trees || [], nT = TR.length / 4;

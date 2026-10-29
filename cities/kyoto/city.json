@@ -48,7 +48,6 @@
   "water": {
     "classes": [],
     "min_area_m2": 5000,
-    "sea": false,
     "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
   },
   "storey": {

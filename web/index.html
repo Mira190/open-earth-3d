@@ -253,6 +253,24 @@ a { color: var(--accent); }
 .g-bars::before, .g-bars::after { content: ""; position: absolute; left: 0; right: 0; height: 0; background: #05090d; transition: height .6s ease; }
 .g-bars::before { top: 0; } .g-bars::after { bottom: 0; }
 .game-stage.letterbox .g-bars::before, .game-stage.letterbox .g-bars::after { height: 8.5vh; }
+/* photo mode: the world holds still, the HUD goes, a panel of controls comes up */
+.game-stage.photo :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens, .g-touch, .g-dialog) { display: none !important; }
+.g-photo { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(780px, calc(100% - 28px)); padding: 11px 14px 9px; display: grid; gap: 9px; z-index: 4; }
+.gph-sliders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.gph-sliders label { display: grid; gap: 3px; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.gph-sliders label span { display: flex; justify-content: space-between; gap: 8px; }
+.gph-sliders output { font-size: 11.5px; font-weight: 500; color: var(--ink); }
+.gph-sliders input { margin: 0; }
+.gph-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.gph-actions .btn.primary { margin-left: auto; }
+.gph-actions .btn kbd, .g-photo .note kbd { font: 600 10px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 4px; background: var(--surface); color: var(--ink); }
+.g-photo .note { margin: 0; font-size: 11.5px; }
+.g-grid { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 3;
+  background: linear-gradient(to right, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(200% / 3 + 0.5px), transparent 0),
+    linear-gradient(to bottom, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.5) 0 calc(200% / 3 + 0.5px), transparent 0); }
+.game-stage.photo.grid .g-grid { display: block; }
+.game-stage.flash::after { content: ""; position: absolute; inset: 0; background: #fff; pointer-events: none; z-index: 8; animation: shutter .4s ease-out forwards; }
+@keyframes shutter { from { opacity: .75; } to { opacity: 0; } }
 .g-hud { background: var(--hud); backdrop-filter: blur(6px); border-radius: var(--r); box-shadow: var(--shadow); }
 .g-labels .lbl { left: 0; top: 0; transform: none; }
 .g-labels .lbl.npc { border-bottom: 0; font-size: 12px; text-align: center; }
@@ -381,9 +399,13 @@ a { color: var(--accent); }
   .g-vhud .note { display: none; }
   .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
   .g-reticle { display: none; }
+  .gph-sliders { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .gph-actions kbd { display: none; }
+  .g-photo .note { display: none; }
   .gt-keys { display: none; }
   .g-title { background: color-mix(in srgb, var(--bg) 78%, transparent); align-items: flex-start; }
 }
+@media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
 @media (prefers-reduced-motion: reduce) { .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after { transition: none; } }
 
 /* ---------- globe ---------- */
@@ -643,12 +665,28 @@ a { color: var(--accent); }
     <div class="labels g-labels" id="g-labels"></div>
     <div class="g-reticle" aria-hidden="true"></div>
     <div class="g-bars" aria-hidden="true"></div>
+    <div class="g-grid" aria-hidden="true"></div>
+    <div class="g-hud g-photo" id="g-photo" hidden role="group" aria-label="Photo mode">
+      <div class="gph-sliders">
+        <label><span>Time <output class="num" id="ph-time-v"></output></span><input type="range" id="ph-time" min="240" max="1320" step="1"></label>
+        <label><span>Lens <output class="num" id="ph-fov-v"></output></span><input type="range" id="ph-fov" min="10" max="90" step="1" dir="rtl"></label>
+        <label><span>Distance <output class="num" id="ph-dist-v"></output></span><input type="range" id="ph-dist" min="0" max="1000" step="1"></label>
+      </div>
+      <div class="gph-actions">
+        <button class="chip-btn" id="ph-turn" aria-pressed="false" title="Circle slowly round the focus">Turntable</button>
+        <button class="chip-btn" id="ph-grid" aria-pressed="false" title="Rule-of-thirds grid">Grid</button>
+        <button class="chip-btn" id="ph-me" aria-pressed="true">Show me</button>
+        <button class="btn primary" id="ph-snap">Save photo <kbd>Enter</kbd></button>
+        <button class="btn" id="ph-done">Done <kbd>Esc</kbd></button>
+      </div>
+      <p class="note">Drag to turn · scroll to come closer · <kbd>W A S D</kbd> move · <kbd>Space</kbd>/<kbd>C</kbd> up and down</p>
+    </div>
     <div class="g-hud g-quest" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span><div class="gq-lines" id="gq-lines" hidden></div></div>
     <div class="g-right">
       <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
       <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
-      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
+      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
     <div class="g-prompt" id="g-prompt" hidden><kbd id="gp-key">E</kbd><span id="gp-text"></span></div>
@@ -700,8 +738,10 @@ a { color: var(--accent); }
           <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
           <tr><td>Ferry</td><td><kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm into the next wharf</td></tr>
           <tr><td><kbd>T</kbd></td><td>Switch the survey line the route follows (or tap its name in the quest card)</td></tr>
+          <tr><td><kbd>O</kbd></td><td>Photo mode: the world holds still; set the sun, the lens and the angle, and save a picture</td></tr>
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
+        <div class="row" id="gm-links"></div>
         <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>
       </div>
     </div>
@@ -766,6 +806,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/people.js"></script>
 <script src="game/kit.js"></script>
 <script src="game/vehicles.js"></script>
+<script src="game/penguins.js"></script>
 <script src="game/audio.js"></script>
 <script src="game/hud.js"></script>
 <script src="game/game.js"></script>
