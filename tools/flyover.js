@@ -57,13 +57,20 @@ const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
     return { look, cam: [look[0] + Math.sin(az) * dist, look[1] + Math.cos(az) * dist, look[2] + h], shadow: Math.min(3000, Math.max(600, 0.7 * Math.hypot(dist, h))) };
   };
   const t0 = Date.now();
+  let last = 0;
   for (let i = 0; i < N; i++) {
-    const jpg = await p.evaluate(async o => {
-      window.__game.flyover.camera(o);
-      // one frame: the game's loop, registered first, draws the new pose before this callback runs
-      await new Promise(r => requestAnimationFrame(r));
-      return document.getElementById('game-gl').toDataURL('image/jpeg', 0.93);
-    }, pose(i / (N - 1)));
+    let jpg = '';
+    // now and then a frame comes back black (the game skipped that draw): a black JPEG is a fraction
+    // of the size of its neighbours, so take it again, up to three times
+    for (let tries = 0; tries < 4 && (!jpg || jpg.length < last * 0.4); tries++) {
+      jpg = await p.evaluate(async o => {
+        window.__game.flyover.camera(o);
+        // one frame: the game's loop, registered first, draws the new pose before this callback runs
+        await new Promise(r => requestAnimationFrame(r));
+        return document.getElementById('game-gl').toDataURL('image/jpeg', 0.93);
+      }, pose(i / (N - 1)));
+    }
+    last = jpg.length;
     fs.writeFileSync(path.join(frames, `f${String(i).padStart(4, '0')}.jpg`), Buffer.from(jpg.split(',')[1], 'base64'));
     if (i % 8 === 0 || i < 3) console.log(`frame ${i}/${N} (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
   }
