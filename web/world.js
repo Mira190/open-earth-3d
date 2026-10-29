@@ -279,7 +279,8 @@ vec3 photoGrade(vec3 c) {
     };
   }
 
-  async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700 } = {}) {
+  // small: the lighter set for a weaker device (quality.js); shadow: the sun's shadow map size
+  async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -287,7 +288,7 @@ vec3 photoGrade(vec3 c) {
     renderer.toneMappingExposure = 0.6;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    const SHADOW = renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048;
+    const SHADOW = Math.min(renderer.capabilities.maxTextureSize, shadow || (renderer.capabilities.maxTextureSize >= 8192 && !small ? 4096 : 2048));
 
     const world = new THREE.Scene();
     const sky = new THREE.Sky();

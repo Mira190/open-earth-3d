@@ -454,6 +454,7 @@ a { color: var(--accent); }
 <div class="title-app" id="globe-app" hidden>
   <section class="ts-stage" id="globe-stage" aria-label="Open Earth 3D: the Earth now, and the cities rebuilt in 3D">
     <canvas id="globe-gl" aria-hidden="true"></canvas>
+    <div class="ts-poster" aria-hidden="true"></div>
     <div class="ts-shade" aria-hidden="true"></div>
     <div class="ts-marks" id="ts-marks"></div>
     <div class="ts-bars" aria-hidden="true"></div>
@@ -465,15 +466,10 @@ a { color: var(--accent); }
           <div class="ts-loadline ts-mono"><span>Loading the Earth</span><span id="ts-load-pct">0%</span></div>
           <div class="ts-loadfile ts-mono" id="ts-load-file"></div>
         </div>
-        <div class="ts-gate" id="ts-gate" hidden>
-          <button class="ts-enter" id="ts-enter">Enter</button>
-          <small>Sound on · headphones recommended</small>
-          <button class="ts-quiet" id="ts-quiet">Enter without sound</button>
-        </div>
       </div>
     </div>
     <div class="ts-caps" aria-live="polite"><span class="live" id="ts-cap1"></span><span id="ts-cap2"></span><span id="ts-cap3"></span></div>
-    <button class="ts-skip" id="ts-skip">Skip · any key</button>
+    <div class="ts-open-tools"><button class="ts-hear" id="ts-hear" aria-pressed="false" hidden><span class="ts-eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span id="ts-hear-l">Sound off</span></button><button class="ts-skip" id="ts-skip">Skip · any key</button></div>
     <h1 class="ts-title" id="ts-title"><span class="w" id="ts-word">OPEN EARTH</span><span class="s">The Earth in 3D, city by city</span><span class="m" id="ts-tally"></span></h1>
     <header class="ts-top">
       <a class="ts-logo" href="#globe" id="ts-logo" aria-label="Open Earth 3D">OPEN EARTH<b>3D</b></a>
@@ -508,6 +504,12 @@ a { color: var(--accent); }
             <h3>Next in line</h3>
             <ul class="ts-plan" id="ts-planned"></ul>
           </div>
+        </div>
+        <div class="ts-picture">
+          <h3>Picture</h3>
+          <p class="ts-mono" id="ts-pic-now"></p>
+          <div class="ts-seg" id="ts-pic" role="group" aria-label="Picture quality"><button data-q="">Auto</button><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button><button data-q="still">Still</button></div>
+          <p>Auto measures what this device can draw. Lower settings use smaller textures and fewer pixels and leave out the night lights' close-up detail, MSAA and the bloom; Still shows a picture of the Earth behind the same menu.</p>
         </div>
         <div>
           <h3>This screen</h3>
@@ -802,6 +804,7 @@ window.THREE = Object.assign({}, T, { OrbitControls, Sky, Reflector, GLTFLoader,
   EffectComposer, RenderPass, UnrealBloomPass, OutputPass, ShaderPass });
 window.dispatchEvent(new Event('three-ready'));
 </script>
+<script src="quality.js"></script>
 <script src="sun.js"></script>
 <script src="sun-gpu.js"></script>
 <script src="cine.js"></script>
@@ -854,7 +857,10 @@ window.dispatchEvent(new Event('three-ready'));
     const id = hashId(), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
     const from = lastId;
     lastId = cid;
-    const city = cities.find(c => c.id === cid && c.built && (!play || c.game));
+    let city = cities.find(c => c.id === cid && c.built && (!play || c.game));
+    // the models need WebGL 2; without it the title says so instead of a loader that never ends
+    const noGL = city && !window.OEQuality.probe().gl2;
+    if (noGL) city = null;
     const prev = current;
     current = null;
     if (prev) { const ctl = await prev; if (ctl) ctl.stop(); }
@@ -872,7 +878,9 @@ window.dispatchEvent(new Event('three-ready'));
       current = window.OpenEarthCity(city.id);
     } else {
       pane('globe-app').hidden = false;
-      current = window.OpenEarthGlobe(cities, id && id !== 'globe' ? `“${id}” has no 3D model yet. Pick a live city.` : '', from);
+      const notice = noGL ? 'The 3D models need WebGL 2, which this browser has turned off or does not support.'
+        : id && id !== 'globe' ? `“${id}” has no 3D model yet. Pick a live city.` : '';
+      current = window.OpenEarthGlobe(cities, notice, from);
     }
   }
   document.addEventListener('click', e => { if (e.target.closest('#back-globe')) { e.preventDefault(); location.hash = 'globe'; } });

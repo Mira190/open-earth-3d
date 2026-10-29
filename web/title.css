@@ -42,21 +42,6 @@
 .ts-load i { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--tx); transition: width 0.25s linear; }
 .ts-loadline { display: flex; justify-content: space-between; width: 220px; font-size: 9.5px; color: var(--tx2); letter-spacing: 0.16em; }
 .ts-loadfile { font-size: 9.5px; color: var(--tx3); letter-spacing: 0.14em; min-height: 1.4em; }
-.ts-gate { display: grid; justify-items: center; gap: 14px; }
-.ts-gate[hidden] { display: none; }
-.ts-enter { position: relative; border: 0; background: none; cursor: pointer; padding: 14px 40px; font: 300 12px/1 var(--t-display); letter-spacing: 0.5em; text-indent: 0.5em; color: var(--tx); }
-.ts-enter::before, .ts-enter::after { content: ""; position: absolute; left: 0; right: 0; height: 1px; background: linear-gradient(90deg, transparent, var(--tx), transparent); opacity: 0.55; transition: opacity 0.4s, transform 0.6s var(--ease); }
-.ts-enter::before { top: 0; } .ts-enter::after { bottom: 0; }
-.ts-enter:focus-visible { outline: none; }
-.ts-enter:hover::before, .ts-enter:focus-visible::before { transform: scaleX(1.25); opacity: 1; }
-.ts-enter:hover::after, .ts-enter:focus-visible::after { transform: scaleX(1.25); opacity: 1; }
-.ts-gate small { font: 400 9.5px/1.5 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx3); }
-.ts-quiet { border: 0; background: none; cursor: pointer; font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx2); padding: 6px; }
-.ts-quiet:hover { color: var(--tx); }
-@media (prefers-reduced-motion: no-preference) {
-  .ts-enter { animation: ts-breathe 3.2s ease-in-out infinite; }
-  @keyframes ts-breathe { 0%, 100% { opacity: 0.72; } 50% { opacity: 1; } }
-}
 .title-app.started .ts-boot { opacity: 0; pointer-events: none; }
 .title-app.started .ts-boot > div { pointer-events: none; }
 
@@ -66,15 +51,41 @@
 .ts-caps .live { color: var(--amber); }
 .ts-caps .live::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--amber); margin-right: 9px; vertical-align: 1px; box-shadow: 0 0 8px var(--amber); }
 .ts-caps span { display: block; min-height: 1.3em; }
+.ts-caps .live:empty::before { display: none; }
+.title-app.menu:not(.opening) .ts-caps { visibility: hidden; }
 @media (max-aspect-ratio: 1/1) {
   .ts-caps { top: max(22px, env(safe-area-inset-top, 0px)); bottom: auto; left: 20px; right: 20px; }
-  .ts-skip { top: auto; bottom: max(22px, env(safe-area-inset-bottom, 0px)); right: 20px; }
+  .ts-open-tools { top: auto; bottom: max(22px, env(safe-area-inset-bottom, 0px)); right: 20px; }
 }
-.ts-skip { position: absolute; right: max(28px, 4vw); bottom: max(28px, calc((100vh - 100vw / 2.39) / 2 + 22px)); z-index: 7; border: 0; background: none; cursor: pointer;
-  font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--tx3); padding: 8px 0; opacity: 0; transition: opacity 0.8s ease, color 0.3s; }
-.ts-skip:hover { color: var(--tx); }
-.title-app.opening .ts-skip { opacity: 1; }
-.title-app.menu .ts-skip { display: none; }
+/* the opening's two controls: sound (it starts without) and skip */
+.ts-open-tools { position: absolute; right: max(28px, 4vw); bottom: max(28px, calc((100vh - 100vw / 2.39) / 2 + 22px)); z-index: 7; display: flex; gap: 22px; align-items: center;
+  opacity: 0; transition: opacity 0.8s ease; }
+.ts-skip, .ts-hear { border: 0; background: none; cursor: pointer; font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--tx3);
+  padding: 12px 0; min-height: 44px; transition: color 0.3s; }
+.ts-hear { display: inline-flex; gap: 9px; align-items: center; color: var(--tx2); }
+.ts-hear[hidden] { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .ts-hear[aria-pressed="true"] .ts-eq i { animation: ts-eq 1.1s ease-in-out infinite; }
+}
+.ts-skip:hover, .ts-hear:hover { color: var(--tx); }
+.title-app.opening .ts-open-tools { opacity: 1; }
+.title-app.menu .ts-open-tools { display: none; }
+
+/* a device that cannot draw the Earth live: a still of it behind the same menu, where the globe would be */
+.ts-poster { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; transition: opacity 1.2s ease;
+  background-repeat: no-repeat; background-size: auto min(96vh, 132vw); background-position: 64% 50%; }
+@media (max-width: 859px), (max-aspect-ratio: 1/1) { .ts-poster { background-size: min(100vw, 70vh) auto; background-position: 50% 30%; } }
+/* the picture is fetched only when it is needed */
+.title-app.fallback .ts-poster { opacity: 1; background-image: url(assets/earth/poster.jpg); }
+.title-app.fallback canvas, .title-app.fallback .ts-marks { visibility: hidden; }
+
+/* About: the picture's tier and the choice of it */
+.ts-seg { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.ts-seg button { border: 1px solid var(--line); background: none; color: var(--tx2); cursor: pointer; padding: 9px 13px; min-height: 40px;
+  font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; }
+.ts-seg button:hover { color: var(--tx); border-color: rgba(236, 232, 225, 0.4); }
+.ts-seg button[aria-pressed="true"] { color: var(--sp); background: var(--tx); border-color: var(--tx); }
+.ts-picture .ts-mono { font-size: 10.5px; color: var(--tx); line-height: 1.6; }
 
 .ts-title { position: absolute; left: 0; right: 0; top: 61%; z-index: 7; margin: 0; text-align: center; pointer-events: none; transform: translateY(-50%); }
 .ts-title::before { content: ""; position: absolute; left: 50%; top: 58%; width: min(1100px, 92vw); height: 150%; transform: translate(-50%, -50%); z-index: -1; opacity: 0;
@@ -186,6 +197,7 @@
 .ts-mark { position: absolute; left: 0; top: 0; border: 0; background: none; padding: 0; pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 8px; white-space: nowrap;
   font: 400 9px/1 var(--t-mono); letter-spacing: 0.18em; text-transform: uppercase; color: rgba(236, 232, 225, 0.82); text-shadow: 0 0 6px rgba(0, 0, 0, 0.9); margin: -4px 0 0 10px; }
 .ts-mark::before { content: ""; width: 14px; height: 1px; background: currentColor; opacity: 0.6; }
+.ts-mark.flip { flex-direction: row-reverse; }
 .ts-mark.hot { color: #fff; }
 .ts-mark.mute { color: transparent; text-shadow: none; }
 .ts-mark.mute::before { color: rgba(236, 232, 225, 0.6); }
@@ -194,6 +206,7 @@
 .ts-mark.hot .co { display: inline; }
 .ts-mark.plan { color: rgba(138, 147, 163, 0.75); font-size: 8.5px; margin-left: 0; }
 .ts-mark.plan::before { width: 5px; height: 5px; border: 1px solid currentColor; border-radius: 50%; background: none; opacity: 0.9; margin-left: -3px; }
+.ts-mark.plan.flip::before { margin-left: 0; margin-right: -3px; }
 .ts-mark.plan .co { color: var(--tx2); }
 
 .ts-notice { position: absolute; left: 50%; top: 70px; transform: translateX(-50%); z-index: 9; margin: 0; padding: 9px 16px; background: var(--glass); backdrop-filter: blur(14px);

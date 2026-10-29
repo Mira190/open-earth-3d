@@ -18,6 +18,7 @@ const fps = +fpsArg;
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oe3d-film-'));
   const b = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: w, height: h } });
+  await p.addInitScript(() => { window.__titleManual = true; }); // hold the sequence at its start instead of starting on its own
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 400)}`));
   await p.goto(`http://localhost:${process.env.PORT || 8800}/index.html#globe`);

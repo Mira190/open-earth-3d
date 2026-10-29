@@ -15,7 +15,7 @@ cities use, so the sun in the title is where it is in the sky now.
 
 ![The title card on the sunrise](images/title/opening.jpg)
 
-| The night pass, waiting at the gate | The menu: the destinations, lit where they are |
+| The night pass, before the sun clears the limb | The menu: the destinations, lit where they are |
 |---|---|
 | ![](images/title/gate.jpg) | ![](images/title/menu.jpg) |
 
@@ -24,9 +24,9 @@ cities use, so the sun in the title is where it is in the sky now.
 | Time | Picture | Sound |
 |---|---|---|
 | Boot | The Milky Way's core comes up while the Earth's textures load. A counter names each file as it arrives: the stars, the Milky Way, the Black Marble, this month's Blue Marble, the clouds. | Silence |
-| Gate | The camera holds over the night side, drifting along the dawn line, and the city lights come up. **Enter** (with sound) or **Enter without sound**; the choice is remembered. | Silence: browsers allow sound only after a click or a key |
-| 0–4 s | The night pass. The camera runs about 1,000 km up towards the sun, the lights below, a 2.39:1 letterbox closing in. Captions decode on screen: the UTC time, the point below, and how long until sunrise there. | A low drone (two tones beating at 0.35 Hz, filtered noise); a riser from 0.8 s |
-| 4.0 s | The sun clears the dense air at the limb, red, then white. The eye has been stopping down as the glow grew, so the sun arrives as a soft bead of light rather than a blow-out, with a fine anamorphic streak across the frame. **OPEN EARTH**: the letters come out of a blur one by one while the tracking closes from 0.9 to 0.34 em. The third caption gives the point on the dawn line: it is sunrise there now. | The hit: a sub dropping from 92 to 30 Hz, a crack of noise, an A major chord with an added ninth left ringing in a long reverb |
+| Start | It starts on its own once the Earth has loaded, without sound. **Sound** in the corner brings the score in where the shot has got to; the menu's switch does the same later. | Silence: browsers allow sound only after a click or a key |
+| 0–4 s | The night pass. The camera runs about 1,000 km up towards the sun, the lights below, a 2.39:1 letterbox closing in. Captions decode on screen: the UTC time, the point below, and how long until sunrise there (or since sunset, on a dusk shot). | A low drone (two tones beating at 0.35 Hz, filtered noise); a riser from 0.8 s |
+| 4.0 s | The sun clears the dense air at the limb, red, then white. The eye has been stopping down as the glow grew, so the sun arrives as a soft bead of light rather than a blow-out, with a fine anamorphic streak across the frame. **OPEN EARTH**: the letters come out of a blur one by one while the tracking closes from 0.9 to 0.34 em. The third caption gives the point on the terminator: it is sunrise (or sunset) there now. | The hit: a sub dropping from 92 to 30 Hz, a crack of noise, an A major chord with an added ninth left ringing in a long reverb |
 | 6.5–10.9 s | The camera pulls back from the limb to the whole planet and swings round to the Asia-Pacific, where most destinations are. The letterbox opens, the menu comes in a line at a time, and the cities' beacons come up one by one. | A slow pad, the chord's filter breathing |
 | Menu | The globe turns to each destination as it is chosen, with a survey reticle (rings at 100, 250 and 500 km). A card gives its figures, its local time and its sun. | A tick on each choice |
 | Dive | Down onto the city: the camera swings over it and falls, faster and faster, with a zoom blur and the colour fringes opening, into black, where the city's loader takes over in the same dark and the same type. | A whoosh and a sub swell |
@@ -39,12 +39,20 @@ runs it again.
 
 The opening is planned on the real sky each time. The sun's direction is fixed
 for the shot. The camera's path is chosen among 72 great circles through the
-sun's direction. It keeps those whose crossing of the terminator is a dawn,
-where the Earth's turn carries the ground into the sun. Then it scores each one
-by the Black Marble's lights along the stretch the camera will see, and takes
-the brightest. The hit is timed to the second: the camera's speed is
-set so that the sun clears the dense air, the lowest 40 km, at 4.0 s after
-Enter, and the riser is scheduled to end there.
+sun's direction, and each is scored by the Black Marble's lights along the
+stretch the camera will see. The idea is a dawn, where the Earth's turn carries
+the ground into the sun. But the camera is always 30 to 37 degrees short of the
+terminator when the sun clears the limb, and for a third of the day the night
+before the dawn line is open ocean: from 12:30 to 19:30 UTC it runs from the
+Pacific to the Atlantic. So the dusk side is scored too, and it wins when it is
+half as bright again. Flying from the night towards the terminator, the sun
+clears the limb ahead either way; the captions say which it is.
+`node tools/title_check.js --sweep` scores the plan every half hour of a day:
+flying to dawn only, 13 of the 48 half hours had a night pass under 15% of the
+day's brightest; flying to dawn or dusk, none, and the mean is 40% brighter.
+The hit is timed to the second: the camera's speed is set so that the sun clears
+the dense air, the lowest 40 km, at 4.0 s after the start, and the riser is
+scheduled to end there.
 
 ## What we took from where
 
@@ -119,6 +127,86 @@ type and one accent, the sun's amber.
 The frame renders at up to 1.75× the CSS pixels and steps down by 0.25 while
 frames take longer than 26 ms, so a laptop keeps its frame rate.
 
+## Every device
+
+The first version drew one picture for everyone, and on an iPad it drew nothing:
+the menu came up over black. The pipeline asked for about 340 MB of graphics
+memory there (four 4096-pixel textures and the 8K lights with their mips, a
+half-float target with 4× MSAA at 1.75× pixels, the bloom), and a tablet's
+browser takes a WebGL context back long before that. Nothing noticed, so the
+screen stayed black. Now the title draws what the device can afford, checks that
+it drew something, and falls back to a still picture rather than to black.
+
+**Tiers, measured.** `web/quality.js` opens a throwaway WebGL 2 context and asks
+it what it can render into: a half-float texture and a 4× multisampled
+half-float renderbuffer, each checked for framebuffer completeness rather than
+read off the extension list. It reads the largest texture, whether the renderer
+is a software one (SwiftShader, llvmpipe), the device's memory where the browser
+says, the pointer (an iPad says it is a Mac; its touch screen gives it away) and
+the screen. Then it loses the probe context to give its memory back.
+
+| Tier | Who | Textures | Night lights | Target | Pixels | Air | Bloom |
+|---|---|---|---|---|---|---|---|
+| High | desktop GPUs | 4096 | 8192 × 4096 | half float, 4× MSAA | ≤ 1.75×, 4.2 MP | 14 × 6 steps | yes |
+| Medium | tablets, weaker laptops | 4096, clouds 2048 | in the surface map | half float | ≤ 1.5×, 2.4 MP | 12 × 5 | yes |
+| Low | phones, software renderers, ≤ 4 GB | 2048 | in the surface map | half float (8-bit without) | ≤ 1.25×, 1.25 MP | 8 × 4 | no |
+| Still | no WebGL 2 | a still of the Earth behind the same menu | | | | | |
+
+The graphics memory each asks for, as the page estimates it (About shows it for
+the device in hand):
+
+| Device | Before | Now |
+|---|---|---|
+| Desktop, 1440 × 900 at 2× | 464 MB | 464 MB (high) |
+| iPad Air, 820 × 1180 at 2× | 392 MB | 161 MB (medium) |
+| iPad in the Claude app, 820 × 905 at 2× | 342 MB | 148 MB (medium) |
+| iPhone, 390 × 844 at 3× | 135 MB | 50 MB (low) |
+
+**The same night on every tier.** The lights come through a curve (L to the
+power 2.1) that keeps suburbs dim and cores bright. A coarser lights map averages
+each city over a bigger texel, and the curve crushes averages: on the low tier
+the share of lit ground in the night pass fell to half of the high tier's. The
+curve's power now follows the map's resolution (2.1 for the 8K map, 1.8 at 4096,
+1.55 at 2048), and the lit share is the same on all three: 9.8, 10.8 and 10.5% of
+the ground on a dawn shot, 14.3, 14.4 and 13.1% on a dusk one.
+
+**A test frame.** Before the opening, the title renders the sunlit side once and
+reads the middle pixel back. If it is as dark as space (an incomplete target, a
+shader the driver will not compile or miscompiles, a GL error), the pipeline
+steps down in place: an 8-bit target, no MSAA, no bloom, fewer steps through the
+air, at most 1× pixels. If that frame is still black, the menu runs over the
+still.
+
+**A lost context.** When the GPU takes the context back, the still shows at once.
+three.js restores its own state when the context comes back; the title then
+steps down, tests a frame and goes live again. A context lost while the textures
+upload waits for the restore up to six seconds. A second loss stays on the still.
+
+**While it runs.** The frame renders at the tier's pixel ratio and steps down by
+0.25 while frames take longer than 26 ms, then drops the bloom past 34 ms.
+
+**The visitor's choice.** About shows the tier, the GPU, the pixel ratio and the
+memory, and offers Auto, High, Medium, Low and Still; the choice is kept.
+
+**The cities.** The model and the game take the same tier (`OEQuality.city()`):
+the pixel ratio within the tier's budget (a desktop keeps up to 2×), MSAA off on
+low, a 4096 shadow map only on high, the game's half-float post stack only where
+the device can draw into one (with 4×, 2× or no MSAA), and on low the lighter
+world: no shopfronts, parapets, awnings or rooftop plant, smaller wave FFTs and
+no reflection in the water.
+
+**Checking it.** `tools/title_check.js` runs the title headless on a tablet, a
+phone and a desktop, and with the faults injected into WebGL: no half-float
+target, no WebGL 2, a context lost while loading, a context lost twice, and a
+driver that draws nothing to the screen. Every one ends on the Earth or on the
+still, never on black.
+
+```bash
+cd web && python3 -m http.server 8800 &
+NODE_PATH=$(npm root -g) node tools/title_check.js title-check
+NODE_PATH=$(npm root -g) node tools/title_check.js --sweep
+```
+
 ## The type
 
 - **Zalando Sans Expanded** (200–300) for the wordmark and the destinations, in
@@ -144,8 +232,10 @@ NODE_PATH=$(npm root -g) node tools/title_film.js opening.mp4 1280x720 24
 ## The data
 
 `pipeline/fetch_earth.py` downloads and bakes every texture into
-`web/assets/earth/`. The first view loads about 6 MB, or 5 MB on a phone, which
-gets neither the 8K lights nor the 4096-pixel textures.
+`web/assets/earth/`. The first view loads about 6 MB on the high tier, and about
+5 MB on the others, which do without the 8K lights. `poster.jpg`, the still for a
+device that cannot draw the Earth, is a frame of the high tier (29 October 2026,
+09:40 UTC, over the South China Sea), fetched only when it is shown.
 
 | File | From | Licence |
 |---|---|---|

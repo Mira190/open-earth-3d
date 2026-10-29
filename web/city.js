@@ -67,8 +67,9 @@ window.OpenEarthCity = async function main(cityId) {
 
   // ------------------------------------------------------------ renderer, camera
   const canvas = $('#gl'), stage = $('#stage');
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries
+  const QC = window.OEQuality.city();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias, powerPreference: 'high-performance' });
   const camera = new THREE.PerspectiveCamera(38, 1, 3, 70000);
   const controls = new THREE.OrbitControls(camera, canvas);
   controls.enableDamping = true;
@@ -81,6 +82,7 @@ window.OpenEarthCity = async function main(cityId) {
   let post = null, lens = null; // the title screen's lens over the model, once the world is built
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setPixelRatio(QC.pixelRatio(w, h));
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
@@ -91,13 +93,14 @@ window.OpenEarthCity = async function main(cityId) {
   resize();
 
   // ------------------------------------------------------------ the shared world (world.js)
-  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
+  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   // the title screen's lens (lens.js): the model in the same tone curve, grade, grain and vignette
-  // as the Earth on the title, the game and the city's film; plain tone mapping without WebGL 2
-  if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2) {
-    post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 }));
+  // as the Earth on the title, the game and the city's film; plain tone mapping where the device's
+  // tier (quality.js) has no post stack
+  if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2 && QC.post) {
+    post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
     post.addPass(new THREE.RenderPass(world, camera));
     post.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0));
     lens = new THREE.ShaderPass(OELens.shader());

@@ -55,13 +55,15 @@ window.OpenEarthGame = async function game(cityId) {
   // neighbouring areas you can go on to, such as the bayside from the city (game.links)
   $('#gm-links').innerHTML = (G.links || []).map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   const stage = $('#game-stage'), canvas = $('#game-gl');
+  // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
   // reversed depth (where the GPU has EXT_clip_control) with the post stack's float depth buffer (atmosphere.js)
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', reversedDepthBuffer: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+  const QC = window.OEQuality.city();
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: QC.antialias, powerPreference: 'high-performance', reversedDepthBuffer: true });
   const BASE_FOV = 55, camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.3, 40000);
   let atmos = null; // clouds, stars, the moon and the post stack (atmosphere.js), once the world is up
   function resize() {
     const w = stage.clientWidth, h = stage.clientHeight;
+    renderer.setPixelRatio(QC.pixelRatio(w, h));
     renderer.setSize(w, h, false);
     camera.aspect = w / Math.max(1, h);
     camera.updateProjectionMatrix();
@@ -70,7 +72,7 @@ window.OpenEarthGame = async function game(cityId) {
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
   resize();
-  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg });
+  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
   const world = Wd.world, U = Wd.U;
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {} }) : null;
