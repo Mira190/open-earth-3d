@@ -255,8 +255,10 @@ def mr_moon(mesh, m, lp):
         a0, a1 = 2 * math.pi * k / segs, 2 * math.pi * (k + 1) / segs
         for r0, r1 in ((0.0, R * 0.5), (R * 0.5, R)):
             pa, pb = (math.sin(a0), math.cos(a0)), (math.sin(a1), math.cos(a1))
-            q = [P(pa[0] * r0, zc + pa[1] * r0, 0.4), P(pb[0] * r0, zc + pb[1] * r0, 0.4), P(pb[0] * r1, zc + pb[1] * r1, 0.4 - 0.3 * r1 / R),
-                 P(pa[0] * r1, zc + pa[1] * r1, 0.4 - 0.3 * r1 / R)]
+            # the dome falls from 0.4 m at the centre to 0.1 m at the rim, the rings meeting at r = R/2
+            y0, y1 = 0.4 - 0.3 * r0 / R, 0.4 - 0.3 * r1 / R
+            q = [P(pa[0] * r0, zc + pa[1] * r0, y0), P(pb[0] * r0, zc + pb[1] * r0, y0), P(pb[0] * r1, zc + pb[1] * r1, y1),
+                 P(pa[0] * r1, zc + pa[1] * r1, y1)]
             mid = (q[0] + q[2]) / 2
             if abs(np.dot(mid - P(0, g0), r)) < 1.6 and mid[2] < g0 + mouth_h:  # the doorway
                 continue
