@@ -19,11 +19,12 @@ window.OEFilm = (function () {
   const out3 = t => 1 - Math.pow(1 - clamp(t), 3);
   const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  let index = null;
+  let index = null, ready = null;
   const cues = {};
-  const ready = fetch('films/index.json').then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(j => { index = j; return j; });
+  // the list of films, fetched the first time a card asks (not on the city and game pages)
+  const list = () => ready || (ready = fetch('films/index.json').then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(j => { index = j; return j; }));
   async function cue(id) {
-    await ready;
+    await list();
     if (!index || !index[id]) return null;
     if (!cues[id]) cues[id] = fetch(index[id].json).then(r => r.json()).catch(() => null);
     return cues[id];
@@ -319,5 +320,5 @@ window.OEFilm = (function () {
     }
   }
 
-  return { ready, cue, card, open, close, stopPreview, hasReel, openReel, get isOpen() { return !!th; } };
+  return { list, cue, card, open, close, stopPreview, hasReel, openReel, get isOpen() { return !!th; } };
 })();
