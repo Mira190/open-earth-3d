@@ -170,6 +170,12 @@ window.OENav = (function () {
       const f = floorAt(x, y, z);
       return col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, passes(z, !!f && isDeck(f.kind)));
     }
+    // push a circle of radius r whose bottom is at z out of the walls it overlaps, between knee
+    // height and z + top (a car's body: kerbs and low walls are the floor's business): {x, y}
+    function push(x, y, z, r, top = HEAD) {
+      const f = floorAt(x, y, z);
+      return col.depenetrate(x, y, r, z + KNEE, z + top, passes(z, !!f && isDeck(f.kind)));
+    }
     // lowest height a flying or floating body may occupy at (x, y): what is directly below
     function groundBelow(x, y, z) {
       let g = isWater(x, y) ? 0 : Math.max(0, terrain(x, y));
@@ -187,7 +193,7 @@ window.OENav = (function () {
     // how far along the segment a -> b (three.js world coordinates) the camera probe gets
     // before touching a building or landmark: a fraction 0..1, or 1 when clear
     function clearFraction(a, b) { return col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE); }
-    return { isWater, floorAt, walk, slide, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP };
+    return { isWater, floorAt, walk, slide, push, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP };
   }
   return { create };
 })();

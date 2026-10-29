@@ -1,6 +1,7 @@
 // Sound, synthesised with Web Audio (no audio files): harbour ambience, footsteps,
-// the helicopter rotor, the ferry engine and horn, dialogue voice beeps with a
-// pitch per character, and little penguins braying in the dark. Browsers allow
+// the helicopter rotor, the ferry engine and horn, a car's engine through its gears,
+// its tyres in a slide and its horn, dialogue voice beeps with a pitch per character,
+// and little penguins braying in the dark. Browsers allow
 // sound only after a click, so start() is called from the Play button.
 'use strict';
 window.OEAudio = (function () {
@@ -47,6 +48,16 @@ window.OEAudio = (function () {
     wl.type = 'bandpass'; wl.frequency.value = 900; wl.Q.value = 0.4; wg.gain.value = 0;
     wn.connect(wl); wl.connect(wg); wg.connect(master);
     ch.wind = wg;
+    // a car's engine: two saws a fifth apart through a low-pass that opens with the throttle
+    const co = ctx.createOscillator(), c2 = ctx.createOscillator(), cl = ctx.createBiquadFilter(), cv = ctx.createGain();
+    co.type = c2.type = 'sawtooth'; co.frequency.value = 40; c2.frequency.value = 60; cl.type = 'lowpass'; cl.frequency.value = 300; cl.Q.value = 2; cv.gain.value = 0;
+    co.connect(cl); c2.connect(cl); cl.connect(cv); cv.connect(master); co.start(); c2.start();
+    ch.car = { vol: cv, a: co, b: c2, lp: cl };
+    // tyres scrubbing sideways: band-passed noise
+    const sn = noiseSource(), sb = ctx.createBiquadFilter(), sg = ctx.createGain();
+    sb.type = 'bandpass'; sb.frequency.value = 1500; sb.Q.value = 6; sg.gain.value = 0;
+    sn.connect(sb); sb.connect(sg); sg.connect(master);
+    ch.skid = sg;
   }
   const ramp = (p, v, t = 0.25) => { if (ctx) p.setTargetAtTime(v, ctx.currentTime, t); };
   function rotor(spin, load = 0) {
@@ -56,6 +67,15 @@ window.OEAudio = (function () {
   }
   function engine(level) { if (ctx) { ramp(ch.engine.vol.gain, level * 0.09); ramp(ch.engine.osc.frequency, 42 + level * 18, 0.6); } }
   function wind(level) { if (ctx) ramp(ch.wind.gain, Math.min(0.12, level * 0.12)); }
+  // rpm 0..1 (idle to the red line), throttle 0..1, level 0..1 (0 off; lower from the back seat)
+  function car(rpm, throttle = 0, level = 1) {
+    if (!ctx) return;
+    const f = 34 + rpm * 120;
+    ramp(ch.car.vol.gain, level * (0.035 + 0.05 * throttle), 0.08);
+    ramp(ch.car.a.frequency, f, 0.06); ramp(ch.car.b.frequency, f * 1.5, 0.06);
+    ramp(ch.car.lp.frequency, 220 + 900 * throttle * rpm + 200 * rpm, 0.08);
+  }
+  function skid(level) { if (ctx) ramp(ch.skid.gain, Math.min(0.06, level * 0.06), 0.06); }
   function blip(freq, dur, type = 'square', vol = 0.05) {
     if (!ctx || muted) return;
     const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
@@ -72,6 +92,7 @@ window.OEAudio = (function () {
     s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()); s.stop(t + 0.08);
   }
   function horn() { blip(196, 1.3, 'sawtooth', 0.06); blip(247, 1.3, 'sawtooth', 0.04); }
+  function honk() { blip(415, 0.32, 'square', 0.045); blip(523, 0.32, 'square', 0.035); }
   function shutter() { // a focal-plane shutter: two short clicks
     if (!ctx || muted) return;
     for (const [at, f] of [[0, 3200], [0.06, 2400]]) {
@@ -107,5 +128,5 @@ window.OEAudio = (function () {
   function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, beep, step, horn, chime, bell, thump, shutter, penguin, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, setMuted, stop, get muted() { return muted; } };
 })();

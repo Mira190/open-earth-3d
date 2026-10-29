@@ -206,7 +206,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
     { benches: lib ? benches : null });
-  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera });
+  // the side of the road the city keeps to: game.keep, its trams', or the country's rule
+  const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
+    || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
+  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
   const player = { rig: makeRig(playerLook(), { vest: true }),
@@ -246,6 +249,404 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // street trams and a funicular, where the city has them (rail.js)
   const rail = G.rail && window.OERail ? OERail.create(world, G) : null;
   const railStation = (x, y, r = 25) => (rail ? rail.stations.find(st => Math.hypot(st.x - x, st.y - y) < r) : null);
+
+  // ------------------------------------------------------------ cars: your own, taxis and rides (cars.js)
+  // Your car waits at the kerb near the start (game.vehicles.car: { model, colour, seat }) and
+  // stays where you leave it; the phone brings it to you. Raise your hand at the kerb (Y) and a
+  // taxi pulls in: the nearest free one coming your way, or one from round the corner. Or order
+  // a ride on the phone (N), as GTA VI's Ryde Me app does: say where first, and a private-hire
+  // car comes to your side of the street. You get in the back (a taxi driver asks where to), and
+  // the driver takes you by road, talking about what you pass, all of it from the model. F skips
+  // the trip, as in GTA V.
+  const keepSign = KEEP === 'left' ? 1 : -1, kerbSeat = KEEP === 'left' ? 'rear_left' : 'rear_right';
+  const CARS_OK = !!(vlib && vlib.cars && Object.values(vlib.info.cars.models).some(m => m.seats));
+  const carCfg = Object.assign({ model: 'Car_Hatch', colour: '#c8372d', seat: '#34363a' }, (G.vehicles || {}).car);
+  const roads = OECars.router(roadNet), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
+  // a pose at the kerb of a place on the roads (router.place), facing the way it goes
+  function kerbPose(pl, off) {
+    roadNet.at(pl.line, pl.s, rq);
+    const hx = rq.hx * pl.dir, hy = rq.hy * pl.dir, k = (off ?? OECars.kerbOf(roadNet.L[pl.line].c)) * keepSign;
+    const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 1);
+    return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
+  }
+  // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of you)
+  function kerbNear(x, y, z, ahead = 9) {
+    const pl = roads.place(x, y, 250, keepSign, z);
+    if (!pl) return null;
+    pl.s = Math.max(3, Math.min(roadNet.L[pl.line].len - 3, pl.s + ahead * pl.dir));
+    return { pl, pose: kerbPose(pl) };
+  }
+  // where a car is on the roads, going the way it faces
+  function placeOf(st) {
+    const pl = roads.place(st.x, st.y, 60, keepSign, st.z);
+    if (!pl) return null;
+    roadNet.at(pl.line, pl.s, rq);
+    pl.dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1;
+    return pl;
+  }
+  let myCar = null, ride = null;
+  function parkMyCar(pose) {
+    if (!CARS_OK || !vlib.info.cars.models[carCfg.model]) return;
+    if (!myCar) {
+      const C = OECars.car(world, vlib, carCfg.model, { colours: { paint: carCfg.colour, seat: carCfg.seat }, keep: KEEP });
+      myCar = { C, D: OECars.drive(C, nav, pose) };
+    }
+    Object.assign(myCar.D.st, { x: pose.x, y: pose.y, z: pose.z, h: pose.h, vx: 0, vy: 0, v: 0, speed: 0, r: 0, vz: 0, steer: 0, air: false, pitch: 0, roll: 0 });
+    myCar.C.place(pose.x, pose.y, pose.z, pose.h); // there already behind the title
+  }
+  { const z = nav.floorAt(G.start.at[0], G.start.at[1], Math.max(0, nav.terrain(G.start.at[0], G.start.at[1])) + 1), k = kerbNear(G.start.at[0], G.start.at[1], z ? z.z : null); if (k) parkMyCar(k.pose); }
+  const stOf = o => (o.D ? o.D.st : o.drv.st);
+  // the ground beside a seat's door (o: your car or a ride)
+  function doorAt(o, seat) {
+    const C = o.C, st = stOf(o), p = C.seats[seat] || C.seats.driver, fx = Math.sin(st.h), fy = Math.cos(st.h);
+    const l = Math.sign(p.x || 1) * (C.hw + 0.55), f = p.z + 0.2;
+    return { x: st.x + fx * f - fy * l, y: st.y + fy * f + fx * l };
+  }
+  // how far (x, y) is from the side of a car
+  function offCar(o, x, y) {
+    const st = stOf(o), fx = Math.sin(st.h), fy = Math.cos(st.h), dx = x - st.x, dy = y - st.y;
+    return Math.hypot(Math.max(0, Math.abs(dx * fx + dy * fy) - o.C.half), Math.max(0, Math.abs(-dx * fy + dy * fx) - o.C.hw));
+  }
+  // the cars near (x, y) as boxes (cars.js), less one (the one you are in)
+  function carBoxes(x, y, r, but = null) {
+    const out = [];
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - x) < r + c.half && Math.abs(c.y - y) < r + c.half) {
+      const b = OECars.boxOf(c, c.half, c.hw || 0.9, c.top || 1.5);
+      b.onHit = () => { c.v = 0; };
+      out.push(b);
+    }
+    for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
+    return out;
+  }
+  // the people near (x, y), for a car to stop for
+  function peopleNear(x, y, r) {
+    const out = [];
+    for (const p of crowd.P) if (p.line >= 0 && Math.abs(p.x - x) < r && Math.abs(p.y - y) < r) out.push({ x: p.x, y: p.y, z: p.z, onHit: () => { p.pause = Math.max(p.pause, 1.5); } });
+    for (const n of npcs) if (Math.abs(n.x - x) < r && Math.abs(n.y - y) < r) out.push({ x: n.x, y: n.y, z: n.z });
+    return out;
+  }
+  // into your car (walk round to the driver's door first), and out again
+  function enterCar() {
+    const d = doorAt(myCar, 'driver');
+    player.auto = { x: d.x, y: d.y, t: 0, then: () => {
+      player.mode = 'car'; player.vehicle = myCar;
+      myCar.C.sit(player.rig, 'driver');
+      if (headlamp) myCar.C.carry(headlamp);
+      cam.mode = 'chase'; cam.dist = 7.5; cam.pitch = 0.2; cam.yaw = myCar.D.st.h;
+      A.thump();
+      H.toast('Your car. <kbd>W</kbd>/<kbd>S</kbd> drive, brake and reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> view, <kbd>E</kbd> get out.');
+    } };
+  }
+  // out of a car onto the ground beside a door, on foot again
+  function stepOut(o, seat) {
+    const st = stOf(o), d = doorAt(o, seat), p = placeNear(d.x, d.y, st.z + 0.5, carBoxes(st.x, st.y, 12));
+    if (!p) return false;
+    o.C.body.remove(player.rig.root); world.add(player.rig.root);
+    player.rig.legRake = player.rig.reach = null;
+    player.mode = 'foot'; player.vehicle = null; player.speed = 0; player.ground = true; player.vz = 0;
+    [player.x, player.y, player.z] = p;
+    player.h = st.h;
+    player.rig.root.visible = true;
+    if (cam.mode === 'cabin') cam.mode = 'chase';
+    cam.dist = 6.5; camera.up.set(0, 1, 0);
+    if (headlamp) o.C.drop(headlamp);
+    A.car(0, 0, 0); A.skid(0); A.thump();
+    return true;
+  }
+  function exitCar() {
+    if (myCar.D.st.speed > 1.5) { H.toast('Stop first.'); return; }
+    if (!stepOut(myCar, 'driver')) { H.toast('No room to get out here.'); return; }
+    save();
+  }
+  function resetCar() { // back on the road, the right way up
+    const k = kerbNear(myCar.D.st.x, myCar.D.st.y, myCar.D.st.z, 0);
+    if (k) { parkMyCar(k.pose); H.toast('Back on the road.'); }
+  }
+  function bringCar() {
+    if (!myCar) return;
+    if (player.mode !== 'foot') { H.toast('Get out first.'); return; }
+    const k = kerbNear(player.x, player.y, player.z, 10);
+    if (!k) { H.toast('There is no street near enough to bring it to.'); return; }
+    parkMyCar(k.pose);
+    H.toast(`Your car is at the kerb, ${Math.round(Math.hypot(k.pose.x - player.x, k.pose.y - player.y))} m away.`);
+    save();
+  }
+  let bumpCar = -9, carFov = 0;
+  function carStep(dt, fwd, side) {
+    const D = myCar.D, st = D.st, ev = [];
+    D.step(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), handbrake: k('Space') },
+      { boxes: carBoxes(st.x, st.y, 14, myCar), people: peopleNear(st.x, st.y, 12) }, ev);
+    for (const e of ev) {
+      if (e.speed > 2.5) A.thump();
+      if (clockT - bumpCar < 2.5 || e.speed < 3) continue;
+      bumpCar = clockT;
+      if (e.type === 'bump') H.toast(e.what === 'person' ? 'Watch out for people!' : e.what === 'car' ? 'Careful! That was another car.' : 'Careful! That was a wall.');
+      if (e.type === 'edge') H.toast(nav.isWater(st.x + Math.sin(st.h) * 5, st.y + Math.cos(st.h) * 5) ? `That's the edge of ${G.water_name || 'the water'}.` : 'Too steep a drop.');
+    }
+    Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.speed });
+    A.car(st.rpm, Math.abs(fwd), 1);
+    A.skid(Math.min(1, Math.max(0, st.slip - 2.2) / 6));
+    player.rig.animate(dt, 0, 'sit', clockT);
+  }
+  // your car, a ride, and the people in them: where they are and what their lamps and wheels do
+  function carsTick(dt) {
+    const night = U.uNight.value;
+    if (myCar) {
+      const st = myCar.D.st, mine = player.mode === 'car';
+      myCar.C.place(st.x, st.y, st.z, st.h, st.pitch, st.roll);
+      myCar.C.animate(dt, { v: mine ? st.v : 0, h: st.h, steer: st.steer, brake: mine && (st.brake || (Math.abs(st.v) < 0.3 && k('KeyS'))), night, on: mine, inside: mine && cam.mode === 'cabin' });
+    }
+    if (ride) rideStep(dt, night);
+  }
+
+  // ------------------------------------------------------------ taxis and rides
+  const FIRST = { Australia: ['Sam', 'Priya', 'Tom', 'Mei', 'Ahmed', 'Jess', 'Luca', 'Aroha'], Japan: ['Kenji', 'Yui', 'Haruto', 'Aiko', 'Takeshi', 'Emi'],
+    France: ['Karim', 'Léa', 'Julien', 'Camille', 'Moussa', 'Inès'], China: ['Ka-ming', 'Wing', 'Chi-wai', 'Mei-ling', 'Siu-fung', 'Hoi-yan'] };
+  const L1 = () => 'ABCDEFGHJKLMNPRSTUVWXYZ'[Math.floor(Math.random() * 23)], D1 = () => String(Math.floor(Math.random() * 10));
+  const plate = () => ({ France: () => `${L1()}${L1()}-${D1()}${D1()}${D1()}-${L1()}${L1()}`, Japan: () => `${D1()}${D1()}-${D1()}${D1()}`,
+    China: () => `${L1()}${L1()} ${D1()}${D1()}${D1()}${D1()}` }[CITY.country] || (() => `${L1()}${L1()}${L1()} ${D1()}${D1()}${L1()}`))();
+  const MODEL_NAME = { Car_Sedan: 'sedan', Car_Taxi: 'taxi', Car_Hatch: 'hatchback', Car_SUV: 'SUV', Car_Van: 'van' };
+  const COLOUR_NAME = [['white', '#f0f0ee'], ['black', '#1c1c1e'], ['silver', '#a9adb3'], ['grey', '#5a6470'], ['red', '#b3242b'], ['maroon', '#7a1f2b'], ['blue', '#1f4e8c'],
+    ['beige', '#d8d3c8'], ['green', '#2f3b33'], ['gold', '#c9a227'], ['yellow', '#f2c21a']].map(([n, h]) => [n, new THREE.Color(h)]);
+  const colourName = hex => { const c = new THREE.Color(hex); let best = '', bd = Infinity; for (const [n, q] of COLOUR_NAME) { const d = (c.r - q.r) ** 2 + (c.g - q.g) ** 2 + (c.b - q.b) ** 2; if (d < bd) { bd = d; best = n; } } return best; };
+  const rideCar = o => `${colourName(o.hex)} ${MODEL_NAME[o.model] || 'car'}`;
+  function driverLook() {
+    const names = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n]) : [];
+    return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
+  }
+  // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, routed to the pick-up
+  function newRide(kind, from, pickup, dest = null) {
+    const tcfg = Object.assign({}, vlib.info.cars.liveries.taxi, ((G.vehicles || {}).cars || {}).taxi);
+    const model = kind === 'taxi' ? 'Car_Taxi' : OEActors.pick(['Car_Sedan', 'Car_SUV', 'Car_Sedan', 'Car_Hatch']);
+    const hex = from.hex || (kind === 'taxi' ? OEActors.pick(tcfg.colours) : OEActors.pick(['#1c1c1e', '#8a9099', '#3d4146', '#e7e5df', '#1f2a3a']));
+    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
+    if (!rt) return null;
+    const C = OECars.car(world, vlib, model, { colours: { paint: hex, seat: kind === 'taxi' ? '#2b2d30' : '#b9ae9c' }, keep: KEEP });
+    const o = { kind, C, model, hex, name: OEActors.pick(FIRST[CITY.country] || FIRST.Australia), plate: plate(), pickup, dest, phase: 'coming',
+      t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140) };
+    o.drv = OECars.chauffeur(C, rt, { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0 });
+    o.driver = makeRig(driverLook(), {});
+    C.sit(o.driver, 'driver');
+    return o;
+  }
+  // one setting out from somewhere a few hundred metres off by road, out of sight
+  function rideFromAround(kind, pickup, dest) {
+    for (let k = 0; k < 8; k++) {
+      const pl = roads.around(pickup.x, pickup.y, 170, 340);
+      const o = pl && newRide(kind, pl, pickup, dest);
+      if (o && o.drv.path.len < 1400) return o;
+      if (o) o.C.dispose();
+    }
+    return null;
+  }
+  const eta = o => (o.phase === 'coming' || o.phase === 'driving' ? o.drv.remaining() / 9 + 3 : 0);
+  // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
+  function hail() {
+    if (player.mode !== 'foot' || player.auto) return;
+    if (!CARS_OK) { H.toast('There are no taxis to hail here.'); return; }
+    if (ride && ride.phase !== 'leaving') { H.toast(ride.phase === 'coming' ? `${ride.name} is on the way.` : `${ride.name} is waiting for you.`); return; }
+    const pickup = roads.place(player.x, player.y, 40, keepSign, player.z);
+    if (!pickup) { H.toast('Stand at the kerb of a street to hail a taxi.'); return; }
+    if (player.rig.wave) player.rig.wave(clockT);
+    let best = null;
+    for (const c of cars.C) {
+      if (!c.taxi || c.line < 0) continue;
+      const d = Math.hypot(c.x - player.x, c.y - player.y);
+      if (d > 280 || d < 12) continue;
+      const rt = roads.route({ line: c.line, s: c.s, dir: c.dir }, pickup, 800);
+      if (rt && rt.len < 800 && (!best || rt.len < best.len)) best = { c, len: rt.len };
+    }
+    let o = null;
+    if (best) {
+      const c = best.c;
+      o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup);
+      if (o) { cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h }); }
+    }
+    if (!o) o = rideFromAround('taxi', pickup);
+    if (!o) { H.toast('No taxis about. Try a busier street, or order a ride on your phone (N).'); return; }
+    ride = o;
+    A.honk();
+    H.toast(best ? `A taxi has seen you: it'll pull in, about ${fmtSec(eta(o))} away.` : `A taxi is coming round the corner, about ${fmtSec(eta(o))} away.`);
+  }
+  // the phone: a private-hire car to where you say
+  function orderRide(dest) {
+    if (player.mode !== 'foot') { H.toast('Order once you are on foot.'); return; }
+    if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
+    const pickup = roads.place(player.x, player.y, 120, keepSign, player.z);
+    if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
+    const o = rideFromAround('hire', pickup, dest);
+    if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
+    ride = o;
+    H.toast(`<b>${o.name}</b> is on the way in a ${rideCar(o)}, ${o.plate}: about ${fmtSec(eta(o))}.`);
+  }
+  function cancelRide() {
+    if (!ride || player.mode === 'ride') return;
+    H.toast(`Ride with ${ride.name} cancelled.`);
+    rideAway();
+  }
+  function boardRide() {
+    const o = ride, d = doorAt(o, kerbSeat);
+    o.phase = 'boarding';
+    player.auto = { x: d.x, y: d.y, t: 0, then: () => {
+      if (ride !== o) return;
+      player.mode = 'ride'; player.vehicle = o;
+      o.C.sit(player.rig, kerbSeat);
+      if (headlamp) o.C.carry(headlamp);
+      cam.mode = 'chase'; cam.dist = 8; cam.pitch = 0.24; cam.yaw = o.drv.st.h;
+      A.thump();
+      if (o.dest) setOff(o.dest); else askWhereTo();
+    } };
+  }
+  // where you might go: the waypoint, the survey, your car, the landmarks, the wharves (each
+  // somewhere whose nearest street is a drive away, not round the corner)
+  const groundZ = (x, y) => { const f = nav.floorAt(x, y, Math.max(0, nav.terrain(x, y)) + 1); return f ? f.z : null; };
+  function destinations(x, y) {
+    const out = [], seen = new Set();
+    const add = (id, name, at, note) => {
+      if (!at || seen.has(id) || Math.hypot(at[0] - x, at[1] - y) < 150) return;
+      const pl = roads.place(at[0], at[1], 300, keepSign, groundZ(at[0], at[1]));
+      if (!pl || Math.hypot(pl.x - x, pl.y - y) < 180) return;
+      seen.add(id); out.push({ id, name, at: [at[0], at[1]], note });
+    };
+    if (waypoint) add('waypoint', 'Your waypoint', waypoint, 'set on the map');
+    const ob = objective();
+    if (ob && ob.at) add('objective', ob.title || 'The survey', ob.at, 'the survey');
+    if (myCar && player.vehicle !== myCar) add('car', 'Your car', [myCar.D.st.x, myCar.D.st.y], 'where you left it');
+    const marks = Object.entries(scene.labels || {}).map(([n, p]) => ({ n, p, d: Math.hypot(p[0] - x, p[1] - y) })).filter(m => m.d > 300).sort((a, b) => a.d - b.d);
+    for (const m of marks.slice(0, 4)) add(`lm-${m.n}`, m.n, m.p, `${(m.d / 1000).toFixed(1)} km`);
+    for (const t of G.travel || []) add(t.id, t.name, t.at, '');
+    for (const w of G.wharves) add(w.id, w.name, w.terminal, 'ferry wharf');
+    add('start', 'Where you started', G.start.at, '');
+    return out.slice(0, 7);
+  }
+  function askWhereTo() {
+    const o = ride;
+    o.phase = 'asking';
+    const list = destinations(o.drv.st.x, o.drv.st.y);
+    dlg.show({ name: o.name, role: o.kind === 'taxi' ? 'Taxi driver' : 'Your driver', color: '#e0a21a', pitch: o.pitch }, [`${G.greeting ? `${G.greeting} ` : ''}Where to?`],
+      list.map(d => ({ text: `${d.name}${d.note ? ` <span class="note">· ${d.note}</span>` : ''}`, dest: d })).concat([{ text: 'Nowhere, thanks. I\'ll get out here.', dest: null }]),
+      c => { if (ride !== o) return; if (c && c.dest) setOff(c.dest); else { o.phase = 'driving'; leaveRide(); } });
+  }
+  function setOff(dest) {
+    const o = ride, from = placeOf(o.drv.st) || o.drv.st.route.to;
+    let to = roads.place(dest.at[0], dest.at[1], 300, keepSign, groundZ(dest.at[0], dest.at[1])) || roads.place(dest.at[0], dest.at[1], 300, keepSign), rt = to && roads.route(from, to, 30000);
+    if (!rt && to) rt = roads.route(from, to = Object.assign({}, to, { dir: -to.dir }), 30000);
+    if (!rt) { H.toast(`<b>${o.name}:</b> I can't get there by road, sorry.`); o.phase = 'driving'; if (player.mode === 'ride') leaveRide(); return; }
+    Object.assign(o, { dest, phase: 'driving', meter: 0, talkT: clockT + 9, t0: clockT });
+    o.drv = OECars.chauffeur(o.C, rt, { keep: keepSign, from: 'kerb' });
+    H.toast(`<b>${o.name}:</b> ${dest.name}, ${(rt.len / 1000).toFixed(1)} km by road. <kbd>F</kbd> to skip the trip.`);
+  }
+  // the car you are in, or have just got out of, pulls away and drives off
+  function rideAway() {
+    const o = ride;
+    o.phase = 'leaving'; o.t0 = clockT;
+    const pl = placeOf(o.drv.st), pts = pl ? roads.onward({ to: pl }, 260) : [];
+    if (pts.length > 1) o.drv = OECars.chauffeur(o.C, { pts, end: false }, { keep: keepSign, from: o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v });
+  }
+  function leaveRide() {
+    const o = ride;
+    if (!o) return;
+    if (player.mode === 'ride') {
+      if (o.drv.st.v > 0.5) { H.toast('Wait until the car stops.'); return; }
+      if (!stepOut(o, kerbSeat)) { H.toast('No room to get out here.'); return; }
+      if (o.phase === 'arrived') H.toast(`<b>${o.name}:</b> ${OEActors.pick(['Enjoy!', 'Have a good one.', 'Take care.', 'Thanks!'])}`);
+      save();
+    }
+    rideAway();
+  }
+  function skipRide() {
+    const o = ride;
+    if (!o || o.phase !== 'driving' || cine.active) return;
+    const end = {}, P = o.drv.path;
+    P.at(P.len, end);
+    o.meter += o.drv.remaining();
+    hopTo(end.x, end.y, end.z, o.dest.name, { cue: () => o.drv.finish(), quiet: true });
+  }
+  // what a ride's driver looks out for (cars.js chauffeur): the traffic, your car, you on foot
+  function inTheWay(o) {
+    const st = o.drv.st, out = [];
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c);
+    if (myCar) out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half });
+    if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
+    return out;
+  }
+  function rideStep(dt, night) {
+    const o = ride, st = o.drv.st;
+    o.drv.update(dt, inTheWay(o));
+    o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
+    o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
+      inside: player.vehicle === o && cam.mode === 'cabin',
+      sign: o.kind === 'taxi' && (o.phase === 'coming' || o.phase === 'leaving') });
+    o.driver.animate(dt, 0, 'sit', clockT);
+    if (o.phase === 'driving') o.meter += st.v * dt;
+    if (o.phase === 'coming' && st.done) {
+      o.phase = 'waiting'; o.wait = 0;
+      H.toast(`<b>${o.name}</b> has pulled in${o.kind === 'hire' ? ` in the ${rideCar(o)}, ${o.plate}` : ''}. <kbd>E</kbd> to get in.`);
+      A.honk();
+    }
+    if (o.phase === 'waiting') {
+      o.wait += dt;
+      if (o.wait > (Math.hypot(st.x - player.x, st.y - player.y) > 90 ? 30 : 180) && player.mode === 'foot' && !player.auto) { H.toast(`${o.name} couldn't wait any longer.`); rideAway(); }
+    }
+    if (player.mode === 'ride' && player.vehicle === o) {
+      Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.v });
+      if (o.phase === 'driving' && clockT > o.talkT) { o.talkT = clockT + 24 + Math.random() * 18; H.toast(`<b>${o.name}:</b> ${smalltalk(st.x, st.y)}`); }
+      if (o.phase === 'driving' && st.done) {
+        o.phase = 'arrived';
+        H.toast(`<b>${o.name}:</b> Here we are: ${o.dest.name}. That's ${(o.meter / 1000).toFixed(1)} km. <kbd>E</kbd> to get out.`);
+        A.chime();
+      }
+      A.car(0.22 + Math.min(1, st.v / 22) * 0.45, st.brake ? 0 : 0.3, 0.35);
+      player.rig.animate(dt, 0, 'sit', clockT);
+    }
+    if (o.phase === 'leaving' && (clockT - o.t0 > 45 || Math.hypot(st.x - player.x, st.y - player.y) > 240 || st.done)) { o.C.dispose(); ride = null; }
+  }
+  // the hail hint at the kerb (Y), beside whatever E does
+  function kerbAction() {
+    if (player.mode !== 'foot' || player.auto || !CARS_OK || (ride && ride.phase !== 'leaving') || player.speed > 1.8) return null;
+    return roadNet.nearest(player.x, player.y, 11, player.z, 2.5) ? { key: 'Y', text: 'Hail a taxi', act: hail } : null;
+  }
+
+  // ------------------------------------------------------------ the phone (N): order a ride, bring your car
+  const phone = { el: $('#g-phone'), body: $('#gph-body'), view: 'home', acts: [], at: 0 };
+  function phoneShow(view) {
+    if (view === false) { phone.el.hidden = true; return; }
+    phone.view = view || (ride && ride.kind === 'hire' && ride.phase !== 'leaving' ? 'ride' : 'home');
+    phone.el.hidden = false;
+    phoneRender();
+  }
+  function phoneRender() {
+    const acts = [], item = (text, note, act) => { acts.push(act); return `<button data-k="${acts.length - 1}"><kbd>${acts.length}</kbd><span><b>${text}</b>${note ? `<span class="note">${note}</span>` : ''}</span></button>`; };
+    let html = '';
+    if (phone.view === 'home') {
+      $('#gph-title').textContent = 'Phone';
+      html = `<div class="list">${item('Order a ride', ride && ride.kind === 'hire' && ride.phase !== 'leaving' ? `${ride.name} is on the way` : 'A car to wherever you say', () => phoneShow(ride && ride.kind === 'hire' && ride.phase !== 'leaving' ? 'ride' : 'where'))}`
+        + `${myCar ? item('Bring my car', `It's ${Math.round(Math.hypot(myCar.D.st.x - player.x, myCar.D.st.y - player.y))} m away`, () => { bringCar(); phoneShow(false); }) : ''}</div>`
+        + `<p class="note">Or raise your hand at the kerb (<kbd>Y</kbd>) and a taxi will pull in.</p>`;
+    } else if (phone.view === 'where') {
+      $('#gph-title').textContent = 'Ride · where to?';
+      const list = destinations(player.x, player.y);
+      html = `<div class="list">${list.map(d => item(d.name, d.note, () => { orderRide(d); phoneShow(ride ? 'ride' : false); })).join('')}</div>`
+        + `<div class="row"><button class="btn" data-back>Back</button></div>`;
+    } else {
+      $('#gph-title').textContent = 'Ride';
+      const o = ride && ride.kind === 'hire' ? ride : null;
+      html = o ? `<div class="gph-card"><b>${o.name}</b><span>${rideCar(o)} · <span class="mono">${o.plate}</span></span><span>to ${o.dest ? o.dest.name : '–'}</span>
+        <b class="num">${o.phase === 'coming' ? `${fmtSec(eta(o))} away` : o.phase === 'waiting' ? 'Waiting at the kerb' : o.phase === 'driving' ? `${fmtSec(eta(o))} to go` : o.phase === 'arrived' ? 'Arrived' : 'On the way'}</b></div>`
+        + `<div class="list">${player.mode === 'foot' ? item('Cancel the ride', '', () => { cancelRide(); phoneShow('home'); }) : ''}</div>` : '<p class="note">No ride booked.</p>';
+      html += `<div class="row"><button class="btn" data-back>Back</button></div>`;
+    }
+    phone.acts = acts;
+    phone.body.innerHTML = html;
+  }
+  on($('#gph-body'), 'click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.hasAttribute('data-back')) phoneShow('home');
+    else if (phone.acts[+b.dataset.k]) phone.acts[+b.dataset.k]();
+  });
+  on($('#gph-close'), 'click', () => phoneShow(false));
+  on($('#g-phone-btn'), 'click', () => phoneShow(phone.el.hidden ? undefined : false));
 
   // ------------------------------------------------------------ trig stations: survey points with a view
   // Hilltops, a headland and the bridge deck (game.json "viewpoints"). Each has a concrete
@@ -593,7 +994,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // ------------------------------------------------------------ save (this browser only)
   const KEY = `oe3d-game-${cityId}`;
   function save() {
-    try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y], clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale } })); } catch (e) { /* storage blocked */ }
+    const car = myCar && [myCar.D.st.x, myCar.D.st.y, myCar.D.st.z, myCar.D.st.h].map(v => Math.round(v * 100) / 100);
+    try { localStorage.setItem(KEY, JSON.stringify({ qs, pos: [player.x, player.y], car, clock: { y: clock.y, m: clock.m, d: clock.d, min: clock.min, scale: clock.scale } })); } catch (e) { /* storage blocked */ }
   }
   function loadSave() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
 
@@ -689,6 +1091,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return { route };
   })();
   let route = null, routeFor = '', routeAt = 0, routeFrom = [0, 0];
+  // in a car the minimap's route keeps to the roads: the ride's own route, or one to the target from where you are
+  const byRoad = { key: '', at: -9, pts: null };
+  function roadRoute(target) {
+    if (player.mode === 'ride' && ride && ride.phase === 'driving') { const P = ride.drv.path, i = P.pos(ride.drv.st.s, {}).i; return [[player.x, player.y]].concat(P.pts.slice(i + 1)); }
+    if (player.mode !== 'car' || !target) return null;
+    const key = `${Math.round(target[0])},${Math.round(target[1])}`;
+    if (key !== byRoad.key || clockT - byRoad.at > 2) {
+      byRoad.key = key; byRoad.at = clockT;
+      const a = placeOf(myCar.D.st), b = roads.place(target[0], target[1], 300, keepSign, groundZ(target[0], target[1])), rt = a && b && roads.route(a, b, 30000);
+      byRoad.pts = rt ? rt.pts : null;
+    }
+    return byRoad.pts && [[player.x, player.y]].concat(byRoad.pts);
+  }
   function updateRoute(t, target) {
     const key = target ? `${Math.round(target[0])},${Math.round(target[1])}` : '';
     if (!target || player.mode !== 'foot' || !settings.route || Math.hypot(target[0] - player.x, target[1] - player.y) < 35) {
@@ -726,15 +1141,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       return;
     }
     if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
-    if (c === 'Escape') { if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
+    if (c === 'Escape') { if (!phone.el.hidden) phoneShow(false); else if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) { if (c === 'KeyM') toggleMap(); return; }
     if (dlg.open) {
       if (c === 'KeyE' || c === 'Enter' || c === 'Space' || c === 'KeyF') dlg.next(false);
       if (/^Digit[1-9]$/.test(c)) dlg.choose(+c.slice(5) - 1);
       return;
     }
-    if (c === 'KeyE' || c === 'KeyF' && !(player.mode === 'ferry' || player.mode === 'rail')) interact();
+    if (!phone.el.hidden && /^Digit[1-9]$/.test(c) && phone.acts[+c.slice(5) - 1]) { phone.acts[+c.slice(5) - 1](); return; }
+    if (c === 'KeyE' || c === 'KeyF' && !(player.mode === 'ferry' || player.mode === 'rail' || player.mode === 'ride')) interact();
     else if (c === 'KeyF' && (player.mode === 'ferry' || player.mode === 'rail')) skip = !skip;
+    else if (c === 'KeyF' && player.mode === 'ride') skipRide();
+    else if (c === 'KeyY') hail();
+    else if (c === 'KeyN') phoneShow(phone.el.hidden ? undefined : false);
+    else if (c === 'KeyH' && player.mode === 'car') A.honk();
+    else if (c === 'KeyV' && (player.mode === 'car' || player.mode === 'ride')) { cam.mode = cam.mode === 'cabin' ? 'chase' : 'cabin'; cam.lastInput = -10; if (cam.mode === 'cabin') cam.pitch = 0.2; }
+    else if (c === 'KeyR' && player.mode === 'car') resetCar();
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyG') guessStart();
     else if (c === 'KeyT') cycleTrack();
@@ -760,6 +1182,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     cam.lastInput = clockT;
   });
   on(canvas, 'pointerup', e => { if (drag && drag.moved < 6 && dlg.open) dlg.next(false); drag = null; });
+  on($('#gp-alt'), 'click', () => { const a = kerbAction(); if (a) { A.start(); a.act(); } });
   on(canvas, 'wheel', e => {
     e.preventDefault();
     if (photo.on) { photo.dist = Math.max(1.5, Math.min(400, photo.dist * (e.deltaY > 0 ? 1.1 : 0.91))); photoSync(); return; }
@@ -783,9 +1206,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const hold = (id, down, up) => { on($(id), 'pointerdown', e => { e.preventDefault(); down(); }); on($(id), 'pointerup', up || (() => {})); on($(id), 'pointercancel', up || (() => {})); };
     hold('#gt-act', () => (dlg.open ? dlg.next(false) : interact()));
     hold('#gt-jump', () => { if (player.mode === 'heli') touchLift = 1; else keys.add('Space'); }, () => { touchLift = 0; keys.delete('Space'); });
-    hold('#gt-down', () => { if (player.mode === 'heli') touchLift = -1; else guessStart(); }, () => { touchLift = 0; }); // Down in the air, Guess on foot
+    hold('#gt-down', () => { if (player.mode === 'heli') touchLift = -1; else if (player.mode === 'car') A.honk(); else guessStart(); }, () => { touchLift = 0; }); // Down in the air, the horn in a car, Guess on foot
     hold('#gt-run', () => { keys.has('ShiftLeft') ? keys.delete('ShiftLeft') : keys.add('ShiftLeft'); $('#gt-run').setAttribute('aria-pressed', String(keys.has('ShiftLeft'))); });
-    hold('#gt-cam', () => { cam.mode = cam.mode === 'bird' ? 'chase' : 'bird'; });
+    hold('#gt-cam', () => { cam.mode = player.mode === 'car' || player.mode === 'ride' ? (cam.mode === 'cabin' ? 'chase' : 'cabin') : cam.mode === 'bird' ? 'chase' : 'bird'; });
     hold('#gt-lens', () => lens());
   }
   let skip = false, waitFerry = null, lastDock = null;
@@ -820,10 +1243,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (here && player.vehicle.moved) return { key: 'E', text: `Get off at ${here.name}`, act: alightRail };
       return null;
     }
+    if (player.mode === 'car') return myCar.D.st.speed < 1.5 ? { key: 'E', text: 'Get out', act: exitCar } : null;
+    if (player.mode === 'ride') return ride && ride.phase !== 'asking' && ride.drv.st.v < 0.5 ? { key: 'E', text: ride.phase === 'arrived' ? `Get out at ${ride.dest.name}` : 'Get out here', act: leaveRide } : null;
     if (player.auto) return null;
     let bn = null, bd = 3.2;
     for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (d < bd && Math.abs(n.z - player.z) < 2) { bd = d; bn = n; } }
     if (bn) return { key: 'E', text: `Talk to ${bn.name}`, act: () => talkTo(bn) };
+    if (ride && ride.phase === 'waiting' && offCar(ride, player.x, player.y) < 4 && Math.abs(ride.drv.st.z - player.z) < 2)
+      return { key: 'E', text: ride.kind === 'taxi' ? 'Get in the taxi' : `Get in ${ride.name}'s ${rideCar(ride)}`, act: boardRide };
+    if (myCar && offCar(myCar, player.x, player.y) < 2.5 && Math.abs(myCar.D.st.z - player.z) < 2) return { key: 'E', text: 'Drive your car', act: enterCar };
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Fly the helicopter', act: enterHeli };
     const st = railStation(player.x, player.y);
     if (st && rail.cars.length) {
@@ -879,10 +1307,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     save();
   }
-  function placeNear(x, y, z0) { // a walkable spot close to (x, y)
+  function placeNear(x, y, z0, avoid = null) { // a walkable spot close to (x, y), not inside any of the boxes in avoid (cars)
     for (let r = 0; r < 45; r += 1.5) for (let a = 0; a < 6.28; a += r ? 0.5 / Math.max(1, r / 3) : 7) {
       const px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.walk(px, py, z0 + 3);
-      if (f.ok) return [px, py, f.z];
+      if (f.ok && !(avoid && OECars.pushOut(px, py, f.z, 0.4, avoid).hit)) return [px, py, f.z];
     }
     return null;
   }
@@ -1257,6 +1685,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const v of VP) icon({ kind: 'trig', done: !!trigDone()[v.id] }, ...P2(v.x, v.y));
     for (const v of fer.vessels) icon({ kind: 'ferry' }, ...P2(v.x, v.y));
     if (player.mode !== 'heli') icon({ kind: 'heli' }, ...P2(heli.st.x, heli.st.y));
+    if (myCar && player.mode !== 'car') icon({ kind: 'car' }, ...P2(myCar.D.st.x, myCar.D.st.y));
+    if (ride && player.mode !== 'ride' && ride.phase !== 'leaving') icon({ kind: 'ride', label: ride.kind === 'taxi' ? 'T' : 'R' }, ...P2(ride.drv.st.x, ride.drv.st.y));
     for (const n of npcs) icon({ kind: 'npc', color: wantsTalk(n) ? '#e0a21a' : '#5b6b77', label: n.name[0] }, ...P2(n.x, n.y));
     for (const o of sideObjectives()) icon({ kind: 'quest2' }, ...P2(...o.at));
     const ob = objective();
@@ -1318,7 +1748,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
-  on($('#gm-reset'), 'click', () => { try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ } qs = freshQs(); renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true; });
+  on($('#gm-reset'), 'click', () => {
+    try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    if ((player.mode === 'car' || player.mode === 'ride') && !stepOut(player.vehicle, player.mode === 'car' ? 'driver' : kerbSeat)) { player.vehicle.C.body.remove(player.rig.root); world.add(player.rig.root); player.mode = 'foot'; player.vehicle = null; }
+    if (ride) rideAway();
+    qs = freshQs(); renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true;
+  });
 
   // ------------------------------------------------------------ start
   function spawn(pos, zRef) { // at ground level (or on steps built on it) unless a height is given
@@ -1346,6 +1781,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (cont && saved) {
       qs = Object.assign(qs, migrate(saved.qs));
       spawn(saved.pos);
+      if (saved.car && myCar && nav.floorAt(saved.car[0], saved.car[1], saved.car[2] + 1)) parkMyCar({ x: saved.car[0], y: saved.car[1], z: saved.car[2], h: saved.car[3] });
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
     const tc = $('#gt-timechoice [aria-pressed="true"]');
@@ -1422,16 +1858,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       for (const v of VP) icons.push({ kind: 'trig', x: v.x, y: v.y, done: !!trigDone()[v.id] });
       for (const v of fer.vessels) icons.push({ kind: 'ferry', x: v.x, y: v.y });
       if (player.mode !== 'heli') icons.push({ kind: 'heli', x: heli.st.x, y: heli.st.y });
+      if (myCar && player.mode !== 'car') icons.push({ kind: 'car', x: myCar.D.st.x, y: myCar.D.st.y });
+      if (ride && player.mode !== 'ride' && ride.phase !== 'leaving') icons.push({ kind: 'ride', x: ride.drv.st.x, y: ride.drv.st.y, pin: true, label: ride.kind === 'taxi' ? 'T' : 'R' });
       for (const n of npcs) { const hot = wantsTalk(n); n.marker.visible = hot && !dlg.open; if (hot) icons.push({ kind: 'npc', x: n.x, y: n.y, color: '#e0a21a', pin: true }); }
       for (const o of sideObjectives()) icons.push({ kind: 'quest2', x: o.at[0], y: o.at[1] });
       if (ob && ob.at) icons.push({ kind: 'quest', x: ob.at[0], y: ob.at[1], pin: true });
       if (waypoint) icons.push({ kind: 'waypoint', x: waypoint[0], y: waypoint[1], pin: true });
       drawMini({ x: me.x, y: me.y, yaw: cam.mode === 'bird' && player.mode === 'heli' ? heli.st.h : cam.yaw, heading: player.mode === 'heli' ? heli.st.h : player.mode === 'ferry' ? player.vehicle.h : player.h,
-        radius: player.mode === 'heli' ? 700 : player.mode === 'ferry' ? 450 : 200, route, icons });
+        radius: player.mode === 'heli' ? 700 : player.mode === 'ferry' ? 450 : player.mode === 'car' || player.mode === 'ride' ? 260 + Math.min(220, player.speed * 7) : 200, route: roadRoute(target) || route, icons });
       if (!$('#g-bigmap').hidden && Math.floor(clockT * 2) !== Math.floor((clockT - dt) * 2)) drawBig();
-      const a = currentAction();
-      $('#g-prompt').hidden = !a;
+      const a = currentAction(), alt = kerbAction();
+      $('#g-prompt').hidden = !a && !alt;
+      $('#gp-main').hidden = !a; $('#gp-alt').hidden = !alt;
       if (a) { $('#gp-key').textContent = a.key; $('#gp-key').hidden = !a.key; $('#gp-text').textContent = a.text; }
+      if (!phone.el.hidden && phone.view === 'ride' && clockT - phone.at > 0.5) { phone.at = clockT; phoneRender(); }
       vehicleHud();
     }
     // a low frame rate is worth a hint (slowroads does the same)
@@ -1460,6 +1900,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       player.rig.animate(dt, 0, 'sit', clockT);
     } else if (player.mode === 'rail') {
       player.rig.animate(dt, 0, 'ground', clockT);
+    } else if (player.mode === 'car') {
+      carStep(dt, held ? 0 : fwd, held ? 0 : side);
     } else if (player.mode === 'ferry') {
       const v = player.vehicle;
       if (v.helm) v.helm.input = { fwd, turn: side };
@@ -1491,7 +1933,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       player.x = v.x + s * D.fwd + c * D.right; player.y = v.y + c * D.fwd - s * D.right; player.z = D.up; player.h = v.h;
       if (v.phase === 'dwell') skip = false;
     }
-    if (player.mode !== 'heli') { player.rig.root.position.copy(W(player.x, player.y, player.z)); player.rig.root.rotation.y = Math.PI - player.h; }
+    carsTick(dt);
+    if (player.mode !== 'heli' && player.mode !== 'car' && player.mode !== 'ride') { player.rig.root.position.copy(W(player.x, player.y, player.z)); player.rig.root.rotation.y = Math.PI - player.h; }
     // NPCs: face the player when close, idle otherwise
     let gaze = null;
     for (const n of npcs) {
@@ -1505,7 +1948,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
-    crowd.update(dt, cx, cy, clockT, player.mode === 'foot' ? player : null);
+    crowd.update(dt, cx, cy, clockT, player.mode === 'foot' ? player : player.mode === 'car' ? { x: player.x, y: player.y, h: player.h, speed: myCar.D.st.v, r: 1.1 } : null);
     if (colonies.length) {
       const L = dayLimits();
       for (const c of colonies) c.update(dt, { min: clock.min, sunset: L.sunset, sunrise: L.sunrise }, cx, cy, U.uNight.value);
@@ -1518,7 +1961,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
     benchBudget += dt * 60; // keep what the benches near the player offer up to date, about 60 a second
     if (benchBudget >= 1) { benches.refresh(benchLit, cx, cy, CR.radius_m || 450, Math.floor(benchBudget)); benchBudget -= Math.floor(benchBudget); }
-    cars.update(dt, cx, cy, clockT, player.mode === 'foot' ? [player] : []);
+    // the traffic brakes for you on foot and for your car, and swings out round a car pulled in at the kerb
+    const blockers = player.mode === 'foot' ? [player] : [];
+    for (const o of [myCar, ride]) if (o) { const st = stOf(o); blockers.push({ x: st.x, y: st.y, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && (o === ride || player.mode !== 'car') }); }
+    cars.update(dt, cx, cy, clockT, blockers);
   }
 
   function walkStep(dt, fwd, side) {
@@ -1529,7 +1975,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       fwd = 1; side = 0;
       player.h += angDiff(Math.atan2(dx, dy), player.h) * Math.min(1, dt * 8);
       const sp = 2.2, nx = player.x + Math.sin(player.h) * sp * dt, ny = player.y + Math.cos(player.h) * sp * dt, w = nav.walk(nx, ny, player.z);
-      if (w.ok) { player.x = nx; player.y = ny; player.z = w.z; } else a.t = 9;
+      if (w.ok) { const o = OECars.pushOut(nx, ny, w.z, 0.35, carBoxes(nx, ny, 6)); player.x = o.x; player.y = o.y; player.z = w.z; } else a.t = 9;
       player.rig.animate(dt, sp, 'ground', clockT);
       return;
     }
@@ -1544,7 +1990,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // move as Unreal's CharacterMovementComponent does: sweep the capsule and slide along the
     // walls it meets, then check the floor where it ends up (water, a drop). At the seawall,
     // where the floor check fails, try one axis at a time.
-    const sx = Math.sin(player.h) * player.speed * dt, sy = Math.cos(player.h) * player.speed * dt;
+    const sx = Math.sin(player.h) * player.speed * dt, sy = Math.cos(player.h) * player.speed * dt, x0 = player.x, y0 = player.y;
     let moved = 0;
     for (const [mx, my] of [[sx, sy], [sx, 0], [0, sy]]) {
       if (!mx && !my) continue;
@@ -1557,6 +2003,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         break;
       } else if (w.why === 'nogo' && clockT - waterT > 20) { waterT = clockT; H.toast(colonies[0] ? colonies[0].colony.keep_off_note : 'Keep out.');
       } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in ${G.water_name || 'the water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
+    }
+    // cars are solid too: out of any the move went into, or one that drove into you (back where you were if that is a wall)
+    const boxes = carBoxes(player.x, player.y, 6);
+    if (boxes.length) {
+      const o = OECars.pushOut(player.x, player.y, player.z, 0.35, boxes);
+      if (o.hit) {
+        if (nav.walk(o.x, o.y, player.z).ok) { player.x = o.x; player.y = o.y; } else { player.x = x0; player.y = y0; }
+        moved = Math.hypot(player.x - x0, player.y - y0);
+      }
     }
     if (dt > 0) player.speed = Math.min(player.speed, moved / dt); // the speed is what the move achieved, so the walk cycle slows against a wall
     const f = nav.floorAt(player.x, player.y, player.z);
@@ -1593,7 +2048,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       return;
     }
     rig(dt);
-    const shot = cine.step(clockT), fov = shot && cine.label === 'survey' ? surveyFov : BASE_FOV;
+    // in a car the view widens with speed, and from a seat it is a little wider still
+    const veh = player.mode === 'car' ? myCar.D.st : player.mode === 'ride' && ride ? ride.drv.st : null;
+    carFov += ((veh ? (cam.mode === 'cabin' ? 8 : Math.max(0, Math.min(13, ((veh.speed ?? Math.abs(veh.v)) - 9) * 0.32))) : 0) - carFov) * Math.min(1, dt * 2);
+    if (veh) player.rig.root.visible = cam.mode !== 'cabin';
+    const shot = cine.step(clockT), fov = shot && cine.label === 'survey' ? surveyFov : BASE_FOV + (shot ? 0 : Math.round(carFov * 4) / 4);
     if (camera.fov !== fov) { camera.fov = fov; camera.updateProjectionMatrix(); }
     if (shot) {
       camera.up.set(0, 1, 0);
@@ -1619,28 +2078,36 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       return;
     }
     live.up.set(0, 1, 0);
+    const veh = player.mode === 'car' ? myCar : player.mode === 'ride' ? ride : null, vs = veh && stOf(veh);
+    if (veh && cam.mode === 'cabin') { cabinView(dt, veh, vs); return; }
     let tx, ty, tz, follow;
     if (player.mode === 'heli') { tx = heli.st.x; ty = heli.st.y; tz = heli.st.z + 2.5; follow = heli.st.h; }
     else if (player.mode === 'ferry') { tx = player.vehicle.x; ty = player.vehicle.y; tz = 5; follow = null; }
     else if (player.mode === 'rail') { tx = player.vehicle.x; ty = player.vehicle.y; tz = player.vehicle.z + 3; follow = null; }
+    else if (veh) { tx = vs.x; ty = vs.y; tz = vs.z + 1.5; follow = vs.h; }
     else { tx = player.x; ty = player.y; tz = player.z + 1.55; follow = player.h; }
-    // drift behind the direction of travel when the player is not steering the camera
-    if (follow != null && clockT - cam.lastInput > 1.6 && (player.mode === 'heli' ? heli.st.speed > 3 : player.speed > 1)) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (player.mode === 'heli' ? 1.6 : 0.9));
-    const dist = player.mode === 'heli' ? Math.max(14, cam.dist) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : cam.dist;
-    camTarget.lerp(W(tx, ty, tz), player.mode === 'foot' ? 1 : k2);
-    // keep the camera out of walls: first rise over them (look down on the player), then come closer
+    // drift behind the direction of travel when the player is not steering the camera (in a car, sooner and faster)
+    const moving = veh ? Math.abs(vs.v) > 1 : player.mode === 'heli' ? heli.st.speed > 3 : player.speed > 1;
+    if (follow != null && clockT - cam.lastInput > (veh ? 0.9 : 1.6) && moving) cam.yaw += angDiff(follow, cam.yaw) * Math.min(1, dt * (veh ? 2.6 : player.mode === 'heli' ? 1.6 : 0.9));
+    const dist = player.mode === 'heli' ? Math.max(14, cam.dist) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + Math.min(2.5, Math.abs(vs.v) * 0.05) : cam.dist;
+    camTarget.lerp(W(tx, ty, tz), player.mode === 'foot' ? 1 : veh ? Math.min(1, dt * 14) : k2);
+    // keep the camera out of walls and cars: first rise over them (look down on the player), then come closer
+    const near = carBoxes(tx, ty, dist + 6, veh);
+    const clear = (a, b) => Math.min(nav.clearFraction(a, b), near.length ? OECars.sweep({ x: a.x, y: -a.z, z: a.y }, { x: b.x, y: -b.z, z: b.y }, near) : 1);
     let best = null;
     for (const lift of [0, 0.25, 0.5, 0.8]) {
       const pitch = Math.min(1.35, cam.pitch + lift), cp = Math.cos(pitch);
       const pos = new THREE.Vector3(camTarget.x - Math.sin(cam.yaw) * cp * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(cam.yaw) * cp * dist);
-      const f = nav.clearFraction(camTarget, pos);
+      const f = clear(camTarget, pos);
       if (!best || f > best.f + 0.05) best = { f, pos };
       if (f >= 0.97) break;
     }
     camPos.copy(best.pos);
     if (best.f < 1) camPos.lerpVectors(camTarget, best.pos, Math.max(0.15, best.f - 0.04));
+    // pulled in that close by a wall, it may be over a car: then it looks down over the roof
+    for (const q of near) if (OECars.pushOut(camPos.x, -camPos.z, q.z + 0.5, 0.35, [q]).hit) camPos.y = Math.max(camPos.y, q.z + q.top + 0.45);
     if (camSmooth.lengthSq() === 0 || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos); // after a teleport
-    camSmooth.lerp(camPos, player.mode === 'foot' ? Math.min(1, dt * 10) : 1);
+    camSmooth.lerp(camPos, player.mode === 'foot' ? Math.min(1, dt * 10) : veh ? Math.min(1, dt * 16) : 1);
     camPos.copy(camSmooth);
     let gz = nav.terrain(camPos.x, -camPos.z);
     for (const st of nav.strips) { // steps and decks below the player's head lift the camera too
@@ -1650,7 +2117,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
     live.pos.copy(camPos);
     live.look.copy(camTarget);
-    live.half = player.mode === 'heli' ? 520 : player.mode === 'ferry' ? 320 : 170;
+    live.half = player.mode === 'heli' ? 520 : player.mode === 'ferry' ? 320 : veh ? 220 : 170;
+  }
+  // from your seat: the eye over the cushion, looking ahead as the car turns (drag to look
+  // round; the look comes back ahead when let go)
+  const eye = new THREE.Vector3();
+  function cabinView(dt, o, st) {
+    const seat = o === myCar ? 'driver' : kerbSeat, back = clockT - cam.lastInput > 1.2 ? Math.max(0, 1 - dt * 3) : 1;
+    o.C.body.updateWorldMatrix(true, false); // where the car is this frame, not where it was last drawn
+    o.C.body.localToWorld(eye.copy(o.C.seats[seat]).add(new THREE.Vector3(0, seat === 'driver' ? 0.7 : 0.64, 0.08)));
+    cam.yaw = st.h + angDiff(cam.yaw, st.h) * back;
+    cam.pitch = 0.2 + (cam.pitch - 0.2) * back;
+    const p = -(cam.pitch - 0.2) * 0.8 - 0.06;
+    live.pos.copy(eye);
+    live.look.set(eye.x + Math.sin(cam.yaw) * Math.cos(p) * 10, eye.y + Math.sin(p) * 10, eye.z - Math.cos(cam.yaw) * Math.cos(p) * 10);
+    live.half = 170;
+    camTarget.copy(eye); camSmooth.copy(eye);
   }
 
   // ------------------------------------------------------------ camera shots (cine.js)
@@ -1688,7 +2170,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // Fast travel: rise over the player, fly across the city at a height that grows with
   // the distance, and come down behind them facing the way they flew. The player moves
   // at the top of the climb, out of sight.
-  function hopTo(x, y, z, name) {
+  // (opts.cue, if given, moves whatever is travelling at the top of the climb instead of you; quiet: no arrival toast)
+  function hopTo(x, y, z, name, opts = {}) {
     const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
     const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
     const alt = Math.max(THREE.MathUtils.clamp(140 + span * 0.12, 180, 520), roofs + 110), top = { dist: alt * 0.3, h: alt }, az = bearing + Math.PI;
@@ -1699,14 +2182,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const a = 0.26, b = 0.66;
     const path = k => (k < a ? rise(OECine.span(k, 0, a)) : k < b ? cross(OECine.ease.inOut(OECine.span(k, a, b))) : fall(OECine.span(k, b, 1)));
     cine.play(OECine.mix(path, () => live, k => handOver(k, 0.86)), Math.min(4.6, 2.4 + span / 1500), { label: 'hop',
-      cues: [[a, () => {
+      cues: [[a, opts.cue ? () => { opts.cue(); cam.yaw = bearing; groundLod(x, y); } : () => {
         [player.x, player.y, player.z] = [x, y, z];
         player.h = bearing; player.speed = 0; player.vz = 0; player.ground = true;
         cam.mode = 'chase'; cam.yaw = bearing; cam.pitch = 0.36; cam.dist = 7.5;
         groundLod(x, y);
         save();
       }]],
-      onEnd: () => H.toast(`You're at ${name}.`) });
+      onEnd: () => { if (!opts.quiet) H.toast(`You're at ${name}.`); } });
   }
 
   function onFerryEvent(ev) {
@@ -1728,7 +2211,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
 
   function vehicleHud() {
     const el = $('#g-vhud');
-    if (touch) { $('#gt-down').hidden = player.mode === 'ferry'; $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : 'Guess'; $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : 'Jump'; }
+    if (touch) {
+      $('#gt-down').hidden = player.mode === 'ferry' || player.mode === 'ride';
+      $('#gt-down').textContent = player.mode === 'heli' ? 'Down' : player.mode === 'car' ? 'Horn' : 'Guess';
+      $('#gt-jump').textContent = player.mode === 'heli' ? 'Up' : player.mode === 'car' ? 'Hand brake' : 'Jump';
+    }
     if (player.mode === 'heli') {
       const st = heli.st, g = nav.groundBelow(st.x, st.y, st.z);
       el.hidden = false;
@@ -1742,6 +2229,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       el.innerHTML = `<div><b>${v.name}</b><span>${v.route}</span></div><div><b>${v.phase === 'dwell' ? 'Departs' : nxt.name}</b><span>${v.phase === 'dwell' ? `in ${fmtSec(t)}` : `in ${fmtSec(t)}`}</span></div>
         <div><b class="num">${(Math.abs(v.speed) * 1.94).toFixed(0)}</b><span>knots</span></div>${v.helm && v.helm.manual ? `<div><b class="num">${Math.round(v.helm.dist || 0)} m</b><span>to berth</span></div>` : ''}
         <p class="note">${v.phase === 'dwell' ? 'E get off · ' : ''}F ${skip ? 'normal speed' : 'skip ahead'} · H take the helm · drag to look around</p>`;
+    } else if (player.mode === 'car') {
+      const st = myCar.D.st;
+      el.hidden = false;
+      el.innerHTML = `<div><b class="num">${Math.round(st.speed * 3.6)}</b><span>km/h</span></div><div><b class="num">${st.gear === 0 ? 'R' : st.speed < 0.3 ? 'N' : st.gear}</b><span>gear</span></div>
+        <div><b class="num">${Math.round(st.z)} m</b><span>altitude</span></div><div><b class="num">${Math.round(st.rpm * 7000 / 100) * 100}</b><span>rpm</span></div>
+        <p class="note">W/S drive, brake, reverse · A/D steer · Space handbrake · H horn · V ${cam.mode === 'cabin' ? 'chase view' : 'from the seat'} · R back on the road${st.speed < 1.5 ? ' · E get out' : ''}</p>`;
+    } else if (player.mode === 'ride' && ride) {
+      const o = ride, st = o.drv.st;
+      el.hidden = false;
+      el.innerHTML = `<div><b>${o.name}</b><span>${o.kind === 'taxi' ? 'taxi' : rideCar(o)}${o.kind === 'hire' ? ` · ${o.plate}` : ''}</span></div><div><b>${o.dest ? o.dest.name : 'Where to?'}</b><span>${o.phase === 'driving' ? `in ${fmtSec(eta(o))}` : o.phase === 'arrived' ? 'here' : ''}</span></div>
+        <div><b class="num">${o.phase === 'driving' ? (o.drv.remaining() / 1000).toFixed(1) : '0.0'} km</b><span>to go</span></div><div><b class="num">${Math.round(st.v * 3.6)}</b><span>km/h</span></div>
+        <p class="note">${o.phase === 'driving' ? 'F skip the trip · ' : ''}V ${cam.mode === 'cabin' ? 'chase view' : 'from the back seat'} · drag to look around${st.v < 0.5 && o.phase !== 'asking' ? ' · E get out' : ''}</p>`;
+    } else if (player.mode === 'foot' && ride && (ride.phase === 'coming' || ride.phase === 'waiting')) {
+      const o = ride;
+      el.hidden = false;
+      el.innerHTML = `<div><b>${o.name}</b><span>${o.kind === 'taxi' ? 'taxi' : `${rideCar(o)} · ${o.plate}`}</span></div><div><b class="num">${o.phase === 'coming' ? fmtSec(eta(o)) : 'here'}</b><span>${o.phase === 'coming' ? 'away' : 'at the kerb'}</span></div>
+        <p class="note">${o.phase === 'coming' ? 'Wait at the kerb. ' : 'E beside it to get in. '}${o.kind === 'hire' ? 'N to cancel.' : ''}</p>`;
     } else if (player.mode === 'rail') {
       const c = player.vehicle, F = rail.funicular, here = rail.stationOf(c.id);
       el.hidden = false;
@@ -1770,7 +2274,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
-  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
+  window.__game = { colonies, dayLimits, footNet, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

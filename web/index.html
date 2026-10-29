@@ -315,6 +315,23 @@ a { color: var(--accent); }
 .g-prompt { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); display: flex; gap: 8px; align-items: center; background: var(--hud); backdrop-filter: blur(6px);
   border-radius: 999px; padding: 7px 14px 7px 8px; box-shadow: var(--shadow); font-weight: 600; font-size: 13px; white-space: nowrap; max-width: calc(100% - 28px); overflow: hidden; text-overflow: ellipsis; }
 .g-prompt kbd { font-size: 12px; padding: 3px 7px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+#gp-main, #gp-alt { display: flex; gap: 8px; align-items: center; }
+#gp-alt { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; }
+#gp-main:not([hidden]) + #gp-alt { border-left: 1px solid var(--line); padding-left: 10px; margin-left: 4px; }
+.g-phone { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); bottom: 14px; width: min(300px, calc(100% - 28px)); max-height: calc(100% - 330px); overflow: auto; padding: 10px 12px 12px;
+  display: grid; gap: 8px; align-content: start; border-top: 3px solid var(--accent); z-index: 4; }
+.g-phone header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.g-phone header b { font: 700 15px/1.2 var(--f-display); font-stretch: 90%; }
+.g-phone .x { border: 0; background: none; font-size: 20px; line-height: 1; cursor: pointer; color: var(--muted); }
+.g-phone .list { display: grid; gap: 6px; }
+.g-phone .list button { display: flex; gap: 8px; align-items: center; text-align: left; border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; padding: 7px 9px; cursor: pointer; color: var(--ink); font: inherit; }
+.g-phone .list button:hover { border-color: var(--accent); }
+.g-phone .list button > span { display: grid; } .g-phone .list .note { font-size: 11px; }
+.g-phone kbd { font: 600 10.5px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; background: var(--surface); color: var(--ink); }
+.g-phone p { margin: 0; }
+.gph-card { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
+.gph-card b.num { font-size: 16px; margin-top: 4px; }
+.gd-choices .note { font-weight: 400; color: var(--muted); }
 .g-vhud { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); bottom: 14px; padding: 10px 12px; display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; max-width: calc(100% - 28px); }
 .g-vhud div { display: grid; } .g-vhud b { font-size: 15px; } .g-vhud span { color: var(--muted); font-size: 11px; }
 .g-vhud .note { grid-column: 1 / -1; margin: 4px 0 0; }
@@ -401,6 +418,7 @@ a { color: var(--accent); }
   .g-prompt { bottom: 200px; }
   .g-dialog { bottom: 8px; }
   .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
+  .g-phone { bottom: 196px; max-height: calc(100% - 420px); }
   .g-vhud .note { display: none; }
   .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
   .g-reticle { display: none; }
@@ -692,12 +710,13 @@ a { color: var(--accent); }
       <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
       <div class="g-hud g-sun" id="g-sun" data-s="sun" title="Ray-cast from where you stand"><i></i><span>In sun</span></div>
-      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
+      <div class="g-btns"><button class="chip-btn" id="g-map-btn">Map <kbd>M</kbd></button><button class="chip-btn" id="g-pass-btn">Passport <span class="num" id="g-pass-count">0</span></button><button class="chip-btn" id="g-photo-btn" title="Photo mode">Photo <kbd>O</kbd></button><button class="chip-btn" id="g-phone-btn" title="Order a ride, bring your car">Phone <kbd>N</kbd></button><button class="chip-btn" id="g-menu-btn">Menu <kbd>Esc</kbd></button></div>
     </div>
     <div class="g-toasts" id="g-toasts" aria-live="polite"></div>
-    <div class="g-prompt" id="g-prompt" hidden><kbd id="gp-key">E</kbd><span id="gp-text"></span></div>
+    <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd>Y</kbd><span>Hail a taxi</span></button></div>
     <div class="g-hud g-vhud" id="g-vhud" hidden></div>
     <aside class="g-hud g-lens" id="g-lens" hidden></aside>
+    <aside class="g-hud g-phone" id="g-phone" hidden aria-label="Phone"><header><b id="gph-title">Phone</b><button class="x" id="gph-close" aria-label="Put the phone away">×</button></header><div id="gph-body"></div></aside>
     <div class="g-dialog" id="gd" hidden role="dialog" aria-live="polite"><div class="gd-head"><b id="gd-name"></b><span id="gd-role"></span></div><p id="gd-text"></p><div class="gd-choices" id="gd-choices"></div><span class="gd-hint" id="gd-hint"></span></div>
 
     <div class="g-overlay" id="g-bigmap" hidden>
@@ -710,11 +729,11 @@ a { color: var(--accent); }
             <div class="g-legend">
               <div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
-              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
+              <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
             </div>
             <h3>Fast travel</h3>
             <ul id="g-travel"></ul>
-            <p class="note">A taxi to the start or to any wharf you have used.</p>
+            <p class="note">A hop to the start or to any wharf you have used. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
           </aside>
         </div>
       </div>
@@ -739,7 +758,10 @@ a { color: var(--accent); }
         <table class="gt-keys"><tbody>
           <tr><td><kbd>W A S D</kbd> or arrows</td><td>Walk, relative to the camera; drag to look around, scroll to zoom</td></tr>
           <tr><td><kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd></td><td>Sprint · walk instead of jog · jump</td></tr>
-          <tr><td><kbd>E</kbd></td><td>Talk, board, fly, get out</td></tr>
+          <tr><td><kbd>E</kbd></td><td>Talk, board, fly, drive your car, get in a taxi, get out</td></tr>
+          <tr><td><kbd>Y</kbd> · <kbd>N</kbd></td><td>Raise your hand at the kerb for a taxi · the phone: order a ride, bring your car</td></tr>
+          <tr><td>Car</td><td><kbd>W</kbd>/<kbd>S</kbd> drive, brake, reverse, <kbd>A</kbd>/<kbd>D</kbd> steer, <kbd>Space</kbd> handbrake, <kbd>H</kbd> horn, <kbd>V</kbd> from the seat, <kbd>R</kbd> back on the road</td></tr>
+          <tr><td>Taxi or ride</td><td><kbd>F</kbd> skip the trip, <kbd>V</kbd> from the back seat, <kbd>E</kbd> get out when it stops</td></tr>
           <tr><td><kbd>Q</kbd></td><td>Survey lens: the building in front of you and where its height comes from</td></tr>
           <tr><td><kbd>G</kbd></td><td>Height challenge: guess a building's height, then see how good the data is</td></tr>
           <tr><td>△ on the map</td><td>Trig stations: stand at one and press <kbd>E</kbd> to survey the view</td></tr>
@@ -763,7 +785,8 @@ a { color: var(--accent); }
         <div class="row"><button class="btn primary" id="gt-play">Start the survey</button><button class="btn" id="gt-continue" hidden>Continue</button></div>
         <table class="gt-keys"><tbody>
           <tr><td><kbd>W A S D</kbd> · drag</td><td>Walk · look around</td></tr>
-          <tr><td><kbd>E</kbd></td><td>Talk, board the ferry, fly the helicopter</td></tr>
+          <tr><td><kbd>E</kbd></td><td>Talk, board the ferry, fly the helicopter, drive your car</td></tr>
+          <tr><td><kbd>Y</kbd> · <kbd>N</kbd></td><td>Hail a taxi at the kerb · your phone: order a ride</td></tr>
           <tr><td><kbd>Q</kbd> · <kbd>G</kbd> · <kbd>M</kbd> · <kbd>Esc</kbd></td><td>Survey lens · guess a height · map · menu</td></tr>
         </tbody></table>
         <p class="note"><a href="#globe">Back to the globe</a></p>
@@ -822,6 +845,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/people.js"></script>
 <script src="game/kit.js"></script>
 <script src="game/vehicles.js"></script>
+<script src="game/cars.js"></script>
 <script src="game/rail.js"></script>
 <script src="game/atmosphere.js"></script>
 <script src="game/penguins.js"></script>

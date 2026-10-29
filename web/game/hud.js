@@ -115,12 +115,12 @@ window.OEHud = (function () {
     } else if (ic.kind === 'trig') { // a trig station: hollow until surveyed
       g.fillStyle = ic.done ? css('--sun') : '#ffffff'; g.strokeStyle = ic.done ? '#ffffff' : '#8a6d1d'; g.lineWidth = 1.8;
       g.beginPath(); g.moveTo(0, -7.5); g.lineTo(7, 5); g.lineTo(-7, 5); g.closePath(); g.fill(); g.stroke();
-    } else if (ic.kind === 'ferry' || ic.kind === 'heli' || ic.kind === 'wharf' || ic.kind === 'pad' || ic.kind === 'waypoint') {
-      const bg = { ferry: '#1e5b3a', heli: '#c62d2a', wharf: '#24577a', pad: '#c62d2a', waypoint: css('--accent') }[ic.kind];
+    } else if (ic.kind === 'ferry' || ic.kind === 'heli' || ic.kind === 'wharf' || ic.kind === 'pad' || ic.kind === 'waypoint' || ic.kind === 'car' || ic.kind === 'ride') {
+      const bg = { ferry: '#1e5b3a', heli: '#c62d2a', wharf: '#24577a', pad: '#c62d2a', waypoint: css('--accent'), car: '#2f5d8c', ride: '#d08a00' }[ic.kind];
       g.fillStyle = bg; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
       g.beginPath(); g.arc(0, 0, ic.kind === 'ferry' || ic.kind === 'heli' ? 5 : 6.5, 0, Math.PI * 2); g.fill(); g.stroke();
       g.fillStyle = '#fff'; g.font = '800 8.5px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-      g.fillText({ wharf: 'F', pad: 'H', waypoint: '◆', ferry: '', heli: '' }[ic.kind], 0, 0.5);
+      g.fillText({ wharf: 'F', pad: 'H', waypoint: '◆', ferry: '', heli: '', car: 'C', ride: ic.label || 'T' }[ic.kind], 0, 0.5);
     }
     g.restore();
   }
