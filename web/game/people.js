@@ -358,7 +358,6 @@ ${PAT_GLSL}`)
       mesh.material.userData.pat.value = PAT[look.pattern] || 0;
       if (look.pattern2) { const c = lin(look.pattern2); mesh.material.userData.pat2.value.set(c.r, c.g, c.b); } else mesh.material.userData.pat2.value.set(-1, -1, -1);
       model.scale.setScalar(look.scale || 1);
-      rig.sized = (rig.sized || 0) + 1; // seat() measures the legs again at the new size
       setAccessories();
     };
     rig.setLook({});
@@ -372,18 +371,17 @@ ${PAT_GLSL}`)
     const legs = ['L', 'R'].map(side => ({ ul: B('UpperLeg.' + side), ll: B('LowerLeg.' + side), ft: B('Foot.' + side), shin: 0, y0: 0 }));
     const arms = ['L', 'R'].map(side => ({ ua: B('UpperArm.' + side), la: B('LowerArm.' + side), wr: B('Wrist.' + side), s: side === 'L' ? 1 : -1 }));
     const seated = legs.every(l => l.ul && l.ll && l.ft), reaches = arms.every(a => a.ua && a.la && a.wr);
+    // The mixer only writes a bone whose value has changed, so under a still clip a foot moved
+    // here stays moved: put it back where the clip had it before measuring again (or standing up).
+    const feetBack = () => { for (const l of legs) if (l.moved) { if (l.ft.position.equals(l.set)) l.ft.position.copy(l.home); l.moved = false; } };
     function seat() {
       if (!seated) return;
       model.position.y = 0;
+      feetBack();
       root.updateWorldMatrix(true, true); // the parents too: in a moving car they have moved since they were drawn
       fw.set(0, 0, 1).applyQuaternion(root.getWorldQuaternion(sq));
-      // the shin's length and the ankle's height, measured once standing: the sitting clip doesn't
-      // move the feet back, so after the first frame they are wherever this left them
-      const ry = root.getWorldPosition(sb).y;
-      for (const l of legs) {
-        if (l.sized !== rig.sized) { l.shin = l.ft.getWorldPosition(sa).distanceTo(l.ll.getWorldPosition(sd)); l.lift = sa.y - ry; l.sized = rig.sized; }
-        l.y0 = ry + l.lift;
-      }
+      // with the feet back where the clip has them, the shin's length and the ankle's height
+      for (const l of legs) { l.y0 = l.ft.getWorldPosition(sa).y; l.shin = sa.distanceTo(l.ll.getWorldPosition(sb)); }
       let drop = 0;
       for (const l of legs) {
         aim(l.ul, l.ll, sd2.copy(fw));
@@ -392,7 +390,10 @@ ${PAT_GLSL}`)
         const ankle = l.ll.getWorldPosition(sa).addScaledVector(down, l.shin);
         drop = Math.min(drop, l.y0 - ankle.y);
         l.ft.parent.updateMatrixWorld(true);
+        l.home = (l.home || new THREE.Vector3()).copy(l.ft.position);
         l.ft.position.copy(l.ft.parent.worldToLocal(ankle));
+        l.set = (l.set || new THREE.Vector3()).copy(l.ft.position);
+        l.moved = true;
       }
       model.position.y = drop / (root.parent ? root.parent.getWorldScale(sb).y : 1);
       if (!rig.reach || !reaches) return;
@@ -408,8 +409,10 @@ ${PAT_GLSL}`)
       }
     }
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
+    // a view through this person's eyes: the head, and whatever is on it, shrinks out of the way
+    rig.hideHead = on => { if (head) head.scale.setScalar(on ? 1e-3 : 1); };
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
-    // root is the seat's surface: thighs forward, shins down, hips on the cushion
+    // root is where the feet rest: thighs forward, shins down, the hips a chair's height above it
     rig.animate = (dt, speed, mode = 'ground', t = 0) => {
       const s = look.scale || 1;
       model.position.y = 0;
@@ -423,6 +426,7 @@ ${PAT_GLSL}`)
       else if (speed < 0.15) play('Idle', 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(1.9, speed / (speeds.Run * s))));
+      if (mode !== 'sit') feetBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
       // the walk cycle as a phase, two steps per cycle (footsteps)
