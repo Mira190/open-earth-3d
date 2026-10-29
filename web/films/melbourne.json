@@ -1,0 +1,116 @@
+{
+ "id": "melbourne",
+ "name": "Melbourne",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/melbourne.mp4",
+ "poster": "films/melbourne.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "station",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "Flinders Street"
+  },
+  {
+   "id": "shuttle",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "The Yarra"
+  },
+  {
+   "id": "spire",
+   "t0": 20,
+   "t1": 24.5,
+   "chapter": "The spire"
+  },
+  {
+   "id": "square",
+   "t0": 24.5,
+   "t1": 29,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "37.81°S 144.96°E",
+    "Sunrise over the Yarra · 06:07 AEDT",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Melbourne",
+   "sub": "Australia",
+   "figures": "13,050 buildings · 4.8 × 3.9 km · 11,335 trees"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Flinders and Swanston Streets",
+   "head": "Flinders Street Station",
+   "text": "A 310 m front in the 1910 cream, terracotta and green that the 2018–2020 repaint restored."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Federation Wharf to Southgate",
+   "head": "The river shuttle",
+   "text": "Kingfisher and Pelican run the Yarra wharf to wharf, under Princes Bridge to Crown Landing."
+  },
+  {
+   "t0": 20.5,
+   "t1": 24.2,
+   "kind": "lower",
+   "eyebrow": "St Kilda Road, Southbank",
+   "head": "The Arts Centre spire",
+   "text": "162 m of lattice over the Theatres Building, rebuilt taller in 1996."
+  },
+  {
+   "t0": 25,
+   "t1": 28.7,
+   "kind": "lower",
+   "eyebrow": "Southbank Promenade",
+   "head": "Walk it",
+   "text": "Talk to the people who know the city, ride the shuttle down the Yarra, fly past the spire."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Melbourne",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}
