@@ -193,7 +193,7 @@ function brief() {
   console.log('\ntour cameras'); for (const t of cfg.tour || []) console.log(`  ${t.title}: cam ${JSON.stringify(t.cam)} tgt ${JSON.stringify(t.tgt)} ${t.place ? 'place ' + t.place : ''}\n    ${t.text}`);
   const S = require(path.join(ROOT, 'web', 'sun.js'));
   S.site({ lat: scene.frame.lat0, lon: scene.frame.lon0, tz: cfg.timezone });
-  const [m, d] = spec.date || [6, 21], y = spec.year || 2026, L = S.dayLimits(y, m, d), hm = x => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(Math.round(x % 60)).padStart(2, '0')}`;
+  const [m, d] = spec.date || [6, 21], y = spec.year || 2026, L = S.dayLimits(y, m, d), hm = x => { const t = Math.round(x); return `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`; };
   console.log(`\nsun on ${y}-${m}-${d}: sunrise ${hm(L.sunrise)}, sunset ${hm(L.sunset)}, noon ${L.noonAltitude.toFixed(1)}°`);
   for (const k of [-25, 0, 10, 30, 90, 180]) for (const base of ['sunrise', 'sunset']) {
     const min = base === 'sunrise' ? L.sunrise + k : L.sunset - k; const p = S.position(S.localToUtc(y, m, d, min));
