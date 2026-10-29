@@ -11,6 +11,10 @@
   "json": "films/hong-kong.json",
   "duration": 36
  },
+ "kyoto": {
+  "json": "films/kyoto.json",
+  "duration": 36.5
+ },
  "melbourne-bayside": {
   "json": "films/melbourne-bayside.json",
   "duration": 36

@@ -1,0 +1,117 @@
+{
+ "id": "kyoto",
+ "name": "Kyoto",
+ "duration": 36.5,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/kyoto.mp4",
+ "poster": "films/kyoto.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "kamo",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The Kamo River"
+  },
+  {
+   "id": "low",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "A city that stays low"
+  },
+  {
+   "id": "tower",
+   "t0": 20,
+   "t1": 25,
+   "chapter": "Kyoto Tower"
+  },
+  {
+   "id": "shijo",
+   "t0": 25,
+   "t1": 29.5,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29.5,
+   "t1": 36.5,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "35.00°N 135.76°E",
+    "Sunrise over Kyoto · 06:38 JST",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Kyoto",
+   "native": "京都",
+   "sub": "Japan",
+   "figures": "65,738 buildings · 3.0 × 5.0 km · heights measured by Project PLATEAU"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Shijo to Sanjo",
+   "head": "The Kamo River",
+   "text": "On its east bank at Shijo stands the Minamiza, the city's kabuki theatre, rebuilt in 1929."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Across the centre, into the sun",
+   "head": "A city that stays low",
+   "text": "65,738 buildings, the median 8.4 m tall: only 65 of them reach above 45 m."
+  },
+  {
+   "t0": 20.6,
+   "t1": 24.6,
+   "kind": "lower",
+   "eyebrow": "Down Karasuma-dori",
+   "head": "Kyoto Tower",
+   "text": "131 m to the spire, the deck at 100 m: a steel tube with no frame inside it, finished in 1964."
+  },
+  {
+   "t0": 25.5,
+   "t1": 29.2,
+   "kind": "lower",
+   "eyebrow": "Shijo Ohashi, toward the Minamiza",
+   "head": "Walk it",
+   "text": "Talk to the people who know the city, walk the quest to the Imperial Gardens, fly over the roofs."
+  },
+  {
+   "t0": 32.7,
+   "t1": 36.5,
+   "kind": "end",
+   "name": "Kyoto",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}
