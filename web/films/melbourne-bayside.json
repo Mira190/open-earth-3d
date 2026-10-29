@@ -38,18 +38,12 @@
   {
    "id": "foreshore",
    "t0": 19.5,
-   "t1": 24,
+   "t1": 26,
    "chapter": "On foot"
   },
   {
-   "id": "penguins",
-   "t0": 24,
-   "t1": 29,
-   "chapter": "The breakwater"
-  },
-  {
    "id": "night",
-   "t0": 29,
+   "t0": 26,
    "t1": 36,
    "chapter": "After dark"
   }
@@ -91,22 +85,14 @@
   },
   {
    "t0": 20,
-   "t1": 23.7,
+   "t1": 25.6,
    "kind": "lower",
    "eyebrow": "The St Kilda foreshore",
    "head": "Walk it",
    "text": "Talk to the people who know the bay, walk the pier, wait for the penguins after dark."
   },
   {
-   "t0": 24.6,
-   "t1": 28.6,
-   "kind": "lower",
-   "eyebrow": "St Kilda breakwater",
-   "head": "The little penguins",
-   "text": "About 1,400 live in the rocks of the 1956 Olympic breakwater and come ashore after sunset."
-  },
-  {
-   "t0": 32.2,
+   "t0": 31,
    "t1": 36,
    "kind": "end",
    "name": "Melbourne Bayside",
