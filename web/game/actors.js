@@ -393,11 +393,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // Walkers follow footway lines with a sideways offset, keeping left. They avoid each other
   // and the player as RVO and Detour Crowd do, but on the lane: each looks ahead for whoever
   // it will pass too close to within a few seconds, steps aside within the footway's width,
-  // and slows to match whoever it can't get round. A walker passing a bench with a free seat
-  // may claim it (benches(), and `sitChance`, which game.js sets), walk over, sit a while,
-  // and walk on.
+  // and slows to match whoever it can't get round. Benches and cars (`cars`, which traffic()
+  // sets) are in the way the same way, a car as a row of discs along its length; and a walker
+  // never steps into a car's footprint, a bench or another walker, but waits, and turns back
+  // if the way stays blocked. A walker passing a bench with a free seat may claim it
+  // (benches(), and `sitChance`, which game.js sets), walk over, sit a while, and walk on.
   const HORIZON = 4;   // seconds of look-ahead
   const BODY = 0.6;    // two walkers closer than this are in each other's way (m, centre to centre)
+  const CLOSE = 0.45;  // a walker never steps closer than this to another (m, centre to centre)
+  const KERB = 0.45;   // how far a walker keeps from a car's side or bumper (m, centre to body)
+  const MOVING = 1.2;  // and the seconds of a moving car's path ahead it won't step into
+  const NEAR = 60, FAR = 150; // walkers farther than these from the player take a step every 2nd, 4th frame (m)
   // ground(x, y, at): the height to stand at beside the line at `at` (net.at), or null where no one can stand
   function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null } = {}) {
     const P = [], tmp = {};
@@ -409,12 +415,53 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       release(p);
       p.state = 'walk'; p.mode = 'ground'; p.lat = null;
       const cand = net.near(cx, cy, rMin, radius);
-      if (!cand.length) { p.line = -1; return; }
-      p.line = cand[Math.floor(rnd() * cand.length)];
-      p.s = rnd() * net.L[p.line].len;
-      p.dir = rnd() < 0.5 ? 1 : -1;
+      p.line = -1;
+      for (let k = 0; k < 4 && cand.length; k++) { // somewhere clear of the cars and benches
+        const line = cand[Math.floor(rnd() * cand.length)], s = rnd() * net.L[line].len, dir = rnd() < 0.5 ? 1 : -1;
+        net.at(line, s, tmp);
+        const x = tmp.x - tmp.hy * dir * p.side, y = tmp.y + tmp.hx * dir * p.side;
+        gather(x, y, p, true, tmp.z);
+        if (blocked(x, y) > 0) continue;
+        p.line = line; p.s = s; p.dir = dir;
+        return;
+      }
     }
-    const api = { R, P, active: n, benches: BN, sitChance: () => 0 };
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0 };
+    // the benches as obstacles: for each 4 m cell, those in it and the cells round it
+    const benchAt = new Map(), bkey = (cx, cy) => (cx + 8192) * 16384 + cy + 8192; // a small integer key, for speed
+    if (BN) for (const b of BN.list) for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) {
+      const k = bkey(Math.floor(b.x / 4) + a, Math.floor(b.y / 4) + c);
+      if (!benchAt.has(k)) benchAt.set(k, []);
+      benchAt.get(k).push(b);
+    }
+    // the cars and benches near a walker: the benches each step, the cars every third (a
+    // little farther out; where they are is read as they move)
+    const none = [];
+    let nearBenches = none, nearCars = none;
+    const addCar = o => { nearCars.push(o); };
+    function gather(x, y, q, fresh, z) { // (z: the cars on that level, not on a deck over it or a street under it)
+      nearBenches = benchAt.size ? benchAt.get(bkey(Math.floor(x / 4), Math.floor(y / 4))) || none : none;
+      nearCars = q.cars || (q.cars = []);
+      if (!fresh) return;
+      nearCars.length = 0;
+      if (api.cars) api.cars.near(x, y, 10, addCar, z);
+    }
+    // how deep (x, y) is in those benches and in those cars' footprints and the paths the
+    // moving ones are about to take, each grown by the room a walker keeps: 0 when clear
+    function blocked(x, y, benches = true) {
+      let deep = 0;
+      if (benches) for (const bn of nearBenches) {
+        const fx = Math.sin(bn.h), fy = Math.cos(bn.h), dx = x - bn.x, dy = y - bn.y;
+        const ea = 0.22 + 0.25 - Math.abs(dx * fx + dy * fy), eb = 0.85 + 0.25 - Math.abs(-dx * fy + dy * fx);
+        if (ea > 0 && eb > 0) deep += Math.min(ea, eb);
+      }
+      for (const o of nearCars) {
+        const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = x - o.x, dy = y - o.y, a = dx * fx + dy * fy;
+        const ea = Math.min(a + o.half + KERB, o.half + KERB + o.v * MOVING - a), eb = o.hw + KERB - Math.abs(-dx * fy + dy * fx);
+        if (ea > 0 && eb > 0) deep += Math.min(ea, eb);
+      }
+      return deep;
+    }
     // neighbours: a spatial hash of 3 m cells (bucket heads and a next-in-bucket chain)
     const CELL = 3, NB = 4096, head = new Int32Array(NB), chain = new Int32Array(n);
     const bucket = (cx, cy) => ((cx * 73856093) ^ (cy * 19349663)) & (NB - 1);
@@ -437,13 +484,40 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const ahead = dx * hx + dy * hy;
       if (ahead > 0) cap = Math.min(cap, Math.max(0, ovx * hx + ovy * hy) + Math.max(0, ahead - rr) * 0.8);
     }
+    // how close the nearest other walker (or the player, given a little more room) is to
+    // (x, y), up to CLOSE (of the nn neighbours walk() found)
+    const nbr = new Int32Array(n);
+    let nn = 0;
+    function closest(x, y, player) {
+      let best = player ? Math.min(CLOSE, Math.hypot(player.x - x, player.y - y) - (player.r || 0.15)) : CLOSE;
+      for (let k = 0; k < nn; k++) { const o = P[nbr[k]], dx = o.x - x, dy = o.y - y; if (Math.abs(dx) < best && Math.abs(dy) < best) best = Math.min(best, Math.hypot(dx, dy)); }
+      return best;
+    }
+    function seeCar(o) { // a row of discs along the car, each as wide as the car
+      const fx = Math.sin(o.h), fy = Math.cos(o.h), k = Math.max(1, Math.round(o.half / o.hw)), r = o.hw + KERB;
+      for (let j = 0; j < k; j++) {
+        const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half - 2 * o.hw) * j / (k - 1);
+        see(o.x + fx * u, o.y + fy * u, fx * o.v, fy * o.v, r, 1.4);
+      }
+    }
+    // walker q, beside the line at tmp: on the ground drawn there; off the bank of the water, closer in to the line
+    function settle(q) {
+      for (let k = 0; ground && k < 3; k++) {
+        const z = ground(q.x, q.y, tmp);
+        if (z != null) { q.z = z; break; }
+        q.lat = k < 1 ? q.lat / 2 : 0;
+        q.x = tmp.x - q.hy * q.lat; q.y = tmp.y + q.hx * q.lat;
+      }
+    }
     function backTo(q) { // the point on the footway a walker returns to from a bench
       q.dir = rnd() < 0.5 ? 1 : -1;
       net.at(q.line, q.s, tmp);
       q.back = { x: tmp.x - tmp.hy * q.dir * q.side, y: tmp.y + tmp.hx * q.dir * q.side, z: tmp.z };
     }
+    let frame = 0;
     function update(dt, cx, cy, t, player) {
       R.begin(dt, cx, cy, t, api.active);
+      frame++;
       head.fill(-1);
       for (let i = 0; i < api.active; i++) {
         const q = P[i];
@@ -458,12 +532,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
         if (p.pause > 0) p.pause -= dt;
-        if (p.state === 'walk') walk(i, dt, player, pvx, pvy);
+        if (p.state === 'walk') { // farther off, a longer step every few frames does
+          const d = Math.max(Math.abs(p.x - cx), Math.abs(p.y - cy)), k = d < NEAR ? 1 : d < FAR ? 2 : 4;
+          if ((frame + i) % k === 0) walk(i, k * dt, player, pvx, pvy);
+        }
         else if (p.state === 'sit') {
           p.v = p.vx = p.vy = 0;
           if ((p.t -= dt) <= 0) { release(p); backTo(p); p.state = 'leave'; }
         } else { // to a seat or back to the footway, in a straight line
-          const g = p.state === 'approach' ? p.seat : p.back, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy), st = Math.min(d, p.speed * 0.8 * dt);
+          const g = p.state === 'approach' ? p.seat : p.back, dx = g.x - p.x, dy = g.y - p.y, d = Math.hypot(dx, dy);
+          gather(p.x, p.y, p, (frame + i) % 6 < 2 || !p.cars, p.z);
+          // (not into a car pulled up by the bench: wait for it)
+          const st = d > 1e-3 && blocked(p.x + dx / d * 0.05, p.y + dy / d * 0.05, false) > blocked(p.x, p.y, false) + 1e-4 ? 0 : Math.min(d, p.speed * 0.8 * dt);
           if (d > 1e-3) { p.x += dx / d * st; p.y += dy / d * st; p.z += (g.z - p.z) * st / d; p.h = Math.atan2(dx, dy); }
           p.v = dt > 0 ? st / dt : 0; p.vx = d > 1e-3 ? dx / d * p.v : 0; p.vy = d > 1e-3 ? dy / d * p.v : 0;
           if (d - st < 0.02) {
@@ -478,14 +558,28 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     function walk(i, dt, player, pvx, pvy) {
       const l = net.L[p.line];
-      if (p.lat == null) { p.lat = p.side; p.v = p.speed; net.at(p.line, p.s, tmp); p.hx = tmp.hx * p.dir; p.hy = tmp.hy * p.dir; }
+      if (p.lat == null) { // just placed: put it there
+        p.lat = p.side; p.v = p.speed; net.at(p.line, p.s, tmp); p.hx = tmp.hx * p.dir; p.hy = tmp.hy * p.dir;
+        p.x = tmp.x - p.hy * p.lat; p.y = tmp.y + p.hx * p.lat; p.z = tmp.z;
+        settle(p);
+      }
       hx = p.hx; hy = p.hy; // the lane's direction where the walker is, from the last step
-      push = 0; cap = p.speed;
+      push = 0; cap = p.speed; nn = 0;
       const c0 = Math.floor(p.x / CELL), r0 = Math.floor(p.y / CELL);
       for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-        for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) if (j !== i) { const o = P[j]; see(o.x, o.y, o.vx, o.vy, BODY, 1); }
+        for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) if (j !== i) { const o = P[j]; see(o.x, o.y, o.vx, o.vy, BODY, 1); nbr[nn++] = j; }
       }
       if (player) see(player.x, player.y, pvx, pvy, BODY + (player.r || 0.15), 1.6); // give the player a little more room (a car more)
+      gather(p.x, p.y, p, (p.steps = (p.steps || 0) + 1) % 2 === 0 || !p.cars, p.z);
+      // the benches' two seats: step round them, without slowing (it may be passing to sit down)
+      let cap0 = cap;
+      for (const bn of nearBenches) for (const st of bn.seats) if (st.by !== i) see(st.x, st.y, 0, 0, 0.5 + BODY / 2, 1);
+      cap = cap0;
+      // a walker caught beside a car (it pulled up, say) steps on out rather than wait for it
+      const was = blocked(p.x, p.y);
+      cap0 = cap;
+      for (const o of nearCars) seeCar(o);
+      if (was > 0) cap = cap0;
       // sideways within the footway (a little past its edge for whoever keeps far left), and speed
       const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
       p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
@@ -494,7 +588,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       p.lat += dl;
       const target = p.pause > 0 ? 0 : Math.min(p.speed, cap);
       p.v = Math.max(0, p.v + Math.max(-3 * dt, Math.min(1.2 * dt, target - p.v)));
-      const s0 = p.s;
+      // face to face with someone neither can get round: after a while, turn back
+      p.still = p.pause <= 0 && p.v < 0.05 ? (p.still || 0) + dt : 0;
+      if (p.still > 4) { p.dir = -p.dir; p.hx = -p.hx; p.hy = -p.hy; p.still = 0; }
+      const s0 = p.s, line0 = p.line, dir0 = p.dir;
       p.s += p.dir * p.v * dt;
       // a bench on this stretch with a free seat: maybe sit down
       p.rest -= dt;
@@ -512,14 +609,24 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         else { p.dir = -p.dir; p.s = Math.max(0, Math.min(l.len, p.s)); }
       }
       net.at(p.line, p.s, tmp);
-      hx = p.hx = tmp.hx * p.dir; hy = p.hy = tmp.hy * p.dir;
-      p.x = tmp.x - hy * p.lat; p.y = tmp.y + hx * p.lat; p.z = tmp.z; // keep left
-      for (let k = 0; ground && k < 3; k++) { // on the ground drawn there; off the bank of the water, closer in to the line
-        const z = ground(p.x, p.y, tmp);
-        if (z != null) { p.z = z; break; }
-        p.lat = k < 1 ? p.lat / 2 : 0;
-        p.x = tmp.x - hy * p.lat; p.y = tmp.y + hx * p.lat;
+      const nhx = tmp.hx * p.dir, nhy = tmp.hy * p.dir;
+      // a step into a car, a bench or someone: stay put (whoever is already in one may walk
+      // out of it, or along it), and after a while turn back
+      const nx1 = tmp.x - nhy * p.lat, ny1 = tmp.y + nhx * p.lat, room1 = closest(nx1, ny1, player);
+      if (blocked(nx1, ny1) > was + 1e-4 || (room1 < CLOSE && room1 < closest(p.x, p.y, player))) {
+        p.line = line0; p.s = s0; p.dir = dir0; p.lat -= dl; p.v = 0;
+        p.vx = p.vy = 0;
+        if (was > 0) for (const d of [0.9 * dt, -0.9 * dt]) { // in a car's way and stuck: a step sideways, out
+          const x = p.x - p.hy * d, y = p.y + p.hx * d;
+          if (blocked(x, y) < was - 1e-4) { p.lat += d; p.x = x; p.y = y; break; }
+        }
+        if ((p.wait = (p.wait || 0) + dt) > (was > 0 ? 0.3 : 6)) { p.dir = -p.dir; p.hx = -p.hx; p.hy = -p.hy; p.wait = 0; }
+        return;
       }
+      p.wait = 0;
+      hx = p.hx = nhx; hy = p.hy = nhy;
+      p.x = tmp.x - hy * p.lat; p.y = tmp.y + hx * p.lat; p.z = tmp.z; // keep left
+      settle(p);
       const lr = dt > 0 ? dl / dt : 0;
       p.vx = hx * p.v - hy * lr; p.vy = hy * p.v + hx * lr;
       if (p.face != null) p.h = p.face;
@@ -536,10 +643,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // ------------------------------------------------------------ traffic (drives on the left, or on the right)
   // With the shared Blender cars (opts.lib from OEVehicles.load) each slot drives one model
   // (sedans, hatches, SUVs, vans, the city's taxis and buses), drawn near, mid or far by
-  // distance from opts.eye; without them, one box car for all. Each knows its size, for
-  // collisions (hl, hw: half length and width; top: height). ground(x, y, at), as for the crowd,
-  // puts each car on the ground drawn under it or on its deck.
-  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null } = {}) {
+  // distance from opts.eye; without them, one box car for all.
+  // Every car is a rectangle on the ground (`half` its length, `hw` its width, halved; `top` its
+  // height), on the side of the road the city keeps to (opts.keep), and on the ground drawn under
+  // it or its deck (opts.ground, as for the crowd).
+  // It brakes for whatever is in its path: another car whose footprint reaches into its lane
+  // (where two paths cross, the one farther from the crossing gives way), the player and the
+  // walkers of opts.crowd, and your car or a ride (blockers with a length), swinging out round
+  // one pulled in at the kerb. Junctions are taken one car at a time: a car claims the node it is
+  // coming up to, or waits short of it, and gives it up once clear of it on the other side.
+  // And it never moves into another car or a person: it waits, and turns round if a jam
+  // won't clear. The crowd keeps out of the cars' footprints (cars.near), and opts.nav stops
+  // the player walking into one (nav.movers).
+  const LANE = 1.7;    // a lane's centre, on the keep side of the road's line (m)
+  const JUNCTION = 5;  // a junction's box: this far round the node where roads meet (m)
+  const STUCK = 10;    // seconds stopped behind a car that won't move before turning round
+  const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
+  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null } = {}) {
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
     let mesh = null, fleet = null;
@@ -554,7 +674,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         for (const name of names) { if ((r -= share(name)) < 0) { k = name; break; } }
         const M = I.models[k], box = geos[k][0].boundingBox, hex = M.taxi ? pick(taxi.colours) : M.bus ? bus.colour : pick(colours);
         C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, model: k, half: (box.max.z - box.min.z) / 2, hw: (box.max.x - box.min.x) / 2, top: box.max.y,
-          taxi: !!M.taxi, hex, c0: lin(hex), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
+          stuck: 0, held: [], taxi: !!M.taxi, hex, c0: lin(hex), c1: lin(M.bus ? bus.band : taxi.band || '#1c1d1f') });
       }
       const mat = toneMaterial(U, { cars: true });
       fleet = {};
@@ -569,7 +689,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) {
         const hex = pick(CARS);
         setC(mesh.geometry.attributes.aC0, i, hex);
-        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, half: 2.2, hw: 0.9, top: 1.5, hex });
+        C.push({ line: -1, s: 0, dir: 1, v: 0, x: 0, y: 0, z: 0, h: 0, off: 0, half: 2.2, hw: 0.98, top: 1.5, stuck: 0, held: [], hex });
       }
     }
     const at = new THREE.Vector3();
@@ -580,62 +700,259 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       M.setMatrixAt(j, m4);
       A.aC0.setXYZ(j, c.c0.r, c.c0.g, c.c0.b); A.aC1.setXYZ(j, c.c1.r, c.c1.g, c.c1.b);
     }
+    // where a car on line `line` at s, driving dir, sits: its lane, on the keep side of the line,
+    // and off metres farther left (a swing out round a car at the kerb)
+    function lanePos(line, s, dir, out, off = 0) {
+      net.at(line, s, out);
+      out.hx *= dir; out.hy *= dir;
+      const lane = LANE * side + off;
+      out.x -= out.hy * lane; out.y += out.hx * lane;
+      return out;
+    }
+    // its height: the lane's, or the ground drawn under it or its deck (opts.ground)
+    function onGround(c, at) {
+      c.z = at.z;
+      const gz = ground && ground(c.x, c.y, at);
+      if (gz != null) c.z = gz;
+    }
+    // is (x, y) clear of every other car by d (centre to centre)?
+    function clear(x, y, d, self, z) {
+      for (let j = 0; j < api.active; j++) { const o = C[j]; if (o !== self && o.line >= 0 && Math.abs(o.z - z) < LEVEL && Math.abs(o.x - x) < d && Math.abs(o.y - y) < d && Math.hypot(o.x - x, o.y - y) < d) return false; }
+      return true;
+    }
+    // how deep car c, at (x, y) heading (hx, hy), would be in other cars' footprints grown
+    // by a margin (along, across): 0 when clear
+    // (and `ahead`: is the deepest of them ahead of it?)
+    let depth = 0, most = 0, ahead = false, oc = null, ox0 = 0, oy0 = 0, ohx = 0, ohy = 0, mL = 0, mW = 0;
+    const overlapTest = o => {
+      if (o === oc) return;
+      const dx = o.x - ox0, dy = o.y - oy0, ox = Math.sin(o.h), oy = Math.cos(o.h), cs = Math.abs(ox * ohx + oy * ohy), sn = Math.abs(-ox * ohy + oy * ohx);
+      const ea = oc.half + cs * o.half + sn * o.hw + mL - Math.abs(dx * ohx + dy * ohy), eb = oc.hw + sn * o.half + cs * o.hw + mW - Math.abs(-dx * ohy + dy * ohx);
+      if (ea > 0 && eb > 0) { const d = Math.min(ea, eb); depth += d; if (d > most) { most = d; ahead = dx * ohx + dy * ohy > 0; } }
+    };
+    function overlaps(c, x, y, hx, hy, ml = 0.5, mw = 0.2) {
+      depth = most = 0; ahead = false; oc = c; ox0 = x; oy0 = y; ohx = hx; ohy = hy; mL = ml; mW = mw;
+      near(x, y, c.half + 1, overlapTest, c.z);
+      return depth;
+    }
+    // and how deep the people (the player, the crowd) would be in it
+    function peopleIn(c, x, y, hx, hy) {
+      let d = 0;
+      const c0 = Math.floor((x - c.half - 1) / CELL), c1 = Math.floor((x + c.half + 1) / CELL), r0 = Math.floor((y - c.half - 1) / CELL), r1 = Math.floor((y + c.half + 1) / CELL);
+      for (let a = c0; a <= c1; a++) for (let b = r0; b <= r1; b++) {
+        for (let j = bhead[bucket(a, b)]; j >= 0; j = bchain[j]) {
+          if (Math.abs(bz[j] - c.z) >= LEVEL) continue;
+          const dx = bx[j] - x, dy = by[j] - y, ea = c.half + br[j] - Math.abs(dx * hx + dy * hy), eb = c.hw + br[j] - Math.abs(-dx * hy + dy * hx);
+          if (ea > 0 && eb > 0) d += Math.min(ea, eb);
+        }
+      }
+      return d;
+    }
     function respawn(c, cx, cy, rMin) {
       const cand = net.near(cx, cy, rMin, radius);
-      if (!cand.length) { c.line = -1; return; }
-      c.line = cand[Math.floor(rnd() * cand.length)];
-      c.s = rnd() * net.L[c.line].len;
-      c.dir = rnd() < 0.5 ? 1 : -1;
-      c.v = net.L[c.line].v * 0.7;
+      releaseAll(c);
+      c.line = -1;
+      for (let k = 0; k < 4 && cand.length; k++) { // somewhere no other car is
+        const line = cand[Math.floor(rnd() * cand.length)], s = rnd() * net.L[line].len, dir = rnd() < 0.5 ? 1 : -1;
+        lanePos(line, s, dir, tmp);
+        c.z = tmp.z;
+        if (!clear(tmp.x, tmp.y, 12, c, tmp.z) || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) continue;
+        c.line = line; c.s = s; c.dir = dir; c.v = net.L[line].v * 0.7; c.stuck = 0; c.nx = undefined; c.off = 0;
+        c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy);
+        return;
+      }
     }
-    const api = { mesh, fleet, C, active: n };
+    // a spatial hash of 16 m cells over the cars (rebuilt each frame) and over what they brake for
+    const CELL = 16, NB = 1024, head = new Int32Array(NB), chain = new Int32Array(n), bhead = new Int32Array(NB);
+    let bchain = new Int32Array(1024), bx = new Float32Array(1024), by = new Float32Array(1024), bz = new Float32Array(1024), br = new Float32Array(1024), nb = 0;
+    const bucket = (cx, cy) => ((cx * 73856093) ^ (cy * 19349663)) & (NB - 1);
+    head.fill(-1); bhead.fill(-1);
+    function addBlocker(x, y, z, r) {
+      if (nb === bx.length) { const g = a => { const b = new a.constructor(a.length * 2); b.set(a); return b; }; bx = g(bx); by = g(by); bz = g(bz); br = g(br); bchain = g(bchain); }
+      bx[nb] = x; by[nb] = y; bz[nb] = z; br[nb] = r;
+      const k = bucket(Math.floor(x / CELL), Math.floor(y / CELL));
+      bchain[nb] = bhead[k]; bhead[k] = nb++;
+    }
+    // call fn(car) for every car with its centre within about r of (x, y) (and, given z, on that level)
+    function near(x, y, r, fn, z = null) {
+      const R = r + 7; // the longest car's centre is this far from its farthest corner
+      const c0 = Math.floor((x - R) / CELL), c1 = Math.floor((x + R) / CELL), r0 = Math.floor((y - R) / CELL), r1 = Math.floor((y + R) / CELL);
+      for (let a = c0; a <= c1; a++) for (let b = r0; b <= r1; b++) {
+        for (let j = head[bucket(a, b)]; j >= 0; j = chain[j]) { const o = C[j]; if (o.line >= 0 && Math.abs(o.x - x) <= r + o.half && Math.abs(o.y - y) <= r + o.half && (z == null || Math.abs(o.z - z) < LEVEL)) fn(o); }
+      }
+    }
+    // how far (x, y) is inside car o's footprint grown by m: the way out, or null when it isn't
+    function into(o, x, y, m) {
+      const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = x - o.x, dy = y - o.y, a = dx * fx + dy * fy, b = -dx * fy + dy * fx;
+      const ea = o.half + m - Math.abs(a), eb = o.hw + m - Math.abs(b);
+      if (ea <= 0 || eb <= 0) return null;
+      return ea < eb ? { x: fx * Math.sign(a || 1) * ea, y: fy * Math.sign(a || 1) * ea } : { x: -fy * Math.sign(b || 1) * eb, y: fx * Math.sign(b || 1) * eb };
+    }
+    // (x, y) moved out of every car's footprint grown by r (of the cars on level z, if given)
+    function pushOut(x, y, r, z = null) {
+      for (let it = 0; it < 3; it++) {
+        let moved = false;
+        near(x, y, r + 1, o => { const e = into(o, x, y, r); if (e) { x += e.x * 1.01; y += e.y * 1.01; moved = true; } }, z);
+        if (!moved) break;
+      }
+      return { x, y };
+    }
+    // junctions: the node at either end of each line, and which car holds it
+    // (a junction drawn as several nodes a few metres apart counts as one: a node is taken
+    // while another car holds one within JUNCTION * 2 of it)
+    const holds = new Set();
+    function claim(c, line, end, left) { // car c, `left` metres short of the node: does it get it?
+      const l = net.L[line], j = end ? l.pts.length / 3 - 1 : 0, x = l.pts[3 * j], y = l.pts[3 * j + 1];
+      for (const h of holds) if (h.car !== c && Math.abs(h.x - x) < JUNCTION * 2 && Math.abs(h.y - y) < JUNCTION * 2) return false;
+      for (const h of c.held) if (h.x === x && h.y === y) return true;
+      const h = { car: c, x, y, d: -left }; // d: how far past the node it has gone
+      holds.add(h); c.held.push(h);
+      return true;
+    }
+    function releaseAll(c) {
+      for (const h of c.held) holds.delete(h);
+      c.held = [];
+    }
+    const api = { mesh, fleet, C, active: n, near, pushOut };
+    if (crowd) crowd.cars = api;
+    if (nav) nav.movers = api;
     // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
-    function take(c) { c.line = -1; c.v = 0; }
-    // blockers: { x, y, half (half length), hw (half width), parked } (the player on foot, your
-    // car, a ride); a parked one beside the lane is passed by swinging out round it
+    function take(c) { releaseAll(c); c.line = -1; c.v = 0; }
+    // blockers: the player on foot { x, y, z } and your car or a ride { x, y, half (half length),
+    // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     function update(dt, cx, cy, t, blockers) {
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
+      head.fill(-1); bhead.fill(-1); nb = 0;
+      for (let i = 0; i < api.active; i++) {
+        const c = C[i];
+        if (c.line < 0) continue;
+        const k = bucket(Math.floor(c.x / CELL), Math.floor(c.y / CELL));
+        chain[i] = head[k]; head[k] = i;
+      }
+      for (const b of blockers) if (!b.half) addBlocker(b.x, b.y, b.z, 0.4); // the player on foot (your car and a ride: below)
+      if (crowd) for (let i = 0; i < crowd.active; i++) { const p = crowd.P[i]; if (p.line >= 0) addBlocker(p.x, p.y, p.z, 0.3); }
       for (let i = 0; i < n; i++) {
         const c = C[i];
-        if (i >= api.active) { c.line = -1; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
+        if (i >= api.active) { if (c.line >= 0) releaseAll(c); c.line = -1; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         if (c.line < 0 || Math.hypot(c.x - cx, c.y - cy) > radius * 1.15) respawn(c, cx, cy, c.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (c.line < 0) { if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         const l = net.L[c.line];
-        // brake for anything ahead in the lane: other cars, the player, pedestrians in the road;
+        // brake for anything in the lane ahead: other cars, the player, pedestrians in the road;
         // the gap is bumper to bumper, so a bus keeps its length back
-        const fx = Math.sin(c.h), fy = Math.cos(c.h);
-        let gap = 40, swerve = 0;
-        const look = (x, y, half) => { const dx = x - c.x, dy = y - c.y, a = dx * fx + dy * fy, b = Math.abs(-dx * fy + dy * fx); if (a > 0 && b < 1.6 && a - half - c.half < gap) gap = a - half - c.half; };
-        for (let j = 0; j < api.active; j++) if (j !== i && C[j].line >= 0) look(C[j].x, C[j].y, C[j].half);
-        for (const b of blockers) {
-          if (b.parked) { // side by side with a hand's width between, or round it if that is a short swing out
-            const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx, need = (c.hw || 0.9) + (b.hw || 0.9) + 0.3;
-            if (a < -b.half - c.half || a > 45 || Math.abs(w) >= need) continue;
-            if (need - Math.abs(w) < 1.6 && Math.abs(w) > 0.4) { const s = -(need - Math.abs(w)) * Math.sign(w); if (Math.abs(s) > Math.abs(swerve)) swerve = s; continue; }
+        const fx = Math.sin(c.h), fy = Math.cos(c.h), reach = Math.min(40, l.v / 0.9 + 4 + c.half);
+        // which road it takes at the end of this one, chosen in time to look along it
+        if (c.nx === undefined) c.nx = net.next(c.line, c.dir > 0 ? 1 : 0);
+        const left = c.dir > 0 ? l.len - c.s : c.s, nl = c.nx ? c.nx[0] : -1, nd = c.nx ? (c.nx[1] === 0 ? 1 : -1) : 0;
+        let gap = 40, byCar = false, swerve = 0;
+        const g0 = Math.floor((c.x + fx * reach / 2 - reach / 2) / CELL), g1 = Math.floor((c.x + fx * reach / 2 + reach / 2) / CELL);
+        const h0 = Math.floor((c.y + fy * reach / 2 - reach / 2) / CELL), h1 = Math.floor((c.y + fy * reach / 2 + reach / 2) / CELL);
+        for (let ga = g0 - 1; ga <= g1 + 1; ga++) for (let gb = h0 - 1; gb <= h1 + 1; gb++) {
+          const k = bucket(ga, gb);
+          for (let j = head[k]; j >= 0; j = chain[j]) {
+            if (j === i) continue;
+            const o = C[j];
+            if (o.line === c.line || o.line === nl) { // on my road or the next: the distance along it
+              if (o.line === c.line && o.dir !== c.dir) continue; // the other lane
+              if (o.line === c.line ? (o.s - c.s) * c.dir > 0 : o.dir === nd) {
+                const g = (o.line === c.line ? (o.s - c.s) * c.dir : left + (nd > 0 ? o.s : net.L[nl].len - o.s)) - o.half - c.half;
+                if (g < gap) { gap = g; byCar = true; }
+              }
+              if (o.line === c.line || o.dir === nd) continue;
+            }
+            if (Math.abs(o.z - c.z) >= LEVEL) continue; // over or under this road, on a deck
+            const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy;
+            if (a <= 0 || a > reach + o.half) continue;
+            const b = -dx * fy + dy * fx, ox = Math.sin(o.h), oy = Math.cos(o.h), cs = Math.abs(ox * fx + oy * fy), sn = Math.abs(-ox * fy + oy * fx);
+            if (Math.abs(b) >= sn * o.half + cs * o.hw + c.hw + 0.4) continue; // its footprint is clear of my lane
+            // and am I in its way too? Then whichever is nearer the other's path goes first
+            const a2 = -dx * ox - dy * oy, b2 = dx * oy - dy * ox;
+            if (a2 > 0 && Math.abs(b2) < sn * c.half + cs * c.hw + o.hw + 0.4) {
+              if (cs < 0.7 && (Math.abs(b2) < Math.abs(b) || (Math.abs(b2) === Math.abs(b) && i < j))) continue;
+            }
+            const g = a - (cs * o.half + sn * o.hw) - c.half;
+            if (g < gap) { gap = g; byCar = true; }
           }
-          look(b.x, b.y, b.half || 0.4);
+          for (let j = bhead[k]; j >= 0; j = bchain[j]) { // people: only what is past my front bumper
+            if (Math.abs(bz[j] - c.z) >= LEVEL) continue;
+            const dx = bx[j] - c.x, dy = by[j] - c.y, a = dx * fx + dy * fy;
+            if (a + br[j] < c.half || a > reach) continue;
+            if (Math.abs(-dx * fy + dy * fx) >= c.hw + br[j] + 0.1) continue;
+            const g = a - br[j] - c.half;
+            if (g < gap) { gap = g; byCar = false; }
+          }
+        }
+        // your car and a ride: one parked beside the lane is passed side by side with a hand's width
+        // between, or round it if that is a short swing out; otherwise braked for like a car ahead
+        for (const b of blockers) {
+          if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
+          const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
+          if (b.parked) {
+            const need = c.hw + (b.hw || 0.9) + 0.3;
+            if (a < -b.half - c.half || a > 45 || Math.abs(w) >= need) continue;
+            if (need - Math.abs(w) < 1.6 && Math.abs(w) > 0.4) { const sw = -(need - Math.abs(w)) * Math.sign(w); if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
+          }
+          if (a > 0 && Math.abs(w) < 1.6 && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; }
         }
         c.off += (swerve - c.off) * Math.min(1, dt * 1.6);
-        const want = gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9);
-        c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
-        c.s += c.dir * c.v * dt;
-        if (c.s < 0 || c.s > l.len) {
-          const nx = net.next(c.line, c.s > l.len ? 1 : 0);
-          if (nx) { c.line = nx[0]; c.dir = nx[1] === 0 ? 1 : -1; c.s = nx[1] === 0 ? 0 : net.L[c.line].len; }
-          else { c.dir = -c.dir; c.s = Math.max(0, Math.min(l.len, c.s)); }
+        // the junction ahead: claim it in time to stop short of it, or stop short of it
+        if (c.nx && left < c.half + JUNCTION + 3 + c.v * c.v / 10) {
+          if (!claim(c, c.line, c.dir > 0 ? 1 : 0, left)) { const g = left - c.half - JUNCTION + 2.6; if (g < gap) { gap = g; byCar = true; } }
         }
-        net.at(c.line, c.s, tmp);
-        const hx = tmp.hx * c.dir, hy = tmp.hy * c.dir;
-        const lane = 1.7 * side + c.off;
-        c.x = tmp.x - hy * lane; c.y = tmp.y + hx * lane; c.z = tmp.z; // the lane on the keep side, and any swing out
-        const gz = ground && ground(c.x, c.y, tmp);
-        if (gz != null) c.z = gz;
-        const h = Math.atan2(hx, hy);
-        let dh = h - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
-        c.h += dh * Math.min(1, dt * 8);
+        // caught up in another car (two stopped for each other can't get out by waiting): the
+        // one in front creeps on, as far as that frees it, and the other backs off (below)
+        const tangled = c.v < 0.5 ? overlaps(c, c.x, c.y, fx, fy, 0, 0) : 0, behind = tangled > 0 && ahead;
+        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9);
+        c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
+        let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;
+        if (c.stuck > (tangled > 0 ? 2 : STUCK)) { dir = -dir; c.stuck = 0; } // a jam that won't clear: turn round
+        // give up a junction once the whole car is clear of it
+        for (let h = c.held.length - 1; h >= 0; h--) {
+          const H = c.held[h];
+          if ((H.d += c.v * dt) > 2 * c.half + JUNCTION) { holds.delete(H); c.held.splice(h, 1); }
+        }
+        if (s < 0 || s > l.len) {
+          if (dir === c.dir && c.nx) { line = nl; dir = nd; s = nd > 0 ? 0 : net.L[line].len; }
+          else { dir = -dir; s = Math.max(0, Math.min(l.len, s)); }
+        }
+        lanePos(line, s, dir, tmp, c.off);
+        let dh = Math.atan2(tmp.hx, tmp.hy) - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
+        const turn = line !== c.line || dir !== c.dir, h = c.h + (line === c.line && dir !== c.dir ? dh : dh * Math.min(1, dt * 8)); // turning round: at once
+        // never into another car: turning round puts the car in the other lane, and turning into
+        // a road may meet a car coming into it from another, so those wait for the way to be
+        // clear; any other step waits unless the car is already caught up with one
+        let held = false;
+        const hx1 = Math.sin(h), hy1 = Math.cos(h), hx0 = Math.sin(c.h), hy0 = Math.cos(c.h);
+        const moves = s !== c.s || h !== c.h || tmp.x !== c.x || tmp.y !== c.y; // (a swing out moves it sideways where it stands)
+        if (turn) { const d1 = overlaps(c, tmp.x, tmp.y, hx1, hy1, tangled > 0 ? 0 : 0.5, tangled > 0 ? 0 : 0.2); held = d1 > 0 && !(d1 < tangled); }
+        else if (moves) { // (caught up side by side, creeping on gets no deeper: that will do)
+          const d1 = overlaps(c, tmp.x, tmp.y, hx1, hy1, 0.15, 0.05), d0 = d1 > 0 ? overlaps(c, c.x, c.y, hx0, hy0, 0.15, 0.05) : 0;
+          held = d1 > 0 && (tangled > 0 ? d1 > d0 + 1e-4 : d1 >= d0 - 1e-4);
+        }
+        if (!held && (turn || moves)) { const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1); held = d1 > 0 && d1 >= peopleIn(c, c.x, c.y, hx0, hy0) - 1e-4; }
+        if (behind && !turn) held = true;
+        if (held && tangled > 0) { // can't get out ahead: try another road next, and back up a little
+          c.nx = undefined;
+          const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.5 * dt));
+          lanePos(c.line, sb, c.dir, tmp, c.off);
+          if (overlaps(c, tmp.x, tmp.y, hx0, hy0, 0, 0) < tangled - 1e-4 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) <= peopleIn(c, c.x, c.y, hx0, hy0)) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); }
+        }
+        if (held) c.v = 0;
+        else {
+          if (turn) c.nx = undefined;
+          if (line === c.line && dir !== c.dir) releaseAll(c); // turned round
+          c.line = line; c.s = s; c.dir = dir;
+          c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = h;
+        }
+        c.stuck = c.v < 0.1 && (byCar || held) ? c.stuck + dt : 0;
         q.setFromAxisAngle(up, Math.PI - c.h);
         m4.compose(W(c.x, c.y, c.z), q, one);
         place(i, c);
+      }
+      // a car that has come up against the player (turning in, say) moves them out of its way
+      if (nav) for (const b of blockers) {
+        if (b.half) continue;
+        const o = pushOut(b.x, b.y, 0.35, b.z);
+        if ((o.x !== b.x || o.y !== b.y) && nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
