@@ -1,4 +1,8 @@
 {
+ "osaka": {
+  "json": "films/osaka.json",
+  "duration": 36
+ },
  "sydney": {
   "json": "films/sydney.json",
   "duration": 36
