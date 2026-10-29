@@ -1,0 +1,166 @@
+{
+  "name": "Paris",
+  "date": [9, 19],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 23.0,
+  "score": {
+    "root": 52,
+    "scale": [0, 2, 3, 5, 7, 8, 10],
+    "chords": [[0, 2, 4], [5, 0, 2], [3, 5, 0], [6, 1, 3]],
+    "motif": [4, 3, 2, 0, 2],
+    "tempo": 70,
+    "voice": "pluck",
+    "air": "city",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [-2775, -70, 66],
+      "to": [-2765, -30, 69],
+      "look": [-2055, -26, 165],
+      "fov": 30,
+      "time": ["07:44", "07:52"],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": ["48.86°N 2.32°E", "Sunrise over the Seine · 07:33 CEST", "The real sun, for the day you watch"]
+      },
+      "tint": [1.06, 1.0, 0.92],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "from": [1650, -1150, 50],
+      "to": [1600, -1050, 210],
+      "look": [-1800, 0, 80],
+      "fov": 30,
+      "time": ["08:45"],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Paris",
+        "sub": "France",
+        "figures": "29,087 buildings · 5.6 × 4.0 km · every roof measured by laser"
+      },
+      "tint": [1.04, 1.0, 0.95]
+    },
+    {
+      "id": "batobus",
+      "chapter": "The Seine",
+      "dur": 5,
+      "type": "track",
+      "ferry": {"route": "Batobus (Left Bank)", "from": "tour-eiffel", "to": "orsay", "s": 1500, "speed": 5},
+      "az": [-25, -40],
+      "dist": [80, 65],
+      "h": [10, 9],
+      "fov": 40,
+      "time": ["16:50"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Tour Eiffel to the Musée d'Orsay",
+        "head": "The Batobus",
+        "text": "The river is held at 26.9 m above the sea, the zero of every height in the model."
+      }
+    },
+    {
+      "id": "notredame",
+      "chapter": "Notre-Dame",
+      "dur": 5,
+      "type": "move",
+      "from": [2430, -680, 42],
+      "to": [2425, -630, 44],
+      "look": [2011, -614, 50],
+      "fov": 24,
+      "time": ["19:10", "19:13"],
+      "flare": 1,
+      "ev": -0.3,
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Île de la Cité, from the Île Saint-Louis",
+        "head": "Notre-Dame de Paris",
+        "text": "Its spire stands 96 m again, rebuilt to Viollet-le-Duc's design; the cathedral reopened in December 2024."
+      }
+    },
+    {
+      "id": "eiffel",
+      "chapter": "The tower",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-1515, 610, 14],
+      "to": [-1525, 540, 15],
+      "look": [-2055, -26, 165],
+      "fov": 27,
+      "time": ["19:22", "19:26"],
+      "flare": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "From the Pont de l'Alma",
+        "head": "The Eiffel Tower",
+        "text": "330 m to the tip of its antenna, its floors at 57.6, 115.7 and 276.1 m."
+      }
+    },
+    {
+      "id": "walk",
+      "chapter": "On foot",
+      "dur": 4.5,
+      "type": "move",
+      "from": [1127, 60, 9.1],
+      "to": [1121, 42, 9.2],
+      "look": [1086, -167, 22],
+      "fov": 28,
+      "time": ["19:38"],
+      "people": [1112, -62],
+      "crowd_r": 50,
+      "hand": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "The Pont des Arts",
+        "head": "Walk it",
+        "text": "Read the roofs with a surveyor's lens, ride the Batobus, fly under the Eiffel Tower."
+      }
+    },
+    {
+      "id": "night",
+      "chapter": "After dark",
+      "dur": 7,
+      "type": "move",
+      "from": [-2600, 520, 50],
+      "to": [-2580, 500, 52],
+      "look": [-2055, -26, 160],
+      "fov": 28,
+      "time": ["20:20", "21:04"],
+      "timeEase": "out",
+      "fadeOut": 1.6,
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Paris",
+        "line": "The model, the sun and the city: open them."
+      },
+      "ev": 0.45
+    }
+  ]
+}
