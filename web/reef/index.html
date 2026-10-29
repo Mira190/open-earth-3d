@@ -11,6 +11,8 @@
   #hud { position: fixed; left: 16px; bottom: 16px; padding: 8px 12px; background: #04202ccc; border-radius: 8px; max-width: 46ch; }
   #load { position: fixed; inset: 0; display: grid; place-content: center; background: #04202c; text-align: center; transition: opacity .6s; }
   #load.done { opacity: 0; pointer-events: none; }
+  #load a { display: inline-block; margin-top: 14px; color: #6fd3e6; font-size: 12px; }
+  @media (max-width: 640px) { #hud { display: none; } }
   #err { position: fixed; top: 12px; left: 12px; right: 12px; color: #ffb4a8; white-space: pre-wrap; }
 </style>
 <script type="importmap">
@@ -19,7 +21,7 @@
 </script>
 </head>
 <body>
-<div id="load"><div><b id="load-title">The Whitsundays</b><br><small id="load-msg">Loading the sea</small></div></div>
+<div id="load"><div><b id="load-title">The Whitsundays</b><br><small id="load-msg">Loading the sea</small><br><a href="../index.html#globe">← Back to the globe</a></div></div>
 <div id="hud"></div>
 <div id="err"></div>
 <script src="../sun.js"></script>

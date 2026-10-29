@@ -83,6 +83,16 @@
 .fm-top { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 20px;
   padding: max(20px, env(safe-area-inset-top, 0px)) max(28px, 4vw) 0; }
 .fm-eb { font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--tx2); }
+.fm-tools { display: flex; gap: 22px; }
+.fm-fs { pointer-events: auto; border: 0; background: none; cursor: pointer; padding: 8px 0; font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx2); }
+.fm-fs:hover { color: var(--tx); }
+.fm-rotate { display: none; }
+@media (orientation: portrait) and (max-width: 600px) {
+  .fm-rotate { display: block; position: absolute; left: 0; right: 0; top: calc(50% + 50vw / 2.39 + 22px); margin: 0; text-align: center;
+    font: 400 9px/1.4 var(--t-mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--tx2); animation: fm-hint 5s ease forwards; }
+  .fm-rotate::before { content: "↻"; display: block; font-size: 18px; margin-bottom: 8px; color: var(--amber); }
+  @keyframes fm-hint { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+}
 .fm-x { pointer-events: auto; border: 0; background: none; cursor: pointer; padding: 8px 0; font: 400 9.5px/1 var(--t-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--tx2); }
 .fm-x:hover { color: var(--tx); }
 .fm-x kbd, .fm-end kbd { font: inherit; opacity: 0.6; margin-left: 6px; }

@@ -41,9 +41,17 @@ export function materials() {
   M.canvas = std({ color: 0x1d3b5e, roughness: 0.92, side: THREE.DoubleSide });
   M.shade = fill(std({ color: 0xe8e4d6, roughness: 0.9, side: THREE.DoubleSide }), 0xe8e4d6);
   M.net = std({ color: 0x20282d, roughness: 0.95, side: THREE.DoubleSide, transparent: true, opacity: 0.85 });
-  // glass: dark tinted, warm window glow when the lamps are on
+  // glass: dark tinted, warm window glow when the lamps are on. The cabin light varies along the boat (some rooms
+  // brighter than others), so a long window band reads as lit rooms, not one flat panel
   M.glass = std({ color: 0x0d1a26, roughness: 0.08, metalness: 0 });
-  M.glass.emissiveNode = vec3(1.0, 0.72, 0.38).mul(shared.lamp).mul(0.7).add(vec3(0.05, 0.09, 0.13).mul(shared.env.u.white));   // sky tint by day, lit cabins at dusk
+  M.glass.emissiveNode = Fn(() => {
+    const p = positionLocal;
+    const rooms = smoothstep(-0.3, 0.4, mx_noise_float(vec3(p.x.mul(0.4), 0.5, p.z.mul(0.4)))).mul(0.7).add(0.3);
+    return vec3(1.0, 0.7, 0.36).mul(shared.lamp).mul(0.45).mul(rooms).add(vec3(0.05, 0.09, 0.13).mul(shared.env.u.white));   // sky tint by day, lit cabins at dusk
+  })();
+  // aircraft glazing: the same tint and sky sheen with no lit cabin behind it (a parked helicopter is dark inside)
+  M.canopy = std({ color: 0x0d1a26, roughness: 0.08, metalness: 0 });
+  M.canopy.emissiveNode = vec3(0.05, 0.09, 0.13).mul(shared.env.u.white);
   M.glassClear = std({ color: 0x1a2c3c, roughness: 0.05, transparent: true, opacity: 0.55, side: THREE.DoubleSide });
 
   // gelcoat hull with antifoul below the waterline, a boot stripe and an optional colour band
@@ -360,4 +368,14 @@ export function lamp(group, color, x, y, z, size = 1.4) {
   s.renderOrder = 20;
   group.add(s);
   return s;
+}
+// a lamp that lights what is under it: a placeholder the light pool in boats.js puts a downlight on when it is
+// among the nearest to the camera. intensity is in display units (against the adapted scene, falling off as
+// 1 / distance): 3 shows a white deck 2.5 m below at about 0.4 of full white
+export function caster(group, color, x, y, z, intensity = 3, range = 14) {
+  const o = new THREE.Object3D();
+  o.position.set(x, y, z);
+  o.userData.cast = { color: new THREE.Color(color), intensity, range };
+  group.add(o);
+  return o;
 }

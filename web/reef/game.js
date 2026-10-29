@@ -7,8 +7,8 @@
 // the model while you play (depths, distances, the light left at your depth, the sun, the wind) or carries a cited
 // source (game/sources.js); the source shows under the line and the journal keeps it with the note.
 //
-// Keys: E talk / board / fly (the player's use key; F steps off a boat), 1-4 answer, J journal, T reef sites, Esc close.
-// Touch: the Journal and Map buttons, tap a line to go on, tap an answer.
+// Keys: E talk / board / fly (the player's use key; F steps off a boat), 1-4 answer, J journal, T reef sites, K time of day,
+// Esc close. Touch: the Journal, Map and Time buttons, tap a line to go on, tap an answer.
 // Query: gametest=1 (a scripted run: "[gametest] PASS/FAIL" lines, window.__gametest), gameshot=<scene> (set a scene up
 // for a screenshot, see game/test.js), lifestub=1 (a stand-in ctx.life near the spawn), gamesite=<file> (content from
 // game/<file>.js instead of the site's own, e.g. generic), gamereset=1 (forget progress). Progress is saved per site in
@@ -118,6 +118,13 @@ export async function init(ctx) {
   function sunset() { const l = window.Sun.utcToLocal(nowMs()), d = window.Sun.dayLimits(l.y, l.m, l.d); return { set: window.Sun.localToUtc(l.y, l.m, l.d, d.sunset), rise: window.Sun.localToUtc(l.y, l.m, l.d, d.sunrise) }; }
   // go to another time: progress is saved and the viewer reloads with ?time=, so the sun, moon, tide and clock all agree
   function skipTo(utc) { save(); const p = new URLSearchParams(location.search); p.set('time', new Date(utc).toISOString()); location.href = `${location.pathname}?${p}`; }
+  // another site's address, at this site's time of day when the clock was set (the time panel), else at now
+  function siteAt(id) {
+    const href = travel.href(id);
+    if (!ctx.clockLive || ctx.clockLive()) return href;
+    const u = new URL(href, location.href); u.searchParams.set('time', new Date(nowMs()).toISOString());
+    return `${u.pathname}${u.search}`;
+  }
   // the tide (main.js ctx.tide, fitted to the gauge predictions) or null; heights are metres about mean sea level
   const tideNow = () => env.u.tide.value;
   function tideTurns(n = 3) { try { return ctx.tide ? ctx.tide.turns(nowMs(), n) : []; } catch (_) { return []; } }
@@ -125,8 +132,8 @@ export async function init(ctx) {
   // ------------------------------------------------------------ the game's HUD and travel
   const travel = createTravel(ctx);
   const ui = createUI({
-    choose: i => choose(i), advance: () => advance(), closeDialog: () => closeDialogue(), journal: () => togglePanel('journal'), map: () => togglePanel('map'), closePanel: () => closePanel(),
-    panelAct: (act, arg) => panelAct(act, arg)
+    choose: i => choose(i), advance: () => advance(), closeDialog: () => closeDialogue(), journal: () => togglePanel('journal'), map: () => togglePanel('map'), time: () => togglePanel('time'), closePanel: () => closePanel(),
+    panelAct: (act, arg) => panelAct(act, arg), globe: () => toGlobe()
   });
   const touch = q.get('touch') === '1' || (window.matchMedia && matchMedia('(pointer: coarse)').matches);
   const FREEZE = { f: 0, r: 0, up: 0, down: 0, run: 0, inflate: 0, deflate: 0 };
@@ -480,6 +487,14 @@ export async function init(ctx) {
     if (D) closeDialogue();
     try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
     if (kind === 'journal') { unread = 0; ui.badge(0); ui.panel('journal', 'Journal', `${S.name || ctx.site} · ${G.clock()}`, journalHtml()); }
+    else if (kind === 'time') {
+      ui.panel('time', 'Time of day', `${S.name || ctx.site} · ${fmtDay.format(new Date(nowMs()))}`, timeHtml());
+      const r = ui.el.querySelector('.rg-time input');
+      if (r) {
+        r.addEventListener('input', () => { const d = timeDay; ctx.setClock(window.Sun.localToUtc(d.y, d.m, d.d, +r.value)); timeReadout(); });
+        r.addEventListener('change', () => r.blur());   // give the keys (K, Esc, WASD) back once the drag ends
+      }
+    }
     else {
       ui.panel('map', 'Map', `${S.name || ctx.site} · ${G.clock()}`, mapHtml());
       const cv = ui.el.querySelector('.rg-map canvas');
@@ -491,9 +506,12 @@ export async function init(ctx) {
   }
   function closePanel() { ui.panel(null); freeze(!!D); }
   function togglePanel(kind) { if (ui.panelKind === kind) closePanel(); else openPanel(kind); }
+  function toGlobe() { save(); location.href = travel.globeHref(); }
   function panelAct(act, arg) {
     if (act === 'track') { G.track(arg); openPanel('journal'); }
-    else if (act === 'travel') { const s = (travel.list || []).find(x => x.id === arg); if (s && s.ready && !s.current) { save(); location.href = travel.href(arg); } }
+    else if (act === 'travel') { const s = (travel.list || []).find(x => x.id === arg); if (s && s.ready && !s.current) { save(); location.href = siteAt(arg); } }
+    else if (act === 'time') setTime(arg);
+    else if (act === 'globe') toGlobe();
     else if (act === 'reset') { if (confirm('Forget all progress on this site?')) { st = fresh(); save(); for (const r of NPCS.values()) hideNpc(r, false); openPanel('journal'); refreshObjective(true); } }
   }
   const srcHtml = ids => (ids || []).map(srcOf).filter(Boolean).map(s => s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(srcLabel(s))}</a>` : esc(srcLabel(s))).join(' · ');
@@ -519,9 +537,47 @@ export async function init(ctx) {
     html += `<h3>Field notes · ${st.notes.length}</h3><ul>` + (st.notes.slice().reverse().map(n => `<li><p class="note">${esc(n.t)}</p><small class="cite">${n.w ? esc(n.w) + ' · ' : ''}${srcHtml(n.s)}</small></li>`).join('') || '<li class="empty">What people tell you is kept here, with where it comes from.</li>') + '</ul>';
     const used = [...new Set(st.notes.flatMap(n => n.s))].map(srcOf).filter(Boolean);
     if (used.length) html += '<h3>Sources</h3><ul>' + used.map(s => `<li><small>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.publisher)}: ${esc(s.title)}</a> · checked ${esc(s.checked || '')}` : `<b>Computed in the model:</b> ${esc(s.title)}. ${esc(s.what || '')}`}</small></li>`).join('') + '</ul>';
-    html += `<div class="foot"><span>Saved in this browser · keys: J journal · T map · 1-4 answer</span><button class="act" data-act="reset">Reset progress</button></div>`;
+    html += `<div class="foot"><span>Saved in this browser · keys: J journal · T map · K time · 1-4 answer</span><button class="act" data-act="reset">Reset progress</button></div>`;
     return html;
   }
+  // the time of day: sun.js's presets for the clock's date (sunrise, golden hour, sunset, blue hour, night ...) and a
+  // slider over the whole of that day. The clock runs on in real time from what you choose (main.js setClock)
+  let timeDay = null;                                    // the local date the panel works on
+  const fmtDay = new Intl.DateTimeFormat('en-AU', { weekday: 'short', day: 'numeric', month: 'short', timeZone: tz });
+  const fmtHM = new Intl.DateTimeFormat('en-AU', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: tz });
+  const presetsOf = d => window.Sun.PRESETS.map(([k, label]) => ({ k, label, ms: window.Sun.localToUtc(d.y, d.m, d.d, window.Sun.presetTime(k, d.y, d.m, d.d)) }));
+  function sunLine() {
+    const a = sunNow().alt;
+    return a >= 0.5 ? `sun ${Math.round(a)}° up` : a > -0.5 ? 'sun on the horizon' : `sun ${Math.round(-a)}° below the horizon`;
+  }
+  function timeHtml() {
+    const Sun = window.Sun, d = timeDay = Sun.utcToLocal(nowMs(), tz), L = Sun.dayLimits(d.y, d.m, d.d), t = nowMs();
+    const pre = presetsOf(d).map(p => `<button data-act="time" data-arg="${p.k}"${Math.abs(p.ms - t) < 6e5 ? ' class="on"' : ''}>${esc(p.label)}<small>${esc(fmtHM.format(new Date(p.ms)))}</small></button>`).join('');
+    const pc = m => (m / 1440 * 100).toFixed(2);
+    return `<div class="rg-time"><div class="now"><b>${esc(fmtHM.format(new Date(t)))}</b><small>${esc(fmtDay.format(new Date(t)))} · ${esc(sunLine())}</small></div>
+      <h3>Go to</h3><div class="pre">${pre}<button data-act="time" data-arg="now">Now<small>${ctx.clockLive && ctx.clockLive() ? 'the clock follows it' : esc(fmtHM.format(new Date()))}</small></button></div>
+      <h3>Any time of the day</h3><input type="range" min="0" max="1439" step="1" value="${Math.round(d.minutes)}" aria-label="Time of day, local clock time">
+      <div class="day"><i style="left:${pc(L.sunrise)}%;width:${pc(L.sunset - L.sunrise)}%"></i></div>
+      <div class="ticks"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>24:00</span></div>
+      <div class="foot"><span>Times are worked out from the sun on this date at ${esc(S.name || ctx.site)}. The sun, moon, tide and lamps follow at once, and the clock runs on in real time from the time you choose. K or Esc to close.</span></div></div>`;
+  }
+  // after the slider moves: the readout and the highlighted preset, without rebuilding the panel under the pointer
+  function timeReadout() {
+    const box = ui.el.querySelector('.rg-time'); if (!box) return;
+    const t = nowMs();
+    box.querySelector('.now b').textContent = fmtHM.format(new Date(t));
+    box.querySelector('.now small').textContent = `${fmtDay.format(new Date(t))} · ${sunLine()}`;
+    const ps = presetsOf(timeDay);
+    box.querySelectorAll('.pre button[data-arg]').forEach(b => { const p = ps.find(x => x.k === b.dataset.arg); b.classList.toggle('on', !!p && Math.abs(p.ms - t) < 6e5); });
+  }
+  function setTime(kind) {
+    if (!ctx.setClock) return;
+    if (kind === 'now') ctx.setClock(null);
+    else { const p = presetsOf(window.Sun.utcToLocal(nowMs(), tz)).find(x => x.k === kind); if (!p) return; ctx.setClock(p.ms); }
+    openPanel('time');
+    if (hud) hud.say(`${G.clock()}: ${sunLine()}`, 2.5);
+  }
+
   // the people, signs, aircraft and tracked target on the site map
   function mapMarks() {
     const out = [];                                         // drawn in this order: aircraft and signs under the people
@@ -542,7 +598,7 @@ export async function init(ctx) {
     return `<div class="rg-map"><div><h3>${esc(S.name || ctx.site)} at this tide</h3><canvas width="300" height="300" aria-label="Map of the site"></canvas>
       <small class="legend"><i class="me">▲</i> you <i class="np">●</i> people <i class="sg">■</i> signs <i class="tg">◆</i> objective</small></div>
       <div><h3>Queensland reef sites</h3><ul class="rg-sites">${sitesHtml(travel.list)}</ul>
-      <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span></div>
+      <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span><button class="act" data-act="globe">Back to the globe</button></div>
       <h3>Named places near you</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
   }
   // the nearest named places (OpenStreetMap names in scene.json), with distance and bearing from you
@@ -563,6 +619,7 @@ export async function init(ctx) {
     }
     if (c === 'KeyJ' && !e.repeat) togglePanel('journal');
     else if (c === 'KeyT' && !e.repeat) togglePanel('map');
+    else if (c === 'KeyK' && !e.repeat) togglePanel('time');
   });
 
   // ------------------------------------------------------------ objective line, compass marker, floating marker
@@ -581,7 +638,7 @@ export async function init(ctx) {
     else { objBearing = null; markTarget = null; }
     objText = t;
     // under the dive gauge when it shows
-    if (gaugeEl) ui.objectiveTop(gaugeEl.classList.contains('on') ? gaugeEl.offsetTop + gaugeEl.offsetHeight + 8 : 10);
+    if (gaugeEl) ui.objectiveTop(gaugeEl.classList.contains('on') ? gaugeEl.offsetTop + gaugeEl.offsetHeight + 8 : null);
   }
   const camDir = new THREE.Vector3();
   function heading() {
@@ -643,7 +700,7 @@ export async function init(ctx) {
       const pending = (travel.list || []).filter(t => !t.ready && !t.current);
       const nodes = s ? {
         edge: { say: `This is the edge of the ${S.name || ctx.site} model. ${s.name} is ${Math.round(s.km)} km ${dirName(s.bearing)} of here.`, src: ['model-terrain'],
-          choices: [{ text: `Continue to ${s.name}`, do: () => { save(); location.href = travel.href(s.id); }, go: 'end' }, { text: 'Turn back', go: 'end' }] } }
+          choices: [{ text: `Continue to ${s.name}`, do: () => { save(); location.href = siteAt(s.id); }, go: 'end' }, { text: 'Turn back', go: 'end' }] } }
         : { edge: { say: `This is the edge of the ${S.name || ctx.site} model, and no other reef site is built yet${pending.length ? ` (${pending.map(t => t.name).join(', ')} ${pending.length > 1 ? 'are' : 'is'} being built)` : ''}. Turn back, or T for the map.`, choices: [{ text: 'Turn back', go: 'end' }] } };
       openDialogue({ name: aboard ? aboard.name : 'Pilot', role: 'Edge of the model', id: 'edge' }, nodes, 'edge');
     });

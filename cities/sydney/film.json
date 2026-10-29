@@ -43,10 +43,10 @@
       "id": "title",
       "dur": 4.5,
       "type": "move",
-      "from": [-450, 1350, 25],
-      "to": [-540, 1520, 280],
-      "look": [-150, -250, 110],
-      "fov": 34,
+      "from": [-300, 1450, 26],
+      "to": [-335, 1575, 150],
+      "look": [-350, -400, 80],
+      "fov": 30,
       "time": ["06:25"],
       "title": {
         "kind": "main",
@@ -123,23 +123,24 @@
       "chapter": "On foot",
       "dur": 4.5,
       "type": "move",
-      "from": [260, 402, 1.65],
-      "to": [268, 413, 1.7],
-      "look": [333, 540, 24],
-      "fov": 26,
-      "time": ["19:22"],
-      "people": [268, 410],
-      "crowd_r": 45,
+      "from": [276, 393, 1.7],
+      "to": [289, 404, 1.75],
+      "look": [332, 548, 30],
+      "fov": 30,
+      "time": ["18:40"],
+      "people": [288, 410],
+      "crowd_r": 35,
       "hand": 1,
       "title": {
         "kind": "lower",
         "at": 0.5,
         "until": 4.2,
-        "eyebrow": "The Monumental Steps",
+        "eyebrow": "Bennelong Point",
         "head": "Walk it",
         "text": "Talk to the people who know the city, ride the ferries, fly under the Bridge."
       },
-      "agl": true
+      "agl": true,
+      "flare": 0
     },
     {
       "id": "night",
@@ -150,7 +151,7 @@
       "to": [990, 330, 38],
       "look": [-60, 820, 60],
       "fov": 30,
-      "time": ["19:44", "20:40"],
+      "time": ["19:38", "20:08"],
       "timeEase": "inOut",
       "fadeOut": 1.6,
       "title": {
@@ -160,7 +161,9 @@
         "name": "Sydney",
         "line": "The model, the sun and the city: open them."
       },
-      "ev": 0.45
+      "ev": 0.3,
+      "tint": [0.94, 0.98, 1.08],
+      "sat": 1.12
     }
   ]
 }

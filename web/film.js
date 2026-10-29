@@ -19,11 +19,12 @@ window.OEFilm = (function () {
   const out3 = t => 1 - Math.pow(1 - clamp(t), 3);
   const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  let index = null;
+  let index = null, ready = null;
   const cues = {};
-  const ready = fetch('films/index.json').then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(j => { index = j; return j; });
+  // the list of films, fetched the first time a card asks (not on the city and game pages)
+  const list = () => ready || (ready = fetch('films/index.json').then(r => (r.ok ? r.json() : {})).catch(() => ({})).then(j => { index = j; return j; }));
   async function cue(id) {
-    await ready;
+    await list();
     if (!index || !index[id]) return null;
     if (!cues[id]) cues[id] = fetch(index[id].json).then(r => r.json()).catch(() => null);
     return cues[id];
@@ -109,7 +110,8 @@ window.OEFilm = (function () {
       <div class="fm-grain" aria-hidden="true"></div>
       <div class="fm-titles" aria-live="polite"></div>
       <div class="fm-chrome">
-        <div class="fm-top"><span class="fm-eb">Film · ${esc(c.name)} · ${fmt(c.duration)}</span><button class="fm-x" type="button">Close <kbd>Esc</kbd></button></div>
+        <div class="fm-top"><span class="fm-eb">Film · ${esc(c.name)} · ${fmt(c.duration)}</span><span class="fm-tools"><button class="fm-fs" type="button">Full screen</button><button class="fm-x" type="button">Close <kbd>Esc</kbd></button></span></div>
+        <p class="fm-rotate" aria-hidden="true">Turn your phone for the full picture</p>
         <div class="fm-bottom">
           <button class="fm-pp" type="button" aria-label="Pause"><i></i></button>
           <div class="fm-chapters" role="group" aria-label="Chapters">${chapters.map((h, i) => `<button type="button" class="fm-ch" data-i="${i}" style="flex:${(h.t1 - h.t0).toFixed(2)}"><span>${esc(h.name)}</span><i><b></b></i></button>`).join('')}</div>
@@ -129,6 +131,7 @@ window.OEFilm = (function () {
         <p class="fm-credit">${esc(c.credit || '')}</p>
       </div>`;
     host.append(el);
+    host.classList.add('film-open'); // the title stops drawing the Earth behind the film
     el.querySelector('.fm-grain').style.backgroundImage = `url(${grainUrl()})`;
     const v = el.querySelector('video'), titles = el.querySelector('.fm-titles'), endEl = el.querySelector('.fm-end');
     const prevFocus = document.activeElement;
@@ -165,6 +168,14 @@ window.OEFilm = (function () {
     v.addEventListener('click', toggle, sig);
     pp.addEventListener('click', toggle, sig);
     el.querySelector('.fm-x').addEventListener('click', close, sig);
+    // full screen, and on a phone the landscape it was made for; an iPhone has full screen for video only
+    el.querySelector('.fm-fs').addEventListener('click', async () => {
+      if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+      if (el.requestFullscreen) {
+        await el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+        if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+      } else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+    }, sig);
     el.querySelector('.fm-snd').addEventListener('click', () => setSound(!sound), sig);
     el.querySelectorAll('.fm-ch').forEach(b => b.addEventListener('click', () => { const h = chapters[+b.dataset.i]; showEnd(false); v.currentTime = h.t0 + 0.01; v.play(); }, sig));
     endEl.addEventListener('click', e => {
@@ -191,6 +202,7 @@ window.OEFilm = (function () {
       // the theatre has the keys while it is open
       e.stopImmediatePropagation();
       if (k === 'escape') { e.preventDefault(); close(); }
+      else if (k === 'f') el.querySelector('.fm-fs').click();
       else if (k === ' ' && !e.target.closest('button')) { e.preventDefault(); toggle(); }
       else if (k === 'm') setSound(!sound);
       else if (k === 'r') again();
@@ -235,10 +247,12 @@ window.OEFilm = (function () {
     if (!th) return;
     const { el, v, ac, raf, titleSound, prevFocus } = th;
     th = null;
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
     cancelAnimationFrame(raf);
     ac.abort();
     v.pause();
     el.classList.remove('on');
+    if (el.parentElement) el.parentElement.classList.remove('film-open');
     setTimeout(() => { v.removeAttribute('src'); v.load(); el.remove(); }, reduced ? 0 : 450);
     if (window.OEScore && titleSound) OEScore.setMuted(false);
     if (prevFocus && prevFocus.isConnected) prevFocus.focus({ preventScroll: true });
@@ -306,5 +320,5 @@ window.OEFilm = (function () {
     }
   }
 
-  return { ready, cue, card, open, close, stopPreview, hasReel, openReel, get isOpen() { return !!th; } };
+  return { list, cue, card, open, close, stopPreview, hasReel, openReel, get isOpen() { return !!th; } };
 })();

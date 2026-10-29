@@ -248,7 +248,12 @@
   "summary": "Central Amsterdam from the IJ to Museumplein: every building the 3DBAG's model of it, measured by the national LiDAR, canal houses with the gable of their century, the church towers, and a game: read the gables, cross the IJ on the free ferry, find the winter sun.",
   "timezone": "Europe/Amsterdam",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 35479,
+  "extent_km": [
+   4.0,
+   4.0
+  ]
  },
  {
   "id": "hong-kong",
