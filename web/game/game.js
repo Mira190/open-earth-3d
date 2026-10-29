@@ -196,10 +196,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   try {
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
-    // the surveyors you play are the main characters made in Blender, when their files load
-    await Promise.all(Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' }).map(([k, h]) => lib.heroes[h] &&
-      lib.require(h).then(() => Object.assign(PLAYER_LOOKS[k], { character: h, scale: 1 })).catch(e => console.warn(`${h} unavailable:`, e))));
-    await Promise.all([...Object.values(PLAYER_LOOKS).map(l => l.character), ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
+    // the surveyors you play are the main characters (blender/build_people.py): the one you play now
+    // loads here, the other when you switch; the old characters stand in if their files don't load
+    for (const [k, h] of Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' })) if (lib.heroes[h]) PLAYER_LOOKS[k].hero = h;
+    const pl = PLAYER_LOOKS[playerChar];
+    if (pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
+    await Promise.all([pl.character, ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded
@@ -215,8 +217,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const player = { rig: makeRig(playerLook(), { vest: true }),
     x: 0, y: 0, z: 0, h: 0, vz: 0, speed: 0, ground: true, floor: 'ground', mode: 'foot', vehicle: null, auto: null, walking: false };
   world.add(player.rig.root);
-  function setPlayerCharacter(name) { // swap the player's character in place
+  async function setPlayerCharacter(name) { // swap the player's character in place
     if (!lib || !PLAYER_LOOKS[name]) return;
+    const pl = PLAYER_LOOKS[name];
+    if (pl.hero && pl.character !== pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
+    await lib.require(pl.character).catch(() => {});
     playerChar = name;
     try { localStorage.setItem(PLAYER_KEY, name); } catch (e) { /* storage blocked */ }
     const old = player.rig, parent = old.root.parent, rig = makeRig(playerLook(), { vest: true });

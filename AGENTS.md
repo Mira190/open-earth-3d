@@ -17,8 +17,8 @@
 - To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.
-- The main characters (the surveyors you play) are built by `blender/build_people.py` from
-  MakeHuman's and Mesh2Motion's CC0 data (`python pipeline/fetch_makehuman.py` first). Its
-  data files are read, never MakeHuman's or MPFB's code.
+- The main characters (the surveyors you play) are Microsoft Rocketbox avatars and clips (MIT;
+  keep `web/assets/people/LICENSE-Rocketbox.txt` with them), built by `blender/build_people.py`
+  (`python pipeline/fetch_rocketbox.py` first).
 - `web/game/vehicles.js` runs on three.js r128 and r186. Keep it free of version-specific
   calls, so it stays shared whichever version a branch uses.

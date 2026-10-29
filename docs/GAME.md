@@ -547,36 +547,33 @@ python blender/build_vehicles.py --only cars  # one kind: helicopter, ferry, fer
 
 ## The main characters
 
-| The two surveyors you play (Cycles, mid-stride) |
+| The surveyors you play: standing, and mid-stride (Cycles) |
 |---|
-| ![](images/people/H_Surveyor_W_Walk10.jpg) ![](images/people/H_Surveyor_M_Walk10.jpg) |
+| ![](images/people/H_Surveyor_W_Idle.jpg) ![](images/people/H_Surveyor_W_Walk.jpg) ![](images/people/H_Surveyor_M_Idle.jpg) ![](images/people/H_Surveyor_M_Walk.jpg) |
 
-The surveyors you play are built in Blender by `blender/build_people.py` from
-MakeHuman's CC0 data, with no MakeHuman or MPFB code running:
-- **Body:** the MakeHuman base mesh, shaped by its macro targets (gender, age,
-  muscle, weight, height, proportions and ancestry) combined as MakeHuman
-  combines them.
-- **Skeleton:** MPFB's game-engine rig (53 bones, Unreal-style names), each bone
-  placed at the centre of a joint cube on the shaped body, with its weights.
-- **Skin, eyes, brows, lashes, hair, clothes and shoes:** from the MakeHuman
-  system asset pack, fitted with their MHCLO references (three body vertices and
-  an offset per vertex). The body skin under the clothes is removed, so it
-  cannot show through when the body bends.
-- **Hi-vis vest:** lofted round the torso, ring by ring along the body's own
-  cross-section, with straight reflective bands.
-- **Hard hat:** a dome and brim sized to the head and carried by the head bone.
-- **Animation:** Mesh2Motion's CC0 clips (walk, jog, sprint, idle, greeting,
-  talking, listening, a nod, interact), retargeted: each bone's rest direction is
-  turned onto the source's, then it follows the source's rotation from rest.
-  The ground speed of each gait is measured from the planted foot, so the
-  game plays the cycle at the speed you move.
+The two surveyors you play are Microsoft Rocketbox avatars (MIT, © 2020 Microsoft;
+`web/assets/people/LICENSE-Rocketbox.txt`): construction workers in hi-vis vests,
+hard hats, gloves and radios, made by artists and rigged on a 3ds Max Biped.
+`blender/build_people.py` builds them:
+- **Clips:** Rocketbox's own motion capture on the same skeleton: a neutral idle,
+  walk, fast run, wave, talking and listening gestures, a nod, and checking
+  documents. Each clip is copied onto the avatar bone by bone in world space,
+  because the avatars' bind pose and the clips' rest pose differ, so local
+  rotations would not carry over. The figure stands and moves as it was
+  captured.
+- **In place:** the walk and the run come with their root motion extracted onto
+  a helper, so they play in place; the helper gives each gait's ground speed,
+  and the game plays the cycle at the speed you move.
+- **Size:** about 8,500 triangles and 2.4 MB each, with WebP textures. The
+  exporter bakes every bone's channels on every frame; channels that only hold
+  a bone's rest value (the face, and every translation but the hips') are
+  dropped afterwards.
 
-Each is about 35,000 triangles and 2.4 MB with its textures (WebP). They are
-textured, so unlike the crowd they are not recoloured per look. If their files
-do not load, the game falls back to the previous characters.
+The game loads the surveyor you play, and the other when you switch in the
+menu. If their files do not load, the earlier characters stand in.
 
 ```
-python pipeline/fetch_makehuman.py               # the CC0 data, into data/raw (once)
+python pipeline/fetch_rocketbox.py               # the avatars and clips, into data/raw (once)
 python blender/build_people.py --preview         # -> web/assets/people/H_*.glb, docs/images/people/
 ```
 
