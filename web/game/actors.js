@@ -242,7 +242,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const p = o.p || o, n = p.length / 3, pts = new Float32Array(n * 3), cum = new Float32Array(n);
       for (let i = 0; i < n; i++) { pts[3 * i] = p[3 * i] / 10; pts[3 * i + 1] = p[3 * i + 1] / 10; pts[3 * i + 2] = p[3 * i + 2] / 10; }
       for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(pts[3 * i] - pts[3 * i - 3], pts[3 * i + 1] - pts[3 * i - 2]);
-      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '' };
+      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null }; // deck: per segment, 1 where the line is off the ground (decks.js)
     }).filter(l => l.len > 4);
     const key = (x, y) => `${Math.round(x / 2)},${Math.round(y / 2)}`;
     const nodes = new Map(), grid = new Map(), GC = 100;
@@ -268,6 +268,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const t = (s - l.cum[k - 1]) / Math.max(1e-6, l.cum[k] - l.cum[k - 1]);
       const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], az = l.pts[3 * k - 1], bx = l.pts[3 * k], by = l.pts[3 * k + 1], bz = l.pts[3 * k + 2];
       out.x = ax + (bx - ax) * t; out.y = ay + (by - ay) * t; out.z = az + (bz - az) * t;
+      out.deck = l.deck ? l.deck[k - 1] : 0;
       out.hx = bx - ax; out.hy = by - ay;
       const h = Math.hypot(out.hx, out.hy) || 1;
       out.hx /= h; out.hy /= h;
@@ -391,7 +392,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // and walk on.
   const HORIZON = 4;   // seconds of look-ahead
   const BODY = 0.6;    // two walkers closer than this are in each other's way (m, centre to centre)
-  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null } = {}) {
+  // ground(x, y, at): the height to stand at beside the line at `at` (net.at), or null where no one can stand
+  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null } = {}) {
     const P = [], tmp = {};
     for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, lat: null, dodge: 0, v: 0, vx: 0, vy: 0,
       pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16, state: 'walk', mode: 'ground', seat: null, t: 0, rest: rnd() * 30 });
@@ -506,6 +508,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       net.at(p.line, p.s, tmp);
       hx = p.hx = tmp.hx * p.dir; hy = p.hy = tmp.hy * p.dir;
       p.x = tmp.x - hy * p.lat; p.y = tmp.y + hx * p.lat; p.z = tmp.z; // keep left
+      for (let k = 0; ground && k < 3; k++) { // on the ground drawn there; off the bank of the water, closer in to the line
+        const z = ground(p.x, p.y, tmp);
+        if (z != null) { p.z = z; break; }
+        p.lat = k < 1 ? p.lat / 2 : 0;
+        p.x = tmp.x - hy * p.lat; p.y = tmp.y + hx * p.lat;
+      }
       const lr = dt > 0 ? dl / dt : 0;
       p.vx = hx * p.v - hy * lr; p.vy = hy * p.v + hx * lr;
       if (p.face != null) p.h = p.face;
@@ -523,7 +531,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // With the shared Blender cars (opts.lib from OEVehicles.load) each slot drives one model
   // (sedans, hatches, SUVs, vans, the city's taxis and buses), drawn near, mid or far by
   // distance from opts.eye; without them, one box car for all.
-  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null } = {}) {
+  function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, ground = null } = {}) {
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
     let mesh = null, fleet = null;
     if (I) {
@@ -597,6 +605,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         net.at(c.line, c.s, tmp);
         const hx = tmp.hx * c.dir, hy = tmp.hy * c.dir;
         c.x = tmp.x - hy * 1.7; c.y = tmp.y + hx * 1.7; c.z = tmp.z; // left lane
+        const gz = ground && ground(c.x, c.y, tmp);
+        if (gz != null) c.z = gz;
         const h = Math.atan2(hx, hy);
         let dh = h - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
         c.h += dh * Math.min(1, dt * 8);

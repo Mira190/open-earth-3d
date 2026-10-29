@@ -108,6 +108,16 @@
     return (D[i] * (1 - fc) + D[i + 1] * fc) * (1 - fr) + (D[i + T.nx] * (1 - fc) + D[i + T.nx + 1] * fc) * fr;
   }
 
+  // the terrain as the ground tiles draw it (three.js PlaneGeometry): each cell is two triangles,
+  // split along the diagonal from its south-west to its north-east corner
+  function terrainTri(T, x, y) {
+    const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell));
+    const r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
+    const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
+    const a = D[i], b = D[i + 1], d = D[i + T.nx], e = D[i + T.nx + 1];
+    return fc + fr <= 1 ? a + fc * (b - a) + fr * (d - a) : e + (1 - fc) * (d - e) + (1 - fr) * (b - e);
+  }
+
   // even-odd scanline fill of one polygon (rings of flat x,y arrays, metres) with max();
   // with an id raster, the cell also records which building is on top
   function fillMax(G, rings, z, id) {
@@ -318,6 +328,6 @@
   }
   const hm = s => { const [h, mm] = s.split(':').map(Number); return h * 60 + mm; };
 
-  return { RAD, site, position, subsolar, dayLimits, offsetHours, standardOffset, localToUtc, utcToLocal, terrainAt, buildDSM, cloneDSM, fillMax, fillTri,
+  return { RAD, site, position, subsolar, dayLimits, offsetHours, standardOffset, localToUtc, utcToLocal, terrainAt, terrainTri, buildDSM, cloneDSM, fillMax, fillTri,
     roofs, unpackRoof, addSolid, pyramid, castRay, sunlit, blocker, samplePlace, fractionSunlit, litMask, inPeriod, hm };
 });

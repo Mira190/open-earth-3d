@@ -161,7 +161,8 @@ window.OEBuildings = (function () {
     return Math.max(0.15, 1 - acc / DIRS.length);
   }
 
-  function create(D, { lin, U, renderer, SRC, small = false }) {
+  // foot(x, y): the height of the ground drawn there, so walls reach it where it is below a building's base
+  function create(D, { lin, U, renderer, SRC, small = false, foot = null }) {
     const t0 = performance.now();
     const { B, T, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
@@ -262,6 +263,30 @@ window.OEBuildings = (function () {
           }
           u += L[k];
         }
+      }
+    }
+
+    // a plain plinth under the walls, down to the lowest ground drawn along the footprint, where that
+    // is below the base: the base is the lowest survey point under the corners, and the ground
+    // drawn between them (a moat's edge, a slope, a quay) can be lower
+    function plinth(rings, bi, si, zb) {
+      let zf = Infinity;
+      for (const r of rings) for (let k = 0, n = r.length / 2; k < n; k++) {
+        const j = (k + 1) % n, ax = r[2 * k], ay = r[2 * k + 1], bx = r[2 * j], by = r[2 * j + 1], m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 2.5));
+        for (let i = 0; i < m; i++) zf = Math.min(zf, foot(ax + (bx - ax) * i / m, ay + (by - ay) * i / m));
+      }
+      if (!(zf < zb - 0.05)) return;
+      zf -= 0.2;
+      const P = BI[bi];
+      for (const r of rings) for (let k = 0, n = r.length / 2; k < n; k++) {
+        const j = (k + 1) % n, x0 = r[2 * k], y0 = r[2 * k + 1], x1 = r[2 * j], y1 = r[2 * j + 1], l = Math.hypot(x1 - x0, y1 - y0);
+        if (l < 0.05) continue;
+        const nx = (y1 - y0) / l, ny = -(x1 - x0) / l; // outward for an anticlockwise outer ring (holes are clockwise: also outward)
+        const a = buf.v(x0, y0, zf, nx, ny, 0, P.wall, 0, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        const b = buf.v(x1, y1, zf, nx, ny, 0, P.wall, l, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        const c = buf.v(x1, y1, zb, nx, ny, 0, P.wall, l, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        const d = buf.v(x0, y0, zb, nx, ny, 0, P.wall, 0, 0, K_WALL * 16 + si, P.storey, P.ground, P.u, 0.7, 0, 0, bi, P.code);
+        buf.idx.push(a, b, c, a, c, d);
       }
     }
 
@@ -375,6 +400,7 @@ window.OEBuildings = (function () {
       const r = roofOf.get(si), fronts = frontOf.get(si);
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
+      if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
       const par = PARAPET[P.style] && s[3] - s[2] >= 50 ? PARAPET[P.style] : 0;
