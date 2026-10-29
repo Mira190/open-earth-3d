@@ -583,7 +583,7 @@ export async function init(ctx) {
     else { objBearing = null; markTarget = null; }
     objText = t;
     // under the dive gauge when it shows
-    if (gaugeEl) ui.objectiveTop(gaugeEl.classList.contains('on') ? gaugeEl.offsetTop + gaugeEl.offsetHeight + 8 : 10);
+    if (gaugeEl) ui.objectiveTop(gaugeEl.classList.contains('on') ? gaugeEl.offsetTop + gaugeEl.offsetHeight + 8 : null);
   }
   const camDir = new THREE.Vector3();
   function heading() {

@@ -22,10 +22,11 @@ computed from the model while you play, or carries a source you can open from th
 | <kbd>F</kbd> | Step off a boat or out of a landed aircraft (the boats' own key) |
 
 The player's own keys are unchanged (WASD, Shift, Space, Ctrl/C, V, F/G, Q, B, H, M). The Globe, Journal
-and Map buttons sit under the clock (on a phone, Globe drops below the other two, clear of the tracked step);
-Globe saves your progress and goes back to the globe with every city. On a phone you tap a line to go on and
-tap an answer. The tracked step shows top left (below the dive gauge when you are diving) with a marker on
-the compass and a diamond over the target. Progress is saved in the browser per site (`localStorage` key
+and Map buttons sit under the clock (on a phone they stack down the right-hand side); Globe saves your
+progress and goes back to the globe with every city. On a phone you tap a line to go on and tap an answer.
+The tracked step shows top left (below the dive gauge when you are diving) with a marker on the compass and
+a diamond over the target; on a screen narrower than 940 px the gauge and the tracked step move down, clear
+of the compass. Progress is saved in the browser per site (`localStorage` key
 `oe3d-reef-game-<site>`).
 
 ## The Whitsundays

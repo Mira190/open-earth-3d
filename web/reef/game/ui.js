@@ -75,7 +75,8 @@ const CSS = `
 .rg-fade { position: absolute; inset: 0; background: #021018; opacity: 0; transition: opacity .55s; display: grid; place-content: center; text-align: center; padding: 20px; font-size: 15px; visibility: hidden; }
 .rg-fade.on { opacity: 1; visibility: visible; } .rg-fade small { display: block; margin-top: 6px; color: var(--ink2); font-size: 12px; }
 @media (max-width: 760px), (max-aspect-ratio: 1/1) { .rg-dlg { left: 50%; transform: translateX(-50%) translateY(8px); width: min(94vw, 560px); } .rg-dlg.on { transform: translateX(-50%); } }
-@media (max-width: 640px) { .rg-dlg { bottom: 176px; padding: 10px 12px; max-height: calc(100vh - 290px); } .rg-dlg .txt { font-size: 14px; } .rg-btns { top: 56px; } .rg-btns .bg { position: absolute; top: 38px; right: 0; } .rg-obj { width: 52vw; } .rg-toast { top: 108px; }
+@media (max-width: 940px) { .rg-obj { top: 64px; } .rg-toast { top: 160px; } }
+@media (max-width: 640px) { .rg-dlg { bottom: 176px; padding: 10px 12px; max-height: calc(100vh - 290px); } .rg-dlg .txt { font-size: 14px; } .rg-btns { top: 64px; flex-direction: column; align-items: flex-end; } .rg-btns .bg { order: 1; } .rg-obj { width: min(calc(100vw - 154px), 320px); } .rg-toast { top: 184px; }
   .rg-panel { width: 96vw; max-height: 80vh; top: 46%; } }
 `;
 
@@ -126,8 +127,8 @@ export function createUI(on) {
       panel.classList.add('on'); $('.bj').classList.toggle('on', kind === 'journal'); $('.bm').classList.toggle('on', kind === 'map');
     },
     get panelKind() { return panel.classList.contains('on') ? panel.dataset.kind : ''; },
-    // keep the tracker clear of hud.js's dive gauge (top left while diving)
-    objectiveTop(px) { const v = px + 'px'; if (obj.style.top !== v) obj.style.top = v; },
+    // keep the tracker clear of hud.js's dive gauge (top left while diving); null leaves it where the CSS puts it
+    objectiveTop(px) { const v = px === null ? '' : px + 'px'; if (obj.style.top !== v) obj.style.top = v; },
     // objective line under the compass; `rel` = bearing minus heading in degrees (null hides the marker); compass span is 120 deg
     objective(text, rel) {
       if (text !== objText) { objText = text; obj.innerHTML = text; obj.classList.toggle('on', !!text); }
