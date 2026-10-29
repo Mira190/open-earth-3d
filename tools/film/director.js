@@ -152,8 +152,21 @@ window.OEFilmDirector = (function () {
     }
   }
 
+  // the game's own guides stay out of the film: the objective's beam, the gold route on the
+  // ground and the markers over the people who have a quest (the game shows them again each frame)
+  function hideGuides() {
+    for (const o of G.atmos.composer.passes[0].scene.children) {
+      const m = o.material;
+      if (!m) continue;
+      const p = o.geometry && o.geometry.parameters;
+      if (m.isLineDashedMaterial || (p && p.height === 90 && m.blending === THREE.AdditiveBlending)) m.visible = false;
+    }
+    for (const n of G.npcs || []) if (n.marker) n.marker.traverse(q => { if (q.material) q.material.visible = false; });
+  }
+
   // set the frame at film time t; the game's next frame draws it
   function apply(t) {
+    hideGuides();
     const s = shotAt(t);
     if (s !== cur) { cur = s; enter(s); }
     const k = clamp((t - s.t0) / s.dur);
@@ -170,6 +183,11 @@ window.OEFilmDirector = (function () {
     const tint = s.tint || spec.tint || [1, 1, 1];
     L.uTint.value.set(tint[0], tint[1], tint[2]);
     L.uSat.value = s.sat ?? spec.sat ?? 1;
+    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
+    // at night the city keeps its blacks: less lift, a firmer curve
+    const night = clamp((-sp.altitude - 2) / 8);
+    L.uLift.value = 1 - 0.7 * night;
+    L.uContrast.value = 0.1 + 0.18 * night;
     L.uAspect.value = innerWidth / innerHeight;
     L.uTime.value = t;
     // fades: in from space black at the head of the film and of a shot that asks, out at the tail
@@ -178,7 +196,6 @@ window.OEFilmDirector = (function () {
     if (s.fadeOut) f = Math.min(f, EASE.smooth(clamp((s.t0 + s.dur - t) / s.fadeOut)));
     L.uFade.value = f;
     // the flare, when the sun is in shot and not behind a building
-    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
     const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
     const dir = new V3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
     probe.fov = fov; probe.aspect = innerWidth / innerHeight; probe.updateProjectionMatrix();
@@ -228,7 +245,7 @@ window.OEFilmDirector = (function () {
       g.beginPath();
       for (let j = 0; j <= 12; j++) {
         const k = j / 12;
-        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 0); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
+        if (s.ferry) { for (let f = 0; f < (j ? s.dur * 24 / 12 : 1); f++) G.fer.update(1 / 24, 1, s.t0 + k * s.dur); }
         shotPose(s, k);
         const px_ = pose.pos.x, py_ = -pose.pos.z, pz = pose.pos.y, lx = pose.look.x, ly = -pose.look.z, lz = pose.look.y;
         j ? g.lineTo(X(px_), Y(py_)) : g.moveTo(X(px_), Y(py_));

@@ -11,11 +11,15 @@
 - Every city shares the helicopter, ferry, river shuttle and car models
   (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people
   (`web/assets/people/`). Don't add per-city copies. A city picks its liveries, its
-  helicopter registration, its taxis' and buses' colours and its vessel names in
-  `game.vehicles` and `game.ferries`, its ferry model in `game.ferry_style.model`, and
-  its tree species in `trees.mix`, all in `cities/<id>/city.json`.
+  helicopter registration, its taxis' and buses' colours, the player's car
+  (`game.vehicles.car`) and its vessel names in `game.vehicles` and `game.ferries`, its
+  ferry model in `game.ferry_style.model`, the side of the road it keeps to in
+  `game.keep`, and its tree species in `trees.mix`, all in `cities/<id>/city.json`.
 - To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.
-- `web/game/vehicles.js` runs on three.js r128 and r186. Keep it free of version-specific
-  calls, so it stays shared whichever version a branch uses.
+- The main characters (the surveyors you play) are Microsoft Rocketbox avatars and clips (MIT;
+  keep `web/assets/people/LICENSE-Rocketbox.txt` with them), built by `blender/build_people.py`
+  (`python pipeline/fetch_rocketbox.py` first).
+- `web/game/vehicles.js` and `web/game/cars.js` run on three.js r128 and r186. Keep them
+  free of version-specific calls, so they stay shared whichever version a branch uses.

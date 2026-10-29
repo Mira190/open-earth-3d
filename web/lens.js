@@ -7,7 +7,8 @@
 //   uCA         chromatic fringes, growing towards the frame's edges
 //   uGrain      film grain, strongest in the midtones (0 for a picture headed for a video encoder)
 //   uSunUv/uSunVis  where the sun is on screen and how much of it shows, for the flare
-//   uTint, uSat white balance and saturation, before the curve
+//   uTint, uSat white balance and saturation, before the curve; uContrast the S-curve's weight
+//   uLift       how far black is lifted to space's #04060b: 1 on the title, less for a city at night
 'use strict';
 window.OELens = (function () {
   function shader() {
@@ -16,14 +17,14 @@ window.OELens = (function () {
         tDiffuse: { value: null }, uAspect: { value: 1 }, uTime: { value: 0 }, uExposure: { value: 1 }, uFade: { value: 1 }, uFlash: { value: 0 },
         uCA: { value: 0.2 }, uGrain: { value: 0.03 }, uVignette: { value: 0.16 }, uLift: { value: 1 },
         uSunUv: { value: new THREE.Vector2(-9, -9) }, uSunVis: { value: 0 }, uFlare: { value: 1 }, uFlareTint: { value: new THREE.Color(1, 0.8, 0.6) },
-        uLetterbox: { value: 0 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uSat: { value: 1 },
+        uLetterbox: { value: 0 }, uTint: { value: new THREE.Vector3(1, 1, 1) }, uSat: { value: 1 }, uContrast: { value: 0.1 },
       },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
       fragmentShader: `
         uniform sampler2D tDiffuse; uniform float uAspect; uniform float uTime; uniform float uExposure; uniform float uFade; uniform float uFlash;
         uniform float uCA; uniform float uGrain; uniform float uVignette; uniform float uLift;
         uniform vec2 uSunUv; uniform float uSunVis; uniform float uFlare; uniform vec3 uFlareTint; uniform float uLetterbox;
-        uniform vec3 uTint; uniform float uSat;
+        uniform vec3 uTint; uniform float uSat; uniform float uContrast;
         varying vec2 vUv;
         float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
         // the title's tone curve: Khronos PBR Neutral with a long exponential shoulder from 0.42
@@ -65,7 +66,7 @@ window.OELens = (function () {
           col = film(col * uExposure * uTint);
           col = max(mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, uSat), 0.0);
           float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
-          col = mix(col, col * col * (3.0 - 2.0 * col), 0.1);                                  // a little contrast
+          col = mix(col, col * col * (3.0 - 2.0 * col), uContrast);                            // a little contrast (more at night)
           col *= mix(vec3(0.97, 1.0, 1.04), vec3(1.015, 1.0, 0.985), smoothstep(0.05, 0.7, l)); // cool shadows, warm light
           col = pow(max(col, 0.0), vec3(1.0 / 2.2));
           col *= 1.0 - uVignette * smoothstep(0.15, 0.95, dot(dc * vec2(uAspect, 1.0), dc * vec2(uAspect, 1.0)) * 1.6 / max(uAspect, 1.0));
@@ -83,8 +84,9 @@ window.OELens = (function () {
   }
 
   // where the sun is on screen for this camera, 0..1 uv, and whether it is in front of it
-  const tmp = new THREE.Vector3();
+  let tmp = null; // made on first use: this script runs before the three.js module has loaded
   function sunOnScreen(camera, sunDir) {
+    tmp = tmp || new THREE.Vector3();
     tmp.copy(camera.position).addScaledVector(sunDir, 10000).project(camera);
     return { u: tmp.x * 0.5 + 0.5, v: tmp.y * 0.5 + 0.5, front: tmp.z < 1 && sunDir.dot(camera.getWorldDirection(new THREE.Vector3())) > 0 };
   }

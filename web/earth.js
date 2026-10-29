@@ -7,6 +7,10 @@
 // The frame goes through a lens: HDR bloom, an anamorphic flare when the sun is in shot,
 // a neutral tone curve, a light grade, grain and a vignette.
 //
+// How much of that a device gets is its quality tier (quality.js): the textures' size, the 8K
+// lights, MSAA, HDR, the steps through the air, the bloom. A lost context is restored, and
+// selfTest() renders the sunlit side once so a pipeline that draws nothing is caught.
+//
 // The globe frame is Earth-fixed and the Earth's radius is 1:
 // x = cos(lat) cos(lon), y = sin(lat), z = -cos(lat) sin(lon), as in SphereGeometry's UVs.
 // The textures are built by pipeline/fetch_earth.py.
@@ -46,7 +50,7 @@ window.OEEarth = (function () {
   const EARTH_FS = `
     uniform sampler2D uDay; uniform sampler2D uSurf; uniform sampler2D uClouds; uniform sampler2D uLightsMap;
     uniform vec3 uSun; uniform vec3 uCam; uniform vec2 uTexel; uniform vec2 uLightsTexel;
-    uniform float uSunE; uniform float uLights; uniform float uCloudU; uniform float uCloudH; uniform float uRelief; uniform float uReady;
+    uniform float uSunE; uniform float uLights; uniform float uLightsGamma; uniform float uCloudU; uniform float uCloudH; uniform float uRelief; uniform float uReady;
     uniform vec3 uFocus; uniform float uFocusAmt; uniform float uTime;
     varying vec2 vUv; varying vec3 vPos;
     ${SUNLIGHT}
@@ -110,7 +114,7 @@ window.OEEarth = (function () {
         float sparkle = smoothstep(0.42, 0.95, n) * 3.2 + 0.04;
         L *= mix(1.0, sparkle, smoothstep(0.0, 1.2, lv) * (1.0 - 0.3 * smoothstep(0.55, 1.0, L))); // the source clips city cores flat: keep some texture there too
       }
-      vec3 lights = mix(vec3(1.0, 0.44, 0.13), vec3(1.0, 0.7, 0.4), smoothstep(0.35, 0.95, L)) * pow(L, 2.1) * 1.35;
+      vec3 lights = mix(vec3(1.0, 0.44, 0.13), vec3(1.0, 0.7, 0.4), smoothstep(0.35, 0.95, L)) * pow(L, uLightsGamma) * 1.35;
       vec3 lit = lights * uLights;
       col += lit / (1.0 + 0.6 * lit) * night * (1.0 - 0.75 * cl); // soft-clipped, so a city glows rather than blows out
       col += day * 0.0012 * night; // earthshine and the moon
@@ -169,7 +173,7 @@ window.OEEarth = (function () {
       vec2 tp = hitSphere(uCam, rd, RP);
       float t0 = max(ta.x, 0.0), t1 = ta.y;
       if (tp.x > 0.0 && tp.x < tp.y) t1 = min(t1, tp.x);
-      const int N = 14; const int NL = 6;
+      const int N = ATMO_N; const int NL = ATMO_NL;
       float ds = (t1 - t0) / float(N);
       float j = hash(gl_FragCoord.xy);
       vec3 sumR = vec3(0.0), sumM = vec3(0.0);
@@ -358,7 +362,7 @@ window.OEEarth = (function () {
     await img.decode();
     return img;
   }
-  // a texture, drawn down to maxW on small screens to spare the GPU's memory
+  // a texture, drawn down to maxW for the tier, to spare the GPU's memory
   function texture(img, renderer, maxW, mip = true) {
     let src = img;
     if (img.width > maxW) {
@@ -421,13 +425,25 @@ window.OEEarth = (function () {
     return g;
   }
 
-  // canvas: the WebGL canvas; month 1..12 picks the Blue Marble; onProgress(0..1, label)
-  function create({ canvas, month, small = false, onProgress = () => {} }) {
+  // canvas: the WebGL canvas; month 1..12 picks the Blue Marble; q: the tier's settings
+  // (OEQuality.TIERS); onProgress(0..1, label); onLost() and onRestored() for a lost context
+  function create({ canvas, month, q = window.OEQuality.TIERS.high, onProgress = () => {}, onLost = () => {}, onRestored = () => {} }) {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance', alpha: false });
     renderer.toneMapping = THREE.NoToneMapping;
     renderer.setClearColor(0x04060b, 1);
-    const maxPR = Math.min(devicePixelRatio || 1, small ? 2 : 1.75);
-    let pr = maxPR;
+    // a shader the GPU will not compile is recorded, so the title can fall back instead of drawing nothing
+    const shaderErrors = [];
+    renderer.debug.onShaderError = (gl, program, vs, fs) => {
+      const log = s => (gl.getShaderInfoLog(s) || '').trim().slice(0, 300);
+      shaderErrors.push({ vs: log(vs), fs: log(fs), program: (gl.getProgramInfoLog(program) || '').trim().slice(0, 300) });
+      console.error('earth: shader failed to compile', shaderErrors[shaderErrors.length - 1]);
+    };
+    // three.js restores its own state on a restored context; the title only needs telling
+    let losses = 0;
+    const lost = e => { e.preventDefault(); losses++; onLost(losses); }, restored = () => onRestored(losses);
+    canvas.addEventListener('webglcontextlost', lost);
+    canvas.addEventListener('webglcontextrestored', restored);
+    let pr = 1, prCap = q.prMax;
     renderer.setPixelRatio(pr);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(32, 1, 0.004, 2000);
@@ -435,7 +451,7 @@ window.OEEarth = (function () {
     const uSunE = { value: 2.3 };
     const ready = { value: 0 };
     const tex = { day: blank([0, 0, 0, 255]), surf: blank([0, 255, 0, 255]), clouds: blank([0, 0, 0, 255]), mw: blank([0, 0, 0, 255]) };
-    const W = small ? 2048 : 4096;
+    const W = q.tex;
 
     // sky, stars and the moon
     const galM = new THREE.Matrix3();
@@ -458,12 +474,14 @@ window.OEEarth = (function () {
     const earthU = Object.assign({}, shared, {
       uDay: { value: tex.day }, uSurf: { value: tex.surf }, uClouds: { value: tex.clouds }, uTexel: { value: new THREE.Vector2(1 / W, 2 / W) },
       uLightsMap: { value: tex.surf }, uLightsTexel: { value: new THREE.Vector2(1 / W, 2 / W) },
-      uLights: { value: 3.4 }, uCloudH: { value: 0.0016 }, uRelief: { value: small ? 0.9 : 1.6 }, uFocus: { value: new THREE.Vector3(1, 0, 0) },
+      // a coarser lights map averages each city over a bigger texel, and the curve would crush the
+      // averages: a gentler curve keeps the same share of the night lit (measured against the 8K map)
+      uLights: { value: 3.4 }, uLightsGamma: { value: W >= 4096 ? 1.8 : 1.55 }, uCloudH: { value: 0.0016 }, uRelief: { value: q.tex < 4096 ? 0.9 : 1.6 }, uFocus: { value: new THREE.Vector3(1, 0, 0) },
       uFocusAmt: { value: 0 }, uTime: { value: 0 } });
-    const earth = new THREE.Mesh(new THREE.SphereGeometry(1, small ? 160 : 256, small ? 80 : 128),
+    const earth = new THREE.Mesh(new THREE.SphereGeometry(1, q.seg, q.seg / 2),
       new THREE.ShaderMaterial({ uniforms: earthU, vertexShader: EARTH_VS, fragmentShader: EARTH_FS, extensions: { derivatives: true } }));
     scene.add(earth);
-    const clouds = new THREE.Mesh(new THREE.SphereGeometry(CLOUD, small ? 128 : 192, small ? 64 : 96), new THREE.ShaderMaterial({
+    const clouds = new THREE.Mesh(new THREE.SphereGeometry(CLOUD, q.seg * 0.75, q.seg * 0.375), new THREE.ShaderMaterial({
       uniforms: Object.assign({}, shared, { uClouds: earthU.uClouds }), vertexShader: EARTH_VS, fragmentShader: CLOUD_FS,
       transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor }));
     clouds.renderOrder = 2;
@@ -472,7 +490,7 @@ window.OEEarth = (function () {
       uHR: { value: 0.0034 }, uHM: { value: 0.0009 }, uG: { value: 0.8 }, uGain: { value: 3.0 } };
     atmoU.uSunDisc = skyDisc;
     const atmo = new THREE.Mesh(new THREE.SphereGeometry(ATMO, 160, 80), new THREE.ShaderMaterial({
-      uniforms: atmoU, vertexShader: ATMO_VS, fragmentShader: ATMO_FS, side: THREE.BackSide, transparent: true, depthWrite: false, depthTest: false,
+      uniforms: atmoU, defines: { ATMO_N: q.atmo[0], ATMO_NL: q.atmo[1] }, vertexShader: ATMO_VS, fragmentShader: ATMO_FS, side: THREE.BackSide, transparent: true, depthWrite: false, depthTest: false,
       blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor }));
     atmo.renderOrder = 5;
     scene.add(atmo);
@@ -494,12 +512,14 @@ window.OEEarth = (function () {
       return { base, axis, intensity: uI, beam: bm.material.uniforms, ring: rm.material.uniforms };
     }
 
-    // post: HDR with 4x MSAA, bloom, the lens
-    const rt = new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: 4 });
+    // post: HDR (half float) with the tier's MSAA, bloom where the tier affords it, the lens.
+    // Without a half-float target the scene is drawn in 8 bits, and the sun clips.
+    const rt = new THREE.WebGLRenderTarget(2, 2, { type: q.hdr ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: q.samples });
     const composer = new THREE.EffectComposer(renderer, rt);
     composer.addPass(new THREE.RenderPass(scene, camera));
-    const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.88, 1.5);
-    composer.addPass(bloom);
+    // without the pass, a stand-in keeps the director's strength settings harmless
+    const bloom = q.bloom ? new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.88, 1.5) : { strength: 0, enabled: false, dispose() {} };
+    if (q.bloom) composer.addPass(bloom);
     const lens = new THREE.ShaderPass(LENS());
     composer.addPass(lens);
     const LU = lens.uniforms;
@@ -507,6 +527,7 @@ window.OEEarth = (function () {
     let w = 1, h = 1;
     function resize(cw, ch) {
       w = Math.max(1, cw); h = Math.max(1, ch);
+      pr = Math.min(prCap, window.OEQuality.pixelRatio(q, w, h));
       renderer.setPixelRatio(pr); composer.setPixelRatio(pr);
       renderer.setSize(w, h, false); composer.setSize(w, h);
       camera.aspect = w / h;
@@ -536,7 +557,7 @@ window.OEEarth = (function () {
     // loading: the sky first (small), then the night side, the day and the clouds
     async function load(base = 'assets/earth/') {
       const files = [['stars.json', 155e3], ['milkyway.jpg', 150e3], ['surface.jpg', 1.36e6], [`day-${String(month).padStart(2, '0')}.jpg`, 1.4e6], ['clouds.jpg', 1.78e6],
-        ['lights.jpg', small ? 0 : 1.07e6]];
+        ['lights.jpg', q.lights8k ? 1.07e6 : 0]];
       const total = files.reduce((a, f) => a + f[1], 0), got = files.map(() => 0);
       const tick = (i, b, t) => { got[i] = files[i][1] * Math.min(1, b / (t || 1)); onProgress(got.reduce((a, x) => a + x, 0) / total, files[i][0]); };
       const cat = await fetch(base + files[0][0]).then(r => r.json()).catch(() => null);
@@ -563,9 +584,9 @@ window.OEEarth = (function () {
         if (!tex.lights) earthU.uLightsMap.value = tex.surf;
       });
       const day = fetchImage(base + files[3][0], (b, t) => tick(3, b, t)).then(img => { tex.day = texture(img, renderer, W); earthU.uDay.value = tex.day; });
-      const cl = fetchImage(base + files[4][0], (b, t) => tick(4, b, t)).then(img => { tex.clouds = texture(img, renderer, W); earthU.uClouds.value = tex.clouds; });
+      const cl = fetchImage(base + files[4][0], (b, t) => tick(4, b, t)).then(img => { tex.clouds = texture(img, renderer, q.clouds); earthU.uClouds.value = tex.clouds; });
       // the lights at 8192 x 4096, one channel, where the screen is big enough to show them
-      const li = small || renderer.capabilities.maxTextureSize < 8192 ? null : fetchImage(base + files[5][0], (b, t) => tick(5, b, t)).then(img => {
+      const li = !q.lights8k || renderer.capabilities.maxTextureSize < 8192 ? null : fetchImage(base + files[5][0], (b, t) => tick(5, b, t)).then(img => {
         const t = new THREE.Texture(img);
         t.format = THREE.RedFormat;
         t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
@@ -573,6 +594,7 @@ window.OEEarth = (function () {
         t.needsUpdate = true;
         tex.lights = t;
         earthU.uLightsMap.value = t;
+        earthU.uLightsGamma.value = 2.1;
         earthU.uLightsTexel.value.set(1 / img.width, 1 / img.height);
       }).catch(() => null);
       await Promise.all([mw, surf, day, cl, li]);
@@ -603,16 +625,65 @@ window.OEEarth = (function () {
       return { uv: [(_v.x + 1) / 2, (_v.y + 1) / 2], vis, clear };
     }
 
-    // dynamic resolution: if frames run long, render fewer pixels
+    // dynamic resolution: if frames run long, render fewer pixels; at the floor, drop the bloom
     let acc = 0, n = 0, settled = false;
+    const steps = [];
     function adapt(dt) {
-      if (settled) return;
+      if (settled || document.hidden) return;
       acc += dt; n++;
       if (acc < 1.2) return;
       const ms = acc / n * 1000;
       acc = 0; n = 0;
-      if (ms > 26 && pr > 0.75) { pr = Math.max(0.75, pr - 0.25); resize(w, h); }
+      if (ms > 26 && pr > 0.75) { prCap = Math.max(0.75, pr - 0.25); resize(w, h); steps.push(`${ms.toFixed(0)} ms: ${pr.toFixed(2)}x`); }
+      else if (ms > 34 && bloom.enabled) { bloom.enabled = false; steps.push(`${ms.toFixed(0)} ms: no bloom`); }
       else if (ms < 18) settled = true;
+    }
+    // a pipeline that draws nothing (an incomplete target, a shader the driver miscompiles) shows
+    // as black: draw the sunlit side once, read the middle of the frame back, and see
+    const _px = new Uint8Array(4);
+    function selfTest() {
+      const gl = renderer.getContext();
+      if (gl.isContextLost()) return { ok: false, why: 'context lost' };
+      if (shaderErrors.length) return { ok: false, why: 'shader' };
+      const keep = { pos: camera.position.clone(), q: camera.quaternion.clone(), fov: camera.fov, view: camera.view ? Object.assign({}, camera.view) : null };
+      const e = { exp: LU.uExposure.value, fade: LU.uFade.value, ready: ready.value };
+      camera.clearViewOffset();
+      camera.position.copy(sun).multiplyScalar(3); camera.lookAt(0, 0, 0); camera.fov = 32; camera.updateProjectionMatrix();
+      LU.uExposure.value = 1; LU.uFade.value = 1; ready.value = 1;
+      while (gl.getError()) { /* clear */ }
+      composer.render(0);
+      renderer.setRenderTarget(null);
+      gl.readPixels(Math.floor(gl.drawingBufferWidth / 2), Math.floor(gl.drawingBufferHeight / 2), 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, _px);
+      const err = gl.getError();
+      camera.position.copy(keep.pos); camera.quaternion.copy(keep.q); camera.fov = keep.fov;
+      if (keep.view && keep.view.enabled) camera.setViewOffset(keep.view.fullWidth, keep.view.fullHeight, keep.view.offsetX, keep.view.offsetY, keep.view.width, keep.view.height);
+      camera.updateProjectionMatrix();
+      LU.uExposure.value = e.exp; LU.uFade.value = e.fade; ready.value = e.ready;
+      const rgb = [_px[0], _px[1], _px[2]];
+      // the sunlit Earth is never this dark; space is #04060b
+      const ok = !err && Math.max(...rgb) > 40 && !shaderErrors.length;
+      return { ok, rgb, why: ok ? '' : err ? `GL error ${err}` : shaderErrors.length ? 'shader' : 'black' };
+    }
+    // one step down without starting again: an 8-bit target with no MSAA, no bloom, fewer
+    // steps through the air and at most 1x pixels; the textures stay
+    let degraded = false;
+    function degrade() {
+      if (degraded) return false;
+      degraded = true;
+      if (q.bloom) { composer.removePass(bloom); bloom.dispose(); }
+      bloom.enabled = false;
+      composer.reset(new THREE.WebGLRenderTarget(2, 2, { type: THREE.UnsignedByteType, samples: 0 }));
+      Object.assign(atmo.material.defines, { ATMO_N: 8, ATMO_NL: 4 });
+      atmo.material.needsUpdate = true;
+      shaderErrors.length = 0;
+      prCap = Math.min(prCap, 1);
+      resize(w, h);
+      steps.push('degraded: 8-bit, no MSAA, no bloom');
+      return true;
+    }
+    function stats() {
+      return { tier: Object.assign({}, q, degraded ? { hdr: false, samples: 0, bloom: false } : {}), pixelRatio: pr, size: [w, h], gpuMB: Math.round(window.OEQuality.gpuBytes(Object.assign({}, q, { bloom: bloom.enabled }), w, h, pr) / 1048576),
+        steps: steps.slice(), losses, shaderErrors: shaderErrors.slice(), textures: renderer.info.memory.textures };
     }
 
     let last = performance.now();
@@ -636,6 +707,8 @@ window.OEEarth = (function () {
     }
 
     function dispose() {
+      canvas.removeEventListener('webglcontextlost', lost);
+      canvas.removeEventListener('webglcontextrestored', restored);
       composer.dispose?.();
       bloom.dispose();
       rt.dispose();
@@ -646,9 +719,26 @@ window.OEEarth = (function () {
     }
 
     return { renderer, scene, camera, sun, earth: earthU, atmo: atmoU, lens: LU, bloom, sky: sky.material.uniforms, ready, uSunE,
-      get stars() { return stars; }, resize, setTime, load, render, addCity, dispose, sunOnScreen, lightsAt,
+      get stars() { return stars; }, resize, setTime, load, render, addCity, dispose, sunOnScreen, lightsAt, selfTest, stats, degrade,
       get pixelRatio() { return pr; } };
   }
 
-  return { create, ll, latlon, gmst, ATMO };
+  // the same interface with nothing drawn, for a device that cannot draw the Earth: the camera
+  // and the sun still move, so the menu works the same over a still picture
+  function still() {
+    const camera = new THREE.PerspectiveCamera(32, 1, 0.004, 2000), sun = new THREE.Vector3(1, 0, 0);
+    const uniforms = init => new Proxy({}, { get: (o, k) => (k in o ? o[k] : (o[k] = { value: init(k) })) });
+    const none = { uv: [0.5, 0.5], vis: 0, clear: 0 };
+    return {
+      renderer: null, camera, sun, still: true, pixelRatio: 1, stars: null,
+      earth: uniforms(k => (k === 'uFocus' ? new THREE.Vector3() : 0)), lens: uniforms(() => 0), atmo: uniforms(() => 0), sky: uniforms(() => 0),
+      bloom: { strength: 0, enabled: false }, ready: { value: 0 }, uSunE: { value: 0 },
+      resize(w, h) { camera.aspect = Math.max(1, w) / Math.max(1, h); camera.updateProjectionMatrix(); },
+      setTime(utcMs) { const s = window.Sun.subsolar(utcMs); ll(s.lat, s.lon, 1, sun); return s; },
+      load: async () => {}, render: () => none, sunOnScreen: () => none, addCity: () => ({ intensity: { value: 0 } }), lightsAt: () => 0,
+      selfTest: () => ({ ok: true }), degrade: () => false, stats: () => ({ tier: null }), dispose() {},
+    };
+  }
+
+  return { create, still, ll, latlon, gmst, ATMO };
 })();

@@ -192,8 +192,12 @@ export function setSun(env, utcMs, lat, lon) {
   u.night.value = 1 - THREE.MathUtils.smoothstep(Math.sin(alt), -0.25, -0.02); // 1 at night
   const warm = 1 - THREE.MathUtils.smoothstep(Math.sin(alt), 0.05, 0.4);
   u.sunCol.value.setRGB(1, 0.96 - 0.35 * warm, 0.88 - 0.6 * warm);
-  u.zenith.value.setRGB(0.10, 0.27, 0.62).multiplyScalar(0.25 + 0.75 * day);
-  u.horizon.value.setRGB(0.60, 0.74, 0.86).lerp(new THREE.Color(0.95, 0.55, 0.35), warm * 0.55).multiplyScalar(0.2 + 0.8 * day);
+  // once the sun is down the sky turns blue (ozone's Chappuis band takes the red out of the light from the zenith),
+  // and only the horizon toward the sun stays warm: that band is the sun-glow term in skyFn, not the whole horizon
+  const dusk = 1 - THREE.MathUtils.smoothstep(Math.sin(alt), -0.12, 0.0);   // 0 with the sun up, 1 from 7 degrees down
+  u.zenith.value.setRGB(0.10, 0.27, 0.62).lerp(new THREE.Color(0.07, 0.17, 0.6), dusk).multiplyScalar(0.25 + 0.75 * day + 0.15 * dusk);
+  u.horizon.value.setRGB(0.60, 0.74, 0.86).lerp(new THREE.Color(0.95, 0.55, 0.35), warm * 0.55 * (1 - dusk))
+    .lerp(new THREE.Color(0.30, 0.40, 0.74), dusk * 0.75).multiplyScalar(0.2 + 0.8 * day);
   // the moon, to a few degrees: it trails the sun's hour angle by its phase (age/29.53 of a day)
   const SYN = 29.530588, JD = utcMs / 86400000 + 2440587.5;
   const age = ((JD - 2451550.1) / SYN % 1 + 1) % 1;                    // 0 new, 0.5 full

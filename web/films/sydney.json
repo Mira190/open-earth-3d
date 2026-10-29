@@ -1,0 +1,116 @@
+{
+ "id": "sydney",
+ "name": "Sydney",
+ "duration": 36,
+ "fps": 24,
+ "size": [
+  1920,
+  804
+ ],
+ "video": "films/sydney.mp4",
+ "poster": "films/sydney.jpg",
+ "credit": "Rendered live from the open-data model by tools/city_film.js; nothing in it is stock footage.",
+ "shots": [
+  {
+   "id": "dawn",
+   "t0": 0,
+   "t1": 5.5,
+   "chapter": "First light"
+  },
+  {
+   "id": "title",
+   "t0": 5.5,
+   "t1": 10,
+   "chapter": null
+  },
+  {
+   "id": "opera",
+   "t0": 10,
+   "t1": 15,
+   "chapter": "The Opera House"
+  },
+  {
+   "id": "ferry",
+   "t0": 15,
+   "t1": 20,
+   "chapter": "The harbour"
+  },
+  {
+   "id": "bridge",
+   "t0": 20,
+   "t1": 24.5,
+   "chapter": "The Bridge"
+  },
+  {
+   "id": "steps",
+   "t0": 24.5,
+   "t1": 29,
+   "chapter": "On foot"
+  },
+  {
+   "id": "night",
+   "t0": 29,
+   "t1": 36,
+   "chapter": "After dark"
+  }
+ ],
+ "titles": [
+  {
+   "t0": 0.9,
+   "t1": 5.2,
+   "kind": "caption",
+   "lines": [
+    "33.86°S 151.21°E",
+    "Sunrise over Port Jackson · 05:50 AEDT",
+    "The real sun, for the day you watch"
+   ]
+  },
+  {
+   "t0": 5.9,
+   "t1": 9.8,
+   "kind": "main",
+   "name": "Sydney",
+   "sub": "Australia",
+   "figures": "7,962 buildings · 3.0 × 4.8 km · heights from 35 published towers"
+  },
+  {
+   "t0": 10.6,
+   "t1": 14.6,
+   "kind": "lower",
+   "eyebrow": "Bennelong Point",
+   "head": "Sydney Opera House",
+   "text": "Every shell is cut from one sphere, 75.2 m in radius: the rule Utzon settled on in 1961."
+  },
+  {
+   "t0": 15.6,
+   "t1": 19.6,
+   "kind": "lower",
+   "eyebrow": "Circular Quay to Milsons Point",
+   "head": "Under the Bridge",
+   "text": "The Cross Harbour ferries run on the timetable's legs, wharf to wharf, with their wakes on the moving sea."
+  },
+  {
+   "t0": 20.5,
+   "t1": 24.2,
+   "kind": "lower",
+   "eyebrow": "Dawes Point to Milsons Point",
+   "head": "Sydney Harbour Bridge",
+   "text": "An arch of 503 m, its crown 134 m above the sea, set out from the two pylons' footprints."
+  },
+  {
+   "t0": 25,
+   "t1": 28.7,
+   "kind": "lower",
+   "eyebrow": "Bennelong Point",
+   "head": "Walk it",
+   "text": "Talk to the people who know the city, ride the ferries, fly under the Bridge."
+  },
+  {
+   "t0": 32.2,
+   "t1": 36,
+   "kind": "end",
+   "name": "Sydney",
+   "line": "The model, the sun and the city: open them."
+  }
+ ]
+}

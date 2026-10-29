@@ -88,7 +88,7 @@ def load_dem(C, cell=DEM_CELL, name="dem", absolute=False):
     row = (my1 - np.asarray(my)) / (my1 - my0) * h - 0.5
     z = map_coordinates(im, [row, col], order=1, mode="nearest").reshape(ny, nx) - C.cfg.get("datum_offset_m", 0.0)
     if name == "dem":
-        z = raise_mapped(C, z, cell)
+        z = level_areas(C, raise_mapped(C, z, cell), cell)
     return z + C.cfg.get("datum_offset_m", 0.0) if absolute else z
 
 
@@ -111,6 +111,20 @@ def raise_mapped(C, dem, cell):
     return dem
 
 
+def level_areas(C, dem, cell):
+    """Ground a bare-earth DEM gets wrong, levelled (terrain.level: [{ring, z_m, feather_m}], ring in
+    longitude and latitude): where a laser survey's filter took out a large structure and the gap
+    was interpolated into a false terrace. The ground inside the ring goes to z_m, blended with the
+    DEM over feather_m inside its edge."""
+    rules = C.cfg.get("terrain", {}).get("level", [])
+    ny, nx = dem.shape
+    for rule in rules:
+        inside = raster_mask([C.to_local(Polygon(rule["ring"]))], nx, ny, cell, C.x0, C.y1)
+        w = np.minimum(1.0, ndimage.distance_transform_edt(inside) * cell / rule.get("feather_m", 8.0))
+        dem = np.where(inside, dem + (rule["z_m"] - dem) * w, dem)
+    return dem
+
+
 def water_polygons(C, con, raw, extent):
     """The city's water bodies in the local frame: Overture water of the configured classes and
     size, less the islands mapped in them (a river polygon can enclose its islands) and any
@@ -124,7 +138,8 @@ def water_polygons(C, con, raw, extent):
     seas = [C.to_local(g) for g in seas]
     sea = [p for g in seas for p in polygons(g.intersection(extent.buffer(50))) if p.area > wmin]
     isles = [C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, raw("land"), "class, wkb") if r["class"] in ("island", "islet")]
-    isles = [g for g in isles if g.geom_type in ("Polygon", "MultiPolygon") and g.intersects(extent)]
+    # an island that covers the model is the land the city stands on (Honshu, for Osaka), not one in its water
+    isles = [g for g in isles if g.geom_type in ("Polygon", "MultiPolygon") and g.intersects(extent) and g.intersection(extent).area < 0.9 * extent.area]
     if isles:
         land = shapely.union_all(isles)
         sea = [p for g in sea for p in polygons(g.difference(land)) if p.area > wmin]
@@ -1504,15 +1519,23 @@ def write_index():
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
-        scene = os.path.join(ROOT, "web", "data", c["id"], "scene.json")
+        data = os.path.join(ROOT, "web", "data", c["id"])
+        scene = os.path.join(data, "scene.json")
         c["built"] = os.path.exists(scene)
-        c["game"] = os.path.exists(os.path.join(ROOT, "web", "data", c["id"], "game.json"))
+        c["game"] = os.path.exists(os.path.join(data, "game.json"))
         if c["built"]:  # the title screen's figures: buildings and the extent of the model
             sc = json.load(open(scene, encoding="utf8"))
             if "height_sources" in sc:
                 c["buildings"] = sum(sc["height_sources"].values())
             x0, x1, y0, y1 = sc["extent_m"] if "extent_m" in sc else (*sc["frame"]["x"], *sc["frame"]["y"])
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
+        if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
+            size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
+            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
+        if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
+            fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
+            c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

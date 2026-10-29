@@ -1,0 +1,163 @@
+{
+  "name": "Amsterdam",
+  "date": [4, 27],
+  "year": 2026,
+  "exposure": 1.1,
+  "poster": 23.0,
+  "score": {
+    "root": 53,
+    "scale": [0, 2, 4, 5, 7, 9, 11],
+    "chords": [[0, 2, 4], [3, 5, 0], [4, 6, 1], [5, 0, 2]],
+    "motif": [4, 5, 4, 2, 0],
+    "tempo": 72,
+    "voice": "bell",
+    "air": "harbour",
+    "title_shot": "title",
+    "title_at": 0.4,
+    "finale_shot": "night",
+    "finale_at": 1.4
+  },
+  "shots": [
+    {
+      "id": "dawn",
+      "chapter": "First light",
+      "dur": 5.5,
+      "type": "move",
+      "from": [-1170, -60, 34],
+      "to": [-1150, -40, 37],
+      "look": [-610, 170, 50],
+      "fov": 20,
+      "time": ["06:24", "06:32"],
+      "fadeIn": 1.6,
+      "ease": "linear",
+      "title": {
+        "kind": "caption",
+        "at": 0.9,
+        "until": 5.2,
+        "lines": ["52.37°N 4.89°E", "Sunrise over the canals · 06:18 CEST", "The real sun, for the day you watch"]
+      },
+      "tint": [1.06, 1.0, 0.92],
+      "sat": 1.08
+    },
+    {
+      "id": "title",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-250, -1250, 70],
+      "to": [-320, -1420, 150],
+      "look": [100, 0, 0],
+      "fov": 34,
+      "time": ["07:45"],
+      "title": {
+        "kind": "main",
+        "at": 0.4,
+        "until": 4.3,
+        "name": "Amsterdam",
+        "sub": "The Netherlands",
+        "figures": "35,479 buildings · 4.0 × 4.05 km · 95.8% of the footprint area measured by laser"
+      },
+      "tint": [1.04, 1.0, 0.95]
+    },
+    {
+      "id": "canal",
+      "chapter": "The canal ring",
+      "dur": 5,
+      "type": "move",
+      "from": [-660, -240, 3.5],
+      "to": [-657, -170, 3.8],
+      "look": [-612, 170, 50],
+      "fov": 28,
+      "time": ["17:10"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "The Prinsengracht",
+        "head": "A gable for every century",
+        "text": "4,303 canal house fronts end in the gable of the year the register gives them: step, neck, bell or cornice."
+      }
+    },
+    {
+      "id": "ferry",
+      "chapter": "The IJ",
+      "dur": 5,
+      "type": "track",
+      "ferry": {"route": "F3 Buiksloterweg", "from": "centraal-f3", "to": "buiksloterweg", "s": 120, "speed": 5},
+      "az": [-130, -105],
+      "dist": [60, 70],
+      "h": [10, 14],
+      "fov": 32,
+      "time": ["18:40"],
+      "title": {
+        "kind": "lower",
+        "at": 0.6,
+        "until": 4.6,
+        "eyebrow": "Centraal Station to Buiksloterweg",
+        "head": "The F3 across the IJ",
+        "text": "The IJ and the canals are both held 40 cm below NAP, the zero of every height in the model."
+      }
+    },
+    {
+      "id": "westertoren",
+      "chapter": "The Westertoren",
+      "dur": 4.5,
+      "type": "move",
+      "from": [-860, 60, 30],
+      "to": [-860, 120, 33],
+      "look": [-610, 170, 62],
+      "fov": 24,
+      "time": ["19:50"],
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "The Prinsengracht",
+        "head": "The Westertoren",
+        "text": "Hendrick de Keyser's tower, finished in 1638: 85 m, the tallest church tower in the city."
+      }
+    },
+    {
+      "id": "walk",
+      "chapter": "On foot",
+      "dur": 4.5,
+      "type": "move",
+      "from": [640, -1058, 3.6],
+      "to": [652, -1054, 3.65],
+      "look": [760, -1018, 5],
+      "fov": 28,
+      "time": ["20:20"],
+      "people": [650, -1054],
+      "crowd_r": 80,
+      "hand": 1,
+      "title": {
+        "kind": "lower",
+        "at": 0.5,
+        "until": 4.2,
+        "eyebrow": "The Magere Brug, King's Day",
+        "head": "Walk it",
+        "text": "Find a step, a neck and a bell gable, cross the IJ on the F3, hear the Westertoren's carillon."
+      }
+    },
+    {
+      "id": "night",
+      "chapter": "After dark",
+      "dur": 7,
+      "type": "move",
+      "from": [-661, -260, 8],
+      "to": [-658, -190, 14],
+      "look": [-612, 170, 45],
+      "fov": 30,
+      "time": ["21:08", "21:46"],
+      "timeEase": "inOut",
+      "fadeOut": 1.6,
+      "title": {
+        "kind": "end",
+        "at": 3.2,
+        "until": 7,
+        "name": "Amsterdam",
+        "line": "The model, the sun and the city: open them."
+      },
+      "ev": 0.6
+    }
+  ]
+}
