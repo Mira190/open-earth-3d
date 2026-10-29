@@ -161,6 +161,7 @@ window.OEFilmDirector = (function () {
     G.setClock(s.year || year, date[0], date[1], min);
     shotPose(s, k);
     fov = ch(s.fov ?? 40, k, EASE[s.ease || 'glide']);
+    G.camera.updateProjectionMatrix(); // the game only updates it when its own fov changes
     // exposure follows the game's own for the light, trimmed by the shot
     const L = lens.uniforms;
     L.uExposure.value = renderer().toneMappingExposure * (spec.exposure ?? 1.1) * Math.pow(2, s.ev || 0);
