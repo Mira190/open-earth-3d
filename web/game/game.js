@@ -493,8 +493,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     ['beige', '#d8d3c8'], ['green', '#2f3b33'], ['gold', '#c9a227'], ['yellow', '#f2c21a']].map(([n, h]) => [n, new THREE.Color(h)]);
   const colourName = hex => { const c = new THREE.Color(hex); let best = '', bd = Infinity; for (const [n, q] of COLOUR_NAME) { const d = (c.r - q.r) ** 2 + (c.g - q.g) ** 2 + (c.b - q.b) ** 2; if (d < bd) { bd = d; best = n; } } return best; };
   const rideCar = o => `${colourName(o.hex)} ${MODEL_NAME[o.model] || 'car'}`;
-  function driverLook() {
-    const names = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n]) : [];
+  function driverLook() { // one of the crowd's characters (a main character has its own look, and isn't for hire)
+    const names = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n] && lib.info.characters[n]) : [];
     return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
   }
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, routed to the pick-up

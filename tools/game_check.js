@@ -2,13 +2,16 @@
 // it, walk, talk to the first quest giver, fly the helicopter up and watch the ferries move,
 // with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
-//   node tools/game_check.js sydney out_dir
+//   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
 (async () => {
-  const b = await chromium.launch({ args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
+  const b = await chromium.launch(process.env.DISPLAY
+    ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
+    : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
