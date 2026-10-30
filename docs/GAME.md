@@ -416,7 +416,9 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Characters:** 13 rigged characters from Quaternius's Ultimate Modular Men
     and Women packs (CC0): office workers, a suit, a hoodie, beachwear,
     hikers, hi-vis workers. They have realistic proportions and 5,000–10,000
-    triangles each.
+    triangles each, and make up the crowd. The surveyors and the NPCs are
+    Rocketbox avatars ([The main characters](#the-main-characters),
+    [The NPCs](#the-npcs)).
   - **One draw call each:** the pipeline merges each character into one skinned
     mesh. Every vertex indexes a small palette, so skin, hair and clothes are
     recoloured per person, and 13 files make a varied crowd.
@@ -782,6 +784,62 @@ python pipeline/fetch_rocketbox.py               # the avatars and clips, into d
 python blender/build_people.py --preview         # -> web/assets/people/H_*.glb, docs/images/people/
 ```
 
+## The NPCs
+
+| Every city's NPCs as the game draws them, waiting at their posts (`web/game/lineup.html?city=…`) |
+|---|
+| ![](images/people/npcs.jpg) |
+
+The people who send you out are Rocketbox avatars too, cast city by city for who
+they are: police, pilots, a paramedic's jumpsuit for a bridge climber, a white
+naval uniform for a water-bus captain, a chef, salarymen, students.
+- **Cast in `city.json`:** an NPC's `look.character` names
+  `R_<avatar>[_<head>][_<tag>...]`. `R_Security_Female_01_f003_plain` is Rocketbox's
+  Security_Female_01 in her uniform, wearing Female_Adult_03's head (heads go by
+  Rocketbox's model code) with the lettering taken off: Haruka, Tokyo Station's
+  attendant. `blender/build_people.py --npcs` builds every character the cities
+  name, one file each, and a character two cities name is built once.
+- **Heads:** Rocketbox has 115 avatars but only four East Asian women's faces and
+  four men's, so the Japanese and Hong Kong NPCs wear those heads on the bodies their
+  jobs need, with hats, glasses or a mask where a face comes round twice in a city.
+  Every avatar of a sex has the same skeleton (the build checks), so a head fits any
+  body. The body's bare skin (hands, and arms or legs of the same tone) takes the new
+  face's colour.
+- **Tags:** `grey`, `white`, `brown` recolour the hair, on the scalp and the hair
+  cards; `dark` and `navy` dye white cloth (Brother Sozen's robe is a dyed kurta);
+  `bare` takes off a hat or helmet; `plain` covers lettering, badges and another
+  country's flag with the cloth beside them (`INSIGNIA`), and takes off any weapon;
+  `leopard` and `mariniere` print the pattern over the top, from where each texel
+  sits on the body, as the shader paints the crowd's (Fumi's cardigan, Camille's
+  Breton top).
+- **Clips:** one file per sex (`R_clips_f.glb`, `R_clips_m.glb`, 2 MB each) drives
+  every NPC of that sex: the gestures, and what each does while it waits
+  (`look.clip`): `Documents` (writing on a clipboard), `Reading`, `Phone`, `Photo`,
+  `Drink`, `Work`, `Present`, `LookAround`, `Thoughtful`, `Stretch`, `Cheer`. The clips
+  are baked on one avatar; a bone that holds still keeps a key, so an avatar whose
+  rest pose differs still takes the clip's pose. Each eases back into its first pose
+  over its last 0.8 s, so the loop doesn't jump (the surveyors' idles too). The phone,
+  camera, clipboard, book and cup sit in the hand's grip, worked out from its finger
+  bones.
+- **Accessories:** hats and glasses made for the crowd's characters are fitted to a
+  real head axis by axis from where its eyes are; an apron hangs from the hips.
+- **Materials:** the FBX importer leaves Metallic unset, which glTF reads as fully
+  metallic; the build makes every material plain cloth and skin.
+- **Size:** 0.3–0.7 MB each (WebP textures: 1024 px colour, 512 px hair cards, 256 px
+  normal maps; normals and skin weights stored as bytes). A city loads its own NPCs
+  and the clips for their sexes, about 6–8 MB.
+- **Kept:** Kuidaore Taro, Dotonbori's mechanical drum-playing doll, stays a doll
+  on the crowd's character. If an NPC's file doesn't load, it stands in as a simple
+  figure without taking the others with it.
+
+To recast an NPC, change its `look` in `cities/<id>/city.json` and run:
+
+```
+python pipeline/fetch_rocketbox.py               # the avatars and clips the cast needs
+python blender/build_people.py --npcs            # -> web/assets/people/R_*.glb (--only R_... for some)
+python pipeline/npc_looks.py                     # the looks into web/data/<city>/game.json
+```
+
 ## The trees
 
 | The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
@@ -811,11 +869,12 @@ Moreton Bay fig, jacaranda and Canary Island date palm.
 
 Everything a city's game says and wears is in `cities/<id>/city.json`, not in code.
 [Osaka on Foot](cities/osaka.md#8-osaka-on-foot) is the example:
-- **People.** An NPC's `look` takes a character, skin, hair and clothes, plus a
-  `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) painted on the
-  top in the shader, and `acc`, a list of accessories attached to bones (`visor`,
-  `hachimaki`, `jingasa`, `mask`, `lanyard`, `tako_tray`, `umbrella`, `flag`, `drum`, and
-  more in `web/game/people.js`).
+- **People.** An NPC's `look` takes a character: a Rocketbox NPC (`R_…`, see
+  [The NPCs](#the-npcs)), or one of the crowd's with skin, hair and clothes and a
+  `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) painted on the top in
+  the shader. `clip` is what it does while it waits, and `acc` a list of accessories
+  attached to bones (`visor`, `hachimaki`, `jingasa`, `mask`, `lanyard`, `sunglasses`,
+  `umbrella`, `flag`, `drum`, and more in `web/game/people.js`).
 - **Crowd.** `crowd.style` gives the crowd's skin, hair, top and leg colours, the
   weight of each character, and the share who wear a pattern, a mask or an umbrella.
 - **Words.** `blurb`, `smalltalk` and `passerby` replace the Sydney defaults, and quest

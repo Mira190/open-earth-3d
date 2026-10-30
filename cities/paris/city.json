@@ -651,15 +651,14 @@
           -100
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_08_mariniere",
           "skin": "#efcfb5",
           "hair": "#3b2a20",
           "top": "#f2efe8",
           "shirt": "#f2efe8",
           "legs": "#23314a",
           "pants": "#23314a",
-          "pattern": "mariniere",
-          "pattern2": "#1d2b4a"
+          "clip": "Documents"
         },
         "idle": [
           "Every roof in this model was measured by a laser from an aeroplane, IGN's LiDAR HD, flown here on the 2nd and 3rd of March 2023.",
@@ -675,13 +674,14 @@
           -176
         ],
         "look": {
-          "character": "M_Adventurer",
+          "character": "R_Male_Adult_05",
           "skin": "#e8c2a4",
           "hair": "#c9c4be",
-          "top": "#3c4a3e",
-          "shirt": "#3c4a3e",
+          "top": "#b8a27a",
+          "shirt": "#b8a27a",
           "legs": "#4a3b2c",
           "pants": "#4a3b2c",
+          "clip": "Reading",
           "acc": [
             "beret",
             "glasses"
@@ -701,16 +701,13 @@
           -560
         ],
         "look": {
-          "character": "W_Worker",
+          "character": "R_Female_Adult_04",
           "skin": "#e9c1a1",
           "hair": "#6a4529",
-          "top": "#2a3644",
-          "shirt": "#2a3644",
+          "top": "#5a3a28",
+          "shirt": "#5a3a28",
           "legs": "#2a3644",
-          "pants": "#2a3644",
-          "acc": [
-            "backpack"
-          ]
+          "pants": "#2a3644"
         },
         "idle": [
           "The forest, we call it: the oak frame under the lead. Hand-hewn again, with axes, the way it was done in the thirteenth century.",
@@ -726,16 +723,15 @@
           -493
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Business_Male_06",
           "skin": "#c99572",
           "hair": "#16110e",
-          "top": "#141414",
+          "top": "#f4f1ea",
           "shirt": "#f4f1ea",
           "legs": "#141414",
           "pants": "#141414",
           "acc": [
-            "apron",
-            "cafe_tray"
+            "apron"
           ],
           "apron": "#f4f1ea"
         },
@@ -753,16 +749,14 @@
           -1250
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Business_Female_02",
           "skin": "#f1d3bd",
           "hair": "#d8d3cc",
-          "top": "#5b2c3a",
-          "shirt": "#5b2c3a",
+          "top": "#7a2e33",
+          "shirt": "#7a2e33",
           "legs": "#2b2b30",
           "pants": "#2b2b30",
-          "acc": [
-            "glasses"
-          ]
+          "clip": "Thoughtful"
         },
         "idle": [
           "The Senate sits in the Palais du Luxembourg, behind me. The garden is the Senate's too; it opens to everyone.",
@@ -778,7 +772,7 @@
           -95
         ],
         "look": {
-          "character": "M_Worker",
+          "character": "R_Gardener_Male_01",
           "skin": "#e6bb98",
           "hair": "#4a3222",
           "top": "#5a3b2a",
@@ -803,11 +797,11 @@
           -440
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_11",
           "skin": "#d7a57f",
           "hair": "#1d1512",
-          "top": "#e9e2d4",
-          "shirt": "#e9e2d4",
+          "top": "#5a3a2a",
+          "shirt": "#5a3a2a",
           "legs": "#3b3a3a",
           "pants": "#3b3a3a",
           "acc": [

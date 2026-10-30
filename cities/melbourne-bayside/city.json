@@ -400,13 +400,14 @@
           3030
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_17",
           "skin": "#e3b08d",
           "hair": "#3b2a20",
-          "top": "#2a9d8f",
+          "top": "#4caf7a",
           "legs": "#2b3440",
-          "shirt": "#2a9d8f",
-          "pants": "#2b3440"
+          "shirt": "#4caf7a",
+          "pants": "#2b3440",
+          "clip": "Documents"
         },
         "idle": [
           "Most heights here are machine-learning estimates. OpenStreetMap maps the heights of only a few buildings in these suburbs. Your survey lens (Q) shows where each one comes from."
@@ -421,13 +422,14 @@
           3048
         ],
         "look": {
-          "character": "W_Adventurer",
+          "character": "R_Female_Adult_12",
           "skin": "#c18661",
           "hair": "#2a1d17",
-          "top": "#3d6b4a",
+          "top": "#23262b",
           "legs": "#24384f",
-          "shirt": "#3d6b4a",
-          "pants": "#24384f"
+          "shirt": "#23262b",
+          "pants": "#24384f",
+          "clip": "LookAround"
         },
         "idle": [
           "The sun sets at {sunset} today. The first penguins usually come ashore about half an hour after."
@@ -442,12 +444,12 @@
           2740
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Male_Adult_06",
           "skin": "#d49c76",
           "hair": "#1b1311",
-          "top": "#c94f3d",
+          "top": "#c0392b",
           "legs": "#1d1f24",
-          "shirt": "#c94f3d",
+          "shirt": "#c0392b",
           "pants": "#1d1f24"
         },
         "idle": [
@@ -463,13 +465,14 @@
           -3012
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Female_Adult_02",
           "skin": "#f0c7aa",
           "hair": "#8c8580",
-          "top": "#e77fa6",
+          "top": "#e9e6df",
           "legs": "#2b3440",
-          "shirt": "#e77fa6",
-          "pants": "#2b3440"
+          "shirt": "#e9e6df",
+          "pants": "#2b3440",
+          "clip": "Idle_Neutral"
         },
         "idle": [
           "No water, no power, no renting out. Just a box on the beach."

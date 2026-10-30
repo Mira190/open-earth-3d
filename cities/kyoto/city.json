@@ -327,13 +327,14 @@
           -1812
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_04_f003",
           "skin": "#f0cfb0",
           "hair": "#1c1411",
-          "top": "#e8e2d6",
+          "top": "#5a3a28",
           "legs": "#2b3a4a",
-          "shirt": "#e8e2d6",
-          "pants": "#2b3a4a"
+          "shirt": "#5a3a28",
+          "pants": "#2b3a4a",
+          "clip": "Documents"
         },
         "idle": [
           "The whole model is open data. If a building looks wrong here, tell me. Kyoto Tower is the easy one: 131 m, and nothing else comes close."
@@ -348,13 +349,14 @@
           -1360
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Male_Adult_15_m024_dark",
           "skin": "#e8c29f",
           "hair": "#e8c29f",
-          "top": "#33363b",
+          "top": "#2a2c30",
           "legs": "#2a2c30",
-          "shirt": "#33363b",
-          "pants": "#2a2c30"
+          "shirt": "#2a2c30",
+          "pants": "#2a2c30",
+          "clip": "Idle_Neutral"
         },
         "idle": [
           "The wooden hall behind me is among the largest in the world. Please do not run in the temple grounds.",
@@ -370,13 +372,14 @@
           150
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Business_Male_02",
           "skin": "#f0cfb0",
           "hair": "#141010",
-          "top": "#202328",
+          "top": "#1d2b4a",
           "legs": "#202328",
-          "shirt": "#202328",
-          "pants": "#202328"
+          "shirt": "#1d2b4a",
+          "pants": "#202328",
+          "clip": "LookAround"
         },
         "idle": [
           "I came down from Tokyo on the Nozomi this morning, about two hours and a quarter. Meetings all day, then the last train back.",
@@ -392,13 +395,18 @@
           232
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_09_f016_grey",
           "skin": "#e8c29f",
           "hair": "#cfcac4",
-          "top": "#f2f0ea",
+          "top": "#6e5a48",
           "legs": "#4b4f5c",
-          "shirt": "#f2f0ea",
-          "pants": "#4b4f5c"
+          "shirt": "#6e5a48",
+          "pants": "#4b4f5c",
+          "clip": "Work",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#f2f0ea"
         },
         "idle": [
           "Tsukemono, fresh today! The market has fed Kyoto for about four hundred years.",
@@ -414,13 +422,14 @@
           1205
         ],
         "look": {
-          "character": "M_Worker",
+          "character": "R_Male_Adult_09",
           "skin": "#f0cfb0",
           "hair": "#1b1613",
-          "top": "#2d4a5c",
+          "top": "#23262b",
           "legs": "#2d4a5c",
-          "shirt": "#2d4a5c",
-          "pants": "#2d4a5c"
+          "shirt": "#23262b",
+          "pants": "#2d4a5c",
+          "clip": "Present"
         },
         "idle": [
           "Tokugawa Ieyasu built Nijo Castle in 1603. Walk the corridors of the Ninomaru Palace and the floorboards sing like nightingales, to warn of intruders."
@@ -435,13 +444,17 @@
           2160
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Female_Adult_15_f013",
           "skin": "#f6dcc4",
           "hair": "#1c1411",
-          "top": "#1f2a44",
+          "top": "#3f51a0",
           "legs": "#1f2a44",
-          "shirt": "#1f2a44",
-          "pants": "#1f2a44"
+          "shirt": "#3f51a0",
+          "pants": "#1f2a44",
+          "clip": "Photo",
+          "acc": [
+            "backpack"
+          ]
         },
         "idle": [
           "Shugaku ryoko! Everyone in Japan comes to Kyoto in their school uniform, once. We have a bus at four, so I need to be quick.",

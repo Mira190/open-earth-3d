@@ -334,7 +334,7 @@
         "name": "Ava",
         "role": "Survey lead",
         "at": [128, 216],
-        "look": {"character": "W_Casual", "skin": "#c68a64", "hair": "#2a1d17", "top": "#f2c230", "legs": "#2b3a4a", "shirt": "#f2c230", "pants": "#2b3a4a"},
+        "look": {"character": "R_Female_Adult_08", "skin": "#c68a64", "hair": "#2a1d17", "top": "#9aa0a6", "legs": "#2b3a4a", "shirt": "#9aa0a6", "pants": "#2b3a4a", "clip": "Documents"},
         "idle": ["The whole model is open data. If something looks wrong, it probably is wrong in the data, so tell me.",
         "There are five trig stations round the harbour, a triangle on the map for each. Climb up to one and survey the view."]
       },
@@ -343,7 +343,7 @@
         "name": "Marco",
         "role": "Opera House guide",
         "at": [298, 432],
-        "look": {"character": "M_Suit", "skin": "#e0b392", "hair": "#4a3426", "top": "#2d5d8a", "legs": "#1e1e22", "shirt": "#2d5d8a", "pants": "#1e1e22"},
+        "look": {"character": "R_Business_Male_03", "skin": "#e0b392", "hair": "#4a3426", "top": "#1f2328", "legs": "#1e1e22", "shirt": "#1f2328", "pants": "#1e1e22", "clip": "Present"},
         "idle": ["Each shell is a triangle cut from one sphere, 75.2 m in radius. Utzon's 'spherical solution', 1961.",
         "Mind your chips on the broadwalk. The gulls by the Opera Bar will have them out of your hand."]
       },
@@ -352,7 +352,7 @@
         "name": "Lena",
         "role": "Bridge climber",
         "at": [-70, 1430],
-        "look": {"character": "W_Adventurer", "skin": "#f1c8a6", "hair": "#c9a35b", "top": "#5b6e7a", "legs": "#3b4a52", "shirt": "#5b6e7a", "pants": "#3b4a52"},
+        "look": {"character": "R_Medical_Female_03_plain", "skin": "#f1c8a6", "hair": "#c9a35b", "top": "#2a50c8", "legs": "#3b4a52", "shirt": "#2a50c8", "pants": "#3b4a52"},
         "idle": ["The arch spans 503 m. The deck is {landmark:harbour_bridge.deck_width_m} m wide and 49 m above the water."]
       },
       {
@@ -360,7 +360,7 @@
         "name": "Sam",
         "role": "Helicopter pilot",
         "at": [728, 1160],
-        "look": {"character": "M_Casual2", "skin": "#8d5a3c", "hair": "#111111", "top": "#1f2a33", "legs": "#1f2a33", "shirt": "#1f2a33", "pants": "#1f2a33"},
+        "look": {"character": "R_Pilot_Male_01_m007", "skin": "#8d5a3c", "hair": "#111111", "top": "#1f2328", "legs": "#1f2a33", "shirt": "#1f2328", "pants": "#1f2a33"},
         "idle": ["Under the deck, keep it below 45 m. The rotor needs the room."]
       },
       {
@@ -368,7 +368,7 @@
         "name": "Priya",
         "role": "Planner",
         "at": [-204, -632],
-        "look": {"character": "W_Suit", "skin": "#a8714f", "hair": "#1b1311", "top": "#b0413e", "legs": "#26303a", "shirt": "#b0413e", "pants": "#26303a"},
+        "look": {"character": "R_Business_Female_04_f011", "skin": "#a8714f", "hair": "#1b1311", "top": "#2b2f3a", "legs": "#26303a", "shirt": "#2b2f3a", "pants": "#26303a", "clip": "Documents"},
         "idle": ["Martin Place is protected from 1 September to 31 May, 12:00 to 14:00. Winter isn't covered."]
       },
       {
@@ -376,7 +376,7 @@
         "name": "Tom",
         "role": "Height detective",
         "at": [-46, -1262],
-        "look": {"character": "M_Adventurer", "skin": "#f0c4a0", "hair": "#7a4b2a", "top": "#3d7a4f", "legs": "#4a3b2c", "shirt": "#3d7a4f", "pants": "#4a3b2c"},
+        "look": {"character": "R_Male_Adult_11", "skin": "#f0c4a0", "hair": "#7a4b2a", "top": "#2f3a2c", "legs": "#4a3b2c", "shirt": "#2f3a2c", "pants": "#4a3b2c", "clip": "LookAround"},
         "idle": ["A floor count times a storey height beats a machine-learning guess most of the time. Not always.",
         "Think you can judge a height by eye? Aim at a building and press G. Then see how good the data is."]
       },
@@ -385,7 +385,7 @@
         "name": "Noor",
         "role": "Barista",
         "at": [-905, 230],
-        "look": {"character": "W_Casual", "skin": "#9b6a4c", "hair": "#120d0b", "top": "#e8e2d6", "legs": "#3a2f2a", "shirt": "#e8e2d6", "pants": "#3a2f2a"},
+        "look": {"character": "R_Female_Party_02", "skin": "#9b6a4c", "hair": "#120d0b", "top": "#4a3a40", "legs": "#3a2f2a", "shirt": "#4a3a40", "pants": "#3a2f2a", "clip": "Drink", "acc": ["apron"], "apron": "#6b4a32"},
         "idle": ["Barangaroo Reserve was a container wharf until 2015. Now it's sandstone and fig trees.", "It's {time} here. {sun_line}"]
       },
       {
@@ -393,7 +393,7 @@
         "name": "Kev",
         "role": "Fisherman",
         "at": [-262, 905],
-        "look": {"character": "M_Beach", "skin": "#d9a27e", "hair": "#9a9a9a", "top": "#6b8f3a", "legs": "#4b4b40", "shirt": "#6b8f3a", "pants": "#4b4b40"},
+        "look": {"character": "R_Male_Adult_05", "skin": "#d9a27e", "hair": "#9a9a9a", "top": "#3d5a2a", "legs": "#4b4b40", "shirt": "#3d5a2a", "pants": "#4b4b40"},
         "idle": ["Bream under the bridge in the mornings. {sun_line}"]
       },
       {
@@ -401,7 +401,7 @@
         "name": "Jess",
         "role": "Opera Bar waiter",
         "at": [239, 444],
-        "look": {"character": "W_Casual", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#1f1f22", "legs": "#2c2c30", "shirt": "#1f1f22", "pants": "#2c2c30"},
+        "look": {"character": "R_Female_Adult_13", "skin": "#e8b896", "hair": "#6b3a1f", "top": "#5f646b", "legs": "#2c2c30", "shirt": "#5f646b", "pants": "#2c2c30", "clip": "Drink", "acc": ["apron"], "apron": "#1f1f22"},
         "idle": ["Forty to forty-five centimetres of gull, and every one of them knows where the chips are.", "It's {time} here. {sun_line}"]
       }
     ],

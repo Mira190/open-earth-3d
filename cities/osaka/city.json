@@ -641,14 +641,14 @@
           -1085
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_07_f003",
           "skin": "#efcbb0",
           "hair": "#1c1613",
-          "top": "#f08a2c",
-          "shirt": "#f08a2c",
+          "top": "#4a3022",
+          "shirt": "#4a3022",
           "legs": "#2b3440",
           "pants": "#2b3440",
-          "scale": 0.9
+          "clip": "Documents"
         },
         "idle": [
           "Dotonbori is a canal that Yasui Doton began digging in 1612. Everything on its banks is newer than the water.",
@@ -664,17 +664,17 @@
           -1138
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Business_Male_06_m017",
           "skin": "#eac3a4",
           "hair": "#1a1512",
           "top": "#f4f1ea",
           "shirt": "#f4f1ea",
           "legs": "#232a3a",
           "pants": "#232a3a",
+          "clip": "Work",
           "acc": [
             "hachimaki",
-            "apron",
-            "tako_tray"
+            "apron"
           ],
           "apron": "#f1efe8"
         },
@@ -719,14 +719,14 @@
           -1090
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Sports_Male_02_m008",
           "skin": "#ebc6a8",
           "hair": "#201813",
-          "top": "#f2c500",
-          "shirt": "#f2c500",
+          "top": "#f4f1ea",
+          "shirt": "#f4f1ea",
           "legs": "#2a3a55",
           "pants": "#2a3a55",
-          "pattern": "tiger",
+          "clip": "Cheer",
           "acc": [
             "tigers_cap"
           ]
@@ -745,11 +745,11 @@
           -1085
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Police_Male_01_m024_plain",
           "skin": "#e9c3a5",
           "hair": "#16110e",
-          "top": "#1f2d4d",
-          "shirt": "#1f2d4d",
+          "top": "#7d9cc4",
+          "shirt": "#7d9cc4",
           "legs": "#1f2d4d",
           "pants": "#1f2d4d",
           "acc": [
@@ -770,19 +770,17 @@
           -1852
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_09_f016_grey_leopard",
           "skin": "#ecc9ad",
           "hair": "#8c8580",
           "top": "#c28a3a",
           "shirt": "#c28a3a",
           "legs": "#1f1f24",
           "pants": "#1f1f24",
-          "pattern": "leopard",
           "acc": [
             "visor",
             "umbrella"
-          ],
-          "scale": 0.88
+          ]
         },
         "idle": [
           "Maido, maido! Ame-chan? Take two. We give candy to strangers here. It's how we say hello.",
@@ -798,13 +796,14 @@
           -2990
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Business_Male_06_m024",
           "skin": "#e8c0a0",
           "hair": "#1a1512",
           "top": "#f4f1ea",
           "shirt": "#f4f1ea",
           "legs": "#232a3a",
           "pants": "#232a3a",
+          "clip": "Work",
           "acc": [
             "hachimaki",
             "apron"
@@ -825,9 +824,12 @@
           -1418
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Business_Male_05_m017",
           "skin": "#ecc7aa",
           "hair": "#17120f",
+          "top": "#3a3d42",
+          "shirt": "#3a3d42",
+          "clip": "Talk",
           "acc": [
             "glasses"
           ]
@@ -846,14 +848,14 @@
           1440
         ],
         "look": {
-          "character": "M_Hoodie",
+          "character": "R_Business_Male_02",
           "skin": "#ebc5a6",
           "hair": "#15110e",
-          "top": "#2a3244",
-          "shirt": "#2a3244",
+          "top": "#1d2b4a",
+          "shirt": "#1d2b4a",
           "legs": "#2a3244",
           "pants": "#2a3244",
-          "pattern": "pinstripe",
+          "clip": "Phone",
           "acc": [
             "lanyard",
             "mask"
@@ -873,16 +875,13 @@
           1262
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Police_Male_05",
           "skin": "#e5b894",
           "hair": "#2a2420",
-          "top": "#1f4a74",
-          "shirt": "#1f4a74",
+          "top": "#f2f0ea",
+          "shirt": "#f2f0ea",
           "legs": "#1c2736",
-          "pants": "#1c2736",
-          "acc": [
-            "police_cap"
-          ]
+          "pants": "#1c2736"
         },
         "idle": [
           "Osaka is called the City of Water. The rivers and canals were the roads here long before the trains.",
@@ -898,9 +897,12 @@
           858
         ],
         "look": {
-          "character": "M_Adventurer",
+          "character": "R_Male_Adult_08_m024",
           "skin": "#e9c1a2",
           "hair": "#17120f",
+          "top": "#a9c4e0",
+          "shirt": "#a9c4e0",
+          "clip": "Present",
           "acc": [
             "jingasa",
             "flag"
@@ -920,11 +922,11 @@
           92
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Pilot_Male_01_m008_grey",
           "skin": "#e8bf9e",
           "hair": "#16110e",
-          "top": "#34465f",
-          "shirt": "#34465f",
+          "top": "#1f2328",
+          "shirt": "#1f2328",
           "legs": "#1c2230",
           "pants": "#1c2230",
           "acc": [

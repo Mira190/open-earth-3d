@@ -256,7 +256,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const [k, h] of Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' })) if (lib.heroes[h]) PLAYER_LOOKS[k].hero = h;
     const pl = PLAYER_LOOKS[playerChar];
     if (pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
-    await Promise.all([pl.character, ...G.npcs.map(n => n.look.character).filter(Boolean)].map(lib.require));
+    await lib.require(pl.character);
+    // an NPC whose file doesn't load stands in as a simple figure, without taking the others with it
+    await Promise.all(G.npcs.map(n => n.look.character).filter(Boolean).map(c => lib.require(c).catch(e => console.warn(`${c} unavailable:`, e))));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const CR = G.crowd || {};
@@ -288,7 +290,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const npcs = [];
   for (const n of G.npcs) {
-    const rig = makeRig(Object.assign({ scale: (n.look.character || '')[0] === 'W' ? 0.91 : 0.96 }, n.look));
+    // the old characters run large; the Rocketbox ones (R_) are life size
+    const rig = makeRig(Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look));
     world.add(rig.root);
     // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or at the height given;
     // off a bank sloping into the water, and not on someone else's toes

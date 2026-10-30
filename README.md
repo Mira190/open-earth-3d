@@ -117,8 +117,11 @@ The model is also a game.
   Westertoren's carillon, take the free ferry across the IJ, and find the
   December sun on the Rembrandtplein.
 
-The people are rigged, animated characters from open (CC0) packs, recoloured so
-that every passer-by looks different. Everything the characters tell you is
+The surveyors you play and the people who send you out are Microsoft Rocketbox
+avatars (MIT) with their own motion capture, cast city by city for who they are: a
+station attendant, a ferry captain, a takoyaki master. Passers-by are rigged,
+animated characters from open (CC0) packs, recoloured so that every one looks
+different. Everything the characters tell you is
 computed from the model as you play. The survey runs as three lines you can take
 in any order. Every city and every reef site lets you pick the time of day:
 - now;
@@ -351,7 +354,10 @@ python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landm
 python analysis/heights.py --city sydney              # published heights vs model
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
-python pipeline/fetch_people.py                       # the game's characters (once; Quaternius CC0 packs)
+python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
+python pipeline/fetch_rocketbox.py                    # the surveyors and the NPCs (once; Microsoft Rocketbox, MIT)
+python blender/build_people.py --npcs                 # every NPC the cities' city.json name (pip install bpy==5.2.3)
+python pipeline/npc_looks.py                          # their looks into web/data/<city>/game.json
 ```
 
 A city whose mapping agency publishes surveyed building heights (Hong Kong)
@@ -456,7 +462,9 @@ Data tab. The shared sources are:
   modules from a CDN, for the city viewer and its game; three.js r186 (MIT),
   vendored in `web/vendor/three`, for the reef sites.
 - **Game characters:** Quaternius, Ultimate Modular Men and Ultimate Modular
-  Women (CC0 1.0, public domain).
+  Women (CC0 1.0, public domain), for the crowd; Microsoft Rocketbox avatars and
+  animations (MIT, © 2020 Microsoft; `web/assets/people/LICENSE-Rocketbox.txt`), for
+  the surveyors and the NPCs.
 - **Water:** the wave spectrum and FFT are ported from Tidewater by Daniel
   Greenheck (github.com/dgreenheck/tidewater, MIT, © 2026 DRG Software
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
