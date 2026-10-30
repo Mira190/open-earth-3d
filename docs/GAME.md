@@ -843,6 +843,10 @@ python blender/build_people.py --npcs            # -> web/assets/people/R_*.glb 
 python pipeline/npc_looks.py                     # the looks into web/data/<city>/game.json
 ```
 
+`web/game/lineup.html?city=tokyo` shows a city's NPCs in a row, as above, and
+`xvfb-run -a node tools/npc_shot.js tokyo out_dir all 18:30` takes a still of each in the
+game beside the surveyor, at the hour given (`… 390x844` for a phone).
+
 ## The trees
 
 | The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |

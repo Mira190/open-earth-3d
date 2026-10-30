@@ -1038,34 +1038,21 @@
     "triangles": 9236,
     "cities": [
      "hong-kong",
+     "kyoto",
      "tokyo"
     ]
    },
-   "R_Female_Adult_09_f016_grey": {
-    "file": "R_Female_Adult_09_f016_grey.glb",
+   "R_Female_Adult_09_f011_grey_leopard": {
+    "file": "R_Female_Adult_09_f011_grey_leopard.glb",
     "sex": "f",
     "avatar": "Adults/Female_Adult_09",
-    "head": "Professions/Business_Female_03",
-    "tags": [
-     "grey"
-    ],
-    "height_m": 1.743,
-    "triangles": 8516,
-    "cities": [
-     "kyoto"
-    ]
-   },
-   "R_Female_Adult_09_f016_grey_leopard": {
-    "file": "R_Female_Adult_09_f016_grey_leopard.glb",
-    "sex": "f",
-    "avatar": "Adults/Female_Adult_09",
-    "head": "Professions/Business_Female_03",
+    "head": "Adults/Female_Adult_11",
     "tags": [
      "grey",
      "leopard"
     ],
-    "height_m": 1.743,
-    "triangles": 8516,
+    "height_m": 1.736,
+    "triangles": 9236,
     "cities": [
      "osaka"
     ]
