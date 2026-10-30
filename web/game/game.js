@@ -76,7 +76,8 @@ window.OpenEarthGame = async function game(cityId) {
   const ro = new ResizeObserver(resize);
   ro.observe(stage);
   resize();
-  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
+  // after dark the far city's traffic is lights (night.js), the cars round the camera real ones (actors.js)
+  const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow, game: true, nearCars: ((G.crowd || {}).radius_m || 450) + 100 });
   const world = Wd.world, U = Wd.U;
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   atmos = window.OEAtmos ? OEAtmos.create(Wd, renderer, camera, { city: D.scene.city, sky: G.sky || {} }) : null;
@@ -237,7 +238,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     gr.addColorStop(0, 'rgba(255,214,150,1)'); gr.addColorStop(0.25, 'rgba(255,190,110,0.45)'); gr.addColorStop(1, 'rgba(255,170,90,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
   const glowMat = new THREE.PointsMaterial({ size: 9, map: glowTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0, sizeAttenuation: true });
   const glows = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.BufferAttribute(glowPos, 3)), glowMat);
-  world.add(benchMesh, poleMesh, headMesh, glows);
+  world.add(benchMesh, poleMesh, headMesh);
+  if (!Wd.night) world.add(glows); // night.js lights these lamps with the rest of the street lights
 
   // ------------------------------------------------------------ people and traffic
   // realistic characters (people.js); the box-built rigs are the fallback if their files can't be loaded

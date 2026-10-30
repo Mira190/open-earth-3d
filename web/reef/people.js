@@ -299,14 +299,15 @@ export async function createPerson(lookIn, opts = {}) {
     if (rig.speech) { group.remove(rig.speech.sprite); rig.speech.sprite.material.map.dispose(); rig.speech.sprite.material.dispose(); rig.speech = null; }
     if (!text) return rig;
     const cv = document.createElement('canvas'), cx = cv.getContext('2d'), W = 512, lh = 40, pad = 22;
-    cx.font = '600 30px system-ui, sans-serif';
+    cx.font = '500 30px "Inter Tight", system-ui, sans-serif';
     const words = String(text).split(' '), lines = []; let line = '';
     for (const w of words) { const t = line ? line + ' ' + w : w; if (cx.measureText(t).width > W - pad * 2 && line) { lines.push(line); line = w; } else line = t; }
     lines.push(line);
     cv.width = W; cv.height = lines.length * lh + pad * 2;
-    cx.font = '600 30px system-ui, sans-serif';
-    cx.fillStyle = 'rgba(6,26,38,0.82)'; cx.beginPath(); cx.roundRect(2, 2, W - 4, cv.height - 4, 22); cx.fill();
-    cx.fillStyle = '#f2f7f8'; cx.textBaseline = 'top';
+    cx.font = '500 30px "Inter Tight", system-ui, sans-serif';
+    cx.fillStyle = 'rgba(6,10,18,0.84)'; cx.beginPath(); cx.roundRect(2, 2, W - 4, cv.height - 4, 4); cx.fill();
+    cx.strokeStyle = 'rgba(236,232,225,0.22)'; cx.lineWidth = 2; cx.stroke();
+    cx.fillStyle = '#ece8e1'; cx.textBaseline = 'top';
     lines.forEach((l, i) => cx.fillText(l, pad, pad + i * lh));
     const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
     const spm = new THREE.SpriteNodeMaterial({ map: tex, transparent: true, depthWrite: false, fog: false });

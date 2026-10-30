@@ -100,10 +100,13 @@ window.OpenEarthCity = async function main(cityId) {
   // the title screen's lens (lens.js): the model in the same tone curve, grade, grain and vignette
   // as the Earth on the title, the game and the city's film; plain tone mapping where the device's
   // tier (quality.js) has no post stack
+  let bloom = null;
   if (window.OELens && THREE.EffectComposer && renderer.capabilities.isWebGL2 && QC.post) {
     post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
     post.addPass(new THREE.RenderPass(world, camera));
-    post.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0));
+    bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0);
+    post.addPass(bloom);
+    Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
     lens = new THREE.ShaderPass(OELens.shader());
     Object.assign(lens.uniforms, { uGrain: { value: 0.025 }, uCA: { value: 0.12 }, uVignette: { value: 0.16 } });
     post.addPass(lens);
@@ -925,6 +928,8 @@ window.OpenEarthCity = async function main(cityId) {
     if (post) {
       const L = lens.uniforms, night = U.uNight.value;
       L.uExposure.value = renderer.toneMappingExposure * 1.1; L.uLift.value = 1 - 0.7 * night; L.uContrast.value = 0.1 + 0.18 * night;
+      // after dark the lamps, windows and headlights bloom as they do through a lens at night
+      bloom.threshold = 6.0 - 4.8 * night; bloom.strength = 0.12 + 0.3 * night; bloom.radius = 0.4 + 0.2 * night;
       L.uSat.value = 1.06; L.uTime.value = t / 1000;
       post.render();
     } else renderer.render(world, camera);
@@ -932,7 +937,7 @@ window.OpenEarthCity = async function main(cityId) {
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
-  window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower,
+  window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower, Wd,
     cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour };
   // the router calls stop() before it shows another view
   return {

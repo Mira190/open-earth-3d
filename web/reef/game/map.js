@@ -2,7 +2,9 @@
 // current tide (sea shaded by depth, the waterline, sand, hill-shaded land), the people you can talk to, the signs,
 // the aircraft, the tracked objective and you. The window fits what matters (you, the people, the target), at
 // least 3 km across. No tiles and no stored imagery: it is the same terrain grid the 3D view stands on.
-const DEEP = [10, 47, 74], SHALLOW = [70, 182, 198], SAND = [233, 226, 204], LAND = [86, 112, 70], HIGH = [150, 150, 120];
+// Drawn at night like a chart table, as the cities' maps are: you a white arrow, the objective amber.
+const DEEP = [6, 14, 22], SHALLOW = [22, 62, 76], SAND = [74, 70, 60], LAND = [24, 33, 29], HIGH = [58, 62, 58];
+const INK = '#ece8e1', AMBER = '#ffb066', NIGHT = '#04060b', MONO = '"JetBrains Mono", ui-monospace, Menlo, monospace';
 const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 
 export function drawSiteMap(canvas, G, marks, me) {
@@ -31,23 +33,23 @@ export function drawSiteMap(canvas, G, marks, me) {
   }
   g.putImageData(img, 0, 0);
   // marks
-  g.font = '600 11px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `400 10px ${MONO}`; g.textAlign = 'center'; g.textBaseline = 'middle';
   for (const m of marks) {
     const px = X(m.x), py = Y(m.north); if (px < -20 || py < -20 || px > W + 20 || py > H + 20) continue;
-    g.lineWidth = 2; g.strokeStyle = '#082633';
-    if (m.kind === 'target') { g.fillStyle = '#ffb347'; g.beginPath(); g.moveTo(px, py - 8); g.lineTo(px + 8, py); g.lineTo(px, py + 8); g.lineTo(px - 8, py); g.closePath(); g.fill(); g.stroke(); }
-    else if (m.kind === 'sign') { g.fillStyle = m.done ? '#7be0b0' : '#d9cfae'; g.fillRect(px - 4, py - 4, 8, 8); g.strokeRect(px - 4, py - 4, 8, 8); }
-    else { g.fillStyle = m.color || '#6fd3e6'; g.beginPath(); g.arc(px, py, 8, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = '#082633'; g.fillText(m.glyph || (m.label || '?')[0], px, py + 0.5); }
-    if (m.label) { g.textAlign = 'left'; g.lineWidth = 3; g.strokeStyle = 'rgba(2,16,24,.85)'; g.fillStyle = '#e8f4f6'; g.strokeText(m.label, px + 11, py); g.fillText(m.label, px + 11, py); g.textAlign = 'center'; }
+    g.lineWidth = 2; g.strokeStyle = NIGHT;
+    if (m.kind === 'target') { g.fillStyle = AMBER; g.beginPath(); g.moveTo(px, py - 8); g.lineTo(px + 8, py); g.lineTo(px, py + 8); g.lineTo(px - 8, py); g.closePath(); g.fill(); g.stroke(); }
+    else if (m.kind === 'sign') { g.fillStyle = m.done ? '#63d39a' : '#d9cfae'; g.fillRect(px - 4, py - 4, 8, 8); g.strokeRect(px - 4, py - 4, 8, 8); }
+    else { g.fillStyle = m.color || '#c3c6cc'; g.beginPath(); g.arc(px, py, 8, 0, 6.283); g.fill(); g.stroke(); g.fillStyle = NIGHT; g.fillText(m.glyph || (m.label || '?')[0], px, py + 0.5); }
+    if (m.label) { g.textAlign = 'left'; g.lineWidth = 3; g.strokeStyle = 'rgba(4,6,11,.85)'; g.fillStyle = INK; g.strokeText(m.label, px + 11, py); g.fillText(m.label, px + 11, py); g.textAlign = 'center'; }
   }
   // you: an arrow along your heading
   const px = X(me.x), py = Y(me.north), a = me.heading * Math.PI / 180;
-  g.save(); g.translate(px, py); g.rotate(a); g.fillStyle = '#ffb347'; g.strokeStyle = '#082633'; g.lineWidth = 2;
+  g.save(); g.translate(px, py); g.rotate(a); g.fillStyle = '#ffffff'; g.strokeStyle = NIGHT; g.lineWidth = 2;
   g.beginPath(); g.moveTo(0, -11); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.stroke(); g.restore();
   // scale bar and north
   const bar = [500, 1000, 2000, 5000].find(b => b / mpp > W * 0.18) || 5000, bl = bar / mpp;
-  g.fillStyle = 'rgba(2,16,24,.7)'; g.fillRect(8, H - 26, bl + 16, 18); g.fillStyle = '#e8f4f6'; g.fillRect(16, H - 18, bl, 3);
-  g.textAlign = 'left'; g.font = '600 10px system-ui, sans-serif'; g.fillText(bar >= 1000 ? `${bar / 1000} km` : `${bar} m`, 18, H - 22 + 0);
-  g.textAlign = 'center'; g.font = '700 12px system-ui, sans-serif'; g.fillStyle = 'rgba(2,16,24,.7)'; g.beginPath(); g.arc(W - 16, 16, 10, 0, 6.283); g.fill(); g.fillStyle = '#e8f4f6'; g.fillText('N', W - 16, 16.5);
+  g.fillStyle = 'rgba(4,6,11,.7)'; g.fillRect(8, H - 26, bl + 16, 18); g.fillStyle = INK; g.fillRect(16, H - 17, bl, 1);
+  g.textAlign = 'left'; g.font = `400 9px ${MONO}`; g.fillText(bar >= 1000 ? `${bar / 1000} KM` : `${bar} M`, 18, H - 22 + 0);
+  g.textAlign = 'center'; g.font = `400 10px ${MONO}`; g.fillStyle = 'rgba(4,6,11,.7)'; g.beginPath(); g.arc(W - 16, 16, 10, 0, 6.283); g.fill(); g.fillStyle = AMBER; g.fillText('N', W - 16, 16.5);
   return { cx, cn, span };
 }

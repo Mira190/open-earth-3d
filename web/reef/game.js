@@ -624,7 +624,7 @@ export async function init(ctx) {
 
   // ------------------------------------------------------------ objective line, compass marker, floating marker
   const markTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.translate(32, 32); g.rotate(Math.PI / 4);
-    g.fillStyle = '#ffb347'; g.strokeStyle = '#082633'; g.lineWidth = 5; g.fillRect(-15, -15, 30, 30); g.strokeRect(-15, -15, 30, 30); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+    g.fillStyle = '#ffb066'; g.strokeStyle = '#04060b'; g.lineWidth = 5; g.fillRect(-15, -15, 30, 30); g.strokeRect(-15, -15, 30, 30); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const markMat = new THREE.SpriteNodeMaterial({ map: markTex, transparent: true, depthTest: false, depthWrite: false, fog: false, sizeAttenuation: false });
   const marker = new THREE.Sprite(markMat); marker.scale.set(0.035, 0.035, 1); marker.renderOrder = 40; marker.visible = false; marker.frustumCulled = false; ctx.scene.add(marker);
   function refreshObjective(now) {

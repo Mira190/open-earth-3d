@@ -4,26 +4,45 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Open Earth 3D: the Whitsundays</title>
+<meta name="theme-color" content="#04060b">
+<link rel="icon" href="../favicon.png" sizes="32x32">
+<link rel="stylesheet" href="../fonts.css">
 <style>
-  :root { color-scheme: dark; --ink:#e8f1f4; --sea:#0b3b4f; }
-  html, body { margin: 0; height: 100%; background: #04202c; color: var(--ink); font: 14px/1.4 system-ui, sans-serif; overflow: hidden; }
+  /* the title screen's look (../title.css, ../index.html): off-white type on the blue-black of space,
+     the sun's amber as the one accent, glass and hairlines instead of boxes */
+  :root { color-scheme: dark; --bg: #04060b; --ink: #ece8e1; --ink-2: #c3c6cc; --muted: #8a93a3; --line: rgba(236, 232, 225, 0.14); --line-2: rgba(236, 232, 225, 0.3);
+    --accent: #ffb066; --accent-2: #ffc48c; --accent-ink: #1a0f04;
+    --f-display: "Zalando Sans Expanded", "Michroma", system-ui, sans-serif; --f-body: "Inter Tight", "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 400 13px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; overflow: hidden; }
   body > canvas { display: block; width: 100vw; height: 100vh; }
-  #hud { position: fixed; left: 16px; bottom: 16px; padding: 8px 12px; background: #04202ccc; border-radius: 8px; max-width: 46ch; }
-  #load { position: fixed; inset: 0; display: grid; place-content: center; background: #04202c; text-align: center; transition: opacity .6s; }
+  ::selection { background: rgba(255, 176, 102, 0.32); }
+  /* the readout: where the camera is, the floor under it, the sun and the tide, set like the title's captions */
+  #hud { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 14px; max-width: 70ch; font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
+    color: rgba(236, 232, 225, 0.5); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); pointer-events: none; }
+  /* the loader carries on from the title screen's dive: the same dark, the same type */
+  #load { position: fixed; inset: 0; display: grid; place-items: center; z-index: 8; background: radial-gradient(90% 70% at 50% 42%, #0b111b 0%, #04060b 70%); text-align: center; transition: opacity .6s ease; }
   #load.done { opacity: 0; pointer-events: none; }
-  #load a { display: inline-block; margin-top: 14px; color: #6fd3e6; font-size: 12px; }
-  @media (max-width: 640px) { #hud { display: none; } }
-  #load > div { width: min(340px, 80vw); }
-  #load b { font-size: 18px; }
-  #load small { display: block; margin-top: 8px; color: #9fc3cf; min-height: 2.8em; }
-  #load .track { position: relative; height: 4px; margin-top: 12px; border-radius: 4px; background: #ffffff22; overflow: hidden; }
-  #load .track i { display: block; height: 100%; width: 0; background: #5fd0e0; transition: width .3s; }
+  #load > div { width: min(460px, 86%); display: grid; justify-items: center; }
+  #load .wm { font: 250 11px/1 var(--f-display); letter-spacing: 0.62em; margin-right: -0.62em; color: var(--ink); opacity: 0.85; }
+  #load .wm b { font-weight: 250; color: var(--accent); }
+  #load .ld-mode { margin-top: 44px; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.32em; margin-right: -0.32em; text-transform: uppercase; color: var(--accent); }
+  #load > div > b { margin-top: 16px; font: 200 clamp(26px, 3.6vw, 44px)/1.1 var(--f-display); letter-spacing: 0.3em; margin-right: -0.3em; text-transform: uppercase; color: #f4f1ea;
+    text-shadow: 0 0 40px rgba(255, 190, 120, 0.16); }
+  #load .track { position: relative; width: 240px; height: 1px; margin-top: 34px; background: var(--line); overflow: hidden; }
+  #load .track i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, rgba(255, 176, 102, 0.4), var(--accent)); transition: width .25s linear; }
   /* a glint that keeps crossing the track, so a long step never looks stuck */
-  #load .track::after { content: ""; position: absolute; inset: 0; width: 30%; background: linear-gradient(90deg, transparent, #ffffff88, transparent);
+  #load .track::after { content: ""; position: absolute; inset: 0; width: 30%; background: linear-gradient(90deg, transparent, var(--accent-2), transparent);
     animation: glint 1.4s ease-in-out infinite; }
   @keyframes glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+  #load small { display: block; margin-top: 14px; min-height: 2.8em; max-width: 46ch; font: 400 9.5px/1.5 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  #load a { margin-top: 22px; display: inline-flex; gap: 8px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); border-radius: 2px; color: var(--ink-2); text-decoration: none;
+    font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; transition: color .3s, border-color .3s; }
+  #load a:hover, #load a:focus-visible { color: var(--ink); border-color: var(--line-2); outline: none; }
+  #load a b { font-weight: 400; color: var(--accent); }
+  @media (max-width: 640px) { #hud { display: none; } }
   @media (prefers-reduced-motion: reduce) { #load .track::after { animation: none; opacity: 0; } #load .track i { transition: none; } }
-  #err { position: fixed; top: 12px; left: 12px; right: 12px; color: #ffb4a8; white-space: pre-wrap; }
+  #err { position: fixed; top: 12px; left: 12px; right: 12px; color: #ff6f61; white-space: pre-wrap; font: 400 11px/1.5 var(--f-mono); }
 </style>
 <script type="importmap">
 { "imports": { "three": "../vendor/three/three.webgpu.js", "three/webgpu": "../vendor/three/three.webgpu.js",
@@ -31,7 +50,14 @@
 </script>
 </head>
 <body>
-<div id="load"><div><b id="load-title">The Whitsundays</b><div class="track"><i id="load-bar"></i></div><small id="load-msg">Loading the sea</small><a href="../index.html#globe">← Back to the globe</a></div></div>
+<div id="load" role="status"><div>
+  <span class="wm" aria-hidden="true">OPEN EARTH <b>3D</b></span>
+  <span class="ld-mode">The Great Barrier Reef</span>
+  <b id="load-title">The Whitsundays</b>
+  <div class="track"><i id="load-bar"></i></div>
+  <small id="load-msg">Loading the sea</small>
+  <a href="../index.html#globe"><b>←</b> Back to the globe</a>
+</div></div>
 <div id="hud"></div>
 <div id="err"></div>
 <script src="../sun.js"></script>

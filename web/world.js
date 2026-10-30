@@ -1,7 +1,8 @@
 // Open Earth 3D world: the city scene that the model viewer (city.js) and the game
 // (game/*.js) share: terrain under aerial imagery, water, the buildings (buildings.js:
 // walls, LOD2 roofs, facades with windows by floor, lights at night, height-source
-// colours), piers, trees, parametric landmarks, sky and sun. Local frame: x east, y north, z up; three.js is
+// colours), piers, trees, parametric landmarks, sky and sun, and after dark the street
+// lights, the traffic and the towers' lights (night.js). Local frame: x east, y north, z up; three.js is
 // y-up, so a local point (x, y, z) is drawn at (x, z, -y).
 'use strict';
 window.OEWorld = (function () {
@@ -39,16 +40,17 @@ window.OEWorld = (function () {
       return JSON.parse(await new Blob(parts).text());
     };
     onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G] = await Promise.all([getJSON('scene.json'), getJSON('buildings.json'), getJSON('places.json'),
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getJSON('buildings.json'), getJSON('places.json'),
       getJSON('landmarks.json'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
-      getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null)]);
+      getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
+      window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
     S.site({ lat: CITY.lat, lon: CITY.lon, tz: CITY.timezone, locale: CITY.locale });
     S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);
     const T = { data: Float32Array.from(ti, v => v * scene.terrain.scale), nx: scene.terrain.nx, ny: scene.terrain.ny,
       cell: scene.terrain.cell, x0: scene.frame.x[0], y1: scene.frame.y[1] };
-    return { id: cityId, DATA, scene, B, P, LM, UNC, G, CITY, T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
+    return { id: cityId, DATA, scene, B, P, LM, UNC, G, N, CITY, T, ground: (x, y) => Math.max(0, S.terrainAt(T, x, y)) };
   }
 
   // surface patterns for parametric landmark materials (landmarks.json "pattern"), drawn
@@ -308,9 +310,13 @@ vec3 photoGrade(vec3 c) {
     };
   }
 
-  // small: the lighter set for a weaker device (quality.js); shadow: the sun's shadow map size
-  async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0 } = {}) {
+  // small: the lighter set for a weaker device (quality.js); shadow: the sun's shadow map size;
+  // game: the game's world, whose own cars take over from the night's traffic within nearCars metres of the camera
+  async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
+    // the street lights' light (night.js), which the ground, the piers and the walls add to what they reflect
+    const NU = window.OENight && D.N ? OENight.uniforms() : null;
+    const NIGHT = NU ? OENight.GLSL : 'vec3 streetLight(vec3 wp) { return vec3(0.0); }';
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -333,15 +339,15 @@ vec3 photoGrade(vec3 c) {
     // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
     su.twilight = { value: new THREE.Color(0, 0, 0) };
     sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
-      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;')
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat; uniform float uSkyDim;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
       .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );' +
         // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
         // (the game sets it, atmosphere.js), and the last few degrees above the horizon go into the
         // haze the model's edge fades into (setSun)
-        '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
+        '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 ) * uSkyDim;' +
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
-    Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 } });
+    Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 }, uSkyDim: { value: 1 } });
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
       .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
@@ -383,6 +389,16 @@ vec3 photoGrade(vec3 c) {
       sh.uniforms.uPhotoGrade = PG;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
         .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);');
+      streetLit(sh);
+    };
+    // the street lights on a lit surface: its colour times their light where it is (the world
+    // position from the view position, as the view matrix is rigid)
+    const streetLit = sh => {
+      if (!NU) return;
+      Object.assign(sh.uniforms, NU);
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${NIGHT}`)
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz));`);
     };
     // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
     function tileGeometry(t, Tg) {
@@ -555,7 +571,8 @@ vec3 photoGrade(vec3 c) {
     // the walls reach the ground drawn round them: the tiles (and in the game the finer ones near the player)
     const foot = (x, y) => Math.min(S.terrainTri(T, x, y), D.Tfine ? S.terrainTri(D.Tfine, x, y) : Infinity);
     U.uPhotoGrade = PG;
-    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE });
+    if (NU) Object.assign(U, NU);
+    const BLD = OEBuildings.create(D, { lin, U, renderer, SRC, small, foot, photoGrade: PHOTO_GRADE, night: NIGHT });
     const bGeo = BLD.geometry, buildings = BLD.mesh;
     const fr = scene.frame;
     U.uFrame.value.set(fr.x[0], fr.y[0], 1 / (fr.x[1] - fr.x[0]), 1 / (fr.y[1] - fr.y[0]));
@@ -583,6 +600,7 @@ vec3 photoGrade(vec3 c) {
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
     const pierGeo = extrude((P.piers || []).map((r, i) => [-1, 0, 0, Math.round(D.pierZ[i] * 10), r]), () => pierColour);
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
+    piers.material.onBeforeCompile = streetLit;
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
     // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
@@ -632,6 +650,7 @@ vec3 photoGrade(vec3 c) {
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
+      if (m.pattern === 'deck_zones' && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { own(sh); streetLit(sh); }; } // a bridge's deck under its lamps
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
       if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
@@ -656,6 +675,15 @@ vec3 photoGrade(vec3 c) {
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
       mesh.name = m.name;
       world.add(mesh);
+    }
+
+    // ------------------------------------------------------------ after dark (night.js)
+    let night = null;
+    if (NU) {
+      loadMsg('Street lights, traffic and the towers\' lights', 0.68);
+      await idle();
+      try { night = OENight.create({ world, U }, D, renderer, NU, { small, game, nearCars }); }
+      catch (e) { console.warn('night lights unavailable:', e); NU.uNightOn.value = 0; }
     }
 
     // ------------------------------------------------------------ sun
@@ -690,7 +718,7 @@ vec3 photoGrade(vec3 c) {
       } catch (e) { return false; }
     }
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, gradePhoto, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, gradePhoto, streetLit, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -706,21 +734,36 @@ vec3 photoGrade(vec3 c) {
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
         const tw = smooth(-11, -4, sp.altitude) * (1 - smooth(-2, 3, sp.altitude));
         su.twilight.value.copy(TWI_SKY).multiplyScalar(tw);
-        hemi.intensity = Math.PI * (0.07 + 0.25 * day + 0.1 * tw * (1 - day) + ((D.scene.city && D.scene.city.night_ambient) || 0) * (1 - day));   // a city's own night glow (neon, street light)
+        // a city's own night glow (neon, street light); with the street lights drawn (night.js), the
+        // night's own light is the moon's and the sky's, and the lamps light the streets themselves
+        const amb = ((D.scene.city && D.scene.city.night_ambient) || 0) * (night ? 0.25 : 1);
+        hemi.intensity = Math.PI * ((night ? 0.035 : 0.07) + 0.25 * day + 0.1 * tw * (1 - day) + amb * (1 - day));
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
+        // The sky's curve lifts a night sky to a tenth of the day's, which lit every glass tower as if
+        // under an overcast evening. With the street lights drawn, the night sky is dark, as it is
+        // over a city from the air, and the lamps do the lighting (the haze keeps the city's glow).
+        su.uSkyDim.value = night ? 1 - 0.85 * smooth(0.35, 1, U.uNight.value) : 1;
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
         LM_NIGHT.value = U.uNight.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
-        const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`;
-        if (key !== envKey) {
+        // the haze first, then the light from the sky: the environment is drawn with the horizon's
+        // haze in it, so it has to be this hour's haze (it kept the last one, a day's haze at night)
+        const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, newSky = key !== envKey;
+        if (newSky && api.skyHaze) hazeOk = readHaze(az);
+        su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
+        // at night the haze takes the glow of the city's lights (night.js), warm where it is lit by sodium
+        world.fog.color.set(day > 0.5 ? 0xc6d3dc : (night && night.skyglow ? night.skyglow.clone().multiplyScalar(1.6) : new THREE.Color(0x0c1420))
+          .lerp(TWI_FOG, tw * 0.7).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
+        // by day the sky's own horizon; through dusk back to the night's blue, which the sky's red night horizon would not give
+        if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
+        su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is
+        if (newSky) {
           envKey = key;
-          if (api.skyHaze) hazeOk = readHaze(az);
-          su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
           if (envRT) envRT.dispose();
           const skySat = su.uSkySat.value;
           su.uSkySat.value = 1; // the light from the sky as the materials were tuned under; only its look is bluer
@@ -728,10 +771,6 @@ vec3 photoGrade(vec3 c) {
           su.uSkySat.value = skySat;
           world.environment = envRT.texture;
         }
-        world.fog.color.set(day > 0.5 ? 0xc6d3dc : new THREE.Color(0x0c1420).lerp(TWI_FOG, tw * 0.7).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
-        // by day the sky's own horizon; through dusk back to the night's blue, which the sky's red night horizon would not give
-        if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
-        su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is
         return day;
       },
       // keep the shadow map centred on what the camera looks at, at least half metres on each
@@ -764,8 +803,9 @@ vec3 photoGrade(vec3 c) {
         SPARKLE.t.value = t * 0.001;
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
+        if (night && camera) night.update(camera, t / 1000);
       },
-      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); },
+      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); },
     };
     return api;
   }

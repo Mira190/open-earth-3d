@@ -162,7 +162,7 @@ window.OEBuildings = (function () {
   }
 
   // foot(x, y): the height of the ground drawn there, so walls reach it where it is below a building's base
-  function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null }) {
+  function create(D, { lin, U, renderer, SRC, small = false, foot = null, photoGrade = null, night = null }) {
     const t0 = performance.now();
     const { B, T, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
@@ -438,7 +438,7 @@ window.OEBuildings = (function () {
     }
 
     const geometry = buf.geometry();
-    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade);
+    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade, night);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = mesh.receiveShadow = true;
 
@@ -675,8 +675,9 @@ window.OEBuildings = (function () {
   }
 
   // ------------------------------------------------------------ the facade and roof shader
-  // photoGrade: GLSL for photoGrade(), the correction world.js gives the aerial photo on the ground
-  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade) {
+  // photoGrade: GLSL for photoGrade(), the correction world.js gives the aerial photo on the ground;
+  // night: GLSL for streetLight(), the street lights' light at a world position (night.js)
+  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade, night) {
     const grid = STYLES.map(s => new THREE.Vector4(...GRIDS[s])), look = STYLES.map(s => new THREE.Vector4(...LOOK[s]));
     while (grid.length < 16) { grid.push(new THREE.Vector4()); look.push(new THREE.Vector4(1, 0, 0, 0.9)); }
     Object.assign(U, {
@@ -715,6 +716,7 @@ window.OEBuildings = (function () {
   varying vec2 vFac; varying vec4 vInf; varying vec3 vExt; varying float vBid; varying float vSrc;
   varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vGrid; varying vec4 vLook;
   ${photoGrade || 'vec3 photoGrade(vec3 c) { return c; }'}
+  ${night || 'vec3 streetLight(vec3 wp) { return vec3(0.0); }'}
   // a pixel's footprint along a coordinate: the length of its screen gradient (fwidth's sum of
   // the two runs up to 1.4 times wider and would blur the windows more than they need)
   float footprint(float x) { return max(length(vec2(dFdx(x), dFdy(x))), 1e-4); }
@@ -735,7 +737,9 @@ window.OEBuildings = (function () {
   float occupancy(float style, float hr) {
     float evening = smoothstep(16.5, 19.0, hr) * (1.0 - smoothstep(22.5, 24.5, hr)) + (1.0 - smoothstep(0.0, 1.5, hr)) * 0.5;
     float work = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 21.0, hr));
-    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) return 0.06 + 0.82 * work + 0.12 * smoothstep(17.5, 19.0, hr) * (1.0 - smoothstep(20.0, 23.0, hr));
+    // offices empty slowly through the evening (overtime, cleaners), and some floors stay lit all night
+    float late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 23.5, hr));
+    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) return 0.08 + 0.82 * late + 0.12 * smoothstep(17.5, 19.0, hr) * (1.0 - smoothstep(20.0, 23.0, hr));
     if (style > 6.5 && style < 7.5) return 0.1 + 0.85 * smoothstep(7.0, 8.0, hr) * (1.0 - smoothstep(21.0, 22.5, hr));
     if (style > 5.5 && style < 6.5) return 0.05 + 0.5 * work + 0.15 * evening;
     return 0.06 + 0.55 * evening + 0.2 * smoothstep(6.0, 7.0, hr) * (1.0 - smoothstep(8.5, 9.5, hr));
@@ -881,11 +885,19 @@ window.OEBuildings = (function () {
     float rnd = h31(vec3(cellId, bidH + seed * 31.0));
     float unitW = style > 3.5 && style < 5.5 ? 6.0 : 2.0;
     float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
-    float lit = step(unitR, occupancy(style, uHour)) * step(0.12, rnd);
+    float occ = occupancy(style, uHour), unitLit = step(unitR, occ), shopLit = 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3);
+    // rooms lit in different lights: most warm, some under cool fluorescent or LED, until a run of
+    // them is under a pixel
+    float tintR = h31(vec3(floor(bay / unitW), fl, bidH * 2.3 + 5.1));
+    vec3 roomTint = mix(tintR > 0.8 ? vec3(0.8, 0.92, 1.1) : tintR > 0.6 ? vec3(1.06, 0.97, 0.88) : vec3(1.0), vec3(1.0), smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
+    float lit = unitLit * step(0.12, rnd);
     if (shop > 0.5) lit = step(0.15, rnd) * step(0.0, occupancy(7.0, uHour) - 0.3);
-    // far off, the share of windows lit rather than which ones are: later than the rest, as a
-    // lit window reads as one whatever is behind it, down to a pixel or two
-    lit = mix(lit, (shop > 0.5 ? 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3) : 0.88 * occupancy(style, uHour)), smoothstep(0.45, 1.0, max(fw.x, fw.y)));
+    // a little farther, whole runs of rooms lit or dark along each floor, as a tower reads from
+    // across the city at night; farther still, where a run is under a pixel, the share of windows
+    // lit rather than which ones are (later than the rest, as a lit window reads as one whatever is
+    // behind it, down to a pixel or two)
+    lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * unitLit, smoothstep(0.45, 1.0, max(fw.x, fw.y)));
+    lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * occ, smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
     rnd = mix(rnd, 0.5, far);
     float blind = step(0.72, h31(vec3(cellId, bidH * 0.53 + 3.1))) * (style > 4.5 && style < 5.5 ? 0.0 : 1.0);
     float blindY = 0.55 + 0.4 * h21(cellId + bidH);
@@ -917,7 +929,7 @@ window.OEBuildings = (function () {
       c = mix(c, vec3(0.36, 0.345, 0.32), far); // a room too small to see into: its mean
       // day: dim, lit by the window; night: the room's lamps when occupied
       float dayL = (style > 4.5 && style < 5.5 ? 0.06 : 0.2) * (1.0 - uNight);
-      vec3 lampC = mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5));
+      vec3 lampC = mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5)) * roomTint;
       float lamp = lit * uNight * (0.3 + 0.3 * rnd);
       float ceilingSpot = mix(hitY > 0.5 && d.y > 0.0 ? 1.0 + 0.8 * exp(-8.0 * dot(hp.xz - vec2(0.5, depth * 0.5), hp.xz - vec2(0.5, depth * 0.5))) : 1.0, 1.1, far);
       room = c * (dayL + lamp * 1.0 * lampC * ceilingSpot * (0.75 + 0.5 * mix(h21(vec2(fl, bidH)), 0.5, far)));
@@ -956,7 +968,7 @@ window.OEBuildings = (function () {
     roughB = max(roughB, 0.16 * far);
     emitB += room * glass;
     emitB += win * isBlind * lit * uNight * vec3(1.0, 0.7, 0.42) * 0.35;
-    emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * (0.22 + 0.2 * rnd);
+    emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * roomTint * (0.34 + 0.3 * rnd);
     // ground contact: a darker plinth and less sky near the street
     aoW *= mix(0.72, 1.0, smoothstep(0.0, 3.0, h));
     // fine plaster noise up close
@@ -1028,6 +1040,9 @@ window.OEBuildings = (function () {
     roughB = 0.8; aoW = 0.9; // awning soffit, lit at night
     emitB += diffuseColor.rgb * uNight * 0.55 * occupancy(7.0, uHour);
   }
+  // the street lights on the lower floors: the light on the pavement in front of the wall, fading
+  // up the facade from the lamps' height, less on glass, which shows the room behind it instead
+  if (kind < 1.5) emitB += diffuseColor.rgb * streetLight(vWPos + vec3(N.x, 0.0, N.z) * 2.5) * exp(-max(vFac.y - 2.0, 0.0) / 9.0) * (1.0 - 0.6 * glass);
   float win = glass;
   if (uMode > 0.5) {
     diffuseColor.rgb = vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8)));
@@ -1045,7 +1060,7 @@ window.OEBuildings = (function () {
   reflectedLight.indirectSpecular *= mix(aoW, 1.0, glass * 0.5);
   reflectedLight.directDiffuse *= mix(1.0, aoW, 0.35);`);
     };
-    mat.customProgramCacheKey = () => 'oe-facade-4';
+    mat.customProgramCacheKey = () => `oe-facade-5${night ? '-night' : ''}`;
     return mat;
   }
 

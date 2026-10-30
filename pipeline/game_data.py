@@ -31,6 +31,8 @@ Writes web/data/<city>/game.json:
   travel    fast-travel points, on the ground; links to neighbouring cities
   climate   passed through from city.json: the monthly mean daily maximum, which decides
             whether the crowd looks for sun or shade on the benches
+
+and from the roads and lamps, web/data/<city>/night.json (pipeline/night_lights.py).
 """
 import base64
 import json
@@ -48,6 +50,7 @@ from shapely import wkb as swkb
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
+import night_lights
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
 from shore import QUAY_SHELF_M, depth_at, from_png
 from cityctx import city_args, polygons
@@ -572,6 +575,7 @@ def main():
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
+    night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
     write_index()
 
 
