@@ -636,6 +636,7 @@
    "Head": "Bip01_Head",
    "Chest": "Bip01_Spine2",
    "Abdomen": "Bip01_Spine",
+   "Hips": "Bip01_Pelvis",
    "WristR": "Bip01_R_Hand",
    "WristL": "Bip01_L_Hand",
    "UpperLeg.L": "Bip01_L_Thigh",
@@ -698,6 +699,872 @@
      "Listen",
      "Nod",
      "Interact"
+    ]
+   }
+  }
+ },
+ "npcs": {
+  "note": "The NPCs: Microsoft Rocketbox avatars built by blender/build_people.py --npcs for the characters the cities' game.npcs name (R_<avatar>[_<head>][_<tag>...]). Each sex's clips are in one file that drives them all.",
+  "source": "Microsoft Rocketbox (MIT, (c) 2020 Microsoft): avatars and animations; see LICENSE-Rocketbox.txt",
+  "bones": {
+   "Head": "Bip01_Head",
+   "Chest": "Bip01_Spine2",
+   "Abdomen": "Bip01_Spine",
+   "Hips": "Bip01_Pelvis",
+   "WristR": "Bip01_R_Hand",
+   "WristL": "Bip01_L_Hand",
+   "UpperLeg.L": "Bip01_L_Thigh",
+   "LowerLeg.L": "Bip01_L_Calf",
+   "Foot.L": "Bip01_L_Foot",
+   "UpperLeg.R": "Bip01_R_Thigh",
+   "LowerLeg.R": "Bip01_R_Calf",
+   "Foot.R": "Bip01_R_Foot",
+   "UpperArm.L": "Bip01_L_UpperArm",
+   "LowerArm.L": "Bip01_L_Forearm",
+   "Wrist.L": "Bip01_L_Hand",
+   "UpperArm.R": "Bip01_R_UpperArm",
+   "LowerArm.R": "Bip01_R_Forearm",
+   "Wrist.R": "Bip01_R_Hand"
+  },
+  "clips": {
+   "f": {
+    "file": "R_clips_f.glb",
+    "clips": [
+     "Idle",
+     "Idle_Neutral",
+     "Walk",
+     "Wave",
+     "Talk",
+     "Listen",
+     "Nod",
+     "Documents",
+     "Drink",
+     "LookAround",
+     "Phone",
+     "Photo",
+     "Present",
+     "Reading",
+     "Thoughtful",
+     "Work"
+    ],
+    "ground_speed": {
+     "Walk": 1.214
+    }
+   },
+   "m": {
+    "file": "R_clips_m.glb",
+    "clips": [
+     "Idle",
+     "Idle_Neutral",
+     "Walk",
+     "Wave",
+     "Talk",
+     "Listen",
+     "Nod",
+     "Cheer",
+     "LookAround",
+     "Phone",
+     "Photo",
+     "Present",
+     "Reading",
+     "Stretch",
+     "Thoughtful",
+     "Work"
+    ],
+    "ground_speed": {
+     "Walk": 1.012
+    }
+   }
+  },
+  "characters": {
+   "R_Business_Female_01": {
+    "file": "R_Business_Female_01.glb",
+    "sex": "f",
+    "avatar": "Professions/Business_Female_01",
+    "head": null,
+    "tags": [],
+    "height_m": 1.74,
+    "triangles": 8966,
+    "cities": [
+     "melbourne"
+    ]
+   },
+   "R_Business_Female_02": {
+    "file": "R_Business_Female_02.glb",
+    "sex": "f",
+    "avatar": "Professions/Business_Female_02",
+    "head": null,
+    "tags": [],
+    "height_m": 1.729,
+    "triangles": 8640,
+    "cities": [
+     "paris"
+    ]
+   },
+   "R_Business_Female_03": {
+    "file": "R_Business_Female_03.glb",
+    "sex": "f",
+    "avatar": "Professions/Business_Female_03",
+    "head": null,
+    "tags": [],
+    "height_m": 1.743,
+    "triangles": 8438,
+    "cities": [
+     "hong-kong",
+     "tokyo"
+    ]
+   },
+   "R_Business_Female_04_f003": {
+    "file": "R_Business_Female_04_f003.glb",
+    "sex": "f",
+    "avatar": "Professions/Business_Female_04",
+    "head": "Adults/Female_Adult_03",
+    "tags": [],
+    "height_m": 1.739,
+    "triangles": 8202,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Business_Female_04_f011": {
+    "file": "R_Business_Female_04_f011.glb",
+    "sex": "f",
+    "avatar": "Professions/Business_Female_04",
+    "head": "Adults/Female_Adult_11",
+    "tags": [],
+    "height_m": 1.736,
+    "triangles": 8288,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Business_Male_02": {
+    "file": "R_Business_Male_02.glb",
+    "sex": "m",
+    "avatar": "Professions/Business_Male_02",
+    "head": null,
+    "tags": [],
+    "height_m": 1.822,
+    "triangles": 7448,
+    "cities": [
+     "kyoto",
+     "osaka",
+     "tokyo"
+    ]
+   },
+   "R_Business_Male_03": {
+    "file": "R_Business_Male_03.glb",
+    "sex": "m",
+    "avatar": "Professions/Business_Male_03",
+    "head": null,
+    "tags": [],
+    "height_m": 1.818,
+    "triangles": 7810,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Business_Male_05_m017": {
+    "file": "R_Business_Male_05_m017.glb",
+    "sex": "m",
+    "avatar": "Professions/Business_Male_05",
+    "head": "Adults/Male_Adult_09",
+    "tags": [],
+    "height_m": 1.821,
+    "triangles": 7794,
+    "cities": [
+     "osaka"
+    ]
+   },
+   "R_Business_Male_06": {
+    "file": "R_Business_Male_06.glb",
+    "sex": "m",
+    "avatar": "Professions/Business_Male_06",
+    "head": null,
+    "tags": [],
+    "height_m": 1.809,
+    "triangles": 6950,
+    "cities": [
+     "paris"
+    ]
+   },
+   "R_Business_Male_06_m017": {
+    "file": "R_Business_Male_06_m017.glb",
+    "sex": "m",
+    "avatar": "Professions/Business_Male_06",
+    "head": "Adults/Male_Adult_09",
+    "tags": [],
+    "height_m": 1.821,
+    "triangles": 7532,
+    "cities": [
+     "osaka",
+     "tokyo"
+    ]
+   },
+   "R_Business_Male_06_m024": {
+    "file": "R_Business_Male_06_m024.glb",
+    "sex": "m",
+    "avatar": "Professions/Business_Male_06",
+    "head": "Adults/Male_Adult_10",
+    "tags": [],
+    "height_m": 1.829,
+    "triangles": 7152,
+    "cities": [
+     "osaka"
+    ]
+   },
+   "R_Construction_Male_05_m008_bare": {
+    "file": "R_Construction_Male_05_m008_bare.glb",
+    "sex": "m",
+    "avatar": "Professions/Construction_Male_05",
+    "head": "Professions/Business_Male_02",
+    "tags": [
+     "bare"
+    ],
+    "height_m": 1.822,
+    "triangles": 7202,
+    "cities": [
+     "hong-kong"
+    ]
+   },
+   "R_Delivery_Male_01": {
+    "file": "R_Delivery_Male_01.glb",
+    "sex": "m",
+    "avatar": "Professions/Delivery_Male_01",
+    "head": null,
+    "tags": [],
+    "height_m": 1.815,
+    "triangles": 6800,
+    "cities": [
+     "amsterdam"
+    ]
+   },
+   "R_Female_Adult_02": {
+    "file": "R_Female_Adult_02.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_02",
+    "head": null,
+    "tags": [],
+    "height_m": 1.731,
+    "triangles": 8940,
+    "cities": [
+     "melbourne-bayside"
+    ]
+   },
+   "R_Female_Adult_04": {
+    "file": "R_Female_Adult_04.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_04",
+    "head": null,
+    "tags": [],
+    "height_m": 1.762,
+    "triangles": 9284,
+    "cities": [
+     "paris"
+    ]
+   },
+   "R_Female_Adult_04_f003": {
+    "file": "R_Female_Adult_04_f003.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_04",
+    "head": "Adults/Female_Adult_03",
+    "tags": [],
+    "height_m": 1.74,
+    "triangles": 8664,
+    "cities": [
+     "hong-kong",
+     "kyoto"
+    ]
+   },
+   "R_Female_Adult_06": {
+    "file": "R_Female_Adult_06.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_06",
+    "head": null,
+    "tags": [],
+    "height_m": 1.735,
+    "triangles": 6992,
+    "cities": [
+     "amsterdam"
+    ]
+   },
+   "R_Female_Adult_07_f003": {
+    "file": "R_Female_Adult_07_f003.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_07",
+    "head": "Adults/Female_Adult_03",
+    "tags": [],
+    "height_m": 1.739,
+    "triangles": 8352,
+    "cities": [
+     "osaka"
+    ]
+   },
+   "R_Female_Adult_08": {
+    "file": "R_Female_Adult_08.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_08",
+    "head": null,
+    "tags": [],
+    "height_m": 1.735,
+    "triangles": 8276,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Female_Adult_08_mariniere": {
+    "file": "R_Female_Adult_08_mariniere.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_08",
+    "head": null,
+    "tags": [
+     "mariniere"
+    ],
+    "height_m": 1.735,
+    "triangles": 8276,
+    "cities": [
+     "paris"
+    ]
+   },
+   "R_Female_Adult_09_f011_grey": {
+    "file": "R_Female_Adult_09_f011_grey.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_09",
+    "head": "Adults/Female_Adult_11",
+    "tags": [
+     "grey"
+    ],
+    "height_m": 1.736,
+    "triangles": 9236,
+    "cities": [
+     "hong-kong",
+     "kyoto",
+     "tokyo"
+    ]
+   },
+   "R_Female_Adult_09_f011_grey_leopard": {
+    "file": "R_Female_Adult_09_f011_grey_leopard.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_09",
+    "head": "Adults/Female_Adult_11",
+    "tags": [
+     "grey",
+     "leopard"
+    ],
+    "height_m": 1.736,
+    "triangles": 9236,
+    "cities": [
+     "osaka"
+    ]
+   },
+   "R_Female_Adult_11": {
+    "file": "R_Female_Adult_11.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_11",
+    "head": null,
+    "tags": [],
+    "height_m": 1.736,
+    "triangles": 8896,
+    "cities": [
+     "amsterdam",
+     "paris"
+    ]
+   },
+   "R_Female_Adult_12": {
+    "file": "R_Female_Adult_12.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_12",
+    "head": null,
+    "tags": [],
+    "height_m": 1.726,
+    "triangles": 8774,
+    "cities": [
+     "melbourne-bayside"
+    ]
+   },
+   "R_Female_Adult_12_f013": {
+    "file": "R_Female_Adult_12_f013.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_12",
+    "head": "Professions/Sports_Female_02",
+    "tags": [],
+    "height_m": 1.733,
+    "triangles": 8552,
+    "cities": [
+     "amsterdam"
+    ]
+   },
+   "R_Female_Adult_13": {
+    "file": "R_Female_Adult_13.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_13",
+    "head": null,
+    "tags": [],
+    "height_m": 1.751,
+    "triangles": 8708,
+    "cities": [
+     "amsterdam",
+     "sydney"
+    ]
+   },
+   "R_Female_Adult_13_f003_brown": {
+    "file": "R_Female_Adult_13_f003_brown.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_13",
+    "head": "Adults/Female_Adult_03",
+    "tags": [
+     "brown"
+    ],
+    "height_m": 1.739,
+    "triangles": 8612,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Female_Adult_14": {
+    "file": "R_Female_Adult_14.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_14",
+    "head": null,
+    "tags": [],
+    "height_m": 1.739,
+    "triangles": 8724,
+    "cities": [
+     "melbourne"
+    ]
+   },
+   "R_Female_Adult_14_f016": {
+    "file": "R_Female_Adult_14_f016.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_14",
+    "head": "Professions/Business_Female_03",
+    "tags": [],
+    "height_m": 1.743,
+    "triangles": 8058,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Female_Adult_15": {
+    "file": "R_Female_Adult_15.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_15",
+    "head": null,
+    "tags": [],
+    "height_m": 1.739,
+    "triangles": 9832,
+    "cities": [
+     "amsterdam"
+    ]
+   },
+   "R_Female_Adult_15_f013": {
+    "file": "R_Female_Adult_15_f013.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_15",
+    "head": "Professions/Sports_Female_02",
+    "tags": [],
+    "height_m": 1.733,
+    "triangles": 8492,
+    "cities": [
+     "kyoto",
+     "shibuya",
+     "tokyo"
+    ]
+   },
+   "R_Female_Adult_17": {
+    "file": "R_Female_Adult_17.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_17",
+    "head": null,
+    "tags": [],
+    "height_m": 1.751,
+    "triangles": 8516,
+    "cities": [
+     "melbourne-bayside"
+    ]
+   },
+   "R_Female_Adult_17_f011": {
+    "file": "R_Female_Adult_17_f011.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Adult_17",
+    "head": "Adults/Female_Adult_11",
+    "tags": [],
+    "height_m": 1.736,
+    "triangles": 8600,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Female_Party_02": {
+    "file": "R_Female_Party_02.glb",
+    "sex": "f",
+    "avatar": "Adults/Female_Party_02",
+    "head": null,
+    "tags": [],
+    "height_m": 1.788,
+    "triangles": 9874,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Gardener_Male_01": {
+    "file": "R_Gardener_Male_01.glb",
+    "sex": "m",
+    "avatar": "Professions/Gardener_Male_01",
+    "head": null,
+    "tags": [],
+    "height_m": 1.812,
+    "triangles": 7470,
+    "cities": [
+     "paris"
+    ]
+   },
+   "R_Male_Adult_03": {
+    "file": "R_Male_Adult_03.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_03",
+    "head": null,
+    "tags": [],
+    "height_m": 1.806,
+    "triangles": 7200,
+    "cities": [
+     "amsterdam"
+    ]
+   },
+   "R_Male_Adult_03_m008_grey": {
+    "file": "R_Male_Adult_03_m008_grey.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_03",
+    "head": "Professions/Business_Male_02",
+    "tags": [
+     "grey"
+    ],
+    "height_m": 1.822,
+    "triangles": 7086,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Male_Adult_05": {
+    "file": "R_Male_Adult_05.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_05",
+    "head": null,
+    "tags": [],
+    "height_m": 1.812,
+    "triangles": 7836,
+    "cities": [
+     "paris",
+     "sydney"
+    ]
+   },
+   "R_Male_Adult_05_m024": {
+    "file": "R_Male_Adult_05_m024.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_05",
+    "head": "Adults/Male_Adult_10",
+    "tags": [],
+    "height_m": 1.829,
+    "triangles": 7606,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Male_Adult_06": {
+    "file": "R_Male_Adult_06.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_06",
+    "head": null,
+    "tags": [],
+    "height_m": 1.831,
+    "triangles": 7456,
+    "cities": [
+     "melbourne-bayside"
+    ]
+   },
+   "R_Male_Adult_06_m024_brown": {
+    "file": "R_Male_Adult_06_m024_brown.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_06",
+    "head": "Adults/Male_Adult_10",
+    "tags": [
+     "brown"
+    ],
+    "height_m": 1.829,
+    "triangles": 6952,
+    "cities": [
+     "tokyo"
+    ]
+   },
+   "R_Male_Adult_08_m024": {
+    "file": "R_Male_Adult_08_m024.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_08",
+    "head": "Adults/Male_Adult_10",
+    "tags": [],
+    "height_m": 1.829,
+    "triangles": 7254,
+    "cities": [
+     "osaka"
+    ]
+   },
+   "R_Male_Adult_09": {
+    "file": "R_Male_Adult_09.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_09",
+    "head": null,
+    "tags": [],
+    "height_m": 1.821,
+    "triangles": 7426,
+    "cities": [
+     "kyoto",
+     "shibuya"
+    ]
+   },
+   "R_Male_Adult_10": {
+    "file": "R_Male_Adult_10.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_10",
+    "head": null,
+    "tags": [],
+    "height_m": 1.829,
+    "triangles": 6732,
+    "cities": [
+     "hong-kong"
+    ]
+   },
+   "R_Male_Adult_11": {
+    "file": "R_Male_Adult_11.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_11",
+    "head": null,
+    "tags": [],
+    "height_m": 1.802,
+    "triangles": 6740,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Male_Adult_13": {
+    "file": "R_Male_Adult_13.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_13",
+    "head": null,
+    "tags": [],
+    "height_m": 1.805,
+    "triangles": 6710,
+    "cities": [
+     "melbourne"
+    ]
+   },
+   "R_Male_Adult_13_m017_grey": {
+    "file": "R_Male_Adult_13_m017_grey.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_13",
+    "head": "Adults/Male_Adult_09",
+    "tags": [
+     "grey"
+    ],
+    "height_m": 1.821,
+    "triangles": 7328,
+    "cities": [
+     "hong-kong"
+    ]
+   },
+   "R_Male_Adult_14_m017_grey": {
+    "file": "R_Male_Adult_14_m017_grey.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_14",
+    "head": "Adults/Male_Adult_09",
+    "tags": [
+     "grey"
+    ],
+    "height_m": 1.821,
+    "triangles": 7398,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Male_Adult_15_m024_dark": {
+    "file": "R_Male_Adult_15_m024_dark.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_15",
+    "head": "Adults/Male_Adult_10",
+    "tags": [
+     "dark"
+    ],
+    "height_m": 1.829,
+    "triangles": 7382,
+    "cities": [
+     "kyoto"
+    ]
+   },
+   "R_Male_Adult_20_m008": {
+    "file": "R_Male_Adult_20_m008.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_20",
+    "head": "Professions/Business_Male_02",
+    "tags": [],
+    "height_m": 1.822,
+    "triangles": 7236,
+    "cities": [
+     "shibuya"
+    ]
+   },
+   "R_Male_Adult_20_m024": {
+    "file": "R_Male_Adult_20_m024.glb",
+    "sex": "m",
+    "avatar": "Adults/Male_Adult_20",
+    "head": "Adults/Male_Adult_10",
+    "tags": [],
+    "height_m": 1.829,
+    "triangles": 7256,
+    "cities": [
+     "melbourne"
+    ]
+   },
+   "R_Medical_Female_03_plain": {
+    "file": "R_Medical_Female_03_plain.glb",
+    "sex": "f",
+    "avatar": "Professions/Medical_Female_03",
+    "head": null,
+    "tags": [
+     "plain"
+    ],
+    "height_m": 1.735,
+    "triangles": 7536,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Pilot_Female_01": {
+    "file": "R_Pilot_Female_01.glb",
+    "sex": "f",
+    "avatar": "Professions/Pilot_Female_01",
+    "head": null,
+    "tags": [],
+    "height_m": 1.775,
+    "triangles": 8288,
+    "cities": [
+     "melbourne"
+    ]
+   },
+   "R_Pilot_Female_01_f013": {
+    "file": "R_Pilot_Female_01_f013.glb",
+    "sex": "f",
+    "avatar": "Professions/Pilot_Female_01",
+    "head": "Professions/Sports_Female_02",
+    "tags": [],
+    "height_m": 1.775,
+    "triangles": 8916,
+    "cities": [
+     "hong-kong"
+    ]
+   },
+   "R_Pilot_Male_01_m007": {
+    "file": "R_Pilot_Male_01_m007.glb",
+    "sex": "m",
+    "avatar": "Professions/Pilot_Male_01",
+    "head": "Adults/Male_Adult_12",
+    "tags": [],
+    "height_m": 1.806,
+    "triangles": 7306,
+    "cities": [
+     "sydney"
+    ]
+   },
+   "R_Pilot_Male_01_m008_grey": {
+    "file": "R_Pilot_Male_01_m008_grey.glb",
+    "sex": "m",
+    "avatar": "Professions/Pilot_Male_01",
+    "head": "Professions/Business_Male_02",
+    "tags": [
+     "grey"
+    ],
+    "height_m": 1.822,
+    "triangles": 7490,
+    "cities": [
+     "osaka",
+     "tokyo"
+    ]
+   },
+   "R_Pilot_Male_03_m016": {
+    "file": "R_Pilot_Male_03_m016.glb",
+    "sex": "m",
+    "avatar": "Professions/Pilot_Male_03",
+    "head": "Professions/Business_Male_05",
+    "tags": [],
+    "height_m": 1.801,
+    "triangles": 7130,
+    "cities": [
+     "melbourne"
+    ]
+   },
+   "R_Police_Male_01_m024_plain": {
+    "file": "R_Police_Male_01_m024_plain.glb",
+    "sex": "m",
+    "avatar": "Professions/Police_Male_01",
+    "head": "Adults/Male_Adult_10",
+    "tags": [
+     "plain"
+    ],
+    "height_m": 1.829,
+    "triangles": 8078,
+    "cities": [
+     "osaka",
+     "shibuya"
+    ]
+   },
+   "R_Police_Male_05": {
+    "file": "R_Police_Male_05.glb",
+    "sex": "m",
+    "avatar": "Professions/Police_Male_05",
+    "head": null,
+    "tags": [],
+    "height_m": 1.854,
+    "triangles": 7694,
+    "cities": [
+     "osaka",
+     "tokyo"
+    ]
+   },
+   "R_Security_Female_01_f003_plain": {
+    "file": "R_Security_Female_01_f003_plain.glb",
+    "sex": "f",
+    "avatar": "Professions/Security_Female_01",
+    "head": "Adults/Female_Adult_03",
+    "tags": [
+     "plain"
+    ],
+    "height_m": 1.739,
+    "triangles": 8923,
+    "cities": [
+     "hong-kong",
+     "tokyo"
+    ]
+   },
+   "R_Sports_Male_02_m008": {
+    "file": "R_Sports_Male_02_m008.glb",
+    "sex": "m",
+    "avatar": "Professions/Sports_Male_02",
+    "head": "Professions/Business_Male_02",
+    "tags": [],
+    "height_m": 1.822,
+    "triangles": 8230,
+    "cities": [
+     "osaka"
+    ]
+   },
+   "R_Sports_Male_04_m024": {
+    "file": "R_Sports_Male_04_m024.glb",
+    "sex": "m",
+    "avatar": "Professions/Sports_Male_04",
+    "head": "Adults/Male_Adult_10",
+    "tags": [],
+    "height_m": 1.829,
+    "triangles": 7684,
+    "cities": [
+     "tokyo"
     ]
    }
   }

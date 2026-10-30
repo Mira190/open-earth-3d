@@ -1,9 +1,10 @@
 // People: realistic rigged characters (Quaternius's Ultimate Modular Men and Women, CC0)
-// for the player, the NPCs and the crowd near the player, plus an instanced low-detail
-// copy of the same characters for the crowd further away. Each character is one skinned
-// mesh whose vertices index a small palette, so skin, hair and clothes are recoloured
-// per person: thirteen files make a varied crowd. pipeline/fetch_people.py builds the
-// files in web/assets/people.
+// for the crowd near the player, plus an instanced low-detail copy of the same characters
+// for the crowd further away. Each character is one skinned mesh whose vertices index a
+// small palette, so skin, hair and clothes are recoloured per person: thirteen files make
+// a varied crowd. pipeline/fetch_people.py builds the files in web/assets/people. The
+// surveyors you play (H_) and the NPCs (R_) are textured Microsoft Rocketbox avatars
+// (MIT, blender/build_people.py); the NPCs share one file of clips per sex.
 'use strict';
 window.OEPeople = (function () {
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
@@ -94,7 +95,9 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   const stdMat = hex => MAT[hex] || (MAT[hex] = new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.75, metalness: 0, side: THREE.DoubleSide }));
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
   // Everything is built in the model's own space (y up, +z forward, metres) around anchors read from the
-  // reference pose, so one set of numbers fits every character; attach() then hangs it on a bone.
+  // reference pose, so one set of numbers fits every character; attach() then hangs it on a bone. A
+  // Rocketbox body (real: the main characters and the NPCs) is slimmer and its spine sits further back,
+  // so what hangs on the body or rests on the hair has numbers of its own for it.
   const ACC = {
     tigers_cap: { bone: 'Head', build: (M, h) => [
       M(geo('hs', () => new THREE.SphereGeometry(0.125, 18, 10, 0, 6.2832, 0, 1.5708)), '#f6c500', h.clone().add(V3(0, 0.07, -0.005)), V3(1, 1.05, 1.2)),
@@ -106,9 +109,9 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     hachimaki: { bone: 'Head', build: (M, h) => [
       M(geo('hband', () => new THREE.CylinderGeometry(0.14, 0.14, 0.055, 18, 1, true)), '#f4f1ea', h.clone().add(V3(0, 0.1, 0.008))),
       M(geo('hknot', () => new THREE.BoxGeometry(0.055, 0.03, 0.05)), '#f4f1ea', h.clone().add(V3(0, 0.08, -0.15)))] },
-    jingasa: { bone: 'Head', build: (M, h) => [
-      M(geo('jcone', () => new THREE.ConeGeometry(0.22, 0.11, 26)), '#1b1816', h.clone().add(V3(0, 0.2, 0.0))),
-      M(geo('jcrest', () => new THREE.SphereGeometry(0.022, 8, 6)), '#d6a931', h.clone().add(V3(0, 0.26, 0)))] },
+    jingasa: { bone: 'Head', build: (M, h, c, look, real) => [
+      M(geo('jcone', () => new THREE.ConeGeometry(0.22, 0.11, 26)), '#1b1816', h.clone().add(V3(0, real ? 0.18 : 0.2, 0.0))),
+      M(geo('jcrest', () => new THREE.SphereGeometry(0.022, 8, 6)), '#d6a931', h.clone().add(V3(0, real ? 0.24 : 0.26, 0)))] },
     mask: { bone: 'Head', build: (M, h) => [
       M(geo('mask', () => new THREE.BoxGeometry(0.13, 0.07, 0.03)), '#f2f2f0', h.clone().add(V3(0, -0.05, 0.172)))] },
     police_cap: { bone: 'Head', build: (M, h) => [
@@ -125,32 +128,42 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       const r = geo('gl', () => new THREE.TorusGeometry(0.032, 0.004, 6, 14));
       return [M(r, '#161616', h.clone().add(V3(-0.045, 0.035, 0.172))), M(r, '#161616', h.clone().add(V3(0.045, 0.035, 0.172))),
         M(geo('glb', () => new THREE.BoxGeometry(0.03, 0.005, 0.005)), '#161616', h.clone().add(V3(0, 0.045, 0.172)))]; } },
-    apron: { bone: 'Abdomen', build: (M, h, c, look) => [
-      M(geo('apron', () => new THREE.BoxGeometry(0.27, 0.52, 0.03)), look.apron || '#f4f1ea', h.clone().add(V3(0, 0.06, 0.13)))] },
-    lanyard: { bone: 'Chest', build: (M, h) => [
-      M(geo('lan1', () => new THREE.BoxGeometry(0.012, 0.3, 0.008)), '#2d6fd6', h.clone().add(V3(-0.07, 0.0, 0.1)), null, null, 0.35),
-      M(geo('lan1', () => new THREE.BoxGeometry(0.012, 0.3, 0.008)), '#2d6fd6', h.clone().add(V3(0.07, 0.0, 0.1)), null, null, -0.35),
-      M(geo('lan2', () => new THREE.BoxGeometry(0.06, 0.085, 0.006)), '#f4f1ea', h.clone().add(V3(0, -0.2, 0.11)))] },
+    sunglasses: { bone: 'Head', build: (M, h) => {
+      const r = geo('sgl', () => new THREE.CylinderGeometry(0.03, 0.03, 0.006, 16).rotateX(1.5708).scale(1.15, 0.85, 1));
+      return [M(r, '#0d0f12', h.clone().add(V3(-0.045, 0.035, 0.174))), M(r, '#0d0f12', h.clone().add(V3(0.045, 0.035, 0.174))),
+        M(geo('glb', () => new THREE.BoxGeometry(0.03, 0.005, 0.005)), '#3a3d42', h.clone().add(V3(0, 0.045, 0.172)))]; } },
+    apron: { bone: 'Abdomen', realBone: 'Hips', build: (M, h, c, look, real) => (real ? [   // from the waist to the knee, on the hips
+      M(geo('apronR', () => new THREE.BoxGeometry(0.34, 0.5, 0.012)), look.apron || '#f4f1ea', h.clone().add(V3(0, -0.17, 0.145)))] : [
+      M(geo('apron', () => new THREE.BoxGeometry(0.27, 0.52, 0.03)), look.apron || '#f4f1ea', h.clone().add(V3(0, 0.06, 0.13)))]) },
+    lanyard: { bone: 'Chest', build: (M, h, c, look, real) => {
+      const z = real ? 0.035 : 0;
+      return [M(geo('lan1', () => new THREE.BoxGeometry(0.012, 0.3, 0.008)), '#2d6fd6', h.clone().add(V3(-0.07, 0.0, 0.1 + z)), null, null, 0.35),
+        M(geo('lan1', () => new THREE.BoxGeometry(0.012, 0.3, 0.008)), '#2d6fd6', h.clone().add(V3(0.07, 0.0, 0.1 + z)), null, null, -0.35),
+        M(geo('lan2', () => new THREE.BoxGeometry(0.06, 0.085, 0.006)), '#f4f1ea', h.clone().add(V3(0, -0.2, 0.11 + z)))]; } },
     drum: { bone: 'Abdomen', build: (M, h) => [
       M(geo('drum', () => new THREE.CylinderGeometry(0.1, 0.1, 0.26, 16).rotateZ(1.5708)), '#d9262c', h.clone().add(V3(0, 0.0, 0.19))),
       M(geo('drumb', () => new THREE.CylinderGeometry(0.103, 0.103, 0.03, 16).rotateZ(1.5708)), '#f4f1ea', h.clone().add(V3(0.1, 0.0, 0.19))),
       M(geo('drumb', () => new THREE.CylinderGeometry(0.103, 0.103, 0.03, 16).rotateZ(1.5708)), '#f4f1ea', h.clone().add(V3(-0.1, 0.0, 0.19))),
       M(geo('drumst', () => new THREE.BoxGeometry(0.34, 0.025, 0.02)), '#f4f1ea', h.clone().add(V3(0, 0.25, 0.08)), null, null, 0)] },
-    backpack: { bone: 'Chest', build: (M, h) => [
-      M(geo('bp', () => new THREE.BoxGeometry(0.3, 0.38, 0.15)), '#4a6b8a', h.clone().add(V3(0, -0.02, -0.19)))] },
+    backpack: { bone: 'Chest', build: (M, h, c, look, real) => [
+      M(geo('bp', () => new THREE.BoxGeometry(0.3, 0.38, 0.15)), '#4a6b8a', h.clone().add(real ? V3(0, -0.13, -0.15) : V3(0, -0.02, -0.19)), real ? V3(0.92, 0.95, 0.85) : null)] },
     tako_tray: { bone: 'WristR', build: (M, h) => {
       const out = [M(geo('tray', () => new THREE.BoxGeometry(0.2, 0.02, 0.14)), '#f4f1ea', h.clone().add(V3(0.02, 0.02, 0.16)))];
       for (let i = 0; i < 6; i++) out.push(M(geo('tako', () => new THREE.SphereGeometry(0.032, 8, 6)), '#b5642c', h.clone().add(V3(-0.05 + 0.05 * (i % 3), 0.05, 0.125 + 0.07 * Math.floor(i / 3)))));
       return out; } },
-    umbrella: { bone: 'WristR', build: (M, h) => [
+    umbrella: { bone: 'WristR', build: (M, h, g) => (g ? [   // closed, by its handle, the tip by the foot
+      M(geo('umbR', () => new THREE.CylinderGeometry(0.028, 0.014, 0.72, 8).rotateZ(1.5708)), '#222a44', g.at(0.44, 0.0, 0.0), null, g.q),
+      M(geo('umbhR', () => new THREE.CylinderGeometry(0.014, 0.014, 0.12, 6).rotateZ(1.5708)), '#6a4a2a', g.at(0.05, 0.0, 0.0), null, g.q)] : [
       M(geo('umb', () => new THREE.CylinderGeometry(0.018, 0.028, 1.0, 8)), '#222a44', h.clone().add(V3(0, -0.4, 0.02))),
-      M(geo('umbh', () => new THREE.CylinderGeometry(0.014, 0.014, 0.14, 6)), '#6a4a2a', h.clone().add(V3(0, 0.0, 0)))] },
-    beret: { bone: 'Head', build: (M, h, c, look) => [
-      M(geo('beret', () => new THREE.CylinderGeometry(0.14, 0.13, 0.04, 20)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, 0.15, -0.01)), null, null, 0.18),
-      M(geo('beretc', () => new THREE.CylinderGeometry(0.008, 0.008, 0.025, 6)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, 0.18, -0.01)))] },
-    baguette: { bone: 'WristR', build: (M, h) => [
+      M(geo('umbh', () => new THREE.CylinderGeometry(0.014, 0.014, 0.14, 6)), '#6a4a2a', h.clone().add(V3(0, 0.0, 0)))]) },
+    beret: { bone: 'Head', build: (M, h, c, look, real) => [
+      M(geo('beret', () => new THREE.CylinderGeometry(0.14, 0.13, 0.04, 20)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, real ? 0.135 : 0.15, -0.01)), real ? V3(1.1, 1, 1.1) : null, null, 0.18),
+      M(geo('beretc', () => new THREE.CylinderGeometry(0.008, 0.008, 0.025, 6)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, real ? 0.165 : 0.18, -0.01)))] },
+    baguette: { bone: 'WristR', build: (M, h, g) => (g ? [   // held at its paper wrap, hanging down by the leg
+      M(geo('bagR', () => new THREE.CylinderGeometry(0.028, 0.028, 0.62, 10).rotateZ(1.5708)), '#c98a3e', g.at(0.2, 0.0, 0.0), null, g.q),
+      M(geo('bagwR', () => new THREE.BoxGeometry(0.2, 0.07, 0.065)), '#efe8da', g.at(0.07, 0.0, 0.0), null, g.q)] : [
       M(geo('bag', () => new THREE.CylinderGeometry(0.028, 0.028, 0.62, 10).rotateZ(1.2)), '#c98a3e', h.clone().add(V3(0.02, 0.02, 0.06))),
-      M(geo('bagw', () => new THREE.BoxGeometry(0.075, 0.2, 0.065)), '#efe8da', h.clone().add(V3(0.0, -0.02, 0.06)))] },
+      M(geo('bagw', () => new THREE.BoxGeometry(0.075, 0.2, 0.065)), '#efe8da', h.clone().add(V3(0.0, -0.02, 0.06)))]) },
     cafe_tray: { bone: 'WristL', build: (M, h) => {
       const out = [M(geo('ctray', () => new THREE.CylinderGeometry(0.17, 0.17, 0.012, 22)), '#b9bcbf', h.clone().add(V3(0, 0.08, 0.05)))];
       for (let i = 0; i < 3; i++) out.push(M(geo('cup', () => new THREE.CylinderGeometry(0.03, 0.025, 0.06, 10)), i ? '#f4f1ea' : '#7a2e33', h.clone().add(V3(-0.07 + 0.07 * i, 0.12, 0.05 + 0.03 * (i % 2)))));
@@ -165,6 +178,23 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       M(geo('pole', () => new THREE.CylinderGeometry(0.012, 0.012, 1.3, 6)), '#8a8a8a', h.clone().add(V3(0, 0.3, 0.0))),
       M(geo('flag', () => new THREE.BoxGeometry(0.01, 0.2, 0.3)), '#d9262c', h.clone().add(V3(0, 0.85, -0.16)))] },
   };
+  // what an NPC holds for what it does while it waits (look.clip)
+  const CLIP_ACC = { Phone: ['phone'], Photo: ['camera'], Documents: ['clipboard'], Reading: ['book'], Drink: ['cup'] };
+  // things held in a hand, placed in its grip (see person): nothing where the rig has no fingers
+  const B3 = (x, y, z) => new THREE.BoxGeometry(x, y, z);
+  Object.assign(ACC, {
+    phone: { bone: 'WristR', build: (M, h, g) => (g ? [M(geo('phone', () => B3(0.14, 0.07, 0.009)), '#16181c', g.at(0.07, 0.0, 0.022 * g.palm), null, g.q)] : []) },
+    camera: { bone: 'WristR', build: (M, h, g) => (g ? [   // gripped by its right end, the lens away from the face
+      M(geo('cam', () => B3(0.07, 0.075, 0.13)), '#1d1f22', g.at(0.045, -0.01, 0.075 * g.palm), null, g.q),
+      M(geo('lens', () => new THREE.CylinderGeometry(0.028, 0.028, 0.06, 14)), '#0f1012', g.at(0.045, -0.07, 0.085 * g.palm), null, g.q)] : []) },
+    clipboard: { bone: 'WristL', build: (M, h, g) => (g ? [
+      M(geo('board', () => B3(0.31, 0.23, 0.01)), '#8a6a45', g.at(0.12, 0.0, 0.02 * g.palm), null, g.q),
+      M(geo('paper', () => B3(0.27, 0.2, 0.004)), '#f2f0ea', g.at(0.12, 0.0, 0.028 * g.palm), null, g.q)] : []) },
+    book: { bone: 'WristR', build: (M, h, g) => (g ? [M(geo('book', () => B3(0.21, 0.15, 0.025)), '#5b2c2c', g.at(0.08, 0.0, 0.03 * g.palm), null, g.q)] : []) },
+    cup: { bone: 'WristR', build: (M, h, g) => (g ? [
+      M(geo('cup', () => new THREE.CylinderGeometry(0.042, 0.034, 0.11, 14)), '#f4f1ea', g.at(0.06, 0.01, 0.045 * g.palm), null, g.q),
+      M(geo('lid', () => new THREE.CylinderGeometry(0.044, 0.044, 0.015, 14)), '#3a2a20', g.at(0.06, 0.07, 0.045 * g.palm), null, g.q)] : []) },
+  });
 
   // ------------------------------------------------------------ loading
   async function load(base, { onMsg } = {}) {
@@ -193,8 +223,19 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     // the main characters (blender/build_people.py): textured, with their own clips and skeleton
     const H = info.heroes || {}, plain = lib.require;
     lib.heroes = H.characters || {};
+    // the NPCs (build_people.py --npcs): textured too, on the same skeleton, sharing one file of clips per sex
+    const NP = info.npcs || {};
+    lib.npcs = NP.characters || {};
+    const clipsOf = sex => lib.loading[`clips:${sex}`] || (lib.loading[`clips:${sex}`] = get(NP.clips[sex].file).then(g => g.animations));
     lib.require = name => {
-      const h = lib.heroes[name];
+      const h = lib.heroes[name], c = lib.npcs[name];
+      if (c) {
+        return lib.loading[name] || (lib.loading[name] = Promise.all([get(c.file), clipsOf(c.sex)]).then(([g, clips]) => {
+          lib.tpl[name] = { scene: g.scene, textured: true, clips, speeds: NP.clips[c.sex].ground_speed, bones: NP.bones || {} };
+          if (onMsg) onMsg(name);
+          return lib.tpl[name];
+        }));
+      }
       if (!h) return plain(name);
       return lib.loading[name] || (lib.loading[name] = get(h.file).then(g => {
         lib.tpl[name] = { scene: g.scene, textured: true, clips: g.animations, speeds: h.ground_speed, bones: H.bones || {} };
@@ -332,37 +373,68 @@ ${PAT_GLSL}`)
       model.traverse(o => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(o.isSkinnedMesh ? o.geometry.boundingBox : part.copy(o.geometry.boundingBox).applyMatrix4(rel.multiplyMatrices(mInv, o.matrixWorld))); } });
       crown = box.max.y - V3(0, 0, 0).setFromMatrixPosition(rel.multiplyMatrices(mInv, thigh.matrixWorld)).y;
     }
-    for (const n of ['Head', 'Chest', 'Abdomen', 'WristR', 'WristL']) {
+    for (const n of ['Head', 'Chest', 'Abdomen', 'Hips', 'WristR', 'WristL']) {
       if (!bones[alias(n)]) continue;
       bones[n] = bones[alias(n)];
       const bm = new THREE.Matrix4().multiplyMatrices(mInv, bones[n].matrixWorld);
       ref[n] = { pos: V3(0, 0, 0).setFromMatrixPosition(bm), inv: bm.clone().invert() };
     }
+    // each hand's grip, from its finger bones (on a Rocketbox rig), for what it holds: x along the
+    // fingers, y towards the thumb, z the third way (palm: which way along it the palm faces);
+    // at(x, y, z) is a point in it, q its turn
+    const grip = {};
+    for (const [n, s] of [['WristR', 'R'], ['WristL', 'L']]) {
+      const f2 = bone[`Bip01_${s}_Finger2`], th = bone[`Bip01_${s}_Finger01`];
+      if (!ref[n] || !f2 || !th) continue;
+      const o = ref[n].pos, p = b => V3(0, 0, 0).setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(mInv, b.matrixWorld)).sub(o);
+      const x = p(f2).normalize(), y = p(th), z = new THREE.Vector3();
+      y.addScaledVector(x, -y.dot(x)).normalize();
+      z.crossVectors(x, y);
+      grip[n] = { at: (a, b, c) => o.clone().addScaledVector(x, a).addScaledVector(y, b).addScaledVector(z, c),
+        q: new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, y, z)), palm: s === 'R' ? -1 : 1 };
+    }
+    // a real head (a Rocketbox rig, found by its eyes) is narrower and longer than the old characters'
+    // the hats and glasses were made for, whose eyes are 9 cm apart: they are fitted to it axis by axis
+    let headFit = null;
+    if (bone.Bip01_REye && bone.Bip01_LEye) {
+      const p = b => V3(0, 0, 0).setFromMatrixPosition(new THREE.Matrix4().multiplyMatrices(mInv, b.matrixWorld));
+      const r = p(bone.Bip01_REye), l = p(bone.Bip01_LEye);
+      headFit = { s: V3(1.1 * r.distanceTo(l) / 0.09, 1.05, 0.8), mid: r.add(l).multiplyScalar(0.5).add(V3(0, -0.03, -0.105)) };
+    }
     let accKey = '', accObjs = [];
-    const mk = (g, hex, pos, scale, _u, rotZ) => {
+    const mk = (g, hex, pos, scale, turn, rotZ) => {
       const m = new THREE.Mesh(g, stdMat(hex));
       m.position.copy(pos);
       if (scale) m.scale.copy(scale);
+      if (turn) m.quaternion.copy(turn);
       if (rotZ) m.rotation.z = rotZ;
       m.castShadow = true;
       return m;
     };
+    // what the NPC does while it waits (look.clip), if this character has the clip
+    const idleClip = () => (look.clip && act[look.clip] ? look.clip : 'Idle');
     function setAccessories() {
-      const key = JSON.stringify([look.acc || [], look.apron || '']);
+      const ids = [...(look.acc || []), ...((act[look.clip] && CLIP_ACC[look.clip]) || [])];
+      const key = JSON.stringify([ids, look.apron || '']);
       if (key === accKey) return;
       accKey = key;
       for (const o of accObjs) o.parent && o.parent.remove(o);
       accObjs = [];
-      for (const id of look.acc || []) {
-        const a = ACC[id];
-        if (!a || !ref[a.bone]) continue;
+      for (const id of ids) {
+        const a = ACC[id], bn = a && headFit && a.realBone && ref[a.realBone] ? a.realBone : a && a.bone;
+        if (!a || !ref[bn]) continue;
         const grp = new THREE.Group();
-        const anchor = ref[a.bone].pos.clone();
-        if (a.bone === 'Head') { anchor.y += 0.11; anchor.z -= 0.05; }   // the middle of the head
-        for (const m of a.build(mk, anchor, null, look)) grp.add(m);
+        const anchor = ref[bn].pos.clone();
+        const fit = bn === 'Head' && headFit;
+        if (fit) anchor.copy(fit.mid);
+        else if (bn === 'Head') { anchor.y += 0.11; anchor.z -= 0.05; }   // the middle of the head
+        for (const m of a.build(mk, anchor, grip[bn], look, !!headFit)) {
+          if (fit) { m.position.sub(anchor).multiply(fit.s).add(anchor); m.scale.multiply(fit.s); }
+          grp.add(m);
+        }
         grp.matrixAutoUpdate = false;
-        grp.matrix.copy(ref[a.bone].inv);
-        bones[a.bone].add(grp);
+        grp.matrix.copy(ref[bn].inv);
+        bones[bn].add(grp);
         accObjs.push(grp);
       }
     }
@@ -458,7 +530,7 @@ ${PAT_GLSL}`)
       else if (mode === 'talk') play(act.Talk ? 'Talk' : 'Idle', 0.35);
       else if (mode === 'sit') play('Idle_Neutral', 0.2);
       else if (mode === 'air') play('Run', 0.15).setEffectiveTimeScale(0.3);
-      else if (speed < 0.15) play('Idle', 0.3);
+      else if (speed < 0.15) play(idleClip(), 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
       else if (act.Sprint && speed > 5.2) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 7 m/s sprint

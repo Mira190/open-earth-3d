@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NPC lineup</title>
+<style>
+html,body{margin:0;height:100%;background:#c9d3da;overflow:hidden;font:12px/1.3 system-ui,sans-serif}
+canvas{display:block}
+#err{position:fixed;top:8px;left:8px;color:#a00;white-space:pre-wrap;font:12px monospace}
+.tag{position:fixed;transform:translateX(-50%);text-align:center;color:#1b1f24;white-space:nowrap;pointer-events:none}
+.tag b{display:block;font-size:13px}.tag i{display:block;width:9.5em;margin:0 auto;white-space:normal;color:#56606a;font-style:normal;font-size:11px}
+</style>
+</head>
+<body>
+<div id="err"></div>
+<script type="importmap">{"imports": {"three": "../vendor/three/three.module.min.js", "three/addons/": "../vendor/three/addons/"}}</script>
+<script type="module">
+// Dev page: a city's NPCs in a row on a flat floor, as the game draws them (people.js), playing what
+// they do while they wait. Query: city=tokyo (its web/data game.json) | chars=R_a,R_b:Clip:acc1+acc2 (characters) |
+// clip=Talk, acc=a,b (everyone) | only=ids or indices | shadows=0 | labels=0 or names | t=seconds to advance |
+// cx,cy,cz camera, tx,ty,tz target, fov | gap | ry | live=1
+import * as T from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
+T.ColorManagement.enabled = false;
+window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils });
+const q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+addEventListener('error', e => { $('err').textContent += String(e.error && e.error.stack || e.message) + '\n'; });
+addEventListener('unhandledrejection', e => { $('err').textContent += String(e.reason && e.reason.stack || e.reason) + '\n'; });
+await new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'people.js'; s.onload = res; s.onerror = rej; document.head.append(s); });
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = q.get('shadows') !== '0';
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xc9d3da).convertSRGBToLinear();
+scene.add(new THREE.HemisphereLight(new THREE.Color(0xdbe8f5).convertSRGBToLinear(), new THREE.Color(0x8f8676).convertSRGBToLinear(), 1.3));
+const sun = new THREE.DirectionalLight(0xfff1dc, 2.6);
+sun.position.set(-4, 9, 7); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048); sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.02;
+Object.assign(sun.shadow.camera, { left: -12, right: 12, top: 6, bottom: -2, near: 1, far: 30 });
+scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: new THREE.Color(0xb9b3a8).convertSRGBToLinear(), roughness: 1 }));
+floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+const lib = await OEPeople.load('../assets/people/');
+let list;
+if (q.get('chars')) list = q.get('chars').split(',').map(c => c.split(':')).map(([c, clip, acc]) => ({ name: c.replace(/^R_/, ''), role: '', look: Object.assign({ character: c }, clip ? { clip } : {}, acc ? { acc: acc.split(/[+ ]/) } : {}) }));
+else list = (await (await fetch(`../data/${q.get('city') || 'tokyo'}/game.json`)).json()).npcs.map(n => ({ name: n.name, role: n.role, look: n.look }));
+if (q.get('only')) { const ids = q.get('only').split(','); list = list.filter((n, i) => ids.includes(String(i)) || ids.includes(n.name.split(' ')[0].toLowerCase())); }
+await Promise.all(list.map(n => lib.require(n.look.character).catch(e => console.warn(n.look.character, e))));
+const gap = Number(q.get('gap') || 0.95), rigs = [];
+list.forEach((n, i) => {
+  if (!lib.tpl[n.look.character]) return;
+  const look = Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look);
+  if (q.get('clip')) look.clip = q.get('clip');
+  if (q.get('acc')) look.acc = q.get('acc').split(',');
+  const rig = OEPeople.person(lib, look);
+  rig.root.position.set((i - (list.length - 1) / 2) * gap, 0, 0);
+  rig.root.rotation.y = Number(q.get('ry') || 0);
+  scene.add(rig.root);
+  rigs.push({ rig, n });
+});
+const camera = new THREE.PerspectiveCamera(Number(q.get('fov') || 30), innerWidth / innerHeight, 0.05, 200);
+const span = list.length * gap;
+camera.position.set(Number(q.get('cx') || 0), Number(q.get('cy') || 1.2), Number(q.get('cz') || Math.max(3.2, span * 1.75)));
+camera.lookAt(Number(q.get('tx') || 0), Number(q.get('ty') || 0.95), Number(q.get('tz') || 0));
+const step = dt => { for (const { rig, n } of rigs) rig.animate(dt, 0, q.get('talk') ? 'talk' : 'ground', 0); };
+for (let t = 0, T1 = Number(q.get('t') || 1.5); t < T1; t += 1 / 30) step(1 / 30);
+if (q.get('labels') !== '0') {
+  const v = new THREE.Vector3();
+  for (const { rig, n } of rigs) {
+    v.copy(rig.root.position).project(camera);
+    const el = document.createElement('div');
+    el.className = 'tag';
+    el.style.left = `${(v.x + 1) / 2 * innerWidth}px`; el.style.top = `${(1 - v.y) / 2 * innerHeight + 8}px`;
+    el.innerHTML = `<b>${n.name}</b><i>${n.role || ''}</i>` + (q.get('labels') === 'names' ? '' : `<i>${n.look.character.replace(/^R_/, '')}${n.look.clip ? ' · ' + n.look.clip : ''}</i>`);
+    document.body.append(el);
+  }
+}
+renderer.render(scene, camera);
+window.__lineup = { scene, camera, renderer, rigs, lib };
+window.__ready = true;
+if (q.get('live')) { let last = performance.now(); renderer.setAnimationLoop(() => { const n = performance.now(); step((n - last) / 1000); last = n; renderer.render(scene, camera); }); }
+</script>
+</body>
+</html>

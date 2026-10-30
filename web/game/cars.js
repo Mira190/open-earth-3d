@@ -271,9 +271,15 @@ window.OECars = (function () {
         rig.reach = seat === 'driver' && steering ? hub : null;
         if (rig.headTop) {
           rig.animate(0, 0, 'sit', 0);
-          const over = body.worldToLocal(rig.headTop()).y - roofOver(p);
+          const over = body.worldToLocal(rig.headTop()).y - (roofOver(p) - 0.03); // (a margin for the pose settling)
           if (over > 0) rig.root.position.y -= Math.min(0.3, over);
         }
+      },
+      // how far under the roof the top of a seated person's head is (m; negative: through it), or null
+      clearance(rig, seat) {
+        if (!rig.headTop) return null;
+        body.updateWorldMatrix(true, true);
+        return roofOver(seats[seat] || seats.driver) + 0.04 - body.worldToLocal(rig.headTop()).y;
       },
       // the shared headlamp (a spot light kept in the scene, so no shader recompiles), on this car
       carry(light) {
@@ -636,7 +642,7 @@ window.OECars = (function () {
   // other way is no obstacle), and pulls in to the kerb at the end. from: 'kerb' if it starts at
   // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now.
   function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15 } = {}) {
-    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, route, P };
+    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
     function lat(s) {
@@ -648,24 +654,32 @@ window.OECars = (function () {
     }
     function pose(s, out) {
       P.at(s, out);
-      const k = lat(s) * keep;
+      const k = lat(s) * keep + (s >= st.s - 1e-6 ? st.shift : 0);
       out.x += -out.hy * k; out.y += out.hx * k;
       return out;
     }
     pose(0, q);
     st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy);
-    // the gap (bumper to bumper) to the first of the others in the lane ahead
+    // the gap (bumper to bumper) to the first of the others in the lane ahead. A car stopped in the
+    // lane (o.v about 0, o.still) is passed: the driver swings out towards the centre line round
+    // it (st.pass, eased into st.shift) instead of waiting behind it for good.
     const c = {};
     function gapAhead(others) {
-      let gap = Infinity;
+      let gap = Infinity, pass = 0;
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 60) continue;
         P.at(Math.min(P.len, st.s + a), c);
-        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx;
-        if (Math.abs(w - lat(st.s + a) * keep) < 1.5 && a - (o.half || 0.4) - C.half < gap) gap = a - (o.half || 0.4) - C.half;
+        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
+        if (Math.abs(w - lane - st.shift) >= 1.5) continue;
+        if (o.still && a < 40 && (!end || P.len - st.s - a > 25)) { // (not one where it is to pull in)
+          const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
+          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; continue; }
+        }
+        if (a - half - C.half < gap) gap = a - half - C.half;
       }
+      st.pass = pass;
       return gap;
     }
     function update(dt, others = []) {
@@ -678,6 +692,9 @@ window.OECars = (function () {
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
       const gap = gapAhead(others);
       want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
+      // out round something stopped in the lane, and back in after it, at a crawl
+      st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
+      if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
       const dv = clamp(want - st.v, -7.5 * dt, 2.6 * dt);
       st.brake = dv < -0.02 * dt * 60 || (st.v < 0.2 && want < 0.1);
       st.v = Math.max(0, st.v + dv);
@@ -694,7 +711,7 @@ window.OECars = (function () {
       if (end && left < 0.5 && st.v < 0.3) { st.done = true; st.v = 0; }
     }
     // straight to the end (skipping the trip)
-    function finish() { st.s = P.len; pose(st.s, q); st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy); st.v = 0; st.done = end; }
+    function finish() { st.s = P.len; st.shift = st.pass = 0; pose(st.s, q); st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy); st.v = 0; st.done = end; }
     return { st, update, finish, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => P.len - st.s };
   }
 

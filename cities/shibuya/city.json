@@ -794,13 +794,14 @@
           -1044.1
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_14_f016",
           "skin": "#f2cdb4",
           "hair": "#2a1d17",
-          "top": "#2f6b4f",
+          "top": "#a8a39a",
           "legs": "#cdbf9f",
-          "shirt": "#2f6b4f",
-          "pants": "#cdbf9f"
+          "shirt": "#a8a39a",
+          "pants": "#cdbf9f",
+          "clip": "Present"
         },
         "idle": [
           "Ten years since a film and a game drew these streets. This October the pilgrims are everywhere.",
@@ -816,12 +817,12 @@
           -978.4
         ],
         "look": {
-          "character": "M_Hoodie",
+          "character": "R_Male_Adult_09",
           "skin": "#e9bf9d",
           "hair": "#1b1512",
-          "top": "#e0742a",
+          "top": "#23262b",
           "legs": "#2b3440",
-          "shirt": "#e0742a",
+          "shirt": "#23262b",
           "pants": "#2b3440"
         },
         "idle": [
@@ -839,12 +840,12 @@
           15.23
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Business_Female_04_f003",
           "skin": "#f0c7aa",
           "hair": "#17120f",
-          "top": "#1f2328",
+          "top": "#2b2f3a",
           "legs": "#1f2328",
-          "shirt": "#1f2328",
+          "shirt": "#2b2f3a",
           "pants": "#1f2328"
         },
         "idle": [
@@ -862,13 +863,14 @@
           241.8
         ],
         "look": {
-          "character": "M_Adventurer",
+          "character": "R_Male_Adult_05_m024",
           "skin": "#e3b08d",
           "hair": "#141010",
-          "top": "#6b6a4a",
+          "top": "#b8a27a",
           "legs": "#3a3026",
-          "shirt": "#6b6a4a",
-          "pants": "#3a3026"
+          "shirt": "#b8a27a",
+          "pants": "#3a3026",
+          "clip": "Photo"
         },
         "idle": [
           "Golden hour at SKY EDGE: the towers go copper, then the scramble lights up.",
@@ -885,12 +887,12 @@
           33.97
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Male_Adult_20_m008",
           "skin": "#e9bf9d",
           "hair": "#17120f",
-          "top": "#3d4a5c",
+          "top": "#5a3a2a",
           "legs": "#24384f",
-          "shirt": "#3d4a5c",
+          "shirt": "#5a3a2a",
           "pants": "#24384f"
         },
         "idle": [
@@ -907,13 +909,14 @@
           -2868.8
         ],
         "look": {
-          "character": "M_Worker",
+          "character": "R_Male_Adult_14_m017_grey",
           "skin": "#e0b392",
           "hair": "#cfcac4",
-          "top": "#9aa3a8",
+          "top": "#8a8f94",
           "legs": "#2f3a4d",
-          "shirt": "#9aa3a8",
-          "pants": "#2f3a4d"
+          "shirt": "#8a8f94",
+          "pants": "#2f3a4d",
+          "clip": "Idle_Neutral"
         },
         "idle": [
           "Forty years a regular. The water's hotter on the men's side, they say on the women's side.",
@@ -930,13 +933,17 @@
           22.06
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_17_f011",
           "skin": "#f6d8c6",
           "hair": "#141010",
-          "top": "#b23a48",
+          "top": "#4caf7a",
           "legs": "#33415c",
-          "shirt": "#b23a48",
-          "pants": "#33415c"
+          "shirt": "#4caf7a",
+          "pants": "#33415c",
+          "clip": "Photo",
+          "acc": [
+            "backpack"
+          ]
         },
         "idle": [
           "我第一次看是高中的时候。I first saw it in high school.",
@@ -952,13 +959,14 @@
           1849.6
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Male_Adult_03_m008_grey",
           "skin": "#e3b08d",
           "hair": "#8c8580",
-          "top": "#5b4a3a",
+          "top": "#6e6458",
           "legs": "#3a3026",
-          "shirt": "#5b4a3a",
-          "pants": "#3a3026"
+          "shirt": "#6e6458",
+          "pants": "#3a3026",
+          "clip": "Reading"
         },
         "idle": [
           "I climb the 男坂 every morning. Fifty years, and nobody came. Now the world comes.",
@@ -974,13 +982,17 @@
           477.4
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Female_Adult_15_f013",
           "skin": "#f6d8c6",
           "hair": "#17120f",
-          "top": "#1d2b4a",
+          "top": "#3f51a0",
           "legs": "#4b5563",
-          "shirt": "#1d2b4a",
-          "pants": "#4b5563"
+          "shirt": "#3f51a0",
+          "pants": "#4b5563",
+          "clip": "Phone",
+          "acc": [
+            "backpack"
+          ]
         },
         "idle": [
           "My stop. A game put a school up that road. There isn't one, I checked.",
@@ -997,13 +1009,14 @@
           34.14
         ],
         "look": {
-          "character": "W_Punk",
+          "character": "R_Female_Adult_13_f003_brown",
           "skin": "#f0c7aa",
           "hair": "#4a3222",
-          "top": "#5d2a6b",
+          "top": "#5f646b",
           "legs": "#1d1f24",
-          "shirt": "#5d2a6b",
-          "pants": "#1d1f24"
+          "shirt": "#5f646b",
+          "pants": "#1d1f24",
+          "clip": "Drink"
         },
         "idle": [
           "2-chome: a few hundred bars, most the size of a living room.",
@@ -1019,13 +1032,16 @@
           2800.8
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Police_Male_01_m024_plain",
           "skin": "#e9bf9d",
           "hair": "#141010",
-          "top": "#1d2b4a",
+          "top": "#7d9cc4",
           "legs": "#1d2b4a",
-          "shirt": "#1d2b4a",
-          "pants": "#1d2b4a"
+          "shirt": "#7d9cc4",
+          "pants": "#1d2b4a",
+          "acc": [
+            "police_cap"
+          ]
         },
         "idle": [
           "Touts are not allowed to follow you. If one does, come to the koban.",

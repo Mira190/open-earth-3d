@@ -558,16 +558,14 @@
           0
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_13",
           "skin": "#f3d6c2",
           "hair": "#d4b27a",
-          "top": "#1d2b4a",
-          "shirt": "#1d2b4a",
+          "top": "#5f646b",
+          "shirt": "#5f646b",
           "legs": "#24384f",
           "pants": "#24384f",
-          "acc": [
-            "backpack"
-          ]
+          "clip": "Documents"
         },
         "idle": [
           "Every building here is in the national register, the BAG, and every one was measured by the national laser survey, the AHN. The 3DBAG puts the two together.",
@@ -583,13 +581,14 @@
           -452
         ],
         "look": {
-          "character": "M_Adventurer",
+          "character": "R_Male_Adult_03",
           "skin": "#efcbb1",
           "hair": "#cfcac4",
-          "top": "#2f4a3c",
-          "shirt": "#2f4a3c",
+          "top": "#6e6458",
+          "shirt": "#6e6458",
           "legs": "#3a3026",
           "pants": "#3a3026",
+          "clip": "Thoughtful",
           "acc": [
             "glasses"
           ]
@@ -608,13 +607,14 @@
           140
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Female_Adult_15",
           "skin": "#f7dfcf",
           "hair": "#8c6339",
-          "top": "#7a2e33",
-          "shirt": "#7a2e33",
+          "top": "#3f51a0",
+          "shirt": "#3f51a0",
           "legs": "#141414",
-          "pants": "#141414"
+          "pants": "#141414",
+          "clip": "Idle_Neutral"
         },
         "idle": [
           "Fifty bells up there. I play them on Tuesdays at noon.",
@@ -630,11 +630,11 @@
           845
         ],
         "look": {
-          "character": "M_Worker",
+          "character": "R_Delivery_Male_01",
           "skin": "#e8bd9e",
           "hair": "#4a3222",
-          "top": "#0b4c8c",
-          "shirt": "#0b4c8c",
+          "top": "#a8302c",
+          "shirt": "#a8302c",
           "legs": "#24384f",
           "pants": "#24384f"
         },
@@ -652,13 +652,14 @@
           1235
         ],
         "look": {
-          "character": "W_Adventurer",
+          "character": "R_Female_Adult_11",
           "skin": "#c99470",
           "hair": "#141010",
-          "top": "#e9e6df",
-          "shirt": "#e9e6df",
+          "top": "#5a3a2a",
+          "shirt": "#5a3a2a",
           "legs": "#141414",
-          "pants": "#141414"
+          "pants": "#141414",
+          "clip": "Documents"
         },
         "idle": [
           "North of the IJ was shipyards and oil tanks. Now it's the Eye, and the A'DAM tower.",
@@ -674,13 +675,14 @@
           -768
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_12_f013",
           "skin": "#efcbb1",
           "hair": "#141010",
-          "top": "#f08a24",
-          "shirt": "#f08a24",
+          "top": "#23262b",
+          "shirt": "#23262b",
           "legs": "#24384f",
           "pants": "#24384f",
+          "clip": "Phone",
           "acc": [
             "backpack"
           ]
@@ -699,17 +701,14 @@
           -1935
         ],
         "look": {
-          "character": "W_Worker",
+          "character": "R_Female_Adult_06",
           "skin": "#b07a55",
           "hair": "#2a1e17",
-          "top": "#2f4a3c",
-          "shirt": "#2f4a3c",
+          "top": "#7a7440",
+          "shirt": "#7a7440",
           "legs": "#2b3440",
           "pants": "#2b3440",
-          "acc": [
-            "apron"
-          ],
-          "apron": "#f4f1ea"
+          "clip": "Work"
         },
         "idle": [
           "Stroopwafels, fresh. The syrup has to run.",

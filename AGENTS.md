@@ -147,5 +147,9 @@ The owner should not be the one who finds the bug.
 - The main characters (the surveyors you play) are Microsoft Rocketbox avatars and clips (MIT;
   keep `web/assets/people/LICENSE-Rocketbox.txt` with them), built by `blender/build_people.py`
   (`python pipeline/fetch_rocketbox.py` first).
+- The NPCs are Rocketbox avatars too. A city casts each in `game.npcs[].look` in
+  `cities/<id>/city.json`: `character` `R_<avatar>[_<head>][_<tag>...]` and `clip`. Build them
+  with `python blender/build_people.py --npcs`, then `python pipeline/npc_looks.py` to copy the
+  looks into `web/data/<id>/game.json`. A character several cities name is one shared file.
 - `web/game/vehicles.js` and `web/game/cars.js` run on three.js r128 and r186. Keep them
   free of version-specific calls, so they stay shared whichever version a branch uses.

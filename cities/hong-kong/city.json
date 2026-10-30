@@ -269,13 +269,14 @@
         "role": "Survey lead",
         "at": [-268, 80],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_04_f003",
           "skin": "#e2b48f",
           "hair": "#14100e",
-          "top": "#d6402f",
+          "top": "#5a3a28",
           "legs": "#2b3440",
-          "shirt": "#d6402f",
-          "pants": "#2b3440"
+          "shirt": "#5a3a28",
+          "pants": "#2b3440",
+          "clip": "Documents"
         },
         "idle": ["Every building here has a surveyed top level from the Lands Department, and a LiDAR scan from 2020 to check it against. Not many cities can say that."]
       },
@@ -285,13 +286,14 @@
         "role": "Height detective",
         "at": [612, 812],
         "look": {
-          "character": "M_Hoodie",
+          "character": "R_Male_Adult_10",
           "skin": "#d8a47e",
           "hair": "#121010",
-          "top": "#2f5d8a",
+          "top": "#a3262a",
           "legs": "#2a2f36",
-          "shirt": "#2f5d8a",
-          "pants": "#2a2f36"
+          "shirt": "#a3262a",
+          "pants": "#2a2f36",
+          "clip": "LookAround"
         },
         "idle": ["A survey says how tall a building is. A laser says how tall it looked from a helicopter in January 2020. When they disagree, one of them is out of date."]
       },
@@ -301,12 +303,12 @@
         "role": "Star Ferry deckhand",
         "at": [530, 820],
         "look": {
-          "character": "M_Worker",
+          "character": "R_Construction_Male_05_m008_bare",
           "skin": "#c98d68",
           "hair": "#2a2a2a",
-          "top": "#1d3557",
+          "top": "#1f4fa8",
           "legs": "#1d3557",
-          "shirt": "#1d3557",
+          "shirt": "#1f4fa8",
           "pants": "#1d3557"
         },
         "idle": ["Central to Tsim Sha Tsui, about a kilometre of harbour. Mind the gangway."]
@@ -317,12 +319,12 @@
         "role": "Helicopter pilot",
         "at": [1098, -150],
         "look": {
-          "character": "W_Adventurer",
+          "character": "R_Pilot_Female_01_f013",
           "skin": "#e9bf9c",
           "hair": "#3a2a20",
-          "top": "#5b6e7a",
+          "top": "#f2f0ea",
           "legs": "#3b4a52",
-          "shirt": "#5b6e7a",
+          "shirt": "#f2f0ea",
           "pants": "#3b4a52"
         },
         "idle": ["The International Commerce Centre tops out at 484 m. Give it a wide berth."]
@@ -333,13 +335,14 @@
         "role": "Planner",
         "at": [-372, -530],
         "look": {
-          "character": "W_Suit",
+          "character": "R_Business_Female_03",
           "skin": "#e3b896",
           "hair": "#0f0c0a",
-          "top": "#24323f",
+          "top": "#8a6a50",
           "legs": "#24323f",
-          "shirt": "#24323f",
-          "pants": "#24323f"
+          "shirt": "#8a6a50",
+          "pants": "#24323f",
+          "clip": "Documents"
         },
         "idle": ["Hong Kong has no rule that protects the sun on its squares. The planning guidelines protect a view instead: a band of green below the Peak's ridgeline, seen from the harbour."]
       },
@@ -349,13 +352,14 @@
         "role": "Tram fan",
         "at": [-430, -470],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Male_Adult_13_m017_grey",
           "skin": "#c99470",
           "hair": "#5a5a5a",
-          "top": "#3d6b4a",
+          "top": "#3a3d42",
           "legs": "#4b5563",
-          "shirt": "#3d6b4a",
-          "pants": "#4b5563"
+          "shirt": "#3a3d42",
+          "pants": "#4b5563",
+          "clip": "Photo"
         },
         "idle": ["Ding ding! The trams have run along this shore since 1904. The sea used to come right up to Des Voeux Road."]
       },
@@ -365,13 +369,14 @@
         "role": "Peak Tram guide",
         "at": [-398, -905],
         "look": {
-          "character": "W_Worker",
+          "character": "R_Security_Female_01_f003_plain",
           "skin": "#d9a882",
           "hair": "#1a1412",
-          "top": "#8e1b1b",
+          "top": "#1f2328",
           "legs": "#2b2b30",
-          "shirt": "#8e1b1b",
-          "pants": "#2b2b30"
+          "shirt": "#1f2328",
+          "pants": "#2b2b30",
+          "clip": "Present"
         },
         "idle": ["The Peak Tram climbs some 360 metres from Garden Road. Stand at the back and the towers lean the wrong way."]
       },
@@ -381,13 +386,14 @@
         "role": "Lookout regular",
         "at": [-1215, -1595],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Female_Adult_09_f011_grey",
           "skin": "#e6b994",
           "hair": "#9a9a9a",
-          "top": "#4f6d5a",
+          "top": "#6e5a48",
           "legs": "#3a3a40",
-          "shirt": "#4f6d5a",
-          "pants": "#3a3a40"
+          "shirt": "#6e5a48",
+          "pants": "#3a3a40",
+          "clip": "Idle_Neutral"
         },
         "idle": ["It's {time} up here. {sun_line}"]
       }

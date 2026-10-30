@@ -535,12 +535,12 @@
           1100
         ],
         "look": {
-          "character": "W_Formal",
+          "character": "R_Security_Female_01_f003_plain",
           "skin": "#f0c7aa",
           "hair": "#17120f",
-          "top": "#1d2b4a",
+          "top": "#1f2328",
           "legs": "#1d2b4a",
-          "shirt": "#1d2b4a",
+          "shirt": "#1f2328",
           "pants": "#1d2b4a"
         },
         "idle": [
@@ -557,13 +557,14 @@
           1118
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Business_Male_02",
           "skin": "#e9bf9d",
           "hair": "#141010",
-          "top": "#1f2328",
+          "top": "#1d2b4a",
           "legs": "#1b1d22",
-          "shirt": "#1f2328",
-          "pants": "#1b1d22"
+          "shirt": "#1d2b4a",
+          "pants": "#1b1d22",
+          "clip": "Phone"
         },
         "idle": [
           "Until 1963 Tokyo capped buildings at 31 m, a hundred shaku. Then floor-area ratios replaced the cap.",
@@ -579,13 +580,14 @@
           1060
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Sports_Male_04_m024",
           "skin": "#e3b08d",
           "hair": "#1b1512",
-          "top": "#e8541c",
+          "top": "#1f4fa8",
           "legs": "#24384f",
-          "shirt": "#e8541c",
-          "pants": "#24384f"
+          "shirt": "#1f4fa8",
+          "pants": "#24384f",
+          "clip": "Stretch"
         },
         "idle": [
           "Five kilometres round the Palace, always counter-clockwise. 反時計回り. Nobody told me; everybody does it.",
@@ -601,13 +603,14 @@
           360
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_09_f011_grey",
           "skin": "#f0c7aa",
           "hair": "#cfcac4",
-          "top": "#7a4e8f",
+          "top": "#6e5a48",
           "legs": "#4b5563",
-          "shirt": "#7a4e8f",
-          "pants": "#4b5563"
+          "shirt": "#6e5a48",
+          "pants": "#4b5563",
+          "clip": "Reading"
         },
         "idle": [
           "Hibiya Park opened in 1903, Japan's first Western-style park. My grandmother walked in it in a kimono.",
@@ -623,13 +626,14 @@
           200
         ],
         "look": {
-          "character": "W_Suit",
+          "character": "R_Business_Female_03",
           "skin": "#f0c7aa",
           "hair": "#2a1d17",
-          "top": "#c9c6bd",
+          "top": "#8a6a50",
           "legs": "#2b2f3a",
-          "shirt": "#c9c6bd",
-          "pants": "#2b2f3a"
+          "shirt": "#8a6a50",
+          "pants": "#2b2f3a",
+          "clip": "Drink"
         },
         "idle": [
           "Ginza at lunch: the main street closes to cars on weekend afternoons. 歩行者天国, the pedestrian paradise.",
@@ -645,13 +649,19 @@
           508
         ],
         "look": {
-          "character": "M_Worker",
+          "character": "R_Business_Male_06_m017",
           "skin": "#e0b392",
           "hair": "#1b1512",
           "top": "#f2f0ea",
           "legs": "#1d2330",
           "shirt": "#f2f0ea",
-          "pants": "#1d2330"
+          "pants": "#1d2330",
+          "clip": "Work",
+          "acc": [
+            "hachimaki",
+            "apron"
+          ],
+          "apron": "#1d2330"
         },
         "idle": [
           "いらっしゃいませ! Under the tracks since 1985. The trains overhead? That's the seasoning.",
@@ -667,12 +677,12 @@
           -1080
         ],
         "look": {
-          "character": "M_Suit",
+          "character": "R_Police_Male_05",
           "skin": "#d9a27e",
           "hair": "#8c8580",
-          "top": "#14284a",
+          "top": "#f2f0ea",
           "legs": "#14284a",
-          "shirt": "#14284a",
+          "shirt": "#f2f0ea",
           "pants": "#14284a"
         },
         "idle": [
@@ -689,13 +699,16 @@
           318
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Pilot_Male_01_m008_grey",
           "skin": "#e3b08d",
           "hair": "#141010",
-          "top": "#2f3b4a",
+          "top": "#1f2328",
           "legs": "#2f3b4a",
-          "shirt": "#2f3b4a",
-          "pants": "#2f3b4a"
+          "shirt": "#1f2328",
+          "pants": "#2f3b4a",
+          "acc": [
+            "sunglasses"
+          ]
         },
         "idle": [
           "The cabin's warm. Keep clear of the Tokyo Tower lattice: 333 m of steel, and it does not move."
@@ -710,13 +723,14 @@
           -1218
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Male_Adult_06_m024_brown",
           "skin": "#e9bf9d",
           "hair": "#17120f",
-          "top": "#e8541c",
+          "top": "#c0392b",
           "legs": "#f1efe9",
-          "shirt": "#e8541c",
-          "pants": "#f1efe9"
+          "shirt": "#c0392b",
+          "pants": "#f1efe9",
+          "clip": "Present"
         },
         "idle": [
           "Tokyo Tower opened in 1958, at 333 m, 13 m taller than the Eiffel Tower. That was the point.",
@@ -732,13 +746,17 @@
           990
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_15_f013",
           "skin": "#f6d8c6",
           "hair": "#17120f",
-          "top": "#1d2b4a",
+          "top": "#3f51a0",
           "legs": "#3a4358",
-          "shirt": "#1d2b4a",
-          "pants": "#3a4358"
+          "shirt": "#3f51a0",
+          "pants": "#3a4358",
+          "clip": "Phone",
+          "acc": [
+            "backpack"
+          ]
         },
         "idle": [
           "Navy blazer, a ribbon, and a long walk to school. I love the autumn light on the moat.",

@@ -618,13 +618,14 @@
           -10
         ],
         "look": {
-          "character": "W_Casual",
+          "character": "R_Female_Adult_14",
           "skin": "#e3b08d",
           "hair": "#4a3222",
-          "top": "#2e7d6b",
+          "top": "#a8a39a",
           "legs": "#2b3440",
-          "shirt": "#2e7d6b",
-          "pants": "#2b3440"
+          "shirt": "#a8a39a",
+          "pants": "#2b3440",
+          "clip": "Documents"
         },
         "idle": [
           "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model.",
@@ -640,7 +641,7 @@
           168
         ],
         "look": {
-          "character": "W_Suit",
+          "character": "R_Business_Female_01",
           "skin": "#c18661",
           "hair": "#141010",
           "top": "#1f2328",
@@ -661,12 +662,12 @@
           -138
         ],
         "look": {
-          "character": "M_Casual2",
+          "character": "R_Pilot_Male_03_m016",
           "skin": "#8f5b3d",
           "hair": "#141010",
-          "top": "#1f4e79",
+          "top": "#f2f0ea",
           "legs": "#2b3440",
-          "shirt": "#1f4e79",
+          "shirt": "#f2f0ea",
           "pants": "#2b3440"
         },
         "idle": [
@@ -682,11 +683,12 @@
           -548
         ],
         "look": {
-          "character": "W_Adventurer",
+          "character": "R_Pilot_Female_01",
           "skin": "#f0c7aa",
           "hair": "#b48a52",
-          "shirt": "#5b6e7a",
-          "pants": "#3b4a52"
+          "shirt": "#f2f0ea",
+          "pants": "#3b4a52",
+          "top": "#f2f0ea"
         },
         "idle": [
           "Australia 108 tops out at 317 m. Give it a wide berth."
@@ -701,13 +703,14 @@
           -150
         ],
         "look": {
-          "character": "M_Hoodie",
+          "character": "R_Male_Adult_20_m024",
           "skin": "#e3b08d",
           "hair": "#141010",
-          "top": "#6b4c9a",
+          "top": "#5a3a2a",
           "legs": "#33415c",
-          "shirt": "#6b4c9a",
-          "pants": "#33415c"
+          "shirt": "#5a3a2a",
+          "pants": "#33415c",
+          "clip": "Phone"
         },
         "idle": [
           "Rialto Towers is mapped at 20 m in OpenStreetMap. The real thing is 251 m. Open data needs checking."
@@ -722,13 +725,14 @@
           90
         ],
         "look": {
-          "character": "M_Beach",
+          "character": "R_Male_Adult_13",
           "skin": "#d49c76",
           "hair": "#8c8580",
-          "top": "#3d6b4a",
+          "top": "#3a3d42",
           "legs": "#4b5563",
-          "shirt": "#3d6b4a",
-          "pants": "#4b5563"
+          "shirt": "#3a3d42",
+          "pants": "#4b5563",
+          "clip": "Photo"
         },
         "idle": [
           "Free trams run all through the CBD. Not in this game yet, sadly. Walk or take the river shuttle."

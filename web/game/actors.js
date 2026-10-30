@@ -882,14 +882,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
         }
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
-        // between, or round it if that is a short swing out; otherwise braked for like a car ahead
+        // between, or round it: a short swing out towards the kerb, or out over the centre line round
+        // one left in the lane, as traffic goes round a stopped car; otherwise braked for like a car ahead
         for (const b of blockers) {
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
           if (b.parked) {
             const need = c.hw + (b.hw || 0.9) + 0.3;
             if (a < -b.half - c.half || a > 45 || Math.abs(w) >= need) continue;
-            if (need - Math.abs(w) < 1.6 && Math.abs(w) > 0.4) { const sw = -(need - Math.abs(w)) * Math.sign(w); if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
+            const toKerb = w + side * need, toCentre = w - side * need; // (the kerb is on the keep side)
+            const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
+            if (sw != null) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
           if (a > 0 && Math.abs(w) < 1.6 && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; }
         }

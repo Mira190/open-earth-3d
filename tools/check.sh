@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The checks to pass before work lands on main, in one command. It serves web/ on its own port
 # and, for what the branch changed against origin/main (or for the targets named):
-#   - plays each city's game headless (tools/game_check.js: walk, talk, helicopter, ferries),
+#   - plays each city's game headless (tools/game_check.js: walk, talk, helicopter, ferries,
+#     your car, a taxi and a ride),
 #     three cities at a time, under xvfb-run (llvmpipe) when it is installed;
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
