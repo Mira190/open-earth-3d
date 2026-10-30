@@ -824,7 +824,9 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
 - **Boats.** A route is a list of landings. Make each route two or three stops long and
   put the landings a quest uses at the ends, so the boat at a landing is the one that goes
   where the quest wants.
-- **Night.** `night_ambient` lifts the light after dark, and a landmark material can carry
+- **Night.** The street lights, the traffic's lights and the towers' lights come from
+  `night.json` ([NIGHT.md](NIGHT.md)), styled by `city.json` `night`; `night_ambient` adds
+  a quarter of its old lift on top (neon, signs), and a landmark material can carry
   `emissive` and `glow` so signs light up.
 - **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
   `game`, or a city's `game_extras` hook returns them with positions measured from its

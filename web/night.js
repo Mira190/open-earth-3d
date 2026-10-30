@@ -339,11 +339,70 @@ void main() {
       lights.push(pts);
     }
 
+    // ------------------------------------------------------------ the towers' crowns
+    // As a lighting designer gives a skyline its hierarchy: the body of a tower is left to its
+    // windows, and its crown is lit, a wash rising up the top few storeys from the setback's
+    // floodlights and a fine line along the parapet, mostly in white light (night.json "crown").
+    // A strip just outside the walls of each lit tower's highest part; additive, so it adds to them.
+    const cr = Object.assign({ from_m: 60, share: 0.6, colours: [['#ffe2bf', 0.5], ['#fff1e2', 0.3], ['#ffc890', 0.12], ['#cfe0ff', 0.08]] }, st.crown);
+    const crownColour = picker(cr.colours, rnd), crowns = new Map(), cPos = [], cCol = [], cV = [];
+    let crownsLit = 0;
+    for (const s of B.s) {
+      const m = B.b[s[0]];
+      if (!m || m[2] < cr.from_m || m[4] === 'parametric') continue;
+      const zt = (s[1] + s[3]) / 10, t = crowns.get(s[0]);
+      if (!t || zt > t.zt) crowns.set(s[0], { zt, top: m[2], ring: s[4] });
+    }
+    for (const [bi, { zt, top, ring }] of crowns) {
+      if (rng(bi * 7 + 3)() > cr.share) continue; // the same towers lit on every visit
+      const H = Math.min(14, Math.max(4, 0.08 * top)), c = crownColour(), n = ring.length / 2;
+      crownsLit++;
+      let area = 0;
+      for (let k = 0; k < n; k++) { const j = (k + 1) % n; area += ring[2 * k] * ring[2 * j + 1] - ring[2 * j] * ring[2 * k + 1]; }
+      const out = area > 0 ? 0.3 : -0.3; // outward, whichever way the ring runs
+      for (let k = 0; k < n; k++) {
+        const j = (k + 1) % n, ax = ring[2 * k] / 10, ay = ring[2 * k + 1] / 10, bx = ring[2 * j] / 10, by = ring[2 * j + 1] / 10, L = Math.hypot(bx - ax, by - ay);
+        if (L < 0.5) continue;
+        const ox = (by - ay) / L * out, oy = -(bx - ax) / L * out;
+        const q = [W(ax + ox, ay + oy, zt - H), W(bx + ox, by + oy, zt - H), W(bx + ox, by + oy, zt + 0.15), W(ax + ox, ay + oy, zt + 0.15)];
+        for (const i of [0, 1, 2, 0, 2, 3]) { cPos.push(q[i].x, q[i].y, q[i].z); cCol.push(c.r, c.g, c.b); cV.push(i < 2 ? 0 : 1); }
+      }
+    }
+    if (cPos.length) {
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(cPos, 3));
+      g.setAttribute('color', new THREE.Float32BufferAttribute(cCol, 3));
+      g.setAttribute('v', new THREE.Float32BufferAttribute(cV, 1));
+      const m = lightMaterial(common, `attribute vec3 color; attribute float v; uniform float uOn; varying vec3 vC; varying float vV;
+#include <common>
+#include <fog_pars_vertex>
+void main() {
+  vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+  vC = color * uOn; vV = v;
+  gl_Position = projectionMatrix * mvPosition;
+  #include <fog_vertex>
+}`, `varying vec3 vC; varying float vV;
+#include <common>
+#include <fog_pars_fragment>
+void main() {
+  // the wash, and the parapet's line kept to its share of the light when it is under a pixel
+  float w = fwidth(vV), lw = 0.06, line = smoothstep(1.0 - lw - w, 1.0 - lw + w, vV) * min(1.0, lw / max(w, lw));
+  gl_FragColor = vec4(vC * (0.45 * pow(vV, 1.7) + 1.5 * line), 1.0);
+  ${FOG_FRAG}
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+}`);
+      m.side = THREE.DoubleSide;
+      const mesh = new THREE.Mesh(g, m);
+      mesh.renderOrder = 19;
+      lights.push(mesh);
+    }
+
     group.add(...lights);
     Wd.world.add(group);
     const sizeV = new THREE.Vector2();
     const api = {
-      group, lamps: nL, generated: nGen, cars: nT, towers: tops.size, map,
+      group, lamps: nL, generated: nGen, cars: nT, towers: tops.size, crowns: crownsLit, map,
       skyglow: st.skyglow ? OEWorld.lin(st.skyglow) : null,
       // how far on the street lights are: they come on as the sun sets
       on: () => common.uOn.value,

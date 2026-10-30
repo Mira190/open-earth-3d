@@ -11,6 +11,13 @@ computed from the model while you play, or carries a source you can open from th
 | **8 m down with Raf: the slate works out where the red went** | **The map: the site at this tide, people, objective, reef sites** |
 | ![](images/reef/game-dive.jpg) | ![](images/reef/game-map.jpg) |
 
+The reef pages wear the title screen's look, as the cities do: the loader in its dark and its type,
+the HUD, the dialogue, the journal, the map and the time of day on glass with hairlines, Zalando Sans
+Expanded for names and figures, Inter Tight for text and JetBrains Mono for labels, and the sun's amber
+as the one accent. The map is drawn at night like a chart table, you a white arrow.
+
+![The reef HUD in the title's look](images/night/reef-hud.jpg)
+
 ## Playing
 
 | Keys | What they do |

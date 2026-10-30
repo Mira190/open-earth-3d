@@ -339,15 +339,18 @@ vec3 photoGrade(vec3 c) {
     // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
     su.twilight = { value: new THREE.Color(0, 0, 0) };
     sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
-      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat; uniform float uSkyDim;')
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
       .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );' +
         // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
         // (the game sets it, atmosphere.js), and the last few degrees above the horizon go into the
         // haze the model's edge fades into (setSun)
-        '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 ) * uSkyDim;' +
+        '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
+        // after dark, the night sky of a city (setSun): deep blue overhead, the city's glow low down
+        '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( uNightHorizon, uNightZenith, pow( clamp( direction.y, 0.0, 1.0 ), 0.6 ) ), uNightSky );' +
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
-    Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 }, uSkyDim: { value: 1 } });
+    Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 },
+      uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
       .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
@@ -694,7 +697,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     // horizon in that haze: the city fades into the sky instead of ending in a grey band. Only
     // where the fog is mixed in linear light before the tone curve (the game's post stack sets
     // skyHaze); the viewer fogs after it and keeps its fixed colours.
-    let hazeRT = null, hazeOk = false;
+    let hazeRT = null, hazeOk = false, fogBase = null;
     const hazeCam = new THREE.PerspectiveCamera(8, 1, 0.1, 100), hazeC = new THREE.Color(), hazePx = new Float32Array(16);
     function readHaze(az) {
       try {
@@ -737,14 +740,17 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         // a city's own night glow (neon, street light); with the street lights drawn (night.js), the
         // night's own light is the moon's and the sky's, and the lamps light the streets themselves
         const amb = ((D.scene.city && D.scene.city.night_ambient) || 0) * (night ? 0.25 : 1);
-        hemi.intensity = Math.PI * ((night ? 0.035 : 0.07) + 0.25 * day + 0.1 * tw * (1 - day) + amb * (1 - day));
+        hemi.intensity = Math.PI * ((night ? 0.02 : 0.07) + 0.25 * day + 0.1 * tw * (1 - day) + amb * (1 - day));
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
-        // The sky's curve lifts a night sky to a tenth of the day's, which lit every glass tower as if
-        // under an overcast evening. With the street lights drawn, the night sky is dark, as it is
-        // over a city from the air, and the lamps do the lighting (the haze keeps the city's glow).
-        su.uSkyDim.value = night ? 1 - 0.85 * smooth(0.35, 1, U.uNight.value) : 1;
+        // The sky after dark as night photographs of a city show it: a deep blue overhead and, low
+        // down, the glow its lights put in the air, which the haze at the model's edge takes too.
+        // (The sky's own curve lifts a night sky to a grey tenth of the day's, which lit every glass
+        // tower like an overcast evening.) Glass reflects both: blue above, warm below. With the
+        // street lights drawn (night.js) the lamps do the lighting.
+        su.uNightSky.value = night ? smooth(0.3, 1, U.uNight.value) : 0;
+        if (night && night.skyglow) su.uNightHorizon.value.copy(night.skyglow).multiplyScalar(2.2);
         // without a clock, guess the hour from the sun: midday, else evening in the west and small hours in the east
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
@@ -756,9 +762,13 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, newSky = key !== envKey;
         if (newSky && api.skyHaze) hazeOk = readHaze(az);
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
-        // at night the haze takes the glow of the city's lights (night.js), warm where it is lit by sodium
-        world.fog.color.set(day > 0.5 ? 0xc6d3dc : (night && night.skyglow ? night.skyglow.clone().multiplyScalar(1.6) : new THREE.Color(0x0c1420))
+        // at night the haze is the night's blue with a little of the city's glow in it (night.js)
+        world.fog.color.set(day > 0.5 ? 0xc6d3dc : (night ? su.uNightZenith.value.clone().multiplyScalar(1.4).add(su.uNightHorizon.value.clone().multiplyScalar(0.1)) : new THREE.Color(0x0c1420))
           .lerp(TWI_FOG, tw * 0.7).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
+        // and at night a little more air between the camera and the far city, so its lights soften
+        // into that glow with distance (the view's own fog distances by day)
+        if (!fogBase) fogBase = [world.fog.near, world.fog.far];
+        world.fog.near = fogBase[0] * (1 - 0.55 * su.uNightSky.value); world.fog.far = fogBase[1] * (1 - 0.3 * su.uNightSky.value);
         // by day the sky's own horizon; through dusk back to the night's blue, which the sky's red night horizon would not give
         if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
         su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is

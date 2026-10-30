@@ -15,8 +15,9 @@ Reads web/data/<city>/game.json and writes web/data/<city>/night.json:
   lamps   the street lamps OpenStreetMap maps (game.json props), in the same units
   style   the city's lights: the colours of its street lamps and their shares, the
           colours on its motorways, the side its traffic keeps to, the height from which
-          its towers carry aircraft warning lights and whether they flash, and the glow
-          its lights put in the haze. From city.json "night", over defaults by country
+          its towers carry aircraft warning lights and whether they flash, the light on the
+          towers' crowns (`crown`: from_m, share, colours), and the glow its lights put in the
+          haze and the sky low down. From city.json "night", over defaults by country
 """
 import argparse
 import base64
@@ -37,22 +38,24 @@ SODIUM, K3000, K4000, K5000 = "#ff9b42", "#ffc58c", "#ffdcb4", "#fff0e2"
 STYLE = {
     "Japan": {"street": [[K4000, 0.45], [K5000, 0.35], [K3000, 0.12], [SODIUM, 0.08]],
               "highway": [[SODIUM, 0.55], [K5000, 0.45]], "aviation": {"from_m": 60, "flash": True},
-              "skyglow": "#1d2230"},
+              "skyglow": "#2a2b33"},
     "China": {"street": [[SODIUM, 0.55], [K3000, 0.2], [K5000, 0.25]],
               "highway": [[SODIUM, 0.8], [K5000, 0.2]], "aviation": {"from_m": 90, "flash": False},
-              "skyglow": "#2a2119"},
+              # Hong Kong's towers are lit in colour along the harbour (A Symphony of Lights)
+              "crown": {"colours": [["#ffe2bf", 0.4], ["#fff1e2", 0.25], ["#7fd8ff", 0.15], ["#c79bff", 0.1], ["#ffc890", 0.1]]},
+              "skyglow": "#33261c"},
     "France": {"street": [[SODIUM, 0.45], [K3000, 0.45], [K4000, 0.1]],
                "highway": [[SODIUM, 0.7], [K3000, 0.3]], "aviation": {"from_m": 100, "flash": False},
-               "skyglow": "#2b2118"},
+               "skyglow": "#33251a"},
     "Netherlands": {"street": [[K3000, 0.55], [K4000, 0.3], [SODIUM, 0.15]],
                     "highway": [[SODIUM, 0.4], [K4000, 0.6]], "aviation": {"from_m": 100, "flash": False},
-                    "skyglow": "#241f1b"},
+                    "skyglow": "#2c241d"},
     "Australia": {"street": [[K3000, 0.45], [K4000, 0.4], [SODIUM, 0.15]],
                   "highway": [[K4000, 0.6], [SODIUM, 0.4]], "aviation": {"from_m": 110, "flash": False},
-                  "skyglow": "#1c1d22"},
+                  "skyglow": "#2b2522"},
 }
 DEFAULT = {"street": [[K3000, 0.5], [K4000, 0.35], [SODIUM, 0.15]], "highway": [[SODIUM, 0.5], [K4000, 0.5]],
-           "aviation": {"from_m": 100, "flash": False}, "skyglow": "#231f1c"}
+           "aviation": {"from_m": 100, "flash": False}, "skyglow": "#2b241f"}
 LEFT = {"Australia", "Japan", "United Kingdom", "Ireland", "New Zealand", "Singapore", "Malaysia", "Indonesia",
         "Thailand", "India", "South Africa", "China"}  # China: Hong Kong and Macau keep left
 

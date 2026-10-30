@@ -197,6 +197,7 @@ window.OEAtmos = (function () {
           L.uExposure.value = renderer.toneMappingExposure * 1.1; // the world's exposure, set for ACES, a little brighter under the film curve
           L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
           L.uContrast.value = 0.1 + 0.18 * night;
+          L.uNightTone.value = night;                              // blue between the lights, amber in them
           L.uSat.value = 1.06;
           L.uTime.value = tSec;
         }

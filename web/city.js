@@ -927,7 +927,7 @@ window.OpenEarthCity = async function main(cityId) {
     refreshPlaces();
     if (post) {
       const L = lens.uniforms, night = U.uNight.value;
-      L.uExposure.value = renderer.toneMappingExposure * 1.1; L.uLift.value = 1 - 0.7 * night; L.uContrast.value = 0.1 + 0.18 * night;
+      L.uExposure.value = renderer.toneMappingExposure * 1.1; L.uLift.value = 1 - 0.7 * night; L.uContrast.value = 0.1 + 0.18 * night; L.uNightTone.value = night;
       // after dark the lamps, windows and headlights bloom as they do through a lens at night
       bloom.threshold = 6.0 - 4.8 * night; bloom.strength = 0.12 + 0.3 * night; bloom.radius = 0.4 + 0.2 * night;
       L.uSat.value = 1.06; L.uTime.value = t / 1000;

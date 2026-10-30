@@ -43,8 +43,8 @@ const CSS = `
 .rh-prompt.on { opacity: 1; }
 .rh-prompt kbd { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 6px; border-radius: 2px; background: var(--warn); color: #1a0f04; font: 400 11px/1 var(--mono); letter-spacing: .04em; }
 .rh-hint { font-size: 12px; color: #c3c6cc; text-shadow: 0 1px 3px rgba(0,0,0,.8); text-align: center; }
-.rh-help { position: absolute; right: 16px; bottom: 16px; font: 400 9px/1.8 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(236,232,225,.5); text-align: right;
-  text-shadow: 0 1px 3px rgba(0,0,0,.8); max-width: 46ch; }
+.rh-help { position: absolute; right: 16px; bottom: 16px; font: 400 9px/1.8 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: rgba(236,232,225,.8); text-align: right;
+  text-shadow: 0 1px 2px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.55); max-width: 46ch; }
 .rh-help.hide > div { display: none; }
 .rh-flash { position: absolute; inset: 0; box-shadow: inset 0 0 90px 10px rgba(255,90,70,0); transition: box-shadow .4s; }
 .rh-flash.on { box-shadow: inset 0 0 90px 10px rgba(255,90,70,.35); }

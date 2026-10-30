@@ -737,9 +737,9 @@ window.OEBuildings = (function () {
   float occupancy(float style, float hr) {
     float evening = smoothstep(16.5, 19.0, hr) * (1.0 - smoothstep(22.5, 24.5, hr)) + (1.0 - smoothstep(0.0, 1.5, hr)) * 0.5;
     float work = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 21.0, hr));
-    // offices empty slowly through the evening (overtime, cleaners), and some floors stay lit all night
-    float late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 23.5, hr));
-    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) return 0.08 + 0.82 * late + 0.12 * smoothstep(17.5, 19.0, hr) * (1.0 - smoothstep(20.0, 23.0, hr));
+    // offices empty through the evening (overtime, cleaners) to a few floors lit all night
+    float late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 22.0, hr));
+    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) return 0.06 + 0.78 * late + 0.1 * smoothstep(17.5, 19.0, hr) * (1.0 - smoothstep(20.0, 23.0, hr));
     if (style > 6.5 && style < 7.5) return 0.1 + 0.85 * smoothstep(7.0, 8.0, hr) * (1.0 - smoothstep(21.0, 22.5, hr));
     if (style > 5.5 && style < 6.5) return 0.05 + 0.5 * work + 0.15 * evening;
     return 0.06 + 0.55 * evening + 0.2 * smoothstep(6.0, 7.0, hr) * (1.0 - smoothstep(8.5, 9.5, hr));
@@ -884,14 +884,24 @@ window.OEBuildings = (function () {
     vec2 cellId = vec2(bay, fl);
     float rnd = h31(vec3(cellId, bidH + seed * 31.0));
     float unitW = style > 3.5 && style < 5.5 ? 6.0 : 2.0;
+    // offices light by the floor (a tenant, the cleaners going up the building), so a tower reads in
+    // bands of lit floors; homes light room by room
     float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
+    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) unitR = mix(h21(vec2(fl, bidH * 1.91 + 2.7)), unitR, 0.3);
     float occ = occupancy(style, uHour), unitLit = step(unitR, occ), shopLit = 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3);
     // rooms lit in different lights: most warm, some under cool fluorescent or LED, until a run of
     // them is under a pixel
     float tintR = h31(vec3(floor(bay / unitW), fl, bidH * 2.3 + 5.1));
     vec3 roomTint = mix(tintR > 0.8 ? vec3(0.8, 0.92, 1.1) : tintR > 0.6 ? vec3(1.06, 0.97, 0.88) : vec3(1.0), vec3(1.0), smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
+    // and as bright as their lamps are: a tower at night is a dark mass with some rooms glowing and
+    // a few bright, not a grid of equal windows (until a run is under a pixel: its mean)
+    float office = step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5);
+    float unitB = mix(0.3 + 0.7 * pow(h31(vec3(floor(bay / unitW), fl, bidH * 0.77 + 9.3)), 1.6), 0.58, smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
     float lit = unitLit * step(0.12, rnd);
     if (shop > 0.5) lit = step(0.15, rnd) * step(0.0, occupancy(7.0, uHour) - 0.3);
+    // an office tower's lobby stays lit all night
+    float lobby = office * step(fl, 0.5) * (1.0 - shop);
+    lit = max(lit, lobby); unitB = mix(unitB, 1.0, lobby);
     // a little farther, whole runs of rooms lit or dark along each floor, as a tower reads from
     // across the city at night; farther still, where a run is under a pixel, the share of windows
     // lit rather than which ones are (later than the rest, as a lit window reads as one whatever is
@@ -930,7 +940,7 @@ window.OEBuildings = (function () {
       // day: dim, lit by the window; night: the room's lamps when occupied
       float dayL = (style > 4.5 && style < 5.5 ? 0.06 : 0.2) * (1.0 - uNight);
       vec3 lampC = mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5)) * roomTint;
-      float lamp = lit * uNight * (0.3 + 0.3 * rnd);
+      float lamp = lit * uNight * (0.3 + 0.3 * rnd) * unitB;
       float ceilingSpot = mix(hitY > 0.5 && d.y > 0.0 ? 1.0 + 0.8 * exp(-8.0 * dot(hp.xz - vec2(0.5, depth * 0.5), hp.xz - vec2(0.5, depth * 0.5))) : 1.0, 1.1, far);
       room = c * (dayL + lamp * 1.0 * lampC * ceilingSpot * (0.75 + 0.5 * mix(h21(vec2(fl, bidH)), 0.5, far)));
       room *= 1.0 - smoothstep(500.0, 900.0, dist) * 0.6;
@@ -967,8 +977,8 @@ window.OEBuildings = (function () {
     // over a facade instead of flashing from window to window
     roughB = max(roughB, 0.16 * far);
     emitB += room * glass;
-    emitB += win * isBlind * lit * uNight * vec3(1.0, 0.7, 0.42) * 0.35;
-    emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * roomTint * (0.34 + 0.3 * rnd);
+    emitB += win * isBlind * lit * uNight * vec3(1.0, 0.7, 0.42) * 0.35 * unitB;
+    emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * roomTint * (0.34 + 0.3 * rnd) * unitB;
     // ground contact: a darker plinth and less sky near the street
     aoW *= mix(0.72, 1.0, smoothstep(0.0, 3.0, h));
     // fine plaster noise up close

@@ -19,7 +19,7 @@
   ::selection { background: rgba(255, 176, 102, 0.32); }
   /* the readout: where the camera is, the floor under it, the sun and the tide, set like the title's captions */
   #hud { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); bottom: 14px; max-width: 70ch; font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
-    color: rgba(236, 232, 225, 0.5); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); pointer-events: none; }
+    color: rgba(236, 232, 225, 0.75); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 10px rgba(0, 0, 0, 0.55); pointer-events: none; }
   /* the loader carries on from the title screen's dive: the same dark, the same type */
   #load { position: fixed; inset: 0; display: grid; place-items: center; z-index: 8; background: radial-gradient(90% 70% at 50% 42%, #0b111b 0%, #04060b 70%); text-align: center; transition: opacity .6s ease; }
   #load.done { opacity: 0; pointer-events: none; }

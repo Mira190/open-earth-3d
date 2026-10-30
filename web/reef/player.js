@@ -30,7 +30,7 @@ export async function init(ctx) {
   const { scene, camera, env, q } = ctx;
   const sp = ctx.S.spawn || {}, SPAWN = { x: sp.x ?? 0, north: sp.y ?? 0, heading: sp.heading ?? 0 };   // scene.json spawn (city.json)
   const hud = createHud();
-  { const h0 = document.getElementById('hud'); if (h0) Object.assign(h0.style, { left: 'auto', right: '12px', bottom: 'auto', top: '62px', fontSize: '11px', padding: '4px 8px', opacity: '.7', display: matchMedia('(pointer: coarse)').matches ? 'none' : '' }); }   // the viewer's debug line makes room for ours
+  { const h0 = document.getElementById('hud'); if (h0) Object.assign(h0.style, { left: 'auto', right: '16px', bottom: 'auto', top: '60px', textAlign: 'right', whiteSpace: 'nowrap', maxWidth: 'none', display: matchMedia('(pointer: coarse)').matches ? 'none' : '' }); }   // the viewer's debug line makes room for ours
   const fx = createFx(ctx);
   const msg = (kind, text) => hud.say(text, { kind: kind === 'info' ? '' : kind, secs: kind === 'bad' ? 7 : 5 });
   const diver = new Diver({ onEvent: msg });

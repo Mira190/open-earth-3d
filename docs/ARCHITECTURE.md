@@ -39,6 +39,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
+| Night | `night_lights.py` (run by `game_data.py`) | `night.json`: the roads simplified for the street lights and the traffic, the mapped lamps, and the city's lighting style (lamp colours, keep side, aircraft lights, crowns, sky glow). See [NIGHT.md](NIGHT.md) |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
@@ -290,6 +291,13 @@ The views switch in place, without reloading the page.
   (4 m/s over 0.5 km) give 0.05 m.
 
   `setSun()` lights the scene for any sun position.
+
+- **`night.js`** is the city after dark, as an aerial photograph shows it: street
+  lights along every mapped road and the light they put on the ground and the lower
+  floors, the traffic's head and tail lights, lit crowns and red aircraft lights on
+  the towers, from `night.json`. `world.js` builds it and gives the ground, piers,
+  bridge decks and walls its light map; after dark the sky turns to a designed night
+  sky and the lens grades shadows blue and lights amber. See [NIGHT.md](NIGHT.md).
 
 - **`lights.js`** is a city's nightly light show, where its config has one
   (`light_show`): searchlights from the landmarks' published tops, lasers

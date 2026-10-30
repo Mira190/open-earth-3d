@@ -281,6 +281,15 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   place, checked against an independent elevation source where one exists.
   Where no imagery is openly licensed, the ground is drawn from the map data
   instead of borrowed.
+- **Night as an aerial photograph shows it.** Street lights along every mapped
+  road in the city's own mix of sodium and LED, the light they put on the streets
+  and the lower floors, traffic in white and red, office towers lit by the floor
+  with their crowns lit, red lights on the tallest tops, a deep blue sky with the
+  city's glow on the horizon, and a night grade. See [docs/NIGHT.md](docs/NIGHT.md).
+
+  | Tokyo at 21:00 | Sydney: the bridge, its traffic, the CBD in the harbour |
+  |---|---|
+  | ![](docs/images/night/tokyo-night.jpg) | ![](docs/images/night/sydney-bridge.jpg) |
 - **The real sun.** The NOAA solar position (about 0.01°) is computed in the
   city's own time zone, with daylight saving taken from the platform's time
   zone database. The viewer adds live shadow maps, a sky model and lit windows
