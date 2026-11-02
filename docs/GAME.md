@@ -455,12 +455,14 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Covered walkways are canopies** (`pipeline/arcades.py`): an arcade over a
     pavement comes in the open data as a long thin building from the ground
     (Kyoto's Shijo, Kawaramachi and Shinkyogoku arcades, Osaka's shotengai). A
-    footprint at most 5 m wide on average, with a mapped footway inside along
+    footprint at most 6 m wide on average (5 m left out Osaka's main arcades,
+    Shinsaibashi-suji, Ebisubashi-suji and Sennichimae, whose footprints take in
+    the wider squares where two covered streets cross), with a mapped footway inside along
     most of its length, mapped as a roof or an unnamed PLATEAU footprint no
     taller than 20 m, starts a quarter of its height (0.5-3 m) under its top,
     and is drawn without windows and with an underside. Walled in by them, the
-    blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 23
-    in Kyoto, 76 in Osaka, 46 in Shibuya, 19 in Tokyo and a few elsewhere are
+    blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 24
+    in Kyoto, 86 in Osaka, 55 in Shibuya, 20 in Tokyo and a few elsewhere are
     canopies now.
   - **Wharves:** each wharf has a landing, the nearest place on foot to its
     terminal. You board from there where the mapped terminal is out on the
