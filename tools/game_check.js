@@ -1,8 +1,9 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
-// (and order a ride on the phone), and travel from the map in your car, with a screenshot
-// after each. Prints what happened and the page's errors; exits 1 on failure.
+// (and order a ride on the phone), travel from the map in your car, and watch the signals at
+// the nearest junction change with the traffic stopping for them, with a screenshot after
+// each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
@@ -88,6 +89,28 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); g.advance(0.2); } });
   if (!talk.none) check(await p.evaluate(() => !window.__game.dlg.open), 'the conversation runs to its end');
 
+  // the gold route to the farthest NPC a walker can reach: drawn on ground a walker can stand on all
+  // the way (not through a building); it stays set for the helicopter and the car below
+  const route = await p.evaluate(async () => {
+    const g = window.__game;
+    for (let i = 0; i < 600 && !g.ways.ready; i++) await new Promise(r => setTimeout(r, 500));
+    if (!g.ways.ready) return { ready: false };
+    const me = { x: g.player.x, y: g.player.y, z: g.player.z };
+    const n = g.npcs.slice().sort((a, b) => Math.hypot(b.x - me.x, b.y - me.y) - Math.hypot(a.x - me.x, a.y - me.y)).find(q => g.ways.walk(me, q));
+    if (!n) return { ready: true, none: true };
+    g.waypoint([n.x, n.y]);
+    g.advance(0.5);
+    const q = g.guide();
+    let len = 0;
+    if (q.pts) for (let i = 1; i < q.pts.length; i++) len += Math.hypot(q.pts[i][0] - q.pts[i - 1][0], q.pts[i][1] - q.pts[i - 1][1]);
+    const where = [];
+    if (q.pts) g.ways.blockedMetres(q.pts, where);
+    return { ready: true, to: n.name, len, blocked: where.run || 0, drawn: !!q.pts && g.gold.mesh.visible, stats: g.ways.stats() };
+  });
+  check(route.ready, `the route network is built${route.stats ? ` (${route.stats.edges} stretches in ${route.stats.ms} ms of work)` : ''}`);
+  check(route.ready && !route.none && route.drawn && route.blocked < 1.5, route.none ? 'no NPC a walker can reach' : `the gold route to ${route.to} on foot (${(route.len || 0).toFixed(0)} m; at most ${(route.blocked || 0).toFixed(1)} m at a time where a walker can't stand)`);
+  await shot('route');
+
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
     const g = window.__game;
@@ -100,10 +123,12 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(2.6);
     const shut = g.heli.st.door, z0 = g.heli.st.z;
     g.advance(8, ['Space']);
-    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut };
+    const q = g.guide();
+    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null };
   });
   check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(heli.climbed || 0).toFixed(1)} m)`);
+  check(heli.none || route.none || (heli.flight != null && heli.flight > 20), heli.none ? 'no helicopter' : `the gold route in the air to a place to land${heli.flight != null ? ` (up to ${heli.flight.toFixed(0)} m)` : ''}`);
   await shot('heli');
 
   // back down, and out the same way
@@ -140,7 +165,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(0.3);
     g.enterCar();
     for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
-    const r = { inCar: g.player.mode === 'car', head: c.C.clearance(g.player.rig, 'driver'), top: 0 }, a = [st.x, st.y];
+    g.advance(0.5);
+    const q = g.guide();
+    const r = { inCar: g.player.mode === 'car', head: c.C.clearance(g.player.rig, 'driver'), top: 0, road: q.pts ? q.pts.length : 0 }, a = [st.x, st.y];
     for (let i = 0; i < 8; i++) { g.advance(0.5, ['KeyW']); r.top = Math.max(r.top, st.speed); }
     r.moved = Math.hypot(st.x - a[0], st.y - a[1]);
     // the brakes while it goes forward (held at a standstill, S reverses), then the handbrake
@@ -155,6 +182,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     return r;
   });
   check(car.none || car.inCar, car.none ? 'no car' : 'gets into your car at the driver\'s door');
+  check(car.none || route.none || car.road > 1, car.none ? 'no car' : 'the gold route by road, from the car');
   check(car.none || car.head == null || car.head > 0, car.none ? 'no car' : `at the wheel, the head is under the roof (${car.head == null ? 'not measured' : `${car.head.toFixed(2)} m`})`);
   check(car.none || (car.top * 3.6 > 15 && car.moved > 5), car.none ? 'no car' : `drives your car (${(car.top * 3.6).toFixed(0)} km/h, ${car.moved.toFixed(0)} m in 4 s)`);
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);
@@ -175,7 +203,8 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     const o = g.ride();
     if (!o) return Object.assign(r, { hailed: false });
     r.hailed = true;
-    for (let i = 0; i < 150 && o.phase === 'coming'; i++) g.advance(1);
+    r.log = [];
+    for (let i = 0; i < 150 && o.phase === 'coming'; i++) { g.advance(1); if (i % 10 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${i}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} near[${near}]`); } }
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     g.boardRide();
     for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
@@ -213,6 +242,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   if (taxi.none) check(true, 'no car, no taxis');
   else {
     check(taxi.hint, 'the kerb offers a taxi (Y)');
+    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < 15)) console.log(taxi.log.join("\n"));
     check(taxi.hailed && taxi.waiting && taxi.near < 15, `hails a taxi: it pulls in beside you${taxi.hailed ? ` (${(taxi.near || 0).toFixed(1)} m away)` : ''}`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
@@ -267,6 +297,25 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
 
+  // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
+  const lights = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions;
+    if (!JN) return { none: true };
+    const sig = JN.J.filter(j => j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
+    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    const j = sig[0], seen = new Set(), s0 = A.stats();
+    for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
+    const s1 = A.stats();
+    return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+  });
+  if (lights.none) check(false, 'the traffic has junctions');
+  else {
+    check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);
+    if (lights.signals) check(lights.states >= 4, `the nearest signals go through their phases (${lights.states} states in 80 s)`);
+    check(!lights.red, `no car crosses its line on red (${lights.red || 0})`);
+    check(lights.moving > 10, `the traffic moves (${lights.moving} cars on the move)`);
+  }
+  await shot('junction');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

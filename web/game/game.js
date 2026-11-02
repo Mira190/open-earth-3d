@@ -216,8 +216,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   await idle();
   const lin = OEWorld.lin, dummy = new THREE.Object3D();
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
+  // the crowd walks the footways where a walker can, not through the buildings a mapped passage
+  // runs into (route.js); the traffic keeps off the roads a car can't get along, once those are known
+  loadMsg('Footways people can walk', 0.84);
+  await idle();
+  const crowdNet = OEActors.network(OERoute.walkable(nav, G.paths.foot));
   // benches face their footway, or the water behind it; each has two seats the crowd can use
-  const benches = OEActors.benches(G.props.bench || [], footNet, nav), lamps = G.props.street_lamp || [];
+  const benches = OEActors.benches(G.props.bench || [], crowdNet, nav), lamps = G.props.street_lamp || [];
   const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z
     [1.7, 0.06, 0.42, 0, 0.42, 0.03, 0, 0], [1.7, 0.34, 0.05, 0, 0.66, -0.2, 0, 0], [0.07, 0.42, 0.44, 0.72, 0.21, 0, 0, 0], [0.07, 0.42, 0.44, -0.72, 0.21, 0, 0, 0]]),
   new THREE.MeshStandardMaterial({ color: lin('#6e5a44'), roughness: 0.9 }), benches.list.length);
@@ -265,12 +270,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
   const CR = G.crowd || {};
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
-  const crowd = OEActors.crowd(world, footNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
+  const crowd = OEActors.crowd(world, crowdNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
     { benches: lib ? benches : null, ground: lineGround });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
-  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav });
+  // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
+  const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE });
+  junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
+  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav, junctions });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
   const player = { rig: makeRig(playerLook(), { vest: true }),
@@ -365,7 +373,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const keepSign = KEEP === 'left' ? 1 : -1, kerbSeat = KEEP === 'left' ? 'rear_left' : 'rear_right';
   const CARS_OK = !!(vlib && vlib.cars && Object.values(vlib.info.cars.models).some(m => m.seats));
   const carCfg = Object.assign({ model: 'Car_Hatch', colour: '#c8372d', seat: '#34363a' }, (G.vehicles || {}).car);
-  const roads = OECars.router(roadNet), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
+  // the ways you can actually go, on foot, by road and in the air (route.js), worked out in slices behind the title
+  const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [] });
+  roadNet.avoid = ways.drive;
+  const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
   // a pose at the kerb of a place on the roads (router.place), facing the way it goes
   function kerbPose(pl, off) {
     roadNet.at(pl.line, pl.s, rq);
@@ -476,6 +487,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     save();
   }
   let bumpCar = -9, carFov = 0;
+  // your car over a stop line on red (junctions.js), with the cross road's green: a word about it
+  const redRq = {};
+  let redLast = -99, redAt = null, redT = 0;
+  function redLight(st) {
+    if ((redT += 1) % 6) return; // (five times a second is enough)
+    const q = Math.abs(st.v) > 3 ? roadNet.nearest(st.x, st.y, 5, st.z, 2.5) : null;
+    if (!q) { redAt = null; return; }
+    roadNet.at(q.line, q.s, redRq);
+    const dir = Math.sin(st.h) * redRq.hx + Math.cos(st.h) * redRq.hy > 0 ? 1 : -1, a = junctions.armAt(q.line, dir > 0 ? 1 : 0);
+    const toLine = a ? (dir > 0 ? roadNet.L[q.line].len - q.s : q.s) - a.back : null;
+    if (a && redAt && redAt.a === a && redAt.d > 0 && toLine <= 0 && junctions.light(a) === 'r' && a.j.st === 'g' && clockT - redLast > 20) {
+      redLast = clockT;
+      H.toast('Careful! That light was red.');
+    }
+    redAt = a ? { a, d: toLine } : null;
+  }
   function carStep(dt, fwd, side) {
     const D = myCar.D, st = D.st, ev = [];
     D.step(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), handbrake: k('Space') },
@@ -488,6 +515,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (e.type === 'edge') H.toast(nav.isWater(st.x + Math.sin(st.h) * 5, st.y + Math.cos(st.h) * 5) ? `That's the edge of ${G.water_name || 'the water'}.` : 'Too steep a drop.');
     }
     Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.speed });
+    redLight(st);
     A.car(st.rpm, Math.abs(fwd), 1);
     A.skid(Math.min(1, Math.max(0, st.slip - 2.2) / 6));
     player.rig.animate(dt, 0, 'sit', clockT);
@@ -519,29 +547,30 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
   }
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, routed to the pick-up
-  function newRide(kind, from, pickup, dest = null) {
+  function newRide(kind, from, pickup, dest = null, limit = 4000) { // (limit: how far by road to look, as when the car was picked)
     const tcfg = Object.assign({}, vlib.info.cars.liveries.taxi, ((G.vehicles || {}).cars || {}).taxi);
     const model = kind === 'taxi' ? 'Car_Taxi' : OEActors.pick(['Car_Sedan', 'Car_SUV', 'Car_Sedan', 'Car_Hatch']);
     const hex = from.hex || (kind === 'taxi' ? OEActors.pick(tcfg.colours) : OEActors.pick(['#1c1c1e', '#8a9099', '#3d4146', '#e7e5df', '#1f2a3a']));
-    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
+    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, limit);
     if (!rt) return null;
     const C = OECars.car(world, vlib, model, { colours: { paint: hex, seat: kind === 'taxi' ? '#2b2d30' : '#b9ae9c' }, keep: KEEP });
     const o = { kind, C, model, hex, name: OEActors.pick(FIRST[CITY.country] || FIRST.Australia), plate: plate(), pickup, dest, phase: 'coming',
       t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140) };
-    o.drv = OECars.chauffeur(C, rt, { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0 });
+    o.drv = OECars.chauffeur(C, rt, { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, lights: junctions });
     o.driver = makeRig(driverLook(), {});
     C.sit(o.driver, 'driver');
     return o;
   }
   // one setting out from somewhere a few hundred metres off by road, out of sight
+  // (of a few places about, the one nearest by road: one-way streets can make a car round the corner a long way off)
   function rideFromAround(kind, pickup, dest, r0 = 170, r1 = 340) {
-    for (let k = 0; k < 8; k++) {
-      const pl = roads.around(pickup.x, pickup.y, r0, r1);
-      const o = pl && newRide(kind, pl, pickup, dest);
-      if (o && o.drv.path.len < 1400) return o;
-      if (o) o.C.dispose();
+    let best = null;
+    for (let k = 0; k < 10; k++) {
+      const pl = roads.around(pickup.x, pickup.y, r0, r1), rt = pl && roads.route({ line: pl.line, s: pl.s, dir: pl.dir }, pickup, 4000);
+      if (rt && (!best || rt.len < best.len)) best = { pl, len: rt.len };
+      if (best && best.len < 1.8 * r1) break;
     }
-    return null;
+    return best && best.len < 1400 ? newRide(kind, best.pl, pickup, dest) : null;
   }
   const eta = o => (o.phase === 'coming' || o.phase === 'driving' ? o.drv.remaining() / 9 + 3 : 0);
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
@@ -563,7 +592,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     let o = null;
     if (best) {
       const c = best.c;
-      o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup);
+      o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup, null, 450);
       if (o) { cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h }); }
     }
     if (!o) o = rideFromAround('taxi', pickup, null, 120, 250);
@@ -639,7 +668,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (!rt && to) rt = roads.route(from, to = Object.assign({}, to, { dir: -to.dir }), 30000);
     if (!rt) { H.toast(`<b>${o.name}:</b> I can't get there by road, sorry.`); o.phase = 'driving'; if (player.mode === 'ride') leaveRide(); return; }
     Object.assign(o, { dest, phase: 'driving', meter: 0, talkT: clockT + 9, t0: clockT });
-    o.drv = OECars.chauffeur(o.C, rt, { keep: keepSign, from: 'kerb' });
+    o.drv = OECars.chauffeur(o.C, rt, { keep: keepSign, from: 'kerb', lights: junctions });
     H.toast(`<b>${o.name}:</b> ${dest.name}, ${(rt.len / 1000).toFixed(1)} km by road. <kbd>F</kbd> to skip the trip.`);
   }
   // the car you are in, or have just got out of, pulls away and drives off
@@ -647,7 +676,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const o = ride;
     o.phase = 'leaving'; o.t0 = clockT;
     const pl = placeOf(o.drv.st), pts = pl ? roads.onward({ to: pl }, 260) : [];
-    if (pts.length > 1) o.drv = OECars.chauffeur(o.C, { pts, end: false }, { keep: keepSign, from: o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v });
+    if (pts.length > 1) o.drv = OECars.chauffeur(o.C, { pts, end: false, nodes: pts.nodes }, { keep: keepSign, from: o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v, lights: junctions });
   }
   function leaveRide() {
     const o = ride;
@@ -681,7 +710,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   function rideStep(dt, night) {
     const o = ride, st = o.drv.st;
-    o.drv.update(dt, inTheWay(o));
+    o.drv.update(dt, inTheWay(o), Math.hypot(st.x - player.x, st.y - player.y) < 120); // (and the lights, in sight)
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
     o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
       inside: player.vehicle === o && cam.mode === 'cabin',
@@ -790,8 +819,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     new THREE.MeshBasicMaterial({ color: lin('#ffc23d'), transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   beam.visible = false;
   world.add(beam);
-  const routeMat = new THREE.LineDashedMaterial({ color: lin('#ffc23d'), dashSize: 2.2, gapSize: 1.4, transparent: true, opacity: 0.95 });
-  let routeLine = null;
+  const gold = OERoute.line(world, lin('#ffc23d')); // the route: on the ground, or in the air when flying
 
   // ------------------------------------------------------------ text from the model
   const areaShare = (() => {
@@ -878,6 +906,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const night = U.uNight.value;
     headMat.emissiveIntensity = 1.6 * night;
     glowMat.opacity = 0.85 * night;
+    if (junctions.heads) junctions.heads.setNight(night);
     const loc = S.utcToLocal(S.localToUtc(clock.y, clock.m, clock.d, clock.min));
     $('#g-time').textContent = `${fmtMin(clock.min)} ${loc.zone}`;
     $('#g-date').textContent = `${clock.d} ${MONTHS[clock.m - 1]}${clock.frozen ? ' · paused' : clock.scale === 1 ? ' · real time' : ''}`;
@@ -1053,7 +1082,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const cur = tracked(), next = id ? lineById(id) : open[(open.indexOf(cur) + 1) % open.length];
     if (!next || !open.includes(next)) return;
     qs.track = next.id;
-    routeFor = '';
+    guide.key = '';
     if (open.length > 1 || id) H.toast(`Tracking <b>${next.title || questOf(next).title}</b>`);
     save();
   }
@@ -1170,85 +1199,118 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     }
   }
 
-  // ------------------------------------------------------------ GPS route over footways and roads (Dijkstra)
-  const graph = (() => {
-    const nodes = new Map(), xy = [], adj = [];
-    const node = (x, y) => { const k = `${Math.round(x / 3)},${Math.round(y / 3)}`; if (!nodes.has(k)) { nodes.set(k, xy.length); xy.push([x, y]); adj.push([]); } return nodes.get(k); };
-    const lines = [];
-    for (const net of [footNet, roadNet]) for (const l of net.L) {
-      if (l.c === 'motorway') continue; // no one walks the expressway
-      const n = l.pts.length / 3, a = node(l.pts[0], l.pts[1]), b = node(l.pts[3 * n - 3], l.pts[3 * n - 2]);
-      const li = lines.push(l) - 1;
-      adj[a].push([b, l.len, li, 0]); adj[b].push([a, l.len, li, 1]);
-    }
-    const GC = 60, grid = new Map();
-    xy.forEach(([x, y], i) => { const k = `${Math.floor(x / GC)},${Math.floor(y / GC)}`; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i); });
-    const nearest = (x, y) => {
-      let best = -1, bd = 150;
-      for (let cx = Math.floor(x / GC) - 2; cx <= Math.floor(x / GC) + 2; cx++) for (let cy = Math.floor(y / GC) - 2; cy <= Math.floor(y / GC) + 2; cy++)
-        for (const i of grid.get(`${cx},${cy}`) || []) { const d = Math.hypot(xy[i][0] - x, xy[i][1] - y); if (d < bd) { bd = d; best = i; } }
-      return best;
-    };
-    function route(ax, ay, bx, by) {
-      const s = nearest(ax, ay), t = nearest(bx, by);
-      if (s < 0 || t < 0) return null;
-      const dist = new Float64Array(xy.length).fill(Infinity), prev = new Int32Array(xy.length).fill(-1), via = [];
-      const heap = [[0, s]];
-      dist[s] = 0;
-      const push = e => { heap.push(e); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
-      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
-      let settled = 0;
-      while (heap.length) {
-        const [d, u] = pop();
-        if (d > dist[u]) continue;
-        if (u === t || ++settled > 60000) break;
-        for (const [v, w, li, rev] of adj[u]) {
-          const h = Math.hypot(xy[v][0] - bx, xy[v][1] - by) - Math.hypot(xy[u][0] - bx, xy[u][1] - by); // A*-style tie-break toward the goal
-          const nd = d + w + h * 0.001;
-          if (nd < dist[v]) { dist[v] = nd; prev[v] = u; via[v] = [li, rev]; push([nd, v]); }
-        }
-      }
-      if (prev[t] < 0 && s !== t) return null;
-      const pts = [[bx, by]];
-      for (let v = t; v !== s; v = prev[v]) {
-        const [li, rev] = via[v], l = lines[li], n = l.pts.length / 3;
-        for (let k = 0; k < n; k++) { const kk = rev ? k : n - 1 - k; pts.push([l.pts[3 * kk], l.pts[3 * kk + 1], l.pts[3 * kk + 2]]); }
-      }
-      pts.push([ax, ay]);
-      return pts.reverse();
-    }
-    return { route };
-  })();
-  let route = null, routeFor = '', routeAt = 0, routeFrom = [0, 0];
-  // in a car the minimap's route keeps to the roads: the ride's own route, or one to the target from where you are
-  const byRoad = { key: '', at: -9, pts: null };
-  function roadRoute(target) {
-    if (player.mode === 'ride' && ride && ride.phase === 'driving') { const P = ride.drv.path, i = P.pos(ride.drv.st.s, {}).i; return [[player.x, player.y]].concat(P.pts.slice(i + 1)); }
-    if (player.mode !== 'car' || !target) return null;
-    const key = `${Math.round(target[0])},${Math.round(target[1])}`;
-    if (key !== byRoad.key || clockT - byRoad.at > 2) {
-      byRoad.key = key; byRoad.at = clockT;
-      const a = placeOf(myCar.D.st), b = roads.place(target[0], target[1], 300, keepSign, groundZ(target[0], target[1])), rt = a && b && roads.route(a, b, 30000);
-      byRoad.pts = rt ? rt.pts : null;
-    }
-    return byRoad.pts && [[player.x, player.y]].concat(byRoad.pts);
+  // ------------------------------------------------------------ the route to go (route.js)
+  // By the way you are going: on foot over the footways and streets as you can walk them, by car
+  // along the roads on your side, in the helicopter over or round the buildings to a spot it can
+  // come down on, and aboard a ferry its course to the stop. A step that needs the helicopter
+  // leads you to it first. Worked out again when the target moves, when you stray off the line,
+  // and (a ride, a ferry) as the trip goes on.
+  const guide = { key: '', at: -9, pts: null, fail: false, n: 0 };
+  ways.build().then(() => { guide.key = ''; }).catch(e => console.warn('Routes unavailable:', e));
+  function routeGoal(target, ob) {
+    const s = ob && !waypoint ? stepOf(ob.line) : null;
+    if (s && (s.type === 'land' || s.type === 'under_bridge') && player.mode !== 'heli') { const d = heli.doorAt(); return { x: d.x, y: d.y, z: heli.st.z, kind: 'heli' }; }
+    if (!target) return null;
+    const n = npcs.find(q => Math.abs(q.x - target[0]) < 0.01 && Math.abs(q.y - target[1]) < 0.01); // someone to talk to stands at a known height
+    return { x: target[0], y: target[1], z: n ? n.z : null, kind: s ? s.type : 'waypoint', step: s };
   }
-  function updateRoute(t, target) {
-    const key = target ? `${Math.round(target[0])},${Math.round(target[1])}` : '';
-    if (!target || player.mode !== 'foot' || !settings.route || Math.hypot(target[0] - player.x, target[1] - player.y) < 35) {
-      route = null; routeFor = '';
-      if (routeLine) { world.remove(routeLine); routeLine.geometry.dispose(); routeLine = null; }
-      return;
+  // a road route's points moved over to the lane on your side, or less far where a lane that
+  // narrow has a wall closer (a back lane in Shibuya)
+  const laneOf = pts => pts.map((p, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(pts.length - 1, i + 1)], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    for (const f of [1, 0.5, 0]) {
+      const k = OECars.LANE * keepSign * f, x = p[0] - (b[1] - a[1]) / l * k, y = p[1] + (b[0] - a[0]) / l * k;
+      if (!f || nav.room(x, y, p[2], 0.6, 1.6, true)) return [x, y, p[2]];
     }
-    if (key === routeFor && t - routeAt < 1.5) return;
-    if (key === routeFor && Math.hypot(player.x - routeFrom[0], player.y - routeFrom[1]) < 25) return;
-    routeFor = key; routeAt = t; routeFrom = [player.x, player.y];
-    route = graph.route(player.x, player.y, target[0], target[1]) || [[player.x, player.y], target];
-    if (routeLine) { world.remove(routeLine); routeLine.geometry.dispose(); }
-    const pts = route.map(p => { const f = nav.floorAt(p[0], p[1], (p[2] ?? player.z) + 1); return W(p[0], p[1], (f ? f.z : p[2] ?? 0) + 0.35); });
-    routeLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), routeMat);
-    routeLine.computeLineDistances();
-    world.add(routeLine);
+  });
+  // a line on the ground: a point every metre, on the floor there (the street, a deck, the quay), a
+  // little above it; broken where a lift takes you up (route.js marks the stop you get out at)
+  function drape(pts, lift = 0.12) {
+    const out = [], on = (x, y, z, jump) => { const f = nav.floorAt(x, y, z + 0.6), q = [x, y, (f && Math.abs(f.z - z) < 2.5 ? f.z : z) + lift]; if (jump) q.push(1); out.push(q); };
+    if (pts.length) on(...pts[0].slice(0, 3));
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, ay, az] = pts[i - 1], [bx, by, bz, jump] = pts[i];
+      if (jump) { on(bx, by, bz, 1); continue; }
+      const m = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay)));
+      for (let k = 1; k <= m; k++) { const t = k / m; on(ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t); }
+    }
+    return out;
+  }
+  function plan(goal) {
+    const m = player.mode;
+    if (m === 'foot') {
+      const me = { x: player.x, y: player.y, z: player.z }, r = ways.walk(me, goal);
+      if (r) return { pts: drape(r.pts), width: 0.8 };
+      // no way there on foot (across the water): to the wharf of a ferry that calls nearest it
+      const near = G.wharves.slice().sort((a, b) => Math.hypot(a.landing[0] - goal.x, a.landing[1] - goal.y) - Math.hypot(b.landing[0] - goal.x, b.landing[1] - goal.y))[0];
+      const from = near ? G.wharves.filter(w => w !== near && (G.ferries || []).some(f => f.stops.includes(w.id) && f.stops.includes(near.id)))
+        .sort((a, b) => Math.hypot(a.landing[0] - me.x, a.landing[1] - me.y) - Math.hypot(b.landing[0] - me.x, b.landing[1] - me.y)) : [];
+      for (const w of from.slice(0, 3)) {
+        const q = ways.walk(me, { x: w.landing[0], y: w.landing[1] });
+        if (q) return { pts: drape(q.pts), width: 0.8, ferry: w };
+      }
+      return null;
+    }
+    if (m === 'car' && myCar) {
+      const st = myCar.D.st, a = roads.place(st.x, st.y, 200, keepSign, st.z);
+      if (!a) return null;
+      roadNet.at(a.line, a.s, rq);
+      a.dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1; // the way the car faces
+      const b = roads.place(goal.x, goal.y, 300, keepSign, goal.z ?? groundZ(goal.x, goal.y)) || roads.place(goal.x, goal.y, 800, keepSign); // (in a park, the nearest kerb)
+      let rt = b && roads.route(a, b, 30000);
+      if (!rt && b) rt = roads.route(a, Object.assign({}, b, { dir: -b.dir }), 30000);
+      if (!rt) { // that kerb is on a road cut off from the streets (inside the castle grounds): the nearest that isn't
+        const near = [...new Set(roadNet.near(goal.x, goal.y, 0, 800))].map(i => {
+          const l = roadNet.L[i];
+          let bk = 0, bd = Infinity;
+          for (let k = 0; k < l.pts.length / 3; k++) { const d = Math.hypot(l.pts[3 * k] - goal.x, l.pts[3 * k + 1] - goal.y); if (d < bd) { bd = d; bk = k; } }
+          return { line: i, s: l.cum[bk], d: bd };
+        }).sort((p, q) => p.d - q.d);
+        for (const q of near.slice(0, 12)) { for (const dir of [1, -1]) if (!rt) rt = roads.route(a, { line: q.line, s: q.s, dir }, 30000); if (rt) break; }
+      }
+      return rt && { pts: drape([[st.x, st.y, st.z]].concat(laneOf(rt.pts)), 0.1), width: 1.3 };
+    }
+    if (m === 'ride' && ride && ride.phase === 'driving') return { pts: drape(laneOf(ride.drv.path.pts), 0.1), width: 1.3 };
+    if (m === 'heli') {
+      const st = heli.st, s = goal.step;
+      if (s && s.type === 'under_bridge') {
+        const strip = nav.strips.find(q => q.fly_under && (!s.surface || q.name === s.surface)), u = strip && ways.underSpan(st, strip), r = u && ways.flight(st, goal, { end: u.end, under: u });
+        if (r) return { pts: r.pts, flat: false, width: 1.6 };
+      }
+      const r = ways.flight(st, goal);
+      return r && { pts: r.pts, flat: false, width: 1.6, land: r.land };
+    }
+    if (m === 'ferry' && player.vehicle) { // the vessel's own course, on to the stop nearest the target
+      const v = player.vehicle, out = [[v.x, v.y, 0.4]];
+      let best = Infinity, cut = 1;
+      for (let n = 0, ci = v.ci; n < v.cycle.length; n++, ci = (ci + 1) % v.cycle.length) {
+        const c = v.cycle[ci], p = c.rev ? c.leg.p.slice().reverse() : c.leg.p, cum = c.rev ? c.leg.cum.map(q => c.leg.len - q).reverse() : c.leg.cum;
+        for (let k = 0; k < p.length; k++) if (n || v.phase === 'dwell' || cum[k] > v.s) out.push([p[k][0], p[k][1], 0.4]);
+        const w = wharfById(c.rev ? c.leg.from : c.leg.to), d = w ? Math.hypot(w.landing[0] - goal.x, w.landing[1] - goal.y) : Infinity;
+        if (d < best - 1) { best = d; cut = out.length; }
+      }
+      return { pts: out.slice(0, cut), width: 3 };
+    }
+    return null;
+  }
+  function updateRoute(t, target, ob, titled) {
+    const m = player.mode, me = m === 'heli' ? heli.st : m === 'ferry' ? player.vehicle : player;
+    const goal = settings.route && !titled ? routeGoal(target, ob) : null;
+    const here = goal && Math.hypot(goal.x - me.x, goal.y - me.y) < (m === 'heli' ? 30 : 12) && (m !== 'heli' || heli.st.landed);
+    if (!goal || here || m === 'rail' || m === 'board') { if (guide.pts) gold.set(null); guide.key = ''; guide.pts = null; return; }
+    const off = gold.follow(me.x, me.y, m === 'heli' ? me.z : null);
+    const key = `${m}|${Math.round(goal.x)},${Math.round(goal.y)}|${goal.kind}|${m === 'ride' && ride ? `${ride.phase}${ride.drv.path ? (ride.drv.path.rid ??= ++guide.n) : ''}` : ''}|${m === 'ferry' && me ? me.ci : ''}`;
+    const stray = { foot: 6, car: 14, heli: 70 }[m] ?? Infinity;
+    if (key === guide.key && (off < stray || t - guide.at < (guide.fail ? 3 : 0.6))) return;
+    if ((m === 'foot' || m === 'heli') && !ways.ready) return;
+    guide.key = key; guide.at = t;
+    const r = plan(goal);
+    if (r && r.ferry && guide.ferry !== r.ferry.id) H.toast(`No way there on foot from here. The gold line leads to <b>${r.ferry.name}</b> for the ferry.`);
+    guide.ferry = r && r.ferry ? r.ferry.id : null;
+    guide.fail = !r;
+    guide.pts = r ? r.pts : null;
+    gold.set(guide.pts, r || {});
+    if (r) gold.follow(me.x, me.y, m === 'heli' ? me.z : null);
   }
 
   // ------------------------------------------------------------ input
@@ -2102,6 +2164,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     g.lineWidth = 2 * dpr;
     for (const r of G.ferries) { g.strokeStyle = 'rgba(30,91,58,0.75)'; g.setLineDash([6 * dpr, 4 * dpr]); for (const l of r.legs) { g.beginPath(); l.path.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); } }
     g.setLineDash([]);
+    const way = guide.pts && gold.ahead(); // the gold route still to go, as on the minimap and in the world
+    if (way && way.length > 1) {
+      g.save(); g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--sun') || '#ffc23d'; g.lineWidth = 3.5 * dpr; g.lineJoin = g.lineCap = 'round';
+      g.beginPath(); way.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.restore();
+    }
     g.save(); g.scale(dpr, dpr);
     bigPins = [];
     const marks = []; // every icon drawn, which the names keep clear of
@@ -2168,7 +2235,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   });
   on(bigCanvas, 'dblclick', e => { const h = mapHit(e); if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
   on($('#g-mappop-go'), 'click', () => { if (picked) travelTo(picked); });
-  on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast('Waypoint set. The route shows on the minimap.'); });
+  on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast('Waypoint set. Follow the gold route there.'); });
   on($('#g-travel'), 'click', e => { const b = e.target.closest('button[data-k]'); if (b && travelList[+b.dataset.k]) travelTo(travelList[+b.dataset.k]); });
   if (touch) $('#g-bigmap header .note').textContent = 'Tap a place to travel there';
   on($('#g-map-btn'), 'click', toggleMap);
@@ -2319,7 +2386,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // HUD
     const ob = titleOn ? null : objective();
     const target = waypoint || (ob && ob.at);
-    updateRoute(clockT, player.mode === 'foot' ? target : null);
+    updateRoute(clockT, target, ob, titleOn);
+    gold.tick(clockT);
     beam.visible = !!target && !titleOn && Math.hypot(target[0] - (player.mode === 'heli' ? heli.st.x : player.x), target[1] - (player.mode === 'heli' ? heli.st.y : player.y)) > 45;
     if (target) { const f = nav.floorAt(target[0], target[1], Math.max(300, nav.terrain(target[0], target[1]) + 1)); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
@@ -2329,8 +2397,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#gq-step').textContent = ob ? ob.text : trigLeft ? `The city is yours. ${trigLeft} trig station${trigLeft > 1 ? 's' : ''} still to survey (△ on the map), or change the time and fly anywhere.`
       : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
     $('#gq-dist').textContent = target ? `${Math.round(Math.hypot(target[0] - me.x, target[1] - me.y))} m` : '';
-    if (photo.on) { beam.visible = false; if (routeLine) routeLine.visible = false; }
-    else if (routeLine) routeLine.visible = true;
+    if (photo.on) beam.visible = false;
+    gold.mesh.visible = !!guide.pts && !photo.on;
     if (!titleOn && !photo.on) {
       const icons = [];
       for (const w of G.wharves) icons.push({ kind: 'wharf', x: w.terminal[0], y: w.terminal[1] });
@@ -2346,7 +2414,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (ob && ob.at) icons.push({ kind: 'quest', x: ob.at[0], y: ob.at[1], pin: true });
       if (waypoint) icons.push({ kind: 'waypoint', x: waypoint[0], y: waypoint[1], pin: true });
       drawMini({ x: me.x, y: me.y, yaw: player.mode !== 'heli' ? cam.yaw : cam.mode === 'bird' ? heli.st.h : cam.mode === 'cockpit' ? heli.st.h - cam.lookYaw : cam.yaw, heading: player.mode === 'heli' ? heli.st.h : player.mode === 'ferry' ? player.vehicle.h : player.h,
-        radius: player.mode === 'heli' ? 700 : player.mode === 'ferry' ? 450 : player.mode === 'car' || player.mode === 'ride' ? 260 + Math.min(220, player.speed * 7) : 200, route: roadRoute(target) || route, icons });
+        radius: player.mode === 'heli' ? 700 : player.mode === 'ferry' ? 450 : player.mode === 'car' || player.mode === 'ride' ? 260 + Math.min(220, player.speed * 7) : 200, route: guide.pts ? [[me.x, me.y]].concat(gold.ahead()) : null, icons });
       if (!$('#g-bigmap').hidden && Math.floor(clockT * 2) !== Math.floor((clockT - dt) * 2)) drawBig();
       const a = currentAction(), alt = kerbAction();
       $('#g-prompt').hidden = !a && !alt;
@@ -2844,6 +2912,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, player.mode === 'heli' ? heli.st.z + 1 : player.z + 1.6, sun) ? 'sun' : 'shade'; checkSteps(); }
     }
     for (const c of hold) keys.delete(c);
+    // and the route, as a frame works it out (by the way you are going now)
+    const titled = preTitle || !$('#g-title').hidden, ob = titled ? null : objective();
+    updateRoute(clockT, waypoint || (ob && ob.at), ob, titled);
     groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     camTarget.copy(player.mode === 'heli' ? W(heli.st.x, heli.st.y, heli.st.z + 2.5) : player.mode === 'ferry' ? W(player.vehicle.x, player.vehicle.y, 5) : W(player.x, player.y, player.z + 1.55));
     updateCamera(1 / 30, false);
@@ -2851,7 +2922,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { flyover, Wd, colonies, flocks, dayLimits, footNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, graph, currentAction, keys, lifts, rideLift, places, lookAt };
+  window.__game = { flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

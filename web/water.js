@@ -287,6 +287,9 @@ void main() {
       uShore: { value: shore ? shore.texture : null }, uShoreOn: { value: shore ? 1 : 0 },
       uShoreBox: { value: shore ? new THREE.Vector4(shore.x0, shore.y1, shore.w, shore.h) : new THREE.Vector4(0, 0, 1, 1) },
       uDeep: { value: lin(cfg.colour || '#0f2b33') }, uShallow: { value: lin(cfg.shallow_colour || '#2f6b66') },
+      // how much light the water column gives back: from the clarity (a clear harbour little, a silty
+      // river much), unless the city sets it from photographs ("scatter")
+      uScatter: { value: cfg.scatter ?? 0.12 + 0.88 * Math.min(1, Math.max(0, (2.0 - (cfg.clarity_m ?? 4)) / 1.6)) },
       uClarity: { value: cfg.clarity_m ?? 4 }, uSlopes: { value: new THREE.Vector3(...['sand', 'rock', 'built'].map(k => (shore && shore.slopes || {})[k] ?? { sand: 0.04, rock: 0.25, built: 1 }[k])) },
       uFloor: { value: shore && shore.floor_m || 4 },
       uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 },
@@ -295,7 +298,7 @@ void main() {
     const C = sizes.length;
     const COMMON = `
 uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind;
-uniform vec4 uShoreBox; uniform vec3 uDeep, uShallow, uSlopes; uniform sampler2D uRefl; uniform mat4 uReflMat;
+uniform vec4 uShoreBox; uniform vec3 uDeep, uShallow, uSlopes; uniform float uScatter; uniform sampler2D uRefl; uniform mat4 uReflMat;
 uniform sampler2D uWake; uniform vec4 uWakeBox;
 // the wake field (x, z of its centre, its size, on): foam drawn by passing vessels
 float wakeAt(vec2 xz) {
@@ -382,7 +385,7 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   // light scattered back out of the water column: a clear harbour gives back little and reads
   // dark; silt and clay in a turbid river (under 2 m of visibility) scatter it back, so the
   // river shows the brown of the aerial photo its colours were picked from
-  diffuseColor.rgb = mix(uShallow, uDeep, smoothstep(0.0, uFloor, wd)) * mix(0.12, 1.0, clamp((2.0 - uClarity) / 1.6, 0.0, 1.0));
+  diffuseColor.rgb = mix(uShallow, uDeep, smoothstep(0.0, uFloor, wd)) * uScatter;
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.82), wFoam);
   // crests catch light through the water (a cheap subsurface term)
   diffuseColor.rgb += uShallow * 0.06 * clamp(vWave.y / max(uHs, 0.05), 0.0, 1.5);`)

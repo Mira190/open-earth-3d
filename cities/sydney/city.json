@@ -38,8 +38,8 @@
     "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads.",
     "waves": {"wind_ms": 5.0, "wind_from_deg": 45, "fetch_km": 4.0, "depth_m": 15, "cascades_m": [157, 33.3, 7.1], "choppiness": 0.9,
               "note": "A typical afternoon north-easterly sea breeze over the 4 km reach from Bradleys Head to the bridge; chosen values, not a measurement."},
-    "colour": "#0e2b31", "shallow_colour": "#2d6862", "clarity_m": 3.5,
-    "colour_note": "Harbour water is green-brown with a few metres of visibility; the colours were picked from the NSW aerial photo."
+    "colour": "#0c446d", "shallow_colour": "#2b7b86", "clarity_m": 3.5, "scatter": 0.55,
+    "colour_note": "Harbour water has a few metres of visibility. Seen from the air on a clear day it reads a deep blue, teal near the shore: the colours and the light the water gives back (scatter) were matched to aerial photographs of the Opera House (Wikimedia Commons, \"Sydney (AU), Opera House -- 2019 -- 2896.jpg\"). The NSW aerial photo, taken straight down, shows it darker and greener."
   },
   "trees": {"mix": {"plane": 0.3, "fig": 0.18, "gum": 0.2, "jacaranda": 0.14, "palm": 0.13, "elm": 0.05}, "note": "Species are not mapped; the mix is a guess at the city's street and park trees: plane trees on the streets, Moreton Bay figs and palms in the parks and the Domain, jacarandas, eucalypts."},
   "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
