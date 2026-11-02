@@ -437,7 +437,10 @@ vec3 scrCell(float cell, vec2 uv) {
 	// (fogFactor still holds the edge, for the night's additive lights, night.js.)
 	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
 	fogFactor = max( fogFactor, oeEdge * oeGate );
-	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );`);
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
+#ifdef OE_SEA
+	gl_FragColor.a = mix( gl_FragColor.a, 1.0, fogFactor ); // the haze hides what lies under the water too, so nothing shows through it from below
+#endif`);
     return fade;
   }
   // The open-water mask past the frame (edgeHaze, pipeline/open_sea.py SEA_HALF_M): its half width,
@@ -661,18 +664,27 @@ vec3 photoGrade(vec3 c) {
 totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz));`);
     };
     // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
+    // Drawn only within the frame: the tiles' grid overhangs it by up to 800 m, which past the frame is
+    // only haze and would lie over the open sea there, cutting it off along a straight line (issue 57).
     function tileGeometry(t, Tg) {
-      const w = t.x1 - t.x0, h = t.y1 - t.y0;
-      const g = new THREE.PlaneGeometry(w, h, Math.round(w / Tg.cell), Math.round(h / Tg.cell));
+      const F = scene.frame, x0 = Math.max(t.x0, F.x[0]), x1 = Math.min(t.x1, F.x[1]), y0 = Math.max(t.y0, F.y[0]), y1 = Math.min(t.y1, F.y[1]);
+      if (x1 <= x0 || y1 <= y0) { // wholly outside: nothing to draw (kept, so groundMeshes stays one to a tile)
+        const e = new THREE.BufferGeometry();
+        for (const [k, n] of [['position', 3], ['normal', 3], ['uv', 2]]) e.setAttribute(k, new THREE.Float32BufferAttribute([], n));
+        return e;
+      }
+      const w = x1 - x0, h = y1 - y0;
+      const g = new THREE.PlaneGeometry(w, h, Math.max(1, Math.round(w / Tg.cell)), Math.max(1, Math.round(h / Tg.cell)));
       g.rotateX(-Math.PI / 2);
-      g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
-      const p = g.attributes.position;
+      g.translate((x0 + x1) / 2, 0, -(y0 + y1) / 2);
+      const p = g.attributes.position, uv = g.attributes.uv;
+      for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) - t.x0) / (t.x1 - t.x0), (-p.getZ(i) - t.y0) / (t.y1 - t.y0)); // the whole tile's photo
       if (Q) Tg = Q.raise(Tg, true); // the points out in the water along a quay at its level
       for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
       // under the cells raised to a quay, which the ground shader leaves open above the water: the bottom
       if (Tg.up) {
-        const cols = Math.round(w / Tg.cell) + 1, rows = p.count / cols, at = [];
+        const cols = Math.max(1, Math.round(w / Tg.cell)) + 1, rows = p.count / cols, at = [];
         const up = i => {
           const c = Math.round((p.getX(i) - Tg.x0) / Tg.cell), r = Math.round((Tg.y1 + p.getZ(i)) / Tg.cell);
           return c >= 0 && r >= 0 && c < Tg.nx && r < Tg.ny && Tg.up[r * Tg.nx + c];
