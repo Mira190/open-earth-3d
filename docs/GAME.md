@@ -745,7 +745,12 @@ cars.
     in past it, but not for one lying there or off the berth waiting for it;
     so on a narrow leg the place to wait off a busy berth is one where the one
     leaving can go by (else the passing place), and one waiting there stays put
-    until the one leaving is past it. Shared narrow water, where a course runs
+    until the one leaving is past it; one that came up as the berth turned busy,
+    too late to stop there, stops at the next such place nearer the berth, or
+    goes slowly astern to one behind it. One leaving along the same leg towards
+    a vessel coming in doesn't make the berth busy for it: they pass, and on a
+    leg as short as Amsterdam's F3 ferry across the IJ the two no longer hold
+    each other at the passing place for good. Shared narrow water, where a course runs
     head-on against another route's (Paris's two Batobus routes along the same
     stretch of the Seine), is taken one way at a time, as a single-track
     railway's section is: each course's stretches, longer than two hull lengths,
@@ -754,8 +759,9 @@ cars.
     short of it, holds it, of two closing on it the nearer goes first, and the
     other waits just short of it, where it is clear of the other course all
     along. One lying still across another route's course is stopped short of,
-    and passed after half a minute only if the two are held by each other (else
-    after two minutes). Two under
+    and after half a minute held, two held by each other go on by; one held by
+    a vessel waiting for its own reasons edges by it if their hulls need come no
+    nearer than touching, and else waits on, up to two minutes. Two under
     way on courses that meet within 8 s: the one that can stop short of the
     other's course gives way; one lying still, or at its berth, sets off only
     when nothing coming by would meet it in the next 30 s; and a place to wait

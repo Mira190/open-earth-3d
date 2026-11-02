@@ -846,13 +846,13 @@ window.OECars = (function () {
           if (reg && st.line >= 0 && toLine > -C.half && !(st.mv && st.mv.a === a) && !(st.mv0 && st.mv0.a === a)) { const ex = exitOf(i, a); if (ex && st.s < ex.at) into(a, ex, true); }
           continue;
         }
-        const lt = lights.light(a);
+        const ex = reg && st.line >= 0 ? exitOf(i, a) : null;
+        const lt = lights.light(a, ex ? ex.e : null); // (with its way across: a turn across the oncoming traffic has its arrow where there is one)
         // seen by the signals coming up to them, as the traffic is (a call for its green)
-        if (lights.approach && toLine - C.half < 60) lights.approach(st, a, -1, Math.max(0, toLine - C.half) / Math.max(st.v, 2));
+        if (lights.approach && toLine - C.half < 60) lights.approach(st, a, ex ? ex.e.m.i : -1, Math.max(0, toLine - C.half) / Math.max(st.v, 2));
         if (priority && lt === 'r' && lights.priority && toLine - C.half < 40) lights.priority(a); // (a ride on its way to you)
         if (a.sign === 'stop' && st.v < 0.3 && toLine - C.half < 2.5) halted.add(nd.k);
         const stop = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < toLine - C.half - 0.3) || (a.sign === 'stop' && !halted.has(nd.k));
-        const ex = reg && st.line >= 0 ? exitOf(i, a) : null;
         if (ex) {
           const t = now(), canStop = st.v * st.v / 8 < toLine - C.half - 0.3;
           if (st.mv && st.mv.a === a) { // in it already: on through, unless the light changed before it got there
