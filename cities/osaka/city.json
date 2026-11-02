@@ -302,7 +302,8 @@
     "大阪城 ホール": "大阪城ホール"
   },
   "arrivals": {
-    "グリコ Glico": {"front": 20, "arc": 55, "dist": 70}
+    "グリコ Glico": {"front": 20, "arc": 55, "dist": 70},
+    "HEP FIVE": {"front": 154, "at": [-1137, 2685]}
   },
   "minor_labels": [
     "大阪市役所",
