@@ -297,8 +297,9 @@ exit, in the north of the model. Its screens have a sheet of their own (`screens
   midnight: `web/night.js` takes a screen's hours across midnight (7:00-1:00).
 
 What could not be checked: the height of the Cross Shinjuku building (16.9 m in OpenStreetMap,
-lower than its neighbour to the west, so the screen stands in front of that neighbour's wall
-there); how long each leg of the bend is; how the Unica screens are spaced round their front and
+which also gives it 11 floors, so it is probably taller: the screen stands on the 16.9 m roof,
+in front of its western neighbour's wall, and the 新宿オカダヤ building to the east hides the far
+end of the bend from some of the plaza); how long each leg of the bend is; how the Unica screens are spaced round their front and
 how high up it they are (estimated from photographs).
 
 ## 7. Tokyo Pilgrimage
