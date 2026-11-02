@@ -218,6 +218,27 @@
       "hold": 9
     },
     {
+      "title": "Tokyo Metropolitan Government Building",
+      "date": [
+        10,
+        29
+      ],
+      "from": "15:00",
+      "to": "15:40",
+      "hold": 9,
+      "cam": [
+        -820,
+        2000,
+        260
+      ],
+      "tgt": [
+        -434,
+        2330,
+        170
+      ],
+      "text": "Kenzo Tange's city hall, finished in 1991: one tower that splits in two at the 33rd floor, 243 m high, with a free observation deck in each half at 202 m. It was the tallest building in Tokyo until 2007."
+    },
+    {
       "title": "Kabukicho after dark",
       "text": "Kabukicho Ichibangai's red arch has lit the way in since 1969. The district is named for a kabuki theatre planned after the war that was never built.",
       "cam": [
@@ -237,28 +258,6 @@
       "from": "19:00",
       "to": "19:30",
       "hold": 10
-    },
-    {
-      "title": "Where the heights come from",
-      "provenance": true,
-      "text": "Blue: a surveyed height (PLATEAU or OpenStreetMap). Orange: a floor count. Green: an estimate from the neighbours. Towers finished since PLATEAU's survey, such as the Tokyu Kabukicho Tower, keep OpenStreetMap's height.",
-      "cam": [
-        2400,
-        -3800,
-        1600
-      ],
-      "tgt": [
-        200,
-        0,
-        40
-      ],
-      "date": [
-        10,
-        29
-      ],
-      "from": "13:00",
-      "to": "13:30",
-      "hold": 9
     }
   ],
   "labels": {

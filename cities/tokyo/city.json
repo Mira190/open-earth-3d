@@ -305,26 +305,25 @@
       "text": "On the winter solstice, {sun:Hibiya Park 日比谷公園|12-22|12:00}% of Hibiya Park is in direct sun at noon, and {sun:Hibiya Park 日比谷公園|12-22|13:00}% at 13:00. On 21 June at noon it is {sun:Hibiya Park 日比谷公園|6-21|12:00}%. No rule protects either."
     },
     {
-      "title": "Where the heights come from",
-      "provenance": true,
+      "title": "The National Diet Building",
       "date": [
-        9,
+        11,
         22
       ],
-      "from": "15:00",
-      "to": "15:30",
+      "from": "10:00",
+      "to": "10:40",
       "hold": 9,
       "cam": [
-        2300,
-        -2200,
-        1300
+        -930,
+        470,
+        140
       ],
       "tgt": [
-        -100,
-        200,
-        40
+        -1280,
+        654,
+        50
       ],
-      "text": "Blue: surveyed height (PLATEAU or OpenStreetMap). Orange: floor count. Green: estimated. In the model, PLATEAU's roof surveys give every tower in Marunouchi, Shiodome and Toranomon its real massing, podium and all."
+      "text": "Japan's parliament, finished in 1936 after seventeen years of building, in granite and marble quarried in Japan. The House of Representatives sits in the south wing, the House of Councillors in the north, and the stepped pyramid of the central tower rises 65 m."
     },
     {
       "title": "Tokyo Tower at sunset",

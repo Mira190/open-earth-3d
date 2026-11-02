@@ -182,6 +182,9 @@
 .ts-foot .next b { color: var(--tx2); font-weight: 400; }
 .ts-foot .ts-tool { font-size: 9px; color: var(--tx3); }
 .ts-foot .ts-tool:hover { color: var(--tx); }
+.ts-foot .ts-ver { margin-left: auto; text-transform: none; letter-spacing: 0.12em; color: var(--tx3); text-decoration: none; font-variant-numeric: tabular-nums; }
+.ts-foot .ts-ver:hover { color: var(--tx); }
+.ts-version .ts-mono { text-transform: none; font-size: 10.5px; color: var(--tx); line-height: 1.6; }
 
 /* the menu comes in after the title, one line at a time */
 .ts-top, .ts-menu, .ts-foot { opacity: 0; transition: opacity 1s ease; }

@@ -409,26 +409,25 @@
       "hold": 9
     },
     {
-      "title": "Where the heights come from",
-      "text": "Coloured by height source: LiDAR-measured in the darkest shade. Where OpenStreetMap has a height tag, it is within 15% of the laser for half the buildings.",
-      "cam": [
-        2400,
-        -2600,
-        1300
-      ],
-      "tgt": [
-        0,
-        0,
-        40
-      ],
+      "title": "The Arc de Triomphe",
       "date": [
         6,
         21
       ],
-      "from": "12:00",
-      "to": "13:00",
+      "from": "20:40",
+      "to": "21:30",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        -2320,
+        1880,
+        140
+      ],
+      "tgt": [
+        -2015,
+        1699,
+        60
+      ],
+      "text": "Napoleon ordered it in 1806, after Austerlitz, and it was finished in 1836: 50 m high. Twelve avenues meet around it at the Étoile, and the Unknown Soldier has lain beneath it since 1921."
     }
   ],
   "renders": [

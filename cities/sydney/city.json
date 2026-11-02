@@ -185,15 +185,25 @@
       "text": "Protected all year from 10:00 to 14:00. On the winter solstice, sun on the park falls from {sun:Hyde Park|6-21|10:00}% at 10:00 to {sun:Hyde Park|6-21|14:00}% at 14:00 as the towers to the west take over."
     },
     {
-      "title": "Where the heights come from",
-      "provenance": true,
-      "date": [9, 22],
+      "title": "Sydney Tower",
+      "date": [
+        9,
+        22
+      ],
       "from": "15:00",
-      "to": "15:30",
+      "to": "15:40",
       "hold": 9,
-      "cam": [-1200, -1900, 900],
-      "tgt": [-250, -500, 40],
-      "text": "Blue: surveyed, published or verified height. Orange: floor count × storey height. Green: estimated. Against {acc:matched} published tower heights the median error is {acc:median_abs_error_pct}%."
+      "cam": [
+        -740,
+        -520,
+        270
+      ],
+      "tgt": [
+        -236,
+        -942,
+        200
+      ],
+      "text": "309 m, the tallest structure in the city since it opened in 1981. The gold turret is held to its shaft by 56 cables; on a clear day the Blue Mountains show from the observation deck."
     },
     {
       "title": "After dark",
