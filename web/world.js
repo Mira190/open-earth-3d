@@ -45,6 +45,10 @@ window.OEWorld = (function () {
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
+    // buildings demolished since the survey (landmarks.json "demolished": solid indices): not drawn, and
+    // flat in the surface model, so nothing stands, shades or blocks the way where they stood
+    for (const si of (LM && LM.demolished) || []) if (B.s[si]) B.s[si][3] = B.s[si][2];
+    if (LM && LM.demolished) scene.hidden_solids = (scene.hidden_solids || []).concat(LM.demolished);
     S.site({ lat: CITY.lat, lon: CITY.lon, tz: CITY.timezone, locale: CITY.locale });
     S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);

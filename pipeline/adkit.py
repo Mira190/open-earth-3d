@@ -185,8 +185,8 @@ def text(img, xy, s, face, size, fill="#ffffff", anchor="mm", glow_c=None, glow_
 def vtext(img, xy, s, face, size, fill="#ffffff", gap=1.05, glow_c=None):
     """Japanese set top to bottom from xy (the top centre)."""
     x, y = xy
-    for ch in s:
-        text(img, (x, y + size / 2), ch, face, size, fill, glow_c=glow_c)
+    for ch in s:   # the long vowel mark turns with the line
+        text(img, (x, y + size / 2), "｜" if ch == "ー" else ch, face, size, fill, glow_c=glow_c)
         y += size * gap
 
 

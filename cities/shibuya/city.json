@@ -499,7 +499,9 @@
   "light_show": {
     "name": "CROSSING LIGHT",
     "start": "19:00",
-    "minutes": 30,
+    "minutes": 10,
+    "every": 30,
+    "until": "22:10",
     "beams": [
       "shibuya_sky"
     ],
@@ -513,7 +515,7 @@
       "#ffffff",
       "#9fd2ff"
     ],
-    "note": "SHIBUYA SKY's 18 searchlights on the roof light after sunset with the seasons (Wikipedia). Their times and movement here are illustrative."
+    "note": "SHIBUYA SKY's 18 searchlights: shows from 19:00 on the hour and the half hour, to 22:00 (enjoytokyo, nippon.com). Each show's length and the beams' movement here are illustrative."
   },
   "night_ambient": 0.08,
   "night": {

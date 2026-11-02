@@ -4,7 +4,8 @@
 // is A Symphony of Lights; the beams and colours here are illustrative, not its choreography.
 // A landmark with searchlights of its own ("beams" in landmarks) lights one from each; "spread" sets
 // how wide a beam opens and "opacity" how bright it is, and "recolour": false leaves the floodlights their
-// own colours (signs, lanterns).
+// own colours (signs, lanterns). "every" and "until" repeat the show: it starts every so many minutes
+// from start until that hour, as SHIBUYA SKY's CROSSING LIGHT does on the hour and the half hour.
 'use strict';
 window.OELights = (function () {
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -24,6 +25,14 @@ window.OELights = (function () {
     const cfg = D.scene.city.light_show, LM = D.scene.landmarks || {};
     if (!cfg) return null;
     const start = hm(cfg.start || '20:00'), len = cfg.minutes || 10, group = new THREE.Group();
+    const every = cfg.every || 0, until = cfg.until ? hm(cfg.until) : start + len;
+    // the start of the show that is on at this minute, or null
+    const showAt = min => {
+      if (min < start || min >= Math.max(until, start + len)) return null;
+      const s0 = every ? start + Math.floor((min - start) / every) * every : start;
+      return min < s0 + len ? s0 : null;
+    };
+    let s0 = start;
     group.visible = false;
     world.add(group);
     const top = k => { const l = LM[k]; return l ? [l.at[0], l.at[1], l.published_top_m ? l.ground_m + l.published_top_m : l.top_m] : null; };
@@ -62,14 +71,16 @@ window.OELights = (function () {
       // the local clock, minutes after midnight; the show runs from start for len minutes after dark
       setClock(min) {
         const was = on;
-        on = Wd.U.uNight.value > 0.5 && min >= start && min < start + len;
+        const at = showAt(min);
+        on = Wd.U.uNight.value > 0.5 && at !== null;
+        if (on) s0 = at;
         minute = min;
         group.visible = on;
         if (was && !on) flood.forEach((m, i) => m.emissive.copy(own[i]));
       },
       tick(t) {
         if (!on) return;
-        const s = t / 1000, ramp = Math.min(1, (minute - start) * 2, (start + len - minute) * 2);
+        const s = t / 1000, ramp = Math.min(1, (minute - s0) * 2, (s0 + len - minute) * 2);
         for (const b of beams) {
           const az = b.phase + Math.sin(s * b.speed + b.phase) * 0.9, el = 1.05 + 0.32 * Math.sin(s * b.speed * 1.7 + b.phase);
           b.m.rotation.set(0, 0, 0);
