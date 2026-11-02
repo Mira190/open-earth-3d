@@ -1775,8 +1775,6 @@ def concourse_meshes(L, uv, lv, drape):
                 if n < 1e-3:
                     continue
                 m = (a + b) / 2
-                if fence.distance(Point(*m)) < 0.4:
-                    continue
                 out = np.array([e[1], -e[0]]) / n * (1 if ccw else -1)  # to its right on an anticlockwise ring: outside
                 if hole:
                     out = -out
@@ -1784,6 +1782,8 @@ def concourse_meshes(L, uv, lv, drape):
                 zo, is_rest = neighbour(*(m + out * 0.25), pc)
                 if zo is None or abs(zi - zo) < 0.03 or not (zi > zo or is_rest):
                     continue
+                if is_rest and fence.distance(Point(*m)) < 0.4:
+                    continue  # the forecourt's edge: its fascia
                 lo, hi = min(zi, zo), max(zi, zo) + 0.03
                 mesh = walls if hi - lo > 0.33 else risers
                 mesh.quad(np.array([*a, lo - 0.3]), np.array([*b, lo - 0.3]), np.array([*b, hi]), np.array([*a, hi]),
@@ -1792,7 +1792,8 @@ def concourse_meshes(L, uv, lv, drape):
     # under it all, a dark bed, so that a hairline between two pieces shows shadow and not the water
     bed = Mesh("lc_bed", "lc_riser", False)
     low = min(min(pc["s"], key=lambda q: q[1])[1] if "s" in pc else pc["z"] for pc in lc["pieces"]) - 0.35
-    for q in Polygon_pieces(shapely.union_all([pc["poly"] for pc in lc["pieces"]]).buffer(0.3)):
+    u = shapely.union_all([pc["poly"] for pc in lc["pieces"]])
+    for q in Polygon_pieces(u.buffer(3.0).intersection(shapely.union_all([u, rest]).buffer(0.5))):
         for t in shapely.constrained_delaunay_triangles(q).geoms:
             cs = np.asarray(t.exterior.coords)[:3]
             bed.tri(*[np.array([x, y, low]) for x, y in cs])
@@ -1823,7 +1824,8 @@ def concourse_meshes(L, uv, lv, drape):
         fascia.quad(P(q0, top0), P(q1, top1), P(q1 + n1 * 0.3, top1), P(q0 + n0 * 0.3, top0), [[run, 0], [run + L1, 0], [run + L1, 0.3], [run, 0.3]])
         fascia.quad(P(q0 + n0 * 0.3, e0[5] - 0.1), P(q1 + n1 * 0.3, e1[5] - 0.1), P(q1 + n1 * 0.3, top1), P(q0 + n0 * 0.3, top0),
                     [[run, e0[5]], [run + L1, e1[5]], [run + L1, top1], [run, top0]])
-        if colonnade(e0) and colonnade(e1):
+        inside = colonnade(e0) and colonnade(e1)
+        if inside:
             s0, s1 = e0[5] - slab, e1[5] - slab
             fascia.quad(P(q0, s0), P(q1, s1), P(q1, top1), P(q0, top0), [[run, s0], [run + L1, s1], [run + L1, top1], [run, top0]])
             b0, b1 = q0 + n0 * rec, q1 + n1 * rec
@@ -1836,14 +1838,18 @@ def concourse_meshes(L, uv, lv, drape):
                     qq, nn = np.array(e[:2]), np.array(e[2:4])
                     fascia.quad(P(qq, e[4] - 0.3), P(qq + nn * rec, e[4] - 0.3), P(qq + nn * rec, e[5] - slab), P(qq, e[5] - slab),
                                 [[0, e[4]], [rec, e[4]], [rec, e[5]], [0, e[5]]])
-            while next_col <= run + L1:  # a mushroom column every few metres, just in from the fascia
+            deep = all(colonnade(E[j]) for j in range(max(k - 2, 0), min(k + 4, len(E))))
+            while deep and next_col <= run + L1:  # a mushroom column every few metres, just in from the fascia
                 t = (next_col - run) / max(L1, 1e-6)
                 c = q0 + (q1 - q0) * t + (n0 + (n1 - n0) * t) * 1.1
                 zf, zs = e0[4] + (e1[4] - e0[4]) * t, s0 + (s1 - s0) * t
                 cols.lathe([(zf - 0.1, 0.24), (zs - 0.75, 0.24), (zs - 0.35, 0.55), (zs - 0.08, 1.05), (zs, 1.1)], c, segs=14)
                 next_col += LOWER["column_every_m"]
+            if not deep:
+                next_col = max(next_col, run + L1 + 2.0)
         else:
-            lo0, lo1 = min(e0[4], e0[5]) - 0.3, min(e1[4], e1[5]) - 0.3
+            near = E[max(k - 2, 0):k + 4]  # down past the lowest floor beside it (a flight's treads step between the samples)
+            lo0 = lo1 = min(min(e[4], e[5]) for e in near) - 0.4
             fascia.quad(P(q0, lo0), P(q1, lo1), P(q1, top1), P(q0, top0), [[run, lo0], [run + L1, lo1], [run + L1, top1], [run, top0]])
             next_col = run + L1 + 4.0
         run += L1
