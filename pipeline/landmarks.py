@@ -3,6 +3,11 @@
 empty file. The output is shared by the web viewer and the Blender script, so
 both show the same geometry. A city whose materials take an image (`map`) draws it
 with landmark_assets(out_dir, scene), which writes the image next to landmarks.json.
+landmark_glows(scene) -> [[x, y, radius m, colour, strength(, on hour, off hour)], ...] adds the light
+a landmark's screens and signs throw on the street after dark (web/night.js), while they are on. landmark_demolished(scene) ->
+[solid index, ...] names solids of the built city that have been pulled down since its survey:
+the viewer and the game neither draw them nor let them stand in the surface model (web/world.js),
+until the city's next build leaves them out itself.
 
     python pipeline/landmarks.py --city sydney      # reads/writes web/data/<city>
 """
@@ -22,6 +27,10 @@ def main():
             print(f"{f}: {os.path.getsize(os.path.join(city.out, f)) / 1e6:.2f} MB")
     out = {"materials": materials, "meshes": [m.dump() for m in meshes],
            "notes": "Parametric; dimensions from published figures, anchors from OpenStreetMap footprints." if meshes else "No parametric landmarks."}
+    if city.hook("landmark_glows"):
+        out["glows"] = city.hook("landmark_glows")(scene)
+    if city.hook("landmark_demolished"):
+        out["demolished"] = city.hook("landmark_demolished")(scene)
     path = os.path.join(city.out, "landmarks.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{sum(len(m.v) for m in meshes)} vertices, {sum(len(m.i) for m in meshes) // 3} triangles -> {path}"

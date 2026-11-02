@@ -131,7 +131,20 @@ arch softly from its deck. Without `flood` a floodlit material glows evenly, as 
 screens do (the Eiffel Tower's gold, Hong Kong's frames and crowns).
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
-instanced batches of 300 m squares drawn within 500 m of the camera.
+instanced batches of 300 m squares drawn within 500 m of the camera. No pole stands in a
+carriageway: a lamp whose kerb would put it on a road crossing its own at the same level
+(where a street meets a junction) is left out, 4 to 6 per cent of them in each city; a road
+alongside (a dual carriageway's other half) does not count. A city can keep a square clear of poles
+(`night.clear` in `city.json`, as Shibuya does over the scramble, whose paved crossing is far
+wider than its streets).
+
+**Big screens and lit signs.** A landmark can carry LED screens (`led_screen`, below) and
+lit signs, and say how much light they throw on the street in front of them
+(`landmarks.json` `glows`: `[x, y, radius m, colour, strength, on hour, off hour]`). A glow
+without hours goes into the same light map as the lamps' pools; one with hours (a screen that
+plays from 9:00 to midnight) goes into a map of its own, a quarter as fine, that is switched
+with them. Either way it is in the screen's mean colour, so the pavement of a crossing ringed
+by screens takes their colour while they play.
 
 **When.** Everything fades in as the street lights come on, about when the sun sets.
 Offices empty through the evening to a few floors lit all night (the windows, above).
@@ -141,6 +154,30 @@ of the day's, which lit every glass tower as if under an overcast evening. After
 now blends to the designed sky. The environment light is drawn from it, after the haze
 for the hour is set: it used to keep the previous hour's haze, so a night kept the day's
 bright horizon in every reflection (the cause of the grey nights in the game too).
+
+## LED screens
+
+Real-time cities usually draw a big screen as a texture that never changes, or as a video
+(which needs a video per screen and stalls on a phone). Here a screen plays a programme from
+one image, as broadcast graphics are built from keyframes:
+
+- **One sheet of keyframes.** `pipeline/adkit.py` draws every clip's keyframes into one JPEG
+  (`screens.jpg`, 2048 px square, 0.6 MB in Shibuya): gradients, light, type and a few product
+  shapes, in a grid of cells. A city writes its clips in its `city.py`; the brands, music and
+  films are invented.
+- **A playlist per screen.** The material (`pattern: "led_screen"` in `landmarks.json`) lists
+  each screen: its shape, phase, playlist (a bit mask over the clips), hours, brightness,
+  whether it joins the synchronised slot, its height and LED pitch. A mesh's texture
+  coordinate u carries the screen's number in its integer part, so every screen of a city is
+  one draw call.
+- **Motion from stills.** The shader holds each keyframe for `frame_s` seconds, pushes slowly
+  into it, and wipes to the next along a slant with a bright edge; the cell is cropped to the
+  screen's shape (cover). Every `sync[1]` seconds the screens that join play the same clip for
+  `sync[2]` seconds, as the screens round Shibuya's crossing do.
+- **Light, not paint.** The picture is emissive: bright enough to read in the sun, dimmed
+  after dark as real screens are, off outside its hours; from close by its LEDs show as a grid
+  of dots at the pixel pitch, which fades out before it can shimmer.
+- **Blender.** `blender/build_scene.py` shows each screen's first keyframe, lit day and night.
 
 ## The data
 
