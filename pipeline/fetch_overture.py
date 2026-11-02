@@ -35,7 +35,9 @@ def queries(root):
         "water": f"SELECT {simple} FROM {base('base/type=water')}",
         "land": f"SELECT {simple} FROM {base('base/type=land')}",
         "land_use": f"SELECT {simple} FROM {base('base/type=land_use')}",
-        "infrastructure": f"SELECT {simple} FROM {base('base/type=infrastructure')}",
+        # the OSM tags say what Overture's class leaves out: a car park that is a pier (man_made=pier),
+        # one under the ground or a heliport on a roof (pipeline/shore.py decks)
+        "infrastructure": f"SELECT {simple}, level, source_tags FROM {base('base/type=infrastructure')}",
         "address": f"SELECT id, number, street, unit, postcode, ST_AsWKB(geometry) AS wkb FROM {base('addresses/type=address')}",
         # road flags (is_bridge, is_tunnel, ...) and levels place traffic on bridges and hide it in tunnels;
         # access restrictions say which streets are one-way, prohibited transitions which turns are
