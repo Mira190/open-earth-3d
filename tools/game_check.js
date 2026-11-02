@@ -1,6 +1,7 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, talk to the first quest giver, fly the helicopter up and watch the ferries move,
-// drive your car, and hail a taxi and ride it (and order a ride on the phone), with a
+// drive your car, and hail a taxi and ride it (and order a ride on the phone), and watch the
+// signals at the nearest junction change with the traffic stopping for them, with a
 // screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -188,6 +189,26 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     check(taxi.ordered, 'orders a ride on the phone');
   }
   await shot('taxi');
+
+  // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
+  const lights = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions;
+    if (!JN) return { none: true };
+    const sig = JN.J.filter(j => j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
+    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    const j = sig[0], seen = new Set(), s0 = A.stats();
+    for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
+    const s1 = A.stats();
+    return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+  });
+  if (lights.none) check(false, 'the traffic has junctions');
+  else {
+    check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);
+    if (lights.signals) check(lights.states >= 4, `the nearest signals go through their phases (${lights.states} states in 80 s)`);
+    check(!lights.red, `no car crosses its line on red (${lights.red || 0})`);
+    check(lights.moving > 10, `the traffic moves (${lights.moving} cars on the move)`);
+  }
+  await shot('junction');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
