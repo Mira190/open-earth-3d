@@ -230,7 +230,7 @@ export async function createPerson(lookIn, opts = {}) {
     const s = look.scale || 1;
     if (speed < 0.12) return rig.play('Idle', { fade, speed: 1 });
     if (speed < 2.2) return rig.play('Walk', { fade, speed: THREE.MathUtils.clamp(speed / (speeds.Walk * s), 0.4, 1.8) });
-    return rig.play('Run', { fade, speed: THREE.MathUtils.clamp(speed / (speeds.Run * s), 0.6, 1.9) });
+    return rig.play('Run', { fade, speed: THREE.MathUtils.clamp(speed / (speeds.Run * s), 0.6, 2.3) });   // up to the 5.2 m/s run (player.js)
   };
   rig.wave = () => rig.play('Wave', { once: true, fade: 0.2 });
 

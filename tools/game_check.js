@@ -1,7 +1,8 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
-// it, walk, talk to the first quest giver, fly the helicopter up and watch the ferries move,
-// drive your car, and hail a taxi and ride it (and order a ride on the phone), with a
-// screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
+// it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
+// fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
+// (and order a ride on the phone), and travel from the map in your car, with a screenshot
+// after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
@@ -46,6 +47,31 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   });
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
+
+  // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
+  // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
+  const hop = await p.evaluate(() => {
+    const g = window.__game, lm = g.landmarks[0];
+    if (!lm) return { none: true };
+    g.toggleMap(); g.advance(0.1);
+    const pins = g.mapPins().filter(q => q.d.kind === 'landmark').length;
+    g.toggleMap();
+    const ok = g.travelTo(lm);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+    g.advance(0.5);
+    const pl = g.player, d = Math.hypot(lm.at[0] - pl.x, lm.at[1] - pl.y), facing = Math.abs(Math.atan2(Math.sin(Math.atan2(lm.at[0] - pl.x, lm.at[1] - pl.y) - pl.h), Math.cos(Math.atan2(lm.at[0] - pl.x, lm.at[1] - pl.y) - pl.h)));
+    const r = { name: lm.name, pins, n: g.landmarks.length, ok, mode: pl.mode, d, facing, walk: g.nav.walk(pl.x, pl.y, pl.z).ok, top: 0 };
+    for (let i = 0; i < 20; i++) { g.advance(0.1, ['KeyW']); r.top = Math.max(r.top, pl.speed); }
+    r.run = g.GAIT.run;
+    return r;
+  });
+  if (hop.none) check(true, 'no landmarks to travel to');
+  else {
+    check(hop.pins === hop.n, `the map shows the landmarks (${hop.pins} of ${hop.n})`);
+    check(hop.ok && hop.mode === 'foot' && hop.walk && hop.d < 600 && hop.facing < 0.3, `travels from the map to ${hop.name} (${hop.mode}, ${hop.d.toFixed(0)} m from it, facing it within ${hop.facing.toFixed(2)} rad)`);
+    check(hop.top > hop.run * 0.8, `runs at ${hop.top.toFixed(1)} m/s (the run is ${hop.run} m/s)`);
+  }
+  await shot('travel');
 
   // the first quest giver: walk up and talk
   const talk = await p.evaluate(() => {
@@ -188,6 +214,26 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     check(taxi.ordered, 'orders a ride on the phone');
   }
   await shot('taxi');
+
+  // map travel in your car: it comes along, parked at a kerb near the landmark, and you are still at the wheel
+  const drive = await p.evaluate(() => {
+    const g = window.__game, c = g.myCar && g.myCar(), lm = g.landmarks[1] || g.landmarks[0];
+    if (!c || !lm) return { none: true };
+    if (g.ride()) g.cancelRide();
+    const st = c.D.st, s = g.KEEP === 'left' ? 1 : -1;
+    g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
+    g.advance(0.3);
+    g.enterCar();
+    for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+    const ok = g.travelTo(lm);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+    g.advance(0.5);
+    return { name: lm.name, ok, mode: g.player.mode, d: Math.hypot(lm.at[0] - st.x, lm.at[1] - st.y), me: Math.hypot(lm.at[0] - g.player.x, lm.at[1] - g.player.y), v: st.speed };
+  });
+  // at the wheel by the kerb near it; or, with no street near (the end of a pier), on foot there and the car on the nearest street
+  check(drive.none || (drive.ok && drive.v < 1 && (drive.mode === 'car' ? drive.d < 900 : drive.mode === 'foot' && drive.me < 600 && drive.d < 2000)), drive.none ? 'no car to travel in'
+    : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
+  await shot('drive');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
