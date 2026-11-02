@@ -536,14 +536,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return o;
   }
   // one setting out from somewhere a few hundred metres off by road, out of sight
+  // (of a few places about, the one nearest by road: one-way streets can make a car round the corner a long way off)
   function rideFromAround(kind, pickup, dest, r0 = 170, r1 = 340) {
-    for (let k = 0; k < 8; k++) {
-      const pl = roads.around(pickup.x, pickup.y, r0, r1);
-      const o = pl && newRide(kind, pl, pickup, dest);
-      if (o && o.drv.path.len < 1400) return o;
-      if (o) o.C.dispose();
+    let best = null;
+    for (let k = 0; k < 10; k++) {
+      const pl = roads.around(pickup.x, pickup.y, r0, r1), rt = pl && roads.route({ line: pl.line, s: pl.s, dir: pl.dir }, pickup, 4000);
+      if (rt && (!best || rt.len < best.len)) best = { pl, len: rt.len };
+      if (best && best.len < 1.8 * r1) break;
     }
-    return null;
+    return best && best.len < 1400 ? newRide(kind, best.pl, pickup, dest) : null;
   }
   const eta = o => (o.phase === 'coming' || o.phase === 'driving' ? o.drv.remaining() / 9 + 3 : 0);
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in

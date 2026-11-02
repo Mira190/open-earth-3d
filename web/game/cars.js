@@ -582,7 +582,7 @@ window.OECars = (function () {
         net.at(i, s, tmp);
         const d = Math.hypot(tmp.x - x, tmp.y - y);
         if (d < r0 || d > r1 * 1.2) continue;
-        return { line: i, s, dir: Math.random() < 0.5 ? 1 : -1, x: tmp.x, y: tmp.y, z: tmp.z };
+        return { line: i, s, dir: l.ow || (Math.random() < 0.5 ? 1 : -1), x: tmp.x, y: tmp.y, z: tmp.z };
       }
       return null;
     }
