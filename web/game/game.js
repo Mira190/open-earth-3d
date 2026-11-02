@@ -2327,16 +2327,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       let rx = fy, ry = -fx; const rl = Math.hypot(rx, ry) || 1; rx /= rl; ry /= rl; // right, level
       const ux = ry * fz, uy = -rx * fz, uz = rx * fy - ry * fx; // up = right x forward
       let seen = 0, cut = 0, lo = Infinity, hi = -Infinity, over = 0;
-      for (const q of body.pts) {
-        const dx = q[0] - cx, dy = q[1] - cy, dz = q[2] - cz, zf = dx * fx + dy * fy + dz * fz;
-        if (zf < 2) { cut++; if (q[2] >= body.high) over++; continue; }
+      for (let k = 0; k < body.pts.length; k++) {
+        const q = body.pts[k], wk = body.w[k], dx = q[0] - cx, dy = q[1] - cy, dz = q[2] - cz, zf = dx * fx + dy * fy + dz * fz;
+        if (zf < 2) { cut += wk; if (q[2] >= body.high) over++; continue; }
         const u = (dx * rx + dy * ry) / (zf * tanH), v = (dx * ux + dy * uy + dz * uz) / (zf * tanV);
         if (q[2] >= body.high && v > 0.97) over++; // its upper part off the top of the frame, hidden or not
         if (!sightTo(cx, cy, cz, q, body, crowns)) continue;
-        if (Math.abs(u) > 0.97 || Math.abs(v) > 0.97) { cut++; continue; }
-        seen++; lo = Math.min(lo, v); hi = Math.max(hi, v);
+        if (Math.abs(u) > 0.97 || Math.abs(v) > 0.97) { cut += wk; continue; }
+        seen += wk; lo = Math.min(lo, v); hi = Math.max(hi, v);
       }
-      const n = body.pts.length;
+      const n = body.wSum;
       return { face, pitch, tilt, seen: seen / n, cut: cut / n, over: over / body.nHigh, fill: seen ? (hi - lo) / 2 : 0 };
     };
     // the score of a view: most of it in sight, filling a good part of the frame and not cut off, and the sun behind you
@@ -2429,7 +2429,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const toks = lm.name.toLowerCase().split(/\s+/), cjk = t => /[^\x00-\x7f]/.test(t), lead = toks.slice(0, Math.max(1, toks.findIndex(cjk))).join(' ');
     const words = new Set([lm.name.toLowerCase(), toks.some(cjk) ? lead : '', ...toks.filter(t => cjk(t) && t.length > 1)].filter(Boolean));
     const named = id => { const m = B.b[id] && B.b[id][0]; return !!m && m.length > 1 && words.has(m.toLowerCase()); };
-    const ids = new Set(), near = new Map();
+    const ids = new Set(), near = new Map(), tall = new Set();
     for (let r = r0 - n; r <= r0 + n; r++) for (let c = c0 - n; c <= c0 + n; c++) {
       if (r < 0 || c < 0 || r >= DSM.ny || c >= DSM.nx) continue;
       const id = DSM.ids[r * DSM.nx + c];
@@ -2437,8 +2437,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const d = Math.hypot(c - c0, r - r0) * C;
       if (d < 150 && named(id)) ids.add(id);
       if (d < 16 && DSM.data[r * DSM.nx + c] > g + Math.min(8, (top - g) * 0.3)) near.set(id, (near.get(id) || 0) + 1);
+      if (d < 40 && DSM.data[r * DSM.nx + c] >= g + (top - g) * 0.6) tall.add(id); // its high part, whatever building the cells were drawn for
     }
     if (!ids.size && near.size) { const most = Math.max(...near.values()); for (const [id, k] of near) if (k >= most * 0.3) ids.add(id); }
+    for (const id of tall) ids.add(id);
     const cells = [];
     for (let r = r0 - n; r <= r0 + n; r++) for (let c = c0 - n; c <= c0 + n; c++) {
       if (r < 1 || c < 1 || r >= DSM.ny - 1 || c >= DSM.nx - 1) continue;
@@ -2458,10 +2460,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // a part over its buildings that the surface model leaves out (HEP FIVE's wheel, a spire, an open iron tower on
     // a base): a column at its label up to its top, as many points as the buildings have, so it counts as much
     const hi = pts.reduce((m, q) => Math.max(m, q[2]), g);
-    if (top > hi + 8 && ids.size) { const k = Math.max(6, pts.length); for (let i = 0; i < k; i++) pts.push([x + (i % 2 ? 3 : -3), y, hi + (top - hi) * (i + 1) / k, 1]); } // over them: their roofs hide it
+    if (top > hi + Math.max(8, (top - g) * 0.15) && ids.size) { const k = Math.max(6, pts.length); for (let i = 0; i < k; i++) pts.push([x + (i % 2 ? 3 : -3), y, hi + (top - hi) * (i + 1) / k, 1]); } // over them: their roofs hide it
     // its upper third, which a frame cut off at the top loses first
-    const zs = pts.map(q => q[2]).sort((a, b) => a - b), high = g + (zs[zs.length - 1] - g) * 0.67;
-    const b = { ids, pts, high, nHigh: Math.max(1, pts.filter(q => q[2] >= high).length) };
+    const zs = pts.map(q => q[2]).sort((a, b) => a - b), zTop = zs[zs.length - 1], high = g + (zTop - g) * 0.67;
+    // each point weighs by its height: a tower is known by its upper floors, the podium round its foot is not
+    const w = pts.map(q => 0.3 + Math.max(0, q[2] - g) / Math.max(1, zTop - g)), wSum = w.reduce((a, v) => a + v, 0);
+    const b = { ids, pts, w, wSum, high, nHigh: Math.max(1, pts.filter(q => q[2] >= high).length) };
     bodies.set(lm.name, b);
     return b;
   }
@@ -2471,11 +2475,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const body = bodyOf(lm, g, spec.top ? g + spec.top : lm.top ?? g + 20), c = camera.position, v = new THREE.Vector3();
     camera.updateMatrixWorld();
     let n = 0;
-    for (const q of body.pts) {
+    body.pts.forEach((q, k) => {
       v.copy(W(q[0], q[1], q[2])).project(camera);
-      if (Math.abs(v.x) < 0.97 && Math.abs(v.y) < 0.97 && v.z < 1 && sightTo(c.x, -c.z, c.y, q, body, true)) n++;
-    }
-    return n / body.pts.length;
+      if (Math.abs(v.x) < 0.97 && Math.abs(v.y) < 0.97 && v.z < 1 && sightTo(c.x, -c.z, c.y, q, body, true)) n += body.w[k];
+    });
+    return n / body.wSum;
   }
   // a clear line from the camera (cx, cy, cz) to a point of a landmark's body: through the surface model in 2 m
   // steps until it meets the body itself (a wall of it in front of the point counts as seen, but not in front of
