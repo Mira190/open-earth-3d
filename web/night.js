@@ -213,7 +213,8 @@ void main() {
     for (const [gx, gy, R, hex, k, h0, h1] of glows) {
       if (h0 == null) { splat(acc, mw, mh, mpp, gx, gy, R, lampColour(hex), k); continue; }
       splat(gAcc, gw, gh, (mw * mpp) / gw, gx, gy, R, lampColour(hex), k);
-      glowHours = glowHours ? [Math.min(glowHours[0], h0), Math.max(glowHours[1], h1)] : [h0, h1];
+      const h1e = h1 < h0 ? h1 + 24 : h1;   // a screen on past midnight (7:00-1:00)
+      glowHours = glowHours ? [Math.min(glowHours[0], h0), Math.max(glowHours[1], h1e)] : [h0, h1e];
     }
     // where pools overlap (a boulevard's two rows, a bridge, a junction) the light rolls off on a soft
     // knee instead of adding up to a white glare, keeping its colour
@@ -490,7 +491,7 @@ void main() {
         const hr = ((Wd.U.uHour.value % 24) + 24) % 24, h0 = Math.floor(hr), f = hr - h0;
         traffic.uDensity.value = TRAFFIC[h0] * (1 - f) + TRAFFIC[(h0 + 1) % 24] * f;
         // the screens' light while they play (their hours; 24 is midnight)
-        if (glowHours) NU.uGlowOn.value = hr >= glowHours[0] && hr < glowHours[1] ? 1 : 0;
+        if (glowHours) NU.uGlowOn.value = [hr, hr + 24].some(h => h >= glowHours[0] && h < glowHours[1]) ? 1 : 0;
         headMat.emissiveIntensity = 2.2 * on;
         const cp = camera.position;
         for (const p of poles) { const v = Math.hypot(p.c.x - cp.x, p.c.z - cp.z) < 500 + CELL * 0.71 && cp.y - p.c.y < 900; p.meshes[0].visible = p.meshes[1].visible = v; }
