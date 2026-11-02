@@ -17,7 +17,9 @@ Reads web/data/<city>/game.json and writes web/data/<city>/night.json:
           colours on its motorways, the side its traffic keeps to, the height from which
           its towers carry aircraft warning lights and whether they flash, the light on the
           towers' crowns (`crown`: from_m, share, colours), and the glow its lights put in the
-          haze and the sky low down. From city.json "night", over defaults by country
+          haze and the sky low down; and `clear`, discs [x, y, radius m] that no generated
+          street lamp stands in (a scramble crossing wider than its streets). From city.json
+          "night", over defaults by country
 """
 import argparse
 import base64

@@ -34,7 +34,7 @@ from shapely.ops import polylabel
 import roofs
 import typology
 from measured import IGNHeights
-from cityctx import ROOT, City, city_args, polygons
+from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
@@ -1460,10 +1460,8 @@ def build(C):
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
 
-    keep = ("id", "name", "country", "country_code", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
-            "light_show", "minor_labels", "place_labels", "sun_hours_region", "renders", "night_ambient")
     scene = {
-        "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0, "architecture": typology.region_name(cfg),
+        "city": {k: cfg[k] for k in SCENE_CITY_KEYS if k in cfg} | {"lat": C.lat0, "lon": C.lon0, "architecture": typology.region_name(cfg),
                                                          "signage": typology.region(cfg)["signage"]},
         "frame": {"proj": C.proj, "lon0": C.lon0, "lat0": C.lat0, "x": [C.x0, C.x1], "y": [C.y0, C.y1], "units": f"m, z = {cfg.get('vertical_datum', 'm')}"},
         "terrain": {"file": "terrain.json", "nx": tg.shape[1], "ny": tg.shape[0], "cell": TERRAIN_CELL, "scale": 0.1,
