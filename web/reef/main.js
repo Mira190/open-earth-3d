@@ -36,6 +36,8 @@ async function main() {
   renderer.toneMappingExposure = Number(q.get('exp') || 1.0);
   document.body.prepend(renderer.domElement);
   await renderer.init();
+  // a lost device or context cannot be restored in place: reload with a note, not a black page (glcare.js)
+  if (window.OEGLCare) window.OEGLCare.reloadOnLoss(renderer, document.body);
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.2, 90000);
