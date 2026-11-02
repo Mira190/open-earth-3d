@@ -901,7 +901,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // blockers: the player on foot { x, y, z } and your car or a ride { x, y, half (half length),
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     let tick = 0;
-    const FAR = 220; // cars farther than this from the eye (m, along x and y) take a step every second frame
+    const FAR = 160; // cars farther than this from the eye (m, along x and y) take a step every second frame
     function update(dt0, cx, cy, t, blockers) {
       const dt = dt0;
       tick++;

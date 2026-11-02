@@ -674,22 +674,40 @@ Sydney's traffic stood still a third of the time.
   already out finish crossing. The lamps change only when a signal does.
 
 `tools/traffic_check.js <city>` measures the flow headless at three places (the
-game's own frame loop stopped, so a run repeats exactly). Sydney before and after,
-150 cars over 112 s at each place, with the roads no car can get along (route.js)
-left out of the traffic:
+game's own frame loop stopped), with the surveyor on a kerb beside the roads,
+not standing in one. Sydney before the junctions, with them (the first two
+columns, measured then), and now with the banned turns, the lanes, the arrows,
+the walk signals and the unsticking above, against main just before (150 cars
+over 112 s at each place):
 
-| | Before | After |
-|---|---|---|
-| Standing still | 39% of the time | 25% |
-| Jammed (still 30 s or more) | 13.4% | 2.5% |
-| Mean speed | 18 km/h | 23 km/h |
-| Longest still | 150 s | 111 s |
-| Turned round in the road | 0.9 per car-minute | 0.2 |
-| Red lights run | (no lights) | 0 |
+| | Before | Junctions | Main before this | Now |
+|---|---|---|---|---|
+| Standing still | 39% of the time | 25% | 21% | 19% |
+| Jammed (still 30 s or more) | 13.4% | 2.5% | 3.8% | 0.7% |
+| Mean speed | 18 km/h | 23 km/h | 26 km/h | 26 km/h |
+| Longest still | 150 s | 111 s | 138 s | 72 s |
+| Red lights run | (no lights) | 0 | 0 | 0 |
 
-The traffic's update costs about 1.6 ms a frame for 150 cars on the software
-renderer here, against 0.5 ms before; the low quality tier runs a third of the
-cars.
+The other cities, jammed share and longest still, main before this and now:
+Tokyo 0.9% and 76 s, now 0.8% and 50 s; Osaka 1.5% and 105 s, 1.2% and 74 s;
+Paris 3.1% and 120 s, 2.6% and 104 s; Hong Kong 5.0% and 138 s, 3.8% and 116 s;
+Kyoto 6.2% and 148 s, 1.8% and 89 s; Melbourne 4.9% and 121 s, 2.7% and 146 s;
+Shibuya 2.7% and 103 s, 1.0% and 105 s; Amsterdam none either way; Melbourne's
+bayside, over six places, 2.9% and 140 s, now 3.2% and 146 s. A run is the
+same each time only roughly: a small change anywhere moves every car after it,
+so a single run's jams swing by a few points either way, and the cars caught
+up in a crowded junction in one run are elsewhere in the next. No junction now
+lets in two movements that cross (Melbourne's bayside did, on main: a car let
+in by one way that asked again by another wasn't checked).
+
+The traffic's update costs about 2.2 ms a frame for 150 cars on the software
+renderer here, against 2.6 ms on main just before, measured the same way: the
+way ahead is sampled walking a line's
+segments on from the last point instead of searching them for every point, the
+cars more than 160 m from the eye (along x and y) take a step of two frames
+every second frame, and the signal heads re-light only a junction whose signals
+changed. The lanes, arrows and walk signals cost less than that saved. The low
+quality tier runs a third of the cars.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
   shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
   files can't be loaded, stand-ins built from `web/game/kit.js` take their
