@@ -135,8 +135,9 @@ window.OENav = (function () {
       const u0 = us[0], u1 = us[us.length - 1];
       for (const end of [-1, 1]) {
         const ue = end < 0 ? u0 : u1;
-        if (firm(s, ue + end * 0.25) && firm(s, ue + end * 0.75) && firm(s, ue + end * 1.25)) continue; // firm ground straight off the end
         const ze = end < 0 ? zs[0] : zs[zs.length - 1];
+        // firm ground straight off the end, level with it (the strip's slab, in 2 m cells, reaches a little past its end)
+        if ([0.05, 0.15, 0.3, 0.5, 0.75, 1, 1.25].every(d => firm(s, ue + end * d)) && Math.abs(terrain(...along(s, ue + end * 0.5)) - ze) < 0.25) continue;
         let reach = null, zq = 0;
         for (let d = 0.5; d <= 12 && reach == null; d += 0.5) {
           const u = ue + end * d;
