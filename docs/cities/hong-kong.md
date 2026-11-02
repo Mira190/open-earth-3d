@@ -211,3 +211,21 @@ one does.
 - The tram's car size (8.9 × 2.0 × 4.5 m) comes from fan databases and a 1967
   report; the Peak Tram car's width is a guess; which Star Ferry runs which
   route is not modelled.
+
+## The coastline checked against the photograph (issue 50)
+
+The land and water were rebuilt from Overture 2026-10-21.0, the newest release, and
+OpenStreetMap's coastline was drawn over the Lands Department's current aerial photograph
+(`tools/coast_overlay.py`). At Wan Chai it follows the finished Wan Chai Development Phase II
+seawall to within a metre or two, round the Convention and Exhibition Centre's tip and its
+helipad platform (land in the game's water mask, so the pads get no apron). The open water
+west of the pads is the harbour; the tip beside it only reads blue from the air because the
+photograph's paving there is dark and in shadow. What the photograph did show under the water
+was elsewhere: Pier No. 3's car park off Tsim Sha Tsui, which OSM maps as a car park tagged
+`man_made=pier`, now a deck (`pipeline/shore.py` `decks`). `tools/stale_shore.py` lists what
+mapped land is still under the water: the Ocean Terminal's round car park (a building, drawn)
+and a few buildings over the water.
+
+![Pier No. 3, before and after](../images/hong-kong/water-pier3.jpg)
+![The HKCEC helipads, before and after the rebuild](../images/hong-kong/water-hkcec.jpg)
+![The photograph with the water mask's edge in red, and the model from above](../images/hong-kong/water-wanchai-check.jpg)
