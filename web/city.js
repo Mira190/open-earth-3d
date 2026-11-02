@@ -96,6 +96,7 @@ window.OpenEarthCity = async function main(cityId) {
   // ------------------------------------------------------------ the shared world (world.js)
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
+  Wd.envEvery = 250; // the sky's light is rebuilt at most four times a second while the sun eases between tour stops
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   // the title screen's lens (lens.js): the model in the same tone curve, grade, grain and vignette
   // as the Earth on the title, the game and the city's film; plain tone mapping where the device's
@@ -144,7 +145,8 @@ window.OpenEarthCity = async function main(cityId) {
   const labelsEl = $('#labels'), labels = [];
   const addLabel = (text, x, y, z, cls = '', pick = null) => {
     const el = document.createElement(pick ? 'button' : 'div');
-    el.className = `lbl ${cls}${pick ? ' pick' : ''}`;
+    el.className = `lbl ${cls}${pick ? ' pick' : ''} off`;
+    el.style.opacity = '0'; // updateLabels fades it in where it belongs
     el.textContent = text;
     if (pick) { el.type = 'button'; el.title = `Fly round ${text}`; el.addEventListener('click', pick); }
     labelsEl.appendChild(el);
@@ -157,27 +159,50 @@ window.OpenEarthCity = async function main(cityId) {
   }
   for (const pl of placeInfo) if (placeLabels.has(pl.name)) addLabel(pl.name, pl.c[0], pl.c[1], ground(pl.c[0], pl.c[1]) + 3, 'place', () => orbitPlace(pl));
   const tmpV = new THREE.Vector3();
-  // labels in priority order (landmarks first); one that would overlap a placed label is hidden
+  // How far a point is out in the haze at the model's edge (0 inside, 1 at the frame and beyond),
+  // as world.js's edgeHaze draws it: a name over a block the haze has taken goes with it, rather
+  // than floating over nothing.
+  const FR = scene.frame, EF = Wd.edgeFade || 300;
+  const smooth01 = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
+  const hazeOut = (x, y, a = 0, b = EF) => smooth01(a, b, Math.hypot(Math.max(Math.abs(x - (FR.x[0] + FR.x[1]) / 2) - ((FR.x[1] - FR.x[0]) / 2 - EF), 0),
+    Math.max(Math.abs(y - (FR.y[0] + FR.y[1]) / 2) - ((FR.y[1] - FR.y[0]) / 2 - EF), 0)));
+  for (const l of labels) l.haze = hazeOut(l.p.x, -l.p.z);
+  // Labels in priority order (landmarks first); one that would overlap a label already placed
+  // waits, and one cut by the frame's edge fades out before it gets there. A label shown last
+  // frame is placed first, so two that overlap do not take turns from one frame to the next,
+  // and each fades in and out (CSS) instead of popping.
+  let order = labels.slice();
+  const LBL_FAR = 6800; // metres: names fade out over the last 1800 (from 5000 they were faint over the overview)
   function updateLabels() {
     const w = stage.clientWidth, h = stage.clientHeight, placed = [];
-    for (const l of labels) {
+    // as edgeHaze: what is near the camera stays clear, unless the camera is out at the edge itself
+    const camOut = hazeOut(camera.position.x, -camera.position.z, EF * 0.8, EF * 1.5);
+    for (const l of order) {
       tmpV.copy(l.p).project(camera);
-      const d = camera.position.distanceTo(l.p);
-      let vis = tmpV.z < 1 && Math.abs(tmpV.x) < 1.05 && Math.abs(tmpV.y) < 1.05 && d < 5200;
-      const x = (tmpV.x * 0.5 + 0.5) * w, y = (-tmpV.y * 0.5 + 0.5) * h;
+      const d = camera.position.distanceTo(l.p), haze = l.haze * Math.max(smooth01(150, 600, d), camOut);
+      let vis = tmpV.z < 1 && Math.abs(tmpV.x) < 1 && Math.abs(tmpV.y) < 1 && d < LBL_FAR && haze < 0.85;
+      const ax = (tmpV.x * 0.5 + 0.5) * w, y = (-tmpV.y * 0.5 + 0.5) * h;
+      let a = 0, x = ax;
       if (vis) {
         if (!l.w) { l.el.hidden = false; l.w = l.el.offsetWidth; l.h = l.el.offsetHeight; }
+        // a name whose place is in the frame slides in to stay whole (Tokyo Tower at the frame's
+        // edge kept its name, cut in half); it fades as the place itself nears the edge
+        x = Math.min(Math.max(ax, l.w / 2 + 10), w - l.w / 2 - 10);
         const r = [x - l.w / 2 - 4, y - l.h - 2, x + l.w / 2 + 4, y + 2];
-        vis = !placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
-        if (vis) placed.push(r);
+        const room = Math.min(ax, w - ax, r[1] - 8, h - r[3]);
+        vis = room > 0 && !placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
+        if (vis) { placed.push(r); a = Math.min(1, (LBL_FAR - d) / 1800, room / 24, 1 - haze / 0.85); }
       }
-      l.el.hidden = !vis;
+      l.shown = vis;
       if (vis) {
+        if (l.el.hidden) l.el.hidden = false;
         l.el.style.left = `${x}px`;
         l.el.style.top = `${y}px`;
-        l.el.style.opacity = String(Math.min(1, (5200 - d) / 1500));
       }
+      l.el.style.opacity = String(Math.max(0, a));
+      if (l.el.classList.contains('off') === vis) { l.el.classList.toggle('off', !vis); if (l.el.tagName === 'BUTTON') l.el.tabIndex = vis ? 0 : -1; }
     }
+    order = labels.filter(l => l.shown).concat(labels.filter(l => !l.shown));
   }
 
   // ------------------------------------------------------------ sun and time
@@ -185,6 +210,8 @@ window.OpenEarthCity = async function main(cityId) {
   const now = new Date();
   const state = { y: CITY.year || now.getFullYear(), m: 6, d: 21, min: 720, playing: false, speed: 90 };
   let sunDir = new THREE.Vector3(0, 1, 0), sunPos = null;
+  // the sun the picture is lit by: sunPos, except while it eases from one tour stop's to the next
+  let shownSun = null, sunEase = null;
   function setDate(y, m, d) {
     Object.assign(state, { y, m, d });
     $('#date').value = `${y}-${pad(m)}-${pad(d)}`;
@@ -214,7 +241,17 @@ window.OpenEarthCity = async function main(cityId) {
     const utc = S.localToUtc(state.y, state.m, state.d, state.min);
     const sp = S.position(utc);
     sunPos = sp;
-    Wd.setSun(sp, state.min);
+    let lit = sp;
+    if (sunEase) {
+      const k = (performance.now() - sunEase.t0) / sunEase.ms, f = sunEase.from;
+      if (k >= 1) sunEase = null;
+      else {
+        const e = ease(Math.max(0, k)), dAz = ((sp.azimuth - f.azimuth + 540) % 360) - 180; // the short way round
+        lit = Object.assign({}, sp, { altitude: f.altitude + (sp.altitude - f.altitude) * e, azimuth: (f.azimuth + dAz * e + 360) % 360 });
+      }
+    }
+    shownSun = { altitude: lit.altitude, azimuth: lit.azimuth };
+    Wd.setSun(lit, state.min);
     Wd.setSeason(state.m, state.d);
     if (show) show.setClock(state.min);
     sunDir = Wd.sunDir;
@@ -383,12 +420,37 @@ window.OpenEarthCity = async function main(cityId) {
   if (!placeInfo.length) $('[data-tab="access"]').hidden = true;
   if (!placeInfo.some(p => p.tested)) $('#tower-group').hidden = true;
   $('#tour-list').innerHTML = TOUR.map((s, i) => `<li><button data-i="${i}"><span class="n">${pad(i + 1)}</span><span><b>${s.title}</b><span>${s.date[1]} ${MONTHS[s.date[0] - 1]}, ${fmtMin(s.from)}</span></span></button></li>`).join('');
-  const tour = { i: -1, playing: true, phase: 'idle', t0: 0 };
+  // one segment per stop under the caption, so where the tour is and where it ends are in view
+  $('#cap-bars').innerHTML = TOUR.map(() => '<span><i></i></span>').join('');
+  const segs = [...$$('#cap-bars i')];
+  const tour = { i: -1, playing: true, done: false, k: 0, t0: 0 };
+  const FLY = reduced ? 0 : 3200;
+  const lastStop = () => tour.i === TOUR.length - 1;
   const stopView = s => (s.place ? placeView(byName(s.place)) : s);
+  function showProgress() {
+    segs.forEach((g, j) => { g.style.width = `${(tour.done || j < tour.i ? 1 : j === tour.i ? tour.k : 0) * 100}%`; });
+    $$('#tour-list button').forEach(b => {
+      b.setAttribute('aria-current', String(!tour.done && +b.dataset.i === tour.i));
+      b.classList.toggle('seen', tour.done || +b.dataset.i < tour.i);
+    });
+  }
+  // the buttons that start, pause and resume the tour say what they will do
+  function tourButtons() {
+    const idle = !tour.playing && tour.done;
+    $('#btn-tour').setAttribute('aria-pressed', String(tour.playing));
+    $('#btn-tour').textContent = tour.playing || idle || tour.i < 0 ? 'Tour' : 'Resume tour';
+    $('#tour-play').textContent = tour.playing ? 'Pause tour' : idle ? 'Watch again' : 'Resume tour';
+    $('#tour-restart').hidden = idle;
+  }
+  const swapCaption = () => { const el = $('#cap-txt'); el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); };
   // here: the camera is already at the stop (the establishing shot ends there), so no flight
   function startStop(i, here = false) {
     tour.i = (i + TOUR.length) % TOUR.length;
+    tour.done = false; tour.k = 0;
     const s = TOUR[tour.i];
+    // the light eases from where it is to this stop's while the camera flies there: cut at once,
+    // a morning stop after a dusk one flashed
+    if (!here && FLY && shownSun) sunEase = { from: shownSun, t0: performance.now(), ms: FLY };
     if (state.m !== s.date[0] || state.d !== s.date[1]) setDate(state.y, s.date[0], s.date[1]);
     setTime(s.from);
     setProvenance(!!s.provenance);
@@ -397,37 +459,67 @@ window.OpenEarthCity = async function main(cityId) {
     const view = stopView(s);
     if (s.place) focusPlace = s.place;
     if (!here) flyTo(view.cam, view.tgt);
+    const cap = $('#caption');
+    cap.classList.remove('done');
+    $('#cap-end').hidden = true;
+    $('#cap-skip').hidden = false;
+    $('#cap-skip').textContent = lastStop() ? 'Finish' : 'Next';
     $('#cap-step').textContent = `${pad(tour.i + 1)} / ${pad(TOUR.length)}`;
     $('#cap-title').textContent = s.title;
     $('#cap-text').textContent = typeof s.text === 'function' ? s.text() : s.text;
-    $$('#tour-list button').forEach(b => b.setAttribute('aria-current', String(+b.dataset.i === tour.i)));
-    tour.t0 = performance.now() - (here && !reduced ? 3200 : 0);
+    swapCaption();
+    showProgress();
+    tourButtons();
+    tour.t0 = performance.now() - (here ? FLY : 0);
     if (focusPlace) refreshPlaces(true);
   }
   function stepTour(t) {
     if (tour.i < 0 || !tour.playing) return;
-    const s = TOUR[tour.i];
-    const fly = reduced ? 0 : 3200, el = t - tour.t0 - fly;
-    const k = Math.max(0, Math.min(1, el / (s.hold * 1000)));
-    $('#cap-bar').style.width = `${k * 100}%`;
-    if (el > 0 && s.to !== s.from) setTime(s.from + (s.to - s.from) * k);
-    if (k >= 1) startStop(tour.i + 1);
+    const s = TOUR[tour.i], el = t - tour.t0 - FLY;
+    tour.k = Math.max(0, Math.min(1, el / (s.hold * 1000)));
+    segs[tour.i].style.width = `${tour.k * 100}%`;
+    if (el > 0 && s.to !== s.from) setTime(s.from + (s.to - s.from) * tour.k);
+    if (tour.k >= 1) { if (lastStop()) endTour(); else startStop(tour.i + 1); }
+  }
+  // The end: the tour stops (it used to start over, so the last stop said Next for ever), the
+  // camera turns slowly round the last view so the picture keeps moving, and the card says the
+  // tour is over and what there is to do next.
+  function endTour() {
+    tour.playing = false; tour.done = true; tour.k = 1;
+    showProgress();
+    tourButtons();
+    const cap = $('#caption');
+    cap.hidden = false;
+    cap.classList.add('done');
+    $('#cap-step').textContent = 'The end';
+    $('#cap-title').textContent = `${CITY.name} is yours`;
+    $('#cap-text').textContent = 'That was the tour. Drag to look around, click a building to see where its height comes from'
+      + (placeInfo.some(p => p.tested) ? ', or open Sun access to test a tower of your own.' : '.');
+    $('#cap-skip').hidden = true;
+    $('#cap-end').hidden = false;
+    const play = $('#btn-play'), cp = $('#cap-play');
+    cp.hidden = play.hidden;
+    cp.href = play.getAttribute('href');
+    cp.textContent = `Play ${CITY.name}`;
+    swapCaption();
+    if (!reduced) setOrbit(true, 2 * Math.PI / 150);
   }
   function setTourPlaying(on) {
     tour.playing = on;
     if (on) setOrbit(false);
-    $('#btn-tour').setAttribute('aria-pressed', String(on));
-    $('#tour-play').textContent = on ? 'Pause tour' : 'Resume tour';
     $('#caption').hidden = !on;
-    $('#btn-tour').textContent = on ? 'Tour' : 'Resume tour';
-    $('#cap-skip').textContent = on ? 'Next' : 'Resume';
-    if (on) tour.t0 = performance.now() - (reduced ? 0 : 3200) - parseFloat($('#cap-bar').style.width || 0) / 100 * TOUR[Math.max(0, tour.i)].hold * 1000;
+    $('#cap-skip').textContent = on ? (lastStop() ? 'Finish' : 'Next') : 'Resume';
+    if (on) tour.t0 = performance.now() - FLY - tour.k * TOUR[Math.max(0, tour.i)].hold * 1000;
+    tourButtons();
   }
+  const playOrPause = () => { if (tour.i < 0 || tour.done) { setTourPlaying(true); startStop(0); } else setTourPlaying(!tour.playing); };
   $('#tour-list').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setTourPlaying(true); startStop(+b.dataset.i); } });
-  $('#tour-play').onclick = () => { if (tour.i < 0) { setTourPlaying(true); startStop(0); } else setTourPlaying(!tour.playing); };
+  $('#tour-play').onclick = playOrPause;
+  $('#btn-tour').onclick = playOrPause;
   $('#tour-restart').onclick = () => { setTourPlaying(true); startStop(0); };
-  $('#btn-tour').onclick = () => { if (tour.i < 0) { setTourPlaying(true); startStop(0); } else setTourPlaying(!tour.playing); };
-  $('#cap-skip').onclick = () => { if (!tour.playing) setTourPlaying(true); else startStop(tour.i + 1); };
+  $('#cap-again').onclick = () => { setTourPlaying(true); startStop(0); };
+  $('#cap-explore').onclick = () => { $('#caption').hidden = true; };
+  $('#cap-skip').onclick = () => { if (!tour.playing) setTourPlaying(true); else if (lastStop()) endTour(); else startStop(tour.i + 1); };
   canvas.addEventListener('pointerdown', () => { if (tour.playing) setTourPlaying(false); flight = null; setOrbit(false, 0, true); });
   canvas.addEventListener('wheel', () => { if (tour.playing) setTourPlaying(false); flight = null; }, { passive: true });
 
@@ -540,11 +632,14 @@ window.OpenEarthCity = async function main(cityId) {
   stage.addEventListener('wheel', skipIntro, { capture: true, passive: true, signal: ac.signal });
 
   // ------------------------------------------------------------ provenance view
+  // the colours by height source fade in and out over half a second (frame) rather than switching
+  let modeTo = 0;
   function setProvenance(on) {
-    U.uMode.value = on ? 1 : 0;
+    modeTo = on ? 1 : 0;
+    if (reduced) U.uMode.value = modeTo;
     $('#btn-prov').setAttribute('aria-pressed', String(on));
   }
-  $('#btn-prov').onclick = () => setProvenance(U.uMode.value < 0.5);
+  $('#btn-prov').onclick = () => setProvenance(modeTo < 0.5);
 
   // ------------------------------------------------------------ picking
   const ray = new THREE.Raycaster();
@@ -919,6 +1014,8 @@ window.OpenEarthCity = async function main(cityId) {
       setTime(m);
     }
     stepTour(t);
+    if (sunEase) applySun();
+    if (U.uMode.value !== modeTo) { const d = modeTo - U.uMode.value; U.uMode.value = Math.abs(d) < 0.01 ? modeTo : U.uMode.value + d * Math.min(1, dt * 5); }
     stepFlight(t);
     stepOrbit(dt);
     const shot = cine.step(t / 1000);
@@ -948,7 +1045,7 @@ window.OpenEarthCity = async function main(cityId) {
   }
   requestAnimationFrame(frame);
   window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower, Wd,
-    cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour };
+    cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour, renderer, world };
   // the router calls stop() before it shows another view
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); if (post) { post.renderTarget1.dispose(); post.renderTarget2.dispose(); } renderer.dispose(); Wd.dispose(); window.__city = null; },

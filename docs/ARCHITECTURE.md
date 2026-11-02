@@ -369,7 +369,19 @@ The views switch in place, without reloading the page.
   synthesised sound. [TITLE.md](TITLE.md) has the details.
 - **`lens.js`** is the title screen's lens as a pass: the tone curve, grade,
   flare, grain and vignette. The model viewer, the game and the city films end
-  their frame on it, so every city is seen as the Earth is on the title.
+  their frame on it, so every city is seen as the Earth is on the title. It also
+  keeps bad pixels out of the picture. Every built-in three.js material ends in
+  a guard (`guardShaders`, added to the dithering chunk) that writes no NaN and
+  nothing past 1024. The bloom's bright pass drops NaN by its bits and holds a
+  highlight's peak to 64 (`tameBloom`), and the lens reads its input the same
+  way. On a real GPU one NaN pixel (from a zero-length normal, say) became the
+  bloom's ceiling under `min()`'s IEEE minNum rule. That made a ball of blue
+  light that flashed over Tokyo's palace and Kyoto's roofs as the tour moved.
+  The tests use bits (`floatBitsToUint`), because a compiler's fast maths can
+  fold `isnan()` away. The grain and dither use pcg3d, an integer hash (Jarzynski
+  and Olano, "Hash Functions for GPU Rendering", JCGT 2020; written here from the
+  paper). The old `fract(sin(x) * 43758.5)` lost its precision on GPUs at
+  full-frame arguments and drew diagonal streaks across the sky.
 - **`film.js`** plays a city's film (`films/<id>.mp4`, rendered from the city's
   own game by `tools/city_film.js`): a silent teaser in the destination card and
   a theatre with titles set as type from the film's cue sheet. [FILMS.md](FILMS.md)

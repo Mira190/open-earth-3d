@@ -69,6 +69,11 @@
     "八坂の塔": "Yasaka Pagoda",
     "京都経済センター": "Kyoto Economic Center"
   },
+  "arrivals": {
+    "Higashi Honganji": {"front": 90},
+    "Nishi Hongwanji": {"front": 90},
+    "Nijo Castle": {"front": 90}
+  },
   "minor_labels": [
     "南座",
     "八坂の塔",
