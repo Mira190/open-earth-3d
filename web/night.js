@@ -220,13 +220,14 @@ void main() {
       if (!chunks.has(key)) chunks.set(key, []);
       chunks.get(key).push(i);
     }
-    const dummy = new THREE.Object3D(), poles = [];
+    const dummy = new THREE.Object3D(), poles = [], bases = [];
     for (const [key, list] of chunks) {
       const [cx, cy] = key.split(',').map(Number), s = new THREE.InstancedMesh(shaft, poleMat, list.length), hd = new THREE.InstancedMesh(head, headMat, list.length);
       list.forEach((i, n) => {
         const base = L.z[i] - L.h[i], dir = L.ux[i] || L.uy[i];
         // the pole stands at the kerb and its arm reaches back over the road
         const ax = dir ? L.uy[i] * L.pole[i] : 0, ay = dir ? -L.ux[i] * L.pole[i] : 0, yaw = dir ? Math.atan2(ax, -ay) : n * 1.7;
+        bases.push(L.x[i], L.y[i], base);
         dummy.position.copy(W(L.x[i], L.y[i], base)); dummy.rotation.set(0, yaw, 0); dummy.scale.set(1, L.h[i], 1); dummy.updateMatrix();
         s.setMatrixAt(n, dummy.matrix);
         dummy.position.copy(W(L.x[i], L.y[i], L.z[i])); dummy.scale.set(1, 1, 1); dummy.updateMatrix();
@@ -402,7 +403,7 @@ void main() {
     Wd.world.add(group);
     const sizeV = new THREE.Vector2();
     const api = {
-      group, lamps: nL, generated: nGen, cars: nT, towers: tops.size, crowns: crownsLit, map,
+      group, lamps: nL, generated: nGen, cars: nT, poles: bases, // poles: x, y, z of each pole's foot it draws towers: tops.size, crowns: crownsLit, map,
       skyglow: st.skyglow ? OEWorld.lin(st.skyglow) : null,
       // how far on the street lights are: they come on as the sun sets
       on: () => common.uOn.value,
