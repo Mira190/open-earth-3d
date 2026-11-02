@@ -74,14 +74,14 @@ brightness within 20% across 1-15 m); red keeps the pure-water floor, 0.40 /m.
 | West of the cay, off the channel | nominal | 8.9 m |
 | Gate toward Gladstone | nominal | 29 m |
 
-Spawn: upper sand of the north shore, 1.9 m (above the highest tide), facing the sea. Start: 130 m up north-west of the
+Spawn: upper sand of the western beach beside the helipad and a short walk from the jetty, 1.5 m on the built terrain (`pipeline/check_marine.py`), facing the sea, so the boats and the helicopter are close. Start: 130 m up north-west of the
 cay looking south-east across the island and Heron Reef. At low tide the reef flat dries around the cay, as it does.
 
 ## Harbour layout (checked with `window.__boats`, viewer 782bbd9)
 
 Two yachts with tenders west of the cay, the jetty without moored boats (`marina.boats: false`; the real jetty has no
 marina berths), the helicopter on its pad, five public moorings, the island launch from the gate to the jetty, a yacht and
-a dive boat (all routes connect) and a scenic helicopter. The player starts walking on the north beach.
+a dive boat (all routes connect) and a scenic helicopter. The player starts walking on the western beach by the helipad.
 
 ## Known problems
 

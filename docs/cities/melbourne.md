@@ -208,7 +208,9 @@ A height for each, with a citation, goes in `verified_heights.csv`.
 ## 5. The game: Melbourne on Foot
 
 Six people and six stamps, all on the same model:
-- **Federation Square:** start here and meet Mia, the survey lead.
+- **Federation Square:** start here and meet Mia, the survey lead. The river
+  shuttle leaves from Federation Wharf below, a helicopter waits on a game pad in
+  Birrarung Marr, and taxis pull in on Flinders Street.
 - **City Square:** Hannah, a planner, explains DDO10. You then find a sunny
   spot on Federation Square at lunchtime on 22 June.
 - **The river:** Arjun takes you downriver from Federation Wharf to Crown
