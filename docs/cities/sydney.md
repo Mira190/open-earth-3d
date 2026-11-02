@@ -200,6 +200,10 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
       glass leaning out 2 m under a bronze rim, roofed in glass back to the
       shell's own glass wall (`north_tiers()`, 106 m of it). The tiers' depths
       and heights are placed from those photographs, not measured.
+
+      | ![The Lower Concourse's colonnade under the forecourt's edge, the flight up to the broadwalk and the broad steps](../images/sydney/lower-concourse-colonnade.jpg) | ![On foot in the game, at the foot of the flight up to the broadwalk](../images/sydney/lower-concourse-steps.jpg) |
+      |---|---|
+      | ![The Lower Concourse from the water at dusk, the colonnade's shopfronts lit](../images/sydney/lower-concourse-dusk.jpg) | ![The podium's north end in tiers, under the foyer's leaning glass](../images/sydney/podium-north-tiers.jpg) |
   - **The podium and the Monumental Steps:** the podium is clad in pink granite
     panels, on two levels. The Monumental Steps climb from the forecourt to a
     landing. They are measured on the aerial photo: 85 m wide, three flights of
