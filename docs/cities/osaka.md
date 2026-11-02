@@ -270,6 +270,9 @@ the weather and the ward's notice on the bridge). No Glico or advertiser's artwo
   screen; the indoor one was added in 2022. They play an invented autumn campaign, the beer, the
   festival and the weather, the two together.
 
+| ![Tombori Station from Dotonbori's street at dusk](../images/osaka/tombori-station.jpg) | ![Namba Ebisubashi Multi Vision from the Sennichimae-dori crossing at dusk](../images/osaka/namba-multi-vision.jpg) |
+|---|---|
+
 Not drawn: the smaller screens along the canal, and the "Ad Vision" across the arcade from the
 Multi Vision, whose size we have not found.
 
