@@ -374,26 +374,25 @@
       "hold": 9
     },
     {
-      "title": "Where the heights come from",
-      "text": "Coloured by height source: measured by the 3DBAG in the darkest shade. The houseboats in the canals are not in the register, and their heights are a guess.",
-      "cam": [
-        1900,
-        -2500,
-        1250
-      ],
-      "tgt": [
-        -150,
-        150,
-        0
-      ],
+      "title": "The A'DAM Toren",
       "date": [
         6,
         21
       ],
-      "from": "12:00",
-      "to": "13:00",
+      "from": "20:00",
+      "to": "21:00",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        430,
+        1000,
+        120
+      ],
+      "tgt": [
+        661,
+        1200,
+        60
+      ],
+      "text": "Built from 1966 to 1971 as Shell's offices on the north bank of the IJ, to Arthur Staal's design. Since 2016 it has been the A'DAM Toren, with a lookout on the roof and a swing that hangs out over the edge."
     }
   ],
   "renders": [

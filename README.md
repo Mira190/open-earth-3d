@@ -409,6 +409,15 @@ python blender/build_vehicles.py --render                 # the shared helicopte
 python blender/build_trees.py --render                    # the shared trees -> web/assets/trees
 ```
 
+## Online, and its version
+
+Every push to main publishes `web/` to GitHub Pages
+(<https://mira190.github.io/open-earth-3d/>) through `.github/workflows/pages.yml`. Each deploy
+gets a version: the major.minor in `VERSION` plus the workflow's run number (`0.1.42`). The
+workflow writes it with the commit and the build time to `web/version.json`, tags the commit
+`v0.1.42`, and the title screen shows it at the bottom right and under About. A local checkout
+has no `version.json` and says "Local build". Raise `VERSION` for a new major or minor release.
+
 ## Add a city
 
 1. Create `cities/<id>/city.json`. It holds:

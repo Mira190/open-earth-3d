@@ -692,26 +692,25 @@
       "hold": 9
     },
     {
-      "title": "Where the heights come from",
-      "text": "OpenStreetMap maps the height of only a few buildings in these suburbs, so most here are Microsoft's machine-learning estimates, corrected for their measured bias, or estimates from neighbours. The colours show each building's source.",
-      "cam": [
-        1300,
-        1500,
-        900
-      ],
-      "tgt": [
-        500,
-        500,
-        0
-      ],
+      "title": "The Palais Theatre",
       "date": [
         1,
         15
       ],
-      "from": "12:00",
-      "to": "13:00",
+      "from": "19:30",
+      "to": "20:20",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        -420,
+        2560,
+        110
+      ],
+      "tgt": [
+        60,
+        2700,
+        15
+      ],
+      "text": "Opened in 1927 next door to Luna Park, on the Lower Esplanade. With about 2,900 seats it is the largest seated theatre in Australia."
     },
     {
       "title": "The Brighton bathing boxes",
