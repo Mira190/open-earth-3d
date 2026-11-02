@@ -35,7 +35,7 @@ import roofs
 import typology
 from measured import IGNHeights
 from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
-from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
+from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
 DEM_CELL = 5.0       # m, building bases and analysis
@@ -125,6 +125,24 @@ def level_areas(C, dem, cell):
         w = np.minimum(1.0, ndimage.distance_transform_edt(inside) * cell / rule.get("feather_m", 8.0))
         dem = np.where(inside, dem + (rule["z_m"] - dem) * w, dem)
     return dem
+
+
+def pier_rings(C, con, raw, sea, extent):
+    """The decks over the water (places.json "piers", decimetre rings): the mapped pier polygons,
+    and the decks the water theme runs over that are mapped otherwise (shore.decks: a car park on
+    a pier, a pier drawn as a line). pipeline/refresh_piers.py writes them without a rebuild."""
+    piers = []
+    for r in rows(con, raw("infrastructure"), "class, wkb"):
+        if r["class"] != "pier":
+            continue
+        for p in polygons(C.to_local(swkb.loads(bytes(r["wkb"])))):
+            if p.area > 20 and extent.contains(p.centroid):
+                piers.append(ring(p.simplify(0.3).exterior.coords))
+    extra = [p for p in decks(C, con, raw, rows, sea) if extent.contains(p.centroid)]
+    piers += [ring(shapely.geometry.polygon.orient(p.simplify(0.3), 1.0).exterior.coords) for p in extra]
+    if extra:
+        print(f"decks: {len(extra)} over the water besides the mapped piers ({sum(p.area for p in extra):.0f} m2)")
+    return piers
 
 
 def water_polygons(C, con, raw, extent):
@@ -1175,13 +1193,7 @@ def build(C):
     tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
 
     # piers and wharves as thin decks just above high water
-    piers = []
-    for r in rows(con, raw("infrastructure")):
-        if r["class"] != "pier":
-            continue
-        for p in polygons(C.to_local(swkb.loads(bytes(r["wkb"])))):
-            if p.area > 20 and extent.contains(p.centroid):
-                piers.append(ring(p.simplify(0.3).exterior.coords))
+    piers = pier_rings(C, con, raw, sea, extent)
 
     # street and park trees mapped in OSM (points and tree rows), as x, y, ground, height in dm;
     # height is not mapped for most, so it is a 7-14 m spread seeded by the feature id

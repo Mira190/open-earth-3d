@@ -236,18 +236,7 @@
       "hold": 8
     },
     {
-      "title": "Where every height comes from",
-      "text": "Colour shows the source of each height. Almost all are PLATEAU measurements. The warm colours are buildings newer than the survey (OpenStreetMap floor counts) and the ones nobody measured, which the model estimates from their neighbours.",
-      "cam": [
-        -2600,
-        -3400,
-        1700
-      ],
-      "tgt": [
-        -200,
-        400,
-        10
-      ],
+      "title": "Midosuji",
       "date": [
         12,
         21
@@ -255,7 +244,17 @@
       "from": "11:00",
       "to": "12:00",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        -1155,
+        -1250,
+        110
+      ],
+      "tgt": [
+        -1120,
+        0,
+        30
+      ],
+      "text": "Opened in 1937: 44 m wide and 4 km long, from Umeda in the north to Namba, lined with ginkgo all the way. All of its traffic runs south, one way, as it has since 1970."
     },
     {
       "title": "Winter sun in Utsubo Park",
