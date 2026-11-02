@@ -60,7 +60,9 @@ window.OENav = (function () {
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     for (const m of D.LM.meshes || []) {
       if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
-      if (((D.LM.materials || {})[m.material] || {}).decal) continue; // paving laid over a roof, which is the solid
+      const mat = (D.LM.materials || {})[m.material] || {};
+      if (mat.decal) continue; // paving laid over a roof, which is the solid
+      if (mat.solid === false) continue; // walls a city's fine walking levels hold walkers back at instead (game.json "patches")
       const p = m.position, idx = m.index, mine = new Map();
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
@@ -87,7 +89,23 @@ window.OENav = (function () {
     // cells, each split from its south-west to its north-east corner (three.js PlaneGeometry),
     // so the walker stands on the same two triangles, never above or below them
     let tri = 0; // the last cell's triangle: its slope, rise over run
+    // fine walking levels a city lays over the grid (game.json "patches": paving with its walls and
+    // steps, every half metre, which the grid would smooth into slopes): the cell's own level, not
+    // interpolated, so that a wall stays a wall and a riser a step
+    const patches = (G.patches || []).map(p => {
+      const b = Uint8Array.from(atob(p.data), c => c.charCodeAt(0));
+      return Object.assign({}, p, { z: new Int16Array(b.buffer, 0, p.nx * p.ny), x1: p.x0 + p.nx * p.cell, y1: p.y0 + p.ny * p.cell });
+    });
+    function patchAt(x, y) {
+      for (const p of patches) {
+        if (x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
+        const v = p.z[Math.floor((y - p.y0) / p.cell) * p.nx + Math.floor((x - p.x0) / p.cell)];
+        if (v !== -32768) return v / 100;
+      }
+      return null;
+    }
     function terrain(x, y) {
+      if (patches.length) { const h = patchAt(x, y); if (h !== null) { tri = 0; return h; } }
       const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell)), r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
       const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
       const a = D[i], b = D[i + 1], d = D[i + T.nx], e = D[i + T.nx + 1];

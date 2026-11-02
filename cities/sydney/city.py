@@ -114,6 +114,17 @@ MATERIALS = {
     "tarpeian": {"color": "#a3865f", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 1.1, "block_m": 6.5},
     # (its map, the aerial photo's tile under it, is set by landmark_meshes)
     "garden_edge": {"color": "#ffffff", "roughness": 0.95, "metalness": 0.0},
+    # the Lower Concourse: "paving, steps and walls of solid granite" (Design 5, 2020), the steps laid
+    # like the paving (walked on, not solids), the walls in courses; the forecourt's soffit and the
+    # colonnade's "unpainted mushroom columns" in off-form concrete; the shopfronts behind them. Not
+    # solids for the game's 2 m collision cells, which would fill the narrow concourse: the walker is
+    # held back by the fine walking levels (walk_patch), where the walls and parapets stand up
+    "lc_tread": {"color": "#b8a08c", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "decal": True, "street_lit": True},
+    "lc_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser", "decal": True},
+    "lc_wall": {"color": "#a8897a", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 2.4, "street_lit": True, "solid": False},
+    "lc_soffit": {"color": "#c9c1b3", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    "lc_fascia": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6], "solid": False},
+    "lc_shop": {"color": "#16110d", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.45, "solid": False},
     "coping": {"color": "#c2ad9b", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 0.0], "street_lit": True},
     "bollard": {"color": "#1d1f21", "roughness": 0.45, "metalness": 0.6},
     "post": {"color": "#2b2f30", "roughness": 0.5, "metalness": 0.55},
@@ -142,6 +153,15 @@ RESTAURANT_SPLIT = 0.65  # how far along the restaurant's ridge its two shells m
 JUNCTION_M = {"concert": 23.0, "joan_sutherland": 20.5, "restaurant": 8.0}  # how high above the podium the back-to-back shells' ridges meet
 SIDE_GLASS_M = {"concert": 6.0, "joan_sutherland": 5.5, "restaurant": 3.0}  # the glass under the side shells, at its highest
 NESTED_BACK, NESTED_RISE = 4.0, 0.5  # a nested shell's ridge goes back into the mouth of the one behind this far behind where it comes out, to this share of its tip's height
+# The podium's north end, under each hall's harbour-facing mouth, as photographed from the Northern
+# Broadwalk (Wikimedia Commons, "AUS Sydney, Central Business District, Sydney Opera House 033.jpg",
+# "... 035.jpg", "... 036.jpg"): it steps back as it rises, in three tiers clad in vertical granite
+# panels, each over a band of glass under a sloping hood (the ground floor's shopfronts, the foyers'
+# windows), and on top the foyer's curved band of glass leans out under a bronze rim, roofed in glass
+# back to the shell's own glass wall. Each tier as [offset out from the podium's mapped edge, m;
+# height]: placed from those photographs, not measured; the second tier's band is SLOT_M
+NORTH_TIERS = {"ground_glass": (1.6, 3.0), "tier1": 2.4, "tier2": 1.2, "hood": (0.5, 0.8), "top_tier_m": 1.6,
+               "bowl_out": 2.0, "bowl_up": 3.6, "roof_up": 5.0, "reach_m": 16.0, "panel_m": 1.8}
 # the dark band of glass along the podium's outer walls, m AHD: placed from photographs (Wikimedia
 # Commons, "AUS Sydney, Central Business District, Sydney Opera House 028.jpg"), not measured
 SLOT_M = (9.6, 10.5)
@@ -179,6 +199,22 @@ PIER_DECK_M = 2.2        # as the viewer draws the piers (web/world.js)
 # CLIFF_BACK_M behind (where the slope levels off), capped back to there over the DEM's slope
 CLIFF_M = 3.0
 CLIFF_BACK_M = (6.0, 9.0, 12.0, 15.0)
+# The Lower Concourse (Opera Bar, Opera Kitchen), between the seawall and the forecourt's western
+# edge. As the Opera House's own visitor map draws it ("Ramp down to Opera Bar", "Stairs down to Lower
+# Concourse") and its heritage statement describes it (Design 5, "Lower Concourse Improvements", 2020:
+# "the raised walkway along the sea wall", "the stepped higher part of the uncovered Lower Concourse",
+# the colonnade of "mushroom columns" under "the parapet spandrel to the Forecourt above"), it lies
+# below both: a walkway along the seawall, retaining walls (OpenStreetMap, the lower side on their
+# right) or broad steps down from it, the concourse, and over it the forecourt's edge on columns.
+# No levels are published. They follow from the steps OpenStreetMap counts and the 5 m DEM: 13 risers
+# of 15 cm down from the broadwalk (2.8 m on the DEM) put the concourse at 0.85 m, 7 risers up from it
+# put the walkway at 1.90 m (the DEM, which barely resolves it, has 1.7 to 1.9 m), and the 20 risers
+# down from the forecourt (3.45 m) are then 13 cm each. The ramp from Circular Quay comes down beside
+# the first retaining wall. `fence_near` picks the forecourt's balustrade (an Overture fence, from
+# OpenStreetMap) as the concourse's eastern edge; `hold_m` is how far in from it the forecourt keeps
+# its level, where the 5 m DEM slopes down into the concourse
+LOWER = {"fence_near": (233.0, 430.0), "walk_m": 1.90, "floor_m": 0.85, "riser_m": 0.15, "tread_m": 0.45, "up_risers": 13,
+         "hold_m": 9.0, "recess_m": 5.0, "slab_m": 0.35, "parapet_m": 1.05, "wall_parapet_m": 0.9, "column_every_m": 8.4}
 # Overture infrastructure drawn in the precinct, by (subtype, class)
 STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "bollard", ("transportation", "street_lamp"): "lamp",
                     ("tower", "lighting"): "floodlight", ("pedestrian", "information"): "pylon"}
@@ -453,7 +489,7 @@ def game_ground(grid, gx, gy, water, scene):
     if not b:
         return grid
     from shapely import contains_xy
-    deck = shapely.union_all([Polygon(d["ring"], d["holes"]) for d in b["deck"]])
+    deck = shapely.union_all([Polygon(d["ring"], d["holes"]).buffer(0) for d in b["deck"]])
     x0, y0, x1, y1 = deck.bounds
     box_ = (gx > x0 - 20) & (gx < x1 + 20) & (gy > y0 - 20) & (gy < y1 + 20)
     idx = np.nonzero(box_)
@@ -461,10 +497,23 @@ def game_ground(grid, gx, gy, water, scene):
     grid = grid.copy()
     for r, c in zip(idx[0][on], idx[1][on]):
         grid[r, c] = level_at(b["level"], gx[r, c], gy[r, c])
+    if b.get("lower"):  # the Lower Concourse's pieces, on their own levels (nav.js walks on b["patch"] there)
+        lc = lower_loaded(b["lower"])
+        u = shapely.union_all([pc["poly"] for pc in lc["pieces"]])
+        on = contains_xy(u, gx[idx], gy[idx]) & ~water[idx]
+        for r, c in zip(idx[0][on], idx[1][on]):
+            grid[r, c] = piece_level(lc, gx[r, c], gy[r, c])
     wall = shapely.MultiLineString([[p[:2] for p in w] for w in b["seawalls"]]).buffer(6.0)
     off = contains_xy(wall, gx[idx], gy[idx]) & water[idx]
     grid[idx[0][off], idx[1][off]] = np.minimum(grid[idx[0][off], idx[1][off]], SEAWALL_FOOT_M)
     return grid
+
+
+def game_patches(scene):
+    """Fine walking levels over the 5 m grid (pipeline/game_data.py, web/game/nav.js): the paving
+    round the Lower Concourse, with its walls and steps, every half metre."""
+    b = scene["landmarks"].get("bennelong") or {}
+    return [b["patch"]] if b.get("patch") else []
 
 
 def landmark_meshes(scene):
@@ -730,6 +779,7 @@ def podium_mesh(o):
                 if ax * by - ay * bx < 0:  # anticlockwise from above: facing up
                     cs = cs[::-1]
                 m.tri(*[np.array([*c, z]) for c in cs], [[(c - so) @ l, (c - so) @ f] for c in cs])
+    north = north_end(o)
     for level in o["podium"]["rings"]:
         top, ring, run = level["top_m"], level["ring"], 0.0
         upper = top > o["podium"]["low_m"] + 0.1
@@ -743,6 +793,8 @@ def podium_mesh(o):
             run += L
             if at_top((p[:2] + q[:2]) / 2):
                 continue  # the flight covers the wall below it, and its top stays open
+            if upper and p[3] and q[3] and north((p[:2] + q[:2]) / 2, out) is not None:
+                continue  # the north end's tiers (north_tiers)
             a, b = p[:2] + out * 0.04, q[:2] + out * 0.04
             clad.quad(np.array([*a, p[2] - 0.5]), np.array([*b, q[2] - 0.5]), np.array([*b, top]), np.array([*a, top]),
                       [[run - L, p[2] - 0.5], [run, q[2] - 0.5], [run, top], [run - L, top]])
@@ -754,7 +806,104 @@ def podium_mesh(o):
             a, b = p[:2] - out * 0.2, q[:2] - out * 0.2
             upstand.box(np.array([*a, top + 0.25]), np.array([*b, top + 0.25]), 0.4, 0.5)
             rail.rails([np.array([*a, top]), np.array([*b, top])], 1.05, post_every=3.0, post=0.05, rail=0.06, rails=1)
-    return [clad, upstand, rail, landing, deck, slots]
+    return [clad, upstand, rail, landing, deck, slots] + north_tiers(o, north)
+
+
+def north_end(o):
+    """A test for the podium's north end: f(midpoint, outward normal) of an edge of the upper
+    podium's outline -> the foot line of the glass wall in the mouth it stands in front of (the
+    harbour-facing shell of the Concert Hall or the Joan Sutherland Theatre), or None."""
+    feet = []
+    for hall in ("concert", "joan_sutherland"):
+        if hall not in o["halls"]:
+            continue
+        J, T, peds = hall_shells(hall, o["halls"][hall], o["podium"]["top_m"])[-1]
+        f = (T[:2] - J[:2]) / np.linalg.norm(T[:2] - J[:2])
+        feet.append((shapely.LineString([peds[0][:2], T[:2], peds[1][:2]]), f, (peds[0][:2] + peds[1][:2]) / 2))
+
+    def test(m, out):
+        for line, f, c in feet:
+            if (m - c) @ f > 0 and out @ f > 0.2 and line.distance(Point(*m)) < NORTH_TIERS["reach_m"]:
+                return line
+        return None
+    return test
+
+
+def north_tiers(o, north):
+    """The podium's north end (NORTH_TIERS): the tiers stepping back as they rise, each over a band
+    of glass under a hood, and the foyer's leaning band of glass with its bronze rim and its glass
+    roof back to the shell's glass wall."""
+    N = NORTH_TIERS
+    ring = next(level["ring"] for level in o["podium"]["rings"] if level["top_m"] > o["podium"]["low_m"] + 0.1)
+    top = o["podium"]["top_m"]
+    t1, t2 = SLOT_M[0], top - N["top_tier_m"]
+    g_out, g_h = N["ground_glass"]
+    hood_out, hood_h = N["hood"]
+    # runs of consecutive edges at the north end, with their vertices' outward normals averaged
+    P = [np.array(p, float) for p in ring]
+    sel = []
+    for k in range(len(P) - 1):
+        e = P[k + 1][:2] - P[k][:2]
+        L = np.linalg.norm(e)
+        out = np.array([e[1], -e[0]]) / (L or 1)
+        sel.append(L > 0.05 and P[k][3] and P[k + 1][3] and north((P[k][:2] + P[k + 1][:2]) / 2, out) is not None)
+    runs, cur = [], []
+    for k, on in enumerate(sel):
+        if on:
+            cur = cur or [k]
+            cur.append(k + 1)
+        elif cur:
+            runs.append(cur)
+            cur = []
+    if cur:
+        runs.append(cur)
+    clad = Mesh("opera_north_tiers", "podium", False, uv=True)
+    shop = Mesh("opera_north_windows", "opening", False, floodlit=True)
+    glass = Mesh("opera_north_glass", "glass", False, floodlit=True, uv=True)
+    rim = Mesh("opera_north_rim", "mullion", True)
+    for idx in runs:
+        V = [P[k] for k in idx]
+        n = []
+        for i in range(len(V)):
+            a, b = V[max(i - 1, 0)][:2], V[min(i + 1, len(V) - 1)][:2]
+            t = (b - a) / (np.linalg.norm(b - a) or 1)
+            n.append(np.array([t[1], -t[0]]))
+        s = np.concatenate([[0.0], np.cumsum([np.linalg.norm(V[i + 1][:2] - V[i][:2]) for i in range(len(V) - 1)])])
+        X = lambda i, d, z: np.array([*(V[i][:2] + n[i] * d), z])
+        # the profile from the broadwalk up: (d out, z) pairs, each pair of rows a face
+        prof = lambda g: [
+            ("shop", (g_out, g - 0.4), (g_out, g + g_h)),
+            ("clad", (g_out, g + g_h), (N["tier1"] + hood_out, g + g_h)),
+            ("clad", (N["tier1"] + hood_out, g + g_h), (N["tier1"], g + g_h + hood_h)),
+            ("clad", (N["tier1"], g + g_h + hood_h), (N["tier1"], t1)),
+            ("clad", (N["tier1"], t1), (N["tier2"] - 0.3, t1)),
+            ("shop", (N["tier2"] - 0.3, t1), (N["tier2"] - 0.3, SLOT_M[1])),
+            ("clad", (N["tier2"] - 0.3, SLOT_M[1]), (N["tier2"] + hood_out, SLOT_M[1])),
+            ("clad", (N["tier2"] + hood_out, SLOT_M[1]), (N["tier2"], SLOT_M[1] + hood_h)),
+            ("clad", (N["tier2"], SLOT_M[1] + hood_h), (N["tier2"], t2)),
+            ("clad", (N["tier2"], t2), (0.0, t2)),
+            ("clad", (0.0, t2), (0.0, top)),
+            ("glass", (0.0, top), (N["bowl_out"], top + N["bowl_up"])),
+        ]
+        for i in range(len(V) - 1):
+            pa, pb = prof(V[i][2]), prof(V[i + 1][2])
+            for (kind, a0, a1), (_, b0, b1) in zip(pa, pb):
+                q = [X(i, *a0), X(i + 1, *b0), X(i + 1, *b1), X(i, *a1)]
+                if kind == "clad":
+                    clad.quad(*q, [[s[i], a0[1]], [s[i + 1], b0[1]], [s[i + 1], b1[1]], [s[i], a1[1]]])
+                elif kind == "shop":
+                    shop.quad(*q)
+                else:
+                    glass.quad(*q, [[s[i] / N["panel_m"], a0[1]], [s[i + 1] / N["panel_m"], b0[1]], [s[i + 1] / N["panel_m"], b1[1]], [s[i] / N["panel_m"], a1[1]]])
+            # the foyer's glass roof, from the rim back to the shell's glass wall
+            line = north((V[i][:2] + V[i + 1][:2]) / 2, n[i])
+            if line is not None:
+                ra, rb = X(i, N["bowl_out"], top + N["bowl_up"]), X(i + 1, N["bowl_out"], top + N["bowl_up"])
+                ia, ib = (np.array([*np.asarray(shapely.ops.nearest_points(line, Point(*r[:2]))[0].coords[0]), top + N["roof_up"]]) for r in (ra, rb))
+                glass.quad(ra, rb, ib, ia, [[s[i] / N["panel_m"], 0], [s[i + 1] / N["panel_m"], 0], [s[i + 1] / N["panel_m"], 1], [s[i] / N["panel_m"], 1]])
+        rim.tube([X(i, N["bowl_out"], top + N["bowl_up"] + 0.08) for i in range(len(V))], 0.14, sides=6)
+    print(f"  the podium's north end: {len(runs)} runs of tiers along {sum(np.linalg.norm(P[k + 1][:2] - P[k][:2]) for k, on in enumerate(sel) if on):.0f} m")
+    return [m for m in (clad, shop, glass, rim) if m.v]
 
 
 # ---------------------------------------------------------------- Harbour Bridge
@@ -991,9 +1140,15 @@ def bennelong(ctx):
         v = np.array([x, y]) - q
         return q, v, float(np.linalg.norm(v))
 
-    def level(x, y):
+    # the forecourt's western balustrade over the Lower Concourse, and the retaining walls between it and the seawall
+    fence, rwalls = concourse_lines(ctx, con, raw("infrastructure"), deck_u, line)
+    plaza = fence.buffer(-LOWER["hold_m"], single_sided=True).intersection(deck_u) if fence is not None else Polygon()
+
+    def level_base(x, y):
         """The paving's level: the ground, held up to the level behind where the DEM sags towards
-        the seawall, and down to the level in front where it climbs a garden's bank or a wall."""
+        the seawall, and down to the level in front where it climbs a garden's bank or a wall;
+        and the forecourt's level out to its edge over the Lower Concourse, where the 5 m DEM
+        slopes down into it."""
         z = ctx.ground(x, y)
         p = Point(x, y)
         if near.contains(p):
@@ -1004,9 +1159,34 @@ def bennelong(ctx):
             q, v, L = nearest(inner, x, y)
             if L > 1e-6:
                 z = min(z, ctx.ground(*(q + v / L * EDGE_HOLD_M)))
+        if plaza.contains(p) and 0.5 < fence.project(p) < fence.length - 0.5:  # (not round its ends)
+            q, v, L = nearest(fence, x, y)
+            if L > 1e-6:
+                z = max(z, ctx.ground(*(q + v / L * LOWER["hold_m"])), ctx.ground(*(q + v / L * (LOWER["hold_m"] + 3))))
         if forecourt.contains(p):
             z = FORECOURT_M
         return z
+    # the Lower Concourse on its own levels: the walkway along the seawall, the concourse below it,
+    # the steps between them and up to the broadwalk (pieces of paving, each with its level)
+    lc = lower_concourse(ctx, line, fence, rwalls, deck_u, level_base) if fence is not None else None
+    pieces_u = lc["union"] if lc else Polygon()
+    others = deck_u.difference(pieces_u.buffer(0.01))
+
+    def level(x, y):
+        """The paving's level as drawn: on the Lower Concourse's pieces their own, elsewhere level_base."""
+        if lc and pieces_u.contains(Point(x, y)):
+            return piece_level(lc, x, y)
+        return level_base(x, y)
+
+    def level_rest(x, y):
+        """The level the paving round the Lower Concourse's pieces is drawn at (a smooth grid),
+        carried in under them from the nearest paving that is not a piece, so that a grid point in
+        the concourse does not pull the forecourt's edge down towards it."""
+        p = Point(x, y)
+        if not (lc and pieces_u.contains(p)) or others.is_empty:
+            return level_out(x, y)
+        q, v, L = nearest(others, x, y)
+        return level_base(*(q - v / (L or 1) * 0.4))
 
     def level_out(x, y):  # outside the paving: the level just inside its nearest edge
         p = Point(x, y)
@@ -1037,6 +1217,9 @@ def bennelong(ctx):
                        "holes": [[[round(x, 1), round(y, 1)] for x, y in h.coords] for h in p.interiors]}
     clip = [rings(p) for p in ctx.polygons(sea.intersection(line.buffer(CLIP_OUT_M)).simplify(0.2)) if p.area > 4]
     clip += [rings(p) for p in ctx.polygons(deck_u.buffer(-0.15).simplify(0.2)) if p.area > 4]
+    # and under the Monumental Steps and their apron, where the DEM's bumps in the forecourt (the car
+    # park's vent) came up through the apron as a pale strip of the aerial photo
+    clip += [rings(p) for p in ctx.polygons(steps.buffer(-0.1).simplify(0.2)) if p.area > 4]
     # and along its other edges a face from the paving to the ground beyond, where they differ: the
     # Tarpeian Wall's sandstone below the garden, a kerb at the road
     skirts = []
@@ -1097,7 +1280,7 @@ def bennelong(ctx):
     bx0, by0, bx1, by1 = shapely.union_all(deck).bounds
     gx0, gy0 = math.floor(bx0 / 5) * 5 - 5, math.floor(by0 / 5) * 5 - 5
     nx, ny = int((bx1 - gx0) // 5) + 3, int((by1 - gy0) // 5) + 3
-    grid = np.array([[level_out(gx0 + i * 5, gy0 + j * 5) for i in range(nx)] for j in range(ny)])
+    grid = np.array([[level_rest(gx0 + i * 5, gy0 + j * 5) for i in range(nx)] for j in range(ny)])
     # the DEM's pits and spikes in the forecourt (the vehicle concourse and the loading dock's ramp
     # run in under it, the car park's vent stands on it), levelled to the paving round them
     from scipy import ndimage
@@ -1107,15 +1290,300 @@ def bennelong(ctx):
     import base64
     lv = {"x0": gx0, "y0": gy0, "cell": 5, "nx": nx, "ny": ny, "encoding": "int16le-base64 cm, rows from y0 north",
           "data": base64.b64encode(np.round(grid * 100).astype("<i2").tobytes()).decode()}
+    # the paving draped on the grid: all but the Lower Concourse's pieces, which are drawn on their own levels
+    drape = [q for p in deck for q in ctx.polygons(p.difference(pieces_u)) if q.area > 0.5] if lc else deck
     deck_out = [{"ring": [[round(x, 2), round(y, 2)] for x, y in p.exterior.coords],
-                 "holes": [[[round(x, 2), round(y, 2)] for x, y in h.coords] for h in p.interiors]} for p in deck]
+                 "holes": [[[round(x, 2), round(y, 2)] for x, y in h.coords] for h in p.interiors]} for p in drape]
     print(f"Bennelong Point: {len(walls)} seawall runs, {line.length:.0f} m; paving {sum(p.area for p in deck):.0f} m2 in {len(deck)} pieces; "
           f"{ {k: len(v) for k, v in props.items()} }; {len(parts)} furniture parts; {len(clip)} clip regions; "
           f"paving {grid[grid > -50].min():.1f} to {grid.max():.1f} m")
     print(f"  the Tarpeian Wall: a cliff along {sum(1 for sk in skirts for p in sk if len(p) > 4) * 2} m of the paving's edge")
-    return {"seawalls": seawalls, "skirts": skirts, "deck": deck_out, "level": lv, "clip": clip, "props": props, "parts": parts,
-            "axis": o["steps"]["axis"], "origin": o["steps"]["origin"]}
+    out = {"seawalls": seawalls, "skirts": skirts, "deck": deck_out, "level": lv, "clip": clip, "props": props, "parts": parts,
+           "axis": o["steps"]["axis"], "origin": o["steps"]["origin"]}
+    if lc:
+        out["lower"] = concourse_out(lc, level_base)
+        lv2 = dict(lv)  # (level_at caches the decoded grid in the dict it is given)
+        out["patch"] = walk_patch(lc, deck_u, lambda x, y: level_at(lv2, x, y), out["lower"])
+    return out
 
+
+
+def concourse_lines(ctx, con, path, deck_u, line):
+    """The forecourt's balustrade over the Lower Concourse (oriented with the forecourt on its
+    right) and the retaining walls between it and the seawall, from Overture's infrastructure."""
+    from shapely import wkb as swkb
+    fences, rwalls = [], []
+    for cl, w in con.execute(f"SELECT class, wkb FROM '{path}' WHERE class IN ('fence', 'retaining_wall')").fetchall():
+        g = ctx.city.to_local(swkb.loads(bytes(w)))
+        if g.geom_type == "LineString" and g.distance(line) < 30 and deck_u.buffer(5).intersects(g):
+            (fences if cl == "fence" else rwalls).append(g)
+    at = Point(*LOWER["fence_near"])
+    fence = min(fences, key=lambda g: g.distance(at), default=None)
+    if fence is None or fence.distance(at) > 5:
+        return None, []
+    a, b = (np.asarray(fence.interpolate(t, normalized=True).coords[0]) for t in (0.49, 0.51))
+    right = np.array([b[1] - a[1], a[0] - b[0]]) / np.linalg.norm(b - a)
+    if line.distance(Point(*((a + b) / 2 + right * 3))) < line.distance(Point(*((a + b) / 2))):
+        fence = shapely.LineString(list(fence.coords)[::-1])
+    rwalls = [g for g in rwalls if g.distance(fence) < 15 and g.distance(line) < 15]
+    return fence, rwalls
+
+
+def lower_concourse(ctx, line, F, rwalls, deck_u, level_base):
+    """The Lower Concourse as pieces of paving on their own levels (LOWER): the walkway along the
+    seawall, down to the concourse at its retaining walls, or by broad steps where none is mapped;
+    the ramp down to it from Circular Quay; the concourse, out to the forecourt's balustrade; and
+    the flight at its north end up to the broadwalk. Each piece is flat or a profile along the
+    seawall (s, metres along it). Also the faces between the pieces, the parapets along the tops
+    of the retaining walls, and the forecourt's edge over the concourse, sampled along its
+    balustrade."""
+    L = LOWER
+    R = max(line.geoms, key=lambda r: sum(r.distance(Point(c)) < 25 for c in F.coords))
+    if R.project(Point(F.coords[-1])) < R.project(Point(F.coords[0])):
+        R = shapely.LineString(list(R.coords)[::-1])  # s runs with the balustrade, from Circular Quay to the north end
+    mid = np.asarray(R.interpolate(0.5, normalized=True).coords[0])
+    t0 = np.asarray(R.interpolate(R.project(Point(*mid)) + 1).coords[0]) - mid
+    side = 1.0 if deck_u.contains(Point(*(mid + np.array([-t0[1], t0[0]]) / np.linalg.norm(t0) * 2))) else -1.0
+
+    def frame(s):  # the seawall's point at s and the normal in over the land
+        s = min(max(s, 0.0), R.length)
+        a, b = (np.asarray(R.interpolate(min(max(q, 0.0), R.length)).coords[0]) for q in (s - 1.5, s + 1.5))
+        t = (b - a) / (np.linalg.norm(b - a) or 1)
+        return np.asarray(R.interpolate(s).coords[0]), np.array([-t[1], t[0]]) * side
+    # the retaining walls: how far in from the seawall each stands, along it (short returns at their
+    # ends left out); where two overlap, the one nearer the seawall is the walkway's edge
+    per, cover = [], []
+    for g in rwalls:
+        c = [np.asarray(q) for q in g.coords]
+        while len(c) > 2 and np.linalg.norm(c[1] - c[0]) < 2.5:
+            c = c[1:]
+        while len(c) > 2 and np.linalg.norm(c[-1] - c[-2]) < 2.5:
+            c = c[:-1]
+        dense = shapely.LineString(c).segmentize(0.5)
+        sd = sorted((R.project(Point(q)), R.distance(Point(q))) for q in dense.coords)
+        per.append((np.array([a for a, _ in sd]), np.array([b for _, b in sd])))
+        cover.append((sd[0][0], sd[-1][0]))
+    if not per:
+        return None
+    cover.sort()
+    grid_s = np.arange(cover[0][0], max(b for _, b in cover) + 0.5, 0.5)
+    best = np.full(len(grid_s), np.nan)
+    for ss, dd in per:
+        on = (grid_s >= ss[0]) & (grid_s <= ss[-1])
+        d = np.interp(grid_s[on], ss, dd)
+        best[on] = np.where(np.isnan(best[on]), d, np.minimum(best[on], d))
+    ok = ~np.isnan(best)
+    S_w, D_w = grid_s[ok], best[ok]
+    width = lambda s: float(np.interp(s, S_w, D_w))
+    s_a, s_r1 = cover[0][0], cover[0][1]  # the first wall: the ramp comes down beside it
+    s_b = R.project(Point(F.coords[-1]))
+
+    def F_at(s):  # where the normal in from the seawall at s meets the balustrade
+        p, n = frame(s)
+        hit = shapely.LineString([p + n * 0.3, p + n * 45]).intersection(F)
+        pts = [np.asarray(q.coords[0]) for q in getattr(hit, "geoms", [hit]) if not q.is_empty and q.geom_type == "Point"]
+        return min(pts, key=lambda q: np.linalg.norm(q - p)) if pts else None
+    W = lambda s: frame(s)[0] + frame(s)[1] * width(s)
+    walk, floor, riser, tread = L["walk_m"], L["floor_m"], L["riser_m"], L["tread_m"]
+    z_south = level_base(*(frame(s_a)[0] + frame(s_a)[1] * 1.5))
+    # the flight up to the broadwalk at the north end, along the balustrade up to its last corner, from
+    # the concourse to the paving beyond (13 risers in OSM; more or fewer if the levels ask it)
+    d_end = F.project(Point(F.coords[-2])) if len(F.coords) > 2 else F.length
+    fq = lambda d: np.asarray(F.interpolate(min(max(d, 0.0), F.length)).coords[0])
+    ft = lambda d: (fq(d + 0.5) - fq(d - 0.5)) / (np.linalg.norm(fq(d + 0.5) - fq(d - 0.5)) or 1)
+    z_top = level_base(*(fq(d_end) + ft(d_end - 1) * 6))  # the broadwalk, beyond the balustrade's last corner
+    # sample along the seawall every metre, up to the balustrade's last corner, and as far as the
+    # concourse is wide enough to walk (it narrows between the last retaining wall and the balustrade)
+    S = list(np.arange(s_a, s_b, 1.0)) + [s_b]
+    Fp = {s: F_at(s) for s in S}
+    S = [s for s in S if Fp[s] is not None and F.project(Point(*Fp[s])) <= d_end + 0.05]
+    if len(S) < 10:
+        return None
+    Wp = {s: W(s) for s in S}
+    wide = [s for s in S if np.linalg.norm(Fp[s] - Wp[s]) >= 1.8]
+    s_end = wide[-1] if wide else S[-1]
+    S = [s for s in S if s <= s_end]
+    # the flight up to the broadwalk (13 risers in OSM; more or fewer if the levels ask it), along the
+    # balustrade at the concourse's north end
+    d_end = F.project(Point(*Fp[s_end]))
+    n_up = L["up_risers"] if 0.1 < (z_top - floor) / L["up_risers"] < 0.2 else max(1, round((z_top - floor) / riser))
+    r_up, t_up = (z_top - floor) / n_up, 0.45
+    d_f0 = d_end - n_up * t_up
+    s_f0 = R.project(Point(*fq(d_f0)))
+    floor_prof = [[s_a, z_south], [s_r1, floor], [s_f0, floor]]
+    zc = lambda s: float(np.interp(s, *zip(*floor_prof)))
+    pn, nn = frame(s_end + 1.5)
+    z_north = level_base(*(pn + nn * 1.5))
+    walk_prof = [[s_a, z_south], [s_a + 12, walk], [s_end - 12, walk], [s_end, z_north]]
+    zw = lambda s: float(np.interp(s, *zip(*walk_prof)))
+    S_walk = list(np.arange(s_a, s_end, 1.0)) + [s_end]
+    ring = lambda a, b: Polygon([tuple(q) for q in list(a) + list(b)[::-1]]).buffer(0)
+    walkway = ring([frame(s)[0] for s in S_walk], [W(s) for s in S_walk]).intersection(deck_u)
+    band = ring([Wp[s] for s in S], [Fp[s] for s in S]).intersection(deck_u).difference(walkway)
+    # where no retaining wall is mapped, broad steps down from the walkway (7 risers between its level and the concourse's)
+    n_t = max(1, round((walk - floor) / riser))
+    gaps, prev = [], s_r1
+    for a, b in cover[1:] + [(s_f0, s_f0)]:
+        if a - prev > 2.0:
+            gaps.append((prev + 0.3, min(a, s_f0) - 0.3))
+        prev = max(prev, b)
+    off = lambda s, d: Wp[s] + frame(s)[1] * d
+    pieces, faces, treads = [], [], []
+    for g0, g1 in gaps:
+        Sg = [s for s in S if g0 <= s <= g1]
+        if len(Sg) < 2:
+            continue
+        for k in range(n_t - 1):
+            q = ring([off(s, k * tread) for s in Sg], [off(s, (k + 1) * tread) for s in Sg]).intersection(band)
+            if q.area > 0.3:
+                treads.append(q)
+                pieces.append({"poly": q, "z": round(walk - (k + 1) * (walk - floor) / n_t, 3), "kind": "tread"})
+            for s0, s1 in zip(Sg, Sg[1:]):  # the riser at its back edge
+                za = walk - k * (walk - floor) / n_t
+                if k and np.linalg.norm(off(s1, k * tread) - Wp[s1]) < np.linalg.norm(Fp[s1] - Wp[s1]) - 0.3:
+                    faces.append([off(s0, k * tread), off(s1, k * tread), za - (walk - floor) / n_t, za, "riser"])
+        k = n_t - 1
+        for s0, s1 in zip(Sg, Sg[1:]):
+            if np.linalg.norm(off(s1, k * tread) - Wp[s1]) < np.linalg.norm(Fp[s1] - Wp[s1]) - 0.3:
+                faces.append([off(s0, k * tread), off(s1, k * tread), floor, floor + (walk - floor) / n_t, "riser"])
+    # the flight at the north end, its treads square to the balustrade, across the concourse
+    def cut_at(d):  # from the balustrade at d out across the concourse
+        q, t = fq(d), ft(d)
+        return q + np.array([t[1], -t[0]]) * 0.5, q - np.array([t[1], -t[0]]) * 20
+    for k in range(n_up):
+        a, b = d_f0 + k * t_up, (d_f0 + (k + 1) * t_up) if k < n_up - 1 else d_end + 30
+        (a0, a1), (b0, b1) = cut_at(a), cut_at(b)
+        q = band.intersection(Polygon([tuple(a0), tuple(a1), tuple(b1), tuple(b0)]).buffer(0))
+        if q.area > 0.2:
+            pieces.append({"poly": q, "z": round(floor + (k + 1) * r_up, 3), "kind": "flight"})
+        seg = shapely.LineString([a0, a1]).intersection(band.buffer(0.05))
+        for g in getattr(seg, "geoms", [seg]):
+            if g.geom_type == "LineString" and g.length > 0.3:
+                c = list(g.coords)
+                faces.append([np.asarray(c[0]), np.asarray(c[-1]), floor + k * r_up, floor + (k + 1) * r_up, "riser"])
+    flight = shapely.union_all([p["poly"] for p in pieces if p["kind"] == "flight"])
+    conc = band.difference(shapely.union_all(treads + [flight]))
+    # what the pieces leave between them (slivers along their shared edges) goes to the concourse
+    rest = shapely.union_all([walkway, band]).difference(shapely.union_all([walkway, conc] + treads + [flight]))
+    conc = shapely.union_all([conc] + [q for q in Polygon_pieces(rest) if q.area > 1e-4]).buffer(0)
+    pieces = [{"poly": walkway, "s": walk_prof, "kind": "walkway"}, {"poly": conc, "s": floor_prof, "kind": "concourse"}] + pieces
+    # along the walkway's inner edge: a retaining wall down to the concourse (or the steps' top riser, or the flight's side)
+    in_gap = lambda s: any(g0 <= s <= g1 for g0, g1 in gaps)
+    parapets, run = [], []
+    for s0, s1 in zip(S, S[1:]):
+        sm = (s0 + s1) / 2
+        lo = (walk - (walk - floor) / n_t) if in_gap(sm) else zc(sm)
+        if sm >= s_f0:  # beside the flight: its tread there
+            lo = piece_level({"ref": R, "pieces": [p for p in pieces if p["kind"] == "flight"]}, *(Wp[s0] + frame(s0)[1] * 0.4))
+        top = zw(sm)
+        if abs(top - lo) > 0.02:
+            faces.append([Wp[s0], Wp[s1], min(lo, top), max(lo, top), "wall" if abs(top - lo) > 0.3 else "riser"])
+        if top - lo > 0.6:  # a parapet on the walkway along its top
+            run.append([*(Wp[s0] - frame(s0)[1] * 0.2), top])
+        elif run:
+            parapets.append(run)
+            run = []
+    if run:
+        parapets.append(run)
+    print(f"  the Lower Concourse: walkway {walkway.area:.0f} m2 at {walk} m, concourse {conc.area:.0f} m2 at {floor} m "
+          f"(the ramp down to it {s_r1 - s_a:.0f} m), {len(treads)} treads of broad steps in {len(gaps)} places, "
+          f"a flight of {n_up} risers of {r_up * 100:.0f} cm up to {z_top:.2f} m")
+    return {"ref": R, "pieces": pieces, "faces": faces, "parapets": parapets, "fence": F,
+            "union": shapely.union_all([p["poly"] for p in pieces]).buffer(0)}
+
+
+def piece_level(lc, x, y):
+    """The level of the Lower Concourse's piece at (x, y) (lower_concourse(), or its dump from
+    concourse_out(), whose pieces carry `poly` once prepared)."""
+    p = Point(x, y)
+    best, bd = None, 1e9
+    for pc in lc["pieces"]:
+        poly = pc["poly"]
+        d = 0.0 if poly.contains(p) else poly.distance(p)
+        if d < bd:
+            best, bd = pc, d
+            if d == 0.0:
+                break
+    if best is None:
+        return 0.0
+    if "z" in best:
+        return best["z"]
+    s = lc["ref"].project(p)
+    return float(np.interp(s, *zip(*best["s"])))
+
+
+def concourse_out(lc, level_base):
+    """The Lower Concourse for scene.json: the reference line, the pieces, the faces between them,
+    the parapets, and the forecourt's edge over the concourse along its balustrade, every metre:
+    [x, y, ex, ey (in under the forecourt), floor, forecourt]."""
+    F = lc["fence"]
+    edge = []
+    for d in np.arange(0.0, F.length + 1e-6, 1.0):
+        q = np.asarray(F.interpolate(d).coords[0])
+        a, b = (np.asarray(F.interpolate(min(max(t, 0.0), F.length)).coords[0]) for t in (d - 0.5, d + 0.5))
+        t = (b - a) / (np.linalg.norm(b - a) or 1)
+        e = np.array([t[1], -t[0]])  # to its right: the forecourt
+        edge.append([round(float(q[0]), 2), round(float(q[1]), 2), round(float(e[0]), 3), round(float(e[1]), 3),
+                     round(piece_level(lc, *(q - e * 0.3)) if lc["union"].distance(Point(*(q - e * 0.3))) < 0.2 else level_base(*(q - e * 0.3)), 2),
+                     round(level_base(*(q + e * 0.6)), 2)])
+    r2 = lambda q: [round(float(q[0]), 2), round(float(q[1]), 2)]
+    rings = lambda p: [{"ring": [r2(c) for c in g.exterior.coords], "holes": [[r2(c) for c in h.coords] for h in g.interiors]}
+                       for g in Polygon_pieces(p) if g.area > 0.05]
+    pieces = []
+    for pc in lc["pieces"]:
+        for r in rings(pc["poly"]):
+            pieces.append(dict(r, kind=pc["kind"], **({"z": pc["z"]} if "z" in pc else {"s": [[round(a, 2), round(b, 3)] for a, b in pc["s"]]})))
+    return {"ref": [r2(c) for c in lc["ref"].coords], "pieces": pieces,
+            "faces": [[r2(a), r2(b), round(float(lo), 3), round(float(hi), 3), k] for a, b, lo, hi, k in lc["faces"]],
+            "parapets": [[[round(float(v), 2) for v in q] for q in run] for run in lc["parapets"]], "edge": edge}
+
+
+def lower_loaded(lower):
+    """concourse_out()'s dump with its shapes rebuilt, for piece_level()."""
+    if "_ref" not in lower:
+        lower["_ref"] = shapely.LineString(lower["ref"])
+        lower["_pieces"] = [dict(pc, poly=Polygon(pc["ring"], pc["holes"]).buffer(0)) for pc in lower["pieces"]]
+    return {"ref": lower["_ref"], "pieces": lower["_pieces"]}
+
+
+def walk_patch(lc, deck_u, rest, L):
+    """The levels the game walks on over the Lower Concourse and round it, every half metre, in
+    centimetres (-32768 where there is no paving): sharp at its walls and steps, which the 5 m
+    walking grid would smooth into slopes, and up to the tops of the parapets along the walkway
+    and the forecourt's edge, which hold a walker back. web/game/nav.js takes it over the grid."""
+    import base64
+    from shapely import contains_xy
+    x0, y0, x1, y1 = lc["union"].buffer(6).bounds
+    cell = 0.5
+    x0, y0 = math.floor(x0), math.floor(y0)
+    nx, ny = int((x1 - x0) / cell) + 1, int((y1 - y0) / cell) + 1
+    gx, gy = np.meshgrid(x0 + (np.arange(nx) + 0.5) * cell, y0 + (np.arange(ny) + 0.5) * cell)
+    z = np.full(gx.shape, np.nan)
+    paved = contains_xy(deck_u, gx, gy)
+    for j, i in zip(*np.nonzero(paved)):
+        z[j, i] = rest(gx[j, i], gy[j, i])
+    for pc in lc["pieces"]:
+        inside = contains_xy(pc["poly"], gx, gy)
+        if "z" in pc:
+            z[inside] = pc["z"]
+        else:
+            s = shapely.line_locate_point(lc["ref"], shapely.points(gx[inside], gy[inside]))
+            z[inside] = np.interp(s, *zip(*pc["s"]))
+    # the parapets: along the walkway's inner edge, and the forecourt's along its balustrade
+    for runp in L["parapets"]:
+        for a, b in zip(runp, runp[1:]):
+            g = shapely.LineString([a[:2], b[:2]]).buffer(0.25)
+            on = contains_xy(g, gx, gy)
+            z[on] = np.fmax(z[on], max(a[2], b[2]) + LOWER["wall_parapet_m"])
+    for e0, e1 in zip(L["edge"], L["edge"][1:]):
+        if abs(e0[5] - e0[4]) < 0.25:
+            continue
+        g = Polygon([e0[:2], e1[:2], [e1[0] + e1[2] * 0.4, e1[1] + e1[3] * 0.4], [e0[0] + e0[2] * 0.4, e0[1] + e0[3] * 0.4]]).buffer(0.1)
+        on = contains_xy(g, gx, gy)
+        z[on] = np.fmax(z[on], max(e0[5], e1[5]) + LOWER["parapet_m"])
+    data = np.where(np.isnan(z), -32768, np.round(z * 100)).astype("<i2")
+    return {"x0": x0, "y0": y0, "cell": cell, "nx": nx, "ny": ny, "encoding": "int16le-base64 cm, rows from y0 north, -32768 none",
+            "data": base64.b64encode(data.tobytes()).decode()}
 
 
 def level_at(lv, x, y):
@@ -1143,7 +1611,7 @@ def bennelong_meshes(b, o, ground=()):
     # the paving: a 4 m grid clipped to the outline, so it follows its level
     pave = Mesh("bennelong_paving", "flagstone", True, uv=True)
     for d in b["deck"]:
-        poly = Polygon(d["ring"], d["holes"])
+        poly = Polygon(d["ring"], d["holes"]).buffer(0)  # (valid again after rounding)
         x0, y0, x1, y1 = poly.bounds
         G = 4.0
         for gx in np.arange(math.floor(x0 / G) * G, x1, G):
@@ -1163,6 +1631,8 @@ def bennelong_meshes(b, o, ground=()):
                         pave.tri(*[np.array([x, y, level_at(lv, x, y) + 0.03]) for x, y in cs], [uv(x, y) for x, y in cs])
     pave.weld()
     meshes.append(pave)
+    if b.get("lower"):
+        meshes += concourse_meshes(b["lower"], uv, lv, [Polygon(d["ring"], d["holes"]).buffer(0) for d in b["deck"]])
     # the seawall: its face from the coping down below low water, and the coping, a little proud
     walls = {k: Mesh(f"seawall_{k}", f"seawall_{k}", False, uv=True) for k in ("opera", "sandstone")}
     coping = Mesh("seawall_coping", "coping", False, uv=True)
@@ -1245,6 +1715,139 @@ def bennelong_meshes(b, o, ground=()):
     if umbrellas:
         props.append(dict(name="umbrella", at=umbrellas, parts=[m.dump() for m in umbrella_model()], far=900))
     return meshes, {"props": props, "clip": b["clip"]}
+
+
+def concourse_meshes(L, uv, lv, drape):
+    """The Lower Concourse from concourse_out(): its pieces of paving on their own levels (the
+    walkway and the concourse in flags, the steps' treads), the faces between them (risers, and the
+    retaining walls in granite courses), the parapets along the walkway's inner edge, and the
+    forecourt's edge over the concourse: its parapet and fascia, and where the forecourt stands a
+    storey above the concourse, the colonnade under it, a soffit on mushroom columns with the
+    shopfronts behind."""
+    lc = lower_loaded(L)
+    flags, treads = Mesh("lc_paving", "flagstone", True, uv=True), Mesh("lc_treads", "lc_tread", False, uv=True)
+    G = 3.0
+    for pc in lc["pieces"]:
+        poly, m = pc["poly"], (treads if pc["kind"] in ("tread", "flight") else flags)
+        zf = (lambda x, y, z=pc["z"]: z) if "z" in pc else (lambda x, y, prof=pc["s"]: float(np.interp(lc["ref"].project(Point(x, y)), *zip(*prof))))
+        x0, y0, x1, y1 = poly.bounds
+        for gx in np.arange(math.floor(x0 / G) * G, x1, G):
+            for gy in np.arange(math.floor(y0 / G) * G, y1, G):
+                cell = shapely.box(gx, gy, gx + G, gy + G)
+                if not poly.intersects(cell):
+                    continue
+                for q in Polygon_pieces(cell.intersection(poly)):
+                    for t in shapely.constrained_delaunay_triangles(q).geoms:
+                        cs = np.asarray(t.exterior.coords)[:3]
+                        (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+                        if abs(ax * by - ay * bx) < 1e-6:
+                            continue
+                        if ax * by - ay * bx < 0:
+                            cs = cs[::-1]
+                        m.tri(*[np.array([x, y, zf(x, y) + 0.03]) for x, y in cs], [uv(x, y) for x, y in cs])
+    flags.weld()
+    treads.weld()
+    # the faces between pieces of different levels, and between a piece and the paving round it: along
+    # every piece's edge, from its own level to its neighbour's, drawn once from the higher side
+    # (a riser up to 30 cm, a granite wall above that)
+    risers, walls = Mesh("lc_risers", "lc_riser", False, uv=True), Mesh("lc_walls", "lc_wall", False, uv=True)
+    zof = lambda pc, x, y: pc["z"] if "z" in pc else float(np.interp(lc["ref"].project(Point(x, y)), *zip(*pc["s"])))
+    rest = shapely.union_all(drape) if drape else Polygon()
+    fence = shapely.LineString([e[:2] for e in L["edge"]])  # the forecourt's edge: its fascia, below
+
+    def neighbour(x, y, me):
+        p = Point(x, y)
+        for pc in lc["pieces"]:
+            if pc is not me and pc["poly"].contains(p):
+                return zof(pc, x, y), False
+        if rest.contains(p):
+            return level_at(lv, x, y), True
+        return None, False
+    run = 0.0
+    for pc in lc["pieces"]:
+        for ring, hole in [(r, k > 0) for poly in Polygon_pieces(pc["poly"]) for k, r in enumerate([poly.exterior] + list(poly.interiors))]:
+            line = shapely.LineString(ring.coords).segmentize(1.0)
+            c = np.asarray(line.coords)
+            ccw = shapely.LinearRing(ring.coords).is_ccw
+            for a, b in zip(c, c[1:]):
+                e = b - a
+                n = float(np.linalg.norm(e))
+                if n < 1e-3:
+                    continue
+                m = (a + b) / 2
+                if fence.distance(Point(*m)) < 0.4:
+                    continue
+                out = np.array([e[1], -e[0]]) / n * (1 if ccw else -1)  # to its right on an anticlockwise ring: outside
+                if hole:
+                    out = -out
+                zi = zof(pc, *(m - out * 0.15))
+                zo, is_rest = neighbour(*(m + out * 0.25), pc)
+                if zo is None or abs(zi - zo) < 0.03 or not (zi > zo or is_rest):
+                    continue
+                lo, hi = min(zi, zo), max(zi, zo) + 0.03
+                mesh = walls if hi - lo > 0.33 else risers
+                mesh.quad(np.array([*a, lo - 0.3]), np.array([*b, lo - 0.3]), np.array([*b, hi]), np.array([*a, hi]),
+                          [[run, lo - 0.3], [run + n, lo - 0.3], [run + n, hi], [run, hi]] if mesh is walls else [[run, 0.0], [run + n, 0.0], [run + n, 1.0], [run, 1.0]])
+                run += n
+    # under it all, a dark bed, so that a hairline between two pieces shows shadow and not the water
+    bed = Mesh("lc_bed", "lc_riser", False)
+    low = min(min(pc["s"], key=lambda q: q[1])[1] if "s" in pc else pc["z"] for pc in lc["pieces"]) - 0.35
+    for q in Polygon_pieces(shapely.union_all([pc["poly"] for pc in lc["pieces"]]).buffer(0.3)):
+        for t in shapely.constrained_delaunay_triangles(q).geoms:
+            cs = np.asarray(t.exterior.coords)[:3]
+            bed.tri(*[np.array([x, y, low]) for x, y in cs])
+    # the parapets along the walkway's inner edge, over the retaining walls
+    par = Mesh("lc_parapets", "lc_wall", False, uv=True)
+    h = LOWER["wall_parapet_m"]
+    for runp in L["parapets"]:
+        for p, q in zip(runp, runp[1:]):
+            par.box(np.array([p[0], p[1], p[2] + h / 2 - 0.15]), np.array([q[0], q[1], q[2] + h / 2 - 0.15]), 0.32, h + 0.3)
+    # the forecourt's edge over the concourse
+    E = L["edge"]
+    fascia, soffit, shop = Mesh("lc_fascia", "lc_fascia", False, uv=True), Mesh("lc_soffit", "lc_soffit", False), Mesh("lc_shopfronts", "lc_shop", False, floodlit=True)
+    floor_m, cols = Mesh("lc_colonnade_floor", "flagstone", True, uv=True), Mesh("lc_columns", "lc_soffit", True)
+    rec, slab, ph = LOWER["recess_m"], LOWER["slab_m"], LOWER["parapet_m"]
+    colonnade = lambda e: e[5] - e[4] > 2.3
+    run, next_col = 0.0, 4.0
+    for k in range(len(E) - 1):
+        e0, e1 = E[k], E[k + 1]
+        q0, q1 = np.array(e0[:2]), np.array(e1[:2])
+        n0, n1 = np.array(e0[2:4]), np.array(e1[2:4])
+        L1 = float(np.linalg.norm(q1 - q0))
+        if abs(e0[5] - e0[4]) < 0.25 and abs(e1[5] - e1[4]) < 0.25:
+            run += L1
+            continue
+        P = lambda q, z: np.array([q[0], q[1], z])
+        top0, top1 = e0[5] + ph, e1[5] + ph
+        # the parapet: its top, and its face to the forecourt
+        fascia.quad(P(q0, top0), P(q1, top1), P(q1 + n1 * 0.3, top1), P(q0 + n0 * 0.3, top0), [[run, 0], [run + L1, 0], [run + L1, 0.3], [run, 0.3]])
+        fascia.quad(P(q0 + n0 * 0.3, e0[5] - 0.1), P(q1 + n1 * 0.3, e1[5] - 0.1), P(q1 + n1 * 0.3, top1), P(q0 + n0 * 0.3, top0),
+                    [[run, e0[5]], [run + L1, e1[5]], [run + L1, top1], [run, top0]])
+        if colonnade(e0) and colonnade(e1):
+            s0, s1 = e0[5] - slab, e1[5] - slab
+            fascia.quad(P(q0, s0), P(q1, s1), P(q1, top1), P(q0, top0), [[run, s0], [run + L1, s1], [run + L1, top1], [run, top0]])
+            b0, b1 = q0 + n0 * rec, q1 + n1 * rec
+            soffit.quad(P(q0, s0), P(q1, s1), P(b1, s1), P(b0, s0))
+            shop.quad(P(b0, e0[4]), P(b1, e1[4]), P(b1, s1), P(b0, s0))
+            floor_m.quad(P(q0, e0[4] + 0.03), P(q1, e1[4] + 0.03), P(b1, e1[4] + 0.03), P(b0, e0[4] + 0.03), [uv(*q0), uv(*q1), uv(*b1), uv(*b0)])
+            for kk, (ea, eb) in enumerate(((E[k - 1] if k else None, e0), (e1, E[k + 2] if k + 2 < len(E) else None))):
+                if ea is None or eb is None or not (colonnade(ea) and colonnade(eb)):  # the colonnade's end: closed
+                    e = e0 if kk == 0 else e1
+                    qq, nn = np.array(e[:2]), np.array(e[2:4])
+                    fascia.quad(P(qq, e[4] - 0.3), P(qq + nn * rec, e[4] - 0.3), P(qq + nn * rec, e[5] - slab), P(qq, e[5] - slab),
+                                [[0, e[4]], [rec, e[4]], [rec, e[5]], [0, e[5]]])
+            while next_col <= run + L1:  # a mushroom column every few metres, just in from the fascia
+                t = (next_col - run) / max(L1, 1e-6)
+                c = q0 + (q1 - q0) * t + (n0 + (n1 - n0) * t) * 1.1
+                zf, zs = e0[4] + (e1[4] - e0[4]) * t, s0 + (s1 - s0) * t
+                cols.lathe([(zf - 0.1, 0.24), (zs - 0.75, 0.24), (zs - 0.35, 0.55), (zs - 0.08, 1.05), (zs, 1.1)], c, segs=14)
+                next_col += LOWER["column_every_m"]
+        else:
+            lo0, lo1 = min(e0[4], e0[5]) - 0.3, min(e1[4], e1[5]) - 0.3
+            fascia.quad(P(q0, lo0), P(q1, lo1), P(q1, top1), P(q0, top0), [[run, lo0], [run + L1, lo1], [run + L1, top1], [run, top0]])
+            next_col = run + L1 + 4.0
+        run += L1
+    return [m for m in (flags, treads, risers, walls, par, fascia, soffit, shop, floor_m, cols, bed) if m.v]
 
 
 def Polygon_pieces(g):

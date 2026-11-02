@@ -93,6 +93,60 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   else check(quay.mode === 'foot' && quay.d > -1.0 && quay.d < 0 && Math.abs(quay.z - quay.top) < 0.6,
     `walks up to the seawall at ${quay.at} and stops ${(-quay.d).toFixed(2)} m short of its face, ${quay.z.toFixed(1)} m up (the quay is ${quay.top.toFixed(1)} m)`);
 
+  // fine walking levels (game.json "patches", nav.js): somewhere on one, climb a flight of steps
+  // (a straight walk that rises 1.5 m or more in steps of 30 cm or less) and get to its top; and
+  // walk at a wall (a rise of 80 cm or more in half a metre) and stay at its foot
+  const levels = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, P = (g.G.patches || [])[0];
+    if (!P) return { none: true };
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    const b = Uint8Array.from(atob(P.data), c => c.charCodeAt(0)), Z = new Int16Array(b.buffer, 0, P.nx * P.ny);
+    const at = (x, y) => { const i = Math.floor((x - P.x0) / P.cell), j = Math.floor((y - P.y0) / P.cell); return i < 0 || j < 0 || i >= P.nx || j >= P.ny || Z[j * P.nx + i] === -32768 ? null : Z[j * P.nx + i] / 100; };
+    const go = (x, y, dx, dy, z, t) => {
+      Object.assign(pl, { x, y, z, ground: true, vz: 0, speed: 0 });
+      pl.h = g.cam.yaw = Math.atan2(dx, dy);
+      for (let i = 0; i < t * 10; i++) g.advance(0.1, ['KeyW']);
+      return { z: pl.z, d: Math.hypot(pl.x - x, pl.y - y), mode: pl.mode };
+    };
+    const r = {};
+    // a flight: from a cell, 8 m in one of 32 directions, rising in small steps by 1.5 m or more
+    search: for (let j = 2; j < P.ny - 2; j++) for (let i = 2; i < P.nx - 2; i++) {
+      const x = P.x0 + (i + 0.5) * P.cell, y = P.y0 + (j + 0.5) * P.cell, z0 = at(x, y);
+      if (z0 === null) continue;
+      for (let k = 0; k < 32; k++) {
+        const dx = Math.cos(k * Math.PI / 16), dy = Math.sin(k * Math.PI / 16);
+        let prev = z0, ok = true, top = z0;
+        for (let s = 0.25; s <= 8 && ok; s += 0.25) { const q = at(x + dx * s, y + dy * s); if (q === null || q - prev > 0.3 || q < prev - 0.05) ok = false; else { prev = q; top = Math.max(top, q); } }
+        if (!ok || top - z0 < 1.5 || !g.nav.walk(x, y, z0).ok) continue;
+        r.flight = Object.assign(go(x, y, dx, dy, z0, 5), { at: [Math.round(x), Math.round(y)], z0, top });
+        break search;
+      }
+    }
+    // a wall: a rise of 80 cm or more within half a metre, with room to walk up to it
+    search2: for (let j = 4; j < P.ny - 4; j += 2) for (let i = 4; i < P.nx - 4; i += 2) {
+      const x = P.x0 + (i + 0.5) * P.cell, y = P.y0 + (j + 0.5) * P.cell, z0 = at(x, y);
+      if (z0 === null) continue;
+      for (let k = 0; k < 8; k++) {
+        const dx = Math.cos(k * Math.PI / 4), dy = Math.sin(k * Math.PI / 4), q = at(x + dx * 2.5, y + dy * 2.5);
+        let flat = true;
+        for (let s = 0.25; s <= 2 && flat; s += 0.25) { const v = at(x + dx * s, y + dy * s); if (v === null || Math.abs(v - z0) > 0.05) flat = false; }
+        if (!flat || q === null || q - z0 < 0.8 || !g.nav.walk(x, y, z0).ok) continue;
+        r.wall = Object.assign(go(x, y, dx, dy, z0, 3), { at: [Math.round(x), Math.round(y)], z0, top: q });
+        break search2;
+      }
+    }
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return r;
+  });
+  if (levels.none) check(true, 'no fine walking levels');
+  else {
+    const f = levels.flight, w = levels.wall;
+    check(!!f && f.mode === 'foot' && f.z > f.top - 0.35,
+      f ? `climbs the steps at ${f.at} from ${f.z0.toFixed(2)} m to ${f.z.toFixed(2)} m (their top is ${f.top.toFixed(2)} m)` : 'found no flight of steps on the fine walking levels');
+    check(!!w && w.mode === 'foot' && Math.abs(w.z - w.z0) < 0.2 && w.d < 2.6,
+      w ? `stops at the foot of the wall at ${w.at}, ${w.z.toFixed(2)} m up after ${w.d.toFixed(1)} m (its top is ${w.top.toFixed(2)} m)` : 'found no wall on the fine walking levels');
+  }
+
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {
