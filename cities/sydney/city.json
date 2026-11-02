@@ -275,8 +275,8 @@
       "source": "Bureau of Meteorology, Sydney (Observatory Hill) 066062, mean maximum temperature 1859-2020"
     },
     "start": {
-      "at": [120, 205],
-      "facing": [298, 432],
+      "at": [-183, 212],
+      "facing": [120, 640],
       "time": "live"
     },
     "wharves": [
@@ -302,7 +302,10 @@
       }
     ],
     "ferry_note": "Wharves and the helipad are from OpenStreetMap via Overture. Routes are generated through open water, and the stops follow the inner-harbour services, but the timetable is not real. Ferries run at 1.5 times their real speed (9 m/s) and wait 20 s at each wharf. The vessel names are those of the First Fleet class ferries. At a wharf you can skip the wait.",
-    "helipads": [{"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}],
+    "helipads": [
+      {"id": "first-fleet-pad", "name": "First Fleet Park pad (game)", "at": [-215, 140, 3.4], "heading": 40},
+      {"id": "kirribilli-pad", "name": "Kirribilli helipad", "from_data": true}
+    ],
     "vehicles": {
       "note": "The helicopter, ferries and cars are shared by every city (web/assets/vehicles, built by blender/build_vehicles.py). Pick a livery from vehicles.json or give your own colours; the registration defaults to the country's. The ferries take their colours and length from ferry_style.",
       "helicopter": {"livery": "survey"},
@@ -333,7 +336,7 @@
         "id": "ava",
         "name": "Ava",
         "role": "Survey lead",
-        "at": [128, 216],
+        "at": [-178, 225],
         "look": {"character": "R_Female_Adult_08", "skin": "#c68a64", "hair": "#2a1d17", "top": "#9aa0a6", "legs": "#2b3a4a", "shirt": "#9aa0a6", "pants": "#2b3a4a", "clip": "Documents"},
         "idle": ["The whole model is open data. If something looks wrong, it probably is wrong in the data, so tell me.",
         "There are five trig stations round the harbour, a triangle on the map for each. Climb up to one and survey the view."]
@@ -441,7 +444,7 @@
         "giver": "ava",
         "title": "Welcome to the Quay",
         "stamp": "Circular Quay",
-        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "There are three surveys to do, in any order. The harbour: Marco at the Opera House, then the ferry and the bridge. The air: Sam flies from the Kirribilli helipad, across the water. The ground: Priya, in Martin Place, on sun and heights.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.", "Which first?"],
+        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "There are three surveys to do, in any order. The harbour: Marco at the Opera House, then the ferry and the bridge. The air: Sam flies from the Kirribilli helipad, across the water. The ground: Priya, in Martin Place, on sun and heights.", "Everything's close. The helicopter is on the lawn of First Fleet Park behind you, the ferries leave from the wharves along the quay, and a hand up at the kerb (Y) on George Street stops a taxi.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.", "Which first?"],
         "choices": [
           {"text": "The harbour: Marco, at the Opera House", "action": "track", "line": "harbour"},
           {"text": "The air: Sam, at the Kirribilli helipad", "action": "track", "line": "air"},

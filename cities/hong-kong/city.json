@@ -195,6 +195,7 @@
       }
     },
     "helipads": [
+      {"id": "harbourfront-pad", "name": "Central Harbourfront pad (game)", "at": [-220, -60, 6.5], "heading": 60},
       {
         "id": "hkcec",
         "name": "Hong Kong Convention and Exhibition Centre heliport",
@@ -404,7 +405,7 @@
         "giver": "kayan",
         "title": "Across the harbour",
         "stamp": "Star Ferry",
-        "talk": ["You're the new surveyor? Good. This is Victoria Harbour from open data: {buildings} buildings, almost every one at the height the Lands Department surveyed, on the government's own LiDAR terrain.", "Take the Star Ferry over to Tsim Sha Tsui. Wing is waiting by the Clock Tower.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, or to wait for the ferry."],
+        "talk": ["You're the new surveyor? Good. This is Victoria Harbour from open data: {buildings} buildings, almost every one at the height the Lands Department surveyed, on the government's own LiDAR terrain.", "Take the Star Ferry over to Tsim Sha Tsui. Wing is waiting by the Clock Tower.", "Or go as you like. The helicopter is on the harbourfront lawn, a minute's walk east, and a hand up at the kerb (Y) stops a red taxi.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, or to wait for the ferry."],
         "steps": [
           {
             "type": "ride",

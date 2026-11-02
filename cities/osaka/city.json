@@ -532,6 +532,7 @@
     "ferry_note": "Landings are the ferry terminals mapped in OpenStreetMap (via Overture). Routes are generated through open water, and the stops follow the Tombori River Cruise and the Aqua Liner, but the timetable and the vessel names are invented. Boats run at 1.5 times real speed (9 m/s) and wait 20 s at each landing. At a landing you can skip the wait.",
     "helipads_from_data": false,
     "helipads": [
+      {"id": "minatomachi-pad", "name": "Minatomachi River Place pad (game)", "at": [-1425, -1085, 2.7], "heading": 90},
       {
         "id": "naniwa-pad",
         "name": "Naniwa-no-miya Park helipad",
@@ -949,7 +950,8 @@
         "talk": [
           "Okaeri. Well, welcome. I'm Mei, from the survey. This is Dotonbori, the canal Yasui Doton began digging in 1612.",
           "The model around you is open data: {buildings} buildings, GSI's 5 m laser terrain and GSI's aerial photos. For {share:plateau}% of the roof area, the height was measured from the air for Project PLATEAU, not guessed.",
-          "Look up at the Glico runner, then find Daisuke on the Dotonbori street. He's the one with the headband. He has opinions about octopus."
+          "Look up at the Glico runner, then find Daisuke on the Dotonbori street. He's the one with the headband. He has opinions about octopus.",
+          "Everything's close. The Tombori River Cruise leaves from the Taizaemon-bashi landing just along the canal, the helicopter waits on Minatomachi River Place, west along the canal walk, and a hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {

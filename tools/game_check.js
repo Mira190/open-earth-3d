@@ -189,6 +189,30 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   }
   await shot('taxi');
 
+  // a quick start: the helicopter waits on a pad near where you start and a taxi can reach you
+  // from a kerb close by; and walk towards another pad while the helicopter stands shut down far
+  // away, and it is waiting there when you arrive
+  const quick = await p.evaluate(() => {
+    const g = window.__game, pl = g.player;
+    g.spawn();
+    g.advance(0.5);
+    const k = g.roads.place(pl.x, pl.y, 400, 1, pl.z), r = { kerb: k ? k.d : null, heli: g.heli ? Math.hypot(g.heli.st.x - pl.x, g.heli.st.y - pl.y) : null };
+    return r;
+  });
+  check(quick.heli == null || quick.heli < 450, `the helicopter waits near the start (${quick.heli == null ? 'none' : `${quick.heli.toFixed(0)} m`})`);
+  check(quick.kerb != null && quick.kerb < 150, `a kerb for a taxi near the start (${quick.kerb == null ? 'none' : `${quick.kerb.toFixed(0)} m`})`);
+  const pads = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, s = g.heli && g.heli.st, P = g.helipads || [];
+    if (!s || P.length < 2) return { none: true };
+    const far = P.slice(1).find(q => Math.hypot(q.at[0] - s.x, q.at[1] - s.y) > 1000);
+    if (!far) return { none: true };
+    const f = g.nav.stand(far.at[0] + 150, far.at[1], far.at[2] + 1, { rMax: 80 }) || { x: far.at[0], y: far.at[1], z: far.at[2] };
+    pl.x = f.x; pl.y = f.y; pl.z = f.z; // walking up to it
+    g.advance(1.5);
+    return { name: far.name, d: Math.hypot(s.x - far.at[0], s.y - far.at[1]) };
+  });
+  check(pads.none || pads.d < 1, pads.none ? 'one pad (no other to wait at)' : `the helicopter waits at ${pads.name} when you come (${pads.d.toFixed(0)} m off it)`);
+
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
   await b.close();

@@ -542,6 +542,7 @@
       "time": "live"
     },
     "helipads": [
+      {"id": "sky-pad", "name": "SHIBUYA SKY rooftop pad (game)", "at": [518, -1124, 243.8], "heading": 0},
       {
         "id": "yoyogi-pad",
         "name": "Yoyogi Park pad (game)",
@@ -1112,7 +1113,8 @@
         "talk": [
           "ようこそ渋谷へ! I'm Aoi. I guide pilgrims: people who come to stand where a story stood. This month it's ten years since a film and a game put these streets on the map.",
           "This is the real Shibuya, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.",
-          "Hachiko has sat here since 1948. A game called this square Station Square. Walk out onto the scramble when the lights change."
+          "Hachiko has sat here since 1948. A game called this square Station Square. Walk out onto the scramble when the lights change.",
+          "Want to see it from above? The lift at SKY GATE in Scramble Square, just across the road, goes up to SHIBUYA SKY, and a helicopter waits on the roof. A hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {

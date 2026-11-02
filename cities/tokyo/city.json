@@ -447,14 +447,8 @@
       "tower_"
     ],
     "start": {
-      "at": [
-        530,
-        1085
-      ],
-      "facing": [
-        632,
-        1248
-      ],
+      "at": [553, 1195],
+      "facing": [660, 1212],
       "time": "live"
     },
     "wharves": [
@@ -510,6 +504,7 @@
     "ferry_note": "Piers are from OpenStreetMap via Overture. Routes are generated through open water; the stops follow the real water-bus piers, but the timetable is not real, and the vessel names are those of Tokyo Cruise boats. Boats run at 1.5 times their real speed and wait 20 s at each pier. At a pier you can skip the wait.",
     "helipads_from_data": false,
     "helipads": [
+      {"id": "marunouchi-pad", "name": "Marunouchi Ekimae Plaza pad (game)", "at": [545, 1270, 2.9], "heading": 90},
       {
         "id": "hibiya-pad",
         "name": "Hibiya Park pad (game)",
@@ -530,10 +525,7 @@
         "id": "haruka",
         "name": "Haruka 遥",
         "role": "Station attendant 駅員",
-        "at": [
-          548,
-          1100
-        ],
+        "at": [563, 1203],
         "look": {
           "character": "R_Security_Female_01_f003_plain",
           "skin": "#f0c7aa",
@@ -773,6 +765,7 @@
         "talk": [
           "ようこそ。Welcome. You're the new surveyor? This city is rebuilt from open data: {buildings} buildings, laser-scanned terrain, the real sun.",
           "This is the Marunouchi side: red brick, built 1914, restored 2012. Behind it, the glass towers. Kenji works in one of them, on Marunouchi Naka-dori.",
+          "Everything's close. The helicopter is on the plaza's north side, the taxis wait in the rotary in front of you (a hand up at the kerb, Y), and the water buses leave from Hinode and Hamarikyu, a taxi ride south.",
           "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."
         ],
         "steps": [

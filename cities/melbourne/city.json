@@ -593,6 +593,7 @@
       "note": "An invented river shuttle, smaller than a harbour ferry."
     },
     "helipads": [
+      {"id": "birrarung-pad", "name": "Birrarung Marr pad (game)", "at": [760, -80, 3.8], "heading": 250},
       {
         "id": "city-helipad",
         "name": "Melbourne City Helipad",
@@ -787,6 +788,7 @@
           "You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings on Geoscience Australia's LiDAR terrain, under the real sun.",
           "There's no open aerial photo of Melbourne, so the ground you're standing on is drawn from the map data: streets, laneways, parks and tram tracks.",
           "There are three surveys to do, in any order. The square: Hannah, in City Square up Swanston Street, on the planning rule for sun. The river: Arjun runs the shuttle from Federation Wharf, and Sophie flies from across the water. The heights: Jun, in Birrarung Marr.",
+          "Everything's close. The shuttle leaves from Federation Wharf below the square, a helicopter waits on the lawn of Birrarung Marr just east along the river, and a hand up at the kerb (Y) on Flinders Street stops a taxi.",
           "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.",
           "Which first?"
         ],
