@@ -204,6 +204,16 @@ export async function gametest(api, ctx) {
       'a way back to the globe: the button and the map panel', globe);
     key('KeyT');
     must(!api.ui.panelKind, 'T again closes it');
+    // 8b. the map's Go buttons: straight to a named place (dry ground nearest it, or the water over a reef), then back
+    key('KeyT'); await new Promise(r => setTimeout(r, 30));
+    const go = dom('.rg-panel [data-act="goto"]');
+    if (go) {
+      const h0 = G.here(), to = G.poi(go.dataset.arg);
+      go.click(); run(0.3);
+      const d = G.dist(G.here(), to);
+      must(!api.ui.panelKind && d < 900 && G.dist(G.here(), h0) > 30, `Go on the map takes you to ${to.name}`, `${G.km(d)} from it, ${player.state}`);
+      player.teleport(h0.x, h0.north); run(0.3);
+    } else { must(true, 'no named place far enough to go to'); key('KeyT'); }
 
     // 9. light at depth, the dive slate's numbers
     const L = G.light(8);
