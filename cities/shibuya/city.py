@@ -1262,6 +1262,7 @@ CARROT, CHIYO, HANAMASA = "キャロットタワー", "千代の湯", "肉のハ
 MARINA_LL = (139.669257, 35.642788)   # Overture place ニューマリーナ (snack bar, 三軒茶屋2-14-21)
 RAIN_LL = (139.669289, 35.642574)     # Overture place Rain on the Roof (cafe, 三軒茶屋2-14-22, first floor up)
 DOCOMO = "ドコモ代々木タワー"
+GROUNDED = {"w170267549", "w87250190", "w54500467"}  # Shinjuku Toho Building, Mark City East and West
 DOCOMO_FIG = {"clock_d_m": 15.0, "clock_z_m": 150.0, "mast_top_m": 272.0}  # Citizen clock, 2002 (Tokyo tourism; TV Tokyo); 892 ft (SkyscraperPage)
 KABUKI_ST = "歌舞伎町一番街通り"
 # districts whose street fronts carry shop signs: centre (lon, lat) and radius in metres
@@ -3015,6 +3016,11 @@ def adjust_building(b, cls, g, geoms, ctx):
     if (b["name"] or "") == DOCOMO:
         # OSM maps the tower's crown as parts from 124.8 m and no part below them, so it floated over
         # Sendagaya: every part stands on the ground, as the tower does
+        for gm in geoms:
+            gm[1] = 0.0
+    if (b.get("record_id") or "").split("@")[0] in GROUNDED:
+        # the same for the Shinjuku Toho Building (its cinemas fill the floors under the hotel) and Shibuya Mark
+        # City's two wings over the Inokashira Line's station and the bus terminal (checked against photographs)
         for gm in geoms:
             gm[1] = 0.0
     return districts_building(b, cls, g, geoms, ctx)
