@@ -537,6 +537,8 @@ def main():
     # (shore.py, which pipeline/pad_discs.py shares to check and repair game.json without a rebuild)
     ground_grid = np.where(water, water_floor(sm, water, gx, gy, C.x0, C.y1), dem)
     pad_aprons(ground_grid, water, gx, gy, helipads)
+    if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
+        ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),

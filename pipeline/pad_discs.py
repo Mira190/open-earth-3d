@@ -5,8 +5,8 @@ pipeline/game_data.py writes the game's terrain grid with the modelled bottom un
 the pad's height (an apron, a disc 14 m across). A pad a city later leaves out (as Osaka and
 Kyoto left out their mapped rooftop pads, "helipads_from_data": false) would keep its disc until
 the next full game_data.py run, which needs the raw Overture data and the DEM. This rebuilds the
-water cells exactly as game_data.py does, from shore.png and the pads game.json lists now (the
-same functions), and reports every water cell that differs: a disc left by a pad that is gone,
+water cells exactly as game_data.py does, from shore.png, the pads game.json lists now and the
+city's game_ground hook (the same functions), and reports every water cell that differs: a disc left by a pad that is gone,
 or an apron a listed pad lacks. With --write it puts those cells back and rewrites game.json the
 way game_data.py writes it. Land cells are never touched.
 
@@ -46,6 +46,8 @@ def check(C, write=False):
     gx, gy = C.x0 + (gx + 0.5) * t["cell"], C.y1 - (gy + 0.5) * t["cell"]
     want = np.where(water, water_floor(from_png(shore, C.x0, C.y1, C.cfg), water, gx, gy, C.x0, C.y1), terrain)
     pad_aprons(want, water, gx, gy, G["helipads"])
+    if C.hook("game_ground"):  # the city's own levels, as game_data.py applies them (Sydney's seawall foot)
+        want = C.hook("game_ground")(want, gx, gy, water, json.load(open(os.path.join(C.out, "scene.json"))))
     q_have, q_want = np.round(terrain / t["scale"]).astype("<i2"), np.round(want / t["scale"]).astype("<i2")
     off = water & (q_have != q_want)
     high, low = off & (q_have > q_want), off & (q_have < q_want)

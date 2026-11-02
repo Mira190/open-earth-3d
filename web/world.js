@@ -258,14 +258,41 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     diffuseColor.rgb *= mix(0.9, 0.7 + 0.38 * crown * mix(0.8, 1.0, lap), near); }`);
       };
     },
+    // the Opera House's glass walls (u counts the mullions across the wall, v metres up): topaz
+    // panes on bronze mullions with a thinner one between, transoms every transom_m, each pane its
+    // own reflection; after dark the foyers light it from inside, pane by pane, the frames dark
+    topaz_glass(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uFrame: { value: lin(m.frame || '#4a3a2a') }, uTransom: { value: m.transom_m || 2.7 } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform vec3 uFrame; uniform float uTransom; float pFrame, pLitK;
+float tgHash(vec2 c) { return fract(sin(dot(c, vec2(27.17, 113.93))) * 31718.927); }`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float u = vUv.x, z = vUv.y, fu = fwidth(u), fz = fwidth(z);
+    float mull = 1.0 - smoothstep(0.035, 0.035 + fu, abs(fract(u + 0.5) - 0.5));
+    float sec = 1.0 - smoothstep(0.014, 0.014 + fu, abs(fract(u) - 0.5));
+    float tr = 1.0 - smoothstep(0.05, 0.05 + fz, abs(fract(z / uTransom + 0.5) - 0.5) * uTransom);
+    float far = smoothstep(0.12, 0.5, max(fu * 5.0, fz / uTransom * 2.0));
+    pFrame = mix(max(max(mull, 0.8 * sec), tr), 0.2, far);
+    vec2 cell = floor(vec2(u * 2.0, z / uTransom));
+    diffuseColor.rgb = mix(diffuseColor.rgb * mix(0.8 + 0.4 * tgHash(cell), 1.0, far), uFrame, pFrame);
+    pLitK = (1.0 - pFrame) * mix(0.5 + 0.5 * tgHash(cell + 3.1), 0.75, far); }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.45, pFrame);')
+          .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = mix(metalnessFactor, 0.55, pFrame);')
+          .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= pLitK;');
+      };
+    },
     // dressed stone in courses (u metres along the wall, v metres up): each course its own height
     // of block, each block its own length and tone, the joints dark; far away, the mean
+    // On a seawall (v metres above the sea) the tidal band: dark weed and wet stone from the water up to
+    // high water, drying paler above it.
     ashlar(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 } });
+        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 }, uTide: { value: m.tide ? 1 : 0 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uCourse, uBlock;
+uniform float uCourse, uBlock, uTide; float pWet;
 float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.743); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float row = floor(vUv.y / uCourse), fy = fract(vUv.y / uCourse);
@@ -275,7 +302,15 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     float joint = 1.0 - smoothstep(0.02, 0.04 + fw, min(min(fx, 1.0 - fx) * len, min(fy, 1.0 - fy) * uCourse));
     float near = 1.0 - smoothstep(0.08, 0.35, fw);
     float tone = 0.84 + 0.28 * ashHash(vec2(row, floor(x)));
-    diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near); }`);
+    diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near);
+    pWet = 0.0;
+    if (uTide > 0.5) { // high water about 0.9 m up, ragged with the weed; a pale salt line just above it
+      float hw = 0.85 + 0.12 * sin(vUv.x * 1.7) + 0.08 * sin(vUv.x * 5.3 + 1.0);
+      pWet = 1.0 - smoothstep(hw - 0.25, hw + 0.05, vUv.y);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.32, 0.34, 0.27), pWet);
+      diffuseColor.rgb *= 1.0 + 0.1 * (smoothstep(hw, hw + 0.15, vUv.y) - smoothstep(hw + 0.2, hw + 0.6, vUv.y));
+    } }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.35, pWet);');
       };
     },
     // big LED screens playing their programmes ("led_screen"): the integer part of u picks the
@@ -486,7 +521,41 @@ vec3 photoGrade(vec3 c) {
       const gr = stats.grade();
       if (gr) PG.value.set(gr[0], gr[1], gr[2], 1);
     };
+    // Where the ground is not drawn (landmarks.json "clip", rasterised at half a metre): under a
+    // landmark's paving, which it would show through, and out in front of a seawall, where on a
+    // 5 or 10 m grid it slopes up out of the water between the last point on land and the first in
+    // the water. Walking, the camera and the analyses keep the terrain as it is.
+    const CLIP = (() => {
+      const regions = LM.clip || [];
+      if (!regions.length) return null;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const c of regions) for (const [x, y] of c.ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      const res = 0.5, w = Math.ceil((x1 - x0) / res) + 2, h = Math.ceil((y1 - y0) / res) + 2;
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff';
+      for (const c of regions) {
+        g.beginPath();
+        for (const r of [c.ring].concat(c.holes || [])) r.forEach(([x, y], k) => g[k ? 'lineTo' : 'moveTo']((x - x0) / res + 1, (y1 - y) / res + 1));
+        g.fill('evenodd');
+      }
+      const tex = new THREE.CanvasTexture(cv);
+      tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) } };
+    })();
+    const clipGround = sh => {
+      if (!CLIP) return;
+      Object.assign(sh.uniforms, { uClip: CLIP.tex, uClipBox: CLIP.box });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClipWP;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvClipWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uClip; uniform vec4 uClipBox; varying vec3 vClipWP;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  { vec2 cuv = vec2((vClipWP.x - uClipBox.x) / uClipBox.z, 1.0 - (uClipBox.y + vClipWP.z) / uClipBox.w);
+    if (vClipWP.y > -0.05 && all(greaterThan(cuv, vec2(0.0))) && all(lessThan(cuv, vec2(1.0))) && texture2D(uClip, cuv).r > 0.5) discard; }`); // under the water the ground stays: the sea floor
+    };
     const gradePhoto = sh => {
+      clipGround(sh);
       sh.uniforms.uPhotoGrade = PG;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
         .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);');
@@ -756,6 +825,9 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
       if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
+      // three.js caches a program by the text of onBeforeCompile, and wrappers (streetLit) read alike
+      // across patterns: each patterned material keys its own
+      if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
     }
     // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
@@ -763,10 +835,11 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
       userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
-      // (a floodlight wraps the material's own pattern, so its source alone would not tell two programs apart)
-      ...(LM.materials[k].flood ? { customProgramCacheKey: () => `flood-${k}` } : {}),
-      defines: Object.assign({}, lmMats[k].defines) }));
-    for (const m of LM.meshes || []) {
+      defines: Object.assign({}, lmMats[k].defines),
+      // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
+      // the pattern, so the wrapper's text alone would not tell two programs apart)
+      customProgramCacheKey: LM.materials[k].flood ? () => `lm|${k}|flood` : lmMats[k].onBeforeCompile ? () => `lm|${k}|lit` : lmMats[k].customProgramCacheKey }));
+    const lmGeometry = m => {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
       const g = new THREE.BufferGeometry();
@@ -774,12 +847,42 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       g.setIndex(m.index);
       if (m.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
       g.computeVertexNormals();
+      return g;
+    };
+    // small things are drawn only within their "far" (metres): beyond it they are under a pixel
+    const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
+    for (const m of LM.meshes || []) {
+      const g = lmGeometry(m);
       const mesh = new THREE.Mesh(g, m.floodlit ? floodlit(m.material) : lmMats[m.material]);
+      if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far); }
       mesh.castShadow = mesh.receiveShadow = true;
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
+      if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
       mesh.name = m.name;
       world.add(mesh);
+    }
+    // street furniture (landmarks.json "props"): each kind's parts drawn once, instanced at every
+    // place it stands ([x, y, z, heading, scale across]), one draw call per part
+    const im4 = new THREE.Matrix4(), imQ = new THREE.Quaternion(), imP = new THREE.Vector3(), imS = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+    for (const pr of LM.props || []) {
+      const c = new THREE.Vector3();
+      for (const a of pr.at) c.add(W(a[0], a[1], a[2]));
+      c.divideScalar(pr.at.length);
+      let r = 0;
+      for (const a of pr.at) r = Math.max(r, c.distanceTo(W(a[0], a[1], a[2])));
+      for (const part of pr.parts) {
+        const im = new THREE.InstancedMesh(lmGeometry(part), part.floodlit ? floodlit(part.material) : lmMats[part.material], pr.at.length);
+        pr.at.forEach((a, i) => {
+          imP.set(a[0], a[2], -a[1]); imQ.setFromAxisAngle(UP, a[3]); imS.set(a[4] || 1, 1, a[4] || 1);
+          im.setMatrixAt(i, im4.compose(imP, imQ, imS));
+        });
+        im.computeBoundingSphere();
+        im.castShadow = im.receiveShadow = true;
+        im.name = `${pr.name}_${part.name}`;
+        farAt(im, c, r + 10, pr.far || 600);
+        world.add(im);
+      }
     }
 
     // ------------------------------------------------------------ after dark (night.js)
@@ -929,6 +1032,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
       tick(t, camera) {
         SPARKLE.t.value = SCREEN.t.value = t * 0.001;
+        if (camera) for (const o of farObjs) o.visible = camera.position.distanceToSquared(o.userData.far.c) < o.userData.far.r2;
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
         if (night && camera) night.update(camera, t / 1000);

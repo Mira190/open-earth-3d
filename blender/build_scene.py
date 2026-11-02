@@ -178,6 +178,14 @@ def build(data):
 
     counts = {"objects": 0, "triangles": 0}
 
+    # where the browser does not draw the ground (landmarks.json "clip": under paving, and in front of
+    # a seawall, where the grid slopes up out of the water), the ground here is drawn lower instead
+    clip = None
+    if LM.get("clip"):
+        import shapely
+        clip = shapely.union_all([shapely.Polygon(c["ring"], c.get("holes") or []) for c in LM["clip"]])
+        shapely.prepare(clip)
+
     # ground tiles with the aerial imagery
     for t in scene["ground"]:
         nx, ny = int((t["x1"] - t["x0"]) / cell) + 1, int((t["y1"] - t["y0"]) / cell) + 1
@@ -185,7 +193,10 @@ def build(data):
         verts, uvs, faces = [], [], []
         for j, y in enumerate(ys):
             for i, x in enumerate(xs):
-                verts.append((x, y, float(h_at(x, y))))
+                z = float(h_at(x, y))
+                if clip is not None and shapely.contains_xy(clip, x, y):
+                    z = z - 3.0 if z > 0.05 else min(z, -30.0)  # under the paving well down, so its 10 m quads do not reach out of the water
+                verts.append((x, y, z))
                 uvs.append((i / (nx - 1), j / (ny - 1)))
         for j in range(ny - 1):
             for i in range(nx - 1):
@@ -267,6 +278,24 @@ def build(data):
         mesh_object(m["name"], [tuple(v) for v in p], [tuple(f) for f in idx], mat, uvs=uvs, smooth=m["smooth"])
         counts["objects"] += 1
         counts["triangles"] += len(idx)
+
+    # street furniture the browser instances (landmarks.json "props"): each part placed at every
+    # [x, y, z, heading, scale across] and joined into one object
+    for pr in LM.get("props", []):
+        for part in pr["parts"]:
+            mt = LM["materials"][part["material"]]
+            p0 = np.asarray(part["position"], float).reshape(-1, 3)
+            f0 = np.asarray(part["index"], int).reshape(-1, 3)
+            verts, faces = [], []
+            for a in pr["at"]:
+                x, y, z, h = a[:4]
+                s, c, sn = (a[4] if len(a) > 4 else 1.0), np.cos(h), np.sin(h)
+                faces += [tuple(int(i) + len(verts) for i in f) for f in f0]
+                verts += [(x + s * (px * c - py * sn), y + s * (px * sn + py * c), z + pz) for px, py, pz in p0]
+            mat = landmark_material(f"{pr['name']}_{part['name']}", mt, None, part.get("floodlit", False))
+            mesh_object(f"{pr['name']}_{part['name']}", verts, faces, mat, smooth=part["smooth"])
+            counts["objects"] += 1
+            counts["triangles"] += len(faces)
 
     # sea level: the ground mesh sits above it on land, so one plane is all the water. It is
     # 10 cm up so that it covers the shore cells the terrain puts at exactly 0 m, which would
