@@ -1,4 +1,4 @@
-"""Covered walkways (arcades) as canopies over the street, not solid blocks.
+"""Covered walkways (arcades) and gates as canopies over the way through, not solid blocks.
 
     python pipeline/arcades.py --city kyoto       # after game_data.py; or --city all
 
@@ -17,6 +17,13 @@ passage runs through: a department store, a station). Its solid then starts at a
 (min_dm) under its measured top (soffit_dm), and it is drawn as a
 plain canopy (class "roof", style "plain": no windows, an underside; web/buildings.js),
 and walked under (web/game/nav.js reads min_dm as every solid's).
+
+A gate is the same: a gatehouse comes in the data as a building from the ground, so the
+mapped path through it (Kyoto Gosho's Gishumon and Kenshunmon, Nijo Castle's Higashi Ote-mon)
+runs into a wall, and a walled precinct has no way in. A building named as a gate (its name
+ends in 門, or its class is "gate"), no bigger than 400 m2 and not a home, shop or hotel, that
+a mapped footway crosses, starts at the height of its opening: 55% of its height, between
+2.5 and 6 m, and at least 0.6 m under its eaves (gate_soffit_dm).
 
 Rewrites web/data/<city>/buildings.json in place; running it again changes nothing.
 """
@@ -37,6 +44,20 @@ def soffit_dm(height_m):
     return round(10 * max(2.5, height_m - max(0.5, min(3.0, 0.25 * height_m))))
 
 
+def gate_soffit_dm(height_m, eave_m):
+    """A gate's opening: 55% of its height (2.5-6 m), under its eaves; None when there is no headroom."""
+    z = min(max(2.5, min(6.0, 0.55 * height_m)), eave_m - 0.6)
+    return round(10 * z) if z >= 2.2 else None
+
+
+GATE_CLASSES = {"", "yes", "roof", "gate", "shrine", "temple", "religious", "castle", "ruins", "historic"}
+
+
+def is_gate(meta, P):
+    name = (meta[0] or "").strip()
+    return (meta[1] == "gate" or name.endswith("門")) and meta[1] in GATE_CLASSES and P.area <= 400
+
+
 def mark(out_dir):
     bpath, gpath = os.path.join(out_dir, "buildings.json"), os.path.join(out_dir, "game.json")
     if not (os.path.exists(bpath) and os.path.exists(gpath)):
@@ -52,6 +73,7 @@ def mark(out_dir):
     tree = shapely.STRtree(foot)
     plain = B["styles"].index("plain") if "plain" in B.get("styles", []) else None
     n = 0
+    eaves = {id(B["s"][r[0]]): r[2] for r in B.get("r", [])}  # a roofed solid's eaves, decimetres over its base
     for s in B["s"]:
         bi, ring = s[0], s[4]
         meta = B["b"][bi]
@@ -63,7 +85,17 @@ def mark(out_dir):
                 P = P.buffer(0)
         except ValueError:
             continue
-        if P.is_empty or P.length < 40 or 2 * P.area / P.length > WIDTH_M:
+        if P.is_empty:
+            continue
+        if is_gate(meta, P) and s[2] == 0 and any(foot[i].crosses(P) for i in tree.query(P)):
+            r = eaves.get(id(s))
+            lo = gate_soffit_dm(height, (r - s[2]) / 10 if r is not None else height)
+            if lo is not None and s[3] - lo >= 5:
+                s[2] = lo
+                meta[1] = "roof"
+                n += 1
+            continue
+        if P.length < 40 or 2 * P.area / P.length > WIDTH_M:
             continue
         roof = meta[1] == "roof"
         if s[2] > 0 and not roof:
@@ -94,7 +126,7 @@ def main():
     data = os.path.join(ROOT, "web", "data")
     ids = sorted(d for d in os.listdir(data) if os.path.exists(os.path.join(data, d, "game.json"))) if a.city == "all" else [a.city]
     for cid in ids:
-        print(f"{cid}: {mark(os.path.join(data, cid))} covered walkways raised to canopies")
+        print(f"{cid}: {mark(os.path.join(data, cid))} covered walkways and gates opened to walk under")
 
 
 if __name__ == "__main__":

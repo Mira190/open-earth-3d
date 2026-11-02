@@ -205,6 +205,9 @@ window.OENav = (function () {
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
     for (const s of D.B.s) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
+    // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
+    const PH = OEBuildings.POST / 2;
+    for (const s of D.B.s) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
     for (const [k, l] of solid) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;
       for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);

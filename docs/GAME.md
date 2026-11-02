@@ -402,6 +402,24 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Piers and decks:** piers are 2.2 m decks, or level with the quay they
     meet where that is higher, so stepping down onto a pier is never a step you
     can't climb back. The bridge deck is a walkable strip.
+  - **Strips meet their banks:** a deck drawn from a mapped outline (an
+    Amsterdam canal bridge) can end a metre or four short of the quay the 5 m
+    water mask draws, or below the ground where the bank rises to it. Each end
+    over the water is carried on along the axis to the first firm ground within
+    12 m, no steeper than 1 in 4, and drawn there in the deck's stone; where the
+    ground under a deck stands up to a step above it, the deck is raised to it,
+    so a walker there is on the deck (Torensluis). The Magere Brug, Leidsebrug,
+    Halvemaansbrug, Brug 72 and Torensluis are crossed down their middles.
+  - **Covered walkways are canopies** (`pipeline/arcades.py`): an arcade over a
+    pavement comes in the open data as a long thin building from the ground
+    (Kyoto's Shijo, Kawaramachi and Shinkyogoku arcades, Osaka's shotengai). A
+    footprint at most 5 m wide on average, with a mapped footway inside along
+    most of its length, mapped as a roof or an unnamed PLATEAU footprint no
+    taller than 20 m, starts a quarter of its height (0.5-3 m) under its top,
+    and is drawn without windows and with an underside. Walled in by them, the
+    blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 23
+    in Kyoto, 76 in Osaka, 46 in Shibuya, 19 in Tokyo and a few elsewhere are
+    canopies now.
   - **Wharves:** each wharf has a landing, the nearest place on foot to its
     terminal. You board from there where the mapped terminal is out on the
     water (Circular Quay's wharves, Central Pier 7).
@@ -416,6 +434,13 @@ pipeline writes. The only city-specific code is landmark geometry in
       boats.
     - Viaducts (an expressway, several levels up) keep their mapped height.
       Stubs that end over the water at nothing are cut back to the bank.
+    - A deck the data's levels make climb steeper than 1 in 3.3 (outside
+      steps) is graded evenly from end to end; a line along a strip that the
+      data puts up to 4 m past its edge, far below it, is on the strip's level
+      beside it. Together these join the Harbour Bridge cycleway: mapped a metre
+      outside the deck, its approach was given the ground's height plus a level
+      and dropped 30 m in 23 m off the deck; it now runs from the deck down to
+      its north end at Milsons Point.
     - The crowd and the traffic keep to the decks, the sun meter sees their
       shade, and you can walk them (but not the expressways). In Osaka this is
       what joins the city across its rivers: from the start on the Dotonbori,
@@ -833,6 +858,24 @@ drop or into the water.
 - **The crowd and the traffic** walk and drive the same data: the crowd now keeps
   to the footways where a walker can stand (cut where they run into a building),
   and the traffic doesn't turn into a road a car doesn't fit along.
+  - A walker keeps 0.6-1.8 m left of its line, and up to 1.5 m more to dodge.
+    Every third step it looks beside itself and 1.5 m ahead for a wall at that
+    offset (`clear`, nav's room for a body 0.3 m round), and takes the nearest
+    offset with room, in towards the line or past it; its offset moves there no
+    faster than a sidestep, so it closes in on a facade and never jumps. In the
+    game check 2 to 4 walkers in 2,000-3,000 are in a wall at a time.
+  - A car looks along its way ahead every half second (every frame on a road
+    route.js flags) for a wall at its lane: where there is room down the middle
+    of the street it keeps to the middle; where there isn't, it brakes as for a
+    car stopped there, and after a second and a half stopped it turns round, or
+    out of sight leaves the traffic for elsewhere. A car on a flagged road when
+    the flags arrive (a second or two after the start) leaves it at once if it is
+    out of sight. In Shibuya the share of car-time inside a wall fell from 2.5%
+    to 0.5% (`tools/traffic_check.js`, which now counts it).
+- **Helipads on roofs:** a pad the data puts on the ground inside a building's
+  footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
+  clear above for the rotor, else on the nearest open ground with clear sky
+  within 120 m (`game.js`; `pipeline/game_data.py` puts new data on the roof).
 
 We looked at what navigates a 3D world in a browser before building this:
 Recast/Detour (zlib licence) and its WebAssembly build recast-navigation-js

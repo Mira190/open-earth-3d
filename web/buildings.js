@@ -16,6 +16,37 @@
 // vertex shader).
 'use strict';
 window.OEBuildings = (function () {
+  // the posts under a canopy (a solid of class "roof" lifted off the ground, pipeline/arcades.py: a
+  // covered walkway or a gate): [[x, y], ...] in metres, 0.25 m in from its outline. A long thin one (an
+  // arcade) stands on posts every 6 m along its edges, anything else (a gate) on its corners. nav.js
+  // walks round the same posts
+  const POST = 0.3; // a post's side (m)
+  function canopyPosts(s, meta) {
+    if (!(s[2] > 0) || !meta || meta[1] !== 'roof') return [];
+    const r = s[4], n = r.length / 2, out = [];
+    let area = 0, per = 0;
+    for (let k = 0; k < n; k++) {
+      const j = (k + 1) % n, ax = r[2 * k] / 10, ay = r[2 * k + 1] / 10, bx = r[2 * j] / 10, by = r[2 * j + 1] / 10;
+      area += ax * by - bx * ay; per += Math.hypot(bx - ax, by - ay);
+    }
+    const sg = area > 0 ? 1 : -1, thin = per > 40 && Math.abs(area) / per <= 2.5; // (mean width = 2 area / perimeter)
+    const P = k => [r[2 * ((k + n) % n)] / 10, r[2 * ((k + n) % n) + 1] / 10];
+    const inward = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l * sg, dx / l * sg]; };
+    let last = null;
+    const add = (x, y) => { if (!last || Math.hypot(x - last[0], y - last[1]) > 3) { out.push([x, y]); last = [x, y]; } };
+    for (let k = 0; k < n; k++) {
+      const a = P(k - 1), b = P(k), c = P(k + 1), n0 = inward(a, b), n1 = inward(b, c);
+      let nx = n0[0] + n1[0], ny = n0[1] + n1[1];
+      const l = Math.hypot(nx, ny) || 1;
+      add(b[0] + nx / l * 0.25, b[1] + ny / l * 0.25);
+      if (thin) { // along the edge to the next corner
+        const L = Math.hypot(c[0] - b[0], c[1] - b[1]), m = Math.floor(L / 6);
+        for (let i = 1; i < m; i++) { const t = i / m; add(b[0] + (c[0] - b[0]) * t + n1[0] * 0.25, b[1] + (c[1] - b[1]) * t + n1[1] * 0.25); }
+      }
+    }
+    if (out.length > 1 && Math.hypot(out[0][0] - last[0], out[0][1] - last[1]) <= 3) out.pop();
+    return out;
+  }
   const STYLES = ['plain', 'house', 'terrace', 'apartment', 'office', 'glass', 'heritage', 'retail', 'industrial', 'civic',
     'machiya', 'mixed', 'stone', 'haussmann', 'grachtenpand'];
   const SI = Object.fromEntries(STYLES.map((s, i) => [s, i]));
@@ -291,6 +322,14 @@ window.OEBuildings = (function () {
     }
 
     // a flat polygon (contour + holes, flat x, y metres) at height z, facing up
+    function post(x, y, z0, z1, bi) { // an upright square post, POST on a side
+      const P = BI[bi], h = POST / 2, c = [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]];
+      for (let k = 0; k < 4; k++) {
+        const [ax, ay] = c[k], [bx, by] = c[(k + 1) % 4], nx = (by - ay) / POST, ny = -(bx - ax) / POST, base = buf.n;
+        for (const [px, py, pz] of [[ax, ay, z0], [bx, by, z0], [bx, by, z1], [ax, ay, z1]]) buf.v(px, py, pz, nx, ny, 0, P.wall, px + py, pz - z0, K_TRIM * 16 + P.si, P.storey, P.ground, P.u, 1, 0, P.mat, bi, P.code);
+        buf.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      }
+    }
     function cap(rings, z, bi, colour, kind, flags, down = false) { // (down: a soffit, facing the street below)
       const P = BI[bi], contour = [], holes = [];
       rings.forEach((r, i) => {
@@ -401,7 +440,10 @@ window.OEBuildings = (function () {
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
       if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
-      if (s[2] > 0 && meta[bi][1] === 'roof') cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true); // a canopy over the street (pipeline/arcades.py): its underside
+      if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
+        cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
+        for (const [x, y] of canopyPosts(s, meta[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
+      }
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
       const par = PARAPET[P.style] && s[3] - s[2] >= 50 ? PARAPET[P.style] : 0;
@@ -1075,5 +1117,5 @@ window.OEBuildings = (function () {
     return mat;
   }
 
-  return { create, STYLES, guessStyle };
+  return { create, STYLES, guessStyle, canopyPosts, POST };
 })();

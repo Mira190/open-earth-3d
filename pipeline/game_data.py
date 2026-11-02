@@ -608,7 +608,7 @@ def main():
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
-    print(f"{arcades.mark(C.out)} covered walkways raised to canopies (buildings.json)")  # pipeline/arcades.py
+    print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     write_index()
 
 
