@@ -49,6 +49,19 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
 
+  // the crowd keeps out of the walls: walkers whose body (0.3 m round, knee to head) is in a building or a
+  // landmark, against those walking (a footway along a facade narrows their offset from its line)
+  const crowdWalls = await p.evaluate(() => {
+    const g = window.__game, nav = g.nav;
+    let n = 0, inWall = 0;
+    for (let k = 0; k < 6; k++) {
+      g.advance(0.5);
+      for (const q of g.crowd.P) if (q.line >= 0 && q.state === 'walk') { n++; if (!nav.room(q.x, q.y, q.z, 0.3)) inWall++; }
+    }
+    return { n, inWall };
+  });
+  check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
+
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping, within a metre of its
   // face, at the level of the quay, not a cell short of it at the terrain grid's bank
   const quay = await p.evaluate(() => {
