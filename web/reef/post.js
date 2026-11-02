@@ -13,7 +13,11 @@ export function createPost(renderer, scene, camera, env) {
   const scenePass = pass(scene, camera);
   const color = scenePass.getTextureNode('output');
   const depth = scenePass.getTextureNode('depth');
-  const bloomPass = bloom(color, 0.35, 0.55, 0.92);
+  // a texel past the half float's range is infinite (or NaN, where an infinity met a zero), and the
+  // bloom's blur carries it across the frame, which then shows black: the bloom sees every finite
+  // colour as it is (a half float's squares sum to under 1.3e10) and nothing for the rest
+  const finite = Fn(() => select(dot(color.rgb, color.rgb).lessThan(1e12), color, vec4(0)))();
+  const bloomPass = bloom(finite, 0.35, 0.55, 0.92);
 
   const STEPS = 14;
   const shafts = Fn(() => {
