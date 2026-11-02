@@ -360,7 +360,8 @@ window.OEJunctions = (function () {
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       j.demand[a.phase === 0 ? 1 : 0] = 1;
     }
-    let frame = 0, ver = 0; // (ver: counts the signals' changes, for the heads)
+    let frame = 0;
+    const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
     const NONE = [0, 0, 0];
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
     // the signals (a call for its phase) and by cars giving way to it
@@ -470,15 +471,16 @@ window.OEJunctions = (function () {
         const wasWalk = j.walkNow;
         if (j.st === 'g') {
           if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || j.t >= j.green[j.ph] + CALL)) {
-            j.st = 'y'; j.t = 0; ver++;
+            j.st = 'y'; j.t = 0; dirty.add(j);
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
           }
-        } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; ver++; }
-        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; ver++; }
+        } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
+        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); }
         j.walkNow = !(j.call && j.t > j.green[j.ph] - 5);
-        if (j.walkNow !== wasWalk) ver++; // (the walk signals: the walk is over)
+        if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
-      if (heads) heads.update(ver);
+      if (heads) heads.update(dirty);
+      dirty.clear();
     }
     // where the crowd's footways (fnet: actors.network) cross the arms' roads at the junctions with
     // signals, from the junction's node out to just past the stop line: per footway line, [{ s
@@ -725,43 +727,54 @@ window.OEJunctions = (function () {
     // a lamp's glow is seen from in front of it: towards the eye, faded out beside it and gone behind
     const face = lanterns.map(L2 => [Math.sin(L2.o.h), Math.cos(L2.o.h)]), lit = new Array(lanterns.length).fill(null);
     let eyeAt = null, tick = 0;
-    let lastVer = -1, lastBlink = null;
-    function update(v = -2) {
-      let changed = false;
-      const blink = (performance.now() % 1000) < 550, fresh = v !== lastVer || v === -2;
-      lastVer = v;
-      if (fresh) for (let i = 0; i < lamp.length; i++) {
+    // each junction's lamps, arrows and walk signals, so a change re-lights only its own
+    const byJ = new Map(), of = j => { if (!byJ.has(j)) byJ.set(j, { L: [], A: [], P: [] }); return byJ.get(j); };
+    lamp.forEach((a, i) => of(a.j).L.push(i));
+    arrows.forEach((A, i) => of(A.o.a.j).A.push(i));
+    peds.forEach((o, i) => of(o.a.j).P.push(i));
+    const flashing = j => j.st === 'g' && j.walkNow === false; // (its walk is over, its red figures flash)
+    let first = true, lastBlink = null;
+    // dirty: the junctions whose signals changed (all of them the first time)
+    function update(dirty = null) {
+      let changed = false, ch2 = false;
+      const blink = (performance.now() % 1000) < 550, all = first || !dirty;
+      first = false;
+      const each = (fn, key, also = null) => { // fn(i) for the lamps of `key` at the junctions changed (and those also() picks)
+        if (all) { for (const g of byJ.values()) for (const i of g[key]) fn(i); return; }
+        for (const j of dirty) { const g = byJ.get(j); if (g) for (const i of g[key]) fn(i); }
+        if (also) for (const [j, g] of byJ) if (!dirty.has(j) && also(j)) for (const i of g[key]) fn(i);
+      };
+      each(i => {
         const s = light(lamp[i]) || 'r';
-        if (shown[i] === s) continue;
+        if (shown[i] === s) return;
         shown[i] = s; changed = true;
         for (const k of ['r', 'y', 'g']) { const C = s === k ? LIT[k] : DARK[k]; lensM[order[k]].setColorAt(i, c3.setRGB(C[0], C[1], C[2])); }
         lensM[order[s]].getMatrixAt(i, mm);
         lp.setFromMatrixPosition(mm);
         gpos[3 * i] = lp.x; gpos[3 * i + 1] = lp.y; gpos[3 * i + 2] = lp.z;
         lit[i] = LIT[s];
-      }
+      }, 'L');
       if (changed) {
         for (const M of lensM) if (M.instanceColor) M.instanceColor.needsUpdate = true;
         glowGeo.attributes.position.needsUpdate = true;
       }
       // the arrows and the walk signals (the red figure flashes while the walk is over but the
       // arm's traffic is still held)
-      let ch2 = false;
-      if (fresh) for (let i = 0; i < arrows.length; i++) {
+      if (arrows.length) each(i => {
         const s = arrow(arrows[i].o.a);
-        if (aShown[i] === s) continue;
+        if (aShown[i] === s) return;
         aShown[i] = s; ch2 = true;
         for (const k of ['r', 'y', 'g']) { const C = s === k ? LIT[k] : DARK[k]; arrL[order[k]].setColorAt(i, c3.setRGB(C[0], C[1], C[2])); }
-      }
+      }, 'A');
       if (ch2) for (const M of arrL) M.instanceColor.needsUpdate = true;
       ch2 = false;
-      if (fresh || blink !== lastBlink) for (let i = 0; i < peds.length; i++) {
+      if (peds.length) each(i => {
         const a = peds[i].a, w = walk(a), held = !w && a.j.ph !== a.phase && a.j.st === 'g', s = w ? 'g' : held && !blink ? 'o' : 'r';
-        if (pShown[i] === s) continue;
+        if (pShown[i] === s) return;
         pShown[i] = s; ch2 = true;
         const R = s === 'r' ? WALK.r : WALK.off, G = s === 'g' ? WALK.g : WALK.off;
         pedL[0].setColorAt(i, c3.setRGB(R[0], R[1], R[2])); pedL[1].setColorAt(i, c3.setRGB(G[0], G[1], G[2]));
-      }
+      }, 'P', blink !== lastBlink ? flashing : null);
       if (ch2) for (const M of pedL) M.instanceColor.needsUpdate = true;
       lastBlink = blink;
       if (eyeAt && (changed || ++tick % 4 === 0)) { // (in plan: x east, y north = -z; a few times a second will do)
