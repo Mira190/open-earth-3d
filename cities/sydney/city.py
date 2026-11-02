@@ -78,10 +78,10 @@ R_SHELL = 75.2
 DECK_ZONES = [(0.5, "parapet"), (3.5, "cycleway"), (0.4, "barrier"), (10.0, "rail"), (0.6, "barrier"), (20.4, "lanes6"),
               (0.6, "barrier"), (6.8, "lanes2"), (0.6, "barrier"), (4.9, "footway"), (0.5, "parapet")]
 MATERIALS = {
-    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.6, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 0.75},
+    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.6, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 1.0},
     "tile_edge": {"color": "#d6ccb8", "roughness": 0.7, "metalness": 0.0},
     # topaz glass on bronze mullions, lit warm from the foyers after dark
-    "glass": {"color": "#22170f", "roughness": 0.05, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.28,
+    "glass": {"color": "#22170f", "roughness": 0.05, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.5,
               "pattern": "topaz_glass", "frame": "#4a3a2a", "transom_m": 2.7},
     "mullion": {"color": "#4d3c2b", "roughness": 0.5, "metalness": 0.7},
     # reconstituted granite (u, v metres): the podium's panels; treads with a pale nosing; risers
@@ -120,7 +120,7 @@ MATERIALS = {
     "pylon": {"color": "#202224", "roughness": 0.5, "metalness": 0.2},
     "panel": {"color": "#e8e4da", "roughness": 0.6, "metalness": 0.0, "emissive": "#fff6e8", "glow": 0.5},
     "colonnade": {"color": "#a58b78", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0]},
-    "opening": {"color": "#16110d", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.3},
+    "opening": {"color": "#16110d", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.45},
 }
 SYDNEY_TOWER = "Sydney Tower"  # the turret part's name; the shaft and mast are unnamed parts above 200 m beside it
 # The shells, hall by hall from south to north, one per ridge OSM maps (the restaurant's two share

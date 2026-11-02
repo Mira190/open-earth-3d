@@ -178,6 +178,14 @@ def build(data):
 
     counts = {"objects": 0, "triangles": 0}
 
+    # where the browser does not draw the ground (landmarks.json "clip": under paving, and in front of
+    # a seawall, where the grid slopes up out of the water), the ground here is drawn lower instead
+    clip = None
+    if LM.get("clip"):
+        import shapely
+        clip = shapely.union_all([shapely.Polygon(c["ring"], c.get("holes") or []) for c in LM["clip"]])
+        shapely.prepare(clip)
+
     # ground tiles with the aerial imagery
     for t in scene["ground"]:
         nx, ny = int((t["x1"] - t["x0"]) / cell) + 1, int((t["y1"] - t["y0"]) / cell) + 1
@@ -185,7 +193,10 @@ def build(data):
         verts, uvs, faces = [], [], []
         for j, y in enumerate(ys):
             for i, x in enumerate(xs):
-                verts.append((x, y, float(h_at(x, y))))
+                z = float(h_at(x, y))
+                if clip is not None and shapely.contains_xy(clip, x, y):
+                    z = z - 3.0 if z > 0.05 else min(z, -30.0)  # under the paving well down, so its 10 m quads do not reach out of the water
+                verts.append((x, y, z))
                 uvs.append((i / (nx - 1), j / (ny - 1)))
         for j in range(ny - 1):
             for i in range(nx - 1):
