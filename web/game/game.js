@@ -749,13 +749,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // RIDE_T to reach you and, where it can be, out of sight (behind you, or farther than you can see)
   function rideFromAround(kind, pickup, dest) {
     let best = bestFrom(pickup);
-    // none can reach that kerb in time (a dead end the near side of the street faces into, a long way
-    // round): the kerb across the street too, as a ride app moves the pick-up
-    if ((!best || best.plan.T > RIDE_T[1] + 5) && !roadNet.L[pickup.line].ow) {
-      const other = bestFrom(Object.assign({}, pickup, { dir: -pickup.dir }));
-      if (other && (!best || other.plan.T < best.plan.T)) best = other;
+    // none can reach that kerb in time (a dead end the near side of the street faces into, a stub no
+    // road feeds): the kerb across the street and the streets round it too, as a ride app moves the
+    // pick-up (a few seconds' allowance for each metre further from yours)
+    if (!best || best.plan.T > RIDE_T[1] + 5) {
+      const alts = roadNet.L[pickup.line].ow ? [] : [Object.assign({}, pickup, { dir: -pickup.dir })];
+      for (const [dx, dy] of [[25, 0], [-25, 0], [0, 25], [0, -25]]) {
+        const q = roads.place(pickup.x + dx, pickup.y + dy, 30, keepSign, pickup.z);
+        if (q && q.line !== pickup.line && !alts.some(a => a.line === q.line)) alts.push(q);
+      }
+      for (const q of alts) {
+        const b = bestFrom(q), walk = Math.hypot(q.x - pickup.x, q.y - pickup.y) / 3;
+        if (b && (!best || b.plan.T + walk < best.plan.T)) best = b;
+      }
     }
-    return best && best.plan.T < 45 ? newRide(kind, best.pl, best.pickup, best.plan, dest) : null;
+    // (and a slow one rather than none, the app saying so)
+    return best && best.plan.T < 120 ? newRide(kind, best.pl, best.pickup, best.plan, dest) : null;
   }
   function bestFrom(pickup) {
     const fx = Math.sin(cam.yaw), fy = Math.cos(cam.yaw); // the way the camera looks, on the map
@@ -821,7 +830,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
     if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
-    const walk = Math.hypot(pickup.x - player.x, pickup.y - player.y);
+    const walk = Math.hypot(o.pickup.x - player.x, o.pickup.y - player.y); // (the pick-up it was given, which may be across the street or round the corner)
     H.toast(`<b>${o.name}</b> is on the way in a ${rideCar(o)}, ${o.plate}: about ${fmtSec(eta(o))}.${walk > 25 ? ` Meet at the pick-up point, ${Math.round(walk)} m from you.` : ''}`);
   }
   function cancelRide() {

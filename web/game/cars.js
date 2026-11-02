@@ -634,7 +634,7 @@ window.OECars = (function () {
     // places from which a car drives to place b in d0..d1 metres by road (what a ride coming for you
     // sets out from): the network searched backwards from b, and on each road that reaches the
     // band, the point that far out. [{ line, s, dir, x, y, z, d }], up to max of them
-    function behind(b, d0, d1, max = 40) {
+    function behind(b, d0, d1, max = 40, ways = into) {
       const out = [], lb = L[b.line];
       const put = (li, s, dir, d) => { if (out.length >= max) return; net.at(li, s, tmp); out.push({ line: li, s, dir, x: tmp.x, y: tmp.y, z: tmp.z, d }); };
       const mid = (d0 + d1) / 2;
@@ -647,15 +647,18 @@ window.OECars = (function () {
         for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[m][0]) m = i;
         const [d, v] = heap[m]; heap.splice(m, 1);
         if (d > (dist.get(v) ?? Infinity) || d > d1) continue;
-        for (const [u, li, fwd] of into[v]) { // a car on li going from u to v (fwd: its way along li) arrives at v
+        for (const [u, li, fwd] of ways[v]) { // a car on li going from u to v (fwd: its way along li) arrives at v
           if (li === b.line) continue;
           const len = L[li].len, nd = d + len;
           if (nd >= d0 && d < d1 && len > 8) { const x = Math.min(len - 2, Math.max(2, Math.min(mid, d1) - d)); put(li, fwd > 0 ? len - x : x, fwd, d + x); }
           if (nd < (dist.get(u) ?? Infinity) && nd < d1) { dist.set(u, nd); heap.push([nd, u]); }
         }
       }
+      // (where the one-way streets leave next to none, along any street, as route() does)
+      if (ways === into && out.length < 3) { if (!anyInto) { anyInto = all.map(() => []); all.forEach((l, a) => { for (const [b2, i, d] of l) anyInto[b2].push([a, i, d]); }); } return out.concat(behind(b, d0, d1, max - out.length, anyInto)); }
       return out;
     }
+    let anyInto = null;
     // on from the end of a route for a while, turning at random at the junctions (a car driving off)
     // (out.nodes: the junctions it comes up to, as a route's)
     function onward(rt, length = 220) {
