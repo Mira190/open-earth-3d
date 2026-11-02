@@ -428,12 +428,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 1);
     return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
   }
-  // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of you)
+  // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
+  // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   function kerbNear(x, y, z, ahead = 9) {
     const pl = roads.place(x, y, 250, keepSign, z);
     if (!pl) return null;
-    pl.s = Math.max(3, Math.min(roadNet.L[pl.line].len - 3, pl.s + ahead * pl.dir));
-    return { pl, pose: kerbPose(pl) };
+    const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
+    const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
+    let first = null;
+    for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
+      const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
+      first = first || { pl: q, pose };
+      if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+      let hit = false;
+      const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
+      posts.near(pose.x, pose.y, half + 1, p => {
+        const dx = p.x - pose.x, dy = p.y - pose.y;
+        if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
+      }, pose.z);
+      if (!hit) return { pl: q, pose };
+    }
+    return first;
   }
   // where a car is on the roads, going the way it faces
   function placeOf(st) {

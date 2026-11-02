@@ -532,8 +532,11 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Never through anything:** a car never moves into another car, your car,
     a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
     if the way stays blocked. One caught up with another gets out without going
-    into a third. None is put on the road on top of your car or a ride. The
-    crowd keeps out of your car and a ride as it does the traffic's.
+    into a third; two still caught after 6 s part (out of sight, one leaves the
+    traffic). None is put on the road on top of your car or a ride, and your
+    car is brought to a kerb clear of the traffic, the posts and the trees.
+    Your car meets another as a box against a box, corners included. The crowd
+    keeps out of your car and a ride as it does the traffic's.
   - **The crowd and the walls:** a footway that runs into a building (an arcade,
     a station's concourse; the model's buildings are solid) ends at its wall,
     and a walker stepping aside keeps in from a wall beside the footway. Before
@@ -542,9 +545,11 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
   shares, modelled in Blender (see [the vehicles](#the-vehicles)).
   - **Ferries keep apart:** under way a vessel keeps to the starboard side of
-    its course, as far as the water allows (the whole hull and 2 m round it
-    over open water, worked out every 10 m of each leg), so two on the same
-    course pass port to port. A berth takes one vessel at a time: one bound for
+    its course by up to its beam, as far as the water allows (the whole hull
+    and half a metre round it over open water, worked out every 10 m of each
+    leg), so two on the same course pass port to port, close to the banks in a
+    river as narrow as the Dotonbori. Where the end of a leg left the hull over
+    the bank, the vessel berths short of it. A berth takes one vessel at a time: one bound for
     a busy berth waits off it, one closing on another ahead on the same leg
     keeps its distance, and none starts out alongside another. Before this,
     Sydney's Sirius and Charlotte lay in the same berth at Circular Quay. If their

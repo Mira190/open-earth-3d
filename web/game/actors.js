@@ -709,8 +709,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // where a car on line `line` at s, driving dir, sits: its lane, on the keep side of the line,
     // and off metres farther left (a swing out round a car at the kerb)
+    // (square to the road over a few metres, a chord, not to the piece the car is on: at a sharp bend the
+    // lane turns the corner, where square to each piece it would jump across it, into the other lane's car)
+    const ta = {}, tb = {};
     function lanePos(line, s, dir, out, off = 0) {
+      const len = net.L[line].len;
+      net.at(line, Math.max(0, s - 3), ta); net.at(line, Math.min(len, s + 3), tb);
       net.at(line, s, out);
+      const cx = tb.x - ta.x, cy = tb.y - ta.y, ch = Math.hypot(cx, cy);
+      if (ch > 1) { out.hx = cx / ch; out.hy = cy / ch; }
       out.hx *= dir; out.hy *= dir;
       const lane = LANE * side + off;
       out.x -= out.hy * lane; out.y += out.hx * lane;
@@ -948,7 +955,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
         const caught = c.caught || (c.caught = new Set());
         caught.clear();
-        const tangled = c.v < 0.5 ? overlaps(c, c.x, c.y, fx, fy, 0, 0, caught) : 0, behind = tangled > 0 && ahead, cg = tangled > 0 ? caught : null;
+        const tangled = c.v < 0.5 ? overlaps(c, c.x, c.y, fx, fy, 0, 0, caught) : 0, cg = tangled > 0 ? caught : null;
+        // still caught after a few seconds (two that each wait for the other): out of sight it leaves
+        // the traffic (its slot comes back elsewhere), in sight it drives on out of the other, as long
+        // as that takes it into nothing else
+        c.tangleT = tangled > 0 ? (c.tangleT || 0) + dt : 0;
+        if (c.tangleT > 6 && Math.hypot(c.x - cx, c.y - cy) > 140) { releaseAll(c); c.line = -1; c.tangleT = 0; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
+        const free = c.tangleT > 6, behind = tangled > 0 && ahead && !free;
         const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9);
         c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;
@@ -974,7 +987,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (turn) { const d1 = overlaps(c, tmp.x, tmp.y, hx1, hy1, tangled > 0 ? 0 : 0.5, tangled > 0 ? 0 : 0.2, null, cg); held = d1 > 0 && (!(d1 < tangled) || fresh > 0); }
         else if (moves) { // (caught up side by side, creeping on gets no deeper: that will do)
           const d1 = overlaps(c, tmp.x, tmp.y, hx1, hy1, 0.15, 0.05, null, cg), f1 = fresh, d0 = d1 > 0 ? overlaps(c, c.x, c.y, hx0, hy0, 0.15, 0.05, null, cg) : 0;
-          held = d1 > 0 && (tangled > 0 ? d1 > d0 + 1e-4 || f1 > fresh + 1e-4 : d1 >= d0 - 1e-4);
+          held = d1 > 0 && (tangled > 0 ? (d1 > d0 + 1e-4 && !free) || f1 > fresh + 1e-4 : d1 >= d0 - 1e-4);
         }
         if (!held && (turn || moves)) { const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1); held = d1 > 0 && d1 >= peopleIn(c, c.x, c.y, hx0, hy0) - 1e-4; }
         if (behind && !turn) held = true;
@@ -986,10 +999,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         if (held) c.v = 0;
         else {
+          const was = [c.line, c.s, c.dir, c.x, c.y, c.z, c.h];
           if (turn) c.nx = undefined;
           if (line === c.line && dir !== c.dir) releaseAll(c); // turned round
           c.line = line; c.s = s; c.dir = dir;
           c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = h;
+          // and, whatever the step was, one that took it deeper into another car is taken back (one parting
+          // from a car it has long been caught with: deeper into any other)
+          const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1;
+          if (f1 > 0 && f1 > (overlaps(c, was[3], was[4], Math.sin(was[6]), Math.cos(was[6]), 0, 0, null, kn), free ? fresh : depth) + 1e-3) {
+            [c.line, c.s, c.dir, c.x, c.y, c.z, c.h] = was;
+            c.v = 0;
+          }
         }
         c.stuck = c.v < 0.1 && (byCar || held) ? c.stuck + dt : 0;
         q.setFromAxisAngle(up, Math.PI - c.h);

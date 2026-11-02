@@ -3,9 +3,11 @@
 //   static:  lamp posts, trees and benches standing in a carriageway (the road as the game draws
 //            it: each road line at its class's width), NPCs inside a building, a carriageway, a
 //            post or a bench
-//   running: traffic cars inside each other, inside a lamp post or a tree trunk, inside your
-//            parked car or a ride; people inside a car, a post, a bench or a building wall; NPCs
-//            inside a car; ferries inside each other or over land; the helicopter on its pad
+//   running: with you on foot and a taxi hailed, then at the wheel of your car stopped in the
+//            traffic's lane, then driving on: traffic cars inside each other, a lamp post or a tree
+//            trunk, your car or a ride, or a building's wall; people inside a car, a post, a bench or
+//            a wall (where the game lets nobody stand); NPCs inside a car; ferries inside each other
+//            or over land; the helicopter on its pad
 //   driven:  your car driven at a lamp post and at a tree, and you walked into a post: how far
 //            each gets into it
 //   seated:  every crowd character (a ride's driver is one) in the driver's and the rear seats of
@@ -122,6 +124,7 @@ const TOL = {
     };
     // a ferry's hull, length and beam, from its meshes (+z is its length)
     H.hull = v => {
+      if (v.len && v.beam) return { l: v.len, b: v.beam }; // the game's own (vehicles.json, at the city's length)
       if (v.hullSize) return v.hullSize;
       const r = v.g.rotation.clone(), q = v.g.position.clone(), bx = new THREE.Box3(), bb = new THREE.Box3();
       v.g.rotation.set(0, 0, 0); v.g.position.set(0, 0, 0); v.g.updateMatrixWorld(true);
@@ -209,10 +212,14 @@ const TOL = {
       for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
       const st = c.D.st, pl = g.roads.place(st.x, st.y, 30, g.KEEP === 'left' ? 1 : -1, st.z);
       if (!pl) return;
-      const q = {};
-      g.roadNet.at(pl.line, pl.s, q);
-      const hx = q.hx * pl.dir, hy = q.hy * pl.dir, k = OECars.LANE * (g.KEEP === 'left' ? 1 : -1);
-      Object.assign(st, { x: q.x - hy * k, y: q.y + hx * k, z: q.z, h: Math.atan2(hx, hy), vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
+      const q = {}, k = OECars.LANE * (g.KEEP === 'left' ? 1 : -1), L = g.roadNet.L[pl.line].len;
+      for (const d of [0, 8, -8, 16, -16, 24, -24, 32, -32]) { // (where no traffic car is: you can't drive into the lane through one)
+        g.roadNet.at(pl.line, Math.max(2, Math.min(L - 2, pl.s + d)), q);
+        const hx = q.hx * pl.dir, hy = q.hy * pl.dir, x = q.x - hy * k, y = q.y + hx * k, h = Math.atan2(hx, hy);
+        if (g.cars.footprint(x, y, q.z, h, c.C.half, c.C.hw, 0.5) > 0) continue;
+        Object.assign(st, { x, y, z: q.z, h, vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
+        break;
+      }
     });
     const keys = phase === 'driving on' ? ['KeyW'] : [];
     let carCar0 = run.carCar, carMine0 = run.carMine;
@@ -276,7 +283,7 @@ const TOL = {
           const d = H.boxCircle(H.benchBox(bn), q.x, q.y, 0.2);
           if (d > TOL.peoplePost.deep) { o.peoplePost++; H.note('walker in bench', d, { x: +q.x.toFixed(1), y: +q.y.toFixed(1) }); }
         }
-        if (q.state === 'walk' && H.inWall(q.x, q.y, q.z, 0.2 - TOL.peopleWall.deep)) { o.peopleWall++; H.note('walker in wall', 1, { x: +q.x.toFixed(1), y: +q.y.toFixed(1), z: +q.z.toFixed(1) }); }
+        if (q.state === 'walk' && g.nav.solid(q.x, q.y, q.z, 0.2 - TOL.peopleWall.deep)) { o.peopleWall++; H.note('walker in wall', 1, { x: +q.x.toFixed(1), y: +q.y.toFixed(1), z: +q.z.toFixed(1) }); }
       }
       // NPCs in the traffic's way
       for (const n of g.npcs) for (const a of boxes) {

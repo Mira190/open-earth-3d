@@ -507,14 +507,15 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     const colours = I ? livery(I, cfg.livery || (style.hull && { hull: style.hull, band: style.trim, cabin: style.upper, trim: style.upper, flag: style.flag })) : null;
     let shared = null; // materials shared by every vessel in the city's livery
     // how far to starboard of its course a vessel can keep under way (below): at points every 10 m
-    // along each leg, each way, the most, up to three quarters of the beam, that keeps the whole hull
-    // and 2 m round it over open water (not a bank, not a pier), and the least of that within a
-    // hull's length either side, so it never swings out and back in short
+    // along each leg, each way, the most, up to its beam, that keeps the whole hull and half a metre
+    // round it over open water (not a bank, not a pier), and the least of that within a hull's length
+    // either side, so it never swings out and back in short (two meeting in a river as narrow as
+    // Osaka's Dotonbori pass close to its banks)
     const sc = I && style.length_m ? style.length_m / I.length_m : 1, hullL = I ? I.length_m * sc : style.length_m || 36, hullB = I ? I.beam_m * sc : style.beam_m || 10;
     const open = (x, y) => nav.isWater(x, y) && nav.surfaceAt(x, y) === -Infinity;
     const hullClear = (x, y, fx, fy) => {
       for (const u of [-0.5, -0.25, 0, 0.25, 0.5]) for (const w of [-1, 0, 1]) {
-        const a = u * hullL + Math.sign(u) * 2, b = w * (hullB / 2 + 2);
+        const a = u * hullL + Math.sign(u) * 0.5, b = w * (hullB / 2 + 0.5);
         if (!open(x + fx * a + fy * b, y + fy * a - fx * b)) return false;
       }
       return true;
@@ -524,7 +525,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       for (let i = 0; i < n; i++) {
         legPoint(leg, rev, leg.len * i / (n - 1), q);
         const fx = Math.sin(q.h), fy = Math.cos(q.h);
-        for (let o = Math.floor(0.75 * hullB); o > 0; o--) if (hullClear(q.x + fy * o, q.y - fx * o, fx, fy)) { raw[i] = o; break; }
+        for (let o = Math.floor(hullB * 2) / 2; o > 0; o -= 0.5) if (hullClear(q.x + fy * o, q.y - fx * o, fx, fy)) { raw[i] = o; break; }
       }
       const out = new Float32Array(n), k = Math.ceil(hullL / 10);
       for (let i = 0; i < n; i++) { let m = Infinity; for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) m = Math.min(m, raw[j]); out[i] = m; }
@@ -553,6 +554,23 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
       Object.assign(l, { p, cum, len: cum[cum.length - 1] });
     }
+    // a leg too narrow for two to pass all along it (a river like the Dotonbori) has a passing place:
+    // where the water is widest for two, s from its `from` end; null where they can pass anywhere
+    function passing(l) {
+      const a = l.off[0], b = l.off[1], n = a.length, k = Math.ceil(hullL / 10), need = hullB + 0.5;
+      let best = -1, at = null, narrow = false;
+      for (let i = k; i < n - k; i++) {
+        const sum = a[i] + b[n - 1 - i];
+        if (sum < need) narrow = true;
+        if (sum > best) { best = sum; at = i; }
+      }
+      return narrow && best >= need ? l.len * at / (n - 1) : null;
+    }
+    // on such a leg, where a vessel waits: at the passing place for a busy berth, or for one coming the
+    // other way when it is the nearer of the two to the passing place (the other goes on through it);
+    // and none sets out onto it while one coming the other way is past the passing place
+    const passAt = (c, s = c.leg.pass) => (c.rev ? c.leg.len - s : s);
+    const oncoming = (v, c) => vessels.filter(o => o !== v && o.phase === 'sail' && o.cycle[o.ci].leg === c.leg && o.cycle[o.ci].rev !== c.rev);
     const keepOff = (v, c) => {
       const o = c.leg.off[c.rev ? 1 : 0], f = Math.max(0, Math.min(1, v.s / c.leg.len)) * (o.length - 1), i = Math.min(o.length - 2, Math.floor(f));
       return o[i] + (o[i + 1] - o[i]) * (f - i);
@@ -565,7 +583,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
         return { from: l.from, to: l.to, p, cum, len: cum[cum.length - 1] };
       });
-      for (const l of legs) { trim(l); l.off = [offsets(l, false), offsets(l, true)]; }
+      for (const l of legs) { trim(l); l.off = [offsets(l, false), offsets(l, true)]; l.pass = passing(l); }
       const cycle = [];
       for (const l of legs) cycle.push({ leg: l, rev: false });
       for (let i = legs.length - 1; i >= 0; i--) cycle.push({ leg: legs[i], rev: true });
@@ -586,9 +604,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       });
     }
     // Under way a vessel keeps to the starboard side of its course, as the rule of the road has it in
-    // a channel, by up to three quarters of its beam, as far as its course keeps clear of the banks
-    // (game.json: the leg's least clearance), easing back onto the course at either end; so two that
-    // meet on the same course pass port to port. A berth takes one vessel at a time: one bound for a
+    // a channel, by up to its beam, as far as the water allows (offsets, above), easing back onto the
+    // course at either end; so two that meet on the same course pass port to port. A berth takes one vessel at a time: one bound for a
     // busy berth waits off it, and one closing on another ahead on the same leg keeps its distance.
     const destOf = v => { const c = v.cycle[v.ci]; return c.rev ? c.leg.from : c.leg.to; };
     const fromOf = v => { const c = v.cycle[v.ci]; return c.rev ? c.leg.to : c.leg.from; };
@@ -603,7 +620,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       legPoint(c.leg, c.rev, v.phase === 'dwell' ? 0 : v.s, tmp);
       const manual = v.helm && v.helm.manual;
       if (!manual) {
-        const off = v.phase === 'dwell' ? 0 : keepOff(v, c) * smooth(25, 90, Math.min(v.s, c.leg.len - v.s));
+        const off = v.phase === 'dwell' ? 0 : keepOff(v, c) * smooth(v.len / 2, v.len * 2, Math.min(v.s, c.leg.len - v.s)); // (out to it within two lengths of a berth)
         v.x = tmp.x + Math.cos(tmp.h) * off; v.y = tmp.y - Math.sin(tmp.h) * off; // (starboard: to the right of the heading)
       }
       let dh = angDiff(tmp.h, v.h);
@@ -617,11 +634,19 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         if (v.phase === 'dwell') {
           v.t -= step;
           v.speed = 0;
-          if (v.t <= 0) { v.phase = 'sail'; v.s = 0; v.events = (v.events || []).concat([{ type: 'depart', v }]); }
+          const nc = v.cycle[v.ci];
+          if (v.t <= 0 && nc.leg.pass != null && oncoming(v, nc).some(o => o.s > passAt(o.cycle[o.ci]) - 1)) v.t = 0.5; // wait for it to come in
+          else if (v.t <= 0) { v.phase = 'sail'; v.s = 0; v.events = (v.events || []).concat([{ type: 'depart', v }]); }
         } else if (v.helm && v.helm.manual) {
           helmStep(v, dt);
         } else {
-          const left = c.leg.len - v.s, wait = busy(v, destOf(v)), stopAt = wait ? left - v.len - 45 : left;
+          const left = c.leg.len - v.s;
+          let wait = busy(v, destOf(v)), stopAt = wait ? left - v.len - 45 : left;
+          if (c.leg.pass != null && v.s < passAt(c) + 1) { // a narrow leg, short of its passing place or at it
+            const here = Math.max(0, passAt(c) - v.s);
+            if (wait) stopAt = here;
+            else if (oncoming(v, c).some(o => { const there = passAt(o.cycle[o.ci]) - o.s; return there > 1 && (here < there || (here === there && vessels.indexOf(o) < vessels.indexOf(v))); })) { wait = true; stopAt = here; }
+          }
           let target = Math.min(speed, Math.sqrt(2 * A * Math.max(0, stopAt)) + (wait ? 0 : 0.6), Math.sqrt(2 * A * v.s) + 1.5);
           if (wait && stopAt < 1) target = 0;
           for (const o of vessels) { // another ahead on the same leg the same way

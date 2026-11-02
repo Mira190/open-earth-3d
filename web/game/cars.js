@@ -472,13 +472,6 @@ window.OECars = (function () {
           what = 'car';
           if (b.onHit) b.onHit();
         }
-        for (const q of env.posts || []) { // lamp posts and tree trunks ({ x, y, z, r, kind }): solid
-          if (Math.abs(q.z - st.z) > 2) continue;
-          const ddx = cx + dx - q.x, ddy = cy + dy - q.y, d = Math.hypot(ddx, ddy), min = rad + q.r;
-          if (d >= min) continue;
-          dx += d > 1e-6 ? ddx * (min - d) / d : -fx * (min - d); dy += d > 1e-6 ? ddy * (min - d) / d : -fy * (min - d);
-          what = q.kind || 'post';
-        }
         for (const q of env.people || []) {
           const ddx = cx + dx - q.x, ddy = cy + dy - q.y, d = Math.hypot(ddx, ddy), min = rad + 0.3;
           if (d >= min || Math.abs(q.z - st.z) > 1.5) continue;
@@ -490,6 +483,38 @@ window.OECars = (function () {
           st.x += dx; st.y += dy; nx += dx; ny += dy; moved = true;
           st.r += clamp(o * (dx * fy - dy * fx) * 0.6, -0.3, 0.3); // a hit off the centre turns it
         }
+      }
+      // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
+      // from the nearest point of the box to its centre
+      for (const q of env.posts || []) {
+        if (Math.abs(q.z - st.z) > 2) continue;
+        const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
+        const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
+        let pu, pw, m;
+        if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
+        else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
+        const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
+        st.x += px; st.y += py; nx += px; ny += py; moved = true;
+        what = q.kind || 'post';
+      }
+      // and the corners the three circles leave out: the body as a box against each other car's box,
+      // pushed out along the axis it is least deep on (the separating axes)
+      for (const b of env.boxes || []) {
+        if (b.ref === st || st.z > b.z + b.top || st.z + 1.5 < b.z) continue;
+        const ax = [[fx, fy], [-fy, fx], [Math.sin(b.h), Math.cos(b.h)], [-Math.cos(b.h), Math.sin(b.h)]];
+        const dx = b.x - st.x, dy = b.y - st.y;
+        let best = Infinity, ux = 0, uy = 0;
+        for (const [px, py] of ax) {
+          const ra = C.half * Math.abs(fx * px + fy * py) + C.hw * Math.abs(-fy * px + fx * py);
+          const rb = b.hl * Math.abs(ax[2][0] * px + ax[2][1] * py) + b.hw * Math.abs(ax[3][0] * px + ax[3][1] * py);
+          const d = dx * px + dy * py, o = ra + rb - Math.abs(d);
+          if (o <= 0) { best = 0; break; }
+          if (o < best) { best = o; ux = -Math.sign(d || 1) * px; uy = -Math.sign(d || 1) * py; }
+        }
+        if (!(best > 0.01)) continue;
+        st.x += ux * best; st.y += uy * best; nx += ux * best; ny += uy * best; moved = true;
+        what = 'car';
+        if (b.onHit) b.onHit();
       }
       if (!moved) return;
       const l = Math.hypot(nx, ny) || 1;
