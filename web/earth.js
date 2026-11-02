@@ -519,6 +519,7 @@ window.OEEarth = (function () {
     composer.addPass(new THREE.RenderPass(scene, camera));
     // without the pass, a stand-in keeps the director's strength settings harmless
     const bloom = q.bloom ? new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.88, 1.5) : { strength: 0, enabled: false, dispose() {} };
+    if (q.bloom && window.OELens) OELens.tameBloom(bloom); // no black frame from an overflowing highlight (lens.js)
     if (q.bloom) composer.addPass(bloom);
     const lens = new THREE.ShaderPass(LENS());
     composer.addPass(lens);

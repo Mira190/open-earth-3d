@@ -94,5 +94,19 @@ window.OELens = (function () {
     return { u: tmp.x * 0.5 + 0.5, v: tmp.y * 0.5 + 0.5, front: tmp.z < 1 && sunDir.dot(camera.getWorldDirection(new THREE.Vector3())) > 0 };
   }
 
-  return { shader, sunOnScreen };
+  // a pixel brighter than a half-float target holds (the sun's glint on glass or water) is stored
+  // as infinite; the bloom's blur carries it across the frame and the tone curve turns it into NaN,
+  // so the whole frame goes black for that one camera position. The bloom's bright pass keeps to a
+  // finite ceiling just under the half float's largest value and drops NaN: every finite highlight
+  // blooms as before, and an overflowing one can no longer black the frame.
+  function tameBloom(bloom) {
+    const m = bloom && bloom.materialHighPassFilter, end = 'gl_FragColor = mix( outputColor, texel, alpha );';
+    if (!m || !m.fragmentShader.includes(end)) return;
+    m.fragmentShader = m.fragmentShader.replace(end, `${end}
+			gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 60000.0 ) );
+			if ( any( isnan( gl_FragColor ) ) ) gl_FragColor = vec4( 0.0 );`);
+    m.needsUpdate = true;
+  }
+
+  return { shader, sunOnScreen, tameBloom };
 })();
