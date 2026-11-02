@@ -632,13 +632,13 @@
       "title": "Port Phillip, St Kilda to Brighton",
       "text": "{buildings} buildings from OpenStreetMap via Overture Maps along 7 km of shore, on Geoscience Australia's 5 m LiDAR terrain. No openly licensed aerial photo covers the bayside, so the ground is drawn from the open map data.",
       "cam": [
-        -3300,
-        -2300,
-        2400
+        1300,
+        -3600,
+        1000
       ],
       "tgt": [
-        300,
-        500,
+        -100,
+        -300,
         0
       ],
       "date": [
