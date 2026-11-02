@@ -14,24 +14,30 @@ The same sources as the other Tokyo maps:
 
 ## Landmarks (`cities/asakusa/city.py`)
 
-Built in code and placed on OpenStreetMap's footprints, whose plain solids are hidden:
+Built in code and placed on OpenStreetMap's footprints, whose plain solids are hidden. Sizes from
+Senso-ji's own guide (senso-ji.jp/guide), eaves and roof extents measured from PLATEAU's survey:
 
-| Landmark | Published figures used | Source |
+| Landmark | Published | Measured from PLATEAU (Taito City 2025, LOD2) |
 |---|---|---|
-| Kaminarimon 雷門 | 11.7 m; the lantern 3.9 m tall, 3.3 m across, about 700 kg; 雷門 front, 風雷神門 back | Senso-ji; OpenStreetMap |
-| Hozomon 宝蔵門 | 21.7 m; the 小舟町 lantern 3.75 m; straw sandals 4.5 m | Senso-ji; OpenStreetMap |
-| Five-storey pagoda 五重塔 | 53.32 m to the finial | Senso-ji; OpenStreetMap |
-| Main hall 本堂 | 29.4 m | OpenStreetMap |
-| Tokyo Skytree | 634 m; a triangle 68 m a side at the foot, round by about 320 m; Tembo Deck 340-350 m, Galleria 445-450 m | Tobu Tower Skytree; Britannica |
-| Flamme d'Or | about 44 m long, on the 44.1 m hall | photographs; OpenStreetMap |
+| Kaminarimon 雷門 (1960), 切妻造 八脚門, clay 本瓦 | 11.4 m across, 69.3 m² (about 6.1 m deep), 11.7 m; lantern 3.9 m, 3.3 m across, 700 kg, 雷門 front, 風雷神門 back; Fujin 2.18 m (right), Raijin 2.09 m (left); Tenryu and Kinryu behind | eaves 8.2 m, roof 12.5 × 17.5 m, top 12.4 m |
+| Hozomon 宝蔵門 (1964), 五間三戸 重層門, 入母屋, titanium tiles (2007) | 21.1 m across (upper 20.0 m), 173.6 m² a floor (about 8.2 m deep), 21.7 m; Nio 5.45 m; 小舟町 lantern 3.75 m; bronze lanterns 2.75 m; sandals 4.5 × 1.5 m | lower eaves 9.2 m, roof 19.4 × 31.8 m |
+| Five-storey pagoda 五重塔 (1973), titanium tiles (2017) | 53.32 m above the ground: a 5 m podium and the 48.32 m tower, its sorin 15.07 m | (LOD2 too coarse to use) |
+| Main hall 本堂 (1958), 和様三手先 入母屋, titanium tiles (2010) | 34.5 m across, 32.7 m deep, 29.4 m to the ridge; 志ん橋 lantern 4.5 m, 3.5 m across | eaves 12.9 m, the porch's 10.1 m, roof 52 × 49 m, top 29.3 m |
+| Tokyo Skytree | 634 m; a triangle 68 m a side at the foot, round by about 320 m; Tembo Deck 340-350 m, Galleria 445-450 m | |
+| Flamme d'Or | about 44 m long, on the 44.1 m hall (OpenStreetMap) | |
 
-The approach's axis is measured from the Kaminarimon's footprint to the main hall's. PLATEAU's
-roof survey stops short of the ridges' ornaments and the finial (it gives the pagoda 37.9 m), so
-the published heights are used. Roof proportions, the brackets and the Skytree's diagrid are
-approximations, not surveys.
+Bay counts, eave overhangs, roof curvature, the statues' colours and the incense burner are not
+published; they follow the gate and hall types and photographs.
 
-After dark the Skytree is lit in Iki's pale blue and Miyabi's purple on alternate days (material
-`emissive_cycle`, read by `web/world.js`), the temple is floodlit from below and the lanterns glow.
+### Open data for these buildings, and what was used
+
+| Source | What it has here | Licence | Used |
+|---|---|---|---|
+| PLATEAU Taito City 2025, 3D Tiles LOD2/LOD3/LOD4 (`13106_taito-ku_city_2025_citygml_1_op_bldg_3dtiles_lod3_no_texture`) | Senso-ji's four structures at LOD2 (LOD3 and LOD4 tiles fall back to LOD2 here): real roof outlines, eaves and ridge heights | CC BY 4.0 (PLATEAU site policy) | yes: `pipeline/plateau_lod3.py` measures eaves and roof extents |
+| PLATEAU Tokyo 23 wards LOD2 vector tiles (indigo-lab) | one height per footprint | CC BY 4.0 / MIT | yes: every building's height |
+| Tokyo Metropolitan Government's 23-ward airborne LiDAR, 2024 (G空間情報センター `tokyopc-23ku-2024`), at least 16 points/m² and a 0.25 m DSM | the finest measure of the roofs' curves and the pagoda's taper | CC BY 4.0 | not yet: the next step for roof curvature |
+| OpenStreetMap (via Overture) | footprints, the names, 11.7 m, 21.7 m, 53.32 m, 29.4 m | ODbL | yes: anchors |
+| Sketchfab photogrammetry ("Asakusa Kaminarimon/Thunder Gate", "Japan Sensoji") | full scans | not stated; download needs an account | no |
 
 ## Game
 
