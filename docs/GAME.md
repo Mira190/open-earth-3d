@@ -595,16 +595,17 @@ Sydney's traffic stood still a third of the time.
 
 `tools/traffic_check.js <city>` measures the flow headless at three places (the
 game's own frame loop stopped, so a run repeats exactly). Sydney before and after,
-150 cars over 112 s at each place:
+150 cars over 112 s at each place, with the roads no car can get along (route.js)
+left out of the traffic:
 
 | | Before | After |
 |---|---|---|
-| Standing still | 34% of the time | 19% |
-| Jammed (still 30 s or more) | 8.9% | 0.3% |
-| Mean speed | 22 km/h | 27 km/h |
-| Longest still | 150 s | 45 s |
-| Turned round in the road | 0.7 per car-minute | 0.2 |
-| Red lights run, crossing movements let in together | (no lights) | 0, 0 |
+| Standing still | 39% of the time | 25% |
+| Jammed (still 30 s or more) | 13.4% | 2.5% |
+| Mean speed | 18 km/h | 23 km/h |
+| Longest still | 150 s | 111 s |
+| Turned round in the road | 0.9 per car-minute | 0.2 |
+| Red lights run | (no lights) | 0 |
 
 The traffic's update costs about 1.6 ms a frame for 150 cars on the software
 renderer here, against 0.5 ms before; the low quality tier runs a third of the
