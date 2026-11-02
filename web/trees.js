@@ -96,7 +96,7 @@ vAO = tc.r;`;
       if (wood) while (k < weights.length - 1 && (r -= woodW[k]) > 0) k++;
       else while (k < weights.length - 1 && (r -= weights[k][1]) > 0) k++;
       which[i] = k; count[k]++;
-      if (wood) far[i] = 0.75 + 0.01 * hash(x + 7, y); // a wood's trees step down sooner: there are many of them
+      if (wood) far[i] = 0.6 + 0.01 * hash(x + 7, y); // a wood's trees step down sooner (full within 80 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
       const s = wood ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
         : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
@@ -104,7 +104,10 @@ vAO = tc.r;`;
       m4.compose(at.set(x, z - 0.05, -y), q, sc.set(s, s * (0.92 + 0.16 * hash(x + 1, y)), s));
       m4.toArray(M, 16 * i);
       pos[3 * i] = x; pos[3 * i + 1] = z + 4; pos[3 * i + 2] = -y;
-      c.setHSL(0, 0, 0.86 + 0.24 * hash(x, y + 1)).toArray(tint, 3 * i);
+      // each tree its own shade; a wood's deeper and more varied, as the crowns of a wood are in a photograph
+      if (wood) { const l = 0.68 + 0.36 * hash(x, y + 1), w = hash(x + 2, y); c.setRGB(l * (0.93 + 0.1 * w), l, l * (0.98 - 0.08 * w)); }
+      else c.setHSL(0, 0, 0.86 + 0.24 * hash(x, y + 1));
+      c.toArray(tint, 3 * i);
     }
     // per species and distance, one instanced mesh per material
     const meshes = names.map((sp, k) => [0, 1, 2].map(lod => {
@@ -137,7 +140,7 @@ vAO = tc.r;`;
         if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // left out, or not drawn where the game has no ground for it
         const dx = pos[3 * i] - eye.x, dy = pos[3 * i + 1] - eye.y, dz = pos[3 * i + 2] - eye.z, d2 = (dx * dx + dy * dy + dz * dz) / (far[i] * far[i]);
         // beyond WOOD_M a wood is the photo's canopy (world.js woodsFloor): its trees thin out towards it
-        if (far[i] < 1 && d2 * far[i] * far[i] > WOOD_M * WOOD_M * (0.55 + 45 * (far[i] - 0.75)) ** 2) continue;
+        if (far[i] < 1 && d2 * far[i] * far[i] > WOOD_M * WOOD_M * (0.55 + 45 * (far[i] - 0.6)) ** 2) continue;
         const parts = meshes[which[i]][d2 < n0 ? 0 : d2 < n1 ? 1 : 2];
         for (const im of parts) {
           const j = im.count++;

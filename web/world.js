@@ -712,7 +712,9 @@ vec3 woodsFloor(vec3 c) {
   float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
   float blue = smoothstep(0.005, 0.03, c.b - c.g) * smoothstep(0.01, 0.04, c.b - c.r);
   c = mix(c, vec3(L) * vec3(1.06, 1.0, 0.9), blue * m.a * 0.85 * (1.0 - smoothstep(150.0, 700.0, d)));
-  float fade = smoothstep(${small ? '300.0, 650.0' : '380.0, 950.0'}, d); // as far as the trees go (trees.js WOOD_M)
+  // as far as the trees go (trees.js WOOD_M), and only from among them: from above, the gaps between their
+  // crowns are the lower canopy and the undergrowth, which the photo has
+  float fade = max(smoothstep(${small ? '300.0, 650.0' : '380.0, 950.0'}, d), smoothstep(30.0, 90.0, cameraPosition.y - vWoodWP.y));
   // further off, the photo's canopy stands for the trees: its teal turned to the leaves' green at its own brightness
   L = dot(c, vec3(0.2126, 0.7152, 0.0722));
   c = mix(c, vec3(0.62, 1.0, 0.34) * L * 1.05, m.r * fade * 0.8);

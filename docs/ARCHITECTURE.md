@@ -278,7 +278,7 @@ The views switch in place, without reloading the page.
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
     cut-out leaf shadows and jacarandas that flower in season; the trees
     planted from a wood's canopy after them, sized by their measured height,
-    without palms, stepping down sooner, thinning out to 1.1 km (700 m and a
+    without palms, stepping down sooner (full within 80 m), thinning out to 1.1 km (700 m and a
     third of them on a small device) where the photo's canopy takes over;
   - under a wood's canopy (`woods.png`), the ground near the camera drawn as a
     wood's floor (bare earth, leaf litter, moss, a compacted path) instead of
@@ -599,7 +599,9 @@ thousands (issue #54). `pipeline/woods.py` fixes this for every city:
   Paris garden's stabilised sand and gravel (`FLOOR` in `woods.py`, or
   `trees.floor` in `city.json`), darker under a tall canopy, with a compacted gravel and
   earth path where a mapped footway runs under the trees. Within the distance
-  the trees are drawn to; beyond, the photo's canopy, turned green.
+  the trees are drawn to, and only with the camera among the trees (below
+  about 60 m above the floor); from further or higher, the photo's canopy,
+  turned green, which shows the undergrowth between the crowns.
 - **Shadows in a park:** the photos' shadows on a park's gravel are skylight
   blue, the same teal; inside a wood or park (`woods.png`'s alpha) the shader
   takes their colour out near the camera, where the scene casts its own.
