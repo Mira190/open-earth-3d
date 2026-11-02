@@ -91,27 +91,50 @@ window.OENav = (function () {
     let tri = 0; // the last cell's triangle: its slope, rise over run
     // fine walking levels a city lays over the grid (game.json "patches": paving with its walls and
     // steps, every half metre, which the grid would smooth into slopes): the cell's own level, not
-    // interpolated, so that a wall stays a wall and a riser a step
-    const patches = (G.patches || []).map(p => {
-      const b = Uint8Array.from(atob(p.data), c => c.charCodeAt(0));
-      return Object.assign({}, p, { z: new Int16Array(b.buffer, 0, p.nx * p.ny), x1: p.x0 + p.nx * p.cell, y1: p.y0 + p.ny * p.cell });
-    });
+    // interpolated, so that a wall stays a wall and a riser a step. Where a slab stands over the
+    // paving (a forecourt over a colonnade), "upper" holds the slab's level: the ground is the slab,
+    // and the floor under it is walked too (floorAt, groundBelow)
+    const int16 = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const patches = (G.patches || []).map(p => Object.assign({}, p, {
+      z: int16(p.data), up: p.upper ? Object.assign({}, p.upper, { z: int16(p.upper.data) }) : null, x1: p.x0 + p.nx * p.cell, y1: p.y0 + p.ny * p.cell }));
+    // the patch's levels at (x, y): [the floor, the slab over it or null], or null off the patches
     function patchAt(x, y) {
       for (const p of patches) {
         if (x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
-        const v = p.z[Math.floor((y - p.y0) / p.cell) * p.nx + Math.floor((x - p.x0) / p.cell)];
-        if (v !== -32768) return v / 100;
+        const c = Math.floor((x - p.x0) / p.cell), r = Math.floor((y - p.y0) / p.cell), v = p.z[r * p.nx + c];
+        if (v === -32768) continue;
+        const U = p.up, uc = U ? c - U.i0 : -1, ur = U ? r - U.j0 : -1;
+        const u = U && uc >= 0 && ur >= 0 && uc < U.nx && ur < U.ny ? U.z[ur * U.nx + uc] : -32768;
+        return [v / 100, u === -32768 ? null : u / 100];
       }
       return null;
     }
+    // the floor under a slab at (x, y), or null where there is none
+    function under(x, y) {
+      if (!patches.length) return null;
+      const h = patchAt(x, y);
+      return h && h[1] !== null ? h[0] : null;
+    }
     function terrain(x, y) {
-      if (patches.length) { const h = patchAt(x, y); if (h !== null) { tri = 0; return h; } }
+      if (patches.length) { const h = patchAt(x, y); if (h !== null) { tri = 0; return h[1] !== null ? h[1] : h[0]; } }
       const c = Math.max(0, Math.min(T.nx - 1.001, (x - T.x0) / T.cell)), r = Math.max(0, Math.min(T.ny - 1.001, (T.y1 - y) / T.cell));
       const c0 = c | 0, r0 = r | 0, fc = c - c0, fr = r - r0, i = r0 * T.nx + c0, D = T.data;
       const a = D[i], b = D[i + 1], d = D[i + T.nx], e = D[i + T.nx + 1];
       if (fc + fr <= 1) { tri = Math.hypot(b - a, d - a) / T.cell; return a + fc * (b - a) + fr * (d - a); }
       tri = Math.hypot(e - d, e - b) / T.cell;
       return e + (1 - fc) * (d - e) + (1 - fr) * (b - e);
+    }
+    // the ground at (x, y) as seen from height z: under a slab that stands above z, the floor under it
+    function terrainBelow(x, y, z) { const t = terrain(x, y), u = under(x, y); return u !== null && t > z ? u : t; }
+    // the underside of a slab over a walker at height z at (x, y) (the patch's "clear_m" over its floor), or null
+    function ceilingAt(x, y, z) {
+      if (!patches.length) return null;
+      for (const p of patches) {
+        if (!p.up || x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
+        const h = patchAt(x, y);
+        return h && h[1] !== null && h[1] > z + 0.5 ? h[0] + (p.clear_m || 2.2) : null;
+      }
+      return null;
     }
     const slope = (x, y) => (terrain(x, y), tri);
     // land beside the water: there the ground drawn goes down the bank (a quay wall, a moat's
@@ -298,7 +321,7 @@ window.OENav = (function () {
     function floorAt(x, y, z) {
       let best = null, kind = '';
       const take = (h, k) => { if (h <= z + STEP && (best === null || h > best)) { best = h; kind = k; } };
-      if (!offGround(x, y)) take(terrain(x, y), 'ground');
+      if (!offGround(x, y)) { take(terrain(x, y), 'ground'); const u = under(x, y); if (u !== null) take(u, 'ground'); }
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
       for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
@@ -355,6 +378,8 @@ window.OENav = (function () {
     // lowest height a flying or floating body may occupy at (x, y): what is directly below
     function groundBelow(x, y, z) {
       let g = isWater(x, y) ? 0 : Math.max(0, terrain(x, y));
+      const u = under(x, y);
+      if (u !== null && g > z + 0.5) g = Math.max(0, u); // under a slab
       const bt = col.topAt(x, y, Infinity, BUILDING);
       if (bt > g) g = bt;
       const k = cellOf(x, y);
@@ -420,7 +445,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, DROP, R, BUILDING, LANDMARK, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, DROP, R, BUILDING, LANDMARK, movers: null, posts: null };
     return api;
   }
   return { create };

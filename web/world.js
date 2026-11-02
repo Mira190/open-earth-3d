@@ -650,7 +650,7 @@ vec3 photoGrade(vec3 c) {
         const g = cv.getContext('2d', { willReadFrequently: true });
         g.drawImage(img, 0, 0);
         Q = OEQuays.create({ px: g.getImageData(0, 0, sh.nx, sh.ny).data, nx: sh.nx, ny: sh.ny, cell: sh.cell, x0: sh.x0, y1: sh.y1 },
-          D.Tfine || T, { band: 1.5 * T.cell, skip: CLIP && CLIP.near });
+          D.Tfine || T, { band: 1.5 * T.cell, skip: CLIP && CLIP.near, faces: LM.seawalls || [] });
         if (!Q.quayPixels) Q = null;
       } catch (e) { console.warn('quays: none drawn', e); Q = null; }
     }

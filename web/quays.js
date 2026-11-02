@@ -13,19 +13,21 @@
 //     level instead of sloping down to it (raise(), for the ground drawn and for walking);
 //   - marks the band out in the water where the ground is not drawn above the water (the mask
 //     the ground shader reads, world.js clipGround);
-//   - says where a walker stops: a few tens of centimetres short of the edge (water()).
+//   - says where a walker stops: with its toes at the coping's edge, EDGE short of the face as
+//     drawn (water(), measured to the walls drawn here and to a landmark's own, `faces`).
 // A wall is left out where the land behind is higher than MAX_TOP (a hillside down to a moat
 // is not one wall) and where a landmark draws its own (skip(x, y), Sydney's Bennelong Point).
 // Frame: local x east, y north; heights in metres above the water (0).
 'use strict';
 window.OEQuays = (function () {
-  const MIN_TOP = 0.4, MAX_TOP = 9.0, EDGE = 0.3; // m; a walker keeps EDGE back from the wall's face
+  const MIN_TOP = 0.4, MAX_TOP = 9.0, EDGE = 0.15; // m; a walker's centre stops EDGE back from the wall's face (its toes at the coping's edge)
   const COPING = { w: 0.9, h: 0.22, lip: 0.06, up: 0.1 }, OUT = 0.2; // depth back from the face, thickness, overhang, height above the ground
 
   // shore: {px: RGBA bytes of shore.png, nx, ny, cell, x0, y1, floor_m}; fine: the finest terrain grid
   // there is (the walls' heights come from it); band: how far out in the water the coarsest grid
-  // drawn reaches past the shoreline (1.5 of its cells); skip(x, y): a landmark's own seawall there
-  function create(shore, fine, { band = 15, skip = null } = {}) {
+  // drawn reaches past the shoreline (1.5 of its cells); skip(x, y): a landmark's own seawall there;
+  // faces: that seawall's face as the landmark draws it, polylines [[x, y], ...] with the water on their right
+  function create(shore, fine, { band = 15, skip = null, faces = [] } = {}) {
     const { px, nx, ny, cell: cs, x0, y1 } = shore, N = nx * ny;
     const D = new Float32Array(N), built = new Uint8Array(N), D0 = D;
     for (let i = 0; i < N; i++) {
@@ -305,14 +307,56 @@ window.OEQuays = (function () {
       return tex;
     }
 
-    // a walker by a quay is in the water from EDGE short of the wall's face; null away from the quays
+    // the faces as drawn, in 4 m buckets: the walls' runs here (their points stand on the face) and a
+    // landmark's own; each segment [ax, ay, bx, by, nx, ny] with n its normal out over the water
+    let segs = null;
+    const SB = 4, skey = (i, j) => i * 65536 + j;
+    function faceSegments() {
+      if (segs) return segs;
+      segs = new Map();
+      const add = (a, b) => {
+        const ex = b[0] - a[0], ey = b[1] - a[1], L = Math.hypot(ex, ey);
+        if (L < 1e-3) return;
+        const s = [a[0], a[1], b[0], b[1], ey / L, -ex / L];
+        const i0 = Math.floor(Math.min(a[0], b[0]) / SB) - 1, i1 = Math.floor(Math.max(a[0], b[0]) / SB) + 1;
+        const j0 = Math.floor(Math.min(a[1], b[1]) / SB) - 1, j1 = Math.floor(Math.max(a[1], b[1]) / SB) + 1;
+        for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+          const k = skey(i, j);
+          if (!segs.has(k)) segs.set(k, []);
+          segs.get(k).push(s);
+        }
+      };
+      for (const run of walls()) for (let k = 0; k < run.length - 1; k++) add(run[k], run[k + 1]); // (the water on the right)
+      for (const f of faces) for (let k = 0; k < f.length - 1; k++) add(f[k], f[k + 1]);
+      return segs;
+    }
+    // the signed distance from (x, y) to the nearest face drawn within a few metres (positive out over
+    // the water), or null where none is drawn
+    function face(x, y) {
+      const list = faceSegments().get(skey(Math.floor(x / SB), Math.floor(y / SB)));
+      if (!list) return null;
+      let best = Infinity, sd = null;
+      for (const [ax, ay, bx, by, nx_, ny_] of list) {
+        const ex = bx - ax, ey = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / (ex * ex + ey * ey)));
+        const px_ = ax + ex * t, py_ = ay + ey * t, d = Math.hypot(x - px_, y - py_);
+        if (d < best - 1e-6) {
+          best = d;
+          // the side: by the segment's normal (at a corner, beyond the segment's end, by the offset's own direction)
+          sd = ((x - px_) * nx_ + (y - py_) * ny_) >= 0 ? d : -d;
+        }
+      }
+      return best <= SB ? sd : null;
+    }
+    // a walker by a quay is in the water from EDGE short of the wall's face as drawn; null away from the quays
     function water(x, y) {
       const k = pix(x, y);
+      const f = face(x, y);
+      if (f !== null && (k >= 0 && zone[k] || Math.abs(f) < 1.5)) return f > -EDGE;
       if (k < 0 || !zone[k]) return null;
       return dist(x, y) > -EDGE;
     }
 
-    return { dist, topAt, raise, walls, geometries, maskTexture, water, box: [x0, y1, nx * cs, ny * cs], quayPixels };
+    return { dist, face, topAt, raise, walls, geometries, maskTexture, water, box: [x0, y1, nx * cs, ny * cs], quayPixels };
   }
 
   // a [1 2 1] / 4 filter, n passes each way

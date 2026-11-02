@@ -63,8 +63,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
-  // a quay (web/quays.js): walk straight at a seawall and stop on its coping, within a metre of its
-  // face, at the level of the quay, not a cell short of it at the terrain grid's bank
+  // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
+  // edge (the centre within 0.3 m of the face as drawn), at the level of the quay, not a cell short
+  // of it at the terrain grid's bank
   const quay = await p.evaluate(() => {
     const g = window.__game, Q = g.Wd.quays, pl = g.player;
     if (!Q) return { none: true };
@@ -82,7 +83,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
       Object.assign(pl, { x: sx, y: sy, z: f.z, ground: true, vz: 0, speed: 0 });
       pl.h = g.cam.yaw = Math.atan2(nx, ny);
       for (let i = 0; i < 40; i++) g.advance(0.1, ['KeyW']);
-      r = Object.assign(r, { at: [Math.round(x), Math.round(y)], d: Q.dist(pl.x, pl.y), z: pl.z, top, mode: pl.mode });
+      r = Object.assign(r, { at: [Math.round(x), Math.round(y)], d: Q.face(pl.x, pl.y), z: pl.z, top, mode: pl.mode });
       break;
     }
     Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
@@ -90,7 +91,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   });
   if (quay.none) check(true, 'no quays');
   else if (quay.d == null) check(false, `found no clear walk up to a seawall (${quay.tried} tried)`);
-  else check(quay.mode === 'foot' && quay.d > -1.0 && quay.d < 0 && Math.abs(quay.z - quay.top) < 0.6,
+  else check(quay.mode === 'foot' && quay.d > -0.3 && quay.d < 0 && Math.abs(quay.z - quay.top) < 0.6,
     `walks up to the seawall at ${quay.at} and stops ${(-quay.d).toFixed(2)} m short of its face, ${quay.z.toFixed(1)} m up (the quay is ${quay.top.toFixed(1)} m)`);
 
   // fine walking levels (game.json "patches", nav.js): somewhere on one, climb a flight of steps
@@ -128,6 +129,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
       if (z0 === null) continue;
       for (let k = 0; k < 8; k++) {
         const dx = Math.cos(k * Math.PI / 4), dy = Math.sin(k * Math.PI / 4), q = at(x + dx * 2.5, y + dy * 2.5);
+        // a wall that runs on a metre and a half to either side (not the end of one, which a walker goes round)
+        const side = [-1.5, 1.5].map(o => at(x + dx * 2.5 - dy * o, y + dy * 2.5 + dx * o));
+        if (side.some(v => v === null || v - z0 < 0.8)) continue;
         let flat = true;
         for (let s = 0.25; s <= 2 && flat; s += 0.25) { const v = at(x + dx * s, y + dy * s); if (v === null || Math.abs(v - z0) > 0.05) flat = false; }
         if (!flat || q === null || q - z0 < 0.8 || !g.nav.walk(x, y, z0).ok) continue;
@@ -145,6 +149,45 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
       f ? `climbs the steps at ${f.at} from ${f.z0.toFixed(2)} m to ${f.z.toFixed(2)} m (their top is ${f.top.toFixed(2)} m)` : 'found no flight of steps on the fine walking levels');
     check(!!w && w.mode === 'foot' && Math.abs(w.z - w.z0) < 0.2 && w.d < 2.6,
       w ? `stops at the foot of the wall at ${w.at}, ${w.z.toFixed(2)} m up after ${w.d.toFixed(1)} m (its top is ${w.top.toFixed(2)} m)` : 'found no wall on the fine walking levels');
+  }
+
+  // the walks a city's fine walking levels name (game.json patches[].walks): from the first point,
+  // on the floor nearest from_m, steer through the points on foot and arrive at the last within a
+  // metre, at to_m; a walk to a seawall ("face") stops with the toes at its edge instead (the centre
+  // within 0.3 m of the face as drawn, web/quays.js)
+  const walks = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, Q = g.Wd.quays, out = [];
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    for (const P of g.G.patches || []) for (const w of P.walks || []) {
+      const [x0, y0] = w.path[0], f = g.nav.floorAt(x0, y0, w.from_m + 0.3);
+      const r = { name: w.name, from: w.from_m, to: w.to_m, start: f ? f.z : null, face: !!w.face };
+      if (!f || Math.abs(f.z - w.from_m) > 0.3) { out.push(r); continue; }
+      Object.assign(pl, { x: x0, y: y0, z: f.z, ground: true, vz: 0, speed: 0 });
+      let low = f.z, high = f.z;
+      for (let k = 1; k < w.path.length; k++) {
+        const [tx, ty] = w.path[k];
+        for (let i = 0; i < 120; i++) {
+          const dx = tx - pl.x, dy = ty - pl.y;
+          if (Math.hypot(dx, dy) < (k === w.path.length - 1 ? 0.4 : 0.6)) break;
+          pl.h = g.cam.yaw = Math.atan2(dx, dy);
+          g.advance(0.05, ['KeyW']);
+          low = Math.min(low, pl.z); high = Math.max(high, pl.z);
+        }
+      }
+      const [ex, ey] = w.path[w.path.length - 1];
+      Object.assign(r, { d: Math.hypot(ex - pl.x, ey - pl.y), z: pl.z, low, high, mode: pl.mode, at: [Math.round(pl.x), Math.round(pl.y)],
+        edge: w.face && Q ? Q.face(pl.x, pl.y) : null });
+      out.push(r);
+    }
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return out;
+  });
+  for (const w of walks) {
+    if (w.start == null || w.d == null) { check(false, `walks ${w.name}: no floor at ${w.from} m at its start (found ${w.start})`); continue; }
+    if (w.face) check(w.mode === 'foot' && w.edge != null && w.edge > -0.3 && w.edge < 0 && Math.abs(w.z - w.to) < 0.3,
+      `walks ${w.name}: stops ${w.edge == null ? '?' : (-w.edge).toFixed(2)} m short of the face, at ${w.z.toFixed(2)} m (the walkway is ${w.to} m)`);
+    else check(w.mode === 'foot' && w.d < 1.0 && Math.abs(w.z - w.to) < 0.3 && w.low > Math.min(w.from, w.to) - 0.3 && w.high < Math.max(w.from, w.to) + 0.3,
+      `walks ${w.name}: from ${w.from} m to ${w.z.toFixed(2)} m (expected ${w.to} m), ${w.d.toFixed(1)} m from the end, never below ${w.low.toFixed(2)} or above ${w.high.toFixed(2)} m`);
   }
 
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,

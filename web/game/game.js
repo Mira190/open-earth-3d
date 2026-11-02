@@ -2197,7 +2197,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     p.focus.y += up * sp;
     const off = Math.hypot(p.focus.x - p.anchor.x, p.focus.z - p.anchor.z);
     if (off > 300) { p.focus.x = p.anchor.x + (p.focus.x - p.anchor.x) * 300 / off; p.focus.z = p.anchor.z + (p.focus.z - p.anchor.z) * 300 / off; }
-    p.focus.y = Math.min(Math.max(p.focus.y, nav.terrain(p.focus.x, -p.focus.z) + 0.3), p.anchor.y + 300);
+    p.focus.y = Math.min(Math.max(p.focus.y, nav.terrainBelow(p.focus.x, -p.focus.z, p.focus.y + 0.5) + 0.3), p.anchor.y + 300);
     if (p.turn) p.az += dt * 2 * Math.PI / 45;
     OECine.around(p.focus, p.az, p.dist * Math.cos(p.pitch), p.dist * Math.sin(p.pitch), camera.position);
     camera.position.y = Math.max(camera.position.y, nav.groundBelow(camera.position.x, -camera.position.z, camera.position.y) + 0.4);
@@ -3292,13 +3292,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (camSmooth.lengthSq() === 0 || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos); // after a teleport
     camSmooth.lerp(camPos, close ? Math.min(1, dt * 10) : veh ? Math.min(1, dt * 16) : 1);
     camPos.copy(camSmooth);
-    let gz = Math.max(0, nav.terrain(camPos.x, -camPos.z)); // over the water, its surface
+    let gz = Math.max(0, nav.terrainBelow(camPos.x, -camPos.z, camTarget.y + 0.5)); // over the water, its surface; under a slab, the floor
     for (const st of nav.strips) { // steps and decks below the player's head lift the camera too
       const h = nav.stripHeight(st, camPos.x, -camPos.z);
       if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
     }
     nav.decksAt(camPos.x, -camPos.z, h => { if (h < camTarget.y + 0.5 && h > gz) gz = h; });
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
+    const ceil = nav.ceilingAt(camPos.x, -camPos.z, camTarget.y - 1); // under a slab (a colonnade): below its soffit
+    if (ceil !== null && camPos.y > ceil - 0.2) camPos.y = Math.max(gz + 0.5, ceil - 0.2);
     live.pos.copy(camPos);
     live.look.copy(camTarget);
     // looking up at a landmark on arrival (cam.tilt): over your head, until you move, steer or drag the view

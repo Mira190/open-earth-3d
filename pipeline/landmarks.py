@@ -11,7 +11,9 @@ until the city's next build leaves them out itself.
 landmark_meshes may return a third item, more keys for landmarks.json: "props", street furniture
 drawn once per kind and instanced at every [x, y, z, heading(, scale across)] in "at", within
 "far" metres; "clip", regions ({ring, holes}) where the viewer does not draw the ground above
-the water (under paving, and in front of a seawall) (web/world.js).
+the water (under paving, and in front of a seawall) (web/world.js); "seawalls", the face of a
+seawall the landmark draws itself, polylines [[x, y], ...] with the water on their right, where a
+walker stops at its edge (web/quays.js).
 
     python pipeline/landmarks.py --city sydney      # reads/writes web/data/<city>
 """
