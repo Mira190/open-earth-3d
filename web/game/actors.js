@@ -1034,7 +1034,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           if (a > 0 && Math.abs(w) < 1.6 && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; }
         }
-        if (c.narrow > 0) { c.narrow -= dt; if (!swerve) swerve = -LANE * side * 0.8; } // (a street too narrow for its lane: down the middle, below)
+        if (c.narrow > 0) { c.narrow -= dt; if (!swerve) swerve = -LANE * side * (c.narrowF || 0); } else c.narrowF = 0; // (a facade beside its lane: in from it, below)
         c.off += (swerve - c.off) * Math.min(1, dt * 1.6);
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
@@ -1113,9 +1113,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const deck = c.z > nav.terrain(c.x, c.y) + 2;
             for (let k = 0; k < np; k++) {
               if (nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) continue;
-              // a facade beside its lane, but room down the middle of the street: it keeps to the middle there
-              const q = pk0 + k;
-              if (nav.room(pathQ[2 * q], pathQ[2 * q + 1], c.z, c.hw * 0.8, 1.4, deck)) { if (k * step < 15) c.narrow = 1.5; continue; }
+              // a facade beside its lane, but room nearer the middle of the street: it moves in only as far as it
+              // needs to there (so that two coming the other way up a narrow street can still pass)
+              const q = pk0 + k, qx = pathQ[2 * q], qy = pathQ[2 * q + 1];
+              let f = -1;
+              for (const g of [0.7, 0.4, 0]) if (nav.room(qx + (P[2 * k] - qx) * g, qy + (P[2 * k + 1] - qy) * g, c.z, c.hw * 0.8, 1.4, deck)) { f = g; break; }
+              if (f >= 0) { if (k * step < 15) { c.narrow = 1.5; c.narrowF = Math.max(c.narrow > 1.4 ? c.narrowF || 0 : 0, 1 - f); } continue; }
               c.wallGap = k * step; break;
             }
           }
