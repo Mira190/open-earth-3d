@@ -52,7 +52,7 @@ from shapely.ops import substring
 
 import night_lights
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
-from shore import QUAY_SHELF_M, depth_at, from_png
+from shore import from_png, pad_aprons, water_floor
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -531,15 +531,14 @@ def main():
             if f:
                 st["at"] = f["at"]
 
-    # the walking ground: the DEM on land, the modelled bottom under the water, except where a
-    # helipad stands on the water (a floating pad): there it keeps the pad's own height
-    ground_grid = np.where(water, -depth_at(sm, gx, gy, C.x0, C.y1), dem)
-    edge = water & ndimage.binary_dilation(~water)  # just under the surface off a quay, as in the viewer's terrain
-    ground_grid[edge] = np.maximum(ground_grid[edge], -QUAY_SHELF_M)
-    for hp in helipads:
-        x, y, z = hp["at"]
-        near = water & (np.hypot(gx - x, gy - y) < 14.0)
-        ground_grid[near] = np.maximum(ground_grid[near], max(z, 0.0))
+    # the walking ground: the DEM on land, the modelled bottom under the water, except round a
+    # helipad on or by the water (a floating pad): there it keeps the pad's own height. Only the
+    # pads written below get that apron, so a pad the city leaves out leaves none behind
+    # (shore.py, which pipeline/pad_discs.py shares to check and repair game.json without a rebuild)
+    ground_grid = np.where(water, water_floor(sm, water, gx, gy, C.x0, C.y1), dem)
+    pad_aprons(ground_grid, water, gx, gy, helipads)
+    if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
+        ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),

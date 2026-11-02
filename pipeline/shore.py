@@ -91,6 +91,29 @@ def depth_at(sm, x, y, x0, y1):
     return np.minimum(FLOOR_M, np.maximum(sm["signed"][r, c], 0.0) * slope)
 
 
+PAD_APRON_M = 14.0  # a helipad on or by the water stands on an apron this far round it (game_data.py)
+
+
+def water_floor(sm, water, gx, gy, x0, y1):
+    """The game's ground under the water (game_data.py terrain): the modelled bottom, and just
+    under the surface off a quay, as in the viewer's terrain. gx, gy: the cells' centres."""
+    floor = -depth_at(sm, gx, gy, x0, y1)
+    edge = water & ndimage.binary_dilation(~water)
+    floor[edge] = np.maximum(floor[edge], -QUAY_SHELF_M)
+    return floor
+
+
+def pad_aprons(grid, water, gx, gy, helipads):
+    """Raise the water cells within PAD_APRON_M of each helipad to the pad's height (a floating
+    pad, or one at the water's edge), in place. Only the pads given, which are the ones the game
+    data lists: a pad a city leaves out gets no apron (pipeline/pad_discs.py lowers old ones)."""
+    for hp in helipads:
+        x, y, z = hp["at"]
+        near = water & (np.hypot(gx - x, gy - y) < PAD_APRON_M)
+        grid[near] = np.maximum(grid[near], max(z, 0.0))
+    return grid
+
+
 def from_png(path, x0, y1, cfg):
     """shore_map() read back from shore.png (for pipeline/game_data.py)."""
     a = np.asarray(Image.open(path).convert("RGBA")).astype(float)

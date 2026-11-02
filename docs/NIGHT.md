@@ -42,6 +42,23 @@ renderers draw night cities, before deciding what to draw.
 - **Offices light by the floor, homes by the room.** A tenant's floor, or the cleaners
   going up the building, light whole storeys; flats light one window or two. From across
   a city an office tower reads in bands.
+- **Fewer windows lit, and brighter.** In an aerial photograph of a business district
+  two hours after sunset most of a tower is dark, its lit floors bright against it, in
+  bands and in runs, some brighter than the rest; offices are under cool white
+  fluorescent or LED light and homes mostly warm. A tower lit everywhere at one level
+  reads as a light grey block. In Japan many homes are lit by daylight-white ceiling
+  lights (6500 K is a standard option of the ceiling fixtures sold there;
+  [Village House](https://www.villagehouse.jp/blog/en/interior-design/how-to-choose-the-perfect-lighting-for-your-home/)),
+  and the flats of Hong Kong's estates by tubes, so their windows read cool too.
+- **Landmarks floodlit from below.** Osaka Castle's keep is lit every night to Motoko
+  Ishii's design, converted to LED in 2023
+  ([Lumenpulse](https://www.lumenpulse.com/projects/589/osaka-castle),
+  [MONDO\*DR Awards 2024](https://mondodrawards.com/2024/?p=3536)): white walls bright,
+  the copper roofs catching the light, the stone base lit warm. Kyoto Tower is floodlit
+  white, and Tokyo Tower has Ishii's *Landmark Light* (1989): orange sodium lamps from
+  October to early July and white metal halide in summer
+  ([Tokyo Metropolitan Government](https://www.tokyoupdates.metro.tokyo.lg.jp/en/post-346/),
+  [ECD](https://www.ecdonline.com.au/content/efficiency-renewables/article/motoko-ishii-lights-up-sparc-2-13-732541313)).
 - **Glass reflects.** At night a curtain wall is a dark mirror: blue sky above, the
   city's glow and its neighbours' lights below.
 - **Many lights as materials, not light sources.** Real-time night cities draw street
@@ -60,7 +77,9 @@ No code was taken from any of these; the ideas are general. What was adopted, an
 | A sky that stays blue, warm low down | `world.js`: after dark the sky shader blends to a designed night sky, deep blue overhead and the city's glow over the horizon (`style.skyglow`); the haze at the model's edge is the night's blue |
 | Warm lights against cool shadows | `lens.js` `uNightTone`: at night the grade takes the shadows to blue and the lights to amber |
 | A hierarchy on the towers | `night.js`: crowns lit on 60% of the towers over 60 m (a wash up the top storeys and a line along the parapet, mostly white); `buildings.js`: lobbies lit all night |
-| Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors; each lit run has its own brightness; some rooms are under cool light |
+| Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors, and offices empty through the evening; each building keeps its own evening; each lit run has its own brightness, a few floors bright |
+| Fewer windows lit, and brighter | `buildings.js`: lit rooms 1.6 times as bright as before and fewer of them (an office two thirds as many at 19:00, three quarters at 21:00); offices under cool white, a floor in four warmer; homes warm, or cool in Japan and Hong Kong; `world.js`: the landmark towers' curtain walls (Hong Kong's) light in runs under cool white too |
+| Landmarks floodlit from below | `world.js` `flood`: a landmark's walls lit full, the undersides of its eaves more, its roofs at a graze, fading up the building; Osaka Castle (its stone base too), Kyoto Tower, Tokyo Tower (its colour by the season) and the Harbour Bridge's arch |
 | Glass that reflects | the environment light is drawn from the night sky, so curtain walls mirror blue above and warm below |
 | Lights as materials | `night.js`: lamps, traffic and tower lights are points and strips in three draw calls; the light on the ground is one texture |
 
@@ -92,17 +111,80 @@ radius of the camera (`game.crowd.radius_m` plus 100 m; 550 m by default).
 country's height (60 m in Japan, where they flash together forty times a minute; 90 to
 110 m elsewhere, steady), and lit crowns.
 
+**The windows.** An office lights by the floor, in runs of six bays, and a home by the
+room. The share of rooms lit follows the hour: offices four floors in five at 17:00,
+three in four at 18:00, half at 19:00, a third at 20:00, a fifth at 21:00 and a few all night;
+homes up to under half through the evening. Each building takes 0.3 to 1.7 times that
+share, so one tower works late beside another all but empty. A lit run has its own
+brightness, most at room light and one in ten bright, and its own light: offices cool
+white (4000 to 5000 K) with a floor in four warmer, homes warm with a share under cool
+ceiling lights (0.55 in Japan, 0.6 in Hong Kong, 0.15 elsewhere). Once a run is under a
+pixel the facade takes the mean of all that, so a far tower keeps its own tone.
+
+**Floodlit landmarks.** A landmark's floodlit material with `flood` is lit from below
+(`world.js`): walls full, the undersides of eaves a little more, roofs facing up at a
+graze, falling off up the building, and the light comes back off the surface in its
+pattern (the courses of a stone base, the tiles of a roof). Osaka Castle's keep is lit
+warm white with its copper roofs and its stone base lit; Kyoto Tower white with its deck's
+windows lit; Tokyo Tower orange, white in summer (`emissive_dates`); the Harbour Bridge's
+arch softly from its deck. Without `flood` a floodlit material glows evenly, as signs and
+screens do (the Eiffel Tower's gold, Hong Kong's frames and crowns).
+
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
-instanced batches of 300 m squares drawn within 500 m of the camera.
+instanced batches of 300 m squares drawn within 500 m of the camera. No pole stands in a
+carriageway: a lamp whose kerb would put it on a road crossing its own at the same level
+(where a street meets a junction) is left out, 4 to 6 per cent of them in each city; a road
+alongside (a dual carriageway's other half) does not count. A city can keep a square clear of poles
+(`night.clear` in `city.json`, as Shibuya does over the scramble, whose paved crossing is far
+wider than its streets).
+
+**Big screens and lit signs.** A landmark can carry LED screens (`led_screen`, below) and
+lit signs, and say how much light they throw on the street in front of them
+(`landmarks.json` `glows`: `[x, y, radius m, colour, strength, on hour, off hour]`). A glow
+without hours goes into the same light map as the lamps' pools; one with hours (a screen that
+plays from 9:00 to midnight) goes into a map of its own, a quarter as fine, that is switched
+with them. Either way it is in the screen's mean colour, so the pavement of a crossing ringed
+by screens takes their colour while they play.
 
 **When.** Everything fades in as the street lights come on, about when the sun sets.
-Offices empty through the evening to a few floors lit all night.
+Offices empty through the evening to a few floors lit all night (the windows, above).
 
 **The night sky and the haze.** The sky's own model lifts a night sky to a grey tenth
 of the day's, which lit every glass tower as if under an overcast evening. After dark it
 now blends to the designed sky. The environment light is drawn from it, after the haze
 for the hour is set: it used to keep the previous hour's haze, so a night kept the day's
 bright horizon in every reflection (the cause of the grey nights in the game too).
+
+## LED screens
+
+Real-time cities usually draw a big screen as a texture that never changes, or as a video
+(which needs a video per screen and stalls on a phone). Here a screen plays a programme from
+one image, as broadcast graphics are built from keyframes:
+
+- **One sheet of keyframes.** `pipeline/adkit.py` draws every clip's keyframes into one JPEG
+  (`screens.jpg`, 2048 px square, 0.6 MB in Shibuya): gradients, light, type and a few product
+  shapes, in a grid of cells. A city writes its clips in its `city.py`; the brands, music and
+  films are invented.
+- **A playlist per screen.** The material (`pattern: "led_screen"` in `landmarks.json`) lists
+  each screen: its shape, phase, playlist (a bit mask over the clips), hours, brightness,
+  whether it joins the synchronised slot, its height and LED pitch. A mesh's texture
+  coordinate u carries the screen's number in its integer part, so every screen of a city is
+  one draw call.
+- **Motion from stills.** The shader holds each keyframe for `frame_s` seconds, pushes slowly
+  into it, and wipes to the next along a slant with a bright edge; the cell is cropped to the
+  screen's shape (cover). Every `sync[1]` seconds the screens that join play the same clip for
+  `sync[2]` seconds, as the screens round Shibuya's crossing do.
+- **Light, not paint.** The picture is emissive: bright enough to read in the sun, dimmed
+  after dark as real screens are, off outside its hours; from close by its LEDs show as a grid
+  of dots at the pixel pitch, which fades out before it can shimmer.
+- **Placed on the built city.** `pipeline/screens.py` (`ScreenSet`) puts a site's screens on
+  the facades of their buildings in `buildings.json` at their published sizes, builds the
+  faces, frames and roof stands, writes the material and sheet, and the light they throw. A
+  screen bent round a corner is a strip along its foot line (`path`, `round`). A city can have
+  several sites, each its own material and sheet (Shibuya's crossing and Shinjuku's east exit);
+  each gets a shader program of its own (`customProgramCacheKey`, as the screen count is in it).
+  Used by Shibuya and Shinjuku (`cities/shibuya/city.py`) and Dotonbori (`cities/osaka/city.py`).
+- **Blender.** `blender/build_scene.py` shows each screen's first keyframe, lit day and night.
 
 ## The data
 

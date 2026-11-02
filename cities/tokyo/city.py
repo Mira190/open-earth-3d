@@ -22,11 +22,18 @@ TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
 STATION = "東京駅丸の内駅舎"
 FOOT_TOWN = "東京タワー"
+# after dark Motoko Ishii's "Landmark Light" (1989): floodlights at the foot and on the main deck
+# light the whole lattice, orange from high-pressure sodium lamps from October to early July and
+# white from metal halide ones in summer ("emissive_dates"); the decks' windows are lit (emissive,
+# glow; "flood" is set from the tower's ground in landmark_meshes)
+SUMMER = ("07-07", "10-01")
 MATERIALS = {
-    "orange": {"color": "#e8541c", "roughness": 0.55, "metalness": 0.35},
-    "white": {"color": "#f1efe9", "roughness": 0.55, "metalness": 0.3},
-    "deck": {"color": "#c9c6bd", "roughness": 0.6, "metalness": 0.2},
-    "glass": {"color": "#2a3138", "roughness": 0.1, "metalness": 0.6},
+    "orange": {"color": "#e8541c", "roughness": 0.55, "metalness": 0.35, "emissive": "#ff8f40", "glow": 0.95,
+               "emissive_dates": [[*SUMMER, "#ffc9a6"]]},
+    "white": {"color": "#f1efe9", "roughness": 0.55, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.85,
+              "emissive_dates": [[*SUMMER, "#f3f1ff"]]},
+    "deck": {"color": "#c9c6bd", "roughness": 0.6, "metalness": 0.2, "emissive": "#ffd29a", "glow": 0.6},
+    "glass": {"color": "#2a3138", "roughness": 0.1, "metalness": 0.6, "emissive": "#ffe2b4", "glow": 0.45},
 }
 
 
@@ -88,7 +95,7 @@ def tower(t):
             m.box(P(tx * h0, ty * h0, lo), P(sx * h1, sy * h1, hi), w * 0.45, w * 0.45)
             m.box(P(sx * h1, sy * h1, hi), P(tx * h1, ty * h1, hi), w * 0.6, w * 0.6)
     deck = Mesh("tower_decks", "deck", False, floodlit=True)
-    glass = Mesh("tower_glass", "glass", False)
+    glass = Mesh("tower_glass", "glass", False, floodlit=True)
     for z0, z1, hw in ((140.0, 150.0, 13.0), (239.0, 250.0, 7.0)):
         deck.box(P(0, 0, z0), P(0, 0, z0 + 2), 2 * hw + 3, 2 * hw + 3)
         glass.box(P(0, 0, z0 + 2), P(0, 0, z1), 2 * hw, 2 * hw)
@@ -102,4 +109,8 @@ def tower(t):
 
 def landmark_meshes(scene):
     t = scene["landmarks"].get("tokyo_tower")
-    return MATERIALS, tower(t) if t else []
+    mats = {k: dict(v) for k, v in MATERIALS.items()}
+    if t:
+        for k in ("orange", "white", "deck"):
+            mats[k]["flood"] = [round(t["ground_m"], 1), round(t["ground_m"] + TOWER["height"], 1), 0.5, 0.5]
+    return mats, tower(t) if t else []

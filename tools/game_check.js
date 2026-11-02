@@ -1,7 +1,9 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
-// it, walk, talk to the first quest giver, fly the helicopter up and watch the ferries move,
-// drive your car, and hail a taxi and ride it (and order a ride on the phone, which must reach
-// you within half a minute, shown on the phone's map), with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
+// it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
+// fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
+// (and order a ride on the phone, which must reach you within half a minute, shown on the
+// phone's map), and travel from the map in your car, with a screenshot after each. Prints what
+// happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
@@ -47,6 +49,31 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
 
+  // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
+  // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
+  const hop = await p.evaluate(() => {
+    const g = window.__game, lm = g.landmarks[0];
+    if (!lm) return { none: true };
+    g.toggleMap(); g.advance(0.1);
+    const pins = g.mapPins().filter(q => q.d.kind === 'landmark').length;
+    g.toggleMap();
+    const ok = g.travelTo(lm);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+    g.advance(0.5);
+    const pl = g.player, d = Math.hypot(lm.at[0] - pl.x, lm.at[1] - pl.y), facing = Math.abs(Math.atan2(Math.sin(Math.atan2(lm.at[0] - pl.x, lm.at[1] - pl.y) - pl.h), Math.cos(Math.atan2(lm.at[0] - pl.x, lm.at[1] - pl.y) - pl.h)));
+    const r = { name: lm.name, pins, n: g.landmarks.length, ok, mode: pl.mode, d, facing, walk: g.nav.walk(pl.x, pl.y, pl.z).ok, top: 0 };
+    for (let i = 0; i < 20; i++) { g.advance(0.1, ['KeyW']); r.top = Math.max(r.top, pl.speed); }
+    r.run = g.GAIT.run;
+    return r;
+  });
+  if (hop.none) check(true, 'no landmarks to travel to');
+  else {
+    check(hop.pins === hop.n, `the map shows the landmarks (${hop.pins} of ${hop.n})`);
+    check(hop.ok && hop.mode === 'foot' && hop.walk && hop.d < 600 && hop.facing < 0.3, `travels from the map to ${hop.name} (${hop.mode}, ${hop.d.toFixed(0)} m from it, facing it within ${hop.facing.toFixed(2)} rad)`);
+    check(hop.top > hop.run * 0.8, `runs at ${hop.top.toFixed(1)} m/s (the run is ${hop.run} m/s)`);
+  }
+  await shot('travel');
+
   // the first quest giver: walk up and talk
   const talk = await p.evaluate(() => {
     const g = window.__game, q = g.quest(), n = q && g.npcs.find(n => n.id === q.giver);
@@ -62,6 +89,28 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); g.advance(0.2); } });
   if (!talk.none) check(await p.evaluate(() => !window.__game.dlg.open), 'the conversation runs to its end');
 
+  // the gold route to the farthest NPC a walker can reach: drawn on ground a walker can stand on all
+  // the way (not through a building); it stays set for the helicopter and the car below
+  const route = await p.evaluate(async () => {
+    const g = window.__game;
+    for (let i = 0; i < 600 && !g.ways.ready; i++) await new Promise(r => setTimeout(r, 500));
+    if (!g.ways.ready) return { ready: false };
+    const me = { x: g.player.x, y: g.player.y, z: g.player.z };
+    const n = g.npcs.slice().sort((a, b) => Math.hypot(b.x - me.x, b.y - me.y) - Math.hypot(a.x - me.x, a.y - me.y)).find(q => g.ways.walk(me, q));
+    if (!n) return { ready: true, none: true };
+    g.waypoint([n.x, n.y]);
+    g.advance(0.5);
+    const q = g.guide();
+    let len = 0;
+    if (q.pts) for (let i = 1; i < q.pts.length; i++) len += Math.hypot(q.pts[i][0] - q.pts[i - 1][0], q.pts[i][1] - q.pts[i - 1][1]);
+    const where = [];
+    if (q.pts) g.ways.blockedMetres(q.pts, where);
+    return { ready: true, to: n.name, len, blocked: where.run || 0, drawn: !!q.pts && g.gold.mesh.visible, stats: g.ways.stats() };
+  });
+  check(route.ready, `the route network is built${route.stats ? ` (${route.stats.edges} stretches in ${route.stats.ms} ms of work)` : ''}`);
+  check(route.ready && !route.none && route.drawn && route.blocked < 1.5, route.none ? 'no NPC a walker can reach' : `the gold route to ${route.to} on foot (${(route.len || 0).toFixed(0)} m; at most ${(route.blocked || 0).toFixed(1)} m at a time where a walker can't stand)`);
+  await shot('route');
+
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
     const g = window.__game;
@@ -74,10 +123,12 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(2.6);
     const shut = g.heli.st.door, z0 = g.heli.st.z;
     g.advance(8, ['Space']);
-    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut };
+    const q = g.guide();
+    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null };
   });
   check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(heli.climbed || 0).toFixed(1)} m)`);
+  check(heli.none || route.none || (heli.flight != null && heli.flight > 20), heli.none ? 'no helicopter' : `the gold route in the air to a place to land${heli.flight != null ? ` (up to ${heli.flight.toFixed(0)} m)` : ''}`);
   await shot('heli');
 
   // back down, and out the same way
@@ -114,7 +165,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(0.3);
     g.enterCar();
     for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
-    const r = { inCar: g.player.mode === 'car', head: c.C.clearance(g.player.rig, 'driver'), top: 0 }, a = [st.x, st.y];
+    g.advance(0.5);
+    const q = g.guide();
+    const r = { inCar: g.player.mode === 'car', head: c.C.clearance(g.player.rig, 'driver'), top: 0, road: q.pts ? q.pts.length : 0 }, a = [st.x, st.y];
     for (let i = 0; i < 8; i++) { g.advance(0.5, ['KeyW']); r.top = Math.max(r.top, st.speed); }
     r.moved = Math.hypot(st.x - a[0], st.y - a[1]);
     // the brakes while it goes forward (held at a standstill, S reverses), then the handbrake
@@ -129,6 +182,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     return r;
   });
   check(car.none || car.inCar, car.none ? 'no car' : 'gets into your car at the driver\'s door');
+  check(car.none || route.none || car.road > 1, car.none ? 'no car' : 'the gold route by road, from the car');
   check(car.none || car.head == null || car.head > 0, car.none ? 'no car' : `at the wheel, the head is under the roof (${car.head == null ? 'not measured' : `${car.head.toFixed(2)} m`})`);
   check(car.none || (car.top * 3.6 > 15 && car.moved > 5), car.none ? 'no car' : `drives your car (${(car.top * 3.6).toFixed(0)} km/h, ${car.moved.toFixed(0)} m in 4 s)`);
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);
@@ -207,6 +261,26 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
       `the ride is there within half a minute, when the app said (${taxi.rideT == null ? '–' : `${taxi.rideT.toFixed(1)} s, said ${taxi.eta0.toFixed(0)} s`})`);
   }
   await shot('taxi');
+
+  // map travel in your car: it comes along, parked at a kerb near the landmark, and you are still at the wheel
+  const drive = await p.evaluate(() => {
+    const g = window.__game, c = g.myCar && g.myCar(), lm = g.landmarks[1] || g.landmarks[0];
+    if (!c || !lm) return { none: true };
+    if (g.ride()) g.cancelRide();
+    const st = c.D.st, s = g.KEEP === 'left' ? 1 : -1;
+    g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
+    g.advance(0.3);
+    g.enterCar();
+    for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+    const ok = g.travelTo(lm);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+    g.advance(0.5);
+    return { name: lm.name, ok, mode: g.player.mode, d: Math.hypot(lm.at[0] - st.x, lm.at[1] - st.y), me: Math.hypot(lm.at[0] - g.player.x, lm.at[1] - g.player.y), v: st.speed };
+  });
+  // at the wheel by the kerb near it; or, with no street near (the end of a pier), on foot there and the car on the nearest street
+  check(drive.none || (drive.ok && drive.v < 1 && (drive.mode === 'car' ? drive.d < 900 : drive.mode === 'foot' && drive.me < 600 && drive.d < 2000)), drive.none ? 'no car to travel in'
+    : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
+  await shot('drive');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

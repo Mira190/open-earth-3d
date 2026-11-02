@@ -34,7 +34,7 @@ from shapely.ops import polylabel
 import roofs
 import typology
 from measured import IGNHeights
-from cityctx import ROOT, City, city_args, polygons
+from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
@@ -1157,6 +1157,7 @@ def build(C):
     dem[edge] = np.maximum(dem[edge], -QUAY_SHELF_M)
     sm["image"].save(os.path.join(C.out, "shore.png"), optimize=True)
     ctx = Ctx(C, dem_land)
+    ctx.sea = sea  # the water polygons, for a hook that follows the shore (a seawall)
 
     tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
 
@@ -1459,10 +1460,8 @@ def build(C):
                "data": base64.b64encode(np.round(tg * 10).astype("<i2").tobytes()).decode()},
               open(os.path.join(C.out, "terrain.json"), "w"))
 
-    keep = ("id", "name", "country", "country_code", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start", "protection",
-            "light_show", "minor_labels", "place_labels", "sun_hours_region", "renders", "night_ambient")
     scene = {
-        "city": {k: cfg[k] for k in keep if k in cfg} | {"lat": C.lat0, "lon": C.lon0, "architecture": typology.region_name(cfg),
+        "city": {k: cfg[k] for k in SCENE_CITY_KEYS if k in cfg} | {"lat": C.lat0, "lon": C.lon0, "architecture": typology.region_name(cfg),
                                                          "signage": typology.region(cfg)["signage"]},
         "frame": {"proj": C.proj, "lon0": C.lon0, "lat0": C.lat0, "x": [C.x0, C.x1], "y": [C.y0, C.y1], "units": f"m, z = {cfg.get('vertical_datum', 'm')}"},
         "terrain": {"file": "terrain.json", "nx": tg.shape[1], "ny": tg.shape[0], "cell": TERRAIN_CELL, "scale": 0.1,
@@ -1471,7 +1470,7 @@ def build(C):
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
-        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m")},
+        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter")},
         "trees": cfg.get("trees", {}),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},

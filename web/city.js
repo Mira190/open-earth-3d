@@ -105,6 +105,7 @@ window.OpenEarthCity = async function main(cityId) {
     post = new THREE.EffectComposer(renderer, new THREE.WebGLRenderTarget(2, 2, { type: THREE.HalfFloatType, samples: QC.samples }));
     post.addPass(new THREE.RenderPass(world, camera));
     bloom = new THREE.UnrealBloomPass(new THREE.Vector2(256, 256), 0.12, 0.4, 6.0);
+    OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
     post.addPass(bloom);
     Wd.skyHaze = true; // fog mixed before the tone curve: the haze takes the sky's colour (world.js)
     lens = new THREE.ShaderPass(OELens.shader());

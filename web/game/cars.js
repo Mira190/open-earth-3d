@@ -494,7 +494,9 @@ window.OECars = (function () {
   // A graph of the road lines (actors.network) joined where their ends meet, as the traffic
   // joins them. A place on it is { line, s, dir }: a line, a distance along it, and the way a
   // car is going (+1 with the line's points, -1 against them).
-  function router(net) {
+  // avoid: per line, 1 where a car can't get along it (route.js fills it in once it has looked):
+  // such a line is taken only where there is no other way
+  function router(net, { avoid = null } = {}) {
     const L = net.L, ids = new Map(), adj = [];
     const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); } return ids.get(k); };
     const ends = L.map((l, i) => {
@@ -542,7 +544,7 @@ window.OECars = (function () {
           if (d > limit) break;
           for (const [v, li, dir] of adj[u]) {
             const p = prev.get(u), back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
-            const nd = d + L[li].len + (back ? 60 : 0);
+            const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) + (back ? 60 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
