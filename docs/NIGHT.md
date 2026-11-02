@@ -139,6 +139,13 @@ one image, as broadcast graphics are built from keyframes:
 - **Light, not paint.** The picture is emissive: bright enough to read in the sun, dimmed
   after dark as real screens are, off outside its hours; from close by its LEDs show as a grid
   of dots at the pixel pitch, which fades out before it can shimmer.
+- **Placed on the built city.** `pipeline/screens.py` (`ScreenSet`) puts a site's screens on
+  the facades of their buildings in `buildings.json` at their published sizes, builds the
+  faces, frames and roof stands, writes the material and sheet, and the light they throw. A
+  screen bent round a corner is a strip along its foot line (`path`, `round`). A city can have
+  several sites, each its own material and sheet (Shibuya's crossing and Shinjuku's east exit);
+  each gets a shader program of its own (`customProgramCacheKey`, as the screen count is in it).
+  Used by Shibuya and Shinjuku (`cities/shibuya/city.py`) and Dotonbori (`cities/osaka/city.py`).
 - **Blender.** `blender/build_scene.py` shows each screen's first keyframe, lit day and night.
 
 ## The data
