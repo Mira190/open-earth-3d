@@ -206,6 +206,8 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 500 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
   color: #fff; text-shadow: 0 0 8px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 0.85); padding-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.55); }
+#labels .lbl { transition: opacity 0.35s ease; }
+#labels .lbl.off { pointer-events: none !important; }
 .lbl.pick { pointer-events: auto; cursor: pointer; background: none; border-width: 0 0 1px; border-style: solid; border-color: rgba(255, 255, 255, 0.55); border-radius: 0; margin: 0; padding: 0 0 5px; }
 .lbl.pick:hover, .lbl.pick:focus-visible { color: var(--accent-2); border-color: var(--accent); }
 .lbl.place { border-bottom: 0; font: italic 400 11.5px/1 var(--f-body); letter-spacing: 0.02em; text-transform: none; color: rgba(255, 255, 255, 0.86); }
@@ -243,8 +245,15 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .caption .step { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.12em; color: var(--accent); white-space: nowrap; padding-top: 4px; }
 .caption b { display: block; font: 300 14px/1.25 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
 .caption p { margin: 7px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
-.caption .bar { grid-column: 1 / -1; height: 1px; margin: 0 -18px; background: var(--line); overflow: hidden; }
+/* one segment per stop: the stops seen are full, the one in hand fills, so the tour's end is in view */
+.caption .bar { grid-column: 1 / -1; display: flex; gap: 3px; height: 2px; margin: 0 -18px; }
+.caption .bar span { flex: 1; background: var(--line); overflow: hidden; }
 .caption .bar i { display: block; height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.caption .cap-txt.in { animation: cap-in 0.7s var(--ease) both; }
+@keyframes cap-in { from { opacity: 0; transform: translateY(6px); } }
+.caption .cap-end { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
+.caption .cap-end[hidden] { display: none; }
+.caption.done .step { color: var(--accent-2); }
 .inspector { position: absolute; right: 16px; top: 62px; width: 290px; padding: 15px 16px 16px;
   background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
 .inspector h3 { font: 300 14px/1.25 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; padding-right: 24px; }
@@ -298,6 +307,7 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .tour-list button[aria-current="true"] b { color: #fff; transform: translateX(6px); }
 .tour-list button[aria-current="true"] span > span { transform: translateX(6px); }
 .tour-list button[aria-current="true"]::before { width: 70%; }
+.tour-list button.seen .n { color: rgba(255, 176, 102, 0.55); }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 7px; padding: 12px 10px 13px 0; min-width: 0; }
 .stat + .stat { padding-left: 12px; border-left: 1px solid var(--line); }
@@ -371,6 +381,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .caption { bottom: 10px; grid-template-columns: minmax(0, 1fr) auto; padding: 12px 14px 0; gap: 12px; width: calc(100% - 20px); }
   .caption .bar { margin: 0 -14px; }
   .caption .step { display: none; }
+  .caption .cap-end { grid-column: 1 / -1; }
+  .caption .cap-end .btn { flex: 1; min-width: 0; text-align: center; }
   .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
   .hud-btns { top: 78px; left: 10px; right: 10px; max-width: none; justify-content: flex-start; gap: 4px; }
   .hud-btns .chip-btn { padding: 8px 9px; font-size: 9px; letter-spacing: 0.1em; }
@@ -655,7 +667,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
 @media (prefers-reduced-motion: reduce) { .loader .track::after { animation: none; opacity: 0; }
-  .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after, .tour-list button::before, .tour-list b { transition: none; } }
+  .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after, .tour-list button::before, .tour-list b { transition: none; }
+  .caption .cap-txt.in { animation: none; } }
 </style>
 </head>
 <body>
@@ -746,9 +759,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     </div>
     <div class="caption brackets" id="caption">
       <span class="step" id="cap-step">1 / 7</span>
-      <div><b id="cap-title">Loading</b><p id="cap-text"></p></div>
+      <div class="cap-txt" id="cap-txt"><b id="cap-title">Loading</b><p id="cap-text"></p></div>
       <button class="btn" id="cap-skip">Next</button>
-      <div class="bar"><i id="cap-bar"></i></div>
+      <div class="cap-end" id="cap-end" hidden><button class="btn primary" id="cap-explore">Explore</button><a class="btn" id="cap-play" href="#" hidden>Play</a><button class="btn" id="cap-again">Watch again</button></div>
+      <div class="bar" id="cap-bars" aria-hidden="true"></div>
     </div>
     <aside class="inspector" id="inspector" hidden>
       <button class="x" id="insp-close" aria-label="Close">×</button>
