@@ -82,7 +82,10 @@ run_city() {
   local c=$1
   if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then echo "ok   game   $c"
   else echo "FAIL game   $c   (see $OUT/$c.log)"; fi
-  if timeout 1200 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
+  # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
+  timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
+  if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
+  elif [ $rc -eq 124 ]; then echo "FAIL tour   $c   (timed out after 1800 s; see $OUT/tour-$c.log)"
   else echo "FAIL tour   $c   ($(grep -m1 '^FAIL' "$OUT/tour-$c.log" || tail -1 "$OUT/tour-$c.log"); see $OUT/tour-$c.log)"; fi
 }
 run_reef() {

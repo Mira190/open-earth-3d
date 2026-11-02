@@ -8,8 +8,10 @@
 //     brighter than a lit city (the bloom turns one such pixel into a ball of light that flashes);
 //   - no frame in a flight between stops is a flat colour, and two frames of a still view differ
 //     as a frame that flashes or pumps would: the mean by under 3 levels, under a tenth of 4x4 blocks.
-// Writes two stills per stop (stop-NN.jpg, stop-NNb.jpg), one from each flight (fly-NN.jpg) and the end card
-// (end.png) to out_dir; prints one line per check and exits 1 if any failed.
+//   - the context lost on purpose (WEBGL_lose_context): the view holds under a note, and once the
+//     context is back the next frame is drawn, lit as before (web/glcare.js).
+// Writes two stills per stop (stop-NN.jpg, stop-NNb.jpg), one from each flight (fly-NN.jpg), the end card
+// (end.png) and the view either side of the lost context (ctx-before.jpg, ctx-after.jpg) to out_dir; prints one line per check and exits 1 if any failed.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/tour_check.js tokyo /tmp/tour-tokyo [1280x800]
 const { chromium } = require('playwright');
@@ -181,7 +183,15 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
   check('Explore puts the card away', !(await state()).caption);
 
   const lost = await p.evaluate(() => window.__ctxLost);
-  check('the WebGL context was never lost', lost === 0, lost ? `lost ${lost} time(s): a renderer under too much load draws black from then on` : '');
+  check('the WebGL context was never lost', lost === 0, lost ? `lost ${lost} time(s) under load${(await p.evaluate(() => window.__city.care.stats.drawn)) ? ', and drawn again after' : ''}` : '');
+  // and then lost on purpose (WEBGL_lose_context): the view holds under a note, and once the
+  // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
+  await p.evaluate(() => window.__city.setOrbit(false)); // a still view, to compare before and after
+  const g = await require('./glcare_step')(p, { canvas: 'gl', api: '__city', outDir });
+  check('a lost context holds the view under a note', g.paused && g.note, `paused ${g.paused}, note ${g.note}`);
+  check('the context restored, the next frame is drawn', g.drawn && g.noteGone && g.reloads === 0 && g.after.sd >= 4,
+    `in ${(g.ms / 1000).toFixed(1)} s, luma ${g.after.mean.toFixed(0)} ± ${g.after.sd.toFixed(1)}, note gone ${g.noteGone}, reloads ${g.reloads}`);
+  check('and lit as before (the sky\'s light rebuilt)', Math.abs(g.after.mean - g.before.mean) < 8, `luma ${g.before.mean.toFixed(1)} before, ${g.after.mean.toFixed(1)} after`);
   check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   console.log(`${city}: ${results.filter(Boolean).length}/${results.length} checks passed; brightest ${worstHdr.max.toFixed(1)}, `
     + `most blocks jumping ${(flicker * 100).toFixed(2)}%, flat flights ${flat.length ? flat.join(', ') : 'none'}`);

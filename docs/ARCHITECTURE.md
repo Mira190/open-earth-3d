@@ -367,6 +367,20 @@ The views switch in place, without reloading the page.
   card and the menu. A destination's beacon, reticle and card show its local time
   and sun, and the dive to it hands over to the model's loader. `score.js` is its
   synthesised sound. [TITLE.md](TITLE.md) has the details.
+- **`glcare.js`** keeps a lost WebGL context from leaving a black canvas in the
+  model viewer and the game (the title has its own, in `earth.js` and `title.js`).
+  A phone that puts the tab away, a driver reset or memory running short takes the
+  context; the frame loop then holds under a note in the loader's veil. three.js
+  rebuilds its own state on `webglcontextrestored`, but every render target comes
+  back empty, so `world.js` (`restoreGPU`) makes the sky's light (the PMREM
+  target) and the haze again and redraws the shadow map; the post stack, the
+  bloom and the water's FFT and wakes are drawn afresh each frame anyway. The
+  next frames are read back, and a context that stays away 8 s, or frames that
+  come back black, reload the page with the note (once a minute at most; after
+  that the note offers a Reload button). The reef pages run on WebGPURenderer,
+  which cannot restore a lost device, so they reload with the same note.
+  `tools/tour_check.js` and `tools/game_check.js` lose the context on purpose
+  (`tools/glcare_step.js`) and check the next frame is drawn and lit as before.
 - **`lens.js`** is the title screen's lens as a pass: the tone curve, grade,
   flare, grain and vignette. The model viewer, the game and the city films end
   their frame on it, so every city is seen as the Earth is on the title. It also

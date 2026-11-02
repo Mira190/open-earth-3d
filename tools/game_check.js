@@ -2,8 +2,8 @@
 // it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone), travel from the map in your car, and watch the signals at
-// the nearest junction change with the traffic stopping for them, with a screenshot after
-// each. Prints what happened and the page's errors; exits 1 on failure.
+// the nearest junction change with the traffic stopping for them, and lose the WebGL context on
+// purpose and get it back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
@@ -408,6 +408,14 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
   }
   await shot('junction');
+
+  // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
+  // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
+  await p.evaluate(() => { const g = window.__game; g.clock.frozen = true; }); // the light held still, to compare before and after
+  const gl = await require('./glcare_step')(p, { canvas: 'game-gl', api: '__game', outDir, prefix: `${city}-` });
+  check(gl.paused && gl.note, `a lost context holds the game under a note (paused ${gl.paused}, note ${gl.note})`);
+  check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
+  check(Math.abs(gl.after.mean - gl.before.mean) < 10, `and lit as before (luma ${gl.before.mean.toFixed(1)} before, ${gl.after.mean.toFixed(1)} after)`);
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
