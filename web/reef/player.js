@@ -301,7 +301,7 @@ export async function init(ctx) {
   function onFoot(dt, inp, wish, mag) {
     const run = inp.run && S.dep < 0.6;
     const wading = S.dep > WADE_FROM;
-    let vmax = (run ? 4.0 : 1.7) * mag;
+    let vmax = (run ? 5.2 : 1.7) * mag;                         // a brisk run on the sand, as in the cities
     if (g_scubaHeavy()) vmax *= 0.8;
     if (wading) vmax *= 1 - 0.5 * sm(0.1, 1.3, S.dep);          // water drag: thigh-deep is half speed
     S.vel.x = damp(S.vel.x, wish.x * vmax, 9, dt); S.vel.z = damp(S.vel.z, wish.z * vmax, 9, dt);
@@ -337,7 +337,7 @@ export async function init(ctx) {
     if (S.speed > 0.25) S.bodyYaw += angDiff(S.bodyYaw, Math.atan2(S.vel.x, -S.vel.z)) * Math.min(1, dt * 9);
     // footsteps: one per stride, a splash in the water
     S.stride += S.speed * dt;
-    const stride = run ? 1.35 : 0.8;
+    const stride = run ? 1.75 : 0.8;                             // footfalls at about three a second either way
     if (S.stride > stride) { S.stride = 0; if (S.grounded) { audio.step(wading ? 'water' : 'sand', clamp(S.speed / 2.5, 0.4, 1.2)); if (wading) splashAtFeet(2 + (S.speed > 1 ? 2 : 0), 1.3); } }
     // into deeper water
     if (S.dep >= SWIM_ENTER && S.grounded) { enterWater(); return; }
