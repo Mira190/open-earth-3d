@@ -153,8 +153,12 @@ what the phone shows: it counts down as the car comes and holds while it waits i
 traffic, as an app's does. At a red light in your sight it stops at the line and
 asks for its green, as a bus with priority does: the other road's green ends once
 it has run 5 s, through amber as ever. Where the kerb it
-is to pull in at is taken, by your own car or a stopped one, it pulls in just
-behind; held up for good near the end, it stops where it is with its hazards on.
+is to pull in at is taken, by your own car or one stopped there for good (10 s),
+it pulls in just behind, and drives round one only waiting in the traffic; held
+up near the end for 8 s, it stops where it is with its hazards on. Where no car
+can reach your kerb in time (a dead end the near side of the street faces into)
+the pick-up moves to the kerb across the street, and in streets as slow as
+Shibuya's a car can set out from just round the corner, 15 to 40 m off.
 Running more than six seconds late in a jam and out of the camera's view, it
 moves on along its route to a clear stretch of road, as games keep the cars that
 come for you on time. A driver waits five minutes at the pick-up.

@@ -748,6 +748,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // one setting out from a street a couple of hundred metres off by road, chosen so it takes
   // RIDE_T to reach you and, where it can be, out of sight (behind you, or farther than you can see)
   function rideFromAround(kind, pickup, dest) {
+    let best = bestFrom(pickup);
+    // none can reach that kerb in time (a dead end the near side of the street faces into, a long way
+    // round): the kerb across the street too, as a ride app moves the pick-up
+    if ((!best || best.plan.T > RIDE_T[1] + 5) && !roadNet.L[pickup.line].ow) {
+      const other = bestFrom(Object.assign({}, pickup, { dir: -pickup.dir }));
+      if (other && (!best || other.plan.T < best.plan.T)) best = other;
+    }
+    return best && best.plan.T < 45 ? newRide(kind, best.pl, best.pickup, best.plan, dest) : null;
+  }
+  function bestFrom(pickup) {
     const fx = Math.sin(cam.yaw), fy = Math.cos(cam.yaw); // the way the camera looks, on the map
     // streets 110 to 270 m from the pick-up by road (the network searched backwards from it), each timed
     const cand = roads.behind(pickup, 110, 270, 36);
@@ -760,13 +770,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
         const hidden = d > 240 || (dx * fx + dy * fy) / Math.max(1, d) < 0.3;
         const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5) + Math.random();
-        if (!best || score < best.score) best = { pl, plan, score };
+        if (!best || score < best.score) best = { pl, plan, score, pickup };
       }
     };
     pick(cand);
     // none of those near enough in time (one-way streets, a slow way round): nearer ones too, 40 to 110 m off
     if (!best || best.plan.T > RIDE_T[1]) pick(roads.behind(pickup, 40, 110, 24));
-    return best && best.plan.T < 45 ? newRide(kind, best.pl, pickup, best.plan, dest) : null;
+    // and in streets as slow as Shibuya's, just round the corner, 15 to 40 m off (out of sight where it can be)
+    if (!best || best.plan.T > RIDE_T[1] + 5) pick(roads.behind(pickup, 15, 40, 16));
+    return best;
   }
   // the time to the pick-up (or, on the way, to where you're going), as the app shows it
   const eta = o => (o.phase === 'coming' ? o.drv.timeLeft() + SIG_WAIT * (o.sig || []).filter(s => s > o.drv.st.s + 2).length : o.phase === 'driving' ? o.drv.timeLeft() : 0);
@@ -903,8 +915,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 || (late && c.v < 2) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true } : c);
-    if (myCar) out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: player.mode !== 'car' && myCar.D.st.speed < 0.3 });
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 || (late && c.v < 2) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10 } : c);
+    if (myCar) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
   }
