@@ -481,10 +481,11 @@ def landmark_meshes(scene):
     mats = {k: dict(v) for k, v in MATERIALS.items()}
     if "opera_house" in lm:
         # the sails are lit from floodlights on the podium (web/world.js "flood"): full at their
-        # feet, falling off up the shells to a little over half at the crowns, the tiles facing up
+        # feet, falling off up the shells to half at the crowns, the tiles facing up
         # at a graze catching most of it, as the photographs of the sails at night show
         top = max(v[2] for m in meshes if m.name == "opera_shells" for v in m.v)
-        mats["tile"]["flood"] = [o["podium"]["top_m"], round(top, 1), 0.8, 0.55]
+        mats["tile"]["flood"] = [o["podium"]["top_m"], round(top, 1), 0.8, 0.5]
+        mats["tile"]["glow"] = 0.8  # (lit evenly at 1.0 the sails were a flat white, the shells' curves lost)
     if "harbour_bridge" in lm:
         meshes += harbour_bridge(lm["harbour_bridge"])
         mats["steel"]["flood"] = [lm["harbour_bridge"]["deck_m"], lm["harbour_bridge"]["crown_m"], 0.6, 0.55]

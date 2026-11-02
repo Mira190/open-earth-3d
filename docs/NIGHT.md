@@ -127,8 +127,8 @@ graze, falling off up the building, and the light comes back off the surface in 
 pattern (the courses of a stone base, the tiles of a roof). Osaka Castle's keep is lit
 warm white with its copper roofs and its stone base lit; Kyoto Tower white with its deck's
 windows lit; Tokyo Tower orange, white in summer (`emissive_dates`); the Harbour Bridge's
-arch softly from its deck; the Opera House's sails from the podium, full at their feet and a
-little over half at the crowns, the tiles facing up catching most of it. Without `flood` a floodlit material glows evenly, as signs and
+arch softly from its deck; the Opera House's sails from the podium, full at their feet and half
+that at the crowns, the tiles facing up catching most of it. Without `flood` a floodlit material glows evenly, as signs and
 screens do (the Eiffel Tower's gold, Hong Kong's frames and crowns).
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
