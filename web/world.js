@@ -315,28 +315,9 @@ vec3 scrCell(float cell, vec2 uv) {
     diffuseColor.rgb = vec3(0.025); }`)
           .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += pScr;');
       };
-    },
-    // neon and LED sign lines that move ("neon"): u metres along the tube. m.mode "chase" runs a
-    // bright pulse along it, "blink" turns it on and off, "breathe" swells; the phase comes from
-    // the tube's position, so neighbouring signs keep their own time
-    neon(mat, m) {
-      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
-      const mode = { chase: 1, blink: 2, breathe: 3 }[m.mode] || 0;
-      mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uNeonT: SCREEN.t, uNeonMode: { value: mode }, uNeonRate: { value: m.rate || 1 } });
-        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vNeonPh;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vNeonPh = fract(dot(floor((modelMatrix * vec4(position, 1.0)).xz / 6.0), vec2(0.37, 0.71)));');
-        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uNeonT, uNeonMode, uNeonRate; varying float vNeonPh;')
-          .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  { float t = uNeonT * uNeonRate + vNeonPh * 7.0, k = 1.0;
-    if (uNeonMode == 1.0) k = 0.35 + 0.65 * smoothstep(0.7, 1.0, fract(vUv.x / 3.0 - t * 0.8)) + 0.25;
-    else if (uNeonMode == 2.0) k = step(0.3, fract(t * 0.5)) * 0.9 + 0.1;
-    else if (uNeonMode == 3.0) k = 0.6 + 0.4 * sin(t * 2.0);
-    totalEmissiveRadiance *= k; }`);
-      };
     }
   };
-  // the screens' and the signs' clock (seconds) and the hour, for their schedules (setSun, tick)
+  // the screens' clock (seconds) and the hour, for their schedules (setSun, tick)
   const SCREEN = { t: { value: 0 }, hour: { value: 12 } };
 
   // build the scene into a new THREE.Scene; the caller owns the renderer and camera

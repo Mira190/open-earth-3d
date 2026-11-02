@@ -207,6 +207,14 @@ model does not reproduce. The green Aoi-gaeru train car that stood by Hachiko un
 
 ## 6a. The crossing after dark, as it stands in 2026
 
+![From Hachiko at 20:15: Q'S EYE and its banner on QFRONT's glass, SHIBUYA TSUTAYA, Q'S WALL, the Nishimura banner, Rakuten Vision and the arch](../images/shibuya/crossing-night.jpg)
+
+| The scramble from the air at 20:15 | CROSSING LIGHT over SHIBUYA SKY, 20:31 |
+|---|---|
+| ![](../images/shibuya/crossing-aerial-night.jpg) | ![](../images/shibuya/crossing-light.jpg) |
+| **Hachiko Square, the hoarding round the Toyoko site behind it** | |
+| ![](../images/shibuya/hachiko-night.jpg) | |
+
 The scramble is lit by its screens. Each one stands on its own building at its published size,
 and plays a programme drawn for this model. The brands, music, films and games are invented, and
 the ward's notices are generic. The screens play from 9:00 to midnight, as the operators run

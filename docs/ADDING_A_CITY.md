@@ -134,6 +134,18 @@ def landmark_assets(out_dir, scene):
     """Called by pipeline/landmarks.py after landmark_meshes. Write files the
     landmark materials use (a texture atlas) into out_dir; return their names."""
 
+def landmark_glows(scene):
+    """Called by pipeline/landmarks.py. The light the landmarks' screens and signs
+    throw on the street after dark: [[x, y, radius_m, colour, strength], ...], with
+    an on hour and an off hour appended for one that is switched (a screen that
+    plays from 9:00 to midnight). web/night.js lights the pavement with them."""
+
+def landmark_demolished(scene):
+    """Called by pipeline/landmarks.py. Solid indices of the built city's
+    buildings.json that have been pulled down since its survey (a PLATEAU building
+    OSM has removed): the viewer, the game and Blender neither draw them nor
+    keep them in the surface model."""
+
 def adjust_terrain(z, city, cell):
     """Called by pipeline/build_scene.py on each DEM grid (the 5 m one and the
     10 m one the browser gets), after the mapped corrections. Return the grid with
@@ -198,6 +210,16 @@ A material's `pattern` is drawn by the browser from the mesh's UVs
   `riser`): reconstituted granite and its slab joints, u and v in metres. A
   tread's v runs back from its nosing; a riser's v runs from its foot (0) to
   its top (1), and the shadow under the nosing is drawn on it.
+- `curtain_wall` with `bay_m`, `storey_m`, `spandrel`, `mullion_m`, `frame`,
+  and optionally `lit_share` and `lit_k` (how many panes are lit after dark, and
+  how brightly; a shop's glass, mostly lit and softer than an office's).
+- `led_screen`: big LED screens that play programmes of keyframes from the
+  material's `map` (a sheet drawn with `pipeline/adkit.py`). u's integer part
+  picks the screen in `screens` and its fraction runs across it; v runs up it.
+  See [NIGHT.md](NIGHT.md#led-screens) and Shibuya's `CROSSING_SCREENS`.
+
+`street_lit: true` puts paving under the street lights and the screens' glow,
+as the ground is.
 
 `decal: true` marks paving laid over a building's roof, such as a podium's
 deck: the browser draws it in front of the roof, and the game walks on the roof
