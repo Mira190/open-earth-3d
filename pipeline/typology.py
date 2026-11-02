@@ -507,6 +507,10 @@ def storeys(style, wall_h, floors, storefront):
         g_extra = 2.6 if storefront else 1.2
     if style == "grachtenpand":  # a raised ground floor over the basement (souterrain), up a stoop
         g_extra = 1.4 if storefront else 1.0
+    # one floor on a wall that could hold two of the style's tallest is a register that counts a
+    # block as one storey (Paris has hundreds at 15-30 m): count them from the storey height instead
+    if floors == 1 and wall_h > 2 * STOREY_MAX[style]:
+        floors = None
     if floors and floors > 0:
         if floors == 1:
             return round(min(max(wall_h, 2.6), 8.0), 2), round(min(max(wall_h, 2.6), 8.0), 2)

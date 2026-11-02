@@ -70,6 +70,11 @@ window.OEBuildings = (function () {
     japan: { house: [1.82, 0.62, 0.3, 0.8], terrace: [1.82, 0.7, 0.28, 0.82], apartment: [3.6, 0.76, 0.02, 0.86],
       office: [3.2, 0.7, 0.22, 0.88], mixed: [2.8, 0.74, 0.2, 0.86], machiya: [1.97, 0.86, 0.3, 0.82] },
   };
+  // storey heights per style (m): typical and the tallest, as pipeline/typology.py
+  const STOREY = { plain: 3.0, house: 2.9, terrace: 3.2, apartment: 3.0, office: 3.8, glass: 3.9, heritage: 4.6, retail: 4.2,
+    industrial: 6.0, civic: 4.0, machiya: 2.9, mixed: 3.3, stone: 4.0, haussmann: 3.05, grachtenpand: 3.2 };
+  const STOREY_MAX = { plain: 6.0, industrial: 8.0, stone: 6.0, house: 3.3, terrace: 3.5, apartment: 3.3, office: 4.4, glass: 4.5, heritage: 5.5, retail: 5.0,
+    civic: 5.0, machiya: 3.2, mixed: 3.8, haussmann: 3.4, grachtenpand: 4.2 };
   const PARAPET = { office: 1.1, glass: 1.2, apartment: 1.0, heritage: 1.3, retail: 0.9, civic: 1.0, mixed: 1.0, industrial: 0.5, haussmann: 1.0 };
   const ROOF_MAT = ['membrane', 'gravel', 'concrete', 'tile', 'metal', 'slate', 'kawara', 'copper', 'glass', 'green', 'zinc'];
   const CURVED = new Set([8, 9, 10]); // round, dome, onion: smooth shading
@@ -215,6 +220,14 @@ window.OEBuildings = (function () {
       const own = hasStyle && m[10] != null;
       const style = own ? (typeof m[10] === 'number' ? styleList[m[10]] : m[10]) : guessStyle(m);
       let storey = own ? m[11] : 0, ground = own ? m[12] : 0;
+      // a record of one floor on a wall that could hold two of the style's tallest (a register that
+      // counts a whole block as one storey) is counted from the style's storey height instead, as
+      // pipeline/typology.py storeys() now does
+      const smax = STOREY_MAX[style];
+      if (own && m[3] === 1 && smax && m[2] > 2 * smax && storey > smax) {
+        const gx = Math.max(0, ground - storey), n = Math.max(1, Math.round((m[2] - gx) / STOREY[style]));
+        storey = Math.min(Math.max((m[2] - gx) / n, 2.6), 6.5); ground = storey + gx;
+      }
       if (!storey && style !== 'wall') {
         const res = /^(house|terrace|apartment)$/.test(style);
         storey = res ? 3.0 : style === 'heritage' ? 4.4 : 3.8;
@@ -1062,7 +1075,9 @@ window.OEBuildings = (function () {
       roughB = mix(roughB, mix(0.07, 0.6, isBlind), win);
     }
     diffuseColor.rgb = mix(diffuseColor.rgb, signC, sign);
-    emitB += sign * signC * (0.05 + 1.1 * uNight * uSigns);
+    // a sign is lit as bright as a lit room, whatever the city's density of signs, and a white or yellow
+    // one less than a red: a backlit panel reads as colour, not as a white glare
+    emitB += sign * signC * (0.04 + 0.75 * uNight * min(uSigns, 1.0)) * (1.0 - 0.45 * dot(signC, vec3(0.3, 0.5, 0.2)));
     roughB = mix(roughB, 0.35, sign);
     glass = win * (1.0 - isBlind);
     // the top of each opening in the lintel's shadow
@@ -1185,7 +1200,7 @@ window.OEBuildings = (function () {
   reflectedLight.indirectSpecular *= mix(aoW, 1.0, glass * 0.5);
   reflectedLight.directDiffuse *= mix(1.0, aoW, 0.35);`);
     };
-    mat.customProgramCacheKey = () => `oe-facade-8${night ? '-night' : ''}`;
+    mat.customProgramCacheKey = () => `oe-facade-9${night ? '-night' : ''}`;
     return mat;
   }
 
