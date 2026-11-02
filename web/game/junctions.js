@@ -197,7 +197,10 @@ window.OEJunctions = (function () {
       }
       // not the other carriageway of the same road, back the way it came, nor a road no car can get
       // along (net.avoid: through a building, route.js), unless that is all there is
-      const av = net.avoid, ok = out.filter(e => !(av && av[e.m.line])), pool = ok.length ? ok : out;
+      // nor, given another way, a short stub that ends in nothing (the map's edge, a lane the data
+      // leaves unjoined), where a car could only turn round
+      const stub = e => { const far = 1 - e.m.end; return L[e.m.line].len < 40 && !armOf.get(e.m.line * 2 + far) && !net.next(e.m.line, far, true); };
+      const av = net.avoid, ok0 = out.filter(e => !(av && av[e.m.line])), ok1 = ok0.filter(e => !stub(e)), ok = ok1.length ? ok1 : ok0, pool = ok.length ? ok : out;
       const fwd = pool.filter(e => Math.abs(e.turn) < 2.6);
       a.exits = fwd.length ? fwd : pool;
       // the lanes a movement goes from: the first lane always; the second (on a road with two) for
