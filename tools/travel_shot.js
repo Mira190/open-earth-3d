@@ -82,9 +82,13 @@ const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = proce
       // (a city.json "arrivals" top, the part it frames, in place of the label's)
       const spec = ((g.scene.city || {}).arrivals || {})[lm.name] || {}, gz = Math.max(0, g.nav.terrain(lm.at[0], lm.at[1]));
       const top = spec.top ? gz + spec.top : lm.top || gz + 20, v = new THREE.Vector3(lm.at[0], gz + (top - gz) * 0.66, -lm.at[1]).project(g.camera);
-      return { ok, mode: pl.mode, dist: Math.hypot(dx, dy), z: pl.z, floor: pl.floor, inFrame: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1, ndc: [v.x, v.y] };
+      // the camera over what is under it: the terrain, a floor below the player's head, and the 2 m surface model
+      const c = g.camera.position, cx = c.x, cy = -c.z, D = g.DSM, ci = Math.floor((cx - D.x0) / D.cell), cj = Math.floor((D.y1 - cy) / D.cell);
+      const fl = g.nav.floorAt(cx, cy, pl.z + 1.5), under = Math.max(Math.max(0, g.nav.terrain(cx, cy)), fl ? fl.z : -1e9);
+      const cam = { over: c.y - under, dsm: c.y - (ci >= 0 && cj >= 0 && ci < D.nx && cj < D.ny ? D.data[cj * D.nx + ci] : 0) };
+      return { ok, mode: pl.mode, dist: Math.hypot(dx, dy), z: pl.z, floor: pl.floor, cam, inFrame: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1, ndc: [v.x, v.y] };
     }, d.i);
-    console.log(`${r.ok && r.inFrame ? 'ok  ' : 'MISS'} ${d.name}: ${r.mode}, ${r.dist.toFixed(0)} m away, z ${r.z.toFixed(1)} (${r.floor}), in frame ${r.inFrame} [${r.ndc.map(x => x.toFixed(2))}]`);
+    console.log(`${r.ok && r.inFrame ? 'ok  ' : 'MISS'} ${d.name}: ${r.mode}, ${r.dist.toFixed(0)} m away, z ${r.z.toFixed(1)} (${r.floor}), in frame ${r.inFrame} [${r.ndc.map(x => x.toFixed(2))}], camera ${r.cam.over.toFixed(1)} m over the ground and ${r.cam.dsm.toFixed(1)} m over the surface model${r.cam.over < 0.3 || r.cam.dsm < -1 ? ' BURIED' : ''}`);
     await shot(`lm${String(d.i).padStart(2, '0')}`);
   }
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

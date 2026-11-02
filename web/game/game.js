@@ -1975,6 +1975,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return c >= 0 && r >= 0 && c < DSM.nx && r < DSM.ny ? DSM.data[r * DSM.nx + c] : 0;
   };
   const inFrame = (x, y, m = 30) => x > FRAME.x0 + m && x < FRAME.x1 - m && y > FRAME.y0 + m && y < FRAME.y1 - m;
+  // how far into the haze at the model's edge a point is, 0 to 1, as world.js edgeHaze draws it: standing in that band,
+  // everything round you is veiled, the near things too
+  const edgeFade = Math.min(500, Math.max(250, 0.1 * Math.min(FRAME.x1 - FRAME.x0, FRAME.y1 - FRAME.y0)));
+  const hazeAt = (x, y) => {
+    const ox = Math.max(0, Math.abs(x - (FRAME.x0 + FRAME.x1) / 2) - ((FRAME.x1 - FRAME.x0) / 2 - edgeFade));
+    const oy = Math.max(0, Math.abs(y - (FRAME.y0 + FRAME.y1) / 2) - ((FRAME.y1 - FRAME.y0) / 2 - edgeFade));
+    return THREE.MathUtils.smoothstep(Math.hypot(ox, oy), 0, edgeFade);
+  };
   // the mapped trees (places.json, decimetres: x, y, ground, height) as [x, y, top, crown radius] on a 20 m grid,
   // built on first use: the surface model has the buildings but not the trees, and a crown hides a tower as well
   let treeGrid = null;
@@ -2063,13 +2071,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // three rings, but none nearer for a tower too tall to stand back from by its full height (Two IFC, the ICC)
     for (const k of spec.dist || tall * 1.4 <= D ? [1, 0.75, 1.3] : [1, 1.3]) for (let i = 0; i < 16; i++) {
       const a = (i + (k === 1 ? 0 : 0.5)) / 16 * Math.PI * 2, px = x + Math.sin(a) * D * k, py = y + Math.cos(a) * D * k, pz = nav.terrain(px, py);
-      if (inFrame(px, py) && pz > -0.5 && aside(px, py) < Infinity) cands.push({ px, py, score: sight(px, py, Math.max(0, pz)) - 0.12 * Math.abs(k - 1) - aside(px, py) });
+      if (inFrame(px, py) && pz > -0.5 && aside(px, py) < Infinity) cands.push({ px, py, score: sight(px, py, Math.max(0, pz)) - 0.12 * Math.abs(k - 1) - aside(px, py) - 3 * hazeAt(px, py) });
     }
     cands.sort((a, b) => b.score - a.score);
     const judge = p => {
       const f = frame(p, Math.hypot(x - p[0], y - p[1])), rm = room(f);
       const fl = nav.floorAt(p[0], p[1], p[2] + 0.5), roof = fl && fl.kind === 'roof' ? 0.4 : 0; // the street rather than a roof level with it
-      const score = sight(p[0], p[1], p[2]) + (rm > 0.97 ? 0.3 : rm === 0.5 ? -0.3 : -1) + 0.5 * open(p) - roof - 0.12 * Math.abs(Math.hypot(x - p[0], y - p[1]) / D - 1) - aside(p[0], p[1]);
+      // out from under a walkway, a flyover or an overhang, for you and for the camera behind you
+      const bx = p[0] - Math.sin(f.face + 0.12) * 7, by = p[1] - Math.cos(f.face + 0.12) * 7;
+      const covered = (dsmAt(p[0], p[1]) > p[2] + 4 ? 0.6 : 0) + (dsmAt(bx, by) > p[2] + 4 ? 0.6 : 0);
+      const score = sight(p[0], p[1], p[2]) + (rm > 0.97 ? 0.3 : rm === 0.5 ? -0.3 : -1) + 0.5 * open(p) - roof - covered - 0.12 * Math.abs(Math.hypot(x - p[0], y - p[1]) / D - 1) - aside(p[0], p[1]) - 3 * hazeAt(p[0], p[1]);
       if (dbg) dbg.push({ p: p.map(v => Math.round(v)), sight: +sight(p[0], p[1], p[2]).toFixed(2), room: +rm.toFixed(2), open: +open(p).toFixed(2), score: +score.toFixed(2) });
       return { f, score, rm };
     };

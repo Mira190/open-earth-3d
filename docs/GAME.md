@@ -744,7 +744,8 @@ cars.
     high part runs. A slot down a street of offices sees only its top over the roofs and
     fails the low lines either side, so a square, a riverbank or a wide road that sees it
     whole wins. Then the sun behind you by day, open ground round the spot, the street
-    rather than a roof, and room behind you for the chase camera (the same test the
+    rather than a roof, out from under a walkway or a flyover (for you and the camera), out of the haze the model's edge fades into (standing in it veils
+    everything round you, the near things too), and room behind you for the chase camera (the same test the
     camera rig makes, and no crown in front of the lens). A spot whose camera is blocked
     is tried again a few steps either side, nearer and further.
   - **Fronts and hand-picked spots** (`arrivals` in `cities/<id>/city.json`, keyed by the
