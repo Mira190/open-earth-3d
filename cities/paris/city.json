@@ -79,6 +79,14 @@
   },
   "architecture": "paris",
   "water": {
+    "seawall": {
+      "stone": "#b3a68e",
+      "coping": "#c2b8a2",
+      "course_m": 0.5,
+      "block_m": 1.2,
+      "high_water_m": 0.45,
+      "note": "The Seine's quays: dressed limestone ashlar under a limestone coping; the river's level is held by its locks."
+    },
     "classes": [
       "river"
     ],

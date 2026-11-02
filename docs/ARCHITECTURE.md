@@ -161,30 +161,52 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   inland. Without it Osaka's river walk along the Dotonbori went under the water.
   The water shader uses the same slopes for how much of the bottom shows.
 
-  The 10 m grid still slopes across a whole cell at a quay, and the aerial
-  photo's paving was draped down that slope into the water: a pale skirt round
-  every seawall, Bennelong Point's most of all. So `world.js` steps the ground at
-  built shores as it draws it (`seawallStep`, nothing in the data changes): a
-  cell that `shore.png` says the shoreline crosses, and that is neither beach nor
-  rock, is drawn on a 2.5 m lattice (5 m on a smaller device). The land keeps
-  the height of the land round it right up to the shoreline, the water side lies
-  0.3 m under the surface and then on the modelled bottom, and the lattice
-  points nearest the line move onto it, each within its own half cell so no
-  triangle folds. A coarse cell beside a stepped one is drawn as a fan through
-  the points on their shared side, so the two meet without a crack. The ground
-  shader draws the steep faces as stone in courses with a dark wet foot, lit by
-  their own normal. Beaches and rocky shores keep their slope. Where a landmark
-  models its own seawall and paving (Bennelong Point's), the ground under them
-  and in front of the wall is not drawn at all (`landmarks.json` `clip`).
-
   Sydney's map holds 25 sand and 220 rock polygons from Overture's land cover.
   Melbourne's sand is sports fields, away from the river.
+
+  **Quays** (`web/quays.js`, for the viewer and the game). The terrain grids
+  (10 m in the viewer, 5 m round the player in the game) cannot turn a corner at
+  a quay wall: between the last point on land and the first in the water the
+  ground sloped up out of the water for up to a cell, draped with the aerial
+  photo as a grey ramp. Along every shore `shore.png` does not mark as sand or
+  rock, the browser now builds the seawall from the same map:
+  - *the shoreline:* the zero of the signed distance, smoothed a little (two
+    [1 2 1] passes, so the half-metre steps don't wobble a straight wall),
+    traced by marching squares, chained and simplified (Douglas–Peucker,
+    0.35 m), in pieces no longer than 6 m;
+  - *the wall:* a face of dressed stone in courses (the `ashlar` pattern, with
+    the tidal band up to the city's high water and grime in streaks above it)
+    from below the modelled bottom up under a coping 0.9 m deep, 0.2 m out in
+    the water from the line. The coping sits on the highest drawn ground behind
+    it, so the ground never shows through it;
+  - *the ground:* the grid points out in the water within 1.5 coarse cells of a
+    quay (and points beside one that lie below the water, where the DEM took the
+    river for land) are raised to the quay's level, so the ground meets the wall
+    level; the ground shader discards it above the water from a quarter metre
+    behind the shoreline out (a 2.5 m mask of the band along the quays), and the
+    bottom is drawn under the cells it opens;
+  - *walking:* along a quay the water starts 0.3 m short of the wall's face, by
+    the same distance, not at the 5 m water mask's bank, and the walker walks on
+    the raised grid (`game/nav.js`).
+
+  The quay's level is the land behind it: the fine grid's points more than
+  0.75 m in from the shore and above the water within 1.6 cells, nearer ones
+  counting more, at least 0.4 m. A shore whose land is more than 9 m up (a
+  hillside down to a moat) is left as it was, and so is a landmark's own
+  seawall (`landmarks.json` `clip`: Bennelong Point). The city's stone is
+  `water.seawall` in `city.json` (copied to `scene.json`). Sydney has 26 km of
+  seawall, Amsterdam 140 km of canal walls, Osaka 33 km, Tokyo 22 km, Paris
+  18 km, Melbourne 17 km, Hong Kong 16 km and the bayside 5 km. It takes 0.3–1 s
+  at load. `?quays=off` leaves them out, to compare. The method is the
+  standard one (marching squares on a distance field, as in d3-contour or
+  scikit-image's `find_contours`); no outside code is used.
 - `scene.json`: the frame, the terrain grid, the ground tiles, storey
   heights, landmark anchors, labels, sources, the published-heights summary,
   and a `city` block. That block is a copy of the config fields the viewer
   needs: tour, start, protection, labels and regions. It also has:
   - `shore`: where `shore.png` lies, and its slopes;
-  - `water`: the city's wave and colour settings from `city.json`;
+  - `water`: the city's wave and colour settings from `city.json`, and the
+    stone of its seawalls (`seawall`);
   - `hidden_solids`: the solids a parametric landmark draws instead. Sydney
     Tower's shaft, turret and mast stay in `buildings.json`, so the surface
     model and every analysis still have the tower's shadow, but the renderers

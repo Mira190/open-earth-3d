@@ -11,6 +11,7 @@
 //   xvfb-run -a node tools/game_shot.js sydney views.json out_dir [WxH]   # llvmpipe; without xvfb-run, SwiftShader
 // views.json: [{"name": "steps", "at": [x, y], "look": [x, y], "time": "15:30", "dist": 6, "pitch": 0.15},
 //              {"name": "harbour", "cam": [x, y, z], "tgt": [x, y, z], "time": "sunset-25"}, ...]
+// ("street": true stands on the ground there rather than on the roof over it)
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -77,7 +78,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       const g = window.__game;
       if (g.cine.active) g.cine.skip();
       window.__shotClock(v);
-      const [x, y] = v.at, f = g.nav.floorAt(x, y, 200);
+      const [x, y] = v.at, f = g.nav.floorAt(x, y, v.street ? g.nav.terrain(x, y) + 0.5 : 200); // (the roof there, or the street under a canopy)
       g.player.x = x; g.player.y = y; g.player.z = f ? f.z : 0;
       g.player.h = Math.atan2(v.look[0] - x, v.look[1] - y);
       Object.assign(g.cam, { mode: 'chase', yaw: g.player.h, pitch: v.pitch ?? 0.12, dist: v.dist ?? 5, distTo: 0, yawTo: null, lastInput: -10 });

@@ -79,7 +79,7 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
     for (let i = 0; i + 1 < spots.length; i += 2) jobs.push([spots[i], spots[i + 1]]);
     for (const [a, t] of jobs) {
       const t1 = performance.now(), rt = ways.walk(a, t), ms = performance.now() - t1;
-      if (!rt) { out.walk.push({ to: t.name, none: true, d: Math.round(Math.hypot(t.x - a.x, t.y - a.y)), ms: Math.round(ms), reach: reach(a, t) }); continue; }
+      if (!rt) { out.walk.push({ to: t.name, at: [Math.round(t.x), Math.round(t.y)], none: true, d: Math.round(Math.hypot(t.x - a.x, t.y - a.y)), ms: Math.round(ms), reach: reach(a, t) }); continue; }
       const where = [];
       out.walk.push({ to: t.name, len: Math.round(rt.len), d: Math.round(Math.hypot(t.x - a.x, t.y - a.y)), blocked: +ways.blockedMetres(rt.pts, where).toFixed(1), run: +(where.run || 0).toFixed(1), where: where.map(q => q.map(v => (typeof v === 'number' ? Math.round(v) : v))),
         endGap: +Math.hypot(rt.end[0] - t.x, rt.end[1] - t.y).toFixed(1), ms: Math.round(ms) });
@@ -136,7 +136,7 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
   const longest = Math.max(0, ...walked.map(w => w.run));
   console.log(`on foot: ${walked.length} routes, ${(total / 1000).toFixed(1)} km, ${blocked.toFixed(1)} m where a walker can't stand (at most ${longest} m at a time: grazing a corner, not through a wall); ${none.length} with no way on foot; ${r.walkMs} ms in all (slowest ${Math.max(...r.walk.map(w => w.ms))} ms)`);
   for (const w of walked.filter(w => w.run > 1).slice(0, 8)) console.log(`  blocked ${w.blocked} m to ${w.to} (${w.len} m), ${w.run} m at a time, at ${JSON.stringify(w.where)}`);
-  for (const w of none.slice(0, 12)) console.log(`  no route to ${w.to} (${w.d} m away): ${w.reach === true ? 'MISSED, a walker can get there' : w.reach === false ? 'a walker can\'t get there either' : 'too far to tell'}`);
+  for (const w of none.slice(0, 12)) console.log(`  no route to ${w.to} at ${w.at} (${w.d} m away): ${w.reach === true ? 'MISSED, a walker can get there' : w.reach === false ? 'a walker can\'t get there either' : 'too far to tell'}`);
   for (const w of walked.filter(w => w.endGap > 12).slice(0, 8)) console.log(`  stops ${w.endGap} m short of ${w.to}`);
   const flown = r.fly.filter(f => !f.none);
   console.log(`flying: ${flown.length} of ${r.fly.length} flights, ${flown.reduce((a, f) => a + f.bad, 0)} points through something; highest ${Math.max(0, ...flown.map(f => f.top))} m; slowest ${Math.max(0, ...flown.map(f => f.ms))} ms`);
