@@ -464,6 +464,14 @@ pipeline writes. The only city-specific code is landmark geometry in
     blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 24
     in Kyoto, 86 in Osaka, 55 in Shibuya, 20 in Tokyo and a few elsewhere are
     canopies now.
+  - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
+    the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
+    wide and hundreds of metres long, with a height estimated from the houses
+    nearby (8.7 m), and were drawn as office blocks. They are 4.5 m walls with a
+    tiled coping and the Gosho's five white lines now, and still walls to a
+    walker: the way in is by the gates `arcades.py` opens. 12 in Kyoto (with
+    Sanjusangen-do's Taiko-bei), 3 in Shibuya (Meiji Jingu), 2 in Osaka and one
+    each in Tokyo, Sydney, Melbourne and Amsterdam.
   - **Wharves:** each wharf has a landing, the nearest place on foot to its
     terminal. You board from there where the mapped terminal is out on the
     water (Circular Quay's wharves, Central Pier 7).
