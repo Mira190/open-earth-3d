@@ -100,8 +100,7 @@ where the city has ferries, and a kerb close by for a taxi. The lead's welcome
 says where each is. Sydney starts on West Circular Quay facing the Opera House,
 Paris on the Pont d'Iéna at the foot of the Eiffel Tower, Tokyo on the Marunouchi
 plaza in front of the station, Kyoto on the station plaza below Kyoto Tower,
-Osaka on the Dotonbori (its pad is on Minatomachi River Place, along the canal
-walk), Shibuya at Hachiko (its pad is the roof of SHIBUYA SKY, a lift ride up),
+Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at Hachiko (its pad is the roof of SHIBUYA SKY, a lift ride up),
 Hong Kong at the Star Ferry's Pier 7, Melbourne in Federation Square, the bayside
 at St Kilda Pier and Amsterdam on the Dam. Heron Island and Whitsundays start on
 the beach by their helipad.

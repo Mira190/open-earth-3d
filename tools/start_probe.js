@@ -1,7 +1,7 @@
 // Where a city's game starts you, and how far that is from a ride: the helicopter (the first
 // helipad), the nearest ferry wharf's landing and the nearest kerb a taxi can pull in at. With
 // points, it also finds open ground for a helipad near each (a 10 m circle free of buildings,
-// landmarks and walls up to 30 m, on the ground or a pier) and the kerb and wharf from there.
+// landmarks and walls up to 40 m, on the ground or a pier) and the kerb and wharf from there.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/start_probe.js sydney                 # the start as it is
 //   xvfb-run -a node tools/start_probe.js sydney -100,150 300,400 # and open ground near these
@@ -38,7 +38,7 @@ const [,, city = 'sydney', ...pts] = process.argv;
           const a = 2 * Math.PI * k / n, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
           const f = nav.floorAt(x, y, roof || Math.max(0, nav.terrain(x, y)) + 1);
           if (!f || (!roof && f.kind !== 'ground' && f.kind !== 'pier')) continue;
-          let ok = nav.free(x, y, f.z + 0.6, f.z + 30, padR);
+          let ok = nav.free(x, y, f.z + 0.3, f.z + 40, padR); // the sky clear for a climb, as vehicles.js checks it
           for (let j = 0; ok && j < 16; j++) { const b = 2 * Math.PI * j / 16, q = nav.floorAt(x + Math.cos(b) * padR * 0.8, y + Math.sin(b) * padR * 0.8, f.z + 1); ok = !!q && Math.abs(q.z - f.z) < 1.2; }
           if (!ok || found.some(o => Math.hypot(o.x - x, o.y - y) < 25)) continue;
           const h = fromHere(x, y, f.z);
