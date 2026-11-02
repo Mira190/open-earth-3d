@@ -163,7 +163,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   shore no longer shows. On a straight slope the water off a beach stayed 2.5 m
   deep out across the bay, in a pale wedge for every stretch of sand (issue 39).
   Along the frame's edge haze the water closes over the bottom, which hazes out
-  there while open sea above it does not.
+  there while open sea above it does not. Out where the floor is reached the
+  water hides the bottom altogether, as the open sea past the frame (which has
+  none under it) does; letting a tenth of the aerial photo through there read
+  as a straight band where the two met at the frame (issue 57).
 
   The first grid point out from the land is at most 0.3 m deep (a shelf), so on
   the 5 m grid the waterline falls at the quay's edge rather than up to a cell
