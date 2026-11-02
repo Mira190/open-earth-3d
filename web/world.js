@@ -264,9 +264,10 @@ float tgHash(vec2 c) { return fract(sin(dot(c, vec2(27.17, 113.93))) * 31718.927
     ashlar(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 }, uTide: { value: m.tide ? 1 : 0 } });
+        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 }, uTide: { value: m.tide ? 1 : 0 },
+          uHighWater: { value: m.high_water_m ?? 0.85 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uCourse, uBlock, uTide; float pWet;
+uniform float uCourse, uBlock, uTide, uHighWater; float pWet;
 float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.743); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float row = floor(vUv.y / uCourse), fy = fract(vUv.y / uCourse);
@@ -278,8 +279,8 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     float tone = 0.84 + 0.28 * ashHash(vec2(row, floor(x)));
     diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near);
     pWet = 0.0;
-    if (uTide > 0.5) { // high water about 0.9 m up, ragged with the weed; a pale salt line just above it
-      float hw = 0.85 + 0.12 * sin(vUv.x * 1.7) + 0.08 * sin(vUv.x * 5.3 + 1.0);
+    if (uTide > 0.5) { // high water (uHighWater, about 0.9 m up on a tidal harbour), ragged with the weed; a pale salt line just above it
+      float hw = uHighWater + (0.12 * sin(vUv.x * 1.7) + 0.08 * sin(vUv.x * 5.3 + 1.0)) * min(1.0, uHighWater / 0.85);
       pWet = 1.0 - smoothstep(hw - 0.25, hw + 0.05, vUv.y);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.32, 0.34, 0.27), pWet);
       diffuseColor.rgb *= 1.0 + 0.1 * (smoothstep(hw, hw + 0.15, vUv.y) - smoothstep(hw + 0.2, hw + 0.6, vUv.y));
@@ -519,9 +520,46 @@ vec3 photoGrade(vec3 c) {
       }
       const tex = new THREE.CanvasTexture(cv);
       tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) } };
+      const px = g.getImageData(0, 0, w, h).data;
+      // within a clip region, or a metre and a half from one (a landmark's own seawall runs along its edge)
+      const near = (x, y) => {
+        const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
+        for (let dr = -3; dr <= 3; dr += 3) for (let dc = -3; dc <= 3; dc += 3) {
+          const rr = r + dr, cc = c + dc;
+          if (rr >= 0 && cc >= 0 && rr < h && cc < w && px[4 * (rr * w + cc)] > 127) return true;
+        }
+        return false;
+      };
+      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) }, near };
     })();
+    // the seawalls along every built shore (quays.js), from shore.png: the ground drawn is raised to
+    // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
+    let shoreTex = null, Q = null;
+    if (scene.shore) {
+      shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
+      if (shoreTex) { shoreTex.colorSpace = THREE.NoColorSpace; shoreTex.generateMipmaps = false; shoreTex.minFilter = THREE.LinearFilter; shoreTex.flipY = false; }
+      if (shoreTex && window.OEQuays && new URLSearchParams(location.search).get('quays') !== 'off') try { // ?quays=off: without, to compare
+        const sh = scene.shore, img = shoreTex.image, cv = document.createElement('canvas');
+        cv.width = sh.nx; cv.height = sh.ny;
+        const g = cv.getContext('2d', { willReadFrequently: true });
+        g.drawImage(img, 0, 0);
+        Q = OEQuays.create({ px: g.getImageData(0, 0, sh.nx, sh.ny).data, nx: sh.nx, ny: sh.ny, cell: sh.cell, x0: sh.x0, y1: sh.y1 },
+          D.Tfine || T, { band: 1.5 * T.cell, skip: CLIP && CLIP.near });
+        if (!Q.quayPixels) Q = null;
+      } catch (e) { console.warn('quays: none drawn', e); Q = null; }
+    }
+    D.quays = Q;
+    const QUAY = Q && { mask: { value: Q.maskTexture() }, dist: { value: shoreTex }, box: { value: new THREE.Vector4(...Q.box) } };
     const clipGround = sh => {
+      if (QUAY) { // out in front of a quay, above the water: the grid's ramp up to the land
+        Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayDist: QUAY.dist, uQuayBox: QUAY.box });
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vQuayWP;')
+          .replace('#include <project_vertex>', '#include <project_vertex>\nvQuayWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uQuayMask, uQuayDist; uniform vec4 uQuayBox; varying vec3 vQuayWP;')
+          .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  { vec2 quv = vec2((vQuayWP.x - uQuayBox.x) / uQuayBox.z, (uQuayBox.y + vQuayWP.z) / uQuayBox.w);
+    if (vQuayWP.y > -0.05 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 127.5 / 255.0) discard; }`); // from a quarter metre back: under the coping
+      }
       if (!CLIP) return;
       Object.assign(sh.uniforms, { uClip: CLIP.tex, uClipBox: CLIP.box });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClipWP;')
@@ -554,16 +592,44 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       g.rotateX(-Math.PI / 2);
       g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
       const p = g.attributes.position;
+      if (Q) Tg = Q.raise(Tg, true); // the points out in the water along a quay at its level
       for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
+      // under the cells raised to a quay, which the ground shader leaves open above the water: the bottom
+      if (Tg.up) {
+        const cols = Math.round(w / Tg.cell) + 1, rows = p.count / cols, at = [];
+        const up = i => {
+          const c = Math.round((p.getX(i) - Tg.x0) / Tg.cell), r = Math.round((Tg.y1 + p.getZ(i)) / Tg.cell);
+          return c >= 0 && r >= 0 && c < Tg.nx && r < Tg.ny && Tg.up[r * Tg.nx + c];
+        };
+        const y = -((scene.shore || {}).floor_m || 4) - 0.05;
+        for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
+          const a = r * cols + c, b = a + 1, d = a + cols, e = d + 1;
+          if (!(up(a) || up(b) || up(d) || up(e))) continue;
+          for (const k of [a, d, b, b, d, e]) at.push(p.getX(k), y, p.getZ(k));
+        }
+        if (at.length) {
+          const u = new THREE.BufferGeometry();
+          u.setAttribute('position', new THREE.Float32BufferAttribute(at, 3));
+          u.computeVertexNormals();
+          g.userData.underlay = u;
+        }
+      }
       return g;
+    }
+    // a ground tile's mesh, with the bottom under its quays (tileGeometry)
+    const quayBed = new THREE.MeshStandardMaterial({ color: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33'), roughness: 1, metalness: 0 });
+    function groundMesh(g, material) {
+      const m = new THREE.Mesh(g, material);
+      if (g.userData.underlay) m.add(new THREE.Mesh(g.userData.underlay, quayBed));
+      return m;
     }
     for (const t of scene.ground) {
       const g = tileGeometry(t, T);
       const tex = texLoader.load(D.DATA + t.file, tileLoaded, undefined, () => tileLoaded({ image: null }));
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
+      const m = groundMesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       m.material.onBeforeCompile = gradePhoto;
       m.receiveShadow = true;
       world.add(m);
@@ -572,11 +638,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
     // the old see-through sheet with ripples. On land the terrain covers it either way.
-    let sea = null, shoreTex = null;
-    if (scene.shore) {
-      shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
-      if (shoreTex) { shoreTex.colorSpace = THREE.NoColorSpace; shoreTex.generateMipmaps = false; shoreTex.minFilter = THREE.LinearFilter; shoreTex.flipY = false; }
-    }
+    let sea = null;
     const quality = (new URLSearchParams(location.search)).get('water') || 'auto';
     if (window.OEWater && quality !== 'flat' && renderer.capabilities.isWebGL2 &&
         (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'))) {
@@ -616,6 +678,36 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     water.receiveShadow = true;
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
+
+    // the seawalls (quays.js): dressed stone in courses with the tidal band, under a coping; the city's stone in scene.json water.seawall (city.json water.seawall)
+    const quayMeshes = [];
+    if (Q) {
+      const sw = Object.assign({ stone: '#8f8678', coping: '#b4ab9b', course_m: 0.6, block_m: 1.4, high_water_m: 0.85 }, (scene.water || {}).seawall || {});
+      const face = new THREE.MeshStandardMaterial({ color: lin(sw.stone), roughness: 0.9, metalness: 0 });
+      PATTERNS.ashlar(face, { course_m: sw.course_m, block_m: sw.block_m, tide: true, high_water_m: sw.high_water_m });
+      const own = face.onBeforeCompile;
+      face.onBeforeCompile = sh => {
+        own(sh);
+        // weathering: grime darkening down towards the tide line, in streaks along the wall
+        sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `{ float streak = 0.5 + 0.5 * sin(vUv.x * 0.9 + 2.0 * sin(vUv.x * 0.23)) * sin(vUv.x * 2.7 + 1.3);
+    diffuseColor.rgb *= mix(0.78 + 0.12 * streak, 1.0, smoothstep(0.0, 2.2, vUv.y - uHighWater)); }
+#include <roughnessmap_fragment>`);
+        streetLit(sh);
+      };
+      face.customProgramCacheKey = () => 'quay|face';
+      const coping = new THREE.MeshStandardMaterial({ color: lin(sw.coping), roughness: 0.82, metalness: 0 });
+      coping.onBeforeCompile = streetLit;
+      coping.customProgramCacheKey = () => 'quay|coping';
+      const { geos, length } = Q.geometries(Q.walls(), (scene.shore || {}).floor_m || 4);
+      for (const g of geos) {
+        const m = new THREE.Mesh(g, [face, coping]);
+        m.receiveShadow = true;
+        m.name = 'quay';
+        world.add(m);
+        quayMeshes.push(m);
+      }
+      console.info(`quays: ${(length / 1000).toFixed(1)} km of seawall in ${geos.length} pieces`);
+    }
 
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
@@ -900,7 +992,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       } catch (e) { return false; }
     }
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, gradePhoto, streetLit, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
