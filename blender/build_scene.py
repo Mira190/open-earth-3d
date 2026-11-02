@@ -254,6 +254,24 @@ def build(data):
         counts["objects"] += 1
         counts["triangles"] += len(idx)
 
+    # street furniture the browser instances (landmarks.json "props"): each part placed at every
+    # [x, y, z, heading, scale across] and joined into one object
+    for pr in LM.get("props", []):
+        for part in pr["parts"]:
+            mt = LM["materials"][part["material"]]
+            p0 = np.asarray(part["position"], float).reshape(-1, 3)
+            f0 = np.asarray(part["index"], int).reshape(-1, 3)
+            verts, faces = [], []
+            for a in pr["at"]:
+                x, y, z, h = a[:4]
+                s, c, sn = (a[4] if len(a) > 4 else 1.0), np.cos(h), np.sin(h)
+                faces += [tuple(int(i) + len(verts) for i in f) for f in f0]
+                verts += [(x + s * (px * c - py * sn), y + s * (px * sn + py * c), z + pz) for px, py, pz in p0]
+            mat = landmark_material(f"{pr['name']}_{part['name']}", mt, None, part.get("floodlit", False))
+            mesh_object(f"{pr['name']}_{part['name']}", verts, faces, mat, smooth=part["smooth"])
+            counts["objects"] += 1
+            counts["triangles"] += len(faces)
+
     # sea level: the ground mesh sits above it on land, so one plane is all the water. It is
     # 10 cm up so that it covers the shore cells the terrain puts at exactly 0 m, which would
     # be coplanar with it, and Cycles shades coplanar faces black.

@@ -540,6 +540,8 @@ def main():
         x, y, z = hp["at"]
         near = water & (np.hypot(gx - x, gy - y) < 14.0)
         ground_grid[near] = np.maximum(ground_grid[near], max(z, 0.0))
+    if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
+        ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),

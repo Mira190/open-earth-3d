@@ -1157,6 +1157,7 @@ def build(C):
     dem[edge] = np.maximum(dem[edge], -QUAY_SHELF_M)
     sm["image"].save(os.path.join(C.out, "shore.png"), optimize=True)
     ctx = Ctx(C, dem_land)
+    ctx.sea = sea  # the water polygons, for a hook that follows the shore (a seawall)
 
     tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
 
@@ -1471,7 +1472,7 @@ def build(C):
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
-        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m")},
+        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter")},
         "trees": cfg.get("trees", {}),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},

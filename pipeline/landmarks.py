@@ -16,14 +16,18 @@ def main():
     city, _ = city_args(__doc__.splitlines()[0])
     scene = json.load(open(os.path.join(city.out, "scene.json")))
     hook = city.hook("landmark_meshes")
-    materials, meshes = hook(scene) if hook else ({}, [])
+    got = hook(scene) if hook else ({}, [])
+    materials, meshes, extra = got if len(got) == 3 else (*got, {})  # extra: "props" drawn instanced, "carve" (web/world.js)
     if city.hook("landmark_assets"):
         for f in city.hook("landmark_assets")(city.out, scene) or []:
             print(f"{f}: {os.path.getsize(os.path.join(city.out, f)) / 1e6:.2f} MB")
     out = {"materials": materials, "meshes": [m.dump() for m in meshes],
            "notes": "Parametric; dimensions from published figures, anchors from OpenStreetMap footprints." if meshes else "No parametric landmarks."}
+    out.update(extra)
     path = os.path.join(city.out, "landmarks.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
+    for p in extra.get("props", []):
+        print(f"  props: {len(p['at'])} x {p['name']} ({sum(len(q['index']) // 3 for q in p['parts'])} triangles each)")
     print(f"{sum(len(m.v) for m in meshes)} vertices, {sum(len(m.i) for m in meshes) // 3} triangles -> {path}"
           f" ({os.path.getsize(path) / 1e6:.2f} MB)")
 
