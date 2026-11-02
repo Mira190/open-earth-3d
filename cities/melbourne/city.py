@@ -25,7 +25,7 @@ Parametric landmarks (called by pipeline/landmarks.py):
                       approximate conversions). The terracotta bands' heights are chosen.
 
 Labels: no footprint in Overture carries Flinders Street Station's name, so its label
-is placed at the station's published coordinates.
+stands over the dome, the station's front (its published coordinates are out over the platforms).
 """
 import math
 
@@ -92,8 +92,15 @@ def station(b, g, geoms, ctx):
 
 
 def finalize(ctx):
-    p = ctx.city.to_local(Point(*FLINDERS_STREET))
-    ctx.labels["Flinders Street Station"] = [round(p.x, 1), round(p.y, 1), round(ctx.ground(p.x, p.y) + 32.0, 1)]
+    # over the dome and the entrance under the clocks, the station's front: its published coordinate is out
+    # over the platforms, 50 m behind it, where map travel framed the platform walls
+    fs = ctx.landmarks.get("flinders_street", {})
+    if "dome" in fs:
+        d = fs["dome"]
+        ctx.labels["Flinders Street Station"] = [d["at"][0], d["at"][1], round(fs["ground_m"] + d["top_m"] + 6.0, 1)]
+    else:
+        p = ctx.city.to_local(Point(*FLINDERS_STREET))
+        ctx.labels["Flinders Street Station"] = [round(p.x, 1), round(p.y, 1), round(ctx.ground(p.x, p.y) + 32.0, 1)]
     s = ctx.landmarks.get("arts_centre_spire")
     if s:
         ctx.labels["Arts Centre spire"] = [s["at"][0], s["at"][1], s["top_m"] + 6.0]
