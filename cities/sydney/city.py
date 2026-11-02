@@ -64,6 +64,7 @@ import math
 
 import numpy as np
 import shapely
+import shapely.ops
 from shapely.geometry import Point, Polygon
 from shapely.geometry.polygon import orient
 
@@ -77,14 +78,15 @@ R_SHELL = 75.2
 DECK_ZONES = [(0.5, "parapet"), (3.5, "cycleway"), (0.4, "barrier"), (10.0, "rail"), (0.6, "barrier"), (20.4, "lanes6"),
               (0.6, "barrier"), (6.8, "lanes2"), (0.6, "barrier"), (4.9, "footway"), (0.5, "parapet")]
 MATERIALS = {
-    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.6, "chevron_m": 1.8, "emissive": "#fff1dc", "glow": 0.42},
+    "tile": {"color": "#f1eee6", "roughness": 0.35, "metalness": 0.0, "pattern": "chevron_tiles", "lid_m": 2.6, "chevron_m": 1.8, "emissive": "#fff4e6", "glow": 1.0},
     "tile_edge": {"color": "#d6ccb8", "roughness": 0.7, "metalness": 0.0},
-    # topaz glass, lit warm from the foyers after dark
-    "glass": {"color": "#2e251d", "roughness": 0.05, "metalness": 0.8, "emissive": "#e89a48", "glow": 0.07},
+    # topaz glass on bronze mullions, lit warm from the foyers after dark
+    "glass": {"color": "#22170f", "roughness": 0.05, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.5,
+              "pattern": "topaz_glass", "frame": "#4a3a2a", "transom_m": 2.7},
     "mullion": {"color": "#4d3c2b", "roughness": 0.5, "metalness": 0.7},
     # reconstituted granite (u, v metres): the podium's panels; treads with a pale nosing; risers
     # darker, with the shadow under the nosing (v from the riser's foot to its top, 0 to 1)
-    "podium": {"color": "#9c816b", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 1.65]},
+    "podium": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6]},
     "granite": {"color": "#b39684", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "tread"},
     # paving laid over a roof: drawn in front of it (web/world.js)
     "paving": {"color": "#b39684", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 1.5], "decal": True},
@@ -99,6 +101,26 @@ MATERIALS = {
     "turret": {"color": "#c9a04a", "roughness": 0.25, "metalness": 0.85},
     "turret_glass": {"color": "#6e5524", "roughness": 0.1, "metalness": 0.7},
     "cable": {"color": "#a3aaaf", "roughness": 0.45, "metalness": 0.6},
+    # Bennelong Point: the forecourt's and the broadwalk's pink granite flags, the seawall (the
+    # broadwalk's in the podium's aggregate, Sydney Cove's and Farm Cove's in sandstone) with its
+    # tidal band, its coping, and the street furniture
+    "flagstone": {"color": "#b49c89", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 2.4], "decal": True, "street_lit": True},
+    "seawall_opera": {"color": "#9f8574", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.9, "block_m": 2.4, "tide": True},
+    "seawall_sandstone": {"color": "#9a8a74", "roughness": 0.9, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.55, "block_m": 1.3, "tide": True},
+    "seawall_sandstone_dry": {"color": "#a08a6c", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.8, "block_m": 2.2},
+    "coping": {"color": "#c2ad9b", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 0.0], "street_lit": True},
+    "bollard": {"color": "#1d1f21", "roughness": 0.45, "metalness": 0.6},
+    "post": {"color": "#2b2f30", "roughness": 0.5, "metalness": 0.55},
+    "globe": {"color": "#f3efe4", "roughness": 0.3, "metalness": 0.0, "emissive": "#ffe2b0", "glow": 1.6},
+    "floodlamp": {"color": "#3d4043", "roughness": 0.4, "metalness": 0.6, "emissive": "#fff4dc", "glow": 0.9},
+    "timber": {"color": "#7d5d40", "roughness": 0.75, "metalness": 0.0},
+    "umbrella": {"color": "#f2efe8", "roughness": 0.85, "metalness": 0.0},
+    "canopy": {"color": "#e9e7e1", "roughness": 0.7, "metalness": 0.0},
+    "furniture": {"color": "#5f6263", "roughness": 0.5, "metalness": 0.5},
+    "pylon": {"color": "#202224", "roughness": 0.5, "metalness": 0.2},
+    "panel": {"color": "#e8e4da", "roughness": 0.6, "metalness": 0.0, "emissive": "#fff6e8", "glow": 0.5},
+    "colonnade": {"color": "#a58b78", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0]},
+    "opening": {"color": "#16110d", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.45},
 }
 SYDNEY_TOWER = "Sydney Tower"  # the turret part's name; the shaft and mast are unnamed parts above 200 m beside it
 # The shells, hall by hall from south to north, one per ridge OSM maps (the restaurant's two share
@@ -114,6 +136,9 @@ RESTAURANT_SPLIT = 0.65  # how far along the restaurant's ridge its two shells m
 JUNCTION_M = {"concert": 23.0, "joan_sutherland": 20.5, "restaurant": 8.0}  # how high above the podium the back-to-back shells' ridges meet
 SIDE_GLASS_M = {"concert": 6.0, "joan_sutherland": 5.5, "restaurant": 3.0}  # the glass under the side shells, at its highest
 NESTED_BACK, NESTED_RISE = 4.0, 0.5  # a nested shell's ridge goes back into the mouth of the one behind this far behind where it comes out, to this share of its tip's height
+# the dark band of glass along the podium's outer walls, m AHD: placed from photographs (Wikimedia
+# Commons, "AUS Sydney, Central Business District, Sydney Opera House 028.jpg"), not measured
+SLOT_M = (9.6, 10.5)
 # Monumental Steps, measured on the aerial photo along the axis of the podium's south edge: the
 # flights in metres from the top riser, the tread, the width and its offset from the podium's axis,
 # and how far inside the podium's mapped edge the top riser is; the riser is assumed
@@ -125,6 +150,27 @@ STEPS = {"flights": [(-17.6, -15.6), (-14.0, -8.0), (-6.4, 0.0)], "tread": 0.39,
 # on the lower landing, west of the Concert Hall's flight, as far as `behind_restaurant`.
 UPPER = {"flights": {"concert": (24.4, -12.0, 11.0), "joan_sutherland": (34.4, 11.0, 44.0)}, "run": 11.6, "risers": 29, "behind_restaurant": 50.0}
 
+# Bennelong Point round the Opera House (bennelong()): the paved precinct, from the Lower Concourse
+# on East Circular Quay round the broadwalk to the forecourt's east edge, in local metres; the
+# seawall is followed from Circular Quay round the point into Farm Cove (SEAWALL_AREA). The road
+# down to the Man O'War Steps and the Royal Botanic Garden stay as the aerial photo shows them.
+PRECINCT = [(138, 328), (205, 350), (255, 383), (300, 394), (346, 398), (350, 470), (482, 470), (482, 722), (118, 722), (118, 328)]
+SEAWALL_AREA = [(140, 300), (490, 300), (490, 722), (118, 722), (118, 335)]
+# The forecourt is level in the photographs (Wikimedia Commons, "AUS Sydney, Central Business District,
+# Sydney Opera House 034.jpg"), but the 5 m DEM dips 3 m in it where the vehicle concourse runs in
+# underneath: there the paving keeps the forecourt's level
+FORECOURT = [(258, 396), (348, 400), (350, 446), (258, 446)]
+FORECOURT_M = 3.45
+PRECINCT_FURNITURE = {"shelter", "roof"}  # Overture classes in the precinct drawn as furniture, not solids
+SEAWALL_SAG_M = 7.0      # the 5 m DEM sags towards the water this far in from a seawall: the paving keeps the level behind
+SEAWALL_FOOT_M = -2.2    # the seawall face goes down below low water
+CLIP_OUT_M = 16.0        # the terrain is not drawn this far out from the seawall (no ramp up out of the water)
+EDGE_HOLD_M = 12.0       # the paving keeps the level this far in from a garden's bank or a wall, where the DEM climbs it
+PIER_DECK_M = 2.2        # as the viewer draws the piers (web/world.js)
+# Overture infrastructure drawn in the precinct, by (subtype, class)
+STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "bollard", ("transportation", "street_lamp"): "lamp",
+                    ("tower", "lighting"): "floodlight", ("pedestrian", "information"): "pylon"}
+
 
 # ---------------------------------------------------------------- build_scene hooks
 
@@ -132,6 +178,13 @@ def adjust_building(b, cls, g, geoms, ctx):
     """geoms: [polygon, min_height, height, source, part_name] per solid."""
     if b["name"] == OPERA:
         return opera_podium(g, geoms, ctx)
+    if cls in PRECINCT_FURNITURE and Polygon(PRECINCT).contains(g.centroid):
+        # the Opera Bar's umbrellas, the Opera Kitchen's canopy, the western colonnade and the small
+        # canopies on the broadwalk are drawn as what they are (bennelong_meshes), not as solids
+        ctx.landmarks.setdefault("precinct_parts", []).append(
+            {"osm": (b["record_id"] or "").split("@")[0], "class": cls, "top_m": round(max(q[2] for q in geoms), 1),
+             "ring": [[round(x, 2), round(y, 2)] for x, y in orient(max(ctx.polygons(g), key=lambda q: q.area), 1.0).exterior.coords]})
+        return []
     turret = next((q for q in geoms if q[4] == SYDNEY_TOWER), None)
     if turret is not None:  # the shaft, turret and mast become one parametric tower
         c = turret[0].centroid
@@ -183,6 +236,7 @@ def finalize(ctx):
     if "opera_house" in ctx.landmarks:
         o = ctx.landmarks["opera_house"]
         ctx.labels["Sydney Opera House"] = [o["centroid"][0], o["centroid"][1], 72.0]
+        ctx.landmarks["bennelong"] = bennelong(ctx)
         for m in ctx.meta:  # the podium in its pink granite: the walls, and the deck's paving for its roof
             if m[0] == OPERA:
                 m[7], m[8] = MATERIALS["podium"]["color"], MATERIALS["granite"]["color"]
@@ -378,6 +432,29 @@ def game_surfaces(scene):
     return out
 
 
+def game_ground(grid, gx, gy, water, scene):
+    """The game walks on the paving round the Opera House at the level it is drawn (bennelong()),
+    not on the DEM, which sags towards the seawall and dips where the vehicle concourse runs in
+    under the forecourt; and off the seawall the bottom drops away, so a walker stops at its top
+    instead of walking down a slope into the water."""
+    b = scene["landmarks"].get("bennelong")
+    if not b:
+        return grid
+    from shapely import contains_xy
+    deck = shapely.union_all([Polygon(d["ring"], d["holes"]) for d in b["deck"]])
+    x0, y0, x1, y1 = deck.bounds
+    box_ = (gx > x0 - 20) & (gx < x1 + 20) & (gy > y0 - 20) & (gy < y1 + 20)
+    idx = np.nonzero(box_)
+    on = contains_xy(deck, gx[idx], gy[idx]) & ~water[idx]
+    grid = grid.copy()
+    for r, c in zip(idx[0][on], idx[1][on]):
+        grid[r, c] = level_at(b["level"], gx[r, c], gy[r, c])
+    wall = shapely.MultiLineString([[p[:2] for p in w] for w in b["seawalls"]]).buffer(6.0)
+    off = contains_xy(wall, gx[idx], gy[idx]) & water[idx]
+    grid[idx[0][off], idx[1][off]] = np.minimum(grid[idx[0][off], idx[1][off]], SEAWALL_FOOT_M)
+    return grid
+
+
 def landmark_meshes(scene):
     """(materials, meshes) for pipeline/landmarks.py."""
     lm = scene["landmarks"]
@@ -393,7 +470,11 @@ def landmark_meshes(scene):
         meshes += harbour_bridge(lm["harbour_bridge"])
     if "sydney_tower" in lm:
         meshes += sydney_tower(lm["sydney_tower"])
-    return MATERIALS, meshes
+    extra = {}
+    if "bennelong" in lm:
+        m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"))
+        meshes += m
+    return MATERIALS, meshes, extra
 
 
 # ---------------------------------------------------------------- Opera House
@@ -496,7 +577,7 @@ def opera_house(o):
     foot of each mouth (and closing a nested shell's back, inside the mouth of the one behind)."""
     shells = Mesh("opera_shells", "tile", True, floodlit=True, uv=True)
     rims, caps = Mesh("opera_shell_rims", "tile_edge", False), Mesh("opera_shell_ridges", "tile_edge", True)
-    glass, mullions = Mesh("opera_glass", "glass", False, floodlit=True), Mesh("opera_mullions", "mullion", False)
+    glass = Mesh("opera_glass", "glass", False, floodlit=True, uv=True)
     for hall, ridges in o["halls"].items():
         z0 = o["podium"]["low_m" if hall == "restaurant" else "top_m"]  # the restaurant stands on the lower landing
         backs = []  # each shell's back edges, west and east: from J down to the pedestal
@@ -516,25 +597,26 @@ def opera_house(o):
                 legs.append([q - (q - c) / R_SHELL * 0.7 for q in leg])  # the glass stands a little inside the edge
                 edges.append([r[-1] for r in pts][::-1])
             caps.sweep(pts[-1], [(-0.65, -0.25), (0.65, -0.25), (0.65, 0.12), (0.3, 0.3), (-0.3, 0.3), (-0.65, 0.12)])
-            mouth(glass, mullions, np.array([T[0], T[1], z0]), legs[0] + legs[1][::-1][1:])
+            mouth(glass, np.array([T[0], T[1], z0]), legs[0] + legs[1][::-1][1:])
             if k > 1:  # a nested shell's back, in the mouth of the one behind: glazed down to the podium
                 for e in edges:
-                    mouth(glass, mullions, np.array([J[0], J[1], z0]), e, frame=False)
+                    mouth(glass, np.array([J[0], J[1], z0]), e)
             backs.append(edges)
         for side in (0, 1):  # side shells between the back-to-back pair
             faces, foot, outline = side_shell(backs[0][side][0], backs[0][side], backs[1][side], z0, SIDE_GLASS_M[hall])
             for pts in faces:
                 shells.grid(pts, shell_uv(pts))
                 caps.sweep([r[-1] for r in pts], [(-0.35, -0.2), (0.35, -0.2), (0.35, 0.08), (-0.35, 0.08)])
-            mouth(glass, mullions, foot, outline)
-    return [shells, rims, caps, glass, mullions]
+            mouth(glass, foot, outline)
+    return [shells, rims, caps, glass]
 
 
-def mouth(glass, mullions, foot, arch, frame=True):
-    """A glass wall hung from a shell's arch (points from one foot over to the other): a pleated
-    curtain of panes down to a line on the podium from one end of the arch through `foot`, under
-    the tip, to the other, on bronze mullions that close in towards the foot, with transoms
-    following the arch."""
+def mouth(glass, foot, arch):
+    """A glass wall hung from a shell's arch (points from one foot over to the other): a curtain of
+    panes down to a line on the podium from one end of the arch through `foot`, under the tip, to
+    the other. The bronze mullions that close in towards the foot, one at every second point of the
+    arch, and the transoms are drawn on the glass (web/world.js "topaz_glass": u counts the mullions,
+    v is metres above the datum)."""
     z0 = foot[2]
     ground = lambda q: np.array([q[0], q[1], z0])
     run = lambda pts: np.concatenate([[0.0], np.cumsum([np.linalg.norm(q - p) for p, q in zip(pts, pts[1:])])])
@@ -544,13 +626,8 @@ def mouth(glass, mullions, foot, arch, frame=True):
     seg = np.minimum(np.searchsorted(sl, t, side="right") - 1, len(line) - 2)
     bottom = [line[k] + (line[k + 1] - line[k]) * ((tt - sl[k]) / max(sl[k + 1] - sl[k], 1e-9)) for k, tt in zip(seg, t)]
     for k in range(len(arch) - 1):
-        glass.quad(arch[k], arch[k + 1], bottom[k + 1], bottom[k])
-    if not frame:
-        return
-    for k in range(2, len(arch) - 2, 2):
-        mullions.box(bottom[k], arch[k], 0.16, 0.26)
-    for lam in (0.3, 0.55, 0.78):
-        mullions.tube([b + (q - b) * lam for b, q in zip(bottom, arch)], 0.08, 4)
+        glass.quad(arch[k], arch[k + 1], bottom[k + 1], bottom[k],
+                   [[k / 2, arch[k][2]], [(k + 1) / 2, arch[k + 1][2]], [(k + 1) / 2, bottom[k + 1][2]], [k / 2, bottom[k][2]]])
 
 
 def shell_uv(pts):
@@ -625,6 +702,7 @@ def podium_mesh(o):
                 return True
         return False
     clad, upstand, rail = Mesh("opera_podium", "podium", False, uv=True), Mesh("opera_podium_upstand", "podium", False), Mesh("opera_podium_rail", "mullion", False)
+    slots = Mesh("opera_podium_slots", "opening", False, floodlit=True)
     # paving on the landing (the strip the game walks on) and over the upper podium's roof, in metres
     # along and across the steps
     landing, deck, st = Mesh("opera_steps_landing", "paving", False, uv=True), Mesh("opera_podium_deck", "paving", False, uv=True), o["landing"]
@@ -654,12 +732,15 @@ def podium_mesh(o):
             a, b = p[:2] + out * 0.04, q[:2] + out * 0.04
             clad.quad(np.array([*a, p[2] - 0.5]), np.array([*b, q[2] - 0.5]), np.array([*b, top]), np.array([*a, top]),
                       [[run - L, p[2] - 0.5], [run, q[2] - 0.5], [run, top], [run - L, top]])
+            if upper and p[3] and q[3] and out[1] > -0.6 and L > 1.0:  # the foyers' slot of glass along the outer walls, not on the south front
+                sa, sb = p[:2] + out * 0.07, q[:2] + out * 0.07
+                slots.quad(np.array([*sa, SLOT_M[0]]), np.array([*sb, SLOT_M[0]]), np.array([*sb, SLOT_M[1]]), np.array([*sa, SLOT_M[1]]))
             if not (p[3] and q[3] or upper):
                 continue  # inside the outline, the lower landing's edge is the foot of the upper podium's wall
             a, b = p[:2] - out * 0.2, q[:2] - out * 0.2
             upstand.box(np.array([*a, top + 0.25]), np.array([*b, top + 0.25]), 0.4, 0.5)
             rail.rails([np.array([*a, top]), np.array([*b, top])], 1.05, post_every=3.0, post=0.05, rail=0.06, rails=1)
-    return [clad, upstand, rail, landing, deck]
+    return [clad, upstand, rail, landing, deck, slots]
 
 
 # ---------------------------------------------------------------- Harbour Bridge
@@ -824,3 +905,449 @@ def sydney_tower(t):
         bot = (cx + r_bot * math.cos(a + twist), cy + r_bot * math.sin(a + twist), z_pod + 0.5)
         cables.tube([top, bot], 0.12, 4)
     return [shaft, turret, glazing, mast, cables]
+
+
+# ---------------------------------------------------------------- Bennelong Point
+
+def bennelong(ctx):
+    """The ground round the Opera House as built, from the Overture release the city uses: the
+    seawall along the shore of the precinct (polylines with the level of their top), the paving
+    (polygons less the Opera House, the steps, the gardens and the buildings), the street
+    furniture OpenStreetMap maps there, the regions where the terrain is not drawn (under the
+    paving, and out in front of the seawall, where it would slope up out of the water), and the
+    faces along the paving's other edges down or up to the ground beyond."""
+    import duckdb
+    from shapely import wkb as swkb
+    C = ctx.city
+    con = duckdb.connect()
+    con.execute("LOAD spatial")
+    area, prec = Polygon(SEAWALL_AREA), Polygon(PRECINCT)
+    sea = shapely.union_all([p for p in ctx.sea if p.intersects(area.buffer(60))]).intersection(area.buffer(60))
+    land = orient(max(ctx.polygons(area.difference(sea)), key=lambda q: q.area), 1.0)
+    # the seawall: the land's edge where the water is just outside it, in runs of points under 2.5 m apart
+    ring = np.asarray(land.exterior.segmentize(2.5).coords)
+    walls, run = [], []
+    for a, b in zip(ring, ring[1:]):
+        e = b - a
+        n = np.array([e[1], -e[0]]) / (np.linalg.norm(e) or 1)  # outward: the ring is anticlockwise
+        m = (a + b) / 2
+        if sea.contains(Point(*(m + n * 1.0))) and area.buffer(-1).contains(Point(*m)):
+            run = run or [a]
+            run.append(b)
+        elif run:
+            walls.append(run)
+            run = []
+    if run:
+        walls.append(run)
+    walls = [w for w in walls if len(w) > 2]
+    line = shapely.MultiLineString([[tuple(p) for p in w] for w in walls])
+
+    def behind(p, n, d=SEAWALL_SAG_M):  # the ground's level behind the sag towards the water
+        return max(ctx.ground(*(p - n * d)), ctx.ground(*(p - n * (d + 3))))
+    # what the paving covers: the precinct's land less the Opera House (its podium and steps draw
+    # their own), the gardens and lawns, and the buildings that stay solids
+    o = ctx.landmarks["opera_house"]
+    st = o["steps"]
+    sf, so = np.array(st["axis"]), np.array(st["origin"])
+    sl = np.array([sf[1], -sf[0]])
+    u0 = st["profile"][0][0]
+    steps = Polygon([so + sf * u0 + sl * st["half_width"], so + sl * st["half_width"], so - sl * st["half_width"], so + sf * u0 - sl * st["half_width"]])
+    opera = shapely.union_all([Polygon([r[:2] for r in rr["ring"]]) for rr in o["podium"]["rings"]] + [steps]).buffer(0.05)
+    raw = lambda name: f"{C.raw}/overture_{name}.parquet"
+    green = []
+    for cl, sub, w in con.execute(f"SELECT class, subtype, wkb FROM '{raw('land_use')}'").fetchall():
+        if cl in ("park", "garden", "grass", "meadow", "village_green", "recreation_ground", "botanical_garden"):
+            green += ctx.polygons(C.to_local(swkb.loads(bytes(w))).intersection(area))
+    for cl, sub, w in con.execute(f"SELECT class, subtype, wkb FROM '{raw('land')}'").fetchall():
+        if sub in ("grass", "forest", "shrub") or cl in ("grass", "wood", "forest", "scrub"):
+            green += ctx.polygons(C.to_local(swkb.loads(bytes(w))).intersection(area))
+    solids = [Polygon(np.asarray(sd[4]).reshape(-1, 2) / 10) for sd in ctx.solids
+              if prec.buffer(20).contains(Point(*(np.asarray(sd[4][:2]) / 10)))]
+    cut = shapely.union_all([opera] + [g.buffer(0) for g in green] + [q.buffer(0.05) for q in solids if q.is_valid])
+    deck = land.intersection(prec).difference(cut)
+    deck = [orient(p.simplify(0.05), 1.0) for p in ctx.polygons(deck) if p.area > 6]
+    near, forecourt = line.buffer(SEAWALL_SAG_M + 0.5), Polygon(FORECOURT)
+    deck_u = shapely.union_all(deck)
+    # the paving's other edges (the gardens, the road, the Tarpeian Wall): not the seawall, not the Opera House
+    inner = deck_u.boundary.difference(line.buffer(0.3)).difference(opera.buffer(0.6))
+    near_in = inner.buffer(EDGE_HOLD_M)
+
+    def nearest(geom, x, y):
+        q = np.asarray(shapely.ops.nearest_points(geom, Point(x, y))[0].coords[0])
+        v = np.array([x, y]) - q
+        return q, v, float(np.linalg.norm(v))
+
+    def level(x, y):
+        """The paving's level: the ground, held up to the level behind where the DEM sags towards
+        the seawall, and down to the level in front where it climbs a garden's bank or a wall."""
+        z = ctx.ground(x, y)
+        p = Point(x, y)
+        if near.contains(p):
+            q, v, L = nearest(line, x, y)
+            if L > 1e-6:
+                z = max(z, behind(np.array([x, y]), -v / L, max(SEAWALL_SAG_M - L, 0.0)))
+        if near_in.contains(p) and deck_u.contains(p):
+            q, v, L = nearest(inner, x, y)
+            if L > 1e-6:
+                z = min(z, ctx.ground(*(q + v / L * EDGE_HOLD_M)))
+        if forecourt.contains(p):
+            z = FORECOURT_M
+        return z
+
+    def level_out(x, y):  # outside the paving: the level just inside its nearest edge
+        p = Point(x, y)
+        if deck_u.contains(p):
+            return level(x, y)
+        q, v, L = nearest(deck_u.boundary, x, y)
+        q = q - v / (L or 1) * 0.4
+        return level(*q)
+    # the seawall's top: the paving's level in the precinct, elsewhere the ground behind the sag
+    seawalls = []
+    for w in walls:
+        pts = []
+        for k, p in enumerate(w):
+            a, b = w[max(k - 1, 0)], w[min(k + 1, len(w) - 1)]
+            e = np.asarray(b) - np.asarray(a)
+            n = np.array([e[1], -e[0]]) / (np.linalg.norm(e) or 1)
+            z = level_out(*p) if prec.contains(Point(*p)) else behind(np.asarray(p), n, 3.0)
+            pts.append([round(float(p[0]), 2), round(float(p[1]), 2), round(max(z, 1.0), 2)])
+        zs = np.array([q[2] for q in pts])
+        zs = np.convolve(np.pad(zs, 2, mode="edge"), np.ones(5) / 5, mode="valid")  # a level coping, not every bump of the DEM
+        for q, z in zip(pts, zs):
+            q[2] = round(float(z), 2)
+        seawalls.append(pts)
+    # Where the terrain is not drawn (the viewer's ground shader discards it, web/world.js "clip"):
+    # out from the seawall, where it would slope up out of the water between the last point on land
+    # and the first in the water, and under the paving, which it would show through.
+    rings = lambda p: {"ring": [[round(x, 1), round(y, 1)] for x, y in p.exterior.coords],
+                       "holes": [[[round(x, 1), round(y, 1)] for x, y in h.coords] for h in p.interiors]}
+    clip = [rings(p) for p in ctx.polygons(sea.intersection(line.buffer(CLIP_OUT_M)).simplify(0.2)) if p.area > 4]
+    clip += [rings(p) for p in ctx.polygons(deck_u.buffer(-0.15).simplify(0.2)) if p.area > 4]
+    # and along its other edges a face from the paving to the ground beyond, where they differ: the
+    # Tarpeian Wall's sandstone below the garden, a kerb at the road
+    skirts = []
+    for ln in (inner.geoms if hasattr(inner, "geoms") else [inner]):
+        if ln.length < 1.0:
+            continue
+        pts = []
+        for d in np.arange(0, ln.length + 1e-6, 2.0):
+            q = np.asarray(ln.interpolate(min(d, ln.length)).coords[0])
+            _, v, L = nearest(deck_u, *(q + np.array([0.01, 0.0])))
+            t = np.asarray(ln.interpolate(min(d + 0.5, ln.length)).coords[0]) - np.asarray(ln.interpolate(max(d - 0.5, 0)).coords[0])
+            n = np.array([t[1], -t[0]]) / (np.linalg.norm(t) or 1)
+            if deck_u.contains(Point(*(q + n * 0.5))):
+                n = -n  # out of the paving
+            zl = level_out(*q)
+            out = [ctx.ground(*(q + n * k)) for k in (1.0, 3.0, 6.0)]
+            pts.append([round(float(q[0]), 2), round(float(q[1]), 2), round(min(zl, out[0]) - 0.3, 2), round(max(zl, out[0] + 0.05), 2)])
+        skirts.append(pts)
+    # the street furniture OpenStreetMap maps there (Overture infrastructure), standing on the paving
+    paved = shapely.union_all(deck).buffer(0.5)
+    props = {}
+    for sub, cl, w in con.execute(f"SELECT subtype, class, wkb FROM '{raw('infrastructure')}'").fetchall():
+        kind = STREET_FURNITURE.get((sub, cl))
+        g = C.to_local(swkb.loads(bytes(w))) if kind else None
+        if g is None or g.geom_type != "Point" or not area.contains(g):
+            continue
+        if kind in ("pylon", "bench", "bollard") and (opera.contains(g) or not paved.buffer(25).contains(g)):
+            continue  # inside the building, or out in the garden
+        x, y = g.x, g.y
+        d = line.project(g)
+        q = np.asarray(line.interpolate(d).coords[0])
+        heading = math.atan2(q[1] - y, q[0] - x)  # facing the nearest water
+        z = level_out(x, y) if paved.contains(g) else ctx.ground(x, y)
+        if sea.contains(g):
+            z = PIER_DECK_M  # on a pier
+        if kind == "floodlight":  # its lamps face the shells
+            heading = math.atan2(o["centroid"][1] - y, o["centroid"][0] - x)
+        props.setdefault(kind, []).append([round(x, 2), round(y, 2), round(z, 2), round(heading, 3)])
+    parts = []
+    for part in ctx.landmarks.pop("precinct_parts", []):
+        c = Polygon(part["ring"]).centroid
+        part["z"] = round(level_out(c.x, c.y), 2)
+        parts.append(part)
+    # the paving's level on the DEM's 5 m grid over the paving, in centimetres (landmark_meshes drapes on it)
+    bx0, by0, bx1, by1 = shapely.union_all(deck).bounds
+    gx0, gy0 = math.floor(bx0 / 5) * 5 - 5, math.floor(by0 / 5) * 5 - 5
+    nx, ny = int((bx1 - gx0) // 5) + 3, int((by1 - gy0) // 5) + 3
+    grid = np.array([[level_out(gx0 + i * 5, gy0 + j * 5) for i in range(nx)] for j in range(ny)])
+    # the DEM's pits and spikes in the forecourt (the vehicle concourse and the loading dock's ramp
+    # run in under it, the car park's vent stands on it), levelled to the paving round them
+    from scipy import ndimage
+    for _ in range(3):
+        med = ndimage.median_filter(grid, size=5, mode="nearest")
+        grid = np.where(np.abs(grid - med) > 0.6, med, grid)
+    import base64
+    lv = {"x0": gx0, "y0": gy0, "cell": 5, "nx": nx, "ny": ny, "encoding": "int16le-base64 cm, rows from y0 north",
+          "data": base64.b64encode(np.round(grid * 100).astype("<i2").tobytes()).decode()}
+    deck_out = [{"ring": [[round(x, 2), round(y, 2)] for x, y in p.exterior.coords],
+                 "holes": [[[round(x, 2), round(y, 2)] for x, y in h.coords] for h in p.interiors]} for p in deck]
+    print(f"Bennelong Point: {len(walls)} seawall runs, {line.length:.0f} m; paving {sum(p.area for p in deck):.0f} m2 in {len(deck)} pieces; "
+          f"{ {k: len(v) for k, v in props.items()} }; {len(parts)} furniture parts; {len(clip)} clip regions; "
+          f"paving {grid[grid > -50].min():.1f} to {grid.max():.1f} m")
+    return {"seawalls": seawalls, "skirts": skirts, "deck": deck_out, "level": lv, "clip": clip, "props": props, "parts": parts,
+            "axis": o["steps"]["axis"], "origin": o["steps"]["origin"]}
+
+
+def level_at(lv, x, y):
+    """The paving's level from bennelong()'s grid, bilinear."""
+    import base64
+    if "_z" not in lv:
+        lv["_z"] = np.frombuffer(base64.b64decode(lv["data"]), "<i2").reshape(lv["ny"], lv["nx"]) / 100.0
+    z, c = lv["_z"], lv["cell"]
+    fx, fy = (x - lv["x0"]) / c, (y - lv["y0"]) / c
+    i, j = min(max(int(fx), 0), lv["nx"] - 2), min(max(int(fy), 0), lv["ny"] - 2)
+    tx, ty = min(max(fx - i, 0.0), 1.0), min(max(fy - j, 0.0), 1.0)
+    return float((z[j, i] * (1 - tx) + z[j, i + 1] * tx) * (1 - ty) + (z[j + 1, i] * (1 - tx) + z[j + 1, i + 1] * tx) * ty)
+
+
+def bennelong_meshes(b, o):
+    """The precinct from bennelong(): the paving draped on its level, the seawall with its coping,
+    the Opera Bar's umbrellas, the canopies and the western colonnade as meshes; the street
+    furniture as props drawn once per kind and instanced (web/world.js); and the regions where the
+    ground is not drawn (clip)."""
+    meshes = []
+    lv = b["level"]
+    so, sf = np.array(b["origin"], float), np.array(b["axis"], float)
+    sl = np.array([sf[1], -sf[0]])
+    uv = lambda x, y: [float((np.array([x, y]) - so) @ sl), float((np.array([x, y]) - so) @ sf)]  # along and across the steps' axis
+    # the paving: a 4 m grid clipped to the outline, so it follows its level
+    pave = Mesh("bennelong_paving", "flagstone", True, uv=True)
+    for d in b["deck"]:
+        poly = Polygon(d["ring"], d["holes"])
+        x0, y0, x1, y1 = poly.bounds
+        G = 4.0
+        for gx in np.arange(math.floor(x0 / G) * G, x1, G):
+            for gy in np.arange(math.floor(y0 / G) * G, y1, G):
+                cell = shapely.box(gx, gy, gx + G, gy + G)
+                if not poly.intersects(cell):
+                    continue
+                piece = cell if poly.contains(cell) else cell.intersection(poly)
+                for q in Polygon_pieces(piece):
+                    for t in shapely.constrained_delaunay_triangles(q).geoms:
+                        cs = np.asarray(t.exterior.coords)[:3]
+                        (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+                        if abs(ax * by - ay * bx) < 1e-6:
+                            continue
+                        if ax * by - ay * bx < 0:
+                            cs = cs[::-1]
+                        pave.tri(*[np.array([x, y, level_at(lv, x, y) + 0.03]) for x, y in cs], [uv(x, y) for x, y in cs])
+    pave.weld()
+    meshes.append(pave)
+    # the seawall: its face from the coping down below low water, and the coping, a little proud
+    walls = {k: Mesh(f"seawall_{k}", f"seawall_{k}", False, uv=True) for k in ("opera", "sandstone")}
+    coping = Mesh("seawall_coping", "coping", False, uv=True)
+    opera = shapely.union_all([Polygon([r[:2] for r in rr["ring"]]) for rr in o["podium"]["rings"]]).buffer(45) if o else None
+    for w in b["seawalls"]:
+        P = [np.array(p, float) for p in w]
+        run = 0.0
+        for k in range(len(P) - 1):
+            a, c = P[k], P[k + 1]
+            e = c[:2] - a[:2]
+            L = float(np.linalg.norm(e))
+            if L < 1e-3:
+                continue
+            n = np.array([e[1], -e[0]]) / L  # out over the water
+            mid = (a[:2] + c[:2]) / 2
+            kind = "opera" if opera is not None and opera.contains(Point(*mid)) and mid[1] > 470 else "sandstone"
+            top_a, top_c = a[2] - 0.16, c[2] - 0.16
+            fa, fc = a[:2] + n * 0.02, c[:2] + n * 0.02
+            walls[kind].quad(np.array([*fa, SEAWALL_FOOT_M]), np.array([*fc, SEAWALL_FOOT_M]), np.array([*fc, top_c]), np.array([*fa, top_a]),
+                             [[run, SEAWALL_FOOT_M], [run + L, SEAWALL_FOOT_M], [run + L, top_c], [run, top_a]])
+            # the coping: 0.6 m deep, its nosing 8 cm out over the face and 16 cm deep
+            ia, ic, oa, oc = a[:2] - n * 0.55, c[:2] - n * 0.55, a[:2] + n * 0.1, c[:2] + n * 0.1
+            coping.quad(np.array([*ia, a[2]]), np.array([*oa, a[2]]), np.array([*oc, c[2]]), np.array([*ic, c[2]]),
+                        [[run, -0.55], [run, 0.1], [run + L, 0.1], [run + L, -0.55]])
+            coping.quad(np.array([*oa, top_a]), np.array([*oc, top_c]), np.array([*oc, c[2]]), np.array([*oa, a[2]]),
+                        [[run, 0.0], [run + L, 0.0], [run + L, 0.16], [run, 0.16]])
+            run += L
+    meshes += [walls["opera"], walls["sandstone"], coping]
+    # the faces along the paving's other edges, down or up to the ground beyond: the Tarpeian
+    # Wall's sandstone below the Royal Botanic Garden, a kerb elsewhere
+    for kind, mat in (("cliff", "seawall_sandstone_dry"), ("kerb", "coping")):
+        m = Mesh(f"bennelong_{kind}", mat, False, uv=True)
+        for pts in b["skirts"]:
+            run = 0.0
+            for a, c in zip(pts, pts[1:]):
+                L = math.hypot(c[0] - a[0], c[1] - a[1])
+                if (max(a[3] - level_at(lv, *a[:2]), c[3] - level_at(lv, *c[:2])) > 1.2) != (kind == "cliff"):
+                    run += L
+                    continue
+                m.quad(np.array([a[0], a[1], a[2]]), np.array([c[0], c[1], c[2]]), np.array([c[0], c[1], c[3]]), np.array([a[0], a[1], a[3]]),
+                       [[run, a[2]], [run + L, c[2]], [run + L, c[3]], [run, a[3]]])
+                run += L
+        meshes.append(m)
+    # the furniture OpenStreetMap outlines as buildings
+    umbrellas = []
+    for part in b["parts"]:
+        ring = np.array(part["ring"], float)
+        poly = Polygon(ring)
+        if part["class"] == "shelter" and poly.area < 40:  # the Opera Bar's square umbrellas
+            mr = np.asarray(poly.minimum_rotated_rectangle.exterior.coords)[:4]
+            e = mr[1] - mr[0]
+            c = poly.centroid
+            umbrellas.append([round(c.x, 2), round(c.y, 2), part["z"], round(math.atan2(e[1], e[0]), 3), round(math.sqrt(poly.area) / 4.6, 3)])
+        elif poly.minimum_rotated_rectangle.length > 70:  # long and thin: the western colonnade
+            meshes += colonnade(ring, part["z"], o)
+        else:
+            meshes += canopy(ring, part["z"], min(part["top_m"], 3.6), part["osm"])
+    props = [dict(name=k, at=v, parts=[m.dump() for m in PROP_MODELS[k]()], far=FAR.get(k, 600)) for k, v in b["props"].items() if k in PROP_MODELS]
+    if umbrellas:
+        props.append(dict(name="umbrella", at=umbrellas, parts=[m.dump() for m in umbrella_model()], far=900))
+    return meshes, {"props": props, "clip": b["clip"]}
+
+
+def Polygon_pieces(g):
+    return [q for q in (g.geoms if hasattr(g, "geoms") else [g]) if q.geom_type == "Polygon" and q.area > 1e-4]
+
+
+FAR = {"bollard": 260, "bench": 350, "pylon": 350, "lamp": 900, "floodlight": 1600}  # drawn within this many metres
+
+
+def cuboid(m, c, size, yaw=0.0):
+    """An upright box centred at c (x, y, z of its centre) of size (x, y, z), turned yaw about z."""
+    ca, sa = math.cos(yaw), math.sin(yaw)
+    hx, hy, hz = (s / 2 for s in size)
+    P = lambda x, y, z: np.array([c[0] + x * ca - y * sa, c[1] + x * sa + y * ca, c[2] + z])
+    v = [P(x, y, z) for z in (-hz, hz) for y in (-hy, hy) for x in (-hx, hx)]
+    for a, b_, c_, d in ((0, 1, 3, 2), (4, 6, 7, 5), (0, 4, 5, 1), (2, 3, 7, 6), (0, 2, 6, 4), (1, 5, 7, 3)):
+        m.quad(v[a], v[b_], v[c_], v[d])
+
+
+def sphere(m, c, r, segs=10):
+    m.lathe([(c[2] - r * math.cos(t), r * math.sin(t) + 1e-3) for t in np.linspace(0, math.pi, segs // 2 + 1)], (c[0], c[1]), segs)
+
+
+def bollard_model():
+    m = Mesh("bollard", "bollard", True)
+    m.lathe([(0.0, 0.095), (0.88, 0.095), (0.93, 0.085), (0.98, 0.055), (1.0, 0.001)], (0, 0), 10)
+    return [m]
+
+
+def bench_model():
+    """A slatted timber bench on steel frames, 1.8 m long, facing +x."""
+    seat, frame = Mesh("bench_slats", "timber", False), Mesh("bench_frame", "furniture", False)
+    for x in (-0.18, -0.09, 0.0, 0.09, 0.18):
+        cuboid(seat, (x, 0, 0.44), (0.075, 1.8, 0.035))
+    for z in (0.62, 0.74, 0.86):
+        cuboid(seat, (-0.27 - (z - 0.62) * 0.25, 0, z), (0.03, 1.8, 0.08))
+    for y in (-0.75, 0.75):
+        cuboid(frame, (0.0, y, 0.21), (0.42, 0.05, 0.05))
+        cuboid(frame, (0.17, y, 0.21), (0.05, 0.05, 0.42))
+        cuboid(frame, (-0.17, y, 0.21), (0.05, 0.05, 0.42))
+        cuboid(frame, (-0.3, y, 0.66), (0.04, 0.05, 0.5), 0.0)
+    return [seat, frame]
+
+
+def lamp_model():
+    """A globe lamp on a slim post, 4 m."""
+    post, globe = Mesh("lamp_post", "post", True), Mesh("lamp_globe", "globe", True, floodlit=True)
+    post.lathe([(0.0, 0.11), (0.35, 0.09), (0.45, 0.06), (3.55, 0.05), (3.62, 0.075), (3.7, 0.075)], (0, 0), 8)
+    sphere(globe, (0, 0, 3.94), 0.25, 12)
+    return [post, globe]
+
+
+def floodlight_model():
+    """One of the masts that floodlight the shells: a tapered pole 11 m tall, a crossbar and three
+    lamps turned towards +x."""
+    pole, lamps = Mesh("floodlight_pole", "post", True), Mesh("floodlight_lamps", "floodlamp", False, floodlit=True)
+    pole.lathe([(0.0, 0.2), (0.4, 0.17), (11.0, 0.08), (11.05, 0.001)], (0, 0), 8)
+    cuboid(pole, (0.0, 0.0, 10.7), (0.12, 1.5, 0.12))
+    for y in (-0.6, 0.0, 0.6):
+        cuboid(lamps, (0.2, y, 10.95), (0.32, 0.38, 0.3))
+    return [pole, lamps]
+
+
+def pylon_model():
+    """A wayfinding pylon: a dark slab with a lit panel on each face."""
+    body, face = Mesh("pylon_body", "pylon", False), Mesh("pylon_panel", "panel", False, floodlit=True)
+    cuboid(body, (0, 0, 1.2), (0.24, 0.85, 2.4))
+    for x in (-0.125, 0.125):
+        cuboid(face, (x, 0, 1.45), (0.012, 0.66, 1.5))
+    return [body, face]
+
+
+PROP_MODELS = {"bollard": bollard_model, "bench": bench_model, "lamp": lamp_model, "floodlight": floodlight_model, "pylon": pylon_model}
+
+
+def umbrella_model():
+    """The Opera Bar's square market umbrella, 4.6 m across (scaled to each one's outline), with a
+    table and four stools under it."""
+    cloth, pole, furn = Mesh("umbrella_canopy", "umbrella", False), Mesh("umbrella_pole", "post", True), Mesh("umbrella_tables", "furniture", True)
+    h, apex, eave = 2.3, 3.05, 2.45
+    corners = [np.array([sx * h, sy * h, eave]) for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1))]
+    top = np.array([0.0, 0.0, apex])
+    for k in range(4):
+        a, b_ = corners[k], corners[(k + 1) % 4]
+        cloth.tri(top, a, b_)
+        cloth.quad(a, b_, b_ - np.array([0, 0, 0.22]), a - np.array([0, 0, 0.22]))  # the valance
+    pole.tube([(0, 0, 0.0), (0, 0, apex + 0.12)], 0.035, 6)
+    furn.lathe([(0.0, 0.25), (0.05, 0.25), (0.06, 0.04), (0.7, 0.04), (0.72, 0.42), (0.76, 0.42), (0.77, 0.001)], (0.0, 0.0), 12)
+    for k in range(4):
+        a = k * math.pi / 2 + math.pi / 4
+        furn.lathe([(0.0, 0.16), (0.04, 0.16), (0.05, 0.025), (0.62, 0.025), (0.63, 0.19), (0.68, 0.19), (0.69, 0.001)],
+                   (0.85 * math.cos(a), 0.85 * math.sin(a)), 8)
+    return [cloth, pole, furn]
+
+
+def canopy(ring, z0, h, name):
+    """A flat canopy on slim posts over its outline (the Opera Kitchen's, and two small ones on the
+    western broadwalk)."""
+    slab, posts = Mesh(f"canopy_{name}", "canopy", False), Mesh(f"canopy_{name}_posts", "post", True)
+    poly = orient(Polygon(ring).simplify(0.2), 1.0)
+    t0, t1 = z0 + h - 0.22, z0 + h
+    for t in shapely.constrained_delaunay_triangles(poly).geoms:
+        cs = np.asarray(t.exterior.coords)[:3]
+        (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+        if ax * by - ay * bx < 0:
+            cs = cs[::-1]
+        slab.tri(*[np.array([x, y, t1]) for x, y in cs])
+        slab.tri(*[np.array([x, y, t0]) for x, y in cs[::-1]])
+    cs = np.asarray(poly.exterior.coords)
+    for a, b_ in zip(cs, cs[1:]):
+        slab.quad(np.array([*a, t0]), np.array([*b_, t0]), np.array([*b_, t1]), np.array([*a, t1]))
+    inner = poly.buffer(-0.35)
+    if not inner.is_empty:
+        ln = inner.exterior
+        for d in np.arange(0, ln.length, 4.5):
+            q = ln.interpolate(d)
+            posts.tube([(q.x, q.y, z0), (q.x, q.y, t0)], 0.05, 6)
+    return [slab, posts]
+
+
+def colonnade(ring, z0, o):
+    """The western colonnade (2006, Utzon's last addition): a verandah 45 m long and 5 m deep
+    along the podium, its flat roof edged in the podium's concrete panels on ten pairs of square
+    columns 3 m high, 400 mm across, and the nine openings it shades, three doors and six windows
+    1.95 m wide and 2.1 m high, cut into the podium wall behind it (Architecture Australia, May 2006)."""
+    roof, cols, glass = Mesh("colonnade_roof", "colonnade", False, uv=True), Mesh("colonnade_columns", "colonnade", False), Mesh("colonnade_openings", "opening", False, floodlit=True)
+    poly = Polygon(ring)
+    mr = np.asarray(poly.minimum_rotated_rectangle.exterior.coords)[:4]
+    e1, e2 = mr[1] - mr[0], mr[2] - mr[1]
+    ax, cr = (e1, e2) if np.linalg.norm(e1) > np.linalg.norm(e2) else (e2, e1)
+    L, D = float(np.linalg.norm(ax)), float(np.linalg.norm(cr))
+    ax, cr = ax / L, cr / D
+    c = np.asarray(poly.minimum_rotated_rectangle.centroid.coords[0])
+    if (np.array(o["centroid"]) - c) @ cr > 0:  # cr points out, away from the podium
+        cr = -cr
+    D = min(D, 5.0)
+    back = c - cr * D / 2  # the podium wall
+    zc, zr = z0 + 3.0, z0 + 3.6
+    P = lambda u, v, z: np.array([*(back + ax * u + cr * v), z])
+    # the roof slab and its fascia of panels
+    for z, flip in ((zr, False), (zc, True)):
+        q = [P(-L / 2, 0, z), P(L / 2, 0, z), P(L / 2, D, z), P(-L / 2, D, z)]
+        roof.quad(*(q[::-1] if flip else q), [[0, 0], [L, 0], [L, D], [0, D]][::-1] if flip else [[0, 0], [L, 0], [L, D], [0, D]])
+    for (u0, v0), (u1, v1) in (((-L / 2, D), (L / 2, D)), ((L / 2, 0), (L / 2, D)), ((-L / 2, D), (-L / 2, 0))):
+        roof.quad(P(u0, v0, zc), P(u1, v1, zc), P(u1, v1, zr), P(u0, v0, zr), [[0, zc], [L, zc], [L, zr], [0, zr]])
+    for i in range(10):
+        u = -L / 2 + L * (i + 0.5) / 10
+        for du in (-0.5, 0.5):
+            cuboid(cols, (*(back + ax * (u + du) + cr * (D - 0.45)), z0 + 1.5), (0.4, 0.4, 3.0), math.atan2(ax[1], ax[0]))
+    # the openings in the wall behind, in the bays between the column pairs
+    for i in range(9):
+        u = -L / 2 + L * (i + 1) / 10
+        door = i in (1, 4, 7)
+        w, h, sill = (2.4, 2.6, 0.0) if door else (1.95, 2.1, 0.5)
+        glass.quad(P(u - w / 2, 0.06, z0 + sill), P(u + w / 2, 0.06, z0 + sill), P(u + w / 2, 0.06, z0 + sill + h), P(u - w / 2, 0.06, z0 + sill + h))
+    return [roof, cols, glass]
