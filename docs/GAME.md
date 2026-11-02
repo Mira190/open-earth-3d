@@ -1322,7 +1322,9 @@ view of the nearest junctions with signals at the times given.
 `tools/clip_check.js <city>` counts what passes through what (furniture in the
 road, cars in posts, walls and each other, walkers in walls, ferries in each
 other, heads through roofs); `tools/check.sh` runs it with the game check.
-`tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+`tools/ride_check.js <city> [N]` hails a taxi and orders a ride N times each at
+kerbs round the start and says how long each took against what the phone said,
+and what held it up. `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
 time and fails if two hulls overlap or a vessel never calls, which is what a
 deadlock or a meeting at a shared berth takes to show.
 
