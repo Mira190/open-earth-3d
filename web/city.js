@@ -613,7 +613,7 @@ window.OpenEarthCity = async function main(cityId) {
     const L = S.utcToLocal(S.localToUtc(state.y, state.m, state.d, state.min)), f2 = n => n.toLocaleString(CITY.locale || undefined);
     $('#intro-eyebrow').textContent = `Open Earth 3D · ${CITY.country || ''}`;
     $('#intro-name').textContent = CITY.name;
-    $('#intro-facts').textContent = `${f2(B.b.length)} buildings · ${f2((P.trees || []).length / 4)} trees · ${((f.x[1] - f.x[0]) / 1000).toFixed(1)} × ${((f.y[1] - f.y[0]) / 1000).toFixed(1)} km · `
+    $('#intro-facts').textContent = `${f2(B.b.length)} buildings · ${f2(((P.trees || []).length + (P.woods || []).length) / 4)} trees · ${((f.x[1] - f.x[0]) / 1000).toFixed(1)} × ${((f.y[1] - f.y[0]) / 1000).toFixed(1)} km · `
       + `${state.d} ${MONTHS[state.m - 1]}, ${fmtMin(state.min)} ${L.zone}, sun ${sunPos.altitude.toFixed(0)}° up`;
     $('#intro').hidden = false;
     stage.classList.add('intro');
@@ -932,7 +932,7 @@ window.OpenEarthCity = async function main(cityId) {
     if (UNC && UNC.fix_list) $('#fix-list tbody').innerHTML = UNC.fix_list.map(f => `<tr><td>${f.name}<br><span class="note">${f.source === 'estimate' ? 'estimated' : f.source === 'floors' ? 'floor count' : f.source}</span></td>
       <td>${f.place}</td><td class="r"><span class="num">${Math.round(f.height_m)} m</span><br><span class="note mono">${f.plausible_m[0]}–${f.plausible_m[1]}</span></td>
       <td class="r"><span class="num">${f.swing_pp}</span><br><span class="note">points</span></td></tr>`).join('');
-    const SRC_NAMES = { buildings: 'Buildings', terrain: 'Terrain', imagery: 'Imagery', places: 'Places', trees: 'Trees',
+    const SRC_NAMES = { buildings: 'Buildings', terrain: 'Terrain', imagery: 'Imagery', places: 'Places', trees: 'Trees', canopy: 'Woods',
       reference_heights: 'Reference heights', landmarks: 'Landmark dimensions' };
     $('#sources').innerHTML = Object.entries(scene.sources || {}).map(([k, v]) => `<li>${SRC_NAMES[k] || k}: ${v}</li>`).join('');
   })();

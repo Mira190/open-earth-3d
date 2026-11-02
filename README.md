@@ -483,6 +483,9 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
+- **Woods and park canopy:** Meta and World Resources Institute High Resolution
+  Canopy Height Maps (Tolan et al. 2024, CC BY 4.0), for the trees planted in
+  the mapped woods and parks and the ground under them (`pipeline/woods.py`).
 - **Vehicles and trees:** modelled from code in this repository
   (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
   third-party assets; the leaf atlas is drawn by the script.

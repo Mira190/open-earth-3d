@@ -303,7 +303,8 @@ python analysis/radar_check.py --city <id>        # unless the terrain is Terrar
 node analysis/sun_access.js --city <id>
 node analysis/uncertainty.js --city <id> 40       # writes the viewer's uncertainty ranges
 python blender/build_scene.py --city <id>         # if renders are configured
-python pipeline/game_data.py --city <id>          # if the city has a game block
+python pipeline/game_data.py --city <id>          # if the city has a game block; runs woods.py too
+python pipeline/woods.py --city <id>              # on its own: the woods' trees and floor (needs land, land_use)
 ```
 
 Then open `web/` with `python -m http.server` and go to `#<id>`.
