@@ -666,6 +666,7 @@ window.OECars = (function () {
     const c = {};
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
+      st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
@@ -679,7 +680,7 @@ window.OECars = (function () {
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; continue; }
         }
-        if (a - half - C.half < gap) gap = a - half - C.half;
+        if (a - half - C.half < gap) { gap = a - half - C.half; st.block = o; }
       }
       st.pass = pass;
       return gap;
