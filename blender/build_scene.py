@@ -162,7 +162,7 @@ def build(data):
     B = json.load(open(os.path.join(data, "buildings.json")))
     LM = json.load(open(os.path.join(data, "landmarks.json")))
     # buildings pulled down since the survey are not drawn (landmarks.json "demolished", as web/world.js)
-    scene["hidden_solids"] = scene.get("hidden_solids", []) + LM.get("demolished", [])
+    scene["hidden_solids"] = scene.get("hidden_solids", []) + LM.get("demolished", []) + LM.get("hidden", [])  # and those a landmark draws
     P = json.load(open(os.path.join(data, "places.json")))
     tinfo = scene["terrain"]
     raw = base64.b64decode(json.load(open(os.path.join(data, "terrain.json")))["data"])

@@ -49,6 +49,8 @@ window.OEWorld = (function () {
     // flat in the surface model, so nothing stands, shades or blocks the way where they stood
     for (const si of (LM && LM.demolished) || []) if (B.s[si]) B.s[si][3] = B.s[si][2];
     if (LM && LM.demolished) scene.hidden_solids = (scene.hidden_solids || []).concat(LM.demolished);
+    // solids a landmark mesh draws instead (landmarks.json "hidden"): not drawn, but kept in the surface model
+    if (LM && LM.hidden) scene.hidden_solids = (scene.hidden_solids || []).concat(LM.hidden);
     S.site({ lat: CITY.lat, lon: CITY.lon, tz: CITY.timezone, locale: CITY.locale });
     S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);

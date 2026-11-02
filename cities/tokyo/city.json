@@ -113,7 +113,7 @@
     "The Okura Prestige Tower": "Okura Prestige Tower"
   },
   "arrivals": {
-    "Kabuki-za 歌舞伎座": {"front": 215, "arc": 35, "dist": 100, "top": 60},
+    "Kabuki-za 歌舞伎座": {"front": 215, "arc": 30, "dist": 95, "top": 28},
     "National Diet 国会議事堂": {"front": 90},
     "Wako 和光 (Ginza 4-chome)": {"front": 150, "arc": 40, "dist": 60}
   },
