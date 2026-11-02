@@ -122,9 +122,14 @@ void main() {
         const ux = (bx - ax) / len, uy = (by - ay) / len;
         while (next <= acc + len) {
           const s = both ? side = -side : side, b = bright * (0.9 + 0.2 * rnd());
+          let placed = false;
           for (const d of [0, 4, -4, 8, -8]) { // (where that is in another road, a few metres along)
             const t = Math.max(0, Math.min(1, (next - acc + d) / len)), x = ax + (bx - ax) * t - uy * s * off, y = ay + (by - ay) * t + ux * s * off, z = az + (bz - az) * t;
-            if (!inRoad(x, y, z)) { lamp(x, y, z + h, colour, b, ux, uy, h, s); break; }
+            if (!inRoad(x, y, z)) { lamp(x, y, z + h, colour, b, ux, uy, h, s); placed = true; break; }
+          }
+          if (!placed && ST.roads) { // or out of that road to its own kerb, so the footway beside it keeps its light
+            const t = Math.max(0, Math.min(1, (next - acc) / len)), z = az + (bz - az) * t, q = ST.roads.kerbside(ax + (bx - ax) * t - uy * s * off, ay + (by - ay) * t + ux * s * off, z, 0.15, 6);
+            if (q) lamp(q[0], q[1], z + h, colour, b, ux, uy, h, s);
           }
           next += step;
         }
