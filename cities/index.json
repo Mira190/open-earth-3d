@@ -1,5 +1,21 @@
 {
   "note": "Cities on the globe. status: live (built and in web/data/<id>) or planned. Planned entries list the open data to check first; none of them has been verified for this project yet.",
+  "note_groups": "A group is one place on the globe with several models: a city's districts (kind city) or a reef's sites (kind reef). Members name it in group; groups gives its own name in the local script and its summary.",
+  "groups": {
+    "Melbourne": {
+      "kind": "city",
+      "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
+    },
+    "Tokyo": {
+      "kind": "city",
+      "native": "東京",
+      "summary": "Two districts of Tokyo at PLATEAU-surveyed heights: Marunouchi to Tokyo Tower, with the Palace and the water bus, and Shibuya to Shinjuku, with the scramble, SHIBUYA SKY's roof and the streets a film and a game drew."
+    },
+    "Great Barrier Reef": {
+      "kind": "reef",
+      "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+    }
+  },
   "cities": [
     {
       "id": "sydney",
@@ -17,6 +33,9 @@
       "lat": -37.8136,
       "lon": 144.9631,
       "status": "live",
+      "group": "Melbourne",
+      "district": "Central Melbourne",
+      "tagline": "Docklands, the Hoddle Grid and Southbank to the Shrine",
       "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
     },
     {
@@ -26,6 +45,9 @@
       "lat": -37.8918,
       "lon": 144.9755,
       "status": "live",
+      "group": "Melbourne",
+      "district": "Bayside",
+      "tagline": "St Kilda, Elwood and Brighton on Port Phillip",
       "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset."
     },
     {
@@ -57,6 +79,9 @@
       "lat": 35.67,
       "lon": 139.759,
       "status": "live",
+      "group": "Tokyo",
+      "district": "Marunouchi & Tokyo Tower",
+      "tagline": "Tokyo Station, the Imperial Palace, Hibiya and Shiba",
       "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower."
     },
     {
@@ -67,6 +92,9 @@
       "lat": 35.6685,
       "lon": 139.6965,
       "status": "live",
+      "group": "Tokyo",
+      "district": "Shibuya & Shinjuku",
+      "tagline": "Sangenjaya to the scramble, Shinjuku and Yotsuya",
       "summary": "Sangenjaya to Shibuya, Shinjuku and Yotsuya: 90,000 buildings at PLATEAU-surveyed heights, the Shibuya scramble, SHIBUYA SKY's roof with its lift and escalator, the Suga Shrine stairs of Your Name with this year's ema, and the streets Persona 5 drew, from Sangenjaya's backstreets to Kabukicho."
     },
     {

@@ -16,8 +16,8 @@
    4.8
   ],
   "load_bytes": {
-   "model": 7482592,
-   "game": 10674405
+   "model": 7481313,
+   "game": 10677526
   }
  },
  {
@@ -27,7 +27,14 @@
   "lat": -37.8136,
   "lon": 144.9631,
   "status": "live",
+  "group": "Melbourne",
+  "district": "Central Melbourne",
+  "tagline": "Docklands, the Hoddle Grid and Southbank to the Shrine",
   "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects.",
+  "group_info": {
+   "kind": "city",
+   "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
+  },
   "timezone": "Australia/Melbourne",
   "built": true,
   "game": true,
@@ -37,8 +44,8 @@
    3.9
   ],
   "load_bytes": {
-   "model": 5254756,
-   "game": 9483055
+   "model": 5241573,
+   "game": 9469872
   }
  },
  {
@@ -48,7 +55,14 @@
   "lat": -37.8918,
   "lon": 144.9755,
   "status": "live",
+  "group": "Melbourne",
+  "district": "Bayside",
+  "tagline": "St Kilda, Elwood and Brighton on Port Phillip",
   "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset.",
+  "group_info": {
+   "kind": "city",
+   "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
+  },
   "timezone": "Australia/Melbourne",
   "built": true,
   "game": true,
@@ -58,8 +72,8 @@
    7.7
   ],
   "load_bytes": {
-   "model": 4938499,
-   "game": 8452721
+   "model": 4937453,
+   "game": 8451675
   }
  },
  {
@@ -80,8 +94,8 @@
    6.4
   ],
   "load_bytes": {
-   "model": 29029783,
-   "game": 35525581
+   "model": 29024213,
+   "game": 35520011
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -108,8 +122,8 @@
    5.0
   ],
   "load_bytes": {
-   "model": 26212544,
-   "game": 29188427
+   "model": 26214366,
+   "game": 29190249
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -126,7 +140,15 @@
   "lat": 35.67,
   "lon": 139.759,
   "status": "live",
+  "group": "Tokyo",
+  "district": "Marunouchi & Tokyo Tower",
+  "tagline": "Tokyo Station, the Imperial Palace, Hibiya and Shiba",
   "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower.",
+  "group_info": {
+   "kind": "city",
+   "native": "\u6771\u4eac",
+   "summary": "Two districts of Tokyo at PLATEAU-surveyed heights: Marunouchi to Tokyo Tower, with the Palace and the water bus, and Shibuya to Shinjuku, with the scramble, SHIBUYA SKY's roof and the streets a film and a game drew."
+  },
   "timezone": "Asia/Tokyo",
   "built": true,
   "game": true,
@@ -136,8 +158,8 @@
    4.8
   ],
   "load_bytes": {
-   "model": 5261189,
-   "game": 8678116
+   "model": 5260863,
+   "game": 8677790
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -154,7 +176,15 @@
   "lat": 35.6685,
   "lon": 139.6965,
   "status": "live",
+  "group": "Tokyo",
+  "district": "Shibuya & Shinjuku",
+  "tagline": "Sangenjaya to the scramble, Shinjuku and Yotsuya",
   "summary": "Sangenjaya to Shibuya, Shinjuku and Yotsuya: 90,000 buildings at PLATEAU-surveyed heights, the Shibuya scramble, SHIBUYA SKY's roof with its lift and escalator, the Suga Shrine stairs of Your Name with this year's ema, and the streets Persona 5 drew, from Sangenjaya's backstreets to Kabukicho.",
+  "group_info": {
+   "kind": "city",
+   "native": "\u6771\u4eac",
+   "summary": "Two districts of Tokyo at PLATEAU-surveyed heights: Marunouchi to Tokyo Tower, with the Palace and the water bus, and Shibuya to Shinjuku, with the scramble, SHIBUYA SKY's roof and the streets a film and a game drew."
+  },
   "timezone": "Asia/Tokyo",
   "built": true,
   "game": true,
@@ -164,8 +194,8 @@
    6.2
   ],
   "load_bytes": {
-   "model": 37205637,
-   "game": 43958173
+   "model": 37204985,
+   "game": 43957521
   }
  },
  {
@@ -179,6 +209,10 @@
   "summary": "The Whitsunday Islands and the inner Great Barrier Reef: 30 m survey bathymetry, a Sentinel-2 sea floor, caustics, wet sand and a swash line. Walk Whitehaven Beach, snorkel, dive.",
   "group": "Great Barrier Reef",
   "tagline": "Whitehaven Beach, Hill Inlet and the Whitsunday Passage",
+  "group_info": {
+   "kind": "reef",
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -198,6 +232,10 @@
   "group": "Great Barrier Reef",
   "tagline": "Heart Reef and the Reefworld pontoon, outer reef",
   "summary": "Hardy Reef on the outer Great Barrier Reef: Heart Reef, the Reefworld pontoon on the channel wall, and Hook, Line and Bait reefs, from 30 m survey bathymetry and Sentinel-2. No land: start on the pontoon's deck and dive the wall.",
+  "group_info": {
+   "kind": "reef",
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -217,6 +255,10 @@
   "group": "Great Barrier Reef",
   "tagline": "Coral cay off Cairns, with Arlington Reef and Michaelmas Cay",
   "summary": "Green Island, a coral cay 27 km off Cairns, with Arlington Reef, Upolu Cay and Michaelmas Cay: survey bathymetry, a seam-free Sentinel-2 sea floor and MSQ's tide. Walk the beach by the jetty, snorkel the reef flat.",
+  "group_info": {
+   "kind": "reef",
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -236,6 +278,10 @@
   "group": "Great Barrier Reef",
   "tagline": "Coral cay on the Tropic of Capricorn, with Wistari Reef",
   "summary": "Heron Island and Heron and Wistari reefs in the southern Great Barrier Reef: the cay rebuilt from its mapped outline, the reef flat drying at low tide, the research station and the wreck of HMCS Protector at the channel.",
+  "group_info": {
+   "kind": "reef",
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -255,6 +301,10 @@
   "group": "Great Barrier Reef",
   "tagline": "The southernmost coral cay of the reef",
   "summary": "Lady Elliot Island, the southernmost coral cay of the Great Barrier Reef: its platform reef in open water, the airstrip and old lighthouse, from survey bathymetry and Sentinel-2. Start on the western beach.",
+  "group_info": {
+   "kind": "reef",
+   "summary": "Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly."
+  },
   "timezone": "Australia/Brisbane",
   "built": true,
   "game": false,
@@ -302,8 +352,8 @@
    4.0
   ],
   "load_bytes": {
-   "model": 24701307,
-   "game": 30856472
+   "model": 24699257,
+   "game": 30854422
   }
  },
  {
@@ -323,8 +373,8 @@
    4.0
   ],
   "load_bytes": {
-   "model": 16105334,
-   "game": 19311776
+   "model": 16104521,
+   "game": 19310963
   }
  },
  {
@@ -345,8 +395,8 @@
    4.8
   ],
   "load_bytes": {
-   "model": 3562692,
-   "game": 7134944
+   "model": 3558668,
+   "game": 7130920
   }
  },
  {

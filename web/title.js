@@ -80,12 +80,18 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (c.group) { if (!groups.has(c.group)) groups.set(c.group, []); groups.get(c.group).push(c); continue; }
     dests.push({ id: c.id, name: c.name, native: c.native, country: c.country, lat: c.lat, lon: c.lon, tz: c.timezone, c, sites: null });
   }
+  // a group is one place with several models: a city's districts (one Tokyo, not Tokyo and Shibuya
+  // side by side) or a reef's sites; cities/index.json's groups name it and sum it up
   for (const [name, cs] of groups) {
     const lat = cs.reduce((a, c) => a + c.lat, 0) / cs.length, lon = cs.reduce((a, c) => a + c.lon, 0) / cs.length;
-    dests.push({ id: `group-${name}`, name, country: cs[0].country, lat, lon, tz: cs[0].timezone, c: cs[0], sites: cs });
+    const info = cs[0].group_info || {}, city = info.kind === 'city';
+    // one entry for the whole place: the city's game if any of its districts has one
+    const c = { id: name.toLowerCase().replace(/\W+/g, '-'), name, native: info.native, country: cs[0].country, summary: info.summary || '',
+      game: city && cs.some(x => x.game), buildings: cs.reduce((a, x) => a + (x.buildings || 0), 0) };
+    dests.push({ id: `group-${name}`, name, native: info.native, country: cs[0].country, lat, lon, tz: cs[0].timezone, c, sites: cs, city });
   }
   // in the order the sun reaches them: east to west
-  dests.sort((a, b) => Math.round(b.lon) - Math.round(a.lon) || live.indexOf(a.c) - live.indexOf(b.c));
+  dests.sort((a, b) => Math.round(b.lon) - Math.round(a.lon) || live.indexOf(a.sites ? a.sites[0] : a.c) - live.indexOf(b.sites ? b.sites[0] : b.c));
   const totalBuildings = live.reduce((a, c) => a + (c.buildings || 0), 0);
   for (const d of dests) {
     d.beacon = earth.addCity(d.lat, d.lon);
@@ -418,29 +424,36 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     // a group's span: the great-circle distance between its two furthest sites
     let spanKm = 0;
     if (d.sites) for (const a of d.sites) for (const b of d.sites) spanKm = Math.max(spanKm, E.ll(a.lat, a.lon).angleTo(E.ll(b.lat, b.lon)) * 6371);
-    const stats = d.sites
-      ? `<div><dt>Sites</dt><dd>${d.sites.length}</dd></div><div><dt>From end to end</dt><dd>${fmtN(Math.round(spanKm / 10) * 10)}<small>km</small></dd></div>`
-      : `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Model</dt><dd>${km}</dd></div>`;
+    const stats = d.city
+      ? `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Districts</dt><dd>${d.sites.length}</dd></div>`
+      : d.sites
+        ? `<div><dt>Sites</dt><dd>${d.sites.length}</dd></div><div><dt>From end to end</dt><dd>${fmtN(Math.round(spanKm / 10) * 10)}<small>km</small></dd></div>`
+        : `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Model</dt><dd>${km}</dd></div>`;
     const prog = p.stamps ? `${p.stamps} stamp${p.stamps > 1 ? 's' : ''} in your passport` : p.visited ? 'Visited' : '';
-    const actions = d.sites
+    // a city's districts each open in 3D, with Play beside those that have a game
+    const actions = d.city
+      ? `<ul class="ts-sites ts-districts">${d.sites.map(c => `<li><button data-site="${c.id}" aria-label="${c.district || c.name}: explore in 3D"><b>${c.district || c.name}</b><small>${c.tagline || ''}</small></button>${c.game ? `<button class="ts-dplay" data-site="${c.id}" data-go="play" aria-label="Play ${c.district || c.name}">Play</button>` : ''}</li>`).join('')}</ul>`
+      : d.sites
       ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
-      <p class="sum">${d.sites ? 'Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.' : (d.c.summary || '')}</p>
+      <p class="sum">${d.c.summary || ''}</p>
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
     card.classList.remove('on', 'has-film');
     void card.offsetWidth;
     card.classList.add('on');
-    // the city's film, if it has one (film.js); a group of sites has one film, named after the group
-    if (window.OEFilm) OEFilm.card(card, d.sites ? { id: d.id.replace(/^group-/, '').toLowerCase().replace(/\W+/g, '-'), name: d.name, country: d.country, game: false } : d.c,
-      { go: play => (d.sites ? dive(d, false, d.sites[0]) : dive(d, play)) });
+    // the city's film, if it has one (film.js); a group has one film, named after the group, and its
+    // end card goes to the district the film shows (the one of the same id), else the first
+    const filmSite = d.sites && (d.sites.find(c => c.id === d.c.id) || d.sites[0]);
+    if (window.OEFilm) OEFilm.card(card, d.sites ? { id: d.c.id, name: d.name, country: d.country, game: d.city && !!filmSite.game } : d.c,
+      { go: play => (d.sites ? dive(d, play && !!filmSite.game, filmSite) : dive(d, play)) });
   }
   on(card, 'click', e => {
     const b = e.target.closest('button');
     if (!b || sel < 0) return;
-    if (b.dataset.site) dive(dests[sel], false, cities.find(c => c.id === b.dataset.site));
+    if (b.dataset.site) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.site));
     else dive(dests[sel], b.dataset.go === 'play');
   });
   on(list, 'click', e => { const b = e.target.closest('.ts-item'); if (!b) return; lastInput = performance.now(); const i = +b.dataset.i; if (i === sel && !narrow()) dive(dests[i], false); else select(i, true); });
@@ -464,7 +477,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     app.classList.add('diving');
     A.confirm();
     A.whoosh(reduced ? 0.4 : 1.7);
-    const target = site || d.c;
+    const target = site || (d.sites ? d.sites[0] : d.c); // a group without a pick: its first district or site
     const go = () => {
       if (manual) return; // the film tool ends on the black
       if (target.viewer) location.href = `${target.viewer}?city=${target.id}`;
@@ -533,7 +546,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'enter' && sel >= 0 && !e.target.closest('.ts-card, .ts-top, .ts-foot')) { e.preventDefault(); const d = dests[sel]; if (d.sites) card.querySelector('[data-site]').focus(); else dive(d, false); }
-    else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
+    else if (k === 'p' && sel >= 0 && dests[sel].c.game) { const d = dests[sel]; if (!d.sites) dive(d, true); else card.querySelector('[data-go="play"]').focus(); }
     else if (k === 'f' && sel >= 0 && window.OEFilm && OEFilm.hasReel()) OEFilm.openReel();
     else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); orb.tdist = fitDist(); for (const d of dests) d.mark.classList.remove('hot'); }
   });

@@ -1539,7 +1539,10 @@ def build(C):
 def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
+    groups = idx.get("groups", {})
     for c in idx["cities"]:
+        if c.get("group") in groups:  # one place on the globe with several models: a city's districts, a reef's sites
+            c["group_info"] = groups[c["group"]]
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
