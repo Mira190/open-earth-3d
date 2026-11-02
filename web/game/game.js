@@ -521,11 +521,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
   }
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, routed to the pick-up
-  function newRide(kind, from, pickup, dest = null) {
+  function newRide(kind, from, pickup, dest = null, limit = 4000) { // (limit: how far by road to look, as when the car was picked)
     const tcfg = Object.assign({}, vlib.info.cars.liveries.taxi, ((G.vehicles || {}).cars || {}).taxi);
     const model = kind === 'taxi' ? 'Car_Taxi' : OEActors.pick(['Car_Sedan', 'Car_SUV', 'Car_Sedan', 'Car_Hatch']);
     const hex = from.hex || (kind === 'taxi' ? OEActors.pick(tcfg.colours) : OEActors.pick(['#1c1c1e', '#8a9099', '#3d4146', '#e7e5df', '#1f2a3a']));
-    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
+    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, limit);
     if (!rt) return null;
     const C = OECars.car(world, vlib, model, { colours: { paint: hex, seat: kind === 'taxi' ? '#2b2d30' : '#b9ae9c' }, keep: KEEP });
     const o = { kind, C, model, hex, name: OEActors.pick(FIRST[CITY.country] || FIRST.Australia), plate: plate(), pickup, dest, phase: 'coming',
@@ -566,7 +566,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     let o = null;
     if (best) {
       const c = best.c;
-      o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup);
+      o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup, null, 450);
       if (o) { cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h }); }
     }
     if (!o) o = rideFromAround('taxi', pickup, null, 120, 250);
