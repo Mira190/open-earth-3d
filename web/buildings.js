@@ -291,7 +291,7 @@ window.OEBuildings = (function () {
     }
 
     // a flat polygon (contour + holes, flat x, y metres) at height z, facing up
-    function cap(rings, z, bi, colour, kind, flags) {
+    function cap(rings, z, bi, colour, kind, flags, down = false) { // (down: a soffit, facing the street below)
       const P = BI[bi], contour = [], holes = [];
       rings.forEach((r, i) => {
         const pts = [];
@@ -301,11 +301,11 @@ window.OEBuildings = (function () {
       let faces;
       try { faces = THREE.ShapeUtils.triangulateShape(contour, holes); } catch (e) { faces = []; }
       const all = contour.concat(...holes), base = buf.n;
-      for (const p of all) buf.v(p.x, p.y, z, 0, 0, 1, colour, p.x, p.y, kind * 16 + P.si, P.storey, P.ground, P.u, 1, flags, P.mat, bi, P.code);
+      for (const p of all) buf.v(p.x, p.y, z, 0, 0, down ? -1 : 1, colour, p.x, p.y, kind * 16 + P.si, P.storey, P.ground, P.u, 1, flags, P.mat, bi, P.code);
       for (const f of faces) {
         const a = all[f[0]], b = all[f[1]], c = all[f[2]];
         const ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0;
-        if (ccw) buf.idx.push(base + f[0], base + f[1], base + f[2]); else buf.idx.push(base + f[0], base + f[2], base + f[1]);
+        if (ccw !== down) buf.idx.push(base + f[0], base + f[1], base + f[2]); else buf.idx.push(base + f[0], base + f[2], base + f[1]);
       }
     }
 
@@ -401,6 +401,7 @@ window.OEBuildings = (function () {
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
       if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
+      if (s[2] > 0 && meta[bi][1] === 'roof') cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true); // a canopy over the street (pipeline/arcades.py): its underside
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
       const par = PARAPET[P.style] && s[3] - s[2] >= 50 ? PARAPET[P.style] : 0;

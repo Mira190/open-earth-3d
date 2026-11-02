@@ -418,9 +418,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const KERB = 0.45;   // how far a walker keeps from a car's side or bumper (m, centre to body)
   const MOVING = 1.2;  // and the seconds of a moving car's path ahead it won't step into
   const NEAR = 60, FAR = 150; // walkers farther than these from the player take a step every 2nd, 4th frame (m)
-  // ground(x, y, at): the height to stand at beside the line at `at` (net.at), or null where no one can stand
-  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null } = {}) {
-    const P = [], tmp = {};
+  // ground(x, y, at): the height to stand at beside the line at `at` (net.at), or null where no one can stand;
+  // clear(x, y, z): whether someone standing there is clear of the walls (a facade the footway runs along)
+  const WALL_LOOK = 1.5; // how far ahead a walker looks for a wall beside its line (m)
+  function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null, clear = null } = {}) {
+    const P = [], tmp = {}, ahead = {};
     for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, lat: null, dodge: 0, v: 0, vx: 0, vy: 0,
       pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16, state: 'walk', mode: 'ground', seat: null, t: 0, rest: rnd() * 30 });
     const R = makeRenderer ? makeRenderer(P) : boxRenderer(world, U, P);
@@ -523,6 +525,26 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         q.x = tmp.x - q.hy * q.lat; q.y = tmp.y + q.hx * q.lat;
       }
     }
+    // the offset nearest `want` (sideways from the line, + = left of the way it walks) that keeps a walker
+    // out of the walls here and WALL_LOOK ahead: tried from `want` in 0.2 m steps in to the line, then out
+    // the other side; `want` itself where nowhere is clear (the line grazing a corner). walk() moves the
+    // walker's offset towards it no faster than a sidestep, so it closes in on a facade, never jumps
+    function wallFree(q, want, hw) {
+      if (!clear) return want;
+      net.at(q.line, Math.max(0, Math.min(net.L[q.line].len, q.s + q.dir * WALL_LOOK)), ahead);
+      const ok = lat => {
+        for (const a of [tmp, ahead]) {
+          const hx = a.hx * q.dir, hy = a.hy * q.dir, x = a.x - hy * lat, y = a.y + hx * lat, z = ground ? ground(x, y, a) : a.z;
+          if (z == null || !clear(x, y, z)) return false;
+        }
+        return true;
+      };
+      if (ok(want)) return want;
+      const sg = want >= 0 ? 1 : -1;
+      for (let l = want - sg * 0.2; l * sg > 0; l -= sg * 0.2) if (ok(l)) return l;
+      for (let l = 0; Math.abs(l) <= hw + 1e-6; l -= sg * 0.2) if (ok(l)) return l;
+      return want;
+    }
     function backTo(q) { // the point on the footway a walker returns to from a bench
       q.dir = rnd() < 0.5 ? 1 : -1;
       net.at(q.line, q.s, tmp);
@@ -574,6 +596,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const l = net.L[p.line];
       if (p.lat == null) { // just placed: put it there
         p.lat = p.side; p.v = p.speed; net.at(p.line, p.s, tmp); p.hx = tmp.hx * p.dir; p.hy = tmp.hy * p.dir;
+        p.lat = p.lim = wallFree(p, p.limWant = p.side, Math.max(1, (FOOTW[l.c] || 3) / 2)); // (placed out of sight: straight to where there is room)
         p.x = tmp.x - p.hy * p.lat; p.y = tmp.y + p.hx * p.lat; p.z = tmp.z;
         settle(p);
       }
@@ -601,7 +624,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // sideways within the footway (a little past its edge for whoever keeps far left), and speed
       const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
       p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
-      const want = Math.max(-hw + 0.3, Math.min(Math.max(hw, p.side) + 0.2, p.side + p.dodge));
+      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, p.side) + 0.2, p.side + p.dodge));
+      // a facade beside the line, here or a little ahead: in towards the line (looked at every few steps)
+      if (clear && ((p.wallStep = (p.wallStep || 0) + 1) % 3 === 0 || p.lim == null)) { net.at(p.line, p.s, tmp); p.lim = wallFree(p, want, hw); p.limWant = want; }
+      if (clear && p.lim != null && p.lim !== p.limWant) want = p.limWant >= 0 ? Math.min(want, p.lim) : Math.max(want, p.lim); // (no further out on that side)
       const dl = Math.max(-0.9 * dt, Math.min(0.9 * dt, want - p.lat));
       p.lat += dl;
       const target = p.pause > 0 ? 0 : Math.min(p.speed, cap);
@@ -1070,6 +1096,28 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const m = mv.e.m;
           if (c.line === m.line) { if ((m.end === 0 ? c.s : l.len - c.s) > m.back + c.half + 0.5) JN.release(c, key); }
           else if (c.line !== mv.a.line && !mv.j.inner.has(c.line) && !(mv.via && mv.via.includes(c.line))) JN.release(c, key);
+        }
+        // a wall across its way: a road the data runs through a building (route.js flags it, net.avoid, a
+        // second or two after the start, when cars can already be on it) or a lane into a facade. Its way
+        // ahead is looked along every half second (on a flagged road every frame): braked for like a car
+        // stopped there; out of sight a car on a flagged road, or stopped at a wall, leaves the traffic
+        // (its slot comes back elsewhere), and in sight one stopped at a wall turns round as from a jam
+        const flagged = !!(net.avoid && net.avoid[c.line]), far = !eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 140;
+        if (flagged && far) { respawn(c, cx, cy, radius * 0.6); continue; }
+        if (nav && np) {
+          c.wallGap = (c.wallGap ?? 40) - c.v * dt;
+          if ((c.wallT = (c.wallT || 0) - dt) <= 0 || flagged) {
+            c.wallT = 0.5; c.wallGap = 40;
+            const deck = c.z > nav.terrain(c.x, c.y) + 2;
+            for (let k = 0; k < np; k++) if (!nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) { c.wallGap = k * step; break; }
+          }
+          if (c.wallGap < gap) { gap = c.wallGap; byCar = false; front = null; why = 'wall'; }
+          c.atWall = why === 'wall' && c.v < 0.1 ? (c.atWall || 0) + dt : 0;
+          if (c.atWall > 1.5) {
+            c.atWall = 0; c.wallT = 0;
+            if (far) { respawn(c, cx, cy, radius * 0.6); continue; }
+            c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
+          }
         }
         c.q = atLine || (byCar && front != null && front.q && c.v < 0.5); // queueing at a junction
         // caught up in another car (two stopped for each other can't get out by waiting): the
