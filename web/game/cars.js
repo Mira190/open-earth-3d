@@ -569,7 +569,7 @@ window.OECars = (function () {
     }
     // a route from place a to place b: { pts: [[x, y, z, v, cls]], len } or null. The car leaves
     // a the way it is going, and arrives at b going b's way (so b's kerb is on its kerb side),
-    // keeping to the one-way streets; where they leave no way (a street mapped one-way out from
+    // keeping to the one-way streets and the banned turns (net.bans, from junctions.js); where they leave no way (a street mapped one-way out from
     // the edge of the map), along any street.
     // shun: lines to keep off where there is another way (a ride re-routing round a jam).
     function route(a, b, limit = 6000, edges = adj, shun = null) {
@@ -587,8 +587,10 @@ window.OECars = (function () {
           if (d > (dist.get(u) ?? Infinity)) continue;
           if (u === goal) { found = true; break; }
           if (d > limit) break;
+          const p = prev.get(u), from = p ? p[1] * 2 + (p[2] > 0 ? 1 : 0) : a.line * 2 + (a.dir > 0 ? 1 : 0), B = net.bans && net.bans.get(from);
           for (const [v, li, dir] of edges[u]) {
-            const p = prev.get(u), back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
+            const back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
+            if (B && edges === adj && B.some(b => b[2] === 1 && b[0] === li && b[1] === (dir > 0 ? 0 : 1))) continue; // a banned turn (junctions.js)
             const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? 60 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
