@@ -21,6 +21,15 @@ window.OELights = (function () {
     return (fadeTex = new THREE.CanvasTexture(c));
   }
 
+  // a beam fades out within a hundred metres of the camera: seen from inside it (a helicopter by the
+  // tower, the roof it shines from) it is a haze in the air, not a grey sheet over the view
+  function nearFade(sh) {
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vBeamZ;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vBeamZ = -mvPosition.z;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vBeamZ;')
+      .replace('#include <opaque_fragment>', '#include <opaque_fragment>\n  gl_FragColor.a *= smoothstep(25.0, 140.0, vBeamZ);');
+  }
+
   function create(world, D, Wd) {
     const cfg = D.scene.city.light_show, LM = D.scene.landmarks || {};
     if (!cfg) return null;
@@ -46,6 +55,7 @@ window.OELights = (function () {
       for (let j = 0; j < n; j++) {
         const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: colours[(i * 2 + j) % colours.length], alphaMap: fade(), transparent: true,
           opacity: 0.0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+        m.material.onBeforeCompile = nearFade;
         m.position.copy(W(p[0], p[1], p[2] - 4));
         m.renderOrder = 30;
         group.add(m);
