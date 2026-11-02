@@ -692,8 +692,9 @@ window.OECars = (function () {
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       const left = P.len - st.s;
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
-      const gap = gapAhead(others);
+      const gap = gapAhead(others), w0 = want;
       want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
+      st.why = want < w0 ? `gap ${gap.toFixed(1)} m` : `${w0.toFixed(1)} m/s ahead`; // what sets the speed (for the game check)
       st.held = st.v < 0.1 && gap < 4 ? st.held + dt : st.pass ? st.held : 0; // (kept while it drives round)
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
