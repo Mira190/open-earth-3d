@@ -718,9 +718,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the route from a place on the roads (from: { line, s, dir, v }) to the pick-up, and how long it takes
   // (the time with nothing in the way and no red lights, which it obeys only in your sight)
   // The traffic lights near the pick-up, which it stops at in your sight, add on average SIG_WAIT
-  // each to the time (it has priority there: the other road's green ends after 5 s, then amber and
-  // all red); the time with them is the one a ride is picked by and the app first says.
-  const SIG_WAIT = 4;
+  // each to the time: it has priority there, calling its green from far enough out that the lights
+  // have changed (the other road's few seconds of green, amber, all red) and held it by the time it
+  // gets there, so it seldom stops (tools/ride_check.js signals measures it); the time with them is
+  // the one a ride is picked by and the app first says.
+  const SIG_WAIT = 1;
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   function planRide(from, pickup) {
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
@@ -798,7 +800,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the time to the pick-up (or, on the way, to where you're going), as the app shows it
   // (held up behind the traffic, it rises as it waits, as an app's does, rather than standing still)
-  const eta = o => (o.phase === 'coming' ? o.drv.timeLeft() + SIG_WAIT * (o.sig || []).filter(s => s > o.drv.st.s + 2).length + Math.max(0, (o.drv.st.held || 0) - 2) : o.phase === 'driving' ? o.drv.timeLeft() : 0);
+  // Stopped at a red light, or queued behind a car that is, it is the time to that light's green
+  // (junctions.toGreen: the signals know their change) with a couple of seconds for the queue to move
+  // off, in place of the average for that light; held up behind cars otherwise, the time it has waited.
+  function rideWait(st) {
+    if (st.v > 1) return null;
+    let b = st.block, n = 0; // (the queue ahead, car by car, to the one at the line)
+    while (b && b.line != null && b.why === 'car' && b.front && b.v < 1 && n < 8) { b = b.front; n++; }
+    const a = /^the line/.test(st.why || '') ? st.lineAt : b && b.line != null && b.why === 'light' ? b.lineArm : null;
+    if (a && a.j.sig) return { light: true, t: junctions.toGreen(a) + (a === st.lineAt ? 0 : 1.5 * (n + 1)) };
+    return { light: false, t: Math.max(0, (st.held || 0) - 2) };
+  }
+  const eta = o => {
+    if (o.phase !== 'coming') return o.phase === 'driving' ? o.drv.timeLeft() : 0;
+    const st = o.drv.st, w = rideWait(st), lights = (o.sig || []).filter(s => s > st.s + 2).length - (w && w.light ? 1 : 0);
+    return o.drv.timeLeft() + SIG_WAIT * Math.max(0, lights) + (w ? w.t : 0);
+  };
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
   function hail() {
     if (player.mode !== 'foot' || player.auto) return;
