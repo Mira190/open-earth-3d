@@ -790,6 +790,9 @@ def pad_records(meta, solids, sinfo, bextra):
     bextra += [{"seed": (bi * 2654435761) & 0xFFFFFF, "facade_color": None, "facade_material": None} for bi in range(len(bextra), len(meta))]
 
 
+STATION_MIN_M2, STATION_ANNEX_M, STATION_GAP_M = 2000.0, 5.5, 4.0   # a big station; one storey; how close
+
+
 def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=(), bare=()):
     """Roof meshes, facade styles, storeys, wall colours, shopfront frontages and
     rooftop plant for the finished buildings. Returns (roof rows, frontage rows,
@@ -809,6 +812,14 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=(), bare=()):
     if R.get("haussmann"):
         fps = [Polygon(np.array(s[4]).reshape(-1, 2) / 10) for s in solids]
         nb = (shapely.STRtree(fps), fps)
+    # in Japan a big station's single-storey neighbours are its exits, kiosks and shelters, flat-roofed, not
+    # houses (Shibuya's Hachiko exit: OSM w155538676, 4.1 m, drew a gable from the prior). Not elsewhere:
+    # Sydney's old stations keep hipped-roof buildings beside them
+    japan = "kawara" in R["pitched_material"]
+    stations = [Polygon(np.array(s[4]).reshape(-1, 2) / 10) for s in solids if japan and meta[s[0]][1] == "train_station"]
+    stations = [g if g.is_valid else g.buffer(0) for g in stations]
+    stations = [g for g in stations if g.area > STATION_MIN_M2]
+    station_tree = shapely.STRtree(stations) if stations else None
     for bi, m in enumerate(meta):
         ks = by_b.get(bi, [])
         if not ks:
@@ -838,6 +849,8 @@ def dress_buildings(C, meta, solids, sinfo, bextra, roads, hidden=(), bare=()):
                 shape, src = meas["roof"], "measured"
             elif len(ks) > 1 and not (top_b < 12 and area_b < 600):
                 shape, src = "flat", "rule"  # parts of a larger building keep flat roofs unless mapped
+            elif not cls and top_b <= STATION_ANNEX_M and station_tree is not None and station_tree.query(poly.buffer(STATION_GAP_M)).size:
+                shape, src = "flat", "rule"
             else:
                 shape, src = typology.infer_roof(R, cls, floors, top_b, area_b, seed + k)
             if shape in ("flat", "sawtooth") or shape not in roofs.CODES and shape not in ("spherical",):
@@ -1470,7 +1483,7 @@ def build(C):
         "shore": {"file": "shore.png", "cell": SHORE_CELL, "nx": sm["nx"], "ny": sm["ny"], "x0": C.x0, "y1": C.y1,
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
-        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter")},
+        "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter", "seawall")},
         "trees": cfg.get("trees", {}),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},

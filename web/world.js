@@ -264,9 +264,10 @@ float tgHash(vec2 c) { return fract(sin(dot(c, vec2(27.17, 113.93))) * 31718.927
     ashlar(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 }, uTide: { value: m.tide ? 1 : 0 } });
+        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 }, uTide: { value: m.tide ? 1 : 0 },
+          uHighWater: { value: m.high_water_m ?? 0.85 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uCourse, uBlock, uTide; float pWet;
+uniform float uCourse, uBlock, uTide, uHighWater; float pWet;
 float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.743); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float row = floor(vUv.y / uCourse), fy = fract(vUv.y / uCourse);
@@ -278,8 +279,8 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     float tone = 0.84 + 0.28 * ashHash(vec2(row, floor(x)));
     diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near);
     pWet = 0.0;
-    if (uTide > 0.5) { // high water about 0.9 m up, ragged with the weed; a pale salt line just above it
-      float hw = 0.85 + 0.12 * sin(vUv.x * 1.7) + 0.08 * sin(vUv.x * 5.3 + 1.0);
+    if (uTide > 0.5) { // high water (uHighWater, about 0.9 m up on a tidal harbour), ragged with the weed; a pale salt line just above it
+      float hw = uHighWater + (0.12 * sin(vUv.x * 1.7) + 0.08 * sin(vUv.x * 5.3 + 1.0)) * min(1.0, uHighWater / 0.85);
       pWet = 1.0 - smoothstep(hw - 0.25, hw + 0.05, vUv.y);
       diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.32, 0.34, 0.27), pWet);
       diffuseColor.rgb *= 1.0 + 0.1 * (smoothstep(hw, hw + 0.15, vUv.y) - smoothstep(hw + 0.2, hw + 0.6, vUv.y));
@@ -375,13 +376,78 @@ vec3 scrCell(float cell, vec2 uv) {
     const n = v => v.toFixed(1), last = (chunk, add) => chunk.replace(/#endif\s*$/, `\t${add}\n#endif`); // inside the outer USE_FOG block
     C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;');
     C.fog_vertex = last(FOG0.v, 'vEdgeXZ = ( transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) ).xz;');
-    C.fog_pars_fragment = last(FOG0.pf, 'varying vec2 vEdgeXZ;');
     // how far out into the haze a point is (0 inside, 1 at the frame and beyond); the camera's own
     // value lifts the near exemption when it is out there itself, so the sea in front of it hazes too
     const out = p => `smoothstep( 0.0, ${n(fade)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
-    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfogFactor = max( fogFactor, ${out('vEdgeXZ')} * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
+    // Over the sea the frame ends nowhere in particular: where the frame's edge is open water, the
+    // surface carries on past it and the distance's own haze takes it to the horizon, darkening a
+    // little toward a distant sea's tone on the way; only where the edge is land does the water haze
+    // out with it. Which it is comes from seaOpen (below), the shoreline along the band's inner edge,
+    // blurred more the further out the point is, so the sea and the haze meet in a soft fan, not a
+    // line. Only the water's materials take it (OE_SEA, uSeaOpen).
+    const c = `vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} )`, hx = w / 2 - fade, hz = h / 2 - fade;
+    C.fog_pars_fragment = last(FOG0.pf, `varying vec2 vEdgeXZ;
+#ifdef OE_SEA
+	uniform sampler2D uSeaOpen;
+	// where a point on the band's inner edge (relative to the frame's centre) lies along it, metres from its north-west corner, clockwise
+	float oePerim( vec2 q ) {
+		if ( q.y <= ${n(0.5 - hz)} ) return q.x + ${n(hx)};
+		if ( q.x >= ${n(hx - 0.5)} ) return ${n(2 * hx + hz)} + q.y;
+		if ( q.y >= ${n(hz - 0.5)} ) return ${n(3 * hx + 2 * hz)} - q.x;
+		return ${n(4 * hx + 3 * hz)} - q.y;
+	}
+#endif`);
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfloat oeEdge = ${out('vEdgeXZ')};
+#ifdef OE_SEA
+	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
+	  float oeOpen = oePast > 0.0 ? texture2D( uSeaOpen, vec2( oePerim( clamp( oeP, - oeH, oeH ) ) / ${n(4 * (hx + hz))}, min( oePast / ${SEA_OPEN_FAR.toFixed(1)}, 1.0 ) ) ).r : 0.0;
+	  oeEdge *= 1.0 - oeOpen;
+	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
+#endif
+	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
 	gl_FragColor.rgb`);
     return fade;
+  }
+  // The open sea along the edge haze's inner band, for the water's fog (edgeHaze): a texture with
+  // the band's perimeter across (from its north-west corner, clockwise) and the distance past it
+  // down (0 to SEA_OPEN_FAR m), 1 where the band meets open water in shore.png and 0 where it meets
+  // land, blurred along the perimeter by 80 m plus 0.8 m for each metre further out.
+  const SEA_OPEN_FAR = 16000;
+  function seaOpen(frame, fade, img, sh) {
+    const N = 1024, L = 16, hx = (frame.x[1] - frame.x[0]) / 2 - fade, hz = (frame.y[1] - frame.y[0]) / 2 - fade;
+    const cx = (frame.x[0] + frame.x[1]) / 2, cy = (frame.y[0] + frame.y[1]) / 2, P = 4 * (hx + hz), step = P / N;
+    const cv = document.createElement('canvas');
+    cv.width = img.width; cv.height = img.height;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, cv.width, cv.height).data, W = sh.nx * sh.cell, H = sh.ny * sh.cell;
+    const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const open = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      let s = (i + 0.5) * step, x, y; // y north, relative to the centre
+      if (s < 2 * hx) { x = s - hx; y = hz; } else if ((s -= 2 * hx) < 2 * hz) { x = hx; y = hz - s; }
+      else if ((s -= 2 * hz) < 2 * hx) { x = hx - s; y = -hz; } else { s -= 2 * hx; x = -hx; y = s - hz; }
+      const u = (cx + x - sh.x0) / W, v = (sh.y1 - (cy + y)) / H;
+      if (u < 0 || v < 0 || u >= 1 || v >= 1) { open[i] = 1; continue; } // past the map, open water (water.js shoreAt)
+      const r = px[4 * (Math.floor(v * cv.height) * cv.width + Math.floor(u * cv.width))];
+      open[i] = smooth(-10, 40, (r - 128) * 0.5);
+    }
+    const data = new Uint8Array(N * L * 4);
+    for (let k = 0; k < L; k++) {
+      const half = Math.max(1, Math.round((80 + 0.8 * SEA_OPEN_FAR * k / (L - 1)) / step));
+      for (let i = 0; i < N; i++) {
+        let a = 0, wsum = 0;
+        for (let j = -half; j <= half; j++) { const wt = 1 - Math.abs(j) / (half + 1); a += wt * open[((i + j) % N + N) % N]; wsum += wt; }
+        const o = smooth(0, 1, a / wsum), at = 4 * (k * N + i);
+        data[at] = data[at + 1] = data[at + 2] = Math.round(o * 255); data[at + 3] = 255;
+      }
+    }
+    const t = new THREE.DataTexture(data, N, L, THREE.RGBAFormat);
+    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+    t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+    return t;
   }
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
@@ -449,18 +515,28 @@ vec3 photoGrade(vec3 c) {
     // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
     su.twilight = { value: new THREE.Color(0, 0, 0) };
     sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
-      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform float uGold, uGoldBeltK; uniform vec3 uGoldWarm, uGoldCool, uGoldCream, uGoldBelt;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
       .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );' +
         // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
         // (the game sets it, atmosphere.js), and the last few degrees above the horizon go into the
         // haze the model's edge fades into (setSun)
         '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
+        // golden hour (setSun): with the sun a few degrees up the Preetham sky is a flat grey-beige, where the
+        // real one is amber toward the sun along the horizon, a warm cream low all round, blue overhead, with a
+        // peach band (the Belt of Venus) low across from it once the sun is down. The sky keeps its brightness and takes that hue (uGold, 0..1).
+        '\n { float gL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );' +
+        '\n   vec2 gD = direction.xz / max( length( direction.xz ), 1e-4 ), gS = vSunDirection.xz / max( length( vSunDirection.xz ), 1e-4 );' +
+        '\n   float gTo = pow( clamp( 0.5 + 0.5 * dot( gD, gS ), 0.0, 1.0 ), 2.0 ), gLow = 1.0 - smoothstep( 0.0, 0.5, max( direction.y, 0.0 ) ), gBand = 1.0 - smoothstep( 0.0, 0.12, max( direction.y, 0.0 ) );' +
+        '\n   vec3 gHue = mix( uGoldCool, uGoldCream, 0.9 * gBand );' +
+        '\n   gHue = mix( mix( gHue, uGoldBelt, uGoldBeltK * gLow * gLow * ( 1.0 - gTo ) ), uGoldWarm, gTo * mix( 0.25, 1.0, gLow * gLow ) );' +
+        '\n   gl_FragColor.rgb = mix( gl_FragColor.rgb, gHue / dot( gHue, vec3( 0.2126, 0.7152, 0.0722 ) ) * gL, uGold ); }' +
         // after dark, the night sky of a city (setSun): deep blue overhead, the city's glow low down
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( uNightHorizon, uNightZenith, pow( clamp( direction.y, 0.0, 1.0 ), 0.6 ) ), uNightSky );' +
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
     Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 },
-      uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
+      uGold: { value: 0 }, uGoldBeltK: { value: 0 }, uGoldWarm: { value: new THREE.Color(1.0, 0.6, 0.3) }, uGoldCool: { value: new THREE.Color(0.24, 0.48, 1.0) }, uGoldCream: { value: new THREE.Color(1.0, 0.8, 0.6) },
+      uGoldBelt: { value: new THREE.Color(0.86, 0.68, 0.7) }, uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
       .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
@@ -483,7 +559,7 @@ vec3 photoGrade(vec3 c) {
     world.add(hemi);
     const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
-    edgeHaze(scene.frame);
+    const edgeFade = edgeHaze(scene.frame);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -519,9 +595,46 @@ vec3 photoGrade(vec3 c) {
       }
       const tex = new THREE.CanvasTexture(cv);
       tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
-      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) } };
+      const px = g.getImageData(0, 0, w, h).data;
+      // within a clip region, or a metre and a half from one (a landmark's own seawall runs along its edge)
+      const near = (x, y) => {
+        const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
+        for (let dr = -3; dr <= 3; dr += 3) for (let dc = -3; dc <= 3; dc += 3) {
+          const rr = r + dr, cc = c + dc;
+          if (rr >= 0 && cc >= 0 && rr < h && cc < w && px[4 * (rr * w + cc)] > 127) return true;
+        }
+        return false;
+      };
+      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) }, near };
     })();
+    // the seawalls along every built shore (quays.js), from shore.png: the ground drawn is raised to
+    // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
+    let shoreTex = null, Q = null;
+    if (scene.shore) {
+      shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
+      if (shoreTex) { shoreTex.colorSpace = THREE.NoColorSpace; shoreTex.generateMipmaps = false; shoreTex.minFilter = THREE.LinearFilter; shoreTex.flipY = false; }
+      if (shoreTex && window.OEQuays && new URLSearchParams(location.search).get('quays') !== 'off') try { // ?quays=off: without, to compare
+        const sh = scene.shore, img = shoreTex.image, cv = document.createElement('canvas');
+        cv.width = sh.nx; cv.height = sh.ny;
+        const g = cv.getContext('2d', { willReadFrequently: true });
+        g.drawImage(img, 0, 0);
+        Q = OEQuays.create({ px: g.getImageData(0, 0, sh.nx, sh.ny).data, nx: sh.nx, ny: sh.ny, cell: sh.cell, x0: sh.x0, y1: sh.y1 },
+          D.Tfine || T, { band: 1.5 * T.cell, skip: CLIP && CLIP.near });
+        if (!Q.quayPixels) Q = null;
+      } catch (e) { console.warn('quays: none drawn', e); Q = null; }
+    }
+    D.quays = Q;
+    const QUAY = Q && { mask: { value: Q.maskTexture() }, dist: { value: shoreTex }, box: { value: new THREE.Vector4(...Q.box) } };
     const clipGround = sh => {
+      if (QUAY) { // out in front of a quay, above the water: the grid's ramp up to the land
+        Object.assign(sh.uniforms, { uQuayMask: QUAY.mask, uQuayDist: QUAY.dist, uQuayBox: QUAY.box });
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vQuayWP;')
+          .replace('#include <project_vertex>', '#include <project_vertex>\nvQuayWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uQuayMask, uQuayDist; uniform vec4 uQuayBox; varying vec3 vQuayWP;')
+          .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  { vec2 quv = vec2((vQuayWP.x - uQuayBox.x) / uQuayBox.z, (uQuayBox.y + vQuayWP.z) / uQuayBox.w);
+    if (vQuayWP.y > -0.05 && all(greaterThan(quv, vec2(0.0))) && all(lessThan(quv, vec2(1.0))) && texture2D(uQuayMask, quv).r > 0.5 && texture2D(uQuayDist, quv).r > 127.5 / 255.0) discard; }`); // from a quarter metre back: under the coping
+      }
       if (!CLIP) return;
       Object.assign(sh.uniforms, { uClip: CLIP.tex, uClipBox: CLIP.box });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClipWP;')
@@ -554,16 +667,44 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       g.rotateX(-Math.PI / 2);
       g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
       const p = g.attributes.position;
+      if (Q) Tg = Q.raise(Tg, true); // the points out in the water along a quay at its level
       for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
+      // under the cells raised to a quay, which the ground shader leaves open above the water: the bottom
+      if (Tg.up) {
+        const cols = Math.round(w / Tg.cell) + 1, rows = p.count / cols, at = [];
+        const up = i => {
+          const c = Math.round((p.getX(i) - Tg.x0) / Tg.cell), r = Math.round((Tg.y1 + p.getZ(i)) / Tg.cell);
+          return c >= 0 && r >= 0 && c < Tg.nx && r < Tg.ny && Tg.up[r * Tg.nx + c];
+        };
+        const y = -((scene.shore || {}).floor_m || 4) - 0.05;
+        for (let r = 0; r < rows - 1; r++) for (let c = 0; c < cols - 1; c++) {
+          const a = r * cols + c, b = a + 1, d = a + cols, e = d + 1;
+          if (!(up(a) || up(b) || up(d) || up(e))) continue;
+          for (const k of [a, d, b, b, d, e]) at.push(p.getX(k), y, p.getZ(k));
+        }
+        if (at.length) {
+          const u = new THREE.BufferGeometry();
+          u.setAttribute('position', new THREE.Float32BufferAttribute(at, 3));
+          u.computeVertexNormals();
+          g.userData.underlay = u;
+        }
+      }
       return g;
+    }
+    // a ground tile's mesh, with the bottom under its quays (tileGeometry)
+    const quayBed = new THREE.MeshStandardMaterial({ color: lin(((scene.water || {}).seawall || {}).bed || '#3a3b33'), roughness: 1, metalness: 0 });
+    function groundMesh(g, material) {
+      const m = new THREE.Mesh(g, material);
+      if (g.userData.underlay) m.add(new THREE.Mesh(g.userData.underlay, quayBed));
+      return m;
     }
     for (const t of scene.ground) {
       const g = tileGeometry(t, T);
       const tex = texLoader.load(D.DATA + t.file, tileLoaded, undefined, () => tileLoaded({ image: null }));
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
-      const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
+      const m = groundMesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       m.material.onBeforeCompile = gradePhoto;
       m.receiveShadow = true;
       world.add(m);
@@ -572,11 +713,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
 
     // water: the wind-driven sea of water.js where the GPU renders to float targets; otherwise
     // the old see-through sheet with ripples. On land the terrain covers it either way.
-    let sea = null, shoreTex = null;
-    if (scene.shore) {
-      shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
-      if (shoreTex) { shoreTex.colorSpace = THREE.NoColorSpace; shoreTex.generateMipmaps = false; shoreTex.minFilter = THREE.LinearFilter; shoreTex.flipY = false; }
-    }
+    let sea = null;
     const quality = (new URLSearchParams(location.search)).get('water') || 'auto';
     if (window.OEWater && quality !== 'flat' && renderer.capabilities.isWebGL2 &&
         (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'))) {
@@ -614,8 +751,49 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     waterGeo.rotateX(-Math.PI / 2);
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
+    // past the frame's edge where it is open water, the sea carries on to the horizon (edgeHaze)
+    if (shoreTex && shoreTex.image) {
+      try {
+        const so = { value: seaOpen(scene.frame, edgeFade, shoreTex.image, scene.shore) };
+        for (const m of [water.material, waterMat]) {
+          const ob = m.onBeforeCompile;
+          m.defines = Object.assign({}, m.defines, { OE_SEA: '' });
+          m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
+        }
+      } catch (e) { console.warn('water: no open sea past the edge', e); }
+    }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
+
+    // the seawalls (quays.js): dressed stone in courses with the tidal band, under a coping; the city's stone in scene.json water.seawall (city.json water.seawall)
+    const quayMeshes = [];
+    if (Q) {
+      const sw = Object.assign({ stone: '#8f8678', coping: '#b4ab9b', course_m: 0.6, block_m: 1.4, high_water_m: 0.85 }, (scene.water || {}).seawall || {});
+      const face = new THREE.MeshStandardMaterial({ color: lin(sw.stone), roughness: 0.9, metalness: 0 });
+      PATTERNS.ashlar(face, { course_m: sw.course_m, block_m: sw.block_m, tide: true, high_water_m: sw.high_water_m });
+      const own = face.onBeforeCompile;
+      face.onBeforeCompile = sh => {
+        own(sh);
+        // weathering: grime darkening down towards the tide line, in streaks along the wall
+        sh.fragmentShader = sh.fragmentShader.replace('#include <roughnessmap_fragment>', `{ float streak = 0.5 + 0.5 * sin(vUv.x * 0.9 + 2.0 * sin(vUv.x * 0.23)) * sin(vUv.x * 2.7 + 1.3);
+    diffuseColor.rgb *= mix(0.78 + 0.12 * streak, 1.0, smoothstep(0.0, 2.2, vUv.y - uHighWater)); }
+#include <roughnessmap_fragment>`);
+        streetLit(sh);
+      };
+      face.customProgramCacheKey = () => 'quay|face';
+      const coping = new THREE.MeshStandardMaterial({ color: lin(sw.coping), roughness: 0.82, metalness: 0 });
+      coping.onBeforeCompile = streetLit;
+      coping.customProgramCacheKey = () => 'quay|coping';
+      const { geos, length } = Q.geometries(Q.walls(), (scene.shore || {}).floor_m || 4);
+      for (const g of geos) {
+        const m = new THREE.Mesh(g, [face, coping]);
+        m.receiveShadow = true;
+        m.name = 'quay';
+        world.add(m);
+        quayMeshes.push(m);
+      }
+      console.info(`quays: ${(length / 1000).toFixed(1)} km of seawall in ${geos.length} pieces`);
+    }
 
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
@@ -900,7 +1078,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       } catch (e) { return false; }
     }
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, gradePhoto, streetLit, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1,
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -911,11 +1089,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
         sunLight.visible = sp.altitude > -0.5;
-        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
+        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 7, sp.altitude); // full a little sooner: a low sun still rakes the city with gold
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
         const tw = smooth(-11, -4, sp.altitude) * (1 - smooth(-2, 3, sp.altitude));
         su.twilight.value.copy(TWI_SKY).multiplyScalar(tw);
+        // golden hour: the sun from just under the horizon to about 12 degrees up (the sky shader's uGold)
+        su.uGold.value = 0.88 * smooth(-3, 0.5, sp.altitude) * (1 - smooth(5, 13, sp.altitude));
+        su.uGoldBeltK.value = 1 - smooth(-1, 3, sp.altitude);
         // a city's own night glow (neon, street light); with the street lights drawn (night.js), the
         // night's own light is the moon's and the sky's, and the lamps light the streets themselves
         const amb = ((D.scene.city && D.scene.city.night_ambient) || 0) * (night ? 0.25 : 1);
