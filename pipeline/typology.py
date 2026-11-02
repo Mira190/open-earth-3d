@@ -17,7 +17,7 @@ import numpy as np
 
 # facade styles; the viewer and Blender read the same codes
 STYLES = ["plain", "house", "terrace", "apartment", "office", "glass", "heritage", "retail", "industrial", "civic",
-          "machiya", "mixed", "stone", "haussmann", "grachtenpand"]
+          "machiya", "mixed", "stone", "haussmann", "grachtenpand", "wall"]  # wall: pipeline/walls.py
 STYLE_CODE = {s: i for i, s in enumerate(STYLES)}
 ROOF_MATERIALS = ["membrane", "gravel", "concrete", "tile", "metal", "slate", "kawara", "copper", "glass", "green", "zinc"]
 
