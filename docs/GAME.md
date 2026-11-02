@@ -550,9 +550,13 @@ pipeline writes. The only city-specific code is landmark geometry in
     lights](#junctions-and-traffic-lights).
   - **Unsticking:** a car waiting on someone standing in the road edges on
     after a few seconds and the walker turns back; a car waiting at its line
-    that a bus can't swing past backs off a metre; two cars held nose to nose
-    for 15 s (10 s in a junction) squeeze past each other; and out of sight, a
-    car stopped 45 s that is not in a queue comes back elsewhere.
+    that a bus can't swing past backs off a metre; a car in a junction stopped
+    behind one waiting at another of its lines asks it to back off, and after
+    8 s goes on as if it weren't there; two cars held nose to nose for 15 s
+    (10 s in a junction, 25 s by one that only inches along) squeeze past each
+    other; a car held 1.5 s part way across to another lane goes back to its
+    own; and out of sight, a car stopped 45 s that is not in a queue comes back
+    elsewhere.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
 
 #### Junctions and traffic lights
@@ -1285,14 +1289,23 @@ kerb where the car was parked, gets in the back, picks the first place the drive
 offers, rides for 20 s, skips the trip and gets out, and orders a ride on the phone.
 Last it watches the nearest junction with signals for 80 s: its lights must go
 through their phases, no car may cross its line on red, and the traffic must be
-moving. Seated at the wheel and in the back, each head must be under the roof.
+moving; the crowd's footways must cross at the signals, with walk signals, and
+the nearest junction's walk must turn on and off within 75 s; a junction with a
+turn arrow must have its arrow lanterns. Seated at the wheel and in the back, each head must be under the roof.
 There is a screenshot after each step, and it fails on any page error.
 `tools/check.sh` runs it for every city whenever the game changes.
 
 `tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
-[Junctions and traffic lights](#junctions-and-traffic-lights)), and
-`tools/signal_shot.js <city> out [count|ids] [HH:MM,...] [WxH]` takes a driver's
-view of the nearest junctions with signals at the times given.
+[Junctions and traffic lights](#junctions-and-traffic-lights)), with the
+update's cost a frame, the lane changes and the walkers waiting at a kerb;
+`tools/traffic_why.js <city> [place] [seconds] [still]` lists the cars standing
+at the end of a run with what holds each (the car in front and what holds that
+one, the light, the movement it waits for, the lane), and the cars caught up in
+one another; `tools/traffic_profile.js <city> [seconds]` runs the browser's
+profiler over the traffic and lists its functions and busiest lines; and
+`tools/signal_shot.js <city> out [count|ids|arrows<n>] [HH:MM,...] [WxH]` takes
+a driver's view of the nearest junctions with signals (or with a turn arrow) at
+the times given, or with `VIEW=kerb` a walker's view of a crossing.
 
 ## Limitations
 
@@ -1316,13 +1329,17 @@ view of the nearest junctions with signals at the times given.
   - Your car is three circles down its length against the walls, so its corners
     can touch a wall before the circles do.
   - Cars push you aside instead of knocking you down, and stop dead for people.
-  - The traffic keeps to its lane, one lane each way (a one-way street's on the
-    keep side), so a wide road carries one file of cars. It swings out round a
-    car pulled in at the kerb but never overtakes, so a car stopped in the lane
-    holds up the queue behind it.
-  - Turn restrictions (Overture's `prohibited_transitions`) are not read, the
-    signals have two phases and no turn arrows, and the crowd doesn't wait for a
-    walk signal: cars stop for people in the road instead.
+  - Lanes come from the road's class, not from OpenStreetMap's `lanes` (Overture
+    doesn't carry it): two each way on a main road, one elsewhere, so a wide
+    residential street still carries one file and a six-lane motorway two. A
+    turn goes from the first lane only, and a junction has no turn pockets or
+    lane arrows of its own.
+  - The arrow phase follows the main road's on every big junction alike; the
+    real plans (SCATS's, Tokyo's) are not open data. Banned turns that apply
+    only at some hours, or to some vehicles, are left out.
+  - Walkers wait for the walk signal only at junctions with signals; at a zebra
+    crossing or anywhere else the cars stop for them instead. Signals on a road
+    between junctions (a mid-block crossing) are not modelled.
   - A few awkward corners (a turning circle, two lines meeting at a very sharp
     angle) can still hold two cars until they squeeze past each other.
   - Only roads at about your height count as the kerb, so a taxi won't stop on

@@ -2,8 +2,9 @@
 // places (the start, then points on its roads), run the traffic there for a while and report how
 // it flowed: the share of cars standing still, the cars jammed for half a minute or more, the
 // turns back where a jam would not clear, the cars caught up in one another, and, at the
-// junctions (junctions.js), the cars that crossed a stop line on red and the movements let into a
-// junction at once that cross. The game's own frame loop is stopped, so a run is the same each
+// junctions (junctions.js), the cars that crossed a stop line on red, the movements let into a
+// junction at once that cross, and the cars found over a line they couldn't stop at (on amber,
+// say) and the movements they cross. The game's own frame loop is stopped, so a run is the same each
 // time. Exits 1 when the traffic jams, tangles or runs a red.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/traffic_check.js sydney [seconds per place] [places]
@@ -89,7 +90,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
     console.log(`  turned back in the road: ${f(r.turnsPerCarMin, 3)} per car-minute; caught up in another car: ${f(r.overlapsPerSample)} pairs a second, ${r.overlapMax} at worst`);
     console.log(`  the traffic update: ${f(r.updateMs)} ms a frame`);
     if (r.laneChanges != null) console.log(`  lane changes: ${r.laneChanges}; walkers waiting at a kerb for the walk signal: ${f(r.kerbWait / Math.max(1, r.seconds), 1)} on average`);
-    if (r.signals != null) console.log(`  red lights run: ${r.redRuns}; crossing movements in one junction at once: ${r.conflicts} (cars found over a line: ${r.overLine})`);
+    if (r.signals != null) console.log(`  red lights run: ${r.redRuns}; crossing movements let into one junction at once: ${r.conflicts}; cars found over a line: ${r.overLine}, crossing ${r.crossedOver || 0} movements in the junction`);
   }
   const r0 = runs[0] || {}, avg = k => runs.reduce((a, r) => a + r[k], 0) / Math.max(1, runs.length), sum = k => runs.reduce((a, r) => a + (r[k] || 0), 0);
   if (r0.signals != null) console.log(`junctions: ${r0.junctions}, ${r0.signals} with signals (${r0.mapped} mapped, ${r0.arrows || 0} with a turn arrow), ${r0.heads} signal heads, ${r0.stops} stop and ${r0.giveWays} give-way signs; ${r0.bans || 0} banned turns (${sum('bannedExits')} exits left out where cars came)`);
@@ -101,7 +102,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
   if (avg('jammedShare') > 0.12) fails.push('jammed');
   if (avg('overlapsPerSample') > 1) fails.push('cars caught up in one another');
   if (sum('redRuns') > 0) fails.push('red lights run');
-  if (sum('conflicts') > sum('overLine')) fails.push('crossing movements let in at once');
+  if (sum('conflicts') > 0) fails.push('crossing movements let in at once');
   console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'ok');
   await b.close();
   process.exit(fails.length ? 1 : 0);

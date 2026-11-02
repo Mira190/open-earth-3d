@@ -1082,12 +1082,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             }
           }
           const lt = JN.light(jArm, jEx), stop = c.v * c.v / 8 < toLine - c.half - 0.3; // (can stop by the line, at 4 m/s²)
-          if (c.mv && c.mv.a === jArm && lt !== 'g' && lt != null && stop) JN.release(c); // the lights changed before it got there
+          if (c.mv && c.mv.a === jArm && lt !== 'g' && lt != null && stop) { JN.release(c); c.rel = 'lights'; } // the lights changed before it got there
           if (!c.mv || c.mv.a !== jArm) {
             JN.approach(c, jArm, JN.mv(c, jEx), Math.max(0, toLine - c.half) / Math.max(c.v, 2));
             if (toLine < c.half + 4 + c.v * c.v / 6) {
               let go = lt == null || lt === 'g' || (lt === 'y' && !stop);
-              if (toLine - c.half < -1) { JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
+              if (toLine - c.half < -1) { c.overWhy = `${c.rel || ''} ${c.why} v ${c.v.toFixed(1)} toLine ${(toLine - c.half).toFixed(1)} lane ${c.ln} lo ${c.lo.toFixed(1)} lt ${lt}`; JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
               if (go && !room(c, jEx)) go = false;
               const inLane = (!c.ln || jEx.lanes.includes(c.ln)) && Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3; // (in a lane its movement can't go from, or still moving across: it waits)
@@ -1149,7 +1149,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // that junction (one waiting at another of its lines, where two roads come in side by side,
         // for this very movement to clear): it gives the movement up and waits its turn
         c.mvHold = c.mv && c.mv.a === jArm && toLine - c.half > 0.5 && c.v < 0.3 && byCar && front && !(front.mv && front.mv.j === c.mv.j) ? (c.mvHold || 0) + dt : 0;
-        if (c.mvHold > 4) { JN.release(c); c.mvHold = 0; }
+        if (c.mvHold > 4) { JN.release(c); c.mvHold = 0; c.rel = 'hold'; }
         c.q = atLine || (byCar && front != null && front.q && c.v < 0.5); // queueing at a junction
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)

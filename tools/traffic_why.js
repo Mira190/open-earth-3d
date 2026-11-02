@@ -31,7 +31,17 @@ const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process
     }
     g.advance(1);
     const still = C.map(() => 0);
-    for (let t = 0; t < T; t++) { g.advance(1); C.forEach((c, i) => { still[i] = c.line >= 0 && c.v < 0.3 ? still[i] + 1 : 0; }); }
+    // (and the movements let into a junction at once that cross, as they happen: by whom and how)
+    const pairs = new Map(), idx0 = new Map(C.map((c, i) => [c, i]));
+    const mvDesc = (j, o) => { const a = j.arms[o.k], e = (a.exits || []).find(x => x.m.i === (o.m & 15)); return `car ${idx0.get(o.c)} from arm ${o.k} (${L[a.line].c}${L[a.line].ow ? ' one-way' : ''}) lane ${o.m >> 4} to arm ${o.m & 15}${e ? ` (turn ${e.turn.toFixed(2)})` : ''} at ${o.t.toFixed(1)} s${o.forced ? ` (found over its line: ${o.c.overWhy})` : ''}`; };
+    for (let t = 0; t < T; t++) {
+      g.advance(1);
+      C.forEach((c, i) => { still[i] = c.line >= 0 && c.v < 0.3 ? still[i] + 1 : 0; });
+      for (const j of JN.J) for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
+        const p = j.active[x], q = j.active[y], key = `${j.id}:${p.t}:${q.t}`;
+        if (!pairs.has(key) && JN.conflict(j, p.k, p.m, q.k, q.m)) pairs.set(key, `junction ${j.id} (${j.arms.length} arms${j.sig ? ', signals' : ''}): ${mvDesc(j, p)} and ${mvDesc(j, q)}`);
+      }
+    }
     const idx = new Map(C.map((c, i) => [c, i]));
     const rows = [], by = {};
     C.forEach((c, i) => {
@@ -58,10 +68,11 @@ const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process
       const P = corners(a), Q = corners(o);
       if (![a.h, a.h + Math.PI / 2, o.h, o.h + Math.PI / 2].some(h => sep(P, Q, [Math.sin(h), Math.cos(h)]))) caught.push(`at ${Math.round(a.x)},${Math.round(a.y)}: ${desc(a)} and ${desc(o)}`);
     }
-    return { at: [Math.round(g.player.x), Math.round(g.player.y)], rows, by, caught };
+    return { at: [Math.round(g.player.x), Math.round(g.player.y)], rows, by, caught, crossing: [...pairs.values()] };
   }, [Number(secs), Number(place), Number(minStill)]);
   console.log(`${city} at ${out.at}: cars still ${minStill} s or more at the end, by what holds them: ${JSON.stringify(out.by)}`);
   for (const r of out.rows) console.log(`  car ${r.car} still ${r.still} s: ${r.why}${r.q ? ' (queueing)' : ''}; ${r.road}; piece ${r.line} (${r.len} m) at ${r.at}${r.mv ? '; ' + r.mv : ''}${r.junction ? '; junction ' + r.junction : ''}${r.front ? '; behind ' + r.front : ''}`);
+  if (out.crossing.length) console.log(`movements in a junction at once that cross (${out.crossing.length}):\n  ` + out.crossing.slice(0, 40).join('\n  '));
   if (out.caught.length) console.log('caught up in one another now:\n  ' + out.caught.join('\n  '));
   await b.close();
 })().catch(e => { console.error(e); process.exit(1); });

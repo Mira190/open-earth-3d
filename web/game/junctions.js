@@ -201,11 +201,12 @@ window.OEJunctions = (function () {
       const fwd = pool.filter(e => Math.abs(e.turn) < 2.6);
       a.exits = fwd.length ? fwd : pool;
       // the lanes a movement goes from: the first lane always; the second (on a road with two) for
-      // straight ahead onto a road with two of the same kind (both one-way, or both two-way)
+      // straight ahead onto a road with two of the same kind (both one-way, or both two-way), 60 m
+      // long or more
       const la = L[a.line], two = lanesOf(la) > 1;
       for (const e of a.exits) {
         const lm = L[e.m.line];
-        e.lanes = two && lanesOf(lm) > 1 && Math.abs(e.turn) < 0.5 && !la.ow === !lm.ow ? [0, 1] : [0];
+        e.lanes = two && lanesOf(lm) > 1 && Math.abs(e.turn) < 0.5 && !la.ow === !lm.ow && lm.len >= 60 ? [0, 1] : [0]; // (not onto a stretch too short to move across on before the next junction)
         e.across = Math.abs(e.turn) < 2.6 && e.turn * side > 0.5; // across the oncoming traffic
       }
       a.lanes = two && a.exits.some(e => e.lanes.length > 1) ? 2 : 1;
@@ -387,8 +388,8 @@ window.OEJunctions = (function () {
     }
     function may(c, a, e, t) {
       const j = a.j, k = a.i, m = mv(c, e);
-      for (const o of j.active) if (o.c === c) return true;
-      for (const o of j.active) if (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) return 'cross';
+      for (const o of j.active) if (o.c === c && o.k === k && o.m === m) return true; // (in it already, this way)
+      for (const o of j.active) if (o.c !== c && (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m))) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
@@ -418,7 +419,7 @@ window.OEJunctions = (function () {
       unwait(c);
       if (c.mv && c.mv.j === j) release(c);
       else if (c.mv) { release(c, 'mv0'); c.mv0 = c.mv; } // still leaving the last one
-      j.active.push({ c, k: a.i, m: mv(c, e), t });
+      j.active.push({ c, k: a.i, m: mv(c, e), t, forced });
       c.mv = { j, a, e }; c.mvT = t;
     }
     // car c is waiting at the line for its movement: the longest waiting goes first
@@ -440,9 +441,10 @@ window.OEJunctions = (function () {
       release(c); release(c, 'mv0');
       unwait(c);
     }
-    // movements in one junction at once that cross, pairs (by construction none but where a car
-    // found itself over a line, put back there or turned round: the checks count both)
-    let crossed = 0, overLine = 0;
+    // movements in one junction at once that cross, pairs: let in by the junction (by construction
+    // none), and with a car found over its line (it couldn't stop, or was put back there or turned
+    // round: the checks count these apart)
+    let crossed = 0, crossedOver = 0, overLine = 0;
     const seenPairs = new Set();
     const conflicts = () => crossed;
     const innerAll = new Set();
@@ -456,7 +458,7 @@ window.OEJunctions = (function () {
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
           const p = j.active[x], q = j.active[y];
-          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(p.t + ':' + q.t + ':' + j.id)) { seenPairs.add(p.t + ':' + q.t + ':' + j.id); crossed++; }
+          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(p.t + ':' + q.t + ':' + j.id)) { seenPairs.add(p.t + ':' + q.t + ':' + j.id); if (p.forced || q.forced) crossedOver++; else crossed++; }
         }
         if (!j.sig) continue;
         j.t += dt;
@@ -525,7 +527,7 @@ window.OEJunctions = (function () {
     }
     function stats() {
       const sj = J.filter(j => j.sig);
-      return { overLine, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
+      return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
     return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
