@@ -571,6 +571,14 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // and none sets out onto it while one coming the other way is past the passing place
     const passAt = (c, s = c.leg.pass) => (c.rev ? c.leg.len - s : s);
     const oncoming = (v, c) => vessels.filter(o => o !== v && o.phase === 'sail' && o.cycle[o.ci].leg === c.leg && o.cycle[o.ci].rev !== c.rev);
+    // how far off a busy berth to wait, coming the way k (0 with the leg's points, 1 against): two and
+    // a half hull lengths and 60 m, or farther out to where the water lets it keep well to starboard,
+    // so one leaving the berth, on this course or across it, passes clear
+    function holding(l, k) {
+      const o = l.off[k], n = o.length, base = Math.min(l.len / 2, 2.5 * hullL + 60);
+      for (let d = base; d <= l.len / 2; d += 10) { const i = Math.round((l.len - d) / l.len * (n - 1)); if (o[i] >= 0.55 * hullB) return d; }
+      return base;
+    }
     const keepOff = (v, c) => {
       const o = c.leg.off[c.rev ? 1 : 0], f = Math.max(0, Math.min(1, v.s / c.leg.len)) * (o.length - 1), i = Math.min(o.length - 2, Math.floor(f));
       return o[i] + (o[i + 1] - o[i]) * (f - i);
@@ -583,7 +591,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
         return { from: l.from, to: l.to, p, cum, len: cum[cum.length - 1] };
       });
-      for (const l of legs) { trim(l); l.off = [offsets(l, false), offsets(l, true)]; l.pass = passing(l); }
+      for (const l of legs) { trim(l); l.off = [offsets(l, false), offsets(l, true)]; l.pass = passing(l); l.hold = [holding(l, 0), holding(l, 1)]; }
       const cycle = [];
       for (const l of legs) cycle.push({ leg: l, rev: false });
       for (let i = legs.length - 1; i >= 0; i--) cycle.push({ leg: legs[i], rev: true });
@@ -641,7 +649,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
           helmStep(v, dt);
         } else {
           const left = c.leg.len - v.s;
-          let wait = busy(v, destOf(v)), stopAt = wait ? left - 2.5 * v.len - 60 : left; // (well off it: one leaving on another course may cross this one's)
+          let wait = busy(v, destOf(v)), stopAt = wait ? left - c.leg.hold[c.rev ? 1 : 0] : left; // (well off it, to starboard: one leaving may cross this course)
           if (c.leg.pass != null && v.s < passAt(c) + 1) { // a narrow leg, short of its passing place or at it
             const here = Math.max(0, passAt(c) - v.s);
             if (wait) stopAt = here;
