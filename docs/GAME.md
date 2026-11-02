@@ -850,6 +850,34 @@ up in a crowded junction in one run are elsewhere in the next. No junction now
 lets in two movements that cross (Melbourne's bayside did, on main: a car let
 in by one way that asked again by another wasn't checked).
 
+**The jams brought back down (issue #51).** `tools/traffic_why.js` found
+three knots behind the 150 s stands. Two cars at an angle (a bus leaving a
+junction beside the queue coming in round a bend) read as touching though
+nearly a metre apart, because footprints were told apart only on the moving
+car's axes; the bus was held in the junction and, having it to itself, locked
+it. The overlap test now separates on both cars' axes. The swing out round a
+car parked beside the lane was measured from where the car already was, so it
+stopped half way out and stood behind the parked one for good. And a car that
+left a junction onto a short stub ending in nothing turned round at full
+speed and was found over the junction's line: such stubs are now left out
+when there is another way, a car slows to turn round at a road's end, and it
+never turns at speed. A car that has gone nowhere for a minute (a minute and
+a half in a queue), however it edged or turned where it stood, comes back
+elsewhere when out of sight. Sydney with these alone: jammed 0.9% (3.6% on
+main), longest still 60 s (150 s), cars over a line 5 (24). With the lane
+arrows and the crossings between junctions (whose red lights hold the traffic
+as the real ones do) every city under `tools/traffic_all.sh`, three places
+each, against main before (jammed, longest still): Sydney 2.1% and 89 s
+(3.6% and 150 s); Melbourne 2.0% and 68 s (1.5% and 129 s); Melbourne's
+bayside 5.7% and 148 s (3.1% and 140 s); Hong Kong 4.0% and 144 s (4.7% and
+147 s); Tokyo 1.7% and 90 s (0.9% and 62 s); Shibuya 4.0% and 140 s (2.9% and
+130 s); Osaka 2.0% and 89 s (2.0% and 93 s); Kyoto 1.6% and 88 s (1.0% and
+79 s); Paris 3.0% and 91 s (2.6% and 79 s); Amsterdam 0.8% and 71 s (0.9% and
+85 s). No junction lets in two movements that cross, no car runs a red. Kyoto
+and Osaka fail the wall check on main as here. A single run swings by a point
+or two with any change (Sydney's six places measured 1.2% to 1.9% between
+equivalent versions), so read these as a direction, not a decimal.
+
 The traffic's update costs about 3.2 ms a frame for 150 cars on the software
 renderer here, against 3.4 ms on main with the rides' changes (2.2 ms against
 2.6 ms before them), measured the same way: the way ahead is sampled walking a line's
