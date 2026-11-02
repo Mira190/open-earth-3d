@@ -145,7 +145,8 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     way, with the height the canopy model measured.
 - `woods.png`: the ground under the woods' and parks' canopy at 2 m a pixel,
   from the north-west corner: `r` how much of the ground the wood's floor
-  covers, `g` the canopy's height times 8 (m), `b` a footway under the trees.
+  covers, `g` the canopy's height times 8 (m), `b` a footway under the trees,
+  `a` inside a wood or park.
 - `terrain.json`: a 10 m grid, int16 decimetres, little-endian, base64,
   starting at the north-west corner. Under the water the bottom is modelled, as
   below.
@@ -596,6 +597,9 @@ thousands (issue #54). `pipeline/woods.py` fixes this for every city:
   the albedos they have, darker under a tall canopy, with a compacted gravel and
   earth path where a mapped footway runs under the trees. Within the distance
   the trees are drawn to; beyond, the photo's canopy, turned green.
+- **Shadows in a park:** the photos' shadows on a park's gravel are skylight
+  blue, the same teal; inside a wood or park (`woods.png`'s alpha) the shader
+  takes their colour out near the camera, where the scene casts its own.
 
 Considered and not adopted: drawing the canopy from the photo alone (its
 greenness picks up lawns and misses trees in shade), and the 10 m global canopy

@@ -19,7 +19,8 @@ cemetery and temple ground:
     trusted.
 
 Writes web/data/<id>/woods.png (r: ground-cover weight, g: canopy height x 8 m, b: footway
-under the canopy; 2 m cells, north-west origin), "woods" in places.json (x, y, ground,
+under the canopy, a: in a wood or park, where the photo's blue shadows are neutralised;
+2 m cells, north-west origin), "woods" in places.json (x, y, ground,
 height in decimetres, as "trees") and "woods" in scene.json. Needs Overture land and land
 use (fetch_overture.py --only land land_use) and game.json's paths; game_data.py calls it
 at its end. To do it to a city as it stands:
@@ -37,6 +38,7 @@ from PIL import Image, ImageDraw
 from scipy import ndimage
 from scipy.spatial import cKDTree
 
+import kerbside
 from cityctx import ROOT, City, polygons
 
 CHM_URL = "https://dataforgood-fb-data.s3.amazonaws.com/forests/v1/alsgedi_global_v6_float/chm/{}.tif"
@@ -165,6 +167,11 @@ def build(C, write=True):
         p = np.array(r["p"]).reshape(-1, 3) / 10
         d.line(P(p[:, :2]), fill=1, width=max(1, round((ROADW.get(r["c"], 7) + 1) / FINE)), joint="curve")
     road = np.asarray(img, bool)
+    img, d, P = raster(nx, ny, FINE, x0, y1)  # where a tree would stand in a carriageway (kerbside.py's rule)
+    for r in G.get("paths", {}).get("road", []):
+        p = np.array(r["p"]).reshape(-1, 3) / 10
+        d.line(P(p[:, :2]), fill=1, width=max(1, math.ceil(2 * (kerbside.setback(r["c"]) + kerbside.RADIUS["tree"] + 0.3) / FINE)), joint="curve")
+    kerb = np.asarray(img, bool)
     img, d, P = raster(nx, ny, FINE, x0, y1)
     for r in G.get("paths", {}).get("foot", []):
         p = np.array(r["p"]).reshape(-1, 3) / 10
@@ -207,7 +214,7 @@ def build(C, write=True):
     # rest of the canopy filled at random (a Poisson-disc fill), each kept apart from the
     # trees already planted by a distance that grows with its height, and clear of the paths
     # and of the trees OSM maps
-    free = under & ~road & ~ndimage.binary_dilation(foot, iterations=1) & (sm >= MIN_TREE_M)
+    free = under & ~kerb & ~ndimage.binary_dilation(foot, iterations=1) & (sm >= MIN_TREE_M)
     peak = (sm == ndimage.maximum_filter(sm, size=5)) & free
     pr, pc = np.nonzero(peak)
     o = np.argsort(-sm[pr, pc])
@@ -246,17 +253,18 @@ def build(C, write=True):
     rch = ndimage.gaussian_filter(down(cover.astype(np.float32)), 0.6)
     gch = np.clip(down(sm * under) * 8, 0, 255)
     bch = ndimage.gaussian_filter(down((foot & cover).astype(np.float32)), 0.5)
-    rgb = np.stack([np.clip(rch * 255, 0, 255), gch, np.clip(bch * 255 * 1.4, 0, 255)], -1).round().astype(np.uint8)
+    ach = down(ok.astype(np.float32))
+    rgb = np.stack([np.clip(rch * 255, 0, 255), gch, np.clip(bch * 255 * 1.4, 0, 255), ach * 255], -1).round().astype(np.uint8)
     n_cover = int(cover.sum())
     print(f"{C.id}: woods and parks {wood.sum() / 1e4:.0f} ha, canopy over them {n_cover / 1e4:.0f} ha; "
           f"{len(trees) // 4} trees from the canopy (OSM maps {len(mapped)})")
     if not write:
         return rgb, trees
-    Image.fromarray(rgb).save(os.path.join(C.out, "woods.png"), optimize=True)
+    Image.fromarray(rgb, 'RGBA').save(os.path.join(C.out, "woods.png"), optimize=True)
     places["woods"] = trees
     json.dump(places, open(places_path, "w"), separators=(",", ":"))
     scene["woods"] = {"file": "woods.png", "cell": CELL, "nx": W, "ny": H, "x0": x0, "y1": y1, "trees": len(trees) // 4,
-                      "encoding": "r: ground cover under the canopy (0-255), g: canopy height x 8 (m), b: a footway under the canopy",
+                      "encoding": "r: ground cover under the canopy (0-255), g: canopy height x 8 (m), b: a footway under the canopy, a: in a wood or park",
                       "source": CHM_SOURCE}
     scene.setdefault("sources", {})["canopy"] = CHM_SOURCE
     json.dump(scene, open(scene_path, "w"), separators=(",", ":"))  # as build_scene.py writes it
