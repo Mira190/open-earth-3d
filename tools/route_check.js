@@ -55,19 +55,20 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
       if (s) spots.push({ name: `spot ${spots.length}`, x: s.x, y: s.y, z: s.z });
     }
     const out = { walk: [], fly: [], drive: [] };
-    // could a walker get from a to b at all? A 2 m search over the ground from b, the walker's own
-    // steps either way: true, false, or null when it gives up (a big area)
+    // could a walker get from a to b at all? A 1 m search over the ground from b (the middle of each
+    // step tested too, as finely as the routes are), the walker's own steps either way, heading for
+    // a first: true, false, or null when it gives up (a big area)
     const reach = (a, b) => {
-      const K = (x, y) => `${Math.round((x - b.x) / 2)},${Math.round((y - b.y) / 2)}`, seen = new Set([K(b.x, b.y)]), q = [[b.x, b.y, b.z]];
+      const K = (x, y) => `${Math.round(x - b.x)},${Math.round(y - b.y)}`, seen = new Set([K(b.x, b.y)]), q = [[b.x, b.y, b.z]];
       for (let h = 0; h < q.length; h++) {
-        if (q.length > 250000) return null;
+        if (q.length > 600000) return null;
         const [x, y, z] = q[h];
         if (Math.hypot(x - a.x, y - a.y) < 3 && Math.abs(z - a.z) < 2) return true;
-        for (const [dx, dy] of [[2, 0], [-2, 0], [0, 2], [0, -2]]) {
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
           const nx = x + dx, ny = y + dy, k = K(nx, ny);
           if (seen.has(k)) continue;
           const w = nav.walk(nx, ny, z + 0.3);
-          if (!w.ok || Math.abs(w.z - z) > 1.2 || !nav.walk(x + dx / 2, y + dy / 2, z + 0.3).ok) continue;
+          if (!w.ok || Math.abs(w.z - z) > 0.75 || !nav.walk(x + dx / 2, y + dy / 2, z + 0.3).ok) continue;
           seen.add(k); q.push([nx, ny, w.z]);
         }
       }

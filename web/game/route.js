@@ -102,13 +102,20 @@ window.OERoute = (function () {
       const w = nav.walk(x, y, zl + 0.6);
       return w.ok && Math.abs(w.z - zl) < tol ? w.z : NaN;
     }
-    // walk the straight line from a to b ({x, y, z}): every 0.75 m on a floor near the line's height
-    function segOK(ax, ay, az, bx, by, bz) {
-      const d = Math.hypot(bx - ax, by - ay), m = Math.ceil(d / 0.75);
+    // walk the straight line from a to b: every 0.75 m (or `step`) on a floor near the line's height
+    function segOK(ax, ay, az, bx, by, bz, step = 0.75) {
+      const d = Math.hypot(bx - ax, by - ay), m = Math.ceil(d / step);
       for (let i = 1; i < m; i++) {
         const t = i / m, z = az + (bz - az) * t;
         if (Number.isNaN(standZ(ax + (bx - ax) * t, ay + (by - ay) * t, z, 1.2))) return false;
       }
+      return true;
+    }
+
+    // room for a walker every 0.5 m between a and b, on the floor of the line between them
+    function roomAlong(ax, ay, az, bx, by, bz) {
+      const m = Math.ceil(Math.hypot(bx - ax, by - ay) / 0.5);
+      for (let i = 1; i < m; i++) { const t = i / m; if (!nav.room(ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t, nav.R)) return false; }
       return true;
     }
 
@@ -275,8 +282,10 @@ window.OERoute = (function () {
               if (Number.isNaN(z)) continue;
               const P = run && run.pts, m = P ? P.length : 0;
               // the way from the last point: moved off a wall at either end, walked all along; on the
-              // line itself at both, no wall at its middle either (the floor between is the line's)
-              if (run && (d !== 0 || run.moved ? !segOK(P[m - 3], P[m - 2], P[m - 1], x, y, z) : !nav.room((P[m - 3] + x) / 2, (P[m - 2] + y) / 2, (P[m - 1] + z) / 2, nav.R))) continue;
+              // line itself at both, every 0.5 m stood on where the water is near (a gap at a bridge's
+              // end), else room for the walker every 0.5 m (the floor between is the line's)
+              if (run && (d !== 0 || run.moved || nav.offGround(x, y) || nav.offGround(P[m - 3], P[m - 2]) ? !segOK(P[m - 3], P[m - 2], P[m - 1], x, y, z, 0.5)
+                : !roomAlong(P[m - 3], P[m - 2], P[m - 1], x, y, z))) continue;
               if (!run) { run = { a: newNode(x, y, z), pts: [x, y, z] }; } else P.push(x, y, z);
               run.moved = d !== 0;
               got = true;
@@ -584,7 +593,7 @@ window.OERoute = (function () {
         edgePts(q.e, EA[q.e] === plan.via ? 0 : lastOf(q.e), SK[q.t.j]);
         toEnd(q.t.cell);
       }
-      const out = simplify(pts);
+      const out = mend(simplify(pts));
       let len = 0;
       for (let i = 1; i < out.length; i++) len += Math.hypot(out[i][0] - out[i - 1][0], out[i][1] - out[i - 1][1]);
       return { pts: out, len, end: [T.start.x, T.start.y, T.start.z] };
@@ -612,6 +621,22 @@ window.OERoute = (function () {
       return P.filter((p, i) => keep[i]);
     }
 
+    // the route walked once more, every 0.5 m: a stretch with a spot a walker can't stand on (a
+    // corner it cuts, a gap by the water) goes round it over the ground instead
+    function mend(P) {
+      const out = [P[0]];
+      for (let i = 1; i < P.length; i++) {
+        const a = out[out.length - 1], b = P[i], d = Math.hypot(b[0] - a[0], b[1] - a[1]), m = Math.max(1, Math.ceil(d / 0.5));
+        let ok = true;
+        for (let k = 1; k < m && ok && !b[3]; k++) { const t = k / m; if (Number.isNaN(standZ(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, 1.5))) ok = false; }
+        if (!ok) {
+          const D = flood(a[0], a[1], a[2], { goal: { x: b[0], y: b[1], z: b[2] }, limit: d * 3 + 30, extra: 0, cells: 4000, want: () => false, aim: true });
+          if (D && D.reached >= 0) for (const q of D.back(D.reached).reverse().slice(1)) out.push(q);
+        }
+        out.push(b);
+      }
+      return out;
+    }
     // how much of a route can't be walked: the metres where a walker can't stand, sampled every 0.5 m
     // (where: the first few spots, and where.run the longest stretch in one go)
     function blockedMetres(P, where = null) {
