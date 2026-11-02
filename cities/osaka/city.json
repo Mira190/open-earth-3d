@@ -90,9 +90,9 @@
     ],
     "time": "09:30",
     "cam": [
-      -4200,
-      -6200,
-      2600
+      -2050,
+      -2850,
+      1900
     ],
     "tgt": [
       -300,
@@ -530,6 +530,7 @@
       }
     ],
     "ferry_note": "Landings are the ferry terminals mapped in OpenStreetMap (via Overture). Routes are generated through open water, and the stops follow the Tombori River Cruise and the Aqua Liner, but the timetable and the vessel names are invented. Boats run at 1.5 times real speed (9 m/s) and wait 20 s at each landing. At a landing you can skip the wait.",
+    "helipads_from_data": false,
     "helipads": [
       {
         "id": "naniwa-pad",

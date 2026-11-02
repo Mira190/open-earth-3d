@@ -236,6 +236,11 @@ def main():
                 hp["name"] = h.get("name", hp["name"])
         if not h.get("from_data") and "at" in h:
             helipads.append({"id": h["id"], "name": h["name"], "at": h["at"] + [round(ground(*h["at"]), 1)]})
+    # the pads city.json names come first, in its order: the game starts the helicopter on the
+    # first. (Appended after the mapped ones, Osaka's park pad came 100th and the game started on a
+    # mapped rooftop pad at street level, at the model's edge.)
+    named = [h["id"] for h in gcfg.get("helipads", [])]
+    helipads.sort(key=lambda hp: named.index(hp["id"]) if hp["id"] in named else len(named))
 
     # ---------------------------------------------------------- boardwalks: mapped walkways (lines) over rocks or water, as decks
     boardwalks = []
