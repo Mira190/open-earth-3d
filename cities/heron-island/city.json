@@ -46,10 +46,10 @@
   },
   "spawn": {
     "poi": "heron-beach",
-    "x": 0,
-    "y": 1518,
-    "heading": 0,
-    "note": "on the upper sand of the north shore, about 1.9 m above mean sea level (the highest astronomical tide is 1.81 m), facing the sea"
+    "x": -375,
+    "y": 1475,
+    "heading": 300,
+    "note": "on the upper sand of the western beach by the helipad, a short walk from the jetty, about 1.8 m above mean sea level (the highest astronomical tide is 1.81 m), facing the sea: the quickest start for the boats and the helicopter"
   },
   "pois": [
     {

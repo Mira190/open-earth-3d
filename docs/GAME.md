@@ -91,6 +91,27 @@ runs it. The plate replaced a recorded flyover video, which was soft,
 stuttered while the city built and flashed black at the hand-over;
 `tools/flyover.js` can still record one for a film.
 
+### Where you start
+
+Every city starts you where visitors go first, with a quick way out by air, water
+and road: the helicopter on a pad a short walk away (the first pad in
+`game.helipads`, a game pad where the city has none there), a ferry landing near
+where the city has ferries, and a kerb close by for a taxi. The lead's welcome
+says where each is. Sydney starts on West Circular Quay facing the Opera House,
+Paris on the Pont d'Iéna at the foot of the Eiffel Tower, Tokyo on the Marunouchi
+plaza in front of the station, Kyoto on the station plaza below Kyoto Tower,
+Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at Hachiko (its pad is the roof of SHIBUYA SKY, a lift ride up),
+Hong Kong at the Star Ferry's Pier 7, Melbourne in Federation Square, the bayside
+at St Kilda Pier and Amsterdam on the Dam. Heron Island and Whitsundays start on
+the beach by their helipad.
+
+One helicopter serves every pad. Walk or ride towards another pad while it stands
+shut down more than 700 m away and it is waiting there when you are within 300 m,
+so the pilots' quests at the other pads still find it. `tools/start_probe.js`
+finds open ground for a pad near a point, `tools/start_shot.js` takes stills of a
+start and its helicopter, and `tools/plan_map.py` draws the start, pads, wharves,
+roads and NPCs on the aerial imagery.
+
 ### Cars, taxis and rides
 
 Every city's game has the same three ways to go by road:
@@ -239,7 +260,7 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
   stroopwafel at the Albert Cuyp market.
 - **Report back** to Sanne on the Dam.
 
-Amsterdam has no helicopter: no pad in the old city, and none is invented.
+Amsterdam has no real helipad in the old city. The pad on the Dam is a game device, so that the city can be seen from the air.
 
 **Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
 is a walk, not a survey: a welcome at Hachiko, then five lines in any order and a

@@ -237,8 +237,9 @@ def main():
         for hp in helipads:
             if hp["id"] == h["id"]:
                 hp["name"] = h.get("name", hp["name"])
-        if not h.get("from_data") and "at" in h:
-            helipads.append({"id": h["id"], "name": h["name"], "at": h["at"] + [round(ground(*h["at"]), 1)]})
+        if not h.get("from_data") and "at" in h:  # [x, y] on the ground, or [x, y, z] up on a roof or a deck
+            z = h["at"][2] if len(h["at"]) > 2 else round(ground(*h["at"][:2]), 1)
+            helipads.append(dict({"id": h["id"], "name": h["name"], "at": h["at"][:2] + [z]}, **({"heading": h["heading"]} if "heading" in h else {})))
     # the pads city.json names come first, in its order: the game starts the helicopter on the
     # first. (Appended after the mapped ones, Osaka's park pad came 100th and the game started on a
     # mapped rooftop pad at street level, at the model's edge.)

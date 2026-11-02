@@ -291,18 +291,13 @@
   "game": {
     "title": "Kyoto on Foot",
     "start": {
-      "at": [
-        -322,
-        -1815
-      ],
-      "facing": [
-        -278,
-        -1722
-      ],
+      "at": [-262, -1812],
+      "facing": [-292, -1720],
       "time": "live"
     },
     "helipads_from_data": false,
     "helipads": [
+      {"id": "ekimae-pad", "name": "Kyoto Station plaza pad (game)", "at": [-230, -1782, 28.2], "heading": 300},
       {
         "id": "gyoen",
         "name": "Kyoto Gyoen helipad (game)",
@@ -323,10 +318,7 @@
         "id": "haruka",
         "name": "Haruka",
         "role": "Survey lead",
-        "at": [
-          -318,
-          -1812
-        ],
+        "at": [-267, -1802],
         "look": {
           "character": "R_Female_Adult_04_f003",
           "skin": "#f0cfb0",
@@ -472,6 +464,7 @@
         "talk": [
           "You are the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, laser terrain, the real sun, and building heights that were measured from the air.",
           "Before we check anything, get your bearings. Kyoto Tower is right behind me. Brother Sozen is at Higashi Honganji, a short walk north. Say hello.",
+          "Or go further. The helicopter is on the station plaza, just to your right, and the taxis are right here: a hand up at the kerb (Y).",
           "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."
         ],
         "steps": [

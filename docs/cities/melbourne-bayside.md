@@ -231,8 +231,9 @@ cross them are dropped.
 
 - **Fast travel:** six points on the shore are on the map from the start, to
   travel to at any time (`game.travel`), with the bayside's labelled landmarks.
-- **Helicopter:** there is no helipad on the bayside foreshore. The one on the
-  Elwood soccer pitch is invented, so that you can fly the coast.
+- **Helicopter:** there is no helipad on the bayside foreshore. The game starts
+  it on a lawn in Catani Gardens, beside the start, and the pad on the Elwood
+  soccer pitch is invented too, so that you can fly the coast.
 - **Ferries:** no ferry runs along this shore, so there are none in the
   game.
 - **Benches:** they use the bayside's own climate. On a cold day sitters choose

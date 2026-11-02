@@ -653,7 +653,7 @@ window.OECars = (function () {
   // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now. With
   // opts.lights (junctions.js) and route.nodes, it stops at the line for a red light and a stop sign.
   function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, lights = null } = {}) {
-    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, route, P };
+    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, held: 0, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
     function lat(s) {
@@ -677,6 +677,7 @@ window.OECars = (function () {
     const c = {};
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
+      st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
@@ -684,11 +685,13 @@ window.OECars = (function () {
         P.at(Math.min(P.len, st.s + a), c);
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
         if (Math.abs(w - lane - st.shift) >= 1.5) continue;
-        if (o.still && a < 40 && (!end || P.len - st.s - a > 25)) { // (not one where it is to pull in)
+        // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
+        // turns round every few seconds and so never stays stuck long enough to be marked still
+        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || P.len - st.s - a > 25)) { // (not one where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; continue; }
         }
-        if (a - half - C.half < gap) gap = a - half - C.half;
+        if (a - half - C.half < gap) { gap = a - half - C.half; st.block = o; }
       }
       st.pass = pass;
       return gap;
@@ -719,8 +722,20 @@ window.OECars = (function () {
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       const left = P.len - st.s;
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
-      const gap = Math.min(gapAhead(others), obey ? lineGap() : Infinity);
+      // the cars ahead, and the line at a red light or a stop sign
+      const carGap = gapAhead(others), line = obey ? lineGap() : Infinity, gap = Math.min(carGap, line), w0 = want;
       want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
+      st.why = want < w0 ? `${line <= carGap ? 'the line' : 'gap'} ${gap.toFixed(1)} m` : `${w0.toFixed(1)} m/s ahead`; // what sets the speed (for the game check)
+      // held up behind cars (never at the line: a red light is waited out) it counts the time while it
+      // crawls, and keeps it until it is under way, since a car caught up with it turns round every few
+      // seconds and the gap comes and goes
+      st.held = line <= carGap ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
+      // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
+      if (st.held > 8 && carGap < 0.5) want = Math.max(want, 1.5);
+      // and held for 12 s in a tangle the traffic does not clear, it stops giving way and creeps on at
+      // up to 3 m/s until it is under way (to the line, if a light is red), rather than wait for good
+      if (st.held > 12) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);

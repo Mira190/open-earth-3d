@@ -257,6 +257,7 @@
     "ferries": [],
     "ferry_note": "No ferry runs along this shore, so there are none here. There is no helipad on the bayside foreshore either: the pad on the Elwood soccer pitch is invented, so that you can fly the coast.",
     "helipads": [
+      {"id": "catani-pad", "name": "Catani Gardens pad (game)", "at": [-330, 3120, 2.9], "heading": 200},
       {
         "id": "elwood-pad",
         "name": "Elwood (invented pad)",
@@ -487,7 +488,8 @@
         "stamp": "Bayside",
         "talk": [
           "This is Melbourne's bayside, rebuilt from open data: {buildings} buildings from St Kilda to Brighton, on Geoscience Australia's 5 m LiDAR terrain.",
-          "Start with the pier. It was rebuilt and reopened in December 2024, about 450 metres out to the breakwater. The kiosk at its end was built in 1904, burnt in 2003 and rebuilt to the old plans."
+          "Start with the pier. It was rebuilt and reopened in December 2024, about 450 metres out to the breakwater. The kiosk at its end was built in 1904, burnt in 2003 and rebuilt to the old plans.",
+          "If you'd rather see the bay from the air, the helicopter is on the lawn of Catani Gardens, just behind you, and a hand up at the kerb (Y) on Jacka Boulevard stops a taxi."
         ],
         "steps": [
           {

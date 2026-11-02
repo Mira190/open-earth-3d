@@ -221,7 +221,9 @@ model, and would float every building.
 
 ## 6. Paris on Foot
 
-Paris on Foot sends a surveyor out from the Pont des Arts:
+Paris on Foot sends a surveyor out from the Pont d'Iéna, at the foot of the Eiffel
+Tower, where the helicopter waits on a game pad under the tower, the Batobus stops on
+the quay below and taxis pull in on the Quai Branly:
 - **The river.** Bernard, a bouquiniste on the Quai de Conti, teaches you to read a
   roof with the survey lens. The lens now shows each roof's shape and material, and
   whether it was measured. Then the Batobus from Saint-Germain-des-Prés to
@@ -256,7 +258,7 @@ can name the span it wants.
 The survey lens, turned round on the Quai de Conti, finds a LiDAR-measured
 building by itself.
 
-![Camille, the survey lead, at the south end of the Pont des Arts](../images/paris/game-camille.jpg)
+![Camille, the survey lead, at the south end of the Pont des Arts, where the game started before it moved to the Eiffel Tower](../images/paris/game-camille.jpg)
 
 ## 7. Limitations
 

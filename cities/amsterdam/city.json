@@ -495,7 +495,9 @@
     "vehicles": {
       "note": "The shared ferry (web/assets/vehicles) in ferry_style's white and blue; no helicopter flies over the old city."
     },
-    "helipads": [],
+    "helipads": [
+      {"id": "dam-pad", "name": "Dam pad (game)", "at": [12, 18, 2.8], "heading": 90}
+    ],
     "helipads_from_data": false,
     "viewpoints": [
       {
@@ -763,7 +765,8 @@
         "talk": [
           "Hoi! You're the new surveyor? Welcome to the Dam, where Amsterdam began: a dam in the Amstel, around 1270.",
           "The model around you is open data: {buildings} buildings from the 3DBAG, on the national laser-scanned terrain, under the national aerial photographs. For {share:3dbag}% of the footprint area the height was measured, not guessed.",
-          "Three surveys today, in any order. The canal ring, with Pieter on the Herengracht. The IJ, with Joost at the ferries behind Centraal Station. And the winter sun, with Mei on the Rembrandtplein."
+          "Three surveys today, in any order. The canal ring, with Pieter on the Herengracht. The IJ, with Joost at the ferries behind Centraal Station. And the winter sun, with Mei on the Rembrandtplein.",
+          "Everything's close. The helicopter is on the square beside you, the trams and taxis stop on the Damrak (a hand up at the kerb, Y), and the free ferries leave from behind Centraal Station, ten minutes' walk north."
         ],
         "steps": [],
         "choices": [

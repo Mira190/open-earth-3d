@@ -479,14 +479,8 @@
     "greeting": "Bonjour !",
     "blurb": "Walk the quays, the islands and the Left Bank, ride the Batobus on the Seine, and fly between the legs of the Eiffel Tower. Talk to the people who know the city. Every fact they tell you comes from the model.",
     "start": {
-      "at": [
-        1110,
-        -102
-      ],
-      "facing": [
-        1130,
-        67
-      ],
+      "at": [-2101, 69],
+      "facing": [-2056, -26],
       "time": "live"
     },
     "wharves": [
@@ -574,6 +568,7 @@
       }
     },
     "helipads": [
+      {"id": "iena-pad", "name": "Eiffel Tower pad (game)", "at": [-2090, 50, 8.4], "heading": 135},
       {
         "id": "champ-de-mars",
         "name": "Champ de Mars pad (game)",
@@ -646,10 +641,7 @@
         "id": "camille",
         "name": "Camille",
         "role": "Survey lead",
-        "at": [
-          1110,
-          -100
-        ],
+        "at": [-2097, 64],
         "look": {
           "character": "R_Female_Adult_08_mariniere",
           "skin": "#efcfb5",
@@ -857,12 +849,13 @@
       {
         "id": "arts",
         "giver": "camille",
-        "title": "Welcome to the Pont des Arts",
-        "stamp": "Pont des Arts",
+        "title": "Welcome to the Eiffel Tower",
+        "stamp": "Pont d'Iéna",
         "talk": [
-          "Bonjour ! You're the new surveyor? This is the Pont des Arts, between the Louvre and the Institut de France.",
+          "Bonjour ! You're the new surveyor? This is the Pont d'Iéna, on the Seine at the foot of the Eiffel Tower.",
           "The model around you is open data: {buildings} buildings on IGN's laser-scanned terrain, under IGN's aerial photographs. For {share:lidar}% of the roof area, the height was measured by LiDAR, not guessed.",
-          "Three surveys today, in any order. The river, with Bernard at the green boxes on the Quai de Conti. The Left Bank, with Simone in the Luxembourg. And the tower: Henri paints it, and he wants someone with a helicopter."
+          "Three surveys today, in any order. The river, with Bernard at the green boxes on the Quai de Conti. The Left Bank, with Simone in the Luxembourg. And the tower: Henri paints it, and he wants someone with a helicopter.",
+          "Everything's close. The helicopter is waiting under the tower, the Batobus stops on the quay just below, and a hand up at the kerb (Y) on the Quai Branly stops a taxi."
         ],
         "steps": [],
         "line": "start",
