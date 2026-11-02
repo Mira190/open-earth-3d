@@ -604,10 +604,13 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       const { facing, x, y, vis } = at[i];
       if (!vis) { if (!el.hidden) el.hidden = true; return; }
       el.hidden = false;
-      // a label that would run off the right edge goes on the other side of its point
-      const lw = widths[i], flip = x + lw + 10 > w - 12;
+      // a label that would run off the right edge goes on the other side of its point; one that
+      // fits on neither side (a long name on a phone) keeps its tick and loses its text
+      const lw = widths[i], back = el.classList.contains('plan') ? -6 : 20;
+      const right = x + lw + 10 <= w - 12, left = x - lw - back >= 12, flip = !right && (left || x > w / 2);
       el.classList.toggle('flip', flip);
-      el.style.transform = `translate(${(flip ? x - lw - (el.classList.contains('plan') ? -6 : 20) : x).toFixed(1)}px, ${y.toFixed(1)}px)`;
+      el.dataset.cramped = right || left ? '' : '1';
+      el.style.transform = `translate(${(flip ? x - lw - back : x).toFixed(1)}px, ${y.toFixed(1)}px)`;
       el.style.opacity = String(Math.min(always ? 1 : 0.9, (facing - 0.12) / 0.25));
     });
     // a label that would overlap one already placed loses its text (its tick stays): the chosen
@@ -617,7 +620,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const placed = [];
     for (const o of order) {
       const r = o.el.getBoundingClientRect();
-      const clash = placed.some(q => r.left < q.right + 6 && r.right + 6 > q.left && r.top < q.bottom + 2 && r.bottom + 2 > q.top);
+      const clash = !!o.el.dataset.cramped || placed.some(q => r.left < q.right + 6 && r.right + 6 > q.left && r.top < q.bottom + 2 && r.bottom + 2 > q.top);
       o.el.classList.toggle('mute', clash);
       if (!clash) placed.push(r);
     }

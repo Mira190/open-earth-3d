@@ -240,7 +240,7 @@
   .ts-top { gap: 14px; padding-left: 20px; padding-right: 20px; }
   .ts-title .w { font-size: clamp(24px, 7.6vw, 60px); }
   .ts-menu { top: auto; bottom: 0; left: 0; right: 0; transform: none; width: auto; padding: 0 0 max(16px, env(safe-area-inset-bottom, 0px)); }
-  .ts-eyebrow { margin: 0 20px 8px; }
+  .ts-eyebrow { margin: 0 20px 8px; line-height: 1.5; text-wrap: balance; } /* two even lines on a phone, not one word left over */
   .ts-list { display: flex; overflow-x: auto; gap: 4px; padding: 0 20px; scroll-snap-type: x mandatory; scrollbar-width: none; }
   .ts-list li { flex: none; scroll-snap-align: start; }
   .ts-item { grid-template-columns: auto; gap: 6px; padding: 10px 14px 12px; border: 1px solid var(--line); background: rgba(6, 10, 18, 0.55); }
