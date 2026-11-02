@@ -143,11 +143,16 @@ Every city's game has the same three ways to go by road:
   opens out to hold the car, and the walk to the pick-up gets the gold route.
 
 A taxi or a ride reaches you within half a minute. The router searches the street
-network backwards from the pick-up for points 110 to 270 m away by road; each is
-timed by driving its route in a dry run (the driver's own rules, nothing in the
-way), and the one that takes 14 to 25 s, out of your sight where it can be, is
-chosen. The same dry run gives the time the phone shows: it counts down as the
-car comes and holds while it waits in traffic, as an app's does. Where the kerb it
+network backwards from the pick-up for points 110 to 270 m away by road (40 to
+110 m where none of those is near enough in time), following the one-way streets;
+each is timed by driving its route in a dry run (the driver's own rules, nothing
+in the way), with 4 s added for each set of traffic lights near the pick-up, and
+the one that takes 10 to 20 s, out of your sight where it can be, is chosen,
+leaving the rest of the half minute for the traffic you can see. The same time is
+what the phone shows: it counts down as the car comes and holds while it waits in
+traffic, as an app's does. At a red light in your sight it stops at the line and
+asks for its green, as a bus with priority does: the other road's green ends once
+it has run 5 s, through amber as ever. Where the kerb it
 is to pull in at is taken, by your own car or a stopped one, it pulls in just
 behind; held up for good near the end, it stops where it is with its hazards on.
 Running more than six seconds late in a jam and out of the camera's view, it
@@ -157,9 +162,11 @@ come for you on time. A driver waits five minutes at the pick-up.
 The driver takes you by road, along a route over the street network, keeping to
 the lane, slowing for bends and for the traffic, and signalling into the kerb at
 the end. A car stopped in the lane, such as yours left in the road, is driven
-round over the centre line, by the driver and by the traffic. While the car coming
-for you is out of sight, more than 120 m off, the traffic doesn't hold it up, so it
-comes in good time, as it would in a game. On the way they talk about what you are passing, as the people on the
+round over the centre line, by the driver and by the traffic, once nothing is
+coming the other way. While the car coming for you is out of your sight (more than
+40 m off and off the screen, or more than 120 m off), neither the traffic nor the
+lights hold it up, so it comes in good time, as it would in a game; in your sight
+it queues, stops at the lights and never steps further into another car. On the way they talk about what you are passing, as the people on the
 footways do, so each remark is a fact from the model, such as a building's height
 and where it comes from. <kbd>F</kbd> skips the trip, as in GTA V: the camera
 rises, crosses the city and comes down behind the car at the kerb. The traffic

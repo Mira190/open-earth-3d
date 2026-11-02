@@ -259,6 +259,12 @@ window.OEJunctions = (function () {
       if (!j.sig) return null;
       return j.ph !== a.phase ? 'r' : j.st === 'g' ? 'g' : j.st === 'y' ? 'y' : 'r';
     }
+    // a vehicle with priority at arm a's red (a ride on its way to you, as a bus has priority at
+    // some signals): the other road's green ends once it has run a few seconds, through amber as ever
+    function priority(a) {
+      const j = a.j;
+      if (j.sig && j.ph !== a.phase && j.st === 'g' && j.t >= 5) { j.st = 'y'; j.t = 0; }
+    }
     let frame = 0;
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
     // the signals (a call for its phase) and by cars giving way to it
@@ -379,7 +385,7 @@ window.OEJunctions = (function () {
       return { overLine, junctions: J.length, signals: sj.length, mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
-    return { J, armAt, exits, choose, light, approach, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, armAt, exits, choose, light, approach, priority, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

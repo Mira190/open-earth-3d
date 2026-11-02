@@ -724,8 +724,9 @@ window.OECars = (function () {
   // you drives briskly while it is out of your sight); dry is set in the dry run that times
   // the trip. timeLeft() is that dry run's time from here to the end: an arrival time that
   // counts down as the car goes and holds while it waits, as a ride app's does. solid(x, y, z, h):
-  // how deep a pose is in the traffic's cars; it never takes a step further into them.
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, lights = null } = {}) {
+  // how deep a pose is in the traffic's cars; it never takes a step further into them. priority:
+  // at a red light it asks the signals for its green (junctions.js priority).
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, lights = null, priority = false } = {}) {
     const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, held: 0, end: P.len, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
@@ -802,6 +803,9 @@ window.OECars = (function () {
         const toLine = sN - a.back - st.s;
         if (toLine < C.half - 0.5) continue; // over its line already
         const lt = lights.light(a);
+        // seen by the signals coming up to them, as the traffic is (a call for its green)
+        if (lights.approach && toLine - C.half < 60) lights.approach(st, a, -1, Math.max(0, toLine - C.half) / Math.max(st.v, 2));
+        if (priority && lt === 'r' && lights.priority && toLine - C.half < 40) lights.priority(a); // (a ride on its way to you)
         if (a.sign === 'stop' && st.v < 0.3 && toLine - C.half < 2.5) halted.add(nd.k);
         const stop = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < toLine - C.half - 0.3) || (a.sign === 'stop' && !halted.has(nd.k));
         return stop ? toLine - C.half + 2.6 : Infinity;
@@ -852,10 +856,10 @@ window.OECars = (function () {
       st.lat += clamp(k - st.lat, -0.35 * st.v * dt, 0.35 * st.v * dt);
       pose(st.s, q, st.lat);
       // never a step further into a car of the traffic (solid: how deep a pose is in their
-      // footprints); it waits, and after a few seconds wedged goes on (a car that won't move off)
-      if (solid && !dry && st.s > s0) {
+      // footprints); it waits, and after a second wedged goes on at a crawl (a car that won't move off)
+      if (solid && !dry && st.s > s0 && Math.abs(st.shift) < 0.2) { // (not while swinging out round a car: that line keeps a hand's width clear)
         const d1 = solid(q.x, q.y, q.z, Math.atan2(q.hx, q.hy));
-        if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < 3) {
+        if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < 1) {
           st.s = s0; st.lat = lat0; st.v = 0; st.brake = true;
           pose(st.s, q, st.lat);
         } else if (d1 <= 0.02) st.wedged = 0;

@@ -689,15 +689,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const t = Math.max(0, Math.min(1, (dp - 130) / 90));
     return 1 + 0.5 * t * t * (3 - 2 * t);
   };
-  const RIDE_T = [14, 25]; // the time a ride should take to reach you (s), leaving a few seconds of the half minute for the traffic
+  const RIDE_T = [10, 20]; // the time a ride should take to reach you (s), leaving the rest of the half minute for the traffic in your sight
   const STUB = { half: 2.3, hw: 0.9, top: 1.5, wheelbase: 2.7 }; // a car's size, to time a trip before there is a car
   // the route from a place on the roads (from: { line, s, dir, v }) to the pick-up, and how long it takes
   // (the time with nothing in the way and no red lights, which it obeys only in your sight)
+  // The traffic lights near the pick-up, which it stops at in your sight, add on average SIG_WAIT
+  // each to the time (it has priority there: the other road's green ends after 5 s, then amber and
+  // all red); the time with them is the one a ride is picked by and the app first says.
+  const SIG_WAIT = 4;
   function planRide(from, pickup) {
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
     if (!rt) return null;
-    const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions };
-    return { rt, opts, T: OECars.chauffeur(STUB, rt, opts).total() };
+    const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true };
+    const P = OECars.path(rt.pts), sig = [];
+    for (const nd of rt.nodes || []) {
+      const p = rt.pts[nd.k], a = p && Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140 ? junctions.armAt(nd.line, nd.end) : null;
+      if (a && a.j.sig) sig.push(P.cum[Math.min(nd.k, P.cum.length - 1)]);
+    }
+    const drive = OECars.chauffeur(STUB, rt, opts).total();
+    return { rt, opts, drive, sig, T: drive + SIG_WAIT * sig.length };
   }
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, on its planned route to the pick-up
   function newRide(kind, from, pickup, plan, dest = null) {
@@ -707,8 +717,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const C = OECars.car(world, vlib, model, { colours: { paint: hex, seat: kind === 'taxi' ? '#2b2d30' : '#b9ae9c' }, keep: KEEP });
     const o = { kind, C, model, hex, name: OEActors.pick(FIRST[CITY.country] || FIRST.Australia), plate: plate(), pickup, dest, phase: 'coming',
       t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140), rating: (4.7 + Math.random() * 0.29).toFixed(2).slice(0, 3) };
-    o.drv = OECars.chauffeur(C, plan.rt, Object.assign({ solid: (x, y, z, h) => cars.footprint(x, y, z, h, C.half, C.hw, 0.1) }, plan.opts)); // (never a step further into the traffic)
-    o.T0 = o.drv.total();
+    // (never a step further into a car of the traffic where you could see it: out of sight, as nothing
+    // else holds a driver up there, it would only be late)
+    o.drv = OECars.chauffeur(C, plan.rt, Object.assign({ solid: (x, y, z, h) => (inSight(x, y, z) ? cars.footprint(x, y, z, h, C.half, C.hw, 0) : 0) }, plan.opts));
+    o.T0 = plan.T; o.sig = plan.sig; // (the lights it is to stop at near you, s along its route)
     o.driver = makeRig(driverLook(), {});
     C.sit(o.driver, 'driver');
     return o;
@@ -721,18 +733,23 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const cand = roads.behind(pickup, 110, 270, 36);
     for (let k = 0; cand.length < 6 && k < 12; k++) { const pl = roads.around(pickup.x, pickup.y, 120, 280); if (pl) cand.push(pl); } // (a pick-up the search can't leave)
     let best = null;
-    for (const pl of cand) {
-      const plan = planRide(pl, pickup);
-      if (!plan) continue;
-      const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
-      const hidden = d > 240 || (dx * fx + dy * fy) / Math.max(1, d) < 0.3;
-      const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5) + Math.random();
-      if (!best || score < best.score) best = { pl, plan, score };
-    }
+    const pick = list => {
+      for (const pl of list) {
+        const plan = planRide(pl, pickup);
+        if (!plan) continue;
+        const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
+        const hidden = d > 240 || (dx * fx + dy * fy) / Math.max(1, d) < 0.3;
+        const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5) + Math.random();
+        if (!best || score < best.score) best = { pl, plan, score };
+      }
+    };
+    pick(cand);
+    // none of those near enough in time (one-way streets, a slow way round): nearer ones too, 40 to 110 m off
+    if (!best || best.plan.T > RIDE_T[1]) pick(roads.behind(pickup, 40, 110, 24));
     return best && best.plan.T < 45 ? newRide(kind, best.pl, pickup, best.plan, dest) : null;
   }
   // the time to the pick-up (or, on the way, to where you're going), as the app shows it
-  const eta = o => (o.phase === 'coming' || o.phase === 'driving' ? o.drv.timeLeft() : 0);
+  const eta = o => (o.phase === 'coming' ? o.drv.timeLeft() + SIG_WAIT * (o.sig || []).filter(s => s > o.drv.st.s + 2).length : o.phase === 'driving' ? o.drv.timeLeft() : 0);
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
   function hail() {
     if (player.mode !== 'foot' || player.auto) return;
@@ -860,10 +877,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // what a ride's driver looks out for (cars.js chauffeur): the traffic, your car, you on foot
   // (one stopped for good, your car left in the lane or a car stuck in a jam, is driven round).
-  // Out of sight, beyond 120 m, nothing holds a driver up, as games keep the cars that come for you on time.
+  // Out of your sight (inSight) nothing holds a driver up, as games keep the cars that come for you on time.
   function inTheWay(o) {
     const st = o.drv.st, out = [];
-    if (Math.hypot(st.x - player.x, st.y - player.y) > 120) return out;
+    if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
     for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 || (late && c.v < 2) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true } : c);
@@ -871,6 +888,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
   }
+  // in your sight: within 40 m of you, or on screen within 120 m
+  function inSight(x, y, z) { const d = Math.hypot(x - player.x, y - player.y); return d < 40 || (d < 120 && inView(x, y, z)); }
   // whether a point is in the camera's view (not whether something hides it)
   const frustum = new THREE.Frustum(), projView = new THREE.Matrix4();
   function inView(x, y, z) {
@@ -880,7 +899,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function rideStep(dt, night) {
     const o = ride, st = o.drv.st;
-    o.drv.update(dt, inTheWay(o), false, Math.hypot(st.x - player.x, st.y - player.y) < 120); // (and the lights, in sight)
+    o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z)); // (and the lights, in sight)
     // running well late in a jam and out of view, it finds its way round, a stretch at a time, to a
     // clear piece of road (games keep the cars that come for you on time); in view it queues as it would
     if (o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 6 && st.v < 0.5 && clockT - (o.hopT || 0) > 2.5 && !inView(st.x, st.y, st.z)) {
@@ -3166,7 +3185,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { G, vlib, peopleLib: lib, posts, flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, junctions, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
+  window.__game = { G, vlib, peopleLib: lib, posts, flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, rideEta: () => (ride ? eta(ride) : 0), cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, junctions, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
