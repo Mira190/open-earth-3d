@@ -42,6 +42,14 @@ renderers draw night cities, before deciding what to draw.
 - **Offices light by the floor, homes by the room.** A tenant's floor, or the cleaners
   going up the building, light whole storeys; flats light one window or two. From across
   a city an office tower reads in bands.
+- **Fewer windows lit, and brighter.** In an aerial photograph of a business district
+  two hours after sunset most of a tower is dark, its lit floors bright against it, in
+  bands and in runs, some brighter than the rest; offices are under cool white
+  fluorescent or LED light and homes mostly warm. A tower lit everywhere at one level
+  reads as a light grey block. In Japan many homes are lit by daylight-white ceiling
+  lights (6500 K is a standard option of the ceiling fixtures sold there;
+  [Village House](https://www.villagehouse.jp/blog/en/interior-design/how-to-choose-the-perfect-lighting-for-your-home/)),
+  and the flats of Hong Kong's estates by tubes, so their windows read cool too.
 - **Glass reflects.** At night a curtain wall is a dark mirror: blue sky above, the
   city's glow and its neighbours' lights below.
 - **Many lights as materials, not light sources.** Real-time night cities draw street
@@ -60,7 +68,8 @@ No code was taken from any of these; the ideas are general. What was adopted, an
 | A sky that stays blue, warm low down | `world.js`: after dark the sky shader blends to a designed night sky, deep blue overhead and the city's glow over the horizon (`style.skyglow`); the haze at the model's edge is the night's blue |
 | Warm lights against cool shadows | `lens.js` `uNightTone`: at night the grade takes the shadows to blue and the lights to amber |
 | A hierarchy on the towers | `night.js`: crowns lit on 60% of the towers over 60 m (a wash up the top storeys and a line along the parapet, mostly white); `buildings.js`: lobbies lit all night |
-| Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors; each lit run has its own brightness; some rooms are under cool light |
+| Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors, and offices empty through the evening; each building keeps its own evening; each lit run has its own brightness, a few floors bright |
+| Fewer windows lit, and brighter | `buildings.js`: lit rooms 1.6 times as bright as before and fewer of them (an office about half as many at 19:00); offices under cool white, a floor in four warmer; homes warm, or cool in Japan and Hong Kong; `world.js`: the landmark towers' curtain walls (Hong Kong's) light in runs under cool white too |
 | Glass that reflects | the environment light is drawn from the night sky, so curtain walls mirror blue above and warm below |
 | Lights as materials | `night.js`: lamps, traffic and tower lights are points and strips in three draw calls; the light on the ground is one texture |
 
@@ -92,11 +101,21 @@ radius of the camera (`game.crowd.radius_m` plus 100 m; 550 m by default).
 country's height (60 m in Japan, where they flash together forty times a minute; 90 to
 110 m elsewhere, steady), and lit crowns.
 
+**The windows.** An office lights by the floor, in runs of six bays, and a home by the
+room. The share of rooms lit follows the hour: offices three floors in four at 17:00,
+two in three at 18:00, under half at 19:00, a quarter at 20:00 and a few all night;
+homes up to under half through the evening. Each building takes 0.3 to 1.7 times that
+share, so one tower works late beside another all but empty. A lit run has its own
+brightness, most at room light and one in ten bright, and its own light: offices cool
+white (4000 to 5000 K) with a floor in four warmer, homes warm with a share under cool
+ceiling lights (0.55 in Japan, 0.6 in Hong Kong, 0.15 elsewhere). Once a run is under a
+pixel the facade takes the mean of all that, so a far tower keeps its own tone.
+
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
 instanced batches of 300 m squares drawn within 500 m of the camera.
 
 **When.** Everything fades in as the street lights come on, about when the sun sets.
-Offices empty through the evening to a few floors lit all night.
+Offices empty through the evening to a few floors lit all night (the windows, above).
 
 **The night sky and the haze.** The sky's own model lifts a night sky to a grey tenth
 of the day's, which lit every glass tower as if under an overcast evening. After dark it

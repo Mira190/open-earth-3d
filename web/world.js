@@ -148,7 +148,7 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
         Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: m.spandrel || 0.25 },
           uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uBay, uSty, uSpan, uMull, uLmNight; uniform vec3 uFrame; float pWin, pLit;
+uniform float uBay, uSty, uSpan, uMull, uLmNight; uniform vec3 uFrame; float pWin, pLit; vec3 pLitC;
 float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
@@ -164,10 +164,12 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
     diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);
     float litFar = mix(0.6 * step(0.74, cwHash(cf + 17.0)) * (1.0 - sf), 0.13, vfar);
-    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.62, cwHash(cell + 17.0)), litFar, far); }`)
+    // lit in runs of four panes along a storey, as an office is, mostly under cool white light
+    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.66, cwHash(cf + 17.0)), litFar, far);
+    pLitC = mix(cwHash(cf + 5.0) < 0.75 ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.84, 0.62), vec3(0.85, 0.88, 0.9), far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * 1.3;`);
+  totalEmissiveRadiance += pWin * pLit * uLmNight * pLitC * 1.4;`);
       };
     },
     // a riveted iron lattice cut out of a panel (u metres across, v metres up): a strut at the

@@ -438,7 +438,10 @@ window.OEBuildings = (function () {
     }
 
     const geometry = buf.geometry();
-    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade, night);
+    // the share of homes lit by cool white ceiling lights rather than warm lamps: most in Japan and
+    // Hong Kong, a few elsewhere (docs/NIGHT.md)
+    const coolHomes = { JP: 0.55, HK: 0.6 }[scene.city.country_code] ?? 0.15;
+    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade, night, coolHomes);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = mesh.receiveShadow = true;
 
@@ -677,13 +680,13 @@ window.OEBuildings = (function () {
   // ------------------------------------------------------------ the facade and roof shader
   // photoGrade: GLSL for photoGrade(), the correction world.js gives the aerial photo on the ground;
   // night: GLSL for streetLight(), the street lights' light at a world position (night.js)
-  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade, night) {
+  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade, night, coolHomes = 0.15) {
     const grid = STYLES.map(s => new THREE.Vector4(...GRIDS[s])), look = STYLES.map(s => new THREE.Vector4(...LOOK[s]));
     while (grid.length < 16) { grid.push(new THREE.Vector4()); look.push(new THREE.Vector4(1, 0, 0, 0.9)); }
     Object.assign(U, {
       uGrid: { value: grid }, uLook: { value: look }, uHour: U.uHour || { value: 12 }, uSunW: U.uSunW || { value: new THREE.Vector3(0, 1, 0) },
       uPhoto: { value: new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1) }, uPhotoOn: { value: 0 },
-      uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage }, uNudge: U.uNudge || { value: 4e-5 },
+      uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage }, uCoolHomes: { value: coolHomes }, uNudge: U.uNudge || { value: 4e-5 },
     });
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.0 });
     mat.extensions = Object.assign(mat.extensions || {}, { derivatives: true });
@@ -712,7 +715,7 @@ window.OEBuildings = (function () {
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
   uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
-  uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns;
+  uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns; uniform float uCoolHomes;
   varying vec2 vFac; varying vec4 vInf; varying vec3 vExt; varying float vBid; varying float vSrc;
   varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vGrid; varying vec4 vLook;
   ${photoGrade || 'vec3 photoGrade(vec3 c) { return c; }'}
@@ -733,16 +736,21 @@ window.OEBuildings = (function () {
     float d = clamp(b - a, 0.0, 1.0), t = x - a, c = floor(t), t0 = t - c - 0.5 * w, t1 = t - c + 0.5 * w;
     return ((floor(t1) - floor(t0)) * d + min(fract(t1), d) - min(fract(t0), d)) / w;
   }
-  // occupancy: the share of rooms lit at this local hour, by style
+  // occupancy: the share of rooms lit at this local hour, by style. Offices empty through the
+  // evening: three floors in four lit at 17:00, two in three at 18:00, under half at 19:00, a
+  // quarter at 20:00 (some floors work late, the cleaners go up the building), and a few all
+  // night. Homes light through the evening, but never every window: rooms nobody is in, and
+  // curtains, keep it under half. (Each building's own share is about this times 0.3 to 1.7.)
   float occupancy(float style, float hr) {
     float evening = smoothstep(16.5, 19.0, hr) * (1.0 - smoothstep(22.5, 24.5, hr)) + (1.0 - smoothstep(0.0, 1.5, hr)) * 0.5;
     float work = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 21.0, hr));
-    // offices empty through the evening (overtime, cleaners) to a few floors lit all night
-    float late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 22.0, hr));
-    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) return 0.06 + 0.78 * late + 0.1 * smoothstep(17.5, 19.0, hr) * (1.0 - smoothstep(20.0, 23.0, hr));
+    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) {
+      float staff = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(17.0, 21.0, hr)), late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(19.0, 24.0, hr));
+      return 0.05 + 0.55 * staff + 0.15 * late;
+    }
     if (style > 6.5 && style < 7.5) return 0.1 + 0.85 * smoothstep(7.0, 8.0, hr) * (1.0 - smoothstep(21.0, 22.5, hr));
     if (style > 5.5 && style < 6.5) return 0.05 + 0.5 * work + 0.15 * evening;
-    return 0.06 + 0.55 * evening + 0.2 * smoothstep(6.0, 7.0, hr) * (1.0 - smoothstep(8.5, 9.5, hr));
+    return 0.05 + 0.4 * evening + 0.2 * smoothstep(6.0, 7.0, hr) * (1.0 - smoothstep(8.5, 9.5, hr));
   }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
   float kind = floor(vInf.x / 16.0 + 0.01), style = floor(vInf.x - kind * 16.0 + 0.5);
@@ -883,20 +891,27 @@ window.OEBuildings = (function () {
     // per window: lit at night, blinds, a room
     vec2 cellId = vec2(bay, fl);
     float rnd = h31(vec3(cellId, bidH + seed * 31.0));
-    float unitW = style > 3.5 && style < 5.5 ? 6.0 : 2.0;
-    // offices light by the floor (a tenant, the cleaners going up the building), so a tower reads in
-    // bands of lit floors; homes light room by room
-    float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
-    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) unitR = mix(h21(vec2(fl, bidH * 1.91 + 2.7)), unitR, 0.3);
-    float occ = occupancy(style, uHour), unitLit = step(unitR, occ), shopLit = 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3);
-    // rooms lit in different lights: most warm, some under cool fluorescent or LED, until a run of
-    // them is under a pixel
-    float tintR = h31(vec3(floor(bay / unitW), fl, bidH * 2.3 + 5.1));
-    vec3 roomTint = mix(tintR > 0.8 ? vec3(0.8, 0.92, 1.1) : tintR > 0.6 ? vec3(1.06, 0.97, 0.88) : vec3(1.0), vec3(1.0), smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
-    // and as bright as their lamps are: a tower at night is a dark mass with some rooms glowing and
-    // a few bright, not a grid of equal windows (until a run is under a pixel: its mean)
     float office = step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5);
-    float unitB = mix(0.3 + 0.7 * pow(h31(vec3(floor(bay / unitW), fl, bidH * 0.77 + 9.3)), 1.6), 0.58, smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
+    float unitW = style > 3.5 && style < 5.5 ? 6.0 : 2.0;
+    float runFar = smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)); // a run of rooms under a pixel: from here on, its mean
+    // offices light by the floor (a tenant, the cleaners going up the building), so a tower reads in
+    // bands of lit floors; homes light room by room. Each building keeps its own evening, a tower
+    // with a tenant working late beside one all but empty, so a skyline is not one even grey.
+    float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
+    if (office > 0.5) unitR = mix(h21(vec2(fl, bidH * 1.91 + 2.7)), unitR, 0.3);
+    float occ = clamp(occupancy(style, uHour) * (0.3 + 1.4 * h21(vec2(bidH * 1.13 + 4.1, 2.9))), 0.0, 0.97);
+    float unitLit = step(unitR, occ), shopLit = 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3);
+    // rooms lit in different lights: offices under cool white (4000-5000 K LED and fluorescent
+    // tubes), a floor in four warmer; homes under warm lamps, or a share of them (uCoolHomes: most
+    // in Japan and Hong Kong) under cool ceiling lights; until a run of rooms is under a pixel
+    float tintR = h31(vec3(floor(bay / unitW), fl, bidH * 2.3 + 5.1));
+    vec3 coolC = vec3(0.8, 0.9, 1.0), whiteC = vec3(1.0, 0.84, 0.62), warmC = vec3(1.0, 0.62, 0.32);
+    vec3 lampC = office > 0.5 ? (tintR < 0.75 ? coolC : whiteC) : tintR < uCoolHomes ? coolC : tintR < uCoolHomes + 0.2 ? whiteC : warmC;
+    lampC = mix(lampC, office > 0.5 ? 0.75 * coolC + 0.25 * whiteC : uCoolHomes * coolC + 0.2 * whiteC + (0.8 - uCoolHomes) * warmC, runFar);
+    // and as bright as their lamps are: a tower at night is a dark mass with most of its lit rooms
+    // at office or room light and a few floors bright, not a grid of equal windows
+    float bR = h31(vec3(floor(bay / unitW), fl, bidH * 0.77 + 9.3));
+    float unitB = mix(0.25 + 0.6 * pow(bR, 1.5) + 0.5 * step(0.9, bR), 0.56, runFar), litGain = 1.6;
     float lit = unitLit * step(0.12, rnd);
     if (shop > 0.5) lit = step(0.15, rnd) * step(0.0, occupancy(7.0, uHour) - 0.3);
     // an office tower's lobby stays lit all night
@@ -907,7 +922,7 @@ window.OEBuildings = (function () {
     // lit rather than which ones are (later than the rest, as a lit window reads as one whatever is
     // behind it, down to a pixel or two)
     lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * unitLit, smoothstep(0.45, 1.0, max(fw.x, fw.y)));
-    lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * occ, smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
+    lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * occ, runFar);
     rnd = mix(rnd, 0.5, far);
     float blind = step(0.72, h31(vec3(cellId, bidH * 0.53 + 3.1))) * (style > 4.5 && style < 5.5 ? 0.0 : 1.0);
     float blindY = 0.55 + 0.4 * h21(cellId + bidH);
@@ -939,8 +954,7 @@ window.OEBuildings = (function () {
       c = mix(c, vec3(0.36, 0.345, 0.32), far); // a room too small to see into: its mean
       // day: dim, lit by the window; night: the room's lamps when occupied
       float dayL = (style > 4.5 && style < 5.5 ? 0.06 : 0.2) * (1.0 - uNight);
-      vec3 lampC = mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5)) * roomTint;
-      float lamp = lit * uNight * (0.3 + 0.3 * rnd) * unitB;
+      float lamp = lit * uNight * (0.3 + 0.3 * rnd) * unitB * litGain;
       float ceilingSpot = mix(hitY > 0.5 && d.y > 0.0 ? 1.0 + 0.8 * exp(-8.0 * dot(hp.xz - vec2(0.5, depth * 0.5), hp.xz - vec2(0.5, depth * 0.5))) : 1.0, 1.1, far);
       room = c * (dayL + lamp * 1.0 * lampC * ceilingSpot * (0.75 + 0.5 * mix(h21(vec2(fl, bidH)), 0.5, far)));
       room *= 1.0 - smoothstep(500.0, 900.0, dist) * 0.6;
@@ -977,8 +991,8 @@ window.OEBuildings = (function () {
     // over a facade instead of flashing from window to window
     roughB = max(roughB, 0.16 * far);
     emitB += room * glass;
-    emitB += win * isBlind * lit * uNight * vec3(1.0, 0.7, 0.42) * 0.35 * unitB;
-    emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * roomTint * (0.34 + 0.3 * rnd) * unitB;
+    emitB += win * isBlind * lit * uNight * lampC * vec3(1.0, 0.88, 0.75) * 0.35 * unitB * litGain; // a blind lit from behind
+    emitB += glowFar * win * lampC * (0.34 + 0.3 * rnd) * unitB * litGain;
     // ground contact: a darker plinth and less sky near the street
     aoW *= mix(0.72, 1.0, smoothstep(0.0, 3.0, h));
     // fine plaster noise up close
@@ -1070,7 +1084,7 @@ window.OEBuildings = (function () {
   reflectedLight.indirectSpecular *= mix(aoW, 1.0, glass * 0.5);
   reflectedLight.directDiffuse *= mix(1.0, aoW, 0.35);`);
     };
-    mat.customProgramCacheKey = () => `oe-facade-5${night ? '-night' : ''}`;
+    mat.customProgramCacheKey = () => `oe-facade-6${night ? '-night' : ''}`;
     return mat;
   }
 
