@@ -640,6 +640,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
   .g-phone { bottom: 196px; max-height: calc(100% - 420px); }
   .gph-map { height: 120px; }
+  #game-stage:has(#g-phone:not([hidden])) .g-vhud { display: none; } /* the phone covers the corner the trip card sits in */
   .gph-eta b { font-size: 22px; }
   .g-vhud .note { display: none; }
   .g-lens { left: 10px; right: 10px; width: auto; top: auto; bottom: 200px; }

@@ -533,21 +533,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     C.sit(o.driver, 'driver');
     return o;
   }
-  // one setting out from a street a few hundred metres off, chosen so it takes RIDE_T to reach
-  // you and, where it can be, out of sight (behind you, or farther than you can see down a street)
-  function rideFromAround(kind, pickup, dest, r0 = 150, r1 = 330) {
+  // one setting out from a street a couple of hundred metres off by road, chosen so it takes
+  // RIDE_T to reach you and, where it can be, out of sight (behind you, or farther than you can see)
+  function rideFromAround(kind, pickup, dest) {
     const fx = Math.sin(cam.yaw), fy = Math.cos(cam.yaw); // the way the camera looks, on the map
+    // streets 110 to 270 m from the pick-up by road (the network searched backwards from it), each timed
+    const cand = roads.behind(pickup, 110, 270, 36);
+    for (let k = 0; cand.length < 6 && k < 12; k++) { const pl = roads.around(pickup.x, pickup.y, 120, 280); if (pl) cand.push(pl); } // (a pick-up the search can't leave)
     let best = null;
-    for (let k = 0; k < 24; k++) {
-      const f = k < 12 ? 1 : 0.7; // nearer streets, if the first ring's are all too far round by road
-      const pl = roads.around(pickup.x, pickup.y, r0 * f, r1 * f);
-      const plan = pl && planRide(pl, pickup);
+    for (const pl of cand) {
+      const plan = planRide(pl, pickup);
       if (!plan) continue;
       const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
       const hidden = d > 240 || (dx * fx + dy * fy) / Math.max(1, d) < 0.3;
-      const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5);
+      const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5) + Math.random();
       if (!best || score < best.score) best = { pl, plan, score };
-      if (score === 0) break;
     }
     return best && best.plan.T < 45 ? newRide(kind, best.pl, pickup, best.plan, dest) : null;
   }
@@ -575,7 +575,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       o = newRide('taxi', best.from, pickup, best.plan);
       cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h });
     }
-    if (!o) o = rideFromAround('taxi', pickup, null, 130, 280);
+    if (!o) o = rideFromAround('taxi', pickup, null);
     if (!o) { H.toast('No taxis about. Try a busier street, or order a ride on your phone (N).'); return; }
     if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
@@ -588,7 +588,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
     const pickup = roads.place(player.x, player.y, 120, keepSign, player.z);
     if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
-    const o = rideFromAround('hire', pickup, dest, 140, 300);
+    const o = rideFromAround('hire', pickup, dest);
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
     if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
@@ -691,9 +691,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
   }
+  // whether a point is in the camera's view (not whether something hides it)
+  const frustum = new THREE.Frustum(), projView = new THREE.Matrix4();
+  function inView(x, y, z) {
+    projView.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+    frustum.setFromProjectionMatrix(projView);
+    return frustum.containsPoint(W(x, y, z + 1));
+  }
   function rideStep(dt, night) {
     const o = ride, st = o.drv.st;
     o.drv.update(dt, inTheWay(o));
+    // running well late in a jam and out of view, it finds its way round, a stretch at a time, to a
+    // clear piece of road (games keep the cars that come for you on time); in view it queues as it would
+    if (o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 6 && st.v < 0.5 && clockT - (o.hopT || 0) > 2.5 && !inView(st.x, st.y, st.z)) {
+      o.hopT = clockT;
+      const P = o.drv.path, at = {};
+      for (let s = Math.min(st.end - 0.5, st.s + 22); s > st.s + 6; s -= 4) {
+        P.at(s, at);
+        if (!inView(at.x, at.y, at.z) && !cars.C.some(c => c.line >= 0 && Math.hypot(c.x - at.x, c.y - at.y) < (c.half || 2.4) + 3.5)) { o.drv.jump(s); break; }
+      }
+    }
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
     o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
       inside: player.vehicle === o && cam.mode === 'cabin',

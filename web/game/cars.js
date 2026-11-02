@@ -584,6 +584,31 @@ window.OECars = (function () {
       }
       return null;
     }
+    // places from which a car drives to place b in d0..d1 metres by road (what a ride coming for you
+    // sets out from): the network searched backwards from b, and on each road that reaches the
+    // band, the point that far out. [{ line, s, dir, x, y, z, d }], up to max of them
+    function behind(b, d0, d1, max = 40) {
+      const out = [], lb = L[b.line];
+      const put = (li, s, dir, d) => { if (out.length >= max) return; net.at(li, s, tmp); out.push({ line: li, s, dir, x: tmp.x, y: tmp.y, z: tmp.z, d }); };
+      const mid = (d0 + d1) / 2;
+      // on b's own road, behind it
+      const back = b.dir > 0 ? b.s : lb.len - b.s;
+      if (back > d0) put(b.line, b.s - b.dir * Math.min(back - 1, mid), b.dir, Math.min(back - 1, mid));
+      const goal = ends[b.line][b.dir > 0 ? 0 : 1], dist = new Map([[goal, back]]), heap = [[back, goal]];
+      while (heap.length && out.length < max) {
+        let m = 0;
+        for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[m][0]) m = i;
+        const [d, v] = heap[m]; heap.splice(m, 1);
+        if (d > (dist.get(v) ?? Infinity) || d > d1) continue;
+        for (const [u, li, dir] of adj[v]) { // a car on li going from u to v (the other way to dir) arrives at v
+          if (li === b.line) continue;
+          const len = L[li].len, nd = d + len, fwd = -dir; // fwd: the place's way along li
+          if (nd >= d0 && d < d1 && len > 8) { const x = Math.min(len - 2, Math.max(2, Math.min(mid, d1) - d)); put(li, fwd > 0 ? len - x : x, fwd, d + x); }
+          if (nd < (dist.get(u) ?? Infinity) && nd < d1) { dist.set(u, nd); heap.push([nd, u]); }
+        }
+      }
+      return out;
+    }
     // on from the end of a route for a while, turning at random at the junctions (a car driving off)
     function onward(rt, length = 220) {
       const b = rt.to, out = [];
@@ -599,7 +624,7 @@ window.OECars = (function () {
       }
       return out;
     }
-    return { place, route, around, onward, ends };
+    return { place, route, around, behind, onward, ends };
   }
 
   // a route's points as a path to follow: position, direction (smoothed over a few metres, so the
@@ -738,6 +763,8 @@ window.OECars = (function () {
       st.signal = end && left < 45 ? -keep : from === 'kerb' && st.s < 18 ? keep : 0;
       if (end && left < 0.5 && st.v < 0.3) { st.done = true; st.v = 0; }
     }
+    // on along the route to s at once (a ride running late, out of sight, gets round a jam)
+    function jump(s) { st.s = clamp(s, st.s, st.end); st.shift = st.pass = 0; st.stall = 0; st.lat = lat(st.s); pose(st.s, q, st.lat); st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy); }
     // straight to the end (skipping the trip)
     function finish() { st.s = st.end; st.shift = st.pass = 0; st.lat = lat(st.s); pose(st.s, q, st.lat); st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy); st.v = 0; st.done = end; }
     // the trip timed by driving it in a dry run with nothing in the way: the time at each step
@@ -759,7 +786,7 @@ window.OECars = (function () {
       return T[lo] + (T[hi] - T[lo]) * (s - S[lo]) / Math.max(1e-6, S[hi] - S[lo]);
     }
     const timeLeft = () => (st.done ? 0 : Math.max(0, timeAt(st.end) - timeAt(st.s)) + (st.end < P.len - 1 ? 1.5 : 0));
-    return { st, update, finish, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
+    return { st, update, finish, jump, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
   return { car, headlamp, drive, router, path, chauffeur, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
