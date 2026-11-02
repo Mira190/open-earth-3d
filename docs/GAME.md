@@ -683,6 +683,38 @@ Sydney's traffic stood still a third of the time.
   and written on the piece it starts from as `"nt": [[end, piece, end entered,
   steps]]`: Sydney has 185, Hong Kong 612, Melbourne 343, Osaka 368.
   `game_data.py` writes the same as it builds.
+- **Lanes from the data.** Overture's segments don't carry OSM's `lanes` or
+  `turn:lanes`, but each names the OSM ways it was cut from.
+  `pipeline/road_lanes.py` reads those ways' tags from the OpenStreetMap API by
+  id (its multi-fetch, a few hundred at a time: about 40 requests for Sydney;
+  Overpass is not reachable from the build machine) and writes `"tl"`, the
+  arrows at a piece's end where the OSM way itself ends, and `"nl"`, the lanes
+  each way where tagged (1 or 2). Sydney has 609 of its 1957 pieces with a
+  count and 71 with arrows, Melbourne 1853 and 128, Hong Kong 1242 and 109;
+  Japan's cities tag almost no arrows. The traffic reads the arrows. It doesn't
+  read the counts yet: where the count changes from one piece to the next
+  (OSM's `lanes=2` on a short stretch between two one-lane ones) the cars'
+  merging can't keep up, and Sydney's jams under `traffic_check.js` (six places)
+  went from 1.2% to 3.4% with the counts and 2.2% with only their reductions to
+  one lane. That waits on merging that looks ahead along the road.
+- **Crossings between junctions.** A pedestrian crossing (OSM's
+  `highway=crossing`, Overture's infrastructure class `crossing`) is sorted by
+  its tags (Overture keeps them as `source_tags`) into one with signals
+  (`crossing=traffic_signals`, `crossing:signals=yes`, a pelican, puffin, toucan
+  or pegasus) and a zebra (`crossing=zebra` or `marked`, `crossing_ref=zebra`,
+  zebra markings): `props.crossing_signals` and `props.crossing_zebra`. One
+  more than 16 m from any junction's node and 12 m from its piece's ends is a
+  junction of its own with no way to turn (`junctions.js`, `j.mid`), an arm for
+  the traffic heading each way, its stop line 3 to 3.6 m back from the
+  stripes. One with signals keeps the traffic's green until a walker presses
+  the button, after at least 20 s of it: amber, all red, the walk for 12 s (the
+  red figure flashing for the last 5), and back; it has the junctions'
+  lanterns and a walk signal on each kerb. At a zebra the traffic gives way at
+  the line to anyone of the crowd on the stripes or walking out onto them (and
+  after 15 s waiting on one who stands there, edges on, braking for them as for
+  anyone in the road). Sydney has 97 crossings with signals between junctions
+  and 63 zebras; the others are at junctions, whose arms have walk signals
+  already.
 - **A junction** is a node where three or more pieces end, or a few such nodes
   joined by pieces under 24 m and no more than 42 m across: a divided road
   crossing another is two to four nodes and one junction. Its arms are the
@@ -693,9 +725,19 @@ Sydney's traffic stood still a third of the time.
 - **Lanes.** A motorway, trunk or primary road, and a one-way secondary, has
   two lanes each way: the first beside the centre line (on a one-way street, on
   the keep side), the second 3 m out towards the kerb (on a one-way street,
-  across on the other side). Every movement goes from the first lane; straight
-  ahead onto a road of the same kind with two lanes may go from either, each
-  lane with its own way across, so two cars go through side by side. A car
+  across on the other side). Where OpenStreetMap paints arrows on the lanes
+  (`turn:lanes`, written on the road pieces as `"tl"` by
+  `pipeline/road_lanes.py`), a movement goes from the lanes whose arrows show
+  its way, the half of the road's lanes on the first lane's side standing for
+  the first lane and the other half for the second. Elsewhere a turn across the
+  oncoming traffic goes from the lane nearer the middle of the road (on a
+  two-way road the first, on a one-way street the second), a turn the other way
+  from the lane nearer the kerb, and straight ahead onto a road of the same
+  kind with two lanes from either, each lane with its own way across, so two
+  cars go through side by side. Two side by side need the room beyond (two
+  lanes, 60 m long); else the movement keeps to the one lane. Two movements
+  from one arm in different lanes go together unless their ways across come
+  within a car's width. A car
   moves across to the lane its movement needs from 150 m out, and to the first
   where its road narrows; otherwise into the other lane when the car ahead is
   slow and there is room beside it there (0.8 m plus 0.9 s of its speed, ahead
@@ -1574,17 +1616,22 @@ deadlock or a meeting at a shared berth takes to show.
   - Your car is three circles down its length against the walls, so its corners
     can touch a wall before the circles do.
   - Cars push you aside instead of knocking you down, and stop dead for people.
-  - Lanes come from the road's class, not from OpenStreetMap's `lanes` (Overture
-    doesn't carry it): two each way on a main road, one elsewhere, so a wide
-    residential street still carries one file and a six-lane motorway two. A
-    turn goes from the first lane only, and a junction has no turn pockets or
-    lane arrows of its own.
+  - Lanes come from the road's class: two each way on a main road, one
+    elsewhere, so a wide residential street still carries one file and a
+    six-lane motorway two. OSM's counts are in `game.json` (`"nl"`) but unused
+    until the merging copes with a count that changes along a road (see
+    [Junctions and traffic lights](#junctions-and-traffic-lights)). There are no turn pockets.
   - The arrow phase follows the main road's on every big junction alike; the
-    real plans (SCATS's, Tokyo's) are not open data. Banned turns that apply
+    real plans (SCATS's, Tokyo's) are not open data. None of the game's cities
+    publishes its signal timings (a request to NSW for Sydney's was refused,
+    as Vienna's was); the crowd-sourced Better Intersections map, built on
+    OpenStreetMap, is the one lead, its coverage and licence still to check. Banned turns that apply
     only at some hours, or to some vehicles, are left out.
-  - Walkers wait for the walk signal only at junctions with signals; at a zebra
-    crossing or anywhere else the cars stop for them instead. Signals on a road
-    between junctions (a mid-block crossing) are not modelled.
+  - Walkers cross where their footways cross a road; they wait for a walk
+    signal at junctions with signals and at crossings with signals between
+    junctions. The crowd doesn't seek out a crossing, and the rides' and your
+    own car's driver (`cars.js`) don't yet stop for a crossing between
+    junctions.
   - A few awkward corners (a turning circle, two lines meeting at a very sharp
     angle) can still hold two cars until they squeeze past each other.
   - Only roads at about your height count as the kerb, so a taxi won't stop on
@@ -1638,6 +1685,15 @@ deadlock or a meeting at a shared berth takes to show.
 - Signals: [SCATS](https://en.wikipedia.org/wiki/Sydney_Coordinated_Adaptive_Traffic_System),
   [Transport Victoria on SCATS](https://transport.vic.gov.au/road-and-active-transport/business/road-and-traffic-management/traffic-lights/signal-coordination-and-automation/scats)
   (phases extended, ended early or skipped by demand).
+- Lane counts and arrows: OpenStreetMap's [`lanes`](https://wiki.openstreetmap.org/wiki/Key:lanes) and
+  [`turn:lanes`](https://wiki.openstreetmap.org/wiki/Key:turn) read by way id from the
+  [OSM API](https://wiki.openstreetmap.org/wiki/API_v0.6) (`ways.json`, `nodes.json`; within its
+  [usage policy](https://operations.osmfoundation.org/policies/api/): a few dozen requests a city,
+  a User-Agent naming the project, cached in `data/raw/<id>/osm_ways.json`). The ways are named by
+  Overture's segment `sources[].record_id`. Data © OpenStreetMap contributors (ODbL).
+- Crossings: OSM's [`highway=crossing`](https://wiki.openstreetmap.org/wiki/Tag:highway%3Dcrossing)
+  and [`crossing=*`](https://wiki.openstreetmap.org/wiki/Key:crossing) tags, as Overture's
+  infrastructure `source_tags`. Data © OpenStreetMap contributors (ODbL), via Overture.
 - One-way streets: [Overture roads guide](https://docs.overturemaps.org/guides/transportation/roads/)
   and [access rules](https://docs.overturemaps.org/schema/reference/transportation/types/access_rules)
   (a heading-scoped denial is a one-way street). Data © OpenStreetMap contributors (ODbL), via Overture.

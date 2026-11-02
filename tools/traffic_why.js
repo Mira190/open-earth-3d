@@ -40,6 +40,7 @@ const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process
     const isIn = (a, o) => { if (a.line < 0 || o.line < 0 || Math.abs(a.z - o.z) > 3 || Math.hypot(a.x - o.x, a.y - o.y) > a.half + o.half + 1) return false; const P = corners(a), Q = corners(o); return ![a.h, a.h + Math.PI / 2, o.h, o.h + Math.PI / 2].some(h => sep(P, Q, [Math.sin(h), Math.cos(h)])); };
     const caughtFor = new Map(); // (the pairs caught up in one another, and for how many seconds of the run)
     // (and each car's last second, frame by frame, to show how one found over its line got there)
+    const byRun = {}; // (the car-seconds jammed, still 30 s or more, over the run, by what held them then)
     const hist = C.map(() => []), forcedSeen = new Set(), forced = [];
     for (let t = 0; t < T; t++) {
       for (let f = 0; f < 30; f++) {
@@ -47,7 +48,7 @@ const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process
         C.forEach((c, i) => { const h = hist[i]; h.push(`${c.line}/${c.s.toFixed(1)} v ${c.v.toFixed(1)} ${c.why}${c.lineArm ? ` j${c.lineArm.j.id} line ${(c.toLine - c.half).toFixed(1)}` : ''}${c.mv ? ` in j${c.mv.j.id}` : ''}`); if (h.length > 24) h.shift(); });
         for (const j of JN.J) for (const o of j.active) if (o.forced && !forcedSeen.has(o)) { forcedSeen.add(o); if (forced.length < 12) forced.push(`car ${idx0.get(o.c)} into junction ${j.id} over its line at ${(t + f / 30).toFixed(1)} s:\n      ` + hist[idx0.get(o.c)].join('\n      ')); }
       }
-      C.forEach((c, i) => { still[i] = c.line >= 0 && c.v < 0.3 ? still[i] + 1 : 0; });
+      C.forEach((c, i) => { still[i] = c.line >= 0 && c.v < 0.3 ? still[i] + 1 : 0; if (still[i] >= 30) { const w = c.why + (c.heldBy ? ' by ' + c.heldBy : ''); byRun[w] = (byRun[w] || 0) + 1; } });
       for (let i = 0; i < C.length; i++) for (let k = i + 1; k < C.length; k++) if (isIn(C[i], C[k])) { const key = i + ' ' + k; const e = caughtFor.get(key) || { n: 0 }; e.n++; e.last = `${t} s at ${Math.round(C[i].x)},${Math.round(C[i].y)}: car ${i} (${C[i].why}, piece ${C[i].line}${C[i].mv ? ' in junction ' + C[i].mv.j.id : ''}) and car ${k} (${C[k].why}, piece ${C[k].line}${C[k].mv ? ' in junction ' + C[k].mv.j.id : ''})`; caughtFor.set(key, e); }
       for (const j of JN.J) for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
         const p = j.active[x], q = j.active[y], key = `${j.id}:${p.t}:${q.t}`;
@@ -77,9 +78,10 @@ const [,, city = 'sydney', place = '2', secs = '150', minStill = '20'] = process
       const a = C[i], o = C[k];
       if (isIn(a, o)) caught.push(`at ${Math.round(a.x)},${Math.round(a.y)}: ${desc(a)} and ${desc(o)}`);
     }
-    return { at: [Math.round(g.player.x), Math.round(g.player.y)], rows, by, caught, crossing: [...pairs.values()], forced, caughtLong: [...caughtFor.values()].sort((a, b) => b.n - a.n).slice(0, 10).map(e => `${e.n} s, the last ${e.last}`) };
+    return { at: [Math.round(g.player.x), Math.round(g.player.y)], rows, by, caught, crossing: [...pairs.values()], forced, byRun, caughtLong: [...caughtFor.values()].sort((a, b) => b.n - a.n).slice(0, 10).map(e => `${e.n} s, the last ${e.last}`) };
   }, [Number(secs), Number(place), Number(minStill)]);
   console.log(`${city} at ${out.at}: cars still ${minStill} s or more at the end, by what holds them: ${JSON.stringify(out.by)}`);
+  console.log(`car-seconds jammed (still 30 s or more) over the run, by what held them: ${JSON.stringify(Object.fromEntries(Object.entries(out.byRun).sort((a, b) => b[1] - a[1])))}`);
   for (const r of out.rows) console.log(`  car ${r.car} still ${r.still} s: ${r.why}${r.q ? ' (queueing)' : ''}; ${r.road}; piece ${r.line} (${r.len} m) at ${r.at} ${r.pose}${r.mv ? '; ' + r.mv : ''}${r.junction ? '; junction ' + r.junction : ''}${r.front ? '; behind ' + r.front : ''}`);
   if (out.crossing.length) console.log(`movements in a junction at once that cross (${out.crossing.length}):\n  ` + out.crossing.slice(0, 40).join('\n  '));
   if (process.env.FORCED && out.forced.length) console.log('cars found over their line, and their last frames before (FORCED=1):\n  ' + out.forced.join('\n  '));

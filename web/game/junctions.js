@@ -49,12 +49,18 @@ window.OEJunctions = (function () {
   // lanes each way on a road piece: two on a main road, one elsewhere; and a lane's offset from the
   // first lane's (m, towards the kerb on a two-way road, across to the other side on a one-way one)
   const TWO = { motorway: 1, trunk: 1, primary: 1 };
-  const lanesOf = l => (l.nl != null ? l.nl : TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
+  // the place along an arm's piece d metres back from where its traffic meets the junction (the
+  // piece's end, or for a crossing between junctions the crossing itself)
+  const alongArm = (l, a, d) => (a.mid != null ? a.mid + (a.end ? -d : d) : a.end ? l.len - d : d);
+  // (game.json also carries OSM's own count, "nl", pipeline/road_lanes.py; the traffic doesn't use it
+  // yet: where it changes from one piece to the next the cars' merging can't keep up, and Sydney's
+  // jams under tools/traffic_check.js more than double)
+  const lanesOf = l => (TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
   const shiftOf = (l, ln) => (ln ? (l.ow ? -3.2 : 3.0) : 0);
 
   // net: actors.network of the roads; opts.signals, .stops, .giveWay: mapped points [x, y, z, ...]
   // in decimetres; keep: the side the traffic keeps to; lane: its lane's offset from the line (m)
-  function create(net, { signals = null, stops = [], giveWay = [], keep = 'left', lane = 1.7 } = {}) {
+  function create(net, { signals = null, stops = [], giveWay = [], keep = 'left', lane = 1.7, midCrossings = null } = {}) {
     const L = net.L, side = keep === 'right' ? -1 : 1, tmp = {};
     const nodeKey = (line, end) => { const l = L[line], k = end ? l.pts.length / 3 - 1 : 0; return net.key(l.pts[3 * k], l.pts[3 * k + 1]); };
     // can a car leave a node along line `line` from its end `end` (0: with its points)?
@@ -170,6 +176,39 @@ window.OEJunctions = (function () {
       }
       j.active = []; j.pend = []; j.near = []; j.demand = [0, 0, 0]; j.seen = -1;
     }
+    // ------------------------------------------------ crossings between junctions
+    // A pedestrian crossing mapped on a road away from any junction (opts.midCrossings: game.json's
+    // props crossing_signals and crossing_zebra, from OSM's tags: pipeline/road_rules.py) is a
+    // junction of its own with no way to turn (j.mid: the place along its piece), and an arm for
+    // the traffic heading for each end of the piece, its stop line back from the stripes. One with
+    // signals runs two phases: the traffic's green, which the walkers' button ends after a while
+    // (phase 1: their walk, all the traffic held), and back. At a zebra the traffic gives way at
+    // the line to anyone on the stripes or stepping onto them (actors.js).
+    const mids = new Map(); // line -> its crossings, along it
+    let nMid = 0, nZebra = 0;
+    const midAt = (flat, sig) => near(flat || [], (x, y) => {
+      if (nearestJ(x, y, 16)) return; // at a junction: its own walk signals, or none
+      const q = net.nearest(x, y, 9);
+      if (!q) return;
+      const l = L[q.line];
+      if (q.s < 12 || q.s > l.len - 12 || innerLine(q.line) || l.c === 'motorway') return;
+      const on = mids.get(q.line) || [];
+      if (on.some(o => Math.abs(o.mid - q.s) < 25)) return; // (one per stretch: a crossing with an island is mapped as two)
+      net.at(q.line, q.s, tmp);
+      const j = { id: J.length, mid: q.s, line: q.line, nodes: [], arms: [], inner: new Set(), x: tmp.x, y: tmp.y, z: tmp.z, hx: tmp.hx, hy: tmp.hy, sig, half: (ROADW[l.c] || 7) / 2,
+        green: [20, 12, 0], amber: (l.v || 11) > 16 ? AMBER + 1 : AMBER, ph: 0, st: 'g', t: rnd() * 20, nxt: 1, active: [], pend: [], near: [], demand: [0, 0, 0], seen: -1 };
+      for (const end of [1, 0]) { // (the traffic heading for each end)
+        if (!canReach(q.line, end)) continue;
+        net.at(q.line, Math.max(0, Math.min(l.len, q.s + (end ? -6 : 6))), tmp);
+        j.arms.push({ j, i: j.arms.length, line: q.line, end, mid: q.s, node: null, x: j.x, y: j.y, z: j.z, out: Math.atan2(tmp.x - j.x, tmp.y - j.y), c: l.c, rank: RANK[l.c] || 2,
+          in: true, exit: true, back: (ROADW[l.c] || 7) > 9 ? 3.6 : 3.0, phase: 0, sign: null, exits: [] });
+      }
+      if (!j.arms.length) return;
+      J.push(j); on.push(j); on.sort((a, b) => a.mid - b.mid); mids.set(q.line, on);
+      if (sig) nMid++; else nZebra++;
+    });
+    const innerLine = line => J.some(j => j.inner.has(line));
+    if (midCrossings) { midAt(midCrossings.signals, true); midAt(midCrossings.zebra, false); }
     // ------------------------------------------------ where a car can go from an arm
     // every exit from arm a: { m (the arm it leaves by), steps: [[line, end entered], ...] } by the
     // pieces inside, as the traffic's next() gives them; a turn back the way it came only if nothing else
@@ -203,16 +242,38 @@ window.OEJunctions = (function () {
       const av = net.avoid, ok0 = out.filter(e => !(av && av[e.m.line])), ok1 = ok0.filter(e => !stub(e)), ok = ok1.length ? ok1 : ok0, pool = ok.length ? ok : out;
       const fwd = pool.filter(e => Math.abs(e.turn) < 2.6);
       a.exits = fwd.length ? fwd : pool;
-      // the lanes a movement goes from: the first lane always; the second (on a road with two) for
-      // straight ahead onto a road with two of the same kind (both one-way, or both two-way), 60 m
-      // long or more
-      const la = L[a.line], two = lanesOf(la) > 1;
-      for (const e of a.exits) {
-        const lm = L[e.m.line];
-        e.lanes = two && lanesOf(lm) > 1 && Math.abs(e.turn) < 0.5 && !la.ow === !lm.ow && lm.len >= 60 ? [0, 1] : [0]; // (not onto a stretch too short to move across on before the next junction)
-        e.across = Math.abs(e.turn) < 2.6 && e.turn * side > 0.5; // across the oncoming traffic
+      // the lanes a movement goes from, on a road with two each way (lane 0 is the one by the centre
+      // line on a two-way road, the one on the keep side of a one-way road: shiftOf): where OSM paints
+      // arrows on the lanes (game.json "tl", pipeline/road_lanes.py), the lanes whose arrows show its
+      // way, the half of the road's lanes on lane 0's side standing for lane 0 and the other half for
+      // lane 1; elsewhere straight ahead from either onto a road with two of the same kind (both
+      // one-way, or both two-way) 60 m long or more, a turn across the oncoming traffic from the lane
+      // nearer the middle of the road and a turn the other way from the one nearer the kerb. Two side
+      // by side only where the road beyond has the room (two lanes, 60 m long); else the one that
+      // way: the inner for a turn across, else the outer
+      const la = L[a.line], two = lanesOf(la) > 1, inner = la.ow ? 1 : 0;
+      const tl = la.tl && la.tl.find(t => t[0] === a.end);
+      let ar = null;
+      if (tl) {
+        const osm = tl[1].split('|'), from0 = (side > 0) === !!la.ow ? osm : osm.slice().reverse(), h = Math.ceil(osm.length / 2);
+        ar = two && osm.length > 1 ? [from0.slice(0, h).join(''), from0.slice(h).join('')] : [osm.join('')];
       }
-      a.lanes = two && a.exits.some(e => e.lanes.length > 1) ? 2 : 1;
+      for (const e of a.exits) {
+        const lm = L[e.m.line], way = Math.abs(e.turn) < 0.45 ? 't' : e.turn > 0 ? 'r' : 'l';
+        e.across = Math.abs(e.turn) < 2.6 && e.turn * side > 0.5; // across the oncoming traffic
+        const room = two && lanesOf(lm) > 1 && lm.len >= 60 && (way !== 't' || !la.ow === !lm.ow); // (not onto a stretch too short to move across on before the next junction)
+        let ls = ar ? ar.map((s, ln) => (s.includes(way) ? ln : -1)).filter(ln => ln >= 0) : [];
+        if (!ls.length) ls = !two ? [0] : Math.abs(e.turn) < 0.5 ? [0, 1] : e.across ? [inner] : [1 - inner]; // (and where arrows leave this way out: a gap in the data) // (arrows that leave this way out: a gap in the data)
+        if (ls.length > 1 && !room) ls = Math.abs(e.turn) < 0.5 ? [0] : [e.across ? inner : 1 - inner];
+        e.lanes = ls;
+      }
+      // (every lane has a way on: where the arrows leave one with none, the way nearest straight ahead)
+      for (let ln = 0; ln < (two ? 2 : 1); ln++) if (a.exits.length && !a.exits.some(e => e.lanes.includes(ln))) {
+        const e = a.exits.reduce((p, q) => (Math.abs(q.turn) < Math.abs(p.turn) ? q : p));
+        e.lanes = e.lanes.concat(ln).sort();
+        if (e.lanes.length > 1 && !(lanesOf(L[e.m.line]) > 1 && L[e.m.line].len >= 60)) e.lanes = [ln]; // (no room for two side by side beyond: this lane's alone)
+      }
+      a.lanes = two && a.exits.some(e => e.lanes.includes(1)) ? 2 : 1;
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
@@ -317,7 +378,8 @@ window.OEJunctions = (function () {
     function conflict(j, k, m, k2, m2) {
       if (k === k2 && (m >> 4) === (m2 >> 4)) return false; // one behind the other in a lane: the car ahead is braked for
       if (m === m2) return true;  // into the same road, from the same lane
-      if (k === k2) return (m & 15) !== (m2 & 15); // side by side from one arm: only straight on together, into the road's two lanes
+      if (k === k2 && (m & 15) === (m2 & 15)) return false; // side by side from one arm into the road's two lanes
+      // (side by side from one arm to two roads: where their ways across come close, by the ways below)
       const C = j.cx || (j.cx = new Map()), key = ((k * 32 + m) * 32 + k2) * 32 + m2;
       if (C.has(key)) return C.get(key);
       const e1 = wayFor(j, k, m), e2 = wayFor(j, k2, m2), w1 = e1 && e1.ways && e1.ways[e1.lanes.indexOf(m >> 4)], w2 = e2 && e2.ways && e2.ways[e2.lanes.indexOf(m2 >> 4)];
@@ -475,11 +537,11 @@ window.OEJunctions = (function () {
         // the phase after this one: the main road's (0), its arrow (2) when someone waits to turn
         // across, the cross road's (1); a call from another phase ends this one's green
         const D = j.seen >= frame - 2 ? j.demand : NONE, arrowCall = j.arrow && D[2];
-        const call = j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1;
+        const call = j.mid != null ? (j.ph === 0 ? D[1] : 1) : j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1; // (a crossing's walk, once called, always ends)
         j.call = !!call;
         const wasWalk = j.walkNow;
         if (j.st === 'g') {
-          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || j.t >= j.green[j.ph] + CALL)) {
+          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
             j.st = 'y'; j.t = 0; dirty.add(j);
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
           }
@@ -502,7 +564,7 @@ window.OEJunctions = (function () {
         for (const a of j.arms) {
           const l = L[a.line], d1 = Math.min(l.len, a.back + 2.5);
           R2.length = 0;
-          for (let d = 0; d <= d1 + 1e-6; d += 1) { net.at(a.line, a.end ? l.len - d : d, tmp); R2.push(tmp.x, tmp.y); }
+          for (let d = 0; d <= d1 + 1e-6; d += 1) { net.at(a.line, Math.max(0, Math.min(l.len, alongArm(l, a, d))), tmp); R2.push(tmp.x, tmp.y); }
           const half = (ROADW[a.c] || 7) / 2;
           for (const fi of new Set(fnet.near(a.x, a.y, 0, d1 + 12))) {
             const f = F[fi], m = f.pts.length / 3;
@@ -537,11 +599,13 @@ window.OEJunctions = (function () {
       return heads;
     }
     function stats() {
-      const sj = J.filter(j => j.sig);
-      return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
+      const sj = J.filter(j => j.sig && j.mid == null);
+      return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
-    return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    // the crossings between junctions on a piece, along it (or null)
+    const midsOn = line => mids.get(line) || null;
+    return { J, midsOn, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
@@ -566,7 +630,7 @@ window.OEJunctions = (function () {
       if (!j.sig) continue;
       for (const a of j.arms) {
         if (!a.in) continue;
-        const l = net.L[a.line], d = a.back + 0.8, s = a.end ? l.len - d : d;
+        const l = net.L[a.line], d = a.back + 0.8, s = alongArm(l, a, d);
         net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
         const dir = a.end ? 1 : -1, hx = tmp.hx * dir, hy = tmp.hy * dir; // the way the arm's traffic drives
         const kerb = (ROADW[a.c] || 7) / 2 + 0.7;
@@ -632,8 +696,8 @@ window.OEJunctions = (function () {
     const peds = [];
     for (const j of J) {
       if (!j.sig) continue;
-      for (const a of j.arms) {
-        const l = net.L[a.line], d = Math.max(1.5, a.back - 1.6), s = a.end ? l.len - d : d;
+      for (const a of (j.mid != null ? j.arms.slice(0, 1) : j.arms)) { // (a crossing between junctions: one post on each kerb)
+        const l = net.L[a.line], d = Math.max(1.5, a.back - 1.6), s = alongArm(l, a, d);
         net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
         const kerb = (ROADW[a.c] || 7) / 2 + 0.55;
         for (const k of [1, -1]) {

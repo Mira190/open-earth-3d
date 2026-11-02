@@ -395,7 +395,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
   // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
-  const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE });
+  const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE,
+    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra } }); // (and the crossings between junctions: signals or zebra stripes)
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
   crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };

@@ -463,7 +463,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   const lights = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
-    const sig = JN.J.filter(j => j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
+    const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
     if (!sig.length) return { junctions: JN.J.length, signals: 0 };
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
@@ -476,6 +476,21 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length,
       crossings: X ? X.byLine.count : 0, walkSignals: H.walks || 0, walkTurns: new Set(walks).size, arrows: s1.arrows, arrowHeads: H.arrows || 0, bans: s1.bans, two };
   });
+  // a crossing with signals between junctions: a walker's call brings the walk, the traffic held at red, and the traffic's green back
+  const mid = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions;
+    const M = JN ? JN.J.filter(j => j.mid != null && j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y)) : [];
+    if (!M.length) return { none: true, zebras: JN ? JN.stats().zebras : 0 };
+    const j = M[0], a = j.arms[0], s0 = A.stats(), seen = [];
+    for (let t = 0; t < 60; t++) { JN.call(a); g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (!seen.length || seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
+    for (let t = 0; t < 30; t++) { g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
+    const X = g.crowd.crossings, walkers = X ? [...X.byLine.values()].flat().filter(x => x.a.j.mid != null).length : 0;
+    return { n: M.length, zebras: JN.stats().zebras, seen: seen.join(' '), red: A.stats().redRuns - s0.redRuns, walkers };
+  });
+  if (!mid.none) {
+    check(/rW/.test(mid.seen) && /g$/.test(mid.seen) && !/gW/.test(mid.seen), `a crossing with signals between junctions gives the walk on a call and the traffic its green after (${mid.seen}; ${mid.n} such crossings, ${mid.zebras} zebras)`);
+    check(mid.walkers > 0 && !mid.red, `the crowd's footways cross there (${mid.walkers}) and no car runs its red (${mid.red})`);
+  }
   if (lights.none) check(false, 'the traffic has junctions');
   else {
     check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);

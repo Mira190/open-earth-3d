@@ -248,9 +248,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) { pts[3 * i] = p[3 * i] / 10; pts[3 * i + 1] = p[3 * i + 1] / 10; pts[3 * i + 2] = p[3 * i + 2] / 10; }
       for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(pts[3 * i] - pts[3 * i - 3], pts[3 * i + 1] - pts[3 * i - 2]);
       // deck: per segment, 1 where the line is off the ground (decks.js); ow: one-way with its points (1) or against them (-1);
-      // i0: its place in the lines given; nt: the turns banned from its ends, nl its lanes each way and tl
-      // its lane arrows, from OSM (junctions.js)
-      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null, ow: o.o || 0, i0, nt: o.nt || null, nl: o.nl || null, tl: o.tl || null };
+      // i0: its place in the lines given; nt: the turns banned from its ends, tl the arrows on its lanes
+      // (OSM's turn:lanes) at its ends (junctions.js)
+      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null, ow: o.o || 0, i0, nt: o.nt || null, tl: o.tl || null };
     }).filter(l => l.len > 4);
     const key = (x, y) => `${Math.round(x / 2)},${Math.round(y / 2)}`;
     const nodes = new Map(), grid = new Map(), GC = 100;
@@ -860,6 +860,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return d;
     }
+    // someone of the crowd on a zebra's stripes, or about to step onto them from its kerb
+    function onStripes(X) {
+      const half = X.half, P = crowd.P;
+      for (let i = 0; i < crowd.active; i++) {
+        const p = P[i];
+        if (p.line < 0 || Math.abs(p.x - X.x) > half + 3 || Math.abs(p.y - X.y) > half + 3 || Math.abs(p.z - X.z) >= LEVEL) continue;
+        const dx = p.x - X.x, dy = p.y - X.y, along = Math.abs(dx * X.hx + dy * X.hy), across = Math.abs(-dx * X.hy + dy * X.hx);
+        if (along > 2.6 || across > half + 1.2) continue;
+        if (across < half || (p.v > 0.2 && Math.abs((p.hx || 0) * X.hx + (p.hy || 0) * X.hy) < 0.6)) return true; // (in the road, or walking out across it)
+      }
+      return false;
+    }
     function respawn(c, cx, cy, rMin) {
       const cand = net.near(cx, cy, rMin, radius);
       JN.forget(c);
@@ -1199,6 +1211,32 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           c.toLine = toLine; c.lineArm = jArm; c.lineEx = jEx;
         } else c.lineArm = null;
+        // a crossing between junctions ahead, on this piece or the next (junctions.js): held at its line
+        // by its lights, or at a zebra by someone on the stripes or stepping onto them (not for ever: a
+        // walker who stands there, it edges on after a while, braking for them as for anyone in the road)
+        if (JN.midsOn) for (let pass = 0; pass < 2; pass++) {
+          const li = pass ? nl : c.line, di = pass ? nd : c.dir, base = pass ? left : 0, Ms = li >= 0 ? JN.midsOn(li) : null;
+          if (!Ms) continue;
+          for (const X of Ms) {
+            const d = base + (pass ? (di > 0 ? X.mid : net.L[li].len - X.mid) : (di > 0 ? X.mid - c.s : c.s - X.mid));
+            const a = X.arms.find(b => b.end === (di > 0 ? 1 : 0));
+            if (!a || d < 0 || d > reach + c.half + 20) continue;
+            const toStop = d - a.back - c.half; // (its front bumper to the line)
+            if (toStop < -0.5) continue; // over it already: on across
+            let hold = false;
+            if (X.sig) {
+              const lt = JN.light(a), can = c.v * c.v / 8 < toStop - 0.3;
+              hold = lt === 'r' || (lt === 'y' && can);
+              if (lt === 'r' && X.ph === 1 && toStop > 0 && toStop - c.v * dt <= 0 && !pass) redRuns++;
+            } else if (crowd && !(c.zebraOff > 0) && c.v * c.v / 8 < toStop + 0.5) hold = onStripes(X);
+            if (hold) {
+              const g = toStop + 2.4;
+              if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = X.sig ? 'light' : 'zebra'; }
+            }
+            break; // (the nearest one ahead rules)
+          }
+        }
+        if (c.zebraOff > 0) c.zebraOff -= dt;
         // out of a junction: its movement given up once the whole car is clear of the box (on its exit
         // past the stop line there), or once it is on a piece that is none of its way there and across
         for (const key of ['mv0', 'mv']) {
@@ -1385,6 +1423,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
         }
         c.stuck = c.v < 0.1 && (byCar || held) && !c.q ? c.stuck + dt : 0;
+        c.zebraT = why === 'zebra' && c.v < 0.3 ? (c.zebraT || 0) + dt : 0;
+        if (c.zebraT > 15) { c.zebraT = 0; c.zebraOff = 6; }
         c.why = held ? 'held' : why; c.front = held ? holder : front; c.who = walker; c.heldBy = held ? (holder ? 'car' : c.backoff > 0 ? 'backing off' : behind ? 'caught up' : 'person') : '';
         c.pw = walker >= 0 && c.v < 0.6 ? (c.pw || 0) + dt : walker >= 0 ? c.pw : 0;
         if (c.pw > 3 && c.pw - dt <= 3 && crowd) crowd.P[walker].give = true;
