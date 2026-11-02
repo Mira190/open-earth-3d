@@ -214,7 +214,9 @@ def main():
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
                     way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
                     roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
-    print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
+    # the banned turns (Overture's prohibited_transitions), on the pieces they start from
+    n_turns = road_rules.turns(C, con, roads, [LineString(np.array(o["p"], dtype=float).reshape(-1, 3)[:, :2] / 10) for o in roads])
+    print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces, {n_turns} banned turns; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
 
     # ---------------------------------------------------------- wharves and helipads
     infra = rows(con, raw("infrastructure"), "name, class, wkb")
