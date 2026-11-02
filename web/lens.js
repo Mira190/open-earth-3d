@@ -28,7 +28,17 @@ window.OELens = (function () {
         uniform vec2 uSunUv; uniform float uSunVis; uniform float uFlare; uniform vec3 uFlareTint; uniform float uLetterbox;
         uniform vec3 uTint; uniform float uSat; uniform float uContrast; uniform float uNightTone;
         varying vec2 vUv;
-        float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+        // grain and dither from an integer hash of the pixel and the frame (pcg3d, Jarzynski and Olano,
+        // JCGT 2020): fract(sin(x) * 43758.5) loses its precision on many GPUs at the arguments a
+        // full-frame grain gives it, and drew diagonal streaks that crawled across the sky
+        float hash3(uvec3 v) {
+          v = v * 1664525u + 1013904223u;
+          v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+          v ^= v >> 16u;
+          v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+          return float(v.x) * (1.0 / 4294967296.0);
+        }
+        float grainAt(float k) { return hash3(uvec3(uvec2(gl_FragCoord.xy), uint(abs(uTime) * 60.0) + uint(k))); }
         // the title's tone curve: Khronos PBR Neutral with a long exponential shoulder from 0.42
         vec3 film(vec3 c) {
           const float s0 = 0.42, desat = 0.22;
@@ -60,10 +70,17 @@ window.OELens = (function () {
           c += ghost(p, s + axis * 2.1, 0.1, vec3(0.6, 0.45, 1.0) * 0.006);
           return c * uSunVis * uFlare;
         }
+        // a NaN texel would show as a black dot and an infinite one turns the tone curve to NaN; the
+        // test is on the bits, which a compiler's fast maths cannot fold away as it can isnan()
+        vec3 tap(vec2 uv) {
+          vec3 c = texture2D(tDiffuse, uv).rgb;
+          if (any(greaterThan(floatBitsToUint(c) & 0x7fffffffu, uvec3(0x7f800000u)))) return vec3(0.0);
+          return min(c, vec3(1024.0));
+        }
         void main() {
           vec2 uv = vUv, dc = uv - 0.5;
           vec2 off = dc * uCA * (0.0015 + 0.03 * dot(dc, dc));
-          vec3 col = vec3(texture2D(tDiffuse, uv - off).r, texture2D(tDiffuse, uv).g, texture2D(tDiffuse, uv + off).b);
+          vec3 col = vec3(tap(uv - off).r, tap(uv).g, tap(uv + off).b);
           if (uSunVis > 0.0) col += flare(uv);
           col = film(col * uExposure * uTint);
           col = max(mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, uSat), 0.0);
@@ -73,14 +90,14 @@ window.OELens = (function () {
           col *= mix(vec3(1.0), mix(vec3(0.84, 0.95, 1.2), vec3(1.05, 1.0, 0.92), smoothstep(0.03, 0.45, l)), uNightTone); // at night, more so
           col = pow(max(col, 0.0), vec3(1.0 / 2.2));
           col *= 1.0 - uVignette * smoothstep(0.15, 0.95, dot(dc * vec2(uAspect, 1.0), dc * vec2(uAspect, 1.0)) * 1.6 / max(uAspect, 1.0));
-          float g = hash(uv * vec2(1931.7, 2713.3) + fract(uTime * 7.31)) - 0.5;
+          float g = grainAt(0.0) - 0.5;
           col += g * uGrain * (0.35 + 0.65 * (1.0 - abs(l * 2.0 - 1.0)));
           vec3 space = vec3(0.016, 0.024, 0.043);                                                // #04060b, never pure black
           col = col * (1.0 - space * uLift) + space * uLift;
           col = mix(space, col, uFade);
           col = mix(col, vec3(1.0), uFlash);
           if (uLetterbox > 0.0) { float bar = (1.0 - 1.0 / (uLetterbox * uAspect)) * 0.5; if (uv.y < bar || uv.y > 1.0 - bar) col = vec3(0.0); }
-          col += (hash(uv * 977.0 + uTime) - 0.5) / 255.0;                                      // dither the gradients
+          col += (grainAt(7919.0) - 0.5) / 255.0;                                      // dither the gradients
           gl_FragColor = vec4(col, 1.0);
         }`,
     };
@@ -94,19 +111,45 @@ window.OELens = (function () {
     return { u: tmp.x * 0.5 + 0.5, v: tmp.y * 0.5 + 0.5, front: tmp.z < 1 && sunDir.dot(camera.getWorldDirection(new THREE.Vector3())) > 0 };
   }
 
-  // a pixel brighter than a half-float target holds (the sun's glint on glass or water) is stored
-  // as infinite; the bloom's blur carries it across the frame and the tone curve turns it into NaN,
-  // so the whole frame goes black for that one camera position. The bloom's bright pass keeps to a
-  // finite ceiling just under the half float's largest value and drops NaN: every finite highlight
-  // blooms as before, and an overflowing one can no longer black the frame.
+  // A pixel brighter than a half-float target holds (the sun's glint on glass or water) is stored
+  // as infinite, and a pixel whose maths went wrong on one GPU (a zero-length normal, say) is NaN.
+  // The bloom's blur carried either across the frame: the tone curve turned it into NaN and the
+  // frame went black, and where a GPU's min() returns the number for a NaN (IEEE minNum) the old
+  // ceiling of 60000 turned one bad pixel into a ball of light that flashed as the camera and the
+  // sun moved. The bright pass now drops NaN by its bits, before any arithmetic, and keeps a
+  // highlight's colour but holds its peak to CEIL: far above anything the cities light (their
+  // lamps, windows and sparkles peak near 16), so they bloom as before, while a glint blooms as a
+  // small star rather than a ball.
+  const BLOOM_CEIL = 64.0;
   function tameBloom(bloom) {
     const m = bloom && bloom.materialHighPassFilter, end = 'gl_FragColor = mix( outputColor, texel, alpha );';
     if (!m || !m.fragmentShader.includes(end)) return;
     m.fragmentShader = m.fragmentShader.replace(end, `${end}
-			gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 60000.0 ) );
-			if ( any( isnan( gl_FragColor ) ) ) gl_FragColor = vec4( 0.0 );`);
+			if ( any( greaterThan( floatBitsToUint( gl_FragColor ) & 0x7fffffffu, uvec4( 0x7f800000u ) ) ) ) gl_FragColor = vec4( 0.0 );
+			gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 65504.0 ) );
+			float oePeak = max( max( gl_FragColor.r, gl_FragColor.g ), gl_FragColor.b );
+			gl_FragColor.rgb *= ${BLOOM_CEIL.toFixed(1)} / max( oePeak, ${BLOOM_CEIL.toFixed(1)} );`);
     m.needsUpdate = true;
   }
 
-  return { shader, sunOnScreen, tameBloom };
+  // Every built-in three.js material (the buildings, ground, water, trees, landmarks, vehicles and
+  // people) ends in the dithering chunk; a guard there keeps a NaN or an infinity from ever being
+  // written, so no pass after it (MSAA's resolve, the bloom, the lens) has to meet one. A NaN
+  // pixel goes to black, which MSAA averages with its neighbours' samples; a highlight keeps to
+  // 1024, still white after the tone curve. Applied once, before the first material compiles.
+  let guarded = false;
+  function guardShaders() {
+    if (guarded || !window.THREE || !THREE.ShaderChunk || typeof THREE.ShaderChunk.dithering_fragment !== 'string') return;
+    guarded = true;
+    THREE.ShaderChunk.dithering_fragment += `
+{ // no NaN or infinity reaches the target (lens.js)
+	bvec4 oeBad = greaterThan( floatBitsToUint( gl_FragColor ) & 0x7fffffffu, uvec4( 0x7f800000u ) );
+	if ( any( oeBad.rgb ) ) gl_FragColor.rgb = vec3( 0.0 );
+	if ( oeBad.a ) gl_FragColor.a = 0.0;
+	gl_FragColor.rgb = min( gl_FragColor.rgb, vec3( 1024.0 ) );
+}`;
+  }
+  if (window.THREE) guardShaders(); else addEventListener('three-ready', guardShaders, { once: true });
+
+  return { shader, sunOnScreen, tameBloom, guardShaders };
 })();
