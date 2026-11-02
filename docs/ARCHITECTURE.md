@@ -318,7 +318,10 @@ The views switch in place, without reloading the page.
     line (Melbourne's bay). Until issue 57
     the edge was extruded: each point past the frame copied the shoreline at
     the frame, so the sea past it was straight bands with hard sides, sea where
-    land should be, and streaks out from the corners.
+    land should be, and streaks out from the corners. Before and after, from
+    above and from the tour cameras toward and away from a low sun:
+    `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
+    for `tools/city_shot.js`).
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
