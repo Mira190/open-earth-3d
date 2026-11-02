@@ -104,27 +104,36 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   }
   await shot('travel');
 
-  // the big map zooms and pans: the wheel zooms about the pointer and names crowded out at the whole city come back,
+  // the big map zooms and pans: the wheel zooms about the pointer (here over the thickest landmark pins), and of
+  // the landmarks then in view, at least as many are named as at the whole city, and more where any were left off;
   // a drag pans without dropping a waypoint, and the fit button shows the whole city again
   const mz = await (async () => {
     await p.evaluate(() => { const g = window.__game; if (document.getElementById('g-bigmap').hidden) g.toggleMap(); });
     await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
-    const r = await p.evaluate(() => { const b = document.getElementById('g-bigmap-c').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width }; });
+    const r = await p.evaluate(() => {
+      const b = document.getElementById('g-bigmap-c').getBoundingClientRect(), q = window.__game.mapPins().filter(q => q.d.kind === 'landmark');
+      let best = q[0], bn = -1;
+      for (const a of q) { const n = q.filter(c => Math.hypot(a.x - c.x, a.y - c.y) < 60).length; if (n > bn) { bn = n; best = a; } }
+      return { x: b.left + (best ? best.x : b.width / 2), y: b.top + (best ? best.y : b.height / 2), w: b.width, h: b.height, cx: b.left + b.width / 2, cy: b.top + b.height / 2 };
+    });
     const v0 = await p.evaluate(() => window.__game.mapView());
     await p.mouse.move(r.x, r.y);
-    for (let i = 0; i < 6; i++) { await p.mouse.wheel(0, -240); await p.waitForTimeout(40); }
-    await p.waitForTimeout(120);
-    const v1 = await p.evaluate(() => window.__game.mapView());
-    await p.mouse.down(); await p.mouse.move(r.x + 120, r.y + 60, { steps: 6 }); await p.mouse.up();
-    await p.waitForTimeout(120);
+    for (let i = 0; i < 3; i++) { await p.mouse.wheel(0, -240); await p.waitForTimeout(60); }
+    await p.waitForTimeout(150);
+    const v1 = await p.evaluate(([w, h]) => Object.assign(window.__game.mapView(),
+      { inView: window.__game.mapPins().filter(q => q.d.kind === 'landmark' && q.x > 0 && q.y > 0 && q.x < w && q.y < h).map(q => q.d.name) }), [r.w, r.h]);
+    await p.mouse.move(r.cx, r.cy); await p.mouse.down(); await p.mouse.move(r.cx + 120, r.cy + 60, { steps: 6 }); await p.mouse.up();
+    await p.waitForTimeout(150);
     const v2 = await p.evaluate(() => window.__game.mapView());
     await p.click('#g-mapzoom [data-z="fit"]');
-    await p.waitForTimeout(120);
+    await p.waitForTimeout(150);
     const v3 = await p.evaluate(() => window.__game.mapView());
     await p.evaluate(() => { document.getElementById('g-bigmap').hidden = true; });
     return { v0, v1, v2, v3 };
   })();
-  check(mz.v1.z > 2 && mz.v1.names.length >= mz.v0.names.length, `the map zooms with the wheel (×${mz.v1.z.toFixed(1)}; ${mz.v0.names.length} names at the whole city, ${mz.v1.names.length} zoomed in)`);
+  const seen = new Set(mz.v1.inView), before = mz.v0.names.filter(n => seen.has(n)).length, after = mz.v1.names.filter(n => seen.has(n)).length;
+  check(mz.v1.z > 2 && after >= before && (after > before || before === seen.size),
+    `the map zooms with the wheel (×${mz.v1.z.toFixed(1)}; of the ${seen.size} landmarks in view, ${before} named at the whole city, ${after} zoomed in)`);
   check(Math.hypot(mz.v2.cx - mz.v1.cx, mz.v2.cy - mz.v1.cy) > 5 && !mz.v2.picked, `a drag pans the map (${Math.hypot(mz.v2.cx - mz.v1.cx, mz.v2.cy - mz.v1.cy).toFixed(0)} map px) without picking a spot`);
   check(mz.v3.z === 1, 'the fit button shows the whole city again');
 
