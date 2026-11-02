@@ -1219,6 +1219,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       const b = roads.place(goal.x, goal.y, 300, keepSign, goal.z ?? groundZ(goal.x, goal.y)) || roads.place(goal.x, goal.y, 800, keepSign); // (in a park, the nearest kerb)
       let rt = b && roads.route(a, b, 30000);
       if (!rt && b) rt = roads.route(a, Object.assign({}, b, { dir: -b.dir }), 30000);
+      if (!rt) { // that kerb is on a road cut off from the streets (inside the castle grounds): the nearest that isn't
+        const near = [...new Set(roadNet.near(goal.x, goal.y, 0, 800))].map(i => {
+          const l = roadNet.L[i];
+          let bk = 0, bd = Infinity;
+          for (let k = 0; k < l.pts.length / 3; k++) { const d = Math.hypot(l.pts[3 * k] - goal.x, l.pts[3 * k + 1] - goal.y); if (d < bd) { bd = d; bk = k; } }
+          return { line: i, s: l.cum[bk], d: bd };
+        }).sort((p, q) => p.d - q.d);
+        for (const q of near.slice(0, 12)) { for (const dir of [1, -1]) if (!rt) rt = roads.route(a, { line: q.line, s: q.s, dir }, 30000); if (rt) break; }
+      }
       return rt && { pts: drape([[st.x, st.y, st.z]].concat(laneOf(rt.pts)), 0.1), width: 1.3 };
     }
     if (m === 'ride' && ride && ride.phase === 'driving') return { pts: drape(laneOf(ride.drv.path.pts), 0.1), width: 1.3 };
