@@ -495,12 +495,13 @@ window.OECars = (function () {
   // joins them, a one-way street only its way. A place on it is { line, s, dir }: a line, a
   // distance along it, and the way a car is going (+1 with the line's points, -1 against them).
   function router(net) {
-    const L = net.L, ids = new Map(), adj = [];
-    const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); } return ids.get(k); };
+    const L = net.L, ids = new Map(), adj = [], all = []; // (all: both ways along every line, for when the one-way streets leave no way)
+    const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); all.push([]); } return ids.get(k); };
     const ends = L.map((l, i) => {
       const n = l.pts.length / 3, a = node(l.pts[0], l.pts[1]), b = node(l.pts[3 * n - 3], l.pts[3 * n - 2]);
       if (l.ow !== -1) adj[a].push([b, i, 1]);
       if (l.ow !== 1) adj[b].push([a, i, -1]);
+      all[a].push([b, i, 1]); all[b].push([a, i, -1]);
       return [a, b];
     });
     const tmp = {};
@@ -525,8 +526,10 @@ window.OECars = (function () {
       out.push(pt(s1));
     }
     // a route from place a to place b: { pts: [[x, y, z, v, cls]], len } or null. The car leaves
-    // a the way it is going, and arrives at b going b's way (so b's kerb is on its kerb side).
-    function route(a, b, limit = 6000) {
+    // a the way it is going, and arrives at b going b's way (so b's kerb is on its kerb side),
+    // keeping to the one-way streets; where they leave no way (a street mapped one-way out from
+    // the edge of the map), along any street.
+    function route(a, b, limit = 6000, edges = adj) {
       const la = L[a.line], lb = L[b.line], segs = [];
       if (a.line === b.line && a.dir === b.dir && (b.s - a.s) * a.dir >= 0) segs.push([a.line, a.s, b.s]);
       else {
@@ -541,13 +544,13 @@ window.OECars = (function () {
           if (d > (dist.get(u) ?? Infinity)) continue;
           if (u === goal) { found = true; break; }
           if (d > limit) break;
-          for (const [v, li, dir] of adj[u]) {
+          for (const [v, li, dir] of edges[u]) {
             const p = prev.get(u), back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
             const nd = d + L[li].len + (back ? 60 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
-        if (!found) return null;
+        if (!found) return edges === adj ? route(a, b, limit, all) : null;
         const chain = [];
         for (let v = goal; v !== start; v = prev.get(v)[0]) chain.push(prev.get(v));
         chain.reverse();
