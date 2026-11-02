@@ -85,6 +85,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         g.player.h = Math.atan2(v.look[0] - x, v.look[1] - y);
         Object.assign(g.cam, { mode: 'chase', yaw: g.player.h, pitch: v.pitch ?? 0.12, dist: v.dist ?? 5, distTo: 0, yawTo: null, lastInput: -10 });
       };
+      // a frame 400 m off first: the chase camera eases after a short move and snaps after a long one
+      g.player.x = x + 400; g.advance(0.05);
       place();
       g.advance(2);
       // a cutscene the place set off (the survey's turn on the spot) would be caught half way: skip it

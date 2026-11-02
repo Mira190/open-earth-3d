@@ -176,7 +176,10 @@ def game_patches(scene):
     -32768 where there is none), base64. web/game/nav.js takes each cell's own level,
     not interpolated, so a wall stays a wall (a walker steps up no more than 0.75 m)
     and a riser a step. Raise the cells under a parapet to its top to hold walkers
-    back there."""
+    back there. Where a slab stands over the paving, add `upper` ({i0, j0, nx, ny,
+    data}: the slab's level in a block of the grid) and `clear_m` (the room under
+    it), and `walks` for tools/game_check.js to take: [{name, path: [[x, y], ...],
+    from_m, to_m, face}]."""
 
 def game_extras(scene):
     """Called by pipeline/game_data.py. Game content placed from the landmarks:

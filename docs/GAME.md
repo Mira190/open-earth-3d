@@ -369,9 +369,18 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Water mask:** 5 m.
   - **Walking terrain:** 5 m. It drops at the seawall instead of sloping across
     a 10 m cell. Along a quay (`web/quays.js`) the points just out in the water
-    are raised to the quay's level and the water starts 0.3 m short of the
-    wall's face, so a walker stops on the coping (`tools/game_check.js` walks
-    up to one in every city).
+    are raised to the quay's level and the water starts 0.15 m short of the
+    wall's face as drawn, so a walker stops with the toes at the coping's edge
+    (`tools/game_check.js` walks up to one in every city).
+  - **Fine walking levels** (`patches`, a city's `game_patches`): levels every
+    half metre where walls and steps are too sharp for the 5 m grid. Where a
+    slab stands over the paving (Sydney's forecourt over the colonnade),
+    `upper` holds the slab's level in a block of the grid and `clear_m` the
+    room under it: the ground is the slab, and `nav.floorAt` offers the floor
+    under it too, so a walker goes under or over; the camera stays under the
+    slab when the walker is. `walks` names routes `tools/game_check.js` walks
+    on foot ([[x, y], ...], `from_m`, `to_m`; `face: true` for a walk to a
+    seawall's edge).
   - **Footways and roads:** 3D polylines.
     - Bridge parts follow the deck surface, using Overture's `is_bridge` flags
       and levels.

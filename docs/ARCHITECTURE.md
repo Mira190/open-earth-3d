@@ -193,8 +193,11 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     level; the ground shader discards it above the water from a quarter metre
     behind the shoreline out (a 2.5 m mask of the band along the quays), and the
     bottom is drawn under the cells it opens;
-  - *walking:* along a quay the water starts 0.3 m short of the wall's face, by
-    the same distance, not at the 5 m water mask's bank, and the walker walks on
+  - *walking:* along a quay a walker stops with the toes at the coping's edge,
+    its centre 0.15 m short of the wall's face as drawn (`water()`, measured to
+    the faces the walls stand on and to a landmark's own seawall, landmarks.json
+    `seawalls`, rather than to the 2.5 m shoreline map, whose zero lies 0.2 m
+    behind the face), not at the 5 m water mask's bank, and the walker walks on
     the raised grid (`game/nav.js`).
 
   The quay's level is the land behind it: the fine grid's points more than

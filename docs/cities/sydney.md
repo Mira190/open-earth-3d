@@ -119,12 +119,16 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
       weed and wet stone runs up to high water, about 0.9 m.
     - *The paving* covers the forecourt, the broadwalk and the Lower Concourse
       (19,250 m²) in pink granite flags, at the level of the ground behind the
-      seawall, where the DEM sags towards the water. The forecourt is level, as
-      the photographs show it, where the DEM dips 3 m over the vehicle concourse
-      under it. The game walks on the same level (`game_ground`), and a walker
-      stops on the seawall's coping, 0.3 m short of its face (`web/quays.js`
-      decides the water's edge from `shore.png` along every quay, this one
-      included), instead of a few metres short at the 5 m grid's bank.
+      seawall, where the DEM sags towards the water. The forecourt is level at
+      4.50 m, as the photographs show it and the Opera House's own section has
+      it (below), where the DEM dips 3 m over the vehicle concourse under it,
+      and the paving eases from it to the DEM's level over 30 m (up from
+      Circular Quay East, down to the Northern Broadwalk). The game walks on the
+      same level (`game_ground`), and a walker stops with the toes at the
+      seawall coping's edge, its centre 0.15 m short of the face as it is drawn
+      (`web/quays.js`, in every city: it measures to the faces the quays draw and
+      to a landmark's own, landmarks.json `seawalls`; it stopped 0.3 m short of
+      the 2.5 m shoreline map's zero, half a metre short of the face).
     - *The Lower Concourse* (Opera Bar, Opera Kitchen) lies below the walkway
       along the seawall and below the forecourt's edge, as the Opera House's
       visitor map draws it ("Ramp down to Opera Bar", "Stairs down to Lower
@@ -137,27 +141,62 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
       From Bennelong Point (214486559).jpeg"). Built from Overture (from
       OpenStreetMap) in `lower_concourse()`:
       - *the walkway* along the seawall, out to the retaining walls OSM maps
-        (where two overlap, the one nearer the water), at 1.90 m, with a granite
+        (where two overlap, the one nearer the water), at 1.58 m, with a granite
         parapet along its inner edge where it stands over the concourse;
       - *broad steps* down from it where no wall is mapped (three places,
         18 treads), as the aerial photo shows the stepped part by the Opera
         Kitchen;
       - *the ramp* down from Circular Quay beside the first retaining wall, 46 m;
-      - *the concourse* at 0.85 m, out to the forecourt's balustrade (an OSM
-        fence), and *a flight of 13 risers* at its north end up to the broadwalk;
+      - *the concourse* at 0.60 m, out to the forecourt's balustrade (an OSM
+        fence);
+      - *the flight at its north end*, 13 risers of 15 cm from the walkway's
+        round end up to the Northern Broadwalk at 3.52 m, 8 m wide: the two ways
+        of 13 steps OpenStreetMap maps there are its two lanes, as the NSW
+        aerial photo at 7.5 cm shows one flight across both (`north_flight()`);
       - *the forecourt's edge* over it: a parapet and fascia in the podium's
         granite, and where the forecourt stands a storey above, the colonnade
-        under it, a soffit on mushroom columns every 8.4 m with the shopfronts
-        behind, lit after dark.
+        under it, 2.4 m clear under a slab 1.5 m deep, a soffit on mushroom
+        columns every 8.4 m with the shopfronts behind, glass between bronze
+        mullions, lit warm after dark;
+      - *the stairwell* from the forecourt down to the concourse (OSM way
+        1118329015, 20 steps): an opening in the forecourt 4.4 by 10.7 m,
+        measured on the aerial photo along the way, behind a granite upstand
+        with a bronze rail; the flight down its east side, 20 risers of 19.5 cm,
+        a void beside it, and from the landing at its foot a passage west under
+        the forecourt, through the shopfronts and the colonnade, to the
+        concourse (`stairwell()`).
 
-      No levels are published. They follow from the steps OSM counts and the
-      5 m DEM: 13 risers of 15 cm down from the broadwalk (2.8 m on the DEM) put
-      the concourse at 0.85 m; 7 risers up from it put the walkway at 1.90 m
-      (the DEM, which barely resolves it, has 1.7–1.9 m); the 20 risers down
-      from the forecourt (3.45 m) are then 13 cm each. The forecourt keeps its
-      level out to its edge, where the 5 m DEM slopes down into the concourse.
+      The levels are the Opera House's own: the section through the Lower
+      Concourse in its renewal application (Humphrey & Edwards Architects,
+      "Sydney Opera House Lower Concourse Improvements", drawing 49HE001-3225
+      rev D, "Detail Section – Shade Structure", 2019, SSD-9794; Luchetti
+      Krelle's sheet DA.102 rev C, approved under SSD-9794-Mod-1 in 2026, has
+      the same) puts the concourse at FFL 0.600, the walkway ("Sea Wall
+      Promenade") at FFL 1.580, the soffit over the concourse at FCL 3.000 and
+      the forecourt's edge ("Upper Concourse") at RL 4.500. The drawing's notes
+      give its levels in AHD, the model's datum. They agree with OpenStreetMap's
+      counts: 7 risers of 14 cm from the concourse up to the walkway, 13 of
+      15.0 cm from the walkway to the Northern Broadwalk, which the DEM has at
+      3.5 m (an independent check: the drawing, OSM's count and the DEM meet
+      within a centimetre), and 20 of 19.5 cm down the stairwell. Where the
+      forecourt stands on the rock, at the foot of the Monumental Steps, the
+      5 m DEM has 4.3 to 4.5 m; over the vehicle concourse and the Lower
+      Concourse it sags to 3.4 m, because a bare-earth model takes a slab out
+      (Geoscience Australia's 5 m LiDAR DEM drops to 0.1 m in the forecourt's
+      middle). Until now the forecourt was 3.45 m from the DEM, which left the
+      colonnade 2.25 m clear (it looked low in the photographs, and was). The
+      Monumental Steps now rise from the forecourt's level, which lifts the
+      landing to 10.35 m and the upper podium to 14.7 m.
+
       The game walks on these levels every half metre (game.json `patches`), so
-      a walker climbs the steps and stops at the walls and parapets.
+      a walker climbs the steps and stops at the walls and parapets. Under the
+      forecourt it walks on two floors: the patch's `upper` holds the slab's
+      level where the concourse runs on under it (the colonnade, the passage),
+      `web/game/nav.js` offers both floors and keeps the camera under the slab
+      (`clear_m`). The patch names walks the game's check takes
+      (`tools/game_check.js`): down the stairwell and back up, up the north
+      flight, into the colonnade and along the forecourt over it, and across the
+      walkway to the seawall's edge.
     - *The Tarpeian Wall*, the sandstone cliff quarried in the 1880s under the
       Royal Botanic Garden, stands along 182 m of the paving's south edge: where
       the garden 6–15 m behind an edge is more than 3 m above the paving, the
@@ -515,20 +554,21 @@ numbers stay valid because the geometry they depend on is unchanged.
   LiDAR by others. The ridges are OSM traces of an aerial photo that is not a
   true orthophoto, so the tall shells' tips may lean a few metres. The other
   tips, how high the back-to-back shells meet, and the side shells come from
-  a photograph. The podium's two levels follow from an assumed 15 cm riser:
-  the landing at 10.1 m and the upper podium at 14.4 m.
-- **Bennelong Point.** The Lower Concourse's levels are derived from the steps
-  OpenStreetMap counts and the 5 m DEM, not surveyed: 0.85 m for the concourse,
-  1.90 m for the walkway. That leaves the colonnade under the forecourt 2.25 m
-  clear, which is lower than it looks in photographs, so the forecourt's edge
-  may stand higher than the DEM has it. OpenStreetMap's retaining walls and
-  steps sit a metre or two off the aerial photo in places. The two flights of 13
-  steps OSM maps east of the concourse's north end are drawn as one flight
-  along the balustrade, and the stairwell from the forecourt down to the
-  concourse (20 steps) is not cut into the forecourt. The tiers at the podium's
-  north end and the foyers' leaning glass are placed from photographs. The
-  benches are generic; the band of glass on the podium is placed from
-  photographs.
+  a photograph. The podium's two levels follow from the forecourt's 4.50 m
+  and an assumed 15 cm riser: the landing at 10.35 m and the upper podium at
+  14.7 m.
+- **Bennelong Point.** The Lower Concourse's levels are from one published
+  section (2019) and are taken as AHD, as the drawing's notes say its surveyed
+  levels are "in most instances". The forecourt is level at 4.50 m; where it
+  eases to the DEM round its edges is assumed, as is the recess of the
+  colonnade (5 m). The stairwell's opening is measured on the aerial photo;
+  the flight in it, the void beside it and the passage at its foot are placed
+  from the photo and OSM's way, not from a plan. OpenStreetMap's retaining
+  walls and steps sit a metre or two off the aerial photo in places. The tiers
+  at the podium's north end and the foyers' leaning glass are placed from
+  photographs. The benches are generic; the band of glass on the podium is
+  placed from photographs. A pale wedge of the terrain shows on the water in
+  the corner west of the walkway's round end (it did before these levels).
 - **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
   guessed heights of 7–14 m. They are not in the shadow analysis, so parks
   read sunnier than they feel. Roof shapes are mapped for 3% of buildings;

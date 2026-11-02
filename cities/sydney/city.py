@@ -122,10 +122,13 @@ MATERIALS = {
     "lc_tread": {"color": "#b8a08c", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "decal": True, "street_lit": True},
     "lc_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser", "decal": True},
     "lc_wall": {"color": "#a8897a", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 2.4, "street_lit": True, "solid": False},
-    "lc_soffit": {"color": "#c9c1b3", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    "lc_soffit": {"color": "#8a8276", "roughness": 0.9, "metalness": 0.0, "solid": False},  # (in the slab's shade: no sky over it)
     "lc_fascia": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6], "solid": False},
     "lc_bronze": {"color": "#5a4029", "roughness": 0.4, "metalness": 0.8, "solid": False},  # the stairwell's handrail
-    "lc_shop": {"color": "#16110d", "roughness": 0.08, "metalness": 0.3, "emissive": "#ffc27a", "glow": 0.45, "solid": False},
+    # the shopfronts: glass between bronze mullions, a kick plate at the foot, most panes lit after dark
+    "lc_shop": {"color": "#1d1712", "roughness": 0.08, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.1, "storey_m": 2.4,
+                "spandrel": 0.12, "mullion_m": 0.09, "frame": "#5a4029", "lit_share": 0.85, "lit_k": 0.32,
+                "warm_share": 1.0, "emissive": "#ffc27a", "glow": 0.12, "solid": False},
     "coping": {"color": "#c2ad9b", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 0.0], "street_lit": True},
     "bollard": {"color": "#1d1f21", "roughness": 0.45, "metalness": 0.6},
     "post": {"color": "#2b2f30", "roughness": 0.5, "metalness": 0.55},
@@ -2051,7 +2054,7 @@ def concourse_meshes(L, uv, lv, drape):
             par.box(np.array([p[0], p[1], p[2] + h / 2 - 0.15]), np.array([q[0], q[1], q[2] + h / 2 - 0.15]), 0.32, h + 0.3)
     # the forecourt's edge over the concourse
     E = L["edge"]
-    fascia, soffit, shop = Mesh("lc_fascia", "lc_fascia", False, uv=True), Mesh("lc_soffit", "lc_soffit", False), Mesh("lc_shopfronts", "lc_shop", False, floodlit=True)
+    fascia, soffit, shop = Mesh("lc_fascia", "lc_fascia", False, uv=True), Mesh("lc_soffit", "lc_soffit", False), Mesh("lc_shopfronts", "lc_shop", False, floodlit=True, uv=True)
     floor_m, cols = Mesh("lc_colonnade_floor", "flagstone", True, uv=True), Mesh("lc_columns", "lc_soffit", True)
     rec, slab, ph = LOWER["recess_m"], LOWER["slab_m"], LOWER["parapet_m"]
     well = L.get("well")
@@ -2080,7 +2083,7 @@ def concourse_meshes(L, uv, lv, drape):
             if not Polygon([q0, q1, b1, b0]).intersects(Polygon(well["opening"]) if well else Polygon()):
                 soffit.quad(P(q0, s0), P(q1, s1), P(b1, s1), P(b0, s0))
             if not door.intersects(shapely.LineString([b0, b1])):
-                shop.quad(P(b0, e0[4]), P(b1, e1[4]), P(b1, s1), P(b0, s0))
+                shop.quad(P(b0, e0[4]), P(b1, e1[4]), P(b1, s1), P(b0, s0), [[run, 0.0], [run + L1, 0.0], [run + L1, s1 - e1[4]], [run, s0 - e0[4]]])
             floor_m.quad(P(q0, e0[4] + 0.03), P(q1, e1[4] + 0.03), P(b1, e1[4] + 0.03), P(b0, e0[4] + 0.03), [uv(*q0), uv(*q1), uv(*b1), uv(*b0)])
             for kk, (ea, eb) in enumerate(((E[k - 1] if k else None, e0), (e1, E[k + 2] if k + 2 < len(E) else None))):
                 if ea is None or eb is None or not (storey_over(ea) and storey_over(eb)):  # the colonnade's end: closed

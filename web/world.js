@@ -169,15 +169,16 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     },
     // a curtain wall (u metres along the facade, v metres up): panes between mullions every bay_m,
     // a spandrel at the foot of each storey_m, pane tones that vary, and some panes lit after dark
-    // (lit_share of them, lit_k bright: a shop's glass is mostly lit and softer than an office's)
+    // (lit_share of them, lit_k bright: a shop's glass is mostly lit and softer than an office's;
+    // warm_share of the lit ones under warm light, the rest cool white)
     curtain_wall(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: m.spandrel || 0.25 },
           uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT,
-          uLitShare: { value: m.lit_share ?? 0.38 }, uLitK: { value: m.lit_k ?? 1.3 } });
+          uLitShare: { value: m.lit_share ?? 0.38 }, uLitK: { value: m.lit_k ?? 1.3 }, uWarm: { value: m.warm_share ?? 0.25 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK; uniform vec3 uFrame; float pWin, pLit; vec3 pLitC;
+uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK, uWarm; uniform vec3 uFrame; float pWin, pLit; vec3 pLitC;
 float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
@@ -196,7 +197,7 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     // lit in runs of four panes along a storey, as an office is, each run a little brighter or dimmer,
     // mostly under cool white light
     pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(1.0 - uLitShare, cwHash(cf + 17.0)) * (0.85 + 0.3 * cwHash(cf + 3.0)), litFar, far);
-    pLitC = mix(cwHash(cf + 5.0) < 0.75 ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.84, 0.62), vec3(0.85, 0.88, 0.9), far); }`)
+    pLitC = mix(cwHash(cf + 5.0) < 1.0 - uWarm ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.84, 0.62), vec3(0.85, 0.88, 0.9), far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
   totalEmissiveRadiance += pWin * pLit * uLmNight * pLitC * uLitK;`);
