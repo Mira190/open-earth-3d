@@ -136,11 +136,13 @@ vAO = tc.r;`;
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
       const n0 = L[0] * L[0], n1 = L[1] * L[1];
+      // from higher up a wood is seen further, and only as crowns: its reach grows with the camera's height
+      const WM = Math.min(keep < 1 ? 1200 : 2200, WOOD_M + (keep < 1 ? 1 : 2) * Math.max(0, eye.y - 60));
       for (let i = 0; i < n; i++) {
         if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // left out, or not drawn where the game has no ground for it
         const dx = pos[3 * i] - eye.x, dy = pos[3 * i + 1] - eye.y, dz = pos[3 * i + 2] - eye.z, e2 = dx * dx + dy * dy + dz * dz, f = far[i];
         // beyond WOOD_M a wood is the photo's canopy (world.js woodsFloor): its trees thin out towards it
-        if (f < 1 && e2 > WOOD_M * WOOD_M * (0.55 + 45 * (f - 0.55)) ** 2) continue;
+        if (f < 1 && e2 > WM * WM * (0.55 + 45 * (f - 0.55)) ** 2) continue;
         const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
         if (lod === 2 && half[i]) continue; // past 200 m half a wood's crowns stand for all (they overlap)
         const parts = meshes[which[i]][lod];
