@@ -10,9 +10,9 @@ Building adjustments (called by pipeline/build_scene.py):
   * Arc de Triomphe and the Louvre Pyramid: their solids are kept for the sun analyses
     and drawn as landmarks instead (the arch's openings, the pyramid's glass).
   * Colonne Vendôme: OSM tags it with a mansard roof; it is a column.
-  * Opéra Garnier: OSM maps its roofs, dome and stage house as parts with a min_height of
-    29 to 55 m and only a small part from the street, so the building floated over Place de
-    l'Opéra. Every part stands on the ground: the house is solid stone below its roofs.
+  * Opéra Garnier: OSM maps its roofs, dome and stage house as parts from 29 to 55 m up and
+    only a small part from the street, so the building floated over Place de l'Opéra. The part
+    from the street takes the building's whole outline, up to where the raised parts start.
 
 Parametric landmarks (called by pipeline/landmarks.py), placed with anchors measured from
 the data:
@@ -109,8 +109,10 @@ def adjust_building(b, cls, g, geoms, ctx):
             if len(gm) > 5 and isinstance(gm[5], dict):
                 gm[5]["roof_shape"] = None
     if b.get("name") == OPERA:
+        raised = [gm[1] for gm in geoms if gm[1] > 0]
         for gm in geoms:
-            gm[1] = 0.0
+            if gm[1] == 0 and raised:
+                gm[0], gm[2] = g, min(raised)
     if b.get("name") in ("Arc de Triomphe", "Pyramide du Louvre"):
         key = "arc_de_triomphe" if b["name"] == "Arc de Triomphe" else "louvre_pyramid"
         mr = np.asarray(g.minimum_rotated_rectangle.exterior.coords)[:4]
