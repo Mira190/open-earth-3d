@@ -261,7 +261,7 @@ class ScreenSet:
                     m = (a + b) / 2
                     P = frame(m, unit(pn[k] + pn[k + 1]))
                     seg = float(np.linalg.norm(b - a))
-                    block(K("screen_frame"), P, -0.5, -0.02, -seg / 2 - 0.02, seg / 2 + 0.02, z0 - 0.35, z0 + h + 0.35)
+                    block(K("screen_frame"), P, -0.6, -0.12, -seg / 2 - 0.02, seg / 2 + 0.02, z0 - 0.35, z0 + h + 0.35)
                     if s["roof"] and (k % 3 == 0 or k == len(pts) - 2):
                         K("steel_dark").tube([P(-0.7, 0.0, s["top"] - 0.3), P(-0.7, 0.0, z0 + h)], 0.14, 6)
                         K("steel_dark").tube([P(-3.2, 0.0, s["top"] - 0.3), P(-0.7, 0.0, z0 + h * 0.7)], 0.09, 4)
@@ -274,9 +274,10 @@ class ScreenSet:
                 for v in np.linspace(-w / 2 + 0.8, w / 2 - 0.8, max(2, int(w / 4.5) + 1)):
                     K("steel_dark").tube([P(-0.3, v, s["top"] - 0.3), P(-0.3, v, z0 + h)], 0.16, 6)
                     K("steel_dark").tube([P(-3.0, v, s["top"] - 0.3), P(-0.3, v, z0 + h * 0.7)], 0.1, 4)
-                block(K("screen_frame"), P, -0.7, 0.12, -w / 2 - 0.3, w / 2 + 0.3, z0 - 0.3, z0 + h + 0.3)
+                block(K("screen_frame"), P, -0.7, 0.03, -w / 2 - 0.3, w / 2 + 0.3, z0 - 0.3, z0 + h + 0.3)
             elif fw > 0:
-                block(K("screen_frame"), P, -s["off"], 0.12, -w / 2 - fw, w / 2 + fw, z0 - fw, z0 + h + fw)
+                # the frame's front stands 10 cm behind the face: closer, the two fight in the depth buffer from afar
+                block(K("screen_frame"), P, -s["off"], 0.03, -w / 2 - fw, w / 2 + fw, z0 - fw, z0 + h + fw)
             for u0, u1, v0, v1 in s["parts"]:   # left to right seen from in front
                 a, b = P(0.125, -w / 2 + u0 * w, z0), P(0.125, -w / 2 + u1 * w, z0)
                 F.quad(a + [0, 0, v0 * h], b + [0, 0, v0 * h], b + [0, 0, v1 * h], a + [0, 0, v1 * h],
