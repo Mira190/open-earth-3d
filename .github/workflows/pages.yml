@@ -1,0 +1,52 @@
+# Publishes web/ to GitHub Pages on every push to main, with a version number.
+# The version is the major.minor in VERSION plus this workflow's run number (0.1.42), and
+# web/version.json carries it with the commit and the build time for the title screen to show.
+name: Deploy to Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Write the version
+        id: version
+        run: |
+          base=$(tr -d '[:space:]' < VERSION)
+          version="$base.${{ github.run_number }}"
+          printf '{"version":"%s","commit":"%s","built":"%s"}\n' \
+            "$version" "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > web/version.json
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          cat web/version.json
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Tag the release
+        run: |
+          tag="v${{ steps.version.outputs.version }}"
+          git tag "$tag" "$GITHUB_SHA"
+          git push origin "$tag"
