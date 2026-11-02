@@ -492,14 +492,15 @@ window.OECars = (function () {
 
   // ------------------------------------------------------------ the road network: routes
   // A graph of the road lines (actors.network) joined where their ends meet, as the traffic
-  // joins them. A place on it is { line, s, dir }: a line, a distance along it, and the way a
-  // car is going (+1 with the line's points, -1 against them).
+  // joins them, a one-way street only its way. A place on it is { line, s, dir }: a line, a
+  // distance along it, and the way a car is going (+1 with the line's points, -1 against them).
   function router(net) {
     const L = net.L, ids = new Map(), adj = [];
     const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); } return ids.get(k); };
     const ends = L.map((l, i) => {
       const n = l.pts.length / 3, a = node(l.pts[0], l.pts[1]), b = node(l.pts[3 * n - 3], l.pts[3 * n - 2]);
-      adj[a].push([b, i, 1]); adj[b].push([a, i, -1]);
+      if (l.ow !== -1) adj[a].push([b, i, 1]);
+      if (l.ow !== 1) adj[b].push([a, i, -1]);
       return [a, b];
     });
     const tmp = {};
@@ -510,7 +511,7 @@ window.OECars = (function () {
       if (!q) return null;
       net.at(q.line, q.s, tmp);
       const side = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx; // > 0: (x, y) is left of the line's direction
-      return { line: q.line, s: q.s, dir: side * keep >= 0 ? 1 : -1, x: q.x, y: q.y, z: q.z, d: q.d };
+      return { line: q.line, s: q.s, dir: L[q.line].ow || (side * keep >= 0 ? 1 : -1), x: q.x, y: q.y, z: q.z, d: q.d };
     }
     // the points of line i from s0 to s1 (either way round), as [x, y, z]
     function stretch(i, s0, s1, out) {
@@ -554,9 +555,9 @@ window.OECars = (function () {
         for (const [, li, dir] of chain) segs.push([li, dir > 0 ? 0 : L[li].len, dir > 0 ? L[li].len : 0]);
         segs.push([b.line, b.dir > 0 ? 0 : lb.len, b.s]);
       }
-      const pts = [];
-      for (const [li, s0, s1] of segs) {
-        if (Math.abs(s1 - s0) < 1e-3) continue;
+      const pts = [], nodes = [];
+      segs.forEach(([li, s0, s1], n) => {
+        if (Math.abs(s1 - s0) < 1e-3) return;
         const part = [];
         stretch(li, s0, s1, part);
         for (const p of part) {
@@ -564,11 +565,12 @@ window.OECars = (function () {
           if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.3) continue;
           pts.push([p[0], p[1], p[2], L[li].v || 11, L[li].c]);
         }
-      }
+        if (n < segs.length - 1) nodes.push({ k: pts.length - 1, line: li, end: s1 > s0 ? 1 : 0 }); // the end of line li, at point k
+      });
       if (pts.length < 2) return null;
       let len = 0;
       for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      return { pts, len, from: a, to: b };
+      return { pts, len, from: a, to: b, nodes };
     }
     // a place to start from, about r0..r1 metres away by road from (x, y) (an ordered ride sets out from there)
     function around(x, y, r0, r1) {
@@ -585,15 +587,18 @@ window.OECars = (function () {
       return null;
     }
     // on from the end of a route for a while, turning at random at the junctions (a car driving off)
+    // (out.nodes: the junctions it comes up to, as a route's)
     function onward(rt, length = 220) {
       const b = rt.to, out = [];
+      out.nodes = [];
       let li = b.line, dir = b.dir, s = b.s, left = length;
       while (left > 0 && out.length < 40) {
         const l = L[li], s1 = dir > 0 ? l.len : 0, part = [];
         stretch(li, s, s1, part);
         for (const p of part) out.push([p[0], p[1], p[2], l.v || 11, l.c]);
+        out.nodes.push({ k: out.length - 1, line: li, end: dir > 0 ? 1 : 0 });
         left -= Math.abs(s1 - s);
-        const nx = net.next(li, dir > 0 ? 1 : 0);
+        const nx = net.next(li, dir > 0 ? 1 : 0, true);
         if (!nx) break;
         li = nx[0]; dir = nx[1] === 0 ? 1 : -1; s = dir > 0 ? 0 : L[li].len;
       }
@@ -640,8 +645,9 @@ window.OECars = (function () {
   // bends, for the end, and for anything in its way (others: [{ x, y, half }], judged against
   // where its own lane will be when it gets there, so a car parked at the kerb or coming the
   // other way is no obstacle), and pulls in to the kerb at the end. from: 'kerb' if it starts at
-  // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now.
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15 } = {}) {
+  // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now. With
+  // opts.lights (junctions.js) and route.nodes, it stops at the line for a red light and a stop sign.
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, lights = null } = {}) {
     const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
@@ -682,7 +688,25 @@ window.OECars = (function () {
       st.pass = pass;
       return gap;
     }
-    function update(dt, others = []) {
+    // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
+    const halted = new Set();
+    function lineGap() {
+      if (!lights || !route.nodes) return Infinity;
+      for (const nd of route.nodes) {
+        const sN = P.cum[Math.min(nd.k, P.cum.length - 1)];
+        if (sN - st.s > 90) break;
+        const a = lights.armAt(nd.line, nd.end);
+        if (!a) continue;
+        const toLine = sN - a.back - st.s;
+        if (toLine < C.half - 0.5) continue; // over its line already
+        const lt = lights.light(a);
+        if (a.sign === 'stop' && st.v < 0.3 && toLine - C.half < 2.5) halted.add(nd.k);
+        const stop = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < toLine - C.half - 0.3) || (a.sign === 'stop' && !halted.has(nd.k));
+        return stop ? toLine - C.half + 2.6 : Infinity;
+      }
+      return Infinity;
+    }
+    function update(dt, others = [], obey = true) {
       if (st.done) { st.v = 0; st.brake = false; return; }
       // how fast: the limit (or the cruise), bends ahead, the end of the route, the gap ahead
       P.pos(st.s, q);
@@ -690,7 +714,7 @@ window.OECars = (function () {
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       const left = P.len - st.s;
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
-      const gap = gapAhead(others);
+      const gap = Math.min(gapAhead(others), obey ? lineGap() : Infinity);
       want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
