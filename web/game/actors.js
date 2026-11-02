@@ -305,12 +305,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return best;
     }
-    function next(i, end) { // another line meeting line i's end (0 start, 1 end)
-      const l = L[i], k = end ? l.pts.length / 3 - 1 : 0;
-      const opts2 = (nodes.get(key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(o => o[0] !== i);
+    function next(i, end) { // another line meeting line i's end (0 start, 1 end), not one to avoid
+      const l = L[i], k = end ? l.pts.length / 3 - 1 : 0, av = api.avoid;
+      const opts2 = (nodes.get(key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(o => o[0] !== i && !(av && av[o[0]]));
       return opts2.length ? opts2[Math.floor(rnd() * opts2.length)] : null;
     }
-    return { L, at, near, nearest, next };
+    // avoid: per line, 1 for a line no one should be put on or turn into (a road through a
+    // building, which route.js finds); set by the game once it knows
+    const api = { L, at, near: (x, y, rMin, rMax) => (api.avoid ? near(x, y, rMin, rMax).filter(i => !api.avoid[i]) : near(x, y, rMin, rMax)), nearest, next, avoid: null };
+    return api;
   }
 
   // ------------------------------------------------------------ the crowd

@@ -88,6 +88,28 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); g.advance(0.2); } });
   if (!talk.none) check(await p.evaluate(() => !window.__game.dlg.open), 'the conversation runs to its end');
 
+  // the gold route to the farthest NPC a walker can reach: drawn on ground a walker can stand on all
+  // the way (not through a building); it stays set for the helicopter and the car below
+  const route = await p.evaluate(async () => {
+    const g = window.__game;
+    for (let i = 0; i < 600 && !g.ways.ready; i++) await new Promise(r => setTimeout(r, 500));
+    if (!g.ways.ready) return { ready: false };
+    const me = { x: g.player.x, y: g.player.y, z: g.player.z };
+    const n = g.npcs.slice().sort((a, b) => Math.hypot(b.x - me.x, b.y - me.y) - Math.hypot(a.x - me.x, a.y - me.y)).find(q => g.ways.walk(me, q));
+    if (!n) return { ready: true, none: true };
+    g.waypoint([n.x, n.y]);
+    g.advance(0.5);
+    const q = g.guide();
+    let len = 0;
+    if (q.pts) for (let i = 1; i < q.pts.length; i++) len += Math.hypot(q.pts[i][0] - q.pts[i - 1][0], q.pts[i][1] - q.pts[i - 1][1]);
+    const where = [];
+    if (q.pts) g.ways.blockedMetres(q.pts, where);
+    return { ready: true, to: n.name, len, blocked: where.run || 0, drawn: !!q.pts && g.gold.mesh.visible, stats: g.ways.stats() };
+  });
+  check(route.ready, `the route network is built${route.stats ? ` (${route.stats.edges} stretches in ${route.stats.ms} ms of work)` : ''}`);
+  check(route.ready && !route.none && route.drawn && route.blocked < 1.5, route.none ? 'no NPC a walker can reach' : `the gold route to ${route.to} on foot (${(route.len || 0).toFixed(0)} m; at most ${(route.blocked || 0).toFixed(1)} m at a time where a walker can't stand)`);
+  await shot('route');
+
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
     const g = window.__game;
@@ -100,10 +122,12 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(2.6);
     const shut = g.heli.st.door, z0 = g.heli.st.z;
     g.advance(8, ['Space']);
-    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut };
+    const q = g.guide();
+    return { mode: g.player.mode, climbed: g.heli.st.z - z0, open, shut, flight: q.pts ? Math.max(...q.pts.map(p => p[2])) : null };
   });
   check(heli.none || (heli.open > 0.9 && heli.shut === 0), heli.none ? 'no helicopter' : `climbs in through the door (open ${(heli.open || 0).toFixed(2)}, then shut)`);
   check(heli.none || (heli.mode === 'heli' && heli.climbed > 10), heli.none ? 'no helicopter' : `flies the helicopter (climbed ${(heli.climbed || 0).toFixed(1)} m)`);
+  check(heli.none || route.none || (heli.flight != null && heli.flight > 20), heli.none ? 'no helicopter' : `the gold route in the air to a place to land${heli.flight != null ? ` (up to ${heli.flight.toFixed(0)} m)` : ''}`);
   await shot('heli');
 
   // back down, and out the same way
@@ -140,7 +164,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(0.3);
     g.enterCar();
     for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
-    const r = { inCar: g.player.mode === 'car', head: c.C.clearance(g.player.rig, 'driver'), top: 0 }, a = [st.x, st.y];
+    g.advance(0.5);
+    const q = g.guide();
+    const r = { inCar: g.player.mode === 'car', head: c.C.clearance(g.player.rig, 'driver'), top: 0, road: q.pts ? q.pts.length : 0 }, a = [st.x, st.y];
     for (let i = 0; i < 8; i++) { g.advance(0.5, ['KeyW']); r.top = Math.max(r.top, st.speed); }
     r.moved = Math.hypot(st.x - a[0], st.y - a[1]);
     // the brakes while it goes forward (held at a standstill, S reverses), then the handbrake
@@ -155,6 +181,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     return r;
   });
   check(car.none || car.inCar, car.none ? 'no car' : 'gets into your car at the driver\'s door');
+  check(car.none || route.none || car.road > 1, car.none ? 'no car' : 'the gold route by road, from the car');
   check(car.none || car.head == null || car.head > 0, car.none ? 'no car' : `at the wheel, the head is under the roof (${car.head == null ? 'not measured' : `${car.head.toFixed(2)} m`})`);
   check(car.none || (car.top * 3.6 > 15 && car.moved > 5), car.none ? 'no car' : `drives your car (${(car.top * 3.6).toFixed(0)} km/h, ${car.moved.toFixed(0)} m in 4 s)`);
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);

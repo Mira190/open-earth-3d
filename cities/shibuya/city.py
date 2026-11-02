@@ -35,6 +35,7 @@ import numpy as np
 from shapely.geometry import Point, Polygon
 
 import adkit as ad
+import screens
 from meshkit import Mesh
 
 HAIDEN = "須賀大神 稲荷大神"       # the OSM name of Suga Shrine's hall (its two kami), as Overture spells it
@@ -1234,8 +1235,9 @@ def landmark_assets(out_dir, scene):
     draw_shrine_items(img, d, rects, rng)
     draw_extra(img, d, rects, rng)
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
-    screen_sheet().save(os.path.join(out_dir, "screens.jpg"), quality=86)
-    return ["atlas.jpg", "screens.jpg"]
+    CROSSING.sheet().save(os.path.join(out_dir, "screens.jpg"), quality=86)
+    EAST.sheet().save(os.path.join(out_dir, "screens_east.jpg"), quality=86)
+    return ["atlas.jpg", "screens.jpg", "screens_east.jpg"]
 
 
 ATLAS_KEYS = ["ema_front"] + [f"ema_w{i}" for i in range(len(WISHES))] + [f"ema_pink{i}" for i in range(len(PINKS))]
@@ -1567,21 +1569,7 @@ def draw_compass(d, rect):
     d.text((cx, cy + 16), "SHIBUYA SKY 229 m", font=font("dot", 16), fill=(200, 210, 220), anchor="mm")
 
 
-def facing_edges(g, toward, min_len=3.0):
-    """Exterior edges of polygon g, best facing the point `toward` first: (score, midpoint, outward normal, length)."""
-    cs = np.asarray(g.exterior.coords)
-    ccw = g.exterior.is_ccw
-    out = []
-    for a, b in zip(cs[:-1], cs[1:]):
-        e = b - a
-        L = float(np.linalg.norm(e))
-        if L < min_len:
-            continue
-        n = np.array([e[1], -e[0]]) / L if ccw else np.array([-e[1], e[0]]) / L
-        mid = (a + b) / 2
-        dirn = unit(np.asarray(toward) - mid)
-        out.append((float(n @ dirn) * min(L, 30.0), mid, n, L))
-    return sorted(out, key=lambda r: -r[0])
+facing_edges = screens.facing_edges
 
 
 def front_to_road(ctx, g, roads):
@@ -2005,7 +1993,9 @@ def districts_meshes(lm):
     if "center_gai" in lm:
         center_gai_gate(K, lm["center_gai"])
     if "scramble" in lm:
-        led_screens(K, crossing_screens(lm))
+        CROSSING.meshes(K, lm["scramble"]["node"])
+    if "kabukicho_gate" in lm:   # the Shinjuku end of the model
+        EAST.meshes(K, EAST_EXIT, face="screens_east")
         crossing_signs(K, lm)
         toyoko_site(K, lm)
         qfront_glass(K)
@@ -2055,70 +2045,17 @@ _BLD = {}
 
 def buildings_json():
     """The built city (web/data/shibuya/buildings.json): its named buildings' solids, for the anchors of
-    things fixed to their facades after the scene is built."""
-    if "b" not in _BLD:
-        import json
-        B = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "shibuya", "buildings.json")))
-        solids = {}
-        for bi, base, mn, top, ring, *holes in B["s"]:
-            r = np.asarray(ring, float).reshape(-1, 2) / 10.0
-            solids.setdefault(bi, []).append({"ring": r, "base": base / 10.0, "min": mn / 10.0, "top": top / 10.0})
-        _BLD["b"], _BLD["s"], _BLD["s_list"] = B["b"], solids, B["s"]
-    return _BLD
-
-
-def building_index(key):
-    """A building in buildings.json by its name, or by its OpenStreetMap id ("w123...") when it has none."""
-    B = buildings_json()
-    field = 6 if key[:1] in "wr" and key[1:].isdigit() else 0
-    return [i for i, b in enumerate(B["b"]) if b[field] == key]
+    things fixed to their facades after the scene is built (pipeline/screens.py)."""
+    return screens.buildings("shibuya")
 
 
 def facade(name, toward, near=None, pick=0, min_len=4.0, edge=None):
-    """The face of a building (by name or OpenStreetMap id) that best faces the point `toward`: (midpoint,
-    outward normal, length, ground z, top z). `near` picks among buildings of the same name (the closest);
-    pick takes the next best face. `edge`, two points, gives the face itself, for a front the footprint
-    rounds off (its normal is the side towards `toward`)."""
-    B = buildings_json()
-    idx = building_index(name)
-    if near is not None:
-        idx.sort(key=lambda i: min(np.hypot(*(s["ring"].mean(0) - near)) for s in B["s"].get(i, [])))
-    solids = B["s"].get(idx[0], [])
-    if edge is not None:
-        a, b = np.asarray(edge, float)
-        n = left_of(unit(b - a))
-        if n @ (np.asarray(toward) - (a + b) / 2) < 0:
-            n = -n
-        top = max(solids, key=lambda q: q["top"])
-        return (a + b) / 2, n, float(np.linalg.norm(b - a)), top["base"], top["base"] + top["top"]
-    # the faces of the building's outline (its solids overlap, and a face inside it is no face), each
-    # as high as the tallest solid behind it
-    from shapely.ops import unary_union
-    polys = [(Polygon(q["ring"]).buffer(0), q) for q in solids]
-    outline = unary_union([g for g, _ in polys if g.area >= 20])
-    best = []
-    for g in getattr(outline, "geoms", [outline]):
-        for sc, mid, n, L in facing_edges(g.simplify(0.3), toward, min_len):
-            inside = Point(*(np.asarray(mid) - np.asarray(n) * 0.6))
-            behind = [q for gq, q in polys if gq.buffer(0.3).contains(inside)] or [max(solids, key=lambda q: q["top"])]
-            q = max(behind, key=lambda q: q["base"] + q["top"])
-            best.append((sc * (1 + 0.02 * (q["top"] - q["min"])), mid, n, L, q["base"], q["base"] + q["top"]))
-    best.sort(key=lambda r: -r[0])
-    _, mid, n, L, z0, z1 = best[pick]
-    return np.asarray(mid), np.asarray(n), L, z0, z1
+    return screens.facade("shibuya", name, toward, near, pick, min_len, edge)
 
 
 def place(sc, node):
-    """Where a screen or sign of CROSSING_SCREENS / CROSSING_SIGNS goes: (centre of its foot on the face,
-    outward normal, along-face unit vector, foot z, ground z, top of the building)."""
-    toward = np.asarray(sc.get("toward", node), float)
-    mid, n, L, z0, z1 = facade(sc["building"], toward, sc.get("near"), sc.get("pick", 0), edge=sc.get("edge"))
-    t = np.array([-n[1], n[0]])
-    if sc.get("roof"):
-        base = z1 + sc.get("lift", 1.2)
-    else:
-        base = z0 + sc["z"] if sc["z"] >= 0 else z1 + sc["z"] - sc["h"]   # above the street, or down from the roof
-    return mid + t * sc.get("along", 0.0), n, t, base, z0, z1
+    """Where a screen or sign of CROSSING_SCREENS / CROSSING_SIGNS goes (pipeline/screens.py place)."""
+    return screens.place("shibuya", sc, node)
 
 
 SYNCHRO7 = ["game", "live", "shoe", "soda"]   # one playlist and one clock: the seven faces play as one
@@ -2440,21 +2377,175 @@ def screen_clip_index(name):
     return [c for c, _ in SCREEN_CLIPS].index(name)
 
 
+CROSSING = screens.ScreenSet("shibuya", CROSSING_SCREENS, SCREEN_CLIPS, MATERIALS["screens"], sync=("sync", SCREEN_SYNC["period_s"], SCREEN_SYNC["length_s"]),
+                             cell=SCREEN_CELL, seed=1999)
+
+
 def crossing_screens(lm):
     """Every screen round the crossing, placed: centre of its foot, outward normal, size, programme."""
-    if "screens" in _BLD:
-        return _BLD["screens"]
-    node = np.asarray(lm["scramble"]["node"], float)
-    out = []
-    for sc in CROSSING_SCREENS:
-        c, n, t, base, z0, z1 = place(sc, node)
-        out.append({"name": sc["name"], "at": c, "normal": n, "w": sc["w"], "h": sc["h"], "z0": base, "ground": z0,
-                    "clips": [screen_clip_index(k) for k in sc["clips"]], "hours": sc.get("hours", [9, 24]),
-                    "sync": 1 if sc.get("sync", True) else 0, "pitch": sc.get("pitch", 0.016), "bright": sc.get("bright", 1.0),
-                    "phase": sc.get("phase", 0.0), "off": sc.get("off", 0.6), "frame": sc.get("frame", 0.35), "roof": sc.get("roof", False),
-                    "parts": sc.get("parts", [[0.0, 1.0, 0.0, 1.0]]), "top": z1})
-    _BLD["screens"] = out
-    return out
+    return CROSSING.placed(lm["scramble"]["node"])
+
+
+# ---------------------------------------------------------------- Shinjuku's east exit: its screens
+#
+# Over the plaza at the east exit, Cross Shinjuku Vision bends round the corner of the Cross Shinjuku
+# building (新宿区新宿3-23-18): a curved screen 18.96 x 8.16 m (154.71 m2), 6 mm pitch, on its roof
+# (Cross Space; AV Watch, 1 July 2021). It is famous for pictures drawn for its bend, which seem to
+# stand out of it from the plaza; the ones here are drawn for this model (a goldfish tank, a wave),
+# not the operator's. Up Yasukuni-dori, Unica Vision: three screens of 13.12 x 7.38 m (10 mm pitch,
+# renewed November 2024) on the rounded front of the Shinjuku Unica building (新宿3-23-7), towards
+# Seibu-Shinjuku station, playing 7:00-1:00 (Unica). Which way the screens bend and stand, and their
+# heights on the walls, are from photographs; the Cross Shinjuku building's footprint is
+# OpenStreetMap's w153133263 and its corner over the plaza the foot of the screen.
+
+EAST_EXIT = (420.0, 2600.0)   # the plaza the screens are drawn to be seen from
+CROSS_PATH = [[382.6, 2677.8], [388.7, 2673.6], [393.37, 2684.21]]   # the foot of the bend, left to right from the plaza
+CROSS_FOLD = 7.41 / 19.0      # where the bend is, across the picture
+SHINJUKU_SCREENS = [
+    {"name": "Cross Shinjuku Vision", "building": "クロス新宿ビル", "path": CROSS_PATH, "round": 1.6, "w": 18.96, "h": 8.16, "roof": True, "lift": 0.6,
+     "clips": ["goldfish", "music", "wave", "movie"], "phase": 0.0, "pitch": 0.006, "off": 0.5, "hours": [7, 24], "sync": False},
+    {"name": "Unica Vision 1", "building": "新宿ユニカビル", "edge": [[393.1, 2771.8], [406.0, 2769.3]], "w": 13.12, "h": 7.38, "z": -4.0,
+     "clips": ["live", "music", "shinjuku", "movie"], "phase": 0.0, "pitch": 0.01, "hours": [7, 1], "toward": [380.0, 2830.0], "off": 0.8, "sync": False},
+    {"name": "Unica Vision 2", "building": "新宿ユニカビル", "edge": [[377.6, 2771.4], [390.5, 2772.3]], "w": 13.12, "h": 7.38, "z": -4.0,
+     "clips": ["live", "music", "shinjuku", "movie"], "phase": 0.0, "pitch": 0.01, "hours": [7, 1], "toward": [380.0, 2830.0], "off": 0.8, "sync": False},
+    {"name": "Unica Vision 3", "building": "新宿ユニカビル", "edge": [[365.2, 2762.1], [375.1, 2770.4]], "w": 13.12, "h": 7.38, "z": -4.0,
+     "clips": ["live", "music", "shinjuku", "movie"], "phase": 0.0, "pitch": 0.01, "hours": [7, 1], "toward": [330.0, 2810.0], "off": 0.8, "sync": False},
+]
+MATERIALS["screens_east"] = dict(MATERIALS["screens"], map="screens_east.jpg")
+
+
+def tank(img, fold, deep="#04284a", wall="#0a5d8c", floor="#c9a86a"):
+    """A glass tank seen through the bent screen: its walls run back from the screen's edges to a back
+    wall behind the bend, so the bend reads as the tank's front corner; a lit rim round the edge."""
+    w, h = img.size
+    y0, y1 = h * 0.19, h * 0.81                      # the band the screen shows (its picture is cropped to its shape)
+    bx0, bx1, by0, by1 = w * (fold - 0.2), w * (fold + 0.24), h * 0.36, h * 0.62
+    ad.gradient(img, deep, wall, 90)
+    d = ad.ImageDraw.Draw(img)
+    d.polygon([(0, y1), (w, y1), (bx1, by1), (bx0, by1)], fill=ad.rgb(floor))                       # the sand
+    d.polygon([(0, y0), (w, y0), (bx1, by0), (bx0, by0)], fill=ad.rgb("#0d6fa6"))                   # the surface, from below
+    d.polygon([(0, y0), (bx0, by0), (bx0, by1), (0, y1)], fill=ad.rgb("#07476e"))                  # the side walls
+    d.polygon([(w, y0), (bx1, by0), (bx1, by1), (w, y1)], fill=ad.rgb("#0a5a88"))
+    d.rectangle([bx0, by0, bx1, by1], fill=ad.rgb("#0b77b0"))                                       # the back wall
+    for k in range(7):                                                                              # weed on the sand
+        x = bx0 + (bx1 - bx0) * (k + 0.5) / 7
+        d.line([(x, by1), (x + h * 0.02 * math.sin(k), by1 - h * (0.06 + 0.03 * (k % 3)))], fill=ad.rgb("#2f9a5a"), width=int(h * 0.012))
+    for k in range(6):                                                                              # light through the surface, in soft shafts
+        x = w * (0.08 + 0.17 * k)
+        ad.glow(img, lambda d, x=x: d.polygon([(x - h * 0.03, y0), (x + h * 0.03, y0), (x + h * 0.16, y1), (x + h * 0.04, y1)], fill=(120, 200, 230)), h * 0.04, 0.22, sharp=False)
+    for x0, x1 in ((0, fold * w), (fold * w, w)):                                                   # the rim of each face
+        d = ad.ImageDraw.Draw(img)
+        d.rectangle([x0 + h * 0.01, y0, x1 - h * 0.01, y1], outline=ad.rgb("#d7eef8"), width=int(h * 0.022))
+    d.line([(fold * w, y0), (fold * w, y1)], fill=ad.rgb("#eaf8ff"), width=int(h * 0.01))           # the front corner
+
+
+def goldfish(img, cx, cy, L, ang=0.0, body="#ff6a1a", fin="#ff8a3a"):
+    """A goldfish, L long, head towards `ang` (degrees, 0: to the right), fins half see-through."""
+    from PIL import Image
+    S = int(L * 2)
+    lay = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    d = ad.ImageDraw.Draw(lay)
+    c = S / 2
+    fa = ad.rgb(fin) + (185,)
+    d.polygon([(c - L * 0.22, c), (c - L * 0.62, c - L * 0.3), (c - L * 0.5, c), (c - L * 0.66, c + L * 0.28)], fill=fa)   # the tail
+    d.polygon([(c - L * 0.05, c - L * 0.16), (c + L * 0.1, c - L * 0.36), (c + L * 0.16, c - L * 0.14)], fill=fa)          # the dorsal fin
+    d.polygon([(c + L * 0.02, c + L * 0.14), (c - L * 0.08, c + L * 0.3), (c + L * 0.14, c + L * 0.16)], fill=fa)
+    d.ellipse([c - L * 0.3, c - L * 0.17, c + L * 0.32, c + L * 0.17], fill=ad.rgb(body) + (255,))
+    over = Image.new("RGBA", (S, S), (0, 0, 0, 0))   # shading laid over the body (ImageDraw replaces, not blends)
+    body_mask = lay.getchannel("A").point(lambda a: 255 if a == 255 else 0)
+    d = ad.ImageDraw.Draw(over)
+    d.ellipse([c - L * 0.26, c + L * 0.02, c + L * 0.28, c + L * 0.17], fill=(200, 50, 10, 150))                         # the belly in shadow
+    d.ellipse([c - L * 0.12, c - L * 0.14, c + L * 0.26, c - L * 0.03], fill=(255, 214, 150, 150))                       # the light on its back
+    for k in range(5):                                                                                                    # scales
+        x = c - L * 0.18 + k * L * 0.07
+        d.arc([x - L * 0.04, c - L * 0.08, x + L * 0.04, c + L * 0.02], 270, 90, fill=(255, 190, 120, 110), width=max(1, int(L * 0.008)))
+    over.putalpha(Image.fromarray(np.minimum(np.asarray(over.getchannel("A")), np.asarray(body_mask))))
+    lay.alpha_composite(over)
+    d = ad.ImageDraw.Draw(lay)
+    d.ellipse([c + L * 0.17, c - L * 0.07, c + L * 0.25, c + L * 0.01], fill=(250, 250, 250, 255))
+    d.ellipse([c + L * 0.195, c - L * 0.05, c + L * 0.235, c - L * 0.01], fill=(10, 10, 10, 255))
+    if math.cos(math.radians(ang)) < 0:   # swimming to the left: mirrored, not upside down
+        lay, ang = lay.transpose(Image.FLIP_LEFT_RIGHT), 180.0 - ang
+    lay = lay.rotate(ang, resample=Image.BICUBIC)
+    base = img.convert("RGBA")
+    base.alpha_composite(lay, (int(cx - c), int(cy - c)))
+    img.paste(base.convert("RGB"))
+
+
+def k_goldfish_a(img, rng):
+    w, h = img.size
+    tank(img, CROSS_FOLD)
+    for x, y, L, a in ((0.62, 0.48, 0.1, 160), (0.72, 0.55, 0.08, 10), (0.3, 0.44, 0.07, -15)):
+        goldfish(img, w * x, h * y, h * L * 2.2, a, "#ff7a22" if a > 0 else "#f04a1a")
+    goldfish(img, w * (CROSS_FOLD - 0.02), h * 0.53, h * 0.62, 195, "#ff5a10")   # coming out over the corner
+    ad.bokeh(img, rng, 26, ["#e9fbff"], h * 0.006, h * 0.02, 0.6)
+    ad.text(img, (w * 0.86, h * 0.75), "新宿 金魚", "zen", h * 0.05, "#e9fbff")
+
+
+def k_goldfish_b(img, rng):
+    w, h = img.size
+    tank(img, CROSS_FOLD)
+    goldfish(img, w * (CROSS_FOLD + 0.06), h * 0.5, h * 1.0, 205, "#ff5a10")       # its head through the glass
+    for _ in range(14):                                                                # the bubbles it blows
+        x, y, r = w * (CROSS_FOLD + rng.uniform(-0.12, 0.02)), h * rng.uniform(0.2, 0.45), h * rng.uniform(0.01, 0.035)
+        d = ad.ImageDraw.Draw(img)
+        d.ellipse([x - r, y - r, x + r, y + r], outline=ad.rgb("#f0fdff"), width=max(2, int(r * 0.25)))
+    ad.text(img, (w * 0.84, h * 0.3), "GOLDFISH", "bebas", h * 0.09, "#ffffff", spacing=h * 0.02)
+
+
+def k_wave_a(img, rng):
+    w, h = img.size
+    tank(img, CROSS_FOLD, deep="#021b2e", wall="#06506e", floor="#0b3a52")
+    d = ad.ImageDraw.Draw(img)
+    pts = [(x, h * (0.62 - 0.12 * math.exp(-((x / w - CROSS_FOLD) / 0.18) ** 2) + 0.02 * math.sin(x / w * 25))) for x in np.linspace(0, w, 80)]
+    d.polygon(pts + [(w, h * 0.81), (0, h * 0.81)], fill=ad.rgb("#0f8fb8"))
+    ad.glow(img, lambda d: d.line(pts, fill=ad.rgb("#e8fbff"), width=int(h * 0.02)), h * 0.02, 0.8)
+    ad.text(img, (w * 0.84, h * 0.3), "WAVE", "bebas", h * 0.1, "#dff7ff", spacing=h * 0.03)
+
+
+def k_wave_b(img, rng):
+    w, h = img.size
+    tank(img, CROSS_FOLD, deep="#021b2e", wall="#06506e", floor="#0b3a52")
+    d = ad.ImageDraw.Draw(img)
+    f = w * CROSS_FOLD
+    # a breaker rising from the right and curling over the corner towards the plaza: its back, its
+    # hollow face, the lip thrown forward and the spray off it
+    back = [(w, h * 0.7), (f + w * 0.3, h * 0.6), (f + w * 0.12, h * 0.36), (f, h * 0.24)]
+    lip = [(f - w * 0.06, h * 0.25), (f - w * 0.12, h * 0.33), (f - w * 0.14, h * 0.44)]
+    face = [(f - w * 0.08, h * 0.5), (f - w * 0.02, h * 0.62), (f - w * 0.2, h * 0.81)]
+    d.polygon(back + lip + face + [(w, h * 0.81)], fill=ad.rgb("#0e7fa6"))
+    d.polygon([(f + w * 0.12, h * 0.36), (f, h * 0.24)] + lip + [(f - w * 0.06, h * 0.42), (f + w * 0.06, h * 0.42)], fill=ad.rgb("#4cc4e0"))
+    d.polygon([(f - w * 0.14, h * 0.44), (f - w * 0.08, h * 0.5), (f - w * 0.02, h * 0.62), (f + w * 0.02, h * 0.5)], fill=ad.rgb("#063a55"))   # the hollow
+    ad.glow(img, lambda d: d.line(back[1:] + lip, fill=ad.rgb("#f2fdff"), width=int(h * 0.03), joint="curve"), h * 0.03, 0.9)
+    ad.bokeh(img, rng, 110, ["#ffffff", "#d6f6ff"], h * 0.004, h * 0.016, 0.9)        # the spray
+    ad.blob(img, (f - w * 0.1, h * 0.3), h * 0.22, "#ffffff", 0.5)
+
+
+def k_shinjuku_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#e86a2a", "#ffd08a", 90)
+    ad.blob(img, (w * 0.24, h * 0.42), h * 0.5, "#fff1b8", 1.1)
+    d = ad.ImageDraw.Draw(img)
+    d.ellipse([w * 0.24 - h * 0.12, h * 0.42 - h * 0.12, w * 0.24 + h * 0.12, h * 0.42 + h * 0.12], fill=(255, 236, 160))
+    ad.text(img, (w * 0.64, h * 0.22), "新宿の天気", "zen", h * 0.1, "#ffffff")
+    ad.text(img, (w * 0.64, h * 0.45), "晴れのち曇り", "dela", h * 0.13, "#ffffff", max_w=w * 0.6)
+    ad.text(img, (w * 0.64, h * 0.7), "17° / 10°", "bebas", h * 0.18, "#ffffff")
+    d.rectangle([0, h * 0.86, w, h], fill=(90, 30, 10))
+    ad.text(img, (w / 2, h * 0.93), "降水確率 20%  ・  北西の風  ・  日の入 16:41", "zen", h * 0.05, "#ffe9d6")
+
+
+def k_shinjuku_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#1d2a6b", "#3d5bd9", 90)
+    ad.text(img, (w / 2, h * 0.3), "路上喫煙は、やめましょう。", "zen", h * 0.11, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.52), "No smoking on the streets of Shinjuku.", "bebas", h * 0.09, "#dfe6ff", max_w=w * 0.9)
+    ad.stripes(img, (w * 0.1, h * 0.7, w * 0.9, h * 0.84), "#ffffff", 8, 0.0)
+    ad.text(img, (w / 2, h * 0.93), "新宿区 SHINJUKU CITY", "zen", h * 0.05, "#dfe6ff")
+
+
+EAST_CLIPS = [("goldfish", [k_goldfish_a, k_goldfish_b]), ("wave", [k_wave_a, k_wave_b]), ("music", [k_music_a, k_music_b]),
+              ("live", [k_live_a, k_live_b]), ("movie", [k_movie_a, k_movie_b]), ("shinjuku", [k_shinjuku_a, k_shinjuku_b])]
+EAST = screens.ScreenSet("shibuya", SHINJUKU_SCREENS, EAST_CLIPS, MATERIALS["screens_east"], cell=SCREEN_CELL, seed=2116)
 
 
 def crossing_signs(K, lm):
@@ -2679,76 +2770,6 @@ def crossing_wall_signs(K, lm):
                 v = -w / 2 + w * (k + 0.5) / 3
                 K("steel_dark").tube([P(0.15, v, z0 + h + 0.1), P(1.2, v, z0 + h + 0.45)], 0.035, 4)
                 block(K("lamp", "lit"), P, 1.05, 1.4, v - 0.16, v + 0.16, z0 + h + 0.3, z0 + h + 0.48)
-
-
-def led_screens(K, scr):
-    """Each screen: its LED face, whose texture coordinates carry the screen's number (u's integer part)
-    for world.js to play its programme, on a dark frame standing off the wall, or on a steel frame on the
-    roof; an irregular screen is the parts of its box (its picture runs across the whole box)."""
-    F = K("screens")
-    for i, s in enumerate(scr):
-        n, w, h, z0 = s["normal"], s["w"], s["h"], s["z0"]
-        c = s["at"] + n * s["off"]
-        P = frame(c, n)
-        fw = s["frame"]
-        if s["roof"]:   # a roof screen stands back from the parapet on legs, braced behind
-            P = frame(s["at"] - n * 2.0, n)
-            for v in np.linspace(-w / 2 + 0.8, w / 2 - 0.8, max(2, int(w / 4.5) + 1)):
-                K("steel_dark").tube([P(-0.3, v, s["top"] - 0.3), P(-0.3, v, z0 + h)], 0.16, 6)
-                K("steel_dark").tube([P(-3.0, v, s["top"] - 0.3), P(-0.3, v, z0 + h * 0.7)], 0.1, 4)
-            block(K("screen_frame"), P, -0.7, 0.12, -w / 2 - 0.3, w / 2 + 0.3, z0 - 0.3, z0 + h + 0.3)
-        elif fw > 0:
-            block(K("screen_frame"), P, -s["off"], 0.12, -w / 2 - fw, w / 2 + fw, z0 - fw, z0 + h + fw)
-        for u0, u1, v0, v1 in s["parts"]:   # left to right seen from in front
-            a, b = P(0.125, -w / 2 + u0 * w, z0), P(0.125, -w / 2 + u1 * w, z0)
-            F.quad(a + [0, 0, v0 * h], b + [0, 0, v0 * h], b + [0, 0, v1 * h], a + [0, 0, v1 * h],
-                   [[i + max(u0, 0.0005), v0], [i + min(u1, 0.9995), v0], [i + min(u1, 0.9995), v1], [i + max(u0, 0.0005), v1]])
-
-
-def screen_material(scr):
-    """The "led_screen" pattern's programme for these screens (world.js)."""
-    cols, cell = 4, SCREEN_CELL
-    rows = math.ceil(len(SCREEN_CLIPS) * 2 / cols)
-    W, H = cols * cell[0], 2048
-    m = dict(MATERIALS["screens"])
-    m.update({"sheet": [cols, rows, cell[0] / W, cell[1] / H], "frames": 2, "cell_aspect": round(cell[0] / cell[1], 4), "frame_s": 4.0,
-              "sync": [screen_clip_index("sync"), SCREEN_SYNC["period_s"], SCREEN_SYNC["length_s"]],
-              "screens": [[round(s["w"] / s["h"], 4), round(s["phase"], 2), sum(1 << c for c in s["clips"]), len(set(s["clips"])), s["hours"][0], s["hours"][1], s["bright"],
-                           s["sync"], round(s["h"], 2), s["pitch"], 0, 0] for s in scr]})
-    return m
-
-
-def screen_sheet():
-    """The keyframes of every clip, in a 2048-pixel square (screens.jpg)."""
-    import adkit
-    from PIL import Image
-    img, lay = adkit.draw_sheet(SCREEN_CLIPS, cols=4, cell=SCREEN_CELL, seed=1999)
-    sheet = Image.new("RGB", (img.size[0], 2048), (0, 0, 0))
-    sheet.paste(img, (0, 0))
-    return sheet
-
-
-def screen_glows(scr, sheet):
-    """The light each screen throws on the street in front of it: a pool in the mean colour of its
-    programme, as wide as the screen is high above the street, and as strong as it is large."""
-    arr = np.asarray(sheet, np.float32) / 255.0
-    cols, cw, ch = 4, SCREEN_CELL[0], SCREEN_CELL[1]
-    out = []
-    for s in scr:
-        cells = [k * 2 + f for k in s["clips"] for f in (0, 1)]
-        lin = np.mean([(arr[(c // cols) * ch:(c // cols + 1) * ch, (c % cols) * cw:(c % cols + 1) * cw] ** 2.2).mean((0, 1)) for c in cells], 0)
-        lin = 0.55 * lin / max(lin.max(), 1e-6) + 0.45 * np.array([1.0, 0.86, 0.72])   # many pictures over an evening: their colour, mostly
-        col = "#" + "".join(f"{int(min(255, 255 * (v / max(lin.max(), 1e-6)) ** (1 / 2.2))):02x}" for v in lin)
-        rise = s["z0"] + s["h"] / 2 - lm_ground(s)
-        g = s["at"] + s["normal"] * (0.6 * rise + 4.0)
-        area = s["w"] * s["h"] * sum((u1 - u0) * (v1 - v0) for u0, u1, v0, v1 in s["parts"])
-        out.append([round(float(g[0]), 1), round(float(g[1]), 1), round(max(s["w"] * 1.1, rise * 1.2, 18.0), 1), col,
-                    round(min(0.9, 0.0016 * area * s["bright"] * float(lin.mean() / max(lin.max(), 1e-6)) + 0.08), 3), *s["hours"]])
-    return out
-
-
-def lm_ground(s):
-    return s.get("ground", s["z0"] - 3.0)
 
 
 # ---------------------------------------------------------------- SHIBUYA SKY, on Shibuya Scramble Square
@@ -3010,17 +3031,20 @@ def landmark_meshes(scene):
         meshes += sky_meshes(lm["shibuya_sky"])
     mats = dict(MATERIALS)
     if "scramble" in lm:
-        mats["screens"] = screen_material(crossing_screens(lm))
+        mats["screens"] = CROSSING.material(lm["scramble"]["node"])
+    if "kabukicho_gate" in lm:
+        mats["screens_east"] = EAST.material(EAST_EXIT)
     return mats, meshes
 
 
 def landmark_glows(scene):
-    """The light the crossing's screens throw on the street (web/night.js)."""
+    """The light the screens of the crossing and of Shinjuku's east exit throw on the street (web/night.js)."""
     lm = scene["landmarks"]
     if "scramble" not in lm:
         return []
     square = [[round(x, 1), round(y, 1), 10.0, "#fff1dc", 0.16] for x, y in HACHIKO_LAMPS]   # the square's lamps, all night
-    return screen_glows(crossing_screens(lm), screen_sheet()) + square
+    east = EAST.glows(EAST_EXIT) if "kabukicho_gate" in lm else []
+    return CROSSING.glows(lm["scramble"]["node"]) + square + east
 
 
 def sky_surfaces(s):

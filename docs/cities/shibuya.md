@@ -274,6 +274,34 @@ screens face (both estimated from photographs); the outline of Scramble Square's
 screen, which is stepped here; the trees and night lighting of Hachiko Square; the colours of
 the Center Gai arch; and where Scramble Square's colour lighting is on the tower.
 
+## 6b. Shinjuku's east exit after dark
+
+The same kit (`pipeline/screens.py`, `pipeline/adkit.py`) lights the plaza at Shinjuku's east
+exit, in the north of the model. Its screens have a sheet of their own (`screens_east.jpg`,
+2048 × 1024, six clips) and a material of their own (`screens_east`).
+
+| Screen | Where | Size | Source |
+|---|---|---|---|
+| Cross Shinjuku Vision | the roof of the Cross Shinjuku building (新宿3-23-18, OpenStreetMap w153133263), bent round its corner over the plaza | 18.96 × 8.16 m, 154.71 m², 6 mm pitch | [AV Watch](https://av.watch.impress.co.jp/docs/news/1337489.html), [DIME](https://dime.jp/genre/1179382/) |
+| Unica Vision, three screens | the rounded front of the Shinjuku Unica building (新宿3-23-7) towards Yasukuni-dori and Seibu-Shinjuku station | 13.12 × 7.38 m each, 10 mm pitch since November 2024; 7:00-1:00 | Unica and Sekishin media sheets, [DreamNews](https://www.dreamnews.jp/press/0000240807/) |
+
+- **The bend.** Cross Shinjuku Vision is one screen bent round a corner, built as a strip along
+  its foot line with the corner rounded (`path`, `round`): about 7.4 m on the face to the south
+  and 11.6 m on the face to the east, its picture running across the bend.
+- **Pictures drawn for the bend.** The screen is known for pictures that seem to stand out of it
+  from the plaza, above all a 3D cat, which is the operator's and is not copied. In its place, a
+  goldfish tank whose back wall stands behind the bend, so that the bend reads as the tank's front
+  corner, with a fish swimming out over it; and a wave breaking over the corner. Between them
+  the screen plays the same invented music and film adverts as Shibuya's.
+- **Unica Vision's three screens** play together (one phase), and their light stays on past
+  midnight: `web/night.js` takes a screen's hours across midnight (7:00-1:00).
+
+What could not be checked: the height of the Cross Shinjuku building (16.9 m in OpenStreetMap,
+which also gives it 11 floors, so it is probably taller: the screen stands on the 16.9 m roof,
+in front of its western neighbour's wall, and the 新宿オカダヤ building to the east hides the far
+end of the bend from some of the plaza); how long each leg of the bend is; how the Unica screens are spaced round their front and
+how high up it they are (estimated from photographs).
+
 ## 7. Tokyo Pilgrimage
 
 The game is a walk, not a survey. Aoi, a pilgrimage guide at Hachiko, welcomes you;
