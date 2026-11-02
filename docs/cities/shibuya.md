@@ -186,9 +186,8 @@ characters, logos, invented shops or interface. What is built:
   crossings share nodes with the roads around the junction, and drawn as 0.45 m
   zebra bars. Hachiko sits on his pedestal (the statue since 1948), with its
   plaque.
-- **Center Gai's arch**, lit after dark; **SHIBUYA109**'s vertical sign; the big
-  screens on QFRONT, MAGNET by SHIBUYA109, the station-front building and Seibu,
-  showing original stand-in pictures, not adverts.
+- **Center Gai's arch**, lit after dark, and **SHIBUYA109**'s vertical sign. The big
+  screens are in section 6a.
 - **Sangenjaya**, the triangle between Setagaya-dori and Route 246: the front of a
   snack bar the game's café is drawn on (New Marina), the bathhouse Chiyo-no-yu
   with its noren, the coin laundry and vending machines beside it, the meat shop on
@@ -199,10 +198,109 @@ characters, logos, invented shops or interface. What is built:
 - **Signs.** About 1,560 shop signs on street fronts in the districts. They are
   indicative, not the real shops' signs.
 
+- **The crossing after dark** is section 6a.
+
 Two things are left out on purpose: the Godzilla head on the Toho building and
 Okamoto Taro's mural *Myth of Tomorrow* in the station passage are artworks the
 model does not reproduce. The green Aoi-gaeru train car that stood by Hachiko until
 2020 has gone to Odate and is not shown.
+
+## 6a. The crossing after dark, as it stands in 2026
+
+![From Hachiko at 20:15: Q'S EYE and its banner on QFRONT's glass, SHIBUYA TSUTAYA, Q'S WALL, the Nishimura banner, Rakuten Vision and the arch](../images/shibuya/crossing-night.jpg)
+
+| The scramble from the air at 20:15 | CROSSING LIGHT over SHIBUYA SKY, 20:31 |
+|---|---|
+| ![](../images/shibuya/crossing-aerial-night.jpg) | ![](../images/shibuya/crossing-light.jpg) |
+| **Hachiko Square, the hoarding round the Toyoko site behind it** | |
+| ![](../images/shibuya/hachiko-night.jpg) | |
+
+The scramble is lit by its screens. Each one stands on its own building at its published size,
+and plays a programme drawn for this model. The brands, music, films and games are invented, and
+the ward's notices are generic. The screens play from 9:00 to midnight, as the operators run
+them, and are dark after that.
+
+| Screen | Where | Size (w × h) | Source |
+|---|---|---|---|
+| Q'S EYE, and its banner screen | NW, built into QFRONT's glass over the diagonal | 12.96 × 7.289 m, banner 12.96 × 5.33 m | Tokyu OOH media sheet (spec of 15 Aug 2025) |
+| Rakuten Vision (formerly Mighty Vision, DHC Channel) | W corner, Taiseido building at Center Gai's mouth | 10.24 × 5.76 m | Mainichi Kokoku sheet, 2024 |
+| Shibuya Ekimae Vision, and its banner screen | SW, roof of the Shibuya Ekimae building | 21.6 × 12.144 m over 21.6 × 4.176 m | Tokyu OOH; traffic news, 2018 |
+| Shibuhachi Hit Vision | SW, roof of the Oto building, south of it | 24.32 × 17.28 m | HIT |
+| Starts Vision SHIBUYA (formerly Glico Vision) | NE, top of the Sanzenri building beside MAGNET | 6.356 × 3.456 m | Shibuya Television |
+| 109 Forum Vision, and its banner screen | NE, MAGNET by SHIBUYA109 | 8.64 × 4.8 m | media sheet |
+| Shibuya Scramble Square Vision | SE, lower floors of the east tower, behind its glass | 552.6 m² in a 25.24 × 40.05 m box; 13.79 × 20.24 m on the east face | Tokyu OOH; Panasonic |
+| Shibuya Nishiguchi Sky Vision (May 2026) | W, roof of the Shibuya Mitsubishi building | 15.2 × 11.4 m | Shibuya Television |
+| Synchro7 | E, seven faces on three buildings at Miyamasuzaka-shita | not published: estimated | HIT |
+
+- **Together.** The five screens in the standard synchronised slot (Q'S EYE, the Ekimae vision,
+  Rakuten, Starts and 109 Forum) play the same clip together. The real slot is 15 seconds, four
+  times an hour; the model runs it for 18 seconds every two and a half minutes, so a visit
+  catches it. Synchro7's seven faces always play as one.
+- **Lit signs.** These are lit from outside:
+  - QFRONT's Q'S WALL prints, on both glass side walls (the real lamps: 11 and 8).
+  - The Ekimae building's 25 × 4 m vertical board.
+  - The Nishimura building's 7.6 × 14.6 m banner.
+  - MAGNET's 18.25 × 3.71 m banner and a wall ad.
+
+  These are lit boxes:
+  - MAGNET's name over its corner, in words and not its logo.
+  - SHIBUYA TSUTAYA's name on QFRONT (placement estimated).
+  - SHIBU HACHI BOX, the ward's tourist information on Hachiko Square since October 2020.
+
+  The trades' stacked signs (袖看板) and lit prints on the fronts round the crossing are
+  indicative.
+- **Light on the street.** Each screen throws a pool of light on the street in front of it, in
+  the mean colour of its programme. No street-lamp pole stands in the scramble.
+- **The old Tokyu Toyoko site.** The West and South buildings behind Hachiko closed in 2020 and
+  have been pulled down. The South building was gone by January 2026. The second phase of Shibuya
+  Scramble Square has been building on the site since May 2025, due in fiscal 2031. PLATEAU's
+  survey still has the twelve solids standing, and OpenStreetMap has removed them. They are left
+  out here (`landmarks.json` `demolished`), and the site is a construction site: a hoarding with
+  the developer's notice, floodlights and a tower crane. The crane's place and height are
+  illustrative.
+- **Hachiko Square.** Hachiko has faced east, towards the station, since May 1989, when his
+  pedestal was lowered so people could touch him. Metal benches ring him. The station's Hachiko
+  gate moved to the Miyamasuzaka side on 26 January 2025, and the *Hachiko Family* tile relief
+  was taken down from February 2025, so neither is drawn.
+- **SHIBUYA SKY's CROSSING LIGHT.** Its 18 searchlights put on a show from 19:00, on the hour and
+  the half hour, to 22:00 (`light_show` `every`, `until`). Each show's length and the beams'
+  movement are illustrative.
+- **Closed and gone.** Seibu Shibuya's A and B buildings closed at the end of September 2026; no
+  screen or lit sign is drawn on them. Coca-Cola's transparent screen on QFRONT's roof (2020) is
+  not drawn: whether it is still there could not be confirmed.
+
+What could not be checked: how high up its wall most screens sit, and which way the roof
+screens face (both estimated from photographs); the outline of Scramble Square's irregular
+screen, which is stepped here; the trees and night lighting of Hachiko Square; the colours of
+the Center Gai arch; and where Scramble Square's colour lighting is on the tower.
+
+## 6b. Shinjuku's east exit after dark
+
+The same kit (`pipeline/screens.py`, `pipeline/adkit.py`) lights the plaza at Shinjuku's east
+exit, in the north of the model. Its screens have a sheet of their own (`screens_east.jpg`,
+2048 × 1024, six clips) and a material of their own (`screens_east`).
+
+| Screen | Where | Size | Source |
+|---|---|---|---|
+| Cross Shinjuku Vision | the roof of the Cross Shinjuku building (新宿3-23-18, OpenStreetMap w153133263), bent round its corner over the plaza | 18.96 × 8.16 m, 154.71 m², 6 mm pitch | [AV Watch](https://av.watch.impress.co.jp/docs/news/1337489.html), [DIME](https://dime.jp/genre/1179382/) |
+| Unica Vision, three screens | the rounded front of the Shinjuku Unica building (新宿3-23-7) towards Yasukuni-dori and Seibu-Shinjuku station | 13.12 × 7.38 m each, 10 mm pitch since November 2024; 7:00-1:00 | Unica and Sekishin media sheets, [DreamNews](https://www.dreamnews.jp/press/0000240807/) |
+
+- **The bend.** Cross Shinjuku Vision is one screen bent round a corner, built as a strip along
+  its foot line with the corner rounded (`path`, `round`): about 7.4 m on the face to the south
+  and 11.6 m on the face to the east, its picture running across the bend.
+- **Pictures drawn for the bend.** The screen is known for pictures that seem to stand out of it
+  from the plaza, above all a 3D cat, which is the operator's and is not copied. In its place, a
+  goldfish tank whose back wall stands behind the bend, so that the bend reads as the tank's front
+  corner, with a fish swimming out over it; and a wave breaking over the corner. Between them
+  the screen plays the same invented music and film adverts as Shibuya's.
+- **Unica Vision's three screens** play together (one phase), and their light stays on past
+  midnight: `web/night.js` takes a screen's hours across midnight (7:00-1:00).
+
+What could not be checked: the height of the Cross Shinjuku building (16.9 m in OpenStreetMap,
+which also gives it 11 floors, so it is probably taller: the screen stands on the 16.9 m roof,
+in front of its western neighbour's wall, and the 新宿オカダヤ building to the east hides the far
+end of the bend from some of the plaza); how long each leg of the bend is; how the Unica screens are spaced round their front and
+how high up it they are (estimated from photographs).
 
 ## 7. Tokyo Pilgrimage
 
@@ -270,7 +368,7 @@ its size).
   closest: its step count, width, length and handrails are published.
 - 9.9% of the footprint area has an estimated height. Look for the green tint under
   **Height sources**.
-- Shop signs, screens and shop fronts are indicative.
+- Shop signs and shop fronts are indicative; the screens' programmes are invented.
 - The searchlights' times and movement are illustrative.
 
 ## 10. Reproducing it
@@ -310,6 +408,23 @@ python blender/build_scene.py --city shibuya
 - Kabukicho's arch: [Sanshin Shoji](https://san-tatsu.jp/pressrelease/462363/),
   [Wikipedia](https://www.wikiwand.com/en/articles/Kabukicho).
 - The ginkgo avenue at Jingu Gaien: [Minato City](https://www.city.minato.tokyo.jp/kouhou/kuse/koho/konjaku/konjaku19.html).
+- The crossing's screens and signs: [Wikipedia (ja), 渋谷スクランブル交差点](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9),
+  the media sheets at [ooh-cmedia.com](https://www.ooh-cmedia.com/media/shibuya-synchronized-broadcast/)
+  ([Q'S EYE](https://www.ooh-cmedia.com/media/qs-eye/), [Ekimae Vision](https://www.ooh-cmedia.com/media/shibuya-station-front-vision/),
+  [Starts Vision](https://www.ooh-cmedia.com/media/starts-vision-shibuya/), [109 Forum Vision](https://www.ooh-cmedia.com/media/shibuya-109forum-vision/),
+  [Scramble Square Vision](https://www.ooh-cmedia.com/media/shibuya-scramble-square-vision/), [Q'S WALL](https://www.ooh-cmedia.com/media/shibuya-qs-wall/),
+  [Ekimae long board](https://www.ooh-cmedia.com/media/shibuya-ekimae-bldg-long-board/), [Nishimura building](https://www.ooh-cmedia.com/media/shibuya-nishimura-bld/),
+  [MAGNET wall jack](https://www.ooh-cmedia.com/media/shibuya-magnet-by-shibuya109-wall-jack/)),
+  [HIT: Shibuhachi Hit Vision](https://www.hit-ad.co.jp/digital-billboards/shibuyaled.html) and [Synchro7](https://www.hit-ad.co.jp/digital-billboards/synchro7_shibuya.html),
+  [Shibuya Television: west exit Sky Vision](https://www.sib.tv/news/10408/), [Panasonic](https://www2.panasonic.biz/jp/solution/outside/works/ShibuyaSSVision.html),
+  [traffic news, 2018](https://trafficnews.jp/post/82440), [AdverTimes](https://www.advertimes.com/?p=494293).
+- The Toyoko site and Phase II: [traffic news](https://trafficnews.jp/post/548718), [traffic news](https://trafficnews.jp/post/653174);
+  Seibu Shibuya's closing: [Fashionsnap](https://www.fashionsnap.com/article/2026-03-25/seibu-shibuya-close/).
+- Hachiko Square: [Wikipedia (ja), 忠犬ハチ公](https://ja.wikipedia.org/wiki/%E5%BF%A0%E7%8A%AC%E3%83%8F%E3%83%81%E5%85%AC),
+  [san-tatsu](https://san-tatsu.jp/collects/381997/), [SHIBU HACHI BOX](https://travel.watch.impress.co.jp/docs/news/1276219.html),
+  [the Hachiko gate's move](https://tabiris.com/?p=54640), [the relief](https://www.tokyoartbeat.com/articles/-/hachiko-family-news-202501).
+- CROSSING LIGHT: [enjoytokyo](https://www.enjoytokyo.jp/article/202710/), [nippon.com](https://www.nippon.com/en/articles/-/17056),
+  [Impress Watch](https://www.watch.impress.co.jp/docs/news/1214693.html).
 - *Persona 5*'s Tokyo and the real places: [Kotaku](https://kotaku.com/persona-5s-in-game-locations-compared-to-the-real-world-1787125885),
   [TheGamer](https://www.thegamer.com/persona-5-locations-visit-real-world-counterparts/),
   [Megami Tensei Wiki: Yongen-Jaya](https://megatenwiki.com/wiki/Yongen-Jaya),

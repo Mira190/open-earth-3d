@@ -11,12 +11,13 @@ Writes web/data/<city>/game.json:
             beach shelves gently, rock steeply, a seawall drops to 4 m at once
   paths     footways for pedestrians and roads for traffic, as 3D polylines in
             decimetres with their class; bridge parts follow the city's deck surfaces, tunnel parts
-            are dropped (Overture road flags and levels)
+            are dropped (Overture road flags and levels); a one-way road carries its direction
+            (pipeline/road_rules.py)
   surfaces  walkable surfaces above the terrain from the city's game_surfaces hook
   wharves   ferry berths next to the Overture ferry terminals named in city.json
   ferries   routes found by a shortest path through open water, kept clear of land
             and piers, then smoothed
-  helipads, props (benches and street lamps), npcs and quests (positions snapped to
+  helipads, props (benches, street lamps, traffic signals and signs), npcs and quests (positions snapped to
   open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
@@ -51,6 +52,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 import night_lights
+import road_rules
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
 from shore import QUAY_SHELF_M, depth_at, from_png
 from cityctx import city_args, polygons
@@ -134,7 +136,7 @@ def main():
 
     # ---------------------------------------------------------- paths
     foot, roads, n_tunnel, n_bridge = [], [], 0, 0
-    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, wkb"):
+    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, access_restrictions, wkb"):
         if r["subtype"] != "road" or (r["class"] not in FOOT and r["class"] not in ROAD):
             continue
         g = C.to_local(swkb.loads(bytes(r["wkb"])))
@@ -188,7 +190,8 @@ def main():
                     foot.append({"c": r["class"], "p": pts})
                 if r["class"] in ROAD:
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
-                    roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts})
+                    way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
+                    roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
     print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
 
     # ---------------------------------------------------------- wharves and helipads
@@ -396,7 +399,7 @@ def main():
         ferries.append({"route": f["route"], "stops": stops, "vessels": f.get("vessels", ["Ferry"]), "legs": legs})
 
     # ---------------------------------------------------------- props
-    props = {"bench": [], "street_lamp": []}
+    props = {"bench": [], "street_lamp": [], **{k: [] for k in road_rules.SIGNS}}  # the signals and signs: the traffic's junctions
     for r in rows(con, raw("infrastructure"), "class, wkb"):
         if r["class"] in props:
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
@@ -540,6 +543,8 @@ def main():
         x, y, z = hp["at"]
         near = water & (np.hypot(gx - x, gy - y) < 14.0)
         ground_grid[near] = np.maximum(ground_grid[near], max(z, 0.0))
+    if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
+        ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
@@ -572,7 +577,7 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars", "signals") if k in gcfg}
     # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
     if C.hook("game_extras"):
         for k, v in C.hook("game_extras")(scene).items():

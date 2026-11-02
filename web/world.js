@@ -45,6 +45,10 @@ window.OEWorld = (function () {
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
     const CITY = scene.city;
+    // buildings demolished since the survey (landmarks.json "demolished": solid indices): not drawn, and
+    // flat in the surface model, so nothing stands, shades or blocks the way where they stood
+    for (const si of (LM && LM.demolished) || []) if (B.s[si]) B.s[si][3] = B.s[si][2];
+    if (LM && LM.demolished) scene.hidden_solids = (scene.hidden_solids || []).concat(LM.demolished);
     S.site({ lat: CITY.lat, lon: CITY.lon, tz: CITY.timezone, locale: CITY.locale });
     S.roofs(B); // surface models follow the pitched roofs
     const ti = new Int16Array(terrBuf);
@@ -142,13 +146,15 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     },
     // a curtain wall (u metres along the facade, v metres up): panes between mullions every bay_m,
     // a spandrel at the foot of each storey_m, pane tones that vary, and some panes lit after dark
+    // (lit_share of them, lit_k bright: a shop's glass is mostly lit and softer than an office's)
     curtain_wall(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: m.spandrel || 0.25 },
-          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT });
+          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT,
+          uLitShare: { value: m.lit_share ?? 0.38 }, uLitK: { value: m.lit_k ?? 1.3 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uBay, uSty, uSpan, uMull, uLmNight; uniform vec3 uFrame; float pWin, pLit;
+uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK; uniform vec3 uFrame; float pWin, pLit;
 float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
@@ -163,11 +169,11 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     float sf = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv)); // the storey's spandrel band
     vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
     diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);
-    float litFar = mix(0.6 * step(0.74, cwHash(cf + 17.0)) * (1.0 - sf), 0.13, vfar);
-    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.62, cwHash(cell + 17.0)), litFar, far); }`)
+    float litFar = mix(0.6 * step(1.0 - 0.68 * uLitShare, cwHash(cf + 17.0)) * (1.0 - sf), 0.34 * uLitShare, vfar);
+    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(1.0 - uLitShare, cwHash(cell + 17.0)) * (0.85 + 0.3 * cwHash(cell + 3.0)), litFar, far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * 1.3;`);
+  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * uLitK;`);
       };
     },
     // a riveted iron lattice cut out of a panel (u metres across, v metres up): a strut at the
@@ -226,14 +232,41 @@ float lh(vec2 p) { p = fract(p * vec2(127.1, 311.7)); p += dot(p, p + 19.19); re
     diffuseColor.rgb *= mix(0.9, 0.7 + 0.38 * crown * mix(0.8, 1.0, lap), near); }`);
       };
     },
+    // the Opera House's glass walls (u counts the mullions across the wall, v metres up): topaz
+    // panes on bronze mullions with a thinner one between, transoms every transom_m, each pane its
+    // own reflection; after dark the foyers light it from inside, pane by pane, the frames dark
+    topaz_glass(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uFrame: { value: lin(m.frame || '#4a3a2a') }, uTransom: { value: m.transom_m || 2.7 } });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform vec3 uFrame; uniform float uTransom; float pFrame, pLitK;
+float tgHash(vec2 c) { return fract(sin(dot(c, vec2(27.17, 113.93))) * 31718.927); }`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+  { float u = vUv.x, z = vUv.y, fu = fwidth(u), fz = fwidth(z);
+    float mull = 1.0 - smoothstep(0.035, 0.035 + fu, abs(fract(u + 0.5) - 0.5));
+    float sec = 1.0 - smoothstep(0.014, 0.014 + fu, abs(fract(u) - 0.5));
+    float tr = 1.0 - smoothstep(0.05, 0.05 + fz, abs(fract(z / uTransom + 0.5) - 0.5) * uTransom);
+    float far = smoothstep(0.12, 0.5, max(fu * 5.0, fz / uTransom * 2.0));
+    pFrame = mix(max(max(mull, 0.8 * sec), tr), 0.2, far);
+    vec2 cell = floor(vec2(u * 2.0, z / uTransom));
+    diffuseColor.rgb = mix(diffuseColor.rgb * mix(0.8 + 0.4 * tgHash(cell), 1.0, far), uFrame, pFrame);
+    pLitK = (1.0 - pFrame) * mix(0.5 + 0.5 * tgHash(cell + 3.1), 0.75, far); }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.45, pFrame);')
+          .replace('#include <metalnessmap_fragment>', '#include <metalnessmap_fragment>\n  metalnessFactor = mix(metalnessFactor, 0.55, pFrame);')
+          .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= pLitK;');
+      };
+    },
     // dressed stone in courses (u metres along the wall, v metres up): each course its own height
     // of block, each block its own length and tone, the joints dark; far away, the mean
+    // On a seawall (v metres above the sea) the tidal band: dark weed and wet stone from the water up to
+    // high water, drying paler above it.
     ashlar(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
-        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 } });
+        Object.assign(sh.uniforms, { uCourse: { value: m.course_m || 0.7 }, uBlock: { value: m.block_m || 1.4 }, uTide: { value: m.tide ? 1 : 0 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uCourse, uBlock;
+uniform float uCourse, uBlock, uTide; float pWet;
 float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.743); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float row = floor(vUv.y / uCourse), fy = fract(vUv.y / uCourse);
@@ -243,10 +276,87 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     float joint = 1.0 - smoothstep(0.02, 0.04 + fw, min(min(fx, 1.0 - fx) * len, min(fy, 1.0 - fy) * uCourse));
     float near = 1.0 - smoothstep(0.08, 0.35, fw);
     float tone = 0.84 + 0.28 * ashHash(vec2(row, floor(x)));
-    diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near); }`);
+    diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near);
+    pWet = 0.0;
+    if (uTide > 0.5) { // high water about 0.9 m up, ragged with the weed; a pale salt line just above it
+      float hw = 0.85 + 0.12 * sin(vUv.x * 1.7) + 0.08 * sin(vUv.x * 5.3 + 1.0);
+      pWet = 1.0 - smoothstep(hw - 0.25, hw + 0.05, vUv.y);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.32, 0.34, 0.27), pWet);
+      diffuseColor.rgb *= 1.0 + 0.1 * (smoothstep(hw, hw + 0.15, vUv.y) - smoothstep(hw + 0.2, hw + 0.6, vUv.y));
+    } }`)
+          .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(roughnessFactor, 0.35, pWet);');
+      };
+    },
+    // big LED screens playing their programmes ("led_screen"): the integer part of u picks the
+    // screen in m.screens, its fraction runs across it, v runs up it. The material's map is a sheet
+    // of keyframes, m.sheet = [columns, rows, cell width, cell height] (fractions of the image),
+    // m.frames keyframes to a clip, each held m.frame_s seconds. Each screen, [aspect, phase s,
+    // playlist (a bit mask over the clips), clips in it, on hour, off hour, brightness, sync, height m,
+    // pixel pitch m], plays its clips in turn, a slow push into
+    // each keyframe and a wipe to the next, and those with sync join the others every m.sync =
+    // [clip, period s, length s] to play the same clip together, as the crossing's screens do. The
+    // picture is light of its own: bright enough to read in the sun, dimmer after dark, off out of
+    // hours, and its LEDs show as a grid of dots from close by.
+    led_screen(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      const S = m.screens, n = S.length, v4 = (i, a) => new THREE.Vector4(...[0, 1, 2, 3].map(j => (S[i] || [])[a + j] || 0));
+      const A = [], Bv = [], Cv = [];
+      for (let i = 0; i < n; i++) { A.push(v4(i, 0)); Bv.push(v4(i, 4)); Cv.push(v4(i, 8)); }
+      const [cols, rows, cw, ch] = m.sheet, [sc, sp, sl] = m.sync || [-1, 1e9, 0];
+      // each site's screens are a program of their own (their count is in the shader, and three.js
+      // would otherwise share one program between materials whose onBeforeCompile reads the same)
+      mat.customProgramCacheKey = () => `led_screen:${n}:${m.frame_s || 4}:${m.cell_aspect || 0}`;
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uScrA: { value: A }, uScrB: { value: Bv }, uScrC: { value: Cv }, uSheet: { value: new THREE.Vector4(cols, rows, cw, ch) },
+          uSync: { value: new THREE.Vector4(sc, sp, sl, m.frames || 1) }, uScrT: SCREEN.t, uScrHour: SCREEN.hour, uScrNight: LM_NIGHT });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform vec4 uScrA[${n}], uScrB[${n}], uScrC[${n}], uSheet, uSync; uniform float uScrT, uScrHour, uScrNight; vec3 pScr;
+// the n-th clip of a playlist (a bit mask over the clips), counting round
+float scrClip(float mask, float n) {
+  float found = 0.0;
+  for (int i = 0; i < 24; i++) {
+    if (mod(floor(mask / exp2(float(i))), 2.0) > 0.5) { if (found == n) return float(i); found += 1.0; }
+  }
+  return 0.0;
+}`)
+          .replace('#include <map_pars_fragment>', `#include <map_pars_fragment>
+vec3 scrCell(float cell, vec2 uv) {
+  float col = mod(cell, uSheet.x), row = floor(cell / uSheet.x);
+  uv = clamp(uv, 0.003, 0.997);
+  return texture2D(map, vec2((col + uv.x) * uSheet.z, 1.0 - (row + 1.0 - uv.y) * uSheet.w)).rgb;
+}`)
+          .replace('#include <map_fragment>', `
+  { int id = int(floor(vUv.x)); vec2 uv = vec2(fract(vUv.x), vUv.y);
+    vec4 A = uScrA[id], B = uScrB[id], C = uScrC[id];
+    float F = uSync.w, D = ${(m.frame_s || 4).toFixed(2)} * F, t = uScrT + A.y, k = floor(t / D), ct = fract(t / D);
+    float clip = scrClip(A.z, mod(k, A.w)), nextClip = scrClip(A.z, mod(k + 1.0, A.w));
+    float st = mod(uScrT, uSync.y);
+    if (B.w > 0.5 && uSync.x >= 0.0 && st < uSync.z) { clip = uSync.x; nextClip = uSync.x; ct = st / uSync.z; }
+    // the cell is cropped to the screen's shape (cover), then pushed into slowly
+    float ca = ${(m.cell_aspect || 16 / 9).toFixed(4)};
+    vec2 cuv = uv;
+    if (A.x > ca) cuv.y = 0.5 + (uv.y - 0.5) * ca / A.x; else cuv.x = 0.5 + (uv.x - 0.5) * A.x / ca;
+    float ft = ct * F, f = floor(ft), fr = fract(ft);
+    vec3 c = scrCell(clip * F + f, 0.5 + (cuv - 0.5) / (1.0 + 0.07 * fr));
+    float w = smoothstep(0.9, 1.0, fr); // the wipe to the next keyframe, along a slant
+    if (w > 0.0) {
+      vec3 c2 = scrCell(f < F - 1.0 ? clip * F + f + 1.0 : nextClip * F, cuv);
+      float edge = (uv.x + 0.35 * uv.y) / 1.35;
+      c = mix(c, c2, step(edge, w * 1.08 - 0.04)) + vec3(0.6) * (1.0 - smoothstep(0.0, 0.02, abs(edge - w * 1.08 + 0.04))) * step(0.01, w) * step(w, 0.99);
+    }
+    float h = uScrHour, on = B.x < B.y ? step(B.x, h) * step(h, B.y) : max(step(B.x, h), step(h, B.y));
+    // the LEDs: a grid of dots at the pixel pitch, seen only from close by
+    vec2 px = vec2(uv.x * A.x, uv.y) * C.x / max(C.y, 0.002);
+    float pw = max(fwidth(px.x), fwidth(px.y)), dots = smoothstep(0.62, 0.3, length(fract(px) - 0.5));
+    float grid = mix(0.35 + 1.3 * dots, 1.0, smoothstep(0.25, 0.7, pw));
+    pScr = c * B.z * mix(2.4, 1.0, uScrNight) * on * grid; // bright enough to read in the sun; dimmed after dark, as they are
+    diffuseColor.rgb = vec3(0.025); }`)
+          .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += pScr;');
       };
     }
   };
+  // the screens' clock (seconds) and the hour, for their schedules (setSun, tick)
+  const SCREEN = { t: { value: 0 }, hour: { value: 12 } };
 
   // The golden hour. With the sun a few degrees up the Preetham sky is a flat grey-beige all round,
   // and so was the haze the city fades into, where the real sky is warm low down towards the sun and
@@ -620,10 +730,44 @@ vec3 photoGrade(vec3 c) {
       const gr = stats.grade();
       if (gr) PG.value.set(gr[0], gr[1], gr[2], 1);
     };
+    // Where the ground is not drawn (landmarks.json "clip", rasterised at half a metre): under a
+    // landmark's paving, which it would show through, and out in front of a seawall, where on a
+    // 5 or 10 m grid it slopes up out of the water between the last point on land and the first in
+    // the water. Walking, the camera and the analyses keep the terrain as it is.
+    const CLIP = (() => {
+      const regions = LM.clip || [];
+      if (!regions.length) return null;
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const c of regions) for (const [x, y] of c.ring) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+      const res = 0.5, w = Math.ceil((x1 - x0) / res) + 2, h = Math.ceil((y1 - y0) / res) + 2;
+      const cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      const g = cv.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, w, h); g.fillStyle = '#fff';
+      for (const c of regions) {
+        g.beginPath();
+        for (const r of [c.ring].concat(c.holes || [])) r.forEach(([x, y], k) => g[k ? 'lineTo' : 'moveTo']((x - x0) / res + 1, (y1 - y) / res + 1));
+        g.fill('evenodd');
+      }
+      const tex = new THREE.CanvasTexture(cv);
+      tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) } };
+    })();
+    const clipGround = sh => {
+      if (!CLIP) return;
+      Object.assign(sh.uniforms, { uClip: CLIP.tex, uClipBox: CLIP.box });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vClipWP;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvClipWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uClip; uniform vec4 uClipBox; varying vec3 vClipWP;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  { vec2 cuv = vec2((vClipWP.x - uClipBox.x) / uClipBox.z, 1.0 - (uClipBox.y + vClipWP.z) / uClipBox.w);
+    if (vClipWP.y > -0.05 && all(greaterThan(cuv, vec2(0.0))) && all(lessThan(cuv, vec2(1.0))) && texture2D(uClip, cuv).r > 0.5) discard; }`); // under the water the ground stays: the sea floor
+    };
     // the ground's photo, graded (photoGrade), and a seawall's face (seawallStep: the steep faces of
     // its lattice) drawn as stone in courses with a dark wet foot instead of the photo stretched down
     // it, and lit by the face's own normal (the lattice's normals keep the quay and the water flat)
     const gradePhoto = sh => {
+      clipGround(sh);
       sh.uniforms.uPhotoGrade = PG;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nattribute float seawall;\nvarying float vSeawall;')
         .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSeawall = seawall;');
@@ -971,18 +1115,23 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
-      if (m.pattern === 'deck_zones' && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { own(sh); streetLit(sh); }; } // a bridge's deck under its lamps
+      // a bridge's deck, or paving ("street_lit"), under the street lights and the screens' glow
+      if ((m.pattern === 'deck_zones' || m.street_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
       if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
+      // three.js caches a program by the text of onBeforeCompile, and wrappers (streetLit) read alike
+      // across patterns: each patterned material keys its own
+      if (lmMats[k].onBeforeCompile) lmMats[k].customProgramCacheKey = () => `lm|${k}`;
     }
     // meshes marked floodlit glow after dark; with emissive_map an image glows in its own colours (a screen, a lit sign)
     // (clone() drops onBeforeCompile and resets the defines, so the copy takes the pattern over explicitly)
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
-    for (const m of LM.meshes || []) {
+      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines),
+      customProgramCacheKey: lmMats[k].onBeforeCompile ? () => `lm|${k}|lit` : lmMats[k].customProgramCacheKey }));
+    const lmGeometry = m => {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
       const g = new THREE.BufferGeometry();
@@ -990,12 +1139,42 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       g.setIndex(m.index);
       if (m.uv) g.setAttribute('uv', new THREE.Float32BufferAttribute(m.uv, 2));
       g.computeVertexNormals();
+      return g;
+    };
+    // small things are drawn only within their "far" (metres): beyond it they are under a pixel
+    const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
+    for (const m of LM.meshes || []) {
+      const g = lmGeometry(m);
       const mesh = new THREE.Mesh(g, m.floodlit ? floodlit(m.material) : lmMats[m.material]);
+      if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far); }
       mesh.castShadow = mesh.receiveShadow = true;
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
       if ((LM.materials[m.material] || {}).opacity < 1) mesh.castShadow = false;
+      if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
       mesh.name = m.name;
       world.add(mesh);
+    }
+    // street furniture (landmarks.json "props"): each kind's parts drawn once, instanced at every
+    // place it stands ([x, y, z, heading, scale across]), one draw call per part
+    const im4 = new THREE.Matrix4(), imQ = new THREE.Quaternion(), imP = new THREE.Vector3(), imS = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+    for (const pr of LM.props || []) {
+      const c = new THREE.Vector3();
+      for (const a of pr.at) c.add(W(a[0], a[1], a[2]));
+      c.divideScalar(pr.at.length);
+      let r = 0;
+      for (const a of pr.at) r = Math.max(r, c.distanceTo(W(a[0], a[1], a[2])));
+      for (const part of pr.parts) {
+        const im = new THREE.InstancedMesh(lmGeometry(part), part.floodlit ? floodlit(part.material) : lmMats[part.material], pr.at.length);
+        pr.at.forEach((a, i) => {
+          imP.set(a[0], a[2], -a[1]); imQ.setFromAxisAngle(UP, a[3]); imS.set(a[4] || 1, 1, a[4] || 1);
+          im.setMatrixAt(i, im4.compose(imP, imQ, imS));
+        });
+        im.computeBoundingSphere();
+        im.castShadow = im.receiveShadow = true;
+        im.name = `${pr.name}_${part.name}`;
+        farAt(im, c, r + 10, pr.far || 600);
+        world.add(im);
+      }
     }
 
     // ------------------------------------------------------------ after dark (night.js)
@@ -1077,6 +1256,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
         LM_NIGHT.value = U.uNight.value;
+        SCREEN.hour.value = U.uHour.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         // the haze first, then the light from the sky: the environment is drawn with the horizon's
@@ -1139,7 +1319,8 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       setSeason(month, day) { if (trees) trees.setSeason(month, day); },
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
       tick(t, camera) {
-        SPARKLE.t.value = t * 0.001;
+        SPARKLE.t.value = SCREEN.t.value = t * 0.001;
+        if (camera) for (const o of farObjs) o.visible = camera.position.distanceToSquared(o.userData.far.c) < o.userData.far.r2;
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
         if (night && camera) night.update(camera, t / 1000);

@@ -106,7 +106,7 @@ The owner should not be the one who finds the bug.
   everything.
 - The checks don't see what a person sees. For a visual change, take stills on a desktop
   (1440×900) and a phone (390×844), at day, dusk and night, from every new viewpoint the change
-  opens (`tools/city_shot.js`, `tools/page_shot.js`, `tools/reef_shot.js`). Look for blown
+  opens (`tools/city_shot.js`, `tools/game_shot.js` for the game on foot, `tools/page_shot.js`, `tools/reef_shot.js`). Look for blown
   highlights, a grey veil, black frames, flicker between two frames, clipping, anything
   floating, and text left over from another city. Put new characters and models next to the
   existing ones in the same shot. Fix what you see before you report.

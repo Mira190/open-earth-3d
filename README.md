@@ -363,6 +363,7 @@ python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landm
 python analysis/heights.py --city sydney              # published heights vs model
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
+python pipeline/road_rules.py sydney                  # one-way streets and traffic signals into a built game.json (after fetch_overture --only segment infrastructure)
 python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
 python pipeline/fetch_rocketbox.py                    # the surveyors and the NPCs (once; Microsoft Rocketbox, MIT)
 python blender/build_people.py --npcs                 # every NPC the cities' city.json name (pip install bpy==5.2.3)
@@ -444,7 +445,7 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 | `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter, ferries and cars; `build_trees.py` grows the trees) |
-| `tools/` | `check.sh` (the checks to pass before landing on main, picked from what a branch changed), `city_shot.js` (screenshots of the model viewer from listed views), `game_shot.js` (the same for the game, from scripted cameras over its title screen), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `flyover.js` (records a city's loading flyover), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score), `title_check.js` (the title on a tablet, a phone and a desktop, and with WebGL faults injected) |
+| `tools/` | `check.sh` (the checks to pass before landing on main, picked from what a branch changed), `city_shot.js` (screenshots of the model viewer from listed views), `game_shot.js` (stills of the game, on foot or from the air over its title screen), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `flyover.js` (records a city's loading flyover), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score), `title_check.js` (the title on a tablet, a phone and a desktop, and with WebGL faults injected) |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
 ## Data and licences

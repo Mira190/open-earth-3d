@@ -37,9 +37,10 @@ def queries(root):
         "land_use": f"SELECT {simple} FROM {base('base/type=land_use')}",
         "infrastructure": f"SELECT {simple} FROM {base('base/type=infrastructure')}",
         "address": f"SELECT id, number, street, unit, postcode, ST_AsWKB(geometry) AS wkb FROM {base('addresses/type=address')}",
-        # road flags (is_bridge, is_tunnel, ...) and levels place traffic on bridges and hide it in tunnels
-        "segment": f"""SELECT {simple}, road_flags, level_rules, speed_limits[1].max_speed.value AS max_speed_kmh
-            FROM {base('transportation/type=segment')}""",
+        # road flags (is_bridge, is_tunnel, ...) and levels place traffic on bridges and hide it in tunnels;
+        # access restrictions say which streets are one-way (pipeline/road_rules.py)
+        "segment": f"""SELECT {simple}, road_flags, level_rules, speed_limits[1].max_speed.value AS max_speed_kmh,
+            access_restrictions FROM {base('transportation/type=segment')}""",
     }
 
 
