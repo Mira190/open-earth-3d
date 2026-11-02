@@ -17,6 +17,7 @@ import sys
 
 import duckdb
 import numpy as np
+import shapely
 from scipy import ndimage
 from shapely import wkb
 
@@ -63,10 +64,10 @@ def scan(cid, min_cells):
                 continue
             x0, y0, x1, y1 = p.bounds
             xs, ys = np.meshgrid(np.arange(x0 + cell / 2, x1, cell), np.arange(y0 + cell / 2, y1, cell))
-            import shapely
             pts = shapely.points(xs.ravel(), ys.ravel())
             inside = shapely.contains(p, pts)
             mark_pts(xs.ravel()[inside], ys.ravel()[inside], bit)
+
 
     piers = []
     if os.path.exists(raw("infrastructure")):
@@ -93,10 +94,13 @@ def scan(cid, min_cells):
             if cls in floating or under:
                 continue
             mark_poly(C.to_local(wkb.loads(bytes(b))), 2)
-    # a building or a road on a mapped pier stands on its deck, which the scene draws
+    # a building or a road on a pier stands on its deck, which the scene draws (places.json: the
+    # mapped piers and the decks pipeline/shore.py adds)
+    pp = os.path.join(C.out, "places.json")
+    if os.path.exists(pp):
+        from shapely.geometry import Polygon
+        piers += [Polygon(np.asarray(r, float).reshape(-1, 2) / 10) for r in json.load(open(pp))["piers"] if len(r) >= 6]
     if piers:
-        import shapely
-        pm = np.zeros(water.shape, bool)
         from build_scene import raster_mask
         pm = raster_mask(piers, nx, ny, cell, C.x0, C.y1)
         hit[ndimage.binary_dilation(pm, iterations=1)] = 0
