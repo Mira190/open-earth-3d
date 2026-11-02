@@ -25,7 +25,7 @@ as the one accent. The map is drawn at night like a chart table, you a white arr
 | <kbd>E</kbd> | Talk, read a sign, board a boat, fly the helicopter or the amphibian, log an animal for the survey; on a line, go on |
 | <kbd>1</kbd>–<kbd>4</kbd> · <kbd>Enter</kbd> · <kbd>Esc</kbd> | Answer · go on · close |
 | <kbd>J</kbd> | Journal: quests, the survey log, field notes with their sources |
-| <kbd>T</kbd> | Map: the site drawn from the model at the current tide, the reef sites, named places near you, and the way back to the globe |
+| <kbd>T</kbd> | Map: the site drawn from the model at the current tide, the reef sites, the named places nearest you with a Go button each (dry ground nearest the place, or the water over a reef or dive site deep enough to swim in), and the way back to the globe |
 | <kbd>K</kbd> | Time of day: sunrise, morning, noon, golden hour, sunset, blue hour, night or now, and a slider over the whole day |
 | <kbd>F</kbd> | Step off a boat or out of a landed aircraft (the boats' own key) |
 

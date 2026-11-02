@@ -451,7 +451,7 @@ export async function init(ctx) {
     when: ms => fmtDate.format(new Date(ms)),
     waterTemp: depth => waterTemp(new Date(nowMs()), depth || 0),
     wind() { const w = boats && boats.windInfo; return w && w.speed ? { kn: w.speed * 1.944, from: ((w.from / RAD) % 360 + 360) % 360 } : null; },
-    vessels: () => boats ? boats.vessels : [], boats, aboard: () => aboard, boardVessel, putBeside, noBoard: v => noBoard.add(v),
+    vessels: () => boats ? boats.vessels : [], boats, aboard: () => aboard, boardVessel, putBeside, goTo, noBoard: v => noBoard.add(v),
     life, species: speciesList, speciesById, logged: () => Object.keys(st.species).length, logSpecies,
     // quests
     quest: qdef, state: qs, start, advance: advance_, complete, isActive, isDone, stepIndex: id => qs(id) ? qs(id).i : -1, data: id => qs(id) ? qs(id).d : null,
@@ -510,6 +510,7 @@ export async function init(ctx) {
   function panelAct(act, arg) {
     if (act === 'track') { G.track(arg); openPanel('journal'); }
     else if (act === 'travel') { const s = (travel.list || []).find(x => x.id === arg); if (s && s.ready && !s.current) { save(); location.href = siteAt(arg); } }
+    else if (act === 'goto') goTo(arg);
     else if (act === 'time') setTime(arg);
     else if (act === 'globe') toGlobe();
     else if (act === 'reset') { if (confirm('Forget all progress on this site?')) { st = fresh(); save(); for (const r of NPCS.values()) hideNpc(r, false); openPanel('journal'); refreshObjective(true); } }
@@ -599,13 +600,29 @@ export async function init(ctx) {
       <small class="legend"><i class="me">▲</i> you <i class="np">●</i> people <i class="sg">■</i> signs <i class="tg">◆</i> objective</small></div>
       <div><h3>Queensland reef sites</h3><ul class="rg-sites">${sitesHtml(travel.list)}</ul>
       <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span><button class="act" data-act="globe">Back to the globe</button></div>
-      <h3>Named places near you</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
+      <h3>Go to a named place</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
   }
-  // the nearest named places (OpenStreetMap names in scene.json), with distance and bearing from you
+  // the named places (OpenStreetMap names in scene.json), nearest first, with distance and bearing from you and a
+  // Go button: a boat run there in a fade, any time you are not aboard something
+  const PLACE_KINDS = /^(beach|bay|inlet|lookout|island|peak|marina|reef|pontoon|town|cultural|dive)$/;
   function nearHtml() {
-    const KINDS = /^(beach|bay|inlet|lookout|island|peak|marina|reef|pontoon|town|cultural|dive)$/, a = here();
-    return (S.pois || []).map(p => poi(p.id)).filter(p => KINDS.test(p.kind)).map(p => ({ p, d: dist(a, p) })).sort((x, y) => x.d - y.d).slice(0, 6)
-      .map(({ p, d }) => `<li><div class="row"><span>${esc(p.name)}</span><span class="tag">${esc(km(d))} ${dirShort(bearing(a, p))}</span></div></li>`).join('');
+    const a = here();
+    return (S.pois || []).map(p => poi(p.id)).filter(p => p && PLACE_KINDS.test(p.kind)).map(p => ({ p, d: dist(a, p) })).sort((x, y) => x.d - y.d).slice(0, 10)
+      .map(({ p, d }) => `<li><div class="row"><span>${esc(p.name)}</span><span class="tag">${esc(km(d))} ${dirShort(bearing(a, p))}</span>${d > 60 ? `<button class="act" data-act="goto" data-arg="${esc(p.id)}">Go</button>` : ''}</div></li>`).join('');
+  }
+  // where a place puts you: in the water over a reef, dive site or pontoon deep enough to swim in, else on dry
+  // ground (above the tide, gentle enough to stand on) nearest it, facing it
+  function goTo(id) {
+    const p = poi(id);
+    if (!p || !player) return false;
+    if (aboard || ctx.controller !== playerCtl) { if (hud) hud.say('Step off first, then go from the map.', { secs: 4 }); return false; }
+    const wet = /^(reef|dive|pontoon)$/.test(p.kind) && ctx.depth(p.x, p.north) >= 1.5;
+    const spot = wet ? { x: p.x, north: p.north } : landSpot(p.x, p.north, { maxR: 900, toward: p });
+    if (!spot) { if (hud) hud.say(`There is nowhere to stand near ${p.name}.`, { secs: 4 }); return false; }
+    const face = dist(spot, p) > 3 ? bearing(spot, p) : undefined;
+    closePanel();
+    transfer(Object.assign(spot, face !== undefined ? { heading: face } : {}), p.name, wet ? 'In the water over it' : 'A short boat run');
+    return true;
   }
 
   // ------------------------------------------------------------ keys

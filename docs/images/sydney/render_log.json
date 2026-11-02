@@ -20,7 +20,7 @@
    "sky": "MULTIPLE_SCATTERING",
    "samples": 48,
    "resolution": "1600x900",
-   "render_s": 73.5
+   "render_s": 107.4
   },
   "bridge": {
    "date": "2026-3-21",
@@ -43,10 +43,11 @@
    "render_s": 79.3
   }
  },
- "build_s": 3.0,
- "objects": 33,
- "triangles": 621938,
- "buildings": 7962,
+ "build_s": 15.3,
+ "objects": 96,
+ "triangles": 1345880,
+ "buildings": 7945,
+ "roofs": 4137,
  "trees": 6096,
- "total_s": 286.2
+ "total_s": 122.8
 }
