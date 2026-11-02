@@ -1117,8 +1117,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               // needs to there (so that two coming the other way up a narrow street can still pass)
               const q = pk0 + k, qx = pathQ[2 * q], qy = pathQ[2 * q + 1];
               let f = -1;
-              for (const g of [0.7, 0.4, 0]) if (nav.room(qx + (P[2 * k] - qx) * g, qy + (P[2 * k + 1] - qy) * g, c.z, c.hw * 0.8, 1.4, deck)) { f = g; break; }
-              if (f >= 0) { if (k * step < 15) { c.narrow = 1.5; c.narrowF = Math.max(c.narrow > 1.4 ? c.narrowF || 0 : 0, 1 - f); } continue; }
+              for (const g of [0.5, 0.25, 0]) if (nav.room(qx + (P[2 * k] - qx) * g, qy + (P[2 * k + 1] - qy) * g, c.z, c.hw * 0.8, 1.4, deck)) { f = g; break; }
+              if (f >= 0) { if (k * step < 25) { c.narrow = 1.5; c.narrowF = Math.max(c.narrow > 1.4 ? c.narrowF || 0 : 0, 1 - f); } continue; }
               c.wallGap = k * step; break;
             }
           }
