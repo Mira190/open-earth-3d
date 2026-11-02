@@ -781,8 +781,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const cand = roads.behind(pickup, 110, 270, 36);
     for (let k = 0; cand.length < 6 && k < 12; k++) { const pl = roads.around(pickup.x, pickup.y, 120, 280); if (pl) cand.push(pl); } // (a pick-up the search can't leave)
     let best = null;
+    // (not where it would pull out into a car of the traffic, or a queue: one at a crawl or stopped close by)
+    const busy = pl => cars.C.some(c => c.line >= 0 && Math.abs(c.z - (pl.z ?? c.z)) < 3 && Math.hypot(c.x - pl.x, c.y - pl.y) < (c.v < 3 ? 25 : 12));
+    let any = false;
     const pick = list => {
       for (const pl of list) {
+        if (!any && busy(pl)) continue;
         const plan = planRide(pl, pickup);
         if (!plan) continue;
         const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
@@ -796,6 +800,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!best || best.plan.T > RIDE_T[1]) pick(roads.behind(pickup, 40, 110, 24));
     // and in streets as slow as Shibuya's, just round the corner, 15 to 40 m off (out of sight where it can be)
     if (!best || best.plan.T > RIDE_T[1] + 5) pick(roads.behind(pickup, 15, 40, 16));
+    if (!best) { any = true; pick(cand); } // (all of them in the traffic: one of those rather than none)
     return best;
   }
   // the time to the pick-up (or, on the way, to where you're going), as the app shows it
@@ -809,7 +814,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     while (b && b.line != null && b.why === 'car' && b.front && b.v < 1 && n < 8) { b = b.front; n++; }
     const a = /^the line/.test(st.why || '') ? st.lineAt : b && b.line != null && b.why === 'light' ? b.lineArm : null;
     if (a && a.j.sig) return { light: true, t: junctions.toGreen(a) + (a === st.lineAt ? 0 : 1.5 * (n + 1)) };
-    return { light: false, t: Math.max(0, (st.held || 0) - 2) };
+    // (behind a car stuck where it is, at a wall or stopped for good: the driver swings out round it
+    // once it has waited 6 s, cars.js gapAhead)
+    const stuck = st.block && st.block.line != null && st.block.v < 0.1 && (st.block.why === 'wall' || st.block.still > 2);
+    return { light: false, t: stuck ? Math.max(1, 7 - (st.held || 0)) : Math.max(0, (st.held || 0) - 2) };
   }
   const eta = o => {
     if (o.phase !== 'coming') return o.phase === 'driving' ? o.drv.timeLeft() : 0;
