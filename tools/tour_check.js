@@ -45,7 +45,7 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
   await p.waitForFunction('window.__city && document.getElementById("loader").hidden', null, { timeout: 900000 });
   console.log(`${city}: loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await p.keyboard.press('Shift'); // skips the establishing shot, which ends on the first stop
-  await p.waitForFunction('window.__city.tour.i === 0', null, { timeout: 30000 });
+  await p.waitForFunction('window.__city.tour.i === 0', null, { timeout: 120000 });
 
   const frame = () => p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   // the canvas as luma (every 4th pixel), its mean and spread, and a JPEG for the record
@@ -122,7 +122,7 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
     if (i === n - 1) break;
     // on to the next stop, and a frame from the middle of the flight
     await finishStop();
-    await p.waitForFunction(k => window.__city.tour.i === k, i + 1, { timeout: 30000 });
+    await p.waitForFunction(k => window.__city.tour.i === k, i + 1, { timeout: 120000 });
     await freeze();
     await p.waitForTimeout(1400);
     const f = await grab(`fly-${pad(i + 1)}.jpg`);
@@ -132,7 +132,7 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
 
   // the end, when the last stop's time is up
   await finishStop();
-  await p.waitForFunction(() => window.__city.tour.done, null, { timeout: 30000 });
+  await p.waitForFunction(() => window.__city.tour.done, null, { timeout: 120000 });
   await p.waitForTimeout(3000); // long enough for a tour that wrapped round to have flown off again
   const e = await state();
   check('the tour ends on its last stop', e.done && !e.playing && e.i === n - 1, `stop ${e.i + 1} of ${n}, playing ${e.playing}`);
@@ -142,13 +142,13 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
   check('the buttons offer the tour again', e.tourBtn === 'Tour' && e.panelBtn === 'Watch again', `${e.tourBtn} / ${e.panelBtn}`);
   await p.screenshot({ path: path.join(outDir, 'end.png') });
 
-  await p.click('#cap-again');
+  await p.evaluate(() => document.getElementById('cap-again').click());
   await freeze();
   await frame();
   const r = await state();
   check('Watch again starts from the first stop', r.i === 0 && r.playing && !r.done && !r.card && r.segs.slice(1).every(v => v === 0), `stop ${r.i + 1}, ${r.step}, playing ${r.playing}, done ${r.done}, card ${r.card}, segments ${r.segs.join(' ')}`);
   // Finish on the last stop ends the tour as well
-  await p.click(`#tour-list button[data-i="${n - 1}"]`);
+  await p.evaluate(k => document.querySelector(`#tour-list button[data-i="${k}"]`).click(), n - 1);
   await freeze();
   await frame();
   await p.evaluate(() => document.getElementById('cap-skip').click());

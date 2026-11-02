@@ -96,6 +96,7 @@ window.OpenEarthCity = async function main(cityId) {
   // ------------------------------------------------------------ the shared world (world.js)
   const Wd = await OEWorld.create(D, renderer, { onMsg: loadMsg, small: QC.small, shadow: QC.shadow });
   const { world, groundMeshes, buildings, bGeo, U, SRC } = Wd;
+  Wd.envEvery = 250; // the sky's light is rebuilt at most four times a second while the sun eases between tour stops
   const show = window.OELights ? OELights.create(world, D, Wd) : null; // the city's nightly light show, if it has one
   // the title screen's lens (lens.js): the model in the same tone curve, grade, grain and vignette
   // as the Earth on the title, the game and the city's film; plain tone mapping where the device's
@@ -163,7 +164,7 @@ window.OpenEarthCity = async function main(cityId) {
   // than floating over nothing.
   const FR = scene.frame, EF = Wd.edgeFade || 300;
   const smooth01 = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
-  const hazeOut = (x, y) => smooth01(0, EF, Math.hypot(Math.max(Math.abs(x - (FR.x[0] + FR.x[1]) / 2) - ((FR.x[1] - FR.x[0]) / 2 - EF), 0),
+  const hazeOut = (x, y, a = 0, b = EF) => smooth01(a, b, Math.hypot(Math.max(Math.abs(x - (FR.x[0] + FR.x[1]) / 2) - ((FR.x[1] - FR.x[0]) / 2 - EF), 0),
     Math.max(Math.abs(y - (FR.y[0] + FR.y[1]) / 2) - ((FR.y[1] - FR.y[0]) / 2 - EF), 0)));
   for (const l of labels) l.haze = hazeOut(l.p.x, -l.p.z);
   // Labels in priority order (landmarks first); one that would overlap a label already placed
@@ -174,10 +175,12 @@ window.OpenEarthCity = async function main(cityId) {
   const LBL_FAR = 6800; // metres: names fade out over the last 1800 (from 5000 they were faint over the overview)
   function updateLabels() {
     const w = stage.clientWidth, h = stage.clientHeight, placed = [];
+    // as edgeHaze: what is near the camera stays clear, unless the camera is out at the edge itself
+    const camOut = hazeOut(camera.position.x, -camera.position.z, EF * 0.8, EF * 1.5);
     for (const l of order) {
       tmpV.copy(l.p).project(camera);
-      const d = camera.position.distanceTo(l.p);
-      let vis = tmpV.z < 1 && Math.abs(tmpV.x) < 1 && Math.abs(tmpV.y) < 1 && d < LBL_FAR && l.haze < 0.85;
+      const d = camera.position.distanceTo(l.p), haze = l.haze * Math.max(smooth01(150, 600, d), camOut);
+      let vis = tmpV.z < 1 && Math.abs(tmpV.x) < 1 && Math.abs(tmpV.y) < 1 && d < LBL_FAR && haze < 0.85;
       const ax = (tmpV.x * 0.5 + 0.5) * w, y = (-tmpV.y * 0.5 + 0.5) * h;
       let a = 0, x = ax;
       if (vis) {
@@ -188,7 +191,7 @@ window.OpenEarthCity = async function main(cityId) {
         const r = [x - l.w / 2 - 4, y - l.h - 2, x + l.w / 2 + 4, y + 2];
         const room = Math.min(ax, w - ax, r[1] - 8, h - r[3]);
         vis = room > 0 && !placed.some(q => r[0] < q[2] && r[2] > q[0] && r[1] < q[3] && r[3] > q[1]);
-        if (vis) { placed.push(r); a = Math.min(1, (LBL_FAR - d) / 1800, room / 24, 1 - l.haze / 0.85); }
+        if (vis) { placed.push(r); a = Math.min(1, (LBL_FAR - d) / 1800, room / 24, 1 - haze / 0.85); }
       }
       l.shown = vis;
       if (vis) {
