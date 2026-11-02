@@ -355,10 +355,10 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
 #elif defined( OE_SEA_FLOOR )
 	oeWet = 1.0 - smoothstep( -0.4, 0.0, vEdgeY );
 #endif
-	// the water (and what shows through it) fades slowly into the haze of where it is; the land quickly,
-	// and where the edge is much sea at all, into the sea's colour, so a headland the frame cuts sinks
-	// into the water round it rather than lying on it as a pale patch
-	float oeCol = mix( smoothstep( 0.0, 0.35, oeSea ), oeSea, oeWet );
+	// the haze of where it is: the sea's colour wherever the edge is much sea at all, so a headland the
+	// frame cuts sinks into the water round it rather than lying on it as a pale patch; the water (and
+	// what shows through it) fades into it slowly, the land as quickly as ever
+	float oeCol = smoothstep( 0.0, 0.35, oeSea );
 	float oeK = smoothstep( 0.0, mix( ${n(fade)}, ${n(fade * SEA_FADES)}, oeSea * oeWet ), oeOut ) * oeNear;
 	// a distant sea is dark seen from above and, seen low across it or towards a low sun, nearly as bright
 	// as the sky it mirrors
@@ -366,8 +366,8 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
 	oeGraze = max( oeGraze, oeGold.z * max( oeToward, 0.0 ) * max( oeToward, 0.0 ) );
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, ${golden('oeSeaHaze * mix( 0.35, 0.8, oeGraze )')}, oeK * oeCol );
 	// and further out, and further from the eye, the air over that sea thickens into the sky's haze
-	float oeAir = max( smoothstep( ${n(fade * SEA_FADES)}, ${n(fade * SEA_FADES * 3.5)}, oeOut ), oeK * smoothstep( 1500.0, 10000.0, vFogDepth ) );
-	fogFactor = max( fogFactor, min( 1.0, oeK * ( 1.0 - oeCol ) + oeSea * oeNear * oeAir ) );
+	float oeAir = max( smoothstep( ${n(fade * SEA_FADES * 0.5)}, ${n(fade * SEA_FADES * 2.5)}, oeOut ), oeK * smoothstep( 1000.0, 6000.0, vFogDepth ) );
+	fogFactor = max( fogFactor, min( 1.0, oeK * ( 1.0 - oeCol ) + oeCol * oeNear * oeAir ) );
 	gl_FragColor.rgb`).replace('fogColor, fogFactor', `${golden('fogColor')}, fogFactor`);
     return fade;
   }
