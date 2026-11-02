@@ -48,21 +48,21 @@ window.OEBuildings = (function () {
     return out;
   }
   const STYLES = ['plain', 'house', 'terrace', 'apartment', 'office', 'glass', 'heritage', 'retail', 'industrial', 'civic',
-    'machiya', 'mixed', 'stone', 'haussmann', 'grachtenpand'];
+    'machiya', 'mixed', 'stone', 'haussmann', 'grachtenpand', 'wall'];
   const SI = Object.fromEntries(STYLES.map((s, i) => [s, i]));
   // per style: bay width m, window width (share of a bay), sill and head (shares of a storey)
   const GRID = {
     plain: [0, 0, 0, 0], house: [3.3, 0.42, 0.3, 0.8], terrace: [2.8, 0.44, 0.24, 0.86], apartment: [3.0, 0.5, 0.27, 0.86],
     office: [3.0, 0.68, 0.25, 0.9], glass: [1.5, 1.0, 0.0, 1.0], heritage: [3.6, 0.4, 0.22, 0.84], retail: [4.2, 0.42, 0.34, 0.8],
     industrial: [6.0, 0.72, 0.64, 0.88], civic: [3.6, 0.88, 0.32, 0.8], machiya: [1.8, 0.72, 0.3, 0.76], mixed: [2.8, 0.7, 0.22, 0.86],
-    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82], grachtenpand: [2.3, 0.5, 0.12, 0.86],
+    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82], grachtenpand: [2.3, 0.5, 0.12, 0.86], wall: [0, 0, 0, 0],
   };
   // per style: interior depth (bays), frame darkness, glass reflectance (metalness), wall roughness
   const LOOK = {
     plain: [1, 0, 0, 0.9], house: [1.2, 0.55, 0.15, 0.88], terrace: [1.4, 0.6, 0.15, 0.85], apartment: [1.4, 0.45, 0.2, 0.8],
     office: [1.6, 0.4, 0.25, 0.7], glass: [2.6, 0.3, 0.55, 0.45], heritage: [1.3, 0.6, 0.15, 0.9], retail: [1.8, 0.4, 0.15, 0.8],
     industrial: [3, 0.5, 0.1, 0.75], civic: [1.8, 0.4, 0.25, 0.75], machiya: [1, 0.7, 0.02, 0.9], mixed: [1.5, 0.45, 0.2, 0.75],
-    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88], grachtenpand: [1.2, 0.3, 0.18, 0.9],
+    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88], grachtenpand: [1.2, 0.3, 0.18, 0.9], wall: [1, 0, 0, 0.95],
   };
   // regional grids: Japan builds on the 910 mm module (sliding units of 1,690 mm on 1,820 mm bays),
   // machiya fronts are three bays of 1.97 m
@@ -199,6 +199,9 @@ window.OEBuildings = (function () {
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
     const GRIDS = Object.assign({}, GRID, REGION_GRID[region] || {});
     const meta = B.b, hasStyle = (B.fields || []).includes('style');
+    // the pipeline names the field 'style (index in styles)', so hasStyle is false for every city and
+    // styles are guessed (issue 46); a precinct wall (pipeline/walls.py) always takes its own record
+    const styled = (B.fields || []).some(f => /^style\b/.test(f));
     const S = window.Sun;
     const roofOf = new Map((B.r || []).map(r => [r[0], S.unpackRoof(r)]));
     const frontOf = new Map((B.f || []).map(f => {
@@ -210,18 +213,19 @@ window.OEBuildings = (function () {
     // per building: style, storey, ground floor, seed, colours
     const styleList = B.styles || STYLES, matList = B.roof_materials || ROOF_MAT;
     const BI = meta.map((m, i) => {
-      const style = hasStyle ? (typeof m[10] === 'number' ? styleList[m[10]] : m[10]) : guessStyle(m);
-      let storey = hasStyle ? m[11] : 0, ground = hasStyle ? m[12] : 0;
-      if (!storey) {
+      const own = hasStyle || (styled && styleList[m[10]] === 'wall');
+      const style = own ? (typeof m[10] === 'number' ? styleList[m[10]] : m[10]) : guessStyle(m);
+      let storey = own ? m[11] : 0, ground = own ? m[12] : 0;
+      if (!storey && style !== 'wall') {
         const res = /^(house|terrace|apartment)$/.test(style);
         storey = res ? 3.0 : style === 'heritage' ? 4.4 : 3.8;
         ground = storey + (res ? 0 : 0.8);
       }
-      const seed = hasStyle ? m[14] : Math.floor(hash1(i + 1) * 65535);
+      const seed = own ? m[14] : Math.floor(hash1(i + 1) * 65535);
       return { style, si: SI[style] ?? 0, storey, ground, seed, u: (seed % 997) / 997,
         wall: lin(m[7] || '#bdb6aa'), roof: lin(m[8] || '#8d8f8f'),
-        mat: hasStyle ? Math.max(0, ROOF_MAT.indexOf(typeof m[13] === 'number' ? matList[m[13]] : m[13])) : 0,
-        code: SRC[m[4]] ?? 2, windows: style !== 'plain' && style !== 'stone' && m[4] !== 'parametric' };
+        mat: own ? Math.max(0, ROOF_MAT.indexOf(typeof m[13] === 'number' ? matList[m[13]] : m[13])) : 0,
+        code: SRC[m[4]] ?? 2, windows: style !== 'plain' && style !== 'stone' && style !== 'wall' && m[4] !== 'parametric' };
     });
 
     // a 4 m surface model of building tops for the openness bake
@@ -1044,6 +1048,27 @@ window.OEBuildings = (function () {
     // ---------------------------------------------------------------- blank wall, gable, parapet
     vec2 fwn = fwidth(vFac) * vec2(1.3, 2.1);
     diffuseColor.rgb *= 0.95 + 0.1 * mix(vnoise(vFac * vec2(1.3, 2.1) + bidH), 0.5, smoothstep(0.25, 0.6, max(fwn.x, fwn.y)));
+    if (style > 14.5 && style < 15.5) {
+      // a precinct wall (pipeline/walls.py): plaster stained under its coping, the white lines of a
+      // suji-bei (as many as the ground-floor field says) under the eaves, and a plinth of dressed stone
+      float hW = vFac.y, eaveW = vInf.y, nL = floor(vInf.z + 0.5);
+      vec2 fv = max(fwidth(vFac), vec2(1e-4));
+      float near = 1.0 - smoothstep(0.08, 0.3, max(fv.x, fv.y));
+      float stain = smoothstep(0.45, 0.9, vnoise(vec2(vFac.x * 0.9 + bidH, 0.3)));
+      diffuseColor.rgb *= 1.0 - 0.13 * stain * smoothstep(0.4 * eaveW, eaveW, hW) - 0.06 * (1.0 - smoothstep(0.55, 1.4, hW));
+      if (nL > 0.5) {
+        float gap = 0.2, y0 = eaveW - 0.5 - nL * gap, k = (hW - y0) / gap;
+        float inL = step(0.0, k) * step(k, nL);
+        float ln = mix(band(fract(k), 0.3, 0.68, fv.y / gap * 1.5), 0.38, 1.0 - near) * inL;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.85, 0.8), ln);
+      }
+      float plinthW = 1.0 - smoothstep(0.6 - fv.y, 0.6 + fv.y, hW);
+      float joint = max(band(fract(hW / 0.3), 0.0, 0.07, fv.y / 0.3 * 1.5),
+                        band(fract(vFac.x / 0.95 + 0.5 * step(0.5, fract(hW / 0.6))), 0.0, 0.03, fv.x / 0.95 * 1.5)) * near;
+      vec3 stoneW = vec3(0.34, 0.3, 0.25) * (0.88 + 0.24 * vnoise(vFac * vec2(1.1, 3.3) + bidH));
+      diffuseColor.rgb = mix(diffuseColor.rgb, stoneW * (1.0 - 0.4 * joint), plinthW);
+      roughB = 0.95;
+    }
     aoW *= mix(0.75, 1.0, smoothstep(0.0, 3.0, vFac.y));
   } else if (kind < 2.5) {
     // ---------------------------------------------------------------- pitched roof

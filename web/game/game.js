@@ -397,6 +397,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
   const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE });
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
+  // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
+  crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav, posts, junctions });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
@@ -655,7 +657,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     roadNet.at(q.line, q.s, redRq);
     const dir = Math.sin(st.h) * redRq.hx + Math.cos(st.h) * redRq.hy > 0 ? 1 : -1, a = junctions.armAt(q.line, dir > 0 ? 1 : 0);
     const toLine = a ? (dir > 0 ? roadNet.L[q.line].len - q.s : q.s) - a.back : null;
-    if (a && redAt && redAt.a === a && redAt.d > 0 && toLine <= 0 && junctions.light(a) === 'r' && a.j.st === 'g' && clockT - redLast > 20) {
+    if (a && redAt && redAt.a === a && redAt.d > 0 && toLine <= 0 && junctions.light(a) === 'r' && a.j.st === 'g' && a.j.ph !== 2 /* (on the arrow your turn may have its green) */ && clockT - redLast > 20) {
       redLast = clockT;
       H.toast('Careful! That light was red.');
     }

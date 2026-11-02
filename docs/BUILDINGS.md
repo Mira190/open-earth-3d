@@ -181,9 +181,10 @@ stay inside it and stay under its height.
 
 ## 3. Facades
 
-`typology.py` gives each building one of 13 styles: plain, house, terrace,
+`typology.py` gives each building one of 15 styles: plain, house, terrace,
 apartment, office, glass (curtain wall), heritage, retail, industrial, civic,
-machiya, mixed (Japanese mixed use with signs) or stone.
+machiya, mixed (Japanese mixed use with signs), stone, haussmann or grachtenpand;
+`pipeline/walls.py` adds a 16th, wall, for precinct walls.
 
 | Rule | Source |
 |---|---|
@@ -192,6 +193,7 @@ machiya, mixed (Japanese mixed use with signs) or stone.
 | Storey height from the floor count and wall height, capped by style. Above the top floor the rest of the wall is attic or parapet, because a residential floor-count height includes 2.8 m of roof | `storey` model in `city.json` |
 | A taller ground floor (+1.1 m) with a shopfront on edges that face a road within 14 m. Flats and unclassed buildings get shopfronts only on main streets | Overture road segments |
 | Awnings over 80% of Sydney's shopfronts; the street pent roof (hisashi) on machiya | City of Sydney, Kyoto machiya guidance |
+| A precinct wall (`pipeline/walls.py`, a step after `game_data.py`): one unnamed solid of no use class, at most 3.5 m thick on average and at least 80 m long, with no mapped footway along it, is drawn in the `wall` style: no windows or storeys, a stone plinth, plaster stained under its coping. An estimated height becomes a wall's (`walls.height_m`, 4 m); a measured one up to 6 m stands. With `walls.coping: "kawara"` it gets a hipped coping of glazed tiles over a 0.35 m overhang, and inside a `walls.lines` box the white lines of a suji-bei (five round the Kyoto Gosho and Sento Gosho) | OpenStreetMap, PLATEAU; Kyoto Gyoen notices (five lines, stone plinth); Sanjusangen-do's Taiko-bei, 5.3 m |
 
 In the browser, `buildings.js` builds the walls:
 - **Runs.** A ring's edges are grouped into runs between corners sharper than 30°. Each run holds a whole number of bays, with a 0.6 m margin at each end, so no window wraps a corner. Normals are smoothed inside a run, so round towers look round.

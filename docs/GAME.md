@@ -464,6 +464,14 @@ pipeline writes. The only city-specific code is landmark geometry in
     blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 24
     in Kyoto, 86 in Osaka, 55 in Shibuya, 20 in Tokyo and a few elsewhere are
     canopies now.
+  - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
+    the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
+    wide and hundreds of metres long, with a height estimated from the houses
+    nearby (8.7 m), and were drawn as office blocks. They are 4.5 m walls with a
+    tiled coping and the Gosho's five white lines now, and still walls to a
+    walker: the way in is by the gates `arcades.py` opens. 12 in Kyoto (with
+    Sanjusangen-do's Taiko-bei), 3 in Shibuya (Meiji Jingu), 2 in Osaka and one
+    each in Tokyo, Sydney, Melbourne and Amsterdam.
   - **Wharves:** each wharf has a landing, the nearest place on foot to its
     terminal. You board from there where the mapped terminal is out on the
     water (Circular Quay's wharves, Central Pier 7).
@@ -623,9 +631,13 @@ pipeline writes. The only city-specific code is landmark geometry in
     lights](#junctions-and-traffic-lights).
   - **Unsticking:** a car waiting on someone standing in the road edges on
     after a few seconds and the walker turns back; a car waiting at its line
-    that a bus can't swing past backs off a metre; two cars held nose to nose
-    for 15 s (10 s in a junction) squeeze past each other; and out of sight, a
-    car stopped 45 s that is not in a queue comes back elsewhere.
+    that a bus can't swing past backs off a metre; a car in a junction stopped
+    behind one waiting at another of its lines asks it to back off, and after
+    8 s goes on as if it weren't there; two cars held nose to nose for 15 s
+    (10 s in a junction, 25 s by one that only inches along) squeeze past each
+    other; a car held 1.5 s part way across to another lane goes back to its
+    own; and out of sight, a car stopped 45 s that is not in a queue comes back
+    elsewhere.
   - **Never through anything:** a car never moves into another car, your car,
     a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
     if the way stays blocked (but for the squeeze past, under Unsticking). One caught up with another gets out without going
@@ -656,13 +668,37 @@ Sydney's traffic stood still a third of the time.
   one-way, and the road pieces in `game.json` carry `"o": 1` or `-1`;
   `traffic_signals`, `stop` and `give_way` points go into `props`. Sydney has
   788 signals and 914 of its 1957 road pieces are one-way, Osaka 1837 and
-  4886, Paris 1456 and 3364. `game_data.py` writes the same as it builds.
+  4886, Paris 1456 and 3364. A banned turn (Overture's
+  `prohibited_transitions`: OpenStreetMap's `no_right_turn`, `no_u_turn`,
+  `only_straight_on` and the like, for motor traffic at all times) is matched
+  to the road pieces cut from its two segments at the connector between them
+  and written on the piece it starts from as `"nt": [[end, piece, end entered,
+  steps]]`: Sydney has 185, Hong Kong 612, Melbourne 343, Osaka 368.
+  `game_data.py` writes the same as it builds.
 - **A junction** is a node where three or more pieces end, or a few such nodes
   joined by pieces under 24 m and no more than 42 m across: a divided road
   crossing another is two to four nodes and one junction. Its arms are the
   pieces out of it. A car coming up an arm picks its exit (ahead more often than
-  a turn, a main road more often than a lane, never back the way it came) and
-  the pieces across to it.
+  a turn, a main road more often than a lane, never back the way it came, never
+  a banned turn) and the pieces across to it. The rides' router (`cars.js`)
+  keeps to the banned turns too.
+- **Lanes.** A motorway, trunk or primary road, and a one-way secondary, has
+  two lanes each way: the first beside the centre line (on a one-way street, on
+  the keep side), the second 3 m out towards the kerb (on a one-way street,
+  across on the other side). Every movement goes from the first lane; straight
+  ahead onto a road of the same kind with two lanes may go from either, each
+  lane with its own way across, so two cars go through side by side. A car
+  moves across to the lane its movement needs from 150 m out, and to the first
+  where its road narrows; otherwise into the other lane when the car ahead is
+  slow and there is room beside it there (0.8 m plus 0.9 s of its speed, ahead
+  and behind), at most every 4 s, never in a junction or in the last 8 m before
+  a line. It noses across at up to 1.3 m/s sideways, slowly while barely
+  moving. A car that reaches the line in a lane its exit can't go from picks an
+  exit that can, or waits to move across. A second lane ends before a junction
+  where a car waiting in it would stand in another arm's way, or where two
+  roads come in side by side (a merge). This is SUMO's lane-change model
+  (LC2013, EPL-2.0) cut down to its strategic and speed-gain changes; no code
+  is taken from it.
 - **Its ways across** are worked out the first time a car comes up to it: each
   movement's lane, smoothed round the corner as the cars drive it, from its
   arm's stop line to its exit's. Two movements whose ways come within 2.8 m of
@@ -679,7 +715,11 @@ Sydney's traffic stood still a third of the time.
   beyond, too close to wait between, is crossed with this one or not at all.
   A bus has the junction to itself. A car gives its movement up once its rear
   is past the stop line on its exit. When the lights change before it gets
-  there and it can still stop, it stops.
+  there and it can still stop, it stops. A car given its way across while
+  still short of its line, then stopped there 4 s behind a car that is not in
+  the junction (one waiting at another of its lines, where two roads come in
+  side by side, for this very movement to clear), gives the movement up and
+  waits its turn.
 - **Signals** go where OpenStreetMap maps them (a mapped point within 22 m of a
   junction's node), or, in a city without the data, at a junction of two main
   roads. The arms take two phases, the main road's axis and the cross road's:
@@ -689,6 +729,24 @@ Sydney's traffic stood still a third of the time.
   as the side roads of SCATS (Sydney's adaptive signals) are skipped when no one
   is there. Taxis and rides stop for a red light and at a stop sign too, while
   in sight. Your own car doesn't: drive over a line on red and you hear about it.
+- **Turn arrows.** A big junction of two main roads (four arms or more, the
+  main road secondary or above and two-way, the cross road tertiary or above)
+  gets a third phase after the main road's: the turn across the oncoming
+  traffic (right where the traffic keeps left, left where it keeps right) on an
+  arrow while everything else is red, for 6 to 10 s, ended after 3 s when no
+  one is left to turn. As SCATS runs a lagging right-turn phase, it comes only
+  when a car waits to turn there, and the turners keep their green from the
+  main road's phase into it while the straight-ahead traffic beside them goes
+  amber and red. On the main road's green they filter through the oncoming
+  traffic as before. Sydney has 22 such junctions of its 166 with signals.
+- **Walk signals.** Where a footway of the crowd crosses an arm's road at a
+  junction with signals (between the junction and just past the stop line), a
+  walker coming up to the kerb while that arm's traffic may go stops there and
+  presses the button, which calls the phase that holds that traffic; they cross
+  on the walk, which shows while the arm's traffic is red and another phase
+  (not the arrow) is green, and ends 5 s before that phase can. Someone already
+  out in the road (over a median, say) walks on. Turning cars still give way to
+  people on the crossing.
 - **The signal heads** are instanced, a handful of draw calls for a city's
   thousands. Each arm with signals has a pole at the kerb by its stop line with
   a lantern facing the traffic, and a second across the junction; a main road's
@@ -699,25 +757,57 @@ Sydney's traffic stood still a third of the time.
   no mast. A city can set its own in `game.signals` in `city.json` (`layout`,
   `pole`, `housing`, `board`, `border`, `mast`: the road rank from which an arm
   has one). The lit lamp blooms, and after dark it glows towards the traffic
-  facing it, not from behind.
+  facing it, not from behind. An arm with a turn arrow has an arrow lantern
+  beside the one over its lane: red, amber and green arrows, dark while the
+  turn filters on the main road's green. Japan's is a row of green arrows (left,
+  ahead, right) under the lantern, the turn's lit on its phase. Every arm's
+  crossing has a walk signal on a post on each kerb, facing across: a red
+  figure standing over a green one walking, the red flashing while those
+  already out finish crossing. The lamps change only when a signal does.
 
 `tools/traffic_check.js <city>` measures the flow headless at three places (the
-game's own frame loop stopped, so a run repeats exactly). Sydney before and after,
-150 cars over 112 s at each place, with the roads no car can get along (route.js)
-left out of the traffic:
+game's own frame loop stopped), with the surveyor on a kerb beside the roads,
+not standing in one. Sydney before the junctions, with them (the first two
+columns, measured then), and now with the banned turns, the lanes, the arrows,
+the walk signals and the unsticking above, against main just before (150 cars
+over 112 s at each place):
 
-| | Before | After |
-|---|---|---|
-| Standing still | 39% of the time | 25% |
-| Jammed (still 30 s or more) | 13.4% | 2.5% |
-| Mean speed | 18 km/h | 23 km/h |
-| Longest still | 150 s | 111 s |
-| Turned round in the road | 0.9 per car-minute | 0.2 |
-| Red lights run | (no lights) | 0 |
+| | Before | Junctions | Main before this | This, before the rides' changes | Main with the rides' changes | Now |
+|---|---|---|---|---|---|---|
+| Standing still | 39% of the time | 25% | 21% | 19% | 27% | 28% |
+| Jammed (still 30 s or more) | 13.4% | 2.5% | 3.8% | 0.7% | 3.8% | 4.2% |
+| Mean speed | 18 km/h | 23 km/h | 26 km/h | 26 km/h | 21 km/h | 21 km/h |
+| Longest still | 150 s | 111 s | 138 s | 72 s | 144 s | 150 s |
+| Red lights run | (no lights) | 0 | 0 | 0 | 0 | 0 |
 
-The traffic's update costs about 1.6 ms a frame for 150 cars on the software
-renderer here, against 0.5 ms before; the low quality tier runs a third of the
-cars.
+Main took in the rides' work (a step into another car taken back, cars kept
+off posts and trunks, a ride's priority at a red) while this was being
+finished; with both, the jams are back to about main's own, and a few cars
+stand the whole run where a car leaving a junction is caught against the
+queue coming into it on a short arm (`tools/traffic_why.js sydney 2` shows
+one). That is left for the follow-up issue.
+
+The other cities, jammed share and longest still, main before this and this
+branch before the rides' changes:
+Tokyo 0.9% and 76 s, now 0.8% and 50 s; Osaka 1.5% and 105 s, 1.2% and 74 s;
+Paris 3.1% and 120 s, 2.6% and 104 s; Hong Kong 5.0% and 138 s, 3.8% and 116 s;
+Kyoto 6.2% and 148 s, 1.8% and 89 s; Melbourne 4.9% and 121 s, 2.7% and 146 s;
+Shibuya 2.7% and 103 s, 1.0% and 105 s; Amsterdam none either way; Melbourne's
+bayside, over six places, 2.9% and 140 s, now 3.2% and 146 s. A run is the
+same each time only roughly: a small change anywhere moves every car after it,
+so a single run's jams swing by a few points either way, and the cars caught
+up in a crowded junction in one run are elsewhere in the next. No junction now
+lets in two movements that cross (Melbourne's bayside did, on main: a car let
+in by one way that asked again by another wasn't checked).
+
+The traffic's update costs about 3.2 ms a frame for 150 cars on the software
+renderer here, against 3.4 ms on main with the rides' changes (2.2 ms against
+2.6 ms before them), measured the same way: the way ahead is sampled walking a line's
+segments on from the last point instead of searching them for every point, the
+cars more than 160 m from the eye (along x and y) take a step of two frames
+every second frame, and the signal heads re-light only a junction whose signals
+changed. The lanes, arrows and walk signals cost less than that saved. The low
+quality tier runs a third of the cars.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
   shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
   files can't be loaded, stand-ins built from `web/game/kit.js` take their
@@ -1409,14 +1499,23 @@ kerb where the car was parked, gets in the back, picks the first place the drive
 offers, rides for 20 s, skips the trip and gets out, and orders a ride on the phone.
 Last it watches the nearest junction with signals for 80 s: its lights must go
 through their phases, no car may cross its line on red, and the traffic must be
-moving. Seated at the wheel and in the back, each head must be under the roof.
+moving; the crowd's footways must cross at the signals, with walk signals, and
+the nearest junction's walk must turn on and off within 75 s; a junction with a
+turn arrow must have its arrow lanterns. Seated at the wheel and in the back, each head must be under the roof.
 There is a screenshot after each step, and it fails on any page error.
 `tools/check.sh` runs it for every city whenever the game changes.
 
 `tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
-[Junctions and traffic lights](#junctions-and-traffic-lights)), and
-`tools/signal_shot.js <city> out [count|ids] [HH:MM,...] [WxH]` takes a driver's
-view of the nearest junctions with signals at the times given.
+[Junctions and traffic lights](#junctions-and-traffic-lights)), with the
+update's cost a frame, the lane changes and the walkers waiting at a kerb;
+`tools/traffic_why.js <city> [place] [seconds] [still]` lists the cars standing
+at the end of a run with what holds each (the car in front and what holds that
+one, the light, the movement it waits for, the lane), and the cars caught up in
+one another; `tools/traffic_profile.js <city> [seconds]` runs the browser's
+profiler over the traffic and lists its functions and busiest lines; and
+`tools/signal_shot.js <city> out [count|ids|arrows<n>] [HH:MM,...] [WxH]` takes
+a driver's view of the nearest junctions with signals (or with a turn arrow) at
+the times given, or with `VIEW=kerb` a walker's view of a crossing.
 
 `tools/clip_check.js <city>` counts what passes through what (furniture in the
 road, cars in posts, walls and each other, walkers in walls, ferries in each
@@ -1449,13 +1548,17 @@ deadlock or a meeting at a shared berth takes to show.
   - Your car is three circles down its length against the walls, so its corners
     can touch a wall before the circles do.
   - Cars push you aside instead of knocking you down, and stop dead for people.
-  - The traffic keeps to its lane, one lane each way (a one-way street's on the
-    keep side), so a wide road carries one file of cars. It swings out round a
-    car pulled in at the kerb but never overtakes, so a car stopped in the lane
-    holds up the queue behind it.
-  - Turn restrictions (Overture's `prohibited_transitions`) are not read, the
-    signals have two phases and no turn arrows, and the crowd doesn't wait for a
-    walk signal: cars stop for people in the road instead.
+  - Lanes come from the road's class, not from OpenStreetMap's `lanes` (Overture
+    doesn't carry it): two each way on a main road, one elsewhere, so a wide
+    residential street still carries one file and a six-lane motorway two. A
+    turn goes from the first lane only, and a junction has no turn pockets or
+    lane arrows of its own.
+  - The arrow phase follows the main road's on every big junction alike; the
+    real plans (SCATS's, Tokyo's) are not open data. Banned turns that apply
+    only at some hours, or to some vehicles, are left out.
+  - Walkers wait for the walk signal only at junctions with signals; at a zebra
+    crossing or anywhere else the cars stop for them instead. Signals on a road
+    between junctions (a mid-block crossing) are not modelled.
   - A few awkward corners (a turning circle, two lines meeting at a very sharp
     angle) can still hold two cars until they squeeze past each other.
   - Only roads at about your height count as the kerb, so a taxi won't stop on
