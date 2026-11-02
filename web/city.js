@@ -114,6 +114,8 @@ window.OpenEarthCity = async function main(cityId) {
     post.addPass(lens);
     resize();
   }
+  // a lost WebGL context pauses the loop under a note and comes back redrawn (glcare.js)
+  const care = OEGLCare.watch({ renderer, host: stage, onRestored: () => { Wd.restoreGPU(); resize(); } });
 
   // ------------------------------------------------------------ places
   const placeInfo = P.places.map(pl => {
@@ -1006,6 +1008,7 @@ window.OpenEarthCity = async function main(cityId) {
   let last = performance.now(), running = true;
   function frame(t) {
     if (!running) return;
+    if (care.lost) { last = t; requestAnimationFrame(frame); return; } // nothing to draw on until it is back
     const dt = Math.min(0.1, (t - last) / 1000);
     last = t;
     if (state.playing) {
@@ -1039,15 +1042,16 @@ window.OpenEarthCity = async function main(cityId) {
     Wd.su.uSkySat.value = 1 + 0.7 * (1 - U.uNight.value);
     if (post) post.render();
     else renderer.render(world, camera);
+    care.drawn();
     if (framesDrawn < 2 && ++framesDrawn === 2) firstDrawn();
     updateLabels();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
   window.__city = { id: cityId, state, setDate, setTime, startStop, setTourPlaying, DSM, placeInfo, camera, controls, inspect, flyTo, W, placeTower, Wd,
-    cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour, renderer, world };
+    cine, orbit, setOrbit, orbitBuilding, orbitLandmark, tour, renderer, world, care };
   // the router calls stop() before it shows another view
   return {
-    stop() { running = false; ac.abort(); ro.disconnect(); controls.dispose(); if (post) { post.renderTarget1.dispose(); post.renderTarget2.dispose(); } renderer.dispose(); Wd.dispose(); window.__city = null; },
+    stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); controls.dispose(); if (post) { post.renderTarget1.dispose(); post.renderTarget2.dispose(); } renderer.dispose(); Wd.dispose(); window.__city = null; },
   };
 };

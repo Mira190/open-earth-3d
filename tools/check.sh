@@ -87,7 +87,10 @@ run_city() {
   if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
     echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance)"
   else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
-  if timeout 1200 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
+  # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
+  timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
+  if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
+  elif [ $rc -eq 124 ]; then echo "FAIL tour   $c   (timed out after 1800 s; see $OUT/tour-$c.log)"
   else echo "FAIL tour   $c   ($(grep -m1 '^FAIL' "$OUT/tour-$c.log" || tail -1 "$OUT/tour-$c.log"); see $OUT/tour-$c.log)"; fi
 }
 run_reef() {

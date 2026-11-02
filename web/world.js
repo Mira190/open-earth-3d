@@ -1117,6 +1117,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
       setSun(sp, minutes) {
+        api.lastSun = { sp: Object.assign({}, sp), minutes };
         const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
         api.sunDir = new THREE.Vector3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
         su.sunPosition.value.copy(api.sunDir);
@@ -1230,6 +1231,15 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
         if (night && camera) night.update(camera, t / 1000);
+      },
+      // after a lost WebGL context comes back (glcare.js): three.js has its state again, but a
+      // render target comes back empty, so the sky's light (the PMREM target) and the haze read
+      // from the sky are made again, and the shadow map redrawn. The water's FFT and wakes and
+      // the post stack's targets are drawn afresh every frame.
+      restoreGPU() {
+        envKey = ''; envAt = -1e9; envWait = null; hazeOk = false;
+        if (api.lastSun) api.setSun(api.lastSun.sp, api.lastSun.minutes);
+        renderer.shadowMap.needsUpdate = true;
       },
       dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); },
     };
