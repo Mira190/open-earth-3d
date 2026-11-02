@@ -434,9 +434,11 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   float path = wd / max(V.y, 0.15);
   wAlpha = clamp(1.0 - exp(-path / uClarity), 0.0, 1.0);
   // murky water hides the bottom off seawalls and mostly off rock; beaches show their sand. Out
-  // where the floor is reached, the kind of the nearest shore no longer shows
+  // where the floor is reached, the kind of the nearest shore no longer shows, and nor does the
+  // bottom: as with the open sea past the frame, which has none (a tenth of the aerial photo let
+  // through here read as a straight band where the two met at the frame, issue 57)
   float shFar = smoothstep(0.5 * SHORE_REACH, SHORE_REACH, sh0.x);
-  wAlpha = max(wAlpha, mix(mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y), 0.9, shFar) * sh0.w);
+  wAlpha = max(wAlpha, mix(mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y), 1.0, shFar) * sh0.w);
   wAlpha = max(wAlpha, wFoam);
   // towards the edge of the shore map (the model's frame) the water closes over the bottom, which is
   // not drawn beyond it, so a sea that runs on past the frame shows no seam there. It is closed
