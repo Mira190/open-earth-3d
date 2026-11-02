@@ -5,20 +5,26 @@ builds the landmarks in code from published dimensions, placed on OpenStreetMap'
 (via Overture), and hides the plain blocks the survey has for them.
 
 Senso-ji (金龍山浅草寺), along its approach from the Kaminarimon to the main hall:
-  * 雷門 Kaminarimon: a gabled eight-legged gate, 11.7 m high (OpenStreetMap; Senso-ji), vermilion,
-    its tiled roof grey. Under it the great red lantern: 3.9 m tall, 3.3 m across, about 700 kg, 雷門 on
+  * 雷門 Kaminarimon: a gabled eight-legged gate (切妻造 八脚門, 1960), 11.4 m across, about 6.1 m deep
+    (69.3 m2) and 11.7 m high (Senso-ji), vermilion, its clay-tiled roof grey; its eaves at 8.5 m and
+    its roof 12.5 by 17.6 m in plan (PLATEAU's survey). Under it the great red lantern: 3.9 m tall, 3.3 m across, about 700 kg, 雷門 on
     the front and 風雷神門 on the back, a black lacquered ring with a carved dragon underneath (Senso-ji;
     the lantern was renewed in 2020). Fujin and Raijin in the front bays, behind wire screens.
   * 仲見世 Nakamise: about 250 m of shops along the approach; the shop blocks are the survey's, given
     their vermilion fronts here.
-  * 宝蔵門 Hozomon: a two-storey gate (二重門, irimoya roofs), 21.7 m high (OpenStreetMap; Senso-ji
-    gives 22.7 m to the ridge ornaments); the 小舟町 lantern, 3.75 m tall and 2.7 m across, between two
-    bronze tsuri-doro; the giant straw sandals, 4.5 m by 1.5 m, on the back.
-  * 五重塔 the five-storey pagoda: 53.32 m to the tip of its finial (OpenStreetMap; Senso-ji), five
-    pyramidal roofs over a stone podium, the bronze sorin with nine rings.
-  * 本堂 the main hall (Kannon-do): 29.4 m (OpenStreetMap), a steep irimoya roof of grey titanium tiles
-    (re-roofed 2010), vermilion posts and the 志ちやうちん lantern in the front bay; the bronze incense
-    burner (常香炉) in front of it.
+  * 宝蔵門 Hozomon: a two-storey gate (五間三戸 重層門, irimoya, titanium tiles since 2007), 21.1 m across
+    (20.0 m above), about 8.2 m deep, 21.7 m high (Senso-ji); the Nio, 5.45 m, in the outer bays; the 小舟町
+    lantern, 3.75 m and 2.7 m across, between two bronze lanterns of 2.75 m; the straw sandals, 4.5 m by
+    1.5 m, on the back.
+  * 五重塔 the five-storey pagoda (1973): 53.32 m above the ground, 48.32 m of it the tower on its 5 m
+    podium, the sorin 15.07 m with its nine rings (Senso-ji); roofs of titanium tiles since 2017.
+  * 本堂 the main hall (Kannon-do, 1958): 34.5 m across, 32.7 m deep, 29.4 m to the ridge (Senso-ji),
+    its eaves only 10.1 m up (PLATEAU's survey), so the steep irimoya of titanium tiles (2010) is two
+    thirds of its height; the front porch over the steps and the 志ん橋 lantern, 4.5 m tall, in its middle
+    bay; the bronze incense burner (常香炉) in front.
+
+Where PLATEAU's model of a structure has been downloaded (pipeline/plateau_lod3.py; Taito City's 2025
+models give these four at LOD2), its eaves' height and its roof's plan extent are measured from it.
 
 Tokyo Skytree (東京スカイツリー), 634 m (Tobu Tower Skytree): a triangle 68 m a side at the foot whose
 section rounds into a circle by about 320 m; the Tembo Deck at 340-350 m and the Tembo Galleria at
@@ -67,6 +73,9 @@ MATERIALS = {
     "wire": {"color": "#2a2a2a", "roughness": 0.7, "metalness": 0.3, "opacity": 0.55},
     "statue_red": {"color": "#a8352a", "roughness": 0.6, "metalness": 0.1},
     "statue_green": {"color": "#3f6d58", "roughness": 0.6, "metalness": 0.1},
+    "cypress": {"color": "#b48a5c", "roughness": 0.75, "metalness": 0.0},
+    "bracket_green": {"color": "#2f6b5a", "roughness": 0.7, "metalness": 0.0},
+    "rope_red": {"color": "#a82a22", "roughness": 0.9, "metalness": 0.0},
     # the lanterns: paper and their words, lit from inside after dark
     "atlas": {"color": "#ffffff", "roughness": 0.75, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 0.9},
     "lamp": {"color": "#f6ecd2", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffcf80", "glow": 2.0},
@@ -89,7 +98,7 @@ LANTERNS = {
     "kaminari_front": (768, 768, (196, 32, 26), "雷門", (18, 14, 12), "syuku"),
     "kaminari_back": (768, 768, (196, 32, 26), "風雷神門", (18, 14, 12), "syuku"),
     "kobuna": (768, 768, (196, 32, 26), "小舟町", (18, 14, 12), "syuku"),
-    "hondo": (768, 768, (196, 32, 26), "志ちやうちん", (18, 14, 12), "syuku"),
+    "hondo": (768, 768, (196, 32, 26), "志ん橋", (18, 14, 12), "syuku"),
     "nakamise": (384, 384, (226, 64, 40), "仲見世", (250, 244, 230), "mincho"),
     "chochin_w": (256, 256, (246, 238, 220), "浅草", (170, 30, 26), "syuku"),
 }
@@ -157,6 +166,34 @@ def nakamise_line(ctx):
     return _LINE["line"]
 
 
+def lod2_measure(C, key, c, ax, ground):
+    """PLATEAU's surveyed model of a structure (pipeline/plateau_lod3.py; LOD2 for Senso-ji's), measured
+    in the approach's frame: the roof's plan extent (eaves), the eaves' height (the outer rim of the roof
+    surfaces), and the top. None without the download."""
+    import json
+    import os
+    path = os.path.join(C.raw, "lod3", f"{key}.json")
+    if not os.path.exists(path):
+        return None
+    d = json.load(open(path))
+    P = np.asarray(d["positions"], float).reshape(-1, 3)
+    F = np.asarray(d["faces"], int).reshape(-1, 3)
+    u = (P[:, :2] - c) @ ax
+    v = (P[:, :2] - c) @ left_of(ax)
+    z = P[:, 2] - ground
+    T = np.stack([u, v, z], 1)[F]
+    n = np.cross(T[:, 1] - T[:, 0], T[:, 2] - T[:, 0])
+    A = np.linalg.norm(n, axis=1) / 2
+    roof = (n[:, 2] / (2 * A + 1e-9) > 0.2) & (A > 0.05)
+    R = T[roof].reshape(-1, 3)
+    if not len(R):
+        return None
+    u0, u1, v0, v1 = R[:, 0].min(), R[:, 0].max(), R[:, 1].min(), R[:, 1].max()
+    rim = R[(np.minimum(R[:, 0] - u0, u1 - R[:, 0]) < 0.6) | (np.minimum(R[:, 1] - v0, v1 - R[:, 1]) < 0.6)]
+    return {"roof_u": [round(float(u0), 2), round(float(u1), 2)], "roof_v": [round(float(v0), 2), round(float(v1), 2)],
+            "eave_m": round(float(np.median(rim[:, 2])), 2), "top_m": round(float(z.max()), 2), "source": "PLATEAU LOD2 (Taito City, 2025)"}
+
+
 def finalize(ctx):
     lm = ctx.landmarks
     s = lm.pop("_senso", {})
@@ -173,6 +210,9 @@ def finalize(ctx):
             mid = np.asarray(e["c"]) + ax * (u0 + u1) / 2 + left_of(ax) * (v0 + v1) / 2
             out[key] = {"c": [round(float(mid[0]), 2), round(float(mid[1]), 2)], "half_u": round((u1 - u0) / 2, 2),
                         "half_v": round((v1 - v0) / 2, 2), "z": e["ground_m"], "top_m": HEIGHTS[key], "survey_m": e["top_m"]}
+            m = lod2_measure(ctx.city, key, mid, ax, e["ground_m"]) if key != "pagoda" else None
+            if m:
+                out[key]["lod2"] = m
         lm["sensoji"] = out
         labels = {"kaminarimon": "Kaminarimon 雷門", "hozomon": "Hozomon 宝蔵門", "pagoda": "Five-storey Pagoda 五重塔", "hondo": "Senso-ji 浅草寺"}
         for key, lab in labels.items():
@@ -261,160 +301,288 @@ def statue(K, P, u, v, z0, mat, h=2.6):
     K("gold").tube(ring, 0.06, 5)
 
 
+# Published dimensions (Senso-ji's guide, senso-ji.jp/guide): frontage across the approach, depth along
+# it, heights above the ground. The eaves' heights and the roofs' plan extents are measured from PLATEAU's
+# survey of each (lod2_measure) where it is downloaded; these are the values it gave, kept as defaults.
+DIMS = {
+    # 本瓦葺 切妻造 八脚門, 1960: 11.4 m frontage, 69.3 m2 (so about 6.1 m deep), 11.7 m
+    "kaminarimon": {"frontage": 11.4, "depth": 6.1, "ridge": 11.7, "eave": 8.5, "roof_u": 12.5, "roof_v": 17.6},
+    # 和様三手先 五間三戸 重層門, 入母屋, titanium tiles (2007), 1964: 21.1 m (upper storey 20.0 m), 173.6 m2 a floor, 21.7 m
+    "hozomon": {"frontage": 21.1, "depth": 8.2, "upper_frontage": 20.0, "upper_depth": 7.2, "ridge": 21.7, "eave": 9.2, "upper_eave": 16.2,
+                "roof_u": 19.4, "roof_v": 32.0},
+    # 1973: 53.32 m above the ground, 48.32 m of it the tower on its 5 m podium (塔院), the sorin 15.07 m
+    "pagoda": {"podium": 5.0, "tower": 48.32, "sorin": 15.07, "podium_half": 9.3},
+    # 和様三手先 入母屋, 1958, titanium tiles (2010): 34.5 m frontage, 32.7 m deep, 29.4 m to the ridge
+    "hondo": {"frontage": 34.5, "depth": 32.7, "ridge": 29.4, "eave": 10.1, "gable_break": 16.4, "roof_u": 48.2, "roof_v": 49.1,
+              "porch_to": 28.2, "porch_eave": 10.4},
+}
+
+
+def dims(key, g):
+    """DIMS, with the eaves and roof extents measured from PLATEAU's model of this one where downloaded."""
+    d = dict(DIMS[key])
+    m = g.get("lod2")
+    if m:
+        d["roof_u"] = m["roof_u"][1] - m["roof_u"][0]
+        d["roof_v"] = m["roof_v"][1] - m["roof_v"][0]
+        d["roof_u0"] = m["roof_u"][0]
+        d["roof_u1"] = m["roof_u"][1]
+        if key in ("kaminarimon", "hozomon", "hondo"):
+            d["eave"] = m["eave_m"]
+    return d
+
+
+def bracket_band(K, P, hu, hv, z0, z1, out=0.6, n=None):
+    """The bracket sets (組物) under the eaves: a band stepping out in three tiers, with a gilt or
+    green-painted block at each post's head, as a 三手先's read from the street."""
+    t = (z1 - z0) / 3
+    for k in range(3):
+        o = out * (k + 1) / 3
+        block(K("vermilion"), P, -hu - o, hu + o, -hv - o, hv + o, z0 + k * t, z0 + (k + 1) * t - 0.06)
+        block(K("bracket_green"), P, -hu - o - 0.02, hu + o + 0.02, -hv - o - 0.02, hv + o + 0.02, z0 + (k + 1) * t - 0.1, z0 + (k + 1) * t - 0.02)
+
+
 def kaminarimon(K, g, ax):
+    """風雷神門: three bays across, two deep, the middle bay the passage. The eight-legged gate's
+    posts, tie beams and brackets, the gabled tiled roof with its ridge across the approach; Fujin
+    (right, as you face it) and Raijin (left) in the front side bays, Tenryu and Kinryu behind, each
+    behind a wire screen; the lantern hung in the passage."""
+    d = dims("kaminarimon", g)
     o = np.asarray(g["c"])
     P = framed(o, ax)       # u: out of the precinct (south), v: across
     z0 = g["z"]
-    hu, hv = min(g["half_u"], 4.5), min(g["half_v"], 6.2)
-    ridge = z0 + g["top_m"]
-    block(K("stone"), P, -hu - 0.6, hu + 0.6, -hv - 0.6, hv + 0.6, z0 - 0.4, z0 + 0.2)
-    zb = z0 + 0.2
-    zh = ridge - 4.6       # the tie beams under the roof
-    gate_posts(K, P, hu - 0.3, hv - 0.3, zb, zh, nv=4, nu=3)
-    for u in (-hu + 0.3, hu - 0.3):
-        block(K("vermilion"), P, u - 0.25, u + 0.25, -hv, hv, zh - 0.8, zh)
-        block(K("vermilion"), P, u - 0.2, u + 0.2, -hv, hv, zb + 2.6, zb + 2.95)
-    block(K("vermilion"), P, -hu + 0.1, hu - 0.1, -hv, hv, zh, zh + 0.9)      # the frieze of brackets, as a band
-    for v in np.linspace(-hv + 0.4, hv - 0.4, 9):
-        block(K("gold"), P, hu - 0.05, hu + 0.02, v - 0.2, v + 0.2, zh + 0.2, zh + 0.65)
-        block(K("gold"), P, -hu - 0.02, -hu + 0.05, v - 0.2, v + 0.2, zh + 0.2, zh + 0.65)
-    kirizuma(K, P, hu, hv, zh + 0.9, ridge - 0.6, ov_u=2.4, ov_v=1.2)
-    # the side bays: walls with the guardians behind a screen of wire, front (Fujin, Raijin) and back
-    mid = (hv - 0.3) / 3
-    for sv, mat in ((1, "statue_green"), (-1, "statue_red")):
-        v = sv * (hv - 0.3 - mid)
-        block(K("white_wall"), P, -0.15, 0.15, v - mid, v + mid, zb, zh - 0.8)
-        statue(K, P, hu * 0.5, v, zb, mat)
-        statue(K, P, -hu * 0.5, v, zb, "gold" if sv > 0 else "bronze", 2.2)
+    hu, hv = d["depth"] / 2, d["frontage"] / 2
+    bay = d["frontage"] / 3
+    ze, zr = z0 + d["eave"], z0 + d["ridge"]
+    block(K("stone"), P, -hu - 0.8, hu + 0.8, -hv - 0.8, hv + 0.8, z0 - 0.4, z0 + 0.25)
+    zb = z0 + 0.25
+    zt = ze - 2.3                            # the head ties; the brackets above them
+    for u in (-hu, 0.0, hu):
+        for v in (-hv, -bay / 2, bay / 2, hv):
+            r = 0.36 if u == 0 else 0.3          # the main posts in the middle row, the eight "legs" front and back
+            lathe_at(K("stone_dark"), *P(u, v, 0)[:2], [(zb, r * 1.6), (zb + 0.35, r * 1.45), (zb + 0.4, r)], 12)
+            lathe_at(K("vermilion"), *P(u, v, 0)[:2], [(zb + 0.4, r), (zt, r * 0.94)], 14)
+    for u in (-hu, 0.0, hu):
+        block(K("vermilion"), P, u - 0.22, u + 0.22, -hv - 0.3, hv + 0.3, zt - 0.55, zt)          # 頭貫
+        block(K("vermilion"), P, u - 0.18, u + 0.18, -hv, hv, zb + 2.9, zb + 3.2)                 # 腰貫
+    for v in (-hv, -bay / 2, bay / 2, hv):
+        block(K("vermilion"), P, -hu - 0.3, hu + 0.3, v - 0.22, v + 0.22, zt - 0.55, zt)
+    bracket_band(K, P, hu, hv, zt, ze - 0.35, out=0.9)
+    ov_u, ov_v = d["roof_u"] / 2 - hu, d["roof_v"] / 2 - hv
+    kirizuma(K, P, hu + 0.9, hv + 0.9, ze, zr, ov_u=max(ov_u - 0.9, 1.0), ov_v=max(ov_v - 0.9, 1.0))
+    # the side bays: a wall down the middle row, wire screens to the front, the back and the passage
+    for sv in (-1, 1):
+        v0, v1 = sorted((sv * bay / 2, sv * hv))
+        vm = (v0 + v1) / 2
+        block(K("white_wall"), P, -0.12, 0.12, v0 + 0.3, v1 - 0.3, zb, zt - 0.6)
+        block(K("stone"), P, -hu + 0.3, hu - 0.3, v0 + 0.3, v1 - 0.3, zb, zb + 0.9)                 # the statues' plinths
+        # front: Fujin (green) on the right as you face the gate (+v here), Raijin (red) on the left
+        statue(K, P, hu * 0.5, vm, zb + 0.9, "statue_green" if sv > 0 else "statue_red", 2.2)
+        # back: Tenryu and Kinryu, bare cypress
+        statue(K, P, -hu * 0.5, vm, zb + 0.9, "cypress", 2.8 if sv > 0 else 2.7)
         for su in (-1, 1):
-            K("wire").quad(P(su * (hu - 0.32), v - mid, zb + 0.3), P(su * (hu - 0.32), v + mid, zb + 0.3),
-                           P(su * (hu - 0.32), v + mid, zh - 0.8), P(su * (hu - 0.32), v - mid, zh - 0.8))
-    # the plaque 金龍山 on the back, over the passage
-    ATLAS.quad(K("atlas"), P(-hu - 0.05, 1.3, zh - 0.75), P(-hu - 0.05, -1.3, zh - 0.75), P(-hu - 0.05, -1.3, zh + 0.2), P(-hu - 0.05, 1.3, zh + 0.2), "kinryuzan")
-    # the lantern, hung in the middle of the passage
+            K("wire").quad(P(su * (hu - 0.32), v0 + 0.3, zb + 0.9), P(su * (hu - 0.32), v1 - 0.3, zb + 0.9),
+                           P(su * (hu - 0.32), v1 - 0.3, zt - 0.6), P(su * (hu - 0.32), v0 + 0.3, zt - 0.6))
+        vv = sv * (bay / 2 + 0.3)
+        for su in (-1, 1):
+            K("wire").quad(P(0.15 * su, vv, zb + 0.9), P(su * (hu - 0.32), vv, zb + 0.9), P(su * (hu - 0.32), vv, zt - 0.6), P(0.15 * su, vv, zt - 0.6))
+    # the plaques: 金龍山 on the back over the passage
+    ATLAS.quad(K("atlas"), P(-hu - 0.25, 1.3, zt - 0.5), P(-hu - 0.25, -1.3, zt - 0.5), P(-hu - 0.25, -1.3, zt + 0.45), P(-hu - 0.25, 1.3, zt + 0.45), "kinryuzan")
+    # the lantern: 3.9 m tall and 3.3 m across, hung from the middle row's tie beam over the passage
     x, y, _ = P(0, 0, 0)
-    lantern_big(K, x, y, zh - 0.8, 3.9, 3.3, "kaminari_front", "kaminari_back", P)
-    return {"lantern": [round(float(x), 2), round(float(y), 2), round(zh - 0.8 - 2.0, 2)]}
+    lantern_big(K, x, y, zt - 0.55, 3.9, 3.3, "kaminari_front", "kaminari_back", P)
+    return {"lantern": [round(float(x), 2), round(float(y), 2), round(zt - 2.5, 2)]}
 
 
 def hozomon(K, g, ax):
+    """The two-storey gate: five bays across, the middle three the doors; the Nio in the outer bays at
+    the front behind screens, the 小舟町 lantern in the middle bay between two bronze lanterns, the
+    giant straw sandals on the back. A tiled skirt roof, the upper storey with its balcony, the hipped
+    and gabled roof over it."""
+    d = dims("hozomon", g)
     o = np.asarray(g["c"])
     P = framed(o, ax)
     z0 = g["z"]
-    hu, hv = min(g["half_u"], 5.0), min(g["half_v"], 10.5)
-    top = z0 + g["top_m"]
-    block(K("stone"), P, -hu - 0.8, hu + 0.8, -hv - 0.8, hv + 0.8, z0 - 0.3, z0 + 0.6)
-    zb = z0 + 0.6
-    z1 = zb + 7.2          # the lower roof's eaves
-    gate_posts(K, P, hu - 0.4, hv - 0.4, zb, z1 - 0.6, nv=6, nu=3, r=0.4)
-    block(K("vermilion"), P, -hu + 0.1, hu - 0.1, -hv + 0.1, hv - 0.1, z1 - 0.6, z1 + 0.5)
-    jk.hip_roof(K("tile"), K("soffit"), P, hu, hv, z1 + 0.5, z1 + 2.6, ov=2.6, k=1.0, ridge_frac=0.0)
-    # the upper storey: a white-walled hall with vermilion posts and its balcony
-    hu2, hv2 = hu - 1.0, hv - 1.6
-    z2 = z1 + 2.6
-    block(K("vermilion_dark"), P, -hu2 - 0.9, hu2 + 0.9, -hv2 - 0.9, hv2 + 0.9, z2 - 0.2, z2 + 0.2)
-    block(K("white_wall"), P, -hu2, hu2, -hv2, hv2, z2 + 0.2, z2 + 4.6)
-    for u in np.linspace(-hu2, hu2, 3):
+    hu, hv = d["depth"] / 2, d["frontage"] / 2
+    bay = d["frontage"] / 5
+    ze1, ze2, zr = z0 + d["eave"], z0 + d["upper_eave"], z0 + d["ridge"]
+    block(K("stone"), P, -hu - 1.2, hu + 1.2, -hv - 1.2, hv + 1.2, z0 - 0.3, z0 + 0.5)
+    zb = z0 + 0.5
+    zt = ze1 - 2.6
+    vs = [-hv + k * bay for k in range(6)]
+    for u in (-hu, 0.0, hu):
+        for v in vs:
+            lathe_at(K("stone_dark"), *P(u, v, 0)[:2], [(zb, 0.62), (zb + 0.4, 0.55), (zb + 0.45, 0.42)], 12)
+            lathe_at(K("vermilion"), *P(u, v, 0)[:2], [(zb + 0.45, 0.42), (zt, 0.4)], 14)
+    for u in (-hu, 0.0, hu):
+        block(K("vermilion"), P, u - 0.25, u + 0.25, -hv - 0.3, hv + 0.3, zt - 0.6, zt)
+    for v in vs:
+        block(K("vermilion"), P, -hu - 0.3, hu + 0.3, v - 0.25, v + 0.25, zt - 0.6, zt)
+    bracket_band(K, P, hu, hv, zt, ze1 - 0.4, out=1.2)
+    ov = (d["roof_u"] / 2 - hu)
+    # the skirt roof of the lower storey, up to the upper storey's balcony
+    hu2, hv2 = d["upper_depth"] / 2, d["upper_frontage"] / 2
+    zf = ze1 + 1.6                                   # the upper floor
+    lower = jk.hip_roof(K("tile_ti"), K("soffit"), P, hu + 1.2, hv + 1.2, ze1, ze1 + 3.4, ov=max(ov - 1.2, 2.0), k=1.6)
+    # the upper storey: its balcony and railing, white walls between vermilion posts, its brackets
+    block(K("vermilion_dark"), P, -hu2 - 1.1, hu2 + 1.1, -hv2 - 1.1, hv2 + 1.1, zf - 0.25, zf)
+    rail = [P(su * (hu2 + 1.0), sv * (hv2 + 1.0), zf) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+    K("vermilion").rails(rail, 0.95, post_every=2.0, post=0.12, rail=0.1, rails=2)
+    zt2 = ze2 - 2.0
+    block(K("white_wall"), P, -hu2 + 0.1, hu2 - 0.1, -hv2 + 0.1, hv2 - 0.1, zf, zt2)
+    for u in (-hu2, hu2):
         for v in np.linspace(-hv2, hv2, 6):
-            slab_at(K("vermilion"), P, u, v, 0.45, 0.45, z2 + 0.2, z2 + 4.8)
-    block(K("vermilion"), P, -hu2 - 0.1, hu2 + 0.1, -hv2 - 0.1, hv2 + 0.1, z2 + 4.6, z2 + 5.4)
-    R = jk.irimoya(K("tile"), K("vermilion_dark", "gable"), K("soffit"), lambda u, v, z: P(v, u, z), hv2, hu2, z2 + 5.4, top - 0.8, ov=3.0, gable_at=0.5)
-    block(K("tile"), P, -0.45, 0.45, -R["Ug"] - 0.4, R["Ug"] + 0.4, top - 1.0, top - 0.3)
+            lathe_at(K("vermilion"), *P(u, v, 0)[:2], [(zf, 0.34), (zt2, 0.32)], 12)
+    for v in np.linspace(-hv2, hv2, 6):
+        for u in (-hu2, hu2):
+            block(K("wood_dark"), P, u - 0.06, u + 0.06, v + 0.6, v + bay - 0.6, zf + 0.5, zt2 - 0.5) if v < hv2 - 0.1 else None
+    block(K("vermilion"), P, -hu2 - 0.2, hu2 + 0.2, -hv2 - 0.2, hv2 + 0.2, zt2 - 0.5, zt2)
+    bracket_band(K, P, hu2, hv2, zt2, ze2 - 0.3, out=1.0)
+    R = jk.irimoya(K("tile_ti"), K("vermilion_dark", "gable"), K("soffit"), lambda u, v, z: P(v, u, z), hv2 + 1.0, hu2 + 1.0, ze2, zr - 0.9, ov=3.8, gable_at=0.5, k=1.6)
+    block(K("tile_ti"), P, -0.5, 0.5, -R["Ug"] - 0.6, R["Ug"] + 0.6, zr - 1.2, zr - 0.4)
+    for sv in (-1, 1):   # the titanium onigawara at the ridge's ends
+        taper(K("tile_ti"), P, 0, sv * (R["Ug"] + 0.4), 1.6, 0.6, zr - 0.6, 0.6, 0.4, zr)
+    # the Nio in the outer bays at the front, behind screens
     for sv in (-1, 1):
-        taper(K("gold"), P, 0, sv * (R["Ug"] + 0.2), 1.0, 0.5, top - 0.5, 0.3, 0.3, top + 1.0)
-    # the 小舟町 lantern between two bronze tsuri-doro, under the lower roof
+        v = sv * (hv - bay / 2)
+        statue(K, P, hu * 0.45, v, zb, "statue_red" if sv > 0 else "statue_green", 5.0)
+        K("wire").quad(P(hu - 0.4, v - bay / 2 + 0.3, zb + 0.4), P(hu - 0.4, v + bay / 2 - 0.3, zb + 0.4), P(hu - 0.4, v + bay / 2 - 0.3, zt - 0.6), P(hu - 0.4, v - bay / 2 + 0.3, zt - 0.6))
+        block(K("white_wall"), P, -0.15, 0.15, v - bay / 2 + 0.3, v + bay / 2 - 0.3, zb, zt - 0.6)
+    # the 小舟町 lantern (3.75 m, 2.7 m across) in the middle bay; the bronze lanterns (2.75 m) in the bays beside it
     x, y, _ = P(0, 0, 0)
-    lantern_big(K, x, y, z1 - 0.6, 3.75, 2.7, "kobuna", "kobuna", P)
+    lantern_big(K, x, y, zt - 0.6, 3.75, 2.7, "kobuna", "kobuna", P)
     for sv in (-1, 1):
-        xx, yy, _ = P(0, sv * 3.0, 0)
-        zt = z1 - 0.6
-        lathe_at(K("bronze"), xx, yy, [(zt - 2.6, 0.0), (zt - 2.5, 0.5), (zt - 2.2, 0.42), (zt - 1.0, 0.55), (zt - 0.9, 0.95), (zt - 0.5, 0.25), (zt, 0.1)], 6)
-    # the sandals on the back
+        xx, yy, _ = P(0, sv * bay, 0)
+        zt_ = zt - 0.6
+        lathe_at(K("bronze"), xx, yy, [(zt_ - 2.75, 0.0), (zt_ - 2.65, 0.45), (zt_ - 2.3, 0.38), (zt_ - 1.1, 0.5), (zt_ - 0.95, 0.9), (zt_ - 0.55, 0.25), (zt_, 0.1)], 6)
+    # the sandals on the back, in the outer bays: 4.5 m by 1.5 m
     for sv in (-1, 1):
-        v = sv * (hv - 2.6)
-        block(K("straw"), P, -hu - 0.05, -hu + 0.25, v - 0.75, v + 0.75, zb + 1.2, zb + 5.7)
-    return {"lantern": [round(float(x), 2), round(float(y), 2), round(z1 - 2.6, 2)]}
+        v = sv * (hv - bay / 2)
+        block(K("straw"), P, -hu - 0.35, -hu - 0.05, v - 0.75, v + 0.75, zb + 0.9, zb + 5.4)
+        block(K("rope_red"), P, -hu - 0.42, -hu - 0.32, v - 0.6, v + 0.6, zb + 4.4, zb + 4.6)
+    return {"lantern": [round(float(x), 2), round(float(y), 2), round(zt - 2.5, 2)]}
 
 
 def pagoda(K, g, ax):
-    """Five storeys whose roofs dominate, as a pagoda's do: short walls under deep eaves, each storey a
-    little narrower, the bracket bands under the eaves, the bronze sorin with its nine rings."""
+    """The tower on its podium (塔院, about 5 m): five storeys of short walls under deep eaves, each a
+    little narrower, the bracket bands under the eaves, and the bronze sorin of 15.07 m with its nine rings."""
+    d = DIMS["pagoda"]
     o = np.asarray(g["c"])
     P = framed(o, ax)
     z0 = g["z"]
-    tip = z0 + g["top_m"]
-    base = min(g["half_u"], g["half_v"], 9.0)
-    block(K("stone"), P, -base, base, -base, base, z0, z0 + 1.6)          # the podium (it holds a hall below)
-    zb = z0 + 1.6
-    sorin = 9.7
-    zt = tip - sorin
+    base = min(d["podium_half"], g["half_u"], g["half_v"])
+    block(K("stone"), P, -base, base, -base, base, z0, z0 + d["podium"] - 0.6)
+    block(K("vermilion_dark"), P, -base + 0.3, base - 0.3, -base + 0.3, base - 0.3, z0 + d["podium"] - 0.6, z0 + d["podium"])
+    zb = z0 + d["podium"]
+    tip = z0 + d["podium"] + d["tower"]
+    zt = tip - d["sorin"]
     h = (zt - zb) / 5.0
     for s in range(5):
         w = 4.9 * (1 - 0.07 * s)
         za = zb + s * h
-        zw = za + h * 0.36                                               # the walls' top
+        zw = za + h * 0.36
         block(K("white_wall"), P, -w, w, -w, w, za, zw)
-        for u in np.linspace(-w, w, 4):
+        for uu in np.linspace(-w, w, 4):
             for sgn in (-1, 1):
-                slab_at(K("vermilion"), P, u, sgn * w, 0.4, 0.4, za, zw)
-                slab_at(K("vermilion"), P, sgn * w, u, 0.4, 0.4, za, zw)
-        # the brackets: two bands stepping out under the eaves
-        block(K("vermilion"), P, -w - 0.5, w + 0.5, -w - 0.5, w + 0.5, zw, zw + h * 0.12)
-        block(K("vermilion_dark"), P, -w - 1.2, w + 1.2, -w - 1.2, w + 1.2, zw + h * 0.12, zw + h * 0.22)
+                slab_at(K("vermilion"), P, uu, sgn * w, 0.4, 0.4, za, zw)
+                slab_at(K("vermilion"), P, sgn * w, uu, 0.4, 0.4, za, zw)
+        bracket_band(K, P, w, w, zw, zw + h * 0.22, out=1.2)
         ze = zw + h * 0.22
         E = w + 1.2 + 2.6 - 0.12 * s
-        if s < 4:   # the roof runs up into the next storey's walls, so no gap shows between them
+        if s < 4:
             w2 = 4.9 * (1 - 0.07 * (s + 1))
             H = (za + h - ze) / ((E - w2 + 0.3) / E) ** 1.7
         else:
             H = h * 0.34
         jk.hip_roof(K("tile_ti"), K("soffit"), P, w + 1.2, w + 1.2, ze, ze + H, ov=2.6 - 0.12 * s, k=1.7)
-        # the balcony rail of the storey above sits on the roof
         if s < 4:
             w2 = 4.9 * (1 - 0.07 * (s + 1))
-            block(K("vermilion_dark"), P, -w2 - 0.6, w2 + 0.6, -w2 - 0.6, w2 + 0.6, za + h - 0.15, za + h + 0.1)
+            rail = [P(su * (w2 + 0.7), sv * (w2 + 0.7), za + h) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1))]
+            K("vermilion").rails(rail, 0.8, post_every=1.8, post=0.1, rail=0.08, rails=2)
     x, y, _ = P(0, 0, 0)
-    lathe_at(K("bronze"), x, y, [(zt - 0.6, 1.8), (zt + 0.6, 1.5), (zt + 0.7, 0.4), (tip - 0.6, 0.18), (tip, 0.0)], 12)
+    sor = d["sorin"]
+    lathe_at(K("bronze"), x, y, [(zt - 0.6, 1.9), (zt + 0.8, 1.6), (zt + 0.9, 0.5), (tip - 0.6, 0.2), (tip, 0.0)], 12)
+    lathe_at(K("bronze"), x, y, [(zt + 0.9, 0.0), (zt + 1.0, 1.0), (zt + 1.8, 1.05), (zt + 2.0, 0.0)], 12)        # the bowl
     for k in range(9):   # the nine rings
-        z = zt + 1.2 + k * (sorin - 3.2) / 9
-        lathe_at(K("bronze"), x, y, [(z, 0.0), (z + 0.05, 0.85 - 0.03 * k), (z + 0.22, 0.85 - 0.03 * k), (z + 0.27, 0.0)], 12)
-    lathe_at(K("gold"), x, y, [(tip - 1.6, 0.0), (tip - 1.3, 0.45), (tip - 0.9, 0.3), (tip - 0.6, 0.0)], 12)
+        z = zt + 2.6 + k * (sor * 0.55) / 9
+        lathe_at(K("bronze"), x, y, [(z, 0.0), (z + 0.06, 0.95 - 0.035 * k), (z + 0.3, 0.95 - 0.035 * k), (z + 0.36, 0.0)], 12)
+    for k in range(4):   # the water flame (水煙), as four gilt blades
+        a = math.pi / 4 + k * math.pi / 2
+        zf = zt + 2.6 + sor * 0.6
+        K("gold").quad(np.array([x, y, zf]), np.array([x + 1.0 * math.cos(a), y + 1.0 * math.sin(a), zf + 0.6]),
+                       np.array([x + 0.7 * math.cos(a), y + 0.7 * math.sin(a), zf + 2.4]), np.array([x, y, zf + 2.0]))
+    lathe_at(K("gold"), x, y, [(tip - 2.4, 0.0), (tip - 2.0, 0.42), (tip - 1.6, 0.3), (tip - 1.2, 0.0)], 12)
 
 
 def hondo(K, g, ax):
+    """The main hall: 34.5 m across, 32.7 m deep, its eaves only 10 m up and the roof rising to 29.4 m,
+    so the roof is two thirds of the hall's height. A raised floor on a stone base, the outer colonnade
+    under deep eaves, white walls and lattice doors within, a steep irimoya of titanium tiles whose
+    gables start low, the front porch (向拝) out over the steps, and the 志ん橋 lantern in its middle bay."""
+    d = dims("hondo", g)
     o = np.asarray(g["c"])
     P = framed(o, ax)
     z0 = g["z"]
-    hu, hv = min(g["half_u"], 17.0), min(g["half_v"], 17.0)
-    ridge = z0 + g["top_m"]
-    zp = z0 + 2.4                                    # the raised floor and its veranda
-    block(K("stone"), P, -hu, hu, -hv, hv, z0 - 0.3, z0 + 1.0)
-    block(K("wood_dark"), P, -hu + 0.6, hu - 0.6, -hv + 0.6, hv - 0.6, z0 + 1.0, zp)
-    for j in range(8):                               # the front steps, the full width of the middle bays
-        uu = hu - 0.6 + (8 - j) * 0.45
-        block(K("stone"), P, hu - 0.6, uu, -6.0, 6.0, z0, z0 + 1.0 + (j + 1) * (zp - z0 - 1.0) / 8)
-    hu_w, hv_w = hu - 3.6, hv - 3.6
-    zw = zp + 7.5
-    block(K("white_wall"), P, -hu_w, hu_w - 2.0, -hv_w, hv_w, zp, zw)
-    for u in np.linspace(-hu + 1.0, hu - 1.0, 7):
-        for v in np.linspace(-hv + 1.0, hv - 1.0, 7):
-            if abs(u) < hu - 1.2 and abs(v) < hv - 1.2 and not (u > hu_w - 2.2):
+    hu, hv = d["depth"] / 2, d["frontage"] / 2
+    ze, zr = z0 + d["eave"], z0 + d["ridge"]
+    zp = z0 + 2.4                                     # the raised floor and its veranda
+    block(K("stone"), P, -hu - 1.4, hu + 1.4, -hv - 1.4, hv + 1.4, z0 - 0.3, z0 + 1.2)
+    block(K("wood_dark"), P, -hu - 1.2, hu + 1.2, -hv - 1.2, hv + 1.2, z0 + 1.2, zp)
+    zt = ze - 2.4
+    nv, nu = 8, 8
+    us, vs = np.linspace(-hu, hu, nu), np.linspace(-hv, hv, nv)
+    for u in us:                                   # the outer colonnade
+        for v in vs:
+            if abs(u) < hu - 0.1 and abs(v) < hv - 0.1:
                 continue
-            lathe_at(K("vermilion"), *P(u, v, 0)[:2], [(zp, 0.42), (zw, 0.4)], 12)
-    block(K("vermilion"), P, -hu + 0.6, hu - 0.6, -hv + 0.6, hv - 0.6, zw, zw + 1.6)   # the bracket band
-    jk.irimoya(K("tile_ti"), K("vermilion_dark", "gable"), K("soffit"), lambda u, v, z: P(v, u, z), hv - 0.6, hu - 0.6, zw + 1.6, ridge - 0.7, ov=3.4, gable_at=0.62, k=1.8)
-    block(K("tile_ti"), P, -0.8, 0.8, -hv * 0.42, hv * 0.42, ridge - 0.9, ridge)
+            lathe_at(K("vermilion"), *P(u, v, 0)[:2], [(zp, 0.48), (zt, 0.46)], 14)
+    hu_w, hv_w = hu - 3.2, hv - 3.2                 # the hall's walls within the veranda
+    block(K("white_wall"), P, -hu_w, hu_w, -hv_w, hv_w, zp, zt - 0.4)
+    for v in np.linspace(-hv_w + 2.0, hv_w - 2.0, 6):   # lattice doors along the front and sides
+        block(K("wood_dark"), P, hu_w, hu_w + 0.08, v - 1.6, v + 1.6, zp + 0.3, zp + 5.2)
+    block(K("vermilion"), P, -hu - 0.3, hu + 0.3, -hv - 0.3, hv + 0.3, zt - 0.7, zt)    # the tie beams round the colonnade
+    bracket_band(K, P, hu, hv, zt, ze - 0.4, out=1.8)
+    # the roof: its spread across from the survey; the front porch is apart, below
+    Ev = d["roof_v"] / 2
+    ov = max(Ev - hv, 3.0)
+    gable = (d["gable_break"] - d["eave"]) / (d["ridge"] - d["eave"])
+    jk.irimoya(K("tile_ti"), K("vermilion_dark", "gable"), K("soffit"), lambda u, v, z: P(v, u, z), hv, hu, ze, zr - 0.8, ov=ov,
+               gable_at=gable, k=1.45)
+    block(K("tile_ti"), P, -0.9, 0.9, -hv * 0.36, hv * 0.36, zr - 1.2, zr)
     for sv in (-1, 1):
-        taper(K("tile_ti"), P, 0, sv * hv * 0.42, 2.2, 1.0, ridge - 0.5, 0.8, 0.6, ridge + 1.8)
-    # the plaque 浅草寺 and the 志ちやうちん lantern in the front bay
-    ATLAS.quad(K("atlas"), P(hu - 0.55, -2.2, zw - 1.6), P(hu - 0.55, 2.2, zw - 1.6), P(hu - 0.55, 2.2, zw), P(hu - 0.55, -2.2, zw), "sensoji")
-    x, y, _ = P(hu - 2.4, 0, 0)
-    lantern_big(K, x, y, zw - 1.8, 3.9, 3.0, "hondo", "hondo", P)
-    # the incense burner in front, on the approach
-    xi, yi, _ = P(hu + 14.0, 0, 0)
+        taper(K("tile_ti"), P, 0, sv * hv * 0.36, 2.6, 1.2, zr - 0.6, 1.0, 0.7, zr + 1.6)
+    # the front porch: its posts, its own roof running from under the main eaves out over the steps
+    pf = d["porch_to"] - 1.6
+    pw = hv * 0.42
+    zpe = z0 + d["porch_eave"]
+    for v in np.linspace(-pw, pw, 4):
+        lathe_at(K("vermilion"), *P(pf, v, 0)[:2], [(z0 + 1.2, 0.46), (zpe - 0.9, 0.44)], 14)
+    block(K("vermilion"), P, pf - 0.3, pf + 0.3, -pw - 0.4, pw + 0.4, zpe - 1.5, zpe - 0.9)
+    bracket_band(K, lambda u, v, z: P(pf + u, v, z), 0.3, pw + 0.4, zpe - 0.9, zpe - 0.3, out=0.5)
+    # 流れ向拝: the porch's roof carries the main roof's front slope on and down, a single concave slope
+    # from under the main eaves out to the porch's own eaves, its corners turned up a little
+    W = pw + 2.0
+    us = np.linspace(hu + 1.0, d["porch_to"], 7)
+    zs = [ze + 1.2 + (zpe - ze - 1.2) * ((uu - us[0]) / (us[-1] - us[0])) ** 0.8 for uu in us]
+    K("tile_ti").grid([[P(uu, v, zz + (0.35 if abs(v) > W - 0.1 and uu > us[-2] else 0.0)) for v in np.linspace(-W, W, 5)] for uu, zz in zip(us, zs)])
+    K("soffit").quad(P(d["porch_to"], -W, zpe - 0.35), P(d["porch_to"], W, zpe - 0.35), P(hu, W, zpe + 0.2), P(hu, -W, zpe + 0.2))
+    for sv in (-1, 1):   # the porch roof's side boards
+        K("vermilion_dark").grid([[P(uu, sv * W, zz - 0.45), P(uu, sv * W, zz)] for uu, zz in zip(us, zs)])
+    block(K("vermilion_dark"), P, d["porch_to"] - 0.3, d["porch_to"], -pw - 2.0, pw + 2.0, zpe - 0.5, zpe)
+    # the steps, the full width of the porch, from the paving up to the floor
+    n = 10
+    for j in range(n):
+        uu = hu + 1.2 + (n - j) * 0.45
+        block(K("stone"), P, hu + 1.2, uu, -pw, pw, z0, z0 + 1.2 + (j + 1) * (zp - z0 - 1.2) / n)
+    # the plaque 浅草寺 and the 志ん橋 lantern (4.5 m, 3.5 m across) in the middle bay
+    ATLAS.quad(K("atlas"), P(hu + 0.35, -2.4, zt - 1.6), P(hu + 0.35, 2.4, zt - 1.6), P(hu + 0.35, 2.4, zt), P(hu + 0.35, -2.4, zt), "sensoji")
+    x, y, _ = P(hu + 2.6, 0, 0)
+    lantern_big(K, x, y, z0 + d["porch_eave"] - 2.0, 4.5, 3.5, "hondo", "hondo", P)
+    # the incense burner on the approach in front
+    xi, yi, _ = P(d["porch_to"] + 14.0, 0, 0)
     zi = z0
     lathe_at(K("bronze"), xi, yi, [(zi, 1.3), (zi + 0.5, 1.2), (zi + 0.6, 1.6), (zi + 1.1, 1.7), (zi + 1.2, 0.6), (zi + 2.2, 0.5), (zi + 2.3, 1.4), (zi + 2.7, 0.6), (zi + 3.2, 0.0)], 8)
-    return {"incense": [round(float(xi), 2), round(float(yi), 2), round(zi, 2)], "lantern": [round(float(x), 2), round(float(y), 2), round(zw - 3.8, 2)]}
+    return {"incense": [round(float(xi), 2), round(float(yi), 2), round(zi, 2)], "lantern": [round(float(x), 2), round(float(y), 2), round(zpe - 6.5, 2)]}
 
 
 def nakamise_lanterns(K, s, ax):

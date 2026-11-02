@@ -137,13 +137,13 @@
     "blurb": "Walk the real Asakusa, rebuilt from open data and lit by the real sun: the Kaminarimon's lantern, Nakamise, Senso-ji, the water bus on the Sumida, and the lift up Tokyo Skytree to the Tembo Deck, 350 m up.",
     "smalltalk": ["いらっしゃいませ!", "こんにちは。", "どうぞ。", "Excuse me!", "お参りですか?"],
     "start": {
-      "at": [-461.0, -126.0],
+      "at": [-462.5, -111.0],
       "facing": [-464.0, -96.0],
       "time": "live"
     },
     "shade_landmarks": ["senso_", "tree_"],
     "helipads_from_data": false,
-    "helipads": [{"id": "sumida-pad", "name": "Sumida Park pad (game)", "at": [-60.0, 200.0]}],
+    "helipads": [{"id": "sumida-pad", "name": "Sumida Park pad (game)", "at": [-170.0, 40.0]}],
     "wharves": [
       {"id": "asakusa", "name": "Asakusa 浅草 (Tokyo Cruise)", "terminal": "浅草"},
       {"id": "nitenmon", "name": "Asakusa Nitenmon 浅草二天門", "terminal": "浅草二天門(水上バス乗り場)"},
@@ -163,10 +163,10 @@
       {
         "route": "Sumida River Line 隅田川ライン",
         "stops": ["asakusa", "komagata", "nitenmon"],
-        "vessels": ["Ryugu 竜馬", "Michikusa みちくさ"]
+        "vessels": ["Sakura さくら"]
       }
     ],
-    "ferry_note": "Piers are from OpenStreetMap via Overture. The route runs between the piers on this map; the timetable is not real. Tokyo Cruise and the Tokyo Mizube Line run on to Hinode, Hamarikyu and Odaiba from here.",
+    "ferry_note": "Piers are from OpenStreetMap via Overture. One boat runs between the piers on this map; the timetable is not real. Tokyo Cruise and the Tokyo Mizube Line run on to Hinode, Hamarikyu and Odaiba from here.",
     "crowd": {"pedestrians": 560, "cars": 150, "radius_m": 420, "style": "tokyo"},
     "vehicles": {
       "helicopter": {"registration": "JA634T"},
@@ -213,12 +213,12 @@
     "travel": [
       {
         "id": "t-kaminari",
-        "name": "Kaminarimon 雷門",
-        "at": [-461.0, -126.0]
+        "name": "Kaminarimon, in front 雷門前",
+        "at": [-462.5, -111.0]
       },
       {
         "id": "t-hondo",
-        "name": "Senso-ji main hall 本堂",
+        "name": "Senso-ji, before the main hall 本堂前",
         "at": [-433.0, 262.0]
       },
       {
@@ -237,7 +237,7 @@
         "id": "sota",
         "name": "Sota 颯太",
         "role": "Rickshaw puller 人力車",
-        "at": [-452.0, -128.0],
+        "at": [-455.0, -112.0],
         "look": {
           "character": "R_Sports_Male_02_m008",
           "skin": "#d9a27e",
@@ -413,5 +413,15 @@
         "steps": [{"type": "spot", "spot": "tembo", "text": "Look out from the Tembo Deck"}]
       }
     ]
+  },
+  "plateau_lod3": {
+    "tileset": "https://assets.cms.plateau.reearth.io/assets/d1/6b9ee6-d3b7-4ab5-8391-b9a6f4833385/13106_taito-ku_city_2025_citygml_1_op_bldg_3dtiles_lod3_no_texture/tileset.json",
+    "buildings": {
+      "kaminarimon": [139.79637, 35.71113],
+      "hozomon": [139.79666, 35.71393],
+      "pagoda": [139.79604, 35.7141],
+      "hondo": [139.79675, 35.71474]
+    },
+    "attribution": "MLIT Project PLATEAU Taito City 2025 building models, LOD3 (CC BY 4.0)"
   }
 }

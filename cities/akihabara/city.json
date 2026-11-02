@@ -184,17 +184,17 @@
       },
       {
         "id": "t-radio",
-        "name": "Radio Kaikan ラジオ会館",
+        "name": "Radio Kaikan, the corner ラジオ会館前",
         "at": [118.0, -170.0]
       },
       {
         "id": "t-kanda",
-        "name": "Kanda Myojin 神田明神",
+        "name": "Kanda Myojin, the gate 隨神門",
         "at": [-285.0, 205.0]
       },
       {
         "id": "t-nikolai",
-        "name": "Nikolai-do ニコライ堂",
+        "name": "Nikolai-do, the gate ニコライ堂前",
         "at": [-420.0, -170.0]
       }
     ],
