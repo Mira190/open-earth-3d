@@ -12,14 +12,28 @@
 //            a junction of two main roads gets them.
 //   signs    a mapped stop sign on an arm makes its cars stop at the line before they go; a stop
 //            or give-way sign, or a lesser road, gives way to cars coming on the main road.
+//   arrows   a big junction of two main roads (four arms or more, the main road two-way) gets a
+//            protected turn phase after the main road's: the turn across the oncoming traffic
+//            (right where the traffic keeps left) has its arrow while the rest of the junction is
+//            red. It is skipped when nobody waits to turn, as SCATS skips it.
+//   turns    a turn OpenStreetMap bans (Overture's prohibited_transitions, game.json "nt" on the
+//            road piece it starts from: pipeline/road_rules.py) is not among an arm's exits.
+//   lanes    a main road (motorway, trunk, primary, a one-way secondary) has two lanes each way:
+//            the one beside the centre line (or on the keep side of a one-way street) for every
+//            movement, and the other for going straight ahead onto a road like it. Each lane's
+//            movement has its own way across.
+//   walkers  the crowd crosses an arm's road at a junction with signals while that arm's traffic is
+//            held at red, and presses the button for it; it waits at the kerb otherwise.
 //   the box  a car goes in only when its movement (from its arm to its exit) crosses no movement
 //            already in the junction, and when there is room for it on its exit beyond the
 //            junction, so a queue never locks a junction up. A car that has waited longest goes
 //            first: one turning across the oncoming traffic gets its turn.
 // The signal heads are modelled here: a pole at the kerb by the stop line with its lantern facing
 // the arm, a second one across the junction, and on a main road a mast arm with a lantern over the
-// lane; vertical red, amber, green, or Japan's horizontal lights on an arm over the road. Their
-// lamps follow the phases and glow after dark.
+// lane; vertical red, amber, green, or Japan's horizontal lights on an arm over the road. An arm
+// with a turn arrow has an arrow lantern beside the one over its lane. Every arm's crossing has a
+// walk signal on each kerb, facing across: a red figure standing, a green one walking, the red
+// flashing while those already out finish crossing. Their lamps follow the phases and glow after dark.
 'use strict';
 window.OEJunctions = (function () {
   const RANK = { motorway: 7, trunk: 6, primary: 5, secondary: 4, tertiary: 3, unclassified: 2, residential: 2, living_street: 1 };
@@ -32,6 +46,11 @@ window.OEJunctions = (function () {
   let seed = 4242;
   const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
   const angle = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  // lanes each way on a road piece: two on a main road, one elsewhere; and a lane's offset from the
+  // first lane's (m, towards the kerb on a two-way road, across to the other side on a one-way one)
+  const TWO = { motorway: 1, trunk: 1, primary: 1 };
+  const lanesOf = l => (l.nl != null ? l.nl : TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
+  const shiftOf = (l, ln) => (ln ? (l.ow ? -3.2 : 3.0) : 0);
 
   // net: actors.network of the roads; opts.signals, .stops, .giveWay: mapped points [x, y, z, ...]
   // in decimetres; keep: the side the traffic keeps to; lane: its lane's offset from the line (m)
@@ -41,6 +60,23 @@ window.OEJunctions = (function () {
     // can a car leave a node along line `line` from its end `end` (0: with its points)?
     const canLeave = (line, end) => (end === 0 ? L[line].ow !== -1 : L[line].ow !== 1);
     const canReach = (line, end) => (end === 1 ? L[line].ow !== -1 : L[line].ow !== 1);
+    // the banned turns: (line, the end a car reaches) -> [[line, the end it enters by, steps]]
+    // (game.json "nt" names pieces by their place in paths.road; network() drops the shortest)
+    const byI0 = new Map(), bans = new Map();
+    L.forEach((l, i) => byI0.set(l.i0 != null ? l.i0 : i, i));
+    let nBans = 0;
+    L.forEach((l, i) => { if (l.nt) for (const [e, k, e2, n] of l.nt) { const i2 = byI0.get(k); if (i2 == null) continue; const key = i * 2 + e; if (!bans.has(key)) bans.set(key, []); bans.get(key).push([i2, e2, n]); nBans++; } });
+    net.bans = bans; // (the rides' router keeps to them too: cars.js)
+    // is the way from arm (line, end reached) by these steps ([line, end entered], ...) a banned turn?
+    function banned(line, end, steps) {
+      if (!bans.size) return false;
+      for (let i = 0; i < steps.length; i++) {
+        const from = i === 0 ? line * 2 + end : steps[i - 1][0] * 2 + 1 - steps[i - 1][1], B = bans.get(from);
+        if (!B) continue;
+        for (const [l2, e2, n] of B) for (let k = i; k < steps.length && (n > 1 || k === i); k++) if (steps[k][0] === l2 && steps[k][1] === e2) return true;
+      }
+      return false;
+    }
     // ------------------------------------------------ the junction nodes, joined into junctions
     const deg = new Map();
     for (const [k, v] of net.nodes) if (v.length >= 3) deg.set(k, v);
@@ -123,13 +159,16 @@ window.OEJunctions = (function () {
       j.sig = both && (mapped ? !!j.mapped : main2);
       if (j.sig) {
         const top = p => Math.max(0, ...j.arms.filter(a => a.phase === p).map(a => a.rank));
-        j.green = [16 + 2 * top(0), 10 + 1.5 * top(1)];
+        j.green = [16 + 2 * top(0), 10 + 1.5 * top(1), 6 + 0.5 * top(0)];
+        // a protected turn across after the main road's phase: at a big junction of two main roads
+        const mainIn = j.arms.filter(a => a.in && a.phase === 0);
+        j.arrow = j.arms.length >= 4 && top(0) >= 4 && top(1) >= 3 && mainIn.length >= 2 && mainIn.some(a => !L[a.line].ow);
         const fast = Math.max(...j.arms.map(a => L[a.line].v || 11));
         j.amber = fast > 16 ? AMBER + 1 : AMBER;
-        j.ph = rnd() < 0.5 ? 0 : 1; j.st = 'g'; j.t = rnd() * j.green[j.ph]; // each junction somewhere in its cycle
+        j.ph = rnd() < 0.5 ? 0 : 1; j.st = 'g'; j.t = rnd() * j.green[j.ph]; j.nxt = 1 - j.ph; // each junction somewhere in its cycle
         for (const a of j.arms) a.sign = null; // the lights rule here
       }
-      j.active = []; j.pend = []; j.near = []; j.demand = [0, 0]; j.seen = -1;
+      j.active = []; j.pend = []; j.near = []; j.demand = [0, 0, 0]; j.seen = -1;
     }
     // ------------------------------------------------ where a car can go from an arm
     // every exit from arm a: { m (the arm it leaves by), steps: [[line, end entered], ...] } by the
@@ -151,7 +190,8 @@ window.OEJunctions = (function () {
             if (!m || !m.exit) continue;
             const steps = [[line, end]];
             for (let n = k; seen.get(n); n = seen.get(n)[0]) steps.unshift([seen.get(n)[1], seen.get(n)[2]]);
-            out.push({ m, steps, turn: angle(m.out, a.out + Math.PI) });
+            if (!banned(a.line, a.end, steps)) out.push({ m, steps, turn: angle(m.out, a.out + Math.PI) });
+            else a.bans = (a.bans || 0) + 1;
           }
         }
       }
@@ -160,6 +200,15 @@ window.OEJunctions = (function () {
       const av = net.avoid, ok = out.filter(e => !(av && av[e.m.line])), pool = ok.length ? ok : out;
       const fwd = pool.filter(e => Math.abs(e.turn) < 2.6);
       a.exits = fwd.length ? fwd : pool;
+      // the lanes a movement goes from: the first lane always; the second (on a road with two) for
+      // straight ahead onto a road with two of the same kind (both one-way, or both two-way)
+      const la = L[a.line], two = lanesOf(la) > 1;
+      for (const e of a.exits) {
+        const lm = L[e.m.line];
+        e.lanes = two && lanesOf(lm) > 1 && Math.abs(e.turn) < 0.5 && !la.ow === !lm.ow ? [0, 1] : [0];
+        e.across = Math.abs(e.turn) < 2.6 && e.turn * side > 0.5; // across the oncoming traffic
+      }
+      a.lanes = two && a.exits.some(e => e.lanes.length > 1) ? 2 : 1;
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
@@ -180,7 +229,7 @@ window.OEJunctions = (function () {
     // waiting there is clear of the other arms' ways across. Worked out for a junction the first
     // time a car comes up to it.
     const PSTEP = 1.2;
-    function wayOf(a, e) {
+    function wayOf(a, e, ln = 0) {
       const chain = [[a.line, a.end ? 1 : -1]].concat(e.steps.map(([li, en]) => [li, en === 0 ? 1 : -1]));
       let total = a.back + e.m.back;
       for (let i = 0; i < e.steps.length - 1; i++) total += L[e.steps[i][0]].len;
@@ -200,7 +249,7 @@ window.OEJunctions = (function () {
         Q.push(tmp.x, tmp.y);
         si += di * PSTEP;
       }
-      const n = Q.length / 2, k0 = Math.round(behind / PSTEP), k1 = Math.max(k0 + 1, n - 2), out = [], off = lane * side; // (not the two points past the far line)
+      const n = Q.length / 2, k0 = Math.round(behind / PSTEP), k1 = Math.max(k0 + 1, n - 2), out = [], off = (lane + shiftOf(L[a.line], ln)) * side; // (not the two points past the far line)
       for (let k = k0; k < Math.min(n, k1); k++) {
         const ka = Math.max(0, k - 2), kb = Math.min(n - 1, k + 2);
         let hx = Q[2 * kb] - Q[2 * ka], hy = Q[2 * kb + 1] - Q[2 * ka + 1];
@@ -216,10 +265,10 @@ window.OEJunctions = (function () {
       return false;
     }
     // where a car waiting at arm a's line stands (a box: centre, direction, half length and width)
-    function waiting(a) {
+    function waiting(a, ln = 0) {
       const l = L[a.line], d = a.back + 2.5, s = a.end ? l.len - d : d, dir = a.end ? 1 : -1;
       net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
-      const hx = tmp.hx * dir, hy = tmp.hy * dir, off = lane * side;
+      const hx = tmp.hx * dir, hy = tmp.hy * dir, off = (lane + shiftOf(l, ln)) * side;
       return { x: tmp.x - hy * off, y: tmp.y + hx * off, hx, hy };
     }
     function inWay(w, W, gl, gw) {
@@ -231,43 +280,94 @@ window.OEJunctions = (function () {
       j.ready = true;
       const ins = j.arms.filter(a => a.in);
       for (const a of ins) exits(a);
-      const ways = () => { for (const a of ins) for (const e of a.exits) e.way = wayOf(a, e); };
+      const ways = () => { for (const a of ins) for (const e of a.exits) { e.ways = e.lanes.map(ln => wayOf(a, e, ln)); e.way = e.ways[0]; } };
+      const crossed = (a, w) => ins.some(b => b !== a && b.exits.some(e => e.m !== a && e.ways.some(W => inWay(w, W, 2.4 + 0.6, 0.95 + 1.1))));
       for (let pass = 0; pass < 2; pass++) {
         ways();
         for (const a of ins) {
           const max = Math.max(a.back, Math.min(16, L[a.line].len * 0.6));
-          for (let w = waiting(a); a.back < max && ins.some(b => b !== a && b.exits.some(e => e.m !== a && inWay(w, e.way, 2.4 + 0.6, 0.95 + 1.1))); w = waiting(a)) a.back = Math.min(max, a.back + 0.6);
+          for (let ln = 0; ln < a.lanes; ln++) for (let w = waiting(a, ln); a.back < max && crossed(a, w); w = waiting(a, ln)) a.back = Math.min(max, a.back + 0.6);
         }
+      }
+      // a second lane whose car waiting at the line would still be in another arm's way (where two
+      // roads merge, say) ends before the junction: its cars move across in time
+      // a second lane whose car waiting at the line would still be in another arm's way, or that
+      // comes within a car's width of another arm's lanes on the way up to the line (two roads that
+      // merge), ends before the junction: its cars move across in time
+      const upTo = (a, ln) => { // the lane's points from the line back 40 m
+        const l = L[a.line], P = [], off = (lane + shiftOf(l, ln)) * side, dir = a.end ? 1 : -1;
+        for (let d = a.back; d < a.back + 40 && d < l.len; d += 2) { net.at(a.line, a.end ? l.len - d : d, tmp); P.push(tmp.x - tmp.hy * dir * off, tmp.y + tmp.hx * dir * off); }
+        return P;
+      };
+      for (const a of ins) {
+        if (a.lanes < 2) continue;
+        const P = upTo(a, 1);
+        if (crossed(a, waiting(a, 1)) || j.arms.some(b => b !== a && b.line !== a.line && (close(P, upTo(b, 0), 3.2) || (b.lanes > 1 && close(P, upTo(b, 1), 3.2))))) { a.lanes = 1; for (const e of a.exits) e.lanes = [0]; }
       }
       ways();
       j.cx = new Map();
     }
-    const wayFor = (j, k, m) => (j.arms[k].exits || []).find(e => e.m.i === m);
+    // a movement is its exit's arm and its lane: m + 16 * lane (mv() gives a car's)
+    const wayFor = (j, k, m) => (j.arms[k].exits || []).find(e => e.m.i === (m & 15));
+    const mv = (c, e) => e.m.i + (c.ln && e.lanes && e.lanes.includes(c.ln) ? 16 * c.ln : 0);
     function conflict(j, k, m, k2, m2) {
-      if (k === k2) return false; // one behind the other: the car ahead is braked for
-      if (m === m2) return true;  // into the same road
-      const C = j.cx || (j.cx = new Map()), key = ((k * 16 + m) * 16 + k2) * 16 + m2;
+      if (k === k2 && (m >> 4) === (m2 >> 4)) return false; // one behind the other in a lane: the car ahead is braked for
+      if (m === m2) return true;  // into the same road, from the same lane
+      const C = j.cx || (j.cx = new Map()), key = ((k * 32 + m) * 32 + k2) * 32 + m2;
       if (C.has(key)) return C.get(key);
-      const e1 = wayFor(j, k, m), e2 = wayFor(j, k2, m2);
-      const v = !e1 || !e2 || !e1.way || !e2.way || close(e1.way, e2.way, 2.8);
+      const e1 = wayFor(j, k, m), e2 = wayFor(j, k2, m2), w1 = e1 && e1.ways && e1.ways[e1.lanes.indexOf(m >> 4)], w2 = e2 && e2.ways && e2.ways[e2.lanes.indexOf(m2 >> 4)];
+      const v = !w1 || !w2 || close(w1, w2, 2.8);
       C.set(key, v);
       return v;
     }
-    // the light an arm shows: 'g', 'y' or 'r', or null where there are no signals
-    function light(a) {
+    // the light an arm shows a car leaving by exit e (an exit, a movement number, or none: the
+    // light for straight ahead): 'g', 'y' or 'r', or null where there are no signals. Phase 2 is
+    // the arrow for the turn across, after the main road's phase (0); the turners keep their green
+    // from one into the other.
+    function light(a, e = null) {
       const j = a.j;
       if (!j.sig) return null;
-      return j.ph !== a.phase ? 'r' : j.st === 'g' ? 'g' : j.st === 'y' ? 'y' : 'r';
+      const st = j.st === 'g' ? 'g' : j.st === 'y' ? 'y' : 'r';
+      if (typeof e === 'number') e = wayFor(j, a.i, e);
+      const turn = j.arrow && a.phase === 0 && e && e.across;
+      if (j.ph === 2) return turn ? st : 'r';
+      if (j.ph !== a.phase) return 'r';
+      if (turn && j.nxt === 2 && j.st !== 'g') return 'g';
+      return st;
+    }
+    // the arrow an arm's turn across shows (for its lantern): 'g', 'y', 'r', or '' (none lit: the
+    // turn filters through the oncoming traffic on the main road's green)
+    function arrow(a) {
+      const j = a.j;
+      if (!j.sig || !j.arrow || a.phase !== 0) return '';
+      if (j.ph === 2) return j.st === 'g' ? 'g' : j.st === 'y' ? 'y' : 'r';
+      if (j.ph === 0 && (j.st === 'g' || j.nxt === 2)) return j.nxt === 2 && j.st !== 'g' ? 'g' : '';
+      return 'r';
+    }
+    // may a walker step out across arm a's road now? While its traffic is held at red, the phase
+    // green for the others (not the arrow's), and not in the last seconds before it may end
+    function walk(a) {
+      const j = a.j;
+      if (!j.sig) return true;
+      return j.ph !== a.phase && j.ph !== 2 && j.st === 'g' && !(j.call && j.t > j.green[j.ph] - 5);
+    }
+    // a walker waits to cross arm a: the button calls the phase that lets them
+    function call(a) {
+      const j = a.j;
+      if (!j.sig) return;
+      if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
+      j.demand[a.phase === 0 ? 1 : 0] = 1;
     }
     let frame = 0;
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
     // the signals (a call for its phase) and by cars giving way to it
     function approach(c, a, m, eta) {
       const j = a.j;
-      if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = 0; }
+      if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       // (the cars coming this frame; the requests before them in the frame see the last frame's)
       j.near.push({ c, k: a.i, m, eta, rank: a.sign ? 0 : a.rank });
       if (eta < 12) j.demand[a.phase] = 1;
+      if (j.arrow && a.phase === 0 && eta < 6 && m >= 0) { const e = wayFor(j, a.i, m); if (e && e.across) j.demand[2] = 1; } // a car to turn across: the arrow
     }
     // may car c go into the junction from arm a, out by exit e, now (t)? It joins the movements in
     // it if so (true); else why not: 'cross' (a movement in it crosses its way), 'turn' (one waiting
@@ -284,13 +384,13 @@ window.OEJunctions = (function () {
       return true;
     }
     function may(c, a, e, t) {
-      const j = a.j, k = a.i, m = e.m.i;
+      const j = a.j, k = a.i, m = mv(c, e);
       for (const o of j.active) if (o.c === c) return true;
       for (const o of j.active) if (o.k !== k && (c.half > LONG || o.c.half > LONG) || conflict(j, k, m, o.k, o.m)) return 'cross';
       const mine = j.pend.find(o => o.c === c);
       for (const o of j.pend) {
         if (o === mine || (mine && o.since >= mine.since) || t - o.since < WAITED || o.c.line < 0) continue;
-        if (j.sig && light(j.arms[o.k]) === 'r') continue; // (its light has turned red since)
+        if (j.sig && light(j.arms[o.k], o.m) === 'r') continue; // (its light has turned red since)
         if (conflict(j, k, m, o.k, o.m)) return 'turn';
       }
       if (!j.sig && j.seen >= frame - 1 && !(mine && t - mine.since > 3 * WAITED)) { // give way to the main road: a car on a greater arm coming, not stopped
@@ -316,13 +416,13 @@ window.OEJunctions = (function () {
       unwait(c);
       if (c.mv && c.mv.j === j) release(c);
       else if (c.mv) { release(c, 'mv0'); c.mv0 = c.mv; } // still leaving the last one
-      j.active.push({ c, k: a.i, m: e.m.i, t });
+      j.active.push({ c, k: a.i, m: mv(c, e), t });
       c.mv = { j, a, e }; c.mvT = t;
     }
     // car c is waiting at the line for its movement: the longest waiting goes first
     function wait(c, a, e, t) {
       const j = a.j;
-      if (!j.pend.some(o => o.c === c)) j.pend.push({ c, k: a.i, m: e.m.i, since: t });
+      if (!j.pend.some(o => o.c === c)) j.pend.push({ c, k: a.i, m: mv(c, e), since: t });
     }
     // the car is clear of a junction (c.mv: the one it is coming up to or in; c.mv0: the one before,
     // which it may still be leaving as it comes up to the next close by)
@@ -358,28 +458,72 @@ window.OEJunctions = (function () {
         }
         if (!j.sig) continue;
         j.t += dt;
-        const other = 1 - j.ph, call = j.seen >= frame - 2 ? j.demand[other] : 0;
-        if (j.st === 'g' && j.t >= j.green[j.ph] && (call || j.t >= j.green[j.ph] + CALL)) { j.st = 'y'; j.t = 0; }
-        else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; }
-        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = other; j.st = 'g'; j.t = 0; }
+        // the phase after this one: the main road's (0), its arrow (2) when someone waits to turn
+        // across, the cross road's (1); a call from another phase ends this one's green
+        const D = j.seen >= frame - 2 ? j.demand : [0, 0, 0], arrowCall = j.arrow && D[2];
+        const call = j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1;
+        j.call = !!call;
+        if (j.st === 'g') {
+          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || j.t >= j.green[j.ph] + CALL)) {
+            j.st = 'y'; j.t = 0;
+            j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
+          }
+        } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; }
+        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; }
       }
       if (heads) heads.update();
+    }
+    // where the crowd's footways (fnet: actors.network) cross the arms' roads at the junctions with
+    // signals, from the junction's node out to just past the stop line: per footway line, [{ s
+    // (along it), a (the arm), kerb (from there back to the kerb, along the footway) }]
+    function crossings(fnet) {
+      const out = new Map(), F = fnet.L, R2 = [];
+      let n = 0;
+      for (const j of J) {
+        if (!j.sig) continue;
+        for (const a of j.arms) {
+          const l = L[a.line], d1 = Math.min(l.len, a.back + 2.5);
+          R2.length = 0;
+          for (let d = 0; d <= d1 + 1e-6; d += 1) { net.at(a.line, a.end ? l.len - d : d, tmp); R2.push(tmp.x, tmp.y); }
+          const half = (ROADW[a.c] || 7) / 2;
+          for (const fi of new Set(fnet.near(a.x, a.y, 0, d1 + 12))) {
+            const f = F[fi], m = f.pts.length / 3;
+            for (let k = 1; k < m; k++) {
+              const ax = f.pts[3 * k - 3], ay = f.pts[3 * k - 2], ex = f.pts[3 * k] - ax, ey = f.pts[3 * k + 1] - ay, fl = Math.hypot(ex, ey);
+              if (fl < 1e-3) continue;
+              for (let r = 2; r < R2.length; r += 2) {
+                const bx = R2[r - 2], by = R2[r - 1], gx = R2[r] - bx, gy = R2[r + 1] - by, den = ex * gy - ey * gx;
+                if (Math.abs(den) < 1e-6) continue;
+                const u = ((bx - ax) * gy - (by - ay) * gx) / den, v = ((bx - ax) * ey - (by - ay) * ex) / den;
+                if (u < 0 || u > 1 || v < 0 || v > 1) continue;
+                const sin = Math.abs(den) / (fl * Math.hypot(gx, gy));
+                if (sin < 0.5) continue; // along the road, not across it
+                if (!out.has(fi)) out.set(fi, []);
+                out.get(fi).push({ s: f.cum[k - 1] + u * fl, a, kerb: Math.min(10, (half + 0.2) / sin) });
+                n++;
+              }
+            }
+          }
+        }
+      }
+      out.count = n;
+      return out;
     }
     // the arm a car on `line` heading for its end `end` comes up to, or null (not a junction, or inside one)
     const armAt = (line, end) => { const a = armOf.get(line * 2 + end); if (!a || !a.in) return null; if (!a.j.ready) prepare(a.j); return a; };
     // ------------------------------------------------ the signal heads
     let heads = null;
     function build(world, { style = {}, ground = null, eye = null } = {}) {
-      heads = signalHeads(world, J, net, { style, side, lane, ground, light });
+      heads = signalHeads(world, J, net, { style, side, lane, ground, light, arrow, walk });
       if (heads && eye) heads.watch(eye);
       return heads;
     }
     function stats() {
       const sj = J.filter(j => j.sig);
-      return { overLine, junctions: J.length, signals: sj.length, mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
+      return { overLine, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
-    return { J, armAt, exits, choose, light, approach, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
@@ -395,7 +539,8 @@ window.OEJunctions = (function () {
   };
   const LIT = { r: [3.4, 0.16, 0.05], y: [3.1, 1.25, 0.04], g: [0.1, 2.3, 1.05] }; // linear, bright enough to bloom
   const DARK = { r: [0.07, 0.012, 0.01], y: [0.07, 0.045, 0.01], g: [0.01, 0.06, 0.045] };
-  function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light }) {
+  const WALK = { r: [3.0, 0.22, 0.08], g: [0.35, 2.4, 1.6], off: [0.035, 0.03, 0.028] }; // the walk signals' figures, lit and dark
+  function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light, arrow = () => '', walk = () => true }) {
     const S = Object.assign({}, STYLES.default, STYLES[style.country] || {}, style), horiz = S.layout === 'horizontal';
     const list = []; // poles: { a (the arm it faces), x, y, z, h (the way its lanterns face: towards the arm's traffic), mast (its arm's length), side (+1 on the keep side) }
     const tmp = {};
@@ -458,6 +603,29 @@ window.OEJunctions = (function () {
       if (!horiz || !o.mast) lanterns.push({ o, out: 0.32, up: horiz ? 3.0 : 2.75 });
       if (o.mast) lanterns.push({ o, out: o.mast, up: horiz ? 5.72 : 5.3 });
     }
+    // arrow lanterns: beside the lantern over the lane (towards the middle of the road), or the
+    // pole's own; Japan's under the lantern
+    const arrows = [];
+    for (const o of list) {
+      if (o.side !== side || !o.a.j.arrow || o.a.phase !== 0) continue;
+      arrows.push(horiz ? { o, out: o.mast || 0.32, up: (o.mast ? 5.72 : 3.0) - 0.45, dx: 0.3 } : { o, out: (o.mast || 0.32) + 0.5, up: o.mast ? 5.3 : 2.75, dx: 0 });
+    }
+    // walk signals: a slim post on each kerb of every arm's crossing, the lantern facing across
+    const peds = [];
+    for (const j of J) {
+      if (!j.sig) continue;
+      for (const a of j.arms) {
+        const l = net.L[a.line], d = Math.max(1.5, a.back - 1.6), s = a.end ? l.len - d : d;
+        net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
+        const kerb = (ROADW[a.c] || 7) / 2 + 0.55;
+        for (const k of [1, -1]) {
+          const px = tmp.x - tmp.hy * kerb * k, py = tmp.y + tmp.hx * kerb * k;
+          if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
+          const g = ground ? ground(px, py, tmp) : null;
+          peds.push({ a, x: px, y: py, z: g != null ? g : tmp.z, h: Math.atan2(tmp.hy * k, -tmp.hx * k) }); // (facing across, to the far kerb)
+        }
+      }
+    }
     const poleM = inst(pole, mat(S.pole), list.length), arms = list.filter(o => o.mast), armM = arms.length ? inst(armG, mat(S.pole), arms.length) : null;
     const housM = inst(geo.housing, mat(S.housing), lanterns.length);
     const boardM = geo.board ? inst(geo.board, mat(S.board), lanterns.length) : null, borderM = geo.border ? inst(geo.border, new THREE.MeshStandardMaterial({ color: lin(S.border), roughness: 0.4 }), lanterns.length) : null;
@@ -491,6 +659,46 @@ window.OEJunctions = (function () {
       }
       lamp.push(o.a);
     });
+    // the arrow lanterns: a housing like the others, three arrow lamps (red, amber, green; the arrow
+    // points the way of the turn across: right where the traffic keeps left)
+    let arrH = null, arrL = null;
+    if (arrows.length) {
+      const sh = new THREE.Shape(), d = side > 0 ? 1 : -1;
+      [[-0.075, 0.025], [0.01, 0.025], [0.01, 0.07], [0.085, 0], [0.01, -0.07], [0.01, -0.025], [-0.075, -0.025]].forEach(([x, y], i) => (i ? sh.lineTo(x * d, y) : sh.moveTo(x * d, y)));
+      const arrowG = new THREE.ShapeGeometry(sh).translate(0, 0, 0.116);
+      arrH = inst(horiz ? merge([box(1.02, 0.36, 0.22, 0, 0, 0)]) : geo.housing, mat(S.housing), arrows.length);
+      arrL = [0, 1, 2].map(() => { const M = inst(arrowG, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true, side: THREE.DoubleSide }), arrows.length); M.castShadow = false; return M; });
+      arrows.forEach((A, i) => {
+        const o = A.o;
+        q.setFromAxisAngle(up, Math.PI - o.h);
+        const out = A.out * o.side, x = o.x - Math.cos(o.h) * out, y = o.y + Math.sin(o.h) * out;
+        m4.compose(W(x, y, o.z + A.up), q, sc.set(1, 1, 1));
+        arrH.setMatrixAt(i, m4);
+        for (let k = 0; k < 3; k++) { const [lx, ly] = at(k); arrL[k].setMatrixAt(i, m4.clone().multiply(new THREE.Matrix4().makeTranslation(lx, ly, 0))); }
+      });
+    }
+    // the walk signals: post, housing, the red figure over the green one (lit or dark)
+    let pedPole = null, pedH = null, pedL = null;
+    if (peds.length) {
+      const fig = walking => { // a figure, white on clear, to be tinted
+        const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+        g.fillStyle = '#fff'; g.strokeStyle = '#fff'; g.lineCap = 'round'; g.lineWidth = 7;
+        g.beginPath(); g.arc(32, 11, 6.5, 0, 6.3); g.fill();
+        const seg = (a, b, c2, d2) => { g.beginPath(); g.moveTo(a, b); g.lineTo(c2, d2); g.stroke(); };
+        if (walking) { seg(32, 22, 29, 40); seg(29, 40, 19, 58); seg(29, 40, 40, 57); seg(31, 25, 20, 36); seg(31, 25, 43, 34); }
+        else { g.lineWidth = 9; seg(32, 22, 32, 40); g.lineWidth = 7; seg(29, 40, 27, 58); seg(35, 40, 37, 58); seg(28, 24, 22, 40); seg(36, 24, 42, 40); }
+        const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+      };
+      pedPole = inst(new THREE.CylinderGeometry(0.05, 0.06, 1, 6).translate(0, 0.5, 0), mat(S.pole), peds.length);
+      pedH = inst(box(0.3, 0.62, 0.17, 0, 0, 0), mat(S.housing), peds.length);
+      pedL = [false, true].map(w => { const M = inst(new THREE.PlaneGeometry(0.22, 0.22).translate(0, w ? -0.14 : 0.14, 0.088), new THREE.MeshBasicMaterial({ color: 0xffffff, map: fig(w), transparent: true, alphaTest: 0.3, toneMapped: true }), peds.length); M.castShadow = false; return M; });
+      peds.forEach((o, i) => {
+        q.setFromAxisAngle(up, Math.PI - o.h);
+        m4.compose(W(o.x, o.y, o.z), q, sc.set(1, 2.55, 1)); pedPole.setMatrixAt(i, m4);
+        m4.compose(W(o.x, o.y, o.z + 2.2), q, sc.set(1, 1, 1));
+        pedH.setMatrixAt(i, m4); pedL[0].setMatrixAt(i, m4); pedL[1].setMatrixAt(i, m4);
+      });
+    }
     for (const M of meshes) { M.instanceMatrix.needsUpdate = true; M.computeBoundingSphere && M.computeBoundingSphere(); }
     // the glow of the lit lamps after dark (and a little by day): one point per lantern, at its lit lamp
     const gpos = new Float32Array(lanterns.length * 3), gcol = new Float32Array(lanterns.length * 3);
@@ -501,6 +709,7 @@ window.OEJunctions = (function () {
     const glows = new THREE.Points(glowGeo, glowMat);
     glows.frustumCulled = false;
     world.add(glows);
+    const aShown = new Array(arrows.length).fill(null), pShown = new Array(peds.length).fill(null);
     const shown = new Array(lanterns.length).fill(''), c3 = new THREE.Color(), lp = new THREE.Vector3(), mm = new THREE.Matrix4();
     const order = horiz ? { g: 0, y: 1, r: 2 } : { r: 0, y: 1, g: 2 };
     // a lamp's glow is seen from in front of it: towards the eye, faded out beside it and gone behind
@@ -522,6 +731,26 @@ window.OEJunctions = (function () {
         for (const M of lensM) if (M.instanceColor) M.instanceColor.needsUpdate = true;
         glowGeo.attributes.position.needsUpdate = true;
       }
+      // the arrows and the walk signals (the red figure flashes while the walk is over but the
+      // arm's traffic is still held)
+      const blink = (performance.now() % 1000) < 550;
+      let ch2 = false;
+      for (let i = 0; i < arrows.length; i++) {
+        const s = arrow(arrows[i].o.a);
+        if (aShown[i] === s) continue;
+        aShown[i] = s; ch2 = true;
+        for (const k of ['r', 'y', 'g']) { const C = s === k ? LIT[k] : DARK[k]; arrL[order[k]].setColorAt(i, c3.setRGB(C[0], C[1], C[2])); }
+      }
+      if (ch2) for (const M of arrL) M.instanceColor.needsUpdate = true;
+      ch2 = false;
+      for (let i = 0; i < peds.length; i++) {
+        const a = peds[i].a, w = walk(a), held = !w && a.j.ph !== a.phase && a.j.st === 'g', s = w ? 'g' : held && !blink ? 'o' : 'r';
+        if (pShown[i] === s) continue;
+        pShown[i] = s; ch2 = true;
+        const R = s === 'r' ? WALK.r : WALK.off, G = s === 'g' ? WALK.g : WALK.off;
+        pedL[0].setColorAt(i, c3.setRGB(R[0], R[1], R[2])); pedL[1].setColorAt(i, c3.setRGB(G[0], G[1], G[2]));
+      }
+      if (ch2) for (const M of pedL) M.instanceColor.needsUpdate = true;
       if (eyeAt && (changed || ++tick % 4 === 0)) { // (in plan: x east, y north = -z; a few times a second will do)
         const ex = eyeAt.position.x, ey = -eyeAt.position.z;
         for (let i = 0; i < lamp.length; i++) {
@@ -537,8 +766,8 @@ window.OEJunctions = (function () {
     function setNight(night) { glowMat.opacity = 0.12 + 0.88 * night; glowMat.size = 1.4 + 1.6 * night; }
     setNight(0);
     update();
-    return { count: lanterns.length, poles: list.length, update, setNight, watch, meshes, glows, list };
+    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list };
   }
 
-  return { create, STYLES, RANK };
+  return { create, STYLES, RANK, lanesOf, shiftOf };
 })();
