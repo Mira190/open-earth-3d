@@ -1929,11 +1929,13 @@ def yongen(K, y):
         facade_panel(K("atlas", "lit"), mid, n, 2.0, z + 3.2, z + 3.7, "rain", off=0.12, along=-2.6)
 
 
-def shop_signs(K, sites):
-    """Blade signs, banners and upper-wall boards on the districts' street fronts, each with its own words."""
+def shop_signs(K, sites, avoid=()):
+    """Blade signs, banners and upper-wall boards on the districts' street fronts, each with its own words
+    (none within 9 m of a published screen or sign in `avoid`)."""
     rng = np.random.default_rng(2016)
     A = K("atlas", "lit")
     for x, y, nx, ny, g, top, L in sites:
+        clear = any(np.hypot(x - p[0], y - p[1]) < 9.0 for p in avoid)   # chosen as usual, so the other fronts keep their signs, but not built
         n, mid = np.array([nx, ny]), np.array([x, y])
         t = np.array([-n[1], n[0]])
         kinds = ["board"] + (["blade"] if top > 9 else []) + (["blade2"] if top > 18 and rng.random() < 0.6 else [])
@@ -1942,7 +1944,9 @@ def shop_signs(K, sites):
                 w = min(max(L * 0.6, 2.4), 6.0)
                 along = (rng.random() - 0.5) * max(L - w, 0.0)
                 z0 = g + 2.9 + rng.random() * 0.6
-                facade_panel(A, mid, n, w, z0, z0 + w / 4, f"board{int(rng.integers(len(BOARDS)))}", off=0.18, along=along)
+                key = f"board{int(rng.integers(len(BOARDS)))}"
+                if not clear:
+                    facade_panel(A, mid, n, w, z0, z0 + w / 4, key, off=0.18, along=along)
             else:
                 along = (rng.random() - 0.5) * max(L - 1.5, 0.0)
                 h = 2.6 + rng.random() * 2.4
@@ -1950,6 +1954,8 @@ def shop_signs(K, sites):
                 if z0 + h > g + top - 0.5:
                     continue
                 key = f"blade{int(rng.integers(len(BLADES)))}"
+                if clear:
+                    continue
                 c = mid + n * 0.95 + t * along
                 for side in (-1, 1):  # both faces of a sign that stands out from the wall
                     a, b = c - n * 0.65 * side + t * 0.06 * side, c + n * 0.65 * side + t * 0.06 * side
@@ -2015,7 +2021,9 @@ def districts_meshes(lm):
     if "docomo" in lm:
         docomo(K, lm["docomo"])
     if "signs" in lm:
-        shop_signs(K, lm["signs"]["sites"])
+        node = lm.get("scramble", {}).get("node")
+        avoid = [place(sc, np.asarray(node, float))[0] for sc in CROSSING_SIGNS + CROSSING_SCREENS] if node else []
+        shop_signs(K, lm["signs"]["sites"], avoid)
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
 
@@ -2035,9 +2043,11 @@ MATERIALS.update({
     # the screens' face: dark LED tiles that light with the programme (world.js "led_screen")
     "screens": {"color": "#0b0c0e", "roughness": 0.32, "metalness": 0.0, "map": "screens.jpg", "pattern": "led_screen"},
     "crane_yellow": {"color": "#d8a21e", "roughness": 0.55, "metalness": 0.4},
+    # Hachiko Square's granite paving, laid over the ground (web/world.js granite: joints every 0.9 m)
+    "plaza": {"color": "#57544f", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 0.9], "decal": True, "street_lit": True},
     # QFRONT's glass front (web/world.js curtain_wall: panes between mullions, some lit after dark)
     "qfront_glass": {"color": "#3b4c58", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
-                     "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb"},
+                     "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.4, "lit_k": 0.42},
     "aviation": {"color": "#9a1a14", "roughness": 0.4, "metalness": 0.0, "emissive": "#ff2a1a", "glow": 5.0},
 })
 _BLD = {}
@@ -2576,16 +2586,44 @@ def lm_ground_at(lm, x, y):
     return bilinear(g, x0, y1, cell, x, y)[0]
 
 
-def hachiko_square(K, h, lm):
-    """Hachiko faces east, towards the station he waited at (since May 1989, when his pedestal was lowered
-    so people could touch him), and metal benches ring him, open on his front; always full."""
+# Hachiko Square between the street, the station's low building and the hoarding (from the footprints), and
+# its lamps (positions illustrative)
+HACHIKO_SQUARE = [(373.5, -1012.0), (400.0, -1016.0), (400.0, -1030.0), (389.0, -1036.0), (389.0, -1055.5), (362.5, -1055.5), (370.5, -1033.0),
+                  (372.5, -1022.0)]   # its west side is the kerb of the street to the west exit
+HACHIKO_LAMPS = [(374.5, -1028.0), (386.0, -1022.0), (386.0, -1052.0), (366.0, -1052.0)]
+
+
+def hachiko_face(h):
+    """Which way Hachiko looks: towards the station (its footprint in the built city)."""
     B = buildings_json()
     st = [q for q in B["s_list"] if B["b"][q[0]][1] == "train_station" and B["b"][q[0]][0] == "渋谷"]
     to = np.asarray(st[0][4], float).reshape(-1, 2).mean(0) / 10.0 if st else np.asarray(h["at"]) + [1.0, -0.4]
-    face = unit(to - np.asarray(h["at"]))
+    return unit(to - np.asarray(h["at"]))
+
+
+def hachiko_square(K, h, lm):
+    """Hachiko faces east, towards the station he waited at (since May 1989, when his pedestal was lowered
+    so people could touch him), and metal benches ring him, open on his front; always full."""
+    face = hachiko_face(h)
     hachiko(K, dict(h, face=[float(face[0]), float(face[1])]))
     P = frame(h["at"], face)
     z = h["z"]
+    # the square's granite paving, from the street to the hoarding, and its lamps: tall poles with LED
+    # heads round its edge (their light: landmark_glows)
+    sq = Polygon(HACHIKO_SQUARE)
+    xs, ys = np.arange(sq.bounds[0], sq.bounds[2], 2.0), np.arange(sq.bounds[1], sq.bounds[3], 2.0)
+    for x in xs:
+        for y in ys:
+            cell = Polygon([(x, y), (x + 2, y), (x + 2, y + 2), (x, y + 2)]).intersection(sq)
+            if cell.is_empty or cell.geom_type != "Polygon" or cell.area < 0.05:
+                continue
+            pts = [np.array([px, py, lm_ground_at(lm, px, py) + 0.06]) for px, py in list(cell.exterior.coords)[:-1]]
+            for k in range(1, len(pts) - 1):
+                K("plaza").tri(pts[0], pts[k], pts[k + 1], [list(pts[0][:2]), list(pts[k][:2]), list(pts[k + 1][:2])])
+    for lx, ly in HACHIKO_LAMPS:
+        gz = lm_ground_at(lm, lx, ly)
+        lathe_at(K("steel_dark"), lx, ly, [(gz, 0.14), (gz + 8.0, 0.09), (gz + 8.05, 0.0)], 8)
+        lathe_at(K("lamp", "lit"), lx, ly, [(gz + 7.6, 0.0), (gz + 7.6, 0.45), (gz + 8.0, 0.45), (gz + 8.05, 0.0)], 10)
     for k in range(7):   # seven benches on a ring 3.4 m out, the front left open
         a = math.radians(70 + k * 37.0)
         u, v = 3.4 * math.cos(a), 3.4 * math.sin(a)
@@ -2611,8 +2649,9 @@ def crossing_wall_signs(K, lm):
     node = np.asarray(lm["scramble"]["node"], float)
     rng = np.random.default_rng(3109)
     A, Pr = K("atlas", "lit"), K("atlas_print", "lit")
+    taken = [place(sc, node)[0] for sc in CROSSING_SIGNS + CROSSING_SCREENS]   # not over a published screen or sign
     for x, y, nx, ny, g, top, L in lm["signs"]["sites"]:
-        if np.hypot(x - node[0], y - node[1]) > 230 or top < 14:
+        if np.hypot(x - node[0], y - node[1]) > 230 or top < 14 or min(np.hypot(x - p[0], y - p[1]) for p in taken) < 14:
             continue
         n, mid = np.array([nx, ny]), np.array([x, y])
         t = np.array([-n[1], n[0]])
@@ -2622,6 +2661,8 @@ def crossing_wall_signs(K, lm):
             z0 = g + 3.4
             c = mid + n * 1.0 + t * (L / 2 - 0.8) * (1 if rng.random() < 0.5 else -1)
             key = f"stack{int(rng.integers(STACKS))}"
+            if min(np.hypot(*(c - p[:2])) for p in taken) < 9.0:
+                continue
             P = frame(c, t)
             block(K("screen_frame"), P, -0.12, 0.12, -0.55, 0.55, z0 - 0.1, z0 + h + 0.1)
             for side in (-1, 1):
@@ -2702,7 +2743,7 @@ def screen_glows(scr, sheet):
         g = s["at"] + s["normal"] * (0.6 * rise + 4.0)
         area = s["w"] * s["h"] * sum((u1 - u0) * (v1 - v0) for u0, u1, v0, v1 in s["parts"])
         out.append([round(float(g[0]), 1), round(float(g[1]), 1), round(max(s["w"] * 1.1, rise * 1.2, 18.0), 1), col,
-                    round(min(0.9, 0.0016 * area * s["bright"] * float(lin.mean() / max(lin.max(), 1e-6)) + 0.08), 3)])
+                    round(min(0.9, 0.0016 * area * s["bright"] * float(lin.mean() / max(lin.max(), 1e-6)) + 0.08), 3), *s["hours"]])
     return out
 
 
@@ -2976,7 +3017,10 @@ def landmark_meshes(scene):
 def landmark_glows(scene):
     """The light the crossing's screens throw on the street (web/night.js)."""
     lm = scene["landmarks"]
-    return screen_glows(crossing_screens(lm), screen_sheet()) if "scramble" in lm else []
+    if "scramble" not in lm:
+        return []
+    square = [[round(x, 1), round(y, 1), 10.0, "#fff1dc", 0.16] for x, y in HACHIKO_LAMPS]   # the square's lamps, all night
+    return screen_glows(crossing_screens(lm), screen_sheet()) + square
 
 
 def sky_surfaces(s):
@@ -3051,10 +3095,11 @@ def suga_extras(s, spots, chatter):
 def districts_extras(lm, spots, chatter):
     h = lm.get("hachiko")
     if h:
-        at, f = np.asarray(h["at"]), np.asarray(h["face"])
+        at, f = np.asarray(h["at"]), hachiko_face(h)
         spots.append(spot("hachiko", "Hachiko 忠犬ハチ公", at + f * 1.4, h["z"], "Look at Hachiko", [
             "Hachiko, an Akita, met his master here every evening. After Professor Ueno died in 1925 he kept coming, for almost ten years.",
-            "The first statue (1934) went for metal in the war; this is the 1948 recast. 'Meet at Hachiko' is still how Tokyo says 'meet at Shibuya'."], 2.8))
+            "The first statue (1934) went for metal in the war; this is the 1948 recast. 'Meet at Hachiko' is still how Tokyo says 'meet at Shibuya'.",
+            "Since 1989 he has faced the station, on a pedestal lowered so that people can touch him. The benches round him are never empty."], 2.8))
         chatter.append(talk(at + f * 6 + left_of(f) * 4, h["z"], [["Student", "Meet at Hachiko? Everyone says that."], ["Friend", "Which side of Hachiko, though?"],
                                                                ["Student", "The side with the tourists."]]))
     sc = lm.get("scramble")

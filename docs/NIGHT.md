@@ -94,16 +94,19 @@ country's height (60 m in Japan, where they flash together forty times a minute;
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
 instanced batches of 300 m squares drawn within 500 m of the camera. No pole stands in a
-carriageway: a lamp whose kerb would put it on another road at the same level (where a
-street meets a junction) is left out, and a city can keep a square clear of poles
+carriageway: a lamp whose kerb would put it on a road crossing its own at the same level
+(where a street meets a junction) is left out, 4 to 6 per cent of them in each city; a road
+alongside (a dual carriageway's other half) does not count. A city can keep a square clear of poles
 (`night.clear` in `city.json`, as Shibuya does over the scramble, whose paved crossing is far
 wider than its streets).
 
 **Big screens and lit signs.** A landmark can carry LED screens (`led_screen`, below) and
 lit signs, and say how much light they throw on the street in front of them
-(`landmarks.json` `glows`: `[x, y, radius m, colour, strength]`). The glows are splatted into
-the same light map as the lamps' pools, in the screen's mean colour, so the pavement of a
-crossing ringed by screens takes their colour.
+(`landmarks.json` `glows`: `[x, y, radius m, colour, strength, on hour, off hour]`). A glow
+without hours goes into the same light map as the lamps' pools; one with hours (a screen that
+plays from 9:00 to midnight) goes into a map of its own, a quarter as fine, that is switched
+with them. Either way it is in the screen's mean colour, so the pavement of a crossing ringed
+by screens takes their colour while they play.
 
 **When.** Everything fades in as the street lights come on, about when the sun sets.
 Offices empty through the evening to a few floors lit all night.

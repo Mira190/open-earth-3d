@@ -45,15 +45,17 @@ window.OENight = (function () {
 
   // GLSL for the materials the street lights fall on (world.js adds it to the ground and the piers,
   // buildings.js to the walls): streetLight(wp), the light at a world position (three.js frame)
-  const GLSL = `uniform sampler2D uNightMap; uniform vec4 uNightXf; uniform float uNightOn;
+  const GLSL = `uniform sampler2D uNightMap, uGlowMap; uniform vec4 uNightXf; uniform float uNightOn, uGlowOn;
 vec3 streetLight(vec3 wp) {
   if (uNightOn <= 0.0) return vec3(0.0);
   vec2 uv = vec2((wp.x - uNightXf.x) * uNightXf.z, (-wp.z - uNightXf.y) * uNightXf.w);
   vec3 c = texture2D(uNightMap, uv).rgb, g = texture2D(uNightMap, uv, 6.0).rgb; // the pools, and the district's glow
-  return (c * c + 0.4 * g * g) * ${VMAX.toFixed(1)} * uNightOn;
+  vec3 s = texture2D(uGlowMap, uv).rgb; // the screens' light, while they play
+  return (c * c + 0.4 * g * g + s * s * uGlowOn) * ${VMAX.toFixed(1)} * uNightOn;
 }`;
   // the uniforms that GLSL reads; world.js shares them with every material it patches
-  const uniforms = () => ({ uNightMap: { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) }, uNightXf: { value: new THREE.Vector4(0, 0, 1, 1) }, uNightOn: { value: 0 } });
+  const uniforms = () => ({ uNightMap: { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) }, uNightXf: { value: new THREE.Vector4(0, 0, 1, 1) }, uNightOn: { value: 0 },
+    uGlowMap: { value: new THREE.DataTexture(new Uint8Array(4), 1, 1) }, uGlowOn: { value: 0 } });
 
   // the edge haze (world.js) on an additive light: fog mixes towards the haze, a light just fades
   const FOG_FRAG = `#include <fog_fragment>
@@ -108,8 +110,8 @@ void main() {
       roads.push({ cls, v: roadsI[i + 1] / 10, pts });
     }
     // every road's pieces in a 40 m grid, so a lamp can find the carriageways around it: a lamp that
-    // would stand on another road (the kerb offset of a street meeting a junction, a scramble's
-    // middle) is left out, as no pole stands in a carriageway
+    // would stand on a road crossing its own (the kerb offset of a street meeting a junction) is left
+    // out, as no pole stands in a carriageway: 4 to 6 per cent of them in each city
     const SEG = 40, segs = new Map();
     roads.forEach((r, ri) => {
       const half = (ROAD[r.cls] || ROAD.unclassified)[1] / 2;
@@ -126,11 +128,13 @@ void main() {
     // and none in a square the city keeps clear of poles (city.json night.clear: [x, y, radius m], as
     // over a scramble crossing much wider than its streets)
     const clear = st.clear || [];
-    const onCarriageway = (x, y, z, own) => {
+    const onCarriageway = (x, y, z, own, ux, uy) => {
       for (const [cx, cy, r] of clear) if (Math.hypot(x - cx, y - cy) < r) return true;
       for (const [ri, a, b, half] of segs.get(Math.floor(x / SEG) * 65536 + Math.floor(y / SEG)) || []) {
         if (ri === own) continue;
-        const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (y - a[1]) * ey) / L2));
+        const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1;
+        if (Math.abs(ex * ux + ey * uy) > 0.87 * Math.sqrt(L2)) continue; // a road alongside (the other carriageway, the street's next stretch): its median and kerbs carry lamps
+        const t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (y - a[1]) * ey) / L2));
         if (Math.hypot(a[0] + ex * t - x, a[1] + ey * t - y) < half - 0.2 && Math.abs(a[2] + (b[2] - a[2]) * t - z) < 3) return true; // a deck above or below is another level
       }
       return false;
@@ -147,7 +151,7 @@ void main() {
         while (next <= acc + len) {
           const t = (next - acc) / len, s = both ? side = -side : side, b = bright * (0.9 + 0.2 * rnd());
           const x = ax + (bx - ax) * t - uy * s * off, y = ay + (by - ay) * t + ux * s * off, z = az + (bz - az) * t;
-          if (!onCarriageway(x, y, z, ri)) lamp(x, y, z + h, colour, b, ux, uy, h, s);
+          if (!onCarriageway(x, y, z, ri, ux, uy)) lamp(x, y, z + h, colour, b, ux, uy, h, s);
           next += step;
         }
         acc += len;
@@ -186,20 +190,30 @@ void main() {
       }
     }
     // the light that a landmark's big screens and signs throw on the street in front of them
-    // (landmarks.json "glows": [x, y, radius m, colour, strength]), a soft disc in their colour
-    for (const [gx, gy, R, hex, k] of (D.LM && D.LM.glows) || []) {
-      const c = lampColour(hex), s = R / 2.2, R2 = 2.6 * s;
-      const i0 = Math.max(0, Math.floor((gx - R2 - fr.x[0]) / mpp)), i1 = Math.min(mw - 1, Math.ceil((gx + R2 - fr.x[0]) / mpp));
-      const j0 = Math.max(0, Math.floor((gy - R2 - fr.y[0]) / mpp)), j1 = Math.min(mh - 1, Math.ceil((gy + R2 - fr.y[0]) / mpp));
+    // (landmarks.json "glows": [x, y, radius m, colour, strength, on hour, off hour]), a soft disc in
+    // their colour: with hours (a screen that plays from 9:00 to midnight) in a map of their own,
+    // a quarter as fine, that is switched with them; without, with the lamps
+    const splat = (A, w, h, step, gx, gy, R, c, k) => {
+      const s = R / 2.2, R2 = 2.6 * s;
+      const i0 = Math.max(0, Math.floor((gx - R2 - fr.x[0]) / step)), i1 = Math.min(w - 1, Math.ceil((gx + R2 - fr.x[0]) / step));
+      const j0 = Math.max(0, Math.floor((gy - R2 - fr.y[0]) / step)), j1 = Math.min(h - 1, Math.ceil((gy + R2 - fr.y[0]) / step));
       for (let j = j0; j <= j1; j++) {
-        const dy = (fr.y[0] + (j + 0.5) * mpp - gy) / s;
+        const dy = (fr.y[0] + (j + 0.5) * step - gy) / s;
         for (let ii = i0; ii <= i1; ii++) {
-          const dx = (fr.x[0] + (ii + 0.5) * mpp - gx) / s, e = (dx * dx + dy * dy) * 0.5 * 32;
+          const dx = (fr.x[0] + (ii + 0.5) * step - gx) / s, e = (dx * dx + dy * dy) * 0.5 * 32;
           if (e >= 256) continue;
-          const w = EXP[e | 0] * k, o = (j * mw + ii) * 3;
-          acc[o] += c.r * w; acc[o + 1] += c.g * w; acc[o + 2] += c.b * w;
+          const wt = EXP[e | 0] * k, o = (j * w + ii) * 3;
+          A[o] += c.r * wt; A[o + 1] += c.g * wt; A[o + 2] += c.b * wt;
         }
       }
+    };
+    const glows = (D.LM && D.LM.glows) || [], timed = glows.filter(g => g.length >= 7);
+    const gw = Math.ceil(mw / 4), gh = Math.ceil(mh / 4), gAcc = timed.length ? new Float32Array(gw * gh * 3) : null;
+    let glowHours = null;
+    for (const [gx, gy, R, hex, k, h0, h1] of glows) {
+      if (h0 == null) { splat(acc, mw, mh, mpp, gx, gy, R, lampColour(hex), k); continue; }
+      splat(gAcc, gw, gh, (mw * mpp) / gw, gx, gy, R, lampColour(hex), k);
+      glowHours = glowHours ? [Math.min(glowHours[0], h0), Math.max(glowHours[1], h1)] : [h0, h1];
     }
     // where pools overlap (a boulevard's two rows, a bridge, a junction) the light rolls off on a soft
     // knee instead of adding up to a white glare, keeping its colour
@@ -214,6 +228,18 @@ void main() {
     const map = new THREE.DataTexture(px, mw, mh, THREE.RGBAFormat);
     Object.assign(map, { magFilter: THREE.LinearFilter, minFilter: THREE.LinearMipmapLinearFilter, generateMipmaps: true, needsUpdate: true });
     NU.uNightMap.value = map;
+    let gMap = null;
+    if (gAcc) { // the screens' light, on the same soft knee
+      const gp = new Uint8Array(gw * gh * 4);
+      for (let i = 0, o = 0; i < gAcc.length; i += 3, o += 4) {
+        const l = 0.2126 * gAcc[i] + 0.7152 * gAcc[i + 1] + 0.0722 * gAcc[i + 2], k = l > 1e-6 ? KNEE * (1 - Math.exp(-l / KNEE)) / l : 1;
+        for (let q = 0; q < 3; q++) gp[o + q] = Math.min(255, Math.round(255 * Math.sqrt(gAcc[i + q] * k / VMAX)));
+        gp[o + 3] = 255;
+      }
+      gMap = new THREE.DataTexture(gp, gw, gh, THREE.RGBAFormat);
+      Object.assign(gMap, { magFilter: THREE.LinearFilter, minFilter: THREE.LinearFilter, needsUpdate: true });
+      NU.uGlowMap.value = gMap;
+    }
     NU.uNightXf.value.set(fr.x[0], fr.y[0], 1 / (mw * mpp), 1 / (mh * mpp));
 
     // ------------------------------------------------------------ the lamps as points of light
@@ -463,11 +489,13 @@ void main() {
         common.uMinPx.value = 1.25 * Math.max(1, renderer.getPixelRatio());
         const hr = ((Wd.U.uHour.value % 24) + 24) % 24, h0 = Math.floor(hr), f = hr - h0;
         traffic.uDensity.value = TRAFFIC[h0] * (1 - f) + TRAFFIC[(h0 + 1) % 24] * f;
+        // the screens' light while they play (their hours; 24 is midnight)
+        if (glowHours) NU.uGlowOn.value = hr >= glowHours[0] && hr < glowHours[1] ? 1 : 0;
         headMat.emissiveIntensity = 2.2 * on;
         const cp = camera.position;
         for (const p of poles) { const v = Math.hypot(p.c.x - cp.x, p.c.z - cp.z) < 500 + CELL * 0.71 && cp.y - p.c.y < 900; p.meshes[0].visible = p.meshes[1].visible = v; }
       },
-      dispose() { map.dispose(); group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); },
+      dispose() { map.dispose(); if (gMap) gMap.dispose(); group.traverse(o => { if (o.geometry) o.geometry.dispose(); }); },
     };
     return api;
   }

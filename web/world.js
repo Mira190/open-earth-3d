@@ -146,13 +146,15 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
     },
     // a curtain wall (u metres along the facade, v metres up): panes between mullions every bay_m,
     // a spandrel at the foot of each storey_m, pane tones that vary, and some panes lit after dark
+    // (lit_share of them, lit_k bright: a shop's glass is mostly lit and softer than an office's)
     curtain_wall(mat, m) {
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       mat.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, { uBay: { value: m.bay_m || 1.5 }, uSty: { value: m.storey_m || 4.0 }, uSpan: { value: m.spandrel || 0.25 },
-          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT });
+          uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT,
+          uLitShare: { value: m.lit_share ?? 0.38 }, uLitK: { value: m.lit_k ?? 1.3 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uBay, uSty, uSpan, uMull, uLmNight; uniform vec3 uFrame; float pWin, pLit;
+uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK; uniform vec3 uFrame; float pWin, pLit;
 float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
@@ -167,11 +169,11 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     float sf = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv)); // the storey's spandrel band
     vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
     diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);
-    float litFar = mix(0.6 * step(0.74, cwHash(cf + 17.0)) * (1.0 - sf), 0.13, vfar);
-    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(0.62, cwHash(cell + 17.0)), litFar, far); }`)
+    float litFar = mix(0.6 * step(1.0 - 0.68 * uLitShare, cwHash(cf + 17.0)) * (1.0 - sf), 0.34 * uLitShare, vfar);
+    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(1.0 - uLitShare, cwHash(cell + 17.0)) * (0.85 + 0.3 * cwHash(cell + 3.0)), litFar, far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * 1.3;`);
+  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * uLitK;`);
       };
     },
     // a riveted iron lattice cut out of a panel (u metres across, v metres up): a strut at the
@@ -742,7 +744,8 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     for (const [k, m] of Object.entries(LM.materials || {})) {
       lmMats[k] = new THREE.MeshStandardMaterial({ color: lin(m.color), roughness: m.roughness, metalness: m.metalness, side: THREE.DoubleSide });
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
-      if (m.pattern === 'deck_zones' && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { own(sh); streetLit(sh); }; } // a bridge's deck under its lamps
+      // a bridge's deck, or paving ("street_lit"), under the street lights and the screens' glow
+      if ((m.pattern === 'deck_zones' || m.street_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
       if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
