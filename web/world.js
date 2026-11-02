@@ -303,6 +303,9 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
       const A = [], Bv = [], Cv = [];
       for (let i = 0; i < n; i++) { A.push(v4(i, 0)); Bv.push(v4(i, 4)); Cv.push(v4(i, 8)); }
       const [cols, rows, cw, ch] = m.sheet, [sc, sp, sl] = m.sync || [-1, 1e9, 0];
+      // each site's screens are a program of their own (their count is in the shader, and three.js
+      // would otherwise share one program between materials whose onBeforeCompile reads the same)
+      mat.customProgramCacheKey = () => `led_screen:${n}:${m.frame_s || 4}:${m.cell_aspect || 0}`;
       mat.onBeforeCompile = sh => {
         Object.assign(sh.uniforms, { uScrA: { value: A }, uScrB: { value: Bv }, uScrC: { value: Cv }, uSheet: { value: new THREE.Vector4(cols, rows, cw, ch) },
           uSync: { value: new THREE.Vector4(sc, sp, sl, m.frames || 1) }, uScrT: SCREEN.t, uScrHour: SCREEN.hour, uScrNight: LM_NIGHT });

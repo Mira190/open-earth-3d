@@ -517,9 +517,99 @@ pipeline writes. The only city-specific code is landmark geometry in
     110 m and about 1,000 beyond, so a street of 150 cars costs a few draw
     calls. Paint is glossy, glass is dark, wheels and trim are metal, and the
     occlusion baked in Blender darkens the wheel arches and the underside.
-  - **Driving:** they keep left, brake for the cars ahead and for the player,
-    and keep bumper-to-bumper gaps, so a bus queues its full length back.
+  - **Driving:** they keep to the city's side, drive a one-way street only its
+    way, brake for the cars ahead and for the player, and keep bumper-to-bumper
+    gaps, so a bus queues its full length back. A car looks ahead along its own
+    lane, round the bend and across the junction it is taking (points every
+    1.5 m, 3 m far from the camera), not along a straight line from its bonnet,
+    so a car waiting in the oncoming lane round a corner doesn't stop it. Where
+    two cars come into each other's way, the one already in the junction, or
+    nearer the point where their ways meet, goes first.
+  - **Junctions** (`web/game/junctions.js`): see [Junctions and traffic
+    lights](#junctions-and-traffic-lights).
+  - **Unsticking:** a car waiting on someone standing in the road edges on
+    after a few seconds and the walker turns back; a car waiting at its line
+    that a bus can't swing past backs off a metre; two cars held nose to nose
+    for 15 s (10 s in a junction) squeeze past each other; and out of sight, a
+    car stopped 45 s that is not in a queue comes back elsewhere.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
+
+#### Junctions and traffic lights
+
+Before, a junction was a lock: one car at a time held the node it came up to,
+and every node where two road pieces met was one, even a bend. Queues reached
+back into the junction behind, cars stopped half way through a turn, jams
+locked solid, and a car stuck behind one turned round in the road after 10 s.
+Sydney's traffic stood still a third of the time.
+
+- **The rules of the road are data.** `pipeline/road_rules.py` reads Overture's
+  segments and infrastructure (OpenStreetMap, ODbL): a segment whose access is
+  denied heading backward (or forward), for everyone or for motor vehicles, is
+  one-way, and the road pieces in `game.json` carry `"o": 1` or `-1`;
+  `traffic_signals`, `stop` and `give_way` points go into `props`. Sydney has
+  788 signals and 914 of its 1957 road pieces are one-way, Osaka 1837 and
+  4886, Paris 1456 and 3364. `game_data.py` writes the same as it builds.
+- **A junction** is a node where three or more pieces end, or a few such nodes
+  joined by pieces under 24 m and no more than 42 m across: a divided road
+  crossing another is two to four nodes and one junction. Its arms are the
+  pieces out of it. A car coming up an arm picks its exit (ahead more often than
+  a turn, a main road more often than a lane, never back the way it came) and
+  the pieces across to it.
+- **Its ways across** are worked out the first time a car comes up to it: each
+  movement's lane, smoothed round the corner as the cars drive it, from its
+  arm's stop line to its exit's. Two movements whose ways come within 2.8 m of
+  each other cross. Each stop line starts at half the widest road crossing
+  there plus a crosswalk, and is set back until a car waiting at it is clear of
+  every other arm's ways (a turning bus included).
+- **Going in.** A car decides at its comfortable braking distance from the line.
+  It goes in only if its light is green (or amber and it can't stop at 4 m/s²),
+  it has stopped at a stop sign, no movement in the junction crosses its way, no
+  car that has waited longer at a line crosses it, and on a lesser road or past
+  a give-way sign no car is coming on the main road within 3 s. And only if
+  there is room for it beyond the junction, up to the next junction's line, so
+  a queue never reaches back into the box: SUMO's *keep clear*. A junction just
+  beyond, too close to wait between, is crossed with this one or not at all.
+  A bus has the junction to itself. A car gives its movement up once its rear
+  is past the stop line on its exit. When the lights change before it gets
+  there and it can still stop, it stops.
+- **Signals** go where OpenStreetMap maps them (a mapped point within 22 m of a
+  junction's node), or, in a city without the data, at a junction of two main
+  roads. The arms take two phases, the main road's axis and the cross road's:
+  green, amber (3.5 s, 4.5 s where the limit is over 60 km/h), 2 s all red. A
+  phase is green for 16 to 26 s on the main road and 10 to 18 s on the cross
+  road, and stays green while no car waits on the other, for up to 24 s more,
+  as the side roads of SCATS (Sydney's adaptive signals) are skipped when no one
+  is there. Taxis and rides stop for a red light and at a stop sign too, while
+  in sight. Your own car doesn't: drive over a line on red and you hear about it.
+- **The signal heads** are instanced, a handful of draw calls for a city's
+  thousands. Each arm with signals has a pole at the kerb by its stop line with
+  a lantern facing the traffic, and a second across the junction; a main road's
+  pole carries a mast arm with a lantern over the lane. Lanterns have visors
+  over the lamps, and in Australia and the Netherlands a black target board with
+  a thin white rim (black from behind). Japan's lights are horizontal (green,
+  amber, red from the left) on arms over the road; France's have no board and
+  no mast. A city can set its own in `game.signals` in `city.json` (`layout`,
+  `pole`, `housing`, `board`, `border`, `mast`: the road rank from which an arm
+  has one). The lit lamp blooms, and after dark it glows towards the traffic
+  facing it, not from behind.
+
+`tools/traffic_check.js <city>` measures the flow headless at three places (the
+game's own frame loop stopped, so a run repeats exactly). Sydney before and after,
+150 cars over 112 s at each place, with the roads no car can get along (route.js)
+left out of the traffic:
+
+| | Before | After |
+|---|---|---|
+| Standing still | 39% of the time | 25% |
+| Jammed (still 30 s or more) | 13.4% | 2.5% |
+| Mean speed | 18 km/h | 23 km/h |
+| Longest still | 150 s | 111 s |
+| Turned round in the road | 0.9 per car-minute | 0.2 |
+| Red lights run | (no lights) | 0 |
+
+The traffic's update costs about 1.6 ms a frame for 150 cars on the software
+renderer here, against 0.5 ms before; the low quality tier runs a third of the
+cars.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
   shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
   files can't be loaded, stand-ins built from `web/game/kit.js` take their
@@ -593,7 +683,8 @@ pipeline writes. The only city-specific code is landmark geometry in
   kerbs and centre lines, so the real-time shadows read correctly.
 - **HUD** (`web/game/hud.js`):
   - **Minimap:** drawn once from the data, with the heading up.
-  - **GPS route:** Dijkstra over the footway and road graph.
+  - **GPS route:** the way you can actually go, drawn on the minimap and in the
+    world (see **Routes** below).
   - **Dialogue:** typewriter text.
   - **Stamps:** saved in the browser.
 - **Camera shots** (`web/cine.js`, shared with the model viewer):
@@ -661,6 +752,78 @@ pipeline writes. The only city-specific code is landmark geometry in
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+
+## Routes
+
+The gold line (`web/game/route.js`) leads to the objective, or to a waypoint
+clicked on the map, by the way you are going, and only where you can go. Every
+point of it is tested with the same nav (`web/game/nav.js`) that moves the
+walker, the car and the helicopter, so it never runs through a building, off a
+drop or into the water.
+
+- **On foot:** over a network built from the mapped footways and streets, behind
+  the title screen in slices (a second and a half of work in Amsterdam on a
+  desktop, two in Paris; the line shows once it is done):
+  - the lines are split where they cross at about the same height (not where a
+    bridge passes over a street) and where one ends on another, so a route can
+    turn there;
+  - each stretch is walked in 2 m steps with the walker's own test, moved up to
+    3 m sideways off a wall it grazes, and cut where it runs through a building
+    the model shows as solid (an arcade, a passage under offices: in Sydney one
+    mapped footway in ten runs into a building somewhere);
+  - the walkable surfaces the lines don't cover (the Harbour Bridge's whole deck,
+    Amsterdam's 224 and Paris's 28 bridge decks, the Opera House steps) get a
+    lattice of lines 6 m apart; lifts (SHIBUYA SKY) are links the line breaks at;
+  - loose ends, and pieces of the network cut off from the rest, are joined to the
+    nearest other piece within 12 m by a straight line a walker can walk, or round
+    whatever is in the way over the ground (a tunnel cut out of the data, the end of
+    a deck);
+  - from where you stand onto the network, and from it to the target, an A*
+    search over a 1.25 m grid of the ground, walked as the walker walks (no step
+    higher than a kerb, no drop either way). A target inside a building is reached
+    at the nearest place to stand. Where the network has no way and the target is
+    within 1.5 km, the search goes over the ground all the way;
+  - where there is no way on foot at all (across the IJ, the harbour), the line
+    leads to the wharf of a ferry that calls nearest the target, and says so. A
+    step that needs the helicopter (fly under the bridge, land in the Domain)
+    leads to the helicopter first.
+- **By car:** the road route the taxis drive (`OECars.router`), on your side of
+  the road, drawn on the lane. A road the car doesn't fit along (a building over it
+  in the model, a motorway viaduct, which isn't drivable) costs twenty times its
+  length, so the route takes it only where there is no other way; the traffic
+  doesn't turn into one.
+- **Flying:** an A* search over the tallest thing in each 16 m cell (terrain,
+  roofs, decks and the landmarks' solids, widened by a cell), where each metre the
+  way rises over the usual 120 m costs as much as a long way round: it goes round
+  a tower, over a low district. The height keeps 30 m over whatever is near, climbs
+  and comes down no steeper than the helicopter, lifts straight off and comes
+  straight down onto a spot with room for the rotor: a helipad near the target
+  (not one mapped under a tower), else level open ground with nothing over it within
+  7.5 m. A step to fly under a span comes in low and goes straight across under it
+  at the height with most room, clear of the pylons, the legs and the arches.
+- **By ferry:** the vessel's own course through the water, to the stop nearest the
+  target.
+- **Drawn:** a band laid on the ground, a metre wide on foot and wider by car, on
+  the floor under each point (street, deck, quay), and in the air turned to the
+  camera. Chevrons run the way to go, a dark amber edge keeps it clear on pale
+  stone, it stays a couple of pixels wide far off, and the stretch behind you
+  disappears as you go. It is worked out again when the target moves, when you
+  stray from it (6 m on foot, 14 m by car, 70 m in the air) and as a ride goes on.
+- **The crowd and the traffic** walk and drive the same data: the crowd now keeps
+  to the footways where a walker can stand (cut where they run into a building),
+  and the traffic doesn't turn into a road a car doesn't fit along.
+
+We looked at what navigates a 3D world in a browser before building this:
+Recast/Detour (zlib licence) and its WebAssembly build recast-navigation-js
+(MIT), three-pathfinding (MIT), PathFinding.js (MIT) and ngraph.path (MIT), with
+GTA V's GPS, the ground guide lines of Marvel's Spider-Man and Watch Dogs, and the
+"highway in the sky" of flight displays for the look. A navmesh baked for tens of
+square kilometres of city would be slow to make in a browser and would duplicate
+the game's collision, which is already exact; so the network here is the mapped
+data, proved walkable by that collision, and no library code was taken. From the
+games: the line on the ground with chevrons that run the way to go (Spider-Man,
+Watch Dogs), the route that keeps to the roads in a car (GTA V), and for the
+helicopter a line ahead in the air rather than a pointer.
 
 ## The vehicles
 
@@ -1029,15 +1192,35 @@ It found four faults, each now fixed:
   0.8 m;
 - an NPC stood in the lift's door, so <kbd>E</kbd> talked to her instead.
 
+`tools/route_check.js <city>` checks the routes. On foot it routes from the start
+to every NPC and between 30 pairs of random places on the footways, and measures
+the stretches of each where a walker can't stand (at most one sample, 0.5 m, at a
+time: a corner grazed, never a wall crossed). For each place it finds no route
+to, a search over the ground itself says whether a walker could get there at all;
+it fails on one the walker could reach. It flies from the helipad to every NPC
+and a few places, every 2 m clear of buildings, landmarks and decks, and flies
+the quest's pass under its span; it drives from your car to each, every point
+with room for the car. `tools/route_shot.js <city>` takes stills of the line on
+foot, by car and in the air, at any time of day.
+
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
-the game, walks for four seconds, talks to the first quest giver, flies the
+the game, walks for four seconds, talks to the first quest giver, checks the gold
+route on foot to the farthest NPC a walker can reach (and that it is drawn in the
+air in the helicopter and on the road in the car), flies the
 helicopter up and lets the ferries run for 40 s. Then it gets into your car at the
 driver's door, drives off, brakes to a stop and gets out. It hails a taxi from the
 kerb where the car was parked, gets in the back, picks the first place the driver
 offers, rides for 20 s, skips the trip and gets out, and orders a ride on the phone.
-Seated at the wheel and in the back, each head must be under the roof. There is a
-screenshot after each step, and it fails on any page error. `tools/check.sh` runs it
-for every city whenever the game changes.
+Last it watches the nearest junction with signals for 80 s: its lights must go
+through their phases, no car may cross its line on red, and the traffic must be
+moving. Seated at the wheel and in the back, each head must be under the roof.
+There is a screenshot after each step, and it fails on any page error.
+`tools/check.sh` runs it for every city whenever the game changes.
+
+`tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
+[Junctions and traffic lights](#junctions-and-traffic-lights)), and
+`tools/signal_shot.js <city> out [count|ids] [HH:MM,...] [WxH]` takes a driver's
+view of the nearest junctions with signals at the times given.
 
 ## Limitations
 
@@ -1061,11 +1244,15 @@ for every city whenever the game changes.
   - Your car is three circles down its length against the walls, so its corners
     can touch a wall before the circles do.
   - Cars push you aside instead of knocking you down, and stop dead for people.
-  - The traffic keeps to its lane. It swings out round a car pulled in at the
-    kerb but never overtakes, so a car stopped in the lane holds up the queue
-    behind it.
-  - One-way streets and turn restrictions are not in the routes, and nothing
-    stops at junctions or lights.
+  - The traffic keeps to its lane, one lane each way (a one-way street's on the
+    keep side), so a wide road carries one file of cars. It swings out round a
+    car pulled in at the kerb but never overtakes, so a car stopped in the lane
+    holds up the queue behind it.
+  - Turn restrictions (Overture's `prohibited_transitions`) are not read, the
+    signals have two phases and no turn arrows, and the crowd doesn't wait for a
+    walk signal: cars stop for people in the road instead.
+  - A few awkward corners (a turning circle, two lines meeting at a very sharp
+    angle) can still hold two cars until they squeeze past each other.
   - Only roads at about your height count as the kerb, so a taxi won't stop on
     a flyover above you. A destination is reached at its nearest street, so a
     landmark across a plaza is a short walk from where you get out.
@@ -1110,6 +1297,16 @@ for every city whenever the game changes.
   near the frame look hazy from a distance.
 
 ## Sources
+
+- Junctions: [SUMO, Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html)
+  (movements as lanes across the junction, their foes, and *keep clear*: no
+  car into a junction it can't leave). Ideas only; no SUMO code (EPL-2.0) is used.
+- Signals: [SCATS](https://en.wikipedia.org/wiki/Sydney_Coordinated_Adaptive_Traffic_System),
+  [Transport Victoria on SCATS](https://transport.vic.gov.au/road-and-active-transport/business/road-and-traffic-management/traffic-lights/signal-coordination-and-automation/scats)
+  (phases extended, ended early or skipped by demand).
+- One-way streets: [Overture roads guide](https://docs.overturemaps.org/guides/transportation/roads/)
+  and [access rules](https://docs.overturemaps.org/schema/reference/transportation/types/access_rules)
+  (a heading-scoped denial is a one-way street). Data © OpenStreetMap contributors (ODbL), via Overture.
 
 - Persona 5's Tokyo and the real places: [Kotaku](https://kotaku.com/persona-5s-in-game-locations-compared-to-the-real-world-1787125885),
   [TheGamer](https://www.thegamer.com/persona-5-locations-visit-real-world-counterparts/),

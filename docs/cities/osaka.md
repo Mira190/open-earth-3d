@@ -217,7 +217,8 @@ or chosen by us.
 | Small keep platform and Kinmeisui well house | the platform 6.0 m high on its OSM outline*, the well house 4.7 m on it | PLATEAU 2025 (27100-bldg-951272) |
 | Tsutenkaku | 103 m (108 m with the lightning rod); observatories at 84 m and 87.5 m (the gold one), the open deck at 94.5 m with its round gallery 8.5 m across, the third-floor deck at 22 m over the legs; the jutting deck*, the ceiling painting under the tower (an octagon 17 m across*), the legs, lattice, sign boards and weather light are schematic* | Osaka City leaflet, MLIT's multilingual guide, gltjp |
 | HEP FIVE wheel | 75 m diameter, 106 m top, lowest point at the seventh floor (about 31 m), 52 gondolas; the building drawn at 47 m*, because PLATEAU's 107 m is the wheel; the trusses are schematic* | published dimensions |
-| Glico sign | a lit board with the runner arms up on a track, on the building nearest the published coordinates* | Wikipedia coordinates |
+| Glico sign | the sixth sign (2014): an LED board 20 m high and 10.38 m wide, on the canal face of 道頓堀1-10-2 at the south-west foot of Ebisubashi, its top 0.6 m below the roof*; the board plays Osaka's skies* behind a simplified runner on a track | Ezaki Glico (via Kyodo), Wikipedia (ja) |
+| TSUTAYA EBISUBASHI HIT VISION | 15.4 × 17.3 m on the wall facing the canal and 18.6 × 10.2 m on the roof over it (455 m²), on 道頓堀1-8-19 at the south-east foot of the bridge (OpenStreetMap w174743244); its top at PLATEAU's 40.2 m* | HIT, [Namba Keizai Shimbun](https://namba.keizai.biz/headline/3343/) |
 | Kani Doraku crab | about 9 m across* with its legs, on the Dotonbori facade | indicative |
 | Shop signs | 1,400 facades with a street in front of them, in three districts*; blades, banners and boards in six colours, lit at night | indicative, random |
 
@@ -231,6 +232,27 @@ their own emissive colour and glow, and a city can add a night ambient light
 (`night_ambient`) so the streets are not pitch black. Shop signs, the Glico
 runner, the crab and the top of Tsutenkaku use them, and the castle keep is
 floodlit after dark in its own colours.
+
+## 6a. Dotonbori's screens
+
+Ebisubashi is lit by its screens, built with the kit Shibuya's crossing uses (`pipeline/screens.py`;
+`docs/NIGHT.md`, LED screens). Their programmes are drawn for this model in `cities/osaka/city.py`
+(`screens.jpg`): Osaka's skies for the Glico board (day, sunset, night with Tsutenkaku lit, cherry
+blossom) and invented adverts and notices for HIT VISION (a bay festival, a beer, a takoyaki stand,
+the weather and the ward's notice on the bridge). No Glico or advertiser's artwork is copied.
+
+- **The Glico sign was on the wrong corner.** The scene placed it on the building nearest
+  Wikipedia's coordinates, which is the TSUTAYA building across the bridge, and drew it 21 m wide
+  and 24 m high on the roof. It is on the back of 道頓堀1-10-2 at the bridge's south-west foot
+  ([Wikipedia (ja)](https://ja.wikipedia.org/wiki/%E9%81%93%E9%A0%93%E5%A0%80%E3%82%B0%E3%83%AA%E3%82%B3%E3%82%B5%E3%82%A4%E3%83%B3)),
+  20 m high and 10.38 m wide. The landmark now stands there (its edge is `GLICO_EDGE`), and the
+  next build looks for it there (`GLICO_LONLAT`). The sixth sign comes down at the end of November
+  2026 and the seventh goes up in spring 2027; the model shows the sixth.
+- **HIT VISION's two screens** play the same programme, the roof one a step ahead. The TSUTAYA
+  under it closes on 11 January 2027.
+
+Not drawn: Tombori Station's 5.0 × 2.8 m screen and the 4.1 × 3.1 m Namba Ebisubashi Multi
+Vision, whose buildings could not be confirmed, and the smaller screens along the canal.
 
 ## 7. Winter sun on the parks
 
@@ -382,3 +404,4 @@ gzipped), `game.json` 6.4 MB (1.7 MB gzipped) and `landmarks.json` 3.5 MB
   22 m deck from [gltjp](https://www.gltjp.com/ja/directory/item/11772/).
 - Tower heights: [Wikipedia, List of tallest buildings in Osaka](https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Osaka).
 - Characters: Quaternius, Ultimate Modular Men and Women (CC0).
+- The screens' type: Google Fonts (SIL Open Font License), fetched by `pipeline/adkit.py`.
