@@ -191,7 +191,10 @@ window.OEJunctions = (function () {
       const q = net.nearest(x, y, 9);
       if (!q) return;
       const l = L[q.line];
-      if (q.s < 12 || q.s > l.len - 12 || innerLine(q.line) || l.c === 'motorway') return;
+      // (clear of a junction at either end by a queue of three, so that one waiting at its red is out of
+      // that junction; nearer, it is the junction's own crossing)
+      const clear = end => (armOf.get(q.line * 2 + end) ? 25 : 12);
+      if (q.s < clear(0) || q.s > l.len - clear(1) || innerLine(q.line) || l.c === 'motorway') return;
       const on = mids.get(q.line) || [];
       if (on.some(o => Math.abs(o.mid - q.s) < 25)) return; // (one per stretch: a crossing with an island is mapped as two)
       net.at(q.line, q.s, tmp);
@@ -482,7 +485,11 @@ window.OEJunctions = (function () {
     }
     // how far along exit e's piece a car can wait: up to the stop line of the junction at its far end
     function reach(e) {
-      const m = e.m, a2 = armOf.get(m.line * 2 + 1 - m.end);
+      const m = e.m, a2 = armOf.get(m.line * 2 + 1 - m.end), M = mids.get(m.line);
+      if (M) { // (or up to the line of a crossing between junctions on it)
+        const X = m.end === 0 ? M[0] : M[M.length - 1], a = X.arms.find(b => b.end === 1 - m.end);
+        if (a) return (m.end === 0 ? X.mid : L[m.line].len - X.mid) - a.back - m.back;
+      }
       return L[m.line].len - m.back - (a2 && a2.in && a2.j !== m.j ? a2.back : 0);
     }
     function enter(c, a, e, t, forced = false) { // into the junction: its movement joins those in it
