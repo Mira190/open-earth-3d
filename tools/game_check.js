@@ -228,9 +228,11 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     const ok = g.travelTo(lm);
     for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
     g.advance(0.5);
-    return { name: lm.name, ok, mode: g.player.mode, d: Math.hypot(lm.at[0] - st.x, lm.at[1] - st.y), v: st.speed };
+    return { name: lm.name, ok, mode: g.player.mode, d: Math.hypot(lm.at[0] - st.x, lm.at[1] - st.y), me: Math.hypot(lm.at[0] - g.player.x, lm.at[1] - g.player.y), v: st.speed };
   });
-  check(drive.none || (drive.ok && drive.mode === 'car' && drive.d < 900 && drive.v < 1), drive.none ? 'no car to travel in' : `travels from the map in your car to ${drive.name} (${drive.mode}, parked ${(drive.d || 0).toFixed(0)} m from it)`);
+  // at the wheel by the kerb near it; or, with no street near (the end of a pier), on foot there and the car on the nearest street
+  check(drive.none || (drive.ok && drive.v < 1 && (drive.mode === 'car' ? drive.d < 900 : drive.mode === 'foot' && drive.me < 600 && drive.d < 2000)), drive.none ? 'no car to travel in'
+    : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');

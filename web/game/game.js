@@ -356,8 +356,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
   }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of you)
-  function kerbNear(x, y, z, ahead = 9) {
-    const pl = roads.place(x, y, 250, keepSign, z);
+  function kerbNear(x, y, z, ahead = 9, within = 250) {
+    const pl = roads.place(x, y, within, keepSign, z);
     if (!pl) return null;
     pl.s = Math.max(3, Math.min(roadNet.L[pl.line].len - 3, pl.s + ahead * pl.dir));
     return { pl, pose: kerbPose(pl) };
@@ -1994,8 +1994,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const [x, y, z] = d.at, p = placeNear(x, y, Number.isFinite(z) ? z : null, null, d.kind === 'point' ? 150 : 45); // on a roof, or the ground
     return p && { x: p[0], y: p[1], z: p[2] };
   }
-  function travelTo(d) {
-    if (cine.active) return false;
+  function travelTo(d) { // a shot playing (the start, a survey) is skipped by the hop, which plays its cues
     if (!['foot', 'car', 'ride'].includes(player.mode)) {
       H.toast({ heli: 'Land and get out of the helicopter first, then travel from the map.', ferry: 'Get off the ferry first (E at a wharf), then travel from the map.', rail: 'Get off first, then travel from the map.' }[player.mode] || 'Not now.');
       return false;
@@ -2005,17 +2004,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     $('#g-bigmap').hidden = true; mapPop.hidden = true; picked = null;
     if (player.auto) { const a = player.auto; player.auto = null; if (a.cancel) a.cancel(); }
     const was = player.mode, name = d.kind === 'point' ? 'your pin' : d.name;
+    // in your car, the kerb nearest the spot, and the camera looking past the car at the landmark
+    const kerb = was === 'car' && myCar ? kerbNear(to.x, to.y, to.z, 0) : null;
+    // no street near the spot (the end of a pier): you go on foot, and the car waits on the nearest street there is
+    const park = was === 'car' && myCar && !kerb ? kerbNear(to.x, to.y, null, 0, 1500) : null;
+    const carYaw = kerb && (d.kind === 'landmark' ? Math.atan2(d.at[0] - kerb.pose.x, d.at[1] - kerb.pose.y) : to.face ?? kerb.pose.h);
     const cue = () => {
-      if (was === 'car' && myCar) { // the car comes too, to the kerb nearest the spot, facing along the street
-        const k = kerbNear(to.x, to.y, to.z, 0);
-        if (k) {
-          parkMyCar(k.pose);
-          Object.assign(player, { x: k.pose.x, y: k.pose.y, z: k.pose.z, h: k.pose.h, speed: 0 });
-          cam.mode = 'chase'; cam.yaw = to.face ?? k.pose.h; cam.pitch = Math.max(0.08, to.pitch ?? 0.2); cam.dist = 7.5;
-          groundLod(k.pose.x, k.pose.y); save();
-          return;
-        }
-        stepOut(myCar, 'driver', [to.x, to.y, to.z]); // no street there: you arrive on foot and it stays where it was
+      if (kerb) { // the car comes too, facing along the street
+        parkMyCar(kerb.pose);
+        Object.assign(player, { x: kerb.pose.x, y: kerb.pose.y, z: kerb.pose.z, h: kerb.pose.h, speed: 0 });
+        cam.mode = 'chase'; cam.yaw = carYaw; cam.pitch = Math.max(0.08, to.pitch ?? 0.2); cam.dist = 7.5;
+        groundLod(kerb.pose.x, kerb.pose.y); save();
+        return;
+      }
+      if (was === 'car' && myCar && player.mode === 'car') {
+        stepOut(myCar, 'driver', [to.x, to.y, to.z]);
+        if (park) { parkMyCar(park.pose); H.toast(`Your car is on the nearest street, ${fmtDist(Math.hypot(park.pose.x - to.x, park.pose.y - to.y))} away.`); }
       }
       if (was === 'ride' && ride && player.mode === 'ride') { stepOut(ride, kerbSeat, [to.x, to.y, to.z]); rideAway(); }
       [player.x, player.y, player.z] = [to.x, to.y, to.z];
@@ -2026,7 +2030,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       if (to.face != null) { cam.yaw = to.face + 0.12; cam.pitch = to.pitch ?? 0.3; } else { cam.yaw = player.h; cam.pitch = 0.36; }
       groundLod(to.x, to.y); save();
     };
-    hopTo(to.x, to.y, to.z, name, { cue, yaw: to.face != null ? to.face + (was === 'car' ? 0 : 0.12) : null, pitch: to.pitch });
+    hopTo(kerb ? kerb.pose.x : to.x, kerb ? kerb.pose.y : to.y, kerb ? kerb.pose.z : to.z, name,
+      { cue, yaw: kerb ? carYaw : to.face != null ? to.face + 0.12 : null, pitch: kerb ? Math.max(0.08, to.pitch ?? 0.2) : to.pitch });
     return true;
   }
   // everywhere the map offers, in groups, nearest first within a group except the landmarks (the city's own order)
