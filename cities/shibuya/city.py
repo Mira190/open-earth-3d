@@ -1826,7 +1826,7 @@ def hachiko(K, h):
     z0 = h["z"]
     block(K("granite"), P, -0.8, 0.8, -0.55, 0.55, z0, z0 + 0.25)
     block(K("granite"), P, -0.7, 0.7, -0.45, 0.45, z0 + 0.25, z0 + 1.6)
-    quad_img(K("atlas"), P(0.705, 0.35, z0 + 0.9), P(0.705, -0.35, z0 + 0.9), P(0.705, -0.35, z0 + 1.15), P(0.705, 0.35, z0 + 1.15), "hachiko")
+    quad_img(K("atlas"), P(0.705, -0.35, z0 + 0.9), P(0.705, 0.35, z0 + 0.9), P(0.705, 0.35, z0 + 1.15), P(0.705, -0.35, z0 + 1.15), "hachiko")   # left to right seen from his front
     Bz = K("bronze")
     z = z0 + 1.6
     block(Bz, P, -0.5, 0.45, -0.35, 0.35, z, z + 0.05)                      # the bronze base plate
