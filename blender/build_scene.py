@@ -248,8 +248,20 @@ def build(data):
         p = np.asarray(m["position"], float).reshape(-1, 3)
         idx = np.asarray(m["index"], int).reshape(-1, 3)
         image = os.path.join(data, mt["map"]) if mt.get("map") else None
-        mat = landmark_material(m["name"], mt, image, m.get("floodlit", False))
+        screen = mt.get("pattern") == "led_screen" and image and "uv" in m
+        if screen:  # an LED screen (web/world.js "led_screen") holds its first keyframe, lit day and night
+            mt = dict(mt, emissive_map=True, glow=0.6)
+        mat = landmark_material(m["name"], mt, image, m.get("floodlit", False) or screen)
         uvs = np.asarray(m["uv"], float).reshape(-1, 2) if image and "uv" in m else None
+        if screen:  # u's integer part picks the screen, whose first clip's first cell it shows
+            cols, rows, cw, ch = mt["sheet"]
+            sid = np.floor(uvs[:, 0]).astype(int)
+            first = [(int(q[2]) & -int(q[2])).bit_length() - 1 for q in mt["screens"]]   # the playlist's lowest clip
+            cell = np.array([first[i] for i in sid]) * mt.get("frames", 1)
+            uvs = np.column_stack([((cell % cols) + uvs[:, 0] - sid) * cw, 1 - ((cell // cols) + 1 - uvs[:, 1]) * ch])
+            node = mat.node_tree.nodes.get("lm_night")
+            if node is not None:  # not switched with the night: a screen is lit by day too
+                node.name, node.outputs[0].default_value = "lm_screen", 1.0
         mesh_object(m["name"], [tuple(v) for v in p], [tuple(f) for f in idx], mat, uvs=uvs, smooth=m["smooth"])
         counts["objects"] += 1
         counts["triangles"] += len(idx)

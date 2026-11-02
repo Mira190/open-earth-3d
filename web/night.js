@@ -107,7 +107,35 @@ void main() {
       for (let j = 0; j < n; j++, k += 3) { const x = P[k] * XY, y = P[k + 1] * XY; pts.push([x, y, onGround(x, y, P[k + 2] * ZU)]); }
       roads.push({ cls, v: roadsI[i + 1] / 10, pts });
     }
-    for (const r of roads) {
+    // every road's pieces in a 40 m grid, so a lamp can find the carriageways around it: a lamp that
+    // would stand on another road (the kerb offset of a street meeting a junction, a scramble's
+    // middle) is left out, as no pole stands in a carriageway
+    const SEG = 40, segs = new Map();
+    roads.forEach((r, ri) => {
+      const half = (ROAD[r.cls] || ROAD.unclassified)[1] / 2;
+      for (let j = 1; j < r.pts.length; j++) {
+        const a = r.pts[j - 1], b = r.pts[j];
+        for (let gx = Math.floor((Math.min(a[0], b[0]) - half) / SEG); gx <= Math.floor((Math.max(a[0], b[0]) + half) / SEG); gx++)
+          for (let gy = Math.floor((Math.min(a[1], b[1]) - half) / SEG); gy <= Math.floor((Math.max(a[1], b[1]) + half) / SEG); gy++) {
+            const k = gx * 65536 + gy;
+            if (!segs.has(k)) segs.set(k, []);
+            segs.get(k).push([ri, a, b, half]);
+          }
+      }
+    });
+    // and none in a square the city keeps clear of poles (city.json night.clear: [x, y, radius m], as
+    // over a scramble crossing much wider than its streets)
+    const clear = st.clear || [];
+    const onCarriageway = (x, y, z, own) => {
+      for (const [cx, cy, r] of clear) if (Math.hypot(x - cx, y - cy) < r) return true;
+      for (const [ri, a, b, half] of segs.get(Math.floor(x / SEG) * 65536 + Math.floor(y / SEG)) || []) {
+        if (ri === own) continue;
+        const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1, t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (y - a[1]) * ey) / L2));
+        if (Math.hypot(a[0] + ex * t - x, a[1] + ey * t - y) < half - 0.2 && Math.abs(a[2] + (b[2] - a[2]) * t - z) < 3) return true; // a deck above or below is another level
+      }
+      return false;
+    };
+    roads.forEach((r, ri) => {
       const [spacing, width, h, both, bright] = ROAD[r.cls] || ROAD.unclassified;
       const step = both ? spacing / 2 : spacing, off = width / 2 + 0.7, pick = /motorway|trunk/.test(r.cls) ? highway : street;
       let side = rnd() < 0.5 ? 1 : -1, next = rnd() * step, acc = 0;
@@ -117,13 +145,14 @@ void main() {
         if (len < 0.01) continue;
         const ux = (bx - ax) / len, uy = (by - ay) / len;
         while (next <= acc + len) {
-          const t = (next - acc) / len, s = both ? side = -side : side;
-          lamp(ax + (bx - ax) * t - uy * s * off, ay + (by - ay) * t + ux * s * off, az + (bz - az) * t + h, colour, bright * (0.9 + 0.2 * rnd()), ux, uy, h, s);
+          const t = (next - acc) / len, s = both ? side = -side : side, b = bright * (0.9 + 0.2 * rnd());
+          const x = ax + (bx - ax) * t - uy * s * off, y = ay + (by - ay) * t + ux * s * off, z = az + (bz - az) * t;
+          if (!onCarriageway(x, y, z, ri)) lamp(x, y, z + h, colour, b, ux, uy, h, s);
           next += step;
         }
         acc += len;
       }
-    }
+    });
     const nGen = L.x.length;
     for (let i = 0; i < mapped.length; i += 3) {
       const x = mapped[i] * XY, y = mapped[i + 1] * XY;
@@ -152,6 +181,22 @@ void main() {
           const dx = fr.x[0] + (ii + 0.5) * mpp - cx, a = (dx * ux + dy * uy) / sa, b = (-dx * uy + dy * ux) / sc, e = (a * a + b * b) * 0.5 * 32;
           if (e >= 256) continue;
           const w = EXP[e | 0] * peak, o = (j * mw + ii) * 3;
+          acc[o] += c.r * w; acc[o + 1] += c.g * w; acc[o + 2] += c.b * w;
+        }
+      }
+    }
+    // the light that a landmark's big screens and signs throw on the street in front of them
+    // (landmarks.json "glows": [x, y, radius m, colour, strength]), a soft disc in their colour
+    for (const [gx, gy, R, hex, k] of (D.LM && D.LM.glows) || []) {
+      const c = lampColour(hex), s = R / 2.2, R2 = 2.6 * s;
+      const i0 = Math.max(0, Math.floor((gx - R2 - fr.x[0]) / mpp)), i1 = Math.min(mw - 1, Math.ceil((gx + R2 - fr.x[0]) / mpp));
+      const j0 = Math.max(0, Math.floor((gy - R2 - fr.y[0]) / mpp)), j1 = Math.min(mh - 1, Math.ceil((gy + R2 - fr.y[0]) / mpp));
+      for (let j = j0; j <= j1; j++) {
+        const dy = (fr.y[0] + (j + 0.5) * mpp - gy) / s;
+        for (let ii = i0; ii <= i1; ii++) {
+          const dx = (fr.x[0] + (ii + 0.5) * mpp - gx) / s, e = (dx * dx + dy * dy) * 0.5 * 32;
+          if (e >= 256) continue;
+          const w = EXP[e | 0] * k, o = (j * mw + ii) * 3;
           acc[o] += c.r * w; acc[o + 1] += c.g * w; acc[o + 2] += c.b * w;
         }
       }

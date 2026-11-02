@@ -34,6 +34,7 @@ import urllib.request
 import numpy as np
 from shapely.geometry import Point, Polygon
 
+import adkit as ad
 from meshkit import Mesh
 
 HAIDEN = "須賀大神 稲荷大神"       # the OSM name of Suga Shrine's hall (its two kami), as Overture spells it
@@ -586,7 +587,7 @@ class Kit:
     def __call__(self, mat, part=""):
         key = (mat, part)
         if key not in self.m:
-            self.m[key] = Mesh(f"{self.prefix}{('_' + part) if part else ''}_{mat}", mat, False, floodlit=mat in self.lit or part == "lit", uv=mat == "atlas")
+            self.m[key] = Mesh(f"{self.prefix}{('_' + part) if part else ''}_{mat}", mat, False, floodlit=mat in self.lit or part == "lit", uv=bool({"map", "pattern"} & set(MATERIALS.get(mat, {}))))
         return self.m[key]
 
     def meshes(self):
@@ -1231,7 +1232,8 @@ def landmark_assets(out_dir, scene):
     draw_shrine_items(img, d, rects, rng)
     draw_extra(img, d, rects, rng)
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
-    return ["atlas.jpg"]
+    screen_sheet().save(os.path.join(out_dir, "screens.jpg"), quality=86)
+    return ["atlas.jpg", "screens.jpg"]
 
 
 ATLAS_KEYS = ["ema_front"] + [f"ema_w{i}" for i in range(len(WISHES))] + [f"ema_pink{i}" for i in range(len(PINKS))]
@@ -1251,7 +1253,6 @@ ATLAS_KEYS = ["ema_front"] + [f"ema_w{i}" for i in range(len(WISHES))] + [f"ema_
 HACHIKO = "忠犬ハチ公像"                         # Overture infrastructure (OSM artwork) on Hachiko Square
 CROSSING_ROADS = {"道玄坂", "神宮通り", "旧大山街道", "渋谷センター街"}   # the four streets that meet at the scramble
 CENTER_GAI = "渋谷センター街"
-SCREENS = ["Q-FRONT", "MAGNET SHIBUYA", "渋谷駅前ビル", "西武渋谷店A館"]   # facades with big screens round the scramble
 S109 = "Shibuya 109"
 CARROT, CHIYO, HANAMASA = "キャロットタワー", "千代の湯", "肉のハナマサ"
 MARINA_LL = (139.669257, 35.642788)   # Overture place ニューマリーナ (snack bar, 三軒茶屋2-14-21)
@@ -1278,13 +1279,6 @@ MATERIALS.update({
     "clock_face": {"color": "#f1efe6", "roughness": 0.5, "metalness": 0.0, "emissive": "#fff6dc", "glow": 1.4},
 })
 
-SCREEN_ADS = [  # what the screens show: invented, colourful, no brands
-    ("SHIBUYA", "SCRAMBLE 2026", ((255, 70, 140), (60, 40, 200))),
-    ("渋谷", "NEW MUSIC FRIDAY", ((20, 200, 220), (20, 30, 90))),
-    ("TOKYO", "NIGHT LIVE 24:00", ((255, 190, 40), (230, 40, 60))),
-    ("夏祭り", "AUTUMN SALE 10.29", ((250, 120, 40), (120, 20, 120))),
-    ("STREAM", "ON AIR", ((90, 230, 120), (10, 70, 90))),
-]
 BLADES = [("居酒屋", (200, 30, 40), (255, 245, 230)), ("カラオケ", (250, 220, 40), (200, 20, 40)), ("ラーメン", (230, 60, 30), (255, 255, 240)),
           ("焼肉", (20, 20, 20), (240, 200, 60)), ("BAR", (30, 30, 80), (120, 220, 255)), ("スナック", (150, 40, 140), (255, 220, 250)),
           ("喫茶", (90, 50, 30), (250, 230, 200)), ("古着", (30, 90, 60), (250, 250, 240)), ("寿司", (245, 245, 240), (30, 30, 30)),
@@ -1302,7 +1296,6 @@ BOARDS = [("いらっしゃいませ", (200, 30, 40), (255, 255, 255)), ("営業
 def district_atlas():
     items = [("centergai", 768, 128), ("kabukicho", 768, 160), ("s109", 128, 512), ("hachiko", 256, 96), ("noren_yu", 256, 160),
              ("chiyo", 384, 96), ("laundry", 384, 96), ("marina", 320, 96), ("rain", 256, 64), ("hanamasa", 512, 112), ("clock", 256, 256)]
-    items += [(f"screen{i}", 512, 288) for i in range(len(SCREEN_ADS))]
     items += [(f"vend{i}", 128, 224) for i in range(3)]
     items += [(f"blade{i}", 64, 256) for i in range(len(BLADES))]
     items += [(f"board{i}", 384, 96) for i in range(len(BOARDS))]
@@ -1359,19 +1352,6 @@ def draw_extra(img, d, rects, rng):
         a = k * math.pi / 6
         r0 = r * (0.78 if k % 3 == 0 else 0.86)
         d.line([(cx + r0 * math.sin(a), cy - r0 * math.cos(a)), (cx + r * math.sin(a), cy - r * math.cos(a))], fill=(40, 44, 50), width=8 if k % 3 == 0 else 4)
-    for i, (big, small, (c0, c1)) in enumerate(SCREEN_ADS):
-        x, y, w, h = rects[f"screen{i}"]
-        for k in range(h + 8):
-            t = k / (h + 8)
-            d.line([(x - 4, y - 4 + k), (x + w + 4, y - 4 + k)], fill=tuple(int(a + (b - a) * t) for a, b in zip(c0, c1)))
-        for _ in range(9):   # bold shapes behind the words
-            cx, cy, r = x + rng.random() * w, y + rng.random() * h, 20 + rng.random() * 70
-            col = tuple(int(min(255, c * 0.6 + 120 * rng.random())) for c in c1)
-            d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=col, width=6)
-        f, _ = fit_lines(d, [big], "rocknroll", w - 60, h * 0.55, 160)
-        d.text((x + w / 2, y + h * 0.42), big, font=f, fill=(255, 255, 255), anchor="mm")
-        f2 = font("dot", 30)
-        d.text((x + w / 2, y + h * 0.82), small, font=f2, fill=(255, 255, 255), anchor="mm")
     for i, (body, label) in enumerate((((200, 30, 40), "DRINK"), ((30, 90, 190), "COFFEE"), ((240, 240, 235), "TEA"))):
         x, y, w, h = rects[f"vend{i}"]   # a vending machine's front: rows of cans under a lit band, the coin slot below
         d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=body)
@@ -1491,7 +1471,7 @@ def districts_building(b, cls, g, geoms, ctx):
     top = max((q[2] for q in geoms), default=0.0)
     if name == CARROT:
         b["facade_color"] = "#c9663a"   # the tower's orange tiles, the carrot of its name
-    if name in SCREENS or name == S109 or name in (CHIYO, HANAMASA, DOCOMO):
+    if name == S109 or name in (CHIYO, HANAMASA, DOCOMO):
         lm.setdefault("_fronts", {})[name] = {"ring": [[round(x, 2), round(y, 2)] for x, y in g.exterior.coords], "top_m": round(top, 1),
                                               "ground_m": round(ctx.ground(g.centroid.x, g.centroid.y), 2)}
     mx, my = ctx.city.fwd.transform(*MARINA_LL)
@@ -1597,7 +1577,7 @@ def districts_finalize(ctx):
     fronts = lm.pop("_fronts", {})
     roads = street_lines(ctx, ["primary", "secondary", "tertiary", "unclassified", "residential", "living_street", "pedestrian", "service", "footway"])
     gz = ctx.ground
-    # Shibuya: the scramble, Hachiko, the Center Gai gate, the screens, the 109's sign
+    # Shibuya: the scramble, Hachiko, the Center Gai gate, the 109's sign (the screens are placed on the built city: crossing_screens)
     scramble_node(ctx)
     node, cross = _DATA["node"]
     if node is not None:
@@ -1617,17 +1597,6 @@ def districts_finalize(ctx):
         f = unit(np.array([b.x - a.x, b.y - a.y]))
         lm["center_gai"] = {"at": [round(a.x, 2), round(a.y, 2)], "axis": [round(float(f[0]), 4), round(float(f[1]), 4)], "z": round(gz(a.x, a.y), 2), "span_m": 9.0}
         ctx.labels["Center Gai センター街"] = [round(a.x, 1), round(a.y, 1), round(gz(a.x, a.y) + 22, 1)]
-    scr = []
-    for k, nm in enumerate(SCREENS):
-        fr = fronts.get(nm)
-        if fr and node is not None:
-            g = Polygon(fr["ring"])
-            sc, mid, n, L = facing_edges(g, node)[0]
-            w = min(L * 0.8, 24.0)
-            h = min(w * 0.56, fr["top_m"] * 0.45)
-            scr.append({"name": nm, "at": [round(float(mid[0]), 2), round(float(mid[1]), 2)], "normal": [round(float(n[0]), 4), round(float(n[1]), 4)],
-                        "w": round(w, 1), "h": round(h, 1), "z0": round(fr["ground_m"] + fr["top_m"] * 0.86 - h, 1), "ad": k % len(SCREEN_ADS)})
-    lm["screens"] = scr
     if S109 in fronts and node is not None:
         fr = fronts[S109]
         _, mid, n, L = facing_edges(Polygon(fr["ring"]), node)[0]
@@ -1794,15 +1763,6 @@ def facade_panel(m, mid, n, w, z0, z1, key, off=0.25, along=0.0):
     quad_img(m, np.array([*a, z0]), np.array([*b, z0]), np.array([*b, z1]), np.array([*a, z1]), key)
 
 
-def screens(K, scr):
-    for s in scr:
-        n = np.asarray(s["normal"], float)
-        mid = np.asarray(s["at"], float)
-        P = frame(mid + n * 0.2, n)
-        block(K("screen_frame"), P, -0.2, 0.35, -s["w"] / 2 - 0.4, s["w"] / 2 + 0.4, s["z0"] - 0.4, s["z0"] + s["h"] + 0.4)
-        facade_panel(K("atlas", "lit"), mid, n, s["w"], s["z0"], s["z0"] + s["h"], f"screen{s['ad']}", off=0.57)
-
-
 def yongen(K, y):
     """Sangenjaya's backstreet: Chiyo-no-yu's curtain, sign, laundry and vending machines; Hanamasa's yellow
     sign; New Marina's lit box and its door; the cafe's sign upstairs."""
@@ -1909,7 +1869,8 @@ def districts_meshes(lm):
         hachiko(K, lm["hachiko"])
     if "center_gai" in lm:
         center_gai_gate(K, lm["center_gai"])
-    screens(K, lm.get("screens", []))
+    if "scramble" in lm:
+        led_screens(K, crossing_screens(lm))
     if "s109" in lm:
         s = lm["s109"]
         facade_panel(K("atlas", "lit"), s["at"], s["normal"], 2.6, s["z1"] - 10.4, s["z1"], "s109", off=0.3)
@@ -1923,6 +1884,400 @@ def districts_meshes(lm):
         shop_signs(K, lm["signs"]["sites"])
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
+
+
+# ---------------------------------------------------------------- the crossing's screens (LED visions)
+#
+# The big screens round the scramble play their programmes all day and into the night, and a few
+# times an hour the ones that can join a synchronised slot play the same clip together. Each screen
+# is placed on the facade of its building that faces the crossing (buildings.json), at its published
+# size and height where one is published, else from photographs (CROSSING_SCREENS). What they show is
+# drawn for this model (SCREEN_CLIPS, pipeline/adkit.py): invented brands, music, a film, a game, the
+# weather and the ward's notices; no real advertiser's material. web/world.js plays them ("led_screen").
+
+SCREEN_CELL = (512, 340)
+SCREEN_SYNC = {"period_s": 150.0, "length_s": 18.0}   # the joint slot: every two and a half minutes, for eighteen seconds
+MATERIALS.update({
+    # the screens' face: dark LED tiles that light with the programme (world.js "led_screen")
+    "screens": {"color": "#0b0c0e", "roughness": 0.32, "metalness": 0.0, "map": "screens.jpg", "pattern": "led_screen"},
+})
+_BLD = {}
+
+
+def buildings_json():
+    """The built city (web/data/shibuya/buildings.json): its named buildings' solids, for the anchors of
+    things fixed to their facades after the scene is built."""
+    if "b" not in _BLD:
+        import json
+        B = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "shibuya", "buildings.json")))
+        solids = {}
+        for bi, base, mn, top, ring, *holes in B["s"]:
+            r = np.asarray(ring, float).reshape(-1, 2) / 10.0
+            solids.setdefault(bi, []).append({"ring": r, "base": base / 10.0, "min": mn / 10.0, "top": top / 10.0})
+        _BLD["b"], _BLD["s"] = B["b"], solids
+    return _BLD
+
+
+def facade(name, toward, near=None, pick=0, min_len=4.0):
+    """The face of a named building that best faces the point `toward`: (midpoint, outward normal, length,
+    ground z, top z). `near` picks among buildings of the same name (the closest); pick takes the next best."""
+    B = buildings_json()
+    idx = [i for i, b in enumerate(B["b"]) if b[0] == name]
+    if near is not None:
+        idx.sort(key=lambda i: min(np.hypot(*(s["ring"].mean(0) - near)) for s in B["s"].get(i, [])))
+    best = []
+    for s in B["s"].get(idx[0], []):
+        g = Polygon(s["ring"])
+        if not g.is_valid or g.area < 20:
+            continue
+        for sc, mid, n, L in facing_edges(g, toward, min_len):
+            best.append((sc * (1 + 0.02 * (s["top"] - s["min"])), mid, n, L, s["base"], s["base"] + s["top"]))
+    best.sort(key=lambda r: -r[0])
+    _, mid, n, L, z0, z1 = best[pick]
+    return np.asarray(mid), np.asarray(n), L, z0, z1
+
+
+# Where the screens are: (building in buildings.json, the face toward the crossing), width and height in
+# metres, "z" the foot above the street (or, negative, the top below the roof), "along" metres along the
+# face from its middle (to the left seen from in front), the hours it plays, its clips, whether it joins
+# the synchronised slot. Provisional: replaced by the surveyed list below.
+CROSSING_SCREENS = [
+    {"name": "Q'S EYE", "building": "Q-FRONT", "w": 15.0, "h": 11.0, "z": -12.0, "clips": ["music", "soda", "phone", "movie", "live", "info"]},
+    {"name": "MAGNET", "building": "MAGNET SHIBUYA", "w": 9.0, "h": 14.0, "z": -6.0, "clips": ["fashion", "beauty", "shoe", "game"]},
+    {"name": "Shibuya Ekimae", "building": "渋谷駅前ビル", "w": 20.0, "h": 16.0, "z": -4.0, "clips": ["live", "noodle", "soda", "movie", "music"]},
+    {"name": "Seibu A", "building": "西武渋谷店A館", "w": 16.0, "h": 9.0, "z": -6.0, "clips": ["beauty", "info", "game", "shoe"]},
+]
+
+
+# the clips: two keyframes each, drawn at twice the size and scaled down (pipeline/adkit.py)
+
+def k_sync_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ff2d7a", "#ff9a2a", 30)
+    ad.rings(img, (w * 0.5, h * 0.5), [h * r for r in (0.28, 0.42, 0.58, 0.76)], "#ffe0f0", h * 0.012, 0.8)
+    ad.streaks(img, rng, 10, "#fff4c0", -18, 0.7)
+    ad.text(img, (w / 2, h * 0.47), "SHIBUYA", "anton", h * 0.42, "#ffffff", glow_c="#ffd0e8", glow_r=h * 0.05, max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.8), "SCRAMBLE CROSSING", "bebas", h * 0.1, "#ffffff", spacing=h * 0.02)
+
+
+def k_sync_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#08134a", "#1b7dff", 70)
+    ad.bokeh(img, rng, 40, ["#7fd7ff", "#ffffff", "#ff7ad9"], h * 0.02, h * 0.09, 0.7)
+    ad.stripes(img, (0, h * 0.78, w, h), "#ffffff", 9, 0.0)
+    ad.text(img, (w / 2, h * 0.42), "渋谷", "dela", h * 0.48, "#ffffff", glow_c="#5fc8ff", glow_r=h * 0.06)
+    ad.text(img, (w / 2, h * 0.7), "SHIBUYA 2026", "bebas", h * 0.08, "#dff4ff", spacing=h * 0.03)
+
+
+def k_music_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0b0418", "#3a0f6b", 90)
+    ad.blob(img, (w * 0.5, h * 0.55), h * 1.0, "#9c3dff", 1.0)
+    ad.rings(img, (w * 0.5, h * 0.48), [h * 0.3], "#ff5ad8", h * 0.02, 1.2)
+    ad.figure(img, w * 0.5, h * 0.2, h * 0.85, "#06020c", coat=False, arms_up=True)
+    ad.text(img, (w * 0.27, h * 0.16), "NOVA", "monoton", h * 0.15, "#ffd6ff", glow_c="#ff4fd8", glow_r=h * 0.03)
+    ad.bokeh(img, rng, 26, ["#ff5ad8", "#8a7bff"], h * 0.01, h * 0.04, 0.5)
+
+
+def k_music_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#14052b", "#5b1080", 0)
+    ad.streaks(img, rng, 8, "#ff79e6", 0, 0.6)
+    ad.text(img, (w / 2, h * 0.2), "NOVA", "monoton", h * 0.2, "#ffffff", glow_c="#ff4fd8", glow_r=h * 0.04)
+    ad.text(img, (w / 2, h * 0.5), "NEW ALBUM『夜光』", "zen", h * 0.13, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.72), "11.20 RELEASE", "bebas", h * 0.15, "#ffe36e", spacing=h * 0.02)
+    ad.pill(img, (w * 0.32, h * 0.84, w * 0.68, h * 0.94), "#ffffff", "配信・CD 予約受付中", "zen", h * 0.05, "#3a0f6b")
+
+
+def k_soda_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#7fd3ff", "#e9f8ff", 90)
+    ad.bokeh(img, rng, 50, ["#ffffff"], h * 0.01, h * 0.035, 0.8)
+    ad.can(img, w * 0.5, h * 0.55, h * 0.72, "#f6fbff", "#1e6fe0", "SORA")
+    ad.blob(img, (w * 0.5, h * 0.98), h * 0.6, "#ffffff", 0.5)
+    ad.text(img, (w * 0.18, h * 0.5), "ZERO", "anton", h * 0.17, "#1e6fe0")
+    ad.text(img, (w * 0.82, h * 0.5), "爽快", "dela", h * 0.15, "#1e6fe0")
+
+
+def k_soda_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#1366e0", "#36c2ff", 120)
+    ad.bokeh(img, rng, 70, ["#ffffff", "#bff0ff"], h * 0.008, h * 0.03, 0.9)
+    ad.text(img, (w / 2, h * 0.36), "ゼロの、爽快。", "dela", h * 0.17, "#ffffff", max_w=w * 0.88)
+    ad.text(img, (w / 2, h * 0.62), "SORA SODA ZERO", "anton", h * 0.14, "#ffffff", spacing=h * 0.01)
+    ad.pill(img, (w * 0.4, h * 0.78, w * 0.6, h * 0.9), "#ffe14a", "NEW", "anton", h * 0.07, "#1366e0")
+
+
+def k_fashion_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#d9c3a5", "#a88664", 90)
+    ad.blob(img, (w * 0.6, h * 0.35), h * 0.9, "#fff1dc", 0.6)
+    ad.figure(img, w * 0.62, h * 0.08, h * 0.9, "#1d1712", coat=True)
+    ad.figure(img, w * 0.78, h * 0.16, h * 0.8, "#4a3a2c", coat=True)
+    ad.text(img, (w * 0.24, h * 0.36), "AW", "bebas", h * 0.3, "#1d1712")
+    ad.text(img, (w * 0.24, h * 0.62), "2026", "bebas", h * 0.2, "#1d1712")
+
+
+def k_fashion_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0e0c0b", "#2a2420", 90)
+    ad.text(img, (w / 2, h * 0.4), "MAISON KIRI", "mincho", h * 0.16, "#f3e9da", spacing=h * 0.03)
+    d = ad.ImageDraw.Draw(img)
+    d.line([(w * 0.35, h * 0.56), (w * 0.65, h * 0.56)], fill=(200, 170, 120), width=3)
+    ad.text(img, (w / 2, h * 0.67), "AUTUMN / WINTER COLLECTION", "bebas", h * 0.07, "#cdb38a", spacing=h * 0.015)
+    ad.text(img, (w / 2, h * 0.82), "SHIBUYA FLAGSHIP OPEN", "bebas", h * 0.055, "#8a7b66", spacing=h * 0.01)
+
+
+def k_phone_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#020306", "#0b1424", 90)
+
+    def scr(s):
+        ad.gradient(s, "#06121f", "#0f5a6e", 90)
+        sw, sh = s.size
+        ad.stars(s, rng, 60, 0.6)
+        ad.glow(s, lambda d: [d.arc([-sw * 0.6, sh * (0.15 + 0.08 * i), sw * 1.6, sh * (1.3 + 0.08 * i)], 200, 340, fill=c, width=int(sw * 0.04)) for i, c in enumerate([(80, 255, 170), (60, 200, 255), (190, 110, 255)])], sw * 0.06, 1.2)
+        ad.ImageDraw.Draw(s).polygon([(0, sh), (sw * 0.3, sh * 0.8), (sw * 0.55, sh * 0.86), (sw, sh * 0.76), (sw, sh)], fill=(4, 8, 12))
+    ad.blob(img, (w * 0.5, h * 0.5), h * 0.9, "#1f6a8a", 0.7)
+    ad.phone(img, w * 0.5, h * 0.5, h * 0.86, scr)
+    ad.text(img, (w * 0.17, h * 0.5), "KUMO", "bebas", h * 0.2, "#ffffff")
+    ad.text(img, (w * 0.84, h * 0.5), "X", "bebas", h * 0.32, "#7ff0d0", glow_c="#33ffc0", glow_r=h * 0.04)
+
+
+def k_phone_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#000000", "#0a1a24", 90)
+    ad.stars(img, rng, 120, 0.7)
+    ad.text(img, (w / 2, h * 0.38), "夜を、撮ろう。", "zen", h * 0.17, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.62), "KUMO X", "bebas", h * 0.16, "#7ff0d0", glow_c="#33ffc0", glow_r=h * 0.03, spacing=h * 0.03)
+    ad.text(img, (w / 2, h * 0.82), "11.07 FRI 発売", "zen", h * 0.07, "#cfe9ff")
+
+
+def k_movie_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#04081c", "#2b3f86", 90, "#e08aa8")
+    ad.stars(img, rng, 260, 0.7)
+    ad.glow(img, lambda d: d.line([(w * 0.95, h * 0.05), (w * 0.35, h * 0.55)], fill=(255, 250, 235), width=int(h * 0.012)), h * 0.04, 1.4)
+    ad.glow(img, lambda d: d.line([(w * 0.95, h * 0.1), (w * 0.4, h * 0.56)], fill=(140, 200, 255), width=int(h * 0.006)), h * 0.03, 1.0)
+    ad.blob(img, (w * 0.35, h * 0.55), h * 0.12, "#ffffff", 1.4)
+    d = ad.ImageDraw.Draw(img)
+    pts = [(0, h)] + [(x, h * (0.82 - 0.05 * math.sin(x / w * 7) - 0.04 * (rng.random() > 0.7))) for x in np.linspace(0, w, 40)] + [(w, h)]
+    d.polygon(pts, fill=(6, 8, 18))
+
+
+def k_movie_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#03050f", "#1a2550", 90)
+    ad.stars(img, rng, 200, 1.0)
+    ad.text(img, (w / 2, h * 0.36), "彗星線", "mincho", h * 0.3, "#ffffff", glow_c="#8fc8ff", glow_r=h * 0.04)
+    ad.text(img, (w / 2, h * 0.6), "COMET LINE", "bebas", h * 0.1, "#cfe2ff", spacing=h * 0.04)
+    ad.text(img, (w / 2, h * 0.8), "12.04 ROADSHOW", "bebas", h * 0.1, "#ffd27a", spacing=h * 0.02)
+
+
+def k_game_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0a0220", "#3b0a5e", 90)
+    ad.blob(img, (w * 0.5, h * 0.45), h * 0.55, "#ff7a2f", 1.2)
+    d = ad.ImageDraw.Draw(img)
+    for i in range(7):
+        y = h * (0.36 + i * 0.03)
+        d.rectangle([w * 0.3, y, w * 0.7, y + h * 0.008 * (1 + i * 0.4)], fill=(10, 2, 32))
+    d.rectangle([0, h * 0.5, w, h], fill=(10, 2, 32))
+    ad.synth_grid(img, 0.5, "#ff3fd0", 1.0)
+    d.polygon([(w * 0.5, h * 0.58), (w * 0.44, h * 0.74), (w * 0.5, h * 0.7), (w * 0.56, h * 0.74)], fill=(120, 240, 255))
+    ad.text(img, (w / 2, h * 0.17), "STAR DRIFT", "monoton", h * 0.14, "#9ff3ff", glow_c="#2ad6ff", glow_r=h * 0.03, max_w=w * 0.9)
+
+
+def k_game_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#05010f", "#1c0638", 90)
+    ad.synth_grid(img, 0.62, "#7b3dff", 0.8)
+    ad.text(img, (w / 2, h * 0.28), "STAR DRIFT", "monoton", h * 0.15, "#ffffff", glow_c="#ff3fd0", glow_r=h * 0.04, max_w=w * 0.92)
+    ad.text(img, (w / 2, h * 0.5), "好評配信中", "dela", h * 0.14, "#ffe14a")
+    ad.text(img, (w / 2, h * 0.66), "NOW ON SALE", "dot", h * 0.08, "#9ff3ff")
+
+
+def k_beauty_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ffd9df", "#ff8fa3", 60)
+    ad.blob(img, (w * 0.5, h * 0.5), h * 0.9, "#ffffff", 0.5)
+    for i, x in enumerate((0.36, 0.5, 0.64)):
+        ad.lipstick(img, w * x, h * (0.52 + 0.03 * (i == 1)), h * (0.6 if i == 1 else 0.5), "#18120f", ["#b3122e", "#d4143a", "#ff4d6d"][i])
+    ad.text(img, (w * 0.5, h * 0.12), "MIRAI", "mincho", h * 0.1, "#5c0f1f", spacing=h * 0.05)
+
+
+def k_beauty_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#7a0418", "#d4143a", 30)
+    ad.bokeh(img, rng, 30, ["#ffb3c1", "#ffffff"], h * 0.01, h * 0.05, 0.5)
+    ad.text(img, (w / 2, h * 0.36), "TOKYO RED", "anton", h * 0.26, "#ffffff", spacing=h * 0.01)
+    ad.text(img, (w / 2, h * 0.64), "新色、限定発売。", "mincho", h * 0.12, "#ffe3e8")
+    ad.text(img, (w / 2, h * 0.84), "MIRAI BEAUTY", "bebas", h * 0.08, "#ffd2da", spacing=h * 0.04)
+
+
+def k_shoe_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ff6a1a", "#ffb02e", 20)
+    ad.streaks(img, rng, 14, "#fff1c9", -8, 0.8)
+    ad.text(img, (w / 2, h * 0.3), "RUN", "anton", h * 0.5, "#ff8a3a")
+    ad.shoe(img, w * 0.5, h * 0.6, w * 0.62, "#0f2a3d", "#ffffff", "#2ee6c8")
+
+
+def k_shoe_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#062b3a", "#0c5d6e", 0)
+    ad.streaks(img, rng, 10, "#2ee6c8", -8, 0.6)
+    ad.text(img, (w / 2, h * 0.36), "RUN THE CITY", "anton", h * 0.2, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.62), "AERO 9", "bebas", h * 0.2, "#2ee6c8", glow_c="#2ee6c8", glow_r=h * 0.02)
+
+
+def k_info_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0f6fd6", "#5ab8ff", 90)
+    ad.blob(img, (w * 0.24, h * 0.42), h * 0.5, "#ffe27a", 1.3)
+    d = ad.ImageDraw.Draw(img)
+    d.ellipse([w * 0.24 - h * 0.12, h * 0.42 - h * 0.12, w * 0.24 + h * 0.12, h * 0.42 + h * 0.12], fill=(255, 214, 70))
+    ad.text(img, (w * 0.64, h * 0.22), "東京の天気", "zen", h * 0.1, "#ffffff")
+    ad.text(img, (w * 0.64, h * 0.45), "晴れ", "dela", h * 0.2, "#ffffff")
+    ad.text(img, (w * 0.64, h * 0.7), "18° / 11°", "bebas", h * 0.18, "#ffffff")
+    d.rectangle([0, h * 0.86, w, h], fill=(6, 40, 90))
+    ad.text(img, (w / 2, h * 0.93), "降水確率 10%  ・  北の風  ・  湿度 48%", "zen", h * 0.05, "#d6ecff")
+
+
+def k_info_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0b3d1f", "#1b8a4a", 90)
+    ad.text(img, (w / 2, h * 0.3), "歩きスマホは、やめよう。", "zen", h * 0.12, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.52), "Please don't walk and text.", "bebas", h * 0.1, "#d9ffe6")
+    ad.stripes(img, (w * 0.1, h * 0.7, w * 0.9, h * 0.84), "#ffffff", 8, 0.0)
+    ad.text(img, (w / 2, h * 0.93), "渋谷区 SHIBUYA CITY", "zen", h * 0.05, "#d9ffe6")
+
+
+def k_live_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#090014", "#2a0040", 90)
+    for i, c in enumerate(["#ff3fa4", "#3fd0ff", "#ffe14a", "#9b5bff", "#3fffa0"]):
+        x = w * (0.1 + 0.2 * i)
+        ad.glow(img, lambda d, x=x, c=c: d.polygon([(x, 0), (x - w * 0.12, h), (x + w * 0.12, h)], fill=ad.rgb(c)), h * 0.05, 0.35, sharp=False)
+    for i in range(5):
+        ad.figure(img, w * (0.22 + 0.14 * i), h * 0.36, h * 0.5, "#0a0010", coat=False, arms_up=i % 2 == 0)
+    ad.bokeh(img, rng, 90, ["#ff3fa4", "#3fd0ff", "#ffe14a", "#ffffff"], h * 0.006, h * 0.02, 0.9)
+    ad.text(img, (w / 2, h * 0.16), "STELLA☆LIVE", "reggae", h * 0.13, "#ffffff", glow_c="#ff3fa4", glow_r=h * 0.03)
+
+
+def k_live_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ff3fa4", "#7a2bff", 45)
+    ad.bokeh(img, rng, 40, ["#ffffff", "#ffe14a"], h * 0.01, h * 0.04, 0.6)
+    ad.text(img, (w / 2, h * 0.3), "ARENA TOUR 2026", "anton", h * 0.16, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.55), "NEON HEART", "monoton", h * 0.14, "#fff3a0", glow_c="#ffffff", glow_r=h * 0.02, max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.8), "チケット一般発売 11.15 SAT", "zen", h * 0.07, "#ffffff")
+
+
+def k_noodle_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ffcf3a", "#ff7a00", 90)
+    ad.rings(img, (w * 0.5, h * 0.55), [h * r for r in (0.32, 0.46)], "#fff4c0", h * 0.015, 0.6)
+    ad.cup(img, w * 0.5, h * 0.6, h * 0.55, "#d61f1f", "#fff4dc", "濃厚味噌")
+    ad.text(img, (w * 0.17, h * 0.4), "新", "dela", h * 0.28, "#d61f1f")
+    ad.text(img, (w * 0.83, h * 0.4), "発売", "dela", h * 0.18, "#d61f1f")
+
+
+def k_noodle_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#a50f0f", "#e8231f", 90)
+    ad.rings(img, (w * 0.5, h * 0.45), [h * 0.38], "#ffd23a", h * 0.012, 0.5)
+    ad.text(img, (w / 2, h * 0.36), "ズズッと、うまい。", "dela", h * 0.15, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.62), "麺屋 風 カップ", "zen", h * 0.12, "#ffe14a")
+    ad.text(img, (w / 2, h * 0.82), "全国のコンビニで", "zen", h * 0.07, "#ffffff")
+
+
+SCREEN_CLIPS = [("sync", [k_sync_a, k_sync_b]), ("music", [k_music_a, k_music_b]), ("soda", [k_soda_a, k_soda_b]),
+         ("fashion", [k_fashion_a, k_fashion_b]), ("phone", [k_phone_a, k_phone_b]), ("movie", [k_movie_a, k_movie_b]),
+         ("game", [k_game_a, k_game_b]), ("beauty", [k_beauty_a, k_beauty_b]), ("shoe", [k_shoe_a, k_shoe_b]),
+         ("info", [k_info_a, k_info_b]), ("live", [k_live_a, k_live_b]), ("noodle", [k_noodle_a, k_noodle_b])]
+
+
+def screen_clip_index(name):
+    return [c for c, _ in SCREEN_CLIPS].index(name)
+
+
+def crossing_screens(lm):
+    """Every screen round the crossing, placed: centre of its foot, outward normal, size, programme."""
+    if "screens" in _BLD:
+        return _BLD["screens"]
+    node = np.asarray(lm["scramble"]["node"], float)
+    out = []
+    for sc in CROSSING_SCREENS:
+        toward = np.asarray(sc.get("toward", node), float)
+        mid, n, L, z0, z1 = facade(sc["building"], toward, sc.get("near"), sc.get("pick", 0))
+        t = np.array([-n[1], n[0]])
+        w, h = sc["w"], sc["h"]
+        base = z0 + sc["z"] if sc["z"] >= 0 else z1 + sc["z"] - h   # metres above the street, or down from the roof
+        c = mid + t * sc.get("along", 0.0)
+        clips = [screen_clip_index(k) for k in sc["clips"]]
+        out.append({"name": sc["name"], "at": c, "normal": n, "w": w, "h": h, "z0": base, "clips": clips, "hours": sc.get("hours", [9, 24]),
+                    "sync": 1 if sc.get("sync", True) else 0, "pitch": sc.get("pitch", 0.016), "bright": sc.get("bright", 1.0),
+                    "phase": sc.get("phase", 0.0), "off": sc.get("off", 0.6), "frame": sc.get("frame", 0.35), "ground": z0})
+    _BLD["screens"] = out
+    return out
+
+
+def led_screens(K, scr):
+    """Each screen: a dark frame standing off the wall and the LED face in front of it, whose texture
+    coordinates carry the screen's number (u's integer part) for world.js to play its programme."""
+    F = K("screens")
+    for i, s in enumerate(scr):
+        n, c = s["normal"], s["at"] + s["normal"] * s["off"]
+        P = frame(c, n)
+        fw = s["frame"]
+        block(K("screen_frame"), P, -s["off"], 0.12, -s["w"] / 2 - fw, s["w"] / 2 + fw, s["z0"] - fw, s["z0"] + s["h"] + fw)
+        a, b = P(0.125, -s["w"] / 2, s["z0"]), P(0.125, s["w"] / 2, s["z0"])   # left to right seen from in front
+        F.quad(a, b, b + [0, 0, s["h"]], a + [0, 0, s["h"]], [[i + 0.0005, 0.0], [i + 0.9995, 0.0], [i + 0.9995, 1.0], [i + 0.0005, 1.0]])
+
+
+def screen_material(scr):
+    """The "led_screen" pattern's programme for these screens (world.js)."""
+    cols, cell = 4, SCREEN_CELL
+    rows = math.ceil(len(SCREEN_CLIPS) * 2 / cols)
+    W, H = cols * cell[0], 2048
+    m = dict(MATERIALS["screens"])
+    m.update({"sheet": [cols, rows, cell[0] / W, cell[1] / H], "frames": 2, "cell_aspect": round(cell[0] / cell[1], 4), "frame_s": 4.0,
+              "sync": [screen_clip_index("sync"), SCREEN_SYNC["period_s"], SCREEN_SYNC["length_s"]],
+              "screens": [[round(s["w"] / s["h"], 4), round(s["phase"], 2), sum(1 << c for c in s["clips"]), len(set(s["clips"])), s["hours"][0], s["hours"][1], s["bright"],
+                           s["sync"], round(s["h"], 2), s["pitch"], 0, 0] for s in scr]})
+    return m
+
+
+def screen_sheet():
+    """The keyframes of every clip, in a 2048-pixel square (screens.jpg)."""
+    import adkit
+    from PIL import Image
+    img, lay = adkit.draw_sheet(SCREEN_CLIPS, cols=4, cell=SCREEN_CELL, seed=1999)
+    sheet = Image.new("RGB", (img.size[0], 2048), (0, 0, 0))
+    sheet.paste(img, (0, 0))
+    return sheet
+
+
+def screen_glows(scr, sheet):
+    """The light each screen throws on the street in front of it: a pool in the mean colour of its
+    programme, as wide as the screen is high above the street, and as strong as it is large."""
+    arr = np.asarray(sheet, np.float32) / 255.0
+    cols, cw, ch = 4, SCREEN_CELL[0], SCREEN_CELL[1]
+    out = []
+    for s in scr:
+        cells = [k * 2 + f for k in s["clips"] for f in (0, 1)]
+        lin = np.mean([(arr[(c // cols) * ch:(c // cols + 1) * ch, (c % cols) * cw:(c % cols + 1) * cw] ** 2.2).mean((0, 1)) for c in cells], 0)
+        col = "#" + "".join(f"{int(min(255, 255 * (v / max(lin.max(), 1e-6)) ** (1 / 2.2))):02x}" for v in lin)
+        rise = s["z0"] + s["h"] / 2 - lm_ground(s)
+        g = s["at"] + s["normal"] * (0.6 * rise + 4.0)
+        out.append([round(float(g[0]), 1), round(float(g[1]), 1), round(max(s["w"] * 1.1, rise * 1.2, 18.0), 1), col,
+                    round(min(1.6, 0.0022 * s["w"] * s["h"] * s["bright"] * float(lin.mean() / max(lin.max(), 1e-6)) + 0.12), 3)])
+    return out
+
+
+def lm_ground(s):
+    return s.get("ground", s["z0"] - 3.0)
 
 
 # ---------------------------------------------------------------- SHIBUYA SKY, on Shibuya Scramble Square
@@ -2182,7 +2537,16 @@ def landmark_meshes(scene):
     meshes += districts_meshes(lm)
     if "shibuya_sky" in lm:
         meshes += sky_meshes(lm["shibuya_sky"])
-    return MATERIALS, meshes
+    mats = dict(MATERIALS)
+    if "scramble" in lm:
+        mats["screens"] = screen_material(crossing_screens(lm))
+    return mats, meshes
+
+
+def landmark_glows(scene):
+    """The light the crossing's screens throw on the street (web/night.js)."""
+    lm = scene["landmarks"]
+    return screen_glows(crossing_screens(lm), screen_sheet()) if "scramble" in lm else []
 
 
 def sky_surfaces(s):

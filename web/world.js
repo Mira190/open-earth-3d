@@ -245,8 +245,93 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     float tone = 0.84 + 0.28 * ashHash(vec2(row, floor(x)));
     diffuseColor.rgb *= mix(0.95, tone * (1.0 - 0.5 * joint), near); }`);
       };
+    },
+    // big LED screens playing their programmes ("led_screen"): the integer part of u picks the
+    // screen in m.screens, its fraction runs across it, v runs up it. The material's map is a sheet
+    // of keyframes, m.sheet = [columns, rows, cell width, cell height] (fractions of the image),
+    // m.frames keyframes to a clip, each held m.frame_s seconds. Each screen, [aspect, phase s,
+    // playlist (a bit mask over the clips), clips in it, on hour, off hour, brightness, sync, height m,
+    // pixel pitch m], plays its clips in turn, a slow push into
+    // each keyframe and a wipe to the next, and those with sync join the others every m.sync =
+    // [clip, period s, length s] to play the same clip together, as the crossing's screens do. The
+    // picture is light of its own: bright enough to read in the sun, dimmer after dark, off out of
+    // hours, and its LEDs show as a grid of dots from close by.
+    led_screen(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      const S = m.screens, n = S.length, v4 = (i, a) => new THREE.Vector4(...[0, 1, 2, 3].map(j => (S[i] || [])[a + j] || 0));
+      const A = [], Bv = [], Cv = [];
+      for (let i = 0; i < n; i++) { A.push(v4(i, 0)); Bv.push(v4(i, 4)); Cv.push(v4(i, 8)); }
+      const [cols, rows, cw, ch] = m.sheet, [sc, sp, sl] = m.sync || [-1, 1e9, 0];
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uScrA: { value: A }, uScrB: { value: Bv }, uScrC: { value: Cv }, uSheet: { value: new THREE.Vector4(cols, rows, cw, ch) },
+          uSync: { value: new THREE.Vector4(sc, sp, sl, m.frames || 1) }, uScrT: SCREEN.t, uScrHour: SCREEN.hour, uScrNight: LM_NIGHT });
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform vec4 uScrA[${n}], uScrB[${n}], uScrC[${n}], uSheet, uSync; uniform float uScrT, uScrHour, uScrNight; vec3 pScr;
+// the n-th clip of a playlist (a bit mask over the clips), counting round
+float scrClip(float mask, float n) {
+  float found = 0.0;
+  for (int i = 0; i < 24; i++) {
+    if (mod(floor(mask / exp2(float(i))), 2.0) > 0.5) { if (found == n) return float(i); found += 1.0; }
+  }
+  return 0.0;
+}`)
+          .replace('#include <map_pars_fragment>', `#include <map_pars_fragment>
+vec3 scrCell(float cell, vec2 uv) {
+  float col = mod(cell, uSheet.x), row = floor(cell / uSheet.x);
+  uv = clamp(uv, 0.003, 0.997);
+  return texture2D(map, vec2((col + uv.x) * uSheet.z, 1.0 - (row + 1.0 - uv.y) * uSheet.w)).rgb;
+}`)
+          .replace('#include <map_fragment>', `
+  { int id = int(floor(vUv.x)); vec2 uv = vec2(fract(vUv.x), vUv.y);
+    vec4 A = uScrA[id], B = uScrB[id], C = uScrC[id];
+    float F = uSync.w, D = ${(m.frame_s || 4).toFixed(2)} * F, t = uScrT + A.y, k = floor(t / D), ct = fract(t / D);
+    float clip = scrClip(A.z, mod(k, A.w)), nextClip = scrClip(A.z, mod(k + 1.0, A.w));
+    float st = mod(uScrT, uSync.y);
+    if (B.w > 0.5 && uSync.x >= 0.0 && st < uSync.z) { clip = uSync.x; nextClip = uSync.x; ct = st / uSync.z; }
+    // the cell is cropped to the screen's shape (cover), then pushed into slowly
+    float ca = ${(m.cell_aspect || 16 / 9).toFixed(4)};
+    vec2 cuv = uv;
+    if (A.x > ca) cuv.y = 0.5 + (uv.y - 0.5) * ca / A.x; else cuv.x = 0.5 + (uv.x - 0.5) * A.x / ca;
+    float ft = ct * F, f = floor(ft), fr = fract(ft);
+    vec3 c = scrCell(clip * F + f, 0.5 + (cuv - 0.5) / (1.0 + 0.07 * fr));
+    float w = smoothstep(0.9, 1.0, fr); // the wipe to the next keyframe, along a slant
+    if (w > 0.0) {
+      vec3 c2 = scrCell(f < F - 1.0 ? clip * F + f + 1.0 : nextClip * F, cuv);
+      float edge = (uv.x + 0.35 * uv.y) / 1.35;
+      c = mix(c, c2, step(edge, w * 1.08 - 0.04)) + vec3(0.6) * (1.0 - smoothstep(0.0, 0.02, abs(edge - w * 1.08 + 0.04))) * step(0.01, w) * step(w, 0.99);
+    }
+    float h = uScrHour, on = B.x < B.y ? step(B.x, h) * step(h, B.y) : max(step(B.x, h), step(h, B.y));
+    // the LEDs: a grid of dots at the pixel pitch, seen only from close by
+    vec2 px = vec2(uv.x * A.x, uv.y) * C.x / max(C.y, 0.002);
+    float pw = max(fwidth(px.x), fwidth(px.y)), dots = smoothstep(0.62, 0.3, length(fract(px) - 0.5));
+    float grid = mix(0.35 + 1.3 * dots, 1.0, smoothstep(0.25, 0.7, pw));
+    pScr = c * B.z * mix(2.4, 1.0, uScrNight) * on * grid; // bright enough to read in the sun; dimmed after dark, as they are
+    diffuseColor.rgb = vec3(0.025); }`)
+          .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance += pScr;');
+      };
+    },
+    // neon and LED sign lines that move ("neon"): u metres along the tube. m.mode "chase" runs a
+    // bright pulse along it, "blink" turns it on and off, "breathe" swells; the phase comes from
+    // the tube's position, so neighbouring signs keep their own time
+    neon(mat, m) {
+      mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
+      const mode = { chase: 1, blink: 2, breathe: 3 }[m.mode] || 0;
+      mat.onBeforeCompile = sh => {
+        Object.assign(sh.uniforms, { uNeonT: SCREEN.t, uNeonMode: { value: mode }, uNeonRate: { value: m.rate || 1 } });
+        sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vNeonPh;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vNeonPh = fract(dot(floor((modelMatrix * vec4(position, 1.0)).xz / 6.0), vec2(0.37, 0.71)));');
+        sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform float uNeonT, uNeonMode, uNeonRate; varying float vNeonPh;')
+          .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  { float t = uNeonT * uNeonRate + vNeonPh * 7.0, k = 1.0;
+    if (uNeonMode == 1.0) k = 0.35 + 0.65 * smoothstep(0.7, 1.0, fract(vUv.x / 3.0 - t * 0.8)) + 0.25;
+    else if (uNeonMode == 2.0) k = step(0.3, fract(t * 0.5)) * 0.9 + 0.1;
+    else if (uNeonMode == 3.0) k = 0.6 + 0.4 * sin(t * 2.0);
+    totalEmissiveRadiance *= k; }`);
+      };
     }
   };
+  // the screens' and the signs' clock (seconds) and the hour, for their schedules (setSun, tick)
+  const SCREEN = { t: { value: 0 }, hour: { value: 12 } };
 
   // build the scene into a new THREE.Scene; the caller owns the renderer and camera
   // The edge of the model: where the open data stops, the ground, the buildings and the
@@ -755,6 +840,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         U.uHour.value = minutes != null ? minutes / 60 : sp.altitude > 0 ? 12 : sp.azimuth > 180 ? 21 : 4;
         for (const m of Object.values(floodMats)) m.emissiveIntensity = m.userData.glow * U.uNight.value;
         LM_NIGHT.value = U.uNight.value;
+        SCREEN.hour.value = U.uHour.value;
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         // the haze first, then the light from the sky: the environment is drawn with the horizon's
@@ -814,7 +900,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       setSeason(month, day) { if (trees) trees.setSeason(month, day); },
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
       tick(t, camera) {
-        SPARKLE.t.value = t * 0.001;
+        SPARKLE.t.value = SCREEN.t.value = t * 0.001;
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);
         if (trees && camera) trees.update(camera, t / 1000);
         if (night && camera) night.update(camera, t / 1000);
