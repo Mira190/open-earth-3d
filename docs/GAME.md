@@ -762,15 +762,23 @@ columns, measured then), and now with the banned turns, the lanes, the arrows,
 the walk signals and the unsticking above, against main just before (150 cars
 over 112 s at each place):
 
-| | Before | Junctions | Main before this | Now |
-|---|---|---|---|---|
-| Standing still | 39% of the time | 25% | 21% | 19% |
-| Jammed (still 30 s or more) | 13.4% | 2.5% | 3.8% | 0.7% |
-| Mean speed | 18 km/h | 23 km/h | 26 km/h | 26 km/h |
-| Longest still | 150 s | 111 s | 138 s | 72 s |
-| Red lights run | (no lights) | 0 | 0 | 0 |
+| | Before | Junctions | Main before this | This, before the rides' changes | Main with the rides' changes | Now |
+|---|---|---|---|---|---|---|
+| Standing still | 39% of the time | 25% | 21% | 19% | 27% | 28% |
+| Jammed (still 30 s or more) | 13.4% | 2.5% | 3.8% | 0.7% | 3.8% | 4.2% |
+| Mean speed | 18 km/h | 23 km/h | 26 km/h | 26 km/h | 21 km/h | 21 km/h |
+| Longest still | 150 s | 111 s | 138 s | 72 s | 144 s | 150 s |
+| Red lights run | (no lights) | 0 | 0 | 0 | 0 | 0 |
 
-The other cities, jammed share and longest still, main before this and now:
+Main took in the rides' work (a step into another car taken back, cars kept
+off posts and trunks, a ride's priority at a red) while this was being
+finished; with both, the jams are back to about main's own, and a few cars
+stand the whole run where a car leaving a junction is caught against the
+queue coming into it on a short arm (`tools/traffic_why.js sydney 2` shows
+one). That is left for the follow-up issue.
+
+The other cities, jammed share and longest still, main before this and this
+branch before the rides' changes:
 Tokyo 0.9% and 76 s, now 0.8% and 50 s; Osaka 1.5% and 105 s, 1.2% and 74 s;
 Paris 3.1% and 120 s, 2.6% and 104 s; Hong Kong 5.0% and 138 s, 3.8% and 116 s;
 Kyoto 6.2% and 148 s, 1.8% and 89 s; Melbourne 4.9% and 121 s, 2.7% and 146 s;
@@ -782,9 +790,9 @@ up in a crowded junction in one run are elsewhere in the next. No junction now
 lets in two movements that cross (Melbourne's bayside did, on main: a car let
 in by one way that asked again by another wasn't checked).
 
-The traffic's update costs about 2.2 ms a frame for 150 cars on the software
-renderer here, against 2.6 ms on main just before, measured the same way: the
-way ahead is sampled walking a line's
+The traffic's update costs about 3.2 ms a frame for 150 cars on the software
+renderer here, against 3.4 ms on main with the rides' changes (2.2 ms against
+2.6 ms before them), measured the same way: the way ahead is sampled walking a line's
 segments on from the last point instead of searching them for every point, the
 cars more than 160 m from the eye (along x and y) take a step of two frames
 every second frame, and the signal heads re-light only a junction whose signals

@@ -1311,14 +1311,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // stopped nose to nose): it squeezes past, in a junction sooner; and by one that only
         // inches along, caught up with it (the time counts on while it is held by one that moves)
         c.inHeld = held ? (c.inHeld || 0) + dt : 0;
-        const squeeze = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15);
+        // (and in a junction, caught up behind one for 10 s: it squeezes past that one too)
+        c.behindT = behind && !turn ? (c.behindT || 0) + dt : 0;
+        const squeeze = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
           held = d1 > (c.pw > 5 ? (turn ? 1.2 : 0.35) : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3;
           if (held && who >= 0) walker = who; // (a walker against it: asked to turn back, below, if it waits on them)
         }
-        if (behind && !turn) held = true;
+        if (behind && !turn && !squeeze) held = true;
         if (c.backoff > 0) { // backing off for a car that can't get past, a metre or two, if the way behind is clear
           c.backoff -= dt; c.v = 0;
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.2 * dt));
