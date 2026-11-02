@@ -76,10 +76,10 @@ No code was taken from any of these; the ideas are general. What was adopted, an
 |---|---|
 | A sky that stays blue, warm low down | `world.js`: after dark the sky shader blends to a designed night sky, deep blue overhead and the city's glow over the horizon (`style.skyglow`); the haze at the model's edge is the night's blue |
 | Warm lights against cool shadows | `lens.js` `uNightTone`: at night the grade takes the shadows to blue and the lights to amber |
-| A hierarchy on the towers | `night.js`: crowns lit on 60% of the towers over 60 m (a wash up the top storeys and a line along the parapet, mostly white); `buildings.js`: lobbies lit all night |
+| A hierarchy on the towers | `night.js`: crowns lit on 60% of the towers over 60 m (a wash up the top storeys and a line along the parapet, mostly white), on the tower's own top, not a small box on its roof (a plant room, a lift overrun, a sliver of the survey's model: under 300 m² and under 40% of a part whose roof is up to 8 m below), which lit all round reads as a lantern; `buildings.js`: lobbies lit all night |
 | Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors, and offices empty through the evening; each building keeps its own evening; each lit run has its own brightness, a few floors bright |
 | Fewer windows lit, and brighter | `buildings.js`: lit rooms 1.6 times as bright as before and fewer of them (an office two thirds as many at 19:00, three quarters at 21:00); offices under cool white, a floor in four warmer; homes warm, or cool in Japan and Hong Kong; `world.js`: the landmark towers' curtain walls (Hong Kong's) light in runs under cool white too |
-| Landmarks floodlit from below | `world.js` `flood`: a landmark's walls lit full, the undersides of its eaves more, its roofs at a graze, fading up the building; Osaka Castle (its stone base too), Kyoto Tower, Tokyo Tower (its colour by the season) and the Harbour Bridge's arch |
+| Landmarks floodlit from below | `world.js` `flood`: a landmark's walls lit full, the undersides of its eaves more, its roofs at a graze, fading up the building; Osaka Castle (its stone base too), Kyoto Tower, Tokyo Tower (its colour by the season), the Harbour Bridge's arch and the Opera House's sails |
 | Glass that reflects | the environment light is drawn from the night sky, so curtain walls mirror blue above and warm below |
 | Lights as materials | `night.js`: lamps, traffic and tower lights are points and strips in three draw calls; the light on the ground is one texture |
 
@@ -127,7 +127,8 @@ graze, falling off up the building, and the light comes back off the surface in 
 pattern (the courses of a stone base, the tiles of a roof). Osaka Castle's keep is lit
 warm white with its copper roofs and its stone base lit; Kyoto Tower white with its deck's
 windows lit; Tokyo Tower orange, white in summer (`emissive_dates`); the Harbour Bridge's
-arch softly from its deck. Without `flood` a floodlit material glows evenly, as signs and
+arch softly from its deck; the Opera House's sails from the podium, full at their feet and a
+little over half at the crowns, the tiles facing up catching most of it. Without `flood` a floodlit material glows evenly, as signs and
 screens do (the Eiffel Tower's gold, Hong Kong's frames and crowns).
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in

@@ -5,6 +5,8 @@
 // rule that keeps rides on time from a lucky run.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/ride_check.js osaka [N=10]
+// "rerouted": how many times it found another way round a jam in view (game.js rideStep);
+// "junctions": how many junctions its driver went into by asking junctions.js for its way across.
 // Exits 1 if more than one in ten took over 30 s.
 const { chromium } = require('playwright');
 const [,, city = 'hong-kong', trials = '10'] = process.argv;
@@ -43,7 +45,7 @@ const [,, city = 'hong-kong', trials = '10'] = process.argv;
           if (why[w] === 8 && w === 'gap') { const bl = st.block; why.gapDetail = `d ${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} left ${(st.end - st.s).toFixed(0)} held ${(st.held||0).toFixed(0)} pass ${st.pass.toFixed(1)} block ${bl ? `${bl.line != null ? 'car' : 'other'} v ${(bl.v||0).toFixed(1)} why ${bl.why || ''} still ${bl.still ? (typeof bl.still === 'number' ? bl.still.toFixed(0) : 'yes') : 'no'} toLine ${bl.toLine != null ? bl.toLine.toFixed(0) : '-'} q ${bl.q ? 1 : 0}` : 'none'}`; }
           if (why[w] === 8 && w === 'ahead') { const fp = g.cars.footprint(st.x, st.y, st.z, st.h, o.C.half, o.C.hw, 0.1); why.detail = `calls ${calls} v ${st.v.toFixed(2)} s ${st.s.toFixed(1)} done ${st.done} brake ${st.brake} shift ${st.shift.toFixed(2)} pass ${st.pass.toFixed(2)} d ${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} left ${(st.end - st.s).toFixed(0)} wedged ${(st.wedged || 0).toFixed(1)} fp ${fp.toFixed(2)} held ${(st.held||0).toFixed(0)} stall ${(st.stall||0).toFixed(1)} phase ${o.phase}`; } }
       }
-      out.push({ k, hail, said: +said.toFixed(0), t, sig: (o.sig || []).length, stops: why, late: o.T0 != null ? +(t - o.T0).toFixed(0) : null });
+      out.push({ k, hail, said: +said.toFixed(0), t, sig: (o.sig || []).length, stops: why, late: o.T0 != null ? +(t - o.T0).toFixed(0) : null, rerouted: o.rerouted || 0, junctions: o.drv.st.entered || 0 });
       g.cancelRide(); g.advance(2);
     }
     return out;

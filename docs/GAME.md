@@ -149,10 +149,16 @@ each is timed by driving its route in a dry run (the driver's own rules, nothing
 in the way), with 4 s added for each set of traffic lights near the pick-up, and
 the one that takes 10 to 20 s, out of your sight where it can be, is chosen,
 leaving the rest of the half minute for the traffic you can see. The same time is
-what the phone shows: it counts down as the car comes and holds while it waits in
-traffic, as an app's does. At a red light in your sight it stops at the line and
+what the phone shows: it counts down as the car comes and, held up behind the
+traffic, rises as it waits, as an app's does. At a red light in your sight it stops at the line and
 asks for its green, as a bus with priority does: the other road's green ends once
-it has run 5 s, through amber as ever. Where the kerb it
+it has run 5 s, through amber as ever. Its driver goes into a junction as the
+traffic does, asking `junctions.js` for its way across (none crossing it already
+in, the longest waiting first, giving way to the main road), so a car of the
+traffic never enters the same junction across it. Held more than 10 s behind a
+queue in view, it looks for another way from where it stands round the piece of
+road the queue is on, and takes it if it is no more than 300 m longer; queued 8 s
+within 45 m of the pick-up, it stops there and you walk the last metres. Where the kerb it
 is to pull in at is taken, by your own car or one stopped there for good (10 s),
 it pulls in just behind, and drives round one only waiting in the traffic; held
 up near the end for 8 s, it stops where it is with its hazards on. Where no car
@@ -378,7 +384,9 @@ pipeline writes. The only city-specific code is landmark geometry in
     - Smoothed only as far as the route still stays at least 4 m from land.
   - **Benches and street lamps:** from OpenStreetMap, moved out of the
     carriageways (`pipeline/kerbside.py`; `web/streets.js` does the same in the
-    browser, for data built before, and for the trees). Many lamps are mapped as
+    browser, for data built before). The trees in `places.json` too, once
+    `game_data.py` has the roads (`python pipeline/kerbside.py --all --write`
+    does it to the data as it stands). Many lamps are mapped as
     nodes of the road itself, and trees in kerb build-outs and medians. Each is
     moved to the nearest place clear of every road's band at its level (the
     road as the game draws it, grown to the outer side of a car pulled in at the
@@ -734,8 +742,20 @@ cars.
     A leg too narrow to pass along has a passing place where the two hulls stay
     clear all the way past, measured hull against hull (on a bend a hull's ends
     swing out of its line); one leaving a berth waits for a vessel still coming
-    in past it, but not for one lying there or off the berth waiting for it.
-    One lying still across another route's course is stopped short of. Two under
+    in past it, but not for one lying there or off the berth waiting for it;
+    so on a narrow leg the place to wait off a busy berth is one where the one
+    leaving can go by (else the passing place), and one waiting there stays put
+    until the one leaving is past it. Shared narrow water, where a course runs
+    head-on against another route's (Paris's two Batobus routes along the same
+    stretch of the Seine), is taken one way at a time, as a single-track
+    railway's section is: each course's stretches, longer than two hull lengths,
+    where a hull would come within a metre of one on the other course, are
+    worked out when the city loads; one in the stretch, or too near to stop
+    short of it, holds it, of two closing on it the nearer goes first, and the
+    other waits just short of it, where it is clear of the other course all
+    along. One lying still across another route's course is stopped short of,
+    and passed after half a minute only if the two are held by each other (else
+    after two minutes). Two under
     way on courses that meet within 8 s: the one that can stop short of the
     other's course gives way; one lying still, or at its berth, sets off only
     when nothing coming by would meet it in the next 30 s; and a place to wait
@@ -1400,7 +1420,7 @@ road, cars in posts, walls and each other, walkers in walls, ferries in each
 other, heads through roofs); `tools/check.sh` runs it with the game check.
 `tools/ride_check.js <city> [N]` hails a taxi and orders a ride N times each at
 kerbs round the start and says how long each took against what the phone said,
-and what held it up. `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+and what held it up, and how many times it re-routed round a jam. `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
 time and fails if two hulls overlap or a vessel never calls, which is what a
 deadlock or a meeting at a shared berth takes to show.
 

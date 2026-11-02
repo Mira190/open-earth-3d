@@ -8,8 +8,17 @@ place clear of every band at its level, grown to the outer side of a car parked 
 or left out where there is none within a few metres (in the middle of a junction, on a
 median). web/streets.js does the same to data built before this existed, and its numbers
 must stay the same as these.
+
+The trees (places.json, written by build_scene.py before the roads exist) are moved the same
+way once game_data.py has the roads, which calls tidy_places at its end. To do it to a city's
+data as it stands, without a rebuild:
+
+    python pipeline/kerbside.py --city paris     # report
+    python pipeline/kerbside.py --all --write    # and rewrite places.json
 """
+import json
 import math
+import os
 
 ROADW = {"motorway": 14, "trunk": 12, "primary": 12, "secondary": 10, "tertiary": 9, "residential": 7,
          "unclassified": 6, "living_street": 5}
@@ -108,3 +117,60 @@ def tidy(props, roads):
         props[kind] = keep
         out[kind] = (moved, dropped)
     return out
+
+
+def tidy_trees(trees, roads):
+    """places.json trees ([x, y, ground, height, ...] in decimetres) moved out of the roads'
+    carriageways, as web/streets.js tidy moves them: (trees, moved, dropped)."""
+    cw, keep, moved, dropped = Carriageways(roads), [], 0, 0
+    for i in range(0, len(trees) - 3, 4):
+        x, y, z = trees[i] / 10, trees[i + 1] / 10, trees[i + 2] / 10
+        q = cw.kerbside(x, y, z, RADIUS["tree"])
+        if q is None:
+            dropped += 1
+            continue
+        if q != (x, y):
+            moved += 1
+            keep += [round(q[0] * 10), round(q[1] * 10), *trees[i + 2:i + 4]]
+        else:
+            keep += trees[i:i + 4]
+    return keep, moved, dropped
+
+
+def tidy_places(out_dir, roads, write=True):
+    """The trees of out_dir/places.json out of the carriageways of roads (game.json paths.road)."""
+    path = os.path.join(out_dir, "places.json")
+    if not os.path.exists(path):
+        return None
+    places = json.load(open(path))
+    trees, moved, dropped = tidy_trees(places.get("trees", []), roads)
+    for _ in range(3):  # again, for the few a decimetre's rounding left on a band's edge
+        trees, m, d = tidy_trees(trees, roads)
+        dropped += d
+        if not m:
+            break
+    print(f"{os.path.basename(os.path.normpath(out_dir))}: {len(trees) // 4} trees; moved to the kerb {moved}, left out {dropped}")
+    if write and (moved or dropped):
+        places["trees"] = trees
+        json.dump(places, open(path, "w"), separators=(",", ":"))  # as build_scene.py writes it
+    return moved, dropped
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser(description="Move a city's mapped trees out of the carriageways (places.json).")
+    ap.add_argument("--city")
+    ap.add_argument("--all", action="store_true", help="every city with a game.json")
+    ap.add_argument("--write", action="store_true", help="rewrite places.json")
+    a = ap.parse_args()
+    data = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web", "data")
+    ids = sorted(c for c in os.listdir(data) if os.path.exists(os.path.join(data, c, "game.json"))) if a.all else [a.city]
+    if ids == [None]:
+        ap.error("give --city <id> or --all")
+    for cid in ids:
+        d = os.path.join(data, cid)
+        tidy_places(d, json.load(open(os.path.join(d, "game.json")))["paths"]["road"], a.write)
+
+
+if __name__ == "__main__":
+    main()

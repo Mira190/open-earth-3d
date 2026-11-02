@@ -479,6 +479,12 @@ def landmark_meshes(scene):
             meshes += steps_mesh(st, f"opera_steps_{hall}")
         meshes += podium_mesh(o)
     mats = {k: dict(v) for k, v in MATERIALS.items()}
+    if "opera_house" in lm:
+        # the sails are lit from floodlights on the podium (web/world.js "flood"): full at their
+        # feet, falling off up the shells to a little over half at the crowns, the tiles facing up
+        # at a graze catching most of it, as the photographs of the sails at night show
+        top = max(v[2] for m in meshes if m.name == "opera_shells" for v in m.v)
+        mats["tile"]["flood"] = [o["podium"]["top_m"], round(top, 1), 0.8, 0.55]
     if "harbour_bridge" in lm:
         meshes += harbour_bridge(lm["harbour_bridge"])
         mats["steel"]["flood"] = [lm["harbour_bridge"]["deck_m"], lm["harbour_bridge"]["crown_m"], 0.6, 0.55]
@@ -488,6 +494,7 @@ def landmark_meshes(scene):
     if "bennelong" in lm:
         m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"), scene.get("ground", []))
         meshes += m
+        mats["garden_edge"] = dict(MATERIALS["garden_edge"])  # (bennelong_meshes gives it its ground tile)
     return mats, meshes, extra
 
 

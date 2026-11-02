@@ -607,6 +607,7 @@ def main():
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
+    kerbside.tidy_places(C.out, roads)  # the mapped trees out of the carriageways too (places.json)
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     write_index()

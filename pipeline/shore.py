@@ -104,12 +104,17 @@ def water_floor(sm, water, gx, gy, x0, y1):
 
 
 def pad_aprons(grid, water, gx, gy, helipads):
-    """Raise the water cells within PAD_APRON_M of each helipad to the pad's height (a floating
-    pad, or one at the water's edge), in place. Only the pads given, which are the ones the game
-    data lists: a pad a city leaves out gets no apron (pipeline/pad_discs.py lowers old ones)."""
+    """Raise the water cells within PAD_APRON_M of each helipad to the pad's height, in place: a
+    floating pad, one whose own cell is water. A pad on land (as the Hong Kong Convention and
+    Exhibition Centre's, on its roof by the harbour) gets none, so the harbour beside it keeps its
+    bottom. Only the pads given, which are the ones the game data lists: a pad a city leaves out
+    gets no apron (pipeline/pad_discs.py lowers old ones)."""
     for hp in helipads:
         x, y, z = hp["at"]
-        near = water & (np.hypot(gx - x, gy - y) < PAD_APRON_M)
+        d = np.hypot(gx - x, gy - y)
+        if not water.flat[int(np.argmin(d))]:
+            continue
+        near = water & (d < PAD_APRON_M)
         grid[near] = np.maximum(grid[near], max(z, 0.0))
     return grid
 

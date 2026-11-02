@@ -1,8 +1,8 @@
 """Check, and repair without a rebuild, the ground under the water in a city's game.json.
 
 pipeline/game_data.py writes the game's terrain grid with the modelled bottom under the water
-(shore.py, from shore.png) and raises the water cells round each helipad on or by the water to
-the pad's height (an apron, a disc 14 m across). A pad a city later leaves out (as Osaka and
+(shore.py, from shore.png) and raises the water cells round each floating helipad to the pad's
+height (an apron, a disc 14 m round it; none for a pad on land). A pad a city later leaves out (as Osaka and
 Kyoto left out their mapped rooftop pads, "helipads_from_data": false) would keep its disc until
 the next full game_data.py run, which needs the raw Overture data and the DEM. This rebuilds the
 water cells exactly as game_data.py does, from shore.png, the pads game.json lists now and the
@@ -52,7 +52,7 @@ def check(C, write=False):
     off = water & (q_have != q_want)
     high, low = off & (q_have > q_want), off & (q_have < q_want)
     print(f"{C.id}: {int(water.sum())} water cells, {len(G['helipads'])} helipads; "
-          f"{int(high.sum())} raised above the bottom with no pad listed, {int(low.sum())} below a listed pad's apron")
+          f"{int(high.sum())} raised above the bottom with no floating pad listed, {int(low.sum())} below a listed pad's apron")
     for name, m in (("raised", high), ("low", low)):
         if m.any():
             r, c = np.nonzero(m)

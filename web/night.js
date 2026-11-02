@@ -404,11 +404,21 @@ void main() {
     const cr = Object.assign({ from_m: 60, share: 0.6, colours: [['#ffe2bf', 0.5], ['#fff1e2', 0.3], ['#ffc890', 0.12], ['#cfe0ff', 0.08]] }, st.crown);
     const crownColour = picker(cr.colours, rnd), crowns = new Map(), cPos = [], cCol = [], cV = [];
     let crownsLit = 0;
+    // The crown goes on the highest part that is the tower's own top, not on a small box on its
+    // roof (a plant room, a lift overrun, a sliver of the survey's model: under 300 m² and under
+    // 40% of a part whose roof is up to 8 m below its own), which lit all round reads as a lantern.
+    const ringArea = ring => { let a = 0; const n = ring.length / 2; for (let k = 0; k < n; k++) { const j = (k + 1) % n; a += ring[2 * k] * ring[2 * j + 1] - ring[2 * j] * ring[2 * k + 1]; } return Math.abs(a) / 200; };
+    const parts = new Map();
     for (const s of B.s) {
       const m = B.b[s[0]];
       if (!m || m[2] < cr.from_m || m[4] === 'parametric') continue;
-      const zt = (s[1] + s[3]) / 10, t = crowns.get(s[0]);
-      if (!t || zt > t.zt) crowns.set(s[0], { zt, top: m[2], ring: s[4] });
+      (parts.get(s[0]) || parts.set(s[0], []).get(s[0])).push({ zt: (s[1] + s[3]) / 10, area: ringArea(s[4]), ring: s[4] });
+    }
+    for (const [bi, ps] of parts) {
+      ps.sort((a, b) => b.zt - a.zt);
+      const box = p => p.area < 300 && ps.some(q => q !== p && q.zt <= p.zt && q.zt > p.zt - 8 && p.area < 0.4 * q.area);
+      const t = ps.find(p => !box(p)) || ps[0];
+      crowns.set(bi, { zt: t.zt, top: B.b[bi][2], ring: t.ring });
     }
     for (const [bi, { zt, top, ring }] of crowns) {
       if (rng(bi * 7 + 3)() > cr.share) continue; // the same towers lit on every visit
