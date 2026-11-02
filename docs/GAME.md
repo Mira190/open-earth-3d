@@ -682,7 +682,8 @@ cars.
   kerbs and centre lines, so the real-time shadows read correctly.
 - **HUD** (`web/game/hud.js`):
   - **Minimap:** drawn once from the data, with the heading up.
-  - **GPS route:** Dijkstra over the footway and road graph.
+  - **GPS route:** the way you can actually go, drawn on the minimap and in the
+    world (see **Routes** below).
   - **Dialogue:** typewriter text.
   - **Stamps:** saved in the browser.
 - **Camera shots** (`web/cine.js`, shared with the model viewer):
@@ -750,6 +751,78 @@ cars.
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+
+## Routes
+
+The gold line (`web/game/route.js`) leads to the objective, or to a waypoint
+clicked on the map, by the way you are going, and only where you can go. Every
+point of it is tested with the same nav (`web/game/nav.js`) that moves the
+walker, the car and the helicopter, so it never runs through a building, off a
+drop or into the water.
+
+- **On foot:** over a network built from the mapped footways and streets, behind
+  the title screen in slices (a second and a half of work in Amsterdam on a
+  desktop, two in Paris; the line shows once it is done):
+  - the lines are split where they cross at about the same height (not where a
+    bridge passes over a street) and where one ends on another, so a route can
+    turn there;
+  - each stretch is walked in 2 m steps with the walker's own test, moved up to
+    3 m sideways off a wall it grazes, and cut where it runs through a building
+    the model shows as solid (an arcade, a passage under offices: in Sydney one
+    mapped footway in ten runs into a building somewhere);
+  - the walkable surfaces the lines don't cover (the Harbour Bridge's whole deck,
+    Amsterdam's 224 and Paris's 28 bridge decks, the Opera House steps) get a
+    lattice of lines 6 m apart; lifts (SHIBUYA SKY) are links the line breaks at;
+  - loose ends, and pieces of the network cut off from the rest, are joined to the
+    nearest other piece within 12 m by a straight line a walker can walk, or round
+    whatever is in the way over the ground (a tunnel cut out of the data, the end of
+    a deck);
+  - from where you stand onto the network, and from it to the target, an A*
+    search over a 1.25 m grid of the ground, walked as the walker walks (no step
+    higher than a kerb, no drop either way). A target inside a building is reached
+    at the nearest place to stand. Where the network has no way and the target is
+    within 1.5 km, the search goes over the ground all the way;
+  - where there is no way on foot at all (across the IJ, the harbour), the line
+    leads to the wharf of a ferry that calls nearest the target, and says so. A
+    step that needs the helicopter (fly under the bridge, land in the Domain)
+    leads to the helicopter first.
+- **By car:** the road route the taxis drive (`OECars.router`), on your side of
+  the road, drawn on the lane. A road the car doesn't fit along (a building over it
+  in the model, a motorway viaduct, which isn't drivable) costs twenty times its
+  length, so the route takes it only where there is no other way; the traffic
+  doesn't turn into one.
+- **Flying:** an A* search over the tallest thing in each 16 m cell (terrain,
+  roofs, decks and the landmarks' solids, widened by a cell), where each metre the
+  way rises over the usual 120 m costs as much as a long way round: it goes round
+  a tower, over a low district. The height keeps 30 m over whatever is near, climbs
+  and comes down no steeper than the helicopter, lifts straight off and comes
+  straight down onto a spot with room for the rotor: a helipad near the target
+  (not one mapped under a tower), else level open ground with nothing over it within
+  7.5 m. A step to fly under a span comes in low and goes straight across under it
+  at the height with most room, clear of the pylons, the legs and the arches.
+- **By ferry:** the vessel's own course through the water, to the stop nearest the
+  target.
+- **Drawn:** a band laid on the ground, a metre wide on foot and wider by car, on
+  the floor under each point (street, deck, quay), and in the air turned to the
+  camera. Chevrons run the way to go, a dark amber edge keeps it clear on pale
+  stone, it stays a couple of pixels wide far off, and the stretch behind you
+  disappears as you go. It is worked out again when the target moves, when you
+  stray from it (6 m on foot, 14 m by car, 70 m in the air) and as a ride goes on.
+- **The crowd and the traffic** walk and drive the same data: the crowd now keeps
+  to the footways where a walker can stand (cut where they run into a building),
+  and the traffic doesn't turn into a road a car doesn't fit along.
+
+We looked at what navigates a 3D world in a browser before building this:
+Recast/Detour (zlib licence) and its WebAssembly build recast-navigation-js
+(MIT), three-pathfinding (MIT), PathFinding.js (MIT) and ngraph.path (MIT), with
+GTA V's GPS, the ground guide lines of Marvel's Spider-Man and Watch Dogs, and the
+"highway in the sky" of flight displays for the look. A navmesh baked for tens of
+square kilometres of city would be slow to make in a browser and would duplicate
+the game's collision, which is already exact; so the network here is the mapped
+data, proved walkable by that collision, and no library code was taken. From the
+games: the line on the ground with chevrons that run the way to go (Spider-Man,
+Watch Dogs), the route that keeps to the roads in a car (GTA V), and for the
+helicopter a line ahead in the air rather than a pointer.
 
 ## The vehicles
 
@@ -1118,8 +1191,21 @@ It found four faults, each now fixed:
   0.8 m;
 - an NPC stood in the lift's door, so <kbd>E</kbd> talked to her instead.
 
+`tools/route_check.js <city>` checks the routes. On foot it routes from the start
+to every NPC and between 30 pairs of random places on the footways, and measures
+the stretches of each where a walker can't stand (at most one sample, 0.5 m, at a
+time: a corner grazed, never a wall crossed). For each place it finds no route
+to, a search over the ground itself says whether a walker could get there at all;
+it fails on one the walker could reach. It flies from the helipad to every NPC
+and a few places, every 2 m clear of buildings, landmarks and decks, and flies
+the quest's pass under its span; it drives from your car to each, every point
+with room for the car. `tools/route_shot.js <city>` takes stills of the line on
+foot, by car and in the air, at any time of day.
+
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
-the game, walks for four seconds, talks to the first quest giver, flies the
+the game, walks for four seconds, talks to the first quest giver, checks the gold
+route on foot to the farthest NPC a walker can reach (and that it is drawn in the
+air in the helicopter and on the road in the car), flies the
 helicopter up and lets the ferries run for 40 s. Then it gets into your car at the
 driver's door, drives off, brakes to a stop and gets out. It hails a taxi from the
 kerb where the car was parked, gets in the back, picks the first place the driver

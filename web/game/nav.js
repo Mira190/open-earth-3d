@@ -50,6 +50,20 @@ window.OENav = (function () {
       if (Math.abs(v) > s.half_width || u < s.us[0] || u > s.us[s.us.length - 1]) return null;
       return interp(s.us, s.zs, u);
     }
+    // each strip's bounds, and the strips by 64 m cell: a point asks only those it can be on
+    // (Amsterdam has more than two hundred bridge decks)
+    const SC = 64, stripGrid = new Map(), noStrips = [], skey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
+    for (const s of strips) {
+      const u0 = s.us[0], u1 = s.us[s.us.length - 1], w = s.half_width, xs = [], ys = [];
+      for (const u of [u0, u1]) for (const v of [-w, w]) { xs.push(s.origin[0] + s.axis[0] * u - s.axis[1] * v); ys.push(s.origin[1] + s.axis[1] * u + s.axis[0] * v); }
+      s.box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+      for (let cx = Math.floor(s.box[0] / SC); cx <= Math.floor(s.box[2] / SC); cx++) for (let cy = Math.floor(s.box[1] / SC); cy <= Math.floor(s.box[3] / SC); cy++) {
+        const k = skey(cx, cy);
+        if (!stripGrid.has(k)) stripGrid.set(k, []);
+        stripGrid.get(k).push(s);
+      }
+    }
+    const stripsAt = (x, y) => stripGrid.get(skey(Math.floor(x / SC), Math.floor(y / SC))) || noStrips;
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
     const solid = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
@@ -79,11 +93,12 @@ window.OENav = (function () {
     const off = [-0.475, -0.2375, 0, 0.2375, 0.475], inCell = off.flatMap(a => off.map(b => [a * DSM.cell, b * DSM.cell]));
     for (const s of strips) {
       const th = s.thickness || 3;
-      for (let r = 0; r < DSM.ny; r++) {
+      const r0 = Math.max(0, Math.floor((y1 - s.box[3]) / DSM.cell)), r1 = Math.min(DSM.ny - 1, Math.ceil((y1 - s.box[1]) / DSM.cell));
+      const c0 = Math.max(0, Math.floor((s.box[0] - x0) / DSM.cell)), c1 = Math.min(DSM.nx - 1, Math.ceil((s.box[2] - x0) / DSM.cell));
+      for (let r = r0; r <= r1; r++) {
         const y = y1 - (r + 0.5) * DSM.cell;
-        for (let c = 0; c < DSM.nx; c++) {
+        for (let c = c0; c <= c1; c++) {
           const x = x0 + (c + 0.5) * DSM.cell;
-          if (Math.abs((x - s.origin[0]) * s.axis[0] + (y - s.origin[1]) * s.axis[1]) > 1000) continue;
           let z = stripHeight(s, x, y);
           if (z == null) continue;
           for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
@@ -149,7 +164,7 @@ window.OENav = (function () {
         const b = (a + 1) % n, ax = r[2 * a], ay = r[2 * a + 1], m = Math.max(1, Math.ceil(Math.hypot(r[2 * b] - ax, r[2 * b + 1] - ay)));
         for (let j = 0; j < m && !underDeck[i]; j++) {
           const x = ax + (r[2 * b] - ax) * j / m, y = ay + (r[2 * b + 1] - ay) * j / m;
-          if (strips.some(s => stripHeight(s, x, y) != null)) underDeck[i] = 1;
+          if (stripsAt(x, y).some(s => stripHeight(s, x, y) != null)) underDeck[i] = 1;
         }
       }
     });
@@ -173,7 +188,7 @@ window.OENav = (function () {
     function surfaceAt(x, y) {
       const k = cellOf(x, y);
       let h = k >= 0 && pier.data[k] > -50 ? pier.data[k] : -Infinity;
-      for (const s of strips) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; }
+      for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; }
       return h;
     }
     // ---------------------------------------------------------- decks of mapped bridges and viaducts (decks.js)
@@ -204,7 +219,7 @@ window.OENav = (function () {
       if (!offGround(x, y)) take(terrain(x, y), 'ground');
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > -50) take(pier.data[k], 'pier');
-      for (const s of strips) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
+      for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null) take(h, s.name); }
       decksAt(x, y, (h, d) => { if (d.walk) take(h, 'deck'); });
       const bt = col.topAt(x, y, z + STEP, BUILDING);
       if (bt > -Infinity) take(bt, 'roof');
@@ -245,7 +260,7 @@ window.OENav = (function () {
       if (bt > g) g = bt;
       const k = cellOf(x, y);
       if (k >= 0 && pier.data[k] > g) g = pier.data[k];
-      for (const s of strips) { const h = stripHeight(s, x, y); if (h != null && h <= z + 0.5 && h > g) g = h; }
+      for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && h <= z + 0.5 && h > g) g = h; }
       decksAt(x, y, h => { if (h <= z + 0.5 && h > g) g = h; });
       const l = solid.get(k);
       if (l) for (let i = 0; i < l.length; i += 2) if (l[i + 1] <= z + 0.5 && l[i + 1] > g) g = l[i + 1];
@@ -289,6 +304,9 @@ window.OENav = (function () {
     }
     // is a circle of radius r around (x, y) between za and zb free of buildings and landmark solids?
     function free(x, y, za, zb, r = 2) { return !col.overlap(x, y, r, za, zb); }
+    // room for a body of radius r standing on the floor at z (x, y), from knee height to z + top,
+    // passing what a walker there passes (a car on the road, a walker wider than R)
+    function room(x, y, z, r, top = HEAD, onDeck = false) { return !col.overlap(x, y, r, z + KNEE, z + top, passes(z, onDeck)); }
     // how far along the segment a -> b (three.js world coordinates) the camera probe gets
     // before touching a building, a landmark or a deck's slab: a fraction 0..1, or 1 when clear
     function clearFraction(a, b) {
@@ -303,7 +321,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, push, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, movers: null };
+    const api = { isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, DROP, R, LANDMARK, movers: null };
     return api;
   }
   return { create };

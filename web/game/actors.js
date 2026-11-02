@@ -307,11 +307,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return best;
     }
-    // another line meeting line i's end (0 start, 1 end): [line, its end there]; with `legal`, only
-    // one a car may drive into from there (not against a one-way street)
+    // another line meeting line i's end (0 start, 1 end): [line, its end there], not one to avoid;
+    // with `legal`, only one a car may drive into from there (not against a one-way street)
     function next(i, end, legal = false) {
-      const l = L[i], k = end ? l.pts.length / 3 - 1 : 0;
-      const opts2 = (nodes.get(key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(o => o[0] !== i && (!legal || L[o[0]].ow !== (o[1] === 0 ? -1 : 1)));
+      const l = L[i], k = end ? l.pts.length / 3 - 1 : 0, av = api.avoid;
+      const opts2 = (nodes.get(key(l.pts[3 * k], l.pts[3 * k + 1])) || []).filter(o => o[0] !== i && !(av && av[o[0]]) && (!legal || L[o[0]].ow !== (o[1] === 0 ? -1 : 1)));
       return opts2.length ? opts2[Math.floor(rnd() * opts2.length)] : null;
     }
     // the one line a car can drive on into from line i's end, where it simply continues (or null)
@@ -319,9 +319,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const l = L[i], k = end ? l.pts.length / 3 - 1 : 0, at2 = nodes.get(key(l.pts[3 * k], l.pts[3 * k + 1])) || [];
       if (at2.length !== 2) return null;
       const o = at2[0][0] === i ? at2[1] : at2[0];
-      return L[o[0]].ow !== (o[1] === 0 ? -1 : 1) ? o : null;
+      return L[o[0]].ow !== (o[1] === 0 ? -1 : 1) && !(api.avoid && api.avoid[o[0]]) ? o : null;
     }
-    return { L, at, near, nearest, next, only, nodes, key };
+    // avoid: per line, 1 for a line no one should be put on or turn into (a road through a
+    // building, which route.js finds); set by the game once it knows
+    const api = { L, at, near: (x, y, rMin, rMax) => (api.avoid ? near(x, y, rMin, rMax).filter(i => !api.avoid[i]) : near(x, y, rMin, rMax)), nearest, next, only, nodes, key, avoid: null };
+    return api;
   }
 
   // ------------------------------------------------------------ the crowd

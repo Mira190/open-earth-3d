@@ -155,9 +155,11 @@ window.OEJunctions = (function () {
           }
         }
       }
-      // not the other carriageway of the same road, back the way it came, unless that is all there is
-      const fwd = out.filter(e => Math.abs(e.turn) < 2.6);
-      a.exits = fwd.length ? fwd : out;
+      // not the other carriageway of the same road, back the way it came, nor a road no car can get
+      // along (net.avoid: through a building, route.js), unless that is all there is
+      const av = net.avoid, ok = out.filter(e => !(av && av[e.m.line])), pool = ok.length ? ok : out;
+      const fwd = pool.filter(e => Math.abs(e.turn) < 2.6);
+      a.exits = fwd.length ? fwd : pool;
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
