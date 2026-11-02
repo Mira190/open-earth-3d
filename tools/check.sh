@@ -6,6 +6,8 @@
 #     three cities at a time, under xvfb-run (llvmpipe) when it is installed; and then measures
 #     what passes through what there (tools/clip_check.js: street furniture in the roads, cars
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
+#   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
+#     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
@@ -58,7 +60,7 @@ else
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|pipeline/kerbside.py) all_cities ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|tools/tour_check.js|pipeline/kerbside.py) all_cities ;;
     esac
   done
 fi
@@ -85,6 +87,8 @@ run_city() {
   if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
     echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance)"
   else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+  if timeout 1200 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
+  else echo "FAIL tour   $c   ($(grep -m1 '^FAIL' "$OUT/tour-$c.log" || tail -1 "$OUT/tour-$c.log"); see $OUT/tour-$c.log)"; fi
 }
 run_reef() {
   local r=$1 res

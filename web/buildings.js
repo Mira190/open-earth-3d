@@ -1111,9 +1111,9 @@ window.OEBuildings = (function () {
   // up the facade from the lamps' height, less on glass, which shows the room behind it instead
   if (kind < 1.5) emitB += diffuseColor.rgb * streetLight(vWPos + vec3(N.x, 0.0, N.z) * 2.5) * exp(-max(vFac.y - 2.0, 0.0) / 9.0) * (1.0 - 0.6 * glass);
   float win = glass;
-  if (uMode > 0.5) {
-    diffuseColor.rgb = vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8)));
-    emitB = vec3(0.0); metalB = 0.0; roughB = 0.85; glass = 0.0;
+  if (uMode > 0.0) { // colour by height source; the viewer fades it in and out (0..1)
+    diffuseColor.rgb = mix(diffuseColor.rgb, vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8))), uMode);
+    emitB *= 1.0 - uMode; metalB *= 1.0 - uMode; roughB = mix(roughB, 0.85, uMode); glass *= 1.0 - uMode;
   }
   if (abs(bidI - uSel) < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.42, 0.12), 0.6);`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>

@@ -403,8 +403,11 @@ vec3 scrCell(float cell, vec2 uv) {
     C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;');
     C.fog_vertex = last(FOG0.v, 'vEdgeXZ = ( transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) ).xz;');
     // how far out into the haze a point is (0 inside, 1 at the frame and beyond); the camera's own
-    // value lifts the near exemption when it is out there itself, so the sea in front of it hazes too
-    const out = p => `smoothstep( 0.0, ${n(fade)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
+    // value lifts the near exemption once it is out there itself, at the frame's edge and past it,
+    // so the sea in front of it hazes too. (Lifted from the band's inner edge, it hazed the whole
+    // view from a tour stop a few hundred metres inside the frame: Shibuya's Sangenjaya and Suga
+    // Shrine looked out through fog.)
+    const out = (p, a = 0, b = fade) => `smoothstep( ${n(a)}, ${n(b)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
     // Over the sea the frame ends nowhere in particular: where the frame's edge is open water, the
     // surface carries on past it and the distance's own haze takes it to the horizon, darkening a
     // little toward a distant sea's tone on the way; only where the edge is land does the water haze
@@ -432,7 +435,7 @@ vec3 scrCell(float cell, vec2 uv) {
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
 #endif
-	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
+	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} ) );
 	gl_FragColor.rgb`);
     return fade;
   }
@@ -573,7 +576,7 @@ vec3 photoGrade(vec3 c) {
     envSky.scale.setScalar(50); // inside the PMREM cube camera's far plane
     envScene.add(envSky);
     const pmrem = new THREE.PMREMGenerator(renderer);
-    let envRT = null, envKey = '';
+    let envRT = null, envKey = '', envAt = -1e9, envWait = null;
 
     const sunLight = new THREE.DirectionalLight(0xffffff, 2 * Math.PI); // intensities are physical since r155: π × the old values
     sunLight.castShadow = true;
@@ -1110,7 +1113,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     }
     const api = {
       world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
-      sunDir: new THREE.Vector3(0, 1, 0), day: 1,
+      sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
       setSun(sp, minutes) {
@@ -1150,8 +1153,12 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         SPARKLE.on.value = U.uNight.value > 0.6 && minutes != null && ((minutes % 60) + 60) % 60 < 5 ? 1 : 0;
         renderer.toneMappingExposure = 0.55 + 0.35 * (1 - day);
         // the haze first, then the light from the sky: the environment is drawn with the horizon's
-        // haze in it, so it has to be this hour's haze (it kept the last one, a day's haze at night)
-        const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, newSky = key !== envKey;
+        // haze in it, so it has to be this hour's haze (it kept the last one, a day's haze at night).
+        // api.envEvery (ms) allows one new sky at most that often: a sun easing between two hours
+        // would otherwise rebuild it nearly every frame. The one held back waits for tick.
+        const key = `${Math.round(sp.altitude / 2)}|${Math.round(sp.azimuth / 6)}`, now = performance.now();
+        const newSky = key !== envKey && now - envAt >= (api.envEvery || 0);
+        envWait = key !== envKey && !newSky ? { sp: Object.assign({}, sp), minutes } : null;
         if (newSky && api.skyHaze) hazeOk = readHaze(az);
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
         // at night the haze is the night's blue with a little of the city's glow in it (night.js)
@@ -1169,7 +1176,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
         su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is
         if (newSky) {
-          envKey = key;
+          envKey = key; envAt = now;
           if (envRT) envRT.dispose();
           const skySat = su.uSkySat.value;
           su.uSkySat.value = 1; // the light from the sky as the materials were tuned under; only its look is bluer
@@ -1217,6 +1224,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       },
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
       tick(t, camera) {
+        if (envWait && performance.now() - envAt >= (api.envEvery || 0)) api.setSun(envWait.sp, envWait.minutes);
         SPARKLE.t.value = SCREEN.t.value = t * 0.001;
         if (camera) for (const o of farObjs) o.visible = camera.position.distanceToSquared(o.userData.far.c) < o.userData.far.r2;
         if (sea && camera) sea.update(t, camera, world); else waterMat.normalMap.offset.set(t * 0.000004, t * 0.0000025);

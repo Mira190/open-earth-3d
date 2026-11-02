@@ -314,7 +314,17 @@ window.OEEarth = (function () {
       uniform float uCA; uniform float uGrain; uniform float uVignette; uniform float uZoom;
       uniform vec2 uSunUv; uniform float uSunVis; uniform float uFlare; uniform vec3 uFlareTint;
       varying vec2 vUv;
-      float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+      // grain and dither from an integer hash of the pixel and the frame (pcg3d, Jarzynski and Olano,
+      // JCGT 2020): fract(sin(x) * 43758.5) loses its precision on many GPUs at the arguments a
+      // full-frame grain gives it, and drew diagonal streaks that crawled across the sky
+      float hash3(uvec3 v) {
+        v = v * 1664525u + 1013904223u;
+        v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+        v ^= v >> 16u;
+        v.x += v.y * v.z; v.y += v.z * v.x; v.z += v.x * v.y;
+        return float(v.x) * (1.0 / 4294967296.0);
+      }
+      float grainAt(float k) { return hash3(uvec3(uvec2(gl_FragCoord.xy), uint(abs(uTime) * 60.0) + uint(k))); }
       // the tone curve: after Khronos PBR Neutral (hue kept, so the oceans stay blue), but with
       // a long exponential shoulder from 0.42 instead of a short one from 0.76, so highlights
       // roll off like film rather than clip, and what is compressed fades towards white
@@ -371,12 +381,12 @@ window.OEEarth = (function () {
         col *= mix(vec3(0.97, 1.0, 1.04), vec3(1.015, 1.0, 0.985), smoothstep(0.05, 0.7, l)); // cool shadows, a little warmth in the light
         col = pow(max(col, 0.0), vec3(1.0 / 2.2));
         col *= 1.0 - uVignette * smoothstep(0.15, 0.95, dot(dc * vec2(uAspect, 1.0), dc * vec2(uAspect, 1.0)) * 1.6 / max(uAspect, 1.0));
-        float g = hash(uv * vec2(1931.7, 2713.3) + fract(uTime * 7.31)) - 0.5;
+        float g = grainAt(0.0) - 0.5;
         col += g * uGrain * (0.35 + 0.65 * (1.0 - abs(l * 2.0 - 1.0)));      // grain, strongest in the midtones
         col = col * (1.0 - vec3(0.016, 0.024, 0.043)) + vec3(0.016, 0.024, 0.043); // space is #04060b, not black
         col = mix(vec3(0.016, 0.024, 0.043), col, uFade);
         col = mix(col, vec3(1.0), uFlash);
-        col += (hash(uv * 977.0 + uTime) - 0.5) / 255.0;                       // dither the gradients
+        col += (grainAt(7919.0) - 0.5) / 255.0;                       // dither the gradients
         gl_FragColor = vec4(col, 1.0);
       }`,
   });

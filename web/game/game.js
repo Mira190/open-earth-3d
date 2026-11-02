@@ -1610,7 +1610,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape') { if (!phone.el.hidden) phoneShow(false); else if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
-    if (uiOpen()) { if (c === 'KeyM') toggleMap(); return; }
+    if (uiOpen()) {
+      if (c === 'KeyM') toggleMap();
+      else if (!$('#g-bigmap').hidden && /^(Equal|NumpadAdd|Minus|NumpadSubtract)$/.test(c)) zoomMap(/Equal|Add/.test(c) ? 1.6 : 1 / 1.6); // + and − zoom the map
+      return;
+    }
     if (dlg.open) {
       if (c === 'KeyE' || c === 'Enter' || c === 'Space' || c === 'KeyF') dlg.next(false);
       if (/^Digit[1-9]$/.test(c)) dlg.choose(+c.slice(5) - 1);
@@ -2244,6 +2248,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return c >= 0 && r >= 0 && c < DSM.nx && r < DSM.ny ? DSM.data[r * DSM.nx + c] : 0;
   };
   const inFrame = (x, y, m = 30) => x > FRAME.x0 + m && x < FRAME.x1 - m && y > FRAME.y0 + m && y < FRAME.y1 - m;
+  // how far into the haze at the model's edge a point is, 0 to 1, as world.js edgeHaze draws it: standing in that band,
+  // everything round you is veiled, the near things too
+  const edgeFade = Math.min(500, Math.max(250, 0.1 * Math.min(FRAME.x1 - FRAME.x0, FRAME.y1 - FRAME.y0)));
+  const hazeAt = (x, y) => {
+    const ox = Math.max(0, Math.abs(x - (FRAME.x0 + FRAME.x1) / 2) - ((FRAME.x1 - FRAME.x0) / 2 - edgeFade));
+    const oy = Math.max(0, Math.abs(y - (FRAME.y0 + FRAME.y1) / 2) - ((FRAME.y1 - FRAME.y0) / 2 - edgeFade));
+    return THREE.MathUtils.smoothstep(Math.hypot(ox, oy), 0, edgeFade);
+  };
   // the mapped trees (places.json, decimetres: x, y, ground, height) as [x, y, top, crown radius] on a 20 m grid,
   // built on first use: the surface model has the buildings but not the trees, and a crown hides a tower as well
   let treeGrid = null;
@@ -2268,8 +2280,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // a tower stands whole in the frame and the Opera House's shells fit across it; then, of the spots round
   // it, the one with the clearest line of sight to its upper part, room behind for the camera, and the
   // sun behind you by day
+  // A city can steer it for the few landmarks the search gets wrong (city.json "arrivals", keyed by the label's
+  // name): "front", the compass bearing its front faces (the arrival keeps within "arc" degrees of it, 70 if not
+  // given), "dist", how far back to stand in metres, or "at", a hand-picked spot [x, y] in the local frame.
+  // "top" frames a lower part than the label's top (metres above the ground): a theatre's front rather than the tower behind it.
   function standFor(lm, dbg = null) {
-    const [x, y] = lm.at, g = groundZ(x, y) ?? Math.max(0, nav.terrain(x, y)), top = lm.top ?? g + 20, tall = Math.max(10, top - g);
+    const spec = ((scene.city && scene.city.arrivals) || {})[lm.name] || {};
+    const [x, y] = lm.at, g = groundZ(x, y) ?? Math.max(0, nav.terrain(x, y)), top = spec.top ? g + spec.top : lm.top ?? g + 20, tall = Math.max(10, top - g);
     const reach = [];
     for (let i = 0; i < 16; i++) { // how far its high part runs out from the label, each way; the median of that
       const a = i / 16 * Math.PI * 2, ux = Math.sin(a), uy = Math.cos(a);
@@ -2278,24 +2295,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       reach.push(last);
     }
     const R = reach.sort((a, b) => a - b)[8];
-    const D = THREE.MathUtils.clamp(Math.max(tall * 1.7, R * 2.2 + 40), 45, 520), aim = g + tall * 0.6;
+    const D = spec.dist || THREE.MathUtils.clamp(Math.max(tall * 1.4, R * 2.2 + 40), 45, 520), aim = g + tall * 0.6;
+    // off its front: 0 straight in front, rising to 0.45 at the edge of the arc, and out of it altogether beyond
+    const arc = (spec.arc ?? 70) * Math.PI / 180, front = spec.front != null ? spec.front * Math.PI / 180 : null;
+    const aside = (px, py) => {
+      if (front == null) return 0;
+      const off = Math.abs(Math.atan2(Math.sin(Math.atan2(px - x, py - y) - front), Math.cos(Math.atan2(px - x, py - y) - front)));
+      return off > arc ? Infinity : 0.45 * (1 - Math.cos(off)) / (1 - Math.cos(arc));
+    };
     const day = sun && sun.altitude > 2, sx = day ? Math.sin(sun.azimuth * Math.PI / 180) : 0, sy = day ? Math.cos(sun.azimuth * Math.PI / 180) : 0;
-    // what a spot (px, py) at height pz offers: the line of sight from eye height to the upper part, every 4 m up
-    // to the landmark's own edge, and the sun behind you
-    const sight = (px, py, pz) => {
-      const d = Math.hypot(x - px, y - py), eye = pz + 1.6, run = Math.max(8, d - Math.max(15, R)), n = Math.max(2, Math.ceil(run / 4));
-      let clear = 1;
-      for (let k = 1; k <= n && clear === 1; k++) {
-        const t = k / n * run / d, qx = px + (x - px) * t, qy = py + (y - py) * t, line = eye + (aim - eye) * t;
-        if (dsmAt(qx, qy) > line + 0.5) clear = (k - 1) / n;
-        else if (treesNear(qx, qy, 0).some(tr => tr[2] > line)) clear = (k - 1) / n; // through a crown
+    // what a spot (px, py) at height pz offers: how much of the landmark it sees and the sun behind you. Four lines
+    // of sight from eye height, every 4 m up to the landmark's own edge: to its upper part, to either side of it
+    // low down (as wide as its high part runs, so a slot down a street between office blocks, which sees a sliver
+    // of its top, scores below a square or a riverbank that sees it whole) and to its lower part
+    const wide = THREE.MathUtils.clamp(R * 0.6, 8, 60), low = g + tall * 0.35;
+    const ray = (px, py, eye, tx, ty, tz) => {
+      const d = Math.hypot(tx - px, ty - py), run = Math.max(8, d - Math.max(15, R)), n = Math.max(2, Math.ceil(run / 4));
+      for (let k = 1; k <= n; k++) {
+        const t = k / n * run / d, qx = px + (tx - px) * t, qy = py + (ty - py) * t, line = eye + (tz - eye) * t;
+        if (dsmAt(qx, qy) > line + 0.5 || treesNear(qx, qy, 0).some(tr => tr[2] > line)) return (k - 1) / n; // a building, or through a crown
       }
+      return 1;
+    };
+    const sight = (px, py, pz) => {
+      const d = Math.hypot(x - px, y - py), eye = pz + 1.6, ux = (y - py) / d, uy = -(x - px) / d; // across the line of sight
+      const clear = 0.4 * ray(px, py, eye, x, y, aim) + 0.2 * ray(px, py, eye, x + ux * wide, y + uy * wide, Math.max(low, eye))
+        + 0.2 * ray(px, py, eye, x - ux * wide, y - uy * wide, Math.max(low, eye)) + 0.2 * ray(px, py, eye, x, y, Math.max(low, eye));
       return clear + (day ? 0.25 * Math.max(0, -((x - px) * sx + (y - py) * sy) / d) : 0);
     };
     const frame = (p, d) => { // the camera tilted up enough to take in the top of its near side
       const face = Math.atan2(x - p[0], y - p[1]), el = Math.atan2(top - (p[2] + 1.6), Math.max(d - R * 0.6, d * 0.4, 1));
       return { x: p[0], y: p[1], z: p[2], face, pitch: THREE.MathUtils.clamp(0.4 - el, -0.22, 0.16) };
     };
+    if (spec.at) { // a hand-picked spot: on it (or the nearest ground to it), facing the landmark
+      const p = placeNear(spec.at[0], spec.at[1], Number.isFinite(spec.at[2]) ? spec.at[2] : null, null, 12);
+      if (p) return frame(p, Math.hypot(x - p[0], y - p[1]));
+    }
     // room for the chase camera behind you: the line from your head to where it will stand, as the rig tests it
     const room = f => {
       const yaw = f.face + 0.12, cp = Math.cos(f.pitch), hd = W(f.x, f.y, f.z + 1.55), cx = f.x - Math.sin(yaw) * cp * 7.5, cy = f.y - Math.cos(yaw) * cp * 7.5;
@@ -2306,15 +2341,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // open ground round a spot (a square, a park, the waterfront rather than a lane): the share of rings 6 and 14 m out with nothing over 3 m on them
     const open = p => { let n = 0; for (const r of [6, 14]) for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; if (dsmAt(p[0] + Math.sin(a) * r, p[1] + Math.cos(a) * r) < p[2] + 3) n++; } return n / 32; };
     const cands = [];
-    for (const k of [1, 0.75, 1.3]) for (let i = 0; i < 16; i++) {
+    // three rings, but none nearer for a tower too tall to stand back from by its full height (Two IFC, the ICC)
+    for (const k of spec.dist || tall * 1.4 <= D ? [1, 0.75, 1.3] : [1, 1.3]) for (let i = 0; i < 16; i++) {
       const a = (i + (k === 1 ? 0 : 0.5)) / 16 * Math.PI * 2, px = x + Math.sin(a) * D * k, py = y + Math.cos(a) * D * k, pz = nav.terrain(px, py);
-      if (inFrame(px, py) && pz > -0.5) cands.push({ px, py, score: sight(px, py, Math.max(0, pz)) - 0.12 * Math.abs(k - 1) });
+      if (inFrame(px, py) && pz > -0.5 && aside(px, py) < Infinity) cands.push({ px, py, score: sight(px, py, Math.max(0, pz)) - 0.12 * Math.abs(k - 1) - aside(px, py) - 3 * hazeAt(px, py) });
     }
     cands.sort((a, b) => b.score - a.score);
     const judge = p => {
       const f = frame(p, Math.hypot(x - p[0], y - p[1])), rm = room(f);
       const fl = nav.floorAt(p[0], p[1], p[2] + 0.5), roof = fl && fl.kind === 'roof' ? 0.4 : 0; // the street rather than a roof level with it
-      const score = sight(p[0], p[1], p[2]) + (rm > 0.97 ? 0.3 : rm === 0.5 ? -0.3 : -1) + 0.5 * open(p) - roof - 0.12 * Math.abs(Math.hypot(x - p[0], y - p[1]) / D - 1);
+      // out from under a walkway, a flyover or an overhang, for you and for the camera behind you
+      const bx = p[0] - Math.sin(f.face + 0.12) * 7, by = p[1] - Math.cos(f.face + 0.12) * 7;
+      const covered = (dsmAt(p[0], p[1]) > p[2] + 4 ? 0.6 : 0) + (dsmAt(bx, by) > p[2] + 4 ? 0.6 : 0);
+      const score = sight(p[0], p[1], p[2]) + (rm > 0.97 ? 0.3 : rm === 0.5 ? -0.3 : -1) + 0.5 * open(p) - roof - covered - 0.12 * Math.abs(Math.hypot(x - p[0], y - p[1]) / D - 1) - aside(p[0], p[1]) - 3 * hazeAt(p[0], p[1]);
       if (dbg) dbg.push({ p: p.map(v => Math.round(v)), sight: +sight(p[0], p[1], p[2]).toFixed(2), room: +rm.toFixed(2), open: +open(p).toFixed(2), score: +score.toFixed(2) });
       return { f, score, rm };
     };
@@ -2420,17 +2459,31 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away`;
     $('#g-mappop-way').hidden = d.kind === 'point';
     mapPop.hidden = false;
+    placePop(cx, cy);
+    $('#g-mappop-go').focus({ preventScroll: true });
+  }
+  function placePop(cx, cy) {
     const box = bigCanvas.getBoundingClientRect(), w = mapPop.offsetWidth, h = mapPop.offsetHeight;
     mapPop.style.left = `${Math.max(6, Math.min(box.width - w - 6, cx - w / 2))}px`;
     mapPop.style.top = `${cy - h - 14 > 6 ? cy - h - 14 : Math.min(box.height - h - 6, cy + 14)}px`;
-    $('#g-mappop-go').focus({ preventScroll: true });
   }
+  // the map's zoom (1: the whole city fits) and the base-map pixel at its centre, kept while the map is closed;
+  // the names are laid out afresh at each zoom, so the ones crowded out come back as you zoom in
+  const mapZ = { z: 1, cx: null, cy: null }, touches = new Map();
+  let mapDrag = null, dragged = false, bigNames = []; // a pan under way, and whether the press that ends it moved (then it is no click)
+  const mapZMax = () => Math.max(4, 2 / (bigView ? bigView.fit : 0.25)); // up to about a metre a screen pixel
   function drawBig() {
     const box = bigCanvas.parentElement.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
-    bigCanvas.width = box.width * dpr; bigCanvas.height = box.height * dpr;
-    const g = bigCanvas.getContext('2d'), s = Math.min(bigCanvas.width / base.canvas.width, bigCanvas.height / base.canvas.height);
-    const ox = (bigCanvas.width - base.canvas.width * s) / 2, oy = (bigCanvas.height - base.canvas.height * s) / 2;
-    bigView = { s, ox, oy, dpr };
+    const cw = Math.round(box.width * dpr), ch = Math.round(box.height * dpr);
+    if (bigCanvas.width !== cw || bigCanvas.height !== ch) { bigCanvas.width = cw; bigCanvas.height = ch; }
+    const bw = base.canvas.width, bh = base.canvas.height, fit = Math.min(cw / bw, ch / bh);
+    mapZ.z = THREE.MathUtils.clamp(mapZ.z, 1, Math.max(4, 2 / fit));
+    const g = bigCanvas.getContext('2d'), s = fit * mapZ.z;
+    // the centre held where the map still fills the frame on that axis (or centred where it is narrower)
+    const half = (c, n, full) => (n * s <= full ? n / 2 : THREE.MathUtils.clamp(c ?? n / 2, full / s / 2, n - full / s / 2));
+    mapZ.cx = half(mapZ.cx, bw, cw); mapZ.cy = half(mapZ.cy, bh, ch);
+    const ox = cw / 2 - mapZ.cx * s, oy = ch / 2 - mapZ.cy * s;
+    bigView = { s, ox, oy, dpr, fit };
     g.clearRect(0, 0, bigCanvas.width, bigCanvas.height);
     g.drawImage(base.canvas, ox, oy, base.canvas.width * s, base.canvas.height * s);
     const P2 = (x, y) => [ox + base.X(x) * s, oy + base.Y(y) * s];
@@ -2490,10 +2543,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         break;
       }
     }
+    bigNames = said.map(q => q.d.name);
     g.translate(px / dpr, py / dpr); g.rotate(player.mode === 'heli' ? heli.st.h : player.h);
     g.fillStyle = '#ffffff'; g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg'); g.lineWidth = 2; // white on the gold route
     g.beginPath(); g.moveTo(0, -10); g.lineTo(7, 8); g.lineTo(0, 4); g.lineTo(-7, 8); g.closePath(); g.fill(); g.stroke();
     g.restore();
+    zoomUi();
+    if (picked && !mapPop.hidden) { // the card follows its place as the map moves, and goes when it leaves the frame
+      const q = picked.kind === 'point' ? waypoint || picked.at : picked.at, [cx, cy] = P2(q[0], q[1]);
+      if (cx < 0 || cy < 0 || cx > cw || cy > ch) { mapPop.hidden = true; picked = null; } else placePop(cx / dpr, cy / dpr);
+    }
     renderTravel();
   }
   // a click picks the pin under it, or drops a waypoint there; a double click travels at once
@@ -2505,7 +2564,64 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const bx = (cx * bigView.dpr - bigView.ox) / bigView.s, by = (cy * bigView.dpr - bigView.oy) / bigView.s;
     return { cx, cy, pin: best, at: [scene.frame.x[0] + bx * base.PX, scene.frame.y[1] - by * base.PX] };
   };
+  // zoom about a point of the canvas (CSS pixels; its centre if none), keeping the spot under it in place
+  let mapRaf = 0;
+  const redrawBig = () => { if (!mapRaf) mapRaf = requestAnimationFrame(() => { mapRaf = 0; if (!$('#g-bigmap').hidden) drawBig(); }); };
+  function zoomMap(k, sx, sy) {
+    if (!bigView) return;
+    const r = bigCanvas.getBoundingClientRect(), { s, ox, oy, dpr } = bigView;
+    if (sx == null) { sx = r.width / 2; sy = r.height / 2; }
+    const z = THREE.MathUtils.clamp(mapZ.z * k, 1, mapZMax()), s2 = bigView.fit * z;
+    const bx = (sx * dpr - ox) / s, by = (sy * dpr - oy) / s; // the base-map pixel under the point
+    mapZ.z = z; mapZ.cx = bx - (sx * dpr - bigCanvas.width / 2) / s2; mapZ.cy = by - (sy * dpr - bigCanvas.height / 2) / s2;
+    redrawBig();
+  }
+  const panMap = (dx, dy) => { if (!bigView) return; mapZ.cx -= dx * bigView.dpr / bigView.s; mapZ.cy -= dy * bigView.dpr / bigView.s; redrawBig(); };
+  function zoomUi() {
+    const z = $('#g-mapzoom');
+    if (!z) return;
+    z.querySelector('[data-z="in"]').disabled = mapZ.z >= mapZMax() - 1e-3;
+    z.querySelector('[data-z="out"]').disabled = z.querySelector('[data-z="fit"]').disabled = mapZ.z <= 1 + 1e-3;
+    bigCanvas.style.cursor = mapDrag && mapDrag.moved ? 'grabbing' : mapZ.z > 1 + 1e-3 ? 'grab' : '';
+  }
+  // the wheel (or a trackpad's pinch, which comes as a wheel with ctrl) zooms; a drag pans; two fingers pinch and pan
+  on(bigCanvas, 'wheel', e => {
+    e.preventDefault();
+    const r = bigCanvas.getBoundingClientRect(), dy = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    zoomMap(Math.exp(-THREE.MathUtils.clamp(dy, -200, 200) * (e.ctrlKey ? 0.01 : 0.0022)), e.clientX - r.left, e.clientY - r.top);
+  }, { passive: false });
+  on(bigCanvas, 'pointerdown', e => {
+    if (e.button > 0) return;
+    touches.set(e.pointerId, [e.clientX, e.clientY]);
+    try { bigCanvas.setPointerCapture(e.pointerId); } catch (err) { /* the pointer went already */ }
+    if (touches.size === 1) { mapDrag = { x: e.clientX, y: e.clientY, moved: false }; dragged = false; } else mapDrag = { pinch: true, moved: true };
+  });
+  on(bigCanvas, 'pointermove', e => {
+    const was = touches.get(e.pointerId);
+    if (!was || !mapDrag) return;
+    if (touches.size >= 2) {
+      const [a, b] = [...touches.values()], other = a === was ? b : a;
+      const d0 = Math.hypot(was[0] - other[0], was[1] - other[1]), d1 = Math.hypot(e.clientX - other[0], e.clientY - other[1]);
+      const r = bigCanvas.getBoundingClientRect(), mx = (e.clientX + other[0]) / 2 - r.left, my = (e.clientY + other[1]) / 2 - r.top;
+      panMap((e.clientX - was[0]) / 2, (e.clientY - was[1]) / 2);
+      if (d0 > 8) zoomMap(d1 / d0, mx, my);
+      dragged = true;
+    } else {
+      if (!mapDrag.moved && Math.hypot(e.clientX - mapDrag.x, e.clientY - mapDrag.y) > (touch ? 9 : 5)) mapDrag.moved = dragged = true;
+      if (mapDrag.moved) panMap(e.clientX - was[0], e.clientY - was[1]);
+    }
+    touches.set(e.pointerId, [e.clientX, e.clientY]);
+  });
+  const lift = e => { touches.delete(e.pointerId); if (!touches.size) { mapDrag = null; zoomUi(); } else if (touches.size === 1) { const [p] = touches.values(); mapDrag = { x: p[0], y: p[1], moved: true }; } };
+  on(bigCanvas, 'pointerup', lift);
+  on(bigCanvas, 'pointercancel', lift);
+  on($('#g-mapzoom'), 'click', e => {
+    const b = e.target.closest('button[data-z]');
+    if (!b) return;
+    if (b.dataset.z === 'fit') { mapZ.z = 1; mapZ.cx = mapZ.cy = null; redrawBig(); } else zoomMap(b.dataset.z === 'in' ? 2 : 0.5);
+  });
   on(bigCanvas, 'click', e => {
+    if (dragged) { dragged = false; return; } // the end of a drag or a pinch is not a pick
     const h = mapHit(e);
     if (!h) return;
     if (h.pin) { pick(h.pin.d, h.pin.x, h.pin.y); return; }
@@ -2513,11 +2629,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     drawBig();
     pick({ kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint }, h.cx, h.cy);
   });
-  on(bigCanvas, 'dblclick', e => { const h = mapHit(e); if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
+  on(bigCanvas, 'dblclick', e => { if (dragged) return; const h = mapHit(e); if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
   on($('#g-mappop-go'), 'click', () => { if (picked) travelTo(picked); });
   on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast('Waypoint set. Follow the gold route there.'); });
   on($('#g-travel'), 'click', e => { const b = e.target.closest('button[data-k]'); if (b && travelList[+b.dataset.k]) travelTo(travelList[+b.dataset.k]); });
-  if (touch) $('#g-bigmap header .note').textContent = 'Tap a place to travel there';
+  $('#g-bigmap header .note').textContent = touch ? 'Tap a place to travel there · pinch to zoom' : 'Pick a place to travel there · double-click to go at once · scroll to zoom, drag to pan';
   on($('#g-map-btn'), 'click', toggleMap);
   on($('#gq-lines'), 'click', e => { const b = e.target.closest('button'); if (b) cycleTrack(b.dataset.line); });
   on($('#g-pass-btn'), 'click', togglePass);
@@ -3226,7 +3342,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { G, vlib, peopleLib: lib, posts, flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, rideEta: () => (ride ? eta(ride) : 0), cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, junctions, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
+  window.__game = { vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
