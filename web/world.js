@@ -401,6 +401,8 @@ vec3 scrCell(float cell, vec2 uv) {
 	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
 	  float oeOpen = oePast > 0.0 ? texture2D( uSeaOpen, vec2( oePerim( clamp( oeP, - oeH, oeH ) ) / ${n(4 * (hx + hz))}, min( oePast / ${SEA_OPEN_FAR.toFixed(1)}, 1.0 ) ) ).r : 0.0;
 	  oeEdge *= 1.0 - oeOpen;
+	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
 #endif
 	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
@@ -512,7 +514,7 @@ vec3 photoGrade(vec3 c) {
     // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
     su.twilight = { value: new THREE.Color(0, 0, 0) };
     sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
-      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform float uGold, uGoldBeltK; uniform vec3 uGoldWarm, uGoldCool, uGoldBelt;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform float uGold, uGoldBeltK; uniform vec3 uGoldWarm, uGoldCool, uGoldCream, uGoldBelt;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
       .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );' +
         // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
@@ -520,18 +522,19 @@ vec3 photoGrade(vec3 c) {
         // haze the model's edge fades into (setSun)
         '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
         // golden hour (setSun): with the sun a few degrees up the Preetham sky is a flat grey-beige, where the
-        // real one is amber toward the sun along the horizon and blue overhead and away from it, with a
+        // real one is amber toward the sun along the horizon, a warm cream low all round, blue overhead, with a
         // peach band (the Belt of Venus) low across from it once the sun is down. The sky keeps its brightness and takes that hue (uGold, 0..1).
         '\n { float gL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );' +
         '\n   vec2 gD = direction.xz / max( length( direction.xz ), 1e-4 ), gS = vSunDirection.xz / max( length( vSunDirection.xz ), 1e-4 );' +
-        '\n   float gTo = pow( clamp( 0.5 + 0.5 * dot( gD, gS ), 0.0, 1.0 ), 2.0 ), gLow = 1.0 - smoothstep( 0.0, 0.5, max( direction.y, 0.0 ) );' +
-        '\n   vec3 gHue = mix( mix( uGoldCool, uGoldBelt, uGoldBeltK * gLow * gLow * ( 1.0 - gTo ) ), uGoldWarm, gTo * mix( 0.25, 1.0, gLow * gLow ) );' +
+        '\n   float gTo = pow( clamp( 0.5 + 0.5 * dot( gD, gS ), 0.0, 1.0 ), 2.0 ), gLow = 1.0 - smoothstep( 0.0, 0.5, max( direction.y, 0.0 ) ), gBand = 1.0 - smoothstep( 0.0, 0.12, max( direction.y, 0.0 ) );' +
+        '\n   vec3 gHue = mix( uGoldCool, uGoldCream, 0.9 * gBand );' +
+        '\n   gHue = mix( mix( gHue, uGoldBelt, uGoldBeltK * gLow * gLow * ( 1.0 - gTo ) ), uGoldWarm, gTo * mix( 0.25, 1.0, gLow * gLow ) );' +
         '\n   gl_FragColor.rgb = mix( gl_FragColor.rgb, gHue / dot( gHue, vec3( 0.2126, 0.7152, 0.0722 ) ) * gL, uGold ); }' +
         // after dark, the night sky of a city (setSun): deep blue overhead, the city's glow low down
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( uNightHorizon, uNightZenith, pow( clamp( direction.y, 0.0, 1.0 ), 0.6 ) ), uNightSky );' +
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
     Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 },
-      uGold: { value: 0 }, uGoldBeltK: { value: 0 }, uGoldWarm: { value: new THREE.Color(1.0, 0.6, 0.3) }, uGoldCool: { value: new THREE.Color(0.34, 0.5, 0.86) },
+      uGold: { value: 0 }, uGoldBeltK: { value: 0 }, uGoldWarm: { value: new THREE.Color(1.0, 0.6, 0.3) }, uGoldCool: { value: new THREE.Color(0.24, 0.48, 1.0) }, uGoldCream: { value: new THREE.Color(1.0, 0.8, 0.6) },
       uGoldBelt: { value: new THREE.Color(0.86, 0.68, 0.7) }, uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
@@ -1000,7 +1003,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         const tw = smooth(-11, -4, sp.altitude) * (1 - smooth(-2, 3, sp.altitude));
         su.twilight.value.copy(TWI_SKY).multiplyScalar(tw);
         // golden hour: the sun from just under the horizon to about 12 degrees up (the sky shader's uGold)
-        su.uGold.value = 0.8 * smooth(-3, 0.5, sp.altitude) * (1 - smooth(5, 13, sp.altitude));
+        su.uGold.value = 0.88 * smooth(-3, 0.5, sp.altitude) * (1 - smooth(5, 13, sp.altitude));
         su.uGoldBeltK.value = 1 - smooth(-1, 3, sp.altitude);
         // a city's own night glow (neon, street light); with the street lights drawn (night.js), the
         // night's own light is the moon's and the sky's, and the lamps light the streets themselves
