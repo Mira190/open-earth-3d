@@ -896,10 +896,14 @@ window.OpenEarthCity = async function main(cityId) {
   controls.target.copy(W(...st0.tgt));
   controls.update();
   loadMsg('Ready', 1);
-  // after a loading flyover the city has been seen from the air, so the establishing shot is the short one
-  OEFlyover.finish($('#loader')).then(flew => {
+  // the loader stays up until the scene has been drawn twice: the shaders compile on the first
+  // draw, which can take seconds, and a loader that faded before it showed a black frame
+  let framesDrawn = 0, firstDrawn;
+  const drawn = new Promise(r => { firstDrawn = r; });
+  const warm = renderer.compileAsync ? renderer.compileAsync(world, camera).catch(() => {}) : Promise.resolve();
+  Promise.all([OEPlate.finish($('#loader')), warm.then(() => drawn)]).then(([flew]) => {
     $('#loader').classList.add('out');
-    setTimeout(() => { $('#loader').hidden = true; OEFlyover.stop($('#loader')); }, reduced ? 0 : 700);
+    setTimeout(() => { $('#loader').hidden = true; OEPlate.stop($('#loader')); }, reduced ? 0 : 700);
     playIntro(flew);
   });
 
@@ -931,8 +935,13 @@ window.OpenEarthCity = async function main(cityId) {
       // after dark the lamps, windows and headlights bloom as they do through a lens at night
       bloom.threshold = 6.0 - 4.8 * night; bloom.strength = 0.12 + 0.3 * night; bloom.radius = 0.4 + 0.2 * night;
       L.uSat.value = 1.06; L.uTime.value = t / 1000;
-      post.render();
-    } else renderer.render(world, camera);
+    }
+    // the game's blue sky (atmosphere.js) rather than the near-white one the filmic curve leaves
+    // (world.js): the viewer showed a pale sky by day and a grey one at golden hour
+    Wd.su.uSkySat.value = 1 + 0.7 * (1 - U.uNight.value);
+    if (post) post.render();
+    else renderer.render(world, camera);
+    if (framesDrawn < 2 && ++framesDrawn === 2) firstDrawn();
     updateLabels();
     requestAnimationFrame(frame);
   }

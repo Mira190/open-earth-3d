@@ -75,15 +75,21 @@ On a phone you get a joystick and buttons. Camera moves (the start, fast travel,
 survey) end at once on any key or drag.
 
 While a city loads, the loader shows how much of its data has arrived and names
-each step. For the cities that have one (Tokyo, Osaka and Kyoto so far), a
-recorded flyover plays behind it: a 14 s spiral from high over the whole model
-down to the title screen's camera, so when it ends the live title screen takes
-over from its last frame. If the city is ready first, **Start** (or any key)
-goes straight in. `tools/flyover.js <city>` records it in the game itself, at
-8 frames a second interpolated to 30, as an H.264 MP4 and a VP9 WebM with a
-poster; `web/flyover.js` plays it. A visitor who prefers reduced motion gets
-the plain loader. The model viewer plays the same video, then its short
-establishing shot.
+each step, on a card over the city's **survey plate** (`web/plate.js`): the
+model's own ground imagery assembling tile by tile as it arrives, at full
+resolution, under a survey grid (a line every 250 m, every kilometre marked)
+with the city's landmarks pinned on it one after another, a scale bar, the
+city's coordinates, its building count and the sources of its imagery and
+heights. The tiles are the files the city loads next, so they come from the
+cache, and everything that moves (a slow drift, the scan line, the pins) is a
+CSS transform or opacity that the compositor runs on its own thread, so the
+plate keeps moving while the city is parsed and built. A visitor who prefers
+reduced motion gets it still. The loader stays up until the scene has been
+drawn twice (its shaders compiled first with `compileAsync`), so the hand-over
+never shows a black frame; `tools/load_check.js` checks that, and `check.sh`
+runs it. The plate replaced a recorded flyover video, which was soft,
+stuttered while the city built and flashed black at the hand-over;
+`tools/flyover.js` can still record one for a film.
 
 ### Cars, taxis and rides
 

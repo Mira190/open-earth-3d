@@ -263,13 +263,11 @@ region's priors in `architecture_overrides`. To look at the buildings up close
 from the command line, use `tools/city_shot.js`; it screenshots views that you
 list in a JSON file.
 
-A city with a game can have a loading flyover: `node tools/flyover.js <id>`
-(with `web/` served on port 8800) renders a spiral from high over the model
-down to the game's title camera, in the game itself, and writes
-`web/data/<id>/flyover.mp4`, `flyover.webm`, `flyover.jpg` and `flyover.json`.
-Run `write_index()` (the last step of `build_scene.py`) to list it in
-`cities.json`. A software renderer takes 15 to 25 s a frame over a whole city,
-so expect about 40 minutes.
+The loading screen needs nothing new: it draws the city's survey plate
+(`web/plate.js`) from `scene.json` (the frame, the ground tiles and the labels).
+To look at it, `HOLD=1 node tools/load_check.js <id> out_dir` keeps it up. A
+recorded flyover (`node tools/flyover.js <id>`, about 40 minutes on a software
+renderer) is no longer played by the loader.
 
 ## 6. Mark it live
 

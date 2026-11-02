@@ -1235,7 +1235,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
 
   // ------------------------------------------------------------ input
   const keys = new Set();
-  let preTitle = true; // until the loader hands over to the title screen (after a loading flyover, when it ends)
+  let preTitle = true; // until the loader hands over to the title screen (once the scene has been drawn)
   const settings = { route: true, density: 'normal' };
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
@@ -1249,7 +1249,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(c)) e.preventDefault();
     if (e.repeat) { keys.add(c); return; }
     keys.add(c);
-    if (preTitle) return; // the loader is still up (a flyover playing)
+    if (preTitle) return; // the loader is still up
     if (!$('#g-title').hidden) { if (c === 'Enter') $('#gt-play').click(); return; }
     if (photo.on) { // photo mode: move with WASD (read in photoCamera), Enter saves, Esc or O leaves
       if (c === 'Enter') snapPhoto(); else if (c === 'Escape' || c === 'KeyO') photoMode(false);
@@ -2017,15 +2017,21 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
   const nowLoc = S.utcToLocal(Date.now());
   $('#gt-now').textContent = `Now in ${CITY.name} (${fmtMin(nowLoc.minutes)})`;
-  // the loading flyover, if it played, ends on the title orbit's first pose, so the orbit takes over from
-  // its last frame as the loader fades; the title card is held back until then, so it never shows over
-  // the loader, while the scene under it waits as on the title screen (preTitle)
-  OEFlyover.finish($('#g-loader')).then(flew => {
+  // the loader (its plate, plate.js) fades onto the title orbit; the title card is held back until
+  // then, so it never shows over the loader, while the scene under it waits as on the title screen
+  // (preTitle). fromFlyover() is for a recorded flyover that ends on the orbit's first pose
+  // (tools/flyover.js); the plate has none, and resolves false
+  // the loader stays up until the scene has been drawn twice: the shaders compile on the first
+  // draw, which can take seconds, and a loader that faded before it showed a black frame
+  let framesDrawn = 0, firstDrawn;
+  const drawn = new Promise(r => { firstDrawn = r; });
+  const warm = renderer.compileAsync ? renderer.compileAsync(world, camera).catch(() => {}) : Promise.resolve();
+  Promise.all([OEPlate.finish($('#g-loader')), warm.then(() => drawn)]).then(([flew]) => {
     if (flew) fromFlyover();
     preTitle = false;
     $('#g-title').hidden = false;
     $('#g-loader').classList.add('out');
-    setTimeout(() => { $('#g-loader').hidden = true; OEFlyover.stop($('#g-loader')); }, reduced ? 0 : 700);
+    setTimeout(() => { $('#g-loader').hidden = true; OEPlate.stop($('#g-loader')); }, reduced ? 0 : 700);
   });
   renderPassport();
 
@@ -2110,6 +2116,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (fpsAcc[0] > 6) { if (!fpsWarned && fpsAcc[1] / fpsAcc[0] < 22 && !titleOn) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); } fpsAcc = [0, 0]; }
     if (player.rig.hideHead) player.rig.hideHead(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on && !(cine.active && cine.label !== 'crane'));
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
+    if (framesDrawn < 2 && ++framesDrawn === 2) firstDrawn();
     updateLabels();
     requestAnimationFrame(frame);
   }
