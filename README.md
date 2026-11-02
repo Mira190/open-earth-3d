@@ -139,7 +139,7 @@ streets, keeping to the city's side of the road, and talks about what you pass.
 Choose a destination
 on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
-`#play-tokyo` and `#play-shibuya`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
+`#play-tokyo`, `#play-shibuya`, `#play-asakusa` and `#play-akihabara`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -192,6 +192,11 @@ card, or go to `#play-osaka`.
 |---|---|---|
 | ![](docs/images/osaka/game-daisuke.jpg) | ![](docs/images/osaka/game-fumi.jpg) | ![](docs/images/osaka/people.jpg) |
 
+**Tokyo is a set of maps**, as games draw it: on the globe it is one destination whose card is a
+subway map of its districts (Marunouchi & Ginza, Shibuya, Shinjuku, Akihabara, Asakusa and the
+Skytree; Ueno, Ikebukuro, Odaiba and more in grey, next in line). Pick a station and go in there.
+See [Tokyo as maps](docs/cities/tokyo-maps.md).
+
 **Tokyo Pilgrimage** walks Shibuya and Shinjuku ten years after a film and a game drew
 them: the stairs of *Your Name* at Suga Shrine, SHIBUYA SKY's roof (take the lift, ride the
 escalator out), Sangenjaya's backstreets and Kabukicho's arch. Walking into a
@@ -236,6 +241,8 @@ whose every line is computed from the model or cited. Choose **Great Barrier Ree
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
 | **Shibuya & Shinjuku**, Japan | **Live** | 90,304 buildings across 5.4 × 6.2 km, from Sangenjaya to Shinjuku and Yotsuya. 86% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble, Center Gai, Sangenjaya's backstreets and Kabukicho's arch: the real places a film and a game drew. *Tokyo Pilgrimage*, a game in five walks. [Case study](docs/cities/shibuya.md) |
+| **Asakusa**, Japan (a map of Tokyo) | **Live** | Asakusa and the Sumida across 2.6 × 1.6 km at PLATEAU-surveyed heights. Senso-ji built to its published sizes: the Kaminarimon and its 700 kg lantern, Nakamise, the Hozomon, the 53 m pagoda and the main hall; Tokyo Skytree, 634 m, lit Iki and Miyabi on alternate nights, with a lift to the Tembo Deck; the Asahi flame; the Sumida water bus. [Case study](docs/cities/asakusa.md) |
+| **Akihabara**, Japan (a map of Tokyo) | **Live** | Electric Town across 1.8 × 1.5 km at PLATEAU-surveyed heights: Chuo-dori's blade signs, boards and wall prints, lit after dark; Kanda Myojin's gate and Nikolai-do's dome up the hill. [Case study](docs/cities/akihabara.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
 | **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |

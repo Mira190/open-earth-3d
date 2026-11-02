@@ -1,0 +1,417 @@
+{
+  "id": "asakusa",
+  "name": "Asakusa",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Asakusa and the Skytree from open data, lit by the real sun: Senso-ji, the Kaminarimon's lantern, Nakamise, the Sumida and its water bus, and Tokyo Skytree across the river.",
+  "bbox": [139.7865, 35.704, 139.817, 35.72],
+  "origin": [139.8015, 35.712],
+  "extent_m": [-1300, 1300, -820, 820],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {"url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png", "zoom": 14},
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)",
+    "exclude": [{"at": [139.810714, 35.710045], "radius_m": 30, "name": "Tokyo Skytree"}]
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": ["ocean", "bay", "water", "river", "canal", "lake", "pond"],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {"elm": 0.55, "plane": 0.45},
+    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) and the ginkgos of Senso-ji's precinct, plane trees for the street trees of Edo-dori and the Sumida's banks. A guess, not a survey."
+  },
+  "storey": {"res": [3.0, 2.8], "non": [3.9, 0.0]},
+  "check_points": {
+    "Senso-ji": [139.7967, 35.7148],
+    "Kaminarimon": [139.7964, 35.7111],
+    "Tokyo Skytree": [139.8107, 35.7101],
+    "Azumabashi": [139.7989, 35.7101]
+  },
+  "start": {
+    "date": [11, 2],
+    "time": "15:30",
+    "cam": [-1500, -1450, 620],
+    "tgt": [0, -50, 80]
+  },
+  "labels": {
+    "浅草文化観光センター": "Asakusa Culture Tourist Information Center",
+    "東京ソラマチ": "Tokyo Solamachi 東京ソラマチ",
+    "墨田区役所": "Sumida City Office",
+    "浅草花やしき": "Hanayashiki 花やしき"
+  },
+  "minor_labels": ["浅草文化観光センター", "墨田区役所"],
+  "places": [
+    {"name": "仲見世商店街", "label": "Nakamise 仲見世", "class": "retail", "protected": false},
+    {"name": "隅田公園", "label": "Sumida Park 隅田公園", "class": "park", "protected": false},
+    {"name": "浅草花やしき", "label": "Hanayashiki 花やしき", "class": "theme_park", "protected": false}
+  ],
+  "place_labels": ["Nakamise 仲見世", "Sumida Park 隅田公園"],
+  "tour": [
+    {
+      "title": "Asakusa, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [-1500, -1450, 620],
+      "tgt": [0, -50, 80],
+      "date": [11, 2],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 8
+    },
+    {
+      "title": "Senso-ji",
+      "text": "The approach runs north from the Kaminarimon, between Nakamise's shops, through the Hozomon to the main hall, with the five-storey pagoda to its left. The gates, pagoda and hall are built to their published sizes: the pagoda {landmark:sensoji.pagoda.top_m} m to the tip of its finial.",
+      "cam": [-330, -260, 95],
+      "tgt": [-450, 180, 20],
+      "date": [11, 2],
+      "from": "14:30",
+      "to": "15:20",
+      "hold": 10
+    },
+    {
+      "title": "Tokyo Skytree",
+      "text": "634 m: a triangle 68 m a side at the foot, a circle by 320 m. The Tembo Deck is at 350 m, the Galleria at 450 m. After dark it is lit, one night in Iki's blue, the next in Miyabi's purple.",
+      "cam": [-160, -620, 90],
+      "tgt": [834, -217, 300],
+      "date": [11, 2],
+      "from": "16:30",
+      "to": "17:30",
+      "hold": 10
+    },
+    {
+      "title": "Where the heights come from",
+      "provenance": true,
+      "date": [11, 2],
+      "from": "15:00",
+      "to": "15:30",
+      "hold": 9,
+      "cam": [-1300, -1300, 600],
+      "tgt": [0, 0, 40],
+      "text": "Blue: surveyed height (PLATEAU or OpenStreetMap). Orange: floor count. Green: estimated. Grey: a typical height for its kind."
+    }
+  ],
+  "renders": [],
+  "sources": {
+    "landmarks": "Senso-ji's Kaminarimon (11.7 m; the lantern 3.9 m, 3.3 m across, about 700 kg), Hozomon (21.7 m; the 小舟町 lantern 3.75 m; the sandals 4.5 m), five-storey pagoda (53.32 m) and main hall (29.4 m) from Senso-ji and OpenStreetMap, placed on OpenStreetMap's footprints; Tokyo Skytree from Tobu Tower Skytree (634 m; a 68 m triangle at the foot; Tembo Deck 350 m, Tembo Galleria 450 m; Iki and Miyabi lighting); the Asahi Flamme d'Or (Philippe Starck, 1989) from photographs. Proportions of roofs and lattices are approximations.",
+    "fonts": "Lanterns and plaques drawn with Google Fonts under the SIL Open Font License: Yuji Syuku, Shippori Mincho"
+  },
+  "game": {
+    "title": "Asakusa on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "the Sumida",
+    "greeting": "いらっしゃい!",
+    "blurb": "Walk the real Asakusa, rebuilt from open data and lit by the real sun: the Kaminarimon's lantern, Nakamise, Senso-ji, the water bus on the Sumida, and the lift up Tokyo Skytree to the Tembo Deck, 350 m up.",
+    "smalltalk": ["いらっしゃいませ!", "こんにちは。", "どうぞ。", "Excuse me!", "お参りですか?"],
+    "start": {
+      "at": [-461.0, -126.0],
+      "facing": [-464.0, -96.0],
+      "time": "live"
+    },
+    "shade_landmarks": ["senso_", "tree_"],
+    "helipads_from_data": false,
+    "helipads": [{"id": "sumida-pad", "name": "Sumida Park pad (game)", "at": [-60.0, 200.0]}],
+    "wharves": [
+      {"id": "asakusa", "name": "Asakusa 浅草 (Tokyo Cruise)", "terminal": "浅草"},
+      {"id": "nitenmon", "name": "Asakusa Nitenmon 浅草二天門", "terminal": "浅草二天門(水上バス乗り場)"},
+      {"id": "komagata", "name": "Komagatabashi 駒形橋", "terminal": "駒形橋簡易船着場"}
+    ],
+    "ferry_style": {
+      "model": "harbour",
+      "length_m": 30,
+      "beam_m": 8,
+      "hull": "#f2f2ee",
+      "trim": "#123b6d",
+      "upper": "#f7f7f4",
+      "flag": "#123b6d",
+      "note": "The shared harbour ferry stands in for the Sumida's water buses; the white and navy are approximate."
+    },
+    "ferries": [
+      {
+        "route": "Sumida River Line 隅田川ライン",
+        "stops": ["asakusa", "komagata", "nitenmon"],
+        "vessels": ["Ryugu 竜馬", "Michikusa みちくさ"]
+      }
+    ],
+    "ferry_note": "Piers are from OpenStreetMap via Overture. The route runs between the piers on this map; the timetable is not real. Tokyo Cruise and the Tokyo Mizube Line run on to Hinode, Hamarikyu and Odaiba from here.",
+    "crowd": {"pedestrians": 560, "cars": 150, "radius_m": 420, "style": "tokyo"},
+    "vehicles": {
+      "helicopter": {"registration": "JA634T"},
+      "cars": {
+        "taxi": {"colours": ["#1e2742", "#e8c21a", "#f2f2ee", "#2f6a3a"], "share": 0.22},
+        "bus": {"colour": "#f3f3ef", "band": "#2a7a3a"}
+      }
+    },
+    "areas": [
+      {
+        "name": "浅草",
+        "kana": "あさくさ",
+        "romaji": "Asakusa",
+        "band": "#f39700",
+        "left": "田原町",
+        "right": "",
+        "at": [-352.0, -111.0],
+        "radius": 260,
+        "note": "The Kaminarimon and Nakamise: where a game sends you to buy a gift"
+      },
+      {
+        "name": "押上",
+        "kana": "おしあげ",
+        "romaji": "Oshiage (SKYTREE)",
+        "band": "#8f76d6",
+        "left": "錦糸町",
+        "right": "",
+        "at": [1000.0, -210.0],
+        "radius": 240,
+        "note": "Tokyo Skytree's station"
+      },
+      {
+        "name": "本所吾妻橋",
+        "kana": "ほんじょあづまばし",
+        "romaji": "Honjo-azumabashi",
+        "band": "#e85298",
+        "left": "押上",
+        "right": "浅草",
+        "at": [-60.0, -330.0],
+        "radius": 160,
+        "note": "The Asahi flame across Azumabashi"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-kaminari",
+        "name": "Kaminarimon 雷門",
+        "at": [-461.0, -126.0]
+      },
+      {
+        "id": "t-hondo",
+        "name": "Senso-ji main hall 本堂",
+        "at": [-433.0, 262.0]
+      },
+      {
+        "id": "t-pier",
+        "name": "Asakusa pier 浅草 (water bus)",
+        "at": [-262.0, -150.0]
+      },
+      {
+        "id": "t-skytree",
+        "name": "Tokyo Skytree, the foot",
+        "at": [790.0, -250.0]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "sota",
+        "name": "Sota 颯太",
+        "role": "Rickshaw puller 人力車",
+        "at": [-452.0, -128.0],
+        "look": {
+          "character": "R_Sports_Male_02_m008",
+          "skin": "#d9a27e",
+          "hair": "#141010",
+          "top": "#1b1b1f",
+          "legs": "#1b1b1f",
+          "shirt": "#1b1b1f",
+          "pants": "#1b1b1f",
+          "acc": ["hachimaki"]
+        },
+        "idle": ["A ride round Asakusa? Thirty minutes, and I'll tell you which shop has the best ningyo-yaki.", "Rickshaws came back to Asakusa in the 1990s. The legs remember the old streets. {sun_line}"]
+      },
+      {
+        "id": "fumiko",
+        "name": "Fumiko 文子",
+        "role": "Nakamise shopkeeper 仲見世",
+        "at": [-447.0, 40.0],
+        "look": {
+          "character": "R_Female_Adult_09_f011_grey",
+          "skin": "#f0c7aa",
+          "hair": "#cfcac4",
+          "top": "#7a2b26",
+          "legs": "#3a3a40",
+          "shirt": "#7a2b26",
+          "pants": "#3a3a40",
+          "clip": "Work",
+          "acc": ["apron"],
+          "apron": "#1d2330"
+        },
+        "idle": ["人形焼, ningyo-yaki: sponge cake with red bean, in the shape of the pagoda and the lantern. Fresh, still warm.", "Eat by the shop, please. Walking and eating on Nakamise isn't done."]
+      },
+      {
+        "id": "kosuke",
+        "name": "Kosuke 浩介",
+        "role": "Temple volunteer",
+        "at": [-433.0, 268.0],
+        "look": {
+          "character": "R_Male_Adult_13_m017_grey",
+          "skin": "#e3b08d",
+          "hair": "#8c8580",
+          "top": "#3b3530",
+          "legs": "#2a2a2e",
+          "shirt": "#3b3530",
+          "pants": "#2a2a2e"
+        },
+        "idle": ["Kannon was found in the river in 628, and the temple grew round her. Tokyo's oldest.", "At New Year three million people come through the Kaminarimon. Today is quiet. {time}."]
+      },
+      {
+        "id": "hiroshi",
+        "name": "Captain Hiroshi 浩",
+        "role": "Water-bus captain 船長",
+        "at": [-268.0, -140.0],
+        "look": {
+          "character": "R_Police_Male_05",
+          "skin": "#d9a27e",
+          "hair": "#8c8580",
+          "top": "#f2f0ea",
+          "legs": "#14284a",
+          "shirt": "#f2f0ea",
+          "pants": "#14284a"
+        },
+        "idle": ["Up the Sumida and down to the bay. The bridges are the best part: every one a different colour.", "The golden thing over the river? Asahi's flame. Everyone calls it something else."]
+      },
+      {
+        "id": "rina",
+        "name": "Rina 里奈",
+        "role": "Skytree attendant",
+        "at": [790.0, -250.0],
+        "look": {
+          "character": "R_Security_Female_01_f003_plain",
+          "skin": "#f0c7aa",
+          "hair": "#17120f",
+          "top": "#e8ecf2",
+          "legs": "#2b3b5a",
+          "shirt": "#e8ecf2",
+          "pants": "#2b3b5a"
+        },
+        "idle": ["Six hundred metres a minute: fifty seconds to the Tembo Deck. Your ears will pop.", "634 m: 武蔵, Musashi, the old name of this province. The height was chosen for the pun."]
+      },
+      {
+        "id": "kei",
+        "name": "Kei 慶",
+        "role": "Student",
+        "at": [-470.0, 180.0],
+        "look": {
+          "character": "R_Female_Adult_15_f013",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#3f51a0",
+          "legs": "#3a4358",
+          "shirt": "#3f51a0",
+          "pants": "#3a4358",
+          "clip": "Phone",
+          "acc": ["backpack"]
+        },
+        "idle": ["A book sent me here, can you believe it. Shitamachi, the old low city.", "I drew 凶 at the fortune box. Tied it on the rack. Trying again tomorrow."]
+      }
+    ],
+    "lines": [
+      {"id": "start", "title": "Welcome"},
+      {
+        "id": "senso",
+        "title": "Senso-ji",
+        "after": ["start"]
+      },
+      {
+        "id": "river",
+        "title": "The Sumida",
+        "after": ["start"]
+      },
+      {
+        "id": "tree",
+        "title": "Skytree",
+        "after": ["river"]
+      }
+    ],
+    "quests": [
+      {
+        "id": "gate",
+        "line": "start",
+        "giver": "sota",
+        "title": "The Thunder Gate",
+        "stamp": "Kaminarimon",
+        "talk": ["いらっしゃい! First time in Asakusa? This is the Kaminarimon, the Thunder Gate. Look up: the lantern weighs about 700 kg.", "This is the real Asakusa, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.", "Walk up Nakamise to the temple. Fumiko's shop is halfway, on the right. WASD to walk, Shift to run, E to talk."],
+        "steps": [
+          {"type": "spot", "spot": "kaminari", "text": "Look up at the Kaminarimon's lantern"},
+          {"type": "talk", "npc": "fumiko", "text": "Find Fumiko on Nakamise"}
+        ]
+      },
+      {
+        "id": "naka",
+        "line": "senso",
+        "giver": "fumiko",
+        "title": "Nakamise",
+        "stamp": "Nakamise",
+        "talk": ["Nakamise: about ninety shops on 250 m, some since Edo. Rice crackers, fans, wigs for festivals, ningyo-yaki.", "Through the Hozomon, with its big 小舟町 lantern, and you're at the hall. Kosuke helps at the incense burner."],
+        "steps": [
+          {"type": "spot", "spot": "jokoro", "text": "Waft the incense smoke"},
+          {"type": "talk", "npc": "kosuke", "text": "Talk to Kosuke in front of the main hall"}
+        ]
+      },
+      {
+        "id": "kuji",
+        "line": "senso",
+        "giver": "kosuke",
+        "title": "Your fortune",
+        "stamp": "Senso-ji",
+        "talk": ["Draw an omikuji: shake the box, read the number, open that drawer. Senso-ji's are honest; about three in ten are 凶.", "The pagoda beside us is 53 m to the top of its finial, rebuilt in 1973. The hall in 1958: both burned in the 1945 air raids."],
+        "steps": [
+          {"type": "spot", "spot": "omikuji", "text": "Draw an omikuji"},
+          {"type": "talk", "npc": "kei", "text": "Talk to Kei by the pagoda"}
+        ]
+      },
+      {
+        "id": "river",
+        "line": "river",
+        "giver": "hiroshi",
+        "title": "Down the Sumida",
+        "stamp": "Sumida River",
+        "talk": ["The water bus leaves from here. Ride it to Komagatabashi and back and you'll see why people paint this river.", "Across the water: Asahi's black hall with the golden flame, and the Skytree behind it."],
+        "steps": [
+          {"type": "ride", "text": "Ride the water bus"},
+          {"type": "talk", "npc": "rina", "text": "Find Rina at the foot of the Skytree"}
+        ]
+      },
+      {
+        "id": "tembo",
+        "line": "tree",
+        "giver": "rina",
+        "title": "Tembo Deck",
+        "stamp": "350 m",
+        "talk": ["The lift is by the door: E to call it. Tembo Deck at 350 m, then the Galleria at 450 m if you're brave.", "On a clear winter day you can see Mt Fuji from up there. {sun_line}"],
+        "steps": [{"type": "spot", "spot": "tembo", "text": "Look out from the Tembo Deck"}]
+      }
+    ]
+  }
+}

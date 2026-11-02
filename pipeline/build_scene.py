@@ -1560,6 +1560,11 @@ def write_index():
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
             c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
+    # a group drawn as one destination with its own map (Tokyo's districts and lines): every member
+    # carries it, so the title screen finds it on whichever comes first
+    for c in idx["cities"]:
+        if c.get("group") in idx.get("groups", {}):
+            c["group_meta"] = idx["groups"][c["group"]]
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

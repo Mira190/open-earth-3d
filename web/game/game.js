@@ -57,7 +57,11 @@ window.OpenEarthGame = async function game(cityId) {
   $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
   if (G.blurb) $('#g-title p').textContent = G.blurb;
   // neighbouring areas you can go on to, such as the bayside from the city (game.links)
-  $('#gm-links').innerHTML = (G.links || []).map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
+  // and the other maps of the same group (Tokyo's districts: cities/index.json groups), as on the subway map
+  const me = (window.OE_CITIES || []).find(c => c.id === cityId), kin = me && me.group
+    ? window.OE_CITIES.filter(c => c.group === me.group && c.id !== me.id && c.built && c.game).map(c => ({ id: c.id, name: `${c.name}${c.native ? ` ${c.native}` : ''}`, how: c.tagline })) : [];
+  $('#gm-links').innerHTML = [...(G.links || []), ...kin.filter(k => !(G.links || []).some(l => l.id === k.id))]
+    .map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   const stage = $('#game-stage'), canvas = $('#game-gl');
   // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
   // reversed depth (where the GPU has EXT_clip_control) with the post stack's float depth buffer (atmosphere.js)
@@ -2856,6 +2860,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (saved.car && myCar && nav.floorAt(saved.car[0], saved.car[1], saved.car[2] + 1)) parkMyCar({ x: saved.car[0], y: saved.car[1], z: saved.car[2], h: saved.car[3] });
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
+    // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
+    const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined);
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;

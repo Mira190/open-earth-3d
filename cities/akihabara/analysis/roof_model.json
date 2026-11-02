@@ -1,0 +1,49 @@
+{
+ "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
+ "counts": {
+  "rule:flat": 6002,
+  "prior:flat": 605,
+  "mapped:flat": 217,
+  "prior:hipped": 423,
+  "prior:gabled_across": 385,
+  "prior:gabled": 545,
+  "mapped:gabled": 6,
+  "mapped:hipped": 4,
+  "mapped:dome": 2,
+  "fallback_flat": 10,
+  "too_low": 29,
+  "prior:skillion": 15,
+  "mapped:pyramidal": 1,
+  "mapped:gabled_across": 6,
+  "mapped:round": 1
+ },
+ "check": {
+  "n": 161,
+  "flat_vs_pitched_accuracy": 0.795,
+  "exact_shape_accuracy": 0.783,
+  "family_accuracy": 0.783,
+  "pitched_recall": 0.429,
+  "flat_recall": 0.83,
+  "confusion_pitched": {
+   "true_pitched_pred_pitched": 6,
+   "true_pitched_pred_flat": 8,
+   "true_flat_pred_flat": 122,
+   "true_flat_pred_pitched": 25
+  },
+  "truth": {
+   "flat": 147,
+   "gabled": 11,
+   "hipped": 2,
+   "round": 1
+  }
+ },
+ "roofs_built": 1388,
+ "rooftop_props": 2557,
+ "frontage_solids": 2441,
+ "skeleton_failures": {
+  "active": 4,
+  "short": 21,
+  "spike": 20,
+  "steps": 1
+ }
+}
