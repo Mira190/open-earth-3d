@@ -122,8 +122,19 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
       seawall, where the DEM sags towards the water. The forecourt is level, as
       the photographs show it, where the DEM dips 3 m over the vehicle concourse
       under it. The game walks on the same level (`game_ground`), and a walker
-      stops at the top of the seawall instead of walking down a slope into the
-      water.
+      stops on the seawall's coping, 0.3 m short of its face (`web/quays.js`
+      decides the water's edge from `shore.png` along every quay, this one
+      included), instead of a few metres short at the 5 m grid's bank.
+    - *The Tarpeian Wall*, the sandstone cliff quarried in the 1880s under the
+      Royal Botanic Garden, stands along 182 m of the paving's south edge: where
+      the garden 6–15 m behind an edge is more than 3 m above the paving, the
+      edge is a cliff of quarried beds (about 1.1 m deep, 6.5 m long) up to the
+      garden's level where the DEM's slope levels off (12–13.5 m, so about 10 m
+      above the forecourt), and its top is capped back to there with the aerial
+      photo, over the slope the 5 m DEM draws. Every face along the paving's
+      edges, and the seawall's coping, now reaches down under the paving as it is
+      drawn (on its smoothed 5 m grid it lies up to 2 m under the level at its
+      edge), where a gap had shown the water through at the cliff's foot.
     - *Where the ground is not drawn:* the terrain grid (10 m in the viewer,
       5 m near the player) cannot turn a corner at a seawall, so between the
       last point on land and the first in the water it sloped up out of the
@@ -457,14 +468,16 @@ numbers stay valid because the geometry they depend on is unchanged.
   tips, how high the back-to-back shells meet, and the side shells come from
   a photograph. The podium's two levels follow from an assumed 15 cm riser:
   the landing at 10.1 m and the upper podium at 14.4 m.
-- **Bennelong Point.** The Lower Concourse (the Opera Bar's level, 1.7 m) meets
-  the forecourt (3.5 m) in a ramp of paving where there are retaining walls and
-  steps; the Tarpeian Wall, the sandstone cliff under the Royal Botanic Garden,
-  is a low face with the terrain's slope behind it rather than a cliff; and the
-  podium's north end is a straight wall where it steps back in terraces. The
-  game's walker stops a few metres short of the seawall, at the top of the
-  5 m grid's bank. The benches are generic; the band of glass on the podium is
-  placed from photographs.
+- **Bennelong Point.** The paving round the Opera Bar is one level, a ramp
+  where OpenStreetMap maps retaining walls and steps. Those walls (ways
+  1510928432–1510928436 and 1118329033) run 3–8 m in from the seawall, and by
+  OpenStreetMap's convention (the lower side on the right of the way) and the
+  steps' `incline` and `step_count` (7, 13 and 20 steps), the water's side is
+  the higher one, by 1–3 m depending on the flight. A single Lower Concourse
+  level of 1.7 m does not fit that, and without photographs of the levels it is
+  left as a ramp. The podium's north end is a straight wall where it steps back
+  in terraces with curved bands of glass. The benches are generic; the band of
+  glass on the podium is placed from photographs.
 - **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
   guessed heights of 7–14 m. They are not in the shadow analysis, so parks
   read sunnier than they feel. Roof shapes are mapped for 3% of buildings;

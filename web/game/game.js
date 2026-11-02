@@ -150,7 +150,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
     const g = Wd.tileGeometry(scene.ground[i], T), coarse = Wd.groundMeshes[i];
-    const m = new THREE.Mesh(g, coarse.material);
+    const m = Wd.groundMesh(g, coarse.material);
     m.receiveShadow = true;
     world.add(m);
     return m;

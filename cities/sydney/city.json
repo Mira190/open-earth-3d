@@ -33,6 +33,14 @@
     "name": "Geoscience Australia 5 m LiDAR DEM"
   },
   "water": {
+    "seawall": {
+      "stone": "#8f7f69",
+      "coping": "#ab9c83",
+      "course_m": 0.55,
+      "block_m": 1.3,
+      "high_water_m": 0.9,
+      "note": "Sydney Harbour and Darling Harbour: Hawkesbury sandstone ashlar and its concrete repairs under a sandstone or concrete coping; the tide ranges about 1.8 m."
+    },
     "classes": ["ocean", "bay", "water"],
     "min_area_m2": 5000,
     "note": "Sydney Harbour is mapped as a water polygon (Port Jackson); the Overture ocean polygon stops at the Heads.",

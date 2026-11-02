@@ -16,12 +16,17 @@ window.OENav = (function () {
   const BUILDING = 1, LANDMARK = 2;
 
   function create(D, DSM) {
-    const G = D.G, T = D.T;
+    const G = D.G, T = D.quays ? D.quays.raise(D.T) : D.T; // the ground as drawn: level up to a quay's wall
     // ---------------------------------------------------------- water (5 m, packed bits)
     const wm = G.water, bytes = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0));
     const isWaterCell = (r, c) => (bytes[(r * wm.nx + c) >> 3] >> (7 - ((r * wm.nx + c) & 7))) & 1;
     const x0 = DSM.x0, y1 = DSM.y1;
+    // along a quay (quays.js) the water starts a few tens of centimetres short of the seawall's face,
+    // not at the 5 m grid's bank
+    const quays = D.quays || null;
     function isWater(x, y) {
+      const q = quays && quays.water(x, y);
+      if (q != null) return q;
       const c = Math.floor((x - x0) / wm.cell), r = Math.floor((y1 - y) / wm.cell);
       if (r < 0 || c < 0 || r >= wm.ny || c >= wm.nx) return true; // outside the model: open water or edge
       return !!isWaterCell(r, c);

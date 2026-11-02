@@ -108,6 +108,10 @@ MATERIALS = {
     "seawall_opera": {"color": "#9f8574", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.9, "block_m": 2.4, "tide": True},
     "seawall_sandstone": {"color": "#9a8a74", "roughness": 0.9, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.55, "block_m": 1.3, "tide": True},
     "seawall_sandstone_dry": {"color": "#a08a6c", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.8, "block_m": 2.2},
+    # the Tarpeian Wall: a quarried face, its beds a metre or so deep and long; the garden's edge on top
+    "tarpeian": {"color": "#a3865f", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 1.1, "block_m": 6.5},
+    # (its map, the aerial photo's tile under it, is set by landmark_meshes)
+    "garden_edge": {"color": "#ffffff", "roughness": 0.95, "metalness": 0.0},
     "coping": {"color": "#c2ad9b", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 0.0], "street_lit": True},
     "bollard": {"color": "#1d1f21", "roughness": 0.45, "metalness": 0.6},
     "post": {"color": "#2b2f30", "roughness": 0.5, "metalness": 0.55},
@@ -167,6 +171,12 @@ SEAWALL_FOOT_M = -2.2    # the seawall face goes down below low water
 CLIP_OUT_M = 16.0        # the terrain is not drawn this far out from the seawall (no ramp up out of the water)
 EDGE_HOLD_M = 12.0       # the paving keeps the level this far in from a garden's bank or a wall, where the DEM climbs it
 PIER_DECK_M = 2.2        # as the viewer draws the piers (web/world.js)
+# The Tarpeian Wall: the sandstone cliff cut in the 1880s under the Royal Botanic Garden, about 10 m
+# high along the forecourt's south side; the 5 m DEM draws it as a slope. Where the garden behind an
+# edge of the paving stands more than CLIFF_M above it, the edge is a cliff up to the garden's level
+# CLIFF_BACK_M behind (where the slope levels off), capped back to there over the DEM's slope
+CLIFF_M = 3.0
+CLIFF_BACK_M = (6.0, 9.0, 12.0, 15.0)
 # Overture infrastructure drawn in the precinct, by (subtype, class)
 STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "bollard", ("transportation", "street_lamp"): "lamp",
                     ("tower", "lighting"): "floodlight", ("pedestrian", "information"): "pylon"}
@@ -472,7 +482,7 @@ def landmark_meshes(scene):
         meshes += sydney_tower(lm["sydney_tower"])
     extra = {}
     if "bennelong" in lm:
-        m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"))
+        m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"), scene.get("ground", []))
         meshes += m
     return MATERIALS, meshes, extra
 
@@ -1039,7 +1049,20 @@ def bennelong(ctx):
                 n = -n  # out of the paving
             zl = level_out(*q)
             out = [ctx.ground(*(q + n * k)) for k in (1.0, 3.0, 6.0)]
-            pts.append([round(float(q[0]), 2), round(float(q[1]), 2), round(min(zl, out[0]) - 0.3, 2), round(max(zl, out[0] + 0.05), 2)])
+            top, back = max(zl, out[0] + 0.05), None
+            if max(ctx.ground(*(q + n * k)) for k in CLIFF_BACK_M) - zl > CLIFF_M:
+                # a cliff: up to the garden's level where its slope levels off, capped back to there
+                K = next((k for k in CLIFF_BACK_M if ctx.ground(*(q + n * (k + 3))) - ctx.ground(*(q + n * k)) < 0.6), CLIFF_BACK_M[-1])
+                bq = q + n * K
+                top, back = max(top, ctx.ground(*bq)), [round(float(bq[0]), 2), round(float(bq[1]), 2), round(ctx.ground(*bq) - 0.05, 2)]
+            pts.append([round(float(q[0]), 2), round(float(q[1]), 2), round(min(zl, out[0]) - 0.3, 2), round(top, 2)] + (back or []))
+        # the cliff's top evened out along it, as a quarried face runs
+        tops = np.array([p[3] for p in pts])
+        if len(tops) > 4:
+            sm = np.convolve(np.pad(tops, 2, mode="edge"), np.ones(5) / 5, mode="valid")
+            for p, t in zip(pts, sm):
+                if len(p) > 4:
+                    p[3] = round(float(max(t, p[6] + 0.05)), 2)
         skirts.append(pts)
     # the street furniture OpenStreetMap maps there (Overture infrastructure), standing on the paving
     paved = shapely.union_all(deck).buffer(0.5)
@@ -1085,8 +1108,10 @@ def bennelong(ctx):
     print(f"Bennelong Point: {len(walls)} seawall runs, {line.length:.0f} m; paving {sum(p.area for p in deck):.0f} m2 in {len(deck)} pieces; "
           f"{ {k: len(v) for k, v in props.items()} }; {len(parts)} furniture parts; {len(clip)} clip regions; "
           f"paving {grid[grid > -50].min():.1f} to {grid.max():.1f} m")
+    print(f"  the Tarpeian Wall: a cliff along {sum(1 for sk in skirts for p in sk if len(p) > 4) * 2} m of the paving's edge")
     return {"seawalls": seawalls, "skirts": skirts, "deck": deck_out, "level": lv, "clip": clip, "props": props, "parts": parts,
             "axis": o["steps"]["axis"], "origin": o["steps"]["origin"]}
+
 
 
 def level_at(lv, x, y):
@@ -1101,7 +1126,7 @@ def level_at(lv, x, y):
     return float((z[j, i] * (1 - tx) + z[j, i + 1] * tx) * (1 - ty) + (z[j + 1, i] * (1 - tx) + z[j + 1, i + 1] * tx) * ty)
 
 
-def bennelong_meshes(b, o):
+def bennelong_meshes(b, o, ground=()):
     """The precinct from bennelong(): the paving draped on its level, the seawall with its coping,
     the Opera Bar's umbrellas, the canopies and the western colonnade as meshes; the street
     furniture as props drawn once per kind and instanced (web/world.js); and the regions where the
@@ -1160,23 +1185,44 @@ def bennelong_meshes(b, o):
                         [[run, -0.55], [run, 0.1], [run + L, 0.1], [run + L, -0.55]])
             coping.quad(np.array([*oa, top_a]), np.array([*oc, top_c]), np.array([*oc, c[2]]), np.array([*oa, a[2]]),
                         [[run, 0.0], [run + L, 0.0], [run + L, 0.16], [run, 0.16]])
+            # its back, down under the paving as drawn (on its 5 m grid it can lie lower than the coping)
+            ba, bc = min(level_at(lv, *ia), a[2]) - 0.5, min(level_at(lv, *ic), c[2]) - 0.5
+            coping.quad(np.array([*ic, bc]), np.array([*ia, ba]), np.array([*ia, a[2]]), np.array([*ic, c[2]]),
+                        [[run + L, 0.0], [run, 0.0], [run, 0.16], [run + L, 0.16]])
             run += L
     meshes += [walls["opera"], walls["sandstone"], coping]
     # the faces along the paving's other edges, down or up to the ground beyond: the Tarpeian
     # Wall's sandstone below the Royal Botanic Garden, a kerb elsewhere
-    for kind, mat in (("cliff", "seawall_sandstone_dry"), ("kerb", "coping")):
+    # the cliff's top: the garden as the aerial photo shows it, on the tile under the cliff
+    caps = [p for pts in b["skirts"] for p in pts if len(p) > 4]
+    tile = next((t for t in ground if caps and all(t["x0"] <= p[k] <= t["x1"] and t["y0"] <= p[k + 1] <= t["y1"] for p in caps for k in (0, 4))), None)
+    if tile:
+        MATERIALS["garden_edge"]["map"] = tile["file"]
+    tuv = (lambda q: [(q[0] - tile["x0"]) / (tile["x1"] - tile["x0"]), (q[1] - tile["y0"]) / (tile["y1"] - tile["y0"])]) if tile else (lambda q: [0.0, 0.0])
+    cap = Mesh("bennelong_garden_edge", "garden_edge", False, uv=True)
+    for kind, mat in (("tarpeian", "tarpeian"), ("cliff", "seawall_sandstone_dry"), ("kerb", "coping")):
         m = Mesh(f"bennelong_{kind}", mat, False, uv=True)
         for pts in b["skirts"]:
             run = 0.0
+            # from under the paving as it is drawn (its 5 m grid, smoothed, can lie a metre or two under the level at its edge)
+            pts = [[p[0], p[1], min(p[2], level_at(lv, p[0], p[1]) - 0.5)] + list(p[3:]) for p in pts]
             for a, c in zip(pts, pts[1:]):
                 L = math.hypot(c[0] - a[0], c[1] - a[1])
-                if (max(a[3] - level_at(lv, *a[:2]), c[3] - level_at(lv, *c[:2])) > 1.2) != (kind == "cliff"):
+                tall = max(a[3] - level_at(lv, *a[:2]), c[3] - level_at(lv, *c[:2])) > 1.2
+                is_ = len(a) > 4 and len(c) > 4 if kind == "tarpeian" else (not (len(a) > 4 and len(c) > 4) and tall == (kind == "cliff"))
+                if not is_:
                     run += L
                     continue
                 m.quad(np.array([a[0], a[1], a[2]]), np.array([c[0], c[1], c[2]]), np.array([c[0], c[1], c[3]]), np.array([a[0], a[1], a[3]]),
                        [[run, a[2]], [run + L, c[2]], [run + L, c[3]], [run, a[3]]])
+                if kind == "tarpeian":  # its top, back over the DEM's slope to the garden's level
+                    q = [np.array([a[0], a[1], a[3]]), np.array([c[0], c[1], c[3]]), np.array(c[4:7]), np.array(a[4:7])]
+                    if np.cross(q[1] - q[0], q[3] - q[0])[2] < 0:
+                        q = q[::-1]
+                    cap.quad(*q, [tuv(v) for v in q])
                 run += L
         meshes.append(m)
+    meshes.append(cap)
     # the furniture OpenStreetMap outlines as buildings
     umbrellas = []
     for part in b["parts"]:

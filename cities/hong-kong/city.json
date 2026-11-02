@@ -59,6 +59,14 @@
     "attribution": "Lands Department, Building dataset (building block outlines with surveyed top and base levels in mPD, and storeys), CSDI portal, (c) The Government of the Hong Kong SAR"
   },
   "water": {
+    "seawall": {
+      "stone": "#686660",
+      "coping": "#8a8781",
+      "course_m": 1.0,
+      "block_m": 2.0,
+      "high_water_m": 1.6,
+      "note": "Victoria Harbour's reclamations: precast concrete blockwork seawalls under a concrete coping; water is drawn at about the lowest tide, so the wet band is tall."
+    },
     "classes": ["ocean", "bay", "strait"],
     "min_area_m2": 5000,
     "note": "Victoria Harbour is OpenStreetMap's coastline polygon (Overture 'ocean') plus the typhoon shelters. Water is drawn at 0 mPD, about the lowest tide: mean sea level is about 1.3 mPD.",
