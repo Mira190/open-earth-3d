@@ -91,7 +91,7 @@ MATERIALS = {
     "granite_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser"},
     # the arch after dark: lit from the deck and the pylons, a soft wash fading towards the crown
     # (the steel under the deck stays dark; "flood" is set from the bridge's heights in landmark_meshes)
-    "steel": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4, "emissive": "#f1e6d4", "glow": 0.3},
+    "steel": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4, "emissive": "#f1e6d4", "glow": 0.2},
     "deck": {"color": "#5e6164", "roughness": 0.85, "metalness": 0.1, "pattern": "deck_zones", "zones": DECK_ZONES},
     "rail": {"color": "#55504a", "roughness": 0.4, "metalness": 0.8},
     "railing": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4, "pattern": "railing", "bar_m": 0.13, "rails_m": [0.08, 1.25]},

@@ -737,16 +737,16 @@ window.OEBuildings = (function () {
     return ((floor(t1) - floor(t0)) * d + min(fract(t1), d) - min(fract(t0), d)) / w;
   }
   // occupancy: the share of rooms lit at this local hour, by style. Offices empty through the
-  // evening: three floors in four lit at 17:00, two in three at 18:00, under half at 19:00, a
-  // quarter at 20:00 (some floors work late, the cleaners go up the building), and a few all
-  // night. Homes light through the evening, but never every window: rooms nobody is in, and
+  // evening: four floors in five lit at 17:00, three in four at 18:00, half at 19:00, a third at
+  // 20:00, a fifth at 21:00 (some floors work late, the cleaners go up the building), and a few
+  // all night. Homes light through the evening, but never every window: rooms nobody is in, and
   // curtains, keep it under half. (Each building's own share is about this times 0.3 to 1.7.)
   float occupancy(float style, float hr) {
     float evening = smoothstep(16.5, 19.0, hr) * (1.0 - smoothstep(22.5, 24.5, hr)) + (1.0 - smoothstep(0.0, 1.5, hr)) * 0.5;
     float work = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 21.0, hr));
     if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) {
       float staff = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(17.0, 21.0, hr)), late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(19.0, 24.0, hr));
-      return 0.05 + 0.55 * staff + 0.15 * late;
+      return 0.05 + 0.55 * staff + 0.22 * late;
     }
     if (style > 6.5 && style < 7.5) return 0.1 + 0.85 * smoothstep(7.0, 8.0, hr) * (1.0 - smoothstep(21.0, 22.5, hr));
     if (style > 5.5 && style < 6.5) return 0.05 + 0.5 * work + 0.15 * evening;

@@ -182,7 +182,7 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     vec3 glass = diffuseColor.rgb * (0.82 + 0.36 * cwHash(cell));
     // once a pane is under a pixel: whole storeys in blocks four bays wide, each with its own tone and
     // lit or not, so a tower across the harbour keeps its floors and its lit windows (darker glass by night)
-    vec2 cf = floor(vec2(bu * 0.25, bv)); float vfar = smoothstep(0.3, 0.8, max(fwidth(bu * 0.25), fwidth(bv)));
+    vec2 cf = floor(vec2(bu * 0.25, bv)); float vfar = smoothstep(0.75, 1.6, max(fwidth(bu * 0.25), fwidth(bv)));
     float sf = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv)); // the storey's spandrel band
     vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
     diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);

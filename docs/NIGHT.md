@@ -78,7 +78,7 @@ No code was taken from any of these; the ideas are general. What was adopted, an
 | Warm lights against cool shadows | `lens.js` `uNightTone`: at night the grade takes the shadows to blue and the lights to amber |
 | A hierarchy on the towers | `night.js`: crowns lit on 60% of the towers over 60 m (a wash up the top storeys and a line along the parapet, mostly white); `buildings.js`: lobbies lit all night |
 | Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors, and offices empty through the evening; each building keeps its own evening; each lit run has its own brightness, a few floors bright |
-| Fewer windows lit, and brighter | `buildings.js`: lit rooms 1.6 times as bright as before and fewer of them (an office about half as many at 19:00); offices under cool white, a floor in four warmer; homes warm, or cool in Japan and Hong Kong; `world.js`: the landmark towers' curtain walls (Hong Kong's) light in runs under cool white too |
+| Fewer windows lit, and brighter | `buildings.js`: lit rooms 1.6 times as bright as before and fewer of them (an office two thirds as many at 19:00, three quarters at 21:00); offices under cool white, a floor in four warmer; homes warm, or cool in Japan and Hong Kong; `world.js`: the landmark towers' curtain walls (Hong Kong's) light in runs under cool white too |
 | Landmarks floodlit from below | `world.js` `flood`: a landmark's walls lit full, the undersides of its eaves more, its roofs at a graze, fading up the building; Osaka Castle (its stone base too), Kyoto Tower, Tokyo Tower (its colour by the season) and the Harbour Bridge's arch |
 | Glass that reflects | the environment light is drawn from the night sky, so curtain walls mirror blue above and warm below |
 | Lights as materials | `night.js`: lamps, traffic and tower lights are points and strips in three draw calls; the light on the ground is one texture |
@@ -112,8 +112,8 @@ country's height (60 m in Japan, where they flash together forty times a minute;
 110 m elsewhere, steady), and lit crowns.
 
 **The windows.** An office lights by the floor, in runs of six bays, and a home by the
-room. The share of rooms lit follows the hour: offices three floors in four at 17:00,
-two in three at 18:00, under half at 19:00, a quarter at 20:00 and a few all night;
+room. The share of rooms lit follows the hour: offices four floors in five at 17:00,
+three in four at 18:00, half at 19:00, a third at 20:00, a fifth at 21:00 and a few all night;
 homes up to under half through the evening. Each building takes 0.3 to 1.7 times that
 share, so one tower works late beside another all but empty. A lit run has its own
 brightness, most at room light and one in ten bright, and its own light: offices cool
