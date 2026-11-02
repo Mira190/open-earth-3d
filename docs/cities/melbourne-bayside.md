@@ -229,8 +229,8 @@ cross them are dropped.
 
 ### Getting around
 
-- **Fast travel:** six points on the shore become fast-travel stops once you
-  have visited them (`game.travel`).
+- **Fast travel:** six points on the shore are on the map from the start, to
+  travel to at any time (`game.travel`), with the bayside's labelled landmarks.
 - **Helicopter:** there is no helipad on the bayside foreshore. The game starts
   it on a lawn in Catani Gardens, beside the start, and the pad on the Elwood
   soccer pitch is invented too, so that you can fly the coast.

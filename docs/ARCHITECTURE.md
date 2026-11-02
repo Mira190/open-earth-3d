@@ -37,7 +37,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
-| Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques) |
+| Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
 | Night | `night_lights.py` (run by `game_data.py`) | `night.json`: the roads simplified for the street lights and the traffic, the mapped lamps, and the city's lighting style (lamp colours, keep side, aircraft lights, crowns, sky glow). See [NIGHT.md](NIGHT.md) |
 
