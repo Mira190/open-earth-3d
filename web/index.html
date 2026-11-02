@@ -733,7 +733,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <p class="ts-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · <kbd>F</kbd> film · drag to turn the Earth</p>
     </nav>
     <section class="ts-card" id="ts-card" aria-live="polite"></section>
-    <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button></footer>
+    <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button><a class="ts-ver" id="ts-ver" target="_blank" rel="noopener" hidden></a></footer>
     <p class="ts-notice" id="globe-notice" role="status" hidden></p>
     <div class="ts-about" id="ts-about" hidden role="dialog" aria-label="About Open Earth 3D">
       <div>
@@ -764,6 +764,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         <div>
           <h3>This screen</h3>
           <p>The Earth as it is now: NASA's Blue Marble for this month by day and the Black Marble's city lights by night (NASA Earth Observatory), Blue Marble clouds and GEBCO relief, the atmosphere scattering the real sun. The Milky Way is ESO/S. Brunier's panorama (CC BY 4.0); the stars are the Yale Bright Star Catalogue, in their real places for this minute, and the Moon is in its real place and phase. The sound is synthesised in the browser.</p>
+        </div>
+        <div class="ts-version">
+          <h3>Version</h3>
+          <p class="ts-mono" id="ts-ver-about">Local build</p>
         </div>
       </div>
     </div>
@@ -1085,6 +1089,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="earth.js"></script>
 <script src="score.js"></script>
 <script src="title.js"></script>
+<script src="version.js"></script>
 <script src="film.js"></script>
 <script src="plate.js"></script>
 <script src="water.js"></script>
