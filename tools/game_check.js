@@ -189,6 +189,14 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     const s0 = o.drv.st.s;
     g.advance(20);
     r.drove = o.drv.st.s - s0;
+    if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
+      const t = o.drv.st, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
+      for (const c of g.cars.C.concat(mc ? [Object.assign({ mine: true }, mc.D.st)] : [])) {
+        const dx = c.x - t.x, dy = c.y - t.y, a = dx * fx + dy * fy;
+        if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}`);
+      }
+      r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}; ${ahead.join('; ') || 'nothing ahead'}`;
+    }
     g.skipRide();
     g.advance(6);
     r.arrived = o.phase === 'arrived';
@@ -209,7 +217,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, 'orders a ride on the phone');
   }
