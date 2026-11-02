@@ -1,7 +1,8 @@
 // Measure a city's street traffic headlessly: load the game, leave the player on foot at a few
 // places (the start, then points on its roads), run the traffic there for a while and report how
 // it flowed: the share of cars standing still, the cars jammed for half a minute or more, the
-// turns back where a jam would not clear, the cars caught up in one another, and, at the
+// turns back where a jam would not clear, the cars caught up in one another, the cars in a wall
+// (a road the data runs through a building), and, at the
 // junctions (junctions.js), the cars that crossed a stop line on red and the movements let into a
 // junction at once that cross. The game's own frame loop is stopped, so a run is the same each
 // time. Exits 1 when the traffic jams, tangles or runs a red.
@@ -40,7 +41,8 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
       };
       const prev = C.map(c => ({ line: c.line, dir: c.dir, x: c.x, y: c.y }));
       const still = C.map(() => 0);
-      let samples = 0, stopped = 0, dist = 0, carSecs = 0, turns = 0, worstJam = 0, jammed = 0, jammedNow = 0, overlaps = 0, overlapMax = 0;
+      let samples = 0, stopped = 0, dist = 0, carSecs = 0, turns = 0, worstJam = 0, jammed = 0, jammedNow = 0, overlaps = 0, overlapMax = 0, inWall = 0, onFlagged = 0;
+      const nav = g.nav, avoid = () => g.roadNet.avoid;
       const warm = Math.min(60, T / 4);
       for (let t = 0; t < T; t++) {
         g.advance(1);
@@ -53,6 +55,9 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
           if (c.line < 0) { prev[i] = { line: -1 }; still[i] = 0; continue; }
           carSecs++;
           if (c.v < 0.3) stopped++;
+          // in a building or a landmark (its middle, most of its width, knee to roof height), or on a road a car doesn't fit along
+          if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
+          if (avoid() && avoid()[c.line]) onFlagged++;
           still[i] = c.v < 0.3 ? still[i] + 1 : 0;
           if (still[i] >= 30) jammedNow++;
           worstJam = Math.max(worstJam, still[i]);
@@ -66,7 +71,8 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
         overlaps += ov; overlapMax = Math.max(overlapMax, ov);
       }
       const out = { at: [Math.round(g.player.x), Math.round(g.player.y)], cars: A.active, seconds: samples, stoppedShare: stopped / Math.max(1, carSecs), meanSpeed: dist / Math.max(1, carSecs),
-        jammedShare: jammed / Math.max(1, carSecs), jammedAtEnd: jammedNow, longestStill: worstJam, turnsPerCarMin: turns / Math.max(1, carSecs / 60), overlapsPerSample: overlaps / Math.max(1, samples), overlapMax };
+        jammedShare: jammed / Math.max(1, carSecs), jammedAtEnd: jammedNow, longestStill: worstJam, turnsPerCarMin: turns / Math.max(1, carSecs / 60), overlapsPerSample: overlaps / Math.max(1, samples), overlapMax,
+        inWallShare: inWall / Math.max(1, carSecs), onFlaggedShare: onFlagged / Math.max(1, carSecs) };
       if (A.stats) Object.assign(out, A.stats());
       return out;
     }, [Number(secs), site]);
@@ -77,6 +83,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
     console.log(`  standing still ${(r.stoppedShare * 100).toFixed(0)}% of the time, mean speed ${f(r.meanSpeed, 1)} m/s (${f(r.meanSpeed * 3.6, 0)} km/h)`);
     console.log(`  jammed (still 30 s or more): ${(r.jammedShare * 100).toFixed(1)}% of the time, ${r.jammedAtEnd} at the end; longest still: ${r.longestStill} s`);
     console.log(`  turned back in the road: ${f(r.turnsPerCarMin, 3)} per car-minute; caught up in another car: ${f(r.overlapsPerSample)} pairs a second, ${r.overlapMax} at worst`);
+    console.log(`  in a wall: ${(r.inWallShare * 100).toFixed(2)}% of the time; on a road a car doesn't fit along: ${(r.onFlaggedShare * 100).toFixed(2)}%`);
     if (r.signals != null) console.log(`  red lights run: ${r.redRuns}; crossing movements in one junction at once: ${r.conflicts} (cars found over a line: ${r.overLine})`);
   }
   const r0 = runs[0] || {}, avg = k => runs.reduce((a, r) => a + r[k], 0) / Math.max(1, runs.length), sum = k => runs.reduce((a, r) => a + (r[k] || 0), 0);
@@ -89,6 +96,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
   if (avg('jammedShare') > 0.12) fails.push('jammed');
   if (avg('overlapsPerSample') > 1) fails.push('cars caught up in one another');
   if (sum('redRuns') > 0) fails.push('red lights run');
+  if (avg('inWallShare') > 0.01) fails.push('cars driving through walls');
   if (sum('conflicts') > sum('overLine')) fails.push('crossing movements let in at once');
   console.log(fails.length ? `FAIL ${fails.join(', ')}` : 'ok');
   await b.close();

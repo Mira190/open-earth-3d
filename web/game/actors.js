@@ -947,7 +947,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // its way ahead: points every STEP metres from its front bumper along its lane, on to the
         // next piece and its way across a junction (as lanePos smooths it round corners)
         const P = c.ps || (c.ps = new Float32Array(2 * NPATH)), Q = pathQ;
-        let np = 0;
+        let np = 0, pk0 = 0;
         // (far from the eye, points twice as far apart: they serve as well there, at half the work)
         const step = !eye || Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) < 250 ? STEP : 2 * STEP;
         c.pst = step;
@@ -973,6 +973,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           // offset into the lane by the direction over two steps either side; the first point kept is the front bumper
           const k0 = Math.round((Math.abs(c.s - sb) + c.half) / step);
+          pk0 = k0;
           for (let k = k0; k < nq && np < NPATH; k++) {
             const ka = Math.max(0, k - 2), kb = Math.min(nq - 1, k + 2);
             let hx = Q[2 * kb] - Q[2 * ka], hy = Q[2 * kb + 1] - Q[2 * ka + 1];
@@ -1033,6 +1034,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           if (a > 0 && Math.abs(w) < 1.6 && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; }
         }
+        if (c.narrow > 0) { c.narrow -= dt; if (!swerve) swerve = -LANE * side * 0.8; } // (a street too narrow for its lane: down the middle, below)
         c.off += (swerve - c.off) * Math.min(1, dt * 1.6);
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
@@ -1109,7 +1111,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if ((c.wallT = (c.wallT || 0) - dt) <= 0 || flagged) {
             c.wallT = 0.5; c.wallGap = 40;
             const deck = c.z > nav.terrain(c.x, c.y) + 2;
-            for (let k = 0; k < np; k++) if (!nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) { c.wallGap = k * step; break; }
+            for (let k = 0; k < np; k++) {
+              if (nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) continue;
+              // a facade beside its lane, but room down the middle of the street: it keeps to the middle there
+              const q = pk0 + k;
+              if (nav.room(pathQ[2 * q], pathQ[2 * q + 1], c.z, c.hw * 0.8, 1.4, deck)) { if (k * step < 15) c.narrow = 1.5; continue; }
+              c.wallGap = k * step; break;
+            }
           }
           if (c.wallGap < gap) { gap = c.wallGap; byCar = false; front = null; why = 'wall'; }
           c.atWall = why === 'wall' && c.v < 0.1 ? (c.atWall || 0) + dt : 0;
