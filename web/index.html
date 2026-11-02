@@ -539,6 +539,24 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-phone p { margin: 0; }
 .gph-card { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
 .gph-card b.num { font-size: 16px; margin-top: 4px; }
+/* the ride, as a ride app shows it: the map, the time, the driver and the car, the trip */
+.gph-map { display: block; box-sizing: border-box; width: 100%; height: 150px; border-radius: 8px; background: var(--gm-water); border: 1px solid var(--line); }
+#gph-body { display: grid; gap: 8px; min-width: 0; }
+.gph-eta { display: flex; align-items: baseline; gap: 10px; }
+.gph-eta b { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; color: #fff; }
+.gph-eta span { font-size: 12.5px; color: var(--ink-2, var(--ink)); }
+.gph-bar { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.gph-bar i { display: block; height: 100%; width: calc(var(--k) * 100%); background: var(--accent); transition: width 0.5s linear; }
+.gph-driver { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0 2px; border-top: 1px solid var(--line); }
+.gph-driver .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 600 14px/1 var(--f-display); color: #fff;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), transparent 60%), var(--c, #3a4452); border: 1px solid rgba(255, 255, 255, 0.28); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.gph-driver .who { display: grid; gap: 1px; min-width: 0; }
+.gph-driver .who b { font-size: 13.5px; } .gph-driver .rt { font: 400 10.5px/1 var(--f-mono); color: var(--accent); margin-left: 4px; }
+.gph-driver .note { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gph-driver .gph-plate { font-size: 11.5px; letter-spacing: 0.08em; padding: 4px 7px; border-radius: 4px; background: #f2efe8; color: #101318; border: 1px solid rgba(0, 0, 0, 0.4); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.gph-trip { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 5px 8px; align-items: center; font-size: 12px; color: var(--ink-2, var(--ink)); }
+.gph-trip .pk { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); justify-self: center; }
+.gph-trip .ds { width: 8px; height: 8px; background: #f4f1ea; justify-self: center; }
 .g-mapwrap { width: min(1100px, 100%); height: min(860px, 100%); grid-template-rows: auto minmax(0, 1fr); }
 .g-mapbody { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; min-height: 0; }
 .g-mapcanvas { position: relative; min-height: 300px; background: var(--gm-water); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
@@ -653,6 +671,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-dialog p { font-size: 15px; }
   .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
   .g-phone { bottom: 196px; max-height: calc(100% - 420px); }
+  .gph-map { height: 120px; }
+  #game-stage:has(#g-phone:not([hidden])) .g-vhud { display: none; } /* the phone covers the corner the trip card sits in */
+  .gph-eta b { font-size: 22px; }
   .g-vhud .note { display: none; }
   .g-lens { left: 10px; right: 10px; width: auto; top: auto; bottom: 200px; }
   .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 1.3fr) minmax(0, 1fr); gap: 14px; }
@@ -932,7 +953,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd>Y</kbd><span>Hail a taxi</span></button></div>
     <div class="g-hud g-vhud" id="g-vhud" hidden></div>
     <aside class="g-hud g-lens brackets" id="g-lens" hidden></aside>
-    <aside class="g-hud g-phone brackets" id="g-phone" hidden aria-label="Phone"><header><b id="gph-title">Phone</b><button class="x" id="gph-close" aria-label="Put the phone away">×</button></header><div id="gph-body"></div></aside>
+    <aside class="g-hud g-phone brackets" id="g-phone" hidden aria-label="Phone"><header><b id="gph-title">Phone</b><button class="x" id="gph-close" aria-label="Put the phone away">×</button></header><canvas class="gph-map" id="gph-map" hidden aria-label="Map of the ride: the car, its route and the pick-up"></canvas><div id="gph-body"></div></aside>
     <div class="g-dialog" id="gd" hidden role="dialog" aria-live="polite"><div class="gd-head"><b id="gd-name"></b><span id="gd-role"></span></div><p id="gd-text"></p><div class="gd-choices" id="gd-choices"></div><span class="gd-hint" id="gd-hint"></span></div>
 
     <div class="g-overlay" id="g-bigmap" hidden>
@@ -1068,6 +1089,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="plate.js"></script>
 <script src="water.js"></script>
 <script src="buildings.js"></script>
+<script src="streets.js"></script>
 <script src="trees.js"></script>
 <script src="night.js"></script>
 <script src="glcare.js"></script>

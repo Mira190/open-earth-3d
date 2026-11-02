@@ -1,9 +1,10 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
-// (and order a ride on the phone), travel from the map in your car, and watch the signals at
-// the nearest junction change with the traffic stopping for them, and lose the WebGL context on
-// purpose and get it back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
+// (and order a ride on the phone, which must reach you within half a minute, shown on the
+// phone's map), travel from the map in your car, watch the signals at the nearest junction
+// change with the traffic stopping for them, and lose the WebGL context on purpose and get it
+// back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
@@ -280,8 +281,11 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     if (!o) return Object.assign(r, { hailed: false });
     r.hailed = true;
     r.log = [];
-    for (let i = 0; i < 150 && o.phase === 'coming'; i++) { g.advance(1); if (i % 10 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${i}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} near[${near}]`); } }
+    let t = 0;
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''} near[${near}]`); } }
+    r.hailT = t;
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
+    r.behind = o.drv.st.end < o.drv.path.len - 1; // (it pulled in behind a car at the kerb: your car, parked there)
     g.boardRide();
     for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
     r.inTaxi = g.player.mode === 'ride';
@@ -308,6 +312,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.leaveRide();
     g.advance(1);
     r.out = g.player.mode === 'foot';
+    // a ride on the phone: on its way at once, on the phone's map, here within half a minute
+    // (the time the app showed when it was ordered within a few seconds of the truth), then cancelled
+    g.advance(6); // the taxi drives off
     const dest = g.destinations(g.player.x, g.player.y)[0];
     // a ride comes only from a car within reach, and the traffic is random: as the phone says when
     // there is none ("Try again in a moment"), a few seconds on, try again
@@ -317,20 +324,40 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     r.ordered = !!q && q !== o && q.kind === 'hire' && q.phase === 'coming';
     // when it does not come, what the phone said (no street, no drivers near, one already on the way)
     if (!r.ordered) r.orderWhy = `${dest ? `to ${dest.name}` : 'nowhere to go'}, the last ride ${o.phase}, ${q ? `ride ${q.kind} ${q.phase}` : 'no ride'}: ${document.getElementById('g-toasts').textContent.slice(-120)}`;
-    if (r.ordered) g.cancelRide();
+    if (r.ordered) {
+      g.phoneShow('ride');
+      g.advance(0.5);
+      r.eta0 = (g.rideEta ? g.rideEta() : q.drv.timeLeft()) + 0.5; // (what the app shows)
+      r.phoneMap = !document.getElementById('gph-map').hidden && /on the way|arriving/.test(document.getElementById('gph-body').textContent);
+      let u = 0.5;
+      r.rideLog = [];
+      for (; u < 120 && q.phase === 'coming'; u += 0.5) {
+        g.advance(0.5);
+        const st = q.drv.st;
+        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
+      }
+      r.rideT = u; r.rideHere = q.phase === 'waiting';
+      g.phoneShow(false);
+      g.cancelRide();
+    }
     return r;
   });
   if (taxi.none) check(true, 'no car, no taxis');
   else {
     check(taxi.hint, 'the kerb offers a taxi (Y)');
-    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < 15)) console.log(taxi.log.join("\n"));
-    check(taxi.hailed && taxi.waiting && taxi.near < 15, `hails a taxi: it pulls in beside you${taxi.hailed ? ` (${(taxi.near || 0).toFixed(1)} m away)` : ''}`);
+    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15) && taxi.hailT <= 30)) console.log(taxi.log.join("\n"));
+    check(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15), `hails a taxi: it pulls in beside you${taxi.hailed ? ` (${(taxi.near || 0).toFixed(1)} m away${taxi.behind ? ', behind the car parked at the kerb' : ''})` : ''}`);
+    check(taxi.hailed && taxi.hailT <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s`})`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
     check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, `orders a ride on the phone${taxi.ordered ? '' : ` (${taxi.orderWhy})`}`);
+    check(taxi.ordered && taxi.phoneMap, 'the phone shows the ride on its map, on the way');
+    const rideOk = taxi.ordered && taxi.rideHere && taxi.rideT <= 30 && Math.abs(taxi.rideT - taxi.eta0) < 8; // (the traffic in your sight and its lights make it vary)
+    check(rideOk, `the ride is there within half a minute, when the app said (${taxi.rideT == null ? '–' : `${taxi.rideT.toFixed(1)} s, said ${taxi.eta0.toFixed(0)} s`})`);
+    if (!rideOk && taxi.rideLog) console.log(taxi.rideLog.join('\n'));
   }
   await shot('taxi');
 

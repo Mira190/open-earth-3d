@@ -348,8 +348,9 @@ window.OEEarth = (function () {
         vec2 p = (uv - 0.5) * vec2(uAspect, 1.0) / unit, s = (uSunUv - 0.5) * vec2(uAspect, 1.0) / unit, d = p - s;
         float r = length(d);
         vec3 c = vec3(0.0);
-        c += vec3(0.6, 0.76, 1.0) * exp(-abs(d.y) * 1500.0) * exp(-abs(d.x) * 2.6) * 0.32;      // a fine anamorphic streak
-        c += vec3(0.65, 0.8, 1.0) * exp(-abs(d.y) * 160.0) * exp(-abs(d.x) * 5.0) * 0.035;
+        // a fine anamorphic streak that fades within a third of the frame (run right across it, it read as a scratch)
+        c += vec3(0.6, 0.76, 1.0) * exp(-abs(d.y) * 1500.0) * exp(-abs(d.x) * 7.5) * 0.24;
+        c += vec3(0.65, 0.8, 1.0) * exp(-abs(d.y) * 160.0) * exp(-abs(d.x) * 9.0) * 0.03;
         c += uFlareTint * (exp(-r * 18.0) * 0.08 + exp(-r * 4.0) * 0.02);                         // a soft veil round the sun
         vec2 axis = -s;
         c += ghost(p, s + axis * 0.62, 0.028, vec3(0.30, 0.55, 1.0) * 0.022);
@@ -566,8 +567,12 @@ window.OEEarth = (function () {
     }
 
     // post: HDR (half float) with the tier's MSAA, bloom where the tier affords it, the lens.
-    // Without a half-float target the scene is drawn in 8 bits, and the sun clips.
-    const rt = new THREE.WebGLRenderTarget(2, 2, { type: q.hdr ? THREE.HalfFloatType : THREE.UnsignedByteType, samples: q.samples });
+    // Without a half-float target the scene is drawn in 8 bits, and the sun clips. Those 8 bits
+    // are sRGB-encoded (the GPU encodes and decodes them), so the darks keep their precision: in
+    // plain linear 8 bits the lens's tone curve lifts the sun's faint glow into a stack of
+    // concentric bands, each edged red and green by the chromatic fringes.
+    const ldr = () => ({ type: THREE.UnsignedByteType, colorSpace: THREE.SRGBColorSpace });
+    const rt = new THREE.WebGLRenderTarget(2, 2, Object.assign(q.hdr ? { type: THREE.HalfFloatType } : ldr(), { samples: q.samples }));
     const composer = new THREE.EffectComposer(renderer, rt);
     composer.addPass(new THREE.RenderPass(scene, camera));
     // without the pass, a stand-in keeps the director's strength settings harmless
@@ -726,7 +731,7 @@ window.OEEarth = (function () {
       degraded = true;
       if (q.bloom) { composer.removePass(bloom); bloom.dispose(); }
       bloom.enabled = false;
-      composer.reset(new THREE.WebGLRenderTarget(2, 2, { type: THREE.UnsignedByteType, samples: 0 }));
+      composer.reset(new THREE.WebGLRenderTarget(2, 2, Object.assign(ldr(), { samples: 0 })));
       Object.assign(atmo.material.defines, { ATMO_N: 8, ATMO_NL: 4 });
       atmo.material.needsUpdate = true;
       shaderErrors.length = 0;

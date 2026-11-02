@@ -382,6 +382,11 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   // murky water hides the bottom off seawalls and mostly off rock; beaches show their sand
   wAlpha = max(wAlpha, mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y) * sh0.w);
   wAlpha = max(wAlpha, wFoam);
+  // towards the edge of the shore map (the model's frame) the water closes over the bottom, which is
+  // not drawn beyond it, so a sea that runs on past the frame shows no seam there
+  vec2 sbUv = vec2((vXZ.x - uShoreBox.x) / uShoreBox.z, (-vXZ.y - uShoreBox.y) / -uShoreBox.w);
+  float sbIn = min(min(sbUv.x, 1.0 - sbUv.x) * uShoreBox.z, min(sbUv.y, 1.0 - sbUv.y) * uShoreBox.w);
+  wAlpha = max(wAlpha, (1.0 - smoothstep(0.0, 300.0, sbIn)) * uShoreOn);
   // light scattered back out of the water column: a clear harbour gives back little and reads
   // dark; silt and clay in a turbid river (under 2 m of visibility) scatter it back, so the
   // river shows the brown of the aerial photo its colours were picked from

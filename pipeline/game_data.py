@@ -17,8 +17,8 @@ Writes web/data/<city>/game.json:
   wharves   ferry berths next to the Overture ferry terminals named in city.json
   ferries   routes found by a shortest path through open water, kept clear of land
             and piers, then smoothed
-  helipads, props (benches, street lamps, traffic signals and signs), npcs and quests (positions snapped to
-  open ground)
+  helipads, props (benches and street lamps, moved out of the carriageways: pipeline/kerbside.py;
+  traffic signals and signs), npcs and quests (positions snapped to open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
   boardwalks  walkways at deck height over rocks, water or sand: mapped lines found by
@@ -52,10 +52,11 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 import arcades
+import kerbside
 import night_lights
 import road_rules
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
-from shore import QUAY_SHELF_M, depth_at, from_png
+from shore import from_png, pad_aprons, water_floor
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -429,7 +430,9 @@ def main():
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q) and not water[cell(q.x, q.y)]:
                 props[r["class"]] += [round(q.x * 10), round(q.y * 10), round(ground(q.x, q.y) * 10)]
-    print("props:", {k: len(v) // 3 for k, v in props.items()})
+    # out of the carriageways as the game draws them: many lamps are mapped as nodes of the road itself
+    moved = kerbside.tidy(props, roads)
+    print("props:", {k: len(v) // 3 for k, v in props.items()}, "moved to the kerb, left out:", moved)
 
     # ---------------------------------------------------------- rail: trams in the street, a funicular up the hill
     # Overture rail segments of the classes the city's game names (game.rail). OpenStreetMap breaks a
@@ -558,15 +561,12 @@ def main():
             if f:
                 st["at"] = f["at"]
 
-    # the walking ground: the DEM on land, the modelled bottom under the water, except where a
-    # helipad stands on the water (a floating pad): there it keeps the pad's own height
-    ground_grid = np.where(water, -depth_at(sm, gx, gy, C.x0, C.y1), dem)
-    edge = water & ndimage.binary_dilation(~water)  # just under the surface off a quay, as in the viewer's terrain
-    ground_grid[edge] = np.maximum(ground_grid[edge], -QUAY_SHELF_M)
-    for hp in helipads:
-        x, y, z = hp["at"]
-        near = water & (np.hypot(gx - x, gy - y) < 14.0)
-        ground_grid[near] = np.maximum(ground_grid[near], max(z, 0.0))
+    # the walking ground: the DEM on land, the modelled bottom under the water, except round a
+    # helipad on or by the water (a floating pad): there it keeps the pad's own height. Only the
+    # pads written below get that apron, so a pad the city leaves out leaves none behind
+    # (shore.py, which pipeline/pad_discs.py shares to check and repair game.json without a rebuild)
+    ground_grid = np.where(water, water_floor(sm, water, gx, gy, C.x0, C.y1), dem)
+    pad_aprons(ground_grid, water, gx, gy, helipads)
     if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
         ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
     out = {

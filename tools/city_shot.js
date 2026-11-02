@@ -37,6 +37,17 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   await p.waitForFunction('window.__city && document.getElementById("loader").hidden', null, { timeout: 900000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`, JSON.stringify(await p.evaluate(() => window.__buildings || null)));
   await p.keyboard.press('Shift'); // a key skips the establishing shot, which would otherwise hold the camera
+  // the skip lands on the tour's first stop on the next frame: let it, or it takes the first view's
+  // camera. Pause the tour first: a software frame can outlast a stop's hold, and the tour would move
+  // on a stop a frame (to a sun-access place, whose sample points stay drawn). The views keep the
+  // first stop's date unless they give one.
+  await p.evaluate(async () => {
+    const C = window.__city, frame = () => new Promise(r => requestAnimationFrame(r));
+    C.setTourPlaying(false);
+    await frame(); await frame();
+    C.startStop(0, true);
+    C.setTourPlaying(false);
+  });
   fs.mkdirSync(outDir, { recursive: true });
   for (const v of views) {
     const ms = await p.evaluate(async v => {

@@ -18,10 +18,12 @@ from meshkit import Mesh
 
 TOWER_LL = (135.75946, 34.98748)   # lon, lat of the tower
 BASE_M = 31.0                      # roof of the building under the tower
+# after dark the tower is floodlit white from the roof of the building under it, and the deck's
+# windows are lit from inside (emissive, glow; "flood" is set from the tower's base in landmark_meshes)
 MATERIALS = {
-    "tower": {"color": "#f4f2ec", "roughness": 0.45, "metalness": 0.1},
-    "deck_glass": {"color": "#2b3238", "roughness": 0.1, "metalness": 0.5},
-    "mast": {"color": "#d9463b", "roughness": 0.5, "metalness": 0.2},
+    "tower": {"color": "#f4f2ec", "roughness": 0.45, "metalness": 0.1, "emissive": "#fff6ea", "glow": 0.75},
+    "deck_glass": {"color": "#2b3238", "roughness": 0.1, "metalness": 0.5, "emissive": "#ffd7a0", "glow": 0.55},
+    "mast": {"color": "#d9463b", "roughness": 0.5, "metalness": 0.2, "emissive": "#ffd2c2", "glow": 0.4},
 }
 
 
@@ -56,12 +58,15 @@ def landmark_meshes(scene):
     t = scene["landmarks"]["kyoto_tower"]
     x, y = t["at"]
     z0 = t["ground_m"] + t["base_m"]
-    shaft = Mesh("Kyoto Tower shaft", "tower", True)
+    mats = {k: dict(v) for k, v in MATERIALS.items()}
+    for k in ("tower", "mast"):
+        mats[k]["flood"] = [round(z0, 1), round(t["ground_m"] + t["spire_m"], 1), 0.5, 0.5]
+    shaft = Mesh("Kyoto Tower shaft", "tower", True, floodlit=True)
     lathe(shaft, x, y, z0, [(0, 6.2), (6, 5.2), (28, 3.9), (52, 3.1), (61, 3.0)])   # base building roof to just under the deck
-    deck = Mesh("Kyoto Tower deck", "deck_glass", True)
+    deck = Mesh("Kyoto Tower deck", "deck_glass", True, floodlit=True)
     lathe(deck, x, y, z0, [(61, 3.0), (62, 7.5), (64, 9.6), (68, 9.6), (70, 7.0), (71, 3.4)])
-    cone = Mesh("Kyoto Tower rim", "tower", True)
+    cone = Mesh("Kyoto Tower rim", "tower", True, floodlit=True)
     lathe(cone, x, y, z0, [(60, 3.0), (62, 7.7), (62, 9.8), (64, 10.0)])
     mast = Mesh("Kyoto Tower mast", "mast", True, floodlit=True)
     lathe(mast, x, y, z0, [(71, 3.4), (74, 2.0), (90, 0.9), (100 - BASE_M + 31, 0.12)], n=12)   # spire tip at 131 m above ground
-    return MATERIALS, [shaft, deck, cone, mast]
+    return mats, [shaft, deck, cone, mast]

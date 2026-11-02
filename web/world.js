@@ -63,6 +63,29 @@ window.OEWorld = (function () {
   const LM_NIGHT = { value: 0 }; // how dark it is, for landmark patterns with lit windows
   // the Eiffel Tower's sparkle: five minutes at the start of every hour after dark (setSun turns it on)
   const SPARKLE = { on: { value: 0 }, t: { value: 0 } };
+  // A floodlit material lit from below (landmarks.json "flood": [from_m, to_m, roof, top]), as a
+  // castle or a tower is lit by floodlights at its foot and on its lower roofs: a wall takes the
+  // light full and the underside of an eave a little more, a roof facing up catches its share at a
+  // graze ("roof", 0.5), and the light falls off up the building from from_m to to_m (the local
+  // frame's heights) to "top" (0.6) of what it is at the foot. Without "flood" a floodlit material
+  // glows evenly, as a sign or a screen does. prev: the material's own pattern, if any.
+  function floodFrom(spec, prev) {
+    if (!spec) return prev;
+    const [z0, z1, roof = 0.5, top = 0.6] = spec;
+    return sh => {
+      if (prev) prev(sh);
+      sh.uniforms.uFlood = { value: new THREE.Vector4(z0, z1, roof, top) };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vFloodY;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n  vFloodY = (modelMatrix * vec4(transformed, 1.0)).y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec4 uFlood; varying float vFloodY;')
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  { vec3 wn = inverseTransformDirection(normal, viewMatrix);
+    float face = wn.y < 0.0 ? 1.0 - 0.3 * wn.y : mix(1.0, uFlood.z, wn.y);
+    // the light comes back off the surface, so its pattern (courses, joints, tiles) shows in it
+    float tex = clamp(dot(diffuseColor.rgb, vec3(1.0)) / max(dot(diffuse, vec3(1.0)), 1e-3), 0.0, 1.5);
+    totalEmissiveRadiance *= face * tex * mix(1.0, uFlood.w, clamp((vFloodY - uFlood.x) / max(uFlood.y - uFlood.x, 1.0), 0.0, 1.0)); }`);
+    };
+  }
   const PATTERNS = {
     // the Opera House roof tiles: chevron lids between the ribs, glossy white tiles inside a
     // lid and matte cream along its joints (u counts rib bays, v is metres along a rib)
@@ -154,7 +177,7 @@ uniform float uEnds[16], uKinds[16], uLanes[16]; uniform vec3 uAsphalt, uConcret
           uMull: { value: m.mullion_m || 0.12 }, uFrame: { value: lin(m.frame || '#c9ced2') }, uLmNight: LM_NIGHT,
           uLitShare: { value: m.lit_share ?? 0.38 }, uLitK: { value: m.lit_k ?? 1.3 } });
         sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK; uniform vec3 uFrame; float pWin, pLit;
+uniform float uBay, uSty, uSpan, uMull, uLmNight, uLitShare, uLitK; uniform vec3 uFrame; float pWin, pLit; vec3 pLitC;
 float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5453); }`)
           .replace('#include <color_fragment>', `#include <color_fragment>
   { float bu = vUv.x / uBay, bv = vUv.y / uSty, fw = max(fwidth(bu), fwidth(bv));
@@ -165,15 +188,18 @@ float cwHash(vec2 c) { return fract(sin(dot(c, vec2(12.9898, 78.233))) * 43758.5
     vec3 glass = diffuseColor.rgb * (0.82 + 0.36 * cwHash(cell));
     // once a pane is under a pixel: whole storeys in blocks four bays wide, each with its own tone and
     // lit or not, so a tower across the harbour keeps its floors and its lit windows (darker glass by night)
-    vec2 cf = floor(vec2(bu * 0.25, bv)); float vfar = smoothstep(0.3, 0.8, max(fwidth(bu * 0.25), fwidth(bv)));
+    vec2 cf = floor(vec2(bu * 0.25, bv)); float vfar = smoothstep(0.75, 1.6, max(fwidth(bu * 0.25), fwidth(bv)));
     float sf = 1.0 - smoothstep(uSpan - fwidth(bv), uSpan + fwidth(bv), fract(bv)); // the storey's spandrel band
     vec3 farCol = mix(diffuseColor.rgb * (0.85 + 0.3 * cwHash(cf)), uFrame, 0.3 * (1.0 - 0.75 * uLmNight));
     diffuseColor.rgb = mix(mix(glass, uFrame, solid), farCol, far);
     float litFar = mix(0.6 * step(1.0 - 0.68 * uLitShare, cwHash(cf + 17.0)) * (1.0 - sf), 0.34 * uLitShare, vfar);
-    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(1.0 - uLitShare, cwHash(cell + 17.0)) * (0.85 + 0.3 * cwHash(cell + 3.0)), litFar, far); }`)
+    // lit in runs of four panes along a storey, as an office is, each run a little brighter or dimmer,
+    // mostly under cool white light
+    pWin = mix(1.0 - solid, 0.6, far); pLit = mix(step(1.0 - uLitShare, cwHash(cf + 17.0)) * (0.85 + 0.3 * cwHash(cf + 3.0)), litFar, far);
+    pLitC = mix(cwHash(cf + 5.0) < 0.75 ? vec3(0.8, 0.9, 1.0) : vec3(1.0, 0.84, 0.62), vec3(0.85, 0.88, 0.9), far); }`)
           .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(0.45, roughnessFactor, pWin);')
           .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-  totalEmissiveRadiance += pWin * pLit * uLmNight * vec3(1.0, 0.78, 0.5) * uLitK;`);
+  totalEmissiveRadiance += pWin * pLit * uLmNight * pLitC * uLitK;`);
       };
     },
     // a riveted iron lattice cut out of a panel (u metres across, v metres up): a strut at the
@@ -493,6 +519,8 @@ vec3 photoGrade(vec3 c) {
   // game: the game's world, whose own cars take over from the night's traffic within nearCars metres of the camera
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
+    // the mapped lamps, benches and trees out of the carriageways, before any of them is drawn (streets.js)
+    if (window.OEStreets) OEStreets.tidy(D);
     // the street lights' light (night.js), which the ground, the piers and the walls add to what they reflect
     const NU = window.OENight && D.N ? OENight.uniforms() : null;
     const NIGHT = NU ? OENight.GLSL : 'vec3 streetLight(vec3 wp) { return vec3(0.0); }';
@@ -992,8 +1020,11 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines),
-      customProgramCacheKey: lmMats[k].onBeforeCompile ? () => `lm|${k}|lit` : lmMats[k].customProgramCacheKey }));
+      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
+      defines: Object.assign({}, lmMats[k].defines),
+      // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
+      // the pattern, so the wrapper's text alone would not tell two programs apart)
+      customProgramCacheKey: LM.materials[k].flood ? () => `lm|${k}|flood` : lmMats[k].onBeforeCompile ? () => `lm|${k}|lit` : lmMats[k].customProgramCacheKey }));
     const lmGeometry = m => {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
@@ -1180,7 +1211,18 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         sunLight.position.copy(shAt).addScaledVector(z, 4500);
       },
       // the date, for what flowers when (local month and day)
-      setSeason(month, day) { if (trees) trees.setSeason(month, day); },
+      setSeason(month, day) {
+        if (trees) trees.setSeason(month, day);
+        // a floodlight that changes with the season (landmarks.json "emissive_dates": [["MM-DD", "MM-DD", colour], ...]):
+        // Tokyo Tower's white metal halide lamps in summer, its orange sodium ones the rest of the year
+        const md = month * 100 + day;
+        for (const [k, m] of Object.entries(floodMats)) {
+          const dates = LM.materials[k].emissive_dates;
+          if (!dates) continue;
+          const hit = dates.find(([a, b]) => { const [p, q] = [a, b].map(s => +s.replace('-', '')); return p <= q ? md >= p && md < q : md >= p || md < q; });
+          m.emissive.copy(lin(hit ? hit[2] : LM.materials[k].emissive || '#ffe2b8'));
+        }
+      },
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
       tick(t, camera) {
         if (envWait && performance.now() - envAt >= (api.envEvery || 0)) api.setSun(envWait.sp, envWait.minutes);

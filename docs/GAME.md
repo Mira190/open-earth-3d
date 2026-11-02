@@ -128,22 +128,52 @@ Every city's game has the same three ways to go by road:
   seat (<kbd>V</kbd>) you see the dashboard and the wheel turning. The phone
   brings it to the nearest kerb if you have walked far from it.
 - **A taxi:** stand at the kerb and press <kbd>Y</kbd>. You raise your hand, and
-  the nearest free taxi coming your way, by road, pulls in on your side of the
+  the quickest free taxi coming your way, by road, pulls in on your side of the
   street with its hazard lights on. If none is close, one comes round the corner.
   Get in with <kbd>E</kbd>. The driver asks where to: your waypoint, the next
   step of the survey, your car, the nearest landmarks, the wharves you have used,
   or where you started.
 - **A ride:** order one on the phone (<kbd>N</kbd>), as GTA VI's Ryde Me app does.
-  Choose where to go first, and a private-hire car is sent from a few hundred
-  metres away. The phone shows its driver, colour, model and number plate, and
-  how far away it is.
+  Choose where to go first, and a private-hire car sets out for the nearest kerb.
+  The phone shows it as a ride app does: a map framed on the car, the pick-up
+  and you, with the route it still has to drive, the car moving along it, the
+  pick-up pin and a dotted walk to it from your blue dot; the time it will take,
+  the driver with a rating, the car and its number plate. On the way the map
+  follows the car to where you are going. The minimap draws the same route and
+  opens out to hold the car, and the walk to the pick-up gets the gold route.
+
+A taxi or a ride reaches you within half a minute. The router searches the street
+network backwards from the pick-up for points 110 to 270 m away by road (40 to
+110 m where none of those is near enough in time), following the one-way streets;
+each is timed by driving its route in a dry run (the driver's own rules, nothing
+in the way), with 4 s added for each set of traffic lights near the pick-up, and
+the one that takes 10 to 20 s, out of your sight where it can be, is chosen,
+leaving the rest of the half minute for the traffic you can see. The same time is
+what the phone shows: it counts down as the car comes and holds while it waits in
+traffic, as an app's does. At a red light in your sight it stops at the line and
+asks for its green, as a bus with priority does: the other road's green ends once
+it has run 5 s, through amber as ever. Where the kerb it
+is to pull in at is taken, by your own car or one stopped there for good (10 s),
+it pulls in just behind, and drives round one only waiting in the traffic; held
+up near the end for 8 s, it stops where it is with its hazards on. Where no car
+can reach your kerb in time (a dead end the near side of the street faces into,
+a stub no road feeds) the pick-up moves to the kerb across the street or a street
+round the corner, as a ride app moves it; in streets as slow as Shibuya's a car
+can set out from just round the corner, 15 to 40 m off; and where the one-way
+streets leave next to no way in, the search goes back along any street, as the
+router does. Rather than none, a slow ride comes, the phone saying how slow.
+Running more than six seconds late in a jam and out of the camera's view, it
+moves on along its route to a clear stretch of road, as games keep the cars that
+come for you on time. A driver waits five minutes at the pick-up.
 
 The driver takes you by road, along a route over the street network, keeping to
 the lane, slowing for bends and for the traffic, and signalling into the kerb at
 the end. A car stopped in the lane, such as yours left in the road, is driven
-round over the centre line, by the driver and by the traffic. While the car coming
-for you is out of sight, more than 120 m off, the traffic doesn't hold it up, so it
-comes in good time, as it would in a game. On the way they talk about what you are passing, as the people on the
+round over the centre line, by the driver and by the traffic, once nothing is
+coming the other way. While the car coming for you is out of your sight (more than
+40 m off and off the screen, or more than 120 m off), neither the traffic nor the
+lights hold it up, so it comes in good time, as it would in a game; in your sight
+it queues, stops at the lights and never steps further into another car. On the way they talk about what you are passing, as the people on the
 footways do, so each remark is a fact from the model, such as a building's height
 and where it comes from. <kbd>F</kbd> skips the trip, as in GTA V: the camera
 rises, crosses the city and comes down behind the car at the kerb. The traffic
@@ -318,6 +348,7 @@ listed at the end.
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
 | **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
+| **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
 
 ## How it works
 
@@ -345,7 +376,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     - Found by a shortest path through open water, weighted to keep to the
       middle of the channel and away from piers.
     - Smoothed only as far as the route still stays at least 4 m from land.
-  - **Benches and street lamps:** from OpenStreetMap.
+  - **Benches and street lamps:** from OpenStreetMap, moved out of the
+    carriageways (`pipeline/kerbside.py`; `web/streets.js` does the same in the
+    browser, for data built before, and for the trees). Many lamps are mapped as
+    nodes of the road itself, and trees in kerb build-outs and medians. Each is
+    moved to the nearest place clear of every road's band at its level (the
+    road as the game draws it, grown to the outer side of a car pulled in at the
+    kerb), or left out where none is within 6 m. Before this, Sydney had 60
+    mapped lamps, 433 trees and 22 benches in a carriageway; Paris 720 lamps and
+    1,947 trees; Amsterdam 470 lamps and 2,159 trees.
   - **Rail** (`game.rail`): the Overture rail lines of the configured classes,
     chained across the junctions where OpenStreetMap breaks them into through
     routes. A funicular's route runs from its lower end with its profile made
@@ -469,6 +508,10 @@ pipeline writes. The only city-specific code is landmark geometry in
       from the exact footprints.
   - **Camera:** a 0.25 m probe sphere is swept from the player to the camera
     against walls, roofs and soffits, as Unreal's SpringArm does.
+  - **Lamp posts and tree trunks** are solid (`OEStreets.posts`, circles in an
+    8 m grid): you walk round them, your car hits them ("Careful! That was a
+    lamp post."), the crowd steps round them and the traffic brakes for one in
+    its way.
   - **Measured against the old 2 m grid:** 120 walks into walls at random
     angles ended inside a footprint 50 times before and never now. The closest
     approach is now the capsule radius. See
@@ -585,6 +628,20 @@ pipeline writes. The only city-specific code is landmark geometry in
     other; a car held 1.5 s part way across to another lane goes back to its
     own; and out of sight, a car stopped 45 s that is not in a queue comes back
     elsewhere.
+  - **Never through anything:** a car never moves into another car, your car,
+    a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
+    if the way stays blocked (but for the squeeze past, under Unsticking). One caught up with another gets out without going
+    into a third; two still caught after 4 s part (out of sight, one leaves the
+    traffic). A ride on the move is left to its own driver (unless it follows it), who never
+    steps further into a car of the traffic and swings out round a stopped car only when
+    nothing is coming the other way. None is put on the road on top of your car or a ride, and your
+    car is brought to a kerb clear of the traffic, the posts and the trees.
+    Your car meets another as a box against a box, corners included. The crowd
+    keeps out of your car and a ride as it does the traffic's.
+  - **The crowd and the walls:** a footway that runs into a building (an arcade,
+    a station's concourse; the model's buildings are solid) ends at its wall,
+    and a walker stepping aside keeps in from a wall beside the footway. Before
+    this, about one walker in nine in Sydney's centre was inside a building.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
 
 #### Junctions and traffic lights
@@ -739,6 +796,29 @@ quality tier runs a third of the cars.
   place: lofted hulls, lathes, slabs, fins, rods and tubes at real dimensions,
   merged into one mesh per material, adapted from the vessel kit of an earlier
   reef scene.
+  - **Ferries keep apart:** under way a vessel keeps to the starboard side of
+    its course by up to its beam, as far as the water allows (the whole hull
+    and half a metre round it over open water, worked out every 10 m of each
+    leg), so two on the same course pass port to port, close to the banks in a
+    river as narrow as the Dotonbori. Where the end of a leg left the hull over
+    the bank, the vessel berths short of it. A berth takes one vessel at a time: one bound for
+    a busy berth waits off it, behind any others waiting there on other routes
+    (a hull length and 30 m farther off for each), one closing on another ahead
+    on the same leg keeps its distance, and none starts out alongside another.
+    A leg too narrow to pass along has a passing place where the two hulls stay
+    clear all the way past, measured hull against hull (on a bend a hull's ends
+    swing out of its line); one leaving a berth waits for a vessel still coming
+    in past it, but not for one lying there or off the berth waiting for it.
+    One lying still across another route's course is stopped short of. Two under
+    way on courses that meet within 8 s: the one that can stop short of the
+    other's course gives way; one lying still, or at its berth, sets off only
+    when nothing coming by would meet it in the next 30 s; and a place to wait
+    off a berth keeps 3 m clear of every course out of it, other routes' too.
+    Before
+    this, Sydney's Sirius and Charlotte lay in the same berth at Circular Quay,
+    two of Tokyo's water buses waited on top of each other off Hinode, and
+    Tokyo's ferries and Osaka's Dotonbori boats could end up each waiting on the
+    other for good.
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
     bounces off a hard hit.
@@ -1070,8 +1150,11 @@ in the city's Cycles renders where the game puts them.
     brighten when braking, the indicators blink when pulling in, and a taxi's
     roof sign is lit while it is for hire. After dark the headlamps light the
     road. People sit in the seats with their feet on the floor, and the driver's
-    hands are on the wheel. The inside of the shell is a dark lining, and the
-    cabin is mirrored where traffic keeps right.
+    hands are on the wheel. The top of the head keeps 6 cm under the roof over
+    it, measured from the head as it sits: a tall person sinks up to 8 cm into
+    the cushion, and one still too tall for that car sits a little smaller, so
+    any of the crowd's characters can drive a ride. The inside of the shell is a
+    dark lining, and the cabin is mirrored where traffic keeps right.
   - **Water:** the helicopter's downwash throws a ring of spray off the water
     (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
     ship makes in deep water, as wide as the hull at the start, with churned
@@ -1394,6 +1477,15 @@ profiler over the traffic and lists its functions and busiest lines; and
 `tools/signal_shot.js <city> out [count|ids|arrows<n>] [HH:MM,...] [WxH]` takes
 a driver's view of the nearest junctions with signals (or with a turn arrow) at
 the times given, or with `VIEW=kerb` a walker's view of a crossing.
+
+`tools/clip_check.js <city>` counts what passes through what (furniture in the
+road, cars in posts, walls and each other, walkers in walls, ferries in each
+other, heads through roofs); `tools/check.sh` runs it with the game check.
+`tools/ride_check.js <city> [N]` hails a taxi and orders a ride N times each at
+kerbs round the start and says how long each took against what the phone said,
+and what held it up. `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+time and fails if two hulls overlap or a vessel never calls, which is what a
+deadlock or a meeting at a shared berth takes to show.
 
 ## Limitations
 

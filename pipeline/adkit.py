@@ -43,8 +43,11 @@ def font(name, size):
     path = os.path.join(d, os.path.basename(FONTS[name]))
     if not os.path.exists(path):
         req = urllib.request.Request(FONT_URL.format(FONTS[name]), headers={"User-Agent": "open-earth-3d (https://github.com/Mira190/open-earth-3d)"})
-        with urllib.request.urlopen(req, timeout=60) as r, open(path, "wb") as f:
-            f.write(r.read())
+        with urllib.request.urlopen(req, timeout=60) as r:
+            data = r.read()  # all of it before the file exists: a broken download leaves no empty font behind
+        with open(path + ".part", "wb") as f:
+            f.write(data)
+        os.replace(path + ".part", path)
     return ImageFont.truetype(path, int(size))
 
 

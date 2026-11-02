@@ -360,6 +360,12 @@ window.OEJunctions = (function () {
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       j.demand[a.phase === 0 ? 1 : 0] = 1;
     }
+    // a vehicle with priority at arm a's red (a ride on its way to you, as a bus has priority at
+    // some signals): the other road's green ends once it has run a few seconds, through amber as ever
+    function priority(a) {
+      const j = a.j;
+      if (j.sig && j.ph !== a.phase && j.st === 'g' && j.t >= 5) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
+    }
     let frame = 0;
     const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
     const NONE = [0, 0, 0];
@@ -532,7 +538,7 @@ window.OEJunctions = (function () {
       return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
-    return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

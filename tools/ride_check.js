@@ -1,0 +1,60 @@
+// Rides over and over, headless: at kerbs up to 400 m from the start, hail a taxi and order a ride
+// on the phone, each N times, and say how long each took against what the phone said, what it
+// was stopped by (its driver's reason: a gap ahead, the line at a light, ...) and, for a long
+// stop, what was in front of it. tools/game_check.js takes one of each, which can't tell a
+// rule that keeps rides on time from a lucky run.
+//   python3 -m http.server 8800 --directory web &
+//   xvfb-run -a node tools/ride_check.js osaka [N=10]
+// Exits 1 if more than one in ten took over 30 s.
+const { chromium } = require('playwright');
+const [,, city = 'hong-kong', trials = '10'] = process.argv;
+(async () => {
+  const b = await chromium.launch(process.env.DISPLAY
+    ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
+    : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
+  const p = await b.newPage({ viewport: { width: 800, height: 500 } });
+  p.on('pageerror', e => console.log('pageerror', String(e).slice(0, 400)));
+  await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded' });
+  await p.waitForFunction('window.__game', null, { timeout: 300000 });
+  await p.evaluate(() => { window.requestAnimationFrame = () => 0; });
+  const r = await p.evaluate(n => {
+    const g = window.__game, out = [], keep = g.KEEP === 'left' ? 1 : -1;
+    g.advance(2);
+    const x0 = g.player.x, y0 = g.player.y;
+    for (let k = 0; k < 2 * n; k++) {
+      // a kerb somewhere within 400 m of the start
+      const a = Math.random() * 2 * Math.PI, d = 50 + Math.random() * 350;
+      const pl = g.roads.place(x0 + Math.sin(a) * d, y0 + Math.cos(a) * d, 120, keep);
+      if (!pl) continue;
+      const nx = pl.x, ny = pl.y;
+      Object.assign(g.player, { x: nx, y: ny }); g.advance(4); // (the traffic settles round you)
+      const hail = k % 2 === 0;
+      if (hail) g.hail(); else { const ds = g.destinations(g.player.x, g.player.y); g.orderRide(ds[0]); }
+      const o = g.ride();
+      if (!o || o.phase !== 'coming') { out.push({ k, hail, none: true }); if (o) g.cancelRide(); continue; }
+      const upd = o.drv.update; let calls = 0; o.drv.update = function (...a) { calls++; return upd.apply(this, a); };
+      g.advance(0.5);
+      const said = g.rideEta ? g.rideEta() + 0.5 : 0, why = {};
+      let t = 0.5;
+      for (; t < 80 && o.phase === 'coming'; t += 0.5) {
+        g.advance(0.5);
+        const st = o.drv.st;
+        if (st.v < 0.5) { const w = (st.why || '?').replace(/[\d.]+ m(\/s)?/, '').trim(); why[w] = (why[w] || 0) + 0.5;
+          if (why[w] === 8 && w === 'gap') { const bl = st.block; why.gapDetail = `d ${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} left ${(st.end - st.s).toFixed(0)} held ${(st.held||0).toFixed(0)} pass ${st.pass.toFixed(1)} block ${bl ? `${bl.line != null ? 'car' : 'other'} v ${(bl.v||0).toFixed(1)} why ${bl.why || ''} still ${bl.still ? (typeof bl.still === 'number' ? bl.still.toFixed(0) : 'yes') : 'no'} toLine ${bl.toLine != null ? bl.toLine.toFixed(0) : '-'} q ${bl.q ? 1 : 0}` : 'none'}`; }
+          if (why[w] === 8 && w === 'ahead') { const fp = g.cars.footprint(st.x, st.y, st.z, st.h, o.C.half, o.C.hw, 0.1); why.detail = `calls ${calls} v ${st.v.toFixed(2)} s ${st.s.toFixed(1)} done ${st.done} brake ${st.brake} shift ${st.shift.toFixed(2)} pass ${st.pass.toFixed(2)} d ${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} left ${(st.end - st.s).toFixed(0)} wedged ${(st.wedged || 0).toFixed(1)} fp ${fp.toFixed(2)} held ${(st.held||0).toFixed(0)} stall ${(st.stall||0).toFixed(1)} phase ${o.phase}`; } }
+      }
+      out.push({ k, hail, said: +said.toFixed(0), t, sig: (o.sig || []).length, stops: why, late: o.T0 != null ? +(t - o.T0).toFixed(0) : null });
+      g.cancelRide(); g.advance(2);
+    }
+    return out;
+  }, +trials);
+  const done = r.filter(x => !x.none);
+  for (const x of r) console.log(JSON.stringify(x));
+  for (const kind of [true, false]) {
+    const ts = done.filter(x => x.hail === kind).map(x => x.t).sort((a, b) => a - b);
+    console.log(`${kind ? 'hail ' : 'order'}: n ${ts.length}, over 30 s: ${ts.filter(t => t > 30).length}, median ${ts[Math.floor(ts.length / 2)]}, max ${ts[ts.length - 1]}`);
+  }
+  await b.close();
+  const late = done.filter(x => x.t > 30).length;
+  process.exit(late > done.length / 10 ? 1 : 0);
+})();

@@ -91,7 +91,9 @@ MATERIALS = {
     # paving laid over a roof: drawn in front of it (web/world.js)
     "paving": {"color": "#b39684", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 1.5], "decal": True},
     "granite_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser"},
-    "steel": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4},
+    # the arch after dark: lit from the deck and the pylons, a soft wash fading towards the crown
+    # (the steel under the deck stays dark; "flood" is set from the bridge's heights in landmark_meshes)
+    "steel": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4, "emissive": "#f1e6d4", "glow": 0.2},
     "deck": {"color": "#5e6164", "roughness": 0.85, "metalness": 0.1, "pattern": "deck_zones", "zones": DECK_ZONES},
     "rail": {"color": "#55504a", "roughness": 0.4, "metalness": 0.8},
     "railing": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.4, "pattern": "railing", "bar_m": 0.13, "rails_m": [0.08, 1.25]},
@@ -476,15 +478,17 @@ def landmark_meshes(scene):
         for hall, st in o["upper_steps"].items():
             meshes += steps_mesh(st, f"opera_steps_{hall}")
         meshes += podium_mesh(o)
+    mats = {k: dict(v) for k, v in MATERIALS.items()}
     if "harbour_bridge" in lm:
         meshes += harbour_bridge(lm["harbour_bridge"])
+        mats["steel"]["flood"] = [lm["harbour_bridge"]["deck_m"], lm["harbour_bridge"]["crown_m"], 0.6, 0.55]
     if "sydney_tower" in lm:
         meshes += sydney_tower(lm["sydney_tower"])
     extra = {}
     if "bennelong" in lm:
         m, extra = bennelong_meshes(lm["bennelong"], lm.get("opera_house"), scene.get("ground", []))
         meshes += m
-    return MATERIALS, meshes, extra
+    return mats, meshes, extra
 
 
 # ---------------------------------------------------------------- Opera House
@@ -779,7 +783,7 @@ def harbour_bridge(h):
         z_end = z_bear + end_depth
         return z_end + (z_crown - z_end) * (1 - (u / half) ** 2)
 
-    steel, deck = Mesh("bridge_steel", "steel", False), Mesh("bridge_deck", "deck", False, uv=True)
+    steel, deck = Mesh("bridge_steel", "steel", False, floodlit=True), Mesh("bridge_deck", "deck", False, uv=True)
     # the steel inside the deck's depth; named under the deck strip, whose slab the game uses for it
     under_steel = Mesh("bridge_deck_steel", "steel", False)
     us = np.linspace(-half, half, panels + 1)

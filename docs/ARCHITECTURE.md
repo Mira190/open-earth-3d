@@ -160,6 +160,7 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   the 5 m grid the waterline falls at the quay's edge rather than up to a cell
   inland. Without it Osaka's river walk along the Dotonbori went under the water.
   The water shader uses the same slopes for how much of the bottom shows.
+
   Sydney's map holds 25 sand and 220 rock polygons from Overture's land cover.
   Melbourne's sand is sports fields, away from the river.
 
