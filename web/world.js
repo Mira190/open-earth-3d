@@ -375,16 +375,81 @@ vec3 scrCell(float cell, vec2 uv) {
     const n = v => v.toFixed(1), last = (chunk, add) => chunk.replace(/#endif\s*$/, `\t${add}\n#endif`); // inside the outer USE_FOG block
     C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;');
     C.fog_vertex = last(FOG0.v, 'vEdgeXZ = ( transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) ).xz;');
-    C.fog_pars_fragment = last(FOG0.pf, 'varying vec2 vEdgeXZ;');
     // how far out into the haze a point is (0 inside, 1 at the frame and beyond); the camera's own
     // value lifts the near exemption once it is out there itself, at the frame's edge and past it,
     // so the sea in front of it hazes too. (Lifted from the band's inner edge, it hazed the whole
     // view from a tour stop a few hundred metres inside the frame: Shibuya's Sangenjaya and Suga
     // Shrine looked out through fog.)
     const out = (p, a = 0, b = fade) => `smoothstep( ${n(a)}, ${n(b)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
-    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfogFactor = max( fogFactor, ${out('vEdgeXZ')} * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} ) );
+    // Over the sea the frame ends nowhere in particular: where the frame's edge is open water, the
+    // surface carries on past it and the distance's own haze takes it to the horizon, darkening a
+    // little toward a distant sea's tone on the way; only where the edge is land does the water haze
+    // out with it. Which it is comes from seaOpen (below), the shoreline along the band's inner edge,
+    // blurred more the further out the point is, so the sea and the haze meet in a soft fan, not a
+    // line. Only the water's materials take it (OE_SEA, uSeaOpen).
+    const c = `vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} )`, hx = w / 2 - fade, hz = h / 2 - fade;
+    C.fog_pars_fragment = last(FOG0.pf, `varying vec2 vEdgeXZ;
+#ifdef OE_SEA
+	uniform sampler2D uSeaOpen;
+	// where a point on the band's inner edge (relative to the frame's centre) lies along it, metres from its north-west corner, clockwise
+	float oePerim( vec2 q ) {
+		if ( q.y <= ${n(0.5 - hz)} ) return q.x + ${n(hx)};
+		if ( q.x >= ${n(hx - 0.5)} ) return ${n(2 * hx + hz)} + q.y;
+		if ( q.y >= ${n(hz - 0.5)} ) return ${n(3 * hx + 2 * hz)} - q.x;
+		return ${n(4 * hx + 3 * hz)} - q.y;
+	}
+#endif`);
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfloat oeEdge = ${out('vEdgeXZ')};
+#ifdef OE_SEA
+	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
+	  float oeOpen = oePast > 0.0 ? texture2D( uSeaOpen, vec2( oePerim( clamp( oeP, - oeH, oeH ) ) / ${n(4 * (hx + hz))}, min( oePast / ${SEA_OPEN_FAR.toFixed(1)}, 1.0 ) ) ).r : 0.0;
+	  oeEdge *= 1.0 - oeOpen;
+	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
+#endif
+	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} ) );
 	gl_FragColor.rgb`);
     return fade;
+  }
+  // The open sea along the edge haze's inner band, for the water's fog (edgeHaze): a texture with
+  // the band's perimeter across (from its north-west corner, clockwise) and the distance past it
+  // down (0 to SEA_OPEN_FAR m), 1 where the band meets open water in shore.png and 0 where it meets
+  // land, blurred along the perimeter by 80 m plus 0.8 m for each metre further out.
+  const SEA_OPEN_FAR = 16000;
+  function seaOpen(frame, fade, img, sh) {
+    const N = 1024, L = 16, hx = (frame.x[1] - frame.x[0]) / 2 - fade, hz = (frame.y[1] - frame.y[0]) / 2 - fade;
+    const cx = (frame.x[0] + frame.x[1]) / 2, cy = (frame.y[0] + frame.y[1]) / 2, P = 4 * (hx + hz), step = P / N;
+    const cv = document.createElement('canvas');
+    cv.width = img.width; cv.height = img.height;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, cv.width, cv.height).data, W = sh.nx * sh.cell, H = sh.ny * sh.cell;
+    const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const open = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      let s = (i + 0.5) * step, x, y; // y north, relative to the centre
+      if (s < 2 * hx) { x = s - hx; y = hz; } else if ((s -= 2 * hx) < 2 * hz) { x = hx; y = hz - s; }
+      else if ((s -= 2 * hz) < 2 * hx) { x = hx - s; y = -hz; } else { s -= 2 * hx; x = -hx; y = s - hz; }
+      const u = (cx + x - sh.x0) / W, v = (sh.y1 - (cy + y)) / H;
+      if (u < 0 || v < 0 || u >= 1 || v >= 1) { open[i] = 1; continue; } // past the map, open water (water.js shoreAt)
+      const r = px[4 * (Math.floor(v * cv.height) * cv.width + Math.floor(u * cv.width))];
+      open[i] = smooth(-10, 40, (r - 128) * 0.5);
+    }
+    const data = new Uint8Array(N * L * 4);
+    for (let k = 0; k < L; k++) {
+      const half = Math.max(1, Math.round((80 + 0.8 * SEA_OPEN_FAR * k / (L - 1)) / step));
+      for (let i = 0; i < N; i++) {
+        let a = 0, wsum = 0;
+        for (let j = -half; j <= half; j++) { const wt = 1 - Math.abs(j) / (half + 1); a += wt * open[((i + j) % N + N) % N]; wsum += wt; }
+        const o = smooth(0, 1, a / wsum), at = 4 * (k * N + i);
+        data[at] = data[at + 1] = data[at + 2] = Math.round(o * 255); data[at + 3] = 255;
+      }
+    }
+    const t = new THREE.DataTexture(data, N, L, THREE.RGBAFormat);
+    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+    t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+    return t;
   }
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
@@ -452,18 +517,28 @@ vec3 photoGrade(vec3 c) {
     // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
     su.twilight = { value: new THREE.Color(0, 0, 0) };
     sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
-      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform float uGold, uGoldBeltK; uniform vec3 uGoldWarm, uGoldCool, uGoldCream, uGoldBelt;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
       .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );' +
         // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
         // (the game sets it, atmosphere.js), and the last few degrees above the horizon go into the
         // haze the model's edge fades into (setSun)
         '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
+        // golden hour (setSun): with the sun a few degrees up the Preetham sky is a flat grey-beige, where the
+        // real one is amber toward the sun along the horizon, a warm cream low all round, blue overhead, with a
+        // peach band (the Belt of Venus) low across from it once the sun is down. The sky keeps its brightness and takes that hue (uGold, 0..1).
+        '\n { float gL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );' +
+        '\n   vec2 gD = direction.xz / max( length( direction.xz ), 1e-4 ), gS = vSunDirection.xz / max( length( vSunDirection.xz ), 1e-4 );' +
+        '\n   float gTo = pow( clamp( 0.5 + 0.5 * dot( gD, gS ), 0.0, 1.0 ), 2.0 ), gLow = 1.0 - smoothstep( 0.0, 0.5, max( direction.y, 0.0 ) ), gBand = 1.0 - smoothstep( 0.0, 0.12, max( direction.y, 0.0 ) );' +
+        '\n   vec3 gHue = mix( uGoldCool, uGoldCream, 0.9 * gBand );' +
+        '\n   gHue = mix( mix( gHue, uGoldBelt, uGoldBeltK * gLow * gLow * ( 1.0 - gTo ) ), uGoldWarm, gTo * mix( 0.25, 1.0, gLow * gLow ) );' +
+        '\n   gl_FragColor.rgb = mix( gl_FragColor.rgb, gHue / dot( gHue, vec3( 0.2126, 0.7152, 0.0722 ) ) * gL, uGold ); }' +
         // after dark, the night sky of a city (setSun): deep blue overhead, the city's glow low down
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( uNightHorizon, uNightZenith, pow( clamp( direction.y, 0.0, 1.0 ), 0.6 ) ), uNightSky );' +
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
     Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 },
-      uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
+      uGold: { value: 0 }, uGoldBeltK: { value: 0 }, uGoldWarm: { value: new THREE.Color(1.0, 0.6, 0.3) }, uGoldCool: { value: new THREE.Color(0.24, 0.48, 1.0) }, uGoldCream: { value: new THREE.Color(1.0, 0.8, 0.6) },
+      uGoldBelt: { value: new THREE.Color(0.86, 0.68, 0.7) }, uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
       .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
@@ -617,6 +692,17 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     waterGeo.rotateX(-Math.PI / 2);
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
+    // past the frame's edge where it is open water, the sea carries on to the horizon (edgeHaze)
+    if (shoreTex && shoreTex.image) {
+      try {
+        const so = { value: seaOpen(scene.frame, edgeFade, shoreTex.image, scene.shore) };
+        for (const m of [water.material, waterMat]) {
+          const ob = m.onBeforeCompile;
+          m.defines = Object.assign({}, m.defines, { OE_SEA: '' });
+          m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
+        }
+      } catch (e) { console.warn('water: no open sea past the edge', e); }
+    }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
 
@@ -914,11 +1000,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
         sunLight.visible = sp.altitude > -0.5;
-        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
+        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 7, sp.altitude); // full a little sooner: a low sun still rakes the city with gold
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
         const tw = smooth(-11, -4, sp.altitude) * (1 - smooth(-2, 3, sp.altitude));
         su.twilight.value.copy(TWI_SKY).multiplyScalar(tw);
+        // golden hour: the sun from just under the horizon to about 12 degrees up (the sky shader's uGold)
+        su.uGold.value = 0.88 * smooth(-3, 0.5, sp.altitude) * (1 - smooth(5, 13, sp.altitude));
+        su.uGoldBeltK.value = 1 - smooth(-1, 3, sp.altitude);
         // a city's own night glow (neon, street light); with the street lights drawn (night.js), the
         // night's own light is the moon's and the sky's, and the lamps light the streets themselves
         const amb = ((D.scene.city && D.scene.city.night_ambient) || 0) * (night ? 0.25 : 1);
