@@ -10,6 +10,9 @@ Building adjustments (called by pipeline/build_scene.py):
   * Arc de Triomphe and the Louvre Pyramid: their solids are kept for the sun analyses
     and drawn as landmarks instead (the arch's openings, the pyramid's glass).
   * Colonne Vendôme: OSM tags it with a mansard roof; it is a column.
+  * Opéra Garnier: OSM maps its roofs, dome and stage house as parts with a min_height of
+    29 to 55 m and only a small part from the street, so the building floated over Place de
+    l'Opéra. Every part stands on the ground: the house is solid stone below its roofs.
 
 Parametric landmarks (called by pipeline/landmarks.py), placed with anchors measured from
 the data:
@@ -56,6 +59,7 @@ ARC = {"height": 49.5, "width": 45.0, "depth": 22.0, "arch_h": 29.19, "arch_w": 
 PYRAMID = {"height": 21.6, "base": 35.4}
 SPIRE_M = 96.0
 NOTRE_DAME = "Cathédrale Notre-Dame de Paris"
+OPERA = "Opéra Garnier"
 # published span counts (Wikipedia, each bridge's article)
 SPANS = {"Pont Neuf": None, "Pont Royal": 5, "Pont de la Concorde": 5, "Pont Alexandre III": 1, "Pont des Arts": 7,
          "Pont Saint-Michel": 3, "Pont Marie": 5, "Pont d'Iéna": 5, "Pont d'Arcole": 1, "Pont au Double": 1, "Pont Saint-Louis": 1,
@@ -104,6 +108,9 @@ def adjust_building(b, cls, g, geoms, ctx):
         for gm in geoms:
             if len(gm) > 5 and isinstance(gm[5], dict):
                 gm[5]["roof_shape"] = None
+    if b.get("name") == OPERA:
+        for gm in geoms:
+            gm[1] = 0.0
     if b.get("name") in ("Arc de Triomphe", "Pyramide du Louvre"):
         key = "arc_de_triomphe" if b["name"] == "Arc de Triomphe" else "louvre_pyramid"
         mr = np.asarray(g.minimum_rotated_rectangle.exterior.coords)[:4]
