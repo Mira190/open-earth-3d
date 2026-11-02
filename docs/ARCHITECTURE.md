@@ -150,11 +150,19 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   - blue is rock or a mapped cliff, the same way.
 
   There is no open bathymetry for the harbour or the river, so each water cell's
-  depth is its distance to the nearest shore times a slope for that kind of
-  shore, down to 4 m:
+  depth is modelled from its distance to the nearest shore and a slope for that
+  kind of shore, down to 4 m:
   - 0.04 off a beach;
   - 0.25 off rock;
   - 1.0 off a seawall or any other built edge.
+
+  Every kind reaches the 4 m floor by 60 m out (`shore.py` `REACH_M`, `water.js`
+  `SHORE_REACH`): a beach keeps its slope at the waterline and curves down to the
+  floor, inside the ±64 m that red encodes. Beyond that the kind of the nearest
+  shore no longer shows. On a straight slope the water off a beach stayed 2.5 m
+  deep out across the bay, in a pale wedge for every stretch of sand (issue 39).
+  Along the frame's edge haze the water closes over the bottom, which hazes out
+  there while open sea above it does not.
 
   The first grid point out from the land is at most 0.3 m deep (a shelf), so on
   the 5 m grid the waterline falls at the quay's edge rather than up to a cell

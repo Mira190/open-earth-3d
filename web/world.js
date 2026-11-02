@@ -751,7 +751,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       try {
         const sh = scene.shore;
         sea = OEWater.create(renderer, scene.water || {}, shoreTex && { texture: shoreTex, x0: sh.x0, y1: sh.y1, w: sh.nx * sh.cell, h: sh.ny * sh.cell, slopes: sh.slopes, floor_m: sh.floor_m },
-          { small, software: OEWater.software(renderer), quality });
+          { small, software: OEWater.software(renderer), quality, edge: edgeFade });
       } catch (e) { console.warn('water: falling back to the flat sheet', e); sea = null; }
     }
     function rippleTexture() {

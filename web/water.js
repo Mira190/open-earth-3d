@@ -315,7 +315,7 @@ vec3 oeGlitter(vec3 spec, vec2 xz, float camD, float lostK, float t) {
   // ---------------------------------------------------------------- the water
   // cfg: city.json "water" block ("waves", "colour", "shallow_colour", "clarity_m"); shore:
   // { texture, x0, y1, w, h, slopes, floor_m } in local metres (scene.json "shore"), or null;
-  // opts: { world, small, software, quality }
+  // opts: { world, small, software, quality, edge: the width of the edge haze at the frame, m (world.js edgeHaze) }
   function create(renderer, cfg, shore, opts) {
     const W = cfg.waves || {}, small = !!opts.small, soft = !!opts.software;
     // wind from a compass bearing (where it blows from) to the direction the waves travel, in three.js x-z
@@ -338,13 +338,14 @@ vec3 oeGlitter(vec3 spec, vec2 xz, float camD, float lostK, float t) {
       uScatter: { value: cfg.scatter ?? 0.12 + 0.88 * Math.min(1, Math.max(0, (2.0 - (cfg.clarity_m ?? 4)) / 1.6)) },
       uClarity: { value: cfg.clarity_m ?? 4 }, uSlopes: { value: new THREE.Vector3(...['sand', 'rock', 'built'].map(k => (shore && shore.slopes || {})[k] ?? { sand: 0.04, rock: 0.25, built: 1 }[k])) },
       uFloor: { value: shore && shore.floor_m || 4 },
+      uEdge: { value: opts.edge || 0 },
       uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 },
       uWake: { value: null }, uWakeBox: { value: new THREE.Vector4(0, 0, 1, 0) }
     };
     const C = sizes.length;
     const COMMON = `
 uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind;
-uniform vec4 uShoreBox; uniform vec3 uDeep, uShallow, uSlopes; uniform float uScatter; uniform sampler2D uRefl; uniform mat4 uReflMat;
+uniform vec4 uShoreBox; uniform float uEdge; uniform vec3 uDeep, uShallow, uSlopes; uniform float uScatter; uniform sampler2D uRefl; uniform mat4 uReflMat;
 uniform sampler2D uWake; uniform vec4 uWakeBox;
 // the wake field (x, z of its centre, its size, on): foam drawn by passing vessels
 float wakeAt(vec2 xz) {
@@ -353,8 +354,10 @@ float wakeAt(vec2 xz) {
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return 0.0;
   return texture(uWake, uv).r;
 }
-// shore.png: r signed distance to the shoreline (0.5 m per level, 128 = shore, water positive),
-// g sand, b rock; outside the map it is open water
+// shore.png: r signed distance to the shoreline (0.5 m per level, 128 = shore, water positive,
+// to 63.5 m), g sand, b rock; outside the map it is open water. The modelled bottom reaches its
+// floor by SHORE_REACH metres out (pipeline/shore.py REACH_M)
+#define SHORE_REACH 60.0
 vec4 shoreAt(vec2 xz) {
   vec2 uv = vec2((xz.x - uShoreBox.x) / uShoreBox.z, (-xz.y - uShoreBox.y) / -uShoreBox.w);
   if (uShoreOn < 0.5 || any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return vec4(64.0, 0.0, 0.0, 0.0);
@@ -421,19 +424,27 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   float wakeFoam = smoothstep(0.05, 0.7, wk) * wakeLace;
   wFoam = clamp(smoothstep(0.25, 1.0, foam) + shoreFoam + wakeFoam, 0.0, 1.0);
   // the modelled depth of pipeline/shore.py (no bathymetry), through which the bottom shows:
-  // the distance to the shore times the slope for its kind (sand, rock or built), to a floor
-  float wd = sh0.w > 0.5 ? min(uFloor, max(sh0.x, 0.0) * mix(mix(uSlopes.z, uSlopes.y, sh0.z), uSlopes.x, sh0.y)) : 30.0;
+  // from the shoreline at the slope for its kind (sand, rock or built), curving down to reach the
+  // floor by SHORE_REACH whatever the kind. shore.png encodes the distance only to 63.5 m, and a
+  // beach's gentle slope alone would leave the water shallow beyond it all the way out, in a wedge
+  // for every stretch of sand that is the nearest shore (issue 39)
+  float dSh = max(sh0.x, 0.0), sSh = mix(mix(uSlopes.z, uSlopes.y, sh0.z), uSlopes.x, sh0.y);
+  float wd = sh0.w > 0.5 ? min(uFloor, sSh * dSh + max(0.0, uFloor - sSh * SHORE_REACH) * (dSh / SHORE_REACH) * (dSh / SHORE_REACH)) : 30.0;
   vec3 V = normalize(cameraPosition - vec3(vXZ.x, 0.0, vXZ.y));
   float path = wd / max(V.y, 0.15);
   wAlpha = clamp(1.0 - exp(-path / uClarity), 0.0, 1.0);
-  // murky water hides the bottom off seawalls and mostly off rock; beaches show their sand
-  wAlpha = max(wAlpha, mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y) * sh0.w);
+  // murky water hides the bottom off seawalls and mostly off rock; beaches show their sand. Out
+  // where the floor is reached, the kind of the nearest shore no longer shows
+  float shFar = smoothstep(0.5 * SHORE_REACH, SHORE_REACH, sh0.x);
+  wAlpha = max(wAlpha, mix(mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y), 0.9, shFar) * sh0.w);
   wAlpha = max(wAlpha, wFoam);
   // towards the edge of the shore map (the model's frame) the water closes over the bottom, which is
-  // not drawn beyond it, so a sea that runs on past the frame shows no seam there
+  // not drawn beyond it, so a sea that runs on past the frame shows no seam there. It is closed
+  // across the whole of the edge haze (uEdge, world.js edgeHaze): the bottom hazes out there but
+  // open sea above it does not, and showed through as a pale strip along the frame (issue 39)
   vec2 sbUv = vec2((vXZ.x - uShoreBox.x) / uShoreBox.z, (-vXZ.y - uShoreBox.y) / -uShoreBox.w);
   float sbIn = min(min(sbUv.x, 1.0 - sbUv.x) * uShoreBox.z, min(sbUv.y, 1.0 - sbUv.y) * uShoreBox.w);
-  wAlpha = max(wAlpha, (1.0 - smoothstep(0.0, 300.0, sbIn)) * uShoreOn);
+  wAlpha = max(wAlpha, (1.0 - smoothstep(uEdge, uEdge + 300.0, sbIn)) * uShoreOn);
   // light scattered back out of the water column: a clear harbour gives back little and reads
   // dark; silt and clay in a turbid river (under 2 m of visibility) scatter it back, so the
   // river shows the brown of the aerial photo its colours were picked from
