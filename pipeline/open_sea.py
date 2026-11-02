@@ -5,7 +5,9 @@ the horizon. sea.jpg says where: a land and water mask SEA_HALF_M either side of
 centre (north up, x east), from Overture's base water theme (OpenStreetMap-derived, ODbL): its
 ocean polygons (OSM's coastline), bays and straits, less the islands mapped in them; and, for a
 city that draws its own rivers or lakes (city.json water.classes), the rivers, lakes, reservoirs
-and canals of at least INLAND_MIN_M2 too. A city that leaves its water to the aerial photo
+and canals of at least FLOW_MIN_M2 (mapped in many short pieces, which together reach the frame)
+and the lakes, reservoirs and other standing water of at least STILL_MIN_M2 (a pond a kilometre
+past the frame, crisp in the haze over land, reads as a dark blob floating there). A city that leaves its water to the aerial photo
 (Kyoto, Shibuya) stands well above the water plane, and its inland water past the frame is
 mostly hidden behind hills the model does not have (Lake Biwa behind Higashiyama).
 
@@ -39,8 +41,10 @@ SEA_HALF_M = 40000  # web/world.js SEA_HALF
 SEA_PX = 2048
 SOFT_M = (60, 450, 2200)  # Gaussian sigma of r, g and b, metres
 SEA_CLASSES = {"ocean", "sea", "bay", "strait"}
-INLAND_CLASSES = {"water", "river", "lake", "lagoon", "reservoir", "canal"}
-INLAND_MIN_M2 = 20000
+FLOW_CLASSES = {"river", "canal"}
+STILL_CLASSES = {"water", "lake", "lagoon", "reservoir"}
+INLAND_CLASSES = FLOW_CLASSES | STILL_CLASSES
+FLOW_MIN_M2, STILL_MIN_M2 = 20000, 1e6
 RELEASE_KEY = "overture_release"
 
 
@@ -79,7 +83,7 @@ def mask(C, rows):
         for p in polygons(g):
             if kind == "isle":
                 isles.append(p)
-            elif cls in SEA_CLASSES or (inland and p.area >= INLAND_MIN_M2):
+            elif cls in SEA_CLASSES or (inland and p.area >= (FLOW_MIN_M2 if cls in FLOW_CLASSES else STILL_MIN_M2)):
                 water.append(p)
     # Lakes and rivers drawn over the sea add nothing; islands cut out of it (a river or a bay can enclose them)
     wet = shapely.union_all(water) if water else shapely.Polygon()

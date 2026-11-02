@@ -298,7 +298,8 @@ The views switch in place, without reloading the page.
     of the frame's centre at about 39 m a pixel, from Overture's base water
     theme (OpenStreetMap's coastline and water, ODbL): the ocean, bays and
     straits, less the islands in them, and for a city that draws its own rivers
-    and lakes, those of at least 2 ha too (a JPEG without chroma subsampling).
+    and lakes, its rivers and canals from 2 ha and its lakes and reservoirs from
+    1 km² too (a JPEG without chroma subsampling).
     Its channels are the mask blurred by 60 m, 450 m and 2.2 km; the shader
     goes from red at the frame to green 2.5 km out and blue 9 km out, so near the
     frame the sea follows the real shore (North Sydney stays land, the harbour
@@ -307,7 +308,11 @@ The views switch in place, without reloading the page.
     tone at the frame to a distant shore's, a little darker and greener
     (`SEA_LAND`), which the distance's own fog takes back to the horizon, so an
     island or a headland out there reads as land in the haze rather than a pale
-    blob. Only the water's materials take it (`OE_SEA`). Until issue 57
+    blob. Only the water's materials take it (`OE_SEA`), and the haze makes
+    the water opaque, so nothing shows through it from below. The ground's photo
+    tiles are drawn only within the frame: their grid overhangs it by up to
+    800 m, which lay over the open sea past it and cut it off along a straight
+    line (Melbourne's bay). Until issue 57
     the edge was extruded: each point past the frame copied the shoreline at
     the frame, so the sea past it was straight bands with hard sides, sea where
     land should be, and streaks out from the corners.
