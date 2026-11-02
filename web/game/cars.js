@@ -699,7 +699,9 @@ window.OECars = (function () {
       // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
       // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
       if (st.held > 8 && gap < 0.5) want = Math.max(want, 1.5);
-      st.held = (st.v < 0.1 && gap < 4) || (st.held > 8 && gap < 0.5) ? st.held + dt : st.pass ? st.held : 0; // (kept while it drives round or creeps on)
+      // (counted while it crawls, and kept until it is under way: a car caught up with it turns round
+      // every few seconds, so the gap comes and goes)
+      st.held = st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
