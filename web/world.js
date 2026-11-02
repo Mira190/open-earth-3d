@@ -384,30 +384,6 @@ vec3 scrCell(float cell, vec2 uv) {
   // the screens' clock (seconds) and the hour, for their schedules (setSun, tick)
   const SCREEN = { t: { value: 0 }, hour: { value: 12 } };
 
-  // The golden hour. With the sun a few degrees up the Preetham sky is a flat grey-beige all round,
-  // and so was the haze the city fades into, where the real sky is warm low down towards the sun and
-  // a clear blue overhead and across from it. oeGolden takes a colour of the sky or of the haze over to
-  // those tints at its own brightness (each tint has a luminance of one), so it gains colour but never
-  // light, and adds a warm glow along the horizon on the sun's side. toward: the cosine between the
-  // bearing it is seen on and the sun's; up: the sine of its height above the horizon; g: how golden
-  // the hour is (setSun). The sky takes it from its own uniform, the hazes from GOLD (edgeHaze): the
-  // sun's bearing in three.js x, z and, in z, how golden the hour is.
-  const unitLum = c => c.multiplyScalar(1 / (0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b));
-  const unitVec3 = rgb => { const l = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2]; return `vec3( ${rgb.map(v => (v / l).toFixed(4)).join(', ')} )`; };
-  const GOLDEN = `vec3 oeGolden( vec3 c, float toward, float up, float g ) {
-	if ( g <= 0.0 ) return c;
-	float lum = dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ), side = smoothstep( -0.3, 1.0, toward );
-	vec3 warm = ${unitVec3([1.0, 0.6, 0.3])}, blue = ${unitVec3([0.32, 0.52, 0.85])};
-	c = mix( c, lum * mix( blue, warm, side * side * exp( -up * 4.0 ) ), g * mix( 0.68, 0.45, smoothstep( 0.0, 0.6, up ) ) );
-	return c + warm * lum * g * 0.45 * pow( max( toward, 0.0 ), 3.0 ) * exp( -up * 9.0 );
-}`;
-  // The haze's state, shared by every built-in material (edgeHaze adds these uniforms to three.js's
-  // shader library; UniformsUtils.clone passes a plain object or a typed array on by reference, so
-  // setSun's values reach them all): GOLD, the sun's bearing (x, z in three.js) and, in z, how golden
-  // the hour is; SEA, the colour of a distant sea; RIM, how much of each stretch of the frame's edge
-  // is open water (seaRim).
-  const GOLD = { x: 0, y: 1, z: 0, w: 0 }, SEA = { x: 0, y: 0, z: 0 }, RIM_N = 12, RIM = new Float32Array(4 * RIM_N);
-
   // build the scene into a new THREE.Scene; the caller owns the renderer and camera
   // The edge of the model: where the open data stops, the ground, the buildings and the
   // water fade into the haze over the last few hundred metres, and beyond the frame there
@@ -417,115 +393,86 @@ vec3 scrCell(float cell, vec2 uv) {
   // reflections included. The world position comes from the view matrix (rigid, so its
   // inverse is its transpose). Things within about 150 m of the camera stay clear, so you
   // can still stand near the edge.
-  //
-  // Where the frame cuts across open water the sea does not stop, and a short fade into the sky's
-  // pale haze drew a hard straight line across the dark water. So the haze takes its colour from
-  // where it is: the sky's haze along a stretch of the edge that is land, the colour of a distant
-  // sea (SEA, dark seen from above, bright seen low across it) along one that is open water (RIM,
-  // blended between the sides by how near each is). The water, and the ground under it that shows
-  // through it (materials that define OE_SEA_EDGE and OE_SEA_FLOOR), fade into it over SEA_FADES
-  // times the distance and then, over a few times that again, on into the sky's haze, so the sea runs
-  // on and softens; everything else fades as quickly as before, so the land still never ends in a
-  // visible cut, and where it reaches a sea edge it sinks into the sea's colour rather than into a
-  // pale patch. Both hazes, like the sky, take the golden hour (GOLDEN) on the bearing they are seen on.
   let FOG0 = null;
-  const SEA_FADES = 3;
   function edgeHaze(frame, near = 150) {
     const C = THREE.ShaderChunk;
     if (!FOG0) FOG0 = { pv: C.fog_pars_vertex, v: C.fog_vertex, pf: C.fog_pars_fragment, f: C.fog_fragment };
-    for (const k in THREE.ShaderLib) {
-      const u = THREE.ShaderLib[k].uniforms;
-      if (u && u.fogColor) Object.assign(u, { oeGold: { value: GOLD }, oeSeaHaze: { value: SEA }, oeRim: { value: RIM } });
-    }
-    const x0 = frame.x[0], x1 = frame.x[1], y0 = frame.y[0], y1 = frame.y[1], w = x1 - x0, h = y1 - y0;
-    const fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
+    const w = frame.x[1] - frame.x[0], h = frame.y[1] - frame.y[0], fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
     const n = v => v.toFixed(1), last = (chunk, add) => chunk.replace(/#endif\s*$/, `\t${add}\n#endif`); // inside the outer USE_FOG block
-    C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;\n#ifdef OE_SEA_FLOOR\n\tvarying float vEdgeY;\n#endif');
-    C.fog_vertex = last(FOG0.v, `vec3 oeWorld = transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz );
-	vEdgeXZ = oeWorld.xz;
-#ifdef OE_SEA_FLOOR
-	vEdgeY = oeWorld.y;
-#endif`);
-    // how far a point is beyond the line where the haze begins, fade inside the frame (three.js x, z)
-    const beyond = p => `length( max( abs( ${p} - vec2( ${n((x0 + x1) / 2)}, ${n(-(y0 + y1) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) )`;
-    // RIM: RIM_N stretches a side, clockwise from the north-west corner (the north side west to east,
-    // the east north to south, the south east to west, the west south to north); a point takes each
-    // side's value where it lies along it, the nearer sides counting for more
-    C.fog_pars_fragment = last(FOG0.pf, `varying vec2 vEdgeXZ;
-#ifdef OE_SEA_FLOOR
-	varying float vEdgeY;
-#endif
-	uniform vec4 oeGold; uniform vec3 oeSeaHaze; uniform vec4 oeRim[ ${RIM_N} ];
-	${GOLDEN}
-	float oeRimAt( int k ) { vec4 v = oeRim[ k / 4 ]; int c = k - 4 * ( k / 4 ); return c == 0 ? v.x : c == 1 ? v.y : c == 2 ? v.z : v.w; }
-	float oeRimLerp( int side, float t ) {
-		float f = clamp( t * ${RIM_N}.0 - 0.5, 0.0, ${RIM_N - 1}.0 ), a = fract( f );
-		int i = int( f ), j = min( i + 1, ${RIM_N - 1} );
-		return mix( oeRimAt( side * ${RIM_N} + i ), oeRimAt( side * ${RIM_N} + j ), a );
-	}
-	// a side's value at t along it, spread over b either way, so the line between sea and land blurs
-	float oeSide( int side, float t, float b ) { return ( oeRimLerp( side, t - b ) + 2.0 * oeRimLerp( side, t ) + oeRimLerp( side, t + b ) ) * 0.25; }
-	// how much of the frame's edge near p is open water: the nearer sides count for more, and the further
-	// out p is, the wider a stretch of each it takes in; a stretch half water counts as sea
-	float oeSeaness( vec2 p, float far ) {
-		float x = p.x, y = - p.y, bx = 0.5 * far / ${n(w)}, by = 0.5 * far / ${n(h)};
-		vec4 d = vec4( abs( ${n(y1)} - y ), abs( ${n(x1)} - x ), abs( y - ${n(y0)} ), abs( x - ${n(x0)} ) ) + ${n(fade)};
-		vec4 wt = 1.0 / ( d * d );
-		vec4 s = vec4( oeSide( 0, ( x - ${n(x0)} ) / ${n(w)}, bx ), oeSide( 1, ( ${n(y1)} - y ) / ${n(h)}, by ), oeSide( 2, ( ${n(x1)} - x ) / ${n(w)}, bx ), oeSide( 3, ( y - ${n(y0)} ) / ${n(h)}, by ) );
-		return smoothstep( 0.15, 0.55, dot( wt, s ) / ( wt.x + wt.y + wt.z + wt.w ) );
-	}`);
+    C.fog_pars_vertex = last(FOG0.pv, 'varying vec2 vEdgeXZ;');
+    C.fog_vertex = last(FOG0.v, 'vEdgeXZ = ( transpose( mat3( viewMatrix ) ) * ( mvPosition.xyz - viewMatrix[ 3 ].xyz ) ).xz;');
     // how far out into the haze a point is (0 inside, 1 at the frame and beyond); the camera's own
     // value lifts the near exemption when it is out there itself, so the sea in front of it hazes too
-    const out = p => `smoothstep( 0.0, ${n(fade)}, ${beyond(p)} )`;
-    // a haze on the bearing it is seen on, at the golden hour (at the horizon, as the sky's band of it)
-    const golden = c => `oeGolden( ${c}, oeToward, 0.0, oeGold.z )`;
-    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfloat oeNear = max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} );
-	float oeToward = dot( normalize( vEdgeXZ - cameraPosition.xz + 1e-6 ), oeGold.xy );
-	float oeOut = ${beyond('vEdgeXZ')}, oeSea = 0.0, oeWet = 0.0;
-	if ( oeOut > 0.0 ) oeSea = oeSeaness( vEdgeXZ, oeOut );
-#if defined( OE_SEA_EDGE )
-	oeWet = 1.0;
-#ifndef PREMULTIPLIED_ALPHA
-	gl_FragColor.a = max( gl_FragColor.a, smoothstep( 0.0, ${n(fade)}, oeOut ) ); // a see-through sheet closes over the bottom, as there is none beyond
+    const out = p => `smoothstep( 0.0, ${n(fade)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
+    // Over the sea the frame ends nowhere in particular: where the frame's edge is open water, the
+    // surface carries on past it and the distance's own haze takes it to the horizon, darkening a
+    // little toward a distant sea's tone on the way; only where the edge is land does the water haze
+    // out with it. Which it is comes from seaOpen (below), the shoreline along the band's inner edge,
+    // blurred more the further out the point is, so the sea and the haze meet in a soft fan, not a
+    // line. Only the water's materials take it (OE_SEA, uSeaOpen).
+    const c = `vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} )`, hx = w / 2 - fade, hz = h / 2 - fade;
+    C.fog_pars_fragment = last(FOG0.pf, `varying vec2 vEdgeXZ;
+#ifdef OE_SEA
+	uniform sampler2D uSeaOpen;
+	// where a point on the band's inner edge (relative to the frame's centre) lies along it, metres from its north-west corner, clockwise
+	float oePerim( vec2 q ) {
+		if ( q.y <= ${n(0.5 - hz)} ) return q.x + ${n(hx)};
+		if ( q.x >= ${n(hx - 0.5)} ) return ${n(2 * hx + hz)} + q.y;
+		if ( q.y >= ${n(hz - 0.5)} ) return ${n(3 * hx + 2 * hz)} - q.x;
+		return ${n(4 * hx + 3 * hz)} - q.y;
+	}
+#endif`);
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfloat oeEdge = ${out('vEdgeXZ')};
+#ifdef OE_SEA
+	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
+	  float oeOpen = oePast > 0.0 ? texture2D( uSeaOpen, vec2( oePerim( clamp( oeP, - oeH, oeH ) ) / ${n(4 * (hx + hz))}, min( oePast / ${SEA_OPEN_FAR.toFixed(1)}, 1.0 ) ) ).r : 0.0;
+	  oeEdge *= 1.0 - oeOpen;
+	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
 #endif
-#elif defined( OE_SEA_FLOOR )
-	oeWet = 1.0 - smoothstep( -0.4, 0.0, vEdgeY );
-#endif
-	// the haze of where it is: the sea's colour wherever the edge is much sea at all, so a headland the
-	// frame cuts sinks into the water round it rather than lying on it as a pale patch; the water (and
-	// what shows through it) fades into it slowly, the land as quickly as ever
-	float oeCol = smoothstep( 0.0, 0.35, oeSea );
-	float oeK = smoothstep( 0.0, mix( ${n(fade)}, ${n(fade * SEA_FADES)}, oeSea * oeWet ), oeOut ) * oeNear;
-	// a distant sea is dark seen from above and, seen low across it or towards a low sun, nearly as bright
-	// as the sky it mirrors
-	float oeGraze = 1.0 - smoothstep( 0.05, 0.4, max( cameraPosition.y, 1.0 ) / max( length( vEdgeXZ - cameraPosition.xz ), 1.0 ) );
-	oeGraze = max( oeGraze, oeGold.z * max( oeToward, 0.0 ) * max( oeToward, 0.0 ) );
-	gl_FragColor.rgb = mix( gl_FragColor.rgb, ${golden('oeSeaHaze * mix( 0.35, 0.8, oeGraze )')}, oeK * oeCol );
-	// and further out, and further from the eye, the air over that sea thickens into the sky's haze
-	float oeAir = max( smoothstep( ${n(fade * SEA_FADES * 0.5)}, ${n(fade * SEA_FADES * 2.5)}, oeOut ), oeK * smoothstep( 1000.0, 6000.0, vFogDepth ) );
-	fogFactor = max( fogFactor, min( 1.0, oeK * ( 1.0 - oeCol ) + oeCol * oeNear * oeAir ) );
-	gl_FragColor.rgb`).replace('fogColor, fogFactor', `${golden('fogColor')}, fogFactor`);
+	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz')} ) );
+	gl_FragColor.rgb`);
     return fade;
   }
-
-  // RIM from the shore field: the share of open water in each stretch of the frame's edge, over the
-  // band the haze covers inside it (a canal or a river mouth is a small share, a harbour a large one)
-  function seaRim(F, frame, cell) {
-    const x0 = frame.x[0], x1 = frame.x[1], y0 = frame.y[0], y1 = frame.y[1], w = x1 - x0, h = y1 - y0;
-    const band = Math.min(500, Math.max(250, 0.1 * Math.min(w, h))), step = Math.max(cell, 5);
-    RIM.fill(0);
-    const share = (ax, ay, bx, by) => { // the water in a box, sampled every step metres
-      let wet = 0, all = 0;
-      for (let y = Math.min(ay, by) + step / 2; y < Math.max(ay, by); y += step) for (let x = Math.min(ax, bx) + step / 2; x < Math.max(ax, bx); x += step) { all++; if (F.at(x, y) > 0) wet++; }
-      return all ? wet / all : 0;
-    };
-    for (let i = 0; i < RIM_N; i++) {
-      const a = i / RIM_N, b = (i + 1) / RIM_N;
-      RIM[i] = share(x0 + a * w, y1 - band, x0 + b * w, y1);                       // north, west to east
-      RIM[RIM_N + i] = share(x1 - band, y1 - a * h, x1, y1 - b * h);               // east, north to south
-      RIM[2 * RIM_N + i] = share(x1 - a * w, y0, x1 - b * w, y0 + band);           // south, east to west
-      RIM[3 * RIM_N + i] = share(x0, y0 + a * h, x0 + band, y0 + b * h);           // west, south to north
+  // The open sea along the edge haze's inner band, for the water's fog (edgeHaze): a texture with
+  // the band's perimeter across (from its north-west corner, clockwise) and the distance past it
+  // down (0 to SEA_OPEN_FAR m), 1 where the band meets open water in shore.png and 0 where it meets
+  // land, blurred along the perimeter by 80 m plus 0.8 m for each metre further out.
+  const SEA_OPEN_FAR = 16000;
+  function seaOpen(frame, fade, img, sh) {
+    const N = 1024, L = 16, hx = (frame.x[1] - frame.x[0]) / 2 - fade, hz = (frame.y[1] - frame.y[0]) / 2 - fade;
+    const cx = (frame.x[0] + frame.x[1]) / 2, cy = (frame.y[0] + frame.y[1]) / 2, P = 4 * (hx + hz), step = P / N;
+    const cv = document.createElement('canvas');
+    cv.width = img.width; cv.height = img.height;
+    const g = cv.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0);
+    const px = g.getImageData(0, 0, cv.width, cv.height).data, W = sh.nx * sh.cell, H = sh.ny * sh.cell;
+    const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const open = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      let s = (i + 0.5) * step, x, y; // y north, relative to the centre
+      if (s < 2 * hx) { x = s - hx; y = hz; } else if ((s -= 2 * hx) < 2 * hz) { x = hx; y = hz - s; }
+      else if ((s -= 2 * hz) < 2 * hx) { x = hx - s; y = -hz; } else { s -= 2 * hx; x = -hx; y = s - hz; }
+      const u = (cx + x - sh.x0) / W, v = (sh.y1 - (cy + y)) / H;
+      if (u < 0 || v < 0 || u >= 1 || v >= 1) { open[i] = 1; continue; } // past the map, open water (water.js shoreAt)
+      const r = px[4 * (Math.floor(v * cv.height) * cv.width + Math.floor(u * cv.width))];
+      open[i] = smooth(-10, 40, (r - 128) * 0.5);
     }
+    const data = new Uint8Array(N * L * 4);
+    for (let k = 0; k < L; k++) {
+      const half = Math.max(1, Math.round((80 + 0.8 * SEA_OPEN_FAR * k / (L - 1)) / step));
+      for (let i = 0; i < N; i++) {
+        let a = 0, wsum = 0;
+        for (let j = -half; j <= half; j++) { const wt = 1 - Math.abs(j) / (half + 1); a += wt * open[((i + j) % N + N) % N]; wsum += wt; }
+        const o = smooth(0, 1, a / wsum), at = 4 * (k * N + i);
+        data[at] = data[at + 1] = data[at + 2] = Math.round(o * 255); data[at + 3] = 255;
+      }
+    }
+    const t = new THREE.DataTexture(data, N, L, THREE.RGBAFormat);
+    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
+    t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
+    return t;
   }
 
   // shore.png (pipeline/shore.py) read back: the signed distance to the shoreline (m, water positive)
@@ -691,21 +638,28 @@ vec3 photoGrade(vec3 c) {
     // civil twilight: `twilight` (set in setSun) adds that blue, strongest toward the horizon.
     su.twilight = { value: new THREE.Color(0, 0, 0) };
     sky.material.fragmentShader = 'uniform vec3 twilight;\n' + sky.material.fragmentShader
-      .replace('varying float vSunE;', `varying float vSunE;\n varying float vSunfade;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;\n uniform float uGolden;\n${GOLDEN}`)
+      .replace('varying float vSunE;', 'varying float vSunE;\n varying float vSunfade;\n uniform float uGold, uGoldBeltK; uniform vec3 uGoldWarm, uGoldCool, uGoldCream, uGoldBelt;\n uniform vec3 uHaze; uniform float uHazeOn; uniform float uHazeH; uniform float uSkySat;\n uniform float uNightSky; uniform vec3 uNightZenith; uniform vec3 uNightHorizon;')
       .replace('vec3 texColor = ( Lin + L0 ) * 0.04 + sundiscColor', 'L0 += ( vSunE * 19000.0 * Fex ) * sundisc;\n vec3 texColor = ( Lin + L0 ) * 0.04')
       .replace('gl_FragColor = vec4( texColor, 1.0 );', 'gl_FragColor = vec4( pow( texColor, vec3( 1.0 / ( 1.2 + ( 1.2 * vSunfade ) ) ) ) + twilight * ( 0.45 + 0.55 * pow( 1.0 - max( direction.y, 0.0 ), 2.0 ) ), 1.0 );' +
         // that curve leaves the sky nearly white under a filmic tone curve: uSkySat gives the blue back
         // (the game sets it, atmosphere.js), and the last few degrees above the horizon go into the
         // haze the model's edge fades into (setSun)
         '\n gl_FragColor.rgb = max( mix( vec3( dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), gl_FragColor.rgb, uSkySat ), 0.0 );' +
+        // golden hour (setSun): with the sun a few degrees up the Preetham sky is a flat grey-beige, where the
+        // real one is amber toward the sun along the horizon, a warm cream low all round, blue overhead, with a
+        // peach band (the Belt of Venus) low across from it once the sun is down. The sky keeps its brightness and takes that hue (uGold, 0..1).
+        '\n { float gL = dot( gl_FragColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );' +
+        '\n   vec2 gD = direction.xz / max( length( direction.xz ), 1e-4 ), gS = vSunDirection.xz / max( length( vSunDirection.xz ), 1e-4 );' +
+        '\n   float gTo = pow( clamp( 0.5 + 0.5 * dot( gD, gS ), 0.0, 1.0 ), 2.0 ), gLow = 1.0 - smoothstep( 0.0, 0.5, max( direction.y, 0.0 ) ), gBand = 1.0 - smoothstep( 0.0, 0.12, max( direction.y, 0.0 ) );' +
+        '\n   vec3 gHue = mix( uGoldCool, uGoldCream, 0.9 * gBand );' +
+        '\n   gHue = mix( mix( gHue, uGoldBelt, uGoldBeltK * gLow * gLow * ( 1.0 - gTo ) ), uGoldWarm, gTo * mix( 0.25, 1.0, gLow * gLow ) );' +
+        '\n   gl_FragColor.rgb = mix( gl_FragColor.rgb, gHue / dot( gHue, vec3( 0.2126, 0.7152, 0.0722 ) ) * gL, uGold ); }' +
         // after dark, the night sky of a city (setSun): deep blue overhead, the city's glow low down
         '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, mix( uNightHorizon, uNightZenith, pow( clamp( direction.y, 0.0, 1.0 ), 0.6 ) ), uNightSky );' +
-        '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );' +
-        // and the golden hour (GOLDEN), over the haze too, as the haze over the city takes it (edgeHaze)
-        '\n gl_FragColor.rgb = oeGolden( gl_FragColor.rgb, dot( normalize( direction.xz + 1e-6 ), normalize( vSunDirection.xz + 1e-6 ) ), max( direction.y, 0.0 ), uGolden );');
+        '\n gl_FragColor.rgb = mix( gl_FragColor.rgb, uHaze, uHazeOn * ( 1.0 - smoothstep( -0.01, uHazeH, direction.y ) ) );');
     Object.assign(su, { uHaze: { value: new THREE.Color() }, uHazeOn: { value: 0 }, uHazeH: { value: 0.05 }, uSkySat: { value: 1 },
-      uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) },
-      uGolden: { value: 0 } });
+      uGold: { value: 0 }, uGoldBeltK: { value: 0 }, uGoldWarm: { value: new THREE.Color(1.0, 0.6, 0.3) }, uGoldCool: { value: new THREE.Color(0.24, 0.48, 1.0) }, uGoldCream: { value: new THREE.Color(1.0, 0.8, 0.6) },
+      uGoldBelt: { value: new THREE.Color(0.86, 0.68, 0.7) }, uNightSky: { value: 0 }, uNightZenith: { value: new THREE.Color(0.0028, 0.0075, 0.019) }, uNightHorizon: { value: new THREE.Color(0.03, 0.026, 0.024) } });
     // the sky sits on the far plane, which a reversed depth buffer (the game's) puts at 0, not 1
     sky.material.vertexShader = sky.material.vertexShader
       .replace('gl_Position.z = gl_Position.w;', '#ifdef USE_REVERSED_DEPTH_BUFFER\n\tgl_Position.z = 0.0;\n#else\n\tgl_Position.z = gl_Position.w;\n#endif');
@@ -728,7 +682,7 @@ vec3 photoGrade(vec3 c) {
     world.add(hemi);
     const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
-    edgeHaze(scene.frame);
+    const edgeFade = edgeHaze(scene.frame);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -744,11 +698,6 @@ vec3 photoGrade(vec3 c) {
         STEP = shore && seawallStep(shore, T, scene.shore, small ? 2 : 4); // a lighter lattice on a smaller device
       } catch (e) { console.warn('seawalls: the shoreline could not be read', e); shore = STEP = null; }
     }
-    // the haze over the sea where it runs on past the frame (edgeHaze): where the frame's edge is open
-    // water, and the water and the ground under it that fade into it slowly
-    RIM.fill(0);
-    if (shore) seaRim(shore, scene.frame, scene.shore.cell);
-    const seaEdged = (m, floor) => { if (shore) m.defines = Object.assign({}, m.defines, floor ? { OE_SEA_FLOOR: '' } : { OE_SEA_EDGE: '' }); };
     const groundMeshes = [];
     const PG = { value: new THREE.Vector4(0, 1, 1, 0) }, stats = photoStats();
     let tilesLeft = scene.ground.length;
@@ -909,7 +858,6 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
       const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ map: tex, roughness: 0.96, metalness: 0 }));
       m.material.onBeforeCompile = gradePhoto;
-      seaEdged(m.material, true);
       m.receiveShadow = true;
       world.add(m);
       groundMeshes.push(m);
@@ -955,13 +903,19 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     waterGeo.rotateX(-Math.PI / 2);
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
+    // past the frame's edge where it is open water, the sea carries on to the horizon (edgeHaze)
+    if (shoreTex && shoreTex.image) {
+      try {
+        const so = { value: seaOpen(scene.frame, edgeFade, shoreTex.image, scene.shore) };
+        for (const m of [water.material, waterMat]) {
+          const ob = m.onBeforeCompile;
+          m.defines = Object.assign({}, m.defines, { OE_SEA: '' });
+          m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
+        }
+      } catch (e) { console.warn('water: no open sea past the edge', e); }
+    }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
-    seaEdged(waterMat, false);
-    if (sea) seaEdged(sea.material, false);
-    // the colour of a distant sea (SEA): the haze over it with a little of the water's own hue (the fog
-    // chunk dims it by how steeply the sea is seen)
-    const seaHaze = new THREE.Color(), seaHue = unitLum(unitLum(lin((scene.water && scene.water.colour) || '#0f2b33')).lerp(new THREE.Color(1, 1, 1), 0.8)), grey = new THREE.Color();
 
     // ------------------------------------------------------------ buildings
     loadMsg(`Building ${B.b.length.toLocaleString()} buildings: walls, roofs and facades`, 0.5);
@@ -1260,15 +1214,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         const day = smooth(-5, 8, sp.altitude);
         api.day = day;
         sunLight.visible = sp.altitude > -0.5;
-        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 10, sp.altitude);
+        sunLight.intensity = Math.PI * 2.4 * smooth(-0.5, 7, sp.altitude); // full a little sooner: a low sun still rakes the city with gold
         sunLight.color.copy(warm).lerp(noonC, smooth(2, 30, sp.altitude));
         // the blue hour: the sun 0 to 8 degrees down, a blue sky and a blue light from it
         const tw = smooth(-11, -4, sp.altitude) * (1 - smooth(-2, 3, sp.altitude));
         su.twilight.value.copy(TWI_SKY).multiplyScalar(tw);
-        // the golden hour, from the sun just under the horizon to about twelve degrees up (GOLDEN)
-        su.uGolden.value = GOLD.z = smooth(-3, 1, sp.altitude) * (1 - smooth(6, 14, sp.altitude));
-        const hz = Math.hypot(api.sunDir.x, api.sunDir.z) || 1;
-        GOLD.x = api.sunDir.x / hz; GOLD.y = api.sunDir.z / hz;
+        // golden hour: the sun from just under the horizon to about 12 degrees up (the sky shader's uGold)
+        su.uGold.value = 0.88 * smooth(-3, 0.5, sp.altitude) * (1 - smooth(5, 13, sp.altitude));
+        su.uGoldBeltK.value = 1 - smooth(-1, 3, sp.altitude);
         // a city's own night glow (neon, street light); with the street lights drawn (night.js), the
         // night's own light is the moon's and the sky's, and the lamps light the streets themselves
         const amb = ((D.scene.city && D.scene.city.night_ambient) || 0) * (night ? 0.25 : 1);
@@ -1308,9 +1261,6 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         world.fog.near = fogBase[0] * (1 - 0.55 * su.uNightSky.value); world.fog.far = fogBase[1] * (1 - 0.3 * su.uNightSky.value);
         // by day the sky's own horizon; through dusk back to the night's blue, which the sky's red night horizon would not give
         if (api.skyHaze && hazeOk) su.uHaze.value.copy(world.fog.color.lerp(hazeC, smooth(0.15, 0.6, day)));
-        const fl = 0.2126 * world.fog.color.r + 0.7152 * world.fog.color.g + 0.0722 * world.fog.color.b;
-        seaHaze.copy(world.fog.color).lerp(grey.setScalar(fl), 0.35).multiply(seaHue); // a little greyer than the haze, so the two hues do not compound
-        SEA.x = seaHaze.r; SEA.y = seaHaze.g; SEA.z = seaHaze.b;
         su.uHazeH.value = 0.05 + 0.2 * (1 - day); // at night a deeper glow, as far from the dark sky's colour as it is
         if (newSky) {
           envKey = key;

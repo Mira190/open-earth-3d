@@ -52,7 +52,7 @@ else
   for f in $changed; do
     case "$f" in
       cities/*/*|web/data/*/*)
-        id=${f#*/}; id=${id%%/*}
+        id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
       web/reef/*) all_reefs ;;
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;

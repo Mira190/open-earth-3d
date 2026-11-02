@@ -245,25 +245,27 @@ The views switch in place, without reloading the page.
     shader takes back a share of that black level and restores some colour;
   - sky, sun and shadows. The shadow map follows the camera in whole texels
     along the sun's axes and changes size in steps, so shadow edges hold still
-    as the camera moves. With the sun from just under the horizon to about 12°
-    up, the Preetham sky is a flat grey-beige all round; a golden-hour term
-    (`GOLDEN` in `world.js`, the counterpart of the blue hour's `twilight`) takes
-    the sky and the haze over to a low sun's amber towards it and a clear blue
-    away from it, at their own brightness, so they gain colour but never light;
+    as the camera moves. The sky is three.js's Preetham sky (Sky.js, MIT) with
+    terms of our own: the blue hour (`twilight`), the night sky, and a golden
+    hour (`uGold`) from just under the horizon to about 12° up, where the
+    Preetham sky on its own is a flat grey-beige. That term keeps each pixel's
+    brightness and gives it the hue a clear golden hour has: amber along the
+    horizon toward the sun, blue overhead and away from it, and once the sun is
+    down a peach Belt of Venus low across from it;
   - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
     the fog colour, and beyond the frame there is only haze. It is three.js's fog
     chunks with the frame written in, so every fogged material takes it,
     reflections included. Within about 150 m of the camera it is held off, unless
-    the camera itself is outside the model. In the game and the viewer, the haze
-    takes the sky's colour at the horizon (read back from the sky when the sun
-    moves) and the sky's last few degrees fade into it, so the city meets the sky
-    without a band. Where the frame's edge is open water (the share of water
-    along each twelfth of each side, from `shore.png`), the sea does not stop: the
-    haze there is the colour of a distant sea (dark seen from above, nearly the
-    sky's brightness seen low across it or towards a low sun), the water and the
-    bottom under it fade into it over three times the distance and then on into
-    the sky's haze, and land the frame cuts there sinks into the sea's colour, so
-    there is no straight line across the water where the model ends.
+    the camera itself is outside the model. In the game, the haze takes the sky's
+    colour at the horizon (read back from the sky when the sun moves) and the
+    sky's last few degrees fade into it, so the city meets the sky without a band.
+    Over the sea the frame does not end: where its edge is open water in
+    `shore.png`, the water carries on past it to the horizon under the ordinary
+    distance fog, darkening a little toward a distant sea's tone, and only
+    behind land does it haze out with the edge. `seaOpen` measures the shoreline
+    along the band's inner edge once, into a small texture blurred more the
+    further out a point is, so the open sea and the haze behind land meet in a
+    soft fan rather than a line. Only the water's materials take it (`OE_SEA`).
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
