@@ -672,8 +672,8 @@ walker, the car and the helicopter, so it never runs through a building, off a
 drop or into the water.
 
 - **On foot:** over a network built from the mapped footways and streets, behind
-  the title screen in slices (about a second and a half of work in Amsterdam,
-  three in Paris):
+  the title screen in slices (a second and a half of work in Amsterdam on a
+  desktop, two in Paris; the line shows once it is done):
   - the lines are split where they cross at about the same height (not where a
     bridge passes over a street) and where one ends on another, so a route can
     turn there;
