@@ -1617,7 +1617,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const settings = { route: true, density: 'normal' };
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
-  const cam = { yaw: 0, pitch: 0.36, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1 };
+  const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1 };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden;
   const k = c => keys.has(c);
@@ -2320,7 +2320,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       reach.push(last);
     }
     const R = reach.sort((a, b) => a - b)[8];
-    const D = spec.dist || THREE.MathUtils.clamp(Math.max(tall * 1.4, R * 2.2 + 40), 45, 520), aim = g + tall * 0.6;
+    const D = spec.dist || THREE.MathUtils.clamp(Math.max(tall * 1.4, R * 2.2 + 40), 45, 520);
     // off its front: 0 straight in front, rising to 0.45 at the edge of the arc, and out of it altogether beyond
     const arc = (spec.arc ?? 70) * Math.PI / 180, front = spec.front != null ? spec.front * Math.PI / 180 : null;
     const aside = (px, py) => {
@@ -2329,32 +2329,45 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       return off > arc ? Infinity : 0.45 * (1 - Math.cos(off)) / (1 - Math.cos(arc));
     };
     const day = sun && sun.altitude > 2, sx = day ? Math.sin(sun.azimuth * Math.PI / 180) : 0, sy = day ? Math.cos(sun.azimuth * Math.PI / 180) : 0;
-    // what a spot (px, py) at height pz offers: how much of the landmark it sees and the sun behind you. Four lines
-    // of sight from eye height, every 4 m up to the landmark's own edge: to its upper part, to either side of it
-    // low down (as wide as its high part runs, so a slot down a street between office blocks, which sees a sliver
-    // of its top, scores below a square or a riverbank that sees it whole) and to its lower part
-    const wide = THREE.MathUtils.clamp(R * 0.6, 8, 60), low = g + tall * 0.35;
-    const ray = (px, py, eye, tx, ty, tz) => {
-      const d = Math.hypot(tx - px, ty - py), run = Math.max(8, d - Math.max(15, R)), n = Math.max(2, Math.ceil(run / 4));
-      for (let k = 1; k <= n; k++) {
-        const t = k / n * run / d, qx = px + (tx - px) * t, qy = py + (ty - py) * t, line = eye + (tz - eye) * t;
-        if (dsmAt(qx, qy) > line + 0.5 || treesNear(qx, qy, 0).some(tr => tr[2] > line)) return (k - 1) / n; // a building, or through a crown
+    const body = bodyOf(lm, g, top);
+    // what the camera behind you sees of the landmark from a spot (px, py, pz), facing it: the share of its body
+    // in frame and in sight (through the surface model, and the tree crowns when asked), how much was cut off
+    // by the frame's edges (and of its upper third off the top), and how much of the frame's height the part in
+    // sight fills. The camera stands where the chase rig puts it: 7.5 m behind your head, a little to the side, at
+    // the pitch (and the tilt up) that takes in its top.
+    const aspect = Math.max(0.4, camera.aspect || 1.6), tanV = Math.tan(BASE_FOV / 2 * Math.PI / 180), tanH = tanV * aspect;
+    const view = (px, py, pz, crowns, fixed = null) => {
+      const face = Math.atan2(x - px, y - py), yaw = face + 0.12, hz = pz + 1.55;
+      let el = -Infinity; // the highest point of it, seen from your head, sets the pitch: its top a little under the frame's top edge
+      for (const q of body.pts) el = Math.max(el, Math.atan2(q[2] - hz, Math.max(1, Math.hypot(q[0] - px, q[1] - py) + 7.5)));
+      // a camera under your head would be in the ground: it stays a little over it and tilts up instead (cam.tilt),
+      // as far as keeps you in the frame
+      const want = fixed ?? Math.atan(tanV * 0.78) - el, pitch = THREE.MathUtils.clamp(want, 0.06, 0.16), tilt = THREE.MathUtils.clamp(pitch - want, 0, 0.26);
+      const cp = Math.cos(pitch), cx = px - Math.sin(yaw) * cp * 7.5, cy = py - Math.cos(yaw) * cp * 7.5;
+      const cz = Math.max(hz + Math.sin(pitch) * 7.5, Math.max(0, nav.terrain(cx, cy)) + 0.5);
+      const he = Math.atan2(hz - cz, Math.hypot(px - cx, py - cy)) + tilt, hh = Math.atan2(px - cx, py - cy);
+      const fx = Math.sin(hh) * Math.cos(he), fy = Math.cos(hh) * Math.cos(he), fz = Math.sin(he);
+      let rx = fy, ry = -fx; const rl = Math.hypot(rx, ry) || 1; rx /= rl; ry /= rl; // right, level
+      const ux = ry * fz, uy = -rx * fz, uz = rx * fy - ry * fx; // up = right x forward
+      let seen = 0, cut = 0, lo = Infinity, hi = -Infinity, over = 0;
+      for (let k = 0; k < body.pts.length; k++) {
+        const q = body.pts[k], wk = body.w[k], dx = q[0] - cx, dy = q[1] - cy, dz = q[2] - cz, zf = dx * fx + dy * fy + dz * fz;
+        if (zf < 2) { cut += wk; if (q[2] >= body.high) over++; continue; }
+        const u = (dx * rx + dy * ry) / (zf * tanH), v = (dx * ux + dy * uy + dz * uz) / (zf * tanV);
+        if (q[2] >= body.high && v > 0.97) over++; // its upper part off the top of the frame, hidden or not
+        if (!sightTo(cx, cy, cz, q, body, crowns)) continue;
+        if (Math.abs(u) > 0.97 || Math.abs(v) > 0.97) { cut += wk; continue; }
+        seen += wk; lo = Math.min(lo, v); hi = Math.max(hi, v);
       }
-      return 1;
+      const n = body.wSum;
+      return { face, pitch, tilt, seen: seen / n, cut: cut / n, over: over / body.nHigh, fill: seen ? (hi - lo) / 2 : 0 };
     };
-    const sight = (px, py, pz) => {
-      const d = Math.hypot(x - px, y - py), eye = pz + 1.6, ux = (y - py) / d, uy = -(x - px) / d; // across the line of sight
-      const clear = 0.4 * ray(px, py, eye, x, y, aim) + 0.2 * ray(px, py, eye, x + ux * wide, y + uy * wide, Math.max(low, eye))
-        + 0.2 * ray(px, py, eye, x - ux * wide, y - uy * wide, Math.max(low, eye)) + 0.2 * ray(px, py, eye, x, y, Math.max(low, eye));
-      return clear + (day ? 0.25 * Math.max(0, -((x - px) * sx + (y - py) * sy) / d) : 0);
-    };
-    const frame = (p, d) => { // the camera tilted up enough to take in the top of its near side
-      const face = Math.atan2(x - p[0], y - p[1]), el = Math.atan2(top - (p[2] + 1.6), Math.max(d - R * 0.6, d * 0.4, 1));
-      return { x: p[0], y: p[1], z: p[2], face, pitch: THREE.MathUtils.clamp(0.4 - el, -0.22, 0.16) };
-    };
+    // the score of a view: most of it in sight, filling a good part of the frame and not cut off, and the sun behind you
+    const rate = (v, px, py) => 1.6 * v.seen + 0.5 * Math.min(1, v.fill / 0.45) - v.cut - 1.2 * v.over
+      + (day ? 0.2 * Math.max(0, -((x - px) * sx + (y - py) * sy) / Math.hypot(x - px, y - py)) : 0);
     if (spec.at) { // a hand-picked spot: on it (or the nearest ground to it), facing the landmark
       const p = placeNear(spec.at[0], spec.at[1], Number.isFinite(spec.at[2]) ? spec.at[2] : null, null, 12);
-      if (p) return frame(p, Math.hypot(x - p[0], y - p[1]));
+      if (p) { const v = view(p[0], p[1], p[2], true); return { x: p[0], y: p[1], z: p[2], face: v.face, pitch: v.pitch, tilt: v.tilt }; }
     }
     // room for the chase camera behind you: the line from your head to where it will stand, as the rig tests it
     const room = f => {
@@ -2366,24 +2379,47 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // open ground round a spot (a square, a park, the waterfront rather than a lane): the share of rings 6 and 14 m out with nothing over 3 m on them
     const open = p => { let n = 0; for (const r of [6, 14]) for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; if (dsmAt(p[0] + Math.sin(a) * r, p[1] + Math.cos(a) * r) < p[2] + 3) n++; } return n / 32; };
     const cands = [];
-    // three rings, but none nearer for a tower too tall to stand back from by its full height (Two IFC, the ICC)
-    for (const k of spec.dist || tall * 1.4 <= D ? [1, 0.75, 1.3] : [1, 1.3]) for (let i = 0; i < 16; i++) {
-      const a = (i + (k === 1 ? 0 : 0.5)) / 16 * Math.PI * 2, px = x + Math.sin(a) * D * k, py = y + Math.cos(a) * D * k, pz = nav.terrain(px, py);
-      if (inFrame(px, py) && pz > -0.5 && aside(px, py) < Infinity) cands.push({ px, py, score: sight(px, py, Math.max(0, pz)) - 0.12 * Math.abs(k - 1) - aside(px, py) - 3 * hazeAt(px, py) });
+    // rings from close under it, looking up, to well back: what the camera sees decides, not the distance
+    for (const k of spec.dist ? [1, 0.75, 1.3] : [1, 0.45, 0.7, 1.35]) for (let i = 0; i < 16; i++) {
+      const a = (i + (k === 1 || k === 0.45 ? 0 : 0.5)) / 16 * Math.PI * 2, px = x + Math.sin(a) * D * k, py = y + Math.cos(a) * D * k, pz = nav.terrain(px, py);
+      if (!inFrame(px, py) || pz <= -0.5 || aside(px, py) === Infinity || Math.hypot(px - x, py - y) < 25) continue;
+      if (dsmAt(px, py) > Math.max(0, pz) + 3) continue; // inside a building
+      cands.push({ px, py, score: rate(view(px, py, Math.max(0, pz), false), px, py) - 0.08 * Math.abs(k - 1) - aside(px, py) - 3 * hazeAt(px, py) });
     }
     cands.sort((a, b) => b.score - a.score);
+    // the rig lifts a camera that a wall or the ground in front of it would block, looking down more: the view it will have
+    const rig = (p, v) => {
+      const hd = W(p[0], p[1], p[2] + 1.55), yaw = v.face + 0.12;
+      for (const lift of [0, 0.25, 0.5, 0.8]) {
+        const pt = Math.min(1.35, v.pitch + lift), cp = Math.cos(pt);
+        const pos = new THREE.Vector3(hd.x - Math.sin(yaw) * cp * 7.5, hd.y + Math.sin(pt) * 7.5, hd.z + Math.cos(yaw) * cp * 7.5);
+        if (nav.clearFraction(hd, pos) >= 0.97) return lift ? Object.assign(view(p[0], p[1], p[2], true, pt), { pitch: v.pitch, tilt: v.tilt }) : v;
+      }
+      return v;
+    };
     const judge = p => {
-      const f = frame(p, Math.hypot(x - p[0], y - p[1])), rm = room(f);
+      const v = rig(p, view(p[0], p[1], p[2], true)), f = { x: p[0], y: p[1], z: p[2], face: v.face, pitch: v.pitch, tilt: v.tilt }, rm = room(f);
       const fl = nav.floorAt(p[0], p[1], p[2] + 0.5), roof = fl && fl.kind === 'roof' ? 0.4 : 0; // the street rather than a roof level with it
       // out from under a walkway, a flyover or an overhang, for you and for the camera behind you
       const bx = p[0] - Math.sin(f.face + 0.12) * 7, by = p[1] - Math.cos(f.face + 0.12) * 7;
       const covered = (dsmAt(p[0], p[1]) > p[2] + 4 ? 0.6 : 0) + (dsmAt(bx, by) > p[2] + 4 ? 0.6 : 0);
-      const score = sight(p[0], p[1], p[2]) + (rm > 0.97 ? 0.3 : rm === 0.5 ? -0.3 : -1) + 0.5 * open(p) - roof - covered - 0.12 * Math.abs(Math.hypot(x - p[0], y - p[1]) / D - 1) - aside(p[0], p[1]) - 3 * hazeAt(p[0], p[1]);
-      if (dbg) dbg.push({ p: p.map(v => Math.round(v)), sight: +sight(p[0], p[1], p[2]).toFixed(2), room: +rm.toFixed(2), open: +open(p).toFixed(2), score: +score.toFixed(2) });
-      return { f, score, rm };
+      const score = rate(v, p[0], p[1]) + (rm > 0.97 ? 0.3 : rm === 0.5 ? -0.3 : -1) + 0.8 * open(p) - roof - covered - aside(p[0], p[1]) - 3 * hazeAt(p[0], p[1]);
+      if (dbg) dbg.push({ p: p.map(v => Math.round(v)), seen: +v.seen.toFixed(2), cut: +v.cut.toFixed(2), over: +v.over.toFixed(2), fill: +v.fill.toFixed(2), room: +rm.toFixed(2), open: +open(p).toFixed(2), score: +score.toFixed(2) });
+      return { f, score, rm, seen: v.seen };
+    };
+    // none of the rings sees much of it (a short building among towers): every open spot on a grid round it, once
+    const grid = () => {
+      if (best && best.seen >= 0.6) return [];
+      const step = Math.max(10, D / 10), out = [];
+      for (let gx = x - D * 1.6; gx <= x + D * 1.6; gx += step) for (let gy = y - D * 1.6; gy <= y + D * 1.6; gy += step) {
+        const d = Math.hypot(gx - x, gy - y), pz = nav.terrain(gx, gy);
+        if (d < 25 || d > D * 1.6 || !inFrame(gx, gy) || pz <= -0.5 || aside(gx, gy) === Infinity || dsmAt(gx, gy) > Math.max(0, pz) + 3) continue;
+        out.push({ px: gx, py: gy, score: rate(view(gx, gy, Math.max(0, pz), false), gx, gy) - 3 * hazeAt(gx, gy) });
+      }
+      return out.sort((a, b) => b.score - a.score).slice(0, 12);
     };
     let best = null;
-    for (const c of cands.slice(0, 20)) {
+    for (let pass = 0; pass < 2; pass++) for (const c of pass ? grid() : cands.slice(0, 24)) {
       const p = placeNear(c.px, c.py, null, null, 12);
       if (!p) continue;
       let j = judge(p);
@@ -2399,7 +2435,89 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     if (best) return best.f;
     const p = placeNear(x, y, null, null, 150); // at its foot, or the nearest ground to it
-    return p ? frame(p, Math.max(20, Math.hypot(x - p[0], y - p[1]))) : null;
+    if (!p) return null;
+    const v = view(p[0], p[1], p[2], false);
+    return { x: p[0], y: p[1], z: p[2], face: v.face, pitch: v.pitch, tilt: v.tilt };
+  }
+  // the landmark's body, as points to look at: the cells of the surface model its buildings cover (those named
+  // after it, or the one under its label), their tops and, along their edges, their walls; for a landmark the
+  // surface model leaves out (an open iron tower), a column at its label. Cut at its "top" when a city.json
+  // "arrivals" entry gives one.
+  const bodies = new Map();
+  function bodyOf(lm, g, top) {
+    if (bodies.has(lm.name)) return bodies.get(lm.name);
+    const [x, y] = lm.at, C = DSM.cell, rad = 250, c0 = Math.floor((x - DSM.x0) / C), r0 = Math.floor((DSM.y1 - y) / C), n = Math.ceil(rad / C);
+    // named after it: the label's name, or the start of it ("Kabuki-za" of "Kabuki-za 歌舞伎座"), or any word of it in
+    // another script ("歌舞伎座"), whole; not a longer name that starts the same ("Town Hall Station" for "Town Hall")
+    const toks = lm.name.toLowerCase().split(/\s+/), cjk = t => /[^\x00-\x7f]/.test(t), lead = toks.slice(0, Math.max(1, toks.findIndex(cjk))).join(' ');
+    const words = new Set([lm.name.toLowerCase(), toks.some(cjk) ? lead : '', ...toks.filter(t => cjk(t) && t.length > 1)].filter(Boolean));
+    const named = id => { const m = B.b[id] && B.b[id][0]; return !!m && m.length > 1 && words.has(m.toLowerCase()); };
+    const ids = new Set(), near = new Map(), tall = new Set();
+    for (let r = r0 - n; r <= r0 + n; r++) for (let c = c0 - n; c <= c0 + n; c++) {
+      if (r < 0 || c < 0 || r >= DSM.ny || c >= DSM.nx) continue;
+      const id = DSM.ids[r * DSM.nx + c];
+      if (id < 0) continue;
+      const d = Math.hypot(c - c0, r - r0) * C;
+      if (d < 150 && named(id)) ids.add(id);
+      if (d < 16 && DSM.data[r * DSM.nx + c] > g + Math.min(8, (top - g) * 0.3)) near.set(id, (near.get(id) || 0) + 1);
+      if (d < 40 && DSM.data[r * DSM.nx + c] >= g + (top - g) * 0.6) tall.add(id); // its high part, whatever building the cells were drawn for
+    }
+    if (!ids.size && near.size) { const most = Math.max(...near.values()); for (const [id, k] of near) if (k >= most * 0.3) ids.add(id); }
+    for (const id of tall) ids.add(id);
+    const cells = [];
+    for (let r = r0 - n; r <= r0 + n; r++) for (let c = c0 - n; c <= c0 + n; c++) {
+      if (r < 1 || c < 1 || r >= DSM.ny - 1 || c >= DSM.nx - 1) continue;
+      const i = r * DSM.nx + c;
+      if (ids.has(DSM.ids[i]) && DSM.data[i] > g + 2) cells.push([r, c, i]);
+    }
+    const pts = [], stride = Math.max(1, Math.ceil(Math.sqrt(cells.length / 90)));
+    for (const [r, c, i] of cells) {
+      const edge = !ids.has(DSM.ids[i - 1]) || !ids.has(DSM.ids[i + 1]) || !ids.has(DSM.ids[i - DSM.nx]) || !ids.has(DSM.ids[i + DSM.nx]);
+      if (!edge && (r % stride || c % stride)) continue;
+      if (edge && (r + c) % stride) continue;
+      const px = DSM.x0 + (c + 0.5) * C, py = DSM.y1 - (r + 0.5) * C, h = Math.min(DSM.data[i], top);
+      pts.push([px, py, h]);
+      if (edge) for (const f of [0.25, 0.6]) pts.push([px, py, g + (h - g) * f]);
+    }
+    if (pts.length < 6) { pts.length = 0; ids.clear(); for (const f of [0.1, 0.3, 0.5, 0.7, 0.9, 1]) for (const s of [-3, 3]) pts.push([x + s, y, g + (top - g) * f]); }
+    // a part over its buildings that the surface model leaves out (HEP FIVE's wheel, a spire, an open iron tower on
+    // a base): a column at its label up to its top, as many points as the buildings have, so it counts as much
+    const hi = pts.reduce((m, q) => Math.max(m, q[2]), g);
+    if (top > hi + Math.max(8, (top - g) * 0.15) && ids.size) { const k = Math.max(6, pts.length); for (let i = 0; i < k; i++) pts.push([x + (i % 2 ? 3 : -3), y, hi + (top - hi) * (i + 1) / k, 1]); } // over them: their roofs hide it
+    // its upper third, which a frame cut off at the top loses first
+    const zs = pts.map(q => q[2]).sort((a, b) => a - b), zTop = zs[zs.length - 1], high = g + (zTop - g) * 0.67;
+    // each point weighs by its height: a tower is known by its upper floors, the podium round its foot is not
+    const w = pts.map(q => 0.3 + Math.max(0, q[2] - g) / Math.max(1, zTop - g)), wSum = w.reduce((a, v) => a + v, 0);
+    const b = { ids, pts, w, wSum, high, nHigh: Math.max(1, pts.filter(q => q[2] >= high).length) };
+    bodies.set(lm.name, b);
+    return b;
+  }
+  // how much of a landmark the camera sees now: the share of its body in frame and in sight (for tools/travel_shot.js)
+  function seenNow(lm) {
+    const spec = ((scene.city && scene.city.arrivals) || {})[lm.name] || {}, [x, y] = lm.at, g = groundZ(x, y) ?? Math.max(0, nav.terrain(x, y));
+    const body = bodyOf(lm, g, spec.top ? g + spec.top : lm.top ?? g + 20), c = camera.position, v = new THREE.Vector3();
+    camera.updateMatrixWorld();
+    let n = 0;
+    body.pts.forEach((q, k) => {
+      v.copy(W(q[0], q[1], q[2])).project(camera);
+      if (Math.abs(v.x) < 0.97 && Math.abs(v.y) < 0.97 && v.z < 1 && sightTo(c.x, -c.z, c.y, q, body, true)) n += body.w[k];
+    });
+    return n / body.wSum;
+  }
+  // a clear line from the camera (cx, cy, cz) to a point of a landmark's body: through the surface model in 2 m
+  // steps until it meets the body itself (a wall of it in front of the point counts as seen, but not in front of
+  // a point of the part over its roofs), and through the mapped tree crowns when asked
+  function sightTo(cx, cy, cz, q, body, crowns) {
+    const d = Math.hypot(q[0] - cx, q[1] - cy), n = Math.max(1, Math.ceil(d / 2));
+    for (let k = 1; k < n; k++) {
+      const t = k / n, qx = cx + (q[0] - cx) * t, qy = cy + (q[1] - cy) * t, line = cz + (q[2] - cz) * t;
+      const c = Math.floor((qx - DSM.x0) / DSM.cell), r = Math.floor((DSM.y1 - qy) / DSM.cell);
+      if (c < 0 || r < 0 || c >= DSM.nx || r >= DSM.ny) continue;
+      const i = r * DSM.nx + c;
+      if (DSM.data[i] > line + 0.5) return !q[3] && body.ids.has(DSM.ids[i]);
+      if (crowns && k % 2 === 0 && d * (1 - t) > 6 && treesNear(qx, qy, 0).some(tr => tr[2] > line && Math.hypot(tr[0] - qx, tr[1] - qy) < tr[3] * 0.8)) return false;
+    }
+    return true;
   }
   // where a destination puts you: { x, y, z, face?, pitch? }, or null
   function arrival(d) {
@@ -2430,7 +2548,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (kerb) { // the car comes too, facing along the street
         parkMyCar(kerb.pose);
         Object.assign(player, { x: kerb.pose.x, y: kerb.pose.y, z: kerb.pose.z, h: kerb.pose.h, speed: 0 });
-        cam.mode = 'chase'; cam.yaw = carYaw; cam.pitch = Math.max(0.08, to.pitch ?? 0.2); cam.dist = 7.5;
+        cam.mode = 'chase'; cam.yaw = carYaw; cam.pitch = Math.max(0.08, to.pitch ?? 0.2); cam.tilt = to.tilt || 0; cam.dist = 7.5;
         groundLod(kerb.pose.x, kerb.pose.y); save();
         return;
       }
@@ -2444,7 +2562,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (to.face != null) player.h = to.face;
       cam.mode = 'chase'; cam.dist = 7.5;
       // the landmark a little left of the player rather than behind their head
-      if (to.face != null) { cam.yaw = to.face + 0.12; cam.pitch = to.pitch ?? 0.3; } else { cam.yaw = player.h; cam.pitch = 0.36; }
+      if (to.face != null) { cam.yaw = to.face + 0.12; cam.pitch = to.pitch ?? 0.3; cam.tilt = to.tilt || 0; } else { cam.yaw = player.h; cam.pitch = 0.36; cam.tilt = 0; }
       groundLod(to.x, to.y); save();
     };
     hopTo(kerb ? kerb.pose.x : to.x, kerb ? kerb.pose.y : to.y, kerb ? kerb.pose.z : to.z, name,
@@ -3183,6 +3301,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
     live.pos.copy(camPos);
     live.look.copy(camTarget);
+    // looking up at a landmark on arrival (cam.tilt): over your head, until you move, steer or drag the view
+    if (cam.tilt > 0.001) {
+      if (moving || clockT - cam.lastInput < 0.5 || !(player.mode === 'foot' || player.mode === 'car')) cam.tilt *= Math.max(0, 1 - dt * 2.5);
+      live.look.y += Math.tan(cam.tilt) * Math.hypot(camPos.x - camTarget.x, camPos.z - camTarget.z);
+    } else cam.tilt = 0;
     live.half = player.mode === 'heli' ? 520 : player.mode === 'ferry' ? 320 : veh ? 220 : 170;
   }
   // from your seat: the eye over the cushion, looking ahead as the car turns (drag to look
@@ -3369,7 +3492,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care };
+  window.__game = { vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

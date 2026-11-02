@@ -285,6 +285,10 @@
     "新宿ダイビル（新宿アルタ）": "Studio Alta",
     "明治神宮聖徳記念絵画館": "Meiji Memorial Picture Gallery"
   },
+  "arrivals": {
+    "Yebisu Garden Place": {"front": 270, "arc": 50},
+    "Your Name stairs 男坂": {"at": [2394, 1876]}
+  },
   "minor_labels": [
     "Seibu Shibuya",
     "Isetan Shinjuku",

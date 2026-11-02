@@ -778,6 +778,8 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     }
     const waterMat = new THREE.MeshStandardMaterial({ color: lin('#1d3a4b'), roughness: 0.08, metalness: 0.0, transparent: true,
       opacity: 0.84, normalMap: rippleTexture(), normalScale: new THREE.Vector2(0.25, 0.25) });
+    // the sun's glitter on it as facets, not a blown slab (water.js patchGlitter)
+    if (window.OEWater && OEWater.patchGlitter) waterMat.onBeforeCompile = sh => OEWater.patchGlitter(sh, SCREEN.t);
     const waterGeo = new THREE.PlaneGeometry(80000, 80000);
     waterGeo.rotateX(-Math.PI / 2);
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);

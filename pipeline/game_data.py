@@ -14,6 +14,9 @@ Writes web/data/<city>/game.json:
             are dropped (Overture road flags and levels); a one-way road carries its direction
             (pipeline/road_rules.py)
   surfaces  walkable surfaces above the terrain from the city's game_surfaces hook
+  patches   fine walking levels over the grid from the city's game_patches hook (int16 cm
+            every half metre, -32768 none): paving with walls and steps the 5 m grid would
+            smooth into slopes
   wharves   ferry berths next to the Overture ferry terminals named in city.json
   ferries   routes found by a shortest path through open water, kept clear of land
             and piers, then smoothed
@@ -579,6 +582,8 @@ def main():
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
         "pier_deck_m": PIER_DECK,
         "surfaces": surfaces,
+        # fine walking levels a city lays over the grid (paving with its walls and steps, every half metre)
+        **({"patches": C.hook("game_patches")(scene)} if C.hook("game_patches") else {}),
         "paths": {"foot": foot, "road": roads},
         "wharves": list(wharves.values()),
         "ferries": ferries, "ferry_note": gcfg.get("ferry_note", ""),

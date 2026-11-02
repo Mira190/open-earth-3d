@@ -3012,6 +3012,11 @@ def adjust_building(b, cls, g, geoms, ctx):
     geoms = suga_building(b, cls, g, geoms, ctx)
     if (b["name"] or "") == SCRAMBLE_SQ:
         geoms = sky_building(b, g, geoms, ctx)
+    if (b["name"] or "") == DOCOMO:
+        # OSM maps the tower's crown as parts from 124.8 m and no part below them, so it floated over
+        # Sendagaya: every part stands on the ground, as the tower does
+        for gm in geoms:
+            gm[1] = 0.0
     return districts_building(b, cls, g, geoms, ctx)
 
 

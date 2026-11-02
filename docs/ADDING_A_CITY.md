@@ -165,6 +165,19 @@ def game_surfaces(scene):
     the surface is put onto it (steps); label: a short name for messages.
     moving_ms and moving_u: [u0, u1] make it an escalator that carries walkers."""
 
+def game_ground(grid, gx, gy, water, scene):
+    """Called by pipeline/game_data.py. The 5 m walking grid with the city's own
+    levels: paving a landmark draws over the DEM (Bennelong Point's)."""
+
+def game_patches(scene):
+    """Called by pipeline/game_data.py. Fine walking levels over the 5 m grid, for
+    paving with walls and steps the grid would smooth into slopes: [{x0, y0, cell,
+    nx, ny, data}], int16 centimetres every `cell` metres (rows from y0 north,
+    -32768 where there is none), base64. web/game/nav.js takes each cell's own level,
+    not interpolated, so a wall stays a wall (a walker steps up no more than 0.75 m)
+    and a riser a step. Raise the cells under a parapet to its top to hold walkers
+    back there."""
+
 def game_extras(scene):
     """Called by pipeline/game_data.py. Game content placed from the landmarks:
     {"travel": [...], "lifts": [...], "spots": [...], "chatter": [...], ...}.
@@ -172,7 +185,10 @@ def game_extras(scene):
 ```
 
 The game turns each landmark mesh into one height interval per 2 m cell, so
-keep parts at different heights in separate meshes. Steel inside a deck merged
+keep parts at different heights in separate meshes. A material with `decal`
+(paving laid over a roof) or `"solid": false` is not turned into cells: use the
+latter for walls along a narrow walk, which 2 m cells would fill, and hold
+walkers back at them with `game_patches` instead. Steel inside a deck merged
 with an arch above it would become a solid block between them. Give every
 part that sits inside a walkable surface's slab that surface's `mesh` prefix:
 Sydney's deck furniture and the steel under its deck are `bridge_deck_*`. The
