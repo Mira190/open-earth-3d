@@ -642,7 +642,7 @@ window.OECars = (function () {
   // other way is no obstacle), and pulls in to the kerb at the end. from: 'kerb' if it starts at
   // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now.
   function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15 } = {}) {
-    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, route, P };
+    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, held: 0, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
     function lat(s) {
@@ -673,7 +673,9 @@ window.OECars = (function () {
         P.at(Math.min(P.len, st.s + a), c);
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
         if (Math.abs(w - lane - st.shift) >= 1.5) continue;
-        if (o.still && a < 40 && (!end || P.len - st.s - a > 25)) { // (not one where it is to pull in)
+        // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
+        // turns round every few seconds and so never stays stuck long enough to be marked still
+        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || P.len - st.s - a > 25)) { // (not one where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; continue; }
         }
@@ -692,6 +694,7 @@ window.OECars = (function () {
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
       const gap = gapAhead(others);
       want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
+      st.held = st.v < 0.1 && gap < 4 ? st.held + dt : st.pass ? st.held : 0; // (kept while it drives round)
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
