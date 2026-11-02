@@ -306,7 +306,13 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
     const s1 = A.stats();
-    return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+    // the walk signals hold the crowd at a kerb; the lanes, the arrows and the banned turns
+    const X = g.crowd.crossings, H = JN.heads || {};
+    const wait = X ? [...X.byLine.values()].flat().map(x => x.a).find(a => a.j === j) : null;
+    const walks = wait ? Array.from({ length: 75 }, () => { g.advance(1); return JN.walk(wait); }) : [];
+    const two = A.C.filter(c => c.line >= 0 && c.ln === 1).length;
+    return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length,
+      crossings: X ? X.byLine.count : 0, walkSignals: H.walks || 0, walkTurns: new Set(walks).size, arrows: s1.arrows, arrowHeads: H.arrows || 0, bans: s1.bans, two };
   });
   if (lights.none) check(false, 'the traffic has junctions');
   else {
@@ -314,6 +320,11 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     if (lights.signals) check(lights.states >= 4, `the nearest signals go through their phases (${lights.states} states in 80 s)`);
     check(!lights.red, `no car crosses its line on red (${lights.red || 0})`);
     check(lights.moving > 10, `the traffic moves (${lights.moving} cars on the move)`);
+    if (lights.signals) {
+      check(lights.crossings > 0 && lights.walkSignals > 0, `the crowd's footways cross at the signals (${lights.crossings} crossings, ${lights.walkSignals} walk signals)`);
+      if (lights.walkTurns) check(lights.walkTurns === 2, 'the nearest junction\'s walk signal turns on and off');
+    }
+    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
   }
   await shot('junction');
 

@@ -313,6 +313,7 @@ window.OEJunctions = (function () {
     function conflict(j, k, m, k2, m2) {
       if (k === k2 && (m >> 4) === (m2 >> 4)) return false; // one behind the other in a lane: the car ahead is braked for
       if (m === m2) return true;  // into the same road, from the same lane
+      if (k === k2) return (m & 15) !== (m2 & 15); // side by side from one arm: only straight on together, into the road's two lanes
       const C = j.cx || (j.cx = new Map()), key = ((k * 32 + m) * 32 + k2) * 32 + m2;
       if (C.has(key)) return C.get(key);
       const e1 = wayFor(j, k, m), e2 = wayFor(j, k2, m2), w1 = e1 && e1.ways && e1.ways[e1.lanes.indexOf(m >> 4)], w2 = e2 && e2.ways && e2.ways[e2.lanes.indexOf(m2 >> 4)];
@@ -358,7 +359,8 @@ window.OEJunctions = (function () {
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       j.demand[a.phase === 0 ? 1 : 0] = 1;
     }
-    let frame = 0;
+    let frame = 0, ver = 0; // (ver: counts the signals' changes, for the heads)
+    const NONE = [0, 0, 0];
     // a car coming up arm a, `eta` seconds from its stop line, to leave by exit m (or -1): seen by
     // the signals (a call for its phase) and by cars giving way to it
     function approach(c, a, m, eta) {
@@ -460,18 +462,21 @@ window.OEJunctions = (function () {
         j.t += dt;
         // the phase after this one: the main road's (0), its arrow (2) when someone waits to turn
         // across, the cross road's (1); a call from another phase ends this one's green
-        const D = j.seen >= frame - 2 ? j.demand : [0, 0, 0], arrowCall = j.arrow && D[2];
+        const D = j.seen >= frame - 2 ? j.demand : NONE, arrowCall = j.arrow && D[2];
         const call = j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1;
         j.call = !!call;
+        const wasWalk = j.walkNow;
         if (j.st === 'g') {
           if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || j.t >= j.green[j.ph] + CALL)) {
-            j.st = 'y'; j.t = 0;
+            j.st = 'y'; j.t = 0; ver++;
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
           }
-        } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; }
-        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; }
+        } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; ver++; }
+        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; ver++; }
+        j.walkNow = !(j.call && j.t > j.green[j.ph] - 5);
+        if (j.walkNow !== wasWalk) ver++; // (the walk signals: the walk is over)
       }
-      if (heads) heads.update();
+      if (heads) heads.update(ver);
     }
     // where the crowd's footways (fnet: actors.network) cross the arms' roads at the junctions with
     // signals, from the junction's node out to just past the stop line: per footway line, [{ s
@@ -539,7 +544,7 @@ window.OEJunctions = (function () {
   };
   const LIT = { r: [3.4, 0.16, 0.05], y: [3.1, 1.25, 0.04], g: [0.1, 2.3, 1.05] }; // linear, bright enough to bloom
   const DARK = { r: [0.07, 0.012, 0.01], y: [0.07, 0.045, 0.01], g: [0.01, 0.06, 0.045] };
-  const WALK = { r: [3.0, 0.22, 0.08], g: [0.35, 2.4, 1.6], off: [0.035, 0.03, 0.028] }; // the walk signals' figures, lit and dark
+  const WALK = { r: [3.0, 0.22, 0.08], g: [0.4, 3.0, 2.0], off: [0.035, 0.03, 0.028] }; // the walk signals' figures, lit and dark
   function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light, arrow = () => '', walk = () => true }) {
     const S = Object.assign({}, STYLES.default, STYLES[style.country] || {}, style), horiz = S.layout === 'horizontal';
     const list = []; // poles: { a (the arm it faces), x, y, z, h (the way its lanterns face: towards the arm's traffic), mast (its arm's length), side (+1 on the keep side) }
@@ -608,7 +613,7 @@ window.OEJunctions = (function () {
     const arrows = [];
     for (const o of list) {
       if (o.side !== side || !o.a.j.arrow || o.a.phase !== 0) continue;
-      arrows.push(horiz ? { o, out: o.mast || 0.32, up: (o.mast ? 5.72 : 3.0) - 0.45, dx: 0.3 } : { o, out: (o.mast || 0.32) + 0.5, up: o.mast ? 5.3 : 2.75, dx: 0 });
+      arrows.push(horiz ? { o, out: o.mast || 0.32, up: (o.mast ? 5.72 : 3.0) - 0.45 } : { o, out: (o.mast || 0.32) + (geo.board ? 0.66 : 0.5), up: o.mast ? 5.3 : 2.75 });
     }
     // walk signals: a slim post on each kerb of every arm's crossing, the lantern facing across
     const peds = [];
@@ -667,6 +672,7 @@ window.OEJunctions = (function () {
       [[-0.075, 0.025], [0.01, 0.025], [0.01, 0.07], [0.085, 0], [0.01, -0.07], [0.01, -0.025], [-0.075, -0.025]].forEach(([x, y], i) => (i ? sh.lineTo(x * d, y) : sh.moveTo(x * d, y)));
       const arrowG = new THREE.ShapeGeometry(sh).translate(0, 0, 0.116);
       arrH = inst(horiz ? merge([box(1.02, 0.36, 0.22, 0, 0, 0)]) : geo.housing, mat(S.housing), arrows.length);
+      const arrB = !horiz && geo.board ? inst(geo.board, mat(S.board), arrows.length) : null, arrR = !horiz && geo.border ? inst(geo.border, new THREE.MeshStandardMaterial({ color: lin(S.border), roughness: 0.4 }), arrows.length) : null;
       arrL = [0, 1, 2].map(() => { const M = inst(arrowG, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true, side: THREE.DoubleSide }), arrows.length); M.castShadow = false; return M; });
       arrows.forEach((A, i) => {
         const o = A.o;
@@ -674,6 +680,8 @@ window.OEJunctions = (function () {
         const out = A.out * o.side, x = o.x - Math.cos(o.h) * out, y = o.y + Math.sin(o.h) * out;
         m4.compose(W(x, y, o.z + A.up), q, sc.set(1, 1, 1));
         arrH.setMatrixAt(i, m4);
+        if (arrB) arrB.setMatrixAt(i, m4);
+        if (arrR) arrR.setMatrixAt(i, m4);
         for (let k = 0; k < 3; k++) { const [lx, ly] = at(k); arrL[k].setMatrixAt(i, m4.clone().multiply(new THREE.Matrix4().makeTranslation(lx, ly, 0))); }
       });
     }
@@ -715,9 +723,12 @@ window.OEJunctions = (function () {
     // a lamp's glow is seen from in front of it: towards the eye, faded out beside it and gone behind
     const face = lanterns.map(L2 => [Math.sin(L2.o.h), Math.cos(L2.o.h)]), lit = new Array(lanterns.length).fill(null);
     let eyeAt = null, tick = 0;
-    function update() {
+    let lastVer = -1, lastBlink = null;
+    function update(v = -2) {
       let changed = false;
-      for (let i = 0; i < lamp.length; i++) {
+      const blink = (performance.now() % 1000) < 550, fresh = v !== lastVer || v === -2;
+      lastVer = v;
+      if (fresh) for (let i = 0; i < lamp.length; i++) {
         const s = light(lamp[i]) || 'r';
         if (shown[i] === s) continue;
         shown[i] = s; changed = true;
@@ -733,9 +744,8 @@ window.OEJunctions = (function () {
       }
       // the arrows and the walk signals (the red figure flashes while the walk is over but the
       // arm's traffic is still held)
-      const blink = (performance.now() % 1000) < 550;
       let ch2 = false;
-      for (let i = 0; i < arrows.length; i++) {
+      if (fresh) for (let i = 0; i < arrows.length; i++) {
         const s = arrow(arrows[i].o.a);
         if (aShown[i] === s) continue;
         aShown[i] = s; ch2 = true;
@@ -743,7 +753,7 @@ window.OEJunctions = (function () {
       }
       if (ch2) for (const M of arrL) M.instanceColor.needsUpdate = true;
       ch2 = false;
-      for (let i = 0; i < peds.length; i++) {
+      if (fresh || blink !== lastBlink) for (let i = 0; i < peds.length; i++) {
         const a = peds[i].a, w = walk(a), held = !w && a.j.ph !== a.phase && a.j.st === 'g', s = w ? 'g' : held && !blink ? 'o' : 'r';
         if (pShown[i] === s) continue;
         pShown[i] = s; ch2 = true;
@@ -751,6 +761,7 @@ window.OEJunctions = (function () {
         pedL[0].setColorAt(i, c3.setRGB(R[0], R[1], R[2])); pedL[1].setColorAt(i, c3.setRGB(G[0], G[1], G[2]));
       }
       if (ch2) for (const M of pedL) M.instanceColor.needsUpdate = true;
+      lastBlink = blink;
       if (eyeAt && (changed || ++tick % 4 === 0)) { // (in plan: x east, y north = -z; a few times a second will do)
         const ex = eyeAt.position.x, ey = -eyeAt.position.z;
         for (let i = 0; i < lamp.length; i++) {

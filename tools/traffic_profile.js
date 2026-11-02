@@ -39,5 +39,15 @@ const [,, city = 'sydney', secs = '40'] = process.argv;
   const total = [...self.values()].reduce((a, v) => a + v, 0);
   console.log(`${city}: the traffic update ${ms.toFixed(2)} ms a frame; own time in actors.js and junctions.js over ${secs} s of play:`);
   for (const [k, t] of [...self].sort((a, b) => b[1] - a[1]).slice(0, 18)) console.log(`  ${(t).toFixed(0).padStart(6)} ms ${(100 * t / total).toFixed(1).padStart(5)}%  ${k}`);
+  // and the lines of the traffic's own update() that take the most samples
+  const lines = new Map();
+  for (const n of profile.nodes) {
+    const f = n.callFrame;
+    if (!/actors\.js$/.test(f.url || '') || f.functionName !== 'update' || !n.positionTicks) continue;
+    for (const t of n.positionTicks) lines.set(t.line, (lines.get(t.line) || 0) + t.ticks);
+  }
+  const tl = [...lines.values()].reduce((a, v) => a + v, 0);
+  if (tl) console.log('busiest lines of the update functions in actors.js (share of their samples):');
+  for (const [l, t] of [...lines].sort((a, b) => b[1] - a[1]).slice(0, 15)) console.log(`  ${(100 * t / tl).toFixed(1).padStart(5)}%  actors.js:${l}`);
   await b.close();
 })().catch(e => { console.error(e); process.exit(1); });

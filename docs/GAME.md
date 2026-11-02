@@ -569,13 +569,37 @@ Sydney's traffic stood still a third of the time.
   one-way, and the road pieces in `game.json` carry `"o": 1` or `-1`;
   `traffic_signals`, `stop` and `give_way` points go into `props`. Sydney has
   788 signals and 914 of its 1957 road pieces are one-way, Osaka 1837 and
-  4886, Paris 1456 and 3364. `game_data.py` writes the same as it builds.
+  4886, Paris 1456 and 3364. A banned turn (Overture's
+  `prohibited_transitions`: OpenStreetMap's `no_right_turn`, `no_u_turn`,
+  `only_straight_on` and the like, for motor traffic at all times) is matched
+  to the road pieces cut from its two segments at the connector between them
+  and written on the piece it starts from as `"nt": [[end, piece, end entered,
+  steps]]`: Sydney has 185, Hong Kong 612, Melbourne 343, Osaka 368.
+  `game_data.py` writes the same as it builds.
 - **A junction** is a node where three or more pieces end, or a few such nodes
   joined by pieces under 24 m and no more than 42 m across: a divided road
   crossing another is two to four nodes and one junction. Its arms are the
   pieces out of it. A car coming up an arm picks its exit (ahead more often than
-  a turn, a main road more often than a lane, never back the way it came) and
-  the pieces across to it.
+  a turn, a main road more often than a lane, never back the way it came, never
+  a banned turn) and the pieces across to it. The rides' router (`cars.js`)
+  keeps to the banned turns too.
+- **Lanes.** A motorway, trunk or primary road, and a one-way secondary, has
+  two lanes each way: the first beside the centre line (on a one-way street, on
+  the keep side), the second 3 m out towards the kerb (on a one-way street,
+  across on the other side). Every movement goes from the first lane; straight
+  ahead onto a road of the same kind with two lanes may go from either, each
+  lane with its own way across, so two cars go through side by side. A car
+  moves across to the lane its movement needs from 150 m out, and to the first
+  where its road narrows; otherwise into the other lane when the car ahead is
+  slow and there is room beside it there (0.8 m plus 0.9 s of its speed, ahead
+  and behind), at most every 4 s, never in a junction or in the last 8 m before
+  a line. It noses across at up to 1.3 m/s sideways, slowly while barely
+  moving. A car that reaches the line in a lane its exit can't go from picks an
+  exit that can, or waits to move across. A second lane ends before a junction
+  where a car waiting in it would stand in another arm's way, or where two
+  roads come in side by side (a merge). This is SUMO's lane-change model
+  (LC2013, EPL-2.0) cut down to its strategic and speed-gain changes; no code
+  is taken from it.
 - **Its ways across** are worked out the first time a car comes up to it: each
   movement's lane, smoothed round the corner as the cars drive it, from its
   arm's stop line to its exit's. Two movements whose ways come within 2.8 m of
@@ -592,7 +616,11 @@ Sydney's traffic stood still a third of the time.
   beyond, too close to wait between, is crossed with this one or not at all.
   A bus has the junction to itself. A car gives its movement up once its rear
   is past the stop line on its exit. When the lights change before it gets
-  there and it can still stop, it stops.
+  there and it can still stop, it stops. A car given its way across while
+  still short of its line, then stopped there 4 s behind a car that is not in
+  the junction (one waiting at another of its lines, where two roads come in
+  side by side, for this very movement to clear), gives the movement up and
+  waits its turn.
 - **Signals** go where OpenStreetMap maps them (a mapped point within 22 m of a
   junction's node), or, in a city without the data, at a junction of two main
   roads. The arms take two phases, the main road's axis and the cross road's:
@@ -602,6 +630,24 @@ Sydney's traffic stood still a third of the time.
   as the side roads of SCATS (Sydney's adaptive signals) are skipped when no one
   is there. Taxis and rides stop for a red light and at a stop sign too, while
   in sight. Your own car doesn't: drive over a line on red and you hear about it.
+- **Turn arrows.** A big junction of two main roads (four arms or more, the
+  main road secondary or above and two-way, the cross road tertiary or above)
+  gets a third phase after the main road's: the turn across the oncoming
+  traffic (right where the traffic keeps left, left where it keeps right) on an
+  arrow while everything else is red, for 6 to 10 s, ended after 3 s when no
+  one is left to turn. As SCATS runs a lagging right-turn phase, it comes only
+  when a car waits to turn there, and the turners keep their green from the
+  main road's phase into it while the straight-ahead traffic beside them goes
+  amber and red. On the main road's green they filter through the oncoming
+  traffic as before. Sydney has 22 such junctions of its 166 with signals.
+- **Walk signals.** Where a footway of the crowd crosses an arm's road at a
+  junction with signals (between the junction and just past the stop line), a
+  walker coming up to the kerb while that arm's traffic may go stops there and
+  presses the button, which calls the phase that holds that traffic; they cross
+  on the walk, which shows while the arm's traffic is red and another phase
+  (not the arrow) is green, and ends 5 s before that phase can. Someone already
+  out in the road (over a median, say) walks on. Turning cars still give way to
+  people on the crossing.
 - **The signal heads** are instanced, a handful of draw calls for a city's
   thousands. Each arm with signals has a pole at the kerb by its stop line with
   a lantern facing the traffic, and a second across the junction; a main road's
@@ -612,7 +658,12 @@ Sydney's traffic stood still a third of the time.
   no mast. A city can set its own in `game.signals` in `city.json` (`layout`,
   `pole`, `housing`, `board`, `border`, `mast`: the road rank from which an arm
   has one). The lit lamp blooms, and after dark it glows towards the traffic
-  facing it, not from behind.
+  facing it, not from behind. An arm with a turn arrow has an arrow lantern
+  beside the one over its lane (under it in Japan): red, amber and green
+  arrows, dark while the turn filters on the main road's green. Every arm's
+  crossing has a walk signal on a post on each kerb, facing across: a red
+  figure standing over a green one walking, the red flashing while those
+  already out finish crossing. The lamps change only when a signal does.
 
 `tools/traffic_check.js <city>` measures the flow headless at three places (the
 game's own frame loop stopped, so a run repeats exactly). Sydney before and after,
