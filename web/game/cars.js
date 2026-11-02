@@ -695,7 +695,10 @@ window.OECars = (function () {
       const gap = gapAhead(others), w0 = want;
       want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
       st.why = want < w0 ? `gap ${gap.toFixed(1)} m` : `${w0.toFixed(1)} m/s ahead`; // what sets the speed (for the game check)
-      st.held = st.v < 0.1 && gap < 4 ? st.held + dt : st.pass ? st.held : 0; // (kept while it drives round)
+      // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
+      // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
+      if (st.held > 8 && gap < 0.5) want = Math.max(want, 1.5);
+      st.held = (st.v < 0.1 && gap < 4) || (st.held > 8 && gap < 0.5) ? st.held + dt : st.pass ? st.held : 0; // (kept while it drives round or creeps on)
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
