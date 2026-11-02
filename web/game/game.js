@@ -2198,13 +2198,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // the names are laid out afresh at each zoom, so the ones crowded out come back as you zoom in
   const mapZ = { z: 1, cx: null, cy: null }, touches = new Map();
   let mapDrag = null, dragged = false, bigNames = []; // a pan under way, and whether the press that ends it moved (then it is no click)
-  const mapZMax = () => Math.max(4, 2.5 / (bigView ? bigView.fit : 0.25)); // up to about a metre a screen pixel
+  const mapZMax = () => Math.max(4, 2 / (bigView ? bigView.fit : 0.25)); // up to about a metre a screen pixel
   function drawBig() {
     const box = bigCanvas.parentElement.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
     const cw = Math.round(box.width * dpr), ch = Math.round(box.height * dpr);
     if (bigCanvas.width !== cw || bigCanvas.height !== ch) { bigCanvas.width = cw; bigCanvas.height = ch; }
     const bw = base.canvas.width, bh = base.canvas.height, fit = Math.min(cw / bw, ch / bh);
-    mapZ.z = THREE.MathUtils.clamp(mapZ.z, 1, Math.max(4, 2.5 / fit));
+    mapZ.z = THREE.MathUtils.clamp(mapZ.z, 1, Math.max(4, 2 / fit));
     const g = bigCanvas.getContext('2d'), s = fit * mapZ.z;
     // the centre held where the map still fills the frame on that axis (or centred where it is narrower)
     const half = (c, n, full) => (n * s <= full ? n / 2 : THREE.MathUtils.clamp(c ?? n / 2, full / s / 2, n - full / s / 2));

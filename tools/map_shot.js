@@ -54,7 +54,7 @@ const phone = kind === 'phone';
     await pointers(m);
   } else {
     await p.mouse.move(fx, fy);
-    for (let i = 0; i < 7; i++) { await p.mouse.wheel(0, -200); await p.waitForTimeout(40); }
+    for (let i = 0; i < 4; i++) { await p.mouse.wheel(0, -200); await p.waitForTimeout(40); }
   }
   const z = await still('zoom');
   if (phone) {
