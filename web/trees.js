@@ -86,7 +86,7 @@ vAO = tc.r;`;
       return mats[name];
     };
     // which species each tree is, its matrix and its tint
-    const which = new Int16Array(n), far = new Float32Array(n).fill(1), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
+    const which = new Int16Array(n), far = new Float32Array(n).fill(1), half = new Uint8Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
     const names = weights.map(([k]) => k), count = names.map(() => 0);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
     for (let i = 0; i < n; i++) {
@@ -96,7 +96,7 @@ vAO = tc.r;`;
       if (wood) while (k < weights.length - 1 && (r -= woodW[k]) > 0) k++;
       else while (k < weights.length - 1 && (r -= weights[k][1]) > 0) k++;
       which[i] = k; count[k]++;
-      if (wood) far[i] = 0.6 + 0.01 * hash(x + 7, y); // a wood's trees step down sooner (full within 80 m): there are many of them
+      if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
       const s = wood ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
         : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
@@ -131,17 +131,19 @@ vAO = tc.r;`;
       });
       return out;
     }));
-    const WOOD_M = keep < 1 ? 700 : 1100, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
+    const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
     // re-sort the trees into near, mid and far when the camera has moved far enough
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
       const n0 = L[0] * L[0], n1 = L[1] * L[1];
       for (let i = 0; i < n; i++) {
         if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // left out, or not drawn where the game has no ground for it
-        const dx = pos[3 * i] - eye.x, dy = pos[3 * i + 1] - eye.y, dz = pos[3 * i + 2] - eye.z, d2 = (dx * dx + dy * dy + dz * dz) / (far[i] * far[i]);
+        const dx = pos[3 * i] - eye.x, dy = pos[3 * i + 1] - eye.y, dz = pos[3 * i + 2] - eye.z, e2 = dx * dx + dy * dy + dz * dz, f = far[i];
         // beyond WOOD_M a wood is the photo's canopy (world.js woodsFloor): its trees thin out towards it
-        if (far[i] < 1 && d2 * far[i] * far[i] > WOOD_M * WOOD_M * (0.55 + 45 * (far[i] - 0.6)) ** 2) continue;
-        const parts = meshes[which[i]][d2 < n0 ? 0 : d2 < n1 ? 1 : 2];
+        if (f < 1 && e2 > WOOD_M * WOOD_M * (0.55 + 45 * (f - 0.55)) ** 2) continue;
+        const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
+        if (lod === 2 && half[i]) continue; // past 200 m half a wood's crowns stand for all (they overlap)
+        const parts = meshes[which[i]][lod];
         for (const im of parts) {
           const j = im.count++;
           im.instanceMatrix.array.set(M.subarray(16 * i, 16 * i + 16), 16 * j);

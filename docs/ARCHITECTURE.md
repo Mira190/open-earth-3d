@@ -278,7 +278,7 @@ The views switch in place, without reloading the page.
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
     cut-out leaf shadows and jacarandas that flower in season; the trees
     planted from a wood's canopy after them, sized by their measured height,
-    without palms, stepping down sooner (full within 80 m), thinning out to 1.1 km (700 m and a
+    without palms, stepping down sooner (full within 72 m, sparse to 200 m, half of them as hulls beyond), thinning out to 900 m (600 m and a
     third of them on a small device) where the photo's canopy takes over;
   - under a wood's canopy (`woods.png`), the ground near the camera drawn as a
     wood's floor (bare earth, leaf litter, moss, a compacted path) instead of
