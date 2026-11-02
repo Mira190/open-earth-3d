@@ -16,12 +16,17 @@ window.OENav = (function () {
   const BUILDING = 1, LANDMARK = 2;
 
   function create(D, DSM) {
-    const G = D.G, T = D.T;
+    const G = D.G, T = D.quays ? D.quays.raise(D.T) : D.T; // the ground as drawn: level up to a quay's wall
     // ---------------------------------------------------------- water (5 m, packed bits)
     const wm = G.water, bytes = Uint8Array.from(atob(wm.bits), c => c.charCodeAt(0));
     const isWaterCell = (r, c) => (bytes[(r * wm.nx + c) >> 3] >> (7 - ((r * wm.nx + c) & 7))) & 1;
     const x0 = DSM.x0, y1 = DSM.y1;
+    // along a quay (quays.js) the water starts a few tens of centimetres short of the seawall's face,
+    // not at the 5 m grid's bank
+    const quays = D.quays || null;
     function isWater(x, y) {
+      const q = quays && quays.water(x, y);
+      if (q != null) return q;
       const c = Math.floor((x - x0) / wm.cell), r = Math.floor((y1 - y) / wm.cell);
       if (r < 0 || c < 0 || r >= wm.ny || c >= wm.nx) return true; // outside the model: open water or edge
       return !!isWaterCell(r, c);
@@ -50,20 +55,6 @@ window.OENav = (function () {
       if (Math.abs(v) > s.half_width || u < s.us[0] || u > s.us[s.us.length - 1]) return null;
       return interp(s.us, s.zs, u);
     }
-    // each strip's bounds, and the strips by 64 m cell: a point asks only those it can be on
-    // (Amsterdam has more than two hundred bridge decks)
-    const SC = 64, stripGrid = new Map(), noStrips = [], skey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
-    for (const s of strips) {
-      const u0 = s.us[0], u1 = s.us[s.us.length - 1], w = s.half_width, xs = [], ys = [];
-      for (const u of [u0, u1]) for (const v of [-w, w]) { xs.push(s.origin[0] + s.axis[0] * u - s.axis[1] * v); ys.push(s.origin[1] + s.axis[1] * u + s.axis[0] * v); }
-      s.box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-      for (let cx = Math.floor(s.box[0] / SC); cx <= Math.floor(s.box[2] / SC); cx++) for (let cy = Math.floor(s.box[1] / SC); cy <= Math.floor(s.box[3] / SC); cy++) {
-        const k = skey(cx, cy);
-        if (!stripGrid.has(k)) stripGrid.set(k, []);
-        stripGrid.get(k).push(s);
-      }
-    }
-    const stripsAt = (x, y) => stripGrid.get(skey(Math.floor(x / SC), Math.floor(y / SC))) || noStrips;
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
     const solid = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
@@ -87,25 +78,6 @@ window.OENav = (function () {
       }
       tops[m.name] = new Map([...mine].map(([k, q]) => [k, q[1]]));
       for (const [k, q] of mine) { const l = solid.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid.set(k, [q[0] - 0.3, q[1] + 0.3]); }
-    }
-    // slabs: solid from (surface - thickness) to the surface. A cell's slab tops out at the lowest point of the
-    // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee
-    const off = [-0.475, -0.2375, 0, 0.2375, 0.475], inCell = off.flatMap(a => off.map(b => [a * DSM.cell, b * DSM.cell]));
-    for (const s of strips) {
-      const th = s.thickness || 3;
-      const r0 = Math.max(0, Math.floor((y1 - s.box[3]) / DSM.cell)), r1 = Math.min(DSM.ny - 1, Math.ceil((y1 - s.box[1]) / DSM.cell));
-      const c0 = Math.max(0, Math.floor((s.box[0] - x0) / DSM.cell)), c1 = Math.min(DSM.nx - 1, Math.ceil((s.box[2] - x0) / DSM.cell));
-      for (let r = r0; r <= r1; r++) {
-        const y = y1 - (r + 0.5) * DSM.cell;
-        for (let c = c0; c <= c1; c++) {
-          const x = x0 + (c + 0.5) * DSM.cell;
-          let z = stripHeight(s, x, y);
-          if (z == null) continue;
-          for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
-          const k = r * DSM.nx + c, l = solid.get(k);
-          if (l) l.push(z - th, z - 0.05); else solid.set(k, [z - th, z - 0.05]);
-        }
-      }
     }
     const cellOf = (x, y) => {
       const c = Math.floor((x - x0) / DSM.cell), r = Math.floor((y1 - y) / DSM.cell);
@@ -147,9 +119,101 @@ window.OENav = (function () {
       if (terrain(x, y) < WATERLINE) return 'water';
       return slope(x, y) > BANK ? 'bank' : null;
     }
+    // ---------------------------------------------------------- strips fitted to their banks
+    // A deck drawn from a mapped outline (an Amsterdam canal bridge) can end short of the quay the
+    // 5 m water mask draws, leaving a metre or four of water between them, or end below the ground
+    // where the bank rises to meet it. Each end over the water is carried on along the axis to the
+    // first firm ground within 12 m, sloping to the quay's height (an approach, drawn by game.js);
+    // and where the ground under the deck stands up to a step above it, the deck is raised to it, so
+    // that a walker there is on the deck (and passes what stands under it) and not on the ground
+    const approaches = [];
+    const along = (s, u) => [s.origin[0] + s.axis[0] * u, s.origin[1] + s.axis[1] * u];
+    const firm = (s, u) => !offGround(...along(s, u)); // (down the middle, where the walk across goes)
+    for (const s of strips) {
+      if (s.drape || s.us.length < 2) continue; // steps laid over the ground: as given
+      let us = s.us.slice(), zs = s.zs.slice();
+      const u0 = us[0], u1 = us[us.length - 1];
+      for (const end of [-1, 1]) {
+        const ue = end < 0 ? u0 : u1;
+        const ze = end < 0 ? zs[0] : zs[zs.length - 1];
+        // firm ground straight off the end, level with it (the strip's slab, in 2 m cells, reaches a little past its end)
+        if ([0.05, 0.15, 0.3, 0.5, 0.75, 1, 1.25].every(d => firm(s, ue + end * d)) && Math.abs(terrain(...along(s, ue + end * 0.5)) - ze) < 0.25) continue;
+        let reach = null, zq = 0;
+        for (let d = 0.5; d <= 12 && reach == null; d += 0.5) {
+          const u = ue + end * d;
+          if (!firm(s, u) || !firm(s, u + end)) continue;
+          const z = terrain(...along(s, u));
+          if (Math.abs(z - ze) <= 0.25 * d + 0.3) { reach = u; zq = z; } // no steeper than 1 in 4 (else the top of the bank is further on)
+        }
+        if (reach == null) continue; // a deck high over the bank (the Harbour Bridge): as given
+        if (end < 0) { us.unshift(reach); zs.unshift(zq); } else { us.push(reach); zs.push(zq); }
+        approaches.push({ strip: s, from: ue, to: reach, z0: ze, z1: zq });
+      }
+      // the ground under the deck, a little above it: the deck there is at the ground's height
+      const n = Math.max(2, Math.ceil((us[us.length - 1] - us[0]) / 0.5) + 1), ru = [], rz = [];
+      let raised = false;
+      for (let i = 0; i < n; i++) {
+        const u = us[0] + (us[us.length - 1] - us[0]) * i / (n - 1), z = interp(us, zs, u);
+        let g = -Infinity;
+        for (const f of [0, 0.6, -0.6]) {
+          const v = f * s.half_width, x = s.origin[0] + s.axis[0] * u - s.axis[1] * v, y = s.origin[1] + s.axis[1] * u + s.axis[0] * v;
+          if (!offGround(x, y)) g = Math.max(g, terrain(x, y));
+        }
+        ru.push(u); rz.push(g > z - 0.05 && g < z + STEP ? (raised = true, g + 0.05) : z);
+      }
+      if (raised) { us = ru; zs = rz; }
+      s.us = us; s.zs = zs; s.profile = us.map((u, i) => [u, zs[i]]);
+    }
+    // each strip's bounds, and the strips by 64 m cell: a point asks only those it can be on
+    // (Amsterdam has more than two hundred bridge decks)
+    const SC = 64, stripGrid = new Map(), noStrips = [], skey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
+    for (const s of strips) {
+      const u0 = s.us[0], u1 = s.us[s.us.length - 1], w = s.half_width, xs = [], ys = [];
+      for (const u of [u0, u1]) for (const v of [-w, w]) { xs.push(s.origin[0] + s.axis[0] * u - s.axis[1] * v); ys.push(s.origin[1] + s.axis[1] * u + s.axis[0] * v); }
+      s.box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+      for (let cx = Math.floor(s.box[0] / SC); cx <= Math.floor(s.box[2] / SC); cx++) for (let cy = Math.floor(s.box[1] / SC); cy <= Math.floor(s.box[3] / SC); cy++) {
+        const k = skey(cx, cy);
+        if (!stripGrid.has(k)) stripGrid.set(k, []);
+        stripGrid.get(k).push(s);
+      }
+    }
+    const stripsAt = (x, y) => stripGrid.get(skey(Math.floor(x / SC), Math.floor(y / SC))) || noStrips;
+    // slabs: solid from (surface - thickness) to the surface. A cell's slab tops out at the lowest point of the
+    // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee
+    const off = [-0.475, -0.2375, 0, 0.2375, 0.475], inCell = off.flatMap(a => off.map(b => [a * DSM.cell, b * DSM.cell]));
+    for (const s of strips) {
+      const th = s.thickness || 3;
+      const r0 = Math.max(0, Math.floor((y1 - s.box[3]) / DSM.cell)), r1 = Math.min(DSM.ny - 1, Math.ceil((y1 - s.box[1]) / DSM.cell));
+      const c0 = Math.max(0, Math.floor((s.box[0] - x0) / DSM.cell)), c1 = Math.min(DSM.nx - 1, Math.ceil((s.box[2] - x0) / DSM.cell));
+      for (let r = r0; r <= r1; r++) {
+        const y = y1 - (r + 0.5) * DSM.cell;
+        for (let c = c0; c <= c1; c++) {
+          const x = x0 + (c + 0.5) * DSM.cell;
+          let z = stripHeight(s, x, y);
+          if (z == null) continue;
+          for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
+          const k = r * DSM.nx + c, l = solid.get(k);
+          if (l) l.push(z - th, z - 0.05); else solid.set(k, [z - th, z - 0.05]);
+        }
+      }
+    }
+    // the height of a strip (not steps laid over the ground) whose edge (x, y) is no more than m metres outside, beside its length, or null
+    function stripBeside(x, y, m) {
+      const seen = new Set();
+      for (const [dx, dy] of [[0, 0], [m, m], [-m, m], [m, -m], [-m, -m]]) for (const s of stripsAt(x + dx, y + dy)) {
+        if (seen.has(s) || s.drape) continue;
+        seen.add(s);
+        const [u, v] = stripUV(s, x, y);
+        if (u >= s.us[0] && u <= s.us[s.us.length - 1] && Math.abs(v) <= s.half_width + m) return interp(s.us, s.zs, u);
+      }
+      return null;
+    }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
     for (const s of D.B.s) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
+    // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
+    const PH = OEBuildings.POST / 2;
+    for (const s of D.B.s) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
     for (const [k, l] of solid) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;
       for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);
@@ -321,7 +385,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, DROP, R, LANDMARK, movers: null };
+    const api = { approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, DROP, R, BUILDING, LANDMARK, movers: null };
     return api;
   }
   return { create };

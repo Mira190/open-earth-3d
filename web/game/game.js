@@ -152,7 +152,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
   function fineTile(i) { // the 5 m version of a ground tile, built the first time the player comes near
     const g = Wd.tileGeometry(scene.ground[i], T), coarse = Wd.groundMeshes[i];
-    const m = new THREE.Mesh(g, coarse.material);
+    const m = Wd.groundMesh(g, coarse.material);
     m.receiveShadow = true;
     world.add(m);
     return m;
@@ -192,6 +192,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     S.fillMax(DSM, [[d.ax + nx, d.ay + ny, d.bx + nx, d.by + ny, d.bx - nx, d.by - ny, d.ax - nx, d.ay - ny]], Math.max(d.az, d.bz), -3);
   }
   world.add(OEDecks.mesh(deckPlan.runs, OEWorld.lin));
+  // where a walkable strip (a canal bridge's deck) is carried on to the quay (nav.js), the approach is drawn in the deck's stone
+  const LMM = (D.LM && D.LM.materials) || {};
+  if (nav.approaches.length) world.add(OEDecks.mesh(nav.approaches.map(a => {
+    const s = a.strip, P3 = (u, z) => [s.origin[0] + s.axis[0] * u, s.origin[1] + s.axis[1] * u, z], back = a.to > a.from ? -0.3 : 0.3;
+    return { pts: [P3(a.from + back, a.z0), P3(a.to, a.z1)], w: 2 * s.half_width, kind: 'foot', lift: 0, cols: [], parapet: false, colour: (LMM[s.mesh] || {}).color };
+  }), OEWorld.lin));
   S.pyramid(DSM);
   // benches, street lamps and trees on the ground drawn under them (their heights in the data are
   // from the survey grid, which the drawn ground between its points can be below or above): on a
@@ -273,7 +279,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const CR = G.crowd || {};
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   const crowd = OEActors.crowd(world, crowdNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
-    { benches: lib ? benches : null, ground: lineGround });
+    { benches: lib ? benches : null, ground: lineGround, clear: (x, y, z) => nav.room(x, y, z, 0.3) });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
@@ -324,6 +330,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
 
   // ------------------------------------------------------------ vehicles
   const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea };
+  // a pad the data puts on the ground inside a building's footprint is on its roof (a hospital's, a
+  // tower's): there, if the roof is clear above for the rotor, else on the nearest open ground with
+  // clear sky (pipeline/game_data.py snaps new data the same way)
+  for (const p of G.helipads) {
+    const [x, y, z] = p.at, top = nav.col.topAt(x, y, Infinity, nav.BUILDING);
+    if (!(top > z + 2)) continue;
+    if (nav.free(x, y, top + 0.3, top + 600, 5)) { p.at = [x, y, top]; continue; }
+    let best = null;
+    for (let r = 4; r <= 120 && !best; r += 4) for (let k = 0, n = Math.ceil(2 * Math.PI * r / 4); k < n && !best; k++) {
+      const a = 2 * Math.PI * k / n, px = x + Math.cos(a) * r, py = y + Math.sin(a) * r, f = nav.floorAt(px, py, nav.terrain(px, py) + 0.5);
+      if (f && f.kind === 'ground' && !nav.offGround(px, py) && Math.abs(nav.groundBelow(px, py, f.z + 1) - f.z) < 0.5 && nav.free(px, py, f.z + 0.3, f.z + 600, 6)) best = [px, py, f.z];
+    }
+    if (best) p.at = best.map(v => Math.round(v * 10) / 10);
+  }
   const padAt = (G.helipads[0] || { at: [G.start.at[0] + 20, G.start.at[1], 2] }).at;
   const heli = OEVehicles.helicopter(world, nav, padAt, vopts);
   if (G.helipads[0] && G.helipads[0].heading != null) heli.st.h = G.helipads[0].heading * Math.PI / 180;
