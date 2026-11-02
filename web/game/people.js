@@ -532,8 +532,8 @@ ${PAT_GLSL}`)
       else if (mode === 'air') play('Run', 0.15).setEffectiveTimeScale(0.3);
       else if (speed < 0.15) play(idleClip(), 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
-      else if (act.Sprint && speed > 5.2) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
-      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 7 m/s sprint
+      else if (act.Sprint && speed > 7) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
+      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 8.5 m/s sprint (game.js GAIT)
       if (mode !== 'sit') feetBack();
       mixer.update(dt);
       if (mode === 'sit') seat();

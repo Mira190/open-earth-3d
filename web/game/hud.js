@@ -124,6 +124,10 @@ window.OEHud = (function () {
       g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); g.fill(); g.stroke();
       g.strokeStyle = '#33424c'; g.lineWidth = 1.6; g.lineCap = 'round';
       g.beginPath(); g.moveTo(-4.4, 0.4); g.quadraticCurveTo(-2.2, -2.6, 0, 0.8); g.quadraticCurveTo(2.2, -2.6, 4.4, 0.4); g.stroke();
+    } else if (ic.kind === 'landmark' || ic.kind === 'place') { // somewhere to travel to: a ringed pin, a gold heart for a landmark, a gold ring for a place
+      g.fillStyle = 'rgba(6, 10, 18, 0.78)'; g.beginPath(); g.arc(0, 0, 6.5, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = ic.kind === 'landmark' ? '#f4efe6' : css('--sun'); g.lineWidth = 1.6; g.beginPath(); g.arc(0, 0, 5.2, 0, Math.PI * 2); g.stroke();
+      g.fillStyle = ic.kind === 'landmark' ? css('--sun') : '#ffffff'; g.beginPath(); g.arc(0, 0, 2.6, 0, Math.PI * 2); g.fill();
     } else if (ic.kind === 'ferry' || ic.kind === 'heli' || ic.kind === 'wharf' || ic.kind === 'pad' || ic.kind === 'waypoint' || ic.kind === 'car' || ic.kind === 'ride') {
       const bg = { ferry: '#1e5b3a', heli: '#c62d2a', wharf: '#24577a', pad: '#c62d2a', waypoint: css('--accent'), car: '#2f5d8c', ride: '#d08a00' }[ic.kind];
       g.fillStyle = bg; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
