@@ -331,7 +331,10 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Game data** (`pipeline/game_data.py` writes `web/data/<city>/game.json`):
   - **Water mask:** 5 m.
   - **Walking terrain:** 5 m. It drops at the seawall instead of sloping across
-    a 10 m cell.
+    a 10 m cell. Along a quay (`web/quays.js`) the points just out in the water
+    are raised to the quay's level and the water starts 0.3 m short of the
+    wall's face, so a walker stops on the coping (`tools/game_check.js` walks
+    up to one in every city).
   - **Footways and roads:** 3D polylines.
     - Bridge parts follow the deck surface, using Overture's `is_bridge` flags
       and levels.

@@ -55,6 +55,14 @@
     "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
   },
   "water": {
+    "seawall": {
+      "stone": "#6c6a64",
+      "coping": "#9a978f",
+      "course_m": 0.5,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The bay's seawalls and the Elwood Canal: bluestone and concrete."
+    },
     "classes": [
       "bay",
       "ocean",

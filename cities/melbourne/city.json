@@ -46,6 +46,14 @@
     "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
   },
   "water": {
+    "seawall": {
+      "stone": "#55524d",
+      "coping": "#6e6a63",
+      "course_m": 0.42,
+      "block_m": 0.95,
+      "high_water_m": 0.5,
+      "note": "The Yarra's wharves and river walls: Victorian bluestone (basalt) under a bluestone coping."
+    },
     "classes": [
       "river",
       "bay",

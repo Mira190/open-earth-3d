@@ -58,6 +58,14 @@
     "add_min_m2": 8
   },
   "water": {
+    "seawall": {
+      "stone": "#6c6963",
+      "coping": "#8a8780",
+      "course_m": 1.2,
+      "block_m": 2.4,
+      "high_water_m": 0.7,
+      "note": "The rivers' concrete revetments (gogan) under a concrete coping."
+    },
     "classes": [
       "river",
       "moat",

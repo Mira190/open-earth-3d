@@ -49,6 +49,36 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
 
+  // a quay (web/quays.js): walk straight at a seawall and stop on its coping, within a metre of its
+  // face, at the level of the quay, not a cell short of it at the terrain grid's bank
+  const quay = await p.evaluate(() => {
+    const g = window.__game, Q = g.Wd.quays, pl = g.player;
+    if (!Q) return { none: true };
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    const pts = Q.walls().flatMap(r => r.filter((_, k) => k % 7 === 3)).sort((a, b) => Math.hypot(a[0] - pl.x, a[1] - pl.y) - Math.hypot(b[0] - pl.x, b[1] - pl.y));
+    let r = { tried: 0 };
+    for (const [x, y, nx, ny, top] of pts.slice(0, 60)) {
+      // a clear run of 8 m up to the wall, on open ground
+      const sx = x - nx * 8, sy = y - ny * 8, f = g.nav.floorAt(sx, sy, top + 1);
+      if (!f || f.kind !== 'ground' || Math.abs(f.z - top) > 0.6) continue;
+      let clear = true;
+      for (let s = 0; s <= 7; s += 0.5) if (!g.nav.walk(sx + nx * s, sy + ny * s, f.z).ok) { clear = false; break; }
+      if (!clear) continue;
+      r.tried++;
+      Object.assign(pl, { x: sx, y: sy, z: f.z, ground: true, vz: 0, speed: 0 });
+      pl.h = g.cam.yaw = Math.atan2(nx, ny);
+      for (let i = 0; i < 40; i++) g.advance(0.1, ['KeyW']);
+      r = Object.assign(r, { at: [Math.round(x), Math.round(y)], d: Q.dist(pl.x, pl.y), z: pl.z, top, mode: pl.mode });
+      break;
+    }
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return r;
+  });
+  if (quay.none) check(true, 'no quays');
+  else if (quay.d == null) check(false, `found no clear walk up to a seawall (${quay.tried} tried)`);
+  else check(quay.mode === 'foot' && quay.d > -1.0 && quay.d < 0 && Math.abs(quay.z - quay.top) < 0.6,
+    `walks up to the seawall at ${quay.at} and stops ${(-quay.d).toFixed(2)} m short of its face, ${quay.z.toFixed(1)} m up (the quay is ${quay.top.toFixed(1)} m)`);
+
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {

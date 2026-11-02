@@ -55,6 +55,14 @@
   },
   "architecture": "amsterdam",
   "water": {
+    "seawall": {
+      "stone": "#6b4434",
+      "coping": "#8e8a84",
+      "course_m": 0.09,
+      "block_m": 0.23,
+      "high_water_m": 0.25,
+      "note": "The canals' quay walls (kademuren): red-brown brick on timber piles under a granite or basalt coping; the water is held at NAP -0.40 m, so only a thin wet band."
+    },
     "classes": [
       "canal",
       "river",
