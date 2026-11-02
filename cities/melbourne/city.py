@@ -24,6 +24,17 @@ Parametric landmarks (called by pipeline/landmarks.py):
                       (Dulux, Munsell 10YR 7/4, 10R 3/8 and 10GY 2/2; the hex values here are
                       approximate conversions). The terracotta bands' heights are chosen.
 
+                      The body, the 24 m blocks and the clock tower are drawn on their mapped parts
+                      (the solids are "hidden"): cream walls in courses with a window in every bay,
+                      arched above the ground floor, the grand arch of the entrance under the clocks,
+                      the drum's windows, and the clock tower's belfry and copper cupola.
+
+  Crown Melbourne     the casino's podium (OSM w13306836) in sandstone with bronze bands, glass along
+                      the river front's two lower floors, the atrium's glass vault over the main
+                      entrance, and the eight Gas Brigades towers along Southbank's promenade, black
+                      granite with the fire bowls that send up fireballs each night. Their 14 m height
+                      and spacing are taken from photographs.
+
 Labels: no footprint in Overture carries Flinders Street Station's name, so its label
 stands over the dome, the station's front (its published coordinates are out over the platforms).
 """
@@ -33,6 +44,7 @@ import numpy as np
 import shapely
 from shapely.geometry import Point
 
+import archkit as ak
 from meshkit import Mesh
 
 SPIRE_OSM = ("w271670390", "w22664482")  # the anchor comes from the first
@@ -49,6 +61,18 @@ MATERIALS = {
     "fss_copper": {"color": "#5d7f6d", "roughness": 0.45, "metalness": 0.5},
     "fss_clock": {"color": "#f4f1e6", "roughness": 0.4, "metalness": 0.0},
     "fss_hands": {"color": "#1d1d1f", "roughness": 0.5, "metalness": 0.2},
+    # the station's walls (floodlit after dark, as its festoon of lights picks it out), windows lit from inside
+    "fss_wall": {"color": CREAM, "roughness": 0.8, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.9, "block_m": 2.0,
+                 "emissive": "#ffd59a", "glow": 0.5},
+    "fss_trim": {"color": "#d9c49c", "roughness": 0.75, "metalness": 0.0, "emissive": "#ffd59a", "glow": 0.5},
+    "fss_win": {"color": "#26292d", "roughness": 0.3, "metalness": 0.3, "emissive": "#ffcf8a", "glow": 0.45},
+    # Crown: sandstone and bronze glass, the Gas Brigades' black granite and their fire bowls
+    "crown_wall": {"color": "#c9b394", "roughness": 0.8, "metalness": 0.0, "emissive": "#ffe2bd", "glow": 0.3},
+    "crown_glass": {"color": "#4a4136", "roughness": 0.1, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 3.0, "storey_m": 4.5,
+                    "spandrel": 0.15, "mullion_m": 0.08, "frame": "#6b5a40", "lit_share": 0.8, "lit_k": 0.6, "emissive": "#ffd9a6", "glow": 0.4},
+    "crown_bronze": {"color": "#6b5a40", "roughness": 0.4, "metalness": 0.7},
+    "crown_granite": {"color": "#26282b", "roughness": 0.35, "metalness": 0.2},
+    "crown_fire": {"color": "#3a2a20", "roughness": 0.6, "metalness": 0.3, "emissive": "#ff8a2a", "glow": 1.2},
 }
 
 
@@ -111,9 +135,131 @@ def landmark_meshes(scene):
     meshes = []
     if "arts_centre_spire" in lm:
         meshes.append(spire(lm["arts_centre_spire"]))
+    hidden = []
     if "flinders_street" in lm:
         meshes += flinders_street(lm["flinders_street"])
-    return MATERIALS, meshes
+        more, hide = station_body(lm["flinders_street"])
+        meshes += more
+        hidden += hide
+    more, hide = crown()
+    meshes += more
+    hidden += hide
+    mats = {k: dict(v) for k, v in MATERIALS.items()}
+    if "flinders_street" in lm:
+        g0 = lm["flinders_street"]["ground_m"]
+        for k in ("fss_wall", "fss_trim"):
+            mats[k]["flood"] = [round(g0, 1), round(g0 + 40.0, 1), 0.5, 0.7]
+    return mats, meshes, {"hidden": hidden}
+
+
+def station_body(s):
+    """Flinders Street Station's body on its mapped parts: cream walls in courses, a window in every bay
+    (arched on the upper floors), the grand arched entrance under the dome, the drum's windows, and the clock
+    tower's belfry and copper cupola on Elizabeth Street."""
+    solids = [q for q in ak.load_solids("melbourne") if q["osm"] == STATION_OSM]
+    K = ak.Kit("fss_body", floodlit={"fss_wall", "fss_trim", "fss_win", "fss_copper"}, uv={"fss_wall"})
+    mats = ("fss_wall", "fss_trim", "fss_win")
+    dome = s.get("dome")
+    hide = []
+    for q in solids:
+        if dome and q["base"] > 5.0:
+            continue  # the dome's part, drawn as the dome
+        hide.append(q["si"])
+        if abs(ak.ring_area(q["ring"])) < 20:
+            continue
+        z0, z1 = q["ground"], q["ground"] + q["top"]
+        if q["top"] > 30:  # the clock tower: plain to the belfry, then the belfry's arches, a cornice and the cupola
+            ak.stone_body(K, q["ring"], z0, z1 - 6.0, mats, storey=7.0, win=(1.2, 3.2), arch=True, every=3.0, sill=2.0)
+            ring = ak.simplify(q["ring"])
+            ak.prism(K["fss_wall"], ak.WORLD, ring, z1 - 6.0, z1)
+            ak.ring_openings(K["fss_win"], ak.WORLD, ring, z1 - 5.0, 1.6, 3.6, 3.0, arch=True)
+            ak.cornice(K["fss_trim"], ak.WORLD, ring, z1 - 0.8, ((0, 0), (0.4, 0.3), (0.7, 0.8), (0, 0.8)))
+            cx, cy = ak.ring_centroid(q["ring"])
+            r = math.sqrt(abs(ak.ring_area(q["ring"]))) * 0.42
+            ak.dome(K["fss_copper"], (cx, cy), z1, r, r * 1.3, segs=16, rows=6)
+            K["fss_copper"].box((cx, cy, z1 + r * 1.2), (cx, cy, z1 + r * 1.3 + 3.5), 0.15, 0.15)
+            continue
+        ak.stone_body(K, q["ring"], z0, z1, mats, storey=6.2, win=(1.7, 3.4), arch=True, every=4.4, sill=1.6)
+    if dome:
+        # the drum's arched windows under the copper dome, and the grand arch of the entrance under the clocks
+        dx, dy = dome["at"]
+        g0 = s["ground_m"]
+        ak.ring_openings_round(K["fss_win"], (dx, dy), g0 + dome["base_m"] - 6.0, dome["r"] * 1.04 + 0.05, 12, 1.8, 4.2, arch=True)
+        e = np.array(s["entrance"])
+        n = (e - np.array([dx, dy])) / np.linalg.norm(e - np.array([dx, dy]))
+        t = np.array([n[1], -n[0]])
+        a, b = e + n * 0.4 - t * 8, e + n * 0.4 + t * 8
+        ak.opening(K["fss_win"], ak.WORLD, b, a, g0 + 0.2, 7.0, 10.5, arch=True, centre=8.0)
+        ak.frame_quad(K["fss_trim"], ak.WORLD, b, a, 8.0, g0 + 0.2, 7.0, 10.5, t=0.8, depth=0.2)
+    return K.out(), hide
+
+
+CROWN = "w13306836"
+GAS_BRIGADES = 8  # the towers along the promenade that send up fireballs each night (Crown Melbourne)
+
+
+def crown():
+    """Crown Melbourne's riverfront: the podium in sandstone and bronze glass, the atrium's glass over the main
+    entrance, and the eight Gas Brigades towers along Southbank's promenade with their fire bowls."""
+    rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
+    if not rows:
+        return [], []
+    q = max(rows, key=lambda r: abs(ak.ring_area(r["ring"])))
+    K = ak.Kit("crown", floodlit={"crown_wall", "crown_glass", "crown_fire"}, uv={"crown_glass"})
+    ring = ak.simplify(q["ring"], 0.8)
+    g, top = q["ground"], q["ground"] + q["top"]
+    ak.prism(K["crown_wall"], ak.WORLD, ring, g, top)
+    ak.cornice(K["crown_bronze"], ak.WORLD, ring, top - 1.2, ((0, 0), (0.6, 0.2), (0.6, 1.2), (0, 1.2)))
+    ak.band(K["crown_bronze"], ak.WORLD, ring, g + 13.0, out=0.4, h=0.8)
+    cx, cy, ax, L, W = ak.oriented(ring)
+    a = math.radians(ax)
+    north = np.array([-math.sin(a), math.cos(a)])
+    if north[1] < 0:
+        north = -north  # the river side: the long side facing the Yarra (north-west)
+    pts = list(ring)
+    if ak.ring_area(pts) < 0:
+        pts = pts[::-1]
+    river = []
+    for k in range(len(pts)):
+        p0, p1 = np.array(pts[k]), np.array(pts[(k + 1) % len(pts)])
+        e = p1 - p0
+        Ln = float(np.linalg.norm(e))
+        if Ln < 12:
+            continue
+        nrm = np.array([e[1], -e[0]]) / Ln  # outward for an anticlockwise ring
+        if float(nrm @ north) > 0.7:
+            river.append((p0, p1, nrm, Ln))
+    glass = K["crown_glass"]
+    s0 = 0.0
+    for p0, p1, nrm, Ln in river:  # glass along the river front, its two lower floors
+        a0, a1 = p0 + nrm * 0.15, p1 + nrm * 0.15
+        glass.quad((*a0, g), (*a1, g), (*a1, g + 12.5), (*a0, g + 12.5), [[s0, 0], [s0 + Ln, 0], [s0 + Ln, 12.5], [s0, 12.5]])
+        s0 += Ln
+    if river:
+        longest = max(river, key=lambda r: r[3])
+        p0, p1, nrm, Ln = longest
+        mid = (p0 + p1) / 2
+        # the atrium: a glass vault over the main entrance, rising over the podium's roof
+        t = (p1 - p0) / Ln
+        F = ak.Frame(*(mid - nrm * 15.0), math.degrees(math.atan2(t[1], t[0])), top)
+        for k in range(10):
+            a0, a1 = math.pi * k / 10, math.pi * (k + 1) / 10
+            glass.quad(F(-20, -14 * math.cos(a0), 7 * math.sin(a0)), F(20, -14 * math.cos(a0), 7 * math.sin(a0)),
+                       F(20, -14 * math.cos(a1), 7 * math.sin(a1)), F(-20, -14 * math.cos(a1), 7 * math.sin(a1)))
+        # the Gas Brigades: along the whole river front, 9 m out on the promenade
+        segs = [(r[0], r[1], r[2]) for r in river]
+        total = sum(float(np.linalg.norm(b - a_)) for a_, b, _ in segs)
+        for i in range(GAS_BRIGADES):
+            d = total * (i + 0.5) / GAS_BRIGADES
+            for a_, b, nrm in segs:
+                Lg = float(np.linalg.norm(b - a_))
+                if d <= Lg:
+                    p = a_ + (b - a_) * d / Lg + nrm * 9.0
+                    K["crown_granite"].box((p[0], p[1], g), (p[0], p[1], g + 14.0), 2.4, 2.4)
+                    K["crown_fire"].lathe([(g + 14.0, 1.0), (g + 14.6, 1.6), (g + 15.0, 1.7)], (p[0], p[1]), segs=10)
+                    break
+                d -= Lg
+    return K.out(), [r["si"] for r in rows]
 
 
 def flinders_street(s):

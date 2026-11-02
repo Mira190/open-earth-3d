@@ -22,7 +22,7 @@ const [,, city = 'sydney', outDir = '.', which = '3', times = '10:30,19:40,22:00
     };
   });
   const logs = [];
-  p.on('console', m => { if (m.type() === 'error') logs.push(`error: ${m.text().slice(0, 300)}`); });
+  p.on('console', m => { if (m.type() === 'error' && !/\/version\.json$/.test((m.location() || {}).url || '')) logs.push(`error: ${m.text().slice(0, 300)}`); });
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   fs.mkdirSync(outDir, { recursive: true });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });

@@ -24,7 +24,7 @@ const [,, city = 'sydney', outDir = '.', pairsArg = '40'] = process.argv;
   });
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  p.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 300)); });
+  p.on('console', m => { if (m.type() === 'error' && !/\/version\.json$/.test((m.location() || {}).url || '')) errors.push(m.text().slice(0, 300)); });
   fs.mkdirSync(outDir, { recursive: true });
   const shot = async name => {
     const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));

@@ -583,7 +583,11 @@ def arc(t, mats):
                 tr.box(P(p0[0] * 0.98, v, spring + (p0[1] - spring) * 0.98), P(p1[0] * 0.98, v, spring + (p1[1] - spring) * 0.98), 0.4, 0.3)
     # the plinth round the foot, the impost cornices at both springings, the keystones
     outer = ak.rect(-hw, hw, -hd, hd)
-    ak.band(tr, P, outer, 0.0, out=0.45, h=1.6)
+    for sx in (-1, 1):  # the plinth round each pier, not across the arches
+        for sy in (-1, 1):
+            u0, u1 = sorted((sx * aw / 2, sx * hw))
+            v0, v1 = sorted((sy * sw / 2, sy * hd))
+            ak.band(tr, P, ak.rect(u0, u1, v0, v1), 0.0, out=0.45, h=1.6)
     ak.band(tr, P, outer, spring - 0.9, out=0.35, h=0.9)
     for sv in (-1, 1):
         tr.box(P(0, sv * (hd + 0.2), ah - 1.6), P(0, sv * (hd + 0.2), ah + 0.6), 2.2, 0.8)
