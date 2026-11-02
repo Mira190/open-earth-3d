@@ -847,17 +847,32 @@ cars.
     that is more (45 to 520 m; a tower taller than that allows is not tried nearer). The breadth is the median, over 16 bearings, of how far
     the surface model stays above 30% of its height out from its label, a street's gap
     ending it.
-  - **Which side:** 48 spots on three rings round it are scored on how much of it they
-    see: four lines of sight from eye height (every 4 m through the 2 m surface model, and
-    through the mapped trees' crowns, which the surface model leaves out), one to 60% of
-    its height and three to 35% of it, at its centre and to either side as far out as its
-    high part runs. A slot down a street of offices sees only its top over the roofs and
-    fails the low lines either side, so a square, a riverbank or a wide road that sees it
-    whole wins. Then the sun behind you by day, open ground round the spot, the street
-    rather than a roof, out from under a walkway or a flyover (for you and the camera), out of the haze the model's edge fades into (standing in it veils
-    everything round you, the near things too), and room behind you for the chase camera (the same test the
-    camera rig makes, and no crown in front of the lens). A spot whose camera is blocked
-    is tried again a few steps either side, nearer and further.
+  - **What it is:** its body is the surface model's cells of its own buildings (named as
+    its label, in either script, within 150 m), or of the buildings under its label, and the
+    high part within 40 m of its label whatever building those cells were drawn for (Shibuya
+    Scramble Square's floors over the station). Its tops are sampled, and along its edges
+    its walls at a quarter and 60% of their height. A part over its roofs that the surface
+    model leaves out (HEP FIVE's wheel, a mast) is a column of points at its label up to the
+    label's height, as many as the buildings have; with no buildings under it (the Eiffel
+    Tower's open iron), the column is all there is. Each point weighs by its height: a tower
+    is known by its upper floors, not the podium round its foot.
+  - **Which side:** spots on four rings round it (0.45, 0.7, 1 and 1.35 times the distance
+    back) are scored on what the camera behind you will see from there: the share of the
+    body's points in the frame (for the screen's own shape, a phone's narrow one too) with a
+    clear line to them from the lens, every 2 m through the surface model until it meets the
+    body itself (a wall of it in front of a point counts as seen, but not in front of a point
+    of the part over its roofs) and through the mapped trees' crowns; less the share the
+    frame's edges cut off, and more again for its upper third off the top; and more for
+    filling a good part of the frame's height. A slot down a street of offices sees only its
+    top over the roofs, so a square, a riverbank or a wide road that sees it whole wins.
+    When no ring sees 60% of it (a short building among towers), every open spot on a grid
+    round it is tried. Then the sun behind you by day, open ground round the spot (the share
+    of two rings 6 and 14 m out with nothing over 3 m; wholly open counts for as much as half the
+    landmark in sight), the street rather than a roof, out from under a walkway or a flyover
+    (for you and the camera), out of the haze the model's edge fades into (standing in it
+    veils everything round you, the near things too), and room behind you for the chase
+    camera (the same test the camera rig makes, and no crown in front of the lens). A spot
+    whose camera is blocked is tried again a few steps either side, nearer and further.
   - **Fronts and hand-picked spots** (`arrivals` in `cities/<id>/city.json`, keyed by the
     label as shown): for the few landmarks the search gets wrong, `front` is the compass
     bearing the landmark's front faces (the National Diet looks east over its garden), and
@@ -870,9 +885,15 @@ cars.
     each arrival lands, its best-scored spots, and a character map of the surface model,
     the water and the main roads round it, for choosing them.
   - **The camera:** behind you and a little to one side, so the landmark stands just off
-    your shoulder, and tilted up enough to take in the top of its near side.
-  - `tools/travel_shot.js <city> <out>` takes a still on arrival at each landmark and says
-    whether it is in frame.
+    your shoulder, at the pitch that puts its top a little under the frame's top edge. A
+    camera can't go under your head to look up (it would be in the ground), so for a tall
+    landmark it stays just over your head and tilts up instead, by up to 15°, which puts you
+    low in the frame under it; the tilt eases off when you move, steer or drag the view.
+  - `tools/travel_shot.js <city> <out> [width height]` takes a still on arrival at each
+    landmark and prints how much of its body the camera sees (the same measure, from the
+    camera the game drew with); under 30% is a MISS. `ARRIVALS='{"Label": {...}}'` tries
+    `arrivals` entries before they go in `city.json`, here and in `arrival_probe.js`, which
+    also prints the body each landmark was given.
   - **Zoom and pan:** the wheel (or a trackpad pinch, or <kbd>+</kbd> and <kbd>−</kbd>) zooms
     the map about the pointer, from the whole city to about a metre a screen pixel; a drag
     pans it, and on a phone two fingers pinch and pan. Buttons in its corner zoom in, out
