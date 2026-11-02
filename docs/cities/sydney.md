@@ -240,9 +240,19 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
       shell's own glass wall (`north_tiers()`, 106 m of it). The tiers' depths
       and heights are placed from those photographs, not measured.
 
-      | ![The Lower Concourse's colonnade under the forecourt's edge, the flight up to the broadwalk and the broad steps](../images/sydney/lower-concourse-colonnade.jpg) | ![On foot in the game, at the foot of the flight up to the broadwalk](../images/sydney/lower-concourse-steps.jpg) |
+      | ![The Lower Concourse's colonnade under the forecourt's edge, 2.4 m clear under the 1.5 m slab](../images/sydney/lower-concourse-colonnade.jpg) | ![On foot in the game, at the foot of the flight up to the Northern Broadwalk](../images/sydney/lower-concourse-steps.jpg) |
       |---|---|
       | ![The Lower Concourse from the water at dusk, the colonnade's shopfronts lit](../images/sydney/lower-concourse-dusk.jpg) | ![The podium's north end in tiers, under the foyer's leaning glass](../images/sydney/podium-north-tiers.jpg) |
+      | ![The stairwell in the forecourt from above at dusk](../images/sydney/stairwell-air.jpg) | ![The flight at the north end, from the walkway's round end to the Northern Broadwalk](../images/sydney/north-flight.jpg) |
+      | ![On foot at the top of the stairwell](../images/sydney/stairwell-top.jpg) | ![On foot at its foot, looking up the passage to the flight](../images/sydney/stairwell-foot.jpg) |
+      | ![On foot under the colonnade at night, the shopfronts lit](../images/sydney/colonnade-walk.jpg) | ![On foot at the seawall's edge, the toes at the coping](../images/sydney/seawall-edge.jpg) |
+
+      Against the aerial photo (NSW Spatial Services, NSW Imagery, CC BY 4.0), the
+      stairwell and the north flight as the model draws them:
+
+      ![The stairwell: NSW Imagery beside the model](../images/sydney/stairwell-aerial-vs-model.jpg)
+      ![The north flight: NSW Imagery beside the model](../images/sydney/north-flight-aerial-vs-model.jpg)
+      ![On a phone: the stairwell, its foot, the colonnade, the north flight, the seawall](../images/sydney/lower-concourse-phone.jpg)
   - **The podium and the Monumental Steps:** the podium is clad in pink granite
     panels, on two levels. The Monumental Steps climb from the forecourt to a
     landing. They are measured on the aerial photo: 85 m wide, three flights of
