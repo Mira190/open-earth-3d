@@ -263,9 +263,14 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     g.advance(1);
     r.out = g.player.mode === 'foot';
     const dest = g.destinations(g.player.x, g.player.y)[0];
+    // a ride comes only from a car within reach, and the traffic is random: as the phone says when
+    // there is none ("Try again in a moment"), a few seconds on, try again
     if (dest) g.orderRide(dest);
+    for (let i = 0; i < 3 && dest && !(g.ride() && g.ride() !== o && g.ride().phase === 'coming'); i++) { g.advance(5); g.orderRide(dest); }
     const q = g.ride();
     r.ordered = !!q && q !== o && q.kind === 'hire' && q.phase === 'coming';
+    // when it does not come, what the phone said (no street, no drivers near, one already on the way)
+    if (!r.ordered) r.orderWhy = `${dest ? `to ${dest.name}` : 'nowhere to go'}, the last ride ${o.phase}, ${q ? `ride ${q.kind} ${q.phase}` : 'no ride'}: ${document.getElementById('g-toasts').textContent.slice(-120)}`;
     if (r.ordered) g.cancelRide();
     return r;
   });
@@ -279,7 +284,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
     check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
-    check(taxi.ordered, 'orders a ride on the phone');
+    check(taxi.ordered, `orders a ride on the phone${taxi.ordered ? '' : ` (${taxi.orderWhy})`}`);
   }
   await shot('taxi');
 
