@@ -7,7 +7,7 @@
 //   - at every stop the scene, drawn into a float target, holds no NaN or infinity and nothing
 //     brighter than a lit city (the bloom turns one such pixel into a ball of light that flashes);
 //   - no frame in a flight between stops is a flat colour, and two frames of a still view differ
-//     by no more than grain, water and leaves: under 1% of pixels, and the mean by under 3 levels.
+//     as a frame that flashes or pumps would: the mean by under 3 levels, under a tenth of 4x4 blocks.
 // Writes two stills per stop (stop-NN.jpg, stop-NNb.jpg), one from each flight (fly-NN.jpg) and the end card
 // (end.png) to out_dir; prints one line per check and exits 1 if any failed.
 //   python3 -m http.server 8800 --directory web &
@@ -112,13 +112,25 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
     await p.waitForTimeout(400);
     await frame();
     const c = await grab(`stop-${pad(i + 1)}b.jpg`);
-    const jump = a.L.reduce((k, v, j) => k + (Math.abs(v - c.L[j]) > 48 ? 1 : 0), 0) / a.L.length;
+    // compared in 4 x 4 blocks of the 320-wide grab. Leaves in the wind and waves on the water
+    // move a few per cent of them (Melbourne's bay, close up, nearly 4%); a frame that flashes or
+    // pumps moves its mean or most of its blocks. (A highlight that flashes is caught at its
+    // source, by the float target above, which a two-frame difference cannot tell from a wave.)
+    const BW = 80, BH = Math.floor(a.L.length / 320 / 4), blockMean = L => {
+      const m = new Float32Array(BW * BH);
+      for (let by = 0; by < BH; by++) for (let bx = 0; bx < BW; bx++) {
+        let t = 0;
+        for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) t += L[(by * 4 + y) * 320 + bx * 4 + x];
+        m[by * BW + bx] = t / 16;
+      }
+      return m;
+    };
+    const ma = blockMean(a.L), mc = blockMean(c.L), at = [];
+    ma.forEach((v, j) => { if (Math.abs(v - mc[j]) > 24) at.push(j); });
+    const jump = at.length / ma.length, dMean = Math.abs(a.mean - c.mean);
     flicker = Math.max(flicker, jump);
-    const at = []; a.L.forEach((v, j) => { if (Math.abs(v - c.L[j]) > 48) at.push(j); });
-    const where = at.length ? `, around (${Math.round(at.reduce((q, j) => q + j % 320, 0) / at.length / 3.2)}%, ${Math.round(at.reduce((q, j) => q + Math.floor(j / 320), 0) / at.length / (a.L.length / 320) * 100)}%) of the frame` : '';
-    // leaves in the wind and the water move a few pixels; a frame that flashes moves its mean
-    const dMean = Math.abs(a.mean - c.mean);
-    check(`stop ${i + 1}: steady`, jump < 0.01 && dMean < 3, `${(jump * 100).toFixed(2)}% of pixels jumped${where}, mean moved ${dMean.toFixed(1)}`);
+    const where = at.length ? `, around (${Math.round(at.reduce((q, j) => q + j % BW, 0) / at.length / BW * 100)}%, ${Math.round(at.reduce((q, j) => q + Math.floor(j / BW), 0) / at.length / BH * 100)}%) of the frame` : '';
+    check(`stop ${i + 1}: steady`, jump < 0.1 && dMean < 3, `${(jump * 100).toFixed(2)}% of blocks jumped${where}, mean moved ${dMean.toFixed(1)}`);
     if (i === n - 1) break;
     // on to the next stop, and a frame from the middle of the flight
     await finishStop();
@@ -161,7 +173,7 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
 
   check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   console.log(`${city}: ${results.filter(Boolean).length}/${results.length} checks passed; brightest ${worstHdr.max.toFixed(1)}, `
-    + `most pixels jumping ${(flicker * 100).toFixed(2)}%, flat flights ${flat.length ? flat.join(', ') : 'none'}`);
+    + `most blocks jumping ${(flicker * 100).toFixed(2)}%, flat flights ${flat.length ? flat.join(', ') : 'none'}`);
   await b.close();
   process.exit(results.every(Boolean) ? 0 : 1);
 })().catch(e => { console.error(e); process.exit(1); });
