@@ -763,8 +763,12 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         if (newSky && api.skyHaze) hazeOk = readHaze(az);
         su.uHazeOn.value = api.skyHaze && hazeOk ? 1 : 0;
         // at night the haze is the night's blue with a little of the city's glow in it (night.js)
-        world.fog.color.set(day > 0.5 ? 0xc6d3dc : (night ? su.uNightZenith.value.clone().multiplyScalar(1.4).add(su.uNightHorizon.value.clone().multiplyScalar(0.1)) : new THREE.Color(0x0c1420))
-          .lerp(TWI_FOG, tw * 0.7).lerp(new THREE.Color(0xd2b49c), day * 2).getHex());
+        // by day a grey-blue, warming to a sandy haze as the sun gets low; under that, the night's
+        // blue through the blue hour (the warm lerp runs 0..1 over day 0..0.5 only: applied to the
+        // day branch too it ran to 2 and pushed the noon haze past sand to orange)
+        world.fog.color.set((day > 0.5 ? new THREE.Color(0xd2b49c).lerp(new THREE.Color(0xc6d3dc), smooth(0.5, 0.9, day))
+          : (night ? su.uNightZenith.value.clone().multiplyScalar(1.4).add(su.uNightHorizon.value.clone().multiplyScalar(0.1)) : new THREE.Color(0x0c1420))
+            .lerp(TWI_FOG, tw * 0.7).lerp(new THREE.Color(0xd2b49c), day * 2)).getHex());
         // and at night a little more air between the camera and the far city, so its lights soften
         // into that glow with distance (the view's own fog distances by day)
         if (!fogBase) fogBase = [world.fog.near, world.fog.far];

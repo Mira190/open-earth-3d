@@ -93,12 +93,18 @@ window.OEEarth = (function () {
       float shade = texture2D(uClouds, cuv + toSun).r;
       float diffuse = max((mu + 0.03) / 1.03, 0.0) * smoothstep(-0.06, 0.04, mu0); // relief can't light the night side
       vec3 col = day * sunC * diffuse * uSunE * (1.0 - 0.62 * smoothstep(0.1, 0.8, shade));
-      // the sun's glint on open water, rough enough to spread with the wind
+      // the sun's glint: a sea of wind-tilted facets (Cox and Munk 1954: slope variance
+      // 0.003 + 0.00512 per m/s of wind, here about 5 m/s, with a fifth of calmer water for a
+      // sharper core), each a Fresnel mirror. In the same units as the diffuse term above
+      // (pi L / E), so at its peak it is about as bright as sunlit land and well under a cloud:
+      // the broad silvery patch of the DSCOVR EPIC disc, not a lamp
       vec3 H = normalize(uSun + V);
-      float nh = max(dot(N0, H), 0.0);
+      float nh = max(dot(N0, H), 0.02), nh2 = nh * nh, tan2 = (1.0 - nh2) / nh2;
       float fres = 0.02 + 0.98 * pow(1.0 - max(dot(N0, V), 0.0), 5.0);
-      float glint = pow(nh, 1400.0) * 7.0 + pow(nh, 200.0) * 0.55 + pow(nh, 18.0) * 0.035;
-      col += sunC * glint * (0.35 + fres) * water * (1.0 - cl) * smoothstep(0.0, 0.1, mu0) * uSunE;
+      float fresH = 0.02 + 0.98 * pow(1.0 - max(dot(V, H), 0.0), 5.0);
+      float slopes = 0.8 * exp(-tan2 / 0.03) / 0.03 + 0.2 * exp(-tan2 / 0.008) / 0.008;
+      float glint = fresH * slopes / (4.0 * max(dot(N0, V), 0.08) * nh2 * nh2);
+      col += sunC * min(glint, 2.5) * water * (1.0 - cl) * smoothstep(0.0, 0.1, mu0) * uSunE;
       col += vec3(0.05, 0.12, 0.25) * fres * water * smoothstep(-0.05, 0.2, mu0) * uSunE * 0.25;
       // night: the lights, warm sodium in the suburbs, whiter in the cores, dimmed under cloud
       float night = 1.0 - smoothstep(-0.11, 0.02, mu0);
@@ -139,7 +145,7 @@ window.OEEarth = (function () {
     void main() {
       vec3 N = normalize(vPos);
       float c = texture2D(uClouds, vec2(vUv.x + uCloudU, vUv.y)).r;
-      float a = smoothstep(0.05, 0.85, c);
+      float a = smoothstep(0.1, 0.85, c); // below a tenth is the map's compression noise, not haze: it speckled the oceans
       vec3 V = normalize(uCam - vPos);
       a = min(1.0, a * (1.0 + 0.6 * pow(1.0 - max(dot(N, V), 0.0), 3.0))); // thicker seen edge-on
       float mu = dot(N, uSun);
@@ -150,8 +156,8 @@ window.OEEarth = (function () {
     }`;
 
   // single scattering through a spherical shell, marched from the camera (or where the ray
-  // enters the air) to the ground or out of the air again; jittered per pixel so the steps
-  // show as grain rather than bands
+  // enters the air) to the ground or out of the air again, each step's air and the earth's
+  // shadow across it integrated exactly, so the picture is clean without jitter
   const ATMO_VS = `varying vec3 vWorld;
     void main() { vec4 w = modelMatrix * vec4(position, 1.0); vWorld = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`;
   const ATMO_FS = `
@@ -166,6 +172,27 @@ window.OEEarth = (function () {
       return vec2(-b - d, -b + d);
     }
     float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
+    // the air's density integrated exactly along a step, its height taken as linear across it:
+    // sampling it at one point per step left a per-pixel speckle over the whole disc
+    float column(float ha, float hb, float ds, float H) {
+      float d = hb - ha;
+      return abs(d) < 1e-7 ? exp(-ha / H) * ds : ds * H * (exp(-ha / H) - exp(-hb / H)) / d;
+    }
+    // the earth's shadow along a ray: the cylinder of radius RP behind the planet, as an interval
+    // of t (empty when x >= y)
+    vec2 shadowSpan(vec3 ro, vec3 rd, vec3 S) {
+      float rs = dot(rd, S), os = dot(ro, S);
+      float A = 1.0 - rs * rs, B = 2.0 * (dot(ro, rd) - os * rs), C = dot(ro, ro) - os * os - RP * RP;
+      if (A < 1e-6) return C < 0.0 ? (rs > 0.0 ? vec2(-1e9, -os / rs) : vec2(-os / rs, 1e9)) : vec2(1e9, -1e9);
+      float D = B * B - 4.0 * A * C;
+      if (D <= 0.0) return vec2(1e9, -1e9);
+      D = sqrt(D);
+      vec2 sp = vec2(-B - D, -B + D) / (2.0 * A);
+      if (abs(rs) < 1e-6) return os < 0.0 ? sp : vec2(1e9, -1e9);
+      float tc = -os / rs; // only the half behind the planet
+      if (rs > 0.0) sp.y = min(sp.y, tc); else sp.x = max(sp.x, tc);
+      return sp;
+    }
     void main() {
       vec3 rd = normalize(vWorld - uCam);
       vec2 ta = hitSphere(uCam, rd, RA);
@@ -175,36 +202,48 @@ window.OEEarth = (function () {
       if (tp.x > 0.0 && tp.x < tp.y) t1 = min(t1, tp.x);
       const int N = ATMO_N; const int NL = ATMO_NL;
       float ds = (t1 - t0) / float(N);
-      float j = hash(gl_FragCoord.xy);
+      vec2 sh = shadowSpan(uCam, rd, uSun);
       vec3 sumR = vec3(0.0), sumM = vec3(0.0);
       float odR = 0.0, odM = 0.0;
       for (int i = 0; i < N; i++) {
-        vec3 p = uCam + rd * (t0 + ds * (float(i) + j));
-        float h = length(p) - RP;
-        float dR = exp(-h / uHR) * ds, dM = exp(-h / uHM) * ds;
+        float sa = t0 + ds * float(i), sb = sa + ds;
+        float ha = length(uCam + rd * sa) - RP, hb = length(uCam + rd * sb) - RP;
+        float dR = column(ha, hb, ds, uHR), dM = column(ha, hb, ds, uHM);
         odR += dR; odM += dM;
-        // the earth's shadow: no sun where the ray to it runs into the ground
-        vec2 tg = hitSphere(p, uSun, RP);
-        if (tg.x > 0.0 && tg.x < tg.y) continue;
+        // the part of the step in the sun: the step less the earth's shadow, integrated exactly
+        // (a shadow test at one jittered point a step speckled the twilight band)
+        float u0 = clamp(sh.x, sa, sb), u1 = clamp(sh.y, sa, sb), litR = dR, litM = dM, mid = sa + ds * 0.5;
+        if (u1 > u0) {
+          float h0 = length(uCam + rd * u0) - RP, h1 = length(uCam + rd * u1) - RP;
+          litR = column(ha, h0, u0 - sa, uHR) + column(h1, hb, sb - u1, uHR);
+          litM = column(ha, h0, u0 - sa, uHM) + column(h1, hb, sb - u1, uHM);
+          if (litR + litM <= 0.0) continue;
+          mid = u0 - sa > sb - u1 ? (sa + u0) * 0.5 : (u1 + sb) * 0.5;
+        }
+        vec3 p = uCam + rd * mid;
         float tl = hitSphere(p, uSun, RA).y, dl = tl / float(NL), lR = 0.0, lM = 0.0;
         for (int k = 0; k < NL; k++) {
           float hq = length(p + uSun * dl * (float(k) + 0.5)) - RP;
           lR += exp(-hq / uHR) * dl; lM += exp(-hq / uHM) * dl;
         }
         vec3 att = exp(-(uBetaR * (odR + lR) + uBetaM * 1.11 * (odM + lM)));
-        sumR += att * dR; sumM += att * dM;
+        sumR += att * litR; sumM += att * litM;
       }
       float mu = dot(rd, uSun), g = uG;
       float pR = 0.0596831 * (1.0 + mu * mu);
       float pM = 0.1193662 * ((1.0 - g * g) * (1.0 + mu * mu)) / ((2.0 + g * g) * pow(1.0 + g * g - 2.0 * g * mu, 1.5));
       vec3 col = uSunE * uGain * (sumR * uBetaR * pR + sumM * uBetaM * pM);
       vec3 tr = exp(-(uBetaR * odR + uBetaM * 1.11 * odM));
-      // the sun itself, where the ray clears the ground: reddened and dimmed by the air it crosses
+      // the sun, where the ray clears the ground, reddened and dimmed by the air it crosses. The
+      // sky behind draws it, and this pass's alpha (one minus the mean transmittance) dims it;
+      // here goes only what the mean leaves out, channel by channel: the reddening. (Drawing the
+      // sun here instead, and masking it in the sky, left a dashed dark seam where the shell's
+      // facets fall short of the true sphere.)
       if (!(tp.x > 0.0 && tp.x < tp.y)) {
         float ang = acos(clamp(mu, -1.0, 1.0));
         float disc = 1.0 - smoothstep(0.0042, 0.0052, ang);
         float glow = exp(-ang * 90.0) * 0.05 + exp(-ang * 14.0) * 0.004;
-        col += vec3(1.0, 0.96, 0.9) * (disc + glow) * uSunDisc * tr;
+        col += vec3(1.0, 0.96, 0.9) * (disc + glow) * uSunDisc * (tr - vec3(dot(tr, vec3(0.3333))));
       }
       col = mix(vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), col, 0.82); // the limb's colours, a little less printed
       gl_FragColor = vec4(col, 1.0 - dot(tr, vec3(0.3333)));
@@ -217,15 +256,13 @@ window.OEEarth = (function () {
     varying vec3 vDir;
     void main() {
       vec3 d = normalize(vDir);
-      float b = dot(uCam, d), c = dot(uCam, uCam) - ${(ATMO * ATMO).toFixed(5)};
-      float inAir = (b * b - c > 0.0 && (-b + sqrt(max(b * b - c, 0.0))) > 0.0) ? 1.0 : 0.0;
       vec3 g = uGal * d;
       vec2 uv = vec2(fract(0.5 - atan(g.y, g.x) / 6.2831853), 0.5 + asin(clamp(g.z, -1.0, 1.0)) / 3.1415927);
       vec3 mw = pow(texture2D(uMW, uv).rgb, vec3(2.2)) * uMWI * uReady;
       float ang = acos(clamp(dot(d, uSun), -1.0, 1.0));
       float disc = 1.0 - smoothstep(0.0042, 0.0052, ang);
       float glow = exp(-ang * 90.0) * 0.05 + exp(-ang * 14.0) * 0.004;
-      gl_FragColor = vec4(mw + vec3(1.0, 0.96, 0.9) * (disc + glow) * uSunDisc * (1.0 - inAir), 1.0);
+      gl_FragColor = vec4(mw + vec3(1.0, 0.96, 0.9) * (disc + glow) * uSunDisc, 1.0); // the earth hides it, the air dims it
     }`;
 
   const STAR_VS = `attribute float aSize; attribute vec3 aColor; uniform float uPx; uniform float uBright; varying vec3 vC;
@@ -268,7 +305,7 @@ window.OEEarth = (function () {
   const LENS = () => ({
     uniforms: {
       tDiffuse: { value: null }, uAspect: { value: 1 }, uTime: { value: 0 }, uExposure: { value: 1 }, uFade: { value: 1 }, uFlash: { value: 0 },
-      uCA: { value: 0.25 }, uGrain: { value: 0.045 }, uVignette: { value: 0.14 }, uZoom: { value: 0 },
+      uCA: { value: 0.25 }, uGrain: { value: 0.028 }, uVignette: { value: 0.14 }, uZoom: { value: 0 },
       uSunUv: { value: new THREE.Vector2(-9, -9) }, uSunVis: { value: 0 }, uFlare: { value: 1 }, uFlareTint: { value: new THREE.Color(1, 0.8, 0.6) },
     },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -357,9 +394,15 @@ window.OEEarth = (function () {
       for (;;) { const { done, value } = await reader.read(); if (done) break; parts.push(value); got += value.length; onBytes(got, total); }
       blob = new Blob(parts);
     } else { blob = await r.blob(); onBytes(1, 1); }
-    const img = new Image();
-    img.src = URL.createObjectURL(blob);
-    await img.decode();
+    const img = new Image(), src = URL.createObjectURL(blob);
+    img.src = src;
+    try { await img.decode(); } catch (e) {
+      // a host whose content policy refuses blob: images: take it by its URL, now in the cache
+      const again = new Image();
+      again.src = url;
+      await again.decode();
+      return again;
+    } finally { setTimeout(() => URL.revokeObjectURL(src), 0); }
     return img;
   }
   // a texture, drawn down to maxW for the tier, to spare the GPU's memory

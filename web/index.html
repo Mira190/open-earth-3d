@@ -147,19 +147,61 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
   animation: glint 1.4s ease-in-out infinite; }
 @keyframes glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 .loader.ready .track::after { animation: none; opacity: 0; }
-/* the loading flyover (flyover.js): the video fills the loader, and the progress sits over it, low down, on glass */
-.loader video.flyover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.loader.has-flyover { place-items: end center; background: var(--bg); }
-.loader.has-flyover > div { position: relative; margin-bottom: max(7vh, 24px); padding: 18px 28px 20px; background: var(--hud);
-  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
-.loader.has-flyover .wm { display: none; }
-.loader.has-flyover .ld-mode { margin-top: 0; }
-.loader.has-flyover > div > b { margin-top: 10px; font-size: clamp(20px, 2.6vw, 30px); }
-.loader.has-flyover .track { margin-top: 20px; }
-.flyover-start { margin-top: 16px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: var(--r); padding: 11px 22px; cursor: pointer;
-  font: 400 10px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; transition: background 0.3s, border-color 0.3s; }
-.flyover-start:hover { background: var(--accent-2); border-color: var(--accent-2); }
-.flyover-start:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+/* the loading plate (plate.js): the city's aerial survey assembles behind the progress, which sits
+   low down on a card. Only transforms and opacity move, so it runs smooth while the city builds. */
+.loader.has-plate { place-items: end center; background: #04060b; overflow: hidden; }
+.plate { position: absolute; inset: 0; margin: 0; overflow: hidden; contain: strict; }
+.plate-map { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.02); opacity: 0; transition: opacity 1s ease; will-change: transform; }
+.plate-map.on { opacity: 1; animation: plate-drift 60s cubic-bezier(0.25, 0, 0.2, 1) forwards; }
+@keyframes plate-drift { from { transform: translate(-50%, -50%) scale(1.02) rotate(-0.5deg); } to { transform: translate(-50%, -50%) scale(1.16) rotate(0.35deg); } }
+.plate-map img { position: absolute; display: block; opacity: 0; transition: opacity 1.4s ease; }
+.plate-map img.in { opacity: 0.78; } /* over the plate's blue-black: the survey at dusk, in the title's grade */
+.plate-grid { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.plate-grid line { stroke: rgba(236, 232, 225, 0.16); stroke-width: 0.7; vector-effect: non-scaling-stroke; }
+.plate-grid line.km { stroke: rgba(255, 196, 140, 0.42); stroke-width: 0.9; }
+.plate-tick { position: absolute; font: 400 9px/1 var(--f-mono); letter-spacing: 0.14em; color: rgba(236, 232, 225, 0.55); white-space: nowrap; text-transform: uppercase; }
+.plate-tick.x { top: 10px; transform: translateX(6px); }
+.plate-tick.y { left: 10px; transform: translateY(-14px); }
+.plate-pin { position: absolute; display: flex; align-items: center; gap: 8px; transform: translate(-5px, -50%); white-space: nowrap; opacity: 0;
+  font: 500 10px/1 var(--f-mono); letter-spacing: 0.18em; text-transform: uppercase; color: #f4f1ea; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.6);
+  animation: plate-pin 0.9s ease forwards; }
+.plate-pin i { flex: none; width: 9px; height: 9px; border: 1px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 176, 102, 0.18), 0 0 10px rgba(255, 176, 102, 0.5); }
+@keyframes plate-pin { from { opacity: 0; transform: translate(-5px, -50%) translateY(6px); } to { opacity: 1; transform: translate(-5px, -50%); } }
+.plate-scan { position: absolute; top: 0; bottom: 0; left: 0; width: 12vw; opacity: 0.4; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 196, 140, 0.05) 75%, rgba(255, 196, 140, 0.5) 99.6%, transparent);
+  animation: plate-scan 7s cubic-bezier(0.45, 0, 0.55, 1) infinite; will-change: transform; }
+@keyframes plate-scan { from { transform: translateX(-14vw); } to { transform: translateX(104vw); } }
+.plate-shade { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 40%, rgba(4, 6, 11, 0) 40%, rgba(4, 6, 11, 0.7) 100%), linear-gradient(180deg, rgba(4, 6, 11, 0.8), rgba(4, 6, 11, 0) 16%, rgba(4, 6, 11, 0) 55%, rgba(4, 6, 11, 0.85)); }
+.plate-hud { position: absolute; inset: max(18px, 2.4vw); pointer-events: none; font: 400 9.5px/1.5 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(236, 232, 225, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 10px rgba(4, 6, 11, 0.8); }
+.ph-c { position: absolute; width: 18px; height: 18px; border: 0 solid rgba(236, 232, 225, 0.5); }
+.ph-c.tl { left: 0; top: 0; border-width: 1px 0 0 1px; } .ph-c.tr { right: 0; top: 0; border-width: 1px 1px 0 0; }
+.ph-c.bl { left: 0; bottom: 0; border-width: 0 0 1px 1px; } .ph-c.br { right: 0; bottom: 0; border-width: 0 1px 1px 0; }
+.ph-t { position: absolute; max-width: 46%; }
+.ph-t.tl { left: 28px; top: -3px; } .ph-t.tr { right: 28px; top: -3px; text-align: right; }
+.ph-t.bl { left: 28px; bottom: -3px; } .ph-t.br { right: 28px; bottom: -3px; text-align: right; }
+.ph-t b { font-weight: 500; color: var(--accent); }
+.ph-t small { display: block; margin-top: 6px; font-size: 8.5px; letter-spacing: 0.12em; color: rgba(190, 197, 208, 0.85); text-transform: none; }
+.ph-scale { display: inline-flex; align-items: center; gap: 10px; font-style: normal; }
+.ph-scale s { display: block; height: 5px; border: 1px solid rgba(236, 232, 225, 0.7); border-top: 0; }
+.ph-scale em { font-style: normal; }
+.plate.still .plate-map.on, .plate.still .plate-scan { animation: none; }
+.plate.still .plate-scan { display: none; }
+.plate.still .plate-pin { animation-duration: 0.01s; }
+.loader.has-plate > div { position: relative; margin-bottom: max(8vh, 30px); padding: 18px 30px 20px; background: rgba(6, 10, 18, 0.78); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5); }
+.loader.has-plate .wm { display: none; }
+.loader.has-plate .ld-mode { margin-top: 0; }
+.loader.has-plate > div > b { margin-top: 10px; font-size: clamp(20px, 2.6vw, 30px); }
+.loader.has-plate .track { margin-top: 20px; }
+@media (max-width: 640px) {
+  .plate-hud { inset: 14px; font-size: 8.5px; }
+  .ph-t.tr, .plate-tick { display: none; }
+  .ph-t.tl { max-width: 80%; }
+  .plate-pin { font-size: 9px; letter-spacing: 0.12em; }
+  .loader.has-plate > div { margin-bottom: max(12vh, 30px); padding: 16px 20px 18px; }
+}
 /* labels over the 3D view: set like the title's place marks */
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 500 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
@@ -984,7 +1026,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="score.js"></script>
 <script src="title.js"></script>
 <script src="film.js"></script>
-<script src="flyover.js"></script>
+<script src="plate.js"></script>
 <script src="water.js"></script>
 <script src="buildings.js"></script>
 <script src="trees.js"></script>
@@ -1047,7 +1089,7 @@ window.dispatchEvent(new Event('three-ready'));
       pane('game-app').hidden = false;
       $('g-load-title').textContent = city.name;
       native($('g-load-native'), city);
-      OEFlyover.play($('g-loader'), city); // the loading flyover, where the city has one
+      OEPlate.play($('g-loader'), city); // the loading plate: the city's aerial survey assembling (plate.js)
       $('gm-model').href = `#${city.id}`;
       current = window.OpenEarthGame(city.id);
     } else if (city) {
@@ -1057,7 +1099,7 @@ window.dispatchEvent(new Event('three-ready'));
       native($('load-native'), city);
       native($('city-native'), city);
       $('city-coords').textContent = fmtLL(city);
-      OEFlyover.play($('loader'), city);
+      OEPlate.play($('loader'), city);
       if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);
     } else {

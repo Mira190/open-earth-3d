@@ -301,13 +301,14 @@
       ],
       "time": "live"
     },
+    "helipads_from_data": false,
     "helipads": [
       {
-        "id": "umekoji",
-        "name": "Umekoji Park helipad (game)",
+        "id": "gyoen",
+        "name": "Kyoto Gyoen helipad (game)",
         "at": [
-          -1380,
-          -1760
+          -100,
+          2000
         ]
       }
     ],
@@ -606,7 +607,7 @@
         "stamp": "Surveyor",
         "talk": [
           "Arigato! That's Kyoto, from the station to the Palace.",
-          "{acc:matched} towers have been checked against published heights, and the rest are measured or estimated as you saw. Take the helicopter from Umekoji Park if you want to see how flat it really is.",
+          "{acc:matched} towers have been checked against published heights, and the rest are measured or estimated as you saw. Take the helicopter from Kyoto Gyoen if you want to see how flat it really is.",
           "The city is yours. Change the time of day, or fly anywhere."
         ],
         "steps": []

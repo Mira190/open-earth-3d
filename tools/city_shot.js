@@ -4,6 +4,7 @@
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/city_shot.js sydney views.json out_dir [width height]   # llvmpipe; without xvfb-run, SwiftShader
 // views.json: [{"name": "cbd", "cam": [x, y, z], "tgt": [x, y, z], "date": [m, d], "time": "09:30"}, ...]
+// ("time" may be "sunset+15" or "sunrise-20"; without "cam" the view is the city's opening camera)
 // in the city's local frame (x east, y north, z up, metres); "agl": true measures z from the ground. Writes out_dir/<name>.png and
 // prints the page's errors and the frame time of each view.
 const { chromium } = require('playwright');
@@ -41,11 +42,14 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       const C = window.__city;
       C.setTourPlaying(false);
       if (v.date) C.setDate(C.state.y, v.date[0], v.date[1]);
-      if (v.time) { const [h, m] = v.time.split(':').map(Number); C.setTime(h * 60 + m); }
+      // "time": "HH:MM", or relative to the day's sun: "sunset+15", "sunrise-20", "sunset"
+      const rel = v.time && /^(sunrise|sunset)([+-]\d+)?$/.exec(v.time);
+      if (rel) C.setTime(Math.round(C.state.limits[rel[1]] + (+rel[2] || 0)));
+      else if (v.time) { const [h, m] = v.time.split(':').map(Number); C.setTime(h * 60 + m); }
       // "agl": camera and target heights above the ground instead of above the datum
-      const cam = v.agl ? [v.cam[0], v.cam[1], v.cam[2] + C.DSM.ground(v.cam[0], v.cam[1])] : v.cam;
-      const tgt = v.agl ? [v.tgt[0], v.tgt[1], v.tgt[2] + C.DSM.ground(v.tgt[0], v.tgt[1])] : v.tgt;
-      C.flyTo(cam, tgt, 0); // also cancels a flight in progress
+      const cam = v.cam && v.agl ? [v.cam[0], v.cam[1], v.cam[2] + C.DSM.ground(v.cam[0], v.cam[1])] : v.cam;
+      const tgt = v.tgt && v.agl ? [v.tgt[0], v.tgt[1], v.tgt[2] + C.DSM.ground(v.tgt[0], v.tgt[1])] : v.tgt;
+      if (cam) C.flyTo(cam, tgt, 0); // also cancels a flight in progress (no "cam": the city's own opening view)
       const frame = () => new Promise(r => requestAnimationFrame(r));
       for (let i = 0; i < 3; i++) await frame();
       const t = performance.now();
