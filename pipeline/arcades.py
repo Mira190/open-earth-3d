@@ -10,7 +10,8 @@ pavement, and it closes off whole blocks (central Kyoto between Shijo, Kawaramac
 and Shinkyogoku had no way in on foot).
 
 A solid is taken for a canopy when its footprint is thin (twice its area over its
-perimeter, its mean width, at most 5 m), a mapped footway (game.json paths) runs inside
+perimeter, its mean width, at most 6 m: an arcade's footprint takes in the wider squares where
+two covered streets cross, as Ebisubashi-suji's does at Namba, 5.7 m), a mapped footway (game.json paths) runs inside
 it along at least 60% of its length, and it is either mapped as a roof (class "roof") or
 an unnamed PLATEAU footprint no taller than 20 m (a named or taller one is a building a
 passage runs through: a department store, a station). Its solid then starts at a soffit
@@ -35,7 +36,7 @@ import shapely
 from shapely.geometry import LineString, Polygon
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-WIDTH_M, ALONG, TALL_M = 5.0, 0.6, 20.0
+WIDTH_M, ALONG, TALL_M = 6.0, 0.6, 20.0
 
 
 def soffit_dm(height_m):
