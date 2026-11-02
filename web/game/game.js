@@ -248,20 +248,90 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const q = seat(flat[i] / 10, flat[i + 1] / 10, flat[i + 2] / 10);
     for (let k = 0; k < 3; k++) flat[i + k] = Math.round(q[k] * 10);
   }
-  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 ? g : null; });
-  // where someone or a car beside a mapped line stands: its deck, or the ground drawn there (null on the bank of the water)
-  const lineGround = (x, y, at) => (at.deck ? at.z : nav.offGround(x, y) ? null : nav.terrain(x, y));
+  // none in a wall (the data's points and the model's footprints disagree by a metre or two), nor, after
+  // that step back from the water, in a carriageway (streets.js moved them out of those before; here
+  // the roads are where decks.js has laid them, on their bridges' and viaducts' decks), nor under a
+  // deck too low for it to stand under
+  const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) })));
+  const inRoad = (x, y, z, r) => roadsNow.depth(x, y, z, r) > 0;
+  const inWall = (x, y, z, r) => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3);
+  const underDeck = (x, y, z, top) => { let hit = false; nav.decksAt(x, y, h => { if (h > z + 0.5 && h < z + top) hit = true; }); const s = nav.surfaceAt(x, y); return hit || (s > z + 0.5 && s < z + top); };
+  for (const [k, r] of [['street_lamp', 0.12], ['bench', 0.3]]) {
+    const flat = (G.props || {})[k];
+    if (!flat) continue;
+    const keep = [];
+    for (let i = 0; i < flat.length; i += 3) {
+      const x = flat[i] / 10, y = flat[i + 1] / 10, z = flat[i + 2] / 10;
+      if (!inWall(x, y, z, r) && !inRoad(x, y, z, k === 'bench' ? 0.6 : r) && !underDeck(x, y, z, k === 'bench' ? 2 : 7)) keep.push(flat[i], flat[i + 1], flat[i + 2]);
+    }
+    G.props[k] = keep;
+  }
+  if (Wd.trees && Wd.trees.reseat) Wd.trees.reseat((x, y) => { const g = nav.terrain(x, y); return g > 0 && !inWall(x, y, g, 0.3) && !inRoad(x, y, g, 0.4) && !underDeck(x, y, g, 8) ? g : null; });
+  // night.js's poles, behind the kerb: where one would be in a wall, its lamp hangs on a bracket there
+  // (and one beside a deck, in the road or under it, goes)
+  if (Wd.night && Wd.night.hidePoles) Wd.night.hidePoles((x, y, z) => !inWall(x, y, z, 0.1) && !inRoad(x, y, z, 0.1) && !inRoad(x, y, nav.terrain(x, y), 0.1) && !underDeck(x, y, z, 7));
+  // lamp posts and tree trunks are solid: for you on foot and at the wheel, the crowd and the traffic
+  const posts = OEStreets.posts();
+  { const L = G.props.street_lamp || [], NP = (Wd.night && Wd.night.poles) || [], TR = Wd.trees && Wd.trees.trunks ? Wd.trees.trunks() : [];
+    for (let i = 0; i < L.length; i += 3) posts.add(L[i] / 10, L[i + 1] / 10, L[i + 2] / 10, 0.12, 'lamp');
+    for (let i = 0; i < NP.length; i += 3) posts.add(NP[i], NP[i + 1], NP[i + 2], 0.12, 'lamp');
+    for (let i = 0; i < TR.length; i += 4) posts.add(TR[i], TR[i + 1], TR[i + 2], TR[i + 3], 'tree'); }
+  nav.posts = posts;
+  // where someone or a car beside a mapped line stands: its deck, the surface the line is on (a pier, a
+  // bridge's walkway, a flight of steps: not the ground under it), or the ground drawn there (null on the bank of the water)
+  const lineGround = (x, y, at) => {
+    if (at.deck) return at.z;
+    const s = nav.surfaceAt(x, y);
+    if (s > -Infinity && Math.abs(s - at.z) < 1.5) return s;
+    return nav.offGround(x, y) ? null : nav.terrain(x, y);
+  };
+  // footways and roads that run into a building (an arcade, a station's concourse, a street under a
+  // railway station's viaduct: the model's buildings are solid from the ground up) end at its wall, so
+  // the crowd and the traffic keep to each mapped line only where they can be (r: how far the line
+  // keeps from a wall; overDecks: leave what is on a deck alone, a viaduct over a building included)
+  function cutAtWalls(lines, r = 0.1, overDecks = false) {
+    const out = [];
+    for (const l of lines) {
+      const p = l.p, n = p.length / 3;
+      let cur = null, curD = null;
+      const flush = () => {
+        if (cur && cur.length >= 6) {
+          let len = 0;
+          for (let k = 3; k < cur.length; k += 3) len += Math.hypot(cur[k] - cur[k - 3], cur[k + 1] - cur[k - 2]);
+          if (len >= 40) out.push(Object.assign({}, l, { p: cur, d: l.d ? Uint8Array.from(curD) : undefined }));
+        }
+        cur = curD = null;
+      };
+      const put = (x, y, z, d) => { if (!cur) { cur = []; curD = []; } else curD.push(d); cur.push(x, y, z); };
+      for (let k = 0; k < n; k++) {
+        const x = p[3 * k], y = p[3 * k + 1], z = p[3 * k + 2], deck = l.d && k > 0 ? l.d[k - 1] : 0, skip = overDecks && deck;
+        if (k > 0) { // every metre and a half along the stretch from the last point
+          const ax = p[3 * k - 3], ay = p[3 * k - 2], az = p[3 * k - 1], m = Math.max(1, Math.ceil(Math.hypot(x - ax, y - ay) / 15));
+          for (let j = 1; j < m; j++) {
+            const qx = ax + (x - ax) * j / m, qy = ay + (y - ay) * j / m, qz = az + (z - az) * j / m;
+            if (!skip && nav.solid(qx / 10, qy / 10, qz / 10, r)) flush();
+            else if (!cur) put(Math.round(qx), Math.round(qy), Math.round(qz), deck);
+          }
+        }
+        if (!skip && nav.solid(x / 10, y / 10, z / 10, r)) flush();
+        else put(x, y, z, deck);
+      }
+      flush();
+    }
+    return out;
+  }
 
   // ------------------------------------------------------------ street furniture: benches, lamps that light at night
   loadMsg('People, traffic and ferries: downloading the models every city shares', 0.86);
   await idle();
   const lin = OEWorld.lin, dummy = new THREE.Object3D();
-  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(G.paths.road);
-  // the crowd walks the footways where a walker can, not through the buildings a mapped passage
-  // runs into (route.js); the traffic keeps off the roads a car can't get along, once those are known
+  // the traffic keeps off the stretches of road that run through a wall (cutAtWalls); the crowd
+  // walks the footways where a walker can, not through the buildings a mapped passage runs into
+  // (route.js), nor through a wall
+  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(cutAtWalls(G.paths.road, 0.5, true));
   loadMsg('Footways people can walk', 0.84);
   await idle();
-  const crowdNet = OEActors.network(OERoute.walkable(nav, G.paths.foot));
+  const crowdNet = OEActors.network(cutAtWalls(OERoute.walkable(nav, G.paths.foot)));
   // benches face their footway, or the water behind it; each has two seats the crowd can use
   const benches = OEActors.benches(G.props.bench || [], crowdNet, nav), lamps = G.props.street_lamp || [];
   const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z
@@ -312,11 +382,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const CR = G.crowd || {};
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
   const crowd = OEActors.crowd(world, crowdNet, U, CR.pedestrians || 300, CR.radius_m || 450, lib && (P => OEPeople.crowdRenderer(world, lib, U, P, { near: touch ? 6 : 14, style: CR.style })),
-    { benches: lib ? benches : null, ground: lineGround });
+    { benches: lib ? benches : null, ground: lineGround, wall: (x, y, z) => nav.solid(x, y, z, 0.2), posts });
   // the side of the road the city keeps to: game.keep, its trams', or the country's rule
   const KEEP = G.keep || ((G.rail || {}).tram || {}).keep || (/^(Australia|Japan|United Kingdom|Ireland|New Zealand|Singapore|Malaysia|Indonesia|Thailand|India|South Africa)$/.test(CITY.country)
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
-  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav });
+  const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav, posts });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
   const player = { rig: makeRig(playerLook(), { vest: true }),
@@ -342,10 +412,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const rig = makeRig(Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look));
     world.add(rig.root);
     // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or at the height given;
-    // off a bank sloping into the water, and not on someone else's toes
+    // off a bank sloping into the water, out of the road (and the room a car pulls in to at the kerb), clear
+    // of the lamp posts, trunks and benches, and not on someone else's toes
     let f = nav.floorAt(n.at[0], n.at[1], n.at[2] != null ? n.at[2] + 1 : Math.max(200, nav.terrain(n.at[0], n.at[1]) + 1));
     if (f && f.kind === 'deck' && n.at[2] == null) f = nav.floorAt(n.at[0], n.at[1], nav.terrain(n.at[0], n.at[1]) + 1);
-    const p = nav.stand(n.at[0], n.at[1], f ? f.z + 0.5 : Math.max(0, nav.terrain(n.at[0], n.at[1])) + 1,
+    const z0 = f ? f.z : Math.max(0, nav.terrain(n.at[0], n.at[1]));
+    const clear = (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) && !inRoad(x, y, z0, 0.3) && !posts.pushOut(x, y, 0.45, z0).hit
+      && !benches.list.some(b => Math.abs(b.z - z0) < 1.5 && Math.abs((x - b.x) * Math.sin(b.h) + (y - b.y) * Math.cos(b.h)) < 0.6 && Math.abs(-(x - b.x) * Math.cos(b.h) + (y - b.y) * Math.sin(b.h)) < 1.2);
+    const p = nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1), { rMax: 15, ok: clear }) || nav.stand(n.at[0], n.at[1], z0 + (f ? 0.5 : 1),
       { rMax: 15, ok: (x, y) => !npcs.some(q => Math.hypot(q.x - x, q.y - y) < 1.2) }) || { x: n.at[0], y: n.at[1], z: f ? f.z : 0 };
     const o = Object.assign({}, n, { rig, x: p.x, y: p.y, z: p.z, h: hash(n.id) % 628 / 100, pitch: 150 + hash(n.id) % 170, color: n.look.top || n.look.shirt, eyes: new THREE.Vector3(),
       marker: OEActors.sprite('!', { bg: '#e0a21a', fg: '#1b1b1b', font: '900 44px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif' }) });
@@ -407,12 +481,27 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 1);
     return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
   }
-  // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of you)
+  // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
+  // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   function kerbNear(x, y, z, ahead = 9, within = 250) {
     const pl = roads.place(x, y, within, keepSign, z);
     if (!pl) return null;
-    pl.s = Math.max(3, Math.min(roadNet.L[pl.line].len - 3, pl.s + ahead * pl.dir));
-    return { pl, pose: kerbPose(pl) };
+    const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
+    const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
+    let first = null;
+    for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
+      const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
+      first = first || { pl: q, pose };
+      if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+      let hit = false;
+      const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
+      posts.near(pose.x, pose.y, half + 1, p => {
+        const dx = p.x - pose.x, dy = p.y - pose.y;
+        if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
+      }, pose.z);
+      if (!hit) return { pl: q, pose };
+    }
+    return first;
   }
   // where a car is on the roads, going the way it faces
   function placeOf(st) {
@@ -456,6 +545,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const o of [myCar, ride]) if (o && o !== but && Math.hypot(stOf(o).x - x, stOf(o).y - y) < r + 5) out.push((o.D || o.drv).box());
     return out;
   }
+  // the lamp posts and trunks near (x, y), for a car to hit
+  function postsNear(x, y, r) { const out = []; posts.near(x, y, r, q => out.push(q)); return out; }
   // the people near (x, y), for a car to stop for
   function peopleNear(x, y, r) {
     const out = [];
@@ -480,6 +571,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = stOf(o), d = !at && doorAt(o, seat), p = at || placeNear(d.x, d.y, st.z + 0.5, carBoxes(st.x, st.y, 12));
     if (!p) return false;
     o.C.body.remove(player.rig.root); world.add(player.rig.root);
+    player.rig.root.scale.setScalar(1); // (a seat too low for you made you a little smaller: cars.js sit)
     player.rig.legRake = player.rig.reach = null;
     player.mode = 'foot'; player.vehicle = null; player.speed = 0; player.ground = true; player.vz = 0;
     [player.x, player.y, player.z] = p;
@@ -513,12 +605,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function carStep(dt, fwd, side) {
     const D = myCar.D, st = D.st, ev = [];
     D.step(dt, { fwd: Math.max(-1, Math.min(1, fwd)), turn: Math.max(-1, Math.min(1, side)), handbrake: k('Space') },
-      { boxes: carBoxes(st.x, st.y, 14, myCar), people: peopleNear(st.x, st.y, 12) }, ev);
+      { boxes: carBoxes(st.x, st.y, 14, myCar), people: peopleNear(st.x, st.y, 12), posts: postsNear(st.x, st.y, 10) }, ev);
     for (const e of ev) {
       if (e.speed > 2.5) A.thump();
       if (clockT - bumpCar < 2.5 || e.speed < 3) continue;
       bumpCar = clockT;
-      if (e.type === 'bump') H.toast(e.what === 'person' ? 'Watch out for people!' : e.what === 'car' ? 'Careful! That was another car.' : 'Careful! That was a wall.');
+      if (e.type === 'bump') H.toast(e.what === 'person' ? 'Watch out for people!' : e.what === 'car' ? 'Careful! That was another car.' : e.what === 'lamp' ? 'Careful! That was a lamp post.' : e.what === 'tree' ? 'Careful! That was a tree.' : 'Careful! That was a wall.');
       if (e.type === 'edge') H.toast(nav.isWater(st.x + Math.sin(st.h) * 5, st.y + Math.cos(st.h) * 5) ? `That's the edge of ${G.water_name || 'the water'}.` : 'Too steep a drop.');
     }
     Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.speed });
@@ -2360,7 +2452,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
   on($('#gm-reset'), 'click', () => {
     try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
-    if ((player.mode === 'car' || player.mode === 'ride') && !stepOut(player.vehicle, player.mode === 'car' ? 'driver' : kerbSeat)) { player.vehicle.C.body.remove(player.rig.root); world.add(player.rig.root); player.mode = 'foot'; player.vehicle = null; }
+    if ((player.mode === 'car' || player.mode === 'ride') && !stepOut(player.vehicle, player.mode === 'car' ? 'driver' : kerbSeat)) { player.vehicle.C.body.remove(player.rig.root); world.add(player.rig.root); player.rig.root.scale.setScalar(1); player.mode = 'foot'; player.vehicle = null; }
     if (ride) rideAway();
     qs = freshQs(); renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true;
   });
@@ -2615,7 +2707,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (benchBudget >= 1) { benches.refresh(benchLit, cx, cy, CR.radius_m || 450, Math.floor(benchBudget)); benchBudget -= Math.floor(benchBudget); }
     // the traffic brakes for you on foot and for your car, and swings out round a car pulled in at the kerb
     const blockers = player.mode === 'foot' ? [player] : [];
-    for (const o of [myCar, ride]) if (o) { const st = stOf(o); blockers.push({ x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && (o === ride || player.mode !== 'car') }); }
+    for (const n of npcs) if (Math.abs(n.x - cx) < 700 && Math.abs(n.y - cy) < 700) blockers.push({ x: n.x, y: n.y, z: n.z, fixed: true }); // (they stand their ground)
+    // your car and a ride: the traffic won't drive into them, nor the crowd walk through them. A ride on
+    // the move is left to its driver (soft: the traffic doesn't wait on it), so that one swinging out
+    // round a queue and a car coming the other way never wait on each other for good
+    cars.extra.length = 0;
+    for (const o of [myCar, ride]) if (o) {
+      const st = stOf(o);
+      blockers.push({ x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && (o === ride || player.mode !== 'car') });
+      cars.extra.push({ x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft: o === ride && Math.abs(st.v) >= 0.3 });
+    }
     cars.update(dt, cx, cy, clockT, blockers);
     if (places) places.update(dt, player.x, player.y, player.z, player.mode === 'foot' && !cine.active);
   }
@@ -3024,7 +3125,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
+  window.__game = { G, vlib, peopleLib: lib, posts, flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, landmarks, GAIT, toggleMap, mapPins: () => bigPins, benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

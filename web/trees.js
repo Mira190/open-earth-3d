@@ -8,6 +8,8 @@
 window.OETrees = (function () {
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
+  // each species' trunk radius above its flare (m, at full size: blender/build_trees.py r0)
+  const TRUNK = { plane: 0.36, elm: 0.34, gum: 0.4, fig: 0.85, jacaranda: 0.26, palm: 0.42 };
 
   async function load(base = 'assets/trees/') {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
@@ -132,6 +134,15 @@ vAO = tc.r;`;
     }
     return {
       n, species: names, count,
+      // the foot of each tree that is drawn and its trunk's radius: x, y, z, r (local metres)
+      trunks() {
+        const out = [];
+        for (let i = 0; i < n; i++) {
+          const s = Math.hypot(M[16 * i], M[16 * i + 2]);
+          if (s > 0) out.push(pos[3 * i], -pos[3 * i + 2], pos[3 * i + 1] - 4, (TRUNK[names[which[i]]] || 0.35) * s);
+        }
+        return out;
+      },
       // per frame: the wind, and the level of detail when the camera has moved 12 m
       update(camera, tSec) {
         U.uWind.value = tSec % 10000;

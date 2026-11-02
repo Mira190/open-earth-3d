@@ -16,8 +16,8 @@ Writes web/data/<city>/game.json:
   wharves   ferry berths next to the Overture ferry terminals named in city.json
   ferries   routes found by a shortest path through open water, kept clear of land
             and piers, then smoothed
-  helipads, props (benches and street lamps), npcs and quests (positions snapped to
-  open ground)
+  helipads, props (benches and street lamps, moved out of the carriageways: pipeline/kerbside.py),
+  npcs and quests (positions snapped to open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
   boardwalks  walkways at deck height over rocks, water or sand: mapped lines found by
@@ -50,6 +50,7 @@ from shapely import wkb as swkb
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
+import kerbside
 import night_lights
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
 from shore import from_png, pad_aprons, water_floor
@@ -402,7 +403,9 @@ def main():
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q) and not water[cell(q.x, q.y)]:
                 props[r["class"]] += [round(q.x * 10), round(q.y * 10), round(ground(q.x, q.y) * 10)]
-    print("props:", {k: len(v) // 3 for k, v in props.items()})
+    # out of the carriageways as the game draws them: many lamps are mapped as nodes of the road itself
+    moved = kerbside.tidy(props, roads)
+    print("props:", {k: len(v) // 3 for k, v in props.items()}, "moved to the kerb, left out:", moved)
 
     # ---------------------------------------------------------- rail: trams in the street, a funicular up the hill
     # Overture rail segments of the classes the city's game names (game.rail). OpenStreetMap breaks a

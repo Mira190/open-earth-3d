@@ -89,7 +89,8 @@ void main() {
   function create(Wd, D, renderer, NU, { small = false, game = false, nearCars = 0 } = {}) {
     const N = D.N, st = N.style || {}, [XY, ZU] = N.units, fr = D.scene.frame, rnd = rng(7919);
     const W = (x, y, z) => new THREE.Vector3(x, z, -y);
-    const roadsI = unpack(N.roads), P = unpack(N.pts), mapped = unpack(N.lamps);
+    // the mapped lamps out of the carriageways (streets.js tidy: game.json's in the game, night.json's in the viewer)
+    const ST = D.streets || {}, roadsI = unpack(N.roads), P = unpack(N.pts), mapped = ST.lamps || Array.from(unpack(N.lamps), (v, i) => v * (i % 3 === 2 ? ZU : XY));
     const street = picker(st.street || [['#ffc58c', 1]], rnd), highway = picker(st.highway || st.street || [['#ffc58c', 1]], rnd);
     const keepLeft = (st.keep || 'right') === 'left';
     // a road point on the ground drawn under it (the viewer's 10 m terrain, and the game's 5 m one
@@ -109,39 +110,15 @@ void main() {
       for (let j = 0; j < n; j++, k += 3) { const x = P[k] * XY, y = P[k + 1] * XY; pts.push([x, y, onGround(x, y, P[k + 2] * ZU)]); }
       roads.push({ cls, v: roadsI[i + 1] / 10, pts });
     }
-    // every road's pieces in a 40 m grid, so a lamp can find the carriageways around it: a lamp that
-    // would stand on a road crossing its own (the kerb offset of a street meeting a junction) is left
-    // out, as no pole stands in a carriageway: 4 to 6 per cent of them in each city
-    const SEG = 40, segs = new Map();
-    roads.forEach((r, ri) => {
-      const half = (ROAD[r.cls] || ROAD.unclassified)[1] / 2;
-      for (let j = 1; j < r.pts.length; j++) {
-        const a = r.pts[j - 1], b = r.pts[j];
-        for (let gx = Math.floor((Math.min(a[0], b[0]) - half) / SEG); gx <= Math.floor((Math.max(a[0], b[0]) + half) / SEG); gx++)
-          for (let gy = Math.floor((Math.min(a[1], b[1]) - half) / SEG); gy <= Math.floor((Math.max(a[1], b[1]) + half) / SEG); gy++) {
-            const k = gx * 65536 + gy;
-            if (!segs.has(k)) segs.set(k, []);
-            segs.get(k).push([ri, a, b, half]);
-          }
-      }
-    });
-    // and none in a square the city keeps clear of poles (city.json night.clear: [x, y, radius m], as
-    // over a scramble crossing much wider than its streets)
-    const clear = st.clear || [];
-    const onCarriageway = (x, y, z, own, ux, uy) => {
-      for (const [cx, cy, r] of clear) if (Math.hypot(x - cx, y - cy) < r) return true;
-      for (const [ri, a, b, half] of segs.get(Math.floor(x / SEG) * 65536 + Math.floor(y / SEG)) || []) {
-        if (ri === own) continue;
-        const ex = b[0] - a[0], ey = b[1] - a[1], L2 = ex * ex + ey * ey || 1;
-        if (Math.abs(ex * ux + ey * uy) > 0.87 * Math.sqrt(L2)) continue; // a road alongside (the other carriageway, the street's next stretch): its median and kerbs carry lamps
-        const t = Math.max(0, Math.min(1, ((x - a[0]) * ex + (y - a[1]) * ey) / L2));
-        if (Math.hypot(a[0] + ex * t - x, a[1] + ey * t - y) < half - 0.2 && Math.abs(a[2] + (b[2] - a[2]) * t - z) < 3) return true; // a deck above or below is another level
-      }
-      return false;
-    };
-    roads.forEach((r, ri) => {
+    // a pole stands behind the kerb, clear of a car pulled in there (streets.js setback), and none
+    // where that is inside another road (beside a junction, between a dual carriageway's two lines)
+    // or in a square the city keeps clear of poles (city.json night.clear: [x, y, radius m], as over
+    // a scramble crossing much wider than its streets)
+    const clear = st.clear || [], inClear = (x, y) => clear.some(([cx, cy, r]) => Math.hypot(x - cx, y - cy) < r);
+    const inRoad = (x, y, z) => inClear(x, y) || !!ST.roads && ST.roads.depth(x, y, z, 0.15) > 0;
+    roads.forEach(r => {
       const [spacing, width, h, both, bright] = ROAD[r.cls] || ROAD.unclassified;
-      const step = both ? spacing / 2 : spacing, off = width / 2 + 0.7, pick = /motorway|trunk/.test(r.cls) ? highway : street;
+      const step = both ? spacing / 2 : spacing, off = window.OEStreets ? OEStreets.setback(r.cls) + 0.2 : width / 2 + 0.7, pick = /motorway|trunk/.test(r.cls) ? highway : street;
       let side = rnd() < 0.5 ? 1 : -1, next = rnd() * step, acc = 0;
       const colour = pick(); // a road keeps one kind of lamp
       for (let j = 1; j < r.pts.length; j++) {
@@ -149,9 +126,16 @@ void main() {
         if (len < 0.01) continue;
         const ux = (bx - ax) / len, uy = (by - ay) / len;
         while (next <= acc + len) {
-          const t = (next - acc) / len, s = both ? side = -side : side, b = bright * (0.9 + 0.2 * rnd());
-          const x = ax + (bx - ax) * t - uy * s * off, y = ay + (by - ay) * t + ux * s * off, z = az + (bz - az) * t;
-          if (!onCarriageway(x, y, z, ri, ux, uy)) lamp(x, y, z + h, colour, b, ux, uy, h, s);
+          const s = both ? side = -side : side, b = bright * (0.9 + 0.2 * rnd());
+          let placed = false;
+          for (const d of [0, 4, -4, 8, -8]) { // (where that is in another road, a few metres along)
+            const t = Math.max(0, Math.min(1, (next - acc + d) / len)), x = ax + (bx - ax) * t - uy * s * off, y = ay + (by - ay) * t + ux * s * off, z = az + (bz - az) * t;
+            if (!inRoad(x, y, z)) { lamp(x, y, z + h, colour, b, ux, uy, h, s); placed = true; break; }
+          }
+          if (!placed && ST.roads) { // or out of that road to its own kerb, so the footway beside it keeps its light
+            const t = Math.max(0, Math.min(1, (next - acc) / len)), z = az + (bz - az) * t, q = ST.roads.kerbside(ax + (bx - ax) * t - uy * s * off, ay + (by - ay) * t + ux * s * off, z, 0.15, 6);
+            if (q && !inClear(q[0], q[1])) lamp(q[0], q[1], z + h, colour, b, ux, uy, h, s);
+          }
           next += step;
         }
         acc += len;
@@ -159,8 +143,8 @@ void main() {
     });
     const nGen = L.x.length;
     for (let i = 0; i < mapped.length; i += 3) {
-      const x = mapped[i] * XY, y = mapped[i + 1] * XY;
-      lamp(x, y, onGround(x, y, mapped[i + 2] * ZU) + MAPPED[0], street(), MAPPED[1], 0, 0, MAPPED[0], 0);
+      const x = mapped[i], y = mapped[i + 1];
+      lamp(x, y, onGround(x, y, mapped[i + 2]) + MAPPED[0], street(), MAPPED[1], 0, 0, MAPPED[0], 0);
     }
     const nL = L.x.length;
 
@@ -292,13 +276,14 @@ void main() {
       if (!chunks.has(key)) chunks.set(key, []);
       chunks.get(key).push(i);
     }
-    const dummy = new THREE.Object3D(), poles = [];
+    const dummy = new THREE.Object3D(), poles = [], bases = [], slots = [];
     for (const [key, list] of chunks) {
       const [cx, cy] = key.split(',').map(Number), s = new THREE.InstancedMesh(shaft, poleMat, list.length), hd = new THREE.InstancedMesh(head, headMat, list.length);
       list.forEach((i, n) => {
         const base = L.z[i] - L.h[i], dir = L.ux[i] || L.uy[i];
         // the pole stands at the kerb and its arm reaches back over the road
         const ax = dir ? L.uy[i] * L.pole[i] : 0, ay = dir ? -L.ux[i] * L.pole[i] : 0, yaw = dir ? Math.atan2(ax, -ay) : n * 1.7;
+        bases.push(L.x[i], L.y[i], base); slots.push(s, n);
         dummy.position.copy(W(L.x[i], L.y[i], base)); dummy.rotation.set(0, yaw, 0); dummy.scale.set(1, L.h[i], 1); dummy.updateMatrix();
         s.setMatrixAt(n, dummy.matrix);
         dummy.position.copy(W(L.x[i], L.y[i], L.z[i])); dummy.scale.set(1, 1, 1); dummy.updateMatrix();
@@ -474,7 +459,19 @@ void main() {
     Wd.world.add(group);
     const sizeV = new THREE.Vector2();
     const api = {
-      group, lamps: nL, generated: nGen, cars: nT, towers: tops.size, crowns: crownsLit, map,
+      group, lamps: nL, generated: nGen, cars: nT,
+      poles: bases, // x, y, z of the foot of each pole it draws
+      // take away the poles stand(x, y, z) turns down (one in a wall: the lamp is on its bracket there)
+      hidePoles(stand) {
+        const keep = [], zero = new THREE.Matrix4().makeScale(0, 0, 0), touched = new Set();
+        for (let k = 0; k < bases.length / 3; k++) {
+          if (stand(bases[3 * k], bases[3 * k + 1], bases[3 * k + 2])) { keep.push(bases[3 * k], bases[3 * k + 1], bases[3 * k + 2]); continue; }
+          slots[2 * k].setMatrixAt(slots[2 * k + 1], zero); touched.add(slots[2 * k]);
+        }
+        for (const m of touched) m.instanceMatrix.needsUpdate = true;
+        api.poles = keep;
+        return bases.length / 3 - keep.length / 3;
+      }, towers: tops.size, crowns: crownsLit, map,
       skyglow: st.skyglow ? OEWorld.lin(st.skyglow) : null,
       // how far on the street lights are: they come on as the sun sets
       on: () => common.uOn.value,

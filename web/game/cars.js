@@ -15,8 +15,8 @@
 // with speed; the engine pulls through five gears to a top speed set per model; holding the
 // brake at a standstill reverses. The car hits buildings, landmarks and the water's edge
 // (three circles down the body, each pushed out of the walls as Unreal's ResolvePenetration
-// does, in steps short enough not to tunnel), bumps into other cars and stops for people,
-// and follows the ground, kerbs and bridge decks.
+// does, in steps short enough not to tunnel), hits lamp posts and tree trunks, bumps into
+// other cars and stops for people, and follows the ground, kerbs and bridge decks.
 //
 // Chauffeur: a driver who takes a route over the road network (a Dijkstra router from a
 // point on one road, going one way, to a point on another), keeps to the lane, slows for
@@ -260,26 +260,34 @@ window.OECars = (function () {
         if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) : 0;
       },
       // a person in a seat, facing forward: the rig's root on the floor in front of the cushion
-      // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it. A
-      // tall person (or a hat) sinks into the seat until the head clears the roof.
+      // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it. The
+      // top of the head keeps clear of the roof over it, with room for the seated idle's sway: a
+      // tall person (or a hat) sinks a little into the cushion, and one still too tall for this car
+      // sits a little smaller, as a game fits any of its characters to any of its seats. (Out of
+      // the car, the rig's root goes back to its own size: game.js stepOut.)
       sit(rig, seat) {
         const p = seats[seat] || seats.driver;
         body.add(rig.root);
         rig.root.position.copy(p).add(new THREE.Vector3(0, -CUSHION, 0));
         rig.root.rotation.set(0, 0, 0);
+        rig.root.scale.setScalar(1);
         rig.legRake = 1;
         rig.reach = seat === 'driver' && steering ? hub : null;
         if (rig.headTop) {
           rig.animate(0, 0, 'sit', 0);
-          const over = body.worldToLocal(rig.headTop()).y - (roofOver(p) - 0.03); // (a margin for the pose settling)
-          if (over > 0) rig.root.position.y -= Math.min(0.3, over);
+          body.updateWorldMatrix(true, true);
+          const head = body.worldToLocal(rig.headTop()), room = roofOver(head) - 0.06;
+          let over = head.y - room;
+          if (over > 0) { const sink = Math.min(0.08, over); rig.root.position.y -= sink; head.y -= sink; over -= sink; }
+          if (over > 0) rig.root.scale.setScalar(Math.max(0.8, (room - rig.root.position.y) / Math.max(0.3, head.y - rig.root.position.y)));
         }
       },
-      // how far under the roof the top of a seated person's head is (m; negative: through it), or null
+      // how far under the roof over it the top of a seated person's head is (m; negative: through it), or null
       clearance(rig, seat) {
         if (!rig.headTop) return null;
         body.updateWorldMatrix(true, true);
-        return roofOver(seats[seat] || seats.driver) + 0.04 - body.worldToLocal(rig.headTop()).y;
+        const head = body.worldToLocal(rig.headTop());
+        return roofOver(head) + 0.04 - head.y;
       },
       // the shared headlamp (a spot light kept in the scene, so no shader recompiles), on this car
       carry(light) {
@@ -359,7 +367,7 @@ window.OECars = (function () {
     const floor = (x, y, z) => { const f = nav.floorAt(x, y, z + 0.1); return f ? f.z : null; };
     // can the car stand here? (not over the water, not off a drop the walkers wouldn't take)
     const standable = (x, y, z) => { const f = floor(x, y, z); return f != null && f > z - 3.5; };
-    // one step of dt: inp { fwd -1..1 (W/S), turn -1..1 (+ right), handbrake }; env { boxes, people }; events []
+    // one step of dt: inp { fwd -1..1 (W/S), turn -1..1 (+ right), handbrake }; env { boxes, people, posts }; events []
     function step(dt, inp, env, events) {
       const n = Math.max(1, Math.ceil(dt * 120), Math.ceil(Math.hypot(st.vx, st.vy) * dt / 0.3));
       for (let i = 0; i < n; i++) sub(dt / n, inp, env, events);
@@ -443,8 +451,8 @@ window.OECars = (function () {
         }
       }
     }
-    // walls (through nav), other cars (boxes) and people (circles): push the body out along
-    // the contact, take the speed into it away (a hard hit bounces), and kick the yaw
+    // walls (through nav), other cars (boxes), lamp posts and trunks and people (circles): push the
+    // body out along the contact, take the speed into it away (a hard hit bounces), and kick the yaw
     function collide(env, events) {
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       let nx = 0, ny = 0, moved = false, what = null;
@@ -475,6 +483,38 @@ window.OECars = (function () {
           st.x += dx; st.y += dy; nx += dx; ny += dy; moved = true;
           st.r += clamp(o * (dx * fy - dy * fx) * 0.6, -0.3, 0.3); // a hit off the centre turns it
         }
+      }
+      // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
+      // from the nearest point of the box to its centre
+      for (const q of env.posts || []) {
+        if (Math.abs(q.z - st.z) > 2) continue;
+        const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
+        const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
+        let pu, pw, m;
+        if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
+        else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
+        const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
+        st.x += px; st.y += py; nx += px; ny += py; moved = true;
+        what = q.kind || 'post';
+      }
+      // and the corners the three circles leave out: the body as a box against each other car's box,
+      // pushed out along the axis it is least deep on (the separating axes)
+      for (const b of env.boxes || []) {
+        if (b.ref === st || st.z > b.z + b.top || st.z + 1.5 < b.z) continue;
+        const ax = [[fx, fy], [-fy, fx], [Math.sin(b.h), Math.cos(b.h)], [-Math.cos(b.h), Math.sin(b.h)]];
+        const dx = b.x - st.x, dy = b.y - st.y;
+        let best = Infinity, ux = 0, uy = 0;
+        for (const [px, py] of ax) {
+          const ra = C.half * Math.abs(fx * px + fy * py) + C.hw * Math.abs(-fy * px + fx * py);
+          const rb = b.hl * Math.abs(ax[2][0] * px + ax[2][1] * py) + b.hw * Math.abs(ax[3][0] * px + ax[3][1] * py);
+          const d = dx * px + dy * py, o = ra + rb - Math.abs(d);
+          if (o <= 0) { best = 0; break; }
+          if (o < best) { best = o; ux = -Math.sign(d || 1) * px; uy = -Math.sign(d || 1) * py; }
+        }
+        if (!(best > 0.01)) continue;
+        st.x += ux * best; st.y += uy * best; nx += ux * best; ny += uy * best; moved = true;
+        what = 'car';
+        if (b.onHit) b.onHit();
       }
       if (!moved) return;
       const l = Math.hypot(nx, ny) || 1;

@@ -131,12 +131,18 @@ arch softly from its deck. Without `flood` a floodlit material glows evenly, as 
 screens do (the Eiffel Tower's gold, Hong Kong's frames and crowns).
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
-instanced batches of 300 m squares drawn within 500 m of the camera. No pole stands in a
-carriageway: a lamp whose kerb would put it on a road crossing its own at the same level
-(where a street meets a junction) is left out, 4 to 6 per cent of them in each city; a road
-alongside (a dual carriageway's other half) does not count. A city can keep a square clear of poles
-(`night.clear` in `city.json`, as Shibuya does over the scramble, whose paved crossing is far
-wider than its streets).
+instanced batches of 300 m squares drawn within 500 m of the camera. A pole stands behind
+the kerb, clear of a car pulled in there (`web/streets.js` setback: the kerb line plus a
+car's half width), and never in another road: where the spot beside its own road falls
+inside the band of another (beside a junction, between a dual carriageway's two lines,
+which the game draws over each other), the lamp moves up to 8 m along its road, failing
+that to the nearest kerb clear of every road within 6 m, so the footway keeps its light,
+and is left out only where neither will do. Before this, 1,662 of Sydney's 6,354 poles stood in a
+carriageway. In the game a pole that would stand in a building's wall is taken away and
+its lamp hangs on a bracket there. The lamps OpenStreetMap maps are moved out of the
+carriageways the same way before they are lit (`OEStreets.tidy`). A city can keep a square
+clear of poles (`night.clear` in `city.json`, as Shibuya does over the scramble, whose paved
+crossing is far wider than its streets).
 
 **Big screens and lit signs.** A landmark can carry LED screens (`led_screen`, below) and
 lit signs, and say how much light they throw on the street in front of them
