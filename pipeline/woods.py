@@ -48,6 +48,11 @@ CELL = 2.0   # the mask's cell (m)
 FINE = 1.0   # the working grid (m), the canopy model's own resolution
 MIN_TREE_M = 4.0   # a canopy peak lower than this is a shrub
 CANOPY_M = 2.5     # canopy over the ground from this height
+# what the ground under the trees is, by country, unless city.json trees.floor says: the bare earth,
+# leaf litter and moss of Japan's shrine and palace woods and Hong Kong's hills; the lawns that
+# run under the trees of Australian and Dutch parks; the pale stabilised sand and gravel under
+# the clipped trees of a Paris garden
+FLOOR = {"AU": "lawn", "NL": "lawn", "FR": "gravel"}
 LAND = {"forest", "wood", "scrub", "shrubbery", "shrub"}
 LAND_USE = {"park", "village_green", "recreation_ground", "garden", "cemetery", "grave_yard", "religious",
             "nature_reserve", "zoo", "grass", "meadow", "dog_park", "golf_course"}
@@ -264,6 +269,7 @@ def build(C, write=True):
     places["woods"] = trees
     json.dump(places, open(places_path, "w"), separators=(",", ":"))
     scene["woods"] = {"file": "woods.png", "cell": CELL, "nx": W, "ny": H, "x0": x0, "y1": y1, "trees": len(trees) // 4,
+                      "floor": C.cfg.get("trees", {}).get("floor") or FLOOR.get(C.cfg.get("country_code"), "earth"),
                       "encoding": "r: ground cover under the canopy (0-255), g: canopy height x 8 (m), b: a footway under the canopy, a: in a wood or park",
                       "source": CHM_SOURCE}
     scene.setdefault("sources", {})["canopy"] = CHM_SOURCE

@@ -593,8 +593,11 @@ thousands (issue #54). `pipeline/woods.py` fixes this for every city:
   trees. A tree in the fill is as tall as the canopy top around it.
 - **The floor:** the canopy's footprint, its small gaps closed and specks
   dropped, is `woods.png`. The ground shader (`world.js` `woodsFloor`, in the
-  viewer and the game) draws it as earth, leaf litter and moss in patches, at
-  the albedos they have, darker under a tall canopy, with a compacted gravel and
+  viewer and the game) draws it as the floor the city's park trees stand on,
+  in patches at the albedos they have: bare earth, leaf litter and moss (Japan,
+  Hong Kong), lawn in shade worn to earth (Australia, the Netherlands), or a
+  Paris garden's stabilised sand and gravel (`FLOOR` in `woods.py`, or
+  `trees.floor` in `city.json`), darker under a tall canopy, with a compacted gravel and
   earth path where a mapped footway runs under the trees. Within the distance
   the trees are drawn to; beyond, the photo's canopy, turned green.
 - **Shadows in a park:** the photos' shadows on a park's gravel are skylight

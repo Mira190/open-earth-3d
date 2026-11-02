@@ -686,6 +686,12 @@ vec3 photoGrade(vec3 c) {
       if (woodsTex) { woodsTex.colorSpace = THREE.NoColorSpace; woodsTex.flipY = false; woodsTex.generateMipmaps = false; woodsTex.minFilter = THREE.LinearFilter; }
     }
     const WOODS = woodsTex && { tex: { value: woodsTex }, box: { value: new THREE.Vector4(scene.woods.x0, scene.woods.y1, scene.woods.nx * scene.woods.cell, scene.woods.ny * scene.woods.cell) } };
+    // the floor's three colours (linear albedo), by what grows or lies under the city's park trees (woods.py FLOOR)
+    const FLOOR = {
+      earth: ['vec3(0.15, 0.1, 0.058)', 'vec3(0.21, 0.135, 0.066)', 'vec3(0.085, 0.12, 0.04)'], // bare earth, leaf litter, moss
+      lawn: ['vec3(0.068, 0.11, 0.034)', 'vec3(0.095, 0.135, 0.042)', 'vec3(0.15, 0.105, 0.062)'], // grass in shade, in sun, worn to earth
+      gravel: ['vec3(0.3, 0.255, 0.19)', 'vec3(0.36, 0.305, 0.225)', 'vec3(0.2, 0.16, 0.11)'], // stabilised sand and gravel, damp under the crowns
+    }[(scene.woods || {}).floor] || ['vec3(0.15, 0.1, 0.058)', 'vec3(0.21, 0.135, 0.066)', 'vec3(0.085, 0.12, 0.04)'];
     const woodsFloor = sh => {
       if (!WOODS) return;
       Object.assign(sh.uniforms, { uWoods: WOODS.tex, uWoodsBox: WOODS.box });
@@ -715,9 +721,9 @@ vec3 woodsFloor(vec3 c) {
   vec2 p = vWoodWP.xz;
   float patches = woodN(p * 0.11) * 0.6 + woodN(p * 0.37 + 3.1) * 0.4;
   float grain = woodN(p * 1.9) * 0.45 + woodN(p * 6.3) * 0.33 + woodN(p * 21.0) * 0.22;
-  // linear albedos: earth, leaf litter, moss (darker where the canopy is tall: deeper shade, damper ground)
-  vec3 g = mix(vec3(0.15, 0.1, 0.058), vec3(0.21, 0.135, 0.066), smoothstep(0.35, 0.72, patches));
-  g = mix(g, vec3(0.085, 0.12, 0.04), smoothstep(0.5, 0.82, woodN(p * 0.19 + 7.0)) * 0.85);
+  // linear albedos, in patches (darker where the canopy is tall: deeper shade, damper ground)
+  vec3 g = mix(${FLOOR[0]}, ${FLOOR[1]}, smoothstep(0.35, 0.72, patches));
+  g = mix(g, ${FLOOR[2]}, smoothstep(0.5, 0.82, woodN(p * 0.19 + 7.0)) * 0.85);
   g *= (0.78 + 0.44 * grain) * mix(1.0, 0.82, smoothstep(6.0, 22.0, m.g * 32.0));
   vec3 path = vec3(0.29, 0.26, 0.21) * (0.86 + 0.28 * woodN(p * 8.0));
   g = mix(g, path, smoothstep(0.2, 0.6, m.b));
