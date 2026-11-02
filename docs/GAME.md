@@ -552,7 +552,9 @@ pipeline writes. The only city-specific code is landmark geometry in
     a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
     if the way stays blocked. One caught up with another gets out without going
     into a third; two still caught after 4 s part (out of sight, one leaves the
-    traffic). A ride on the move is left to its own driver. None is put on the road on top of your car or a ride, and your
+    traffic). A ride on the move is left to its own driver (unless it follows it), who never
+    steps further into a car of the traffic and swings out round a stopped car only when
+    nothing is coming the other way. None is put on the road on top of your car or a ride, and your
     car is brought to a kerb clear of the traffic, the posts and the trees.
     Your car meets another as a box against a box, corners included. The crowd
     keeps out of your car and a ride as it does the traffic's.
@@ -562,20 +564,29 @@ pipeline writes. The only city-specific code is landmark geometry in
     this, about one walker in nine in Sydney's centre was inside a building.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
-  shares, modelled in Blender (see [the vehicles](#the-vehicles)).
+  shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
+  files can't be loaded, stand-ins built from `web/game/kit.js` take their
+  place: lofted hulls, lathes, slabs, fins, rods and tubes at real dimensions,
+  merged into one mesh per material, adapted from the vessel kit of an earlier
+  reef scene.
   - **Ferries keep apart:** under way a vessel keeps to the starboard side of
     its course by up to its beam, as far as the water allows (the whole hull
     and half a metre round it over open water, worked out every 10 m of each
     leg), so two on the same course pass port to port, close to the banks in a
     river as narrow as the Dotonbori. Where the end of a leg left the hull over
     the bank, the vessel berths short of it. A berth takes one vessel at a time: one bound for
-    a busy berth waits off it, one closing on another ahead on the same leg
-    keeps its distance, and none starts out alongside another. Before this,
-    Sydney's Sirius and Charlotte lay in the same berth at Circular Quay. If their
-  files can't be loaded, stand-ins built from `web/game/kit.js` take their
-  place: lofted hulls, lathes, slabs, fins, rods and tubes at real dimensions,
-  merged into one mesh per material, adapted from the vessel kit of an earlier
-  reef scene.
+    a busy berth waits off it, behind any others waiting there on other routes
+    (a hull length and 30 m farther off for each), one closing on another ahead
+    on the same leg keeps its distance, and none starts out alongside another.
+    A leg too narrow to pass along has a passing place where the two hulls stay
+    clear all the way past, measured hull against hull (on a bend a hull's ends
+    swing out of its line); one leaving a berth waits for a vessel still coming
+    in past it, but not for one lying there or off the berth waiting for it.
+    One lying still across another route's course is stopped short of. Before
+    this, Sydney's Sirius and Charlotte lay in the same berth at Circular Quay,
+    two of Tokyo's water buses waited on top of each other off Hinode, and
+    Tokyo's ferries and Osaka's Dotonbori boats could end up each waiting on the
+    other for good.
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
     bounces off a hard hit.

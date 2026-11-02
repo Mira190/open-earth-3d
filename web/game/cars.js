@@ -715,8 +715,8 @@ window.OECars = (function () {
   // you drives briskly while it is out of your sight); dry is set in the dry run that times
   // the trip. timeLeft() is that dry run's time from here to the end: an arrival time that
   // counts down as the car goes and holds while it waits, as a ride app's does.
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null } = {}) {
-    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, end: P.len, route, P };
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null } = {}) {
+    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, end: P.len, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
     const kerbStart = kerbOf(P.pos(0, q2).c);
@@ -744,25 +744,36 @@ window.OECars = (function () {
     st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy);
     // the gap (bumper to bumper) to the first of the others in the lane ahead. A car stopped in the
     // lane (o.v about 0, o.still) is passed: the driver swings out towards the centre line round
-    // it (st.pass, eased into st.shift) instead of waiting behind it for good.
-    const c = {};
+    // it (st.pass, eased into st.shift) instead of waiting behind it for good, but not while a car
+    // is coming along the side of the road it would swing out into: it waits behind until that has
+    // gone by.
+    const c = {}, passing = [];
     let still = false;
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
-      still = false;
+      still = false; passing.length = 0;
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 60) continue;
         P.at(Math.min(P.len, st.s + a), c);
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
-        if (Math.abs(w - lane - st.shift) >= 1.5) continue;
+        if (Math.abs(w - lane - st.shift) >= Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) continue; // (side by side, clear)
         if (o.still && a < 40 && (!end || st.end - st.s - a > 25)) { // (not one where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
-          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; continue; }
+          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push(a - half - C.half); continue; }
         }
         if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.still; }
       }
+      if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
+        if (o.still) continue;
+        const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
+        if (a <= -C.half || a > 70) continue;
+        P.at(Math.min(P.len, st.s + Math.max(0, a)), c);
+        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + Math.max(0, a)) * keep;
+        if (Math.abs(w - lane - pass) < (o.hw || 0.4) + C.hw + 0.4) { pass = 0; break; }
+      }
+      if (!pass) for (const g of passing) if (g < gap) { gap = g; still = true; }
       st.pass = pass;
       return gap;
     }
@@ -789,12 +800,22 @@ window.OECars = (function () {
       const dv = clamp(want - st.v, -7.5 * dt, 2.6 * dt);
       st.brake = dv < -0.02 * dt * 60 || (st.v < 0.2 && want < 0.1);
       st.v = Math.max(0, st.v + dv);
+      const s0 = st.s, lat0 = st.lat;
       st.s = Math.min(st.end, st.s + st.v * dt);
       // across the road it eases to its line as it goes, never sideways on the spot (so an end
       // brought forward bends its path in rather than jumping it)
       const k = lat(st.s);
       st.lat += clamp(k - st.lat, -0.35 * st.v * dt, 0.35 * st.v * dt);
       pose(st.s, q, st.lat);
+      // never a step further into a car of the traffic (solid: how deep a pose is in their
+      // footprints); it waits, and after a few seconds wedged goes on (a car that won't move off)
+      if (solid && !dry && st.s > s0) {
+        const d1 = solid(q.x, q.y, q.z, Math.atan2(q.hx, q.hy));
+        if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < 3) {
+          st.s = s0; st.lat = lat0; st.v = 0; st.brake = true;
+          pose(st.s, q, st.lat);
+        } else if (d1 <= 0.02) st.wedged = 0;
+      }
       const h0 = st.h;
       st.h += angDiff(Math.atan2(q.x - st.x + q.hx * 0.01, q.y - st.y + q.hy * 0.01), st.h) * Math.min(1, dt * 6) * (st.v > 0.05 ? 1 : 0);
       st.steer = clamp(dt > 0 ? angDiff(st.h, h0) / dt * C.wheelbase / Math.max(1, st.v) : 0, -0.6, 0.6);

@@ -557,17 +557,43 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
       Object.assign(l, { p, cum, len: cum[cum.length - 1] });
     }
-    // a leg too narrow for two to pass all along it (a river like the Dotonbori) has a passing place:
-    // where the water is widest for two, s from its `from` end; null where they can pass anywhere
+    // a hull on a leg at s, as it sails it (place, below): on its course, out to starboard
+    const hullAt = (l, rev, s, out) => {
+      s = Math.max(0, Math.min(l.len, s));
+      legPoint(l, rev, s, out);
+      const o = l.off[rev ? 1 : 0], f = s / l.len * (o.length - 1), i = Math.min(o.length - 2, Math.floor(f));
+      const off = (o[i] + (o[i + 1] - o[i]) * (f - i)) * smooth(hullL / 2, hullL * 2, Math.min(s, l.len - s));
+      out.x += Math.cos(out.h) * off; out.y -= Math.sin(out.h) * off;
+      out.hl = hullL / 2; out.hw = hullB / 2;
+      return out;
+    };
+    // how far apart two hulls are (x, y, h, hl half length, hw half beam), less than 0 when they overlap
+    function gapOf(A, B) {
+      let g = -Infinity;
+      for (const h of [A.h, B.h]) for (const [ux, uy] of [[Math.sin(h), Math.cos(h)], [Math.cos(h), -Math.sin(h)]]) {
+        const r = o => o.hl * Math.abs(Math.sin(o.h) * ux + Math.cos(o.h) * uy) + o.hw * Math.abs(Math.cos(o.h) * ux - Math.sin(o.h) * uy);
+        g = Math.max(g, Math.abs((B.x - A.x) * ux + (B.y - A.y) * uy) - r(A) - r(B));
+      }
+      return g;
+    }
+    // a leg too narrow for two to pass all along it (a river like the Dotonbori) has a passing place,
+    // s from its `from` end: where one waiting there and one going by it the other way keep farthest
+    // apart, all the way past (on a bend a hull's ends swing out of its line); null where they can pass anywhere
     function passing(l) {
       const a = l.off[0], b = l.off[1], n = a.length, k = Math.ceil(hullL / 10), need = hullB + 0.5;
-      let best = -1, at = null, narrow = false;
+      let narrow = false;
+      for (let i = k; i < n - k; i++) if (a[i] + b[n - 1 - i] < need) narrow = true;
+      if (!narrow) return null;
+      let best = -Infinity, at = null;
+      const W = {}, M = {};
       for (let i = k; i < n - k; i++) {
-        const sum = a[i] + b[n - 1 - i];
-        if (sum < need) narrow = true;
-        if (sum > best) { best = sum; at = i; }
+        const s = l.len * i / (n - 1);
+        hullAt(l, false, s, W);
+        let clear = Infinity;
+        for (let d = -2 * hullL; d <= 2 * hullL && clear > best; d += 3) clear = Math.min(clear, gapOf(W, hullAt(l, true, l.len - s + d, M)));
+        if (clear > best) { best = clear; at = s; }
       }
-      return narrow && best >= need ? l.len * at / (n - 1) : null;
+      return at;
     }
     // on such a leg, where a vessel waits: at the passing place for a busy berth, or for one coming the
     // other way when it is the nearer of the two to the passing place (the other goes on through it);
@@ -621,9 +647,32 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     const destOf = v => { const c = v.cycle[v.ci]; return c.rev ? c.leg.from : c.leg.to; };
     const fromOf = v => { const c = v.cycle[v.ci]; return c.rev ? c.leg.to : c.leg.from; };
     // is someone else at (or just leaving, or just making for) wharf id?
+    // (one nearer it bound there too counts: on another course in, from where it waits off it)
     const busy = (v, id) => vessels.some(o => o !== v && ((o.phase === 'dwell' && stopOf(o) === id) || (o.phase === 'sail' && fromOf(o) === id && o.s < 2.5 * o.len + 70)
-      || (o.phase === 'sail' && destOf(o) === id && o.cycle[o.ci].leg.len - o.s < v.len + 40 && o.cycle[o.ci].leg.len - o.s < leftOf(v))));
+      || (o.phase === 'sail' && destOf(o) === id && ahead(o, v) && leftOf(o) < (o.cycle[o.ci].leg === v.cycle[v.ci].leg ? 0 : holdOf(o)) + v.len + 40)));
     const leftOf = v => v.cycle[v.ci].leg.len - v.s;
+    // how far a vessel can go on along its course before its hull would come within half a metre of one lying
+    // still (not on its own leg, whose vessels pass by the rules above): Infinity when nothing is
+    const P0 = {}, P1 = {};
+    function roomAhead(v, c) {
+      const still = vessels.filter(o => o !== v && o.speed < 0.3 && o.cycle[o.ci].leg !== c.leg && Math.hypot(o.x - v.x, o.y - v.y) < 3 * (o.len + v.len));
+      if (!still.length) return Infinity;
+      const me = Object.assign(P0, { x: v.x, y: v.y, h: v.h, hl: v.len / 2, hw: v.beam / 2 });
+      const now = still.map(o => ({ o, g: gapOf(me, { x: o.x, y: o.y, h: o.h, hl: o.len / 2, hw: o.beam / 2 }) }));
+      const reach = Math.min(c.leg.len - v.s, 2 * v.len + 20);
+      for (let d = 3; d <= reach; d += 3) {
+        const p = hullAt(c.leg, c.rev, v.s + d, P1);
+        p.hl = v.len / 2; p.hw = v.beam / 2;
+        for (const { o, g } of now) { const g1 = gapOf(p, { x: o.x, y: o.y, h: o.h, hl: o.len / 2, hw: o.beam / 2 }); if (g1 < 0.5 && g1 < g) return d - 3; }
+      }
+      return Infinity;
+    }
+    const holdOf = v => { const c = v.cycle[v.ci]; return c.leg.hold[c.rev ? 1 : 0]; };
+    const ahead = (o, v) => leftOf(o) < leftOf(v) || (leftOf(o) === leftOf(v) && vessels.indexOf(o) < vessels.indexOf(v));
+    // waiting off a busy berth behind others bound there that are nearer it (on another route, whose
+    // course comes in to the same spot): a hull length and 30 m farther off for each, so two waiting
+    // never lie on top of each other
+    const queued = v => { const id = destOf(v); let d = 0; for (const o of vessels) if (o !== v && o.phase === 'sail' && destOf(o) === id && ahead(o, v)) d += o.len + 30; return d; };
     function stopOf(v) { const c = v.cycle[v.ci]; return v.phase === 'dwell' ? (c.rev ? c.leg.to : c.leg.from) : null; }
     function nextStop(v) { const c = v.cycle[v.ci]; return v.phase === 'dwell' ? (c.rev ? c.leg.from : c.leg.to) : (c.rev ? c.leg.from : c.leg.to); }
     function place(v) {
@@ -646,13 +695,15 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
           v.t -= step;
           v.speed = 0;
           const nc = v.cycle[v.ci];
-          if (v.t <= 0 && nc.leg.pass != null && oncoming(v, nc).some(o => o.s > passAt(o.cycle[o.ci]) - 1)) v.t = 0.5; // wait for it to come in
+          // wait for one coming the other way, past the passing place, to come in; not one lying still
+          // (at the passing place, or off this berth waiting for it): it lets this one out, and they pass
+          if (v.t <= 0 && nc.leg.pass != null && oncoming(v, nc).some(o => o.s > passAt(o.cycle[o.ci]) - 1 && o.speed >= 0.3)) v.t = 0.5;
           else if (v.t <= 0) { v.phase = 'sail'; v.s = 0; v.events = (v.events || []).concat([{ type: 'depart', v }]); }
         } else if (v.helm && v.helm.manual) {
           helmStep(v, dt);
         } else {
           const left = c.leg.len - v.s;
-          let wait = busy(v, destOf(v)), stopAt = wait ? left - c.leg.hold[c.rev ? 1 : 0] : left; // (well off it, to starboard: one leaving may cross this course)
+          let wait = busy(v, destOf(v)), stopAt = wait ? left - c.leg.hold[c.rev ? 1 : 0] - queued(v) : left; // (well off it, to starboard: one leaving may cross this course)
           if (c.leg.pass != null && v.s < passAt(c) + 1) { // a narrow leg, short of its passing place or at it
             const here = Math.max(0, passAt(c) - v.s);
             if (wait) stopAt = here;
@@ -664,6 +715,11 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
             if (o === v || o.phase !== 'sail' || o.cycle[o.ci].leg !== c.leg || o.cycle[o.ci].rev !== c.rev || o.s <= v.s) continue;
             target = Math.min(target, Math.max(0, (o.s - v.s - (o.len + v.len) / 2 - 25) * 0.25 + Math.max(0, o.speed - 0.5)));
           }
+          // one lying still across its course (waiting off a berth on another route): it stops short
+          // of it, and after half a minute held there (each waiting on the other) goes on by
+          const room = roomAhead(v, c);
+          v.heldT = room < Infinity ? (v.heldT || 0) + step : 0;
+          if (room < Infinity && v.heldT < 30) target = Math.min(target, room < 1 ? 0 : Math.sqrt(2 * A * room));
           v.speed += Math.max(-A * 2 * step, Math.min(A * step, target - v.speed));
           v.s += v.speed * step;
           if (v.helm && left < 160 && !v.helm.manual) { v.helm.manual = true; v.helm.t0 = t; v.events = (v.events || []).concat([{ type: 'helm', v }]); }

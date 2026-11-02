@@ -668,7 +668,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const C = OECars.car(world, vlib, model, { colours: { paint: hex, seat: kind === 'taxi' ? '#2b2d30' : '#b9ae9c' }, keep: KEEP });
     const o = { kind, C, model, hex, name: OEActors.pick(FIRST[CITY.country] || FIRST.Australia), plate: plate(), pickup, dest, phase: 'coming',
       t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140), rating: (4.7 + Math.random() * 0.29).toFixed(2).slice(0, 3) };
-    o.drv = OECars.chauffeur(C, plan.rt, plan.opts);
+    o.drv = OECars.chauffeur(C, plan.rt, Object.assign({ solid: (x, y, z, h) => cars.footprint(x, y, z, h, C.half, C.hw, 0.1) }, plan.opts)); // (never a step further into the traffic)
     o.T0 = o.drv.total();
     o.driver = makeRig(driverLook(), {});
     C.sit(o.driver, 'driver');

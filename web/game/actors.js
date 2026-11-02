@@ -743,7 +743,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // deep it is in the ones not in knownSet, the cars it is already caught up with)
     let depth = 0, most = 0, ahead = false, oc = null, ox0 = 0, oy0 = 0, ohx = 0, ohy = 0, mL = 0, mW = 0, inSet = null, known = null, fresh = 0;
     const overlapTest = o => {
-      if (o === oc || o.soft) return; // (a ride on the move: game.js)
+      if (o === oc || (o.soft && Math.sin(o.h) * ohx + Math.cos(o.h) * ohy < 0.5)) return; // (a ride on the move, but for one it follows: game.js)
       const dx = o.x - ox0, dy = o.y - oy0, ox = Math.sin(o.h), oy = Math.cos(o.h), cs = Math.abs(ox * ohx + oy * ohy), sn = Math.abs(-ox * ohy + oy * ohx);
       const ea = oc.half + cs * o.half + sn * o.hw + mL - Math.abs(dx * ohx + dy * ohy), eb = oc.hw + sn * o.half + cs * o.hw + mW - Math.abs(-dx * ohy + dy * ohx);
       if (ea > 0 && eb > 0) {
@@ -938,7 +938,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
             if (sw != null) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
-          if (a > 0 && Math.abs(w) < 1.6 && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; }
+          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; } // (a ride pulling in still reaches into the lane)
         }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
         if (posts) posts.near(c.x + fx * reach / 2, c.y + fy * reach / 2, reach / 2 + 1, q => {
