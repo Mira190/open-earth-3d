@@ -542,7 +542,15 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-mapwrap { width: min(1100px, 100%); height: min(860px, 100%); grid-template-rows: auto minmax(0, 1fr); }
 .g-mapbody { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; min-height: 0; }
 .g-mapcanvas { position: relative; min-height: 300px; background: var(--gm-water); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.g-mapcanvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.g-mapcanvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+/* zoom buttons over the map's corner (game.js zoomMap); the wheel, a drag and a pinch do the same */
+.g-mapzoom { position: absolute; right: 10px; bottom: 10px; z-index: 1; display: grid; background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.g-mapzoom button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; background: none; color: var(--ink); font: 400 18px/1 var(--f-body); cursor: pointer; transition: background 0.3s, color 0.3s; }
+.g-mapzoom button + button { border-top: 1px solid var(--line); }
+.g-mapzoom button[data-z="fit"] { font-size: 14px; }
+.g-mapzoom button:hover:not(:disabled), .g-mapzoom button:focus-visible { background: var(--accent-wash); color: #fff; }
+.g-mapzoom button:disabled { color: var(--faint); cursor: default; }
 .g-mapbody aside { display: grid; gap: 12px; align-content: start; overflow: auto; }
 .g-legend { display: grid; gap: 7px; font-size: 12px; color: var(--ink-2); }
 .g-legend div { display: flex; gap: 9px; align-items: center; }
@@ -932,6 +940,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         <header><h2>Map</h2><span class="note">Pick a place to travel there · double-click to go at once</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
         <div class="g-mapbody">
           <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas>
+            <div class="g-mapzoom" id="g-mapzoom" role="group" aria-label="Zoom the map"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="fit" aria-label="Show the whole city">⤢</button></div>
             <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span>
               <div class="g-mappop-acts"><button class="btn primary" id="g-mappop-go">Travel here</button><button class="btn" id="g-mappop-way">Set waypoint</button></div></div></div>
           <aside>

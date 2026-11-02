@@ -108,6 +108,11 @@
     "戲曲中心 Xiqu Centre": "Xiqu Centre",
     "M+": "M+"
   },
+  "arrivals": {
+    "TST Star Ferry Pier": {"front": 120, "arc": 60, "dist": 120},
+    "Legislative Council": {"front": 0, "arc": 60},
+    "Hopewell Centre": {"top": 216, "front": 25, "arc": 50}
+  },
   "minor_labels": ["Legislative Council", "Court of Final Appeal", "Ocean Terminal", "Central Star Ferry Pier", "TST Star Ferry Pier", "Xiqu Centre", "M+", "Cultural Centre", "Jardine House", "Exchange Square", "Lippo Centre", "Hopewell Centre", "The Center", "Cheung Kong Center"],
   "places": [
     {"name": "皇后像廣場 Statue Square", "label": "Statue Square", "class": "park"},

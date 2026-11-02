@@ -63,7 +63,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which survey line the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
-| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -761,21 +761,44 @@ cars.
   in your car (the car comes too, parked at the kerb nearest the spot) and in a taxi
   (it lets you out and drives off). From the helicopter, a ferry or the funicular you
   get off first. Where a landmark puts you:
-  - **How far back:** about 1.7 times its height, or twice its breadth and 40 m when
-    that is more (45 to 520 m). The breadth is the median, over 16 bearings, of how far
+  - **How far back:** about 1.4 times its height, or twice its breadth and 40 m when
+    that is more (45 to 520 m; a tower taller than that allows is not tried nearer). The breadth is the median, over 16 bearings, of how far
     the surface model stays above 30% of its height out from its label, a street's gap
     ending it.
-  - **Which side:** 48 spots on three rings round it are scored on the line of sight from
-    eye height to 60% of its height (every 4 m through the 2 m surface model, and through
-    the mapped trees' crowns, which the surface model leaves out), the sun behind you by
-    day, open ground round the spot (a square or the waterfront rather than a lane), the
-    street rather than a roof, and room behind you for the chase camera (the same test the
+  - **Which side:** 48 spots on three rings round it are scored on how much of it they
+    see: four lines of sight from eye height (every 4 m through the 2 m surface model, and
+    through the mapped trees' crowns, which the surface model leaves out), one to 60% of
+    its height and three to 35% of it, at its centre and to either side as far out as its
+    high part runs. A slot down a street of offices sees only its top over the roofs and
+    fails the low lines either side, so a square, a riverbank or a wide road that sees it
+    whole wins. Then the sun behind you by day, open ground round the spot, the street
+    rather than a roof, out from under a walkway or a flyover (for you and the camera), out of the haze the model's edge fades into (standing in it veils
+    everything round you, the near things too), and room behind you for the chase camera (the same test the
     camera rig makes, and no crown in front of the lens). A spot whose camera is blocked
     is tried again a few steps either side, nearer and further.
+  - **Fronts and hand-picked spots** (`arrivals` in `cities/<id>/city.json`, keyed by the
+    label as shown): for the few landmarks the search gets wrong, `front` is the compass
+    bearing the landmark's front faces (the National Diet looks east over its garden), and
+    the arrival keeps within `arc` degrees of it (70 by default), preferring straight in
+    front; `dist` sets how far back to stand; `top` frames a lower part than the label's
+    top, in metres above the ground (Kabuki-za's theatre rather than the tower behind it);
+    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark.
+    `python pipeline/scene_config.py --city <id>` copies them into `scene.json` without
+    rebuilding the scene, and `node tools/arrival_probe.js <city> <names>` prints where
+    each arrival lands, its best-scored spots, and a character map of the surface model,
+    the water and the main roads round it, for choosing them.
   - **The camera:** behind you and a little to one side, so the landmark stands just off
     your shoulder, and tilted up enough to take in the top of its near side.
   - `tools/travel_shot.js <city> <out>` takes a still on arrival at each landmark and says
     whether it is in frame.
+  - **Zoom and pan:** the wheel (or a trackpad pinch, or <kbd>+</kbd> and <kbd>−</kbd>) zooms
+    the map about the pointer, from the whole city to about a metre a screen pixel; a drag
+    pans it, and on a phone two fingers pinch and pan. Buttons in its corner zoom in, out
+    and back to the whole city. The names are laid out afresh at each zoom, so the ones
+    the whole city crowds out come back as you zoom in, and a picked place's card follows
+    its pin. The zoom is kept while the map is closed. `tools/map_shot.js <city> <out>
+    [phone]` takes stills of it at the whole city, zoomed into the thickest pins, panned
+    and with a pin picked.
 - **Neighbourhoods** (`web/game/places.js`, game.json `areas`, `spots`, `chatter`):
   - **Areas:** a circle round a station. Walking in puts up its sign: the name, its
     reading, the line's colour band and the stations either side. Where circles
