@@ -218,6 +218,8 @@ or chosen by us.
 | Tsutenkaku | 103 m (108 m with the lightning rod); observatories at 84 m and 87.5 m (the gold one), the open deck at 94.5 m with its round gallery 8.5 m across, the third-floor deck at 22 m over the legs; the jutting deck*, the ceiling painting under the tower (an octagon 17 m across*), the legs, lattice, sign boards and weather light are schematic* | Osaka City leaflet, MLIT's multilingual guide, gltjp |
 | HEP FIVE wheel | 75 m diameter, 106 m top, lowest point at the seventh floor (about 31 m), 52 gondolas; the building drawn at 47 m*, because PLATEAU's 107 m is the wheel; the trusses are schematic* | published dimensions |
 | Glico sign | the sixth sign (2014): an LED board 20 m high and 10.38 m wide, on the canal face of 道頓堀1-10-2 at the south-west foot of Ebisubashi, its top 0.6 m below the roof*; the board plays Osaka's skies* behind a simplified runner on a track | Ezaki Glico (via Kyodo), Wikipedia (ja) |
+| Tombori Station | 5.00 × 2.80 m on the north wall of the Bel Sud building (道頓堀1-9, w222963577), its foot 5.4 m over the street* | B&D |
+| Namba Ebisubashi Multi Vision | 4.096 × 3.072 m outdoors on the north wall and 2.95 × 2.10 m indoors on the east wall of the Namba Ichiban building (難波3-5-1, w219869421), their feet about 5 m over the street* | KESION, oogatavision-navi |
 | TSUTAYA EBISUBASHI HIT VISION | 15.4 × 17.3 m on the wall facing the canal and 18.6 × 10.2 m on the roof over it (455 m²), on 道頓堀1-8-19 at the south-east foot of the bridge (OpenStreetMap w174743244); its top at PLATEAU's 40.2 m* | HIT, [Namba Keizai Shimbun](https://namba.keizai.biz/headline/3343/) |
 | Kani Doraku crab | about 9 m across* with its legs, on the Dotonbori facade | indicative |
 | Shop signs | 1,400 facades with a street in front of them, in three districts*; blades, banners and boards in six colours, lit at night | indicative, random |
@@ -251,8 +253,28 @@ the weather and the ward's notice on the bridge). No Glico or advertiser's artwo
 - **HIT VISION's two screens** play the same programme, the roof one a step ahead. The TSUTAYA
   under it closes on 11 January 2027.
 
-Not drawn: Tombori Station's 5.0 × 2.8 m screen and the 4.1 × 3.1 m Namba Ebisubashi Multi
-Vision, whose buildings could not be confirmed, and the smaller screens along the canal.
+- **Tombori Station** (5.00 × 2.80 m, 11:00–22:00) is on the north wall of the Bel Sud building
+  (道頓堀1-9, OpenStreetMap w222963577), on the south side of Dotonbori's street, looking up
+  Ebisubashi-suji to the bridge. Its foot is at the second floor over the FamilyMart, east of the
+  middle of the wall, both measured from the operator's photographs
+  ([B&D media sheet](http://tombori.com/tombori_station/)). It plays a crowd camera on the bridge
+  (the screen has its own studio for live broadcasts), the takoyaki stand, the weather and the
+  bay festival.
+- **Namba Ebisubashi Multi Vision** is two screens on the Namba Ichiban building (難波3-5-1,
+  w219869421; Big Echo is in it), at the south-west corner of Ebisubashi-suji and
+  Sennichimae-dori, at eye level from the crossing: 4.096 × 3.072 m outdoors on the north wall
+  facing Sennichimae-dori, and 2.95 × 2.10 m indoors behind the first-floor windows on the east
+  wall over the arcade, 8:00–24:00 (KESION's media sheet, 2022;
+  [oogatavision-navi](https://oogatavision-navi.jp/vision/namba/v27010/);
+  [ADREX](https://press.portal-th.com/archives/11625)). The issue's "4.1 × 3.1 m" is the outdoor
+  screen; the indoor one was added in 2022. They play an invented autumn campaign, the beer, the
+  festival and the weather, the two together.
+
+| ![Tombori Station from Dotonbori's street at dusk](../images/osaka/tombori-station.jpg) | ![Namba Ebisubashi Multi Vision from the Sennichimae-dori crossing at dusk](../images/osaka/namba-multi-vision.jpg) |
+|---|---|
+
+Not drawn: the smaller screens along the canal, and the "Ad Vision" across the arcade from the
+Multi Vision, whose size we have not found.
 
 ## 7. Winter sun on the parks
 

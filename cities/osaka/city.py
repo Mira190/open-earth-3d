@@ -34,7 +34,8 @@ Parametric landmarks (pipeline/landmarks.py), with anchors measured from the dat
                       and 10.38 m wide (Ezaki Glico) on the canal face of 道頓堀1-10-2 at the
                       south-west foot of Ebisubashi, its top at the roof. The board plays skies
                       behind the runner; the figure is simplified and indicative.
-  Dotonbori screens   TSUTAYA EBISUBASHI HIT VISION across the bridge (DOTONBORI below).
+  Dotonbori screens   TSUTAYA EBISUBASHI HIT VISION across the bridge, Tombori Station, and Namba
+                      Ebisubashi Multi Vision at Sennichimae-dori (DOTONBORI below).
   Kani Doraku crab    the moving crab on the Dotonbori front, about 8 m across.
   HEP FIVE wheel      75 m diameter, top at 106 m above the street, lowest point at the seventh
                       floor (about 31 m).
@@ -924,12 +925,24 @@ def glico_sign(sc):
 # and plays skies behind the runner; across the bridge on the TSUTAYA EBISUBASHI building
 # (道頓堀1-8-19), TSUTAYA EBISUBASHI HIT VISION, from March 2016: 15.4 x 17.3 m on the wall facing
 # the canal and 18.6 x 10.2 m on the roof over it, 455 m2, the two playing together or apart (HIT;
-# Namba Keizai Shimbun). The TSUTAYA closes on 11 January 2027. Neither building is named in the
-# open data: OpenStreetMap ids stand for them. The pictures are drawn for this model (adkit):
-# invented brands and Osaka's own skies, not Glico's or the advertisers'.
+# Namba Keizai Shimbun). The TSUTAYA closes on 11 January 2027. Two smaller screens: Tombori
+# Station, 5.00 x 2.80 m, 11:00-22:00, on the north wall of the Bel Sud building (道頓堀1-9) at
+# the south side of Dotonbori's street, facing the bridge down the line of Ebisubashi-suji, its foot
+# at the second floor over the FamilyMart, east of the middle of the wall (B&D's media sheet and its
+# photographs); and Namba Ebisubashi Multi Vision on the Namba Ichiban building (難波3-5-1, the
+# south-west corner of Ebisubashi-suji and Sennichimae-dori; Big Echo is in it), two screens over
+# the ground-floor shop either side of the corner, at eye level from the crossing: 4.096 x 3.072 m
+# outdoors on the north wall facing Sennichimae-dori, and 2.95 x 2.10 m indoors behind the
+# first-floor windows on the east wall over the arcade, 8:00-24:00 (KESION's media sheet,
+# oogatavision-navi, ADREX). Their heights over the street and their places along the walls are
+# measured from the photographs. None of the three buildings is named in the open data:
+# OpenStreetMap ids stand for them. The pictures are drawn for this model (adkit): invented brands
+# and Osaka's own skies, not Glico's or the advertisers'.
 
 EBISUBASHI = (-1071.0, -1100.0)     # the bridge, which the screens face
 GLICO_EDGE = [[-1090.6, -1117.5], [-1080.2, -1117.5]]    # the canal faces of 道頓堀1-10-2 and the sign's frame (w174744227, w903050161)
+MULTI_NORTH = [[-1083.5, -1343.7], [-1070.7, -1343.6]]   # the Namba Ichiban building's walls either side of its corner (w219869421)
+MULTI_EAST = [[-1068.0, -1365.7], [-1068.3, -1345.5]]
 DOTONBORI_SCREENS = [
     {"name": "Glico sign", "building": "w174744227", "edge": GLICO_EDGE, "w": 10.38, "h": 20.0, "z": -0.6, "frame": 0.25, "off": 0.5,
      "clips": ["sky_day", "sky_night"], "phase": 0.0, "pitch": 0.035, "hours": [6, 24], "bright": 0.8, "sync": False},
@@ -937,6 +950,14 @@ DOTONBORI_SCREENS = [
      "clips": ["festival", "beer", "takoyaki", "osaka"], "phase": 0.0, "pitch": 0.01},
     {"name": "TSUTAYA EBISUBASHI HIT VISION (wall)", "building": "w174743244", "w": 15.4, "h": 17.3, "z": -11.0, "frame": 0.3, "off": 0.7,
      "clips": ["festival", "beer", "takoyaki", "osaka"], "phase": 0.0, "pitch": 0.01},
+    {"name": "Tombori Station", "building": "w222963577", "w": 5.0, "h": 2.8, "z": 5.4, "along": -2.8, "frame": 0.3, "off": 0.45,
+     "clips": ["live", "takoyaki", "osaka", "festival"], "phase": 6.0, "pitch": 0.006, "hours": [11, 22]},
+    {"name": "Namba Ebisubashi Multi Vision (right)", "building": "w219869421", "edge": MULTI_NORTH, "toward": (-1077.0, -1300.0),
+     "w": 4.096, "h": 3.072, "z": 4.9, "along": -3.7, "frame": 0.35, "off": 0.4,
+     "clips": ["autumn", "beer", "festival", "osaka"], "phase": 3.0, "pitch": 0.008, "hours": [8, 24]},
+    {"name": "Namba Ebisubashi Multi Vision (left)", "building": "w219869421", "edge": MULTI_EAST, "toward": (-1040.0, -1347.0),
+     "w": 2.95, "h": 2.1, "z": 5.0, "along": 8.4, "frame": 0.0, "off": 0.12,
+     "clips": ["autumn", "beer", "festival", "osaka"], "phase": 3.0, "pitch": 0.0048, "hours": [8, 24], "bright": 0.85},
 ]
 MATERIALS.update(screens.MATERIALS)
 MATERIALS["screens"] = {"color": "#0b0c0e", "roughness": 0.32, "metalness": 0.0, "map": "screens.jpg", "pattern": "led_screen"}
@@ -1085,8 +1106,86 @@ def k_osaka_b(img, rng):
     ad.text(img, (w / 2, h * 0.93), "大阪市中央区 CHUO WARD, OSAKA", "zen", h * 0.05, "#d9ffe6")
 
 
+def k_live_a(img, rng):
+    """Live from the bridge: the crowd on Ebisubashi at dusk waving to the camera, as Tombori
+    Station's studio shows it."""
+    w, h = img.size
+    ad.gradient(img, "#1a1550", "#ff8a5a", 90, c2="#ffc98a")
+    skyline(img, "#2a1838", castle=False)
+    ad.bokeh(img, rng, 50, ["#ffd27a", "#ff7ab0", "#7ae0ff"], h * 0.008, h * 0.03, 0.8)
+    d = ad.ImageDraw.Draw(img)
+    d.rectangle([0, h * 0.8, w, h], fill=ad.rgb("#20141e"))
+    for k in range(int(rng.integers(16, 20))):    # the crowd, the front row larger, some arms up
+        x = w * (k + rng.uniform(0.1, 0.9)) / 17
+        big = rng.uniform(0.42, 0.62)
+        ad.figure(img, x, h * (1.02 - big), h * big, ["#120a14", "#1c1020", "#24142a"][k % 3], coat=False, arms_up=bool(rng.random() < 0.55))
+    ad.pill(img, (w * 0.04, h * 0.05, w * 0.2, h * 0.15), "#e8232e", "   LIVE", "bebas", h * 0.08, "#ffffff")
+    d = ad.ImageDraw.Draw(img)
+    d.ellipse([w * 0.065, h * 0.08, w * 0.065 + h * 0.04, h * 0.12], fill=(255, 255, 255))
+    d.rectangle([0, h * 0.84, w, h * 0.97], fill=ad.rgb("#0b0b16"))
+    d.rectangle([0, h * 0.84, w * 0.012, h * 0.97], fill=ad.rgb("#ffcf3a"))
+    ad.text(img, (w * 0.04, h * 0.905), "戎橋から生中継  EBISUBASHI LIVE", "zen", h * 0.065, "#ffffff", anchor="lm", max_w=w * 0.7)
+    ad.text(img, (w * 0.95, h * 0.905), "18:42", "bebas", h * 0.09, "#ffcf3a", anchor="rm")
+
+
+def k_live_b(img, rng):
+    """The same programme's call to the bridge: wave, and be on the screen."""
+    w, h = img.size
+    ad.gradient(img, "#ff4f9a", "#ffb03a", 20)
+    ad.stripes(img, (0, 0, w, h * 0.16), "#ffffff", 12, 0.35)
+    ad.phone(img, w * 0.78, h * 0.56, h * 0.68, lambda im: (ad.gradient(im, "#1a1550", "#ff8a5a", 90),
+                                                          [ad.figure(im, im.size[0] * f, im.size[1] * 0.45, im.size[1] * 0.55, "#1c1020", coat=False, arms_up=True) for f in (0.3, 0.7)]))
+    ad.text(img, (w * 0.36, h * 0.36), "手をふって、", "dela", h * 0.12, "#ffffff", max_w=w * 0.62)
+    ad.text(img, (w * 0.36, h * 0.56), "大画面に。", "dela", h * 0.15, "#ffffff", max_w=w * 0.62)
+    ad.pill(img, (w * 0.08, h * 0.72, w * 0.64, h * 0.86), "#2a0a3a", "#EBISUBASHI  毎日 18:00〜", "zen", h * 0.06, "#ffe06a")
+
+
+def maple(d, cx, cy, r, rot, fill):
+    """A maple leaf: five lobes (the top three long, the bottom two short), each with a pointed tip
+    and a tooth either side, round a short stem."""
+    pts = []
+    for k, (ang, L) in enumerate(((-90, 1.0), (-28, 0.9), (34, 0.62), (146, 0.62), (208, 0.9))):
+        a = math.radians(ang) + rot
+        for da, rr in ((-0.42, 0.34), (-0.2, 0.62 * L), (-0.1, 0.58 * L), (0.0, L), (0.1, 0.58 * L), (0.2, 0.62 * L)):
+            pts.append((cx + r * rr * math.cos(a + da), cy + r * rr * math.sin(a + da)))
+        if k == 2:   # the notch where the stem leaves
+            a2 = math.radians(90) + rot
+            pts.append((cx + r * 0.12 * math.cos(a2 - 0.5), cy + r * 0.12 * math.sin(a2 - 0.5)))
+            pts.append((cx + r * 0.12 * math.cos(a2 + 0.5), cy + r * 0.12 * math.sin(a2 + 0.5)))
+    d.polygon(pts, fill=fill)
+    a2 = math.radians(90) + rot
+    d.line([(cx, cy), (cx + r * 0.75 * math.cos(a2), cy + r * 0.75 * math.sin(a2))], fill=fill, width=max(2, int(r * 0.07)))
+
+
+def k_autumn_a(img, rng):
+    """Leaves coming down, for the season's opening (an invented department-store campaign)."""
+    w, h = img.size
+    ad.gradient(img, "#fff4e2", "#f6c79a", 90)
+    ad.blob(img, (w * 0.7, h * 0.3), h * 0.5, "#fff8d8", 0.9)
+    d = ad.ImageDraw.Draw(img)
+    for _ in range(26):   # in the band over the type and under it, clear of the words
+        y = h * (rng.uniform(0.0, 0.26) if rng.random() < 0.5 else rng.uniform(0.78, 1.0))
+        maple(d, w * rng.uniform(0, 1), y, h * rng.uniform(0.05, 0.11), rng.uniform(-0.6, 0.6),
+              ad.rgb(["#d6361e", "#e8721e", "#f2b02a", "#b0201a", "#c85a1a"][int(rng.integers(5))]))
+    ad.text(img, (w / 2, h * 0.44), "紅葉、はじまる。", "mincho", h * 0.15, "#5a1a10", max_w=w * 0.86)
+    ad.text(img, (w / 2, h * 0.66), "MINAMI  AUTUMN  2026", "bebas", h * 0.1, "#8a3a18", spacing=4)
+
+
+def k_autumn_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#7a0f14", "#2a0508", 90)
+    d = ad.ImageDraw.Draw(img)
+    for _ in range(14):
+        maple(d, w * rng.choice([rng.uniform(0, 0.16), rng.uniform(0.84, 1.0)]), h * rng.uniform(0, 1), h * rng.uniform(0.06, 0.12), rng.uniform(-0.6, 0.6),
+              ad.rgb(["#b8321a", "#d8661e", "#9a1a14"][int(rng.integers(3))]))
+    ad.text(img, (w / 2, h * 0.34), "AUTUMN SALE", "anton", h * 0.2, "#ffd38a", glow_c="#ff7a2a", glow_r=h * 0.02, max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.6), "最大 30% OFF", "dela", h * 0.15, "#ffffff")
+    ad.pill(img, (w * 0.22, h * 0.74, w * 0.78, h * 0.88), "#ffd38a", "なんば南口 ・ 11.3 → 11.24", "zen", h * 0.06, "#5a0a10")
+
+
 DOTONBORI_CLIPS = [("sky_day", [k_sky_day_a, k_sky_day_b]), ("sky_night", [k_sky_night_a, k_sky_night_b]), ("festival", [k_festival_a, k_festival_b]),
-                   ("beer", [k_beer_a, k_beer_b]), ("takoyaki", [k_takoyaki_a, k_takoyaki_b]), ("osaka", [k_osaka_a, k_osaka_b])]
+                   ("beer", [k_beer_a, k_beer_b]), ("takoyaki", [k_takoyaki_a, k_takoyaki_b]), ("osaka", [k_osaka_a, k_osaka_b]),
+                   ("live", [k_live_a, k_live_b]), ("autumn", [k_autumn_a, k_autumn_b])]
 DOTONBORI = screens.ScreenSet("osaka", DOTONBORI_SCREENS, DOTONBORI_CLIPS, MATERIALS["screens"], seed=1935)
 
 
