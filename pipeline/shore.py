@@ -10,8 +10,8 @@ shore.png covers the city's frame at SHORE_CELL metres per pixel:
 There is no open bathymetry for the harbour or the river, so the bottom is modelled: each
 water cell's depth is its distance to the nearest shore times a slope for that kind of
 shore (gentle off a beach, steep off rock, a sheer wall off a seawall or a built edge),
-down to a floor of 4 m. The water shader uses the same slopes to decide how much of the
-bottom shows through.
+down to a floor of 4 m, which every kind reaches by REACH_M out. The water shader uses the
+same depths to decide how much of the bottom shows through.
 """
 import os
 
@@ -42,6 +42,12 @@ def without_raised(C, con, path, rows, sea):
     return [q for p in sea for q in polygons(p.difference(cut)) if q.area > 1]
 SLOPES = {"sand": 0.04, "rock": 0.25, "built": 1.0}  # depth per metre from the shore
 FLOOR_M = 4.0
+# the bottom reaches the floor this far out whatever the kind of shore (web/water.js SHORE_REACH):
+# shore.png encodes the distance only to 63.5 m, and a beach's slope alone (0.04) would reach the
+# floor only at 100 m, so the water would stay shallow out across the bay, in a wedge for every
+# stretch of sand that is the nearest shore (issue 39). Within the reach a beach keeps its slope
+# at the waterline and curves down to the floor; rock and seawalls reach it sooner by themselves.
+REACH_M = 60.0
 QUAY_SHELF_M = 0.3  # the terrain's first point out from the land is at most this deep (build_scene.py, game_data.py)
 
 
@@ -88,7 +94,14 @@ def depth_at(sm, x, y, x0, y1):
     r = np.clip(((y1 - np.asarray(y)) / SHORE_CELL).astype(int), 0, sm["ny"] - 1)
     s = sm["slopes"]
     slope = np.where(sm["sand"][r, c], s["sand"], np.where(sm["rock"][r, c], s["rock"], s["built"]))
-    return np.minimum(FLOOR_M, np.maximum(sm["signed"][r, c], 0.0) * slope)
+    return profile(np.maximum(sm["signed"][r, c], 0.0), slope)
+
+
+def profile(d, slope):
+    """Modelled depth (m) at d metres from the shore off a shore of this slope: the slope at the
+    waterline, curving down to FLOOR_M by REACH_M (web/water.js computes the same)."""
+    d = np.asarray(d, float)
+    return np.minimum(FLOOR_M, slope * d + np.maximum(0.0, FLOOR_M - slope * REACH_M) * (d / REACH_M) ** 2)
 
 
 PAD_APRON_M = 14.0  # a helipad on or by the water stands on an apron this far round it (game_data.py)
