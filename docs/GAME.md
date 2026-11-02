@@ -693,7 +693,12 @@ cars.
     clear all the way past, measured hull against hull (on a bend a hull's ends
     swing out of its line); one leaving a berth waits for a vessel still coming
     in past it, but not for one lying there or off the berth waiting for it.
-    One lying still across another route's course is stopped short of. Before
+    One lying still across another route's course is stopped short of. Two under
+    way on courses that meet within 8 s: the one that can stop short of the
+    other's course gives way; one lying still, or at its berth, sets off only
+    when nothing coming by would meet it in the next 30 s; and a place to wait
+    off a berth keeps 3 m clear of every course out of it, other routes' too.
+    Before
     this, Sydney's Sirius and Charlotte lay in the same berth at Circular Quay,
     two of Tokyo's water buses waited on top of each other off Hinode, and
     Tokyo's ferries and Osaka's Dotonbori boats could end up each waiting on the

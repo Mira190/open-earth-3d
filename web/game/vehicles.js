@@ -613,6 +613,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       return o[i] + (o[i + 1] - o[i]) * (f - i);
     };
     const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+    const allLegs = [];
     for (const r of G.ferries || []) {
       // the route as a sequence of legs, out and back
       const legs = r.legs.map(l => {
@@ -620,7 +621,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         for (let i = 1; i < p.length; i++) cum.push(cum[i - 1] + Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1]));
         return { from: l.from, to: l.to, p, cum, len: cum[cum.length - 1] };
       });
-      for (const l of legs) { trim(l); l.off = [offsets(l, false), offsets(l, true)]; l.pass = passing(l); l.hold = [holding(l, 0), holding(l, 1)]; }
+      for (const l of legs) { trim(l); l.off = [offsets(l, false), offsets(l, true)]; l.pass = passing(l); l.hold = [holding(l, 0), holding(l, 1)]; allLegs.push(l); }
       const cycle = [];
       for (const l of legs) cycle.push({ leg: l, rev: false });
       for (let i = legs.length - 1; i >= 0; i--) cycle.push({ leg: legs[i], rev: true });
@@ -639,6 +640,30 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         place(v);
         vessels.push(v);
       });
+    }
+    // and where it waits off a busy berth, clear of every course out of that berth (other routes' too):
+    // the first spot out from the one above whose hull keeps 3 m from a vessel's hull setting out on any
+    // of them, over its first 400 m (else the one above)
+    const QA = {}, QB = {};
+    // is a hull d m short of the berth on leg l (k: 0 coming the leg's way, 1 against it) clear of them?
+    function clearOff(l, k, d) {
+      const out = l.outs && l.outs[k];
+      if (!out) return true;
+      const memo = l.clearMemo || (l.clearMemo = new Map()), key = k * 1e6 + Math.round(d);
+      if (!memo.has(key)) { const a = hullAt(l, !!k, l.len - d, QA); memo.set(key, out.every(b => gapOf(a, b) >= 3)); }
+      return memo.get(key);
+    }
+    // where to wait d m or more off the berth: the first spot from there, every 10 m, that is clear
+    const waitOff = (l, k, d) => { for (let e = d; e <= l.len - 20; e += 10) if (clearOff(l, k, e)) return e; return d; };
+    for (const l of allLegs) for (const k of [0, 1]) {
+      const berth = k ? l.from : l.to, out = [];
+      for (const m of allLegs) {
+        if (m === l) continue; // (its own course out: passed to starboard)
+        for (const rev of [false, true]) if ((rev ? m.to : m.from) === berth) for (let s = 0; s <= Math.min(m.len, 400); s += 6) out.push(Object.assign({}, hullAt(m, rev, s, QB)));
+      }
+      if (!out.length) continue;
+      (l.outs || (l.outs = []))[k] = out;
+      for (let d = l.hold[k]; d <= l.len / 2; d += 10) if (clearOff(l, k, d)) { l.hold[k] = d; break; }
     }
     // Under way a vessel keeps to the starboard side of its course, as the rule of the road has it in
     // a channel, by up to its beam, as far as the water allows (offsets, above), easing back onto the
@@ -666,6 +691,43 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
         for (const { o, g } of now) { const g1 = gapOf(p, { x: o.x, y: o.y, h: o.h, hl: o.len / 2, hw: o.beam / 2 }); if (g1 < 0.5 && g1 < g) return d - 3; }
       }
       return Infinity;
+    }
+    // a vessel under way on another course whose hull would come within a metre of this one's in the
+    // next 8 s, both going on as they are (this one at least at 2 m/s, setting out): that one, else null.
+    // (Not one on the same leg: those keep their distance, pass to starboard or at a passing place.)
+    // Under way, of two whose courses meet so, one gives way: the one that can stop short of the
+    // other's course over its next 200 m (where both can, or neither, the one later in the list), so
+    // that it doesn't stop in the other's way; one setting out waits at its berth
+    const Q0 = {}, Q1 = {};
+    function stopsClear(v, c, o, oc) {
+      const a = hullAt(c.leg, c.rev, Math.min(c.leg.len, v.s + v.speed * v.speed / (4 * A) + 2), Q0);
+      a.hl = v.len / 2; a.hw = v.beam / 2;
+      for (let s = o.s; s <= Math.min(oc.leg.len, o.s + 200); s += 6) {
+        const b = hullAt(oc.leg, oc.rev, s, Q1);
+        b.hl = o.len / 2; b.hw = o.beam / 2;
+        if (gapOf(a, b) < 1) return false;
+      }
+      return true;
+    }
+    function crossing(v, c, sailing) {
+      for (const o of vessels) {
+        if (o === v || o.phase !== 'sail' || o.speed < 0.3 || (o.helm && o.helm.manual)) continue;
+        const oc = o.cycle[o.ci];
+        // (one setting out looks 30 s ahead, gathering way as it does, so as not to leave into the way of one coming in)
+        const T = sailing ? 8 : 30, ahead = t => sailing ? Math.max(2, v.speed) * t : t < speed / A ? A * t * t / 2 : speed * speed / (2 * A) + speed * (t - speed / A);
+        if (oc.leg === c.leg || Math.hypot(o.x - v.x, o.y - v.y) > o.speed * T + ahead(T) + o.len + v.len) continue;
+        let meet = false;
+        for (let t = 1; t <= T && !meet; t++) {
+          const a = hullAt(c.leg, c.rev, v.s + ahead(t), Q0), b = hullAt(oc.leg, oc.rev, o.s + o.speed * t, Q1);
+          a.hl = v.len / 2; a.hw = v.beam / 2; b.hl = o.len / 2; b.hw = o.beam / 2;
+          meet = gapOf(a, b) < 1;
+        }
+        if (!meet) continue;
+        if (!sailing) return o;
+        const mine = stopsClear(v, c, o, oc), its = stopsClear(o, oc, v, c), first = vessels.indexOf(o) < vessels.indexOf(v);
+        if (mine ? !its || first : !its && first) return o; // (neither can: the later one all the same)
+      }
+      return null;
     }
     const holdOf = v => { const c = v.cycle[v.ci]; return c.leg.hold[c.rev ? 1 : 0]; };
     const ahead = (o, v) => leftOf(o) < leftOf(v) || (leftOf(o) === leftOf(v) && vessels.indexOf(o) < vessels.indexOf(v));
@@ -698,12 +760,13 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
           // wait for one coming the other way, past the passing place, to come in; not one lying still
           // (at the passing place, or off this berth waiting for it): it lets this one out, and they pass
           if (v.t <= 0 && nc.leg.pass != null && oncoming(v, nc).some(o => o.s > passAt(o.cycle[o.ci]) - 1 && o.speed >= 0.3)) v.t = 0.5;
+          else if (v.t <= 0 && crossing(v, nc, false)) v.t = 0.5; // (nor out across the course of one coming by)
           else if (v.t <= 0) { v.phase = 'sail'; v.s = 0; v.events = (v.events || []).concat([{ type: 'depart', v }]); }
         } else if (v.helm && v.helm.manual) {
           helmStep(v, dt);
         } else {
           const left = c.leg.len - v.s;
-          let wait = busy(v, destOf(v)), stopAt = wait ? left - c.leg.hold[c.rev ? 1 : 0] - queued(v) : left; // (well off it, to starboard: one leaving may cross this course)
+          let wait = busy(v, destOf(v)), stopAt = wait ? left - waitOff(c.leg, c.rev ? 1 : 0, c.leg.hold[c.rev ? 1 : 0] + queued(v)) : left; // (well off it, to starboard: one leaving may cross this course)
           if (c.leg.pass != null && v.s < passAt(c) + 1) { // a narrow leg, short of its passing place or at it
             const here = Math.max(0, passAt(c) - v.s);
             if (wait) stopAt = here;
@@ -717,6 +780,9 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
           }
           // one lying still across its course (waiting off a berth on another route): it stops short
           // of it, and after half a minute held there (each waiting on the other) goes on by
+          // two under way on courses that meet: one gives way, stopping short (crossing, above); and one
+          // lying still (waiting off a berth) sets off only as one setting out from a berth would
+          if (v.speed < 0.3 ? crossing(v, c, false) : crossing(v, c, true)) target = 0;
           const room = roomAhead(v, c);
           v.heldT = room < Infinity ? (v.heldT || 0) + step : 0;
           if (room < Infinity && v.heldT < 30) target = Math.min(target, room < 1 ? 0 : Math.sqrt(2 * A * room));
