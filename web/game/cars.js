@@ -763,7 +763,7 @@ window.OECars = (function () {
       if (forced) lights.enter(st, a, ex.e, now(), true);
       if (last != null) out0At = last; // (still leaving the one before, close by)
       outAt = ex.at + C.half + 0.5;
-      st.entered = (st.entered || 0) + 1; // (for the checks)
+      st.entered = (st.entered || 0) + 1; st.junction = null; // (for the checks)
     }
     function leave() {
       if (!reg || st.line < 0) return;
