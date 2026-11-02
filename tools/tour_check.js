@@ -34,6 +34,11 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
       return get.call(this, type, /webgl/.test(type) ? Object.assign({}, opts, { preserveDrawingBuffer: true }) : opts);
     };
   });
+  // a lost WebGL context draws nothing but black: named as such, not left to read as a flat frame
+  await p.addInitScript(() => {
+    window.__ctxLost = 0;
+    addEventListener('webglcontextlost', () => { window.__ctxLost++; }, true);
+  });
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
   p.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 300)); });
@@ -89,7 +94,8 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
   // slow that a stop would run out on its own between two checks): the flight there still runs.
   // Then run the stop to its end: its time is skipped, the flight that follows is not.
   const freeze = () => p.evaluate(() => { window.__city.tour.t0 = performance.now() + 1e9; window.__stopAt = performance.now(); });
-  const landed = () => p.waitForFunction(() => performance.now() - window.__stopAt > 3500, null, { timeout: 60000 });
+  // the flight takes 3.2 s; the light settles a moment after (the sky's last rebuild, world.js envEvery)
+  const landed = () => p.waitForFunction(() => performance.now() - window.__stopAt > 4500, null, { timeout: 60000 });
   const finishStop = () => p.evaluate(() => { window.__city.tour.t0 = performance.now() - 1e7; });
 
   const n = (await state()).n;
@@ -109,6 +115,7 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
     worstHdr = { max: Math.max(worstHdr.max, h.max), bad: worstHdr.bad + h.bad };
     check(`stop ${i + 1}: no NaN, infinity or runaway highlight`, h.bad === 0 && h.max <= HDR_MAX, `max ${h.max.toFixed(1)}, non-finite ${h.bad}`);
     const a = await grab(`stop-${pad(i + 1)}.jpg`);
+    check(`stop ${i + 1}: drawn`, a.sd >= 4, `luma ${a.mean.toFixed(0)} ± ${a.sd.toFixed(1)}`);
     await p.waitForTimeout(400);
     await frame();
     const c = await grab(`stop-${pad(i + 1)}b.jpg`);
@@ -152,7 +159,9 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
   check('every segment is full', e.segs.every(v => v >= 99.9), e.segs.join(' '));
   check('the camera turns slowly at the end', e.orbit);
   check('the buttons offer the tour again', e.tourBtn === 'Tour' && e.panelBtn === 'Watch again', `${e.tourBtn} / ${e.panelBtn}`);
-  await p.screenshot({ path: path.join(outDir, 'end.png') });
+  // the end card as the page shows it, for the record (a software renderer's compositor can be slow
+  // to hand over a frame; a still that does not come is not a failed check)
+  await p.screenshot({ path: path.join(outDir, 'end.png'), timeout: 180000 }).catch(e => console.log(`(no end.png: ${String(e).split('\n')[0]})`));
 
   await p.evaluate(() => document.getElementById('cap-again').click());
   await freeze();
@@ -171,6 +180,8 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
   await frame();
   check('Explore puts the card away', !(await state()).caption);
 
+  const lost = await p.evaluate(() => window.__ctxLost);
+  check('the WebGL context was never lost', lost === 0, lost ? `lost ${lost} time(s): a renderer under too much load draws black from then on` : '');
   check('no page errors', errors.length === 0, errors.slice(0, 3).join(' | '));
   console.log(`${city}: ${results.filter(Boolean).length}/${results.length} checks passed; brightest ${worstHdr.max.toFixed(1)}, `
     + `most blocks jumping ${(flicker * 100).toFixed(2)}%, flat flights ${flat.length ? flat.join(', ') : 'none'}`);
