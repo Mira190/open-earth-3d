@@ -795,8 +795,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // call fn(car) for every car with its centre within about r of (x, y) (and, given z, on that level):
     // the traffic's, and the cars in api.extra (your car and a ride, which game.js keeps up to date)
+    let ownOnly = false;
     function near(x, y, r, fn, z = null) {
-      for (const o of api.extra) if (Math.abs(o.x - x) <= r + o.half && Math.abs(o.y - y) <= r + o.half && (z == null || Math.abs(o.z - z) < LEVEL)) fn(o);
+      if (!ownOnly) for (const o of api.extra) if (Math.abs(o.x - x) <= r + o.half && Math.abs(o.y - y) <= r + o.half && (z == null || Math.abs(o.z - z) < LEVEL)) fn(o);
       const R = r + 7; // the longest car's centre is this far from its farthest corner
       const c0 = Math.floor((x - R) / CELL), c1 = Math.floor((x + R) / CELL), r0 = Math.floor((y - R) / CELL), r1 = Math.floor((y + R) / CELL);
       for (let a = c0; a <= c1; a++) for (let b = r0; b <= r1; b++) {
@@ -840,6 +841,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     if (nav) nav.movers = api;
     // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
     function take(c) { releaseAll(c); c.line = -1; c.v = 0; }
+    // how deep a car-sized box (x, y at height z, heading h, half length and width, grown by m) would
+    // be in the traffic's cars (not api.extra): 0 when clear. For a car driven by something else (a
+    // ride) to wait rather than move into one, as the traffic waits for it
+    const probe = { half: 0, hw: 0, z: 0 };
+    function footprint(x, y, z, h, half, hw, m = 0.15) {
+      Object.assign(probe, { half, hw, z });
+      ownOnly = true;
+      const d = overlaps(probe, x, y, Math.sin(h), Math.cos(h), m, m);
+      ownOnly = false;
+      return d;
+    }
     // blockers: the player on foot { x, y, z } and your car or a ride { x, y, half (half length),
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     function update(dt, cx, cy, t, blockers) {
@@ -996,7 +1008,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
       }
     }
-    return Object.assign(api, { update, take });
+    return Object.assign(api, { update, take, footprint });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)
