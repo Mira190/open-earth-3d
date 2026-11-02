@@ -160,6 +160,20 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   the 5 m grid the waterline falls at the quay's edge rather than up to a cell
   inland. Without it Osaka's river walk along the Dotonbori went under the water.
   The water shader uses the same slopes for how much of the bottom shows.
+
+  The 10 m grid still slopes across a whole cell at a quay, and the aerial
+  photo's paving was draped down that slope into the water: a pale skirt round
+  every seawall, Bennelong Point's most of all. So `world.js` steps the ground at
+  built shores as it draws it (`seawallStep`, nothing in the data changes): a
+  cell that `shore.png` says the shoreline crosses, and that is neither beach nor
+  rock, is drawn on a 2.5 m lattice (5 m on a smaller device). The land keeps
+  the height of the land round it right up to the shoreline, the water side lies
+  0.3 m under the surface and then on the modelled bottom, and the lattice
+  points nearest the line move onto it, each within its own half cell so no
+  triangle folds. A coarse cell beside a stepped one is drawn as a fan through
+  the points on their shared side, so the two meet without a crack. The ground
+  shader draws the steep faces as stone in courses with a dark wet foot, lit by
+  their own normal. Beaches and rocky shores keep their slope.
   Sydney's map holds 25 sand and 220 rock polygons from Overture's land cover.
   Melbourne's sand is sports fields, away from the river.
 - `scene.json`: the frame, the terrain grid, the ground tiles, storey
@@ -228,14 +242,25 @@ The views switch in place, without reloading the page.
     shader takes back a share of that black level and restores some colour;
   - sky, sun and shadows. The shadow map follows the camera in whole texels
     along the sun's axes and changes size in steps, so shadow edges hold still
-    as the camera moves;
+    as the camera moves. With the sun from just under the horizon to about 12°
+    up, the Preetham sky is a flat grey-beige all round; a golden-hour term
+    (`GOLDEN` in `world.js`, the counterpart of the blue hour's `twilight`) takes
+    the sky and the haze over to a low sun's amber towards it and a clear blue
+    away from it, at their own brightness, so they gain colour but never light;
   - the edge haze. Over the last 250 to 500 m of the frame, everything fades into
     the fog colour, and beyond the frame there is only haze. It is three.js's fog
     chunks with the frame written in, so every fogged material takes it,
     reflections included. Within about 150 m of the camera it is held off, unless
-    the camera itself is outside the model. In the game, the haze takes the sky's
-    colour at the horizon (read back from the sky when the sun moves) and the
-    sky's last few degrees fade into it, so the city meets the sky without a band.
+    the camera itself is outside the model. In the game and the viewer, the haze
+    takes the sky's colour at the horizon (read back from the sky when the sun
+    moves) and the sky's last few degrees fade into it, so the city meets the sky
+    without a band. Where the frame's edge is open water (the share of water
+    along each twelfth of each side, from `shore.png`), the sea does not stop: the
+    haze there is the colour of a distant sea (dark seen from above, nearly the
+    sky's brightness seen low across it or towards a low sun), the water and the
+    bottom under it fade into it over three times the distance and then on into
+    the sky's haze, and land the frame cuts there sinks into the sea's colour, so
+    there is no straight line across the water where the model ends.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
