@@ -215,26 +215,6 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   }
   await shot('taxi');
 
-  // map travel in your car: it comes along, parked at a kerb near the landmark, and you are still at the wheel
-  const drive = await p.evaluate(() => {
-    const g = window.__game, c = g.myCar && g.myCar(), lm = g.landmarks[1] || g.landmarks[0];
-    if (!c || !lm) return { none: true };
-    if (g.ride()) g.cancelRide();
-    const st = c.D.st, s = g.KEEP === 'left' ? 1 : -1;
-    g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
-    g.advance(0.3);
-    g.enterCar();
-    for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
-    const ok = g.travelTo(lm);
-    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
-    g.advance(0.5);
-    return { name: lm.name, ok, mode: g.player.mode, d: Math.hypot(lm.at[0] - st.x, lm.at[1] - st.y), me: Math.hypot(lm.at[0] - g.player.x, lm.at[1] - g.player.y), v: st.speed };
-  });
-  // at the wheel by the kerb near it; or, with no street near (the end of a pier), on foot there and the car on the nearest street
-  check(drive.none || (drive.ok && drive.v < 1 && (drive.mode === 'car' ? drive.d < 900 : drive.mode === 'foot' && drive.me < 600 && drive.d < 2000)), drive.none ? 'no car to travel in'
-    : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
-  await shot('drive');
-
   // a quick start: the helicopter waits on a pad near where you start and a taxi can reach you
   // from a kerb close by; and walk towards another pad while the helicopter stands shut down far
   // away, and it is waiting there when you arrive
@@ -258,6 +238,27 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     return { name: far.name, d: Math.hypot(s.x - far.at[0], s.y - far.at[1]) };
   });
   check(pads.none || pads.d < 1, pads.none ? 'one pad (no other to wait at)' : `the helicopter waits at ${pads.name} when you come (${pads.d.toFixed(0)} m off it)`);
+
+  // map travel in your car: it comes along, parked at a kerb near the landmark, and you are still at the wheel
+  const drive = await p.evaluate(() => {
+    const g = window.__game, c = g.myCar && g.myCar(), lm = g.landmarks[1] || g.landmarks[0];
+    if (!c || !lm) return { none: true };
+    if (g.ride()) g.cancelRide();
+    const st = c.D.st, s = g.KEEP === 'left' ? 1 : -1;
+    g.player.x = st.x + Math.cos(st.h) * 2.6 * s; g.player.y = st.y - Math.sin(st.h) * 2.6 * s; g.player.z = st.z;
+    g.advance(0.3);
+    g.enterCar();
+    for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+    const ok = g.travelTo(lm);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+    g.advance(0.5);
+    return { name: lm.name, ok, mode: g.player.mode, d: Math.hypot(lm.at[0] - st.x, lm.at[1] - st.y), me: Math.hypot(lm.at[0] - g.player.x, lm.at[1] - g.player.y), v: st.speed };
+  });
+  // at the wheel by the kerb near it; or, with no street near (the end of a pier), on foot there and the car on the nearest street
+  check(drive.none || (drive.ok && drive.v < 1 && (drive.mode === 'car' ? drive.d < 900 : drive.mode === 'foot' && drive.me < 600 && drive.d < 2000)), drive.none ? 'no car to travel in'
+    : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
+  await shot('drive');
+
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
