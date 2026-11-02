@@ -34,7 +34,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Measured buildings (the Netherlands) | `fetch_3dbag.py` | `data/raw/<id>/3dbag.json`: the 3DBAG's CityJSON tiles (from the release's `tile_index.fgb`) as one feature per LOD1.3 roof level, with its LiDAR top and the roof its LOD2.2 model has over it; read by `build_scene.BAG3D` behind the PLATEAU interface |
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
-| Open water past the frame | `open_sea.py` | `sea.png`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
+| Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
@@ -294,16 +294,20 @@ The views switch in place, without reloading the page.
     water, the water carries on to the horizon under the ordinary distance fog,
     darkening a little toward a distant sea's tone, and only over land does it
     haze out with the edge. Where the open water is comes from the city's
-    `sea.png` (`pipeline/open_sea.py`): a land and water mask 40 km either side
+    `sea.jpg` (`pipeline/open_sea.py`): a land and water mask 40 km either side
     of the frame's centre at about 39 m a pixel, from Overture's base water
     theme (OpenStreetMap's coastline and water, ODbL): the ocean, bays and
     straits, less the islands in them, and for a city that draws its own rivers
-    and lakes, those of at least 2 ha too. Its red channel is the mask
-    antialiased, green and blue the same blurred by 450 m and 2.2 km; the shader
+    and lakes, those of at least 2 ha too (a JPEG without chroma subsampling).
+    Its channels are the mask blurred by 60 m, 450 m and 2.2 km; the shader
     goes from red at the frame to green 2.5 km out and blue 9 km out, so near the
     frame the sea follows the real shore (North Sydney stays land, the harbour
     runs on west to Parramatta) and far out it meets the haze over land in a
-    soft gradient. Only the water's materials take it (`OE_SEA`). Until issue 57
+    soft gradient. Over land past the frame the haze settles from the horizon's
+    tone at the frame to a distant shore's, a little darker and greener
+    (`SEA_LAND`), which the distance's own fog takes back to the horizon, so an
+    island or a headland out there reads as land in the haze rather than a pale
+    blob. Only the water's materials take it (`OE_SEA`). Until issue 57
     the edge was extruded: each point past the frame copied the shoreline at
     the frame, so the sea past it was straight bands with hard sides, sea where
     land should be, and streaks out from the corners.

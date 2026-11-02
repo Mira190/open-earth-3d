@@ -1,7 +1,7 @@
 """The open water past the model's frame, for the edge haze (web/world.js edgeHaze, OE_SEA).
 
 Past the frame the city is only haze, but where there is real open water the sea carries on to
-the horizon. sea.png says where: a land and water mask SEA_HALF_M either side of the frame's
+the horizon. sea.jpg says where: a land and water mask SEA_HALF_M either side of the frame's
 centre (north up, x east), from Overture's base water theme (OpenStreetMap-derived, ODbL): its
 ocean polygons (OSM's coastline), bays and straits, less the islands mapped in them; and, for a
 city that draws its own rivers or lakes (city.json water.classes), the rivers, lakes, reservoirs
@@ -9,7 +9,7 @@ and canals of at least INLAND_MIN_M2 too. A city that leaves its water to the ae
 (Kyoto, Shibuya) stands well above the water plane, and its inland water past the frame is
 mostly hidden behind hills the model does not have (Lake Biwa behind Higashiyama).
 
-  r  water, antialiased (1 pixel, about 39 m)
+  r  water, blurred by SOFT_M[0] (about 1.5 pixels: no stair steps seen from above)
   g  the same blurred by SOFT_M[1]
   b  the same blurred by SOFT_M[2]
 
@@ -17,7 +17,7 @@ The shader blends from r at the frame toward b far out, so near the frame the wa
 follows the real shore and far out the sea and the haze over land meet in a soft gradient
 rather than a line.
 
-    python pipeline/open_sea.py --city sydney      # -> web/data/sydney/sea.png
+    python pipeline/open_sea.py --city sydney      # -> web/data/sydney/sea.jpg
     python pipeline/open_sea.py --all              # every built city with a shore.png
 
 If your environment injects AWS credentials, unset them first (see fetch_overture.py).
@@ -37,7 +37,7 @@ from cityctx import ROOT, City, polygons
 
 SEA_HALF_M = 40000  # web/world.js SEA_HALF
 SEA_PX = 2048
-SOFT_M = (0, 450, 2200)  # Gaussian sigma of r, g and b (r is antialiased only)
+SOFT_M = (60, 450, 2200)  # Gaussian sigma of r, g and b, metres
 SEA_CLASSES = {"ocean", "sea", "bay", "strait"}
 INLAND_CLASSES = {"water", "river", "lake", "lagoon", "reservoir", "canal"}
 INLAND_MIN_M2 = 20000
@@ -103,10 +103,11 @@ def mask(C, rows):
 
 def bake(C, a):
     cell = 2 * SEA_HALF_M / SEA_PX
-    chans = [a if s == 0 else ndimage.gaussian_filter(a, s / cell, mode="nearest") for s in SOFT_M]
+    chans = [ndimage.gaussian_filter(a, s / cell, mode="nearest") for s in SOFT_M]
     out = np.stack([np.clip(np.round(c * 255), 0, 255).astype(np.uint8) for c in chans], axis=-1)
-    path = os.path.join(C.out, "sea.png")
-    Image.fromarray(out, "RGB").save(path, optimize=True)
+    path = os.path.join(C.out, "sea.jpg")
+    # smooth, so a JPEG without chroma subsampling holds it to a level or two at half a PNG's size
+    Image.fromarray(out, "RGB").save(path, quality=90, subsampling=0, optimize=True)
     return path
 
 

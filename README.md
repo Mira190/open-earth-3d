@@ -486,7 +486,7 @@ Data tab. The shared sources are:
   through `pipeline/shore.py`.
 - **Open water past the model's frame:** Overture Maps' base water and land
   themes (OpenStreetMap's coastline and water bodies, ODbL), 40 km around each
-  city, through `pipeline/open_sea.py` into `web/data/<id>/sea.png`. Considered
+  city, through `pipeline/open_sea.py` into `web/data/<id>/sea.jpg`. Considered
   and not used: Natural Earth's 1:10m land (public domain) is a kilometre or so
   coarse, too rough for the harbours a few hundred metres past the frame, and
   OSM's own land polygons (osmdata.openstreetmap.de, ODbL) are the same

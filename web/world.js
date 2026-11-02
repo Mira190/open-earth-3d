@@ -411,7 +411,7 @@ vec3 scrCell(float cell, vec2 uv) {
     // Over the sea the frame ends nowhere in particular: past the frame's edge, where there is real
     // open water, the surface carries on and the distance's own haze takes it to the horizon,
     // darkening a little toward a distant sea's tone on the way; only over land does the water haze
-    // out with the edge. Which it is comes from the city's sea.png (pipeline/open_sea.py): a land and
+    // out with the edge. Which it is comes from the city's sea.jpg (pipeline/open_sea.py): a land and
     // water mask SEA_HALF m either side of the frame's centre, from OpenStreetMap's coastline and
     // water, sharp at the frame and blurred more the further out a point is (its three channels), so
     // the open sea follows the real shore near the frame and meets the haze over land softly far
@@ -421,24 +421,30 @@ vec3 scrCell(float cell, vec2 uv) {
 #ifdef OE_SEA
 	uniform sampler2D uSeaOpen;
 #endif`);
-    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfloat oeEdge = ${out('vEdgeXZ')};
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );', `\tfloat oeEdge = ${out('vEdgeXZ')}, oeGate = max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} );
 #ifdef OE_SEA
 	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
 	  vec3 oeM = texture2D( uSeaOpen, vec2( 0.5 + oeP.x / ${n(2 * SEA_HALF)}, 0.5 - oeP.y / ${n(2 * SEA_HALF)} ) ).rgb; // north up (flipY)
 	  float oeOpen = oePast > 0.0 ? mix( mix( oeM.r, oeM.g, smoothstep( 0.0, ${n(SEA_SOFT[0])}, oePast ) ), oeM.b, smoothstep( ${n(SEA_SOFT[0])}, ${n(SEA_SOFT[1])}, oePast ) ) : 0.0;
-	  oeEdge *= 1.0 - oeOpen;
 	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
-	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) );
+	  oeEdge *= 1.0 - oeOpen; }
 #endif
-	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} ) );
-	gl_FragColor.rgb`);
+	// The edge's haze is a distant shore's tone, a little darker and greener than the horizon's, which
+	// the distance takes back to the horizon's by 12 km: so a headland fading out at the frame, or an
+	// island past it, reads as land in the haze beside the open sea rather than a pale blob on it.
+	// (fogFactor still holds the edge, for the night's additive lights, night.js.)
+	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
+	fogFactor = max( fogFactor, oeEdge * oeGate );
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );`);
     return fade;
   }
   // The open-water mask past the frame (edgeHaze, pipeline/open_sea.py SEA_HALF_M): its half width,
-  // metres, and how far past the frame the water's edge has gone from sea.png's sharp channel (r) to
+  // metres, and how far past the frame the water's edge has gone from sea.jpg's sharp channel (r) to
   // its soft one (g), and from that to its softest (b).
-  const SEA_HALF = 40000, SEA_SOFT = [2500, 9000];
+  // SEA_LAND: the edge haze's tone (distant land), as a share of the fog's colour.
+  const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
@@ -602,7 +608,7 @@ vec3 photoGrade(vec3 c) {
     // the seawalls along every built shore (quays.js), from shore.png: the ground drawn is raised to
     // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
     // the open water past the frame (edgeHaze); without it everything past the frame is haze
-    const seaLoad = new Promise(res => texLoader.load(D.DATA + 'sea.png', t => { t.colorSpace = THREE.NoColorSpace; res(t); }, undefined, () => res(null)));
+    const seaLoad = new Promise(res => texLoader.load(D.DATA + 'sea.jpg', t => { t.colorSpace = THREE.NoColorSpace; res(t); }, undefined, () => res(null)));
     let shoreTex = null, Q = null;
     if (scene.shore) {
       shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
