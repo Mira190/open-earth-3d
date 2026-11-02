@@ -469,10 +469,10 @@
  ],
  "spawn": {
   "poi": "whitehaven",
-  "x": 505,
-  "y": 445,
+  "x": 615,
+  "y": 250,
   "heading": 90,
-  "note": "on the sand of Whitehaven Beach, facing the sea"
+  "note": "on the sand of Whitehaven Beach beside the helipad, facing the sea: the quickest start for the scenic flight and the boats"
  },
  "harbour": {
   "fleets": [

@@ -2,8 +2,9 @@
 // it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
-// phone's map), and travel from the map in your car, with a screenshot after each. Prints what
-// happened and the page's errors; exits 1 on failure.
+// phone's map), travel from the map in your car, and watch the signals at the nearest junction
+// change with the traffic stopping for them, with a screenshot after each. Prints what happened
+// and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
 const { chromium } = require('playwright');
@@ -203,8 +204,9 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     const o = g.ride();
     if (!o) return Object.assign(r, { hailed: false });
     r.hailed = true;
+    r.log = [];
     let t = 0;
-    for (; t < 150 && o.phase === 'coming'; t += 0.5) g.advance(0.5);
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 10 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''} near[${near}]`); } }
     r.hailT = t;
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     g.boardRide();
@@ -219,6 +221,14 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     const s0 = o.drv.st.s;
     g.advance(20);
     r.drove = o.drv.st.s - s0;
+    if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
+      const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
+      for (const c of g.cars.C.concat(mc ? [Object.assign({ mine: true }, mc.D.st)] : [])) {
+        const dx = c.x - t.x, dy = c.y - t.y, a = dx * fx + dy * fy;
+        if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}`);
+      }
+      r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}, held ${(t.held || 0).toFixed(0)} s, ${t.why}${t.block ? ` behind ${t.block === player ? 'you' : mc && t.block.x === mc.D.st.x ? 'your car' : t.block.line != null ? `a car on line ${t.block.line} (stuck ${(t.block.stuck || 0).toFixed(0)} s, v ${(t.block.v || 0).toFixed(1)})` : 'something'} at ${Math.hypot(t.block.x - t.x, t.block.y - t.y).toFixed(1)} m${t.block.still ? ', still' : ''}` : ''}; ${ahead.join('; ') || 'nothing ahead'}`;
+    }
     g.skipRide();
     g.advance(6);
     r.arrived = o.phase === 'arrived';
@@ -248,12 +258,13 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   if (taxi.none) check(true, 'no car, no taxis');
   else {
     check(taxi.hint, 'the kerb offers a taxi (Y)');
+    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < 15)) console.log(taxi.log.join("\n"));
     check(taxi.hailed && taxi.waiting && taxi.near < 15, `hails a taxi: it pulls in beside you${taxi.hailed ? ` (${(taxi.near || 0).toFixed(1)} m away)` : ''}`);
     check(taxi.hailed && taxi.hailT <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s`})`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, 'orders a ride on the phone');
     check(taxi.ordered && taxi.phoneMap, 'the phone shows the ride on its map, on the way');
@@ -261,6 +272,30 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
       `the ride is there within half a minute, when the app said (${taxi.rideT == null ? '–' : `${taxi.rideT.toFixed(1)} s, said ${taxi.eta0.toFixed(0)} s`})`);
   }
   await shot('taxi');
+
+  // a quick start: the helicopter waits on a pad near where you start and a taxi can reach you
+  // from a kerb close by; and walk towards another pad while the helicopter stands shut down far
+  // away, and it is waiting there when you arrive
+  const quick = await p.evaluate(() => {
+    const g = window.__game, pl = g.player;
+    g.spawn();
+    g.advance(0.5);
+    const k = g.roads.place(pl.x, pl.y, 400, 1, pl.z), r = { kerb: k ? k.d : null, heli: g.heli ? Math.hypot(g.heli.st.x - pl.x, g.heli.st.y - pl.y) : null };
+    return r;
+  });
+  check(quick.heli == null || quick.heli < 450, `the helicopter waits near the start (${quick.heli == null ? 'none' : `${quick.heli.toFixed(0)} m`})`);
+  check(quick.kerb != null && quick.kerb < 150, `a kerb for a taxi near the start (${quick.kerb == null ? 'none' : `${quick.kerb.toFixed(0)} m`})`);
+  const pads = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, s = g.heli && g.heli.st, P = g.helipads || [];
+    if (!s || P.length < 2) return { none: true };
+    const far = P.slice(1).find(q => Math.hypot(q.at[0] - s.x, q.at[1] - s.y) > 1000);
+    if (!far) return { none: true };
+    const f = g.nav.stand(far.at[0] + 150, far.at[1], far.at[2] + 1, { rMax: 80 }) || { x: far.at[0], y: far.at[1], z: far.at[2] };
+    pl.x = f.x; pl.y = f.y; pl.z = f.z; // walking up to it
+    g.advance(1.5);
+    return { name: far.name, d: Math.hypot(s.x - far.at[0], s.y - far.at[1]) };
+  });
+  check(pads.none || pads.d < 1, pads.none ? 'one pad (no other to wait at)' : `the helicopter waits at ${pads.name} when you come (${pads.d.toFixed(0)} m off it)`);
 
   // map travel in your car: it comes along, parked at a kerb near the landmark, and you are still at the wheel
   const drive = await p.evaluate(() => {
@@ -281,6 +316,26 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   check(drive.none || (drive.ok && drive.v < 1 && (drive.mode === 'car' ? drive.d < 900 : drive.mode === 'foot' && drive.me < 600 && drive.d < 2000)), drive.none ? 'no car to travel in'
     : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
+
+  // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
+  const lights = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions;
+    if (!JN) return { none: true };
+    const sig = JN.J.filter(j => j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
+    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    const j = sig[0], seen = new Set(), s0 = A.stats();
+    for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
+    const s1 = A.stats();
+    return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+  });
+  if (lights.none) check(false, 'the traffic has junctions');
+  else {
+    check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);
+    if (lights.signals) check(lights.states >= 4, `the nearest signals go through their phases (${lights.states} states in 80 s)`);
+    check(!lights.red, `no car crosses its line on red (${lights.red || 0})`);
+    check(lights.moving > 10, `the traffic moves (${lights.moving} cars on the move)`);
+  }
+  await shot('junction');
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

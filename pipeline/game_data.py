@@ -11,13 +11,14 @@ Writes web/data/<city>/game.json:
             beach shelves gently, rock steeply, a seawall drops to 4 m at once
   paths     footways for pedestrians and roads for traffic, as 3D polylines in
             decimetres with their class; bridge parts follow the city's deck surfaces, tunnel parts
-            are dropped (Overture road flags and levels)
+            are dropped (Overture road flags and levels); a one-way road carries its direction
+            (pipeline/road_rules.py)
   surfaces  walkable surfaces above the terrain from the city's game_surfaces hook
   wharves   ferry berths next to the Overture ferry terminals named in city.json
   ferries   routes found by a shortest path through open water, kept clear of land
             and piers, then smoothed
-  helipads, props (benches and street lamps, moved out of the carriageways: pipeline/kerbside.py),
-  npcs and quests (positions snapped to open ground)
+  helipads, props (benches and street lamps, moved out of the carriageways: pipeline/kerbside.py;
+  traffic signals and signs), npcs and quests (positions snapped to open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
   boardwalks  walkways at deck height over rocks, water or sand: mapped lines found by
@@ -52,6 +53,7 @@ from shapely.ops import substring
 
 import kerbside
 import night_lights
+import road_rules
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
 from shore import from_png, pad_aprons, water_floor
 from cityctx import city_args, polygons
@@ -135,7 +137,7 @@ def main():
 
     # ---------------------------------------------------------- paths
     foot, roads, n_tunnel, n_bridge = [], [], 0, 0
-    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, wkb"):
+    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, access_restrictions, wkb"):
         if r["subtype"] != "road" or (r["class"] not in FOOT and r["class"] not in ROAD):
             continue
         g = C.to_local(swkb.loads(bytes(r["wkb"])))
@@ -189,7 +191,8 @@ def main():
                     foot.append({"c": r["class"], "p": pts})
                 if r["class"] in ROAD:
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
-                    roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts})
+                    way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
+                    roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
     print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
 
     # ---------------------------------------------------------- wharves and helipads
@@ -235,8 +238,9 @@ def main():
         for hp in helipads:
             if hp["id"] == h["id"]:
                 hp["name"] = h.get("name", hp["name"])
-        if not h.get("from_data") and "at" in h:
-            helipads.append({"id": h["id"], "name": h["name"], "at": h["at"] + [round(ground(*h["at"]), 1)]})
+        if not h.get("from_data") and "at" in h:  # [x, y] on the ground, or [x, y, z] up on a roof or a deck
+            z = h["at"][2] if len(h["at"]) > 2 else round(ground(*h["at"][:2]), 1)
+            helipads.append(dict({"id": h["id"], "name": h["name"], "at": h["at"][:2] + [z]}, **({"heading": h["heading"]} if "heading" in h else {})))
     # the pads city.json names come first, in its order: the game starts the helicopter on the
     # first. (Appended after the mapped ones, Osaka's park pad came 100th and the game started on a
     # mapped rooftop pad at street level, at the model's edge.)
@@ -397,7 +401,7 @@ def main():
         ferries.append({"route": f["route"], "stops": stops, "vessels": f.get("vessels", ["Ferry"]), "legs": legs})
 
     # ---------------------------------------------------------- props
-    props = {"bench": [], "street_lamp": []}
+    props = {"bench": [], "street_lamp": [], **{k: [] for k in road_rules.SIGNS}}  # the signals and signs: the traffic's junctions
     for r in rows(con, raw("infrastructure"), "class, wkb"):
         if r["class"] in props:
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
@@ -574,7 +578,7 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars", "signals") if k in gcfg}
     # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
     if C.hook("game_extras"):
         for k, v in C.hook("game_extras")(scene).items():

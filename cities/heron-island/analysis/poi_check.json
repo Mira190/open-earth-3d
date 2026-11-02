@@ -109,10 +109,10 @@
   {
    "id": "spawn",
    "kind": "spawn",
-   "x": 0,
-   "y": 1518,
+   "x": -375,
+   "y": 1475,
    "ok": true,
-   "note": "ground 1.9 m, heading 0"
+   "note": "ground 1.5 m, heading 300"
   }
  ]
 }

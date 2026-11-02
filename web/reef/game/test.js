@@ -206,7 +206,8 @@ export async function gametest(api, ctx) {
     must(!api.ui.panelKind, 'T again closes it');
     // 8b. the map's Go buttons: straight to a named place (dry ground nearest it, or the water over a reef), then back
     key('KeyT'); await new Promise(r => setTimeout(r, 30));
-    const go = dom('.rg-panel [data-act="goto"]');
+    // a place far enough away to tell that Go moved you (the spawn can be beside the first one: Heron's jetty)
+    const go = [...document.querySelectorAll('.rg-panel [data-act="goto"]')].find(b => G.poi(b.dataset.arg) && G.dist(G.here(), G.poi(b.dataset.arg)) > 200) || dom('.rg-panel [data-act="goto"]');
     if (go) {
       const h0 = G.here(), to = G.poi(go.dataset.arg);
       go.click(); run(0.3);

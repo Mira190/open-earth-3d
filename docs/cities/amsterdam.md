@@ -228,8 +228,10 @@ follows the date the register keeps.
 
 ## 6. Amsterdam on Foot
 
-The survey starts on the Dam with Sanne, the survey lead, and runs as three lines
-in any order:
+The survey starts on the Dam with Sanne, the survey lead. A helicopter waits on the
+square (a game pad: there is no helipad in the old city), the trams and taxis stop
+on the Damrak, and the free ferries leave from behind Centraal Station. It runs as
+three lines in any order:
 - **The canal ring.** Pieter, a building historian on the Herengracht, explains the
   gables and sends you to find a step gable, a neck gable and a bell gable. The
   survey lens names a house's gable and when that type was built. Femke plays the

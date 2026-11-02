@@ -332,7 +332,7 @@ What the game took from *Persona 5*, and what it does instead:
 
 The crowd uses the `tokyo` style. The helicopter's registration is JA26SB; taxis
 come in Tokyo's dark navy, yellow, white and green, and buses in white with a red
-band. The helipad in Yoyogi Park is a game device; there is no heliport there.
+band. The helipad in Yoyogi Park is a game device; there is no heliport there. The game starts the helicopter on the roof of SHIBUYA SKY, on the GEO COMPASS deck, a lift ride from the start at Hachiko; that pad is a game device too.
 
 ## 8. Sun
 

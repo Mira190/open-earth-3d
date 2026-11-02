@@ -532,16 +532,18 @@ window.OECars = (function () {
 
   // ------------------------------------------------------------ the road network: routes
   // A graph of the road lines (actors.network) joined where their ends meet, as the traffic
-  // joins them. A place on it is { line, s, dir }: a line, a distance along it, and the way a
-  // car is going (+1 with the line's points, -1 against them).
+  // joins them, a one-way street only its way. A place on it is { line, s, dir }: a line, a
+  // distance along it, and the way a car is going (+1 with the line's points, -1 against them).
   // avoid: per line, 1 where a car can't get along it (route.js fills it in once it has looked):
   // such a line is taken only where there is no other way
   function router(net, { avoid = null } = {}) {
-    const L = net.L, ids = new Map(), adj = [];
-    const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); } return ids.get(k); };
+    const L = net.L, ids = new Map(), adj = [], all = [], into = []; // (all: both ways along every line, for when the one-way streets leave no way; into: the ways in to each node)
+    const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); all.push([]); into.push([]); } return ids.get(k); };
     const ends = L.map((l, i) => {
       const n = l.pts.length / 3, a = node(l.pts[0], l.pts[1]), b = node(l.pts[3 * n - 3], l.pts[3 * n - 2]);
-      adj[a].push([b, i, 1]); adj[b].push([a, i, -1]);
+      if (l.ow !== -1) { adj[a].push([b, i, 1]); into[b].push([a, i, 1]); }
+      if (l.ow !== 1) { adj[b].push([a, i, -1]); into[a].push([b, i, -1]); }
+      all[a].push([b, i, 1]); all[b].push([a, i, -1]);
       return [a, b];
     });
     const tmp = {};
@@ -552,7 +554,7 @@ window.OECars = (function () {
       if (!q) return null;
       net.at(q.line, q.s, tmp);
       const side = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx; // > 0: (x, y) is left of the line's direction
-      return { line: q.line, s: q.s, dir: side * keep >= 0 ? 1 : -1, x: q.x, y: q.y, z: q.z, d: q.d };
+      return { line: q.line, s: q.s, dir: L[q.line].ow || (side * keep >= 0 ? 1 : -1), x: q.x, y: q.y, z: q.z, d: q.d };
     }
     // the points of line i from s0 to s1 (either way round), as [x, y, z]
     function stretch(i, s0, s1, out) {
@@ -566,8 +568,10 @@ window.OECars = (function () {
       out.push(pt(s1));
     }
     // a route from place a to place b: { pts: [[x, y, z, v, cls]], len } or null. The car leaves
-    // a the way it is going, and arrives at b going b's way (so b's kerb is on its kerb side).
-    function route(a, b, limit = 6000) {
+    // a the way it is going, and arrives at b going b's way (so b's kerb is on its kerb side),
+    // keeping to the one-way streets; where they leave no way (a street mapped one-way out from
+    // the edge of the map), along any street.
+    function route(a, b, limit = 6000, edges = adj) {
       const la = L[a.line], lb = L[b.line], segs = [];
       if (a.line === b.line && a.dir === b.dir && (b.s - a.s) * a.dir >= 0) segs.push([a.line, a.s, b.s]);
       else {
@@ -582,13 +586,13 @@ window.OECars = (function () {
           if (d > (dist.get(u) ?? Infinity)) continue;
           if (u === goal) { found = true; break; }
           if (d > limit) break;
-          for (const [v, li, dir] of adj[u]) {
+          for (const [v, li, dir] of edges[u]) {
             const p = prev.get(u), back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
             const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) + (back ? 60 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
-        if (!found) return null;
+        if (!found) return edges === adj ? route(a, b, limit, all) : null;
         const chain = [];
         for (let v = goal; v !== start; v = prev.get(v)[0]) chain.push(prev.get(v));
         chain.reverse();
@@ -596,9 +600,9 @@ window.OECars = (function () {
         for (const [, li, dir] of chain) segs.push([li, dir > 0 ? 0 : L[li].len, dir > 0 ? L[li].len : 0]);
         segs.push([b.line, b.dir > 0 ? 0 : lb.len, b.s]);
       }
-      const pts = [];
-      for (const [li, s0, s1] of segs) {
-        if (Math.abs(s1 - s0) < 1e-3) continue;
+      const pts = [], nodes = [];
+      segs.forEach(([li, s0, s1], n) => {
+        if (Math.abs(s1 - s0) < 1e-3) return;
         const part = [];
         stretch(li, s0, s1, part);
         for (const p of part) {
@@ -606,11 +610,12 @@ window.OECars = (function () {
           if (last && Math.hypot(p[0] - last[0], p[1] - last[1]) < 0.3) continue;
           pts.push([p[0], p[1], p[2], L[li].v || 11, L[li].c]);
         }
-      }
+        if (n < segs.length - 1) nodes.push({ k: pts.length - 1, line: li, end: s1 > s0 ? 1 : 0 }); // the end of line li, at point k
+      });
       if (pts.length < 2) return null;
       let len = 0;
       for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      return { pts, len, from: a, to: b };
+      return { pts, len, from: a, to: b, nodes };
     }
     // a place to start from, about r0..r1 metres away by road from (x, y) (an ordered ride sets out from there)
     function around(x, y, r0, r1) {
@@ -622,7 +627,7 @@ window.OECars = (function () {
         net.at(i, s, tmp);
         const d = Math.hypot(tmp.x - x, tmp.y - y);
         if (d < r0 || d > r1 * 1.2) continue;
-        return { line: i, s, dir: Math.random() < 0.5 ? 1 : -1, x: tmp.x, y: tmp.y, z: tmp.z };
+        return { line: i, s, dir: l.ow || (Math.random() < 0.5 ? 1 : -1), x: tmp.x, y: tmp.y, z: tmp.z };
       }
       return null;
     }
@@ -642,9 +647,9 @@ window.OECars = (function () {
         for (let i = 1; i < heap.length; i++) if (heap[i][0] < heap[m][0]) m = i;
         const [d, v] = heap[m]; heap.splice(m, 1);
         if (d > (dist.get(v) ?? Infinity) || d > d1) continue;
-        for (const [u, li, dir] of adj[v]) { // a car on li going from u to v (the other way to dir) arrives at v
+        for (const [u, li, fwd] of into[v]) { // a car on li going from u to v (fwd: its way along li) arrives at v
           if (li === b.line) continue;
-          const len = L[li].len, nd = d + len, fwd = -dir; // fwd: the place's way along li
+          const len = L[li].len, nd = d + len;
           if (nd >= d0 && d < d1 && len > 8) { const x = Math.min(len - 2, Math.max(2, Math.min(mid, d1) - d)); put(li, fwd > 0 ? len - x : x, fwd, d + x); }
           if (nd < (dist.get(u) ?? Infinity) && nd < d1) { dist.set(u, nd); heap.push([nd, u]); }
         }
@@ -652,15 +657,18 @@ window.OECars = (function () {
       return out;
     }
     // on from the end of a route for a while, turning at random at the junctions (a car driving off)
+    // (out.nodes: the junctions it comes up to, as a route's)
     function onward(rt, length = 220) {
       const b = rt.to, out = [];
+      out.nodes = [];
       let li = b.line, dir = b.dir, s = b.s, left = length;
       while (left > 0 && out.length < 40) {
         const l = L[li], s1 = dir > 0 ? l.len : 0, part = [];
         stretch(li, s, s1, part);
         for (const p of part) out.push([p[0], p[1], p[2], l.v || 11, l.c]);
+        out.nodes.push({ k: out.length - 1, line: li, end: dir > 0 ? 1 : 0 });
         left -= Math.abs(s1 - s);
-        const nx = net.next(li, dir > 0 ? 1 : 0);
+        const nx = net.next(li, dir > 0 ? 1 : 0, true);
         if (!nx) break;
         li = nx[0]; dir = nx[1] === 0 ? 1 : -1; s = dir > 0 ? 0 : L[li].len;
       }
@@ -707,16 +715,18 @@ window.OECars = (function () {
   // bends, for the end, and for anything in its way (others: [{ x, y, half }], judged against
   // where its own lane will be when it gets there, so a car parked at the kerb or coming the
   // other way is no obstacle), and pulls in to the kerb at the end. from: 'kerb' if it starts at
-  // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now.
+  // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now. With
+  // opts.lights (junctions.js) and route.nodes, it stops at the line for a red light and a stop sign.
   // Where the kerb it is to pull in at is taken (a car parked there, or one stopped for good),
   // it pulls in just behind, as a driver picking you up does, instead of waiting in the lane
   // for it to move; held up for good near the end, it stops where it is, hazards on.
   // hurry(st, dry): a factor on the speeds it drives at, from where it is (a ride coming for
   // you drives briskly while it is out of your sight); dry is set in the dry run that times
   // the trip. timeLeft() is that dry run's time from here to the end: an arrival time that
-  // counts down as the car goes and holds while it waits, as a ride app's does.
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null } = {}) {
-    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, end: P.len, route, P };
+  // counts down as the car goes and holds while it waits, as a ride app's does. solid(x, y, z, h):
+  // how deep a pose is in the traffic's cars; it never takes a step further into them.
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, lights = null } = {}) {
+    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, held: 0, end: P.len, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
     const kerbStart = kerbOf(P.pos(0, q2).c);
@@ -747,11 +757,12 @@ window.OECars = (function () {
     // it (st.pass, eased into st.shift) instead of waiting behind it for good, but not while a car
     // is coming along the side of the road it would swing out into: it waits behind until that has
     // gone by.
-    const c = {}, passing = [];
+    const c = {}, passing = [], passed = [];
     let still = false;
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
-      still = false; passing.length = 0;
+      still = false; passing.length = 0; passed.length = 0;
+      st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
@@ -759,14 +770,16 @@ window.OECars = (function () {
         P.at(Math.min(P.len, st.s + a), c);
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
         if (Math.abs(w - lane - st.shift) >= Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) continue; // (side by side, clear)
-        if (o.still && a < 40 && (!end || st.end - st.s - a > 25)) { // (not one where it is to pull in)
+        // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
+        // turns round every few seconds and so never stays stuck long enough to be marked still
+        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25)) { // (not one where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
-          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push(a - half - C.half); continue; }
+          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push(a - half - C.half); passed.push(o); continue; }
         }
-        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.still; }
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.still; st.block = o; }
       }
       if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
-        if (o.still) continue;
+        if (passed.includes(o)) continue;
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= -C.half || a > 70) continue;
         P.at(Math.min(P.len, st.s + Math.max(0, a)), c);
@@ -777,22 +790,53 @@ window.OECars = (function () {
       st.pass = pass;
       return gap;
     }
-    function update(dt, others = [], dry = false) {
+    // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
+    const halted = new Set();
+    function lineGap() {
+      if (!lights || !route.nodes) return Infinity;
+      for (const nd of route.nodes) {
+        const sN = P.cum[Math.min(nd.k, P.cum.length - 1)];
+        if (sN - st.s > 90) break;
+        const a = lights.armAt(nd.line, nd.end);
+        if (!a) continue;
+        const toLine = sN - a.back - st.s;
+        if (toLine < C.half - 0.5) continue; // over its line already
+        const lt = lights.light(a);
+        if (a.sign === 'stop' && st.v < 0.3 && toLine - C.half < 2.5) halted.add(nd.k);
+        const stop = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < toLine - C.half - 0.3) || (a.sign === 'stop' && !halted.has(nd.k));
+        return stop ? toLine - C.half + 2.6 : Infinity;
+      }
+      return Infinity;
+    }
+    // dry: the dry run that times the trip (no lights, nothing in the way); obey: stop at the lights
+    function update(dt, others = [], dry = false, obey = true) {
       if (st.done) { st.v = 0; st.brake = false; return; }
       // how fast: the limit (or the cruise), bends ahead, the end of the route, the gap ahead
       P.pos(st.s, q);
       const hz = hurry ? hurry(st, dry) : 1;
       let want = Math.min(cruise, q.v || cruise) * hz;
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
-      const gap = gapAhead(others);
+      // the cars ahead, and the line at a red light or a stop sign
+      const carGap = gapAhead(others), line = obey && !dry ? lineGap() : Infinity;
       // a car standing where it is to pull in: pull in behind it
-      if (end && still && gap < Infinity && st.s + gap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, gap - 3.2)));
+      if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
       let left = st.end - st.s;
       if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
-      const held = gap < 2.8 ? 0 : (gap - 2.8) * 0.9;
-      if (held < want) want = held;
-      // held up near the end for good (by something that isn't moving off): stop here
-      st.stall = st.v < 0.2 && held < 0.1 ? st.stall + dt : 0;
+      const gap = Math.min(carGap, line), w0 = want, room = gap < 2.8 ? 0 : (gap - 2.8) * 0.9;
+      if (room < want) want = room;
+      st.why = want < w0 ? `${line <= carGap ? 'the line' : 'gap'} ${gap.toFixed(1)} m` : `${w0.toFixed(1)} m/s ahead`; // what sets the speed (for the game check)
+      // held up behind cars (never at the line: a red light is waited out) it counts the time while it
+      // crawls, and keeps it until it is under way, since a car caught up with it turns round every few
+      // seconds and the gap comes and goes
+      st.held = line <= carGap ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
+      // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
+      if (st.held > 8 && carGap < 0.5) want = Math.max(want, 1.5);
+      // and held for 12 s in a tangle the traffic does not clear, it stops giving way and creeps on at
+      // up to 3 m/s until it is under way (to the line, if a light is red), rather than wait for good
+      if (st.held > 12) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
+      // held up near the end for good (by a car that isn't moving off, not a light): stop here
+      st.stall = st.v < 0.2 && room < 0.1 && carGap < line ? st.stall + dt : 0;
       if (end && st.stall > 4 && left < 45) { endAt(st.s); left = 0; }
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
