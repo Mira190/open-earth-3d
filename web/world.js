@@ -373,7 +373,7 @@ vec3 photoGrade(vec3 c) {
     world.add(hemi);
     const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
-    edgeHaze(scene.frame);
+    const edgeFade = edgeHaze(scene.frame);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -722,7 +722,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     }
     const api = {
       world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, gradePhoto, streetLit, tileGeometry, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
-      sunDir: new THREE.Vector3(0, 1, 0), day: 1,
+      sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
       setSun(sp, minutes) {
