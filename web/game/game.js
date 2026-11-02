@@ -2115,6 +2115,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     g.lineWidth = 2 * dpr;
     for (const r of G.ferries) { g.strokeStyle = 'rgba(30,91,58,0.75)'; g.setLineDash([6 * dpr, 4 * dpr]); for (const l of r.legs) { g.beginPath(); l.path.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); } }
     g.setLineDash([]);
+    const way = guide.pts && gold.ahead(); // the gold route still to go, as on the minimap and in the world
+    if (way && way.length > 1) {
+      g.save(); g.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--sun') || '#ffc23d'; g.lineWidth = 3.5 * dpr; g.lineJoin = g.lineCap = 'round';
+      g.beginPath(); way.forEach((p, i) => { const [x, y] = P2(p[0], p[1]); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke(); g.restore();
+    }
     g.save(); g.scale(dpr, dpr);
     bigPins = [];
     const marks = []; // every icon drawn, which the names keep clear of
@@ -2857,6 +2862,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
         sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, player.mode === 'heli' ? heli.st.z + 1 : player.z + 1.6, sun) ? 'sun' : 'shade'; checkSteps(); }
     }
     for (const c of hold) keys.delete(c);
+    // and the route, as a frame works it out (by the way you are going now)
+    const titled = preTitle || !$('#g-title').hidden, ob = titled ? null : objective();
+    updateRoute(clockT, waypoint || (ob && ob.at), ob, titled);
     groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     camTarget.copy(player.mode === 'heli' ? W(heli.st.x, heli.st.y, heli.st.z + 2.5) : player.mode === 'ferry' ? W(player.vehicle.x, player.vehicle.y, 5) : W(player.x, player.y, player.z + 1.55));
     updateCamera(1 / 30, false);
