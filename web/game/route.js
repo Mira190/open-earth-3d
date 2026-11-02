@@ -274,8 +274,9 @@ window.OERoute = (function () {
               const d = q < 0 ? 0 : NUDGE[q], x = pos.x - pos.hy * d, y = pos.y + pos.hx * d, z = standZ(x, y, pos.z);
               if (Number.isNaN(z)) continue;
               const P = run && run.pts, m = P ? P.length : 0;
-              // the way from the last point: on the line itself both ends, its middle; moved off a wall, all along
-              if (run && (d === 0 && !run.moved ? Number.isNaN(standZ((P[m - 3] + x) / 2, (P[m - 2] + y) / 2, (P[m - 1] + z) / 2, 1.2)) : !segOK(P[m - 3], P[m - 2], P[m - 1], x, y, z))) continue;
+              // the way from the last point: moved off a wall at either end, walked all along; on the
+              // line itself at both, no wall at its middle either (the floor between is the line's)
+              if (run && (d !== 0 || run.moved ? !segOK(P[m - 3], P[m - 2], P[m - 1], x, y, z) : !nav.room((P[m - 3] + x) / 2, (P[m - 2] + y) / 2, (P[m - 1] + z) / 2, nav.R))) continue;
               if (!run) { run = { a: newNode(x, y, z), pts: [x, y, z] }; } else P.push(x, y, z);
               run.moved = d !== 0;
               got = true;

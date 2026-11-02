@@ -63,7 +63,7 @@ const [,, city = 'sydney', outDir = '.', times = '10:30', size = '1440x900'] = p
     await p.evaluate(t => {
       const g = window.__game, c = g.clock, s = window.__start, L = g.dayLimits();
       const min = t === 'dusk' ? L.sunset - 10 : t === 'night' ? L.sunset + 60 : t.split(':').map(Number).reduce((h, m) => h * 60 + m);
-      if (g.player.mode === 'heli') { g.heli.st.z = g.nav.groundBelow(g.heli.st.x, g.heli.st.y, g.heli.st.z); g.advance(1); g.exitHeli(); g.advance(1); }
+      if (g.player.mode === 'heli') { for (let i = 0; i < 60 && !g.heli.st.landed; i++) g.advance(0.5, ['KeyC']); g.advance(1); g.exitHeli(); g.advance(2); }
       if (g.player.mode === 'car') { g.myCar().D.st.v = 0; g.myCar().D.st.speed = 0; g.exitCar(); g.advance(0.5); }
       g.setClock(c.y, c.m, c.d, min);
       Object.assign(g.player, { x: s.x, y: s.y, z: s.z });
