@@ -97,8 +97,9 @@ instanced batches of 300 m squares drawn within 500 m of the camera. A pole stan
 the kerb, clear of a car pulled in there (`web/streets.js` setback: the kerb line plus a
 car's half width), and never in another road: where the spot beside its own road falls
 inside the band of another (beside a junction, between a dual carriageway's two lines,
-which the game draws over each other), the lamp moves up to 8 m along its road, and is
-left out if that doesn't clear it. Before this, 1,662 of Sydney's 6,354 poles stood in a
+which the game draws over each other), the lamp moves up to 8 m along its road, failing
+that to the nearest kerb clear of every road within 6 m, so the footway keeps its light,
+and is left out only where neither will do. Before this, 1,662 of Sydney's 6,354 poles stood in a
 carriageway. In the game a pole that would stand in a building's wall is taken away and
 its lamp hangs on a bracket there. The lamps OpenStreetMap maps are moved out of the
 carriageways the same way before they are lit (`OEStreets.tidy`).
