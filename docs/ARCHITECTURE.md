@@ -302,7 +302,7 @@ The views switch in place, without reloading the page.
     theme (OpenStreetMap's coastline and water, ODbL): the ocean, bays and
     straits, less the islands in them, and for a city that draws its own rivers
     and lakes, its rivers and canals from 2 ha and its lakes and reservoirs from
-    1 km² too (a JPEG without chroma subsampling).
+    1 km² too, any water narrower than 160 m left out (a JPEG without chroma subsampling).
     Its channels are the mask blurred by 60 m, 450 m and 2.2 km; the shader
     goes from red at the frame to green 2.5 km out and blue 9 km out, so near the
     frame the sea follows the real shore (North Sydney stays land, the harbour

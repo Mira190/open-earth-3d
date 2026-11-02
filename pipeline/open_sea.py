@@ -7,7 +7,8 @@ ocean polygons (OSM's coastline), bays and straits, less the islands mapped in t
 city that draws its own rivers or lakes (city.json water.classes), the rivers, lakes, reservoirs
 and canals of at least FLOW_MIN_M2 (mapped in many short pieces, which together reach the frame)
 and the lakes, reservoirs and other standing water of at least STILL_MIN_M2 (a pond a kilometre
-past the frame, crisp in the haze over land, reads as a dark blob floating there). A city that leaves its water to the aerial photo
+past the frame, crisp in the haze over land, reads as a dark blob floating there). Water narrower
+than NARROW_M is left out the same way: a creek reads as a crack across the haze. A city that leaves its water to the aerial photo
 (Kyoto, Shibuya) stands well above the water plane, and its inland water past the frame is
 mostly hidden behind hills the model does not have (Lake Biwa behind Higashiyama).
 
@@ -45,6 +46,7 @@ FLOW_CLASSES = {"river", "canal"}
 STILL_CLASSES = {"water", "lake", "lagoon", "reservoir"}
 INLAND_CLASSES = FLOW_CLASSES | STILL_CLASSES
 FLOW_MIN_M2, STILL_MIN_M2 = 20000, 1e6
+NARROW_M = 160  # water narrower than this is left out
 RELEASE_KEY = "overture_release"
 
 
@@ -102,7 +104,18 @@ def mask(C, rows):
         for r in p.interiors:
             d.polygon(px(r.coords), fill=0)
     a = np.asarray(img, dtype=np.float32) / 255
-    return a.reshape(SEA_PX, S, SEA_PX, S).mean(axis=(1, 3))
+    a = a.reshape(SEA_PX, S, SEA_PX, S).mean(axis=(1, 3))
+    # water narrower than about NARROW_M left out: a creek or a canal, crisp through the haze over
+    # land, reads as a dark crack across it (Osaka's rivers past the frame)
+    r = int(round(NARROW_M / 2 / (2 * SEA_HALF_M / SEA_PX)))
+    yy, xx = np.mgrid[-r:r + 1, -r:r + 1]
+    disk = xx * xx + yy * yy <= r * r
+    wide = ndimage.binary_opening(a > 0.5, disk)
+    # and what that leaves in pieces under STILL_MIN_M2 / 2 (the wider reaches of a river cut up)
+    lab, n = ndimage.label(wide)
+    size = ndimage.sum(wide, lab, np.arange(1, n + 1)) * (2 * SEA_HALF_M / SEA_PX) ** 2
+    wide = np.isin(lab, 1 + np.flatnonzero(size >= STILL_MIN_M2 / 2))
+    return a * ndimage.binary_dilation(wide, np.ones((3, 3), bool))
 
 
 def bake(C, a):
