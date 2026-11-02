@@ -52,6 +52,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 import arcades
+import walls
 import kerbside
 import night_lights
 import road_rules
@@ -609,6 +610,7 @@ def main():
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
+    print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
     write_index()
 
 
