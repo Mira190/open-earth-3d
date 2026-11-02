@@ -294,6 +294,7 @@ listed at the end.
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
 | **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
+| **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
 
 ## How it works
 
@@ -318,7 +319,15 @@ pipeline writes. The only city-specific code is landmark geometry in
     - Found by a shortest path through open water, weighted to keep to the
       middle of the channel and away from piers.
     - Smoothed only as far as the route still stays at least 4 m from land.
-  - **Benches and street lamps:** from OpenStreetMap.
+  - **Benches and street lamps:** from OpenStreetMap, moved out of the
+    carriageways (`pipeline/kerbside.py`; `web/streets.js` does the same in the
+    browser, for data built before, and for the trees). Many lamps are mapped as
+    nodes of the road itself, and trees in kerb build-outs and medians. Each is
+    moved to the nearest place clear of every road's band at its level (the
+    road as the game draws it, grown to the outer side of a car pulled in at the
+    kerb), or left out where none is within 6 m. Before this, Sydney had 60
+    mapped lamps, 433 trees and 22 benches in a carriageway; Paris 720 lamps and
+    1,947 trees; Amsterdam 470 lamps and 2,159 trees.
   - **Rail** (`game.rail`): the Overture rail lines of the configured classes,
     chained across the junctions where OpenStreetMap breaks them into through
     routes. A funicular's route runs from its lower end with its profile made
@@ -417,6 +426,10 @@ pipeline writes. The only city-specific code is landmark geometry in
       from the exact footprints.
   - **Camera:** a 0.25 m probe sphere is swept from the player to the camera
     against walls, roofs and soffits, as Unreal's SpringArm does.
+  - **Lamp posts and tree trunks** are solid (`OEStreets.posts`, circles in an
+    8 m grid): you walk round them, your car hits them ("Careful! That was a
+    lamp post."), the crowd steps round them and the traffic brakes for one in
+    its way.
   - **Measured against the old 2 m grid:** 120 walks into walls at random
     angles ended inside a footprint 50 times before and never now. The closest
     approach is now the capsule radius. See
@@ -516,9 +529,25 @@ pipeline writes. The only city-specific code is landmark geometry in
     occlusion baked in Blender darkens the wheel arches and the underside.
   - **Driving:** they keep left, brake for the cars ahead and for the player,
     and keep bumper-to-bumper gaps, so a bus queues its full length back.
+  - **Never through anything:** a car never moves into another car, your car,
+    a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
+    if the way stays blocked. One caught up with another gets out without going
+    into a third. None is put on the road on top of your car or a ride. The
+    crowd keeps out of your car and a ride as it does the traffic's.
+  - **The crowd and the walls:** a footway that runs into a building (an arcade,
+    a station's concourse; the model's buildings are solid) ends at its wall,
+    and a walker stepping aside keeps in from a wall beside the footway. Before
+    this, about one walker in nine in Sydney's centre was inside a building.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
-  shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
+  shares, modelled in Blender (see [the vehicles](#the-vehicles)).
+  - **Ferries keep apart:** under way a vessel keeps to the starboard side of
+    its course, as far as the water allows (the whole hull and 2 m round it
+    over open water, worked out every 10 m of each leg), so two on the same
+    course pass port to port. A berth takes one vessel at a time: one bound for
+    a busy berth waits off it, one closing on another ahead on the same leg
+    keeps its distance, and none starts out alongside another. Before this,
+    Sydney's Sirius and Charlotte lay in the same berth at Circular Quay. If their
   files can't be loaded, stand-ins built from `web/game/kit.js` take their
   place: lofted hulls, lathes, slabs, fins, rods and tubes at real dimensions,
   merged into one mesh per material, adapted from the vessel kit of an earlier
@@ -717,8 +746,11 @@ in the city's Cycles renders where the game puts them.
     brighten when braking, the indicators blink when pulling in, and a taxi's
     roof sign is lit while it is for hire. After dark the headlamps light the
     road. People sit in the seats with their feet on the floor, and the driver's
-    hands are on the wheel. The inside of the shell is a dark lining, and the
-    cabin is mirrored where traffic keeps right.
+    hands are on the wheel. The top of the head keeps 6 cm under the roof over
+    it, measured from the head as it sits: a tall person sinks up to 8 cm into
+    the cushion, and one still too tall for that car sits a little smaller, so
+    any of the crowd's characters can drive a ride. The inside of the shell is a
+    dark lining, and the cabin is mirrored where traffic keeps right.
   - **Water:** the helicopter's downwash throws a ring of spray off the water
     (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
     ship makes in deep water, as wide as the hull at the start, with churned

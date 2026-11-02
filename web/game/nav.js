@@ -51,7 +51,7 @@ window.OENav = (function () {
       return interp(s.us, s.zs, u);
     }
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
-    const solid = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
+    const solid0 = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
     for (const m of D.LM.meshes || []) {
       if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
@@ -72,7 +72,7 @@ window.OENav = (function () {
         }
       }
       tops[m.name] = new Map([...mine].map(([k, q]) => [k, q[1]]));
-      for (const [k, q] of mine) { const l = solid.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid.set(k, [q[0] - 0.3, q[1] + 0.3]); }
+      for (const [k, q] of mine) { const l = solid0.get(k); if (l) l.push(q[0] - 0.3, q[1] + 0.3); else solid0.set(k, [q[0] - 0.3, q[1] + 0.3]); }
     }
     // slabs: solid from (surface - thickness) to the surface. A cell's slab tops out at the lowest point of the
     // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee
@@ -87,8 +87,8 @@ window.OENav = (function () {
           let z = stripHeight(s, x, y);
           if (z == null) continue;
           for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
-          const k = r * DSM.nx + c, l = solid.get(k);
-          if (l) l.push(z - th, z - 0.05); else solid.set(k, [z - th, z - 0.05]);
+          const k = r * DSM.nx + c, l = solid0.get(k);
+          if (l) l.push(z - th, z - 0.05); else solid0.set(k, [z - th, z - 0.05]);
         }
       }
     }
@@ -135,7 +135,7 @@ window.OENav = (function () {
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
     for (const s of D.B.s) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
-    for (const [k, l] of solid) {
+    for (const [k, l] of solid0) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;
       for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);
     }
@@ -164,7 +164,7 @@ window.OENav = (function () {
     function buildingId(x, y) { const k = cellOf(x, y); return k >= 0 ? DSM.ids[k] : -1; }
     // does a landmark solid overlap [za, zb] at (x, y)?
     function landmarkHit(x, y, za, zb) {
-      const l = solid.get(cellOf(x, y));
+      const l = solid0.get(cellOf(x, y));
       if (!l) return false;
       for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true;
       return false;
@@ -221,17 +221,34 @@ window.OENav = (function () {
       return { ok: true, z: f.z, kind: f.kind };
     }
     // move a walker whose feet are at z by (dx, dy), sliding along walls and round the cars
-    // in `movers` (the traffic, which sets it): {x, y, hit}
+    // in `movers` (the traffic, which sets it) and the lamp posts and trunks in `posts`
+    // (streets.js, which game.js sets): {x, y, hit}
     function slide(x, y, z, dx, dy) {
       const f = floorAt(x, y, z), skip = passes(z, !!f && isDeck(f.kind));
       const m = col.slide(x, y, dx, dy, R, z + KNEE, z + HEAD, skip);
-      if (!api.movers) return m;
-      const o = api.movers.pushOut(m.x, m.y, R, z); // (the cars on this level)
+      let o = m;
+      if (api.movers) o = api.movers.pushOut(o.x, o.y, R, z); // (the cars on this level)
+      if (api.posts) o = api.posts.pushOut(o.x, o.y, R, z);
       if (o.x === m.x && o.y === m.y) return m;
-      // pushed out of a car's side: keep that, unless it puts the walker in a wall
+      // pushed out of a car's side or round a post: keep that, unless it puts the walker in a wall
       if (!col.overlap(o.x, o.y, R, z + KNEE, z + HEAD, skip)) return { x: o.x, y: o.y, hit: m.hit };
       return { x, y, hit: m.hit };
     }
+    // is a walker whose feet are at about z, at (x, y), inside a wall (a circle of radius r between
+    // knee and head height)? A look at the 2 m surface model round it first, for speed
+    function solid(x, y, z, r = 0.1) {
+      const k = cellOf(x, y);
+      if (k < 0) return false;
+      let near = false;
+      for (let a = -1; a <= 1 && !near; a++) for (let b = -1; b <= 1 && !near; b++) {
+        const q = k + a * DSM.nx + b;
+        if (q >= 0 && q < DSM.ids.length && ((DSM.ids[q] >= 0 && DSM.data[q] > z + KNEE) || solidCell(q, z + KNEE, z + HEAD))) near = true;
+      }
+      if (!near) return false;
+      const f = floorAt(x, y, z + 0.3), fz = f ? f.z : z;
+      return col.overlap(x, y, r, fz + KNEE, fz + HEAD, passes(fz, !!f && isDeck(f.kind)));
+    }
+    function solidCell(k, za, zb) { const l = solid0.get(k); if (!l) return false; for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true; return false; }
     // push a circle of radius r whose bottom is at z out of the walls it overlaps, between knee
     // height and z + top (a car's body: kerbs and low walls are the floor's business): {x, y}
     function push(x, y, z, r, top = HEAD) {
@@ -247,7 +264,7 @@ window.OENav = (function () {
       if (k >= 0 && pier.data[k] > g) g = pier.data[k];
       for (const s of strips) { const h = stripHeight(s, x, y); if (h != null && h <= z + 0.5 && h > g) g = h; }
       decksAt(x, y, h => { if (h <= z + 0.5 && h > g) g = h; });
-      const l = solid.get(k);
+      const l = solid0.get(k);
       if (l) for (let i = 0; i < l.length; i += 2) if (l[i + 1] <= z + 0.5 && l[i + 1] > g) g = l[i + 1];
       return g;
     }
@@ -303,7 +320,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, push, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, movers: null };
+    const api = { isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, movers: null, posts: null };
     return api;
   }
   return { create };

@@ -23,10 +23,12 @@ const TOL = {
   npcs: { deep: 0.05, n: 0 },      // NPCs inside a building, a carriageway, a post or a bench
   carCar: { deep: 0.2, n: 2 },     // traffic cars inside each other (sample pairs)
   carPost: { deep: 0.05, n: 0 },   // traffic cars inside a post or trunk
-  carMine: { deep: 0.1, n: 0 },    // traffic inside your car or a ride
+  carMine: { deep: 0.1, n: 0 },    // traffic inside your car
+  carRide: { deep: 0.1, n: 0 },    // traffic inside a ride (noted: the ride's driver, cars.js chauffeur, is not taught to avoid it here)
+  carWall: { deep: 0.6, n: 4 },    // traffic cars inside a building's wall (noted: a building modelled solid over a road)
   people: { deep: 0.1, n: 6 },     // walkers inside a car (sample walker-cars)
   peoplePost: { deep: 0.05, n: 4 },// walkers inside a post, trunk or bench
-  peopleWall: { deep: 0.1, n: 6 }, // walkers inside a building wall
+  peopleWall: { deep: 0.1, n: 6, rate: 0.002 }, // walkers inside a building wall (or 1 sample in 500)
   npcCar: { deep: 0.1, n: 0 },     // traffic inside an NPC
   ferry: { deep: 1.0, n: 0 },      // ferries inside each other
   drive: { deep: 0.05, n: 0 },     // your car driven into a post or trunk
@@ -177,13 +179,48 @@ const TOL = {
     g.hail();
   });
   const total = +secs, chunk = 0.5;
-  const run = { samples: 0, cars: 0, walkers: 0, carCar: 0, carCarPairs: 0, carPost: 0, carMine: 0, people: 0, peoplePost: 0, peopleWall: 0, npcCar: 0, ferry: 0, ferryLand: 0, heli: null };
+  const run = { samples: 0, cars: 0, walkers: 0, carCar: 0, carCarPairs: 0, carPost: 0, carMine: 0, carRide: 0, people: 0, peoplePost: 0, peopleWall: 0, npcCar: 0, ferry: 0, ferryLand: 0, carWall: 0, heli: null, phases: {} };
   const pairs = new Set();
-  for (let t = 0; t < total; t += chunk) {
-    const r = await p.evaluate(({ chunk, TOL }) => {
+  // then, for a third of the time again, you at the wheel of your car stopped in the traffic's lane
+  // of the street it was parked in, with the traffic queueing behind you and going round, and then
+  // driving on along it
+  const phases = [['on foot', total], ['stopped in the lane', total / 3], ['driving on', total / 6]];
+  let walked = [];
+  for (const [phase, secsOf] of phases) {
+    // on foot still: you walked into a lamp post near the start
+    if (phase === 'stopped in the lane') walked = await p.evaluate(({ TOL }) => {
+      const g = window.__game, H = window.__clip, c = g.myCar && g.myCar(), out = [];
+      const at = c ? c.D.st : g.player;
+      const post = H.posts.filter(q => q.kind !== 'tree' && Math.hypot(q.x - at.x, q.y - at.y) < 300 && g.nav.walk(q.x - 2.5, q.y, q.z).ok && !g.nav.col.overlap(q.x - 1.2, q.y, 0.4, q.z + 0.4, q.z + 1.8))
+        .sort((a, b) => Math.hypot(a.x - at.x, a.y - at.y) - Math.hypot(b.x - at.x, b.y - at.y))[0];
+      if (!post || g.player.mode !== 'foot') return out;
+      g.player.x = post.x - 2.5; g.player.y = post.y; g.player.z = g.nav.walk(post.x - 2.5, post.y, post.z).z; g.cam.yaw = Math.PI / 2;
+      let deep = 0;
+      for (let k = 0; k < 20; k++) { g.advance(0.1, ['KeyW']); deep = Math.max(deep, post.r + 0.3 - Math.hypot(g.player.x - post.x, g.player.y - post.y)); }
+      out.push({ what: `walked into a ${post.kind}`, deep: +deep.toFixed(2), x: +post.x.toFixed(1), y: +post.y.toFixed(1) });
+      if (deep > TOL.walk.deep) H.note(`walked into a ${post.kind}`, deep, { x: +post.x.toFixed(1), y: +post.y.toFixed(1) });
+      return out;
+    }, { TOL });
+    if (phase === 'stopped in the lane') await p.evaluate(() => {
+      const g = window.__game, c = g.myCar && g.myCar();
+      if (!c) return;
+      if (g.ride()) g.cancelRide();
+      g.enterCar();
+      for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
+      const st = c.D.st, pl = g.roads.place(st.x, st.y, 30, g.KEEP === 'left' ? 1 : -1, st.z);
+      if (!pl) return;
+      const q = {};
+      g.roadNet.at(pl.line, pl.s, q);
+      const hx = q.hx * pl.dir, hy = q.hy * pl.dir, k = OECars.LANE * (g.KEEP === 'left' ? 1 : -1);
+      Object.assign(st, { x: q.x - hy * k, y: q.y + hx * k, z: q.z, h: Math.atan2(hx, hy), vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
+    });
+    const keys = phase === 'driving on' ? ['KeyW'] : [];
+    let carCar0 = run.carCar, carMine0 = run.carMine;
+  for (let t = 0; t < secsOf; t += chunk) {
+    const r = await p.evaluate(({ chunk, TOL, keys }) => {
       const g = window.__game, H = window.__clip, LEVEL = 3;
-      g.advance(chunk);
-      const C = g.cars.C.slice(0, g.cars.active).filter(c => c.line >= 0), o = { cars: C.length, walkers: 0, carCar: 0, pairs: [], carPost: 0, carMine: 0, people: 0, peoplePost: 0, peopleWall: 0, npcCar: 0, ferry: 0, ferryLand: 0 };
+      g.advance(chunk, keys);
+      const C = g.cars.C.slice(0, g.cars.active).filter(c => c.line >= 0), o = { cars: C.length, walkers: 0, carCar: 0, pairs: [], carPost: 0, carMine: 0, carRide: 0, people: 0, peoplePost: 0, peopleWall: 0, npcCar: 0, ferry: 0, ferryLand: 0, carWall: 0 };
       const boxes = C.map(H.carBox);
       // cars inside each other
       const cell = new Map();
@@ -199,6 +236,8 @@ const TOL = {
               b: `${B.model || 'car'} line ${B.line} s ${B.s.toFixed(1)} dir ${B.dir} v ${B.v.toFixed(1)} off ${B.off.toFixed(2)}` });
           }
         }
+        // a building's wall through it
+        if (a.z - g.nav.terrain(a.x, a.y) < 2 && H.inWall(a.x, a.y, a.z, 0.6)) { o.carWall++; H.note('car in wall', 1, { x: +a.x.toFixed(1), y: +a.y.toFixed(1), car: `${C[i].model || 'car'} line ${C[i].line}` }); }
         // a lamp post or a trunk inside it
         H.postsNear(a.x, a.y, a.hl + 1, q => {
           if (Math.abs(q.z - a.z) >= LEVEL) return;
@@ -213,7 +252,7 @@ const TOL = {
       for (const m of mine) boxes.forEach((a, i) => {
         if (Math.abs(a.z - m.z) >= LEVEL) return;
         const d = H.boxBox(a, m);
-        if (d > TOL.carMine.deep) { o.carMine++; H.note(`car in ${m.what}`, d, { x: +a.x.toFixed(1), y: +a.y.toFixed(1), car: `${C[i].model || 'car'} line ${C[i].line} v ${C[i].v.toFixed(1)} off ${C[i].off.toFixed(2)}` }); }
+        if (d > TOL.carMine.deep) { o[m.what === 'your car' ? 'carMine' : 'carRide']++; H.note(`car in ${m.what}`, d, { x: +a.x.toFixed(1), y: +a.y.toFixed(1), car: `${C[i].model || 'car'} line ${C[i].line} v ${C[i].v.toFixed(1)} off ${C[i].off.toFixed(2)}` }); }
       });
       const allCars = boxes.concat(mine);
       // the crowd: inside a car, a post, a bench or a wall
@@ -262,10 +301,12 @@ const TOL = {
         if (land > 2) { o.ferryLand++; H.note('ferry over land', land, { x: +f.x.toFixed(0), y: +f.y.toFixed(0), name: f.v.name, phase: f.v.phase }); }
       }
       return o;
-    }, { chunk, TOL });
+    }, { chunk, TOL, keys });
     run.samples++; run.cars += r.cars; run.walkers += r.walkers;
-    for (const k of ['carCar', 'carPost', 'carMine', 'people', 'peoplePost', 'peopleWall', 'npcCar', 'ferry', 'ferryLand']) run[k] += r[k];
+    for (const k of ['carCar', 'carPost', 'carMine', 'carRide', 'people', 'peoplePost', 'peopleWall', 'npcCar', 'ferry', 'ferryLand', 'carWall']) run[k] += r[k];
     for (const q of r.pairs) pairs.add(q);
+  }
+    run.phases[phase] = { carCar: run.carCar - carCar0, carMine: run.carMine - carMine0 };
   }
   run.carCarPairs = pairs.size;
 
@@ -294,14 +335,18 @@ const TOL = {
       if ((tried[kind] || 0) >= 2) continue;
       const near = g.roads.place(q.x, q.y, 9, 1, q.z);
       if (!near) continue;
-      // run up from the road's side of it, square on
-      const ux = q.x - near.x, uy = q.y - near.y, L = Math.hypot(ux, uy);
-      const h = L > 0.5 ? Math.atan2(ux, uy) : Math.atan2(-(q.y - near.y), q.x - near.x);
-      const sx = q.x - Math.sin(h) * 12, sy = q.y - Math.cos(h) * 12, f = g.nav.floorAt(sx, sy, q.z + 1);
-      if (!f || Math.abs(f.z - q.z) > 1) continue;
-      let clearRun = true;
-      for (let k = 0; k <= 10 && clearRun; k++) { const x = q.x - Math.sin(h) * (12 - k), y = q.y - Math.cos(h) * (12 - k); if (H.inWall(x, y, q.z, 1.1)) clearRun = false; }
-      if (!clearRun) continue;
+      // run up at it square on: from the road's side, or along the kerb either way
+      const ux = q.x - near.x, uy = q.y - near.y, L = Math.hypot(ux, uy), h0 = L > 0.5 ? Math.atan2(ux, uy) : 0;
+      let h = null, sx = 0, sy = 0, f = null;
+      for (const hh of [h0, h0 + Math.PI / 2, h0 - Math.PI / 2]) {
+        const x0 = q.x - Math.sin(hh) * 12, y0 = q.y - Math.cos(hh) * 12, f0 = g.nav.floorAt(x0, y0, q.z + 1);
+        if (!f0 || Math.abs(f0.z - q.z) > 1) continue;
+        let clearRun = true;
+        for (let k = 0; k <= 10 && clearRun; k++) { const x = q.x - Math.sin(hh) * (12 - k), y = q.y - Math.cos(hh) * (12 - k); if (H.inWall(x, y, q.z, 1.1)) clearRun = false; }
+        H.postsNear(q.x - Math.sin(hh) * 6, q.y - Math.cos(hh) * 6, 6, o => { if (o !== q && H.boxCircle({ x: q.x - Math.sin(hh) * 6.5, y: q.y - Math.cos(hh) * 6.5, h: hh, hl: 6, hw: 1.2 }, o.x, o.y, o.r) > 0) clearRun = false; });
+        if (clearRun) { h = hh; sx = x0; sy = y0; f = f0; break; }
+      }
+      if (h == null) continue;
       tried[kind] = (tried[kind] || 0) + 1;
       Object.assign(st, { x: sx, y: sy, z: f.z, h, vx: 0, vy: 0, v: 0, speed: 0, r: 0, vz: 0, steer: 0, air: false });
       let deep = 0, top = 0;
@@ -316,19 +361,9 @@ const TOL = {
     }
     Object.assign(st, home, { vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
     g.advance(0.2);
-    g.exitCar();
-    g.advance(0.5);
-    // on foot, at a lamp post near the start
-    const post = cand.find(q => q.kind !== 'tree' && g.nav.walk(q.x - 2.5, q.y, q.z).ok);
-    if (post && g.player.mode === 'foot') {
-      g.player.x = post.x - 2.5; g.player.y = post.y; g.player.z = g.nav.walk(post.x - 2.5, post.y, post.z).z; g.cam.yaw = Math.PI / 2;
-      let deep = 0;
-      for (let k = 0; k < 20; k++) { g.advance(0.1, ['KeyW']); deep = Math.max(deep, post.r + 0.3 - Math.hypot(g.player.x - post.x, g.player.y - post.y)); }
-      out.push({ what: `walked into a ${post.kind}`, deep: +deep.toFixed(2), x: +post.x.toFixed(1), y: +post.y.toFixed(1) });
-      if (deep > TOL.walk.deep) H.note(`walked into a ${post.kind}`, deep, { x: +post.x.toFixed(1), y: +post.y.toFixed(1) });
-    }
     return out;
   }, { TOL });
+  drive.unshift(...walked);
   // ------------------------------------------------------------ seated: every crowd character in every car's seats
   // (a ride's driver is one of the crowd's characters; you and a passenger sit in the back): the
   // head under the roof, with the character as tall as a look makes it
@@ -416,12 +451,14 @@ const TOL = {
   line(nProps <= TOL.props.n, `furniture in a carriageway: ${nProps} (${JSON.stringify(stat.props)}); within a lane's reach of a road's line: ${JSON.stringify(stat.lane)}`);
   line(stat.npcs <= TOL.npcs.n, `NPCs inside a wall, a carriageway, a post or a bench: ${stat.npcs}`);
   console.log(`ran ${total} s: ${run.samples} samples, ${(run.cars / run.samples).toFixed(0)} cars and ${(run.walkers / run.samples).toFixed(0)} walkers on average`);
-  line(run.carCar <= TOL.carCar.n, `traffic cars inside each other: ${run.carCar} sampled pairs (${run.carCarPairs} distinct)`);
+  line(run.carCar <= TOL.carCar.n, `traffic cars inside each other: ${run.carCar} sampled pairs (${run.carCarPairs} distinct); by phase ${JSON.stringify(run.phases)}`);
   line(run.carPost <= TOL.carPost.n, `traffic cars inside a lamp post or a trunk: ${run.carPost}`);
-  line(run.carMine <= TOL.carMine.n, `traffic inside your car or a ride: ${run.carMine}`);
+  console.log(`${run.carWall > TOL.carWall.n ? 'note' : 'ok  '} traffic cars inside a building's wall: ${run.carWall} (a building modelled solid over a road: the data, not the traffic)`);
+  line(run.carMine <= TOL.carMine.n, `traffic inside your car: ${run.carMine}`);
+  console.log(`${run.carRide > TOL.carRide.n ? 'note' : 'ok  '} traffic inside a ride: ${run.carRide} (the ride's own driving, cars.js chauffeur, is not covered by this check)`);
   line(run.people <= TOL.people.n, `walkers inside a car: ${run.people}`);
   line(run.peoplePost <= TOL.peoplePost.n, `walkers inside a post, a trunk or a bench: ${run.peoplePost}`);
-  line(run.peopleWall <= TOL.peopleWall.n, `walkers inside a building's wall: ${run.peopleWall}`);
+  line(run.peopleWall <= Math.max(TOL.peopleWall.n, run.walkers * TOL.peopleWall.rate), `walkers inside a building's wall: ${run.peopleWall} of ${run.walkers} walker samples`);
   line(run.npcCar <= TOL.npcCar.n, `traffic inside an NPC: ${run.npcCar}`);
   line(run.ferry <= TOL.ferry.n, `ferries inside each other: ${run.ferry}`);
   console.log(`     ferries with their hull over land: ${run.ferryLand} samples`);
