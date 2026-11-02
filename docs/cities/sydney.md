@@ -103,7 +103,49 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
     to back. How wide each shell spans is measured from the outline of the OSM
     roof parts. The shells carry the chevron pattern of glossy white and matte
     cream tiles, with tile lids between the ribs. The glass walls hang from the
-    arches in pleats of topaz glass on bronze mullions, and glow warm at night.
+    arches: topaz glass on bronze mullions, drawn on the glass by its shader
+    (`topaz_glass` in `web/world.js`) with a thinner mullion between and
+    transoms every 2.7 m, each pane its own reflection. After dark the foyers
+    light them pane by pane, and the floodlit shells are the brightest thing in
+    the view, as in night photographs.
+  - **Bennelong Point round it** (`bennelong()` in `cities/sydney/city.py`): the
+    ground of the precinct is built, not left to the 5 m DEM and the aerial
+    photo, which drew it as grey slopes running into the water.
+    - *The seawall* follows the shore Overture maps (release 2026-10-21, from
+      OpenStreetMap; checked against the live OpenStreetMap API on 2 November
+      2026) for 894 m, from East Circular Quay round the point into Farm Cove:
+      along the broadwalk in the podium's pink aggregate, elsewhere in Sydney
+      sandstone, in coursed blocks with a granite coping. A tidal band of dark
+      weed and wet stone runs up to high water, about 0.9 m.
+    - *The paving* covers the forecourt, the broadwalk and the Lower Concourse
+      (19,250 m²) in pink granite flags, at the level of the ground behind the
+      seawall, where the DEM sags towards the water. The forecourt is level, as
+      the photographs show it, where the DEM dips 3 m over the vehicle concourse
+      under it. The game walks on the same level (`game_ground`), and a walker
+      stops at the top of the seawall instead of walking down a slope into the
+      water.
+    - *Where the ground is not drawn:* the terrain grid (10 m in the viewer,
+      5 m near the player) cannot turn a corner at a seawall, so between the
+      last point on land and the first in the water it sloped up out of the
+      water. The ground shader now discards it above the water in a band
+      outside the seawall and under the paving (landmarks.json `clip`, a
+      half-metre mask). Walking, the camera and the analyses keep the terrain.
+    - *Street furniture* where OpenStreetMap maps it: 20 benches facing the
+      water, 40 bollards, 13 globe lamps, the 7 masts that floodlight the
+      shells, 3 wayfinding pylons, and the Opera Bar's 12 square umbrellas with
+      their tables. Each kind is drawn once and instanced
+      (landmarks.json `props`), and drawn only within a few hundred metres.
+    - *What OSM maps as small buildings* is drawn as what it is: the Opera Bar's
+      umbrellas and the Opera Kitchen's canopy (they were 3.6 m solid boxes, which
+      the player could not walk under), and Utzon's western colonnade of 2006,
+      "a forty-five-metre-long, five-metre-deep verandah" with "twenty paired
+      columns" three metres high and 400 mm square and nine openings in the wall
+      behind it, three doors and six windows 1.95 by 2.1 m (Architecture
+      Australia, May 2006, "Adding to the Opera House"). It was a box with
+      office windows.
+    - *The podium* is clad in tall vertical panels, as photographed, with a dark
+      band of glass along its outer walls (9.6 to 10.5 m above the datum: placed
+      from photographs, not measured).
   - **The podium and the Monumental Steps:** the podium is clad in pink granite
     panels, on two levels. The Monumental Steps climb from the forecourt to a
     landing. They are measured on the aerial photo: 85 m wide, three flights of
@@ -352,6 +394,39 @@ it can only show a picture of it.
 - In headless Chromium with software rendering (SwiftShader), it loads and
   builds in about 10 s. A GPU browser is much faster.
 
+### The Opera House precinct, and the budget it keeps
+
+The brief was a precinct as faithful as an open-world game's hero landmark
+(the Assassin's Creed games rebuild Notre-Dame or the Acropolis at full scale,
+from photographs and plans), without the download or the GPU load. What was
+adopted from that practice, in a browser:
+
+- **Reference first.** Real dimensions where they are published (the shells,
+  the steps, the colonnade), the open map for where things stand, and
+  photographs for what is neither: the aerial view from the north-east
+  (Wikimedia Commons, "Sydney (AU), Opera House -- 2019 -- 2896.jpg") was
+  matched in the viewer for the colour of the water, the podium and the
+  paving; the western broadwalk (Commons, "AUS Sydney, Central Business
+  District, Sydney Opera House 028/031/034.jpg") for the panels, the bollards
+  and the paving. The photographs are references only; none is shipped.
+- **Materials drawn by the shader, not textures:** granite flags, coursed
+  stone with its tidal band, the glass and its mullions are a few lines of
+  GLSL each over texture coordinates in metres, with no image to download, and
+  they fade to their average colour where a pixel covers several repeats, so
+  they never shimmer.
+- **Instancing for anything repeated** and a draw distance for small things
+  (`far` in landmarks.json; `web/world.js` hides them beyond it each frame).
+- **Geometry where it shows, the shader where it does not:** the glass walls'
+  mullions were 19,000 triangles of boxes and tubes (0.66 MB of JSON); they are
+  now lines on the glass.
+
+| | before | after |
+|---|---|---|
+| landmarks.json | 2.84 MB (0.68 MB gzipped) | 2.59 MB (0.62 MB gzipped) |
+| scene.json | 21 kB | 56 kB (the precinct's outlines and paving levels) |
+| landmark triangles | 77,000 in 32 meshes | 64,000 in 49 meshes, plus 17,000 instanced in 12 draws |
+| frame time, software renderer, 1440 × 900 | 830–1360 ms | 690–1120 ms (the same four views, two runs each) |
+
 ## 7. Where the Opus + Blender approach still wins
 
 - **Still-image realism.** Facade detail, real materials, proper tree
@@ -382,6 +457,14 @@ numbers stay valid because the geometry they depend on is unchanged.
   tips, how high the back-to-back shells meet, and the side shells come from
   a photograph. The podium's two levels follow from an assumed 15 cm riser:
   the landing at 10.1 m and the upper podium at 14.4 m.
+- **Bennelong Point.** The Lower Concourse (the Opera Bar's level, 1.7 m) meets
+  the forecourt (3.5 m) in a ramp of paving where there are retaining walls and
+  steps; the Tarpeian Wall, the sandstone cliff under the Royal Botanic Garden,
+  is a low face with the terrain's slope behind it rather than a cliff; and the
+  podium's north end is a straight wall where it steps back in terraces. The
+  game's walker stops a few metres short of the seawall, at the top of the
+  5 m grid's bank. The benches are generic; the band of glass on the podium is
+  placed from photographs.
 - **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
   guessed heights of 7–14 m. They are not in the shadow analysis, so parks
   read sunnier than they feel. Roof shapes are mapped for 3% of buildings;

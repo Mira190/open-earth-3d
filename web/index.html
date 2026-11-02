@@ -547,10 +547,22 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-legend { display: grid; gap: 7px; font-size: 12px; color: var(--ink-2); }
 .g-legend div { display: flex; gap: 9px; align-items: center; }
 .g-legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 700 8px/1 var(--f-body); font-style: normal; flex: none; }
-#g-travel { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-#g-travel button { width: 100%; text-align: left; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.02); border-radius: var(--r); padding: 8px 10px; cursor: pointer; font-size: 12.5px; color: var(--ink);
-  transition: border-color 0.3s, background 0.3s; }
-#g-travel button:hover { border-color: rgba(255, 176, 102, 0.6); background: var(--accent-wash); }
+#g-travel, #g-travel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#g-travel { gap: 14px; }
+#g-travel h4 { margin: 0 0 6px; font: 400 8.5px/1.2 var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: 0.2em; }
+#g-travel button { width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.02); border-radius: var(--r);
+  padding: 8px 10px; cursor: pointer; font: inherit; font-size: 12.5px; color: var(--ink); transition: border-color 0.3s, background 0.3s; }
+#g-travel button .num { flex: none; font-size: 10.5px; color: var(--muted); }
+#g-travel button:hover, #g-travel button:focus-visible { border-color: rgba(255, 176, 102, 0.6); background: var(--accent-wash); }
+.g-lg-pin { background: rgba(6, 10, 18, 0.78); box-shadow: inset 0 0 0 1.5px #f4efe6, inset 0 0 0 4px rgba(6, 10, 18, 0.78), inset 0 0 0 7px var(--sun); }
+/* the card over the map for a picked place: travel there, or set a waypoint (game.js pick) */
+.g-mappop { position: absolute; z-index: 1; width: max-content; max-width: min(340px, calc(100% - 12px)); display: grid; gap: 4px; padding: 12px 14px 13px; background: var(--hud-solid);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-top: 2px solid var(--sun); border-radius: var(--r); box-shadow: var(--shadow); }
+.g-mappop b { font: 500 14px/1.25 var(--f-body); color: #fff; }
+.g-mappop .note { font: 400 9px/1.3 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.g-mappop-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.g-mappop-acts .btn { padding: 10px 14px; }
+.g-mappop-acts .btn[hidden] { display: none; }
 .g-stampfx { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 12px; pointer-events: none; z-index: 5; }
 .g-stampfx .stamp { width: 172px; height: 172px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 20px;
   border: 4px double var(--accent); color: var(--accent); background: rgba(6, 10, 18, 0.72); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
@@ -635,7 +647,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-phone { bottom: 196px; max-height: calc(100% - 420px); }
   .g-vhud .note { display: none; }
   .g-lens { left: 10px; right: 10px; width: auto; top: auto; bottom: 200px; }
-  .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
+  .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 1.3fr) minmax(0, 1fr); gap: 14px; }
+  .g-mapbody aside > h3:first-child, .g-legend { display: none; } /* on a phone the map and the travel list; the pins say what they are when picked */
+  .g-mappop-acts .btn { flex: 1; padding: 10px 8px; letter-spacing: 0.12em; }
   .g-panel { padding: 18px 16px 18px; }
   .g-reticle { display: none; }
   .g-photo { width: calc(100% - 16px); bottom: 8px; }
@@ -915,19 +929,21 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 
     <div class="g-overlay" id="g-bigmap" hidden>
       <div class="g-panel g-mapwrap">
-        <header><h2>Map</h2><span class="note">Click the map to set a waypoint</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
+        <header><h2>Map</h2><span class="note">Pick a place to travel there · double-click to go at once</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
         <div class="g-mapbody">
-          <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas></div>
+          <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas>
+            <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span>
+              <div class="g-mappop-acts"><button class="btn primary" id="g-mappop-go">Travel here</button><button class="btn" id="g-mappop-way">Set waypoint</button></div></div></div>
           <aside>
             <h3>Legend</h3>
             <div class="g-legend">
-              <div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
+              <div><i class="g-lg-pin"></i>Landmark: pick it to travel there</div><div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
               <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
             </div>
-            <h3>Fast travel</h3>
+            <h3>Travel</h3>
+            <p class="note">Go any time, on foot or in your car. Or pick any spot on the map. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
             <ul id="g-travel"></ul>
-            <p class="note">A hop to the start or to any wharf you have used. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
           </aside>
         </div>
       </div>

@@ -10,14 +10,14 @@
   "timezone": "Australia/Sydney",
   "built": true,
   "game": true,
-  "buildings": 7962,
+  "buildings": 7945,
   "extent_km": [
    3.0,
    4.8
   ],
   "load_bytes": {
-   "model": 6870695,
-   "game": 9824689
+   "model": 6627829,
+   "game": 9582103
   }
  },
  {
@@ -38,7 +38,7 @@
   ],
   "load_bytes": {
    "model": 5254349,
-   "game": 9433371
+   "game": 9433495
   }
  },
  {
@@ -58,8 +58,8 @@
    7.7
   ],
   "load_bytes": {
-   "model": 4938330,
-   "game": 8441551
+   "model": 4938327,
+   "game": 8441638
   }
  },
  {
@@ -81,7 +81,7 @@
   ],
   "load_bytes": {
    "model": 29028968,
-   "game": 35457890
+   "game": 35451853
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -109,7 +109,7 @@
   ],
   "load_bytes": {
    "model": 26212085,
-   "game": 29169678
+   "game": 29169605
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -137,7 +137,7 @@
   ],
   "load_bytes": {
    "model": 5260372,
-   "game": 8638836
+   "game": 8639184
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -149,7 +149,7 @@
  {
   "id": "shibuya",
   "name": "Shibuya & Shinjuku",
-  "native": "渋谷・新宿",
+  "native": "\u6e0b\u8c37\u30fb\u65b0\u5bbf",
   "country": "Japan",
   "lat": 35.6685,
   "lon": 139.6965,
@@ -157,7 +157,16 @@
   "summary": "Sangenjaya to Shibuya, Shinjuku and Yotsuya: 90,000 buildings at PLATEAU-surveyed heights, the Shibuya scramble, SHIBUYA SKY's roof with its lift and escalator, the Suga Shrine stairs of Your Name with this year's ema, and the streets Persona 5 drew, from Sangenjaya's backstreets to Kabukicho.",
   "timezone": "Asia/Tokyo",
   "built": true,
-  "game": true
+  "game": true,
+  "buildings": 90304,
+  "extent_km": [
+   5.4,
+   6.2
+  ],
+  "load_bytes": {
+   "model": 37192863,
+   "game": 43887123
+  }
  },
  {
   "id": "whitsundays",
@@ -294,7 +303,7 @@
   ],
   "load_bytes": {
    "model": 24700698,
-   "game": 30810801
+   "game": 30810839
   }
  },
  {
@@ -315,7 +324,7 @@
   ],
   "load_bytes": {
    "model": 16104955,
-   "game": 19286187
+   "game": 19286302
   }
  },
  {
@@ -337,7 +346,7 @@
   ],
   "load_bytes": {
    "model": 3562250,
-   "game": 7098923
+   "game": 7099162
   }
  },
  {
