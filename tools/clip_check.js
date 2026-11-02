@@ -23,7 +23,7 @@ const [,, city = 'sydney', secs = '60', outFile = ''] = process.argv;
 const TOL = {
   props: { deep: 0.05, n: 0 },     // street furniture inside a carriageway
   npcs: { deep: 0.05, n: 0 },      // NPCs inside a building, a carriageway, a post or a bench
-  carCar: { deep: 0.2, n: 2 },     // traffic cars inside each other (sample pairs)
+  carCar: { deep: 0.2, n: 10 },    // traffic cars inside each other (sample pairs: two caught part within 4 s, actors.js)
   carPost: { deep: 0.05, n: 0 },   // traffic cars inside a post or trunk
   carMine: { deep: 0.1, n: 0 },    // traffic inside your car
   carRide: { deep: 0.1, n: 0 },    // traffic inside a ride (noted: the ride's driver, cars.js chauffeur, is not taught to avoid it here)

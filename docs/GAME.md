@@ -532,8 +532,8 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Never through anything:** a car never moves into another car, your car,
     a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
     if the way stays blocked. One caught up with another gets out without going
-    into a third; two still caught after 6 s part (out of sight, one leaves the
-    traffic). None is put on the road on top of your car or a ride, and your
+    into a third; two still caught after 4 s part (out of sight, one leaves the
+    traffic). A ride on the move is left to its own driver. None is put on the road on top of your car or a ride, and your
     car is brought to a kerb clear of the traffic, the posts and the trees.
     Your car meets another as a box against a box, corners included. The crowd
     keeps out of your car and a ride as it does the traffic's.

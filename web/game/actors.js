@@ -740,7 +740,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // deep it is in the ones not in knownSet, the cars it is already caught up with)
     let depth = 0, most = 0, ahead = false, oc = null, ox0 = 0, oy0 = 0, ohx = 0, ohy = 0, mL = 0, mW = 0, inSet = null, known = null, fresh = 0;
     const overlapTest = o => {
-      if (o === oc) return;
+      if (o === oc || o.soft) return; // (a ride on the move: game.js)
       const dx = o.x - ox0, dy = o.y - oy0, ox = Math.sin(o.h), oy = Math.cos(o.h), cs = Math.abs(ox * ohx + oy * ohy), sn = Math.abs(-ox * ohy + oy * ohx);
       const ea = oc.half + cs * o.half + sn * o.hw + mL - Math.abs(dx * ohx + dy * ohy), eb = oc.hw + sn * o.half + cs * o.hw + mW - Math.abs(-dx * ohy + dy * ohx);
       if (ea > 0 && eb > 0) {
@@ -956,12 +956,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const caught = c.caught || (c.caught = new Set());
         caught.clear();
         const tangled = c.v < 0.5 ? overlaps(c, c.x, c.y, fx, fy, 0, 0, caught) : 0, cg = tangled > 0 ? caught : null;
-        // still caught after a few seconds (two that each wait for the other): out of sight it leaves
+        // still caught after 4 s (two that each wait for the other): out of sight it leaves
         // the traffic (its slot comes back elsewhere), in sight it drives on out of the other, as long
         // as that takes it into nothing else
         c.tangleT = tangled > 0 ? (c.tangleT || 0) + dt : 0;
-        if (c.tangleT > 6 && Math.hypot(c.x - cx, c.y - cy) > 140) { releaseAll(c); c.line = -1; c.tangleT = 0; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
-        const free = c.tangleT > 6, behind = tangled > 0 && ahead && !free;
+        if (c.tangleT > 4 && Math.hypot(c.x - cx, c.y - cy) > 140) { releaseAll(c); c.line = -1; c.tangleT = 0; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
+        const free = c.tangleT > 4, behind = tangled > 0 && ahead && !free;
         const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9);
         c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;

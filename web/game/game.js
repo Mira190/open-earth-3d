@@ -2296,11 +2296,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // the traffic brakes for you on foot and for your car, and swings out round a car pulled in at the kerb
     const blockers = player.mode === 'foot' ? [player] : [];
     for (const n of npcs) if (Math.abs(n.x - cx) < 700 && Math.abs(n.y - cy) < 700) blockers.push({ x: n.x, y: n.y, z: n.z, fixed: true }); // (they stand their ground)
-    cars.extra.length = 0; // your car and a ride: the traffic won't drive into them, nor the crowd walk through them
+    // your car and a ride: the traffic won't drive into them, nor the crowd walk through them. A ride on
+    // the move is left to its driver (soft: the traffic doesn't wait on it), so that one swinging out
+    // round a queue and a car coming the other way never wait on each other for good
+    cars.extra.length = 0;
     for (const o of [myCar, ride]) if (o) {
       const st = stOf(o);
       blockers.push({ x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && (o === ride || player.mode !== 'car') });
-      cars.extra.push({ x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top });
+      cars.extra.push({ x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft: o === ride && Math.abs(st.v) >= 0.3 });
     }
     cars.update(dt, cx, cy, clockT, blockers);
     if (places) places.update(dt, player.x, player.y, player.z, player.mode === 'foot' && !cine.active);
