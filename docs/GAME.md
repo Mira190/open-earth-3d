@@ -63,7 +63,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
 | <kbd>T</kbd> | Switch which survey line the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
-| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -405,6 +405,24 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Piers and decks:** piers are 2.2 m decks, or level with the quay they
     meet where that is higher, so stepping down onto a pier is never a step you
     can't climb back. The bridge deck is a walkable strip.
+  - **Strips meet their banks:** a deck drawn from a mapped outline (an
+    Amsterdam canal bridge) can end a metre or four short of the quay the 5 m
+    water mask draws, or below the ground where the bank rises to it. Each end
+    over the water is carried on along the axis to the first firm ground within
+    12 m, no steeper than 1 in 4, and drawn there in the deck's stone; where the
+    ground under a deck stands up to a step above it, the deck is raised to it,
+    so a walker there is on the deck (Torensluis). The Magere Brug, Leidsebrug,
+    Halvemaansbrug, Brug 72 and Torensluis are crossed down their middles.
+  - **Covered walkways are canopies** (`pipeline/arcades.py`): an arcade over a
+    pavement comes in the open data as a long thin building from the ground
+    (Kyoto's Shijo, Kawaramachi and Shinkyogoku arcades, Osaka's shotengai). A
+    footprint at most 5 m wide on average, with a mapped footway inside along
+    most of its length, mapped as a roof or an unnamed PLATEAU footprint no
+    taller than 20 m, starts a quarter of its height (0.5-3 m) under its top,
+    and is drawn without windows and with an underside. Walled in by them, the
+    blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 23
+    in Kyoto, 76 in Osaka, 46 in Shibuya, 19 in Tokyo and a few elsewhere are
+    canopies now.
   - **Wharves:** each wharf has a landing, the nearest place on foot to its
     terminal. You board from there where the mapped terminal is out on the
     water (Circular Quay's wharves, Central Pier 7).
@@ -419,6 +437,13 @@ pipeline writes. The only city-specific code is landmark geometry in
       boats.
     - Viaducts (an expressway, several levels up) keep their mapped height.
       Stubs that end over the water at nothing are cut back to the bank.
+    - A deck the data's levels make climb steeper than 1 in 3.3 (outside
+      steps) is graded evenly from end to end; a line along a strip that the
+      data puts up to 4 m past its edge, far below it, is on the strip's level
+      beside it. Together these join the Harbour Bridge cycleway: mapped a metre
+      outside the deck, its approach was given the ground's height plus a level
+      and dropped 30 m in 23 m off the deck; it now runs from the deck down to
+      its north end at Milsons Point.
     - The crowd and the traffic keep to the decks, the sun meter sees their
       shade, and you can walk them (but not the expressways). In Osaka this is
       what joins the city across its rivers: from the start on the Dotonbori,
@@ -736,21 +761,44 @@ cars.
   in your car (the car comes too, parked at the kerb nearest the spot) and in a taxi
   (it lets you out and drives off). From the helicopter, a ferry or the funicular you
   get off first. Where a landmark puts you:
-  - **How far back:** about 1.7 times its height, or twice its breadth and 40 m when
-    that is more (45 to 520 m). The breadth is the median, over 16 bearings, of how far
+  - **How far back:** about 1.4 times its height, or twice its breadth and 40 m when
+    that is more (45 to 520 m; a tower taller than that allows is not tried nearer). The breadth is the median, over 16 bearings, of how far
     the surface model stays above 30% of its height out from its label, a street's gap
     ending it.
-  - **Which side:** 48 spots on three rings round it are scored on the line of sight from
-    eye height to 60% of its height (every 4 m through the 2 m surface model, and through
-    the mapped trees' crowns, which the surface model leaves out), the sun behind you by
-    day, open ground round the spot (a square or the waterfront rather than a lane), the
-    street rather than a roof, and room behind you for the chase camera (the same test the
+  - **Which side:** 48 spots on three rings round it are scored on how much of it they
+    see: four lines of sight from eye height (every 4 m through the 2 m surface model, and
+    through the mapped trees' crowns, which the surface model leaves out), one to 60% of
+    its height and three to 35% of it, at its centre and to either side as far out as its
+    high part runs. A slot down a street of offices sees only its top over the roofs and
+    fails the low lines either side, so a square, a riverbank or a wide road that sees it
+    whole wins. Then the sun behind you by day, open ground round the spot, the street
+    rather than a roof, out from under a walkway or a flyover (for you and the camera), out of the haze the model's edge fades into (standing in it veils
+    everything round you, the near things too), and room behind you for the chase camera (the same test the
     camera rig makes, and no crown in front of the lens). A spot whose camera is blocked
     is tried again a few steps either side, nearer and further.
+  - **Fronts and hand-picked spots** (`arrivals` in `cities/<id>/city.json`, keyed by the
+    label as shown): for the few landmarks the search gets wrong, `front` is the compass
+    bearing the landmark's front faces (the National Diet looks east over its garden), and
+    the arrival keeps within `arc` degrees of it (70 by default), preferring straight in
+    front; `dist` sets how far back to stand; `top` frames a lower part than the label's
+    top, in metres above the ground (Kabuki-za's theatre rather than the tower behind it);
+    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark.
+    `python pipeline/scene_config.py --city <id>` copies them into `scene.json` without
+    rebuilding the scene, and `node tools/arrival_probe.js <city> <names>` prints where
+    each arrival lands, its best-scored spots, and a character map of the surface model,
+    the water and the main roads round it, for choosing them.
   - **The camera:** behind you and a little to one side, so the landmark stands just off
     your shoulder, and tilted up enough to take in the top of its near side.
   - `tools/travel_shot.js <city> <out>` takes a still on arrival at each landmark and says
     whether it is in frame.
+  - **Zoom and pan:** the wheel (or a trackpad pinch, or <kbd>+</kbd> and <kbd>−</kbd>) zooms
+    the map about the pointer, from the whole city to about a metre a screen pixel; a drag
+    pans it, and on a phone two fingers pinch and pan. Buttons in its corner zoom in, out
+    and back to the whole city. The names are laid out afresh at each zoom, so the ones
+    the whole city crowds out come back as you zoom in, and a picked place's card follows
+    its pin. The zoom is kept while the map is closed. `tools/map_shot.js <city> <out>
+    [phone]` takes stills of it at the whole city, zoomed into the thickest pins, panned
+    and with a pin picked.
 - **Neighbourhoods** (`web/game/places.js`, game.json `areas`, `spots`, `chatter`):
   - **Areas:** a circle round a station. Walking in puts up its sign: the name, its
     reading, the line's colour band and the stations either side. Where circles
@@ -836,6 +884,24 @@ drop or into the water.
 - **The crowd and the traffic** walk and drive the same data: the crowd now keeps
   to the footways where a walker can stand (cut where they run into a building),
   and the traffic doesn't turn into a road a car doesn't fit along.
+  - A walker keeps 0.6-1.8 m left of its line, and up to 1.5 m more to dodge.
+    Every third step it looks beside itself and 1.5 m ahead for a wall at that
+    offset (`clear`, nav's room for a body 0.3 m round), and takes the nearest
+    offset with room, in towards the line or past it; its offset moves there no
+    faster than a sidestep, so it closes in on a facade and never jumps. In the
+    game check 2 to 4 walkers in 2,000-3,000 are in a wall at a time.
+  - A car looks along its way ahead every half second (every frame on a road
+    route.js flags) for a wall at its lane: where there is room down the middle
+    of the street it keeps to the middle; where there isn't, it brakes as for a
+    car stopped there, and after a second and a half stopped it turns round, or
+    out of sight leaves the traffic for elsewhere. A car on a flagged road when
+    the flags arrive (a second or two after the start) leaves it at once if it is
+    out of sight. In Shibuya the share of car-time inside a wall fell from 2.5%
+    to 0.5% (`tools/traffic_check.js`, which now counts it).
+- **Helipads on roofs:** a pad the data puts on the ground inside a building's
+  footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
+  clear above for the rotor, else on the nearest open ground with clear sky
+  within 120 m (`game.js`; `pipeline/game_data.py` puts new data on the roof).
 
 We looked at what navigates a 3D world in a browser before building this:
 Recast/Detour (zlib licence) and its WebAssembly build recast-navigation-js

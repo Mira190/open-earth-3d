@@ -51,6 +51,7 @@ from shapely import wkb as swkb
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
+import arcades
 import night_lights
 import road_rules
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
@@ -73,6 +74,25 @@ def strip_height(surf, x, y):
     if abs(v) > surf["half_width"] or u < prof[0][0] or u > prof[-1][0]:
         return None
     return float(np.interp(u, [p[0] for p in prof], [p[1] for p in prof]))
+
+
+def roof_pads(C, helipads):
+    """A mapped pad inside a building's footprint is on its roof (a hospital's, a tower's): its height is
+    the roof's (buildings.json from build_scene.py), not the ground's under it."""
+    path = os.path.join(C.out, "buildings.json")
+    if not helipads or not os.path.exists(path):
+        return
+    solids = json.load(open(path, encoding="utf8"))["s"]
+    for hp in helipads:
+        x, y, z = hp["at"]
+        for s in solids:
+            r = s[4]
+            xs, ys = r[0::2], r[1::2]
+            if not (min(xs) <= x * 10 <= max(xs) and min(ys) <= y * 10 <= max(ys)):
+                continue
+            top = (s[1] + s[3]) / 10
+            if top > z + 2 and Polygon([(r[k] / 10, r[k + 1] / 10) for k in range(0, len(r), 2)]).contains(Point(x, y)):
+                hp["at"][2] = round(max(top, hp["at"][2]), 1)
 
 
 def flag_ranges(flags, name):
@@ -225,6 +245,7 @@ def main():
                 first = next((h["id"] for h in gcfg.get("helipads", []) if h.get("from_data")), "helipad")
                 helipads.append({"id": first if not helipads else f"helipad-{len(helipads)}", "name": r["name"] or "Helipad",
                                  "at": [round(q.x, 1), round(q.y, 1), round(ground(q.x, q.y), 1)]})
+    roof_pads(C, helipads)
     for h in gcfg.get("helipads", []):
         if h.get("from_data") and "near" in h and helipads:  # the mapped pad nearest a point, first in the list
             k = min(range(len(helipads)), key=lambda i: math.hypot(helipads[i]["at"][0] - h["near"][0], helipads[i]["at"][1] - h["near"][1]))
@@ -587,6 +608,7 @@ def main():
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
+    print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     write_index()
 
 

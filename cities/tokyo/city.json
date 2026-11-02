@@ -112,6 +112,11 @@
     "帝国ホテル": "Imperial Hotel 帝国ホテル",
     "The Okura Prestige Tower": "Okura Prestige Tower"
   },
+  "arrivals": {
+    "Kabuki-za 歌舞伎座": {"front": 215, "arc": 35, "dist": 100, "top": 60},
+    "National Diet 国会議事堂": {"front": 90},
+    "Wako 和光 (Ginza 4-chome)": {"front": 150, "arc": 40, "dist": 60}
+  },
   "minor_labels": [
     "和光",
     "東京国際フォーラム",

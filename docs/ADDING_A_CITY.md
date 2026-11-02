@@ -69,6 +69,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `architecture_overrides` | no | Changes to those rules for this city, such as `{"awning": 0.5, "signage": 0.3, "machiya": true, "roofs": {"house": {"gabled": 0.7, "hipped": 0.3}}}` |
 | `building_styles` | no | `{"OSM building name": "style"}` for buildings the rules would get wrong, such as a bridge pylon (`stone`) |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
+| `arrivals` | no | `{"Label shown": {front, arc, dist, top, at}}`: where map travel puts you at a landmark the search frames badly. `front` is the compass bearing its front faces (the arrival keeps within `arc` degrees of it, 70 by default), `dist` how far back to stand (m), `top` the height to frame above the ground (m), `at` a spot `[x, y]` to stand on. See [GAME.md](GAME.md), map travel |
 | `minor_labels` | no | Labels drawn in the lighter style |
 | `place_labels` | no | Names from `places` to label on the ground |
 | `places` | no | Public places: `{name, class, protected, period, from, to}`. `name` is matched to the start of an Overture land-use name with that `class`. With `source: "land"`, the name is matched in Overture's land cover instead (a beach). With `source: "water"`, every water polygon of that name is joined and widened by `buffer_m` (a river corridor), and `label` renames it. `period` is `all`, a range `MM-DD..MM-DD`, a single day `MM-DD`, or a comma-separated list of those (`04-22,09-22`); `from` and `to` are local `HH:MM`. A protected place with a period is tested by "test a new tower" |
