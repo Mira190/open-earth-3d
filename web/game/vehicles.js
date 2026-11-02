@@ -610,7 +610,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     const destOf = v => { const c = v.cycle[v.ci]; return c.rev ? c.leg.from : c.leg.to; };
     const fromOf = v => { const c = v.cycle[v.ci]; return c.rev ? c.leg.to : c.leg.from; };
     // is someone else at (or just leaving, or just making for) wharf id?
-    const busy = (v, id) => vessels.some(o => o !== v && ((o.phase === 'dwell' && stopOf(o) === id) || (o.phase === 'sail' && fromOf(o) === id && o.s < o.len + 50)
+    const busy = (v, id) => vessels.some(o => o !== v && ((o.phase === 'dwell' && stopOf(o) === id) || (o.phase === 'sail' && fromOf(o) === id && o.s < 2.5 * o.len + 70)
       || (o.phase === 'sail' && destOf(o) === id && o.cycle[o.ci].leg.len - o.s < v.len + 40 && o.cycle[o.ci].leg.len - o.s < leftOf(v))));
     const leftOf = v => v.cycle[v.ci].leg.len - v.s;
     function stopOf(v) { const c = v.cycle[v.ci]; return v.phase === 'dwell' ? (c.rev ? c.leg.to : c.leg.from) : null; }
@@ -641,7 +641,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
           helmStep(v, dt);
         } else {
           const left = c.leg.len - v.s;
-          let wait = busy(v, destOf(v)), stopAt = wait ? left - v.len - 45 : left;
+          let wait = busy(v, destOf(v)), stopAt = wait ? left - 2.5 * v.len - 60 : left; // (well off it: one leaving on another course may cross this one's)
           if (c.leg.pass != null && v.s < passAt(c) + 1) { // a narrow leg, short of its passing place or at it
             const here = Math.max(0, passAt(c) - v.s);
             if (wait) stopAt = here;
