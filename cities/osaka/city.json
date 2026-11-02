@@ -113,9 +113,9 @@
       "title": "Osaka from open data",
       "text": "{buildings} buildings from Project PLATEAU, OpenStreetMap and Overture Maps, on GSI's 5 m laser terrain under GSI aerial photos, from Umeda in the north to Shinsekai in the south.",
       "cam": [
-        -4200,
-        -6200,
-        2600
+        -2050,
+        -2850,
+        1900
       ],
       "tgt": [
         -300,
