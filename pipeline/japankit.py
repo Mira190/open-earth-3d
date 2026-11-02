@@ -234,6 +234,14 @@ def overture(C, layer, where="TRUE"):
     return out
 
 
+def police_box(b, geoms):
+    """A koban (交番), a police box: a small one- or two-storey building, whose height the build
+    otherwise estimates from its taller neighbours. A typical 6 m where the survey has none."""
+    if not (b["name"] or "").endswith("交番"):
+        return geoms
+    return [[q[0], q[1], 6.0, "typical", q[4]] if q[3] in ("default", "ml", "estimate") or q[2] > 9.0 else q for q in geoms]
+
+
 def footprint_frame(g, toward=None):
     """A footprint's minimum rectangle: centre, unit long axis (turned to face `toward` if given) and
     the half-sizes along it and across."""

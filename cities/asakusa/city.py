@@ -114,6 +114,7 @@ def adjust_building(b, cls, g, geoms, ctx):
     lm = ctx.landmarks
     if g.geom_type != "Polygon":
         return geoms
+    geoms = jk.police_box(b, geoms)
     top = max((q[2] for q in geoms), default=0.0)
     c = g.centroid
     if name in (KAMINARIMON, HOZOMON, PAGODA, HONDO) and g.distance(Point(*ctx.city.fwd.transform(*NAKAMISE))) < 260:
@@ -139,7 +140,7 @@ def adjust_building(b, cls, g, geoms, ctx):
         b["facade_color"] = "#18181a"   # black granite
     if name == ASAHI_HQ:
         b["facade_color"] = "#c98a2a"   # the amber glass of a glass of beer
-    if top < 9 and g.area < 600 and g.distance(nakamise_line(ctx)) < 6.0:
+    if top < 9 and g.area < 600 and not name.endswith("交番") and g.distance(nakamise_line(ctx)) < 6.0:
         b["facade_color"] = "#b4412d"   # Nakamise's vermilion shop fronts, the low rows either side of the approach
     return geoms
 
@@ -361,7 +362,13 @@ def pagoda(K, g, ax):
         block(K("vermilion"), P, -w - 0.5, w + 0.5, -w - 0.5, w + 0.5, zw, zw + h * 0.12)
         block(K("vermilion_dark"), P, -w - 1.2, w + 1.2, -w - 1.2, w + 1.2, zw + h * 0.12, zw + h * 0.22)
         ze = zw + h * 0.22
-        jk.hip_roof(K("tile_ti"), K("soffit"), P, w + 1.2, w + 1.2, ze, ze + h * 0.34, ov=2.6 - 0.12 * s, k=1.7)
+        E = w + 1.2 + 2.6 - 0.12 * s
+        if s < 4:   # the roof runs up into the next storey's walls, so no gap shows between them
+            w2 = 4.9 * (1 - 0.07 * (s + 1))
+            H = (za + h - ze) / ((E - w2 + 0.3) / E) ** 1.7
+        else:
+            H = h * 0.34
+        jk.hip_roof(K("tile_ti"), K("soffit"), P, w + 1.2, w + 1.2, ze, ze + H, ov=2.6 - 0.12 * s, k=1.7)
         # the balcony rail of the storey above sits on the roof
         if s < 4:
             w2 = 4.9 * (1 - 0.07 * (s + 1))

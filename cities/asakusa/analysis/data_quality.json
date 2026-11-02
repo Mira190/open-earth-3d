@@ -1,0 +1,53 @@
+{
+ "ml_heights": {
+  "buildings": 20210,
+  "with_height": 2424,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -1300,
+   1300,
+   -820,
+   820
+  ],
+  "land": {
+   "samples": 4841,
+   "median_excess_m": 8.0,
+   "p90_excess_m": 13.0
+  },
+  "under_buildings": {
+   "samples": 2530,
+   "median_excess_m": 8.6,
+   "p90_excess_m": 13.3
+  },
+  "open_ground": {
+   "samples": 2311,
+   "median_excess_m": 7.0,
+   "p90_excess_m": 12.6
+  },
+  "points": {
+   "Senso-ji": {
+    "terrarium_m": 8.3,
+    "dem_m": 3.6
+   },
+   "Kaminarimon": {
+    "terrarium_m": 10.0,
+    "dem_m": 3.9
+   },
+   "Tokyo Skytree": {
+    "terrarium_m": 5.1,
+    "dem_m": 1.9
+   },
+   "Azumabashi": {
+    "terrarium_m": 5.1,
+    "dem_m": 2.3
+   }
+  }
+ }
+}

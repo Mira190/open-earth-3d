@@ -78,6 +78,7 @@ def adjust_building(b, cls, g, geoms, ctx):
     lm = ctx.landmarks
     if g.geom_type != "Polygon":
         return geoms
+    geoms = jk.police_box(b, geoms)
     top = max((q[2] for q in geoms), default=0.0)
     c = g.centroid
     gz = ctx.ground(c.x, c.y)
