@@ -74,6 +74,30 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   }
   await shot('travel');
 
+  // the big map zooms and pans: the wheel zooms about the pointer and names crowded out at the whole city come back,
+  // a drag pans without dropping a waypoint, and the fit button shows the whole city again
+  const mz = await (async () => {
+    await p.evaluate(() => { const g = window.__game; if (document.getElementById('g-bigmap').hidden) g.toggleMap(); });
+    await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
+    const r = await p.evaluate(() => { const b = document.getElementById('g-bigmap-c').getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, w: b.width }; });
+    const v0 = await p.evaluate(() => window.__game.mapView());
+    await p.mouse.move(r.x, r.y);
+    for (let i = 0; i < 6; i++) { await p.mouse.wheel(0, -240); await p.waitForTimeout(40); }
+    await p.waitForTimeout(120);
+    const v1 = await p.evaluate(() => window.__game.mapView());
+    await p.mouse.down(); await p.mouse.move(r.x + 120, r.y + 60, { steps: 6 }); await p.mouse.up();
+    await p.waitForTimeout(120);
+    const v2 = await p.evaluate(() => window.__game.mapView());
+    await p.click('#g-mapzoom [data-z="fit"]');
+    await p.waitForTimeout(120);
+    const v3 = await p.evaluate(() => window.__game.mapView());
+    await p.evaluate(() => { document.getElementById('g-bigmap').hidden = true; });
+    return { v0, v1, v2, v3 };
+  })();
+  check(mz.v1.z > 2 && mz.v1.names.length >= mz.v0.names.length, `the map zooms with the wheel (×${mz.v1.z.toFixed(1)}; ${mz.v0.names.length} names at the whole city, ${mz.v1.names.length} zoomed in)`);
+  check(Math.hypot(mz.v2.cx - mz.v1.cx, mz.v2.cy - mz.v1.cy) > 5 && !mz.v2.picked, `a drag pans the map (${Math.hypot(mz.v2.cx - mz.v1.cx, mz.v2.cy - mz.v1.cy).toFixed(0)} map px) without picking a spot`);
+  check(mz.v3.z === 1, 'the fit button shows the whole city again');
+
   // the first quest giver: walk up and talk
   const talk = await p.evaluate(() => {
     const g = window.__game, q = g.quest(), n = q && g.npcs.find(n => n.id === q.giver);

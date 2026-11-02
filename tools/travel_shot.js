@@ -35,8 +35,11 @@ const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = proce
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
-  const play = await p.$('#gt-play');
-  if (play) await play.click().catch(() => {});
+  // the title card comes up once the loader has faded, which on a loaded machine is well after window.__game:
+  // wait for it, then play (through the DOM, which a busy page cannot time out)
+  await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 600000 }).catch(() => console.log('no title card'));
+  await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });
+  await p.waitForFunction(() => { const t = document.getElementById('g-title'); return !t || t.hidden; }, null, { timeout: 120000 }).catch(() => console.log('the title is still up'));
   await p.evaluate(([time, date]) => {
     const g = window.__game;
     g.advance(1);
@@ -76,7 +79,9 @@ const [,, city = 'sydney', outDir = '.', width = '1440', height = '900'] = proce
       g.advance(0.5);
       const pl = g.player, dx = lm.at[0] - pl.x, dy = lm.at[1] - pl.y;
       // in frame: the landmark's centre at two thirds of its height above its ground, projected through the camera
-      const gz = Math.max(0, g.nav.terrain(lm.at[0], lm.at[1])), v = new THREE.Vector3(lm.at[0], gz + ((lm.top || gz + 20) - gz) * 0.66, -lm.at[1]).project(g.camera);
+      // (a city.json "arrivals" top, the part it frames, in place of the label's)
+      const spec = ((g.scene.city || {}).arrivals || {})[lm.name] || {}, gz = Math.max(0, g.nav.terrain(lm.at[0], lm.at[1]));
+      const top = spec.top ? gz + spec.top : lm.top || gz + 20, v = new THREE.Vector3(lm.at[0], gz + (top - gz) * 0.66, -lm.at[1]).project(g.camera);
       return { ok, mode: pl.mode, dist: Math.hypot(dx, dy), z: pl.z, floor: pl.floor, inFrame: Math.abs(v.x) < 1 && Math.abs(v.y) < 1 && v.z < 1, ndc: [v.x, v.y] };
     }, d.i);
     console.log(`${r.ok && r.inFrame ? 'ok  ' : 'MISS'} ${d.name}: ${r.mode}, ${r.dist.toFixed(0)} m away, z ${r.z.toFixed(1)} (${r.floor}), in frame ${r.inFrame} [${r.ndc.map(x => x.toFixed(2))}]`);

@@ -59,6 +59,10 @@
     "Tower 1": "One Sydney Harbour",
     "Chifley Tower": "Chifley Tower"
   },
+  "arrivals": {
+    "Town Hall": {"front": 90},
+    "Customs House": {"front": 0}
+  },
   "minor_labels": ["Customs House", "Queen Victoria Building", "Town Hall", "St Mary's Cathedral"],
   "place_labels": ["Hyde Park", "Martin Place", "Barangaroo Reserve", "Royal Botanic Garden", "Wynyard Park", "The Domain"],
   "protection": {

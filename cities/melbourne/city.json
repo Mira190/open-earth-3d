@@ -95,6 +95,13 @@
     "Southern Cross": "Southern Cross Station",
     "Crown Melbourne": "Crown"
   },
+  "arrivals": {
+    "Flinders Street Station": {"front": 10},
+    "Parliament House": {"front": 250},
+    "State Library Victoria": {"front": 250},
+    "Town Hall": {"front": 250},
+    "Royal Exhibition Building": {"front": 180}
+  },
   "minor_labels": [
     "Town Hall",
     "Parliament House",

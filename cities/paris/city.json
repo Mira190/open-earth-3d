@@ -144,6 +144,19 @@
     "Institut de France": "Institut de France",
     "Tour Zamansky": "Tour Zamansky"
   },
+  "arrivals": {
+    "Notre-Dame": {"front": 270},
+    "Panthéon": {"front": 270},
+    "Opéra Garnier": {"front": 155},
+    "Les Invalides": {"front": 0},
+    "La Madeleine": {"front": 180},
+    "Assemblée nationale": {"front": 0},
+    "Centre Pompidou": {"front": 270},
+    "Saint-Sulpice": {"front": 270},
+    "Hôtel de Ville": {"front": 260},
+    "Palais de Chaillot": {"front": 135},
+    "Palais du Luxembourg": {"front": 180}
+  },
   "minor_labels": [
     "Palais de Justice",
     "Petit Palais",

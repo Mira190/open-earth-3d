@@ -111,6 +111,11 @@
     "Noorderkerk": "Noorderkerk",
     "Sint-Franciscus Xaveriuskerk": "De Krijtberg"
   },
+  "arrivals": {
+    "Centraal Station": {"front": 180},
+    "Royal Palace": {"front": 95},
+    "Beurs van Berlage": {"front": 270}
+  },
   "minor_labels": [
     "Schreierstoren",
     "Magna Plaza",
