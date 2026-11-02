@@ -320,6 +320,29 @@ The views switch in place, without reloading the page.
     (off on software renderers and small screens). The output is
     premultiplied: the reflection adds on top, and the bottom shows through
     what the water column and the surface's reflection leave.
+  - **Glitter:** where the waves are smaller than a pixel, the sun's lobe they
+    average to, seen at a grazing angle, is hundreds of times a white wall
+    (the 1 / 4 cos θv of the microfacet model). With a low sun over the water
+    it filled a band from the horizon down as one blown slab, and the bloom
+    carried it up into the sky as a column (issue 42). `oeGlitter` draws that
+    lobe the way a photograph shows it: as facets, a pattern anchored to the
+    water two or three pixels across (two octaves chosen by distance, so it
+    holds still as the camera moves), the stronger the lobe the more of them
+    lit, so the path is dense in its middle and sparkles at its fringe, with
+    dark water between; two layers drifting with the wind make them twinkle.
+    Where the FFT resolves the waves they make their own glints. Every glint
+    rolls off from 6 toward 24, still white after the tone curve, so the
+    bloom (ceiling 64) makes each a small star rather than a veil. The flat
+    sheet takes the same (`patchGlitter`). The idea, a stochastic set of
+    facets whose density follows the lobe, is from the glint literature
+    (Jakob et al. 2014, "Discrete stochastic microfacet models"; Zirr and
+    Kaplanyan 2016, "Real-time rendering of procedural multiscale
+    materials"; Bruneton, Neyret and Holzschuch 2010 for the ocean's
+    geometry-to-BRDF hand-over); no code is taken from them. The reef
+    sites' ocean (`reef/ocean.js`) has its own Cox–Munk glitter from the
+    resolved slope variance. `tools/glare_probe.js <city> --tour` checks
+    every tour stop, and each stop's camera turned to a low sun, for a
+    glare that blooms.
   - **Shore:** foam by the kind of shore and the size of the waves:
     - a faint broken lap against a seawall;
     - splash off rock;

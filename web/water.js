@@ -266,6 +266,52 @@ void main() {
     return g;
   }
 
+  // ---------------------------------------------------------------- the sun's glitter
+  // Where the waves are smaller than a pixel they are drawn as roughness, and the sun's lobe they
+  // average to, seen at a grazing angle, is hundreds of times a white wall: with the sun low over
+  // the water it filled a band from the horizon down as one blown slab, and the bloom carried it
+  // up into the sky as a column of light (issue 42, Sydney's winter-morning stop). A photograph
+  // of a low sun over water shows the facets instead: points of sun along a path, dark water
+  // between them, the path densest in its middle and sparkling at its fringe. Here the facets are
+  // a pattern anchored to the water two or three pixels across (two octaves picked by distance, so it
+  // holds still as the camera moves), the stronger the lobe the more of them lit, twinkling as
+  // two layers drift with the wind; where the waves resolve they make their own glints and keep
+  // them. Every glint rolls off toward a ceiling (GLINT_PEAK) that the tone curve still shows
+  // white, low enough for the bloom to make each a small star rather than a veil.
+  const GLINT_KNEE = 6.0, GLINT_PEAK = 24.0;
+  const GLINT = `
+float oeGlintHash(vec2 i) { i = mod(i, 1024.0); vec3 p = fract(vec3(i.xyx) * 0.1031); p += dot(p, p.yzx + 33.33); return fract((p.x + p.y) * p.z); }
+float oeGlintNoise(vec2 q) { vec2 i = floor(q), f = fract(q); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(oeGlintHash(i), oeGlintHash(i + vec2(1, 0)), f.x), mix(oeGlintHash(i + vec2(0, 1)), oeGlintHash(i + vec2(1, 1)), f.x), f.y); }
+float oeGlintAt(vec2 xz, float cell, float t) {
+  return oeGlintNoise((xz + vec2(1.1, 0.4) * t) / cell) * oeGlintNoise((xz * 1.37 - vec2(0.6, 1.0) * t) / cell);
+}
+// spec: the sun's specular light off this pixel; camD: metres from the camera; lostK: 0 where the
+// waves resolve, 1 where they are all roughness; t: seconds
+vec3 oeGlitter(vec3 spec, vec2 xz, float camD, float lostK, float t) {
+  float m = max(max(spec.r, spec.g), spec.b);
+  if (m < 1e-4) return spec;
+  float L = log2(max(camD * 0.003, 0.5)), c0 = exp2(floor(L));
+  float n = mix(oeGlintAt(xz, c0, t), oeGlintAt(xz, 2.0 * c0, t), fract(L));
+  // off the path a facet here and there, no brighter than the sheen it stands for; in the path
+  // they crowd together and, a few times brighter than their average, reach the ceiling
+  float dens = clamp(log2(1.0 + m) / 8.0, 0.0, 1.0);
+  float lit = smoothstep(0.5 - 0.18 * dens, 0.62 - 0.16 * dens, n);
+  vec3 s = spec * mix(1.0, lit * (0.7 + 1.6 * dens * dens), smoothstep(0.15, 0.5, lostK));
+  float sm = max(max(s.r, s.g), s.b);
+  return sm > ${GLINT_KNEE.toFixed(1)} ? s * (${GLINT_KNEE.toFixed(1)} + ${(GLINT_PEAK - GLINT_KNEE).toFixed(1)} * (1.0 - exp(-(sm - ${GLINT_KNEE.toFixed(1)}) / ${(GLINT_PEAK - GLINT_KNEE).toFixed(1)}))) / sm : s;
+}`;
+  // the same for a plain three.js material (the flat sheet where the GPU has no float targets):
+  // t a uniform { value: seconds }
+  function patchGlitter(sh, t) {
+    sh.uniforms.uGlintT = t;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vGlintXZ;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\nvGlintXZ = (modelMatrix * vec4(transformed, 1.0)).xz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\nvarying vec2 vGlintXZ; uniform float uGlintT;\n${GLINT}`)
+      .replace('vec3 totalSpecular = reflectedLight.directSpecular + reflectedLight.indirectSpecular;',
+        'vec3 totalSpecular = oeGlitter(reflectedLight.directSpecular, vGlintXZ, length(vGlintXZ - cameraPosition.xz), 1.0, uGlintT) + reflectedLight.indirectSpecular;');
+  }
+
   // ---------------------------------------------------------------- the water
   // cfg: city.json "water" block ("waves", "colour", "shallow_colour", "clarity_m"); shore:
   // { texture, x0, y1, w, h, slopes, floor_m } in local metres (scene.json "shore"), or null;
@@ -339,6 +385,7 @@ ${sizes.map((_, c) => `  d += textureLod(uDisp[${c}], xz / uSize[${c}], 0.0).xyz
         .replace('#include <common>', `#include <common>
 ${COMMON}
 varying vec3 vWave; varying vec2 vXZ; varying float vSpacing;
+${GLINT}
 float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float wNoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(wHash(i), wHash(i + vec2(1, 0)), f.x), mix(wHash(i + vec2(0, 1)), wHash(i + vec2(1, 1)), f.x), f.y); }
@@ -416,7 +463,8 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
         // the water shows through what the water column and the surface's reflection leave
         .replace('vec3 outgoingLight = totalDiffuse + totalSpecular + totalEmissiveRadiance;',
           `float wF = 0.02 + 0.98 * pow(1.0 - saturate(dot(normal, geometryViewDir)), 5.0);
-  vec3 outgoingLight = (totalDiffuse + totalEmissiveRadiance) * wAlpha * (1.0 - wF) + totalSpecular;`)
+  vec3 wSun = reflectedLight.directSpecular; // the sun's glints, as facets (oeGlitter)
+  vec3 outgoingLight = (totalDiffuse + totalEmissiveRadiance) * wAlpha * (1.0 - wF) + totalSpecular - wSun + oeGlitter(wSun, vXZ, camD, clamp(lost / float(${C}), 0.0, 1.0), uTime);`)
         .replace('#include <opaque_fragment>', 'gl_FragColor = vec4(outgoingLight, 1.0 - (1.0 - wAlpha) * (1.0 - wF));')
         .replace('#include <premultiplied_alpha_fragment>', '');
     };
@@ -533,5 +581,5 @@ vec4 shoreAt(vec2 xz) {
     return /swiftshader|llvmpipe|software|basic render/i.test(dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '');
   }
 
-  return { create, software, FFT, spectrum, significantHeight, system, polarGrid };
+  return { create, software, patchGlitter, FFT, spectrum, significantHeight, system, polarGrid };
 })();

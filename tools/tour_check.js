@@ -5,7 +5,9 @@
 //     every segment is full, the camera turns slowly, and a few seconds on it has not moved on;
 //   - Watch again starts from the first stop, and Finish on the last stop ends the tour too;
 //   - at every stop the scene, drawn into a float target, holds no NaN or infinity and nothing
-//     brighter than a lit city (the bloom turns one such pixel into a ball of light that flashes);
+//     brighter than a lit city (the bloom turns one such pixel into a ball of light that flashes),
+//     and no more than GLARE_SHARE of it above 16, where a low sun's glare over water blooms into a
+//     veil or a column (issue 42; tools/glare_probe.js takes such a view apart);
 //   - no frame in a flight between stops is a flat colour, and two frames of a still view differ
 //     as a frame that flashes or pumps would: the mean by under 3 levels, under a tenth of 4x4 blocks.
 //   - the context lost on purpose (WEBGL_lose_context): the view holds under a note, and once the
@@ -21,6 +23,7 @@ const [,, city = 'tokyo', outDir = `/tmp/tour-${city}`, size = '1280x800'] = pro
 const [W, H] = size.split('x').map(Number);
 const PORT = process.env.PORT || 8800;
 const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks near 16
+const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown column was 1.2%, a glitter path stays under 0.6%
 
 (async () => {
   fs.mkdirSync(outDir, { recursive: true });
@@ -77,12 +80,12 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
     const px = new Float32Array(w * h * 4);
     R.readRenderTargetPixels(rt, 0, 0, w, h, px);
     rt.dispose();
-    let max = 0, bad = 0;
+    let max = 0, bad = 0, over = 0;
     for (let i = 0; i < w * h; i++) {
       const m = Math.max(px[4 * i], px[4 * i + 1], px[4 * i + 2]);
-      if (!Number.isFinite(m)) bad++; else if (m > max) max = m;
+      if (!Number.isFinite(m)) bad++; else { if (m > max) max = m; if (m > 16) over++; }
     }
-    return { max, bad };
+    return { max, bad, share: over / (w * h) };
   });
   const state = () => p.evaluate(() => {
     const C = window.__city, $ = s => document.querySelector(s);
@@ -116,6 +119,7 @@ const HDR_MAX = 1024; // the materials' own ceiling (lens.js); a lit city peaks 
     const h = await hdr();
     worstHdr = { max: Math.max(worstHdr.max, h.max), bad: worstHdr.bad + h.bad };
     check(`stop ${i + 1}: no NaN, infinity or runaway highlight`, h.bad === 0 && h.max <= HDR_MAX, `max ${h.max.toFixed(1)}, non-finite ${h.bad}`);
+    check(`stop ${i + 1}: no glare that blooms`, h.share <= GLARE_SHARE, `${(h.share * 100).toFixed(2)}% of the frame above 16`);
     const a = await grab(`stop-${pad(i + 1)}.jpg`);
     check(`stop ${i + 1}: drawn`, a.sd >= 4, `luma ${a.mean.toFixed(0)} ± ${a.sd.toFixed(1)}`);
     await p.waitForTimeout(400);
