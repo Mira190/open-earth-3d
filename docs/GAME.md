@@ -666,8 +666,9 @@ Sydney's traffic stood still a third of the time.
   `pole`, `housing`, `board`, `border`, `mast`: the road rank from which an arm
   has one). The lit lamp blooms, and after dark it glows towards the traffic
   facing it, not from behind. An arm with a turn arrow has an arrow lantern
-  beside the one over its lane (under it in Japan): red, amber and green
-  arrows, dark while the turn filters on the main road's green. Every arm's
+  beside the one over its lane: red, amber and green arrows, dark while the
+  turn filters on the main road's green. Japan's is a row of green arrows (left,
+  ahead, right) under the lantern, the turn's lit on its phase. Every arm's
   crossing has a walk signal on a post on each kerb, facing across: a red
   figure standing over a green one walking, the red flashing while those
   already out finish crossing. The lamps change only when a signal does.

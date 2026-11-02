@@ -677,7 +677,9 @@ window.OEJunctions = (function () {
       const arrowG = new THREE.ShapeGeometry(sh).translate(0, 0, 0.116);
       arrH = inst(horiz ? merge([box(1.02, 0.36, 0.22, 0, 0, 0)]) : geo.housing, mat(S.housing), arrows.length);
       const arrB = !horiz && geo.board ? inst(geo.board, mat(S.board), arrows.length) : null, arrR = !horiz && geo.border ? inst(geo.border, new THREE.MeshStandardMaterial({ color: lin(S.border), roughness: 0.4 }), arrows.length) : null;
-      arrL = [0, 1, 2].map(() => { const M = inst(arrowG, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true, side: THREE.DoubleSide }), arrows.length); M.castShadow = false; return M; });
+      // (Japan's: left, ahead and right, green only, under the lantern; the turn's lights on its arrow)
+      const turnG = k => (k === 1 ? arrowG.clone().rotateZ(Math.PI / 2 * d) : k === (d > 0 ? 0 : 2) ? arrowG.clone().rotateZ(Math.PI) : arrowG);
+      arrL = [0, 1, 2].map(k => { const M = inst(horiz ? turnG(k) : arrowG, new THREE.MeshBasicMaterial({ color: 0xffffff, toneMapped: true, side: THREE.DoubleSide }), arrows.length); M.castShadow = false; return M; });
       arrows.forEach((A, i) => {
         const o = A.o;
         q.setFromAxisAngle(up, Math.PI - o.h);
@@ -764,7 +766,8 @@ window.OEJunctions = (function () {
         const s = arrow(arrows[i].o.a);
         if (aShown[i] === s) return;
         aShown[i] = s; ch2 = true;
-        for (const k of ['r', 'y', 'g']) { const C = s === k ? LIT[k] : DARK[k]; arrL[order[k]].setColorAt(i, c3.setRGB(C[0], C[1], C[2])); }
+        if (horiz) for (let k = 0; k < 3; k++) { const C = s === 'g' && k === (side > 0 ? 2 : 0) ? LIT.g : DARK.g; arrL[k].setColorAt(i, c3.setRGB(C[0], C[1], C[2])); }
+        else for (const k of ['r', 'y', 'g']) { const C = s === k ? LIT[k] : DARK[k]; arrL[order[k]].setColorAt(i, c3.setRGB(C[0], C[1], C[2])); }
       }, 'A');
       if (ch2) for (const M of arrL) M.instanceColor.needsUpdate = true;
       ch2 = false;

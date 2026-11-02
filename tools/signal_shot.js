@@ -2,7 +2,7 @@
 // junctions with signals near the start (or the ones named), the surveyor stands on a corner and
 // the camera looks over the shoulder across the junction, at each clock time given, after the
 // traffic has run a while (VIEW=kerb: on the kerb by the main arm's crossing, looking across at
-// the walk signal). Prints what the signals and the traffic were doing and the page's errors.
+// the walk signal; PHASE=2: the junction shown in its arrow phase). Prints what the signals and the traffic were doing and the page's errors.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/signal_shot.js sydney out_dir [count|id,id|arrows<count>] [HH:MM,HH:MM] [WxH]
 const { chromium } = require('playwright');
@@ -39,7 +39,7 @@ const [,, city = 'sydney', outDir = '.', which = '3', times = '10:30,19:40,22:00
   for (const id of ids) {
     for (const hhmm of times.split(',')) {
       const [hh, mm] = hhmm.split(':').map(Number);
-      const info = await p.evaluate(([id, min, view]) => {
+      const info = await p.evaluate(([id, min, view, phase]) => {
         const g = window.__game, JN = g.cars.junctions, j = JN.J[id], c = g.clock;
         if (g.cine.active) g.cine.skip();
         g.setClock(c.y, c.m, c.d, min);
@@ -56,9 +56,10 @@ const [,, city = 'sydney', outDir = '.', which = '3', times = '10:30,19:40,22:00
         g.player.h = Math.atan2(tx - x, ty - y);
         Object.assign(g.cam, { mode: 'chase', yaw: g.player.h, pitch: 0.02, dist: 4, distTo: 0, yawTo: null, lastInput: -10 });
         g.advance(25);
+        if (phase !== '') { j.ph = Number(phase); j.st = 'g'; j.t = 0; j.nxt = j.ph === 1 ? 0 : 1; if (JN.heads) JN.heads.update(); } // (PHASE=n: shown in that phase, an arrow's say)
         const lights = j.arms.filter(a => a.in).map(a => JN.light(a) + (JN.arrow(a) ? `(arrow ${JN.arrow(a)})` : '')).join(' ') + `, phase ${j.ph}, walk ${j.arms.map(a => (JN.walk(a) ? 'W' : '-')).join('')}`;
         return { id, at: [Math.round(j.x), Math.round(j.y)], arms: j.arms.length, lights, cars: g.cars.C.filter(q => q.line >= 0 && Math.hypot(q.x - j.x, q.y - j.y) < 60).length };
-      }, [id, hh * 60 + mm, process.env.VIEW || '']);
+      }, [id, hh * 60 + mm, process.env.VIEW || '', process.env.PHASE || '']);
       const png = await p.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => res(document.getElementById('game-gl').toDataURL('image/png'))))));
       const file = path.join(outDir, `${city}-j${id}-${hhmm.replace(':', '')}-${w}${process.env.VIEW ? '-' + process.env.VIEW : ''}.png`);
       fs.writeFileSync(file, Buffer.from(png.split(',')[1], 'base64'));
