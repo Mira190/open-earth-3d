@@ -107,15 +107,31 @@ Every city's game has the same three ways to go by road:
   seat (<kbd>V</kbd>) you see the dashboard and the wheel turning. The phone
   brings it to the nearest kerb if you have walked far from it.
 - **A taxi:** stand at the kerb and press <kbd>Y</kbd>. You raise your hand, and
-  the nearest free taxi coming your way, by road, pulls in on your side of the
+  the quickest free taxi coming your way, by road, pulls in on your side of the
   street with its hazard lights on. If none is close, one comes round the corner.
   Get in with <kbd>E</kbd>. The driver asks where to: your waypoint, the next
   step of the survey, your car, the nearest landmarks, the wharves you have used,
   or where you started.
 - **A ride:** order one on the phone (<kbd>N</kbd>), as GTA VI's Ryde Me app does.
-  Choose where to go first, and a private-hire car is sent from a few hundred
-  metres away. The phone shows its driver, colour, model and number plate, and
-  how far away it is.
+  Choose where to go first, and a private-hire car sets out for the nearest kerb.
+  The phone shows it as a ride app does: a map framed on the car, the pick-up
+  and you, with the route it still has to drive, the car moving along it, the
+  pick-up pin and a dotted walk to it from your blue dot; the time it will take,
+  the driver with a rating, the car and its number plate. On the way the map
+  follows the car to where you are going. The minimap draws the same route and
+  opens out to hold the car, and the walk to the pick-up gets the gold route.
+
+A taxi or a ride reaches you within half a minute. The router searches the street
+network backwards from the pick-up for points 110 to 270 m away by road; each is
+timed by driving its route in a dry run (the driver's own rules, nothing in the
+way), and the one that takes 14 to 25 s, out of your sight where it can be, is
+chosen. The same dry run gives the time the phone shows: it counts down as the
+car comes and holds while it waits in traffic, as an app's does. Where the kerb it
+is to pull in at is taken, by your own car or a stopped one, it pulls in just
+behind; held up for good near the end, it stops where it is with its hazards on.
+Running more than six seconds late in a jam and out of the camera's view, it
+moves on along its route to a clear stretch of road, as games keep the cars that
+come for you on time. A driver waits five minutes at the pick-up.
 
 The driver takes you by road, along a route over the street network, keeping to
 the lane, slowing for bends and for the traffic, and signalling into the kerb at
