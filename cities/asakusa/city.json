@@ -113,15 +113,14 @@
       "hold": 10
     },
     {
-      "title": "Where the heights come from",
-      "provenance": true,
+      "title": "The Sumida and the Asahi flame",
+      "text": "Across Azumabashi: the Asahi Beer Hall, black granite under Philippe Starck's golden flame (1989), and the headquarters beside it, amber glass with a white crown, a glass of beer. The water bus leaves from the pier at the bridge's foot.",
+      "cam": [-330, -150, 28],
+      "tgt": [-107, -241, 50],
       "date": [11, 2],
-      "from": "15:00",
-      "to": "15:30",
-      "hold": 9,
-      "cam": [-1300, -1300, 600],
-      "tgt": [0, 0, 40],
-      "text": "Blue: surveyed height (PLATEAU or OpenStreetMap). Orange: floor count. Green: estimated. Grey: a typical height for its kind."
+      "from": "16:00",
+      "to": "16:40",
+      "hold": 9
     }
   ],
   "renders": [],

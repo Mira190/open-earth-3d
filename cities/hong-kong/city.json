@@ -545,15 +545,25 @@
       "hold": 9
     },
     {
-      "title": "Heights you can check",
-      "text": "Blue is a measured height. The Lands Department surveys the top level of every building block; where its blocks miss a footprint, the 2020 LiDAR scan measures the roof. Against the laser, the surveyed roofs agree to {lidar:median_abs_m} m at the median; against the published list of tallest buildings, to {acc:median_abs_error_pct}%.",
-      "cam": [500, -1500, 950],
-      "tgt": [-300, -300, 80],
-      "date": [11, 15],
+      "title": "HSBC Main Building",
+      "date": [
+        11,
+        15
+      ],
       "from": "11:00",
       "to": "12:00",
       "hold": 10,
-      "provenance": true
+      "cam": [
+        -300,
+        -320,
+        230
+      ],
+      "tgt": [
+        -409,
+        -633,
+        95
+      ],
+      "text": "Norman Foster's bank, finished in 1985, hangs its floors from steel trusses carried on eight masts, so at street level there is nothing but the masts: the ground floor is a public passage under the banking hall, open from Queen's Road to Statue Square. 179 m to the top."
     },
     {
       "title": "Bank of China Tower",

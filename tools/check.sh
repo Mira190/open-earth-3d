@@ -77,9 +77,6 @@ if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
   for _ in $(seq 50); do curl -s -o /dev/null "http://localhost:$PORT/index.html" && break; sleep 0.2; done
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
-# the title and the viewer read web/version.json, which the Pages deploy writes (.github/workflows/pages.yml)
-# and git ignores: a stand-in here, so its 404 is not counted as a page error
-[ -f web/version.json ] || printf '{"version":"%s-local","commit":"%s","built":"%s"}\n' "$(tr -d '[:space:]' < VERSION)" "$(git rev-parse --short HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > web/version.json
 export PORT
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 

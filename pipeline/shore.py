@@ -40,6 +40,108 @@ def without_raised(C, con, path, rows, sea):
         return sea
     cut = shapely.union_all([C.to_local(swkb.loads(bytes(r["wkb"]))) for r in rows(con, path) if r["class"] in classes])
     return [q for p in sea for q in polygons(p.difference(cut)) if q.area > 1]
+# Decks over the water that OpenStreetMap does not map as a pier polygon (issue 50): a car park
+# that is a pier (Hong Kong's Pier No. 3, man_made=pier), a car park, helipad or apron out on the
+# water, and a pier mapped as a line (Tokyo's finger piers on the Sumida). Overture's base water
+# runs straight over them, so without a deck the photograph of the car park shows through the water.
+DECK_CLASSES = {"parking", "helipad", "heliport", "apron"}
+DECK_IN_WATER = 0.5  # a mapped area this much in the water is a deck over it
+ROOF_ELE_M = 10.0  # a pad mapped this high (ele) is on a roof, not a deck (Hong Kong's Sky Shuttle Heliport)
+LINE_PIER_HALF_M = 1.5  # a pier mapped as a line, with nothing on it: a 3 m jetty
+ROAD_HALF_M = 3.0  # half a road's width on a pier, past the road's centre line
+PATH_HALF_M = 1.0  # half a footpath's
+PATHS = {"footway", "path", "pedestrian", "cycleway", "steps", "bridleway", "sidewalk", "crosswalk"}
+ROAD_ON_PIER_M = 15.0  # a road this near a line pier, out over the water, runs along its deck
+LINE_PIER_MAX_HALF_M = 12.0
+
+
+def _num(v):
+    try:
+        return float(str(v).split(";")[0])
+    except (TypeError, ValueError):
+        return None
+
+
+def deck_like(r):
+    """Whether an Overture infrastructure row stands at the waterfront's level: not underground
+    (level < 0, parking=underground: Amsterdam's garages under its canals), not on a roof (a
+    building tag, or mapped high: a rooftop heliport)."""
+    tags = dict(r.get("source_tags") or {})
+    lv = r.get("level")
+    if (lv is not None and lv < 0) or tags.get("parking") in ("underground", "multi-storey", "rooftop") or tags.get("location") in ("underground", "roof", "rooftop"):
+        return False
+    if any((_num(x) or 0) < 0 for x in str(tags.get("level", "")).split(";") if x):
+        return False
+    if tags.get("building") or (_num(tags.get("ele")) or 0) > ROOF_ELE_M or tags.get("aeroway") == "helipad" and tags.get("location") == "roof":
+        return False
+    return True
+
+
+def decks(C, con, raw, rows, sea):
+    """Deck polygons (local frame) for the structures over the water that are not pier polygons:
+    any area tagged man_made=pier whatever its Overture class, areas of DECK_CLASSES mostly in the
+    water and at ground level (deck_like), and the water part of each line pier, as wide as the
+    roads that run along it over the water (a service road down a finger pier), else a 3 m jetty.
+    pipeline/build_scene.py adds them to the piers."""
+    path = raw("infrastructure")
+    if not sea or not os.path.exists(path):
+        return []
+    wet = shapely.union_all(sea)
+    shapely.prepare(wet)
+    con_cols = {d[0] for d in con.execute(f"DESCRIBE SELECT * FROM '{path}'").fetchall()}
+    tagged = "source_tags" in con_cols
+    out, lines = [], []
+    for r in rows(con, path, "class, wkb" + (", level, source_tags" if tagged else "")):
+        tags = dict(r.get("source_tags") or {})
+        pier = r["class"] == "pier" or tags.get("man_made") == "pier"
+        if not pier and r["class"] not in DECK_CLASSES:
+            continue
+        g = C.to_local(swkb.loads(bytes(r["wkb"])))
+        if pier and r["class"] == "pier":
+            lines += [g] if g.geom_type == "LineString" else [q for q in getattr(g, "geoms", []) if q.geom_type == "LineString"]
+            continue  # its polygons are the mapped piers already
+        if not pier and not (tagged and deck_like(r)):
+            continue  # without the tags, nothing tells a garage under a canal from a car park on a pier
+        for p in polygons(g):
+            if p.area > 20 and wet.intersection(p).area >= DECK_IN_WATER * p.area:
+                out.append(p)
+    if lines:
+        roads, widths = [], []
+        seg = raw("segment")
+        if os.path.exists(seg):
+            for r in rows(con, seg, "subtype, class, road_flags, level_rules, wkb"):
+                if r["subtype"] != "road" or any((lv.get("value") or 0) != 0 for lv in r["level_rules"] or []):
+                    continue
+                if any(set(f.get("values") or []) & {"is_bridge", "is_tunnel"} for f in r["road_flags"] or []):
+                    continue
+                roads.append(C.to_local(swkb.loads(bytes(r["wkb"]))))
+                widths.append(PATH_HALF_M if r["class"] in PATHS else ROAD_HALF_M)
+        tree = shapely.STRtree(roads) if roads else None
+        # a road out on the open water, not one along the quay nor one on a mapped pier (which is
+        # its own deck: the outline of a wharf mapped as a line beside it is not widened by it)
+        mapped = [p for r in rows(con, path, "class, wkb") if r["class"] == "pier"
+                  for p in polygons(C.to_local(swkb.loads(bytes(r["wkb"]))))]
+        open_water = wet.buffer(-4.0)
+        if mapped:
+            open_water = open_water.difference(shapely.union_all(mapped).buffer(2.0))
+        for ln in lines:
+            if not wet.intersects(ln):
+                continue
+            half = LINE_PIER_HALF_M
+            if tree is not None:
+                near = ln.buffer(ROAD_ON_PIER_M)
+                for i in tree.query(near):
+                    on = roads[i].intersection(near).intersection(open_water)
+                    if on.is_empty or on.length < 10:
+                        continue
+                    # the points alongside the pier, not past either end of it (a path turning off it)
+                    pts = [q for q in (on.interpolate(d) for d in np.arange(0, on.length, 2.0)) if 1.0 < ln.project(q) < ln.length - 1.0]
+                    if len(pts) >= 5:
+                        half = max(half, min(LINE_PIER_MAX_HALF_M, max(ln.distance(q) for q in pts) + widths[i]))
+            out += [p for p in polygons(ln.buffer(half, cap_style="flat").intersection(wet.buffer(half))) if p.area > 20]
+    return out
+
+
 SLOPES = {"sand": 0.04, "rock": 0.25, "built": 1.0}  # depth per metre from the shore
 FLOOR_M = 4.0
 # the bottom reaches the floor this far out whatever the kind of shore (web/water.js SHORE_REACH):
