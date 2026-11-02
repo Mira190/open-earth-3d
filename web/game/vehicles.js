@@ -360,7 +360,8 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     src.add(fan);
     // lights: position lights steady, beacons and strobes flashing, all visible by day
     const L = {};
-    const spot = (name, colour, size) => { const s = glow(colour); s.position.copy(p(name)); s.userData.size = size; src.add(s); L[name] = s; return s; };
+    // (hidden until animate() lights them, so nothing shows at full size before the first frame)
+    const spot = (name, colour, size) => { const s = glow(colour); s.position.copy(p(name)); s.userData.size = size; s.visible = false; src.add(s); L[name] = s; return s; };
     spot('Nav_Red', '#ff3030', 1.1); spot('Nav_Green', '#30ff70', 1.1); spot('Nav_White', '#ffffff', 0.9);
     spot('Beacon_Top', '#ff2020', 1.6); spot('Beacon_Bottom', '#ff2020', 1.6);
     spot('Strobe_L', '#ffffff', 2.6); spot('Strobe_R', '#ffffff', 2.6);
@@ -423,15 +424,17 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       tail.visible = rpm < 0.45;
       fanMat.opacity = smooth(0.2, 0.6, rpm) * 0.95;
       fan.rotation.x = -t * 3;
-      // lights
+      // lights. By day a navigation light is lost in the daylight a few hundred metres off, so
+      // its glow fades out with distance (seen from afar it would be a coloured blot)
       const powered = rpm > 0.05, flying = !st.landed;
+      const seen = opts.camera ? night + day * smooth(260, 110, opts.camera.position.distanceTo(g.getWorldPosition(tmpV))) : 1;
       const show = (name, on, k = 1) => {
         const s = L[name];
-        s.visible = on > 0.01;
+        s.visible = on * seen > 0.01;
         if (!s.visible) return;
         const size = s.userData.size * (0.45 + 0.9 * night) * k;
         s.scale.setScalar(size);
-        s.material.opacity = on * (0.35 + 0.65 * night);
+        s.material.opacity = on * seen * (0.35 + 0.65 * night);
       };
       const nav3 = powered ? 1 : 0;
       show('Nav_Red', nav3); show('Nav_Green', nav3); show('Nav_White', nav3);
@@ -653,7 +656,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     flagMesh.geometry = flagMesh.geometry.clone();
     const fp = flagMesh.geometry.attributes.position, f0 = Float32Array.from(fp.array);
     const L = {};
-    const spot = (key, at, colour, size) => { const s = glow(colour); s.position.copy(node(at).position); s.userData.size = size; src.add(s); L[key] = s; };
+    const spot = (key, at, colour, size) => { const s = glow(colour); s.position.copy(node(at).position); s.userData.size = size; s.visible = false; src.add(s); L[key] = s; }; // (lit by animate())
     spot('left', 'Side_Left', '#ff2a2a', 2.2); spot('right', 'Side_Right', '#2aff6a', 2.2); spot('mast', 'Masthead', '#ffffff', 2.6);
     const dp = node('Deck_Passenger').position;
     const tmpV = new THREE.Vector3(), red = lin('#ff2a2a'), green = lin('#2aff6a');
@@ -668,9 +671,11 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       // sidelights: red to port. Going end A first, port is the left side
       L.left.material.color.copy(lead > 0 ? red : green);
       L.right.material.color.copy(lead > 0 ? green : red);
-      for (const s of Object.values(L)) { s.scale.setScalar(s.userData.size * (0.35 + 0.9 * night)); s.material.opacity = 0.25 + 0.75 * night; }
+      // by day the sidelights fade out with distance, as real ones are lost in the daylight
+      const dist = opts.camera ? opts.camera.position.distanceTo(g.getWorldPosition(tmpV)) : 0, seen = night + (1 - night) * smooth(300, 120, dist);
+      for (const s of Object.values(L)) { s.visible = seen > 0.01; s.scale.setScalar(s.userData.size * (0.35 + 0.9 * night)); s.material.opacity = (0.25 + 0.75 * night) * seen; }
       if (opts.camera) {
-        const far = opts.camera.position.distanceTo(g.getWorldPosition(tmpV)) > (I.lod1_m || 260);
+        const far = dist > (I.lod1_m || 260);
         body.visible = trim.visible = !far;
         if (lod1) lod1.visible = far;
       }

@@ -641,31 +641,48 @@ window.OECars = (function () {
   // where its own lane will be when it gets there, so a car parked at the kerb or coming the
   // other way is no obstacle), and pulls in to the kerb at the end. from: 'kerb' if it starts at
   // the kerb (pulled in), 'lane' if it is already in the traffic; v: its speed now.
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15 } = {}) {
-    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, route, P };
+  // Where the kerb it is to pull in at is taken (a car parked there, or one stopped for good),
+  // it pulls in just behind, as a driver picking you up does, instead of waiting in the lane
+  // for it to move; held up for good near the end, it stops where it is, hazards on.
+  // hurry(st, dry): a factor on the speeds it drives at, from where it is (a ride coming for
+  // you drives briskly while it is out of your sight); dry is set in the dry run that times
+  // the trip. timeLeft() is that dry run's time from here to the end: an arrival time that
+  // counts down as the car goes and holds while it waits, as a ride app's does.
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null } = {}) {
+    const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, end: P.len, route, P };
     const q = {}, q2 = {};
     const end = route.end !== false; // pull in at the end (a car driving off just runs out of road)
+    const kerbStart = kerbOf(P.pos(0, q2).c);
+    let kerbEnd = kerbOf(P.pos(P.len, q2).c);
+    // the way it keeps off the centre line at s: the lane, easing in to the kerb at the end and out of it at the start
     function lat(s) {
-      const kerbEnd = kerbOf(P.pos(P.len, q2).c), kerbStart = kerbOf(P.pos(0, q2).c);
       let k = LANE;
-      if (end) k += (kerbEnd - LANE) * smooth(P.len - 24, P.len - 4, s);
+      if (end) k += (kerbEnd - LANE) * smooth(st.end - 24, st.end - 4, s);
       if (from === 'kerb') k += (kerbStart - LANE) * (1 - smooth(0, 12, s));
       return k;
     }
-    function pose(s, out) {
+    function pose(s, out, k) {
       P.at(s, out);
-      const k = lat(s) * keep + (s >= st.s - 1e-6 ? st.shift : 0);
+      k = k * keep + st.shift;
       out.x += -out.hy * k; out.y += out.hx * k;
       return out;
     }
-    pose(0, q);
+    // the end, brought forward (behind a car at the kerb it was to pull in at)
+    function endAt(e) {
+      st.end = clamp(e, st.s, P.len);
+      kerbEnd = kerbOf(P.pos(st.end, q2).c);
+    }
+    st.lat = lat(0);
+    pose(0, q, st.lat);
     st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy);
     // the gap (bumper to bumper) to the first of the others in the lane ahead. A car stopped in the
     // lane (o.v about 0, o.still) is passed: the driver swings out towards the centre line round
     // it (st.pass, eased into st.shift) instead of waiting behind it for good.
     const c = {};
+    let still = false;
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
+      still = false;
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
@@ -673,33 +690,44 @@ window.OECars = (function () {
         P.at(Math.min(P.len, st.s + a), c);
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
         if (Math.abs(w - lane - st.shift) >= 1.5) continue;
-        if (o.still && a < 40 && (!end || P.len - st.s - a > 25)) { // (not one where it is to pull in)
+        if (o.still && a < 40 && (!end || st.end - st.s - a > 25)) { // (not one where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; continue; }
         }
-        if (a - half - C.half < gap) gap = a - half - C.half;
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.still; }
       }
       st.pass = pass;
       return gap;
     }
-    function update(dt, others = []) {
+    function update(dt, others = [], dry = false) {
       if (st.done) { st.v = 0; st.brake = false; return; }
       // how fast: the limit (or the cruise), bends ahead, the end of the route, the gap ahead
       P.pos(st.s, q);
-      let want = Math.min(cruise, q.v || cruise);
+      const hz = hurry ? hurry(st, dry) : 1;
+      let want = Math.min(cruise, q.v || cruise) * hz;
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
-      const left = P.len - st.s;
-      if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
       const gap = gapAhead(others);
-      want = Math.min(want, gap < 2.8 ? 0 : (gap - 2.8) * 0.9);
+      // a car standing where it is to pull in: pull in behind it
+      if (end && still && gap < Infinity && st.s + gap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, gap - 3.2)));
+      let left = st.end - st.s;
+      if (end) want = Math.min(want, Math.sqrt(2 * 2.2 * Math.max(0, left - 0.4)));
+      const held = gap < 2.8 ? 0 : (gap - 2.8) * 0.9;
+      if (held < want) want = held;
+      // held up near the end for good (by something that isn't moving off): stop here
+      st.stall = st.v < 0.2 && held < 0.1 ? st.stall + dt : 0;
+      if (end && st.stall > 4 && left < 45) { endAt(st.s); left = 0; }
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
       const dv = clamp(want - st.v, -7.5 * dt, 2.6 * dt);
       st.brake = dv < -0.02 * dt * 60 || (st.v < 0.2 && want < 0.1);
       st.v = Math.max(0, st.v + dv);
-      st.s = Math.min(P.len, st.s + st.v * dt);
-      pose(st.s, q);
+      st.s = Math.min(st.end, st.s + st.v * dt);
+      // across the road it eases to its line as it goes, never sideways on the spot (so an end
+      // brought forward bends its path in rather than jumping it)
+      const k = lat(st.s);
+      st.lat += clamp(k - st.lat, -0.35 * st.v * dt, 0.35 * st.v * dt);
+      pose(st.s, q, st.lat);
       const h0 = st.h;
       st.h += angDiff(Math.atan2(q.x - st.x + q.hx * 0.01, q.y - st.y + q.hy * 0.01), st.h) * Math.min(1, dt * 6) * (st.v > 0.05 ? 1 : 0);
       st.steer = clamp(dt > 0 ? angDiff(st.h, h0) / dt * C.wheelbase / Math.max(1, st.v) : 0, -0.6, 0.6);
@@ -711,8 +739,27 @@ window.OECars = (function () {
       if (end && left < 0.5 && st.v < 0.3) { st.done = true; st.v = 0; }
     }
     // straight to the end (skipping the trip)
-    function finish() { st.s = P.len; st.shift = st.pass = 0; pose(st.s, q); st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy); st.v = 0; st.done = end; }
-    return { st, update, finish, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => P.len - st.s };
+    function finish() { st.s = st.end; st.shift = st.pass = 0; st.lat = lat(st.s); pose(st.s, q, st.lat); st.x = q.x; st.y = q.y; st.z = q.z; st.h = Math.atan2(q.hx, q.hy); st.v = 0; st.done = end; }
+    // the trip timed by driving it in a dry run with nothing in the way: the time at each step
+    let plan = null;
+    function timed() {
+      if (plan) return plan;
+      const D = chauffeur({ half: C.half, hw: C.hw, top: C.top, wheelbase: C.wheelbase }, route, { keep, from, v, cruise, hurry }), S = [0], T = [0];
+      let t = 0;
+      for (; t < 900 && !D.st.done && D.st.s < P.len - 0.05; t += 0.25) { D.update(0.25, [], true); S.push(D.st.s); T.push(t + 0.25); }
+      if (!D.st.done) { S.push(P.len); T.push(t + 1); }
+      return (plan = { S, T, total: T[T.length - 1] });
+    }
+    // the planned time at s (between the dry run's steps)
+    function timeAt(s) {
+      const { S, T } = timed();
+      let lo = 0, hi = S.length - 1;
+      if (s >= S[hi]) return T[hi];
+      while (hi - lo > 1) { const m = (lo + hi) >> 1; if (S[m] <= s) lo = m; else hi = m; }
+      return T[lo] + (T[hi] - T[lo]) * (s - S[lo]) / Math.max(1e-6, S[hi] - S[lo]);
+    }
+    const timeLeft = () => (st.done ? 0 : Math.max(0, timeAt(st.end) - timeAt(st.s)) + (st.end < P.len - 1 ? 1.5 : 0));
+    return { st, update, finish, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
   return { car, headlamp, drive, router, path, chauffeur, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };

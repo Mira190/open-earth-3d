@@ -1,4 +1,4 @@
-// HUD pieces: the minimap (heading-up, with the GPS route), the full map, the
+// HUD pieces: the minimap (heading-up, with the GPS route), the full map, the ride app's map, the
 // dialogue box (typewriter lines with a voice beep per character, Short Hike style),
 // toasts and HTML labels. The map is drawn once from the same data as the 3D scene:
 // water mask, building footprints, parks and roads.
@@ -56,7 +56,7 @@ window.OEHud = (function () {
   // ------------------------------------------------------------ minimap
   function minimap(canvas, base) {
     const g = canvas.getContext('2d'), S = canvas.width;
-    return function draw({ x, y, yaw, heading, radius, route, icons }) {
+    return function draw({ x, y, yaw, heading, radius, route, icons, ride }) {
       const k = (S / 2) / radius * base.PX; // canvas px per base px
       g.save();
       g.clearRect(0, 0, S, S);
@@ -78,6 +78,7 @@ window.OEHud = (function () {
         route.forEach((p, i) => (i ? g.lineTo(base.X(p[0]), base.Y(p[1])) : g.moveTo(base.X(p[0]), base.Y(p[1]))));
         g.stroke();
       }
+      if (ride && ride.length > 1) rideLine(g, ride, base.X, base.Y, 1 / k);
       g.restore();
       // icons stay upright; clamp off-map ones to the rim
       g.save();
@@ -88,7 +89,7 @@ window.OEHud = (function () {
         let px = dx * cs - dy * sn, py = dx * sn + dy * cs;
         const r = Math.hypot(px, py), lim = S / 2 - 10;
         if (r > lim) { if (!ic.pin) continue; px *= lim / r; py *= lim / r; }
-        drawIcon(g, ic, px, py);
+        drawIcon(g, ic.h == null ? ic : Object.assign({}, ic, { rot: ic.h - yaw }), px, py);
       }
       // the player, at the centre
       g.rotate(heading - yaw);
@@ -103,11 +104,44 @@ window.OEHud = (function () {
       g.fillText('N', nx, ny);
     };
   }
+  // a ride's route still to drive: a light line on a dark casing, as the ride apps draw it on a dark map
+  // (X, Y: map metres to the canvas; px: one screen pixel in the canvas's units)
+  function rideLine(g, pts, X, Y, px) {
+    g.save();
+    g.lineJoin = g.lineCap = 'round';
+    g.beginPath();
+    pts.forEach((p, i) => (i ? g.lineTo(X(p[0]), Y(p[1])) : g.moveTo(X(p[0]), Y(p[1]))));
+    g.strokeStyle = 'rgba(4,6,11,0.85)'; g.lineWidth = 6.5 * px; g.stroke();
+    g.strokeStyle = '#f4f1ea'; g.lineWidth = 3.4 * px; g.stroke();
+    g.restore();
+  }
   function drawIcon(g, ic, x, y) {
     g.save();
     g.translate(x, y);
     const col = ic.color || css('--ink');
-    if (ic.kind === 'quest') {
+    if (ic.kind === 'ridecar') { // the car coming for you, from above, facing the way it drives
+      g.rotate(ic.rot || 0);
+      g.shadowColor = 'rgba(0,0,0,0.55)'; g.shadowBlur = 5; g.shadowOffsetY = 1.5;
+      g.fillStyle = ic.color || '#f4f1ea'; g.strokeStyle = '#04060b'; g.lineWidth = 1.2;
+      g.beginPath(); g.roundRect ? g.roundRect(-4.6, -8.5, 9.2, 17, 3.2) : g.rect(-4.6, -8.5, 9.2, 17); g.fill();
+      g.shadowColor = 'transparent'; g.stroke();
+      g.fillStyle = 'rgba(4,6,11,0.78)'; // the windscreen and the back window
+      g.beginPath(); g.moveTo(-3.4, -3.6); g.lineTo(3.4, -3.6); g.lineTo(2.8, -6.2); g.lineTo(-2.8, -6.2); g.closePath(); g.fill();
+      g.fillRect(-3, 4, 6, 2);
+    } else if (ic.kind === 'pickup') { // where the ride pulls in: a pin with a hole
+      g.fillStyle = css('--accent'); g.strokeStyle = '#04060b'; g.lineWidth = 1.5;
+      g.beginPath(); g.moveTo(0, 0); g.bezierCurveTo(-2.5, -5, -7, -8, -7, -13); g.arc(0, -13, 7, Math.PI, 0); g.bezierCurveTo(7, -8, 2.5, -5, 0, 0); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = '#04060b'; g.beginPath(); g.arc(0, -13, 2.6, 0, Math.PI * 2); g.fill();
+    } else if (ic.kind === 'you') { // you, as the apps show you: a blue dot in a white ring, a soft halo, the way you face
+      g.fillStyle = 'rgba(78,161,255,0.2)'; g.beginPath(); g.arc(0, 0, 13, 0, Math.PI * 2); g.fill();
+      if (ic.rot != null) { g.save(); g.rotate(ic.rot); g.fillStyle = 'rgba(78,161,255,0.45)'; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 15, -Math.PI / 2 - 0.5, -Math.PI / 2 + 0.5); g.closePath(); g.fill(); g.restore(); }
+      g.fillStyle = '#4ea1ff'; g.strokeStyle = '#ffffff'; g.lineWidth = 2.2;
+      g.beginPath(); g.arc(0, 0, 5.5, 0, Math.PI * 2); g.fill(); g.stroke();
+    } else if (ic.kind === 'dest') { // where you're going: a square on a stalk
+      g.strokeStyle = '#f4f1ea'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -12); g.stroke();
+      g.fillStyle = '#f4f1ea'; g.strokeStyle = '#04060b'; g.lineWidth = 1.2; g.fillRect(-5.5, -19, 11, 9); g.strokeRect(-5.5, -19, 11, 9);
+      g.fillStyle = '#04060b'; g.fillRect(-2, -16.5, 4, 4);
+    } else if (ic.kind === 'quest') {
       g.fillStyle = css('--sun'); g.strokeStyle = '#fff'; g.lineWidth = 1.5;
       g.beginPath(); for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2, r = i % 2 ? 3.5 : 8; g.lineTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); g.fill(); g.stroke();
     } else if (ic.kind === 'npc') {
@@ -132,6 +166,56 @@ window.OEHud = (function () {
       g.fillText({ wharf: 'F', pad: 'H', waypoint: '◆', ferry: '', heli: '', car: 'C', ride: ic.label || 'T' }[ic.kind], 0, 0.5);
     }
     g.restore();
+  }
+
+  // ------------------------------------------------------------ the ride app's map
+  // North up and framed on what matters, as a ride app frames it: the car and the pick-up while
+  // it comes (and you, if you're a walk from the pick-up), the car and where you're going on the
+  // way. The frame glides to follow rather than jumping. The route still to drive is a light line
+  // on a dark casing; you are the blue dot, with a dotted walk to the pick-up when it is a walk.
+  function rideMap(canvas, base) {
+    const g = canvas.getContext('2d');
+    let view = null;
+    return function draw({ route, car, pickup, you, dest, reset }) {
+      const dpr = Math.min(2, window.devicePixelRatio || 1), w = canvas.clientWidth, h = canvas.clientHeight;
+      if (!w || !h) return;
+      if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+      // the frame: everything in it, with a margin, and never closer than 160 m across
+      const pts = [car, pickup, you, dest].filter(Boolean);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+      const pad = 34, span = Math.max(160, (x1 - x0) * h / w, y1 - y0);
+      const want = { cx: (x0 + x1) / 2, cy: (y0 + y1) / 2, k: Math.min((w - 2 * pad) / Math.max(160, x1 - x0), (h - 2 * pad - 14) / span) };
+      if (!view || reset) view = Object.assign({}, want);
+      else { const e = 0.08; view.cx += (want.cx - view.cx) * e; view.cy += (want.cy - view.cy) * e; view.k *= Math.pow(want.k / view.k, e); }
+      const { cx, cy, k } = view, ox = w / 2, oy = h / 2 + 7; // a little low, under the pins' heads
+      const sx = x => ox + (x - cx) * k, sy = y => oy - (y - cy) * k;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.fillStyle = css('--gm-water'); g.fillRect(0, 0, w, h);
+      // the base map (1 px = base.PX m), only the part in view
+      const a = k * base.PX, bx = base.X(cx), by = base.Y(cy);
+      g.save();
+      g.setTransform(a * dpr, 0, 0, a * dpr, (ox - bx * a) * dpr, (oy - by * a) * dpr);
+      g.imageSmoothingEnabled = true;
+      const hw = w / 2 / a + 2, hh = h / 2 / a + 2, cv = base.canvas;
+      const u0 = Math.max(0, Math.floor(bx - hw)), v0 = Math.max(0, Math.floor(by - hh)), u1 = Math.min(cv.width, Math.ceil(bx + hw)), v1 = Math.min(cv.height, Math.ceil(by + hh));
+      if (u1 > u0 && v1 > v0) g.drawImage(cv, u0, v0, u1 - u0, v1 - v0, u0, v0, u1 - u0, v1 - v0);
+      g.restore();
+      g.fillStyle = 'rgba(4,6,11,0.18)'; g.fillRect(0, 0, w, h); // a touch darker, so the route reads
+      if (route && route.length > 1) rideLine(g, route, sx, sy, 1);
+      if (you && pickup && Math.hypot(you.x - pickup.x, you.y - pickup.y) > 15) { // the walk to the pick-up
+        g.save(); g.setLineDash([2, 5]); g.lineCap = 'round'; g.strokeStyle = '#7fb8ff'; g.lineWidth = 2.4;
+        g.beginPath(); g.moveTo(sx(you.x), sy(you.y)); g.lineTo(sx(pickup.x), sy(pickup.y)); g.stroke(); g.restore();
+      }
+      if (dest) drawIcon(g, { kind: 'dest' }, sx(dest.x), sy(dest.y));
+      if (pickup) drawIcon(g, { kind: 'pickup' }, sx(pickup.x), sy(pickup.y));
+      if (you) drawIcon(g, { kind: 'you', rot: you.h }, sx(you.x), sy(you.y));
+      if (car) drawIcon(g, { kind: 'ridecar', rot: car.h, color: car.color }, sx(car.x), sy(car.y));
+      // a scale bar, as a map has
+      const m = [20, 50, 100, 200, 500, 1000, 2000].find(v => v * k > 44) || 2000, L = m * k;
+      g.fillStyle = 'rgba(236,232,225,0.75)'; g.fillRect(10, h - 12, L, 1.5); g.fillRect(10, h - 16, 1.5, 5.5); g.fillRect(10 + L - 1.5, h - 16, 1.5, 5.5);
+      g.font = '400 9px "JetBrains Mono", ui-monospace, monospace'; g.textBaseline = 'bottom'; g.fillText(m >= 1000 ? `${m / 1000} km` : `${m} m`, 16 + L, h - 9);
+    };
   }
 
   // ------------------------------------------------------------ dialogue: typewriter with voice beeps
@@ -215,5 +299,5 @@ window.OEHud = (function () {
     setTimeout(() => el.remove(), 3200);
   }
 
-  return { baseMap, minimap, dialogue, toast, drawIcon, stamp };
+  return { baseMap, minimap, rideMap, rideLine, dialogue, toast, drawIcon, stamp };
 })();

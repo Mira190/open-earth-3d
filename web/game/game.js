@@ -343,7 +343,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // a ride on the phone (N), as GTA VI's Ryde Me app does: say where first, and a private-hire
   // car comes to your side of the street. You get in the back (a taxi driver asks where to), and
   // the driver takes you by road, talking about what you pass, all of it from the model. F skips
-  // the trip, as in GTA V.
+  // the trip, as in GTA V. Whichever it is arrives within half a minute: it sets out from a
+  // street chosen so the trip, timed by driving it in a dry run, takes 14 to 25 s, and it drives
+  // briskly while it is well out of your sight. The phone shows it coming as a ride app does: the
+  // car on the map moving along its route to the pick-up, and the time it will take.
   const keepSign = KEEP === 'left' ? 1 : -1, kerbSeat = KEEP === 'left' ? 'rear_left' : 'rear_right';
   const CARS_OK = !!(vlib && vlib.cars && Object.values(vlib.info.cars.models).some(m => m.seats));
   const carCfg = Object.assign({ model: 'Car_Hatch', colour: '#c8372d', seat: '#34363a' }, (G.vehicles || {}).car);
@@ -500,32 +503,56 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const names = lib ? Object.keys(lib.tpl).filter(n => !PLAYER_LOOKS[n] && lib.info.characters[n]) : [];
     return names.length ? OEPeople.randomLook(lib, names[Math.floor(Math.random() * names.length)], CR.style) : {};
   }
-  // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, routed to the pick-up
-  function newRide(kind, from, pickup, dest = null) {
+  // a ride coming for you drives at up to half as fast again while it is well out of sight of the
+  // pick-up and of you (in the dry run that times it, of the pick-up), as games keep such cars on time
+  const hurryTo = pickup => (st, dry) => {
+    const d = Math.hypot(st.x - pickup.x, st.y - pickup.y), dp = dry ? d : Math.min(d, Math.hypot(st.x - player.x, st.y - player.y));
+    const t = Math.max(0, Math.min(1, (dp - 130) / 90));
+    return 1 + 0.5 * t * t * (3 - 2 * t);
+  };
+  const RIDE_T = [14, 25]; // the time a ride should take to reach you (s), leaving a few seconds of the half minute for the traffic
+  const STUB = { half: 2.3, hw: 0.9, top: 1.5, wheelbase: 2.7 }; // a car's size, to time a trip before there is a car
+  // the route from a place on the roads (from: { line, s, dir, v }) to the pick-up, and how long it takes
+  function planRide(from, pickup) {
+    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
+    if (!rt) return null;
+    const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup) };
+    return { rt, opts, T: OECars.chauffeur(STUB, rt, opts).total() };
+  }
+  // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, on its planned route to the pick-up
+  function newRide(kind, from, pickup, plan, dest = null) {
     const tcfg = Object.assign({}, vlib.info.cars.liveries.taxi, ((G.vehicles || {}).cars || {}).taxi);
     const model = kind === 'taxi' ? 'Car_Taxi' : OEActors.pick(['Car_Sedan', 'Car_SUV', 'Car_Sedan', 'Car_Hatch']);
     const hex = from.hex || (kind === 'taxi' ? OEActors.pick(tcfg.colours) : OEActors.pick(['#1c1c1e', '#8a9099', '#3d4146', '#e7e5df', '#1f2a3a']));
-    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
-    if (!rt) return null;
     const C = OECars.car(world, vlib, model, { colours: { paint: hex, seat: kind === 'taxi' ? '#2b2d30' : '#b9ae9c' }, keep: KEEP });
     const o = { kind, C, model, hex, name: OEActors.pick(FIRST[CITY.country] || FIRST.Australia), plate: plate(), pickup, dest, phase: 'coming',
-      t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140) };
-    o.drv = OECars.chauffeur(C, rt, { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0 });
+      t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140), rating: (4.7 + Math.random() * 0.29).toFixed(2).slice(0, 3) };
+    o.drv = OECars.chauffeur(C, plan.rt, plan.opts);
+    o.T0 = o.drv.total();
     o.driver = makeRig(driverLook(), {});
     C.sit(o.driver, 'driver');
     return o;
   }
-  // one setting out from somewhere a few hundred metres off by road, out of sight
-  function rideFromAround(kind, pickup, dest, r0 = 170, r1 = 340) {
-    for (let k = 0; k < 8; k++) {
-      const pl = roads.around(pickup.x, pickup.y, r0, r1);
-      const o = pl && newRide(kind, pl, pickup, dest);
-      if (o && o.drv.path.len < 1400) return o;
-      if (o) o.C.dispose();
+  // one setting out from a street a few hundred metres off, chosen so it takes RIDE_T to reach
+  // you and, where it can be, out of sight (behind you, or farther than you can see down a street)
+  function rideFromAround(kind, pickup, dest, r0 = 150, r1 = 330) {
+    const fx = Math.sin(cam.yaw), fy = Math.cos(cam.yaw); // the way the camera looks, on the map
+    let best = null;
+    for (let k = 0; k < 24; k++) {
+      const f = k < 12 ? 1 : 0.7; // nearer streets, if the first ring's are all too far round by road
+      const pl = roads.around(pickup.x, pickup.y, r0 * f, r1 * f);
+      const plan = pl && planRide(pl, pickup);
+      if (!plan) continue;
+      const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
+      const hidden = d > 240 || (dx * fx + dy * fy) / Math.max(1, d) < 0.3;
+      const score = (plan.T < RIDE_T[0] ? RIDE_T[0] - plan.T : plan.T > RIDE_T[1] ? 4 * (plan.T - RIDE_T[1]) : 0) + (hidden ? 0 : 5);
+      if (!best || score < best.score) best = { pl, plan, score };
+      if (score === 0) break;
     }
-    return null;
+    return best && best.plan.T < 45 ? newRide(kind, best.pl, pickup, best.plan, dest) : null;
   }
-  const eta = o => (o.phase === 'coming' || o.phase === 'driving' ? o.drv.remaining() / 9 + 3 : 0);
+  // the time to the pick-up (or, on the way, to where you're going), as the app shows it
+  const eta = o => (o.phase === 'coming' || o.phase === 'driving' ? o.drv.timeLeft() : 0);
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
   function hail() {
     if (player.mode !== 'foot' || player.auto) return;
@@ -538,22 +565,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const c of cars.C) {
       if (!c.taxi || c.line < 0) continue;
       const d = Math.hypot(c.x - player.x, c.y - player.y);
-      if (d > 250 || d < 12) continue;
-      const rt = roads.route({ line: c.line, s: c.s, dir: c.dir }, pickup, 450);
-      if (rt && rt.len < 450 && (!best || rt.len < best.len)) best = { c, len: rt.len };
+      if (d > 300 || d < 12) continue;
+      const from = { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, plan = planRide(from, pickup);
+      if (plan && plan.T <= RIDE_T[1] && (!best || plan.T < best.plan.T)) best = { c, from, plan };
     }
     let o = null;
     if (best) {
       const c = best.c;
-      o = newRide('taxi', { line: c.line, s: c.s, dir: c.dir, v: Math.max(1, c.v), hex: c.hex }, pickup);
-      if (o) { cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h }); }
+      o = newRide('taxi', best.from, pickup, best.plan);
+      cars.take(c); Object.assign(o.drv.st, { x: c.x, y: c.y, z: c.z, h: c.h });
     }
-    if (!o) o = rideFromAround('taxi', pickup, null, 120, 250);
+    if (!o) o = rideFromAround('taxi', pickup, null, 130, 280);
     if (!o) { H.toast('No taxis about. Try a busier street, or order a ride on your phone (N).'); return; }
     if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
     A.honk();
-    H.toast(best ? `A taxi has seen you: it'll pull in, about ${fmtSec(eta(o))} away.` : `A taxi is coming round the corner, about ${fmtSec(eta(o))} away.`);
+    H.toast(best ? `A taxi has seen you: it'll pull in in about ${fmtSec(eta(o))}.` : `A taxi is coming round the corner, about ${fmtSec(eta(o))} away.`);
   }
   // the phone: a private-hire car to where you say
   function orderRide(dest) {
@@ -561,11 +588,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
     const pickup = roads.place(player.x, player.y, 120, keepSign, player.z);
     if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
-    const o = rideFromAround('hire', pickup, dest);
+    const o = rideFromAround('hire', pickup, dest, 140, 300);
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
     if (ride) ride.C.dispose(); // the last one, still driving off
     ride = o;
-    H.toast(`<b>${o.name}</b> is on the way in a ${rideCar(o)}, ${o.plate}: about ${fmtSec(eta(o))}.`);
+    const walk = Math.hypot(pickup.x - player.x, pickup.y - player.y);
+    H.toast(`<b>${o.name}</b> is on the way in a ${rideCar(o)}, ${o.plate}: about ${fmtSec(eta(o))}.${walk > 25 ? ` Meet at the pick-up point, ${Math.round(walk)} m from you.` : ''}`);
   }
   function cancelRide() {
     if (!ride || player.mode === 'ride') return;
@@ -656,7 +684,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   function inTheWay(o) {
     const st = o.drv.st, out = [];
     if (Math.hypot(st.x - player.x, st.y - player.y) > 120) return out;
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true } : c);
+    // a ride running late for you goes round a car holding it up instead of queueing behind it
+    const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 || (late && c.v < 2) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true } : c);
     if (myCar) out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: player.mode !== 'car' && myCar.D.st.speed < 0.3 });
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
@@ -671,13 +701,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     o.driver.animate(dt, 0, 'sit', clockT);
     if (o.phase === 'driving') o.meter += st.v * dt;
     if (o.phase === 'coming' && st.done) {
-      o.phase = 'waiting'; o.wait = 0;
-      H.toast(`<b>${o.name}</b> has pulled in${o.kind === 'hire' ? ` in the ${rideCar(o)}, ${o.plate}` : ''}. <kbd>E</kbd> to get in.`);
+      o.phase = 'waiting'; o.wait = 0; o.tArrived = clockT - o.t0;
+      const far = Math.hypot(st.x - player.x, st.y - player.y);
+      H.toast(`<b>${o.name}</b> has pulled in${o.kind === 'hire' ? ` in the ${rideCar(o)}, ${o.plate}` : ''}${far > 25 ? `, ${Math.round(far)} m from you` : ''}. <kbd>E</kbd> to get in.`);
       A.honk();
     }
     if (o.phase === 'waiting') {
+      // a driver waits five minutes, as the apps' drivers do; one you have walked well away from, one
       o.wait += dt;
-      if (o.wait > (Math.hypot(st.x - player.x, st.y - player.y) > 90 ? 30 : 180) && player.mode === 'foot' && !player.auto) { H.toast(`${o.name} couldn't wait any longer.`); rideAway(); }
+      if (o.wait > (Math.hypot(st.x - player.x, st.y - player.y) > 350 ? 60 : 300) && player.mode === 'foot' && !player.auto) { H.toast(`${o.name} couldn't wait any longer.`); rideAway(); }
     }
     if (player.mode === 'ride' && player.vehicle === o) {
       Object.assign(player, { x: st.x, y: st.y, z: st.z, h: st.h, speed: st.v });
@@ -699,19 +731,34 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   }
 
   // ------------------------------------------------------------ the phone (N): order a ride, bring your car
-  const phone = { el: $('#g-phone'), body: $('#gph-body'), view: 'home', acts: [], at: 0 };
+  const phone = { el: $('#g-phone'), body: $('#gph-body'), map: $('#gph-map'), view: 'home', acts: [], at: 0, fresh: true };
+  const rideOn = () => ride && ride.phase !== 'leaving';
   function phoneShow(view) {
     if (view === false) { phone.el.hidden = true; return; }
-    phone.view = view || (ride && ride.kind === 'hire' && ride.phase !== 'leaving' ? 'ride' : 'home');
+    phone.view = view || (rideOn() ? 'ride' : 'home');
     phone.el.hidden = false;
+    phone.fresh = true;
     phoneRender();
+  }
+  // the ride on the phone's map: the route still to drive (to the pick-up, or on the way to where
+  // you're going), the car, the pick-up, you, and where you're going
+  function rideMapFrame() {
+    const o = ride, st = o.drv.st, P = o.drv.path, i = P.pos(st.s, {}).i;
+    const inside = player.mode === 'ride' && player.vehicle === o, toGo = o.phase === 'coming' || o.phase === 'driving';
+    const route = toGo ? [[st.x, st.y]].concat(P.pts.slice(i + 1)) : null;
+    const dest = o.dest ? { x: o.dest.at[0], y: o.dest.at[1] } : null;
+    if (!phone.draw) phone.draw = H.rideMap(phone.map, base); // (the base map is drawn further down)
+    phone.draw({ route, car: { x: st.x, y: st.y, h: st.h }, pickup: inside || o.phase === 'arrived' ? null : o.pickup,
+      you: inside ? null : { x: player.x, y: player.y, h: player.h }, dest: inside || o.phase === 'arrived' ? dest : null, reset: phone.fresh });
+    phone.fresh = false;
   }
   function phoneRender() {
     const acts = [], item = (text, note, act) => { acts.push(act); return `<button data-k="${acts.length - 1}"><kbd>${acts.length}</kbd><span><b>${text}</b>${note ? `<span class="note">${note}</span>` : ''}</span></button>`; };
     let html = '';
+    phone.map.hidden = !(phone.view === 'ride' && rideOn());
     if (phone.view === 'home') {
       $('#gph-title').textContent = 'Phone';
-      html = `<div class="list">${item('Order a ride', ride && ride.kind === 'hire' && ride.phase !== 'leaving' ? `${ride.name} is on the way` : 'A car to wherever you say', () => phoneShow(ride && ride.kind === 'hire' && ride.phase !== 'leaving' ? 'ride' : 'where'))}`
+      html = `<div class="list">${item('Order a ride', rideOn() ? `${ride.name} is ${ride.phase === 'coming' ? 'on the way' : ride.phase === 'waiting' ? 'waiting for you' : 'taking you'}` : 'A car to wherever you say, here in half a minute', () => phoneShow(rideOn() ? 'ride' : 'where'))}`
         + `${myCar ? item('Bring my car', `It's ${Math.round(Math.hypot(myCar.D.st.x - player.x, myCar.D.st.y - player.y))} m away`, () => { bringCar(); phoneShow(false); }) : ''}</div>`
         + `<p class="note">Or raise your hand at the kerb (<kbd>Y</kbd>) and a taxi will pull in.</p>`;
     } else if (phone.view === 'where') {
@@ -720,11 +767,26 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       html = `<div class="list">${list.map(d => item(d.name, d.note, () => { orderRide(d); phoneShow(ride ? 'ride' : false); })).join('')}</div>`
         + `<div class="row"><button class="btn" data-back>Back</button></div>`;
     } else {
-      $('#gph-title').textContent = 'Ride';
-      const o = ride && ride.kind === 'hire' ? ride : null;
-      html = o ? `<div class="gph-card"><b>${o.name}</b><span>${rideCar(o)} · <span class="mono">${o.plate}</span></span><span>to ${o.dest ? o.dest.name : '–'}</span>
-        <b class="num">${o.phase === 'coming' ? `${fmtSec(eta(o))} away` : o.phase === 'waiting' ? 'Waiting at the kerb' : o.phase === 'driving' ? `${fmtSec(eta(o))} to go` : o.phase === 'arrived' ? 'Arrived' : 'On the way'}</b></div>`
-        + `<div class="list">${player.mode === 'foot' ? item('Cancel the ride', '', () => { cancelRide(); phoneShow('home'); }) : ''}</div>` : '<p class="note">No ride booked.</p>';
+      const o = rideOn() ? ride : null;
+      $('#gph-title').textContent = o ? (o.kind === 'taxi' ? 'Taxi' : 'Your ride') : 'Ride';
+      if (o) {
+        const st = o.drv.st, t = eta(o), walk = Math.hypot(o.pickup.x - player.x, o.pickup.y - player.y), near = Math.hypot(st.x - player.x, st.y - player.y);
+        const inside = player.mode === 'ride' && player.vehicle === o;
+        let big, line, k;
+        if (o.phase === 'coming') { big = t < 4 ? 'Now' : fmtSec(Math.ceil(t)); line = t < 4 ? `${o.name} is arriving` : `${o.name} is on the way`; k = 1 - t / Math.max(1, o.T0); }
+        else if (o.phase === 'waiting' || o.phase === 'boarding') { big = near < 12 ? 'Here' : 'Arrived'; line = near < 12 ? `${o.name} is beside you` : `${o.name} is waiting at the pick-up, ${Math.round(near)} m away`; k = 1; }
+        else if (o.phase === 'asking') { big = '–'; line = 'Tell the driver where to'; k = 0; }
+        else if (o.phase === 'driving') { big = fmtSec(Math.ceil(t)); line = `to ${o.dest.name} · ${(o.drv.remaining() / 1000).toFixed(1)} km`; k = st.s / Math.max(1, o.drv.path.len); }
+        else { big = 'Arrived'; line = o.dest ? o.dest.name : ''; k = 1; }
+        const stop = o.phase === 'coming' || o.phase === 'waiting' || o.phase === 'boarding'
+          ? `<span class="pk"></span><span>Pick-up${walk > 20 && !inside ? ` · ${Math.round(walk)} m walk` : ''}</span>` : '';
+        const to = o.dest ? `<span class="ds"></span><span>${o.dest.name}</span>` : o.kind === 'taxi' && !inside ? '<span class="ds"></span><span>Tell the driver when you get in</span>' : '';
+        html = `<div class="gph-eta"><b class="num">${big}</b><span>${line}</span></div>`
+          + `<div class="gph-bar" style="--k:${Math.max(0.02, Math.min(1, k)).toFixed(3)}"><i></i></div>`
+          + `<div class="gph-driver"><span class="av" style="--c:${o.hex}">${o.name[0]}</span><span class="who"><b>${o.name} <span class="rt">★ ${o.rating}</span></b><span class="note">${rideCar(o)[0].toUpperCase()}${rideCar(o).slice(1)}</span></span><span class="gph-plate mono">${o.plate}</span></div>`
+          + (stop || to ? `<div class="gph-trip">${stop}${to}</div>` : '')
+          + `<div class="list">${player.mode === 'foot' && o.phase !== 'boarding' ? item('Cancel the ride', '', () => { cancelRide(); phoneShow('home'); }) : ''}</div>`;
+      } else html = '<p class="note">No ride booked.</p>';
       html += `<div class="row"><button class="btn" data-back>Back</button></div>`;
     }
     phone.acts = acts;
@@ -1111,6 +1173,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   // ------------------------------------------------------------ HUD
   const base = H.baseMap(D);
   const drawMini = H.minimap($('#g-minimap'), base);
+  const mini = { r: 200 }; // the minimap's radius, eased as it opens out and closes in
   const dlg = H.dialogue(A);
   function renderPassport() {
     $('#gp-stamps').innerHTML = LINES.flatMap(l => l.quests).map(q => {
@@ -1896,7 +1959,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     for (const v of fer.vessels) icon({ kind: 'ferry' }, ...P2(v.x, v.y));
     if (player.mode !== 'heli') icon({ kind: 'heli' }, ...P2(heli.st.x, heli.st.y));
     if (myCar && player.mode !== 'car') icon({ kind: 'car' }, ...P2(myCar.D.st.x, myCar.D.st.y));
-    if (ride && player.mode !== 'ride' && ride.phase !== 'leaving') icon({ kind: 'ride', label: ride.kind === 'taxi' ? 'T' : 'R' }, ...P2(ride.drv.st.x, ride.drv.st.y));
+    if (ride && ride.phase !== 'leaving') {
+      const st = ride.drv.st, P = ride.drv.path;
+      if (ride.phase === 'coming' || ride.phase === 'driving') {
+        g.restore(); H.rideLine(g, [[st.x, st.y]].concat(P.pts.slice(P.pos(st.s, {}).i + 1)), x => P2(x, 0)[0], y => P2(0, y)[1], dpr); g.save(); g.scale(dpr, dpr);
+      }
+      if (ride.phase === 'coming' || ride.phase === 'waiting') icon({ kind: 'pickup' }, ...P2(ride.pickup.x, ride.pickup.y));
+      if (player.mode !== 'ride') icon({ kind: 'ridecar', rot: st.h }, ...P2(st.x, st.y));
+    }
     for (const n of npcs) icon({ kind: 'npc', color: wantsTalk(n) ? '#e0a21a' : '#5b6b77', label: n.name[0] }, ...P2(n.x, n.y));
     for (const o of sideObjectives()) icon({ kind: 'quest2' }, ...P2(...o.at));
     const ob = objective();
@@ -2074,7 +2144,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     // HUD
     const ob = titleOn ? null : objective();
     const target = waypoint || (ob && ob.at);
-    updateRoute(clockT, player.mode === 'foot' ? target : null);
+    const toPickup = player.mode === 'foot' && ride && (ride.phase === 'coming' || ride.phase === 'waiting') && Math.hypot(ride.pickup.x - player.x, ride.pickup.y - player.y) > 40 ? [ride.pickup.x, ride.pickup.y] : null;
+    updateRoute(clockT, player.mode === 'foot' ? toPickup || target : null);
     beam.visible = !!target && !titleOn && Math.hypot(target[0] - (player.mode === 'heli' ? heli.st.x : player.x), target[1] - (player.mode === 'heli' ? heli.st.y : player.y)) > 45;
     if (target) { const f = nav.floorAt(target[0], target[1], Math.max(300, nav.terrain(target[0], target[1]) + 1)); beam.position.copy(W(target[0], target[1], f ? f.z : 0)); beam.scale.set(1, player.mode === 'heli' ? 4 : 1, 1); }
     const me = player.mode === 'heli' ? heli.st : player.mode === 'ferry' ? player.vehicle : player;
@@ -2095,19 +2166,30 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       for (const v of fer.vessels) icons.push({ kind: 'ferry', x: v.x, y: v.y });
       if (player.mode !== 'heli') icons.push({ kind: 'heli', x: heli.st.x, y: heli.st.y });
       if (myCar && player.mode !== 'car') icons.push({ kind: 'car', x: myCar.D.st.x, y: myCar.D.st.y });
-      if (ride && player.mode !== 'ride' && ride.phase !== 'leaving') icons.push({ kind: 'ride', x: ride.drv.st.x, y: ride.drv.st.y, pin: true, label: ride.kind === 'taxi' ? 'T' : 'R' });
+      let rideRoute = null, radius = player.mode === 'heli' ? 700 : player.mode === 'ferry' ? 450 : player.mode === 'car' || player.mode === 'ride' ? 260 + Math.min(220, player.speed * 7) : 200;
+      if (ride && player.mode !== 'ride' && ride.phase !== 'leaving') {
+        const st = ride.drv.st;
+        if (ride.phase === 'coming') { const P = ride.drv.path; rideRoute = [[st.x, st.y]].concat(P.pts.slice(P.pos(st.s, {}).i + 1)); }
+        if (ride.phase !== 'arrived') icons.push({ kind: 'pickup', x: ride.pickup.x, y: ride.pickup.y, pin: true });
+        icons.push({ kind: 'ridecar', x: st.x, y: st.y, h: st.h, pin: true });
+        // on foot, the minimap opens out to show the car coming and the pick-up, as the app's map does
+        if (player.mode === 'foot') radius = Math.max(radius, Math.min(480, 1.18 * Math.max(Math.hypot(st.x - player.x, st.y - player.y), Math.hypot(ride.pickup.x - player.x, ride.pickup.y - player.y))));
+      }
       for (const n of npcs) { const hot = wantsTalk(n); n.marker.visible = hot && !dlg.open; if (hot) icons.push({ kind: 'npc', x: n.x, y: n.y, color: '#e0a21a', pin: true }); }
       for (const o of sideObjectives()) icons.push({ kind: 'quest2', x: o.at[0], y: o.at[1] });
       if (ob && ob.at) icons.push({ kind: 'quest', x: ob.at[0], y: ob.at[1], pin: true });
       if (waypoint) icons.push({ kind: 'waypoint', x: waypoint[0], y: waypoint[1], pin: true });
       drawMini({ x: me.x, y: me.y, yaw: player.mode !== 'heli' ? cam.yaw : cam.mode === 'bird' ? heli.st.h : cam.mode === 'cockpit' ? heli.st.h - cam.lookYaw : cam.yaw, heading: player.mode === 'heli' ? heli.st.h : player.mode === 'ferry' ? player.vehicle.h : player.h,
-        radius: player.mode === 'heli' ? 700 : player.mode === 'ferry' ? 450 : player.mode === 'car' || player.mode === 'ride' ? 260 + Math.min(220, player.speed * 7) : 200, route: roadRoute(target) || route, icons });
+        radius: mini.r += (radius - mini.r) * Math.min(1, dt * 2.5), route: roadRoute(target) || route, icons, ride: rideRoute });
       if (!$('#g-bigmap').hidden && Math.floor(clockT * 2) !== Math.floor((clockT - dt) * 2)) drawBig();
       const a = currentAction(), alt = kerbAction();
       $('#g-prompt').hidden = !a && !alt;
       $('#gp-main').hidden = !a; $('#gp-alt').hidden = !alt;
       if (a) { $('#gp-key').textContent = a.key; $('#gp-key').hidden = !a.key; $('#gp-text').textContent = a.text; }
-      if (!phone.el.hidden && phone.view === 'ride' && clockT - phone.at > 0.5) { phone.at = clockT; phoneRender(); }
+      if (!phone.el.hidden && phone.view === 'ride') {
+        if (clockT - phone.at > 0.5) { phone.at = clockT; phoneRender(); }
+        if (rideOn() && !phone.map.hidden) rideMapFrame();
+      }
       vehicleHud();
       if (player.mode !== 'foot') gaitChip('');
     }
@@ -2572,8 +2654,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     } else if (player.mode === 'foot' && ride && (ride.phase === 'coming' || ride.phase === 'waiting')) {
       const o = ride;
       el.hidden = false;
-      el.innerHTML = `<div><b>${o.name}</b><span>${o.kind === 'taxi' ? 'taxi' : `${rideCar(o)} · ${o.plate}`}</span></div><div><b class="num">${o.phase === 'coming' ? fmtSec(eta(o)) : 'here'}</b><span>${o.phase === 'coming' ? 'away' : 'at the kerb'}</span></div>
-        <p class="note">${o.phase === 'coming' ? 'Wait at the kerb. ' : 'E beside it to get in. '}${o.kind === 'hire' ? 'N to cancel.' : ''}</p>`;
+      const walk = Math.hypot(o.pickup.x - player.x, o.pickup.y - player.y);
+      el.innerHTML = `<div><b>${o.name}</b><span>${o.kind === 'taxi' ? 'taxi' : `${rideCar(o)} · ${o.plate}`}</span></div><div><b class="num">${o.phase === 'coming' ? (eta(o) < 4 ? 'now' : fmtSec(Math.ceil(eta(o)))) : 'here'}</b><span>${o.phase === 'coming' ? 'arriving' : 'at the pick-up'}</span></div>
+        ${walk > 20 ? `<div><b class="num">${Math.round(walk)} m</b><span>walk to the pick-up</span></div>` : ''}
+        <p class="note">${o.phase === 'coming' ? (walk > 20 ? 'Follow the route to the pick-up. ' : 'Wait at the kerb. ') : 'E beside it to get in. '}N your phone${o.kind === 'hire' ? ': the map, or cancel.' : '.'}</p>`;
     } else if (player.mode === 'rail') {
       const c = player.vehicle, F = rail.funicular, here = rail.stationOf(c.id);
       el.hidden = false;
