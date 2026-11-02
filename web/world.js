@@ -314,6 +314,8 @@ vec3 photoGrade(vec3 c) {
   // game: the game's world, whose own cars take over from the night's traffic within nearCars metres of the camera
   async function create(D, renderer, { onMsg = () => {}, small = Math.min(innerWidth, innerHeight) < 700, shadow = 0, game = false, nearCars = 0 } = {}) {
     const { B, P, LM, T } = D, scene = D.scene, loadMsg = onMsg;
+    // the mapped lamps, benches and trees out of the carriageways, before any of them is drawn (streets.js)
+    if (window.OEStreets) OEStreets.tidy(D);
     // the street lights' light (night.js), which the ground, the piers and the walls add to what they reflect
     const NU = window.OENight && D.N ? OENight.uniforms() : null;
     const NIGHT = NU ? OENight.GLSL : 'vec3 streetLight(vec3 wp) { return vec3(0.0); }';

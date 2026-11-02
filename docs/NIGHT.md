@@ -93,7 +93,15 @@ country's height (60 m in Japan, where they flash together forty times a minute;
 110 m elsewhere, steady), and lit crowns.
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
-instanced batches of 300 m squares drawn within 500 m of the camera.
+instanced batches of 300 m squares drawn within 500 m of the camera. A pole stands behind
+the kerb, clear of a car pulled in there (`web/streets.js` setback: the kerb line plus a
+car's half width), and never in another road: where the spot beside its own road falls
+inside the band of another (beside a junction, between a dual carriageway's two lines,
+which the game draws over each other), the lamp moves up to 8 m along its road, and is
+left out if that doesn't clear it. Before this, 1,662 of Sydney's 6,354 poles stood in a
+carriageway. In the game a pole that would stand in a building's wall is taken away and
+its lamp hangs on a bracket there. The lamps OpenStreetMap maps are moved out of the
+carriageways the same way before they are lit (`OEStreets.tidy`).
 
 **When.** Everything fades in as the street lights come on, about when the sun sets.
 Offices empty through the evening to a few floors lit all night.
