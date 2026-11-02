@@ -59,6 +59,29 @@ window.OEWorld = (function () {
   const LM_NIGHT = { value: 0 }; // how dark it is, for landmark patterns with lit windows
   // the Eiffel Tower's sparkle: five minutes at the start of every hour after dark (setSun turns it on)
   const SPARKLE = { on: { value: 0 }, t: { value: 0 } };
+  // A floodlit material lit from below (landmarks.json "flood": [from_m, to_m, roof, top]), as a
+  // castle or a tower is lit by floodlights at its foot and on its lower roofs: a wall takes the
+  // light full and the underside of an eave a little more, a roof facing up catches its share at a
+  // graze ("roof", 0.5), and the light falls off up the building from from_m to to_m (the local
+  // frame's heights) to "top" (0.6) of what it is at the foot. Without "flood" a floodlit material
+  // glows evenly, as a sign or a screen does. prev: the material's own pattern, if any.
+  function floodFrom(spec, prev) {
+    if (!spec) return prev;
+    const [z0, z1, roof = 0.5, top = 0.6] = spec;
+    return sh => {
+      if (prev) prev(sh);
+      sh.uniforms.uFlood = { value: new THREE.Vector4(z0, z1, roof, top) };
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vFloodY;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n  vFloodY = (modelMatrix * vec4(transformed, 1.0)).y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec4 uFlood; varying float vFloodY;')
+        .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+  { vec3 wn = inverseTransformDirection(normal, viewMatrix);
+    float face = wn.y < 0.0 ? 1.0 - 0.3 * wn.y : mix(1.0, uFlood.z, wn.y);
+    // the light comes back off the surface, so its pattern (courses, joints, tiles) shows in it
+    float tex = clamp(dot(diffuseColor.rgb, vec3(1.0)) / max(dot(diffuse, vec3(1.0)), 1e-3), 0.0, 1.5);
+    totalEmissiveRadiance *= face * tex * mix(1.0, uFlood.w, clamp((vFloodY - uFlood.x) / max(uFlood.y - uFlood.x, 1.0), 0.0, 1.0)); }`);
+    };
+  }
   const PATTERNS = {
     // the Opera House roof tiles: chevron lids between the ribs, glossy white tiles inside a
     // lid and matte cream along its joints (u counts rib bays, v is metres along a rib)
@@ -665,7 +688,10 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const floodlit = k => floodMats[k] || (floodMats[k] = Object.assign(lmMats[k].clone(), {
       emissive: lin(LM.materials[k].emissive || (LM.materials[k].emissive_map ? '#ffffff' : '#ffe2b8')), emissiveIntensity: 0,
       emissiveMap: LM.materials[k].emissive_map ? lmMats[k].map : null,
-      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: lmMats[k].onBeforeCompile, defines: Object.assign({}, lmMats[k].defines) }));
+      userData: { glow: LM.materials[k].glow || 0.32 }, onBeforeCompile: floodFrom(LM.materials[k].flood, lmMats[k].onBeforeCompile),
+      // (a floodlight wraps the material's own pattern, so its source alone would not tell two programs apart)
+      ...(LM.materials[k].flood ? { customProgramCacheKey: () => `flood-${k}` } : {}),
+      defines: Object.assign({}, lmMats[k].defines) }));
     for (const m of LM.meshes || []) {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
@@ -813,7 +839,18 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         sunLight.position.copy(shAt).addScaledVector(z, 4500);
       },
       // the date, for what flowers when (local month and day)
-      setSeason(month, day) { if (trees) trees.setSeason(month, day); },
+      setSeason(month, day) {
+        if (trees) trees.setSeason(month, day);
+        // a floodlight that changes with the season (landmarks.json "emissive_dates": [["MM-DD", "MM-DD", colour], ...]):
+        // Tokyo Tower's white metal halide lamps in summer, its orange sodium ones the rest of the year
+        const md = month * 100 + day;
+        for (const [k, m] of Object.entries(floodMats)) {
+          const dates = LM.materials[k].emissive_dates;
+          if (!dates) continue;
+          const hit = dates.find(([a, b]) => { const [p, q] = [a, b].map(s => +s.replace('-', '')); return p <= q ? md >= p && md < q : md >= p || md < q; });
+          m.emissive.copy(lin(hit ? hit[2] : LM.materials[k].emissive || '#ffe2b8'));
+        }
+      },
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
       tick(t, camera) {
         SPARKLE.t.value = t * 0.001;

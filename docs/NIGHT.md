@@ -50,6 +50,15 @@ renderers draw night cities, before deciding what to draw.
   lights (6500 K is a standard option of the ceiling fixtures sold there;
   [Village House](https://www.villagehouse.jp/blog/en/interior-design/how-to-choose-the-perfect-lighting-for-your-home/)),
   and the flats of Hong Kong's estates by tubes, so their windows read cool too.
+- **Landmarks floodlit from below.** Osaka Castle's keep is lit every night to Motoko
+  Ishii's design, converted to LED in 2023
+  ([Lumenpulse](https://www.lumenpulse.com/projects/589/osaka-castle),
+  [MONDO\*DR Awards 2024](https://mondodrawards.com/2024/?p=3536)): white walls bright,
+  the copper roofs catching the light, the stone base lit warm. Kyoto Tower is floodlit
+  white, and Tokyo Tower has Ishii's *Landmark Light* (1989): orange sodium lamps from
+  October to early July and white metal halide in summer
+  ([Tokyo Metropolitan Government](https://www.tokyoupdates.metro.tokyo.lg.jp/en/post-346/),
+  [ECD](https://www.ecdonline.com.au/content/efficiency-renewables/article/motoko-ishii-lights-up-sparc-2-13-732541313)).
 - **Glass reflects.** At night a curtain wall is a dark mirror: blue sky above, the
   city's glow and its neighbours' lights below.
 - **Many lights as materials, not light sources.** Real-time night cities draw street
@@ -70,6 +79,7 @@ No code was taken from any of these; the ideas are general. What was adopted, an
 | A hierarchy on the towers | `night.js`: crowns lit on 60% of the towers over 60 m (a wash up the top storeys and a line along the parapet, mostly white); `buildings.js`: lobbies lit all night |
 | Offices by the floor, homes by the room | `buildings.js`: an office's lit rooms follow its floors, and offices empty through the evening; each building keeps its own evening; each lit run has its own brightness, a few floors bright |
 | Fewer windows lit, and brighter | `buildings.js`: lit rooms 1.6 times as bright as before and fewer of them (an office about half as many at 19:00); offices under cool white, a floor in four warmer; homes warm, or cool in Japan and Hong Kong; `world.js`: the landmark towers' curtain walls (Hong Kong's) light in runs under cool white too |
+| Landmarks floodlit from below | `world.js` `flood`: a landmark's walls lit full, the undersides of its eaves more, its roofs at a graze, fading up the building; Osaka Castle (its stone base too), Kyoto Tower, Tokyo Tower (its colour by the season) and the Harbour Bridge's arch |
 | Glass that reflects | the environment light is drawn from the night sky, so curtain walls mirror blue above and warm below |
 | Lights as materials | `night.js`: lamps, traffic and tower lights are points and strips in three draw calls; the light on the ground is one texture |
 
@@ -110,6 +120,15 @@ brightness, most at room light and one in ten bright, and its own light: offices
 white (4000 to 5000 K) with a floor in four warmer, homes warm with a share under cool
 ceiling lights (0.55 in Japan, 0.6 in Hong Kong, 0.15 elsewhere). Once a run is under a
 pixel the facade takes the mean of all that, so a far tower keeps its own tone.
+
+**Floodlit landmarks.** A landmark's floodlit material with `flood` is lit from below
+(`world.js`): walls full, the undersides of eaves a little more, roofs facing up at a
+graze, falling off up the building, and the light comes back off the surface in its
+pattern (the courses of a stone base, the tiles of a roof). Osaka Castle's keep is lit
+warm white with its copper roofs and its stone base lit; Kyoto Tower white with its deck's
+windows lit; Tokyo Tower orange, white in summer (`emissive_dates`); the Harbour Bridge's
+arch softly from its deck. Without `flood` a floodlit material glows evenly, as signs and
+screens do (the Eiffel Tower's gold, Hong Kong's frames and crowns).
 
 **Poles.** The generated lamps stand on poles with an arm out over the road, in
 instanced batches of 300 m squares drawn within 500 m of the camera.

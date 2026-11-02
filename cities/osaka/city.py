@@ -59,13 +59,16 @@ HEP5_BUILDING_H = 47.0
 MATERIALS = {
     # the castle: dressed granite in courses, copper formed as round tiles (verdigris), white
     # plaster, gold leaf, black lacquer; the well house's grey tiles and timber
-    "granite": {"color": "#8d8a81", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.75, "block_m": 1.5},
-    "plaster": {"color": "#ebe8df", "roughness": 0.8, "metalness": 0.0, "emissive": "#fff3e2", "glow": 0.42},
+    # (after dark the keep is floodlit in warm white from below, its stone base in a warmer light:
+    # emissive and glow are what the floodlights give each surface; "flood" is set per keep below)
+    "granite": {"color": "#8d8a81", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.75, "block_m": 1.5,
+                "emissive": "#ffd8ad", "glow": 0.24},
+    "plaster": {"color": "#ebe8df", "roughness": 0.8, "metalness": 0.0, "emissive": "#fff1dd", "glow": 0.8},
     "copper_roof": {"color": "#4f8b78", "roughness": 0.55, "metalness": 0.3, "pattern": "roof_tiles", "bay_m": 0.33, "course_m": 0.32,
-                    "emissive": "#5f9e8a", "glow": 0.32},
-    "ridge_copper": {"color": "#3c6b5c", "roughness": 0.55, "metalness": 0.3, "emissive": "#4d8574", "glow": 0.32},
-    "gold": {"color": "#d6a931", "roughness": 0.32, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.55},
-    "black_wall": {"color": "#24201e", "roughness": 0.6, "metalness": 0.1, "emissive": "#2b2420", "glow": 0.3},
+                    "emissive": "#6cae98", "glow": 0.6},
+    "ridge_copper": {"color": "#3c6b5c", "roughness": 0.55, "metalness": 0.3, "emissive": "#5a9a85", "glow": 0.55},
+    "gold": {"color": "#d6a931", "roughness": 0.32, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.75},
+    "black_wall": {"color": "#24201e", "roughness": 0.6, "metalness": 0.1, "emissive": "#3a3029", "glow": 0.35},
     "window": {"color": "#2d2f30", "roughness": 0.45, "metalness": 0.2},
     "window_bar": {"color": "#8e938f", "roughness": 0.6, "metalness": 0.2},
     "paving": {"color": "#c6bda9", "roughness": 0.92, "metalness": 0.0},
@@ -334,9 +337,16 @@ def finalize(ctx):
 
 def landmark_meshes(scene):
     lm = scene["landmarks"]
-    meshes = []
+    meshes, mats = [], {k: dict(v) for k, v in MATERIALS.items()}
     if "castle" in lm:
         meshes += osaka_castle(lm["castle"])
+        # the floodlights (web/world.js "flood"): at the foot of the stone base, washing it up to
+        # its top, and on the base and the roofs below each tier, lighting the walls, the eaves'
+        # undersides and, at a graze, the copper roofs, a little less towards the shachi
+        z0 = lm["castle"]["ground_m"]
+        mats["granite"]["flood"] = [z0, round(z0 + CASTLE_STONE_H, 1), 0.5, 0.45]
+        for k in ("plaster", "copper_roof", "ridge_copper", "gold", "black_wall"):
+            mats[k]["flood"] = [round(z0 + CASTLE_STONE_H, 1), round(z0 + CASTLE_TOP_H, 1), 0.6, 0.7]
     if "kotenshu" in lm or "well_house" in lm:
         M = {k: Mesh("kotenshu_" + k, m, False, uv=m in ("granite", "kawara")) for k, m in
              (("stone", "granite"), ("paving", "paving"), ("wall", "plaster"), ("timber", "timber"), ("kawara", "kawara"), ("kawara_ridge", "kawara_ridge"))}
@@ -355,7 +365,7 @@ def landmark_meshes(scene):
         meshes += kani_crab(lm["kani"])
     if "signs" in lm:
         meshes += shop_signs(lm["signs"]["sites"])
-    return MATERIALS, meshes
+    return mats, meshes
 
 
 # ---------------------------------------------------------------- Osaka Castle keep
@@ -638,8 +648,8 @@ def osaka_castle(c):
     lv = lambda h: z0 + keep_level(h)
     mats = {"stone": "granite", "wall": "plaster", "soffit": "plaster", "roof": "copper_roof", "ridge": "ridge_copper", "gold": "gold",
             "black": "black_wall", "window": "window", "bars": "window_bar", "deck": "black_wall"}
-    # the keep is floodlit after dark: everything but the stone base and the windows
-    M = {k: Mesh("castle_" + k, m, False, floodlit=k not in ("stone", "window", "bars"), uv=m in ("granite", "copper_roof")) for k, m in mats.items()}
+    # the keep is floodlit after dark, its stone base too: everything but the windows
+    M = {k: Mesh("castle_" + k, m, False, floodlit=k not in ("window", "bars"), uv=m in ("granite", "copper_roof")) for k, m in mats.items()}
     stone_base(M["stone"], P, z0, KEEP_STONE[0], KEEP_STONE[1], CASTLE_STONE_H)
     gables = [(("n", "s") if f == "ns" else ("e", "w"), d0, cc, hw, lv(zb), lv(za), dp) for f, d0, cc, hw, zb, za, dp in KEEP_GABLES]
     for k, (wall, eave, rise, soffit, top) in enumerate(KEEP_TIERS):

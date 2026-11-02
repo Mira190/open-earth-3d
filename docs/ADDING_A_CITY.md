@@ -185,6 +185,19 @@ cuts out its transparent pixels, `emissive_map: true` lights the image itself
 after dark on a floodlit mesh (signs, screens, lanterns), and `opacity` below 1
 makes glass. The meshes keep their UVs (`uv=True`). Blender reads the same keys.
 
+After dark a floodlit mesh (`floodlit=True`) glows in its material's `emissive`
+colour at `glow` (what the light gives that surface: 0.3 for a dim one, 1 and up
+for a sign). Evenly, as a sign or a screen does, unless the material has
+`flood: [from_m, to_m, roof, top]`: then it is lit from below, as a castle keep
+or a tower is by floodlights at its foot and on its lower roofs. Walls take the
+light full and the undersides of eaves a little more, a roof facing up catches
+`roof` of it (0.5), and it falls off from `from_m` to `to_m` (heights in the
+local frame) to `top` (0.6) of what it is at the foot. Set the heights in
+`landmark_meshes` from the landmark's ground, on a copy of the materials (Osaka
+Castle, Kyoto Tower and Tokyo Tower do). `emissive_dates: [["MM-DD", "MM-DD",
+colour], ...]` changes the light's colour between those dates, as Tokyo Tower's
+turns from orange to white for the summer.
+
 A material's `pattern` is drawn by the browser from the mesh's UVs
 (`web/world.js` `PATTERNS`). Its settings sit next to it in the material:
 - `chevron_tiles` with `lid_m` and `chevron_m`: a tiled shell. u counts the
