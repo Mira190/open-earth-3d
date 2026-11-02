@@ -88,7 +88,14 @@ window.OpenEarthGame = async function game(cityId) {
     if (renderer.capabilities.reversedDepthBuffer) U.uNudge.value = 1.5e-5; // a float depth buffer needs less to order coplanar roofs (buildings.js)
   }
   U.uTime = { value: 0 };
-  // close up, 1 m aerial imagery is a blur: add fine noise that fades out with distance
+  // Close up, 1 m aerial imagery is a blur, lit twice (the photo's own sun and shadows, then the
+  // scene's) and far too pale for paving: a sunlit forecourt read as a white sheet with grey
+  // smudges. Near the camera the ground is made into a surface: the photo's baked shadows are
+  // flattened towards their surroundings (the scene casts its own), the paving is brought to the
+  // albedo concrete and sandstone have (about 0.3) instead of the photo's near-white, and paved
+  // ground gets pavers (stretcher bond, joints anti-aliased by their screen size, each paver its
+  // own shade), roads a fine aggregate, the rest a fine grain; all of it fades out with distance,
+  // so from the air the ground is the photograph.
   for (const m of Wd.groundMeshes) m.material.onBeforeCompile = sh => {
     if (Wd.sea) Wd.sea.patchGround(sh); // the wet band and swash along the shore
     sh.uniforms.uStreet = m.material.userData.street = m.material.userData.street || { value: null };
@@ -99,16 +106,50 @@ window.OpenEarthGame = async function game(cityId) {
 varying vec3 vWP; uniform sampler2D uStreet; uniform float uStreetOn;
 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }`)
+  return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
+// pavers 0.6 x 0.3 m in stretcher bond: x, 1 inside a paver and 0 in a joint; y, the paver's own shade
+vec2 pavers(vec2 p) {
+  vec2 q = p / vec2(0.6, 0.3);
+  float row = floor(q.y);
+  q.x += mod(row, 2.0) * 0.5;
+  vec2 f = fract(q), w = fwidth(q) * 1.2, j = vec2(0.012 / 0.6, 0.012 / 0.3);
+  float inside = smoothstep(j.x, j.x + w.x, f.x) * smoothstep(j.x, j.x + w.x, 1.0 - f.x) * smoothstep(j.y, j.y + w.y, f.y) * smoothstep(j.y, j.y + w.y, 1.0 - f.y);
+  // joints finer than a pixel and a half fade to the mean instead of shimmering
+  inside = mix(inside, 0.93, smoothstep(0.25, 0.6, max(w.x, w.y)));
+  return vec2(inside, h2(floor(q) + vec2(row * 7.0, 3.0)));
+}`)
       .replace('#include <map_fragment>', `#include <map_fragment>
 float camD = distance(vWP, cameraPosition);
 float near = 1.0 - smoothstep(12.0, 70.0, camD);
+float street = 1.0 - smoothstep(60.0, 420.0, camD); // street level, out to where the photo takes over
+const vec3 LUM = vec3(0.2126, 0.7152, 0.0722);
+// the photo's baked shadows and blotches, flattened towards the ground around them
+float l0 = dot(texture2D(map, vMapUv).rgb, LUM), l4 = dot(texture2D(map, vMapUv, 4.0).rgb, LUM);
+diffuseColor.rgb *= mix(1.0, clamp(sqrt(l4 / max(l0, 0.01)), 0.7, 1.45), 0.75 * (1.0 - smoothstep(25.0, 160.0, camD)));
+// what kind of ground: paved (pale and grey), planted (green), the rest
+float mx = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)), sat = (mx - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b))) / max(mx, 1e-3);
+float green = smoothstep(0.02, 0.08, diffuseColor.g - max(diffuseColor.r, diffuseColor.b));
+float paved = smoothstep(0.32, 0.18, sat) * smoothstep(0.07, 0.16, dot(diffuseColor.rgb, LUM)) * (1.0 - green);
+float roadway = 0.0;
 if (uStreetOn > 0.5) { // drawn streets near the camera: no blur, no shadows baked into the photo
   vec4 st = sRGBTransferEOTF(texture2D(uStreet, vMapUv));
-  diffuseColor.rgb = mix(diffuseColor.rgb, st.rgb, st.a * (1.0 - smoothstep(35.0, 140.0, camD)) * 0.92);
+  float k = st.a * (1.0 - smoothstep(35.0, 140.0, camD)) * 0.92;
+  diffuseColor.rgb = mix(diffuseColor.rgb, st.rgb, k);
+  float sl = dot(st.rgb, LUM);
+  roadway = k * smoothstep(0.12, 0.07, sl);           // asphalt (dark), not the footways and kerbs drawn beside it
+  paved = mix(paved, 1.0 - roadway, k);
 }
+// paving at the albedo it has, not the photo's near-white: a soft knee from 0.28
+float L = dot(diffuseColor.rgb, LUM);
+if (L > 0.28) diffuseColor.rgb *= mix(1.0, (0.28 + (L - 0.28) * 0.3) / L, street * mix(0.6, 1.0, paved));
+// pavers on paved ground, a fine aggregate on the roads, a grain on the rest
+vec2 pv = pavers(vWP.xz);
+float pnear = 1.0 - smoothstep(8.0, 32.0, camD);
+diffuseColor.rgb *= mix(1.0, (0.9 + 0.14 * pv.y) * mix(0.7, 1.0, pv.x), paved * (1.0 - roadway) * pnear * 0.85);
+float agg = vn(vWP.xz * 31.0) * 0.6 + vn(vWP.xz * 7.0) * 0.4;
+diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near);
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
-diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
+diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * pnear));`);
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
   };
   loadMsg('Surface model for walking, flying and sunlight', 0.78);
@@ -137,7 +178,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
       }
     };
     const foot = G.paths.foot.filter(f => inTile(f.p)), roads = G.paths.road.filter(r => inTile(r.p));
-    for (const f of foot) { path(f.p); g.strokeStyle = '#c4beb2'; g.lineWidth = (FOOTW[f.c] || 3) / PX; g.stroke(); }
+    for (const f of foot) { path(f.p); g.strokeStyle = '#b3ada1'; g.lineWidth = (FOOTW[f.c] || 3) / PX; g.stroke(); }
     for (const r of roads) { path(r.p); g.strokeStyle = '#9d988d'; g.lineWidth = ((ROADW[r.c] || 7) + 1) / PX; g.stroke(); } // kerbs
     for (const r of roads) { path(r.p); g.strokeStyle = '#4b4e52'; g.lineWidth = (ROADW[r.c] || 7) / PX; g.stroke(); }
     g.setLineDash([3 / PX, 6 / PX]);
@@ -674,7 +715,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const o = ride;
     if (!o || o.phase !== 'driving' || cine.active) return;
     const end = {}, P = o.drv.path;
-    P.at(P.len, end);
+    P.at(o.drv.st.end, end);
     o.meter += o.drv.remaining();
     hopTo(end.x, end.y, end.z, o.dest.name, { cue: () => o.drv.finish(), quiet: true });
   }
