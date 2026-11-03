@@ -430,7 +430,10 @@ def main():
 
     # ---------------------------------------------------------- props
     props = {"bench": [], "street_lamp": [], **{k: [] for k in road_rules.SIGNS}}  # the signals and signs: the traffic's junctions
-    for r in rows(con, raw("infrastructure"), "class, wkb"):
+    tagged = "source_tags" in [d[0] for d in con.execute(f"DESCRIBE SELECT * FROM '{raw('infrastructure')}'").fetchall()]
+    for r in rows(con, raw("infrastructure"), "class, wkb" + (", source_tags" if tagged else "")):
+        if r["class"] == "crossing":  # (by its OSM tags: one with signals or zebra stripes)
+            r["class"] = road_rules.crossing_kind(r.get("source_tags"))
         if r["class"] in props:
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q) and not water[cell(q.x, q.y)]:

@@ -4,7 +4,7 @@
 // traffic has run a while (VIEW=kerb: on the kerb by the main arm's crossing, looking across at
 // the walk signal; PHASE=2: the junction shown in its arrow phase). Prints what the signals and the traffic were doing and the page's errors.
 //   cd web && python3 -m http.server 8800 &
-//   xvfb-run -a node tools/signal_shot.js sydney out_dir [count|id,id|arrows<count>] [HH:MM,HH:MM] [WxH]
+//   xvfb-run -a node tools/signal_shot.js sydney out_dir [count|id,id|arrows<count>|mid<count>] [HH:MM,HH:MM] [WxH]
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
@@ -33,6 +33,8 @@ const [,, city = 'sydney', outDir = '.', which = '3', times = '10:30,19:40,22:00
     const g = window.__game, J = g.cars.junctions.J, x0 = g.player.x, y0 = g.player.y;
     if (/^[\d,]+$/.test(which) && which.includes(',')) return which.split(',').filter(Boolean).map(Number);
     const arrows = /^arrows?(\d*)$/.exec(which); // 'arrows3': the nearest three with a turn arrow
+    const mids = /^mids?(\d*)$/.exec(which); // 'mid3': the nearest three crossings with signals between junctions
+    if (mids) return J.filter(j => j.sig && j.mid != null).sort((a, b) => Math.hypot(a.x - x0, a.y - y0) - Math.hypot(b.x - x0, b.y - y0)).slice(0, Number(mids[1] || 3)).map(j => j.id);
     if (arrows) return J.filter(j => j.sig && j.arrow).sort((a, b) => Math.hypot(a.x - x0, a.y - y0) - Math.hypot(b.x - x0, b.y - y0)).slice(0, Number(arrows[1] || 3)).map(j => j.id);
     return J.filter(j => j.sig).sort((a, b) => Math.hypot(a.x - x0, a.y - y0) - Math.hypot(b.x - x0, b.y - y0)).slice(0, Number(which)).map(j => j.id);
   }, which);
