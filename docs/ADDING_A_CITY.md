@@ -236,6 +236,14 @@ mesh draws instead as `{"hidden": [...]}` (the third item of
 `landmark_meshes`): the renderers leave them out, the surface model keeps them.
 Outlines that the built data lacks are fetched once from OpenStreetMap and kept
 next to the city's hooks with their way ids (`cities/kyoto/castles_osm.json`).
+Where a landmark steps in section (wings with a lower gallery, a pavilion with an
+attic), measure it rather than guess: `pipeline/lidar_massing.py` cuts a
+footprint (`massing_footprints()` in the city's hooks) into zones by the roof
+levels an airborne LiDAR surface model shows, with their heights
+(`cities/<id>/massing.json`; IGN LiDAR HD so far), and lists the solids with a
+guessed height that stand on bare ground, for `landmark_demolished`
+(`lidar_massing.absent_solids`). Paris's Palais de Chaillot is built this way.
+A landmark's `clip` regions (no ground drawn) also keep the trees out.
 
 Every part takes metres. Build the small parts too: the railings, lamps,
 mullions and deck markings are what make a structure read as built, and they

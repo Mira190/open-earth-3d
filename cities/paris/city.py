@@ -40,6 +40,7 @@ Statistics for the tour (scene.json "landmarks"): the share of LiDAR-profiled pi
 that are mansards and the median measured roof height, the eaves of the buildings dated
 1850-1914, and the Seine's level.
 """
+import json
 import math
 import os
 
@@ -99,6 +100,9 @@ MATERIALS = {
     "win": {"color": "#272a30", "roughness": 0.3, "metalness": 0.3, "emissive": "#ffc77d", "glow": 0.35},
     "lead_roof": {"color": "#59606a", "roughness": 0.55, "metalness": 0.45, "emissive": "#ffd9a6", "glow": 0.25},
     "copper": {"color": "#6a877a", "roughness": 0.55, "metalness": 0.3, "emissive": "#d8ffe8", "glow": 0.3},
+    "lawn": {"color": "#5d7a3c", "roughness": 0.95, "metalness": 0.0},
+    "basin_water": {"color": "#24434f", "roughness": 0.06, "metalness": 0.1},
+    "jet": {"color": "#eef4f6", "roughness": 0.4, "metalness": 0.0, "opacity": 0.42, "emissive": "#ffffff", "glow": 0.2},
     "gold": {"color": "#d8ad45", "roughness": 0.28, "metalness": 0.95, "emissive": "#ffcf6a", "glow": 0.9},
     "steel_white": {"color": "#eceeee", "roughness": 0.4, "metalness": 0.3, "emissive": "#f4f8ff", "glow": 0.35},
     "pompidou_glass": {"color": "#5d7180", "roughness": 0.08, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 12.8, "storey_m": 7.0,
@@ -342,8 +346,12 @@ def landmark_meshes(scene):
     if "louvre_pyramid" in lm:
         meshes += pyramid(lm["louvre_pyramid"])
     more, hidden = monuments(mats)
-    meshes += more
-    return mats, meshes, {"hidden": hidden}
+    meshes += more + varsovie(mats) + trocadero_lawns(mats)
+    # the ground is not drawn over the Warsaw Fountain's water (its terrain is interpolated over the basin)
+    import cityctx
+    C = cityctx.City("paris")
+    clip = [{"ring": [[round(x, 1), round(y, 1)] for x, y in q.buffer(0.3).exterior.coords], "holes": []} for _, _, q in varsovie_pieces()]
+    return mats, meshes, {"hidden": hidden, "clip": clip}
 
 
 def eiffel_tower(t):
@@ -1369,66 +1377,270 @@ CHAILLOT_LL = [[[2.2907905, 48.8632296],
                [2.2872917, 48.8619985]]]
 
 
-def chaillot(rows, mats):
-    """The Palais de Chaillot: the two curved wings and the head pavilions on the parvis."""
+def massing_footprints():
+    """Footprints whose massing pipeline/lidar_massing.py measures (cities/paris/massing.json): the
+    Palais de Chaillot's wings, grown into the head pavilions OpenStreetMap's outlines leave out."""
+    return {"chaillot": {"rings": CHAILLOT_LL, "grow_m": 12.0}}
+
+
+def gilt_figure(m, x, y, z, facing, h, pose=0):
+    """A standing bronze figure h tall at (x, y, z), facing the bearing `facing` (radians from +x): legs in
+    contrapposto, the torso, shoulders and head, and arms in one of eight gestures (raised, holding out,
+    at rest), modelled as tapered tubes (the parvis's statues seen from the gardens and the terrace)."""
+    c, s_ = math.cos(facing), math.sin(facing)
+    P = lambda f, l, u: (x + c * f - s_ * l, y + s_ * f + c * l, z + u * h / 4.2)  # forward, left, up (4.2 m figure)
+    sway = 0.12 if pose % 2 else -0.12
+    hip, knee_l, knee_r = P(0, sway, 2.0), P(0.05, 0.2 + sway, 1.05), P(-0.18, -0.2 + sway * 0.5, 1.05)
+    m.tube([P(0.05, 0.24 + sway, 0.0), knee_l, P(0, 0.17 + sway, 2.0)], [0.15, 0.17, 0.22], sides=7)
+    m.tube([P(-0.3, -0.24, 0.0), knee_r, P(0, -0.17 + sway, 2.0)], [0.15, 0.17, 0.22], sides=7)
+    chest, neck = P(0.02, sway * 0.3, 3.05), P(0.02, 0, 3.55)
+    m.tube([hip, P(0.04, sway * 0.6, 2.5), chest, neck], [0.32, 0.27, 0.36, 0.11], sides=8)
+    m.tube([P(0.03, 0, 3.6), P(0.05, 0, 3.78), P(0.04, 0, 4.0), P(0.02, 0, 4.12)], [0.12, 0.15, 0.14, 0.05], sides=8)
+    sh_l, sh_r = P(0.0, 0.42, 3.4), P(0.0, -0.42, 3.4)
+    m.tube([sh_r, P(0.0, 0, 3.47), sh_l], [0.12, 0.16, 0.12], sides=6)
+    gestures = [((0.35, 0.65, 4.4), (0.15, 0.55, 5.1)), ((0.6, 0.5, 3.2), (1.1, 0.5, 3.3)), ((0.1, 0.55, 2.7), (0.2, 0.5, 2.1)),
+                ((0.3, 0.7, 3.9), (0.5, 0.9, 4.5)), ((0.55, 0.35, 2.9), (0.75, 0.1, 2.9)), ((0.2, 0.75, 3.6), (0.1, 1.0, 4.2)),
+                ((0.45, 0.55, 3.5), (0.9, 0.45, 4.0)), ((0.1, 0.5, 2.6), (0.35, 0.35, 2.15))]
+    (el, ha), (er, hr) = gestures[pose % 8], gestures[(pose + 3) % 8]
+    m.tube([sh_l, P(*el), P(*ha)], [0.1, 0.085, 0.06], sides=6)
+    m.tube([sh_r, P(er[0], -er[1], er[2]), P(hr[0], -hr[1], hr[2])], [0.1, 0.085, 0.06], sides=6)
+
+
+def chaillot_zones():
+    """The palace's massing measured by IGN LiDAR HD (cities/paris/massing.json, pipeline/lidar_massing.py):
+    [(roof z, ring [(x, y)] in the local frame)], lowest first."""
     import cityctx
     C = cityctx.City("paris")
-    wings = [[C.fwd.transform(lon, lat) for lon, lat in ring] for ring in CHAILLOT_LL]
-    parvis = max(s["ground"] for s in rows) if rows else 33.7
-    K = Monument("chaillot", mats, parvis - 22.0, parvis + 18.0)
-    st, tr, wn, gold, rl = K.m("lime"), K.m("lime_trim"), K.m("win"), K.m("gold"), K.m("relief")
-    roof = parvis + 12.0  # OpenStreetMap's 30 m, from the gardens' side
-    for ring in wings:
-        ring = ak.simplify(ring, 0.6)
-        z0 = parvis - 24.0  # the gardens' side, down the slope to the Seine; the terrain covers what is underground
-        ak.prism(st, ak.WORLD, ring, z0, roof, top=False)
-        ak.cap(rl, ak.WORLD, ring, roof - 0.3)
-        ak.cornice(tr, ak.WORLD, ring, roof - 1.4, ((0, 0), (0.3, 0.4), (0.6, 1.0), (0.6, 1.4), (0, 1.4)))
-        # the piers and tall windows of the long curved walls
-        pts = list(ring)
-        if ak.ring_area(pts) > 0:
-            pts = pts[::-1]
-        for k in range(len(pts)):
-            a, b = pts[k], pts[(k + 1) % len(pts)]
-            if math.dist(a, b) < 3.0:
-                continue
-            ak.openings_along(wn, ak.WORLD, a, b, parvis - 20.0, 2.2, 16.0, 4.6)
-            ak.openings_along(wn, ak.WORLD, a, b, parvis - 1.0, 2.2, 10.5, 4.6)
-            ak.pilasters(tr, ak.WORLD, a, b, parvis - 22.0, roof - parvis + 20.6, 0.9, 4.6, out=0.35)
-        # the head pavilion: the wing's end nearest the parvis's axis, a storey higher
-        cx, cy = ak.ring_centroid(ring)
-    # the parvis between the wings: the head pavilions face each other across it; each is the end of its wing
-    # nearest the other wing
-    import shapely
-    from shapely.geometry import Polygon
-    A, B = (Polygon(ak.simplify(w, 0.6)).buffer(0) for w in wings)
-    from shapely.ops import nearest_points
-    pa, pb = nearest_points(A, B)
-    mid = ((pa.x + pb.x) / 2, (pa.y + pb.y) / 2)
-    for poly, p in ((A, pa), (B, pb)):
-        head = poly.intersection(Point(p.x, p.y).buffer(26.0))
-        if head.is_empty or head.geom_type != "Polygon":
+    M = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "massing.json")))["chaillot"]
+    return [(q["z"], [C.fwd.transform(lon, lat) for lon, lat in r]) for q in M["zones"] for r in q["rings"]]
+
+
+# The Warsaw Fountain (Fontaine de Varsovie, 1937) below the gardens' slope: its basins as OpenStreetMap maps
+# them (ODbL, cities/paris/trocadero.json; way 79738429 the long basin with the small ones at its head, 79738439 the curved basin at its
+# foot, the rest the head's small basins), lon/lat. The long basin's coping is 12.0 m on both sides in IGN
+# LiDAR HD (March 2023), which saw a temporary platform over the water (a flat top at 24.2 m, 86 m by 30 m:
+# the built data's 10.9 m "monument", which is demolished here). Its jets (Wikipedia): twenty cannons in four
+# groups of five, aimed along the basin towards the Eiffel Tower, 50 m in range; twelve columns of 7 m; 56 jets.
+TROCADERO = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "trocadero.json")))
+VARSOVIE_OSM = {int(k): v for k, v in TROCADERO["water"].items()}  # the fountain's basins and the gardens' pools
+VARSOVIE_RIM = 12.0
+VARSOVIE_HEAD = 14.0  # m: the head's small basins stand up the slope, above the long basin's coping
+
+
+def varsovie_pieces():
+    """The fountain's basins as (water z, coping z, polygon in the local frame): the long basin and the curved
+    one at its foot at their measured levels, the head's small basins on the ground up the slope."""
+    import cityctx
+    from shapely.geometry import Polygon, box
+    C = cityctx.City("paris")
+    T = ak.Terrain("paris")
+    out = []
+    for wid, ring in sorted(VARSOVIE_OSM.items()):
+        P = Polygon([C.fwd.transform(lon, lat) for lon, lat in ring]).buffer(0)
+        if wid != 79738429:  # the curved basin at the long one's foot, a step below it, and the gardens' pools
+            g = min(T(x, y) for x, y in P.exterior.coords)
+            out.append((g + 0.1, g + 0.45, P))
             continue
-        hr = ak.simplify(list(head.exterior.coords), 0.6)
-        ak.prism(st, ak.WORLD, hr, roof - 0.5, parvis + 18.0, top=False)
-        ak.cap(rl, ak.WORLD, hr, parvis + 17.7)
-        ak.cornice(tr, ak.WORLD, hr, parvis + 16.6, ((0, 0), (0.3, 0.4), (0.7, 1.1), (0.7, 1.4), (0, 1.4)))
-        ak.band(gold, ak.WORLD, hr, parvis + 13.4, out=0.12, h=1.2)  # Paul Valéry's gilded inscriptions
-        pts = list(hr)
-        if ak.ring_area(pts) > 0:
+        # cut the long basin's outline where the ground rises above its coping: the small basins at its head
+        x0, y0, x1, y1 = P.bounds
+        cells = [box(x, y, x + 1, y + 1) for x in np.arange(x0, x1, 1.0) for y in np.arange(y0, y1, 1.0) if T(x + 0.5, y + 0.5) > VARSOVIE_HEAD]
+        head = shapely.union_all(cells).buffer(0) if cells else Polygon()
+        for part, up in ((P.difference(head), False), (P.intersection(head), True)):
+            for q in getattr(part, "geoms", [part]):
+                if q.geom_type != "Polygon" or q.area < 4:
+                    continue
+                q = q.buffer(-0.3).buffer(0.3).simplify(0.2)
+                if q.is_empty or q.geom_type != "Polygon":
+                    continue
+                if up:
+                    g = min(T(x, y) for x, y in q.exterior.coords)
+                    out.append((g + 0.1, g + 0.45, q))
+                else:
+                    out.append((VARSOVIE_RIM - 0.35, VARSOVIE_RIM, q))
+    return out
+
+
+def trocadero_lawns(mats):
+    """The gardens' lawns (OpenStreetMap landuse=grass), draped a hand over the terrain on a 2 m grid: the
+    aerial photograph there shows a temporary hall over the slope and pale paving."""
+    import cityctx
+    from shapely.geometry import Polygon, box
+    C = cityctx.City("paris")
+    T = ak.Terrain("paris")
+    K = ak.Kit("trocadero_lawn")
+    m = K["lawn"]
+    water = shapely.union_all([q for _, _, q in varsovie_pieces()]).buffer(1.0)
+    for ring in TROCADERO["grass"].values():
+        P = Polygon([C.fwd.transform(lon, lat) for lon, lat in ring]).buffer(0).difference(water)
+        x0, y0, x1, y1 = P.bounds
+        for x in np.arange(math.floor(x0 / 2) * 2, x1, 2.0):
+            for y in np.arange(math.floor(y0 / 2) * 2, y1, 2.0):
+                c = P.intersection(box(x, y, x + 2, y + 2))
+                for q in getattr(c, "geoms", [c]):
+                    if q.geom_type != "Polygon" or q.area < 0.05:
+                        continue
+                    pts = list(q.exterior.coords)[:-1]
+                    if ak.ring_area(pts) < 0:
+                        pts = pts[::-1]
+                    for a, b, cc in ak.ear_clip([tuple(p) for p in pts]):
+                        m.tri(*[(px, py, T(px, py) + 0.08) for px, py in (a, b, cc)])
+    return K.out()
+
+
+def varsovie(mats):
+    """The Fontaine de Varsovie: each basin's water a hand below its stone coping, the walls inside it, and
+    outside down to the ground where the slope falls away; the cannons at the long basin's head, arching along
+    it towards the Seine, and its columns of water in two rows."""
+    import cityctx
+    from shapely.geometry import Polygon
+    C = cityctx.City("paris")
+    T = ak.Terrain("paris")
+    K = ak.Kit("varsovie")
+    st, wa, jet = K["stone"], K["basin_water"], K["jet"]
+    pieces = varsovie_pieces()
+    for w, rim, q in pieces:
+        pts = list(q.exterior.coords)[:-1]
+        if ak.ring_area(pts) < 0:
             pts = pts[::-1]
+        ak.cap(wa, ak.WORLD, pts, w)
+        for k in range(len(pts)):  # the wall inside the coping, facing the water
+            a, b = pts[k], pts[(k + 1) % len(pts)]
+            ak.wall(st, ak.WORLD, b[0], b[1], a[0], a[1], w - 0.8, rim)
+        outer = ak.offset_ring(pts, 0.6)
+        g0 = min(T(x, y) for x, y in outer) - 0.5
+        ak.prism(st, ak.WORLD, outer, g0, rim, top=False)
+        ak.cornice(st, ak.WORLD, pts, rim - 0.01, ((0, 0), (0.6, 0), (0.6, 0.02), (0, 0.02)))
+    # the long basin: its axis, the head towards the palace
+    w, rim, L0 = max(((w, r, q) for w, r, q in pieces if r == VARSOVIE_RIM), key=lambda t: t[2].area)
+    cx, cy, deg, L, W = ak.oriented(list(L0.exterior.coords))
+    u = np.array([math.cos(math.radians(deg)), math.sin(math.radians(deg))])
+    c = np.array([cx, cy])
+    if np.dot(u, np.array(C.fwd.transform(2.2886, 48.8626)) - c) < 0:
+        u = -u
+    v = np.array([-u[1], u[0]])
+    W = min(W, 24.0)
+    # twenty cannons in four groups of five at the head, their arcs falling 40 m along the basin
+    for gi in range(4):
+        for j in range(5):
+            off = (-0.39 + 0.26 * gi) * W + (j - 2) * 0.9
+            q = c + u * (L / 2 - 3.0) + v * off
+            pts = [(*(q - u * s), w + 0.5 + 7.5 * math.sin(math.pi * s / 40.0)) for s in np.linspace(0, 40.0, 9)]
+            jet.tube(pts, list(np.linspace(0.18, 0.1, len(pts))), sides=5)
+    # twelve columns of 7 m, in two rows down the basin
+    for j in range(6):
+        for side in (-1, 1):
+            q = c + u * (L / 2 - 14 - j * (L - 24) / 5) + v * side * W * 0.32
+            jet.tube([(q[0], q[1], w), (q[0], q[1], w + 3.5), (q[0], q[1], w + 7.0)], [0.45, 0.3, 0.1], sides=6)
+    return K.out()
+
+
+def chaillot_site():
+    """The built data's solids on the palace's site, as (solid index, on the measured massing?): those on it
+    are a roof's outline over a pavilion and the like, which the palace draws instead; those off it stand
+    on the parvis between the pavilions, where the laser sees bare paving (a 10.8 m block), and are gone."""
+    from shapely.geometry import Polygon, Point
+    polys = [Polygon(r).buffer(0) for _, r in chaillot_zones()]
+    on = shapely.union_all(polys).buffer(2.0)
+    parvis = shapely.union_all([p for (z, _), p in zip(chaillot_zones(), polys) if z > 60.0]).convex_hull
+    out = []
+    for s in ak.load_solids("paris"):
+        c = Point(*ak.ring_centroid(s["ring"]))
+        if on.contains(c) or parvis.contains(c):
+            out.append((s["si"], on.contains(c)))
+    return out
+
+
+def landmark_demolished(scene):
+    """Solids the LiDAR survey finds absent (pipeline/lidar_massing.py: a guessed height over bare ground
+    under the whole footprint; ML footprints in the gardens and squares, a fountain basin's coping), except
+    the light structures a mapper named, which may be newer than the March 2023 flight; and what stands on
+    Chaillot's parvis where the laser sees bare paving."""
+    import lidar_massing
+    B = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "web", "data", "paris", "buildings.json")))
+    light = {"shelter", "kiosk", "hut", "shed", "roof", "carport"}
+    gone = {si for si in lidar_massing.absent_solids("paris") if B["b"][B["s"][si][0]][1] not in light}
+    import cityctx
+    from shapely.geometry import Polygon, Point
+    C = cityctx.City("paris")
+    basin = shapely.union_all([q for _, _, q in varsovie_pieces()]).buffer(3.0)
+    over = {s["si"] for s in ak.load_solids("paris") if basin.contains(Point(*ak.ring_centroid(s["ring"])))}
+    return sorted(gone | over | {si for si, on in chaillot_site() if not on})
+
+
+def chaillot(rows, mats):
+    """The Palais de Chaillot on its measured massing: each wing a tall range on the gardens' side (57 m,
+    its square piers to 58.7 m) and a lower gallery on the streets' (46-48 m), from the parvis (34 m) down
+    the hill to the gardens' foot (25 m), so its garden front stands 30 m as OpenStreetMap has it; the head
+    pavilions on the parvis to 62.8 m round a 68 m core, with Paul Valéry's gilded inscriptions under their
+    cornices facing each other; tall windows between piers on every exposed face; the gilded statues."""
+    import shapely
+    from shapely.geometry import Polygon, Point
+    T = ak.Terrain("paris")
+    zones = [(z, ak.simplify(r, 0.4)) for z, r in chaillot_zones()]
+    polys = [(z, Polygon(r).buffer(0)) for z, r in zones]
+    tree = shapely.STRtree([p for _, p in polys])
+    parvis = 33.7
+    K = Monument("chaillot", mats, 22.0, 69.0)
+    st, tr, wn, gold, rl = K.m("lime"), K.m("lime_trim"), K.m("win"), K.m("gold"), K.m("relief")
+
+    def roof_at(x, y):
+        """The highest zone roof over (x, y), or None."""
+        hit = [polys[i][0] for i in tree.query(Point(x, y)) if polys[i][1].contains(Point(x, y))]
+        return max(hit) if hit else None
+
+    # the head pavilions: the 68 m cores, and the parvis's axis between them
+    A, B = sorted((p for z, p in polys if z > 66.0), key=lambda p: -p.area)[:2]
+    pa, pb = A.centroid, B.centroid
+    mid = ((pa.x + pb.x) / 2, (pa.y + pb.y) / 2)
+    for z, ring in zones:
+        pts = list(ring)
+        if ak.ring_area(pts) < 0:  # anticlockwise: the outside on the right of each edge
+            pts = pts[::-1]
+        g0 = min(T(x, y) for x, y in pts) - 1.5  # the terrain covers what is underground
+        ak.prism(st, ak.WORLD, pts, g0, z, top=False)
+        ak.cap(rl, ak.WORLD, pts, z - 0.05)
+        big = Polygon(pts).area > 60
+        if big:
+            ak.cornice(tr, ak.WORLD, pts, z - 1.1, ((0, 0), (0.25, 0.3), (0.5, 0.8), (0.5, 1.1), (0, 1.1)))
         for k in range(len(pts)):
             a, b = pts[k], pts[(k + 1) % len(pts)]
-            if math.dist(a, b) > 6:
-                ak.openings_along(wn, ak.WORLD, a, b, parvis + 0.6, 2.4, 11.0, 4.8)
-    # the gilded bronze statues along the parvis, on their plinths
+            L = math.dist(a, b)
+            if L < 4.2:
+                continue
+            tx, ty = (b[0] - a[0]) / L, (b[1] - a[1]) / L
+            mx, my = (a[0] + b[0]) / 2 + ty * 1.2, (a[1] + b[1]) / 2 - tx * 1.2  # just outside the edge
+            nb = roof_at(mx, my)
+            foot = max(T(mx, my), nb if nb is not None else -1e9)
+            if z - foot < 4.0:  # the face is inside a taller zone or barely shows
+                continue
+            # tall windows between piers, a storey of 6 m from the face's foot to under the cornice
+            z1 = z - (2.2 if big else 1.0)
+            ak.pilasters(tr, ak.WORLD, a, b, foot, z1 - foot, 0.9, 4.6, out=0.3)
+            zz = foot + 0.8
+            while zz + 4.4 < z1:
+                ak.openings_along(wn, ak.WORLD, a, b, zz, 2.0, min(4.4, z1 - zz - 0.6), 4.6)
+                zz += 6.0
+            # the gilded inscriptions: the head pavilions' faces towards the parvis's axis, under their cornices
+            ox, oy = ty, -tx
+            dx, dy = mid[0] - mx, mid[1] - my
+            dd = math.hypot(dx, dy) or 1.0
+            if 60.0 < z < 66.0 and dd < 70.0 and (ox * dx + oy * dy) / dd > 0.6:
+                ak.openings_along(gold, ak.WORLD, a, b, z - 4.6, min(L - 3.0, 30.0), 1.1, L, depth=0.1)
+    # the eight gilded bronze statues along the parvis (1937), on their plinths, four either side of its axis,
+    # facing across it
     ux, uy = pb.x - pa.x, pb.y - pa.y
     Lp = math.hypot(ux, uy)
     nx, ny = -uy / Lp, ux / Lp
     for side in (-1, 1):
         for k in range(4):
-            t = 0.2 + 0.2 * k
+            t = 0.3 + 0.13 * k
             x, y = pa.x + ux * t + nx * side * 22.0, pa.y + uy * t + ny * side * 22.0
-            st.box((x, y, parvis), (x, y, parvis + 2.2), 1.4, 1.4)
-            gold.box((x, y, parvis + 2.2), (x, y, parvis + 5.0), 0.8, 0.6)
-    return K.out(), [s["si"] for s in rows]
+            if roof_at(x, y) is not None:
+                continue
+            gz = T(x, y)
+            st.box((x, y, gz), (x, y, gz + 2.2), 1.6, 1.6)
+            tr.box((x, y, gz + 2.2), (x, y, gz + 2.45), 1.9, 1.9)
+            gilt_figure(gold, x, y, gz + 2.45, math.atan2(-side * ny, -side * nx), 4.2, pose=k + (side > 0) * 4)
+    # the solids the palace draws instead: its own pieces, and what the built data puts on its roofs
+    hide = {s["si"] for s in rows} | {si for si, inside in chaillot_site() if inside}
+    return K.out(), sorted(hide)

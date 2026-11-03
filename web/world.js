@@ -610,7 +610,11 @@ vec3 photoGrade(vec3 c) {
         }
         return false;
       };
-      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) }, near };
+      const inside = (x, y) => {
+        const c = Math.round((x - x0) / res + 1), r = Math.round((y1 - y) / res + 1);
+        return r >= 0 && c >= 0 && r < h && c < w && px[4 * (r * w + c)] > 127;
+      };
+      return { tex: { value: tex }, box: { value: new THREE.Vector4(x0 - res, y1 + res, w * res, h * res) }, near, inside };
     })();
     // the seawalls along every built shore (quays.js), from shore.png: the ground drawn is raised to
     // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
@@ -1016,7 +1020,15 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     // with measured heights; a third of them on a small device): the shared Blender species
     // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
     // heights are not mapped (7-14 m spread)
-    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || []), nT = TR.length / 4;
+    // no tree stands where a landmark keeps the ground clear ("clip": a fountain's water, a deck's paving;
+    // the canopy model reads a basin's flat void fill as a crown)
+    const unclipped = a => {
+      if (!CLIP || !a) return a || [];
+      const out = [];
+      for (let i = 0; i < a.length; i += 4) if (!CLIP.inside(a[i], a[i + 1])) out.push(a[i], a[i + 1], a[i + 2], a[i + 3]);
+      return out;
+    };
+    const mappedTrees = unclipped(P.trees), nMapped = mappedTrees.length / 4, TR = mappedTrees.concat(unclipped(P.woods)), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
       try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
