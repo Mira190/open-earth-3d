@@ -233,12 +233,12 @@
     ],
     "start": {
       "at": [
-        200.0,
-        82.0
+        300.0,
+        -118.0
       ],
       "facing": [
-        120.0,
-        95.0
+        200.0,
+        -150.0
       ],
       "time": "live"
     },
@@ -344,6 +344,14 @@
     ],
     "travel": [
       {
+        "id": "t-central",
+        "name": "Ueno Station, Central exit 中央口",
+        "at": [
+          300.0,
+          -118.0
+        ]
+      },
+      {
         "id": "t-park",
         "name": "Ueno Station, Park exit 公園口",
         "at": [
@@ -398,8 +406,8 @@
         "name": "Noriko 典子",
         "role": "Museum volunteer guide",
         "at": [
-          188.0,
-          96.0
+          288.0,
+          -108.0
         ],
         "look": {
           "character": "R_Female_Adult_09_f011_grey",
@@ -518,7 +526,7 @@
         "stamp": "Ueno",
         "talk": [
           "Welcome to Ueno! I'm Noriko; I guide at the National Museum on weekends.",
-          "This was the gate to the north: the trains from Tohoku came in here. Down the steps is Ameyoko. Find Daichi; he shouts louder than anyone."
+          "This was the gate to the north: the trains from Tohoku came in here. Across the road is Ameyoko. Find Daichi; he shouts louder than anyone."
         ],
         "steps": [
           {
