@@ -1180,12 +1180,23 @@ drop or into the water.
   at the height with most room, clear of the pylons, the legs and the arches.
 - **By ferry:** the vessel's own course through the water, to the stop nearest the
   target.
-- **Drawn:** a band laid on the ground, a metre wide on foot and wider by car, on
-  the floor under each point (street, deck, quay), and in the air turned to the
-  camera. Chevrons run the way to go, a dark amber edge keeps it clear on pale
-  stone, it stays a couple of pixels wide far off, and the stretch behind you
-  disappears as you go. It is worked out again when the target moves, when you
-  stray from it (6 m on foot, 14 m by car, 70 m in the air) and as a ride goes on.
+- **Drawn:** a quiet band laid on the ground, half a metre wide on foot and wider
+  by car, on the floor under each point (street, deck, quay), and in the air
+  turned to the camera. Slow, faint chevrons drift the way to go, a soft amber
+  edge holds it on pale stone, it fades in a few metres ahead of you, out with
+  distance (to a fifth by 320 m, 900 m in the air) and over the last ten metres,
+  and at night it turns a dimmer, warmer amber, as sodium light on stone. The
+  stretch behind you disappears as you go. It is worked out again when the target
+  moves, when you stray from it (6 m on foot, 14 m by car, 70 m in the air) and as
+  a ride goes on.
+- **Shown:** the menu's Route line is On, Only when I ask or Off, remembered in
+  the browser (`oe-route-line`). When it isn't On, <kbd>L</kbd> or Show route in
+  the quest card brings the line up for eight seconds. Whichever, the minimap
+  keeps the route, as the quiet reference. The line eases out while a
+  conversation, the menu, a map, photo mode or a camera shot is up, and comes back
+  after. As in most open-world games' GPS lines (a setting to turn the world line
+  off, the minimap kept), learned from their design, not their look. The reef sites
+  have no line in the world (a compass and a marker), so the setting is the cities'.
 - **The crowd and the traffic** walk and drive the same data: the crowd now keeps
   to the footways where a walker can stand (cut where they run into a building),
   and the traffic doesn't turn into a road a car doesn't fit along.
