@@ -780,6 +780,25 @@ const { pinClock } = require('./pin_clock');
     check(r.held.front > -0.5 && r.held.front < 6 && r.held.v < 0.2, `a ride stops at a crossing between junctions at ${kind} (crossing ${r.id}: its front ${r.held.front.toFixed(1)} m short of the line, ${r.held.v.toFixed(1)} m/s, ${r.held.why})`);
     check(r.went > 5, `and goes on across once ${r.sig ? 'it turns green' : 'the stripes are clear'} (${r.went.toFixed(0)} m past it)`);
   }
+  // lanes from OSM's counts (#82): the main road pieces they take down to one lane each way; over 40 s,
+  // the cars in a second lane that are within 5 m of where it ends (they should have moved across
+  // well before: actors.js looks ahead along the road, junctions.js laneRun)
+  const lanes = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions, L = g.roadNet.L, TWO = { motorway: 1, trunk: 1, primary: 1 };
+    const one = L.filter(l => (TWO[l.c] || (l.ow && l.c === 'secondary')) && JN.lanesOf(l) === 1).length;
+    let inL1 = 0, atEnd = 0;
+    for (let t = 0; t < 40; t++) {
+      g.advance(1);
+      for (const c of A.C) {
+        if (c.line < 0 || c.ln !== 1 || c.mv) continue;
+        inL1++;
+        const l = L[c.line], end = c.dir > 0 ? 1 : 0, left = c.dir > 0 ? l.len - c.s : c.s;
+        if (!JN.armAt(c.line, end) && left + JN.laneRun(c.line, end) < 5 + c.half) atEnd++;
+      }
+    }
+    return { one, inL1, atEnd };
+  });
+  check(lanes.atEnd <= Math.max(2, 0.02 * lanes.inL1), `${lanes.one} main road pieces one lane each way by OSM's count; cars in a second lane within 5 m of its end: ${lanes.atEnd} of ${lanes.inL1} samples`);
   // turns banned and streets shut to cars at some hours (#82: junctions.js by the game's clock): at an
   // hour it is closed no car chooses that way and the rides' router keeps off the street; at an hour it
   // is open, cars take it again

@@ -16,9 +16,8 @@ web/data/<id>/game.json:
                 at an end where the OSM way itself ends (where its arrows are painted)
 
 The traffic (web/game/junctions.js) reads the arrows: a movement goes from the lanes whose arrows show
-its way. It doesn't read the counts yet (lanesOf keeps two each way on a main road, one elsewhere):
-where the count changes from one piece to the next the cars' merging can't keep up, and Sydney's
-jams under tools/traffic_check.js more than double. The tags are cached in data/raw/<id>/osm_ways.json.
+its way. It reads the counts where they take a main road down to one lane each way, smoothed along
+the road between junctions (lanesOf, laneRun). The tags are cached in data/raw/<id>/osm_ways.json.
 
     python pipeline/fetch_overture.py --city sydney --only segment   # with records
     python pipeline/road_lanes.py                  # every city with roads

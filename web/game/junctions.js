@@ -63,9 +63,6 @@ window.OEJunctions = (function () {
   // the place along an arm's piece d metres back from where its traffic meets the junction (the
   // piece's end, or for a crossing between junctions the crossing itself)
   const alongArm = (l, a, d) => (a.mid != null ? a.mid + (a.end ? -d : d) : a.end ? l.len - d : d);
-  // (game.json also carries OSM's own count, "nl", pipeline/road_lanes.py; the traffic doesn't use it
-  // yet: where it changes from one piece to the next the cars' merging can't keep up, and Sydney's
-  // jams under tools/traffic_check.js more than double)
   const byClass = l => (TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
   const lanesOf = l => l.lanes || byClass(l); // (l.lanes: OSM's count, smoothed: create)
   const SHORT2 = 120, SHORT1 = 40; // m
