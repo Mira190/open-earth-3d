@@ -888,6 +888,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (!clear(tmp.x, tmp.y, 12, c, tmp.z) || overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 3, 1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) continue; // (and not on your car or a ride)
         c.line = line; c.s = s; c.dir = dir; c.v = L1.v * 0.7; c.stuck = 0; c.nx = undefined; c.plan = c.ex = c.ex2 = c.exA = c.pv = null; c.halt = false; c.q = false; c.off = 0;
         c.ln = ln; c.lo = lo; c.lcT = 0; c.lnWait = 0;
+        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; // (a wall seen where it was is not one here: looked for at once)
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy);
         return;
       }
@@ -1289,9 +1290,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const flagged = !!(net.avoid && net.avoid[c.line]), far = !eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 140;
         if (flagged && far) { respawn(c, cx, cy, radius * 0.6); continue; }
         if (nav && np) {
-          c.wallGap = (c.wallGap ?? 40) - c.v * dt;
+          // (between looks, a wall found comes nearer as the car drives on; none found is none: Infinity, not
+          // the 40 m the look reaches, which counted down would read as a wall just ahead of every car)
+          if (c.wallGap == null) c.wallGap = Infinity;
+          else if (c.wallGap < Infinity) c.wallGap -= c.v * dt;
           if ((c.wallT = (c.wallT || 0) - dt) <= 0 || flagged) {
-            c.wallT = 0.5; c.wallGap = 40;
+            c.wallT = 0.5; c.wallGap = Infinity;
             const deck = c.z > nav.terrain(c.x, c.y) + 2;
             for (let k = 0; k < np; k++) {
               if (nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) continue;
