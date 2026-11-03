@@ -8,7 +8,7 @@
 //   without the city: all.png, no-water.png, no-city.png):
 //     xvfb-run -a node tools/glare_probe.js sydney '[-1750,-1650,760]' '[-260,-620,40]' 6-21 08:00 [1440x900 [out_dir]]
 //   every tour stop at its first, middle and last minute, and from each stop's camera turned to
-//   the sun an hour after sunrise and an hour before sunset; exits 1 if any view has more than
+//   the sun and away from it an hour after sunrise and an hour before sunset; exits 1 if any view has more than
 //   GLARE_SHARE of its frame above 16 (a glare that blooms into a veil or a column, issue 42):
 //     xvfb-run -a node tools/glare_probe.js sydney --tour [1440x900 [out_dir]]
 const { chromium } = require('playwright');
@@ -73,8 +73,8 @@ const GLARE_SHARE = 0.008;
     };
   });
   // set a view: camera and target in the city's frame, [month, day], minutes (or rel: [sunrise or
-  // sunset, minutes]); face turns the camera to the sun's bearing, looking a little down (as
-  // tools/city_shot.js does)
+  // sunset, minutes]); face turns the camera to the sun's bearing (or with 'away', its back to it),
+  // looking a little down (as tools/city_shot.js does)
   const view = (v, parts) => p.evaluate(async ({ v, parts }) => {
     const C = window.__city, frame = () => new Promise(r => requestAnimationFrame(r));
     C.setTourPlaying(false);
@@ -82,7 +82,7 @@ const GLARE_SHARE = 0.008;
     if (v.rel) C.setTime(Math.round(C.state.limits[v.rel[0]] + v.rel[1])); else C.setTime(v.min);
     if (v.cam) C.flyTo(v.cam, v.tgt, 0);
     if (v.face) {
-      const q = C.camera.position, d = C.Wd.sunDir, h = Math.hypot(d.x, d.z) || 1, at = [q.x, -q.z, q.y];
+      const q = C.camera.position, d = C.Wd.sunDir, h = (Math.hypot(d.x, d.z) || 1) * (v.face === 'away' ? -1 : 1), at = [q.x, -q.z, q.y];
       C.flyTo(at, [at[0] + d.x / h * 4000, at[1] - d.z / h * 4000, Math.max(0, at[2] - 600)], 0);
     }
     for (let i = 0; i < 4; i++) await frame();
@@ -127,16 +127,17 @@ const GLARE_SHARE = 0.008;
     if (!s.cam) continue;
     const from = hm(s.from || s.time || '12:00'), to = s.to ? hm(s.to) : from;
     const views = [['from', { min: from }], ['mid', { min: Math.round((from + to) / 2) }], ['to', { min: to }],
-      ['sunrise+60', { rel: ['sunrise', 60], face: true }], ['sunset-60', { rel: ['sunset', -60], face: true }]]
+      ['sunrise+60', { rel: ['sunrise', 60], face: true }], ['sunset-60', { rel: ['sunset', -60], face: true }],
+      ['sunrise+60-away', { rel: ['sunrise', 60], face: 'away' }], ['sunset-60-away', { rel: ['sunset', -60], face: 'away' }]]
       .filter(([k]) => !(to === from && (k === 'mid' || k === 'to')));
     for (const [k, v] of views) {
       const r = await view(Object.assign({ cam: s.cam, tgt: s.tgt, date: s.date }, v), false);
       const ok = r.all.share <= GLARE_SHARE;
       n++; if (!ok) bad++;
-      const name = `stop-${String(i + 1).padStart(2, '0')}-${k.replace(/[+-]/, '')}`;
+      const name = `stop-${String(i + 1).padStart(2, '0')}-${k.replace(/[+-](?=\d)/, '')}`;
       if (r.all.share > worst.share) worst = { share: r.all.share, name };
       if (shotDir && (!ok || v.face)) await still(path.join(shotDir, `${name}.jpg`));
-      console.log(`${ok ? 'ok  ' : 'FAIL'} ${city} stop ${i + 1} ${k.padEnd(10)} sun ${String(r.sunAlt).padStart(5)}°  max ${String(r.all.max).padStart(6)}  above 16: ${(r.all.share * 100).toFixed(2)}% (without the water ${(r.noWater.share * 100).toFixed(2)}%)`);
+      console.log(`${ok ? 'ok  ' : 'FAIL'} ${city} stop ${i + 1} ${k.padEnd(15)} sun ${String(r.sunAlt).padStart(5)}°  max ${String(r.all.max).padStart(6)}  above 16: ${(r.all.share * 100).toFixed(2)}% (without the water ${(r.noWater.share * 100).toFixed(2)}%)`);
     }
   }
   console.log(`${city}: ${n - bad}/${n} views without a blown glare; most above 16: ${(worst.share * 100).toFixed(2)}% (${worst.name || '-'})`);

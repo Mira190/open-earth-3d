@@ -369,6 +369,7 @@ python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landm
 python analysis/heights.py --city sydney              # published heights vs model
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
+python pipeline/open_sea.py --city sydney             # the open water past the frame (Overture, 40 km around)
 python pipeline/road_rules.py sydney                  # one-way streets, banned turns and traffic signals into a built game.json (after fetch_overture --only segment infrastructure)
 python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
 python pipeline/fetch_rocketbox.py                    # the surveyors and the NPCs (once; Microsoft Rocketbox, MIT)
@@ -495,6 +496,16 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
+- **Woods and park canopy:** Meta and World Resources Institute High Resolution
+  Canopy Height Maps (Tolan et al. 2024, CC BY 4.0), for the trees planted in
+  the mapped woods and parks and the ground under them (`pipeline/woods.py`).
+- **Open water past the model's frame:** Overture Maps' base water and land
+  themes (OpenStreetMap's coastline and water bodies, ODbL), 40 km around each
+  city, through `pipeline/open_sea.py` into `web/data/<id>/sea.jpg`. Considered
+  and not used: Natural Earth's 1:10m land (public domain) is a kilometre or so
+  coarse, too rough for the harbours a few hundred metres past the frame, and
+  OSM's own land polygons (osmdata.openstreetmap.de, ODbL) are the same
+  coastline as Overture's ocean polygons, but only as a global download.
 - **Vehicles and trees:** modelled from code in this repository
   (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
   third-party assets; the leaf atlas is drawn by the script.
