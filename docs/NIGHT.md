@@ -190,7 +190,7 @@ one image, as broadcast graphics are built from keyframes:
   screen bent round a corner is a strip along its foot line (`path`, `round`). A city can have
   several sites, each its own material and sheet (Shibuya's crossing and Shinjuku's east exit);
   each gets a shader program of its own (`customProgramCacheKey`, as the screen count is in it).
-  Used by Shibuya and Shinjuku (`cities/shibuya/city.py`) and Dotonbori (`cities/osaka/city.py`).
+  Used by Shibuya and Shinjuku (`cities/shibuya/city.py`, which builds both maps) and Dotonbori (`cities/osaka/city.py`).
 - **Blender.** `blender/build_scene.py` shows each screen's first keyframe, lit day and night.
 
 ## The data

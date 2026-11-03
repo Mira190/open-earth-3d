@@ -328,6 +328,7 @@ float ashHash(vec2 c) { return fract(sin(dot(c, vec2(41.31, 289.17))) * 15731.74
     // picture is light of its own: bright enough to read in the sun, dimmer after dark, off out of
     // hours, and its LEDs show as a grid of dots from close by.
     led_screen(mat, m) {
+      if (!m.screens || !m.sheet) return;   // a screen material with no screens placed: a plain dark face
       mat.defines = Object.assign(mat.defines || {}, { USE_UV: '' });
       const S = m.screens, n = S.length, v4 = (i, a) => new THREE.Vector4(...[0, 1, 2, 3].map(j => (S[i] || [])[a + j] || 0));
       const A = [], Bv = [], Cv = [];
@@ -1018,7 +1019,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {

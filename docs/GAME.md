@@ -311,16 +311,17 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
 
 Amsterdam has no real helipad in the old city. The pad on the Dam is a game device, so that the city can be seen from the air.
 
-**Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
-is a pilgrimage: a welcome at Hachiko, then five lines in any order and a
-report back.
+**Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
+[Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
+is a pilgrimage: in Shibuya a welcome at Hachiko, in Shinjuku at the east exit, then
+lines in any order and a report back.
 - **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
   lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
-- **Your Name:** climb the 52 steps of Suga Shrine's 男坂 and read an ema.
+- **Your Name** (Shinjuku): climb the 52 steps of Suga Shrine's 男坂 and read an ema.
 - **Shinjuku:** Kabukicho's arch after dark.
-- **Aoyama:** the ginkgo avenue at Jingu Gaien.
+- **Aoyama** (Shinjuku): the ginkgo avenue at Jingu Gaien.
 
 Walking into a neighbourhood puts its name up on a station sign. <kbd>E</kbd> at a
 spot (an ema, a vending machine, a shop front) reads it. Conversations come up in
@@ -1459,12 +1460,12 @@ game beside the surveyor, at the hour given (`… 390x844` for a phone).
 
 ## The trees
 
-| The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
+| The seven species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
 |---|---|
 | ![](images/trees/trees.jpg) | ![](images/sydney/game-traffic.jpg) |
 
-`blender/build_trees.py` grows six species: London plane, elm, eucalyptus,
-Moreton Bay fig, jacaranda and Canary Island date palm.
+`blender/build_trees.py` grows seven species: London plane, elm, eucalyptus,
+Moreton Bay fig, jacaranda, Canary Island date palm and Japanese maple (momiji).
 - **Growth:** points are scattered through the shell of the species' crown
   shape (an ellipsoid, a vase, clumps, a dome or an umbrella), clustered into
   limbs and twigs, and branches grow from the trunk out to each cluster. Each
@@ -1477,10 +1478,15 @@ Moreton Bay fig, jacaranda and Canary Island date palm.
   instanced per species and distance. Each tree takes a species from the
   city's mix by a hash of its position, a size from its height and a turn of
   its own. The wind sways the crowns and flutters the leaves, the leaf cards
-  cut out their shadows, and jacarandas flower from mid October to November
-  in the south (May and June in the north).
+  cut out their shadows, jacarandas flower from mid October to November
+  in the south (May and June in the north), and maples turn red from mid
+  November to mid December in the north (late April to May in the south),
+  over a fortnight either side.
 - **Mix:** OpenStreetMap rarely says what species a tree is, so each city
-  sets a mix in `city.json` (`"trees": {"mix": {"plane": 0.3, ...}}`).
+  sets a mix in `city.json` (`"trees": {"mix": {"plane": 0.3, ...}}`), and
+  places with their own (a garden's maples) in `"areas": [{"at": [x, y],
+  "radius": m, "mix": {...}}]`. `pipeline/scene_config.py` refreshes it
+  without a rebuild.
 
 ## Per-city flavour
 
@@ -1506,7 +1512,7 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
   `emissive` and `glow` so signs light up.
 - **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
   `game`, or a city's `game_extras` hook returns them with positions measured from its
-  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage) is the example.
+  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) is the example.
 
 ## Testing
 
