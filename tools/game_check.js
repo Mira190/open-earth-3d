@@ -764,7 +764,7 @@ const { pinClock } = require('./pin_clock');
       if (sig) { j.ph = 1; j.st = 'g'; j.t = 0; } // the walk: the traffic held at red
       const C = { half: 2.3, hw: 0.9, top: 1.5, wheelbase: 2.7 }, D = OECars.chauffeur(C, rt, { keep: g.KEEP === 'right' ? -1 : 1, from: 'lane', v: 10, lights, cruise: 12 });
       const at = rt.mids.find(m => m.X === j).at, line = at - a.back;
-      for (let k = 0; k < 200; k++) D.update(0.1, [], false, true); // 20 s at the red, or at the stripes
+      for (let k = 0; k < 120; k++) D.update(0.1, [], false, true); // 12 s at the red, or at the stripes (after 15 s stopped at a zebra it edges on)
       const held = { front: line - D.st.s - C.half, v: D.st.v, why: D.st.junction };
       clear = true; if (sig) { j.ph = 0; j.st = 'g'; j.t = 0; }
       for (let k = 0; k < 150; k++) D.update(0.1, [], false, true);
