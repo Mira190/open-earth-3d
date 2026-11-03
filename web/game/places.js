@@ -4,6 +4,8 @@
 //   spots    things to look at closely: E opens a few lines about them (a votive tablet's wish, a bathhouse's
 //            price list), one picked at random where the spot has many
 //   chatter  conversations you overhear as you pass, in bubbles over where they are said
+// A spot with a "look" is a photo spot: E brings the camera in to look closer (closer(), below),
+// a metre from the thing, and you look along it (a shrine's ema rack, rail by rail).
 // The model viewer does not use it.
 'use strict';
 window.OEPlaces = (function () {
@@ -75,6 +77,45 @@ window.OEPlaces = (function () {
         }
       },
       area: () => inArea,
+      closer,
+    };
+  }
+
+  // The look closer at a spot's "look" {at: [x, y, z] the middle of the thing, along: its long axis,
+  // half_m: how far either way to look along it, dist_m: how far the eye stands off its face, faces:
+  // how far each face is out from the middle, rails: the heights to look at (the lowest to the highest),
+  // tablets: [[u, rail, side, layer, text], ...] what hangs where, texts}. From the side the walker stands
+  // on, at the point along it nearest them. step(dt, along, up) moves the eye along and up and down (keys
+  // or a drag, from -1 to 1, along in the screen's sense) and returns {pos, look, text}: the eye and the
+  // point it looks at in local metres, and the text of what is in the middle of the view.
+  function closer(sp, px, py) {
+    const L = sp.look, [cx, cy, cz] = L.at, ax = L.along[0], ay = L.along[1], nx = -ay, ny = ax;
+    const half = L.half_m || 1, dist = L.dist_m || 1, face = L.faces || 0, rails = L.rails || [cz], zlo = Math.min(...rails), zhi = Math.max(...rails);
+    const side = (px - cx) * nx + (py - cy) * ny >= 0 ? 1 : -1;
+    const st = { u: Math.max(-half, Math.min(half, (px - cx) * ax + (py - cy) * ay)), z: rails[Math.floor(rails.length / 2)], yaw: 0, pitch: 0 };
+    const sense = -side; // looking at the face on `side`, screen right runs along -side * along
+    const at = (u, off, z) => [cx + ax * u + nx * off, cy + ay * u + ny * off, z];
+    function text() {
+      let best = null, bd = Infinity;
+      for (const t of L.tablets || []) {
+        if (t[2] !== side) continue;
+        const d = Math.abs(t[0] - st.u) + Math.abs(rails[t[1]] - st.z) * 1.5 - t[3] * 0.03; // the outer layer, where two overlap
+        if (d < bd) { bd = d; best = t; }
+      }
+      return best && L.texts ? L.texts[best[4]] : null;
+    }
+    return {
+      side, state: st,
+      step(dt, along, up) {
+        st.u = Math.max(-half, Math.min(half, st.u + along * sense * 0.55 * dt));
+        st.z = Math.max(zlo, Math.min(zhi, st.z + up * 0.45 * dt));
+        const look = at(st.u, side * face, st.z), eye = at(st.u, side * (face + dist), st.z + 0.08);
+        // a turn of the head (a drag) looks a little either way, then eases back to the face
+        const yaw = st.yaw, h = Math.atan2(look[0] - eye[0], look[1] - eye[1]) + yaw, D = Math.hypot(look[0] - eye[0], look[1] - eye[1]);
+        st.yaw *= Math.max(0, 1 - dt * 0.8); st.pitch *= Math.max(0, 1 - dt * 0.8);
+        return { pos: eye, look: [eye[0] + Math.sin(h) * D, eye[1] + Math.cos(h) * D, look[2] - 0.08 + st.pitch * D], text: text(), u: st.u, z: st.z };
+      },
+      turn(dx, dy) { st.yaw = Math.max(-0.6, Math.min(0.6, st.yaw + dx)); st.pitch = Math.max(-0.5, Math.min(0.5, st.pitch + dy)); },
     };
   }
   return { create };

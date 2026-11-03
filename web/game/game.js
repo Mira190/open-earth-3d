@@ -1663,6 +1663,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (c === 'Enter') snapPhoto(); else if (c === 'Escape' || c === 'KeyO') photoMode(false);
       return;
     }
+    if (closeup) { // looking closer: WASD read in closeupCamera, Enter saves a photo, E or Esc steps back
+      if (c === 'Enter') snapPhoto(); else if (c === 'KeyE' || c === 'Escape') closeupEnd();
+      return;
+    }
     if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape') { if (!phone.el.hidden) phoneShow(false); else if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) {
@@ -1705,6 +1709,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy);
     if (photo.on) { photo.az += dx * 0.006; photo.pitch = Math.max(-0.35, Math.min(1.5, photo.pitch + dy * 0.005)); photoSync(); return; }
+    if (closeup) { closeup.c.turn(-dx * 0.004, -dy * 0.003); return; }
     if (player.mode === 'heli' && cam.mode === 'cockpit') { cam.lookYaw = Math.max(-2.4, Math.min(2.4, cam.lookYaw - dx * 0.005)); cam.lookPitch = Math.max(-1.1, Math.min(0.8, cam.lookPitch - dy * 0.004)); }
     else { cam.yawTo = null; cam.yaw += dx * 0.006; cam.pitch = Math.max(-0.25, Math.min(1.35, cam.pitch + dy * 0.005)); }
     cam.lastInput = clockT;
@@ -1766,6 +1771,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     return best;
   }
   function currentAction() {
+    if (closeup) return { key: 'E', text: 'Step back', act: closeupEnd };
     if (dlg.open || uiOpen() || cine.active) return null;
     if (player.mode === 'board') return { key: '', text: boarding.dir > 0 ? (boarding.t < 0.3 ? 'Opening the door…' : 'Climbing aboard…') : (boarding.t < 0.25 ? 'Engine off. Opening the door…' : 'Climbing out…') };
     if (player.mode === 'heli') {
@@ -1825,9 +1831,52 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function interact() { const a = currentAction(); if (a && a.act) { A.start(); a.act(); } }
   // a spot (places.js): its lines, and a step waiting for it ("spot": its id) moves on
   function lookAt(sp) {
+    if (sp.look && places) { closeupStart(sp); return; }
     dlg.show({ name: sp.name, role: sp.role || '', color: sp.color || '#6d5a3a', pitch: sp.pitch || 260 }, places.lines(sp).map(fill));
-    for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); }
+    spotDone(sp);
   }
+  function spotDone(sp) { for (const l of openLines()) { const s = stepOf(l); if (s && s.type === 'spot' && s.spot === sp.id) completeStep(l); } }
+  // a photo spot's look closer (places.js closer): the eye a metre off the thing, the walker out of the
+  // way, and you look along it with A/D (or the stick) and W/S, drag to turn your head, read what is in
+  // the middle of the view, save a photo with Enter, and step back with E or Esc
+  let closeup = null;
+  function closeupStart(sp) {
+    if (photo.on || closeup) return;
+    closeup = { sp, c: places.closer(sp, player.x, player.y), text: null };
+    stage.classList.add('closer');
+    $('#g-closer').hidden = false;
+    $('#gc-name').textContent = sp.name + (sp.role ? ` · ${sp.role}` : '');
+    player.rig.root.visible = false;
+    spotDone(sp);
+    const to = closeup.c.step(0, 0, 0), from = { pos: camera.position.clone(), look: live.look.clone() };
+    const end = { pos: W(...to.pos), look: W(...to.look) };
+    cine.play(OECine.mix(() => from, () => end, q => OECine.ease.smooth(q)), 0.8, { label: 'closer' });
+  }
+  function closeupEnd() {
+    if (!closeup) return;
+    closeup = null;
+    stage.classList.remove('closer');
+    $('#g-closer').hidden = true;
+    player.rig.root.visible = true;
+    const from = { pos: camera.position.clone(), look: live.look.clone() };
+    cine.play(OECine.mix(() => from, () => live, q => OECine.ease.smooth(q)), 0.8, { label: 'closer' }); // (down at the eye's height: not lifted over the roofs)
+  }
+  const gcHold = { along: 0, up: 0 }; // the panel's arrows, held down on a touch screen
+  function closeupCamera(dt) {
+    if (cine.active && cine.label === 'closer') { updateCamera(dt, false); return; }
+    const along = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x + gcHold.along;
+    const up = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y + gcHold.up;
+    const r = closeup.c.step(dt, Math.max(-1, Math.min(1, along)), Math.max(-1, Math.min(1, up)));
+    if (camera.fov !== CLOSE_FOV || camera.near !== 0.05) { camera.fov = CLOSE_FOV; camera.near = 0.05; camera.updateProjectionMatrix(); }
+    camera.up.set(0, 1, 0);
+    camera.position.copy(W(...r.pos));
+    const look = W(...r.look);
+    camera.lookAt(look);
+    live.look.copy(look); // (where the crane back to the walker starts from)
+    Wd.fitShadow(look, 40);
+    if (r.text !== closeup.text) { closeup.text = r.text; $('#gc-text').textContent = fill(r.text || ''); }
+  }
+  const CLOSE_FOV = 50;
 
   function board(v, w) {
     player.mode = 'ferry'; player.vehicle = v; v.rider = true;
@@ -2189,7 +2238,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const distOf = v => 1.5 * Math.pow(400 / 1.5, v / 1000), distTo = d => Math.round(1000 * Math.log(d / 1.5) / Math.log(400 / 1.5)); // a log slider, 1.5 to 400 m
   const focal = fov => Math.round(12 / Math.tan(fov * RAD / 2)); // a full-frame 35 mm camera, 24 mm tall
   function photoMode(on) {
-    if (on === photo.on || !$('#g-title').hidden) return;
+    if (on === photo.on || !$('#g-title').hidden || closeup) return;
     if (on && dlg.open) { H.toast('Finish the conversation first.'); return; }
     if (on && cine.active) cine.skip();
     photo.on = on;
@@ -2276,6 +2325,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on($('#ph-snap'), 'click', snapPhoto);
   on($('#ph-done'), 'click', () => photoMode(false));
   on($('#g-photo-btn'), 'click', () => photoMode(true));
+  on($('#gc-snap'), 'click', snapPhoto);
+  on($('#gc-done'), 'click', closeupEnd);
+  for (const b of document.querySelectorAll('#g-closer [data-hold]')) {
+    const [a, u] = b.dataset.hold.split(',').map(Number);
+    on(b, 'pointerdown', e => { gcHold.along = a; gcHold.up = u; b.setPointerCapture(e.pointerId); });
+    for (const ev of ['pointerup', 'pointercancel']) on(b, ev, () => { gcHold.along = gcHold.up = 0; });
+  }
 
   // ------------------------------------------------------------ menus, map, passport
   function toggleMenu() { $('#g-menu').hidden = !$('#g-menu').hidden; if (!$('#g-menu').hidden) menuSync(); }
@@ -2952,7 +3008,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!paused) simulate(dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn && titleYaw != null) titleYaw += dt * 0.05;
-    if (photo.on) photoCamera(dt); else updateCamera(dt, titleOn);
+    if (photo.on) photoCamera(dt); else if (closeup && !titleOn) closeupCamera(dt); else updateCamera(dt, titleOn);
     stage.classList.toggle('cine', cine.active && (cine.label !== 'crane' || cine.k < 0.5));
     // world clocks and fades
     Wd.tick(now, camera);
@@ -3029,7 +3085,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function simulate(dt) {
     const fwd = (k('KeyW') || k('ArrowUp') ? 1 : 0) - (k('KeyS') || k('ArrowDown') ? 1 : 0) + joy.y;
     const side = (k('KeyD') || k('ArrowRight') ? 1 : 0) - (k('KeyA') || k('ArrowLeft') ? 1 : 0) + joy.x;
-    const held = dlg.open || cine.label === 'hop' || cine.label === 'survey';
+    const held = dlg.open || !!closeup || cine.label === 'hop' || cine.label === 'survey' || cine.label === 'closer';
     if (player.mode === 'foot') walkStep(dt, held ? 0 : fwd, held ? 0 : side);
     else if (player.mode === 'board') boardStep(dt);
     else if (player.mode === 'heli') {
@@ -3261,7 +3317,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       camera.position.copy(shot.pos);
       // never inside a building; a film's shots (tools/film) are checked against the surface model when
       // they are planned, and go down to eye level among the crowd, so they are left where they are
-      if (cine.label !== 'film') camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
+      if (cine.label !== 'film' && cine.label !== 'closer') camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
       camera.lookAt(shot.look);
       Wd.fitShadow(shot.look, THREE.MathUtils.clamp(camera.position.distanceTo(shot.look) * 1.2, live.half, 1600));
       return;
@@ -3517,6 +3573,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!clock.frozen) { clock.min += clock.scale / 60 / 30; if (clock.min >= 1440) setClock(clock.y, clock.m, clock.d, clock.min); }
       simulate(1 / 30);
       if (cine.active) cine.step(clockT);
+      if (closeup) closeupCamera(1 / 30); // (looking closer reads the held keys as it goes)
       fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
       if (i % 8 === 0) { sunTimer = 0; applySun(); const px = player.mode === 'heli' ? heli.st.x : player.x, py = player.mode === 'heli' ? heli.st.y : player.y;
         sunState = sun.altitude <= 0 ? 'night' : S.sunlit(DSM, px, py, player.mode === 'heli' ? heli.st.z + 1 : player.z + 1.6, sun) ? 'sun' : 'shade'; checkSteps(); }
@@ -3527,7 +3584,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     updateRoute(clockT, waypoint || (ob && ob.at), ob, titled);
     groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     camTarget.copy(player.mode === 'heli' ? W(heli.st.x, heli.st.y, heli.st.z + 2.5) : player.mode === 'ferry' ? W(player.vehicle.x, player.vehicle.y, 5) : W(player.x, player.y, player.z + 1.55));
-    updateCamera(1 / 30, false);
+    if (closeup) closeupCamera(0); else updateCamera(1 / 30, false);
     camera.updateMatrixWorld();
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame

@@ -421,6 +421,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .gph-actions .btn.primary { margin-left: auto; }
 .g-photo .note { margin: 0; font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
 .g-photo .note kbd { font-size: 9px; padding: 1px 4px; }
+/* look closer at a photo spot (places.js closer): the HUD goes, the text of what is in view comes up */
+.game-stage.closer :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens, .g-dialog) { display: none !important; }
+.g-closer { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(620px, calc(100% - 32px)); padding: 14px 16px 12px; display: grid; gap: 10px; z-index: 4; }
+.gc-text { margin: 0; min-height: 2.7em; font: 500 17px/1.55 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", var(--f-body, system-ui), sans-serif; color: var(--ink); text-wrap: pretty; }
+.g-closer .note { margin: 0; font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.g-closer .note kbd { font-size: 9px; padding: 1px 4px; }
+.g-closer [data-hold] { min-width: 40px; touch-action: none; }
 .g-grid { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 3;
   background: linear-gradient(to right, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(200% / 3 + 0.5px), transparent 0),
     linear-gradient(to bottom, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(200% / 3 + 0.5px), transparent 0); }
@@ -693,6 +700,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .gph-sliders { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .gph-actions kbd { display: none; }
   .g-photo .note { display: none; }
+  .g-closer { width: calc(100% - 16px); top: 8px; bottom: auto; padding: 12px 12px 10px; } /* over the stick, not under it */
+  .g-closer .note { display: none; }
+  .gc-text { font-size: 15px; }
   .gt-keys, .gt-hints { display: none; }
   .g-title { align-items: flex-end; padding: 24px 20px max(24px, env(safe-area-inset-bottom, 0px));
     background: linear-gradient(0deg, rgba(4, 6, 11, 0.95) 0%, rgba(4, 6, 11, 0.86) 52%, rgba(4, 6, 11, 0.3) 82%, rgba(4, 6, 11, 0.1) 100%); }
@@ -953,6 +963,19 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         <button class="btn" id="ph-done">Done <kbd>Esc</kbd></button>
       </div>
       <p class="note">Drag to turn · scroll to come closer · <kbd>W A S D</kbd> move · <kbd>Space</kbd>/<kbd>C</kbd> up and down</p>
+    </div>
+    <div class="g-hud g-closer" id="g-closer" hidden role="group" aria-label="Look closer">
+      <span class="eyebrow" id="gc-name"></span>
+      <p class="gc-text" id="gc-text" aria-live="polite"></p>
+      <div class="gph-actions">
+        <button class="chip-btn" data-hold="-1,0" aria-label="Look along to the left">◀</button>
+        <button class="chip-btn" data-hold="1,0" aria-label="Look along to the right">▶</button>
+        <button class="chip-btn" data-hold="0,1" aria-label="Look higher">▲</button>
+        <button class="chip-btn" data-hold="0,-1" aria-label="Look lower">▼</button>
+        <button class="btn primary" id="gc-snap">Save photo <kbd>Enter</kbd></button>
+        <button class="btn" id="gc-done">Step back <kbd>E</kbd></button>
+      </div>
+      <p class="note"><kbd>A</kbd>/<kbd>D</kbd> look along · <kbd>W</kbd>/<kbd>S</kbd> higher and lower · drag to turn your head</p>
     </div>
     <div class="g-hud g-quest brackets" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span><div class="gq-lines" id="gq-lines" hidden></div></div>
     <div class="g-right">

@@ -57,12 +57,15 @@ window.OENav = (function () {
     }
     // ---------------------------------------------------------- landmark solids as height intervals per 2 m cell
     const solid0 = new Map(); // cell index -> [zmin, zmax, zmin, zmax, ...]
+    const slabs = new Map();  // the same for the strips' slabs alone (the collision world's boxes for them)
     const tops = {};         // mesh name -> Map(cell index -> top), for shading the surface model
+    const solidMeshes = [];  // the meshes that are solid, for the collision world's finer cells (below)
     for (const m of D.LM.meshes || []) {
       if (strips.some(st => st.mesh && m.name.startsWith(st.mesh))) continue; // walked on as a strip surface; its slab is added below
       const mat = (D.LM.materials || {})[m.material] || {};
       if (mat.decal) continue; // paving laid over a roof, which is the solid
       if (mat.solid === false) continue; // walls a city's fine walking levels hold walkers back at instead (game.json "patches")
+      solidMeshes.push(m);
       const p = m.position, idx = m.index, mine = new Map();
       for (let t = 0; t < idx.length; t += 3) {
         const a = idx[t] * 3, b = idx[t + 1] * 3, c = idx[t + 2] * 3;
@@ -233,8 +236,8 @@ window.OENav = (function () {
           let z = stripHeight(s, x, y);
           if (z == null) continue;
           for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
-          const k = r * DSM.nx + c, l = solid0.get(k);
-          if (l) l.push(z - th, z - 0.05); else solid0.set(k, [z - th, z - 0.05]);
+          const k = r * DSM.nx + c;
+          for (const M of [solid0, slabs]) { const l = M.get(k); if (l) l.push(z - th, z - 0.05); else M.set(k, [z - th, z - 0.05]); }
         }
       }
     }
@@ -249,13 +252,128 @@ window.OENav = (function () {
       }
       return null;
     }
+    // ---------------------------------------------------------- landmark solids for the collision world
+    // A walker meets a landmark's small things up close: a lantern, a shrine's ema rack, a statue's plinth,
+    // the posts of a gate. In 2 m cells each of them would stand as a box up to 4 m across (and its roof,
+    // widened by the cells' 0.3 m of height, would come down to head height), so nobody could walk up to
+    // it. So the parts of the meshes a walker can reach, up to BAND over the floor beneath them, are laid
+    // into FINE cells, each cell's heights split where there is room between them (a lantern's roof over
+    // the paving, the eaves over a step), and the cells merged into rectangles; what stands higher (a
+    // tower's top, a bridge's arch) keeps the 2 m cells, which the helicopter and the camera meet. Paving
+    // that lies on the floor is left to the floor. Returns the 2 m cells (index -> [zlo, zhi, ...]) and adds
+    // the fine boxes to the collision world.
+    let fineBoxes = 0;
+    function landmarkCells(meshes, slabs) {
+      const FINE = 0.25, BAND = 3.5, GAP = 0.4, MZ = 0.1, SAMPLE = 0.17, FLAT = 0.25;
+      const coarse = new Map(slabs), fine = new Map(), FNX = DSM.nx * Math.round(DSM.cell / FINE);
+      const ref = (x, y) => { let h = terrain(x, y); for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; } const k = cellOf(x, y); if (k >= 0 && pier.data[k] > h) h = pier.data[k]; return h; };
+      const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
+      // a triangle's points every `step` metres at most, each passed to fn(x, y, z)
+      function sample(A, B, C, step, fn) {
+        const e = Math.max(Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]), Math.hypot(C[0] - A[0], C[1] - A[1], C[2] - A[2]), Math.hypot(C[0] - B[0], C[1] - B[1], C[2] - B[2]));
+        const n = Math.max(1, Math.ceil(e / step));
+        for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
+          const u = i / n, v = j / n, w = 1 - u - v;
+          fn(A[0] * w + B[0] * u + C[0] * v, A[1] * w + B[1] * u + C[1] * v, A[2] * w + B[2] * u + C[2] * v);
+        }
+      }
+      // the 2 m cells, one interval per mesh and cell as before
+      function toCoarse(tris) {
+        const mine = new Map();
+        for (const [A, B, C] of tris) sample(A, B, C, 1.0, (x, y, z) => {
+          const k = cellOf(x, y);
+          if (k < 0) return;
+          const q = mine.get(k);
+          if (q) { if (z < q[0]) q[0] = z; if (z > q[1]) q[1] = z; } else mine.set(k, [z, z]);
+        });
+        for (const [k, q] of mine) cpush(coarse, k, q[0] - 0.3, q[1] + 0.3);
+      }
+      // a fine cell's heights: intervals no closer than GAP. What lies under a walkable strip (the stone of a
+      // flight of steps, the edge of the platform it climbs to) is the strip's own slab: left out
+      function toFine(x, y, z) {
+        const c = Math.floor((x - x0) / FINE), r = Math.floor((y1 - y) / FINE);
+        if (c < 0 || r < 0 || c >= FNX) return;
+        for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && z <= h + 0.15) return; }
+        const k = r * FNX + c, l = fine.get(k);
+        if (!l) { fine.set(k, [z, z]); return; }
+        for (let i = 0; i < l.length; i += 2) if (z >= l[i] - GAP && z <= l[i + 1] + GAP) { if (z < l[i]) l[i] = z; if (z > l[i + 1]) l[i + 1] = z; return; }
+        l.push(z, z);
+      }
+      // the part of triangle ABC below the height zc and the part above, each as triangles
+      function cut(P, zc) {
+        const lo = [], hi = [];
+        for (let i = 0; i < 3; i++) {
+          const a = P[i], b = P[(i + 1) % 3];
+          (a[2] <= zc ? lo : hi).push(a);
+          if ((a[2] < zc) !== (b[2] < zc) && a[2] !== zc && b[2] !== zc) {
+            const t = (zc - a[2]) / (b[2] - a[2]), q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, zc];
+            lo.push(q); hi.push(q);
+          }
+        }
+        const fan = Q => Q.length < 3 ? [] : Q.slice(1, -1).map((_, i) => [Q[0], Q[i + 1], Q[i + 2]]);
+        return [fan(lo), fan(hi)];
+      }
+      for (const m of meshes) {
+        const p = m.position, idx = m.index, up = [];
+        for (let t = 0; t < idx.length; t += 3) {
+          const P = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]);
+          const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
+          const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
+          const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
+          const rlo = Math.min(...rs), zc = Math.max(...rs) + BAND;
+          if (zlo >= zc) { up.push(P); continue; }
+          if (zhi < rlo + FLAT) continue; // paving on the floor
+          const [below, above] = zhi > zc ? cut(P, zc) : [[P], []];
+          for (const [A, B, C] of below) sample(A, B, C, SAMPLE, toFine);
+          for (const q of above) up.push(q);
+        }
+        toCoarse(up);
+      }
+      // the fine cells in rectangles: runs along each row of cells whose heights agree, then runs of rows
+      const near = (a, b) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 0.3);
+      const widen = (a, b) => a.map((v, i) => (i % 2 ? Math.max(v, b[i]) : Math.min(v, b[i])));
+      const keys = [...fine.keys()].sort((a, b) => a - b);
+      for (const k of keys) { const l = fine.get(k), o = []; // the intervals in order of height, any that came to touch joined
+        const pairs = []; for (let i = 0; i < l.length; i += 2) pairs.push([l[i], l[i + 1]]);
+        pairs.sort((a, b) => a[0] - b[0]);
+        for (const [a, b] of pairs) if (o.length && a <= o[o.length - 1] + GAP) o[o.length - 1] = Math.max(o[o.length - 1], b); else o.push(a, b);
+        fine.set(k, o);
+      }
+      let open = new Map(), n = 0;
+      const emit = q => {
+        const xa = x0 + q.c0 * FINE, xb = x0 + (q.c1 + 1) * FINE, yb = y1 - q.r0 * FINE, ya = y1 - (q.r1 + 1) * FINE;
+        for (let i = 0; i < q.iv.length; i += 2) { col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], q.iv[i] - MZ, q.iv[i + 1] + MZ, LANDMARK, -1); n++; }
+      };
+      for (let a = 0; a < keys.length;) {
+        const r = Math.floor(keys[a] / FNX), runs = [];
+        for (; a < keys.length && Math.floor(keys[a] / FNX) === r;) {
+          const c0 = keys[a] % FNX;
+          let c1 = c0, iv = fine.get(keys[a]);
+          while (a + 1 < keys.length && keys[a + 1] === keys[a] + 1 && Math.floor(keys[a + 1] / FNX) === r && near(iv, fine.get(keys[a + 1]))) { iv = widen(iv, fine.get(keys[a + 1])); c1++; a++; }
+          a++;
+          runs.push({ c0, c1, iv });
+        }
+        const next = new Map();
+        for (const q of runs) {
+          const key = `${q.c0},${q.c1}`, o = open.get(key);
+          if (o && o.r1 === r - 1 && near(o.iv, q.iv)) { o.r1 = r; o.iv = widen(o.iv, q.iv); next.set(key, o); open.delete(key); }
+          else next.set(key, Object.assign(q, { r0: r, r1: r }));
+        }
+        for (const o of open.values()) emit(o);
+        open = next;
+      }
+      for (const o of open.values()) emit(o);
+      fineBoxes = n;
+      return coarse;
+    }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
     for (const s of D.B.s) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;
     for (const s of D.B.s) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
-    for (const [k, l] of solid0) {
+    const coarse = landmarkCells(solidMeshes, slabs);
+    for (const [k, l] of coarse) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;
       for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);
     }
@@ -445,7 +563,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, STEP, DROP, R, BUILDING, LANDMARK, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, get fineBoxes() { return fineBoxes; }, STEP, DROP, R, BUILDING, LANDMARK, movers: null, posts: null };
     return api;
   }
   return { create };

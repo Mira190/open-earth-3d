@@ -83,7 +83,7 @@ MATERIALS = {
     "pole": {"color": "#b8b5ad", "roughness": 0.9, "metalness": 0.0},
     "wire": {"color": "#1e1e1e", "roughness": 0.6, "metalness": 0.2},
     "paint_white": {"color": "#e9e7e0", "roughness": 0.7, "metalness": 0.0},
-    "rope_red": {"color": "#b02a2a", "roughness": 0.9, "metalness": 0.0},
+    "rope_red": {"color": "#b02a2a", "roughness": 0.9, "metalness": 0.0, "solid": False},  # the bell's rope: you take it in your hand
     "lamp": {"color": "#f6ecd2", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffcf80", "glow": 2.2},
     # the drawn images (landmark_assets): ema, plaques, banners, signs and screens; lit after dark where floodlit
     "atlas": {"color": "#ffffff", "roughness": 0.75, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 1.25},
@@ -775,6 +775,31 @@ def temizuya(K, P, z0):
         lathe_at(K("wood_light"), *P(u + 0.02, 0.13, 0)[:2], [(z0 + 0.86, 0.04), (z0 + 0.94, 0.045)], 8)
 
 
+RAILS = (1.08, 1.43, 1.78)   # the ema rack's three rails a side, m over the ground
+
+
+def rack_layout(length):
+    """Where each ema hangs on a rack `length` m long, the same for the mesh (ema_rack) and the game's
+    look closer (suga_extras): (side, rail, layer, u, face, back, tilt, off), side +-1 across the rack,
+    layer 1 hung over layer 0. Its own random stream, so the game reads the ema the mesh shows."""
+    rng = np.random.default_rng(2610)
+    hl, out = length / 2, []
+    wishes = [k for k in ATLAS_KEYS if k.startswith("ema_w")]
+    pinks = [k for k in ATLAS_KEYS if k.startswith("ema_pink")]
+    for side in (-1, 1):
+        for rail in range(len(RAILS)):
+            for layer in (0, 1):  # two overlapping layers, as a full rack hangs
+                u = -hl + 0.06 + layer * 0.055
+                while u < hl - 0.06:
+                    face = rng.choice(pinks) if rng.random() < 0.06 else ("ema_front" if rng.random() < 0.28 else rng.choice(wishes))
+                    back = "ema_front" if face != "ema_front" else rng.choice(wishes)
+                    tilt = rng.normal(0, 0.12)
+                    off = side * (0.135 + 0.012 * layer + rng.random() * 0.01)
+                    out.append((side, rail, layer, u, str(face), str(back), tilt, off))
+                    u += 0.105 + rng.random() * 0.03
+    return out
+
+
 def ema_rack(K, P, z0, length, rng):
     """The ema rack: posts, a little gable roof and three rails a side, hung thick with this year's ema,
     some showing their wishes and some the shrine's painting of the 男坂."""
@@ -783,21 +808,12 @@ def ema_rack(K, P, z0, length, rng):
         slab_at(K("wood_dark"), P, u, 0, 0.1, 0.1, z0, z0 + 2.05)
     block(K("wood_dark"), P, -hl - 0.1, hl + 0.1, -0.06, 0.06, z0 + 1.95, z0 + 2.07)
     gable_roof(K("wood"), K("wood_dark", "gable"), P, -hl - 0.15, hl + 0.15, 0.32, z0 + 2.02, z0 + 2.32, ov=0.12)
-    wishes = [k for k in ATLAS_KEYS if k.startswith("ema_w")]
-    pinks = [k for k in ATLAS_KEYS if k.startswith("ema_pink")]
-    A = K("atlas")
     for side in (-1, 1):
-        for z in (1.08, 1.43, 1.78):
+        for z in RAILS:
             block(K("wood_light"), P, -hl, hl, side * 0.11 - 0.015, side * 0.11 + 0.015, z0 + z - 0.015, z0 + z + 0.015)
-            for layer in (0, 1):  # two overlapping layers, as a full rack hangs
-                u = -hl + 0.06 + layer * 0.055
-                while u < hl - 0.06:
-                    face = rng.choice(pinks) if rng.random() < 0.06 else ("ema_front" if rng.random() < 0.28 else rng.choice(wishes))
-                    back = "ema_front" if face != "ema_front" else rng.choice(wishes)
-                    tilt = rng.normal(0, 0.12)
-                    off = side * (0.135 + 0.012 * layer + rng.random() * 0.01)
-                    ema(A, P, u, off, z0 + z - 0.055 - 0.015 * layer, side, tilt, face, back)
-                    u += 0.105 + rng.random() * 0.03
+    A = K("atlas")
+    for side, rail, layer, u, face, back, tilt, off in rack_layout(length):
+        ema(A, P, u, off, z0 + RAILS[rail] - 0.055 - 0.015 * layer, side, tilt, face, back)
 
 
 EMA_W, EMA_H = 0.15, 0.10
@@ -812,7 +828,8 @@ def ema(m, P, u, v, zc, side, tilt, face, back):
         u0, v0, u1, v1 = atlas_uv(key)
         pts, uvs = [], []
         for x, y in EMA_SHAPE:
-            xx, yy = x * EMA_W * flip * side, y * EMA_H
+            # read from its side: someone at +v looking across the rack has -u on their right, at -v, +u
+            xx, yy = -x * EMA_W * flip * side, y * EMA_H
             xr, yr = xx * c - yy * s, xx * s + yy * c
             pts.append(P(u + xr, v + dv, zc + yr))
             uvs.append([u0 + (x + 0.5) * (u1 - u0), v0 + (y + 0.5) * (v1 - v0)])
@@ -3416,6 +3433,7 @@ GLOSS = ["Your Name: happy 10th anniversary of the release!", "Ten years on, the
          "Finally here: the Suga Shrine stairs. A dream come true.", "", "", "", "", "Ten years of Kimi no Na wa! Mexico, 2026.",
          "Ten years already... thank you for this film. Paris, 2026.", "", "Prosperity in business. Reiwa 8.", "Road safety. Reiwa 8, Yotsuya.",
          "May Mike the cat stay well.", "Ten years in Tokyo: that film gave me the push."]
+PINK_GLOSS = ["Happy 10th anniversary!", "Success in love. 2026.", "Tie the bond of fate. Reiwa 8."]
 
 
 def spot(id_, name, at, z, verb, lines, radius=2.5, pick=0, role=""):
@@ -3423,22 +3441,54 @@ def spot(id_, name, at, z, verb, lines, radius=2.5, pick=0, role=""):
             "radius": radius, **({"pick": 1} if pick else {}), **({"role": role} if role else {})}
 
 
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
 def talk(at, z, lines, radius=14, side=True):
     return {"at": [round(float(at[0]), 2), round(float(at[1]), 2), round(float(z), 2)], "radius": radius, "lines": lines, "side": side}
 
 
-def suga_extras(s, spots, chatter):
+def suga_extras(s, spots, chatter, close):
     P = precinct_frame({"suga": s})
     r = s["ema_rack"]
     wishes = []
     for (fname, lines, ink, kind), gl in zip(WISHES, GLOSS):
         txt = "「" + " ".join(lines) + "」"
         wishes.append(txt + (f" ({gl})" if gl else ""))
-    spots.append(spot("ema", "Ema rack 絵馬掛所", P(r["s"], r["v"], 0), r["z"], "Read an ema", wishes, 3.0, pick=1, role="Suga Shrine, 2026"))
+    ax = np.asarray(s["axis"], float)
+    rack = spot("ema", "Ema rack 絵馬掛所", P(r["s"], r["v"], 0), r["z"], "Look closer at the ema", wishes, 3.0, pick=1, role="Suga Shrine, 2026")
+    # walk right up to it from the approach and from behind (the ema hang on both faces, 0.14 m out),
+    # and look along it close up: the three rails from 1.0 to 1.8 m (ema_rack)
+    rack["reach"] = [close_to(None, P(r["s"], r["v"], 0), r["z"], P(r["s"], r["v"] + sgn * 4.0, 0), 1.0, 0.3) for sgn in (1, -1)]
+    rack["look"] = {"at": [*xy(P(r["s"], r["v"], 0)), round(r["z"] + 1.42, 2)], "along": [round(float(ax[0]), 5), round(float(ax[1]), 5)],
+                    "half_m": round(r["length_m"] / 2 - 0.15, 2), "dist_m": 0.95, "rails": [round(r["z"] + z - 0.055, 3) for z in RAILS], "faces": 0.14}
+    # each ema as it hangs (rack_layout): [u along the rack, rail, side, layer, line], the line's text in
+    # "texts": the wishes, then the shrine's own design, then the pink ones
+    texts = wishes + ["The shrine's own ema, 800 yen: the 男坂 painted at dusk, the stone stairs and their red rails between the houses, "
+                      "and Suga Shrine's red seal. The wish is written on the back."]
+    texts += ["「" + " ".join(lines) + "」" + (f" ({g})" if g else "") for (_, lines, _), g in zip(PINKS, PINK_GLOSS)]
+    key = {"ema_front": len(wishes)} | {f"ema_w{i}": i for i in range(len(wishes))} | {f"ema_pink{i}": len(wishes) + 1 + i for i in range(len(PINKS))}
+    rack["look"]["texts"] = texts
+    rack["look"]["tablets"] = [[round(u, 3), rail, side, layer, key[face]] for side, rail, layer, u, face, _, _, _ in rack_layout(r["length_m"])]
+    spots.append(rack)
     h = s["hall"]
-    spots.append(spot("saisen", "Offering box 賽銭箱", P(h["s_front"] - 2.4, 0, 0), h["z"], "Pray at the hall", [
+    pray = spot("saisen", "Offering box 賽銭箱", P(h["s_front"] - 2.4, 0, 0), h["z"], "Pray at the hall", [
         "Bow twice, clap twice, bow once. A coin first: five yen, go-en, sounds like 'a bond'.",
-        "Suga Shrine enshrines Susanoo and the Inari kami. It has watched over Yotsuya's eighteen towns since 1634."], 2.6, role="Suga Shrine"))
+        "Suga Shrine enshrines Susanoo and the Inari kami. It has watched over Yotsuya's eighteen towns since 1634."], 2.6, role="Suga Shrine")
+    # up the five steps onto the platform, to the box under the bell (hall(): at 0.55 to 1.25 m in from the front)
+    pray["reach"] = [close_to(None, P(h["s_front"] + 0.9, h["v_mid"], 0), h["z"] + 0.9, P(h["s_front"] - 7.0, h["v_mid"], 0), 1.0, 0.35)]
+    spots.append(pray)
+    for k, (a, b, z) in enumerate(s["lanterns"]):
+        close.append(close_to(f"Suga Shrine stone lantern {k + 1}", P(a, b, 0), z, P(a, 0, 0), 1.0, 0.25))
+    for k, (a, b, z) in enumerate(s["komainu"]):
+        close.append(close_to(f"Suga Shrine komainu {'AU'[k]}", P(a, b, 0), z, P(a - 3.0, 0, 0), 1.2, 0.3))
     q = s["temizuya"]
     spots.append(spot("temizuya", "Temizuya 手水舎", P(q[0], q[1], 0), q[2], "Rinse your hands", [
         "Left hand, then right, then a sip from your cupped left palm, never from the ladle. Then rinse the handle."], 2.4))
@@ -3451,7 +3501,7 @@ def suga_extras(s, spots, chatter):
                    ["Friend", "Stand on the left. I'll be halfway up."], ["Pilgrim", "Ten years... I was in high school."]]))
 
 
-def districts_extras(lm, spots, chatter):
+def districts_extras(lm, spots, chatter, close):
     h = lm.get("hachiko")
     if h:
         at, f = np.asarray(h["at"]), hachiko_face(h)
@@ -3459,6 +3509,7 @@ def districts_extras(lm, spots, chatter):
             "Hachiko, an Akita, met his master here every evening. After Professor Ueno died in 1925 he kept coming, for almost ten years.",
             "The first statue (1934) went for metal in the war; this is the 1948 recast. 'Meet at Hachiko' is still how Tokyo says 'meet at Shibuya'.",
             "Since 1989 he has faced the station, on a pedestal lowered so that people can touch him. The benches round him are never empty."], 2.8))
+        spots[-1]["reach"] = [close_to(None, at, h["z"], at + f * 4.5, 1.5, 0.8)]   # up to his pedestal (1.6 by 1.1 m), close enough to touch
         chatter.append(talk(at + f * 6 + left_of(f) * 4, h["z"], [["Student", "Meet at Hachiko? Everyone says that."], ["Friend", "Which side of Hachiko, though?"],
                                                                ["Student", "The side with the tourists."]]))
     sc = lm.get("scramble")
@@ -3471,6 +3522,8 @@ def districts_extras(lm, spots, chatter):
         at, f = np.asarray(cg["at"]), np.asarray(cg["axis"])
         spots.append(spot("center_gai", "Center Gai センター街", at + f * 1.5, cg["z"], "Read the arch", [
             "SHIBUYA CENTER-GAI: a few hundred metres of shops, ramen and arcades from the scramble towards Udagawacho. A game knew it as Central Street."], 4.0))
+        G = frame(at, f)
+        close.append(close_to("Center Gai arch, its post", G(0, cg["span_m"] / 2, 0), cg["z"], G(-4.0, cg["span_m"] / 2 - 1.5, 0), 1.2, 0.2))
         chatter.append(talk(at + f * 12, cg["z"], [["Friend", "Ramen or monja?"], ["Friend", "Ramen. Then the arcade."], ["Friend", "You always say that."]]))
     y = lm.get("yongen", {})
     if "chiyo" in y:
@@ -3498,6 +3551,8 @@ def districts_extras(lm, spots, chatter):
         at, f = np.asarray(k["at"]), np.asarray(k["axis"])
         spots.append(spot("kabukicho", "Kabukicho Ichibangai 歌舞伎町一番街", at - f * 2.0, k["z"], "Look up at the arch", [
             "The red arch has stood at Kabukicho Ichibangai since 1969. Kabukicho is named for a kabuki theatre planned here after the war and never built."], 4.0))
+        G = frame(at, f)
+        close.append(close_to("Kabukicho Ichibangai arch, its post", G(0, k["span_m"] / 2, 0), k["z"], G(-4.0, k["span_m"] / 2 - 1.5, 0), 1.2, 0.2))
         chatter.append(talk(at + f * 10, k["z"], [["Friend", "Karaoke till the first train?"], ["Friend", "The first train's at five..."], ["Friend", "Exactly."]]))
 
 
@@ -3523,11 +3578,11 @@ def game_extras(scene):
     real lifts' 360 m a minute) and its roof to travel to from the start; spots to look at closely and
     conversations to overhear, placed at the landmarks."""
     lm = scene["landmarks"]
-    spots, chatter = [], []
+    spots, chatter, close = [], [], []
     if "suga" in lm:
-        suga_extras(lm["suga"], spots, chatter)
-    districts_extras(lm, spots, chatter)
-    out = {"spots": spots, "chatter": chatter}
+        suga_extras(lm["suga"], spots, chatter, close)
+    districts_extras(lm, spots, chatter, close)
+    out = {"spots": spots, "chatter": chatter, "close": close}
     s = lm.get("shibuya_sky")
     if not s:
         return out
@@ -3556,6 +3611,22 @@ def game_surfaces(scene):
     for k, leg in enumerate((s.get("onnazaka") or {}).get("legs", [])):
         out.append({"name": f"Suga Shrine 女坂 {k + 1}", "type": "strip", "origin": leg["origin"], "axis": leg["axis"], "half_width": leg["half_width"] + 0.2,
                     "profile": leg["profile"], "thickness": 2.0, "mesh": "suga_onna", "drape": True, "label": "the 女坂"})
+    out.append(hall_steps(s))
     if "shibuya_sky" in scene["landmarks"]:
         out += sky_surfaces(scene["landmarks"]["shibuya_sky"])
     return out
+
+
+def hall_steps(s):
+    """The hall's five front steps and its platform as far as the doors, as hall() builds them: a strip a
+    walker climbs to the offering box (the platform's stone stays solid round it)."""
+    h, ax = s["hall"], np.array(s["axis"])
+    front = np.array(s["origin"]) + ax * h["s_front"] + left_of(ax) * h["v_mid"]
+    z0, n, prof = h["z"], 5, []
+    for j in range(n):
+        a, z = -0.4 - (n - j) * 0.32, h["z"] + (j + 1) * 0.9 / n
+        prof += [[round(a + (0.02 if j else 0), 3), round(z, 3)], [round(a + 0.32, 3), round(z, 3)]]
+    prof.append([2.3, round(z0 + 0.9, 3)])  # the platform, to the haiden's doors (porch, 2.4 m)
+    return {"name": "Suga Shrine hall steps", "type": "strip", "origin": [round(float(front[0]), 2), round(float(front[1]), 2)],
+            "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)], "half_width": 1.8, "profile": prof, "thickness": 1.2,
+            "mesh": "suga_steps", "label": "the hall"}
