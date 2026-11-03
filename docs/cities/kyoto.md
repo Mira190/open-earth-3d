@@ -90,6 +90,9 @@ outline under an outline roof, rather than as one hall over their bounding box
 the gate. At Nijo, the covered ways between the Ninomaru's halls are corridors.
 A block with a guessed height in the Shishinden's court is dropped.
 
+![The Imperial Palace's south court, its corridors and the Jōmei-mon](../images/kyoto/gosho-south-court.jpg)
+![Nijo's Ninomaru palace](../images/kyoto/nijo-ninomaru.jpg)
+
 ## 4. Sun on public places
 
 Kyoto has no statutory sun window for public places. The places listed (Kyoto Gyoen, Kamo

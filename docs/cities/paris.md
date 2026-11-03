@@ -240,6 +240,17 @@ model, and would float every building.
   temporary platform over the basin too, which the built data had as a 10.9 m
   "monument" with a pyramid roof (the grey mound); it is demolished, and no tree
   stands in a landmark's clipped ground.
+  ![The Palais de Chaillot from the Seine, before: the wings drawn to 12 m over the parvis and a pyramid-roofed block over the fountain](../images/paris/chaillot-before.jpg)
+  ![After: the wings on their LiDAR massing, the Warsaw Fountain and the lawns](../images/paris/chaillot-from-the-seine.jpg)
+  ![From above](../images/paris/chaillot-air.jpg)
+  ![After dark, floodlit](../images/paris/chaillot-night.jpg)
+  ![The parvis's gilded statues and the Eiffel Tower between the pavilions](../images/paris/chaillot-parvis.jpg)
+- **Sculpture.** The Arc de Triomphe's four high-relief groups (three figures on the
+  pedestal and a winged Genius over them) and the Opéra's gilded groups (Harmony and
+  Poetry with their geniuses, Millet's Apollo raising his lyre, Lequesne's Pegasi)
+  are figures, not blocks, built from tapered limbs in `cities/paris/city.py`.
+  ![The Opéra's gilded groups](../images/paris/opera-statues.jpg)
+  ![The Arc's relief groups](../images/paris/arc-reliefs.jpg)
 - **Guessed heights over bare ground.** `lidar_massing.py` also tests the solids
   whose height the build could only guess (an estimate or an ML height): where the
   laser sees bare ground under the whole footprint (Microsoft ML outlines in the
