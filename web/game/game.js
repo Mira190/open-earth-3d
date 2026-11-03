@@ -410,6 +410,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   try {
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
+    if (Wd.streetLit) OEPeople.setLight(Wd.streetLit); // the street lights light the people after dark
     // the surveyors you play are the main characters (blender/build_people.py): the one you play now
     // loads here, the other when you switch; the old characters stand in if their files don't load
     for (const [k, h] of Object.entries({ W_Worker: 'H_Surveyor_W', M_Worker: 'H_Surveyor_M' })) if (lib.heroes[h]) PLAYER_LOOKS[k].hero = h;

@@ -117,6 +117,18 @@
       "summary": "Akihabara's Electric Town from open data at PLATEAU-surveyed heights: Chuo-dori's blade signs and wall prints, lit after dark, the arcades' lanes, Kanda Myojin's gate up the hill and Nikolai-do's dome over Ochanomizu."
     },
     {
+      "id": "ueno",
+      "name": "Ueno",
+      "native": "上野",
+      "country": "Japan",
+      "lat": 35.713,
+      "lon": 139.7735,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Ueno Park, Toshogu's gilt hall, Shinobazu Pond and Bentendo, and Ameyoko's market",
+      "summary": "Ueno from open data at PLATEAU-surveyed heights: the park on its hill with Saigo's statue, Toshogu's gilt hall between its lanterns and Kan'ei-ji's pagoda, Shinobazu Pond's lotus and Bentendo on its island, and Ameyoko's market under the tracks to Okachimachi."
+    },
+    {
       "id": "whitsundays",
       "name": "Whitsundays",
       "country": "Australia",
@@ -289,7 +301,7 @@
           "native": "上野",
           "lat": 35.7138,
           "lon": 139.7774,
-          "note": "Ueno Park, Ameyoko, Shinobazu Pond",
+          "map": "ueno",
           "label": "t"
         },
         {
