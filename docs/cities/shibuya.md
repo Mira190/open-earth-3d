@@ -218,7 +218,8 @@ are, checked against photographs from the same viewpoints (the comparison stills
 | Shibuchika's pavilion (exit 8) | The square pavilion on Hachiko Square with its charcoal fascia and name | OSM's 13.8 × 13.4 m outline | Its height (OSM 3.8 m) |
 | Tactile paving | Yellow 30 cm guide blocks along every footway OSM tags `tactile_paving=yes`, warning blocks where they meet a kerb or a door | OSM | |
 | Guard rails | White guard pipes (0.8 m, posts every 2 m) on the kerbs between crosswalks; short stainless bollards on QFRONT's forecourt | Photographs 2024-25 | Their exact runs |
-| The JR lines | The Yamanote Line's two tracks and the freight line's two on a raised bed between retaining walls, the steel girder bridge over the road under them, rails on sleepers, the overhead line on portal masts | OSM's track lines and bridge | Rails 7.4 m over the road, the girder 2 m deep, masts every 46 m |
+| The Ginza line | Its concrete viaduct on piers clear of the roads, two tracks with their third rail and no wires | OSM's line (bridge=viaduct, layer 2) | Rails 12 m over the street, the deck 9 m wide |
+| The JR lines | The Yamanote Line's two tracks and the freight line's two: the steel plate-girder bridge over the road (stiffeners, flanges, its clearance sign), north of it a concrete viaduct on three rows of columns with the Hachiko-exit bicycle lot under it (city bicycles, instanced), rails on sleepers, the overhead line on portal masts | OSM's track lines, bridge and the bicycle lot under the tracks | Rails 7.4 m over the road, the girder 2 m deep, masts every 46 m, the 4.5 m clearance |
 | QFRONT | A double skin curved round its corners: glass on silver fins every 0.9 m in front of the floors (lit after dark), the glass crown with a roof advert, Q FRONT under it, the canopy with SHIBUYA TSUTAYA and STARBUCKS COFFEE. Q'S EYE (12.96 × 7.289 m) and its banner screen are moved up to where the photographs put them, 30.8 and 20.4 m over the street | PLATEAU 52.2 m to the crown; R.I.A. design, 1999, 8 floors | Fins, storeys, the gap between the skins |
 | SHIBUYA109 | The aluminium block and the cylinder at its point, the printed advert on its front and the pink 109 in a ring on its silver top | PLATEAU: 33.6 m roof, the cylinder 49.7 m; OSM's footprint rounds the point on a 13.7 m circle (PLATEAU's generalised model, 11.5 m); drawn 13 m across | The advert's size; the panels' joints |
 | MAGNET | Its glazed corner under a sloping silver fascia with its name in red serif letters | Photographs 2025 | The fascia's height and slope |
@@ -227,8 +228,26 @@ are, checked against photographs from the same viewpoints (the comparison stills
 | The station's Hachiko side | OSM maps the whole station as one 15 to 29 m building, which the generic styles drew as a yellow stone palace. It is drawn as the works site it is: pale panel walls, hoardings with the works notice at its foot, a scaffold over the square carrying an advert | OSM's outline and heights; photographs 2024-25 | The scaffold's size |
 | The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands; the Taiseido bookshop's fascia | PLATEAU, photographs | All the brands are invented |
 
-**What was not built, and why.** The Ginza line's viaduct over the Toyoko site is not drawn: its line
-over the street could not be confirmed against a photograph. Seibu's A and B buildings closed on
+**Side by side.** Each still stands the camera where the photographer stood and is cropped to the
+photo's lens (`tools/compare/shibuya.json`, `tools/compare_sheet.py`); the photo first, then the model at
+13:00, 15 minutes after sunset and 20:30 on 3 November.
+
+| | |
+|---|---|
+| Hachiko Square toward QFRONT | ![](../images/shibuya/compare/hachiko.jpg) |
+| QFRONT from the Hachiko corner | ![](../images/shibuya/compare/qfront.jpg) |
+| SHIBUYA109 from the scramble | ![](../images/shibuya/compare/s109.jpg) |
+| The station side | ![](../images/shibuya/compare/station.jpg) |
+| Across the junction from MAGNET | ![](../images/shibuya/compare/diagonal.jpg) |
+
+**Cost.** The Shibuya map's data grew from 34.0 MB to 36.1 MB (landmarks.json 1.61 to 3.07 MB, and
+scramble.jpg, 0.3 MB). On the low tier under a software renderer (llvmpipe, `TIER=low tools/city_shot.js`)
+the map loads in 23.4 s and draws the view from Hachiko Square in 311 ms a frame by day and 368 ms at
+night; on a GPU the cost is a few more draw calls (one per material, about 40). A real GPU was not
+measured.
+
+**What was not built, and why.** The Ginza line's viaduct is drawn from Mark City across the street and
+the Toyoko site to the JR station (it carries on inside the station's outline). Seibu's A and B buildings closed on
 30 September 2026 and carry no sign here. The traffic signals and the crowd belong to the game
 (`web/game/junctions.js`). Real brands, logos and the real adverts are not drawn: every advert is
 invented in the kind the real one is, and the buildings' own names are set in open fonts.
