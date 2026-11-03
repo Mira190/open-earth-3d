@@ -56,6 +56,7 @@ from shapely.ops import substring
 
 import arcades
 import walls
+import woods
 import kerbside
 import night_lights
 import road_rules
@@ -619,6 +620,8 @@ def main():
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
+    if os.path.exists(os.path.join(C.raw, "overture_land_use.parquet")):
+        woods.build(C)  # the trees from the woods' and parks' canopy, and the ground under it (pipeline/woods.py)
     write_index()
 
 
