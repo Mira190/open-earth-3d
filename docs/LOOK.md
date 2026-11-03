@@ -48,6 +48,14 @@ A square with no street lamp in it (the scramble) gets a light card after dark
 (`game.look.fill`): a large area light over its middle, standing for the shopfronts,
 floodlights and signs round it.
 
+### The camera (`web/game/atmosphere.js` camFx)
+
+Depth of field and motion blur only where a camera would show them: photo mode gets an
+Aperture slider (f/1.4 to f/16, focused on the focus point, the circle of confusion of a
+full-frame lens at the chosen focal length), and the opening shot of a city has a shallow focus
+and the camera's motion blur as it cranes in. In play there is neither. Both read a distance
+pass drawn only while they are on.
+
 ### Wet streets (`web/mirror.js`, with the weather of #95)
 
 When the ground is wet (`OEWeather.uniforms.uWet`, the weather's), the high tier draws the city a
@@ -86,9 +94,25 @@ Measured with `tools/scramble_shot.js` (the median of a run of frames at each vi
 repository's checks that is Mesa's llvmpipe, a software renderer, which is only good for
 comparing one build with another; a real GPU was not available to measure.
 
-See the table in the pull request for issue #112.
+Shibuya, from the middle of the scramble at 21:00, 1440×900, median frame (ms), November 2026:
+
+| Tier | main before | this change |
+|---|---|---|
+| low | 750, 750 | 700, 733 |
+| medium | | 1,750 |
+| high | 1,467 | 2,217 |
+
+The low tier is unchanged or a little faster (no area lights, no mirror, the crowd thinned by the
+hour). On the high tier the software renderer pays for every area light in every lit fragment
+and for the larger crowd; on a GPU those are cheap, but this was not measured on one. A device
+that runs slowly can drop a tier in About.
 
 ## Stills and the film
+
+The film: `cities/shibuya/scramble_film.json`, 20 s of the scramble at dusk (17:08 to 17:13 on
+30 October) under the game's own grade (`"grade": "game"`):
+`xvfb-run -a node tools/city_film.js shibuya --spec cities/shibuya/scramble_film.json --out <dir>`.
+
 
 `tools/scramble_shot.js` takes stills from free cameras with the world running, at the hours
 and weather a views file names (`tools/views/shibuya-scramble.json`: from Hachiko, from the
