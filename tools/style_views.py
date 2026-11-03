@@ -53,13 +53,20 @@ for si, s in enumerate(B['s']):
             grid[(gi, gj)].append((xs, ys, (s[1] + s[3]) / 10))
 
 
-# the trees, on a 50 m grid: x, y, ground and height (m; places.json trees, then woods), a crown
-# from a third of the height up, as wide as 0.35 of it and at least 2.5 m round
+# the trees, on a 50 m grid, sized as web/trees.js draws them: a mapped tree (places.json trees) is
+# its species' model scaled 0.78-1.22 by its mapped height, a wood's (woods) its measured height;
+# the tallest and widest species of the city's mix, a crown from a quarter of the height up
+SP = json.load(open(f'{a.data}/../assets/trees/trees.json'))
+mix = (S.get('trees') or {}).get('mix') or SP['mix']
+kinds = [SP['species'][k] for k in mix if k in SP['species']] or list(SP['species'].values())
+TH, TW = max(k['height_m'] for k in kinds), max(max(k['crown'][:2]) for k in kinds)
 trees = defaultdict(list)
 TR = (P.get('trees') or []) + (P.get('woods') or [])
+n_mapped = len(P.get('trees') or []) // 4
 for k in range(0, len(TR) - 3, 4):
     x, y, g, h = (v / 10 for v in TR[k:k + 4])
-    trees[(math.floor(x / 50), math.floor(y / 50))].append((x, y, g, h, max(2.5, 0.35 * h)))
+    s = 0.78 + 0.44 * min(1, max(0, (h - 7) / 7)) if k // 4 < n_mapped else min(1.5, max(0.4, h / TH))
+    trees[(math.floor(x / 50), math.floor(y / 50))].append((x, y, g, TH * s * 1.08, TW / 2 * s))
 
 
 def tree_at(x, y, z, pad=0.0):
@@ -68,7 +75,7 @@ def tree_at(x, y, z, pad=0.0):
     for di in (-1, 0, 1):
         for dj in (-1, 0, 1):
             for tx, ty, g, h, r in trees.get((gi + di, gj + dj), ()):
-                if math.hypot(x - tx, y - ty) < r + pad and g + h / 3 - pad < z < g + h + pad:
+                if math.hypot(x - tx, y - ty) < r + pad and g + h / 4 - pad < z < g + h + pad:
                     return True
     return False
 
@@ -142,6 +149,8 @@ for st in want:
                 ex, ey = (qx - ax) / L, (qy - ay) / L
                 mx, my = (ax + qx) / 2, (ay + qy) / 2
                 for d, along, h in ((30, 16, 9), (40, 22, 12), (55, 30, 16)):
+                    if d < 0.9 * min(bt, 60):  # far enough back to see a tall front whole, not a wall filling the frame
+                        continue
                     c = [mx + ey * d + ex * along, my - ex * d + ey * along, h]
                     t = [mx + ey * 0.5, my - ex * 0.5, tz]
                     if room(c, base) and clear(c, t, base):
