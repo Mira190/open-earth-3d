@@ -103,21 +103,21 @@
       "dur": 4.5,
       "type": "move",
       "from": [
-        -500,
-        100,
-        230
+        -330,
+        -80,
+        360
       ],
       "to": [
-        -560,
-        180,
-        420
+        -400,
+        0,
+        500
       ],
       "look": [
-        500,
-        -1300,
-        150
+        380,
+        -1000,
+        -170
       ],
-      "fov": 32,
+      "fov": 30,
       "time": [
         "07:30"
       ],
@@ -244,46 +244,46 @@
       }
     },
     {
-      "id": "sangenjaya",
-      "chapter": "After dark",
+      "id": "omotesando",
+      "chapter": "Golden hour",
       "dur": 4.5,
       "type": "move",
       "from": [
-        -2461,
-        -2893,
-        2.2
+        1192,
+        -225,
+        5.5
       ],
       "to": [
-        -2459.5,
-        -2887,
-        2.2
+        1180,
+        -218.5,
+        5.5
       ],
       "look": [
-        -2443,
-        -2838,
-        7
+        1040,
+        -140,
+        10
       ],
       "fov": 30,
       "time": [
-        "18:40"
+        "16:28"
       ],
       "agl": true,
+      "hand": 1,
       "people": [
-        -2450,
-        -2862
+        1150,
+        -205
       ],
-      "crowd_r": 30,
-      "crowd_n": 40,
-      "crowd_clear": 8,
+      "crowd_r": 45,
+      "crowd_n": 90,
+      "crowd_clear": 10,
       "title": {
         "kind": "lower",
         "at": 0.6,
         "until": 4.2,
-        "eyebrow": "Sangenjaya, Setagaya",
-        "head": "The triangle",
-        "text": "Backstreets between Setagaya-dori and Route 246: a game drew its hero's home town here and called it Yongen-Jaya."
-      },
-      "hand": 1
+        "eyebrow": "Harajuku to Aoyama",
+        "head": "Omotesando",
+        "text": "Meiji Shrine's front approach since 1920: a kilometre of zelkova trees, and the shops under them."
+      }
     },
     {
       "id": "night",
@@ -306,8 +306,8 @@
       ],
       "fov": 28,
       "time": [
-        "17:05",
-        "17:40"
+        "17:10",
+        "17:45"
       ],
       "title": {
         "kind": "end",
