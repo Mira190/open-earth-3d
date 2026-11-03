@@ -398,14 +398,24 @@
     ],
     "start": {
       "at": [
-        371.9,
-        -1041.6
+        376.9,
+        -1013.1
       ],
       "facing": [
-        368.7,
-        -1000.6
+        358.8,
+        -985.5
       ],
-      "time": "live"
+      "time": "live",
+      "shot": {
+        "look": [
+          354.5,
+          -968.6,
+          34.0
+        ],
+        "dur": 4.2,
+        "walk_in": 2.2,
+        "sway_deg": 8
+      }
     },
     "helipads": [
       {
@@ -520,10 +530,10 @@
     "travel": [
       {
         "id": "t-shibuya",
-        "name": "Shibuya: Hachiko 渋谷",
+        "name": "Shibuya: the scramble 渋谷",
         "at": [
-          372.2,
-          -1044.1
+          376.9,
+          -1013.1
         ]
       },
       {
@@ -549,8 +559,8 @@
         "name": "Aoi 葵",
         "role": "Pilgrimage guide 聖地巡礼ガイド",
         "at": [
-          372.2,
-          -1044.1
+          355.6,
+          -983.6
         ],
         "look": {
           "character": "R_Female_Adult_14_f016",
@@ -709,7 +719,7 @@
           "shibuya",
           "yongen"
         ],
-        "on_open": "<b>Every walk done.</b> Report back to Aoi at Hachiko."
+        "on_open": "<b>Every walk done.</b> Report back to Aoi by QFRONT, across the scramble from Hachiko."
       }
     ],
     "quests": [
@@ -721,18 +731,18 @@
         "stamp": "Hachiko",
         "talk": [
           "ようこそ渋谷へ! I'm Aoi. I guide pilgrims: people who come to stand where a story stood. This month it's ten years since a film and a game put these streets on the map.",
-          "Hachiko has sat here since 1948. A game called this square Station Square. Walk out onto the scramble when the lights change.",
+          "You've just crossed it: the scramble, up to three thousand people at one change of the lights. Hachiko, back across the road, has sat there since 1948, and a game called his square Station Square. Cross back to him when the lights change.",
           "Want to see it from above? The lift at SKY GATE in Scramble Square, just across the road, goes up to SHIBUYA SKY, and a helicopter waits on the roof. A hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {
             "type": "visit",
             "at": [
-              368.7,
-              -1000.6
+              373.78,
+              -1047.42
             ],
-            "radius": 10,
-            "text": "Walk out onto the scramble"
+            "radius": 6,
+            "text": "Cross back to Hachiko"
           },
           {
             "type": "talk",

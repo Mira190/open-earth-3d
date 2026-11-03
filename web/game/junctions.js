@@ -186,10 +186,15 @@ window.OEJunctions = (function () {
     }
     // the scrambles: a fourth phase (3), the walkers', every arm red; the traffic's turns kept short
     let nScramble = 0;
-    for (const [x, y] of scrambles || []) {
-      const j = nearestJ(x, y, 30);
-      if (!j || !j.sig || j.scramble) continue;
+    for (const sc of scrambles || []) { // ([x, y], or { node: [x, y], lines: its crosswalks [[x, y], [x, y]] })
+      const [x, y] = Array.isArray(sc) ? sc : sc.node, j = nearestJ(x, y, 30);
+      if (!j || j.scramble || j.arms.filter(a => a.in).length < 2) continue;
+      if (!j.sig) { // (signalled whether or not OSM maps its lights near the node: Shibuya's stand at the crosswalks, beyond the radius)
+        j.sig = true; j.arrow = false; j.amber = Math.max(...j.arms.map(a => L[a.line].v || 11)) > 16 ? AMBER + 1 : AMBER;
+        for (const a of j.arms) { if (a.phase == null) a.phase = 0; a.sign = null; }
+      }
       j.scramble = true; nScramble++;
+      j.stripes = Array.isArray(sc) ? null : sc.lines || null;
       j.green = [16, 12, 6, 32];
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
@@ -455,9 +460,16 @@ window.OEJunctions = (function () {
       const j = a.j;
       if (!j.sig) return;
       if (j.ph === a.phase && j.st === 'g') { j.hold = frame; return; }
-      if (j.ph === 3) return; // (the scramble's walk is never cut short: its crowd is out on the road)
+      if (j.scramble) return; // (the scramble keeps its own cycle: its walk is never cut short for a ride, its crowd out on the road)
       if (j.ph !== a.phase && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
       else if (j.st !== 'g' && j.nxt !== a.phase && j.ph !== a.phase) j.nxt = a.phase; // (changing already: to its phase next)
+    }
+    // the scramble j's walk in `inS` seconds (the game opening on it): every arm held at red until then, or
+    // the walk already that far in (inS < 0)
+    function walkIn(j, inS) {
+      if (!j || !j.scramble) return;
+      if (inS > 0) { j.st = 'r'; j.nxt = 3; j.t = ALLRED - inS; } else { j.ph = 3; j.st = 'g'; j.t = -inS; }
+      j.walkNow = j.ph === 3 && j.st === 'g'; dirty.add(j);
     }
     // about how long until arm a's light is green for a vehicle with priority there (0 if it is, or
     // there are no signals): what is left of the change, and of the other road's few seconds first
@@ -604,6 +616,7 @@ window.OEJunctions = (function () {
       let n = 0;
       for (const j of J) {
         if (!j.sig) continue;
+        if (j.stripes) { n += stripeCrossings(j, fnet, out); continue; }
         for (const a of j.arms) {
           const l = L[a.line], d1 = Math.min(l.len, a.back + 2.5);
           R2.length = 0;
@@ -632,6 +645,31 @@ window.OEJunctions = (function () {
       out.count = n;
       return out;
     }
+    // A scramble's crosswalks as the city maps them (scene landmarks.scramble.lines): a footway that runs along
+    // one crosses there, the kerbs at the stripes' two ends, the diagonals too. (Its arms' roads meet at a node in
+    // the middle of the crossing, so the kerbs found from them would stand out in the road.)
+    function stripeCrossings(j, fnet, out) {
+      const F = fnet.L;
+      let n = 0;
+      for (const [[ax, ay], [bx, by]] of j.stripes) {
+        const mx = (ax + bx) / 2, my = (ay + by) / 2, len = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / len, uy = (by - ay) / len;
+        for (const fi of new Set(fnet.near(mx, my, 0, len / 2 + 6))) {
+          const f = F[fi], m = f.pts.length / 3;
+          let best = null;
+          for (let k = 1; k < m; k++) { // the footway's point nearest the stripes' middle, on a piece along them
+            const px = f.pts[3 * k - 3], py = f.pts[3 * k - 2], ex = f.pts[3 * k] - px, ey = f.pts[3 * k + 1] - py, fl = Math.hypot(ex, ey);
+            if (fl < 1e-3 || Math.abs(ex * ux + ey * uy) / fl < 0.9) continue;
+            const u = Math.max(0, Math.min(1, ((mx - px) * ex + (my - py) * ey) / (fl * fl))), d = Math.hypot(px + ex * u - mx, py + ey * u - my);
+            if (d < 2.5 && (!best || d < best.d)) best = { d, s: f.cum[k - 1] + u * fl };
+          }
+          if (!best) continue;
+          if (!out.has(fi)) out.set(fi, []);
+          out.get(fi).push({ s: best.s, a: j.arms[0], kerb: len / 2 + 0.2, scramble: true });
+          n++;
+        }
+      }
+      return n;
+    }
     // the arm a car on `line` heading for its end `end` comes up to, or null (not a junction, or inside one)
     const armAt = (line, end) => { const a = armOf.get(line * 2 + end); if (!a || !a.in) return null; if (!a.j.ready) prepare(a.j); return a; };
     // ------------------------------------------------ the signal heads
@@ -648,7 +686,7 @@ window.OEJunctions = (function () {
     }
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
-    return { J, midsOn, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, midsOn, armAt, exits, choose, light, arrow, walk, call, walkIn, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

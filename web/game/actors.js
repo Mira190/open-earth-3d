@@ -449,7 +449,20 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         return;
       }
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0 };
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, muster };
+    // a crowd gathered somewhere at once (the scramble as the game opens on its walk): each of `spots`
+    // ({ line, s, dir, side: its place across the footway, m }) takes the walker farthest from (cx, cy), placed on the next step
+    function muster(spots, cx, cy) {
+      const order = P.slice(0, api.active).map((q, i) => [i, q.line < 0 ? 1e9 : Math.hypot(q.x - cx, q.y - cy)]).sort((a, b) => b[1] - a[1]);
+      spots.slice(0, order.length).forEach((sp, k) => {
+        const q = P[order[k][0]];
+        release(q);
+        q.state = 'walk'; q.mode = 'ground'; q.lat = null; q.side = sp.side ?? 0.3 + rnd() * 1.4; q.pause = 0; q.still = 0; q.wait = 0;
+        q.line = sp.line; q.s = Math.max(0, Math.min(net.L[sp.line].len, sp.s)); q.dir = sp.dir;
+        net.at(q.line, q.s, tmp); q.x = tmp.x; q.y = tmp.y; q.z = tmp.z; // (walk() puts it beside the line)
+      });
+      return Math.min(spots.length, order.length);
+    }
     // the benches as obstacles: for each 4 m cell, those in it and the cells round it
     const benchAt = new Map(), bkey = (cx, cy) => (cx + 8192) * 16384 + cy + 8192; // a small integer key, for speed
     if (BN) for (const b of BN.list) for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) {

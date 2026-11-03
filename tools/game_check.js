@@ -74,6 +74,21 @@ const { pinClock } = require('./pin_clock');
     }
     return { arrived: t, near, steps, missing, flag: O.done() };
   });
+  // an opening shot at a scramble (#110: Shibuya): you start at its kerb or on its stripes, the walk on, the crowd round you
+  const opening = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, sc = (g.scene.landmarks || {}).scramble;
+    if (!g.opening() || !sc || !sc.lines) return null;
+    const j = g.junctions.J.find(q => q.scramble && Math.hypot(q.x - pl.x, q.y - pl.y) < 80);
+    let kerb = Infinity, on = Infinity;
+    for (const [[ax, ay], [bx, by]] of sc.lines) {
+      kerb = Math.min(kerb, Math.hypot(pl.x - ax, pl.y - ay), Math.hypot(pl.x - bx, pl.y - by));
+      const ex = bx - ax, ey = by - ay, u = Math.max(0, Math.min(1, ((pl.x - ax) * ex + (pl.y - ay) * ey) / (ex * ex + ey * ey)));
+      on = Math.min(on, Math.hypot(pl.x - ax - ex * u, pl.y - ay - ey * u));
+    }
+    return { kerb, on, ph: j ? `${j.ph}${j.st}` : 'none', walkers: g.crowd.P.filter(q => q.line >= 0 && Math.hypot(q.x - pl.x, q.y - pl.y) < 10).length };
+  });
+  if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
+    `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
   check(onboard.steps.length >= 8 && !onboard.missing.length && onboard.back === onboard.steps.length - 2 && onboard.skipped && onboard.flag && onboard.noTalk,
     `the HUD tour opens the first time, steps through ${onboard.steps.join(', ')}, steps back and skips, and remembers it${onboard.missing.length ? ` (${onboard.missing.join('; ')})` : ''}`);
