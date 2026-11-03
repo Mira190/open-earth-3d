@@ -230,7 +230,7 @@ Osaka have built-in adjustments:
 | Roofs | Hipped houses and semis, gabled terraces, tile, metal or slate | Gabled houses, kawara or sheet metal, flat from 3–4 floors |
 | Walls | Painted stucco and sandstock brick (terraces); red face brick and roughcast (Federation); liver and cream brick (flats); precast (offices); sandstone | Ceramic siding (over 80% of new houses); tile and painted concrete; low chroma under the Tokyo and Kyoto colour rules |
 | Grids | Metric bays, 2.8–3.6 m | The 910 mm module: sliding units of 1,690 mm on 1,820 mm bays; machiya fronts of three 1.97 m bays |
-| Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, lettered (a line of characters across a panel, a column down a corner sign; dark on a light sign, white on a dark one) and backlit at night |
+| Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, lettered with real words (a business across a floor's panel, a two-character tenant a floor down a corner sign, read top to bottom; dark on a light sign, white on a dark one) and backlit at night. The words are kinds of business, not shops' names, drawn into `web/assets/signs/glyphs.png` by `pipeline/sign_glyphs.py` with Google Fonts (Zen Kaku Gothic New, Shippori Mincho, Dela Gothic One, RocknRoll One, M PLUS Rounded 1c; SIL Open Font License); until it loads, strokes in the shape of characters |
 | City adjustments | | Kyoto: machiya, signs at 0.35 (no rooftop or flashing signs by ordinance). Osaka: signs at 1.4 |
 
 **Paris** (`paris`, country FR) measures its roofs instead of drawing them. IGN's

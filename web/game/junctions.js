@@ -360,11 +360,27 @@ window.OEJunctions = (function () {
       if (j.seen !== frame) { j.seen = frame; j.near.length = 0; j.demand[0] = j.demand[1] = j.demand[2] = 0; }
       j.demand[a.phase === 0 ? 1 : 0] = 1;
     }
-    // a vehicle with priority at arm a's red (a ride on its way to you, as a bus has priority at
-    // some signals): the other road's green ends once it has run a few seconds, through amber as ever
+    // a vehicle with priority coming up arm a (a ride on its way to you, as a bus has priority at
+    // some signals, called from far enough out that the change is made by the time it gets there):
+    // the other road's green ends once it has run a few seconds, through amber as ever, and its own
+    // green is held for it (up to HOLD past when it would have ended) while it comes on
+    const MIN_G = 5, HOLD = 15;
     function priority(a) {
       const j = a.j;
-      if (j.sig && j.ph !== a.phase && j.st === 'g' && j.t >= 5) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
+      if (!j.sig) return;
+      if (j.ph === a.phase && j.st === 'g') { j.hold = frame; return; }
+      if (j.ph !== a.phase && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
+      else if (j.st !== 'g' && j.nxt !== a.phase && j.ph !== a.phase) j.nxt = a.phase; // (changing already: to its phase next)
+    }
+    // about how long until arm a's light is green for a vehicle with priority there (0 if it is, or
+    // there are no signals): what is left of the change, and of the other road's few seconds first
+    function toGreen(a) {
+      const j = a.j;
+      if (!j.sig || light(a) === 'g') return 0;
+      const amber = j.amber || AMBER, change = amber + ALLRED;
+      if (j.st === 'g') return Math.max(0, MIN_G - j.t) + change; // the other road's green
+      if (j.st === 'y') return amber - j.t + ALLRED + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
+      return Math.max(0, ALLRED - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
     }
     let frame = 0;
     const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
@@ -475,7 +491,8 @@ window.OEJunctions = (function () {
         const call = j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1;
         j.call = !!call;
         const wasWalk = j.walkNow;
-        if (j.st === 'g') {
+        const held = j.hold != null && j.hold >= frame - 2 && j.ph !== 2 && j.t < j.green[j.ph] + HOLD; // (a vehicle with priority coming: held green for it)
+        if (j.st === 'g' && !held) {
           if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || j.t >= j.green[j.ph] + CALL)) {
             j.st = 'y'; j.t = 0; dirty.add(j);
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
@@ -538,7 +555,7 @@ window.OEJunctions = (function () {
       return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
-    return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads

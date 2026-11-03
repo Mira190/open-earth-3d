@@ -45,6 +45,7 @@ from shapely.geometry import Point, Polygon
 import adkit as ad
 import screens
 import archkit as ak
+from japankit import open_fronts
 from meshkit import Mesh
 
 HAIDEN = "須賀大神 稲荷大神"       # the OSM name of Suga Shrine's hall (its two kami), as Overture spells it
@@ -1926,7 +1927,7 @@ def yongen(K, y):
         Q = frame(mid + n * 0.9 + t * 0.9, t)
         block(K("steel_dark"), Q, -0.85, 0.85, -0.12, 0.12, z + 2.4, z + 2.95)
         for side in (-1, 1):
-            a, b = Q(-0.8 * side, side * 0.125, z + 2.45), Q(0.8 * side, side * 0.125, z + 2.45)
+            a, b = Q(-0.8 * side, -side * 0.125, z + 2.45), Q(0.8 * side, -side * 0.125, z + 2.45)   # each face on the side it faces
             quad_img(K("atlas", "lit"), a, b, b + [0, 0, 0.45], a + [0, 0, 0.45], "marina")
         facade_panel(K("atlas", "lit"), mid, n, 2.0, z + 3.2, z + 3.7, "rain", off=0.12, along=-2.6)
 
@@ -1936,6 +1937,7 @@ def shop_signs(K, sites, avoid=()):
     (none within 9 m of a published screen or sign in `avoid`)."""
     rng = np.random.default_rng(2016)
     A = K("atlas", "lit")
+    placed = []   # blades already built: one from the facing wall of a narrow lane would cross them
     for x, y, nx, ny, g, top, L in sites:
         clear = any(np.hypot(x - p[0], y - p[1]) < 9.0 for p in avoid)   # chosen as usual, so the other fronts keep their signs, but not built
         n, mid = np.array([nx, ny]), np.array([x, y])
@@ -1959,8 +1961,11 @@ def shop_signs(K, sites, avoid=()):
                 if clear:
                     continue
                 c = mid + n * 0.95 + t * along
-                for side in (-1, 1):  # both faces of a sign that stands out from the wall
-                    a, b = c - n * 0.65 * side + t * 0.06 * side, c + n * 0.65 * side + t * 0.06 * side
+                if any(np.hypot(*(c - p)) < 2.0 and abs(z0 - pz) < h + ph for p, pz, ph in placed):
+                    continue
+                placed.append((c, z0, h))
+                for side in (-1, 1):  # both faces of a sign that stands out from the wall, each on the side it faces
+                    a, b = c - n * 0.65 * side - t * 0.06 * side, c + n * 0.65 * side - t * 0.06 * side
                     quad_img(A, np.array([*a, z0]), np.array([*b, z0]), np.array([*b, z0 + h]), np.array([*a, z0 + h]), key)
 
 
@@ -2027,7 +2032,7 @@ def districts_meshes(lm):
     if "signs" in lm:
         node = lm.get("scramble", {}).get("node")
         avoid = [place(sc, np.asarray(node, float))[0] for sc in CROSSING_SIGNS + CROSSING_SCREENS] if node else []
-        shop_signs(K, lm["signs"]["sites"], avoid)
+        shop_signs(K, open_fronts(lm["signs"]["sites"]), avoid)
     poles_and_wires(K, lm.get("poles", []))
     return K.meshes()
 
@@ -2405,8 +2410,8 @@ def crossing_screens(lm):
 # Over the plaza at the east exit, Cross Shinjuku Vision bends round the corner of the Cross Shinjuku
 # building (新宿区新宿3-23-18): a curved screen 18.96 x 8.16 m (154.71 m2), 6 mm pitch, on its roof
 # (Cross Space; AV Watch, 1 July 2021). It is famous for pictures drawn for its bend, which seem to
-# stand out of it from the plaza; the ones here are drawn for this model (a goldfish tank, a wave),
-# not the operator's. Up Yasukuni-dori, Unica Vision: three screens of 13.12 x 7.38 m (10 mm pitch,
+# stand out of it from the plaza, the giant calico cat above all; the ones here are drawn for this model
+# (a calico cat of our own leaning out of its room, a goldfish tank, a wave), not the operator's. Up Yasukuni-dori, Unica Vision: three screens of 13.12 x 7.38 m (10 mm pitch,
 # renewed November 2024) on the rounded front of the Shinjuku Unica building (新宿3-23-7), towards
 # Seibu-Shinjuku station, playing 7:00-1:00 (Unica). Which way the screens bend and stand, and their
 # heights on the walls, are from photographs; the Cross Shinjuku building's footprint is
@@ -2417,7 +2422,7 @@ CROSS_PATH = [[382.6, 2677.8], [388.7, 2673.6], [393.37, 2684.21]]   # the foot 
 CROSS_FOLD = 7.41 / 19.0      # where the bend is, across the picture
 SHINJUKU_SCREENS = [
     {"name": "Cross Shinjuku Vision", "building": "クロス新宿ビル", "path": CROSS_PATH, "round": 1.6, "w": 18.96, "h": 8.16, "roof": True, "lift": 0.6,
-     "clips": ["goldfish", "music", "wave", "movie"], "phase": 0.0, "pitch": 0.006, "off": 0.5, "hours": [7, 24], "sync": False},
+     "clips": ["cat", "goldfish", "music", "wave", "movie"], "phase": 0.0, "pitch": 0.006, "off": 0.5, "hours": [7, 24], "sync": False},
     {"name": "Unica Vision 1", "building": "新宿ユニカビル", "edge": [[393.1, 2771.8], [406.0, 2769.3]], "w": 13.12, "h": 7.38, "z": -4.0,
      "clips": ["live", "music", "shinjuku", "movie"], "phase": 0.0, "pitch": 0.01, "hours": [7, 1], "toward": [380.0, 2830.0], "off": 0.8, "sync": False},
     {"name": "Unica Vision 2", "building": "新宿ユニカビル", "edge": [[377.6, 2771.4], [390.5, 2772.3]], "w": 13.12, "h": 7.38, "z": -4.0,
@@ -2507,6 +2512,197 @@ def k_goldfish_b(img, rng):
     ad.text(img, (w * 0.84, h * 0.3), "GOLDFISH", "bebas", h * 0.09, "#ffffff", spacing=h * 0.02)
 
 
+# ---- the giant calico cat: our own cat for the bend, in the way the plaza's 3D screen made famous. It lies
+# in the tank and leans out over the front corner, so from the plaza its head and paws seem to stand
+# out of the building. The cat is drawn here; it is not the operator's.
+
+CALICO = {"white": (246, 242, 234), "orange": (226, 132, 48), "black": (44, 38, 36), "pink": (240, 160, 170),
+          "eye": (196, 214, 70), "shade": (150, 140, 150)}
+
+
+def _layer(img):
+    from PIL import Image
+    return Image.new("RGBA", img.size, (0, 0, 0, 0))
+
+
+def _put(img, lay):
+    base = img.convert("RGBA")
+    base.alpha_composite(lay)
+    img.paste(base.convert("RGB"))
+
+
+def _patched(img, shape, patches, shade):
+    """A white fur shape with calico patches inside it and soft shading under it: shape(draw, fill)
+    draws the outline; patches [(ellipse box, colour)], clipped to it; shade, an ellipse of shadow."""
+    from PIL import Image, ImageFilter
+    lay = _layer(img)
+    shape(ad.ImageDraw.Draw(lay), CALICO["white"] + (255,))
+    mask = lay.getchannel("A")
+    over = _layer(img)
+    d = ad.ImageDraw.Draw(over)
+    for box, c in patches:
+        d.ellipse(box, fill=CALICO[c] + (255,))
+    over = over.filter(ImageFilter.GaussianBlur(3))       # the patches' edges, soft as fur
+    if shade:
+        sh = _layer(img)
+        ad.ImageDraw.Draw(sh).ellipse(shade, fill=(70, 60, 80, 110))
+        over.alpha_composite(sh.filter(ImageFilter.GaussianBlur(max(4, (shade[3] - shade[1]) * 0.25))))
+    over.putalpha(Image.fromarray(np.minimum(np.asarray(over.getchannel("A")), np.asarray(mask))))
+    lay.alpha_composite(over)
+    _put(img, lay)
+
+
+def cat_head(img, cx, cy, r, mouth=False, look=(0.0, 0.0)):
+    """A calico cat's head, r its half-width: ears, an orange patch over one ear and a black one over
+    the other eye, green-gold eyes with slit pupils looking `look` (fractions of r), nose, whiskers."""
+    ears = [[(cx - 0.95 * r, cy - 0.35 * r), (cx - 0.78 * r, cy - 1.22 * r), (cx - 0.22 * r, cy - 0.78 * r)],
+            [(cx + 0.95 * r, cy - 0.35 * r), (cx + 0.78 * r, cy - 1.22 * r), (cx + 0.22 * r, cy - 0.78 * r)]]
+
+    def shape(d, fill):
+        d.ellipse([cx - 1.05 * r, cy - 0.92 * r, cx + 1.05 * r, cy + 0.82 * r], fill=fill)
+        for e in ears:
+            d.polygon(e, fill=fill)
+    _patched(img, shape, [([cx - 1.3 * r, cy - 1.4 * r, cx - 0.05 * r, cy - 0.15 * r], "orange"),
+                          ([cx + 0.15 * r, cy - 1.35 * r, cx + 1.2 * r, cy + 0.05 * r], "black"),
+                          ([cx - 1.25 * r, cy - 0.2 * r, cx - 0.7 * r, cy + 0.3 * r], "orange")],
+             [cx - 0.9 * r, cy + 0.35 * r, cx + 0.9 * r, cy + 1.1 * r])
+    lay = _layer(img)
+    d = ad.ImageDraw.Draw(lay)
+    for e in ears:   # the pink inside the ears
+        c = np.mean(e, axis=0)
+        d.polygon([tuple(c + (np.asarray(p) - c) * 0.55) for p in e], fill=CALICO["pink"] + (200,))
+    lx, ly = look
+    for sx in (-1, 1):   # the eyes: an iris with its slit pupil, a lid line and a highlight
+        ex, ey = cx + sx * 0.42 * r, cy - 0.12 * r
+        d.ellipse([ex - 0.2 * r, ey - 0.22 * r, ex + 0.2 * r, ey + 0.2 * r], fill=(30, 26, 22, 255))
+        d.ellipse([ex - 0.17 * r, ey - 0.19 * r, ex + 0.17 * r, ey + 0.17 * r], fill=CALICO["eye"] + (255,))
+        px, py = ex + lx * 0.07 * r, ey + ly * 0.07 * r
+        d.ellipse([px - 0.045 * r, py - 0.16 * r, px + 0.045 * r, py + 0.15 * r], fill=(12, 10, 10, 255))
+        d.ellipse([ex - 0.1 * r, ey - 0.13 * r, ex - 0.03 * r, ey - 0.06 * r], fill=(255, 255, 255, 235))
+    d.polygon([(cx - 0.1 * r, cy + 0.18 * r), (cx + 0.1 * r, cy + 0.18 * r), (cx, cy + 0.3 * r)], fill=CALICO["pink"] + (255,))
+    w = max(2, int(r * 0.03))
+    if mouth:   # a meow: the open mouth and its tongue
+        d.ellipse([cx - 0.17 * r, cy + 0.33 * r, cx + 0.17 * r, cy + 0.62 * r], fill=(110, 30, 40, 255))
+        d.ellipse([cx - 0.1 * r, cy + 0.47 * r, cx + 0.1 * r, cy + 0.62 * r], fill=(232, 110, 128, 255))
+    d.line([(cx, cy + 0.3 * r), (cx, cy + 0.38 * r)], fill=(90, 70, 70, 255), width=w)
+    d.arc([cx - 0.2 * r, cy + 0.26 * r, cx, cy + 0.44 * r], 20, 160, fill=(90, 70, 70, 255), width=w)
+    d.arc([cx, cy + 0.26 * r, cx + 0.2 * r, cy + 0.44 * r], 20, 160, fill=(90, 70, 70, 255), width=w)
+    for sx in (-1, 1):   # whiskers
+        for k in (-1, 0, 1):
+            d.line([(cx + sx * 0.3 * r, cy + 0.3 * r + k * 0.05 * r), (cx + sx * 1.35 * r, cy + 0.22 * r + k * 0.16 * r)],
+                   fill=(235, 235, 240, 220), width=max(1, w // 2 + 1))
+    _put(img, lay)
+
+
+def cat_paw(img, cx, cy, r, pads=False):
+    """A white paw, r its half-width, seen from above (toes) or from below (pink pads)."""
+    _patched(img, lambda d, fill: d.ellipse([cx - r, cy - 0.85 * r, cx + r, cy + 0.85 * r], fill=fill), [],
+             [cx - r, cy + 0.2 * r, cx + r, cy + 1.2 * r])
+    lay = _layer(img)
+    d = ad.ImageDraw.Draw(lay)
+    if pads:
+        d.ellipse([cx - 0.42 * r, cy - 0.05 * r, cx + 0.42 * r, cy + 0.55 * r], fill=CALICO["pink"] + (255,))
+        for k in (-1.5, -0.5, 0.5, 1.5):
+            x, y = cx + k * 0.36 * r, cy - 0.42 * r + abs(k) * 0.12 * r
+            d.ellipse([x - 0.15 * r, y - 0.17 * r, x + 0.15 * r, y + 0.17 * r], fill=CALICO["pink"] + (255,))
+    else:
+        for k in (-1, 0, 1):
+            x = cx + k * 0.33 * r
+            d.line([(x, cy + 0.15 * r), (x, cy + 0.75 * r)], fill=CALICO["shade"] + (255,), width=max(2, int(r * 0.06)))
+    _put(img, lay)
+
+
+def cat_body(img, x0, y0, x1, y1):
+    """The cat lying in its room: a white body with an orange and a black patch."""
+    w, h = x1 - x0, y1 - y0
+    _patched(img, lambda d, fill: d.ellipse([x0, y0, x1, y1], fill=fill),
+             [([x0 + 0.35 * w, y0 - 0.2 * h, x0 + 0.8 * w, y0 + 0.55 * h], "orange"), ([x0 + 0.72 * w, y0 - 0.1 * h, x1 + 0.1 * w, y0 + 0.7 * h], "black")],
+             [x0, y0 + 0.55 * h, x1, y1 + 0.3 * h])
+
+
+def tank_shadow(img, cx, cy, rx, ry):
+    from PIL import ImageFilter
+    lay = _layer(img)
+    ad.ImageDraw.Draw(lay).ellipse([cx - rx, cy - ry, cx + rx, cy + ry], fill=(0, 10, 20, 120))
+    _put(img, lay.filter(ImageFilter.GaussianBlur(ry * 0.5)))
+
+
+def cat_room(img):
+    """The cat's room behind the bend, its walls running back from the screen's edges to a back wall
+    behind the corner as the tank's do, so the bend reads as the room's front corner: warm plaster,
+    a wooden floor, a window of evening sky on the back wall and a lit rim round each face."""
+    w, h = img.size
+    f = CROSS_FOLD
+    y0, y1 = h * 0.19, h * 0.81
+    bx0, bx1, by0, by1 = w * (f - 0.2), w * (f + 0.24), h * 0.36, h * 0.62
+    ad.gradient(img, "#2a1d18", "#5a3b2a", 90)
+    d = ad.ImageDraw.Draw(img)
+    d.polygon([(0, y1), (w, y1), (bx1, by1), (bx0, by1)], fill=ad.rgb("#b98552"))                    # the floor
+    for k in range(13):                                                                               # its boards
+        d.line([(w * k / 12, y1), (bx0 + (bx1 - bx0) * k / 12, by1)], fill=(150, 104, 62), width=3)
+    d.polygon([(0, y0), (w, y0), (bx1, by0), (bx0, by0)], fill=ad.rgb("#e9dccb"))                    # the ceiling
+    d.polygon([(0, y0), (bx0, by0), (bx0, by1), (0, y1)], fill=ad.rgb("#cdb59a"))                    # the side walls
+    d.polygon([(w, y0), (bx1, by0), (bx1, by1), (w, y1)], fill=ad.rgb("#dcc6a8"))
+    d.rectangle([bx0, by0, bx1, by1], fill=ad.rgb("#e8d6bc"))                                         # the back wall
+    wx0, wx1, wy0, wy1 = bx0 + (bx1 - bx0) * 0.58, bx0 + (bx1 - bx0) * 0.9, by0 + (by1 - by0) * 0.12, by0 + (by1 - by0) * 0.62
+    for k in range(int(wy1 - wy0)):                                                                  # a window of dusk sky
+        t = k / max(wy1 - wy0 - 1, 1)
+        d.line([(wx0, wy0 + k), (wx1, wy0 + k)], fill=(int(70 + 180 * t), int(90 + 90 * t), int(170 - 40 * t)))
+    d.rectangle([wx0, wy0, wx1, wy1], outline=(120, 86, 56), width=6)
+    d.line([((wx0 + wx1) / 2, wy0), ((wx0 + wx1) / 2, wy1)], fill=(120, 86, 56), width=4)
+    ad.blob(img, (w * (f + 0.02), h * 0.32), h * 0.6, "#ffe2b0", 0.3)                                 # a warm lamp overhead
+    d = ad.ImageDraw.Draw(img)
+    for x0, x1 in ((0, f * w), (f * w, w)):                                                           # the rim of each face
+        d.rectangle([x0 + h * 0.01, y0, x1 - h * 0.01, y1], outline=ad.rgb("#fff1dc"), width=int(h * 0.022))
+    d.line([(f * w, y0), (f * w, y1)], fill=ad.rgb("#fffaf0"), width=int(h * 0.01))                   # the front corner
+
+
+def cat_tail(img, pts, r0, r1):
+    """A tail along a smooth curve through pts, r0 thick at its root and r1 at its tip: orange with a
+    dark tip, its underside in shade."""
+    P = np.asarray(pts, float)
+    t = np.linspace(0, 1, 160)
+    n = len(P) - 1   # a Bezier through the control points
+    from math import comb
+    B = sum(comb(n, k) * ((1 - t) ** (n - k))[:, None] * (t ** k)[:, None] * P[k] for k in range(n + 1))
+    lay = _layer(img)
+    d = ad.ImageDraw.Draw(lay)
+    for k, (x, y) in enumerate(B):
+        u = k / (len(B) - 1)
+        r = r0 + (r1 - r0) * u
+        c = CALICO["black"] if u > 0.82 else CALICO["orange"]
+        d.ellipse([x - r, y - r, x + r, y + r], fill=c + (255,))
+        d.ellipse([x - r * 0.6, y - r * 0.9, x + r * 0.5, y - r * 0.1], fill=tuple(min(255, v + 30) for v in c) + (255,))
+    _put(img, lay)
+
+
+def k_cat_a(img, rng):
+    """The cat lies in its room, looks round at the plaza and puts its front paws over the corner."""
+    w, h = img.size
+    f = w * CROSS_FOLD
+    cat_room(img)
+    tank_shadow(img, f + w * 0.1, h * 0.72, w * 0.3, h * 0.07)
+    cat_tail(img, [(f + w * 0.38, h * 0.66), (f + w * 0.56, h * 0.7), (f + w * 0.56, h * 0.42), (f + w * 0.48, h * 0.4)], h * 0.035, h * 0.025)
+    cat_body(img, f - w * 0.02, h * 0.45, f + w * 0.42, h * 0.74)
+    for dx in (-0.06, 0.03):
+        cat_paw(img, f + w * dx, h * 0.8, h * 0.07)
+    cat_head(img, f - w * 0.01, h * 0.47, h * 0.2, look=(-0.4, 0.6))
+    ad.text(img, (w * 0.86, h * 0.26), "新宿 三毛猫", "zen", h * 0.05, "#6b3f22")
+
+
+def k_cat_b(img, rng):
+    """It leans out over the corner, head first, says hello and reaches for the plaza with a paw."""
+    w, h = img.size
+    f = w * CROSS_FOLD
+    cat_room(img)
+    tank_shadow(img, f + w * 0.05, h * 0.78, w * 0.32, h * 0.06)
+    cat_tail(img, [(f + w * 0.42, h * 0.72), (f + w * 0.62, h * 0.74), (f + w * 0.58, h * 0.4), (f + w * 0.52, h * 0.44)], h * 0.035, h * 0.025)
+    cat_body(img, f + w * 0.02, h * 0.52, f + w * 0.46, h * 0.8)
+    cat_head(img, f - w * 0.005, h * 0.535, h * 0.26, mouth=True, look=(-0.2, 0.9))
+    cat_paw(img, f - w * 0.19, h * 0.76, h * 0.1, pads=True)   # reaching out of the corner, towards the plaza
+    ad.text(img, (w * 0.85, h * 0.27), "ニャー", "dela", h * 0.09, "#e2733a", stroke=h * 0.008, stroke_c="#5a2e14")
+
+
 def k_wave_a(img, rng):
     w, h = img.size
     tank(img, CROSS_FOLD, deep="#021b2e", wall="#06506e", floor="#0b3a52")
@@ -2557,7 +2753,7 @@ def k_shinjuku_b(img, rng):
     ad.text(img, (w / 2, h * 0.93), "新宿区 SHINJUKU CITY", "zen", h * 0.05, "#dfe6ff")
 
 
-EAST_CLIPS = [("goldfish", [k_goldfish_a, k_goldfish_b]), ("wave", [k_wave_a, k_wave_b]), ("music", [k_music_a, k_music_b]),
+EAST_CLIPS = [("cat", [k_cat_a, k_cat_b]), ("goldfish", [k_goldfish_a, k_goldfish_b]), ("wave", [k_wave_a, k_wave_b]), ("music", [k_music_a, k_music_b]),
               ("live", [k_live_a, k_live_b]), ("movie", [k_movie_a, k_movie_b]), ("shinjuku", [k_shinjuku_a, k_shinjuku_b])]
 EAST = screens.ScreenSet("shibuya", SHINJUKU_SCREENS, EAST_CLIPS, MATERIALS["screens_east"], cell=SCREEN_CELL, seed=2116)
 
@@ -2576,7 +2772,7 @@ def crossing_signs(K, lm):
             P = frame(q, t)
             block(Fr, P, -0.18, 0.18, -w / 2 - 0.08, w / 2 + 0.08, base - 0.08, base + h + 0.08)
             for side in (-1, 1):
-                a, b = q - n * (w / 2) * side + t * 0.19 * side, q + n * (w / 2) * side + t * 0.19 * side
+                a, b = q - n * (w / 2) * side - t * 0.19 * side, q + n * (w / 2) * side - t * 0.19 * side
                 quad_img(A, np.array([*a, base]), np.array([*b, base]), np.array([*b, base + h]), np.array([*a, base + h]), key)
             K("steel_dark").tube([np.array([*(c + n * 0.05), base + h * 0.5]), np.array([*(c + n * out), base + h * 0.5])], 0.06, 4)
             continue
@@ -2771,7 +2967,7 @@ def crossing_wall_signs(K, lm):
             P = frame(c, t)
             block(K("screen_frame"), P, -0.12, 0.12, -0.55, 0.55, z0 - 0.1, z0 + h + 0.1)
             for side in (-1, 1):
-                a, b = c - n * 0.5 * side + t * 0.13 * side, c + n * 0.5 * side + t * 0.13 * side
+                a, b = c - n * 0.5 * side - t * 0.13 * side, c + n * 0.5 * side - t * 0.13 * side
                 quad_img(A, np.array([*a, z0]), np.array([*b, z0]), np.array([*b, z0 + h]), np.array([*a, z0 + h]), key)
         elif r < 0.8 and top >= 20 and L >= 7:    # a print on the upper floors, lamps over it
             w = min(L * 0.7, 9.0)
