@@ -105,6 +105,7 @@ LANTERNS = {
 PLAQUES = {
     "kinryuzan": (512, 192, (28, 24, 20), "金龍山", (222, 178, 72), "mincho"),
     "sensoji": (512, 192, (28, 24, 20), "浅草寺", (222, 178, 72), "mincho"),
+    "omikuji": (384, 96, (28, 24, 20), "おみくじ", (222, 178, 72), "mincho"),
 }
 ATLAS = Atlas([(k, w, h) for k, (w, h, *_) in {**LANTERNS, **PLAQUES}.items()])
 
@@ -357,7 +358,9 @@ def kaminarimon(K, g, ax):
     ze, zr = z0 + d["eave"], z0 + d["ridge"]
     block(K("stone"), P, -hu - 0.8, hu + 0.8, -hv - 0.8, hv + 0.8, z0 - 0.4, z0 + 0.25)
     zb = z0 + 0.25
-    zt = ze - 2.3                            # the head ties; the brackets above them
+    # the head ties, the brackets above them: high enough that the lantern hung under the middle row's
+    # tie clears the passage (its dragon about 2.2 m over the stone, where people stand to look up at it)
+    zt = ze - 1.1
     for u in (-hu, 0.0, hu):
         for v in (-hv, -bay / 2, bay / 2, hv):
             r = 0.36 if u == 0 else 0.3          # the main posts in the middle row, the eight "legs" front and back
@@ -395,6 +398,9 @@ def kaminarimon(K, g, ax):
     return {"lantern": [round(float(x), 2), round(float(y), 2), round(zt - 2.5, 2)]}
 
 
+HOZO_STONE = 0.25   # the gate's stone floor over the paving
+
+
 def hozomon(K, g, ax):
     """The two-storey gate: five bays across, the middle three the doors; the Nio in the outer bays at
     the front behind screens, the 小舟町 lantern in the middle bay between two bronze lanterns, the
@@ -407,9 +413,9 @@ def hozomon(K, g, ax):
     hu, hv = d["depth"] / 2, d["frontage"] / 2
     bay = d["frontage"] / 5
     ze1, ze2, zr = z0 + d["eave"], z0 + d["upper_eave"], z0 + d["ridge"]
-    block(K("stone"), P, -hu - 1.2, hu + 1.2, -hv - 1.2, hv + 1.2, z0 - 0.3, z0 + 0.5)
-    zb = z0 + 0.5
-    zt = ze1 - 2.6
+    block(K("stone"), P, -hu - 1.2, hu + 1.2, -hv - 1.2, hv + 1.2, z0 - 0.3, z0 + HOZO_STONE)   # a step up, no more
+    zb = z0 + HOZO_STONE
+    zt = ze1 - 2.0                                   # the 小舟町 lantern under the tie clears the middle bay
     vs = [-hv + k * bay for k in range(6)]
     for u in (-hu, 0.0, hu):
         for v in vs:
@@ -515,6 +521,45 @@ def pagoda(K, g, ax):
     lathe_at(K("gold"), x, y, [(tip - 2.4, 0.0), (tip - 2.0, 0.42), (tip - 1.6, 0.3), (tip - 1.2, 0.0)], 12)
 
 
+def hondo_layout(g):
+    """Where the main hall's front things stand, in its frame (u out of the precinct from the hall's
+    centre, v across), shared by the meshes (hondo) and the game (game_surfaces, game_extras): the flight
+    of steps from the paving to the floor (10 risers of 0.24 m, 0.45 m treads, the porch's width), the
+    offering box on the veranda before the doors, the incense burner on the approach, and the two
+    omikuji stalls either side of the steps."""
+    d = dims("hondo", g)
+    hu, hv = d["depth"] / 2, d["frontage"] / 2
+    pw = hv * 0.42
+    n, tread = 10, 0.45
+    return {"hu": hu, "hv": hv, "pw": pw, "zp": g["z"] + 2.4, "wall_u": hu - 3.2, "porch_to": d["porch_to"],
+            "steps": {"n": n, "tread": tread, "u_top": hu + 1.2, "u_foot": hu + 1.2 + n * tread},
+            "box": {"u": (hu - 2.5, hu - 1.3), "v": 2.2, "h": 1.0},
+            "incense": d["porch_to"] + 14.0, "incense_r": 1.7,
+            "omikuji": [(hu + 2.0, sv * (pw + 3.5)) for sv in (1, -1)]}
+
+
+def omikuji_stall(K, Q, z0):
+    """An omikuji stall in frame Q (u out from its back, v across): the cabinet of a hundred numbered
+    drawers behind, the counter with the hexagonal tins to shake a numbered stick out of, the little
+    tiled roof on two vermilion posts, and its sign."""
+    block(K("wood_dark"), Q, 0.0, 0.55, -1.5, 1.5, z0, z0 + 2.2)
+    block(K("cypress"), Q, 0.55, 0.57, -1.4, 1.4, z0 + 1.05, z0 + 2.1)
+    for z in np.linspace(z0 + 1.05, z0 + 2.1, 11):          # the drawers' grid
+        block(K("wood_dark"), Q, 0.57, 0.59, -1.4, 1.4, z - 0.012, z + 0.012)
+    for v in np.linspace(-1.4, 1.4, 11):
+        block(K("wood_dark"), Q, 0.57, 0.59, v - 0.012, v + 0.012, z0 + 1.05, z0 + 2.1)
+    block(K("wood_dark"), Q, 0.55, 1.15, -1.5, 1.5, z0, z0 + 0.92)                    # the counter
+    block(K("cypress"), Q, 0.5, 1.2, -1.55, 1.55, z0 + 0.92, z0 + 0.98)
+    for v in np.linspace(-1.1, 1.1, 5):                      # the tins
+        x, y, _ = Q(0.9, v, 0)
+        lathe_at(K("bronze"), x, y, [(z0 + 0.98, 0.0), (z0 + 0.99, 0.075), (z0 + 1.3, 0.075), (z0 + 1.31, 0.0)], 6)
+    for sv in (-1, 1):
+        lathe_at(K("vermilion"), *Q(1.35, sv * 1.45, 0)[:2], [(z0, 0.07), (z0 + 2.55, 0.07)], 8)
+    block(K("vermilion"), Q, -0.1, 1.45, -1.6, 1.6, z0 + 2.2, z0 + 2.55)
+    block(K("tile"), Q, -0.3, 1.75, -1.85, 1.85, z0 + 2.55, z0 + 2.7)
+    ATLAS.quad(K("atlas"), Q(1.47, -0.75, z0 + 2.22), Q(1.47, 0.75, z0 + 2.22), Q(1.47, 0.75, z0 + 2.53), Q(1.47, -0.75, z0 + 2.53), "omikuji")
+
+
 def hondo(K, g, ax):
     """The main hall: 34.5 m across, 32.7 m deep, its eaves only 10 m up and the roof rising to 29.4 m,
     so the roof is two thirds of the hall's height. A raised floor on a stone base, the outer colonnade
@@ -570,17 +615,26 @@ def hondo(K, g, ax):
     for sv in (-1, 1):   # the porch roof's side boards
         K("vermilion_dark").grid([[P(uu, sv * W, zz - 0.45), P(uu, sv * W, zz)] for uu, zz in zip(us, zs)])
     block(K("vermilion_dark"), P, d["porch_to"] - 0.3, d["porch_to"], -pw - 2.0, pw + 2.0, zpe - 0.5, zpe)
-    # the steps, the full width of the porch, from the paving up to the floor
-    n = 10
-    for j in range(n):
-        uu = hu + 1.2 + (n - j) * 0.45
-        block(K("stone"), P, hu + 1.2, uu, -pw, pw, z0, z0 + 1.2 + (j + 1) * (zp - z0 - 1.2) / n)
+    # the steps, the full width of the porch, from the paving up to the floor (a walkable strip: hall_steps)
+    L = hondo_layout(g)
+    st = L["steps"]
+    for j in range(st["n"]):
+        uu = st["u_top"] + (st["n"] - j) * st["tread"]
+        block(K("stone", "steps"), P, st["u_top"], uu, -pw, pw, z0 - 0.3, z0 + (j + 1) * (zp - z0) / st["n"])
+    # the offering box (賽銭箱) on the veranda before the doors, its top a grille of slats
+    bx = L["box"]
+    block(K("wood_dark"), P, bx["u"][0], bx["u"][1], -bx["v"], bx["v"], zp, zp + bx["h"] - 0.08)
+    for v in np.linspace(-bx["v"] + 0.1, bx["v"] - 0.1, 15):
+        block(K("cypress"), P, bx["u"][0] + 0.05, bx["u"][1] - 0.05, v - 0.06, v + 0.06, zp + bx["h"] - 0.08, zp + bx["h"])
+    for k, (uo, vo) in enumerate(L["omikuji"]):
+        omikuji_stall(K, frame(P(uo, vo, 0), ax), z0)
     # the plaque 浅草寺 and the 志ん橋 lantern (4.5 m, 3.5 m across) in the middle bay
     ATLAS.quad(K("atlas"), P(hu + 0.35, -2.4, zt - 1.6), P(hu + 0.35, 2.4, zt - 1.6), P(hu + 0.35, 2.4, zt), P(hu + 0.35, -2.4, zt), "sensoji")
-    x, y, _ = P(hu + 2.6, 0, 0)
-    lantern_big(K, x, y, z0 + d["porch_eave"] - 2.0, 4.5, 3.5, "hondo", "hondo", P)
+    # (hung clear of the bracket band, high enough that people climbing the steps pass under it)
+    x, y, _ = P(hu + 3.6, 0, 0)
+    lantern_big(K, x, y, z0 + d["porch_eave"] - 1.2, 4.5, 3.5, "hondo", "hondo", P)
     # the incense burner on the approach in front
-    xi, yi, _ = P(d["porch_to"] + 14.0, 0, 0)
+    xi, yi, _ = P(L["incense"], 0, 0)
     zi = z0
     lathe_at(K("bronze"), xi, yi, [(zi, 1.3), (zi + 0.5, 1.2), (zi + 0.6, 1.6), (zi + 1.1, 1.7), (zi + 1.2, 0.6), (zi + 2.2, 0.5), (zi + 2.3, 1.4), (zi + 2.7, 0.6), (zi + 3.2, 0.0)], 8)
     return {"incense": [round(float(xi), 2), round(float(yi), 2), round(zi, 2)], "lantern": [round(float(x), 2), round(float(y), 2), round(zpe - 6.5, 2)]}
@@ -796,37 +850,114 @@ def landmark_glows(scene):
     return out
 
 
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def sensoji_extras(s, spots, chatter, close):
+    """Senso-ji's spots, talk, and the things people walk right up to: under the two great lanterns,
+    Fujin's screen, the Hozomon's straw sandals, the incense burner, an omikuji stall, and up the hall's
+    steps to the offering box."""
+    ax = np.asarray(s["axis"])
+    if "kaminarimon" in s:
+        g = s["kaminarimon"]
+        p = np.asarray(g["c"]) + ax * (g["half_u"] + 4.0)
+        spots.append({"id": "kaminari", "name": "Kaminarimon 雷門", "at": [round(float(p[0]), 2), round(float(p[1]), 2), g["z"]], "verb": "Look up at the lantern",
+                      "lines": ["The great lantern: 3.9 m tall, 3.3 m across and about 700 kg. 雷門 on the front, 風雷神門 on the back. Look underneath: a carved dragon.",
+                                "Fujin, the god of wind, on the right; Raijin, the god of thunder, on the left. The gate burned in 1865 and stood empty for 95 years, until 1960."],
+                      "radius": 4.0})
+        chatter.append({"at": [round(float(p[0] + 3), 2), round(float(p[1]), 2), g["z"]], "radius": 14, "side": True,
+                        "lines": [["Visitor", "Everyone takes the same photo here."], ["Friend", "Because it's the photo. Stand under the lantern."], ["Visitor", "Rickshaw after?"]]})
+        d = dims("kaminarimon", g)
+        P, hu, bay, zb = frame(g["c"], ax), d["depth"] / 2, d["frontage"] / 3, g["z"] + 0.25
+        # under the lantern in the passage (kaminarimon(): its dragon about 2.2 m over the gate's stone)
+        spots[-1]["reach"] = [close_to(None, P(0, 0, 0), zb, P(hu + 5.5, 0, 0), 1.0)]
+        vm = (bay / 2 + d["frontage"] / 2) / 2      # Fujin's bay, the right as you face the gate
+        close.append(close_to("Kaminarimon, Fujin behind his screen", P(hu - 0.32, vm, 0), zb, P(hu + 5.0, vm, 0), 1.0))
+    if "hozomon" in s:
+        g = s["hozomon"]
+        d = dims("hozomon", g)
+        P, hu, hv, bay, zb = frame(g["c"], ax), d["depth"] / 2, d["frontage"] / 2, d["frontage"] / 5, g["z"] + HOZO_STONE
+        close.append(close_to("Hozomon, under the 小舟町 lantern", P(0, 0, 0), zb, P(hu + 6.0, 0, 0), 1.0))
+        v = -(hv - bay / 2)                          # a straw sandal (4.5 m) on the back, 0.35 m deep
+        close.append(close_to("Hozomon, a great straw sandal", P(-hu - 0.35, v, 0), zb, P(-hu - 5.5, v, 0), 1.0, 0.2))
+    if "hondo" in s:
+        g = s["hondo"]
+        L = hondo_layout(g)
+        P, z0 = frame(g["c"], ax), g["z"]
+        ui, r = L["incense"], L["incense_r"]
+        spots.append({"id": "jokoro", "name": "Incense burner 常香炉", "at": [*xy(P(ui, 0, 0)), z0], "verb": "Waft the smoke",
+                      "lines": ["Wave the smoke over yourself: to the head for wisdom, to a sore shoulder to heal it. Then up the steps to the hall.",
+                                "Senso-ji is Tokyo's oldest temple: two fishermen found a statue of Kannon in the Sumida in 628, says the temple."],
+                      "radius": 3.5,
+                      # up to its bowl (1.7 m round) from the approach and from the hall's side
+                      "reach": [close_to(None, P(ui + sg * (r - 0.1), 0, 0), z0, P(ui + sg * (r + 5.0), 0, 0), 1.0) for sg in (1, -1)]})
+        uo, vo = L["omikuji"][0]
+        front = P(uo + 1.2, vo, 0)                   # the counter's edge (omikuji_stall)
+        spots.append({"id": "omikuji", "name": "Omikuji おみくじ", "at": [*xy(P(uo + 2.2, vo, 0)), z0], "verb": "Draw a fortune", "pick": 1,
+                      "lines": ["第四十八 大吉. Great fortune. What you wish for will come; the lost thing will be found.",
+                                "第三十二 吉. Good fortune. Be patient with travel; the wind turns.",
+                                "第九十六 凶. Bad fortune. Tie it to the rack and leave it behind. Senso-ji is known for its 凶: about three in ten.",
+                                "第七十 末吉. Future fortune. Small steps; the road is longer than it looks."],
+                      "radius": 3.0, "reach": [close_to(None, front, z0, P(uo + 6.0, vo, 0), 1.0)]})
+        bx = L["box"]
+        spots.append({"id": "saisen", "name": "Offering box 賽銭箱", "at": [*xy(P(bx["u"][1] + 1.0, 0, 0)), L["zp"]], "verb": "Pray to Kannon",
+                      "lines": ["A coin into the box, a bow, hands together; no clapping at a temple. Inside, the Kannon is never shown: it is hidden, even from the priests.",
+                                "The hall burned in the air raid of March 1945 and was rebuilt in concrete in 1958, to the old hall's lines."],
+                      "radius": 2.6,
+                      # up the ten steps under the porch onto the veranda, to the box before the doors (from
+                      # the second step: the walk starts within 2.5 m of the veranda's height)
+                      "reach": [close_to(None, P(bx["u"][1], 0, 0), L["zp"], P(L["steps"]["u_foot"] - 0.7, 0, 0), 1.0)]})
+
+
+def game_surfaces(scene):
+    """The main hall's steps and its veranda to the doors, as hondo() builds them: a strip a walker climbs
+    to the offering box (the hall's stone and floor stay solid round it)."""
+    s = scene["landmarks"].get("sensoji")
+    if not s or "hondo" not in s:
+        return []
+    g = s["hondo"]
+    L, ax = hondo_layout(g), np.asarray(s["axis"], float)
+    st, z0 = L["steps"], g["z"]
+    foot = frame(g["c"], ax)(st["u_foot"], 0, 0)
+    prof = []
+    for j in range(st["n"]):
+        z = round(z0 + (j + 1) * (L["zp"] - z0) / st["n"], 3)
+        prof += [[round(j * st["tread"] + (0.02 if j else 0), 3), z], [round((j + 1) * st["tread"], 3), z]]
+    prof.append([round(st["u_foot"] - L["wall_u"] - 0.1, 3), round(L["zp"], 3)])   # the veranda, to the doors
+    return [{"name": "Senso-ji main hall steps", "type": "strip", "origin": xy(foot), "axis": [round(float(-ax[0]), 5), round(float(-ax[1]), 5)],
+             "half_width": round(L["pw"], 2), "profile": prof, "thickness": 1.2, "mesh": "senso_steps", "label": "the main hall"}]
+
+
+SENSO_SOLIDS = (KAMINARIMON, HOZOMON, PAGODA, HONDO)
+
+
+def landmark_demolished(scene):
+    """The survey's blocks for Senso-ji's gates, pagoda and hall: the landmark meshes draw them and, in the
+    game, hold walkers back at their own posts, walls and steps; the blocks would stand solid across the
+    gates' passages and over the hall's steps. (The next full build can drop them in adjust_building.)"""
+    if "sensoji" not in scene["landmarks"]:
+        return []
+    import archkit
+    hidden = set(scene.get("hidden_solids", []))
+    return sorted(q["si"] for q in archkit.load_solids("asakusa") if q["si"] in hidden and q["name"] in SENSO_SOLIDS)
+
+
 def game_extras(scene):
     """Spots to look at, talk to overhear, and the Skytree's lifts to the Tembo Deck (600 m a minute)."""
     lm = scene["landmarks"]
     spots, chatter = [], []
+    close = []
     s = lm.get("sensoji")
     if s:
-        ax = np.asarray(s["axis"])
-        if "kaminarimon" in s:
-            g = s["kaminarimon"]
-            p = np.asarray(g["c"]) + ax * (g["half_u"] + 4.0)
-            spots.append({"id": "kaminari", "name": "Kaminarimon 雷門", "at": [round(float(p[0]), 2), round(float(p[1]), 2), g["z"]], "verb": "Look up at the lantern",
-                          "lines": ["The great lantern: 3.9 m tall, 3.3 m across and about 700 kg. 雷門 on the front, 風雷神門 on the back. Look underneath: a carved dragon.",
-                                    "Fujin, the god of wind, on the right; Raijin, the god of thunder, on the left. The gate burned in 1865 and stood empty for 95 years, until 1960."],
-                          "radius": 4.0})
-            chatter.append({"at": [round(float(p[0] + 3), 2), round(float(p[1]), 2), g["z"]], "radius": 14, "side": True,
-                            "lines": [["Visitor", "Everyone takes the same photo here."], ["Friend", "Because it's the photo. Stand under the lantern."], ["Visitor", "Rickshaw after?"]]})
-        if "hondo" in s and "built" in s and "hondo" in s["built"]:
-            x, y, z = s["built"]["hondo"]["incense"]
-            spots.append({"id": "jokoro", "name": "Incense burner 常香炉", "at": [x, y, z], "verb": "Waft the smoke",
-                          "lines": ["Wave the smoke over yourself: to the head for wisdom, to a sore shoulder to heal it. Then up the steps to the hall.",
-                                    "Senso-ji is Tokyo's oldest temple: two fishermen found a statue of Kannon in the Sumida in 628, says the temple."],
-                          "radius": 3.5})
-            g = s["hondo"]
-            p = np.asarray(g["c"]) + ax * (g["half_u"] + 6.0) + left_of(ax) * 8.0
-            spots.append({"id": "omikuji", "name": "Omikuji おみくじ", "at": [round(float(p[0]), 2), round(float(p[1]), 2), g["z"]], "verb": "Draw a fortune", "pick": 1,
-                          "lines": ["第四十八 大吉. Great fortune. What you wish for will come; the lost thing will be found.",
-                                    "第三十二 吉. Good fortune. Be patient with travel; the wind turns.",
-                                    "第九十六 凶. Bad fortune. Tie it to the rack and leave it behind. Senso-ji is known for its 凶: about three in ten.",
-                                    "第七十 末吉. Future fortune. Small steps; the road is longer than it looks."],
-                          "radius": 3.0})
-    out = {"spots": spots, "chatter": chatter}
+        sensoji_extras(s, spots, chatter, close)
+    out = {"spots": spots, "chatter": chatter, "close": close}
     t = lm.get("skytree")
     if t:
         gz, (cx, cy) = t["ground_m"], t["centre"]

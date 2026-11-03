@@ -548,6 +548,101 @@ def game_patches(scene):
     return [b["patch"]] if b.get("patch") else []
 
 
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting
+    at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def strip_z(st, u):
+    """The height of a flight's strip u metres along its axis from its origin."""
+    p = st["profile"]
+    return float(np.interp(u, [q[0] for q in p], [q[1] for q in p]))
+
+
+def face_of(ring, out):
+    """The midpoint and outward normal of the longest edge of a footprint whose outward normal is
+    within 30 degrees of `out`."""
+    pts = [np.asarray(p, float) for p in ring]
+    c = np.mean(pts, axis=0)
+    best = None
+    for a, b in zip(pts, pts[1:] + pts[:1]):
+        L = float(np.linalg.norm(b - a))
+        if L < 1.0:
+            continue
+        n = np.array([(b - a)[1], -(b - a)[0]]) / L
+        if np.dot((a + b) / 2 - c, n) < 0:
+            n = -n
+        if n @ out > 0.86 and (best is None or L > best[2]):
+            best = ((a + b) / 2, n, L)
+    return best
+
+
+def game_extras(scene):
+    """The things people come to see up close (game.json "close"): up the Monumental Steps from the
+    forecourt, landing by landing, to the lower landing; up the Concert Hall's flight to the podium and
+    to the glass walls of the foyers under the tips of the first shells; a mushroom column of the
+    colonnade on the Lower Concourse; the foot of the Harbour Bridge's south pylon in Dawes Point Park;
+    and Westfield's front on Pitt Street Mall, the way in to Sydney Tower."""
+    import archkit as ak
+    lm = scene["landmarks"]
+    close = []
+    o = lm.get("opera_house")
+    if o:
+        st = o["steps"]
+        O, f = np.asarray(st["origin"], float), np.asarray(st["axis"], float)
+        u_foot = STEPS["flights"][0][0]
+        landing1 = (STEPS["flights"][0][1] + STEPS["flights"][1][0]) / 2
+        landing2 = (STEPS["flights"][1][1] + STEPS["flights"][2][0]) / 2
+        for name, u, start in (("Monumental Steps, the first landing", landing1, u_foot - 3.0),
+                               ("Monumental Steps, the second landing", landing2, landing2 - 5.3),
+                               ("Monumental Steps, the top: the lower landing", 1.5, -4.0)):
+            close.append(close_to(name, O + f * u, strip_z(st, u), O + f * start, 1.0))
+        c = o["upper_steps"]["concert"]
+        C = np.asarray(c["origin"], float)
+        u0 = c["profile"][0][0]
+        close.append(close_to("Concert Hall flight, halfway up", C + f * u0 / 2, strip_z(c, u0 / 2), C + f * (u0 - 4.0), 1.0))
+        for hall in ("concert", "joan_sutherland"):  # the first shell faces the forecourt: its glass comes down to the podium under its tip
+            _, T, _ = hall_shells(hall, o["halls"][hall], o["podium"]["top_m"])[0]
+            close.append(close_to(f"{HALL_NAMES[hall]} foyer glass, under the first shell", T[:2], o["podium"]["top_m"], T[:2] - f * 5.5, 1.0, 0.1))
+    b = lm.get("bennelong") or {}
+    if b.get("lower"):
+        E = b["lower"]["edge"]
+        cols = colonnade_columns(E)
+        if cols:
+            x, y, zf, _ = cols[len(cols) * 2 // 3]
+            e = min(E, key=lambda e: (e[0] - x) ** 2 + (e[1] - y) ** 2)
+            n = np.asarray(e[2:4], float)  # in under the forecourt: the concourse is open on the other side
+            close.append(close_to("Lower Concourse colonnade, a mushroom column", (x, y), zf, np.array([x, y]) - n * 4.5, 1.0, 0.3))
+    if "harbour_bridge" in lm:
+        T = ak.Terrain("sydney")
+        base = [q for q in ak.load_solids("sydney") if q["name"] == PYLONS[0] and q["base"] < 1.0]
+        if base:
+            ring = max(base, key=lambda q: abs(ak.ring_area(q["ring"])))["ring"]
+            h = lm["harbour_bridge"]
+            ax = np.asarray(h["north_pylons"], float) - np.asarray(h["south_pylons"], float)
+            ax /= np.linalg.norm(ax)
+            for name, out in (("Harbour Bridge south pylon, its foot facing the harbour", ax), ("Harbour Bridge south pylon, its east foot", np.array([ax[1], -ax[0]]))):
+                face = face_of(ring, out)
+                if face:
+                    m, n, _ = face
+                    close.append(close_to(name, m, T(*m), m + n * 5.0, 1.0, 0.1))
+    t = lm.get("sydney_tower")
+    if t:
+        T = ak.Terrain("sydney")
+        under = [q for q in ak.load_solids("sydney") if q["base"] < 1.0 and q["top"] < 60 and Polygon(q["ring"]).buffer(0).contains(Point(*t["at"]))]
+        if under:
+            face = face_of(max(under, key=lambda q: abs(ak.ring_area(q["ring"])))["ring"], np.array([-1.0, 0.0]))  # Pitt Street Mall, on its west
+            if face:
+                m, n, _ = face
+                close.append(close_to("Sydney Tower, Westfield's doors on Pitt Street Mall", m, T(*m), m + n * 5.0, 1.0, 0.1))
+    return {"close": close}
+
+
 def landmark_meshes(scene):
     """(materials, meshes) for pipeline/landmarks.py."""
     lm = scene["landmarks"]

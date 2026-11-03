@@ -198,4 +198,111 @@ def temples_and_palaces():
         else:
             ak.hall(K, P, L, W, float(np.clip(4.0 + 0.36 * W, 6.5, 14.5)), BARK, eave_frac=0.42, base_h=0.8)
         hidden.append(sd["si"])
-    return K.out(), sorted(set(hidden))
+    return K.out() + approach_steps(solids), sorted(set(hidden))
+
+
+
+# ---------------------------------------------------------------- the front steps, and the game
+
+# (OSM id, name, kind): the halls and the gate visitors walk into, all facing east onto Karasuma-dori and
+# Horikawa-dori. Their front steps are drawn (approach_steps) and walked as strips (game_surfaces): the
+# mapped outlines, which stay in the collisions, run out to the eaves' drip line, beyond the platforms
+FRONTS = [("w1241560765", "Higashi Honganji, the Founder's Hall Gate 御影堂門", "gate"),
+          ("w99130389", "Higashi Honganji, the Founder's Hall 御影堂", "founders"),
+          ("w99182315", "Nishi Hongwanji, the Founder's Hall 御影堂", "founders")]
+RISE, TREAD = 0.2, 0.32
+
+
+def approaches(solids):
+    """For each of FRONTS on the built city's footprints: the strip a walker takes from the paving outside
+    its outline up the front steps, onto the platform as far as the doors (a hall) or through the middle
+    bay and down the far side (a gate), in a frame whose u runs inward from the platform's front edge.
+    [{name, kind, origin, axis, half_width, profile, z0, edge, wall, depth}]"""
+    by = {sd["osm"]: sd for sd in solids if abs(ak.ring_area(sd["ring"])) > 50}
+    out = []
+    for oid, name, kind in FRONTS:
+        sd = by.get(oid)
+        if not sd:
+            continue
+        cx, cy, ax, L, W = ak.oriented(sd["ring"])
+        P = ak.Frame(cx, cy, ax, sd["ground"])
+        sgn = 1 if P(0, 1, 0)[0] > P(0, -1, 0)[0] else -1          # the side of the frame towards the east
+        if kind == "gate":                                           # gate(): the platform is the outline, 0.8 m up
+            edge, base_h, wall, hw = W / 2, 0.8, None, 2.2
+        else:                                                        # hall(): the platform 1.2 m out from the walls
+            over = max(1.6, 0.11 * W)
+            wall = W / 2 - over * 0.55
+            edge, base_h, hw = wall + 1.2, 1.0, 3.0
+        front = np.array(P(0, sgn * edge, 0)[:2])
+        inward = np.array(P(0, 0, 0)[:2]) - front
+        inward /= np.linalg.norm(inward)
+        z0, n = sd["ground"], int(round(base_h / RISE))
+        prof = [[-(W / 2 - edge) - 2.5, z0], [round(-n * TREAD - 0.02, 3), z0]]   # the paving from outside the outline
+        for j in range(n):
+            a = -(n - j) * TREAD
+            prof += [[round(a + (0.02 if j else 0), 3), round(z0 + (j + 1) * RISE, 3)], [round(a + TREAD, 3), round(z0 + (j + 1) * RISE, 3)]]
+        if kind == "gate":                                           # across the platform and down the far side
+            prof.append([round(W - 0.02, 3), round(z0 + base_h, 3)])
+            for j in range(n):
+                a = W + j * TREAD
+                prof += [[round(a + 0.02, 3), round(z0 + base_h - (j + 1) * RISE, 3)], [round(a + TREAD, 3), round(z0 + base_h - (j + 1) * RISE, 3)]]
+            prof.append([round(W + n * TREAD + 2.5, 3), z0])
+        else:
+            prof.append([1.2, round(z0 + base_h, 3)])                # the platform, to the doors
+        out.append({"name": name, "kind": kind, "origin": [float(front[0]), float(front[1])], "axis": [float(inward[0]), float(inward[1])],
+                    "half_width": hw, "profile": prof, "z0": z0, "base_h": base_h, "depth": W})
+    return out
+
+
+def approach_steps(solids):
+    """The front steps in granite, under each strip's treads (approaches)."""
+    m = Mesh("kyoto_steps", "jp_base", False, uv=True)
+    for a in approaches(solids):
+        ang = math.degrees(math.atan2(a["axis"][1], a["axis"][0]))
+        F = ak.Frame(a["origin"][0], a["origin"][1], ang, 0.0)
+        z0, n, hw = a["z0"], int(round(a["base_h"] / RISE)), a["half_width"] + 0.3
+        for j in range(n):
+            ak.block(m, F, -(n - j) * TREAD, 0.0, -hw, hw, z0 - 0.3, z0 + (j + 1) * RISE)
+            if a["kind"] == "gate":
+                ak.block(m, F, a["depth"], a["depth"] + (n - j) * TREAD, -hw, hw, z0 - 0.3, z0 + (j + 1) * RISE)
+    return [m] if m.i else []
+
+
+def game_surfaces(scene):
+    """The front steps of the gate and the founders' halls (approaches), walked as strips."""
+    return [{"name": a["name"] + ", the steps", "type": "strip", "origin": [round(v, 2) for v in a["origin"]], "axis": [round(v, 5) for v in a["axis"]],
+             "half_width": a["half_width"], "profile": a["profile"], "thickness": 1.2, "mesh": "kyoto_steps", "label": a["name"]}
+            for a in approaches(ak.load_solids("kyoto"))]
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting at
+    `start`; the walker must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people walk up to: Kyoto Tower's doors on Shiokoji-dori and Karasuma-dori; through
+    Higashi Honganji's Founder's Hall Gate and up to the doors of the two founders' halls."""
+    close = []
+    solids = ak.load_solids("kyoto")
+    t = scene["landmarks"].get("kyoto_tower")
+    hotel = next((sd for sd in solids if sd["name"] == "京都タワーホテル"), None)
+    if t and hotel:
+        cx, cy, ax, L, W = ak.oriented(hotel["ring"])      # the block's rectangle is square to the compass
+        z, (x, y) = hotel["ground"], t["at"]
+        south, east = cy - W / 2, cx + L / 2
+        close.append(close_to("Kyoto Tower, its doors on Shiokoji-dori", (x, south), z, (x, south - 5.0), 1.2))
+        close.append(close_to("Kyoto Tower Building on Karasuma-dori", (east, y), z, (east + 5.0, y), 1.2))
+    for a in approaches(solids):
+        o, d = np.array(a["origin"]), np.array(a["axis"])
+        start = o + d * (a["profile"][0][0] - 3.0)
+        if a["kind"] == "gate":    # through the middle bay, to the gate's centre line
+            close.append(close_to(a["name"] + ", through it", o + d * a["depth"] / 2, a["z0"] + a["base_h"], start, 1.0))
+        else:                      # up the steps to the doors
+            close.append(close_to(a["name"] + ", up to its doors", o + d * 1.2, a["z0"] + a["base_h"], start, 1.0))
+    return {"close": close}
