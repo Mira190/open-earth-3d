@@ -240,7 +240,7 @@ photo's lens (`tools/compare/shibuya.json`, `tools/compare_sheet.py`); the photo
 | The station side | ![](../images/shibuya/compare/station.jpg) |
 | Across the junction from MAGNET | ![](../images/shibuya/compare/diagonal.jpg) |
 
-**Cost.** The Shibuya map's data grew from 34.0 MB to 35.9 MB (landmarks.json 1.61 to 2.95 MB, and
+**Cost.** The Shibuya map's data grew from 34.0 MB to 36.1 MB (landmarks.json 1.61 to 3.07 MB, and
 scramble.jpg, 0.3 MB). On the low tier under a software renderer (llvmpipe, `TIER=low tools/city_shot.js`)
 the map loads in 23.4 s and draws the view from Hachiko Square in 311 ms a frame by day and 368 ms at
 night; on a GPU the cost is a few more draw calls (one per material, about 40). A real GPU was not
