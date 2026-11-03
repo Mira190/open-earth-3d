@@ -85,7 +85,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   }
   for (const [name, cs] of groups) {
     const lat = cs.reduce((a, c) => a + c.lat, 0) / cs.length, lon = cs.reduce((a, c) => a + c.lon, 0) / cs.length;
-    dests.push({ id: `group-${name}`, name, country: cs[0].country, lat, lon, tz: cs[0].timezone, c: cs[0], sites: cs });
+    const meta = cs[0].group_meta || null;
+    dests.push({ id: `group-${name}`, name, native: meta && meta.native, country: cs[0].country, lat, lon, tz: cs[0].timezone, c: cs[0], sites: cs, meta });
   }
   // in the order the sun reaches them: east to west
   dests.sort((a, b) => Math.round(b.lon) - Math.round(a.lon) || live.indexOf(a.c) - live.indexOf(b.c));
@@ -463,20 +464,25 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const p = progress(d);
     const km = d.c.extent_km ? `${d.c.extent_km[0]} × ${d.c.extent_km[1]}<small>km</small>` : '';
     // a group's span: the great-circle distance between its two furthest sites
+    const metro = d.meta && d.meta.kind === 'metro';
     let spanKm = 0;
     if (d.sites) for (const a of d.sites) for (const b of d.sites) spanKm = Math.max(spanKm, E.ll(a.lat, a.lon).angleTo(E.ll(b.lat, b.lon)) * 6371);
-    const stats = d.sites
+    const stats = metro
+      ? `<div><dt>Maps</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} districts</small></dd></div><div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div>`
+      : d.sites
       ? `<div><dt>Sites</dt><dd>${d.sites.length}</dd></div><div><dt>From end to end</dt><dd>${fmtN(Math.round(spanKm / 10) * 10)}<small>km</small></dd></div>`
       : `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Model</dt><dd>${km}</dd></div>`;
     const prog = p.stamps ? `${p.stamps} stamp${p.stamps > 1 ? 's' : ''} in your passport` : p.visited ? 'Visited' : '';
-    const actions = d.sites
-      ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
+    const actions = metro ? metroHTML(d)
+      : d.sites ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
-      <p class="sum">${d.sites ? 'Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.' : (d.c.summary || '')}</p>
+      <p class="sum">${d.meta && d.meta.summary ? d.meta.summary : d.sites ? 'Five sites on the Great Barrier Reef, rebuilt from survey bathymetry and satellite imagery under the real sun, moon and tide. Walk, snorkel, dive, sail and fly.' : (d.c.summary || '')}</p>
       <dl class="ts-stats">${stats}<div><dt>Local time</dt><dd data-k="time"></dd></div><div><dt>Sun</dt><dd data-k="sun"></dd></div></dl>
       ${prog ? `<span class="ts-prog">${prog}</span>` : ''}${actions}`;
     fillStats(d);
+    card.classList.toggle('metro', !!metro);
+    if (metro) metroPick(d, metroSel[d.id] ?? d.meta.districts.findIndex(x => x.map));
     card.classList.remove('on', 'has-film');
     void card.offsetWidth;
     card.classList.add('on');
@@ -485,9 +491,12 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       { go: play => (d.sites ? dive(d, false, d.sites[0]) : dive(d, play)) });
   }
   on(card, 'click', e => {
+    const st = e.target.closest('[data-district]');
+    if (st && sel >= 0) { metroPick(dests[sel], +st.dataset.district); return; }
     const b = e.target.closest('button');
     if (!b || sel < 0) return;
-    if (b.dataset.site) dive(dests[sel], false, cities.find(c => c.id === b.dataset.site));
+    if (b.dataset.map) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.map), b.dataset.arrive);
+    else if (b.dataset.site) dive(dests[sel], false, cities.find(c => c.id === b.dataset.site));
     else dive(dests[sel], b.dataset.go === 'play');
   });
   on(list, 'click', e => { const b = e.target.closest('.ts-item'); if (!b) return; lastInput = performance.now(); const i = +b.dataset.i; if (i === sel && !narrow()) dive(dests[i], false); else select(i, true); });
@@ -503,7 +512,59 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
 
   // the dive: down onto the city, faster and faster, into the dark where the model loads
   let diving = null;
-  function dive(d, play, site) {
+  // ------------------------------------------------------------ a group drawn as a subway map (Tokyo)
+  // The districts are maps of their own, as games draw Tokyo (Persona 5's subway map, where a station
+  // is a district to go to): the lines and stations at their real positions, each built map's extent
+  // shaded behind its stations, the districts still to build in grey. Choosing a station shows what
+  // is there and goes in at that district.
+  const metroSel = {};
+  const escH = t => String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+  function metroHTML(d) {
+    const m = d.meta, pts = [];
+    for (const l of m.lines) for (const [la, lo] of l.stops) pts.push([la, lo]);
+    for (const s of m.districts) pts.push([s.lat, s.lon]);
+    const lat0 = pts.reduce((a, p) => a + p[0], 0) / pts.length, k = Math.cos(lat0 * RAD);
+    const xs = pts.map(p => p[1] * k), ys = pts.map(p => -p[0]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    const W = 400, pad = 26, sc = (W - 2 * pad) / (x1 - x0), H = Math.round((y1 - y0) * sc + 2 * pad);
+    const P = (la, lo) => [pad + (lo * k - x0) * sc, pad + (-la - y0) * sc];
+    const f = v => v.toFixed(1);
+    // the built maps' extents, shaded
+    const areas = d.sites.map(c => {
+      if (!c.extent_km) return '';
+      const [cx, cy] = P(c.lat, c.lon), w = c.extent_km[0] / 111.32 / Math.cos(c.lat * RAD) * k * sc, h = c.extent_km[1] / 111.32 * sc;
+      return `<rect class="mt-area" x="${f(cx - w / 2)}" y="${f(cy - h / 2)}" width="${f(w)}" height="${f(h)}" rx="3"/>`;
+    }).join('');
+    const lines = m.lines.map(l => {
+      const ps = l.stops.map(([la, lo]) => P(la, lo).map(f).join(',')).join(' ');
+      return `<${l.loop ? 'polygon' : 'polyline'} class="mt-line" points="${ps}" style="--c:${l.colour}"><title>${escH(l.name)} ${escH(l.native || '')}</title></${l.loop ? 'polygon' : 'polyline'}>`;
+    }).join('');
+    const stns = m.districts.map((s, i) => {
+      // the label on the side the group's config says (l, r, t, b), clear of its neighbours
+      const [x, y] = P(s.lat, s.lon), at = s.label || (x < W * 0.62 ? 'r' : 'l');
+      const [tx, ty, an] = { r: [x + 11, y + 5, 'start'], l: [x - 11, y + 5, 'end'], t: [x, y - 12, 'middle'], b: [x, y + 21, 'middle'] }[at];
+      return `<g class="mt-stn${s.map ? ' on' : ''}" data-district="${i}" tabindex="0" role="button" aria-label="${escH(s.name)}${s.map ? '' : ', next in line'}">
+        <circle cx="${f(x)}" cy="${f(y)}" r="${s.map ? 7 : 5}"/><text x="${f(tx)}" y="${f(ty)}" text-anchor="${an}" lang="ja">${escH(s.native)}</text></g>`;
+    }).join('');
+    const legend = m.lines.map(l => `<span style="--c:${l.colour}"><i></i>${escH(l.native || l.name)}</span>`).join('');
+    return `<div class="ts-metro"><svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Districts of ${escH(d.name)}">${areas}${lines}${stns}</svg>
+      <div class="mt-legend">${legend}</div><div class="mt-pick" aria-live="polite"></div></div>`;
+  }
+  function metroPick(d, i) {
+    const m = d.meta, s = m.districts[i];
+    if (!s) return;
+    metroSel[d.id] = i;
+    card.querySelectorAll('.mt-stn').forEach((g, j) => g.classList.toggle('sel', j === i));
+    const c = s.map && cities.find(x => x.id === s.map && x.built), el = card.querySelector('.mt-pick');
+    if (!el) return;
+    const arrive = s.travel ? ` data-arrive="${escH(s.travel)}"` : '';
+    el.innerHTML = `<div class="mt-name"><b>${escH(s.name)}</b><small lang="ja">${escH(s.native)}</small>${c ? `<em>${escH(c.name)} map</em>` : '<em class="next">Next in line</em>'}</div>
+      <p>${escH(c ? (s.travel ? s.note || c.tagline || '' : c.tagline || '') : s.note || '')}</p>
+      ${c ? `<div class="ts-actions">${c.game ? `<button class="ts-btn primary" data-map="${c.id}" data-go="play"${arrive}>Play <kbd>P</kbd></button>` : ''}<button class="ts-btn" data-map="${c.id}" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>` : ''}`;
+  }
+  on(card, 'keydown', e => { const st = e.target.closest('[data-district]'); if (st && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); metroPick(dests[sel], +st.dataset.district); } });
+
+  function dive(d, play, site, arrive) {
     if (state === 'dive' || (state !== 'menu' && state !== 'open')) return;
     if (state === 'open') skip();
     state = 'dive';
@@ -515,7 +576,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const go = () => {
       if (manual) return; // the film tool ends on the black
       if (target.viewer) location.href = `${target.viewer}?city=${target.id}`;
-      else location.hash = play ? `play-${target.id}` : target.id;
+      else location.hash = play ? `play-${target.id}${arrive ? `@${arrive}` : ''}` : target.id;
     };
     if (reduced) { earth.lens.uFade.value = 0; after(250, go); return; }
     diving = { t0: clock(), from: { pos: cam.position.clone(), fov: cam.fov }, dir: E.ll(target.lat, target.lon), go, done: false };
@@ -579,7 +640,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const k = e.key.toLowerCase();
     if (k === 'arrowdown' || k === 's' || k === 'arrowright') { e.preventDefault(); select((sel + 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
-    else if (k === 'enter' && sel >= 0 && !e.target.closest('.ts-card, .ts-top, .ts-foot')) { e.preventDefault(); const d = dests[sel]; if (d.sites) card.querySelector('[data-site]').focus(); else dive(d, false); }
+    else if (k === 'enter' && sel >= 0 && !e.target.closest('.ts-card, .ts-top, .ts-foot')) { e.preventDefault(); const d = dests[sel]; const mb = card.querySelector('[data-map][data-go="model"]'); if (mb) mb.click(); else if (d.sites) card.querySelector('[data-site]').focus(); else dive(d, false); }
+    else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('[data-map][data-go="play"]')) card.querySelector('[data-map][data-go="play"]').click();
     else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
     else if (k === 'f' && sel >= 0 && window.OEFilm && OEFilm.hasReel()) OEFilm.openReel();
     else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); orb.tdist = fitDist(); for (const d of dests) d.mark.classList.remove('hot'); }

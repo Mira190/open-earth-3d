@@ -746,7 +746,16 @@ window.OEBuildings = (function () {
       uGrid: { value: grid }, uLook: { value: look }, uHour: U.uHour || { value: 12 }, uSunW: U.uSunW || { value: new THREE.Vector3(0, 1, 0) },
       uPhoto: { value: new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1) }, uPhotoOn: { value: 0 },
       uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage }, uCoolHomes: { value: coolHomes }, uNudge: U.uNudge || { value: 4e-5 },
+      uGlyphs: { value: new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1) }, uGlyphOn: { value: 0 },
     });
+    U.uGlyphs.value.needsUpdate = true;
+    // the words on the signs (pipeline/sign_glyphs.py); until they load, or if they don't, the
+    // signs carry strokes in the shape of characters
+    if (signage > 0) new THREE.TextureLoader().load('assets/signs/glyphs.png', tex => {
+      tex.minFilter = tex.magFilter = THREE.LinearFilter; // the shader reads each word's length from a cell; a mipmap would blur it
+      tex.generateMipmaps = false;
+      U.uGlyphs.value = tex; U.uGlyphOn.value = 1;
+    }, undefined, () => {});
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.0 });
     mat.extensions = Object.assign(mat.extensions || {}, { derivatives: true });
     mat.onBeforeCompile = sh => {
@@ -774,7 +783,7 @@ window.OEBuildings = (function () {
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
   uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
-  uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns; uniform float uCoolHomes;
+  uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns; uniform float uCoolHomes; uniform sampler2D uGlyphs; uniform float uGlyphOn;
   varying vec2 vFac; varying vec4 vInf; varying vec3 vExt; varying float vBid; varying float vSrc;
   varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vGrid; varying vec4 vLook;
   ${photoGrade || 'vec3 photoGrade(vec3 c) { return c; }'}
@@ -797,6 +806,13 @@ window.OEBuildings = (function () {
     float vs = step(k0, 0.4) * step(va, c.y) * step(c.y, vb) * step(abs(f.x - 0.5), 0.2);
     return max(hs, vs);
   }
+  // a character of the signs' words (assets/signs/glyphs.png, 8 x 32 cells): cell (column, row), q 0..1
+  // across it from its bottom left; and the length of the word in a row (the grey of its last cell)
+  float sgCell(vec2 cell, vec2 q) {
+    if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) return 0.0;
+    return texture2D(uGlyphs, vec2((cell.x + q.x) / 8.0, 1.0 - (cell.y + 1.0 - q.y) / 32.0)).r;
+  }
+  float sgLen(float row) { return floor(texture2D(uGlyphs, vec2(7.5 / 8.0, 1.0 - (row + 0.5) / 32.0)).r * 255.0 / 16.0 + 0.5); }
   float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
   // an anti-aliased box: 1 inside [a, b] on coordinate x, with a filter width w
@@ -964,12 +980,25 @@ window.OEBuildings = (function () {
       // stroke is under a pixel. Characters about a third of a storey high
       float gm = 0.32 * storey, bw = max(vGrid.x, 1.0), txt = 0.0, sub = gm / 5.0 / bw;
       if (vert > 0.5) {
-        float gy = h / (gm * 1.18), gi = floor(gy);
-        txt = glyph(vec2((fx - 0.5) * bw / gm + 0.5, 1.0 - fract(gy) * 1.18), gi + bidH * 3.1 + 40.0);
+        if (uGlyphOn > 0.5) { // a tenant a floor, two characters each, read top to bottom
+          float yy = (fy - 0.5) * storey / (gm * 1.18), k = floor(h21(vec2(fl, bidH * 7.3 + 2.0)) * 40.0);
+          txt = abs(yy) < 1.0 ? sgCell(vec2(mod(k, 4.0) * 2.0 + (yy >= 0.0 ? 0.0 : 1.0), 22.0 + floor(k / 4.0)),
+                                       vec2((fx - 0.5) * bw / gm + 0.5, (fract(yy) - 0.5) * 1.18 + 0.5)) : 0.0;
+        } else {
+          float gy = h / (gm * 1.18), gi = floor(gy);
+          txt = glyph(vec2((fx - 0.5) * bw / gm + 0.5, 1.0 - fract(gy) * 1.18), gi + bidH * 3.1 + 40.0);
+        }
       } else if (pane > 0.0) {
         float xm = ((fract(bay / 2.0) * 2.0 + fx) * bw - 0.5) / (gm * 1.15), gi = floor(xm);
         float n = floor((1.84 * bw - 0.6) / (gm * 1.15)); // characters that fit the panel
-        txt = gi < n ? glyph(vec2(fract(xm) * 1.15, 1.0 - (fy - 0.5) * storey / gm - 0.5), gi + sr * 61.0 + bidH) : 0.0;
+        if (uGlyphOn > 0.5) { // a word, centred on the panel (a two-character one where a longer one won't fit)
+          float w = floor(h21(vec2(floor(bay / 2.0), fl) + bidH * 3.3) * 22.0), L = sgLen(w);
+          if (L > n) { w = 1.0; L = 2.0; }
+          float ci = gi - floor((n - L) * 0.5);
+          txt = ci >= 0.0 && ci < L ? sgCell(vec2(ci, w), vec2(fract(xm) * 1.15, (fy - 0.5) * storey / gm + 0.5)) : 0.0;
+        } else {
+          txt = gi < n ? glyph(vec2(fract(xm) * 1.15, 1.0 - (fy - 0.5) * storey / gm - 0.5), gi + sr * 61.0 + bidH) : 0.0;
+        }
       }
       txt = mix(txt, 0.3 * max(pane, vert), smoothstep(0.35, 1.0, max(fw.x / sub, fw.y * storey / (gm / 5.0))));
       signC = mix(signC, dot(signC, vec3(0.3, 0.5, 0.2)) > 0.5 ? vec3(0.07, 0.06, 0.06) : vec3(0.97, 0.96, 0.92), txt * (1.0 - far));
