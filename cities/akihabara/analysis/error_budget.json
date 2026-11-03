@@ -1,0 +1,18 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Akihabara Park",
+   "prod": 55.33,
+   "finer_samples": 55.47,
+   "finer_dsm": 54.21,
+   "finer_time": 56.63,
+   "reference": 55.42,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": -0.09,
+   "seconds": 0.438
+  }
+ ],
+ "max_abs_numerical_error_pp": 0.09
+}

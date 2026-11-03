@@ -1199,10 +1199,13 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         // Tokyo Tower's white metal halide lamps in summer, its orange sodium ones the rest of the year
         const md = month * 100 + day;
         for (const [k, m] of Object.entries(floodMats)) {
-          const dates = LM.materials[k].emissive_dates;
-          if (!dates) continue;
-          const hit = dates.find(([a, b]) => { const [p, q] = [a, b].map(s => +s.replace('-', '')); return p <= q ? md >= p && md < q : md >= p || md < q; });
-          m.emissive.copy(lin(hit ? hit[2] : LM.materials[k].emissive || '#ffe2b8'));
+          const dates = LM.materials[k].emissive_dates, cycle = LM.materials[k].emissive_cycle;
+          if (!dates && !cycle) continue;
+          const hit = dates && dates.find(([a, b]) => { const [p, q] = [a, b].map(s => +s.replace('-', '')); return p <= q ? md >= p && md < q : md >= p || md < q; });
+          // a lighting that takes turns day by day ("emissive_cycle": [colour, ...]): Tokyo Skytree's
+          // Iki blue one night and Miyabi purple the next
+          const doy = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 864e5);
+          m.emissive.copy(lin(hit ? hit[2] : cycle ? cycle[doy % cycle.length] : LM.materials[k].emissive || '#ffe2b8'));
         }
       },
       // per frame, before the render: the waves (and their reflection) and the trees' wind and detail for this camera
