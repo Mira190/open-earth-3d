@@ -1191,6 +1191,9 @@ def build(C):
     ctx.sea = sea  # the water polygons, for a hook that follows the shore (a seawall)
 
     tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
+    for f in set(os.listdir(C.out)) - {t["file"] for t in tiles}:   # tiles of an earlier, larger extent
+        if f.startswith("ground_") and f.endswith(".jpg"):
+            os.remove(os.path.join(C.out, f))
 
     # piers and wharves as thin decks just above high water
     piers = pier_rings(C, con, raw, sea, extent)

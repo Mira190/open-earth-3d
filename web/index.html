@@ -1154,6 +1154,11 @@ window.dispatchEvent(new Event('three-ready'));
   const fmtLL = c => `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'N' : 'S'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'E' : 'W'}`;
   async function show() {
     const [id, arrive] = hashId().split('@'), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
+    // a travel point that has moved to another map ("moved" in cities/index.json: Shinjuku was part of
+    // the Shibuya map): its old link opens the map that has it now
+    const moved = play && arrive ? (cities.find(c => c.id === cid) || {}).moved : null;
+    const movedTo = moved && Object.keys(moved).find(m => moved[m].includes(arrive));
+    if (movedTo) { history.replaceState(null, '', `#play-${movedTo}@${arrive}`); return show(); }
     // "#play-<city>@<travel point>": start the game at a district of a map (the Tokyo subway map, title.js)
     window.OE_ARRIVE = play && arrive ? arrive : null;
     const from = lastId;

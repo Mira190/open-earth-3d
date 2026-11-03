@@ -305,16 +305,17 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
 
 Amsterdam has no real helipad in the old city. The pad on the Dam is a game device, so that the city can be seen from the air.
 
-**Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
-is a walk, not a survey: a welcome at Hachiko, then five lines in any order and a
-report back.
+**Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
+[Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
+is a walk, not a survey: in Shibuya a welcome at Hachiko, in Shinjuku at the east exit, then
+lines in any order and a report back.
 - **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
   lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
-- **Your Name:** climb the 52 steps of Suga Shrine's 男坂 and read an ema.
+- **Your Name** (Shinjuku): climb the 52 steps of Suga Shrine's 男坂 and read an ema.
 - **Shinjuku:** Kabukicho's arch after dark.
-- **Aoyama:** the ginkgo avenue at Jingu Gaien.
+- **Aoyama** (Shinjuku): the ginkgo avenue at Jingu Gaien.
 
 Walking into a neighbourhood puts its name up on a station sign. <kbd>E</kbd> at a
 spot (an ema, a vending machine, a shop front) reads it. Conversations come up in
@@ -1494,7 +1495,7 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
   `emissive` and `glow` so signs light up.
 - **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
   `game`, or a city's `game_extras` hook returns them with positions measured from its
-  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage) is the example.
+  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) is the example.
 
 ## Testing
 

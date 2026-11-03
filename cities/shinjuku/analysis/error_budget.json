@@ -1,0 +1,29 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Shinjuku Gyoen 新宿御苑",
+   "prod": 94.85,
+   "finer_samples": 94.97,
+   "finer_dsm": 94.54,
+   "finer_time": 94.86,
+   "reference": 94.47,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 0.38,
+   "seconds": 44.458
+  },
+  {
+   "place": "Suga Park 須賀公園",
+   "prod": 80.83,
+   "finer_samples": 79.46,
+   "finer_dsm": 79.17,
+   "finer_time": 80.41,
+   "reference": 78.26,
+   "lit_rays_leaving_extent_low_pct": 0,
+   "prod_minus_reference": 2.57,
+   "seconds": 0.037
+  }
+ ],
+ "max_abs_numerical_error_pp": 2.57
+}
