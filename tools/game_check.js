@@ -157,6 +157,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
   // within 0.3 m of the face as drawn, web/quays.js)
   const walks = await p.evaluate(() => {
     const g = window.__game, pl = g.player, Q = g.Wd.quays, out = [];
+    if (!(g.G.patches || []).some(P => (P.walks || []).length)) return out; // (no time passes: the traffic later steps meet stays as it was)
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
     for (const P of g.G.patches || []) for (const w of P.walks || []) {
       const [x0, y0] = w.path[0], f = g.nav.floorAt(x0, y0, w.from_m + 0.3);
