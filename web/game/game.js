@@ -2944,9 +2944,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     { id: 'menu', title: 'The menu', target: '#g-menu-btn',
       text: '<kbd>Esc</kbd> pauses: the time of day and the date, the clock\'s speed, who you play, sound, every key, and <b>Show the intro again</b>.',
       touch: '<b>Menu</b> pauses: the time of day and the date, the clock\'s speed, who you play, sound, and <b>Show the intro again</b>.' },
-    { id: 'route', title: 'The route line', target: '#g-quest',
-      text: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the menu (<b>Show the route to the objective</b>).',
-      touch: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the <b>Menu</b> (<b>Show the route to the objective</b>).' },
+    // (the menu's route setting: a three-way Route line, On, Only when I ask and Off, or a single checkbox)
+    $('#gm-route [data-r]') ? { id: 'route', title: 'The route line', target: '#g-quest',
+      text: 'This card is your objective. The gold line on the ground and on the minimap leads there. In the menu, <b>Route line</b> sets it On, Only when I ask (<kbd>L</kbd> shows it for a few seconds) or Off.',
+      touch: 'This card is your objective. The gold line on the ground and on the minimap leads there. In the <b>Menu</b>, <b>Route line</b> sets it On, Only when I ask (<b>Show route</b> on this card) or Off.' }
+      : { id: 'route', title: 'The route line', target: '#g-quest',
+        text: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the menu (<b>Show the route to the objective</b>).',
+        touch: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the <b>Menu</b> (<b>Show the route to the objective</b>).' },
   ];
   function startTour(then = null) {
     return OEOnboard.tour(tourSteps(), { root: stage, onEnd: () => { OEOnboard.markDone(CITY.id); if (then) then(); } });
@@ -3312,7 +3316,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       camera.position.copy(shot.pos);
       // never inside a building; a film's shots (tools/film) are checked against the surface model when
       // they are planned, and go down to eye level among the crowd, so they are left where they are
-      if (cine.label !== 'film') camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
+      // the arrival and the hops keep clear of the roofs themselves (calmElevation) and come down into a street to the
+      // player, where this clamp (the tallest roof in the cells round it) would pin them at the roofline: within 25 m
+      // of what they look at they are left alone, as the chase camera is
+      const own = (cine.label === 'crane' || cine.label === 'hop') && camera.position.distanceTo(shot.look) < 25;
+      if (cine.label !== 'film' && !own) camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
       camera.lookAt(shot.look);
       Wd.fitShadow(shot.look, THREE.MathUtils.clamp(camera.position.distanceTo(shot.look) * 1.2, live.half, 1600));
       return;
@@ -3481,9 +3489,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const step = rate * dur / N;
     for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
     for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
-    if (e0 != null && el[0] > e0) { const d = el[0] - e0, M = N / 3; for (let i = 0; i <= M; i++) el[i] -= d * (1 - S(i / M)); }
+    const early = e0 != null ? el[0] - e0 : 0; // how far above the first frame the roofs want it straight away
+    if (early > 0) { const M = N / 3; for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
     const fn = k => { const f = Math.max(0, Math.min(N, k * N)), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
     fn.late = el[N] - e(1); // how far above its own last elevation the roofs held it: more time is needed to come down calmly
+    fn.max = Math.max(...el); // the steepest it gets
+    fn.early = early;
     return fn;
   }
   function craneIn(onDone = null) {
@@ -3565,23 +3576,33 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
     const a = 0.26, b = 0.6, km = 0.45;
     const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.smooth(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
-    const eBase = k => (k < km ? L(e0, eT, E.smooth(k / km)) : L(eT, pe, E.smooth(OECine.span(k, km, 1))));
-    // over tall roofs the way down starts steeper; the hop then takes the time it needs to tilt back calmly (to 6.5 s)
+    let eTop = eT, peL = pe; // the elevation at the top, and the chase camera's pitch on landing
+    const eBase = k => (k < km ? L(e0, eTop, E.smooth(k / km)) : L(eTop, peL, E.smooth(OECine.span(k, km, 1))));
+    // Over tall roofs the way down has to be steeper. The top then already holds the steepest it will need, so the
+    // camera only ever tilts one way on the way down; the hop takes the time it needs to tilt back calmly (to 6.5 s),
+    // and where even that is not enough it lands looking a little more steeply over the shoulder (to 37°)
     const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
-    let fallEl = fallOf(dur);
-    for (let n = 0; n < 3 && fallEl.late > 0.02 && dur < 6.5; n++) { dur = Math.min(6.5, dur + 1.3 * fallEl.late / HOP_PITCH_RATE); fallEl = fallOf(dur); }
+    const riseOf = d => calmElevation({ c: A, az: k => azAt(L(0, a, k)), r: k => rAt(L(0, a, k)), e: k => eBase(L(0, a, k)), dur: d * a, rate: HOP_PITCH_RATE, rMin: 14, upto: 1, e0 });
+    let fallEl = fallOf(dur), riseEl = riseOf(dur);
+    for (let n = 0; n < 4; n++) {
+      eTop = Math.min(1.2, Math.max(eT, fallEl.max, riseEl(1)));
+      const short = Math.max(fallEl.late, riseEl.early); // the roofs want more tilt than the time allows
+      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * short / HOP_PITCH_RATE);
+      else if (fallEl.late > 0.02) peL = Math.min(0.65, peL + fallEl.late);
+      fallEl = fallOf(dur); riseEl = riseOf(dur);
+    }
     const path = k => {
       const ctr = k < a ? A : k < b ? c.lerpVectors(A, B, E.inOut(OECine.span(k, a, b))) : head(), r = rAt(k);
-      const e = k < b ? eBase(k) : Math.max(eBase(k), fallEl(OECine.span(k, b, 1)));
+      const e = k < a ? Math.max(eBase(k), riseEl(k / a)) : k < b ? eBase(k) : Math.max(eBase(k), fallEl(OECine.span(k, b, 1)));
       OECine.around(ctr, azAt(k), r * Math.cos(e), r * Math.sin(e), pos);
       return { pos, look: lk.copy(ctr) };
     };
     const yawEnd = azEnd - Math.PI; // where the chase camera will be: behind the player, facing on
-    cine.play(OECine.mix(path, () => live, k => handOver(k, 0.86)), dur, { label: 'hop',
-      cues: [[a, opts.cue ? () => { opts.cue(); if (opts.yaw == null) cam.yaw = yawEnd; groundLod(x, y); } : () => {
+    cine.play(OECine.mix(path, () => live, k => handOver(k, 0.78)), dur, { label: 'hop',
+      cues: [[a, opts.cue ? () => { opts.cue(); if (opts.yaw == null) cam.yaw = yawEnd; if (peL > pe + 0.01) cam.pitch = peL; groundLod(x, y); } : () => {
         [player.x, player.y, player.z] = [x, y, z];
         player.h = yawEnd; player.speed = 0; player.vz = 0; player.ground = true;
-        cam.mode = 'chase'; cam.yaw = yawEnd; cam.pitch = 0.36; cam.dist = 7.5;
+        cam.mode = 'chase'; cam.yaw = yawEnd; cam.pitch = peL; cam.dist = 7.5;
         groundLod(x, y);
         save();
       }]],

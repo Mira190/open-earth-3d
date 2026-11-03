@@ -335,6 +335,39 @@ camera and the shot:
 **Save photo** (<kbd>Enter</kbd>) writes a PNG. Its caption gives the place, the
 date and time, the sun's height and the data credit.
 
+### Arriving and getting started
+
+Starting a game is one calm camera move, about 3.6 s, from the title shot down to
+over the player's shoulder (`craneIn` in `web/game/game.js`). It dollies in along
+the bearing the title camera is already on and turns about the player by at most
+50°, spread evenly over the move, so it never swings round them, spins or changes
+direction; the horizon stays level. The distance closes on a log scale, so the
+approach is a steady glide rather than a rush at the end, and the point the camera
+looks at closes on the player faster than the camera does, so the view hardly
+turns. The player turns to face the way the shot looks, as near the start's own
+view as that allows with a few steps clear in front. `calmElevation` keeps the
+line 8 m clear of the roofs while it is far out, as an envelope whose elevation
+changes no faster than a set rate, so it comes over a tower without a jolt. Any
+key or tap settles it in 0.7 s; with `prefers-reduced-motion` it is a cut under a
+short fade. The fast-travel hop follows the same rules: one even turn of at most
+45° a second, up and down on a log scale (the old one plunged at the end), and over
+tall blocks it takes up to 6.5 s, or lands looking a little more steeply over the
+shoulder, rather than tilt fast. `tools/arrival_shot.js <city> <out> [desktop|phone]
+[travel id]` follows the camera frame by frame through the arrival and a hop to
+the farthest travel point, prints each move's peak turn and pitch rates, and
+fails above 45° and 60° a second.
+
+The first time a browser plays any map (or reef site), a short tour of the HUD
+follows the arrival (`web/onboard.js`): walking and looking, the map, travel,
+taxis and rides, the passport, the phone, photo mode, the menu and the route line,
+one step each, pointing at the control with a ring and a card, with touch wording
+on a phone. Enter or → moves on, ← goes back, Esc or "Skip tour" ends it. The flag
+(`oe3d-onboard` in `localStorage`) is shared by every map, so on a later one the
+title card offers "Skip the intro", ticked, and the guide greets you with a short
+local welcome instead. "Show the intro again" in the menu runs the tour at any
+time. While the tour shows nothing can be started (no talk, no boarding), and it
+carries `data-hush`, so the area sign waits for it.
+
 ## What we took from other games, and where this one is different
 
 A research pass looked at the games people compare this to. The sources are
@@ -352,6 +385,7 @@ listed at the end.
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
 | **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
 | **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
+| **Game Accessibility Guidelines, `prefers-reduced-motion`, app coach marks** | Camera moves that never spin or whip (a capped turn and pitch rate, a level horizon, no reversal), skippable at once, and a cut for players who ask for less motion. A first-run tour that points at one control at a time and can be skipped. | The arrival and the hops are measured frame by frame against those limits (`tools/arrival_shot.js`), and the tour runs once across every map rather than once per map. |
 | **Genshin Impact, Breath of the Wild, Flight Simulator's world map** | Travel from the map at any time, to a named place or (Flight Simulator) to any spot you pick. | Their travel points are unlocked by finding them, and they drop you on a waypoint. Here every landmark is open from the start, as a sightseer would want, and you arrive placed to see it. |
 | **Google Earth's fly-to** | Arriving framed on the place: back from it by its size, looking at it. | Its camera floats free. Here the arrival is a spot you can stand on, picked by a line of sight through the city's surface model and its trees, with the sun behind you. |
 | **GeoGuessr** | A guess scored against the answer. | Here the answer has error bars and the score shows them. For an estimated height, a good eye can be as good as the data. |

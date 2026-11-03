@@ -47,6 +47,9 @@ with a marker on the compass and a diamond over the target; on a screen narrower
 tracked step move down, clear of the compass. Progress is saved in the browser per site (`localStorage` key
 `oe3d-reef-game-<site>`).
 
+
+Arriving, the camera comes down in one calm move from high behind the player to their own view (3.2 s; a key or a tap settles it, and with reduced motion there is none). The first time a browser plays any map or reef site, a short tour of the HUD follows: moving and swimming, the objective, using things, the journal, the map and travel, and the time and tide (`web/onboard.js`, shared with the cities). "Show the intro again" is at the foot of the journal.
+
 ## The Whitsundays
 
 | Who | Where (POI) | What |
