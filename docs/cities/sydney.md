@@ -226,11 +226,21 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
     - *Under the forecourt's slab* the soffit, the mushroom columns, the
       colonnade's floor and shopfronts and the stairwell's passage take only
       their share of the sky's light (a mesh's `sky` in landmarks.json,
-      `SKY_UNDER`: 0.18 for the soffit, which faces down, about a third for the
+      `SKY_UNDER`: 0.3 for the soffit, which faces down, about a third for the
       floor and the shopfronts behind the 2.4 m opening across the 5.8 m
-      recess). three.js spreads its ambient light over every surface as if it
-      were in the open, so they had read as pale by day as the paving in the
-      sun. `web/world.js` scales a sheltered mesh's indirect light by it.
+      recess, 0.2 in the passage). three.js spreads its ambient light over every
+      surface as if it were in the open, so they had read as pale by day as the
+      paving in the sun. `web/world.js` scales a sheltered mesh's indirect light
+      by it, and tints what is left towards the colour of the ground it comes up
+      off (`bounce`, the sandstone flags), so the soffit reads warm rather than
+      grey. At night the soffit, columns and floor are floodlit by the
+      colonnade's downlights.
+
+      ![The forecourt's seawall at day, dusk and night, and the colonnade at night from the water](../images/bennelong-84/viewer-day-dusk-night.jpg)
+
+      | ![](../images/bennelong-84/colonnade-desktop.jpg) | ![](../images/bennelong-84/colonnade-phone.jpg) |
+      |---|---|
+      | The colonnade on foot, day, dusk and night (desktop) | On a phone, and the stairwell to the concourse |
     - *Street furniture* where OpenStreetMap maps it: 20 benches facing the
       water, 40 bollards, 13 globe lamps, the 7 masts that floodlight the
       shells, 3 wayfinding pylons, and the Opera Bar's 12 square umbrellas with
