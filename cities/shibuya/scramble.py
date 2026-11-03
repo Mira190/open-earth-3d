@@ -69,10 +69,13 @@ MATERIALS = {
     "x_alu": {"color": "#b9bdc1", "roughness": 0.38, "metalness": 0.6, "pattern": "granite", "joints_m": [1.8, 0.9]},
     # printed adverts lit from outside by lamps: dimmer after dark than a lit box
     "x_print": {"color": "#ffffff", "roughness": 0.7, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 0.5},
+    "x_station": {"color": "#c9ccce", "roughness": 0.6, "metalness": 0.2, "pattern": "granite", "joints_m": [1.5, 3.6]},
+    "x_koban": {"color": "#d8d4cb", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.6]},
+    "x_red_lamp": {"color": "#d0201a", "roughness": 0.3, "metalness": 0.0, "emissive": "#ff2010", "glow": 3.0},
     "x_gate": {"color": "#7c8086", "roughness": 0.5, "metalness": 0.55},
     "x_atlas": {"color": "#ffffff", "roughness": 0.6, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
 }
-LIT = {"x_light", "x_atlas", "x_print", "x_shop"}
+LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp"}
 
 
 # ---------------------------------------------------------------- data
@@ -396,7 +399,7 @@ def entrance_sites(D, near, radius=150.0):
             if s["top"] > 5 or len(s["ring"]) < 4 or abs(s["ring"][0][0] - n["xy"][0]) > 30 or abs(s["ring"][0][1] - n["xy"][1]) > 30:
                 continue
             g = Poly(s["ring"])
-            if g.area < 150 and g.distance(p) < 0.5:
+            if g.area < 200 and g.distance(p) < 0.5:
                 best = s
         if not best:
             continue
@@ -415,6 +418,11 @@ def entrance_sites(D, near, radius=150.0):
         cx, cy, ax, L, W = ak.oriented(best["ring"])
         f = np.array([math.cos(math.radians(ax)), math.sin(math.radians(ax))])
         c = np.array([cx, cy])
+        kiosk = Poly(best["ring"]).area > 150       # Shibuchika's pavilion on Hachiko Square: open toward the crossing
+        if kiosk:
+            f = unit(near - c)
+            up = None
+            down = c - f
         # the stairs go down away from the open end: the end the street footway comes in at
         if up is not None and abs((up - c) @ f) > 0.3:
             sgn = 1.0 if (up - c) @ f > 0 else -1.0
@@ -422,7 +430,7 @@ def entrance_sites(D, near, radius=150.0):
             sgn = -1.0 if (down - c) @ f > 0 else 1.0
         else:
             sgn = 1.0 if (n["xy"] - c) @ f >= 0 else -1.0
-        out.append({"ref": t.get("ref") or "", "name": t.get("name") or "渋谷駅", "si": best["si"], "c": c, "f": f * sgn, "L": L, "W": W,
+        out.append({"ref": t.get("ref") or "", "name": "しぶちか" if kiosk else (t.get("name") or "渋谷駅"), "kiosk": kiosk, "si": best["si"], "c": c, "f": f * sgn, "L": L, "W": W,
                     "g": min(D.ground(*q) for q in best["ring"]), "top": best["top"]})
     return out
 
@@ -490,10 +498,18 @@ def entrance(K, A, e):
 
 
 def draw_exit(img, rect, ref, name):
-    """An exit's sign: navy, the exit's code white on a yellow square at the left, then the station."""
+    """An exit's sign: navy, the exit's code white on a yellow square at the left, then the station;
+    Shibuchika's pavilion carries its own name, white on charcoal."""
     from PIL import ImageDraw
     x, y, w, h = rect
     d = ImageDraw.Draw(img)
+    if name == "しぶちか":
+        d.rectangle([x, y, x + w, y + h], fill=(38, 40, 44))
+        f = ad.font("rounded", int(h * 0.5))
+        d.text((x + w * 0.4, y + h * 0.48), "しぶちか", font=f, fill=(255, 255, 255), anchor="mm")
+        f = ad.font("bebas", int(h * 0.28))
+        d.text((x + w * 0.78, y + h * 0.52), "SHIBUCHIKA  " + ref, font=f, fill=(220, 222, 226), anchor="mm")
+        return
     d.rectangle([x, y, x + w, y + h], fill=(22, 34, 72))
     s = h - 16
     if ref:
@@ -523,7 +539,7 @@ def draw_side(img, rect):
 # run north-south past the scramble on a raised bed, and cross the road under them on a steel girder
 # bridge (OSM: bridge=yes, layer 1, level 2). The rails' height over the road, the girder's depth and
 # the walls are estimates from photographs: the road under it is signed for about 4.5 m.
-JR = {"y0": -1045.0, "y1": -860.0, "bridge": (-1012.5, -987.5), "rail_m": 7.4, "girder_m": 2.0, "clear_m": 4.9, "margin_m": 2.4,
+JR = {"y0": -1016.0, "y1": -860.0, "bridge": (-1012.5, -987.5), "rail_m": 7.4, "girder_m": 2.0, "clear_m": 4.9, "margin_m": 2.4,
       "lines": ("山手線", "山手貨物線"), "mast_every_m": 46.0}
 
 
@@ -952,6 +968,281 @@ def draw_gate(img, rects):
     img.paste(sub, (x, y))
 
 
+# ---------------------------------------------------------------- the west side's rooftop billboards and sign bands
+
+# What makes the west side read as Shibuya from the scramble is its billboards: box signs stacked on
+# steel towers over the roofs and bands of tenants' signs floor over floor. Their places and sizes are
+# from photographs (2024-26; the Taiseido block's sign tower is in PLATEAU's LOD2, 5.5 x 5.6 m to 39.4 m
+# over the street); the brands are invented, in the kinds the real ones are (a pharmaceutical's two
+# boxes, a card company, a furniture store, throat lozenges, a karaoke chain).
+BILLBOARDS = [
+    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 8.2, 2.7), ("bb_hikari2", 8.2, 4.6)], "gap": 0.4},
+    {"at": (306.5, -951.0), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_card", 6.4, 6.4)], "lift": 3.0},
+    {"at": (281.0, -952.0), "face": (372.0, -1020.0), "roof_m": 37.8, "boxes": [("bb_home", 8.0, 3.6)], "lift": 2.0},
+    {"at": (274.0, -968.0), "face": (372.0, -1020.0), "roof_m": 52.1, "boxes": [("bb_nodo", 9.0, 4.2)], "lift": 1.5},
+]
+# bands of tenants' signs across a building's face toward the scramble: (building, floors' heights above
+# the street, art) -- the Oto building's restaurants and opticians, the Taiseido block's bookshop fascia
+BANDS = [
+    {"building": "渋谷駅前ビル", "near": (320.0, -1045.0), "toward": (372.0, -1010.0), "rows": [(8.2, "band_shabu"), (11.6, "band_cafe"), (15.0, "band_megane"),
+                                                                                       (18.4, "band_price"), (21.8, "band_clinic")], "w": 0.8},
+    {"building": "w136690966", "near": (318.0, -975.0), "toward": (360.0, -1000.0), "rows": [(3.2, "band_books")], "w": 0.55},
+]
+BB_ART = {
+    "bb_hikari": ("#1d4fa8", "HIKARIDO", "bebas", "#ffffff", None),
+    "bb_hikari2": ("#1f9a4c", "ヒカリパス", "zen", "#ffffff", "貼る、すっきり。"),
+    "bb_card": ("#ffffff", "NC", "anton", "#1d3c9a", "NOVA CARD"),
+    "bb_home": ("#f2c400", "HOMELY", "anton", "#164aa8", "家具と雑貨"),
+    "bb_nodo": ("#f06aa0", "のどにハッカ", "zen", "#ffffff", "ハッカ散 ダイレクト"),
+    "band_shabu": ("#f07a1a", "しゃぶしゃぶ 葉山", "zen", "#ffffff", None),
+    "band_cafe": ("#d7262b", "Cafeレストラン ガロ", "zen", "#ffffff", None),
+    "band_megane": ("#d42f2f", "メガネ・コンタクト", "zen", "#fff3a0", None),
+    "band_price": ("#ffde2a", "チケット プライス", "zen", "#c0141c", None),
+    "band_clinic": ("#ffffff", "渋谷駅前クリニック", "zen", "#1d4fa8", None),
+    "band_books": ("#ffffff", "大盛堂書店", "mincho", "#1a3c9c", None),
+}
+
+
+def lit_box(K, A, P, w, h, d, z0, key, frame_mat="x_jr_steel"):
+    """A box sign, its face toward +u in frame P, lit from inside; steel at the back and sides."""
+    box(K[frame_mat], P, -d, 0.0, -w / 2, w / 2, z0, z0 + h)
+    A.quad(K["x_atlas"], P(0.02, -w / 2, z0), P(0.02, w / 2, z0), P(0.02, w / 2, z0 + h), P(0.02, -w / 2, z0 + h), key)
+
+
+def billboards(K, A, D):
+    steel = K["x_jr_steel"]
+    for b in BILLBOARDS:
+        at, face = np.asarray(b["at"]), np.asarray(b["face"])
+        P = frame(at, face - at)
+        g = D.ground(*at)
+        z = g + b["roof_m"] + b.get("lift", 0.0)
+        hs = sum(h for _, _, h in b["boxes"]) + b.get("gap", 0.0) * (len(b["boxes"]) - 1)
+        w = max(w for _, w, _ in b["boxes"])
+        # the tower: legs, cross-bracing, a catwalk under the lowest box
+        for v in (-w * 0.35, w * 0.35):
+            for u in (-1.6, -0.5):
+                steel.tube([P(u, v, g + b["roof_m"]), P(u, v, z + hs)], 0.09, 6)
+            steel.tube([P(-1.6, v, g + b["roof_m"]), P(-0.5, v, z + hs * 0.5)], 0.05, 4)
+        box(steel, P, -1.8, 0.6, -w / 2, w / 2, z - 0.15, z - 0.05)
+        K["x_wire"].tube([P(0.6, -w / 2, z + 1.0), P(0.6, w / 2, z + 1.0)], 0.02, 4)   # the catwalk's rail
+        zz = z + hs
+        for key, bw, bh in b["boxes"]:
+            zz -= bh
+            lit_box(K, A, P, bw, bh, 0.6, zz, key)
+            zz -= b.get("gap", 0.0)
+
+
+def sign_bands(K, A, D):
+    import screens as sc_
+    for b in BANDS:
+        mid, n, L, z0, z1 = sc_.facade("shibuya", b["building"], b["toward"], near=b.get("near"))
+        P = frame(mid, n)
+        w = L * b["w"]
+        for z, key in b["rows"]:
+            if z0 + z + 1.2 > z1:
+                continue
+            lit_box(K, A, P, w, 1.15, 0.35, z0 + z, key)
+
+
+def draw_billboards(img, rects):
+    from PIL import ImageDraw
+    for key, (bg, word, face, fg, sub_) in BB_ART.items():
+        x, y, w, h = rects[key]
+        im = Image_new(w, h, ad.rgb(bg))
+        d = ImageDraw.Draw(im)
+        d.rectangle([3, 3, w - 4, h - 4], outline=tuple(max(0, c - 40) for c in ad.rgb(bg)), width=4)
+        if key == "bb_card":
+            d.ellipse([w * 0.18, h * 0.1, w * 0.82, h * 0.74], fill=(29, 60, 154))
+            ad.text(im, (w / 2, h * 0.42), word, face, int(h * 0.34), fill="#ffffff")
+            ad.text(im, (w / 2, h * 0.87), sub_, "bebas", int(h * 0.16), fill=fg)
+        elif sub_:
+            ad.text(im, (w / 2, h * 0.4), word, face, int(h * 0.44), fill=fg, max_w=w * 0.9)
+            ad.text(im, (w / 2, h * 0.8), sub_, "zen", int(h * 0.18), fill=fg, max_w=w * 0.9)
+        else:
+            ad.text(im, (w / 2, h * 0.52), word, face, int(h * 0.62), fill=fg, max_w=w * 0.92)
+        img.paste(im, (x, y))
+
+
+# ---------------------------------------------------------------- MAGNET by SHIBUYA109's front
+
+# MAGNET's corner on the scramble (1987, as 109-2; MAGNET since 2018): a glazed shopfront under a silver
+# fascia that slopes out over the pavement, its name on it in red serif letters (photographs, 2025). The
+# fascia's height and slope are estimates.
+MAGNET = {"name": "MAGNET SHIBUYA", "faces": [((387.8, -979.0), (394.9, -988.2)), ((394.9, -988.2), (405.0, -988.7)), ((390.6, -965.0), (387.8, -979.0))],
+          "z": (4.4, 6.9), "out": 1.3}
+
+
+def magnet_front(K, A, D):
+    panel = K["x_qf_panel"]
+    for k, (a, b) in enumerate(MAGNET["faces"]):
+        a, b = np.asarray(a, float), np.asarray(b, float)
+        L = float(np.linalg.norm(b - a))
+        f = (b - a) / L
+        n = np.array([-f[1], f[0]])                     # out, toward the street (the faces run clockwise round the corner)
+        if n @ (np.array([368.7, -1000.6]) - (a + b) / 2) < 0:
+            n = -n
+        g = min(D.ground(*a), D.ground(*b))
+        z0, z1 = g + MAGNET["z"][0], g + MAGNET["z"][1]
+        o = MAGNET["out"]
+        K["x_shop"].quad(np.array([*(a + n * 0.05), g - 0.1]), np.array([*(b + n * 0.05), g - 0.1]), np.array([*(b + n * 0.05), z0]), np.array([*(a + n * 0.05), z0]),
+                         [[0, 0], [L, 0], [L, z0 - g + 0.1], [0, z0 - g + 0.1]])
+        # the sloping fascia: from its foot out over the pavement up to the wall, its soffit lit
+        lo_a, lo_b = a + n * o, b + n * o
+        if n @ np.array([-f[1], f[0]]) > 0:
+            quad = (np.array([*lo_a, z0]), np.array([*lo_b, z0]), np.array([*b, z1]), np.array([*a, z1]))
+        else:
+            quad = (np.array([*lo_b, z0]), np.array([*lo_a, z0]), np.array([*a, z1]), np.array([*b, z1]))
+        panel.quad(*quad)
+        panel.quad(np.array([*a, z0 - 0.02]), np.array([*b, z0 - 0.02]), np.array([*lo_b, z0 - 0.02]), np.array([*lo_a, z0 - 0.02]))
+        K["x_light"].quad(np.array([*(a + n * (o - 0.3)), z0 - 0.03]), np.array([*(b + n * (o - 0.3)), z0 - 0.03]), np.array([*(b + n * (o - 0.45)), z0 - 0.03]),
+                          np.array([*(a + n * (o - 0.45)), z0 - 0.03]))
+        if k == 0:   # the name on the corner's fascia, read from the scramble
+            c0, c1 = (lo_a + a) / 2, (lo_b + b) / 2
+            t = c1 - c0
+            m0, m1 = c0 + t * 0.08 + n * 0.03, c0 + t * 0.92 + n * 0.03
+            p0, p1 = m0 + n * 0.4, m1 + n * 0.4
+            pts = (np.array([*p0, z0 + 0.55]), np.array([*p1, z0 + 0.55]), np.array([*(m1 - n * 0.4), z1 - 0.45]), np.array([*(m0 - n * 0.4), z1 - 0.45]))
+            nrm = np.cross(pts[1] - pts[0], pts[3] - pts[0])
+            if nrm @ np.array([*n, 0.5]) < 0:              # face it out, so it reads left to right from the street
+                pts = (pts[1], pts[0], pts[3], pts[2])
+            A.quad(K["x_atlas"], *pts, "magnet_name")
+
+
+def draw_magnet(img, rects):
+    x, y, w, h = rects["magnet_name"]
+    im = Image_new(w, h, (206, 210, 214))
+    ad.text(im, (w * 0.42, h * 0.5), "MAGNET", "mincho", int(h * 0.7), fill="#d01e2a")
+    ad.text(im, (w * 0.86, h * 0.56), "by SHIBUYA109", "mincho", int(h * 0.2), fill="#d01e2a")
+    img.paste(im, (x, y))
+
+
+# ---------------------------------------------------------------- the JR station's Hachiko side
+
+# OSM maps JR Shibuya station's whole outline as one 15 m building, which the generic styles drew as a
+# yellow stone palace. Its Hachiko side is a works site in 2024-26 (the station's rebuilding): pale
+# panel walls over the concourse, hoardings at the foot, and over them steel scaffolds that carry huge
+# adverts facing the square (photographs 2024-25). Drawn so on OSM's outline, its height kept, with the
+# koban's corner left open; the advert is invented.
+STATION = {"osm": "w904652357", "billboard": {"a": (407.9, -1022.5), "b": (411.4, -1052.0), "z": (8.0, 19.5), "lift": 1.5}}
+
+
+def station(K, A, D, koban_box):
+    sol = [s for s in D.solids if s["osm"] == STATION["osm"]]
+    if not sol:
+        return []
+    wall, hoard = K["x_station"], K["x_print"]
+    for q in sol:
+        O = Polygon(q["ring"]).buffer(0)
+        if koban_box is not None:
+            O = O.difference(koban_box.buffer(0.4, join_style=2))
+        if O.is_empty:
+            continue
+        O = max(getattr(O, "geoms", [O]), key=lambda p_: p_.area)
+        zt = q["ground"] + q["base"] + q["top"] if q["base"] < q["top"] else q["ground"] + q["top"]
+        zt = q["ground"] + q["top"]
+        for a, b, n, L in ring_edges(O):
+            g = min(D.ground(*a), D.ground(*b))
+            wall.quad(np.array([*a, g]), np.array([*b, g]), np.array([*b, zt]), np.array([*a, zt]), [[0, g], [L, g], [L, zt], [0, zt]])
+            if n[0] < -0.5 and L > 3.0 and q["top"] < 16:      # the side on Hachiko Square: a hoarding along its foot
+                off = a + n * 0.08, b + n * 0.08
+                u0, v0, u1, v1 = A.uv("st_hoarding")
+                reps = max(1, int(round(L / 9.0)))
+                for k in range(reps):
+                    p, r_ = off[0] + (off[1] - off[0]) * k / reps, off[0] + (off[1] - off[0]) * (k + 1) / reps
+                    hoard.quad(np.array([*p, g]), np.array([*r_, g]), np.array([*r_, g + 3.0]), np.array([*p, g + 3.0]), [[u0, v0], [u1, v0], [u1, v1], [u0, v1]])
+        ak.cap(K["x_qf_roof"], ak.WORLD, [tuple(p) for p in list(O.exterior.coords)[:-1]], zt)
+    # the scaffold over the square and its advert
+    bb = STATION["billboard"]
+    a, b = np.asarray(bb["a"]), np.asarray(bb["b"])
+    f = unit(b - a)
+    n = np.array([-f[1], f[0]])
+    if n[0] > 0:
+        n = -n
+    g = D.ground(*a)
+    z0, z1 = g + bb["z"][0], g + bb["z"][1]
+    lift = bb["lift"]
+    steel = K["x_jr_steel"]
+    L = float(np.linalg.norm(b - a))
+    for k in range(int(L // 3.0) + 1):
+        p = a + f * min(L, k * 3.0)
+        for d in (0.3, 1.5):
+            q = p + n * d
+            steel.tube([np.array([*q, g + 3.0]), np.array([*q, z1 + 0.6])], 0.05, 4)
+    for z in np.arange(g + 3.0, z1 + 0.7, 2.0):
+        for d in (0.3, 1.5):
+            steel.tube([np.array([*(a + n * d), z]), np.array([*(b + n * d), z])], 0.04, 4)
+    q0, q1 = a + n * (lift + 0.05), b + n * (lift + 0.05)
+    pts = [np.array([*q0, z0]), np.array([*q1, z0]), np.array([*q1, z1]), np.array([*q0, z1])]
+    if np.cross(pts[1] - pts[0], pts[3] - pts[0]) @ np.array([*n, 0]) < 0:
+        pts = [pts[1], pts[0], pts[3], pts[2]]
+    A.quad(K["x_print"], *pts, "st_billboard")
+    for k in range(6):      # its lamps, on arms over the top
+        p = a + f * L * (k + 0.5) / 6 + n * (lift + 1.4)
+        box(K["x_light"], frame(p, n), -0.25, 0.25, -0.3, 0.3, z1 + 0.4, z1 + 0.7)
+    return [q["si"] for q in sol]
+
+
+def draw_station(img, rects):
+    from PIL import ImageDraw
+    x, y, w, h = rects["st_billboard"]          # an invented game, in the way the station's scaffold adverts run
+    im = Image_new(w, h, (90, 170, 235))
+    ad.gradient(im, "#3a8fe0", "#bfe6ff", angle=90.0)
+    d = ImageDraw.Draw(im)
+    d.ellipse([w * 0.52, h * 0.12, w * 0.92, h * 1.15], fill=(255, 150, 40))
+    d.ellipse([w * 0.62, h * 0.25, w * 0.72, h * 0.4], fill=(255, 255, 255))
+    ad.text(im, (w * 0.28, h * 0.36), "SKYTAIL", "anton", int(h * 0.26), fill="#ffffff")
+    ad.text(im, (w * 0.28, h * 0.62), "LEGENDS", "bebas", int(h * 0.16), fill="#0d2b55")
+    ad.text(im, (w * 0.28, h * 0.84), "新作 好評発売中", "zen", int(h * 0.1), fill="#0d2b55")
+    img.paste(im, (x, y))
+    x, y, w, h = rects["st_hoarding"]
+    im = Image_new(w, h, (238, 240, 242))
+    d = ImageDraw.Draw(im)
+    d.rectangle([0, h * 0.82, w, h], fill=(22, 90, 60))
+    ad.text(im, (w * 0.5, h * 0.35), "渋谷駅 改良工事", "zen", int(h * 0.2), fill="#1a3c2a")
+    ad.text(im, (w * 0.5, h * 0.6), "ご不便をおかけしております  Station works in progress", "zen", int(h * 0.08), fill="#4a5560", max_w=w * 0.9)
+    img.paste(im, (x, y))
+
+
+# ---------------------------------------------------------------- the koban
+
+# 渋谷警察署渋谷駅前交番, the police box on Hachiko Square's north edge (OSM's node), facing the scramble.
+# (The owl-eyed koban of 1985 is Udagawa's, at Center Gai's far end.) Its form here is a Tokyo koban's: two
+# storeys of pale tile, a glazed front under a canopy, KOBAN and its name over the door and the red lamp
+# that burns all night; the size is an estimate from photographs (6.4 x 4.6 m, 6.6 m high).
+KOBAN = {"name": "渋谷警察署渋谷駅前交番", "w": 6.4, "d": 4.6, "h": 6.6}
+
+
+def koban(K, A, D, node):
+    n = next((n for n in D.nodes if n["tags"].get("amenity") == "police" and n["tags"].get("name") == KOBAN["name"]), None)
+    if n is None:
+        return None
+    at = n["xy"]
+    f = unit(np.asarray(node) - at)
+    P = frame(at, f)
+    g = D.ground(*at)
+    hw, hd, h = KOBAN["w"] / 2, KOBAN["d"] / 2, KOBAN["h"]
+    tile, glass, dark = K["x_koban"], K["x_qf_glass"], K["x_frame"]
+    box(tile, P, -hd, hd - 0.6, -hw, hw, g, g + h, uvm=True)                     # the body, its front set back under the canopy
+    box(dark, P, hd - 0.6, hd - 0.55, -hw + 0.4, hw - 0.4, g, g + 2.9)            # the glazed front's frame
+    box(K["x_shop"], P, hd - 0.56, hd - 0.5, -hw + 0.5, hw - 0.5, g + 0.05, g + 2.8, uvm=True)
+    box(tile, P, hd - 0.6, hd + 0.5, -hw - 0.2, hw + 0.2, g + 3.0, g + 3.35)    # the canopy
+    K["x_light"].quad(P(hd + 0.2, hw - 0.3, g + 2.99), P(hd + 0.2, -hw + 0.3, g + 2.99), P(hd - 0.2, -hw + 0.3, g + 2.99), P(hd - 0.2, hw - 0.3, g + 2.99))
+    A.quad(K["x_atlas"], P(hd + 0.51, -2.4, g + 3.4), P(hd + 0.51, 2.4, g + 3.4), P(hd + 0.51, 2.4, g + 4.35), P(hd + 0.51, -2.4, g + 4.35), "koban_sign")
+    K["x_red_lamp"].lathe([(g + 4.55, 0.0), (g + 4.6, 0.2), (g + 4.85, 0.24), (g + 5.1, 0.2), (g + 5.15, 0.0)], (float(P(hd - 0.3, 0, 0)[0]), float(P(hd - 0.3, 0, 0)[1])), 14)
+    for v in (-1.6, 1.6):                                                        # windows on the upper floor
+        box(glass, P, hd - 0.62, hd - 0.58, v - 1.0, v + 1.0, g + 4.4, g + 5.8)
+    ak.cap(K["x_qf_roof"], ak.WORLD, [tuple(P(u, v, 0)[:2]) for u, v in ((-hd, -hw), (hd - 0.6, -hw), (hd - 0.6, hw), (-hd, hw))], g + h + 0.01)
+    return Polygon([tuple(P(u, v, 0)[:2]) for u, v in ((-hd, -hw), (hd + 0.5, -hw), (hd + 0.5, hw), (-hd, hw))])
+
+
+def draw_koban(img, rects):
+    x, y, w, h = rects["koban_sign"]
+    im = Image_new(w, h, (246, 246, 242))
+    ad.text(im, (w / 2, h * 0.36), "KOBAN", "bebas", int(h * 0.5), fill="#1a2a6a")
+    ad.text(im, (w / 2, h * 0.8), "渋谷駅前交番", "zen", int(h * 0.26), fill="#1a2a6a")
+    img.paste(im, (x, y))
+
+
 # ---------------------------------------------------------------- the module's hooks (city.py)
 
 class Build:
@@ -963,7 +1254,10 @@ class Build:
         self.node = np.asarray(node, float)
         self.entrances = entrance_sites(self.D, self.node)
         items = [(f"exit_{e['ref']}", 512, 96) for e in self.entrances] + [("exit_side", 1024, 64)]
-        items += [("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
+        for b in BILLBOARDS:
+            items += [(k, int(min(512, 96 * w / h)) if w >= h else 128, 96 if w >= h else int(128 * h / w)) for k, w, h in b["boxes"]]
+        items += [(k, 768, 76) for b in BANDS for _, k in b["rows"]]
+        items += [("st_billboard", 1024, 480), ("st_hoarding", 512, 160), ("magnet_name", 768, 112), ("koban_sign", 384, 76), ("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
         items += [("qf_crown", 1024, 320), ("qf_name", 384, 52), ("qf_starbucks", 768, 92), ("qf_tsutaya", 512, 84)]
         self.A = Atlas(list(dict.fromkeys(items)), width=2048)
 
@@ -974,6 +1268,11 @@ class Build:
         jr_lines(K, self.A, self.D)
         hidden += qfront(K, self.A, self.D)
         hidden += shibuya109(K, self.A, self.D)
+        billboards(K, self.A, self.D)
+        kb = koban(K, self.A, self.D, self.node)
+        hidden += station(K, self.A, self.D, kb)
+        magnet_front(K, self.A, self.D)
+        sign_bands(K, self.A, self.D)
         if "center_gai" in self.lm:
             center_gai_gate(K, self.A, self.D, self.lm["center_gai"])
         for e in self.entrances:
@@ -990,5 +1289,9 @@ class Build:
         draw_qfront(img, self.A.rects)
         draw_109(img, self.A.rects)
         draw_gate(img, self.A.rects)
+        draw_billboards(img, self.A.rects)
+        draw_koban(img, self.A.rects)
+        draw_magnet(img, self.A.rects)
+        draw_station(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=90)
         return ATLAS_FILE

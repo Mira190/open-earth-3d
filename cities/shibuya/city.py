@@ -1390,9 +1390,8 @@ CROSSING_SIGNS = [
     # 7.6 x 14.6 m, both lit from outside
     {"building": "渋谷駅前ビル", "toward": [318.0, -985.0], "kind": "print", "w": 4.0, "h": 25.0, "z": 3.5, "along": 9.0, "lamps": 3, "art": "ekimae_board"},
     {"building": "w136690966", "toward": [312.0, -1010.0], "kind": "print", "w": 7.6, "h": 14.6, "z": 5.0, "along": 7.5, "lamps": 4, "art": "nishimura"},
-    # MAGNET by SHIBUYA109: its name over the corner (the words, not the M of its logo), the 18.25 x 3.71 m
+    # MAGNET by SHIBUYA109 (its name on the corner's fascia: scramble.py): the 18.25 x 3.71 m
     # vertical banner and a 7.1 x 11.2 m wall ad on the Jinnan side, lit from outside
-    {"building": "MAGNET SHIBUYA", "edge": [[393.0, -983.0], [400.0, -986.0]], "kind": "box", "w": 7.0, "h": 2.0, "z": -1.2, "depth": 0.5, "art": "magnet"},
     {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 3.71, "h": 18.25, "z": 6.0, "along": 21.0, "lamps": 2, "art": "magnet_banner"},
     {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 7.1, "h": 11.2, "z": 11.0, "along": 12.0, "lamps": 4, "art": "magnet_wall"},
     # SHIBU HACHI BOX, the ward's tourist information on Hachiko Square (since October 2020), facing the statue
@@ -1415,7 +1414,6 @@ CROSSING_SIGN_ART = {
     "qwall_c": ("clip", "fashion", 0), "qwall_j": ("clip", "beauty", 0), "magnet_wall": ("clip", "shoe", 0),
     "ekimae_board": (["#14052b", "#5b1080"], [("NOVA", "monoton", "#ffd6ff", 0.25), ("夜光", "dela", "#ffffff", 0.45), ("11.20", "bebas", "#ffe36e", 0.3)], None),
     "nishimura": (["#062b3a", "#0c5d6e"], [("RUN", "anton", "#ffffff", 0.3), ("THE CITY", "anton", "#2ee6c8", 0.3), ("AERO 9", "bebas", "#ffffff", 0.4)], None),
-    "magnet": ("#121214", [("MAGNET by SHIBUYA109", "bebas", "#ffffff", 1.0)], "#e8343c"),
     "magnet_banner": (["#ff3fa4", "#7a2bff"], [("STELLA", "reggae", "#ffffff", 0.5), ("LIVE", "anton", "#fff3a0", 0.5)], None),
     "hachibox": ("#f2f0ea", [("SHIBU HACHI BOX  観光案内所  i", "zen", "#1d3c78", 1.0)], None),
     "hoarding": ("#f4f3ef", [("渋谷スクランブルスクエア 第Ⅱ期 工事中", "zen", "#16367a", 0.42), ("ご迷惑をおかけしております  Under construction", "zen", "#55606e", 0.3),
