@@ -184,7 +184,8 @@ def game_extras(scene):
         spots.append(dk.spot("ring", "GLOBAL RING", at, r["z"], "Look up at the ring",
                              ["Ikebukuro West Gate Park: the ring went up in 2019, over an open-air theatre. Orchestras play here on summer nights.",
                               "Before that it was a fountain and benches, and the kids from a famous TV drama hung out here. People still come looking for them."], 6.0))
-        close.append(dk.close_to("GLOBAL RING, under the ring", np.asarray(r["c"]) + np.array([RING_D / 2 - 2.0, 0.0]), r["z"], np.asarray(r["c"]) + np.array([RING_D / 2 + 6.0, 0.0]), 2.0))
+        R = r.get("r_out", RING_D / 2)   # from the plaza on the west side, under the ring's edge
+        close.append(dk.close_to("GLOBAL RING, under the ring", np.asarray(r["c"]) + np.array([-(R - 2.0), 0.0]), r["z"], np.asarray(r["c"]) + np.array([-(R + 8.0), 0.0]), 2.0))
     st = (lm.get("streets") or {}).get("sites", [])
     if st:
         x, y, nx, ny, g, top, L = st[len(st) // 3]

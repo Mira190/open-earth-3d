@@ -243,10 +243,10 @@
     "helipads": [
       {
         "id": "ropp-pad",
-        "name": "Hinokicho Park pad (game)",
+        "name": "Roppongi 6-chome, the open lot pad (game)",
         "at": [
-          147.0,
-          483.0
+          60.0,
+          -160.0
         ]
       }
     ],

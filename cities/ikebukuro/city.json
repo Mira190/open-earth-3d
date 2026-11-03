@@ -216,12 +216,12 @@
     ],
     "start": {
       "at": [
-        -205.0,
-        30.0
+        -150.0,
+        -35.0
       ],
       "facing": [
-        -100.0,
-        10.0
+        -60.0,
+        -40.0
       ],
       "time": "live"
     },
@@ -232,10 +232,10 @@
     "helipads": [
       {
         "id": "ike-pad",
-        "name": "Higashi-Ikebukuro Central Park pad (game)",
+        "name": "Minami-Ikebukuro Park pad (game)",
         "at": [
-          336.0,
-          14.0
+          -59.0,
+          -270.0
         ]
       }
     ],
@@ -316,8 +316,8 @@
         "id": "t-east",
         "name": "Ikebukuro Station, East exit 東口",
         "at": [
-          -205.0,
-          30.0
+          -150.0,
+          -35.0
         ]
       },
       {
@@ -389,8 +389,8 @@
         "name": "Hiro 宏",
         "role": "Ramen chef ラーメン屋",
         "at": [
-          -180.0,
-          22.0
+          -140.0,
+          -25.0
         ],
         "look": {
           "character": "R_Male_Adult_06_m024_brown",

@@ -230,10 +230,10 @@
     "helipads": [
       {
         "id": "jinbo-pad",
-        "name": "Kanda Nishikicho pad (game)",
+        "name": "Kanda, the school ground pad (game)",
         "at": [
-          120.0,
-          -260.0
+          -50.0,
+          -282.0
         ]
       }
     ],
