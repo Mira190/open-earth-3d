@@ -24,7 +24,7 @@ const fps = +fpsArg;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/index.html#globe`);
   await p.waitForFunction('window.__title && __title.state === "gate"', null, { timeout: 300000 });
   const T = await p.evaluate(() => __title.timing);
-  const dest = destArg === '' ? await p.evaluate(() => __title.dests.findIndex(d => d.id === 'tokyo')) : +destArg;
+  const dest = destArg === '' ? await p.evaluate(() => __title.dests.findIndex(d => d.id === 'tokyo' || (d.sites || []).some(c => c.id === 'tokyo'))) : +destArg;
   // the shot list, in seconds after Enter
   const menuAt = T.PULL_A + T.PULL_D, selAt = menuAt + 1.2, diveAt = selAt + 2.6, end = diveAt + 2.2;
   // the score, offline: the same calls the page makes, plus a tick on the choice and the whoosh of the dive
