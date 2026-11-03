@@ -289,10 +289,10 @@ The views switch in place, without reloading the page.
     shopfronts, glass with a room behind it, lights by the local hour, and
     the height-source colours ([BUILDINGS.md](BUILDINGS.md));
   - landmarks with their surface patterns, piers and water;
-  - trees (`trees.js`): the six species of `blender/build_trees.py`, in the
-    city's mix, instanced per species and per distance (full within 130 m,
+  - trees (`trees.js`): the seven species of `blender/build_trees.py`, in the
+    city's mix (and an area's own), instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
-    cut-out leaf shadows and jacarandas that flower in season; the trees
+    cut-out leaf shadows, jacarandas that flower and maples that redden in season; the trees
     planted from a wood's canopy after them, sized by their measured height,
     without palms, stepping down sooner (full within 72 m, sparse to 200 m, half of them as hulls beyond), thinning out to 900 m, further from higher up (600 m and a
     third of them on a small device) where the photo's canopy takes over;

@@ -51,8 +51,12 @@ taken before the split are still in `docs/images/shibuya/`.
   Vision's bend and its cat, and Unica Vision (section 4); the Docomo tower's clock (15 m across,
   150 m up) and mast to 272 m; shop signs in Kabukicho, Golden Gai and 2-chome; utility poles and their
   wires in the lanes round the shrine.
-- **Game.** *Tokyo Pilgrimage: Shinjuku*: a welcome at the east exit, then three walks in any order.
-  Section 5.
+- **Shinkai's Shinjuku.** Shinjuku Gyoen's shelter by the pond from *The Garden of Words*, the wisteria
+  trellis, the Kyu-Goryotei and the Japanese garden's ponds and maples; the Shinanomachi Station
+  footbridge and Yotsuya's moat from *Your Name*; where Yoyogi Kaikan stood (*Weathering with You*);
+  Sangubashi Station (*5 Centimeters per Second*). Section 5.
+- **Game.** *Tokyo Pilgrimage: Shinjuku*: a welcome at the east exit, then four walks in any order.
+  Section 6.
 
 ## 2. Sources
 
@@ -149,10 +153,104 @@ in front of its western neighbour's wall, and the 新宿オカダヤ building to
 end of the bend from some of the plaza); how long each leg of the bend is; how the Unica screens are spaced round their front and
 how high up it they are (estimated from photographs).
 
-## 5. Tokyo Pilgrimage: Shinjuku
+## 5. Shinkai's Shinjuku: the pilgrimage sites
+
+Makoto Shinkai's films made central Shinjuku one of the most visited places for film pilgrimages
+(聖地巡礼). The map has the places of three of them that are inside its bbox, built in
+`pipeline/shinkai.py` (chained after the shared Shibuya hooks in `cities/shinjuku/city.py`). Places
+only: no art, frames, characters or logos from the films, and the guide's words are our own.
+
+| The shelter by the pond in late November | Inside the shelter, looking out over the pond |
+|---|---|
+| ![](../images/shinjuku/gyoen-shelter-autumn.jpg) | ![](../images/shinjuku/gyoen-shelter-inside.jpg) |
+| **The Kyu-Goryotei from the pond path, maples turning** | **The Kyu-Goryotei after dark** |
+| ![](../images/shinjuku/gyoen-goryotei-autumn.jpg) | ![](../images/shinjuku/gyoen-goryotei-night.jpg) |
+| **On the Shinanomachi footbridge at dusk: the Docomo tower up the street** | **The footbridge and its three flights** |
+| ![](../images/shinjuku/shinanomachi-footbridge-dusk.jpg) | ![](../images/shinjuku/shinanomachi-footbridge.jpg) |
+
+### 5.1 Shinjuku Gyoen: The Garden of Words (言の葉の庭, 2013)
+
+- **Where the shelter is.** Pilgrimage guides agree that the film's azumaya (東屋) is the rest shelter by
+  the pond of the Japanese garden, near the Kyu-Goryotei, reached from the Sendagaya gate, on the pond's
+  shore with the water in front and trees behind (tianlang2's survey; libert; FotoReiser). The garden's
+  own map (Ministry of the Environment, 見どころ map) marks a shelter on the south shore of the second
+  pool west of the Kyu-Goryotei. OpenStreetMap maps that pond (relation 5362865) but not the shelter, so
+  the model stands it on the mapped shore nearest the map's mark (139.7081 E, 35.6848 N), 3.4 m back from
+  the water, its open side to the pond.
+- **The shelter.** A square timber shelter: four posts on base stones 3.2 m apart, eave and tie beams, a
+  pyramidal (hogyo) roof 0.85 m out over the posts on exposed rafters with a bronze finial, benches round
+  three sides with slatted backs, and the pond side open; shore stones along the water in front. The form
+  is from photographs; the dimensions are a park shelter's, not a survey. The real shelter has had an
+  ashtray stand in the middle (removed from the model). It is walkable: its frame is not solid in the
+  game's 2 m collision grid.
+- **The wisteria trellis (藤棚)** on the pond path between the shelter and the Kyu-Goryotei, as the guides
+  place it: 7.2 × 4.8 m of log posts and a pole grid at 2.4 m, three old vines and their leaves (in leaf,
+  not in flower: the wisteria blooms in late April and early May).
+- **The Kyu-Goryotei (旧御涼亭, the "Taiwan Pavilion").** Given by Japanese residents of Taiwan for the
+  Crown Prince's wedding and finished in 1927 (design Moriyama Matsunosuke): a single-storey timber
+  pavilion in the Min-nan style of southern Fujian, clay-tiled (honkawara), 165 m², restored in 2002, a
+  Tokyo selected historic building (Kanto Regional Development Bureau; Tokyo's register). The model takes
+  OpenStreetMap's 276 m² stepped footprint (which includes the veranda), splits it into its three halls,
+  each under a hip-and-gable roof of grey tiles with the ridge sweeping up into swallowtails, the main
+  ridge at 8 m (PLATEAU's 10.3 m top is capped: it likely includes the trees over it), red columns, lattice
+  windows (their paper lit softly after dark) and an open veranda with a low railing on the pond side.
+  The proportions are approximate.
+- **The ponds.** The viewer's water lies at sea level, so a garden pond 30 m up is drawn here: each pond
+  inside the garden (Overture's land use 新宿御苑, 11 ponds) is a sheet of water at its low shore (the
+  15th percentile of the ground round it), the grid inside it lowered 0.6 m under that and the bank to
+  within a metre or so above (`adjust_terrain`); the laser survey's ground over a pond is the interpolated
+  water surface, which the 10 m grid smoothed into mounds. The canopy model's trees are kept out of the
+  ponds and off the models (`woods_clear`).
+- **The maples.** The shared trees now include a Japanese maple (`blender/build_trees.py`), red from mid
+  November to mid December, each tree its own shade from crimson to gold. `trees.areas` plants them round
+  the Japanese garden (22% of its trees) and on Momiji-yama by the lower pond (55%), where the garden's map
+  names them. Species are not surveyed there either; the shares are a guess.
+- **Rain.** The film is set in the June rain. The game has no weather yet, so the guide says when the rainy
+  season is instead; rain to go with it is a follow-up (an issue on GitHub).
+
+### 5.2 Your Name (君の名は。, 2016)
+
+- **Suga Shrine's 男坂** is section 3. The travel point `t-stairs` stands you at the foot of the stairs
+  looking up them, the view the poster takes; the guides' other view is from the top looking down.
+- **The Shinanomachi Station footbridge (信濃町駅前歩道橋).** On OpenStreetMap's line (way 381567526,
+  level 1) and its three flights of steps (ways 97195468, 381567525, 97195476): a steel deck 2.4 m wide,
+  5.6 m over the highest ground under it (a Tokyo footbridge's 4.7 m clearance plus the girder), railings
+  of thin bars open where the flights leave, piers at the nodes, lamps on the rails; flights of 0.3 m
+  treads and risers of up to 0.16 m with a landing half way, stringers and handrails. All of it is walkable
+  (`game_surfaces`), and `tools/game_check.js` climbs each flight. Looking north-west from the deck, up
+  Gaien-higashi-dori, the Docomo tower's clock stands over the street, the view pilgrims come for.
+- **Yotsuya.** Yotsuya Station sits in the old outer moat of Edo Castle (外濠), the Chuo line along its
+  bottom and Sophia University's sports ground in the drained moat beside it (上智大学真田堀グラウンド). The
+  film's commuter town is this one. They are the map's own: Overture's and PLATEAU's buildings, OpenStreetMap's
+  station and land use; the walk sends you along the bank and over the tracks.
+- **The south side of Shinjuku Station** (Southern Terrace, Busta Shinjuku) is in the map as Overture and
+  PLATEAU have it.
+
+### 5.3 Weathering with You (天気の子, 2019)
+
+- **Yoyogi Kaikan (代々木会館)**, Yoyogi 1-35-1 by Yoyogi Station's west exit, was the old block whose roof
+  the film gave a shrine. It was pulled down from August 2019 (Business Insider Japan; honichi) and an
+  office building stands there now, so it is not modelled: the guide sends you to stand where it was
+  (Overture's address point for 代々木一丁目 35).
+- **Kabukicho's streets and Shinjuku's rooftops** are the map's own (sections 1 and 4).
+- **5 Centimeters per Second (秒速5センチメートル, 2007).** Sangubashi Station on the Odakyu line, at the map's west
+  side (OpenStreetMap's station node): the walk ends there, and it puts up its station sign.
+
+### 5.4 In the game
+
+A fourth walk, **Shinkai's Shinjuku**: Kaede, a garden volunteer, meets you by the trellis and sends you to
+sit in the shelter, under the trellis and to the pavilion's side of the pond, then to Kenji, a photographer
+on the Shinanomachi footbridge, who has you look up the street and sends you on to Haruka, a Sophia student
+at Yotsuya Station. She walks you along the moat's bank and over the tracks, and sends you west to where
+Yoyogi Kaikan stood and to Sangubashi Station. Stamps 東屋, 歩道橋 and 四ツ谷; travel points `t-gyoen`,
+`t-shinano` and `t-yotsuya` (`#play-shinjuku@t-gyoen`); station signs for Yotsuya and Sangubashi.
+`tools/game_check.js` travels to each new point, climbs each flight of the footbridge and checks that every
+step of the walk can be reached.
+
+## 6. Tokyo Pilgrimage: Shinjuku
 
 Nao, a pilgrimage guide (Aoi's colleague in Shibuya), meets you at the east exit, under the corner
-screen; then three lines run side by side, and a report back waits for all of them:
+screen; then four lines run side by side, and a report back waits for all of them:
 
 | Line | Who | What you do |
 |---|---|---|
@@ -160,14 +258,16 @@ screen; then three lines run side by side, and a report back waits for all of th
 | Shinjuku | Mika, a bartender in 2-chome; Officer Ono at the koban | See Kabukicho's arch after dark |
 | Your Name | Xiaoyu, a pilgrim from Shanghai; Mr Sato, a Yotsuya resident | Climb the 男坂, read an ema, stand at the foot of the stairs (a choice sets the clock to dusk) |
 | Aoyama | Rin, a high-school student | Walk the ginkgo avenue at Jingu Gaien |
+| Shinkai's Shinjuku | Kaede, a garden volunteer; Kenji, a photographer; Haruka, a Sophia student | Sit in the shelter by the pond, walk under the trellis to the Kyu-Goryotei, stand on the Shinanomachi footbridge, walk Yotsuya's moat, find where Yoyogi Kaikan stood, and Sangubashi Station (section 5) |
 
-Eight areas put up their station signs as you walk in: Shinjuku, Shinjuku-sanchome, Tochomae,
-Shinjuku-gyoemmae, Yotsuya-sanchome, Yoyogi, Shinanomachi and Aoyama-itchome. The helipad on Kabukicho's
-Cine City Plaza, by the Toho building, is a game device; there is no heliport there. Travel points: the east exit, Tochomae, Suga
-Shrine and the foot of the 男坂, Kabukicho and Aoyama-itchome; `#play-shinjuku@t-suga` starts at the
-shrine. The people are original characters. None stands for a real shop's staff.
+Ten areas put up their station signs as you walk in: Shinjuku, Shinjuku-sanchome, Tochomae,
+Shinjuku-gyoemmae, Yotsuya-sanchome, Yoyogi, Shinanomachi, Aoyama-itchome, Yotsuya and Sangubashi. The
+helipad on Kabukicho's Cine City Plaza, by the Toho building, is a game device; there is no heliport there.
+Travel points: the east exit, Tochomae, Suga Shrine and the foot of the 男坂, Kabukicho, Aoyama-itchome,
+the shelter in Shinjuku Gyoen, the Shinanomachi footbridge and Yotsuya Station; `#play-shinjuku@t-suga`
+starts at the shrine. The people are original characters. None stands for a real shop's staff.
 
-## 6. Sun
+## 7. Sun
 
 Tokyo protects no park's sunlight (see [Tokyo](tokyo.md#5-sun-and-the-rules)). The places carry this
 project's lunch-hour window, noon to 13:00, as a thought experiment. `analysis/sun_access.js` gives the
@@ -181,15 +281,18 @@ mean share of each place in direct sun over the window, December and June:
 Suga Park, a small park in the shrine's neighbourhood, is the case a rule would be about: two buildings
 of 9 m put three quarters of it in shade at a winter lunchtime, when the sun is 31° up.
 
-## 7. Limits
+## 8. Limits
 
 - The aerial photos are not true orthophotos, and the towers lean in them.
 - The shrine's buildings and the district pieces are built from published figures and photographs, not
   surveys. The 男坂 is the closest: its step count, width, length and handrails are published.
 - 10.9% of the footprint area has an estimated height. Look for the green tint under **Height sources**.
 - Shop signs and shop fronts are indicative; the screens' programmes are invented.
+- The Garden of Words shelter, the trellis and the Kyu-Goryotei are built from photographs and published
+  figures, not surveys; the shelter's place is the garden map's mark on a mapped shore. The ponds' levels
+  are estimated from the shore's ground.
 
-## 8. Reproducing it
+## 9. Reproducing it
 
 ```bash
 env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
@@ -197,7 +300,7 @@ env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
 python pipeline/fetch_tiles.py --city shinjuku
 python pipeline/fetch_plateau.py --city shinjuku
 python pipeline/build_scene.py --city shinjuku
-python pipeline/landmarks.py --city shinjuku      # the landmark code is cities/shibuya/city.py
+python pipeline/landmarks.py --city shinjuku      # the landmark code is cities/shibuya/city.py and pipeline/shinkai.py
 python pipeline/game_data.py --city shinjuku
 python pipeline/night_lights.py --city shinjuku   # after game_data.py: it reads game.json
 python analysis/data_quality.py --city shinjuku
@@ -207,6 +310,21 @@ node analysis/uncertainty.js --city shinjuku 40
 ```
 
 ## Sources
+
+- Shinjuku Gyoen and The Garden of Words: the garden's map
+  ([Ministry of the Environment](https://policies.env.go.jp/national-garden/shinjukugyoen/guide/map/documents/midokoro_main.pdf)),
+  the Kyu-Goryotei ([Kanto Regional Development Bureau](https://www.ktr.mlit.go.jp/eizen/shihon/eizen_shihon00000079.html),
+  [Tokyo's selected historic buildings](https://www.toshiseibi.metro.tokyo.lg.jp/kenchiku/keikan/rekiken/re_list06.htm)),
+  pilgrimage guides ([tianlang2](http://tianlang2.s206.xrea.com/kotonoha.htm),
+  [libert](https://libert.co.jp/pilgrimage-guild/kotonohanoniwa-anime-pilgrimage/),
+  [FotoReiser](https://alan-d-haller.info/travel_jp/thegardenofwords/),
+  [anime-pilgrimage](https://anime-pilgrimage.com/the-garden-of-words/),
+  [想景の地](https://fujisyuu01.hatenablog.jp/entry/2024/09/01/184854),
+  [astral-tanbou](https://astral-tanbou.com/entry/2015/02/15/235846)).
+- The Shinanomachi footbridge: [LIVE JAPAN](https://livejapan.com/ja/article-a0000790),
+  [MATCHA](https://matcha-jp.com/jp/3773); its lines are OpenStreetMap's (ODbL, via Overture).
+- Yoyogi Kaikan: [Business Insider Japan](https://www.businessinsider.jp/article/195692/),
+  [honichi](https://honichi.com/news/2019/09/03/weatheringwithyou), [ciatr](https://ciatr.jp/topics/323253).
 
 - Suga Shrine: [the shrine](https://sugajinjya.or.jp/), its
   [amulets and ema](https://sugajinjya.or.jp/amulet/),

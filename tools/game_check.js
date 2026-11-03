@@ -87,7 +87,7 @@ const { pinClock } = require('./pin_clock');
     const toasts = seen;
     return { settled: t, tour: O.active(), toast: toasts.join(' | ') };
   });
-  check(second.settled < 1.2 && !second.tour && /gold line/.test(second.toast),
+  check(second.settled < 1.2 && !second.tour && /gold line|minimap shows the way/.test(second.toast),
     `on a later map the intro is skipped: a key settles the arrival (${second.settled.toFixed(1)} s), no tour, the guide's welcome ("${second.toast.slice(0, 90)}")`);
 
   // walking: forward for four seconds
@@ -240,6 +240,40 @@ const { pinClock } = require('./pin_clock');
       `walks ${w.name}: from ${w.from} m to ${w.z.toFixed(2)} m (expected ${w.to} m), ${w.d.toFixed(1)} m from the end, never below ${w.low.toFixed(2)} or above ${w.high.toFixed(2)} m`);
   }
 
+  // the flights of steps a city names for checking (game.json surfaces with check: true, a footbridge's): from
+  // a metre past the foot, climb on foot to the top, and arrive within 0.35 m of the top's height, never
+  // having dropped below the foot or risen above the top
+  const climbs = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, out = [];
+    const S = (g.G.surfaces || []).filter(s => s.check && s.type === 'strip');
+    if (!S.length) return out;
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    for (const s of S) {
+      const [ox, oy] = s.origin, [ax, ay] = s.axis, P = s.profile, uf = P[P.length - 1][0], ut = P[0][0];
+      const zf = P[P.length - 1][1], zt = P[0][1];
+      const x0 = ox + ax * (uf + 1.0), y0 = oy + ay * (uf + 1.0), tx = ox + ax * (ut + 0.6), ty = oy + ay * (ut + 0.6);
+      const f = g.nav.floorAt(x0, y0, zf + 0.5);
+      const r = { name: s.name, from: zf, to: zt };
+      if (!f) { out.push(r); continue; }
+      Object.assign(pl, { x: x0, y: y0, z: f.z, ground: true, vz: 0, speed: 0 });
+      let low = f.z, high = f.z;
+      for (let i = 0; i < 400 && Math.hypot(tx - pl.x, ty - pl.y) > 0.4; i++) {
+        pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y);
+        g.advance(0.05, ['KeyW']);
+        low = Math.min(low, pl.z); high = Math.max(high, pl.z);
+      }
+      Object.assign(r, { z: pl.z, d: Math.hypot(tx - pl.x, ty - pl.y), low, high, start: f.z, mode: pl.mode });
+      out.push(r);
+    }
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return out;
+  });
+  for (const c of climbs) {
+    if (c.z == null) { check(false, `climbs ${c.name}: no floor at its foot`); continue; }
+    check(c.mode === 'foot' && c.d < 1.0 && Math.abs(c.z - c.to) < 0.35 && c.low > Math.min(c.start, c.from) - 0.3 && c.high < c.to + 0.35,
+      `climbs ${c.name}: from ${c.start.toFixed(2)} m to ${c.z.toFixed(2)} m (the top is ${c.to.toFixed(2)} m), ${c.d.toFixed(1)} m from it`);
+  }
+
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {
@@ -264,6 +298,40 @@ const { pinClock } = require('./pin_clock');
     check(hop.top > hop.run * 0.8, `runs at ${hop.top.toFixed(1)} m/s (the run is ${hop.run} m/s)`);
   }
   await shot('travel');
+
+  // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
+  // your feet, on ground you can walk, near it
+  const hops = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const t of (g.G.travel || []).filter(t => t.check)) {
+      const ok = g.travelTo({ kind: 'place', id: t.id, name: t.name, at: t.at });
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const pl = g.player;
+      out.push({ name: t.name, ok, mode: pl.mode, d: Math.hypot(t.at[0] - pl.x, t.at[1] - pl.y), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    return out;
+  });
+  // the quests a city names for checking (quests[].check: a new walk): each place a step sends you to has
+  // ground you can stand on within its radius, and each NPC a step names is there
+  const goals = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const q of (g.G.quests || []).filter(q => q.check)) for (const s of q.steps || []) {
+      if (s.type === 'visit' && s.at) {
+        let n = 0;
+        for (let a = 0; a < 24; a++) for (const d of [0, 0.4, 0.7, 0.95]) {
+          const x = s.at[0] + Math.cos(a * Math.PI / 12) * d * s.radius, y = s.at[1] + Math.sin(a * Math.PI / 12) * d * s.radius, gz = g.nav.terrain(x, y);
+          const w = g.nav.walk(x, y, s.at.length > 2 ? s.at[2] : gz);
+          if (w.ok) n++;
+        }
+        out.push({ quest: q.title, text: s.text, ok: n > 0, why: `${n} of 97 points round it walkable` });
+      } else if (s.type === 'talk') out.push({ quest: q.title, text: s.text, ok: g.npcs.some(n => n.id === s.npc), why: `NPC ${s.npc}` });
+      else if (s.type === 'surface') out.push({ quest: q.title, text: s.text, ok: g.nav.strips.some(t => t.name === s.surface), why: `surface ${s.surface}` });
+    }
+    return out;
+  });
+  for (const o of goals) check(o.ok, `${o.quest}: ${o.text} (${o.why})`);
+  for (const h of hops) check(h.ok && h.mode === 'foot' && h.walk && h.d < 80, `travels to ${h.name} (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.walk ? 'on' : 'off'} walkable ground)`);
 
   // the big map zooms and pans: the wheel zooms about the pointer (here over the thickest landmark pins), and of
   // the landmarks then in view, at least as many are named as at the whole city, and more where any were left off;
@@ -376,6 +444,32 @@ const { pinClock } = require('./pin_clock');
   check(route.ready, `the route network is built${route.stats ? ` (${route.stats.edges} stretches in ${route.stats.ms} ms of work)` : ''}`);
   check(route.ready && !route.none && route.drawn && route.blocked < 1.5, route.none ? 'no NPC a walker can reach' : `the gold route to ${route.to} on foot (${(route.len || 0).toFixed(0)} m; at most ${(route.blocked || 0).toFixed(1)} m at a time where a walker can't stand)`);
   await shot('route');
+
+  // the route line's setting (menu: On / Only when I ask / Off, remembered): off hides the line in the
+  // world but keeps the route for the minimap; L shows it for a few seconds; a conversation hides it
+  if (route.drawn) {
+    const rl = await p.evaluate(async () => {
+      const g = window.__game, R = g.route, out = {};
+      const seen = () => g.gold.mesh.visible;
+      const menu = document.getElementById('g-menu');
+      document.querySelector('#gm-route button[data-r="off"]').click(); g.advance(0.2);
+      out.offHidden = !seen(); out.offMinimap = !!g.guide().pts; out.saved = (() => { try { return localStorage.getItem('oe-route-line'); } catch (e) { return 'blocked'; } })();
+      out.button = !document.getElementById('gq-route').hidden;
+      out.tappable = (() => { const r = document.getElementById('gq-route').getBoundingClientRect(), e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!(e && e.closest('#gq-route')); })();
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyL' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyL' }));
+      g.advance(0.2); out.peekShown = seen();
+      g.advance(R.PEEK + 0.5); out.peekGone = !seen();
+      R.set('ask'); g.advance(0.2); out.askHidden = !seen();
+      document.getElementById('gq-route').click(); g.advance(0.2); out.askShown = seen();
+      R.set('on'); g.advance(0.2); out.onShown = seen();
+      menu.hidden = false; g.advance(0.2); out.menuHidden = !seen(); menu.hidden = true; g.advance(0.2); out.back = seen();
+      return out;
+    });
+    check(rl.offHidden && rl.offMinimap && rl.saved === 'off' && rl.button && rl.tappable, `route line Off: hidden in the world, kept on the minimap, remembered, Show route offered (${JSON.stringify(rl)})`);
+    check(rl.peekShown && rl.peekGone, 'route line Off: L shows it for a few seconds, then it goes');
+    check(rl.askHidden && rl.askShown, 'route line Only when I ask: hidden until Show route is tapped');
+    check(rl.onShown && rl.menuHidden && rl.back, 'route line On: shown, hidden while the menu is open, and back after');
+  }
 
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {

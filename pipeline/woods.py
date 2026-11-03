@@ -142,6 +142,18 @@ def photo(C, scene, nx, ny, x0, y1):
     return out
 
 
+def cleared(clear, x, y):
+    """Whether (x, y) is in one of a woods_clear hook's circles [x, y, r] or rings [[x, y], ...]."""
+    from shapely.geometry import Point, Polygon
+    for c in clear:
+        if isinstance(c[0], (list, tuple)):
+            if Polygon(c).contains(Point(x, y)):
+                return True
+        elif (x - c[0]) ** 2 + (y - c[1]) ** 2 <= c[2] * c[2]:
+            return True
+    return False
+
+
 def build(C, write=True):
     scene_path, places_path, game_path = (os.path.join(C.out, f) for f in ("scene.json", "places.json", "game.json"))
     scene, places = json.load(open(scene_path)), json.load(open(places_path))
@@ -243,6 +255,11 @@ def build(C, write=True):
             continue
         grid.setdefault((cx, cy), []).append((x, y, sep))
         keep.append((x, y, h))
+    # and off a city's landmarks that stand in a wood (city.py woods_clear: circles [x, y, r] round a shelter or
+    # a pavilion, rings [[x, y], ...] of a pond the water theme leaves out)
+    clear = C.hook("woods_clear")(scene) if C.hook("woods_clear") else []
+    if clear:
+        keep = [t for t in keep if not cleared(clear, t[0], t[1])]
     T = scene["terrain"]
     tz = np.frombuffer(base64.b64decode(json.load(open(os.path.join(C.out, T["file"])))["data"]), "<i2").reshape(T["ny"], T["nx"]) * T.get("scale", 0.1)
     trees = []
