@@ -17,7 +17,7 @@
 window.OEFarLand = (function () {
   // world.js edgeHaze reads them: the haze over the far land at the frame (EDGE, as much as the city's
   // own edge takes there), how far out it clears (RAMP, metres) and to how much (BASE)
-  const EDGE = 0.2, RAMP = 350, BASE = 0.04;
+  const EDGE = 0.2, RAMP = 350, BASE = 0.04, AIR = 30000; // AIR: metres of air to a 63% veil
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
 
   // the far land's bytes: far.json, the height map's pixels and the colour texture; null if there are none
@@ -131,7 +131,7 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   // blocks and woods at 40 to 300 m, which fades out where a pixel covers it
   vec3 c = photoGrade(texture2D(uFarCol, vFarUV).rgb);
   vec2 p = vFarXZ; float fw = max(fwidth(p.x), fwidth(p.y));
-  float g = (farN(p / 300.0) - 0.5) * 0.5 * (1.0 - smoothstep(60.0, 200.0, fw))
+  float g = (farN(p / 300.0) - 0.5) * 0.25 * (1.0 - smoothstep(60.0, 200.0, fw))
           + (farN(p / 90.0 + 7.0) - 0.5) * 0.45 * (1.0 - smoothstep(18.0, 60.0, fw))
           + (farN(p / 33.0 + 3.0) - 0.5) * 0.3 * (1.0 - smoothstep(7.0, 22.0, fw));
   // seen through kilometres of air the land's colours are thinner than the photo's close by
@@ -171,5 +171,5 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
     };
   }
 
-  return { load, geometry, create, EDGE, RAMP, BASE };
+  return { load, geometry, create, EDGE, RAMP, BASE, AIR };
 })();

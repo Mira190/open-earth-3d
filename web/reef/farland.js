@@ -28,7 +28,7 @@ export async function createFarLand(base, d, env, { small = false } = {}) {
     let c = texture(col, uv()).rgb;
     // what the 117 m colour cells average away, back as a grain of bush, fields and towns
     const p = vec3(positionWorld.x, 0, positionWorld.z);
-    c = c.mul(float(1).add(mx_noise_float(p.mul(1 / 400)).mul(0.22)).add(mx_noise_float(p.mul(1 / 90)).mul(0.12)));
+    c = c.mul(float(1).add(mx_noise_float(p.mul(1 / 400)).mul(0.12)).add(mx_noise_float(p.mul(1 / 90)).mul(0.12)));
     // seen through tens of kilometres of air its colours are thinner than the photo's close by
     return mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 0.8);
   })();

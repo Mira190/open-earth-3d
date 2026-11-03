@@ -442,9 +442,13 @@ vec3 scrCell(float cell, vec2 uv) {
 #endif
 #ifdef OE_FAR
 	// the land past the frame (farland.js): as hazed as the city at the frame, where the city has faded
-	// into the haze, clearing over the first few hundred metres to a distant land's veil
+	// into the haze, clearing over the first few hundred metres to a distant land's veil, and thickening
+	// with distance as air does (FAR_AIR m to 63%), so a far city's plain meets the sky in haze, not in a band
+	float oeFar = 0.0;
 	{ float oePast = length( max( abs( vEdgeXZ - ${c} ) - vec2( ${n(w / 2)}, ${n(h / 2)} ), 0.0 ) );
-	  oeEdge = max( 1.0 - smoothstep( 0.0, ${n(FAR_RAMP)}, oePast ), ${(FAR_BASE / FAR_EDGE).toFixed(3)} ); oeGate = 1.0; } // times FAR_EDGE below
+	  float oeAir = 1.0 - exp( -vFogDepth / ${n(FAR_AIR)} );
+	  oeFar = max( ${FAR_EDGE.toFixed(3)} * ( 1.0 - smoothstep( 0.0, ${n(FAR_RAMP)}, oePast ) ), ${FAR_BASE.toFixed(3)} + ${(1 - FAR_BASE).toFixed(3)} * oeAir );
+	  oeEdge = 0.0; }
 #endif
 	// The edge's haze is a distant shore's tone, a little darker and greener than the horizon's, which
 	// the distance takes back to the horizon's by 12 km: so a headland fading out at the frame, or an
@@ -452,6 +456,9 @@ vec3 scrCell(float cell, vec2 uv) {
 	// (fogFactor still holds the edge, for the night's additive lights, night.js.)
 	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
 	fogFactor = max( fogFactor, oeEdge * oeGate${farLand ? ` * ${FAR_EDGE.toFixed(3)}` : ''} );
+#ifdef OE_FAR
+	fogFactor = max( fogFactor, oeFar );
+#endif
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
 #ifdef OE_SEA
 	gl_FragColor.a = mix( gl_FragColor.a, 1.0, fogFactor ); // the haze hides what lies under the water too, so nothing shows through it from below
@@ -465,7 +472,7 @@ vec3 scrCell(float cell, vec2 uv) {
   const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
   // the land past the frame (farland.js): how far its haze takes to clear from the frame, and to how much
   const FAR_RAMP = (window.OEFarLand || {}).RAMP || 1400, FAR_BASE = (window.OEFarLand || {}).BASE || 0.32,
-    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.75;
+    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_AIR = (window.OEFarLand || {}).AIR || 30000;
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
