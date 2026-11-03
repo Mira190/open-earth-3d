@@ -53,7 +53,7 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900', timesArg = '10:00,s
       // a taxi hailed at the kerb (or a ride ordered on the phone), and in the back
       let o = null;
       for (let k = 0; k < 4 && g.player.mode !== 'ride'; k++) { // (the last one may still be pulling away: a few seconds on, again)
-        if (g.ride() && g.ride().phase === 'leaving') g.advance(4);
+        for (let t = 0; t < 60 && g.ride() && g.ride().phase === 'leaving'; t += 2) g.advance(2); // (the last one driving off, out of the way)
         g.hail();
         if (!g.ride() || g.ride().phase === 'leaving') { const dest = g.destinations(g.player.x, g.player.y)[0]; if (dest) g.orderRide(dest); }
         o = g.ride();

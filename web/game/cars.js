@@ -257,7 +257,7 @@ window.OECars = (function () {
         mats.Light_Head.emissiveIntensity = lit ? 2.4 : 0.05;
         mats.Light_Tail.emissiveIntensity = (s.brake ? 2.2 : 0) + (lit ? 0.9 : 0.05);
         mats.Light_Amber.emissiveIntensity = amber ? 2.6 : 0;
-        mats.Sign.emissiveIntensity = s.sign ? 0.4 + 1.6 * night : 0;
+        mats.Sign.emissiveIntensity = s.sign ? 0.3 + 0.8 * night : 0; // (a lit panel, not a lamp: no bloom across the car)
         for (const q of glows) { // (the headlamps' glow is for the street, not for whoever is at the wheel: s.inside)
           const k = q.userData.kind === 'head' ? (lit && !s.inside ? 1 : 0) : lit ? (s.brake ? 1.4 : 0.8) : s.brake ? 0.6 : 0;
           q.visible = k > 0.01;
@@ -266,7 +266,7 @@ window.OECars = (function () {
         }
         // (the beam on a car stopped close ahead, s.near metres: dimmed as the eye would adapt to it,
         // rather than a white wall where a queue's back is lit from 3 m)
-        const nearK = s.near != null && s.near < 12 ? Math.max(0.15, (Math.max(0, s.near) / 12) ** 2) : 1;
+        const nearK = s.near != null && s.near < 12 ? Math.max(0.05, (Math.max(0, s.near) / 12) ** 2) : 1;
         if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) * nearK : 0;
       },
       // a person in a seat, facing forward: the rig's root on the floor in front of the cushion
