@@ -515,14 +515,16 @@ window.OEJunctions = (function () {
       return L[m.line].len - m.back - (a2 && a2.in && a2.j !== m.j ? a2.back : 0);
     }
     function enter(c, a, e, t, forced = false) { // into the junction: its movement joins those in it
-      const j = a.j;
+      const j = a.j, m = mv(c, e);
+      const had = j.active.find(o => o.c === c && o.k === a.i && o.m === m);
+      if (had && c.mv && c.mv.j === j) { c.mv = { j, a, e }; return; } // (in it already, this way: as it was)
       if (forced) overLine++; // (a car already over the line: the checks count these)
       unwait(c);
       if (c.mv && c.mv.j === j) release(c);
       else if (c.mv) { release(c, 'mv0'); c.mv0 = c.mv; } // still leaving the last one
       if (c.mv0 && c.mv0.j === j) c.mv0 = null; // (one movement a car at a junction: one it came back to, its exit changed, replaces the one it had)
       for (let i = j.active.length - 1; i >= 0; i--) if (j.active[i].c === c) j.active.splice(i, 1);
-      j.active.push({ c, k: a.i, m: mv(c, e), t, forced });
+      j.active.push({ c, k: a.i, m, t, forced });
       c.mv = { j, a, e }; c.mvT = t;
     }
     // car c is waiting at the line for its movement: the longest waiting goes first
@@ -561,7 +563,7 @@ window.OEJunctions = (function () {
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
           const p = j.active[x], q = j.active[y];
-          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(p.t + ':' + q.t + ':' + j.id)) { seenPairs.add(p.t + ':' + q.t + ':' + j.id); if (p.forced || q.forced) crossedOver++; else { crossed++; if (crossLog.length < 10) crossLog.push(`junction ${j.id}${j.sig ? ` phase ${j.ph} ${j.st} at ${j.t.toFixed(1)} s` : ''}: arm ${p.k} to ${p.m} in at ${p.t} and arm ${q.k} to ${q.m} in at ${q.t}${p.c === q.c ? ', the same car' : ''}, now ${t}`); } }
+          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(p.t + ':' + q.t + ':' + j.id)) { seenPairs.add(p.t + ':' + q.t + ':' + j.id); if (p.forced || q.forced) crossedOver++; else crossed++; if (crossLog.length < 20) { crossLog.push(`${p.forced || q.forced ? 'over the line: ' : ''}junction ${j.id}${j.sig ? ` phase ${j.ph} ${j.st} at ${j.t.toFixed(1)} s` : ''}: arm ${p.k} to ${p.m} in at ${p.t} and arm ${q.k} to ${q.m} in at ${q.t}${p.c === q.c ? ', the same car' : ''}, now ${t.toFixed(1)}${p.forced ? ` (the first over the line: ${p.c.overWhy})` : q.forced ? ` (the second over the line: ${q.c.overWhy})` : ''}`); } }
         }
         if (!j.sig) continue;
         j.t += dt;
