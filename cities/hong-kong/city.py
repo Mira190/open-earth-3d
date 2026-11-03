@@ -550,3 +550,48 @@ def peak_tower(o):
             p = c + n * a * t + e * b * v * 0.7
             roof.lathe([(PEAK["body_top_m"], 0.6), (PEAK["roof_base_m"] + 0.2, 0.6)], (p[0], p[1]), 8)
     return [body, roof]
+
+
+# ---------------------------------------------------------------- the game
+
+COMPASS = ("north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west")
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting at
+    `start`; the walker must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people walk up to: the Clock Tower's foot on the harbour side and on the side of the
+    Cultural Centre's plaza, a gondola of the Observation Wheel where it boards at the bottom of the
+    wheel, and Peak Tower's glass at its east end, as clock_tower(), observation_wheel() and peak_tower()
+    draw them."""
+    lm, close = scene["landmarks"], []
+    c = lm.get("clock_tower")
+    if c:
+        at, (e, n) = np.array(c["at"]), axes(c["bearing_deg"])
+        for v in (-n, n):   # the faces towards the harbour (south-west) and the plaza (north-east), 3.75 m out at the granite band
+            side = COMPASS[int(round(math.degrees(math.atan2(v[0], v[1])) / 45)) % 8]
+            close.append(close_to(f"Clock Tower, the foot of its {side} face", at + v * 3.75, c["ground_m"], at + v * 9.5, 1.0))
+    w = lm.get("observation_wheel")
+    if w:
+        c, (ax, d) = np.array(w["at"]), axes(w["bearing_deg"])
+        # the lowest gondola (observation_wheel(): 42 round the rim, 1.6 m outside it), its floor just over the
+        # platform: up to its door, along the axle
+        r = w["height_m"] / 2 - 3.0 + 1.6
+        k = min(range(w["gondolas"]), key=lambda k: math.sin(2 * math.pi * k / w["gondolas"]))
+        g = c + d * r * math.cos(2 * math.pi * k / w["gondolas"])
+        close.append(close_to("Observation Wheel, a gondola at the boarding platform", g + ax * 1.0, w["ground_m"], g + ax * 7.0, 1.0))
+    p = lm.get("peak_tower")
+    if p:
+        at, (e, n) = np.array(p["at"]), axes(p["bearing_deg"])
+        tip = at + n * PEAK["length_m"] / 2 * 0.82   # the body's plan: an ellipse 82 % of the roof's length
+        z = p["ground_m"] + 8.1                      # the paving at the east end (the LiDAR ground, 384.5 m)
+        close.append(close_to("Peak Tower, the glass at its east end", tip, z, at + n * (PEAK["length_m"] / 2 * 0.82 + 5.5), 1.0))
+    return {"close": close}

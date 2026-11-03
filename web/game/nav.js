@@ -266,7 +266,16 @@ window.OENav = (function () {
     function landmarkCells(meshes, slabs) {
       const FINE = 0.25, BAND = 3.5, GAP = 0.4, MZ = 0.1, SAMPLE = 0.22, FLAT = 0.25;
       const coarse = new Map(slabs), fine = new Map(), FNX = DSM.nx * Math.round(DSM.cell / FINE);
-      const ref = (x, y) => { let h = terrain(x, y); for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; } const k = cellOf(x, y); if (k >= 0 && pier.data[k] > h) h = pier.data[k]; return h; };
+      // the floor under a point of a landmark at height z: the ground, a strip, a pier, or the roof of a building
+      // it stands on (the surface model's top there, when no higher than z: a landmark on a raised platform)
+      const ref = (x, y, z) => {
+        let h = terrain(x, y);
+        for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
+        const k = cellOf(x, y);
+        if (k >= 0 && pier.data[k] > h) h = pier.data[k];
+        if (k >= 0 && DSM.ids[k] >= 0 && DSM.data[k] <= z + 0.3 && DSM.data[k] > h) h = DSM.data[k];
+        return h;
+      };
       const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
       // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
       // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length
@@ -328,7 +337,7 @@ window.OENav = (function () {
           const P = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]);
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
-          const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
+          const rs = [ref(cx, cy, zlo), ref(P[0][0], P[0][1], P[0][2]), ref(P[1][0], P[1][1], P[1][2]), ref(P[2][0], P[2][1], P[2][2])];
           const rlo = Math.min(...rs), zc = Math.max(...rs) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor

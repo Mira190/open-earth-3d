@@ -8,7 +8,9 @@ Building adjustments (called by pipeline/build_scene.py):
   * The small keep platform (小天守台) and the Kinmeisui well house (金明水井戸屋形) on it:
     PLATEAU's 2017 survey drew one outline round them and the keep, so both took the keep's
     54.6 m and stood as a white tower beside it. They are drawn as a 6.0 m stone platform and a
-    4.7 m well house, the heights PLATEAU's 2025 model gives them.
+    4.7 m well house, the heights PLATEAU's 2025 model gives them. A flight of stone steps climbs
+    its east face beside the ticket office, and the game walks it and the paved top as strips
+    (game_surfaces), past the well house to the keep's stone base.
   * Tsutenkaku: the OSM footprint is a 108 m box. The footprint stays as a 12 m base and the
     steel tower is parametric above it.
   * HEP FIVE: PLATEAU's 107 m is the top of the Ferris wheel, not the building. The building
@@ -357,7 +359,7 @@ def landmark_meshes(scene):
         M = {k: Mesh("kotenshu_" + k, m, False, uv=m in ("granite", "kawara")) for k, m in
              (("stone", "granite"), ("paving", "paving"), ("wall", "plaster"), ("timber", "timber"), ("kawara", "kawara"), ("kawara_ridge", "kawara_ridge"))}
         if "kotenshu" in lm:
-            kotenshu(M, lm["kotenshu"])
+            kotenshu(M, lm["kotenshu"], lm.get("castle", {}).get("centroid"))
         if "well_house" in lm:
             well_house(M, lm["well_house"])
         meshes += [m for m in M.values() if m.v]
@@ -617,8 +619,13 @@ def stone_base(mesh, P, z0, foot, top, h, below=8.0):
         j = (k + 1) % 4
         tdir = np.array(CORNERS[j]) - np.array(CORNERS[k])
         tdir = tdir / np.linalg.norm(tdir)
-        rows = [[P(hu * CORNERS[i][0], hv * CORNERS[i][1], z) for i in (k, j)] for (hu, hv), z in rings]
-        uvs = [[[float(np.dot((hu * CORNERS[i][0], hv * CORNERS[i][1]), tdir)), z - z0] for i in (k, j)] for (hu, hv), z in rings]
+        # in columns about two metres wide, so that the game meets the stone where it stands (its landmark
+        # collision samples each triangle's floor at its corners)
+        L = float(np.linalg.norm(np.array(foot) * (np.array(CORNERS[j]) - np.array(CORNERS[k]))))
+        fs = np.linspace(0.0, 1.0, max(2, int(math.ceil(L / 2.0)) + 1))
+        pt = lambda hu, hv, f: (hu * (CORNERS[k][0] + (CORNERS[j][0] - CORNERS[k][0]) * f), hv * (CORNERS[k][1] + (CORNERS[j][1] - CORNERS[k][1]) * f))
+        rows = [[P(*pt(hu, hv, f), z) for f in fs] for (hu, hv), z in rings]
+        uvs = [[[float(np.dot(pt(hu, hv, f), tdir)), z - z0] for f in fs] for (hu, hv), z in rings]
         mesh.grid(rows, uvs)
 
 
@@ -698,26 +705,29 @@ def osaka_castle(c):
     return list(M.values())
 
 
-def kotenshu_top(p):
-    """The small keep platform's top: its mapped outline with each corner moved 0.9 m in along the
-    bisector of its two edges (the batter), as an array of points."""
+def kotenshu_top(p, keep=None):
+    """The small keep platform's top: its mapped outline with each face moved 0.9 m in (the batter), but
+    for the face it shares with the keep's stone base (keep: the keep's centre), which has none, as an
+    array of points."""
     ring = np.array(p["ring"], float)
     n = len(ring)
     nrm = [np.array((ring[(i + 1) % n][1] - ring[i][1], ring[i][0] - ring[(i + 1) % n][0])) for i in range(n)]
     nrm = [v / np.linalg.norm(v) for v in nrm]           # outward, for an anticlockwise ring
+    mid = [(ring[i] + ring[(i + 1) % n]) / 2 for i in range(n)]
+    d = [0.0 if keep is not None and np.dot(np.asarray(keep) - mid[i], nrm[i]) > 0 and np.linalg.norm(np.asarray(keep) - mid[i]) < 30 else 0.9
+         for i in range(n)]
     top = []
-    for i in range(n):
-        m = nrm[i - 1] + nrm[i]
-        m = m / (np.linalg.norm(m) or 1)
-        top.append(ring[i] - m * 0.9 / max(0.3, float(np.dot(m, nrm[i]))))
+    for i in range(n):   # the corner where the two faces, each moved in by its own batter, meet
+        A = np.array([nrm[i - 1], nrm[i]])
+        top.append(ring[i] - np.linalg.solve(A, np.array([d[i - 1], d[i]])) if abs(np.linalg.det(A)) > 0.05 else ring[i] - nrm[i] * d[i])
     return np.array(top)
 
 
-def kotenshu(M, p):
+def kotenshu(M, p, keep=None):
     """The small keep platform (小天守台) on its mapped outline: dressed stone in a batter, paved on top."""
     ring = np.array(p["ring"], float)
     z0, h, n = p["ground_m"], p["height_m"], len(ring)
-    top = kotenshu_top(p)
+    top = kotenshu_top(p, keep)
     # each face in panels about a metre square, so that the game meets the stone where it stands (its
     # landmark collision samples each triangle's floor at its corners)
     s = 0.0
@@ -1326,26 +1336,31 @@ def kotenshu_steps(p):
     hw, k, t, r = f["half_width"], f["n"], f["tread"], f["rise"]
     for j in range(k):
         slab(m, P, -(k - j) * t, 1.0, -hw, hw, f["z0"] - 0.3, f["z0"] + (j + 1) * r)
-    for sv in (-1, 1):   # the cheeks, a handrail's height over the treads
-        slab(m, P, -k * t - 0.3, 1.0, sv * hw + (0.05 if sv > 0 else -0.35), sv * hw + (0.35 if sv > 0 else -0.05), f["z0"] - 0.3, f["z0"] + 0.5)
-        for j in range(0, k, 3):
-            u0 = -(k - j) * t
-            slab(m, P, u0, min(1.0, u0 + 3 * t), sv * hw + (0.05 if sv > 0 else -0.35), sv * hw + (0.35 if sv > 0 else -0.05),
-                 f["z0"] - 0.3, f["z0"] + (j + 3) * r + 0.9)
+    # the cheeks: stone walls either side, their coping a handrail's height over the nosings
+    us = [-k * t - 0.3, -k * t, 0.0, 1.0]
+    cop = [f["z0"] + 0.5, f["z0"] + r + 0.9, f["top"] + 0.9, f["top"] + 0.9]
+    for sv in (-1, 1):
+        vi, vo = sv * (hw + 0.05), sv * (hw + 0.35)
+        for v in (vi, vo):   # the faces, from under the ground to the coping
+            m.grid([[P(u, v, f["z0"] - 0.3) for u in us], [P(u, v, z) for u, z in zip(us, cop)]][::(1 if (v > 0) == (v == vo) else -1)])
+        m.grid([[P(u, vi, z) for u, z in zip(us, cop)], [P(u, vo, z) for u, z in zip(us, cop)]][::(1 if sv > 0 else -1)])   # the coping
+        m.grid([[P(us[0], vi, f["z0"] - 0.3), P(us[0], vo, f["z0"] - 0.3)], [P(us[0], vi, cop[0]), P(us[0], vo, cop[0])]][::(-1 if sv > 0 else 1)])   # the end
     return [m]
 
 
-def kotenshu_floor(p):
+def kotenshu_floor(p, keep=None):
     """The small keep platform's paved top as rectangles a walker crosses (strips): the top cut into slices
     across its longest edge at each corner, each slice's largest rectangle inside it, and neighbours of the
     same width merged. [(origin, axis, half_width, u0, u1)]"""
-    top = kotenshu_top(p)
+    top = kotenshu_top(p, keep)
     poly = Polygon(top)
     n = len(top)
     i = max(range(n), key=lambda k: np.linalg.norm(top[(k + 1) % n] - top[k]))
     ax = (top[(i + 1) % n] - top[i]) / np.linalg.norm(top[(i + 1) % n] - top[i])
     nv = np.array([-ax[1], ax[0]])
     o = top[i]
+    ring = np.array(p["ring"], float)
+    against = keep is not None and abs(float(np.dot(top[i] - ring[i], nv))) < 0.01    # that face has no batter: the keep's
     loc = np.array([[np.dot(q - o, ax), np.dot(q - o, nv)] for q in top])
     us = sorted(set(round(float(u), 2) for u in loc[:, 0]))
     rects = []
@@ -1369,7 +1384,9 @@ def kotenshu_floor(p):
     for ua, ub, lo, hi in rects:
         if hi - lo < 1.0:
             continue
-        lo, hi = lo - 0.3, hi + 0.3                 # a little over the crest of the stone, so that the game finds it under the floor
+        # a little over the crest of the stone, so that the game finds it under the floor, and on the keep's
+        # side (the longest face, v = 0, against the keep's stone base) on under its batter, for the same reason
+        lo, hi = lo - (2.0 if against else 0.3), hi + 0.3
         c = o + nv * (lo + hi) / 2
         out.append(([float(c[0]), float(c[1])], [float(ax[0]), float(ax[1])], (hi - lo) / 2, ua - 0.3, ub + 0.3))
     return out
@@ -1385,7 +1402,7 @@ def game_surfaces(scene):
     top = k["ground_m"] + k["height_m"]
     floor = [{"name": f"Osaka Castle, the small keep platform {j + 1}", "type": "strip", "origin": [round(v, 2) for v in o], "axis": [round(v, 5) for v in a],
               "half_width": round(hw, 2), "profile": [[round(u0, 2), round(top, 2)], [round(u1, 2), round(top, 2)]], "thickness": 1.5,
-              "mesh": "kotenshu_paving", "label": "the small keep platform"} for j, (o, a, hw, u0, u1) in enumerate(kotenshu_floor(k))]
+              "mesh": "kotenshu_paving", "label": "the small keep platform"} for j, (o, a, hw, u0, u1) in enumerate(kotenshu_floor(k, scene["landmarks"].get("castle", {}).get("centroid")))]
     return floor + [{"name": "Osaka Castle, the steps to the small keep platform", "type": "strip", "origin": [round(v, 2) for v in f["origin"]],
              "axis": [round(v, 5) for v in f["axis"]], "half_width": f["half_width"], "profile": f["profile"], "thickness": 1.5,
              "mesh": "kotenshu_steps", "label": "the small keep platform"}]
@@ -1404,14 +1421,15 @@ def close_to(name, at, z, start, within=1.5, keep=0.0):
 def game_extras(scene):
     """The things people walk up to: under Tsutenkaku to the ceiling painting and to a leg; Osaka Castle's
     keep on its stone base, from the honmaru and from the small keep platform, and the Kinmeisui well house;
-    Kani Doraku's door under the crab; the Glico sign's building from the Tombori River Walk."""
+    Kani Doraku's door under the crab; the Glico sign's wall from the Tombori River Walk."""
     lm, close = scene["landmarks"], []
     t = lm.get("tsutenkaku")
     if t:
         P = frame(*t["centroid"], math.radians(t["axis_deg"]))
         z, half = t["ground_m"], min(t["width_m"], t["depth_m"]) / 2 - 0.5
         close.append(close_to("Tsutenkaku, under the ceiling painting", P(0, 0, z), z, P(half + 6.0, 0, z), 1.0))
-        close.append(close_to("Tsutenkaku, a leg", P(half + 1.1, -half, z), z, P(half + 6.0, -half, z), 1.0))
+        close.append(close_to("Tsutenkaku, a leg from the street", P(half + 1.1, -half, z), z, P(half + 6.0, -half, z), 1.0))
+        close.append(close_to("Tsutenkaku, a leg from under the tower", P(half - 1.1, -half, z), z, P(half - 6.5, -half, z), 1.0))
     c = lm.get("castle")
     if c:
         P = frame(*c["centroid"], math.radians(c["axis_deg"]) - math.pi / 2)
@@ -1437,4 +1455,8 @@ def game_extras(scene):
     if kc:
         a, n = np.array(kc["at"]), np.array(kc["normal"])
         close.append(close_to("Kani Doraku, the door under the crab", a, kc["ground_m"], a + n * 5.0, 1.0))
+    # under the Glico sign on the Tombori River Walk (the paving 2.2 m up, GSI's DEM), to the foot of the wall
+    # it hangs on (Ebisubashi itself is not in the open data's walkways, so the bridge is not walked yet)
+    g = np.mean(np.array(GLICO_EDGE, float), axis=0)
+    close.append(close_to("Glico sign, from the Tombori River Walk", g, 2.2, g + np.array([0.0, 6.0]), 1.0))
     return {"close": close}
