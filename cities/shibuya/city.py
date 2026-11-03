@@ -1,4 +1,9 @@
-"""Shibuya & Shinjuku: what the generic pipeline cannot know from open data.
+"""Shibuya and Shinjuku: what the generic pipeline cannot know from open data.
+
+This file builds the landmarks of two maps that share one frame (the same origin, so every local
+coordinate here is valid in both): the Shibuya map (cities/shibuya) and the Shinjuku map
+(cities/shinjuku, whose city.py loads this one with CITY = "shinjuku"). Each landmark is built in the
+map whose data has it, or whose extent holds it (in_map).
 
 Yoyogi National Gymnasium (国立代々木競技場), Kenzo Tange, 1964: OpenStreetMap maps the first
 gymnasium's outline (30.2 m) and, as a part, the 131 m strip of its roof's spine at 40.37 m; by the
@@ -47,6 +52,20 @@ import screens
 import archkit as ak
 from japankit import open_fronts
 from meshkit import Mesh
+
+# the map being built: "shibuya", or "shinjuku" when cities/shinjuku/city.py loads this file
+CITY = globals().get("CITY", "shibuya")
+_EXTENT = {}
+
+
+def in_map(x, y, margin=0.0):
+    """Whether a point of the shared frame lies inside the map being built (its extent_m)."""
+    if not _EXTENT:
+        import json
+        cfg = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), CITY, "city.json"), encoding="utf8"))
+        _EXTENT["e"] = cfg["extent_m"]
+    x0, x1, y0, y1 = _EXTENT["e"]
+    return x0 + margin <= x <= x1 - margin and y0 + margin <= y <= y1 - margin
 
 HAIDEN = "須賀大神 稲荷大神"       # the OSM name of Suga Shrine's hall (its two kami), as Overture spells it
 TENPAKU = "天白稲荷神社"
@@ -1268,9 +1287,16 @@ def landmark_assets(out_dir, scene):
     draw_shrine_items(img, d, rects, rng)
     draw_extra(img, d, rects, rng)
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
-    CROSSING.sheet().save(os.path.join(out_dir, "screens.jpg"), quality=86)
-    EAST.sheet().save(os.path.join(out_dir, "screens_east.jpg"), quality=86)
-    return ["atlas.jpg", "screens.jpg", "screens_east.jpg"]
+    out = ["atlas.jpg"]
+    lm = scene["landmarks"]
+    for key, sheet, name in (("scramble", CROSSING, "screens.jpg"), ("kabukicho_gate", EAST, "screens_east.jpg")):
+        path = os.path.join(out_dir, name)
+        if key in lm:   # each map draws only the screens it has
+            sheet.sheet().save(path, quality=86)
+            out.append(name)
+        elif os.path.exists(path):
+            os.remove(path)
+    return out
 
 
 ATLAS_KEYS = ["ema_front"] + [f"ema_w{i}" for i in range(len(WISHES))] + [f"ema_pink{i}" for i in range(len(PINKS))]
@@ -1766,9 +1792,11 @@ def districts_finalize(ctx):
         mid, n, L = front_to_road(ctx, Polygon(mar["ring"]), streets)
         shops["marina"] = {"at": [round(float(mid[0]), 2), round(float(mid[1]), 2)], "normal": [round(float(n[0]), 4), round(float(n[1]), 4)],
                            "len": round(L, 1), "z": round(gz(*mid), 2), "top_m": mar["top_m"]}
-    lm["yongen"] = shops
+    if shops:
+        lm["yongen"] = shops
     mx, my = ctx.city.fwd.transform(*MARINA_LL)
-    ctx.labels["Yongen-Jaya: Sangenjaya 三軒茶屋"] = [round(mx, 1), round(my, 1), round(gz(mx, my) + 40, 1)]
+    if in_map(mx, my):
+        ctx.labels["Yongen-Jaya: Sangenjaya 三軒茶屋"] = [round(mx, 1), round(my, 1), round(gz(mx, my) + 40, 1)]
     # Shinjuku: the Kabukicho Ichibangai arch, the Docomo tower's clock and mast
     kb = [r["geom"] for r in roads if (r["name"] or "") == KABUKI_ST]
     if kb:
@@ -1789,7 +1817,8 @@ def districts_finalize(ctx):
         ctx.labels["Docomo Tower ドコモタワー"] = [round(g.centroid.x, 1), round(g.centroid.y, 1), round(fr["ground_m"] + DOCOMO_FIG["mast_top_m"] + 6, 1)]
     for label, (ll, _) in (("Shinjuku 2-chome 新宿二丁目", SIGN_DISTRICTS["Shinjuku 2-chome"]), ("Golden Gai ゴールデン街", SIGN_DISTRICTS["Golden Gai"])):
         x, y = ctx.city.fwd.transform(*ll)
-        ctx.labels[label] = [round(x, 1), round(y, 1), round(gz(x, y) + 30, 1)]
+        if in_map(x, y):
+            ctx.labels[label] = [round(x, 1), round(y, 1), round(gz(x, y) + 30, 1)]
     # shop signs on the street fronts of the districts, and the poles and wires of the backstreets
     sites = sign_sites(ctx, [r for r in roads if r["class"] != "service"])
     if len(sites) > MAX_SIGNS:
@@ -2032,13 +2061,13 @@ def districts_meshes(lm):
         center_gai_gate(K, lm["center_gai"])
     if "scramble" in lm:
         CROSSING.meshes(K, lm["scramble"]["node"])
-    if "kabukicho_gate" in lm:   # the Shinjuku end of the model
-        EAST.meshes(K, EAST_EXIT, face="screens_east")
         crossing_signs(K, lm)
         toyoko_site(K, lm)
         qfront_glass(K)
         if "signs" in lm:
             crossing_wall_signs(K, lm)
+    if "kabukicho_gate" in lm:   # Shinjuku's east exit
+        EAST.meshes(K, EAST_EXIT, face="screens_east")
     if "s109" in lm:
         s = lm["s109"]
         facade_panel(K("atlas", "lit"), s["at"], s["normal"], 2.6, s["z1"] - 10.4, s["z1"], "s109", off=0.3)
@@ -2082,18 +2111,18 @@ _BLD = {}
 
 
 def buildings_json():
-    """The built city (web/data/shibuya/buildings.json): its named buildings' solids, for the anchors of
+    """The built city (web/data/<map>/buildings.json): its named buildings' solids, for the anchors of
     things fixed to their facades after the scene is built (pipeline/screens.py)."""
-    return screens.buildings("shibuya")
+    return screens.buildings(CITY)
 
 
 def facade(name, toward, near=None, pick=0, min_len=4.0, edge=None):
-    return screens.facade("shibuya", name, toward, near, pick, min_len, edge)
+    return screens.facade(CITY, name, toward, near, pick, min_len, edge)
 
 
 def place(sc, node):
     """Where a screen or sign of CROSSING_SCREENS / CROSSING_SIGNS goes (pipeline/screens.py place)."""
-    return screens.place("shibuya", sc, node)
+    return screens.place(CITY, sc, node)
 
 
 SYNCHRO7 = ["game", "live", "shoe", "soda"]   # one playlist and one clock: the seven faces play as one
@@ -2415,7 +2444,7 @@ def screen_clip_index(name):
     return [c for c, _ in SCREEN_CLIPS].index(name)
 
 
-CROSSING = screens.ScreenSet("shibuya", CROSSING_SCREENS, SCREEN_CLIPS, MATERIALS["screens"], sync=("sync", SCREEN_SYNC["period_s"], SCREEN_SYNC["length_s"]),
+CROSSING = screens.ScreenSet(CITY, CROSSING_SCREENS, SCREEN_CLIPS, MATERIALS["screens"], sync=("sync", SCREEN_SYNC["period_s"], SCREEN_SYNC["length_s"]),
                              cell=SCREEN_CELL, seed=1999)
 
 
@@ -2774,7 +2803,7 @@ def k_shinjuku_b(img, rng):
 
 EAST_CLIPS = [("cat", [k_cat_a, k_cat_b]), ("goldfish", [k_goldfish_a, k_goldfish_b]), ("wave", [k_wave_a, k_wave_b]), ("music", [k_music_a, k_music_b]),
               ("live", [k_live_a, k_live_b]), ("movie", [k_movie_a, k_movie_b]), ("shinjuku", [k_shinjuku_a, k_shinjuku_b])]
-EAST = screens.ScreenSet("shibuya", SHINJUKU_SCREENS, EAST_CLIPS, MATERIALS["screens_east"], cell=SCREEN_CELL, seed=2116)
+EAST = screens.ScreenSet(CITY, SHINJUKU_SCREENS, EAST_CLIPS, MATERIALS["screens_east"], cell=SCREEN_CELL, seed=2116)
 
 
 def crossing_signs(K, lm):
@@ -2892,12 +2921,12 @@ def toyoko_site(K, lm):
 
 
 def lm_ground_at(lm, x, y):
-    """The ground under (x, y): the model's terrain (web/data/shibuya/terrain.json, 10 m cells), as the
+    """The ground under (x, y): the model's terrain (web/data/<map>/terrain.json, 10 m cells), as the
     viewer draws it."""
     if "terrain" not in _BLD:
         import base64
         import json
-        d = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "shibuya")
+        d = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", CITY)
         sc = json.load(open(os.path.join(d, "scene.json")))
         t = json.load(open(os.path.join(d, "terrain.json")))
         g = np.frombuffer(base64.b64decode(t["data"]), "<i2").astype(float).reshape(t["ny"], t["nx"]) * sc["terrain"]["scale"]
@@ -3269,6 +3298,7 @@ def landmark_meshes(scene):
     if "shibuya_sky" in lm:
         meshes += sky_meshes(lm["shibuya_sky"])
     mats = dict(MATERIALS)
+    mats.pop("screens"), mats.pop("screens_east")   # each map has the screens it has, and only those
     if "scramble" in lm:
         mats["screens"] = CROSSING.material(lm["scramble"]["node"])
     if "kabukicho_gate" in lm:
@@ -3284,13 +3314,15 @@ def yoyogi():
     """The two gymnasiums' suspended roofs on their mapped outlines."""
     import json
     import cityctx
-    C = cityctx.City("shibuya")
-    T = ak.Terrain("shibuya")
+    C = cityctx.City(CITY)
+    T = ak.Terrain(CITY)
     osm = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "yoyogi_osm.json")))
     loc = lambda pts: [C.fwd.transform(lon, lat) for lon, lat in pts]
     first, spine, second = Polygon(loc(osm["first"])).buffer(0), Polygon(loc(osm["spine"])).buffer(0), Polygon(loc(osm["second"])).buffer(0)
+    if not in_map(first.centroid.x, first.centroid.y):
+        return [], []   # in the Shibuya map only
     K = ak.Kit("yoyogi", floodlit={"yoyogi_roof", "yoyogi_concrete", "yoyogi_glass"})
-    solids = ak.load_solids("shibuya")
+    solids = ak.load_solids(CITY)
     hidden = [s["si"] for s in solids if s["osm"] == YOYOGI_SPINE or (s["top"] < 45 and first.buffer(-2).contains(Point(*ak.ring_centroid(s["ring"]))))]
     sx, sy, sax, sL, sW = ak.oriented(list(spine.exterior.coords))
     g = min(T(*p) for p in list(first.exterior.coords)[::4])
@@ -3394,11 +3426,13 @@ def yoyogi():
 def landmark_glows(scene):
     """The light the screens of the crossing and of Shinjuku's east exit throw on the street (web/night.js)."""
     lm = scene["landmarks"]
-    if "scramble" not in lm:
-        return []
-    square = [[round(x, 1), round(y, 1), 10.0, "#fff1dc", 0.16] for x, y in HACHIKO_LAMPS]   # the square's lamps, all night
-    east = EAST.glows(EAST_EXIT) if "kabukicho_gate" in lm else []
-    return CROSSING.glows(lm["scramble"]["node"]) + square + east
+    out = []
+    if "scramble" in lm:
+        out += CROSSING.glows(lm["scramble"]["node"])
+        out += [[round(x, 1), round(y, 1), 10.0, "#fff1dc", 0.16] for x, y in HACHIKO_LAMPS]   # the square's lamps, all night
+    if "kabukicho_gate" in lm:
+        out += EAST.glows(EAST_EXIT)
+    return out
 
 
 def sky_surfaces(s):
@@ -3498,7 +3532,7 @@ def suga_extras(s, spots, chatter, close):
     foot = np.asarray(ok["origin"]) - np.asarray(ok["axis"]) * 16.0
     spots.append(spot("otoko", "男坂 Otokozaka", foot - np.asarray(ok["axis"]) * 1.0, ok["z_foot"], "Look up the stairs", [
         f"The 男坂: {ok['steps']} stone steps, 18, 16 and 15 to the approach and 3 more, {OTOKO['width_m']} m wide, red iron handrails both sides and down the middle.",
-        f"Here each riser is {round(ok['riser_m'] * 100)} cm: {round(ok['z_top'] - ok['z_foot'], 1)} m from the street to the shrine, by GSI's laser survey of the ground."], 3.0))
+        f"Here each riser is {round(ok['riser_m'] * 100)} cm: {round(ok['z_top'] - ok['z_foot'], 1)} m from the street to the shrine. Count them on the way up."], 3.0))
     chatter.append(talk(foot - np.asarray(ok["axis"]) * 3.0, ok["z_foot"], [["Pilgrim", "Here! This is the angle from the poster."],
                    ["Friend", "Stand on the left. I'll be halfway up."], ["Pilgrim", "Ten years... I was in high school."]]))
 

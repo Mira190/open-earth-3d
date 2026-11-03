@@ -9,6 +9,8 @@
 #   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
+#   - reads every line the games' characters say, in every city and reef site, for talk about the
+#     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
@@ -21,6 +23,7 @@
 #   tools/check.sh                      # what this branch changed (committed or not)
 #   tools/check.sh sydney hardy-reef    # these cities and reef sites
 #   tools/check.sh title                # the title screen only
+#   tools/check.sh voice                # what the characters say only (it runs with every target)
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh all                  # every city, every reef site and the title
 set -u
@@ -35,7 +38,7 @@ CITIES=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0 loader=0
+cities=() reefs=() title=0 loader=0 voice=0
 add_city() { is_in "$1" "${cities[*]:-}" || cities+=("$1"); }
 add_reef() { is_in "$1" "${reefs[*]:-}" || reefs+=("$1"); }
 all_cities() { for c in $CITIES; do add_city "$c"; done; }
@@ -45,6 +48,7 @@ if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
       all) all_cities; all_reefs; title=1; loader=1 ;;
+      voice) voice=1 ;;
       title) title=1 ;;
       loader) loader=1 ;;
       *) if is_in "$t" "$CITIES"; then add_city "$t"
@@ -65,11 +69,12 @@ else
       web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
       web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
+      tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
   done
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   exit 0
 fi
@@ -135,6 +140,9 @@ EOF
 }
 
 {
+  # what the characters say, everywhere (tools/voice_check.py): locals, not the map's credits. A second or so.
+  if python3 tools/voice_check.py >"$OUT/voice.log" 2>&1; then tail -1 "$OUT/voice.log"
+  else echo "FAIL voice  $(grep '^FAIL' "$OUT/voice.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/voice.log)"; fi
   # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
   if [ ${#cities[@]} -gt 0 ]; then
     if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
