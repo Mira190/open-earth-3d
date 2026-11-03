@@ -2068,8 +2068,8 @@ def districts_meshes(lm):
     K = Kit("p5", floodlit=("lamp", "neon_red", "neon_pink", "clock_face"))   # (the scramble's crosswalks: scramble.py)
     if "hachiko" in lm:
         hachiko_square(K, lm["hachiko"], lm)
-    if "center_gai" in lm:
-        center_gai_gate(K, lm["center_gai"])
+    if "center_gai" in lm and CITY != "shibuya":
+        center_gai_gate(K, lm["center_gai"])   # (in the Shibuya map, the gate as it stands: scramble.py)
     if "scramble" in lm:
         CROSSING.meshes(K, lm["scramble"]["node"])
         crossing_signs(K, lm)
@@ -2079,9 +2079,7 @@ def districts_meshes(lm):
             crossing_wall_signs(K, lm)
     if "kabukicho_gate" in lm:   # Shinjuku's east exit
         EAST.meshes(K, EAST_EXIT, face="screens_east")
-    if "s109" in lm:
-        s = lm["s109"]
-        facade_panel(K("atlas", "lit"), s["at"], s["normal"], 2.6, s["z1"] - 10.4, s["z1"], "s109", off=0.3)
+    # (SHIBUYA109, its cylinder and its name: scramble.py)
     if "yongen" in lm:
         yongen(K, lm["yongen"])
     if "kabukicho_gate" in lm:
@@ -3331,7 +3329,7 @@ def scramble_build(lm):
     if "scramble" not in lm or CITY != "shibuya":
         return None
     if "scramble_build" not in _DATA:
-        _DATA["scramble_build"] = scramble.Build(CITY, lm["scramble"]["node"])
+        _DATA["scramble_build"] = scramble.Build(CITY, lm["scramble"]["node"], lm)
     return _DATA["scramble_build"]
 
 

@@ -41,8 +41,10 @@ MATERIALS = {
     "x_riser": {"color": "#7d7a75", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.0], "stair": "riser"},
     "x_tile": {"color": "#d9d6cf", "roughness": 0.5, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.15]},
     "x_dark": {"color": "#1d1e20", "roughness": 0.9, "metalness": 0.0},
-    "x_tactile": {"color": "#e8b711", "roughness": 0.7, "metalness": 0.0},
+    "x_tactile": {"color": "#e1b20f", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.1], "decal": True},
+    "x_tactile_dot": {"color": "#e8b711", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.075, 0.075], "decal": True},
     "x_rail": {"color": "#b7bcc0", "roughness": 0.3, "metalness": 0.8},
+    "x_guard": {"color": "#eeeeea", "roughness": 0.45, "metalness": 0.2},
     "x_light": {"color": "#f3f1ea", "roughness": 0.5, "metalness": 0.0, "emissive": "#fff4e0", "glow": 2.4},
     # the drawn signs (this module's own atlas, scramble.jpg), lit after dark
     # the JR lines' bed: retaining walls of concrete, the girder bridge's steel (painted grey), ballast, rails
@@ -63,9 +65,14 @@ MATERIALS = {
     # QFRONT's floors behind the outer skin (as city.py's qfront_glass)
     "qfront_glass": {"color": "#2b3741", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.55, "lit_k": 0.6},
+    # SHIBUYA109's aluminium panels: horizontal joints every 0.9 m, vertical every 1.8 m (photographs)
+    "x_alu": {"color": "#b9bdc1", "roughness": 0.38, "metalness": 0.6, "pattern": "granite", "joints_m": [1.8, 0.9]},
+    # printed adverts lit from outside by lamps: dimmer after dark than a lit box
+    "x_print": {"color": "#ffffff", "roughness": 0.7, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 0.5},
+    "x_gate": {"color": "#7c8086", "roughness": 0.5, "metalness": 0.55},
     "x_atlas": {"color": "#ffffff", "roughness": 0.6, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
 }
-LIT = {"x_light", "x_atlas"}
+LIT = {"x_light", "x_atlas", "x_print", "x_shop"}
 
 
 # ---------------------------------------------------------------- data
@@ -220,7 +227,9 @@ def paint_strip(m, gz, a, b, w, z_off=0.045, n=None):
 def crosswalks(K, D, node):
     paint, asphalt = K["x_paint"], K["x_asphalt"]
     gz = lambda p: D.ground(*p)
-    ground_polygon(asphalt, junction_area(D), gz, 0.03)
+    area = junction_area(D)
+    ground_polygon(asphalt, area, gz, 0.03)
+    tactile(K, D, np.asarray(node, float), area)
     centre = np.mean([np.asarray(c["a"]) + np.asarray(c["b"]) for c in CROSSWALKS], axis=0) / 2
     for cw in CROSSWALKS:
         mode = STOPS.get(cw["id"])
@@ -237,9 +246,21 @@ def crosswalks(K, D, node):
         drv_left = -np.array([-o[1], o[0]])          # the left of a driver coming in (heading -o)
         if mode == "full":
             p, q = back - f * L / 2, back + f * L / 2
+            lanes = [back + (f if f @ drv_left > 0 else -f) * (L / 2 - 1.6 - 3.1 * k) for k in range(int(L // 3.1))]
         else:
             p, q = back + drv_left * 0.15, back + drv_left * L / 2
+            lanes = [back + drv_left * (1.6 + 3.1 * k) for k in range(int((L / 2) // 3.1))]
         paint_strip(paint, gz, p, q, STOP_W)
+        # the diamonds that warn of the crosswalk ahead (横断歩道又は自転車横断帯あり), 30 m and 50 m back, one per lane
+        bands = road_bands(D)
+        for c0 in lanes:
+            for d in (30.0, 50.0):
+                cc = c0 + o * d
+                if not bands.contains(Point(*cc).buffer(1.0)):
+                    continue
+                pts = [cc + o * 2.5, cc + drv_left * 0.75, cc - o * 2.5, cc - drv_left * 0.75]
+                for k in range(4):
+                    paint_strip(paint, gz, pts[k], pts[(k + 1) % 4], 0.2, n=2)
     # the bars: along the traffic (across the walk), one every 90 cm across the walk's length
     for cw in CROSSWALKS:
         a, b = np.asarray(cw["a"], float), np.asarray(cw["b"], float)
@@ -257,6 +278,105 @@ def crosswalks(K, D, node):
             for j in range(3):
                 pts = [seg[j], seg2[j], seg2[j + 1], seg[j + 1]]
                 paint.quad(*[np.array([*p, gz(p) + 0.045]) for p in pts])
+    guard_rails(K, D, area, centre)
+
+
+def road_bands(D):
+    if not hasattr(D, "_bands"):
+        from shapely.ops import unary_union
+        D._bands = unary_union([LineString([p[:2] for p in pts]).buffer(ROADW.get(c, 7) / 2, cap_style=2) for c, pts in D.roads
+                                if len(pts) > 1 and min(p[2] - D.ground(p[0], p[1]) for p in pts) < 3])
+    return D._bands
+
+
+def guard_rails(K, D, area, centre, near=40.0):
+    """Along the scramble's kerbs, between the crosswalks: white guard pipes (ガードパイプ, 0.8 m, posts every
+    2 m) on the Hachiko and station side, and short stainless bollards along QFRONT's forecourt, where the
+    photographs show them; none across a crosswalk's end, a road or a doorway."""
+    bands = road_bands(D)
+    ends = []
+    for c in CROSSWALKS:
+        a, b = np.asarray(c["a"], float), np.asarray(c["b"], float)
+        ends += [Point(*a).buffer(c["width"] / 2 + 0.8), Point(*b).buffer(c["width"] / 2 + 0.8)]
+    from shapely.ops import unary_union
+    skip = unary_union(ends)
+    ring = np.asarray(area.exterior.coords)
+    white, steel = K["x_guard"], K["x_rail"]
+    gz = lambda p: D.ground(*p)
+    from shapely.geometry.polygon import orient
+    ring = np.asarray(orient(area, 1.0).exterior.coords)
+    for a, b in zip(ring[:-1], ring[1:]):
+        L = float(np.linalg.norm(b - a))
+        if L < 0.5:
+            continue
+        f = (b - a) / L
+        out = np.array([f[1], -f[0]])
+        n = max(1, int(L // 2.0))
+        for k in range(n):
+            p, q = a + f * L * k / n, a + f * L * (k + 1) / n
+            m = (p + q) / 2
+            o = m + out * 0.45
+            if np.linalg.norm(m - centre) > near or skip.contains(Point(*m)) or bands.contains(Point(*(m + out * 1.2))):
+                continue
+            if any(Polygon(s_["ring"]).contains(Point(*(m + out * 0.6))) for s_ in D.solids if abs(s_["ring"][0][0] - m[0]) < 25 and abs(s_["ring"][0][1] - m[1]) < 25):
+                continue
+            if m[1] > -992.0 and m[0] < 372.0:             # QFRONT's forecourt: bollards
+                c = o
+                lathe = [(gz(c), 0.09), (gz(c) + 0.75, 0.09), (gz(c) + 0.8, 0.06), (gz(c) + 0.82, 0.0)]
+                steel.lathe([(float(z), float(r)) for z, r in lathe], (float(c[0]), float(c[1])), 10)
+                continue
+            po, qo = p + out * 0.45, q + out * 0.45
+            for c in (po,):
+                white.tube([np.array([*c, gz(c)]), np.array([*c, gz(c) + 0.8])], 0.035, 6)
+            for h in (0.42, 0.78):
+                white.tube([np.array([*po, gz(po) + h]), np.array([*qo, gz(qo) + h])], 0.025, 6)
+
+
+# ---------------------------------------------------------------- tactile paving
+
+def tactile(K, D, node, road, radius=125.0):
+    """The yellow tactile blocks (点字ブロック, 30 cm square) along the footways OSM tags tactile_paving=yes
+    round the scramble: guide blocks along the line, warning blocks (dots) where it meets a kerb or turns,
+    on the pavement only (not on the road, not under a building)."""
+    from shapely.ops import unary_union
+    from shapely import STRtree
+    blds = [Polygon(s["ring"]) for s in D.solids if len(s["ring"]) >= 3 and np.linalg.norm(np.asarray(s["ring"][0]) - node) < radius + 60]
+    blocked = unary_union([b.buffer(0.3) for b in blds if b.is_valid] + [road.buffer(0.2)])
+    m = K["x_tactile"]
+    gz = lambda p: D.ground(*p)
+    ends = []
+    for w in D.ways:
+        t = w["tags"]
+        if t.get("tactile_paving") != "yes" or not t.get("highway") or t.get("highway") in ("steps", "elevator"):
+            continue
+        if str(t.get("layer", "0")) != "0" or str(t.get("level", "0"))[:1] in "-123" or t.get("bridge"):
+            continue
+        pts = [p for p in w["xy"]]
+        if min(np.linalg.norm(p - node) for p in pts) > radius:
+            continue
+        line = LineString([tuple(p) for p in pts]).difference(blocked)
+        for piece in getattr(line, "geoms", [line]):
+            if piece.geom_type != "LineString" or piece.length < 0.6:
+                continue
+            cs = np.asarray(piece.coords)
+            for a, b in zip(cs[:-1], cs[1:]):
+                L = float(np.linalg.norm(b - a))
+                if L < 0.05:
+                    continue
+                f = (b - a) / L
+                l = np.array([-f[1], f[0]]) * 0.15
+                for k in range(max(1, int(L // 2.0) + 1)):
+                    p, q = a + f * L * k / max(1, int(L // 2.0) + 1), a + f * L * (k + 1) / max(1, int(L // 2.0) + 1)
+                    u0, u1 = L * k / max(1, int(L // 2.0) + 1), L * (k + 1) / max(1, int(L // 2.0) + 1)
+                    m.quad(*[np.array([*x, gz(x) + 0.12]) for x in (p - l, q - l, q + l, p + l)], [[u0, 0], [u1, 0], [u1, 0.3], [u0, 0.3]])
+            ends += [cs[0], cs[-1]]
+    dots = K["x_tactile_dot"]
+    for e in ends:
+        if road.distance(Point(*e)) < 1.5 or blocked.distance(Point(*e)) > 0.8:   # at a kerb, or at a door
+            for i in (-1, 0):
+                for j in (-1, 0):
+                    q = [e + np.array([i * 0.3 + a, j * 0.3 + b]) for a, b in ((0, 0), (0.3, 0), (0.3, 0.3), (0, 0.3))]
+                    dots.quad(*[np.array([*x, gz(x) + 0.125]) for x in q], [list(x) for x in q])
 
 
 # ---------------------------------------------------------------- the underground's entrances
@@ -376,13 +496,14 @@ def draw_exit(img, rect, ref, name):
     d = ImageDraw.Draw(img)
     d.rectangle([x, y, x + w, y + h], fill=(22, 34, 72))
     s = h - 16
-    d.rectangle([x + 8, y + 8, x + 8 + s * (1.5 if len(ref) > 2 else 1.2), y + 8 + s], fill=(255, 209, 0))
+    if ref:
+        d.rectangle([x + 8, y + 8, x + 8 + s * (1.5 if len(ref) > 2 else 1.2), y + 8 + s], fill=(255, 209, 0))
     if ref:
         f = ad.font("zen", int(s * 0.62))
         d.text((x + 8 + s * (0.75 if len(ref) > 2 else 0.6), y + 8 + s / 2), ref, font=f, fill=(20, 20, 20), anchor="mm")
     f = ad.font("zen", int(h * 0.34))
     f2 = ad.font("bebas", int(h * 0.3))
-    x1 = x + 16 + s * (1.5 if len(ref) > 2 else 1.2)
+    x1 = x + 16 + (s * (1.5 if len(ref) > 2 else 1.2) if ref else 0)
     d.text((x1 + 8, y + h * 0.36), "渋谷駅", font=f, fill=(255, 255, 255), anchor="lm")
     d.text((x1 + 8, y + h * 0.76), "SHIBUYA STATION", font=f2, fill=(220, 226, 240), anchor="lm")
 
@@ -654,9 +775,9 @@ def draw_qfront(img, rects):
     for k in range(6):
         d.arc([-w * 0.2, h * (0.25 + 0.1 * k), w * 1.2, h * (1.6 + 0.1 * k)], 190, 350, fill=(255, 255, 255), width=3)
     f = ad.font("reggae", int(h * 0.52))
-    d.text((w * 0.36, h * 0.46), "FIZZLE", font=f, fill=(255, 255, 255), anchor="mm")
-    f = ad.font("zen", int(h * 0.2))
-    d.text((w * 0.78, h * 0.5), "爽快、ひと口。", font=f, fill=(255, 236, 236), anchor="mm")
+    d.text((w * 0.34, h * 0.46), "FIZZLE", font=f, fill=(255, 255, 255), anchor="mm")
+    f = ad.font("zen", int(h * 0.16))
+    d.text((w * 0.83, h * 0.5), "爽快、ひと口。", font=f, fill=(255, 236, 236), anchor="mm")
     img.paste(sub, (x, y))
     x, y, w, h = rects["qf_name"]
     d = ImageDraw.Draw(img)
@@ -679,16 +800,170 @@ def Image_new(w, h, c):
     return Image.new("RGB", (w, h), c)
 
 
+# ---------------------------------------------------------------- SHIBUYA109
+
+# SHIBUYA109 (1979, Minoru Takeyama; 8 floors over the ground): an aluminium-clad block in the fork of
+# Dogenzaka and Bunkamura-dori, and at its point, facing the scramble, the cylinder (its lift tower),
+# which rises over the roof to carry the name. PLATEAU: 33.6 m measured; the cylinder 49.7 m to its top,
+# about 11.5 m across in its generalised model; OSM's footprint rounds its point on a 13.7 m circle. It is
+# drawn 13 m across, on the footprint's circle. Its front carries a printed advert over most of its height (estimated 23 m
+# tall, invented here). The panels' joints and the shopfronts are from photographs (estimates).
+S109 = {"osm": "w55895868", "centre": (229.6, -993.0), "r": 6.5, "top_m": 49.7, "roof_m": 33.6, "toward": (369.0, -1000.0),
+        "wrap": (13.0, 31.0, 120.0), "crown": (38.5, 48.4)}
+
+
+def cyl_strip(m, c, r, a0, a1, z0, z1, segs, uv=None, out=True):
+    """A band of a cylinder from angle a0 to a1 (radians, counter-clockwise), facing out; uv: (u0, v0, u1, v1) over it, else metres."""
+    for k in range(segs):
+        t0, t1 = a0 + (a1 - a0) * k / segs, a0 + (a1 - a0) * (k + 1) / segs
+        p = lambda a, z: np.array([c[0] + r * math.cos(a), c[1] + r * math.sin(a), z])
+        if uv:
+            u0, v0, u1, v1 = uv
+            q = [[u0 + (u1 - u0) * k / segs, v0], [u0 + (u1 - u0) * (k + 1) / segs, v0], [u0 + (u1 - u0) * (k + 1) / segs, v1], [u0 + (u1 - u0) * k / segs, v1]]
+        else:
+            q = [[r * t0, z0], [r * t1, z0], [r * t1, z1], [r * t0, z1]]
+        if out:
+            m.quad(p(t0, z0), p(t1, z0), p(t1, z1), p(t0, z1), q)
+        else:
+            m.quad(p(t1, z0), p(t0, z0), p(t0, z1), p(t1, z1), q)
+
+
+def shibuya109(K, A, D):
+    sol = [s for s in D.solids if s["osm"] == S109["osm"]]
+    if not sol:
+        return []
+    from shapely.ops import unary_union
+    g = min(s["ground"] for s in sol)
+    c = np.asarray(S109["centre"])
+    r = S109["r"]
+    body = unary_union([Polygon(s["ring"]).buffer(0) for s in sol]).buffer(0.2).buffer(-0.2)
+    body = max(getattr(body, "geoms", [body]), key=lambda q: q.area)
+    body = body.difference(Point(*c).buffer(r - 0.4, 32))   # the block stops at the cylinder
+    body = max(getattr(body, "geoms", [body]), key=lambda q: q.area)
+    zr = g + S109["roof_m"]
+    alu, shop, panel = K["x_alu"], K["x_shop"], K["x_qf_panel"]
+    toward = np.asarray(S109["toward"])
+    # the block: aluminium walls, shopfronts at the foot of the street faces, a parapet; the roof
+    for a, b, n, L in ring_edges(body):
+        mid = (a + b) / 2
+        if Point(*mid).distance(Point(*c)) < r + 0.3:
+            continue                                     # (the cylinder stands there)
+        street = len(ring_edges(body)) and L > 2.0
+        gz0 = min(D.ground(*a), D.ground(*b))
+        z_shop = gz0 + 4.2 if street else gz0
+        if street:
+            shop.quad(np.array([*a, gz0 - 0.2]), np.array([*b, gz0 - 0.2]), np.array([*b, z_shop]), np.array([*a, z_shop]), [[0, 0], [L, 0], [L, 4.4], [0, 4.4]])
+            box(K["x_fin"], frame(a, b - a), 0, L, 0, 0.6, z_shop, z_shop + 0.5)   # the fascia over the shops
+        alu.quad(np.array([*a, z_shop]), np.array([*b, z_shop]), np.array([*b, zr + 1.0]), np.array([*a, zr + 1.0]), [[0, z_shop], [L, z_shop], [L, zr + 1.0], [0, zr + 1.0]])
+    ak.cap(K["x_qf_roof"], ak.WORLD, [tuple(p) for p in list(body.exterior.coords)[:-1]], zr + 0.2)
+    # the cylinder: panels all round, the advert on the face toward the scramble, the crown with the name
+    face = math.atan2(*(toward - c)[::-1])
+    w0, w1, span = S109["wrap"]
+    half = math.radians(span) / 2
+    zt = g + S109["top_m"]
+    cyl_strip(alu, c, r, face + half, face - half + 2 * math.pi, g + 4.2, zt, 36)
+    cyl_strip(alu, c, r, face - half, face + half, g + 4.2, g + w0, 16)
+    cyl_strip(alu, c, r, face - half, face + half, g + w1, zt, 16)
+    cyl_strip(shop, c, r, 0, 2 * math.pi, g - 0.2, g + 4.2, 32)
+    cyl_strip(K["x_fin"], c, r + 0.35, 0, 2 * math.pi, g + 4.2, g + 4.7, 32)
+    u0, v0, u1, v1 = A.uv("s109_wrap")
+    cyl_strip(K["x_print"], c, r + 0.12, face - half, face + half, g + w0, g + w1, 20, uv=(u0, v0, u1, v1))
+    # the frame round the advert, and the lamps that light it from below
+    for z in (g + w0 - 0.25, g + w1):
+        cyl_strip(K["x_fin"], c, r + 0.3, face - half - 0.03, face + half + 0.03, z, z + 0.25, 20)
+    for k in range(9):
+        a = face - half + 2 * half * (k + 0.5) / 9
+        p = c + (r + 1.0) * np.array([math.cos(a), math.sin(a)])
+        box(K["x_light"], frame(p, (math.cos(a), math.sin(a))), -0.2, 0.2, -0.25, 0.25, g + w0 - 0.9, g + w0 - 0.6)
+    z0c, z1c = (g + x for x in S109["crown"])
+    u0, v0, u1, v1 = A.uv("s109_name")
+    cyl_strip(K["x_atlas"], c, r + 0.15, face - 1.0, face + 1.0, z0c, z1c, 16, uv=(u0, v0, u1, v1))
+    ak.cap(K["x_qf_roof"], ak.WORLD, [tuple(c + r * np.array([math.cos(a), math.sin(a)])) for a in np.linspace(0, 2 * math.pi, 24, endpoint=False)], zt)
+    cyl_strip(K["x_fin"], c, r + 0.2, 0, 2 * math.pi, zt - 0.5, zt + 0.3, 32)
+    return [s["si"] for s in sol]
+
+
+def draw_109(img, rects):
+    from PIL import ImageDraw
+    x, y, w, h = rects["s109_wrap"]   # an invented fashion campaign: a gradient, a figure, the season's words
+    sub = Image_new(w, h, (255, 120, 180))
+    ad.gradient(sub, "#ff4fa0", "#ffd0e4", angle=90.0)
+    ad.figure(sub, w * 0.5, h * 0.18, h * 0.62, "#3a1c3a", coat=True)
+    ad.text(sub, (w * 0.5, h * 0.1), "AW 2026", "anton", int(h * 0.07), fill="#ffffff")
+    ad.text(sub, (w * 0.5, h * 0.88), "LUMIÈRE", "bebas", int(h * 0.09), fill="#ffffff")
+    ad.text(sub, (w * 0.5, h * 0.95), "ルミエール 新作入荷", "zen", int(h * 0.035), fill="#4a0d2e")
+    img.paste(sub, (x, y))
+    x, y, w, h = rects["s109_name"]   # the name on the cylinder's silver: a pink 109 in a ring, in words, not its logo
+    sub = Image_new(w, h, (186, 190, 195))
+    d = ImageDraw.Draw(sub)
+    for k in range(0, h, 12):
+        d.line([(0, k), (w, k)], fill=(170, 174, 180), width=1)
+    r = h * 0.42
+    d.ellipse([w / 2 - r, h / 2 - r, w / 2 + r, h / 2 + r], outline=(236, 72, 150), width=int(h * 0.05))
+    ad.text(sub, (w / 2, h / 2), "109", "anton", int(h * 0.42), fill="#ec4896", max_w=r * 1.5)
+    img.paste(sub, (x, y))
+
+
+# ---------------------------------------------------------------- Center Gai's gate
+
+# The gate at Center Gai's mouth (since the old arcade sign fell in the typhoon of 1997): a grey steel
+# post each side of the street that bends over at the top like a shepherd's crook, a disc lamp at its
+# tip, センター街 on the posts, and a banner hung between them (in 2024-25 the street's basketball
+# banner: it has been "Basketball Street" since 2011). No dimensions are published: the height and the
+# span are estimates from photographs (5.5 m posts, the street's 9 m); the banner is drawn for the model.
+def center_gai_gate(K, A, D, c):
+    P = frame(c["at"], c["axis"])
+    z0, hs = c["z"], c["span_m"] / 2
+    grey = K["x_gate"]
+    for side in (-1, 1):
+        v = side * hs
+        grey.tube([P(0, v, z0), P(0, v, z0 + 5.2)], 0.22, 12)
+        arc = [P(0, v - side * (1.0 - math.cos(t)) * 1.1, z0 + 5.2 + math.sin(t) * 1.1) for t in np.linspace(0, math.pi * 0.95, 10)]
+        grey.tube(arc, 0.18, 10)
+        tip = arc[-1]
+        K["x_gate"].lathe([(float(tip[2] - 0.35), 0.0), (float(tip[2] - 0.3), 0.5), (float(tip[2] - 0.15), 0.55), (float(tip[2] - 0.05), 0.2)],
+                          (float(tip[0]), float(tip[1])), 16)
+        K["x_light"].lathe([(float(tip[2] - 0.36), 0.0), (float(tip[2] - 0.355), 0.42)], (float(tip[0]), float(tip[1])), 16)
+        # the street's name down each post, on both faces
+        for u in (-0.23, 0.23):
+            a, b = (P(u, v - 0.16, z0 + 2.6), P(u, v + 0.16, z0 + 2.6)) if u > 0 else (P(u, v + 0.16, z0 + 2.6), P(u, v - 0.16, z0 + 2.6))
+            A.quad(K["x_atlas"], a, b, b + [0, 0, 2.2], a + [0, 0, 2.2], "cg_name")
+    # the banner on a bar between the posts, each face on the side it faces
+    grey.tube([P(0, -hs + 0.2, z0 + 4.75), P(0, hs - 0.2, z0 + 4.75)], 0.05, 6)
+    w = 2 * hs - 2.6
+    for side in (-1, 1):
+        u = side * 0.03
+        a, b = (P(u, -w / 2, z0 + 3.55), P(u, w / 2, z0 + 3.55)) if side > 0 else (P(u, w / 2, z0 + 3.55), P(u, -w / 2, z0 + 3.55))
+        A.quad(K["x_print"], a, b, b + [0, 0, 1.15], a + [0, 0, 1.15], "cg_banner")
+
+
+def draw_gate(img, rects):
+    from PIL import ImageDraw
+    x, y, w, h = rects["cg_banner"]
+    sub = Image_new(w, h, (250, 206, 0))
+    d = ImageDraw.Draw(sub)
+    d.rectangle([0, h * 0.72, w, h], fill=(20, 20, 22))
+    ad.text(sub, (w * 0.5, h * 0.38), "BASKETBALL STREET", "anton", int(h * 0.42), fill="#141416", max_w=w * 0.9)
+    ad.text(sub, (w * 0.5, h * 0.86), "渋谷センター街  SHIBUYA CENTER-GAI", "zen", int(h * 0.17), fill="#ffd200", max_w=w * 0.9)
+    img.paste(sub, (x, y))
+    x, y, w, h = rects["cg_name"]
+    sub = Image_new(w, h, (118, 122, 128))
+    ad.vtext(sub, (w / 2, h * 0.1), "センター街", "zen", int(w * 0.62), fill="#ffffff")
+    img.paste(sub, (x, y))
+
+
 # ---------------------------------------------------------------- the module's hooks (city.py)
 
 class Build:
     """What the scramble adds to the Shibuya map's landmarks: meshes, solids it draws instead, ground clips."""
 
-    def __init__(self, city_id, node):
+    def __init__(self, city_id, node, lm=None):
+        self.lm = lm or {}
         self.D = Data(city_id)
         self.node = np.asarray(node, float)
         self.entrances = entrance_sites(self.D, self.node)
         items = [(f"exit_{e['ref']}", 512, 96) for e in self.entrances] + [("exit_side", 1024, 64)]
+        items += [("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
         items += [("qf_crown", 1024, 320), ("qf_name", 384, 52), ("qf_starbucks", 768, 92), ("qf_tsutaya", 512, 84)]
         self.A = Atlas(list(dict.fromkeys(items)), width=2048)
 
@@ -698,6 +973,9 @@ class Build:
         crosswalks(K, self.D, self.node)
         jr_lines(K, self.A, self.D)
         hidden += qfront(K, self.A, self.D)
+        hidden += shibuya109(K, self.A, self.D)
+        if "center_gai" in self.lm:
+            center_gai_gate(K, self.A, self.D, self.lm["center_gai"])
         for e in self.entrances:
             clip.append({"ring": entrance(K, self.A, e)})
             hidden.append(e["si"])
@@ -710,5 +988,7 @@ class Build:
             draw_exit(img, self.A.rects[f"exit_{e['ref']}"], e["ref"], e["name"])
         draw_side(img, self.A.rects["exit_side"])
         draw_qfront(img, self.A.rects)
+        draw_109(img, self.A.rects)
+        draw_gate(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=90)
         return ATLAS_FILE
