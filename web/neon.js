@@ -18,7 +18,7 @@ window.OENeon = (function () {
   const COUNT = { high: 8, medium: 4, low: 0 };
   // The screens are drawn dimmer than they are, so that their pictures read after the tone curve; the
   // light they throw is that of the real panels (some 1,000 nits after dark against a lamp-lit street)
-  const SPILL = 22;
+  const SPILL = 13;
 
   // the n-th clip of a playlist (a bit mask over the clips), counting round: world.js scrClip
   function scrClip(mask, n) {
