@@ -347,3 +347,78 @@ def near_line(g, pts, d):
     """Whether geometry g is within d m of the polyline pts."""
     from shapely.geometry import LineString
     return LineString(pts).distance(g) < d
+
+
+# ---------------------------------------------------------------- names on roofs
+
+def roof_name_sites(C, names, min_edge=6.0):
+    """For each building whose name is drawn on its roof ({key, ring, top_m, ground_m}), the footprint's edge
+    that faces the nearest main road: its middle, outward normal, length and the roof's height."""
+    roads = [r["geom"] for r in jk.overture(C, "segment", "subtype = 'road' AND class IN ('primary', 'secondary', 'tertiary')")
+             if r["geom"].geom_type == "LineString"]
+    out = []
+    for n in names:
+        g = Polygon(n["ring"])
+        if not roads:
+            break
+        near = min(roads, key=lambda ln: ln.distance(g.centroid))
+        p = near.interpolate(near.project(g.centroid))
+        cs = np.asarray(g.exterior.coords)
+        best = None
+        for a, b in zip(cs[:-1], cs[1:]):
+            mid = (a + b) / 2
+            L = float(np.linalg.norm(b - a))
+            if L < min_edge:
+                continue
+            e = (b - a) / L
+            nrm = np.array([e[1], -e[0]]) if g.exterior.is_ccw else np.array([-e[1], e[0]])
+            score = float(np.linalg.norm(mid - [p.x, p.y]))
+            if (np.array([p.x, p.y]) - mid) @ nrm > 0 and (best is None or score < best[0]):
+                best = (score, mid, nrm, L)
+        if best:
+            _, mid, nrm, L = best
+            out.append({"key": n["key"], "mid": rnd(mid), "n": rnd(nrm, 4), "L": round(L, 1), "z": round(n["ground_m"] + n["top_m"], 2)})
+    return out
+
+
+def roof_names(K, atlas, sites, max_w=22.0, aspect=5.3, mat="frame"):
+    """The names on their roofs' edges, on steel legs, lit after dark (atlas cells name_<key>)."""
+    A = K("atlas", "lit")
+    for r in sites:
+        n, mid = np.asarray(r["n"]), np.asarray(r["mid"])
+        t = np.array([-n[1], n[0]])
+        w = min(r["L"] * 0.8, max_w)
+        h = w / aspect
+        c = mid + n * 0.3
+        a, b = c - t * w / 2, c + t * w / 2
+        z0 = r["z"] + 0.6
+        atlas.quad(A, np.array([*a, z0]), np.array([*b, z0]), np.array([*b, z0 + h]), np.array([*a, z0 + h]), f"name_{r['key']}")
+        for s in np.linspace(-w / 2 + 0.5, w / 2 - 0.5, 5):
+            p = mid - n * 0.3 + t * s
+            K(mat).box(np.array([*p, r["z"]]), np.array([*p, z0 + h * 0.8]), 0.18, 0.18)
+
+
+def draw_names(d, atlas, names):
+    """Atlas cells for roof names: {key: (words, background, ink, font)}."""
+    for k, (words, bg, ink, fname) in names.items():
+        x, y, w, h = atlas.rects[f"name_{k}"]
+        d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=bg)
+        jk.text(d, (x + w / 2, y + h / 2), words, fname, jk.fit(d, [words], fname, w - 30, h - 14, 90), ink)
+
+
+def draw_signs(d, atlas, blades, boards):
+    """Atlas cells blade<i> (vertical words) and board<i> (a lit board) for jk.street_signs."""
+    for i, (words, bg, ink, fname) in enumerate(blades):
+        x, y, w, h = atlas.rects[f"blade{i}"]
+        d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=bg)
+        d.rectangle([x + 3, y + 3, x + w - 3, y + h - 3], outline=ink, width=2)
+        jk.vertical(d, words.replace(" ", ""), x + w / 2, y + 10, y + h - 10, fname, ink, w - 12)
+    for i, (words, bg, ink, fname) in enumerate(boards):
+        x, y, w, h = atlas.rects[f"board{i}"]
+        d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=bg)
+        jk.text(d, (x + w / 2, y + h / 2), words, fname, jk.fit(d, [words], fname, w - 24, h - 16, 80), ink)
+
+
+def sign_glows(sites, every=3, colours=("#ffd9a0", "#ffffff", "#ffb070"), strength=0.26):
+    return [[round(x + nx * 3.0, 1), round(y + ny * 3.0, 1), 8.0, colours[k % len(colours)], strength]
+            for k, (x, y, nx, ny, g, top, L) in enumerate(sites) if k % every == 0]
