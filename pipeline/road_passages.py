@@ -14,14 +14,14 @@ arcade over a street open to cars (an Osaka shotengai) stands on posts in the ca
 tools/road_walls.js lists each stretch where the game cuts a road, and each where a car doesn't
 fit along it (route.js), with the points along it and what is in the way, measured by the game's
 own collision (the floor under the road, decks).
-For each building solid in such a stretch the road's corridor (its line, 1.5 m on at either
+For each building solid in such a stretch the road's corridor (its line, 4 m on at either
 end, 1.3 m either side: room for a car on the road's line) is taken out of the footprint:
 - where it only clips the footprint (what is left is one piece, the corridor takes at most a
   quarter of it, and no more than a metre deep of one high enough for a passage), the footprint
   stands back from the road: it is trimmed; not where a lane
   only too narrow for a car runs between buildings on both sides (an alley: it is that narrow);
 - where the road goes into or through it and the building is high enough over the road
-  (2.5 m of it over a 4.5 m clearance), the corridor becomes a passage: the building is kept
+  (2.5 m of it over a 4.5 m clearance over the road's highest point in there), the corridor becomes a passage: the building is kept
   over it (and under it, for a road passing at a height), and the passage gets a ceiling
   (buildings.json "passages", web/buildings.js);
 - where a main road (motorway to secondary) runs through a building too low for a passage, the
@@ -30,6 +30,9 @@ end, 1.3 m either side: room for a car on the road's line) is taken out of the f
   and the traffic keeps off it (web/game/route.js).
 A canopy's post in the corridor is left out (buildings.json "no_posts", by building, the posts'
 positions in decimetres; web/buildings.js canopyPosts). Landmarks are not touched.
+
+A building with roads through it at two levels is carved for the lowest, and for the next when
+the stretches are measured again (tools/road_passages.sh repeats until nothing changes).
 
 A new piece keeps its building (style, windows, roof material); its facades' shopfronts follow
 the edges they came from. Rewrites web/data/<city>/buildings.json in place; with the stretches
@@ -44,7 +47,7 @@ from shapely.geometry import LineString, MultiPolygon, Polygon
 from shapely.ops import substring
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-HW, EXT = 1.3, 1.5          # corridor half-width and the stretch extended at either end (m)
+HW, EXT = 1.3, 4.0          # corridor half-width and the stretch extended at either end (m: a ramp down into a building is found a stretch at a time)
 CLEAR, OVER = 4.5, 2.5      # a passage's clearance over the road, and the building it needs over that (m)
 UNDER = 2.5                 # a building kept under an elevated road passing through it (m of it)
 TRIM_SHARE = 0.25           # the most of a footprint a trim takes
@@ -131,7 +134,7 @@ def carve(out_dir, walls):
         pts = w.get("pts") or []
         if not pts:
             continue
-        z = min(p[2] for p in pts)
+        z, ztop = min(p[2] for p in pts), max(p[2] for p in pts)  # (a ramp: the clearance over its highest point in there)
         major = w.get("c") in MAJOR
         # (a lane too narrow for a car between buildings on both sides, an alley: it really is that narrow,
         # and the traffic keeps off it; a footprint that clips it on one side only stands back from it)
@@ -163,8 +166,8 @@ def carve(out_dir, walls):
                 s = S[si]
                 if si in hidden or abs((s[1] + s[2]) / 10 - h["zlo"]) > 0.15 or abs((s[1] + s[3]) / 10 - h["zhi"]) > 0.15:
                     continue
-                want.setdefault(si, []).append((corridor(pts), z, major, trim_ok))
-    n_trim = n_pass = n_left = 0
+                want.setdefault(si, []).append((corridor(pts), z, major, trim_ok, ztop))
+    n_trim = n_pass = n_left = n_later = 0
     new_solids, new_fronts = [], []
     for si, cs in sorted(want.items()):
         s = S[si]
@@ -173,8 +176,14 @@ def carve(out_dir, walls):
             continue
         bi, base, lo, hi = s[0], s[1], s[2], s[3]
         g0 = base / 10
-        C = shapely.unary_union([c[0] for c in cs])
+        # (roads through it at more than one level, an elevated road over a street: the lowest now, the next
+        # when it is measured again, through the pieces this leaves)
         z = min(c[1] for c in cs)
+        later = [c for c in cs if c[1] > z + 3]
+        cs = [c for c in cs if c[1] <= z + 3]
+        n_later += bool(later)
+        C = shapely.unary_union([c[0] for c in cs])
+        ztop = max(c[4] for c in cs)
         major = any(c[2] for c in cs)
         trim_ok = all(c[3] for c in cs)
         cut, rest = P.intersection(C), P.difference(C)
@@ -183,7 +192,7 @@ def carve(out_dir, walls):
         rp = pieces(rest)
         r = roof.get(si)
         top_walls = r[2] if r else hi  # (a pitched roof: the walls end at its eaves, the roof drawn over all of it)
-        over = g0 + top_walls / 10 - (z + CLEAR)
+        over = g0 + top_walls / 10 - (ztop + CLEAR)
         # how far into the footprint the road goes: the deepest point of what it takes from it
         depth = max((P.boundary.distance(shapely.Point(q)) for g in pieces(cut) or [cut] if hasattr(g, "exterior") for q in g.exterior.coords), default=0.0)
         if len(rp) <= 1 and cut.area <= TRIM_SHARE * P.area and trim_ok and (depth <= SLIVER or over < OVER):
@@ -218,7 +227,7 @@ def carve(out_dir, walls):
                     new_fronts.append((len(S) + len(new_solids) - 1, ff))
         if kind == "pass":
             for p in pieces(cut):
-                parts = [(solid_of(p, base, max(lo, round((z + CLEAR - g0) * 10)), top_walls, bi), True)]
+                parts = [(solid_of(p, base, max(lo, round((ztop + CLEAR - g0) * 10)), top_walls, bi), True)]
                 if (z - 0.3) - (g0 + lo / 10) >= UNDER:  # a road at a height through it: the building under the road too
                     parts.append((solid_of(p, base, lo, round((z - 0.3 - g0) * 10), bi), False))
                 for ns, ceiling in parts:
@@ -248,7 +257,8 @@ def carve(out_dir, walls):
     with open(bpath, "w") as f:
         json.dump(B, f, separators=(",", ":"))
     print(f"  {n_trim} footprints stood back from a road, {n_pass} passages for a road through a building, "
-          f"{n_post} canopy posts out of a carriageway; {n_left} roads through low buildings left as they are")
+          f"{n_post} canopy posts out of a carriageway; {n_left} roads through low buildings left as they are"
+          + (f"; {n_later} with a road at another level through them, for the next pass" if n_later else ""))
 
 
 def main():

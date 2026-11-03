@@ -65,14 +65,18 @@ const jsonOut = rest[0] === '--json' ? rest[1] : null;
       for (let j = 0; j <= n; j++) {
         g.roadNet.at(li, l.len * j / n, q);
         const f = nav.floorAt(q.x, q.y, q.z + 0.6);
-        if (!f || Math.abs(f.z - q.z) > 2) { noFloor.add(li); end(); continue; } // (no floor at the road's height: a deck's heights, not a wall; counted below)
-        if (nav.room(q.x, q.y, f.z, 0.9, 1.6, nav.isDeck(f.kind))) { end(); continue; }
+        // (no floor at the road's height: a deck's heights, counted below; a wall only where a building stands
+        // at the road's own height there, an elevated road run into a tower: then measured from the road)
+        const lost = !f || Math.abs(f.z - q.z) > 2;
+        if (lost) noFloor.add(li);
+        if (lost ? !nav.col.overlap(q.x, q.y, 0.9, q.z + 0.4, q.z + 1.6, (pi, pr) => pr.tag !== nav.BUILDING) : nav.room(q.x, q.y, f.z, 0.9, 1.6, nav.isDeck(f.kind))) { end(); continue; }
         if (!run) run = { road: `piece ${li}`, c: l.c, ow: l.ow || 0, at: [+q.x.toFixed(1), +q.y.toFixed(1), +q.z.toFixed(1)], m: 0, hits: {}, room: true };
         run.m += l.len / n; run.to = [+q.x.toFixed(1), +q.y.toFixed(1)];
-        const fz = f ? f.z : q.z;
+        const fz = f && !lost ? f.z : q.z;
         (run.pts || (run.pts = [])).push([+q.x.toFixed(2), +q.y.toFixed(2), +fz.toFixed(2)]);
         nav.col.overlap(q.x, q.y, 0.9, fz + 0.4, fz + 1.6, (pi, pr) => {
-          if (pr.tag === nav.BUILDING && (pr.zhi <= fz + 0.75 || (f && nav.isDeck(f.kind) && pr.zhi <= fz + 2))) return true;
+          if (pr.tag === nav.BUILDING && (pr.zhi <= fz + 0.75 || (!lost && f && nav.isDeck(f.kind) && pr.zhi <= fz + 2))) return true;
+          if (lost && pr.tag !== nav.BUILDING) return true;
           const post = pr.tag === nav.BUILDING && pr.rings && pr.rings[0] && pr.rings[0].length === 8 && Math.abs(pr.rings[0][2] - pr.rings[0][0] - OEBuildings.POST) < 0.02 && Math.abs(pr.rings[0][5] - pr.rings[0][1] - OEBuildings.POST) < 0.02;
           const h = { kind: pr.tag === nav.LANDMARK ? 'landmark' : post ? 'post' : 'building', id: pr.id, zlo: +pr.zlo.toFixed(1), zhi: +pr.zhi.toFixed(1) };
           if (post) { const r = pr.rings[0]; h.x = +((r[0] + r[4]) / 2).toFixed(2); h.y = +((r[1] + r[5]) / 2).toFixed(2); }
