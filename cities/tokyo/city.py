@@ -261,7 +261,11 @@ def kabukiza():
         x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, KZ_STEP)
         K["kz_red"].lathe([(z, 0.35), (z + z0 - KZ_STEP, 0.35)], (x, y), segs=8)
     KZ_FRONT.update({"F": F, "vf": vf, "g": g})
-    return K.out(), [s["si"] for s in solids]
+    # and what else the built data stands on the theatre's site off the tower (a PLATEAU-only block of the
+    # auditorium, 20 m, under no OpenStreetMap id), which the theatre draws instead
+    extra = [s["si"] for s in ak.load_solids("tokyo") if not s["osm"] and site.buffer(-1.0).contains(Point(*ak.ring_centroid(s["ring"])))
+             and not tower_p.contains(Point(*ak.ring_centroid(s["ring"])))]
+    return K.out(), [s["si"] for s in solids] + extra
 
 
 # ---------------------------------------------------------------- the game
