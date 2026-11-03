@@ -1,5 +1,6 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
-// it, walk, travel from the map to a landmark and run there, talk to the first quest giver,
+// it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
+// from the map to a landmark and run there, talk to the first quest giver,
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
@@ -196,6 +197,21 @@ const { pinClock } = require('./pin_clock');
       `walks ${w.name}: stops ${w.edge == null ? '?' : (-w.edge).toFixed(2)} m short of the face, at ${w.z.toFixed(2)} m (the walkway is ${w.to} m)`);
     else check(w.mode === 'foot' && w.d < 1.0 && Math.abs(w.z - w.to) < 0.3 && w.low > Math.min(w.from, w.to) - 0.3 && w.high < Math.max(w.from, w.to) + 0.3,
       `walks ${w.name}: from ${w.from} m to ${w.z.toFixed(2)} m (expected ${w.to} m), ${w.d.toFixed(1)} m from the end, never below ${w.low.toFixed(2)} or above ${w.high.toFixed(2)} m`);
+  }
+
+  // up close: walk right up to each thing the city's builders name to see close to (game.json "close",
+  // a spot's "reach": a shrine's ema rack, a lantern, a statue, a gate's posts), within 1.5 m or what the
+  // target says and never into it; and look closer at each photo spot (a spot's "look") and step back
+  // (tools/close_step.js)
+  {
+    const keep = await p.evaluate(() => { const g = window.__game, pl = g.player; return { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw }; });
+    const near = await require('./close_step')(p, {});
+    for (const r of near) {
+      if (r.look) check(r.ok, `looks closer at ${r.name} (${r.open ? `the eye ${r.eye.toFixed(2)} m off it, reading "${String(r.text).slice(0, 40)}", ${r.moved.toFixed(2)} m along it, ${r.closed && r.back ? 'and back' : 'NOT back'}` : `offered: ${r.offered}`})`);
+      else check(r.ok, `walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}${r.keep ? `, not nearer than ${r.keep}` : ''})${r.ok ? '' : `: ${r.why}`}`}`);
+    }
+    if (!near.length) console.log('     (nothing named to walk up to)');
+    await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
   }
 
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,

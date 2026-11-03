@@ -264,17 +264,26 @@ window.OENav = (function () {
     // the fine boxes to the collision world.
     let fineBoxes = 0;
     function landmarkCells(meshes, slabs) {
-      const FINE = 0.25, BAND = 3.5, GAP = 0.4, MZ = 0.1, SAMPLE = 0.17, FLAT = 0.25;
+      const FINE = 0.25, BAND = 3.5, GAP = 0.4, MZ = 0.1, SAMPLE = 0.22, FLAT = 0.25;
       const coarse = new Map(slabs), fine = new Map(), FNX = DSM.nx * Math.round(DSM.cell / FINE);
       const ref = (x, y) => { let h = terrain(x, y); for (const s of stripsAt(x, y)) { const z = stripHeight(s, x, y); if (z != null && z > h) h = z; } const k = cellOf(x, y); if (k >= 0 && pier.data[k] > h) h = pier.data[k]; return h; };
       const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
-      // a triangle's points every `step` metres at most, each passed to fn(x, y, z)
-      function sample(A, B, C, step, fn) {
-        const e = Math.max(Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]), Math.hypot(C[0] - A[0], C[1] - A[1], C[2] - A[2]), Math.hypot(C[0] - B[0], C[1] - B[1], C[2] - B[2]));
-        const n = Math.max(1, Math.ceil(e / step));
-        for (let i = 0; i <= n; i++) for (let j = 0; j <= n - i; j++) {
-          const u = i / n, v = j / n, w = 1 - u - v;
-          fn(A[0] * w + B[0] * u + C[0] * v, A[1] * w + B[1] * u + C[1] * v, A[2] * w + B[2] * u + C[2] * v);
+      // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
+      // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length
+      // squared. A flat one (|nz| > 0.95, the top of a stone base) only round its edges: its sides, where
+      // a walker meets it, are triangles of their own
+      const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
+        for (let j = 0; j <= n; j++) { const t = j / n; fn(P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t, P[2] + (Q[2] - P[2]) * t); } };
+      function sample(A, B, C, step, fn, edges = false) {
+        const ab = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]), bc = Math.hypot(C[0] - B[0], C[1] - B[1], C[2] - B[2]), ca = Math.hypot(A[0] - C[0], A[1] - C[1], A[2] - C[2]);
+        if (ab < bc || ab < ca) { if (bc >= ca) [A, B, C] = [B, C, A]; else [A, B, C] = [C, A, B]; } // AB the longest
+        const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, area2 = Math.hypot(nx, ny, nz);
+        if (edges || (area2 > 0 && Math.abs(nz) > 0.95 * area2)) { seg(A, B, step, fn); seg(B, C, step, fn); seg(C, A, step, fn); return; }
+        const L = Math.max(ab, 1e-9), h = area2 / L, rows = Math.max(1, Math.ceil(h / step)); // C's distance from AB
+        for (let i = 0; i <= rows; i++) {
+          const t = i / rows;
+          seg([A[0] + vx * t, A[1] + vy * t, A[2] + vz * t], [B[0] + (C[0] - B[0]) * t, B[1] + (C[1] - B[1]) * t, B[2] + (C[2] - B[2]) * t], step, fn);
         }
       }
       // the 2 m cells, one interval per mesh and cell as before

@@ -64,7 +64,7 @@ else
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
     esac
   done
 fi
