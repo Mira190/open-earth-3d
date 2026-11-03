@@ -287,7 +287,7 @@
     "title": "Sydney on Foot",
     "local_name": "Sydneysider",
     "water_name": "the harbour",
-    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the ferries, and fly under the Harbour Bridge. Every fact they tell you comes from the model.",
+    "blurb": "Walk Sydney under the real sun. Talk to the people who know it, ride the ferries round the harbour, and fly under the Harbour Bridge.",
     "under_bridge_note": "49 m of clearance, and you used it.",
     "shade_landmarks": ["opera", "sydney_tower"],
     "ferry_style": {"model": "harbour", "length_m": 36, "beam_m": 10, "hull": "#1e5b3a", "trim": "#e2b22b", "upper": "#efe6cc", "flag": "#a8322a",
@@ -357,11 +357,13 @@
       {
         "id": "ava",
         "name": "Ava",
-        "role": "Survey lead",
+        "role": "Circular Quay guide",
         "at": [-178, 225],
         "look": {"character": "R_Female_Adult_08", "skin": "#c68a64", "hair": "#2a1d17", "top": "#9aa0a6", "legs": "#2b3a4a", "shirt": "#9aa0a6", "pants": "#2b3a4a", "clip": "Documents"},
-        "idle": ["The whole model is open data. If something looks wrong, it probably is wrong in the data, so tell me.",
-        "There are five trig stations round the harbour, a triangle on the map for each. Climb up to one and survey the view."]
+        "idle": [
+          "The Manly ferry goes from Wharf 3. Half an hour across the harbour, and the best view in Sydney for the price of a ticket.",
+          "There are five trig stations round the harbour, a triangle on the map for each. Climb up to one for the view."
+        ]
       },
       {
         "id": "marco",
@@ -399,11 +401,13 @@
       {
         "id": "tom",
         "name": "Tom",
-        "role": "Height detective",
+        "role": "Hyde Park regular",
         "at": [-46, -1262],
         "look": {"character": "R_Male_Adult_11", "skin": "#f0c4a0", "hair": "#7a4b2a", "top": "#2f3a2c", "legs": "#4a3b2c", "shirt": "#2f3a2c", "pants": "#4a3b2c", "clip": "LookAround"},
-        "idle": ["A floor count times a storey height beats a machine-learning guess most of the time. Not always.",
-        "Think you can judge a height by eye? Aim at a building and press G. Then see how good the data is."]
+        "idle": [
+          "The Archibald Fountain's been here since 1932. A newspaperman left the money, to remember France and Australia in the Great War.",
+          "Think you can judge a height by eye? Aim at a building and press G. I'm usually out by twenty metres."
+        ]
       },
       {
         "id": "noor",
@@ -456,7 +460,7 @@
         "id": "finale",
         "title": "Report back",
         "after": ["harbour", "air", "ground"],
-        "on_open": "<b>All three surveys done.</b> Report back to Ava at Circular Quay."
+        "on_open": "<b>All three walks done.</b> Report back to Ava at Circular Quay."
       }
     ],
     "quests": [
@@ -466,7 +470,7 @@
         "giver": "ava",
         "title": "Welcome to the Quay",
         "stamp": "Circular Quay",
-        "talk": ["You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, real terrain, the real sun.", "There are three surveys to do, in any order. The harbour: Marco at the Opera House, then the ferry and the bridge. The air: Sam flies from the Kirribilli helipad, across the water. The ground: Priya, in Martin Place, on sun and heights.", "Everything's close. The helicopter is on the lawn of First Fleet Park behind you, the ferries leave from the wharves along the quay, and a hand up at the kerb (Y) on George Street stops a taxi.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.", "Which first?"],
+        "talk": ["G'day, welcome to the Quay! I'm Ava; I show people round the harbour. It's {season} here, and the water looks good {now}.", "Three walks, any order. The harbour: Marco at the Opera House, then a ferry and the bridge. The air: Sam flies from the Kirribilli helipad. The ground: Priya, in Martin Place, knows where the sun falls at lunch.", "The helicopter's on the lawn of First Fleet Park behind you, ferries leave from the wharves along the quay, and a hand up at the kerb (Y) stops a taxi. WASD to walk, E to talk, T to switch walks. Which first?"],
         "choices": [
           {"text": "The harbour: Marco, at the Opera House", "action": "track", "line": "harbour"},
           {"text": "The air: Sam, at the Kirribilli helipad", "action": "track", "line": "air"},
@@ -480,7 +484,7 @@
         "giver": "marco",
         "title": "Shells from one sphere",
         "stamp": "Sydney Opera House",
-        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest shell stands 67 m above sea level. The model builds them from that one rule, not from a scan.", "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.", "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
+        "talk": ["Ava sent you? Welcome. Look up: every one of these shells is a spherical triangle cut from one sphere, 75.2 m in radius.", "The highest stands 67 m above the water. The tiles came from Sweden, over a million of them, in gloss white and matt cream.", "First, climb the Monumental Steps up to the podium. They're nearly 100 m wide, and everyone who comes here sits on them.", "Then see the harbour from the water. Take a ferry from Circular Quay, Wharf 4, to Milsons Point. Lena will meet you there."],
         "steps": [
           {
             "type": "surface",
@@ -503,7 +507,7 @@
         "giver": "lena",
         "title": "Over the arch",
         "stamp": "Sydney Harbour Bridge",
-        "talk": ["Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.", "The deck in this model rises on its approach viaducts until it meets the ground. Walk up from here to the middle of the arch.", "That's the harbour surveyed once you're up there. Sam keeps a helicopter at the Kirribilli helipad, along the shore, if you want to see it from above."],
+        "talk": ["Nice ride? Now look up. The arch spans 503 m, and its crown is 134 m above the water.", "Walk up the approach from here to the middle of the arch. Locals call it the Coathanger.", "That's the harbour done once you're up there. Sam keeps a helicopter at the Kirribilli helipad, along the shore, if you want to see it from above."],
         "steps": [
           {
             "type": "surface",
@@ -531,7 +535,7 @@
         "giver": "priya",
         "title": "A place in the sun",
         "stamp": "Martin Place",
-        "talk": ["The planning rule says new towers may not add shadow to Martin Place between 12:00 and 14:00, from September to May.", "Winter isn't protected. On 21 June at 12:30, only {sun:Martin Place|6-21|12:30}% of the place gets direct sun. On 21 December it's {sun:Martin Place|12-21|12:30}%.", "Find a sunny spot here at lunchtime on 21 June. Watch the sun meter under the map. It ray-casts from where you stand."],
+        "talk": ["The planning rule says new towers may not add shadow to Martin Place between 12:00 and 14:00, from September to May.", "Winter isn't protected. On 21 June at 12:30, only {sun:Martin Place|6-21|12:30}% of the place gets direct sun. On 21 December it's {sun:Martin Place|12-21|12:30}%.", "Find a sunny spot here at lunchtime on 21 June, like the office workers do. The sun meter under the map tells you when you're in it."],
         "choices": [
           {
             "text": "Show me 21 June at 12:30",
@@ -542,29 +546,19 @@
           {"text": "I'll set the time myself"}
         ],
         "steps": [
-          {
-            "type": "sun",
-            "place": "Martin Place",
-            "date": [6, 21],
-            "window": ["12:00", "14:00"],
-            "text": "Stand in direct sun in Martin Place, 12:00 to 14:00 on 21 June"
-          },
-          {"type": "talk", "npc": "tom", "text": "Meet Tom at the north end of Hyde Park"}
+          {"type": "sun", "place": "Martin Place", "date": [6, 21], "window": ["12:00", "14:00"], "text": "Stand in direct sun in Martin Place, 12:00 to 14:00 on 21 June"},
+          {"type": "talk", "npc": "tom", "text": "Meet Tom in Hyde Park"}
         ]
       },
       {
         "id": "lens",
         "line": "ground",
         "giver": "tom",
-        "title": "Where heights come from",
+        "title": "Hyde Park",
         "stamp": "Hyde Park",
-        "talk": ["Every building here carries the source of its height. {share:floors}% of the footprint area comes from a floor count, {share:mapped}% from a surveyed height, and the rest is estimated.", "Aim at a building and press Q to use the survey lens. Find one with a surveyed height, one from a floor count and one that's estimated."],
+        "talk": ["Priya sent you? Sit down a minute. Governor Macquarie named Hyde Park in 1810, and the colony ran its first horse races here that same year. It's the oldest public park in the country.", "The fig avenue runs right down the middle. And across College Street is St Mary's: they only finished its spires in 2000, a hundred and thirty years after they started.", "Go and stand under them."],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": ["mapped", "floors", "estimate"],
-            "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
-          }
+          {"type": "visit", "at": [173.0, -1018.8], "radius": 70, "text": "Cross College Street to St Mary's Cathedral"}
         ]
       },
       {
@@ -587,9 +581,9 @@
         "id": "done",
         "line": "finale",
         "giver": "ava",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
-        "talk": ["That's the full tour: the water, the bridge, the air, the sun and the data underneath it all.", "{acc:matched} towers have been checked against their published heights, with a median error of {acc:median_abs_error_pct}%. Now you know where the other numbers come from.", "The city is yours. Change the time of day, take any ferry, or fly anywhere."],
+        "title": "The harbour city",
+        "stamp": "Sydneysider",
+        "talk": ["That's the lot: the water, the bridge, the air and the sun at lunchtime. You've seen more of it in a day than most of us do in a year.", "The city's yours. Change the time of day, take any ferry, or fly anywhere. Sunset on the Opera House steps is hard to beat."],
         "steps": []
       }
     ]

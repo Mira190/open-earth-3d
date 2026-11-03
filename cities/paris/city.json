@@ -498,7 +498,7 @@
     "local_name": "Parisian",
     "water_name": "the Seine",
     "greeting": "Bonjour !",
-    "blurb": "Walk the quays, the islands and the Left Bank, ride the Batobus on the Seine, and fly between the legs of the Eiffel Tower. Talk to the people who know the city. Every fact they tell you comes from the model.",
+    "blurb": "Walk the quays, the islands and the Left Bank, ride the Batobus on the Seine, and fly between the legs of the Eiffel Tower. Talk to the people who know the city.",
     "start": {
       "at": [-2101, 69],
       "facing": [-2056, -26],
@@ -661,7 +661,7 @@
       {
         "id": "camille",
         "name": "Camille",
-        "role": "Survey lead",
+        "role": "Guide, the Seine",
         "at": [-2097, 64],
         "look": {
           "character": "R_Female_Adult_08_mariniere",
@@ -674,8 +674,8 @@
           "clip": "Documents"
         },
         "idle": [
-          "Every roof in this model was measured by a laser from an aeroplane, IGN's LiDAR HD, flown here on the 2nd and 3rd of March 2023.",
-          "There are five trig stations along the river, a triangle on the map for each. Climb up to one and survey the view."
+          "Thirty-seven bridges cross the Seine in Paris. The Pont Neuf, the 'new bridge', is the oldest of them.",
+          "There are five trig stations along the river, a triangle on the map for each. Climb up to one for the view."
         ]
       },
       {
@@ -863,7 +863,7 @@
           "left-bank",
           "tower"
         ],
-        "on_open": "<b>All three surveys done.</b> Report back to Camille on the Pont des Arts."
+        "on_open": "<b>All three walks done.</b> Report back to Camille at the Pont d'Iéna."
       }
     ],
     "quests": [
@@ -873,10 +873,9 @@
         "title": "Welcome to the Eiffel Tower",
         "stamp": "Pont d'Iéna",
         "talk": [
-          "Bonjour ! You're the new surveyor? This is the Pont d'Iéna, on the Seine at the foot of the Eiffel Tower.",
-          "The model around you is open data: {buildings} buildings on IGN's laser-scanned terrain, under IGN's aerial photographs. For {share:lidar}% of the roof area, the height was measured by LiDAR, not guessed.",
-          "Three surveys today, in any order. The river, with Bernard at the green boxes on the Quai de Conti. The Left Bank, with Simone in the Luxembourg. And the tower: Henri paints it, and he wants someone with a helicopter.",
-          "Everything's close. The helicopter is waiting under the tower, the Batobus stops on the quay just below, and a hand up at the kerb (Y) on the Quai Branly stops a taxi."
+          "Bonjour ! Welcome to Paris. I'm Camille; I take people along the Seine. This is the Pont d'Iéna, at the foot of the Eiffel Tower.",
+          "Three walks today, in any order. The river, with Bernard at the green boxes on the Quai de Conti. The Left Bank, with Simone in the Luxembourg. And the tower: Henri paints it, and he wants someone with a helicopter.",
+          "The helicopter is waiting under the tower, the Batobus stops on the quay just below, and a hand up at the kerb (Y) on the Quai Branly stops a taxi. Where first?"
         ],
         "steps": [],
         "line": "start",
@@ -904,24 +903,12 @@
         "title": "Read a roof",
         "stamp": "Bouquinistes",
         "talk": [
-          "Ah, the surveyor. Camille sent you? Then you must learn to read Paris, and Paris is written on its roofs.",
-          "Zinc, grey-blue, with the dormers of the old maids' rooms, the chambres de bonne. A mansard: steep below, nearly flat on top. Mansart did not invent it, but Paris made it law.",
-          "Aim at a building and press Q for the survey lens. Find one whose height the laser measured, and read what it says about the roof. Then take the Batobus from Saint-Germain-des-Prés to Notre-Dame. Léa works on the cathedral roof; she will show you the rest."
+          "Ah, Camille sent you? Then you must learn to read Paris, and Paris is written on its roofs.",
+          "Zinc, grey-blue, with the dormers of the old maids' rooms, the chambres de bonne. A mansard: steep below, nearly flat on top. Mansart did not invent it, but Paris put it on every street.",
+          "Look up at the roofs along the quai as you go. Then take the Batobus from Saint-Germain-des-Prés to Notre-Dame. Léa works on the cathedral roof; she will show you the rest."
         ],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": [
-              "lidar"
-            ],
-            "text": "Survey lens (Q): a building whose height and roof the LiDAR measured"
-          },
-          {
-            "type": "ride",
-            "from": "saint-germain",
-            "to": "notre-dame",
-            "text": "Ride the Batobus from Saint-Germain-des-Prés to Notre-Dame"
-          }
+          {"type": "ride", "from": "saint-germain", "to": "notre-dame", "text": "Ride the Batobus from Saint-Germain-des-Prés to Notre-Dame"}
         ],
         "line": "river"
       },
@@ -933,7 +920,7 @@
         "talk": [
           "Salut. You came by boat? Good, it is the best view of the apse.",
           "In April 2019 the roof burned, and the spire fell through the vault. We rebuilt the frame in oak, as it was. The cathedral reopened in December 2024.",
-          "The towers are 69 metres and the spire 96. The laser saw the towers in March 2023, and only scaffolding where the spire stands now. The model draws the spire from its drawings."
+          "The towers are 69 metres and the spire 96. The new rooster on top holds relics, and a scroll with the names of the two thousand people who brought her back."
         ],
         "steps": [],
         "line": "river"
@@ -973,7 +960,7 @@
         "talk": [
           "Bonjour, monsieur-dame. A table on the terrace? They all face the street, like a theatre.",
           "You are hungry, I can see it. Nadia has the best tradition on the Rue du Bac. Go before the evening queue.",
-          "Bring her my regards. Then you can tell Camille the Left Bank is surveyed."
+          "Bring her my regards. Then you can tell Camille the Left Bank is done."
         ],
         "steps": [
           {
@@ -1012,12 +999,12 @@
         "id": "done",
         "line": "finale",
         "giver": "camille",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
+        "title": "Paris, read",
+        "stamp": "Paris",
         "talk": [
-          "You're back. The river, the Left Bank and the tower: that is Paris read from the air.",
-          "Every roof you looked at was measured, and every shadow comes from the sun's real position. If something looks wrong, it is probably wrong in the data. Tell IGN, or fix OpenStreetMap.",
-          "Bonne continuation, surveyor. The city is yours to walk."
+          "You're back. The river, the Left Bank and the tower: that is Paris, read from the water, the street and the air.",
+          "Come back after dark: on the hour, for five minutes, the tower sparkles.",
+          "Bonne continuation ! The city is yours to walk."
         ],
         "steps": []
       }

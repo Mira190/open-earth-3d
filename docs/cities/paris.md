@@ -224,9 +224,8 @@ model, and would float every building.
 Paris on Foot sends a surveyor out from the Pont d'Iéna, at the foot of the Eiffel
 Tower, where the helicopter waits on a game pad under the tower, the Batobus stops on
 the quay below and taxis pull in on the Quai Branly:
-- **The river.** Bernard, a bouquiniste on the Quai de Conti, teaches you to read a
-  roof with the survey lens. The lens now shows each roof's shape and material, and
-  whether it was measured. Then the Batobus from Saint-Germain-des-Prés to
+- **The river.** Bernard, a bouquiniste on the Quai de Conti, teaches you to read
+  the zinc roofs and their mansards. Then the Batobus from Saint-Germain-des-Prés to
   Notre-Dame, where Léa, a carpenter on the cathedral's new roof, tells its story.
 - **The Left Bank.** Simone, a retired senator, plays chess in the Luxembourg. Find
   her a chair in direct sun at noon on 21 December, when the sun is 18 degrees up.
@@ -235,7 +234,7 @@ the quay below and taxis pull in on the Quai Branly:
 - **The tower.** Henri paints the Eiffel Tower. Fly the helicopter under its first
   floor, then follow the river to the Louvre and land in the Tuileries.
 
-The survey is written in lines (`game.lines`). After Camille's prologue the river,
+The walks are written in lines (`game.lines`). After Camille's prologue the river,
 the Left Bank and the tower open side by side, and her finale waits for all three.
 
 The Batobus runs on two lines through the seven Batobus landings mapped in
@@ -255,10 +254,7 @@ can name the span it wants.
 - the helicopter's crossing under the Eiffel Tower's first floor fires;
 - it lands in the Tuileries.
 
-The survey lens, turned round on the Quai de Conti, finds a LiDAR-measured
-building by itself.
-
-![Camille, the survey lead, at the south end of the Pont des Arts, where the game started before it moved to the Eiffel Tower](../images/paris/game-camille.jpg)
+![Camille, the guide, at the south end of the Pont des Arts, where the game started before it moved to the Eiffel Tower](../images/paris/game-camille.jpg)
 
 ## 7. Limitations
 
