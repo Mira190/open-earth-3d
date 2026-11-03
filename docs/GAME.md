@@ -364,6 +364,12 @@ tall blocks it cranes up over the player before it pulls back and takes up to
 the farthest travel point, prints each move's peak turn and pitch rates, and
 fails above 45° and 60° a second.
 
+A map with an overture (`game.overture`, so far Shibuya) plays it in place of the
+arrival the first time you play that map: about forty seconds cut to a score, from the
+map's signature sights down to your shoulder, after which the onboarding goes on as
+below. Any key or tap eases down to you in under a second; "Play the opening" in the
+menu plays it again. See [OVERTURE.md](OVERTURE.md).
+
 The first time a browser plays any map (or reef site), a short tour of the HUD
 follows the arrival (`web/onboard.js`): walking and looking, the map, travel,
 taxis and rides, the passport, the phone, photo mode, the menu and the route line,

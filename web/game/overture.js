@@ -387,9 +387,10 @@ window.OEOverture = (function () {
         const pool = i < nClose && close.length ? close : cand;
         if (p.seat) { p.seat.by = -1; p.seat = null; }
         p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.pause = 0; p.dodge = 0;
-        for (let tries = 0; tries < 8; tries++) {
+        for (let tries = 0; tries < 24; tries++) { // (near you: on the part of the footway within 25 m, not just a footway that comes that close)
           p.line = pool[Math.floor(rnd() * pool.length)]; p.s = rnd() * net.L[p.line].len; net.at(p.line, p.s, tmp);
-          if (Math.hypot(tmp.x - endAt[0], tmp.y - endAt[1]) > 1.6) break;
+          const d = Math.hypot(tmp.x - endAt[0], tmp.y - endAt[1]);
+          if (d > 1.6 && (pool !== close || d < 25)) break;
         }
         p.dir = rnd() < 0.5 ? 1 : -1; p.x = tmp.x; p.y = tmp.y; p.z = tmp.z;
       });
