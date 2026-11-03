@@ -1,0 +1,50 @@
+{
+ "year": 2026,
+ "dsm": {
+  "cell_m": 2,
+  "nx": 900,
+  "ny": 740,
+  "build_ms": 102
+ },
+ "places": [
+  {
+   "name": "Akihabara Park",
+   "lep": false,
+   "period": null,
+   "window": "10:00-14:00",
+   "window_verified": false,
+   "area_m2": 546,
+   "samples": 60,
+   "mean_pct_in_sun_by_month": [
+    19,
+    41,
+    67,
+    77,
+    80,
+    83,
+    82,
+    78,
+    66,
+    39,
+    19,
+    13
+   ],
+   "protected_months": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ]
+  }
+ ],
+ "rays": 12240,
+ "ray_ms": 48
+}

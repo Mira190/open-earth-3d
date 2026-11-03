@@ -8,12 +8,16 @@
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
 #   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
+#   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
 #   - opens Sydney's game and model and checks the hand-over from the loading screen
 #     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
 # Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
+# The games play at a pinned local hour (GAME_TIME, default 10:00 in each city's own time zone,
+# tools/pin_clock.js), so that a run does not depend on the hour it is started at:
+#   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
 #   tools/check.sh                      # what this branch changed (committed or not)
 #   tools/check.sh sydney hardy-reef    # these cities and reef sites
 #   tools/check.sh title                # the title screen only
@@ -60,7 +64,7 @@ else
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|tools/tour_check.js|pipeline/kerbside.py) all_cities ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
     esac
   done
 fi
@@ -78,6 +82,7 @@ if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
+export GAME_TIME=${GAME_TIME:-10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
 run_city() {
@@ -130,6 +135,11 @@ EOF
 }
 
 {
+  # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
+  if [ ${#cities[@]} -gt 0 ]; then
+    if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
+    else echo "FAIL signs  $(grep -v '^ok' "$OUT/signs.log" | head -2 | paste -sd ';' -)   (see $OUT/signs.log)"; fi
+  fi
   for c in "${cities[@]}"; do
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done
     run_city "$c" &

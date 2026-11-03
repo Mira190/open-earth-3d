@@ -1551,10 +1551,7 @@ def build(C):
 def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
-    groups = idx.get("groups", {})
     for c in idx["cities"]:
-        if c.get("group") in groups:  # one place on the globe with several models: a city's districts, a reef's sites
-            c["group_info"] = groups[c["group"]]
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
             c["timezone"] = json.load(open(own, encoding="utf8")).get("timezone")
@@ -1575,6 +1572,11 @@ def write_index():
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
             c["flyover"] = {k: fly[k] for k in ("video", "webm", "poster", "seconds") if k in fly}
+    # a group drawn as one destination with its own map (Tokyo's districts and lines): every member
+    # carries it, so the title screen finds it on whichever comes first
+    for c in idx["cities"]:
+        if c.get("group") in idx.get("groups", {}):
+            c["group_meta"] = idx["groups"][c["group"]]
     os.makedirs(os.path.join(ROOT, "web", "data"), exist_ok=True)
     json.dump(idx["cities"], open(os.path.join(ROOT, "web", "data", "cities.json"), "w"), indent=1)
 

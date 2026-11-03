@@ -170,6 +170,32 @@
 .ts-btn.primary { background: var(--amber); border-color: var(--amber); color: #1a0f04; }
 .ts-btn.primary:hover { background: #ffc48c; border-color: #ffc48c; }
 .ts-btn kbd { font: 400 9px/1 var(--t-mono); letter-spacing: 0.06em; opacity: 0.6; }
+.ts-card.metro { gap: 12px; max-height: calc(100vh - 2 * max(26px, 5vh)); overflow: hidden auto; scrollbar-width: thin; }
+.ts-card.metro .sum { display: none; }
+.ts-card.metro .ts-stats { grid-template-columns: repeat(4, auto); padding-top: 10px; }
+/* a group drawn as a subway map (Tokyo's districts): lines at their real colours, built maps shaded */
+.ts-metro { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 10px; }
+.ts-metro svg { width: 100%; height: auto; max-height: 29vh; display: block; overflow: visible; }
+.ts-metro .mt-area { fill: rgba(255, 176, 102, 0.07); stroke: rgba(255, 176, 102, 0.35); stroke-width: 0.8; stroke-dasharray: 2 2; }
+.ts-metro .mt-line { fill: none; stroke: var(--c); stroke-width: 4; stroke-linejoin: round; stroke-linecap: round; opacity: 0.78; }
+.ts-metro .mt-stn { cursor: pointer; outline: none; }
+.ts-metro .mt-stn circle { fill: #0b0e14; stroke: #5b6472; stroke-width: 1.6; transition: stroke 0.25s, fill 0.25s, r 0.25s; }
+.ts-metro .mt-stn.on circle { fill: #f4f1ea; stroke: #0b0e14; stroke-width: 2.2; }
+.ts-metro .mt-stn text { font: 600 14px/1 var(--t-jp); letter-spacing: 0.08em; fill: var(--tx3); paint-order: stroke; stroke: rgba(4, 6, 11, 0.85); stroke-width: 3px; }
+.ts-metro .mt-stn.on text { fill: var(--tx); }
+.ts-metro .mt-stn:hover circle, .ts-metro .mt-stn:focus-visible circle { stroke: var(--amber); }
+.ts-metro .mt-stn.sel circle { fill: var(--amber); stroke: #1a0f04; r: 8.5; }
+.ts-metro .mt-stn.sel text { fill: var(--amber); }
+.mt-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; font: 400 9px/1 var(--t-jp); color: var(--tx2); }
+.mt-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.mt-legend i { width: 14px; height: 3px; border-radius: 2px; background: var(--c); }
+.mt-pick { display: grid; gap: 8px; min-height: 0; }
+.mt-pick .mt-name { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.mt-pick b { font: 300 17px/1.1 var(--t-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; font-weight: 300; }
+.mt-pick small { font: 500 13px/1 var(--t-jp); letter-spacing: 0.2em; color: var(--tx2); }
+.mt-pick em { margin-left: auto; font: 400 8.5px/1 var(--t-mono); font-style: normal; letter-spacing: 0.18em; text-transform: uppercase; color: var(--amber); }
+.mt-pick em.next { color: var(--tx3); }
+.mt-pick p { margin: 0; font-size: 12px; line-height: 1.5; color: #c9cbd0; }
 .ts-sites { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; border-top: 1px solid var(--line); padding-top: 8px; max-height: 40vh; overflow: auto; }
 .ts-sites button { width: 100%; text-align: left; border: 0; background: none; cursor: pointer; padding: 8px 6px; display: grid; gap: 3px; color: var(--tx); }
 .ts-sites button:hover, .ts-sites button:focus-visible { background: rgba(236, 232, 225, 0.06); }
@@ -258,6 +284,11 @@
   .ts-menu .ts-hint, .ts-foot { display: none; }
   .ts-card { left: 16px; right: 16px; width: auto; bottom: calc(124px + env(safe-area-inset-bottom, 0px)); padding: 16px 18px; gap: 12px; }
   .ts-card .sum { display: none; }
+  .ts-metro svg { max-height: 30vh; }
+  .ts-card.metro { max-height: calc(100vh - 150px - env(safe-area-inset-bottom, 0px)); }
+  .ts-card.metro .ts-stats { grid-template-columns: 1fr 1fr; }
+  .mt-legend { display: none; }
+  .mt-pick { min-height: 0; }
   .ts-card h2 { font-size: 24px; }
   .ts-card h2 small { display: inline; margin: 0 0 0 10px; font-size: 13px; }
   .ts-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 12px; }

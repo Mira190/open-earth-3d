@@ -731,7 +731,8 @@ window.OECars = (function () {
   // the trip. timeLeft() is that dry run's time from here to the end: an arrival time that
   // counts down as the car goes and holds while it waits, as a ride app's does. solid(x, y, z, h):
   // how deep a pose is in the traffic's cars; it never takes a step further into them. priority:
-  // at a red light it asks the signals for its green (junctions.js priority). now(): the traffic's
+  // coming up to traffic lights it asks them for its green, from far enough out (PRIO_T at its speed)
+  // that they have changed by the time it gets there, and for its green held (junctions.js priority). now(): the traffic's
   // clock; given it, the driver goes into a junction as the traffic does, by asking junctions.js
   // for its way across (request: none crossing it already in, the longest waiting first, giving
   // way to the main road), and is out of it once the whole car is past the exit's line; leave()
@@ -836,13 +837,15 @@ window.OECars = (function () {
     }
     // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
     const halted = new Set();
+    const PRIO_T = 12; // (s: the other road's few seconds of green, amber and all red, and a little to spare)
     function lineGap() {
       if (!lights || !route.nodes) return Infinity;
       for (let i = 0; i < route.nodes.length; i++) {
         const nd = route.nodes[i], sN = P.cum[Math.min(nd.k, P.cum.length - 1)];
-        if (sN - st.s > 90) break;
+        if (sN - st.s > 90 && !(priority && sN - st.s < PRIO_T * Math.max(st.v, 4) + 20)) break;
         const a = lights.armAt(nd.line, nd.end);
         if (!a) continue;
+        if (sN - st.s > 90) { if (lights.priority && a.j.sig) lights.priority(a); break; } // (far off, but at speed: the signals called in time)
         const toLine = sN - a.back - st.s;
         if (toLine < C.half - 0.5) { // over its line already (a route that starts there): in the junction, so through it
           if (reg && st.line >= 0 && toLine > -C.half && !(st.mv && st.mv.a === a) && !(st.mv0 && st.mv0.a === a)) { const ex = exitOf(i, a); if (ex && st.s < ex.at) into(a, ex, true); }
@@ -852,7 +855,7 @@ window.OECars = (function () {
         const lt = lights.light(a, ex ? ex.e : null); // (with its way across: a turn across the oncoming traffic has its arrow where there is one)
         // seen by the signals coming up to them, as the traffic is (a call for its green)
         if (lights.approach && toLine - C.half < 60) lights.approach(st, a, ex ? ex.e.m.i : -1, Math.max(0, toLine - C.half) / Math.max(st.v, 2));
-        if (priority && lt === 'r' && lights.priority && toLine - C.half < 40) lights.priority(a); // (a ride on its way to you)
+        if (priority && lights.priority) lights.priority(a); // (a ride on its way to you: its green by the time it gets there, and held for it)
         if (a.sign === 'stop' && st.v < 0.3 && toLine - C.half < 2.5) halted.add(nd.k);
         const stop = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < toLine - C.half - 0.3) || (a.sign === 'stop' && !halted.has(nd.k));
         if (ex) {
@@ -864,13 +867,27 @@ window.OECars = (function () {
             const last = st.mv && st.mv.j !== a.j ? outAt : null, r = lights.request(st, a, ex.e, t);
             if (r === true) { into(a, ex, false, last); return Infinity; }
             if (toLine - C.half < 2.5 && st.v < 0.6) { lights.wait(st, a, ex.e, t); st.wj = a.j; } // its turn comes: the longest waiting goes first
-            st.junction = r; // why it waits (for the game check)
+            st.junction = r; st.lineAt = a; // why it waits (for the game check), and where
             return toLine - C.half + 2.6;
           }
         }
-        return stop ? toLine - C.half + 2.6 : Infinity;
+        if (stop) { st.junction = lt === 'r' ? 'red' : lt === 'y' ? 'amber' : 'stop sign'; st.lineAt = a; return toLine - C.half + 2.6; }
+        return Infinity;
       }
       return Infinity;
+    }
+    // the signals at the next junction ahead on its way, asked for its green in time (PRIO_T), as lineGap does
+    function callAhead() {
+      if (!lights || !lights.priority || !route.nodes) return;
+      for (const nd of route.nodes) {
+        const sN = P.cum[Math.min(nd.k, P.cum.length - 1)];
+        if (sN < st.s) continue;
+        if (sN - st.s > PRIO_T * Math.max(st.v, 4) + 20) return;
+        const a = lights.armAt(nd.line, nd.end);
+        if (!a) continue;
+        if (a.j.sig && sN - a.back > st.s) lights.priority(a);
+        return;
+      }
     }
     // dry: the dry run that times the trip (no lights, nothing in the way); obey: stop at the lights
     function update(dt, others = [], dry = false, obey = true) {
@@ -886,6 +903,7 @@ window.OECars = (function () {
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       // the cars ahead, and the line at a red light or a stop sign
       const carGap = gapAhead(others), line = obey && !dry ? lineGap() : Infinity;
+      if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
       // a car standing where it is to pull in: pull in behind it
       if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
       let left = st.end - st.s;

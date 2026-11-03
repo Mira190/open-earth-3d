@@ -7,16 +7,23 @@
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
+//   GAME_TIME=22:00 xvfb-run -a node tools/game_check.js osaka out_dir   # at that local hour in the city
+// GAME_TIME (HH:MM, or YYYY-MM-DDTHH:MM) pins the page's clock to that wall time in the city's own
+// time zone, so a game that starts at the live hour plays the same traffic and light on every run;
+// tools/check.sh pins it (GAME_TIME=live leaves the real clock).
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
+const { pinClock } = require('./pin_clock');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
   const b = await chromium.launch(process.env.DISPLAY
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 1100, height: 650 } });
+  const pinned = await pinClock(p, city); // (GAME_TIME)
+  if (pinned) console.log(`clock pinned to ${pinned.spec} in ${pinned.tz} (${pinned.utc})`);
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, opts) {
@@ -388,7 +395,7 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
       for (; u < 120 && q.phase === 'coming'; u += 0.5) {
         g.advance(0.5);
         const st = q.drv.st;
-        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
+        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
       }
       r.rideT = u; r.rideHere = q.phase === 'waiting';
       g.phoneShow(false);

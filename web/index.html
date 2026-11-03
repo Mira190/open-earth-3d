@@ -1130,7 +1130,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/hud.js"></script>
 <script src="game/game.js"></script>
 <script>
-// Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game,
+// Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game ("@<travel id>" to start there),
 // anything else shows the globe. Views switch in place, without reloading the page:
 // the old view stops, and a view shown before gets a fresh copy of its markup so no
 // old listeners remain.
@@ -1153,7 +1153,9 @@ window.dispatchEvent(new Event('three-ready'));
   const native = (el, c) => { el.textContent = c.native || ''; el.lang = c.id === 'hong-kong' ? 'zh-Hant' : 'ja'; el.hidden = !c.native; };
   const fmtLL = c => `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'N' : 'S'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'E' : 'W'}`;
   async function show() {
-    const id = hashId(), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
+    const [id, arrive] = hashId().split('@'), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
+    // "#play-<city>@<travel point>": start the game at a district of a map (the Tokyo subway map, title.js)
+    window.OE_ARRIVE = play && arrive ? arrive : null;
     const from = lastId;
     lastId = cid;
     let city = cities.find(c => c.id === cid && c.built && (!play || c.game));
@@ -1179,7 +1181,7 @@ window.dispatchEvent(new Event('three-ready'));
       native($('city-native'), city);
       $('city-coords').textContent = fmtLL(city);
       // a district of a bigger city: name the city, and offer its other districts
-      const district = city.group_info && city.group_info.kind === 'city', sibs = district ? cities.filter(c => c.group === city.group && c.built) : [];
+      const district = city.group_meta && ['city', 'metro'].includes(city.group_meta.kind), sibs = district ? cities.filter(c => c.group === city.group && c.built) : [];
       $('city-group').textContent = district ? city.group : '';
       const nav = $('city-districts');
       nav.hidden = sibs.length < 2;
