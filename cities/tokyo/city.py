@@ -247,13 +247,6 @@ def close_to(name, at, z, start, within=1.5, keep=0.0):
     return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
 
 
-def landmark_demolished(scene):
-    """Kabuki-za's surveyed blocks: kabukiza() draws the theatre and, in the game, holds walkers back at its
-    own walls; the blocks would stand solid across the arcade under its porch. (The next full build can drop
-    them in adjust_building.)"""
-    return sorted(s["si"] for s in ak.load_solids("tokyo") if s["osm"] == KABUKIZA)
-
-
 def game_extras(scene):
     """The things people walk right up to: Tokyo Tower's four legs, where they meet the ground, and the
     Foot Town doors between them; Kabuki-za's doors under the karahafu porch."""

@@ -935,20 +935,6 @@ def game_surfaces(scene):
              "half_width": round(L["pw"], 2), "profile": prof, "thickness": 1.2, "mesh": "senso_steps", "label": "the main hall"}]
 
 
-SENSO_SOLIDS = (KAMINARIMON, HOZOMON, PAGODA, HONDO)
-
-
-def landmark_demolished(scene):
-    """The survey's blocks for Senso-ji's gates, pagoda and hall: the landmark meshes draw them and, in the
-    game, hold walkers back at their own posts, walls and steps; the blocks would stand solid across the
-    gates' passages and over the hall's steps. (The next full build can drop them in adjust_building.)"""
-    if "sensoji" not in scene["landmarks"]:
-        return []
-    import archkit
-    hidden = set(scene.get("hidden_solids", []))
-    return sorted(q["si"] for q in archkit.load_solids("asakusa") if q["si"] in hidden and q["name"] in SENSO_SOLIDS)
-
-
 def game_extras(scene):
     """Spots to look at, talk to overhear, and the Skytree's lifts to the Tembo Deck (600 m a minute)."""
     lm = scene["landmarks"]
