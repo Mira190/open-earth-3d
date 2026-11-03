@@ -249,10 +249,10 @@
     "helipads": [
       {
         "id": "ueno-pad",
-        "name": "Ueno Park, the fountain plaza pad (game)",
+        "name": "Ueno Park, the Park exit square pad (game)",
         "at": [
-          210.0,
-          470.0
+          200.0,
+          112.0
         ]
       }
     ],
