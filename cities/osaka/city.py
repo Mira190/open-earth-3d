@@ -698,11 +698,11 @@ def osaka_castle(c):
     return list(M.values())
 
 
-def kotenshu(M, p):
-    """The small keep platform (小天守台) on its mapped outline: dressed stone in a batter, paved on top."""
+def kotenshu_top(p):
+    """The small keep platform's top: its mapped outline with each corner moved 0.9 m in along the
+    bisector of its two edges (the batter), as an array of points."""
     ring = np.array(p["ring"], float)
-    z0, h, n = p["ground_m"], p["height_m"], len(ring)
-    # the top, 0.9 m in from the foot: each corner moved in along the bisector of its two edges
+    n = len(ring)
     nrm = [np.array((ring[(i + 1) % n][1] - ring[i][1], ring[i][0] - ring[(i + 1) % n][0])) for i in range(n)]
     nrm = [v / np.linalg.norm(v) for v in nrm]           # outward, for an anticlockwise ring
     top = []
@@ -710,13 +710,27 @@ def kotenshu(M, p):
         m = nrm[i - 1] + nrm[i]
         m = m / (np.linalg.norm(m) or 1)
         top.append(ring[i] - m * 0.9 / max(0.3, float(np.dot(m, nrm[i]))))
+    return np.array(top)
+
+
+def kotenshu(M, p):
+    """The small keep platform (小天守台) on its mapped outline: dressed stone in a batter, paved on top."""
+    ring = np.array(p["ring"], float)
+    z0, h, n = p["ground_m"], p["height_m"], len(ring)
+    top = kotenshu_top(p)
+    # each face in panels about a metre square, so that the game meets the stone where it stands (its
+    # landmark collision samples each triangle's floor at its corners)
     s = 0.0
     for i in range(n):
         j = (i + 1) % n
         L = float(np.linalg.norm(ring[j] - ring[i]))
-        M["stone"].grid([[np.array((*ring[i], z0 - 4.0)), np.array((*ring[j], z0 - 4.0))], [np.array((*ring[i], z0)), np.array((*ring[j], z0))],
-                         [np.array((*top[i], z0 + h)), np.array((*top[j], z0 + h))]],
-                        [[[s, -4.0], [s + L, -4.0]], [[s, 0.0], [s + L, 0.0]], [[s, h], [s + L, h]]])
+        cols = [k / max(1, int(math.ceil(L))) for k in range(max(1, int(math.ceil(L))) + 1)]
+        ts = [k / 6 for k in range(7)]
+        foot = lambda f: ring[i] + (ring[j] - ring[i]) * f
+        crest = lambda f: top[i] + (top[j] - top[i]) * f
+        rows = [[np.array((*foot(f), z0 - 4.0)) for f in cols]] + [[np.array((*(foot(f) + (crest(f) - foot(f)) * t), z0 + h * t)) for f in cols] for t in ts]
+        uvs = [[[s + L * f, -4.0] for f in cols]] + [[[s + L * f, h * t] for f in cols] for t in ts]
+        M["stone"].grid(rows, uvs)
         s += L
     for t in triangles(Polygon(top)):
         M["paving"].tri(*[np.array((x, y, z0 + h)) for x, y in t.exterior.coords[:3]])
@@ -1321,13 +1335,58 @@ def kotenshu_steps(p):
     return [m]
 
 
+def kotenshu_floor(p):
+    """The small keep platform's paved top as rectangles a walker crosses (strips): the top cut into slices
+    across its longest edge at each corner, each slice's largest rectangle inside it, and neighbours of the
+    same width merged. [(origin, axis, half_width, u0, u1)]"""
+    top = kotenshu_top(p)
+    poly = Polygon(top)
+    n = len(top)
+    i = max(range(n), key=lambda k: np.linalg.norm(top[(k + 1) % n] - top[k]))
+    ax = (top[(i + 1) % n] - top[i]) / np.linalg.norm(top[(i + 1) % n] - top[i])
+    nv = np.array([-ax[1], ax[0]])
+    o = top[i]
+    loc = np.array([[np.dot(q - o, ax), np.dot(q - o, nv)] for q in top])
+    us = sorted(set(round(float(u), 2) for u in loc[:, 0]))
+    rects = []
+    for ua, ub in zip(us, us[1:]):
+        if ub - ua < 0.5:
+            continue
+        lo, hi = -1e9, 1e9
+        for u in (ua + 0.02, ub - 0.02):      # the slice's top and bottom at its two sides
+            line = shapely.LineString([tuple(o + ax * u + nv * -500), tuple(o + ax * u + nv * 500)]).intersection(poly)
+            vs = [float(np.dot(np.array(c) - o, nv)) for c in line.coords] if not line.is_empty else []
+            if len(vs) < 2:
+                break
+            lo, hi = max(lo, min(vs)), min(hi, max(vs))
+        else:
+            if rects and abs(rects[-1][2] - lo) < 0.3 and abs(rects[-1][3] - hi) < 0.3:
+                rects[-1][1] = ub
+                rects[-1][2], rects[-1][3] = max(rects[-1][2], lo), min(rects[-1][3], hi)
+            else:
+                rects.append([ua, ub, lo, hi])
+    out = []
+    for ua, ub, lo, hi in rects:
+        if hi - lo < 1.0:
+            continue
+        lo, hi = lo - 0.3, hi + 0.3                 # a little over the crest of the stone, so that the game finds it under the floor
+        c = o + nv * (lo + hi) / 2
+        out.append(([float(c[0]), float(c[1])], [float(ax[0]), float(ax[1])], (hi - lo) / 2, ua - 0.3, ub + 0.3))
+    return out
+
+
 def game_surfaces(scene):
-    """The steps up to the small keep platform, walked as a strip."""
+    """The steps up to the small keep platform and its paved top, walked as strips (the platform's top is
+    the strips' slab, so the well house on it is met in the walker's fine cells)."""
     k = scene["landmarks"].get("kotenshu")
     if not k:
         return []
     f = kotenshu_flight(k)
-    return [{"name": "Osaka Castle, the steps to the small keep platform", "type": "strip", "origin": [round(v, 2) for v in f["origin"]],
+    top = k["ground_m"] + k["height_m"]
+    floor = [{"name": f"Osaka Castle, the small keep platform {j + 1}", "type": "strip", "origin": [round(v, 2) for v in o], "axis": [round(v, 5) for v in a],
+              "half_width": round(hw, 2), "profile": [[round(u0, 2), round(top, 2)], [round(u1, 2), round(top, 2)]], "thickness": 1.5,
+              "mesh": "kotenshu_paving", "label": "the small keep platform"} for j, (o, a, hw, u0, u1) in enumerate(kotenshu_floor(k))]
+    return floor + [{"name": "Osaka Castle, the steps to the small keep platform", "type": "strip", "origin": [round(v, 2) for v in f["origin"]],
              "axis": [round(v, 5) for v in f["axis"]], "half_width": f["half_width"], "profile": f["profile"], "thickness": 1.5,
              "mesh": "kotenshu_steps", "label": "the small keep platform"}]
 
