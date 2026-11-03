@@ -1,7 +1,7 @@
 {
  "ml_heights": {
-  "buildings": 97603,
-  "with_height": 14456,
+  "buildings": 56926,
+  "with_height": 7098,
   "height_is_ml": 0,
   "ml_with_floor_count": 0,
   "median_ml_over_floor_height": null,
@@ -12,41 +12,37 @@
  "terrain": {
   "region_m": [
    -2700,
-   2700,
+   1750,
    -3100,
-   3100
+   900
   ],
   "land": {
-   "samples": 53568,
-   "median_excess_m": 6.1,
-   "p90_excess_m": 15.6
+   "samples": 28480,
+   "median_excess_m": 6.0,
+   "p90_excess_m": 14.7
   },
   "under_buildings": {
-   "samples": 29677,
-   "median_excess_m": 5.9,
-   "p90_excess_m": 15.2
+   "samples": 16067,
+   "median_excess_m": 5.8,
+   "p90_excess_m": 14.5
   },
   "open_ground": {
-   "samples": 23891,
-   "median_excess_m": 6.4,
-   "p90_excess_m": 16.1
+   "samples": 12413,
+   "median_excess_m": 6.2,
+   "p90_excess_m": 14.8
   },
   "points": {
    "Shibuya scramble": {
     "terrarium_m": 38.7,
     "dem_m": 15.2
    },
-   "Suga Shrine": {
-    "terrarium_m": 33.3,
-    "dem_m": 30.9
-   },
    "Sangenjaya": {
     "terrarium_m": 38.6,
     "dem_m": 32.2
    },
-   "Shinjuku Station": {
-    "terrarium_m": 54.0,
-    "dem_m": 37.4
+   "Harajuku Station": {
+    "terrarium_m": 34.8,
+    "dem_m": 32.5
    }
   }
  }

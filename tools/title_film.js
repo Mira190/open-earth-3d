@@ -1,4 +1,4 @@
-// Film the title screen's opening frame by frame, with its score, into an MP4: Enter, the
+// Film the title screen's opening frame by frame, with its score, into an MP4: the fall from deep space, the
 // night pass, the sunrise and the title, the pull-back to the menu, a destination chosen and
 // the dive into it. Software WebGL is far too slow for real time, so the page's sequence clock
 // is held at each frame's time and the frame drawn on demand (window.__title.still), and CSS
@@ -24,19 +24,19 @@ const fps = +fpsArg;
   await p.goto(`http://localhost:${process.env.PORT || 8800}/index.html#globe`);
   await p.waitForFunction('window.__title && __title.state === "gate"', null, { timeout: 300000 });
   const T = await p.evaluate(() => __title.timing);
-  const dest = destArg === '' ? await p.evaluate(() => __title.dests.findIndex(d => d.id === 'tokyo')) : +destArg;
+  const dest = destArg === '' ? await p.evaluate(() => __title.dests.findIndex(d => d.id === 'tokyo' || (d.sites || []).some(c => c.id === 'tokyo'))) : +destArg;
   // the shot list, in seconds after Enter
   const menuAt = T.PULL_A + T.PULL_D, selAt = menuAt + 1.2, diveAt = selAt + 2.6, end = diveAt + 2.2;
   // the score, offline: the same calls the page makes, plus a tick on the choice and the whoosh of the dive
   const pcm = await p.evaluate(async ({ T, end, selAt, diveAt }) => {
-    const ch = await OEScore.bounce(end + 1, t0 => {
-      OEScore.drone(2.2); OEScore.riser(t0 + T.T_RISE, 3.2); OEScore.hit(t0 + T.T_RISE + 0.03);
+    const ch = await OEScore.bounce(end + T.T_IN + 1, t0 => {
+      OEScore.drone(2.2 + T.T_IN); OEScore.riser(t0 + T.T_IN + T.T_RISE, 3.2); OEScore.hit(t0 + T.T_IN + T.T_RISE + 0.03);
     });
     // the tick and the whoosh, mixed in by hand: they are scheduled from "now" in the live page
     const rate = 48000, n = ch[0].length, mix = (at, fn) => { for (let i = Math.floor(at * rate); i < n; i++) { const v = fn((i - at * rate) / rate); if (v === null) break; ch[0][i] += v; ch[1][i] += v; } };
-    mix(selAt, t => (t > 0.08 ? null : Math.sin(2 * Math.PI * 2100 * t) * 0.035 * Math.exp(-t * 60)));
+    mix(selAt + T.T_IN, t => (t > 0.08 ? null : Math.sin(2 * Math.PI * 2100 * t) * 0.035 * Math.exp(-t * 60)));
     let seed = 1, lp = 0;
-    mix(diveAt, t => { if (t > 2.0) return null; seed = (seed * 16807) % 2147483647; const nz = seed / 1073741823 - 1; lp += (nz - lp) * Math.min(1, 0.02 + t * 0.25);
+    mix(diveAt + T.T_IN, t => { if (t > 2.0) return null; seed = (seed * 16807) % 2147483647; const nz = seed / 1073741823 - 1; lp += (nz - lp) * Math.min(1, 0.02 + t * 0.25);
       return lp * 0.5 * Math.min(1, t / 1.6) * (t > 1.75 ? Math.max(0, 1 - (t - 1.75) / 0.25) : 1) + Math.sin(2 * Math.PI * (40 + 40 * t) * t) * 0.3 * Math.min(1, t / 1.7) * (t > 1.75 ? 0 : 1); });
     const buf = new Int16Array(n * 2);
     for (let i = 0; i < n; i++) { buf[2 * i] = Math.max(-1, Math.min(1, ch[0][i])) * 32767; buf[2 * i + 1] = Math.max(-1, Math.min(1, ch[1][i])) * 32767; }
@@ -54,10 +54,10 @@ const fps = +fpsArg;
   await cdp.send('Animation.enable');
   let rate = 0.05;
   await cdp.send('Animation.setPlaybackRate', { playbackRate: rate });
-  const frames = Math.round(end * fps);
+  const frames = Math.round((end + T.T_IN) * fps); // from the fall out of deep space, at -T_IN
   let selected = false, dove = false;
   for (let i = 0; i < frames; i++) {
-    const t = i / fps, t0 = Date.now();
+    const t = i / fps - T.T_IN, t0 = Date.now();
     if (!selected && t >= selAt) { selected = true; await p.evaluate(d => __title.select(d), dest); }
     if (!dove && t >= diveAt) { dove = true; await p.evaluate(d => { window.addEventListener('hashchange', e => e.stopImmediatePropagation(), { capture: true }); __title.dive(d, false); }, dest); }
     await p.evaluate(t => __title.still(t), t);

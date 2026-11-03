@@ -3,14 +3,28 @@
 # and, for what the branch changed against origin/main (or for the targets named):
 #   - plays each city's game headless (tools/game_check.js: walk, talk, helicopter, ferries,
 #     your car, a taxi and a ride),
-#     three cities at a time, under xvfb-run (llvmpipe) when it is installed;
+#     three cities at a time, under xvfb-run (llvmpipe) when it is installed; and then measures
+#     what passes through what there (tools/clip_check.js: street furniture in the roads, cars
+#     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
+#   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
+#     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
+#   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
+#   - reads every line the games' characters say, in every city and reef site, for talk about the
+#     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
-#     (tools/title_check.js), and fails a frame that ends black or a page that throws.
+#     (tools/title_check.js), and fails a frame that ends black or a page that throws;
+#   - opens Sydney's game and model and checks the hand-over from the loading screen
+#     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
 # Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
+# The games play at a pinned local hour (GAME_TIME, default 10:00 in each city's own time zone,
+# tools/pin_clock.js), so that a run does not depend on the hour it is started at:
+#   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
 #   tools/check.sh                      # what this branch changed (committed or not)
 #   tools/check.sh sydney hardy-reef    # these cities and reef sites
 #   tools/check.sh title                # the title screen only
+#   tools/check.sh voice                # what the characters say only (it runs with every target)
+#   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh all                  # every city, every reef site and the title
 set -u
 cd "$(dirname "$0")/.."
@@ -24,7 +38,7 @@ CITIES=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
-cities=() reefs=() title=0
+cities=() reefs=() title=0 loader=0 voice=0
 add_city() { is_in "$1" "${cities[*]:-}" || cities+=("$1"); }
 add_reef() { is_in "$1" "${reefs[*]:-}" || reefs+=("$1"); }
 all_cities() { for c in $CITIES; do add_city "$c"; done; }
@@ -33,8 +47,10 @@ all_reefs() { for r in $REEFS; do add_reef "$r"; done; }
 if [ $# -gt 0 ]; then
   for t in "$@"; do
     case "$t" in
-      all) all_cities; all_reefs; title=1 ;;
+      all) all_cities; all_reefs; title=1; loader=1 ;;
+      voice) voice=1 ;;
       title) title=1 ;;
+      loader) loader=1 ;;
       *) if is_in "$t" "$CITIES"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
          else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
@@ -46,17 +62,19 @@ else
   for f in $changed; do
     case "$f" in
       cities/*/*|web/data/*/*)
-        id=${f#*/}; id=${id%%/*}
+        id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
       web/reef/*) all_reefs ;;
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
-      web/index.html|web/quality.js) all_cities; title=1 ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js) all_cities ;;
+      web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
+      web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/close_step.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
+      tools/voice_check.py|pipeline/game_text.py) voice=1 ;;   # the voice check alone (it runs with any target)
     esac
   done
 fi
 
-if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ]; then
+if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
   exit 0
 fi
@@ -69,12 +87,21 @@ if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
+export GAME_TIME=${GAME_TIME:-10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
 run_city() {
   local c=$1
   if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then echo "ok   game   $c"
   else echo "FAIL game   $c   (see $OUT/$c.log)"; fi
+  if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
+    echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance)"
+  else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+  # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
+  timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
+  if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
+  elif [ $rc -eq 124 ]; then echo "FAIL tour   $c   (timed out after 1800 s; see $OUT/tour-$c.log)"
+  else echo "FAIL tour   $c   ($(grep -m1 '^FAIL' "$OUT/tour-$c.log" || tail -1 "$OUT/tour-$c.log"); see $OUT/tour-$c.log)"; fi
 }
 run_reef() {
   local r=$1 res
@@ -84,6 +111,14 @@ run_reef() {
     \[*,0\]) echo "ok   reef   $r ${res}" ;;
     *) echo "FAIL reef   $r ${res:-no result}   (see $OUT/$r.log)" ;;
   esac
+}
+run_loader() {
+  local m
+  for m in play model; do
+    if timeout 1200 $X node tools/load_check.js sydney "$OUT/load-$m" $m 1440x900 400 >"$OUT/load-$m.log" 2>&1; then
+      echo "ok   loader $m: $(grep -o 'opened after [0-9.]* s' "$OUT/load-$m.log"), the view drawn as the loader fades"
+    else echo "FAIL loader $m   ($(grep '^FAIL' "$OUT/load-$m.log" | head -1); see $OUT/load-$m.log)"; fi
+  done
 }
 run_title() {
   timeout 1800 node tools/title_check.js "$OUT/title" >"$OUT/title.log" 2>&1
@@ -105,12 +140,21 @@ EOF
 }
 
 {
+  # what the characters say, everywhere (tools/voice_check.py): locals, not the map's credits. A second or so.
+  if python3 tools/voice_check.py >"$OUT/voice.log" 2>&1; then tail -1 "$OUT/voice.log"
+  else echo "FAIL voice  $(grep '^FAIL' "$OUT/voice.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/voice.log)"; fi
+  # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
+  if [ ${#cities[@]} -gt 0 ]; then
+    if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
+    else echo "FAIL signs  $(grep -v '^ok' "$OUT/signs.log" | head -2 | paste -sd ';' -)   (see $OUT/signs.log)"; fi
+  fi
   for c in "${cities[@]}"; do
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done
     run_city "$c" &
   done
   wait
   for r in "${reefs[@]}"; do run_reef "$r"; done
+  [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
 } | tee "$OUT/summary.txt"
 ! grep -q '^FAIL' "$OUT/summary.txt"

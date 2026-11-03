@@ -17,6 +17,8 @@ window.OEDecks = (function () {
   const PARAPET = 0.9;  // the walls along its edges, above the surface
   const SPAN = 30;      // columns under a deck about this far apart
   const STUB = 20;      // how far back from a loose end a stub is cut (m)
+  const SLOPE = 0.3;   // a deck climbing steeper than this (rise over run, outside steps) is regraded
+  const EDGE = 4;      // how far past a walkable strip's edge a line along it is taken to be on it (m)
   const LEVEL = 6;      // the data puts a bridge or a viaduct this much higher per level
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const FOOTW = { pedestrian: 8, footway: 3, path: 2.5, steps: 3, cycleway: 2.5, living_street: 5 };
@@ -107,6 +109,14 @@ window.OEDecks = (function () {
         else if (!water && z - g <= RISE) zs[k] = g; // on the ground drawn there
         else { cls[k] = 2; zs[k] = z; }
       }
+      // a line along a bridge's strip that the data puts a few metres past its edge, and so far below it (the
+      // Harbour Bridge cycleway, mapped a metre outside the deck and given the ground's height plus a level):
+      // on the deck's level beside it, as long as the line is on the strip somewhere else
+      if (cls.some(c => c === 1)) for (let k = 0; k < n; k++) {
+        if (cls[k] === 1) continue;
+        const h = nav.stripBeside(X(k), Y(k), EDGE);
+        if (h != null && h - zs[k] > 2 * RISE) { cls[k] = 2; zs[k] = h; }
+      }
       // a loose end on a deck (no other line meets it): cut back what is over the water, and
       // bring the first point on land down to the ground
       const loose = (i, step, stop) => {
@@ -152,6 +162,17 @@ window.OEDecks = (function () {
             zs[i] = Math.max(1.6, za + (zb - za) * t + rise); // clear of the water under its slab
           }
         }
+        else if (o.c !== 'steps') {
+          // a deck the data's levels make climb steeper than a ramp (a level is taken as 6 m, the Harbour
+          // Bridge cycleway's approach drops 30 m from the deck in 23 m): graded evenly from end to end, over the ground
+          const a0 = Math.max(0, i0), a1 = i1 >= 0 ? i1 : e;
+          let steep = false;
+          for (let i = a0; i < a1 && !steep; i++) steep = Math.abs(zs[i + 1] - zs[i]) > SLOPE * Math.max(0.5, cum[i + 1] - cum[i]);
+          if (steep && a1 > a0) {
+            const L = Math.max(1, cum[a1] - cum[a0]);
+            if (Math.abs(zs[a1] - zs[a0]) <= SLOPE * L) for (let i = k; i <= e; i++) zs[i] = Math.max(nav.terrain(X(i), Y(i)) + RISE, zs[a0] + (zs[a1] - zs[a0]) * (cum[i] - cum[a0]) / L);
+          }
+        }
         const from = Math.max(0, i0), to = i1 >= 0 ? i1 : e, w = kind === 'road' ? (ROADW[o.c] || 7) + 1 : FOOTW[o.c] || 3;
         // a deck ends where it meets the ground or a built surface; its pieces for walking on
         const pts = [];
@@ -183,7 +204,7 @@ window.OEDecks = (function () {
       quad(P(-hx, -hy, z1), P(hx, -hy, z1), P(hx, hy, z1), P(-hx, hy, z1), k);
     };
     for (const r of runs) {
-      const n = r.pts.length, hw = r.w / 2, top = C[r.kind];
+      const n = r.pts.length, hw = r.w / 2, top = r.colour ? lin(r.colour) : C[r.kind]; // (a strip's approach: its deck's colour)
       // the left of the line at each point, the average of the pieces either side
       const L = r.pts.map((q, i) => {
         const a = r.pts[Math.max(0, i - 1)], b = r.pts[Math.min(n - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], d = Math.hypot(dx, dy) || 1;
@@ -196,7 +217,7 @@ window.OEDecks = (function () {
         quad(at(i, hw, 0), at(j, hw, 0), at(j, hw, -THICK), at(i, hw, -THICK), C.side);                          // its edges
         quad(at(i, -hw, -THICK), at(j, -hw, -THICK), at(j, -hw, 0), at(i, -hw, 0), C.side);
         quad(at(i, hw, -THICK), at(j, hw, -THICK), at(j, -hw, -THICK), at(i, -hw, -THICK), C.under);             // the soffit
-        for (const s of [1, -1]) { // parapets: outer face, top, inner face
+        if (r.parapet !== false) for (const s of [1, -1]) { // parapets: outer face, top, inner face
           const o = s * hw, w = s * (hw - 0.25);
           quad(at(i, o, 0), at(j, o, 0), at(j, o, PARAPET), at(i, o, PARAPET), C.side);
           quad(at(i, o, PARAPET), at(j, o, PARAPET), at(j, w, PARAPET), at(i, w, PARAPET), C.side);

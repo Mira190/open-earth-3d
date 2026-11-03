@@ -95,11 +95,22 @@ type and one accent, the sun's amber.
   in the cores, dimmed under cloud.
 - **Clouds**: Blue Marble's composite on a shell 29 km up, drifting, lit through
   the air. Each cloud casts its shadow along the sun's direction at its height.
-- **Glint**: the sun's reflection on open water, with a Fresnel sky reflection
-  at grazing angles.
+- **Glint**: the sun's reflection on open water, as Cox and Munk's sea of
+  wind-tilted facets (slope variance for about 5 m/s of wind, a fifth of calmer
+  water for a sharper core), each a Fresnel mirror, in the same units as the
+  diffuse light: at its peak about as bright as sunlit land and well under a
+  cloud, the broad silvery patch of the DSCOVR EPIC disc rather than a lamp.
+  A Fresnel sky reflection at grazing angles. Thin cloud below a tenth of the
+  map's range is left out: it was the map's compression noise, and speckled
+  the oceans.
 - **Air**: single scattering through a spherical shell, Rayleigh and Mie, with
-  the Earth's shadow. It is marched per pixel with jitter, so steps show as grain,
-  not bands. The sunlight that reaches the ground goes through Kasten and Young's
+  the Earth's shadow. Each step's air, and the part of it in the Earth's shadow
+  (a cylinder behind the planet, met by the ray as an interval), is integrated
+  exactly, so the picture is clean without jitter: no speckle over the disc and
+  none in the twilight band. The sun's disc and glow are drawn by the sky
+  behind and dimmed by the air's alpha; the air adds only the reddening. (Drawn
+  by the air and masked in the sky, they left a dashed dark seam where the
+  shell's facets fall short of the true sphere.) The sunlight that reaches the ground goes through Kasten and Young's
   air mass, which is why the terminator is warm; past the horizon the air mass
   climbs into the hundreds, so cloud tops before dawn glow a faint red. The sun
   itself is drawn inside the air with per-channel extinction, so it rises red and

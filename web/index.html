@@ -147,23 +147,67 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
   animation: glint 1.4s ease-in-out infinite; }
 @keyframes glint { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
 .loader.ready .track::after { animation: none; opacity: 0; }
-/* the loading flyover (flyover.js): the video fills the loader, and the progress sits over it, low down, on glass */
-.loader video.flyover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.loader.has-flyover { place-items: end center; background: var(--bg); }
-.loader.has-flyover > div { position: relative; margin-bottom: max(7vh, 24px); padding: 18px 28px 20px; background: var(--hud);
-  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
-.loader.has-flyover .wm { display: none; }
-.loader.has-flyover .ld-mode { margin-top: 0; }
-.loader.has-flyover > div > b { margin-top: 10px; font-size: clamp(20px, 2.6vw, 30px); }
-.loader.has-flyover .track { margin-top: 20px; }
-.flyover-start { margin-top: 16px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: var(--r); padding: 11px 22px; cursor: pointer;
-  font: 400 10px/1.2 var(--f-display); letter-spacing: 0.16em; text-transform: uppercase; transition: background 0.3s, border-color 0.3s; }
-.flyover-start:hover { background: var(--accent-2); border-color: var(--accent-2); }
-.flyover-start:focus-visible { outline: 1px solid var(--ink); outline-offset: 3px; }
+/* the loading plate (plate.js): the city's aerial survey assembles behind the progress, which sits
+   low down on a card. Only transforms and opacity move, so it runs smooth while the city builds. */
+.loader.has-plate { place-items: end center; background: #04060b; overflow: hidden; }
+.plate { position: absolute; inset: 0; margin: 0; overflow: hidden; contain: strict; }
+.plate-map { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(1.02); opacity: 0; transition: opacity 1s ease; will-change: transform; }
+.plate-map.on { opacity: 1; animation: plate-drift 60s cubic-bezier(0.25, 0, 0.2, 1) forwards; }
+@keyframes plate-drift { from { transform: translate(-50%, -50%) scale(1.02) rotate(-0.5deg); } to { transform: translate(-50%, -50%) scale(1.16) rotate(0.35deg); } }
+.plate-map img { position: absolute; display: block; opacity: 0; transition: opacity 1.4s ease; }
+.plate-map img.in { opacity: 0.78; } /* over the plate's blue-black: the survey at dusk, in the title's grade */
+.plate-grid { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.plate-grid line { stroke: rgba(236, 232, 225, 0.16); stroke-width: 0.7; vector-effect: non-scaling-stroke; }
+.plate-grid line.km { stroke: rgba(255, 196, 140, 0.42); stroke-width: 0.9; }
+.plate-tick { position: absolute; font: 400 9px/1 var(--f-mono); letter-spacing: 0.14em; color: rgba(236, 232, 225, 0.55); white-space: nowrap; text-transform: uppercase; }
+.plate-tick.x { top: 10px; transform: translateX(6px); }
+.plate-tick.y { left: 10px; transform: translateY(-14px); }
+.plate-pin { position: absolute; display: flex; align-items: center; gap: 8px; transform: translate(-5px, -50%); white-space: nowrap; opacity: 0;
+  font: 500 10px/1 var(--f-mono); letter-spacing: 0.18em; text-transform: uppercase; color: #f4f1ea; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.6);
+  animation: plate-pin 0.9s ease forwards; }
+.plate-pin i { flex: none; width: 9px; height: 9px; border: 1px solid var(--accent); border-radius: 50%; box-shadow: 0 0 0 3px rgba(255, 176, 102, 0.18), 0 0 10px rgba(255, 176, 102, 0.5); }
+@keyframes plate-pin { from { opacity: 0; transform: translate(-5px, -50%) translateY(6px); } to { opacity: 1; transform: translate(-5px, -50%); } }
+.plate-scan { position: absolute; top: 0; bottom: 0; left: 0; width: 12vw; opacity: 0.4; pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255, 196, 140, 0.05) 75%, rgba(255, 196, 140, 0.5) 99.6%, transparent);
+  animation: plate-scan 7s cubic-bezier(0.45, 0, 0.55, 1) infinite; will-change: transform; }
+@keyframes plate-scan { from { transform: translateX(-14vw); } to { transform: translateX(104vw); } }
+.plate-shade { position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 50% 40%, rgba(4, 6, 11, 0) 40%, rgba(4, 6, 11, 0.7) 100%), linear-gradient(180deg, rgba(4, 6, 11, 0.8), rgba(4, 6, 11, 0) 16%, rgba(4, 6, 11, 0) 55%, rgba(4, 6, 11, 0.85)); }
+.plate-hud { position: absolute; inset: max(18px, 2.4vw); pointer-events: none; font: 400 9.5px/1.5 var(--f-mono); letter-spacing: 0.2em; text-transform: uppercase; color: rgba(236, 232, 225, 0.8);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9), 0 0 10px rgba(4, 6, 11, 0.8); }
+.ph-c { position: absolute; width: 18px; height: 18px; border: 0 solid rgba(236, 232, 225, 0.5); }
+.ph-c.tl { left: 0; top: 0; border-width: 1px 0 0 1px; } .ph-c.tr { right: 0; top: 0; border-width: 1px 1px 0 0; }
+.ph-c.bl { left: 0; bottom: 0; border-width: 0 0 1px 1px; } .ph-c.br { right: 0; bottom: 0; border-width: 0 1px 1px 0; }
+.ph-t { position: absolute; max-width: 46%; }
+.ph-t.tl { left: 28px; top: -3px; } .ph-t.tr { right: 28px; top: -3px; text-align: right; }
+.ph-t.bl { left: 28px; bottom: -3px; } .ph-t.br { right: 28px; bottom: -3px; text-align: right; }
+.ph-t b { font-weight: 500; color: var(--accent); }
+.ph-t small { display: block; margin-top: 6px; font-size: 8.5px; letter-spacing: 0.12em; color: rgba(190, 197, 208, 0.85); text-transform: none; }
+.ph-scale { display: inline-flex; align-items: center; gap: 10px; font-style: normal; }
+.ph-scale s { display: block; height: 5px; border: 1px solid rgba(236, 232, 225, 0.7); border-top: 0; }
+.ph-scale em { font-style: normal; }
+.plate.still .plate-map.on, .plate.still .plate-scan { animation: none; }
+.plate.still .plate-scan { display: none; }
+.plate.still .plate-pin { animation-duration: 0.01s; }
+.loader.has-plate > div { position: relative; margin-bottom: max(8vh, 30px); padding: 18px 30px 20px; background: rgba(6, 10, 18, 0.78); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5); }
+.loader.has-plate .wm { display: none; }
+.loader.has-plate .ld-mode { margin-top: 0; }
+.loader.has-plate > div > b { margin-top: 10px; font-size: clamp(20px, 2.6vw, 30px); }
+.loader.has-plate .track { margin-top: 20px; }
+@media (max-width: 640px) {
+  .plate-hud { inset: 14px; font-size: 8.5px; }
+  .ph-t.tr, .plate-tick { display: none; }
+  .ph-t.tl { max-width: 80%; }
+  .plate-pin { font-size: 9px; letter-spacing: 0.12em; }
+  .loader.has-plate > div { margin-bottom: max(12vh, 30px); padding: 16px 20px 18px; }
+}
 /* labels over the 3D view: set like the title's place marks */
 .labels { position: absolute; inset: 0; pointer-events: none; }
 .lbl { position: absolute; transform: translate(-50%, -100%); white-space: nowrap; font: 500 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
   color: #fff; text-shadow: 0 0 8px rgba(0, 0, 0, 0.8), 0 1px 2px rgba(0, 0, 0, 0.85); padding-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.55); }
+#labels .lbl { transition: opacity 0.35s ease; }
+#labels .lbl.off { pointer-events: none !important; }
 .lbl.pick { pointer-events: auto; cursor: pointer; background: none; border-width: 0 0 1px; border-style: solid; border-color: rgba(255, 255, 255, 0.55); border-radius: 0; margin: 0; padding: 0 0 5px; }
 .lbl.pick:hover, .lbl.pick:focus-visible { color: var(--accent-2); border-color: var(--accent); }
 .lbl.place { border-bottom: 0; font: italic 400 11.5px/1 var(--f-body); letter-spacing: 0.02em; text-transform: none; color: rgba(255, 255, 255, 0.86); }
@@ -189,6 +233,11 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .title-card .eyebrow { display: flex; gap: 10px; margin-top: 16px; }
 .title-card .eyebrow span + span::before { content: "·"; margin-right: 10px; }
 .title-card .eyebrow span:empty { display: none; }
+/* the other districts of the same city (cities/index.json's groups): one Tokyo, two models */
+.tc-districts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tc-districts a { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 6px 9px; border: 1px solid rgba(236, 232, 225, 0.16); transition: color 0.3s, border-color 0.3s; }
+.tc-districts a:hover, .tc-districts a:focus-visible { color: var(--ink); border-color: rgba(236, 232, 225, 0.45); }
+.tc-districts a[aria-current="page"] { color: var(--accent); border-color: var(--accent); pointer-events: none; }
 .title-card h1 { margin-top: 8px; font: 300 clamp(22px, 2.3vw, 30px)/1.05 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
 .title-card h1 small { font: 500 0.56em/1 var(--f-jp); letter-spacing: 0.22em; color: var(--muted); margin-left: 0.6em; text-transform: none; vertical-align: 0.14em; }
 .title-card h1 small:lang(zh-Hant) { font-family: var(--f-tc); }
@@ -201,8 +250,15 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .caption .step { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.12em; color: var(--accent); white-space: nowrap; padding-top: 4px; }
 .caption b { display: block; font: 300 14px/1.25 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; }
 .caption p { margin: 7px 0 0; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
-.caption .bar { grid-column: 1 / -1; height: 1px; margin: 0 -18px; background: var(--line); overflow: hidden; }
+/* one segment per stop: the stops seen are full, the one in hand fills, so the tour's end is in view */
+.caption .bar { grid-column: 1 / -1; display: flex; gap: 3px; height: 2px; margin: 0 -18px; }
+.caption .bar span { flex: 1; background: var(--line); overflow: hidden; }
 .caption .bar i { display: block; height: 100%; width: 0; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.caption .cap-txt.in { animation: cap-in 0.7s var(--ease) both; }
+@keyframes cap-in { from { opacity: 0; transform: translateY(6px); } }
+.caption .cap-end { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: -4px; }
+.caption .cap-end[hidden] { display: none; }
+.caption.done .step { color: var(--accent-2); }
 .inspector { position: absolute; right: 16px; top: 62px; width: 290px; padding: 15px 16px 16px;
   background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-radius: var(--r); }
 .inspector h3 { font: 300 14px/1.25 var(--f-display); letter-spacing: 0.1em; text-transform: uppercase; color: #fff; padding-right: 24px; }
@@ -256,6 +312,7 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .tour-list button[aria-current="true"] b { color: #fff; transform: translateX(6px); }
 .tour-list button[aria-current="true"] span > span { transform: translateX(6px); }
 .tour-list button[aria-current="true"]::before { width: 70%; }
+.tour-list button.seen .n { color: rgba(255, 176, 102, 0.55); }
 .stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .stat { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: 7px; padding: 12px 10px 13px 0; min-width: 0; }
 .stat + .stat { padding-left: 12px; border-left: 1px solid var(--line); }
@@ -329,8 +386,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .caption { bottom: 10px; grid-template-columns: minmax(0, 1fr) auto; padding: 12px 14px 0; gap: 12px; width: calc(100% - 20px); }
   .caption .bar { margin: 0 -14px; }
   .caption .step { display: none; }
+  .caption .cap-end { grid-column: 1 / -1; }
+  .caption .cap-end .btn { flex: 1; min-width: 0; text-align: center; }
   .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
   .hud-btns { top: 78px; left: 10px; right: 10px; max-width: none; justify-content: flex-start; gap: 4px; }
+  .tc-districts { margin-top: 7px; gap: 4px; }
+  .tc-districts a { padding: 5px 7px; font-size: 8.5px; letter-spacing: 0.1em; }
+  .stage:has(.tc-districts:not([hidden])) .hud-btns { top: 114px; }
   .hud-btns .chip-btn { padding: 8px 9px; font-size: 9px; letter-spacing: 0.1em; }
 }
 
@@ -342,6 +404,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 /* the HUD fades out for the title and for camera shots (fast travel, surveys) and back in as play resumes */
 .g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens { transition: opacity 0.7s ease, visibility 0.7s; }
 .game-stage.titled :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels),
+/* the arrival with reduced motion: a cut from the title shot to the player, under a short fade (game.js craneIn) */
+.game-stage.arrive-fade #game-gl { animation: g-arrive-fade .5s ease-out; }
+@keyframes g-arrive-fade { from { opacity: 0; } }
 .game-stage.cine :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-vhud, .g-lens) { opacity: 0; visibility: hidden; }
 .g-bars { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .g-bars::before, .g-bars::after { content: ""; position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height 0.6s ease; }
@@ -359,6 +424,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .gph-actions .btn.primary { margin-left: auto; }
 .g-photo .note { margin: 0; font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
 .g-photo .note kbd { font-size: 9px; padding: 1px 4px; }
+/* look closer at a photo spot (places.js closer): the HUD goes, the text of what is in view comes up */
+.game-stage.closer :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens, .g-dialog, .g-ekimei, .g-chatter) { display: none !important; }
+.g-closer { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(620px, calc(100% - 32px)); padding: 14px 16px 12px; display: grid; gap: 10px; z-index: 4; }
+.gc-text { margin: 0; min-height: 2.7em; font: 500 17px/1.55 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", var(--f-body, system-ui), sans-serif; color: var(--ink); text-wrap: pretty; }
+.g-closer .note { margin: 0; font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.g-closer .note kbd { font-size: 9px; padding: 1px 4px; }
+.g-closer [data-hold] { min-width: 40px; touch-action: none; }
 .g-grid { position: absolute; inset: 0; pointer-events: none; display: none; z-index: 3;
   background: linear-gradient(to right, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(200% / 3 + 0.5px), transparent 0),
     linear-gradient(to bottom, transparent calc(100% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(100% / 3 + 0.5px), transparent 0 calc(200% / 3 - 0.5px), rgba(255,255,255,.45) 0 calc(200% / 3 + 0.5px), transparent 0); }
@@ -378,6 +450,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-quest .eyebrow { color: var(--accent); }
 .g-quest b { font: 500 14.5px/1.35 var(--f-body); color: #fff; }
 .g-quest .mono { font-size: 10px; letter-spacing: 0.06em; color: var(--muted); }
+.gq-meta { display: flex; align-items: center; gap: 10px; min-height: 14px; }
+.gq-route { border: 1px solid var(--line); background: none; border-radius: var(--r); padding: 4px 8px; cursor: pointer; color: var(--ink-2);
+  font: 400 9px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; transition: color 0.3s, border-color 0.3s; }
+.gq-route:hover { color: var(--accent); border-color: rgba(255, 176, 102, 0.6); }
+.gq-route kbd { font-size: 9px; padding: 1px 4px; margin-left: 4px; }
+@media (hover: none) { .gq-route { padding: 7px 10px; } .gq-route kbd { display: none; } }
 .gq-lines { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; padding-top: 10px; border-top: 1px solid var(--line); align-items: center; }
 .gq-lines button { border: 1px solid var(--line); background: none; border-radius: var(--r); padding: 4px 8px; cursor: pointer; color: var(--ink-2);
   font: 400 9px/1.4 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; display: inline-flex; gap: 6px; align-items: baseline; transition: color 0.3s, border-color 0.3s; }
@@ -388,7 +466,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .gq-lines .key { font: 400 9px/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); margin-left: 4px; }
 .gq-lines .key kbd { font-size: 9px; padding: 1px 4px; }
 /* the minimap, the clock, the sun and the buttons, top right */
-.g-right { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: 16px; display: grid; gap: 8px; justify-items: end; }
+.g-right { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); top: 16px; display: grid; gap: 8px; justify-items: end; pointer-events: none; }
+.g-right > * { pointer-events: auto; } /* (its box spans the quest card on a phone: only its own pieces take a tap) */
 #g-minimap { width: 200px; height: 200px; border-radius: 50%; box-shadow: 0 0 0 1px var(--line), 0 0 0 6px rgba(4, 6, 11, 0.32), var(--shadow); }
 .g-clock { padding: 8px 12px; display: flex; gap: 10px; align-items: baseline; }
 .g-clock b { font: 300 17px/1 var(--f-display); letter-spacing: 0.06em; color: #fff; }
@@ -412,16 +491,27 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-toast kbd { font-size: 9px; padding: 1px 4px; }
 .g-toast.stamp { border-color: rgba(255, 176, 102, 0.6); padding: 12px 20px; }
 .g-toast.stamp b { display: block; font: 300 17px/1.2 var(--f-display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); }
-/* a neighbourhood's name on a station sign (places.js): Tokyo's platform signs, the line's colour in the band */
-.g-ekimei { position: absolute; left: 50%; top: 17%; transform: translateX(-50%); width: min(420px, calc(100% - 32px)); background: #fbfbf8; color: #111;
-  border-radius: 6px; box-shadow: 0 10px 30px rgba(0, 0, 0, .28); padding: 12px 0 8px; text-align: center; pointer-events: none; animation: ek-in .5s ease-out; transition: opacity .6s, transform .6s; }
-.g-ekimei.out { opacity: 0; transform: translateX(-50%) translateY(-8px); }
-.g-ekimei .ek-name { font: 700 40px/1.05 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", var(--f-display); letter-spacing: .08em; }
-.g-ekimei .ek-kana { font: 500 14px/1.3 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; color: #333; letter-spacing: .2em; }
-.g-ekimei .ek-band { margin: 7px 0 5px; background: var(--band, #1f7a4d); color: #fff; font: 700 15px/1.7 var(--f-body); letter-spacing: .28em; text-transform: uppercase; }
-.g-ekimei .ek-next { display: flex; justify-content: space-between; padding: 0 14px; font: 600 12.5px/1.3 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; color: #222; }
-.g-ekimei .ek-note { margin-top: 5px; font: 500 11.5px/1.3 var(--f-body); color: #666; }
-@keyframes ek-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%); } }
+/* a neighbourhood's name as a brief arrival caption (places.js), in the character of Tokyo's platform signs
+   (駅名標): the name and its reading, the line's colour in the band, the areas either side you can walk to */
+.g-ekimei { position: absolute; left: 50%; top: 11%; transform: translateX(-50%); width: min(320px, calc(100% - 32px)); box-sizing: border-box;
+  background: rgba(250, 248, 243, .92); color: #15161a; border-radius: 4px; overflow: hidden; text-align: center; pointer-events: none; z-index: 2;
+  box-shadow: 0 8px 26px rgba(8, 10, 16, .32), 0 0 0 1px rgba(255, 255, 255, .5) inset; opacity: 0; transform: translateX(-50%) translateY(8px); }
+.g-ekimei.in { opacity: 1; transform: translateX(-50%); transition: opacity .35s ease-out, transform .35s cubic-bezier(.2, .7, .2, 1); }
+.g-ekimei.in.out { opacity: 0; transform: translateX(-50%) translateY(-6px); transition: opacity .45s ease-in, transform .45s ease-in; }
+.g-ekimei .ek-top { display: flex; align-items: baseline; justify-content: center; gap: 10px; padding: 8px 12px 5px; }
+.g-ekimei .ek-name { font: 700 24px/1.05 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", var(--f-display); letter-spacing: .08em; }
+.g-ekimei .ek-kana { font: 500 11px/1.2 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; color: #4a4c52; letter-spacing: .18em; }
+.g-ekimei .ek-band { background: var(--band, #1f7a4d); color: #fff; font: 400 10.5px/1.75 var(--f-display); letter-spacing: .3em; text-transform: uppercase;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, .25); }
+.g-ekimei .ek-next { display: grid; grid-template-columns: 1fr auto 1fr; align-items: baseline; gap: 6px; padding: 4px 10px 0;
+  font: 600 11px/1.3 "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; color: #26282d; }
+.g-ekimei .ek-next .l { text-align: left; } .g-ekimei .ek-next .r { text-align: right; } .g-ekimei .ek-next > span { white-space: nowrap; }
+.g-ekimei .ek-next i { font: 400 9px/1 var(--f-mono); font-style: normal; color: #6b6e75; }
+.g-ekimei .ek-what { font: 400 8px/1 var(--f-mono); letter-spacing: .18em; text-transform: uppercase; color: #8a8d94; }
+.g-ekimei .ek-note { padding: 3px 14px 7px; font: 400 10.5px/1.35 var(--f-body); color: #5a5d64; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+.g-ekimei .ek-band + .ek-note { padding-top: 6px; }
+/* on a phone the HUD fills the top: below it, still in the upper third and clear of the surveyor */
+@media (max-width: 560px) { .g-ekimei { top: 33%; width: min(280px, calc(100% - 32px)); } .g-ekimei .ek-name { font-size: 21px; } }
 /* overheard conversations (places.js): small bubbles over where they are said */
 .g-chatter { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
 .g-bubble { position: absolute; left: 0; top: 0; max-width: 240px; background: rgba(255, 255, 255, .93); color: #1b1b1b; border-radius: 12px; padding: 6px 10px;
@@ -446,7 +536,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-guess output { font: 300 17px/1 var(--f-display); letter-spacing: 0.04em; min-width: 64px; text-align: right; color: #fff; }
 .g-reticle { position: absolute; left: 50%; top: 46%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 6px rgba(0, 0, 0, 0.4); pointer-events: none; }
 /* the conversation, bottom centre: the speaker's name in their colour */
-.g-dialog { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(680px, calc(100% - 32px)); padding: 18px 22px 13px; cursor: pointer;
+.g-dialog { position: absolute; z-index: 2; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(680px, calc(100% - 32px)); padding: 18px 22px 13px; cursor: pointer;
   background: rgba(6, 10, 18, 0.82); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-top: 2px solid var(--npc, var(--accent)); border-radius: var(--r); }
 .gd-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .gd-head b { font: 300 15px/1.1 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--npc, var(--ink)) 45%, #f4f1ea); }
@@ -485,18 +575,56 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-phone p { margin: 0; }
 .gph-card { display: grid; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--surface-2); }
 .gph-card b.num { font-size: 16px; margin-top: 4px; }
+/* the ride, as a ride app shows it: the map, the time, the driver and the car, the trip */
+.gph-map { display: block; box-sizing: border-box; width: 100%; height: 150px; border-radius: 8px; background: var(--gm-water); border: 1px solid var(--line); }
+#gph-body { display: grid; gap: 8px; min-width: 0; }
+.gph-eta { display: flex; align-items: baseline; gap: 10px; }
+.gph-eta b { font-size: 24px; font-weight: 500; letter-spacing: -0.02em; color: #fff; }
+.gph-eta span { font-size: 12.5px; color: var(--ink-2, var(--ink)); }
+.gph-bar { height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.gph-bar i { display: block; height: 100%; width: calc(var(--k) * 100%); background: var(--accent); transition: width 0.5s linear; }
+.gph-driver { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0 2px; border-top: 1px solid var(--line); }
+.gph-driver .av { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font: 600 14px/1 var(--f-display); color: #fff;
+  background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.28), transparent 60%), var(--c, #3a4452); border: 1px solid rgba(255, 255, 255, 0.28); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+.gph-driver .who { display: grid; gap: 1px; min-width: 0; }
+.gph-driver .who b { font-size: 13.5px; } .gph-driver .rt { font: 400 10.5px/1 var(--f-mono); color: var(--accent); margin-left: 4px; }
+.gph-driver .note { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gph-driver .gph-plate { font-size: 11.5px; letter-spacing: 0.08em; padding: 4px 7px; border-radius: 4px; background: #f2efe8; color: #101318; border: 1px solid rgba(0, 0, 0, 0.4); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.gph-trip { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 5px 8px; align-items: center; font-size: 12px; color: var(--ink-2, var(--ink)); }
+.gph-trip .pk { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); justify-self: center; }
+.gph-trip .ds { width: 8px; height: 8px; background: #f4f1ea; justify-self: center; }
 .g-mapwrap { width: min(1100px, 100%); height: min(860px, 100%); grid-template-rows: auto minmax(0, 1fr); }
 .g-mapbody { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 18px; min-height: 0; }
 .g-mapcanvas { position: relative; min-height: 300px; background: var(--gm-water); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
-.g-mapcanvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; }
+.g-mapcanvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+/* zoom buttons over the map's corner (game.js zoomMap); the wheel, a drag and a pinch do the same */
+.g-mapzoom { position: absolute; right: 10px; bottom: 10px; z-index: 1; display: grid; background: var(--hud-solid); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); overflow: hidden; }
+.g-mapzoom button { width: 34px; height: 34px; display: grid; place-items: center; border: 0; background: none; color: var(--ink); font: 400 18px/1 var(--f-body); cursor: pointer; transition: background 0.3s, color 0.3s; }
+.g-mapzoom button + button { border-top: 1px solid var(--line); }
+.g-mapzoom button[data-z="fit"] { font-size: 14px; }
+.g-mapzoom button:hover:not(:disabled), .g-mapzoom button:focus-visible { background: var(--accent-wash); color: #fff; }
+.g-mapzoom button:disabled { color: var(--faint); cursor: default; }
 .g-mapbody aside { display: grid; gap: 12px; align-content: start; overflow: auto; }
 .g-legend { display: grid; gap: 7px; font-size: 12px; color: var(--ink-2); }
 .g-legend div { display: flex; gap: 9px; align-items: center; }
 .g-legend i { width: 14px; height: 14px; border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font: 700 8px/1 var(--f-body); font-style: normal; flex: none; }
-#g-travel { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-#g-travel button { width: 100%; text-align: left; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.02); border-radius: var(--r); padding: 8px 10px; cursor: pointer; font-size: 12.5px; color: var(--ink);
-  transition: border-color 0.3s, background 0.3s; }
-#g-travel button:hover { border-color: rgba(255, 176, 102, 0.6); background: var(--accent-wash); }
+#g-travel, #g-travel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+#g-travel { gap: 14px; }
+#g-travel h4 { margin: 0 0 6px; font: 400 8.5px/1.2 var(--f-mono); color: var(--faint); text-transform: uppercase; letter-spacing: 0.2em; }
+#g-travel button { width: 100%; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; text-align: left; border: 1px solid var(--line); background: rgba(236, 232, 225, 0.02); border-radius: var(--r);
+  padding: 8px 10px; cursor: pointer; font: inherit; font-size: 12.5px; color: var(--ink); transition: border-color 0.3s, background 0.3s; }
+#g-travel button .num { flex: none; font-size: 10.5px; color: var(--muted); }
+#g-travel button:hover, #g-travel button:focus-visible { border-color: rgba(255, 176, 102, 0.6); background: var(--accent-wash); }
+.g-lg-pin { background: rgba(6, 10, 18, 0.78); box-shadow: inset 0 0 0 1.5px #f4efe6, inset 0 0 0 4px rgba(6, 10, 18, 0.78), inset 0 0 0 7px var(--sun); }
+/* the card over the map for a picked place: travel there, or set a waypoint (game.js pick) */
+.g-mappop { position: absolute; z-index: 1; width: max-content; max-width: min(340px, calc(100% - 12px)); display: grid; gap: 4px; padding: 12px 14px 13px; background: var(--hud-solid);
+  -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-top: 2px solid var(--sun); border-radius: var(--r); box-shadow: var(--shadow); }
+.g-mappop b { font: 500 14px/1.25 var(--f-body); color: #fff; }
+.g-mappop .note { font: 400 9px/1.3 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.g-mappop-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.g-mappop-acts .btn { padding: 10px 14px; }
+.g-mappop-acts .btn[hidden] { display: none; }
 .g-stampfx { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 12px; pointer-events: none; z-index: 5; }
 .g-stampfx .stamp { width: 172px; height: 172px; border-radius: 50%; display: grid; place-items: center; text-align: center; padding: 20px;
   border: 4px double var(--accent); color: var(--accent); background: rgba(6, 10, 18, 0.72); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
@@ -540,6 +668,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .gt-go { display: flex; gap: 10px; flex-wrap: wrap; }
 .gt-go .btn { padding: 16px 18px; min-width: 210px; justify-content: space-between; }
 .gt-go .btn:not(.primary) { min-width: 0; }
+.gt-skip { display: flex; gap: 8px; align-items: center; margin: -4px 0 0; color: var(--muted); cursor: pointer; }
+.gt-skip[hidden] { display: none; }
+.gt-skip input { accent-color: var(--accent); }
 .gt-hints { margin: 0; display: grid; gap: 7px; font: 400 9px/1.6 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 .gt-hints kbd { font-size: 9px; padding: 1px 4px; color: var(--ink-2); margin-right: 2px; }
 .gt-back { justify-self: start; display: inline-flex; gap: 8px; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 4px 0; transition: color 0.3s; }
@@ -553,8 +684,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   @keyframes gt-in { from { opacity: 0; transform: translateX(-18px); } }
   @keyframes gt-fade { from { opacity: 0; } }
 }
-/* touch controls */
+/* touch controls; while someone is talking to you they step aside, so the words aren't under the stick and the buttons */
 .g-touch { position: absolute; inset: auto 0 0 0; height: 190px; pointer-events: none; }
+.game-stage:has(.g-dialog:not([hidden])) .g-touch { display: none; }
 .g-touch > * { pointer-events: auto; }
 #gt-joy { position: absolute; left: max(18px, env(safe-area-inset-left, 0px)); bottom: 24px; width: 120px; height: 120px; border-radius: 50%; touch-action: none;
   background: rgba(6, 10, 18, 0.35); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid var(--line-2); }
@@ -579,15 +711,23 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .g-dialog p { font-size: 15px; }
   .g-vhud { bottom: 196px; grid-template-columns: repeat(2, auto); }
   .g-phone { bottom: 196px; max-height: calc(100% - 420px); }
+  .gph-map { height: 120px; }
+  #game-stage:has(#g-phone:not([hidden])) .g-vhud { display: none; } /* the phone covers the corner the trip card sits in */
+  .gph-eta b { font-size: 22px; }
   .g-vhud .note { display: none; }
   .g-lens { left: 10px; right: 10px; width: auto; top: auto; bottom: 200px; }
-  .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(260px, 1fr) auto; }
+  .g-mapbody { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(300px, 1.3fr) minmax(0, 1fr); gap: 14px; }
+  .g-mapbody aside > h3:first-child, .g-legend { display: none; } /* on a phone the map and the travel list; the pins say what they are when picked */
+  .g-mappop-acts .btn { flex: 1; padding: 10px 8px; letter-spacing: 0.12em; }
   .g-panel { padding: 18px 16px 18px; }
   .g-reticle { display: none; }
   .g-photo { width: calc(100% - 16px); bottom: 8px; }
   .gph-sliders { grid-template-columns: minmax(0, 1fr); gap: 6px; }
   .gph-actions kbd { display: none; }
   .g-photo .note { display: none; }
+  .g-closer { width: calc(100% - 16px); top: 8px; bottom: auto; padding: 12px 12px 10px; } /* over the stick, not under it */
+  .g-closer .note { display: none; }
+  .gc-text { font-size: 15px; }
   .gt-keys, .gt-hints { display: none; }
   .g-title { align-items: flex-end; padding: 24px 20px max(24px, env(safe-area-inset-bottom, 0px));
     background: linear-gradient(0deg, rgba(4, 6, 11, 0.95) 0%, rgba(4, 6, 11, 0.86) 52%, rgba(4, 6, 11, 0.3) 82%, rgba(4, 6, 11, 0.1) 100%); }
@@ -599,7 +739,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 }
 @media (prefers-reduced-motion: reduce) { .game-stage.flash::after { display: none; } }
 @media (prefers-reduced-motion: reduce) { .loader .track::after { animation: none; opacity: 0; }
-  .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after, .tour-list button::before, .tour-list b { transition: none; } }
+  .loader .track i, .g-toast, .g-bars::before, .g-bars::after, .loader, .title-card, .hud-btns, .caption, .inspector, .stage::after, .tour-list button::before, .tour-list b { transition: none; }
+  .caption .cap-txt.in { animation: none; } }
 </style>
 </head>
 <body>
@@ -635,7 +776,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <p class="ts-hint"><kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>↵</kbd> explore · <kbd>P</kbd> play · <kbd>F</kbd> film · drag to turn the Earth</p>
     </nav>
     <section class="ts-card" id="ts-card" aria-live="polite"></section>
-    <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button></footer>
+    <footer class="ts-foot"><span class="next" id="ts-next"></span><button class="ts-tool" id="ts-replay">Replay the opening</button><a class="ts-ver" id="ts-ver" target="_blank" rel="noopener" hidden></a></footer>
     <p class="ts-notice" id="globe-notice" role="status" hidden></p>
     <div class="ts-about" id="ts-about" hidden role="dialog" aria-label="About Open Earth 3D">
       <div>
@@ -667,6 +808,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <h3>This screen</h3>
           <p>The Earth as it is now: NASA's Blue Marble for this month by day and the Black Marble's city lights by night (NASA Earth Observatory), Blue Marble clouds and GEBCO relief, the atmosphere scattering the real sun. The Milky Way is ESO/S. Brunier's panorama (CC BY 4.0); the stars are the Yale Bright Star Catalogue, in their real places for this minute, and the Moon is in its real place and phase. The sound is synthesised in the browser.</p>
         </div>
+        <div class="ts-version">
+          <h3>Version</h3>
+          <p class="ts-mono" id="ts-ver-about">Local build</p>
+        </div>
       </div>
     </div>
   </section>
@@ -678,8 +823,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     <div class="labels" id="labels"></div>
     <div class="title-card brackets">
       <a class="tc-back" href="#globe" id="back-globe"><span aria-hidden="true">←</span> Open Earth <b>3D</b></a>
-      <span class="eyebrow"><span id="city-country"></span><span id="city-coords"></span></span>
+      <span class="eyebrow"><span id="city-country"></span><span id="city-group"></span><span id="city-coords"></span></span>
       <h1><span id="city-name">City</span><small id="city-native" hidden></small></h1>
+      <nav class="tc-districts" id="city-districts" aria-label="Districts" hidden></nav>
       <p id="city-desc"></p>
     </div>
     <div class="hud-btns">
@@ -690,9 +836,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     </div>
     <div class="caption brackets" id="caption">
       <span class="step" id="cap-step">1 / 7</span>
-      <div><b id="cap-title">Loading</b><p id="cap-text"></p></div>
+      <div class="cap-txt" id="cap-txt"><b id="cap-title">Loading</b><p id="cap-text"></p></div>
       <button class="btn" id="cap-skip">Next</button>
-      <div class="bar"><i id="cap-bar"></i></div>
+      <div class="cap-end" id="cap-end" hidden><button class="btn primary" id="cap-explore">Explore</button><a class="btn" id="cap-play" href="#" hidden>Play</a><button class="btn" id="cap-again">Watch again</button></div>
+      <div class="bar" id="cap-bars" aria-hidden="true"></div>
     </div>
     <aside class="inspector" id="inspector" hidden>
       <button class="x" id="insp-close" aria-label="Close">×</button>
@@ -842,7 +989,20 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       </div>
       <p class="note">Drag to turn · scroll to come closer · <kbd>W A S D</kbd> move · <kbd>Space</kbd>/<kbd>C</kbd> up and down</p>
     </div>
-    <div class="g-hud g-quest brackets" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="mono" id="gq-dist"></span><div class="gq-lines" id="gq-lines" hidden></div></div>
+    <div class="g-hud g-closer" id="g-closer" hidden data-hush role="group" aria-label="Look closer">
+      <span class="eyebrow" id="gc-name"></span>
+      <p class="gc-text" id="gc-text" aria-live="polite"></p>
+      <div class="gph-actions">
+        <button class="chip-btn" data-hold="-1,0" aria-label="Look along to the left">◀</button>
+        <button class="chip-btn" data-hold="1,0" aria-label="Look along to the right">▶</button>
+        <button class="chip-btn" data-hold="0,1" aria-label="Look higher">▲</button>
+        <button class="chip-btn" data-hold="0,-1" aria-label="Look lower">▼</button>
+        <button class="btn primary" id="gc-snap">Save photo <kbd>Enter</kbd></button>
+        <button class="btn" id="gc-done">Step back <kbd>E</kbd></button>
+      </div>
+      <p class="note"><kbd>A</kbd>/<kbd>D</kbd> look along · <kbd>W</kbd>/<kbd>S</kbd> higher and lower · drag to turn your head</p>
+    </div>
+    <div class="g-hud g-quest brackets" id="g-quest" aria-live="polite"><span class="eyebrow" id="gq-title"></span><b id="gq-step"></b><span class="gq-meta"><span class="mono" id="gq-dist"></span><button class="gq-route" id="gq-route" hidden aria-label="Show the route for a few seconds">Show route <kbd>L</kbd></button></span><div class="gq-lines" id="gq-lines" hidden></div></div>
     <div class="g-right">
       <canvas id="g-minimap" width="420" height="420" aria-label="Minimap"></canvas>
       <div class="g-hud g-clock"><b class="num" id="g-time">--:--</b><span id="g-date"></span></div>
@@ -854,24 +1014,27 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     <div class="g-prompt" id="g-prompt" hidden><span id="gp-main"><kbd id="gp-key">E</kbd><span id="gp-text"></span></span><button id="gp-alt" hidden><kbd>Y</kbd><span>Hail a taxi</span></button></div>
     <div class="g-hud g-vhud" id="g-vhud" hidden></div>
     <aside class="g-hud g-lens brackets" id="g-lens" hidden></aside>
-    <aside class="g-hud g-phone brackets" id="g-phone" hidden aria-label="Phone"><header><b id="gph-title">Phone</b><button class="x" id="gph-close" aria-label="Put the phone away">×</button></header><div id="gph-body"></div></aside>
+    <aside class="g-hud g-phone brackets" id="g-phone" hidden aria-label="Phone"><header><b id="gph-title">Phone</b><button class="x" id="gph-close" aria-label="Put the phone away">×</button></header><canvas class="gph-map" id="gph-map" hidden aria-label="Map of the ride: the car, its route and the pick-up"></canvas><div id="gph-body"></div></aside>
     <div class="g-dialog" id="gd" hidden role="dialog" aria-live="polite"><div class="gd-head"><b id="gd-name"></b><span id="gd-role"></span></div><p id="gd-text"></p><div class="gd-choices" id="gd-choices"></div><span class="gd-hint" id="gd-hint"></span></div>
 
     <div class="g-overlay" id="g-bigmap" hidden>
       <div class="g-panel g-mapwrap">
-        <header><h2>Map</h2><span class="note">Click the map to set a waypoint</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
+        <header><h2>Map</h2><span class="note">Pick a place to travel there · double-click to go at once</span><button class="x" id="g-bigmap-close" aria-label="Close the map">×</button></header>
         <div class="g-mapbody">
-          <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas></div>
+          <div class="g-mapcanvas"><canvas id="g-bigmap-c"></canvas>
+            <div class="g-mapzoom" id="g-mapzoom" role="group" aria-label="Zoom the map"><button data-z="in" aria-label="Zoom in">+</button><button data-z="out" aria-label="Zoom out">−</button><button data-z="fit" aria-label="Show the whole city">⤢</button></div>
+            <div class="g-mappop" id="g-mappop" hidden role="dialog" aria-label="Travel"><b id="g-mappop-name"></b><span class="note" id="g-mappop-note"></span>
+              <div class="g-mappop-acts"><button class="btn primary" id="g-mappop-go">Travel here</button><button class="btn" id="g-mappop-way">Set waypoint</button></div></div></div>
           <aside>
             <h3>Legend</h3>
             <div class="g-legend">
-              <div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
+              <div><i class="g-lg-pin"></i>Landmark: pick it to travel there</div><div><i style="background:#e0a21a">★</i>Current objective</div><div><i style="background:#e0a21a">!</i>Someone to talk to</div>
               <div><i style="background:#24577a">F</i>Ferry wharf</div><div><i style="background:#1e5b3a"></i>Ferry, live position</div>
               <div><i style="background:#c62d2a">H</i>Helipad and helicopter</div><div><i style="background:#2f5d8c">C</i>Your car</div><div><i style="background:#d08a00">T</i>Your taxi or ride</div><div><i style="background:#8a6d1d">△</i>Trig station: survey the view</div><div><i style="background:var(--sun-soft);border-radius:2px;height:4px"></i>Your route</div>
             </div>
-            <h3>Fast travel</h3>
+            <h3>Travel</h3>
+            <p class="note">Go any time, on foot or in your car. Or pick any spot on the map. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
             <ul id="g-travel"></ul>
-            <p class="note">A hop to the start or to any wharf you have used. For a real taxi, raise your hand at the kerb (Y) or order a ride on your phone (N).</p>
           </aside>
         </div>
       </div>
@@ -890,7 +1053,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
-          <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gm-route" checked> Show the route to the objective</label>
+          <div class="field"><span class="note">Route line</span><div class="seg wrap" id="gm-route"><button data-r="on" aria-pressed="true">On</button><button data-r="ask">Only when I ask</button><button data-r="off">Off</button></div></div>
           <label class="note" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="gm-sound" checked> Sound</label>
         </div>
         <table class="gt-keys"><tbody>
@@ -905,12 +1068,13 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr><td>△ on the map</td><td>Trig stations: stand at one and press <kbd>E</kbd> to survey the view</td></tr>
           <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
           <tr><td>Ferry</td><td><kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm into the next wharf</td></tr>
-          <tr><td><kbd>T</kbd></td><td>Switch the survey line the route follows (or tap its name in the quest card)</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Switch the walk the route follows (or tap its name in the quest card)</td></tr>
+          <tr><td><kbd>L</kbd></td><td>Show the route line for a few seconds when it is set to Only when I ask or Off (or tap Show route in the quest card)</td></tr>
           <tr><td><kbd>O</kbd></td><td>Photo mode: the world holds still; set the sun, the lens and the angle, and save a picture</td></tr>
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
-        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>
+        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-reset">Start again</button></div>
       </div>
     </div>
 
@@ -919,9 +1083,10 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <div class="gt-card">
         <span class="eyebrow gt-eb"><span>Open Earth 3D · <span id="gt-city">City</span></span></span>
         <h1 id="gt-title">On Foot</h1>
-        <p id="gt-blurb">Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it. Every fact they tell you comes from the model.</p>
+        <p id="gt-blurb">Walk a real city under the real sun, and talk to the people who know it.</p>
         <div class="gt-time"><span class="eyebrow">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button></div></div>
         <div class="gt-go"><button class="btn primary" id="gt-play">Start the survey <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
+        <label class="gt-skip note" id="gt-skip" hidden><input type="checkbox" id="gt-skip-on" checked> Skip the intro: you have played before</label>
         <div class="gt-hints">
           <span><kbd>W A S D</kbd> walk · drag to look around</span>
           <span><kbd>E</kbd> talk, board the ferry, fly the helicopter, drive your car</span>
@@ -979,16 +1144,21 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="sun.js"></script>
 <script src="sun-gpu.js"></script>
 <script src="cine.js"></script>
+<script src="onboard.js"></script>
 <script src="lens.js"></script>
 <script src="earth.js"></script>
 <script src="score.js"></script>
 <script src="title.js"></script>
+<script src="version.js"></script>
 <script src="film.js"></script>
-<script src="flyover.js"></script>
+<script src="plate.js"></script>
 <script src="water.js"></script>
 <script src="buildings.js"></script>
+<script src="streets.js"></script>
 <script src="trees.js"></script>
 <script src="night.js"></script>
+<script src="glcare.js"></script>
+<script src="quays.js"></script>
 <script src="world.js"></script>
 <script src="lights.js"></script>
 <script src="city.js"></script>
@@ -996,10 +1166,12 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/nav.js"></script>
 <script src="game/decks.js"></script>
 <script src="game/actors.js"></script>
+<script src="game/junctions.js"></script>
 <script src="game/people.js"></script>
 <script src="game/kit.js"></script>
 <script src="game/vehicles.js"></script>
 <script src="game/cars.js"></script>
+<script src="game/route.js"></script>
 <script src="game/rail.js"></script>
 <script src="game/atmosphere.js"></script>
 <script src="game/penguins.js"></script>
@@ -1009,7 +1181,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/hud.js"></script>
 <script src="game/game.js"></script>
 <script>
-// Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game,
+// Router: "#<city id>" opens that city's 3D model, "#play-<city id>" its game ("@<travel id>" to start there),
 // anything else shows the globe. Views switch in place, without reloading the page:
 // the old view stops, and a view shown before gets a fresh copy of its markup so no
 // old listeners remain.
@@ -1032,7 +1204,14 @@ window.dispatchEvent(new Event('three-ready'));
   const native = (el, c) => { el.textContent = c.native || ''; el.lang = c.id === 'hong-kong' ? 'zh-Hant' : 'ja'; el.hidden = !c.native; };
   const fmtLL = c => `${Math.abs(c.lat).toFixed(2)}°${c.lat >= 0 ? 'N' : 'S'} ${Math.abs(c.lon).toFixed(2)}°${c.lon >= 0 ? 'E' : 'W'}`;
   async function show() {
-    const id = hashId(), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
+    const [id, arrive] = hashId().split('@'), play = /^play-/.test(id), cid = id.replace(/^play-/, '');
+    // a travel point that has moved to another map ("moved" in cities/index.json: Shinjuku was part of
+    // the Shibuya map): its old link opens the map that has it now
+    const moved = play && arrive ? (cities.find(c => c.id === cid) || {}).moved : null;
+    const movedTo = moved && Object.keys(moved).find(m => moved[m].includes(arrive));
+    if (movedTo) { history.replaceState(null, '', `#play-${movedTo}@${arrive}`); return show(); }
+    // "#play-<city>@<travel point>": start the game at a district of a map (the Tokyo subway map, title.js)
+    window.OE_ARRIVE = play && arrive ? arrive : null;
     const from = lastId;
     lastId = cid;
     let city = cities.find(c => c.id === cid && c.built && (!play || c.game));
@@ -1047,7 +1226,7 @@ window.dispatchEvent(new Event('three-ready'));
       pane('game-app').hidden = false;
       $('g-load-title').textContent = city.name;
       native($('g-load-native'), city);
-      OEFlyover.play($('g-loader'), city); // the loading flyover, where the city has one
+      OEPlate.play($('g-loader'), city); // the loading plate: the city's aerial survey assembling (plate.js)
       $('gm-model').href = `#${city.id}`;
       current = window.OpenEarthGame(city.id);
     } else if (city) {
@@ -1057,7 +1236,13 @@ window.dispatchEvent(new Event('three-ready'));
       native($('load-native'), city);
       native($('city-native'), city);
       $('city-coords').textContent = fmtLL(city);
-      OEFlyover.play($('loader'), city);
+      // a district of a bigger city: name the city, and offer its other districts
+      const district = city.group_meta && ['city', 'metro'].includes(city.group_meta.kind), sibs = district ? cities.filter(c => c.group === city.group && c.built) : [];
+      $('city-group').textContent = district ? city.group : '';
+      const nav = $('city-districts');
+      nav.hidden = sibs.length < 2;
+      nav.innerHTML = sibs.length < 2 ? '' : sibs.map(c => `<a href="#${c.id}"${c.id === city.id ? ' aria-current="page"' : ''}>${c.district || c.name}</a>`).join('');
+      OEPlate.play($('loader'), city);
       if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);
     } else {

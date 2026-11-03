@@ -147,6 +147,20 @@ class Mesh:
                 q = a + (b - a) * t / L
                 self.box(q, q + up * height, post, post)
 
+    def weld(self, tol=0.005):
+        """Merge vertices at the same place with the same texture coordinates (a mesh built a
+        triangle at a time), so it smooths across them and dumps smaller."""
+        key, out_v, out_t, remap = {}, [], [], []
+        for k, (p, t) in enumerate(zip(self.v, self.t)):
+            q = (round(p[0] / tol), round(p[1] / tol), round(p[2] / tol), round(t[0] / tol), round(t[1] / tol))
+            if q not in key:
+                key[q] = len(out_v)
+                out_v.append(p)
+                out_t.append(t)
+            remap.append(key[q])
+        self.i = [remap[i] for i in self.i]
+        self.v, self.t = out_v, out_t
+
     def dump(self):
         v = np.round(np.asarray(self.v, float), 2)
         out = {"name": self.name, "material": self.mat, "smooth": self.smooth, "floodlit": self.floodlit,

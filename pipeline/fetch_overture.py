@@ -35,11 +35,19 @@ def queries(root):
         "water": f"SELECT {simple} FROM {base('base/type=water')}",
         "land": f"SELECT {simple} FROM {base('base/type=land')}",
         "land_use": f"SELECT {simple} FROM {base('base/type=land_use')}",
-        "infrastructure": f"SELECT {simple} FROM {base('base/type=infrastructure')}",
+        # the OSM tags say what Overture's class leaves out: a car park that is a pier (man_made=pier),
+        # one under the ground or a heliport on a roof (pipeline/shore.py decks), and which crossings
+        # have signals or zebra stripes (road_rules.py)
+        "infrastructure": f"SELECT {simple}, level, source_tags FROM {base('base/type=infrastructure')}",
         "address": f"SELECT id, number, street, unit, postcode, ST_AsWKB(geometry) AS wkb FROM {base('addresses/type=address')}",
-        # road flags (is_bridge, is_tunnel, ...) and levels place traffic on bridges and hide it in tunnels
-        "segment": f"""SELECT {simple}, road_flags, level_rules, speed_limits[1].max_speed.value AS max_speed_kmh
-            FROM {base('transportation/type=segment')}""",
+        # road flags (is_bridge, is_tunnel, ...) and levels place traffic on bridges and hide it in tunnels;
+        # access restrictions say which streets are one-way, prohibited transitions which turns are
+        # banned (from which connector into which segment), width rules how wide a road is
+        # (pipeline/road_rules.py); records, the OpenStreetMap ways it was cut from ("w123@4"), give the
+        # lane counts and lane arrows Overture leaves out (pipeline/road_lanes.py)
+        "segment": f"""SELECT {simple}, road_flags, level_rules, speed_limits[1].max_speed.value AS max_speed_kmh,
+            access_restrictions, connectors, prohibited_transitions, width_rules,
+            list_transform(sources, lambda s: s.record_id) AS records FROM {base('transportation/type=segment')}""",
     }
 
 

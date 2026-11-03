@@ -60,8 +60,8 @@ const frames = fs.mkdtempSync(path.join(os.tmpdir(), `flyover-${city}-`));
   let last = 0;
   for (let i = 0; i < N; i++) {
     let jpg = '';
-    // now and then a frame comes back black (the game skipped that draw): a black JPEG is a fraction
-    // of the size of its neighbours, so take it again, up to three times
+    // a black frame (once, a NaN from the bloom; lens.js tameBloom now stops that) is a fraction of
+    // the size of its neighbours as a JPEG, so take it again, up to three times
     for (let tries = 0; tries < 4 && (!jpg || jpg.length < last * 0.4); tries++) {
       jpg = await p.evaluate(async o => {
         window.__game.flyover.camera(o);

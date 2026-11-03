@@ -1,16 +1,16 @@
 {
  "note": "Roof shapes: mapped (Overture roof_shape), else ruled flat, else drawn from the region's prior. The check predicts each mapped roof as if it were not mapped.",
  "counts": {
-  "prior:gabled": 1174,
-  "prior:hipped": 2005,
-  "prior:flat": 1724,
-  "prior:gabled_across": 446,
+  "prior:gabled": 1166,
+  "prior:hipped": 1971,
+  "prior:flat": 1760,
+  "prior:gabled_across": 424,
   "rule:flat": 2316,
-  "fallback_flat": 35,
+  "fallback_flat": 30,
   "too_low": 81,
-  "prior:skillion": 390,
+  "prior:skillion": 403,
   "mapped:flat": 74,
-  "mapped:skillion": 16,
+  "mapped:skillion": 14,
   "mapped:hipped": 42,
   "mapped:gabled_across": 52,
   "mapped:gabled": 32,
@@ -21,15 +21,15 @@
   "mapped:mansard": 1
  },
  "check": {
-  "n": 201,
-  "flat_vs_pitched_accuracy": 0.687,
-  "exact_shape_accuracy": 0.408,
-  "family_accuracy": 0.413,
-  "pitched_recall": 0.62,
+  "n": 199,
+  "flat_vs_pitched_accuracy": 0.668,
+  "exact_shape_accuracy": 0.412,
+  "family_accuracy": 0.417,
+  "pitched_recall": 0.593,
   "flat_recall": 0.847,
   "confusion_pitched": {
-   "true_pitched_pred_pitched": 88,
-   "true_pitched_pred_flat": 54,
+   "true_pitched_pred_pitched": 83,
+   "true_pitched_pred_flat": 57,
    "true_flat_pred_flat": 50,
    "true_flat_pred_pitched": 9
   },
@@ -37,14 +37,14 @@
    "gabled": 81,
    "flat": 59,
    "hipped": 42,
-   "skillion": 13,
+   "skillion": 11,
    "round": 5,
    "mansard": 1
   }
  },
- "roofs_built": 4190,
- "rooftop_props": 3766,
- "frontage_solids": 1249,
+ "roofs_built": 4137,
+ "rooftop_props": 3769,
+ "frontage_solids": 1250,
  "skeleton_failures": {
   "active": 5,
   "steps": 2

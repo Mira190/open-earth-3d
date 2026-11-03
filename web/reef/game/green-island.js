@@ -39,7 +39,7 @@ export default function greenIsland(G) {
     cay: { say: G2 => {
       const c = P('green-island'), ha = c ? landArea(G2, c.x, c.north) : null;
       return [{ t: 'It formed about 6,000 years ago, when waves piled sand, coral and other debris onto the reef.', src: ['wiki-green-island'] },
-        ha ? { t: `In this model the mapped island is ${ha.toFixed(0)} hectares above mean sea level.`, src: ['model-terrain', 'model-pois'] } : null,
+        ha ? { t: `Above mean sea level the island is about ${ha.toFixed(0)} hectares: you can walk round it in under an hour.`, src: ['model-terrain', 'model-pois'] } : null,
         { t: 'There is no freshwater spring. The plants live on rain and a small lens of fresh water under the island; the middle is vine-thicket rainforest.', src: ['wiki-green-island'] },
         { t: 'Cook named it on 10 June 1770: maybe for its green, maybe after Charles Green, the Endeavour\'s astronomer.', src: ['wiki-green-island'] },
         { t: 'The island and its reef are protected: Green Island National Park, inside the Great Barrier Reef Marine Park.', src: ['wiki-green-island'] }];
@@ -68,7 +68,7 @@ export default function greenIsland(G) {
         const s = P('green-snorkel'), mix = s ? habitatMix(s) : [];
         return [{ t: 'G\'day, I\'m Noah. I take people snorkelling off the beach here.', src: null },
           s ? { t: `The reef flat beside the jetty is ${G2.depth(s.x, s.north).toFixed(1)} m deep at this tide.`, src: G2.tide() ? ['model-terrain', 'model-tide'] : ['model-terrain'] } : null,
-          mix.length ? { t: `In the model's habitat map, read from the satellite colours, the floor within 150 m is ${mix.join(', ')}.`, src: ['model-terrain'] } : null];
+          mix.length ? { t: `Within 150 m of here the floor is ${mix.join(', ')}. Look down when you snorkel over it.`, src: ['model-terrain'] } : null];
       }, choices: [
         { text: 'Can I borrow a mask?', do: G2 => { if (!G2.player.S.gear.mask) G2.player.equip('snorkel'); }, go: 'gear' },
         { text: 'Can I help with a survey?', go: 'survey', when: G2 => G2.species().length > 0 && !G2.state('survey') },
@@ -86,7 +86,7 @@ export default function greenIsland(G) {
       const sg = G2.sign('green-lookout'), at = sg ? { x: sg.x, north: sg.north } : P('green-lookout');
       const seen = inSight(G2, at, 'green-lookout', { kinds: new Set(['island', 'marina']), range: 20000, exclude: ['green-island'] });
       return [{ t: 'Viewpoint, south-east shore of Green Island, as mapped.', src: ['model-pois'] },
-        seen.length ? { t: `In sight from here over the model's terrain: ${seen.join('; ')}.`, src: ['model-terrain', 'model-pois'] } : { t: `From eye height here the sea horizon is ${G2.km(G2.horizonM(at))} away, and nothing mapped stands above it.`, src: ['model-terrain', 'model-pois'] }];
+        seen.length ? { t: `In sight from here: ${seen.join('; ')}.`, src: ['model-terrain', 'model-pois'] } : { t: `From eye height here the sea horizon is ${G2.km(G2.horizonM(at))} away, and nothing mapped stands above it.`, src: ['model-terrain', 'model-pois'] }];
     } } } }] : [];
 
   // ------------------------------------------------------------ quests

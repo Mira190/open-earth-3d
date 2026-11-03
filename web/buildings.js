@@ -16,22 +16,53 @@
 // vertex shader).
 'use strict';
 window.OEBuildings = (function () {
+  // the posts under a canopy (a solid of class "roof" lifted off the ground, pipeline/arcades.py: a
+  // covered walkway or a gate): [[x, y], ...] in metres, 0.25 m in from its outline. A long thin one (an
+  // arcade) stands on posts every 6 m along its edges, anything else (a gate) on its corners. nav.js
+  // walks round the same posts
+  const POST = 0.3; // a post's side (m)
+  function canopyPosts(s, meta) {
+    if (!(s[2] > 0) || !meta || meta[1] !== 'roof') return [];
+    const r = s[4], n = r.length / 2, out = [];
+    let area = 0, per = 0;
+    for (let k = 0; k < n; k++) {
+      const j = (k + 1) % n, ax = r[2 * k] / 10, ay = r[2 * k + 1] / 10, bx = r[2 * j] / 10, by = r[2 * j + 1] / 10;
+      area += ax * by - bx * ay; per += Math.hypot(bx - ax, by - ay);
+    }
+    const sg = area > 0 ? 1 : -1, thin = per > 40 && Math.abs(area) / per <= 2.5; // (mean width = 2 area / perimeter)
+    const P = k => [r[2 * ((k + n) % n)] / 10, r[2 * ((k + n) % n) + 1] / 10];
+    const inward = (a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1; return [-dy / l * sg, dx / l * sg]; };
+    let last = null;
+    const add = (x, y) => { if (!last || Math.hypot(x - last[0], y - last[1]) > 3) { out.push([x, y]); last = [x, y]; } };
+    for (let k = 0; k < n; k++) {
+      const a = P(k - 1), b = P(k), c = P(k + 1), n0 = inward(a, b), n1 = inward(b, c);
+      let nx = n0[0] + n1[0], ny = n0[1] + n1[1];
+      const l = Math.hypot(nx, ny) || 1;
+      add(b[0] + nx / l * 0.25, b[1] + ny / l * 0.25);
+      if (thin) { // along the edge to the next corner
+        const L = Math.hypot(c[0] - b[0], c[1] - b[1]), m = Math.floor(L / 6);
+        for (let i = 1; i < m; i++) { const t = i / m; add(b[0] + (c[0] - b[0]) * t + n1[0] * 0.25, b[1] + (c[1] - b[1]) * t + n1[1] * 0.25); }
+      }
+    }
+    if (out.length > 1 && Math.hypot(out[0][0] - last[0], out[0][1] - last[1]) <= 3) out.pop();
+    return out;
+  }
   const STYLES = ['plain', 'house', 'terrace', 'apartment', 'office', 'glass', 'heritage', 'retail', 'industrial', 'civic',
-    'machiya', 'mixed', 'stone', 'haussmann', 'grachtenpand'];
+    'machiya', 'mixed', 'stone', 'haussmann', 'grachtenpand', 'wall'];
   const SI = Object.fromEntries(STYLES.map((s, i) => [s, i]));
   // per style: bay width m, window width (share of a bay), sill and head (shares of a storey)
   const GRID = {
     plain: [0, 0, 0, 0], house: [3.3, 0.42, 0.3, 0.8], terrace: [2.8, 0.44, 0.24, 0.86], apartment: [3.0, 0.5, 0.27, 0.86],
     office: [3.0, 0.68, 0.25, 0.9], glass: [1.5, 1.0, 0.0, 1.0], heritage: [3.6, 0.4, 0.22, 0.84], retail: [4.2, 0.42, 0.34, 0.8],
     industrial: [6.0, 0.72, 0.64, 0.88], civic: [3.6, 0.88, 0.32, 0.8], machiya: [1.8, 0.72, 0.3, 0.76], mixed: [2.8, 0.7, 0.22, 0.86],
-    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82], grachtenpand: [2.3, 0.5, 0.12, 0.86],
+    stone: [0, 0, 0, 0], haussmann: [2.9, 0.44, 0.06, 0.82], grachtenpand: [2.3, 0.5, 0.12, 0.86], wall: [0, 0, 0, 0],
   };
   // per style: interior depth (bays), frame darkness, glass reflectance (metalness), wall roughness
   const LOOK = {
     plain: [1, 0, 0, 0.9], house: [1.2, 0.55, 0.15, 0.88], terrace: [1.4, 0.6, 0.15, 0.85], apartment: [1.4, 0.45, 0.2, 0.8],
     office: [1.6, 0.4, 0.25, 0.7], glass: [2.6, 0.3, 0.55, 0.45], heritage: [1.3, 0.6, 0.15, 0.9], retail: [1.8, 0.4, 0.15, 0.8],
     industrial: [3, 0.5, 0.1, 0.75], civic: [1.8, 0.4, 0.25, 0.75], machiya: [1, 0.7, 0.02, 0.9], mixed: [1.5, 0.45, 0.2, 0.75],
-    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88], grachtenpand: [1.2, 0.3, 0.18, 0.9],
+    stone: [1, 0, 0, 0.95], haussmann: [1.3, 0.35, 0.12, 0.88], grachtenpand: [1.2, 0.3, 0.18, 0.9], wall: [1, 0, 0, 0.95],
   };
   // regional grids: Japan builds on the 910 mm module (sliding units of 1,690 mm on 1,820 mm bays),
   // machiya fronts are three bays of 1.97 m
@@ -39,6 +70,11 @@ window.OEBuildings = (function () {
     japan: { house: [1.82, 0.62, 0.3, 0.8], terrace: [1.82, 0.7, 0.28, 0.82], apartment: [3.6, 0.76, 0.02, 0.86],
       office: [3.2, 0.7, 0.22, 0.88], mixed: [2.8, 0.74, 0.2, 0.86], machiya: [1.97, 0.86, 0.3, 0.82] },
   };
+  // storey heights per style (m): typical and the tallest, as pipeline/typology.py
+  const STOREY = { plain: 3.0, house: 2.9, terrace: 3.2, apartment: 3.0, office: 3.8, glass: 3.9, heritage: 4.6, retail: 4.2,
+    industrial: 6.0, civic: 4.0, machiya: 2.9, mixed: 3.3, stone: 4.0, haussmann: 3.05, grachtenpand: 3.2 };
+  const STOREY_MAX = { plain: 6.0, industrial: 8.0, stone: 6.0, house: 3.3, terrace: 3.5, apartment: 3.3, office: 4.4, glass: 4.5, heritage: 5.5, retail: 5.0,
+    civic: 5.0, machiya: 3.2, mixed: 3.8, haussmann: 3.4, grachtenpand: 4.2 };
   const PARAPET = { office: 1.1, glass: 1.2, apartment: 1.0, heritage: 1.3, retail: 0.9, civic: 1.0, mixed: 1.0, industrial: 0.5, haussmann: 1.0 };
   const ROOF_MAT = ['membrane', 'gravel', 'concrete', 'tile', 'metal', 'slate', 'kawara', 'copper', 'glass', 'green', 'zinc'];
   const CURVED = new Set([8, 9, 10]); // round, dome, onion: smooth shading
@@ -167,7 +203,9 @@ window.OEBuildings = (function () {
     const { B, T, scene } = D;
     const region = scene.city.architecture || (scene.city.country === 'Japan' ? 'japan' : '');
     const GRIDS = Object.assign({}, GRID, REGION_GRID[region] || {});
-    const meta = B.b, hasStyle = (B.fields || []).includes('style');
+    // the pipeline's facade data (fields 10-14: style, storey and ground-floor heights, roof material,
+    // seed; build_scene.py names the first 'style (index in styles)'); older files guess from class and height
+    const meta = B.b, hasStyle = (B.fields || []).some(f => /^style\b/.test(f));
     const S = window.Sun;
     const roofOf = new Map((B.r || []).map(r => [r[0], S.unpackRoof(r)]));
     const frontOf = new Map((B.f || []).map(f => {
@@ -179,18 +217,27 @@ window.OEBuildings = (function () {
     // per building: style, storey, ground floor, seed, colours
     const styleList = B.styles || STYLES, matList = B.roof_materials || ROOF_MAT;
     const BI = meta.map((m, i) => {
-      const style = hasStyle ? (typeof m[10] === 'number' ? styleList[m[10]] : m[10]) : guessStyle(m);
-      let storey = hasStyle ? m[11] : 0, ground = hasStyle ? m[12] : 0;
-      if (!storey) {
+      const own = hasStyle && m[10] != null;
+      const style = own ? (typeof m[10] === 'number' ? styleList[m[10]] : m[10]) : guessStyle(m);
+      let storey = own ? m[11] : 0, ground = own ? m[12] : 0;
+      // a record of one floor on a wall that could hold two of the style's tallest (a register that
+      // counts a whole block as one storey) is counted from the style's storey height instead, as
+      // pipeline/typology.py storeys() now does
+      const smax = STOREY_MAX[style];
+      if (own && m[3] === 1 && smax && m[2] > 2 * smax && storey > smax) {
+        const gx = Math.max(0, ground - storey), n = Math.max(1, Math.round((m[2] - gx) / STOREY[style]));
+        storey = Math.min(Math.max((m[2] - gx) / n, 2.6), 6.5); ground = storey + gx;
+      }
+      if (!storey && style !== 'wall') {
         const res = /^(house|terrace|apartment)$/.test(style);
         storey = res ? 3.0 : style === 'heritage' ? 4.4 : 3.8;
         ground = storey + (res ? 0 : 0.8);
       }
-      const seed = hasStyle ? m[14] : Math.floor(hash1(i + 1) * 65535);
+      const seed = own ? m[14] : Math.floor(hash1(i + 1) * 65535);
       return { style, si: SI[style] ?? 0, storey, ground, seed, u: (seed % 997) / 997,
         wall: lin(m[7] || '#bdb6aa'), roof: lin(m[8] || '#8d8f8f'),
-        mat: hasStyle ? Math.max(0, ROOF_MAT.indexOf(typeof m[13] === 'number' ? matList[m[13]] : m[13])) : 0,
-        code: SRC[m[4]] ?? 2, windows: style !== 'plain' && style !== 'stone' && m[4] !== 'parametric' };
+        mat: own ? Math.max(0, ROOF_MAT.indexOf(typeof m[13] === 'number' ? matList[m[13]] : m[13])) : 0,
+        code: SRC[m[4]] ?? 2, windows: style !== 'plain' && style !== 'stone' && style !== 'wall' && m[4] !== 'parametric' };
     });
 
     // a 4 m surface model of building tops for the openness bake
@@ -291,7 +338,15 @@ window.OEBuildings = (function () {
     }
 
     // a flat polygon (contour + holes, flat x, y metres) at height z, facing up
-    function cap(rings, z, bi, colour, kind, flags) {
+    function post(x, y, z0, z1, bi) { // an upright square post, POST on a side
+      const P = BI[bi], h = POST / 2, c = [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]];
+      for (let k = 0; k < 4; k++) {
+        const [ax, ay] = c[k], [bx, by] = c[(k + 1) % 4], nx = (by - ay) / POST, ny = -(bx - ax) / POST, base = buf.n;
+        for (const [px, py, pz] of [[ax, ay, z0], [bx, by, z0], [bx, by, z1], [ax, ay, z1]]) buf.v(px, py, pz, nx, ny, 0, P.wall, px + py, pz - z0, K_TRIM * 16 + P.si, P.storey, P.ground, P.u, 1, 0, P.mat, bi, P.code);
+        buf.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      }
+    }
+    function cap(rings, z, bi, colour, kind, flags, down = false) { // (down: a soffit, facing the street below)
       const P = BI[bi], contour = [], holes = [];
       rings.forEach((r, i) => {
         const pts = [];
@@ -301,11 +356,11 @@ window.OEBuildings = (function () {
       let faces;
       try { faces = THREE.ShapeUtils.triangulateShape(contour, holes); } catch (e) { faces = []; }
       const all = contour.concat(...holes), base = buf.n;
-      for (const p of all) buf.v(p.x, p.y, z, 0, 0, 1, colour, p.x, p.y, kind * 16 + P.si, P.storey, P.ground, P.u, 1, flags, P.mat, bi, P.code);
+      for (const p of all) buf.v(p.x, p.y, z, 0, 0, down ? -1 : 1, colour, p.x, p.y, kind * 16 + P.si, P.storey, P.ground, P.u, 1, flags, P.mat, bi, P.code);
       for (const f of faces) {
         const a = all[f[0]], b = all[f[1]], c = all[f[2]];
         const ccw = (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x) > 0;
-        if (ccw) buf.idx.push(base + f[0], base + f[1], base + f[2]); else buf.idx.push(base + f[0], base + f[2], base + f[1]);
+        if (ccw !== down) buf.idx.push(base + f[0], base + f[1], base + f[2]); else buf.idx.push(base + f[0], base + f[2], base + f[1]);
       }
     }
 
@@ -401,6 +456,10 @@ window.OEBuildings = (function () {
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
       if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
+      if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
+        cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
+        for (const [x, y] of canopyPosts(s, meta[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
+      }
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough
       const par = PARAPET[P.style] && s[3] - s[2] >= 50 ? PARAPET[P.style] : 0;
@@ -438,7 +497,10 @@ window.OEBuildings = (function () {
     }
 
     const geometry = buf.geometry();
-    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade, night);
+    // the share of homes lit by cool white ceiling lights rather than warm lamps: most in Japan and
+    // Hong Kong, a few elsewhere (docs/NIGHT.md)
+    const coolHomes = { JP: 0.55, HK: 0.6 }[scene.city.country_code] ?? 0.15;
+    const material = facadeMaterial(U, renderer, GRIDS, scene.city.signage ?? (region === 'japan' ? 1 : 0), photoGrade, night, coolHomes);
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = mesh.receiveShadow = true;
 
@@ -677,14 +739,23 @@ window.OEBuildings = (function () {
   // ------------------------------------------------------------ the facade and roof shader
   // photoGrade: GLSL for photoGrade(), the correction world.js gives the aerial photo on the ground;
   // night: GLSL for streetLight(), the street lights' light at a world position (night.js)
-  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade, night) {
+  function facadeMaterial(U, renderer, GRIDS, signage, photoGrade, night, coolHomes = 0.15) {
     const grid = STYLES.map(s => new THREE.Vector4(...GRIDS[s])), look = STYLES.map(s => new THREE.Vector4(...LOOK[s]));
     while (grid.length < 16) { grid.push(new THREE.Vector4()); look.push(new THREE.Vector4(1, 0, 0, 0.9)); }
     Object.assign(U, {
       uGrid: { value: grid }, uLook: { value: look }, uHour: U.uHour || { value: 12 }, uSunW: U.uSunW || { value: new THREE.Vector3(0, 1, 0) },
       uPhoto: { value: new THREE.DataTexture(new Uint8Array([128, 128, 128, 255]), 1, 1) }, uPhotoOn: { value: 0 },
-      uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage }, uNudge: U.uNudge || { value: 4e-5 },
+      uFrame: { value: new THREE.Vector4(0, 0, 1, 1) }, uSigns: { value: signage }, uCoolHomes: { value: coolHomes }, uNudge: U.uNudge || { value: 4e-5 },
+      uGlyphs: { value: new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1) }, uGlyphOn: { value: 0 },
     });
+    U.uGlyphs.value.needsUpdate = true;
+    // the words on the signs (pipeline/sign_glyphs.py); until they load, or if they don't, the
+    // signs carry strokes in the shape of characters
+    if (signage > 0) new THREE.TextureLoader().load('assets/signs/glyphs.png', tex => {
+      tex.minFilter = tex.magFilter = THREE.LinearFilter; // the shader reads each word's length from a cell; a mipmap would blur it
+      tex.generateMipmaps = false;
+      U.uGlyphs.value = tex; U.uGlyphOn.value = 1;
+    }, undefined, () => {});
     const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, metalness: 0.0 });
     mat.extensions = Object.assign(mat.extensions || {}, { derivatives: true });
     mat.onBeforeCompile = sh => {
@@ -712,7 +783,7 @@ window.OEBuildings = (function () {
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', `#include <common>
   uniform float uNight; uniform float uSel; uniform float uMode; uniform vec3 uC0; uniform vec3 uC1; uniform vec3 uC2;
-  uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns;
+  uniform float uHour; uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; uniform float uSigns; uniform float uCoolHomes; uniform sampler2D uGlyphs; uniform float uGlyphOn;
   varying vec2 vFac; varying vec4 vInf; varying vec3 vExt; varying float vBid; varying float vSrc;
   varying vec3 vWPos; varying vec3 vWNrm; varying vec4 vGrid; varying vec4 vLook;
   ${photoGrade || 'vec3 photoGrade(vec3 c) { return c; }'}
@@ -722,6 +793,26 @@ window.OEBuildings = (function () {
   float footprint(float x) { return max(length(vec2(dFdx(x), dFdy(x))), 1e-4); }
   float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
   float h31(vec3 p) { return h21(p.xy + p.z * 17.17); }
+  // a sign's character on a 5 x 5 grid, p 0..1 across it: a horizontal stroke on some rows and an
+  // upright on some columns, each over a run of cells, as a CJK character reads from across a street
+  float glyph(vec2 p, float id) {
+    if (p.x < 0.0 || p.x > 1.0 || p.y < 0.0 || p.y > 1.0) return 0.0;
+    vec2 c = min(floor(p * 5.0), 4.0), f = fract(p * 5.0);
+    float r0 = h21(vec2(c.y, id)), r1 = h21(vec2(c.y + 9.1, id)), r2 = h21(vec2(c.y + 3.7, id * 1.3));
+    float a = floor(r1 * 3.0), b = a + 1.0 + floor(r2 * (4.0 - a));
+    float hs = step(r0, 0.55) * step(a, c.x) * step(c.x, b) * step(abs(f.y - 0.5), 0.2);
+    float k0 = h21(vec2(c.x + 5.3, id)), k1 = h21(vec2(c.x + 1.9, id * 0.7)), k2 = h21(vec2(c.x + 7.7, id * 1.9));
+    float va = floor(k1 * 3.0), vb = va + 1.0 + floor(k2 * (4.0 - va));
+    float vs = step(k0, 0.4) * step(va, c.y) * step(c.y, vb) * step(abs(f.x - 0.5), 0.2);
+    return max(hs, vs);
+  }
+  // a character of the signs' words (assets/signs/glyphs.png, 8 x 32 cells): cell (column, row), q 0..1
+  // across it from its bottom left; and the length of the word in a row (the grey of its last cell)
+  float sgCell(vec2 cell, vec2 q) {
+    if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) return 0.0;
+    return texture2D(uGlyphs, vec2((cell.x + q.x) / 8.0, 1.0 - (cell.y + 1.0 - q.y) / 32.0)).r;
+  }
+  float sgLen(float row) { return floor(texture2D(uGlyphs, vec2(7.5 / 8.0, 1.0 - (row + 0.5) / 32.0)).r * 255.0 / 16.0 + 0.5); }
   float vnoise(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
     return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
   // an anti-aliased box: 1 inside [a, b] on coordinate x, with a filter width w
@@ -733,16 +824,21 @@ window.OEBuildings = (function () {
     float d = clamp(b - a, 0.0, 1.0), t = x - a, c = floor(t), t0 = t - c - 0.5 * w, t1 = t - c + 0.5 * w;
     return ((floor(t1) - floor(t0)) * d + min(fract(t1), d) - min(fract(t0), d)) / w;
   }
-  // occupancy: the share of rooms lit at this local hour, by style
+  // occupancy: the share of rooms lit at this local hour, by style. Offices empty through the
+  // evening: four floors in five lit at 17:00, three in four at 18:00, half at 19:00, a third at
+  // 20:00, a fifth at 21:00 (some floors work late, the cleaners go up the building), and a few
+  // all night. Homes light through the evening, but never every window: rooms nobody is in, and
+  // curtains, keep it under half. (Each building's own share is about this times 0.3 to 1.7.)
   float occupancy(float style, float hr) {
     float evening = smoothstep(16.5, 19.0, hr) * (1.0 - smoothstep(22.5, 24.5, hr)) + (1.0 - smoothstep(0.0, 1.5, hr)) * 0.5;
     float work = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 21.0, hr));
-    // offices empty through the evening (overtime, cleaners) to a few floors lit all night
-    float late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(18.0, 22.0, hr));
-    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) return 0.06 + 0.78 * late + 0.1 * smoothstep(17.5, 19.0, hr) * (1.0 - smoothstep(20.0, 23.0, hr));
+    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) {
+      float staff = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(17.0, 21.0, hr)), late = smoothstep(6.5, 8.5, hr) * (1.0 - smoothstep(19.0, 24.0, hr));
+      return 0.05 + 0.55 * staff + 0.22 * late;
+    }
     if (style > 6.5 && style < 7.5) return 0.1 + 0.85 * smoothstep(7.0, 8.0, hr) * (1.0 - smoothstep(21.0, 22.5, hr));
     if (style > 5.5 && style < 6.5) return 0.05 + 0.5 * work + 0.15 * evening;
-    return 0.06 + 0.55 * evening + 0.2 * smoothstep(6.0, 7.0, hr) * (1.0 - smoothstep(8.5, 9.5, hr));
+    return 0.05 + 0.4 * evening + 0.2 * smoothstep(6.0, 7.0, hr) * (1.0 - smoothstep(8.5, 9.5, hr));
   }`)
         .replace('#include <color_fragment>', `#include <color_fragment>
   float kind = floor(vInf.x / 16.0 + 0.01), style = floor(vInf.x - kind * 16.0 + 0.5);
@@ -819,7 +915,14 @@ window.OEBuildings = (function () {
         if (fl < 0.5) diffuseColor.rgb *= 1.0 - 0.12 * band(fract(s * 1.6 + step(0.5, fract(h / 0.9)) * 0.5), 0.0, 0.05, fw.x * 1.6) * (1.0 - far);
         float topF = floorsIn - 1.0;
         float filant = (abs(fl - 2.0) < 0.5 || (abs(fl - topF) < 0.5 && topF > 3.5)) ? 1.0 : 0.0;
-        float bars = 0.5 + 0.5 * pulse(s * 14.0, 0.0, 0.32, fw.x * 14.0);
+        // the ironwork: a handrail and a bottom rail, thin balusters and a band of lattice between
+        // them, settling to its mean cover before a baluster is under a pixel
+        float rq = (q - sill - 0.01) / 0.28, fq = fw.y / 0.28;
+        float rails = max(band(rq, 0.86, 1.0, fq), band(rq, 0.0, 0.08, fq));
+        float bal = pulse(s * 20.0, 0.0, 0.16, fw.x * 20.0);
+        float lat = max(band(abs(fract(s * 6.0 + rq * 0.9) - 0.5), 0.0, 0.05, fw.x * 6.0 + fq),
+                        band(abs(fract(s * 6.0 - rq * 0.9) - 0.5), 0.0, 0.05, fw.x * 6.0 + fq)) * band(rq, 0.3, 0.7, fq);
+        float bars = mix(max(rails, max(bal, lat)), 0.42, smoothstep(0.3, 0.8, max(fw.x * 20.0, fq * 6.0)));
         float rail = pulse(q, sill + 0.01, min(sill + 0.29, 0.31), fw.y) * step(0.5, fl) * step(fl, topF + 0.5)
           * mix(pulse(s, 0.5 - wx - 0.04, 0.5 + wx + 0.04, fw.x), 1.0, filant);
         float slab = pulse(q, 0.0, sill + 0.01, fw.y) * filant * step(0.5, fl);
@@ -872,6 +975,33 @@ window.OEBuildings = (function () {
       float hue = h21(vec2(floor(bay / 2.0), fl) * 1.3 + bidH);
       signC = hue < 0.3 ? vec3(0.85, 0.12, 0.1) : hue < 0.5 ? vec3(0.95, 0.8, 0.15) : hue < 0.7 ? vec3(0.92, 0.92, 0.9) : hue < 0.85 ? vec3(0.1, 0.35, 0.8) : vec3(0.1, 0.6, 0.3);
       if (vert > 0.5) signC = seed < 0.7 ? vec3(0.9, 0.9, 0.88) : vec3(0.85, 0.15, 0.12);
+      // lettering: a line of characters across a panel, a column of them down the corner sign, dark on a
+      // light sign and white on a dark one (lit from behind at night), settling to its mean tone before a
+      // stroke is under a pixel. Characters about a third of a storey high
+      float gm = 0.32 * storey, bw = max(vGrid.x, 1.0), txt = 0.0, sub = gm / 5.0 / bw;
+      if (vert > 0.5) {
+        if (uGlyphOn > 0.5) { // a tenant a floor, two characters each, read top to bottom
+          float yy = (fy - 0.5) * storey / (gm * 1.18), k = floor(h21(vec2(fl, bidH * 7.3 + 2.0)) * 40.0);
+          txt = abs(yy) < 1.0 ? sgCell(vec2(mod(k, 4.0) * 2.0 + (yy >= 0.0 ? 0.0 : 1.0), 22.0 + floor(k / 4.0)),
+                                       vec2((fx - 0.5) * bw / gm + 0.5, (fract(yy) - 0.5) * 1.18 + 0.5)) : 0.0;
+        } else {
+          float gy = h / (gm * 1.18), gi = floor(gy);
+          txt = glyph(vec2((fx - 0.5) * bw / gm + 0.5, 1.0 - fract(gy) * 1.18), gi + bidH * 3.1 + 40.0);
+        }
+      } else if (pane > 0.0) {
+        float xm = ((fract(bay / 2.0) * 2.0 + fx) * bw - 0.5) / (gm * 1.15), gi = floor(xm);
+        float n = floor((1.84 * bw - 0.6) / (gm * 1.15)); // characters that fit the panel
+        if (uGlyphOn > 0.5) { // a word, centred on the panel (a two-character one where a longer one won't fit)
+          float w = floor(h21(vec2(floor(bay / 2.0), fl) + bidH * 3.3) * 22.0), L = sgLen(w);
+          if (L > n) { w = 1.0; L = 2.0; }
+          float ci = gi - floor((n - L) * 0.5);
+          txt = ci >= 0.0 && ci < L ? sgCell(vec2(ci, w), vec2(fract(xm) * 1.15, (fy - 0.5) * storey / gm + 0.5)) : 0.0;
+        } else {
+          txt = gi < n ? glyph(vec2(fract(xm) * 1.15, 1.0 - (fy - 0.5) * storey / gm - 0.5), gi + sr * 61.0 + bidH) : 0.0;
+        }
+      }
+      txt = mix(txt, 0.3 * max(pane, vert), smoothstep(0.35, 1.0, max(fw.x / sub, fw.y * storey / (gm / 5.0))));
+      signC = mix(signC, dot(signC, vec3(0.3, 0.5, 0.2)) > 0.5 ? vec3(0.07, 0.06, 0.06) : vec3(0.97, 0.96, 0.92), txt * (1.0 - far));
       // far off: the signs' share of the wall in their mean colour
       sign = mix(max(pane, vert), 0.15 * uSigns, far);
       signC = mix(signC, vec3(0.66, 0.52, 0.41), far);
@@ -883,20 +1013,27 @@ window.OEBuildings = (function () {
     // per window: lit at night, blinds, a room
     vec2 cellId = vec2(bay, fl);
     float rnd = h31(vec3(cellId, bidH + seed * 31.0));
-    float unitW = style > 3.5 && style < 5.5 ? 6.0 : 2.0;
-    // offices light by the floor (a tenant, the cleaners going up the building), so a tower reads in
-    // bands of lit floors; homes light room by room
-    float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
-    if (style > 3.5 && style < 5.5 || style > 8.5 && style < 9.5) unitR = mix(h21(vec2(fl, bidH * 1.91 + 2.7)), unitR, 0.3);
-    float occ = occupancy(style, uHour), unitLit = step(unitR, occ), shopLit = 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3);
-    // rooms lit in different lights: most warm, some under cool fluorescent or LED, until a run of
-    // them is under a pixel
-    float tintR = h31(vec3(floor(bay / unitW), fl, bidH * 2.3 + 5.1));
-    vec3 roomTint = mix(tintR > 0.8 ? vec3(0.8, 0.92, 1.1) : tintR > 0.6 ? vec3(1.06, 0.97, 0.88) : vec3(1.0), vec3(1.0), smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
-    // and as bright as their lamps are: a tower at night is a dark mass with some rooms glowing and
-    // a few bright, not a grid of equal windows (until a run is under a pixel: its mean)
     float office = step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5);
-    float unitB = mix(0.3 + 0.7 * pow(h31(vec3(floor(bay / unitW), fl, bidH * 0.77 + 9.3)), 1.6), 0.58, smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
+    float unitW = style > 3.5 && style < 5.5 ? 6.0 : 2.0;
+    float runFar = smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)); // a run of rooms under a pixel: from here on, its mean
+    // offices light by the floor (a tenant, the cleaners going up the building), so a tower reads in
+    // bands of lit floors; homes light room by room. Each building keeps its own evening, a tower
+    // with a tenant working late beside one all but empty, so a skyline is not one even grey.
+    float unitR = h31(vec3(floor(bay / unitW), fl, bidH * 1.37));
+    if (office > 0.5) unitR = mix(h21(vec2(fl, bidH * 1.91 + 2.7)), unitR, 0.3);
+    float occ = clamp(occupancy(style, uHour) * (0.3 + 1.4 * h21(vec2(bidH * 1.13 + 4.1, 2.9))), 0.0, 0.97);
+    float unitLit = step(unitR, occ), shopLit = 0.85 * step(0.0, occupancy(7.0, uHour) - 0.3);
+    // rooms lit in different lights: offices under cool white (4000-5000 K LED and fluorescent
+    // tubes), a floor in four warmer; homes under warm lamps, or a share of them (uCoolHomes: most
+    // in Japan and Hong Kong) under cool ceiling lights; until a run of rooms is under a pixel
+    float tintR = h31(vec3(floor(bay / unitW), fl, bidH * 2.3 + 5.1));
+    vec3 coolC = vec3(0.8, 0.9, 1.0), whiteC = vec3(1.0, 0.84, 0.62), warmC = vec3(1.0, 0.62, 0.32);
+    vec3 lampC = office > 0.5 ? (tintR < 0.75 ? coolC : whiteC) : tintR < uCoolHomes ? coolC : tintR < uCoolHomes + 0.2 ? whiteC : warmC;
+    lampC = mix(lampC, office > 0.5 ? 0.75 * coolC + 0.25 * whiteC : uCoolHomes * coolC + 0.2 * whiteC + (0.8 - uCoolHomes) * warmC, runFar);
+    // and as bright as their lamps are: a tower at night is a dark mass with most of its lit rooms
+    // at office or room light and a few floors bright, not a grid of equal windows
+    float bR = h31(vec3(floor(bay / unitW), fl, bidH * 0.77 + 9.3));
+    float unitB = mix(0.25 + 0.6 * pow(bR, 1.5) + 0.5 * step(0.9, bR), 0.56, runFar), litGain = 1.6;
     float lit = unitLit * step(0.12, rnd);
     if (shop > 0.5) lit = step(0.15, rnd) * step(0.0, occupancy(7.0, uHour) - 0.3);
     // an office tower's lobby stays lit all night
@@ -907,7 +1044,7 @@ window.OEBuildings = (function () {
     // lit rather than which ones are (later than the rest, as a lit window reads as one whatever is
     // behind it, down to a pixel or two)
     lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * unitLit, smoothstep(0.45, 1.0, max(fw.x, fw.y)));
-    lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * occ, smoothstep(0.75, 1.6, max(fw.x / unitW, fw.y)));
+    lit = mix(lit, shop > 0.5 ? shopLit : 0.88 * occ, runFar);
     rnd = mix(rnd, 0.5, far);
     float blind = step(0.72, h31(vec3(cellId, bidH * 0.53 + 3.1))) * (style > 4.5 && style < 5.5 ? 0.0 : 1.0);
     float blindY = 0.55 + 0.4 * h21(cellId + bidH);
@@ -939,8 +1076,7 @@ window.OEBuildings = (function () {
       c = mix(c, vec3(0.36, 0.345, 0.32), far); // a room too small to see into: its mean
       // day: dim, lit by the window; night: the room's lamps when occupied
       float dayL = (style > 4.5 && style < 5.5 ? 0.06 : 0.2) * (1.0 - uNight);
-      vec3 lampC = mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5) + step(8.5, style) * step(style, 9.5)) * roomTint;
-      float lamp = lit * uNight * (0.3 + 0.3 * rnd) * unitB;
+      float lamp = lit * uNight * (0.3 + 0.3 * rnd) * unitB * litGain;
       float ceilingSpot = mix(hitY > 0.5 && d.y > 0.0 ? 1.0 + 0.8 * exp(-8.0 * dot(hp.xz - vec2(0.5, depth * 0.5), hp.xz - vec2(0.5, depth * 0.5))) : 1.0, 1.1, far);
       room = c * (dayL + lamp * 1.0 * lampC * ceilingSpot * (0.75 + 0.5 * mix(h21(vec2(fl, bidH)), 0.5, far)));
       room *= 1.0 - smoothstep(500.0, 900.0, dist) * 0.6;
@@ -968,7 +1104,9 @@ window.OEBuildings = (function () {
       roughB = mix(roughB, mix(0.07, 0.6, isBlind), win);
     }
     diffuseColor.rgb = mix(diffuseColor.rgb, signC, sign);
-    emitB += sign * signC * (0.05 + 1.1 * uNight * uSigns);
+    // a sign is lit as bright as a lit room, whatever the city's density of signs, and a white or yellow
+    // one less than a red: a backlit panel reads as colour, not as a white glare
+    emitB += sign * signC * (0.04 + 0.75 * uNight * min(uSigns, 1.0)) * (1.0 - 0.45 * dot(signC, vec3(0.3, 0.5, 0.2)));
     roughB = mix(roughB, 0.35, sign);
     glass = win * (1.0 - isBlind);
     // the top of each opening in the lintel's shadow
@@ -977,8 +1115,8 @@ window.OEBuildings = (function () {
     // over a facade instead of flashing from window to window
     roughB = max(roughB, 0.16 * far);
     emitB += room * glass;
-    emitB += win * isBlind * lit * uNight * vec3(1.0, 0.7, 0.42) * 0.35 * unitB;
-    emitB += glowFar * win * mix(vec3(1.0, 0.64, 0.34), vec3(1.0, 0.86, 0.66), step(3.5, style) * step(style, 5.5)) * roomTint * (0.34 + 0.3 * rnd) * unitB;
+    emitB += win * isBlind * lit * uNight * lampC * vec3(1.0, 0.88, 0.75) * 0.35 * unitB * litGain; // a blind lit from behind
+    emitB += glowFar * win * lampC * (0.34 + 0.3 * rnd) * unitB * litGain;
     // ground contact: a darker plinth and less sky near the street
     aoW *= mix(0.72, 1.0, smoothstep(0.0, 3.0, h));
     // fine plaster noise up close
@@ -987,6 +1125,27 @@ window.OEBuildings = (function () {
     // ---------------------------------------------------------------- blank wall, gable, parapet
     vec2 fwn = fwidth(vFac) * vec2(1.3, 2.1);
     diffuseColor.rgb *= 0.95 + 0.1 * mix(vnoise(vFac * vec2(1.3, 2.1) + bidH), 0.5, smoothstep(0.25, 0.6, max(fwn.x, fwn.y)));
+    if (style > 14.5 && style < 15.5) {
+      // a precinct wall (pipeline/walls.py): plaster stained under its coping, the white lines of a
+      // suji-bei (as many as the ground-floor field says) under the eaves, and a plinth of dressed stone
+      float hW = vFac.y, eaveW = vInf.y, nL = floor(vInf.z + 0.5);
+      vec2 fv = max(fwidth(vFac), vec2(1e-4));
+      float near = 1.0 - smoothstep(0.08, 0.3, max(fv.x, fv.y));
+      float stain = smoothstep(0.45, 0.9, vnoise(vec2(vFac.x * 0.9 + bidH, 0.3)));
+      diffuseColor.rgb *= 1.0 - 0.13 * stain * smoothstep(0.4 * eaveW, eaveW, hW) - 0.06 * (1.0 - smoothstep(0.55, 1.4, hW));
+      if (nL > 0.5) {
+        float gap = 0.2, y0 = eaveW - 0.5 - nL * gap, k = (hW - y0) / gap;
+        float inL = step(0.0, k) * step(k, nL);
+        float ln = mix(band(fract(k), 0.3, 0.68, fv.y / gap * 1.5), 0.38, 1.0 - near) * inL;
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.85, 0.8), ln);
+      }
+      float plinthW = 1.0 - smoothstep(0.6 - fv.y, 0.6 + fv.y, hW);
+      float joint = max(band(fract(hW / 0.3), 0.0, 0.07, fv.y / 0.3 * 1.5),
+                        band(fract(vFac.x / 0.95 + 0.5 * step(0.5, fract(hW / 0.6))), 0.0, 0.03, fv.x / 0.95 * 1.5)) * near;
+      vec3 stoneW = vec3(0.34, 0.3, 0.25) * (0.88 + 0.24 * vnoise(vFac * vec2(1.1, 3.3) + bidH));
+      diffuseColor.rgb = mix(diffuseColor.rgb, stoneW * (1.0 - 0.4 * joint), plinthW);
+      roughB = 0.95;
+    }
     aoW *= mix(0.75, 1.0, smoothstep(0.0, 3.0, vFac.y));
   } else if (kind < 2.5) {
     // ---------------------------------------------------------------- pitched roof
@@ -1054,9 +1213,9 @@ window.OEBuildings = (function () {
   // up the facade from the lamps' height, less on glass, which shows the room behind it instead
   if (kind < 1.5) emitB += diffuseColor.rgb * streetLight(vWPos + vec3(N.x, 0.0, N.z) * 2.5) * exp(-max(vFac.y - 2.0, 0.0) / 9.0) * (1.0 - 0.6 * glass);
   float win = glass;
-  if (uMode > 0.5) {
-    diffuseColor.rgb = vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8)));
-    emitB = vec3(0.0); metalB = 0.0; roughB = 0.85; glass = 0.0;
+  if (uMode > 0.0) { // colour by height source; the viewer fades it in and out (0..1)
+    diffuseColor.rgb = mix(diffuseColor.rgb, vSrc < 0.5 ? uC0 : (vSrc < 1.5 ? uC1 : (vSrc < 2.5 ? uC2 : vec3(0.8))), uMode);
+    emitB *= 1.0 - uMode; metalB *= 1.0 - uMode; roughB = mix(roughB, 0.85, uMode); glass *= 1.0 - uMode;
   }
   if (abs(bidI - uSel) < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(1.0, 0.42, 0.12), 0.6);`)
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
@@ -1070,9 +1229,9 @@ window.OEBuildings = (function () {
   reflectedLight.indirectSpecular *= mix(aoW, 1.0, glass * 0.5);
   reflectedLight.directDiffuse *= mix(1.0, aoW, 0.35);`);
     };
-    mat.customProgramCacheKey = () => `oe-facade-5${night ? '-night' : ''}`;
+    mat.customProgramCacheKey = () => `oe-facade-9${night ? '-night' : ''}`;
     return mat;
   }
 
-  return { create, STYLES, guessStyle };
+  return { create, STYLES, guessStyle, canopyPosts, POST };
 })();

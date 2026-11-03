@@ -116,6 +116,7 @@ Measured headless in Chromium, the old and new code on the same scenarios:
 | Camera with its back to a wall, 40 places: camera inside a building | 2 | **0** |
 | Helicopter into a tower at 35° for 10 s: distance along the wall | 15.5 m (bounced) | **196.8 m** (slid) |
 | Walking from the top of the Opera House steps onto the podium | Blocked by a 2 m cell | Walks on |
+| Walking up to Suga Shrine's ema rack (landmark props in 0.25 m cells, issue #91) | Stopped 4.1 m short | 0.73 m from its middle |
 | North approach to mid-arch on the bridge deck | 115 s | 117 s |
 | Flying under the bridge deck: crossing event | Fires | Fires |
 | Simulation cost per 30 Hz tick | 1.01 ms | 0.98–1.14 ms |

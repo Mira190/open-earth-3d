@@ -110,7 +110,7 @@ export async function gametest(api, ctx) {
       run(0.3); player.interact();
       const pg = G.dialogue() ? G.dialogue().pages.map(p => p.t) : [];
       must(G.dialogue() && G.dialogue().id === 'inlet' && pg.some(p => /\d+% of it is under water/.test(p)), 'Mia computes the inlet\'s wet share', pg[1] || around());
-      must(pg.some(p => /m above mean sea level/.test(p)), 'lookout elevation from the model', pg[0]);
+      must(pg.some(p => /m above the sea/.test(p)), 'lookout elevation', pg[0]);
       if (G.tide()) must(pg.some(p => /water is [+-]?\d/.test(p)), 'next tide turn from the tide model', pg[2]);
       key('Escape');
       const hi = G.poi('hill-inlet'); S.camYaw = G.bearing(G.here(), hi) * Math.PI / 180;
@@ -131,7 +131,7 @@ export async function gametest(api, ctx) {
         G.start('lookouts'); player.teleport(bari.x + 1.5, bari.north, undefined, 270); run(0.4);
         must(player.interact() && G.dialogue() && G.dialogue().who.id === 'sign:bari-dhili-lookout', 'E reads the lookout sign', around());
         const t = G.dialogue().pages.map(p => p.t).join(' ');
-        must(/Ngaro, as signed and mapped/.test(t) && /\d+ m above mean sea level/.test(t), 'the sign gives the mapped name and the model height', t.slice(0, 160));
+        must(/Ngaro, as signed and mapped/.test(t) && /\d+ m above the sea/.test(t), 'the sign gives the mapped name and the model height', t.slice(0, 160));
         must(/In sight from here/.test(t), 'the sign lists places in sight over the terrain', t.slice(t.indexOf('In sight'), t.indexOf('In sight') + 140));
         key('Escape');
         must(G.st().signs['bari-dhili-lookout'] && G.isActive('lookouts'), 'reading it counts toward the lookouts quest', JSON.stringify(G.state('lookouts')));
@@ -204,6 +204,17 @@ export async function gametest(api, ctx) {
       'a way back to the globe: the button and the map panel', globe);
     key('KeyT');
     must(!api.ui.panelKind, 'T again closes it');
+    // 8b. the map's Go buttons: straight to a named place (dry ground nearest it, or the water over a reef), then back
+    key('KeyT'); await new Promise(r => setTimeout(r, 30));
+    // a place far enough away to tell that Go moved you (the spawn can be beside the first one: Heron's jetty)
+    const go = [...document.querySelectorAll('.rg-panel [data-act="goto"]')].find(b => G.poi(b.dataset.arg) && G.dist(G.here(), G.poi(b.dataset.arg)) > 200) || dom('.rg-panel [data-act="goto"]');
+    if (go) {
+      const h0 = G.here(), to = G.poi(go.dataset.arg);
+      go.click(); run(0.3);
+      const d = G.dist(G.here(), to);
+      must(!api.ui.panelKind && d < 900 && G.dist(G.here(), h0) > 30, `Go on the map takes you to ${to.name}`, `${G.km(d)} from it, ${player.state}`);
+      player.teleport(h0.x, h0.north); run(0.3);
+    } else { must(true, 'no named place far enough to go to'); key('KeyT'); }
 
     // 9. light at depth, the dive slate's numbers
     const L = G.light(8);
@@ -275,6 +286,31 @@ export async function gametest(api, ctx) {
     let saved = null; try { saved = JSON.parse(localStorage.getItem(`oe3d-reef-game-${ctx.site}-test`)); } catch (_) {}
     must(saved && saved.q && saved.notes.length > 0 && Object.keys(saved.q).length === Object.keys(G.st().q).length, 'progress saved to localStorage', saved && `${saved.notes.length} notes, quests ${Object.keys(saved.q).join(',')}`);
     must(Number.isFinite(player.position.x) && Number.isFinite(player.position.y), 'no NaNs in the player');
+
+    // 13. the first-time tour of the HUD (onboard.js, #89): "Show the intro again" in the journal opens it; every
+    // step's card is on the screen and its control is there; it steps back and on, Esc skips it, and it is
+    // remembered across every map (the player's own flag is put back afterwards)
+    if (window.OEOnboard) {
+      let keep = null; try { keep = localStorage.getItem('oe3d-onboard'); } catch (_) {}
+      key('KeyJ');
+      const again = dom('.rg-panel [data-act="intro"]');
+      if (again) again.click();
+      const t = window.OEOnboard.current(), seen = [], bad = [];
+      if (t) for (let i = 0; i < t.count; i++) {
+        seen.push(t.id);
+        // where the card settles (it eases there in 0.5 s, which a software renderer under load draws late)
+        const ce = t.el.querySelector('.ob-card'), cl = parseFloat(ce.style.left), ct = parseFloat(ce.style.top);
+        const r = { left: cl, top: ct, right: cl + ce.offsetWidth, bottom: ct + ce.offsetHeight };
+        if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) bad.push(`${t.id} off screen`);
+        if (i < t.count - 1) t.next();
+      }
+      if (t) t.back();
+      const back = t ? t.step : -9;
+      dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }));
+      must(!!again && !api.ui.panelKind && seen.length >= 5 && !bad.length && back === seen.length - 2 && !window.OEOnboard.active() && window.OEOnboard.done(),
+        'the HUD tour opens from the journal, steps through and back, and Esc skips it', `${seen.join(',')}${bad.length ? ' · ' + bad.join('; ') : ''}`);
+      try { if (keep == null) localStorage.removeItem('oe3d-onboard'); else localStorage.setItem('oe3d-onboard', keep); } catch (_) {}
+    }
   } catch (e) { out(false, 'exception', String(e && e.stack || e)); }
   // leave things as a player would find them
   try { if (ctx.controller !== playerCtl && ctx.boats) ctx.boats.leave(); G.closeDialogue(); G.closePanel(); player.equip('none'); const s = G.spawn(); player.teleport(s.x, s.north, undefined, s.heading); S.virt = null; } catch (_) {}

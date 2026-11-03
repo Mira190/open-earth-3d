@@ -60,15 +60,17 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `surface_check` | no | A LiDAR surface model, fetched like a `tile_index` terrain: `{type, index, url_field, crs, frame_crs, pixel_m, name, flown, flown_ms}`. It measures footprints the survey misses, lowers surveyed pieces the laser saw far lower on blocks surveyed before `flown_ms`, and checks every roof (`analysis/lidar_heights.py`) |
 | `terrain_check` | no | An independent elevation source for `analysis/dem_check.py`: `{type: "arcgis_identify", url, field, name}` (a raster service sampled on a grid) or `{type: "arcgis_points", url, field, name}` (surveyed spot heights from a feature layer); `{type: "gsi_dem_png", url, zoom, name}` for GSI PNG tiles (a coarser, older Japanese DEM); `{type: "gsi_elevation_api", url, name}`, GSI's elevation lookup (the 1 m laser DEM where flown); or `{type: "wms_bil", url, layer, crs, pixel_m, name}`, another DEM from a WMS (IGN's RGE ALTI against Paris's LiDAR terrain) |
 | `plateau` | no | Project PLATEAU's measured building heights, from one of: `{citygml}`, a city's CityGML zip (one feature per building, with its use, storeys and the LOD1 block height where there is no survey record); `{zip}`, a city's 3D Tiles zip; or `{tiles, zoom}`, a vector-tile mirror of the LOD2 models (one feature per roof face). Both zips are read with HTTP range requests, only the parts inside the bbox. Also `attribution`; `exclude` (`[{at, radius_m}]`, footprints a parametric landmark stands for); `add_min_m2` (the smallest PLATEAU building that Overture lacks to add, default 40). With `roofs: true` and a `zip`, the LOD2 tiles are read too and each building's roof is measured from its mesh; a measured roof outranks the inferred one ([BUILDINGS.md](BUILDINGS.md#measured-roofs)). `fetch_plateau.py` writes them to `plateau.json`, and `build_scene.py` gives every footprint they cover the measured height (source `plateau`; `plateau_lod1` for a block height), cut into tiers where the roof faces differ |
+| `plateau_lod3` | no | PLATEAU's finest 3D Tiles 1.1 for a city's landmarks: `{tileset, buildings: {key: [lon, lat]}, attribution}`. `pipeline/plateau_lod3.py` writes each building's mesh in the local frame to `data/raw/<city>/lod3/<key>.json`, for `city.py` to measure (Asakusa's Senso-ji) |
 | `ign` | no | France's measured buildings from IGN (Licence Ouverte), used in place of `plateau`: `{bdtopo: {layer}, lidar: {layers, pixel_m}, exclude, attribution}`. `fetch_ign.py` downloads BD TOPO buildings (eaves heights, floors, dates, use, materials) and the LiDAR HD rasters; `pipeline/measured.py` gives each footprint its LiDAR top (source `lidar`), cuts footprints whose heights fall into levels into pieces, drops open courtyards, and profiles each roof over its surveyed eaves (roof source `measured`). Where the LiDAR is blank, the eaves plus the median measured roof (source `bdtopo`) |
 | `bag3d` | no | The Netherlands' measured buildings from the 3DBAG (TU Delft and 3DGI, CC BY 4.0), used in place of `plateau`: `{release, index, exclude, attribution}`, `index` the release's `tile_index.fgb`. `fetch_3dbag.py` downloads the CityJSON tiles over the bbox (checking each against the index's SHA-256) and writes one feature per LOD1.3 roof level of each building: its top over the building's ground, and the roof its LOD2.2 model has over it, measured with PLATEAU's LOD2 classifier (`plateau_3dtiles.roof_of`), a skillion with the way it faces. It also keeps the BAG's year of construction (Amsterdam's gables follow it) and the 3DBAG's floor estimate. `build_scene.BAG3D` reads them through the `plateau` interface (source `3dbag`, footprint `D`); a stack of small tiers standing 8 m or more over the main roof is kept as a tower |
-| `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water, less the islands mapped in them (`island`, `islet`); `exclude` `[{box: [west, south, east, north], why}]` drops any water body whose centre falls in a box (water kept at another level than the scene's, such as a polder's ponds); `floating` lists building classes that sit on the water instead of the ground under them (`houseboat`). Also how the water looks (`web/water.js`): `waves` `{wind_ms, wind_from_deg, fetch_km, depth_m, cascades_m, choppiness}` for a typical wind over the water's longest reach; optionally `swell_m`, `swell_from_deg` and `swell_wind_ms` for an ocean swell; `colour` and `shallow_colour` (sRGB hex); `clarity_m` (how far you see into the water; under 2 m the water scatters light back and shows its `colour` from above, as a muddy river does); `shore_slopes` `{sand, rock, built}` to override the modelled bottom's depth per metre from each kind of shore (default 0.04, 0.25, 1.0). The waves and colours are chosen values, so say so in a `note`. `sea: false` for an inland city: the water plane stops at the model's edge instead of running to the horizon |
-| `trees` | no | `{mix: {species: weight}}`: the species the mapped trees are drawn as, from `plane`, `elm`, `gum`, `fig`, `jacaranda` and `palm` (the shared trees of `blender/build_trees.py`). Species are rarely mapped, so the mix is a guess at the city's street and park trees; without it the default mix in `web/assets/trees/trees.json` applies |
+| `water` | no | `{classes, min_area_m2}`: Overture water classes drawn as water, less the islands mapped in them (`island`, `islet`); `exclude` `[{box: [west, south, east, north], why}]` drops any water body whose centre falls in a box (water kept at another level than the scene's, such as a polder's ponds); `floating` lists building classes that sit on the water instead of the ground under them (`houseboat`). Also how the water looks (`web/water.js`): `waves` `{wind_ms, wind_from_deg, fetch_km, depth_m, cascades_m, choppiness}` for a typical wind over the water's longest reach; optionally `swell_m`, `swell_from_deg` and `swell_wind_ms` for an ocean swell; `colour` and `shallow_colour` (sRGB hex); `clarity_m` (how far you see into the water; under 2 m the water scatters light back and shows its `colour` from above, as a muddy river does); `shore_slopes` `{sand, rock, built}` to override the modelled bottom's depth per metre from each kind of shore (default 0.04, 0.25, 1.0); `seawall` `{stone, coping, course_m, block_m, high_water_m, note}`: the colours (sRGB hex) and the courses and block length of the stone of the quay walls `web/quays.js` builds along every built shore, and how far up the tidal band runs (see [ARCHITECTURE.md](ARCHITECTURE.md)). The waves and colours are chosen values, so say so in a `note`. `sea: false` for an inland city: the water plane stops at the model's edge instead of running to the horizon |
+| `trees` | no | `{mix: {species: weight}}`: the species the mapped trees are drawn as, from `plane`, `elm`, `gum`, `fig`, `jacaranda`, `palm` and `maple` (the shared trees of `blender/build_trees.py`); `areas: [{at: [x, y], radius, mix}]` gives a place its own mix (a garden's maples). Species are rarely mapped, so the mix is a guess at the city's street and park trees; without it the default mix in `web/assets/trees/trees.json` applies. `floor` (`earth`, `lawn` or `gravel`) is what the ground under the woods' and parks' canopy is drawn as (`pipeline/woods.py`; by country without it) |
 | `storey` | no | `{res: [a, b], non: [a, b]}`: height = floors × a + b. Calibrate it against buildings that have both a surveyed height and floors |
 | `architecture` | no | The rules that dress the buildings (roof-shape priors, pitches, wall palettes, window grids, shopfronts, awnings, signs): `sydney`, `japan`, `paris`, `amsterdam` or `default`. Without it the city takes its `country_code`'s rules (AU, JP, FR, NL), else `default`. See [BUILDINGS.md](BUILDINGS.md) |
 | `architecture_overrides` | no | Changes to those rules for this city, such as `{"awning": 0.5, "signage": 0.3, "machiya": true, "roofs": {"house": {"gabled": 0.7, "hipped": 0.3}}}` |
 | `building_styles` | no | `{"OSM building name": "style"}` for buildings the rules would get wrong, such as a bridge pylon (`stone`) |
 | `labels` | no | `{"OSM building name": "Label shown"}` |
+| `arrivals` | no | `{"Label shown": {front, arc, dist, top, at}}`: where map travel puts you at a landmark the search frames badly. `front` is the compass bearing its front faces (the arrival keeps within `arc` degrees of it, 70 by default), `dist` how far back to stand (m), `top` the height to frame above the ground (m), `at` a spot `[x, y]` to stand on. See [GAME.md](GAME.md), map travel |
 | `minor_labels` | no | Labels drawn in the lighter style |
 | `place_labels` | no | Names from `places` to label on the ground |
 | `places` | no | Public places: `{name, class, protected, period, from, to}`. `name` is matched to the start of an Overture land-use name with that `class`. With `source: "land"`, the name is matched in Overture's land cover instead (a beach). With `source: "water"`, every water polygon of that name is joined and widened by `buffer_m` (a river corridor), and `label` renames it. `period` is `all`, a range `MM-DD..MM-DD`, a single day `MM-DD`, or a comma-separated list of those (`04-22,09-22`); `from` and `to` are local `HH:MM`. A protected place with a period is tested by "test a new tower" |
@@ -85,7 +87,7 @@ north (y) of `origin`, with z in metres of the vertical datum.
 | `tour` | no | Stops: `{title, text, date: [M, D], from, to, hold, cam, tgt}`, or `place` instead of `cam`/`tgt`, plus `provenance: true` to colour by height source. See the tokens below |
 | `renders` | no | Blender views: `{name, cam, tgt, date: [Y, M, D], time}` |
 | `sources` | no | Extra lines for the viewer's source list, such as `{landmarks: "..."}` |
-| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given); `crowd` (`pedestrians`, `cars`, `radius_m`); `climate` (`mean_max_c`: the twelve monthly mean daily maximum temperatures in °C, and their `source`), which decides whether the crowd looks for sun or shade on the benches; `blurb` (the title screen's line); `boardwalks` (`name` of a mapped walkway line, or a `line` in the local frame, and `width_m`: walkable timber decks at the pier deck height); `wildlife` (a colony: `kind: "little_penguin"`, `name`, `on` (the infrastructure class it lives on), `colony_near`, `within_m`, `seaward_bearing_deg`, `count`, `show`, `height_m`, `ashore_after_sunset_min`, `leave_before_sunrise_min`, `day_ashore_share`, `viewing` (the name of its mapped viewing platform), `viewing_note`, `keep_off_note`, `note`, `source`); `flocks` (birds round a spot on the ground: `id`, `kind: "silver_gull"`, `name`, `at`, `count`, `perch_m` (how far along the seawall they stand), `note`, `source`); `travel` (`id`, `name`, `at`: fast-travel points, unlocked by visiting); `links` (`id`, `name`, `how`: neighbouring cities in the menu); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character`: a Rocketbox NPC, `R_<avatar>[_<head>][_<tag>...]` (built by `python blender/build_people.py --npcs`, see [GAME.md](GAME.md#the-npcs)), or a crowd character from `web/assets/people/people.json`, recoloured by `skin`, `hair`, `top`, `legs` (sRGB hex; the Rocketbox NPCs keep them for the stand-in figure and the dialogue's colour). `clip` is what an NPC does while it waits (`Documents`, `Reading`, `Phone`, `Photo`, `Drink`, `Work`, `Present`, `LookAround`, `Thoughtful`, `Stretch`, `Cheer`, `Talk`, `Idle_Neutral`). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun`, `inspect`, `gable` (`kinds`: the survey lens finds a house with each of these gables, Amsterdam), `visit` (`at` and `radius`, a `place`, or a `flock`; with `after_dark: true` only once the sun is down) and `penguins` (`count` birds ashore within `radius`). A choice can carry an `action`: `set_time` (`date`, `time`) or `dusk` (ten minutes before today's sunset). `ferry_style` `{model, length_m, beam_m, hull, trim, upper, flag, note}` picks the shared ferry (`model`: `harbour` for the 34 m harbour ferry or `river` for the 22 m river shuttle; without it, by `length_m`), sizes it and gives it the city's livery. A wharf whose terminal name several berths share takes `near` `[x, y]`: the berth nearest it. `rail` `{tram: {class, keep, gauge_m, length_m, width_m, height_m, speed_ms, spacing_m, stop_every_m, liveries, min_length_m, note}, funicular: {class, climb: true, name, stations, gauge_m, length_m, width_m, height_m, livery, trim, speed_ms, dwell_s, car_names, note}}` runs trams and a funicular on the Overture rail lines of those classes (`web/game/rail.js`); a `rail` step `{from, to}` rides the funicular between its stations. `vehicles` picks the look of the shared vehicles: `helicopter` (`livery`, `registration`, `logo`), `ferry` (`livery`) and `cars` (`taxi`: `colours`, `share`; `bus`: `colour`, `band`; `colours` for private cars); without a ferry livery the ferries take `ferry_style`'s colours. `sky` `{clouds, cloud_density, saturation, post}` sets the game's cloud cover (0–1, default 0.3) and the sky's colour (`saturation`, default 1.7; 1 is the model viewer's paler sky) and can turn the post stack off. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}`, `{share:source}`, `{sunset}`, and `{penguins_from}` and `{penguins_to}` (when tonight's first and last rafts come in). `lines` (`id`, `title`, `after`: lines that must be done first, `on_open`) groups the quests into lines that run side by side; a quest names its `line`. `areas` (`name`, `kana`, `romaji`, `band`, `left`, `right`, `at`, `radius`, `note`) are neighbourhoods with a station sign; `spots` (`id`, `name`, `at` with an optional height, `radius`, `verb`, `lines`, `pick`) are things to look at with E, and a step `{type: "spot", spot}` waits for one; `chatter` (`at`, `radius`, `lines`: `[who, text]`, `every`) are conversations overheard in passing; `lifts` (`id`, `name`, `line`, `m_per_min`, `stops`: `{name, at: [x, y, z], face}`) carry you between a street door and a floor high up. A `travel` point's `at` may carry a height, and `always: true` lists it before a visit. See the Sydney, Melbourne, Melbourne Bayside, Hong Kong and Shibuya configs and [GAME.md](GAME.md). Flavour keys: `greeting` or `smalltalk` (the crowd's lines), `player_looks`; `crowd.style`, a preset's name from `web/game/people.js` (`tokyo`, `kyoto`) or `{skin, hair, tops, legs, weights, scale, patterns, acc}` (the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`); see Osaka's config. |
+| `game` | no | The game, if the city has one: `title`; `local_name` (what passers-by are called, such as `Melburnian`); `water_name`; `start` (`at`, `facing`); `wharves` (`id`, `name`, Overture `terminal` name); `ferries` (`route`, `stops`, `vessels`); `ferry_speed_ms`; `helipads` (`from_data: true` takes a mapped helipad, the one nearest `near` if given; `helipads_from_data: false` leaves the other mapped pads out, as rooftop pads mapped at street level should be; a floating pad (one whose own cell is water) stands on a 14 m apron, a pad on land on none, and `python pipeline/pad_discs.py --city <id>` checks game.json's water cells against it and lowers the apron of a pad left out without a rebuild); `crowd` (`pedestrians`, `cars`, `radius_m`); `climate` (`mean_max_c`: the twelve monthly mean daily maximum temperatures in °C, and their `source`), which decides whether the crowd looks for sun or shade on the benches; `blurb` (the title screen's line); `boardwalks` (`name` of a mapped walkway line, or a `line` in the local frame, and `width_m`: walkable timber decks at the pier deck height); `wildlife` (a colony: `kind: "little_penguin"`, `name`, `on` (the infrastructure class it lives on), `colony_near`, `within_m`, `seaward_bearing_deg`, `count`, `show`, `height_m`, `ashore_after_sunset_min`, `leave_before_sunrise_min`, `day_ashore_share`, `viewing` (the name of its mapped viewing platform), `viewing_note`, `keep_off_note`, `note`, `source`); `flocks` (birds round a spot on the ground: `id`, `kind: "silver_gull"`, `name`, `at`, `count`, `perch_m` (how far along the seawall they stand), `note`, `source`); `travel` (`id`, `name`, `at`: points on the map to travel to at any time, as are the city's labelled landmarks); `links` (`id`, `name`, `how`: neighbouring cities in the menu); `npcs` (`id`, `name`, `role`, `at`, `look`, `idle` lines); `quests` (`id`, `giver`, `title`, `stamp`, `talk` lines, optional `choices`, `steps`). A `look` names a `character`: a Rocketbox NPC, `R_<avatar>[_<head>][_<tag>...]` (built by `python blender/build_people.py --npcs`, see [GAME.md](GAME.md#the-npcs)), or a crowd character from `web/assets/people/people.json`, recoloured by `skin`, `hair`, `top`, `legs` (sRGB hex; the Rocketbox NPCs keep them for the stand-in figure and the dialogue's colour). `clip` is what an NPC does while it waits (`Documents`, `Reading`, `Phone`, `Photo`, `Drink`, `Work`, `Present`, `LookAround`, `Thoughtful`, `Stretch`, `Cheer`, `Talk`, `Idle_Neutral`). Step types: `talk`, `ride`, `surface`, `under_bridge`, `land`, `sun`, `inspect`, `gable` (`kinds`: the survey lens finds a house with each of these gables, Amsterdam), `visit` (`at` and `radius`, a `place`, or a `flock`; with `after_dark: true` only once the sun is down) and `penguins` (`count` birds ashore within `radius`). A choice can carry an `action`: `set_time` (`date`, `time`) or `dusk` (ten minutes before today's sunset). `ferry_style` `{model, length_m, beam_m, hull, trim, upper, flag, note}` picks the shared ferry (`model`: `harbour` for the 34 m harbour ferry or `river` for the 22 m river shuttle; without it, by `length_m`), sizes it and gives it the city's livery. A wharf whose terminal name several berths share takes `near` `[x, y]`: the berth nearest it. `rail` `{tram: {class, keep, gauge_m, length_m, width_m, height_m, speed_ms, spacing_m, stop_every_m, liveries, min_length_m, note}, funicular: {class, climb: true, name, stations, gauge_m, length_m, width_m, height_m, livery, trim, speed_ms, dwell_s, car_names, note}}` runs trams and a funicular on the Overture rail lines of those classes (`web/game/rail.js`); a `rail` step `{from, to}` rides the funicular between its stations. `vehicles` picks the look of the shared vehicles: `helicopter` (`livery`, `registration`, `logo`), `ferry` (`livery`) and `cars` (`taxi`: `colours`, `share`; `bus`: `colour`, `band`; `colours` for private cars); without a ferry livery the ferries take `ferry_style`'s colours. `sky` `{clouds, cloud_density, saturation, post}` sets the game's cloud cover (0–1, default 0.3) and the sky's colour (`saturation`, default 1.7; 1 is the model viewer's paler sky) and can turn the post stack off. `shade_landmarks` lists landmark mesh name prefixes that shade the sun meter, and `under_bridge_note` is the line shown on flying under a `fly_under` surface. NPC lines take the tour tokens, plus `{time}`, `{sun_line}`, `{share:source}`, `{sunset}`, and `{penguins_from}` and `{penguins_to}` (when tonight's first and last rafts come in). `lines` (`id`, `title`, `after`: lines that must be done first, `on_open`) groups the quests into lines that run side by side; a quest names its `line`. `areas` (`name`, `kana`, `romaji`, `band`, `left`, `right`, `at`, `radius`, `note`) are neighbourhoods with a station sign; `spots` (`id`, `name`, `at` with an optional height, `radius`, `verb`, `lines`, `pick`) are things to look at with E, and a step `{type: "spot", spot}` waits for one; `chatter` (`at`, `radius`, `lines`: `[who, text]`, `every`) are conversations overheard in passing; `lifts` (`id`, `name`, `line`, `m_per_min`, `stops`: `{name, at: [x, y, z], face}`) carry you between a street door and a floor high up. A `travel` point's `at` may carry a height (a roof or a deck). See the Sydney, Melbourne, Melbourne Bayside, Hong Kong and Shibuya configs and [GAME.md](GAME.md). Flavour keys: `greeting` or `smalltalk` (the crowd's lines), `player_looks`; `crowd.style`, a preset's name from `web/game/people.js` (`tokyo`, `kyoto`) or `{skin, hair, tops, legs, weights, scale, patterns, acc}` (the crowd's palette and the share wearing a pattern or an accessory); an NPC's `look` may also carry `pattern` (`leopard`, `tiger`, `kuidaore`, `pinstripe`, `plaid`) and `acc` (accessory ids, see `web/game/people.js`); see Osaka's config. |
 
 Tour text can hold tokens that the viewer fills in from the model:
 
@@ -99,6 +101,15 @@ Tour text can hold tokens that the viewer fills in from the model:
 
 Write tour text that the model can back up. If a stop quotes a number, prefer
 a token, so that the number changes when the data does.
+
+The game's characters take the tokens about the place (`{sun:...}`, `{landmark:...}`)
+and a few of their own: `{time}`, `{sun_line}`, `{sunset}`, `{now}` ("this morning",
+"tonight") and `{season}` (for the city's hemisphere). They don't take `{buildings}`,
+`{share:...}` or `{acc:...}`: the people in the game talk like locals, not like the
+map's credits, and `tools/voice_check.py` fails a line that talks about open data,
+LiDAR, PLATEAU or how the map was built. Where the data comes from goes in the tour
+and the Sources panel. After editing the lines, `python pipeline/game_text.py <id>`
+copies them into `web/data/<id>/game.json`.
 
 The game's helicopter and ferries are shared by every city: the models are in
 `web/assets/vehicles`, built by `blender/build_vehicles.py`. Don't add models
@@ -134,6 +145,18 @@ def landmark_assets(out_dir, scene):
     """Called by pipeline/landmarks.py after landmark_meshes. Write files the
     landmark materials use (a texture atlas) into out_dir; return their names."""
 
+def landmark_glows(scene):
+    """Called by pipeline/landmarks.py. The light the landmarks' screens and signs
+    throw on the street after dark: [[x, y, radius_m, colour, strength], ...], with
+    an on hour and an off hour appended for one that is switched (a screen that
+    plays from 9:00 to midnight). web/night.js lights the pavement with them."""
+
+def landmark_demolished(scene):
+    """Called by pipeline/landmarks.py. Solid indices of the built city's
+    buildings.json that have been pulled down since its survey (a PLATEAU building
+    OSM has removed): the viewer, the game and Blender neither draw them nor
+    keep them in the surface model."""
+
 def adjust_terrain(z, city, cell):
     """Called by pipeline/build_scene.py on each DEM grid (the 5 m one and the
     10 m one the browser gets), after the mapped corrections. Return the grid with
@@ -152,6 +175,22 @@ def game_surfaces(scene):
     the surface is put onto it (steps); label: a short name for messages.
     moving_ms and moving_u: [u0, u1] make it an escalator that carries walkers."""
 
+def game_ground(grid, gx, gy, water, scene):
+    """Called by pipeline/game_data.py. The 5 m walking grid with the city's own
+    levels: paving a landmark draws over the DEM (Bennelong Point's)."""
+
+def game_patches(scene):
+    """Called by pipeline/game_data.py. Fine walking levels over the 5 m grid, for
+    paving with walls and steps the grid would smooth into slopes: [{x0, y0, cell,
+    nx, ny, data}], int16 centimetres every `cell` metres (rows from y0 north,
+    -32768 where there is none), base64. web/game/nav.js takes each cell's own level,
+    not interpolated, so a wall stays a wall (a walker steps up no more than 0.75 m)
+    and a riser a step. Raise the cells under a parapet to its top to hold walkers
+    back there. Where a slab stands over the paving, add `upper` ({i0, j0, nx, ny,
+    data}: the slab's level in a block of the grid) and `clear_m` (the room under
+    it), and `walks` for tools/game_check.js to take: [{name, path: [[x, y], ...],
+    from_m, to_m, face}]."""
+
 def game_extras(scene):
     """Called by pipeline/game_data.py. Game content placed from the landmarks:
     {"travel": [...], "lifts": [...], "spots": [...], "chatter": [...], ...}.
@@ -159,7 +198,14 @@ def game_extras(scene):
 ```
 
 The game turns each landmark mesh into one height interval per 2 m cell, so
-keep parts at different heights in separate meshes. Steel inside a deck merged
+keep parts at different heights in separate meshes; within 3.5 m of the floor a
+walker meets them in 0.25 m cells, heights split where there is room. A material
+with `decal` (paving laid over a roof) or `"solid": false` is not turned into cells:
+use the latter for something soft (a shrine bell's rope) and for walls along a
+narrow walk, holding walkers back at them with `game_patches` instead. Steps a
+visitor climbs (a hall's front steps) are a strip in `game_surfaces`, not solid
+stone. Name what people walk up to in `game_extras`' `close` list (see
+`pipeline/game_extras.py`), so `tools/game_check.js` walks up to it. Steel inside a deck merged
 with an arch above it would become a solid block between them. Give every
 part that sits inside a walkable surface's slab that surface's `mesh` prefix:
 Sydney's deck furniture and the steel under its deck are `bridge_deck_*`. The
@@ -175,6 +221,22 @@ measured from the data (footprint centroids, bearings), never from guesses.
   path), `panel` (a strip for a cut-out pattern) and `rails`;
 - `grid`, `quad` and `tri` for anything else.
 
+`pipeline/archkit.py` builds on it with the parts buildings are made of, in a
+building's frame (`Frame(cx, cy, axis_deg, ground)`, u along, v across): walls
+with ashlar UVs, cornices and string courses swept round an outline, arched and
+square openings, columns, colonnades, pilasters, pediments, steps,
+balustrades, domes with ribs, drums and lanterns; and for Japan, hipped-and-gabled
+(irimoya) roofs with curved eaves, halls (platform, pillars, tie beams, bracket
+band, roof, an optional pent roof), two-storey gates, battered stone ramparts
+(ishigaki) and plastered walls (dobei). `load_solids(city)` reads the built
+footprints and `Terrain(city)` the ground, so a monument can stand on its
+mapped outline: Paris's monuments, Kyoto's temples, castle and palace,
+Kabuki-za and the Yoyogi gymnasiums are built this way. Return the solids a
+mesh draws instead as `{"hidden": [...]}` (the third item of
+`landmark_meshes`): the renderers leave them out, the surface model keeps them.
+Outlines that the built data lacks are fetched once from OpenStreetMap and kept
+next to the city's hooks with their way ids (`cities/kyoto/castles_osm.json`).
+
 Every part takes metres. Build the small parts too: the railings, lamps,
 mullions and deck markings are what make a structure read as built, and they
 cost little when each material is one mesh.
@@ -184,6 +246,19 @@ folder (one atlas for every sign, written by `landmark_assets`), `cutout: true`
 cuts out its transparent pixels, `emissive_map: true` lights the image itself
 after dark on a floodlit mesh (signs, screens, lanterns), and `opacity` below 1
 makes glass. The meshes keep their UVs (`uv=True`). Blender reads the same keys.
+
+After dark a floodlit mesh (`floodlit=True`) glows in its material's `emissive`
+colour at `glow` (what the light gives that surface: 0.3 for a dim one, 1 and up
+for a sign). Evenly, as a sign or a screen does, unless the material has
+`flood: [from_m, to_m, roof, top]`: then it is lit from below, as a castle keep
+or a tower is by floodlights at its foot and on its lower roofs. Walls take the
+light full and the undersides of eaves a little more, a roof facing up catches
+`roof` of it (0.5), and it falls off from `from_m` to `to_m` (heights in the
+local frame) to `top` (0.6) of what it is at the foot. Set the heights in
+`landmark_meshes` from the landmark's ground, on a copy of the materials (Osaka
+Castle, Kyoto Tower and Tokyo Tower do). `emissive_dates: [["MM-DD", "MM-DD",
+colour], ...]` changes the light's colour between those dates, as Tokyo Tower's
+turns from orange to white for the summer.
 
 A material's `pattern` is drawn by the browser from the mesh's UVs
 (`web/world.js` `PATTERNS`). Its settings sit next to it in the material:
@@ -198,6 +273,16 @@ A material's `pattern` is drawn by the browser from the mesh's UVs
   `riser`): reconstituted granite and its slab joints, u and v in metres. A
   tread's v runs back from its nosing; a riser's v runs from its foot (0) to
   its top (1), and the shadow under the nosing is drawn on it.
+- `curtain_wall` with `bay_m`, `storey_m`, `spandrel`, `mullion_m`, `frame`,
+  and optionally `lit_share` and `lit_k` (how many panes are lit after dark, and
+  how brightly; a shop's glass, mostly lit and softer than an office's).
+- `led_screen`: big LED screens that play programmes of keyframes from the
+  material's `map` (a sheet drawn with `pipeline/adkit.py`). u's integer part
+  picks the screen in `screens` and its fraction runs across it; v runs up it.
+  See [NIGHT.md](NIGHT.md#led-screens) and Shibuya's `CROSSING_SCREENS`.
+
+`street_lit: true` puts paving under the street lights and the screens' glow,
+as the ground is.
 
 `decal: true` marks paving laid over a building's roof, such as a podium's
 deck: the browser draws it in front of the roof, and the game walks on the roof
@@ -239,6 +324,7 @@ python pipeline/fetch_ign.py --city <id>          # if the city has an ign block
 python pipeline/fetch_3dbag.py --city <id>        # if the city has a bag3d block (the Netherlands)
 python pipeline/build_scene.py --city <id>
 python pipeline/landmarks.py --city <id>
+python pipeline/open_sea.py --city <id>           # the open water past the frame (sea.jpg)
 python analysis/heights.py --city <id>            # if there is a reference table
 python pipeline/build_scene.py --city <id>        # applies reference corrections
 python analysis/data_quality.py --city <id>
@@ -251,7 +337,8 @@ python analysis/radar_check.py --city <id>        # unless the terrain is Terrar
 node analysis/sun_access.js --city <id>
 node analysis/uncertainty.js --city <id> 40       # writes the viewer's uncertainty ranges
 python blender/build_scene.py --city <id>         # if renders are configured
-python pipeline/game_data.py --city <id>          # if the city has a game block
+python pipeline/game_data.py --city <id>          # if the city has a game block; runs woods.py too
+python pipeline/woods.py --city <id>              # on its own: the woods' trees and floor (needs land, land_use)
 ```
 
 Then open `web/` with `python -m http.server` and go to `#<id>`.
@@ -263,13 +350,11 @@ region's priors in `architecture_overrides`. To look at the buildings up close
 from the command line, use `tools/city_shot.js`; it screenshots views that you
 list in a JSON file.
 
-A city with a game can have a loading flyover: `node tools/flyover.js <id>`
-(with `web/` served on port 8800) renders a spiral from high over the model
-down to the game's title camera, in the game itself, and writes
-`web/data/<id>/flyover.mp4`, `flyover.webm`, `flyover.jpg` and `flyover.json`.
-Run `write_index()` (the last step of `build_scene.py`) to list it in
-`cities.json`. A software renderer takes 15 to 25 s a frame over a whole city,
-so expect about 40 minutes.
+The loading screen needs nothing new: it draws the city's survey plate
+(`web/plate.js`) from `scene.json` (the frame, the ground tiles and the labels).
+To look at it, `HOLD=1 node tools/load_check.js <id> out_dir` keeps it up. A
+recorded flyover (`node tools/flyover.js <id>`, about 40 minutes on a software
+renderer) is no longer played by the loader.
 
 ## 6. Mark it live
 

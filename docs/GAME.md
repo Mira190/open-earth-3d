@@ -15,8 +15,16 @@ model as the viewer. In Sydney that means:
 - the NSW bare-earth terrain;
 - the real sun in Sydney's time zone.
 
-Everything the characters tell you about the city is computed from the model
-while you play.
+The characters talk like the locals they are: who they are, what this street is,
+what is worth seeing at this hour and season, and where to go next. A guide's first
+meeting is two or three lines before the first choice. Numbers they give (a height,
+the share of a square in sun at noon on the solstice, tonight's sunset) are still
+computed while you play, but nobody in the game talks about open data, LiDAR,
+PLATEAU or how the map was built: that belongs in the model viewer's tour and its
+Sources panel, and in these docs. `tools/voice_check.py` reads every line the
+characters say, in every city and reef site, and fails on a short list of such
+words (it runs in `tools/check.sh`). Rewritten lines reach `web/data/<id>/game.json`
+with `python pipeline/game_text.py`, without rebuilding the game data.
 
 Open it from the title screen (**Play** on a destination's card), from the 3D
 model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
@@ -55,15 +63,15 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | Keys | What they do |
 |---|---|
 | <kbd>W A S D</kbd> or arrows | Walk relative to the camera. Drag to look around; scroll to zoom. |
-| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint while held (7 m/s) · switch between running (4.5 m/s) and walking (1.4 m/s) · jump. A chip under the sun indicator shows the gait. |
+| <kbd>Shift</kbd> · <kbd>X</kbd> · <kbd>Space</kbd> | Sprint while held (8.5 m/s) · switch between running (6 m/s) and walking (1.4 m/s) · jump. A chip under the sun indicator shows the gait. The run is the pace of the surveyors' run clip (5.4 to 5.8 m/s), so the feet keep to the ground. |
 | <kbd>E</kbd> | Talk, board a ferry or wait for one, board the helicopter, drive your car, get in a taxi, get out, take a lift, look at something up close |
 | <kbd>Y</kbd> · <kbd>N</kbd> | Raise your hand at the kerb and a taxi pulls in · the phone: order a ride, bring your car |
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
-| <kbd>T</kbd> | Switch which survey line the route and the beam follow |
+| <kbd>T</kbd> | Switch which walk the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
-| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map with waypoints and fast travel · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
+| <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
 | Helicopter | <kbd>Space</kbd> climb, <kbd>C</kbd> or <kbd>Shift</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd> forward/back, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> chase, cockpit or bird's-eye view (drag to look round the cockpit) |
 | Ferry | <kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm for the approach to the next wharf |
@@ -75,15 +83,42 @@ On a phone you get a joystick and buttons. Camera moves (the start, fast travel,
 survey) end at once on any key or drag.
 
 While a city loads, the loader shows how much of its data has arrived and names
-each step. For the cities that have one (Tokyo, Osaka and Kyoto so far), a
-recorded flyover plays behind it: a 14 s spiral from high over the whole model
-down to the title screen's camera, so when it ends the live title screen takes
-over from its last frame. If the city is ready first, **Start** (or any key)
-goes straight in. `tools/flyover.js <city>` records it in the game itself, at
-8 frames a second interpolated to 30, as an H.264 MP4 and a VP9 WebM with a
-poster; `web/flyover.js` plays it. A visitor who prefers reduced motion gets
-the plain loader. The model viewer plays the same video, then its short
-establishing shot.
+each step, on a card over the city's **survey plate** (`web/plate.js`): the
+model's own ground imagery assembling tile by tile as it arrives, at full
+resolution, under a survey grid (a line every 250 m, every kilometre marked)
+with the city's landmarks pinned on it one after another, a scale bar, the
+city's coordinates, its building count and the sources of its imagery and
+heights. The tiles are the files the city loads next, so they come from the
+cache, and everything that moves (a slow drift, the scan line, the pins) is a
+CSS transform or opacity that the compositor runs on its own thread, so the
+plate keeps moving while the city is parsed and built. A visitor who prefers
+reduced motion gets it still. The loader stays up until the scene has been
+drawn twice (its shaders compiled first with `compileAsync`), so the hand-over
+never shows a black frame; `tools/load_check.js` checks that, and `check.sh`
+runs it. The plate replaced a recorded flyover video, which was soft,
+stuttered while the city built and flashed black at the hand-over;
+`tools/flyover.js` can still record one for a film.
+
+### Where you start
+
+Every city starts you where visitors go first, with a quick way out by air, water
+and road: the helicopter on a pad a short walk away (the first pad in
+`game.helipads`, a game pad where the city has none there), a ferry landing near
+where the city has ferries, and a kerb close by for a taxi. The lead's welcome
+says where each is. Sydney starts on West Circular Quay facing the Opera House,
+Paris on the Pont d'Iéna at the foot of the Eiffel Tower, Tokyo on the Marunouchi
+plaza in front of the station, Kyoto on the station plaza below Kyoto Tower,
+Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at Hachiko (its pad is the roof of SHIBUYA SKY, a lift ride up),
+Hong Kong at the Star Ferry's Pier 7, Melbourne in Federation Square, the bayside
+at St Kilda Pier and Amsterdam on the Dam. Heron Island and Whitsundays start on
+the beach by their helipad.
+
+One helicopter serves every pad. Walk or ride towards another pad while it stands
+shut down more than 700 m away and it is waiting there when you are within 300 m,
+so the pilots' quests at the other pads still find it. `tools/start_probe.js`
+finds open ground for a pad near a point, `tools/start_shot.js` takes stills of a
+start and its helicopter, and `tools/plan_map.py` draws the start, pads, wharves,
+roads and NPCs on the aerial imagery.
 
 ### Cars, taxis and rides
 
@@ -101,32 +136,74 @@ Every city's game has the same three ways to go by road:
   seat (<kbd>V</kbd>) you see the dashboard and the wheel turning. The phone
   brings it to the nearest kerb if you have walked far from it.
 - **A taxi:** stand at the kerb and press <kbd>Y</kbd>. You raise your hand, and
-  the nearest free taxi coming your way, by road, pulls in on your side of the
+  the quickest free taxi coming your way, by road, pulls in on your side of the
   street with its hazard lights on. If none is close, one comes round the corner.
   Get in with <kbd>E</kbd>. The driver asks where to: your waypoint, the next
-  step of the survey, your car, the nearest landmarks, the wharves you have used,
+  step of your walk, your car, the nearest landmarks, the wharves you have used,
   or where you started.
 - **A ride:** order one on the phone (<kbd>N</kbd>), as GTA VI's Ryde Me app does.
-  Choose where to go first, and a private-hire car is sent from a few hundred
-  metres away. The phone shows its driver, colour, model and number plate, and
-  how far away it is.
+  Choose where to go first, and a private-hire car sets out for the nearest kerb.
+  The phone shows it as a ride app does: a map framed on the car, the pick-up
+  and you, with the route it still has to drive, the car moving along it, the
+  pick-up pin and a dotted walk to it from your blue dot; the time it will take,
+  the driver with a rating, the car and its number plate. On the way the map
+  follows the car to where you are going. The minimap draws the same route and
+  opens out to hold the car, and the walk to the pick-up gets the gold route.
+
+A taxi or a ride reaches you within half a minute. The router searches the street
+network backwards from the pick-up for points 110 to 270 m away by road (40 to
+110 m where none of those is near enough in time), following the one-way streets;
+each is timed by driving its route in a dry run (the driver's own rules, nothing
+in the way), with 1 s added for each set of traffic lights near the pick-up, and
+the one that takes 10 to 20 s, out of your sight where it can be and not where a
+car of the traffic or a queue would be in its way as it sets out, is chosen,
+leaving the rest of the half minute for the traffic you can see. The same time is
+what the phone shows: it counts down as the car comes and, held up behind the
+traffic, rises as it waits, as an app's does; stopped at a red light, or queued
+behind cars that are, it shows the time to that light's green (`junctions.js`
+`toGreen`) and a moment for the queue to move off, and behind a car stuck at a wall
+or stopped for good, the few seconds before its driver swings out round it. Coming
+up to traffic lights it asks for its green, as a bus with priority does, from 12 s
+out at its speed (in your sight or out of it), so that the lights have changed by the
+time it gets there: the other road's green ends once it has run 5 s, through amber
+as ever, and its own green is held while it comes (up to 15 s past its end). It
+stops at a red line only in your sight. Its driver goes into a junction as the
+traffic does, asking `junctions.js` for its way across (none crossing it already
+in, the longest waiting first, giving way to the main road), so a car of the
+traffic never enters the same junction across it. Held more than 10 s behind a
+queue in view, it looks for another way from where it stands round the piece of
+road the queue is on, and takes it if it is no more than 300 m longer; queued 8 s
+within 45 m of the pick-up, it stops there and you walk the last metres. Where the kerb it
+is to pull in at is taken, by your own car or one stopped there for good (10 s),
+it pulls in just behind, and drives round one only waiting in the traffic; held
+up near the end for 8 s, it stops where it is with its hazards on. Where no car
+can reach your kerb in time (a dead end the near side of the street faces into,
+a stub no road feeds) the pick-up moves to the kerb across the street or a street
+round the corner, as a ride app moves it; in streets as slow as Shibuya's a car
+can set out from just round the corner, 15 to 40 m off; and where the one-way
+streets leave next to no way in, the search goes back along any street, as the
+router does. Rather than none, a slow ride comes, the phone saying how slow.
+Running more than six seconds late in a jam and out of the camera's view, it
+moves on along its route to a clear stretch of road, as games keep the cars that
+come for you on time. A driver waits five minutes at the pick-up.
 
 The driver takes you by road, along a route over the street network, keeping to
 the lane, slowing for bends and for the traffic, and signalling into the kerb at
 the end. A car stopped in the lane, such as yours left in the road, is driven
-round over the centre line, by the driver and by the traffic. While the car coming
-for you is out of sight, more than 120 m off, the traffic doesn't hold it up, so it
-comes in good time, as it would in a game. On the way they talk about what you are passing, as the people on the
-footways do, so each remark is a fact from the model, such as a building's height
-and where it comes from. <kbd>F</kbd> skips the trip, as in GTA V: the camera
+round over the centre line, by the driver and by the traffic, once nothing is
+coming the other way. While the car coming for you is out of your sight (more than
+40 m off and off the screen, or more than 120 m off), neither the traffic nor the
+lights hold it up, so it comes in good time, as it would in a game; in your sight
+it queues, stops at the lights and never steps further into another car. On the way they talk about what you are passing, as the people on the
+footways do: what that building is, and how tall. <kbd>F</kbd> skips the trip, as in GTA V: the camera
 rises, crosses the city and comes down behind the car at the kerb. The traffic
 keeps to the city's side of the road: the left in Australia, Japan and Hong
 Kong, and the right in Paris, where the cars are left-hand drive.
 
-The survey comes in lines. After a welcome, three surveys run side by side, in
-any order, and a report back waits for all three. The Sydney survey has seven
+The walks come in lines. After a welcome, three walks run side by side, in
+any order, and a report back waits for all three. Sydney has seven
 stamps, and an eighth for the locals:
-- **Welcome** (Ava, at Circular Quay): she sets out the three surveys and asks
+- **Welcome** (Ava, at Circular Quay): she sets out the three walks and asks
   which you want to start with.
 - **The harbour** (Marco, at the Opera House), two stamps:
   - hear how the shells are cut from one sphere, and climb the Monumental Steps;
@@ -136,18 +213,18 @@ stamps, and an eighth for the locals:
   Domain.
 - **The ground** (Priya, in Martin Place), two stamps:
   - find a spot that gets sun at lunchtime on the winter solstice;
-  - then, with Tom, use the survey lens on three buildings whose heights come from
-    different sources.
-- **Report back** (Ava): opens once the three surveys are done.
+  - then Tom, a Hyde Park regular, tells you about the park and sends you across
+    College Street to St Mary's Cathedral.
+- **Report back** (Ava): opens once the three walks are done.
 - **The locals** (Jess, a waiter at the Opera Bar), on the side: walk up to the
   silver gulls fighting over a box of hot chips by the water.
 
 A step counts whether its line is tracked or not. If you stand in the sun in Martin
-Place on the way to the ferry, the ground survey moves on. <kbd>T</kbd>, or a tap
-on a survey's name in the quest card, chooses the line that the route, the beam and
+Place on the way to the ferry, the ground walk moves on. <kbd>T</kbd>, or a tap
+on a walk's name in the quest card, chooses the line that the route, the beam and
 the minimap's star follow. The other lines show as hollow stars.
 
-Docking a ferry by hand earns an extra stamp. After the survey, the city is free
+Docking a ferry by hand earns an extra stamp. After the walks, the city is free
 roam, with two things to do in it at any time:
 
 - **Trig stations.** Five survey points round the harbour, each a △ on the map: the
@@ -165,21 +242,21 @@ roam, with two things to do in it at any time:
   ±20% nine times in ten, and an estimate to much less. A guess inside that range is
   as good as the data, and the score says so.
 
-The Melbourne survey has the same shape and six stamps:
+Melbourne has the same shape and six stamps:
 - **Welcome** (Mia, at Federation Square).
 - **The square** (Hannah, in City Square): how DDO10 protects public spaces from
   new shadow, and a sunny spot on Federation Square at lunchtime on 22 June.
 - **The river** (Arjun, at Federation Wharf), two stamps:
   - the river shuttle to Crown Landing;
   - Sophie's helicopter past the Arts Centre spire to Birrarung Marr.
-- **The heights** (Jun, in Birrarung Marr): the survey lens on three height
-  sources.
+- **The gardens** (Jun, a city gardener in Birrarung Marr): up the hill to
+  Fitzroy Gardens and Cook's Cottage.
 - **Report back** (Mia).
 
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
 
-The bayside survey is one line of four stamps, taken in order:
+The bayside is one line of four stamps, taken in order:
 1. Walk out along St Kilda Pier to the kiosk.
 2. Hear from Tash, an Earthcare volunteer, about the colony, then wait on the
    viewing platform after sunset until penguins come ashore near you. One
@@ -188,12 +265,13 @@ The bayside survey is one line of four stamps, taken in order:
 4. Walk the row of Brighton bathing boxes, from the first to the last.
 
 The bayside has no ferries and no real helipad. The pad at Elwood is invented
-and says so. Places you have visited become fast-travel stops on the map.
+and says so. Its six shore stops are on the map from the start, to travel to at
+any time.
 
-The Hong Kong survey has six:
+Hong Kong has six:
 1. Take the Star Ferry from Central's Pier 7 to Tsim Sha Tsui.
-2. Find a surveyed and a LiDAR-measured height with the survey lens at the
-   Clock Tower, then take the ferry on to Wan Chai.
+2. Hear about the Clock Tower from Wing, walk east along the Tsim Sha Tsui
+   promenade for the view of Central, then take the ferry on to Wan Chai.
 3. Fly from the Convention Centre heliport between the towers and land in
    Tamar Park.
 4. Find a sunny spot in Statue Square at noon on 21 December, among the bank
@@ -204,10 +282,9 @@ The Hong Kong survey has six:
 The Star Ferry's routes are real; its timetable and which vessel runs which
 route are not.
 
-The Paris survey has seven stamps, written as three lines after a welcome on the
-Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
-- **The river:** Bernard, a bouquiniste, and the survey lens on a LiDAR-measured
-  roof; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
+Paris has seven stamps, written as three lines after a welcome on the
+Pont d'Iéna (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
+- **The river:** Bernard, a bouquiniste, on reading the roofs of Paris; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
   on the cathedral's roof.
 - **The Left Bank:** a chair in the sun in the Luxembourg at noon on 21 December;
   Karim's café and Nadia's bakery.
@@ -218,10 +295,10 @@ Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
 On the Seine the helicopter takes the nearest span to fly under, and a step can
 name its span (`"surface"`).
 
-The Amsterdam survey has eight stamps, written as three lines after a welcome on
+Amsterdam has eight stamps, written as three lines after a welcome on
 the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)):
 - **The canal ring:** Pieter, a building historian on the Herengracht, sends you
-  to find a step gable, a neck gable and a bell gable with the survey lens (a
+  to find a step gable, a neck gable and a bell gable with the lens (a
   `gable` step: the lens names a house's gable and when that type was built);
   Femke plays the Westertoren's carillon, and the Anne Frank House is two doors
   down.
@@ -232,18 +309,19 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
   stroopwafel at the Albert Cuyp market.
 - **Report back** to Sanne on the Dam.
 
-Amsterdam has no helicopter: no pad in the old city, and none is invented.
+Amsterdam has no real helipad in the old city. The pad on the Dam is a game device, so that the city can be seen from the air.
 
-**Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
-is a walk, not a survey: a welcome at Hachiko, then five lines in any order and a
-report back.
+**Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
+[Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
+is a pilgrimage: in Shibuya a welcome at Hachiko, in Shinjuku at the east exit, then
+lines in any order and a report back.
 - **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
   lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
-- **Your Name:** climb the 52 steps of Suga Shrine's 男坂 and read an ema.
+- **Your Name** (Shinjuku): climb the 52 steps of Suga Shrine's 男坂 and read an ema.
 - **Shinjuku:** Kabukicho's arch after dark.
-- **Aoyama:** the ginkgo avenue at Jingu Gaien.
+- **Aoyama** (Shinjuku): the ginkgo avenue at Jingu Gaien.
 
 Walking into a neighbourhood puts its name up on a station sign. <kbd>E</kbd> at a
 spot (an ema, a vending machine, a shop front) reads it. Conversations come up in
@@ -264,6 +342,39 @@ camera and the shot:
 **Save photo** (<kbd>Enter</kbd>) writes a PNG. Its caption gives the place, the
 date and time, the sun's height and the data credit.
 
+### Arriving and getting started
+
+Starting a game is one calm camera move, about 3.6 s, from the title shot down to
+over the player's shoulder (`craneIn` in `web/game/game.js`). It dollies in along
+the bearing the title camera is already on and turns about the player by at most
+50°, spread evenly over the move, so it never swings round them, spins or changes
+direction; the horizon stays level. The distance closes on a log scale, so the
+approach is a steady glide rather than a rush at the end, and the point the camera
+looks at closes on the player faster than the camera does, so the view hardly
+turns. The player turns to face the way the shot looks, as near the start's own
+view as that allows with a few steps clear in front. `calmElevation` keeps the
+line 8 m clear of the roofs while it is far out, as an envelope whose elevation
+changes no faster than a set rate, so it comes over a tower without a jolt. Any
+key or tap settles it in 0.7 s; with `prefers-reduced-motion` it is a cut under a
+short fade. The fast-travel hop follows the same rules: one even turn of at most
+45° a second, up and down on a log scale (the old one plunged at the end), and over
+tall blocks it cranes up over the player before it pulls back and takes up to
+6.5 s rather than tilt fast. `tools/arrival_shot.js <city> <out> [desktop|phone]
+[travel id]` follows the camera frame by frame through the arrival and a hop to
+the farthest travel point, prints each move's peak turn and pitch rates, and
+fails above 45° and 60° a second.
+
+The first time a browser plays any map (or reef site), a short tour of the HUD
+follows the arrival (`web/onboard.js`): walking and looking, the map, travel,
+taxis and rides, the passport, the phone, photo mode, the menu and the route line,
+one step each, pointing at the control with a ring and a card, with touch wording
+on a phone. Enter or → moves on, ← goes back, Esc or "Skip tour" ends it. The flag
+(`oe3d-onboard` in `localStorage`) is shared by every map, so on a later one the
+title card offers "Skip the intro", ticked, and the guide greets you with a short
+local welcome instead. "Show the intro again" in the menu runs the tour at any
+time. While the tour shows nothing can be started (no talk, no boarding), and it
+carries `data-hush`, so the area sign waits for it.
+
 ## What we took from other games, and where this one is different
 
 A research pass looked at the games people compare this to. The sources are
@@ -281,6 +392,9 @@ listed at the end.
 | **A Short Hike, Animal Crossing** | One-breath dialogue lines that you can finish with a tap, a voice beep pitched per character, and small tasks with small rewards (passport stamps). | Their worlds are invented. Here a favour is a fact about a real place. |
 | **Assassin's Creed viewpoints** | Climb to a high point, and the camera turns once round you while the names fill in. | Its viewpoints reveal what designers placed there. Here what is named is what is in sight from that spot: a line of sight through the model to each roof, with the source of each height. |
 | **GTA V character switch** | The fast-travel camera goes up, across the city and down onto the player, instead of cutting. | Its sky camera hides streaming. Here it keeps the city in one piece, and the cruise height clears the tallest roof on the route. |
+| **Game Accessibility Guidelines, `prefers-reduced-motion`, app coach marks** | Camera moves that never spin or whip (a capped turn and pitch rate, a level horizon, no reversal), skippable at once, and a cut for players who ask for less motion. A first-run tour that points at one control at a time and can be skipped. | The arrival and the hops are measured frame by frame against those limits (`tools/arrival_shot.js`), and the tour runs once across every map rather than once per map. |
+| **Genshin Impact, Breath of the Wild, Flight Simulator's world map** | Travel from the map at any time, to a named place or (Flight Simulator) to any spot you pick. | Their travel points are unlocked by finding them, and they drop you on a waypoint. Here every landmark is open from the start, as a sightseer would want, and you arrive placed to see it. |
+| **Google Earth's fly-to** | Arriving framed on the place: back from it by its size, looking at it. | Its camera floats free. Here the arrival is a spot you can stand on, picked by a line of sight through the city's surface model and its trees, with the sun behind you. |
 | **GeoGuessr** | A guess scored against the answer. | Here the answer has error bars and the score shows them. For an estimated height, a good eye can be as good as the data. |
 | **Breath of the Wild** | After a short prologue, the main quests open together and can be done in any order. | Its quests end in invented places. Here each line ends in a fact about a real one. A step from one line completes while you follow another, because both are a position, a time or a sun angle in the same model. |
 | **Ghost of Tsushima photo mode** | The world holds still, and you change the time of day and the lens. | Its light is art-directed. Here the sun for the time you choose is the computed one, and the saved picture's caption says when and how high it was. |
@@ -288,6 +402,7 @@ listed at the end.
 | **GTA V's scenario points, The Sims, Unreal's Smart Objects and Detour Crowd** | Benches as places to sit. Each has two seats that a passer-by claims, walks to, sits on and leaves, and each advertises what it offers. Walkers look a few seconds ahead and step aside for each other and for you. | Their people pick seats by script or by invented needs. Here they pick by the sun the model computes. At 12:30 on the winter solstice every sitter around Martin Place is on a sunny bench, though only 55% of the benches there are in sun. On a January afternoon, 92% of the benches are in sun but only 21% of the sitters. |
 | **Persona 5** | A city told district by district, each a few streets drawn closely: Shibuya's crossing, a quiet residential neighbourhood, Shinjuku at night. A district's name comes up as you arrive. Passers-by talk among themselves and you catch a line as you pass. Things to examine with one button: a vending machine, a sign, a shop front. | Its Tokyo is renamed and redrawn. Here the names are the real ones and the streets are measured. The arrival card is drawn like Tokyo's own platform signs (駅名標), with the line's colour and the stations either side. There is no calendar, no social ranks and no combat, the clock is the real sun, and the people are our own. Persona's characters and art are not used. |
 | **Unreal Engine** | The CharacterMovementComponent's capsule sweep: slide along a wall, stop in a corner, push out of anything you start inside, step up what is low enough. The SpringArm's probe sphere for the camera. Re-written from the documentation, since the engine's code can't be copied into an open project. | Its collision is whatever the level designer built. Here it is the published footprints, so walking into a wall tests the open data. [docs/ENGINES.md](ENGINES.md) is the full study of what else to take from Unreal and other engines. |
+| **Unreal's City Sample (Mass traffic and crowd), GTA V's road nodes** | Street furniture placed by rule from the road network, a set distance behind the kerb, and registered as obstacles the traffic and the crowd keep clear of; a lane that never lets a car move into another, and a place to wait off a busy berth or junction. Ideas only: no code or assets taken. | Their furniture is generated. Here it is mapped (OpenStreetMap's lamps, benches and trees), so it is moved only as far as it must be out of the road as the game draws it, and left out where no kerb is near (`web/streets.js`, `pipeline/kerbside.py`). |
 
 ## How it works
 
@@ -301,7 +416,19 @@ pipeline writes. The only city-specific code is landmark geometry in
 - **Game data** (`pipeline/game_data.py` writes `web/data/<city>/game.json`):
   - **Water mask:** 5 m.
   - **Walking terrain:** 5 m. It drops at the seawall instead of sloping across
-    a 10 m cell.
+    a 10 m cell. Along a quay (`web/quays.js`) the points just out in the water
+    are raised to the quay's level and the water starts 0.15 m short of the
+    wall's face as drawn, so a walker stops with the toes at the coping's edge
+    (`tools/game_check.js` walks up to one in every city).
+  - **Fine walking levels** (`patches`, a city's `game_patches`): levels every
+    half metre where walls and steps are too sharp for the 5 m grid. Where a
+    slab stands over the paving (Sydney's forecourt over the colonnade),
+    `upper` holds the slab's level in a block of the grid and `clear_m` the
+    room under it: the ground is the slab, and `nav.floorAt` offers the floor
+    under it too, so a walker goes under or over; the camera stays under the
+    slab when the walker is. `walks` names routes `tools/game_check.js` walks
+    on foot ([[x, y], ...], `from_m`, `to_m`; `face: true` for a walk to a
+    seawall's edge).
   - **Footways and roads:** 3D polylines.
     - Bridge parts follow the deck surface, using Overture's `is_bridge` flags
       and levels.
@@ -312,7 +439,17 @@ pipeline writes. The only city-specific code is landmark geometry in
     - Found by a shortest path through open water, weighted to keep to the
       middle of the channel and away from piers.
     - Smoothed only as far as the route still stays at least 4 m from land.
-  - **Benches and street lamps:** from OpenStreetMap.
+  - **Benches and street lamps:** from OpenStreetMap, moved out of the
+    carriageways (`pipeline/kerbside.py`; `web/streets.js` does the same in the
+    browser, for data built before). The trees in `places.json` too, once
+    `game_data.py` has the roads (`python pipeline/kerbside.py --all --write`
+    does it to the data as it stands). Many lamps are mapped as
+    nodes of the road itself, and trees in kerb build-outs and medians. Each is
+    moved to the nearest place clear of every road's band at its level (the
+    road as the game draws it, grown to the outer side of a car pulled in at the
+    kerb), or left out where none is within 6 m. Before this, Sydney had 60
+    mapped lamps, 433 trees and 22 benches in a carriageway; Paris 720 lamps and
+    1,947 trees; Amsterdam 470 lamps and 2,159 trees.
   - **Rail** (`game.rail`): the Overture rail lines of the configured classes,
     chained across the junctions where OpenStreetMap breaks them into through
     routes. A funicular's route runs from its lower end with its profile made
@@ -372,6 +509,34 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Piers and decks:** piers are 2.2 m decks, or level with the quay they
     meet where that is higher, so stepping down onto a pier is never a step you
     can't climb back. The bridge deck is a walkable strip.
+  - **Strips meet their banks:** a deck drawn from a mapped outline (an
+    Amsterdam canal bridge) can end a metre or four short of the quay the 5 m
+    water mask draws, or below the ground where the bank rises to it. Each end
+    over the water is carried on along the axis to the first firm ground within
+    12 m, no steeper than 1 in 4, and drawn there in the deck's stone; where the
+    ground under a deck stands up to a step above it, the deck is raised to it,
+    so a walker there is on the deck (Torensluis). The Magere Brug, Leidsebrug,
+    Halvemaansbrug, Brug 72 and Torensluis are crossed down their middles.
+  - **Covered walkways are canopies** (`pipeline/arcades.py`): an arcade over a
+    pavement comes in the open data as a long thin building from the ground
+    (Kyoto's Shijo, Kawaramachi and Shinkyogoku arcades, Osaka's shotengai). A
+    footprint at most 6 m wide on average (5 m left out Osaka's main arcades,
+    Shinsaibashi-suji, Ebisubashi-suji and Sennichimae, whose footprints take in
+    the wider squares where two covered streets cross), with a mapped footway inside along
+    most of its length, mapped as a roof or an unnamed PLATEAU footprint no
+    taller than 20 m, starts a quarter of its height (0.5-3 m) under its top,
+    and is drawn without windows and with an underside. Walled in by them, the
+    blocks between Shijo, Kawaramachi, Sanjo and Shinkyogoku had no way in; 24
+    in Kyoto, 86 in Osaka, 55 in Shibuya, 20 in Tokyo and a few elsewhere are
+    canopies now.
+  - **Precinct walls are walls** (`pipeline/walls.py`): the earthen walls round
+    the Kyoto Gosho and the Sento Gosho come in the open data as buildings 3 m
+    wide and hundreds of metres long, with a height estimated from the houses
+    nearby (8.7 m), and were drawn as office blocks. They are 4.5 m walls with a
+    tiled coping and the Gosho's five white lines now, and still walls to a
+    walker: the way in is by the gates `arcades.py` opens. 12 in Kyoto (with
+    Sanjusangen-do's Taiko-bei), 3 in Shibuya (Meiji Jingu), 2 in Osaka and one
+    each in Tokyo, Sydney, Melbourne and Amsterdam.
   - **Wharves:** each wharf has a landing, the nearest place on foot to its
     terminal. You board from there where the mapped terminal is out on the
     water (Circular Quay's wharves, Central Pier 7).
@@ -386,6 +551,13 @@ pipeline writes. The only city-specific code is landmark geometry in
       boats.
     - Viaducts (an expressway, several levels up) keep their mapped height.
       Stubs that end over the water at nothing are cut back to the bank.
+    - A deck the data's levels make climb steeper than 1 in 3.3 (outside
+      steps) is graded evenly from end to end; a line along a strip that the
+      data puts up to 4 m past its edge, far below it, is on the strip's level
+      beside it. Together these join the Harbour Bridge cycleway: mapped a metre
+      outside the deck, its approach was given the ground's height plus a level
+      and dropped 30 m in 23 m off the deck; it now runs from the deck down to
+      its north end at Milsons Point.
     - The crowd and the traffic keep to the decks, the sun meter sees their
       shade, and you can walk them (but not the expressways). In Osaka this is
       what joins the city across its rivers: from the start on the Dotonbori,
@@ -398,6 +570,17 @@ pipeline writes. The only city-specific code is landmark geometry in
     above the water, which lies level everywhere.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
     cells, so the helicopter can pass under the deck but not through the arch.
+    Where a walker meets them, up to 3.5 m over the floor below, the collision world
+    has them in 0.25 m cells instead (`landmarkCells` in `nav.js`): each cell's
+    heights split where there is 0.4 m of room between them, 0.1 m added above and
+    below, and the cells merged into rectangles along rows and then down columns.
+    In 2 m cells, per material, a 0.5 m lantern or a 4.2 m ema rack stood as a box
+    up to 4 m across and the rack's roof came down to head height (issue #91). Each
+    triangle is sampled in rows along its longest edge, every 0.22 m, so a long thin
+    one costs its area; a flat top only round its edges, since its sides are
+    triangles of their own. What lies under a walkable strip (the stone of a flight
+    of steps) is the strip's slab and is left out. It adds 0.2 s (Osaka) to 1.8 s
+    (Kyoto's temples) to the game's start on a desktop.
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
     the city's note. A boardwalk across them stays walkable.
 - **Collision** (`web/game/collision.js`): every building solid is a prism, its
@@ -411,6 +594,10 @@ pipeline writes. The only city-specific code is landmark geometry in
       from the exact footprints.
   - **Camera:** a 0.25 m probe sphere is swept from the player to the camera
     against walls, roofs and soffits, as Unreal's SpringArm does.
+  - **Lamp posts and tree trunks** are solid (`OEStreets.posts`, circles in an
+    8 m grid): you walk round them, your car hits them ("Careful! That was a
+    lamp post."), the crowd steps round them and the traffic brakes for one in
+    its way.
   - **Measured against the old 2 m grid:** 120 walks into walls at random
     angles ended inside a footprint 50 times before and never now. The closest
     approach is now the capsule radius. See
@@ -508,15 +695,312 @@ pipeline writes. The only city-specific code is landmark geometry in
     110 m and about 1,000 beyond, so a street of 150 cars costs a few draw
     calls. Paint is glossy, glass is dark, wheels and trim are metal, and the
     occlusion baked in Blender darkens the wheel arches and the underside.
-  - **Driving:** they keep left, brake for the cars ahead and for the player,
-    and keep bumper-to-bumper gaps, so a bus queues its full length back.
+  - **Driving:** they keep to the city's side, drive a one-way street only its
+    way, brake for the cars ahead and for the player, and keep bumper-to-bumper
+    gaps, so a bus queues its full length back. A car looks ahead along its own
+    lane, round the bend and across the junction it is taking (points every
+    1.5 m, 3 m far from the camera), not along a straight line from its bonnet,
+    so a car waiting in the oncoming lane round a corner doesn't stop it. Where
+    two cars come into each other's way, the one already in the junction, or
+    nearer the point where their ways meet, goes first.
+  - **Junctions** (`web/game/junctions.js`): see [Junctions and traffic
+    lights](#junctions-and-traffic-lights).
+  - **Unsticking:** a car waiting on someone standing in the road edges on
+    after a few seconds and the walker turns back; a car waiting at its line
+    that a bus can't swing past backs off a metre; a car in a junction stopped
+    behind one waiting at another of its lines asks it to back off, and after
+    8 s goes on as if it weren't there; two cars held nose to nose for 15 s
+    (10 s in a junction, 25 s by one that only inches along) squeeze past each
+    other; a car held 1.5 s part way across to another lane goes back to its
+    own; and out of sight, a car stopped 45 s that is not in a queue comes back
+    elsewhere.
+  - **Never through anything:** a car never moves into another car, your car,
+    a ride, a person, an NPC, a lamp post or a trunk; it waits, and turns round
+    if the way stays blocked (but for the squeeze past, under Unsticking). One caught up with another gets out without going
+    into a third; two still caught after 4 s part (out of sight, one leaves the
+    traffic). A ride on the move is left to its own driver (unless it follows it), who never
+    steps further into a car of the traffic and swings out round a stopped car only when
+    nothing is coming the other way. None is put on the road on top of your car or a ride, and your
+    car is brought to a kerb clear of the traffic, the posts and the trees.
+    Your car meets another as a box against a box, corners included. The crowd
+    keeps out of your car and a ride as it does the traffic's.
+  - **The crowd and the walls:** a footway that runs into a building (an arcade,
+    a station's concourse; the model's buildings are solid) ends at its wall,
+    and a walker stepping aside keeps in from a wall beside the footway. Before
+    this, about one walker in nine in Sydney's centre was inside a building.
   - **After dark:** headlights, tail lights and the taxis' roof signs light up.
+
+#### Junctions and traffic lights
+
+Before, a junction was a lock: one car at a time held the node it came up to,
+and every node where two road pieces met was one, even a bend. Queues reached
+back into the junction behind, cars stopped half way through a turn, jams
+locked solid, and a car stuck behind one turned round in the road after 10 s.
+Sydney's traffic stood still a third of the time.
+
+- **The rules of the road are data.** `pipeline/road_rules.py` reads Overture's
+  segments and infrastructure (OpenStreetMap, ODbL): a segment whose access is
+  denied heading backward (or forward), for everyone or for motor vehicles, is
+  one-way, and the road pieces in `game.json` carry `"o": 1` or `-1`;
+  `traffic_signals`, `stop` and `give_way` points go into `props`. Sydney has
+  788 signals and 914 of its 1957 road pieces are one-way, Osaka 1837 and
+  4886, Paris 1456 and 3364. A banned turn (Overture's
+  `prohibited_transitions`: OpenStreetMap's `no_right_turn`, `no_u_turn`,
+  `only_straight_on` and the like, for motor traffic at all times) is matched
+  to the road pieces cut from its two segments at the connector between them
+  and written on the piece it starts from as `"nt": [[end, piece, end entered,
+  steps]]`: Sydney has 185, Hong Kong 612, Melbourne 343, Osaka 368.
+  `game_data.py` writes the same as it builds.
+- **Lanes from the data.** Overture's segments don't carry OSM's `lanes` or
+  `turn:lanes`, but each names the OSM ways it was cut from.
+  `pipeline/road_lanes.py` reads those ways' tags from the OpenStreetMap API by
+  id (its multi-fetch, a few hundred at a time: about 40 requests for Sydney;
+  Overpass is not reachable from the build machine) and writes `"tl"`, the
+  arrows at a piece's end where the OSM way itself ends, and `"nl"`, the lanes
+  each way where tagged (1 or 2). Sydney has 609 of its 1957 pieces with a
+  count and 71 with arrows, Melbourne 1853 and 128, Hong Kong 1242 and 109;
+  Japan's cities tag almost no arrows. The traffic reads the arrows. It doesn't
+  read the counts yet: where the count changes from one piece to the next
+  (OSM's `lanes=2` on a short stretch between two one-lane ones) the cars'
+  merging can't keep up, and Sydney's jams under `traffic_check.js` (six places)
+  went from 1.2% to 3.4% with the counts and 2.2% with only their reductions to
+  one lane. That waits on merging that looks ahead along the road.
+- **Crossings between junctions.** A pedestrian crossing (OSM's
+  `highway=crossing`, Overture's infrastructure class `crossing`) is sorted by
+  its tags (Overture keeps them as `source_tags`) into one with signals
+  (`crossing=traffic_signals`, `crossing:signals=yes`, a pelican, puffin, toucan
+  or pegasus) and a zebra (`crossing=zebra` or `marked`, `crossing_ref=zebra`,
+  zebra markings): `props.crossing_signals` and `props.crossing_zebra`. One
+  more than 16 m from any junction's node and 12 m from its piece's ends is a
+  junction of its own with no way to turn (`junctions.js`, `j.mid`), an arm for
+  the traffic heading each way, its stop line 3 to 3.6 m back from the
+  stripes. One with signals keeps the traffic's green until a walker presses
+  the button, after at least 20 s of it: amber, all red, the walk for 12 s (the
+  red figure flashing for the last 5), and back; it has the junctions'
+  lanterns and a walk signal on each kerb. At a zebra the traffic gives way at
+  the line to anyone of the crowd on the stripes or walking out onto them (and
+  after 15 s waiting on one who stands there, edges on, braking for them as for
+  anyone in the road). Sydney has 97 crossings with signals between junctions
+  and 63 zebras; the others are at junctions, whose arms have walk signals
+  already.
+- **A junction** is a node where three or more pieces end, or a few such nodes
+  joined by pieces under 24 m and no more than 42 m across: a divided road
+  crossing another is two to four nodes and one junction. Its arms are the
+  pieces out of it. A car coming up an arm picks its exit (ahead more often than
+  a turn, a main road more often than a lane, never back the way it came, never
+  a banned turn) and the pieces across to it. The rides' router (`cars.js`)
+  keeps to the banned turns too.
+- **Lanes.** A motorway, trunk or primary road, and a one-way secondary, has
+  two lanes each way: the first beside the centre line (on a one-way street, on
+  the keep side), the second 3 m out towards the kerb (on a one-way street,
+  across on the other side). Where OpenStreetMap paints arrows on the lanes
+  (`turn:lanes`, written on the road pieces as `"tl"` by
+  `pipeline/road_lanes.py`), a movement goes from the lanes whose arrows show
+  its way, the half of the road's lanes on the first lane's side standing for
+  the first lane and the other half for the second. Elsewhere a turn across the
+  oncoming traffic goes from the lane nearer the middle of the road (on a
+  two-way road the first, on a one-way street the second), a turn the other way
+  from the lane nearer the kerb, and straight ahead onto a road of the same
+  kind with two lanes from either, each lane with its own way across, so two
+  cars go through side by side. Two side by side need the room beyond (two
+  lanes, 60 m long); else the movement keeps to the one lane. Two movements
+  from one arm in different lanes go together unless their ways across come
+  within a car's width. A car
+  moves across to the lane its movement needs from 150 m out, and to the first
+  where its road narrows; otherwise into the other lane when the car ahead is
+  slow and there is room beside it there (0.8 m plus 0.9 s of its speed, ahead
+  and behind), at most every 4 s, never in a junction or in the last 8 m before
+  a line. It noses across at up to 1.3 m/s sideways, slowly while barely
+  moving. A car that reaches the line in a lane its exit can't go from picks an
+  exit that can, or waits to move across. A second lane ends before a junction
+  where a car waiting in it would stand in another arm's way, or where two
+  roads come in side by side (a merge). This is SUMO's lane-change model
+  (LC2013, EPL-2.0) cut down to its strategic and speed-gain changes; no code
+  is taken from it.
+- **Its ways across** are worked out the first time a car comes up to it: each
+  movement's lane, smoothed round the corner as the cars drive it, from its
+  arm's stop line to its exit's. Two movements whose ways come within 2.8 m of
+  each other cross. Each stop line starts at half the widest road crossing
+  there plus a crosswalk, and is set back until a car waiting at it is clear of
+  every other arm's ways (a turning bus included).
+- **Going in.** A car decides at its comfortable braking distance from the line.
+  It goes in only if its light is green (or amber and it can't stop at 4 m/s²),
+  it has stopped at a stop sign, no movement in the junction crosses its way, no
+  car that has waited longer at a line crosses it, and on a lesser road or past
+  a give-way sign no car is coming on the main road within 3 s. And only if
+  there is room for it beyond the junction, up to the next junction's line, so
+  a queue never reaches back into the box: SUMO's *keep clear*. A junction just
+  beyond, too close to wait between, is crossed with this one or not at all.
+  A bus has the junction to itself. A car gives its movement up once its rear
+  is past the stop line on its exit. When the lights change before it gets
+  there and it can still stop, it stops. A car given its way across while
+  still short of its line, then stopped there 4 s behind a car that is not in
+  the junction (one waiting at another of its lines, where two roads come in
+  side by side, for this very movement to clear), gives the movement up and
+  waits its turn.
+- **Signals** go where OpenStreetMap maps them (a mapped point within 22 m of a
+  junction's node), or, in a city without the data, at a junction of two main
+  roads. The arms take two phases, the main road's axis and the cross road's:
+  green, amber (3.5 s, 4.5 s where the limit is over 60 km/h), 2 s all red. A
+  phase is green for 16 to 26 s on the main road and 10 to 18 s on the cross
+  road, and stays green while no car waits on the other, for up to 24 s more,
+  as the side roads of SCATS (Sydney's adaptive signals) are skipped when no one
+  is there. Taxis and rides stop for a red light and at a stop sign too, while
+  in sight. Your own car doesn't: drive over a line on red and you hear about it.
+- **Turn arrows.** A big junction of two main roads (four arms or more, the
+  main road secondary or above and two-way, the cross road tertiary or above)
+  gets a third phase after the main road's: the turn across the oncoming
+  traffic (right where the traffic keeps left, left where it keeps right) on an
+  arrow while everything else is red, for 6 to 10 s, ended after 3 s when no
+  one is left to turn. As SCATS runs a lagging right-turn phase, it comes only
+  when a car waits to turn there, and the turners keep their green from the
+  main road's phase into it while the straight-ahead traffic beside them goes
+  amber and red. On the main road's green they filter through the oncoming
+  traffic as before. Sydney has 22 such junctions of its 166 with signals.
+- **Walk signals.** Where a footway of the crowd crosses an arm's road at a
+  junction with signals (between the junction and just past the stop line), a
+  walker coming up to the kerb while that arm's traffic may go stops there and
+  presses the button, which calls the phase that holds that traffic; they cross
+  on the walk, which shows while the arm's traffic is red and another phase
+  (not the arrow) is green, and ends 5 s before that phase can. Someone already
+  out in the road (over a median, say) walks on. Turning cars still give way to
+  people on the crossing.
+- **The signal heads** are instanced, a handful of draw calls for a city's
+  thousands. Each arm with signals has a pole at the kerb by its stop line with
+  a lantern facing the traffic, and a second across the junction; a main road's
+  pole carries a mast arm with a lantern over the lane. Lanterns have visors
+  over the lamps, and in Australia and the Netherlands a black target board with
+  a thin white rim (black from behind). Japan's lights are horizontal (green,
+  amber, red from the left) on arms over the road; France's have no board and
+  no mast. A city can set its own in `game.signals` in `city.json` (`layout`,
+  `pole`, `housing`, `board`, `border`, `mast`: the road rank from which an arm
+  has one). The lit lamp blooms, and after dark it glows towards the traffic
+  facing it, not from behind. An arm with a turn arrow has an arrow lantern
+  beside the one over its lane: red, amber and green arrows, dark while the
+  turn filters on the main road's green. Japan's is a row of green arrows (left,
+  ahead, right) under the lantern, the turn's lit on its phase. Every arm's
+  crossing has a walk signal on a post on each kerb, facing across: a red
+  figure standing over a green one walking, the red flashing while those
+  already out finish crossing. The lamps change only when a signal does.
+
+`tools/traffic_check.js <city>` measures the flow headless at three places (the
+game's own frame loop stopped), with the surveyor on a kerb beside the roads,
+not standing in one. Sydney before the junctions, with them (the first two
+columns, measured then), and now with the banned turns, the lanes, the arrows,
+the walk signals and the unsticking above, against main just before (150 cars
+over 112 s at each place):
+
+| | Before | Junctions | Main before this | This, before the rides' changes | Main with the rides' changes | Now |
+|---|---|---|---|---|---|---|
+| Standing still | 39% of the time | 25% | 21% | 19% | 27% | 28% |
+| Jammed (still 30 s or more) | 13.4% | 2.5% | 3.8% | 0.7% | 3.8% | 4.2% |
+| Mean speed | 18 km/h | 23 km/h | 26 km/h | 26 km/h | 21 km/h | 21 km/h |
+| Longest still | 150 s | 111 s | 138 s | 72 s | 144 s | 150 s |
+| Red lights run | (no lights) | 0 | 0 | 0 | 0 | 0 |
+
+Main took in the rides' work (a step into another car taken back, cars kept
+off posts and trunks, a ride's priority at a red) while this was being
+finished; with both, the jams are back to about main's own, and a few cars
+stand the whole run where a car leaving a junction is caught against the
+queue coming into it on a short arm (`tools/traffic_why.js sydney 2` shows
+one). That is left for the follow-up issue.
+
+The other cities, jammed share and longest still, main before this and this
+branch before the rides' changes:
+Tokyo 0.9% and 76 s, now 0.8% and 50 s; Osaka 1.5% and 105 s, 1.2% and 74 s;
+Paris 3.1% and 120 s, 2.6% and 104 s; Hong Kong 5.0% and 138 s, 3.8% and 116 s;
+Kyoto 6.2% and 148 s, 1.8% and 89 s; Melbourne 4.9% and 121 s, 2.7% and 146 s;
+Shibuya 2.7% and 103 s, 1.0% and 105 s; Amsterdam none either way; Melbourne's
+bayside, over six places, 2.9% and 140 s, now 3.2% and 146 s. A run is the
+same each time only roughly: a small change anywhere moves every car after it,
+so a single run's jams swing by a few points either way, and the cars caught
+up in a crowded junction in one run are elsewhere in the next. No junction now
+lets in two movements that cross (Melbourne's bayside did, on main: a car let
+in by one way that asked again by another wasn't checked).
+
+**The jams brought back down (issue #51).** `tools/traffic_why.js` found
+three knots behind the 150 s stands. Two cars at an angle (a bus leaving a
+junction beside the queue coming in round a bend) read as touching though
+nearly a metre apart, because footprints were told apart only on the moving
+car's axes; the bus was held in the junction and, having it to itself, locked
+it. The overlap test now separates on both cars' axes. The swing out round a
+car parked beside the lane was measured from where the car already was, so it
+stopped half way out and stood behind the parked one for good. And a car that
+left a junction onto a short stub ending in nothing turned round at full
+speed and was found over the junction's line: such stubs are now left out
+when there is another way, a car slows to turn round at a road's end, and it
+never turns at speed. A car that has gone nowhere for a minute (a minute and
+a half in a queue), however it edged or turned where it stood, comes back
+elsewhere when out of sight. Sydney with these alone: jammed 0.9% (3.6% on
+main), longest still 60 s (150 s), cars over a line 5 (24). With the lane
+arrows and the crossings between junctions (whose red lights hold the traffic
+as the real ones do) every city under `tools/traffic_all.sh`, three places
+each, against main before (jammed, longest still): Sydney 2.1% and 89 s
+(3.6% and 150 s); Melbourne 2.0% and 68 s (1.5% and 129 s); Melbourne's
+bayside 5.7% and 148 s (3.1% and 140 s); Hong Kong 4.0% and 144 s (4.7% and
+147 s); Tokyo 1.7% and 90 s (0.9% and 62 s); Shibuya 4.0% and 140 s (2.9% and
+130 s); Osaka 2.0% and 89 s (2.0% and 93 s); Kyoto 1.6% and 88 s (1.0% and
+79 s); Paris 3.0% and 91 s (2.6% and 79 s); Amsterdam 0.8% and 71 s (0.9% and
+85 s). No junction lets in two movements that cross, no car runs a red. Kyoto
+and Osaka fail the wall check on main as here. A single run swings by a point
+or two with any change (Sydney's six places measured 1.2% to 1.9% between
+equivalent versions), so read these as a direction, not a decimal.
+
+The traffic's update costs about 3.2 ms a frame for 150 cars on the software
+renderer here, against 3.4 ms on main with the rides' changes (2.2 ms against
+2.6 ms before them), measured the same way: the way ahead is sampled walking a line's
+segments on from the last point instead of searching them for every point, the
+cars more than 160 m from the eye (along x and y) take a step of two frames
+every second frame, and the signal heads re-light only a junction whose signals
+changed. The lanes, arrows and walk signals cost less than that saved. The low
+quality tier runs a third of the cars.
 - **Vehicles** (`web/game/vehicles.js`): the helicopter and ferries every city
   shares, modelled in Blender (see [the vehicles](#the-vehicles)). If their
   files can't be loaded, stand-ins built from `web/game/kit.js` take their
   place: lofted hulls, lathes, slabs, fins, rods and tubes at real dimensions,
   merged into one mesh per material, adapted from the vessel kit of an earlier
   reef scene.
+  - **Ferries keep apart:** under way a vessel keeps to the starboard side of
+    its course by up to its beam, as far as the water allows (the whole hull
+    and half a metre round it over open water, worked out every 10 m of each
+    leg), so two on the same course pass port to port, close to the banks in a
+    river as narrow as the Dotonbori. Where the end of a leg left the hull over
+    the bank, the vessel berths short of it. A berth takes one vessel at a time: one bound for
+    a busy berth waits off it, behind any others waiting there on other routes
+    (a hull length and 30 m farther off for each), one closing on another ahead
+    on the same leg keeps its distance, and none starts out alongside another.
+    A leg too narrow to pass along has a passing place where the two hulls stay
+    clear all the way past, measured hull against hull (on a bend a hull's ends
+    swing out of its line); one leaving a berth waits for a vessel still coming
+    in past it, but not for one lying there or off the berth waiting for it;
+    so on a narrow leg the place to wait off a busy berth is one where the one
+    leaving can go by (else the passing place), and one waiting there stays put
+    until the one leaving is past it; one that came up as the berth turned busy,
+    too late to stop there, stops at the next such place nearer the berth, or
+    goes slowly astern to one behind it. One leaving along the same leg towards
+    a vessel coming in doesn't make the berth busy for it: they pass, and on a
+    leg as short as Amsterdam's F3 ferry across the IJ the two no longer hold
+    each other at the passing place for good. Shared narrow water, where a course runs
+    head-on against another route's (Paris's two Batobus routes along the same
+    stretch of the Seine), is taken one way at a time, as a single-track
+    railway's section is: each course's stretches, longer than two hull lengths,
+    where a hull would come within a metre of one on the other course, are
+    worked out when the city loads; one in the stretch, or too near to stop
+    short of it, holds it, of two closing on it the nearer goes first, and the
+    other waits just short of it, where it is clear of the other course all
+    along. One lying still across another route's course is stopped short of,
+    and after half a minute held, two held by each other go on by; one held by
+    a vessel waiting for its own reasons edges by it if their hulls need come no
+    nearer than touching, and else waits on, up to two minutes. Two under
+    way on courses that meet within 8 s: the one that can stop short of the
+    other's course gives way; one lying still, or at its berth, sets off only
+    when nothing coming by would meet it in the next 30 s; and a place to wait
+    off a berth keeps 3 m clear of every course out of it, other routes' too.
+    Before
+    this, Sydney's Sirius and Charlotte lay in the same berth at Circular Quay,
+    two of Tokyo's water buses waited on top of each other off Hinode, and
+    Tokyo's ferries and Osaka's Dotonbori boats could end up each waiting on the
+    other for good.
   - **Helicopter:** the assisted model, with collisions against buildings and
     landmark solids. It slides along a wall it meets at a glancing angle and
     bounces off a hard hit.
@@ -584,7 +1068,8 @@ pipeline writes. The only city-specific code is landmark geometry in
   kerbs and centre lines, so the real-time shadows read correctly.
 - **HUD** (`web/game/hud.js`):
   - **Minimap:** drawn once from the data, with the heading up.
-  - **GPS route:** Dijkstra over the footway and road graph.
+  - **GPS route:** the way you can actually go, drawn on the minimap and in the
+    world (see **Routes** below).
   - **Dialogue:** typewriter text.
   - **Stamps:** saved in the browser.
 - **Camera shots** (`web/cine.js`, shared with the model viewer):
@@ -597,20 +1082,104 @@ pipeline writes. The only city-specific code is landmark geometry in
     and you can walk while it moves.
   - **Fast travel:** the camera rises over the player and crosses the city. It cruises
     110 m above the tallest roof on the route, read from the surface model's 16 m block
-    maxima. It comes down behind the player, who faces the way they flew.
+    maxima. It comes down behind the player, who faces the way they flew, or, at a
+    landmark, faces it with the camera swung round behind them.
   - **Trig stations:** one turn on the spot, over the player's shoulder with a longer
     lens. The names are the result of a line of sight through the 2 m surface model to
     just under each roof within 3 km. The surface model includes the Opera House
     shells and the bridge deck.
   - **Buildings:** no shot puts the camera inside one. Each pose is kept 3 m above the
     surface model under it.
+- **Map travel** (`travelTo` in `web/game/game.js`): the map lists every landmark the
+  city labels (`scene.labels`), its travel points, trig stations and wharves, your car
+  and the start, nearest first within a group; a pin on the map does the same, and a
+  click anywhere else drops a waypoint you can travel to. It works at any time on foot,
+  in your car (the car comes too, parked at the kerb nearest the spot) and in a taxi
+  (it lets you out and drives off). From the helicopter, a ferry or the funicular you
+  get off first. Where a landmark puts you:
+  - **How far back:** about 1.4 times its height, or twice its breadth and 40 m when
+    that is more (45 to 520 m; a tower taller than that allows is not tried nearer). The breadth is the median, over 16 bearings, of how far
+    the surface model stays above 30% of its height out from its label, a street's gap
+    ending it.
+  - **What it is:** its body is the surface model's cells of its own buildings (named as
+    its label, in either script, within 150 m), or of the buildings under its label, and the
+    high part within 40 m of its label whatever building those cells were drawn for (Shibuya
+    Scramble Square's floors over the station). Its tops are sampled, and along its edges
+    its walls at a quarter and 60% of their height. A part over its roofs that the surface
+    model leaves out (HEP FIVE's wheel, a mast) is a column of points at its label up to the
+    label's height, as many as the buildings have; with no buildings under it (the Eiffel
+    Tower's open iron), the column is all there is. Each point weighs by its height: a tower
+    is known by its upper floors, not the podium round its foot.
+  - **Which side:** spots on four rings round it (0.45, 0.7, 1 and 1.35 times the distance
+    back) are scored on what the camera behind you will see from there: the share of the
+    body's points in the frame (for the screen's own shape, a phone's narrow one too) with a
+    clear line to them from the lens, every 2 m through the surface model until it meets the
+    body itself (a wall of it in front of a point counts as seen, but not in front of a point
+    of the part over its roofs) and through the mapped trees' crowns; less the share the
+    frame's edges cut off, and more again for its upper third off the top; and more for
+    filling a good part of the frame's height. A slot down a street of offices sees only its
+    top over the roofs, so a square, a riverbank or a wide road that sees it whole wins.
+    When no ring sees 60% of it (a short building among towers), every open spot on a grid
+    round it is tried. Then the sun behind you by day, open ground round the spot (the share
+    of two rings 6 and 14 m out with nothing over 3 m; wholly open counts for as much as half the
+    landmark in sight), the street rather than a roof, out from under a walkway or a flyover
+    (for you and the camera), out of the haze the model's edge fades into (standing in it
+    veils everything round you, the near things too), and room behind you for the chase
+    camera (the same test the camera rig makes, and no crown in front of the lens). A spot
+    whose camera is blocked is tried again a few steps either side, nearer and further.
+  - **Fronts and hand-picked spots** (`arrivals` in `cities/<id>/city.json`, keyed by the
+    label as shown): for the few landmarks the search gets wrong, `front` is the compass
+    bearing the landmark's front faces (the National Diet looks east over its garden), and
+    the arrival keeps within `arc` degrees of it (70 by default), preferring straight in
+    front; `dist` sets how far back to stand; `top` frames a lower part than the label's
+    top, in metres above the ground (Kabuki-za's theatre rather than the tower behind it);
+    and `at` is a spot `[x, y]` in the local frame to stand on, facing the landmark.
+    `python pipeline/scene_config.py --city <id>` copies them into `scene.json` without
+    rebuilding the scene, and `node tools/arrival_probe.js <city> <names>` prints where
+    each arrival lands, its best-scored spots, and a character map of the surface model,
+    the water and the main roads round it, for choosing them.
+  - **The camera:** behind you and a little to one side, so the landmark stands just off
+    your shoulder, at the pitch that puts its top a little under the frame's top edge. A
+    camera can't go under your head to look up (it would be in the ground), so for a tall
+    landmark it stays just over your head and tilts up instead, by up to 15°, which puts you
+    low in the frame under it; the tilt eases off when you move, steer or drag the view.
+  - `tools/travel_shot.js <city> <out> [width height]` takes a still on arrival at each
+    landmark and prints how much of its body the camera sees (the same measure, from the
+    camera the game drew with); under 30% is a MISS. `ARRIVALS='{"Label": {...}}'` tries
+    `arrivals` entries before they go in `city.json`, here and in `arrival_probe.js`, which
+    also prints the body each landmark was given.
+  - **Zoom and pan:** the wheel (or a trackpad pinch, or <kbd>+</kbd> and <kbd>−</kbd>) zooms
+    the map about the pointer, from the whole city to about a metre a screen pixel; a drag
+    pans it, and on a phone two fingers pinch and pan. Buttons in its corner zoom in, out
+    and back to the whole city. The names are laid out afresh at each zoom, so the ones
+    the whole city crowds out come back as you zoom in, and a picked place's card follows
+    its pin. The zoom is kept while the map is closed. `tools/map_shot.js <city> <out>
+    [phone]` takes stills of it at the whole city, zoomed into the thickest pins, panned
+    and with a pin picked.
 - **Neighbourhoods** (`web/game/places.js`, game.json `areas`, `spots`, `chatter`):
   - **Areas:** a circle round a station. Walking in puts up its sign: the name, its
     reading, the line's colour band and the stations either side. Where circles
     overlap, the smaller one wins. A sign waits until a camera move ends.
   - **Spots:** <kbd>E</kbd> within a few metres opens a few lines. A spot with
-    `"pick": 1` shows one of its lines at random (each ema on the rack is a
-    different wish). A quest step `{"type": "spot", "spot": id}` waits for one.
+    `"pick": 1` shows one of its lines at random. A quest step
+    `{"type": "spot", "spot": id}` waits for one.
+  - **Look closer:** a spot with a `look` is a photo spot. <kbd>E</kbd> brings the eye
+    to about a metre off the thing, the walker out of the way, and you look along it:
+    <kbd>A</kbd>/<kbd>D</kbd> (or the stick, or the panel's arrows) along,
+    <kbd>W</kbd>/<kbd>S</kbd> between its rails, a drag turns your head, <kbd>Enter</kbd>
+    saves a photo and <kbd>E</kbd> or <kbd>Esc</kbd> steps back. The panel reads out what
+    hangs in the middle of the view: at Suga Shrine's ema rack, the wish on the ema you
+    are looking at (`look.tablets` place each ema as the mesh hangs it, from
+    `rack_layout` in `cities/shibuya/city.py`). The atlas holds each ema at 192 by 128 px
+    for its 15 by 10 cm, 1280 px a metre, more than a 1440 px wide desktop shows of it
+    from 0.95 m.
+  - **Up close** (game.json `close`, a spot's `reach`, from the landmark builders'
+    `game_extras`): the things people walk up to, each a point on the thing, where a
+    walker starts towards it, how near they must get and how near they cannot.
+    `tools/game_check.js` walks up to every one (`tools/close_step.js`;
+    `tools/close_check.js <city> <out>` alone, with a still of each).
+    `python pipeline/game_extras.py --city <id>` rebuilds them, the spots, the chatter and
+    the walkable surfaces from `scene.json` in seconds, without the raw downloads.
   - **Chatter:** a conversation at a place, one line every few seconds in a bubble
     over where it is said, once you are within earshot. It stays quiet for a while
     after it ends.
@@ -629,6 +1198,107 @@ pipeline writes. The only city-specific code is landmark geometry in
   - rotor chop at the blade-pass rate;
   - ferry engine and horn;
   - dialogue beeps.
+
+## Routes
+
+The gold line (`web/game/route.js`) leads to the objective, or to a waypoint
+clicked on the map, by the way you are going, and only where you can go. Every
+point of it is tested with the same nav (`web/game/nav.js`) that moves the
+walker, the car and the helicopter, so it never runs through a building, off a
+drop or into the water.
+
+- **On foot:** over a network built from the mapped footways and streets, behind
+  the title screen in slices (a second and a half of work in Amsterdam on a
+  desktop, two in Paris; the line shows once it is done):
+  - the lines are split where they cross at about the same height (not where a
+    bridge passes over a street) and where one ends on another, so a route can
+    turn there;
+  - each stretch is walked in 2 m steps with the walker's own test, moved up to
+    3 m sideways off a wall it grazes, and cut where it runs through a building
+    the model shows as solid (an arcade, a passage under offices: in Sydney one
+    mapped footway in ten runs into a building somewhere);
+  - the walkable surfaces the lines don't cover (the Harbour Bridge's whole deck,
+    Amsterdam's 224 and Paris's 28 bridge decks, the Opera House steps) get a
+    lattice of lines 6 m apart; lifts (SHIBUYA SKY) are links the line breaks at;
+  - loose ends, and pieces of the network cut off from the rest, are joined to the
+    nearest other piece within 12 m by a straight line a walker can walk, or round
+    whatever is in the way over the ground (a tunnel cut out of the data, the end of
+    a deck);
+  - from where you stand onto the network, and from it to the target, an A*
+    search over a 1.25 m grid of the ground, walked as the walker walks (no step
+    higher than a kerb, no drop either way). A target inside a building is reached
+    at the nearest place to stand. Where the network has no way and the target is
+    within 1.5 km, the search goes over the ground all the way;
+  - where there is no way on foot at all (across the IJ, the harbour), the line
+    leads to the wharf of a ferry that calls nearest the target, and says so. A
+    step that needs the helicopter (fly under the bridge, land in the Domain)
+    leads to the helicopter first.
+- **By car:** the road route the taxis drive (`OECars.router`), on your side of
+  the road, drawn on the lane. A road the car doesn't fit along (a building over it
+  in the model, a motorway viaduct, which isn't drivable) costs twenty times its
+  length, so the route takes it only where there is no other way; the traffic
+  doesn't turn into one.
+- **Flying:** an A* search over the tallest thing in each 16 m cell (terrain,
+  roofs, decks and the landmarks' solids, widened by a cell), where each metre the
+  way rises over the usual 120 m costs as much as a long way round: it goes round
+  a tower, over a low district. The height keeps 30 m over whatever is near, climbs
+  and comes down no steeper than the helicopter, lifts straight off and comes
+  straight down onto a spot with room for the rotor: a helipad near the target
+  (not one mapped under a tower), else level open ground with nothing over it within
+  7.5 m. A step to fly under a span comes in low and goes straight across under it
+  at the height with most room, clear of the pylons, the legs and the arches.
+- **By ferry:** the vessel's own course through the water, to the stop nearest the
+  target.
+- **Drawn:** a quiet band laid on the ground, half a metre wide on foot and wider
+  by car, on the floor under each point (street, deck, quay), and in the air
+  turned to the camera. Slow, faint chevrons drift the way to go, a soft amber
+  edge holds it on pale stone, it fades in a few metres ahead of you, out with
+  distance (to a fifth by 320 m, 900 m in the air) and over the last ten metres,
+  and at night it turns a dimmer, warmer amber, as sodium light on stone. The
+  stretch behind you disappears as you go. It is worked out again when the target
+  moves, when you stray from it (6 m on foot, 14 m by car, 70 m in the air) and as
+  a ride goes on.
+- **Shown:** the menu's Route line is On, Only when I ask or Off, remembered in
+  the browser (`oe-route-line`). When it isn't On, <kbd>L</kbd> or Show route in
+  the quest card brings the line up for eight seconds. Whichever, the minimap
+  keeps the route, as the quiet reference. The line eases out while a
+  conversation, the menu, a map, photo mode or a camera shot is up, and comes back
+  after. As in most open-world games' GPS lines (a setting to turn the world line
+  off, the minimap kept), learned from their design, not their look. The reef sites
+  have no line in the world (a compass and a marker), so the setting is the cities'.
+- **The crowd and the traffic** walk and drive the same data: the crowd now keeps
+  to the footways where a walker can stand (cut where they run into a building),
+  and the traffic doesn't turn into a road a car doesn't fit along.
+  - A walker keeps 0.6-1.8 m left of its line, and up to 1.5 m more to dodge.
+    Every third step it looks beside itself and 1.5 m ahead for a wall at that
+    offset (`clear`, nav's room for a body 0.3 m round), and takes the nearest
+    offset with room, in towards the line or past it; its offset moves there no
+    faster than a sidestep, so it closes in on a facade and never jumps. In the
+    game check 2 to 4 walkers in 2,000-3,000 are in a wall at a time.
+  - A car looks along its way ahead every half second (every frame on a road
+    route.js flags) for a wall at its lane: where there is room down the middle
+    of the street it keeps to the middle; where there isn't, it brakes as for a
+    car stopped there, and after a second and a half stopped it turns round, or
+    out of sight leaves the traffic for elsewhere. A car on a flagged road when
+    the flags arrive (a second or two after the start) leaves it at once if it is
+    out of sight. In Shibuya the share of car-time inside a wall fell from 2.5%
+    to 0.5% (`tools/traffic_check.js`, which now counts it).
+- **Helipads on roofs:** a pad the data puts on the ground inside a building's
+  footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
+  clear above for the rotor, else on the nearest open ground with clear sky
+  within 120 m (`game.js`; `pipeline/game_data.py` puts new data on the roof).
+
+We looked at what navigates a 3D world in a browser before building this:
+Recast/Detour (zlib licence) and its WebAssembly build recast-navigation-js
+(MIT), three-pathfinding (MIT), PathFinding.js (MIT) and ngraph.path (MIT), with
+GTA V's GPS, the ground guide lines of Marvel's Spider-Man and Watch Dogs, and the
+"highway in the sky" of flight displays for the look. A navmesh baked for tens of
+square kilometres of city would be slow to make in a browser and would duplicate
+the game's collision, which is already exact; so the network here is the mapped
+data, proved walkable by that collision, and no library code was taken. From the
+games: the line on the ground with chevrons that run the way to go (Spider-Man,
+Watch Dogs), the route that keeps to the roads in a car (GTA V), and for the
+helicopter a line ahead in the air rather than a pointer.
 
 ## The vehicles
 
@@ -711,8 +1381,11 @@ in the city's Cycles renders where the game puts them.
     brighten when braking, the indicators blink when pulling in, and a taxi's
     roof sign is lit while it is for hire. After dark the headlamps light the
     road. People sit in the seats with their feet on the floor, and the driver's
-    hands are on the wheel. The inside of the shell is a dark lining, and the
-    cabin is mirrored where traffic keeps right.
+    hands are on the wheel. The top of the head keeps 6 cm under the roof over
+    it, measured from the head as it sits: a tall person sinks up to 8 cm into
+    the cushion, and one still too tall for that car sits a little smaller, so
+    any of the crowd's characters can drive a ride. The inside of the shell is a
+    dark lining, and the cabin is mirrored where traffic keeps right.
   - **Water:** the helicopter's downwash throws a ring of spray off the water
     (dust over land). The ferries leave a Kelvin wake, the 19.5° V that every
     ship makes in deep water, as wide as the hull at the start, with churned
@@ -849,12 +1522,12 @@ game beside the surveyor, at the hour given (`… 390x844` for a phone).
 
 ## The trees
 
-| The six species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
+| The seven species (Cycles render) | Afternoon traffic under plane trees, a palm and a jacaranda |
 |---|---|
 | ![](images/trees/trees.jpg) | ![](images/sydney/game-traffic.jpg) |
 
-`blender/build_trees.py` grows six species: London plane, elm, eucalyptus,
-Moreton Bay fig, jacaranda and Canary Island date palm.
+`blender/build_trees.py` grows seven species: London plane, elm, eucalyptus,
+Moreton Bay fig, jacaranda, Canary Island date palm and Japanese maple (momiji).
 - **Growth:** points are scattered through the shell of the species' crown
   shape (an ellipsoid, a vase, clumps, a dome or an umbrella), clustered into
   limbs and twigs, and branches grow from the trunk out to each cluster. Each
@@ -867,10 +1540,15 @@ Moreton Bay fig, jacaranda and Canary Island date palm.
   instanced per species and distance. Each tree takes a species from the
   city's mix by a hash of its position, a size from its height and a turn of
   its own. The wind sways the crowns and flutters the leaves, the leaf cards
-  cut out their shadows, and jacarandas flower from mid October to November
-  in the south (May and June in the north).
+  cut out their shadows, jacarandas flower from mid October to November
+  in the south (May and June in the north), and maples turn red from mid
+  November to mid December in the north (late April to May in the south),
+  over a fortnight either side.
 - **Mix:** OpenStreetMap rarely says what species a tree is, so each city
-  sets a mix in `city.json` (`"trees": {"mix": {"plane": 0.3, ...}}`).
+  sets a mix in `city.json` (`"trees": {"mix": {"plane": 0.3, ...}}`), and
+  places with their own (a garden's maples) in `"areas": [{"at": [x, y],
+  "radius": m, "mix": {...}}]`. `pipeline/scene_config.py` refreshes it
+  without a rebuild.
 
 ## Per-city flavour
 
@@ -896,7 +1574,7 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
   `emissive` and `glow` so signs light up.
 - **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
   `game`, or a city's `game_extras` hook returns them with positions measured from its
-  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage) is the example.
+  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) is the example.
 
 ## Testing
 
@@ -915,8 +1593,7 @@ the whole survey this way. It checks:
      fires), and lands in the Domain.
    - **Sun:** with the time set to 21 June at 12:30, a sunlit spot in Martin
      Place completes the step.
-   - **Survey lens:** it finds a surveyed, a floor-count and an estimated
-     height.
+   - **St Mary's:** walking to the cathedral completes Tom's walk.
 4. All seven stamps are awarded.
 
 The camera shots were checked the same way:
@@ -997,15 +1674,62 @@ It found four faults, each now fixed:
   0.8 m;
 - an NPC stood in the lift's door, so <kbd>E</kbd> talked to her instead.
 
+`tools/route_check.js <city>` checks the routes. On foot it routes from the start
+to every NPC and between 30 pairs of random places on the footways, and measures
+the stretches of each where a walker can't stand (at most one sample, 0.5 m, at a
+time: a corner grazed, never a wall crossed). For each place it finds no route
+to, a search over the ground itself says whether a walker could get there at all;
+it fails on one the walker could reach. It flies from the helipad to every NPC
+and a few places, every 2 m clear of buildings, landmarks and decks, and flies
+the quest's pass under its span; it drives from your car to each, every point
+with room for the car. `tools/route_shot.js <city>` takes stills of the line on
+foot, by car and in the air, at any time of day.
+
 `tools/game_check.js <city>` is the smoke test for every city's game. It starts
-the game, walks for four seconds, talks to the first quest giver, flies the
+the game, walks for four seconds, talks to the first quest giver, checks the gold
+route on foot to the farthest NPC a walker can reach (and that it is drawn in the
+air in the helicopter and on the road in the car), flies the
 helicopter up and lets the ferries run for 40 s. Then it gets into your car at the
 driver's door, drives off, brakes to a stop and gets out. It hails a taxi from the
 kerb where the car was parked, gets in the back, picks the first place the driver
 offers, rides for 20 s, skips the trip and gets out, and orders a ride on the phone.
-Seated at the wheel and in the back, each head must be under the roof. There is a
-screenshot after each step, and it fails on any page error. `tools/check.sh` runs it
-for every city whenever the game changes.
+Last it watches the nearest junction with signals for 80 s: its lights must go
+through their phases, no car may cross its line on red, and the traffic must be
+moving; the crowd's footways must cross at the signals, with walk signals, and
+the nearest junction's walk must turn on and off within 75 s; a junction with a
+turn arrow must have its arrow lanterns. Seated at the wheel and in the back, each head must be under the roof.
+There is a screenshot after each step, and it fails on any page error.
+`tools/check.sh` runs it for every city whenever the game changes, at 10:00 in
+each city's time zone: `GAME_TIME=22:40` (or `YYYY-MM-DDTHH:MM`) pins the page's
+clock to another local hour (`tools/pin_clock.js`), and `GAME_TIME=live` leaves the
+real one, which a city starting at `"time": "live"` would otherwise play at.
+
+`tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
+[Junctions and traffic lights](#junctions-and-traffic-lights)), with the
+update's cost a frame, the lane changes and the walkers waiting at a kerb;
+`tools/traffic_why.js <city> [place] [seconds] [still]` lists the cars standing
+at the end of a run with what holds each (the car in front and what holds that
+one, the light, the movement it waits for, the lane), and the cars caught up in
+one another; `tools/traffic_profile.js <city> [seconds]` runs the browser's
+profiler over the traffic and lists its functions and busiest lines; and
+`tools/signal_shot.js <city> out [count|ids|arrows<n>] [HH:MM,...] [WxH]` takes
+a driver's view of the nearest junctions with signals (or with a turn arrow) at
+the times given, or with `VIEW=kerb` a walker's view of a crossing.
+
+`tools/clip_check.js <city>` counts what passes through what (furniture in the
+road, cars in posts, walls and each other, walkers in walls, ferries in each
+other, heads through roofs); `tools/check.sh` runs it with the game check.
+`tools/ride_check.js <city> [N] [signals]` hails a taxi and orders a ride N times each at
+kerbs round the start and says how long each took against what the phone said,
+and what held it up (at the line: a red, an amber, a stop sign or the junction's
+turn), and how many times it re-routed round a jam; `signals` keeps only the rides
+past traffic lights near you. It seeds `Math.random` and takes `GAME_TIME`, so a
+run is the same each time, and fails when more than one ride in ten is late or
+more than 8 s off what the phone said. `tools/wall_stops.js <city> [seconds]
+[places]` lists where the traffic stops at a wall across its way, and what the
+wall is (a building, a canopy's post, a landmark). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+time and fails if two hulls overlap or a vessel never calls, which is what a
+deadlock or a meeting at a shared berth takes to show.
 
 ## Limitations
 
@@ -1029,11 +1753,24 @@ for every city whenever the game changes.
   - Your car is three circles down its length against the walls, so its corners
     can touch a wall before the circles do.
   - Cars push you aside instead of knocking you down, and stop dead for people.
-  - The traffic keeps to its lane. It swings out round a car pulled in at the
-    kerb but never overtakes, so a car stopped in the lane holds up the queue
-    behind it.
-  - One-way streets and turn restrictions are not in the routes, and nothing
-    stops at junctions or lights.
+  - Lanes come from the road's class: two each way on a main road, one
+    elsewhere, so a wide residential street still carries one file and a
+    six-lane motorway two. OSM's counts are in `game.json` (`"nl"`) but unused
+    until the merging copes with a count that changes along a road (see
+    [Junctions and traffic lights](#junctions-and-traffic-lights)). There are no turn pockets.
+  - The arrow phase follows the main road's on every big junction alike; the
+    real plans (SCATS's, Tokyo's) are not open data. None of the game's cities
+    publishes its signal timings (a request to NSW for Sydney's was refused,
+    as Vienna's was); the crowd-sourced Better Intersections map, built on
+    OpenStreetMap, is the one lead, its coverage and licence still to check. Banned turns that apply
+    only at some hours, or to some vehicles, are left out.
+  - Walkers cross where their footways cross a road; they wait for a walk
+    signal at junctions with signals and at crossings with signals between
+    junctions. The crowd doesn't seek out a crossing, and the rides' and your
+    own car's driver (`cars.js`) don't yet stop for a crossing between
+    junctions.
+  - A few awkward corners (a turning circle, two lines meeting at a very sharp
+    angle) can still hold two cars until they squeeze past each other.
   - Only roads at about your height count as the kerb, so a taxi won't stop on
     a flyover above you. A destination is reached at its nearest street, so a
     landmark across a plaza is a short walk from where you get out.
@@ -1078,6 +1815,25 @@ for every city whenever the game changes.
   near the frame look hazy from a distance.
 
 ## Sources
+
+- Junctions: [SUMO, Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html)
+  (movements as lanes across the junction, their foes, and *keep clear*: no
+  car into a junction it can't leave). Ideas only; no SUMO code (EPL-2.0) is used.
+- Signals: [SCATS](https://en.wikipedia.org/wiki/Sydney_Coordinated_Adaptive_Traffic_System),
+  [Transport Victoria on SCATS](https://transport.vic.gov.au/road-and-active-transport/business/road-and-traffic-management/traffic-lights/signal-coordination-and-automation/scats)
+  (phases extended, ended early or skipped by demand).
+- Lane counts and arrows: OpenStreetMap's [`lanes`](https://wiki.openstreetmap.org/wiki/Key:lanes) and
+  [`turn:lanes`](https://wiki.openstreetmap.org/wiki/Key:turn) read by way id from the
+  [OSM API](https://wiki.openstreetmap.org/wiki/API_v0.6) (`ways.json`, `nodes.json`; within its
+  [usage policy](https://operations.osmfoundation.org/policies/api/): a few dozen requests a city,
+  a User-Agent naming the project, cached in `data/raw/<id>/osm_ways.json`). The ways are named by
+  Overture's segment `sources[].record_id`. Data © OpenStreetMap contributors (ODbL).
+- Crossings: OSM's [`highway=crossing`](https://wiki.openstreetmap.org/wiki/Tag:highway%3Dcrossing)
+  and [`crossing=*`](https://wiki.openstreetmap.org/wiki/Key:crossing) tags, as Overture's
+  infrastructure `source_tags`. Data © OpenStreetMap contributors (ODbL), via Overture.
+- One-way streets: [Overture roads guide](https://docs.overturemaps.org/guides/transportation/roads/)
+  and [access rules](https://docs.overturemaps.org/schema/reference/transportation/types/access_rules)
+  (a heading-scoped denial is a one-way street). Data © OpenStreetMap contributors (ODbL), via Overture.
 
 - Persona 5's Tokyo and the real places: [Kotaku](https://kotaku.com/persona-5s-in-game-locations-compared-to-the-real-world-1787125885),
   [TheGamer](https://www.thegamer.com/persona-5-locations-visit-real-world-counterparts/),

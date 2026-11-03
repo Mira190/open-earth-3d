@@ -46,6 +46,14 @@
     "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
   },
   "water": {
+    "seawall": {
+      "stone": "#55524d",
+      "coping": "#6e6a63",
+      "course_m": 0.42,
+      "block_m": 0.95,
+      "high_water_m": 0.5,
+      "note": "The Yarra's wharves and river walls: Victorian bluestone (basalt) under a bluestone coping."
+    },
     "classes": [
       "river",
       "bay",
@@ -94,6 +102,13 @@
     "Shrine of Remembrance": "Shrine of Remembrance",
     "Southern Cross": "Southern Cross Station",
     "Crown Melbourne": "Crown"
+  },
+  "arrivals": {
+    "Flinders Street Station": {"front": 25, "dist": 75}, "Crown": {"front": 320, "arc": 25, "dist": 260},
+    "Parliament House": {"front": 250},
+    "State Library Victoria": {"front": 250},
+    "Town Hall": {"front": 250},
+    "Royal Exhibition Building": {"front": 180}
   },
   "minor_labels": [
     "Town Hall",
@@ -520,7 +535,7 @@
   },
   "game": {
     "title": "Melbourne on Foot",
-    "blurb": "Walk central Melbourne rebuilt from open data and lit by the real sun. Talk to the people who know it, take the river shuttle down the Yarra, and fly past the Arts Centre spire. Every fact they tell you comes from the model.",
+    "blurb": "Walk central Melbourne under the real sun. Talk to the people who know it, take the river shuttle down the Yarra, and fly past the Arts Centre spire.",
     "local_name": "Melburnian",
     "water_name": "the Yarra",
     "climate": {
@@ -593,6 +608,7 @@
       "note": "An invented river shuttle, smaller than a harbour ferry."
     },
     "helipads": [
+      {"id": "birrarung-pad", "name": "Birrarung Marr pad (game)", "at": [760, -80, 3.8], "heading": 250},
       {
         "id": "city-helipad",
         "name": "Melbourne City Helipad",
@@ -612,7 +628,7 @@
       {
         "id": "mia",
         "name": "Mia",
-        "role": "Survey lead",
+        "role": "Federation Square guide",
         "at": [
           556,
           -10
@@ -628,7 +644,7 @@
           "clip": "Documents"
         },
         "idle": [
-          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. You can test a tower against that rule in the 3D model.",
+          "Federation Square is protected from new shadow from 11 to 3, every day from 22 April to 22 September. Melbourne fought for its winter sun.",
           "Route 96 runs from the city to St Kilda. After dark the little penguins come ashore on the breakwater there: open St Kilda and Brighton from the menu (Esc)."
         ]
       },
@@ -671,7 +687,7 @@
           "pants": "#2b3440"
         },
         "idle": [
-          "The Yarra here is flattened to 0 m in the terrain data. Tides and all, that's close enough."
+          "The Yarra's tidal right up to Dights Falls. It's brown from the clay, not from dirt, whatever Sydney tells you."
         ]
       },
       {
@@ -697,7 +713,7 @@
       {
         "id": "jun",
         "name": "Jun",
-        "role": "Height detective",
+        "role": "City gardener",
         "at": [
           960,
           -150
@@ -713,7 +729,7 @@
           "clip": "Phone"
         },
         "idle": [
-          "Rialto Towers is mapped at 20 m in OpenStreetMap. The real thing is 251 m. Open data needs checking."
+          "Birrarung, the Wurundjeri called this river: the river of mists. The Marr is the bank you're standing on."
         ]
       },
       {
@@ -735,7 +751,7 @@
           "clip": "Photo"
         },
         "idle": [
-          "Free trams run all through the CBD. Not in this game yet, sadly. Walk or take the river shuttle."
+          "The City Circle, route 35, runs the old W-class trams round the edge of the CBD. Free, and you'll hear the bell before you see it."
         ]
       }
     ],
@@ -760,7 +776,7 @@
       },
       {
         "id": "heights",
-        "title": "The heights",
+        "title": "The gardens",
         "after": [
           "start"
         ]
@@ -773,7 +789,7 @@
           "river",
           "heights"
         ],
-        "on_open": "<b>All three surveys done.</b> Report back to Mia at Federation Square."
+        "on_open": "<b>All three walks done.</b> Report back to Mia at Federation Square."
       }
     ],
     "quests": [
@@ -784,28 +800,14 @@
         "title": "Welcome to Fed Square",
         "stamp": "Federation Square",
         "talk": [
-          "You're the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings on Geoscience Australia's LiDAR terrain, under the real sun.",
-          "There's no open aerial photo of Melbourne, so the ground you're standing on is drawn from the map data: streets, laneways, parks and tram tracks.",
-          "There are three surveys to do, in any order. The square: Hannah, in City Square up Swanston Street, on the planning rule for sun. The river: Arjun runs the shuttle from Federation Wharf, and Sophie flies from across the water. The heights: Jun, in Birrarung Marr.",
-          "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, and T to switch between surveys.",
-          "Which first?"
+          "G'day, welcome to Fed Square! I'm Mia. It's {season} in Melbourne, which means four seasons by teatime, so keep a jacket handy.",
+          "Three walks, any order. The square: Hannah, in City Square up Swanston Street, knows the rules for the sun. The river: Arjun runs the shuttle from Federation Wharf, and Sophie flies from across the water. The gardens: Jun, in Birrarung Marr.",
+          "The shuttle leaves from the wharf below the square, the helicopter waits in Birrarung Marr just east along the river, and a hand up at the kerb (Y) stops a taxi. WASD to walk, E to talk, T to switch walks. Which first?"
         ],
         "choices": [
-          {
-            "text": "The square: Hannah, in City Square",
-            "action": "track",
-            "line": "square"
-          },
-          {
-            "text": "The river: Arjun, at Federation Wharf",
-            "action": "track",
-            "line": "river"
-          },
-          {
-            "text": "The heights: Jun, in Birrarung Marr",
-            "action": "track",
-            "line": "heights"
-          }
+          {"text": "The square: Hannah, in City Square", "action": "track", "line": "square"},
+          {"text": "The river: Arjun, at Federation Wharf", "action": "track", "line": "river"},
+          {"text": "The gardens: Jun, in Birrarung Marr", "action": "track", "line": "heights"}
         ],
         "steps": []
       },
@@ -818,7 +820,7 @@
         "talk": [
           "Melbourne's planning scheme lists the spaces no new building may shade. Federation Square is protected from 11 am to 3 pm, every day from 22 April to 22 September.",
           "On 22 June at 12:30, {sun:Federation Square|6-22|12:30}% of the square gets direct sun. The sun is only 29° up at noon in midwinter.",
-          "Go back down to Federation Square and find a sunny spot at lunchtime on 22 June. The sun meter under the map ray-casts from where you stand."
+          "Go back down to Federation Square and find a sunny spot at lunchtime on 22 June. The sun meter under the map tells you when you're in it."
         ],
         "choices": [
           {
@@ -881,7 +883,7 @@
         "title": "Over the spire",
         "stamp": "Arts Centre spire",
         "talk": [
-          "Ready? The Arts Centre spire is 162 m of steel lattice. In OpenStreetMap it's a thin block; here it's built from its published height.",
+          "Ready? The Arts Centre spire is 162 m of steel lattice, drawn after a ballerina's tutu. At night it glows.",
           "Fly upriver past the spire and set down in Birrarung Marr.",
           "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."
         ],
@@ -897,33 +899,26 @@
         "id": "lens",
         "line": "heights",
         "giver": "jun",
-        "title": "Where heights come from",
-        "stamp": "Birrarung Marr",
+        "title": "A city of gardens",
+        "stamp": "Fitzroy Gardens",
         "talk": [
-          "Every building here carries the source of its height. {share:mapped}% of the footprint area has a surveyed height and {share:floors}% a floor count; the rest is estimated.",
-          "Aim at a building and press Q to use the survey lens. Find one with a surveyed height, one from a floor count and one that's estimated."
+          "Melbourne's a city of gardens, and the best is a short walk up the hill: Fitzroy Gardens, with its elms.",
+          "There's a cottage in there that Captain Cook's parents built in Yorkshire. It was shipped out in 1934, brick by numbered brick, and put back together under the trees.",
+          "Go and find it. Then tell Mia you've seen the gardens."
         ],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": [
-              "mapped",
-              "floors",
-              "estimate"
-            ],
-            "text": "Survey lens (Q): a surveyed, a floor-count and an estimated height"
-          }
+          {"type": "visit", "place": "Fitzroy Gardens", "text": "Walk up to Fitzroy Gardens"}
         ]
       },
       {
         "id": "done",
         "line": "finale",
         "giver": "mia",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
+        "title": "Back at the square",
+        "stamp": "Melburnian",
         "talk": [
-          "That's the full tour: the square, the river, the air and the data underneath it all.",
-          "{acc:matched} towers have been checked against their published heights, with a median error of {acc:median_abs_error_pct}%. Now you know where the other numbers come from.",
+          "That's the lot: the square, the river, the air and the gardens.",
+          "You've earned a coffee. Degraves Street, across Flinders Street, does a good one.",
           "The city is yours. Change the time of day, take the shuttle, or fly anywhere."
         ],
         "steps": []

@@ -8,7 +8,9 @@ Building adjustments (called by pipeline/build_scene.py):
   * The small keep platform (小天守台) and the Kinmeisui well house (金明水井戸屋形) on it:
     PLATEAU's 2017 survey drew one outline round them and the keep, so both took the keep's
     54.6 m and stood as a white tower beside it. They are drawn as a 6.0 m stone platform and a
-    4.7 m well house, the heights PLATEAU's 2025 model gives them.
+    4.7 m well house, the heights PLATEAU's 2025 model gives them. A flight of stone steps climbs
+    its east face beside the ticket office, and the game walks it and the paved top as strips
+    (game_surfaces), past the well house to the keep's stone base.
   * Tsutenkaku: the OSM footprint is a 108 m box. The footprint stays as a 12 m base and the
     steel tower is parametric above it.
   * HEP FIVE: PLATEAU's 107 m is the top of the Ferris wheel, not the building. The building
@@ -30,18 +32,25 @@ Parametric landmarks (pipeline/landmarks.py), with anchors measured from the dat
                       with its round gallery 8.5 m across, the third-floor deck at 22 m over the
                       legs (Osaka City planning leaflet; MLIT's multilingual guide; gltjp). The
                       legs, lattice, ceiling painting, sign boards and jutting deck are schematic.
-  Glico sign          the Dotonbori running man: a panel about 21 m wide with a simplified
-                      runner, at the position published for it. Size and figure are indicative.
+  Glico sign          the Dotonbori running man, the sixth sign (2014): an LED board 20 m high
+                      and 10.38 m wide (Ezaki Glico) on the canal face of 道頓堀1-10-2 at the
+                      south-west foot of Ebisubashi, its top at the roof. The board plays skies
+                      behind the runner; the figure is simplified and indicative.
+  Dotonbori screens   TSUTAYA EBISUBASHI HIT VISION across the bridge, Tombori Station, and Namba
+                      Ebisubashi Multi Vision at Sennichimae-dori (DOTONBORI below).
   Kani Doraku crab    the moving crab on the Dotonbori front, about 8 m across.
   HEP FIVE wheel      75 m diameter, top at 106 m above the street, lowest point at the seventh
                       floor (about 31 m).
 """
 import math
+import os
 
 import numpy as np
 import shapely
 from shapely.geometry import Point, Polygon
 
+import adkit as ad
+import screens
 from meshkit import Mesh
 
 TSUTENKAKU = "通天閣"
@@ -51,7 +60,7 @@ KOTENSHU_H, WELL_H = 6.0, 4.7     # the small keep platform and the well house o
                                   # well house, 27100-bldg-951272, 4.7 m on ground 6.0 m above the keep's)
 HEP5 = "HEP FIVE"
 KANI = "かに道楽"
-GLICO_LONLAT = (135.50134, 34.66885)   # Glico sign, Dotonbori (Wikipedia coordinates)
+GLICO_LONLAT = (135.50114, 34.66892)   # Glico sign: on the back of 道頓堀1-10-2, at the south-west foot of Ebisubashi
 CASTLE_STONE_H, CASTLE_TOWER_H, CASTLE_TOP_H = 13.3, 39.4, 54.8
 BRICK_HALL, CITY_HALL = "大阪市中央公会堂", "大阪市役所"
 HEP5_BUILDING_H = 47.0
@@ -59,13 +68,16 @@ HEP5_BUILDING_H = 47.0
 MATERIALS = {
     # the castle: dressed granite in courses, copper formed as round tiles (verdigris), white
     # plaster, gold leaf, black lacquer; the well house's grey tiles and timber
-    "granite": {"color": "#8d8a81", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.75, "block_m": 1.5},
-    "plaster": {"color": "#ebe8df", "roughness": 0.8, "metalness": 0.0, "emissive": "#fff3e2", "glow": 0.42},
+    # (after dark the keep is floodlit in warm white from below, its stone base in a warmer light:
+    # emissive and glow are what the floodlights give each surface; "flood" is set per keep below)
+    "granite": {"color": "#8d8a81", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.75, "block_m": 1.5,
+                "emissive": "#ffd8ad", "glow": 0.24},
+    "plaster": {"color": "#ebe8df", "roughness": 0.8, "metalness": 0.0, "emissive": "#fff1dd", "glow": 0.8},
     "copper_roof": {"color": "#4f8b78", "roughness": 0.55, "metalness": 0.3, "pattern": "roof_tiles", "bay_m": 0.33, "course_m": 0.32,
-                    "emissive": "#5f9e8a", "glow": 0.32},
-    "ridge_copper": {"color": "#3c6b5c", "roughness": 0.55, "metalness": 0.3, "emissive": "#4d8574", "glow": 0.32},
-    "gold": {"color": "#d6a931", "roughness": 0.32, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.55},
-    "black_wall": {"color": "#24201e", "roughness": 0.6, "metalness": 0.1, "emissive": "#2b2420", "glow": 0.3},
+                    "emissive": "#6cae98", "glow": 0.6},
+    "ridge_copper": {"color": "#3c6b5c", "roughness": 0.55, "metalness": 0.3, "emissive": "#5a9a85", "glow": 0.55},
+    "gold": {"color": "#d6a931", "roughness": 0.32, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.75},
+    "black_wall": {"color": "#24201e", "roughness": 0.6, "metalness": 0.1, "emissive": "#3a3029", "glow": 0.35},
     "window": {"color": "#2d2f30", "roughness": 0.45, "metalness": 0.2},
     "window_bar": {"color": "#8e938f", "roughness": 0.6, "metalness": 0.2},
     "paving": {"color": "#c6bda9", "roughness": 0.92, "metalness": 0.0},
@@ -79,10 +91,9 @@ MATERIALS = {
     "ceiling_paint": {"color": "#b5543a", "roughness": 0.7, "metalness": 0.0, "emissive": "#ff9a50", "glow": 0.7},
     "sign_board": {"color": "#e9edf2", "roughness": 0.5, "metalness": 0.0, "emissive": "#9fc4ff", "glow": 1.1},
     "neon": {"color": "#ff7a2a", "roughness": 0.4, "metalness": 0.0, "emissive": "#ff6a1a", "glow": 1.6},
-    "glico_blue": {"color": "#1d62c9", "roughness": 0.5, "metalness": 0.0, "emissive": "#2a6cff", "glow": 1.3},
-    "glico_white": {"color": "#f4f1ea", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffffff", "glow": 1.4},
-    "glico_red": {"color": "#e5242b", "roughness": 0.5, "metalness": 0.0, "emissive": "#ff2a30", "glow": 1.3},
-    "glico_gold": {"color": "#f3b320", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffb020", "glow": 1.3},
+    "glico_white": {"color": "#f4f1ea", "roughness": 0.5, "metalness": 0.0, "emissive": "#fff6ea", "glow": 0.5},
+    "glico_red": {"color": "#e5242b", "roughness": 0.5, "metalness": 0.0, "emissive": "#ff2a30", "glow": 0.6},
+    "glico_gold": {"color": "#f3b320", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffb020", "glow": 0.6},
     "crab": {"color": "#e04a2b", "roughness": 0.45, "metalness": 0.1, "emissive": "#ff4a20", "glow": 0.9},
     "wheel_red": {"color": "#d8302f", "roughness": 0.45, "metalness": 0.3},
     # shop signs: painted by day, lit after dark (the viewer lights "floodlit" meshes by night)
@@ -257,9 +268,9 @@ def adjust_building(b, cls, g, geoms, ctx):
             if 7 <= top <= 80:
                 ctx.signs.append((g, top))
     # the building nearest the Glico sign that is big enough to carry a sign
-    if g.area > 150 and geoms:
+    if g.area > 40 and geoms:
         d = g.distance(Point(*ctx.city.fwd.transform(*GLICO_LONLAT)))
-        if d < 25 and d < lm.get("_glico", {}).get("d", 1e9):
+        if d < 12 and d < lm.get("_glico", {}).get("d", 1e9):
             mid, n, L = facing_edge(g, (0.0, 1.0))
             lm["_glico"] = {"d": d, "at": [float(mid[0]), float(mid[1])], "normal": [float(n[0]), float(n[1])], "len": L,
                             "roof_m": round(max(s[2] for s in geoms), 1), "ground_m": round(ctx.ground(*mid), 1)}
@@ -334,28 +345,46 @@ def finalize(ctx):
 
 def landmark_meshes(scene):
     lm = scene["landmarks"]
-    meshes = []
+    meshes, mats = [], {k: dict(v) for k, v in MATERIALS.items()}
     if "castle" in lm:
         meshes += osaka_castle(lm["castle"])
+        # the floodlights (web/world.js "flood"): at the foot of the stone base, washing it up to
+        # its top, and on the base and the roofs below each tier, lighting the walls, the eaves'
+        # undersides and, at a graze, the copper roofs, a little less towards the shachi
+        z0 = lm["castle"]["ground_m"]
+        mats["granite"]["flood"] = [z0, round(z0 + CASTLE_STONE_H, 1), 0.5, 0.45]
+        for k in ("plaster", "copper_roof", "ridge_copper", "gold", "black_wall"):
+            mats[k]["flood"] = [round(z0 + CASTLE_STONE_H, 1), round(z0 + CASTLE_TOP_H, 1), 0.6, 0.7]
     if "kotenshu" in lm or "well_house" in lm:
         M = {k: Mesh("kotenshu_" + k, m, False, uv=m in ("granite", "kawara")) for k, m in
              (("stone", "granite"), ("paving", "paving"), ("wall", "plaster"), ("timber", "timber"), ("kawara", "kawara"), ("kawara_ridge", "kawara_ridge"))}
         if "kotenshu" in lm:
-            kotenshu(M, lm["kotenshu"])
+            kotenshu(M, lm["kotenshu"], lm.get("castle", {}).get("centroid"))
         if "well_house" in lm:
             well_house(M, lm["well_house"])
         meshes += [m for m in M.values() if m.v]
+    if "kotenshu" in lm:
+        meshes += kotenshu_steps(lm["kotenshu"])
     if "tsutenkaku" in lm:
         meshes += tsutenkaku(lm["tsutenkaku"])
     if "hep_five" in lm:
         meshes += hep_wheel(lm["hep_five"])
-    if "glico" in lm:
-        meshes += glico_sign(lm["glico"])
+    meshes += dotonbori_meshes()
     if "kani" in lm:
         meshes += kani_crab(lm["kani"])
     if "signs" in lm:
         meshes += shop_signs(lm["signs"]["sites"])
-    return MATERIALS, meshes
+    return mats | {"screens": DOTONBORI.material(EBISUBASHI)}, meshes
+
+
+def landmark_assets(out_dir, scene):
+    DOTONBORI.sheet().save(os.path.join(out_dir, "screens.jpg"), quality=86)
+    return ["screens.jpg"]
+
+
+def landmark_glows(scene):
+    """The light Dotonbori's screens throw on the canal and its banks (web/night.js)."""
+    return DOTONBORI.glows(EBISUBASHI)
 
 
 # ---------------------------------------------------------------- Osaka Castle keep
@@ -590,8 +619,13 @@ def stone_base(mesh, P, z0, foot, top, h, below=8.0):
         j = (k + 1) % 4
         tdir = np.array(CORNERS[j]) - np.array(CORNERS[k])
         tdir = tdir / np.linalg.norm(tdir)
-        rows = [[P(hu * CORNERS[i][0], hv * CORNERS[i][1], z) for i in (k, j)] for (hu, hv), z in rings]
-        uvs = [[[float(np.dot((hu * CORNERS[i][0], hv * CORNERS[i][1]), tdir)), z - z0] for i in (k, j)] for (hu, hv), z in rings]
+        # in columns about two metres wide, so that the game meets the stone where it stands (its landmark
+        # collision samples each triangle's floor at its corners)
+        L = float(np.linalg.norm(np.array(foot) * (np.array(CORNERS[j]) - np.array(CORNERS[k]))))
+        fs = np.linspace(0.0, 1.0, max(2, int(math.ceil(L / 2.0)) + 1))
+        pt = lambda hu, hv, f: (hu * (CORNERS[k][0] + (CORNERS[j][0] - CORNERS[k][0]) * f), hv * (CORNERS[k][1] + (CORNERS[j][1] - CORNERS[k][1]) * f))
+        rows = [[P(*pt(hu, hv, f), z) for f in fs] for (hu, hv), z in rings]
+        uvs = [[[float(np.dot(pt(hu, hv, f), tdir)), z - z0] for f in fs] for (hu, hv), z in rings]
         mesh.grid(rows, uvs)
 
 
@@ -638,8 +672,8 @@ def osaka_castle(c):
     lv = lambda h: z0 + keep_level(h)
     mats = {"stone": "granite", "wall": "plaster", "soffit": "plaster", "roof": "copper_roof", "ridge": "ridge_copper", "gold": "gold",
             "black": "black_wall", "window": "window", "bars": "window_bar", "deck": "black_wall"}
-    # the keep is floodlit after dark: everything but the stone base and the windows
-    M = {k: Mesh("castle_" + k, m, False, floodlit=k not in ("stone", "window", "bars"), uv=m in ("granite", "copper_roof")) for k, m in mats.items()}
+    # the keep is floodlit after dark, its stone base too: everything but the windows
+    M = {k: Mesh("castle_" + k, m, False, floodlit=k not in ("window", "bars"), uv=m in ("granite", "copper_roof")) for k, m in mats.items()}
     stone_base(M["stone"], P, z0, KEEP_STONE[0], KEEP_STONE[1], CASTLE_STONE_H)
     gables = [(("n", "s") if f == "ns" else ("e", "w"), d0, cc, hw, lv(zb), lv(za), dp) for f, d0, cc, hw, zb, za, dp in KEEP_GABLES]
     for k, (wall, eave, rise, soffit, top) in enumerate(KEEP_TIERS):
@@ -671,25 +705,42 @@ def osaka_castle(c):
     return list(M.values())
 
 
-def kotenshu(M, p):
+def kotenshu_top(p, keep=None):
+    """The small keep platform's top: its mapped outline with each face moved 0.9 m in (the batter), but
+    for the face it shares with the keep's stone base (keep: the keep's centre), which has none, as an
+    array of points."""
+    ring = np.array(p["ring"], float)
+    n = len(ring)
+    nrm = [np.array((ring[(i + 1) % n][1] - ring[i][1], ring[i][0] - ring[(i + 1) % n][0])) for i in range(n)]
+    nrm = [v / np.linalg.norm(v) for v in nrm]           # outward, for an anticlockwise ring
+    mid = [(ring[i] + ring[(i + 1) % n]) / 2 for i in range(n)]
+    d = [0.0 if keep is not None and np.dot(np.asarray(keep) - mid[i], nrm[i]) > 0 and np.linalg.norm(np.asarray(keep) - mid[i]) < 30 else 0.9
+         for i in range(n)]
+    top = []
+    for i in range(n):   # the corner where the two faces, each moved in by its own batter, meet
+        A = np.array([nrm[i - 1], nrm[i]])
+        top.append(ring[i] - np.linalg.solve(A, np.array([d[i - 1], d[i]])) if abs(np.linalg.det(A)) > 0.05 else ring[i] - nrm[i] * d[i])
+    return np.array(top)
+
+
+def kotenshu(M, p, keep=None):
     """The small keep platform (小天守台) on its mapped outline: dressed stone in a batter, paved on top."""
     ring = np.array(p["ring"], float)
     z0, h, n = p["ground_m"], p["height_m"], len(ring)
-    # the top, 0.9 m in from the foot: each corner moved in along the bisector of its two edges
-    nrm = [np.array((ring[(i + 1) % n][1] - ring[i][1], ring[i][0] - ring[(i + 1) % n][0])) for i in range(n)]
-    nrm = [v / np.linalg.norm(v) for v in nrm]           # outward, for an anticlockwise ring
-    top = []
-    for i in range(n):
-        m = nrm[i - 1] + nrm[i]
-        m = m / (np.linalg.norm(m) or 1)
-        top.append(ring[i] - m * 0.9 / max(0.3, float(np.dot(m, nrm[i]))))
+    top = kotenshu_top(p, keep)
+    # each face in panels about a metre square, so that the game meets the stone where it stands (its
+    # landmark collision samples each triangle's floor at its corners)
     s = 0.0
     for i in range(n):
         j = (i + 1) % n
         L = float(np.linalg.norm(ring[j] - ring[i]))
-        M["stone"].grid([[np.array((*ring[i], z0 - 4.0)), np.array((*ring[j], z0 - 4.0))], [np.array((*ring[i], z0)), np.array((*ring[j], z0))],
-                         [np.array((*top[i], z0 + h)), np.array((*top[j], z0 + h))]],
-                        [[[s, -4.0], [s + L, -4.0]], [[s, 0.0], [s + L, 0.0]], [[s, h], [s + L, h]]])
+        cols = [k / max(1, int(math.ceil(L))) for k in range(max(1, int(math.ceil(L))) + 1)]
+        ts = [k / 6 for k in range(7)]
+        foot = lambda f: ring[i] + (ring[j] - ring[i]) * f
+        crest = lambda f: top[i] + (top[j] - top[i]) * f
+        rows = [[np.array((*foot(f), z0 - 4.0)) for f in cols]] + [[np.array((*(foot(f) + (crest(f) - foot(f)) * t), z0 + h * t)) for f in cols] for t in ts]
+        uvs = [[[s + L * f, -4.0] for f in cols]] + [[[s + L * f, h * t] for f in cols] for t in ts]
+        M["stone"].grid(rows, uvs)
         s += L
     for t in triangles(Polygon(top)):
         M["paving"].tri(*[np.array((x, y, z0 + h)) for x, y in t.exterior.coords[:3]])
@@ -869,32 +920,312 @@ def runner():
     return body.simplify(0.004), shorts
 
 
-def glico_sign(g):
-    """The Glico sign: a lit board standing on the roof, its face to the canal, with the runner
-    arms up on a track (an indicative figure, at the published position)."""
-    n = np.array(g["normal"], float)
+def glico_sign(sc):
+    """The Glico sign over the screen that is its board (DOTONBORI): a lit white border, the runner
+    arms up on a gold track, standing out from the board (a simplified, indicative figure)."""
+    n = np.asarray(sc["normal"], float)
     t = np.array([n[1], -n[0]])
-    Q = lambda u, v, z: np.array([g["at"][0] + t[0] * u + n[0] * v, g["at"][1] + t[1] * u + n[1] * v, z])
-    z0 = g["ground_m"] + g["roof_m"]
-    W, H = min(21.0, max(g["len"] - 1.0, 8.0)), 24.0
-    blue, white, red, gold = (Mesh("glico_panel", "glico_blue", False, floodlit=True), Mesh("glico_white", "glico_white", False, floodlit=True),
-                              Mesh("glico_red", "glico_red", False, floodlit=True), Mesh("glico_gold", "glico_gold", False, floodlit=True))
-    frame_ = Mesh("glico_frame", "steel", False)
-    loft(blue, Q, W, 0.8, z0 + 1.0, W, 0.8, z0 + H, True)
-    for u in (-W / 2 + 1.0, 0.0, W / 2 - 1.0):                             # legs and a catwalk on the roof
-        frame_.box(Q(u, -0.6, z0), Q(u, -0.6, z0 + 1.0), 0.5, 0.5)
-    ring_ = [Q(-W / 2, 0.42, z0 + 1.0), Q(W / 2, 0.42, z0 + 1.0), Q(W / 2, 0.42, z0 + H), Q(-W / 2, 0.42, z0 + H)]
+    c = sc["at"] + n * sc["off"]
+    Q = lambda u, v, z: np.array([c[0] + t[0] * u + n[0] * v, c[1] + t[1] * u + n[1] * v, z])
+    z0, W, H = sc["z0"], sc["w"], sc["h"]
+    white, red, gold = (Mesh("glico_white", "glico_white", False, floodlit=True), Mesh("glico_red", "glico_red", False, floodlit=True),
+                        Mesh("glico_gold", "glico_gold", False, floodlit=True))
+    ring_ = [Q(-W / 2, 0.2, z0), Q(W / 2, 0.2, z0), Q(W / 2, 0.2, z0 + H), Q(-W / 2, 0.2, z0 + H)]
     for a, b in zip(ring_, ring_[1:] + ring_[:1]):
-        white.box(a, b, 0.12, 0.35)                                        # the lit border
-    for zz in (1.9, 2.7):                                                  # the track and its lanes
-        gold.box(Q(-W / 2 + 0.6, 0.43, z0 + zz), Q(W / 2 - 0.6, 0.43, z0 + zz), 0.06, 0.22)
+        white.box(a, b, 0.12, 0.3)                                         # the lit border
+    for zz in (1.4, 2.0):                                                  # the track and its lanes
+        gold.box(Q(-W / 2 + 0.4, 0.22, z0 + zz), Q(W / 2 - 0.4, 0.22, z0 + zz), 0.06, 0.18)
     body, shorts = runner()
-    s = H * 0.82
-    fig = lambda x, d, z: Q(x * s, 0.4 + d, z0 + 2.8 + z * s)
+    s = H * 0.72
+    fig = lambda x, d, z: Q(x * s * 0.95, 0.3 + d, z0 + 2.1 + z * s)
     for part, mesh in ((body, white), (shorts, red)):
         for poly in [part] if part.geom_type == "Polygon" else part.geoms:
             plate(mesh, fig, list(poly.exterior.coords)[:-1], 0.0, 0.1)
-    return [blue, white, red, gold, frame_]
+    return [white, red, gold]
+
+
+# ---------------------------------------------------------------- Dotonbori's screens
+#
+# At Ebisubashi the canal is lit by its screens. On the south bank west of the bridge, the Glico
+# sign, whose board has been LED since 2014 (20 x 10.38 m, about 140,000 LEDs; Ezaki Glico, Kyodo)
+# and plays skies behind the runner; across the bridge on the TSUTAYA EBISUBASHI building
+# (道頓堀1-8-19), TSUTAYA EBISUBASHI HIT VISION, from March 2016: 15.4 x 17.3 m on the wall facing
+# the canal and 18.6 x 10.2 m on the roof over it, 455 m2, the two playing together or apart (HIT;
+# Namba Keizai Shimbun). The TSUTAYA closes on 11 January 2027. Two smaller screens: Tombori
+# Station, 5.00 x 2.80 m, 11:00-22:00, on the north wall of the Bel Sud building (道頓堀1-9) at
+# the south side of Dotonbori's street, facing the bridge down the line of Ebisubashi-suji, its foot
+# at the second floor over the FamilyMart, east of the middle of the wall (B&D's media sheet and its
+# photographs); and Namba Ebisubashi Multi Vision on the Namba Ichiban building (難波3-5-1, the
+# south-west corner of Ebisubashi-suji and Sennichimae-dori; Big Echo is in it), two screens over
+# the ground-floor shop either side of the corner, at eye level from the crossing: 4.096 x 3.072 m
+# outdoors on the north wall facing Sennichimae-dori, and 2.95 x 2.10 m indoors behind the
+# first-floor windows on the east wall over the arcade, 8:00-24:00 (KESION's media sheet,
+# oogatavision-navi, ADREX). Their heights over the street and their places along the walls are
+# measured from the photographs. None of the three buildings is named in the open data:
+# OpenStreetMap ids stand for them. The pictures are drawn for this model (adkit): invented brands
+# and Osaka's own skies, not Glico's or the advertisers'.
+
+EBISUBASHI = (-1071.0, -1100.0)     # the bridge, which the screens face
+GLICO_EDGE = [[-1090.6, -1117.5], [-1080.2, -1117.5]]    # the canal faces of 道頓堀1-10-2 and the sign's frame (w174744227, w903050161)
+MULTI_NORTH = [[-1083.5, -1343.7], [-1070.7, -1343.6]]   # the Namba Ichiban building's walls either side of its corner (w219869421)
+MULTI_EAST = [[-1068.0, -1365.7], [-1068.3, -1345.5]]
+DOTONBORI_SCREENS = [
+    {"name": "Glico sign", "building": "w174744227", "edge": GLICO_EDGE, "w": 10.38, "h": 20.0, "z": -0.6, "frame": 0.25, "off": 0.5,
+     "clips": ["sky_day", "sky_night"], "phase": 0.0, "pitch": 0.035, "hours": [6, 24], "bright": 0.8, "sync": False},
+    {"name": "TSUTAYA EBISUBASHI HIT VISION (roof)", "building": "w174743244", "w": 18.6, "h": 10.2, "z": -0.3, "frame": 0.3, "off": 0.7,
+     "clips": ["festival", "beer", "takoyaki", "osaka"], "phase": 0.0, "pitch": 0.01},
+    {"name": "TSUTAYA EBISUBASHI HIT VISION (wall)", "building": "w174743244", "w": 15.4, "h": 17.3, "z": -11.0, "frame": 0.3, "off": 0.7,
+     "clips": ["festival", "beer", "takoyaki", "osaka"], "phase": 0.0, "pitch": 0.01},
+    {"name": "Tombori Station", "building": "w222963577", "w": 5.0, "h": 2.8, "z": 5.4, "along": -2.8, "frame": 0.3, "off": 0.45,
+     "clips": ["live", "takoyaki", "osaka", "festival"], "phase": 6.0, "pitch": 0.006, "hours": [11, 22]},
+    {"name": "Namba Ebisubashi Multi Vision (right)", "building": "w219869421", "edge": MULTI_NORTH, "toward": (-1077.0, -1300.0),
+     "w": 4.096, "h": 3.072, "z": 4.9, "along": -3.7, "frame": 0.35, "off": 0.4,
+     "clips": ["autumn", "beer", "festival", "osaka"], "phase": 3.0, "pitch": 0.008, "hours": [8, 24]},
+    {"name": "Namba Ebisubashi Multi Vision (left)", "building": "w219869421", "edge": MULTI_EAST, "toward": (-1040.0, -1347.0),
+     "w": 2.95, "h": 2.1, "z": 5.0, "along": 8.4, "frame": 0.0, "off": 0.12,
+     "clips": ["autumn", "beer", "festival", "osaka"], "phase": 3.0, "pitch": 0.0048, "hours": [8, 24], "bright": 0.85},
+]
+MATERIALS.update(screens.MATERIALS)
+MATERIALS["screens"] = {"color": "#0b0c0e", "roughness": 0.32, "metalness": 0.0, "map": "screens.jpg", "pattern": "led_screen"}
+
+
+def skyline(img, colour, castle=True, tower=True):
+    """Osaka on the horizon: towers, the castle keep and Tsutenkaku in silhouette."""
+    w, h = img.size
+    d = ad.ImageDraw.Draw(img)
+    rng = np.random.default_rng(6)
+    x = 0.0
+    while x < w:
+        bw, bh = w * rng.uniform(0.02, 0.05), h * rng.uniform(0.06, 0.2)
+        d.rectangle([x, h * 0.86 - bh, x + bw, h], fill=ad.rgb(colour))
+        x += bw * rng.uniform(0.9, 1.3)
+    if castle:   # five roofs stepping in, on a stone base
+        cx, b = w * 0.42, h * 0.86   # both inside the middle third, which the Glico board shows
+        d.polygon([(cx - h * 0.1, b), (cx + h * 0.1, b), (cx + h * 0.08, b - h * 0.07), (cx - h * 0.08, b - h * 0.07)], fill=ad.rgb(colour))
+        for k in range(5):
+            y, r = b - h * (0.07 + 0.05 * k), h * (0.1 - 0.016 * k)
+            d.polygon([(cx - r, y), (cx + r, y), (cx + r * 0.6, y - h * 0.035), (cx - r * 0.6, y - h * 0.035)], fill=ad.rgb(colour))
+            d.rectangle([cx - r * 0.55, y - h * 0.05, cx + r * 0.55, y - h * 0.03], fill=ad.rgb(colour))
+    if tower:    # Tsutenkaku: legs, shaft and the round deck
+        tx, b = w * 0.59, h * 0.86
+        d.polygon([(tx - h * 0.06, b), (tx + h * 0.06, b), (tx + h * 0.02, b - h * 0.14), (tx - h * 0.02, b - h * 0.14)], fill=ad.rgb(colour))
+        d.rectangle([tx - h * 0.018, b - h * 0.5, tx + h * 0.018, b - h * 0.12], fill=ad.rgb(colour))
+        d.rectangle([tx - h * 0.04, b - h * 0.52, tx + h * 0.04, b - h * 0.44], fill=ad.rgb(colour))
+        d.line([(tx, b - h * 0.52), (tx, b - h * 0.62)], fill=ad.rgb(colour), width=max(2, int(h * 0.006)))
+
+
+def k_sky_day_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#3b8fe8", "#bfe6ff", 90)
+    for _ in range(6):
+        ad.blob(img, (w * rng.uniform(0.1, 0.9), h * rng.uniform(0.15, 0.5)), h * rng.uniform(0.08, 0.16), "#ffffff", 0.7)
+    skyline(img, "#2c5a8a")
+
+
+def k_sky_day_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ffb15a", "#ff5a7a", 90, c2="#5a2a7a")
+    ad.blob(img, (w * 0.5, h * 0.7), h * 0.3, "#fff0a0", 1.2)
+    skyline(img, "#3a1838")
+
+
+def k_sky_night_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#04082a", "#1a2a7a", 90)
+    ad.stars(img, rng, 160, 0.75)
+    skyline(img, "#05060f")
+    d = ad.ImageDraw.Draw(img)
+    tx = w * 0.59
+    d.rectangle([tx - h * 0.04, h * 0.34, tx + h * 0.04, h * 0.42], fill=ad.rgb("#ffcf5a"))     # Tsutenkaku's lit deck
+
+
+def k_sky_night_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ffd6e8", "#ff8fbf", 90)
+    ad.bokeh(img, rng, 90, ["#ffffff", "#ffc2dc", "#ff9ec8"], h * 0.006, h * 0.03, 0.9)    # cherry petals
+    skyline(img, "#a2477a", tower=False)
+
+
+def k_festival_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#05103a", "#0b3a8a", 90)
+    for _ in range(5):   # fireworks over the bay
+        cx, cy, r = w * rng.uniform(0.15, 0.85), h * rng.uniform(0.2, 0.5), h * rng.uniform(0.12, 0.22)
+        col = ["#ffd24a", "#ff4f8a", "#5fe0ff", "#ffffff"][int(rng.integers(4))]
+        ad.glow(img, lambda d, cx=cx, cy=cy, r=r, col=col: [d.line([(cx, cy), (cx + r * math.cos(a), cy + r * math.sin(a))], fill=ad.rgb(col), width=3)
+                                                          for a in np.linspace(0, 2 * math.pi, 28)], h * 0.01, 1.0)
+    ad.text(img, (w / 2, h * 0.78), "OSAKA BAY FES 2026", "anton", h * 0.13, "#ffffff", glow_c="#5fe0ff", glow_r=h * 0.02, max_w=w * 0.9)
+
+
+def k_festival_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ff4f8a", "#ffb23a", 30)
+    ad.stripes(img, (0, h * 0.82, w, h), "#ffffff", 10, 0.3)
+    ad.text(img, (w / 2, h * 0.3), "大阪ベイフェス", "dela", h * 0.16, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.55), "11.21 SAT - 11.23 MON", "bebas", h * 0.14, "#2a0a3a")
+    ad.text(img, (w / 2, h * 0.73), "咲洲 特設会場 ・ 花火 毎夜 19:30", "zen", h * 0.06, "#ffffff")
+
+
+def k_beer_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#9fd8ff", "#f4fbff", 90)
+    ad.bokeh(img, rng, 40, ["#ffffff"], h * 0.01, h * 0.03, 0.8)
+    ad.can(img, w * 0.5, h * 0.55, h * 0.74, "#d9dde2", "#c8102e", "NANIWA")
+    ad.text(img, (w * 0.18, h * 0.45), "DRY", "anton", h * 0.18, "#c8102e")
+    ad.text(img, (w * 0.82, h * 0.45), "キレ", "dela", h * 0.16, "#c8102e")
+
+
+def k_beer_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#c8102e", "#6a0716", 90)
+    ad.text(img, (w / 2, h * 0.32), "今夜は、ナニワで乾杯。", "dela", h * 0.12, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.58), "NANIWA DRY", "anton", h * 0.16, "#ffe3a0")
+    ad.text(img, (w / 2, h * 0.85), "お酒は20歳になってから。", "zen", h * 0.05, "#ffd6d6")
+
+
+def k_takoyaki_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#3a1a08", "#8a3a10", 90)
+    ad.blob(img, (w * 0.5, h * 0.6), h * 0.6, "#ff9a2a", 0.8)
+    d = ad.ImageDraw.Draw(img)
+    d.polygon([(w * 0.2, h * 0.66), (w * 0.8, h * 0.66), (w * 0.74, h * 0.86), (w * 0.26, h * 0.86)], fill=(214, 180, 128))   # the boat
+    for k, (fx, fy) in enumerate(((0.33, 0.6), (0.44, 0.62), (0.56, 0.62), (0.67, 0.6), (0.39, 0.5), (0.5, 0.52), (0.61, 0.5), (0.5, 0.42))):
+        cx, cy, r = w * fx, h * fy, h * 0.1   # a ball: browned, glazed with sauce, mayonnaise, aonori
+        d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(176, 104, 44))
+        d.chord([cx - r * 0.95, cy - r * 0.95, cx + r * 0.95, cy + r * 0.7], 180, 360, fill=(92, 40, 18))
+        d.ellipse([cx - r * 0.45, cy - r * 0.75, cx - r * 0.05, cy - r * 0.55], fill=(160, 90, 50))
+        d.line([(cx - r * 0.7, cy - r * 0.3), (cx - r * 0.2, cy - r * 0.6), (cx + r * 0.2, cy - r * 0.25), (cx + r * 0.7, cy - r * 0.55)],
+               fill=(250, 244, 214), width=int(h * 0.012), joint="curve")
+        for _ in range(6):
+            px, py = cx + r * rng.uniform(-0.6, 0.6), cy - r * rng.uniform(0.2, 0.8)
+            d.ellipse([px - 2, py - 2, px + 2, py + 2], fill=(70, 130, 40))
+    ad.text(img, (w / 2, h * 0.2), "たこ焼 くるり", "dela", h * 0.14, "#fff2c0", glow_c="#ff9a2a", glow_r=h * 0.02)
+
+
+def k_takoyaki_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#ffd23a", "#ff9a1a", 90)
+    ad.text(img, (w / 2, h * 0.32), "外カリ、中トロ。", "dela", h * 0.15, "#3a1a08", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.58), "8コ 600円", "dela", h * 0.15, "#c8102e")
+    ad.pill(img, (w * 0.25, h * 0.74, w * 0.75, h * 0.88), "#3a1a08", "戎橋すぐ ・ 深夜2時まで", "zen", h * 0.06, "#ffd23a")
+
+
+def k_osaka_a(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0f6fd6", "#5ab8ff", 90)
+    ad.blob(img, (w * 0.24, h * 0.42), h * 0.5, "#ffe27a", 1.3)
+    d = ad.ImageDraw.Draw(img)
+    d.ellipse([w * 0.24 - h * 0.12, h * 0.42 - h * 0.12, w * 0.24 + h * 0.12, h * 0.42 + h * 0.12], fill=(255, 214, 70))
+    ad.text(img, (w * 0.64, h * 0.22), "大阪の天気", "zen", h * 0.1, "#ffffff")
+    ad.text(img, (w * 0.64, h * 0.45), "晴れ", "dela", h * 0.2, "#ffffff")
+    ad.text(img, (w * 0.64, h * 0.7), "19° / 12°", "bebas", h * 0.18, "#ffffff")
+    d.rectangle([0, h * 0.86, w, h], fill=(6, 40, 90))
+    ad.text(img, (w / 2, h * 0.93), "降水確率 10%  ・  西の風  ・  日の入 17:00", "zen", h * 0.05, "#d6ecff")
+
+
+def k_osaka_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#0b3d1f", "#1b8a4a", 90)
+    ad.text(img, (w / 2, h * 0.3), "橋の上で、立ち止まらないで。", "zen", h * 0.1, "#ffffff", max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.52), "Please keep moving on Ebisubashi.", "bebas", h * 0.1, "#d9ffe6", max_w=w * 0.9)
+    ad.stripes(img, (w * 0.1, h * 0.7, w * 0.9, h * 0.84), "#ffffff", 8, 0.0)
+    ad.text(img, (w / 2, h * 0.93), "大阪市中央区 CHUO WARD, OSAKA", "zen", h * 0.05, "#d9ffe6")
+
+
+def k_live_a(img, rng):
+    """Live from the bridge: the crowd on Ebisubashi at dusk waving to the camera, as Tombori
+    Station's studio shows it."""
+    w, h = img.size
+    ad.gradient(img, "#1a1550", "#ff8a5a", 90, c2="#ffc98a")
+    skyline(img, "#2a1838", castle=False)
+    ad.bokeh(img, rng, 50, ["#ffd27a", "#ff7ab0", "#7ae0ff"], h * 0.008, h * 0.03, 0.8)
+    d = ad.ImageDraw.Draw(img)
+    d.rectangle([0, h * 0.8, w, h], fill=ad.rgb("#20141e"))
+    for k in range(int(rng.integers(16, 20))):    # the crowd, the front row larger, some arms up
+        x = w * (k + rng.uniform(0.1, 0.9)) / 17
+        big = rng.uniform(0.42, 0.62)
+        ad.figure(img, x, h * (1.02 - big), h * big, ["#120a14", "#1c1020", "#24142a"][k % 3], coat=False, arms_up=bool(rng.random() < 0.55))
+    ad.pill(img, (w * 0.04, h * 0.05, w * 0.2, h * 0.15), "#e8232e", "   LIVE", "bebas", h * 0.08, "#ffffff")
+    d = ad.ImageDraw.Draw(img)
+    d.ellipse([w * 0.065, h * 0.08, w * 0.065 + h * 0.04, h * 0.12], fill=(255, 255, 255))
+    d.rectangle([0, h * 0.84, w, h * 0.97], fill=ad.rgb("#0b0b16"))
+    d.rectangle([0, h * 0.84, w * 0.012, h * 0.97], fill=ad.rgb("#ffcf3a"))
+    ad.text(img, (w * 0.04, h * 0.905), "戎橋から生中継  EBISUBASHI LIVE", "zen", h * 0.065, "#ffffff", anchor="lm", max_w=w * 0.7)
+    ad.text(img, (w * 0.95, h * 0.905), "18:42", "bebas", h * 0.09, "#ffcf3a", anchor="rm")
+
+
+def k_live_b(img, rng):
+    """The same programme's call to the bridge: wave, and be on the screen."""
+    w, h = img.size
+    ad.gradient(img, "#ff4f9a", "#ffb03a", 20)
+    ad.stripes(img, (0, 0, w, h * 0.16), "#ffffff", 12, 0.35)
+    ad.phone(img, w * 0.78, h * 0.56, h * 0.68, lambda im: (ad.gradient(im, "#1a1550", "#ff8a5a", 90),
+                                                          [ad.figure(im, im.size[0] * f, im.size[1] * 0.45, im.size[1] * 0.55, "#1c1020", coat=False, arms_up=True) for f in (0.3, 0.7)]))
+    ad.text(img, (w * 0.36, h * 0.36), "手をふって、", "dela", h * 0.12, "#ffffff", max_w=w * 0.62)
+    ad.text(img, (w * 0.36, h * 0.56), "大画面に。", "dela", h * 0.15, "#ffffff", max_w=w * 0.62)
+    ad.pill(img, (w * 0.08, h * 0.72, w * 0.64, h * 0.86), "#2a0a3a", "#EBISUBASHI  毎日 18:00〜", "zen", h * 0.06, "#ffe06a")
+
+
+def maple(d, cx, cy, r, rot, fill):
+    """A maple leaf: five lobes (the top three long, the bottom two short), each with a pointed tip
+    and a tooth either side, round a short stem."""
+    pts = []
+    for k, (ang, L) in enumerate(((-90, 1.0), (-28, 0.9), (34, 0.62), (146, 0.62), (208, 0.9))):
+        a = math.radians(ang) + rot
+        for da, rr in ((-0.42, 0.34), (-0.2, 0.62 * L), (-0.1, 0.58 * L), (0.0, L), (0.1, 0.58 * L), (0.2, 0.62 * L)):
+            pts.append((cx + r * rr * math.cos(a + da), cy + r * rr * math.sin(a + da)))
+        if k == 2:   # the notch where the stem leaves
+            a2 = math.radians(90) + rot
+            pts.append((cx + r * 0.12 * math.cos(a2 - 0.5), cy + r * 0.12 * math.sin(a2 - 0.5)))
+            pts.append((cx + r * 0.12 * math.cos(a2 + 0.5), cy + r * 0.12 * math.sin(a2 + 0.5)))
+    d.polygon(pts, fill=fill)
+    a2 = math.radians(90) + rot
+    d.line([(cx, cy), (cx + r * 0.75 * math.cos(a2), cy + r * 0.75 * math.sin(a2))], fill=fill, width=max(2, int(r * 0.07)))
+
+
+def k_autumn_a(img, rng):
+    """Leaves coming down, for the season's opening (an invented department-store campaign)."""
+    w, h = img.size
+    ad.gradient(img, "#fff4e2", "#f6c79a", 90)
+    ad.blob(img, (w * 0.7, h * 0.3), h * 0.5, "#fff8d8", 0.9)
+    d = ad.ImageDraw.Draw(img)
+    for _ in range(26):   # in the band over the type and under it, clear of the words
+        y = h * (rng.uniform(0.0, 0.26) if rng.random() < 0.5 else rng.uniform(0.78, 1.0))
+        maple(d, w * rng.uniform(0, 1), y, h * rng.uniform(0.05, 0.11), rng.uniform(-0.6, 0.6),
+              ad.rgb(["#d6361e", "#e8721e", "#f2b02a", "#b0201a", "#c85a1a"][int(rng.integers(5))]))
+    ad.text(img, (w / 2, h * 0.44), "紅葉、はじまる。", "mincho", h * 0.15, "#5a1a10", max_w=w * 0.86)
+    ad.text(img, (w / 2, h * 0.66), "MINAMI  AUTUMN  2026", "bebas", h * 0.1, "#8a3a18", spacing=4)
+
+
+def k_autumn_b(img, rng):
+    w, h = img.size
+    ad.gradient(img, "#7a0f14", "#2a0508", 90)
+    d = ad.ImageDraw.Draw(img)
+    for _ in range(14):
+        maple(d, w * rng.choice([rng.uniform(0, 0.16), rng.uniform(0.84, 1.0)]), h * rng.uniform(0, 1), h * rng.uniform(0.06, 0.12), rng.uniform(-0.6, 0.6),
+              ad.rgb(["#b8321a", "#d8661e", "#9a1a14"][int(rng.integers(3))]))
+    ad.text(img, (w / 2, h * 0.34), "AUTUMN SALE", "anton", h * 0.2, "#ffd38a", glow_c="#ff7a2a", glow_r=h * 0.02, max_w=w * 0.9)
+    ad.text(img, (w / 2, h * 0.6), "最大 30% OFF", "dela", h * 0.15, "#ffffff")
+    ad.pill(img, (w * 0.22, h * 0.74, w * 0.78, h * 0.88), "#ffd38a", "なんば南口 ・ 11.3 → 11.24", "zen", h * 0.06, "#5a0a10")
+
+
+DOTONBORI_CLIPS = [("sky_day", [k_sky_day_a, k_sky_day_b]), ("sky_night", [k_sky_night_a, k_sky_night_b]), ("festival", [k_festival_a, k_festival_b]),
+                   ("beer", [k_beer_a, k_beer_b]), ("takoyaki", [k_takoyaki_a, k_takoyaki_b]), ("osaka", [k_osaka_a, k_osaka_b]),
+                   ("live", [k_live_a, k_live_b]), ("autumn", [k_autumn_a, k_autumn_b])]
+DOTONBORI = screens.ScreenSet("osaka", DOTONBORI_SCREENS, DOTONBORI_CLIPS, MATERIALS["screens"], seed=1935)
+
+
+def dotonbori_meshes():
+    """The screens at Ebisubashi, and the Glico sign's border and runner over its board."""
+    kit = {}
+
+    def K(mat):
+        if mat not in kit:
+            kit[mat] = Mesh(f"dotonbori_{mat}", mat, False, uv=mat == "screens")
+        return kit[mat]
+    DOTONBORI.meshes(K, EBISUBASHI)
+    glico = next(s for s in DOTONBORI.placed(EBISUBASHI) if s["name"] == "Glico sign")
+    return [m for m in kit.values() if m.v] + glico_sign(glico)
 
 
 def kani_crab(k):
@@ -963,3 +1294,169 @@ def shop_signs(sites):
                 zz0 = min(z0 + z, z0 + top - h - 1.0)
                 loft(m, lambda u, v, zzz: Q(u0 + u, v + 0.15, zzz), w, 0.3, zz0, w, 0.3, zz0 + h)
     return [m for m in meshes.values() if m.v]
+
+
+# ---------------------------------------------------------------- the game
+
+def kotenshu_flight(p):
+    """The stone steps up the east face of the small keep platform, at the back of its south-east re-entrant
+    corner between the ticket office and the platform's northern arm, where visitors climb past the
+    Kinmeisui well house to the keep (the flight's width and pitch are indicative): a strip whose u runs west into the platform from the foot of its face, rising in steps
+    of 0.2 by 0.3 m to the platform's top, then across it to beside the well house.
+    {origin, axis, half_width, profile, z0, top, n}"""
+    ring = np.array(p["ring"], float)
+    z0, top = p["ground_m"], p["ground_m"] + p["height_m"]
+    # the re-entrant corner's face: the edge that faces east with the most of the platform west of it
+    best = None
+    for i in range(len(ring)):
+        a, b = ring[i], ring[(i + 1) % len(ring)]
+        t = (b - a) / np.linalg.norm(b - a)
+        n = np.array([t[1], -t[0]])                     # outward for an anticlockwise ring
+        if n[0] > 0.9 and (best is None or a[0] < best[0][0]):
+            best = (a, b, n)
+    a, b, n = best
+    hw = 1.2
+    foot = b - (b - a) / np.linalg.norm(b - a) * (hw + 0.8)       # beside the northern arm, clear of the ticket office
+    rise, tread = 0.2, 0.3
+    k = int(round((top - z0) / rise))
+    prof = [[round(-k * tread - 2.5, 3), z0], [round(-k * tread - 0.02, 3), z0]]
+    for j in range(k):
+        u = -(k - j) * tread
+        prof += [[round(u + (0.02 if j else 0), 3), round(z0 + (j + 1) * rise, 3)], [round(u + tread, 3), round(z0 + (j + 1) * rise, 3)]]
+    prof.append([4.0, round(top, 3)])
+    return {"origin": [float(foot[0]), float(foot[1])], "axis": [float(-n[0]), float(-n[1])], "half_width": hw, "profile": prof,
+            "z0": z0, "top": top, "n": k, "tread": tread, "rise": rise}
+
+
+def kotenshu_steps(p):
+    """The flight up to the small keep platform (kotenshu_flight) in granite, with its stone cheeks."""
+    f = kotenshu_flight(p)
+    P = frame(f["origin"][0], f["origin"][1], math.atan2(f["axis"][1], f["axis"][0]))
+    m = Mesh("kotenshu_steps", "granite", False, uv=True)
+    hw, k, t, r = f["half_width"], f["n"], f["tread"], f["rise"]
+    for j in range(k):
+        slab(m, P, -(k - j) * t, 1.0, -hw, hw, f["z0"] - 0.3, f["z0"] + (j + 1) * r)
+    # the cheeks: stone walls either side, their coping a handrail's height over the nosings
+    us = [-k * t - 0.3, -k * t, 0.0, 1.0]
+    cop = [f["z0"] + 0.5, f["z0"] + r + 0.9, f["top"] + 0.9, f["top"] + 0.9]
+    for sv in (-1, 1):
+        vi, vo = sv * (hw + 0.05), sv * (hw + 0.35)
+        for v in (vi, vo):   # the faces, from under the ground to the coping
+            m.grid([[P(u, v, f["z0"] - 0.3) for u in us], [P(u, v, z) for u, z in zip(us, cop)]][::(1 if (v > 0) == (v == vo) else -1)])
+        m.grid([[P(u, vi, z) for u, z in zip(us, cop)], [P(u, vo, z) for u, z in zip(us, cop)]][::(1 if sv > 0 else -1)])   # the coping
+        m.grid([[P(us[0], vi, f["z0"] - 0.3), P(us[0], vo, f["z0"] - 0.3)], [P(us[0], vi, cop[0]), P(us[0], vo, cop[0])]][::(-1 if sv > 0 else 1)])   # the end
+    return [m]
+
+
+def kotenshu_floor(p, keep=None):
+    """The small keep platform's paved top as rectangles a walker crosses (strips): the top cut into slices
+    across its longest edge at each corner, each slice's largest rectangle inside it, and neighbours of the
+    same width merged. [(origin, axis, half_width, u0, u1)]"""
+    top = kotenshu_top(p, keep)
+    poly = Polygon(top)
+    n = len(top)
+    i = max(range(n), key=lambda k: np.linalg.norm(top[(k + 1) % n] - top[k]))
+    ax = (top[(i + 1) % n] - top[i]) / np.linalg.norm(top[(i + 1) % n] - top[i])
+    nv = np.array([-ax[1], ax[0]])
+    o = top[i]
+    ring = np.array(p["ring"], float)
+    against = keep is not None and abs(float(np.dot(top[i] - ring[i], nv))) < 0.01    # that face has no batter: the keep's
+    loc = np.array([[np.dot(q - o, ax), np.dot(q - o, nv)] for q in top])
+    us = sorted(set(round(float(u), 2) for u in loc[:, 0]))
+    rects = []
+    for ua, ub in zip(us, us[1:]):
+        if ub - ua < 0.5:
+            continue
+        lo, hi = -1e9, 1e9
+        for u in (ua + 0.02, ub - 0.02):      # the slice's top and bottom at its two sides
+            line = shapely.LineString([tuple(o + ax * u + nv * -500), tuple(o + ax * u + nv * 500)]).intersection(poly)
+            vs = [float(np.dot(np.array(c) - o, nv)) for c in line.coords] if not line.is_empty else []
+            if len(vs) < 2:
+                break
+            lo, hi = max(lo, min(vs)), min(hi, max(vs))
+        else:
+            if rects and abs(rects[-1][2] - lo) < 0.3 and abs(rects[-1][3] - hi) < 0.3:
+                rects[-1][1] = ub
+                rects[-1][2], rects[-1][3] = max(rects[-1][2], lo), min(rects[-1][3], hi)
+            else:
+                rects.append([ua, ub, lo, hi])
+    out = []
+    for ua, ub, lo, hi in rects:
+        if hi - lo < 1.0:
+            continue
+        # a little over the crest of the stone, so that the game finds it under the floor, and on the keep's
+        # side (the longest face, v = 0, against the keep's stone base) on under its batter, for the same reason
+        lo, hi = lo - (2.0 if against else 0.3), hi + 0.3
+        c = o + nv * (lo + hi) / 2
+        out.append(([float(c[0]), float(c[1])], [float(ax[0]), float(ax[1])], (hi - lo) / 2, ua - 0.3, ub + 0.3))
+    return out
+
+
+def game_surfaces(scene):
+    """The steps up to the small keep platform and its paved top, walked as strips (the platform's top is
+    the strips' slab, so the well house on it is met in the walker's fine cells)."""
+    k = scene["landmarks"].get("kotenshu")
+    if not k:
+        return []
+    f = kotenshu_flight(k)
+    top = k["ground_m"] + k["height_m"]
+    floor = [{"name": f"Osaka Castle, the small keep platform {j + 1}", "type": "strip", "origin": [round(v, 2) for v in o], "axis": [round(v, 5) for v in a],
+              "half_width": round(hw, 2), "profile": [[round(u0, 2), round(top, 2)], [round(u1, 2), round(top, 2)]], "thickness": 1.5,
+              "mesh": "kotenshu_paving", "label": "the small keep platform"} for j, (o, a, hw, u0, u1) in enumerate(kotenshu_floor(k, scene["landmarks"].get("castle", {}).get("centroid")))]
+    return floor + [{"name": "Osaka Castle, the steps to the small keep platform", "type": "strip", "origin": [round(v, 2) for v in f["origin"]],
+             "axis": [round(v, 5) for v in f["axis"]], "half_width": f["half_width"], "profile": f["profile"], "thickness": 1.5,
+             "mesh": "kotenshu_steps", "label": "the small keep platform"}]
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting at
+    `start`; the walker must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people walk up to: under Tsutenkaku to the ceiling painting and to a leg; Osaka Castle's
+    keep on its stone base, from the honmaru and from the small keep platform, and the Kinmeisui well house;
+    Kani Doraku's door under the crab; the Glico sign's wall from the Tombori River Walk."""
+    lm, close = scene["landmarks"], []
+    t = lm.get("tsutenkaku")
+    if t:
+        P = frame(*t["centroid"], math.radians(t["axis_deg"]))
+        z, half = t["ground_m"], min(t["width_m"], t["depth_m"]) / 2 - 0.5
+        close.append(close_to("Tsutenkaku, under the ceiling painting", P(0, 0, z), z, P(half + 6.0, 0, z), 1.0))
+        close.append(close_to("Tsutenkaku, a leg from the street", P(half + 1.1, -half, z), z, P(half + 6.0, -half, z), 1.0))
+        close.append(close_to("Tsutenkaku, a leg from under the tower", P(half - 1.1, -half, z), z, P(half - 6.5, -half, z), 1.0))
+    c = lm.get("castle")
+    if c:
+        P = frame(*c["centroid"], math.radians(c["axis_deg"]) - math.pi / 2)
+        z = c["ground_m"]
+        close.append(close_to("Osaka Castle keep, the foot of its stone base", P(KEEP_STONE[0][0], 0, z), z, P(KEEP_STONE[0][0] + 5.0, 0, z), 1.0))
+    k, w = lm.get("kotenshu"), lm.get("well_house")
+    if k and w:
+        f = kotenshu_flight(k)
+        o, d = np.array(f["origin"]), np.array(f["axis"])
+        top = o + d * 1.5                                                     # at the head of the steps
+        W = frame(*w["centroid"], math.radians(w["axis_deg"]))
+        zt = w["ground_m"] + w["base_m"]
+        face = min((W(su * (w["long_m"] / 2 - 0.3), sv * (w["short_m"] / 2 - 0.3), zt) for su, sv in ((1, 0), (-1, 0), (0, 1), (0, -1))),
+                   key=lambda q: np.hypot(q[0] - top[0], q[1] - top[1]))      # its stone plinth, on the side towards the steps
+        close.append(close_to("Kinmeisui well house 金明水井戸屋形", face, zt, top, 1.0))
+        if c:   # across the platform to the keep's stone base, where the visitors go in
+            P = frame(*c["centroid"], math.radians(c["axis_deg"]) - math.pi / 2)
+            h = (zt - c["ground_m"]) / CASTLE_STONE_H
+            v = KEEP_STONE[1][1] + (KEEP_STONE[0][1] - KEEP_STONE[1][1]) * (1 - h) ** 1.7     # stone_base(): the batter at that height
+            at = P(0, -v, zt)[:2]
+            close.append(close_to("Osaka Castle keep, from the small keep platform", at, zt, at + (top - at) / np.linalg.norm(top - at) * 5.0, 1.2))
+    kc = lm.get("kani")
+    if kc:
+        a, n = np.array(kc["at"]), np.array(kc["normal"])
+        close.append(close_to("Kani Doraku, the door under the crab", a, kc["ground_m"], a + n * 5.0, 1.0))
+    # under the Glico sign on the Tombori River Walk (the paving 2.2 m up, GSI's DEM), to the foot of the wall
+    # it hangs on (Ebisubashi itself is not in the open data's walkways, so the bridge is not walked yet)
+    g = np.mean(np.array(GLICO_EDGE, float), axis=0)
+    close.append(close_to("Glico sign, from the Tombori River Walk", g, 2.2, g + np.array([0.0, 6.0]), 1.0))
+    return {"close": close}

@@ -366,12 +366,13 @@ ${PAT_GLSL}`)
     // how far the top of the head (and a hat) stands over the hip joints, standing, at scale 1: what a
     // seat has to leave under a car's roof (rig.headTop, below)
     const thigh = bone[THREE.PropertyBinding.sanitizeNodeName(alias('UpperLeg.L'))];
-    let crown = 0;
+    let crown = 0, overHead = 0;
     if (thigh) {
       const box = new THREE.Box3(), part = new THREE.Box3(), rel = new THREE.Matrix4();
       // (a skinned mesh's vertices are already in the standing figure's frame; its node's transform is not what places them)
       model.traverse(o => { if (o.isMesh) { if (!o.geometry.boundingBox) o.geometry.computeBoundingBox(); box.union(o.isSkinnedMesh ? o.geometry.boundingBox : part.copy(o.geometry.boundingBox).applyMatrix4(rel.multiplyMatrices(mInv, o.matrixWorld))); } });
       crown = box.max.y - V3(0, 0, 0).setFromMatrixPosition(rel.multiplyMatrices(mInv, thigh.matrixWorld)).y;
+      if (head) overHead = box.max.y - V3(0, 0, 0).setFromMatrixPosition(rel.multiplyMatrices(mInv, head.matrixWorld)).y; // and over the head's joint
     }
     for (const n of ['Head', 'Chest', 'Abdomen', 'Hips', 'WristR', 'WristL']) {
       if (!bones[alias(n)]) continue;
@@ -500,7 +501,7 @@ ${PAT_GLSL}`)
         l.set = (l.set || new THREE.Vector3()).copy(l.ft.position);
         l.moved = true;
       }
-      model.position.y = drop / (root.parent ? root.parent.getWorldScale(sb).y : 1);
+      model.position.y = drop / root.getWorldScale(sb).y; // (a car's seat may make the whole figure a little smaller: cars.js sit)
       if (!rig.reach || !reaches) return;
       // hands on the wheel: each elbow a little down and out from halfway, the hand at the rim
       root.updateWorldMatrix(false, true);
@@ -514,8 +515,10 @@ ${PAT_GLSL}`)
       }
     }
     rig.wave = (t = 0) => { waveUntil = t + act.Wave.getClip().duration * 0.95; play('Wave', 0.2, true); };
-    // the top of the head in the world as the rig is posed (seated, the body stays upright over the hips)
-    if (thigh && crown > 0) rig.headTop = (out = V3(0, 0, 0)) => thigh.getWorldPosition(out).add(sb.set(0, crown * model.getWorldScale(sa).y, 0));
+    // the top of the head in the world as the rig is posed: over the head's joint as it is now (seated
+    // and leaning back, or sitting up), as high as the hair stood over it standing
+    if (thigh && crown > 0) rig.headTop = (out = V3(0, 0, 0)) => (head && overHead > 0 ? head.getWorldPosition(out).add(sb.set(0, overHead * model.getWorldScale(sa).y, 0))
+      : thigh.getWorldPosition(out).add(sb.set(0, crown * model.getWorldScale(sa).y, 0)));
     // a view through this person's eyes: the head, and whatever is on it, shrinks out of the way
     rig.hideHead = on => { if (head) head.scale.setScalar(on ? 1e-3 : 1); };
     // speed in m/s, mode 'ground' | 'air' | 'sit' | 'talk'; t is the game clock. Seated, the
@@ -532,8 +535,8 @@ ${PAT_GLSL}`)
       else if (mode === 'air') play('Run', 0.15).setEffectiveTimeScale(0.3);
       else if (speed < 0.15) play(idleClip(), 0.3);
       else if (speed < 2.1) play('Walk', 0.25).setEffectiveTimeScale(Math.max(0.5, Math.min(1.7, speed / (speeds.Walk * s))));
-      else if (act.Sprint && speed > 5.2) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
-      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 7 m/s sprint
+      else if (act.Sprint && speed > 7) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
+      else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 8.5 m/s sprint (game.js GAIT)
       if (mode !== 'sit') feetBack();
       mixer.update(dt);
       if (mode === 'sit') seat();

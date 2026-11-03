@@ -174,7 +174,7 @@ tests. `sun_access.js` reports a 10 am–2 pm window on the 21st of each month.
 
 You start on the promenade at the foot of St Kilda Pier, at the city's live
 clock. There are four people and four stamps:
-- **Kim (survey lead):** sends you out along the pier to the kiosk.
+- **Kim (a St Kilda local):** sends you out along the pier to the kiosk.
 - **Tash (Earthcare St Kilda volunteer):** explains the colony.
   - About 1,400 little penguins live in the breakwater, which was built for
     the sailing at the 1956 Olympics.
@@ -229,10 +229,11 @@ cross them are dropped.
 
 ### Getting around
 
-- **Fast travel:** six points on the shore become fast-travel stops once you
-  have visited them (`game.travel`).
-- **Helicopter:** there is no helipad on the bayside foreshore. The one on the
-  Elwood soccer pitch is invented, so that you can fly the coast.
+- **Fast travel:** six points on the shore are on the map from the start, to
+  travel to at any time (`game.travel`), with the bayside's labelled landmarks.
+- **Helicopter:** there is no helipad on the bayside foreshore. The game starts
+  it on a lawn in Catani Gardens, beside the start, and the pad on the Elwood
+  soccer pitch is invented too, so that you can fly the coast.
 - **Ferries:** no ferry runs along this shore, so there are none in the
   game.
 - **Benches:** they use the bayside's own climate. On a cold day sitters choose

@@ -17,6 +17,9 @@
       "lat": -37.8136,
       "lon": 144.9631,
       "status": "live",
+      "group": "Melbourne",
+      "district": "Central Melbourne",
+      "tagline": "Docklands, the Hoddle Grid and Southbank to the Shrine",
       "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
     },
     {
@@ -26,6 +29,9 @@
       "lat": -37.8918,
       "lon": 144.9755,
       "status": "live",
+      "group": "Melbourne",
+      "district": "Bayside",
+      "tagline": "St Kilda, Elwood and Brighton on Port Phillip",
       "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset."
     },
     {
@@ -51,23 +57,64 @@
     },
     {
       "id": "tokyo",
-      "name": "Tokyo",
-      "native": "東京",
+      "name": "Marunouchi & Ginza",
+      "native": "丸の内・銀座",
       "country": "Japan",
       "lat": 35.67,
       "lon": 139.759,
       "status": "live",
-      "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower."
+      "summary": "Marunouchi to Tokyo Tower: 15,000 buildings, 76% of the footprint area at a PLATEAU-surveyed height, Tokyo Tower built to its published dimensions, and a game: Tokyo Station, the Palace, Hibiya Park, the water bus and a helicopter to the tower.",
+      "group": "Tokyo",
+      "tagline": "Tokyo Station, the Palace, Ginza, the water bus and Tokyo Tower"
     },
     {
       "id": "shibuya",
-      "name": "Shibuya & Shinjuku",
-      "native": "渋谷・新宿",
+      "name": "Shibuya",
+      "native": "渋谷",
       "country": "Japan",
-      "lat": 35.6685,
-      "lon": 139.6965,
+      "lat": 35.6586,
+      "lon": 139.6913,
       "status": "live",
-      "summary": "Sangenjaya to Shibuya, Shinjuku and Yotsuya: 90,000 buildings at PLATEAU-surveyed heights, the Shibuya scramble, SHIBUYA SKY's roof with its lift and escalator, the Suga Shrine stairs of Your Name with this year's ema, and the streets Persona 5 drew, from Sangenjaya's backstreets to Kabukicho."
+      "summary": "Sangenjaya to Shibuya, Harajuku and Yoyogi Park: 48,000 buildings at PLATEAU-surveyed heights, the scramble and Hachiko, SHIBUYA SKY's roof with its lift and escalator, Center Gai, Yoyogi's gymnasiums and the streets Persona 5 drew, from Sangenjaya's backstreets to the station.",
+      "group": "Tokyo",
+      "tagline": "The scramble, Hachiko, SHIBUYA SKY, Center Gai and Sangenjaya's lanes",
+      "moved": {"shinjuku": ["t-suga", "t-stairs", "t-kabuki", "t-aoyama"]}
+    },
+    {
+      "id": "shinjuku",
+      "name": "Shinjuku",
+      "native": "新宿",
+      "country": "Japan",
+      "lat": 35.6844,
+      "lon": 139.7081,
+      "status": "live",
+      "summary": "Nishi-Shinjuku's towers to Yotsuya: 27,000 buildings at PLATEAU-surveyed heights, Kabukicho's arch, the east exit's screens, 2-chome and Golden Gai, Shinjuku Gyoen, Jingu Gaien's ginkgo avenue and the Suga Shrine stairs of Your Name with this year's ema.",
+      "group": "Tokyo",
+      "tagline": "Kabukicho, the east exit, Nishi-Shinjuku's towers and the Your Name stairs"
+    },
+    {
+      "id": "asakusa",
+      "name": "Asakusa",
+      "native": "浅草",
+      "country": "Japan",
+      "lat": 35.712,
+      "lon": 139.8015,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Senso-ji, the Kaminarimon lantern, Nakamise and Tokyo Skytree across the Sumida",
+      "summary": "Asakusa and the Sumida from open data at PLATEAU-surveyed heights: Senso-ji's gates, pagoda and hall built to their published sizes, the Kaminarimon's lantern, Nakamise, the water bus, and Tokyo Skytree, 634 m, with a lift to the Tembo Deck."
+    },
+    {
+      "id": "akihabara",
+      "name": "Akihabara",
+      "native": "秋葉原",
+      "country": "Japan",
+      "lat": 35.6995,
+      "lon": 139.7705,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Electric Town's signs on Chuo-dori, Kanda Myojin and Nikolai-do",
+      "summary": "Akihabara's Electric Town from open data at PLATEAU-surveyed heights: Chuo-dori's blade signs and wall prints, lit after dark, the arcades' lanes, Kanda Myojin's gate up the hill and Nikolai-do's dome over Ochanomizu."
     },
     {
       "id": "whitsundays",
@@ -184,5 +231,259 @@
       "status": "planned",
       "data": "OSM footprints and heights; open bare-earth DEM and imagery still to find."
     }
-  ]
+  ],
+  "groups": {
+    "Melbourne": {
+      "kind": "city",
+      "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
+    },
+    "Tokyo": {
+      "native": "東京",
+      "kind": "metro",
+      "summary": "Tokyo as maps, the way games draw it: each district a walkable map of its own, chosen from the subway map. Lit stations are built; grey ones are next.",
+      "note": "Districts and lines from the Tokyo Metro and JR East maps; station positions are the stations' own (OpenStreetMap). Which districts a game sends you to follows Persona 5's Tokyo (Atlus, 2016): Shibuya, Shinjuku, Akihabara, Asakusa, Ueno, Ikebukuro, Odaiba, Jinbocho, Kanda, Tsukishima.",
+      "districts": [
+        {"name": "Marunouchi", "native": "丸の内", "lat": 35.6812, "lon": 139.7671, "map": "tokyo", "label": "r"},
+        {"name": "Ginza", "native": "銀座", "lat": 35.6717, "lon": 139.764, "map": "tokyo", "label": "l"},
+        {"name": "Shibuya", "native": "渋谷", "lat": 35.659, "lon": 139.7016, "map": "shibuya", "label": "r"},
+        {"name": "Harajuku", "native": "原宿", "lat": 35.6702, "lon": 139.7027, "map": "shibuya", "travel": "t-harajuku", "label": "r"},
+        {
+          "name": "Shinjuku",
+          "native": "新宿",
+          "lat": 35.6905,
+          "lon": 139.7003,
+          "map": "shinjuku",
+          "travel": "t-east",
+          "label": "r"
+        },
+        {"name": "Yotsuya", "native": "四ツ谷", "lat": 35.686, "lon": 139.7302, "map": "shinjuku", "travel": "t-suga", "label": "r"},
+        {
+          "name": "Sangen-jaya",
+          "native": "三軒茶屋",
+          "lat": 35.6437,
+          "lon": 139.6702,
+          "map": "shibuya",
+          "travel": "t-sancha",
+          "label": "r"
+        },
+        {
+          "name": "Akihabara",
+          "native": "秋葉原",
+          "lat": 35.6984,
+          "lon": 139.7731,
+          "map": "akihabara",
+          "label": "r"
+        },
+        {"name": "Asakusa", "native": "浅草", "lat": 35.711, "lon": 139.7976, "map": "asakusa", "label": "b"},
+        {
+          "name": "Oshiage · Skytree",
+          "native": "押上",
+          "lat": 35.7102,
+          "lon": 139.8133,
+          "map": "asakusa",
+          "travel": "tembo",
+          "label": "t"
+        },
+        {
+          "name": "Ueno",
+          "native": "上野",
+          "lat": 35.7138,
+          "lon": 139.7774,
+          "note": "Ueno Park, Ameyoko, Shinobazu Pond",
+          "label": "t"
+        },
+        {
+          "name": "Ikebukuro",
+          "native": "池袋",
+          "lat": 35.7295,
+          "lon": 139.7109,
+          "note": "Sunshine 60, Otome Road",
+          "label": "r"
+        },
+        {
+          "name": "Jinbocho",
+          "native": "神保町",
+          "lat": 35.6959,
+          "lon": 139.7577,
+          "note": "The book town",
+          "label": "l"
+        },
+        {
+          "name": "Roppongi",
+          "native": "六本木",
+          "lat": 35.6627,
+          "lon": 139.7314,
+          "note": "Roppongi Hills and Mori Tower",
+          "label": "b"
+        },
+        {
+          "name": "Tsukishima",
+          "native": "月島",
+          "lat": 35.6646,
+          "lon": 139.784,
+          "note": "Monja Street",
+          "label": "r"
+        },
+        {
+          "name": "Odaiba",
+          "native": "お台場",
+          "lat": 35.627,
+          "lon": 139.775,
+          "note": "Seaside Park and Rainbow Bridge",
+          "label": "r"
+        },
+        {
+          "name": "Shinagawa",
+          "native": "品川",
+          "lat": 35.6285,
+          "lon": 139.7387,
+          "note": "The southern gateway",
+          "label": "l"
+        }
+      ],
+      "lines": [
+        {
+          "name": "JR Yamanote Line",
+          "native": "山手線",
+          "colour": "#9acd32",
+          "loop": true,
+          "stops": [
+            [35.6812, 139.7671],
+            [35.6918, 139.7709],
+            [35.6984, 139.7731],
+            [35.7138, 139.7774],
+            [35.7281, 139.771],
+            [35.7381, 139.7608],
+            [35.7365, 139.747],
+            [35.7334, 139.7393],
+            [35.7295, 139.7109],
+            [35.7126, 139.7038],
+            [35.6905, 139.7003],
+            [35.6831, 139.702],
+            [35.6702, 139.7027],
+            [35.658, 139.7016],
+            [35.6467, 139.7101],
+            [35.6339, 139.7157],
+            [35.6262, 139.7236],
+            [35.6285, 139.7387],
+            [35.6457, 139.7476],
+            [35.6555, 139.757],
+            [35.6663, 139.7583],
+            [35.6751, 139.763]
+          ]
+        },
+        {
+          "name": "Ginza Line",
+          "native": "銀座線",
+          "colour": "#f39700",
+          "stops": [
+            [35.659, 139.7016],
+            [35.6652, 139.7123],
+            [35.6727, 139.724],
+            [35.677, 139.737],
+            [35.6736, 139.7414],
+            [35.67, 139.7499],
+            [35.6663, 139.7583],
+            [35.6717, 139.764],
+            [35.6767, 139.7701],
+            [35.682, 139.774],
+            [35.6853, 139.7731],
+            [35.6918, 139.7709],
+            [35.7027, 139.7716],
+            [35.7077, 139.7727],
+            [35.7114, 139.7768],
+            [35.7112, 139.7826],
+            [35.7108, 139.7905],
+            [35.711, 139.7976]
+          ]
+        },
+        {
+          "name": "Hanzomon Line",
+          "native": "半蔵門線",
+          "colour": "#8f76d6",
+          "stops": [
+            [35.659, 139.7016],
+            [35.6652, 139.7123],
+            [35.6727, 139.724],
+            [35.6788, 139.7403],
+            [35.6857, 139.7413],
+            [35.6955, 139.7516],
+            [35.6959, 139.7577],
+            [35.6869, 139.766],
+            [35.6853, 139.7731],
+            [35.6826, 139.7854],
+            [35.682, 139.7993],
+            [35.689, 139.8157],
+            [35.6969, 139.8146],
+            [35.7102, 139.8133]
+          ]
+        },
+        {
+          "name": "Yurakucho Line",
+          "native": "有楽町線",
+          "colour": "#c1a470",
+          "stops": [
+            [35.7295, 139.7109],
+            [35.718, 139.73],
+            [35.7037, 139.7445],
+            [35.6955, 139.7516],
+            [35.6865, 139.748],
+            [35.6788, 139.7403],
+            [35.6751, 139.763],
+            [35.6743, 139.7671],
+            [35.6705, 139.7737],
+            [35.6646, 139.784]
+          ]
+        },
+        {
+          "name": "Marunouchi Line",
+          "native": "丸ノ内線",
+          "colour": "#f62e36",
+          "stops": [
+            [35.6905, 139.7003],
+            [35.6906, 139.7055],
+            [35.6884, 139.7105],
+            [35.6882, 139.72],
+            [35.686, 139.7302],
+            [35.677, 139.737],
+            [35.674, 139.7451],
+            [35.6739, 139.7505],
+            [35.6717, 139.764],
+            [35.6812, 139.7671]
+          ]
+        },
+        {
+          "name": "Hibiya Line",
+          "native": "日比谷線",
+          "colour": "#b5b5ac",
+          "stops": [
+            [35.7114, 139.7768],
+            [35.6984, 139.7731],
+            [35.6908, 139.7798],
+            [35.6825, 139.779],
+            [35.6717, 139.764],
+            [35.6739, 139.7505],
+            [35.67, 139.7499],
+            [35.663, 139.7446],
+            [35.6627, 139.7314],
+            [35.6467, 139.7101]
+          ]
+        },
+        {
+          "name": "Yurikamome",
+          "native": "ゆりかもめ",
+          "colour": "#1e8fd6",
+          "stops": [
+            [35.6663, 139.7583],
+            [35.6537, 139.7617],
+            [35.6488, 139.76],
+            [35.6401, 139.7626],
+            [35.6299, 139.7787],
+            [35.627, 139.775],
+            [35.6252, 139.7716]
+          ]
+        }
+      ]
+    }
+  }
 }

@@ -58,6 +58,14 @@
     "add_min_m2": 8
   },
   "water": {
+    "seawall": {
+      "stone": "#6c6963",
+      "coping": "#8a8780",
+      "course_m": 1.2,
+      "block_m": 2.4,
+      "high_water_m": 0.7,
+      "note": "The rivers' concrete revetments (gogan) under a concrete coping."
+    },
     "classes": [
       "river",
       "moat",
@@ -90,9 +98,9 @@
     ],
     "time": "09:30",
     "cam": [
-      -4200,
-      -6200,
-      2600
+      -2050,
+      -2850,
+      1900
     ],
     "tgt": [
       -300,
@@ -105,9 +113,9 @@
       "title": "Osaka from open data",
       "text": "{buildings} buildings from Project PLATEAU, OpenStreetMap and Overture Maps, on GSI's 5 m laser terrain under GSI aerial photos, from Umeda in the north to Shinsekai in the south.",
       "cam": [
-        -4200,
-        -6200,
-        2600
+        -2050,
+        -2850,
+        1900
       ],
       "tgt": [
         -300,
@@ -228,18 +236,7 @@
       "hold": 8
     },
     {
-      "title": "Where every height comes from",
-      "text": "Colour shows the source of each height. Almost all are PLATEAU measurements. The warm colours are buildings newer than the survey (OpenStreetMap floor counts) and the ones nobody measured, which the model estimates from their neighbours.",
-      "cam": [
-        -2600,
-        -3400,
-        1700
-      ],
-      "tgt": [
-        -200,
-        400,
-        10
-      ],
+      "title": "Midosuji",
       "date": [
         12,
         21
@@ -247,7 +244,17 @@
       "from": "11:00",
       "to": "12:00",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        -1155,
+        -1250,
+        110
+      ],
+      "tgt": [
+        -1120,
+        0,
+        30
+      ],
+      "text": "Opened in 1937: 44 m wide and 4 km long, from Umeda in the north to Namba, lined with ginkgo all the way. All of its traffic runs south, one way, as it has since 1970."
     },
     {
       "title": "Winter sun in Utsubo Park",
@@ -292,6 +299,10 @@
     "ザ・タワー大阪": "The Tower Osaka",
     "かに道楽": "かに道楽 Kani Doraku",
     "大阪城 ホール": "大阪城ホール"
+  },
+  "arrivals": {
+    "グリコ Glico": {"front": 20, "arc": 55, "dist": 70},
+    "HEP FIVE": {"front": 154, "at": [-1137, 2685]}
   },
   "minor_labels": [
     "大阪市役所",
@@ -530,7 +541,9 @@
       }
     ],
     "ferry_note": "Landings are the ferry terminals mapped in OpenStreetMap (via Overture). Routes are generated through open water, and the stops follow the Tombori River Cruise and the Aqua Liner, but the timetable and the vessel names are invented. Boats run at 1.5 times real speed (9 m/s) and wait 20 s at each landing. At a landing you can skip the wait.",
+    "helipads_from_data": false,
     "helipads": [
+      {"id": "soemoncho-pad", "name": "Soemoncho pad (game)", "at": [-922, -994, 4.5], "heading": 200},
       {
         "id": "naniwa-pad",
         "name": "Naniwa-no-miya Park helipad",
@@ -635,7 +648,7 @@
       {
         "id": "mei",
         "name": "Mei",
-        "role": "Survey lead",
+        "role": "Namba local",
         "at": [
           -1000,
           -1085
@@ -652,7 +665,7 @@
         },
         "idle": [
           "Dotonbori is a canal that Yasui Doton began digging in 1612. Everything on its banks is newer than the water.",
-          "Almost every height you see here was measured from the air for Project PLATEAU. {share:plateau}% of the roof area. We didn't have to guess much."
+          "Come back after dark. The Glico runner lights up over the canal, and the whole street with him."
         ]
       },
       {
@@ -910,7 +923,7 @@
         },
         "idle": [
           "Hideyoshi began this castle in 1583. The keep you see is from 1931, built with donations from the people of Osaka. It's concrete under the copper.",
-          "From the foot of the stone base to the top of the shachi the keep is {landmark:castle.height_m} m. PLATEAU measured 54.6, so the model and the survey agree."
+          "From the foot of the stone base to the top of the shachi the keep is {landmark:castle.height_m} m. There's a lift inside, but the stairs are better."
         ]
       },
       {
@@ -946,9 +959,9 @@
         "title": "Welcome to Dotonbori",
         "stamp": "Ebisu-bashi",
         "talk": [
-          "Okaeri. Well, welcome. I'm Mei, from the survey. This is Dotonbori, the canal Yasui Doton began digging in 1612.",
-          "The model around you is open data: {buildings} buildings, GSI's 5 m laser terrain and GSI's aerial photos. For {share:plateau}% of the roof area, the height was measured from the air for Project PLATEAU, not guessed.",
-          "Look up at the Glico runner, then find Daisuke on the Dotonbori street. He's the one with the headband. He has opinions about octopus."
+          "Okaeri! Well, welcome. I'm Mei; I grew up over a shop in Namba. This is Dotonbori, the canal Yasui Doton began digging in 1612.",
+          "Look up at the Glico runner, then find Daisuke on the Dotonbori street. He's the one with the headband. He has opinions about octopus.",
+          "The Tombori River Cruise leaves from the Taizaemon-bashi landing just along the canal, the helicopter waits on the open lot a block north-east, and a hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {
@@ -985,27 +998,15 @@
       {
         "id": "kuromon",
         "giver": "fumi",
-        "title": "Read a building",
+        "title": "Osaka's kitchen",
         "stamp": "Kuromon Market",
         "talk": [
           "Maido, maido! Daisuke sent you? Ame-chan, take two. That's how we say hello.",
-          "They call this market Osaka's kitchen. You, you're measuring the city. Fine. Show me you can read a building.",
-          "Aim at a building and press Q for the survey lens. Find one whose height was measured for PLATEAU, and one that nobody measured, so the model estimated it from its neighbours. Then go and eat kushikatsu in Shinsekai. Kenji is the best."
+          "They call this market Osaka's kitchen: fish, fruit, fugu and beef, and the chefs of Namba shop here before dawn. Eat as you walk, everybody does.",
+          "Then go and eat kushikatsu in Shinsekai. Kenji is the best."
         ],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": [
-              "plateau",
-              "estimate"
-            ],
-            "text": "Survey lens (Q): one measured height and one estimated"
-          },
-          {
-            "type": "talk",
-            "npc": "kenji",
-            "text": "Find Kenji, the kushikatsu chef, in Shinsekai"
-          }
+          {"type": "talk", "npc": "kenji", "text": "Find Kenji, the kushikatsu chef, in Shinsekai"}
         ]
       },
       {
@@ -1015,7 +1016,7 @@
         "stamp": "Tsutenkaku",
         "talk": [
           "Nidozuke kinshi! One dip only. Good. Eat.",
-          "That's Tsutenkaku above you. The first tower came down in 1943; this one went up in 1956. Published height {landmark:tsutenkaku.published_m} m, or {landmark:tsutenkaku.with_rod_m} m with the lightning rod. The model draws both.",
+          "That's Tsutenkaku above you. The first tower came down in 1943; this one went up in 1956. {landmark:tsutenkaku.published_m} m, or {landmark:tsutenkaku.with_rod_m} m with the lightning rod.",
           "The lights at the top tell tomorrow's weather: white for fair, orange for cloudy, blue for rain. Now go to Namba and find the two guys outside the Grand Kagetsu theatre. They'll tell you the rest."
         ],
         "steps": [
@@ -1032,7 +1033,7 @@
         "title": "Nandeyanen!",
         "stamp": "Namba Grand Kagetsu",
         "talk": [
-          "Yoshi: We measure towers, you know. Taka: Nobody asked you. Yoshi: It's a hundred and three metres. Taka: Nandeyanen! The map says a hundred and eight! Yoshi: With the lightning rod. Taka: ...fine.",
+          "Yoshi: Tsutenkaku is a hundred and three metres. Taka: Nandeyanen! It's a hundred and eight! Yoshi: With the lightning rod. Taka: ...fine.",
           "Taka: Seriously, your Mr Tanaka is waiting at Yodoyabashi. Middle of Midosuji. Takes the subway every day. Yoshi: He has never laughed once. Taka: Get him to laugh. Nandeyanen!"
         ],
         "steps": [
@@ -1051,7 +1052,7 @@
         "talk": [
           "Ohayo gozaimasu. Midosuji: the boulevard from Umeda to Namba, one-way, gingko trees on both sides. In the evening in December they light them. You should see it.",
           "Stand on the right on the escalators here. In Tokyo it's the left. We are not Tokyo.",
-          "Utsubo Park, west of here, is boxed in by towers. On 21 December at noon the model puts {sun:靱公園|12-21|12:00}% of the park in direct sun. Go and stand in the sun there at midday on the winter solstice. Then take the Aqua Liner: Captain Nishida is at Hachikenyahama."
+          "Utsubo Park, west of here, is boxed in by towers. On 21 December at noon only {sun:靱公園|12-21|12:00}% of the park is in direct sun. Go and stand in it at midday on the winter solstice. Then take the Aqua Liner: Captain Nishida is at Hachikenyahama."
         ],
         "choices": [
           {
@@ -1118,7 +1119,7 @@
         "stamp": "Osaka Castle",
         "talk": [
           "Hideyoshi began this castle in 1583. The keep you see is from 1931, paid for by the people of Osaka. Concrete and steel under the copper.",
-          "It stands on a stone base 13.3 m high and rises 39.4 m above it: five roofs outside, eight floors inside. The model builds the keep from those figures, with the plan of each tier and the gables on each face measured from PLATEAU's 3D model. The ground under it, {landmark:castle.ground_m} m above Tokyo Peil, is GSI's laser survey of the honmaru.",
+          "It stands on a stone base 13.3 m high and rises 39.4 m above it: five roofs outside, eight floors inside. Look for the gilded tigers on the top tier, and the golden shachi on the ridge.",
           "Now go to Naniwa-no-miya Park. Ryo's helicopter is waiting there."
         ],
         "steps": [
@@ -1155,17 +1156,17 @@
       {
         "id": "done",
         "giver": "mei",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
+        "title": "Kuidaore",
+        "stamp": "大阪 Osaka",
         "talk": [
-          "That's the full tour: the canal, the market, the tower, the river, the keep and the air.",
-          "{acc:matched} towers have been checked against their published heights, with a median error of {acc:median_abs_error_pct}%. Where the survey and the published figure differ, it's usually the rooftop plant: PLATEAU measures to the top of the machinery.",
+          "That's all of it: the canal, the market, the tower, the river, the keep and the air.",
+          "And you ate. That's the most Osaka thing of all.",
           "The city is yours. Change the time of day, take any boat, or fly anywhere. Go and see the Glico sign at night."
         ],
         "steps": []
       }
     ],
-    "blurb": "Walk Dotonbori, Kuromon and Shinsekai, take the Tombori River Cruise and the Aqua Liner, climb to the keep of Osaka Castle and fly over Umeda. Talk to the people who know the city. Every fact they tell you comes from the model.",
+    "blurb": "Walk Dotonbori, Kuromon and Shinsekai, take the Tombori River Cruise and the Aqua Liner, climb to the keep of Osaka Castle and fly over Umeda. Talk to the people who know the city.",
     "local_name": "Osakan",
     "water_name": "the canal"
   },

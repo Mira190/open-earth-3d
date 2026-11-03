@@ -11,13 +11,17 @@ Writes web/data/<city>/game.json:
             beach shelves gently, rock steeply, a seawall drops to 4 m at once
   paths     footways for pedestrians and roads for traffic, as 3D polylines in
             decimetres with their class; bridge parts follow the city's deck surfaces, tunnel parts
-            are dropped (Overture road flags and levels)
+            are dropped (Overture road flags and levels); a one-way road carries its direction
+            (pipeline/road_rules.py)
   surfaces  walkable surfaces above the terrain from the city's game_surfaces hook
+  patches   fine walking levels over the grid from the city's game_patches hook (int16 cm
+            every half metre, -32768 none): paving with walls and steps the 5 m grid would
+            smooth into slopes
   wharves   ferry berths next to the Overture ferry terminals named in city.json
   ferries   routes found by a shortest path through open water, kept clear of land
             and piers, then smoothed
-  helipads, props (benches and street lamps), npcs and quests (positions snapped to
-  open ground)
+  helipads, props (benches and street lamps, moved out of the carriageways: pipeline/kerbside.py;
+  traffic signals and signs), npcs and quests (positions snapped to open ground)
   viewpoints  trig stations to survey the view from, as given in city.json (not
             snapped: one stands on the bridge deck)
   boardwalks  walkways at deck height over rocks, water or sand: mapped lines found by
@@ -50,9 +54,14 @@ from shapely import wkb as swkb
 from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
+import arcades
+import walls
+import woods
+import kerbside
 import night_lights
+import road_rules
 from build_scene import DEM_CELL, load_dem, raster_mask, rows, sample, water_polygons, write_index
-from shore import QUAY_SHELF_M, depth_at, from_png
+from shore import from_png, pad_aprons, water_floor
 from cityctx import city_args, polygons
 
 FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
@@ -71,6 +80,25 @@ def strip_height(surf, x, y):
     if abs(v) > surf["half_width"] or u < prof[0][0] or u > prof[-1][0]:
         return None
     return float(np.interp(u, [p[0] for p in prof], [p[1] for p in prof]))
+
+
+def roof_pads(C, helipads):
+    """A mapped pad inside a building's footprint is on its roof (a hospital's, a tower's): its height is
+    the roof's (buildings.json from build_scene.py), not the ground's under it."""
+    path = os.path.join(C.out, "buildings.json")
+    if not helipads or not os.path.exists(path):
+        return
+    solids = json.load(open(path, encoding="utf8"))["s"]
+    for hp in helipads:
+        x, y, z = hp["at"]
+        for s in solids:
+            r = s[4]
+            xs, ys = r[0::2], r[1::2]
+            if not (min(xs) <= x * 10 <= max(xs) and min(ys) <= y * 10 <= max(ys)):
+                continue
+            top = (s[1] + s[3]) / 10
+            if top > z + 2 and Polygon([(r[k] / 10, r[k + 1] / 10) for k in range(0, len(r), 2)]).contains(Point(x, y)):
+                hp["at"][2] = round(max(top, hp["at"][2]), 1)
 
 
 def flag_ranges(flags, name):
@@ -134,7 +162,7 @@ def main():
 
     # ---------------------------------------------------------- paths
     foot, roads, n_tunnel, n_bridge = [], [], 0, 0
-    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, wkb"):
+    for r in rows(con, raw("segment"), "class, subtype, road_flags, level_rules, max_speed_kmh, access_restrictions, wkb"):
         if r["subtype"] != "road" or (r["class"] not in FOOT and r["class"] not in ROAD):
             continue
         g = C.to_local(swkb.loads(bytes(r["wkb"])))
@@ -188,8 +216,11 @@ def main():
                     foot.append({"c": r["class"], "p": pts})
                 if r["class"] in ROAD:
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
-                    roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts})
-    print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
+                    way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
+                    roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
+    # the banned turns (Overture's prohibited_transitions), on the pieces they start from
+    n_turns = road_rules.turns(C, con, roads, [LineString(np.array(o["p"], dtype=float).reshape(-1, 3)[:, :2] / 10) for o in roads])
+    print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces, {n_turns} banned turns; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
 
     # ---------------------------------------------------------- wharves and helipads
     infra = rows(con, raw("infrastructure"), "name, class, wkb")
@@ -222,6 +253,7 @@ def main():
                 first = next((h["id"] for h in gcfg.get("helipads", []) if h.get("from_data")), "helipad")
                 helipads.append({"id": first if not helipads else f"helipad-{len(helipads)}", "name": r["name"] or "Helipad",
                                  "at": [round(q.x, 1), round(q.y, 1), round(ground(q.x, q.y), 1)]})
+    roof_pads(C, helipads)
     for h in gcfg.get("helipads", []):
         if h.get("from_data") and "near" in h and helipads:  # the mapped pad nearest a point, first in the list
             k = min(range(len(helipads)), key=lambda i: math.hypot(helipads[i]["at"][0] - h["near"][0], helipads[i]["at"][1] - h["near"][1]))
@@ -234,8 +266,14 @@ def main():
         for hp in helipads:
             if hp["id"] == h["id"]:
                 hp["name"] = h.get("name", hp["name"])
-        if not h.get("from_data") and "at" in h:
-            helipads.append({"id": h["id"], "name": h["name"], "at": h["at"] + [round(ground(*h["at"]), 1)]})
+        if not h.get("from_data") and "at" in h:  # [x, y] on the ground, or [x, y, z] up on a roof or a deck
+            z = h["at"][2] if len(h["at"]) > 2 else round(ground(*h["at"][:2]), 1)
+            helipads.append(dict({"id": h["id"], "name": h["name"], "at": h["at"][:2] + [z]}, **({"heading": h["heading"]} if "heading" in h else {})))
+    # the pads city.json names come first, in its order: the game starts the helicopter on the
+    # first. (Appended after the mapped ones, Osaka's park pad came 100th and the game started on a
+    # mapped rooftop pad at street level, at the model's edge.)
+    named = [h["id"] for h in gcfg.get("helipads", [])]
+    helipads.sort(key=lambda hp: named.index(hp["id"]) if hp["id"] in named else len(named))
 
     # ---------------------------------------------------------- boardwalks: mapped walkways (lines) over rocks or water, as decks
     boardwalks = []
@@ -391,13 +429,18 @@ def main():
         ferries.append({"route": f["route"], "stops": stops, "vessels": f.get("vessels", ["Ferry"]), "legs": legs})
 
     # ---------------------------------------------------------- props
-    props = {"bench": [], "street_lamp": []}
-    for r in rows(con, raw("infrastructure"), "class, wkb"):
+    props = {"bench": [], "street_lamp": [], **{k: [] for k in road_rules.SIGNS}}  # the signals and signs: the traffic's junctions
+    tagged = "source_tags" in [d[0] for d in con.execute(f"DESCRIBE SELECT * FROM '{raw('infrastructure')}'").fetchall()]
+    for r in rows(con, raw("infrastructure"), "class, wkb" + (", source_tags" if tagged else "")):
+        if r["class"] == "crossing":  # (by its OSM tags: one with signals or zebra stripes)
+            r["class"] = road_rules.crossing_kind(r.get("source_tags"))
         if r["class"] in props:
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q) and not water[cell(q.x, q.y)]:
                 props[r["class"]] += [round(q.x * 10), round(q.y * 10), round(ground(q.x, q.y) * 10)]
-    print("props:", {k: len(v) // 3 for k, v in props.items()})
+    # out of the carriageways as the game draws them: many lamps are mapped as nodes of the road itself
+    moved = kerbside.tidy(props, roads)
+    print("props:", {k: len(v) // 3 for k, v in props.items()}, "moved to the kerb, left out:", moved)
 
     # ---------------------------------------------------------- rail: trams in the street, a funicular up the hill
     # Overture rail segments of the classes the city's game names (game.rail). OpenStreetMap breaks a
@@ -526,15 +569,14 @@ def main():
             if f:
                 st["at"] = f["at"]
 
-    # the walking ground: the DEM on land, the modelled bottom under the water, except where a
-    # helipad stands on the water (a floating pad): there it keeps the pad's own height
-    ground_grid = np.where(water, -depth_at(sm, gx, gy, C.x0, C.y1), dem)
-    edge = water & ndimage.binary_dilation(~water)  # just under the surface off a quay, as in the viewer's terrain
-    ground_grid[edge] = np.maximum(ground_grid[edge], -QUAY_SHELF_M)
-    for hp in helipads:
-        x, y, z = hp["at"]
-        near = water & (np.hypot(gx - x, gy - y) < 14.0)
-        ground_grid[near] = np.maximum(ground_grid[near], max(z, 0.0))
+    # the walking ground: the DEM on land, the modelled bottom under the water, except round a
+    # helipad on or by the water (a floating pad): there it keeps the pad's own height. Only the
+    # pads written below get that apron, so a pad the city leaves out leaves none behind
+    # (shore.py, which pipeline/pad_discs.py shares to check and repair game.json without a rebuild)
+    ground_grid = np.where(water, water_floor(sm, water, gx, gy, C.x0, C.y1), dem)
+    pad_aprons(ground_grid, water, gx, gy, helipads)
+    if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
+        ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
@@ -544,6 +586,8 @@ def main():
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
         "pier_deck_m": PIER_DECK,
         "surfaces": surfaces,
+        # fine walking levels a city lays over the grid (paving with its walls and steps, every half metre)
+        **({"patches": C.hook("game_patches")(scene)} if C.hook("game_patches") else {}),
         "paths": {"foot": foot, "road": roads},
         "wharves": list(wharves.values()),
         "ferries": ferries, "ferry_note": gcfg.get("ferry_note", ""),
@@ -567,7 +611,7 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "metro", "regulars") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "close", "metro", "regulars", "signals") if k in gcfg}
     # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
     if C.hook("game_extras"):
         for k, v in C.hook("game_extras")(scene).items():
@@ -575,7 +619,12 @@ def main():
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
+    kerbside.tidy_places(C.out, roads)  # the mapped trees out of the carriageways too (places.json)
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
+    print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
+    print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
+    if os.path.exists(os.path.join(C.raw, "overture_land_use.parquet")):
+        woods.build(C)  # the trees from the woods' and parks' canopy, and the ground under it (pipeline/woods.py)
     write_index()
 
 

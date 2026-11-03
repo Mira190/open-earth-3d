@@ -60,6 +60,14 @@
     ]
   },
   "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
     "classes": [
       "ocean",
       "bay",
@@ -103,6 +111,11 @@
     "グラントウキョウノースタワー": "Gran Tokyo North Tower",
     "帝国ホテル": "Imperial Hotel 帝国ホテル",
     "The Okura Prestige Tower": "Okura Prestige Tower"
+  },
+  "arrivals": {
+    "Kabuki-za 歌舞伎座": {"front": 215, "arc": 30, "dist": 95, "top": 28},
+    "National Diet 国会議事堂": {"front": 90},
+    "Wako 和光 (Ginza 4-chome)": {"front": 150, "arc": 40, "dist": 60}
   },
   "minor_labels": [
     "和光",
@@ -292,26 +305,25 @@
       "text": "On the winter solstice, {sun:Hibiya Park 日比谷公園|12-22|12:00}% of Hibiya Park is in direct sun at noon, and {sun:Hibiya Park 日比谷公園|12-22|13:00}% at 13:00. On 21 June at noon it is {sun:Hibiya Park 日比谷公園|6-21|12:00}%. No rule protects either."
     },
     {
-      "title": "Where the heights come from",
-      "provenance": true,
+      "title": "The National Diet Building",
       "date": [
-        9,
+        11,
         22
       ],
-      "from": "15:00",
-      "to": "15:30",
+      "from": "10:00",
+      "to": "10:40",
       "hold": 9,
       "cam": [
-        2300,
-        -2200,
-        1300
+        -930,
+        470,
+        140
       ],
       "tgt": [
-        -100,
-        200,
-        40
+        -1280,
+        654,
+        50
       ],
-      "text": "Blue: surveyed height (PLATEAU or OpenStreetMap). Orange: floor count. Green: estimated. In the model, PLATEAU's roof surveys give every tower in Marunouchi, Shiodome and Toranomon its real massing, podium and all."
+      "text": "Japan's parliament, finished in 1936 after seventeen years of building, in granite and marble quarried in Japan. The House of Representatives sits in the south wing, the House of Councillors in the north, and the stepped pyramid of the central tower rises 65 m."
     },
     {
       "title": "Tokyo Tower at sunset",
@@ -442,19 +454,13 @@
     "local_name": "Tokyoite",
     "water_name": "Tokyo Bay",
     "greeting": "こんにちは。",
-    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, ride the water bus, and fly to Tokyo Tower. Every fact they tell you comes from the model.",
+    "blurb": "Walk Tokyo from the station to the bay under the real sun. Talk to the people who know it, ride the water bus, and fly to Tokyo Tower.",
     "shade_landmarks": [
       "tower_"
     ],
     "start": {
-      "at": [
-        530,
-        1085
-      ],
-      "facing": [
-        632,
-        1248
-      ],
+      "at": [553, 1195],
+      "facing": [660, 1212],
       "time": "live"
     },
     "wharves": [
@@ -510,6 +516,7 @@
     "ferry_note": "Piers are from OpenStreetMap via Overture. Routes are generated through open water; the stops follow the real water-bus piers, but the timetable is not real, and the vessel names are those of Tokyo Cruise boats. Boats run at 1.5 times their real speed and wait 20 s at each pier. At a pier you can skip the wait.",
     "helipads_from_data": false,
     "helipads": [
+      {"id": "marunouchi-pad", "name": "Marunouchi Ekimae Plaza pad (game)", "at": [545, 1270, 2.9], "heading": 90},
       {
         "id": "hibiya-pad",
         "name": "Hibiya Park pad (game)",
@@ -530,10 +537,7 @@
         "id": "haruka",
         "name": "Haruka 遥",
         "role": "Station attendant 駅員",
-        "at": [
-          548,
-          1100
-        ],
+        "at": [563, 1203],
         "look": {
           "character": "R_Security_Female_01_f003_plain",
           "skin": "#f0c7aa",
@@ -771,9 +775,9 @@
         "title": "Welcome to Tokyo Station",
         "stamp": "Tokyo Station",
         "talk": [
-          "ようこそ。Welcome. You're the new surveyor? This city is rebuilt from open data: {buildings} buildings, laser-scanned terrain, the real sun.",
-          "This is the Marunouchi side: red brick, built 1914, restored 2012. Behind it, the glass towers. Kenji works in one of them, on Marunouchi Naka-dori.",
-          "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."
+          "ようこそ。Welcome to Tokyo Station. I'm Haruka; I work the Marunouchi gates. Red brick, 1914, and in 2012 they gave it back the domes it lost in the war.",
+          "Behind it, the glass towers. Kenji works in one of them, on Marunouchi Naka-dori: ask him why the towers are so tall and the station so low.",
+          "The helicopter is on the plaza's north side, taxis wait in the rotary (a hand up at the kerb, Y), and the water buses leave from Hamarikyu, a taxi ride south. WASD to walk, Shift to run, E to talk."
         ],
         "steps": [
           {
@@ -791,23 +795,11 @@
         "talk": [
           "Look at the station: a few storeys of brick. Look at the towers: 200 m of glass. Why does Marunouchi look like that?",
           "Because the station owner sold its unused floor area, its 空中権 (air rights), to the towers nearby. The brick stays low and the money restored it.",
-          "Here every building carries the source of its height. {share:plateau}% of the footprint area comes from PLATEAU's roof surveys. Aim at a building and press Q to use the survey lens. Find a surveyed one, a floor-count one and an estimate."
+          "Stand on the plaza in front of the station and look back: brick below, glass above. Then go and find Daichi on the Palace plaza. He runs there every day."
         ],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": [
-              "plateau",
-              "floors",
-              "estimate"
-            ],
-            "text": "Survey lens (Q): a PLATEAU, a floor-count and an estimated height"
-          },
-          {
-            "type": "talk",
-            "npc": "daichi",
-            "text": "Find Daichi on the Palace plaza"
-          }
+          {"type": "visit", "place": "Marunouchi Central Plaza", "text": "Stand on the plaza in front of the station"},
+          {"type": "talk", "npc": "daichi", "text": "Find Daichi on the Palace plaza"}
         ]
       },
       {
@@ -834,7 +826,7 @@
         "stamp": "Hibiya Park",
         "talk": [
           "Winter lunch in Hibiya Park: that's my favourite hour. On 22 December at noon, {sun:Hibiya Park 日比谷公園|12-22|12:00}% of the park is in direct sun. On 21 June it's {sun:Hibiya Park 日比谷公園|6-21|12:00}%.",
-          "No rule protects it, you know. A new tower could take it away. Find a sunny spot for me at lunchtime on the winter solstice. Watch the sun meter under the map. It ray-casts from where you stand."
+          "No rule protects it, you know. A new tower could take it away. Find a sunny spot for me at lunchtime on the winter solstice. The sun meter under the map tells you when you're in it."
         ],
         "choices": [
           {
@@ -877,7 +869,7 @@
         "title": "Lunch in Ginza",
         "stamp": "Ginza",
         "talk": [
-          "Finally, someone who counts shadows! Ginza's main street keeps its wall at 56 m under the Ginza Rules (銀座ルール). Check it with Q.",
+          "Finally, someone who counts shadows! Ginza's main street keeps its rooflines at 56 m: the Ginza Rules, 銀座ルール.",
           "Skip the department store, though. Ishikawa-san grills under the tracks at Yurakucho, and his yakitori is the real lunch."
         ],
         "steps": [
@@ -944,9 +936,9 @@
         "title": "333 metres",
         "stamp": "Tokyo Tower",
         "talk": [
-          "You flew in? Then you've seen it: {landmark:tokyo_tower.height} m, and the main deck at {landmark:tokyo_tower.main_deck} m. The model builds the lattice from those figures, not from a scan.",
-          "Not everything is a scan, anyway. {share:plateau}% of the buildings you passed were surveyed by PLATEAU; the rest are estimates from their neighbours.",
-          "Report back to Haruka at the station. The survey is nearly done."
+          "You flew in? Then you've seen it: {landmark:tokyo_tower.height} m, and the main deck at {landmark:tokyo_tower.main_deck} m. Six hundred steps up, if you'd rather walk.",
+          "On a clear winter morning you can see Mt Fuji from the top deck.",
+          "Report back to Haruka at the station. You've walked the whole loop."
         ],
         "steps": [
           {
@@ -959,11 +951,11 @@
       {
         "id": "done",
         "giver": "haruka",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
+        "title": "The whole loop",
+        "stamp": "東京 Tokyo",
         "talk": [
-          "お疲れ様でした。That's the full survey: the station, the air above it, the Palace, the sun, the water and the tower.",
-          "Now you know where the numbers come from. The city is yours. Change the time of day, take the water bus, or fly anywhere."
+          "お疲れ様でした。That's the whole loop: the station, the air above it, the Palace, the sun, the water and the tower.",
+          "The city is yours. Change the time of day, take the water bus, or fly anywhere. Come back to the station after dark: the brick is lit."
         ],
         "steps": []
       }

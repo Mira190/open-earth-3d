@@ -20,6 +20,10 @@ from pyproj import Transformer
 from shapely.geometry import MultiPolygon, Polygon
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# the city.json settings that scene.json carries in its "city" block for the viewer and the game
+# (build_scene.py writes them; scene_config.py refreshes them without rebuilding the scene)
+SCENE_CITY_KEYS = ("id", "name", "country", "country_code", "timezone", "locale", "description", "vertical_datum", "year", "tour", "start",
+                   "protection", "light_show", "minor_labels", "place_labels", "arrivals", "sun_hours_region", "renders", "night_ambient")
 
 
 class City:

@@ -12,7 +12,10 @@ can check, as well as look at.
 It started with Sydney, as an answer to the "Opus 5.5 + Blender made a 3D
 Sydney" demos: the same city, rebuilt so that it can be checked. Melbourne came
 next, then Melbourne's bayside, Osaka, Kyoto, Tokyo, Shibuya and Shinjuku, Paris,
-Hong Kong and Amsterdam. It
+Hong Kong and Amsterdam. A city with more than one model is still one place on the
+globe (`groups` in `cities/index.json`): Tokyo's four maps are chosen from its subway
+map, Melbourne holds its centre and its bayside, and the Great Barrier Reef its five
+sites. It
 grows from there one city at a time. Each new city is a config file and a few
 checks, not a new codebase.
 
@@ -56,7 +59,7 @@ rendering and the tiers.
 |---|---|---|
 | ![](docs/images/amsterdam/overview.jpg) | ![](docs/images/amsterdam/canals.jpg) | ![](docs/images/amsterdam/gables.jpg) |
 
-| Shibuya & Shinjuku: the 男坂 of Suga Shrine | SHIBUYA SKY, 229 m up | Kabukicho after dark |
+| Shinjuku: the 男坂 of Suga Shrine | Shibuya: SHIBUYA SKY, 229 m up | Shinjuku: Kabukicho after dark |
 |---|---|---|
 | ![](docs/images/shibuya/cycles-suga-stairs.jpg) | ![](docs/images/shibuya/cycles-shibuya-sky.jpg) | ![](docs/images/shibuya/cycles-kabukicho.jpg) |
 
@@ -139,7 +142,7 @@ streets, keeping to the city's side of the road, and talks about what you pass.
 Choose a destination
 on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
-`#play-tokyo` and `#play-shibuya`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
+`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa` and `#play-akihabara`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -192,11 +195,16 @@ card, or go to `#play-osaka`.
 |---|---|---|
 | ![](docs/images/osaka/game-daisuke.jpg) | ![](docs/images/osaka/game-fumi.jpg) | ![](docs/images/osaka/people.jpg) |
 
-**Tokyo Pilgrimage** walks Shibuya and Shinjuku ten years after a film and a game drew
-them: the stairs of *Your Name* at Suga Shrine, SHIBUYA SKY's roof (take the lift, ride the
-escalator out), Sangenjaya's backstreets and Kabukicho's arch. Walking into a
-neighbourhood puts its name up on a station sign; <kbd>E</kbd> reads an ema or a vending
-machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya`.
+**Tokyo is a set of maps**, as games draw it: on the globe it is one destination whose card is a
+subway map of its districts (Marunouchi & Ginza, Shibuya, Shinjuku, Akihabara, Asakusa and the
+Skytree; Ueno, Ikebukuro, Odaiba and more in grey, next in line). Pick a station and go in there.
+See [Tokyo as maps](docs/cities/tokyo-maps.md).
+
+**Tokyo Pilgrimage** walks Shibuya and Shinjuku, two maps of Tokyo, ten years after a film and a
+game drew them: the stairs of *Your Name* at Suga Shrine and Kabukicho's arch in Shinjuku, SHIBUYA
+SKY's roof (take the lift, ride the escalator out) and Sangenjaya's backstreets in Shibuya. Walking
+into a neighbourhood puts its name up on a station sign; <kbd>E</kbd> reads an ema or a vending
+machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya` or `#play-shinjuku`.
 
 | The stairs from the lane at their foot | Reading an ema, under Yotsuya-sanchome's station sign | Riding up SHIBUYA SKY's escalator |
 |---|---|---|
@@ -231,11 +239,14 @@ whose every line is computed from the model or cited. Choose **Great Barrier Ree
 |---|---|---|
 | **Sydney**, Australia | **Live** | 7,962 buildings (4,190 with pitched roofs) and 6,096 trees across 3.0 × 4.8 km. The Opera House stands on the shell ridges OpenStreetMap maps for its roof, and the Harbour Bridge and Sydney Tower are built to their published geometry. Sun access is tested on the public places protected by Sydney LEP 2012 cl. 6.18. Heights are checked against 35 published towers (median error 4.5%). [Case study](docs/cities/sydney.md) |
 | **Melbourne**, Australia | **Live** | 13,050 buildings (4,530 with pitched roofs) and 11,335 trees across 4.8 × 3.9 km, on Geoscience Australia's 5 m LiDAR terrain. That terrain agrees with 238 surveyed spot heights to 0.26 m at the median. Heights are checked against 42 published towers: 21 are matched by address, with a median error of 0.2%. Sun access is tested on the public spaces the planning scheme protects (DDO10). There is no open aerial imagery, so the ground is drawn from the map data. [City notes](docs/cities/melbourne.md) |
-| **Melbourne Bayside**, Australia | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
+| **Melbourne Bayside**, Australia (a district of Melbourne) | **Live** | Port Phillip's shore from St Kilda to Brighton: 9,335 buildings (6,561 with pitched roofs) and 4,524 trees across 3.2 × 7.7 km. The terrain agrees with 12 surveyed spot heights to 0.21 m at the median. The 96 Brighton bathing boxes and Luna Park's Scenic Railway and Mr Moon are kit-built. In the game, little penguins come ashore on the St Kilda breakwater after the real sunset. [City notes](docs/cities/melbourne-bayside.md) |
 | **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep (each tier, its eaves and its gables measured from PLATEAU's own 3D model of it), Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
-| **Shibuya & Shinjuku**, Japan | **Live** | 90,304 buildings across 5.4 × 6.2 km, from Sangenjaya to Shinjuku and Yotsuya. 86% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble, Center Gai, Sangenjaya's backstreets and Kabukicho's arch: the real places a film and a game drew. *Tokyo Pilgrimage*, a game in five walks. [Case study](docs/cities/shibuya.md) |
+| **Shibuya**, Japan (a map of Tokyo) | **Live** | 47,787 buildings across 4.5 × 4.0 km, from Sangenjaya to Harajuku and Meiji Jingu. 87% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble and Hachiko, Center Gai and Sangenjaya's backstreets: the real places a game drew. [Case study](docs/cities/shibuya.md) |
+| **Shinjuku**, Japan (a map of Tokyo) | **Live** | 26,697 buildings across 4.5 × 3.1 km, from Nishi-Shinjuku's towers to Yotsuya. 85% of the footprint area at a PLATEAU surveyed height. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema; Kabukicho's arch, the east exit's screens, 2-chome and Shinjuku Gyoen. [Case study](docs/cities/shinjuku.md) |
+| **Asakusa**, Japan (a map of Tokyo) | **Live** | Asakusa and the Sumida across 2.6 × 1.6 km at PLATEAU-surveyed heights. Senso-ji built to its published sizes: the Kaminarimon and its 700 kg lantern, Nakamise, the Hozomon, the 53 m pagoda and the main hall; Tokyo Skytree, 634 m, lit Iki and Miyabi on alternate nights, with a lift to the Tembo Deck; the Asahi flame; the Sumida water bus. [Case study](docs/cities/asakusa.md) |
+| **Akihabara**, Japan (a map of Tokyo) | **Live** | Electric Town across 1.8 × 1.5 km at PLATEAU-surveyed heights: Chuo-dori's blade signs, boards and wall prints, lit after dark; Kanda Myojin's gate and Nikolai-do's dome up the hill. [Case study](docs/cities/akihabara.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
 | **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |
@@ -316,7 +327,10 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   gets a curtain-wall, ribbon or punched-window facade from its class and
   height, with a parapet and its mapped storeys.
 - **A guided tour** written in the city's config, with numbers filled in from
-  the model.
+  the model. The camera flies from stop to stop while the sun eases to the next
+  stop's hour; a segmented bar under the caption shows how far through it is,
+  and after the last stop it ends on a card (explore, play the city, watch
+  again) while the camera turns slowly, rather than starting over.
 - **A flyover.** When a city opens, the camera comes down from above the whole
   model onto the first tour stop. It is shorter on later visits, and any key or
   click skips it. Click a landmark's name to fly round it, or turn on **Orbit** to
@@ -330,7 +344,7 @@ The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the title screen, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #shibuya, #hong-kong) for a 3D model,
+# open http://localhost:8000 for the title screen, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #shibuya, #shinjuku, #hong-kong) for a 3D model,
 # #play-sydney (and so on) for a game,
 # reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
 ```
@@ -363,6 +377,9 @@ python pipeline/landmarks.py --city sydney            # -> web/data/sydney/landm
 python analysis/heights.py --city sydney              # published heights vs model
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
+python pipeline/open_sea.py --city sydney             # the open water past the frame (Overture, 40 km around)
+python pipeline/road_rules.py sydney                  # one-way streets, banned turns, traffic signals and crossings into a built game.json (after fetch_overture --only segment infrastructure)
+python pipeline/road_lanes.py sydney                  # OSM lane arrows and counts by way id into a built game.json (after fetch_overture --only segment)
 python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
 python pipeline/fetch_rocketbox.py                    # the surveyors and the NPCs (once; Microsoft Rocketbox, MIT)
 python blender/build_people.py --npcs                 # every NPC the cities' city.json name (pip install bpy==5.2.3)
@@ -404,6 +421,15 @@ python blender/build_vehicles.py --render                 # the shared helicopte
 python blender/build_trees.py --render                    # the shared trees -> web/assets/trees
 ```
 
+## Online, and its version
+
+Every push to main publishes `web/` to GitHub Pages
+(<https://mira190.github.io/open-earth-3d/>) through `.github/workflows/pages.yml`. Each deploy
+gets a version: the major.minor in `VERSION` plus the workflow's run number (`0.1.42`). The
+workflow writes it with the commit and the build time to `web/version.json`, tags the commit
+`v0.1.42`, and the title screen shows it at the bottom right and under About. A local checkout
+has no `version.json` and says "Local build". Raise `VERSION` for a new major or minor release.
+
 ## Add a city
 
 1. Create `cities/<id>/city.json`. It holds:
@@ -444,7 +470,7 @@ what was measured. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) covers:
 | `web/reef/` | The marine worlds: `main.js`, `env.js` (light, sky, water column), `ocean.js`, `ripples.js`, `world.js`, `shore.js`, `post.js`, `tide.js`, `life.js` + `life/`, `boats.js` + `boats/`, `player.js` and the people, `game.js` + `game/`; three.js r186 in `web/vendor/three` |
 | `analysis/` | Height accuracy, data quality, terrain and radar checks, sun access, error budget, uncertainty, time basis |
 | `blender/` | Headless Blender rebuild and Cycles renders (`buildings.py` builds the buildings; `build_vehicles.py` models the game's helicopter, ferries and cars; `build_trees.py` grows the trees) |
-| `tools/` | `check.sh` (the checks to pass before landing on main, picked from what a branch changed), `city_shot.js` (screenshots of the model viewer from listed views), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries), `flyover.js` (records a city's loading flyover), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score), `title_check.js` (the title on a tablet, a phone and a desktop, and with WebGL faults injected) |
+| `tools/` | `check.sh` (the checks to pass before landing on main, picked from what a branch changed), `city_shot.js` (screenshots of the model viewer from listed views), `game_shot.js` (stills of the game, on foot or from the air over its title screen), `game_check.js` (plays a city's game headless: walk, talk, fly, ferries, a taxi and a ride), `clip_check.js` (counts what passes through what in the street), `ride_check.js` (rides over and over, timed), `ferry_check.js` (the ferries over fifteen minutes), `tour_check.js` (plays a city's guided tour in the model viewer: every stop, the end card, no runaway highlight or flat frame), `flyover.js` (records a city's loading flyover), `reef_shot.js` and `page_shot.js` for the reef sites, `title_film.js` (films the title screen's opening, frame by frame, with its score), `title_check.js` (the title on a tablet, a phone and a desktop, and with WebGL faults injected) |
 | `docs/` | Architecture, buildings, the game, adding a city, per-city case studies, images |
 
 ## Data and licences
@@ -479,6 +505,16 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
+- **Woods and park canopy:** Meta and World Resources Institute High Resolution
+  Canopy Height Maps (Tolan et al. 2024, CC BY 4.0), for the trees planted in
+  the mapped woods and parks and the ground under them (`pipeline/woods.py`).
+- **Open water past the model's frame:** Overture Maps' base water and land
+  themes (OpenStreetMap's coastline and water bodies, ODbL), 40 km around each
+  city, through `pipeline/open_sea.py` into `web/data/<id>/sea.jpg`. Considered
+  and not used: Natural Earth's 1:10m land (public domain) is a kilometre or so
+  coarse, too rough for the harbours a few hundred metres past the frame, and
+  OSM's own land polygons (osmdata.openstreetmap.de, ODbL) are the same
+  coastline as Overture's ocean polygons, but only as a global download.
 - **Vehicles and trees:** modelled from code in this repository
   (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
   third-party assets; the leaf atlas is drawn by the script.

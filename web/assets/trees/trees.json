@@ -13,7 +13,8 @@
    "fig": 3,
    "jacaranda": 4,
    "bloom": 5,
-   "palm": 6
+   "palm": 6,
+   "maple": 7
   },
   "columns": 4,
   "rows": 2
@@ -124,6 +125,23 @@
     116
    ],
    "note": "Canary Island date palm"
+  },
+  "maple": {
+   "height_m": 7.5,
+   "crown": [
+    4.7,
+    4.6,
+    2.5
+   ],
+   "colour": "#628f3b",
+   "bark": "#5b534a",
+   "triangles": [
+    2054,
+    390,
+    103
+   ],
+   "note": "Japanese maple (momiji, Acer palmatum): a low, wide, layered crown; red from mid November in Tokyo and Kyoto",
+   "autumn_colour": "#c2412b"
   }
  }
 }

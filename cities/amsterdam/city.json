@@ -55,6 +55,14 @@
   },
   "architecture": "amsterdam",
   "water": {
+    "seawall": {
+      "stone": "#6b4434",
+      "coping": "#8e8a84",
+      "course_m": 0.09,
+      "block_m": 0.23,
+      "high_water_m": 0.25,
+      "note": "The canals' quay walls (kademuren): red-brown brick on timber piles under a granite or basalt coping; the water is held at NAP -0.40 m, so only a thin wet band."
+    },
     "classes": [
       "canal",
       "river",
@@ -110,6 +118,11 @@
     "Waag": "Waag",
     "Noorderkerk": "Noorderkerk",
     "Sint-Franciscus Xaveriuskerk": "De Krijtberg"
+  },
+  "arrivals": {
+    "Centraal Station": {"front": 180},
+    "Royal Palace": {"front": 95},
+    "Beurs van Berlage": {"front": 270}
   },
   "minor_labels": [
     "Schreierstoren",
@@ -291,7 +304,7 @@
       "cam": [
         -470,
         120,
-        26
+        40
       ],
       "tgt": [
         -600,
@@ -361,26 +374,25 @@
       "hold": 9
     },
     {
-      "title": "Where the heights come from",
-      "text": "Coloured by height source: measured by the 3DBAG in the darkest shade. The houseboats in the canals are not in the register, and their heights are a guess.",
-      "cam": [
-        1900,
-        -2500,
-        1250
-      ],
-      "tgt": [
-        -150,
-        150,
-        0
-      ],
+      "title": "The A'DAM Toren",
       "date": [
         6,
         21
       ],
-      "from": "12:00",
-      "to": "13:00",
+      "from": "20:00",
+      "to": "21:00",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        430,
+        1000,
+        120
+      ],
+      "tgt": [
+        661,
+        1200,
+        60
+      ],
+      "text": "Built from 1966 to 1971 as Shell's offices on the north bank of the IJ, to Arthur Staal's design. Since 2016 it has been the A'DAM Toren, with a lookout on the roof and a swing that hangs out over the edge."
     }
   ],
   "renders": [
@@ -415,7 +427,7 @@
     "local_name": "Amsterdammer",
     "water_name": "the canals",
     "greeting": "Hoi!",
-    "blurb": "Walk the canal ring and read its gables, take the free ferry across the IJ, and find the winter sun in the old city. Talk to the people who know it. Every fact they tell you comes from the model.",
+    "blurb": "Walk the canal ring and read its gables, take the free ferry across the IJ, and find the winter sun in the old city. Talk to the people who know it.",
     "start": {
       "at": [
         25,
@@ -495,7 +507,9 @@
     "vehicles": {
       "note": "The shared ferry (web/assets/vehicles) in ferry_style's white and blue; no helicopter flies over the old city."
     },
-    "helipads": [],
+    "helipads": [
+      {"id": "dam-pad", "name": "Dam pad (game)", "at": [12, 18, 2.8], "heading": 90}
+    ],
     "helipads_from_data": false,
     "viewpoints": [
       {
@@ -552,7 +566,7 @@
       {
         "id": "sanne",
         "name": "Sanne",
-        "role": "Survey lead",
+        "role": "Guide, born on the Dam",
         "at": [
           20,
           0
@@ -568,8 +582,8 @@
           "clip": "Documents"
         },
         "idle": [
-          "Every building here is in the national register, the BAG, and every one was measured by the national laser survey, the AHN. The 3DBAG puts the two together.",
-          "There are four trig stations, a triangle on the map for each. Climb up to one and survey the view."
+          "Mind the bike lanes: the red asphalt is theirs, and they will not stop for you.",
+          "There are four trig stations, a triangle on the map for each. Climb up to one for the view."
         ]
       },
       {
@@ -750,7 +764,7 @@
           "ij",
           "sun"
         ],
-        "on_open": "<b>All three surveys done.</b> Report back to Sanne on the Dam."
+        "on_open": "<b>All three walks done.</b> Report back to Sanne on the Dam."
       }
     ],
     "quests": [
@@ -761,9 +775,9 @@
         "title": "Welcome to the Dam",
         "stamp": "Dam",
         "talk": [
-          "Hoi! You're the new surveyor? Welcome to the Dam, where Amsterdam began: a dam in the Amstel, around 1270.",
-          "The model around you is open data: {buildings} buildings from the 3DBAG, on the national laser-scanned terrain, under the national aerial photographs. For {share:3dbag}% of the footprint area the height was measured, not guessed.",
-          "Three surveys today, in any order. The canal ring, with Pieter on the Herengracht. The IJ, with Joost at the ferries behind Centraal Station. And the winter sun, with Mei on the Rembrandtplein."
+          "Hoi! Welcome to the Dam, where Amsterdam began: a dam in the Amstel, around 1270. I'm Sanne, and I was born three streets from here.",
+          "Three walks today, in any order. The canal ring, with Pieter on the Herengracht. The IJ, with Joost at the ferries behind Centraal Station. And the winter sun, with Mei on the Rembrandtplein.",
+          "The helicopter is on the square beside you, the trams and taxis stop on the Damrak (a hand up at the kerb, Y), and the free ferries leave from behind Centraal Station, ten minutes' walk north. Where first?"
         ],
         "steps": [],
         "choices": [
@@ -791,25 +805,13 @@
         "title": "Read a gable",
         "stamp": "Grachtengordel",
         "talk": [
-          "Ah, the surveyor. Sanne said you'd come. The canal ring was dug from 1613, and most of these houses were built in the hundred years after.",
-          "Each front ends in the gable of its day. Step gables until the 1660s, then the neck gable, then the bell, and from the 1700s the straight cornice. This model draws each house's gable from the year the register gives for it.",
-          "Aim at a house and press Q for the survey lens. Find me a step gable, a neck gable and a bell gable. Then go up to the Westertoren; Femke plays its bells."
+          "Ah, Sanne said you'd come. The canal ring was dug from 1613, and most of these houses were built in the hundred years after.",
+          "Each front ends in the gable of its day. Step gables until the 1660s, then the neck gable, then the bell, and from the 1700s the straight cornice.",
+          "Aim at a house and press Q to look closely. Find me a step gable, a neck gable and a bell gable. Then go up to the Westertoren; Femke plays its bells."
         ],
         "steps": [
-          {
-            "type": "gable",
-            "kinds": [
-              "step",
-              "neck",
-              "bell"
-            ],
-            "text": "Survey lens (Q): find a step gable, a neck gable and a bell gable"
-          },
-          {
-            "type": "talk",
-            "npc": "femke",
-            "text": "Find Femke at the foot of the Westertoren"
-          }
+          {"type": "gable", "kinds": ["step", "neck", "bell"], "text": "Look closely (Q): find a step gable, a neck gable and a bell gable"},
+          {"type": "talk", "npc": "femke", "text": "Find Femke at the foot of the Westertoren"}
         ]
       },
       {
@@ -820,8 +822,8 @@
         "stamp": "Westertoren",
         "talk": [
           "Hello. You found the tallest church tower in the city: 85 metres, 87 with the weathercock. Hendrick de Keyser designed it, and it was finished in 1638.",
-          "A laser over a ten-metre footprint can't draw a spire, so the model builds it from its published height, with Maximilian's crown on top.",
-          "Two doors down the Prinsengracht is number 263, the Anne Frank House. Anne could hear these bells from the Secret Annex, every quarter of an hour. Walk past it, then tell Sanne the canal ring is surveyed."
+          "Rembrandt is buried in the church below, somewhere. Nobody knows exactly where.",
+          "Two doors down the Prinsengracht is number 263, the Anne Frank House. Anne could hear these bells from the Secret Annex, every quarter of an hour. Walk past it, then tell Sanne you've seen the canal ring."
         ],
         "steps": [
           {
@@ -868,8 +870,8 @@
         "stamp": "Overhoeks",
         "talk": [
           "Welcome to Noord. That tower is the A'DAM Toren, Shell's offices from 1971. Now there's a swing on the roof.",
-          "The laser's highest point on it is {landmark:adam_toren.height_m} m above the street. Published, it's 80 m to the roof and about 100 m to the top of the mast: the laser caught the mast.",
-          "Walk to its foot and look up. Then you can tell Sanne the IJ is surveyed."
+          "It's 80 m to the roof. Up top is the lookout: the old city on one side, the flat fields of Noord on the other.",
+          "Walk to its foot and look up. Then you can tell Sanne you've crossed the IJ."
         ],
         "steps": [
           {
@@ -890,7 +892,7 @@
         "title": "Sun in December",
         "stamp": "Rembrandtplein",
         "talk": [
-          "Hi! You're the surveyor? Perfect. I'm writing about the sun in the city in winter.",
+          "Hi! Sanne sent you? Perfect. I'm writing about the sun in the city in winter.",
           "On the 21st of December the sun stands 14 degrees above the horizon at noon, which is at 12:38 here. The houses round this square are 15 to 20 metres tall, so their shadows are 60 to 80 metres long.",
           "Find me a spot on the Rembrandtplein in direct sun between 10 and 2 on the 21st. Then go to the Albert Cuyp market and buy a stroopwafel from Fatima. I'll pay you back."
         ],
@@ -923,7 +925,7 @@
         "stamp": "Albert Cuyp",
         "talk": [
           "Goedemiddag! A stroopwafel? Wait, I'll make it fresh. Two thin waffles, syrup in between, warm so it runs.",
-          "Mei sent you? Then it's on her. Tell her the sun is surveyed, and tell Sanne too."
+          "Mei sent you? Then it's on her. Tell her you found the sun, and tell Sanne too."
         ],
         "steps": []
       },
@@ -931,12 +933,12 @@
         "id": "klaar",
         "line": "finale",
         "giver": "sanne",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
+        "title": "Back on the Dam",
+        "stamp": "Amsterdammer",
         "talk": [
-          "You're back. The canal ring, the IJ and the winter sun: that's Amsterdam, read from the register and the laser.",
-          "Every house you looked at was measured, and every shadow comes from the sun's real position. If something looks wrong, it is probably wrong in the data. Tell the 3DBAG, or fix OpenStreetMap.",
-          "Doei, surveyor. The city is yours to walk."
+          "You're back. The canal ring, the IJ and the winter sun: that's Amsterdam, from the gables to the water.",
+          "Walk the canals after dark, when the houses light up. Half of them never draw the curtains.",
+          "Doei! The city is yours to walk."
         ],
         "steps": []
       }

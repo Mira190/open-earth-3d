@@ -41,7 +41,7 @@ export default function ladyElliot(G) {
     island: { say: G2 => {
       const c = P('lady-elliot-island'), ha = c ? landArea(G2, c.x, c.north) : null;
       return [{ t: 'It first rose above the sea around 1500 BC, as a spit of coral rubble, and took about 3,000 years to become a mature cay.', src: ['wiki-lei'] },
-        ha ? { t: `Wikipedia gives about 45 hectares; the mapped outline in this model gives ${ha.toFixed(0)} above mean sea level.`, src: ['wiki-lei', 'model-terrain'] } : null,
+        ha ? { t: `About 45 hectares, and ${ha.toFixed(0)} of them above mean sea level. You can walk round it in about an hour.`, src: ['wiki-lei', 'model-terrain'] } : null,
         { t: 'It is a shingle cay with plants on it, which is uncommon: most are too narrow to hold fresh water, or too mobile for plants to take hold.', src: ['wiki-lei'] },
         { t: 'The waters around it are a Green Zone of the Marine Park: no fishing, and nothing taken.', src: ['wiki-lei'] },
         { t: `Captain Thomas Stewart named it in 1816, after his ship, the Lady Elliot. It's 85 km north-east of Bundaberg; the grass airstrip, ${G2.where('lei-airstrip')}, was built in 1969 by Don Adams and is still in use.`, src: ['wiki-lei', 'model-pois'] }];

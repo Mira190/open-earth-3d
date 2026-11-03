@@ -55,6 +55,14 @@
     "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
   },
   "water": {
+    "seawall": {
+      "stone": "#6c6a64",
+      "coping": "#9a978f",
+      "course_m": 0.5,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The bay's seawalls and the Elwood Canal: bluestone and concrete."
+    },
     "classes": [
       "bay",
       "ocean",
@@ -207,13 +215,13 @@
     ],
     "time": "16:30",
     "cam": [
-      -3300,
-      -2300,
-      2400
+      1300,
+      -3600,
+      1000
     ],
     "tgt": [
-      300,
-      500,
+      -100,
+      -300,
       0
     ]
   },
@@ -224,7 +232,7 @@
     "title": "Bayside on Foot",
     "local_name": "Melburnian",
     "water_name": "the bay",
-    "blurb": "Walk Port Phillip's shore from St Kilda Pier to the Brighton bathing boxes, rebuilt from open data under the real sun. Stay on the pier after sunset and the little penguins come ashore. Every fact you hear comes from the model or a cited source.",
+    "blurb": "Walk Port Phillip's shore from St Kilda Pier to the Brighton bathing boxes under the real sun. Stay on the pier after sunset and the little penguins come ashore.",
     "climate": {
       "mean_max_c": [
         26.8,
@@ -257,6 +265,7 @@
     "ferries": [],
     "ferry_note": "No ferry runs along this shore, so there are none here. There is no helipad on the bayside foreshore either: the pad on the Elwood soccer pitch is invented, so that you can fly the coast.",
     "helipads": [
+      {"id": "catani-pad", "name": "Catani Gardens pad (game)", "at": [-330, 3120, 2.9], "heading": 200},
       {
         "id": "elwood-pad",
         "name": "Elwood (invented pad)",
@@ -394,7 +403,7 @@
       {
         "id": "kim",
         "name": "Kim",
-        "role": "Survey lead",
+        "role": "St Kilda local",
         "at": [
           -415,
           3030
@@ -410,7 +419,7 @@
           "clip": "Documents"
         },
         "idle": [
-          "Most heights here are machine-learning estimates. OpenStreetMap maps the heights of only a few buildings in these suburbs. Your survey lens (Q) shows where each one comes from."
+          "In summer half of Melbourne comes down here on the 96 tram. In winter it's just us, the dog walkers and the kitesurfers."
         ]
       },
       {
@@ -486,8 +495,9 @@
         "title": "St Kilda to Brighton",
         "stamp": "Bayside",
         "talk": [
-          "This is Melbourne's bayside, rebuilt from open data: {buildings} buildings from St Kilda to Brighton, on Geoscience Australia's 5 m LiDAR terrain.",
-          "Start with the pier. It was rebuilt and reopened in December 2024, about 450 metres out to the breakwater. The kiosk at its end was built in 1904, burnt in 2003 and rebuilt to the old plans."
+          "G'day, welcome to St Kilda! I'm Kim; I grew up on this beach. From here the bay runs south past Elwood to the Brighton bathing boxes.",
+          "Start with the pier. It was rebuilt and reopened in December 2024, about 450 metres out to the breakwater. The kiosk at its end was built in 1904, burnt in 2003 and rebuilt to the old plans.",
+          "If you'd rather see the bay from the air, the helicopter is on the lawn of Catani Gardens, just behind you, and a hand up at the kerb (Y) on Jacka Boulevard stops a taxi."
         ],
         "steps": [
           {
@@ -622,13 +632,13 @@
       "title": "Port Phillip, St Kilda to Brighton",
       "text": "{buildings} buildings from OpenStreetMap via Overture Maps along 7 km of shore, on Geoscience Australia's 5 m LiDAR terrain. No openly licensed aerial photo covers the bayside, so the ground is drawn from the open map data.",
       "cam": [
-        -3300,
-        -2300,
-        2400
+        1300,
+        -3600,
+        1000
       ],
       "tgt": [
-        300,
-        500,
+        -100,
+        -300,
         0
       ],
       "date": [
@@ -682,26 +692,25 @@
       "hold": 9
     },
     {
-      "title": "Where the heights come from",
-      "text": "OpenStreetMap maps the height of only a few buildings in these suburbs, so most here are Microsoft's machine-learning estimates, corrected for their measured bias, or estimates from neighbours. The colours show each building's source.",
-      "cam": [
-        1300,
-        1500,
-        900
-      ],
-      "tgt": [
-        500,
-        500,
-        0
-      ],
+      "title": "The Palais Theatre",
       "date": [
         1,
         15
       ],
-      "from": "12:00",
-      "to": "13:00",
+      "from": "19:30",
+      "to": "20:20",
       "hold": 9,
-      "provenance": true
+      "cam": [
+        -420,
+        2560,
+        110
+      ],
+      "tgt": [
+        60,
+        2700,
+        15
+      ],
+      "text": "Opened in 1927 next door to Luna Park, on the Lower Esplanade. With about 2,900 seats it is the largest seated theatre in Australia."
     },
     {
       "title": "The Brighton bathing boxes",

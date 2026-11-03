@@ -2,9 +2,9 @@
  "year": 2026,
  "dsm": {
   "cell_m": 2,
-  "nx": 2700,
-  "ny": 3100,
-  "build_ms": 738
+  "nx": 2225,
+  "ny": 2000,
+  "build_ms": 381
  },
  "places": [
   {
@@ -45,43 +45,6 @@
    ]
   },
   {
-   "name": "Shinjuku Gyoen 新宿御苑",
-   "lep": false,
-   "period": "all",
-   "window": "12:00-13:00",
-   "window_verified": true,
-   "area_m2": 577104,
-   "samples": 23081,
-   "mean_pct_in_sun_by_month": [
-    93,
-    94,
-    95,
-    96,
-    97,
-    98,
-    97,
-    96,
-    95,
-    94,
-    92,
-    91
-   ],
-   "protected_months": [
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true
-   ]
-  },
-  {
    "name": "Miyashita Park 宮下公園",
    "lep": false,
    "period": "all",
@@ -90,7 +53,7 @@
    "area_m2": 11573,
    "samples": 1287,
    "mean_pct_in_sun_by_month": [
-    82,
+    83,
     85,
     86,
     87,
@@ -98,47 +61,10 @@
     88,
     88,
     87,
-    85,
+    86,
     83,
     81,
     81
-   ],
-   "protected_months": [
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true,
-    true
-   ]
-  },
-  {
-   "name": "Suga Park 須賀公園",
-   "lep": false,
-   "period": "all",
-   "window": "12:00-13:00",
-   "window_verified": true,
-   "area_m2": 171,
-   "samples": 18,
-   "mean_pct_in_sun_by_month": [
-    46,
-    86,
-    100,
-    100,
-    100,
-    100,
-    100,
-    100,
-    100,
-    77,
-    27,
-    23
    ],
    "protected_months": [
     true,
@@ -172,10 +98,10 @@
     100,
     100,
     100,
-    97,
+    98,
     91,
     84,
-    77
+    78
    ],
    "protected_months": [
     true,
@@ -193,6 +119,6 @@
    ]
   }
  ],
- "rays": 2756700,
- "ray_ms": 5545
+ "rays": 1370760,
+ "ray_ms": 1379
 }

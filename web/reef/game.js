@@ -31,7 +31,8 @@ const wrap180 = a => ((a % 360) + 540) % 360 - 180;
 
 export async function init(ctx) {
   const { q, env, camera } = ctx, S = ctx.S, player = ctx.player || null, hud = ctx.hud || null;
-  const playerCtl = ctx.controller;                       // the player's own controller: any other one means aboard (or free-fly)
+  const playerCtl = ctx.controller;
+  const api0 = {};                                         // window.__game, filled in below                       // the player's own controller: any other one means aboard (or free-fly)
   if (q.get('lifestub') === '1' && !ctx.life) { try { ctx.life = (await import('./game/life_stub.js')).createLifeStub(ctx); } catch (e) { console.warn('game: life stub', e); } }
   const testing = q.get('gametest') === '1' || !!q.get('gameshot');
   const KEY = `oe3d-reef-game-${ctx.site}${testing ? '-test' : ''}`;
@@ -451,7 +452,7 @@ export async function init(ctx) {
     when: ms => fmtDate.format(new Date(ms)),
     waterTemp: depth => waterTemp(new Date(nowMs()), depth || 0),
     wind() { const w = boats && boats.windInfo; return w && w.speed ? { kn: w.speed * 1.944, from: ((w.from / RAD) % 360 + 360) % 360 } : null; },
-    vessels: () => boats ? boats.vessels : [], boats, aboard: () => aboard, boardVessel, putBeside, noBoard: v => noBoard.add(v),
+    vessels: () => boats ? boats.vessels : [], boats, aboard: () => aboard, boardVessel, putBeside, goTo, noBoard: v => noBoard.add(v),
     life, species: speciesList, speciesById, logged: () => Object.keys(st.species).length, logSpecies,
     // quests
     quest: qdef, state: qs, start, advance: advance_, complete, isActive, isDone, stepIndex: id => qs(id) ? qs(id).i : -1, data: id => qs(id) ? qs(id).d : null,
@@ -510,8 +511,10 @@ export async function init(ctx) {
   function panelAct(act, arg) {
     if (act === 'track') { G.track(arg); openPanel('journal'); }
     else if (act === 'travel') { const s = (travel.list || []).find(x => x.id === arg); if (s && s.ready && !s.current) { save(); location.href = siteAt(arg); } }
+    else if (act === 'goto') goTo(arg);
     else if (act === 'time') setTime(arg);
     else if (act === 'globe') toGlobe();
+    else if (act === 'intro') { closePanel(); startTour(); }
     else if (act === 'reset') { if (confirm('Forget all progress on this site?')) { st = fresh(); save(); for (const r of NPCS.values()) hideNpc(r, false); openPanel('journal'); refreshObjective(true); } }
   }
   const srcHtml = ids => (ids || []).map(srcOf).filter(Boolean).map(s => s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(srcLabel(s))}</a>` : esc(srcLabel(s))).join(' · ');
@@ -537,7 +540,7 @@ export async function init(ctx) {
     html += `<h3>Field notes · ${st.notes.length}</h3><ul>` + (st.notes.slice().reverse().map(n => `<li><p class="note">${esc(n.t)}</p><small class="cite">${n.w ? esc(n.w) + ' · ' : ''}${srcHtml(n.s)}</small></li>`).join('') || '<li class="empty">What people tell you is kept here, with where it comes from.</li>') + '</ul>';
     const used = [...new Set(st.notes.flatMap(n => n.s))].map(srcOf).filter(Boolean);
     if (used.length) html += '<h3>Sources</h3><ul>' + used.map(s => `<li><small>${s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.publisher)}: ${esc(s.title)}</a> · checked ${esc(s.checked || '')}` : `<b>Computed in the model:</b> ${esc(s.title)}. ${esc(s.what || '')}`}</small></li>`).join('') + '</ul>';
-    html += `<div class="foot"><span>Saved in this browser · keys: J journal · T map · K time · 1-4 answer</span><button class="act" data-act="reset">Reset progress</button></div>`;
+    html += `<div class="foot"><span>Saved in this browser · keys: J journal · T map · K time · 1-4 answer</span><span><button class="act" data-act="intro">Show the intro again</button> <button class="act" data-act="reset">Reset progress</button></span></div>`;
     return html;
   }
   // the time of day: sun.js's presets for the clock's date (sunrise, golden hour, sunset, blue hour, night ...) and a
@@ -599,13 +602,29 @@ export async function init(ctx) {
       <small class="legend"><i class="me">▲</i> you <i class="np">●</i> people <i class="sg">■</i> signs <i class="tg">◆</i> objective</small></div>
       <div><h3>Queensland reef sites</h3><ul class="rg-sites">${sitesHtml(travel.list)}</ul>
       <div class="foot"><span>More reef sites appear here as their data is built. Fly the seaplane or the helicopter off the edge of the model to go to the nearest one.</span><button class="act" data-act="globe">Back to the globe</button></div>
-      <h3>Named places near you</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
+      <h3>Go to a named place</h3><ul class="rg-near">${nearHtml()}</ul></div></div>`;
   }
-  // the nearest named places (OpenStreetMap names in scene.json), with distance and bearing from you
+  // the named places (OpenStreetMap names in scene.json), nearest first, with distance and bearing from you and a
+  // Go button: a boat run there in a fade, any time you are not aboard something
+  const PLACE_KINDS = /^(beach|bay|inlet|lookout|island|peak|marina|reef|pontoon|town|cultural|dive)$/;
   function nearHtml() {
-    const KINDS = /^(beach|bay|inlet|lookout|island|peak|marina|reef|pontoon|town|cultural|dive)$/, a = here();
-    return (S.pois || []).map(p => poi(p.id)).filter(p => KINDS.test(p.kind)).map(p => ({ p, d: dist(a, p) })).sort((x, y) => x.d - y.d).slice(0, 6)
-      .map(({ p, d }) => `<li><div class="row"><span>${esc(p.name)}</span><span class="tag">${esc(km(d))} ${dirShort(bearing(a, p))}</span></div></li>`).join('');
+    const a = here();
+    return (S.pois || []).map(p => poi(p.id)).filter(p => p && PLACE_KINDS.test(p.kind)).map(p => ({ p, d: dist(a, p) })).sort((x, y) => x.d - y.d).slice(0, 10)
+      .map(({ p, d }) => `<li><div class="row"><span>${esc(p.name)}</span><span class="tag">${esc(km(d))} ${dirShort(bearing(a, p))}</span>${d > 60 ? `<button class="act" data-act="goto" data-arg="${esc(p.id)}">Go</button>` : ''}</div></li>`).join('');
+  }
+  // where a place puts you: in the water over a reef, dive site or pontoon deep enough to swim in, else on dry
+  // ground (above the tide, gentle enough to stand on) nearest it, facing it
+  function goTo(id) {
+    const p = poi(id);
+    if (!p || !player) return false;
+    if (aboard || ctx.controller !== playerCtl) { if (hud) hud.say('Step off first, then go from the map.', { secs: 4 }); return false; }
+    const wet = /^(reef|dive|pontoon)$/.test(p.kind) && ctx.depth(p.x, p.north) >= 1.5;
+    const spot = wet ? { x: p.x, north: p.north } : landSpot(p.x, p.north, { maxR: 900, toward: p });
+    if (!spot) { if (hud) hud.say(`There is nowhere to stand near ${p.name}.`, { secs: 4 }); return false; }
+    const face = dist(spot, p) > 3 ? bearing(spot, p) : undefined;
+    closePanel();
+    transfer(Object.assign(spot, face !== undefined ? { heading: face } : {}), p.name, wet ? 'In the water over it' : 'A short boat run');
+    return true;
   }
 
   // ------------------------------------------------------------ keys
@@ -699,17 +718,109 @@ export async function init(ctx) {
       const hdg = ((aboard ? aboard.hdg / RAD : 0) + 360) % 360, s = travel.nearest(hdg);
       const pending = (travel.list || []).filter(t => !t.ready && !t.current);
       const nodes = s ? {
-        edge: { say: `This is the edge of the ${S.name || ctx.site} model. ${s.name} is ${Math.round(s.km)} km ${dirName(s.bearing)} of here.`, src: ['model-terrain'],
+        edge: { say: `That's as far out as we go around ${S.name || ctx.site}. ${s.name} is ${Math.round(s.km)} km ${dirName(s.bearing)} of here.`, src: ['model-terrain'],
           choices: [{ text: `Continue to ${s.name}`, do: () => { save(); location.href = siteAt(s.id); }, go: 'end' }, { text: 'Turn back', go: 'end' }] } }
-        : { edge: { say: `This is the edge of the ${S.name || ctx.site} model, and no other reef site is built yet${pending.length ? ` (${pending.map(t => t.name).join(', ')} ${pending.length > 1 ? 'are' : 'is'} being built)` : ''}. Turn back, or T for the map.`, choices: [{ text: 'Turn back', go: 'end' }] } };
-      openDialogue({ name: aboard ? aboard.name : 'Pilot', role: 'Edge of the model', id: 'edge' }, nodes, 'edge');
+        : { edge: { say: `That's as far out as we go around ${S.name || ctx.site}, and there's nowhere else to land from here yet${pending.length ? ` (${pending.map(t => t.name).join(', ')} soon)` : ''}. Turn back, or T for the map.`, choices: [{ text: 'Turn back', go: 'end' }] } };
+      openDialogue({ name: aboard ? aboard.name : 'Pilot', role: 'Turning back', id: 'edge' }, nodes, 'edge');
     });
   }
+
+  // ------------------------------------------------------------ arrival and onboarding (#89, onboard.js)
+  // When the loader lifts, one calm move from a high view behind the player down to their own camera: along the
+  // bearing that camera already looks (so the view never turns about them), the distance closing on a log scale,
+  // the horizon level, about 3 s. A key or a tap settles it in 0.6 s; with reduced motion there is no move (the
+  // loader's fade is the cut). Then, the first time in this browser on any map, a short tour of the HUD; for a
+  // returning player a short welcome. "Show the intro again" is in the journal.
+  const OB = window.OEOnboard;
+  const reducedMotion = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  const tourSteps = () => [
+    { id: 'move', title: 'Walk, swim and look', target: touch ? '.rh-stick' : null,
+      text: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk or swim the way you look, <kbd>Shift</kbd> runs, <kbd>Space</kbd> jumps or swims up, <kbd>Ctrl</kbd> dives. Drag to look around, <kbd>V</kbd> changes the view, <kbd>H</kbd> shows the keys.',
+      touch: 'The stick walks or swims the way you look; <b>Up</b> and <b>Dive</b> take you up and down. Drag on the right to look around; <b>View</b> changes the view.' },
+    { id: 'objective', title: 'Your objective', target: '.rg-obj',
+      text: 'What to do next, how far it is and which way. The ◆ on the compass and over the place itself show the way there.' },
+    { id: 'use', title: 'Talk, read and gear up', target: null,
+      text: '<kbd>E</kbd> uses what is in front of you: talk to the people here, read a sign, put on the mask, fins or scuba kit, board a boat.',
+      touch: '<b>Use</b> works what is in front of you: talk to the people here, read a sign, put on the mask, fins or scuba kit, board a boat.' },
+    { id: 'journal', title: 'Your journal', target: '.rg-btns .bj',
+      text: '<kbd>J</kbd>: your quests, what you have learnt and where every fact comes from.', touch: '<b>Journal</b>: your quests, what you have learnt and where every fact comes from.' },
+    { id: 'map', title: 'The map and travel', target: '.rg-btns .bm',
+      text: '<kbd>T</kbd>: the places here, with <b>Go</b> to take a short boat run to one, and the other reef sites, with <b>Travel</b> to go there.',
+      touch: '<b>Map</b>: the places here, with <b>Go</b> to take a short boat run to one, and the other reef sites, with <b>Travel</b> to go there.' },
+    { id: 'time', title: 'Time and tide', target: '.rg-btns .bk',
+      text: '<kbd>K</kbd> sets the time of day: the sun, the moon and the predicted tide follow it. <b>Show the intro again</b> is in the journal.',
+      touch: '<b>Time</b> sets the time of day: the sun, the moon and the predicted tide follow it. <b>Show the intro again</b> is in the journal.' },
+  ];
+  function startTour() {
+    if (!OB) return null;
+    try { if (document.pointerLockElement) document.exitPointerLock(); } catch (_) {}
+    return OB.tour(tourSteps(), { onEnd: () => OB.markDone(ctx.site) });
+  }
+  function onboard() {
+    if (!OB) return;
+    if (!OB.done()) startTour();
+    else ui.toast(S.name || ctx.site, 'Welcome back. J journal · T map · K time');
+  }
+  const arrival = { on: false, t: 0, dur: 3.2, settle: null, r0: 0, e0: 0 };
+  const eu = new THREE.Euler(0, 0, 0, 'YXZ'), aPos = new THREE.Vector3(), aFocus = new THREE.Vector3(), aDir = new THREE.Vector3();
+  const lerpA = (a, b, t) => a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * t;
+  const sm = t => t * t * t * (t * (6 * t - 15) + 10);
+  const arriveCtl = {
+    update(dt, t) {
+      playerCtl.update(dt, t); // the player's own camera this frame: where the move lands
+      if (ctx.controller !== arriveCtl) { endArrival(); return; } // something took over (a boat)
+      dt = dt > 0 ? Math.min(dt, 0.1) : 1 / 60;
+      eu.setFromQuaternion(camera.quaternion, 'YXZ');
+      const yaw1 = eu.y, pitch1 = eu.x, p1 = camera.position.clone();
+      camera.getWorldDirection(aDir);
+      const r1 = Math.max(1.5, player.S.dist || 4);
+      aFocus.copy(p1).addScaledVector(aDir, r1);
+      if (!arrival.r0) { arrival.r0 = 85; arrival.e0 = 0.5; }
+      arrival.t += dt;
+      let px, yaw, pitch;
+      if (arrival.settle) {
+        const k = sm(Math.min(1, (arrival.t - arrival.settle.t) / 0.6));
+        aPos.lerpVectors(arrival.settle.p, p1, k); yaw = lerpA(arrival.settle.yaw, yaw1, k); pitch = arrival.settle.pitch + (pitch1 - arrival.settle.pitch) * k;
+        px = k;
+      } else {
+        const k = Math.min(1, arrival.t / arrival.dur), s = sm(k), e1 = -pitch1;
+        const r = arrival.r0 * Math.pow(r1 / arrival.r0, s), e = arrival.e0 + (e1 - arrival.e0) * s;
+        // behind the focus on the camera's own bearing, at elevation e
+        aPos.set(aFocus.x + Math.sin(yaw1) * Math.cos(e) * r, aFocus.y + Math.sin(e) * r, aFocus.z + Math.cos(yaw1) * Math.cos(e) * r);
+        aPos.y = Math.max(aPos.y, ctx.height(aPos.x, -aPos.z) + 2, k < 0.8 ? env.u.tide.value + 1 : -1e9);
+        // the last fifth hands over to the player's camera
+        const w = sm(Math.max(0, (k - 0.8) / 0.2));
+        aPos.lerp(p1, w); yaw = yaw1; pitch = -e + (pitch1 + e) * w;
+        px = k;
+      }
+      camera.position.copy(aPos);
+      camera.quaternion.setFromEuler(eu.set(pitch, yaw, 0, 'YXZ'));
+      if (px >= 1) endArrival();
+    }
+  };
+  function settleArrival() {
+    if (!arrival.on || arrival.settle) return;
+    eu.setFromQuaternion(camera.quaternion, 'YXZ');
+    arrival.settle = { t: arrival.t, p: camera.position.clone(), yaw: eu.y, pitch: eu.x };
+  }
+  function endArrival() {
+    if (!arrival.on) return;
+    arrival.on = false;
+    if (ctx.controller === arriveCtl) ctx.controller = playerCtl;
+    removeEventListener('keydown', settleArrival, true); removeEventListener('pointerdown', settleArrival, true);
+    onboard();
+  }
+  if (!testing && !q.get('still') && !q.get('cam') && playerCtl && player && !reducedMotion) {
+    arrival.on = true;
+    ctx.controller = arriveCtl;
+    addEventListener('keydown', settleArrival, true); addEventListener('pointerdown', settleArrival, true);
+  } else if (!testing && !q.get('still')) setTimeout(onboard, 900); // after the loader's fade
+  api0.arrival = arrival; api0.startTour = startTour; api0.settleArrival = settleArrival;
 
   // first objective, the site list in the background
   refreshObjective(true);
   travel.load();
-  const api = { update, G, ui, travel, rider, board, surv, light, get aboard() { return aboard; }, get state() { return st; } };
+  const api = Object.defineProperties(api0, Object.getOwnPropertyDescriptors({ update, G, ui, travel, rider, board, surv, light, get aboard() { return aboard; }, get state() { return st; } })); // (getters kept live)
   window.__game = api;
   if (q.get('gametest') === '1' || q.get('gameshot')) {
     const T = await import('./game/test.js');

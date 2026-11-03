@@ -217,7 +217,10 @@ or chosen by us.
 | Small keep platform and Kinmeisui well house | the platform 6.0 m high on its OSM outline*, the well house 4.7 m on it | PLATEAU 2025 (27100-bldg-951272) |
 | Tsutenkaku | 103 m (108 m with the lightning rod); observatories at 84 m and 87.5 m (the gold one), the open deck at 94.5 m with its round gallery 8.5 m across, the third-floor deck at 22 m over the legs; the jutting deck*, the ceiling painting under the tower (an octagon 17 m across*), the legs, lattice, sign boards and weather light are schematic* | Osaka City leaflet, MLIT's multilingual guide, gltjp |
 | HEP FIVE wheel | 75 m diameter, 106 m top, lowest point at the seventh floor (about 31 m), 52 gondolas; the building drawn at 47 m*, because PLATEAU's 107 m is the wheel; the trusses are schematic* | published dimensions |
-| Glico sign | a lit board with the runner arms up on a track, on the building nearest the published coordinates* | Wikipedia coordinates |
+| Glico sign | the sixth sign (2014): an LED board 20 m high and 10.38 m wide, on the canal face of 道頓堀1-10-2 at the south-west foot of Ebisubashi, its top 0.6 m below the roof*; the board plays Osaka's skies* behind a simplified runner on a track | Ezaki Glico (via Kyodo), Wikipedia (ja) |
+| Tombori Station | 5.00 × 2.80 m on the north wall of the Bel Sud building (道頓堀1-9, w222963577), its foot 5.4 m over the street* | B&D |
+| Namba Ebisubashi Multi Vision | 4.096 × 3.072 m outdoors on the north wall and 2.95 × 2.10 m indoors on the east wall of the Namba Ichiban building (難波3-5-1, w219869421), their feet about 5 m over the street* | KESION, oogatavision-navi |
+| TSUTAYA EBISUBASHI HIT VISION | 15.4 × 17.3 m on the wall facing the canal and 18.6 × 10.2 m on the roof over it (455 m²), on 道頓堀1-8-19 at the south-east foot of the bridge (OpenStreetMap w174743244); its top at PLATEAU's 40.2 m* | HIT, [Namba Keizai Shimbun](https://namba.keizai.biz/headline/3343/) |
 | Kani Doraku crab | about 9 m across* with its legs, on the Dotonbori facade | indicative |
 | Shop signs | 1,400 facades with a street in front of them, in three districts*; blades, banners and boards in six colours, lit at night | indicative, random |
 
@@ -231,6 +234,47 @@ their own emissive colour and glow, and a city can add a night ambient light
 (`night_ambient`) so the streets are not pitch black. Shop signs, the Glico
 runner, the crab and the top of Tsutenkaku use them, and the castle keep is
 floodlit after dark in its own colours.
+
+## 6a. Dotonbori's screens
+
+Ebisubashi is lit by its screens, built with the kit Shibuya's crossing uses (`pipeline/screens.py`;
+`docs/NIGHT.md`, LED screens). Their programmes are drawn for this model in `cities/osaka/city.py`
+(`screens.jpg`): Osaka's skies for the Glico board (day, sunset, night with Tsutenkaku lit, cherry
+blossom) and invented adverts and notices for HIT VISION (a bay festival, a beer, a takoyaki stand,
+the weather and the ward's notice on the bridge). No Glico or advertiser's artwork is copied.
+
+- **The Glico sign was on the wrong corner.** The scene placed it on the building nearest
+  Wikipedia's coordinates, which is the TSUTAYA building across the bridge, and drew it 21 m wide
+  and 24 m high on the roof. It is on the back of 道頓堀1-10-2 at the bridge's south-west foot
+  ([Wikipedia (ja)](https://ja.wikipedia.org/wiki/%E9%81%93%E9%A0%93%E5%A0%80%E3%82%B0%E3%83%AA%E3%82%B3%E3%82%B5%E3%82%A4%E3%83%B3)),
+  20 m high and 10.38 m wide. The landmark now stands there (its edge is `GLICO_EDGE`), and the
+  next build looks for it there (`GLICO_LONLAT`). The sixth sign comes down at the end of November
+  2026 and the seventh goes up in spring 2027; the model shows the sixth.
+- **HIT VISION's two screens** play the same programme, the roof one a step ahead. The TSUTAYA
+  under it closes on 11 January 2027.
+
+- **Tombori Station** (5.00 × 2.80 m, 11:00–22:00) is on the north wall of the Bel Sud building
+  (道頓堀1-9, OpenStreetMap w222963577), on the south side of Dotonbori's street, looking up
+  Ebisubashi-suji to the bridge. Its foot is at the second floor over the FamilyMart, east of the
+  middle of the wall, both measured from the operator's photographs
+  ([B&D media sheet](http://tombori.com/tombori_station/)). It plays a crowd camera on the bridge
+  (the screen has its own studio for live broadcasts), the takoyaki stand, the weather and the
+  bay festival.
+- **Namba Ebisubashi Multi Vision** is two screens on the Namba Ichiban building (難波3-5-1,
+  w219869421; Big Echo is in it), at the south-west corner of Ebisubashi-suji and
+  Sennichimae-dori, at eye level from the crossing: 4.096 × 3.072 m outdoors on the north wall
+  facing Sennichimae-dori, and 2.95 × 2.10 m indoors behind the first-floor windows on the east
+  wall over the arcade, 8:00–24:00 (KESION's media sheet, 2022;
+  [oogatavision-navi](https://oogatavision-navi.jp/vision/namba/v27010/);
+  [ADREX](https://press.portal-th.com/archives/11625)). The issue's "4.1 × 3.1 m" is the outdoor
+  screen; the indoor one was added in 2022. They play an invented autumn campaign, the beer, the
+  festival and the weather, the two together.
+
+| ![Tombori Station from Dotonbori's street at dusk](../images/osaka/tombori-station.jpg) | ![Namba Ebisubashi Multi Vision from the Sennichimae-dori crossing at dusk](../images/osaka/namba-multi-vision.jpg) |
+|---|---|
+
+Not drawn: the smaller screens along the canal, and the "Ad Vision" across the arcade from the
+Multi Vision, whose size we have not found.
 
 ## 7. Winter sun on the parks
 
@@ -274,7 +318,7 @@ Kansai accent in English: *maido* (welcome), *ookini* (thank you), *honma?*
 
 | NPC | Role | Local flavour |
 |---|---|---|
-| Mei | Survey lead | Ebisu-bashi, Dotonbori's origin in 1612 |
+| Mei | Namba local | Ebisu-bashi, Dotonbori's origin in 1612 |
 | Daisuke | Takoyaki master | headband, apron, a tray of takoyaki |
 | Kuidaore Taro | Dotonbori mascot | red-and-white stripes, clown hat, drum |
 | Kenta | Tigers fan | yellow-and-black stripes, the cap, the 1985 Colonel Sanders legend |
@@ -293,7 +337,7 @@ The ten stamps:
 
 1. **Ebisu-bashi.** Meet Mei and hear how much of the roof area is measured.
 2. **Takoyaki.** Ride the Tombori River Cruise from Taizaemon-bashi to Nipponbashi.
-3. **Kuromon Market.** Use the survey lens on a PLATEAU-measured and an estimated building.
+3. **Kuromon Market.** Fumi hands you candy and sends you on to Shinsekai.
 4. **Tsutenkaku.** Kushikatsu in Shinsekai, under the tower.
 5. **Namba Grand Kagetsu.** The manzai act argues about 103 m and 108 m.
 6. **Midosuji.** Stand in direct sun in Utsubo Park on the winter solstice.
@@ -382,3 +426,4 @@ gzipped), `game.json` 6.4 MB (1.7 MB gzipped) and `landmarks.json` 3.5 MB
   22 m deck from [gltjp](https://www.gltjp.com/ja/directory/item/11772/).
 - Tower heights: [Wikipedia, List of tallest buildings in Osaka](https://en.wikipedia.org/wiki/List_of_tallest_buildings_in_Osaka).
 - Characters: Quaternius, Ultimate Modular Men and Women (CC0).
+- The screens' type: Google Fonts (SIL Open Font License), fetched by `pipeline/adkit.py`.

@@ -103,14 +103,165 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
     to back. How wide each shell spans is measured from the outline of the OSM
     roof parts. The shells carry the chevron pattern of glossy white and matte
     cream tiles, with tile lids between the ribs. The glass walls hang from the
-    arches in pleats of topaz glass on bronze mullions, and glow warm at night.
+    arches: topaz glass on bronze mullions, drawn on the glass by its shader
+    (`topaz_glass` in `web/world.js`) with a thinner mullion between and
+    transoms every 2.7 m, each pane its own reflection. After dark the foyers
+    light them pane by pane, and the floodlit shells are the brightest thing in
+    the view, as in night photographs.
+  - **Bennelong Point round it** (`bennelong()` in `cities/sydney/city.py`): the
+    ground of the precinct is built, not left to the 5 m DEM and the aerial
+    photo, which drew it as grey slopes running into the water.
+    - *The seawall* follows the shore Overture maps (release 2026-10-21, from
+      OpenStreetMap; checked against the live OpenStreetMap API on 2 November
+      2026) for 894 m, from East Circular Quay round the point into Farm Cove:
+      along the broadwalk in the podium's pink aggregate, elsewhere in Sydney
+      sandstone, in coursed blocks with a granite coping. A tidal band of dark
+      weed and wet stone runs up to high water, about 0.9 m.
+    - *The paving* covers the forecourt, the broadwalk and the Lower Concourse
+      (19,250 m²) in pink granite flags, at the level of the ground behind the
+      seawall, where the DEM sags towards the water. The forecourt is level at
+      4.50 m, as the photographs show it and the Opera House's own section has
+      it (below), where the DEM dips 3 m over the vehicle concourse under it,
+      and the paving eases from it to the DEM's level over 30 m (up from
+      Circular Quay East, down to the Northern Broadwalk). The game walks on the
+      same level (`game_ground`), and a walker stops with the toes at the
+      seawall coping's edge, its centre 0.15 m short of the face as it is drawn
+      (`web/quays.js`, in every city: it measures to the faces the quays draw and
+      to a landmark's own, landmarks.json `seawalls`; it stopped 0.3 m short of
+      the 2.5 m shoreline map's zero, half a metre short of the face).
+    - *The Lower Concourse* (Opera Bar, Opera Kitchen) lies below the walkway
+      along the seawall and below the forecourt's edge, as the Opera House's
+      visitor map draws it ("Ramp down to Opera Bar", "Stairs down to Lower
+      Concourse") and its heritage statement describes it (Design 5, "Sydney
+      Opera House Lower Concourse Improvements, Heritage Impact Assessment",
+      2020: "the raised walkway along the sea wall", "the stepped higher part of
+      the uncovered Lower Concourse", the colonnade of "mushroom columns" under
+      "the parapet spandrel to the Forecourt above"). Photographs of the Opera
+      Bar show its terrace below the walkway (Wikimedia Commons, "Circular Quay
+      From Bennelong Point (214486559).jpeg"). Built from Overture (from
+      OpenStreetMap) in `lower_concourse()`:
+      - *the walkway* along the seawall, out to the retaining walls OSM maps
+        (where two overlap, the one nearer the water), at 1.58 m, with a granite
+        parapet along its inner edge where it stands over the concourse;
+      - *broad steps* down from it where no wall is mapped (three places,
+        18 treads), as the aerial photo shows the stepped part by the Opera
+        Kitchen;
+      - *the ramp* down from Circular Quay beside the first retaining wall, 46 m;
+      - *the concourse* at 0.60 m, out to the forecourt's balustrade (an OSM
+        fence);
+      - *the flight at its north end*, 13 risers of 15 cm from the walkway's
+        round end up to the Northern Broadwalk at 3.52 m, 8 m wide: the two ways
+        of 13 steps OpenStreetMap maps there are its two lanes, as the NSW
+        aerial photo at 7.5 cm shows one flight across both (`north_flight()`);
+      - *the forecourt's edge* over it: a parapet and fascia in the podium's
+        granite, and where the forecourt stands a storey above, the colonnade
+        under it, 2.4 m clear under a slab 1.5 m deep, a soffit on mushroom
+        columns every 8.4 m with the shopfronts behind, glass between bronze
+        mullions, lit warm after dark;
+      - *the stairwell* from the forecourt down to the concourse (OSM way
+        1118329015, 20 steps): an opening in the forecourt 4.4 by 10.7 m,
+        measured on the aerial photo along the way, behind a granite upstand
+        with a bronze rail; the flight down its east side, 20 risers of 19.5 cm,
+        a void beside it, and from the landing at its foot a passage west under
+        the forecourt, through the shopfronts and the colonnade, to the
+        concourse (`stairwell()`).
+
+      The levels are the Opera House's own: the section through the Lower
+      Concourse in its renewal application (Humphrey & Edwards Architects,
+      "Sydney Opera House Lower Concourse Improvements", drawing 49HE001-3225
+      rev D, "Detail Section – Shade Structure", 2019, SSD-9794; Luchetti
+      Krelle's sheet DA.102 rev C, approved under SSD-9794-Mod-1 in 2026, has
+      the same) puts the concourse at FFL 0.600, the walkway ("Sea Wall
+      Promenade") at FFL 1.580, the soffit over the concourse at FCL 3.000 and
+      the forecourt's edge ("Upper Concourse") at RL 4.500. The drawing's notes
+      give its levels in AHD, the model's datum. They agree with OpenStreetMap's
+      counts: 7 risers of 14 cm from the concourse up to the walkway, 13 of
+      15.0 cm from the walkway to the Northern Broadwalk, which the DEM has at
+      3.5 m (an independent check: the drawing, OSM's count and the DEM meet
+      within a centimetre), and 20 of 19.5 cm down the stairwell. Where the
+      forecourt stands on the rock, at the foot of the Monumental Steps, the
+      5 m DEM has 4.3 to 4.5 m; over the vehicle concourse and the Lower
+      Concourse it sags to 3.4 m, because a bare-earth model takes a slab out
+      (Geoscience Australia's 5 m LiDAR DEM drops to 0.1 m in the forecourt's
+      middle). Until now the forecourt was 3.45 m from the DEM, which left the
+      colonnade 2.25 m clear (it looked low in the photographs, and was). The
+      Monumental Steps now rise from the forecourt's level, which lifts the
+      landing to 10.35 m and the upper podium to 14.7 m.
+
+      The game walks on these levels every half metre (game.json `patches`), so
+      a walker climbs the steps and stops at the walls and parapets. Under the
+      forecourt it walks on two floors: the patch's `upper` holds the slab's
+      level where the concourse runs on under it (the colonnade, the passage),
+      `web/game/nav.js` offers both floors and keeps the camera under the slab
+      (`clear_m`). The patch names walks the game's check takes
+      (`tools/game_check.js`): down the stairwell and back up, up the north
+      flight, into the colonnade and along the forecourt over it, and across the
+      walkway to the seawall's edge.
+    - *The Tarpeian Wall*, the sandstone cliff quarried in the 1880s under the
+      Royal Botanic Garden, stands along 182 m of the paving's south edge: where
+      the garden 6–15 m behind an edge is more than 3 m above the paving, the
+      edge is a cliff of quarried beds (about 1.1 m deep, 6.5 m long) up to the
+      garden's level where the DEM's slope levels off (12–13.5 m, so about 10 m
+      above the forecourt), and its top is capped back to there with the aerial
+      photo, over the slope the 5 m DEM draws. Every face along the paving's
+      edges, and the seawall's coping, now reaches down under the paving as it is
+      drawn (on its smoothed 5 m grid it lies up to 2 m under the level at its
+      edge), where a gap had shown the water through at the cliff's foot.
+    - *Where the ground is not drawn:* the terrain grid (10 m in the viewer,
+      5 m near the player) cannot turn a corner at a seawall, so between the
+      last point on land and the first in the water it sloped up out of the
+      water. The ground shader now discards it above the water in a band
+      outside the seawall and under the paving (landmarks.json `clip`, a
+      half-metre mask). Walking, the camera and the analyses keep the terrain.
+    - *Street furniture* where OpenStreetMap maps it: 20 benches facing the
+      water, 40 bollards, 13 globe lamps, the 7 masts that floodlight the
+      shells, 3 wayfinding pylons, and the Opera Bar's 12 square umbrellas with
+      their tables. Each kind is drawn once and instanced
+      (landmarks.json `props`), and drawn only within a few hundred metres.
+    - *What OSM maps as small buildings* is drawn as what it is: the Opera Bar's
+      umbrellas and the Opera Kitchen's canopy (they were 3.6 m solid boxes, which
+      the player could not walk under), and Utzon's western colonnade of 2006,
+      "a forty-five-metre-long, five-metre-deep verandah" with "twenty paired
+      columns" three metres high and 400 mm square and nine openings in the wall
+      behind it, three doors and six windows 1.95 by 2.1 m (Architecture
+      Australia, May 2006, "Adding to the Opera House"). It was a box with
+      office windows.
+    - *The podium* is clad in tall vertical panels, as photographed, with a dark
+      band of glass along its outer walls (9.6 to 10.5 m above the datum: placed
+      from photographs, not measured).
+    - *The podium's north end*, under the Concert Hall's and the Joan Sutherland
+      Theatre's harbour-facing mouths, steps back as it rises, as photographed
+      from the Northern Broadwalk (Wikimedia Commons, "AUS Sydney, Central
+      Business District, Sydney Opera House 033.jpg", "... 035.jpg",
+      "... 036.jpg"): three tiers of vertical granite panels, each over a band of
+      glass under a sloping hood (the ground floor's shopfronts at the broadwalk,
+      the foyers' windows at 9.6–10.5 m), and on top the foyer's curved band of
+      glass leaning out 2 m under a bronze rim, roofed in glass back to the
+      shell's own glass wall (`north_tiers()`, 106 m of it). The tiers' depths
+      and heights are placed from those photographs, not measured.
+
+      | ![The Lower Concourse's colonnade under the forecourt's edge, 2.4 m clear under the 1.5 m slab](../images/sydney/lower-concourse-colonnade.jpg) | ![On foot in the game, at the foot of the flight up to the Northern Broadwalk](../images/sydney/lower-concourse-steps.jpg) |
+      |---|---|
+      | ![The Lower Concourse from the water at dusk, the colonnade's shopfronts lit](../images/sydney/lower-concourse-dusk.jpg) | ![The podium's north end in tiers, under the foyer's leaning glass](../images/sydney/podium-north-tiers.jpg) |
+      | ![The stairwell in the forecourt from above at dusk](../images/sydney/stairwell-air.jpg) | ![The flight at the north end, from the walkway's round end to the Northern Broadwalk](../images/sydney/north-flight.jpg) |
+      | ![On foot at the top of the stairwell](../images/sydney/stairwell-top.jpg) | ![On foot at its foot, looking up the passage to the flight](../images/sydney/stairwell-foot.jpg) |
+      | ![On foot under the colonnade at night, the shopfronts lit](../images/sydney/colonnade-walk.jpg) | ![On foot at the seawall's edge, the toes at the coping](../images/sydney/seawall-edge.jpg) |
+
+      Against the aerial photo (NSW Spatial Services, NSW Imagery, CC BY 4.0), the
+      stairwell and the north flight as the model draws them:
+
+      ![The stairwell: NSW Imagery beside the model](../images/sydney/stairwell-aerial-vs-model.jpg)
+      ![The north flight: NSW Imagery beside the model](../images/sydney/north-flight-aerial-vs-model.jpg)
+      ![On a phone: the stairwell, its foot, the colonnade, the north flight, the seawall](../images/sydney/lower-concourse-phone.jpg)
   - **The podium and the Monumental Steps:** the podium is clad in pink granite
     panels, on two levels. The Monumental Steps climb from the forecourt to a
     landing. They are measured on the aerial photo: 85 m wide, three flights of
     0.39 m treads between landings 1.6 m deep. A flight in front of each hall
     climbs from the landing to the upper podium, which the halls stand on. Each
     tread has a pale nosing that overhangs a darker riser, so the steps read
-    as steps from any side.
+    as steps from any side. The ground is not drawn under the steps and their
+    apron, where the DEM's bumps in the forecourt (the car park's vent) came up
+    through the apron as a pale strip of the aerial photo.
   - **The Harbour Bridge:** the deck is laid out in its real strips, west to
     east:
     - the cycleway;
@@ -352,6 +503,39 @@ it can only show a picture of it.
 - In headless Chromium with software rendering (SwiftShader), it loads and
   builds in about 10 s. A GPU browser is much faster.
 
+### The Opera House precinct, and the budget it keeps
+
+The brief was a precinct as faithful as an open-world game's hero landmark
+(the Assassin's Creed games rebuild Notre-Dame or the Acropolis at full scale,
+from photographs and plans), without the download or the GPU load. What was
+adopted from that practice, in a browser:
+
+- **Reference first.** Real dimensions where they are published (the shells,
+  the steps, the colonnade), the open map for where things stand, and
+  photographs for what is neither: the aerial view from the north-east
+  (Wikimedia Commons, "Sydney (AU), Opera House -- 2019 -- 2896.jpg") was
+  matched in the viewer for the colour of the water, the podium and the
+  paving; the western broadwalk (Commons, "AUS Sydney, Central Business
+  District, Sydney Opera House 028/031/034.jpg") for the panels, the bollards
+  and the paving. The photographs are references only; none is shipped.
+- **Materials drawn by the shader, not textures:** granite flags, coursed
+  stone with its tidal band, the glass and its mullions are a few lines of
+  GLSL each over texture coordinates in metres, with no image to download, and
+  they fade to their average colour where a pixel covers several repeats, so
+  they never shimmer.
+- **Instancing for anything repeated** and a draw distance for small things
+  (`far` in landmarks.json; `web/world.js` hides them beyond it each frame).
+- **Geometry where it shows, the shader where it does not:** the glass walls'
+  mullions were 19,000 triangles of boxes and tubes (0.66 MB of JSON); they are
+  now lines on the glass.
+
+| | before | after |
+|---|---|---|
+| landmarks.json | 2.84 MB (0.68 MB gzipped) | 2.59 MB (0.62 MB gzipped) |
+| scene.json | 21 kB | 56 kB (the precinct's outlines and paving levels) |
+| landmark triangles | 77,000 in 32 meshes | 64,000 in 49 meshes, plus 17,000 instanced in 12 draws |
+| frame time, software renderer, 1440 × 900 | 830–1360 ms | 690–1120 ms (the same four views, two runs each) |
+
 ## 7. Where the Opus + Blender approach still wins
 
 - **Still-image realism.** Facade detail, real materials, proper tree
@@ -380,8 +564,21 @@ numbers stay valid because the geometry they depend on is unchanged.
   LiDAR by others. The ridges are OSM traces of an aerial photo that is not a
   true orthophoto, so the tall shells' tips may lean a few metres. The other
   tips, how high the back-to-back shells meet, and the side shells come from
-  a photograph. The podium's two levels follow from an assumed 15 cm riser:
-  the landing at 10.1 m and the upper podium at 14.4 m.
+  a photograph. The podium's two levels follow from the forecourt's 4.50 m
+  and an assumed 15 cm riser: the landing at 10.35 m and the upper podium at
+  14.7 m.
+- **Bennelong Point.** The Lower Concourse's levels are from one published
+  section (2019) and are taken as AHD, as the drawing's notes say its surveyed
+  levels are "in most instances". The forecourt is level at 4.50 m; where it
+  eases to the DEM round its edges is assumed, as is the recess of the
+  colonnade (5 m). The stairwell's opening is measured on the aerial photo;
+  the flight in it, the void beside it and the passage at its foot are placed
+  from the photo and OSM's way, not from a plan. OpenStreetMap's retaining
+  walls and steps sit a metre or two off the aerial photo in places. The tiers
+  at the podium's north end and the foyers' leaning glass are placed from
+  photographs. The benches are generic; the band of glass on the podium is
+  placed from photographs. A pale wedge of the terrain shows on the water in
+  the corner west of the walkway's round end (it did before these levels).
 - **Trees, roofs and facades.** The 6,096 OSM-mapped trees are drawn with
   guessed heights of 7–14 m. They are not in the shadow analysis, so parks
   read sunnier than they feel. Roof shapes are mapped for 3% of buildings;

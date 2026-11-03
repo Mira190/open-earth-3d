@@ -152,6 +152,7 @@ window.OEAtmos = (function () {
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(world, camera));
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
+      if (window.OELens) OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
       composer.addPass(bloom);
       if (window.OELens && sky.lens !== false) {
         // the title screen's lens (lens.js): its tone curve, grade, grain and vignette, so the city
