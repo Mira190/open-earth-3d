@@ -8,7 +8,10 @@ web/data/<id>/game.json:
 
   "nl": n       lanes each way (1 or 2: the game drives at most two each way), where OSM tags them:
                 a one-way road's `lanes`; a two-way road's `lanes:forward` and `lanes:backward`
-                (the fewer of the two), or half its `lanes` less any `lanes:both_ways`
+                (the more of the two), or half its `lanes` less any `lanes:both_ways`, rounded up:
+                the game keeps one count for both ways, and the traffic only takes a main road
+                down to one lane each way, so a road with two lanes one way and one the other
+                (lanes=3) keeps its second lane where it has one
   "tl": [[end, "l|t|tr"], ...]
                 the lane arrows of the traffic coming up to the piece's end (0 its first point, 1
                 its last), one entry per OSM lane from left to right as the driver sees them,
@@ -102,10 +105,10 @@ def lanes_each_way(t, oneway):
         return num(t.get("lanes"))
     f, b = num(t.get("lanes:forward")), num(t.get("lanes:backward"))
     if f and b:
-        return min(f, b)
+        return max(f, b)
     n = num(t.get("lanes"))
     if n:
-        return max(1, (n - (num(t.get("lanes:both_ways")) or 0)) // 2)
+        return max(1, (n - (num(t.get("lanes:both_ways")) or 0) + 1) // 2)
     return None
 
 

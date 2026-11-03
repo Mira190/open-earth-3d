@@ -1787,15 +1787,18 @@ deadlock or a meeting at a shared berth takes to show.
   - Cars push you aside instead of knocking you down, and stop dead for people.
   - Lanes come from the road's class: two each way on a main road, one
     elsewhere, so a wide residential street still carries one file and a
-    six-lane motorway two. OSM's counts are in `game.json` (`"nl"`) but unused
-    until the merging copes with a count that changes along a road (see
+    six-lane motorway two. OSM's counts (`"nl"`) only take a main road down to one lane
+    each way, smoothed along the road (see
     [Junctions and traffic lights](#junctions-and-traffic-lights)). There are no turn pockets.
   - The arrow phase follows the main road's on every big junction alike; the
     real plans (SCATS's, Tokyo's) are not open data. None of the game's cities
     publishes its signal timings (a request to NSW for Sydney's was refused,
     as Vienna's was); the crowd-sourced Better Intersections map, built on
-    OpenStreetMap, is the one lead, its coverage and licence still to check. Banned turns that apply
-    only at some hours, or to some vehicles, are left out.
+    OpenStreetMap, was checked (#82): it is crowd-sourced stopwatch timings of the walk
+    signals, mostly in Sydney, with its code under the AGPL-3.0 and
+    no licence stated for the timings, so the game doesn't take them; they could serve to check
+    the walkers' waits (#108) against. Banned turns and street closures at some hours follow the
+    game's clock; ones only for some vehicles (lorries, by weight) are left out.
   - Walkers cross where their footways cross a road; they wait for a walk
     signal at junctions with signals and at crossings with signals between
     junctions. The crowd doesn't seek out a crossing, and the rides' and your
