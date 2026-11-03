@@ -188,16 +188,18 @@ window.OEFilmDirector = (function () {
     fov = ch(s.fov ?? 40, k, EASE[s.ease || 'glide']);
     G.camera.updateProjectionMatrix(); // the game re-applies its own fov only when it changes, so set the film's here
     // exposure follows the game's own for the light, trimmed by the shot
-    const L = lens.uniforms;
-    L.uExposure.value = renderer().toneMappingExposure * (spec.exposure ?? 1.1) * Math.pow(2, s.ev || 0);
-    const tint = s.tint || spec.tint || [1, 1, 1];
+    // ("grade": "game": the game's own grade for the hour, game/atmosphere.js, under the shot's trims)
+    const L = lens.uniforms, sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
+    const gg = spec.grade === 'game' && window.OEAtmos && OEAtmos.gradeAt ? OEAtmos.gradeAt(G.atmos.keys, sp.altitude, { tint: [1, 1, 1] }) : null;
+    L.uExposure.value = renderer().toneMappingExposure * (gg ? gg.ev : spec.exposure ?? 1.1) * Math.pow(2, s.ev || 0);
+    const tint = s.tint || spec.tint || (gg ? gg.tint : [1, 1, 1]);
     L.uTint.value.set(tint[0], tint[1], tint[2]);
-    L.uSat.value = s.sat ?? spec.sat ?? 1;
-    const sp = Sun.position(Sun.localToUtc(s.year || year, date[0], date[1], min));
+    L.uSat.value = s.sat ?? spec.sat ?? (gg ? gg.sat : 1);
     // at night the city keeps its blacks: less lift, a firmer curve
     const night = clamp((-sp.altitude - 2) / 8);
     L.uLift.value = 1 - 0.7 * night;
-    L.uContrast.value = 0.1 + 0.18 * night;
+    L.uContrast.value = gg ? gg.contrast : 0.1 + 0.18 * night;
+    if (gg) L.uNightTone.value = G.Wd.U.uNight.value; // blue between the lights, amber in them, as in play
     L.uAspect.value = innerWidth / innerHeight;
     L.uTime.value = t;
     // fades: in from space black at the head of the film and of a shot that asks, out at the tail

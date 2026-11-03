@@ -196,7 +196,7 @@ window.OEAtmos = (function () {
     const q = new THREE.Quaternion();
     let night = 0;
     const api = {
-      composer, lens, stars: S, moon: M,
+      composer, lens, stars: S, moon: M, keys, // (keys: the grade by the hour, for a film's lens: tools/film/director.js)
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
       update(utcMs, tSec, U) {
         night = U.uNight.value;
