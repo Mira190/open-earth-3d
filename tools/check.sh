@@ -82,9 +82,6 @@ fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
 export GAME_TIME=${GAME_TIME:-10:00}
-# the Pages workflow writes web/version.json (git-ignored); without it a local page's fetch of it is a
-# 404 in the console, which the checks count as a page error. An empty one: no version shown, as locally
-[ -f web/version.json ] || echo '{}' > web/version.json
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
 run_city() {
