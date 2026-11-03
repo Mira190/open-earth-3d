@@ -719,7 +719,19 @@ shadow map and were drawn into it for nothing. Twigs are three-sided tubes and
 limbs six (a fifth fewer triangles in every full tree). Under llvmpipe, at the
 desktop (high and medium draw the same trees) and low tiers:
 
-WOODS_TABLE
+| Where (tier) | Before: drawn / into the shadow map | After: drawn / into the shadow map | Both passes |
+| --- | --- | --- | --- |
+| Kyoto Gyoen 357,2590 (desktop) | 1.59 / 1.59 M | 1.66 / 1.00 M | -16% |
+| Kyoto Gyoen 100,1880 (desktop) | 1.96 / 1.96 M | 2.12 / 1.36 M | -11% |
+| Kyoto Gyoen 202,2002 (desktop) | 2.19 / 2.19 M | 2.36 / 1.56 M | -11% |
+| Kyoto Gyoen 100,1880 (low) | 0.90 / 0.90 M | 0.96 / 0.50 M | -19% |
+| Hong Kong's wooded hill (desktop) | 3.44 / 3.44 M | 3.61 / 2.06 M | -18% |
+| Hong Kong's wooded hill (low) | 1.06 / 1.06 M | 1.12 / 0.74 M | -12% |
+| Meiji Jingu 300,700, Shibuya (desktop) | 1.59 / 1.59 M | 1.79 / 1.16 M | -7% |
+| Meiji Jingu 300,700, Shibuya (low) | 0.63 / 0.63 M | 0.71 / 0.46 M | -7% |
+
+The camera pass draws 4-13% more (the local species are fuller trees than the elms
+and planes they replace); the shadow pass a third less.
 
 Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
 llvmpipe gives (seconds) say nothing about a device.
