@@ -303,7 +303,7 @@ void main() {
     // (the ground is patched from game.js, which knows its paving and road classes: patchGround)
     if (Wd.lmMats) for (const [k, m] of Object.entries(Wd.lmMats)) {
       if (/pond|water|pool|moat/i.test(k)) wrap(m, { water: true }, k);
-      else if (/pav|plaza|flagstone|^sk_stone|gravel|path/i.test(k)) wrap(m, { puddles: '0.6', porous: 0.35 }, k);
+      else if (m.userData.paving || /pav|plaza|flagstone|^sk_stone|gravel|path/i.test(k)) wrap(m, { puddles: '0.6', porous: 0.35 }, k);
     }
     if (Wd.waterMat) wrap(Wd.waterMat, { water: true }, 'waterMat');
     // the sea's own shader (water.js) works out its normal itself: its ripples go in there
@@ -371,6 +371,7 @@ void main() {
     let mode = KINDS[asked] || asked === 'live' ? asked : navigator.webdriver ? 'clear' : 'live';
     try { if (!asked && !navigator.webdriver) { const v = localStorage.getItem('oe3d-weather'); if (v && (KINDS[v] || v === 'live')) mode = v; } } catch (e) { /* storage blocked */ }
     const cur = { rain: 0, cloud: 0 }, target = { rain: 0, cloud: 0 };
+    let custom = null, wetPin = null;
     let clockAt = null, snap = true, cover = { roof: false, h: 0, at: 0 }, occT = -9, occAt = new THREE.Vector3(1e9, 0, 0), hideList = [], hideAt = -99;
     const lastCam = new THREE.Vector3().copy(camera.position), vel = new THREE.Vector3();
     const baseClouds = su && su.cloudCoverage ? [su.cloudCoverage.value, su.cloudDensity.value] : null;
@@ -380,11 +381,19 @@ void main() {
       get mode() { return mode; },
       get kind() { return kindOf(cur); },
       get state() { return { mode, kind: kindOf(cur), rain: cur.rain, cloud: cur.cloud, wet: U.uOeWet.value, covered: cover.roof, coverH: cover.h }; },
-      // pin a weather ('clear', 'overcast', 'drizzle', 'rain') or follow the season ('live');
-      // now: no easing in (a still, a test); keep: remember it for the next visit
+      // pin a weather ('clear', 'overcast', 'drizzle', 'rain'), or exact amounts ({rain, cloud, wet}
+      // 0..1, for a still or a film), or follow the season ('live'); now: no easing in; keep:
+      // remember it for the next visit
       set(m, { now = false, keep = false } = {}) {
+        if (m && typeof m === 'object') {
+          const k = m.rain > 0.5 ? 'rain' : m.rain > 0.06 ? 'drizzle' : (m.cloud ?? 0) > 0.6 ? 'overcast' : 'clear';
+          custom = { rain: m.rain ?? KINDS[k].rain, cloud: m.cloud ?? Math.max(KINDS[k].cloud, m.rain > 0.06 ? 0.9 : 0) };
+          mode = 'custom'; wetPin = m.wet ?? null;
+          if (now || m.now) snap = true;
+          return;
+        }
         if (!(KINDS[m] || m === 'live')) return;
-        mode = m;
+        mode = m; wetPin = null;
         if (now) snap = true;
         if (keep) try { localStorage.setItem('oe3d-weather', m); } catch (e) { /* storage blocked */ }
       },
@@ -416,14 +425,14 @@ void main() {
       },
       update(dt, tSec, focus) {
         // what the weather should be now
-        const want = mode === 'live' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : KINDS[mode];
+        const want = mode === 'live' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : mode === 'custom' ? custom : KINDS[mode];
         target.rain = want.rain; target.cloud = want.cloud;
         if (snap) { cur.rain = target.rain; cur.cloud = target.cloud; U.uOeWet.value = target.rain > 0.05 ? Math.min(1, 0.5 + target.rain) : 0; snap = false; }
         const ease = (a, b, rate) => a + (b - a) * Math.min(1, dt * rate);
         cur.cloud = ease(cur.cloud, target.cloud, 0.25);
         cur.rain = cur.cloud > 0.55 || target.rain === 0 ? ease(cur.rain, target.rain, 0.35) : ease(cur.rain, 0, 0.35); // rain waits for its clouds
         const wet = U.uOeWet.value;
-        U.uOeWet.value = cur.rain > 0.04 ? Math.min(1, wet + dt * (0.02 + 0.1 * cur.rain)) : Math.max(0, wet - dt / 150);
+        U.uOeWet.value = wetPin != null ? wetPin : cur.rain > 0.04 ? Math.min(1, wet + dt * (0.02 + 0.1 * cur.rain)) : Math.max(0, wet - dt / 150);
         U.uOeRain.value = cur.rain;
         U.uOeT.value = reduced ? tSec * 0.3 : tSec;
         if (su && su.cloudCoverage && baseClouds) {
