@@ -60,6 +60,7 @@ const { pinClock } = require('./pin_clock');
     if (tour) {
       for (let i = 0; i < tour.count; i++) {
         steps.push(tour.id);
+        await new Promise(r => setTimeout(r, 650)); // where the card settles (it eases there in 0.5 s)
         const card = tour.el.querySelector('.ob-card').getBoundingClientRect();
         if (card.left < 0 || card.top < 0 || card.right > innerWidth || card.bottom > innerHeight) missing.push(`${tour.id}: card off screen`);
         if (i < tour.count - 1) tour.next();

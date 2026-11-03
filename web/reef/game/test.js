@@ -298,6 +298,7 @@ export async function gametest(api, ctx) {
       const t = window.OEOnboard.current(), seen = [], bad = [];
       if (t) for (let i = 0; i < t.count; i++) {
         seen.push(t.id);
+        await new Promise(res => setTimeout(res, 650)); // where the card settles (it eases there in 0.5 s)
         const r = t.el.querySelector('.ob-card').getBoundingClientRect();
         if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) bad.push(`${t.id} off screen`);
         if (i < t.count - 1) t.next();
