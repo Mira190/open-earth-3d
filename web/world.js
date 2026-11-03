@@ -1000,14 +1000,30 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
     const pierGeo = extrude((P.piers || []).map((r, i) => [-1, 0, 0, Math.round(D.pierZ[i] * 10), r]), () => pierColour);
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
-    piers.material.onBeforeCompile = streetLit;
+    // the deck's top shows the aerial photo, as a flat roof does (buildings.js uPhoto: the ground tiles in
+    // one canvas): the parking bays, kerbs and sheds the photograph has of the wharf, not a plain slab
+    // (issue 65); its sides stay concrete
+    piers.material.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, { uPhoto: U.uPhoto, uPhotoOn: U.uPhotoOn, uFrame: U.uFrame, uPhotoGrade: PG });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vDeckW; varying float vDeckUp;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvDeckW = (modelMatrix * vec4(transformed, 1.0)).xyz; vDeckUp = normal.y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; varying vec3 vDeckW; varying float vDeckUp;
+${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
+  if (uPhotoOn > 0.5 && vDeckUp > 0.7) {
+    vec2 duv = vec2((vDeckW.x - uFrame.x) * uFrame.z, (-vDeckW.z - uFrame.y) * uFrame.w);
+    diffuseColor.rgb = mix(diffuseColor.rgb, photoGrade(texture2D(uPhoto, duv).rgb), 0.8);
+  }`);
+      streetLit(sh);
+    };
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
     // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
     const walks = (D.G && D.G.boardwalks) || [];
     if (walks.length) {
       const top = Math.round((D.G.pier_deck_m || 2.2) * 10), timber = { wall: lin('#6f5a44'), roof: lin('#8a7258'), code: 3, windows: false };
-      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), piers.material);
+      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
+      deck.material.onBeforeCompile = streetLit;
       deck.castShadow = deck.receiveShadow = true;
       world.add(deck);
     }

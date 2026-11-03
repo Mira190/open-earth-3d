@@ -90,8 +90,10 @@ def scan(cid, min_cells):
                 pts = [line.interpolate(d) for d in np.arange(0, line.length, STEP)]
                 mark_pts([p.x for p in pts], [p.y for p in pts], 1)
     if os.path.exists(raw("building")):
-        for cls, under, b in con.execute(f"SELECT class, is_underground, wkb FROM '{raw('building')}'").fetchall():
-            if cls in floating or under:
+        import wet_buildings  # a vessel floats; a wharf deck mapped as a building is one of the piers (issue 65)
+        afloat = {k for k, o in wet_buildings.classify(C).items() if o["kind"] == "vessel"}
+        for bid, cls, under, b in con.execute(f"SELECT id, class, is_underground, wkb FROM '{raw('building')}'").fetchall():
+            if cls in floating or under or bid in afloat:
                 continue
             mark_poly(C.to_local(wkb.loads(bytes(b))), 2)
     # a building or a road on a pier stands on its deck, which the scene draws (places.json: the

@@ -551,6 +551,14 @@ pipeline writes. The only city-specific code is landmark geometry in
       boats.
     - Viaducts (an expressway, several levels up) keep their mapped height.
       Stubs that end over the water at nothing are cut back to the bank.
+    - Under a deck over the water the aerial photograph has the same bridge or
+      expressway, draped on the modelled bottom, and it showed through the
+      water as a road on the riverbed (Tokyo's Nihonbashi under the Shuto,
+      Osaka's Higashi-Yokobori under the Hanshin loop). `game.js` draws the
+      decks over the water into a mask, a little wider than each deck and more
+      so the higher it stands (a photograph leans a raised deck off its plan),
+      and the water closes over the bottom there (`water.js` `setCover`). The
+      viewer, which draws no decks, keeps the photograph as the bridge (issue 65).
     - A deck the data's levels make climb steeper than 1 in 3.3 (outside
       steps) is graded evenly from end to end; a line along a strip that the
       data puts up to 4 m past its edge, far below it, is on the strip's level
