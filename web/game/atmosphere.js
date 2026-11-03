@@ -206,7 +206,18 @@ window.OEAtmos = (function () {
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
     let composer = null, bloom = null, grade = null, lens = null, camFx = null, distRT = null, fx = null;
-    const distMat = new THREE.MeshDistanceMaterial(), prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4();
+    // the distance pass: the depth material (which skins and instances as the scene's own materials do)
+    // writing each pixel's distance from the camera over FAR, packed into RGBA. (MeshDistanceMaterial
+    // reads its point from a point light's shadow camera and cannot be drawn outside a shadow pass.)
+    const FAR = 3000, prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4();
+    const distMat = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    distMat.onBeforeCompile = sh => {
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying float vOeDist;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\n\tvOeDist = length( mvPosition.xyz );');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vOeDist;')
+        .replace(/}\s*$/, `\tgl_FragColor = packDepthToRGBA( clamp( vOeDist / ${FAR.toFixed(1)}, 0.0, 0.9999 ) );\n}`);
+    };
+    distMat.customProgramCacheKey = () => 'oe-distance';
     const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
     if (canPost) {
@@ -285,8 +296,7 @@ window.OEAtmos = (function () {
         if (camFx && camFx.enabled) {
           const z = renderer.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(2, z.x >> 1), h = Math.max(2, z.y >> 1);
           if (!distRT || distRT.width !== w || distRT.height !== h) { if (distRT) distRT.dispose(); distRT = new THREE.WebGLRenderTarget(w, h); }
-          const F = camFx.uniforms, far = 3000;
-          distMat.referencePosition = cam.position; distMat.nearDistance = 0; distMat.farDistance = far;
+          const F = camFx.uniforms, far = FAR;
           const prevT = renderer.getRenderTarget(), prevO = scene.overrideMaterial, prevBg = scene.background, prevS = renderer.shadowMap.autoUpdate, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
           scene.overrideMaterial = distMat; scene.background = null; renderer.shadowMap.autoUpdate = false;
           renderer.setRenderTarget(distRT); renderer.setClearColor(0xffffff, 1); renderer.clear(); renderer.render(scene, cam);
