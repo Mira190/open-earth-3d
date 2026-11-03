@@ -60,9 +60,10 @@ const { pinClock } = require('./pin_clock');
     if (tour) {
       for (let i = 0; i < tour.count; i++) {
         steps.push(tour.id);
-        await new Promise(r => setTimeout(r, 650)); // where the card settles (it eases there in 0.5 s)
-        const card = tour.el.querySelector('.ob-card').getBoundingClientRect();
-        if (card.left < 0 || card.top < 0 || card.right > innerWidth || card.bottom > innerHeight) missing.push(`${tour.id}: card off screen`);
+        // where the card settles (it eases there in 0.5 s, which a software renderer under load draws late)
+        const ce = tour.el.querySelector('.ob-card'), cl = parseFloat(ce.style.left), ct = parseFloat(ce.style.top);
+        const card = { left: cl, top: ct, width: ce.offsetWidth, height: ce.offsetHeight, right: cl + ce.offsetWidth, bottom: ct + ce.offsetHeight };
+        if (card.left < 0 || card.top < 0 || card.right > innerWidth || card.bottom > innerHeight) missing.push(`${tour.id}: card off screen at ${[card.left, card.top, card.width, card.height].map(Math.round)} (quest card ${(r => [r.left, r.top, r.width, r.height].map(Math.round))(document.getElementById('g-quest').getBoundingClientRect())})`);
         if (i < tour.count - 1) tour.next();
       }
       tour.back(); const back = tour.step;

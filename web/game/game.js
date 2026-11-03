@@ -3001,7 +3001,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         touch: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the <b>Menu</b> (<b>Show the route to the objective</b>).' },
   ];
   function startTour(then = null) {
-    return OEOnboard.tour(tourSteps(), { root: stage, onEnd: () => { OEOnboard.markDone(CITY.id); if (then) then(); } });
+    return OEOnboard.tour(tourSteps(), { root: document.body, onEnd: () => { OEOnboard.markDone(CITY.id); if (then) then(); } });
   }
   on($('#gt-play'), 'click', () => startGame(false));
   on($('#gt-continue'), 'click', () => startGame(true));

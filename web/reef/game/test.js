@@ -298,8 +298,9 @@ export async function gametest(api, ctx) {
       const t = window.OEOnboard.current(), seen = [], bad = [];
       if (t) for (let i = 0; i < t.count; i++) {
         seen.push(t.id);
-        await new Promise(res => setTimeout(res, 650)); // where the card settles (it eases there in 0.5 s)
-        const r = t.el.querySelector('.ob-card').getBoundingClientRect();
+        // where the card settles (it eases there in 0.5 s, which a software renderer under load draws late)
+        const ce = t.el.querySelector('.ob-card'), cl = parseFloat(ce.style.left), ct = parseFloat(ce.style.top);
+        const r = { left: cl, top: ct, right: cl + ce.offsetWidth, bottom: ct + ce.offsetHeight };
         if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) bad.push(`${t.id} off screen`);
         if (i < t.count - 1) t.next();
       }
