@@ -153,7 +153,7 @@ window.OEAtmos = (function () {
   // lens, and the camera's motion blur, each pixel smeared along the way it moved on screen since
   // the last frame (its distance from the camera, read from a distance pass, put back into the
   // world and seen from the last frame's camera). The distance pass is drawn only while either is on.
-  const CAMFX = {
+  const CAMFX = () => ({ // (made when the stack is: this script runs before three.js has loaded)
     uniforms: { tDiffuse: { value: null }, tDist: { value: null }, uFocus: { value: 10 }, uAperture: { value: 0 }, uBlur: { value: 0 },
       uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uFar: { value: 3000 }, uAspect: { value: 1 } },
     vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
@@ -187,7 +187,7 @@ window.OEAtmos = (function () {
         }
         gl_FragColor = vec4(c, 1.0);
       }`,
-  };
+  });
 
   // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
   function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
@@ -228,7 +228,7 @@ window.OEAtmos = (function () {
         lens = new THREE.ShaderPass(OELens.shader());
         Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
         lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
-        camFx = new THREE.ShaderPass(CAMFX);
+        camFx = new THREE.ShaderPass(CAMFX());
         camFx.enabled = false;
         composer.addPass(camFx);
         composer.addPass(lens);
