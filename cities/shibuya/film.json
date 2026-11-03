@@ -249,32 +249,32 @@
       "dur": 4.5,
       "type": "move",
       "from": [
-        -2445,
-        -2960,
-        40
+        -2461,
+        -2893,
+        2.2
       ],
       "to": [
-        -2448,
-        -2952,
-        40
+        -2459.5,
+        -2887,
+        2.2
       ],
       "look": [
-        -2465,
-        -2870,
-        42
+        -2443,
+        -2838,
+        7
       ],
       "fov": 30,
       "time": [
         "18:40"
       ],
-      "agl": false,
+      "agl": true,
       "people": [
-        -2458,
-        -2915
+        -2450,
+        -2862
       ],
-      "crowd_r": 35,
-      "crowd_n": 60,
-      "crowd_clear": 10,
+      "crowd_r": 30,
+      "crowd_n": 40,
+      "crowd_clear": 8,
       "title": {
         "kind": "lower",
         "at": 0.6,
@@ -282,7 +282,8 @@
         "eyebrow": "Sangenjaya, Setagaya",
         "head": "The triangle",
         "text": "Backstreets between Setagaya-dori and Route 246: a game drew its hero's home town here and called it Yongen-Jaya."
-      }
+      },
+      "hand": 1
     },
     {
       "id": "night",
