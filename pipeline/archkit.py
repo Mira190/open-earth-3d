@@ -200,10 +200,12 @@ def openings_along(m, P, a, b, z0, w, h, every, arch=False, margin=None, depth=0
 
 
 def ring_openings(m, P, ring, z0, w, h, every, arch=False, margin=None, min_len=0.0):
-    """Openings along every edge of a ring (outside on the right when the ring runs clockwise)."""
+    """Openings along every edge of a ring, on its outside: the ring is run anticlockwise, so that the
+    outside is on the right of each edge, where opening() puts its panel (clockwise, they were drawn
+    5 cm inside the wall, facing in, and never seen)."""
     pts = list(ring)
     area = sum(pts[i][0] * pts[(i + 1) % len(pts)][1] - pts[(i + 1) % len(pts)][0] * pts[i][1] for i in range(len(pts)))
-    if area > 0:
+    if area < 0:
         pts = pts[::-1]
     for k in range(len(pts)):
         a, b = pts[k], pts[(k + 1) % len(pts)]

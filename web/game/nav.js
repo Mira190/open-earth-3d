@@ -377,10 +377,15 @@ window.OENav = (function () {
     }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create();
-    for (const s of D.B.s) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
+    // the solids a landmark draws instead (scene.json hidden_solids, landmarks.json "hidden", which world.js
+    // adds to them) are not walls: the landmark's own mesh is, and a measured piece wider than the drawn
+    // tower round it would stand as an invisible wall in front of it (issue #91)
+    const hidden = new Set((D.scene && D.scene.hidden_solids) || []);
+    const shown = D.B.s.filter((s, i) => !hidden.has(i));
+    for (const s of shown) col.add(s.slice(4).map(r => r.map(v => v / 10)), (s[1] + s[2]) / 10, (s[1] + s[3]) / 10, BUILDING, s[0]);
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;
-    for (const s of D.B.s) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    for (const s of shown) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
     const coarse = landmarkCells(solidMeshes, slabs);
     for (const [k, l] of coarse) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;

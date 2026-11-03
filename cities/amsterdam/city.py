@@ -226,6 +226,55 @@ def game_surfaces(scene):
     return out
 
 
+# ---------------------------------------------------------------- things to walk up to (game.json "close")
+
+# where people come up to a tower's foot from (a unit vector, east and north): the Munttoren from
+# Muntplein's west side, by the Singel; the Westertoren from the Prinsengracht quay. (Not the
+# Oudekerkstoren from Oudekerksplein: the measured pieces it hides, which a walker still meets,
+# reach 2.3 m out in front of its drawn west face.)
+TOWER_FRONT = {"Munttoren": (-1.0, 0.0), "Westertoren": (-1.0, 0.0), "Oudekerkstoren": (-1.0, 0.0)}
+# canal bridges to lean on the railing of: one over the Amstel, one over a ring canal
+RAIL_BRIDGES = ("Halvemaansbrug", "Vingboomsbrug")
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting at
+    `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people walk up to: two towers' feet, and the railings of two canal bridges at
+    their crowns."""
+    lm, close = scene["landmarks"], []
+    for t in lm.get("towers", []):
+        f = TOWER_FRONT.get(t["name"])
+        if not f:
+            continue
+        c, a, half = np.asarray(t["centre"], float), math.radians(t["axis_deg"]), t["side_m"] / 2
+        if t["design"] not in ("munt", "montelbaan"):  # a square shaft: out to the face square on to f
+            u, n = np.array([math.cos(a), math.sin(a)]), np.array([-math.sin(a), math.cos(a)])
+            half /= max(abs(float(np.dot(f, u))), abs(float(np.dot(f, n))))
+        at = c + np.asarray(f) * half
+        close.append(close_to(f"{t['name']}, its foot", at, t["ground_m"], at + np.asarray(f) * 5.0, 1.0, 0.3))
+    for b in lm.get("bridges", []):
+        if b["name"] not in RAIL_BRIDGES or any(c["name"].startswith(b["name"]) for c in close):
+            continue
+        ax = np.asarray(b["axis"], float)
+        n = np.array([-ax[1], ax[0]])
+        prof = deck_profile(b)
+        z = float(np.interp(0.0, [p[0] for p in prof], [p[1] for p in prof]))
+        v = b["width_m"] / 2 - 0.15  # bridge(): the railing's line
+        at = np.asarray(b["centre"], float) + n * v
+        start = at - n * min(5.0, b["width_m"] - 1.0) - ax * max(0.0, 5.0 - (b["width_m"] - 1.0))
+        close.append(close_to(f"{b['name']}, its railing", at, z, start, 0.8, 0.2))
+    return {"close": close}
+
+
 def deck_profile(b):
     """[[u, z]] along the axis: the two banks, and a crown of 4% of the length (0.3-1.2 m), as a
     canal bridge humps over the boats."""

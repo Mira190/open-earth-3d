@@ -239,6 +239,83 @@ def game_surfaces(scene):
     return out
 
 
+# ---------------------------------------------------------------- things to walk up to (game.json "close")
+
+# Notre-Dame's west front as IGN draws it (OpenStreetMap way 201611261, its 62 m slab between the
+# towers' feet): the outer face's two ends, north last. The three portals are on it: Saint Anne's
+# (south), the Last Judgement's (the middle) and the Virgin's (north), about 12.5 m apart.
+NOTRE_DAME_FRONT = ((1943.3, -599.0), (1959.8, -565.3))
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting at
+    `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def ground_at(scene):
+    """The ground the game walks at (x, y): the viewer's terrain grid (terrain.json, written with
+    scene.json), each cell split south-west to north-east as the game splits it (web/game/nav.js)."""
+    import base64
+    import json
+    t = scene["terrain"]
+    path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "web", "data", "paris", t["file"])
+    raw = json.load(open(path))
+    D = np.frombuffer(base64.b64decode(raw["data"]), "<i2").astype(float).reshape(t["ny"], t["nx"]) * t["scale"]
+    x0, y1, cell = scene["frame"]["x"][0], scene["frame"]["y"][1], t["cell"]
+
+    def z(x, y):
+        c = min(max((x - x0) / cell, 0), t["nx"] - 1.001)
+        r = min(max((y1 - y) / cell, 0), t["ny"] - 1.001)
+        c0, r0 = int(c), int(r)
+        fc, fr = c - c0, r - r0
+        a, b, d, e = D[r0, c0], D[r0, c0 + 1], D[r0 + 1, c0], D[r0 + 1, c0 + 1]
+        return float(a + fc * (b - a) + fr * (d - a) if fc + fr <= 1 else e + (1 - fc) * (d - e) + (1 - fr) * (b - e))
+    return z
+
+
+def game_extras(scene):
+    """The things people walk up to: the Eiffel Tower's north leg from outside and from under the
+    tower, and the way in between two legs; the Arc de Triomphe's great arch (where the Unknown
+    Soldier lies) and a relief group's pedestal; Notre-Dame's three west portals."""
+    lm, close = scene["landmarks"], []
+    gz = ground_at(scene)
+
+    def to(name, at, start, within, keep=0.0):
+        close.append(close_to(name, at, gz(*at), start, within, keep))
+    e = lm.get("eiffel_tower")
+    if e:
+        a = math.radians(e["axis_deg"])
+        E = lambda u, v: (e["centre"][0] + math.cos(a) * u - math.sin(a) * v, e["centre"][1] + math.sin(a) * u + math.cos(a) * v)
+        Wb, leg = EIFFEL["base_half"], EIFFEL["leg"]
+        lean = (Wb - EIFFEL["profile"][1][1]) / EIFFEL["profile"][1][0]  # the outer face's lean, m in per m up
+        mid = Wb - leg / 2  # the middle of a leg's face
+        # the north leg (u, v > 0; v is its north-west face): its lattice leans in, so a walker meets it
+        # at knee to head height, 1 to 1.5 m in from its foot, outside and under the tower alike
+        to("Eiffel Tower, the north leg's foot", E(mid, Wb - 1.3 * lean), E(mid, Wb + 5.5), 1.0, 0.3)
+        to("Eiffel Tower, the north leg from under the tower", E(mid, Wb - leg - 0.75), E(mid, Wb - leg - 5.5), 1.0, 0.3)
+        to("Eiffel Tower, in between the north and west legs", E(0, Wb - leg), E(0, Wb - leg + 5.5), 1.0)
+    t = lm.get("arc_de_triomphe")
+    if t:
+        P = ak.Frame(t["centre"][0], t["centre"][1], t["axis_deg"], 0.0)
+        hw, hd, aw = ARC["width"] / 2, ARC["depth"] / 2, ARC["arch_w"]
+        um = aw / 2 + (hw - aw / 2) / 2  # a pier's middle (arc(): the relief groups)
+        to("Arc de Triomphe, under the great arch (the Tomb of the Unknown Soldier)", P(0, 0, 0)[:2], P(0, -hd - 5.0, 0)[:2], 1.0)
+        to("Arc de Triomphe, a relief group's pedestal", P(um, -hd - 2.4, 0)[:2], P(um, -hd - 7.4, 0)[:2], 1.0, 0.3)
+    if "notre_dame" in lm:
+        (ax_, ay_), (bx, by) = NOTRE_DAME_FRONT
+        L = math.hypot(bx - ax_, by - ay_)
+        al, out = ((bx - ax_) / L, (by - ay_) / L), (-(by - ay_) / L, (bx - ax_) / L)  # along it northwards, and west out of it
+        for name, s in (("Notre-Dame, Saint Anne's portal", -12.5), ("Notre-Dame, the portal of the Last Judgement", 0.0), ("Notre-Dame, the Virgin's portal", 12.5)):
+            p = ((ax_ + bx) / 2 + al[0] * s, (ay_ + by) / 2 + al[1] * s)
+            to(name, p, (p[0] + out[0] * 5.0, p[1] + out[1] * 5.0), 1.0, 0.3)
+    return {"close": close}
+
+
 def deck_profile(b):
     """[[u, z]] along the axis: the two banks, and a crown of 1% of the length (at least 0.6 m)."""
     L, (za, zb) = b["length_m"], b["z_ends"]

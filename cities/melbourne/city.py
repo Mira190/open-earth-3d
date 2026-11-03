@@ -195,22 +195,15 @@ def station_body(s):
 
 
 CROWN = "w13306836"
+GAS_BRIGADE_M = 2.4  # their granite shafts, square
 GAS_BRIGADES = 8  # the towers along the promenade that send up fireballs each night (Crown Melbourne)
 
 
-def crown():
-    """Crown Melbourne's riverfront: the podium in sandstone and bronze glass, the atrium's glass over the main
-    entrance, and the eight Gas Brigades towers along Southbank's promenade with their fire bowls."""
-    rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
-    if not rows:
-        return [], []
-    q = max(rows, key=lambda r: abs(ak.ring_area(r["ring"])))
-    K = ak.Kit("crown", floodlit={"crown_wall", "crown_glass", "crown_fire"}, uv={"crown_glass"})
+def crown_front(q):
+    """The casino podium's simplified ring, its ground and top, and its river front: the long edges
+    [(p0, p1, outward normal, length)] facing the Yarra (north-west)."""
     ring = ak.simplify(q["ring"], 0.8)
     g, top = q["ground"], q["ground"] + q["top"]
-    ak.prism(K["crown_wall"], ak.WORLD, ring, g, top)
-    ak.cornice(K["crown_bronze"], ak.WORLD, ring, top - 1.2, ((0, 0), (0.6, 0.2), (0.6, 1.2), (0, 1.2)))
-    ak.band(K["crown_bronze"], ak.WORLD, ring, g + 13.0, out=0.4, h=0.8)
     cx, cy, ax, L, W = ak.oriented(ring)
     a = math.radians(ax)
     north = np.array([-math.sin(a), math.cos(a)])
@@ -229,6 +222,37 @@ def crown():
         nrm = np.array([e[1], -e[0]]) / Ln  # outward for an anticlockwise ring
         if float(nrm @ north) > 0.7:
             river.append((p0, p1, nrm, Ln))
+    return ring, g, top, river
+
+
+def gas_brigades(river):
+    """The Gas Brigades along the whole river front, 9 m out on the promenade: [(centre, outward normal)]."""
+    segs = [(r[0], r[1], r[2]) for r in river]
+    total = sum(float(np.linalg.norm(b - a_)) for a_, b, _ in segs)
+    out = []
+    for i in range(GAS_BRIGADES):
+        d = total * (i + 0.5) / GAS_BRIGADES
+        for a_, b, nrm in segs:
+            Lg = float(np.linalg.norm(b - a_))
+            if d <= Lg:
+                out.append((a_ + (b - a_) * d / Lg + nrm * 9.0, nrm))
+                break
+            d -= Lg
+    return out
+
+
+def crown():
+    """Crown Melbourne's riverfront: the podium in sandstone and bronze glass, the atrium's glass over the main
+    entrance, and the eight Gas Brigades towers along Southbank's promenade with their fire bowls."""
+    rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
+    if not rows:
+        return [], []
+    q = max(rows, key=lambda r: abs(ak.ring_area(r["ring"])))
+    K = ak.Kit("crown", floodlit={"crown_wall", "crown_glass", "crown_fire"}, uv={"crown_glass"})
+    ring, g, top, river = crown_front(q)
+    ak.prism(K["crown_wall"], ak.WORLD, ring, g, top)
+    ak.cornice(K["crown_bronze"], ak.WORLD, ring, top - 1.2, ((0, 0), (0.6, 0.2), (0.6, 1.2), (0, 1.2)))
+    ak.band(K["crown_bronze"], ak.WORLD, ring, g + 13.0, out=0.4, h=0.8)
     glass = K["crown_glass"]
     s0 = 0.0
     for p0, p1, nrm, Ln in river:  # glass along the river front, its two lower floors
@@ -246,19 +270,9 @@ def crown():
             a0, a1 = math.pi * k / 10, math.pi * (k + 1) / 10
             glass.quad(F(-20, -14 * math.cos(a0), 7 * math.sin(a0)), F(20, -14 * math.cos(a0), 7 * math.sin(a0)),
                        F(20, -14 * math.cos(a1), 7 * math.sin(a1)), F(-20, -14 * math.cos(a1), 7 * math.sin(a1)))
-        # the Gas Brigades: along the whole river front, 9 m out on the promenade
-        segs = [(r[0], r[1], r[2]) for r in river]
-        total = sum(float(np.linalg.norm(b - a_)) for a_, b, _ in segs)
-        for i in range(GAS_BRIGADES):
-            d = total * (i + 0.5) / GAS_BRIGADES
-            for a_, b, nrm in segs:
-                Lg = float(np.linalg.norm(b - a_))
-                if d <= Lg:
-                    p = a_ + (b - a_) * d / Lg + nrm * 9.0
-                    K["crown_granite"].box((p[0], p[1], g), (p[0], p[1], g + 14.0), 2.4, 2.4)
-                    K["crown_fire"].lathe([(g + 14.0, 1.0), (g + 14.6, 1.6), (g + 15.0, 1.7)], (p[0], p[1]), segs=10)
-                    break
-                d -= Lg
+        for p, _ in gas_brigades(river):
+            K["crown_granite"].box((p[0], p[1], g), (p[0], p[1], g + 14.0), GAS_BRIGADE_M, GAS_BRIGADE_M)
+            K["crown_fire"].lathe([(g + 14.0, 1.0), (g + 14.6, 1.6), (g + 15.0, 1.7)], (p[0], p[1]), segs=10)
     # an unmapped duplicate of the casino under the complex's outline (w972192630, 31 m): drawn by the podium too
     from shapely.geometry import Polygon
     outline = Polygon(q["ring"]).buffer(0)
@@ -352,3 +366,37 @@ def spire(s):
     for (za, wa), (zb, wb) in zip(mast, mast[1:]):
         m.box((cx, cy, za), (cx, cy, zb), (wa + wb) / 2, (wa + wb) / 2, up=(1, 0, 0))
     return m
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting
+    at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people come to see up close (game.json "close"): Flinders Street Station's main entrance
+    under the clocks, from the corner of Flinders and Swanston Streets, and the Gas Brigades towers on
+    Southbank's promenade. (The Arts Centre spire stands on the Theatres Building's roof, 15 m up: not a
+    thing to walk up to.)"""
+    lm = scene["landmarks"]
+    close = []
+    T = ak.Terrain("melbourne")
+    fs = lm.get("flinders_street")
+    if fs and "dome" in fs:
+        e, d = np.asarray(fs["entrance"], float), np.asarray(fs["dome"]["at"], float)
+        n = (e - d) / np.linalg.norm(e - d)  # out from under the dome, as the clocks face (flinders_street)
+        close.append(close_to("Flinders Street Station, the entrance under the clocks", e, T(*e), e + n * 6.0, 1.5, 0.2))
+    rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
+    if rows:
+        _, _, _, river = crown_front(max(rows, key=lambda r: abs(ak.ring_area(r["ring"]))))
+        towers = gas_brigades(river)
+        for k in (0, len(towers) // 2):
+            p, nrm = towers[k]
+            at = p + nrm * GAS_BRIGADE_M / 2  # its face towards the river
+            close.append(close_to(f"Crown's Gas Brigades, tower {k + 1}", at, T(*at), at + nrm * 5.0, 1.0, 0.1))
+    return {"close": close}

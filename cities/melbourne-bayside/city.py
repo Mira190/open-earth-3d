@@ -148,6 +148,14 @@ def landmark_meshes(scene):
 
 
 KIOSK_DECK_M = 2.2  # the piers' deck (game.json pier_deck_m)
+KIOSK_DOOR_M = 1.6  # its doors, one in each end (a pair of leaves, from photographs)
+
+
+def openings_out(m, P, ring, z0, w, h, every):
+    """Windows along every side of an anticlockwise ring (ak.rect), on the outside: ak.opening puts its
+    panel on the right of a -> b, which is outside when the ring runs anticlockwise."""
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        ak.openings_along(m, P, a, b, z0, w, h, every)
 
 
 def pier_kiosk(scene):
@@ -161,14 +169,20 @@ def pier_kiosk(scene):
     # the ground floor: weatherboards and tall windows, a door in each end, the verandah's posts round it
     ak.block(wall, P, -hl, hl, -hw, hw, 0.0, 3.8, top=False)
     ring = ak.rect(-hl, hl, -hw, hw)
-    ak.ring_openings(win, P, ring, 0.9, 1.3, 2.2, 2.4)
+    for (a, b) in zip(ring, ring[1:] + ring[:1]):  # tall windows along the sides; in each end a door between two windows
+        if abs(a[0] - b[0]) < 0.1:
+            for c in (hw - 2.4, hw + 2.4):
+                ak.opening(win, P, a, b, 0.9, 1.3, 2.2, centre=c)
+            ak.opening(win, P, a, b, 0.0, KIOSK_DOOR_M, 2.7, centre=hw, depth=0.08)
+        else:
+            ak.openings_along(win, P, a, b, 0.9, 1.3, 2.2, 2.4)
     for z in (0.0, 0.8, 3.6):
         ak.band(trim, P, ring, z, out=0.06, h=0.2)
     vo = 2.0  # the verandah's reach
     for u in np.linspace(-hl - vo + 0.2, hl + vo - 0.2, 9):
         for v in (-hw - vo + 0.2, hw + vo - 0.2):
             trim.box(P(u, v, 0.0), P(u, v, 3.6), 0.16, 0.16)
-    for v in np.linspace(-hw - vo + 0.2, hw + vo - 0.2, 5)[1:-1]:
+    for v in np.linspace(-hw - vo + 0.2, hw + vo - 0.2, 5)[[1, 3]]:  # (none in front of the doors)
         for u in (-hl - vo + 0.2, hl + vo - 0.2):
             trim.box(P(u, v, 0.0), P(u, v, 3.6), 0.16, 0.16)
     # the verandah's roof, a low hipped skirt of red iron, carrying the upper deck's floor
@@ -182,11 +196,11 @@ def pier_kiosk(scene):
     # the observatory: a room on the deck with windows all round, its hipped roof, the lantern and its vane
     ol, ow = 7.0, 5.0
     ak.block(wall, P, -ol / 2, ol / 2, -ow / 2, ow / 2, 4.6, 7.6, top=False)
-    ak.ring_openings(win, P, ak.rect(-ol / 2, ol / 2, -ow / 2, ow / 2), 5.3, 1.1, 1.8, 1.7)
+    openings_out(win, P, ak.rect(-ol / 2, ol / 2, -ow / 2, ow / 2), 5.3, 1.1, 1.8, 1.7)
     ak.band(trim, P, ak.rect(-ol / 2, ol / 2, -ow / 2, ow / 2), 7.4, out=0.25, h=0.3)
     ak.hip_roof(K, P, ol, ow, 7.6, 2.2, over=0.7, lift=0.0, mat="kiosk_roof", trim="kiosk_trim", sag=0.0)
     ak.block(wall, P, -1.1, 1.1, -1.1, 1.1, 9.4, 10.6, top=False)
-    ak.ring_openings(win, P, ak.rect(-1.1, 1.1, -1.1, 1.1), 9.6, 0.7, 0.8, 1.0)
+    openings_out(win, P, ak.rect(-1.1, 1.1, -1.1, 1.1), 9.6, 0.7, 0.8, 1.0)
     roof.lathe([(KIOSK_DECK_M + 10.6, 1.6), (KIOSK_DECK_M + 12.4, 0.12)], P(0, 0, 0)[:2], segs=4)
     iron.box(P(0, 0, 12.3), P(0, 0, 14.0), 0.08, 0.08)
     iron.box(P(-0.6, 0, 13.6), P(0.6, 0, 13.6), 0.05, 0.25)  # the vane
@@ -357,3 +371,41 @@ def mr_moon(mesh, m, lp):
         tx, ty = (np.array([cx, cy]) + r[:2] * s * (R + 2.6)).tolist()
         towers.lathe([(g0, 1.6), (g0 + 12.0, 1.6), (g0 + 12.0, 2.0), (g0 + 12.6, 2.0), (g0 + 12.6, 1.5)], (tx, ty), segs=16)
         domes.lathe([(g0 + 12.6, 1.6), (g0 + 14.2, 1.3), (g0 + 15.4, 0.6), (g0 + 16.2, 0.1)], (tx, ty), segs=16)
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting
+    at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people come to see up close (game.json "close"): the doors of bathing boxes at both ends
+    of the row and in its middle, from the sand in front; Mr Moon's mouth, and on through it into Luna
+    Park; and the St Kilda Pier kiosk's door at its landward end, from the pier's deck."""
+    lm = scene["landmarks"]
+    close = []
+    T = ak.Terrain("melbourne-bayside")
+    boxes = lm.get("bathing_boxes", [])
+    for k in sorted({0, len(boxes) // 2, len(boxes) - 1}) if boxes else ():
+        o, f, _ = frame(boxes[k])
+        at = o[:2] + f[:2] * boxes[k]["depth_m"] / 2  # the middle of its doors
+        close.append(close_to(f"Brighton bathing box {k + 1}, its doors", at, T(*at), at + f[:2] * 5.0, 1.0, 0.1))
+    m = lm.get("mr_moon")
+    if m:
+        c = np.asarray(m["at"], float)
+        lp = lm.get("luna_park")
+        f = c - np.asarray(lp["centre"], float) if lp else np.array([0.0, 1.0])  # out of the park, as mr_moon() faces him
+        f /= np.linalg.norm(f)
+        close.append(close_to("Mr Moon, his mouth: Luna Park's way in", c, m["ground_m"], c + f * 5.0, 1.0))
+        inside = c - f * 4.0
+        close.append(close_to("Luna Park, in through Mr Moon's mouth", inside, T(*inside), c + f * 4.0, 1.0))
+    if "St Kilda Pier kiosk" in scene.get("labels", {}):
+        x, y = scene["labels"]["St Kilda Pier kiosk"][:2]
+        at = np.array([x - 2.0 + 8.0, y])  # pier_kiosk(): 16 m long along x, a door in each end; the shore is to the east
+        close.append(close_to("St Kilda Pier kiosk, its door", at, KIOSK_DECK_M, at + np.array([5.0, 0.0]), 1.0, 0.1))
+    return {"close": close}
