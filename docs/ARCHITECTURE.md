@@ -34,11 +34,13 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Measured buildings (the Netherlands) | `fetch_3dbag.py` | `data/raw/<id>/3dbag.json`: the 3DBAG's CityJSON tiles (from the release's `tile_index.fgb`) as one feature per LOD1.3 roof level, with its LiDAR top and the roof its LOD2.2 model has over it; read by `build_scene.BAG3D` behind the PLATEAU interface |
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
+| Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
+| Woods | `woods.py` (run by `game_data.py`) | `woods.png` and `woods` in `places.json`: in every mapped wood, forest, scrub, park, garden, cemetery and temple ground, the trees planted from an open canopy height model (Meta and WRI, CC BY 4.0) and a mask of the ground under that canopy, which the ground shader draws as a wood's floor instead of the photo's tree tops. See [Woods](#woods-and-park-canopy) below |
 | Night | `night_lights.py` (run by `game_data.py`) | `night.json`: the roads simplified for the street lights and the traffic, the mapped lamps, and the city's lighting style (lamp colours, keep side, aircraft lights, crowns, sky glow). See [NIGHT.md](NIGHT.md) |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
@@ -149,6 +151,12 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     lies under the built water, and `tools/coast_overlay.py` draws the water, the mask and
     the decks over the aerial photograph to check a coastline (issue 50).
   - `trees`: flat `[x, y, z, h]` in decimetres.
+  - `woods`: the trees planted from the canopy (`pipeline/woods.py`), the same
+    way, with the height the canopy model measured.
+- `woods.png`: the ground under the woods' and parks' canopy at 2 m a pixel,
+  from the north-west corner: `r` how much of the ground the wood's floor
+  covers, `g` the canopy's height times 8 (m), `b` a footway under the trees,
+  `a` inside a wood or park.
 - `terrain.json`: a 10 m grid, int16 decimetres, little-endian, base64,
   starting at the north-west corner. Under the water the bottom is modelled, as
   below.
@@ -171,7 +179,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   shore no longer shows. On a straight slope the water off a beach stayed 2.5 m
   deep out across the bay, in a pale wedge for every stretch of sand (issue 39).
   Along the frame's edge haze the water closes over the bottom, which hazes out
-  there while open sea above it does not.
+  there while open sea above it does not. Out where the floor is reached the
+  water hides the bottom altogether, as the open sea past the frame (which has
+  none under it) does; letting a tenth of the aerial photo through there read
+  as a straight band where the two met at the frame (issue 57).
 
   The first grid point out from the land is at most 0.3 m deep (a shelf), so on
   the 5 m grid the waterline falls at the quay's edge rather than up to a cell
@@ -278,7 +289,14 @@ The views switch in place, without reloading the page.
   - trees (`trees.js`): the six species of `blender/build_trees.py`, in the
     city's mix, instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
-    cut-out leaf shadows and jacarandas that flower in season;
+    cut-out leaf shadows and jacarandas that flower in season; the trees
+    planted from a wood's canopy after them, sized by their measured height,
+    without palms, stepping down sooner (full within 72 m, sparse to 200 m, half of them as hulls beyond), thinning out to 900 m, further from higher up (600 m and a
+    third of them on a small device) where the photo's canopy takes over;
+  - under a wood's canopy (`woods.png`), the ground near the camera drawn as a
+    wood's floor (bare earth, leaf litter, moss, a compacted path) instead of
+    the photo's tree tops, and further off the photo's canopy turned from its
+    teal to the leaves' green;
   - the ground's aerial photos, with their haze taken out: the city's tiles are
     measured as they load (the darkest 2% and the mean saturation), and the
     shader takes back a share of that black level and restores some colour;
@@ -298,13 +316,35 @@ The views switch in place, without reloading the page.
     the camera itself is outside the model. In the game, the haze takes the sky's
     colour at the horizon (read back from the sky when the sun moves) and the
     sky's last few degrees fade into it, so the city meets the sky without a band.
-    Over the sea the frame does not end: where its edge is open water in
-    `shore.png`, the water carries on past it to the horizon under the ordinary
-    distance fog, darkening a little toward a distant sea's tone, and only
-    behind land does it haze out with the edge. `seaOpen` measures the shoreline
-    along the band's inner edge once, into a small texture blurred more the
-    further out a point is, so the open sea and the haze behind land meet in a
-    soft fan rather than a line. Only the water's materials take it (`OE_SEA`).
+    Over the sea the frame does not end: past its edge, where there is real open
+    water, the water carries on to the horizon under the ordinary distance fog,
+    darkening a little toward a distant sea's tone, and only over land does it
+    haze out with the edge. Where the open water is comes from the city's
+    `sea.jpg` (`pipeline/open_sea.py`): a land and water mask 40 km either side
+    of the frame's centre at about 39 m a pixel, from Overture's base water
+    theme (OpenStreetMap's coastline and water, ODbL): the ocean, bays and
+    straits, less the islands in them, and for a city that draws its own rivers
+    and lakes, its rivers and canals from 2 ha and its lakes and reservoirs from
+    1 km² too, any water narrower than 160 m left out (a JPEG without chroma subsampling).
+    Its channels are the mask blurred by 60 m, 450 m and 2.2 km; the shader
+    goes from red at the frame to green 2.5 km out and blue 9 km out, so near the
+    frame the sea follows the real shore (North Sydney stays land, the harbour
+    runs on west to Parramatta) and far out it meets the haze over land in a
+    soft gradient. Over land past the frame the haze settles from the horizon's
+    tone at the frame to a distant shore's, a little darker and greener
+    (`SEA_LAND`), which the distance's own fog takes back to the horizon, so an
+    island or a headland out there reads as land in the haze rather than a pale
+    blob. Only the water's materials take it (`OE_SEA`), and the haze makes
+    the water opaque, so nothing shows through it from below. The ground's photo
+    tiles are drawn only within the frame: their grid overhangs it by up to
+    800 m, which lay over the open sea past it and cut it off along a straight
+    line (Melbourne's bay). Until issue 57
+    the edge was extruded: each point past the frame copied the shoreline at
+    the frame, so the sea past it was straight bands with hard sides, sea where
+    land should be, and streaks out from the corners. Before and after, from
+    above and from the tour cameras toward and away from a low sun:
+    `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
+    for `tools/city_shot.js`).
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -557,3 +597,53 @@ Two more scripts build what every city shares, from code, with no stock assets:
 - `blender/build_trees.py`: six tree species grown from points in their crown
   shapes, with a leaf atlas it draws itself, in three levels of detail, into
   `web/assets/trees/` with `trees.json`.
+
+## Woods and park canopy
+
+An aerial photograph of a wood shows the tops of its trees. Draped on the terrain
+and seen from the ground, that canopy turned into a lumpy teal surface (graded,
+and in a wall's shade a deep blue band), and only the trees OpenStreetMap maps one
+by one stood on it: in the Kyoto Gyoen a few dozen where the photo shows
+thousands (issue #54). `pipeline/woods.py` fixes this for every city:
+
+- **Where:** Overture's land (`forest`, `wood`, `scrub`, `shrubbery`) and land use
+  (`park`, `garden`, `cemetery`, `grave_yard`, `religious`, `recreation_ground`,
+  `village_green`, `nature_reserve`, `grass`, ...), minus buildings, water and
+  roads.
+- **The canopy:** Meta and the World Resources Institute's [High Resolution
+  Canopy Height Maps](https://sustainability.atmeta.com/blog/2024/04/22/using-artificial-intelligence-to-map-the-earths-forests/)
+  (Tolan et al. 2024, *Remote Sensing of Environment* 300; about 1 m, global,
+  from Maxar imagery of 2009-2020; CC BY 4.0), read straight from its public
+  bucket (`s3://dataforgood-fb-data/forests/v1/alsgedi_global_v6_float/chm/`,
+  one cloud-optimised GeoTIFF per zoom-9 quadkey) and cached in
+  `data/raw/<id>/chm.npz`. Where the city has an aerial photo, a pale grey patch
+  wider than about 7 m (gravel, paving, a roof) is not taken as canopy, whatever
+  the model says. The model underestimates the tallest trees (its paper reports
+  a mean absolute error of about 2.8 m against airborne lidar), so heights run
+  a little low.
+- **The trees:** the canopy's local maxima, tallest first (the usual
+  individual-tree detection from a canopy height model), then the rest of the
+  canopy filled at random (a Poisson-disc fill), each tree kept 3.6-6.5 m from
+  the others by its height, off the footways, and 3.5 m clear of the mapped
+  trees. A tree in the fill is as tall as the canopy top around it.
+- **The floor:** the canopy's footprint, its small gaps closed and specks
+  dropped, is `woods.png`. The ground shader (`world.js` `woodsFloor`, in the
+  viewer and the game) draws it as the floor the city's park trees stand on,
+  in patches at the albedos they have: bare earth, leaf litter and moss (Japan,
+  Hong Kong), lawn in shade worn to earth (Australia, the Netherlands), or a
+  Paris garden's stabilised sand and gravel (`FLOOR` in `woods.py`, or
+  `trees.floor` in `city.json`), darker under a tall canopy, with a compacted gravel and
+  earth path where a mapped footway runs under the trees. Within the distance
+  the trees are drawn to, and only with the camera among the trees (below
+  about 60 m above the floor); from further or higher, the photo's canopy,
+  turned green, which shows the undergrowth between the crowns.
+- **Shadows in a park:** the photos' shadows on a park's gravel are skylight
+  blue, the same teal; inside a wood or park (`woods.png`'s alpha) the shader
+  takes their colour out near the camera, where the scene casts its own.
+
+Considered and not adopted: drawing the canopy from the photo alone (its
+greenness picks up lawns and misses trees in shade), and the 10 m global canopy
+height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees. The
+species are still the city's mix of the six shared trees (`web/assets/trees/`):
+no pine, zelkova or camphor yet.
+
