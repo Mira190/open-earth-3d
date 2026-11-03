@@ -598,6 +598,12 @@ pipeline writes. The only city-specific code is landmark geometry in
     8 m grid): you walk round them, your car hits them ("Careful! That was a
     lamp post."), the crowd steps round them and the traffic brakes for one in
     its way.
+  - **What can move gives way to what can't:** a car's body is pushed out of
+    the other cars and the people first, then the walls, and the posts and
+    trunks last, and a car that shoves you on foot is followed by a push out of
+    the posts. The last push is the one that holds, so a traffic car pressing in
+    can't drive yours, or you, into a trunk (#96). `tools/clip_check.js` presses
+    a car's box into yours, nose to a trunk, at five offsets and three angles.
   - **Measured against the old 2 m grid:** 120 walks into walls at random
     angles ended inside a footprint 50 times before and never now. The closest
     approach is now the capsule radius. See

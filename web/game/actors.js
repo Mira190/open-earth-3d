@@ -1445,8 +1445,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // a car that has come up against the player (turning in, say) moves them out of its way
       if (nav) for (const b of blockers) {
         if (b.half || b.fixed) continue;
-        const o = pushOut(b.x, b.y, 0.35, b.z);
-        if ((o.x !== b.x || o.y !== b.y) && nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
+        let o = pushOut(b.x, b.y, 0.35, b.z);
+        if (o.x !== b.x || o.y !== b.y) {
+          if (nav.posts) o = nav.posts.pushOut(o.x, o.y, 0.35, b.z); // (and not into a lamp post or a trunk)
+          if (nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
+        }
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
