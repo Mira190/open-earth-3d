@@ -69,8 +69,7 @@ FLINDERS_STREET = (144.9671, -37.8183)
 MATERIALS = {
     "spire": {"color": "#eef0f2", "roughness": 0.35, "metalness": 0.5},
     # the Theatres Building: bluestone (Victorian basalt) in courses, a pale concrete coping, the foyer's glass
-    "acm_bluestone": {"color": "#55585c", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 1.2,
-                      "emissive": "#ffe2bd", "glow": 0.25},
+    "acm_bluestone": {"color": "#55585c", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 1.2},
     "acm_coping": {"color": "#cfcac0", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffe2bd", "glow": 0.3},
     "acm_glass": {"color": "#2b3238", "roughness": 0.15, "metalness": 0.5, "emissive": "#ffd9a6", "glow": 0.5},
     "fss_terracotta": {"color": TERRACOTTA, "roughness": 0.85, "metalness": 0.0},
@@ -377,7 +376,7 @@ def theatres_building(s):
     T = ak.Terrain("melbourne")
     roof = s["base_m"]
     z0 = min(T(x, y) for x, y in ring) - 0.5
-    K = ak.Kit("acm_theatres", floodlit={"acm_bluestone", "acm_coping"}, uv={"acm_bluestone"})
+    K = ak.Kit("acm_theatres", floodlit={"acm_coping"}, uv={"acm_bluestone"})  # (dark stone stays dark at night; its coping catches the light)
     ak.prism(K["acm_bluestone"], ak.WORLD, ring, z0, roof - 0.9)
     ak.prism(K["acm_coping"], ak.WORLD, ak.offset_ring(ring, 0.15), roof - 0.9, roof)
     ak.band(K["acm_coping"], ak.WORLD, ring, roof - 4.2, out=0.12, h=0.3)

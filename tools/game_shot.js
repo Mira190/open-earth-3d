@@ -76,6 +76,11 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (foot.length) {
     const play = await p.$('#gt-play');
     if (play) await play.click().catch(() => {});
+    // until the title has gone (a click while the city is still loading can be lost): click again
+    for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {
+      await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });
+      await p.waitForTimeout(1000);
+    }
     // the arrival's crane shot: settled, so that it does not fly the camera over the first view
     await p.evaluate(async () => {
       const g = window.__game;
@@ -86,6 +91,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   for (const v of foot) {
     await p.evaluate(v => {
       const g = window.__game;
+      for (let i = 0; i < 40 && g.arriving && g.arriving(); i++) { g.settleArrival(); g.advance(0.1); } // an arrival that began late
       if (g.cine.active) g.cine.skip();
       window.__shotClock(v);
       const [x, y] = v.at, f = g.nav.floorAt(x, y, v.z != null ? v.z + 0.5 : v.street ? g.nav.terrain(x, y) + 0.5 : 200); // (the roof there, the street under a canopy, or the floor nearest z)
