@@ -15,6 +15,9 @@
 #   - opens Sydney's game and model and checks the hand-over from the loading screen
 #     (tools/load_check.js): the 3D view must be drawn, not black, when the loader starts to fade.
 # Prints one line per check and exits 1 if any failed. Logs and screenshots go to $CHECK_OUT.
+# The games play at a pinned local hour (GAME_TIME, default 10:00 in each city's own time zone,
+# tools/pin_clock.js), so that a run does not depend on the hour it is started at:
+#   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
 #   tools/check.sh                      # what this branch changed (committed or not)
 #   tools/check.sh sydney hardy-reef    # these cities and reef sites
 #   tools/check.sh title                # the title screen only
@@ -79,6 +82,7 @@ if ! curl -s -o /dev/null "http://localhost:$PORT/index.html"; then
 fi
 trap '[ -n "$started" ] && kill $started 2>/dev/null' EXIT
 export PORT
+export GAME_TIME=${GAME_TIME:-10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
 run_city() {
