@@ -3279,6 +3279,7 @@ def landmark_meshes(scene):
     if "shibuya_sky" in lm:
         meshes += sky_meshes(lm["shibuya_sky"])
     mats = dict(MATERIALS)
+    mats.pop("screens"), mats.pop("screens_east")   # each map has the screens it has, and only those
     if "scramble" in lm:
         mats["screens"] = CROSSING.material(lm["scramble"]["node"])
     if "kabukicho_gate" in lm:

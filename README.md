@@ -59,7 +59,7 @@ rendering and the tiers.
 |---|---|---|
 | ![](docs/images/amsterdam/overview.jpg) | ![](docs/images/amsterdam/canals.jpg) | ![](docs/images/amsterdam/gables.jpg) |
 
-| Shibuya & Shinjuku: the 男坂 of Suga Shrine | SHIBUYA SKY, 229 m up | Kabukicho after dark |
+| Shinjuku: the 男坂 of Suga Shrine | Shibuya: SHIBUYA SKY, 229 m up | Shinjuku: Kabukicho after dark |
 |---|---|---|
 | ![](docs/images/shibuya/cycles-suga-stairs.jpg) | ![](docs/images/shibuya/cycles-shibuya-sky.jpg) | ![](docs/images/shibuya/cycles-kabukicho.jpg) |
 
@@ -142,7 +142,7 @@ streets, keeping to the city's side of the road, and talks about what you pass.
 Choose a destination
 on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
-`#play-tokyo`, `#play-shibuya`, `#play-asakusa` and `#play-akihabara`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
+`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa` and `#play-akihabara`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -200,11 +200,11 @@ subway map of its districts (Marunouchi & Ginza, Shibuya, Shinjuku, Akihabara, A
 Skytree; Ueno, Ikebukuro, Odaiba and more in grey, next in line). Pick a station and go in there.
 See [Tokyo as maps](docs/cities/tokyo-maps.md).
 
-**Tokyo Pilgrimage** walks Shibuya and Shinjuku ten years after a film and a game drew
-them: the stairs of *Your Name* at Suga Shrine, SHIBUYA SKY's roof (take the lift, ride the
-escalator out), Sangenjaya's backstreets and Kabukicho's arch. Walking into a
-neighbourhood puts its name up on a station sign; <kbd>E</kbd> reads an ema or a vending
-machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya`.
+**Tokyo Pilgrimage** walks Shibuya and Shinjuku, two maps of Tokyo, ten years after a film and a
+game drew them: the stairs of *Your Name* at Suga Shrine and Kabukicho's arch in Shinjuku, SHIBUYA
+SKY's roof (take the lift, ride the escalator out) and Sangenjaya's backstreets in Shibuya. Walking
+into a neighbourhood puts its name up on a station sign; <kbd>E</kbd> reads an ema or a vending
+machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya` or `#play-shinjuku`.
 
 | The stairs from the lane at their foot | Reading an ema, under Yotsuya-sanchome's station sign | Riding up SHIBUYA SKY's escalator |
 |---|---|---|
@@ -243,7 +243,8 @@ whose every line is computed from the model or cited. Choose **Great Barrier Ree
 | **Osaka**, Japan | **Live** | 73,267 buildings (32,955 solids with pitched roofs) across 4.5 × 6.4 km, from Umeda to Shinsekai with Osaka Castle. 89% of the roof area carries a height measured for Project PLATEAU; GSI's 5 m laser DEM is the terrain. The castle keep (each tier, its eaves and its gables measured from PLATEAU's own 3D model of it), Tsutenkaku, the HEP FIVE wheel and the Dotonbori signs are built to published dimensions. A winter-sun study of eight parks, and *Osaka on Foot*, a game with Osaka people. [Case study](docs/cities/osaka.md) |
 | **Kyoto**, Japan | **Live** | 65,738 buildings across 3.0 × 5.0 km, 93% of the footprint area with a height measured from the air by Project PLATEAU, and roofs measured from its LOD2 models (45,866 pitched). GSI laser terrain and aerial photographs. A game with Kyoto people, some in town from Tokyo. [Case study](docs/cities/kyoto.md) |
 | **Tokyo**, Japan | **Live** | 15,395 buildings across 3.2 × 4.8 km, from Marunouchi to Tokyo Tower. 76% of the footprint area stands at a Project PLATEAU surveyed height (median 2.8% off OpenStreetMap on 135 towers). GSI 5 m laser terrain, a parametric Tokyo Tower, and a game with Tokyo's people. [Case study](docs/cities/tokyo.md) |
-| **Shibuya & Shinjuku**, Japan (a map of Tokyo) | **Live** | 90,304 buildings across 5.4 × 6.2 km, from Sangenjaya to Shinjuku and Yotsuya. 86% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble, Center Gai, Sangenjaya's backstreets and Kabukicho's arch: the real places a film and a game drew. *Tokyo Pilgrimage*, a game in five walks. [Case study](docs/cities/shibuya.md) |
+| **Shibuya**, Japan (a map of Tokyo) | **Live** | 47,787 buildings across 4.5 × 4.0 km, from Sangenjaya to Harajuku and Meiji Jingu. 87% of the footprint area stands at a Project PLATEAU surveyed height, on GSI's 5 m laser terrain. SHIBUYA SKY's roof is walkable: take the lift, ride the escalator out, stand at SKY EDGE. The scramble and Hachiko, Center Gai and Sangenjaya's backstreets: the real places a game drew. [Case study](docs/cities/shibuya.md) |
+| **Shinjuku**, Japan (a map of Tokyo) | **Live** | 26,697 buildings across 4.5 × 3.1 km, from Nishi-Shinjuku's towers to Yotsuya. 85% of the footprint area at a PLATEAU surveyed height. Suga Shrine and the 52 steps of its 男坂, the stairs of *Your Name*, are set into the slope, with this year's ema; Kabukicho's arch, the east exit's screens, 2-chome and Shinjuku Gyoen. [Case study](docs/cities/shinjuku.md) |
 | **Asakusa**, Japan (a map of Tokyo) | **Live** | Asakusa and the Sumida across 2.6 × 1.6 km at PLATEAU-surveyed heights. Senso-ji built to its published sizes: the Kaminarimon and its 700 kg lantern, Nakamise, the Hozomon, the 53 m pagoda and the main hall; Tokyo Skytree, 634 m, lit Iki and Miyabi on alternate nights, with a lift to the Tembo Deck; the Asahi flame; the Sumida water bus. [Case study](docs/cities/asakusa.md) |
 | **Akihabara**, Japan (a map of Tokyo) | **Live** | Electric Town across 1.8 × 1.5 km at PLATEAU-surveyed heights: Chuo-dori's blade signs, boards and wall prints, lit after dark; Kanda Myojin's gate and Nikolai-do's dome up the hill. [Case study](docs/cities/akihabara.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
@@ -343,7 +344,7 @@ The built scenes are in the repository, so the viewer runs straight away:
 
 ```bash
 cd web && python -m http.server 8000
-# open http://localhost:8000 for the title screen, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #shibuya, #hong-kong) for a 3D model,
+# open http://localhost:8000 for the title screen, #sydney (or #melbourne, #melbourne-bayside, #osaka, #kyoto, #tokyo, #shibuya, #shinjuku, #hong-kong) for a 3D model,
 # #play-sydney (and so on) for a game,
 # reef/index.html?city=whitsundays (or hardy-reef, green-island, heron-island, lady-elliot-island) for a reef site
 ```
