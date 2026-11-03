@@ -1706,7 +1706,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (c === 'Enter') snapPhoto(); else if (c === 'KeyE' || c === 'Escape') closeupEnd();
       return;
     }
-    if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
+    if (arriving) settleArrival(); // a key settles the arrival (and still walks, looks or opens what it opens)
+    else if (cine.active && cine.label !== 'crane') { cine.skip(); return; } // a key ends a hop or a survey shot
     if (c === 'Escape') { if (!phone.el.hidden) phoneShow(false); else if (!$('#g-bigmap').hidden || !$('#g-pass').hidden) { $('#g-bigmap').hidden = $('#g-pass').hidden = true; } else toggleMenu(); return; }
     if (uiOpen()) {
       if (c === 'KeyM') toggleMap();
@@ -1743,7 +1744,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   on(window, 'keyup', e => keys.delete(e.code));
   on(window, 'blur', () => keys.clear());
   let drag = null;
-  on(canvas, 'pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); A.start(); if (cine.active) cine.skip(); });
+  on(canvas, 'pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; canvas.setPointerCapture(e.pointerId); A.start(); if (arriving) settleArrival(); else if (cine.active) cine.skip(); });
   on(canvas, 'pointermove', e => {
     if (!drag || drag.id !== e.pointerId) return;
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
@@ -1767,7 +1768,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-touch').hidden = false;
     const pad = $('#gt-joy'), knob = $('#gt-knob');
     let jid = null, c0 = null;
-    on(pad, 'pointerdown', e => { jid = e.pointerId; c0 = [e.clientX, e.clientY]; pad.setPointerCapture(jid); A.start(); });
+    on(pad, 'pointerdown', e => { jid = e.pointerId; c0 = [e.clientX, e.clientY]; pad.setPointerCapture(jid); A.start(); settleArrival(); });
     on(pad, 'pointermove', e => {
       if (e.pointerId !== jid) return;
       let dx = (e.clientX - c0[0]) / 50, dy = (e.clientY - c0[1]) / 50;
@@ -1812,7 +1813,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function currentAction() {
     if (closeup) return { key: 'E', text: 'Step back', act: closeupEnd };
-    if (dlg.open || uiOpen() || cine.active) return null;
+    if (dlg.open || uiOpen() || cine.active || OEOnboard.active()) return null; // nothing to start while the tour is showing
     if (player.mode === 'board') return { key: '', text: boarding.dir > 0 ? (boarding.t < 0.3 ? 'Opening the door…' : 'Climbing aboard…') : (boarding.t < 0.25 ? 'Engine off. Opening the door…' : 'Climbing out…') };
     if (player.mode === 'heli') {
       if (heli.st.landed && heli.st.speed < 1) return { key: 'E', text: 'Get out', act: exitHeli };
@@ -2944,6 +2945,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
   on($('#gm-sound'), 'change', e => A.setMuted(!e.target.checked));
+  on($('#gm-intro'), 'click', () => { $('#g-menu').hidden = true; startTour(); });
   on($('#gm-reset'), 'click', () => {
     try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
     if ((player.mode === 'car' || player.mode === 'ride') && !stepOut(player.vehicle, player.mode === 'car' ? 'driver' : kerbSeat)) { player.vehicle.C.body.remove(player.rig.root); world.add(player.rig.root); player.rig.root.scale.setScalar(1); player.mode = 'foot'; player.vehicle = null; }
@@ -2983,8 +2985,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   const saved = loadSave();
   if (saved) $('#gt-continue').hidden = false;
+  $('#gt-skip').hidden = !OEOnboard.done(); // a returning player (any map): the intro is skipped unless they untick it
+  // the title orbit's centre, so the camera can be carried with the player when the game starts somewhere else
+  // (Continue, a district from the subway map): the arrival then starts from the same view of the new place
   const startGame = cont => {
     A.start();
+    const was = [player.x, player.y, player.z];
     if (cont && saved) {
       qs = Object.assign(qs, migrate(saved.qs));
       // back on the deck or roof where you left off; at the start if that is no longer in the map (a map split in two)
@@ -3000,10 +3006,59 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;
-    craneIn();
+    const dv = W(player.x, player.y, player.z).sub(W(...was));
+    if (dv.lengthSq() > 1) { camera.position.add(dv); titleLook.add(dv); }
+    const skip = OEOnboard.done() && $('#gt-skip-on').checked;
+    craneIn(() => (cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false))));
     renderPassport();
-    if (!cont) H.toast(`Find ${npcById(quest() ? quest().giver : npcs[0].id).name}: ${routeMode === 'on' ? 'follow the gold route' : 'the route is on the minimap'}, or press <kbd>M</kbd> for the map.`);
   };
+  // Onboarding, once in this browser across every map (onboard.js, #89): the first time, a short tour of the
+  // HUD and then the guide's directions; on a later map, with "Skip the intro" (on for a returning player),
+  // straight to the guide's own short welcome. "Show the intro again" in the menu runs the tour now.
+  function welcome(short) {
+    const q = quest(), n = npcById(q ? q.giver : npcs[0].id);
+    if (!n) return;
+    // (not the quest's first line: several begin "You're the new surveyor?", which a returning player is not)
+    const way = routeMode === 'on' ? 'follow the gold route' : 'the route is on the minimap'; // (the menu's Route line, #90)
+    H.toast(short ? `<b>${n.name}</b>: ${G.greeting || 'Hello!'} Welcome to ${CITY.name}. <span>${routeMode === 'on' ? 'Follow the gold line' : 'The minimap shows the way'} and come and find me.</span>`
+      : `Find ${n.name}: ${way}, or ${touch ? 'tap <b>Map</b>' : 'press <kbd>M</kbd>'} for the map.`);
+  }
+  const tourSteps = () => [
+    { id: 'move', title: 'Walk and look', target: touch ? '#gt-joy' : null,
+      text: '<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk the way the camera faces. Hold <kbd>Shift</kbd> to sprint, <kbd>X</kbd> switches walking and running, <kbd>Space</kbd> jumps. Drag to look around, scroll to zoom.',
+      touch: 'The stick walks the way the camera faces; <b>Run</b> switches to running and <b>Jump</b> jumps. Drag anywhere else to look around.' },
+    { id: 'map', title: 'The map', target: '#g-map-btn',
+      text: '<kbd>M</kbd> opens the map of the whole area: your objective, the people to meet, the ferries, the helipads and the trig stations (△).',
+      touch: '<b>Map</b> opens the map of the whole area: your objective, the people to meet, the ferries, the helipads and the trig stations (△).' },
+    { id: 'travel', title: 'Travel anywhere', target: '#g-minimap',
+      text: 'On the map, pick a place, or a district from the list beside it, and <b>Travel here</b> takes you there in a few seconds. <b>Set waypoint</b> puts the gold line on it instead.',
+      touch: 'On the map, tap a place, or a district from the list, and <b>Travel here</b> takes you there in a few seconds. <b>Set waypoint</b> puts the gold line on it instead.' },
+    { id: 'taxi', title: 'Taxis and rides', target: null,
+      text: 'At the kerb, <kbd>Y</kbd> raises your hand and a passing taxi pulls in. <kbd>E</kbd> gets in, pick where to go, <kbd>F</kbd> skips the trip and <kbd>E</kbd> gets out when it stops.',
+      touch: 'At the kerb, <b>Hail a taxi</b> raises your hand and a passing taxi pulls in. <b>E</b> gets in, pick where to go, and <b>E</b> gets out when it stops.' },
+    { id: 'passport', title: 'Your passport', target: '#g-pass-btn',
+      text: 'Every place you survey and every quest you finish stamps your passport (<kbd>P</kbd>). The count is beside the button.',
+      touch: 'Every place you survey and every quest you finish stamps your <b>Passport</b>. The count is beside the button.' },
+    { id: 'phone', title: 'Your phone', target: '#g-phone-btn',
+      text: '<kbd>N</kbd> takes out your phone: order a ride to anywhere on the map and watch it come to you, or have your car brought round.',
+      touch: '<b>Phone</b>: order a ride to anywhere on the map and watch it come to you, or have your car brought round.' },
+    { id: 'photo', title: 'Photo mode', target: '#g-photo-btn',
+      text: '<kbd>O</kbd> holds the world still: set the sun, the lens and the angle, and save a picture.',
+      touch: '<b>Photo</b> holds the world still: set the sun, the lens and the angle, and save a picture.' },
+    { id: 'menu', title: 'The menu', target: '#g-menu-btn',
+      text: '<kbd>Esc</kbd> pauses: the time of day and the date, the clock\'s speed, who you play, sound, every key, and <b>Show the intro again</b>.',
+      touch: '<b>Menu</b> pauses: the time of day and the date, the clock\'s speed, who you play, sound, and <b>Show the intro again</b>.' },
+    // (the menu's route setting: a three-way Route line, On, Only when I ask and Off, or a single checkbox)
+    $('#gm-route [data-r]') ? { id: 'route', title: 'The route line', target: '#g-quest',
+      text: 'This card is your objective. The gold line on the ground and on the minimap leads there. In the menu, <b>Route line</b> sets it On, Only when I ask (<kbd>L</kbd> shows it for a few seconds) or Off.',
+      touch: 'This card is your objective. The gold line on the ground and on the minimap leads there. In the <b>Menu</b>, <b>Route line</b> sets it On, Only when I ask (<b>Show route</b> on this card) or Off.' }
+      : { id: 'route', title: 'The route line', target: '#g-quest',
+        text: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the menu (<b>Show the route to the objective</b>).',
+        touch: 'This card is your objective. The gold line on the ground and on the minimap leads there; turn it off in the <b>Menu</b> (<b>Show the route to the objective</b>).' },
+  ];
+  function startTour(then = null) {
+    return OEOnboard.tour(tourSteps(), { root: document.body, onEnd: () => { OEOnboard.markDone(CITY.id); if (then) then(); } });
+  }
   on($('#gt-play'), 'click', () => startGame(false));
   on($('#gt-continue'), 'click', () => startGame(true));
   on($('#gt-timechoice'), 'click', e => { const b = e.target.closest('button'); if (b) $$('#gt-timechoice button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); });
@@ -3371,7 +3426,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       camera.position.copy(shot.pos);
       // never inside a building; a film's shots (tools/film) are checked against the surface model when
       // they are planned, and go down to eye level among the crowd, so they are left where they are
-      if (cine.label !== 'film' && cine.label !== 'closer') camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
+      // the arrival and the hops keep clear of the roofs themselves (calmElevation) and come down into a street to the
+      // player, where this clamp (the tallest roof in the cells round it) would pin them at the roofline: within 25 m
+      // of what they look at they are left alone, as the chase camera is; the look closer is at the eye's height
+      const own = (cine.label === 'crane' || cine.label === 'hop') && camera.position.distanceTo(shot.look) < 25;
+      if (cine.label !== 'film' && cine.label !== 'closer' && !own) camera.position.y = Math.max(camera.position.y, roofBelow(camera.position.x, -camera.position.z) + 3);
       camera.lookAt(shot.look);
       Wd.fitShadow(shot.look, THREE.MathUtils.clamp(camera.position.distanceTo(shot.look) * 1.2, live.half, 1600));
       return;
@@ -3495,16 +3554,91 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const head = () => W(player.x, player.y, player.z + 1.55);
   const chasePolar = () => ({ az: cam.yaw + Math.PI, dist: Math.cos(cam.pitch) * cam.dist, h: Math.sin(cam.pitch) * cam.dist });
   const handOver = (k, from = 0.8) => OECine.ease.smooth(OECine.span(k, from, 1)); // weight of the live rig at the end of a shot
-  // Start: from the title orbit, close in over the player at height, drop down beside
-  // them and swing in behind, then hand over to the chase camera. Moving is allowed.
-  function craneIn() {
-    const look0 = titleLook.clone(), p0 = OECine.polar(head(), camera.position);
-    cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5;
+  // Start (#89): one eased move from the title shot down to over the player's shoulder, calm enough not to
+  // make anyone dizzy. The camera dollies in along the bearing it is already on, turning about the player by
+  // at most ARRIVE.turn, spread evenly over the whole move (so it never swings round them, spins or changes
+  // direction), with the horizon level. Its distance closes on a log scale, so the approach is a steady glide
+  // and not a rush at the end, and the point it looks at closes on the player at the same rate, so the view's
+  // direction hardly turns. The player turns to face the way the shot looks, as near the start's own view as
+  // that turn allows with a few steps clear in front. The camera lifts smoothly over any roof on its line,
+  // never jumping. A key or a tap settles it in under a second (settleArrival); with reduced motion it is a
+  // cut under a short fade. Moving is allowed throughout. onDone runs once it has handed over.
+  const ARRIVE = { dur: 3.6, turn: 50 * Math.PI / 180, pitch: 14 * Math.PI / 180, settle: 0.7 };
+  let arriving = null;
+  const clearAhead = h => { // a few steps' walk in front of the player along bearing h
+    let z = player.z;
+    for (let d = 0.5; d <= 3; d += 0.5) { const w = nav.walk(player.x + Math.sin(h) * d, player.y + Math.cos(h) * d, z); if (!w.ok) return false; z = w.z; }
+    return true;
+  };
+  // the chase bearing (behind the player) within ARRIVE.turn of az0 that is nearest to want, with room to walk on
+  function calmBearing(az0, want) {
+    const t = OECine.turn(az0, want);
+    if (Math.abs(t) <= ARRIVE.turn && clearAhead(want - Math.PI)) return want;
+    const c = [];
+    for (let a = -ARRIVE.turn; a <= ARRIVE.turn + 1e-6; a += ARRIVE.turn / 5) c.push(az0 + a);
+    c.sort((a, b) => Math.abs(OECine.turn(a, want)) - Math.abs(OECine.turn(b, want)));
+    return c.find(a => clearAhead(a - Math.PI)) ?? c[0];
+  }
+  // The elevation of a camera move about a centre c (bearing az(k), range r(k), elevation e(k), k 0..1 over dur
+  // seconds), raised where the line would pass within 8 m of a roof while the camera is over rMin away, and made
+  // into an envelope that rises and falls no faster than rate (rad/s): the camera comes over a tower and down again
+  // without a jolt. Near the player the chase camera's own clearance takes over. With e0, the first frame keeps
+  // that elevation and any lift is eased in. Returns k -> elevation.
+  function calmElevation({ c, az, r, e, dur, rate, e0 = null, rMin = 40, upto = 0.85 }) {
+    const N = 60, el = new Float32Array(N + 1), tmp = new THREE.Vector3(), S = OECine.ease.smooth;
+    for (let i = 0; i <= N; i++) {
+      const k = i / N, rk = r(k);
+      let ek = e(k);
+      if (k < upto && rk > rMin) for (let n = 0; n < 14; n++) { // up in steps until it is 8 m over what is below it
+        OECine.around(c, az(k), rk * Math.cos(ek), rk * Math.sin(ek), tmp);
+        if (tmp.y >= roofBelow(tmp.x, -tmp.z) + 8 || ek > 1.3) break;
+        ek = Math.min(1.3, ek + 0.08);
+      }
+      el[i] = ek;
+    }
+    const step = rate * dur / N;
+    for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
+    for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
+    const early = e0 != null ? el[0] - e0 : 0; // how far above the first frame the roofs want it straight away
+    if (early > 0) { const M = N / 3; for (let i = 0; i <= M; i++) el[i] -= early * (1 - S(i / M)); }
+    const fn = k => { const f = Math.max(0, Math.min(N, k * N)), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
+    fn.late = el[N] - e(1); // how far above its own last elevation the roofs held it: more time is needed to come down calmly
+    fn.max = Math.max(...el); // the steepest it gets
+    fn.early = early;
+    return fn;
+  }
+  function craneIn(onDone = null) {
+    const H0 = head(), lk0 = titleLook.clone().sub(H0), p0 = OECine.polar(H0, camera.position);
+    const best = calmBearing(p0.az, player.h + Math.PI);
+    player.h = best - Math.PI;
+    cam.mode = 'chase'; cam.yaw = player.h; cam.pitch = 0.36; cam.dist = 7.5; cam.tilt = 0;
     camSmooth.set(0, 0, 0);
-    const p1 = chasePolar(), lk = new THREE.Vector3();
-    const path = OECine.spiral({ center: head, az: [p0.az, p0.az + OECine.turn(p0.az, p1.az)], dist: [p0.dist, p1.dist], h: [p0.h, p1.h],
-      look: k => lk.lerpVectors(look0, head(), OECine.ease.inOut(Math.min(1, k * 1.4))), e: { dist: 'out', h: 'in' } });
-    cine.play(OECine.mix(path, () => live, k => handOver(k)), 3.2, { label: 'crane' });
+    const p1 = chasePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
+    const r0 = Math.max(10, Math.hypot(p0.dist, p0.h)), r1 = Math.hypot(p1.dist, p1.h), e0 = Math.atan2(p0.h, p0.dist), e1 = Math.atan2(p1.h, p1.dist);
+    const S = OECine.ease.smooth, pos = new THREE.Vector3(), lk = new THREE.Vector3();
+    const rAt = k => r0 * Math.pow(r1 / r0, S(k)), azAt = k => p0.az + (az1 - p0.az) * S(k);
+    const elAt = calmElevation({ c: H0, az: azAt, r: rAt, e: k => e0 + (e1 - e0) * S(k), dur: ARRIVE.dur, rate: ARRIVE.pitch, e0 });
+    const path = k => {
+      const c = head(), r = rAt(k), e = elAt(k);
+      OECine.around(c, azAt(k), r * Math.cos(e), r * Math.sin(e), pos);
+      lk.copy(lk0).multiplyScalar(Math.pow(r / r0, 1.5)).add(c); // the title's point of interest, closing on the player faster than the camera
+      return { pos, look: lk };
+    };
+    arriving = { onDone, settling: false };
+    if (reduced) { stage.classList.remove('arrive-fade'); void stage.offsetWidth; stage.classList.add('arrive-fade'); }
+    cine.play(OECine.mix(path, () => live, k => handOver(k)), ARRIVE.dur, { label: 'crane', onEnd: () => { if (arriving && !arriving.settling) arrived(); } });
+  }
+  function arrived() {
+    const a = arriving;
+    arriving = null;
+    if (a && a.onDone) a.onDone();
+  }
+  // a key or a tap during the arrival: ease from where the camera is to the chase camera, quickly but not a cut
+  function settleArrival() {
+    if (!arriving || arriving.settling || !cine.active || cine.label !== 'crane') return;
+    arriving.settling = true;
+    const from = { pos: camera.position.clone(), look: camera.getWorldDirection(new THREE.Vector3()).multiplyScalar(Math.max(5, camera.position.distanceTo(head()))).add(camera.position) };
+    cine.play(OECine.mix(() => from, () => live, k => OECine.ease.smooth(k)), ARRIVE.settle, { label: 'crane', onEnd: arrived });
   }
   // A lift: the camera climbs the tower's face (or comes down it) while the player rides, at the lift's own
   // speed with the time shortened, and hands back to the chase camera at the far stop, facing on.
@@ -3531,22 +3665,54 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the distance, and come down behind them facing the way they flew. The player moves
   // at the top of the climb, out of sight.
   // (opts.cue, if given, moves whatever is travelling at the top of the climb instead of you; quiet: no arrival toast)
+  const HOP_TURN_RATE = 45 * Math.PI / 180, HOP_PITCH_RATE = 30 * Math.PI / 180; // rad/s
   function hopTo(x, y, z, name, opts = {}) {
     const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
     const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
-    const alt = Math.max(THREE.MathUtils.clamp(140 + span * 0.12, 180, 520), roofs + 110), top = { dist: alt * 0.3, h: alt }, az = bearing + Math.PI;
+    const alt = Math.max(THREE.MathUtils.clamp(140 + span * 0.12, 180, 520), roofs + 110), top = { dist: alt * 0.84, h: alt }, az = bearing + Math.PI;
     const A = head(), B = W(x, y, z + 1.55), p0 = OECine.polar(A, camera.position), c = new THREE.Vector3();
-    const rise = OECine.spiral({ center: A, az: [p0.az, p0.az + OECine.turn(p0.az, az)], dist: [p0.dist, top.dist], h: [p0.h, top.h], e: { dist: 'inOut', h: 'out' } });
-    const cross = OECine.spiral({ center: k => c.lerpVectors(A, B, k), az, dist: top.dist, h: top.h });
-    const pe = opts.pitch ?? 0.36, azEnd = opts.yaw != null ? az + OECine.turn(az, opts.yaw + Math.PI) : az; // where the chase camera will be
-    const fall = OECine.spiral({ center: head, az: [az, azEnd], dist: [top.dist, Math.cos(pe) * 7.5], h: [top.h, Math.sin(pe) * 7.5], e: { dist: 'out', h: 'in', az: 'inOut' } });
-    const a = 0.26, b = 0.66;
-    const path = k => (k < a ? rise(OECine.span(k, 0, a)) : k < b ? cross(OECine.ease.inOut(OECine.span(k, a, b))) : fall(OECine.span(k, b, 1)));
-    cine.play(OECine.mix(path, () => live, k => handOver(k, 0.86)), Math.min(4.6, 2.4 + span / 1500), { label: 'hop',
-      cues: [[a, opts.cue ? () => { opts.cue(); if (opts.yaw == null) cam.yaw = bearing; groundLod(x, y); } : () => {
+    // the camera's bearing about the player turns once, evenly over the whole hop, and never faster than
+    // HOP_TURN_RATE at its peak (#89): to frame a landmark (opts.yaw) the hop takes longer if it must; otherwise
+    // it comes down only as far round towards the way you flew as that rate allows in the time
+    const pe = opts.pitch ?? 0.36;
+    let dur = Math.min(4.6, 3.2 + span / 2000), turnBy = OECine.turn(p0.az, opts.yaw != null ? opts.yaw + Math.PI : az);
+    const peak = t => 1.875 * Math.abs(t) / dur; // the smootherstep's top speed
+    if (opts.yaw != null) dur = Math.min(6.5, Math.max(dur, 1.875 * Math.abs(turnBy) / HOP_TURN_RATE));
+    else if (peak(turnBy) > HOP_TURN_RATE) turnBy = Math.sign(turnBy) * HOP_TURN_RATE * dur / 1.875;
+    const azAt = k => p0.az + turnBy * OECine.ease.smooth(k), azEnd = azAt(1);
+    // up and down on a log scale of the range; the elevation one gentle rise to eT by 45% of the way and one fall to
+    // the chase camera's, raised over the roofs on the way down (calmElevation): no plunge at the end
+    const pos = new THREE.Vector3(), lk = new THREE.Vector3(), E = OECine.ease, L = OECine.lerp;
+    const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
+    const a = 0.26, b = 0.6, km = 0.45;
+    // (out of the street it cranes up over the player's head before it pulls back: the range grows late in the rise)
+    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
+    let eTop = eT; const peL = pe; // the elevation at the top, and the chase camera's pitch on landing
+    const eBase = k => (k < km ? L(e0, eTop, E.smooth(k / km)) : L(eTop, peL, E.smooth(OECine.span(k, km, 1))));
+    // Over tall roofs the way down has to be steeper. The top then already holds the steepest it will need, so the
+    // camera only ever tilts one way on the way down; the hop takes the time it needs to tilt back calmly (to 6.5 s),
+    // and the hand-over to the chase camera (the last 22%) takes what is left
+    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
+    const riseOf = d => calmElevation({ c: A, az: k => azAt(L(0, a, k)), r: k => rAt(L(0, a, k)), e: k => eBase(L(0, a, k)), dur: d * a, rate: HOP_PITCH_RATE, rMin: 14, upto: 1, e0 });
+    let fallEl = fallOf(dur), riseEl = riseOf(dur);
+    for (let n = 0; n < 4; n++) {
+      eTop = Math.min(1.2, Math.max(eT, fallEl.max, riseEl(1)));
+      const short = Math.max(fallEl.late, riseEl.early); // the roofs want more tilt than the time allows
+      if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * short / HOP_PITCH_RATE);
+      fallEl = fallOf(dur); riseEl = riseOf(dur);
+    }
+    const path = k => {
+      const ctr = k < a ? A : k < b ? c.lerpVectors(A, B, E.inOut(OECine.span(k, a, b))) : head(), r = rAt(k);
+      const e = k < a ? Math.max(eBase(k), riseEl(k / a)) : k < b ? eBase(k) : Math.max(eBase(k), fallEl(OECine.span(k, b, 1)));
+      OECine.around(ctr, azAt(k), r * Math.cos(e), r * Math.sin(e), pos);
+      return { pos, look: lk.copy(ctr) };
+    };
+    const yawEnd = azEnd - Math.PI; // where the chase camera will be: behind the player, facing on
+    cine.play(OECine.mix(path, () => live, k => handOver(k, 0.78)), dur, { label: 'hop',
+      cues: [[a, opts.cue ? () => { opts.cue(); if (opts.yaw == null) cam.yaw = yawEnd; if (peL > pe + 0.01) cam.pitch = peL; groundLod(x, y); } : () => {
         [player.x, player.y, player.z] = [x, y, z];
-        player.h = bearing; player.speed = 0; player.vz = 0; player.ground = true;
-        cam.mode = 'chase'; cam.yaw = bearing; cam.pitch = 0.36; cam.dist = 7.5;
+        player.h = yawEnd; player.speed = 0; player.vz = 0; player.ground = true;
+        cam.mode = 'chase'; cam.yaw = yawEnd; cam.pitch = peL; cam.dist = 7.5;
         groundLod(x, y);
         save();
       }]],
@@ -3644,7 +3810,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care };
+  window.__game = { t: () => clockT, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

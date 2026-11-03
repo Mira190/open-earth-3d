@@ -44,10 +44,54 @@ const { pinClock } = require('./pin_clock');
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  await p.evaluate(() => { try { localStorage.removeItem('oe3d-onboard'); } catch (e) { /* storage blocked */ } }); // a first-time player
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
+
+  // the arrival (#89): the calm move from the title shot hands over to the chase camera within 4.5 s, then the
+  // first-time tour of the HUD opens; every step points at its control, it steps back and on, and skips
+  const onboard = await p.evaluate(async () => {
+    const g = window.__game, O = window.OEOnboard;
+    let t = 1;
+    while (g.arriving() && t < 8) { g.advance(0.25); t += 0.25; await new Promise(r => requestAnimationFrame(r)); }
+    const head = g.player.z + 1.55, cam = g.camera.position, near = Math.hypot(cam.x - g.player.x, cam.z + g.player.y, cam.y - head);
+    const tour = O.current(), steps = [], missing = [];
+    if (tour) {
+      for (let i = 0; i < tour.count; i++) {
+        steps.push(tour.id);
+        // where the card settles (it eases there in 0.5 s, which a software renderer under load draws late)
+        const ce = tour.el.querySelector('.ob-card'), cl = parseFloat(ce.style.left), ct = parseFloat(ce.style.top);
+        const card = { left: cl, top: ct, width: ce.offsetWidth, height: ce.offsetHeight, right: cl + ce.offsetWidth, bottom: ct + ce.offsetHeight };
+        if (card.left < 0 || card.top < 0 || card.right > innerWidth || card.bottom > innerHeight) missing.push(`${tour.id}: card off screen at ${[card.left, card.top, card.width, card.height].map(Math.round)} (quest card ${(r => [r.left, r.top, r.width, r.height].map(Math.round))(document.getElementById('g-quest').getBoundingClientRect())})`);
+        if (i < tour.count - 1) tour.next();
+      }
+      tour.back(); const back = tour.step;
+      const noTalk = g.currentAction() === null; // nothing to start (no talk, no boarding) while it shows
+      tour.skip();
+      return { arrived: t, near, steps, missing, back, skipped: !O.active(), flag: O.done(), noTalk };
+    }
+    return { arrived: t, near, steps, missing, flag: O.done() };
+  });
+  check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
+  check(onboard.steps.length >= 8 && !onboard.missing.length && onboard.back === onboard.steps.length - 2 && onboard.skipped && onboard.flag && onboard.noTalk,
+    `the HUD tour opens the first time, steps through ${onboard.steps.join(', ')}, steps back and skips, and remembers it${onboard.missing.length ? ` (${onboard.missing.join('; ')})` : ''}`);
+  // a second map with the flag set: the arrival again, with no tour and the guide's short welcome instead
+  const second = await p.evaluate(async () => {
+    const g = window.__game, O = window.OEOnboard;
+    const seen = [], mo = new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => seen.push(n.textContent))));
+    mo.observe(document.getElementById('g-toasts'), { childList: true }); // (toasts are capped at three and fade)
+    g.craneIn(() => (O.done() && document.getElementById('gt-skip-on').checked ? g.welcome(true) : g.startTour(() => g.welcome(false))));
+    g.advance(0.5); g.settleArrival(); // a key settles it
+    let t = 0;
+    while (g.arriving() && t < 3) { g.advance(0.1); t += 0.1; await new Promise(r => requestAnimationFrame(r)); }
+    await new Promise(r => setTimeout(r, 50)); mo.disconnect();
+    const toasts = seen;
+    return { settled: t, tour: O.active(), toast: toasts.join(' | ') };
+  });
+  check(second.settled < 1.2 && !second.tour && /gold line|minimap shows the way/.test(second.toast),
+    `on a later map the intro is skipped: a key settles the arrival (${second.settled.toFixed(1)} s), no tour, the guide's welcome ("${second.toast.slice(0, 90)}")`);
 
   // walking: forward for four seconds
   const walk = await p.evaluate(() => {
@@ -481,11 +525,13 @@ const { pinClock } = require('./pin_clock');
   const ferry = await p.evaluate(() => {
     const g = window.__game, V = (g.fer && g.fer.vessels) || [];
     if (!V.length) return { none: true };
-    const a = V.map(v => [v.x, v.y]);
-    g.advance(40);
-    return { n: V.length, moved: Math.max(...V.map((v, i) => Math.hypot(v.x - a[i][0], v.y - a[i][1]))) };
+    // (a single water bus can be waiting out its dwell at a terminal when the window opens: up to two minutes)
+    const a = V.map(v => [v.x, v.y]), far = () => Math.max(...V.map((v, i) => Math.hypot(v.x - a[i][0], v.y - a[i][1])));
+    let t = 0;
+    do { g.advance(10); t += 10; } while (t < 120 && (t < 40 || far() <= 20));
+    return { n: V.length, moved: far(), t };
   });
-  check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in 40 s)`);
+  check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in ${ferry.t} s)`);
   await shot('ferry');
 
   // your car: round to the driver's door and in, seated with the head under the roof, drive off,

@@ -286,6 +286,31 @@ export async function gametest(api, ctx) {
     let saved = null; try { saved = JSON.parse(localStorage.getItem(`oe3d-reef-game-${ctx.site}-test`)); } catch (_) {}
     must(saved && saved.q && saved.notes.length > 0 && Object.keys(saved.q).length === Object.keys(G.st().q).length, 'progress saved to localStorage', saved && `${saved.notes.length} notes, quests ${Object.keys(saved.q).join(',')}`);
     must(Number.isFinite(player.position.x) && Number.isFinite(player.position.y), 'no NaNs in the player');
+
+    // 13. the first-time tour of the HUD (onboard.js, #89): "Show the intro again" in the journal opens it; every
+    // step's card is on the screen and its control is there; it steps back and on, Esc skips it, and it is
+    // remembered across every map (the player's own flag is put back afterwards)
+    if (window.OEOnboard) {
+      let keep = null; try { keep = localStorage.getItem('oe3d-onboard'); } catch (_) {}
+      key('KeyJ');
+      const again = dom('.rg-panel [data-act="intro"]');
+      if (again) again.click();
+      const t = window.OEOnboard.current(), seen = [], bad = [];
+      if (t) for (let i = 0; i < t.count; i++) {
+        seen.push(t.id);
+        // where the card settles (it eases there in 0.5 s, which a software renderer under load draws late)
+        const ce = t.el.querySelector('.ob-card'), cl = parseFloat(ce.style.left), ct = parseFloat(ce.style.top);
+        const r = { left: cl, top: ct, right: cl + ce.offsetWidth, bottom: ct + ce.offsetHeight };
+        if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) bad.push(`${t.id} off screen`);
+        if (i < t.count - 1) t.next();
+      }
+      if (t) t.back();
+      const back = t ? t.step : -9;
+      dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape', key: 'Escape', bubbles: true }));
+      must(!!again && !api.ui.panelKind && seen.length >= 5 && !bad.length && back === seen.length - 2 && !window.OEOnboard.active() && window.OEOnboard.done(),
+        'the HUD tour opens from the journal, steps through and back, and Esc skips it', `${seen.join(',')}${bad.length ? ' · ' + bad.join('; ') : ''}`);
+      try { if (keep == null) localStorage.removeItem('oe3d-onboard'); else localStorage.setItem('oe3d-onboard', keep); } catch (_) {}
+    }
   } catch (e) { out(false, 'exception', String(e && e.stack || e)); }
   // leave things as a player would find them
   try { if (ctx.controller !== playerCtl && ctx.boats) ctx.boats.leave(); G.closeDialogue(); G.closePanel(); player.equip('none'); const s = G.spawn(); player.teleport(s.x, s.north, undefined, s.heading); S.virt = null; } catch (_) {}
