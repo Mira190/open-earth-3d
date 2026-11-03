@@ -46,8 +46,8 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
   });
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  // (a local checkout has no version.json, which only the Pages workflow writes: web/version.js says "Local build")
-  p.on('console', m => { if (m.type() === 'error' && !/\/version\.json(\?|$)/.test(m.location().url || '')) errors.push(m.text().slice(0, 300)); });
+  // (version.json is written by the Pages deploy only: a local checkout answers 404, which version.js expects)
+  p.on('console', m => { if (m.type() === 'error' && !/\/version\.json(\?|$)/.test((m.location() || {}).url || '')) errors.push(m.text().slice(0, 300)); });
   const results = [];
   const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? `  ${detail}` : ''}`); };
 
@@ -56,7 +56,13 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
   await p.waitForFunction('window.__city && document.getElementById("loader").hidden', null, { timeout: 900000 });
   console.log(`${city}: loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   await p.keyboard.press('Shift'); // skips the establishing shot, which ends on the first stop
-  await p.waitForFunction('window.__city.tour.i === 0', null, { timeout: 120000 });
+  // and holds it there in the same frame it arrives (freeze, below): on slow frames the first stop
+  // could otherwise run out before it is checked
+  await p.waitForFunction(() => {
+    if (window.__city.tour.i !== 0) return false;
+    window.__city.tour.t0 = performance.now() + 1e9; window.__stopAt = performance.now();
+    return true;
+  }, null, { timeout: 120000, polling: 'raf' });
 
   const frame = () => p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))));
   // the canvas as luma (every 4th pixel), its mean and spread, and a JPEG for the record
