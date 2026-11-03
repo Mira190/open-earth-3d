@@ -33,7 +33,7 @@ const [w, h] = size.split('x').map(Number);
   const p = await ctx.newPage();
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  p.on('console', m => { if (m.type() === 'error' && !/\/version\.json$/.test((m.location() || {}).url || '')) errors.push(m.text().slice(0, 300)); });
+  p.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 300)); });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/index.html#globe`, { timeout: 120000 });
   await p.waitForFunction(() => window.__title && ['gate', 'menu'].includes(window.__title.state), null, { timeout: 300000 });
   fs.mkdirSync(outDir, { recursive: true });
