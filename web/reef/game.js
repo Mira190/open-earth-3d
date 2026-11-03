@@ -716,10 +716,10 @@ export async function init(ctx) {
       const hdg = ((aboard ? aboard.hdg / RAD : 0) + 360) % 360, s = travel.nearest(hdg);
       const pending = (travel.list || []).filter(t => !t.ready && !t.current);
       const nodes = s ? {
-        edge: { say: `This is the edge of the ${S.name || ctx.site} model. ${s.name} is ${Math.round(s.km)} km ${dirName(s.bearing)} of here.`, src: ['model-terrain'],
+        edge: { say: `That's as far out as we go around ${S.name || ctx.site}. ${s.name} is ${Math.round(s.km)} km ${dirName(s.bearing)} of here.`, src: ['model-terrain'],
           choices: [{ text: `Continue to ${s.name}`, do: () => { save(); location.href = siteAt(s.id); }, go: 'end' }, { text: 'Turn back', go: 'end' }] } }
-        : { edge: { say: `This is the edge of the ${S.name || ctx.site} model, and no other reef site is built yet${pending.length ? ` (${pending.map(t => t.name).join(', ')} ${pending.length > 1 ? 'are' : 'is'} being built)` : ''}. Turn back, or T for the map.`, choices: [{ text: 'Turn back', go: 'end' }] } };
-      openDialogue({ name: aboard ? aboard.name : 'Pilot', role: 'Edge of the model', id: 'edge' }, nodes, 'edge');
+        : { edge: { say: `That's as far out as we go around ${S.name || ctx.site}, and there's nowhere else to land from here yet${pending.length ? ` (${pending.map(t => t.name).join(', ')} soon)` : ''}. Turn back, or T for the map.`, choices: [{ text: 'Turn back', go: 'end' }] } };
+      openDialogue({ name: aboard ? aboard.name : 'Pilot', role: 'Turning back', id: 'edge' }, nodes, 'edge');
     });
   }
 

@@ -102,6 +102,15 @@ Tour text can hold tokens that the viewer fills in from the model:
 Write tour text that the model can back up. If a stop quotes a number, prefer
 a token, so that the number changes when the data does.
 
+The game's characters take the tokens about the place (`{sun:...}`, `{landmark:...}`)
+and a few of their own: `{time}`, `{sun_line}`, `{sunset}`, `{now}` ("this morning",
+"tonight") and `{season}` (for the city's hemisphere). They don't take `{buildings}`,
+`{share:...}` or `{acc:...}`: the people in the game talk like locals, not like the
+map's credits, and `tools/voice_check.py` fails a line that talks about open data,
+LiDAR, PLATEAU or how the map was built. Where the data comes from goes in the tour
+and the Sources panel. After editing the lines, `python pipeline/game_text.py <id>`
+copies them into `web/data/<id>/game.json`.
+
 The game's helicopter and ferries are shared by every city: the models are in
 `web/assets/vehicles`, built by `blender/build_vehicles.py`. Don't add models
 for one city. Choose a livery, a registration and a logo in `game.vehicles`, or

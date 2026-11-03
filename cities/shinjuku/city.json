@@ -369,7 +369,7 @@
     "local_name": "Tokyoite",
     "water_name": "the river",
     "greeting": "こんにちは。",
-    "blurb": "Walk the real Shinjuku, rebuilt from open data and lit by the real sun: the east exit's screens, Kabukicho's arch, 2-chome's bars, the ginkgo avenue of Jingu Gaien and the stairs of Suga Shrine, ten years after a film made them famous.",
+    "blurb": "Walk Shinjuku under the real sun: the east exit's screens, Kabukicho's arch, 2-chome's bars, the ginkgo avenue of Jingu Gaien and the stairs of Suga Shrine, ten years after a film made them famous.",
     "smalltalk": [
       "すみません。",
       "こんにちは。",
@@ -381,21 +381,21 @@
     "start": {
       "at": [
         402.0,
-        2585.0
+        2620.0
       ],
       "facing": [
-        445.0,
-        2640.0
+        388.0,
+        2678.0
       ],
       "time": "live"
     },
     "helipads": [
       {
-        "id": "gyoen-pad",
-        "name": "Shinjuku Gyoen lawn pad (game)",
+        "id": "cinecity-pad",
+        "name": "Kabukicho Cine City Plaza pad (game)",
         "at": [
-          1177.0,
-          1886.0
+          434.5,
+          3001.5
         ]
       }
     ],
@@ -579,7 +579,7 @@
         "name": "Shinjuku: the east exit 新宿東口",
         "at": [
           402.0,
-          2585.0
+          2620.0
         ]
       },
       {
@@ -608,7 +608,7 @@
       },
       {
         "id": "t-kabuki",
-        "name": "Kabukicho 歌舞伎町",
+        "name": "Kabukicho: Ichibangai's arch 歌舞伎町一番街",
         "at": [
           405.1,
           2796.5
@@ -656,8 +656,8 @@
         "name": "Nao 奈央",
         "role": "Pilgrimage guide 聖地巡礼ガイド",
         "at": [
-          405.0,
-          2590.0
+          407.0,
+          2626.0
         ],
         "look": {
           "character": "R_Female_Adult_12_f013",
@@ -930,17 +930,16 @@
         "stamp": "Shinjuku east exit",
         "talk": [
           "ようこそ新宿へ! I'm Nao. I guide pilgrims: people who come to stand where a story stood. Ten years ago a film put a staircase in Yotsuya on its poster, and a game sent its heroes to Shinjuku's bars.",
-          "This is the real Shinjuku, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.",
           "The busiest station in the world is behind you. Look up at the corner: the cat on the curved screen. Then go up the street to Kabukicho's arch and say hello at the koban. A hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {
             "type": "visit",
             "at": [
-              445.0,
-              2640.0
+              398.0,
+              2655.0
             ],
-            "radius": 14,
+            "radius": 16,
             "text": "Stand under the cat on the corner screen"
           },
           {
@@ -1210,7 +1209,7 @@
         "title": "Pilgrim",
         "stamp": "Shinjuku pilgrim",
         "talk": [
-          "お帰り! Stairs, an arch, a bar the size of a living room, a ginkgo avenue. All of it real, all of it measured.",
+          "お帰り! Stairs, an arch, a bar the size of a living room, a ginkgo avenue. All of it real, and now you've stood in all of it.",
           "Ten years ago a film and a game drew these streets. Now you've walked them. Shibuya's scramble is two stops south on the Yamanote Line, where Aoi guides. Or wait for dusk on the 男坂, or just wander."
         ],
         "steps": []

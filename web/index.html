@@ -519,7 +519,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-guess output { font: 300 17px/1 var(--f-display); letter-spacing: 0.04em; min-width: 64px; text-align: right; color: #fff; }
 .g-reticle { position: absolute; left: 50%; top: 46%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 6px rgba(0, 0, 0, 0.4); pointer-events: none; }
 /* the conversation, bottom centre: the speaker's name in their colour */
-.g-dialog { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(680px, calc(100% - 32px)); padding: 18px 22px 13px; cursor: pointer;
+.g-dialog { position: absolute; z-index: 2; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(680px, calc(100% - 32px)); padding: 18px 22px 13px; cursor: pointer;
   background: rgba(6, 10, 18, 0.82); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-top: 2px solid var(--npc, var(--accent)); border-radius: var(--r); }
 .gd-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .gd-head b { font: 300 15px/1.1 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--npc, var(--ink)) 45%, #f4f1ea); }
@@ -664,8 +664,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   @keyframes gt-in { from { opacity: 0; transform: translateX(-18px); } }
   @keyframes gt-fade { from { opacity: 0; } }
 }
-/* touch controls */
+/* touch controls; while someone is talking to you they step aside, so the words aren't under the stick and the buttons */
 .g-touch { position: absolute; inset: auto 0 0 0; height: 190px; pointer-events: none; }
+.game-stage:has(.g-dialog:not([hidden])) .g-touch { display: none; }
 .g-touch > * { pointer-events: auto; }
 #gt-joy { position: absolute; left: max(18px, env(safe-area-inset-left, 0px)); bottom: 24px; width: 120px; height: 120px; border-radius: 50%; touch-action: none;
   background: rgba(6, 10, 18, 0.35); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid var(--line-2); }
@@ -1031,12 +1032,12 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr><td>△ on the map</td><td>Trig stations: stand at one and press <kbd>E</kbd> to survey the view</td></tr>
           <tr><td>Helicopter</td><td><kbd>Space</kbd> climb, <kbd>C</kbd> descend, <kbd>W</kbd>/<kbd>S</kbd>, <kbd>A</kbd>/<kbd>D</kbd> turn, <kbd>V</kbd> bird's-eye view</td></tr>
           <tr><td>Ferry</td><td><kbd>F</kbd> skip ahead, <kbd>H</kbd> take the helm into the next wharf</td></tr>
-          <tr><td><kbd>T</kbd></td><td>Switch the survey line the route follows (or tap its name in the quest card)</td></tr>
+          <tr><td><kbd>T</kbd></td><td>Switch the walk the route follows (or tap its name in the quest card)</td></tr>
           <tr><td><kbd>O</kbd></td><td>Photo mode: the world holds still; set the sun, the lens and the angle, and save a picture</td></tr>
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
-        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>
+        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-reset">Start again</button></div>
       </div>
     </div>
 
@@ -1045,7 +1046,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
       <div class="gt-card">
         <span class="eyebrow gt-eb"><span>Open Earth 3D · <span id="gt-city">City</span></span></span>
         <h1 id="gt-title">On Foot</h1>
-        <p id="gt-blurb">Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it. Every fact they tell you comes from the model.</p>
+        <p id="gt-blurb">Walk a real city under the real sun, and talk to the people who know it.</p>
         <div class="gt-time"><span class="eyebrow">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button></div></div>
         <div class="gt-go"><button class="btn primary" id="gt-play">Start the survey <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
         <div class="gt-hints">

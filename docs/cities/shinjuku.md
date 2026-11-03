@@ -14,6 +14,12 @@ Until November 2026 this was the north half of one map with Shibuya; it was spli
 the landmarks of both (`cities/shinjuku/city.py` loads it with `CITY = "shinjuku"`), and the pictures
 taken before the split are still in `docs/images/shibuya/`.
 
+| The east exit plaza, where the game starts | The plaza after dark |
+|---|---|
+| ![](../images/shinjuku/east-exit.jpg) | ![](../images/shinjuku/east-exit-night.jpg) |
+| **Ichibangai's arch at dusk** | **Shinjuku on the title's subway map** |
+| ![](../images/shinjuku/kabukicho-dusk.jpg) | ![](../images/shinjuku/metro-card.jpg) |
+
 | The 男坂 at dusk, rendered in Cycles (`blender/build_scene.py`) | Kabukicho's arch at night, in Cycles |
 |---|---|
 | ![](../images/shibuya/cycles-suga-stairs.jpg) | ![](../images/shibuya/cycles-kabukicho.jpg) |
@@ -255,10 +261,11 @@ screen; then four lines run side by side, and a report back waits for all of the
 | Shinkai's Shinjuku | Kaede, a garden volunteer; Kenji, a photographer; Haruka, a Sophia student | Sit in the shelter by the pond, walk under the trellis to the Kyu-Goryotei, stand on the Shinanomachi footbridge, walk Yotsuya's moat, find where Yoyogi Kaikan stood, and Sangubashi Station (section 5) |
 
 Ten areas put up their station signs as you walk in: Shinjuku, Shinjuku-sanchome, Tochomae,
-Shinjuku-gyoemmae, Yotsuya-sanchome, Yoyogi, Shinanomachi, Aoyama-itchome, Yotsuya and Sangubashi. The helipad on Shinjuku
-Gyoen's lawn is a game device; there is no heliport there. Travel points: the east exit, Tochomae, Suga
-Shrine and the foot of the 男坂, Kabukicho, Aoyama-itchome, the shelter in Shinjuku Gyoen, the
-Shinanomachi footbridge and Yotsuya Station; `#play-shinjuku@t-suga` starts at the shrine. The people are original characters. None stands for a real shop's staff.
+Shinjuku-gyoemmae, Yotsuya-sanchome, Yoyogi, Shinanomachi, Aoyama-itchome, Yotsuya and Sangubashi. The
+helipad on Kabukicho's Cine City Plaza, by the Toho building, is a game device; there is no heliport there.
+Travel points: the east exit, Tochomae, Suga Shrine and the foot of the 男坂, Kabukicho, Aoyama-itchome,
+the shelter in Shinjuku Gyoen, the Shinanomachi footbridge and Yotsuya Station; `#play-shinjuku@t-suga`
+starts at the shrine. The people are original characters. None stands for a real shop's staff.
 
 ## 7. Sun
 

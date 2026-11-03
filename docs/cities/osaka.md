@@ -318,7 +318,7 @@ Kansai accent in English: *maido* (welcome), *ookini* (thank you), *honma?*
 
 | NPC | Role | Local flavour |
 |---|---|---|
-| Mei | Survey lead | Ebisu-bashi, Dotonbori's origin in 1612 |
+| Mei | Namba local | Ebisu-bashi, Dotonbori's origin in 1612 |
 | Daisuke | Takoyaki master | headband, apron, a tray of takoyaki |
 | Kuidaore Taro | Dotonbori mascot | red-and-white stripes, clown hat, drum |
 | Kenta | Tigers fan | yellow-and-black stripes, the cap, the 1985 Colonel Sanders legend |
@@ -337,7 +337,7 @@ The ten stamps:
 
 1. **Ebisu-bashi.** Meet Mei and hear how much of the roof area is measured.
 2. **Takoyaki.** Ride the Tombori River Cruise from Taizaemon-bashi to Nipponbashi.
-3. **Kuromon Market.** Use the survey lens on a PLATEAU-measured and an estimated building.
+3. **Kuromon Market.** Fumi hands you candy and sends you on to Shinsekai.
 4. **Tsutenkaku.** Kushikatsu in Shinsekai, under the tower.
 5. **Namba Grand Kagetsu.** The manzai act argues about 103 m and 108 m.
 6. **Midosuji.** Stand in direct sun in Utsubo Park on the winter solstice.

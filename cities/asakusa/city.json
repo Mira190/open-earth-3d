@@ -133,7 +133,7 @@
     "local_name": "Tokyoite",
     "water_name": "the Sumida",
     "greeting": "いらっしゃい!",
-    "blurb": "Walk the real Asakusa, rebuilt from open data and lit by the real sun: the Kaminarimon's lantern, Nakamise, Senso-ji, the water bus on the Sumida, and the lift up Tokyo Skytree to the Tembo Deck, 350 m up.",
+    "blurb": "Walk Asakusa under the real sun: the Kaminarimon's lantern, Nakamise, Senso-ji, the water bus on the Sumida, and the lift up Tokyo Skytree to the Tembo Deck, 350 m up.",
     "smalltalk": ["いらっしゃいませ!", "こんにちは。", "どうぞ。", "Excuse me!", "お参りですか?"],
     "start": {
       "at": [-462.5, -111.0],
@@ -360,7 +360,7 @@
         "giver": "sota",
         "title": "The Thunder Gate",
         "stamp": "Kaminarimon",
-        "talk": ["いらっしゃい! First time in Asakusa? This is the Kaminarimon, the Thunder Gate. Look up: the lantern weighs about 700 kg.", "This is the real Asakusa, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.", "Walk up Nakamise to the temple. Fumiko's shop is halfway, on the right. WASD to walk, Shift to run, E to talk."],
+        "talk": ["いらっしゃい! First time in Asakusa? This is the Kaminarimon, the Thunder Gate. Look up: the lantern weighs about 700 kg.", "Come back in the evening. When the shops close, their shutters show paintings of old Asakusa, all the way up Nakamise.", "Walk up Nakamise to the temple. Fumiko's shop is halfway, on the right. WASD to walk, Shift to run, E to talk."],
         "steps": [
           {"type": "spot", "spot": "kaminari", "text": "Look up at the Kaminarimon's lantern"},
           {"type": "talk", "npc": "fumiko", "text": "Find Fumiko on Nakamise"}

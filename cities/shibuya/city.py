@@ -3480,7 +3480,7 @@ def suga_extras(s, spots, chatter):
     foot = np.asarray(ok["origin"]) - np.asarray(ok["axis"]) * 16.0
     spots.append(spot("otoko", "男坂 Otokozaka", foot - np.asarray(ok["axis"]) * 1.0, ok["z_foot"], "Look up the stairs", [
         f"The 男坂: {ok['steps']} stone steps, 18, 16 and 15 to the approach and 3 more, {OTOKO['width_m']} m wide, red iron handrails both sides and down the middle.",
-        f"Here each riser is {round(ok['riser_m'] * 100)} cm: {round(ok['z_top'] - ok['z_foot'], 1)} m from the street to the shrine, by GSI's laser survey of the ground."], 3.0))
+        f"Here each riser is {round(ok['riser_m'] * 100)} cm: {round(ok['z_top'] - ok['z_foot'], 1)} m from the street to the shrine. Count them on the way up."], 3.0))
     chatter.append(talk(foot - np.asarray(ok["axis"]) * 3.0, ok["z_foot"], [["Pilgrim", "Here! This is the angle from the poster."],
                    ["Friend", "Stand on the left. I'll be halfway up."], ["Pilgrim", "Ten years... I was in high school."]]))
 

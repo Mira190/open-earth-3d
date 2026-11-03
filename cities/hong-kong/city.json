@@ -152,7 +152,7 @@
     "title": "Hong Kong on Foot",
     "local_name": "Hongkonger",
     "greeting": "Néih hóu.",
-    "blurb": "Cross the harbour on the Star Ferry, ride the Peak Tram up to the lookout for the 8 pm light show, and fly between the towers of Central. Talk to the people who know the city. Every fact they tell you comes from the model.",
+    "blurb": "Cross the harbour on the Star Ferry, ride the Peak Tram up to the lookout for the 8 pm light show, and fly between the towers of Central. Talk to the people who know the city.",
     "smalltalk": ["Néih hóu.", "Sihk jó faahn meih a? Have you eaten yet?", "Mh gōi. Thanks.", "Nice view of the harbour, isn't it?"],
     "water_name": "Victoria Harbour",
     "start": {
@@ -273,14 +273,14 @@
         "speed_ms": 6.0,
         "dwell_s": 40,
         "car_names": ["Car 1", "Car 2"],
-        "note": "1,277 m of track climbing 358 m since the 2022 rebuild, at 6 m/s (Peak Tramways via ropeways.net); the line is the one OpenStreetMap maps, on the LiDAR terrain. The car is about 33 m long (the 2018 plan); its width is a guess."
+        "note": "1,277 m of track, climbing 358 m to the Peak."
       }
     },
     "npcs": [
       {
         "id": "kayan",
         "name": "Ka-yan",
-        "role": "Survey lead",
+        "role": "Central local",
         "at": [-268, 80],
         "look": {
           "character": "R_Female_Adult_04_f003",
@@ -292,12 +292,12 @@
           "pants": "#2b3440",
           "clip": "Documents"
         },
-        "idle": ["Every building here has a surveyed top level from the Lands Department, and a LiDAR scan from 2020 to check it against. Not many cities can say that."]
+        "idle": ["Sihk jó faahn meih a? Have you eaten yet? It's how we say hello. A bowl of wonton noodles fixes most things."]
       },
       {
         "id": "wing",
         "name": "Wing",
-        "role": "Height detective",
+        "role": "Tsim Sha Tsui local",
         "at": [612, 812],
         "look": {
           "character": "R_Male_Adult_10",
@@ -309,7 +309,7 @@
           "pants": "#2a2f36",
           "clip": "LookAround"
         },
-        "idle": ["A survey says how tall a building is. A laser says how tall it looked from a helicopter in January 2020. When they disagree, one of them is out of date."]
+        "idle": ["Every night at eight the towers across the water put on the Symphony of Lights. The best seats are right here on the promenade."]
       },
       {
         "id": "leung",
@@ -418,7 +418,7 @@
         "giver": "kayan",
         "title": "Across the harbour",
         "stamp": "Star Ferry",
-        "talk": ["You're the new surveyor? Good. This is Victoria Harbour from open data: {buildings} buildings, almost every one at the height the Lands Department surveyed, on the government's own LiDAR terrain.", "Take the Star Ferry over to Tsim Sha Tsui. Wing is waiting by the Clock Tower.", "Or go as you like. The helicopter is on the harbourfront lawn, a minute's walk east, and a hand up at the kerb (Y) stops a red taxi.", "WASD or the arrow keys to move, Shift to sprint, X to walk, drag to look around. E to talk, or to wait for the ferry."],
+        "talk": ["Néih hóu! Welcome to Central. I'm Ka-yan. I've crossed this harbour twice a day since school, and the Star Ferry is still the best ten minutes in Hong Kong.", "Take it over to Tsim Sha Tsui: Wing is waiting by the Clock Tower. Or go as you like. The helicopter is on the harbourfront lawn, a minute's walk east, and a hand up at the kerb (Y) stops a red taxi.", "WASD or the arrow keys to move, Shift to sprint, drag to look around. E to talk, or to wait for the ferry."],
         "steps": [
           {
             "type": "ride",
@@ -432,21 +432,12 @@
       {
         "id": "lens",
         "giver": "wing",
-        "title": "Two measurements",
+        "title": "The Clock Tower",
         "stamp": "Clock Tower",
-        "talk": ["{share:survey}% of the footprint area has a surveyed top level, and {share:lidar}% is measured from the 2020 LiDAR scan where the survey falls short. Only {share:estimate}% is estimated.", "Aim at a building and press Q to use the survey lens. Find one with a surveyed height and one measured by LiDAR.", "Then take the ferry to Wan Chai. Grace keeps a helicopter at the Convention Centre."],
+        "talk": ["The Clock Tower is all that's left of the old Kowloon-Canton Railway terminus: 1915, 44 metres of red brick and granite. The trains moved to Hung Hom in 1975.", "Walk along the promenade, east past the Cultural Centre, and look back across the water at Central. That's the view on every postcard.", "Then take the ferry to Wan Chai. Grace keeps a helicopter at the Convention Centre."],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": ["survey", "lidar"],
-            "text": "Survey lens (Q): a surveyed and a LiDAR-measured height"
-          },
-          {
-            "type": "ride",
-            "from": "tst",
-            "to": "wan-chai",
-            "text": "Take the Star Ferry from Tsim Sha Tsui to Wan Chai"
-          },
+          {"type": "visit", "place": "Tsim Sha Tsui Promenade", "text": "Walk east along the Tsim Sha Tsui promenade"},
+          {"type": "ride", "from": "tst", "to": "wan-chai", "text": "Take the Star Ferry from Tsim Sha Tsui to Wan Chai"},
           {"type": "talk", "npc": "grace", "text": "Meet Grace at the Convention Centre heliport"}
         ]
       },
@@ -455,7 +446,7 @@
         "giver": "grace",
         "title": "Between the towers",
         "stamp": "Victoria Harbour",
-        "talk": ["Ready? Two IFC stands 412 m on the Central waterfront, and the ICC 484 m across the water. Both are in the model at their surveyed tops.", "Fly west along the shore and set down in Tamar Park, by the Government Headquarters. Mei will meet you in Statue Square.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
+        "talk": ["Ready? Two IFC stands 412 m on the Central waterfront, and the ICC 484 m across the water. Give them both plenty of room.", "Fly west along the shore and set down in Tamar Park, by the Government Headquarters. Mei will meet you in Statue Square.", "Space to climb, C to descend, W and S for forward and back, A and D to turn. V switches to a bird's-eye view. E gets you out once you've landed."],
         "steps": [
           {"type": "land", "place": "Tamar Park", "text": "Land in Tamar Park"},
           {"type": "talk", "npc": "mei", "text": "Meet Mei in Statue Square"}
@@ -466,7 +457,7 @@
         "giver": "mei",
         "title": "Winter sun on Statue Square",
         "stamp": "Statue Square",
-        "talk": ["Statue Square sits among the bank towers: HSBC to the south, the Bank of China behind it. At midwinter the sun is only 44° up at noon, and it comes from the south, over them.", "On 21 December at noon, {sun:Statue Square|12-21|12:00}% of the square is in direct sun. Go and find a sunny spot.", "Nothing in Hong Kong's rules protects that sun. The model can still measure it."],
+        "talk": ["Statue Square sits among the bank towers: HSBC to the south, the Bank of China behind it. At midwinter the sun is only 44° up at noon, and it comes from the south, over them.", "On 21 December at noon, {sun:Statue Square|12-21|12:00}% of the square is in direct sun. Go and find a sunny spot.", "Nothing in Hong Kong's rules protects that sun. Enjoy it while you can."],
         "choices": [
           {
             "text": "Show me 21 December at noon",
@@ -492,7 +483,7 @@
         "giver": "siu",
         "title": "Up the Peak",
         "stamp": "Peak Tram",
-        "talk": ["The Peak Tram has climbed from Garden Road to the Peak since 1888. The line here is the one OpenStreetMap maps, laid on the LiDAR terrain.", "Ride it to the top. Mrs Fong is up there every evening; she'll show you the view."],
+        "talk": ["The Peak Tram has climbed from Garden Road to the Peak since 1888, the first funicular in Asia. The new cars came in 2022 and hold 210 people.", "Ride it to the top. Mrs Fong is up there every evening; she'll show you the view."],
         "steps": [
           {
             "type": "rail",
@@ -508,7 +499,7 @@
         "giver": "fong",
         "title": "The view",
         "stamp": "Victoria Peak",
-        "talk": ["That's the whole harbour: the ferry, the towers, the trams and the hill.", "Every height you can see has a source, and {lidar:within_2m_pct}% of the surveyed roofs agree with the laser to within 2 m.", "Stay for the evening. At eight the towers light up for the Symphony of Lights."],
+        "talk": ["That's the whole harbour: the ferry, the towers, the trams and the hill.", "Down there: Central, the harbour, and Kowloon with its hills behind. Kowloon means nine dragons, for the eight peaks and an emperor.", "Stay for the evening. At eight the towers light up for the Symphony of Lights."],
         "choices": [
           {
             "text": "Show me 8 pm",
