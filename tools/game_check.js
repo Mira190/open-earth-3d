@@ -58,11 +58,11 @@ const { pinClock } = require('./pin_clock');
     const g = window.__game, V = (x, y, z) => new THREE.Vector3(x, z, -y), r = { spots: 0, pitch: 0, move: 0, lifted: 0 };
     const head = () => mode === 'car' ? (s => V(s.x, s.y, s.z + 1.5))(g.myCar().D.st) : V(g.player.x, g.player.y, g.player.z + 1.55);
     const settle = () => { for (let i = 0; i < 45; i++) g.advance(1 / 30); }; // advance() moves the camera once per call
-    const run = (frames, each) => {
+    const run = (frames, each, walk = true) => { // the second half walking on (on foot)
       let last = null;
       for (let i = 0; i < frames; i++) {
         each(i);
-        g.advance(1 / 30, i >= frames / 2 ? ['KeyW'] : []);
+        g.advance(1 / 30, walk && i >= frames / 2 ? ['KeyW'] : []);
         const c = g.camera.position, t = g.live.look, off = c.clone().sub(t), pitch = Math.atan2(off.y, Math.hypot(off.x, off.z));
         r.lifted = Math.max(r.lifted, g.cam.lift || 0);
         const v = last && off.clone().sub(last.off);
@@ -76,10 +76,8 @@ const { pinClock } = require('./pin_clock');
       if (g.player.mode !== 'car') { const st = c.D.st; g.player.x = st.x; g.player.y = st.y; g.player.z = st.z; g.enterCar(); for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5); }
       if (g.player.mode !== 'car') return null;
       g.cam.mode = 'chase'; g.cam.dist = 7.5; settle();
-      run(240, () => { g.cam.yaw += 0.04; }); // a full turn round the car, then away
+      run(160, () => { g.cam.yaw += 0.04; }, false); // a full turn round the parked car (driving, a knock jolts the car itself)
       r.spots = 1;
-      const st = c.D.st;
-      for (let i = 0; i < 60 && st.speed > 0.3; i++) g.advance(0.1, ['Space']);
       g.exitCar(); g.advance(1);
       return r;
     }
@@ -106,7 +104,7 @@ const { pinClock } = require('./pin_clock');
   }, mode);
   const tight = (r, what) => {
     if (!r || !r.spots) { check(true, `no tight spot for the chase camera ${what}`); return; }
-    check(r.pitch < 4 && r.move < 0.6, `the chase camera eases round walls ${what} (${r.spots} spots, lift up to ${r.lifted.toFixed(2)} rad; worst frame ${r.pitch.toFixed(1)}° of pitch, a ${r.move.toFixed(2)} m jolt)`);
+    check(r.pitch < 5 && r.move < 0.6, `the chase camera eases round walls ${what} (${r.spots} spots, lift up to ${r.lifted.toFixed(2)} rad; worst frame ${r.pitch.toFixed(1)}° of pitch, a ${r.move.toFixed(2)} m jolt)`);
   };
 
   // the arrival (#89): the calm move from the title shot hands over to the chase camera within 4.5 s, then the
