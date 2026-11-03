@@ -139,7 +139,16 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
 - `places.json`
   - `places`: `{name, lep, period, from, to, area_m2, polygons}`. `lep` means
     "protected by the city's rule".
-  - `piers`: rings.
+  - `piers`: rings. The mapped pier polygons, and the decks Overture's water runs over
+    that OpenStreetMap maps otherwise (`pipeline/shore.py` `decks`): any area tagged
+    `man_made=pier` whatever its class (Hong Kong's Pier No. 3 car park), car parks,
+    helipads and aprons mostly in the water and at ground level (not underground, as
+    Amsterdam's garages under its canals, nor on a roof), and piers mapped as lines, as
+    wide as the road down them (Tokyo's finger piers) or else a 3 m jetty. The infrastructure
+    layer keeps OSM's tags (`source_tags`) and `level` for this. `pipeline/refresh_piers.py`
+    rewrites them without a rebuild; `tools/stale_shore.py` lists where mapped land still
+    lies under the built water, and `tools/coast_overlay.py` draws the water, the mask and
+    the decks over the aerial photograph to check a coastline (issue 50).
   - `trees`: flat `[x, y, z, h]` in decimetres.
 - `terrain.json`: a 10 m grid, int16 decimetres, little-endian, base64,
   starting at the north-west corner. Under the water the bottom is modelled, as
