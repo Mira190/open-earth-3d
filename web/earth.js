@@ -100,8 +100,8 @@ window.OEEarth = (function () {
       // the broad silvery patch of the DSCOVR EPIC disc, not a lamp
       vec3 H = normalize(uSun + V);
       float nh = max(dot(N0, H), 0.02), nh2 = nh * nh, tan2 = (1.0 - nh2) / nh2;
-      float fres = 0.02 + 0.98 * pow(1.0 - max(dot(N0, V), 0.0), 5.0);
-      float fresH = 0.02 + 0.98 * pow(1.0 - max(dot(V, H), 0.0), 5.0);
+      float fres = 0.02 + 0.98 * pow(1.0 - clamp(dot(N0, V), 0.0, 1.0), 5.0);
+      float fresH = 0.02 + 0.98 * pow(1.0 - clamp(dot(V, H), 0.0, 1.0), 5.0);
       float slopes = 0.8 * exp(-tan2 / 0.03) / 0.03 + 0.2 * exp(-tan2 / 0.008) / 0.008;
       float glint = fresH * slopes / (4.0 * max(dot(N0, V), 0.08) * nh2 * nh2);
       col += sunC * min(glint, 2.5) * water * (1.0 - cl) * smoothstep(0.0, 0.1, mu0) * uSunE;
@@ -147,7 +147,7 @@ window.OEEarth = (function () {
       float c = texture2D(uClouds, vec2(vUv.x + uCloudU, vUv.y)).r;
       float a = smoothstep(0.1, 0.85, c); // below a tenth is the map's compression noise, not haze: it speckled the oceans
       vec3 V = normalize(uCam - vPos);
-      a = min(1.0, a * (1.0 + 0.6 * pow(1.0 - max(dot(N, V), 0.0), 3.0))); // thicker seen edge-on
+      a = min(1.0, a * (1.0 + 0.6 * pow(1.0 - clamp(dot(N, V), 0.0, 1.0), 3.0))); // thicker seen edge-on
       float mu = dot(N, uSun);
       float lit = smoothstep(-0.08, 0.12, mu) * (0.45 + 0.55 * max(mu, 0.0));
       vec3 col = vec3(0.96, 0.98, 1.0) * sunlight(mu + 0.015) * lit * uSunE * 0.86 + vec3(0.0008, 0.001, 0.0016);
@@ -283,12 +283,6 @@ window.OEEarth = (function () {
   const MOON_VS = `varying vec3 vN; varying vec3 vL; void main() { vL = position * 4.0; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`;
 
   // a city: a shaft of light from the ground, and rings that pulse out over the surface
-  const BEAM_VS = `attribute vec2 corner; uniform vec3 uBase; uniform vec3 uAxis; uniform float uH; uniform float uW; varying vec2 vC;
-    void main() { vC = corner; vec3 toCam = normalize(cameraPosition - uBase); vec3 side = normalize(cross(uAxis, toCam)) * uW;
-      gl_Position = projectionMatrix * viewMatrix * vec4(uBase + side * corner.x + uAxis * uH * corner.y, 1.0); }`;
-  const BEAM_FS = `uniform vec3 uColor; uniform float uI; varying vec2 vC;
-    void main() { float a = exp(-abs(vC.x) * 4.0) * pow(1.0 - vC.y, 3.0) * 0.35 + exp(-abs(vC.x) * 30.0) * pow(1.0 - vC.y, 1.4);
-      gl_FragColor = vec4(uColor * a * uI, 1.0); }`;
   const RING_VS = `attribute vec2 corner; uniform vec3 uBase; uniform vec3 uAxis; uniform float uS; varying vec2 vC;
     void main() { vC = corner; vec3 e = normalize(cross(vec3(0.0, 1.0, 0.0), uAxis) + vec3(0.0, 0.0, 1e-5)); vec3 n = cross(uAxis, e);
       gl_Position = projectionMatrix * viewMatrix * vec4(uBase * 1.0006 + (e * corner.x + n * corner.y) * uS, 1.0); }`;
@@ -553,17 +547,15 @@ window.OEEarth = (function () {
     const beams = new THREE.Group();
     beams.renderOrder = 3;
     scene.add(beams);
-    const beamGeo = quad([-1, 0, 1, 0, 1, 1, -1, 1]), ringGeo = quad([-1, -1, 1, -1, 1, 1, -1, 1]);
+    const ringGeo = quad([-1, -1, 1, -1, 1, 1, -1, 1]);
     const time = { value: 0 };
     function addCity(lat, lon, color = [2.4, 1.25, 0.5]) {
       const base = ll(lat, lon), axis = base.clone().normalize(), c = new THREE.Vector3(...color);
       const uI = { value: 0 };
-      const bm = new THREE.Mesh(beamGeo, new THREE.ShaderMaterial({ uniforms: { uBase: { value: base }, uAxis: { value: axis }, uH: { value: 0.12 }, uW: { value: 0.006 }, uColor: { value: c }, uI },
-        vertexShader: BEAM_VS, fragmentShader: BEAM_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       const rm = new THREE.Mesh(ringGeo, new THREE.ShaderMaterial({ uniforms: { uBase: { value: base }, uAxis: { value: axis }, uS: { value: 0.03 }, uColor: { value: c }, uI, uTime: time },
         vertexShader: RING_VS, fragmentShader: RING_FS, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, extensions: { derivatives: true } }));
-      for (const m of [bm, rm]) { m.frustumCulled = false; m.renderOrder = 3; beams.add(m); }
-      return { base, axis, intensity: uI, beam: bm.material.uniforms, ring: rm.material.uniforms };
+      rm.frustumCulled = false; rm.renderOrder = 3; beams.add(rm);
+      return { base, axis, intensity: uI, ring: rm.material.uniforms };
     }
 
     // post: HDR (half float) with the tier's MSAA, bloom where the tier affords it, the lens.
