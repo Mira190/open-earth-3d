@@ -508,7 +508,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-guess output { font: 300 17px/1 var(--f-display); letter-spacing: 0.04em; min-width: 64px; text-align: right; color: #fff; }
 .g-reticle { position: absolute; left: 50%; top: 46%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 6px rgba(0, 0, 0, 0.4); pointer-events: none; }
 /* the conversation, bottom centre: the speaker's name in their colour */
-.g-dialog { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(680px, calc(100% - 32px)); padding: 18px 22px 13px; cursor: pointer;
+.g-dialog { position: absolute; z-index: 2; left: 50%; bottom: 22px; transform: translateX(-50%); width: min(680px, calc(100% - 32px)); padding: 18px 22px 13px; cursor: pointer;
   background: rgba(6, 10, 18, 0.82); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur); border: 1px solid var(--line); border-top: 2px solid var(--npc, var(--accent)); border-radius: var(--r); }
 .gd-head { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .gd-head b { font: 300 15px/1.1 var(--f-display); letter-spacing: 0.14em; text-transform: uppercase; color: color-mix(in srgb, var(--npc, var(--ink)) 45%, #f4f1ea); }
@@ -653,8 +653,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   @keyframes gt-in { from { opacity: 0; transform: translateX(-18px); } }
   @keyframes gt-fade { from { opacity: 0; } }
 }
-/* touch controls */
+/* touch controls; while someone is talking to you they step aside, so the words aren't under the stick and the buttons */
 .g-touch { position: absolute; inset: auto 0 0 0; height: 190px; pointer-events: none; }
+.game-stage:has(.g-dialog:not([hidden])) .g-touch { display: none; }
 .g-touch > * { pointer-events: auto; }
 #gt-joy { position: absolute; left: max(18px, env(safe-area-inset-left, 0px)); bottom: 24px; width: 120px; height: 120px; border-radius: 50%; touch-action: none;
   background: rgba(6, 10, 18, 0.35); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border: 1px solid var(--line-2); }

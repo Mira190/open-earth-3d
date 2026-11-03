@@ -1203,6 +1203,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     });
   }
   const sampleCache = {};
+  // a line as the player reads it: tokens filled, and on a touch screen without the keyboard's keys (the
+  // walking and flying keys are the stick and the buttons there, and Q and G are the Lens and Guess buttons)
+  function said(text) {
+    const t = fill(text);
+    if (!touch || !t) return t;
+    return t.replace(/ ?\((?:a hand up at the kerb, )?Y\)/g, m => (m.includes('kerb') ? ' (a hand up at the kerb)' : ''))
+      .replace(/\bpress Q\b/g, 'tap Lens').replace(/\bpress G\b/g, 'tap Guess').replace(/\(Q\)/g, '(Lens)')
+      .split(/(?<=[.!?。])\s+/).filter(s => !/^(WASD|Space to climb|V (switches|is)|[A-Z] and [A-Z] )/.test(s)).join(' ').trim();
+  }
   const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', survey: 'its top level is surveyed by the mapping agency', lidar: 'its height was measured by an airborne LiDAR scan', '3dbag': 'its height was measured by the national airborne LiDAR and modelled in the 3DBAG', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours', typical: 'its height is the typical one for its kind (none is mapped)', plateau: 'its height was measured from the air for Project PLATEAU', plateau_lod1: 'its height is the block height in Project PLATEAU (no survey record)', bdtopo: 'its eaves were surveyed by IGN and its roof is the typical one',
     ml: 'its height is a machine-learning estimate, bias-corrected', reference: 'its height is the published figure (the open data was far too short)', verified: 'its height was checked by hand against a cited source', parametric: 'it is built from its published dimensions' };
   function smalltalk(x, y) {
@@ -1343,7 +1352,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!ls(l).started) { const n = npcById(q.giver); return { text: `Talk to ${n.name} (${n.role})`, at: [n.x, n.y], title: q.title, line: l }; }
     const s = stepOf(l);
     if (!s) return null;
-    const out = { text: s.text, title: q.title, line: l };
+    const out = { text: said(s.text), title: q.title, line: l };
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
     else if (s.type === 'spot') { const sp = (G.spots || []).find(q => q.id === s.spot); if (sp) out.at = sp.at.slice(0, 2); }
     else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.landing; }
@@ -1360,7 +1369,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = ls(l);
     st.si++;
     if (st.si >= questOf(l).steps.length) completeQuest(l);
-    else { H.toast(`<b>Next:</b> ${questOf(l).steps[st.si].text}`); save(); }
+    else { H.toast(`<b>Next:</b> ${said(questOf(l).steps[st.si].text)}`); save(); }
   }
   function completeQuest(l = tracked()) {
     const q = questOf(l), wasOpen = new Set(openLines());
@@ -1380,7 +1389,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     Object.assign(ls(l), { started: true, si: 0 });
     qs.track = l.id;
     if (!q.steps.length) completeQuest(l);
-    else { H.toast(`<b>${q.title}</b><span>${q.steps[0].text}</span>`); save(); }
+    else { H.toast(`<b>${q.title}</b><span>${said(q.steps[0].text)}</span>`); save(); }
   }
   function talkTo(n) {
     n.talking = true;
@@ -1395,10 +1404,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     const ready = openLines().find(l => questOf(l).giver === n.id && !ls(l).started);
     if (ready) return giveQuest(n, ready, questOf(ready));
-    dlg.show(n, [fill(n.idle[Math.floor(Math.random() * n.idle.length)] || smalltalk(n.x, n.y))], null, finish);
+    dlg.show(n, [said(n.idle[Math.floor(Math.random() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
   }
   function giveQuest(n, l, q) {
-    dlg.show(n, q.talk.map(fill), q.choices, c => {
+    const talk = q.talk.map(said).filter(Boolean);
+    dlg.show(n, talk.length ? talk : q.talk.map(fill), q.choices, c => {
       n.talking = false;
       if (c && c.action === 'set_time') { const [m, d] = c.date; setClock(clock.y, m, d, S.hm(c.time)); H.toast(`Time set to ${c.time}, ${d} ${MONTHS[m - 1]}`); }
       if (c && c.action === 'dusk') { const t = Math.round(dayLimits().sunset) - 10; setClock(clock.y, clock.m, clock.d, t); H.toast(`Time set to ${fmtMin(t)}, ten minutes before sunset`); }

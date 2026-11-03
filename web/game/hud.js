@@ -241,7 +241,7 @@ window.OEHud = (function () {
       cur.full = cur.lines[cur.i]; cur.typed = 0; cur.t = 0;
       textEl.textContent = '';
       choicesEl.innerHTML = '';
-      hint.textContent = cur.i < cur.lines.length - 1 || !cur.choices.length ? 'E or click to continue' : '';
+      hint.textContent = cur.i < cur.lines.length - 1 || !cur.choices.length ? (matchMedia('(pointer: coarse)').matches ? 'Tap to continue' : 'E or click to continue') : '';
     }
     function showChoices() {
       if (!cur || cur.i < cur.lines.length - 1 || !cur.choices.length) return;
