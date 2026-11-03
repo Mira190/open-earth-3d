@@ -1,6 +1,7 @@
 // Check the title screen on the devices and faults it has to survive, headless (SwiftShader):
-// a tablet, a phone and a desktop; no half-float target, no WebGL 2, a context the GPU takes
-// back (once while the textures load, twice later), and a driver that draws nothing. For each:
+// a tablet, a phone and a desktop; a visitor back within the quarter hour; no half-float
+// target, no WebGL 2, a context the GPU takes back (once while the textures load, twice later),
+// and a driver that draws nothing. For each:
 // the tier the page chose (quality.js) and why, its pixel ratio and graphics memory, whether it
 // fell back to the still, and how much of the night pass is lit. Frames go to out_dir.
 //   cd web && python3 -m http.server 8800 &
@@ -23,13 +24,16 @@ const SCENARIOS = {
   lostload: Object.assign({ loseAt: 600, restoreAfter: 1500, wait: 5000 }, TABLET),
   losttwice: Object.assign({ loseAt: 4000, restoreAfter: 1500, times: 2, wait: 9000 }, TABLET),
   black: Object.assign({ blackScreen: true }, TABLET),
+  // the opening seen in this tab a minute ago: the short version, live, from deep space straight in to the globe
+  returning: Object.assign({ returning: true, quality: 'high' }, { w: 1440, h: 900, dpr: 1 }),
 };
 
 // faults go in before the page runs: WebGL 2 missing, extensions hidden, the context lost and
 // restored, draws to the screen dropped
 function inject(c) {
   try { if (c.quality) localStorage.setItem('oe3d-quality', c.quality); else localStorage.removeItem('oe3d-quality'); } catch (e) { /* storage blocked */ }
-  window.__titleManual = true;
+  if (c.returning) { try { sessionStorage.setItem('oe3d-title', String(Date.now() - 60e3)); } catch (e) { /* storage blocked */ } }
+  else window.__titleManual = true;
   const get = HTMLCanvasElement.prototype.getContext;
   HTMLCanvasElement.prototype.getContext = function (type, opts) {
     if (c.noWebGL2 && type === 'webgl2') return null;
@@ -84,7 +88,19 @@ async function scenario(b, name, c, outDir) {
   if (c.wait) await p.waitForTimeout(c.wait);
   const T = await p.evaluate(() => window.__title.timing);
   const res = {};
-  for (const [label, t] of [['night', 3.2], ['menu', T.PULL_A + T.PULL_D + 1.5]]) {
+  if (c.returning) {
+    // live frames as the camera falls in from deep space, and once it has settled on the menu
+    for (const [label, ms] of [['in', 1200], ['menu', 5000]]) {
+      await p.waitForTimeout(ms - (label === 'menu' ? 1200 : 0));
+      res[label] = await p.evaluate(measure);
+      await p.screenshot({ path: path.join(outDir, `${name}-${label}.jpg`), type: 'jpeg', quality: 80, timeout: 240000 });
+    }
+    console.log(name.padEnd(10), JSON.stringify(res), errors.length ? `errors: ${errors.join(' | ')}` : '');
+    await ctx.close();
+    return;
+  }
+  // the fall from deep space, the night pass, and the menu
+  for (const [label, t] of [['fall', -1.0], ['night', 3.2], ['menu', T.PULL_A + T.PULL_D + 1.5]]) {
     // held frames: the fade-in, which integrates frame by frame, is set done first
     await p.evaluate(t => { const e = window.__title.earth; window.__title.hold(t); e.lens.uFade.value = 1; e.ready.value = 1; window.__title.still(t); }, t);
     res[label] = await p.evaluate(measure);
