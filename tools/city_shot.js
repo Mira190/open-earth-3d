@@ -5,7 +5,8 @@
 //   xvfb-run -a node tools/city_shot.js sydney views.json out_dir [width height]   # llvmpipe; without xvfb-run, SwiftShader
 // views.json: [{"name": "cbd", "cam": [x, y, z], "tgt": [x, y, z], "date": [m, d], "time": "09:30"}, ...]
 // ("time" may be "sunset+15" or "sunrise-20"; without "cam" the view is the city's opening camera;
-// "face": "sun" or "away" turns that camera to the sun's bearing or away from it)
+// "face": "sun" or "away" turns that camera to the sun's bearing or away from it; "js" is evaluated
+// with C = window.__city before the frame, to take a part away and compare)
 // in the city's local frame (x east, y north, z up, metres); "agl": true measures z from the ground. Writes out_dir/<name>.png and
 // prints the page's errors and the frame time of each view.
 const { chromium } = require('playwright');
@@ -69,6 +70,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
         const at = [p.x, -p.z, p.y];
         C.flyTo(at, [at[0] + k * d.x / h * 4000, at[1] - k * d.z / h * 4000, Math.max(0, at[2] - 600)], 0);
       }
+      if (v.js) new Function('C', v.js)(C);
       const frame = () => new Promise(r => requestAnimationFrame(r));
       for (let i = 0; i < 3; i++) await frame();
       const t = performance.now();
