@@ -1239,7 +1239,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
   const settings = { route: true, density: 'normal' };
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
-  const cam = { yaw: 0, pitch: 0.36, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1 };
+  const cam = { yaw: 0, pitch: 0.36, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden;
   const k = c => keys.has(c);
@@ -2349,7 +2349,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     camera.lookAt(live.look);
     Wd.fitShadow(live.look, live.half);
   }
-  const cabinQ = new THREE.Quaternion();
+  const cabinQ = new THREE.Quaternion(), camProbe = new THREE.Vector3();
+  const CAM_LIFTS = [0, 0.15, 0.3, 0.45, 0.6, 0.8]; // the chase camera's lifts over a wall behind, in radians of pitch
   function rig(dt) {
     const k2 = Math.min(1, dt * 6);
     if (player.mode === 'heli' && cam.mode === 'cockpit') {
@@ -2390,31 +2391,43 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75);`);
     const dist = player.mode === 'heli' ? Math.max(cam.distTo ? cam.dist : 14, cam.dist) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + Math.min(2.5, Math.abs(vs.v) * 0.05) : cam.dist;
     const close = player.mode === 'foot' || player.mode === 'board';
     camTarget.lerp(W(tx, ty, tz), close ? 1 : veh ? Math.min(1, dt * 14) : k2);
-    // keep the camera out of walls and cars: first rise over them (look down on the player), then come closer
+    // keep the camera out of walls and cars: first rise over them (look down on the player), then come
+    // closer. The lift and the pull-in are eased at a bounded rate rather than switched between steps,
+    // so a tight spot never makes the view jump from one frame to the next (#97): it rises quickly when
+    // a wall comes between, holds a moment, and settles back slowly once the way behind is open
     const near = carBoxes(tx, ty, dist + 6, veh);
     const clear = (a, b) => Math.min(nav.clearFraction(a, b), near.length ? OECars.sweep({ x: a.x, y: -a.z, z: a.y }, { x: b.x, y: -b.z, z: b.y }, near) : 1);
-    let best = null;
-    for (const lift of [0, 0.25, 0.5, 0.8]) {
-      const pitch = Math.min(1.35, cam.pitch + lift), cp = Math.cos(pitch);
-      const pos = new THREE.Vector3(camTarget.x - Math.sin(cam.yaw) * cp * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(cam.yaw) * cp * dist);
-      const f = clear(camTarget, pos);
-      if (!best || f > best.f + 0.05) best = { f, pos };
+    const orbit = (lift, out) => { const pitch = Math.min(1.35, cam.pitch + lift), cp = Math.cos(pitch); return out.set(camTarget.x - Math.sin(cam.yaw) * cp * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(cam.yaw) * cp * dist); };
+    let want = null;
+    for (const lift of CAM_LIFTS) {
+      const f = clear(camTarget, orbit(lift, camProbe));
+      if (!want || f > want.f + 0.05) want = { f, lift };
       if (f >= 0.97) break;
     }
-    camPos.copy(best.pos);
-    if (best.f < 1) camPos.lerpVectors(camTarget, best.pos, Math.max(0.15, best.f - 0.04));
+    const jumped = camSmooth.lengthSq() === 0 || camSmooth.distanceTo(orbit(cam.lift, camProbe)) > 60; // after a teleport
+    if (jumped) { cam.lift = want.lift; cam.liftHold = 0; }
+    else if (want.lift > cam.lift) { cam.lift = Math.min(want.lift, cam.lift + Math.min((want.lift - cam.lift) * dt * 6, dt * 2)); cam.liftHold = 0.5; }
+    else if ((cam.liftHold -= dt) <= 0) cam.lift = Math.max(want.lift, cam.lift - Math.min((cam.lift - want.lift) * dt * 2, dt * 0.5));
+    const f = clear(camTarget, orbit(cam.lift, camPos)), pull = f < 1 ? Math.max(0.15, f - 0.04) : 1;
+    if (jumped) cam.pull = pull;
+    else cam.pull += pull < cam.pull ? -Math.min(cam.pull - pull, Math.max(dt * 2.5, (cam.pull - pull) * dt * 6)) : Math.min(pull - cam.pull, dt * 0.8);
+    if (cam.pull < 1) camPos.lerpVectors(camTarget, camPos, cam.pull);
     // pulled in that close by a wall, it may be over a car: then it looks down over the roof
     for (const q of near) if (OECars.pushOut(camPos.x, -camPos.z, q.z + 0.5, 0.35, [q]).hit) camPos.y = Math.max(camPos.y, q.z + q.top + 0.45);
-    if (camSmooth.lengthSq() === 0 || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos); // after a teleport
+    if (jumped || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos);
     camSmooth.lerp(camPos, close ? Math.min(1, dt * 10) : veh ? Math.min(1, dt * 16) : 1);
     camPos.copy(camSmooth);
-    let gz = Math.max(0, nav.terrain(camPos.x, -camPos.z)); // over the water, its surface
-    for (const st of nav.strips) { // steps and decks below the player's head lift the camera too
+    // the floor under the camera: the ground (or the water) at once, steps and decks below the player's
+    // head eased in, so walking onto a stair or a deck lifts the view smoothly
+    const ground = Math.max(0, nav.terrain(camPos.x, -camPos.z));
+    let gz = ground;
+    for (const st of nav.strips) {
       const h = nav.stripHeight(st, camPos.x, -camPos.z);
       if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
     }
     nav.decksAt(camPos.x, -camPos.z, h => { if (h < camTarget.y + 0.5 && h > gz) gz = h; });
-    if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
+    cam.floor = jumped || cam.floor == null ? gz : cam.floor + (gz - cam.floor) * Math.min(1, dt * 8);
+    camPos.y = Math.max(camPos.y, ground + 0.5, cam.floor + 0.5);
     live.pos.copy(camPos);
     live.look.copy(camTarget);
     live.half = player.mode === 'heli' ? 520 : player.mode === 'ferry' ? 320 : veh ? 220 : 170;
