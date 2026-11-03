@@ -2702,12 +2702,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (ob && ob.at) icon({ kind: 'quest' }, ...P2(...ob.at));
     if (waypoint) icon({ kind: 'waypoint' }, ...P2(...waypoint));
     const [px, py] = P2(player.mode === 'heli' ? heli.st.x : player.mode === 'ferry' ? player.vehicle.x : player.x, player.mode === 'heli' ? heli.st.y : player.mode === 'ferry' ? player.vehicle.y : player.y);
-    // the city's first five landmarks are named over anything but another pin; the rest keep clear of every icon
+    // the city's first five landmarks are named over anything but another pin; the rest keep clear of every icon,
+    // and a landmark is named before a travel place, which the list beside the map names too
     const me = [px / dpr - 11, py / dpr - 11, px / dpr + 11, py / dpr + 11], pinBox = bigPins.map(q => [q.x - 7, q.y - 7, q.x + 7, q.y + 7]);
     const taken = marks.concat([me]), first = new Set(landmarks.slice(0, 5)), firstTaken = pinBox.concat([me]);
     g.font = '600 11px "Public Sans", "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     const said = []; // pins already named: a place and a landmark on the same spot take one name
-    for (const q of bigPins.slice().sort((a, b) => first.has(b.d) - first.has(a.d))) {
+    const rank = q => (first.has(q.d) ? 2 : q.d.kind === 'landmark' ? 1 : 0); // then the landmarks, then the travel places
+    for (const q of bigPins.slice().sort((a, b) => rank(b) - rank(a))) {
       if ((q.d.kind !== 'landmark' && q.d.kind !== 'place') || said.some(o => Math.hypot(o.x - q.x, o.y - q.y) < 16)) continue;
       const w = g.measureText(q.d.name).width;
       // right, left, above or below its pin: [text x, text y, align]

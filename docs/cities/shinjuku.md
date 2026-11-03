@@ -156,8 +156,8 @@ screen; then three lines run side by side, and a report back waits for all of th
 | Aoyama | Rin, a high-school student | Walk the ginkgo avenue at Jingu Gaien |
 
 Eight areas put up their station signs as you walk in: Shinjuku, Shinjuku-sanchome, Tochomae,
-Shinjuku-gyoemmae, Yotsuya-sanchome, Yoyogi, Shinanomachi and Aoyama-itchome. The helipad on Shinjuku
-Gyoen's lawn is a game device; there is no heliport there. Travel points: the east exit, Tochomae, Suga
+Shinjuku-gyoemmae, Yotsuya-sanchome, Yoyogi, Shinanomachi and Aoyama-itchome. The helipad on Kabukicho's
+Cine City Plaza, by the Toho building, is a game device; there is no heliport there. Travel points: the east exit, Tochomae, Suga
 Shrine and the foot of the 男坂, Kabukicho and Aoyama-itchome; `#play-shinjuku@t-suga` starts at the
 shrine. The people are original characters. None stands for a real shop's staff.
 

@@ -357,18 +357,18 @@
         2585.0
       ],
       "facing": [
-        445.0,
-        2640.0
+        388.0,
+        2678.0
       ],
       "time": "live"
     },
     "helipads": [
       {
-        "id": "gyoen-pad",
-        "name": "Shinjuku Gyoen lawn pad (game)",
+        "id": "cinecity-pad",
+        "name": "Kabukicho Cine City Plaza pad (game)",
         "at": [
-          1177.0,
-          1886.0
+          434.5,
+          3001.5
         ]
       }
     ],
@@ -553,7 +553,7 @@
       },
       {
         "id": "t-kabuki",
-        "name": "Kabukicho 歌舞伎町",
+        "name": "Kabukicho: Ichibangai's arch 歌舞伎町一番街",
         "at": [
           405.1,
           2796.5
@@ -771,10 +771,10 @@
           {
             "type": "visit",
             "at": [
-              445.0,
-              2640.0
+              398.0,
+              2655.0
             ],
-            "radius": 14,
+            "radius": 16,
             "text": "Stand under the cat on the corner screen"
           },
           {
