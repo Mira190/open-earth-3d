@@ -829,8 +829,9 @@ window.OECars = (function () {
         // turns round every few seconds and so never stays stuck long enough to be marked still
         // (but never one queueing at a junction, o.q: a queue at a red light is waited out in the lane,
         // not overtaken up the oncoming side to its head)
-        // (o.still is a flag the game sets, true; a traffic car's own c.still counts the seconds it has stood)
-        if (!o.q && (o.still === true || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        // (o.still: true, a flag the game sets, or a traffic car's own count of the seconds it has stood:
+        // over 6 s, and not queueing, it is stopped for good, as one caught up with this one at a kerb)
+        if (!o.q && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
