@@ -196,7 +196,9 @@ characters, logos, invented shops or interface. What is built:
 - **Shinjuku:** Kabukicho Ichibangai's red arch (1969), and the Docomo tower's clock
   (15 m across, 150 m up) and mast to 272 m.
 - **Signs.** About 1,560 shop signs on street fronts in the districts. They are
-  indicative, not the real shops' signs.
+  indicative, not the real shops' signs. A blade sign's two faces each stand on the side they
+  face, so both read the right way round (`tools/sign_check.py` checks every city's), and blades
+  from the facing walls of a narrow lane do not cross.
 
 - **The crossing after dark** is section 6a.
 
@@ -289,10 +291,13 @@ exit, in the north of the model. Its screens have a sheet of their own (`screens
   its foot line with the corner rounded (`path`, `round`): about 7.4 m on the face to the south
   and 11.6 m on the face to the east, its picture running across the bend.
 - **Pictures drawn for the bend.** The screen is known for pictures that seem to stand out of it
-  from the plaza, above all a 3D cat, which is the operator's and is not copied. In its place, a
-  goldfish tank whose back wall stands behind the bend, so that the bend reads as the tank's front
-  corner, with a fish swimming out over it; and a wave breaking over the corner. Between them
-  the screen plays the same invented music and film adverts as Shibuya's.
+  from the plaza, above all a giant calico cat (Cross Space, 2021). That production is the
+  operator's and is not copied; the screen plays a giant calico cat of our own drawing in the same
+  manner (`k_cat_a`, `k_cat_b`): it lies in a room whose back wall stands behind the bend, so the
+  bend reads as the room's front corner, looks round at the plaza with its paws over the edge, then
+  leans out over the corner with a meow and reaches for the plaza with a paw. Then a goldfish tank
+  with a fish swimming out over its corner, and a wave breaking over it. Between them the screen
+  plays the same invented music and film adverts as Shibuya's.
 - **Unica Vision's three screens** play together (one phase), and their light stays on past
   midnight: `web/night.js` takes a screen's hours across midnight (7:00-1:00).
 

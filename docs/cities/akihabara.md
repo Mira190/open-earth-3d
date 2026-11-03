@@ -16,7 +16,10 @@ vector tiles), GSI DEM5A terrain and GSI aerial photographs, as for the other To
   over the shop front and one to three blade signs standing out from the wall, and one tall front
   in three a big print on its upper wall. The trades are those of the street (PC parts, games,
   anime, figures, cards, maid cafes, duty free); the signs are not real shops', and the prints are
-  invented, with no characters, logos or art of any game or show.
+  invented, with no characters, logos or art of any game or show. A blade's two faces each stand
+  on the side they face, so its words read the right way round from both ways along the street;
+  a front that faces its neighbour across a party wall carries no sign; and a character a display
+  face lacks (Bebas Neue has no kanji) is set in Zen Kaku Gothic New instead of drawn as a box.
 - **Names on roofs.** Radio Kaikan, Don Quijote, GiGO and Yodobashi Akiba, their own words in open
   fonts on the roof edge that faces the nearest main road.
 - **Kanda Myojin's Zuishinmon** (1975) on OpenStreetMap's footprint, its axis from the hall's

@@ -49,7 +49,10 @@ at 600 m a minute.
 Persona 5 sends its players to Asakusa by a book; its Asakusa is the Kaminarimon, Nakamise and
 the Skytree across the river. Nothing of the game's art is used.
 
+The great lanterns' words face the approach: the front's centred on the gate's axis out of the
+precinct, the back's on the side towards the hall, each running left to right seen from outside
+(stills from both sides of each gate; `tools/sign_check.py`).
+
 ## Not checked
 
-The roof shapes against photographs at close range; the lantern words' orientation from every
-side; the water bus route against Tokyo Cruise's timetable (it is not real).
+The roof shapes against photographs at close range; the water bus route against Tokyo Cruise's timetable (it is not real).
