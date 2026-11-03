@@ -293,6 +293,32 @@ const { pinClock } = require('./pin_clock');
   check(route.ready && !route.none && route.drawn && route.blocked < 1.5, route.none ? 'no NPC a walker can reach' : `the gold route to ${route.to} on foot (${(route.len || 0).toFixed(0)} m; at most ${(route.blocked || 0).toFixed(1)} m at a time where a walker can't stand)`);
   await shot('route');
 
+  // the route line's setting (menu: On / Only when I ask / Off, remembered): off hides the line in the
+  // world but keeps the route for the minimap; L shows it for a few seconds; a conversation hides it
+  if (route.drawn) {
+    const rl = await p.evaluate(async () => {
+      const g = window.__game, R = g.route, out = {};
+      const seen = () => g.gold.mesh.visible;
+      const menu = document.getElementById('g-menu');
+      document.querySelector('#gm-route button[data-r="off"]').click(); g.advance(0.2);
+      out.offHidden = !seen(); out.offMinimap = !!g.guide().pts; out.saved = (() => { try { return localStorage.getItem('oe-route-line'); } catch (e) { return 'blocked'; } })();
+      out.button = !document.getElementById('gq-route').hidden;
+      out.tappable = (() => { const r = document.getElementById('gq-route').getBoundingClientRect(), e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return !!(e && e.closest('#gq-route')); })();
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyL' })); window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyL' }));
+      g.advance(0.2); out.peekShown = seen();
+      g.advance(R.PEEK + 0.5); out.peekGone = !seen();
+      R.set('ask'); g.advance(0.2); out.askHidden = !seen();
+      document.getElementById('gq-route').click(); g.advance(0.2); out.askShown = seen();
+      R.set('on'); g.advance(0.2); out.onShown = seen();
+      menu.hidden = false; g.advance(0.2); out.menuHidden = !seen(); menu.hidden = true; g.advance(0.2); out.back = seen();
+      return out;
+    });
+    check(rl.offHidden && rl.offMinimap && rl.saved === 'off' && rl.button && rl.tappable, `route line Off: hidden in the world, kept on the minimap, remembered, Show route offered (${JSON.stringify(rl)})`);
+    check(rl.peekShown && rl.peekGone, 'route line Off: L shows it for a few seconds, then it goes');
+    check(rl.askHidden && rl.askShown, 'route line Only when I ask: hidden until Show route is tapped');
+    check(rl.onShown && rl.menuHidden && rl.back, 'route line On: shown, hidden while the menu is open, and back after');
+  }
+
   // the helicopter: in through its door (open while you climb in, shut behind you), spool up, climb
   const heli = await p.evaluate(() => {
     const g = window.__game;

@@ -1146,7 +1146,32 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     new THREE.MeshBasicMaterial({ color: lin('#ffc23d'), transparent: true, opacity: 0.32, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide }));
   beam.visible = false;
   world.add(beam);
-  const gold = OERoute.line(world, lin('#ffc23d')); // the route: on the ground, or in the air when flying
+  const gold = OERoute.line(world, lin('#f2bd52')); // the route: on the ground, or in the air when flying
+  // The route line in the world: always on, only when asked (L, or Show route in the quest card), or
+  // off. The minimap keeps its route whichever: the quiet reference. Remembered in this browser.
+  const ROUTE_KEY = 'oe-route-line', ROUTE_MODES = { on: 'On', ask: 'Only when I ask', off: 'Off' };
+  let routeMode = 'on', routePeek = -1; // (clockT until which a line asked for stays up)
+  try { const v = localStorage.getItem(ROUTE_KEY); if (ROUTE_MODES[v]) routeMode = v; } catch (e) { /* storage blocked */ }
+  function setRouteMode(m) {
+    if (!ROUTE_MODES[m]) return;
+    routeMode = m; routePeek = -1;
+    try { localStorage.setItem(ROUTE_KEY, m); } catch (e) { /* storage blocked */ }
+    $$('#gm-route button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.r === m)));
+  }
+  const ROUTE_PEEK = 8; // seconds a line asked for stays up
+  function peekRoute() {
+    if (!guide.pts) { H.toast(waypoint || objective() ? 'No route from here.' : 'No objective to lead you to. Set a waypoint on the map (<kbd>M</kbd>).'); return; }
+    routePeek = clockT + ROUTE_PEEK;
+  }
+  // whether the line is up, and its fade toward that: hidden in a conversation, a menu, a map, photo
+  // mode or a cinematic shot, and in the last few metres to the objective
+  function routeShow(dt, titled) {
+    const want = (routeMode === 'on' || clockT < routePeek) && !!guide.pts && !titled && !photo.on && !dlg.open && !uiOpen() && !cine.active && gold.left > 6;
+    gold.fade(want ? 1 : 0, dt);
+    gold.night(U.uNight.value);
+    const b = $('#gq-route');
+    if (b) b.hidden = routeMode === 'on' || !guide.pts || clockT < routePeek || titled;
+  }
 
   // ------------------------------------------------------------ text from the model
   const areaShare = (() => {
@@ -1623,7 +1648,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   function updateRoute(t, target, ob, titled) {
     const m = player.mode, me = m === 'heli' ? heli.st : m === 'ferry' ? player.vehicle : player;
-    const goal = settings.route && !titled ? routeGoal(target, ob) : null;
+    const goal = !titled ? routeGoal(target, ob) : null;
     const here = goal && Math.hypot(goal.x - me.x, goal.y - me.y) < (m === 'heli' ? 30 : 12) && (m !== 'heli' || heli.st.landed);
     if (!goal || here || m === 'rail' || m === 'board') { if (guide.pts) gold.set(null); guide.key = ''; guide.pts = null; return; }
     const off = gold.follow(me.x, me.y, m === 'heli' ? me.z : null);
@@ -1644,7 +1669,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ input
   const keys = new Set();
   let preTitle = true; // until the loader hands over to the title screen (once the scene has been drawn)
-  const settings = { route: true, density: 'normal' };
+  const settings = { density: 'normal' };
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
   const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1 };
@@ -1687,6 +1712,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     else if (c === 'KeyQ') lens();
     else if (c === 'KeyG') guessStart();
     else if (c === 'KeyT') cycleTrack();
+    else if (c === 'KeyL') peekRoute();
     else if (c === 'KeyO') photoMode(true);
     else if (c === 'Enter' && guess.bi >= 0 && !guess.revealed) guessCheck();
     else if (c === 'KeyV') nextView();
@@ -2809,7 +2835,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   });
   on(bigCanvas, 'dblclick', e => { if (dragged) return; const h = mapHit(e); if (h) travelTo(h.pin ? h.pin.d : { kind: 'point', id: 'waypoint', name: 'Your waypoint', at: waypoint || h.at }); });
   on($('#g-mappop-go'), 'click', () => { if (picked) travelTo(picked); });
-  on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast('Waypoint set. Follow the gold route there.'); });
+  on($('#g-mappop-way'), 'click', () => { if (!picked) return; waypoint = picked.at.slice(0, 2); mapPop.hidden = true; picked = null; travelKey = ''; drawBig(); H.toast(routeMode === 'on' ? 'Waypoint set. Follow the gold route there.' : 'Waypoint set. Its route is on the minimap; <kbd>L</kbd> shows it in the world.'); });
   on($('#g-travel'), 'click', e => { const b = e.target.closest('button[data-k]'); if (b && travelList[+b.dataset.k]) travelTo(travelList[+b.dataset.k]); });
   $('#g-bigmap header .note').textContent = touch ? 'Tap a place to travel there · pinch to zoom' : 'Pick a place to travel there · double-click to go at once · scroll to zoom, drag to pan';
   on($('#g-map-btn'), 'click', toggleMap);
@@ -2834,7 +2860,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     crowd.active = Math.round(crowd.P.length * density[b.dataset.d]); cars.active = Math.round(cars.C.length * density[b.dataset.d]);
     $$('#gm-density button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
   });
-  on($('#gm-route'), 'change', e => { settings.route = e.target.checked; });
+  on($('#gm-route'), 'click', e => { const b = e.target.closest('button'); if (b) setRouteMode(b.dataset.r); });
+  setRouteMode(routeMode);
+  on($('#gq-route'), 'click', e => { e.stopPropagation(); peekRoute(); });
   if (!lib) $('#gm-who').closest('.field').hidden = true;
   $$('#gm-who button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.c === playerChar)));
   on($('#gm-who'), 'click', e => {
@@ -2899,7 +2927,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-title').hidden = true;
     craneIn();
     renderPassport();
-    if (!cont) H.toast(`Find ${npcById(quest() ? quest().giver : npcs[0].id).name}: follow the gold route, or press <kbd>M</kbd> for the map.`);
+    if (!cont) H.toast(`Find ${npcById(quest() ? quest().giver : npcs[0].id).name}: ${routeMode === 'on' ? 'follow the gold route' : 'the route is on the minimap'}, or press <kbd>M</kbd> for the map.`);
   };
   on($('#gt-play'), 'click', () => startGame(false));
   on($('#gt-continue'), 'click', () => startGame(true));
@@ -2978,7 +3006,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       : 'The city is yours. Change the time, ride the ferries, fly anywhere.';
     $('#gq-dist').textContent = target ? `${Math.round(Math.hypot(target[0] - me.x, target[1] - me.y))} m` : '';
     if (photo.on) beam.visible = false;
-    gold.mesh.visible = !!guide.pts && !photo.on;
+    routeShow(dt, titleOn);
     if (!titleOn && !photo.on) {
       const icons = [];
       for (const w of G.wharves) icons.push({ kind: 'wharf', x: w.terminal[0], y: w.terminal[1] });
@@ -3525,6 +3553,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // and the route, as a frame works it out (by the way you are going now)
     const titled = preTitle || !$('#g-title').hidden, ob = titled ? null : objective();
     updateRoute(clockT, waypoint || (ob && ob.at), ob, titled);
+    routeShow(Infinity, titled);
     groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     camTarget.copy(player.mode === 'heli' ? W(heli.st.x, heli.st.y, heli.st.z + 2.5) : player.mode === 'ferry' ? W(player.vehicle.x, player.vehicle.y, 5) : W(player.x, player.y, player.z + 1.55));
     updateCamera(1 / 30, false);
@@ -3532,7 +3561,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care };
+  window.__game = { route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
