@@ -142,7 +142,7 @@ streets, keeping to the city's side of the road, and talks about what you pass.
 Choose a destination
 on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
-`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa`, `#play-akihabara` and `#play-ueno`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
+`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa`, `#play-akihabara`, `#play-ueno`, `#play-ikebukuro`, `#play-jinbocho` and `#play-roppongi`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -197,7 +197,7 @@ card, or go to `#play-osaka`.
 
 **Tokyo is a set of maps**, as games draw it: on the globe it is one destination whose card is a
 subway map of its districts (Marunouchi & Ginza, Shibuya, Shinjuku, Akihabara, Asakusa and the
-Skytree, Ueno; Ikebukuro, Odaiba and more in grey, next in line). Pick a station and go in there.
+Skytree, Ueno, Ikebukuro, Jinbocho and Roppongi; Tsukishima, Odaiba and Shinagawa in grey, next in line). Pick a station and go in there.
 See [Tokyo as maps](docs/cities/tokyo-maps.md).
 
 **Tokyo Pilgrimage** walks Shibuya and Shinjuku, two maps of Tokyo, ten years after a film and a
@@ -248,6 +248,9 @@ whose every line is computed from the model or cited. Choose **Great Barrier Ree
 | **Asakusa**, Japan (a map of Tokyo) | **Live** | Asakusa and the Sumida across 2.6 × 1.6 km at PLATEAU-surveyed heights. Senso-ji built to its published sizes: the Kaminarimon and its 700 kg lantern, Nakamise, the Hozomon, the 53 m pagoda and the main hall; Tokyo Skytree, 634 m, lit Iki and Miyabi on alternate nights, with a lift to the Tembo Deck; the Asahi flame; the Sumida water bus. [Case study](docs/cities/asakusa.md) |
 | **Akihabara**, Japan (a map of Tokyo) | **Live** | Electric Town across 1.8 × 1.5 km at PLATEAU-surveyed heights: Chuo-dori's blade signs, boards and wall prints, lit after dark; Kanda Myojin's gate and Nikolai-do's dome up the hill. [Case study](docs/cities/akihabara.md) |
 | **Ueno**, Japan (a map of Tokyo) | **Live** | Ueno Park and Shinobazu Pond across 1.9 × 1.8 km at PLATEAU-surveyed heights: the pond's water at its own level with the lotus beds, Bentendo on its island, Toshogu's gilt hall and lantern-lined approach, Kan'ei-ji's pagoda, Saigo's statue, and Ameyoko's signs and gate under the tracks. [Case study](docs/cities/ueno.md) |
+| **Ikebukuro**, Japan (a map of Tokyo) | **Live** | Sunshine 60 and Ikebukuro's two sides across 1.8 × 1.6 km at PLATEAU-surveyed heights: Sunshine 60-dori's and Otome Road's signs, the department stores' names on their roofs, and GLOBAL RING over West Gate Park, lit after dark. [Case study](docs/cities/ikebukuro.md) |
+| **Jinbocho**, Japan (a map of Tokyo) | **Live** | The book town and Kanda across 1.8 × 1.5 km: the second-hand bookshops' signs and their carts of cheap books, the Catholic Kanda Church's basilica, and Nikolai-do over Ochanomizu. [Case study](docs/cities/jinbocho.md) |
+| **Roppongi**, Japan (a map of Tokyo) | **Live** | Roppongi Hills to Tokyo Midtown across 1.8 × 1.6 km: Maman the spider, the Mohri Garden's pond, the National Art Center's glass wave, Keyakizaka's lit zelkovas and the crossing's bars. [Case study](docs/cities/roppongi.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
 | **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |
