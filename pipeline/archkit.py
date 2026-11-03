@@ -769,3 +769,26 @@ def letters(m, P, text, font, u, v_mid, z_base, height, depth=0.2, spacing=0.06,
                 for p0, p1 in zip(pts[:-1], pts[1:]):
                     m.quad(Q(*p0, u), Q(*p1, u), Q(*p1, u + depth), Q(*p0, u + depth))
         s += w
+
+
+def measured_roofs(city_id):
+    """The built city's measured roofs (buildings.json "r", the 3DBAG's or PLATEAU's LOD2), by solid:
+    {si: {"eave": m above the solid's ground, "top": m, "roof": [triangle [(x, y, z) m absolute]], "rest": [...]}};
+    "roof" are the roof's own faces, "rest" its gables and soffits (web/sun.js unpackRoof reads the same)."""
+    import base64
+    import json
+    import os
+    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city_id)
+    B = json.load(open(os.path.join(root, "buildings.json")))
+    out = {}
+    for r in B.get("r", []):
+        si, top, eave, _shape, x0, y0, xyz, tris, n_roof = r
+        q = np.frombuffer(base64.b64decode(xyz), dtype="<i2").reshape(-1, 3).astype(float)
+        ib = base64.b64decode(tris)
+        idx = np.frombuffer(ib, dtype="<u2" if len(q) > 255 else np.uint8).astype(int).reshape(-1, 3)
+        s = B["s"][si]
+        g0, k = s[1] / 10, s[3] / top if top else 1.0  # the solid's ground; a solid scaled from its roof's top
+        V = [(float((x + x0) / 10), float((y + y0) / 10), float(g0 + z * k / 10)) for x, y, z in q]
+        T = [tuple(V[i] for i in t) for t in idx]
+        out[si] = {"eave": eave * k / 10, "top": top * k / 10, "roof": T[:n_roof], "rest": T[n_roof:]}
+    return out
