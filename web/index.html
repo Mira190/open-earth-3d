@@ -233,6 +233,11 @@ input[type="date"] { border: 1px solid var(--line); border-radius: var(--r); pad
 .title-card .eyebrow { display: flex; gap: 10px; margin-top: 16px; }
 .title-card .eyebrow span + span::before { content: "·"; margin-right: 10px; }
 .title-card .eyebrow span:empty { display: none; }
+/* the other districts of the same city (cities/index.json's groups): one Tokyo, two models */
+.tc-districts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.tc-districts a { font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 6px 9px; border: 1px solid rgba(236, 232, 225, 0.16); transition: color 0.3s, border-color 0.3s; }
+.tc-districts a:hover, .tc-districts a:focus-visible { color: var(--ink); border-color: rgba(236, 232, 225, 0.45); }
+.tc-districts a[aria-current="page"] { color: var(--accent); border-color: var(--accent); pointer-events: none; }
 .title-card h1 { margin-top: 8px; font: 300 clamp(22px, 2.3vw, 30px)/1.05 var(--f-display); letter-spacing: 0.08em; text-transform: uppercase; color: #fff; }
 .title-card h1 small { font: 500 0.56em/1 var(--f-jp); letter-spacing: 0.22em; color: var(--muted); margin-left: 0.6em; text-transform: none; vertical-align: 0.14em; }
 .title-card h1 small:lang(zh-Hant) { font-family: var(--f-tc); }
@@ -385,6 +390,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
   .caption .cap-end .btn { flex: 1; min-width: 0; text-align: center; }
   .inspector { top: auto; bottom: 10px; right: 10px; left: 10px; width: auto; }
   .hud-btns { top: 78px; left: 10px; right: 10px; max-width: none; justify-content: flex-start; gap: 4px; }
+  .tc-districts { margin-top: 7px; gap: 4px; }
+  .tc-districts a { padding: 5px 7px; font-size: 8.5px; letter-spacing: 0.1em; }
+  .stage:has(.tc-districts:not([hidden])) .hud-btns { top: 114px; }
   .hud-btns .chip-btn { padding: 8px 9px; font-size: 9px; letter-spacing: 0.1em; }
 }
 
@@ -780,8 +788,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
     <div class="labels" id="labels"></div>
     <div class="title-card brackets">
       <a class="tc-back" href="#globe" id="back-globe"><span aria-hidden="true">←</span> Open Earth <b>3D</b></a>
-      <span class="eyebrow"><span id="city-country"></span><span id="city-coords"></span></span>
+      <span class="eyebrow"><span id="city-country"></span><span id="city-group"></span><span id="city-coords"></span></span>
       <h1><span id="city-name">City</span><small id="city-native" hidden></small></h1>
+      <nav class="tc-districts" id="city-districts" aria-label="Districts" hidden></nav>
       <p id="city-desc"></p>
     </div>
     <div class="hud-btns">
@@ -1171,6 +1180,12 @@ window.dispatchEvent(new Event('three-ready'));
       native($('load-native'), city);
       native($('city-native'), city);
       $('city-coords').textContent = fmtLL(city);
+      // a district of a bigger city: name the city, and offer its other districts
+      const district = city.group_meta && ['city', 'metro'].includes(city.group_meta.kind), sibs = district ? cities.filter(c => c.group === city.group && c.built) : [];
+      $('city-group').textContent = district ? city.group : '';
+      const nav = $('city-districts');
+      nav.hidden = sibs.length < 2;
+      nav.innerHTML = sibs.length < 2 ? '' : sibs.map(c => `<a href="#${c.id}"${c.id === city.id ? ' aria-current="page"' : ''}>${c.district || c.name}</a>`).join('');
       OEPlate.play($('loader'), city);
       if (city.game) { $('btn-play').hidden = false; $('btn-play').href = `#play-${city.id}`; }
       current = window.OpenEarthCity(city.id);

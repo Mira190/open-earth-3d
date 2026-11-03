@@ -1,6 +1,6 @@
 """The rules of the road for a city's traffic, from Overture Maps (OpenStreetMap, ODbL): which
-streets are one-way, which turns are banned, and where the traffic signals, stop signs and
-give-way signs stand.
+streets are one-way, which turns are banned, and where the traffic signals, stop signs, give-way
+signs and the pedestrian crossings with signals or zebra stripes stand.
 
 pipeline/game_data.py writes them into web/data/<id>/game.json as it builds the paths and props:
 a road piece one-way with its points carries "o": 1, one-way against them "o": -1; the signals
@@ -30,7 +30,21 @@ from shapely.geometry import box
 from cityctx import City
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SIGNS = ("traffic_signals", "stop", "give_way")
+SIGNS = ("traffic_signals", "stop", "give_way", "crossing_signals", "crossing_zebra")
+# a pedestrian crossing (OSM highway=crossing, Overture class "crossing") by its tags: one with its own
+# signals (a pelican or puffin crossing, and the walk signals at a junction's arms), or a zebra, where
+# the traffic gives way to whoever is on it; the game models the ones between junctions (junctions.js)
+ZEBRA = {"zebra", "marked"}
+
+
+def crossing_kind(tags):
+    """'crossing_signals', 'crossing_zebra' or None, from a crossing's OSM tags (Overture's source_tags)."""
+    t = tags or {}
+    if t.get("crossing") == "traffic_signals" or t.get("crossing:signals") == "yes" or t.get("crossing_ref") in ("pelican", "puffin", "toucan", "pegasus"):
+        return "crossing_signals"
+    if t.get("crossing") in ZEBRA or t.get("crossing_ref") == "zebra" or str(t.get("crossing:markings", "")).startswith("zebra"):
+        return "crossing_zebra"
+    return None
 MOTOR = {"motor_vehicle", "car", "vehicle"}
 
 
@@ -177,11 +191,15 @@ def signs(C, con, extent):
     """The signals and signs inside the extent, as local points: {class: [(x, y)]}."""
     out = {k: [] for k in SIGNS}
     path = os.path.join(C.raw, "overture_infrastructure.parquet")
-    for r in raw_rows(con, path, "class, wkb"):
-        if r["class"] in out:
+    tags = "source_tags" in [d[0] for d in con.execute(f"DESCRIBE SELECT * FROM '{path}'").fetchall()]
+    if not tags:
+        print(f"  {path} has no source_tags: no crossings (fetch it again with fetch_overture.py --only infrastructure)")
+    for r in raw_rows(con, path, "class, wkb" + (", source_tags" if tags else "")):
+        k = crossing_kind(r.get("source_tags")) if r["class"] == "crossing" else r["class"]
+        if k in out:
             q = C.to_local(swkb.loads(bytes(r["wkb"]))).centroid
             if extent.contains(q):
-                out[r["class"]].append((q.x, q.y))
+                out[k].append((q.x, q.y))
     return out
 
 

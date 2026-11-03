@@ -100,7 +100,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
     if (r.signals != null) console.log(`  red lights run: ${r.redRuns}; crossing movements let into one junction at once: ${r.conflicts}; cars found over a line: ${r.overLine}, crossing ${r.crossedOver || 0} movements in the junction`);
   }
   const r0 = runs[0] || {}, avg = k => runs.reduce((a, r) => a + r[k], 0) / Math.max(1, runs.length), sum = k => runs.reduce((a, r) => a + (r[k] || 0), 0);
-  if (r0.signals != null) console.log(`junctions: ${r0.junctions}, ${r0.signals} with signals (${r0.mapped} mapped, ${r0.arrows || 0} with a turn arrow), ${r0.heads} signal heads, ${r0.stops} stop and ${r0.giveWays} give-way signs; ${r0.bans || 0} banned turns (${sum('bannedExits')} exits left out where cars came)`);
+  if (r0.signals != null) console.log(`junctions: ${r0.junctions}, ${r0.signals} with signals (${r0.mapped} mapped, ${r0.arrows || 0} with a turn arrow), ${r0.heads} signal heads, ${r0.stops} stop and ${r0.giveWays} give-way signs; ${r0.midSignals || 0} crossings with signals and ${r0.zebras || 0} zebras between junctions; ${r0.bans || 0} banned turns (${sum('bannedExits')} exits left out where cars came)`);
   console.log(`all places: standing still ${(avg('stoppedShare') * 100).toFixed(0)}%, jammed ${(avg('jammedShare') * 100).toFixed(1)}%, ${(avg('meanSpeed') * 3.6).toFixed(0)} km/h, longest still ${Math.max(...runs.map(r => r.longestStill))} s, update ${avg('updateMs').toFixed(2)} ms a frame`);
   for (const e of errors) console.log(`  pageerror: ${e}`);
   const fails = [];
