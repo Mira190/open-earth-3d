@@ -232,7 +232,7 @@
     "title": "Bayside on Foot",
     "local_name": "Melburnian",
     "water_name": "the bay",
-    "blurb": "Walk Port Phillip's shore from St Kilda Pier to the Brighton bathing boxes, rebuilt from open data under the real sun. Stay on the pier after sunset and the little penguins come ashore. Every fact you hear comes from the model or a cited source.",
+    "blurb": "Walk Port Phillip's shore from St Kilda Pier to the Brighton bathing boxes under the real sun. Stay on the pier after sunset and the little penguins come ashore.",
     "climate": {
       "mean_max_c": [
         26.8,
@@ -403,7 +403,7 @@
       {
         "id": "kim",
         "name": "Kim",
-        "role": "Survey lead",
+        "role": "St Kilda local",
         "at": [
           -415,
           3030
@@ -419,7 +419,7 @@
           "clip": "Documents"
         },
         "idle": [
-          "Most heights here are machine-learning estimates. OpenStreetMap maps the heights of only a few buildings in these suburbs. Your survey lens (Q) shows where each one comes from."
+          "In summer half of Melbourne comes down here on the 96 tram. In winter it's just us, the dog walkers and the kitesurfers."
         ]
       },
       {
@@ -495,7 +495,7 @@
         "title": "St Kilda to Brighton",
         "stamp": "Bayside",
         "talk": [
-          "This is Melbourne's bayside, rebuilt from open data: {buildings} buildings from St Kilda to Brighton, on Geoscience Australia's 5 m LiDAR terrain.",
+          "G'day, welcome to St Kilda! I'm Kim; I grew up on this beach. From here the bay runs south past Elwood to the Brighton bathing boxes.",
           "Start with the pier. It was rebuilt and reopened in December 2024, about 450 metres out to the breakwater. The kiosk at its end was built in 1904, burnt in 2003 and rebuilt to the old plans.",
           "If you'd rather see the bay from the air, the helicopter is on the lawn of Catani Gardens, just behind you, and a hand up at the kerb (Y) on Jacka Boulevard stops a taxi."
         ],

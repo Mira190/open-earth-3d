@@ -342,7 +342,7 @@
     "local_name": "Tokyoite",
     "water_name": "the river",
     "greeting": "こんにちは。",
-    "blurb": "Walk the real Shinjuku, rebuilt from open data and lit by the real sun: the east exit's screens, Kabukicho's arch, 2-chome's bars, the ginkgo avenue of Jingu Gaien and the stairs of Suga Shrine, ten years after a film made them famous.",
+    "blurb": "Walk Shinjuku under the real sun: the east exit's screens, Kabukicho's arch, 2-chome's bars, the ginkgo avenue of Jingu Gaien and the stairs of Suga Shrine, ten years after a film made them famous.",
     "smalltalk": [
       "すみません。",
       "こんにちは。",
@@ -764,7 +764,6 @@
         "stamp": "Shinjuku east exit",
         "talk": [
           "ようこそ新宿へ! I'm Nao. I guide pilgrims: people who come to stand where a story stood. Ten years ago a film put a staircase in Yotsuya on its poster, and a game sent its heroes to Shinjuku's bars.",
-          "This is the real Shinjuku, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.",
           "The busiest station in the world is behind you. Look up at the corner: the cat on the curved screen. Then go up the street to Kabukicho's arch and say hello at the koban. A hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
@@ -917,7 +916,7 @@
         "title": "Pilgrim",
         "stamp": "Shinjuku pilgrim",
         "talk": [
-          "お帰り! Stairs, an arch, a bar the size of a living room, a ginkgo avenue. All of it real, all of it measured.",
+          "お帰り! Stairs, an arch, a bar the size of a living room, a ginkgo avenue. All of it real, and now you've stood in all of it.",
           "Ten years ago a film and a game drew these streets. Now you've walked them. Shibuya's scramble is two stops south on the Yamanote Line, where Aoi guides. Or wait for dusk on the 男坂, or just wander."
         ],
         "steps": []

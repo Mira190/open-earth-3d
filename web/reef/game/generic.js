@@ -158,7 +158,7 @@ export function ranger(G, o = {}) {
     nodes: Object.assign({
       hello: { say: G2 => [
         { t: `${G2.greet()}! I'm ${o.name || 'Alex'}, the ranger here. Welcome to ${G2.S.name}.`, src: null }, tidePage(G2),
-        { t: `This model is ${st.wKm.toFixed(0)} by ${st.hKm.toFixed(0)} km. At this tide ${st.wetPct}% of it is sea, down to ${st.deepest} m, and the highest ground is ${st.highest} m.`, src: ['model-terrain'] }],
+        { t: `From here to the horizon it's ${st.wKm.toFixed(0)} by ${st.hKm.toFixed(0)} km of reef and water. At this tide ${st.wetPct}% of it is sea, down to ${st.deepest} m, and the highest ground is ${st.highest} m.`, src: ['model-terrain'] }],
         choices: [
           { text: 'Is it safe to swim?', go: 'swim', when: slsqApplies },
           { text: 'How is the reef doing?', go: 'reef', when: G2 => G2.S.kind === 'marine' },

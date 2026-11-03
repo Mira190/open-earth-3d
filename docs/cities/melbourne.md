@@ -208,7 +208,7 @@ A height for each, with a citation, goes in `verified_heights.csv`.
 ## 5. The game: Melbourne on Foot
 
 Six people and six stamps, all on the same model:
-- **Federation Square:** start here and meet Mia, the survey lead. The river
+- **Federation Square:** start here and meet Mia, the guide. The river
   shuttle leaves from Federation Wharf below, a helicopter waits on a game pad in
   Birrarung Marr, and taxis pull in on Flinders Street.
 - **City Square:** Hannah, a planner, explains DDO10. You then find a sunny
@@ -217,7 +217,7 @@ Six people and six stamps, all on the same model:
   Landing.
 - **The air:** Sophie flies you from the Yarra helipad past the Arts Centre
   spire to Birrarung Marr.
-- **The survey lens:** Jun sends you to find three height sources.
+- **The gardens:** Jun sends you up the hill to Fitzroy Gardens and Cook's Cottage.
 
 The river shuttle is invented: there is no regular ferry through the city. It
 is smaller than a harbour ferry (22 m), in a navy and gold livery that is

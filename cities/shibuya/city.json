@@ -387,7 +387,7 @@
     "local_name": "Tokyoite",
     "water_name": "the river",
     "greeting": "こんにちは。",
-    "blurb": "Walk the real Shibuya, rebuilt from open data and lit by the real sun: the scramble and Hachiko, SHIBUYA SKY 229 m up, Center Gai and Sangenjaya's backstreets, ten years after a game made them famous.",
+    "blurb": "Walk Shibuya under the real sun: the scramble and Hachiko, SHIBUYA SKY 229 m up, Center Gai and Sangenjaya's backstreets, ten years after a game made them famous.",
     "smalltalk": [
       "すみません。",
       "こんにちは。",
@@ -721,7 +721,6 @@
         "stamp": "Hachiko",
         "talk": [
           "ようこそ渋谷へ! I'm Aoi. I guide pilgrims: people who come to stand where a story stood. This month it's ten years since a film and a game put these streets on the map.",
-          "This is the real Shibuya, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at heights Project PLATEAU surveyed.",
           "Hachiko has sat here since 1948. A game called this square Station Square. Walk out onto the scramble when the lights change.",
           "Want to see it from above? The lift at SKY GATE in Scramble Square, just across the road, goes up to SHIBUYA SKY, and a helicopter waits on the roof. A hand up at the kerb (Y) stops a taxi."
         ],
@@ -871,7 +870,7 @@
         "title": "Pilgrim",
         "stamp": "Shibuya pilgrim",
         "talk": [
-          "お帰り! A crossing, a bathhouse, a roof 229 metres up. All of it real, all of it measured.",
+          "お帰り! A crossing, a bathhouse, a roof 229 metres up. All of it real, and now you've stood in all of it.",
           "Ten years ago a game drew these streets. Now you've walked them. The stairs of Your Name are in Shinjuku: two stops north on the Yamanote Line, and my friend Nao guides there. Or change the time, go up SHIBUYA SKY at night, or just wander."
         ],
         "steps": []

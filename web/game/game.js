@@ -1,8 +1,9 @@
 // Open Earth 3D game: walk a real city, talk to people, take the ferry, fly the
 // helicopter. The world is the same open-data model as the viewer (world.js), lit by
-// the same sun (sun.js) in the city's own time zone. Everything the NPCs say about the
-// city is computed from the model: heights and their sources, sun on public places,
-// the bridge's geometry.
+// the same sun (sun.js) in the city's own time zone. The NPCs talk like locals: the numbers
+// they give (sun on public places, a landmark's height, tonight's sunset) are computed
+// while you play, and where the data comes from stays in the viewer's tour and Sources
+// panel, not in their mouths (tools/voice_check.py, issue #87).
 'use strict';
 window.OpenEarthGame = async function game(cityId) {
   const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
@@ -512,7 +513,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // taxi pulls in: the nearest free one coming your way, or one from round the corner. Or order
   // a ride on the phone (N), as GTA VI's Ryde Me app does: say where first, and a private-hire
   // car comes to your side of the street. You get in the back (a taxi driver asks where to), and
-  // the driver takes you by road, talking about what you pass, all of it from the model. F skips
+  // the driver takes you by road, talking about what you pass, as a local would. F skips
   // the trip, as in GTA V. Whichever it is arrives within half a minute: it sets out from a
   // street chosen so the trip, timed by driving it in a dry run, takes 14 to 25 s, and it drives
   // briskly while it is well out of your sight. The phone shows it coming as a ride app does: the
@@ -902,7 +903,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     };
     if (waypoint) add('waypoint', 'Your waypoint', waypoint, 'set on the map');
     const ob = objective();
-    if (ob && ob.at) add('objective', ob.title || 'The survey', ob.at, 'the survey');
+    if (ob && ob.at) add('objective', ob.title || 'Your walk', ob.at, 'your walk');
     if (myCar && player.vehicle !== myCar) add('car', 'Your car', [myCar.D.st.x, myCar.D.st.y], 'where you left it');
     const marks = Object.entries(scene.labels || {}).map(([n, p]) => ({ n, p, d: Math.hypot(p[0] - x, p[1] - y) })).filter(m => m.d > 300).sort((a, b) => a.d - b.d);
     for (const m of marks.slice(0, 4)) add(`lm-${m.n}`, m.n, m.p, `${(m.d / 1000).toFixed(1)} km`);
@@ -1181,6 +1182,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (kind === 'time') return `${fmtMin(clock.min)} ${S.utcToLocal(S.localToUtc(clock.y, clock.m, clock.d, clock.min)).zone}`;
       if (kind === 'sun_line') return sunLine();
       if (kind === 'sunset') return fmtMin(dayLimits().sunset);
+      // the part of the day and the season, in the guide's words ("this evening", "autumn"), for lines about what to see now
+      if (kind === 'now') return !sun || sun.altitude < -6 ? 'tonight' : clock.min < 720 ? 'this morning' : sun.altitude < 12 && clock.min > 900 ? 'this evening' : 'this afternoon';
+      if (kind === 'season') return ['winter', 'spring', 'summer', 'autumn'][(Math.floor((clock.m % 12) / 3) + (scene.frame.lat0 < 0 ? 2 : 0)) % 4];
       if (kind === 'penguins_from' || kind === 'penguins_to') { // when the first and the last rafts come in tonight
         const c = colonies[0] && colonies[0].colony;
         return c ? fmtMin(dayLimits().sunset + c.ashore_after_sunset_min[kind === 'penguins_from' ? 0 : 1]) : '–';
@@ -1199,6 +1203,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     });
   }
   const sampleCache = {};
+  // a line as the player reads it: tokens filled, and on a touch screen without the keyboard's keys (the
+  // walking and flying keys are the stick and the buttons there, and Q and G are the Lens and Guess buttons)
+  function said(text) {
+    const t = fill(text);
+    if (!touch || !t) return t;
+    return t.replace(/ ?\((?:a hand up at the kerb, )?Y\)/g, m => (m.includes('kerb') ? ' (a hand up at the kerb)' : ''))
+      .replace(/\bpress Q\b/g, 'tap Lens').replace(/\bpress G\b/g, 'tap Guess').replace(/\(Q\)/g, '(Lens)')
+      .split(/(?<=[.!?。])\s+/).filter(s => !/^(WASD|Space to climb|V (switches|is)|[A-Z] and [A-Z] )/.test(s)).join(' ').trim();
+  }
   const SRC_TEXT = { mapped: 'its height is surveyed in OpenStreetMap', survey: 'its top level is surveyed by the mapping agency', lidar: 'its height was measured by an airborne LiDAR scan', '3dbag': 'its height was measured by the national airborne LiDAR and modelled in the 3DBAG', floors: 'its height is its floor count times a storey height', estimate: 'its height is estimated from its neighbours', typical: 'its height is the typical one for its kind (none is mapped)', plateau: 'its height was measured from the air for Project PLATEAU', plateau_lod1: 'its height is the block height in Project PLATEAU (no survey record)', bdtopo: 'its eaves were surveyed by IGN and its roof is the typical one',
     ml: 'its height is a machine-learning estimate, bias-corrected', reference: 'its height is the published figure (the open data was far too short)', verified: 'its height was checked by hand against a cited source', parametric: 'it is built from its published dimensions' };
   function smalltalk(x, y) {
@@ -1208,7 +1221,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     for (const [name, p] of Object.entries(scene.labels || {})) { const d = Math.hypot(p[0] - x, p[1] - y); if (d < bd) { bd = d; best = name; } }
     if (best) {
       const m = B.b.find(b => b[0] && (b[0] === best || b[0].startsWith(best)));
-      if (m) opts.push(`That's ${best}, ${Math.round(m[2])} m. ${SRC_TEXT[m[4]] ? SRC_TEXT[m[4]][0].toUpperCase() + SRC_TEXT[m[4]].slice(1) : ''}.`);
+      if (m) opts.push(m[2] > 60 ? `That's ${best} up there, ${Math.round(m[2])} metres of it.` : `That's ${best}, just there.`);
     }
     const w = G.wharves.reduce((a, q) => (Math.hypot(q.terminal[0] - x, q.terminal[1] - y) < (a ? Math.hypot(a.terminal[0] - x, a.terminal[1] - y) : 400) ? q : a), null);
     if (w) { const e = nextFerry(w.id); if (e) opts.push(`The next ferry from ${w.name} is ${e.v.name}, ${e.t < 5 ? 'boarding now' : `in ${fmtSec(e.t)}`}.`); }
@@ -1339,7 +1352,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!ls(l).started) { const n = npcById(q.giver); return { text: `Talk to ${n.name} (${n.role})`, at: [n.x, n.y], title: q.title, line: l }; }
     const s = stepOf(l);
     if (!s) return null;
-    const out = { text: s.text, title: q.title, line: l };
+    const out = { text: said(s.text), title: q.title, line: l };
     if (s.type === 'talk') { const n = npcById(s.npc); out.at = [n.x, n.y]; }
     else if (s.type === 'spot') { const sp = (G.spots || []).find(q => q.id === s.spot); if (sp) out.at = sp.at.slice(0, 2); }
     else if (s.type === 'ride') { const w = wharfById(player.mode === 'ferry' ? s.to : s.from); out.at = w.landing; }
@@ -1356,7 +1369,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const st = ls(l);
     st.si++;
     if (st.si >= questOf(l).steps.length) completeQuest(l);
-    else { H.toast(`<b>Next:</b> ${questOf(l).steps[st.si].text}`); save(); }
+    else { H.toast(`<b>Next:</b> ${said(questOf(l).steps[st.si].text)}`); save(); }
   }
   function completeQuest(l = tracked()) {
     const q = questOf(l), wasOpen = new Set(openLines());
@@ -1376,7 +1389,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     Object.assign(ls(l), { started: true, si: 0 });
     qs.track = l.id;
     if (!q.steps.length) completeQuest(l);
-    else { H.toast(`<b>${q.title}</b><span>${q.steps[0].text}</span>`); save(); }
+    else { H.toast(`<b>${q.title}</b><span>${said(q.steps[0].text)}</span>`); save(); }
   }
   function talkTo(n) {
     n.talking = true;
@@ -1391,10 +1404,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     const ready = openLines().find(l => questOf(l).giver === n.id && !ls(l).started);
     if (ready) return giveQuest(n, ready, questOf(ready));
-    dlg.show(n, [fill(n.idle[Math.floor(Math.random() * n.idle.length)] || smalltalk(n.x, n.y))], null, finish);
+    dlg.show(n, [said(n.idle[Math.floor(Math.random() * n.idle.length)]) || smalltalk(n.x, n.y)], null, finish);
   }
   function giveQuest(n, l, q) {
-    dlg.show(n, q.talk.map(fill), q.choices, c => {
+    const talk = q.talk.map(said).filter(Boolean);
+    dlg.show(n, talk.length ? talk : q.talk.map(fill), q.choices, c => {
       n.talking = false;
       if (c && c.action === 'set_time') { const [m, d] = c.date; setClock(clock.y, m, d, S.hm(c.time)); H.toast(`Time set to ${c.time}, ${d} ${MONTHS[m - 1]}`); }
       if (c && c.action === 'dusk') { const t = Math.round(dayLimits().sunset) - 10; setClock(clock.y, clock.m, clock.d, t); H.toast(`Time set to ${fmtMin(t)}, ten minutes before sunset`); }
@@ -1456,7 +1470,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     linesKey = key;
     const el = $('#gq-lines');
     el.hidden = open.length < 2;
-    el.innerHTML = open.map(l => `<button data-line="${l.id}" aria-pressed="${l === cur}" title="Track this survey">${l.title || questOf(l).title}<span class="num">${ls(l).qi}/${l.quests.length}</span></button>`).join('')
+    el.innerHTML = open.map(l => `<button data-line="${l.id}" aria-pressed="${l === cur}" title="Track this walk">${l.title || questOf(l).title}<span class="num">${ls(l).qi}/${l.quests.length}</span></button>`).join('')
       + (touch ? '' : '<span class="key"><kbd>T</kbd> switch</span>');
   }
   // a save from before the lines (one chain, qs.qi): the stamps say which quests are done
@@ -2850,7 +2864,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
     if ((player.mode === 'car' || player.mode === 'ride') && !stepOut(player.vehicle, player.mode === 'car' ? 'driver' : kerbSeat)) { player.vehicle.C.body.remove(player.rig.root); world.add(player.rig.root); player.rig.root.scale.setScalar(1); player.mode = 'foot'; player.vehicle = null; }
     if (ride) rideAway();
-    qs = freshQs(); renderPassport(); spawn(); H.toast('New survey started.'); $('#g-menu').hidden = true;
+    qs = freshQs(); renderPassport(); spawn(); H.toast('A fresh start: a new passport.'); $('#g-menu').hidden = true;
   });
 
   // ------------------------------------------------------------ start
@@ -2955,6 +2969,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
+    else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn && titleYaw != null) titleYaw += dt * 0.05;
     if (photo.on) photoCamera(dt); else updateCamera(dt, titleOn);
@@ -3123,7 +3138,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cars.extra.push({ x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft: o === ride && Math.abs(st.v) >= 0.3 });
     }
     cars.update(dt, cx, cy, clockT, blockers);
-    if (places) places.update(dt, player.x, player.y, player.z, player.mode === 'foot' && !cine.active);
+    if (places) {
+      // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
+      // onboarding (anything marked data-hush that is showing holds it too)
+      const active = player.mode === 'foot' && !cine.active;
+      const calm = active && !dlg.open && !uiOpen() && phone.el.hidden && !photo.on && !document.querySelector('[data-hush]:not([hidden])');
+      places.update(dt, player.x, player.y, player.z, active, calm);
+    }
   }
 
   // on foot, m/s: a stroll, the default run (the surveyors' run clip is cut at 5.4 to 5.8 m/s, so it plays
