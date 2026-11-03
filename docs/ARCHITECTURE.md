@@ -34,6 +34,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Measured buildings (the Netherlands) | `fetch_3dbag.py` | `data/raw/<id>/3dbag.json`: the 3DBAG's CityJSON tiles (from the release's `tile_index.fgb`) as one feature per LOD1.3 roof level, with its LiDAR top and the roof its LOD2.2 model has over it; read by `build_scene.BAG3D` behind the PLATEAU interface |
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
+| Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
@@ -178,7 +179,10 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
   shore no longer shows. On a straight slope the water off a beach stayed 2.5 m
   deep out across the bay, in a pale wedge for every stretch of sand (issue 39).
   Along the frame's edge haze the water closes over the bottom, which hazes out
-  there while open sea above it does not.
+  there while open sea above it does not. Out where the floor is reached the
+  water hides the bottom altogether, as the open sea past the frame (which has
+  none under it) does; letting a tenth of the aerial photo through there read
+  as a straight band where the two met at the frame (issue 57).
 
   The first grid point out from the land is at most 0.3 m deep (a shelf), so on
   the 5 m grid the waterline falls at the quay's edge rather than up to a cell
@@ -312,13 +316,35 @@ The views switch in place, without reloading the page.
     the camera itself is outside the model. In the game, the haze takes the sky's
     colour at the horizon (read back from the sky when the sun moves) and the
     sky's last few degrees fade into it, so the city meets the sky without a band.
-    Over the sea the frame does not end: where its edge is open water in
-    `shore.png`, the water carries on past it to the horizon under the ordinary
-    distance fog, darkening a little toward a distant sea's tone, and only
-    behind land does it haze out with the edge. `seaOpen` measures the shoreline
-    along the band's inner edge once, into a small texture blurred more the
-    further out a point is, so the open sea and the haze behind land meet in a
-    soft fan rather than a line. Only the water's materials take it (`OE_SEA`).
+    Over the sea the frame does not end: past its edge, where there is real open
+    water, the water carries on to the horizon under the ordinary distance fog,
+    darkening a little toward a distant sea's tone, and only over land does it
+    haze out with the edge. Where the open water is comes from the city's
+    `sea.jpg` (`pipeline/open_sea.py`): a land and water mask 40 km either side
+    of the frame's centre at about 39 m a pixel, from Overture's base water
+    theme (OpenStreetMap's coastline and water, ODbL): the ocean, bays and
+    straits, less the islands in them, and for a city that draws its own rivers
+    and lakes, its rivers and canals from 2 ha and its lakes and reservoirs from
+    1 km² too, any water narrower than 160 m left out (a JPEG without chroma subsampling).
+    Its channels are the mask blurred by 60 m, 450 m and 2.2 km; the shader
+    goes from red at the frame to green 2.5 km out and blue 9 km out, so near the
+    frame the sea follows the real shore (North Sydney stays land, the harbour
+    runs on west to Parramatta) and far out it meets the haze over land in a
+    soft gradient. Over land past the frame the haze settles from the horizon's
+    tone at the frame to a distant shore's, a little darker and greener
+    (`SEA_LAND`), which the distance's own fog takes back to the horizon, so an
+    island or a headland out there reads as land in the haze rather than a pale
+    blob. Only the water's materials take it (`OE_SEA`), and the haze makes
+    the water opaque, so nothing shows through it from below. The ground's photo
+    tiles are drawn only within the frame: their grid overhangs it by up to
+    800 m, which lay over the open sea past it and cut it off along a straight
+    line (Melbourne's bay). Until issue 57
+    the edge was extruded: each point past the frame copied the shoreline at
+    the frame, so the sea past it was straight bands with hard sides, sea where
+    land should be, and streaks out from the corners. Before and after, from
+    above and from the tour cameras toward and away from a low sun:
+    `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
+    for `tools/city_shot.js`).
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a

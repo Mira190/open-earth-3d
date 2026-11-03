@@ -408,76 +408,46 @@ vec3 scrCell(float cell, vec2 uv) {
     // view from a tour stop a few hundred metres inside the frame: Shibuya's Sangenjaya and Suga
     // Shrine looked out through fog.)
     const out = (p, a = 0, b = fade) => `smoothstep( ${n(a)}, ${n(b)}, length( max( abs( ${p} - vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} ) ) - vec2( ${n(w / 2 - fade)}, ${n(h / 2 - fade)} ), 0.0 ) ) )`;
-    // Over the sea the frame ends nowhere in particular: where the frame's edge is open water, the
-    // surface carries on past it and the distance's own haze takes it to the horizon, darkening a
-    // little toward a distant sea's tone on the way; only where the edge is land does the water haze
-    // out with it. Which it is comes from seaOpen (below), the shoreline along the band's inner edge,
-    // blurred more the further out the point is, so the sea and the haze meet in a soft fan, not a
-    // line. Only the water's materials take it (OE_SEA, uSeaOpen).
+    // Over the sea the frame ends nowhere in particular: past the frame's edge, where there is real
+    // open water, the surface carries on and the distance's own haze takes it to the horizon,
+    // darkening a little toward a distant sea's tone on the way; only over land does the water haze
+    // out with the edge. Which it is comes from the city's sea.jpg (pipeline/open_sea.py): a land and
+    // water mask SEA_HALF m either side of the frame's centre, from OpenStreetMap's coastline and
+    // water, sharp at the frame and blurred more the further out a point is (its three channels), so
+    // the open sea follows the real shore near the frame and meets the haze over land softly far
+    // out. Only the water's materials take it (OE_SEA, uSeaOpen).
     const c = `vec2( ${n((frame.x[0] + frame.x[1]) / 2)}, ${n(-(frame.y[0] + frame.y[1]) / 2)} )`, hx = w / 2 - fade, hz = h / 2 - fade;
     C.fog_pars_fragment = last(FOG0.pf, `varying vec2 vEdgeXZ;
 #ifdef OE_SEA
 	uniform sampler2D uSeaOpen;
-	// where a point on the band's inner edge (relative to the frame's centre) lies along it, metres from its north-west corner, clockwise
-	float oePerim( vec2 q ) {
-		if ( q.y <= ${n(0.5 - hz)} ) return q.x + ${n(hx)};
-		if ( q.x >= ${n(hx - 0.5)} ) return ${n(2 * hx + hz)} + q.y;
-		if ( q.y >= ${n(hz - 0.5)} ) return ${n(3 * hx + 2 * hz)} - q.x;
-		return ${n(4 * hx + 3 * hz)} - q.y;
-	}
 #endif`);
-    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb', `\tfloat oeEdge = ${out('vEdgeXZ')};
+    C.fog_fragment = FOG0.f.replace('\tgl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );', `\tfloat oeEdge = ${out('vEdgeXZ')}, oeGate = max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} );
 #ifdef OE_SEA
 	{ vec2 oeP = vEdgeXZ - ${c}, oeH = vec2( ${n(hx)}, ${n(hz)} ); float oePast = length( max( abs( oeP ) - oeH, 0.0 ) );
-	  float oeOpen = oePast > 0.0 ? texture2D( uSeaOpen, vec2( oePerim( clamp( oeP, - oeH, oeH ) ) / ${n(4 * (hx + hz))}, min( oePast / ${SEA_OPEN_FAR.toFixed(1)}, 1.0 ) ) ).r : 0.0;
-	  oeEdge *= 1.0 - oeOpen;
+	  vec3 oeM = texture2D( uSeaOpen, vec2( 0.5 + oeP.x / ${n(2 * SEA_HALF)}, 0.5 - oeP.y / ${n(2 * SEA_HALF)} ) ).rgb; // north up (flipY)
+	  float oeOpen = oePast > 0.0 ? mix( mix( oeM.r, oeM.g, smoothstep( 0.0, ${n(SEA_SOFT[0])}, oePast ) ), oeM.b, smoothstep( ${n(SEA_SOFT[0])}, ${n(SEA_SOFT[1])}, oePast ) ) : 0.0;
 	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
-	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) ); }
+	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) );
+	  oeEdge *= 1.0 - oeOpen; }
 #endif
-	fogFactor = max( fogFactor, oeEdge * max( smoothstep( ${n(near)}, ${n(near * 4)}, vFogDepth ), ${out('cameraPosition.xz', fade * 0.8, fade * 1.5)} ) );
-	gl_FragColor.rgb`);
+	// The edge's haze is a distant shore's tone, a little darker and greener than the horizon's, which
+	// the distance takes back to the horizon's by 12 km: so a headland fading out at the frame, or an
+	// island past it, reads as land in the haze beside the open sea rather than a pale blob on it.
+	// (fogFactor still holds the edge, for the night's additive lights, night.js.)
+	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
+	fogFactor = max( fogFactor, oeEdge * oeGate );
+	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
+#ifdef OE_SEA
+	gl_FragColor.a = mix( gl_FragColor.a, 1.0, fogFactor ); // the haze hides what lies under the water too, so nothing shows through it from below
+#endif`);
     return fade;
   }
-  // The open sea along the edge haze's inner band, for the water's fog (edgeHaze): a texture with
-  // the band's perimeter across (from its north-west corner, clockwise) and the distance past it
-  // down (0 to SEA_OPEN_FAR m), 1 where the band meets open water in shore.png and 0 where it meets
-  // land, blurred along the perimeter by 80 m plus 0.8 m for each metre further out.
-  const SEA_OPEN_FAR = 16000;
-  function seaOpen(frame, fade, img, sh) {
-    const N = 1024, L = 16, hx = (frame.x[1] - frame.x[0]) / 2 - fade, hz = (frame.y[1] - frame.y[0]) / 2 - fade;
-    const cx = (frame.x[0] + frame.x[1]) / 2, cy = (frame.y[0] + frame.y[1]) / 2, P = 4 * (hx + hz), step = P / N;
-    const cv = document.createElement('canvas');
-    cv.width = img.width; cv.height = img.height;
-    const g = cv.getContext('2d', { willReadFrequently: true });
-    g.drawImage(img, 0, 0);
-    const px = g.getImageData(0, 0, cv.width, cv.height).data, W = sh.nx * sh.cell, H = sh.ny * sh.cell;
-    const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-    const open = new Float32Array(N);
-    for (let i = 0; i < N; i++) {
-      let s = (i + 0.5) * step, x, y; // y north, relative to the centre
-      if (s < 2 * hx) { x = s - hx; y = hz; } else if ((s -= 2 * hx) < 2 * hz) { x = hx; y = hz - s; }
-      else if ((s -= 2 * hz) < 2 * hx) { x = hx - s; y = -hz; } else { s -= 2 * hx; x = -hx; y = s - hz; }
-      const u = (cx + x - sh.x0) / W, v = (sh.y1 - (cy + y)) / H;
-      if (u < 0 || v < 0 || u >= 1 || v >= 1) { open[i] = 1; continue; } // past the map, open water (water.js shoreAt)
-      const r = px[4 * (Math.floor(v * cv.height) * cv.width + Math.floor(u * cv.width))];
-      open[i] = smooth(-10, 40, (r - 128) * 0.5);
-    }
-    const data = new Uint8Array(N * L * 4);
-    for (let k = 0; k < L; k++) {
-      const half = Math.max(1, Math.round((80 + 0.8 * SEA_OPEN_FAR * k / (L - 1)) / step));
-      for (let i = 0; i < N; i++) {
-        let a = 0, wsum = 0;
-        for (let j = -half; j <= half; j++) { const wt = 1 - Math.abs(j) / (half + 1); a += wt * open[((i + j) % N + N) % N]; wsum += wt; }
-        const o = smooth(0, 1, a / wsum), at = 4 * (k * N + i);
-        data[at] = data[at + 1] = data[at + 2] = Math.round(o * 255); data[at + 3] = 255;
-      }
-    }
-    const t = new THREE.DataTexture(data, N, L, THREE.RGBAFormat);
-    t.wrapS = THREE.RepeatWrapping; t.wrapT = THREE.ClampToEdgeWrapping;
-    t.magFilter = t.minFilter = THREE.LinearFilter; t.needsUpdate = true;
-    return t;
-  }
+  // The open-water mask past the frame (edgeHaze, pipeline/open_sea.py SEA_HALF_M): its half width,
+  // metres, and how far past the frame the water's edge has gone from sea.jpg's sharp channel (r) to
+  // its soft one (g), and from that to its softest (b).
+  // SEA_LAND: the edge haze's tone (distant land), as a share of the fog's colour.
+  const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
@@ -640,6 +610,8 @@ vec3 photoGrade(vec3 c) {
     })();
     // the seawalls along every built shore (quays.js), from shore.png: the ground drawn is raised to
     // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
+    // the open water past the frame (edgeHaze); without it everything past the frame is haze
+    const seaLoad = new Promise(res => texLoader.load(D.DATA + 'sea.jpg', t => { t.colorSpace = THREE.NoColorSpace; res(t); }, undefined, () => res(null)));
     let shoreTex = null, Q = null;
     if (scene.shore) {
       shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
@@ -750,18 +722,27 @@ vec3 woodsFloor(vec3 c) {
 totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatrix)) * (-vViewPosition - viewMatrix[3].xyz));`);
     };
     // a ground tile draped on terrain grid Tg (the viewer's 10 m grid, or the game's 5 m one near the player)
+    // Drawn only within the frame: the tiles' grid overhangs it by up to 800 m, which past the frame is
+    // only haze and would lie over the open sea there, cutting it off along a straight line (issue 57).
     function tileGeometry(t, Tg) {
-      const w = t.x1 - t.x0, h = t.y1 - t.y0;
-      const g = new THREE.PlaneGeometry(w, h, Math.round(w / Tg.cell), Math.round(h / Tg.cell));
+      const F = scene.frame, x0 = Math.max(t.x0, F.x[0]), x1 = Math.min(t.x1, F.x[1]), y0 = Math.max(t.y0, F.y[0]), y1 = Math.min(t.y1, F.y[1]);
+      if (x1 <= x0 || y1 <= y0) { // wholly outside: nothing to draw (kept, so groundMeshes stays one to a tile)
+        const e = new THREE.BufferGeometry();
+        for (const [k, n] of [['position', 3], ['normal', 3], ['uv', 2]]) e.setAttribute(k, new THREE.Float32BufferAttribute([], n));
+        return e;
+      }
+      const w = x1 - x0, h = y1 - y0;
+      const g = new THREE.PlaneGeometry(w, h, Math.max(1, Math.round(w / Tg.cell)), Math.max(1, Math.round(h / Tg.cell)));
       g.rotateX(-Math.PI / 2);
-      g.translate((t.x0 + t.x1) / 2, 0, -(t.y0 + t.y1) / 2);
-      const p = g.attributes.position;
+      g.translate((x0 + x1) / 2, 0, -(y0 + y1) / 2);
+      const p = g.attributes.position, uv = g.attributes.uv;
+      for (let i = 0; i < p.count; i++) uv.setXY(i, (p.getX(i) - t.x0) / (t.x1 - t.x0), (-p.getZ(i) - t.y0) / (t.y1 - t.y0)); // the whole tile's photo
       if (Q) Tg = Q.raise(Tg, true); // the points out in the water along a quay at its level
       for (let i = 0; i < p.count; i++) p.setY(i, S.terrainAt(Tg, p.getX(i), -p.getZ(i)));
       g.computeVertexNormals();
       // under the cells raised to a quay, which the ground shader leaves open above the water: the bottom
       if (Tg.up) {
-        const cols = Math.round(w / Tg.cell) + 1, rows = p.count / cols, at = [];
+        const cols = Math.max(1, Math.round(w / Tg.cell)) + 1, rows = p.count / cols, at = [];
         const up = i => {
           const c = Math.round((p.getX(i) - Tg.x0) / Tg.cell), r = Math.round((Tg.y1 + p.getZ(i)) / Tg.cell);
           return c >= 0 && r >= 0 && c < Tg.nx && r < Tg.ny && Tg.up[r * Tg.nx + c];
@@ -843,15 +824,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const water = sea ? sea.mesh : new THREE.Mesh(waterGeo, waterMat);
     water.receiveShadow = true;
     // past the frame's edge where it is open water, the sea carries on to the horizon (edgeHaze)
-    if (shoreTex && shoreTex.image) {
-      try {
-        const so = { value: seaOpen(scene.frame, edgeFade, shoreTex.image, scene.shore) };
-        for (const m of [water.material, waterMat]) {
-          const ob = m.onBeforeCompile;
-          m.defines = Object.assign({}, m.defines, { OE_SEA: '' });
-          m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
-        }
-      } catch (e) { console.warn('water: no open sea past the edge', e); }
+    const seaTex = await seaLoad;
+    if (seaTex) {
+      const so = { value: seaTex };
+      for (const m of [water.material, waterMat]) {
+        const ob = m.onBeforeCompile;
+        m.defines = Object.assign({}, m.defines, { OE_SEA: '' });
+        m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
+      }
     }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };

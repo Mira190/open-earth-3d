@@ -291,6 +291,7 @@ python pipeline/fetch_ign.py --city <id>          # if the city has an ign block
 python pipeline/fetch_3dbag.py --city <id>        # if the city has a bag3d block (the Netherlands)
 python pipeline/build_scene.py --city <id>
 python pipeline/landmarks.py --city <id>
+python pipeline/open_sea.py --city <id>           # the open water past the frame (sea.jpg)
 python analysis/heights.py --city <id>            # if there is a reference table
 python pipeline/build_scene.py --city <id>        # applies reference corrections
 python analysis/data_quality.py --city <id>
