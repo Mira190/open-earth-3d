@@ -1259,7 +1259,7 @@ def build(C):
     # hull after the build
     wet = wet_buildings.classify(C, con, raw, sea)
     for b in blds:
-        if b["is_underground"] or wet.get(b["id"], {}).get("kind") in ("deck", "bridge"):
+        if b["is_underground"] or wet.get(b["id"], {}).get("kind") in ("deck", "bridge", "under"):
             continue
         # ids of solids a hook hid: only this building's, since Python reuses the ids of freed objects
         ctx.hidden.clear()

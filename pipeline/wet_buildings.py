@@ -11,6 +11,8 @@ buildings they are white blocks with windows standing in the harbour:
   building: one BRIDGE_WET over the water and BRIDGE_COVER under a road Overture flags as a bridge
   or puts above the ground (Osaka's Hanshin loop over the Higashi-Yokobori). Its solid is not drawn:
   the game draws the deck (web/game/decks.js), and the viewer has the photograph of it;
+- a building OpenStreetMap puts under the water (layer below 0, location=underground) that
+  Overture does not mark underground: Amsterdam's Albert Cuypgarage, a car park under a canal. Not drawn;
 - a vessel: OpenStreetMap's building=ship, boat, houseboat or barge (Sydney's museum ships at
   Darling Harbour, the Paris bateaux and peniches, Amsterdam's houseboats), floating=yes, a
   building class the city lists in water.floating, and any other machine-learned footprint out on
@@ -19,7 +21,8 @@ buildings they are white blocks with windows standing in the harbour:
   it, and a lighter superstructure set in from the sides and shorter than the hull.
 
 A building counts as out on the water when WET_SHARE of its footprint is in the city's water and
-less than ON_PIER of it on a mapped pier (a shed or a terminal on a pier stands on its deck, and
+less than ON_PIER of it on a mapped pier (a houseboat when BOAT_SHARE is in the water, wherever
+its outline falls) (a shed or a terminal on a pier stands on its deck, and
 Hong Kong's ferry piers, building=yes on piles, stay buildings). OpenStreetMap's tags come from
 its API for those buildings only, cached in data/raw/<id>/osm_wet_buildings.json.
 
@@ -52,6 +55,7 @@ UA = "open-earth-3d (https://github.com/Mira190/open-earth-3d)"
 
 WET_SHARE = 0.8      # this much of a footprint in the water: it is out on the water
 ON_PIER = 0.5        # this much on a mapped pier: it stands on the pier's deck
+BOAT_SHARE = 0.4     # a building classed a houseboat (or a city's floating class) this much in the water floats
 DECK_M2 = 1000.0     # a machine-learned footprint this large, joined to the land, is a deck
 DECK_LAND_M = 1.0    # joined to the land: the part ashore at least this wide on average
 VESSEL_TAGS = {"ship", "boat", "houseboat", "barge"}
@@ -85,6 +89,13 @@ def _get(url):
                 raise
             print(f"  {e}: again in {2 ** k} s")
             time.sleep(2 ** k)
+
+
+def _num(v):
+    try:
+        return float(str(v).strip())
+    except ValueError:
+        return None
 
 
 def osm_tags(C, records):
@@ -170,7 +181,13 @@ def _classify(C, con, raw, sea):
             if near and shapely.union_all(near).intersection(g).area >= BRIDGE_COVER * g.area:
                 out[r["id"]] = {"kind": "bridge", "geom": g}  # the deck of an expressway over a river (Osaka's Higashi-Yokobori)
                 continue
-        if share < WET_SHARE or (pier is not None and pier.intersects(g) and pier.intersection(g).area >= ON_PIER * g.area):
+        # a building the data calls a houseboat is one wherever its outline falls: half on a canal's mapped
+        # edge, or over the jetty it is moored to (Amsterdam)
+        boat = r["class"] in floating or r["class"] == "houseboat"
+        osm = r["src"] == "OpenStreetMap"
+        if share < (BOAT_SHARE if boat or osm else WET_SHARE):
+            continue  # (OpenStreetMap's own buildings are looked up from BOAT_SHARE: a boat or a garage under a canal)
+        if not boat and pier is not None and pier.intersects(g) and pier.intersection(g).area >= ON_PIER * g.area:
             continue
         cand.append((r, g, share))
     tags = osm_tags(C, [r["record_id"] for r, _, _ in cand if r["src"] == "OpenStreetMap"])
@@ -179,8 +196,13 @@ def _classify(C, con, raw, sea):
         t = tags.get((r["record_id"] or "").split("@")[0], {}) if osm else {}
         mapped_h = r["height"] if r["height"] and r["height_src"] == "OpenStreetMap" else None
         if osm:
+            if any((_num(x) or 0) < 0 for x in str(t.get("layer", "")).split(";") if x) or t.get("location") == "underground":
+                out[r["id"]] = {"kind": "under", "geom": g}  # under the water: Amsterdam's Albert Cuypgarage, layer=-1
+                continue
             if not (t.get("building") in VESSEL_TAGS or t.get("floating") == "yes" or t.get("seamark:type") == "hulk"
                     or r["class"] in floating or r["class"] == "houseboat"):
+                continue
+            if share < WET_SHARE and not (r["class"] in floating or r["class"] == "houseboat" or t.get("building") in VESSEL_TAGS):
                 continue  # mapped as a building over the water: a pier terminal on piles, a pavilion
             ship = t.get("building") == "ship" or g.area >= SHIP_M2
             war = t.get("ship:type") in ("destroyer", "frigate", "patrol_boat", "submarine", "corvette", "cruiser") or "military" in t
@@ -266,7 +288,7 @@ def mark(C, wet=None):
         ks = [idx[i] for i in tree.query(g) if geoms[i].intersection(g).area >= 0.6 * geoms[i].area]
         if not ks:
             continue
-        if o["kind"] in ("deck", "bridge"):
+        if o["kind"] in ("deck", "bridge", "under"):
             for k in ks:
                 s = B["s"][k]
                 if k not in hidden or s[3] != s[2]:
