@@ -647,11 +647,69 @@ vec3 photoGrade(vec3 c) {
   { vec2 cuv = vec2((vClipWP.x - uClipBox.x) / uClipBox.z, 1.0 - (uClipBox.y + vClipWP.z) / uClipBox.w);
     if (vClipWP.y > -0.05 && all(greaterThan(cuv, vec2(0.0))) && all(lessThan(cuv, vec2(1.0))) && texture2D(uClip, cuv).r > 0.5) discard; }`); // under the water the ground stays: the sea floor
     };
+    // under a wood's or a park's canopy (woods.png, pipeline/woods.py) the photo shows the tops of
+    // the trees, which seen from the ground read as a teal sea: near the camera the ground there is
+    // drawn as a wood's floor instead (bare earth, leaf litter and moss in patches, compacted
+    // gravel and earth where a footway runs under the trees), and the trees planted from the
+    // canopy stand on it; from further off the photo's canopy takes over again
+    let woodsTex = null;
+    if (scene.woods && new URLSearchParams(location.search).get('woods') !== 'off') { // ?woods=off: without, to compare
+      woodsTex = await new Promise(res => texLoader.load(D.DATA + scene.woods.file, res, undefined, () => res(null)));
+      if (woodsTex) { woodsTex.colorSpace = THREE.NoColorSpace; woodsTex.flipY = false; woodsTex.generateMipmaps = false; woodsTex.minFilter = THREE.LinearFilter; }
+    }
+    const WOODS = woodsTex && { tex: { value: woodsTex }, box: { value: new THREE.Vector4(scene.woods.x0, scene.woods.y1, scene.woods.nx * scene.woods.cell, scene.woods.ny * scene.woods.cell) } };
+    // the floor's three colours (linear albedo), by what grows or lies under the city's park trees (woods.py FLOOR)
+    const FLOOR = {
+      earth: ['vec3(0.15, 0.1, 0.058)', 'vec3(0.21, 0.135, 0.066)', 'vec3(0.085, 0.12, 0.04)'], // bare earth, leaf litter, moss
+      lawn: ['vec3(0.068, 0.11, 0.034)', 'vec3(0.095, 0.135, 0.042)', 'vec3(0.15, 0.105, 0.062)'], // grass in shade, in sun, worn to earth
+      gravel: ['vec3(0.3, 0.255, 0.19)', 'vec3(0.36, 0.305, 0.225)', 'vec3(0.2, 0.16, 0.11)'], // stabilised sand and gravel, damp under the crowns
+    }[(scene.woods || {}).floor] || ['vec3(0.15, 0.1, 0.058)', 'vec3(0.21, 0.135, 0.066)', 'vec3(0.085, 0.12, 0.04)'];
+    const woodsFloor = sh => {
+      if (!WOODS) return;
+      Object.assign(sh.uniforms, { uWoods: WOODS.tex, uWoodsBox: WOODS.box });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWoodWP;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvWoodWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uWoods; uniform vec4 uWoodsBox; varying vec3 vWoodWP;
+float woodH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float woodN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(woodH(i), woodH(i + vec2(1, 0)), f.x), mix(woodH(i + vec2(0, 1)), woodH(i + vec2(1, 1)), f.x), f.y); }
+vec3 woodsFloor(vec3 c) {
+  vec2 uv = vec2((vWoodWP.x - uWoodsBox.x) / uWoodsBox.z, (uWoodsBox.y + vWoodWP.z) / uWoodsBox.w);
+  if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return c;
+  vec4 m = texture2D(uWoods, uv);
+  float d = distance(vWoodWP, cameraPosition);
+  // in a park, the photo's shadows on its gravel are skylight blue (the same teal), and the scene
+  // casts its own: near the camera, their colour taken out
+  float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  float blue = smoothstep(0.005, 0.03, c.b - c.g) * smoothstep(0.01, 0.04, c.b - c.r);
+  c = mix(c, vec3(L) * vec3(1.06, 1.0, 0.9), blue * m.a * 0.85 * (1.0 - smoothstep(150.0, 700.0, d)));
+  // as far as the trees go (trees.js WOOD_M), and only from among them: from above, the gaps between their
+  // crowns are the lower canopy and the undergrowth, which the photo has
+  float fade = max(smoothstep(${small ? '260.0, 560.0' : '320.0, 780.0'}, d), smoothstep(30.0, 90.0, cameraPosition.y - vWoodWP.y));
+  // further off, the photo's canopy stands for the trees: its teal turned to the leaves' green at its own brightness
+  L = dot(c, vec3(0.2126, 0.7152, 0.0722));
+  c = mix(c, vec3(0.62, 1.0, 0.34) * L * 1.05, m.r * fade * 0.8);
+  float k = m.r * (1.0 - fade);
+  if (k < 0.004) return c;
+  vec2 p = vWoodWP.xz;
+  float patches = woodN(p * 0.11) * 0.6 + woodN(p * 0.37 + 3.1) * 0.4;
+  float grain = woodN(p * 1.9) * 0.45 + woodN(p * 6.3) * 0.33 + woodN(p * 21.0) * 0.22;
+  // linear albedos, in patches (darker where the canopy is tall: deeper shade, damper ground)
+  vec3 g = mix(${FLOOR[0]}, ${FLOOR[1]}, smoothstep(0.35, 0.72, patches));
+  g = mix(g, ${FLOOR[2]}, smoothstep(0.5, 0.82, woodN(p * 0.19 + 7.0)) * 0.85);
+  g *= (0.78 + 0.44 * grain) * mix(1.0, 0.82, smoothstep(6.0, 22.0, m.g * 32.0));
+  vec3 path = vec3(0.29, 0.26, 0.21) * (0.86 + 0.28 * woodN(p * 8.0));
+  g = mix(g, path, smoothstep(0.2, 0.6, m.b));
+  return mix(c, g, k);
+}`).replace('#include <emissivemap_fragment>', 'diffuseColor.rgb = woodsFloor(diffuseColor.rgb);\n#include <emissivemap_fragment>');
+    };
     const gradePhoto = sh => {
       clipGround(sh);
       sh.uniforms.uPhotoGrade = PG;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>\n${PHOTO_GRADE}`)
         .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb = photoGrade(diffuseColor.rgb);');
+      woodsFloor(sh); // after the photo, the game's drawn streets and grain: the floor has its own
       streetLit(sh);
     };
     // the street lights on a lit surface: its colour times their light where it is (the world
@@ -950,12 +1008,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       world.add(deck);
     }
 
-    // trees mapped in OSM: the shared Blender species (trees.js) in the city's mix, else
-    // low-poly crowns on short trunks; heights are not mapped (7-14 m spread)
-    const TR = P.trees || [], nT = TR.length / 4;
+    // trees mapped in OSM, then those planted from the woods' and parks' canopy (pipeline/woods.py,
+    // with measured heights; a third of them on a small device): the shared Blender species
+    // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
+    // heights are not mapped (7-14 m spread)
+    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, south: D.CITY.lat < 0 }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {

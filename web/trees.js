@@ -2,7 +2,9 @@
 // blender/build_trees.py), drawn instanced per species and per distance: the full tree near
 // the camera, a sparser one further off, a trunk and crown hull beyond. Each mapped tree
 // takes a species from the city's mix by a hash of its position, a size from its height and
-// a turn of its own. The wind sways the crowns and flutters the leaves, the leaf cards cut
+// a turn of its own. The trees planted from a wood's canopy (pipeline/woods.py) come after the
+// mapped ones, sized by the height the canopy model measured, in the city's mix without its palms,
+// a share of them left out on a small device. The wind sways the crowns and flutters the leaves, the leaf cards cut
 // their shadows out, and jacarandas flower in late spring.
 'use strict';
 window.OETrees = (function () {
@@ -54,11 +56,16 @@ vAO = tc.r;`;
     };
   }
 
-  // world: the scene; list: x, y, ground, height in dm per tree (places.json); mix: species
-  // weights; south: the city is in the southern hemisphere (for the flowering season)
-  function create(world, lib, list, { mix = null, south = true } = {}) {
+  // world: the scene; list: x, y, ground, height in dm per tree (places.json trees, then woods);
+  // mix: species weights; south: the city is in the southern hemisphere (for the flowering season);
+  // measured: the index from which the trees are a wood's, with measured heights; keep: the share
+  // of those drawn
+  function create(world, lib, list, { mix = null, south = true, measured = Infinity, keep = 1 } = {}) {
     const I = lib.info, n = list.length / 4, U = { uWind: { value: 0 }, uBloom: { value: 0 } };
     const weights = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0), total = weights.reduce((a, [, w]) => a + w, 0);
+    // a wood has no palms (unless the city has nothing else)
+    const woodTotal = weights.reduce((a, [k, w]) => a + (k === 'palm' ? 0 : w), 0) || total;
+    const woodW = weights.map(([k, w]) => (k === 'palm' && woodTotal !== total ? 0 : w));
     // materials: one leaf atlas for all, bark and far crowns per species
     let atlas = null;
     lib.gltf.scene.traverse(o => { if (o.isMesh && o.material.name === 'Leaves') atlas = o.material.map; });
@@ -79,20 +86,28 @@ vAO = tc.r;`;
       return mats[name];
     };
     // which species each tree is, its matrix and its tint
-    const which = new Int16Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
+    const which = new Int16Array(n), far = new Float32Array(n).fill(1), half = new Uint8Array(n), M = new Float32Array(n * 16), tint = new Float32Array(n * 3), pos = new Float32Array(n * 3);
     const names = weights.map(([k]) => k), count = names.map(() => 0);
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
-      let r = hash(x, y) * total, k = 0;
-      while (k < weights.length - 1 && (r -= weights[k][1]) > 0) k++;
+      const wood = i >= measured;
+      let r = hash(x, y) * (wood ? woodTotal : total), k = 0;
+      if (wood) while (k < weights.length - 1 && (r -= woodW[k]) > 0) k++;
+      else while (k < weights.length - 1 && (r -= weights[k][1]) > 0) k++;
       which[i] = k; count[k]++;
-      const s = 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
+      if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
+      if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
+      const s = wood ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
+        : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
       q.setFromAxisAngle(up, hash(y, x) * Math.PI * 2);
       m4.compose(at.set(x, z - 0.05, -y), q, sc.set(s, s * (0.92 + 0.16 * hash(x + 1, y)), s));
       m4.toArray(M, 16 * i);
       pos[3 * i] = x; pos[3 * i + 1] = z + 4; pos[3 * i + 2] = -y;
-      c.setHSL(0, 0, 0.86 + 0.24 * hash(x, y + 1)).toArray(tint, 3 * i);
+      // each tree its own shade; a wood's deeper and more varied, as the crowns of a wood are in a photograph
+      if (wood) { const l = 0.68 + 0.36 * hash(x, y + 1), w = hash(x + 2, y); c.setRGB(l * (0.93 + 0.1 * w), l, l * (0.98 - 0.08 * w)); }
+      else c.setHSL(0, 0, 0.86 + 0.24 * hash(x, y + 1));
+      c.toArray(tint, 3 * i);
     }
     // per species and distance, one instanced mesh per material
     const meshes = names.map((sp, k) => [0, 1, 2].map(lod => {
@@ -116,14 +131,21 @@ vAO = tc.r;`;
       });
       return out;
     }));
-    const L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
+    const WOOD_M = keep < 1 ? 600 : 900, L = I.lod_m || [130, 520], last = new THREE.Vector3(1e9, 0, 0), cam = new THREE.Vector3();
     // re-sort the trees into near, mid and far when the camera has moved far enough
     function sort(eye) {
       for (const per of meshes) for (const parts of per) for (const im of parts) im.count = 0;
       const n0 = L[0] * L[0], n1 = L[1] * L[1];
+      // from higher up a wood is seen further, and only as crowns: its reach grows with the camera's height
+      const WM = Math.min(keep < 1 ? 1200 : 2200, WOOD_M + (keep < 1 ? 1 : 2) * Math.max(0, eye.y - 60));
       for (let i = 0; i < n; i++) {
-        const dx = pos[3 * i] - eye.x, dy = pos[3 * i + 1] - eye.y, dz = pos[3 * i + 2] - eye.z, d2 = dx * dx + dy * dy + dz * dz;
-        const parts = meshes[which[i]][d2 < n0 ? 0 : d2 < n1 ? 1 : 2];
+        if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // left out, or not drawn where the game has no ground for it
+        const dx = pos[3 * i] - eye.x, dy = pos[3 * i + 1] - eye.y, dz = pos[3 * i + 2] - eye.z, e2 = dx * dx + dy * dy + dz * dz, f = far[i];
+        // beyond WOOD_M a wood is the photo's canopy (world.js woodsFloor): its trees thin out towards it
+        if (f < 1 && e2 > WM * WM * (0.55 + 45 * (f - 0.55)) ** 2) continue;
+        const lod = e2 < n0 * f * f ? 0 : e2 < n1 * (f < 1 ? 0.15 : 1) ? 1 : 2;
+        if (lod === 2 && half[i]) continue; // past 200 m half a wood's crowns stand for all (they overlap)
+        const parts = meshes[which[i]][lod];
         for (const im of parts) {
           const j = im.count++;
           im.instanceMatrix.array.set(M.subarray(16 * i, 16 * i + 16), 16 * j);
@@ -156,6 +178,7 @@ vAO = tc.r;`;
         for (let i = 0; i < n; i++) {
           const z = ground(list[4 * i] / 10, list[4 * i + 1] / 10, list[4 * i + 2] / 10);
           if (z == null) { M.fill(0, 16 * i, 16 * i + 15); M[16 * i + 15] = 1; continue; } // shrunk to a point
+          if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // one left out
           M[16 * i + 13] = z - 0.05; pos[3 * i + 1] = z + 4;
         }
         last.set(1e9, 0, 0); // sorted again at the next update

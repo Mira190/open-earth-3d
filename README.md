@@ -500,6 +500,9 @@ Data tab. The shared sources are:
   Solutions LLC). Its licence notice is at the top of `web/water.js`.
 - **Land cover for beaches and rock:** Overture Maps' land theme (ODbL),
   through `pipeline/shore.py`.
+- **Woods and park canopy:** Meta and World Resources Institute High Resolution
+  Canopy Height Maps (Tolan et al. 2024, CC BY 4.0), for the trees planted in
+  the mapped woods and parks and the ground under them (`pipeline/woods.py`).
 - **Open water past the model's frame:** Overture Maps' base water and land
   themes (OpenStreetMap's coastline and water bodies, ODbL), 40 km around each
   city, through `pipeline/open_sea.py` into `web/data/<id>/sea.jpg`. Considered
