@@ -65,6 +65,7 @@ window.OEOnboard = (function () {
     el.className = 'ob-tour';
     el.setAttribute('role', 'dialog');
     el.setAttribute('aria-label', 'Getting started');
+    el.dataset.hush = ''; // the area sign (game/places.js) waits while it shows
     el.innerHTML = `<div class="ob-veil"></div><div class="ob-ring none"></div><div class="ob-card" aria-live="polite"><div class="ob-eb"><span>Getting started</span><span class="ob-n"></span></div><h3></h3><p></p>
       <div class="ob-dots">${steps.map(() => '<i></i>').join('')}</div>
       <div class="ob-acts"><button class="ob-skip" type="button">Skip tour</button><span class="ob-nav"><button class="ob-back" type="button">Back</button><button class="ob-next" type="button">Next</button></span></div></div>`;
@@ -94,7 +95,7 @@ window.OEOnboard = (function () {
           y = (H - ch) / 2;
           x = r.left + r.width / 2 > W / 2 ? r.left - pad - 14 - cw : r.right + pad + 14;
         }
-      } else { x = (W - cw) / 2; y = Math.min(H * 0.56, H - ch - g); }
+      } else { x = (W - cw) / 2; y = Math.min(H * 0.66, H - ch - g); } // below the player, who stands mid-screen
       card.style.left = `${Math.round(Math.max(g, Math.min(W - cw - g, x)))}px`;
       card.style.top = `${Math.round(Math.max(g, Math.min(H - ch - g, y)))}px`;
     }

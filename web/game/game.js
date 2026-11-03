@@ -3445,7 +3445,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // that turn allows with a few steps clear in front. The camera lifts smoothly over any roof on its line,
   // never jumping. A key or a tap settles it in under a second (settleArrival); with reduced motion it is a
   // cut under a short fade. Moving is allowed throughout. onDone runs once it has handed over.
-  const ARRIVE = { dur: 3.6, turn: 50 * Math.PI / 180, pitch: 20 * Math.PI / 180, settle: 0.7 };
+  const ARRIVE = { dur: 3.6, turn: 50 * Math.PI / 180, pitch: 14 * Math.PI / 180, settle: 0.7 };
   let arriving = null;
   const clearAhead = h => { // a few steps' walk in front of the player along bearing h
     let z = player.z;
@@ -3461,6 +3461,31 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     c.sort((a, b) => Math.abs(OECine.turn(a, want)) - Math.abs(OECine.turn(b, want)));
     return c.find(a => clearAhead(a - Math.PI)) ?? c[0];
   }
+  // The elevation of a camera move about a centre c (bearing az(k), range r(k), elevation e(k), k 0..1 over dur
+  // seconds), raised where the line would pass within 8 m of a roof while the camera is over rMin away, and made
+  // into an envelope that rises and falls no faster than rate (rad/s): the camera comes over a tower and down again
+  // without a jolt. Near the player the chase camera's own clearance takes over. With e0, the first frame keeps
+  // that elevation and any lift is eased in. Returns k -> elevation.
+  function calmElevation({ c, az, r, e, dur, rate, e0 = null, rMin = 40, upto = 0.85 }) {
+    const N = 60, el = new Float32Array(N + 1), tmp = new THREE.Vector3(), S = OECine.ease.smooth;
+    for (let i = 0; i <= N; i++) {
+      const k = i / N, rk = r(k);
+      let ek = e(k);
+      if (k < upto && rk > rMin) for (let n = 0; n < 14; n++) { // up in steps until it is 8 m over what is below it
+        OECine.around(c, az(k), rk * Math.cos(ek), rk * Math.sin(ek), tmp);
+        if (tmp.y >= roofBelow(tmp.x, -tmp.z) + 8 || ek > 1.3) break;
+        ek = Math.min(1.3, ek + 0.08);
+      }
+      el[i] = ek;
+    }
+    const step = rate * dur / N;
+    for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
+    for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
+    if (e0 != null && el[0] > e0) { const d = el[0] - e0, M = N / 3; for (let i = 0; i <= M; i++) el[i] -= d * (1 - S(i / M)); }
+    const fn = k => { const f = Math.max(0, Math.min(N, k * N)), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
+    fn.late = el[N] - e(1); // how far above its own last elevation the roofs held it: more time is needed to come down calmly
+    return fn;
+  }
   function craneIn(onDone = null) {
     const H0 = head(), lk0 = titleLook.clone().sub(H0), p0 = OECine.polar(H0, camera.position);
     const best = calmBearing(p0.az, player.h + Math.PI);
@@ -3470,31 +3495,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const p1 = chasePolar(), az1 = p0.az + OECine.turn(p0.az, p1.az);
     const r0 = Math.max(10, Math.hypot(p0.dist, p0.h)), r1 = Math.hypot(p1.dist, p1.h), e0 = Math.atan2(p0.h, p0.dist), e1 = Math.atan2(p1.h, p1.dist);
     const S = OECine.ease.smooth, pos = new THREE.Vector3(), lk = new THREE.Vector3();
-    // clear of the roofs: the elevation the line needs at each sample, made into an envelope that never rises or
-    // falls faster than ARRIVE.pitch a second (so the camera comes over a tower and down again without a jolt)
-    const N = 60, el = new Float32Array(N + 1), tmp = new THREE.Vector3();
     const rAt = k => r0 * Math.pow(r1 / r0, S(k)), azAt = k => p0.az + (az1 - p0.az) * S(k);
-    for (let i = 0; i <= N; i++) {
-      const k = i / N, r = rAt(k);
-      let e = e0 + (e1 - e0) * S(k);
-      if (k < 0.85) for (let n = 0; n < 12; n++) { // up in steps until the camera is 8 m over what is below it
-        OECine.around(H0, azAt(k), r * Math.cos(e), r * Math.sin(e), tmp);
-        if (tmp.y >= roofBelow(tmp.x, -tmp.z) + 8 || e > 1.3) break;
-        e = Math.min(1.3, e + 0.08);
-      }
-      el[i] = e;
-    }
-    const step = ARRIVE.pitch * ARRIVE.dur / N / 1.6; // per sample, with room for the ease's faster middle
-    for (let i = 1; i <= N; i++) el[i] = Math.max(el[i], el[i - 1] - step);
-    for (let i = N - 1; i >= 0; i--) el[i] = Math.max(el[i], el[i + 1] - step);
-    // the first frame is the title shot itself: any lift the envelope asks for there is eased in over the first third
-    const lift0 = el[0] - e0;
-    if (lift0 > 0) for (let i = 0; i <= N / 3; i++) el[i] -= lift0 * (1 - S(i / (N / 3)));
-    const elAt = k => { const f = Math.min(N, k * N), i = Math.floor(f), j = Math.min(N, i + 1); return el[i] + (el[j] - el[i]) * (f - i); };
+    const elAt = calmElevation({ c: H0, az: azAt, r: rAt, e: k => e0 + (e1 - e0) * S(k), dur: ARRIVE.dur, rate: ARRIVE.pitch, e0 });
     const path = k => {
       const c = head(), r = rAt(k), e = elAt(k);
       OECine.around(c, azAt(k), r * Math.cos(e), r * Math.sin(e), pos);
-      lk.copy(lk0).multiplyScalar(r / r0).add(c); // the title's point of interest, closing on the player with the camera
+      lk.copy(lk0).multiplyScalar(Math.pow(r / r0, 1.5)).add(c); // the title's point of interest, closing on the player faster than the camera
       return { pos, look: lk };
     };
     arriving = { onDone, settling: false };
@@ -3538,30 +3544,35 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the distance, and come down behind them facing the way they flew. The player moves
   // at the top of the climb, out of sight.
   // (opts.cue, if given, moves whatever is travelling at the top of the climb instead of you; quiet: no arrival toast)
-  const HOP_TURN_RATE = 45 * Math.PI / 180; // rad/s
+  const HOP_TURN_RATE = 45 * Math.PI / 180, HOP_PITCH_RATE = 30 * Math.PI / 180; // rad/s
   function hopTo(x, y, z, name, opts = {}) {
     const span = Math.hypot(x - player.x, y - player.y), bearing = Math.atan2(x - player.x, y - player.y);
     const roofs = roofAlong(player.x, player.y, x, y) - player.z; // cruise well clear of the tallest roof on the way
-    const alt = Math.max(THREE.MathUtils.clamp(140 + span * 0.12, 180, 520), roofs + 110), top = { dist: alt * 0.6, h: alt }, az = bearing + Math.PI;
+    const alt = Math.max(THREE.MathUtils.clamp(140 + span * 0.12, 180, 520), roofs + 110), top = { dist: alt * 0.84, h: alt }, az = bearing + Math.PI;
     const A = head(), B = W(x, y, z + 1.55), p0 = OECine.polar(A, camera.position), c = new THREE.Vector3();
     // the camera's bearing about the player turns once, evenly over the whole hop, and never faster than
     // HOP_TURN_RATE at its peak (#89): to frame a landmark (opts.yaw) the hop takes longer if it must; otherwise
     // it comes down only as far round towards the way you flew as that rate allows in the time
     const pe = opts.pitch ?? 0.36;
-    let dur = Math.min(4.6, 2.4 + span / 1500), turnBy = OECine.turn(p0.az, opts.yaw != null ? opts.yaw + Math.PI : az);
+    let dur = Math.min(4.6, 3.2 + span / 2000), turnBy = OECine.turn(p0.az, opts.yaw != null ? opts.yaw + Math.PI : az);
     const peak = t => 1.875 * Math.abs(t) / dur; // the smootherstep's top speed
     if (opts.yaw != null) dur = Math.min(6.5, Math.max(dur, 1.875 * Math.abs(turnBy) / HOP_TURN_RATE));
     else if (peak(turnBy) > HOP_TURN_RATE) turnBy = Math.sign(turnBy) * HOP_TURN_RATE * dur / 1.875;
     const azAt = k => p0.az + turnBy * OECine.ease.smooth(k), azEnd = azAt(1);
-    // up and down on a log scale of the range, the elevation easing evenly with it: no plunge at the end
+    // up and down on a log scale of the range; the elevation one gentle rise to eT by 45% of the way and one fall to
+    // the chase camera's, raised over the roofs on the way down (calmElevation): no plunge at the end
     const pos = new THREE.Vector3(), lk = new THREE.Vector3(), E = OECine.ease, L = OECine.lerp;
     const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
-    const a = 0.24, b = 0.6;
+    const a = 0.26, b = 0.6, km = 0.45;
+    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.smooth(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
+    const eBase = k => (k < km ? L(e0, eT, E.smooth(k / km)) : L(eT, pe, E.smooth(OECine.span(k, km, 1))));
+    // over tall roofs the way down starts steeper; the hop then takes the time it needs to tilt back calmly (to 6.5 s)
+    const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
+    let fallEl = fallOf(dur);
+    for (let n = 0; n < 3 && fallEl.late > 0.02 && dur < 6.5; n++) { dur = Math.min(6.5, dur + 1.3 * fallEl.late / HOP_PITCH_RATE); fallEl = fallOf(dur); }
     const path = k => {
-      let ctr, r, e;
-      if (k < a) { const t = E.smooth(OECine.span(k, 0, a)); ctr = A; r = r0 * Math.pow(rT / r0, t); e = L(e0, eT, t); }
-      else if (k < b) { ctr = c.lerpVectors(A, B, E.inOut(OECine.span(k, a, b))); r = rT; e = eT; }
-      else { const t = E.smooth(OECine.span(k, b, 1)); ctr = head(); r = rT * Math.pow(r1 / rT, t); e = L(eT, pe, t); }
+      const ctr = k < a ? A : k < b ? c.lerpVectors(A, B, E.inOut(OECine.span(k, a, b))) : head(), r = rAt(k);
+      const e = k < b ? eBase(k) : Math.max(eBase(k), fallEl(OECine.span(k, b, 1)));
       OECine.around(ctr, azAt(k), r * Math.cos(e), r * Math.sin(e), pos);
       return { pos, look: lk.copy(ctr) };
     };

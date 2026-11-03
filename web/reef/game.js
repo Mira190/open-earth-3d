@@ -820,7 +820,7 @@ export async function init(ctx) {
   // first objective, the site list in the background
   refreshObjective(true);
   travel.load();
-  const api = Object.assign(api0, { update, G, ui, travel, rider, board, surv, light, get aboard() { return aboard; }, get state() { return st; } });
+  const api = Object.defineProperties(api0, Object.getOwnPropertyDescriptors({ update, G, ui, travel, rider, board, surv, light, get aboard() { return aboard; }, get state() { return st; } })); // (getters kept live)
   window.__game = api;
   if (q.get('gametest') === '1' || q.get('gameshot')) {
     const T = await import('./game/test.js');

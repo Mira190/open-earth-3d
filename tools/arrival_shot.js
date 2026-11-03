@@ -5,13 +5,13 @@
 // stills along the way (<out>/<city>[@point]-<size>-arrive-<n>.png, -hop-<n>.png) and the tour's first card.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/arrival_shot.js shibuya out_dir [desktop|phone] [travel id]
-// Exits 1 when a move turns faster than MAX_RATE (default 45°/s), rolls, takes over 4.5 s to arrive (7 s to
+// Exits 1 when a move turns faster than MAX_RATE (default 45°/s), pitches faster than MAX_PITCH (60°/s), rolls, takes over 4.5 s to arrive (7 s to
 // hop) or changes the direction of its turn.
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
 const [,, city = 'shibuya', outDir = '.', size = 'desktop', point = ''] = process.argv;
-const MAX_RATE = Number(process.env.MAX_RATE || 45);
+const MAX_RATE = Number(process.env.MAX_RATE || 45), MAX_PITCH = Number(process.env.MAX_PITCH || 60);
 const VIEW = { desktop: { width: 1440, height: 900 }, phone: { width: 390, height: 844, isMobile: true, hasTouch: true, deviceScaleFactor: 1 } }[size];
 (async () => {
   const b = await chromium.launch(process.env.DISPLAY
@@ -68,7 +68,7 @@ const VIEW = { desktop: { width: 1440, height: 900 }, phone: { width: 390, heigh
   };
   const fails = [];
   const report = (m, maxDur) => {
-    const ok = m.peak <= MAX_RATE && m.roll < 0.5 && m.dur <= maxDur && m.flips === 0;
+    const ok = m.peak <= MAX_RATE && m.peakP <= MAX_PITCH && m.roll < 0.5 && m.dur <= maxDur && m.flips === 0;
     console.log(`${ok ? 'ok  ' : 'FAIL'} ${tag} ${m.label}: ${m.dur.toFixed(2)} s, ${m.frames} frames, peak turn ${m.peak.toFixed(1)}°/s, peak pitch ${m.peakP.toFixed(1)}°/s, roll ${m.roll.toFixed(2)}°, ${m.flips} reversals`);
     if (!ok) fails.push(m.label);
   };
