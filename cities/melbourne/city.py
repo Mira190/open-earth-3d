@@ -58,7 +58,7 @@ MATERIALS = {
     "fss_terracotta": {"color": TERRACOTTA, "roughness": 0.85, "metalness": 0.0},
     "fss_green": {"color": DARK_GREEN, "roughness": 0.6, "metalness": 0.1},
     "fss_cream": {"color": CREAM, "roughness": 0.8, "metalness": 0.0},
-    "fss_copper": {"color": "#5d7f6d", "roughness": 0.45, "metalness": 0.5},
+    "fss_copper": {"color": "#5d7f6d", "roughness": 0.45, "metalness": 0.5, "emissive": "#7fbf9f", "glow": 0.3},
     "fss_clock": {"color": "#f4f1e6", "roughness": 0.4, "metalness": 0.0},
     "fss_hands": {"color": "#1d1d1f", "roughness": 0.5, "metalness": 0.2},
     # the station's walls (floodlit after dark, as its festoon of lights picks it out), windows lit from inside
@@ -259,7 +259,12 @@ def crown():
                     K["crown_fire"].lathe([(g + 14.0, 1.0), (g + 14.6, 1.6), (g + 15.0, 1.7)], (p[0], p[1]), segs=10)
                     break
                 d -= Lg
-    return K.out(), [r["si"] for r in rows]
+    # an unmapped duplicate of the casino under the complex's outline (w972192630, 31 m): drawn by the podium too
+    from shapely.geometry import Polygon
+    outline = Polygon(q["ring"]).buffer(0)
+    dup = [r["si"] for r in ak.load_solids("melbourne") if r["osm"] != CROWN and abs(ak.ring_area(r["ring"])) > 1000
+           and Polygon(r["ring"]).buffer(0).intersection(outline).area > 0.8 * abs(ak.ring_area(r["ring"]))]
+    return K.out(), [r["si"] for r in rows] + dup
 
 
 def flinders_street(s):
