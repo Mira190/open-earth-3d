@@ -190,7 +190,7 @@ machiya, mixed (Japanese mixed use with signs), stone, haussmann or grachtenpand
 |---|---|
 | Curtain wall when `facade_material` is glass, an office is 40 m or taller (85%), or anything is 80 m or taller | Research synthesis |
 | Heritage for churches, civic buildings and stations up to 50 m: round-headed windows, string courses, a rusticated base | Sydney sandstone civic buildings |
-| Storey height from the floor count and wall height, capped by style. Above the top floor the rest of the wall is attic or parapet, because a residential floor-count height includes 2.8 m of roof | `storey` model in `city.json` |
+| Storey height from the floor count and wall height, capped by style. Above the top floor the rest of the wall is attic or parapet, because a residential floor-count height includes 2.8 m of roof. One floor on a wall taller than two of the style's tallest storeys is a register counting a whole block as one storey (Paris has about 1,600 at 15–30 m): its storeys are counted from the style's height instead (`typology.storeys`, and `buildings.js` for files built before) | `storey` model in `city.json` |
 | A taller ground floor (+1.1 m) with a shopfront on edges that face a road within 14 m. Flats and unclassed buildings get shopfronts only on main streets | Overture road segments |
 | Awnings over 80% of Sydney's shopfronts; the street pent roof (hisashi) on machiya | City of Sydney, Kyoto machiya guidance |
 | A precinct wall (`pipeline/walls.py`, a step after `game_data.py`): one unnamed solid of no use class, at most 3.5 m thick on average and at least 80 m long, with no mapped footway along it, is drawn in the `wall` style: no windows or storeys, a stone plinth, plaster stained under its coping. An estimated height becomes a wall's (`walls.height_m`, 4 m); a measured one up to 6 m stands. With `walls.coping: "kawara"` it gets a hipped coping of glazed tiles over a 0.35 m overhang, and inside a `walls.lines` box the white lines of a suji-bei (five round the Kyoto Gosho and Sento Gosho) | OpenStreetMap, PLATEAU; Kyoto Gyoen notices (five lines, stone plinth); Sanjusangen-do's Taiko-bei, 5.3 m |
@@ -230,7 +230,7 @@ Osaka have built-in adjustments:
 | Roofs | Hipped houses and semis, gabled terraces, tile, metal or slate | Gabled houses, kawara or sheet metal, flat from 3–4 floors |
 | Walls | Painted stucco and sandstock brick (terraces); red face brick and roughcast (Federation); liver and cream brick (flats); precast (offices); sandstone | Ceramic siding (over 80% of new houses); tile and painted concrete; low chroma under the Tokyo and Kyoto colour rules |
 | Grids | Metric bays, 2.8–3.6 m | The 910 mm module: sliding units of 1,690 mm on 1,820 mm bays; machiya fronts of three 1.97 m bays |
-| Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, backlit at night |
+| Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, lettered (a line of characters across a panel, a column down a corner sign; dark on a light sign, white on a dark one) and backlit at night |
 | City adjustments | | Kyoto: machiya, signs at 0.35 (no rooftop or flashing signs by ordinance). Osaka: signs at 1.4 |
 
 **Paris** (`paris`, country FR) measures its roofs instead of drawing them. IGN's
@@ -242,7 +242,8 @@ region's own rules:
 - roofs flush behind the cornice, ridges along the street, standing-seam zinc;
 - a `haussmann` facade style for stone blocks of four to eight floors: ashlar
   courses, a rusticated base under a shop and its entresol, balconies along the
-  second and top floors, railings across the other French windows, a cornice;
+  second and top floors, railings across the other French windows (wrought iron:
+  a handrail, a bottom rail, balusters and a band of lattice), a cornice;
 - dormers on the street side of mansards and tall attics, and chimney stacks on
   the party walls (rooftop kinds 3 and 4, with an absolute base);
 - limestone palettes, and awnings over 45% of shopfronts.
@@ -289,6 +290,14 @@ Sources for these numbers:
 - **`p`:** rooftop plant.
 
 Old files without these fields still render: styles are guessed from class and height, and roofs stay flat.
+`buildings.js` knows the fields by the name `build_scene.py` gives the first of them,
+`style (index in styles)`. Until issue #46 it looked for `style` alone, so every city
+was drawn from the guess: no machiya, Haussmann, canal house or mixed-use front, and
+every pitched roof plain. The before/after stills of that fix are in
+[images/facade-styles/](images/facade-styles/); `tools/style_shots.sh` takes them
+(each city's opening view and a street view of its most characteristic styles, at
+day, dusk and night, on a desktop and a phone, from `tools/style_views.py`) and
+`tools/style_compare.py` lays two runs side by side.
 
 The integrated build, every city rebuilt (mesh and build time in headless Chrome
 on a CPU, SwiftShader):
