@@ -217,6 +217,23 @@ follows the date the register keeps.
 
   The stages' proportions come from photographs. A tower inside its church's
   footprint is centred under the 3DBAG's highest tiers.
+- **The Rijksmuseum** (P. J. H. Cuypers, 1885; 135.54 m long, towers 52.90 m,
+  nl.wikipedia "Rijksmuseumgebouw"). Its 46 measured 3DBAG solids drew as white
+  walls under pink roofs; a landmark now draws them, and hides them (they stay
+  in the surface model):
+  - red brick in courses banded with sandstone over a granite plinth (the
+    soubasement is Ourthe granite), rows of arched windows on every outer wall;
+  - the 3DBAG's measured roofs in slate, glass over the two courtyards, gilt
+    finials on the towers (`archkit.measured_roofs`);
+  - the passage through the central wing, its axis between the central towers'
+    solids on each front: a vaulted tunnel 10 m wide and 10 m high with
+    sandstone ribs, a great arch at each end with a blind arch either side, the
+    red cycle path between granite footways; the ground there is not drawn
+    (`clip`), since it is the bare earth under the building.
+
+  The storeys' bands and windows and the passage's section are taken from
+  photographs (Wikimedia Commons, "Rijksmuseum in Amsterdam.jpg"). The game
+  cannot walk the passage yet: its ground still comes from the surface model.
 - **Bridges.** OpenStreetMap outlines 225 bridges over the canals, the Amstel and
   the IJ. Each is built on its outline:
   - a deck from bank to bank at the measured ground of the two banks;
