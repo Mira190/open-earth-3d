@@ -3,8 +3,11 @@
 // Boot: the stars come up first, with a counter and the name of each file as it loads
 // (the Earth's textures are a few megabytes). Then it starts on its own, without sound,
 // since browsers allow sound only after a click or a key; a Sound button brings the score in
-// where the shot has got to. The cold open runs about nine seconds. The camera crosses the
-// real night side of the Earth, low over the brightest stretch of city lights that the
+// where the shot has got to. While the textures load the Earth is a pale dot in front of the
+// Milky Way's core, some 250,000 km out. Then the camera falls towards it, the sky wheeling
+// round as it lines up on the night side, and pitches up out of the dive onto the horizon:
+// one unbroken move from deep space to low orbit, about five seconds. The cold open then runs
+// about nine seconds more. The camera crosses the real night side of the Earth, low over the brightest stretch of city lights that the
 // terminator is about to reach: dawn's, or dusk's when the night before dawn is open ocean.
 // It runs towards the real sun until the sun clears the limb: a riser, then a hit, a flare,
 // and the title. Then the camera pulls back to the whole planet and the menu comes in. Any
@@ -186,6 +189,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   const Y = new V3(0, 1, 0);
   const arc = (Sd, P, th, out = new V3()) => out.copy(Sd).multiplyScalar(Math.cos(th * RAD)).addScaledVector(P, Math.sin(th * RAD));
   const T_RISE = 4.0, V_ARC = 2.1, TAU = 0.9, R0 = 1.165;
+  // the fall from deep space: from T_IN seconds before the night pass starts, done T_JOIN after
+  const T_IN = 4.8, T_JOIN = 1.0, BOOT_R = 40;
   const ramp = t => t - TAU * (1 - Math.exp(-t / TAU)); // starts still, settles to full speed
   let plan = null;
   // The camera's path is a great circle through the sun's direction; P is where it crosses the
@@ -242,24 +247,65 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     out.fov = lerp(40, 37, smooth(t / 8));
     return out;
   }
+  // deep space while the textures load: the Earth a dot in front of the Milky Way's core, the
+  // frame turning slowly round it
+  function bootPose(t, out = pose) {
+    const core = E.ll(-29, 266.4 - E.gmst(Date.now()), 1);
+    out.pos.copy(core).multiplyScalar(-BOOT_R);
+    out.look.set(0, 0, 0);
+    out.up.set(0, 1, 0).applyAxisAngle(core, t * 0.01);
+    out.fov = 46;
+    return out;
+  }
+  // the fall from the boot shot onto the night pass, t seconds after Enter (from -T_IN): the
+  // distance falls geometrically, so the Earth grows at an even rate rather than all at the end;
+  // the camera swings round onto the night side while it is still far out, the frame rolling
+  // towards the coming heading, and then pitches up out of the dive onto the horizon
+  const _night = { pos: new V3(), look: new V3(), up: new V3(), fov: 0 };
+  const _qa = new THREE.Quaternion(), _qb = new THREE.Quaternion(), _qt = new THREE.Quaternion(), _m4 = new THREE.Matrix4(), O = new V3();
+  function approachPose(t, out = pose) {
+    const from = plan.from, to = nightPose(t, _night);
+    const s = span(t, -T_IN, T_JOIN);
+    const r0 = from.pos.length(), r1 = to.pos.length();
+    const da = from.pos.clone().normalize(), db = to.pos.clone().normalize();
+    const axis = new V3().crossVectors(da, db);
+    if (axis.lengthSq() > 1e-10) _qt.setFromAxisAngle(axis.normalize(), da.angleTo(db) * smooth(span(s, 0, 0.62))); else _qt.identity();
+    const dir = da.applyQuaternion(_qt);
+    out.pos.copy(dir).multiplyScalar(r0 * Math.pow(r1 / r0, smooth(s)));
+    // looking at the centre: the boot's up carried round with the camera, turned to the heading
+    const fwd = to.look.clone().sub(to.pos).normalize(), view = dir.clone().negate();
+    const upA = from.up.clone().applyQuaternion(_qt), head = fwd.clone().addScaledVector(view, -fwd.dot(view));
+    if (head.lengthSq() > 1e-6) upA.lerp(head.normalize(), smooth(span(s, 0.2, 0.62)));
+    if (upA.lengthSq() < 1e-6) upA.copy(head);
+    _qa.setFromRotationMatrix(_m4.lookAt(out.pos, O, upA));
+    _qb.setFromRotationMatrix(_m4.lookAt(out.pos, fwd.clone().add(out.pos), to.up));
+    _qa.slerp(_qb, smooth(span(s, 0.55, 1)));
+    out.look.set(0, 0, -1).applyQuaternion(_qa).add(out.pos);
+    out.up.set(0, 1, 0).applyQuaternion(_qa);
+    out.fov = lerp(from.fov, to.fov, smooth(s));
+    return out;
+  }
   // the pull-back from the sunrise to the menu's orbit, over d seconds from time a
   const PULL_A = T_RISE + 2.5, PULL_D = 4.4;
   const _a = { pos: new V3(), look: new V3(), up: new V3(), fov: 0 }, _b = { pos: new V3(), look: new V3(), up: new V3(), fov: 0 };
-  function blendPose(a, b, k, out = pose) {
+  // far: the radius falls geometrically (from deep space), and the swing round is done early
+  function blendPose(a, b, k, out = pose, far = false) {
     const ra = a.pos.length(), rb = b.pos.length();
     const da = a.pos.clone().normalize(), db = b.pos.clone().normalize();
-    const kd = smooth(k), kr = smooth(span(k, 0.0, 0.9));
+    const kd = smooth(far ? span(k, 0, 0.65) : k), kr = smooth(span(k, 0.0, far ? 1 : 0.9));
     const ang = da.angleTo(db), axis = new V3().crossVectors(da, db);
     const dir = axis.lengthSq() > 1e-10 ? da.clone().applyAxisAngle(axis.normalize(), ang * kd) : da.clone();
-    out.pos.copy(dir).multiplyScalar(lerp(ra, rb, kr));
+    out.pos.copy(dir).multiplyScalar(far ? ra * Math.pow(rb / ra, kr) : lerp(ra, rb, kr));
     // the look moves from a point on the shot's line of sight, as far off as the horizon, to the
     // orbit's target, so whatever the shot framed stays in frame as the camera pulls away
     const reach = Math.sqrt(Math.max(0.05, ra * ra - 1));
     const pa = a.look.clone().sub(a.pos).normalize().multiplyScalar(reach).add(a.pos);
     const kl = smooth(span(k, 0.0, 0.7));
     out.look.copy(pa).lerp(b.look, kl);
-    out.up.copy(a.up).multiplyScalar(1 - kd).addScaledVector(b.up, kd).normalize();
-    out.fov = lerp(a.fov, b.fov, kd);
+    out.up.copy(a.up).multiplyScalar(1 - kd).addScaledVector(b.up, kd);
+    if (out.up.lengthSq() < 1e-6) out.up.copy(b.up);
+    out.up.normalize();
+    out.fov = lerp(a.fov, b.fov, far ? kr : kd);
     return out;
   }
   function menuStart() {
@@ -322,7 +368,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     });
     subEl.style.opacity = smooth(span(t, a + 0.7, a + 2.1)).toFixed(3);
     tallyEl.style.opacity = smooth(span(t, a + 1.6, a + 3.0)).toFixed(3);
-    barsEl.style.setProperty('--bar', (smooth(span(t, 0, 1.6)) * (1 - smooth(span(t, PULL_A + 1.3, PULL_A + 2.9)))).toFixed(4));
+    barsEl.style.setProperty('--bar', (smooth(span(t, -1.6, 0.4)) * (1 - smooth(span(t, PULL_A + 1.3, PULL_A + 2.9)))).toFixed(4));
     capsEl.style.setProperty('--caps', (1 - smooth(span(t, PULL_A + 0.4, PULL_A + 1.4))).toFixed(3));
   }
   const lensBase = { exposure: 1, bloom: 0.22 };
@@ -338,7 +384,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
 
   function begin(withSound) {
     if (state !== 'gate') return;
-    store.set('oe3d-title', '1', true);
+    store.set('oe3d-title', String(Date.now()), true);
     store.set('oe3d-sound', withSound ? 'on' : 'off');
     soundOn = withSound && A.start(true); // without sound, no audio context until the visitor asks for one
     setSoundUi();
@@ -346,13 +392,14 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     menuStart();
     plan.nadir = E.latlon(arc(plan.S, plan.P, plan.thHold));
     plan.dawn = E.latlon(plan.P);
+    plan.from = bootPose(clock() - bootAt, { pos: new V3(), look: new V3(), up: new V3(), fov: 0 });
     app.classList.add('started', 'opening');
     $('ts-hear').hidden = false;
-    tBegin = clock();
-    const at = A.now();
-    if (soundOn && !reduced) { A.drone(2.2); A.riser(at + T_RISE, 3.2); A.hit(at + T_RISE + 0.03); }
+    tBegin = clock() + T_IN; // the sequence's clock: the fall runs from -T_IN, the night pass from 0
+    const at = A.now() + T_IN;
+    if (soundOn && !reduced) { A.drone(2.2 + T_IN); A.riser(at + T_RISE, 3.2); A.hit(at + T_RISE + 0.03); }
     const d = new Date();
-    cue(0.2, () => decode($('ts-cap1'), `Live · ${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} · ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`, 800));
+    cue(-T_IN + 0.5, () => decode($('ts-cap1'), `Live · ${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} · ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`, 800));
     const nd = plan.nadir, wait = plan.dusk ? minutesSinceSunset(nd.lat, nd.lon, Date.now()) : minutesToSunrise(nd.lat, nd.lon, Date.now());
     const when = wait == null ? '' : plan.dusk ? ` · sunset ${hm(wait)} ago` : ` · sunrise in ${hm(wait)}`;
     cue(1.3, () => decode($('ts-cap2'), `Night below · ${fmtLat(nd.lat)} ${fmtLon(nd.lon)}${when}`, 1100));
@@ -369,13 +416,13 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     titleFx(PULL_A + 4);
     if (soundOn && clock() - tBegin < T_RISE) { A.stop(0.15); after(200, () => { if (!running) return; A.start(true); A.pad(); }); }
     const from = { pos: cam.position.clone(), look: cam.position.clone().add(cam.getWorldDirection(new V3())), up: cam.up.clone(), fov: cam.fov };
-    transition(from, reduced ? 0 : 1.4);
+    transition(from, reduced ? 0 : from.pos.length() > 6 ? 2.4 : 1.4, from.pos.length() > 6); // skipped while still far out: on in, not a lurch
     state = 'menu';
     app.classList.remove('opening');
   }
   // a short blend from a pose into the orbit
   let trans = null;
-  function transition(fromPose, dur) { trans = { from: fromPose, t0: clock(), dur }; }
+  function transition(fromPose, dur, far = false) { trans = { from: fromPose, t0: clock(), dur, far }; }
 
   function showMenu() {
     app.classList.add('menu');
@@ -700,25 +747,17 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     lastT = now;
     const L = earth.lens;
     if (state === 'boot' || state === 'gate') {
-      if (plan) {
-        // waiting at the gate: the camera holds over the dark, drifting along the dawn line
-        if (!reduced) plan.P.applyAxisAngle(plan.S, -dt * 0.06 * RAD);
-        apply(nightPose(0, pose));
-        earth.ready.value = Math.min(1, earth.ready.value + dt * 0.5);
-        earth.earth.uLights.value = 3.6;
-      } else {
-        // the stars come up while the earth loads: the Milky Way's core, turning slowly
-        const t = now - bootAt;
-        const look = E.ll(-29, 266.4 - E.gmst(Date.now()), 1);
-        apply({ pos: look.clone().multiplyScalar(-40), look: look.clone().multiplyScalar(-39), up: new V3(0, 1, 0).applyAxisAngle(look, t * 0.01), fov: 46 });
-      }
+      // the stars come up while the earth loads: a pale dot before the Milky Way's core
+      apply(bootPose(now - bootAt, pose));
+      if (plan) { earth.ready.value = Math.min(1, earth.ready.value + dt * 0.5); earth.earth.uLights.value = 3.6; }
       L.uExposure.value = NIGHT_EXP;
       L.uFade.value = Math.min(1, L.uFade.value + dt * 0.45);
     } else if (state === 'open') {
       const t = frozen != null ? frozen.t : now - tBegin;
       for (const c of cues) if (!c.done && t >= c.t) { c.done = true; c.fn(); }
       titleFx(t);
-      if (t < PULL_A) apply(nightPose(t, pose));
+      if (t < T_JOIN) apply(approachPose(t, pose));
+      else if (t < PULL_A) apply(nightPose(t, pose));
       else {
         nightPose(t, _a);
         orbitPose(orb, _b);
@@ -727,15 +766,22 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
         shift.y = shift.ty * smooth(span(t, PULL_A + 0.5, PULL_A + PULL_D));
         applyShift();
       }
+      // the height above the ground, counting down through the fall until the night's caption takes the line
+      if (t > -T_IN + 1.0 && t < 1.3) $('ts-cap2').textContent = `Altitude · ${fmtN(Math.round((cam.position.length() - 1) * 637.1) * 10)} km`;
       // the eye: open for the night, stopped down as the sun arrives, a burst of glare at the hit
       // the eye stops down as the glow grows, before the sun is out, so it arrives soft, not blown
       const rise = span(t, T_RISE - 1.4, T_RISE + 1.2);
       L.uExposure.value = lerp(NIGHT_EXP, 0.92, smooth(rise)) * (t > PULL_A ? lerp(1, menuExposure() / 0.92, smooth(span(t, PULL_A, PULL_A + PULL_D))) : 1);
+      if (t < T_JOIN) {
+        // falling in: stopped down for the sunlit disc as it grows, open again for the night
+        const s = span(t, -T_IN, T_JOIN);
+        L.uExposure.value = lerp(lerp(NIGHT_EXP, menuExposure(), smooth(span(s, 0, 0.3))), NIGHT_EXP, smooth(span(s, 0.5, 0.92)));
+      }
       earth.bloom.strength = lensBase.bloom + 0.1 * Math.exp(-Math.pow((t - T_RISE - 0.3) / 0.7, 2));
       earth.earth.uLights.value = lerp(3.6, 3.4, smooth(span(t, PULL_A, PULL_A + PULL_D)));
       L.uFlash.value = 0;
       L.uFade.value = Math.min(1, L.uFade.value + dt * 0.8);
-      earth.ready.value = 1;
+      earth.ready.value = Math.min(1, earth.ready.value + dt * 0.8);
     } else if (state === 'menu') {
       // the orbit: damped towards its targets, with inertia after a drag and a slow drift when idle
       if (!drag) {
@@ -749,7 +795,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       orbitPose(orb, _b);
       if (trans) {
         const k = trans.dur ? clamp((now - trans.t0) / trans.dur) : 1;
-        apply(blendPose(trans.from, _b, k, pose));
+        apply(blendPose(trans.from, _b, k, pose, trans.far));
         if (k >= 1) trans = null;
       } else apply(_b);
       shift.x += (shift.tx - shift.x) * kk; shift.y += (shift.ty - shift.y) * kk;
@@ -824,7 +870,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   resize();
   earth.lens.uFade.value = 0;
   raf = requestAnimationFrame(frame);
-  const returning = !!store.get('oe3d-title', true);
+  // the opening seen in this tab in the last quarter of an hour: the short version
+  const seen = +store.get('oe3d-title', true) || 0, returning = seen > 0 && Date.now() - seen < 15 * 60e3;
   const back = from && dests.find(d => d.id === from || (d.sites && d.sites.some(c => c.id === from)));
   try { await earth.load(); } catch (e) { console.warn('title: textures', e); }
   if (!running) return api();
@@ -846,7 +893,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
   if (reduced || returning || back || mode === 'still') {
     // straight to the menu: from the city just left, or a pull-in from further out (over the
     // still picture there is no shot to film)
-    store.set('oe3d-title', '1', true);
+    if (!seen) store.set('oe3d-title', String(Date.now()), true);
+    const fromBoot = bootPose(clock() - bootAt, { pos: new V3(), look: new V3(), up: new V3(), fov: 0 });
     app.classList.add('started', 'menu');
     state = 'menu';
     menuStart();
@@ -856,7 +904,8 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       orb.lat = orb.tlat; orb.lon = orb.tlon;
       transition({ pos: E.ll(back.lat, back.lon, 1.02), look: new V3(), up: new V3(0, 1, 0), fov: 50 }, reduced ? 0 : 2.6);
     } else {
-      transition(orbitPose(Object.assign({}, orb, { dist: orb.dist * 1.9, lon: orb.lon + 25 })), reduced ? 0 : 3.2);
+      // from the dot in deep space, straight in to the globe without a cut
+      transition(fromBoot, reduced ? 0 : 3.6, true);
     }
     menuShownAt = clock();
     earth.ready.value = 1;
@@ -879,7 +928,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     dive(i, play) { dive(dests[i], play); },
     // draw one frame at time t after Enter, and stop the page drawing on its own
     still(t) { manual = true; cancelAnimationFrame(raf); this.hold(t); frame(true); },
-    timing: { T_RISE, PULL_A, PULL_D }, earth,
+    timing: { T_IN, T_RISE, PULL_A, PULL_D }, earth,
     // the opening's plan for another moment (for checks across the day), and what is being drawn
     plan(utcMs) { earth.setTime(utcMs); const p = planOpen(); earth.setTime(Date.now()); return { dusk: p.dusk, dawnScore: p.dawnScore, duskScore: p.duskScore, nadir: p.nadir, terminator: p.dawn }; },
     get picture() { return { mode, why, auto: tier.auto, chosen: tier.chosen, caps: Q.probe(), stats: earth.stats() }; },

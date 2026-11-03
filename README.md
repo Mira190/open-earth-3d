@@ -374,7 +374,8 @@ python analysis/heights.py --city sydney              # published heights vs mod
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
 python pipeline/open_sea.py --city sydney             # the open water past the frame (Overture, 40 km around)
-python pipeline/road_rules.py sydney                  # one-way streets, banned turns and traffic signals into a built game.json (after fetch_overture --only segment infrastructure)
+python pipeline/road_rules.py sydney                  # one-way streets, banned turns, traffic signals and crossings into a built game.json (after fetch_overture --only segment infrastructure)
+python pipeline/road_lanes.py sydney                  # OSM lane arrows and counts by way id into a built game.json (after fetch_overture --only segment)
 python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
 python pipeline/fetch_rocketbox.py                    # the surveyors and the NPCs (once; Microsoft Rocketbox, MIT)
 python blender/build_people.py --npcs                 # every NPC the cities' city.json name (pip install bpy==5.2.3)

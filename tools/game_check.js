@@ -410,6 +410,8 @@ const { pinClock } = require('./pin_clock');
         if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}`);
       }
       r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}, held ${(t.held || 0).toFixed(0)} s, ${t.why}${t.junction ? ` (the junction: ${t.junction})` : ''}${t.block ? ` behind ${t.block === player ? 'you' : mc && t.block.x === mc.D.st.x ? 'your car' : t.block.line != null ? `a car on line ${t.block.line} (stuck ${(t.block.stuck || 0).toFixed(0)} s, v ${(t.block.v || 0).toFixed(1)})` : 'something'} at ${Math.hypot(t.block.x - t.x, t.block.y - t.y).toFixed(1)} m${t.block.still ? ', still' : ''}` : ''}; ${ahead.join('; ') || 'nothing ahead'}`;
+      // (and what is in the junction it waits at: each car's way, what holds it, and for how long it has stood)
+      if (t.junction) { const JN = g.cars.junctions, near = JN.J.filter(j => Math.hypot(j.x - t.x, j.y - t.y) < 40 && j.active.length); r.why += near.map(j => `; junction ${j.id}${j.mid != null ? ' (a crossing)' : ''}: ` + j.active.map(o => `car ${g.cars.C.indexOf(o.c)} ${o.c.why}${o.c.heldBy ? ' by ' + o.c.heldBy : ''} v ${o.c.v.toFixed(1)} still ${(o.c.still || 0).toFixed(0)} s${o.forced ? ' over its line' : ''}`).join(', ')).join(''); }
     }
     g.skipRide();
     g.advance(6);
@@ -514,7 +516,7 @@ const { pinClock } = require('./pin_clock');
   const lights = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
-    const sig = JN.J.filter(j => j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
+    const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
     if (!sig.length) return { junctions: JN.J.length, signals: 0 };
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
@@ -527,6 +529,21 @@ const { pinClock } = require('./pin_clock');
     return { junctions: JN.J.length, signals: sig.length, heads: s1.heads, states: seen.size, red: s1.redRuns - s0.redRuns, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length,
       crossings: X ? X.byLine.count : 0, walkSignals: H.walks || 0, walkTurns: new Set(walks).size, arrows: s1.arrows, arrowHeads: H.arrows || 0, bans: s1.bans, two };
   });
+  // a crossing with signals between junctions: a walker's call brings the walk, the traffic held at red, and the traffic's green back
+  const mid = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions;
+    const M = JN ? JN.J.filter(j => j.mid != null && j.sig).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y)) : [];
+    if (!M.length) return { none: true, zebras: JN ? JN.stats().zebras : 0 };
+    const j = M[0], a = j.arms[0], s0 = A.stats(), seen = [];
+    for (let t = 0; t < 60; t++) { JN.call(a); g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (!seen.length || seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
+    for (let t = 0; t < 30; t++) { g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
+    const X = g.crowd.crossings, walkers = X ? [...X.byLine.values()].flat().filter(x => x.a.j.mid != null).length : 0;
+    return { n: M.length, zebras: JN.stats().zebras, seen: seen.join(' '), red: A.stats().redRuns - s0.redRuns, walkers, log: (A.stats().redLog || []).slice(-3).join('; ') };
+  });
+  if (!mid.none) {
+    check(/rW.* g/.test(mid.seen) && !/gW/.test(mid.seen), `a crossing with signals between junctions gives the walk on a call and the traffic its green after (${mid.seen}; ${mid.n} such crossings, ${mid.zebras} zebras)`);
+    check(mid.walkers > 0 && !mid.red, `the crowd's footways cross there (${mid.walkers}) and no car runs its red (${mid.red}${mid.red ? ': ' + mid.log : ''})`);
+  }
   if (lights.none) check(false, 'the traffic has junctions');
   else {
     check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);
