@@ -122,8 +122,8 @@
    5.0
   ],
   "load_bytes": {
-   "model": 33866816,
-   "game": 36867212
+   "model": 33866916,
+   "game": 36867312
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -1344,8 +1344,8 @@
    3.1
   ],
   "load_bytes": {
-   "model": 11449988,
-   "game": 14272792
+   "model": 13289323,
+   "game": 16121841
   },
   "group_meta": {
    "native": "\u6771\u4eac",

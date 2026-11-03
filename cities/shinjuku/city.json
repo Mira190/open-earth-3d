@@ -64,7 +64,34 @@
       "elm": 0.6,
       "plane": 0.4
     },
-    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey."
+    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey. Japanese maples (momiji) stand round Shinjuku Gyoen's Japanese garden and on its Momiji-yama by the lower pond (the garden's map), red from mid November.",
+    "areas": [
+      {
+        "name": "Shinjuku Gyoen's Japanese garden",
+        "at": [
+          1030.0,
+          1810.0
+        ],
+        "radius": 160,
+        "mix": {
+          "maple": 0.22,
+          "elm": 0.5,
+          "plane": 0.28
+        }
+      },
+      {
+        "name": "Shinjuku Gyoen's Momiji-yama",
+        "at": [
+          1430.0,
+          1565.0
+        ],
+        "radius": 70,
+        "mix": {
+          "maple": 0.55,
+          "elm": 0.45
+        }
+      }
+    ]
   },
   "storey": {
     "res": [
@@ -515,7 +542,35 @@
           2230.0
         ],
         "radius": 180,
-        "note": "Shinjuku Gyoen's north gate"
+        "note": "Shinjuku Gyoen: the shelter by the pond, in The Garden of Words"
+      },
+      {
+        "name": "四ツ谷",
+        "kana": "よつや",
+        "romaji": "Yotsuya",
+        "band": "#f15a22",
+        "left": "市ケ谷",
+        "right": "信濃町",
+        "at": [
+          3088.0,
+          1900.0
+        ],
+        "radius": 220,
+        "note": "The outer moat and Sophia University, in Your Name"
+      },
+      {
+        "name": "参宮橋",
+        "kana": "さんぐうばし",
+        "romaji": "Sangūbashi",
+        "band": "#2288cc",
+        "left": "南新宿",
+        "right": "代々木八幡",
+        "at": [
+          -255.9,
+          1136.3
+        ],
+        "radius": 150,
+        "note": "The Odakyu line's little station, in 5 Centimeters per Second"
       }
     ],
     "travel": [
@@ -566,6 +621,33 @@
           2471.6,
           477.4
         ]
+      },
+      {
+        "id": "t-gyoen",
+        "name": "Shinjuku Gyoen: the shelter by the pond 東屋",
+        "at": [
+          1066.0,
+          1791.0
+        ],
+        "check": true
+      },
+      {
+        "id": "t-shinano",
+        "name": "Shinanomachi: the footbridge 歩道橋",
+        "at": [
+          2083.0,
+          1231.0
+        ],
+        "check": true
+      },
+      {
+        "id": "t-yotsuya",
+        "name": "Yotsuya Station 四ツ谷駅",
+        "at": [
+          3058.0,
+          1910.0
+        ],
+        "check": true
       }
     ],
     "npcs": [
@@ -716,6 +798,82 @@
           "Touts are not allowed to follow you. If one does, come to the koban.",
           "The arch went red in 1969. It's been red ever since."
         ]
+      },
+      {
+        "id": "kaede",
+        "name": "Kaede 楓",
+        "role": "Garden volunteer, Shinjuku Gyoen 御苑ボランティア",
+        "at": [
+          1069.0,
+          1788.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_09_f011_grey",
+          "skin": "#f1d2bd",
+          "hair": "#8a8580",
+          "top": "#5d6b4c",
+          "legs": "#3a3a3a",
+          "shirt": "#5d6b4c",
+          "pants": "#3a3a3a",
+          "clip": "Present"
+        },
+        "idle": [
+          "Twelve years I've walked this garden, and the pond is never the same twice.",
+          "{time} in Shinjuku Gyoen. {sun_line}"
+        ]
+      },
+      {
+        "id": "kenji",
+        "name": "Kenji 健二",
+        "role": "Photographer, Shinanomachi 写真家",
+        "at": [
+          2106.0,
+          1224.5,
+          39.9
+        ],
+        "look": {
+          "character": "R_Male_Adult_05_m024",
+          "skin": "#e9c4a6",
+          "hair": "#16120f",
+          "top": "#2e3440",
+          "legs": "#3b3f46",
+          "shirt": "#2e3440",
+          "pants": "#3b3f46",
+          "clip": "Photo",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Same bridge every week. The light's never the same.",
+          "Look up the street: the clock on the Docomo tower."
+        ]
+      },
+      {
+        "id": "haruka",
+        "name": "Haruka 遥",
+        "role": "Student, Sophia University 上智大生",
+        "at": [
+          3058.0,
+          1905.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_17_f011",
+          "skin": "#f3d3c0",
+          "hair": "#2a1d16",
+          "top": "#b8c4d6",
+          "legs": "#2b2f3a",
+          "shirt": "#b8c4d6",
+          "pants": "#2b2f3a",
+          "clip": "Phone",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Lectures across the road, the moat's bank for lunch.",
+          "Yotsuya at {time}. {sun_line}"
+        ]
       }
     ],
     "lines": [
@@ -745,12 +903,20 @@
         ]
       },
       {
+        "id": "shinkai",
+        "title": "Shinkai's Shinjuku",
+        "after": [
+          "start"
+        ]
+      },
+      {
         "id": "finale",
         "title": "Report back",
         "after": [
           "shinjuku",
           "suga",
-          "aoyama"
+          "aoyama",
+          "shinkai"
         ],
         "on_open": "<b>Every walk done.</b> Report back to Nao at the east exit."
       }
@@ -906,6 +1072,133 @@
             ],
             "radius": 45,
             "text": "Walk the ginkgo avenue at Jingu Gaien"
+          }
+        ]
+      },
+      {
+        "id": "gyoen",
+        "line": "shinkai",
+        "giver": "kaede",
+        "title": "The Garden of Words",
+        "stamp": "東屋",
+        "talk": [
+          "Welcome to Shinjuku Gyoen. I've volunteered in this garden for twelve years.",
+          "A film made this Japanese garden famous in 2013: two strangers keep meeting in the shelter by the pond on rainy mornings. The shelter is real, and so is the rain: tsuyu, the rainy season, runs from early June to mid July.",
+          "Sit in the shelter and look at the water. Then take the path under the wisteria trellis to the Kyu-Goryotei, the pavilion Taiwan's Japanese residents gave in 1927. The maples go red at the end of November."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              1051.9,
+              1810.4
+            ],
+            "radius": 2.6,
+            "text": "Sit in the shelter by the pond"
+          },
+          {
+            "type": "visit",
+            "at": [
+              1074.9,
+              1793.9
+            ],
+            "radius": 4.5,
+            "text": "Walk under the wisteria trellis"
+          },
+          {
+            "type": "visit",
+            "at": [
+              1111.0,
+              1781.0
+            ],
+            "radius": 9,
+            "text": "Stand on the Kyu-Goryotei's side of the pond"
+          },
+          {
+            "type": "talk",
+            "npc": "kenji",
+            "text": "Meet Kenji on the Shinanomachi footbridge"
+          }
+        ],
+        "check": true
+      },
+      {
+        "id": "shinano",
+        "line": "shinkai",
+        "giver": "kenji",
+        "title": "Shinanomachi",
+        "stamp": "歩道橋",
+        "talk": [
+          "You found it. Your Name draws its Tokyo from real streets, and this footbridge outside Shinanomachi Station is one of them.",
+          "Look north-west, over the tracks and up the street: the Docomo tower's clock, {landmark:docomo.clock_d_m} metres across.",
+          "The film's Tokyo goes on to Yotsuya, one stop east. Haruka studies at Sophia University there; she'll show you the moat."
+        ],
+        "steps": [
+          {
+            "type": "surface",
+            "surface": "Shinanomachi footbridge 1",
+            "u": [
+              3.0,
+              29.0
+            ],
+            "text": "Stand on the footbridge and look up the street"
+          },
+          {
+            "type": "talk",
+            "npc": "haruka",
+            "text": "Meet Haruka by Yotsuya Station"
+          }
+        ],
+        "check": true
+      },
+      {
+        "id": "yotsuya",
+        "line": "shinkai",
+        "giver": "haruka",
+        "title": "Yotsuya",
+        "stamp": "四ツ谷",
+        "check": true,
+        "talk": [
+          "Yotsuya Station sits in the old outer moat of Edo Castle. The trains run along the bottom of it; Sophia's sports ground is the drained moat next door.",
+          "The film's commuter town is this one: the station, the bank above the tracks, the streets down to Shinanomachi. Walk the bank, then the bridge over the tracks.",
+          "Two more, further west. Yoyogi Kaikan stood by Yoyogi Station's west exit, an old block Weathering with You gave a rooftop shrine; it was pulled down from August 2019 and an office building stands there now. And past it, Sangubashi on the Odakyu line, the little station of 5 Centimeters per Second."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              3150.0,
+              1640.0
+            ],
+            "radius": 40,
+            "text": "Walk the moat's bank by Sophia University"
+          },
+          {
+            "type": "visit",
+            "at": [
+              3088.2,
+              1946.1
+            ],
+            "radius": 30,
+            "text": "Cross over the tracks at Yotsuya Station"
+          },
+          {
+            "type": "visit",
+            "at": [
+              477.9,
+              1699.7
+            ],
+            "radius": 22,
+            "text": "Stand where Yoyogi Kaikan stood, by Yoyogi Station's west exit"
+          },
+          {
+            "type": "visit",
+            "at": [
+              -255.9,
+              1136.3
+            ],
+            "radius": 25,
+            "text": "Find Sangubashi Station on the Odakyu line"
           }
         ]
       },

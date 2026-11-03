@@ -3,7 +3,7 @@
  "counts": {
   "prior:gabled": 6754,
   "prior:flat": 4029,
-  "prior:hipped": 3989,
+  "prior:hipped": 3988,
   "rule:flat": 11646,
   "fallback_flat": 87,
   "too_low": 294,
@@ -43,7 +43,7 @@
    "gambrel": 1
   }
  },
- "roofs_built": 13212,
+ "roofs_built": 13211,
  "rooftop_props": 6442,
  "frontage_solids": 3535,
  "skeleton_failures": {

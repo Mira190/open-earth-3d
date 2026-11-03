@@ -1,8 +1,9 @@
 """Build the street and park trees every city shares: web/assets/trees/trees.glb and
 trees.json.
 
-Six species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda and Canary
-Island date palm. Each is grown, not sculpted: points are scattered through the shell of
+Seven species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
+Island date palm and Japanese maple (momiji, red in autumn: web/trees.js). Each is grown,
+not sculpted: points are scattered through the shell of
 the species' crown shape, clustered into limbs and twigs, and branches are grown from the
 trunk out to each cluster; every point carries a card with a spray of leaves from a leaf
 atlas drawn here too. Each tree comes in three levels of detail: the full tree, a sparse
@@ -37,7 +38,7 @@ DOCS = os.path.join(ROOT, "docs", "images", "trees")
 # ------------------------------------------------------------ the leaf atlas
 # 4 x 2 cells, each a spray of leaves growing up from the middle of its bottom edge
 ATLAS, CW, CH = 1024, 256, 512
-CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6}
+CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7}
 
 
 def cell_uv(k):
@@ -69,6 +70,14 @@ def leaf_poly(kind, L, Wd, rng):
         if rng.random() < 0.5:      # serrated edge
             up = [(x, y * (1 + 0.08 * (i % 2))) for i, (x, y) in enumerate(up)]
         return up + lo[::-1]
+    if kind == "maple":     # Acer palmatum: seven narrow pointed lobes, cut deep, from the stalk end
+        pts = []
+        R = L / 2
+        for a in np.linspace(-0.95 * math.pi, 0.95 * math.pi, 70):
+            lobe = abs(math.cos(3.5 * a)) ** 3
+            r = R * (0.34 + 0.66 * lobe) * (1 - 0.3 * abs(a) / math.pi)
+            pts.append((R * 0.8 + r * math.cos(a), r * math.sin(a)))
+        return pts
     # palmate (plane): five pointed lobes round the stalk end
     pts = []
     R = L / 2
@@ -147,6 +156,8 @@ SPRAYS = {
                       twig="#5a4a3a", twig_w=2, taper=True),
     "bloom": dict(leaf="flower", L=0, W=0, twigs=8, spread=0.9, every=2, angle=(0.6, 1.2), colours=["#8e6bc4", "#a184d6", "#7a5ab2", "#9a78cc"],
                   twig="#5a4a3a", twig_w=2, fill=0.95),
+    "maple": dict(leaf="maple", L=46, W=46, twigs=8, spread=0.85, every=2, angle=(0.6, 1.2), droop=0.3,
+                  colours=["#7aa646", "#86b24e", "#6c9a3e", "#93ba58"], twig="#6b3b2c", twig_w=2, fill=0.8),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
 }
@@ -197,6 +208,9 @@ SPECIES = {
                       note="Jacaranda: purple in late spring (cards swap to the bloom cell with the season)"),
     "palm": dict(H=11.0, trunk=8.2, r0=0.42, crown=("palm", 9.0, 4.2, 2.6), n=26, size=5.6, leaf="palm",
                  bark="#86745c", lean=0.03, colour="#62803e", note="Canary Island date palm"),
+    "maple": dict(H=7.5, trunk=1.5, r0=0.2, crown=("umbrella", 4.7, 4.6, 2.5), n=300, size=2.2, n1=6, n2=4, leaf="maple",
+                  bark="#5b534a", lean=0.12, leader=False, colour="#628f3b", autumn_colour="#c2412b",
+                  note="Japanese maple (momiji, Acer palmatum): a low, wide, layered crown; red from mid November in Tokyo and Kyoto"),
 }
 
 
@@ -544,8 +558,9 @@ def build_all(atlas):
             tri.append(triangles(ob))
         info[name] = {"height_m": sp["H"], "crown": list(sp["crown"][1:]), "colour": sp["colour"], "bark": sp["bark"], "triangles": tri,
                       "note": sp["note"]}
-        if "bloom_colour" in sp:
-            info[name]["bloom_colour"] = sp["bloom_colour"]
+        for k_ in ("bloom_colour", "autumn_colour"):
+            if k_ in sp:
+                info[name][k_] = sp[k_]
     return objs, info
 
 
@@ -604,7 +619,7 @@ def main():
         for ob in objs.values():
             name, lod = ob.name.rsplit("_LOD", 1)
             ob.hide_render = lod != "0"
-            ob.location = (names.index(name) * 19.0 - 47, 0, 0)
+            ob.location = (names.index(name) * 16.0 - 8.0 * (len(names) - 1), 0, 0)
         os.makedirs(DOCS, exist_ok=True)
         setup_render(a.samples, (1600, 900), sun=(34, 150), strength=0.6)
         ground_plane("Ground", 400, material("Grass", "#4d5a33", 0.95))

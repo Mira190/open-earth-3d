@@ -835,11 +835,18 @@ window.OERoute = (function () {
 
   // ------------------------------------------------------------ the gold line
   // A band laid on the ground (on foot, by car, on the water) or hung in the air turned to the
-  // camera (flying), with chevrons running the way to go. It keeps a couple of pixels wide far
-  // off, and the stretch behind you is gone: follow() moves its start to where you are.
+  // camera (flying), with chevrons drifting the way to go. It is kept quiet: a thin, soft band that
+  // fades in a few metres ahead of you and out with distance (a hint of where to go, not a stripe
+  // painted on the city), dimmer and warmer at night so it sits in the grade as the street lights
+  // do. The stretch behind you is gone: follow() moves its start to where you are. fade(k, dt)
+  // eases it in and out (the player's setting, a menu or a conversation open), and the mesh is
+  // hidden once it has faded away.
+  const THIN = 0.62; // the band's width, against the widths the planner asks for
   function line(world, color) {
-    const U = { uHead: { value: 0 }, uLen: { value: 1 }, uTime: { value: 0 }, uWidth: { value: 0.8 }, uFlat: { value: 1 }, uMin: { value: 0.003 },
-      uRim: { value: new THREE.Color('#7a4304') }, uHi: { value: new THREE.Color('#fff3cf') } }; // a dark amber edge to stand out on pale stone, and the chevrons' cream
+    const U = { uHead: { value: 0 }, uLen: { value: 1 }, uTime: { value: 0 }, uWidth: { value: 0.8 }, uFlat: { value: 1 }, uMin: { value: 0.002 },
+      uFade: { value: 0 }, uNight: { value: 0 }, uFar: { value: new THREE.Vector2(40, 320) },
+      uDusk: { value: new THREE.Color('#e38f24') }, // the night tint: a deeper, softer amber, as sodium light on stone
+      uRim: { value: new THREE.Color('#6b4210') }, uHi: { value: new THREE.Color('#fff1d2') } }; // a dark amber edge to hold on pale stone, and the chevrons' cream
     const mat = new THREE.MeshBasicMaterial({ color, transparent: true, depthWrite: false, side: THREE.DoubleSide,
       polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 });
     mat.onBeforeCompile = sh => {
@@ -853,15 +860,17 @@ nrm = length(nrm) > 1e-4 ? normalize(nrm) : vec3(1.0, 0.0, 0.0);
 transformed += nrm * aSide * max(uWidth, vDist * uMin) * 0.5;
 vS = aS; vSide = aSide;`);
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
-uniform float uHead, uLen, uTime; uniform vec3 uRim, uHi; varying float vS, vSide, vDist;`).replace('#include <color_fragment>', `#include <color_fragment>
+uniform float uHead, uLen, uTime, uFade, uNight; uniform vec2 uFar; uniform vec3 uRim, uHi, uDusk; varying float vS, vSide, vDist;`).replace('#include <color_fragment>', `#include <color_fragment>
 if (vS < uHead - 0.5) discard;
 float across = abs(vSide);
-float ch = fract((vS - uTime * 1.8) / 2.6 + across * 0.5);
-float chev = smoothstep(0.0, 0.06, ch) * (1.0 - smoothstep(0.30, 0.40, ch)) * (1.0 - smoothstep(50.0, 160.0, vDist));
-float rim = smoothstep(0.6, 0.8, across) * (1.0 - smoothstep(60.0, 200.0, vDist));
-diffuseColor.rgb = mix(mix(diffuseColor.rgb, uRim, rim * 0.8), uHi, chev * (1.0 - rim) * 0.8);
-diffuseColor.a *= (1.0 - smoothstep(0.88, 1.0, across)) * (0.78 + 0.22 * chev)
-  * smoothstep(uHead - 0.5, uHead + 5.0, vS) * (1.0 - smoothstep(uLen - 4.0, uLen, vS));`);
+float ch = fract((vS - uTime * 1.1) / 4.0 + across * 0.35);
+float chev = smoothstep(0.0, 0.08, ch) * (1.0 - smoothstep(0.24, 0.36, ch)) * (1.0 - smoothstep(30.0, 110.0, vDist));
+float rim = smoothstep(0.55, 0.85, across) * (1.0 - smoothstep(40.0, 160.0, vDist)) * (1.0 - uNight);
+vec3 base = mix(diffuseColor.rgb, uDusk * 0.8, uNight);
+diffuseColor.rgb = mix(mix(base, uRim, rim * 0.55), mix(uHi, uDusk * 1.2, uNight * 0.75), chev * (1.0 - rim) * 0.42);
+diffuseColor.a *= (1.0 - smoothstep(0.7, 1.0, across)) * (0.62 + 0.12 * chev) * mix(1.0, 0.82, uNight)
+  * mix(1.0, 0.22, smoothstep(uFar.x, uFar.y, vDist))
+  * smoothstep(uHead + 1.0, uHead + 9.0, vS) * (1.0 - smoothstep(uLen - 10.0, uLen - 1.0, vS)) * uFade;`);
     };
     const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
     mesh.frustumCulled = false;
@@ -873,8 +882,7 @@ diffuseColor.a *= (1.0 - smoothstep(0.88, 1.0, across)) * (0.78 + 0.22 * chev)
     function set(pts, { flat = true, width = 0.8, min = flat ? 0.003 : 0.0045 } = {}) {
       P = pts && pts.length > 1 ? pts : null;
       at = 0;
-      mesh.visible = !!P;
-      if (!P) return;
+      if (!P) { mesh.visible = false; U.uFade.value = 0; return; }
       const n = P.length, pos = new Float32Array(n * 6), dir = new Float32Array(n * 6), side = new Float32Array(n * 2), s = new Float32Array(n * 2), idx = [];
       cum = new Float64Array(n);
       for (let i = 0; i < n; i++) {
@@ -900,7 +908,8 @@ diffuseColor.a *= (1.0 - smoothstep(0.88, 1.0, across)) * (0.78 + 0.22 * chev)
       g.setIndex(idx);
       mesh.geometry.dispose();
       mesh.geometry = g;
-      U.uLen.value = cum[n - 1]; U.uHead.value = 0; U.uWidth.value = width; U.uFlat.value = flat ? 1 : 0; U.uMin.value = min;
+      U.uLen.value = cum[n - 1]; U.uHead.value = 0; U.uWidth.value = width * THIN; U.uFlat.value = flat ? 1 : 0; U.uMin.value = min * THIN;
+      U.uFar.value.set(flat ? 40 : 120, flat ? 320 : 900); // in the air it fades much further off
     }
     // where you are along the line: moves its start up to you; returns how far you are from it
     // (with z, in three dimensions), Infinity when there is none
@@ -919,7 +928,14 @@ diffuseColor.a *= (1.0 - smoothstep(0.88, 1.0, across)) * (0.78 + 0.22 * chev)
     }
     // the way still to go, for the maps
     const ahead = () => (P ? P.slice(Math.max(0, at)) : null);
-    return { mesh, set, follow, ahead, tick: t => { U.uTime.value = t; }, get pts() { return P; }, get left() { return P ? U.uLen.value - U.uHead.value : 0; } };
+    // ease toward shown (k = 1) or hidden (0) over about half a second; dt Infinity snaps
+    function fade(k, dt) {
+      const f = U.uFade.value, to = P ? k : 0;
+      U.uFade.value = to > f ? Math.min(to, f + dt * 2.2) : Math.max(to, f - dt * 3.2);
+      mesh.visible = U.uFade.value > 0.01;
+    }
+    return { mesh, set, follow, ahead, fade, tick: t => { U.uTime.value = t; }, night: n => { U.uNight.value = n; }, get shown() { return U.uFade.value; },
+      get pts() { return P; }, get left() { return P ? U.uLen.value - U.uHead.value : 0; } };
   }
   return { create, line, walkable };
 })();
