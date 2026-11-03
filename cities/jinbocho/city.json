@@ -1,0 +1,568 @@
+{
+  "id": "jinbocho",
+  "name": "Jinbocho",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Jinbocho and Kanda from open data, lit by the real sun: the book town's second-hand shops along Yasukuni-dori with their carts of cheap books, the Catholic Kanda Church, and Nikolai-do over Ochanomizu.",
+  "bbox": [
+    139.7475,
+    35.6887,
+    139.7685,
+    35.7033
+  ],
+  "origin": [
+    139.758,
+    35.696
+  ],
+  "extent_m": [
+    -900,
+    900,
+    -750,
+    750
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "river",
+      "canal"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.5,
+      "plane": 0.5
+    },
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki), plane trees for the street planes and ginkgos. A guess, not a survey."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Jinbocho crossing": [
+      139.7577,
+      35.6959
+    ],
+    "Ochanomizu Station": [
+      139.765,
+      35.6996
+    ],
+    "Kudanshita": [
+      139.7514,
+      35.6955
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:00",
+    "cam": [
+      700,
+      -1000,
+      420
+    ],
+    "tgt": [
+      0,
+      0,
+      30
+    ]
+  },
+  "labels": {
+    "学士会館": "Gakushi Kaikan",
+    "明治大学リバティタワー": "Meiji University Liberty Tower",
+    "神保町三井ビルディング": "Jinbocho Mitsui Building"
+  },
+  "minor_labels": [
+    "学士会館"
+  ],
+  "places": [],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Jinbocho, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [
+        700,
+        -1000,
+        420
+      ],
+      "tgt": [
+        0,
+        0,
+        30
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 8
+    },
+    {
+      "title": "The book town",
+      "text": "About 130 second-hand bookshops, most along Yasukuni-dori's south side, facing north to keep the sun off their books; carts of cheap books before every door. The signs here are typical of the street, not its real shops'.",
+      "cam": [
+        60,
+        40,
+        22
+      ],
+      "tgt": [
+        150,
+        -35,
+        6
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "14:00",
+      "to": "15:00",
+      "hold": 10
+    },
+    {
+      "title": "Up the hill to Ochanomizu",
+      "text": "Meiji University's tower, and Nikolai-do's green dome over the Kanda river's gorge.",
+      "cam": [
+        420,
+        0,
+        90
+      ],
+      "tgt": [
+        679,
+        224,
+        30
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 9
+    }
+  ],
+  "sources": {
+    "landmarks": "The Catholic Kanda Church (Max Hinder, 1928; registered tangible cultural property; Chiyoda City) on the basilica's footprint of block 1-1, Nishi-Kanda; Nikolai-do as in the Akihabara map. The bookshops' signs are indicative: typical trades, no real shops' signs; the roof names are Sanseido's and Tokyo-do's own words in open fonts.",
+    "fonts": "Signs drawn with Google Fonts under the SIL Open Font License: Zen Kaku Gothic New, Dela Gothic One, M PLUS Rounded 1c, Bebas Neue, Shippori Mincho"
+  },
+  "night": {
+    "note": "The bookshops' signs are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "title": "Jinbocho on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "the Kanda",
+    "greeting": "いらっしゃいませ。",
+    "blurb": "Walk the book town under the real sun: the second-hand shops and their carts along Yasukuni-dori, a curry for lunch, the Kanda church, and up the hill to Nikolai-do.",
+    "smalltalk": [
+      "いらっしゃいませ。",
+      "すみません。",
+      "どうも。",
+      "Excuse me!"
+    ],
+    "start": {
+      "at": [
+        -30.0,
+        -2.0
+      ],
+      "facing": [
+        80.0,
+        -10.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "jinbo_",
+      "akiba_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "jinbo-pad",
+        "name": "Kanda Nishikicho pad (game)",
+        "at": [
+          120.0,
+          -260.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 560,
+      "cars": 170,
+      "radius_m": 420,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA24JB"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.22
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#2a7a3a"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "神保町",
+        "kana": "じんぼうちょう",
+        "romaji": "Jinbocho",
+        "band": "#8f76d6",
+        "left": "九段下",
+        "right": "大手町",
+        "at": [
+          -20.0,
+          -15.0
+        ],
+        "radius": 240,
+        "note": "The book town"
+      },
+      {
+        "name": "御茶ノ水",
+        "kana": "おちゃのみず",
+        "romaji": "Ochanomizu",
+        "band": "#f15a22",
+        "left": "水道橋",
+        "right": "神田",
+        "at": [
+          600.0,
+          380.0
+        ],
+        "radius": 220,
+        "note": "Students, guitar shops and Nikolai-do over the river"
+      },
+      {
+        "name": "九段下",
+        "kana": "くだんした",
+        "romaji": "Kudanshita",
+        "band": "#009bbf",
+        "left": "飯田橋",
+        "right": "竹橋",
+        "at": [
+          -597.0,
+          -55.0
+        ],
+        "radius": 200,
+        "note": "Up the hill to the Budokan"
+      },
+      {
+        "name": "水道橋",
+        "kana": "すいどうばし",
+        "romaji": "Suidobashi",
+        "band": "#f15a22",
+        "left": "飯田橋",
+        "right": "御茶ノ水",
+        "at": [
+          -407.0,
+          660.0
+        ],
+        "radius": 180,
+        "note": "Tokyo Dome's station"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-jinbo",
+        "name": "Jinbocho crossing 神保町交差点",
+        "at": [
+          -30.0,
+          -2.0
+        ]
+      },
+      {
+        "id": "t-books",
+        "name": "The book town, Yasukuni-dori 古書店街",
+        "at": [
+          150.0,
+          -15.0
+        ]
+      },
+      {
+        "id": "t-suzuran",
+        "name": "Suzuran-dori すずらん通り",
+        "at": [
+          120.0,
+          -80.0
+        ]
+      },
+      {
+        "id": "t-church",
+        "name": "Catholic Kanda Church 神田教会",
+        "at": [
+          -30.0,
+          395.0
+        ]
+      },
+      {
+        "id": "t-nikolai",
+        "name": "Nikolai-do, the gate ニコライ堂前",
+        "at": [
+          620.0,
+          215.0
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "shigeru",
+        "name": "Shigeru 茂",
+        "role": "Antiquarian bookseller 古書店主",
+        "at": [
+          60.0,
+          -12.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_13_m017_grey",
+          "skin": "#e9bf9d",
+          "hair": "#9a958f",
+          "top": "#4a3a2a",
+          "legs": "#2b2b30",
+          "shirt": "#4a3a2a",
+          "pants": "#2b2b30",
+          "clip": "Reading"
+        },
+        "idle": [
+          "My grandfather opened this shop in 1925. The books were the only thing he carried out of the fire in '45.",
+          "We face north, all of us, so the sun never fades a spine. {time}."
+        ]
+      },
+      {
+        "id": "kana",
+        "name": "Kana 佳奈",
+        "role": "Curry shop waitress カレー屋",
+        "at": [
+          110.0,
+          -88.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_17_f011",
+          "skin": "#f2cdb4",
+          "hair": "#2a1d17",
+          "top": "#f4f1ea",
+          "legs": "#2b3440",
+          "shirt": "#f4f1ea",
+          "pants": "#2b3440",
+          "clip": "Talk",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#5a2d18"
+        },
+        "idle": [
+          "Jinbocho has more curry shops than anywhere in Tokyo. You read with one hand and eat with the other.",
+          "Butter, spices and a baked potato on the side. That's the house style. {sun_line}"
+        ]
+      },
+      {
+        "id": "takumi",
+        "name": "Takumi 拓海",
+        "role": "Meiji University student",
+        "at": [
+          300.0,
+          150.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_10",
+          "skin": "#e2b48f",
+          "hair": "#1b1512",
+          "top": "#2b3a5a",
+          "legs": "#3a3f48",
+          "shirt": "#2b3a5a",
+          "pants": "#3a3f48",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Every textbook I own came from a cart on Yasukuni-dori. Half the price, and somebody's notes in the margins.",
+          "Ochanomizu has the guitar shops. I go to look, not to buy."
+        ]
+      },
+      {
+        "id": "yoko",
+        "name": "Yoko 洋子",
+        "role": "Church volunteer",
+        "at": [
+          -25.0,
+          385.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_08",
+          "skin": "#f6d8c6",
+          "hair": "#4a3a30",
+          "top": "#3d4a5c",
+          "legs": "#2a2e36",
+          "shirt": "#3d4a5c",
+          "pants": "#2a2e36",
+          "clip": "Present"
+        },
+        "idle": [
+          "The church is from 1928. The first one fell in the earthquake; the Swiss architect who drew this one built half the churches of Tokyo.",
+          "Mass is in Japanese, English and Spanish. Everyone sings."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "books",
+        "title": "The book town",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "kanda",
+        "title": "Kanda",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "shigeru",
+        "title": "Jinbocho",
+        "stamp": "Jinbocho",
+        "talk": [
+          "Welcome to Jinbocho. A hundred and thirty bookshops, and I've read most of them.",
+          "Look at the carts before you go in. Then go round the back to Suzuran-dori: Kana will feed you."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "carts",
+            "text": "Browse the carts of cheap books"
+          },
+          {
+            "type": "talk",
+            "npc": "kana",
+            "text": "Find Kana on Suzuran-dori"
+          }
+        ]
+      },
+      {
+        "id": "curry",
+        "line": "books",
+        "giver": "kana",
+        "title": "Curry and books",
+        "stamp": "Suzuran-dori",
+        "talk": [
+          "Sit, eat, read. That's Jinbocho.",
+          "Takumi comes in every day with a new old book. He's up at the university now, on the hill."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "takumi",
+            "text": "Find Takumi by Meiji University"
+          }
+        ]
+      },
+      {
+        "id": "hill",
+        "line": "books",
+        "giver": "takumi",
+        "title": "Up the hill",
+        "stamp": "Ochanomizu",
+        "talk": [
+          "From here, Ochanomizu: the river in its gorge, the trains crossing it, and Nikolai-do's dome.",
+          "Go and listen for the bells."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "nikolai",
+            "text": "Find Nikolai-do"
+          }
+        ]
+      },
+      {
+        "id": "church",
+        "line": "kanda",
+        "giver": "yoko",
+        "title": "The Kanda church",
+        "stamp": "Kanda Church",
+        "talk": [
+          "Welcome. Come and look at the front: the rose window lights the nave at sunset.",
+          "Inside it's quiet. Even on a weekday, someone is always there."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "church",
+            "text": "Look at the Kanda church"
+          }
+        ]
+      }
+    ]
+  }
+}

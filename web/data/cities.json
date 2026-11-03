@@ -265,7 +265,7 @@
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "note": "Sunshine 60, Otome Road",
+     "map": "ikebukuro",
      "label": "r"
     },
     {
@@ -273,7 +273,7 @@
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "note": "The book town",
+     "map": "jinbocho",
      "label": "l"
     },
     {
@@ -281,7 +281,7 @@
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "note": "Roppongi Hills and Mori Tower",
+     "map": "roppongi",
      "label": "b"
     },
     {
@@ -755,8 +755,8 @@
    4.0
   ],
   "load_bytes": {
-   "model": 20340318,
-   "game": 23887336
+   "model": 21598931,
+   "game": 25145949
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -862,7 +862,7 @@
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "note": "Sunshine 60, Otome Road",
+     "map": "ikebukuro",
      "label": "r"
     },
     {
@@ -870,7 +870,7 @@
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "note": "The book town",
+     "map": "jinbocho",
      "label": "l"
     },
     {
@@ -878,7 +878,7 @@
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "note": "Roppongi Hills and Mori Tower",
+     "map": "roppongi",
      "label": "b"
     },
     {
@@ -1344,8 +1344,8 @@
    3.1
   ],
   "load_bytes": {
-   "model": 13293339,
-   "game": 16141120
+   "model": 13293242,
+   "game": 16141023
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1451,7 +1451,7 @@
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "note": "Sunshine 60, Otome Road",
+     "map": "ikebukuro",
      "label": "r"
     },
     {
@@ -1459,7 +1459,7 @@
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "note": "The book town",
+     "map": "jinbocho",
      "label": "l"
     },
     {
@@ -1467,7 +1467,7 @@
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "note": "Roppongi Hills and Mori Tower",
+     "map": "roppongi",
      "label": "b"
     },
     {
@@ -2040,7 +2040,7 @@
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "note": "Sunshine 60, Otome Road",
+     "map": "ikebukuro",
      "label": "r"
     },
     {
@@ -2048,7 +2048,7 @@
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "note": "The book town",
+     "map": "jinbocho",
      "label": "l"
     },
     {
@@ -2056,7 +2056,7 @@
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "note": "Roppongi Hills and Mori Tower",
+     "map": "roppongi",
      "label": "b"
     },
     {
@@ -2629,7 +2629,7 @@
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "note": "Sunshine 60, Otome Road",
+     "map": "ikebukuro",
      "label": "r"
     },
     {
@@ -2637,7 +2637,7 @@
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "note": "The book town",
+     "map": "jinbocho",
      "label": "l"
     },
     {
@@ -2645,7 +2645,7 @@
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "note": "Roppongi Hills and Mori Tower",
+     "map": "roppongi",
      "label": "b"
     },
     {
@@ -3111,8 +3111,8 @@
    1.8
   ],
   "load_bytes": {
-   "model": 6131270,
-   "game": 6955582
+   "model": 6503500,
+   "game": 7327919
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3218,7 +3218,7 @@
      "native": "\u6c60\u888b",
      "lat": 35.7295,
      "lon": 139.7109,
-     "note": "Sunshine 60, Otome Road",
+     "map": "ikebukuro",
      "label": "r"
     },
     {
@@ -3226,7 +3226,7 @@
      "native": "\u795e\u4fdd\u753a",
      "lat": 35.6959,
      "lon": 139.7577,
-     "note": "The book town",
+     "map": "jinbocho",
      "label": "l"
     },
     {
@@ -3234,7 +3234,1774 @@
      "native": "\u516d\u672c\u6728",
      "lat": 35.6627,
      "lon": 139.7314,
-     "note": "Roppongi Hills and Mori Tower",
+     "map": "roppongi",
+     "label": "b"
+    },
+    {
+     "name": "Tsukishima",
+     "native": "\u6708\u5cf6",
+     "lat": 35.6646,
+     "lon": 139.784,
+     "note": "Monja Street",
+     "label": "r"
+    },
+    {
+     "name": "Odaiba",
+     "native": "\u304a\u53f0\u5834",
+     "lat": 35.627,
+     "lon": 139.775,
+     "note": "Seaside Park and Rainbow Bridge",
+     "label": "r"
+    },
+    {
+     "name": "Shinagawa",
+     "native": "\u54c1\u5ddd",
+     "lat": 35.6285,
+     "lon": 139.7387,
+     "note": "The southern gateway",
+     "label": "l"
+    }
+   ],
+   "lines": [
+    {
+     "name": "JR Yamanote Line",
+     "native": "\u5c71\u624b\u7dda",
+     "colour": "#9acd32",
+     "loop": true,
+     "stops": [
+      [
+       35.6812,
+       139.7671
+      ],
+      [
+       35.6918,
+       139.7709
+      ],
+      [
+       35.6984,
+       139.7731
+      ],
+      [
+       35.7138,
+       139.7774
+      ],
+      [
+       35.7281,
+       139.771
+      ],
+      [
+       35.7381,
+       139.7608
+      ],
+      [
+       35.7365,
+       139.747
+      ],
+      [
+       35.7334,
+       139.7393
+      ],
+      [
+       35.7295,
+       139.7109
+      ],
+      [
+       35.7126,
+       139.7038
+      ],
+      [
+       35.6905,
+       139.7003
+      ],
+      [
+       35.6831,
+       139.702
+      ],
+      [
+       35.6702,
+       139.7027
+      ],
+      [
+       35.658,
+       139.7016
+      ],
+      [
+       35.6467,
+       139.7101
+      ],
+      [
+       35.6339,
+       139.7157
+      ],
+      [
+       35.6262,
+       139.7236
+      ],
+      [
+       35.6285,
+       139.7387
+      ],
+      [
+       35.6457,
+       139.7476
+      ],
+      [
+       35.6555,
+       139.757
+      ],
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6751,
+       139.763
+      ]
+     ]
+    },
+    {
+     "name": "Ginza Line",
+     "native": "\u9280\u5ea7\u7dda",
+     "colour": "#f39700",
+     "stops": [
+      [
+       35.659,
+       139.7016
+      ],
+      [
+       35.6652,
+       139.7123
+      ],
+      [
+       35.6727,
+       139.724
+      ],
+      [
+       35.677,
+       139.737
+      ],
+      [
+       35.6736,
+       139.7414
+      ],
+      [
+       35.67,
+       139.7499
+      ],
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6767,
+       139.7701
+      ],
+      [
+       35.682,
+       139.774
+      ],
+      [
+       35.6853,
+       139.7731
+      ],
+      [
+       35.6918,
+       139.7709
+      ],
+      [
+       35.7027,
+       139.7716
+      ],
+      [
+       35.7077,
+       139.7727
+      ],
+      [
+       35.7114,
+       139.7768
+      ],
+      [
+       35.7112,
+       139.7826
+      ],
+      [
+       35.7108,
+       139.7905
+      ],
+      [
+       35.711,
+       139.7976
+      ]
+     ]
+    },
+    {
+     "name": "Hanzomon Line",
+     "native": "\u534a\u8535\u9580\u7dda",
+     "colour": "#8f76d6",
+     "stops": [
+      [
+       35.659,
+       139.7016
+      ],
+      [
+       35.6652,
+       139.7123
+      ],
+      [
+       35.6727,
+       139.724
+      ],
+      [
+       35.6788,
+       139.7403
+      ],
+      [
+       35.6857,
+       139.7413
+      ],
+      [
+       35.6955,
+       139.7516
+      ],
+      [
+       35.6959,
+       139.7577
+      ],
+      [
+       35.6869,
+       139.766
+      ],
+      [
+       35.6853,
+       139.7731
+      ],
+      [
+       35.6826,
+       139.7854
+      ],
+      [
+       35.682,
+       139.7993
+      ],
+      [
+       35.689,
+       139.8157
+      ],
+      [
+       35.6969,
+       139.8146
+      ],
+      [
+       35.7102,
+       139.8133
+      ]
+     ]
+    },
+    {
+     "name": "Yurakucho Line",
+     "native": "\u6709\u697d\u753a\u7dda",
+     "colour": "#c1a470",
+     "stops": [
+      [
+       35.7295,
+       139.7109
+      ],
+      [
+       35.718,
+       139.73
+      ],
+      [
+       35.7037,
+       139.7445
+      ],
+      [
+       35.6955,
+       139.7516
+      ],
+      [
+       35.6865,
+       139.748
+      ],
+      [
+       35.6788,
+       139.7403
+      ],
+      [
+       35.6751,
+       139.763
+      ],
+      [
+       35.6743,
+       139.7671
+      ],
+      [
+       35.6705,
+       139.7737
+      ],
+      [
+       35.6646,
+       139.784
+      ]
+     ]
+    },
+    {
+     "name": "Marunouchi Line",
+     "native": "\u4e38\u30ce\u5185\u7dda",
+     "colour": "#f62e36",
+     "stops": [
+      [
+       35.6905,
+       139.7003
+      ],
+      [
+       35.6906,
+       139.7055
+      ],
+      [
+       35.6884,
+       139.7105
+      ],
+      [
+       35.6882,
+       139.72
+      ],
+      [
+       35.686,
+       139.7302
+      ],
+      [
+       35.677,
+       139.737
+      ],
+      [
+       35.674,
+       139.7451
+      ],
+      [
+       35.6739,
+       139.7505
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6812,
+       139.7671
+      ]
+     ]
+    },
+    {
+     "name": "Hibiya Line",
+     "native": "\u65e5\u6bd4\u8c37\u7dda",
+     "colour": "#b5b5ac",
+     "stops": [
+      [
+       35.7114,
+       139.7768
+      ],
+      [
+       35.6984,
+       139.7731
+      ],
+      [
+       35.6908,
+       139.7798
+      ],
+      [
+       35.6825,
+       139.779
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6739,
+       139.7505
+      ],
+      [
+       35.67,
+       139.7499
+      ],
+      [
+       35.663,
+       139.7446
+      ],
+      [
+       35.6627,
+       139.7314
+      ],
+      [
+       35.6467,
+       139.7101
+      ]
+     ]
+    },
+    {
+     "name": "Yurikamome",
+     "native": "\u3086\u308a\u304b\u3082\u3081",
+     "colour": "#1e8fd6",
+     "stops": [
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6537,
+       139.7617
+      ],
+      [
+       35.6488,
+       139.76
+      ],
+      [
+       35.6401,
+       139.7626
+      ],
+      [
+       35.6299,
+       139.7787
+      ],
+      [
+       35.627,
+       139.775
+      ],
+      [
+       35.6252,
+       139.7716
+      ]
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "id": "ikebukuro",
+  "name": "Ikebukuro",
+  "native": "\u6c60\u888b",
+  "country": "Japan",
+  "lat": 35.73,
+  "lon": 139.715,
+  "status": "live",
+  "group": "Tokyo",
+  "tagline": "Sunshine 60, Otome Road, the department stores and West Gate Park's ring",
+  "summary": "Ikebukuro from open data at PLATEAU-surveyed heights: Sunshine 60 over the east side, Sunshine 60-dori's signs and Otome Road's shops, the department stores' names round the station, and GLOBAL RING over West Gate Park.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 9186,
+  "extent_km": [
+   1.8,
+   1.6
+  ],
+  "load_bytes": {
+   "model": 3439114,
+   "game": 4110292
+  },
+  "group_meta": {
+   "native": "\u6771\u4eac",
+   "kind": "metro",
+   "summary": "Tokyo as maps, the way games draw it: each district a walkable map of its own, chosen from the subway map. Lit stations are built; grey ones are next.",
+   "note": "Districts and lines from the Tokyo Metro and JR East maps; station positions are the stations' own (OpenStreetMap). Which districts a game sends you to follows Persona 5's Tokyo (Atlus, 2016): Shibuya, Shinjuku, Akihabara, Asakusa, Ueno, Ikebukuro, Odaiba, Jinbocho, Kanda, Tsukishima.",
+   "districts": [
+    {
+     "name": "Marunouchi",
+     "native": "\u4e38\u306e\u5185",
+     "lat": 35.6812,
+     "lon": 139.7671,
+     "map": "tokyo",
+     "label": "r"
+    },
+    {
+     "name": "Ginza",
+     "native": "\u9280\u5ea7",
+     "lat": 35.6717,
+     "lon": 139.764,
+     "map": "tokyo",
+     "label": "l"
+    },
+    {
+     "name": "Shibuya",
+     "native": "\u6e0b\u8c37",
+     "lat": 35.659,
+     "lon": 139.7016,
+     "map": "shibuya",
+     "label": "r"
+    },
+    {
+     "name": "Harajuku",
+     "native": "\u539f\u5bbf",
+     "lat": 35.6702,
+     "lon": 139.7027,
+     "map": "shibuya",
+     "travel": "t-harajuku",
+     "label": "r"
+    },
+    {
+     "name": "Shinjuku",
+     "native": "\u65b0\u5bbf",
+     "lat": 35.6905,
+     "lon": 139.7003,
+     "map": "shinjuku",
+     "travel": "t-east",
+     "label": "r"
+    },
+    {
+     "name": "Yotsuya",
+     "native": "\u56db\u30c4\u8c37",
+     "lat": 35.686,
+     "lon": 139.7302,
+     "map": "shinjuku",
+     "travel": "t-suga",
+     "label": "r"
+    },
+    {
+     "name": "Sangen-jaya",
+     "native": "\u4e09\u8ed2\u8336\u5c4b",
+     "lat": 35.6437,
+     "lon": 139.6702,
+     "map": "shibuya",
+     "travel": "t-sancha",
+     "label": "r"
+    },
+    {
+     "name": "Akihabara",
+     "native": "\u79cb\u8449\u539f",
+     "lat": 35.6984,
+     "lon": 139.7731,
+     "map": "akihabara",
+     "label": "r"
+    },
+    {
+     "name": "Asakusa",
+     "native": "\u6d45\u8349",
+     "lat": 35.711,
+     "lon": 139.7976,
+     "map": "asakusa",
+     "label": "b"
+    },
+    {
+     "name": "Oshiage \u00b7 Skytree",
+     "native": "\u62bc\u4e0a",
+     "lat": 35.7102,
+     "lon": 139.8133,
+     "map": "asakusa",
+     "travel": "tembo",
+     "label": "t"
+    },
+    {
+     "name": "Ueno",
+     "native": "\u4e0a\u91ce",
+     "lat": 35.7138,
+     "lon": 139.7774,
+     "map": "ueno",
+     "label": "t"
+    },
+    {
+     "name": "Ikebukuro",
+     "native": "\u6c60\u888b",
+     "lat": 35.7295,
+     "lon": 139.7109,
+     "map": "ikebukuro",
+     "label": "r"
+    },
+    {
+     "name": "Jinbocho",
+     "native": "\u795e\u4fdd\u753a",
+     "lat": 35.6959,
+     "lon": 139.7577,
+     "map": "jinbocho",
+     "label": "l"
+    },
+    {
+     "name": "Roppongi",
+     "native": "\u516d\u672c\u6728",
+     "lat": 35.6627,
+     "lon": 139.7314,
+     "map": "roppongi",
+     "label": "b"
+    },
+    {
+     "name": "Tsukishima",
+     "native": "\u6708\u5cf6",
+     "lat": 35.6646,
+     "lon": 139.784,
+     "note": "Monja Street",
+     "label": "r"
+    },
+    {
+     "name": "Odaiba",
+     "native": "\u304a\u53f0\u5834",
+     "lat": 35.627,
+     "lon": 139.775,
+     "note": "Seaside Park and Rainbow Bridge",
+     "label": "r"
+    },
+    {
+     "name": "Shinagawa",
+     "native": "\u54c1\u5ddd",
+     "lat": 35.6285,
+     "lon": 139.7387,
+     "note": "The southern gateway",
+     "label": "l"
+    }
+   ],
+   "lines": [
+    {
+     "name": "JR Yamanote Line",
+     "native": "\u5c71\u624b\u7dda",
+     "colour": "#9acd32",
+     "loop": true,
+     "stops": [
+      [
+       35.6812,
+       139.7671
+      ],
+      [
+       35.6918,
+       139.7709
+      ],
+      [
+       35.6984,
+       139.7731
+      ],
+      [
+       35.7138,
+       139.7774
+      ],
+      [
+       35.7281,
+       139.771
+      ],
+      [
+       35.7381,
+       139.7608
+      ],
+      [
+       35.7365,
+       139.747
+      ],
+      [
+       35.7334,
+       139.7393
+      ],
+      [
+       35.7295,
+       139.7109
+      ],
+      [
+       35.7126,
+       139.7038
+      ],
+      [
+       35.6905,
+       139.7003
+      ],
+      [
+       35.6831,
+       139.702
+      ],
+      [
+       35.6702,
+       139.7027
+      ],
+      [
+       35.658,
+       139.7016
+      ],
+      [
+       35.6467,
+       139.7101
+      ],
+      [
+       35.6339,
+       139.7157
+      ],
+      [
+       35.6262,
+       139.7236
+      ],
+      [
+       35.6285,
+       139.7387
+      ],
+      [
+       35.6457,
+       139.7476
+      ],
+      [
+       35.6555,
+       139.757
+      ],
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6751,
+       139.763
+      ]
+     ]
+    },
+    {
+     "name": "Ginza Line",
+     "native": "\u9280\u5ea7\u7dda",
+     "colour": "#f39700",
+     "stops": [
+      [
+       35.659,
+       139.7016
+      ],
+      [
+       35.6652,
+       139.7123
+      ],
+      [
+       35.6727,
+       139.724
+      ],
+      [
+       35.677,
+       139.737
+      ],
+      [
+       35.6736,
+       139.7414
+      ],
+      [
+       35.67,
+       139.7499
+      ],
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6767,
+       139.7701
+      ],
+      [
+       35.682,
+       139.774
+      ],
+      [
+       35.6853,
+       139.7731
+      ],
+      [
+       35.6918,
+       139.7709
+      ],
+      [
+       35.7027,
+       139.7716
+      ],
+      [
+       35.7077,
+       139.7727
+      ],
+      [
+       35.7114,
+       139.7768
+      ],
+      [
+       35.7112,
+       139.7826
+      ],
+      [
+       35.7108,
+       139.7905
+      ],
+      [
+       35.711,
+       139.7976
+      ]
+     ]
+    },
+    {
+     "name": "Hanzomon Line",
+     "native": "\u534a\u8535\u9580\u7dda",
+     "colour": "#8f76d6",
+     "stops": [
+      [
+       35.659,
+       139.7016
+      ],
+      [
+       35.6652,
+       139.7123
+      ],
+      [
+       35.6727,
+       139.724
+      ],
+      [
+       35.6788,
+       139.7403
+      ],
+      [
+       35.6857,
+       139.7413
+      ],
+      [
+       35.6955,
+       139.7516
+      ],
+      [
+       35.6959,
+       139.7577
+      ],
+      [
+       35.6869,
+       139.766
+      ],
+      [
+       35.6853,
+       139.7731
+      ],
+      [
+       35.6826,
+       139.7854
+      ],
+      [
+       35.682,
+       139.7993
+      ],
+      [
+       35.689,
+       139.8157
+      ],
+      [
+       35.6969,
+       139.8146
+      ],
+      [
+       35.7102,
+       139.8133
+      ]
+     ]
+    },
+    {
+     "name": "Yurakucho Line",
+     "native": "\u6709\u697d\u753a\u7dda",
+     "colour": "#c1a470",
+     "stops": [
+      [
+       35.7295,
+       139.7109
+      ],
+      [
+       35.718,
+       139.73
+      ],
+      [
+       35.7037,
+       139.7445
+      ],
+      [
+       35.6955,
+       139.7516
+      ],
+      [
+       35.6865,
+       139.748
+      ],
+      [
+       35.6788,
+       139.7403
+      ],
+      [
+       35.6751,
+       139.763
+      ],
+      [
+       35.6743,
+       139.7671
+      ],
+      [
+       35.6705,
+       139.7737
+      ],
+      [
+       35.6646,
+       139.784
+      ]
+     ]
+    },
+    {
+     "name": "Marunouchi Line",
+     "native": "\u4e38\u30ce\u5185\u7dda",
+     "colour": "#f62e36",
+     "stops": [
+      [
+       35.6905,
+       139.7003
+      ],
+      [
+       35.6906,
+       139.7055
+      ],
+      [
+       35.6884,
+       139.7105
+      ],
+      [
+       35.6882,
+       139.72
+      ],
+      [
+       35.686,
+       139.7302
+      ],
+      [
+       35.677,
+       139.737
+      ],
+      [
+       35.674,
+       139.7451
+      ],
+      [
+       35.6739,
+       139.7505
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6812,
+       139.7671
+      ]
+     ]
+    },
+    {
+     "name": "Hibiya Line",
+     "native": "\u65e5\u6bd4\u8c37\u7dda",
+     "colour": "#b5b5ac",
+     "stops": [
+      [
+       35.7114,
+       139.7768
+      ],
+      [
+       35.6984,
+       139.7731
+      ],
+      [
+       35.6908,
+       139.7798
+      ],
+      [
+       35.6825,
+       139.779
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6739,
+       139.7505
+      ],
+      [
+       35.67,
+       139.7499
+      ],
+      [
+       35.663,
+       139.7446
+      ],
+      [
+       35.6627,
+       139.7314
+      ],
+      [
+       35.6467,
+       139.7101
+      ]
+     ]
+    },
+    {
+     "name": "Yurikamome",
+     "native": "\u3086\u308a\u304b\u3082\u3081",
+     "colour": "#1e8fd6",
+     "stops": [
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6537,
+       139.7617
+      ],
+      [
+       35.6488,
+       139.76
+      ],
+      [
+       35.6401,
+       139.7626
+      ],
+      [
+       35.6299,
+       139.7787
+      ],
+      [
+       35.627,
+       139.775
+      ],
+      [
+       35.6252,
+       139.7716
+      ]
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "id": "jinbocho",
+  "name": "Jinbocho",
+  "native": "\u795e\u4fdd\u753a",
+  "country": "Japan",
+  "lat": 35.696,
+  "lon": 139.758,
+  "status": "live",
+  "group": "Tokyo",
+  "tagline": "The book town's shops and carts, the Catholic Kanda Church and Nikolai-do",
+  "summary": "Jinbocho and Kanda from open data at PLATEAU-surveyed heights: the book town's second-hand shops along Yasukuni-dori with their carts of cheap books, the Catholic Kanda Church of 1928, and Nikolai-do over Ochanomizu.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 4120,
+  "extent_km": [
+   1.8,
+   1.5
+  ],
+  "load_bytes": {
+   "model": 1617680,
+   "game": 2262252
+  },
+  "group_meta": {
+   "native": "\u6771\u4eac",
+   "kind": "metro",
+   "summary": "Tokyo as maps, the way games draw it: each district a walkable map of its own, chosen from the subway map. Lit stations are built; grey ones are next.",
+   "note": "Districts and lines from the Tokyo Metro and JR East maps; station positions are the stations' own (OpenStreetMap). Which districts a game sends you to follows Persona 5's Tokyo (Atlus, 2016): Shibuya, Shinjuku, Akihabara, Asakusa, Ueno, Ikebukuro, Odaiba, Jinbocho, Kanda, Tsukishima.",
+   "districts": [
+    {
+     "name": "Marunouchi",
+     "native": "\u4e38\u306e\u5185",
+     "lat": 35.6812,
+     "lon": 139.7671,
+     "map": "tokyo",
+     "label": "r"
+    },
+    {
+     "name": "Ginza",
+     "native": "\u9280\u5ea7",
+     "lat": 35.6717,
+     "lon": 139.764,
+     "map": "tokyo",
+     "label": "l"
+    },
+    {
+     "name": "Shibuya",
+     "native": "\u6e0b\u8c37",
+     "lat": 35.659,
+     "lon": 139.7016,
+     "map": "shibuya",
+     "label": "r"
+    },
+    {
+     "name": "Harajuku",
+     "native": "\u539f\u5bbf",
+     "lat": 35.6702,
+     "lon": 139.7027,
+     "map": "shibuya",
+     "travel": "t-harajuku",
+     "label": "r"
+    },
+    {
+     "name": "Shinjuku",
+     "native": "\u65b0\u5bbf",
+     "lat": 35.6905,
+     "lon": 139.7003,
+     "map": "shinjuku",
+     "travel": "t-east",
+     "label": "r"
+    },
+    {
+     "name": "Yotsuya",
+     "native": "\u56db\u30c4\u8c37",
+     "lat": 35.686,
+     "lon": 139.7302,
+     "map": "shinjuku",
+     "travel": "t-suga",
+     "label": "r"
+    },
+    {
+     "name": "Sangen-jaya",
+     "native": "\u4e09\u8ed2\u8336\u5c4b",
+     "lat": 35.6437,
+     "lon": 139.6702,
+     "map": "shibuya",
+     "travel": "t-sancha",
+     "label": "r"
+    },
+    {
+     "name": "Akihabara",
+     "native": "\u79cb\u8449\u539f",
+     "lat": 35.6984,
+     "lon": 139.7731,
+     "map": "akihabara",
+     "label": "r"
+    },
+    {
+     "name": "Asakusa",
+     "native": "\u6d45\u8349",
+     "lat": 35.711,
+     "lon": 139.7976,
+     "map": "asakusa",
+     "label": "b"
+    },
+    {
+     "name": "Oshiage \u00b7 Skytree",
+     "native": "\u62bc\u4e0a",
+     "lat": 35.7102,
+     "lon": 139.8133,
+     "map": "asakusa",
+     "travel": "tembo",
+     "label": "t"
+    },
+    {
+     "name": "Ueno",
+     "native": "\u4e0a\u91ce",
+     "lat": 35.7138,
+     "lon": 139.7774,
+     "map": "ueno",
+     "label": "t"
+    },
+    {
+     "name": "Ikebukuro",
+     "native": "\u6c60\u888b",
+     "lat": 35.7295,
+     "lon": 139.7109,
+     "map": "ikebukuro",
+     "label": "r"
+    },
+    {
+     "name": "Jinbocho",
+     "native": "\u795e\u4fdd\u753a",
+     "lat": 35.6959,
+     "lon": 139.7577,
+     "map": "jinbocho",
+     "label": "l"
+    },
+    {
+     "name": "Roppongi",
+     "native": "\u516d\u672c\u6728",
+     "lat": 35.6627,
+     "lon": 139.7314,
+     "map": "roppongi",
+     "label": "b"
+    },
+    {
+     "name": "Tsukishima",
+     "native": "\u6708\u5cf6",
+     "lat": 35.6646,
+     "lon": 139.784,
+     "note": "Monja Street",
+     "label": "r"
+    },
+    {
+     "name": "Odaiba",
+     "native": "\u304a\u53f0\u5834",
+     "lat": 35.627,
+     "lon": 139.775,
+     "note": "Seaside Park and Rainbow Bridge",
+     "label": "r"
+    },
+    {
+     "name": "Shinagawa",
+     "native": "\u54c1\u5ddd",
+     "lat": 35.6285,
+     "lon": 139.7387,
+     "note": "The southern gateway",
+     "label": "l"
+    }
+   ],
+   "lines": [
+    {
+     "name": "JR Yamanote Line",
+     "native": "\u5c71\u624b\u7dda",
+     "colour": "#9acd32",
+     "loop": true,
+     "stops": [
+      [
+       35.6812,
+       139.7671
+      ],
+      [
+       35.6918,
+       139.7709
+      ],
+      [
+       35.6984,
+       139.7731
+      ],
+      [
+       35.7138,
+       139.7774
+      ],
+      [
+       35.7281,
+       139.771
+      ],
+      [
+       35.7381,
+       139.7608
+      ],
+      [
+       35.7365,
+       139.747
+      ],
+      [
+       35.7334,
+       139.7393
+      ],
+      [
+       35.7295,
+       139.7109
+      ],
+      [
+       35.7126,
+       139.7038
+      ],
+      [
+       35.6905,
+       139.7003
+      ],
+      [
+       35.6831,
+       139.702
+      ],
+      [
+       35.6702,
+       139.7027
+      ],
+      [
+       35.658,
+       139.7016
+      ],
+      [
+       35.6467,
+       139.7101
+      ],
+      [
+       35.6339,
+       139.7157
+      ],
+      [
+       35.6262,
+       139.7236
+      ],
+      [
+       35.6285,
+       139.7387
+      ],
+      [
+       35.6457,
+       139.7476
+      ],
+      [
+       35.6555,
+       139.757
+      ],
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6751,
+       139.763
+      ]
+     ]
+    },
+    {
+     "name": "Ginza Line",
+     "native": "\u9280\u5ea7\u7dda",
+     "colour": "#f39700",
+     "stops": [
+      [
+       35.659,
+       139.7016
+      ],
+      [
+       35.6652,
+       139.7123
+      ],
+      [
+       35.6727,
+       139.724
+      ],
+      [
+       35.677,
+       139.737
+      ],
+      [
+       35.6736,
+       139.7414
+      ],
+      [
+       35.67,
+       139.7499
+      ],
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6767,
+       139.7701
+      ],
+      [
+       35.682,
+       139.774
+      ],
+      [
+       35.6853,
+       139.7731
+      ],
+      [
+       35.6918,
+       139.7709
+      ],
+      [
+       35.7027,
+       139.7716
+      ],
+      [
+       35.7077,
+       139.7727
+      ],
+      [
+       35.7114,
+       139.7768
+      ],
+      [
+       35.7112,
+       139.7826
+      ],
+      [
+       35.7108,
+       139.7905
+      ],
+      [
+       35.711,
+       139.7976
+      ]
+     ]
+    },
+    {
+     "name": "Hanzomon Line",
+     "native": "\u534a\u8535\u9580\u7dda",
+     "colour": "#8f76d6",
+     "stops": [
+      [
+       35.659,
+       139.7016
+      ],
+      [
+       35.6652,
+       139.7123
+      ],
+      [
+       35.6727,
+       139.724
+      ],
+      [
+       35.6788,
+       139.7403
+      ],
+      [
+       35.6857,
+       139.7413
+      ],
+      [
+       35.6955,
+       139.7516
+      ],
+      [
+       35.6959,
+       139.7577
+      ],
+      [
+       35.6869,
+       139.766
+      ],
+      [
+       35.6853,
+       139.7731
+      ],
+      [
+       35.6826,
+       139.7854
+      ],
+      [
+       35.682,
+       139.7993
+      ],
+      [
+       35.689,
+       139.8157
+      ],
+      [
+       35.6969,
+       139.8146
+      ],
+      [
+       35.7102,
+       139.8133
+      ]
+     ]
+    },
+    {
+     "name": "Yurakucho Line",
+     "native": "\u6709\u697d\u753a\u7dda",
+     "colour": "#c1a470",
+     "stops": [
+      [
+       35.7295,
+       139.7109
+      ],
+      [
+       35.718,
+       139.73
+      ],
+      [
+       35.7037,
+       139.7445
+      ],
+      [
+       35.6955,
+       139.7516
+      ],
+      [
+       35.6865,
+       139.748
+      ],
+      [
+       35.6788,
+       139.7403
+      ],
+      [
+       35.6751,
+       139.763
+      ],
+      [
+       35.6743,
+       139.7671
+      ],
+      [
+       35.6705,
+       139.7737
+      ],
+      [
+       35.6646,
+       139.784
+      ]
+     ]
+    },
+    {
+     "name": "Marunouchi Line",
+     "native": "\u4e38\u30ce\u5185\u7dda",
+     "colour": "#f62e36",
+     "stops": [
+      [
+       35.6905,
+       139.7003
+      ],
+      [
+       35.6906,
+       139.7055
+      ],
+      [
+       35.6884,
+       139.7105
+      ],
+      [
+       35.6882,
+       139.72
+      ],
+      [
+       35.686,
+       139.7302
+      ],
+      [
+       35.677,
+       139.737
+      ],
+      [
+       35.674,
+       139.7451
+      ],
+      [
+       35.6739,
+       139.7505
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6812,
+       139.7671
+      ]
+     ]
+    },
+    {
+     "name": "Hibiya Line",
+     "native": "\u65e5\u6bd4\u8c37\u7dda",
+     "colour": "#b5b5ac",
+     "stops": [
+      [
+       35.7114,
+       139.7768
+      ],
+      [
+       35.6984,
+       139.7731
+      ],
+      [
+       35.6908,
+       139.7798
+      ],
+      [
+       35.6825,
+       139.779
+      ],
+      [
+       35.6717,
+       139.764
+      ],
+      [
+       35.6739,
+       139.7505
+      ],
+      [
+       35.67,
+       139.7499
+      ],
+      [
+       35.663,
+       139.7446
+      ],
+      [
+       35.6627,
+       139.7314
+      ],
+      [
+       35.6467,
+       139.7101
+      ]
+     ]
+    },
+    {
+     "name": "Yurikamome",
+     "native": "\u3086\u308a\u304b\u3082\u3081",
+     "colour": "#1e8fd6",
+     "stops": [
+      [
+       35.6663,
+       139.7583
+      ],
+      [
+       35.6537,
+       139.7617
+      ],
+      [
+       35.6488,
+       139.76
+      ],
+      [
+       35.6401,
+       139.7626
+      ],
+      [
+       35.6299,
+       139.7787
+      ],
+      [
+       35.627,
+       139.775
+      ],
+      [
+       35.6252,
+       139.7716
+      ]
+     ]
+    }
+   ]
+  }
+ },
+ {
+  "id": "roppongi",
+  "name": "Roppongi",
+  "native": "\u516d\u672c\u6728",
+  "country": "Japan",
+  "lat": 35.6625,
+  "lon": 139.731,
+  "status": "live",
+  "group": "Tokyo",
+  "tagline": "Roppongi Hills and Maman, Keyakizaka's lights, the National Art Center and the crossing's bars",
+  "summary": "Roppongi from open data at PLATEAU-surveyed heights: Mori Tower and Maman the spider at Roppongi Hills, the Mohri Garden's pond, Keyakizaka's winter lights, the National Art Center's glass wave, Tokyo Midtown, and the bars round the crossing.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 4846,
+  "extent_km": [
+   1.8,
+   1.6
+  ],
+  "load_bytes": {
+   "model": 3214047,
+   "game": 3856620
+  },
+  "group_meta": {
+   "native": "\u6771\u4eac",
+   "kind": "metro",
+   "summary": "Tokyo as maps, the way games draw it: each district a walkable map of its own, chosen from the subway map. Lit stations are built; grey ones are next.",
+   "note": "Districts and lines from the Tokyo Metro and JR East maps; station positions are the stations' own (OpenStreetMap). Which districts a game sends you to follows Persona 5's Tokyo (Atlus, 2016): Shibuya, Shinjuku, Akihabara, Asakusa, Ueno, Ikebukuro, Odaiba, Jinbocho, Kanda, Tsukishima.",
+   "districts": [
+    {
+     "name": "Marunouchi",
+     "native": "\u4e38\u306e\u5185",
+     "lat": 35.6812,
+     "lon": 139.7671,
+     "map": "tokyo",
+     "label": "r"
+    },
+    {
+     "name": "Ginza",
+     "native": "\u9280\u5ea7",
+     "lat": 35.6717,
+     "lon": 139.764,
+     "map": "tokyo",
+     "label": "l"
+    },
+    {
+     "name": "Shibuya",
+     "native": "\u6e0b\u8c37",
+     "lat": 35.659,
+     "lon": 139.7016,
+     "map": "shibuya",
+     "label": "r"
+    },
+    {
+     "name": "Harajuku",
+     "native": "\u539f\u5bbf",
+     "lat": 35.6702,
+     "lon": 139.7027,
+     "map": "shibuya",
+     "travel": "t-harajuku",
+     "label": "r"
+    },
+    {
+     "name": "Shinjuku",
+     "native": "\u65b0\u5bbf",
+     "lat": 35.6905,
+     "lon": 139.7003,
+     "map": "shinjuku",
+     "travel": "t-east",
+     "label": "r"
+    },
+    {
+     "name": "Yotsuya",
+     "native": "\u56db\u30c4\u8c37",
+     "lat": 35.686,
+     "lon": 139.7302,
+     "map": "shinjuku",
+     "travel": "t-suga",
+     "label": "r"
+    },
+    {
+     "name": "Sangen-jaya",
+     "native": "\u4e09\u8ed2\u8336\u5c4b",
+     "lat": 35.6437,
+     "lon": 139.6702,
+     "map": "shibuya",
+     "travel": "t-sancha",
+     "label": "r"
+    },
+    {
+     "name": "Akihabara",
+     "native": "\u79cb\u8449\u539f",
+     "lat": 35.6984,
+     "lon": 139.7731,
+     "map": "akihabara",
+     "label": "r"
+    },
+    {
+     "name": "Asakusa",
+     "native": "\u6d45\u8349",
+     "lat": 35.711,
+     "lon": 139.7976,
+     "map": "asakusa",
+     "label": "b"
+    },
+    {
+     "name": "Oshiage \u00b7 Skytree",
+     "native": "\u62bc\u4e0a",
+     "lat": 35.7102,
+     "lon": 139.8133,
+     "map": "asakusa",
+     "travel": "tembo",
+     "label": "t"
+    },
+    {
+     "name": "Ueno",
+     "native": "\u4e0a\u91ce",
+     "lat": 35.7138,
+     "lon": 139.7774,
+     "map": "ueno",
+     "label": "t"
+    },
+    {
+     "name": "Ikebukuro",
+     "native": "\u6c60\u888b",
+     "lat": 35.7295,
+     "lon": 139.7109,
+     "map": "ikebukuro",
+     "label": "r"
+    },
+    {
+     "name": "Jinbocho",
+     "native": "\u795e\u4fdd\u753a",
+     "lat": 35.6959,
+     "lon": 139.7577,
+     "map": "jinbocho",
+     "label": "l"
+    },
+    {
+     "name": "Roppongi",
+     "native": "\u516d\u672c\u6728",
+     "lat": 35.6627,
+     "lon": 139.7314,
+     "map": "roppongi",
      "label": "b"
     },
     {
