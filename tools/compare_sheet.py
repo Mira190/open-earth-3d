@@ -37,6 +37,20 @@ def fit(im, w, h):
     return im.crop((x, y, x + w, y + h))
 
 
+def lens(im, v, S, kind):
+    """The desktop still cropped to the photo's lens: its horizontal field from the 35 mm-equivalent focal
+    length, against the game's (its vertical field and the still's shape)."""
+    import math
+    if kind != "desktop" or not v.get("mm"):
+        return im
+    hm = 2 * math.atan(math.tan(math.radians(S.get("model_vfov_deg", 55)) / 2) * im.width / im.height)
+    hp = 2 * math.atan(18.0 / v["mm"])
+    k = min(1.0, math.tan(hp / 2) / math.tan(hm / 2))
+    w, h = int(im.width * k), int(im.height * k)
+    x, y = (im.width - w) // 2, (im.height - h) // 2
+    return im.crop((x, y, x + w, y + h))
+
+
 def sheets(city, out, photos):
     S = spec(city)
     font = None
@@ -52,7 +66,7 @@ def sheets(city, out, photos):
             continue
         for v in S["views"]:
             cells = [("photo", Image.open(os.path.join(photos, v["photo"])).convert("RGB"), v["credit"])]
-            cells += [(t, Image.open(os.path.join(d_in, f"{v['id']}_{t}.png")).convert("RGB"), f"model, {t}") for t in S["times"]
+            cells += [(t, lens(Image.open(os.path.join(d_in, f"{v['id']}_{t}.png")).convert("RGB"), v, S, kind), f"model, {t}") for t in S["times"]
                       if os.path.exists(os.path.join(d_in, f"{v['id']}_{t}.png"))]
             sheet = Image.new("RGB", (w * len(cells) + 8 * (len(cells) - 1), h + 40), (14, 16, 20))
             dr = ImageDraw.Draw(sheet)
