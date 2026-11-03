@@ -189,10 +189,14 @@ def game_extras(scene):
 ```
 
 The game turns each landmark mesh into one height interval per 2 m cell, so
-keep parts at different heights in separate meshes. A material with `decal`
-(paving laid over a roof) or `"solid": false` is not turned into cells: use the
-latter for walls along a narrow walk, which 2 m cells would fill, and hold
-walkers back at them with `game_patches` instead. Steel inside a deck merged
+keep parts at different heights in separate meshes; within 3.5 m of the floor a
+walker meets them in 0.25 m cells, heights split where there is room. A material
+with `decal` (paving laid over a roof) or `"solid": false` is not turned into cells:
+use the latter for something soft (a shrine bell's rope) and for walls along a
+narrow walk, holding walkers back at them with `game_patches` instead. Steps a
+visitor climbs (a hall's front steps) are a strip in `game_surfaces`, not solid
+stone. Name what people walk up to in `game_extras`' `close` list (see
+`pipeline/game_extras.py`), so `tools/game_check.js` walks up to it. Steel inside a deck merged
 with an arch above it would become a solid block between them. Give every
 part that sits inside a walkable surface's slab that surface's `mesh` prefix:
 Sydney's deck furniture and the steel under its deck are `bridge_deck_*`. The

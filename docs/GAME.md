@@ -529,6 +529,17 @@ pipeline writes. The only city-specific code is landmark geometry in
     above the water, which lies level everywhere.
   - **Landmarks:** the landmark meshes are rasterised as height intervals in 2 m
     cells, so the helicopter can pass under the deck but not through the arch.
+    Where a walker meets them, up to 3.5 m over the floor below, the collision world
+    has them in 0.25 m cells instead (`landmarkCells` in `nav.js`): each cell's
+    heights split where there is 0.4 m of room between them, 0.1 m added above and
+    below, and the cells merged into rectangles along rows and then down columns.
+    In 2 m cells, per material, a 0.5 m lantern or a 4.2 m ema rack stood as a box
+    up to 4 m across and the rack's roof came down to head height (issue #91). Each
+    triangle is sampled in rows along its longest edge, every 0.22 m, so a long thin
+    one costs its area; a flat top only round its edges, since its sides are
+    triangles of their own. What lies under a walkable strip (the stone of a flight
+    of steps) is the strip's slab and is left out. It adds 0.2 s (Osaka) to 1.8 s
+    (Kyoto's temples) to the game's start on a desktop.
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
     the city's note. A boardwalk across them stays walkable.
 - **Collision** (`web/game/collision.js`): every building solid is a prism, its
@@ -1109,8 +1120,25 @@ quality tier runs a third of the cars.
     reading, the line's colour band and the stations either side. Where circles
     overlap, the smaller one wins. A sign waits until a camera move ends.
   - **Spots:** <kbd>E</kbd> within a few metres opens a few lines. A spot with
-    `"pick": 1` shows one of its lines at random (each ema on the rack is a
-    different wish). A quest step `{"type": "spot", "spot": id}` waits for one.
+    `"pick": 1` shows one of its lines at random. A quest step
+    `{"type": "spot", "spot": id}` waits for one.
+  - **Look closer:** a spot with a `look` is a photo spot. <kbd>E</kbd> brings the eye
+    to about a metre off the thing, the walker out of the way, and you look along it:
+    <kbd>A</kbd>/<kbd>D</kbd> (or the stick, or the panel's arrows) along,
+    <kbd>W</kbd>/<kbd>S</kbd> between its rails, a drag turns your head, <kbd>Enter</kbd>
+    saves a photo and <kbd>E</kbd> or <kbd>Esc</kbd> steps back. The panel reads out what
+    hangs in the middle of the view: at Suga Shrine's ema rack, the wish on the ema you
+    are looking at (`look.tablets` place each ema as the mesh hangs it, from
+    `rack_layout` in `cities/shibuya/city.py`). The atlas holds each ema at 192 by 128 px
+    for its 15 by 10 cm, 1280 px a metre, more than a 1440 px wide desktop shows of it
+    from 0.95 m.
+  - **Up close** (game.json `close`, a spot's `reach`, from the landmark builders'
+    `game_extras`): the things people walk up to, each a point on the thing, where a
+    walker starts towards it, how near they must get and how near they cannot.
+    `tools/game_check.js` walks up to every one (`tools/close_step.js`;
+    `tools/close_check.js <city> <out>` alone, with a still of each).
+    `python pipeline/game_extras.py --city <id>` rebuilds them, the spots, the chatter and
+    the walkable surfaces from `scene.json` in seconds, without the raw downloads.
   - **Chatter:** a conversation at a place, one line every few seconds in a bubble
     over where it is said, once you are within earshot. It stays quiet for a while
     after it ends.
