@@ -14,6 +14,12 @@ Until November 2026 this was the north half of one map with Shibuya; it was spli
 the landmarks of both (`cities/shinjuku/city.py` loads it with `CITY = "shinjuku"`), and the pictures
 taken before the split are still in `docs/images/shibuya/`.
 
+| The east exit plaza, where the game starts | The plaza after dark |
+|---|---|
+| ![](../images/shinjuku/east-exit.jpg) | ![](../images/shinjuku/east-exit-night.jpg) |
+| **Ichibangai's arch at dusk** | **Shinjuku on the title's subway map** |
+| ![](../images/shinjuku/kabukicho-dusk.jpg) | ![](../images/shinjuku/metro-card.jpg) |
+
 | The 男坂 at dusk, rendered in Cycles (`blender/build_scene.py`) | Kabukicho's arch at night, in Cycles |
 |---|---|
 | ![](../images/shibuya/cycles-suga-stairs.jpg) | ![](../images/shibuya/cycles-kabukicho.jpg) |

@@ -354,7 +354,7 @@
     "start": {
       "at": [
         402.0,
-        2585.0
+        2620.0
       ],
       "facing": [
         388.0,
@@ -524,7 +524,7 @@
         "name": "Shinjuku: the east exit 新宿東口",
         "at": [
           402.0,
-          2585.0
+          2620.0
         ]
       },
       {
@@ -574,8 +574,8 @@
         "name": "Nao 奈央",
         "role": "Pilgrimage guide 聖地巡礼ガイド",
         "at": [
-          405.0,
-          2590.0
+          407.0,
+          2626.0
         ],
         "look": {
           "character": "R_Female_Adult_12_f013",
