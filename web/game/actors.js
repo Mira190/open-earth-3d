@@ -1132,9 +1132,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             // would stop where it is as far again from the one needed)
             const w0 = w + c.off;
             if (a < -b.half - c.half || a > 45 || Math.abs(w0) >= need) continue;
+            // (not round one stopped at a junction's line, a taxi waiting for its turn: it queues behind)
+            const atJ = arm && left - arm.back < a + b.half + 15;
             const toKerb = w0 + side * need, toCentre = w0 - side * need; // (the kerb is on the keep side)
             const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
-            if (sw != null) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
+            if (sw != null && !atJ) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
           if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; } // (a ride pulling in still reaches into the lane)
         }
