@@ -1,12 +1,12 @@
 {
-  "name": "Shibuya & Shinjuku",
+  "name": "Shibuya",
   "date": [
     11,
     20
   ],
   "year": 2026,
   "exposure": 1.1,
-  "poster": 21,
+  "poster": 19,
   "score": {
     "root": 49,
     "scale": [
@@ -60,18 +60,18 @@
       "dur": 5.5,
       "type": "move",
       "from": [
-        -1680,
-        2660,
-        115
+        -700,
+        -660,
+        110
       ],
       "to": [
-        -1620,
-        2650,
-        117
+        -650,
+        -680,
+        112
       ],
       "look": [
-        -433,
-        2330,
+        518,
+        -1124,
         190
       ],
       "fov": 26,
@@ -86,8 +86,8 @@
         "at": 0.9,
         "until": 5.2,
         "lines": [
-          "35.69°N 139.69°E",
-          "Sunrise behind Nishi-Shinjuku · 06:21 JST",
+          "35.66°N 139.70°E",
+          "Sunrise behind Shibuya Scramble Square · 06:21 JST",
           "The real sun, for the day you watch"
         ]
       },
@@ -103,19 +103,19 @@
       "dur": 4.5,
       "type": "move",
       "from": [
-        700,
-        -2500,
+        -500,
+        100,
         230
       ],
       "to": [
-        660,
-        -2750,
+        -560,
+        180,
         420
       ],
       "look": [
-        380,
-        900,
-        160
+        500,
+        -1300,
+        150
       ],
       "fov": 32,
       "time": [
@@ -125,10 +125,10 @@
         "kind": "main",
         "at": 0.4,
         "until": 4.3,
-        "name": "Shibuya & Shinjuku",
-        "native": "渋谷・新宿",
+        "name": "Shibuya",
+        "native": "渋谷",
         "sub": "Japan",
-        "figures": "90,304 buildings · 5.4 × 6.2 km · 86% of heights surveyed by PLATEAU"
+        "figures": "47,787 buildings · 4.5 × 4.0 km · 87% of heights surveyed by PLATEAU"
       },
       "tint": [
         1.04,
@@ -137,36 +137,36 @@
       ]
     },
     {
-      "id": "stairs",
-      "chapter": "The stairs",
+      "id": "yoyogi",
+      "chapter": "Yoyogi",
       "dur": 5,
       "type": "move",
       "from": [
-        2442,
-        1854,
-        23.9
+        640,
+        130,
+        60
       ],
       "to": [
-        2440,
-        1851.5,
-        23.85
+        610,
+        150,
+        58
       ],
       "look": [
-        2426,
-        1833,
-        29.6
+        331,
+        -95,
+        45
       ],
-      "fov": 32,
+      "fov": 28,
       "time": [
-        "08:40"
+        "15:50"
       ],
       "title": {
         "kind": "lower",
         "at": 0.6,
         "until": 4.6,
-        "eyebrow": "Suga Shrine, Yotsuya",
-        "head": "The 男坂",
-        "text": "Fifty-two stone steps between red handrails: the stairs at the end of Your Name, ten years old this year."
+        "eyebrow": "Yoyogi Park, 1964",
+        "head": "Yoyogi National Gymnasium",
+        "text": "Kenzo Tange's roofs for the Tokyo Olympics hang on steel cables slung between two concrete masts."
       }
     },
     {
@@ -244,43 +244,44 @@
       }
     },
     {
-      "id": "kabukicho",
+      "id": "sangenjaya",
       "chapter": "After dark",
       "dur": 4.5,
       "type": "move",
       "from": [
-        404,
-        2780,
-        35.3
+        -2445,
+        -2960,
+        40
       ],
       "to": [
-        405,
-        2788,
-        35.3
+        -2448,
+        -2952,
+        40
       ],
       "look": [
-        409,
-        2830,
-        39
+        -2465,
+        -2870,
+        42
       ],
       "fov": 30,
       "time": [
-        "20:10"
+        "18:40"
       ],
+      "agl": false,
       "people": [
-        408,
-        2810
+        -2458,
+        -2915
       ],
-      "crowd_r": 40,
-      "crowd_n": 140,
-      "crowd_clear": 12,
+      "crowd_r": 35,
+      "crowd_n": 60,
+      "crowd_clear": 10,
       "title": {
         "kind": "lower",
         "at": 0.6,
         "until": 4.2,
-        "eyebrow": "Shinjuku",
-        "head": "Kabukicho Ichibangai",
-        "text": "The red arch has lit the way in since 1969, to a kabuki theatre that was never built."
+        "eyebrow": "Sangenjaya, Setagaya",
+        "head": "The triangle",
+        "text": "Backstreets between Setagaya-dori and Route 246: a game drew its hero's home town here and called it Yongen-Jaya."
       }
     },
     {
@@ -288,30 +289,30 @@
       "dur": 7,
       "type": "move",
       "from": [
-        1700,
-        1300,
-        260
+        1350,
+        -250,
+        230
       ],
       "to": [
-        1600,
-        1360,
-        270
+        1260,
+        -200,
+        240
       ],
       "look": [
-        -200,
-        2350,
-        160
+        480,
+        -1150,
+        150
       ],
       "fov": 28,
       "time": [
-        "20:40",
-        "20:48"
+        "17:05",
+        "17:40"
       ],
       "title": {
         "kind": "end",
         "at": 3.2,
         "until": 7,
-        "name": "Shibuya & Shinjuku",
+        "name": "Shibuya",
         "line": "The model, the sun and the city: open them."
       },
       "tint": [
