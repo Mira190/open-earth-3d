@@ -697,3 +697,75 @@ def dobei(K, P, pts, z, h=2.4, mats=("plaster", "kawara", "kawara_ridge")):
                       [[s, 0], [s + L, 0], [s + L, 0.9], [s, 0.9]])
         ridge.box(P(*a, z + h + 0.45), P(*b, z + h + 0.45), 0.3, 0.25)
         s += L
+
+
+# ---------------------------------------------------------------- lettering
+
+_GLYPHS = {}
+
+
+def glyph_outline(ch, font, px=240):
+    """A character's outline as shapely polygons (with holes) in units of its cap height (0..1 up,
+    advance along), traced from the font's raster at px pixels: rows of ink merged into one shape
+    and simplified, so a letter's bowls and counters come out as holes."""
+    import shapely
+    from PIL import Image, ImageDraw
+    from shapely.geometry import box
+    key = (ch, id(font), px)
+    if key in _GLYPHS:
+        return _GLYPHS[key]
+    cap_top, cap_bot = font.getbbox("H")[1], font.getbbox("H")[3]
+    l, t, r, b = font.getbbox(ch)
+    adv = font.getlength(ch)
+    img = Image.new("L", (int(r - l) + 4, int(b - t) + 4), 0)
+    ImageDraw.Draw(img).text((2 - l, 2 - t), ch, font=font, fill=255)
+    a = np.asarray(img) > 127
+    boxes = []
+    for y in range(a.shape[0]):
+        row = np.flatnonzero(np.diff(np.concatenate(([0], a[y].astype(np.int8), [0]))))
+        for x0, x1 in zip(row[::2], row[1::2]):
+            boxes.append(box(x0, -y - 1, x1, -y))
+    H = float(cap_bot - cap_top) or 1.0
+    shape = shapely.union_all(boxes).simplify(px * 0.004) if boxes else None
+    polys = []
+    if shape is not None and not shape.is_empty:
+        # back to cap-height units: x from the advance's start, y up from the baseline
+        shape = shapely.affinity.affine_transform(shape, [1 / H, 0, 0, 1 / H, (l - 2) / H, (cap_bot - t + 2) / H])
+        polys = [g for g in getattr(shape, "geoms", [shape]) if g.area > 1e-4]
+    _GLYPHS[key] = (polys, adv / H)
+    return _GLYPHS[key]
+
+
+def letters(m, P, text, font, u, v_mid, z_base, height, depth=0.2, spacing=0.06, arc=None, back=False):
+    """Letters cast or fixed on a wall facing +u (the frame's u out of the wall, v to a viewer's right),
+    a line of `text` centred at v_mid, its cap height `height` m standing on z_base, each letter a solid
+    `depth` m proud of the wall at u. With arc = radius (m), the line follows a circle whose centre is
+    that far below the letters' foot at v_mid, each letter turned to it (a curved parapet's lettering)."""
+    import shapely
+    glyphs = [glyph_outline(c, font) if c != " " else ([], font.getlength(" ") / max(1.0, font.getbbox("H")[3] - font.getbbox("H")[1])) for c in text]
+    widths = [g[1] * height + spacing * height for g in glyphs]
+    total = sum(widths) - spacing * height
+    s = -total / 2
+    for (polys, adv), w in zip(glyphs, widths):
+        mid = s + adv * height / 2  # the letter's centre along the line
+        if arc:
+            ang = mid / arc
+            cv, cz = v_mid + arc * math.sin(ang), z_base - arc + arc * math.cos(ang)
+            ca, sa = math.cos(ang), math.sin(ang)
+        else:
+            cv, cz, ca, sa = v_mid + mid, z_base, 1.0, 0.0
+        # a point of the glyph (x along its advance from its centre, y up) in the frame
+        Q = lambda x, y, uu: P(uu, cv + ca * x + sa * y, cz - sa * x + ca * y)
+        for poly in polys:
+            g = shapely.affinity.scale(poly, height, height, origin=(0, 0))
+            g = shapely.affinity.translate(g, -adv * height / 2, 0)
+            for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                a, b, c = list(tri.exterior.coords)[:3]
+                m.tri(Q(*a, u + depth), Q(*b, u + depth), Q(*c, u + depth))
+                if back:
+                    m.tri(Q(*c, u), Q(*b, u), Q(*a, u))
+            for ring in [g.exterior, *g.interiors]:
+                pts = list(ring.coords)
+                for p0, p1 in zip(pts[:-1], pts[1:]):
+                    m.quad(Q(*p0, u), Q(*p1, u), Q(*p1, u + depth), Q(*p0, u + depth))
+        s += w

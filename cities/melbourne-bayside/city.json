@@ -701,14 +701,14 @@
       "to": "20:20",
       "hold": 9,
       "cam": [
-        -420,
-        2560,
-        110
+        170,
+        2850,
+        75
       ],
       "tgt": [
-        60,
-        2700,
-        15
+        48,
+        2695,
+        14
       ],
       "text": "Opened in 1927 next door to Luna Park, on the Lower Esplanade. With about 2,900 seats it is the largest seated theatre in Australia."
     },

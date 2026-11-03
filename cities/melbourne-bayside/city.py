@@ -31,6 +31,19 @@ Parametric landmarks (called by pipeline/landmarks.py):
                   the 16 m by 9 m plan, the heights and the cream, green and red paint are taken
                   from photographs.
 
+  Palais Theatre  Henry E. White's picture palace on the Lower Esplanade (1927; restored 2017-2019, the
+                  facade back in its original sand colour). Drawn on its mapped footprint (OSM w15477104,
+                  34 by 78 m), which it hides: the front to the Esplanade between two square towers, each
+                  with a tall slit window, an upper stage with an arched window and Spanish Baroque corner
+                  pinnacles, and a zinc dome and spire; between them the curved parapet with PALAIS THEATRE
+                  in raised capitals over the crest and its flagpole, the arched recess with five tall
+                  windows and lattice panels, the glazed loggia of three arches over the balustrade, the
+                  cantilevered canopy and its sign band over the doors; behind, the auditorium under a
+                  shallow barrel roof. No drawings are published: the facade's proportions are scaled
+                  from a 2025 photograph (Wikimedia Commons, "Palais Theatre St Kilda 2025.jpg") to the
+                  footprint's 34 m front, which puts the towers' spires at about 30 m and the parapet's
+                  crown at 25 m; the auditorium's 20 m is the mapped height.
+
 Labels: the pier kiosk and Mr Moon are placed at their OpenStreetMap coordinates.
 """
 import math
@@ -40,11 +53,13 @@ import shapely
 from shapely.geometry import LineString, Point
 
 import archkit as ak
+import japankit as jk
 from meshkit import Mesh
 
 WALL_M, PITCH_DEG, PLINTH_M = 2.0, 35.0, 0.25
 MR_MOON = (144.97678, -37.86725)      # Luna Park's main entrance (OSM)
 PIER_KIOSK = (144.96572, -37.86472)   # St Kilda Pier kiosk (OSM node 310961049)
+PALAIS_OSM = "w15477104"              # the Palais Theatre's footprint
 SCENIC_TOP_M, SCENIC_TRACK_M = 16.0, 967.0
 
 # paint and roof colours for the boxes (sRGB); schemes are illustrative
@@ -66,7 +81,19 @@ MATERIALS = {**{f"paint_{k}": {"color": v, "roughness": 0.72, "metalness": 0.0} 
              "kiosk_trim": {"color": "#2f4a36", "roughness": 0.6, "metalness": 0.1},
              "kiosk_roof": {"color": "#a4432e", "roughness": 0.5, "metalness": 0.35},
              "kiosk_win": {"color": "#2a3036", "roughness": 0.2, "metalness": 0.3, "emissive": "#ffd59a", "glow": 0.9},
-             "kiosk_iron": {"color": "#2c2f30", "roughness": 0.5, "metalness": 0.6}}
+             "kiosk_iron": {"color": "#2c2f30", "roughness": 0.5, "metalness": 0.6},
+             # the Palais: sand-coloured render (the 2017 restoration's), floodlit after dark, zinc domes,
+             # bronze-framed glass lit from the foyer, the raised letters lit white
+             "palais_wall": {"color": "#d3a35c", "roughness": 0.82, "metalness": 0.0, "emissive": "#ffcf8a", "glow": 0.3},
+             "palais_trim": {"color": "#e0b873", "roughness": 0.78, "metalness": 0.0, "emissive": "#ffd9a0", "glow": 0.26},
+             "palais_lattice": {"color": "#b78a4c", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9a0", "glow": 0.18},
+             "palais_glass": {"color": "#2a2d31", "roughness": 0.2, "metalness": 0.4, "emissive": "#ffd29a", "glow": 0.75},
+             "palais_frame": {"color": "#33302c", "roughness": 0.5, "metalness": 0.5},
+             "palais_zinc": {"color": "#868d93", "roughness": 0.45, "metalness": 0.55},
+             "palais_roof": {"color": "#9a9d9e", "roughness": 0.55, "metalness": 0.4},
+             "palais_letters": {"color": "#f2e7c9", "roughness": 0.6, "metalness": 0.0, "emissive": "#fff4dd", "glow": 1.1},
+             "palais_sign": {"color": "#f4f2ec", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffffff", "glow": 1.2},
+             "palais_poster": {"color": "#b8433c", "roughness": 0.4, "metalness": 0.0, "emissive": "#ffb489", "glow": 0.9}}
 
 
 def adjust_building(b, cls, g, geoms, ctx):
@@ -144,7 +171,13 @@ def landmark_meshes(scene):
         scenic_railway(mesh, lm["luna_park"], lm.get("mr_moon"))
     if "mr_moon" in lm:
         mr_moon(mesh, lm["mr_moon"], lm.get("luna_park"))
-    return MATERIALS, list(meshes.values()) + pier_kiosk(scene)
+    more, hidden = palais()
+    mats = {k: dict(v) for k, v in MATERIALS.items()}
+    if PALAIS_GROUND:
+        g0 = PALAIS_GROUND[0]
+        for k in ("palais_wall", "palais_trim", "palais_lattice"):
+            mats[k]["flood"] = [round(g0, 1), round(g0 + 32.0, 1), 0.55, 0.75]
+    return mats, list(meshes.values()) + pier_kiosk(scene) + more, {"hidden": hidden}
 
 
 KIOSK_DECK_M = 2.2  # the piers' deck (game.json pier_deck_m)
@@ -210,6 +243,166 @@ def pier_kiosk(scene):
     for (u, v) in ak.rect(-hl - vo, hl + vo, -hw - vo, hw + vo):
         iron.box(P(u, v, 3.6), P(u, v, 4.4), 0.1, 0.1)
     return K.out()
+
+
+PALAIS_GROUND = []  # the front's ground, once palais() has found it (for the floodlight's reach)
+PALAIS_TOWER_M, PALAIS_FRONT_DEPTH_M = 7.6, 9.0  # each tower's side; the front block's depth (from the photograph)
+
+
+def palais():
+    """The Palais Theatre on its mapped footprint, facing the Lower Esplanade (the footprint's end nearer
+    the water's edge road: its north-north-east end). The frame's u runs out of the front, v to the right
+    of someone looking at it, z up from the ground in front of the doors."""
+    solids = [q for q in ak.load_solids("melbourne-bayside") if q["osm"] == PALAIS_OSM]
+    if not solids:
+        return [], []
+    sd = max(solids, key=lambda q: abs(ak.ring_area(q["ring"])))
+    cx, cy, axis, L, W = ak.oriented(sd["ring"])
+    T = ak.Terrain("melbourne-bayside")
+    # the front is the short end towards the Esplanade: the end with the higher ground (the beach road's
+    # rise), checked against the footprint's two short ends
+    a = math.radians(axis)
+    ends = [(cx + math.cos(a) * L / 2 * s, cy + math.sin(a) * L / 2 * s, s) for s in (-1, 1)]
+    fx, fy, sgn = max(ends, key=lambda e: e[1])  # the north end
+    front_deg = axis if sgn > 0 else axis + 180.0
+    g0 = T(fx, fy)
+    PALAIS_GROUND[:] = [g0]
+    P = ak.Frame(fx, fy, front_deg, g0)
+    K = ak.Kit("palais", floodlit={"palais_wall", "palais_trim", "palais_lattice", "palais_glass", "palais_letters", "palais_sign", "palais_poster"})
+    wall, trim, lat, glass, frm, zinc, roof = (K[m] for m in ("palais_wall", "palais_trim", "palais_lattice", "palais_glass", "palais_frame", "palais_zinc", "palais_roof"))
+    hw, tw, D = W / 2, PALAIS_TOWER_M, PALAIS_FRONT_DEPTH_M
+    cw = hw - tw  # the central bay's half width
+    z_low = min(T(*P(-L, v, 0)[:2]) for v in (-hw, hw)) - g0 - 0.6  # the walls reach down to the lowest ground
+    top = lambda v: 23.8 + 1.5 * (1 - (v / cw) ** 2)  # the curved parapet between the towers
+
+    # ---- the auditorium: rendered walls with pilasters, a cornice, and a shallow barrel roof
+    ak.block(wall, P, -L, -D, -hw, hw, z_low, 16.5, top=False)
+    for v in (-hw, hw):
+        for u in np.arange(-D - 4.0, -L + 2.0, -6.5):
+            trim.box(P(u, v * 1.012, z_low), P(u, v * 1.012, 16.0), 0.8, 0.45, up=(0, 0, 1))
+    ak.band(trim, P, ak.rect(-L, -D, -hw, hw), 15.6, out=0.35, h=0.9)
+    ak.band(trim, P, ak.rect(-L, -D, -hw, hw), 4.2, out=0.12, h=0.3)
+    n = 14
+    arcz = lambda v: 16.5 + 4.0 * (1 - (v / hw) ** 2)
+    vs = np.linspace(-hw, hw, n + 1)
+    for v0, v1 in zip(vs[:-1], vs[1:]):
+        roof.quad(P(-L - 0.3, v0, arcz(v0)), P(-L - 0.3, v1, arcz(v1)), P(-D, v1, arcz(v1)), P(-D, v0, arcz(v0)))
+        wall.quad(P(-L, v0, 16.5), P(-L, v1, 16.5), P(-L, v1, arcz(v1)), P(-L, v0, arcz(v0)))  # the back's gable
+    for k in range(5):  # exit doors along each side
+        u = -D - 8.0 - k * 14.0
+        ak.opening(frm, P, (u + 1.0, hw), (u - 1.0, hw), 0.0, 1.8, 2.4, centre=1.0)  # (the outside on the right)
+        ak.opening(frm, P, (u - 1.0, -hw), (u + 1.0, -hw), 0.0, 1.8, 2.4, centre=1.0)
+
+    # ---- the towers
+    tower_c = []
+    for s in (-1, 1):
+        v0, v1 = sorted((s * cw, s * hw))
+        vc = (v0 + v1) / 2
+        tower_c.append(vc)
+        ak.block(wall, P, -D, 0.0, v0, v1, z_low, 21.5)
+        for e in (v0, v1):  # the corner piers, standing proud of the front and running up to the shoulder
+            ee = e + (0.6 if e == v0 else -0.6)
+            trim.box(P(0.15, ee, 4.8), P(0.15, ee, 21.2), 1.2, 0.3, up=(0, 0, 1))
+        ak.opening(glass, P, (0.0, v0), (0.0, v1), 6.3, 1.0, 13.4, centre=tw / 2, depth=0.04)  # the tall slit window
+        side = ((0.0, v1), (-D, v1)) if s > 0 else ((-D, v0), (0.0, v0))  # and on the outer side, outside on the right
+        ak.opening(glass, P, *side, 6.3, 1.0, 13.4, centre=D / 2, depth=0.04)
+        ak.band(trim, P, ak.rect(-D, 0.0, v0, v1), 21.1, out=0.4, h=0.55)
+        ak.band(trim, P, ak.rect(-D, 0.0, v0, v1), 4.6, out=0.15, h=0.45)
+        # the upper stage: a square room with an arched window on each face, corner pinnacles, a cornice
+        uc, h2 = -tw / 2 + 0.2, 2.7
+        ak.block(wall, P, uc - h2, uc + h2, vc - h2, vc + h2, 21.5, 25.8)
+        for ring_a, ring_b in zip(ak.rect(uc - h2, uc + h2, vc - h2, vc + h2), ak.rect(uc - h2, uc + h2, vc - h2, vc + h2)[1:] + ak.rect(uc - h2, uc + h2, vc - h2, vc + h2)[:1]):
+            ak.opening(glass, P, ring_a, ring_b, 22.3, 1.4, 2.9, arch=True, centre=h2, depth=0.04)
+        ak.band(trim, P, ak.rect(uc - h2, uc + h2, vc - h2, vc + h2), 25.4, out=0.35, h=0.45)
+        for du in (-1, 1):
+            for dv in (-1, 1):
+                pu, pv = uc + du * (h2 + 0.55), vc + dv * (h2 + 0.55)
+                ak.block(trim, P, pu - 0.4, pu + 0.4, pv - 0.4, pv + 0.4, 21.6, 23.4)
+                trim.lathe([(g0 + 23.4, 0.45), (g0 + 23.9, 0.3), (g0 + 24.6, 0.05)], P(pu, pv, 0)[:2], segs=4)
+                # the scroll from the pinnacle up the stage's corner (a console in two steps)
+                trim.box(P(pu - du * 0.35, pv - dv * 0.35, 23.0), P(uc + du * h2, vc + dv * h2, 24.8), 0.45, 0.45, up=(0, 0, 1))
+        # the zinc dome on a short drum, its finial and spire
+        cxy = P(uc, vc, 0)[:2]
+        zinc.lathe([(g0 + 25.8, 2.75), (g0 + 26.3, 2.75)], cxy, segs=24)
+        zinc.lathe([(g0 + 26.3, 2.95), (g0 + 27.3, 2.75), (g0 + 28.1, 2.15), (g0 + 28.7, 1.2), (g0 + 28.95, 0.25)], cxy, segs=24)
+        zinc.lathe([(g0 + 28.9, 0.18), (g0 + 30.6, 0.02)], cxy, segs=6)
+
+    # ---- the central bay: the wall under its curved parapet, set back from the towers' fronts
+    uf = -0.45
+    vs = np.linspace(-cw, cw, 19)
+    for v0, v1 in zip(vs[:-1], vs[1:]):
+        wall.quad(P(uf, v0, z_low), P(uf, v1, z_low), P(uf, v1, top(v1)), P(uf, v0, top(v0)))
+        wall.quad(P(uf, v0, top(v0)), P(uf, v1, top(v1)), P(-D, v1, top(v1)), P(-D, v0, top(v0)))  # the parapet's top
+    for v0, v1 in zip(vs[:-1], vs[1:]):  # its coping
+        trim.quad(P(uf + 0.25, v0, top(v0) - 0.45), P(uf + 0.25, v1, top(v1) - 0.45), P(uf + 0.25, v1, top(v1)), P(uf + 0.25, v0, top(v0)))
+        trim.quad(P(uf + 0.25, v0, top(v0)), P(uf + 0.25, v1, top(v1)), P(uf, v1, top(v1) + 0.02), P(uf, v0, top(v0) + 0.02))
+    # the crest over the parapet's crown, its medallion and the flagpole
+    ak.block(trim, P, uf - 0.8, uf + 0.35, -2.4, 2.4, top(0) - 0.6, top(0) + 0.5)
+    ak.block(trim, P, uf - 0.8, uf + 0.3, -1.2, 1.2, top(0) + 0.5, top(0) + 1.9)
+    for k in range(16):  # the medallion: a disc on the crest's face
+        a0, a1 = 2 * math.pi * k / 16, 2 * math.pi * (k + 1) / 16
+        trim.tri(P(uf + 0.5, 0, top(0) + 1.0), P(uf + 0.5, 0.75 * math.sin(a1), top(0) + 1.0 + 0.75 * math.cos(a1)),
+                 P(uf + 0.5, 0.75 * math.sin(a0), top(0) + 1.0 + 0.75 * math.cos(a0)))
+    frm.box(P(uf - 0.3, 0, top(0) + 1.9), P(uf - 0.3, 0, top(0) + 8.5), 0.1, 0.1, up=(1, 0, 0))
+    # PALAIS THEATRE in raised capitals, following the parapet's curve
+    f = jk.font("cinzel", 240)
+    f.set_variation_by_name("Bold")
+    words = "PALAIS THEATRE"
+    span = sum(ak.glyph_outline(c, f)[1] if c != " " else 0.3 for c in words) + 0.05 * (len(words) - 1)
+    ak.letters(K["palais_letters"], P, words, f, uf, 0.0, 22.85, min(1.55, 17.2 / span), depth=0.22, spacing=0.05, arc=20.0)
+    # the arched recess: lattice panels between pilasters, five tall windows and their roundels
+    va = 8.3
+    arc_top = lambda v: 20.9 + 1.1 * (1 - (v / va) ** 2)
+    vs = np.linspace(-va, va, 17)
+    for v0, v1 in zip(vs[:-1], vs[1:]):
+        lat.quad(P(uf + 0.03, v0, 9.7), P(uf + 0.03, v1, 9.7), P(uf + 0.03, v1, arc_top(v1)), P(uf + 0.03, v0, arc_top(v0)))
+        trim.box(P(uf + 0.12, v0, arc_top(v0) + 0.2), P(uf + 0.12, v1, arc_top(v1) + 0.2), 0.45, 0.3, up=(1, 0, 0))
+    for v in (-8.3, -5.4, -1.85, 1.85, 5.4, 8.3):
+        trim.box(P(uf + 0.1, v, 9.7), P(uf + 0.1, v, arc_top(v) + 0.2), 0.55, 0.3, up=(1, 0, 0))
+    for v, w, z0, z1 in ((0.0, 1.55, 10.9, 19.9), (-3.65, 1.55, 10.9, 19.9), (3.65, 1.55, 10.9, 19.9), (-6.95, 0.85, 9.9, 18.9), (6.95, 0.85, 9.9, 18.9)):
+        glass.quad(P(uf + 0.07, v - w / 2, z0), P(uf + 0.07, v + w / 2, z0), P(uf + 0.07, v + w / 2, z1), P(uf + 0.07, v - w / 2, z1))
+        for z in np.arange(z0 + 1.0, z1, 1.0):  # glazing bars
+            frm.box(P(uf + 0.09, v - w / 2, z), P(uf + 0.09, v + w / 2, z), 0.05, 0.04, up=(1, 0, 0))
+        frm.box(P(uf + 0.09, v, z0), P(uf + 0.09, v, z1), 0.05, 0.04, up=(1, 0, 0))
+    for v in (-3.65, 0.0, 3.65):
+        for k in range(12):
+            a0, a1 = 2 * math.pi * k / 12, 2 * math.pi * (k + 1) / 12
+            trim.tri(P(uf + 0.12, v, 10.25), P(uf + 0.12, v + 0.42 * math.sin(a1), 10.25 + 0.42 * math.cos(a1)),
+                     P(uf + 0.12, v + 0.42 * math.sin(a0), 10.25 + 0.42 * math.cos(a0)))
+    # the loggia: a glazed box over the balustrade, three arched bays in its middle
+    ul = 0.6
+    ak.block(frm, P, uf, ul, -10.0, 10.0, 9.45, 9.7)
+    glass.quad(P(ul, -10.0, 6.25), P(ul, 10.0, 6.25), P(ul, 10.0, 9.45), P(ul, -10.0, 9.45))
+    for v in (-10.0, 10.0):
+        glass.quad(P(uf, v, 6.25), P(ul, v, 6.25), P(ul, v, 9.45), P(uf, v, 9.45))
+    for v in np.arange(-10.0, 10.01, 1.0):
+        frm.box(P(ul + 0.03, v, 6.25), P(ul + 0.03, v, 9.45), 0.07, 0.06, up=(1, 0, 0))
+    frm.box(P(ul + 0.03, -10.0, 7.6), P(ul + 0.03, 10.0, 7.6), 0.07, 0.06, up=(1, 0, 0))
+    for vc in (-4.0, 0.0, 4.0):  # the arches' frames, springing at 8.3 m
+        pts = [(vc + 2.0 * math.cos(t), 8.3 + 1.1 * math.sin(t)) for t in np.linspace(0, math.pi, 10)]
+        for (v0, z0), (v1, z1) in zip(pts[:-1], pts[1:]):
+            frm.box(P(ul + 0.05, v0, z0), P(ul + 0.05, v1, z1), 0.16, 0.08, up=(1, 0, 0))
+        frm.box(P(ul + 0.05, vc - 2.0, 6.25), P(ul + 0.05, vc - 2.0, 8.3), 0.16, 0.08, up=(1, 0, 0))
+    frm.box(P(ul + 0.05, 6.0, 6.25), P(ul + 0.05, 6.0, 8.3), 0.16, 0.08, up=(1, 0, 0))
+    # the balustrade across the front, at the loggia's foot
+    ak.balustrade(trim, P, [(1.0, -hw + 0.6), (1.0, hw - 0.6)], 5.55, h=0.7)
+    ak.block(trim, P, -0.1, 1.15, -hw + 0.4, hw - 0.4, 5.25, 5.55)
+    # the cantilevered canopy and its sign band, the small sign over it
+    ak.block(frm, P, 0.0, 3.6, -15.2, 15.2, 3.95, 4.75, bottom=True)
+    K["palais_sign"].quad(P(3.62, -14.8, 4.05), P(3.62, 14.8, 4.05), P(3.62, 14.8, 4.62), P(3.62, -14.8, 4.62))
+    ak.block(frm, P, 0.6, 1.3, -2.9, 2.9, 4.75, 5.3)
+    K["palais_sign"].quad(P(1.32, -2.7, 4.82), P(1.32, 2.7, 4.82), P(1.32, 2.7, 5.22), P(1.32, -2.7, 5.22))
+    # the doors along the front under the canopy, between piers; a poster case at each end
+    for v in (-10.6, -6.2, -2.0, 2.0, 6.2, 10.6):
+        ak.block(trim, P, -0.4, 0.35, v - 0.45, v + 0.45, 0.0, 3.95)
+    glass.quad(P(-0.38, -10.2, 0.0), P(-0.38, 10.2, 0.0), P(-0.38, 10.2, 3.6), P(-0.38, -10.2, 3.6))
+    for v in np.arange(-10.0, 10.01, 1.25):
+        frm.box(P(-0.34, v, 0.0), P(-0.34, v, 3.6), 0.06, 0.05, up=(1, 0, 0))
+    for s in (-1, 1):
+        v0, v1 = sorted((s * 11.6, s * 16.4))
+        ak.block(frm, P, 0.0, 0.35, v0, v1, 0.25, 3.7)
+        K["palais_poster"].quad(P(0.37, v0 + 0.2, 0.45), P(0.37, v1 - 0.2, 0.45), P(0.37, v1 - 0.2, 3.5), P(0.37, v0 + 0.2, 3.5))
+    return K.out(), [q["si"] for q in solids]
 
 
 def frame(b):
