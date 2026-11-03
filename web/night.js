@@ -468,7 +468,11 @@ void main() {
     group.add(...lights);
     Wd.world.add(group);
     const sizeV = new THREE.Vector2();
+    // how much of the screens' static pools to draw: less where neon.js lights the street from the
+    // screens themselves (their light then moves with the pictures; a pool would double it)
+    let glowScale = 1;
     const api = {
+      setGlowScale(v) { glowScale = v; },
       group, lamps: nL, generated: nGen, cars: nT,
       poles: bases, // x, y, z of the foot of each pole it draws
       // take away the poles stand(x, y, z) turns down (one in a wall: the lamp is on its bracket there)
@@ -498,7 +502,7 @@ void main() {
         const hr = ((Wd.U.uHour.value % 24) + 24) % 24, h0 = Math.floor(hr), f = hr - h0;
         traffic.uDensity.value = TRAFFIC[h0] * (1 - f) + TRAFFIC[(h0 + 1) % 24] * f;
         // the screens' light while they play (their hours; 24 is midnight)
-        if (glowHours) NU.uGlowOn.value = [hr, hr + 24].some(h => h >= glowHours[0] && h < glowHours[1]) ? 1 : 0;
+        if (glowHours) NU.uGlowOn.value = ([hr, hr + 24].some(h => h >= glowHours[0] && h < glowHours[1]) ? 1 : 0) * glowScale;
         headMat.emissiveIntensity = 2.2 * on;
         const cp = camera.position;
         for (const p of poles) { const v = Math.hypot(p.c.x - cp.x, p.c.z - cp.z) < 500 + CELL * 0.71 && cp.y - p.c.y < 900; p.meshes[0].visible = p.meshes[1].visible = v; }

@@ -121,6 +121,7 @@ window.OENeon = (function () {
       const on = s.on < s.off ? hour >= s.on && hour <= s.off : hour >= s.on || hour <= s.off;
       return tmp.copy(c).multiplyScalar(on ? s.bright * (2.4 + (1 - 2.4) * night) : 0);
     }
+    if (screens.length && Wd.night && Wd.night.setGlowScale) Wd.night.setGlowScale(0.3);
     const api = {
       lights, screens, cards, count: lights.length,
       // per frame: each screen's colour now, and the lights on the nearest
