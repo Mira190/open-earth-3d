@@ -161,6 +161,17 @@ def band(m, P, ring, z, out=0.15, h=0.4):
     cornice(m, P, ring, z, ((0.0, 0.0), (out, 0.0), (out, h), (0.0, h)))
 
 
+def edge_band(m, a, b, z, out, h):
+    """A string course along one wall a -> b in world coordinates (outside on the right), `out` m proud, h m tall."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    t = (b - a) / (np.linalg.norm(b - a) or 1)
+    n = np.array([t[1], -t[0]]) * out
+    A, B = (*(a + n), 0), (*(b + n), 0)
+    m.quad((A[0], A[1], z), (B[0], B[1], z), (B[0], B[1], z + h), (A[0], A[1], z + h))
+    m.quad((A[0], A[1], z + h), (B[0], B[1], z + h), (b[0], b[1], z + h), (a[0], a[1], z + h))
+    m.quad((a[0], a[1], z), (b[0], b[1], z), (B[0], B[1], z), (A[0], A[1], z))
+
+
 def rect(u0, u1, v0, v1):
     return [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
 

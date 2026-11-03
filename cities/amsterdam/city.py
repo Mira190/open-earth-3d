@@ -432,17 +432,6 @@ MATERIALS.update({
 })
 
 
-def _edge_band(m, a, b, z, out, h):
-    """A string course along one wall a -> b (outside on the right), standing `out` m proud, h m tall."""
-    a, b = np.asarray(a, float), np.asarray(b, float)
-    t = (b - a) / (np.linalg.norm(b - a) or 1)
-    n = np.array([t[1], -t[0]]) * out
-    A, B = (*(a + n), 0), (*(b + n), 0)
-    m.quad((A[0], A[1], z), (B[0], B[1], z), (B[0], B[1], z + h), (A[0], A[1], z + h))
-    m.quad((A[0], A[1], z + h), (B[0], B[1], z + h), (b[0], b[1], z + h), (a[0], a[1], z + h))
-    m.quad((a[0], a[1], z), (b[0], b[1], z), (B[0], B[1], z), (A[0], A[1], z))
-
-
 def _ccw(ring):
     pts = [tuple(p) for p in ring]
     if pts and pts[0] == pts[-1]:
@@ -489,12 +478,12 @@ def rijksmuseum():
             # the granite plinth, the string courses and the cornice, where the wall reaches them
             zp = min(z1, g_ref + RIJKS_BANDS[0])
             if zp > z0:
-                _edge_band(granite, p, q, z0, 0.25, zp - z0)
+                ak.edge_band(granite, p, q, z0, 0.25, zp - z0)
             for zb in RIJKS_BANDS[1:]:
                 if z0 < g_ref + zb < z1 - 1.0:
-                    _edge_band(stone, p, q, g_ref + zb, 0.14, 0.38)
+                    ak.edge_band(stone, p, q, g_ref + zb, 0.14, 0.38)
             if z1 - z0 > 4.0:
-                _edge_band(stone, p, q, z1 - 0.9, 0.3, 0.6)
+                ak.edge_band(stone, p, q, z1 - 0.9, 0.3, 0.6)
             for sill, w, h in RIJKS_WINDOWS:
                 zs = g_ref + sill
                 if zs >= z0 + 0.3 and zs + h <= z1 - 1.2 and L >= w + 1.6:
