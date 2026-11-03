@@ -46,7 +46,7 @@ const GLARE_SHARE = 0.008; // the share of the frame above 16: Sydney's blown co
   });
   const errors = [];
   p.on('pageerror', e => errors.push(String(e).slice(0, 300)));
-  p.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 300)); });
+  p.on('console', m => { if (m.type() === 'error' && !/version\.json/.test((m.location() || {}).url || '')) errors.push(m.text().slice(0, 300)); }); // (version.json is written only by the Pages deploy)
   const results = [];
   const check = (name, ok, detail = '') => { results.push(ok); console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? `  ${detail}` : ''}`); };
 

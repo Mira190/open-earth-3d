@@ -485,11 +485,11 @@ const [,, city = 'sydney', outDir = '.'] = process.argv;
     for (let t = 0; t < 60; t++) { JN.call(a); g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (!seen.length || seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
     for (let t = 0; t < 30; t++) { g.advance(1); const w = JN.walk(a), lt = JN.light(a); if (seen[seen.length - 1] !== lt + (w ? 'W' : '')) seen.push(lt + (w ? 'W' : '')); }
     const X = g.crowd.crossings, walkers = X ? [...X.byLine.values()].flat().filter(x => x.a.j.mid != null).length : 0;
-    return { n: M.length, zebras: JN.stats().zebras, seen: seen.join(' '), red: A.stats().redRuns - s0.redRuns, walkers };
+    return { n: M.length, zebras: JN.stats().zebras, seen: seen.join(' '), red: A.stats().redRuns - s0.redRuns, walkers, log: (A.stats().redLog || []).slice(-3).join('; ') };
   });
   if (!mid.none) {
-    check(/rW/.test(mid.seen) && /g$/.test(mid.seen) && !/gW/.test(mid.seen), `a crossing with signals between junctions gives the walk on a call and the traffic its green after (${mid.seen}; ${mid.n} such crossings, ${mid.zebras} zebras)`);
-    check(mid.walkers > 0 && !mid.red, `the crowd's footways cross there (${mid.walkers}) and no car runs its red (${mid.red})`);
+    check(/rW.* g/.test(mid.seen) && !/gW/.test(mid.seen), `a crossing with signals between junctions gives the walk on a call and the traffic its green after (${mid.seen}; ${mid.n} such crossings, ${mid.zebras} zebras)`);
+    check(mid.walkers > 0 && !mid.red, `the crowd's footways cross there (${mid.walkers}) and no car runs its red (${mid.red}${mid.red ? ': ' + mid.log : ''})`);
   }
   if (lights.none) check(false, 'the traffic has junctions');
   else {

@@ -881,6 +881,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (JN.inner(line) || L1.len < 15) continue;
         const ahead = dir > 0 ? L1.len - s : s, ar = JN.armAt(line, dir > 0 ? 1 : 0);
         if (ar && ahead < ar.back + 10) continue; // not at a junction's line, or over it
+        if (JN.midsOn && (JN.midsOn(line) || []).some(X => Math.abs(X.mid - s) < 30)) continue; // nor at a crossing's
         const ln = JN.lanesOf(L1) > 1 && rnd() < 0.5 ? 1 : 0, lo = side * JN.shiftOf(L1, ln);
         lanePos(line, s, dir, tmp, lo);
         c.z = tmp.z;
@@ -962,6 +963,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return free >= Math.min(need, JN.reach(e) - 1);
     }
     let redRuns = 0, laneChanges = 0;
+    const redLog = []; // (the last few cars over a crossing's line on red, how: tools/traffic_why.js)
     const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
     if (crowd) crowd.cars = api;
     if (nav) nav.movers = api;
@@ -1227,7 +1229,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (X.sig) {
               const lt = JN.light(a), can = c.v * c.v / 8 < toStop - 0.3;
               hold = lt === 'r' || (lt === 'y' && can);
-              if (lt === 'r' && X.ph === 1 && toStop > 0 && toStop - c.v * dt <= 0 && !pass) redRuns++;
+              if (lt === 'r' && X.ph === 1 && toStop > 0 && toStop - c.v * dt <= 0 && !pass) { redRuns++; if (redLog.length < 20) redLog.push(`crossing ${X.id}: v ${c.v.toFixed(1)} to its line ${toStop.toFixed(2)} ${why} gap ${gap.toFixed(1)} t ${X.t.toFixed(1)}`); }
             } else if (crowd && !(c.zebraOff > 0) && c.v * c.v / 8 < toStop + 0.5) hold = onStripes(X);
             if (hold) {
               const g = toStop + 2.4;
@@ -1445,7 +1447,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
       }
     }
-    return Object.assign(api, { update, take, footprint, stats: () => Object.assign(JN.stats(), { redRuns, laneChanges, conflicts: JN.conflicts() }) });
+    return Object.assign(api, { update, take, footprint, stats: () => Object.assign(JN.stats(), { redRuns, redLog, laneChanges, conflicts: JN.conflicts() }) });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)
