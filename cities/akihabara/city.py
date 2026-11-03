@@ -187,7 +187,7 @@ def electric_town(K, et, names):
             K("frame").box(np.array([*p, r["z"]]), np.array([*p, z0 + h * 0.8]), 0.18, 0.18)
 
 
-GATE_STONE = 0.25   # the gate's stone floor: one low step up from the paving, walked over
+GATE_STONE = 0.4    # the gate's stone floor: one step up from the paving, stood on (web/game/nav.js floorAt)
 
 
 def zuishin_frame(gte):
@@ -311,10 +311,11 @@ def xy(p):
     return [round(float(p[0]), 2), round(float(p[1]), 2)]
 
 
-def close_to(name, at, z, start, within=1.5, keep=0.0):
+def close_to(name, at, z, start, within=1.5, keep=0.0, on=False):
     """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
-    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
-    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`, and with `on`, stand on
+    that floor (a gate's stone base, a plinth)."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {}), **({"on": True} if on else {})}
 
 
 def wall_point(ring, toward):
@@ -336,7 +337,7 @@ def close_extras(lm, close):
     if z:
         P, hu, hv = zuishin_frame(z)
         zb = z["z"] + GATE_STONE
-        close.append(close_to("Zuishinmon, through the gate", P(0, 0, 0), zb, P(hu + 5.0, 0, 0), 1.0))
+        close.append(close_to("Zuishinmon, through the gate", P(0, 0, 0), zb, P(hu + 5.0, 0, 0), 1.0, on=True))
         v = (hv - 0.4) / 3                          # the posts either side of the passage (radius 0.32)
         close.append(close_to("Zuishinmon, a vermilion post", P(hu - 0.4 + 0.32, -v, 0), zb, P(hu + 4.5, -v, 0), 1.0))
         hall = [q for q in solids if q["name"] == SHADEN and q["base"] == 0]

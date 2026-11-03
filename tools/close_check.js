@@ -26,7 +26,8 @@ const [,, city = 'shibuya', outDir = '.'] = process.argv;
   const t0 = Date.now();
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; ${await p.evaluate(() => window.__game.nav.fineBoxes)} fine landmark boxes`);
+  const nv = await p.evaluate(() => { const n = window.__game.nav; return [n.startMs, n.fineBoxes, n.fineMs].map(Math.round); });
+  console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; landmark tiles sorted in ${nv[0]} ms, ${nv[1]} fine boxes laid so far in ${nv[2]} ms`);
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
   await p.evaluate(extra => { const G = window.__game.G; G.close = (G.close || []).concat(extra); window.__game.advance(1); }, JSON.parse(process.env.CLOSE || '[]'));
@@ -35,7 +36,7 @@ const [,, city = 'shibuya', outDir = '.'] = process.argv;
   res.forEach((r, n) => {
     if (!r.ok) bad++;
     if (r.look) { console.log(`${r.ok ? 'ok  ' : 'FAIL'} looks closer at ${r.name}: ${JSON.stringify(r)}`); return; }
-    console.log(`${r.ok ? 'ok  ' : 'FAIL'} [${n}] walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}, keep ${r.keep}) from ${r.from}${r.ok ? '' : `: ${r.why}`}`}`);
+    console.log(`${r.ok ? 'ok  ' : 'FAIL'} [${n}] walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}, keep ${r.keep})${r.on ? `, standing ${r.dz.toFixed(2)} m off its floor` : ''} from ${r.from}${r.ok ? '' : `: ${r.why}`}`}`);
   });
   if (!res.length) console.log('no targets');
   for (const e of errors) console.log(`pageerror: ${e}`);

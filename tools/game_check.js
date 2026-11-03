@@ -252,7 +252,7 @@ const { pinClock } = require('./pin_clock');
     const near = await require('./close_step')(p, {});
     for (const r of near) {
       if (r.look) check(r.ok, `looks closer at ${r.name} (${r.open ? `the eye ${r.eye.toFixed(2)} m off it, reading "${String(r.text).slice(0, 40)}", ${r.moved.toFixed(2)} m along it, ${r.closed && r.back ? 'and back' : 'NOT back'}` : `offered: ${r.offered}`})`);
-      else check(r.ok, `walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}${r.keep ? `, not nearer than ${r.keep}` : ''})${r.ok ? '' : `: ${r.why}`}`}`);
+      else check(r.ok, `walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}${r.keep ? `, not nearer than ${r.keep}` : ''}${r.on ? `, standing ${r.dz.toFixed(2)} m off the raised floor it is on` : ''})${r.ok ? '' : `: ${r.why}`}`}`);
     }
     if (!near.length) console.log('     (nothing named to walk up to)');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);

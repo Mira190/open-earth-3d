@@ -138,7 +138,7 @@ KABUKIZA = "r4859313"
 FRONT_DEG = 215.0  # the front's compass bearing, onto Harumi-dori
 
 
-KZ_STEP = 0.2       # the front's stone plinth over the pavement
+KZ_STEP = 0.6       # the front's stone plinth over the pavement, stepped onto (web/game/nav.js floorAt)
 KZ_FRONT = {}       # the front's frame, as kabukiza() lays it out (for game_extras)
 
 
@@ -241,10 +241,11 @@ def xy(p):
     return [round(float(p[0]), 2), round(float(p[1]), 2)]
 
 
-def close_to(name, at, z, start, within=1.5, keep=0.0):
+def close_to(name, at, z, start, within=1.5, keep=0.0, on=False):
     """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
-    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
-    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`, and with `on`, stand on
+    that floor (a gate's stone base, a plinth)."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {}), **({"on": True} if on else {})}
 
 
 def game_extras(scene):
@@ -293,5 +294,5 @@ def game_extras(scene):
     if KZ_FRONT:
         F, vf, g = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"]
         # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
-        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + KZ_STEP, F(0, vf + 5.5, 0), 1.0))
+        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + KZ_STEP, F(0, vf + 5.5, 0), 1.0, on=True))
     return {"close": close}

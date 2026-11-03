@@ -12,8 +12,9 @@ window.OENav = (function () {
   const DROP = 4.0;      // highest drop a walker steps off (railings everywhere else)
   const R = 0.35;        // walker capsule radius (m)
   const KNEE = 0.4, HEAD = 1.8; // a walker's capsule spans feet + KNEE to feet + HEAD; landmark lips below the knee are stepped over
+  const FOOT = 0.25;     // how far from a walker's middle the feet find a landmark's top to stand on (m)
   const PROBE = 0.25;    // camera probe radius (m), a little under the near plane
-  const BUILDING = 1, LANDMARK = 2;
+  const BUILDING = 1, LANDMARK = 2, LFINE = 3; // LFINE: a landmark's fine cells, near the floor
 
   function create(D, DSM) {
     const G = D.G, T = D.quays ? D.quays.raise(D.T) : D.T; // the ground as drawn: level up to a quay's wall
@@ -264,41 +265,57 @@ window.OENav = (function () {
     // into FINE cells, each cell's heights split where there is room between them (a lantern's roof over
     // the paving, the eaves over a step), and the cells merged into rectangles; what stands higher (a
     // tower's top, a bridge's arch) keeps the 2 m cells, which the helicopter and the camera meet. Paving
-    // that lies on the floor is left to the floor. Returns the 2 m cells (index -> [zlo, zhi, ...]) and adds
-    // the fine boxes to the collision world.
-    let fineBoxes = 0;
-    function landmarkCells(meshes, slabs) {
-      const FINE = 0.25, BAND = 3.5, GAP = 0.4, MZ = 0.1, SAMPLE = 0.22, FLAT = 0.25;
-      const coarse = new Map(slabs), fine = new Map(), FNX = DSM.nx * Math.round(DSM.cell / FINE);
-      // the floor under a point of a landmark: the ground, a strip or a pier. (Not a roof: the surface model's
-      // roofs include the measured solids a landmark draws instead, the temple halls' own roofs in Kyoto, which
-      // would lay whole roofs into the fine cells; a landmark on a raised platform walks on a strip instead)
-      const ref = (x, y) => {
-        let h = terrain(x, y);
-        for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
-        const k = cellOf(x, y);
-        if (k >= 0 && pier.data[k] > h) h = pier.data[k];
-        return h;
-      };
-      const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
-      // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
-      // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length
-      // squared. A flat one (|nz| > 0.95, the top of a stone base) only round its edges: its sides, where
-      // a walker meets it, are triangles of their own
-      const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
-        for (let j = 0; j <= n; j++) { const t = j / n; fn(P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t, P[2] + (Q[2] - P[2]) * t); } };
-      function sample(A, B, C, step, fn, edges = false) {
-        const ab = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]), bc = Math.hypot(C[0] - B[0], C[1] - B[1], C[2] - B[2]), ca = Math.hypot(A[0] - C[0], A[1] - C[1], A[2] - C[2]);
-        if (ab < bc || ab < ca) { if (bc >= ca) [A, B, C] = [B, C, A]; else [A, B, C] = [C, A, B]; } // AB the longest
-        const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
-        const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, area2 = Math.hypot(nx, ny, nz);
-        if (edges || (area2 > 0 && Math.abs(nz) > 0.95 * area2)) { seg(A, B, step, fn); seg(B, C, step, fn); seg(C, A, step, fn); return; }
-        const L = Math.max(ab, 1e-9), h = area2 / L, rows = Math.max(1, Math.ceil(h / step)); // C's distance from AB
-        for (let i = 0; i <= rows; i++) {
-          const t = i / rows;
-          seg([A[0] + vx * t, A[1] + vy * t, A[2] + vz * t], [B[0] + (C[0] - B[0]) * t, B[1] + (C[1] - B[1]) * t, B[2] + (C[2] - B[2]) * t], step, fn);
-        }
+    // that lies on the floor is left to the floor; a flat top above it (a gate's stone base, a plinth) is
+    // laid in whole, so that a walker can stand on it (floorAt).
+    // The fine cells cost seconds in a city of temples, so they are built a TILE at a time: the triangles
+    // are sorted into tiles here, and a tile is laid into the collision world the first time anything
+    // asks about a box that touches it (col.need), or ahead of the walker a few milliseconds a frame
+    // (prefetch). Returns the 2 m cells (index -> [zlo, zhi, ...]).
+    const FINE = 0.25, BAND = 3.5, GAP = 0.4, MZ = 0.1, SAMPLE = 0.22, FLAT = 0.25, TILE = 16;
+    const FNX = DSM.nx * Math.round(DSM.cell / FINE), TPC = Math.round(TILE / FINE); // fine cells a row; and a tile's side
+    const TNX = Math.ceil(DSM.nx * DSM.cell / TILE), TNY = Math.ceil(DSM.ny * DSM.cell / TILE);
+    const tileTris = new Map(); // tile index -> [[A, B, C], ...]: the triangles (or their parts) the tile's fine cells take
+    const tileDone = new Uint8Array(TNX * TNY); // 0 not built, 1 being built, 2 built
+    let fineBoxes = 0, fineMs = 0, startMs = 0; // boxes laid so far, the time the tiles took, the time sorting took
+    // the floor under a point of a landmark: the ground, a strip or a pier. (Not a roof: the surface model's
+    // roofs include the measured solids a landmark draws instead, the temple halls' own roofs in Kyoto, which
+    // would lay whole roofs into the fine cells; a landmark on a raised platform walks on a strip instead)
+    const ref = (x, y) => {
+      let h = terrain(x, y);
+      for (const s of stripsAt(x, y)) { const q = stripHeight(s, x, y); if (q != null && q > h) h = q; }
+      const k = cellOf(x, y);
+      if (k >= 0 && pier.data[k] > h) h = pier.data[k];
+      return h;
+    };
+    // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
+    // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length squared
+    const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
+      for (let j = 0; j <= n; j++) { const t = j / n; fn(P[0] + (Q[0] - P[0]) * t, P[1] + (Q[1] - P[1]) * t, P[2] + (Q[2] - P[2]) * t); } };
+    function sample(A, B, C, step, fn) {
+      const ab = Math.hypot(B[0] - A[0], B[1] - A[1], B[2] - A[2]), bc = Math.hypot(C[0] - B[0], C[1] - B[1], C[2] - B[2]), ca = Math.hypot(A[0] - C[0], A[1] - C[1], A[2] - C[2]);
+      if (ab < bc || ab < ca) { if (bc >= ca) [A, B, C] = [B, C, A]; else [A, B, C] = [C, A, B]; } // AB the longest
+      const ux = B[0] - A[0], uy = B[1] - A[1], uz = B[2] - A[2], vx = C[0] - A[0], vy = C[1] - A[1], vz = C[2] - A[2];
+      const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx, area2 = Math.hypot(nx, ny, nz);
+      const L = Math.max(ab, 1e-9), h = area2 / L, rows = Math.max(1, Math.ceil(h / step)); // C's distance from AB
+      for (let i = 0; i <= rows; i++) {
+        const t = i / rows;
+        seg([A[0] + vx * t, A[1] + vy * t, A[2] + vz * t], [B[0] + (C[0] - B[0]) * t, B[1] + (C[1] - B[1]) * t, B[2] + (C[2] - B[2]) * t], step, fn);
       }
+    }
+    // the part of polygon P (points [x, y, z]) on the side of axis `ax` (0 x, 1 y, 2 z) where sign * (p[ax] - v) <= 0
+    function clip(P, ax, v, sign) {
+      const out = [];
+      for (let i = 0; i < P.length; i++) {
+        const a = P[i], b = P[(i + 1) % P.length], da = sign * (a[ax] - v), db = sign * (b[ax] - v);
+        if (da <= 0) out.push(a);
+        if ((da < 0 && db > 0) || (da > 0 && db < 0)) { const t = da / (da - db); out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]); }
+      }
+      return out;
+    }
+    const fan = Q => Q.length < 3 ? [] : Q.slice(1, -1).map((_, i) => [Q[0], Q[i + 1], Q[i + 2]]);
+    const cpush = (M, k, lo, hi) => { const l = M.get(k); if (l) l.push(lo, hi); else M.set(k, [lo, hi]); };
+    function landmarkCells(meshes, slabs) {
+      const coarse = new Map(slabs);
       // the 2 m cells, one interval per mesh and cell as before
       function toCoarse(tris) {
         const mine = new Map();
@@ -310,31 +327,6 @@ window.OENav = (function () {
         });
         for (const [k, q] of mine) cpush(coarse, k, q[0] - 0.3, q[1] + 0.3);
       }
-      // a fine cell's heights: intervals no closer than GAP. What lies under a walkable strip (the stone of a
-      // flight of steps, the edge of the platform it climbs to) is the strip's own slab: left out
-      function toFine(x, y, z) {
-        const c = Math.floor((x - x0) / FINE), r = Math.floor((y1 - y) / FINE);
-        if (c < 0 || r < 0 || c >= FNX) return;
-        for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && z <= h + 0.15) return; }
-        const k = r * FNX + c, l = fine.get(k);
-        if (!l) { fine.set(k, [z, z]); return; }
-        for (let i = 0; i < l.length; i += 2) if (z >= l[i] - GAP && z <= l[i + 1] + GAP) { if (z < l[i]) l[i] = z; if (z > l[i + 1]) l[i + 1] = z; return; }
-        l.push(z, z);
-      }
-      // the part of triangle ABC below the height zc and the part above, each as triangles
-      function cut(P, zc) {
-        const lo = [], hi = [];
-        for (let i = 0; i < 3; i++) {
-          const a = P[i], b = P[(i + 1) % 3];
-          (a[2] <= zc ? lo : hi).push(a);
-          if ((a[2] < zc) !== (b[2] < zc) && a[2] !== zc && b[2] !== zc) {
-            const t = (zc - a[2]) / (b[2] - a[2]), q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, zc];
-            lo.push(q); hi.push(q);
-          }
-        }
-        const fan = Q => Q.length < 3 ? [] : Q.slice(1, -1).map((_, i) => [Q[0], Q[i + 1], Q[i + 2]]);
-        return [fan(lo), fan(hi)];
-      }
       for (const m of meshes) {
         const p = m.position, idx = m.index, up = [];
         for (let t = 0; t < idx.length; t += 3) {
@@ -345,26 +337,59 @@ window.OENav = (function () {
           const rlo = Math.min(...rs), zc = Math.max(...rs) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
-          const [below, above] = zhi > zc ? cut(P, zc) : [[P], []];
-          for (const [A, B, C] of below) sample(A, B, C, SAMPLE, toFine);
-          for (const q of above) up.push(q);
+          let below = [P];
+          if (zhi > zc) { below = fan(clip(P, 2, zc, 1)); for (const q of fan(clip(P, 2, zc, -1))) up.push(q); }
+          for (const T of below) { // into the tiles it touches
+            const c0 = Math.max(0, Math.floor((Math.min(T[0][0], T[1][0], T[2][0]) - x0) / TILE)), c1 = Math.min(TNX - 1, Math.floor((Math.max(T[0][0], T[1][0], T[2][0]) - x0) / TILE));
+            const r0 = Math.max(0, Math.floor((y1 - Math.max(T[0][1], T[1][1], T[2][1])) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - Math.min(T[0][1], T[1][1], T[2][1])) / TILE));
+            for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) { const k = r * TNX + c, l = tileTris.get(k); if (l) l.push(T); else tileTris.set(k, [T]); }
+          }
         }
         toCoarse(up);
+      }
+      return coarse;
+    }
+    // lay one tile's fine cells into the collision world: a generator that yields now and then, so that
+    // prefetch() can spread a tile over frames; need() runs it to the end
+    function* tileBuild(k) {
+      const tris = tileTris.get(k) || [], tc = k % TNX, tr = Math.floor(k / TNX);
+      const xa = x0 + tc * TILE, xb = xa + TILE, yb = y1 - tr * TILE, ya = yb - TILE;
+      const fc0 = tc * TPC, fr0 = tr * TPC, fine = new Map();
+      const tStrips = strips.filter(st => st.box[0] <= xb && st.box[2] >= xa && st.box[1] <= yb && st.box[3] >= ya); // (most tiles have none)
+      // a fine cell's heights: intervals no closer than GAP. What lies under a walkable strip (the stone of a
+      // flight of steps, the edge of the platform it climbs to) is the strip's own slab: left out
+      function toFine(x, y, z) {
+        const c = Math.floor((x - x0) / FINE), r = Math.floor((y1 - y) / FINE);
+        if (c < fc0 || r < fr0 || c >= fc0 + TPC || r >= fr0 + TPC || c >= FNX) return;
+        if (tStrips.length) for (const s of stripsAt(x, y)) { const h = stripHeight(s, x, y); if (h != null && z <= h + 0.15) return; }
+        const q = r * FNX + c, l = fine.get(q);
+        if (!l) { fine.set(q, [z, z]); return; }
+        for (let i = 0; i < l.length; i += 2) if (z >= l[i] - GAP && z <= l[i + 1] + GAP) { if (z < l[i]) l[i] = z; if (z > l[i + 1]) l[i + 1] = z; return; }
+        l.push(z, z);
+      }
+      let n = 0;
+      for (const T of tris) {
+        let Q = T; // the part of it over this tile
+        if (Math.min(T[0][0], T[1][0], T[2][0]) < xa || Math.max(T[0][0], T[1][0], T[2][0]) > xb || Math.min(T[0][1], T[1][1], T[2][1]) < ya || Math.max(T[0][1], T[1][1], T[2][1]) > yb)
+          Q = clip(clip(clip(clip(T, 0, xa - 0.01, -1), 0, xb + 0.01, 1), 1, ya - 0.01, -1), 1, yb + 0.01, 1);
+        for (const [A, B, C] of fan(Q)) sample(A, B, C, SAMPLE, toFine);
+        if (++n % 64 === 0) yield;
+      }
+      // the intervals in order of height, any that came to touch joined
+      const keys = [...fine.keys()].sort((a, b) => a - b);
+      for (const q of keys) { const l = fine.get(q), o = [];
+        const pairs = []; for (let i = 0; i < l.length; i += 2) pairs.push([l[i], l[i + 1]]);
+        pairs.sort((a, b) => a[0] - b[0]);
+        for (const [a, b] of pairs) if (o.length && a <= o[o.length - 1] + GAP) o[o.length - 1] = Math.max(o[o.length - 1], b); else o.push(a, b);
+        fine.set(q, o);
       }
       // the fine cells in rectangles: runs along each row of cells whose heights agree, then runs of rows
       const near = (a, b) => a.length === b.length && a.every((v, i) => Math.abs(v - b[i]) < 0.3);
       const widen = (a, b) => a.map((v, i) => (i % 2 ? Math.max(v, b[i]) : Math.min(v, b[i])));
-      const keys = [...fine.keys()].sort((a, b) => a - b);
-      for (const k of keys) { const l = fine.get(k), o = []; // the intervals in order of height, any that came to touch joined
-        const pairs = []; for (let i = 0; i < l.length; i += 2) pairs.push([l[i], l[i + 1]]);
-        pairs.sort((a, b) => a[0] - b[0]);
-        for (const [a, b] of pairs) if (o.length && a <= o[o.length - 1] + GAP) o[o.length - 1] = Math.max(o[o.length - 1], b); else o.push(a, b);
-        fine.set(k, o);
-      }
-      let open = new Map(), n = 0;
+      let open = new Map();
       const emit = q => {
-        const xa = x0 + q.c0 * FINE, xb = x0 + (q.c1 + 1) * FINE, yb = y1 - q.r0 * FINE, ya = y1 - (q.r1 + 1) * FINE;
-        for (let i = 0; i < q.iv.length; i += 2) { col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], q.iv[i] - MZ, q.iv[i + 1] + MZ, LANDMARK, -1); n++; }
+        const ea = x0 + q.c0 * FINE, eb = x0 + (q.c1 + 1) * FINE, fb = y1 - q.r0 * FINE, fa = y1 - (q.r1 + 1) * FINE;
+        for (let i = 0; i < q.iv.length; i += 2) { col.add([[ea, fa, eb, fa, eb, fb, ea, fb]], q.iv[i] - MZ, q.iv[i + 1] + MZ, LFINE, -1); fineBoxes++; }
       };
       for (let a = 0; a < keys.length;) {
         const r = Math.floor(keys[a] / FNX), runs = [];
@@ -385,8 +410,44 @@ window.OENav = (function () {
         open = next;
       }
       for (const o of open.values()) emit(o);
-      fineBoxes = n;
-      return coarse;
+    }
+    const building = new Map(); // tile index -> its generator, part-way through
+    function runTile(k, until) {
+      if (tileDone[k] === 2) return true;
+      const t0 = performance.now();
+      if (!tileTris.has(k)) { tileDone[k] = 2; return true; }
+      let g = building.get(k);
+      if (!g) { g = tileBuild(k); building.set(k, g); tileDone[k] = 1; }
+      let done = false;
+      while (!(done = g.next().done) && performance.now() < until);
+      fineMs += performance.now() - t0;
+      if (done) { building.delete(k); tileDone[k] = 2; }
+      return done;
+    }
+    // the tiles a box touches, built now (a query far wider than a walker's, a flight's, leaves them be)
+    let coarseOnly = false;
+    function need(xa, ya, xb, yb) {
+      if (coarseOnly || xb - xa > 6 * TILE || yb - ya > 6 * TILE) return;
+      const c0 = Math.max(0, Math.floor((xa - x0) / TILE)), c1 = Math.min(TNX - 1, Math.floor((xb - x0) / TILE));
+      const r0 = Math.max(0, Math.floor((y1 - yb) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - ya) / TILE));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (tileDone[r * TNX + c] !== 2) runTile(r * TNX + c, Infinity);
+    }
+    // fn() run against the 2 m cells alone, the fine ones left unbuilt: a sweep over the whole city at the
+    // start (where the trees and lamps may stand) that a landmark's 2 m cells answer well enough
+    function withoutFine(fn) { coarseOnly = true; try { return fn(); } finally { coarseOnly = false; } }
+    // build the tiles within `radius` of (x, y), nearest first, for at most `ms` milliseconds (the game
+    // calls this every frame with the walker's or the car's place); true when they are all built
+    function prefetch(x, y, radius = 48, ms = 3) {
+      const until = performance.now() + ms, c0 = Math.max(0, Math.floor((x - radius - x0) / TILE)), c1 = Math.min(TNX - 1, Math.floor((x + radius - x0) / TILE));
+      const r0 = Math.max(0, Math.floor((y1 - y - radius) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - y + radius) / TILE));
+      const todo = [];
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) {
+        const k = r * TNX + c;
+        if (tileDone[k] !== 2) todo.push([Math.hypot(x0 + (c + 0.5) * TILE - x, y1 - (r + 0.5) * TILE - y), k]);
+      }
+      todo.sort((a, b) => a[0] - b[0]);
+      for (const [, k] of todo) { if (performance.now() >= until) return false; if (!runTile(k, until)) return false; }
+      return true;
     }
     // ---------------------------------------------------------- the collision world: buildings as published, landmark cells as boxes
     const col = OECollision.create(4); // (4 m buckets: the fine landmark cells put hundreds of small boxes in one 8 m bucket)
@@ -399,12 +460,15 @@ window.OENav = (function () {
     // the posts a canopy (an arcade, a gate: pipeline/arcades.py) stands on, as buildings.js draws them
     const PH = OEBuildings.POST / 2;
     for (const s of shown) for (const [x, y] of OEBuildings.canopyPosts(s, D.B.b[s[0]])) col.add([[x - PH, y - PH, x + PH, y - PH, x + PH, y + PH, x - PH, y + PH]], s[1] / 10 - 1, (s[1] + s[2]) / 10, BUILDING, s[0]);
+    const tFine = performance.now();
     const coarse = landmarkCells(solidMeshes, slabs);
+    startMs = performance.now() - tFine;
     for (const [k, l] of coarse) {
       const r = Math.floor(k / DSM.nx), c = k % DSM.nx, xa = x0 + c * DSM.cell, xb = xa + DSM.cell, yb = y1 - r * DSM.cell, ya = yb - DSM.cell;
       for (let i = 0; i < l.length; i += 2) col.add([[xa, ya, xb, ya, xb, yb, xa, yb]], l[i], l[i + 1], LANDMARK, k);
     }
     col.build();
+    col.need = need;
     // buildings under a deck (or poking through it in the data) don't block a walker on the deck
     const underDeck = new Uint8Array(col.prisms.length);
     col.prisms.forEach((p, i) => {
@@ -419,8 +483,9 @@ window.OENav = (function () {
       }
     });
     // what a walker with feet at z passes: buildings no taller than a step, and on a deck the buildings
-    // under it (landmark lips below the knee are already outside the capsule's height range)
-    const passes = (z, onDeck) => (i, p) => p.tag === BUILDING && (p.zhi <= z + STEP || (onDeck && underDeck[i] === 1));
+    // under it, and a landmark's fine cells no higher than a step, which the walker steps onto (floorAt)
+    // (landmark lips below the knee are already outside the capsule's height range)
+    const passes = (z, onDeck) => (i, p) => (p.tag === BUILDING && (p.zhi <= z + STEP || (onDeck && underDeck[i] === 1))) || (p.tag === LFINE && p.zhi <= z + STEP + MZ);
     // building top at (x, y), or -Infinity where there is no building
     function buildingTop(x, y) {
       const k = cellOf(x, y);
@@ -473,9 +538,13 @@ window.OENav = (function () {
       decksAt(x, y, (h, d) => { if (d.walk) take(h, 'deck'); });
       const bt = col.topAt(x, y, z + STEP, BUILDING);
       if (bt > -Infinity) take(bt, 'roof');
+      // a landmark's top within a step (a gate's stone base, a plinth, a platform): under the feet, which
+      // reach a little past the body's middle, so that the edge of a base is stood on, not walked into
+      const lt = col.topNear(x, y, FOOT, z + STEP + MZ, LFINE);
+      if (lt > -Infinity) take(lt - MZ, 'landmark');
       return best === null ? null : { z: best, kind };
     }
-    const isDeck = kind => kind !== 'ground' && kind !== 'pier' && kind !== 'roof';
+    const isDeck = kind => kind !== 'ground' && kind !== 'pier' && kind !== 'roof' && kind !== 'landmark';
     // can a walker whose feet are at z stand at (x, y)? Returns the new floor or a reason.
     function walk(x, y, z) {
       const f = floorAt(x, y, z);
@@ -590,7 +659,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, get fineBoxes() { return fineBoxes; }, STEP, DROP, R, BUILDING, LANDMARK, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, prefetch, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
     return api;
   }
   return { create };
