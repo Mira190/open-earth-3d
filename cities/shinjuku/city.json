@@ -543,6 +543,34 @@
         ],
         "radius": 180,
         "note": "Shinjuku Gyoen: the shelter by the pond, in The Garden of Words"
+      },
+      {
+        "name": "四ツ谷",
+        "kana": "よつや",
+        "romaji": "Yotsuya",
+        "band": "#f15a22",
+        "left": "市ケ谷",
+        "right": "信濃町",
+        "at": [
+          3088.0,
+          1900.0
+        ],
+        "radius": 220,
+        "note": "The outer moat and Sophia University, in Your Name"
+      },
+      {
+        "name": "参宮橋",
+        "kana": "さんぐうばし",
+        "romaji": "Sangūbashi",
+        "band": "#2288cc",
+        "left": "南新宿",
+        "right": "代々木八幡",
+        "at": [
+          -255.9,
+          1136.3
+        ],
+        "radius": 150,
+        "note": "The Odakyu line's little station, in 5 Centimeters per Second"
       }
     ],
     "travel": [
@@ -609,6 +637,15 @@
         "at": [
           2083.0,
           1231.0
+        ],
+        "check": true
+      },
+      {
+        "id": "t-yotsuya",
+        "name": "Yotsuya Station 四ツ谷駅",
+        "at": [
+          3058.0,
+          1910.0
         ],
         "check": true
       }
@@ -810,6 +847,32 @@
         "idle": [
           "Same bridge every week. The light's never the same.",
           "Look up the street: the clock on the Docomo tower."
+        ]
+      },
+      {
+        "id": "haruka",
+        "name": "Haruka 遥",
+        "role": "Student, Sophia University 上智大生",
+        "at": [
+          3058.0,
+          1905.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_17_f011",
+          "skin": "#f3d3c0",
+          "hair": "#2a1d16",
+          "top": "#b8c4d6",
+          "legs": "#2b2f3a",
+          "shirt": "#b8c4d6",
+          "pants": "#2b2f3a",
+          "clip": "Phone",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Lectures across the road, the moat's bank for lunch.",
+          "Yotsuya at {time}. {sun_line}"
         ]
       }
     ],
@@ -1069,7 +1132,7 @@
         "talk": [
           "You found it. Your Name draws its Tokyo from real streets, and this footbridge outside Shinanomachi Station is one of them.",
           "Look north-west, over the tracks and up the street: the Docomo tower's clock, {landmark:docomo.clock_d_m} metres across.",
-          "One more, for Weathering with You (2019). Yoyogi Kaikan stood by Yoyogi Station's west exit, an old block the film gave a rooftop shrine. It was pulled down from August 2019; an office building stands there now. Go and stand where it was. Kabukicho's lanes, up from the east exit, are the film's too."
+          "The film's Tokyo goes on to Yotsuya, one stop east. Haruka studies at Sophia University there; she'll show you the moat."
         ],
         "steps": [
           {
@@ -1082,6 +1145,45 @@
             "text": "Stand on the footbridge and look up the street"
           },
           {
+            "type": "talk",
+            "npc": "haruka",
+            "text": "Meet Haruka by Yotsuya Station"
+          }
+        ],
+        "check": true
+      },
+      {
+        "id": "yotsuya",
+        "line": "shinkai",
+        "giver": "haruka",
+        "title": "Yotsuya",
+        "stamp": "四ツ谷",
+        "check": true,
+        "talk": [
+          "Yotsuya Station sits in the old outer moat of Edo Castle. The trains run along the bottom of it; Sophia's sports ground is the drained moat next door.",
+          "The film's commuter town is this one: the station, the bank above the tracks, the streets down to Shinanomachi. Walk the bank, then the bridge over the tracks.",
+          "Two more, further west. Yoyogi Kaikan stood by Yoyogi Station's west exit, an old block Weathering with You gave a rooftop shrine; it was pulled down from August 2019 and an office building stands there now. And past it, Sangubashi on the Odakyu line, the little station of 5 Centimeters per Second."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              3150.0,
+              1640.0
+            ],
+            "radius": 40,
+            "text": "Walk the moat's bank by Sophia University"
+          },
+          {
+            "type": "visit",
+            "at": [
+              3088.2,
+              1946.1
+            ],
+            "radius": 30,
+            "text": "Cross over the tracks at Yotsuya Station"
+          },
+          {
             "type": "visit",
             "at": [
               477.9,
@@ -1089,9 +1191,17 @@
             ],
             "radius": 22,
             "text": "Stand where Yoyogi Kaikan stood, by Yoyogi Station's west exit"
+          },
+          {
+            "type": "visit",
+            "at": [
+              -255.9,
+              1136.3
+            ],
+            "radius": 25,
+            "text": "Find Sangubashi Station on the Odakyu line"
           }
-        ],
-        "check": true
+        ]
       },
       {
         "id": "done",
