@@ -57,7 +57,11 @@ window.OpenEarthGame = async function game(cityId) {
   $('#gt-city').textContent = `${CITY.name}, ${CITY.country}`;
   if (G.blurb) $('#g-title p').textContent = G.blurb;
   // neighbouring areas you can go on to, such as the bayside from the city (game.links)
-  $('#gm-links').innerHTML = (G.links || []).map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
+  // and the other maps of the same group (Tokyo's districts: cities/index.json groups), as on the subway map
+  const me = (window.OE_CITIES || []).find(c => c.id === cityId), kin = me && me.group
+    ? window.OE_CITIES.filter(c => c.group === me.group && c.id !== me.id && c.built && c.game).map(c => ({ id: c.id, name: `${c.name}${c.native ? ` ${c.native}` : ''}`, how: c.tagline })) : [];
+  $('#gm-links').innerHTML = [...(G.links || []), ...kin.filter(k => !(G.links || []).some(l => l.id === k.id))]
+    .map(l => `<a class="btn" href="#play-${l.id}">${l.name}</a><span class="note">${l.how || ''}</span>`).join('');
   const stage = $('#game-stage'), canvas = $('#game-gl');
   // the device's tier (quality.js): pixels, MSAA, shadows and how much detail the world carries;
   // reversed depth (where the GPU has EXT_clip_control) with the post stack's float depth buffer (atmosphere.js)
@@ -718,9 +722,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the route from a place on the roads (from: { line, s, dir, v }) to the pick-up, and how long it takes
   // (the time with nothing in the way and no red lights, which it obeys only in your sight)
   // The traffic lights near the pick-up, which it stops at in your sight, add on average SIG_WAIT
-  // each to the time (it has priority there: the other road's green ends after 5 s, then amber and
-  // all red); the time with them is the one a ride is picked by and the app first says.
-  const SIG_WAIT = 4;
+  // each to the time: it has priority there, calling its green from far enough out that the lights
+  // have changed (the other road's few seconds of green, amber, all red) and held it by the time it
+  // gets there, so it seldom stops (tools/ride_check.js signals measures it); the time with them is
+  // the one a ride is picked by and the app first says.
+  const SIG_WAIT = 1;
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   function planRide(from, pickup) {
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
@@ -779,8 +785,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const cand = roads.behind(pickup, 110, 270, 36);
     for (let k = 0; cand.length < 6 && k < 12; k++) { const pl = roads.around(pickup.x, pickup.y, 120, 280); if (pl) cand.push(pl); } // (a pick-up the search can't leave)
     let best = null;
+    // (not where it would pull out into a car of the traffic, or a queue: one at a crawl or stopped close by)
+    const busy = pl => cars.C.some(c => c.line >= 0 && Math.abs(c.z - (pl.z ?? c.z)) < 3 && Math.hypot(c.x - pl.x, c.y - pl.y) < (c.v < 3 ? 25 : 12));
+    let any = false;
     const pick = list => {
       for (const pl of list) {
+        if (!any && busy(pl)) continue;
         const plan = planRide(pl, pickup);
         if (!plan) continue;
         const dx = pl.x - player.x, dy = pl.y - player.y, d = Math.hypot(dx, dy);
@@ -794,11 +804,30 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!best || best.plan.T > RIDE_T[1]) pick(roads.behind(pickup, 40, 110, 24));
     // and in streets as slow as Shibuya's, just round the corner, 15 to 40 m off (out of sight where it can be)
     if (!best || best.plan.T > RIDE_T[1] + 5) pick(roads.behind(pickup, 15, 40, 16));
+    if (!best) { any = true; pick(cand); } // (all of them in the traffic: one of those rather than none)
     return best;
   }
   // the time to the pick-up (or, on the way, to where you're going), as the app shows it
   // (held up behind the traffic, it rises as it waits, as an app's does, rather than standing still)
-  const eta = o => (o.phase === 'coming' ? o.drv.timeLeft() + SIG_WAIT * (o.sig || []).filter(s => s > o.drv.st.s + 2).length + Math.max(0, (o.drv.st.held || 0) - 2) : o.phase === 'driving' ? o.drv.timeLeft() : 0);
+  // Stopped at a red light, or queued behind a car that is, it is the time to that light's green
+  // (junctions.toGreen: the signals know their change) with a couple of seconds for the queue to move
+  // off, in place of the average for that light; held up behind cars otherwise, the time it has waited.
+  function rideWait(st) {
+    if (st.v > 1) return null;
+    let b = st.block, n = 0; // (the queue ahead, car by car, to the one at the line)
+    while (b && b.line != null && b.why === 'car' && b.front && b.v < 1 && n < 8) { b = b.front; n++; }
+    const a = /^the line/.test(st.why || '') ? st.lineAt : b && b.line != null && b.why === 'light' ? b.lineArm : null;
+    if (a && a.j.sig) return { light: true, t: junctions.toGreen(a) + (a === st.lineAt ? 0 : 1.5 * (n + 1)) };
+    // (behind a car stuck where it is, at a wall or stopped for good: the driver swings out round it
+    // once it has waited 6 s, cars.js gapAhead)
+    const stuck = st.block && st.block.line != null && st.block.v < 0.1 && (st.block.why === 'wall' || st.block.still > 2);
+    return { light: false, t: stuck ? Math.max(1, 7 - (st.held || 0)) : Math.max(0, (st.held || 0) - 2) };
+  }
+  const eta = o => {
+    if (o.phase !== 'coming') return o.phase === 'driving' ? o.drv.timeLeft() : 0;
+    const st = o.drv.st, w = rideWait(st), lights = (o.sig || []).filter(s => s > st.s + 2).length - (w && w.light ? 1 : 0);
+    return o.drv.timeLeft() + SIG_WAIT * Math.max(0, lights) + (w ? w.t : 0);
+  };
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
   function hail() {
     if (player.mode !== 'foot' || player.auto) return;
@@ -2856,6 +2885,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (saved.car && myCar && nav.floorAt(saved.car[0], saved.car[1], saved.car[2] + 1)) parkMyCar({ x: saved.car[0], y: saved.car[1], z: saved.car[2], h: saved.car[3] });
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }
+    // arriving at a district of the map from the subway map (index.html router, "@<travel id>")
+    const arrive = !cont && window.OE_ARRIVE && (G.travel || []).find(t => t.id === window.OE_ARRIVE);
+    if (arrive) spawn(arrive.at, arrive.at[2] != null ? arrive.at[2] + 0.5 : undefined);
     const tc = $('#gt-timechoice [aria-pressed="true"]');
     if (!cont && tc) presetTime(tc.dataset.t);
     $('#g-title').hidden = true;

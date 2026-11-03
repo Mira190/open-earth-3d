@@ -146,13 +146,20 @@ A taxi or a ride reaches you within half a minute. The router searches the stree
 network backwards from the pick-up for points 110 to 270 m away by road (40 to
 110 m where none of those is near enough in time), following the one-way streets;
 each is timed by driving its route in a dry run (the driver's own rules, nothing
-in the way), with 4 s added for each set of traffic lights near the pick-up, and
-the one that takes 10 to 20 s, out of your sight where it can be, is chosen,
+in the way), with 1 s added for each set of traffic lights near the pick-up, and
+the one that takes 10 to 20 s, out of your sight where it can be and not where a
+car of the traffic or a queue would be in its way as it sets out, is chosen,
 leaving the rest of the half minute for the traffic you can see. The same time is
 what the phone shows: it counts down as the car comes and, held up behind the
-traffic, rises as it waits, as an app's does. At a red light in your sight it stops at the line and
-asks for its green, as a bus with priority does: the other road's green ends once
-it has run 5 s, through amber as ever. Its driver goes into a junction as the
+traffic, rises as it waits, as an app's does; stopped at a red light, or queued
+behind cars that are, it shows the time to that light's green (`junctions.js`
+`toGreen`) and a moment for the queue to move off, and behind a car stuck at a wall
+or stopped for good, the few seconds before its driver swings out round it. Coming
+up to traffic lights it asks for its green, as a bus with priority does, from 12 s
+out at its speed (in your sight or out of it), so that the lights have changed by the
+time it gets there: the other road's green ends once it has run 5 s, through amber
+as ever, and its own green is held while it comes (up to 15 s past its end). It
+stops at a red line only in your sight. Its driver goes into a junction as the
 traffic does, asking `junctions.js` for its way across (none crossing it already
 in, the longest waiting first, giving way to the main road), so a car of the
 traffic never enters the same junction across it. Held more than 10 s behind a
@@ -1538,7 +1545,10 @@ moving; the crowd's footways must cross at the signals, with walk signals, and
 the nearest junction's walk must turn on and off within 75 s; a junction with a
 turn arrow must have its arrow lanterns. Seated at the wheel and in the back, each head must be under the roof.
 There is a screenshot after each step, and it fails on any page error.
-`tools/check.sh` runs it for every city whenever the game changes.
+`tools/check.sh` runs it for every city whenever the game changes, at 10:00 in
+each city's time zone: `GAME_TIME=22:40` (or `YYYY-MM-DDTHH:MM`) pins the page's
+clock to another local hour (`tools/pin_clock.js`), and `GAME_TIME=live` leaves the
+real one, which a city starting at `"time": "live"` would otherwise play at.
 
 `tools/traffic_check.js <city> [seconds] [places]` measures the traffic (see
 [Junctions and traffic lights](#junctions-and-traffic-lights)), with the
@@ -1555,9 +1565,15 @@ the times given, or with `VIEW=kerb` a walker's view of a crossing.
 `tools/clip_check.js <city>` counts what passes through what (furniture in the
 road, cars in posts, walls and each other, walkers in walls, ferries in each
 other, heads through roofs); `tools/check.sh` runs it with the game check.
-`tools/ride_check.js <city> [N]` hails a taxi and orders a ride N times each at
+`tools/ride_check.js <city> [N] [signals]` hails a taxi and orders a ride N times each at
 kerbs round the start and says how long each took against what the phone said,
-and what held it up, and how many times it re-routed round a jam. `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+and what held it up (at the line: a red, an amber, a stop sign or the junction's
+turn), and how many times it re-routed round a jam; `signals` keeps only the rides
+past traffic lights near you. It seeds `Math.random` and takes `GAME_TIME`, so a
+run is the same each time, and fails when more than one ride in ten is late or
+more than 8 s off what the phone said. `tools/wall_stops.js <city> [seconds]
+[places]` lists where the traffic stops at a wall across its way, and what the
+wall is (a building, a canopy's post, a landmark). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
 time and fails if two hulls overlap or a vessel never calls, which is what a
 deadlock or a meeting at a shared berth takes to show.
 

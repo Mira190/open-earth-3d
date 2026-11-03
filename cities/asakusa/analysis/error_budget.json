@@ -1,0 +1,40 @@
+{
+ "note": "Mean % of place area in direct sun over its protected window (or 10:00-14:00), 21st of each month.",
+ "year": 2026,
+ "rows": [
+  {
+   "place": "Nakamise 仲見世",
+   "prod": 57.21,
+   "finer_samples": 56.94,
+   "finer_dsm": 49.35,
+   "finer_time": 57.8,
+   "reference": 50.14,
+   "lit_rays_leaving_extent_low_pct": 16.53,
+   "prod_minus_reference": 7.07,
+   "seconds": 7.584
+  },
+  {
+   "place": "Sumida Park 隅田公園",
+   "prod": 92.83,
+   "finer_samples": 92.8,
+   "finer_dsm": 92.4,
+   "finer_time": 92.92,
+   "reference": 92.5,
+   "lit_rays_leaving_extent_low_pct": 8.12,
+   "prod_minus_reference": 0.33,
+   "seconds": 235.994
+  },
+  {
+   "place": "Hanayashiki 花やしき",
+   "prod": 34.66,
+   "finer_samples": 34.12,
+   "finer_dsm": 29.32,
+   "finer_time": 34.94,
+   "reference": 30.65,
+   "lit_rays_leaving_extent_low_pct": 0.64,
+   "prod_minus_reference": 4.01,
+   "seconds": 6.735
+  }
+ ],
+ "max_abs_numerical_error_pp": 7.07
+}

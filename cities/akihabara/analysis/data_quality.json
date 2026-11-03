@@ -1,0 +1,53 @@
+{
+ "ml_heights": {
+  "buildings": 8703,
+  "with_height": 226,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -900,
+   900,
+   -740,
+   740
+  ],
+  "land": {
+   "samples": 4315,
+   "median_excess_m": 13.5,
+   "p90_excess_m": 19.8
+  },
+  "under_buildings": {
+   "samples": 2587,
+   "median_excess_m": 13.3,
+   "p90_excess_m": 19.7
+  },
+  "open_ground": {
+   "samples": 1728,
+   "median_excess_m": 13.9,
+   "p90_excess_m": 20.2
+  },
+  "points": {
+   "Akihabara Station": {
+    "terrarium_m": 14.4,
+    "dem_m": 3.8
+   },
+   "Kanda Myojin": {
+    "terrarium_m": 23.0,
+    "dem_m": 19.8
+   },
+   "Nikolai-do": {
+    "terrarium_m": 31.7,
+    "dem_m": 19.4
+   },
+   "Suehirocho": {
+    "terrarium_m": 24.4,
+    "dem_m": 3.5
+   }
+  }
+ }
+}

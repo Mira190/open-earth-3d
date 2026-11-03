@@ -1,0 +1,124 @@
+{
+ "year": 2026,
+ "dsm": {
+  "cell_m": 2,
+  "nx": 1300,
+  "ny": 820,
+  "build_ms": 149
+ },
+ "places": [
+  {
+   "name": "Nakamise 仲見世",
+   "lep": false,
+   "period": null,
+   "window": "10:00-14:00",
+   "window_verified": false,
+   "area_m2": 4274,
+   "samples": 477,
+   "mean_pct_in_sun_by_month": [
+    43,
+    49,
+    56,
+    64,
+    70,
+    80,
+    72,
+    64,
+    57,
+    48,
+    43,
+    40
+   ],
+   "protected_months": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ]
+  },
+  {
+   "name": "Sumida Park 隅田公園",
+   "lep": false,
+   "period": null,
+   "window": "10:00-14:00",
+   "window_verified": false,
+   "area_m2": 201856,
+   "samples": 8062,
+   "mean_pct_in_sun_by_month": [
+    89,
+    92,
+    94,
+    95,
+    96,
+    96,
+    96,
+    95,
+    94,
+    92,
+    89,
+    88
+   ],
+   "protected_months": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ]
+  },
+  {
+   "name": "Hanayashiki 花やしき",
+   "lep": false,
+   "period": null,
+   "window": "10:00-14:00",
+   "window_verified": false,
+   "area_m2": 6254,
+   "samples": 696,
+   "mean_pct_in_sun_by_month": [
+    19,
+    27,
+    35,
+    45,
+    50,
+    53,
+    50,
+    45,
+    35,
+    25,
+    17,
+    15
+   ],
+   "protected_months": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ]
+  }
+ ],
+ "rays": 1883940,
+ "ray_ms": 7955
+}
