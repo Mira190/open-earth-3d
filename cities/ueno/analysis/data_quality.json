@@ -1,0 +1,53 @@
+{
+ "ml_heights": {
+  "buildings": 10682,
+  "with_height": 675,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -950,
+   950,
+   -900,
+   900
+  ],
+  "land": {
+   "samples": 5472,
+   "median_excess_m": 8.3,
+   "p90_excess_m": 15.5
+  },
+  "under_buildings": {
+   "samples": 2795,
+   "median_excess_m": 9.5,
+   "p90_excess_m": 15.8
+  },
+  "open_ground": {
+   "samples": 2677,
+   "median_excess_m": 7.0,
+   "p90_excess_m": 14.7
+  },
+  "points": {
+   "Ueno Station": {
+    "terrarium_m": 20.0,
+    "dem_m": 4.4
+   },
+   "Shinobazu Pond": {
+    "terrarium_m": 4.6,
+    "dem_m": 8.9
+   },
+   "Tokyo National Museum": {
+    "terrarium_m": 30.0,
+    "dem_m": 14.9
+   },
+   "Okachimachi": {
+    "terrarium_m": 14.2,
+    "dem_m": 3.2
+   }
+  }
+ }
+}

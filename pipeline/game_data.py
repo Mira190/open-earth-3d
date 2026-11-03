@@ -142,6 +142,16 @@ def main():
     gx, gy = C.x0 + (gx + 0.5) * DEM_CELL, C.y1 - (gy + 0.5) * DEM_CELL
     sea = water_polygons(C, con, raw, extent)
     water = raster_mask(sea, nx, ny, DEM_CELL, C.x0, C.y1)
+    # ponds above the sea-level water (a park's or a garden's, drawn by the city's landmarks at their own level):
+    # water to the game too, a basin a metre under that level rather than the modelled sea bottom
+    ponds = C.hook("game_ponds")(scene) if C.hook("game_ponds") else []
+    pond_level = np.full((ny, nx), np.nan)
+    for p in ponds:
+        m = raster_mask([Polygon(p["ring"], p.get("holes") or [])], nx, ny, DEM_CELL, C.x0, C.y1)
+        pond_level[m] = p["z"] - 1.0
+        water |= m
+    if ponds:
+        print(f"ponds: {len(ponds)} above the sea, {int(np.isfinite(pond_level).sum())} cells")
     piers = [Polygon(np.asarray(r, float).reshape(-1, 2) / 10) for r in places["piers"]]
     pier_mask = raster_mask([p.buffer(3) for p in piers], nx, ny, DEM_CELL, C.x0, C.y1)
     built = raster_mask([Polygon(np.asarray(s[4], float).reshape(-1, 2) / 10) for s in B["s"]], nx, ny, DEM_CELL, C.x0, C.y1)
@@ -574,6 +584,7 @@ def main():
     # pads written below get that apron, so a pad the city leaves out leaves none behind
     # (shore.py, which pipeline/pad_discs.py shares to check and repair game.json without a rebuild)
     ground_grid = np.where(water, water_floor(sm, water, gx, gy, C.x0, C.y1), dem)
+    ground_grid = np.where(np.isfinite(pond_level), pond_level, ground_grid)
     pad_aprons(ground_grid, water, gx, gy, helipads)
     if C.hook("game_ground"):  # a city's own levels: paving a landmark draws over the DEM
         ground_grid = C.hook("game_ground")(ground_grid, gx, gy, water, scene)
