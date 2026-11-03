@@ -889,7 +889,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (!clear(tmp.x, tmp.y, 12, c, tmp.z) || overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 3, 1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) continue; // (and not on your car or a ride)
         c.line = line; c.s = s; c.dir = dir; c.v = L1.v * 0.7; c.stuck = 0; c.nx = undefined; c.plan = c.ex = c.ex2 = c.exA = c.pv = null; c.halt = false; c.q = false; c.off = 0;
         c.ln = ln; c.lo = lo; c.lcT = 0; c.lnWait = 0;
-        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; // (a wall seen where it was is not one here: looked for at once)
+        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; // (a wall seen where it was is not one here: looked for at once)
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy);
         return;
       }
@@ -1091,6 +1091,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               // is it coming into my way as I come into its? Then whoever is in the junction first, or
               // nearer the place where the two ways meet, goes first, and the other waits
               const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
+              // two coming at each other up a street too narrow for both (each in from a facade): the one already in
+              // the narrow stretch goes on, and the other waits short of it, in its lane; never into the other
+              const headOn = d2 >= 0 && o.line === c.line && o.dir !== c.dir && (c.narrowF > 0.2 || o.narrowF > 0.2);
+              if (headOn) {
+                const cIn = c.narrow > 0 && c.narrowIn < 1, oIn = o.narrow > 0 && o.narrowIn < 1;
+                let g = d + 0.6, w = 'car';
+                if (!cIn && c.narrowIn < Infinity && (oIn || d2 < d)) { const g2 = Math.max(0, c.narrowIn - 1.5); if (g2 < g) { g = g2; w = 'narrow'; } }
+                if (g < gap) { gap = g; byCar = true; front = o; why = w; }
+                continue;
+              }
               if (d2 >= 0) {
                 const first = c.mv && o.mv && c.mv.j === o.mv.j ? c.mvT < o.mvT || (c.mvT === o.mvT && i < j) : c.mv && !o.mv && o.toLine > 0 ? true : !c.mv && o.mv && c.toLine > 0 ? false : d < d2 - 0.5 || (Math.abs(d - d2) <= 0.5 && i < j);
                 if (first) continue;
@@ -1152,7 +1162,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         });
         // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
         // metres to go, not a time, so a car that stops beside a facade stays in from it however long it waits)
-        if (c.narrow > 0) { c.narrow -= c.v * dt; if (c.narrow <= 0) c.wallT = 0; if (!swerve) swerve = -LANE * side * (c.narrowF || 0); } else c.narrowF = 0;
+        // (and only once it is close to the place: one waiting short of a narrow stretch for a car coming the
+        // other way through it keeps to its lane, out of that car's way)
+        if (c.narrow > 0) {
+          c.narrow -= c.v * dt; c.narrowIn = Math.max(0, (c.narrowIn ?? 0) - c.v * dt);
+          if (c.narrow <= 0) { c.wallT = 0; c.narrowIn = Infinity; }
+          if (!swerve && c.narrowIn < 6 + c.v) swerve = -LANE * side * (c.narrowF || 0);
+        } else { c.narrowF = 0; c.narrowIn = Infinity; }
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
@@ -1300,7 +1316,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if ((c.wallT = (c.wallT || 0) - dt) <= 0 || flagged) {
             c.wallT = 0.5; c.wallGap = Infinity;
             const deck = c.z > nav.terrain(c.x, c.y) + 2;
-            let nF = 0, nEnd = 0; // (how far in from its lane it needs to be on the 25 m ahead, and for how far)
+            let nF = 0, nEnd = 0, nIn = Infinity; // (how far in from its lane it needs to be on the 25 m ahead, for how far, and from where)
             for (let k = 0; k < np; k++) {
               if (nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) continue;
               // a facade beside its lane, but room nearer the middle of the street: it moves in only as far as it
@@ -1316,11 +1332,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                   if (nav.room(qx + ux * at, qy + uy * at, c.z, c.hw * 0.8, 1.4, deck)) { f = F; break; }
                 }
               }
-              if (f >= 0) { if (k * step < 25) { nF = Math.max(nF, f); nEnd = Math.max(nEnd, k * step + 2 * c.half + 1.5); } continue; }
+              if (f >= 0) { if (k * step < 25) { nF = Math.max(nF, f); nEnd = Math.max(nEnd, k * step + 2 * c.half + 1.5); nIn = Math.min(nIn, k * step); } continue; }
               c.wallGap = k * step; break;
             }
             // (a facade still beside it from before, further in: it keeps to that one until it is past it)
-            if (nF > 0) { if (!(c.narrow > 0) || nF >= c.narrowF) c.narrowF = nF; c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, nEnd); c.narrowNow = true; } else c.narrowNow = false;
+            if (nF > 0) { if (!(c.narrow > 0) || nF >= c.narrowF) c.narrowF = nF; c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, nEnd); c.narrowIn = Math.min(c.narrow > 0 && c.narrowIn != null ? c.narrowIn : Infinity, nIn); c.narrowNow = true; } else c.narrowNow = false;
           }
           if (c.ln && (c.wallGap < 40 || c.narrowNow)) c.noL1 = 6; // (a facade by the second lane: back to the first)
           if (c.wallGap < gap) { gap = c.wallGap; byCar = false; front = null; why = 'wall'; }

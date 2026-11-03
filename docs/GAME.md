@@ -1308,8 +1308,17 @@ drop or into the water.
     of low houses or a landmark. A one-way road that comes to a wall, or whose
     only ways on are roads the traffic keeps off, is kept off too (route.js), back
     up the one-way roads that lead only there, so no car waits at its end in
-    sight. The game check counts the car-seconds in a wall (at most 1%), the cars
-    waiting at a wall and the one-way roads into one.
+    sight. An elevated road with no deck under it where it runs into a tower
+    (Sydney's at 22 and 33 m through one building) is measured from its own
+    height, and a building with roads through it at two levels is carved for each
+    in turn (`road_passages.sh` repeats until nothing changes). Footprints stood
+    back, passages and posts left out: Osaka 473, 91, 22; Shibuya 151, 29;
+    Kyoto 111, 20; Shinjuku 106, 23; Tokyo 43, 38, 2; Amsterdam 19, 28; Asakusa
+    26, 8; Ueno 23, 5; Hong Kong 22, 18; Melbourne 18, 11; Akihabara 16, 5; Paris
+    11, 14; Sydney 11, 9. What `road_walls.js` still lists afterwards is mostly
+    alleys and roads through landmarks (Amsterdam 32 stretches, Paris 21). The
+    game check counts the car-seconds in a wall (at most 1%), the cars waiting at
+    a wall and the one-way roads into one.
 - **Helipads on roofs:** a pad the data puts on the ground inside a building's
   footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
   clear above for the rotor, else on the nearest open ground with clear sky
