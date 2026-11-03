@@ -220,8 +220,11 @@ window.OENav = (function () {
     }
     const stripsAt = (x, y) => stripGrid.get(skey(Math.floor(x / SC), Math.floor(y / SC))) || noStrips;
     // slabs: solid from (surface - thickness) to the surface. A cell's slab tops out at the lowest point of the
-    // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee
+    // surface inside it, so that on a steep one (steps, an escalator) the cell ahead never stands above the knee;
+    // and a cell another strip climbs through from below the knee (a flight of steps coming up beside a
+    // footbridge's deck) has no slab of the higher one, which would stand across the top steps
     const off = [-0.475, -0.2375, 0, 0.2375, 0.475], inCell = off.flatMap(a => off.map(b => [a * DSM.cell, b * DSM.cell]));
+    const climbedThrough = (s, x, y, z) => stripsAt(x, y).some(o => o !== s && inCell.some(([dx, dy]) => { const q = stripHeight(o, x + dx, y + dy); return q != null && q < z - KNEE; }));
     for (const s of strips) {
       const th = s.thickness || 3;
       const r0 = Math.max(0, Math.floor((y1 - s.box[3]) / DSM.cell)), r1 = Math.min(DSM.ny - 1, Math.ceil((y1 - s.box[1]) / DSM.cell));
@@ -233,6 +236,7 @@ window.OENav = (function () {
           let z = stripHeight(s, x, y);
           if (z == null) continue;
           for (const [dx, dy] of inCell) { const q = stripHeight(s, x + dx, y + dy); if (q != null && q < z) z = q; }
+          if (climbedThrough(s, x, y, z)) continue;
           const k = r * DSM.nx + c, l = solid0.get(k);
           if (l) l.push(z - th, z - 0.05); else solid0.set(k, [z - th, z - 0.05]);
         }

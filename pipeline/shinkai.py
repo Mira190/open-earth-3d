@@ -44,13 +44,17 @@ DECK_CLEAR_M = 5.6      # deck above the road (a Tokyo footbridge's 4.7 m cleara
 
 MATERIALS = {
     "sk_timber": {"color": "#5b4433", "roughness": 0.85, "metalness": 0.0},
+    # the shelter's frame, benches and shore stones: walked among, not into (in the game's 2 m collision cells
+    # they would fill the shelter's floor); the roof is above head height
+    "sk_frame": {"color": "#5b4433", "roughness": 0.85, "metalness": 0.0, "solid": False},
+    "sk_bench": {"color": "#9a7a5c", "roughness": 0.85, "metalness": 0.0, "solid": False},
+    "sk_stone": {"color": "#7d7a72", "roughness": 0.95, "metalness": 0.0, "solid": False},
+    "sk_stone_moss": {"color": "#5d6a4a", "roughness": 0.95, "metalness": 0.0, "solid": False},
     "sk_timber_light": {"color": "#9a7a5c", "roughness": 0.85, "metalness": 0.0},
     "sk_soffit": {"color": "#6e5642", "roughness": 0.9, "metalness": 0.0},
     "sk_roof": {"color": "#4b4a47", "roughness": 0.7, "metalness": 0.2},
     "sk_bronze": {"color": "#5e4c3a", "roughness": 0.45, "metalness": 0.7},
     "sk_paving": {"color": "#a19b8f", "roughness": 0.92, "metalness": 0.0},
-    "sk_rock": {"color": "#7d7a72", "roughness": 0.95, "metalness": 0.0},
-    "sk_rock_moss": {"color": "#5d6a4a", "roughness": 0.95, "metalness": 0.0},
     "sk_pond": {"color": "#1b2a26", "roughness": 0.5, "metalness": 0.0},
     "sk_vine": {"color": "#54463a", "roughness": 0.9, "metalness": 0.0},
     "sk_leaf": {"color": "#4d6e34", "roughness": 0.8, "metalness": 0.0},
@@ -60,7 +64,7 @@ MATERIALS = {
     "go_wood": {"color": "#7a3226", "roughness": 0.7, "metalness": 0.0},
     "go_lattice": {"color": "#3d2a22", "roughness": 0.75, "metalness": 0.0},
     "go_wall": {"color": "#e6dccb", "roughness": 0.85, "metalness": 0.0},
-    "go_glow": {"color": "#b9a888", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd29a", "glow": 0.45},
+    "go_glow": {"color": "#b9a888", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd29a", "glow": 0.25},
     "go_stone": {"color": "#9c968b", "roughness": 0.9, "metalness": 0.0},
     "fb_girder": {"color": "#7f8f8b", "roughness": 0.55, "metalness": 0.4},
     "fb_deck": {"color": "#8a8279", "roughness": 0.9, "metalness": 0.0},
@@ -312,12 +316,12 @@ def azumaya(K, a):
     P = frame(c, f)            # u towards the pond, v to its left
     h, w = AZ["half"], AZ["post"]
     zf = z0 + 0.14
-    T, TL = K("sk_timber"), K("sk_timber_light")
+    T, TL = K("sk_frame"), K("sk_bench")
     block(K("sk_paving"), P, -h - 0.55, h + 0.55, -h - 0.55, h + 0.55, z0 - 0.4, zf)
     for su in (-1, 1):
         for sv in (-1, 1):
             slab_at(T, P, su * h, sv * h, w, w, zf, z0 + AZ["eave_z"])
-            lathe_at(K("sk_rock"), *P(su * h, sv * h, 0)[:2], [(zf - 0.02, 0.16), (zf + 0.08, 0.14), (zf + 0.1, 0.0)], 8)  # base stones
+            lathe_at(K("sk_stone"), *P(su * h, sv * h, 0)[:2], [(zf - 0.02, 0.16), (zf + 0.08, 0.14), (zf + 0.1, 0.0)], 8)  # base stones
     ze = z0 + AZ["eave_z"]
     # the eave beams (keta) round the top, the tie beams (nuki) under them, a tie across the middle
     for sv in (-1, 1):
@@ -384,8 +388,8 @@ def azumaya(K, a):
 
 def rock(K, x, y, z, r):
     """A garden stone: a low lumpy lathe, its top mossy."""
-    lathe_at(K("sk_rock"), x, y, [(z - 0.2, r * 0.9), (z + r * 0.25, r), (z + r * 0.55, r * 0.8)], 7)
-    lathe_at(K("sk_rock_moss"), x, y, [(z + r * 0.55, r * 0.8), (z + r * 0.7, r * 0.45), (z + r * 0.74, 0.0)], 7)
+    lathe_at(K("sk_stone"), x, y, [(z - 0.2, r * 0.9), (z + r * 0.25, r), (z + r * 0.55, r * 0.8)], 7)
+    lathe_at(K("sk_stone_moss"), x, y, [(z + r * 0.55, r * 0.8), (z + r * 0.7, r * 0.45), (z + r * 0.74, 0.0)], 7)
 
 
 # ---------------------------------------------------------------- the wisteria trellis
@@ -575,12 +579,40 @@ def ponds(K, ps):
 
 # ---------------------------------------------------------------- the Shinanomachi footbridge
 
+def openings(fb, a, f, L, hw):
+    """Where the flights leave the deck segment a + f t (t in 0..L): (t0, t1, side) gaps in its railing."""
+    out = []
+    for fl in fb["flights"]:
+        d = np.array(fl["top"]) - a
+        t = float(d @ f)
+        if -0.5 <= t <= L + 0.5 and abs(float(d @ left_of(f))) < 0.6:
+            side = 1 if float(np.array(fl["axis"]) @ left_of(f)) > 0 else -1
+            out.append((t - STAIR_HW - 0.1, t + STAIR_HW + 0.1, side))
+    return out
+
+
+def spans(t0, t1, cuts):
+    """[t0, t1] less the cuts (a0, a1): the pieces left."""
+    out, a = [], t0
+    for c0, c1 in sorted(cuts):
+        if c1 <= a or c0 >= t1:
+            continue
+        if c0 > a:
+            out.append((a, c0))
+        a = max(a, c1)
+    if a < t1:
+        out.append((a, t1))
+    return out
+
+
 def footbridge_meshes(K, fb):
-    """Girder, deck and railings along the line, piers at each node and every 12 m, lamps on the rails; the
-    flights of steps with stringers, treads, risers and handrails."""
+    """Girder, deck and railings along the line, open where the flights leave it, piers at each node and every
+    12 m, lamps on the rails; the flights of steps with stringers, treads, risers and handrails."""
     z, hw = fb["z"], fb["width_m"] / 2
     pts = [np.array(p) for p in fb["deck"]]
-    G, Dk, Rl = K("fb_girder"), K("fb_deck"), K("fb_rail")
+    # the deck and all on it are walked on as its strips (game_surfaces: mesh "shinkai_deck"): the game's 2 m
+    # collision cells would otherwise take the railings for a wall across the deck; the piers stay solid
+    G, Dk, Rl = K("fb_girder", "deck"), K("fb_deck", "deck"), K("fb_rail", "deck")
     for a, b in zip(pts, pts[1:]):
         f = unit(b - a)
         L = float(np.linalg.norm(b - a))
@@ -589,34 +621,41 @@ def footbridge_meshes(K, fb):
         P = frame(a, f)
         block(G, P, -0.15, L + 0.15, -hw - 0.1, hw + 0.1, z - 0.95, z - 0.05)
         block(Dk, P, -0.15, L + 0.15, -hw, hw, z - 0.05, z)
+        gaps = openings(fb, a, f, L, hw)
         for sv in (-1, 1):
-            block(G, P, -0.15, L + 0.15, sv * hw - 0.06 * (sv < 0) - 0.0, sv * hw + 0.06 * (sv > 0), z - 0.05, z + 0.12)
-            Rl.box(P(-0.15, sv * (hw - 0.04), z + 1.15), P(L + 0.15, sv * (hw - 0.04), z + 1.15), 0.08, 0.05)
-            Rl.box(P(-0.15, sv * (hw - 0.04), z + 0.2), P(L + 0.15, sv * (hw - 0.04), z + 0.2), 0.05, 0.04)
-            for t in np.arange(0.0, L + 0.01, 0.12):
-                Rl.box(P(t, sv * (hw - 0.04), z + 0.12), P(t, sv * (hw - 0.04), z + 1.12), 0.018, 0.018)
-            for t in np.arange(1.5, L, 6.0):
-                slab_at(K("fb_lamp"), P, t, sv * (hw - 0.1), 0.3, 0.06, z + 1.04, z + 1.1)
+            vv = sv * (hw - 0.04)
+            for t0, t1 in spans(-0.15, L + 0.15, [(g0, g1) for g0, g1, side in gaps if side == sv]):
+                block(G, P, t0, t1, sv * hw - 0.06 * (sv < 0), sv * hw + 0.06 * (sv > 0), z - 0.05, z + 0.12)
+                Rl.box(P(t0, vv, z + 1.15), P(t1, vv, z + 1.15), 0.08, 0.05)
+                Rl.box(P(t0, vv, z + 0.2), P(t1, vv, z + 0.2), 0.05, 0.04)
+                for t in np.arange(t0, t1 + 0.01, 0.12):
+                    Rl.box(P(t, vv, z + 0.12), P(t, vv, z + 1.12), 0.018, 0.018)
+                for t in np.arange(t0 + 1.5, t1, 6.0):
+                    slab_at(K("fb_lamp", "deck"), P, t, sv * (hw - 0.1), 0.3, 0.06, z + 1.04, z + 1.1)
     zg = min(f["z_foot"] for f in fb["flights"]) if fb["flights"] else z - DECK_CLEAR_M
     piers = list(pts)
     for a, b in zip(pts, pts[1:]):
         L = float(np.linalg.norm(b - a))
         piers += [a + (b - a) * t for t in np.arange(12.0, L - 4.0, 12.0) / max(L, 1e-6)]
     for p in piers:
-        lathe_at(G, p[0], p[1], [(zg - 0.5, 0.32), (z - 0.95, 0.3)], 12)
+        lathe_at(K("fb_girder"), p[0], p[1], [(zg - 0.5, 0.32), (z - 0.95, 0.3)], 12)
     for fl in fb["flights"]:
-        flight(K, fl, z)
+        flight(K, fl, z, hw)
 
 
-def stair_profile(z_top, z_foot, length):
-    """(u, z) along a flight from its top: treads of 0.3 m, risers of up to 0.16 m, a landing half way."""
+STAIR_HW = 0.9
+
+
+def stair_profile(z_top, z_foot, length, start=0.0):
+    """(u, z) along a flight from its top (the deck's centreline): level to start (the deck's edge), then treads
+    of 0.3 m and risers of up to 0.16 m, with a landing half way."""
     rise = z_top - z_foot
     n = max(2, int(math.ceil(rise / 0.16)))
     run = 0.3 * n
-    land = max(0.0, min(1.6, length - run))
+    land = max(0.0, min(1.6, length - start - run))
     half = n // 2
-    prof = [(0.0, z_top)]
-    u, zz = 0.0, z_top
+    prof = [(0.0, z_top), (start, z_top)] if start > 0 else [(0.0, z_top)]
+    u, zz = start, z_top
     for k in range(n):
         if k == half and land > 0.4:
             u += land
@@ -628,19 +667,24 @@ def stair_profile(z_top, z_foot, length):
     return prof
 
 
-def flight(K, fl, z_top):
+def flight(K, fl, z_top, deck_hw):
     P = frame(fl["top"], fl["axis"])
-    hw = 0.9
-    prof = stair_profile(z_top, fl["z_foot"], fl["length_m"])
-    St, G, Rl = K("fb_deck", "steps"), K("fb_girder"), K("fb_rail")
+    hw = STAIR_HW
+    prof = stair_profile(z_top, fl["z_foot"], fl["length_m"], deck_hw)
+    # all of it is walked on as the strip (game_surfaces: mesh "shinkai_steps"), as the 男坂 is: in the game's 2 m
+    # collision cells its stringers and rails would stand across the treads
+    St, Rs, G, Rl = K("fb_deck", "steps"), K("fb_girder", "steps"), K("fb_girder", "steps"), K("fb_rail", "steps")
     for (u0, z0), (u1, z1) in zip(prof, prof[1:]):
+        if u0 < deck_hw - 0.01:
+            continue                                 # on the deck
         if abs(z1 - z0) < 1e-6 and u1 > u0:         # a tread (or the landing)
             block(St, P, u0, u1, -hw, hw, z0 - 0.06, z0)
         elif u1 == u0:                               # a riser
-            block(G, P, u0 - 0.01, u0 + 0.01, -hw, hw, z1, z0)
+            block(Rs, P, u0 - 0.01, u0 + 0.01, -hw, hw, z1, z0)
     end = prof[-1][0]
+    steps = [(u, zz) for u, zz in prof if u >= deck_hw - 0.01]
     for sv in (-1, 1):
-        path = [P(u, sv * hw, zz) for u, zz in prof[::2]] + [P(end, sv * hw, prof[-1][1])]
+        path = [P(u, sv * hw, zz) for u, zz in steps[::2]] + [P(end, sv * hw, prof[-1][1])]
         G.sweep(path, [(-0.04, -0.35), (0.04, -0.35), (0.04, 0.08), (-0.04, 0.08)])
         rail = [p + np.array([0, 0, 0.95]) for p in path]
         Rl.tube(rail, 0.025, 6)
@@ -678,6 +722,16 @@ def glows(lm):
     return [[m[0], m[1], 14, "#fff1d0", 0.5]]
 
 
+def riser_spread(prof, d=0.02):
+    """A stepped profile with each riser leant d metres forward, so that u always grows (strip heights interpolate in u)."""
+    out = []
+    for u, z in prof:
+        if out and u <= out[-1][0]:
+            u = out[-1][0] + d
+        out.append([round(u, 3), round(z, 3)])
+    return out
+
+
 def surfaces(lm):
     """The footbridge's deck and flights as walkable strips (game_data.py game_surfaces)."""
     fb = (lm.get("shinkai") or {}).get("footbridge")
@@ -691,10 +745,11 @@ def surfaces(lm):
             continue
         out.append({"name": f"Shinanomachi footbridge {k + 1}", "type": "strip", "origin": rnd(a), "axis": rnd(unit(b - a), 4),
                     "half_width": fb["width_m"] / 2 + 0.3, "profile": [[-0.4, fb["z"]], [round(L + 0.4, 2), fb["z"]]],
-                    "thickness": 1.0, "mesh": "shinkai_fb_deck", "label": "the footbridge"})
+                    "thickness": 1.0, "mesh": "shinkai_deck", "label": "the footbridge"})
     for fl in fb["flights"]:
-        prof = stair_profile(fb["z"], fl["z_foot"], fl["length_m"])
+        prof = stair_profile(fb["z"], fl["z_foot"], fl["length_m"], fb["width_m"] / 2)
         out.append({"name": f"Shinanomachi footbridge steps {fl['id']}", "type": "strip", "origin": fl["top"], "axis": fl["axis"],
-                    "half_width": 1.0, "profile": [[round(u, 2), round(zz, 2)] for u, zz in prof[::2]] + [[round(prof[-1][0] + 0.6, 2), prof[-1][1]]],
-                    "thickness": 1.5, "mesh": "shinkai_steps_fb_deck", "drape": True, "label": "the footbridge's steps"})
+                    "half_width": STAIR_HW + 0.05, "profile": riser_spread(prof) + [[round(prof[-1][0] + 0.6, 2), round(prof[-1][1], 3)]],
+                    "thickness": 1.5, "mesh": "shinkai_steps", "drape": True, "label": "the footbridge's steps",
+                    "check": True})   # tools/game_check.js climbs it
     return out

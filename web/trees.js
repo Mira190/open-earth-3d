@@ -23,7 +23,7 @@ window.OETrees = (function () {
   // the colour attribute carries ambient occlusion (r), how far the wind moves a vertex (g)
   // and a flutter phase (b); renamed so no material reads it as a colour
   const VERT_HEAD = `#include <common>
-attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vMaple;`;
+attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vMaple; varying float vTurn;`;
   // the jacaranda's bloom cell (column 1, row 1 of the atlas; glTF v runs down) swaps to its
   // leaf cell (column 0) out of season
   // the maple's cell (column 3, row 1) turns red in autumn (uAutumn, in the fragment shader)
@@ -42,7 +42,8 @@ transformed.z += cos(uWind * 0.93 + ph * 1.7) * 0.22 * sw;
 #ifdef LEAVES
 transformed += normal * sin(uWind * 6.0 + tc.b * 6.2832 + ph) * 0.05 * tc.g;
 #endif
-vAO = tc.r;`;
+vAO = tc.r;
+vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
   function shader(U, leaves, depth) {
     return sh => {
       sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uAutumn = U.uAutumn;
@@ -50,11 +51,18 @@ vAO = tc.r;`;
       sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_HEAD).replace('#include <uv_vertex>', VERT_UV).replace('#include <begin_vertex>', VERT_WIND);
       if (depth) return;
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vAO; varying float vMaple; uniform float uAutumn;')
+        .replace('#include <common>', '#include <common>\nvarying float vAO; varying float vMaple; varying float vTurn; uniform float uAutumn;')
         .replace('#include <map_fragment>', `#include <map_fragment>
 diffuseColor.rgb *= mix(0.5, 1.0, vAO);
+#ifdef LEAVES
+// each maple its own turn: most a deep crimson, some scarlet, a few orange and gold, one in eight still
+// half green; the leaves keep their own light and dark
 if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
-  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l * 2.5, l * 0.42, l * 0.2), uAutumn); }`)
+  vec3 red = mix(vec3(1.75, 0.36, 0.26), vec3(1.95, 0.62, 0.22), smoothstep(0.45, 0.85, vTurn));
+  red = mix(red, vec3(1.7, 1.15, 0.3), smoothstep(0.88, 0.97, vTurn));
+  float k = uAutumn * (vTurn < 0.12 ? 0.45 : 1.0);
+  diffuseColor.rgb = mix(diffuseColor.rgb, red * l, k); }
+#endif`)
         .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;');
       // the cards' normals point out of the crown on both faces: lit as a mass, never flipped
       if (leaves) sh.fragmentShader = sh.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
