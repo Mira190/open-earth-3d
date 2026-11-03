@@ -77,12 +77,14 @@ const { pinClock } = require('./pin_clock');
   // a second map with the flag set: the arrival again, with no tour and the guide's short welcome instead
   const second = await p.evaluate(async () => {
     const g = window.__game, O = window.OEOnboard;
-    const n0 = document.querySelectorAll('#g-toasts .g-toast').length;
+    const seen = [], mo = new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => seen.push(n.textContent))));
+    mo.observe(document.getElementById('g-toasts'), { childList: true }); // (toasts are capped at three and fade)
     g.craneIn(() => (O.done() && document.getElementById('gt-skip-on').checked ? g.welcome(true) : g.startTour(() => g.welcome(false))));
     g.advance(0.5); g.settleArrival(); // a key settles it
     let t = 0;
     while (g.arriving() && t < 3) { g.advance(0.1); t += 0.1; await new Promise(r => requestAnimationFrame(r)); }
-    const toasts = [...document.querySelectorAll('#g-toasts .g-toast')].slice(n0).map(e => e.textContent);
+    await new Promise(r => setTimeout(r, 50)); mo.disconnect();
+    const toasts = seen;
     return { settled: t, tour: O.active(), toast: toasts.join(' | ') };
   });
   check(second.settled < 1.2 && !second.tour && /gold line/.test(second.toast),
