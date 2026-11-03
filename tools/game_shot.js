@@ -11,7 +11,9 @@
 //   xvfb-run -a node tools/game_shot.js sydney views.json out_dir [WxH]   # llvmpipe; without xvfb-run, SwiftShader
 // views.json: [{"name": "steps", "at": [x, y], "look": [x, y], "time": "15:30", "dist": 6, "pitch": 0.15},
 //              {"name": "harbour", "cam": [x, y, z], "tgt": [x, y, z], "time": "sunset-25"}, ...]
-// ("street": true stands on the ground there rather than on the roof over it; "z": on the floor
+// ("closer": a photo spot's id looks closer at it from where you stand, "along": seconds looking along it,
+// "up": seconds up (or down, negative) between its rails, with the panel up: a screenshot of the page, not the canvas;
+// "street": true stands on the ground there rather than on the roof over it; "z": on the floor
 // nearest that level, as under a slab)
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
@@ -51,6 +53,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       g.setClock(c.y, m, d, min);
     };
   });
+  const grabPage = async name => { await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); await p.screenshot({ path: path.join(outDir, `${name}.png`) }); console.log(name); };
   const grab = async name => {
     const png = await p.evaluate(() => new Promise(res => requestAnimationFrame(() => requestAnimationFrame(() => res(document.getElementById('game-gl').toDataURL('image/png'))))));
     fs.writeFileSync(path.join(outDir, `${name}.png`), Buffer.from(png.split(',')[1], 'base64'));
@@ -91,8 +94,11 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       g.advance(2);
       // a cutscene the place set off (the survey's turn on the spot) would be caught half way: skip it
       if (g.cine.active) { g.cine.skip(); place(); g.advance(0.5); }
+      // "closer": a photo spot's id, to look closer at it from there (places.js), "along" seconds to the right
+      if (v.closer) { g.lookAt(g.G.spots.find(s => s.id === v.closer)); g.advance(1.2); if (v.along) g.advance(v.along, ['KeyD']); if (v.up) g.advance(Math.abs(v.up), [v.up > 0 ? 'KeyW' : 'KeyS']); }
     }, v);
-    await grab(v.name);
+    await (v.closer ? grabPage : grab)(v.name);
+    if (v.closer) await p.evaluate(() => window.__game.interact()); // (step back)
   }
   if (logs.length) console.log(logs.slice(0, 20).join('\n'));
   await b.close();

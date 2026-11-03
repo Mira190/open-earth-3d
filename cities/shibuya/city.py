@@ -87,6 +87,8 @@ MATERIALS = {
     "lamp": {"color": "#f6ecd2", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffcf80", "glow": 2.2},
     # the drawn images (landmark_assets): ema, plaques, banners, signs and screens; lit after dark where floodlit
     "atlas": {"color": "#ffffff", "roughness": 0.75, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 1.25},
+    # the ema: the atlas, lit after dark as the precinct's lanterns and the hall's lamps light the rack, softly
+    "ema": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 0.2},
     # the same images printed and lit from outside by lamps (a hoarding, a wall print): dimmer than a lit box
     "atlas_print": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 0.42},
 }
@@ -811,7 +813,7 @@ def ema_rack(K, P, z0, length, rng):
     for side in (-1, 1):
         for z in RAILS:
             block(K("wood_light"), P, -hl, hl, side * 0.11 - 0.015, side * 0.11 + 0.015, z0 + z - 0.015, z0 + z + 0.015)
-    A = K("atlas")
+    A = K("ema", "lit")
     for side, rail, layer, u, face, back, tilt, off in rack_layout(length):
         ema(A, P, u, off, z0 + RAILS[rail] - 0.055 - 0.015 * layer, side, tilt, face, back)
 
