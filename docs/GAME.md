@@ -602,7 +602,10 @@ pipeline writes. The only city-specific code is landmark geometry in
     the other cars and the people first, then the walls, and the posts and
     trunks last, and a car that shoves you on foot is followed by a push out of
     the posts. The last push is the one that holds, so a traffic car pressing in
-    can't drive yours, or you, into a trunk (#96). `tools/clip_check.js` presses
+    can't drive yours, or you, into a trunk (#96). A move that would leave the
+    car where it can't stand (a drop, the water's edge) is refused whole, the
+    heading with it, so it can't turn on the spot into a trunk either.
+    `tools/clip_check.js` presses
     a car's box into yours, nose to a trunk, at five offsets and three angles.
   - **Measured against the old 2 m grid:** 120 walks into walls at random
     angles ended inside a footprint 50 times before and never now. The closest

@@ -390,7 +390,7 @@ window.OECars = (function () {
       st.roll += (gr - st.roll) * Math.min(1, dt * 8);
     }
     function sub(dt, inp, env, events) {
-      const fx = Math.sin(st.h), fy = Math.cos(st.h), lx = -fy, ly = fx;
+      const fx = Math.sin(st.h), fy = Math.cos(st.h), lx = -fy, ly = fx, ph = st.h;
       let vf = st.vx * fx + st.vy * fy, vl = st.vx * lx + st.vy * ly;
       const fwd = clamp(inp.fwd || 0, -1, 1), hb = !!inp.handbrake && !st.air;
       // drive (W) and brake (S); stopped, S reverses and W goes forward again
@@ -432,11 +432,12 @@ window.OECars = (function () {
       const px = st.x, py = st.y;
       st.x += st.vx * dt; st.y += st.vy * dt;
       for (let it = 0; it < 2; it++) collide(env, events);
-      // the water's edge, a drop, a wall too high: back to where it was, bouncing off
+      // the water's edge, a drop, a wall too high: back to where it was, bouncing off (the heading
+      // too: a turn on the spot would swing the body into the trunk or wall it was pushed out of)
       const nfx = Math.sin(st.h), nfy = Math.cos(st.h);
       if (offs.some(o => !standable(st.x + nfx * o, st.y + nfy * o, st.z))) {
         const sp = Math.hypot(st.vx, st.vy);
-        st.x = px; st.y = py; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
+        st.x = px; st.y = py; st.h = ph; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
         if (sp > 2) events.push({ type: 'edge', speed: sp });
       }
       // follow the ground: up kerbs and ramps at once, off an edge under gravity

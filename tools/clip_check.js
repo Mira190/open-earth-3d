@@ -378,7 +378,8 @@ const TOL = {
     // swinging round you pushed it 0.87 m into one in Sydney, #96)
     if (pressed) {
       const C = c.C, fx = Math.sin(pressed.h), fy = Math.cos(pressed.h), gap = C.half + pressed.q.r + 0.02;
-      const q = { q: pressed.q, h: pressed.h, z: pressed.z, x: pressed.q.x - fx * gap, y: pressed.q.y - fy * gap }; // (nose to the trunk, on the run-up's heading)
+      const x = pressed.q.x - fx * gap, y = pressed.q.y - fy * gap, fl = g.nav.floorAt(x, y, pressed.q.z + 1);
+      const q = { q: pressed.q, h: pressed.h, z: fl ? fl.z : pressed.z, x, y }; // (nose to the trunk, on the run-up's heading, on the floor there)
       let deep = 0;
       for (const side of [-1.2, -0.6, 0, 0.6, 1.2]) for (const ang of [0, 0.3, -0.3]) {
         Object.assign(st, { x: q.x, y: q.y, z: q.z, h: q.h, vx: 0, vy: 0, v: 0, speed: 0, r: 0, vz: 0, steer: 0, air: false });
