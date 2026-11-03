@@ -195,11 +195,12 @@ window.OEAtmos = (function () {
         if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
         if (lens) {
           const L = lens.uniforms;
-          L.uExposure.value = renderer.toneMappingExposure * 1.1; // the world's exposure, set for ACES, a little brighter under the film curve
+          const trim = lens.trim || null;                          // a shot's own exposure and saturation (overture.js)
+          L.uExposure.value = renderer.toneMappingExposure * 1.1 * (trim ? trim.ev : 1); // the world's exposure, set for ACES, a little brighter under the film curve
           L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
           L.uContrast.value = 0.1 + 0.18 * night;
           L.uNightTone.value = night;                              // blue between the lights, amber in them
-          L.uSat.value = 1.06;
+          L.uSat.value = 1.06 * (trim ? trim.sat : 1);
           L.uTime.value = tSec;
         }
       },

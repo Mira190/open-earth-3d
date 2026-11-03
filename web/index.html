@@ -1074,7 +1074,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
-        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-reset">Start again</button></div>
+        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#" title="The city as a 3D model, with its guided tour and the sources of its data">The 3D model and its sources</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-overture" hidden>Play the opening</button><button class="btn" id="gm-reset">Start again</button></div>
       </div>
     </div>
 
@@ -1178,6 +1178,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/gulls.js"></script>
 <script src="game/audio.js"></script>
 <script src="game/places.js"></script>
+<script src="game/overture.js"></script>
 <script src="game/hud.js"></script>
 <script src="game/game.js"></script>
 <script>

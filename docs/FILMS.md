@@ -11,7 +11,7 @@ stay sharp at any size and can be read by a screen reader.
 | | |
 |---|---|
 | Source | `cities/<id>/film.json`: the shot list |
-| Tool | `tools/city_film.js` (with `tools/film/`: the virtual clock, the director, the score) |
+| Tool | `tools/city_film.js` (with `tools/film/`: the virtual clock and the director; `web/film-score.js`: the score, shared with the game's overture) |
 | Output | `web/films/<id>.mp4`, `<id>.jpg` (poster), `<id>.json` (cue sheet), `web/films/index.json` |
 | Player | `web/film.js`, `web/film.css`: the reel in the destination card and the theatre |
 | Lens | `web/lens.js`: the title screen's tone curve, grade, flare, grain and vignette as a pass |

@@ -167,7 +167,7 @@
   font-weight: 500;
   font-display: swap;
   src: url(assets/fonts/noto-serif-tc-500-all.woff2) format('woff2');
-  unicode-range: U+4eac, U+5927, U+6771, U+6e2f, U+90fd, U+962a, U+9999;
+  unicode-range: U+4ea4, U+4eac, U+5927, U+5dee, U+6771, U+6e0b, U+6e2f, U+8c37, U+90fd, U+962a, U+9999;
 }
 @font-face {
   font-family: 'Shippori Mincho';
@@ -175,5 +175,5 @@
   font-weight: 500;
   font-display: swap;
   src: url(assets/fonts/shippori-mincho-500-all.woff2) format('woff2');
-  unicode-range: U+4eac, U+5927, U+6771, U+6e2f, U+90fd, U+962a, U+9999;
+  unicode-range: U+4ea4, U+4eac, U+5927, U+5dee, U+6771, U+6e0b, U+6e2f, U+8c37, U+90fd, U+962a, U+9999;
 }
