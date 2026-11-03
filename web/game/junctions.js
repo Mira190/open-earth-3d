@@ -460,7 +460,7 @@ window.OEJunctions = (function () {
       const j = a.j;
       if (!j.sig) return;
       if (j.ph === a.phase && j.st === 'g') { j.hold = frame; return; }
-      if (j.scramble) return; // (the scramble keeps its own cycle: its walk is never cut short for a ride, its crowd out on the road)
+      if (j.ph === 3) return; // (the scramble's walk is never cut short: its crowd is out on the road)
       if (j.ph !== a.phase && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
       else if (j.st !== 'g' && j.nxt !== a.phase && j.ph !== a.phase) j.nxt = a.phase; // (changing already: to its phase next)
     }
@@ -477,6 +477,7 @@ window.OEJunctions = (function () {
       const j = a.j;
       if (!j.sig || light(a) === 'g') return 0;
       const amber = j.amber || AMBER, change = amber + ALLRED;
+      if (j.ph === 3 && j.st === 'g') return Math.max(0, j.green[3] - j.t) + change; // (the scramble's walk runs its course; a call makes its phase next)
       if (j.st === 'g') return Math.max(0, MIN_G - j.t) + change; // the other road's green
       if (j.st === 'y') return amber - j.t + ALLRED + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
       return Math.max(0, ALLRED - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
