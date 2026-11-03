@@ -18,7 +18,7 @@ window.OENeon = (function () {
   const COUNT = { high: 8, medium: 4, low: 0 };
   // The screens are drawn dimmer than they are, so that their pictures read after the tone curve; the
   // light they throw is that of the real panels (some 1,000 nits after dark against a lamp-lit street)
-  const SPILL = 14;
+  const SPILL = 22;
 
   // the n-th clip of a playlist (a bit mask over the clips), counting round: world.js scrClip
   function scrClip(mask, n) {
@@ -70,18 +70,29 @@ window.OENeon = (function () {
     return out;
   }
 
-  // Wd: the world (world.js); tier: 'high' | 'medium' | 'low'; gain: a city's own scale on the light
-  async function create(Wd, renderer, { tier = 'low', gain = 1 } = {}) {
+  // Wd: the world (world.js); tier: 'high' | 'medium' | 'low'; gain: a city's own scale on the light;
+  // fill: light cards over a plaza after dark (game.look.fill: [{at: [x, y], z: height over the
+  // ground, w, h metres, colour, k}]), the light its shopfronts, floodlights and signs put on the
+  // middle of a square that no street lamp stands in (Shibuya's scramble); ground(x, y): the ground's height
+  async function create(Wd, renderer, { tier = 'low', gain = 1, fill = [], ground = () => 0 } = {}) {
     const n = COUNT[tier] || 0, info = Wd.screens;
-    const none = { lights: [], screens: [], update() {}, count: 0 };
-    if (!n || !info || !info.meshes.length) return none;
+    const none = { lights: [], screens: [], cards: [], update() {}, count: 0 };
+    if (!n || !info || (!info.meshes.length && !fill.length)) return none;
     try {
       const lib = await import('three/addons/lights/RectAreaLightUniformsLib.js');
       lib.RectAreaLightUniformsLib.init();
     } catch (e) { console.warn('area lights unavailable:', e); return none; }
     const screens = [];
     for (const e of info.meshes) { e.mesh.updateMatrixWorld(true); screens.push(...screensOf(e)); }
-    if (!screens.length) return none;
+    const cards = fill.map(f => {
+      const L = new THREE.RectAreaLight(new THREE.Color(f.colour || '#ffd9b0').convertSRGBToLinear(), 0, f.w || 60, f.h || 60);
+      const gz = ground(f.at[0], f.at[1]);
+      L.position.set(f.at[0], gz + (f.z || 30), -f.at[1]);
+      L.lookAt(f.at[0], gz - 10, -f.at[1]);
+      L.userData.k = f.k ?? 1;
+      Wd.world.add(L);
+      return L;
+    });
     // each programme's keyframe colours, once its sheet has loaded
     const means = new Map();
     const lights = [];
@@ -111,10 +122,11 @@ window.OENeon = (function () {
       return tmp.copy(c).multiplyScalar(on ? s.bright * (2.4 + (1 - 2.4) * night) : 0);
     }
     const api = {
-      lights, screens, count: lights.length,
+      lights, screens, cards, count: lights.length,
       // per frame: each screen's colour now, and the lights on the nearest
       update(camera, dt) {
         const t = info.clock.t.value, hour = info.clock.hour.value, night = info.night.value;
+        for (const L of cards) L.intensity = L.userData.k * night;
         if (last < 0) last = t;
         const cp = camera.position;
         for (const s of screens) s.score = cp.distanceTo(s.c) / Math.sqrt(s.area);
@@ -140,7 +152,7 @@ window.OENeon = (function () {
           const c = colourOf(s, t, hour, night);
           if (c) s.col.lerp(c, k); // the light eases between keyframes, as a wall's glow does
           L.color.copy(s.col);
-          L.intensity = u.w * gain * SPILL;
+          L.intensity = u.w * gain * SPILL * (0.06 + 0.94 * night); // (in the sun a screen lights little round it)
         }
       },
     };

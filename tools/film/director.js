@@ -46,6 +46,7 @@ window.OEFilmDirector = (function () {
     G.cine.stop();
     G.clock.frozen = true;
     // the whole crowd and all the traffic
+    if (G.crowdAuto) G.crowdAuto(false); // (not thinned by the hour: game.crowd.hours)
     G.crowd.active = G.crowd.P.length;
     if (G.cars && G.cars.C) G.cars.active = G.cars.C.length;
     // the post stack ends on the title's lens: scene, bloom, lens (no ACES, no game grade)

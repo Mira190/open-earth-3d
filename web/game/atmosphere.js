@@ -125,8 +125,34 @@ window.OEAtmos = (function () {
       }`,
   };
 
-  // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density})
-  function create(Wd, renderer, camera, { city, sky = {} } = {}) {
+  // The grade through the day, under the title's lens: keyed on the sun's height (degrees), each key
+  // an exposure (ev, on the world's own), a white balance (tint), a saturation and the curve's
+  // contrast. By day a little warmth and contrast; in the golden hour warmer; in the blue hour a
+  // lift and a cool balance, so the dusk sky and the first lights read together rather than the
+  // street going grey; at night the deepest contrast, with lens.js uNightTone taking the shadows to
+  // blue and the lights to amber. A city can key its own (game.look.grade: {night, blue, golden, day}).
+  const GRADE_KEYS = [['night', -12], ['blue', -4], ['golden', 3], ['day', 20]];
+  const GRADE_DEF = {
+    night: { ev: 1.1, tint: [1, 1, 1], sat: 1.06, contrast: 0.28 },
+    blue: { ev: 1.18, tint: [0.98, 0.99, 1.03], sat: 1.08, contrast: 0.2 },
+    golden: { ev: 1.08, tint: [1.05, 1.0, 0.93], sat: 1.1, contrast: 0.15 },
+    day: { ev: 1.04, tint: [1.02, 1.0, 0.97], sat: 1.08, contrast: 0.14 },
+  };
+  function gradeAt(keys, alt, out) {
+    let i = 0;
+    while (i < GRADE_KEYS.length - 1 && alt > GRADE_KEYS[i + 1][1]) i++;
+    const [a, a0] = GRADE_KEYS[i], [b, b0] = GRADE_KEYS[Math.min(i + 1, GRADE_KEYS.length - 1)];
+    const t = b0 > a0 ? Math.max(0, Math.min(1, (alt - a0) / (b0 - a0))) : 0, k = t * t * (3 - 2 * t), A = keys[a], B = keys[b];
+    out.ev = A.ev + (B.ev - A.ev) * k; out.sat = A.sat + (B.sat - A.sat) * k; out.contrast = A.contrast + (B.contrast - A.contrast) * k;
+    for (let j = 0; j < 3; j++) out.tint[j] = A.tint[j] + (B.tint[j] - A.tint[j]) * k;
+    return out;
+  }
+
+  // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
+  function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
+    const keys = {};
+    for (const [k] of GRADE_KEYS) keys[k] = Object.assign({}, GRADE_DEF[k], (look.grade || {})[k]);
+    const gr = { ev: 1, sat: 1, contrast: 0, tint: [1, 1, 1] };
     const su = Wd.su, world = Wd.world, basis = new THREE.Matrix4();
     const clouds = sky.clouds ?? 0.3;
     if (su.cloudCoverage) {
@@ -195,11 +221,13 @@ window.OEAtmos = (function () {
         if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
         if (lens) {
           const L = lens.uniforms;
-          L.uExposure.value = renderer.toneMappingExposure * 1.1; // the world's exposure, set for ACES, a little brighter under the film curve
+          gradeAt(keys, Wd.lastSun ? Wd.lastSun.sp.altitude : 30, gr);
+          L.uExposure.value = renderer.toneMappingExposure * gr.ev; // the world's exposure, set for ACES, graded for the hour under the film curve
           L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
-          L.uContrast.value = 0.1 + 0.18 * night;
+          L.uContrast.value = gr.contrast;
           L.uNightTone.value = night;                              // blue between the lights, amber in them
-          L.uSat.value = 1.06;
+          L.uSat.value = gr.sat;
+          L.uTint.value.set(gr.tint[0], gr.tint[1], gr.tint[2]);
           L.uTime.value = tSec;
         }
       },
@@ -211,5 +239,5 @@ window.OEAtmos = (function () {
     return api;
   }
 
-  return { create, moonRaDec, skyBasis };
+  return { create, moonRaDec, skyBasis, gradeAt, GRADE_DEF };
 })();
