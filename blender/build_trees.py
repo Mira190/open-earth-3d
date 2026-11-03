@@ -278,11 +278,11 @@ SPECIES = {
                     note="Camphor laurel (kusunoki, Cinnamomum camphora): a broad, bright evergreen dome on a massive trunk; the "
                          "shrine trees of Osaka and Kyoto and Meiji Jingu's commonest"),
     "zelkova": dict(H=20.0, trunk=3.0, r0=0.45, crown=("vase", 3.6, 20.0, 1.6, 8.6), n=420, size=3.0, n1=7, n2=5, leaf="zelkova",
-                    bark="#857d70", lean=0.02, leader=False, colour="#557d35", autumn_colour="#a8612e",
+                    bark="#857d70", lean=0.02, leader=False, colour="#557d35", autumn_colour="#8e6a3e",
                     note="Japanese zelkova (keyaki, Zelkova serrata): a broom of upswept limbs and fine twigs; the avenue tree of "
                          "Omotesando and the precincts, rust-orange in November"),
     "ginkgo": dict(H=17.0, trunk=2.6, r0=0.34, crown=("ellipsoid", 10.0, 4.2, 7.4), n=360, size=2.8, n1=9, n2=3, leaf="ginkgo",
-                   bark="#6e655a", lean=0.02, excurrent=True, colour="#62903a", autumn_colour="#d9ad2a",
+                   bark="#6e655a", lean=0.02, excurrent=True, colour="#62903a", autumn_colour="#c8a640",
                    note="Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree "
                         "(Midosuji, Jingu Gaien), gold in late November"),
     # the subtropics: the evergreen laurel forest of Hong Kong's hills (Schima, Machilus) and of Japan's old

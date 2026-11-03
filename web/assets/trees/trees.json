@@ -237,7 +237,7 @@
    "cell": 11,
    "trunk_r": 0.45,
    "note": "Japanese zelkova (keyaki, Zelkova serrata): a broom of upswept limbs and fine twigs; the avenue tree of Omotesando and the precincts, rust-orange in November",
-   "autumn_colour": "#a8612e"
+   "autumn_colour": "#8e6a3e"
   },
   "ginkgo": {
    "height_m": 17.0,
@@ -256,7 +256,7 @@
    "cell": 12,
    "trunk_r": 0.34,
    "note": "Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree (Midosuji, Jingu Gaien), gold in late November",
-   "autumn_colour": "#d9ad2a"
+   "autumn_colour": "#c8a640"
   },
   "evergreen": {
    "height_m": 14.0,
