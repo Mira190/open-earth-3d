@@ -45,6 +45,8 @@ window.OEFilmDirector = (function () {
     for (const id of ['g-title', 'g-menu', 'g-bigmap', 'g-pass']) { const el = document.getElementById(id); if (el) el.hidden = true; }
     G.cine.stop();
     G.clock.frozen = true;
+    // the film's weather ("weather": "clear", "rain"...; game/weather.js), at once, not as the season brings it
+    if (G.weather && G.weather.set) G.weather.set(s.weather || 'clear', { now: true });
     // the whole crowd and all the traffic
     if (G.crowdAuto) G.crowdAuto(false); // (not thinned by the hour: game.crowd.hours)
     G.crowd.active = G.crowd.P.length;
