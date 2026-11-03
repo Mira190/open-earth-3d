@@ -57,6 +57,7 @@ window.OEPlaces = (function () {
         for (const q of areas) if (Math.hypot(q.at[0] - px, q.at[1] - py) < q.radius && (!a || q.radius < a.radius)) a = q;
         if (a !== inArea) { inArea = a; due = a; }
         if (due && active) { showSign(due); due = null; }
+        else if (!active && signT > 0.6) signT = 0.6; // something else came up (a dialogue, the tour): the sign makes way
         if (signT > 0) { signT -= dt; if (signT <= 0.6 && !sign.classList.contains('out')) sign.classList.add('out'); if (signT <= 0) sign.hidden = true; }
         // conversations: start when you come within earshot, a line every few seconds, then quiet for a while
         for (const c of chatter) {

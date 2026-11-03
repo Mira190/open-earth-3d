@@ -404,6 +404,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 /* the HUD fades out for the title and for camera shots (fast travel, surveys) and back in as play resumes */
 .g-quest, .g-right, .g-reticle, .g-prompt, .g-labels, .g-vhud, .g-lens { transition: opacity 0.7s ease, visibility 0.7s; }
 .game-stage.titled :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-labels),
+/* the arrival with reduced motion: a cut from the title shot to the player, under a short fade (game.js craneIn) */
+.game-stage.arrive-fade #game-gl { animation: g-arrive-fade .5s ease-out; }
+@keyframes g-arrive-fade { from { opacity: 0; } }
 .game-stage.cine :is(.g-quest, .g-right, .g-reticle, .g-prompt, .g-vhud, .g-lens) { opacity: 0; visibility: hidden; }
 .g-bars { position: absolute; inset: 0; pointer-events: none; z-index: 3; }
 .g-bars::before, .g-bars::after { content: ""; position: absolute; left: 0; right: 0; height: 0; background: #000; transition: height 0.6s ease; }
@@ -640,6 +643,9 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .gt-go { display: flex; gap: 10px; flex-wrap: wrap; }
 .gt-go .btn { padding: 16px 18px; min-width: 210px; justify-content: space-between; }
 .gt-go .btn:not(.primary) { min-width: 0; }
+.gt-skip { display: flex; gap: 8px; align-items: center; margin: -4px 0 0; color: var(--muted); cursor: pointer; }
+.gt-skip[hidden] { display: none; }
+.gt-skip input { accent-color: var(--accent); }
 .gt-hints { margin: 0; display: grid; gap: 7px; font: 400 9px/1.6 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 .gt-hints kbd { font-size: 9px; padding: 1px 4px; color: var(--ink-2); margin-right: 2px; }
 .gt-back { justify-self: start; display: inline-flex; gap: 8px; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); text-decoration: none; padding: 4px 0; transition: color 0.3s; }
@@ -1025,7 +1031,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <tr><td><kbd>M</kbd> · <kbd>P</kbd> · <kbd>R</kbd></td><td>Map · passport · unstick yourself</td></tr>
         </tbody></table>
         <div class="row" id="gm-links"></div>
-        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-reset">Start the survey again</button></div>
+        <div class="row"><a class="btn" href="#globe">Back to the globe</a><a class="btn" id="gm-model" href="#">The 3D model</a><button class="btn" id="gm-intro">Show the intro again</button><button class="btn" id="gm-reset">Start the survey again</button></div>
       </div>
     </div>
 
@@ -1037,6 +1043,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
         <p id="gt-blurb">Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it. Every fact they tell you comes from the model.</p>
         <div class="gt-time"><span class="eyebrow">Start at</span><div class="seg" id="gt-timechoice"><button data-t="live" aria-pressed="true" id="gt-now">Now</button></div></div>
         <div class="gt-go"><button class="btn primary" id="gt-play">Start the survey <kbd>↵</kbd></button><button class="btn" id="gt-continue" hidden>Continue</button></div>
+        <label class="gt-skip note" id="gt-skip" hidden><input type="checkbox" id="gt-skip-on" checked> Skip the intro: you have played before</label>
         <div class="gt-hints">
           <span><kbd>W A S D</kbd> walk · drag to look around</span>
           <span><kbd>E</kbd> talk, board the ferry, fly the helicopter, drive your car</span>
@@ -1094,6 +1101,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="sun.js"></script>
 <script src="sun-gpu.js"></script>
 <script src="cine.js"></script>
+<script src="onboard.js"></script>
 <script src="lens.js"></script>
 <script src="earth.js"></script>
 <script src="score.js"></script>
