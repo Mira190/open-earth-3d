@@ -1348,6 +1348,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (s < 0 || s > l.len) {
           if (dir === c.dir && c.nx) { line = nl; dir = nd; s = nd > 0 ? 0 : net.L[line].len; }
           else if (l.ow && away) { respawn(c, cx, cy, radius * 0.6); continue; } // the end of a one-way street (the edge of the map)
+          else if (l.ow) { s = Math.max(0, Math.min(l.len, s)); c.v = 0; } // in sight: it waits there (turned round it would meet the traffic head on in its one lane) and comes back elsewhere once out of sight
           else { dir = -dir; s = Math.max(0, Math.min(l.len, s)); }
         }
         // across its stop line on red, with the cross road's green (the checks count it: tools/traffic_check.js)
