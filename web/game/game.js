@@ -2282,13 +2282,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const oy = Math.max(0, Math.abs(y - (FRAME.y0 + FRAME.y1) / 2) - ((FRAME.y1 - FRAME.y0) / 2 - edgeFade));
     return THREE.MathUtils.smoothstep(Math.hypot(ox, oy), 0, edgeFade);
   };
-  // the mapped trees (places.json, decimetres: x, y, ground, height) as [x, y, top, crown radius] on a 20 m grid,
+  // the trees (places.json, decimetres: x, y, ground, height; mapped, and planted from the woods' canopy) as [x, y, top, crown radius] on a 20 m grid,
   // built on first use: the surface model has the buildings but not the trees, and a crown hides a tower as well
   let treeGrid = null;
   function treesNear(x, y, r) {
     if (!treeGrid) {
       treeGrid = new Map();
-      const T = P.trees || [];
+      const T = (P.trees || []).concat(P.woods || []);
       for (let i = 0; i + 3 < T.length; i += 4) {
         const tx = T[i] / 10, ty = T[i + 1] / 10, h = T[i + 3] / 10, k = `${Math.floor(tx / 20)},${Math.floor(ty / 20)}`;
         if (!treeGrid.has(k)) treeGrid.set(k, []);
