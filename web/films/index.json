@@ -15,12 +15,12 @@
   "json": "films/kyoto.json",
   "duration": 36.5
  },
- "melbourne-bayside": {
-  "json": "films/melbourne-bayside.json",
-  "duration": 36
- },
  "melbourne": {
   "json": "films/melbourne.json",
+  "duration": 36
+ },
+ "melbourne-bayside": {
+  "json": "films/melbourne-bayside.json",
   "duration": 36
  },
  "osaka": {
@@ -34,6 +34,10 @@
  "shibuya": {
   "json": "films/shibuya.json",
   "duration": 36.5
+ },
+ "shinjuku": {
+  "json": "films/shinjuku.json",
+  "duration": 31.5
  },
  "sydney": {
   "json": "films/sydney.json",
