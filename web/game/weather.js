@@ -130,7 +130,12 @@ if (oePd > 0.0) { vec2 oeR = oeRipple(vOeW.xz, oeCamD);
 { vec2 oeR = oeRipple(vOeW.xz, distance(vOeW, cameraPosition)); normal = normalize(normal + (viewMatrix * vec4(oeR.x, 0.0, oeR.y, 0.0)).xyz * 2.0); }`)
         // the rain on a pond: a glassier surface, so its rings catch the sky
         .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.1), smoothstep(0.0, 0.3, uOeRain));`);
+roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.1), smoothstep(0.0, 0.3, uOeRain));`)
+        // and, as on the wet ground, the open sky it reflects is mostly the trees' and the walls' round it
+        .replace('#include <lights_fragment_maps>', `#include <lights_fragment_maps>
+#if defined( RE_IndirectSpecular )
+  radiance *= mix(1.0, 0.5, smoothstep(0.0, 0.3, uOeRain));
+#endif`);
     }
     return sh;
   }

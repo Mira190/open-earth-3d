@@ -160,7 +160,7 @@ diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near);
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
 diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * pnear));`);
     // in the rain: darker, glossier ground, and puddles on the roads and the paving (weather.js)
-    if (window.OEWeather) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '(1.0 - green) * (0.55 + 0.45 * roadway)', porous: 0.42 });
+    if (window.OEWeather) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', porous: 0.42 });
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
   };
   loadMsg('Surface model for walking, flying and sunlight', 0.78);
