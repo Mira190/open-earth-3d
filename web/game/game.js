@@ -3004,6 +3004,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
+    else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     if (titleOn && titleYaw != null) titleYaw += dt * 0.05;
     if (photo.on) photoCamera(dt); else updateCamera(dt, titleOn);
@@ -3172,8 +3173,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cars.extra.push({ x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft: o === ride && Math.abs(st.v) >= 0.3 });
     }
     cars.update(dt, cx, cy, clockT, blockers);
-    // the area sign waits for the tour and the guide's dialogue: never two of them up at once (#89)
-    if (places) places.update(dt, player.x, player.y, player.z, player.mode === 'foot' && !cine.active && !dlg.open && !OEOnboard.active());
+    if (places) {
+      // the area caption waits for a quiet screen: no conversation, menu, map, phone, photo mode or
+      // onboarding (anything marked data-hush that is showing holds it too)
+      const active = player.mode === 'foot' && !cine.active;
+      const calm = active && !dlg.open && !uiOpen() && phone.el.hidden && !photo.on && !document.querySelector('[data-hush]:not([hidden])');
+      places.update(dt, player.x, player.y, player.z, active, calm);
+    }
   }
 
   // on foot, m/s: a stroll, the default run (the surveyors' run clip is cut at 5.4 to 5.8 m/s, so it plays
