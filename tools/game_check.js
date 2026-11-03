@@ -413,11 +413,13 @@ const { pinClock } = require('./pin_clock');
   const ferry = await p.evaluate(() => {
     const g = window.__game, V = (g.fer && g.fer.vessels) || [];
     if (!V.length) return { none: true };
-    const a = V.map(v => [v.x, v.y]);
-    g.advance(40);
-    return { n: V.length, moved: Math.max(...V.map((v, i) => Math.hypot(v.x - a[i][0], v.y - a[i][1]))) };
+    // (a single water bus can be waiting out its dwell at a terminal when the window opens: up to two minutes)
+    const a = V.map(v => [v.x, v.y]), far = () => Math.max(...V.map((v, i) => Math.hypot(v.x - a[i][0], v.y - a[i][1])));
+    let t = 0;
+    do { g.advance(10); t += 10; } while (t < 120 && (t < 40 || far() <= 20));
+    return { n: V.length, moved: far(), t };
   });
-  check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in 40 s)`);
+  check(ferry.none || ferry.moved > 20, ferry.none ? 'no ferries' : `${ferry.n} ferries run (the farthest moved ${ferry.moved.toFixed(0)} m in ${ferry.t} s)`);
   await shot('ferry');
 
   // your car: round to the driver's door and in, seated with the head under the roof, drive off,

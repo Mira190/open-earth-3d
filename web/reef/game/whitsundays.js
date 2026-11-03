@@ -173,7 +173,7 @@ export default function whitsundays(G) {
         const seen = inSight(G, from, 'whitehaven-south').filter(s => !/^Whitehaven/.test(s));
         return [{ t: 'There are 74 continental islands in the Whitsundays.', src: ['wiki-whitsundays'] },
           { t: 'Captain Cook sailed through on Sunday 3 June 1770, the day Whitsun was celebrated, and named it Whitsundays\' Passage.', src: ['wiki-whitsundays'] },
-          seen.length ? { t: `From here, in sight over the model's terrain: ${seen.join('; ')}.`, src: ['model-terrain', 'model-pois'] } : null];
+          seen.length ? { t: `From here you can see ${seen.join('; ')}.`, src: ['model-terrain', 'model-pois'] } : null];
       }, next: 'hello' },
       flight: { say: G => {
         const h = aircraft(G).find(v => v.kind === 'helicopter'), s = aircraft(G).find(v => v.kind === 'seaplane');
@@ -198,8 +198,8 @@ export default function whitsundays(G) {
       inlet: { say: G => {
         const r = G.npc('guide'), me = r ? { x: r.npc.group.position.x, north: -r.npc.group.position.z } : P('hill-inlet-lookout');
         const elev = Math.round(G.height(me.x, me.north)), I = inlet(G), z = G.tideNow(), T = G.tide(), next = G.tideTurns(1)[0];
-        const pages = [{ t: `This lookout is ${elev} m above mean sea level in the model. Hill Inlet is ${G.where('hill-inlet', me)} of us.`, src: ['model-terrain', 'model-pois'] },
-          { t: `Within ${I.R} m of the inlet, ${I.km2.toFixed(1)} km² of the model is sand and shallows, between 2.5 m below and 2.5 m above mean sea level. At ${T ? `this tide, ${z >= 0 ? '+' : ''}${z.toFixed(1)} m` : 'mean sea level'}, ${I.wet(z)}% of it is under water.`, src: T ? ['model-terrain', 'msq-tide'] : ['model-terrain'] }];
+        const pages = [{ t: `This lookout is ${elev} m above the sea. Hill Inlet is ${G.where('hill-inlet', me)} of us.`, src: ['model-terrain', 'model-pois'] },
+          { t: `Within ${I.R} m of the inlet, ${I.km2.toFixed(1)} km² is sand and shallows, between 2.5 m below and 2.5 m above mean sea level. At ${T ? `this tide, ${z >= 0 ? '+' : ''}${z.toFixed(1)} m` : 'mean sea level'}, ${I.wet(z)}% of it is under water.`, src: T ? ['model-terrain', 'msq-tide'] : ['model-terrain'] }];
         if (T && next) pages.push({ t: `${next.high ? 'High' : 'Low'} water is ${next.z >= 0 ? '+' : ''}${next.z.toFixed(1)} m at ${new Intl.DateTimeFormat('en-AU', { hour: 'numeric', minute: '2-digit', timeZone: G.S.timezone }).format(new Date(next.t))} by the Shute Harbour predictions, and then ${I.wet(next.z)}% of it will be under water. That is what moves the sand and water patterns around all day.`, src: ['msq-tide', 'model-terrain'] });
         else pages.push({ t: `A metre more water would cover ${I.wet(1)}% of it, a metre less ${I.wet(-1)}%. The tide moves those patterns around all day.`, src: ['model-terrain'] });
         pages.push({ t: 'Go on, have a proper look out over the inlet.', src: null });
@@ -234,7 +234,7 @@ export default function whitsundays(G) {
       spawn: { say: G => {
         const sp = (G.life() || {}).spawning; if (!sp) return [];
         const s = G.sunset().set, rise = G.moonrise(s - 3 * 3600e3), gap = rise && rise > s ? Math.round((rise - s) / 60000) : 0;
-        return [{ t: `The inner reefs spawn in the week after the October full moon. By the model it's ${sp.nightsAfterFullMoon} night${sp.nightsAfterFullMoon === 1 ? '' : 's'} since the full moon.`, src: ['wiki-gbr', 'model-life'] },
+        return [{ t: `The inner reefs spawn in the week after the October full moon. It's ${sp.nightsAfterFullMoon} night${sp.nightsAfterFullMoon === 1 ? '' : 's'} since the full moon.`, src: ['wiki-gbr', 'model-life'] },
           { t: `It comes in the evening or at night, and the cue seems to be the dark between sunset and moonrise. Tonight the sun sets at ${G.time(s)}${rise ? `, and by the model's moon it rises at ${G.time(rise)}${gap ? `: ${Math.floor(gap / 60)} h ${gap % 60} min of dark` : ', before the sun is down'}` : ''}.`, src: ['wiki-coral', 'model-sun'] },
           { t: 'Snorkel over the reef then, mask on.', src: null }];
       }, do: G => G.start('spawning'), choices: [
@@ -262,8 +262,8 @@ export default function whitsundays(G) {
   const signNodes = id => ({ read: { say: G => {
     const p = P(id), sg = G.sign(id), at = sg ? { x: sg.x, north: sg.north } : p, elev = Math.round(G.height(at.x, at.north)), seen = inSight(G, at, id);
     const ngaro = NGARO_LOOKOUTS.includes(id);
-    return [{ t: `${p.name}. ${ngaro ? 'A lookout named in Ngaro, as signed and mapped; the English in brackets is part of the mapped name. ' : ''}${elev} m above mean sea level in the model.`, src: ['model-pois', 'model-terrain'] },
-      seen.length ? { t: `In sight from here over the model's terrain: ${seen.join('; ')}.`, src: ['model-terrain', 'model-pois'] } : null];
+    return [{ t: `${p.name}. ${ngaro ? 'A lookout named in Ngaro, as signed and mapped; the English in brackets is part of the mapped name. ' : ''}${elev} m above the sea.`, src: ['model-pois', 'model-terrain'] },
+      seen.length ? { t: `In sight from here: ${seen.join('; ')}.`, src: ['model-terrain', 'model-pois'] } : null];
   } } });
   const signs = [
     ...NGARO_LOOKOUTS.map(id => ({ id, title: P(id) ? P(id).name : id, at: signAt(id, 'whitehaven'), nodes: signNodes(id) })),

@@ -186,7 +186,7 @@ model, so their shadows are the measured ones.
 
 *Hong Kong on Foot* starts at Central's Pier 7, with a helicopter on a game pad
 on the harbourfront lawn a minute's walk east. The quests cross the harbour on
-the Star Ferry, read heights with the survey lens at the Clock Tower, fly from
+the Star Ferry, walk the promenade from the Clock Tower, fly from
 the Convention Centre heliport to Tamar Park, find the winter sun in Statue
 Square, ride the Peak Tram and end at the lookout at 8 pm. The trams run on both
 tracks along the north shore, keeping left, and stop for anyone on the rails;

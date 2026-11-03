@@ -14,7 +14,7 @@ gable its year calls for.
 | The canal ring | The Westertoren | Gables of three centuries |
 |---|---|---|
 | ![](../images/amsterdam/canals.jpg) | ![](../images/amsterdam/westertoren.jpg) | ![](../images/amsterdam/gables.jpg) |
-| **The Amstel at dusk, 21 December** | **Amsterdam on Foot: the F3 at Buiksloterweg** | **Sanne, the survey lead, on the Dam** |
+| **The Amstel at dusk, 21 December** | **Amsterdam on Foot: the F3 at Buiksloterweg** | **Sanne, the guide, on the Dam** |
 | ![](../images/amsterdam/dusk.jpg) | ![](../images/amsterdam/game-ferry.jpg) | ![](../images/amsterdam/game-sanne.jpg) |
 
 ## The short answer
@@ -228,13 +228,13 @@ follows the date the register keeps.
 
 ## 6. Amsterdam on Foot
 
-The survey starts on the Dam with Sanne, the survey lead. A helicopter waits on the
+The walks start on the Dam with Sanne, the guide. A helicopter waits on the
 square (a game pad: there is no helipad in the old city), the trams and taxis stop
 on the Damrak, and the free ferries leave from behind Centraal Station. It runs as
 three lines in any order:
 - **The canal ring.** Pieter, a building historian on the Herengracht, explains the
   gables and sends you to find a step gable, a neck gable and a bell gable. The
-  survey lens names a house's gable and when that type was built. Femke plays the
+  lens (Q) names a house's gable and when that type was built. Femke plays the
   Westertoren's carillon. Two doors down the Prinsengracht is the Anne Frank House;
   Anne could hear these bells from the Secret Annex.
 - **The IJ.** Joost puts you on GVB's free F3 ferry to Buiksloterweg, which leaves

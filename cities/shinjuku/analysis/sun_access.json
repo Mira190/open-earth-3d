@@ -1,0 +1,87 @@
+{
+ "year": 2026,
+ "dsm": {
+  "cell_m": 2,
+  "nx": 2250,
+  "ny": 1535,
+  "build_ms": 220
+ },
+ "places": [
+  {
+   "name": "Shinjuku Gyoen 新宿御苑",
+   "lep": false,
+   "period": "all",
+   "window": "12:00-13:00",
+   "window_verified": true,
+   "area_m2": 577104,
+   "samples": 23081,
+   "mean_pct_in_sun_by_month": [
+    93,
+    94,
+    95,
+    96,
+    97,
+    98,
+    97,
+    96,
+    95,
+    94,
+    92,
+    91
+   ],
+   "protected_months": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ]
+  },
+  {
+   "name": "Suga Park 須賀公園",
+   "lep": false,
+   "period": "all",
+   "window": "12:00-13:00",
+   "window_verified": true,
+   "area_m2": 171,
+   "samples": 18,
+   "mean_pct_in_sun_by_month": [
+    51,
+    86,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    77,
+    32,
+    24
+   ],
+   "protected_months": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+   ]
+  }
+ ],
+ "rays": 1385940,
+ "ray_ms": 1528
+}

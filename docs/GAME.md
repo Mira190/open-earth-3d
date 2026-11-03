@@ -15,8 +15,16 @@ model as the viewer. In Sydney that means:
 - the NSW bare-earth terrain;
 - the real sun in Sydney's time zone.
 
-Everything the characters tell you about the city is computed from the model
-while you play.
+The characters talk like the locals they are: who they are, what this street is,
+what is worth seeing at this hour and season, and where to go next. A guide's first
+meeting is two or three lines before the first choice. Numbers they give (a height,
+the share of a square in sun at noon on the solstice, tonight's sunset) are still
+computed while you play, but nobody in the game talks about open data, LiDAR,
+PLATEAU or how the map was built: that belongs in the model viewer's tour and its
+Sources panel, and in these docs. `tools/voice_check.py` reads every line the
+characters say, in every city and reef site, and fails on a short list of such
+words (it runs in `tools/check.sh`). Rewritten lines reach `web/data/<id>/game.json`
+with `python pipeline/game_text.py`, without rebuilding the game data.
 
 Open it from the title screen (**Play** on a destination's card), from the 3D
 model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-melbourne`,
@@ -61,7 +69,7 @@ model (the **Play** chip), or directly at `web/index.html#play-sydney`, `#play-m
 | <kbd>Q</kbd> | Survey lens: the building in front of you, its height and where the height comes from |
 | <kbd>G</kbd> | Height challenge: guess the height of the building in front of you, then see how good the data is |
 | <kbd>E</kbd> at a △ | Survey the view from a trig station |
-| <kbd>T</kbd> | Switch which survey line the route and the beam follow |
+| <kbd>T</kbd> | Switch which walk the route and the beam follow |
 | <kbd>O</kbd> | Photo mode: the world holds still while you set the sun, the lens and the angle, and save a picture |
 | <kbd>M</kbd> · <kbd>P</kbd> · <kbd>Esc</kbd> | Map: pick a landmark, a trig station, a wharf or any spot and travel there at once (double-click goes straight there), or set a waypoint; scroll or pinch to zoom, drag to pan · passport of stamps · menu (time of day, any time and date, clock speed, crowds, sound) |
 | <kbd>R</kbd> | Unstick yourself |
@@ -131,7 +139,7 @@ Every city's game has the same three ways to go by road:
   the quickest free taxi coming your way, by road, pulls in on your side of the
   street with its hazard lights on. If none is close, one comes round the corner.
   Get in with <kbd>E</kbd>. The driver asks where to: your waypoint, the next
-  step of the survey, your car, the nearest landmarks, the wharves you have used,
+  step of your walk, your car, the nearest landmarks, the wharves you have used,
   or where you started.
 - **A ride:** order one on the phone (<kbd>N</kbd>), as GTA VI's Ryde Me app does.
   Choose where to go first, and a private-hire car sets out for the nearest kerb.
@@ -187,16 +195,15 @@ coming the other way. While the car coming for you is out of your sight (more th
 40 m off and off the screen, or more than 120 m off), neither the traffic nor the
 lights hold it up, so it comes in good time, as it would in a game; in your sight
 it queues, stops at the lights and never steps further into another car. On the way they talk about what you are passing, as the people on the
-footways do, so each remark is a fact from the model, such as a building's height
-and where it comes from. <kbd>F</kbd> skips the trip, as in GTA V: the camera
+footways do: what that building is, and how tall. <kbd>F</kbd> skips the trip, as in GTA V: the camera
 rises, crosses the city and comes down behind the car at the kerb. The traffic
 keeps to the city's side of the road: the left in Australia, Japan and Hong
 Kong, and the right in Paris, where the cars are left-hand drive.
 
-The survey comes in lines. After a welcome, three surveys run side by side, in
-any order, and a report back waits for all three. The Sydney survey has seven
+The walks come in lines. After a welcome, three walks run side by side, in
+any order, and a report back waits for all three. Sydney has seven
 stamps, and an eighth for the locals:
-- **Welcome** (Ava, at Circular Quay): she sets out the three surveys and asks
+- **Welcome** (Ava, at Circular Quay): she sets out the three walks and asks
   which you want to start with.
 - **The harbour** (Marco, at the Opera House), two stamps:
   - hear how the shells are cut from one sphere, and climb the Monumental Steps;
@@ -206,18 +213,18 @@ stamps, and an eighth for the locals:
   Domain.
 - **The ground** (Priya, in Martin Place), two stamps:
   - find a spot that gets sun at lunchtime on the winter solstice;
-  - then, with Tom, use the survey lens on three buildings whose heights come from
-    different sources.
-- **Report back** (Ava): opens once the three surveys are done.
+  - then Tom, a Hyde Park regular, tells you about the park and sends you across
+    College Street to St Mary's Cathedral.
+- **Report back** (Ava): opens once the three walks are done.
 - **The locals** (Jess, a waiter at the Opera Bar), on the side: walk up to the
   silver gulls fighting over a box of hot chips by the water.
 
 A step counts whether its line is tracked or not. If you stand in the sun in Martin
-Place on the way to the ferry, the ground survey moves on. <kbd>T</kbd>, or a tap
-on a survey's name in the quest card, chooses the line that the route, the beam and
+Place on the way to the ferry, the ground walk moves on. <kbd>T</kbd>, or a tap
+on a walk's name in the quest card, chooses the line that the route, the beam and
 the minimap's star follow. The other lines show as hollow stars.
 
-Docking a ferry by hand earns an extra stamp. After the survey, the city is free
+Docking a ferry by hand earns an extra stamp. After the walks, the city is free
 roam, with two things to do in it at any time:
 
 - **Trig stations.** Five survey points round the harbour, each a △ on the map: the
@@ -235,21 +242,21 @@ roam, with two things to do in it at any time:
   ±20% nine times in ten, and an estimate to much less. A guess inside that range is
   as good as the data, and the score says so.
 
-The Melbourne survey has the same shape and six stamps:
+Melbourne has the same shape and six stamps:
 - **Welcome** (Mia, at Federation Square).
 - **The square** (Hannah, in City Square): how DDO10 protects public spaces from
   new shadow, and a sunny spot on Federation Square at lunchtime on 22 June.
 - **The river** (Arjun, at Federation Wharf), two stamps:
   - the river shuttle to Crown Landing;
   - Sophie's helicopter past the Arts Centre spire to Birrarung Marr.
-- **The heights** (Jun, in Birrarung Marr): the survey lens on three height
-  sources.
+- **The gardens** (Jun, a city gardener in Birrarung Marr): up the hill to
+  Fitzroy Gardens and Cook's Cottage.
 - **Report back** (Mia).
 
 Melbourne has no ferry through the city, so the shuttle is invented and says
 so.
 
-The bayside survey is one line of four stamps, taken in order:
+The bayside is one line of four stamps, taken in order:
 1. Walk out along St Kilda Pier to the kiosk.
 2. Hear from Tash, an Earthcare volunteer, about the colony, then wait on the
    viewing platform after sunset until penguins come ashore near you. One
@@ -261,10 +268,10 @@ The bayside has no ferries and no real helipad. The pad at Elwood is invented
 and says so. Its six shore stops are on the map from the start, to travel to at
 any time.
 
-The Hong Kong survey has six:
+Hong Kong has six:
 1. Take the Star Ferry from Central's Pier 7 to Tsim Sha Tsui.
-2. Find a surveyed and a LiDAR-measured height with the survey lens at the
-   Clock Tower, then take the ferry on to Wan Chai.
+2. Hear about the Clock Tower from Wing, walk east along the Tsim Sha Tsui
+   promenade for the view of Central, then take the ferry on to Wan Chai.
 3. Fly from the Convention Centre heliport between the towers and land in
    Tamar Park.
 4. Find a sunny spot in Statue Square at noon on 21 December, among the bank
@@ -275,10 +282,9 @@ The Hong Kong survey has six:
 The Star Ferry's routes are real; its timetable and which vessel runs which
 route are not.
 
-The Paris survey has seven stamps, written as three lines after a welcome on the
-Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
-- **The river:** Bernard, a bouquiniste, and the survey lens on a LiDAR-measured
-  roof; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
+Paris has seven stamps, written as three lines after a welcome on the
+Pont d'Iéna (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
+- **The river:** Bernard, a bouquiniste, on reading the roofs of Paris; the Batobus from Saint-Germain-des-Prés to Notre-Dame; Léa, a carpenter
   on the cathedral's roof.
 - **The Left Bank:** a chair in the sun in the Luxembourg at noon on 21 December;
   Karim's café and Nadia's bakery.
@@ -289,10 +295,10 @@ Pont des Arts (see [the Paris case study](cities/paris.md#6-paris-on-foot)):
 On the Seine the helicopter takes the nearest span to fly under, and a step can
 name its span (`"surface"`).
 
-The Amsterdam survey has eight stamps, written as three lines after a welcome on
+Amsterdam has eight stamps, written as three lines after a welcome on
 the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)):
 - **The canal ring:** Pieter, a building historian on the Herengracht, sends you
-  to find a step gable, a neck gable and a bell gable with the survey lens (a
+  to find a step gable, a neck gable and a bell gable with the lens (a
   `gable` step: the lens names a house's gable and when that type was built);
   Femke plays the Westertoren's carillon, and the Anne Frank House is two doors
   down.
@@ -305,16 +311,17 @@ the Dam (see [the Amsterdam case study](cities/amsterdam.md#6-amsterdam-on-foot)
 
 Amsterdam has no real helipad in the old city. The pad on the Dam is a game device, so that the city can be seen from the air.
 
-**Tokyo Pilgrimage** (Shibuya and Shinjuku, see [the case study](cities/shibuya.md#7-tokyo-pilgrimage))
-is a walk, not a survey: a welcome at Hachiko, then five lines in any order and a
-report back.
+**Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
+[Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
+is a pilgrimage: in Shibuya a welcome at Hachiko, in Shinjuku at the east exit, then
+lines in any order and a report back.
 - **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
   lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
-- **Your Name:** climb the 52 steps of Suga Shrine's 男坂 and read an ema.
+- **Your Name** (Shinjuku): climb the 52 steps of Suga Shrine's 男坂 and read an ema.
 - **Shinjuku:** Kabukicho's arch after dark.
-- **Aoyama:** the ginkgo avenue at Jingu Gaien.
+- **Aoyama** (Shinjuku): the ginkgo avenue at Jingu Gaien.
 
 Walking into a neighbourhood puts its name up on a station sign. <kbd>E</kbd> at a
 spot (an ema, a vending machine, a shop front) reads it. Conversations come up in
@@ -1523,7 +1530,7 @@ Everything a city's game says and wears is in `cities/<id>/city.json`, not in co
   `emissive` and `glow` so signs light up.
 - **Neighbourhoods.** `areas` (station signs), `spots` and `chatter` live in `city.json`
   `game`, or a city's `game_extras` hook returns them with positions measured from its
-  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage) is the example.
+  landmarks. [Tokyo Pilgrimage](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) is the example.
 
 ## Testing
 
@@ -1542,8 +1549,7 @@ the whole survey this way. It checks:
      fires), and lands in the Domain.
    - **Sun:** with the time set to 21 June at 12:30, a sunlit spot in Martin
      Place completes the step.
-   - **Survey lens:** it finds a surveyed, a floor-count and an estimated
-     height.
+   - **St Mary's:** walking to the cathedral completes Tom's walk.
 4. All seven stamps are awarded.
 
 The camera shots were checked the same way:

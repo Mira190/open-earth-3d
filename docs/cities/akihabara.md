@@ -30,7 +30,7 @@ vector tiles), GSI DEM5A terrain and GSI aerial photographs, as for the other To
 ## Game
 
 Akihabara on Foot: a parts-shop owner at the Electric Town exit, a maid cafe's guide on
-Chuo-dori, a collector on Junk Street, the survey lens, and a shrine attendant at Kanda Myojin.
+Chuo-dori, a collector on Junk Street, and a shrine attendant at Kanda Myojin.
 
 ## Not checked
 

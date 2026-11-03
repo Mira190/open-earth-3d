@@ -36,7 +36,7 @@ export default function heronIsland(G) {
       const c = P('heron-island'), ha = c ? landArea(G2, c.x, c.north) : null;
       const l = window.Sun.utcToLocal(G2.nowMs()), noon = window.Sun.dayLimits(l.y, l.m, l.d).noonAltitude;
       return [{ t: 'It sits at the western, leeward end of Heron Reef, a platform reef with around 900 of the Great Barrier Reef\'s 1,500 fish species and 72% of its coral species.', src: ['wiki-heron'] },
-        ha ? { t: `Wikipedia gives about 16 hectares, 800 m long and 300 m wide; the mapped outline in this model gives ${ha.toFixed(0)} hectares above mean sea level.`, src: ['wiki-heron', 'model-terrain'] } : null,
+        ha ? { t: `About 16 hectares, 800 m long and 300 m wide. Above mean sea level it comes to ${ha.toFixed(0)} hectares: small enough to walk round before breakfast.`, src: ['wiki-heron', 'model-terrain'] } : null,
         { t: `Today the sun reaches ${noon.toFixed(0)}° above the horizon here at noon.`, src: ['model-sun'] },
         { t: 'A Royal Navy expedition, HMS Fly and the cutter Bramble, found it on 12 January 1843, and Lieutenant Charles Bampfield Yule of the Bramble named it.', src: ['wiki-heron'] },
         { t: 'The whole island was declared a National Park on 11 September 1943; the eastern half is now part of the Capricornia Cays National Park.', src: ['wiki-heron'] }];
@@ -75,7 +75,7 @@ export default function heronIsland(G) {
       water: { say: G2 => {
         const b = blueness(opticsHere(G2)), wh = (G2._optics || {}).whitsundays, wb = wh ? blueness(wh.optics) : null;
         return [b ? { t: `From the satellite, the deep water around this reef sends back ${b.toFixed(2)} times as much blue light as green${wb ? `; over the Whitsundays it is ${wb.toFixed(2)}` : ''}.`, src: ['model-optics'] } : null,
-          { t: `Out on the reef flat the water is ${Math.max(0, G2.depth(P('heron-reef').x, P('heron-reef').north)).toFixed(1)} m deep at this tide, by the model.`, src: G2.tide() ? ['model-terrain', 'model-tide'] : ['model-terrain'] }];
+          { t: `Out on the reef flat the water is ${Math.max(0, G2.depth(P('heron-reef').x, P('heron-reef').north)).toFixed(1)} m deep at this tide.`, src: G2.tide() ? ['model-terrain', 'model-tide'] : ['model-terrain'] }];
       }, next: 'hello' },
       survey: { say: G2 => [{ t: `Log ${surveySize(G2)} species for me: mask on, get within a few metres, and E.`, src: ['model-life'] }], do: G2 => G2.start('survey'), next: 'end' },
       surveyDone: surveyDoneNode()
