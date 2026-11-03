@@ -1,6 +1,7 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
-// from the map to a landmark and run there, talk to the first quest giver,
+// from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
+// in sight at night,
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
@@ -18,6 +19,7 @@ const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
+const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
   const b = await chromium.launch(process.env.DISPLAY
@@ -457,6 +459,14 @@ const { pinClock } = require('./pin_clock');
   await shot('talk');
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); g.advance(0.2); } });
   if (!talk.none) check(await p.evaluate(() => !window.__game.dlg.open), 'the conversation runs to its end');
+
+  // after dark every NPC waits in light and in sight (#92; tools/npc_night.js): the street lights' light
+  // where they stand, and walkers round them who can see them past the walls
+  {
+    const rs = await p.evaluate(npcNight.survey), bad = rs.map(r => [r, npcNight.verdict(r)]).filter(([, w]) => w.length);
+    const dim = rs.filter(r => r.light != null).sort((a, b) => a.light - b.light)[0];
+    check(!bad.length, `every NPC stands in light and in sight at night (${rs.length} NPCs${dim ? `; the dimmest, ${dim.name}, at ${dim.light.toFixed(2)}` : ''})${bad.length ? ': ' + bad.map(([r, w]) => `${r.name} at ${r.at} ${w.join(', ')}`).join('; ') : ''}`);
+  }
 
   // the area caption (places.js): up briefly when you walk into an area, gone within 3.5 s, never over a
   // conversation, and not brought back by walking along an area's edge
