@@ -247,10 +247,10 @@ def build_atlas(path):
 # Heights in metres; a crown is a shape that says, for a point, how far out it is (1 at the
 # surface). Species are near their usual street-tree size; the game scales each tree.
 SPECIES = {
-    "plane": dict(H=17.0, trunk=4.2, r0=0.36, crown=("ellipsoid", 10.6, 6.6, 6.4), n=330, size=2.9, n1=7, n2=4, leaf="plane",
-                  bark="#a08f78", lean=0.04, leader=True, colour="#557f37", note="London plane: the street tree of both cities"),
-    "elm": dict(H=16.0, trunk=3.0, r0=0.34, crown=("vase", 3.2, 16.0, 1.2, 7.4), n=320, size=2.7, n1=5, n2=5, leaf="elm",
-                bark="#5a4c40", lean=0.02, leader=False, colour="#4f7a32", note="English elm: Melbourne's avenues"),
+    "plane": dict(deciduous=True, H=17.0, trunk=4.2, r0=0.36, crown=("ellipsoid", 10.6, 6.6, 6.4), n=330, size=2.9, n1=7, n2=4, leaf="plane",
+                  bark="#a08f78", lean=0.04, leader=True, colour="#557f37", autumn_colour="#7f7444", note="London plane: the street tree of both cities"),
+    "elm": dict(deciduous=True, H=16.0, trunk=3.0, r0=0.34, crown=("vase", 3.2, 16.0, 1.2, 7.4), n=320, size=2.7, n1=5, n2=5, leaf="elm",
+                bark="#5a4c40", lean=0.02, leader=False, colour="#4f7a32", autumn_colour="#8c8240", note="English elm: Melbourne's avenues"),
     "gum": dict(H=18.0, trunk=6.5, r0=0.40, crown=("clumps", 12.5, 5.6, 5.0), n=200, size=2.8, n1=5, n2=3, leaf="gum",
                 bark="#ddd5c6", lean=0.10, leader=True, colour="#73906d", note="Eucalyptus: pale bark, open crown in clumps"),
     "fig": dict(H=15.0, trunk=2.6, r0=0.85, crown=("dome", 8.6, 10.5, 6.4), n=440, size=3.1, n1=8, n2=4, leaf="fig",
@@ -260,7 +260,7 @@ SPECIES = {
                       note="Jacaranda: purple in late spring (cards swap to the bloom cell with the season)"),
     "palm": dict(H=11.0, trunk=8.2, r0=0.42, crown=("palm", 9.0, 4.2, 2.6), n=26, size=5.6, leaf="palm",
                  bark="#86745c", lean=0.03, colour="#62803e", note="Canary Island date palm"),
-    "maple": dict(H=7.5, trunk=1.5, r0=0.2, crown=("umbrella", 4.7, 4.6, 2.5), n=300, size=2.2, n1=6, n2=4, leaf="maple",
+    "maple": dict(deciduous=True, H=7.5, trunk=1.5, r0=0.2, crown=("umbrella", 4.7, 4.6, 2.5), n=300, size=2.2, n1=6, n2=4, leaf="maple",
                   bark="#5b534a", lean=0.12, leader=False, colour="#628f3b", autumn_colour="#c2412b",
                   note="Japanese maple (momiji, Acer palmatum): a low, wide, layered crown; red from mid November in Tokyo and Kyoto"),
     # Japan's own: the Gyoen's and the palace lawns' black pines, the shrine woods' cryptomeria, the camphor
@@ -277,11 +277,11 @@ SPECIES = {
                     bark="#5a4f45", lean=0.04, leader=False, colour="#56813a",
                     note="Camphor laurel (kusunoki, Cinnamomum camphora): a broad, bright evergreen dome on a massive trunk; the "
                          "shrine trees of Osaka and Kyoto and Meiji Jingu's commonest"),
-    "zelkova": dict(H=20.0, trunk=3.0, r0=0.45, crown=("vase", 3.6, 20.0, 1.6, 8.6), n=420, size=3.0, n1=7, n2=5, leaf="zelkova",
+    "zelkova": dict(deciduous=True, H=20.0, trunk=3.0, r0=0.45, crown=("vase", 3.6, 20.0, 1.6, 8.6), n=420, size=3.0, n1=7, n2=5, leaf="zelkova",
                     bark="#857d70", lean=0.02, leader=False, colour="#557d35", autumn_colour="#8e6a3e",
                     note="Japanese zelkova (keyaki, Zelkova serrata): a broom of upswept limbs and fine twigs; the avenue tree of "
                          "Omotesando and the precincts, rust-orange in November"),
-    "ginkgo": dict(H=17.0, trunk=2.6, r0=0.34, crown=("ellipsoid", 10.0, 4.2, 7.4), n=360, size=2.8, n1=9, n2=3, leaf="ginkgo",
+    "ginkgo": dict(deciduous=True, H=17.0, trunk=2.6, r0=0.34, crown=("ellipsoid", 10.0, 4.2, 7.4), n=360, size=2.8, n1=9, n2=3, leaf="ginkgo",
                    bark="#6e655a", lean=0.02, excurrent=True, colour="#62903a", autumn_colour="#c8a640",
                    note="Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree "
                         "(Midosuji, Jingu Gaien), gold in late November"),
@@ -675,7 +675,7 @@ def build_all(atlas):
             tri.append(triangles(ob))
         info[name] = {"height_m": sp["H"], "crown": list(sp["crown"][1:]), "colour": sp["colour"], "bark": sp["bark"], "triangles": tri,
                       "cell": CELLS[sp["leaf"]], "trunk_r": sp["r0"], "note": sp["note"]}
-        for k_ in ("bloom_colour", "autumn_colour"):
+        for k_ in ("bloom_colour", "autumn_colour", "deciduous"):
             if k_ in sp:
                 info[name][k_] = sp[k_]
     return objs, info

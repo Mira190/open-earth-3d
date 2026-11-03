@@ -74,8 +74,12 @@ def trees_cfg(city):
         found = json.load(open(path, encoding="utf8")).get("areas", {})
         for a in cfg.get("areas", []):
             if a.get("name") in found:
-                a["xy"] = found[a["name"]]["xy"]
-                a.setdefault("osm", found[a["name"]]["osm"])
+                f = found[a["name"]]
+                for k in ("xy", "parts"):
+                    if k in f:
+                        a[k] = f[k]
+                if "xy" in f:
+                    a.setdefault("osm", f["osm"])
     return cfg
 
 

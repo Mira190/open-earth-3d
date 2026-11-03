@@ -17,8 +17,9 @@ window.OETrees = (function () {
   // trees.json older than its trunk_r
   const TRUNK = { plane: 0.36, elm: 0.34, gum: 0.4, fig: 0.85, jacaranda: 0.26, palm: 0.42, maple: 0.2 };
   // the leaves' autumn colour, per species with an autumn_colour (trees.json), as a multiple of the leaf's
-  // own lightness: the maple keeps its crimson-to-gold range below; the ginkgo goes a clear gold, the zelkova rust
-  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36] };
+  // own lightness: the maple keeps its crimson-to-gold range below; the ginkgo goes a clear gold, the zelkova rust,
+  // the plane a dull yellow-brown and the elm yellow
+  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36], plane: [1.55, 1.2, 0.45], elm: [2.0, 1.7, 0.4] };
   const inPoly = (x, y, P) => {
     let c = false;
     for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
@@ -38,7 +39,7 @@ window.OETrees = (function () {
   // the colour attribute carries ambient occlusion (r), how far the wind moves a vertex (g)
   // and a flutter phase (b); renamed so no material reads it as a colour
   const VERT_HEAD = `#include <common>
-attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vCell; varying float vTurn;`;
+attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vCell; varying float vTurn; varying float vCard;`;
   // the atlas cell a leaf card shows (CELLS columns x ROWS; glTF v runs down): the jacaranda's bloom
   // cell swaps to its leaf cell, one to the left, out of season; the cells that turn in autumn are
   // coloured in the fragment shader (uAutumn)
@@ -59,13 +60,23 @@ transformed.z += cos(uWind * 0.93 + ph * 1.7) * 0.22 * sw;
 transformed += normal * sin(uWind * 6.0 + tc.b * 6.2832 + ph) * 0.05 * tc.g;
 #endif
 vAO = tc.r;
+vCard = tc.b; // a leaf card's own phase: which cards fall first
 vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
   function shader(U, leaves, depth, A) {
     return sh => {
       sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uAutumn = U.uAutumn; sh.uniforms.uFall = U.uFall;
+      sh.uniforms.uBare = U.uBare; sh.uniforms.uDecid = U.uDecid;
       sh.defines = Object.assign(sh.defines || {}, { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_MAPLE: A.maple.toFixed(1), ATLAS_CELLS: A.cols * A.rows });
       if (leaves) sh.defines.LEAVES = '';
       sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_HEAD).replace('#include <uv_vertex>', VERT_UV).replace('#include <begin_vertex>', VERT_WIND);
+      // in winter a deciduous tree's cards fall, in the camera's pass and the shadow's alike: each card at its
+      // own time (vCard), each tree a little ahead of or behind the others (vTurn)
+      const BARE = `uniform float uBare; uniform float uDecid[ATLAS_CELLS]; varying float vCell; varying float vTurn; varying float vCard;`;
+      if (leaves) sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', depth ? '#include <common>\n' + BARE : '#include <common>\nuniform float uBare; uniform float uDecid[ATLAS_CELLS]; varying float vCard;')
+        .replace('#include <alphatest_fragment>', `{ int bc = int(vCell + 0.5);
+  if (uBare > 0.0 && bc >= 0 && bc < ATLAS_CELLS && uDecid[bc] > 0.5 && fract(vCard * 7.13 + vTurn * 0.37) < uBare * (0.85 + 0.3 * vTurn)) discard; }
+#include <alphatest_fragment>`);
       if (depth) return;
       sh.fragmentShader = sh.fragmentShader
         .replace('#include <common>', '#include <common>\nvarying float vAO; varying float vCell; varying float vTurn; uniform float uAutumn; uniform vec3 uFall[ATLAS_CELLS];')
@@ -114,15 +125,22 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, maple: cells.maple ?? 7 };
     const fall = Array.from({ length: A.cols * A.rows }, () => new THREE.Vector3());
     for (const [sp, f] of Object.entries(FALL)) if (I.species[sp] && cells[sp] != null && cells[sp] < fall.length) fall[cells[sp]].set(...f);
-    const U = { uWind: { value: 0 }, uBloom: { value: 0 }, uAutumn: { value: 0 }, uFall: { value: fall } };
+    // the cells of the deciduous species (trees.json deciduous): bare in winter
+    const decid = Array.from({ length: A.cols * A.rows }, () => 0);
+    for (const [sp, S] of Object.entries(I.species)) if (S.deciduous && cells[sp] != null && cells[sp] < decid.length) decid[cells[sp]] = 1;
+    const U = { uWind: { value: 0 }, uBloom: { value: 0 }, uAutumn: { value: 0 }, uFall: { value: fall }, uBare: { value: 0 }, uDecid: { value: decid } };
     const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
     // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
-    const zones = (areas || []).filter(a => a && a.mix && ((a.at && a.radius > 0) || (a.xy && a.xy.length > 2)));
-    for (const a of zones) if (a.xy) { // its bounding box, to test a tree against it only when it is near
-      const xs = a.xy.map(p => p[0]), ys = a.xy.map(p => p[1]);
-      a.box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
-    }
-    const inZone = (a, x, y) => a.xy ? x >= a.box[0] && y >= a.box[1] && x <= a.box[2] && y <= a.box[3] && inPoly(x, y, a.xy)
+    // an area is a circle, an outline (xy) or several (parts: the stretches of an avenue), each outline
+    // with its bounding box, to test a tree against it only when it is near
+    const zones = (areas || []).filter(a => a && a.mix && ((a.at && a.radius > 0) || (a.xy && a.xy.length > 2) || (a.parts && a.parts.length))).map(a => {
+      const polys = (a.parts || (a.xy ? [a.xy] : [])).filter(P => P.length > 2).map(P => {
+        const xs = P.map(p => p[0]), ys = P.map(p => p[1]);
+        return { P, box: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] };
+      });
+      return Object.assign({}, a, { polys });
+    });
+    const inZone = (a, x, y) => a.polys.length ? a.polys.some(({ P, box }) => x >= box[0] && y >= box[1] && x <= box[2] && y <= box[3] && inPoly(x, y, P))
       : (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius;
     const woodMix = Object.entries(woods || {}).filter(([k, w]) => I.species[k] && w > 0);
     const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix).concat(Object.keys(a.woods || {}))).concat(woodMix.map(([k]) => k)))]
@@ -233,6 +251,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     }
     return {
       n, species: names, count,
+      // the season the trees show: flowering, autumn colour and how bare the deciduous ones are (0..1)
+      season: () => ({ bloom: U.uBloom.value, autumn: U.uAutumn.value, bare: U.uBare.value }),
       // the species of tree i (an index into species) and where it stands (x, y local metres), for the tools
       kind: i => which[i], at: i => (M[16 * i] === 0 && M[16 * i + 2] === 0 ? null : [list[4 * i] / 10, list[4 * i + 1] / 10]), // (null: not drawn)
       // the foot of each tree that is drawn and its trunk's radius: x, y, z, r (local metres)
@@ -263,17 +283,27 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
         }
         last.set(1e9, 0, 0); // sorted again at the next update
       },
-      // jacarandas flower from mid October to November in the south, May and June in the north
-      // and maples go red from mid November to mid December in the north (late April to May in the south),
-      // turning over a fortnight either side
+      // jacarandas flower from mid October to November in the south, May and June in the north;
+      // maples, ginkgos and zelkovas turn from mid November in the north (late April in the south), over a
+      // fortnight, and keep their colour until their leaves fall: the deciduous trees (plane, elm, maple,
+      // zelkova, ginkgo) drop them from late November to mid December (June in the south) and leaf out again
+      // from late March to mid April (late September to mid October)
       setSeason(month, day) {
         const doy = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 864e5);
         U.uBloom.value = south ? +(doy >= 285 && doy <= 334) : +(doy >= 130 && doy <= 178);
-        const [a0, a1] = south ? [115, 150] : [318, 350], ramp = 14;
-        U.uAutumn.value = Math.max(0, Math.min(1, (doy - a0 + ramp) / ramp, (a1 + ramp - doy) / ramp));
+        const d = (doy + (south ? 182 : 0)) % 365; // the day in a northern year
+        const ramp = 14, clamp = v => Math.max(0, Math.min(1, v));
+        // bare: falling 328-348 (24 November-14 December: Midosuji's and Jingu Gaien's ginkgos are bare by mid
+        // December), bare until 80, leafing 80-104 (21 March-14 April)
+        U.uBare.value = d >= 328 ? clamp((d - 328) / 20) : d < 80 ? 1 : clamp((104 - d) / 24);
+        // turned from 304-318 until the leaves have fallen; new leaves are green
+        U.uAutumn.value = d >= 304 ? clamp((d - 304) / ramp) : d < 80 ? 1 : 0;
         for (const [name, m] of Object.entries(mats)) {
           const S = I.species[name.split('_')[1]];
-          if (name.startsWith('Crown_') && S && S.autumn_colour) m.color.copy(lin(S.colour).lerp(lin(S.autumn_colour), U.uAutumn.value).multiplyScalar(0.8));
+          if (!name.startsWith('Crown_') || !S) continue;
+          if (S.autumn_colour) m.color.copy(lin(S.colour).lerp(lin(S.autumn_colour), U.uAutumn.value).multiplyScalar(0.8));
+          // a deciduous tree's far crown goes when half its leaves have (its trunk stays)
+          if (S.deciduous) m.visible = U.uBare.value < 0.5;
         }
       },
     };

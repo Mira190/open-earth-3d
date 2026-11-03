@@ -5,7 +5,8 @@ streets and parks. Some places are known for their own: the black pines on the K
 Kokyo Gaien's lawns, the camphors and evergreen oaks of Meiji Jingu's wood, the ginkgo rows of Jingu
 Gaien. An area in city.json names its place by its OpenStreetMap element ("osm": "W123" or "R123") or by
 a search ("find": "Kyoto Gyoen"), and gives a mix for every tree inside it ("mix") and, if they
-differ, for the trees planted from its canopy ("woods"). This writes each place's outline, in the
+differ, for the trees planted from its canopy ("woods"). A street ("buffer": metres either side of its
+centre line) becomes an avenue: every part of it the search finds, widened. This writes each place's outline, in the
 city's local metres and simplified to about 4 m, with the element it found, to
 cities/<id>/tree_areas.json, then refreshes scene.json (pipeline/scene_config.py), whose trees.areas
 carry them as "xy" (cityctx.trees_cfg). web/trees.js tests each tree against it.
@@ -49,8 +50,17 @@ def outline(city, area):
         hits = get("lookup", osm_ids=area["osm"], format="json", polygon_geojson=1)
     else:
         lon0, lat0, lon1, lat1 = city.cfg["bbox"]
-        hits = get("search", q=area["find"], format="json", polygon_geojson=1, limit=10, bounded=1,
+        hits = get("search", q=area["find"], format="json", polygon_geojson=1, limit=40 if area.get("buffer") else 10, bounded=1,
                    viewbox=f"{lon0},{lat1},{lon1},{lat0}")
+    if area.get("buffer"):      # a street: every part of it the search finds, widened to an avenue's width
+        lines = [city.to_local(shape(h["geojson"])) for h in hits if (h.get("geojson") or {}).get("type") in ("LineString", "MultiLineString")]
+        if not lines:
+            raise SystemExit(f"{city.id}: no street for {area.get('find')!r}")
+        local = shapely.simplify(shapely.union_all([g.buffer(area["buffer"], cap_style="flat") for g in lines]), 4.0)
+        ids = ",".join(h["osm_type"][0].upper() + str(h["osm_id"]) for h in hits if (h.get("geojson") or {}).get("type") in ("LineString", "MultiLineString"))
+        # every stretch of it, each an outline of its own ("parts")
+        parts = list(local.geoms) if local.geom_type == "MultiPolygon" else [local]
+        return [[[round(x), round(y)] for x, y in list(p.exterior.coords)[:-1]] for p in parts if p.area > 200], ids
     for h in hits:
         g = shape(h.get("geojson") or {"type": "Point", "coordinates": [0, 0]})
         if g.geom_type not in ("Polygon", "MultiPolygon"):
@@ -71,8 +81,12 @@ def main():
         if not (a.get("osm") or a.get("find")):
             continue
         xy, osm = outline(city, a)
-        out[a["name"]] = {"osm": osm, "xy": xy}
-        print(f"  {a['name']}: {osm}, {len(xy)} points")
+        if a.get("buffer"):
+            out[a["name"]] = {"osm": osm, "parts": xy}
+            print(f"  {a['name']}: {len(xy)} stretches, {sum(map(len, xy))} points")
+        else:
+            out[a["name"]] = {"osm": osm, "xy": xy}
+            print(f"  {a['name']}: {osm}, {len(xy)} points")
     path = city.file("tree_areas.json")
     with open(path, "w", encoding="utf8") as f:
         json.dump({"note": "Outlines of city.json trees.areas, by pipeline/tree_areas.py from OpenStreetMap (ODbL) via Nominatim; "

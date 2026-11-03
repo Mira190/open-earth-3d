@@ -52,7 +52,9 @@
    ],
    "cell": 1,
    "trunk_r": 0.36,
-   "note": "London plane: the street tree of both cities"
+   "note": "London plane: the street tree of both cities",
+   "autumn_colour": "#7f7444",
+   "deciduous": true
   },
   "elm": {
    "height_m": 16.0,
@@ -71,7 +73,9 @@
    ],
    "cell": 2,
    "trunk_r": 0.34,
-   "note": "English elm: Melbourne's avenues"
+   "note": "English elm: Melbourne's avenues",
+   "autumn_colour": "#8c8240",
+   "deciduous": true
   },
   "gum": {
    "height_m": 18.0,
@@ -163,7 +167,8 @@
    "cell": 7,
    "trunk_r": 0.2,
    "note": "Japanese maple (momiji, Acer palmatum): a low, wide, layered crown; red from mid November in Tokyo and Kyoto",
-   "autumn_colour": "#c2412b"
+   "autumn_colour": "#c2412b",
+   "deciduous": true
   },
   "pine": {
    "height_m": 11.0,
@@ -237,7 +242,8 @@
    "cell": 11,
    "trunk_r": 0.45,
    "note": "Japanese zelkova (keyaki, Zelkova serrata): a broom of upswept limbs and fine twigs; the avenue tree of Omotesando and the precincts, rust-orange in November",
-   "autumn_colour": "#8e6a3e"
+   "autumn_colour": "#8e6a3e",
+   "deciduous": true
   },
   "ginkgo": {
    "height_m": 17.0,
@@ -256,7 +262,8 @@
    "cell": 12,
    "trunk_r": 0.34,
    "note": "Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree (Midosuji, Jingu Gaien), gold in late November",
-   "autumn_colour": "#c8a640"
+   "autumn_colour": "#c8a640",
+   "deciduous": true
   },
   "evergreen": {
    "height_m": 14.0,
