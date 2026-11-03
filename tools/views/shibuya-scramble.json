@@ -1,6 +1,6 @@
 {
   "date": [10, 30],
-  "times": { "day": "13:00", "dusk": "sunset+15", "night": "21:00", "rain": { "time": "21:00", "wet": 1, "rain": 1 } },
+  "times": { "day": "13:00", "dusk": "sunset+15", "night": "21:00", "rain": { "time": "21:00", "weather": "rain" } },
   "views": [
     { "name": "hachiko", "eye": [376.0, -1047.0, 1.65], "look": [362.0, -1000.0, 5.0], "fov": 55 },
     { "name": "mid", "eye": [371.0, -1010.0, 1.65], "look": [345.0, -966.0, 9.0], "fov": 55 },

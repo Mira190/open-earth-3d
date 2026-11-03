@@ -3,7 +3,7 @@
 // player would see it from that spot, through the game's own post stack and tier.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/scramble_shot.js shibuya tools/views/shibuya-scramble.json out_dir [WxH]
-// views.json: {"times": {"day": "13:00", "dusk": "sunset+15", "night": "21:00", "rain": {"time": "21:00", "wet": 1, "rain": 1}},
+// views.json: {"times": {"day": "13:00", "dusk": "sunset+15", "night": "21:00", "rain": {"time": "21:00", "weather": "rain"}},
 //              "views": [{"name": "hachiko", "eye": [x, y, dz], "look": [x, y, dz], "fov": 50}, ...]}
 // dz is metres over the ground there. "date": [month, day]; TIER=high|medium|low (default high);
 // ONLY=name,name and TIMES=day,night pick some; SETTLE=seconds the world runs before each still (6).
@@ -67,7 +67,10 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null, onlyT = proc
         if (rel && g.dayLimits) min = Math.round(g.dayLimits()[rel[1]] + (+rel[2] || 0));
         else if (tv.time) { const [hh, mm] = tv.time.split(':').map(Number); min = hh * 60 + mm; }
         g.setClock(c.y, m, d, min);
-        if (g.weather) g.weather.set({ wet: tv.wet || 0, rain: tv.rain || 0, now: true });
+        // the weather (game/weather.js: "clear", "overcast", "drizzle", "rain"), at once rather than coming on;
+        // without one, the wet street alone (mirror.js)
+        if (g.weather && g.weather.set) g.weather.set(tv.weather || 'clear', { now: true });
+        else if (g.mirror) g.mirror.wet = tv.weather === 'rain' ? 1 : 0;
         const gz = (x, y) => { const f = g.nav.floorAt(x, y, g.nav.terrain(x, y) + 0.5); return f ? f.z : Math.max(0, g.nav.terrain(x, y)); };
         const W = (x, y, z) => new THREE.Vector3(x, z, -y);
         const S = window.__shot;

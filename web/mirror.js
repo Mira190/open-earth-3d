@@ -22,12 +22,13 @@ float oeMirN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 *
   return mix(mix(oeMirH(i), oeMirH(i + vec2(1, 0)), f.x), mix(oeMirH(i + vec2(0, 1)), oeMirH(i + vec2(1, 1)), f.x), f.y); }`;
   const PUDDLE = `
 float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) * 0.3 + oeMirN(xz * 1.3) * 0.1; return smoothstep(0.5, 0.62, n); }`;
-  const wetU = () => (window.OEWeather && OEWeather.uniforms && OEWeather.uniforms.uWet) || null;
+  const W = () => (window.OEWeather && OEWeather.U) || null;
+  const wetU = () => (W() && W().uOeWet) || null;
 
   function create(Wd, renderer, camera, { tier = 'low', ground = () => 0 } = {}) {
     const own = { value: 0 };
     const U = { uMirror: { value: null }, uMirrorMat: { value: new THREE.Matrix4() }, uMirrorOn: { value: 0 }, uMirrorTime: { value: 0 },
-      uMirrorPx: { value: new THREE.Vector2(1, 1) }, uMirrorDark: { value: window.OEWeather ? 0 : 1 }, uWetM: wetU() || own, uRainM: (window.OEWeather && OEWeather.uniforms && OEWeather.uniforms.uRain) || { value: 0 } };
+      uMirrorPx: { value: new THREE.Vector2(1, 1) }, uMirrorDark: { value: window.OEWeather ? 0 : 1 }, uWetM: { value: 0 }, uRainM: (W() && W().uOeRain) || { value: 0 } };
     const high = tier === 'high' && renderer.capabilities.isWebGL2;
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
     const rt = high ? new THREE.WebGLRenderTarget(Math.max(2, size.x >> 1), Math.max(2, size.y >> 1), { type: THREE.HalfFloatType, samples: 0 }) : null;
@@ -38,7 +39,7 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
     const bias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), look = new THREE.Vector3(), dir = new THREE.Vector3(), up = new THREE.Vector3();
     const patched = new WeakSet();
-    const puddle = (window.OEWeather && OEWeather.glsl && OEWeather.glsl.puddle) || PUDDLE;
+    const puddle = PUDDLE; // (the weather's own oePuddle where its patch is in the shader: game/weather.js)
 
     // a material takes the mirror: its own patch first, then the reflection into the outgoing light
     function patch(mat) {
