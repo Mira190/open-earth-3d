@@ -50,7 +50,7 @@
     "min_area_m2": 5000,
     "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
   },
-  "trees": {"mix": {"elm": 0.6, "plane": 0.4}, "note": "Species are not mapped, and the shared trees have no ginkgo, cherry or maple, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and temple grounds, plane trees for the street planes and ginkgos. A guess, not a survey."},
+  "trees": {"mix": {"elm": 0.52, "plane": 0.34, "maple": 0.14}, "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and temple grounds, plane trees for the street planes and ginkgos, and Japanese maples (momiji) for the temple gardens' and the Kamo's, red from mid November. A guess, not a survey."},
   "walls": {"height_m": 4.5, "coping": "kawara", "colour": "#d8c79f",
     "note": "Earthen precinct walls (tsuiji-bei) on a stone plinth under a tiled coping, in yellow-ochre plaster (pipeline/walls.py). OpenStreetMap maps the walls of the Gosho and the Sento Gosho as buildings without a height; 4.5 m to the ridge is read from photographs against people at the gates, not measured. Sanjusangen-do's Taiko-bei keeps its PLATEAU height (5.0 m; 5.3 m published).",
     "lines": [{"name": "Kyoto Gosho and Sento Gosho: suji-bei with five white lines, the highest rank", "box": [-350, 1500, 420, 3100], "n": 5}]},

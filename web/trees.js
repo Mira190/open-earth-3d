@@ -11,7 +11,7 @@ window.OETrees = (function () {
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
   // each species' trunk radius above its flare (m, at full size: blender/build_trees.py r0)
-  const TRUNK = { plane: 0.36, elm: 0.34, gum: 0.4, fig: 0.85, jacaranda: 0.26, palm: 0.42 };
+  const TRUNK = { plane: 0.36, elm: 0.34, gum: 0.4, fig: 0.85, jacaranda: 0.26, palm: 0.42, maple: 0.2 };
 
   async function load(base = 'assets/trees/') {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
@@ -23,10 +23,12 @@ window.OETrees = (function () {
   // the colour attribute carries ambient occlusion (r), how far the wind moves a vertex (g)
   // and a flutter phase (b); renamed so no material reads it as a colour
   const VERT_HEAD = `#include <common>
-attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO;`;
+attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vMaple;`;
   // the jacaranda's bloom cell (column 1, row 1 of the atlas; glTF v runs down) swaps to its
   // leaf cell (column 0) out of season
+  // the maple's cell (column 3, row 1) turns red in autumn (uAutumn, in the fragment shader)
   const VERT_UV = `vec2 tuv = uv;
+vMaple = tuv.y > 0.5 && tuv.x > 0.75 ? 1.0 : 0.0;
 if (uBloom < 0.5 && tuv.y > 0.5 && tuv.x > 0.25 && tuv.x < 0.5) tuv.x -= 0.25;
 #define uv tuv
 #include <uv_vertex>
@@ -43,13 +45,16 @@ transformed += normal * sin(uWind * 6.0 + tc.b * 6.2832 + ph) * 0.05 * tc.g;
 vAO = tc.r;`;
   function shader(U, leaves, depth) {
     return sh => {
-      sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom;
+      sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uAutumn = U.uAutumn;
       if (leaves) sh.defines = Object.assign(sh.defines || {}, { LEAVES: '' });
       sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_HEAD).replace('#include <uv_vertex>', VERT_UV).replace('#include <begin_vertex>', VERT_WIND);
       if (depth) return;
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vAO;')
-        .replace('#include <map_fragment>', '#include <map_fragment>\ndiffuseColor.rgb *= mix(0.5, 1.0, vAO);')
+        .replace('#include <common>', '#include <common>\nvarying float vAO; varying float vMaple; uniform float uAutumn;')
+        .replace('#include <map_fragment>', `#include <map_fragment>
+diffuseColor.rgb *= mix(0.5, 1.0, vAO);
+if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(l * 2.5, l * 0.42, l * 0.2), uAutumn); }`)
         .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;');
       // the cards' normals point out of the crown on both faces: lit as a mass, never flipped
       if (leaves) sh.fragmentShader = sh.fragmentShader.replace('float faceDirection = gl_FrontFacing ? 1.0 : - 1.0;', 'float faceDirection = 1.0;');
@@ -60,12 +65,26 @@ vAO = tc.r;`;
   // mix: species weights; south: the city is in the southern hemisphere (for the flowering season);
   // measured: the index from which the trees are a wood's, with measured heights; keep: the share
   // of those drawn
-  function create(world, lib, list, { mix = null, south = true, measured = Infinity, keep = 1 } = {}) {
-    const I = lib.info, n = list.length / 4, U = { uWind: { value: 0 }, uBloom: { value: 0 } };
-    const weights = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0), total = weights.reduce((a, [, w]) => a + w, 0);
+  // areas: [{at: [x, y], radius, mix}], places whose trees take their own mix (a garden's maples)
+  function create(world, lib, list, { mix = null, south = true, measured = Infinity, keep = 1, areas = [] } = {}) {
+    const I = lib.info, n = list.length / 4, U = { uWind: { value: 0 }, uBloom: { value: 0 }, uAutumn: { value: 0 } };
+    const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
+    // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
+    const zones = (areas || []).filter(a => a && a.mix && a.at && a.radius > 0);
+    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix)))].filter(k => I.species[k] && !city.some(([c]) => c === k));
+    const weights = city.concat(extra.map(k => [k, 0]));
     // a wood has no palms (unless the city has nothing else)
+    const cityW = weights.map(([, w]) => w), total = cityW.reduce((a, w) => a + w, 0);
     const woodTotal = weights.reduce((a, [k, w]) => a + (k === 'palm' ? 0 : w), 0) || total;
     const woodW = weights.map(([k, w]) => (k === 'palm' && woodTotal !== total ? 0 : w));
+    const zoneW = zones.map(a => weights.map(([k]) => Math.max(0, +a.mix[k] || 0)));
+    // a species by a hash of the position, from a weight per species (never one weighted 0)
+    const pick = (u, W) => {
+      const tot = W.reduce((a, w) => a + w, 0);
+      let r = u * tot, last = 0;
+      for (let k = 0; k < W.length; k++) { if (W[k] <= 0) continue; last = k; if ((r -= W[k]) <= 0) return k; }
+      return last;
+    };
     // materials: one leaf atlas for all, bark and far crowns per species
     let atlas = null;
     lib.gltf.scene.traverse(o => { if (o.isMesh && o.material.name === 'Leaves') atlas = o.material.map; });
@@ -92,9 +111,8 @@ vAO = tc.r;`;
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
       const wood = i >= measured;
-      let r = hash(x, y) * (wood ? woodTotal : total), k = 0;
-      if (wood) while (k < weights.length - 1 && (r -= woodW[k]) > 0) k++;
-      else while (k < weights.length - 1 && (r -= weights[k][1]) > 0) k++;
+      const zi = zones.findIndex(a => (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius);
+      const k = pick(hash(x, y), zi >= 0 ? zoneW[zi] : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
@@ -184,9 +202,17 @@ vAO = tc.r;`;
         last.set(1e9, 0, 0); // sorted again at the next update
       },
       // jacarandas flower from mid October to November in the south, May and June in the north
+      // and maples go red from mid November to mid December in the north (late April to May in the south),
+      // turning over a fortnight either side
       setSeason(month, day) {
         const doy = Math.round((Date.UTC(2001, month - 1, day) - Date.UTC(2001, 0, 1)) / 864e5);
         U.uBloom.value = south ? +(doy >= 285 && doy <= 334) : +(doy >= 130 && doy <= 178);
+        const [a0, a1] = south ? [115, 150] : [318, 350], ramp = 14;
+        U.uAutumn.value = Math.max(0, Math.min(1, (doy - a0 + ramp) / ramp, (a1 + ramp - doy) / ramp));
+        for (const [name, m] of Object.entries(mats)) {
+          const S = I.species[name.split('_')[1]];
+          if (name.startsWith('Crown_') && S && S.autumn_colour) m.color.copy(lin(S.colour).lerp(lin(S.autumn_colour), U.uAutumn.value).multiplyScalar(0.8));
+        }
       },
     };
   }
