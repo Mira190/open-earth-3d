@@ -4,6 +4,12 @@ The game has weather in every city: clear, overcast, drizzle and rain (`web/game
 Issue #95; it started from Shinjuku Gyoen's rainy-season mornings, where Kaede's quest offers
 "Wait for the rain in the shelter".
 
+Shinjuku in the June rain, desktop (the street and Gyoen's shelter at day, dusk and night, the
+crowd under umbrellas, the pond) and phone:
+
+![Shinjuku in the rain, desktop](images/weather/shinjuku-rain-desktop.jpg)
+![Shinjuku in the rain, phone](images/weather/shinjuku-rain-phone.jpg)
+
 ## What decides it
 
 - **The season.** `game.weather` in `cities/<id>/city.json` holds the city's mean number of days a
