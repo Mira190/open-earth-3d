@@ -54,7 +54,7 @@ const VIEW = { desktop: { width: 1440, height: 900 }, phone: { width: 390, heigh
     let peak = 0, peakP = 0, roll = 0, flips = 0, last = 0;
     for (let i = 1; i < rows.length; i++) {
       const dt = rows[i].t - rows[i - 1].t;
-      if (dt <= 1e-4) continue;
+      if (dt <= 1e-4 || !rows[i].on) continue; // the move itself: after it the chase camera answers for itself
       const dy = Math.atan2(Math.sin(rows[i].yaw - rows[i - 1].yaw), Math.cos(rows[i].yaw - rows[i - 1].yaw)), dp = rows[i].pitch - rows[i - 1].pitch;
       // the bearing of a view looking nearly straight down means little; weigh it by how level the view is
       const rate = Math.abs(dy) / dt * Math.cos(rows[i].pitch) * 180 / Math.PI;

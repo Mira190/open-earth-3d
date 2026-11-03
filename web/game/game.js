@@ -3575,12 +3575,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const pos = new THREE.Vector3(), lk = new THREE.Vector3(), E = OECine.ease, L = OECine.lerp;
     const r0 = Math.max(2, Math.hypot(p0.dist, p0.h)), e0 = Math.atan2(p0.h, p0.dist), rT = Math.hypot(top.dist, top.h), eT = Math.atan2(top.h, top.dist), r1 = 7.5;
     const a = 0.26, b = 0.6, km = 0.45;
-    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.smooth(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
-    let eTop = eT, peL = pe; // the elevation at the top, and the chase camera's pitch on landing
+    // (out of the street it cranes up over the player's head before it pulls back: the range grows late in the rise)
+    const rAt = k => (k < a ? r0 * Math.pow(rT / r0, E.in(OECine.span(k, 0, a))) : k < b ? rT : rT * Math.pow(r1 / rT, E.smooth(OECine.span(k, b, 1))));
+    let eTop = eT; const peL = pe; // the elevation at the top, and the chase camera's pitch on landing
     const eBase = k => (k < km ? L(e0, eTop, E.smooth(k / km)) : L(eTop, peL, E.smooth(OECine.span(k, km, 1))));
     // Over tall roofs the way down has to be steeper. The top then already holds the steepest it will need, so the
     // camera only ever tilts one way on the way down; the hop takes the time it needs to tilt back calmly (to 6.5 s),
-    // and where even that is not enough it lands looking a little more steeply over the shoulder (to 37°)
+    // and the hand-over to the chase camera (the last 22%) takes what is left
     const fallOf = d => calmElevation({ c: B, az: k => azAt(L(b, 1, k)), r: k => rAt(L(b, 1, k)), e: k => eBase(L(b, 1, k)), dur: d * (1 - b), rate: HOP_PITCH_RATE, rMin: 14, upto: 0.7 });
     const riseOf = d => calmElevation({ c: A, az: k => azAt(L(0, a, k)), r: k => rAt(L(0, a, k)), e: k => eBase(L(0, a, k)), dur: d * a, rate: HOP_PITCH_RATE, rMin: 14, upto: 1, e0 });
     let fallEl = fallOf(dur), riseEl = riseOf(dur);
@@ -3588,7 +3589,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       eTop = Math.min(1.2, Math.max(eT, fallEl.max, riseEl(1)));
       const short = Math.max(fallEl.late, riseEl.early); // the roofs want more tilt than the time allows
       if (short > 0.02 && dur < 6.5) dur = Math.min(6.5, dur + 1.3 * short / HOP_PITCH_RATE);
-      else if (fallEl.late > 0.02) peL = Math.min(0.65, peL + fallEl.late);
       fallEl = fallOf(dur); riseEl = riseOf(dur);
     }
     const path = k => {

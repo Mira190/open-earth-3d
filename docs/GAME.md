@@ -351,8 +351,8 @@ changes no faster than a set rate, so it comes over a tower without a jolt. Any
 key or tap settles it in 0.7 s; with `prefers-reduced-motion` it is a cut under a
 short fade. The fast-travel hop follows the same rules: one even turn of at most
 45° a second, up and down on a log scale (the old one plunged at the end), and over
-tall blocks it takes up to 6.5 s, or lands looking a little more steeply over the
-shoulder, rather than tilt fast. `tools/arrival_shot.js <city> <out> [desktop|phone]
+tall blocks it cranes up over the player before it pulls back and takes up to
+6.5 s rather than tilt fast. `tools/arrival_shot.js <city> <out> [desktop|phone]
 [travel id]` follows the camera frame by frame through the arrival and a hop to
 the farthest travel point, prints each move's peak turn and pitch rates, and
 fails above 45° and 60° a second.
