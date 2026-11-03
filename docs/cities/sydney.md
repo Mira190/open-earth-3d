@@ -155,16 +155,22 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
         aerial photo at 7.5 cm shows one flight across both (`north_flight()`);
       - *the forecourt's edge* over it: a parapet and fascia in the podium's
         granite, and where the forecourt stands a storey above, the colonnade
-        under it, 2.4 m clear under a slab 1.5 m deep, a soffit on mushroom
-        columns every 8.4 m with the shopfronts behind, glass between bronze
-        mullions, lit warm after dark;
+        under it, 2.4 m clear under a slab 1.5 m deep and 5.8 m deep from the
+        edge to the shopfronts, a soffit on mushroom columns every 7.2 m (four
+        1.8 m pavers), 1.8 m in from the edge with shafts 0.38 m across, and the
+        shopfronts behind, glass between bronze mullions, lit warm after dark
+        (Luchetti Krelle, DA.131 at 1:50 and DA.101, SSD-9794-Mod-1, 2025);
       - *the stairwell* from the forecourt down to the concourse (OSM way
-        1118329015, 20 steps): an opening in the forecourt 4.4 by 10.7 m,
-        measured on the aerial photo along the way, behind a granite upstand
-        with a bronze rail; the flight down its east side, 20 risers of 19.5 cm,
-        a void beside it, and from the landing at its foot a passage west under
-        the forecourt, through the shopfronts and the colonnade, to the
-        concourse (`stairwell()`).
+        1118329015, 20 steps; "Stair to Circular Quay" on DA.101): an opening in
+        the forecourt 10.7 m long, measured on the aerial photo along the way,
+        and 3.0 m across, as the plan and OSM's outline of it (way 1118329050)
+        have it, behind a granite upstand with a bronze rail; one straight
+        flight of 20 risers of 19.5 cm down to the south-south-west, the full
+        width between the balustrades (the plan shows no void beside it; the
+        4.4 m first measured on the photo took in the upstands and their
+        shadow), and from the landing at its foot a lobby whose doors open west
+        onto the colonnade, the passage OSM maps as a covered footway (way
+        1118329034) (`stairwell()`).
 
       The levels are the Opera House's own: the section through the Lower
       Concourse in its renewal application (Humphrey & Edwards Architects,
@@ -213,6 +219,18 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
       water. The ground shader now discards it above the water in a band
       outside the seawall and under the paving (landmarks.json `clip`, a
       half-metre mask). Walking, the camera and the analyses keep the terrain.
+      Across that band the harbour's bottom is drawn at the seawall's foot
+      (2.2 m below the water, `seawall_bed`): without it the band was open under
+      the water, and the sky's colour showed through as a pale band along the
+      wall and a wedge in the corner west of the walkway's round end (issue 84).
+    - *Under the forecourt's slab* the soffit, the mushroom columns, the
+      colonnade's floor and shopfronts and the stairwell's passage take only
+      their share of the sky's light (a mesh's `sky` in landmarks.json,
+      `SKY_UNDER`: 0.18 for the soffit, which faces down, about a third for the
+      floor and the shopfronts behind the 2.4 m opening across the 5.8 m
+      recess). three.js spreads its ambient light over every surface as if it
+      were in the open, so they had read as pale by day as the paving in the
+      sun. `web/world.js` scales a sheltered mesh's indirect light by it.
     - *Street furniture* where OpenStreetMap maps it: 20 benches facing the
       water, 40 bollards, 13 globe lamps, the 7 masts that floodlight the
       shells, 3 wayfinding pylons, and the Opera Bar's 12 square umbrellas with
