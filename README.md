@@ -300,7 +300,9 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   road in the city's own mix of sodium and LED, the light they put on the streets
   and the lower floors, traffic in white and red, office towers lit by the floor
   with their crowns lit, red lights on the tallest tops, a deep blue sky with the
-  city's glow on the horizon, and a night grade. See [docs/NIGHT.md](docs/NIGHT.md).
+  city's glow on the horizon, and a night grade. See [docs/NIGHT.md](docs/NIGHT.md). The big LED
+  screens light the street, the crowd and the facades in the colour they are playing, a wet street
+  mirrors them, and the grade follows the hour. See [docs/LOOK.md](docs/LOOK.md).
 
   | Tokyo at 21:00 | Sydney: the bridge, its traffic, the CBD in the harbour |
   |---|---|
