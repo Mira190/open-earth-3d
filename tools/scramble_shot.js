@@ -5,7 +5,7 @@
 //   xvfb-run -a node tools/scramble_shot.js shibuya tools/views/shibuya-scramble.json out_dir [WxH]
 // views.json: {"times": {"day": "13:00", "dusk": "sunset+15", "night": "21:00", "rain": {"time": "21:00", "weather": "rain"}},
 //              "views": [{"name": "hachiko", "eye": [x, y, dz], "look": [x, y, dz], "fov": 50}, ...]}
-// dz is metres over the ground there. "date": [month, day]; TIER=high|medium|low (default high);
+// dz is metres over the ground there; "people": [x, y] (with crowd_r, crowd_n) stages the crowd round a point, as a film shot does. "date": [month, day]; TIER=high|medium|low (default high);
 // ONLY=name,name and TIMES=day,night pick some; SETTLE=seconds the world runs before each still (6).
 // Prints the frame time the page measured for each still (ms, median of FRAMES (9) frames on this renderer).
 const { chromium } = require('playwright');
@@ -82,6 +82,24 @@ const only = process.env.ONLY ? process.env.ONLY.split(',') : null, onlyT = proc
         if (g.player.rig) g.player.rig.root.visible = false;
         g.cine.stop();
         g.cine.play(() => S.pose, 1e9, { label: 'film' });
+        // "people": [x, y] puts the crowd on the footways round that point, as the films do
+        // (tools/film/director.js), crowd_n of them within crowd_r m, none within 6 m of the camera
+        if (v.people) {
+          if (g.crowdAuto) g.crowdAuto(false);
+          const C = g.crowd, net = g.footNet, cand = net.near(v.people[0], v.people[1], 0, v.crowd_r || 90), tmp = {};
+          let seed = 99;
+          const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+          C.active = Math.min(C.P.length, v.crowd_n || C.P.length);
+          for (const p of C.P.slice(0, C.active)) {
+            if (p.seat) { p.seat.by = -1; p.seat = null; }
+            p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.pause = 0; p.dodge = 0;
+            for (let k = 0; k < 12; k++) {
+              p.line = cand[Math.floor(rnd() * cand.length)]; p.s = rnd() * net.L[p.line].len; net.at(p.line, p.s, tmp);
+              if (Math.hypot(tmp.x - v.eye[0], tmp.y - v.eye[1]) >= 6) break;
+            }
+            p.dir = rnd() < 0.5 ? 1 : -1; p.x = tmp.x; p.y = tmp.y; p.z = tmp.z;
+          }
+        }
         g.advance(settle);
         g.Wd.fitShadow(S.pose.look, 300);
         // the frame time on this renderer: the median of nf real frames

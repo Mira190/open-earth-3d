@@ -59,7 +59,7 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
     float oeUp = smoothstep(0.75, 0.95, oeN.y), oePd = oePuddle(oeP.xz) * smoothstep(0.25, 0.75, uWetM);
     vec3 oeV = normalize(cameraPosition - oeP);
     float oeF = 0.02 + 0.98 * pow(1.0 - max(dot(oeV, vec3(0.0, 1.0, 0.0)), 0.0), 5.0);   // water, seen at the angle the street is
-    float oeK = oeUp * uWetM * mix(0.22, 1.0, oePd) * oeF;
+    float oeK = oeUp * uWetM * mix(0.55, 1.0, oePd) * oeF;
     // the street's grain and, in the rain, rings in the puddles: the picture wavers
     vec2 oeR = vec2(oeMirN(oeP.xz * 2.3 + uMirrorTime * 0.7), oeMirN(oeP.zx * 2.9 - uMirrorTime * 0.6)) - 0.5;
     oeR += (vec2(oeMirN(oeP.xz * 9.0 + uMirrorTime * 4.0), oeMirN(oeP.zx * 8.0 - uMirrorTime * 3.5)) - 0.5) * uRainM * oePd;
