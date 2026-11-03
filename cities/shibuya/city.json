@@ -390,6 +390,9 @@
     "landmarks": "SHIBUYA SKY from SHIBUYA SKY and Wikipedia (229 m, 2,500 m², 18 searchlights, 360 m/min lifts); the scramble's screens at their operators' published sizes; Yoyogi National Gymnasium from OpenStreetMap and Tange's drawings. Signs, screens and shop fronts are indicative.",
     "fonts": "Ema, plaques and signs drawn with Google Fonts under the SIL Open Font License: Yomogi, Zen Kurenaido, Klee One, Yuji Syuku, Shippori Mincho, DotGothic16, RocknRoll One, Ma Shan Zheng, ZCOOL KuaiLe, Long Cang, LXGW WenKai TC, Nanum Pen Script, Caveat, Kalam"
   },
+  "osm_detail": {
+    "scramble": {"bbox": [139.697, 35.6575, 139.703, 35.6615], "note": "the scramble and the first 150 m of the streets off it: pipeline/osm_detail.py"}
+  },
   "light_show": {
     "name": "CROSSING LIGHT",
     "start": "19:00",
