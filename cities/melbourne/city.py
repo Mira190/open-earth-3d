@@ -3,14 +3,22 @@
 Building adjustments (called by pipeline/build_scene.py):
   * Arts Centre Melbourne spire: OpenStreetMap maps it twice, as a 7 m square block
     from 15 m to 162 m (w271670390) and as a solid 452 m2 block from 15 m to 50 m with
-    a 162 m mast (w22664482). Both become one parametric lattice spire on the first
-    one's anchor.
+    a 162 m mast (the built data's merge of the Theatres Building, w22664482, with the
+    spire's skirt, w272730480). Both become one parametric lattice spire on the first
+    one's anchor, and the Theatres Building is drawn on its own outline (below).
 
 Parametric landmarks (called by pipeline/landmarks.py):
   Arts Centre spire   162 m tall (Wikipedia, Arts Centre Melbourne; completed 1996,
                       replacing the 115 m original). Twelve ribs flare from a wide base
                       on the Theatres Building roof into a mast, with rings every 8 m.
                       The shape is an approximation: no published drawing was used.
+
+  Theatres Building   Arts Centre Melbourne's theatres under the spire (Roy Grounds; opened 1984) lie mostly
+                      below St Kilda Road. Above ground they show as a low bluestone-clad body on
+                      OpenStreetMap's outline (way 22664482, 15 m over the Southbank promenade), its roof
+                      at the spire's foot, 6 m over the forecourt on St Kilda Road (whose ground the DEM
+                      lost: city.json terrain.level), with the foyer's glass to the forecourt, a pale
+                      coping and the drum the spire's ribs stand on.
 
   Flinders Street Station  OpenStreetMap maps the station's 310 m outline at 20 m (4 floors)
                       with parts: a dome from 20 to 30 m, the Elizabeth Street clock tower
@@ -52,9 +60,19 @@ STATION_OSM = "w271939456"  # its parts: the dome w271939464, the clock tower w3
 STATION_ENTRANCE = (144.96718, -37.81776)  # "under the clocks", Flinders and Swanston (OSM)
 CREAM, TERRACOTTA, DARK_GREEN = "#c4a77d", "#8a2f22", "#2e3a2b"
 SPIRE_TOP_M = 162.0
+# the Theatres Building's outline (OpenStreetMap way 22664482, mapped from aerial imagery), longitude and latitude
+THEATRES_OUTLINE = [[144.968591, -37.8218057], [144.9685573, -37.8218489], [144.9685262, -37.8218741], [144.9684864, -37.821896], [144.9684327, -37.8219166], [144.9683793, -37.8219264], [144.9683255, -37.8219284], [144.9682742, -37.8219241], [144.9682307, -37.821911], [144.9681966, -37.8218914], [144.9681597, -37.8218638], [144.9681278, -37.8218256], [144.9681087, -37.8217894], [144.968098, -37.8217558], [144.9681049, -37.8217099], [144.9681174, -37.8216694], [144.9681321, -37.8216259], [144.9682702, -37.821146], [144.9682998, -37.821091], [144.96834, -37.8210518], [144.9683909, -37.8210263], [144.9684473, -37.8210062], [144.9685036, -37.8210009], [144.9685269, -37.8210028], [144.9685559, -37.8210051], [144.9685798, -37.8210107], [144.9686243, -37.821021], [144.9686739, -37.8210528], [144.9687168, -37.8210899], [144.9687463, -37.8211376], [144.9687571, -37.8211863], [144.9687504, -37.821234], [144.9687124, -37.8214178], [144.9686766, -37.8215336], [144.9686639, -37.8215749], [144.9686187, -37.8217329], [144.9686108, -37.8217607]]
+# the row of clocks over the main entrance hangs over the top of its steps, which climb about 1 m from the
+# corner's pavement; the clocks' lower edge is about 3 m over the top step (photographs)
+ENTRANCE_STEPS_M, CLOCKS_OVER_STEPS_M, ENTRANCE_CLOCK_R = 1.0, 3.0, 0.5
 FLINDERS_STREET = (144.9671, -37.8183)
 MATERIALS = {
     "spire": {"color": "#eef0f2", "roughness": 0.35, "metalness": 0.5},
+    # the Theatres Building: bluestone (Victorian basalt) in courses, a pale concrete coping, the foyer's glass
+    "acm_bluestone": {"color": "#55585c", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 1.2,
+                      "emissive": "#ffe2bd", "glow": 0.25},
+    "acm_coping": {"color": "#cfcac0", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffe2bd", "glow": 0.3},
+    "acm_glass": {"color": "#2b3238", "roughness": 0.15, "metalness": 0.5, "emissive": "#ffd9a6", "glow": 0.5},
     "fss_terracotta": {"color": TERRACOTTA, "roughness": 0.85, "metalness": 0.0},
     "fss_green": {"color": DARK_GREEN, "roughness": 0.6, "metalness": 0.1},
     "fss_cream": {"color": CREAM, "roughness": 0.8, "metalness": 0.0},
@@ -135,6 +153,7 @@ def landmark_meshes(scene):
     meshes = []
     if "arts_centre_spire" in lm:
         meshes.append(spire(lm["arts_centre_spire"]))
+        meshes += theatres_building(lm["arts_centre_spire"])
     hidden = []
     if "flinders_street" in lm:
         meshes += flinders_street(lm["flinders_street"])
@@ -330,13 +349,56 @@ def flinders_street(s):
         for a, c in zip(cs, cs[1:] + cs[:1]):
             m = (a + c) / 2
             face(m, m - tc, min(1.8, np.linalg.norm(c - a) * 0.3), zc)
-    if "dome" in s:  # the row of clocks over the entrance, facing out from under the dome
+    if "dome" in s:  # the row of clocks over the entrance, facing out from under the dome, placed from the
+        # ground at the door (the station's centroid stands 3 m lower, down Flinders Street)
         e, d = np.array(s["entrance"]), np.array(s["dome"]["at"])
         n = (e - d) / np.linalg.norm(e - d)
         side = np.array([n[1], -n[0]])
+        ze = ak.Terrain("melbourne")(*e) + ENTRANCE_STEPS_M + CLOCKS_OVER_STEPS_M + ENTRANCE_CLOCK_R
         for j in range(-3, 4):
-            face(e + side * j * 1.3 + n * 0.4, n, 0.5, g0 + 6.0)
+            face(e + side * j * 1.3 + n * 0.4, n, ENTRANCE_CLOCK_R, ze)
     return out + [clocks, hands]
+
+
+def theatres_outline():
+    """The Theatres Building's outline in the local frame, anticlockwise, simplified to 0.4 m."""
+    import cityctx
+    from shapely.geometry import Polygon
+    C = cityctx.City("melbourne")
+    ring = ak.simplify(list(C.to_local(Polygon(THEATRES_OUTLINE)).exterior.coords)[:-1])
+    return ring if ak.ring_area(ring) > 0 else ring[::-1]
+
+
+def theatres_building(s):
+    """The Theatres Building above ground: bluestone walls from the promenade to the roof at the spire's foot,
+    a pale coping, the foyer's glass where it faces the forecourt on St Kilda Road (east), the roof, and the
+    drum the spire's ribs stand on."""
+    ring = theatres_outline()
+    T = ak.Terrain("melbourne")
+    roof = s["base_m"]
+    z0 = min(T(x, y) for x, y in ring) - 0.5
+    K = ak.Kit("acm_theatres", floodlit={"acm_bluestone", "acm_coping"}, uv={"acm_bluestone"})
+    ak.prism(K["acm_bluestone"], ak.WORLD, ring, z0, roof - 0.9)
+    ak.prism(K["acm_coping"], ak.WORLD, ak.offset_ring(ring, 0.15), roof - 0.9, roof)
+    ak.band(K["acm_coping"], ak.WORLD, ring, roof - 4.2, out=0.12, h=0.3)
+    glass = K["acm_glass"]
+    for k in range(len(ring)):
+        a, b = np.asarray(ring[k]), np.asarray(ring[(k + 1) % len(ring)])
+        L = float(np.linalg.norm(b - a))
+        if L < 3.0:
+            continue
+        t = (b - a) / L
+        n = np.array([t[1], -t[0]])  # outward, the ring being anticlockwise
+        if n[0] < 0.6:  # the forecourt's side only
+            continue
+        za, zb = T(*(a + t * 0.6)), T(*(b - t * 0.6))
+        if roof - max(za, zb) > 7.5:  # only where the forecourt is (the promenade below it has no foyer)
+            continue
+        p0, p1 = a + t * 0.6 + n * 0.06, b - t * 0.6 + n * 0.06
+        glass.quad((*p0, za - 0.3), (*p1, zb - 0.3), (*p1, zb + 3.4), (*p0, za + 3.4), [[0, 0], [L, 0], [L, 3.7], [0, 3.7]])
+    cx, cy = s["at"]
+    K["acm_coping"].lathe([(roof, 15.6), (roof + 0.9, 15.6), (roof + 0.9, 14.8), (roof + 1.3, 14.4), (roof + 1.3, 0.1)], (cx, cy), segs=36)
+    return K.out()
 
 
 def spire(s):
@@ -381,8 +443,8 @@ def close_to(name, at, z, start, within=1.5, keep=0.0):
 def game_extras(scene):
     """The things people come to see up close (game.json "close"): Flinders Street Station's main entrance
     under the clocks, from the corner of Flinders and Swanston Streets, and the Gas Brigades towers on
-    Southbank's promenade. (The Arts Centre spire stands on the Theatres Building's roof, 15 m up: not a
-    thing to walk up to.)"""
+    Southbank's promenade, and the Theatres Building's foyer glass under the Arts Centre spire, across the
+    forecourt from St Kilda Road. (The spire stands on the building's roof, 6 m up: not a thing to walk up to.)"""
     lm = scene["landmarks"]
     close = []
     T = ak.Terrain("melbourne")
@@ -391,6 +453,22 @@ def game_extras(scene):
         e, d = np.asarray(fs["entrance"], float), np.asarray(fs["dome"]["at"], float)
         n = (e - d) / np.linalg.norm(e - d)  # out from under the dome, as the clocks face (flinders_street)
         close.append(close_to("Flinders Street Station, the entrance under the clocks", e, T(*e), e + n * 6.0, 1.5, 0.2))
+    sp = lm.get("arts_centre_spire")
+    if sp:
+        # the forecourt's side of the Theatres Building: the east-facing wall nearest the spire
+        ring, c = theatres_outline(), np.asarray(sp["at"], float)
+        best = None
+        for k in range(len(ring)):
+            a, b = np.asarray(ring[k], float), np.asarray(ring[(k + 1) % len(ring)], float)
+            L = float(np.linalg.norm(b - a))
+            n = np.array([(b - a)[1], -(b - a)[0]]) / max(L, 1e-9)
+            if L > 6.0 and n[0] > 0.6:
+                m = (a + b) / 2
+                if best is None or np.linalg.norm(m - c) < np.linalg.norm(best[0] - c):
+                    best = (m, n)
+        if best:
+            m, n = best
+            close.append(close_to("Arts Centre Melbourne, the Theatres Building's foyer under the spire", m, T(*(m + n * 1.0)), m + n * 6.0, 1.0, 0.3))
     rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
     if rows:
         _, _, _, river = crown_front(max(rows, key=lambda r: abs(ak.ring_area(r["ring"]))))

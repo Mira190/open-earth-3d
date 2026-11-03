@@ -76,6 +76,12 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (foot.length) {
     const play = await p.$('#gt-play');
     if (play) await play.click().catch(() => {});
+    // the arrival's crane shot: settled, so that it does not fly the camera over the first view
+    await p.evaluate(async () => {
+      const g = window.__game;
+      for (let t = 0; t < 10 && (!g.arriving || !g.arriving()); t += 0.25) await new Promise(r => setTimeout(r, 250));
+      for (let t = 0; t < 10 && g.arriving && g.arriving(); t += 0.25) { g.settleArrival(); g.advance(0.25); await new Promise(r => requestAnimationFrame(r)); }
+    });
   }
   for (const v of foot) {
     await p.evaluate(v => {
