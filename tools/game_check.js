@@ -287,6 +287,48 @@ const { pinClock } = require('./pin_clock');
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); g.advance(0.2); } });
   if (!talk.none) check(await p.evaluate(() => !window.__game.dlg.open), 'the conversation runs to its end');
 
+  // the area caption (places.js): up briefly when you walk into an area, gone within 3.5 s, never over a
+  // conversation, and not brought back by walking along an area's edge
+  const cap = await p.evaluate(() => {
+    const g = window.__game, P = g.places, areas = (g.G.areas || []).slice().sort((a, b) => b.radius - a.radius);
+    if (!P || areas.length < 2) return { none: true };
+    const vis = () => { const el = document.querySelector('.g-ekimei'); return !!el && !el.hidden && getComputedStyle(el).display !== 'none'; };
+    const at = (a, f = 0) => { g.spawn([a.at[0] + a.radius * f, a.at[1]]); g.advance(0.1); };
+    const out = { areas: areas.length };
+    P.forget();
+    // walk into the first: it shows, then it is gone within 3.5 s
+    const [a, b] = areas;
+    at(a, 3); g.advance(1); // from outside it
+    at(a);
+    let t = 0; while (!vis() && t < 3) { g.advance(0.1); t += 0.1; }
+    out.shownAfter = vis() ? t : null; out.name = P.sign().area;
+    t = 0; while (vis() && t < 6) { g.advance(0.1); t += 0.1; }
+    out.upFor = t;
+    // walk into the second with a conversation open: nothing while it is open, the caption after it closes
+    const n = g.npcs[0];
+    g.dlg.show(n || { name: 'Test' }, ['A line.', 'Another line.']);
+    at(b);
+    let over = false;
+    for (t = 0; t < 4; t += 0.1) { g.advance(0.1); if (vis()) over = true; }
+    out.overDialogue = over;
+    for (let i = 0; i < 10 && g.dlg.open; i++) { g.dlg.next(); g.dlg.next(); }
+    for (t = 0; t < 3 && !vis(); t += 0.1) g.advance(0.1);
+    out.afterDialogue = vis() ? t : null;
+    for (t = 0; t < 4; t += 0.1) g.advance(0.1);
+    // along the edge of the first, in and out across its radius and a little way out and back: it doesn't come back
+    at(a, 0.97); g.advance(5);
+    let again = 0;
+    for (let i = 0; i < 12; i++) { at(a, [0.97, 1.06, 0.97, 1.5][i % 4]); for (let k = 0; k < 5; k++) { g.advance(0.1); if (vis() && P.sign().name === a.name) again++; } }
+    out.edge = again;
+    return out;
+  });
+  if (cap.none) check(true, 'no areas to caption');
+  else {
+    check(cap.shownAfter != null && cap.upFor <= 3.5, `the area caption for ${cap.name} shows (after ${(cap.shownAfter ?? -1).toFixed(1)} s) and is gone within 3.5 s (${cap.upFor.toFixed(1)} s)`);
+    check(!cap.overDialogue && cap.afterDialogue != null, `the area caption waits for a conversation to end (${cap.overDialogue ? 'shown over it' : cap.afterDialogue == null ? 'never shown after' : `shown ${cap.afterDialogue.toFixed(1)} s after`})`);
+    check(cap.edge === 0, `walking along an area's edge doesn't bring its caption back (${cap.edge} frames shown)`);
+  }
+
   // the gold route to the farthest NPC a walker can reach: drawn on ground a walker can stand on all
   // the way (not through a building); it stays set for the helicopter and the car below
   const route = await p.evaluate(async () => {
