@@ -19,9 +19,10 @@ window.OEBuildings = (function () {
   // the posts under a canopy (a solid of class "roof" lifted off the ground, pipeline/arcades.py: a
   // covered walkway or a gate): [[x, y], ...] in metres, 0.25 m in from its outline. A long thin one (an
   // arcade) stands on posts every 6 m along its edges, anything else (a gate) on its corners. nav.js
-  // walks round the same posts
+  // walks round the same posts. skip: [x_dm, y_dm, ...] posts not put up, where one would stand in a road's
+  // carriageway (buildings.json no_posts, by building: pipeline/road_passages.py)
   const POST = 0.3; // a post's side (m)
-  function canopyPosts(s, meta) {
+  function canopyPosts(s, meta, skip = null) {
     if (!(s[2] > 0) || !meta || meta[1] !== 'roof') return [];
     const r = s[4], n = r.length / 2, out = [];
     let area = 0, per = 0;
@@ -45,6 +46,7 @@ window.OEBuildings = (function () {
       }
     }
     if (out.length > 1 && Math.hypot(out[0][0] - last[0], out[0][1] - last[1]) <= 3) out.pop();
+    if (skip && skip.length) return out.filter(([x, y]) => { for (let i = 0; i < skip.length; i += 2) if (Math.hypot(x - skip[i] / 10, y - skip[i + 1] / 10) < 0.6) return false; return true; });
     return out;
   }
   const STYLES = ['plain', 'house', 'terrace', 'apartment', 'office', 'glass', 'heritage', 'retail', 'industrial', 'civic',
@@ -448,6 +450,7 @@ window.OEBuildings = (function () {
 
     const deckZ = new Map(); // solid -> deck height, for rooftop plant
     const hidden = new Set(scene.hidden_solids || []); // drawn by a parametric landmark instead
+    const passages = new Set(B.passages || []);
     B.s.forEach((s, si) => {
       if (hidden.has(si)) return;
       const bi = s[0], P = BI[bi], g0 = s[1] / 10, zb = g0 + s[2] / 10, zt = g0 + s[3] / 10;
@@ -456,9 +459,10 @@ window.OEBuildings = (function () {
       const eave = r ? g0 + r[2] / 10 : zt;
       rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
       if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
-      if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
+      if (passages.has(si)) cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true); // a building over a road through it (pipeline/road_passages.py): the passage's ceiling
+      else if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
         cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
-        for (const [x, y] of canopyPosts(s, meta[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
+        for (const [x, y] of canopyPosts(s, meta[bi], B.no_posts && B.no_posts[bi])) post(x, y, foot ? Math.min(g0, foot(x, y)) - 0.2 : g0, zb, bi);
       }
       if (r) { roof(r, g0, bi); return; }
       // flat roof: a parapet round a deck that shows the aerial photo, where the building is big enough

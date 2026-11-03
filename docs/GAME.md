@@ -1283,6 +1283,33 @@ drop or into the water.
     the flags arrive (a second or two after the start) leaves it at once if it is
     out of sight. In Shibuya the share of car-time inside a wall fell from 2.5%
     to 0.5% (`tools/traffic_check.js`, which now counts it).
+  - How far in from its lane it moves for a facade is measured from its own
+    lane, not from where it already is (it stayed half way in, brushing the
+    house), and it stays in until its back has passed the place, however long it
+    waits there (a car stopped in a queue beside a house drifted back out into
+    it once a timer ran out). On Osaka's narrow streets the car-time in a wall
+    fell from 0.8-1.1% to 0.2-0.5% at `traffic_check.js`'s places; it now lists
+    where (`in a wall at ...`: the road, the lane, how far from its line, what holds
+    the car and what it is in).
+  - **Roads into a building** (`pipeline/road_passages.py`, run by
+    `tools/road_passages.sh <city|all>`): where the data runs a road into a
+    building or a canopy's post, the traffic used to stop at the wall
+    (`cutAtWalls`) or keep off the road (route.js). `tools/road_walls.js` lists
+    each such stretch with what is in the way, by the game's own collision; then
+    a footprint that only clips the road (at most a quarter of it, at most a
+    metre deep into a tall one) stands back from it; a road into or through a
+    building with 2.5 m of it over a 4.5 m clearance gets a passage, with a
+    ceiling (Osaka's OCAT bus terminal and Minatomachi River Place, the roads
+    under the Loop Line's viaduct, an elevated road past a tower in Sydney); a
+    main road (motorway to secondary) through a lower building trims it; and an
+    arcade's post in a carriageway is left out (buildings.json `no_posts`, an
+    Osaka shotengai). A lane between buildings on both sides that is only too
+    narrow for a car (an alley) is left as it is, and so is a road through a row
+    of low houses or a landmark. A one-way road that comes to a wall, or whose
+    only ways on are roads the traffic keeps off, is kept off too (route.js), back
+    up the one-way roads that lead only there, so no car waits at its end in
+    sight. The game check counts the car-seconds in a wall (at most 1%), the cars
+    waiting at a wall and the one-way roads into one.
 - **Helipads on roofs:** a pad the data puts on the ground inside a building's
   footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
   clear above for the rotor, else on the nearest open ground with clear sky
@@ -1727,7 +1754,9 @@ past traffic lights near you. It seeds `Math.random` and takes `GAME_TIME`, so a
 run is the same each time, and fails when more than one ride in ten is late or
 more than 8 s off what the phone said. `tools/wall_stops.js <city> [seconds]
 [places]` lists where the traffic stops at a wall across its way, and what the
-wall is (a building, a canopy's post, a landmark). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+wall is (a building, a canopy's post, a landmark); `tools/road_walls.js <city>`
+lists every stretch where the game cuts a road at a wall, or a car doesn't fit
+along it, with what is in the way (`--json` for `pipeline/road_passages.py`). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
 time and fails if two hulls overlap or a vessel never calls, which is what a
 deadlock or a meeting at a shared berth takes to show.
 
