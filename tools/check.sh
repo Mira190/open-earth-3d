@@ -8,6 +8,7 @@
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
 #   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
+#   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - runs each reef site's scripted test (reef/index.html?gametest=1);
 #   - runs the title screen on a tablet, a phone and a desktop and with WebGL faults injected
 #     (tools/title_check.js), and fails a frame that ends black or a page that throws;
@@ -60,7 +61,7 @@ else
       web/title.*|web/earth.js|web/score.js|web/film.*|web/fonts.css) title=1 ;;
       web/index.html|web/quality.js) all_cities; title=1; loader=1 ;;
       web/plate.js|web/city.js|web/game/game.js|tools/load_check.js) all_cities; loader=1 ;;
-      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|tools/tour_check.js|pipeline/kerbside.py) all_cities ;;
+      web/game/*|web/assets/*|web/vendor/*|web/*.js|tools/game_check.js|tools/clip_check.js|tools/tour_check.js|tools/sign_check.py|pipeline/kerbside.py|pipeline/japankit.py) all_cities ;;
     esac
   done
 fi
@@ -130,6 +131,11 @@ EOF
 }
 
 {
+  # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
+  if [ ${#cities[@]} -gt 0 ]; then
+    if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
+    else echo "FAIL signs  $(grep -v '^ok' "$OUT/signs.log" | head -2 | paste -sd ';' -)   (see $OUT/signs.log)"; fi
+  fi
   for c in "${cities[@]}"; do
     while [ "$(jobs -rp | wc -l)" -ge "$JOBS" ]; do wait -n; done
     run_city "$c" &

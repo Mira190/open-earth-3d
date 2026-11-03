@@ -269,8 +269,9 @@ def lantern_big(K, x, y, z_top, h, d, front, back, P):
     m = K("atlas", "lit")
     for (za, ra), (zb_, rb) in zip(prof, prof[1:]):
         rr = (ra + rb) / 2
-        # half the drum shows the front's words, half the back's
-        for key, a0 in ((front, -math.pi / 2), (back, math.pi / 2)):
+        # half the drum shows the front's words (centred on the frame's u axis, out of the precinct),
+        # half the back's; the picture runs counter-clockwise round the drum, left to right seen from outside
+        for key, a0 in ((front, 0.0), (back, math.pi)):
             u0, v0, u1, v1 = ATLAS.uv(key)
             seg = 12
             for kk in range(seg):
@@ -281,8 +282,8 @@ def lantern_big(K, x, y, z_top, h, d, front, back, P):
                 pa = lambda ang, z, r_: np.array([x + r_ * math.cos(ang), y + r_ * math.sin(ang), z])
                 # angles in the gate's frame: turn by the frame's heading
                 m.quad(pa(a + P.heading, za, ra), pa(b + P.heading, za, ra), pa(b + P.heading, zb_, rb), pa(a + P.heading, zb_, rb),
-                       [[u0 + (u1 - u0) * (1 - fa), v0 + (v1 - v0) * ta], [u0 + (u1 - u0) * (1 - fb), v0 + (v1 - v0) * ta],
-                        [u0 + (u1 - u0) * (1 - fb), v0 + (v1 - v0) * tb], [u0 + (u1 - u0) * (1 - fa), v0 + (v1 - v0) * tb]])
+                       [[u0 + (u1 - u0) * fa, v0 + (v1 - v0) * ta], [u0 + (u1 - u0) * fb, v0 + (v1 - v0) * ta],
+                        [u0 + (u1 - u0) * fb, v0 + (v1 - v0) * tb], [u0 + (u1 - u0) * fa, v0 + (v1 - v0) * tb]])
 
 
 def framed(o, ax):
@@ -770,17 +771,15 @@ def landmark_assets(out_dir, scene):
             yy = y + h * k / 24
             d.line([(x, yy), (x + w, yy)], fill=tuple(max(0, c - 22) for c in paper), width=2)
         if len(words) <= 2:
-            f = jk.fit(d, [words], fname, w * 0.46, h * 0.86, 520)
             # the words face one way on half the drum: set them in the middle of the cell's half-width
-            d.text((x + w / 2, y + h / 2), words, font=f, fill=ink, anchor="mm")
+            jk.text(d, (x + w / 2, y + h / 2), words, fname, jk.fit(d, [words], fname, w * 0.46, h * 0.86, 520), ink)
         else:
             jk.vertical(d, words, x + w / 2, y + h * 0.06, y + h * 0.94, fname, ink, w * 0.3)
     for key, (w, h, bg, words, ink, fname) in PLAQUES.items():
         x, y = ATLAS.rects[key][:2]
         d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=bg)
         d.rectangle([x + 8, y + 8, x + w - 8, y + h - 8], outline=ink, width=5)
-        f = jk.fit(d, [words], fname, w - 60, h - 40, 160)
-        d.text((x + w / 2, y + h / 2), words, font=f, fill=ink, anchor="mm")
+        jk.text(d, (x + w / 2, y + h / 2), words, fname, jk.fit(d, [words], fname, w - 60, h - 40, 160), ink)
     img.save(f"{out_dir}/atlas.jpg", quality=90)
     return ["atlas.jpg"]
 

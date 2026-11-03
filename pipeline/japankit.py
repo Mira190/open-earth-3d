@@ -35,23 +35,59 @@ def font(name, size):
     return ImageFont.truetype(path, size)
 
 
+FALLBACK = "zen"   # a face with kana and kanji, for the characters a Latin display face lacks
+_COVERS = {}
+
+
+def covers(fname, ch):
+    """Whether the font draws the character (a missing one draws the same box as a private-use code point)."""
+    k = (fname, ch)
+    if k not in _COVERS:
+        f = font(fname, 48)
+        _COVERS[k] = ch.isspace() or bytes(f.getmask(ch)) != bytes(f.getmask("\U000F0000"))
+    return _COVERS[k]
+
+
+def runs(text, fname):
+    """The text in runs of one font each: fname where it has the glyphs, FALLBACK where it has not."""
+    out = []
+    for ch in text:
+        fn = fname if covers(fname, ch) else FALLBACK
+        if out and out[-1][1] == fn:
+            out[-1][0] += ch
+        else:
+            out.append([ch, fn])
+    return out
+
+
+def length(draw, text, fname, size):
+    return sum(draw.textlength(t, font=font(fn, size)) for t, fn in runs(text, fname))
+
+
+def text(draw, xy, words, fname, size, fill):
+    """A line centred on xy, each character in a font that has it (no boxes for missing glyphs)."""
+    x = xy[0] - length(draw, words, fname, size) / 2
+    for t, fn in runs(words, fname):
+        f = font(fn, size)
+        draw.text((x, xy[1]), t, font=f, fill=fill, anchor="lm")
+        x += draw.textlength(t, font=f)
+
+
 def fit(draw, lines, fname, box_w, box_h, max_size=120):
-    """The largest font at which the lines fit the box."""
+    """The largest size at which the lines fit the box (with fallback glyphs measured as drawn)."""
     for size in range(max_size, 7, -1):
-        f = font(fname, size)
-        if max(draw.textlength(t, font=f) for t in lines) <= box_w and size * 1.18 * len(lines) <= box_h:
-            return f
-    return font(fname, 8)
+        if max(length(draw, t, fname, size) for t in lines) <= box_w and size * 1.18 * len(lines) <= box_h:
+            return size
+    return 8
 
 
 def vertical(draw, text, cx, y0, y1, fname, fill, width):
     """Text set top to bottom, one character a line, as large as fits."""
     n = max(len(text), 1)
-    size = int(min(width * 0.9, (y1 - y0) / n * 0.92))
-    f = font(fname, max(size, 8))
+    size = max(int(min(width * 0.9, (y1 - y0) / n * 0.92)), 8)
     step = (y1 - y0) / n
     for k, ch in enumerate(text):
-        draw.text((cx, y0 + step * (k + 0.5)), ch, font=f, fill=fill, anchor="mm")
+        draw.text((cx, y0 + step * (k + 0.5)), ch, font=font(fname if covers(fname, ch) else FALLBACK, size), fill=fill, anchor="mm")
 
 
 # ---------------------------------------------------------------- geometry
@@ -253,12 +289,29 @@ def footprint_frame(g, toward=None):
     return c, ax, half
 
 
+def open_fronts(sites):
+    """The sites without those that face a neighbour across a party wall: two fronts back to back
+    within a metre, each facing into the other's building (the footprints of a terrace often leave
+    one with a road beyond it), whose signs would stand inside a wall and show their backs."""
+    S = np.asarray([s[:4] for s in sites], float).reshape(-1, 4)
+    shut = set()
+    for i in range(len(S)):
+        m, n = S[i, :2], S[i, 2:4]
+        t = np.array([-n[1], n[0]])
+        for j in range(i + 1, len(S)):
+            d = S[j, :2] - m
+            if np.dot(n, S[j, 2:4]) < -0.9 and 0.0 <= np.dot(d, n) < 1.0 and abs(np.dot(d, t)) < (sites[i][6] + sites[j][6]) / 2:
+                shut |= {i, j}
+    return [s for k, s in enumerate(sites) if k not in shut]
+
+
 def street_signs(K, atlas, sites, keys, rng, max_h=None):
     """Signs on street fronts: a lit board over the shop front and blade signs standing out from the
     wall, read both ways. sites: [x, y, nx, ny, ground, top, edge length]; keys: (board keys, blade keys)."""
     boards, blades = keys
     A = K("atlas", "lit")
-    for x, y, nx, ny, g, top, L in sites:
+    placed = []   # blades already built: one from the facing wall of a narrow lane would cross them
+    for x, y, nx, ny, g, top, L in open_fronts(sites):
         n, mid = np.array([nx, ny]), np.array([x, y])
         t = np.array([-n[1], n[0]])
         w = min(max(L * 0.6, 2.4), 6.5)
@@ -278,8 +331,11 @@ def street_signs(K, atlas, sites, keys, rng, max_h=None):
             along = (rng.random() - 0.5) * max(L - 1.5, 0.0)
             c = mid + n * 0.95 + t * along
             key = blades[int(rng.integers(len(blades)))]
-            for side in (-1, 1):
-                a, b = c - n * 0.7 * side + t * 0.06 * side, c + n * 0.7 * side + t * 0.06 * side
+            if any(np.hypot(*(c - p)) < 2.0 and abs(z0 - pz) < h + ph for p, pz, ph in placed):
+                continue
+            placed.append((c, z0, h))
+            for side in (-1, 1):  # both faces, each on the side it faces
+                a, b = c - n * 0.7 * side - t * 0.06 * side, c + n * 0.7 * side - t * 0.06 * side
                 atlas.quad(A, np.array([*a, z0]), np.array([*b, z0]), np.array([*b, z0 + h]), np.array([*a, z0 + h]), key)
 
 

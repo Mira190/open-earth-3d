@@ -158,7 +158,7 @@ def electric_town(K, et, names):
     jk.street_signs(K, ATLAS, et["sites"], ([f"board{i}" for i in range(len(BOARDS))], [f"blade{i}" for i in range(len(BLADES))]), rng)
     # a big print on the upper wall of each tall street front (one in three), its frame and the lamps over it
     P = K("atlas_print", "lit")
-    for x, y, nx, ny, g, top, L in et["sites"]:
+    for x, y, nx, ny, g, top, L in jk.open_fronts(et["sites"]):
         if top < 22 or L < 8 or rng.random() > 0.38:
             continue
         n, t = np.array([nx, ny]), np.array([-ny, nx])
@@ -265,8 +265,7 @@ def landmark_assets(out_dir, scene):
     for i, (words, bg, ink, fname) in enumerate(BOARDS):
         x, y, w, h = ATLAS.rects[f"board{i}"]
         d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=bg)
-        f = jk.fit(d, [words], fname, w - 24, h - 16, 80)
-        d.text((x + w / 2, y + h / 2), words, font=f, fill=ink, anchor="mm")
+        jk.text(d, (x + w / 2, y + h / 2), words, fname, jk.fit(d, [words], fname, w - 24, h - 16, 80), ink)
     for i, (cols, lines, fname) in enumerate(PRINTS):
         x, y, w, h = ATLAS.rects[f"print{i}"]
         _grad(img, (x - 4, y - 4, w + 8, h + 8), *cols)
@@ -275,19 +274,17 @@ def landmark_assets(out_dir, scene):
             yy = y + h * (0.1 + 0.15 * k)
             d.polygon([(x, yy), (x + w, yy - 40), (x + w, yy - 28), (x, yy + 12)], fill=tuple(min(255, c + 40) for c in ImageColor.getrgb(cols[0])))
         for k, line in enumerate(lines):
-            f = jk.fit(d, [line], fname, w - 24, h * 0.2, 120)
-            d.text((x + w / 2 + 2, y + h * (0.3 + 0.24 * k) + 3), line, font=f, fill=(0, 0, 0), anchor="mm")
-            d.text((x + w / 2, y + h * (0.3 + 0.24 * k)), line, font=f, fill=(255, 255, 255), anchor="mm")
+            size = jk.fit(d, [line], fname, w - 24, h * 0.2, 120)
+            jk.text(d, (x + w / 2 + 2, y + h * (0.3 + 0.24 * k) + 3), line, fname, size, (0, 0, 0))
+            jk.text(d, (x + w / 2, y + h * (0.3 + 0.24 * k)), line, fname, size, (255, 255, 255))
     for k, (words, bg, ink, fname) in NAMES.items():
         x, y, w, h = ATLAS.rects[f"name_{k}"]
         d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=bg)
-        f = jk.fit(d, [words], fname, w - 30, h - 14, 90)
-        d.text((x + w / 2, y + h / 2), words, font=f, fill=ink, anchor="mm")
+        jk.text(d, (x + w / 2, y + h / 2), words, fname, jk.fit(d, [words], fname, w - 30, h - 14, 90), ink)
     x, y, w, h = ATLAS.rects["kanda"]
     d.rectangle([x - 4, y - 4, x + w + 4, y + h + 4], fill=(28, 40, 34))
     d.rectangle([x + 8, y + 8, x + w - 8, y + h - 8], outline=(222, 178, 72), width=5)
-    f = jk.fit(d, ["神田神社"], "mincho", w - 50, h - 30, 120)
-    d.text((x + w / 2, y + h / 2), "神田神社", font=f, fill=(222, 178, 72), anchor="mm")
+    jk.text(d, (x + w / 2, y + h / 2), "神田神社", "mincho", jk.fit(d, ["神田神社"], "mincho", w - 50, h - 30, 120), (222, 178, 72))
     img.save(f"{out_dir}/atlas.jpg", quality=90)
     return ["atlas.jpg"]
 
