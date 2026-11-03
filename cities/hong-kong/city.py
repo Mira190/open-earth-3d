@@ -36,14 +36,18 @@ Sources (the research notes are in docs/cities/hong-kong.md):
                         corners, about 48 m faces, one looking south; a
                         three-sided glass pyramid from about 282 m (Wikipedia;
                         OpenStreetMap). Gold and silver glass.
-  Observation Wheel     60 m high, 42 gondolas (Wikipedia); its plane along
-                        160 degrees, from its base in OpenStreetMap.
+  Observation Wheel     60 m high, 42 fully enclosed gondolas (Wikipedia); its
+                        plane along 160 degrees, from its base in OpenStreetMap.
+                        Capsule gondolas and a boarding platform, walked as
+                        strips (GONDOLA, WHEEL_DECK; indicative sizes).
   Clock Tower           44 m plus a 7 m lightning rod, a 7 x 7 m red-brick and
                         granite shaft with four clock faces and a domed
                         octagonal belfry (Antiquities and Monuments Office).
   Peak Tower            396 to 428 m above the datum; a 68.5 x 28.8 m crescent
                         roof with upswept ends, floating on columns over the
                         building (Wikipedia; Farrells; OpenStreetMap outline).
+                        The ground round it is levelled in city.json
+                        (terrain.level), where the LiDAR's filter left a slope.
 """
 import math
 
@@ -69,7 +73,10 @@ MATERIALS = {
                  "spandrel": 0.3, "mullion_m": 0.16, "frame": "#9c8c66"},
     "cp_crown": {"color": "#c9c3b0", "roughness": 0.2, "metalness": 0.6},
     "wheel": {"color": "#f1f3f4", "roughness": 0.35, "metalness": 0.4},
-    "gondola": {"color": "#dfe7ec", "roughness": 0.15, "metalness": 0.3},
+    "gondola": {"color": "#eef1f2", "roughness": 0.3, "metalness": 0.25},
+    "gondola_glass": {"color": "#22323d", "roughness": 0.06, "metalness": 0.7, "emissive": "#d6e8ff", "glow": 0.35},
+    "wheel_deck": {"color": "#8d8f8c", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 0.6},
+    "wheel_deck_side": {"color": "#b9bbb7", "roughness": 0.7, "metalness": 0.1},
     "brick": {"color": "#a4523a", "roughness": 0.85, "metalness": 0.0},
     "stone_trim": {"color": "#ddd5c4", "roughness": 0.7, "metalness": 0.0},
     "clock_face": {"color": "#f4f1e8", "roughness": 0.5, "metalness": 0.0},
@@ -475,26 +482,130 @@ def central_plaza(o):
 
 # ---------------------------------------------------------------- Observation Wheel
 
-def observation_wheel(o):
+# The gondolas: 42 fully enclosed, air-conditioned cabins seating eight (Wikipedia), drawn as rounded
+# capsules glazed all round between a white floor pan and roof, each held upright outside the rim on a
+# mounting arm. Their size is indicative (2.9 m along the wheel, 2.3 m across it, 2.5 m high). The
+# lowest stops at a boarding platform at the wheel's foot, a low deck either side of the cabins' path,
+# ramped down to the paving at its ends and railed along its outer edge, as passengers board from both
+# sides; the platform's size is indicative.
+GONDOLA = {"half_len": 1.45, "half_wid": 1.15, "half_h": 1.25, "out": 2.3, "floor": 0.15}
+WHEEL_DECK = {"rise": 0.4, "inner": 1.3, "outer": 4.2, "flat": 10.0, "ramp": 2.5}
+
+
+def wheel_geometry(o):
+    """(c, d, ax, g0, hub, r, rc): the wheel's centre on the ground, the unit vectors in its plane and along
+    its axle, the ground, the hub's height, the rim's radius and the gondolas' centres' radius, so that the
+    top gondola's roof is at the published height and the lowest one's floor is at the platform's deck."""
     c, g0, H = np.array(o["at"]), o["ground_m"], o["height_m"]
     d, ax = axes(o["bearing_deg"])[1], axes(o["bearing_deg"])[0]  # d: in the wheel's plane; ax: its axle
-    r, hub = H / 2 - 3.0, g0 + H / 2 + 0.5
-    frame, cars = Mesh("wheel_frame", "wheel", False, floodlit=True), Mesh("wheel_gondolas", "gondola", True, floodlit=True)
+    G = GONDOLA
+    base = WHEEL_DECK["rise"] - G["floor"]                     # the lowest gondola's bottom over the paving
+    rc = (H - base - 2 * G["half_h"]) / 2
+    return c, d, ax, g0, g0 + base + G["half_h"] + rc, rc - G["out"], rc
+
+
+def gondola_angle(k, n):
+    """The k-th gondola's angle round the hub (half a step off the horizontal, so that one is at the bottom)."""
+    return 2 * math.pi * (k + 0.5) / n
+
+
+def gondola(shell, glass, trim, centre, d, ax):
+    """A capsule cabin about centre: a superellipse in plan, rounded into its floor pan and roof, the glass
+    band between them, mullions round it, and doors in the faces across the wheel."""
+    G = GONDOLA
+    A, B, h = G["half_len"], G["half_wid"], G["half_h"]
+    n = 28
+    ring = []
+    for j in range(n + 1):
+        t = 2 * math.pi * j / n
+        ct, st = math.cos(t), math.sin(t)
+        ring.append((A * math.copysign(abs(ct) ** 0.5, ct), B * math.copysign(abs(st) ** 0.5, st)))
+    cx, cy, cz = centre
+    v = -ax                       # (d, v) is anticlockwise seen from above, so the grids face out
+    pt = lambda x, y, s, z: [cx + (d[0] * x + v[0] * y) * s, cy + (d[1] * x + v[1] * y) * s, cz + z]
+    lo, hi = -0.62, 0.92          # the glass band
+    for mesh, prof in ((shell, [(-h, 0.6), (-h + 0.06, 0.82), (-h + 0.2, 0.95), (-h + 0.42, 1.0), (lo, 1.0)]),
+                       (glass, [(lo, 1.0), (hi, 1.0)]),
+                       (shell, [(hi, 1.0), (h - 0.2, 0.97), (h - 0.08, 0.86), (h, 0.62)])):
+        mesh.grid([[pt(x, y, s, z) for x, y in ring] for z, s in prof])
+    for z, s, up in ((-h, 0.6, False), (h, 0.62, True)):      # the floor pan's bottom and the roof
+        for (x0, y0), (x1, y1) in zip(ring[:-1], ring[1:]):
+            a, b = pt(x0, y0, s, z), pt(x1, y1, s, z)
+            shell.tri([cx, cy, cz + z], a, b) if up else shell.tri([cx, cy, cz + z], b, a)
+    for j in range(0, n, n // 8):  # mullions at the corners and the middles of the sides
+        x, y = ring[j]
+        trim.box(pt(x, y, 1.015, lo), pt(x, y, 1.015, hi), 0.09, 0.09)
+    for sy in (-1, 1):            # the doors: a frame in each face across the wheel, and a step
+        for x in (-0.45, 0.45):
+            trim.box(pt(x, sy * B, 1.02, lo - 0.25), pt(x, sy * B, 1.02, hi), 0.07, 0.07)
+        trim.box(pt(-0.45, sy * B, 1.02, hi), pt(0.45, sy * B, 1.02, hi), 0.07, 0.07)
+        trim.box(pt(-0.5, sy * (B + 0.05), 1.0, -h + G["floor"] - 0.04), pt(0.5, sy * (B + 0.05), 1.0, -h + G["floor"] - 0.04), 0.18, 0.08)
+
+
+def wheel_deck_profile(g0):
+    """The boarding platform's deck along the wheel's plane: [[u, z]], ramped down to the paving at its ends."""
+    W = WHEEL_DECK
+    f, r = W["flat"], W["ramp"]
+    return [[-f - r, g0], [-f, g0 + W["rise"]], [f, g0 + W["rise"]], [f + r, g0]]
+
+
+def observation_wheel(o):
+    c, d, ax, g0, hub, r, rc = wheel_geometry(o)
+    n = o["gondolas"]
+    frame, shell = Mesh("wheel_frame", "wheel", False, floodlit=True), Mesh("wheel_gondolas", "gondola", True, floodlit=True)
+    glass, trim = Mesh("wheel_gondola_glass", "gondola_glass", True, floodlit=True), Mesh("wheel_gondola_trim", "wheel", False, floodlit=True)
     P = lambda a, rr, off: [c[0] + d[0] * rr * math.cos(a) + ax[0] * off, c[1] + d[1] * rr * math.cos(a) + ax[1] * off, hub + rr * math.sin(a)]
     for off in (-1.2, 1.2):  # the twin rims
         frame.tube([P(a, r, off) for a in np.linspace(0, 2 * math.pi, 73)], 0.35, 6)
-    for k in range(42):  # spokes, alternating sides, and the gondolas hung outside the rim
-        a = 2 * math.pi * k / 42
-        frame.tube([P(0, 0, 1.6 * (1 if k % 2 else -1)), P(a, r, 1.2 * (1 if k % 2 else -1))], 0.06, 4)
-        g = P(a, r + 1.6, 0.0)
-        cars.box([g[0], g[1], g[2] - 1.3], [g[0], g[1], g[2] + 1.0], 2.2, 2.6)
+    for k in range(n):       # spokes, alternating sides; the gondolas outside the rim, upright, each on its arm
+        a = gondola_angle(k, n)
+        side = 1 if k % 2 else -1
+        frame.tube([P(0, 0, 1.6 * side), P(a, r, 1.2 * side)], 0.06, 4)
+        g = P(a, rc, 0.0)
+        gondola(shell, glass, trim, g, d, ax)
+        for off in (-0.7, 0.7):   # the mounting arm from the rims to the cabin's side nearest the hub
+            frame.tube([P(a, r, off * 1.7), P(a, rc - 1.0, off)], 0.09, 5)
     for side in (-1, 1):  # A-frame legs either side of the wheel, down to a base along its plane
         top = [c[0] + ax[0] * side * 3.2, c[1] + ax[1] * side * 3.2, hub]
         for t in (-1, 1):
             foot = [c[0] + d[0] * t * 13.0 + ax[0] * side * 5.0, c[1] + d[1] * t * 13.0 + ax[1] * side * 5.0, g0]
             frame.tube([foot, top], 0.55, 8)
     frame.tube([[c[0] - ax[0] * 3.4, c[1] - ax[1] * 3.4, hub], [c[0] + ax[0] * 3.4, c[1] + ax[1] * 3.4, hub]], 1.2, 12)  # the axle
-    return [frame, cars]
+    return [frame, shell, glass, trim] + wheel_platform(c, d, ax, g0)
+
+
+def wheel_platform(c, d, ax, g0):
+    """The boarding platform: a deck either side of the gondolas' path (walked as strips, game_surfaces),
+    its edges faced down to the paving, a railing along its outer edge, and rails along the inner edge
+    that leave the boarding gate at the lowest gondola open."""
+    W = WHEEL_DECK
+    deck, side, rail = Mesh("wheel_boarding_deck", "wheel_deck", False, uv=True), Mesh("wheel_boarding_edges", "wheel_deck_side", False), Mesh("wheel_boarding_rails", "wheel", False)
+    prof = wheel_deck_profile(g0)
+    us = [p[0] for p in prof]
+    zs = lambda u: float(np.interp(u, us, [p[1] for p in prof]))
+    Q = lambda u, v, z: [c[0] + d[0] * u + ax[0] * v, c[1] + d[1] * u + ax[1] * v, z]
+    for s in (-1, 1):
+        v0, v1 = s * W["inner"], s * W["outer"]
+        rows = [[Q(u, v, zs(u)) for u in us] for v in ((v0, v1) if s < 0 else (v1, v0))]
+        deck.grid(rows, [[[u, v] for u in us] for v in ((v0, v1) if s < 0 else (v1, v0))])
+        for v, out in ((v1, s), (v0, -s)):          # its edges, from the deck down into the paving
+            for ua, ub in zip(us[:-1], us[1:]):
+                quad = [Q(ua, v, g0 - 0.1), Q(ub, v, g0 - 0.1), Q(ub, v, zs(ub)), Q(ua, v, zs(ua))]
+                nrm = np.cross(np.subtract(quad[2], quad[0]), np.subtract(quad[3], quad[1]))
+                if float(nrm[0] * ax[0] * out + nrm[1] * ax[1] * out) < 0:
+                    quad = quad[::-1]
+                side.quad(*quad)
+        f, vr = W["flat"], s * (W["outer"] - 0.12)
+        for u in np.arange(-f, f + 0.01, 2.0):       # the outer railing: posts, a handrail and a mid rail
+            rail.tube([Q(u, vr, g0 + W["rise"]), Q(u, vr, g0 + W["rise"] + 1.05)], 0.035, 5)
+        for h in (0.5, 1.05):
+            rail.tube([Q(-f, vr, g0 + W["rise"] + h), Q(f, vr, g0 + W["rise"] + h)], 0.04 if h > 1 else 0.025, 6)
+        vi = s * (W["inner"] + 0.1)
+        for u0, u1 in ((-f, -2.2), (2.2, f)):        # the inner rails, open at the gate
+            for u in np.arange(u0, u1 + 0.01, (u1 - u0) / 3):
+                rail.tube([Q(u, vi, g0 + W["rise"]), Q(u, vi, g0 + W["rise"] + 1.05)], 0.035, 5)
+            rail.tube([Q(u0, vi, g0 + W["rise"] + 1.05), Q(u1, vi, g0 + W["rise"] + 1.05)], 0.04, 6)
+    return [deck, side, rail]
 
 
 # ---------------------------------------------------------------- Clock Tower
@@ -581,17 +692,34 @@ def game_extras(scene):
             close.append(close_to(f"Clock Tower, the foot of its {side} face", at + v * 3.75, c["ground_m"], at + v * 9.5, 1.0))
     w = lm.get("observation_wheel")
     if w:
-        c, (ax, d) = np.array(w["at"]), axes(w["bearing_deg"])
-        # the lowest gondola (observation_wheel(): 42 round the rim, 1.6 m outside it), its floor just over the
-        # platform: up to its door, along the axle
-        r = w["height_m"] / 2 - 3.0 + 1.6
-        k = min(range(w["gondolas"]), key=lambda k: math.sin(2 * math.pi * k / w["gondolas"]))
-        g = c + d * r * math.cos(2 * math.pi * k / w["gondolas"])
-        close.append(close_to("Observation Wheel, a gondola at the boarding platform", g + ax * 1.0, w["ground_m"], g + ax * 7.0, 1.0))
+        c, d, ax, g0, hub, r, rc = wheel_geometry(w)
+        # the lowest gondola (observation_wheel()), its floor level with the boarding platform: across the
+        # deck from its outer railing to the gondola's door
+        k = min(range(w["gondolas"]), key=lambda k: math.sin(gondola_angle(k, w["gondolas"])))
+        g = c + d * rc * math.cos(gondola_angle(k, w["gondolas"]))
+        z = g0 + WHEEL_DECK["rise"]
+        close.append(close_to("Observation Wheel, a gondola at the boarding platform", g + ax * GONDOLA["half_wid"], z, g + ax * (WHEEL_DECK["outer"] - 0.6), 1.0))
     p = lm.get("peak_tower")
     if p:
         at, (e, n) = np.array(p["at"]), axes(p["bearing_deg"])
-        tip = at + n * PEAK["length_m"] / 2 * 0.82   # the body's plan: an ellipse 82 % of the roof's length
-        z = p["ground_m"] + 8.1                      # the paving at the east end (the LiDAR ground, 384.5 m)
-        close.append(close_to("Peak Tower, the glass at its east end", tip, z, at + n * (PEAK["length_m"] / 2 * 0.82 + 5.5), 1.0))
+        a, b = PEAK["length_m"] / 2 * 0.82, PEAK["width_m"] / 2 * 0.78   # the body's plan: an ellipse
+        # the paving round the body, as city.json levels it (terrain.level: Peak Tower's east end and its forecourt)
+        close.append(close_to("Peak Tower, the glass at its east end", at + n * a, 383.5, at + n * (a + 5.5), 1.0))
+        close.append(close_to("Peak Tower, the glass on the forecourt", at + e * b, 396.5, at + e * (b + 6.0), 1.0))
     return {"close": close}
+
+
+def game_surfaces(scene):
+    """The Observation Wheel's boarding platform: its two decks, walked as strips laid as given, with their ramps."""
+    w = scene["landmarks"].get("observation_wheel")
+    if not w:
+        return []
+    c, d, ax, g0, hub, r, rc = wheel_geometry(w)
+    W, out = WHEEL_DECK, []
+    for s, side in ((1, "one side"), (-1, "the other side")):
+        o = c + ax * s * (W["inner"] + W["outer"]) / 2
+        out.append({"name": f"Observation Wheel, the boarding platform ({side})", "type": "strip", "origin": xy(o),
+                    "axis": [round(float(d[0]), 5), round(float(d[1]), 5)], "half_width": round((W["outer"] - W["inner"]) / 2, 2),
+                    "profile": [[round(u, 2), round(z, 2)] for u, z in wheel_deck_profile(g0)], "thickness": 0.6,
+                    "mesh": "wheel_boarding_deck", "drape": True, "fly_under": False, "label": "the Observation Wheel's boarding platform"})
+    return out
