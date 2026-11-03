@@ -1,0 +1,602 @@
+{
+  "id": "ueno",
+  "name": "Ueno",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Ueno from open data, lit by the real sun: the park on its hill with Toshogu's gilt hall and Kan'ei-ji's pagoda, Shinobazu Pond and Bentendo below it, and Ameyoko's market under the tracks to Okachimachi.",
+  "bbox": [
+    139.7625,
+    35.7045,
+    139.7845,
+    35.7215
+  ],
+  "origin": [
+    139.7735,
+    35.713
+  ],
+  "extent_m": [
+    -950,
+    950,
+    -900,
+    900
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "river",
+      "canal"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.45,
+      "plane": 0.35,
+      "maple": 0.2
+    },
+    "note": "Species are not mapped, and the shared trees have no cherry or ginkgo, so the mix stands in: elms for the park's zelkovas (keyaki) and its rows of Somei-yoshino cherries, plane trees for the ginkgos and the street planes, and Japanese maples by the pond and the temple grounds. A guess, not a survey."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Ueno Station": [
+      139.7774,
+      35.7138
+    ],
+    "Shinobazu Pond": [
+      139.77,
+      35.7115
+    ],
+    "Tokyo National Museum": [
+      139.7765,
+      35.7189
+    ],
+    "Okachimachi": [
+      139.7748,
+      35.7075
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:20",
+    "cam": [
+      650,
+      -1050,
+      480
+    ],
+    "tgt": [
+      -60,
+      40,
+      20
+    ]
+  },
+  "labels": {
+    "東京文化会館": "Tokyo Bunka Kaikan",
+    "表慶館": "Hyokeikan",
+    "本館": "Tokyo National Museum",
+    "清水観音堂": "Kiyomizu Kannon-do",
+    "上野マルイ": "Ueno Marui",
+    "松坂屋": "Matsuzakaya"
+  },
+  "minor_labels": [
+    "表慶館",
+    "清水観音堂",
+    "上野マルイ",
+    "松坂屋"
+  ],
+  "places": [
+    {
+      "name": "上野公園",
+      "label": "Ueno Park",
+      "class": "park",
+      "protected": true
+    }
+  ],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Ueno, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [
+        650,
+        -1050,
+        480
+      ],
+      "tgt": [
+        -60,
+        40,
+        20
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:30",
+      "to": "16:30",
+      "hold": 8
+    },
+    {
+      "title": "Shinobazu Pond",
+      "text": "Once an inlet of the bay: three ponds below the park's hill, the lotus pond's leaves brown in November, and Bentendo on its island.",
+      "cam": [
+        -60,
+        -380,
+        60
+      ],
+      "tgt": [
+        -220,
+        -110,
+        4
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "14:00",
+      "to": "15:00",
+      "hold": 9
+    },
+    {
+      "title": "Ameyoko after dark",
+      "text": "The market under the Yamanote line's viaduct, from the station to Okachimachi: fish, sweets, shoes and standing bars. The signs here are typical of the street, not its real shops'.",
+      "cam": [
+        190,
+        -300,
+        40
+      ],
+      "tgt": [
+        95,
+        -200,
+        8
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "17:30",
+      "to": "18:30",
+      "hold": 10
+    }
+  ],
+  "renders": [],
+  "sources": {
+    "landmarks": "Kan'ei-ji's pagoda (1639; 36.4 m, Taito City), Bentendo (Kan'ei-ji; 1958), Ueno Toshogu's Konjiki-den (1651) and the statue of Saigo Takamori (Takamura Koun, 1898; 3.7 m) on OpenStreetMap's footprints and positions, their proportions from photographs. Ameyoko's signs are indicative: typical trades, no real shops' signs or logos.",
+    "fonts": "Signs drawn with Google Fonts under the SIL Open Font License: Zen Kaku Gothic New, Dela Gothic One, M PLUS Rounded 1c, Bebas Neue, Shippori Mincho"
+  },
+  "night": {
+    "note": "Ameyoko's signs and the Toshogu lanterns are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "title": "Ueno on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "Shinobazu Pond",
+    "greeting": "いらっしゃい!",
+    "blurb": "Walk Ueno under the real sun: up the park's steps past Saigo and his dog, round Shinobazu Pond to Bentendo, up the lantern-lined approach to Toshogu's gilt hall, and down into Ameyoko's market.",
+    "smalltalk": [
+      "いらっしゃい!",
+      "安いよ!",
+      "すみません。",
+      "どうも。",
+      "Excuse me!"
+    ],
+    "start": {
+      "at": [
+        200.0,
+        82.0
+      ],
+      "facing": [
+        120.0,
+        95.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "ueno_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "ueno-pad",
+        "name": "Ueno Park, the fountain plaza pad (game)",
+        "at": [
+          210.0,
+          470.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 640,
+      "cars": 160,
+      "radius_m": 420,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA22UE"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.22
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#2a7a3a"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "上野",
+        "kana": "うえの",
+        "romaji": "Ueno",
+        "band": "#9acd32",
+        "left": "御徒町",
+        "right": "鶯谷",
+        "at": [
+          230.0,
+          60.0
+        ],
+        "radius": 240,
+        "note": "The park on its hill, the museums, and the station of the north"
+      },
+      {
+        "name": "御徒町",
+        "kana": "おかちまち",
+        "romaji": "Okachimachi",
+        "band": "#9acd32",
+        "left": "秋葉原",
+        "right": "上野",
+        "at": [
+          70.0,
+          -690.0
+        ],
+        "radius": 200,
+        "note": "Ameyoko's south end and the jewellers' quarter"
+      },
+      {
+        "name": "湯島",
+        "kana": "ゆしま",
+        "romaji": "Yushima",
+        "band": "#00bb85",
+        "left": "新御茶ノ水",
+        "right": "根津",
+        "at": [
+          -330.0,
+          -690.0
+        ],
+        "radius": 200,
+        "note": "Yushima Tenjin up the hill, the shrine of exams"
+      },
+      {
+        "name": "根津",
+        "kana": "ねづ",
+        "romaji": "Nezu",
+        "band": "#00bb85",
+        "left": "湯島",
+        "right": "千駄木",
+        "at": [
+          -700.0,
+          480.0
+        ],
+        "radius": 220,
+        "note": "Old Yanaka's lanes behind the park"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-park",
+        "name": "Ueno Station, Park exit 公園口",
+        "at": [
+          200.0,
+          82.0
+        ]
+      },
+      {
+        "id": "t-saigo",
+        "name": "Saigo's statue 西郷さん",
+        "at": [
+          70.0,
+          -140.0
+        ]
+      },
+      {
+        "id": "t-ameyoko",
+        "name": "Ameyoko, the gate アメ横",
+        "at": [
+          110.0,
+          -195.0
+        ]
+      },
+      {
+        "id": "t-benten",
+        "name": "Bentendo, the causeway 弁天堂",
+        "at": [
+          -140.0,
+          -75.0
+        ]
+      },
+      {
+        "id": "t-toshogu",
+        "name": "Ueno Toshogu, the approach 東照宮参道",
+        "at": [
+          -170.0,
+          262.0
+        ]
+      },
+      {
+        "id": "t-museum",
+        "name": "Tokyo National Museum 東京国立博物館",
+        "at": [
+          262.0,
+          560.0
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "noriko",
+        "name": "Noriko 典子",
+        "role": "Museum volunteer guide",
+        "at": [
+          188.0,
+          96.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_09_f011_grey",
+          "skin": "#efcdb4",
+          "hair": "#8a8580",
+          "top": "#3d4a5c",
+          "legs": "#2a2e36",
+          "shirt": "#3d4a5c",
+          "pants": "#2a2e36",
+          "clip": "Present"
+        },
+        "idle": [
+          "Five museums, a concert hall and a zoo on one hill. Most people only see the pandas.",
+          "The cherries here are the city's clock: when they open, half of Tokyo has a picnic under them. {time}."
+        ]
+      },
+      {
+        "id": "daichi",
+        "name": "Daichi 大地",
+        "role": "Fishmonger 鮮魚店",
+        "at": [
+          96.0,
+          -300.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_03_m008_grey",
+          "skin": "#e2b48f",
+          "hair": "#2a2420",
+          "top": "#f2f2ee",
+          "legs": "#1f2a3a",
+          "shirt": "#f2f2ee",
+          "pants": "#1f2a3a",
+          "clip": "Talk",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#1d3f7a"
+        },
+        "idle": [
+          "Tuna, crab, salmon roe! In December you can't move in here.",
+          "My grandfather sold sweets from a box under the tracks in 1946. Ame, sweets: that's the name. {sun_line}"
+        ]
+      },
+      {
+        "id": "sota",
+        "name": "Sota 颯太",
+        "role": "Boat keeper ボート場",
+        "at": [
+          -300.0,
+          -30.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_05_m024",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#2f5a3a",
+          "legs": "#2b3440",
+          "shirt": "#2f5a3a",
+          "pants": "#2b3440",
+          "clip": "LookAround"
+        },
+        "idle": [
+          "Rowing boats, pedal boats, swan boats. The swans are the ones couples fight about.",
+          "There's an old story that couples who row here together split up. Business is still good."
+        ]
+      },
+      {
+        "id": "aoi",
+        "name": "Aoi 葵",
+        "role": "Shrine attendant 巫女",
+        "at": [
+          -215.0,
+          258.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_12_f013",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#f4f1ea",
+          "legs": "#b3202a",
+          "shirt": "#f4f1ea",
+          "pants": "#b3202a"
+        },
+        "idle": [
+          "Toshogu is Tokugawa Ieyasu's shrine. The gold is real leaf; we redid it in 2013.",
+          "The peony garden opens in winter: peonies under straw hats in the snow."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "market",
+        "title": "Ameyoko",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "park",
+        "title": "The park",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "noriko",
+        "title": "Ueno",
+        "stamp": "Ueno",
+        "talk": [
+          "Welcome to Ueno! I'm Noriko; I guide at the National Museum on weekends.",
+          "This was the gate to the north: the trains from Tohoku came in here. Down the steps is Ameyoko. Find Daichi; he shouts louder than anyone."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "daichi",
+            "text": "Find Daichi in Ameyoko"
+          }
+        ]
+      },
+      {
+        "id": "ameyoko",
+        "line": "market",
+        "giver": "daichi",
+        "title": "Ameyoko",
+        "stamp": "Ameyoko",
+        "talk": [
+          "Ameyoko: fish on one side, sweets on the other, shoes upstairs, beer under the tracks.",
+          "Go and see the gate at the station end. Then come back hungry."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "ame_gate",
+            "text": "Look down Ameyoko from its gate"
+          },
+          {
+            "type": "spot",
+            "spot": "saigo",
+            "text": "Meet Saigo and his dog up the steps"
+          }
+        ]
+      },
+      {
+        "id": "pond",
+        "line": "park",
+        "giver": "sota",
+        "title": "Shinobazu Pond",
+        "stamp": "Bentendo",
+        "talk": [
+          "Shinobazu Pond: three ponds, one for lotus, one for boats, one for cormorants.",
+          "Walk out to Bentendo on its island. The goddess of the hall plays the biwa; musicians come to her for luck."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "benten",
+            "text": "Visit Bentendo on its island"
+          },
+          {
+            "type": "spot",
+            "spot": "lotus",
+            "text": "Look over the lotus pond"
+          }
+        ]
+      },
+      {
+        "id": "shrine",
+        "line": "park",
+        "giver": "aoi",
+        "title": "The gilt hall",
+        "stamp": "Toshogu",
+        "talk": [
+          "Up the approach between the lanterns to the Konjiki-den. Gold leaf, black lacquer, 1651.",
+          "From the approach you can see the old pagoda over the zoo's fence. It's older than the hall."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "toshogu",
+            "text": "Look at Toshogu's gilt hall"
+          },
+          {
+            "type": "spot",
+            "spot": "pagoda",
+            "text": "Find the five-storey pagoda"
+          }
+        ]
+      }
+    ]
+  }
+}
