@@ -376,6 +376,7 @@ The views switch in place, without reloading the page.
     horizon, and the coast's towns are a band of light at night. `?far=off`
     leaves it out, to compare; `tools/far_views.py` writes the high views out
     past each edge at noon, dusk and night for `tools/city_shot.js`.
+    Before and after: `docs/images/far-land/*-compare.jpg`.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
