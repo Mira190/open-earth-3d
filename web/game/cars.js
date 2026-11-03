@@ -803,10 +803,10 @@ window.OECars = (function () {
     // is coming along the side of the road it would swing out into: it waits behind until that has
     // gone by.
     const c = {}, passing = [], passed = [];
-    let still = false;
+    let still = false, queued = false;
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
-      still = false; passing.length = 0; passed.length = 0;
+      still = queued = false; passing.length = 0; passed.length = 0;
       st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
@@ -817,11 +817,14 @@ window.OECars = (function () {
         if (Math.abs(w - lane - st.shift) >= Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) continue; // (side by side, clear)
         // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
         // turns round every few seconds and so never stays stuck long enough to be marked still
-        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        // (but never one queueing at a junction, o.q: a queue at a red light is waited out in the lane,
+        // not overtaken up the oncoming side to its head)
+        // (o.still is a flag the game sets, true; a traffic car's own c.still counts the seconds it has stood)
+        if (!o.q && (o.still === true || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
-        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; }
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = !!o.q; }
       }
       if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
         if (passed.includes(o)) continue;
@@ -914,13 +917,23 @@ window.OECars = (function () {
       // held up behind cars (never at the line: a red light is waited out) it counts the time while it
       // crawls, and keeps it until it is under way, since a car caught up with it turns round every few
       // seconds and the gap comes and goes
-      st.held = line <= carGap ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // (in a queue for a junction, the car ahead waiting its turn there, it is waiting for the light too:
+      // unless it is caught up in that car, or the queue has not moved for a minute, longer than any
+      // light's red, a jam in the junction, when it counts again, for a ride to find another way round)
+      st.qT = queued && st.v < 0.5 ? (st.qT || 0) + dt : 0;
+      const waiting = queued && carGap >= 0.5 && st.qT < 60;
+      st.held = line <= carGap || waiting ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // queueing for a junction itself (stopped for its line, or behind a car that is): what the traffic
+      // behind reads, as it reads a car of its own (c.q), so it queues behind and never goes round
+      st.q = st.v < 0.5 && ((line < Infinity && line <= carGap) || (queued && carGap < line));
+      st.qBy = st.q && carGap < line ? st.block : null; // (the car it queues behind: that one does not queue behind it in turn)
       // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
       // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
       if (st.held > 8 && carGap < 0.5) want = Math.max(want, 1.5);
       // and held for 12 s in a tangle the traffic does not clear, it stops giving way and creeps on at
       // up to 3 m/s until it is under way (to the line, if a light is red), rather than wait for good
-      if (st.held > 12) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
+      // (never on into a car queueing ahead of it)
+      if (st.held > 12 && !queued) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // held up near the end for good (by a car that isn't moving off, not a light): stop here
       st.stall = st.v < 0.2 && room < 0.1 && carGap < line ? st.stall + dt : 0;
       if (end && st.stall > 8 && left < 45) { endAt(st.s); left = 0; }

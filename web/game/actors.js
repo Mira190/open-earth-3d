@@ -1123,10 +1123,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
         // one left in the lane, as traffic goes round a stopped car; otherwise braked for like a car ahead
+        let youQ = false; // (the one braked for is a ride queueing for a junction: this car queues behind it)
         for (const b of blockers) {
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
-          if (b.parked) {
+          // (never round a ride queueing at a red light, b.q: it waits its turn there, and so does this car)
+          if (b.parked && !b.q) {
             const need = c.hw + (b.hw || 0.9) + 0.3;
             // (w0: where it is across from the car's own lane, without the swing out the car has already
             // taken, so that the swing is the whole way out round it and not half of it: with w the swing
@@ -1139,7 +1141,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
             if (sw != null && !atJ) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
-          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; } // (a ride pulling in still reaches into the lane)
+          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; } // (a ride pulling in still reaches into the lane)
         }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
         if (posts) posts.near(c.x + fx * reach / 2, c.y + fy * reach / 2, reach / 2 + 1, q => {
@@ -1317,7 +1319,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
           }
         }
-        c.q = atLine || (byCar && front != null && front.q && c.v < 0.5); // queueing at a junction
+        c.q = atLine || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there)
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
