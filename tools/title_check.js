@@ -89,9 +89,11 @@ async function scenario(b, name, c, outDir) {
   const T = await p.evaluate(() => window.__title.timing);
   const res = {};
   if (c.returning) {
-    // live frames as the camera falls in from deep space, and once it has settled on the menu
-    for (const [label, ms] of [['in', 1200], ['menu', 5000]]) {
-      await p.waitForTimeout(ms - (label === 'menu' ? 1200 : 0));
+    // live frames as the camera falls in from deep space (once the fade-in, which a software
+    // renderer runs at a few frames a second, is up), and once it has settled on the menu
+    for (const label of ['in', 'menu']) {
+      if (label === 'in') await p.waitForFunction(() => window.__title.earth.lens.uFade.value > 0.9, null, { timeout: 60000 });
+      else await p.waitForTimeout(5000);
       res[label] = await p.evaluate(measure);
       await p.screenshot({ path: path.join(outDir, `${name}-${label}.jpg`), type: 'jpeg', quality: 80, timeout: 240000 });
     }
