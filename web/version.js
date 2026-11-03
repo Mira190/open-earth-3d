@@ -1,6 +1,7 @@
 // The deployed build's version, written to version.json by the Pages workflow
 // (.github/workflows/pages.yml): the base in VERSION plus the deploy's run number, and its commit.
-// A local checkout has no version.json, so the footer stays empty and About says "Local build".
+// A local checkout's version.json is an empty placeholder (so no page asks for a file that is not
+// there, which the checks count as an error), so the footer stays empty and About says "Local build".
 (function () {
   const REPO = 'https://github.com/Mira190/open-earth-3d';
   fetch('version.json', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(v => {
