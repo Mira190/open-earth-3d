@@ -2155,6 +2155,10 @@ CROSSING_SCREENS = [
     # the wall of the Taiseido building, speakers above it
     {"name": "Rakuten Vision", "building": "w136690966", "edge": [[324.0, -975.0], [330.0, -969.0]], "w": 10.24, "h": 5.76, "z": 9.5, "off": 0.9,
      "clips": ["shoe", "noodle", "info", "game", "fashion"], "phase": 3.0, "pitch": 0.01},
+    # under it, the block's second screen over the bookshop's fascia (a portrait screen in the photographs of
+    # 2024-25; its size is an estimate): it plays its own programme, not the synchronised slot
+    {"name": "Taiseido corner screen", "building": "w136690966", "edge": [[324.0, -975.0], [330.0, -969.0]], "w": 5.6, "h": 5.0, "z": 4.1, "off": 0.9,
+     "clips": ["game", "beauty", "music", "movie"], "phase": 7.0, "pitch": 0.008, "sync": False},
     # SW: on the roof of the Shibuya Ekimae building, the station-front vision (Tokyu, from 2019): 21.6 x
     # 12.144 m over a 21.6 x 4.176 m banner screen; and south of it, on the roof of the Oto building, HIT's
     # Shibuhachi Hit Vision, 24.32 x 17.28 m. The two buildings are one footprint in the open data
@@ -3314,10 +3318,11 @@ def landmark_meshes(scene):
     extra = {"hidden": hidden}
     sb = scramble_build(lm)
     if sb:
-        sm, sh, sc = sb.meshes()
+        sm, sh, sc, props = sb.meshes()
         meshes += sm
         extra["hidden"] = hidden + sh
         extra["clip"] = sc
+        extra["props"] = props
         mats.update(scramble.MATERIALS)
     return mats, meshes + more, extra
 
