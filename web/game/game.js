@@ -535,6 +535,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
+  const scrambleJ = junctions.J.filter(j => j.scramble);
   function kerbNear(x, y, z, ahead = 9, within = 250) {
     const pl = roads.place(x, y, within, keepSign, z);
     if (!pl) return null;
@@ -545,6 +546,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
       first = first || { pl: q, pose };
       if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+      if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
       let hit = false;
       const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
       posts.near(pose.x, pose.y, half + 1, p => {
@@ -573,7 +575,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     Object.assign(myCar.D.st, { x: pose.x, y: pose.y, z: pose.z, h: pose.h, vx: 0, vy: 0, v: 0, speed: 0, r: 0, vz: 0, steer: 0, air: false, pitch: 0, roll: 0 });
     myCar.C.place(pose.x, pose.y, pose.z, pose.h); // there already behind the title
   }
-  { const z = nav.floorAt(G.start.at[0], G.start.at[1], Math.max(0, nav.terrain(G.start.at[0], G.start.at[1])) + 1), k = kerbNear(G.start.at[0], G.start.at[1], z ? z.z : null); if (k) parkMyCar(k.pose); }
+  { const [cx, cy] = G.start.car || G.start.at; // (game.start.car: where it waits, when not by the start: Shibuya's start is at the scramble)
+    const z = nav.floorAt(cx, cy, Math.max(0, nav.terrain(cx, cy)) + 1), k = kerbNear(cx, cy, z ? z.z : null); if (k) parkMyCar(k.pose); }
   const stOf = o => (o.D ? o.D.st : o.drv.st);
   // the ground beside a seat's door (o: your car or a ride)
   function doorAt(o, seat) {

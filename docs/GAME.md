@@ -380,6 +380,9 @@ gathered at the kerbs of every crosswalk (`crowd.muster`, twenty at yours) steps
 round you as control comes, a couple of seconds into the walk. The travel menu's
 Shibuya stop is the same kerb, and Aoi, the guide the onboarding sends you to,
 waits across the diagonal by QFRONT, so the first walk is the crossing.
+`game.start.car` puts your car at a kerb away from the start when the start's own
+kerb is no place for it (Shibuya's: at the scramble's mouth; it waits by Hachiko),
+and no car is left within 36 m of a scramble when another kerb will do.
 `tools/opening_shot.js <city> <out> [WxH] [times]` takes stills of the shot (as Play
 is pressed, in the crane, at the street, the hand-over and 3 s on), and
 `tools/game_check.js` checks that the game opens at the scramble's kerb, in its
