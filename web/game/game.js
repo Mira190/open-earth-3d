@@ -401,10 +401,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
   // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
   const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE,
-    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra } }); // (and the crossings between junctions: signals or zebra stripes)
+    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra },
+    // (and the crossings between junctions: signals or zebra stripes); the scrambles, every way at once in
+    // a phase of their own: Shibuya's with its mapped crosswalks (scene landmarks), the others a city names
+    scrambles: [(scene.landmarks || {}).scramble, ...(G.scrambles || [])].filter(Boolean), foot: crowdNet });
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
-  crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };
+  crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call };
+  // and gathers at the scrambles: a share of it their own, massing at the kerbs and surging across
+  // every way at once (actors.js plazas), and more of it on the footways round them
+  { const S = junctions.J.filter(j => j.scramble && j.spans && j.spans.length);
+    if (S.length) {
+      crowd.plazas = S.map(j => { const a = j.arms.find(q => q.in) || j.arms[0]; return (j.plaza = { j, x: j.x, y: j.y, spans: j.spans, walk: () => junctions.walk(a), left: () => junctions.walkLeft(a) }); });
+      crowd.hot = S.map(j => ({ x: j.x, y: j.y, r: 90, share: 0.16 / S.length, pull: 0.5 }));
+    } }
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav, posts, junctions });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);

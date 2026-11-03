@@ -22,6 +22,11 @@
 //            the one beside the centre line (or on the keep side of a one-way street) for every
 //            movement, and the other for going straight ahead onto a road like it. Each lane's
 //            movement has its own way across.
+//   scramble a junction a city names in opts.scrambles (Shibuya's scramble: scene landmarks) runs
+//            Japan's 歩車分離 (pedestrian-only phase) after the cross road's: every arm's traffic
+//            held at red while the walkers cross every way at once, the diagonals too, and nobody
+//            walks in the traffic's phases. Shibuya's own cycle is about two minutes with 40 to 50 s
+//            of walk (live japan); the game keeps the walk and shortens the traffic's turns.
 //   walkers  the crowd crosses an arm's road at a junction with signals while that arm's traffic is
 //            held at red, and presses the button for it; it waits at the kerb otherwise.
 //   the box  a car goes in only when its movement (from its arm to its exit) crosses no movement
@@ -60,11 +65,13 @@ window.OEJunctions = (function () {
 
   // net: actors.network of the roads; opts.signals, .stops, .giveWay: mapped points [x, y, z, ...]
   // in decimetres; keep: the side the traffic keeps to; lane: its lane's offset from the line (m)
-  function create(net, { signals = null, stops = [], giveWay = [], keep = 'left', lane = 1.7, midCrossings = null } = {}) {
+  function create(net, { signals = null, stops = [], giveWay = [], keep = 'left', lane = 1.7, midCrossings = null, scrambles = null, foot = null } = {}) {
     const L = net.L, side = keep === 'right' ? -1 : 1, tmp = {};
     const nodeKey = (line, end) => { const l = L[line], k = end ? l.pts.length / 3 - 1 : 0; return net.key(l.pts[3 * k], l.pts[3 * k + 1]); };
     // can a car leave a node along line `line` from its end `end` (0: with its points)?
-    const canLeave = (line, end) => (end === 0 ? L[line].ow !== -1 : L[line].ow !== 1);
+    // (and not into a one-way street that leads nowhere, mapped as ending in a station square, say:
+    // a car could only wait at its end for good, over the crosswalk there)
+    const canLeave = (line, end) => (end === 0 ? L[line].ow !== -1 : L[line].ow !== 1) && !(L[line].ow && !net.next(line, 1 - end, true));
     const canReach = (line, end) => (end === 1 ? L[line].ow !== -1 : L[line].ow !== 1);
     // the banned turns: (line, the end a car reaches) -> [[line, the end it enters by, steps]]
     // (game.json "nt" names pieces by their place in paths.road; network() drops the shortest)
@@ -176,6 +183,68 @@ window.OEJunctions = (function () {
       }
       j.active = []; j.pend = []; j.near = []; j.demand = [0, 0, 0]; j.seen = -1;
     }
+    // the scrambles: a fourth phase (3), the walkers', every arm red; the traffic's turns kept short.
+    // opts.scrambles: [x, y], or { node: [x, y], lines: the mapped crosswalks [[[x, y], [x, y]], ...] }
+    // (Shibuya's, scene landmarks.scramble). Its crosswalks (j.walks: segments [ax, ay, bx, by]) are
+    // those lines, or else the crowd's footways (opts.foot) that cross its arms within SCR_R; each
+    // arm's stop line stands just behind the outermost, and the walkers wait at their ends.
+    let nScramble = 0;
+    const SCR_R = 26, SCR_W = 3; // (m: how far out a scramble's crosswalks may be, their half-width)
+    const crossAt = (a, R, segs, fn) => { // where segments [ax, ay, bx, by] cross arm a's road within R of the node: fn(d along the arm, seg)
+      const l = L[a.line], d1 = Math.min(l.len - 1, R), P = [];
+      for (let d = 0; d <= d1 + 1e-6; d += 1) { net.at(a.line, Math.max(0, Math.min(l.len, alongArm(l, a, d))), tmp); P.push(tmp.x, tmp.y); }
+      for (const g of segs) {
+        const ex = g[2] - g[0], ey = g[3] - g[1], fl = Math.hypot(ex, ey);
+        if (fl < 1e-3) continue;
+        for (let r = 2; r < P.length; r += 2) {
+          const bx = P[r - 2], by = P[r - 1], gx = P[r] - bx, gy = P[r + 1] - by, den = ex * gy - ey * gx;
+          if (Math.abs(den) < 1e-6) continue;
+          const u = ((bx - g[0]) * gy - (by - g[1]) * gx) / den, v = ((bx - g[0]) * ey - (by - g[1]) * ex) / den;
+          if (u < 0 || u > 1 || v < 0 || v > 1 || Math.abs(den) / (fl * Math.hypot(gx, gy)) < 0.5) continue; // (along the road, not across it)
+          fn(r / 2 - 1 + v, g);
+        }
+      }
+    };
+    for (const o of scrambles || []) {
+      const [x, y] = Array.isArray(o) ? o : o.node || o.at || [];
+      if (x == null) continue;
+      const j = nearestJ(x, y, 30);
+      if (!j || j.mid != null || j.scramble || j.arms.filter(a => a.in).length < 2) continue;
+      // (OSM maps a scramble's signals at its stop lines, often farther out than a junction's own:
+      // Shibuya's stand 30 m from its node. Named a scramble, it has signals.)
+      if (!j.sig) {
+        j.sig = true;
+        j.amber = Math.max(...j.arms.map(a => L[a.line].v || 11)) > 16 ? AMBER + 1 : AMBER;
+        for (const a of j.arms) a.sign = null;
+      }
+      j.arrow = false; // (the turns across go in the traffic's own phases: the walk takes the time an arrow would)
+      j.scramble = true; nScramble++;
+      // the crosswalks: the mapped ones, or the footways crossing the arms near the node
+      let segs = [], R = SCR_R;
+      if (o.lines && o.lines.length) {
+        segs = o.lines.map(q => [q[0][0], q[0][1], q[q.length - 1][0], q[q.length - 1][1]]);
+        R = Math.max(...segs.map(g => Math.max(Math.hypot(g[0] - j.x, g[1] - j.y), Math.hypot(g[2] - j.x, g[3] - j.y)))) + 3;
+      } else if (foot) {
+        const cand = [];
+        for (const fi of new Set(foot.near(j.x, j.y, 0, SCR_R + 12))) {
+          const f = foot.L[fi], m = f.pts.length / 3;
+          for (let k = 1; k < m; k++) cand.push([f.pts[3 * k - 3], f.pts[3 * k - 2], f.pts[3 * k], f.pts[3 * k + 1]]);
+        }
+        const keep = new Set();
+        for (const a of j.arms) crossAt(a, SCR_R, cand, (d, g) => keep.add(g));
+        segs = [...keep];
+      }
+      j.walks = segs; j.reach = R;
+      // each arm's stop line: back behind its outermost crosswalk
+      for (const a of j.arms) {
+        let far = 0;
+        crossAt(a, R, segs, d => { if (d > far) far = d; });
+        if (far > 2) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, far + SCR_W + 1));
+      }
+      j.green = [16, 12, 6, 32]; j.allred = 4; // (and longer all-red before the walk: a wide box to clear)
+      j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
+    }
+    const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
     // ------------------------------------------------ crossings between junctions
     // A pedestrian crossing mapped on a road away from any junction (opts.midCrossings: game.json's
     // props crossing_signals and crossing_zebra, from OSM's tags: pipeline/road_rules.py) is a
@@ -187,7 +256,7 @@ window.OEJunctions = (function () {
     const mids = new Map(); // line -> its crossings, along it
     let nMid = 0, nZebra = 0;
     const midAt = (flat, sig) => near(flat || [], (x, y) => {
-      if (nearestJ(x, y, 16)) return; // at a junction: its own walk signals, or none
+      if (nearestJ(x, y, 16) || scrambleNear(x, y)) return; // at a junction: its own walk signals, or none (a scramble's reach farther out)
       const q = net.nearest(x, y, 9);
       if (!q) return;
       const l = L[q.line];
@@ -419,7 +488,16 @@ window.OEJunctions = (function () {
     function walk(a) {
       const j = a.j;
       if (!j.sig) return true;
+      if (j.scramble) return j.ph === 3 && j.st === 'g' && j.t < j.green[3] - 6;
       return j.ph !== a.phase && j.ph !== 2 && j.st === 'g' && !(j.call && j.t > j.green[j.ph] - 5);
+    }
+    // the seconds a walker stepping out across arm a now has before the traffic may move (a
+    // scramble's walk, its flashing and its change; elsewhere as long as they like)
+    function walkLeft(a) {
+      const j = a.j;
+      if (!j.scramble) return Infinity;
+      if (j.ph !== 3) return 0;
+      return j.st === 'g' ? j.green[3] - j.t + j.amber + j.allred : j.st === 'y' ? j.amber - j.t + j.allred : j.allred - j.t;
     }
     // a walker waits to cross arm a: the button calls the phase that lets them
     function call(a) {
@@ -437,6 +515,7 @@ window.OEJunctions = (function () {
       const j = a.j;
       if (!j.sig) return;
       if (j.ph === a.phase && j.st === 'g') { j.hold = frame; return; }
+      if (j.scramble) return; // (a scramble keeps its order: its walk is never cut short or skipped, its crowd out on the road or waiting for it)
       if (j.ph !== a.phase && j.st === 'g' && j.t >= MIN_G) { j.st = 'y'; j.t = 0; j.nxt = a.phase; dirty.add(j); } // (its phase next: not the arrow's)
       else if (j.st !== 'g' && j.nxt !== a.phase && j.ph !== a.phase) j.nxt = a.phase; // (changing already: to its phase next)
     }
@@ -445,7 +524,8 @@ window.OEJunctions = (function () {
     function toGreen(a) {
       const j = a.j;
       if (!j.sig || light(a) === 'g') return 0;
-      const amber = j.amber || AMBER, change = amber + ALLRED;
+      const amber = j.amber || AMBER, change = amber + (j.allred || ALLRED);
+      if (j.ph === 3) return walkLeft(a) + (j.nxt === a.phase ? 0 : j.green[0] + change); // (a scramble's walk runs its course)
       if (j.st === 'g') return Math.max(0, MIN_G - j.t) + change; // the other road's green
       if (j.st === 'y') return amber - j.t + ALLRED + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
       return Math.max(0, ALLRED - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
@@ -560,18 +640,18 @@ window.OEJunctions = (function () {
         // the phase after this one: the main road's (0), its arrow (2) when someone waits to turn
         // across, the cross road's (1); a call from another phase ends this one's green
         const D = j.seen >= frame - 2 ? j.demand : NONE, arrowCall = j.arrow && D[2];
-        const call = j.mid != null ? (j.ph === 0 ? D[1] : 1) : j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1; // (a crossing's walk, once called, always ends)
+        const call = j.scramble ? 1 : j.mid != null ? (j.ph === 0 ? D[1] : 1) : j.ph === 0 ? D[1] || arrowCall : j.ph === 1 ? D[0] || arrowCall : 1; // (a crossing's walk, once called, always ends)
         j.call = !!call;
         const wasWalk = j.walkNow;
         const held = j.hold != null && j.hold >= frame - 2 && j.ph !== 2 && j.t < j.green[j.ph] + HOLD; // (a vehicle with priority coming: held green for it)
         if (j.st === 'g' && !held) {
           if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
             j.st = 'y'; j.t = 0; dirty.add(j);
-            j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
+            j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); }
-        j.walkNow = !(j.call && j.t > j.green[j.ph] - 5);
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 8)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road: j.busy, actors.js)
+        j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > j.green[j.ph] - 5);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
       if (heads) heads.update(dirty);
@@ -585,6 +665,7 @@ window.OEJunctions = (function () {
       let n = 0;
       for (const j of J) {
         if (!j.sig) continue;
+        if (j.scramble) { n += scrambleCrossings(j, fnet, out); continue; }
         for (const a of j.arms) {
           const l = L[a.line], d1 = Math.min(l.len, a.back + 2.5);
           R2.length = 0;
@@ -613,6 +694,42 @@ window.OEJunctions = (function () {
       out.count = n;
       return out;
     }
+    // a scramble's crossings: the stretches of the crowd's footways that run along its crosswalks
+    // (j.walks), each one crossing from kerb to kerb, the diagonals too; its walkers wait at either end
+    function scrambleCrossings(j, fnet, out) {
+      const F = fnet.L, a = j.arms.find(q => q.in) || j.arms[0], W = j.walks || [];
+      let n = 0;
+      j.spans = [];
+      const on = (x, y, hx, hy) => W.some(g => {
+        const ex = g[2] - g[0], ey = g[3] - g[1], L2 = ex * ex + ey * ey;
+        if (L2 < 1) return false;
+        if (Math.abs(hx * ex + hy * ey) < 0.8 * Math.sqrt(L2)) return false; // (along it, not across its end)
+        const t = ((x - g[0]) * ex + (y - g[1]) * ey) / L2;
+        return t > -0.02 && t < 1.02 && Math.abs((x - g[0]) * ey - (y - g[1]) * ex) / Math.sqrt(L2) < SCR_W;
+      });
+      for (const fi of new Set(fnet.near(j.x, j.y, 0, j.reach + 12))) {
+        const f = F[fi], spans = [];
+        let s0 = -1, last = -1;
+        for (let s = 0; s <= f.len + 1e-6; s += 0.5) {
+          fnet.at(fi, s, tmp);
+          if (Math.hypot(tmp.x - j.x, tmp.y - j.y) > j.reach || !on(tmp.x, tmp.y, tmp.hx, tmp.hy)) continue;
+          if (s0 < 0 || s - last > 1.5) { if (s0 >= 0) spans.push([s0, last]); s0 = s; }
+          last = s;
+        }
+        if (s0 >= 0) spans.push([s0, last]);
+        for (const [p, q] of spans) {
+          if (q - p < 3) continue;
+          // (and the crosswalk kerb to kerb, for the scramble's own crowd: once, however many footways run along it)
+          const A = fnet.at(fi, p, {}), B = fnet.at(fi, q, {});
+          if (!j.spans.some(w => Math.min(Math.hypot(w[0] - A.x, w[1] - A.y) + Math.hypot(w[3] - B.x, w[4] - B.y), Math.hypot(w[0] - B.x, w[1] - B.y) + Math.hypot(w[3] - A.x, w[4] - A.y)) < 5)) j.spans.push([A.x, A.y, A.z, B.x, B.y, B.z]);
+          if (!out.has(fi)) out.set(fi, []);
+          out.get(fi).push({ s: (p + q) / 2, a, kerb: (q - p) / 2 + 0.3, scramble: j });
+          out.get(fi).scramble = true; // (a footway the crowd spreads out on: actors.js)
+          n++;
+        }
+      }
+      return n;
+    }
     // the arm a car on `line` heading for its end `end` comes up to, or null (not a junction, or inside one)
     const armAt = (line, end) => { const a = armOf.get(line * 2 + end); if (!a || !a.in) return null; if (!a.j.ready) prepare(a.j); return a; };
     // ------------------------------------------------ the signal heads
@@ -624,12 +741,12 @@ window.OEJunctions = (function () {
     }
     function stats() {
       const sj = J.filter(j => j.sig && j.mid == null);
-      return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra,
+      return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra, scrambles: nScramble,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
-    return { J, midsOn, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, midsOn, armAt, exits, choose, light, arrow, walk, walkLeft, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
@@ -666,7 +783,9 @@ window.OEJunctions = (function () {
         list.push({ a, x: px, y: py, z: gz(px, py), h, mast, side });
         // the far one, across the junction on the other side, for the same arm
         if (S.far && a.j.arms.length >= 3) {
-          const far = a.back + Math.max(...a.j.arms.filter(b => b !== a).map(b => b.back)) + Math.min(14, 2 * Math.hypot(a.x - a.j.x, a.y - a.j.y) + 2);
+          // (across a scramble's wide box: to the arm opposite, its stop line set back behind its crosswalk)
+          const opp = a.j.scramble ? a.j.arms.filter(b => b !== a).reduce((m, b) => (Math.abs(angle(b.out, a.out)) > Math.abs(angle(m.out, a.out)) ? b : m)) : null;
+          const far = opp ? a.back + opp.back : a.back + Math.max(...a.j.arms.filter(b => b !== a).map(b => b.back)) + Math.min(14, 2 * Math.hypot(a.x - a.j.x, a.y - a.j.y) + 2);
           const fx = tmp.x + hx * far + hy * kerb * side, fy = tmp.y + hy * far - hx * kerb * side;
           if (net.nearest(fx, fy, 2.2)) continue; // that would stand in a road
           list.push({ a, x: fx, y: fy, z: gz(fx, fy), h, mast: 0, side: -side });
@@ -831,7 +950,7 @@ window.OEJunctions = (function () {
     lamp.forEach((a, i) => of(a.j).L.push(i));
     arrows.forEach((A, i) => of(A.o.a.j).A.push(i));
     peds.forEach((o, i) => of(o.a.j).P.push(i));
-    const flashing = j => j.st === 'g' && j.walkNow === false; // (its walk is over, its red figures flash)
+    const flashing = j => j.st === 'g' && j.walkNow === false && (!j.scramble || j.ph === 3); // (its walk is over, its red figures flash)
     let first = true, lastBlink = null;
     // dirty: the junctions whose signals changed (all of them the first time)
     function update(dirty = null) {
@@ -869,7 +988,7 @@ window.OEJunctions = (function () {
       if (ch2) for (const M of arrL) M.instanceColor.needsUpdate = true;
       ch2 = false;
       if (peds.length) each(i => {
-        const a = peds[i].a, w = walk(a), held = !w && a.j.ph !== a.phase && a.j.st === 'g', s = w ? 'g' : held && !blink ? 'o' : 'r';
+        const a = peds[i].a, w = walk(a), held = !w && (a.j.scramble ? a.j.ph === 3 : a.j.ph !== a.phase) && a.j.st === 'g', s = w ? 'g' : held && !blink ? 'o' : 'r';
         if (pShown[i] === s) return;
         pShown[i] = s; ch2 = true;
         const R = s === 'r' ? WALK.r : WALK.off, G = s === 'g' ? WALK.g : WALK.off;
@@ -892,7 +1011,8 @@ window.OEJunctions = (function () {
     function setNight(night) { glowMat.opacity = 0.12 + 0.88 * night; glowMat.size = 1.4 + 1.6 * night; }
     setNight(0);
     update();
-    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list };
+    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list,
+      walkShown: j => peds.map((o, i) => (o.a.j === j ? pShown[i] : null)).filter(v => v != null) }; // (what a junction's walk signals show: 'g', 'r', or 'o' flashing off)
   }
 
   return { create, STYLES, RANK, lanesOf, shiftOf };
