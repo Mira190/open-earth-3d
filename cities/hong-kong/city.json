@@ -613,5 +613,6 @@
     "beams": ["bank_of_china", "hsbc", "ifc2", "central_plaza", "icc"],
     "lasers": [["icc", "ifc2"], ["icc", "bank_of_china"], ["icc", "central_plaza"]],
     "note": "A Symphony of Lights has run at 8 pm nightly since 2004, with lights on some 40 buildings on both sides of the harbour (Wikipedia; Tourism Commission). In February 2026 the government said it would be retired in the second half of 2026 (Hong Kong Free Press, 27 February 2026); it was still running in September. The beams, lasers and colours here are illustrative, not the show's choreography."
-  }
+  },
+  "trees": {"mix": {"fig": 0.4, "evergreen": 0.35, "camphor": 0.15, "palm": 0.1}, "woods": {"evergreen": 0.75, "camphor": 0.15, "fig": 0.1}, "note": "Species are not mapped; the mix is a guess. The streets' and parks' big trees are Chinese banyans (Ficus microcarpa; the fig stands in), with camphors and palms; the hills' woods are secondary evergreen broadleaf forest (Schima, Machilus and the like: the evergreen species)."}
 }

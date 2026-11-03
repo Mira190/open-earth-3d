@@ -3,15 +3,30 @@
 // the camera, a sparser one further off, a trunk and crown hull beyond. Each mapped tree
 // takes a species from the city's mix by a hash of its position, a size from its height and
 // a turn of its own. The trees planted from a wood's canopy (pipeline/woods.py) come after the
-// mapped ones, sized by the height the canopy model measured, in the city's mix without its palms,
-// a share of them left out on a small device. The wind sways the crowns and flutters the leaves, the leaf cards cut
-// their shadows out, and jacarandas flower in late spring.
+// mapped ones, sized by the height the canopy model measured, in the city's woods mix (its own mix
+// without its palms if it has none), a share of them left out on a small device. A city's areas (a
+// park's or a precinct's outline, or a circle) give the trees there a mix of their own: the black
+// pines of a palace lawn, the cedars and camphors of a shrine wood. The wind sways the crowns and
+// flutters the leaves, the leaf cards cut their shadows out, jacarandas flower in late spring, and
+// maples, ginkgos and zelkovas turn in autumn.
 'use strict';
 window.OETrees = (function () {
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   const hash = (x, y) => { const s = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return s - Math.floor(s); };
-  // each species' trunk radius above its flare (m, at full size: blender/build_trees.py r0)
+  // each species' trunk radius above its flare (m, at full size: blender/build_trees.py r0), for a
+  // trees.json older than its trunk_r
   const TRUNK = { plane: 0.36, elm: 0.34, gum: 0.4, fig: 0.85, jacaranda: 0.26, palm: 0.42, maple: 0.2 };
+  // the leaves' autumn colour, per species with an autumn_colour (trees.json), as a multiple of the leaf's
+  // own lightness: the maple keeps its crimson-to-gold range below; the ginkgo goes a clear gold, the zelkova rust
+  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36] };
+  const inPoly = (x, y, P) => {
+    let c = false;
+    for (let i = 0, j = P.length - 1; i < P.length; j = i++) {
+      const [xi, yi] = P[i], [xj, yj] = P[j];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+    }
+    return c;
+  };
 
   async function load(base = 'assets/trees/') {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
@@ -23,13 +38,14 @@ window.OETrees = (function () {
   // the colour attribute carries ambient occlusion (r), how far the wind moves a vertex (g)
   // and a flutter phase (b); renamed so no material reads it as a colour
   const VERT_HEAD = `#include <common>
-attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vMaple; varying float vTurn;`;
-  // the jacaranda's bloom cell (column 1, row 1 of the atlas; glTF v runs down) swaps to its
-  // leaf cell (column 0) out of season
-  // the maple's cell (column 3, row 1) turns red in autumn (uAutumn, in the fragment shader)
+attribute vec4 tc; uniform float uWind; uniform float uBloom; varying float vAO; varying float vCell; varying float vTurn;`;
+  // the atlas cell a leaf card shows (CELLS columns x ROWS; glTF v runs down): the jacaranda's bloom
+  // cell swaps to its leaf cell, one to the left, out of season; the cells that turn in autumn are
+  // coloured in the fragment shader (uAutumn)
   const VERT_UV = `vec2 tuv = uv;
-vMaple = tuv.y > 0.5 && tuv.x > 0.75 ? 1.0 : 0.0;
-if (uBloom < 0.5 && tuv.y > 0.5 && tuv.x > 0.25 && tuv.x < 0.5) tuv.x -= 0.25;
+float cell = floor(tuv.x * ATLAS_COLS) + floor(tuv.y * ATLAS_ROWS) * ATLAS_COLS;
+vCell = cell;
+if (uBloom < 0.5 && abs(cell - CELL_BLOOM) < 0.5) tuv.x -= 1.0 / ATLAS_COLS;
 #define uv tuv
 #include <uv_vertex>
 #undef uv`;
@@ -44,24 +60,39 @@ transformed += normal * sin(uWind * 6.0 + tc.b * 6.2832 + ph) * 0.05 * tc.g;
 #endif
 vAO = tc.r;
 vTurn = fract(sin(dot(ip.xz, vec2(12.9898, 78.233))) * 43758.5453);`;
-  function shader(U, leaves, depth) {
+  function shader(U, leaves, depth, A) {
     return sh => {
-      sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uAutumn = U.uAutumn;
-      if (leaves) sh.defines = Object.assign(sh.defines || {}, { LEAVES: '' });
+      sh.uniforms.uWind = U.uWind; sh.uniforms.uBloom = U.uBloom; sh.uniforms.uAutumn = U.uAutumn; sh.uniforms.uFall = U.uFall;
+      sh.defines = Object.assign(sh.defines || {}, { ATLAS_COLS: A.cols.toFixed(1), ATLAS_ROWS: A.rows.toFixed(1), CELL_BLOOM: A.bloom.toFixed(1), CELL_MAPLE: A.maple.toFixed(1), ATLAS_CELLS: A.cols * A.rows });
+      if (leaves) sh.defines.LEAVES = '';
       sh.vertexShader = sh.vertexShader.replace('#include <common>', VERT_HEAD).replace('#include <uv_vertex>', VERT_UV).replace('#include <begin_vertex>', VERT_WIND);
       if (depth) return;
       sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying float vAO; varying float vMaple; varying float vTurn; uniform float uAutumn;')
+        .replace('#include <common>', '#include <common>\nvarying float vAO; varying float vCell; varying float vTurn; uniform float uAutumn; uniform vec3 uFall[ATLAS_CELLS];')
         .replace('#include <map_fragment>', `#include <map_fragment>
+#if defined(LEAVES) && defined(USE_MAP)
+// a leaf card's alpha, averaged down the mip chain, falls under the cut-out threshold and thin leaves (a
+// she-oak's threads, a palm's leaflets, a jacaranda's) vanish with distance: scale it up with the mip level
+// (Ben Golus, "Anti-aliased Alpha Test: The Esoteric Alpha To Coverage", 2017)
+{ vec2 tx = vMapUv * vec2(textureSize(map, 0)); float d = max(dot(dFdx(tx), dFdx(tx)), dot(dFdy(tx), dFdy(tx)));
+  diffuseColor.a *= 1.0 + max(0.0, 0.5 * log2(d)) * 0.25; }
+#endif
 diffuseColor.rgb *= mix(0.5, 1.0, vAO);
 #ifdef LEAVES
 // each maple its own turn: most a deep crimson, some scarlet, a few orange and gold, one in eight still
 // half green; the leaves keep their own light and dark
-if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
-  vec3 red = mix(vec3(1.75, 0.36, 0.26), vec3(1.95, 0.62, 0.22), smoothstep(0.45, 0.85, vTurn));
-  red = mix(red, vec3(1.7, 1.15, 0.3), smoothstep(0.88, 0.97, vTurn));
-  float k = uAutumn * (vTurn < 0.12 ? 0.45 : 1.0);
-  diffuseColor.rgb = mix(diffuseColor.rgb, red * l, k); }
+if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int ci = int(vCell + 0.5);
+  if (abs(vCell - CELL_MAPLE) < 0.5) {
+    vec3 red = mix(vec3(1.75, 0.36, 0.26), vec3(1.95, 0.62, 0.22), smoothstep(0.45, 0.85, vTurn));
+    red = mix(red, vec3(1.7, 1.15, 0.3), smoothstep(0.88, 0.97, vTurn));
+    float k = uAutumn * (vTurn < 0.12 ? 0.45 : 1.0);
+    diffuseColor.rgb = mix(diffuseColor.rgb, red * l, k);
+  } else if (ci >= 0 && ci < ATLAS_CELLS && uFall[ci].r > 0.0) {
+    // a ginkgo or a zelkova: each tree a little ahead of or behind the others, one in eight still half green
+    float k = uAutumn * (vTurn < 0.12 ? 0.4 : 0.9 + 0.1 * vTurn);
+    diffuseColor.rgb = mix(diffuseColor.rgb, uFall[ci] * mix(0.9, 1.1, vTurn) * l, k);
+  }
+}
 #endif`)
         .replace('#include <aomap_fragment>', '#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= vAO; reflectedLight.indirectSpecular *= vAO;');
       // the cards' normals point out of the crown on both faces: lit as a mass, never flipped
@@ -73,19 +104,37 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
   // mix: species weights; south: the city is in the southern hemisphere (for the flowering season);
   // measured: the index from which the trees are a wood's, with measured heights; keep: the share
   // of those drawn
-  // areas: [{at: [x, y], radius, mix}], places whose trees take their own mix (a garden's maples)
-  function create(world, lib, list, { mix = null, south = true, measured = Infinity, keep = 1, areas = [] } = {}) {
-    const I = lib.info, n = list.length / 4, U = { uWind: { value: 0 }, uBloom: { value: 0 }, uAutumn: { value: 0 } };
+  // areas: [{at: [x, y], radius, mix} or {xy: [[x, y], ...], mix, woods}], places whose trees take their
+  // own mix (a garden's maples, a palace lawn's pines): mix for every tree there, woods (if given) for
+  // those planted from the canopy; woods: the mix of the trees planted from a wood's canopy (the city's
+  // own without its palms if not given)
+  function create(world, lib, list, { mix = null, woods = null, south = true, measured = Infinity, keep = 1, areas = [] } = {}) {
+    const I = lib.info, n = list.length / 4;
+    const AT = I.atlas || {}, cells = AT.cells || {};
+    const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, maple: cells.maple ?? 7 };
+    const fall = Array.from({ length: A.cols * A.rows }, () => new THREE.Vector3());
+    for (const [sp, f] of Object.entries(FALL)) if (I.species[sp] && cells[sp] != null && cells[sp] < fall.length) fall[cells[sp]].set(...f);
+    const U = { uWind: { value: 0 }, uBloom: { value: 0 }, uAutumn: { value: 0 }, uFall: { value: fall } };
     const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
     // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
-    const zones = (areas || []).filter(a => a && a.mix && a.at && a.radius > 0);
-    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix)))].filter(k => I.species[k] && !city.some(([c]) => c === k));
+    const zones = (areas || []).filter(a => a && a.mix && ((a.at && a.radius > 0) || (a.xy && a.xy.length > 2)));
+    for (const a of zones) if (a.xy) { // its bounding box, to test a tree against it only when it is near
+      const xs = a.xy.map(p => p[0]), ys = a.xy.map(p => p[1]);
+      a.box = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+    }
+    const inZone = (a, x, y) => a.xy ? x >= a.box[0] && y >= a.box[1] && x <= a.box[2] && y <= a.box[3] && inPoly(x, y, a.xy)
+      : (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius;
+    const woodMix = Object.entries(woods || {}).filter(([k, w]) => I.species[k] && w > 0);
+    const extra = [...new Set(zones.flatMap(a => Object.keys(a.mix).concat(Object.keys(a.woods || {}))).concat(woodMix.map(([k]) => k)))]
+      .filter(k => I.species[k] && !city.some(([c]) => c === k));
     const weights = city.concat(extra.map(k => [k, 0]));
-    // a wood has no palms (unless the city has nothing else)
+    // a wood has no palms (unless the city has nothing else), unless the city gives its woods a mix of their own
     const cityW = weights.map(([, w]) => w), total = cityW.reduce((a, w) => a + w, 0);
     const woodTotal = weights.reduce((a, [k, w]) => a + (k === 'palm' ? 0 : w), 0) || total;
-    const woodW = weights.map(([k, w]) => (k === 'palm' && woodTotal !== total ? 0 : w));
+    const woodW = woodMix.length ? weights.map(([k]) => Math.max(0, +(woods[k] || 0)))
+      : weights.map(([k, w]) => (k === 'palm' && woodTotal !== total ? 0 : w));
     const zoneW = zones.map(a => weights.map(([k]) => Math.max(0, +a.mix[k] || 0)));
+    const zoneWood = zones.map((a, z) => (a.woods ? weights.map(([k]) => Math.max(0, +a.woods[k] || 0)) : zoneW[z]));
     // a species by a hash of the position, from a weight per species (never one weighted 0)
     const pick = (u, W) => {
       const tot = W.reduce((a, w) => a + w, 0);
@@ -97,18 +146,18 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
     let atlas = null;
     lib.gltf.scene.traverse(o => { if (o.isMesh && o.material.name === 'Leaves') atlas = o.material.map; });
     const leafMat = new THREE.MeshStandardMaterial({ map: atlas, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.82 });
-    leafMat.onBeforeCompile = shader(U, true, false);
+    leafMat.onBeforeCompile = shader(U, true, false, A);
     const leafDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking, map: atlas, alphaTest: 0.5, side: THREE.DoubleSide });
-    leafDepth.onBeforeCompile = shader(U, true, true);
+    leafDepth.onBeforeCompile = shader(U, true, true, A);
     const solidDepth = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
-    solidDepth.onBeforeCompile = shader(U, false, true);
+    solidDepth.onBeforeCompile = shader(U, false, true, A);
     const mats = {};
     const matFor = name => {
       if (name === 'Leaves') return leafMat;
       if (!mats[name]) {
         const [kind, sp] = name.split('_'), S = I.species[sp];
         mats[name] = new THREE.MeshStandardMaterial({ color: kind === 'Bark' ? lin(S.bark) : lin(S.colour).multiplyScalar(0.8), roughness: kind === 'Bark' ? 0.92 : 0.88 });
-        mats[name].onBeforeCompile = shader(U, false, false);
+        mats[name].onBeforeCompile = shader(U, false, false, A);
       }
       return mats[name];
     };
@@ -119,8 +168,8 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
       const wood = i >= measured;
-      const zi = zones.findIndex(a => (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius);
-      const k = pick(hash(x, y), zi >= 0 ? zoneW[zi] : wood ? woodW : cityW);
+      const zi = zones.findIndex(a => inZone(a, x, y));
+      const k = pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
@@ -149,7 +198,9 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
         im.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
         im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(count[k] * 3), 3);
         im.customDepthMaterial = leaves ? leafDepth : solidDepth;
-        im.castShadow = true; im.receiveShadow = true;
+        // the far crown hulls stand 200-900 m off, mostly past the sun's shadow map: they would only be drawn into it
+        // for nothing (on Hong Kong's wooded hill they are half the trees' triangles), so they cast none
+        im.castShadow = lod < 2; im.receiveShadow = true;
         im.frustumCulled = false;
         im.count = 0;
         world.add(im);
@@ -182,12 +233,15 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
     }
     return {
       n, species: names, count,
+      // the species of tree i (an index into species) and where it stands (x, y local metres), for the tools
+      kind: i => which[i], at: i => (M[16 * i] === 0 && M[16 * i + 2] === 0 ? null : [list[4 * i] / 10, list[4 * i + 1] / 10]), // (null: not drawn)
       // the foot of each tree that is drawn and its trunk's radius: x, y, z, r (local metres)
       trunks() {
         const out = [];
         for (let i = 0; i < n; i++) {
           const s = Math.hypot(M[16 * i], M[16 * i + 2]);
-          if (s > 0) out.push(pos[3 * i], -pos[3 * i + 2], pos[3 * i + 1] - 4, (TRUNK[names[which[i]]] || 0.35) * s);
+          const S = I.species[names[which[i]]];
+          if (s > 0) out.push(pos[3 * i], -pos[3 * i + 2], pos[3 * i + 1] - 4, ((S && S.trunk_r) || TRUNK[names[which[i]]] || 0.35) * s);
         }
         return out;
       },

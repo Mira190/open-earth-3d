@@ -65,6 +65,20 @@ class City:
             os.makedirs(d, exist_ok=True)
 
 
+def trees_cfg(city):
+    """city.json's "trees" as scene.json carries it: each area named in cities/<id>/tree_areas.json
+    (pipeline/tree_areas.py) with its outline as "xy"."""
+    cfg = json.loads(json.dumps(city.cfg.get("trees", {})))
+    path = city.file("tree_areas.json")
+    if os.path.exists(path):
+        found = json.load(open(path, encoding="utf8")).get("areas", {})
+        for a in cfg.get("areas", []):
+            if a.get("name") in found:
+                a["xy"] = found[a["name"]]["xy"]
+                a.setdefault("osm", found[a["name"]]["osm"])
+    return cfg
+
+
 def polygons(geom):
     if isinstance(geom, Polygon):
         return [geom]

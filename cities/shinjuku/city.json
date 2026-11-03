@@ -61,10 +61,22 @@
   },
   "trees": {
     "mix": {
-      "elm": 0.6,
-      "plane": 0.4
+      "zelkova": 0.3,
+      "ginkgo": 0.3,
+      "plane": 0.2,
+      "camphor": 0.1,
+      "evergreen": 0.1
     },
-    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey. Japanese maples (momiji) stand round Shinjuku Gyoen's Japanese garden and on its Momiji-yama by the lower pond (the garden's map), red from mid November.",
+    "woods": {
+      "evergreen": 0.25,
+      "camphor": 0.2,
+      "zelkova": 0.2,
+      "plane": 0.1,
+      "ginkgo": 0.1,
+      "maple": 0.08,
+      "sugi": 0.07
+    },
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py).",
     "areas": [
       {
         "name": "Shinjuku Gyoen's Japanese garden",
@@ -90,6 +102,45 @@
           "maple": 0.55,
           "elm": 0.45
         }
+      },
+      {
+        "name": "Shinjuku Gyoen",
+        "find": "新宿御苑",
+        "mix": {
+          "plane": 0.25,
+          "zelkova": 0.15,
+          "camphor": 0.15,
+          "evergreen": 0.15,
+          "pine": 0.1,
+          "ginkgo": 0.1,
+          "sugi": 0.1
+        },
+        "note": "The French formal garden's plane avenues, the Japanese garden's pines, the Himalayan cedars (sugi stands in) and camphors."
+      },
+      {
+        "name": "Meiji Jingu Gaien",
+        "find": "明治神宮外苑",
+        "mix": {
+          "ginkgo": 0.55,
+          "zelkova": 0.15,
+          "plane": 0.15,
+          "camphor": 0.15
+        },
+        "note": "The ginkgo avenue to the Seitoku Memorial Picture Gallery, gold in late November."
+      },
+      {
+        "name": "Meiji Jingu",
+        "find": "明治神宮",
+        "mix": {
+          "camphor": 0.3,
+          "evergreen": 0.35,
+          "sugi": 0.1,
+          "zelkova": 0.1,
+          "ginkgo": 0.05,
+          "pine": 0.05,
+          "maple": 0.05
+        },
+        "note": "The planted shrine forest, now mostly camphor and the evergreen oaks and shii of the laurel forest."
       }
     ]
   },

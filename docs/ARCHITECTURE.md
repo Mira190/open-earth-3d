@@ -597,9 +597,10 @@ Two more scripts build what every city shares, from code, with no stock assets:
   shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
-- `blender/build_trees.py`: six tree species grown from points in their crown
-  shapes, with a leaf atlas it draws itself, in three levels of detail, into
-  `web/assets/trees/` with `trees.json`.
+- `blender/build_trees.py`: fifteen tree species grown from points in their
+  crown shapes, with a leaf atlas it draws itself (4 x 4 cells), in three levels
+  of detail, into `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
+  (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
 
 ## Woods and park canopy
 
@@ -646,7 +647,80 @@ thousands (issue #54). `pipeline/woods.py` fixes this for every city:
 
 Considered and not adopted: drawing the canopy from the photo alone (its
 greenness picks up lawns and misses trees in shade), and the 10 m global canopy
-height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees. The
-species are still the city's mix of the six shared trees (`web/assets/trees/`):
-no pine, zelkova or camphor yet.
+height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees.
+
+### Local species (issue #69)
+
+The woods were drawn from six street trees, so the Kyoto Gyoen, Meiji Jingu and
+the palace gardens were elms and planes, and the pale plane trunks read as
+grey-green columns in a wood's blue shade. The shared set now has the trees those
+places are known for, grown by the same code from new crown shapes (a cone with
+its trunk carried through as a leader; flat pads in tiers) and leaf cells drawn
+for them (paired needles in tufts, a cedar's awls, the ginkgo's fan, a she-oak's
+jointed threads):
+
+| Species | Where | Autumn |
+| --- | --- | --- |
+| Japanese black pine (kuromatsu) | the Gyoen's and Kokyo Gaien's lawns, Hama-rikyu, castle and temple gardens | |
+| Japanese cedar (sugi; stands for hinoki) | shrine woods | |
+| Camphor (kusunoki) | shrine trees, Meiji Jingu, Osaka | |
+| Zelkova (keyaki) | avenues and precincts | rust, from mid November |
+| Ginkgo (icho) | street rows (Midosuji, Jingu Gaien), temple precincts | gold, late November |
+| Evergreen broadleaf (Schima, Machilus; shii and kashi) | Hong Kong's hills, the laurel forest of the shrine groves | |
+| Pisonia, coastal she-oak (casuarina) | the coral cays (below) | |
+
+![The shared trees](images/trees/lineup.jpg)
+![Late November: ginkgo, maple, zelkova](images/trees/lineup_autumn.jpg)
+
+- **Mixes:** a city's `trees.mix` is its streets', `trees.woods` the mix of the
+  trees planted from a wood's canopy (the street mix without its palms if it has
+  none), and `trees.areas` the places with a mix of their own. An area names its
+  place in OpenStreetMap (`find`, or `osm`); `pipeline/tree_areas.py` looks up
+  its outline through Nominatim (ODbL), simplifies it to about 4 m into
+  `cities/<id>/tree_areas.json`, and `scene.json` carries it (`cityctx.trees_cfg`).
+  `web/trees.js` tests each tree against the outlines (a bounding box first). The
+  Japanese maps have the Gyoen, Nijo-jo, the Honganji, Kokyo Gaien (about 2,000
+  black pines), the East Gardens and the palace woods, Hibiya, Shiba Park,
+  Hama-rikyu, Shinjuku Gyoen, Jingu Gaien's ginkgo avenue, Meiji Jingu, Yoyogi
+  Park, Senso-ji, Kanda Myojin and Osaka Castle Park. Hong Kong's hills are
+  evergreen broadleaf, its streets banyans (the fig stands in), camphors and palms.
+  Species are still not mapped tree by tree: every mix is a guess from the
+  cities' street-tree surveys and the parks' own guides.
+- **Autumn:** web/trees.js finds a leaf card's atlas cell from its uv; the
+  maples keep their range of reds, the ginkgos go gold and the zelkovas rust
+  (`FALL`), each tree a little ahead of or behind the others, and the far crown
+  hulls follow `autumn_colour`.
+- **Thin leaves at a distance:** a card's alpha averaged down the mip chain fell
+  under the cut-out and the she-oak's threads, the palm's leaflets and the
+  jacaranda's vanished past a few tens of metres; the leaf shader scales alpha up
+  with the mip level (Ben Golus, *Anti-aliased Alpha Test*, 2017), in the city
+  and on the reef.
+- **Plane bark** is warmer (`#a08f78`), so a plane wood's trunks stay bark in the
+  blue shade.
+
+### The coral cays
+
+Heron and Lady Elliot's pisonia and she-oaks and Green Island's vine forest were
+the reef renderer's spheres on cylinders (`web/reef/life/geo.js`). Within 160 m of
+the camera they are now the shared trees (`web/reef/life/flora.js` `SHARED`,
+`geo.sharedTree`, `mats.cards`): the full tree within 55 m, the sparse one beyond;
+the far rings keep the reef's own crowns and spindles. The site's leaf albedo
+tints the atlas (over the species' own colour). The life module waits for them
+while it loads, so they do not pop in. On Heron Island the trees drawn from the
+beach are 1.08 M triangles (1.09 M before), from 30 m up 0.46 M (0.47 M); on Lady
+Elliot 0.74 M (0.92 M).
+
+### What the trees cost
+
+`tools/woods_probe.js` counts the tree triangles drawn on foot where the woods are
+thickest, and the share of them drawn again into the sun's shadow map. The far
+crown hulls (200-900 m) no longer cast shadows: they stood mostly outside the
+shadow map and were drawn into it for nothing. Twigs are three-sided tubes and
+limbs six (a fifth fewer triangles in every full tree). Under llvmpipe, at the
+desktop (high and medium draw the same trees) and low tiers:
+
+WOODS_TABLE
+
+Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
+llvmpipe gives (seconds) say nothing about a device.
 
