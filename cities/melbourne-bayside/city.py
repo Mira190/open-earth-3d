@@ -22,8 +22,16 @@ Parametric landmarks (called by pipeline/landmarks.py):
                   published, so the face is scaled so that its open mouth is a 3.2 m doorway,
                   between two towers, at the entrance OpenStreetMap maps on the park's edge.
 
-Labels: the pier kiosk (1904, rebuilt after the 2003 fire) and Mr Moon are placed at their
-OpenStreetMap coordinates.
+  Pier kiosk      the pavilion at the end of St Kilda Pier (J. C. Morell for the Public Works
+                  Department, 1904; burnt in 2003 and rebuilt in 2005 to the original plans): a
+                  timber kiosk and observatory on its mapped platform at the pier's deck height, its
+                  ground floor of weatherboards and windows under a verandah, the balustraded
+                  upper deck, the observatory room on it and its lantern, cast-iron cresting and
+                  weathervane (Victorian Heritage Database; Wikipedia). No drawings are published:
+                  the 16 m by 9 m plan, the heights and the cream, green and red paint are taken
+                  from photographs.
+
+Labels: the pier kiosk and Mr Moon are placed at their OpenStreetMap coordinates.
 """
 import math
 
@@ -31,6 +39,7 @@ import numpy as np
 import shapely
 from shapely.geometry import LineString, Point
 
+import archkit as ak
 from meshkit import Mesh
 
 WALL_M, PITCH_DEG, PLINTH_M = 2.0, 35.0, 0.25
@@ -51,7 +60,13 @@ MATERIALS = {**{f"paint_{k}": {"color": v, "roughness": 0.72, "metalness": 0.0} 
              "moon_dark": {"color": "#2b2a33", "roughness": 0.6, "metalness": 0.0},
              "moon_red": {"color": "#c23a3a", "roughness": 0.5, "metalness": 0.0},
              "tower": {"color": "#e8d7b0", "roughness": 0.7, "metalness": 0.0},
-             "dome": {"color": "#d8a23a", "roughness": 0.4, "metalness": 0.4}}
+             "dome": {"color": "#d8a23a", "roughness": 0.4, "metalness": 0.4},
+             # the pier kiosk: cream weatherboards, dark green trim, a red iron roof; its windows lit after dark
+             "kiosk_wall": {"color": "#eee3c8", "roughness": 0.75, "metalness": 0.0, "emissive": "#fff0d6", "glow": 0.35},
+             "kiosk_trim": {"color": "#2f4a36", "roughness": 0.6, "metalness": 0.1},
+             "kiosk_roof": {"color": "#a4432e", "roughness": 0.5, "metalness": 0.35},
+             "kiosk_win": {"color": "#2a3036", "roughness": 0.2, "metalness": 0.3, "emissive": "#ffd59a", "glow": 0.9},
+             "kiosk_iron": {"color": "#2c2f30", "roughness": 0.5, "metalness": 0.6}}
 
 
 def adjust_building(b, cls, g, geoms, ctx):
@@ -129,7 +144,58 @@ def landmark_meshes(scene):
         scenic_railway(mesh, lm["luna_park"], lm.get("mr_moon"))
     if "mr_moon" in lm:
         mr_moon(mesh, lm["mr_moon"], lm.get("luna_park"))
-    return MATERIALS, list(meshes.values())
+    return MATERIALS, list(meshes.values()) + pier_kiosk(scene)
+
+
+KIOSK_DECK_M = 2.2  # the piers' deck (game.json pier_deck_m)
+
+
+def pier_kiosk(scene):
+    """The St Kilda Pier kiosk on the pier's end, at its label."""
+    x, y = scene["labels"]["St Kilda Pier kiosk"][:2]
+    K = ak.Kit("pier_kiosk", floodlit={"kiosk_wall", "kiosk_win"})
+    P = ak.Frame(x - 2.0, y, 0.0, KIOSK_DECK_M)
+    wall, trim, roof, win, iron = (K[m] for m in ("kiosk_wall", "kiosk_trim", "kiosk_roof", "kiosk_win", "kiosk_iron"))
+    L, W = 16.0, 9.0
+    hl, hw = L / 2, W / 2
+    # the ground floor: weatherboards and tall windows, a door in each end, the verandah's posts round it
+    ak.block(wall, P, -hl, hl, -hw, hw, 0.0, 3.8, top=False)
+    ring = ak.rect(-hl, hl, -hw, hw)
+    ak.ring_openings(win, P, ring, 0.9, 1.3, 2.2, 2.4)
+    for z in (0.0, 0.8, 3.6):
+        ak.band(trim, P, ring, z, out=0.06, h=0.2)
+    vo = 2.0  # the verandah's reach
+    for u in np.linspace(-hl - vo + 0.2, hl + vo - 0.2, 9):
+        for v in (-hw - vo + 0.2, hw + vo - 0.2):
+            trim.box(P(u, v, 0.0), P(u, v, 3.6), 0.16, 0.16)
+    for v in np.linspace(-hw - vo + 0.2, hw + vo - 0.2, 5)[1:-1]:
+        for u in (-hl - vo + 0.2, hl + vo - 0.2):
+            trim.box(P(u, v, 0.0), P(u, v, 3.6), 0.16, 0.16)
+    # the verandah's roof, a low hipped skirt of red iron, carrying the upper deck's floor
+    o = ak.rect(-hl - vo, hl + vo, -hw - vo, hw + vo)
+    for k in range(4):
+        a, b = o[k], o[(k + 1) % 4]
+        ia, ib = ak.rect(-hl, hl, -hw, hw)[k], ak.rect(-hl, hl, -hw, hw)[(k + 1) % 4]
+        roof.quad(P(*a, 3.6), P(*b, 3.6), P(*ib, 4.3), P(*ia, 4.3))
+    ak.block(wall, P, -hl, hl, -hw, hw, 4.3, 4.6)
+    ak.balustrade(trim, P, [(-hl, -hw), (hl, -hw), (hl, hw), (-hl, hw), (-hl, -hw)], 4.6, h=1.0)
+    # the observatory: a room on the deck with windows all round, its hipped roof, the lantern and its vane
+    ol, ow = 7.0, 5.0
+    ak.block(wall, P, -ol / 2, ol / 2, -ow / 2, ow / 2, 4.6, 7.6, top=False)
+    ak.ring_openings(win, P, ak.rect(-ol / 2, ol / 2, -ow / 2, ow / 2), 5.3, 1.1, 1.8, 1.7)
+    ak.band(trim, P, ak.rect(-ol / 2, ol / 2, -ow / 2, ow / 2), 7.4, out=0.25, h=0.3)
+    ak.hip_roof(K, P, ol, ow, 7.6, 2.2, over=0.7, lift=0.0, mat="kiosk_roof", trim="kiosk_trim", sag=0.0)
+    ak.block(wall, P, -1.1, 1.1, -1.1, 1.1, 9.4, 10.6, top=False)
+    ak.ring_openings(win, P, ak.rect(-1.1, 1.1, -1.1, 1.1), 9.6, 0.7, 0.8, 1.0)
+    roof.lathe([(KIOSK_DECK_M + 10.6, 1.6), (KIOSK_DECK_M + 12.4, 0.12)], P(0, 0, 0)[:2], segs=4)
+    iron.box(P(0, 0, 12.3), P(0, 0, 14.0), 0.08, 0.08)
+    iron.box(P(-0.6, 0, 13.6), P(0.6, 0, 13.6), 0.05, 0.25)  # the vane
+    # the cast-iron cresting along the verandah roof's ridge line, and finials at its corners
+    for (a, b) in zip(ak.rect(-hl, hl, -hw, hw), ak.rect(-hl, hl, -hw, hw)[1:] + ak.rect(-hl, hl, -hw, hw)[:1]):
+        iron.box(P(*a, 4.3), P(*b, 4.3), 0.05, 0.05)
+    for (u, v) in ak.rect(-hl - vo, hl + vo, -hw - vo, hw + vo):
+        iron.box(P(u, v, 3.6), P(u, v, 4.4), 0.1, 0.1)
+    return K.out()
 
 
 def frame(b):

@@ -5,12 +5,14 @@
 // a landmark's "front" or a hand-picked "at" spot in city.json.
 //   python3 -m http.server 8800 --directory web &
 //   node tools/arrival_probe.js osaka [names, comma-separated substrings] [radius m]
-// env: ARRIVALS='{"HEP FIVE": {"front": 154}}' tries "arrivals" entries before they go in city.json.
+// env: ARRIVALS='{"HEP FIVE": {"front": 154}}' tries "arrivals" entries before they go in city.json; SIZE=390x844
+// scores the views in a phone's frame (640x400 by default).
 const { chromium } = require('playwright');
 const [,, city = 'osaka', names = '', radius = '160'] = process.argv;
 (async () => {
   const b = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-  const p = await b.newPage({ viewport: { width: 640, height: 400 } });
+  const [vw, vh] = (process.env.SIZE || '640x400').split('x').map(Number);
+  const p = await b.newPage({ viewport: { width: vw, height: vh } });
   await p.addInitScript(() => { try { localStorage.setItem('oe3d-quality', 'low'); } catch (e) { /* storage blocked */ } });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 600000 });

@@ -2481,7 +2481,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // another script ("歌舞伎座"), whole; not a longer name that starts the same ("Town Hall Station" for "Town Hall")
     const toks = lm.name.toLowerCase().split(/\s+/), cjk = t => /[^\x00-\x7f]/.test(t), lead = toks.slice(0, Math.max(1, toks.findIndex(cjk))).join(' ');
     const words = new Set([lm.name.toLowerCase(), toks.some(cjk) ? lead : '', ...toks.filter(t => cjk(t) && t.length > 1)].filter(Boolean));
-    const named = id => { const m = B.b[id] && B.b[id][0]; return !!m && m.length > 1 && words.has(m.toLowerCase()); };
+    // or a name that ends in the label's words after a place's ("Tsim Sha Tsui Clock Tower" for "Clock Tower")
+    const tail = ' ' + lm.name.toLowerCase();
+    const named = id => { const m = B.b[id] && B.b[id][0] && B.b[id][0].toLowerCase(); return !!m && m.length > 1 && (words.has(m) || m.endsWith(tail)); };
     const ids = new Set(), near = new Map(), tall = new Set();
     for (let r = r0 - n; r <= r0 + n; r++) for (let c = c0 - n; c <= c0 + n; c++) {
       if (r < 0 || c < 0 || r >= DSM.ny || c >= DSM.nx) continue;
@@ -2492,8 +2494,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (d < 16 && DSM.data[r * DSM.nx + c] > g + Math.min(8, (top - g) * 0.3)) near.set(id, (near.get(id) || 0) + 1);
       if (d < 40 && DSM.data[r * DSM.nx + c] >= g + (top - g) * 0.6) tall.add(id); // its high part, whatever building the cells were drawn for
     }
+    // a landmark found by its name keeps to it and its unnamed parts: a neighbour named for something else is not
+    // its high part (Hong Kong's Cultural Centre behind the Clock Tower), and framing both crops a phone's narrow view
+    const byName = ids.size > 0;
     if (!ids.size && near.size) { const most = Math.max(...near.values()); for (const [id, k] of near) if (k >= most * 0.3) ids.add(id); }
-    for (const id of tall) ids.add(id);
+    for (const id of tall) if (!byName || !(B.b[id] && B.b[id][0] && B.b[id][0].length > 1)) ids.add(id);
     const cells = [];
     for (let r = r0 - n; r <= r0 + n; r++) for (let c = c0 - n; c <= c0 + n; c++) {
       if (r < 1 || c < 1 || r >= DSM.ny - 1 || c >= DSM.nx - 1) continue;

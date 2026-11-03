@@ -75,7 +75,7 @@
   "arrivals": {
     "Higashi Honganji": {"front": 90},
     "Nishi Hongwanji": {"front": 90},
-    "Nijo Castle": {"front": 90}
+    "Nijo Castle": {"at": [-985, 1097]}
   },
   "minor_labels": [
     "南座",

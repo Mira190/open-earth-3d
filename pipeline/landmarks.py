@@ -8,7 +8,8 @@ a landmark's screens and signs throw on the street after dark (web/night.js), wh
 [solid index, ...] names solids of the built city that have been pulled down since its survey:
 the viewer and the game neither draw them nor let them stand in the surface model (web/world.js),
 until the city's next build leaves them out itself.
-landmark_meshes may return a third item, more keys for landmarks.json: "props", street furniture
+landmark_meshes may return a third item, more keys for landmarks.json: "hidden", solids of the built city that a
+landmark mesh draws instead (not drawn, but kept in the surface model, as scene.json's hidden_solids); "props", street furniture
 drawn once per kind and instanced at every [x, y, z, heading(, scale across)] in "at", within
 "far" metres; "clip", regions ({ring, holes}) where the viewer does not draw the ground above
 the water (under paving, and in front of a seawall) (web/world.js); "seawalls", the face of a

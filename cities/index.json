@@ -17,6 +17,9 @@
       "lat": -37.8136,
       "lon": 144.9631,
       "status": "live",
+      "group": "Melbourne",
+      "district": "Central Melbourne",
+      "tagline": "Docklands, the Hoddle Grid and Southbank to the Shrine",
       "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects."
     },
     {
@@ -26,6 +29,9 @@
       "lat": -37.8918,
       "lon": 144.9755,
       "status": "live",
+      "group": "Melbourne",
+      "district": "Bayside",
+      "tagline": "St Kilda, Elwood and Brighton on Port Phillip",
       "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset."
     },
     {
@@ -214,6 +220,10 @@
     }
   ],
   "groups": {
+    "Melbourne": {
+      "kind": "city",
+      "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
+    },
     "Tokyo": {
       "native": "東京",
       "kind": "metro",

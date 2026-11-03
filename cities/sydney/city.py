@@ -246,8 +246,16 @@ STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "b
 
 # ---------------------------------------------------------------- build_scene hooks
 
+BRIDGEPORT = "w387782067"  # 38-42 Bridge Street
+
+
 def adjust_building(b, cls, g, geoms, ctx):
     """geoms: [polygon, min_height, height, source, part_name] per solid."""
+    if (b.get("record_id") or "").split("@")[0] == BRIDGEPORT:
+        # OSM maps only its top floors, from 45 m: the sandstone building stands on Bridge Street's corner
+        # with Loftus Street (converted to flats in 1998, three storeys added)
+        for q in geoms:
+            q[1] = 0.0
     if b["name"] == OPERA:
         return opera_podium(g, geoms, ctx)
     if cls in PRECINCT_FURNITURE and Polygon(PRECINCT).contains(g.centroid):

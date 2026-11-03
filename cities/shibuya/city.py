@@ -1,5 +1,13 @@
 """Shibuya & Shinjuku: what the generic pipeline cannot know from open data.
 
+Yoyogi National Gymnasium (国立代々木競技場), Kenzo Tange, 1964: OpenStreetMap maps the first
+gymnasium's outline (30.2 m) and, as a part, the 131 m strip of its roof's spine at 40.37 m; by the
+parts convention only the strip was built, a yellow block. Both halls are drawn from their outlines
+(cities/shibuya/yoyogi_osm.json): the first, its two concrete masts at the spine's ends and the roof hung
+from the main cables between them, falling in a concave saddle to the stands' rim and down to the
+anchor blocks at both tails; the second, its roof spiralling up to its single mast. Steel roof plates
+with the suspension ribs, the skylight along the spine, concrete below.
+
 The model is the real city: Overture footprints at Project PLATEAU's surveyed heights. This file
 adds the places a film and a game made famous, built in code from published dimensions and
 placed on anchors measured from the data (OpenStreetMap footprints, steps and points via Overture):
@@ -36,6 +44,7 @@ from shapely.geometry import Point, Polygon
 
 import adkit as ad
 import screens
+import archkit as ak
 from japankit import open_fronts
 from meshkit import Mesh
 
@@ -47,6 +56,10 @@ ONNAZAKA = "Suga Shrine Onnazaka"
 OTOKO = {"flights": [18, 16, 15], "extra": 3, "width_m": 3.6, "length_m": 16.0, "slope_deg": 27.0}
 
 MATERIALS = {
+    "yoyogi_roof": {"color": "#8b9196", "roughness": 0.45, "metalness": 0.55, "emissive": "#dfe8ff", "glow": 0.25},
+    "yoyogi_rib": {"color": "#5a6066", "roughness": 0.5, "metalness": 0.5},
+    "yoyogi_concrete": {"color": "#cdc7b9", "roughness": 0.9, "metalness": 0.0, "emissive": "#ffe9cf", "glow": 0.3},
+    "yoyogi_glass": {"color": "#3f4c55", "roughness": 0.1, "metalness": 0.5, "emissive": "#ffe6be", "glow": 0.6},
     "granite": {"color": "#a29e96", "roughness": 0.85, "metalness": 0.0},
     "granite_dark": {"color": "#8a867e", "roughness": 0.9, "metalness": 0.0},
     "concrete": {"color": "#b5b0a6", "roughness": 0.92, "metalness": 0.0},
@@ -1263,6 +1276,7 @@ CARROT, CHIYO, HANAMASA = "キャロットタワー", "千代の湯", "肉のハ
 MARINA_LL = (139.669257, 35.642788)   # Overture place ニューマリーナ (snack bar, 三軒茶屋2-14-21)
 RAIN_LL = (139.669289, 35.642574)     # Overture place Rain on the Roof (cafe, 三軒茶屋2-14-22, first floor up)
 DOCOMO = "ドコモ代々木タワー"
+GROUNDED = {"w170267549", "w87250190", "w54500467"}  # Shinjuku Toho Building, Mark City East and West
 DOCOMO_FIG = {"clock_d_m": 15.0, "clock_z_m": 150.0, "mast_top_m": 272.0}  # Citizen clock, 2002 (Tokyo tourism; TV Tokyo); 892 ft (SkyscraperPage)
 KABUKI_ST = "歌舞伎町一番街通り"
 # districts whose street fronts carry shop signs: centre (lon, lat) and radius in metres
@@ -3213,6 +3227,11 @@ def adjust_building(b, cls, g, geoms, ctx):
         # Sendagaya: every part stands on the ground, as the tower does
         for gm in geoms:
             gm[1] = 0.0
+    if (b.get("record_id") or "").split("@")[0] in GROUNDED:
+        # the same for the Shinjuku Toho Building (its cinemas fill the floors under the hotel) and Shibuya Mark
+        # City's two wings over the Inokashira Line's station and the bus terminal (checked against photographs)
+        for gm in geoms:
+            gm[1] = 0.0
     return districts_building(b, cls, g, geoms, ctx)
 
 
@@ -3235,7 +3254,122 @@ def landmark_meshes(scene):
         mats["screens"] = CROSSING.material(lm["scramble"]["node"])
     if "kabukicho_gate" in lm:
         mats["screens_east"] = EAST.material(EAST_EXIT)
-    return mats, meshes
+    more, hidden = yoyogi()
+    return mats, meshes + more, {"hidden": hidden}
+
+
+YOYOGI_SPINE = "w1069271775"
+
+
+def yoyogi():
+    """The two gymnasiums' suspended roofs on their mapped outlines."""
+    import json
+    import cityctx
+    C = cityctx.City("shibuya")
+    T = ak.Terrain("shibuya")
+    osm = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "yoyogi_osm.json")))
+    loc = lambda pts: [C.fwd.transform(lon, lat) for lon, lat in pts]
+    first, spine, second = Polygon(loc(osm["first"])).buffer(0), Polygon(loc(osm["spine"])).buffer(0), Polygon(loc(osm["second"])).buffer(0)
+    K = ak.Kit("yoyogi", floodlit={"yoyogi_roof", "yoyogi_concrete", "yoyogi_glass"})
+    solids = ak.load_solids("shibuya")
+    hidden = [s["si"] for s in solids if s["osm"] == YOYOGI_SPINE or (s["top"] < 45 and first.buffer(-2).contains(Point(*ak.ring_centroid(s["ring"]))))]
+    sx, sy, sax, sL, sW = ak.oriented(list(spine.exterior.coords))
+    g = min(T(*p) for p in list(first.exterior.coords)[::4])
+    F = ak.Frame(sx, sy, sax, g)
+    mast_h, rim = 40.4, 9.0
+    hl = sL / 2
+    sag = 6.0  # the main cables between the masts
+
+    def ridge(u):
+        if abs(u) <= hl:
+            return mast_h - 0.6 - sag * (1 - (u / hl) ** 2)
+        return None
+    # the outline in the spine's frame, and its reach across (to the rim) and along (to the tails)
+    ring = [F.local(x, y) for x, y in first.exterior.coords]
+    fl = Polygon(ring)
+    umin, vmin, umax, vmax = fl.bounds
+
+    def reach(u, sgn):  # how far the outline runs across at u, each side
+        from shapely.geometry import LineString
+        ln = LineString([(u, 0.0), (u, sgn * 400.0)])
+        x = ln.intersection(fl)
+        if x.is_empty:
+            return None
+        return max(abs(c[1]) for c in (x.coords if hasattr(x, "coords") else [c for gg in x.geoms for c in gg.coords]))
+
+    def roof_z(u, t):  # t: 0 at the spine, 1 at the rim
+        r = ridge(u)
+        if r is None:  # beyond the masts the cables run down to their anchors at the tails
+            tail = umax if u > 0 else umin
+            f = (abs(u) - hl) / max(1.0, abs(tail) - hl)
+            r = mast_h - 0.6 - (mast_h - 0.6 - rim + 2.0) * min(1.0, f) ** 0.8
+        return rim + (r - rim) * (1 - t) ** 1.7
+    roof, rib, conc, glass = K["yoyogi_roof"], K["yoyogi_rib"], K["yoyogi_concrete"], K["yoyogi_glass"]
+    us = np.linspace(umin + 0.5, umax - 0.5, 48)
+    for sgn in (-1, 1):
+        rows = []
+        for u in us:
+            R = reach(u, sgn)
+            if R is None or R < 1.0:
+                R = 0.6
+            rows.append([F(u, sgn * max(0.0, sW / 2 if abs(u) <= hl else 0.0) + sgn * (R - (sW / 2 if abs(u) <= hl else 0.0)) * t, roof_z(u, t))
+                         for t in np.linspace(0, 1, 12)])
+        roof.grid(rows)
+        for k, u in enumerate(us):
+            if k % 2 == 0:
+                rib.tube([rows[k][j] for j in range(12)], 0.18, sides=4)
+        # the rim: the stands' concrete wall under the roof's edge, down to the ground
+        for (ua, ra), (ub, rb) in zip(zip(us[:-1], rows[:-1]), zip(us[1:], rows[1:])):
+            a, b = ra[-1], rb[-1]
+            conc.quad(a, b, (b[0], b[1], g - 1.0), (a[0], a[1], g - 1.0))
+    # the skylight along the spine and the two main cables, the masts
+    for u0, u1 in zip(np.linspace(-hl, hl, 25)[:-1], np.linspace(-hl, hl, 25)[1:]):
+        glass.quad(F(u0, -sW / 2, ridge(u0) + 0.3), F(u1, -sW / 2, ridge(u1) + 0.3), F(u1, sW / 2, ridge(u1) + 0.3), F(u0, sW / 2, ridge(u0) + 0.3))
+    for sv in (-1, 1):
+        pts = [F(u, sv * sW / 2, ridge(u) + 0.6) for u in np.linspace(-hl, hl, 25)]
+        rib.tube(pts, 0.55, sides=6)
+        for su in (-1, 1):
+            tail = umax if su > 0 else umin
+            rib.tube([F(su * hl, sv * sW / 2, mast_h), F(tail - su * 2.0, sv * 1.5, rim)], 0.45, sides=6)
+    for su in (-1, 1):
+        x, y, _ = F(su * hl, 0.0, 0.0)
+        conc.lathe([(g - 1.0, 2.6), (g + mast_h - 6.0, 1.7), (g + mast_h + 1.5, 1.2)], (x, y), segs=10)
+        conc.box(F(su * hl, -sW / 2 - 1.5, mast_h - 1.0), F(su * hl, sW / 2 + 1.5, mast_h - 1.0), 2.0, 2.4)
+        tail = umax if su > 0 else umin
+        x, y, _ = F(tail - su * 3.0, 0.0, 0.0)
+        conc.box((x, y, g - 1.0), (x, y, g + rim + 1.5), 7.0, 6.0)  # the anchor block
+    # the second gymnasium: one mast, the roof spiralling up to it
+    c2 = second.centroid
+    far = max(list(second.exterior.coords), key=lambda p: math.hypot(p[0] - c2.x, p[1] - c2.y))
+    mx, my = c2.x + (c2.x - far[0]) * 0.12, c2.y + (c2.y - far[1]) * 0.12
+    g2 = min(T(*p) for p in list(second.exterior.coords)[::3])
+    top2, rim2 = 34.0, 8.0
+    ring2 = list(second.exterior.coords)
+    n = 64
+    edge = []
+    for k in range(n + 1):
+        a = 2 * math.pi * k / n
+        from shapely.geometry import LineString
+        ln = LineString([(mx, my), (mx + 300 * math.cos(a), my + 300 * math.sin(a))])
+        x = ln.intersection(second.exterior)
+        pts = [x] if x.geom_type == "Point" else list(getattr(x, "geoms", []))
+        p = max(pts, key=lambda q: math.hypot(q.x - mx, q.y - my)) if pts else Point(mx, my)
+        edge.append((p.x, p.y))
+    rows = []
+    for t in np.linspace(0, 1, 10):
+        row = []
+        for k, (ex, ey) in enumerate(edge):
+            spiral = 1.0 + 0.25 * math.sin(2 * math.pi * k / n)  # the shell's twist: its rim rises one way round
+            row.append((mx + (ex - mx) * t, my + (ey - my) * t, g2 + rim2 * spiral + (top2 - rim2 * spiral) * (1 - t) ** 1.6))
+        rows.append(row)
+    roof.grid(rows)
+    for k in range(0, n, 2):
+        rib.tube([rows[j][k] for j in range(10)], 0.16, sides=4)
+    for (a, b) in zip(rows[-1][:-1], rows[-1][1:]):
+        conc.quad(a, b, (b[0], b[1], g2 - 1.0), (a[0], a[1], g2 - 1.0))
+    conc.lathe([(g2 - 1.0, 2.0), (g2 + top2 + 4.0, 1.0)], (mx, my), segs=10)
+    hidden += [s["si"] for s in solids if s["top"] < 45 and second.buffer(-2).contains(Point(*ak.ring_centroid(s["ring"])))]
+    return K.out(), sorted(set(hidden))
 
 
 def landmark_glows(scene):

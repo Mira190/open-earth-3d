@@ -116,7 +116,17 @@ def landmark_hulls(ctx):
         HULLS.setdefault(NAMES[name], ctx.city.to_local(swkb.loads(bytes(w))).convex_hull)
 
 
+# Buildings whose mapped parts all start high with nothing under them, though the building stands on the
+# ground (checked against photographs): the Central Government Offices' wings and Conference Hall at Tamar
+# (their lobby is on the first and second floors, over a podium), Landmark Prince's, Hang Seng Bank
+# Headquarters (podium levels B3 to L3) and Convention Plaza's two towers on their podium.
+GROUNDED = {"r8366346", "w101959166", "w142227308", "w995099219", "w42293788", "w28825127", "w107497692", "w107497689"}
+
+
 def adjust_building(b, cls, g, geoms, ctx):
+    if (b.get("record_id") or "").split("@")[0] in GROUNDED:
+        for q in geoms:
+            q[1] = 0.0
     if not HULLS:
         landmark_hulls(ctx)
     key = NAMES.get(b["name"])

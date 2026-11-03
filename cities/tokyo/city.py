@@ -11,11 +11,18 @@ Parametric landmark (called by pipeline/landmarks.py):
                painted in alternating International Orange and white bands (aviation
                marking rules). The lattice is an approximation of the published outline,
                anchored at the published coordinates of the tower (35.65858 N, 139.74543 E).
+  Kabuki-za    the theatre (2013, Kengo Kuma, after Yoshida Isoya's 1951 front) on its outline from
+               OpenStreetMap (cities/tokyo/kabukiza_osm.json): the auditorium block, and on Harumi-dori (its
+               south-west side) the front of two storeys under grey tiles: the great central gable facing the street over
+               the cusped karahafu porch, the side roofs, white plaster, vermilion railings and lattices,
+               and the row of red lanterns. OSM records the theatre at the 141 m of the tower behind it;
+               the tower (歌舞伎座タワー) stays a building.
 """
 import math
 
 import numpy as np
 
+import archkit as ak
 from meshkit import Mesh
 
 TOWER_LL = (139.745433, 35.658581)
@@ -34,6 +41,16 @@ MATERIALS = {
               "emissive_dates": [[*SUMMER, "#f3f1ff"]]},
     "deck": {"color": "#c9c6bd", "roughness": 0.6, "metalness": 0.2, "emissive": "#ffd29a", "glow": 0.6},
     "glass": {"color": "#2a3138", "roughness": 0.1, "metalness": 0.6, "emissive": "#ffe2b4", "glow": 0.45},
+    # Kabuki-za
+    "kz_plaster": {"color": "#efebe2", "roughness": 0.8, "metalness": 0.0, "emissive": "#fff0dc", "glow": 0.55},
+    "kz_tile": {"color": "#4f5458", "roughness": 0.55, "metalness": 0.15, "pattern": "roof_tiles", "bay_m": 0.28, "course_m": 0.28},
+    "kz_ridge": {"color": "#393d40", "roughness": 0.55, "metalness": 0.15},
+    "kz_red": {"color": "#a8382b", "roughness": 0.6, "metalness": 0.0, "emissive": "#ff6a3c", "glow": 0.4},
+    "kz_timber": {"color": "#4b372a", "roughness": 0.8, "metalness": 0.0},
+    "kz_stone": {"color": "#a7a196", "roughness": 0.9, "metalness": 0.0},
+    "kz_gold": {"color": "#d4a63c", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.7},
+    "kz_lantern": {"color": "#d9412e", "roughness": 0.6, "metalness": 0.0, "emissive": "#ff7a3a", "glow": 1.4},
+    "kz_glass": {"color": "#2c3036", "roughness": 0.2, "metalness": 0.4, "emissive": "#ffd9a8", "glow": 0.5},
 }
 
 
@@ -113,4 +130,97 @@ def landmark_meshes(scene):
     if t:
         for k in ("orange", "white", "deck"):
             mats[k]["flood"] = [round(t["ground_m"], 1), round(t["ground_m"] + TOWER["height"], 1), 0.5, 0.5]
-    return mats, tower(t) if t else []
+    meshes, hidden = kabukiza()
+    return mats, (tower(t) if t else []) + meshes, {"hidden": hidden}
+
+
+KABUKIZA = "r4859313"
+FRONT_DEG = 215.0  # the front's compass bearing, onto Harumi-dori
+
+
+def kabukiza():
+    import json
+    import os
+    from shapely.geometry import Polygon
+    import cityctx
+    C = cityctx.City("tokyo")
+    osm = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "kabukiza_osm.json")))
+    loc = lambda pts: [C.fwd.transform(lon, lat) for lon, lat in pts]
+    site, tower_p, front = (Polygon(loc(osm[k])).buffer(0) for k in ("site", "tower", "front"))
+    solids = [s for s in ak.load_solids("tokyo") if s["osm"] == KABUKIZA]
+    if not solids:
+        return [], []
+    g = min(s["ground"] for s in solids)
+    K = ak.Kit("kabukiza", floodlit={"kz_plaster", "kz_red", "kz_gold", "kz_lantern", "kz_glass"}, uv={"kz_tile"})
+    mats = {"base": "kz_stone", "post": "kz_red", "wall": "kz_plaster", "bracket": "kz_timber", "roof": "kz_tile", "ridge": "kz_ridge", "gable": "kz_plaster"}
+    # the front faces Harumi-dori (south-west, 215 degrees, as city.json's arrival): a 12 m deep strip along the
+    # site's edge there, u along the street, v out to it
+    n = np.array([math.sin(math.radians(FRONT_DEG)), math.cos(math.radians(FRONT_DEG))])
+    pts = np.asarray(site.exterior.coords)
+    reach = pts @ n
+    edge = pts[reach > reach.max() - 14.0]
+    t = np.array([n[1], -n[0]])
+    along = edge @ t
+    W = 12.0
+    L = float(along.max() - along.min())
+    mid = t * (along.max() + along.min()) / 2 + n * (reach.max() - W / 2)
+    ax = math.degrees(math.atan2(-n[0], n[1]))
+    F = ak.Frame(mid[0], mid[1], ax, g)
+    front = Polygon([F(u, v, 0)[:2] for u, v in ak.rect(-L / 2, L / 2, -W / 2, W / 2)])
+    # the auditorium: the site less the tower and the front, to its roof garden (lower than the front's roofs)
+    body = site.difference(tower_p.buffer(0.5)).difference(front.buffer(-0.5))
+    for poly in getattr(body, "geoms", [body]):
+        if poly.area > 40:
+            ring = ak.simplify(list(poly.exterior.coords), 0.5)
+            ak.prism(K["kz_plaster"], ak.WORLD, ring, g, g + 17.0, top=False)
+            ak.cap(K["kz_ridge"], ak.WORLD, ring, g + 17.0)  # the roof garden's deck
+            ak.cornice(K["kz_ridge"], ak.WORLD, ring, g + 16.0, ((0, 0), (0.6, 0.3), (1.2, 0.8), (1.2, 1.0), (0, 1.0)))
+    hl = L / 2
+    vf = W / 2  # the street face
+    vb = -W / 2
+    # ground floor: the arcade of the entrances, its glass, the stone plinth; the first eaves (tiles) at 8.5 m
+    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, 0.6)
+    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, 0.6, 15.5, top=False)
+    for u in np.linspace(-hl + 3, hl - 3, 13):
+        ak.opening(K["kz_glass"], F, (-hl, vf - 1.5 + 0.02), (hl, vf - 1.5 + 0.02), 0.6, 3.2, 4.6, centre=u + hl)
+        x, y, z = F(u, vf - 0.4, 0.6)
+        K["kz_red"].lathe([(z, 0.3), (z + 7.6, 0.3)], (x, y), segs=6)
+    ak.irimoya(K, ak.Frame(*F(0, vf - 3.0, 0)[:2], ax, g), L + 1.0, 5.0, 8.4, 1.8, over=2.2, lift=0.4,
+               mats=("kz_tile", "kz_ridge", "kz_plaster"), gable_frac=1.0, sag=0.06)
+    # the lanterns under the first eaves
+    for u in np.linspace(-hl + 2, hl - 2, 22):
+        x, y, z = F(u, vf + 0.6, 6.4)
+        K["kz_lantern"].lathe([(z, 0.25), (z + 0.2, 0.45), (z + 1.0, 0.48), (z + 1.3, 0.25)], (x, y), segs=8)
+    # the upper storey: vermilion railings and lattices, white plaster, the side roofs
+    ak.balustrade(K["kz_red"], F, [(-hl + 1, vf - 1.6), (hl - 1, vf - 1.6)], 10.4, h=1.1)
+    for u in np.linspace(-hl + 4, hl - 4, 9):
+        ak.opening(K["kz_red"], F, (-hl, vf - 1.48), (hl, vf - 1.48), 11.8, 2.6, 2.8, centre=u + hl)
+    side = L * 0.3
+    for sgn in (-1, 1):
+        uc = sgn * (hl - side / 2)
+        Q = ak.Frame(*F(uc, -1.0, 0)[:2], ax, g)
+        ak.irimoya(K, Q, side, W + 2.0, 15.5, 5.0, over=2.2, lift=0.8, mats=("kz_tile", "kz_ridge", "kz_plaster"), gable_frac=0.5, sag=0.15)
+    # the great central roof, its gable to the street (its ridge runs back from the front), on a taller body
+    cw = L * 0.34
+    ak.block(K["kz_plaster"], F, -cw / 2, cw / 2, vb - 8.0, vf - 1.5, 15.5, 19.0, top=False)
+    G = ak.Frame(*F(0, (vb - 8.0 + vf) / 2 - 0.5, 0)[:2], (ax) + 90.0, g)
+    ak.irimoya(K, G, (vf - vb) + 8.0, cw, 19.0, 9.5, over=2.6, lift=1.2, mats=("kz_tile", "kz_ridge", "kz_plaster"), gable_frac=0.42, sag=0.2)
+    gold = K["kz_gold"]
+    gold.box(F(0, vf + 2.2, 24.2), F(0, vf + 2.2, 26.6), 1.6, 0.4)  # the gable's ornament (懸魚)
+    # the karahafu porch over the main entrance: a cusped gable, rising to a peak and sweeping out at both ends
+    pw, pd, z0 = 12.0, 6.0, 8.6
+    prof = []
+    for k in range(17):
+        s_ = -1 + 2 * k / 16
+        z = z0 + 3.2 * (math.cos(math.pi * s_ / 2) ** 1.6) + 0.5 * abs(s_) ** 6
+        prof.append((s_ * pw / 2, z))
+    rows = [[F(u, vf + pd * 0.5, z) for u, z in prof], [F(u, vf - pd * 0.5, z + 0.3) for u, z in prof]]
+    K["kz_tile"].grid(rows, [[[u, 0.0] for u, _ in prof], [[u, pd] for u, _ in prof]])
+    for v in (vf + pd * 0.5,):
+        for (ua, za), (ub, zb) in zip(prof[:-1], prof[1:]):
+            gold.box(F(ua, v + 0.1, za - 0.3), F(ub, v + 0.1, zb - 0.3), 0.25, 0.45)
+            K["kz_plaster"].tri(F(ua, v, za - 0.3), F(ub, v, zb - 0.3), F(0.0, v, z0 - 0.4))
+    for su in (-1, 1):
+        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, 0.6)
+        K["kz_red"].lathe([(z, 0.35), (z + z0 - 0.6, 0.35)], (x, y), segs=8)
+    return K.out(), [s["si"] for s in solids]

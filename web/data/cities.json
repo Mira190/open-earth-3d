@@ -16,8 +16,8 @@
    4.8
   ],
   "load_bytes": {
-   "model": 7870994,
-   "game": 11117541
+   "model": 7871009,
+   "game": 11130098
   }
  },
  {
@@ -27,6 +27,9 @@
   "lat": -37.8136,
   "lon": 144.9631,
   "status": "live",
+  "group": "Melbourne",
+  "district": "Central Melbourne",
+  "tagline": "Docklands, the Hoddle Grid and Southbank to the Shrine",
   "summary": "Central Melbourne from Docklands to the Shrine: 13,050 buildings on Geoscience Australia's 5 m LiDAR terrain, the Arts Centre spire, and sun on the public spaces the planning scheme protects.",
   "timezone": "Australia/Melbourne",
   "built": true,
@@ -37,8 +40,12 @@
    3.9
   ],
   "load_bytes": {
-   "model": 5566821,
-   "game": 9841381
+   "model": 6146123,
+   "game": 10420683
+  },
+  "group_meta": {
+   "kind": "city",
+   "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
   }
  },
  {
@@ -48,6 +55,9 @@
   "lat": -37.8918,
   "lon": 144.9755,
   "status": "live",
+  "group": "Melbourne",
+  "district": "Bayside",
+  "tagline": "St Kilda, Elwood and Brighton on Port Phillip",
   "summary": "Port Phillip's shore from St Kilda to Brighton: 9,335 buildings, the 96 Brighton bathing boxes, Luna Park's Scenic Railway, and a game where little penguins come ashore on the St Kilda breakwater after sunset.",
   "timezone": "Australia/Melbourne",
   "built": true,
@@ -58,8 +68,12 @@
    7.7
   ],
   "load_bytes": {
-   "model": 4990463,
-   "game": 8512396
+   "model": 5063673,
+   "game": 8585606
+  },
+  "group_meta": {
+   "kind": "city",
+   "summary": "Two districts of Melbourne on Geoscience Australia's LiDAR terrain: the city centre from Docklands to the Shrine, and Port Phillip's shore from St Kilda to Brighton, where little penguins come ashore after sunset."
   }
  },
  {
@@ -108,8 +122,8 @@
    5.0
   ],
   "load_bytes": {
-   "model": 26545762,
-   "game": 29546647
+   "model": 33866816,
+   "game": 36867701
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -138,8 +152,8 @@
    4.8
   ],
   "load_bytes": {
-   "model": 5663753,
-   "game": 9125136
+   "model": 5843725,
+   "game": 9305108
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -676,8 +690,8 @@
    6.2
   ],
   "load_bytes": {
-   "model": 37928187,
-   "game": 44725792
+   "model": 38233471,
+   "game": 45031076
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -2386,8 +2400,8 @@
    4.0
   ],
   "load_bytes": {
-   "model": 24941851,
-   "game": 31217561
+   "model": 29079160,
+   "game": 35354870
   }
  },
  {
@@ -2429,8 +2443,8 @@
    4.8
   ],
   "load_bytes": {
-   "model": 5279548,
-   "game": 8870520
+   "model": 5279526,
+   "game": 8870498
   }
  },
  {

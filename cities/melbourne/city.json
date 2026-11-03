@@ -104,7 +104,7 @@
     "Crown Melbourne": "Crown"
   },
   "arrivals": {
-    "Flinders Street Station": {"front": 10},
+    "Flinders Street Station": {"front": 25, "dist": 75}, "Crown": {"front": 320, "arc": 25, "dist": 260},
     "Parliament House": {"front": 250},
     "State Library Victoria": {"front": 250},
     "Town Hall": {"front": 250},

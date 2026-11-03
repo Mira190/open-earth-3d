@@ -286,30 +286,42 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     return out;
   }
   // the pull-back from the sunrise to the menu's orbit, over d seconds from time a
-  const PULL_A = T_RISE + 2.5, PULL_D = 4.4;
+  const PULL_A = T_RISE + 2.5, PULL_D = 6.4;
   const _a = { pos: new V3(), look: new V3(), up: new V3(), fov: 0 }, _b = { pos: new V3(), look: new V3(), up: new V3(), fov: 0 };
-  // far: the radius falls geometrically (from deep space), and the swing round is done early
-  function blendPose(a, b, k, out = pose, far = false) {
-    const ra = a.pos.length(), rb = b.pos.length();
+  // From one pose to another round the globe, with no lurch and no tumble. The camera turns
+  // round the globe only while it is far out, where a turn reads as the globe turning and not as
+  // the ground racing past: going out, it rises first and turns after; coming in, it turns
+  // first and falls after. The camera's orientation is carried round with it and eased from the
+  // first pose's to the second's as one rotation, so the frame never rolls over.
+  function blendPose(a, b, k, out = pose) {
+    const ra = a.pos.length(), rb = b.pos.length(), inbound = ra > rb * 1.5;
     const da = a.pos.clone().normalize(), db = b.pos.clone().normalize();
-    const kd = smooth(far ? span(k, 0, 0.65) : k), kr = smooth(span(k, 0.0, far ? 1 : 0.9));
-    const ang = da.angleTo(db), axis = new V3().crossVectors(da, db);
-    const dir = axis.lengthSq() > 1e-10 ? da.clone().applyAxisAngle(axis.normalize(), ang * kd) : da.clone();
-    out.pos.copy(dir).multiplyScalar(far ? ra * Math.pow(rb / ra, kr) : lerp(ra, rb, kr));
-    // the look moves from a point on the shot's line of sight, as far off as the horizon, to the
-    // orbit's target, so whatever the shot framed stays in frame as the camera pulls away
-    const reach = Math.sqrt(Math.max(0.05, ra * ra - 1));
-    const pa = a.look.clone().sub(a.pos).normalize().multiplyScalar(reach).add(a.pos);
-    const kl = smooth(span(k, 0.0, 0.7));
-    out.look.copy(pa).lerp(b.look, kl);
-    out.up.copy(a.up).multiplyScalar(1 - kd).addScaledVector(b.up, kd);
-    if (out.up.lengthSq() < 1e-6) out.up.copy(b.up);
-    out.up.normalize();
-    out.fov = lerp(a.fov, b.fov, far ? kr : kd);
+    const kd = smooth(inbound ? span(k, 0, 0.65) : span(k, 0.25, 1));
+    const kr = smooth(inbound ? k : span(k, 0, 0.78));
+    const ko = smooth(inbound ? span(k, 0.15, 1) : span(k, 0, 0.72));
+    const axis = new V3().crossVectors(da, db);
+    if (axis.lengthSq() > 1e-10) _qt.setFromAxisAngle(axis.normalize(), da.angleTo(db) * kd); else _qt.identity();
+    out.pos.copy(da).applyQuaternion(_qt).multiplyScalar(ra * Math.pow(rb / ra, kr));
+    _qa.setFromRotationMatrix(_m4.lookAt(a.pos, a.look, a.up)).premultiply(_qt);
+    _qb.setFromRotationMatrix(_m4.lookAt(out.pos, b.look, b.up));
+    _qa.slerp(_qb, ko);
+    out.look.set(0, 0, -1).applyQuaternion(_qa).add(out.pos);
+    out.up.set(0, 1, 0).applyQuaternion(_qa);
+    out.fov = lerp(a.fov, b.fov, ko);
     return out;
   }
+  // frame a destination up and to the left of the globe's centre, clear of its card
+  function frameOn(d) {
+    orb.tlat = clamp(d.lat - (narrow() ? 12 : 10), -55, 55);
+    orb.tlon = d.lon + (narrow() ? 0 : 16);
+    orb.tdist = fitDist(0.92);
+  }
+  // where the menu's orbit starts. On a wide screen the menu soon chooses the first destination
+  // for itself, so the camera arrives framed on it already, rather than settling and then
+  // swinging over to it
   function menuStart() {
     homeView();
+    if (!narrow() && dests.length) frameOn(dests[0]);
     orb.lat = orb.tlat; orb.lon = orb.tlon; orb.dist = orb.tdist;
   }
 
@@ -404,7 +416,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const when = wait == null ? '' : plan.dusk ? ` · sunset ${hm(wait)} ago` : ` · sunrise in ${hm(wait)}`;
     cue(1.3, () => decode($('ts-cap2'), `Night below · ${fmtLat(nd.lat)} ${fmtLon(nd.lon)}${when}`, 1100));
     cue(T_RISE + 0.1, () => decode($('ts-cap3'), `${plan.dusk ? 'Sunset' : 'Sunrise'} · ${fmtLat(plan.dawn.lat)} ${fmtLon(plan.dawn.lon)} · now`, 900));
-    cue(PULL_A + 1.3, () => showMenu());
+    cue(PULL_A + 2.8, () => showMenu());
     cue(PULL_A + PULL_D, () => { titleFx(PULL_A + PULL_D); state = 'menu'; app.classList.remove('opening'); });
     if (reduced) skip();
   }
@@ -416,13 +428,13 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     titleFx(PULL_A + 4);
     if (soundOn && clock() - tBegin < T_RISE) { A.stop(0.15); after(200, () => { if (!running) return; A.start(true); A.pad(); }); }
     const from = { pos: cam.position.clone(), look: cam.position.clone().add(cam.getWorldDirection(new V3())), up: cam.up.clone(), fov: cam.fov };
-    transition(from, reduced ? 0 : from.pos.length() > 6 ? 2.4 : 1.4, from.pos.length() > 6); // skipped while still far out: on in, not a lurch
+    transition(from, reduced ? 0 : 2.6);
     state = 'menu';
     app.classList.remove('opening');
   }
   // a short blend from a pose into the orbit
   let trans = null;
-  function transition(fromPose, dur, far = false) { trans = { from: fromPose, t0: clock(), dur, far }; }
+  function transition(fromPose, dur) { trans = { from: fromPose, t0: clock(), dur }; }
 
   function showMenu() {
     app.classList.add('menu');
@@ -445,10 +457,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     for (const d of dests) d.mark.classList.toggle('hot', dests.indexOf(d) === i);
     if (fromUser || !quiet) A.tick(2100, 0.035);
     const d = dests[i];
-    // frame the city up and to the left of the globe's centre, clear of its card
-    orb.tlat = clamp(d.lat - (narrow() ? 12 : 10), -55, 55);
-    orb.tlon = d.lon + (narrow() ? 0 : 16);
-    orb.tdist = fitDist(0.92);
+    frameOn(d);
     focusDir.copy(d.dir);
     showCard(d);
   }
@@ -465,15 +474,20 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const km = d.c.extent_km ? `${d.c.extent_km[0]} × ${d.c.extent_km[1]}<small>km</small>` : '';
     // a group's span: the great-circle distance between its two furthest sites
     const metro = d.meta && d.meta.kind === 'metro';
+    // a city of a few districts, without a map of its own (Melbourne: the centre and the bayside)
+    const city = d.meta && d.meta.kind === 'city';
     let spanKm = 0;
     if (d.sites) for (const a of d.sites) for (const b of d.sites) spanKm = Math.max(spanKm, E.ll(a.lat, a.lon).angleTo(E.ll(b.lat, b.lon)) * 6371);
     const stats = metro
       ? `<div><dt>Maps</dt><dd>${d.sites.length}<small>of ${d.meta.districts.length} districts</small></dd></div><div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div>`
+      : city
+      ? `<div><dt>Buildings</dt><dd>${fmtN(d.sites.reduce((a, c) => a + (c.buildings || 0), 0))}</dd></div><div><dt>Districts</dt><dd>${d.sites.length}</dd></div>`
       : d.sites
       ? `<div><dt>Sites</dt><dd>${d.sites.length}</dd></div><div><dt>From end to end</dt><dd>${fmtN(Math.round(spanKm / 10) * 10)}<small>km</small></dd></div>`
       : `<div><dt>Buildings</dt><dd>${fmtN(d.c.buildings || 0)}</dd></div><div><dt>Model</dt><dd>${km}</dd></div>`;
     const prog = p.stamps ? `${p.stamps} stamp${p.stamps > 1 ? 's' : ''} in your passport` : p.visited ? 'Visited' : '';
     const actions = metro ? metroHTML(d)
+      : city ? `<ul class="ts-sites ts-districts">${d.sites.map(c => `<li><button data-site="${c.id}" aria-label="${c.district || c.name}: explore in 3D"><b>${c.district || c.name}</b><small>${c.tagline || ''}</small></button>${c.game ? `<button class="ts-dplay" data-site="${c.id}" data-go="play" aria-label="Play ${c.district || c.name}">Play</button>` : ''}</li>`).join('')}</ul>`
       : d.sites ? `<ul class="ts-sites">${d.sites.map(c => `<li><button data-site="${c.id}"><b>${c.name}</b><small>${c.tagline || ''}</small></button></li>`).join('')}</ul>`
       : `<div class="ts-actions">${d.c.game ? '<button class="ts-btn primary" data-go="play">Play <kbd>P</kbd></button>' : ''}<button class="ts-btn" data-go="model">Explore in 3D <kbd>↵</kbd></button></div>`;
     card.innerHTML = `<div><span class="eb">${d.country} · ${fmtLat(d.lat)} ${fmtLon(d.lon)}</span><h2>${d.name}${d.native ? `<small lang="${lang(d)}">${d.native}</small>` : ''}</h2></div>
@@ -496,7 +510,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     const b = e.target.closest('button');
     if (!b || sel < 0) return;
     if (b.dataset.map) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.map), b.dataset.arrive);
-    else if (b.dataset.site) dive(dests[sel], false, cities.find(c => c.id === b.dataset.site));
+    else if (b.dataset.site) dive(dests[sel], b.dataset.go === 'play', cities.find(c => c.id === b.dataset.site));
     else dive(dests[sel], b.dataset.go === 'play');
   });
   on(list, 'click', e => { const b = e.target.closest('.ts-item'); if (!b) return; lastInput = performance.now(); const i = +b.dataset.i; if (i === sel && !narrow()) dive(dests[i], false); else select(i, true); });
@@ -642,6 +656,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
     else if (k === 'arrowup' || k === 'w' || k === 'arrowleft') { e.preventDefault(); select((sel - 1 + dests.length) % dests.length, true); items[sel].focus({ preventScroll: true }); }
     else if (k === 'enter' && sel >= 0 && !e.target.closest('.ts-card, .ts-top, .ts-foot')) { e.preventDefault(); const d = dests[sel]; const mb = card.querySelector('[data-map][data-go="model"]'); if (mb) mb.click(); else if (d.sites) card.querySelector('[data-site]').focus(); else dive(d, false); }
     else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('[data-map][data-go="play"]')) card.querySelector('[data-map][data-go="play"]').click();
+    else if (k === 'p' && sel >= 0 && dests[sel].sites && card.querySelector('.ts-dplay')) card.querySelector('.ts-dplay').focus();
     else if (k === 'p' && sel >= 0 && dests[sel].c.game && !dests[sel].sites) dive(dests[sel], true);
     else if (k === 'f' && sel >= 0 && window.OEFilm && OEFilm.hasReel()) OEFilm.openReel();
     else if (k === 'escape' && sel >= 0) { sel = -1; items.forEach(b => b.setAttribute('aria-current', 'false')); card.classList.remove('on'); orb.tdist = fitDist(); for (const d of dests) d.mark.classList.remove('hot'); }
@@ -795,7 +810,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       orbitPose(orb, _b);
       if (trans) {
         const k = trans.dur ? clamp((now - trans.t0) / trans.dur) : 1;
-        apply(blendPose(trans.from, _b, k, pose, trans.far));
+        apply(blendPose(trans.from, _b, k, pose));
         if (k >= 1) trans = null;
       } else apply(_b);
       shift.x += (shift.tx - shift.x) * kk; shift.y += (shift.ty - shift.y) * kk;
@@ -905,7 +920,7 @@ window.OpenEarthGlobe = async function title(cities, notice, from) {
       transition({ pos: E.ll(back.lat, back.lon, 1.02), look: new V3(), up: new V3(0, 1, 0), fov: 50 }, reduced ? 0 : 2.6);
     } else {
       // from the dot in deep space, straight in to the globe without a cut
-      transition(fromBoot, reduced ? 0 : 3.6, true);
+      transition(fromBoot, reduced ? 0 : 3.6);
     }
     menuShownAt = clock();
     earth.ready.value = 1;

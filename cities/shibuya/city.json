@@ -285,7 +285,7 @@
     "明治神宮聖徳記念絵画館": "Meiji Memorial Picture Gallery"
   },
   "arrivals": {
-    "Yebisu Garden Place": {"front": 270, "arc": 50},
+    "Yebisu Garden Place": {"front": 270, "arc": 50}, "Yoyogi National Gymnasium": {"front": 190, "arc": 40, "dist": 170},
     "Your Name stairs 男坂": {"at": [2394, 1876]}
   },
   "minor_labels": [

@@ -208,6 +208,22 @@ measured from the data (footprint centroids, bearings), never from guesses.
   path), `panel` (a strip for a cut-out pattern) and `rails`;
 - `grid`, `quad` and `tri` for anything else.
 
+`pipeline/archkit.py` builds on it with the parts buildings are made of, in a
+building's frame (`Frame(cx, cy, axis_deg, ground)`, u along, v across): walls
+with ashlar UVs, cornices and string courses swept round an outline, arched and
+square openings, columns, colonnades, pilasters, pediments, steps,
+balustrades, domes with ribs, drums and lanterns; and for Japan, hipped-and-gabled
+(irimoya) roofs with curved eaves, halls (platform, pillars, tie beams, bracket
+band, roof, an optional pent roof), two-storey gates, battered stone ramparts
+(ishigaki) and plastered walls (dobei). `load_solids(city)` reads the built
+footprints and `Terrain(city)` the ground, so a monument can stand on its
+mapped outline: Paris's monuments, Kyoto's temples, castle and palace,
+Kabuki-za and the Yoyogi gymnasiums are built this way. Return the solids a
+mesh draws instead as `{"hidden": [...]}` (the third item of
+`landmark_meshes`): the renderers leave them out, the surface model keeps them.
+Outlines that the built data lacks are fetched once from OpenStreetMap and kept
+next to the city's hooks with their way ids (`cities/kyoto/castles_osm.json`).
+
 Every part takes metres. Build the small parts too: the railings, lamps,
 mullions and deck markings are what make a structure read as built, and they
 cost little when each material is one mesh.
