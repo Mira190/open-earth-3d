@@ -18,8 +18,9 @@ Parametric landmarks (called by pipeline/landmarks.py):
   Nijo Castle       the palaces of the Ninomaru and the Honmaru on their footprints; the stone ramparts,
                     plastered walls, the two corner turrets, the gates and the keep's base where
                     OpenStreetMap maps them (cities/kyoto/castles_osm.json).
-  Imperial Palace   the Hall for State Ceremonies (紫宸殿), 20.5 m to its ridge under cypress bark, and the
-                    halls, gates and walls inside the palace's outline.
+  Imperial Palace   the Hall for State Ceremonies (紫宸殿), 20.5 m to its ridge under cypress bark, the south
+                    court's corridors (回廊) and its vermilion gates, the Jōmei-mon (承明門), Nikka-mon and
+                    Gekka-mon; the halls, gates and walls inside the palace's outline.
   Kyoto Tower  131 m to the spire, observation deck at 100 m, a stressed-skin steel tube
                (no inner frame) completed in 1964. Published figures are the two heights;
                the radii and the deck's shape are an approximation, not survey data.
@@ -51,6 +52,8 @@ MATERIALS = {
     "hiwada_ridge": {"color": "#4c3c30", "roughness": 0.9, "metalness": 0.0},
     "gable_white": {"color": "#e9e4d6", "roughness": 0.8, "metalness": 0.0},
     "ishigaki": {"color": "#8f897d", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.65, "block_m": 1.1},
+    "shu": {"color": "#b5452f", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffc9a8", "glow": 0.2},   # vermilion lacquer
+    "renji": {"color": "#3e6b56", "roughness": 0.75, "metalness": 0.0},  # the corridors' green lattice
     "jp_gold": {"color": "#d6a93a", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.5},
 }
 
@@ -109,6 +112,12 @@ BARK = dict(TILE, roof="hiwada", ridge="hiwada_ridge")
 TEMPLE_HALLS = [("w99130389", 38.0, "founders"), ("w560097459", 29.0, "hall"), ("w1241560765", 27.3, "gate"), ("w1241560768", 18.9, "hall"),
                 ("w99182315", 29.0, "founders"), ("w99182202", 25.0, "founders"), ("w372433543", 17.7, "hall"), ("w372433070", 16.2, "hall")]
 SHISHINDEN = "w554905814"
+# the south court before the Shishinden (南庭): its corridors (回廊), vermilion pillars and green lattice in a white
+# wall under cypress bark, and its vermilion gates, the Jōmei-mon (承明門) to the south, the Nikka-mon (日華門) and the
+# Gekka-mon (月華門) to the east and west (Imperial Household Agency; OpenStreetMap)
+GOSHO_KAIRO = ("w554905823", "w554905831")
+GOSHO_SHU_GATES = ("承明門", "日華門", "月華門")
+SHU = dict(BARK, post="shu", lattice="renji")
 
 
 def temples_and_palaces():
@@ -127,6 +136,29 @@ def temples_and_palaces():
     K = ak.Kit("kyoto_jp", floodlit={"jp_wall", "jp_bracket", "jp_gold"}, uv={"kawara", "hiwada", "jp_base", "ishigaki"})
     hidden = []
 
+    def bent(sd):
+        """An outline far from its rectangle (a corridor that turns, an L, a ring round a court)."""
+        cx, cy, ax, L, W = ak.oriented(sd["ring"])
+        return bool(sd["holes"]) or abs(ak.ring_area(sd["ring"])) < 0.6 * L * W
+
+    def along_outline(sd, mats):
+        """A building drawn on its own outline: a stone footing, white walls, and an outline roof whose eaves
+        follow every turn, as wide as the building's mean width (2 area / perimeter) allows."""
+        from shapely.geometry import Polygon as Pg
+        P_ = Pg(sd["ring"], sd["holes"]).buffer(0)
+        w = 2 * P_.area / max(P_.length, 1.0)
+        g = sd["ground"]
+        eave = g + float(np.clip(2.6 + 0.35 * w, 3.2, 6.5))
+        for poly in getattr(P_, "geoms", [P_]):
+            rings = [ak.simplify(list(poly.exterior.coords), 0.4)] + [ak.simplify(list(h.coords), 0.4) for h in poly.interiors]
+            for r in rings:
+                ak.prism(K[mats["base"]], ak.WORLD, r, g - 0.5, g + 0.5, top=False)
+                ak.prism(K[mats["wall"]], ak.WORLD, r, g + 0.5, eave - 0.25, top=False)
+            over = float(np.clip(0.25 * w + 0.6, 0.8, 1.8))
+            ak.outline_roof(K[mats["roof"]], rings[0], eave, 0.6, over=over, rise_max=float(np.clip(0.3 * (w + 2 * over), 1.2, 6.0)), k=1.3,
+                            holes=rings[1:], soffit=K[mats["bracket"]], wall_z=eave - 0.25, cell=1.5)
+        hidden.append(sd["si"])
+
     def draw(sd, ridge, kind, mats):
         cx, cy, ax, L, W = ak.oriented(sd["ring"])
         P = ak.Frame(cx, cy, ax, sd["ground"])
@@ -143,9 +175,8 @@ def temples_and_palaces():
     # Nijo Castle: every building inside its outline is a palace hall, a turret or a gate
     castle = Polygon(loc(osm["nijo"]["outline"]))
     named = {r["name"]: Polygon(loc(r["pts"])) for r in osm["nijo"]["gates"] + osm["nijo"]["turrets"] if len(r["pts"]) > 3}
-    for sd in solids:
-        if sd["base"] > 0 or not castle.contains(Point(*ak.ring_centroid(sd["ring"]))) or abs(ak.ring_area(sd["ring"])) < 40:
-            continue
+    halls = [sd for sd in solids if sd["base"] <= 0 and castle.contains(Point(*ak.ring_centroid(sd["ring"]))) and abs(ak.ring_area(sd["ring"])) >= 40]
+    for sd in halls:
         cx, cy, ax, L, W = ak.oriented(sd["ring"])
         which = next((n for n, pg in named.items() if pg.buffer(3).contains(Point(cx, cy))), None)
         if which and "櫓" in which and "門" not in which:  # a corner turret: two storeys
@@ -157,6 +188,13 @@ def temples_and_palaces():
             ridge = 14.0 if which in ("東大手門", "北大手門") else 10.5 if which == "唐門" else 8.5
             draw(sd, ridge, "gate", BARK if which == "唐門" else TILE)
             continue
+        elif bent(sd):
+            along_outline(sd, TILE)
+            continue
+        elif not sd["name"] and W < 7.5 and L > 1.3 * W and sum(Polygon(o["ring"]).buffer(0).distance(Polygon(sd["ring"]).buffer(0)) < 1.5
+                                                               for o in halls if o is not sd) >= 2:
+            # a covered way (渡廊下) between two of the palace's halls, as the Ninomaru's run from hall to hall
+            ak.corridor(K, ak.Frame(cx, cy, ax, sd["ground"]), L, W, float(np.clip(3.2 + 0.5 * W, 5.0, 7.0)), dict(TILE, lattice="jp_post"))
         else:
             ridge = float(np.clip(4.5 + 0.38 * W, 7.5, 15.5))
             P = ak.Frame(cx, cy, ax, sd["ground"])
@@ -184,8 +222,12 @@ def temples_and_palaces():
         ak.ishigaki(K["ishigaki"], ak.WORLD, ring, z - 1.0, z + 7.0, batter=0.18)
     # the Imperial Palace: the halls under cypress bark, the gates, the plastered walls (築地塀)
     gosho = Polygon(loc(osm["gosho"]["outline"]))
-    for sd in solids:
-        if sd["base"] > 0 or not gosho.buffer(4).contains(Point(*ak.ring_centroid(sd["ring"]))) or abs(ak.ring_area(sd["ring"])) < 30:
+    in_gosho = [sd for sd in solids if gosho.buffer(4).contains(Point(*ak.ring_centroid(sd["ring"]))) and abs(ak.ring_area(sd["ring"])) >= 30]
+    grounded = {sd["osm"] for sd in in_gosho if sd["base"] <= 0 and sd["osm"]}
+    for sd in in_gosho:
+        # a building's upper parts (a gate's roof, mapped as a part over its posts) go with it; a gate mapped
+        # only by its upper part is drawn from the ground
+        if sd["base"] > 0 and not (sd["osm"] and sd["osm"] not in grounded and sd["name"].endswith("門")):
             continue
         cx, cy, ax, L, W = ak.oriented(sd["ring"])
         P = ak.Frame(cx, cy, ax, sd["ground"])
@@ -193,12 +235,45 @@ def temples_and_palaces():
             u = ak.Frame(cx, cy, ax, 0)
             ak.dobei(K, ak.WORLD, [u(-L / 2, 0, 0)[:2], u(L / 2, 0, 0)[:2]], sd["ground"], min(5.0, sd["top"]) - 0.6,
                      mats=("gable_white", "hiwada", "hiwada_ridge"))
+        elif sd["osm"] != SHISHINDEN and bent(sd):
+            along_outline(sd, BARK)
+            continue
+        elif sd["osm"] in GOSHO_KAIRO:
+            ak.corridor(K, P, L, W, 6.4, SHU)
+        elif sd["name"] in GOSHO_SHU_GATES:
+            ak.gate(K, ak.Frame(cx, cy, ax, T(cx, cy)), L, W, 10.0 if sd["name"] == "承明門" else 8.0, SHU, storeys=1)
+        elif sd["name"].endswith("門"):  # the outer gates, the Kenrei-mon (建礼門) first: plain cypress, open bays
+            ak.gate(K, ak.Frame(cx, cy, ax, T(cx, cy)), L, W, 8.5 if sd["name"] == "建礼門" else 7.5, BARK, storeys=1)
         elif sd["osm"] == SHISHINDEN:
             ak.hall(K, P, L, W, 20.5, BARK, eave_frac=0.42, base_h=1.6, over=3.4)
         else:
             ak.hall(K, P, L, W, float(np.clip(4.0 + 0.36 * W, 6.5, 14.5)), BARK, eave_frac=0.42, base_h=0.8)
         hidden.append(sd["si"])
+    # every part of a building drawn here goes with it (the parts mapped over a gate's posts, a hall's roof)
+    drawn = {sd["osm"] for sd in solids if sd["si"] in set(hidden) and sd["osm"]}
+    hidden += [sd["si"] for sd in solids if sd["osm"] in drawn]
     return K.out() + approach_steps(solids), sorted(set(hidden))
+
+
+def gosho_court_strays():
+    """Solids in the court before the Shishinden (南庭), which is bare gravel between its corridors but for the
+    cherry and the mandarin orange: a block with a guessed height there is not."""
+    import json
+    import os
+    from shapely.geometry import Point, Polygon
+    import shapely
+    solids = ak.load_solids("kyoto")
+    pieces = [Polygon(sd["ring"]) for sd in solids if sd["osm"] in GOSHO_KAIRO + (SHISHINDEN,) and abs(ak.ring_area(sd["ring"])) > 100]
+    if not pieces:
+        return []
+    court = shapely.union_all(pieces).convex_hull.difference(shapely.union_all(pieces).buffer(1.0))
+    B = json.load(open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "web", "data", "kyoto", "buildings.json")))
+    return [sd["si"] for sd in solids if court.contains(Point(*ak.ring_centroid(sd["ring"]))) and not sd["osm"]
+            and B["b"][B["s"][sd["si"]][0]][4] in ("estimate", "ml")]
+
+
+def landmark_demolished(scene):
+    return gosho_court_strays()
 
 
 

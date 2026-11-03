@@ -10,6 +10,8 @@ import urllib.request
 
 import numpy as np
 
+import archkit as ak
+
 from meshkit import Mesh
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -137,69 +139,17 @@ def lathe_at(m, x, y, profile, segs=16):
 def hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=1.6, rings=6, ridge_frac=0.0):
     """A hipped roof with the concave sweep of a temple's (flat at the eaves, steep above), over the
     rectangle u in +-u_half, v in +-v_half, its eaves `ov` out; ridge_frac of the long side stays as a
-    ridge (0: a pyramid, as a pagoda's storeys). Returns the eave outline's corner points."""
-    Eu, Ev = u_half + ov, v_half + ov
-    ridge = max(Eu - Ev, 0.0) * ridge_frac if Eu >= Ev else 0.0
-    rv = max(Ev - Eu, 0.0) * ridge_frac if Ev > Eu else 0.0
-    H = z_top - z_eave
-
-    def ring(t):  # t from 0 (eaves) to 1 (top): the outline shrinks linearly in plan, rises on the curve
-        s = 1 - t
-        hu = ridge + (Eu - ridge) * s
-        hv = rv + (Ev - rv) * s
-        z = z_eave + H * t ** k if k != 1 else z_eave + H * t
-        # the corners lift a little (sori): the eaves curve up toward the corners
-        return [P(su * hu, sv * hv, z + (0.28 * ov * s if t < 0.35 else 0.0)) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-
-    rs = [ring(t) for t in np.linspace(0, 1, rings + 1)]
-    for a, b in zip(rs, rs[1:]):
-        for i in range(4):
-            j = (i + 1) % 4
-            roof.quad(a[i], a[j], b[j], b[i])
-    top = rs[-1]
-    roof.quad(top[0], top[1], top[2], top[3])
-    e = rs[0]
-    w = [P(su * u_half, sv * v_half, z_eave - 0.4) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-    dn = np.array([0, 0, -0.35])
-    for i in range(4):
-        j = (i + 1) % 4
-        soffit.quad(e[i] + dn, e[j] + dn, e[j], e[i])
-        soffit.quad(e[i] + dn, w[i], w[j], e[j] + dn)
-    return e
+    ridge (0: a pyramid, as a pagoda's storeys). archkit.japanese_roof draws it. Returns the eave
+    outline's corner points."""
+    return ak.japanese_roof(P, u_half, v_half, z_eave, z_top, ov, roof, soffit, None, soffit, gable_frac=1.0, k=k,
+                            lift=0.28 * ov, ridge_frac=ridge_frac, ridges=False, n=rings)["corners"]
 
 
 def irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=0.55, k=1.5):
     """A hip-and-gable roof (irimoya) with its ridge along u: the hipped skirt below gable_at of the
-    height, the gables above it, and the ridge."""
-    Eu, Ev = u_half + ov, v_half + ov
-    H = z_ridge - z_eave
-    zr = lambda d: z_eave + H * (min(max(d / Ev, 0.0), 1.0)) ** k   # height at d in from the long eaves
-    d_g = Ev * gable_at ** (1 / k)
-    Ug = Eu - d_g
-    # the two long slopes, from the eaves to the ridge (the ridge runs from -Ug to Ug)
-    vs = np.linspace(-Ev, Ev, 13)
-    roof.grid([[P(u, v, zr(Ev - abs(v))) for u in np.linspace(-Ug, Ug, 7)] for v in vs])
-    # the hipped ends: from the eaves to the gable's foot
-    for su in (-1, 1):
-        rows = []
-        for v in vs:
-            d = Ev - abs(v)
-            rows.append([P(su * u, v, zr(min(d, Eu - abs(u), d_g))) for u in np.linspace(Ug, Eu, 5)])
-        if su < 0:
-            rows = [r[::-1] for r in rows]
-        roof.grid(rows)
-        zg = zr(d_g)
-        vv = [v for v in vs if Ev - abs(v) >= d_g - 1e-6]
-        for a, b in zip(vv, vv[1:]):
-            gable.quad(P(su * Ug, a, zg), P(su * Ug, b, zg), P(su * Ug, b, zr(Ev - abs(b))), P(su * Ug, a, zr(Ev - abs(a))))
-    e = [P(su * Eu, sv * Ev, z_eave) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-    w = [P(su * u_half, sv * v_half, z_eave - 0.4) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-    dn = np.array([0, 0, -0.4])
-    for i in range(4):
-        j = (i + 1) % 4
-        soffit.quad(e[i] + dn, e[j] + dn, e[j], e[i])
-        soffit.quad(e[i] + dn, w[i], w[j], e[j] + dn)
-    return {"zr": zr, "Ug": Ug, "Ev": Ev}
+    height, the gables above it (archkit.japanese_roof). Returns {"zr", "Ug", "Ev"}."""
+    return ak.japanese_roof(P, u_half, v_half, z_eave, z_ridge, ov, roof, soffit, gable, soffit, gable_frac=gable_at ** (1 / k), k=k,
+                            lift=0.28 * ov, ridges=False)
 
 
 # ---------------------------------------------------------------- meshes per material, and the atlas

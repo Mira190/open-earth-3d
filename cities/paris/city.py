@@ -310,6 +310,11 @@ def game_extras(scene):
         um = aw / 2 + (hw - aw / 2) / 2  # a pier's middle (arc(): the relief groups)
         to("Arc de Triomphe, under the great arch (the Tomb of the Unknown Soldier)", P(0, 0, 0)[:2], P(0, -hd - 5.0, 0)[:2], 1.0)
         to("Arc de Triomphe, a relief group's pedestal", P(um, -hd - 2.4, 0)[:2], P(um, -hd - 7.4, 0)[:2], 1.0, 0.3)
+    sts = chaillot_statues()
+    if sts:  # a statue's plinth on Chaillot's parvis, from the axis side
+        x, y, f, _ = sts[1]
+        to("Palais de Chaillot, a gilded statue's plinth on the parvis", (x + math.cos(f) * 0.8, y + math.sin(f) * 0.8),
+           (x + math.cos(f) * 6.0, y + math.sin(f) * 6.0), 1.0, 0.3)
     if "notre_dame" in lm:
         (ax_, ay_), (bx, by) = NOTRE_DAME_FRONT
         L = math.hypot(bx - ax_, by - ay_)
@@ -684,8 +689,18 @@ def arc(t, mats):
             v = sv * hd
             ak.block(rl, P, um - 3.6, um + 3.6, min(v, v + sv * 2.4), max(v, v + sv * 2.4), 0.0, 5.6)
             ak.block(rl, P, um - 3.0, um + 3.0, min(v, v + sv * 1.6), max(v, v + sv * 1.6), 5.6, 17.2)
-            for f in (0.25, 0.5, 0.75):  # the figures' masses in the group
-                rl.box(P(um - 3.0 + 6.0 * f, v + sv * 1.7, 6.0), P(um - 3.0 + 6.0 * f, v + sv * 1.7, 13.5 + 3 * f * (1 - f)), 1.3, 1.1)
+            # the group: three figures striding out of the panel on the pedestal, and the winged Genius over them
+            o = P(0, 0, 0)
+            out = math.atan2(P(0, sv, 0)[1] - o[1], P(0, sv, 0)[0] - o[0])
+            for j, f in enumerate((-2.1, 0.1, 2.2)):
+                x, y, z = P(um + f, v + sv * (2.0 + 0.25 * (j % 2)), 5.6)
+                figure(rl, x, y, z, out + 0.25 * (j - 1) * sx, 5.4 - 0.5 * (j % 2), pose=(j * 3 + (sx + 1) + (sv + 1) // 2) % 8)
+            gx, gy, gz = P(um + 0.4 * sx, v + sv * 1.9, 11.2)
+            figure(rl, gx, gy, gz, out, 4.6, pose=0)
+            for side in (-1, 1):  # its wings, spread against the panel
+                root = P(um + 0.4 * sx + side * 0.3, v + sv * 1.75, 14.4)
+                rl.tri(root, P(um + 0.4 * sx + side * 3.4, v + sv * 1.75, 16.6), P(um + 0.4 * sx + side * 2.6, v + sv * 1.75, 13.0))
+                rl.tri(root, P(um + 0.4 * sx + side * 2.6, v + sv * 1.75, 13.0), P(um + 0.4 * sx + side * 1.2, v + sv * 1.75, 12.3))
             ak.block(rl, P, um - 3.4, um + 3.4, min(v, v + sv * 0.45), max(v, v + sv * 0.45), spring + 0.6, spring + 7.4)
     # the frieze between two cornices, the entablature's crown, the attic with its shields, the top cornice
     ak.block(st, P, -hw, hw, -hd, hd, ent, att, top=False)
@@ -902,7 +917,14 @@ def opera_garnier(rows, mats):
         ak.block(st, F, -2.5, 1.2, v0, v1, 0.0, zt + 3.0)
         ak.pediment(st, F, -2.5, 1.2, v0, v1, zt + 3.0, 3.6, along_u=False)
         ak.opening(wn, F, (1.25, v1), (1.25, v0), 12.5, 4.0, 9.5, arch=True, centre=(v1 - v0) / 2)
-        gold.box(F(0.0, sv * (hw + 3.5), zt + 6.6), F(0.0, sv * (hw + 3.5), zt + 11.0), 3.8, 2.4)
+        # Gumery's gilded group: the winged figure standing between two kneeling geniuses
+        fx, fy, fz = F(0.0, sv * (hw + 3.5), zt + 6.6)
+        front = bearing(F, 1, 0)
+        figure(gold, fx, fy, fz, front, 4.6, pose=0 if sv < 0 else 3)
+        wings(gold, F, 0.15, sv * (hw + 3.5), zt + 6.6 + 3.4, 2.6)
+        for k in (-1, 1):
+            gx, gy, gz = F(0.4, sv * (hw + 3.5) + k * 1.5, zt + 6.6)
+            figure(gold, gx, gy, gz, front + k * 0.4, 2.4, pose=(4 + k) % 8)
     # the attic over the front, its masks, the copper roof over the foyer
     ak.block(st, F, -12.0, -2.0, -hw, hw, zt, zt + 4.5)
     cu.quad(F(-2.0, -hw, zt + 4.5), F(-2.0, hw, zt + 4.5), F(-12.0, hw, zt + 7.5), F(-12.0, -hw, zt + 7.5))
@@ -939,10 +961,18 @@ def opera_garnier(rows, mats):
             tr.box(S(u, v0, eave), S(u, 0, top), 0.9, 0.9)
             tr.box(S(u, v1, eave), S(u, 0, top), 0.9, 0.9)
         ak.ring_openings(wn, S, ak.rect(u0, u1, v0, v1), zt + 6.0, 2.0, 7.0, 7.5, arch=True)
-        gold.box(S(u1 + 0.3, 0, top), S(u1 + 0.3, 0, top + 7.5), 2.2, 1.6)  # Apollo, 7.5 m with his lyre
-        gold.box(S(u1 + 0.3, -1.8, top + 6.0), S(u1 + 0.3, 1.8, top + 6.0), 0.4, 0.8)
+        # Millet's Apollo raising his golden lyre, 7.5 m with it, on the front gable's apex
+        ax_, ay_, az_ = S(u1 + 0.3, 0, top)
+        figure(gold, ax_, ay_, az_, bearing(S, 1, 0), 5.6, pose=0)
+        L_ = lambda v, dz: S(u1 + 0.45, v, top + dz)
+        gold.tube([L_(-1.0, 7.6), L_(-1.05, 6.5), L_(-0.6, 5.8), L_(0.6, 5.8), L_(1.05, 6.5), L_(1.0, 7.6)], 0.14, sides=6)
+        gold.tube([L_(-1.1, 7.35), L_(1.1, 7.35)], 0.1, sides=5)
+        for k in range(5):  # its strings
+            gold.tube([S(u1 + 0.45, -0.5 + 0.25 * k, top + 5.8), S(u1 + 0.45, -0.5 + 0.25 * k, top + 7.2)], 0.03, sides=4)
+        # Lequesne's two Pegasi at the back gable's corners, rearing outwards
         for sv in (-1, 1):
-            gold.box(S(u0 - 0.3, sv * (v1 - v0) * 0.42, eave), S(u0 - 0.3, sv * (v1 - v0) * 0.42, eave + 4.5), 2.4, 1.6)
+            px, py, pz = S(u0 - 0.3, sv * (v1 - v0) * 0.42, eave)
+            pegasus(gold, px, py, pz, bearing(S, 0, sv), 4.5)
     return K.out(), [s["si"] for s in rows]
 
 
@@ -1383,7 +1413,7 @@ def massing_footprints():
     return {"chaillot": {"rings": CHAILLOT_LL, "grow_m": 12.0}}
 
 
-def gilt_figure(m, x, y, z, facing, h, pose=0):
+def figure(m, x, y, z, facing, h, pose=0):
     """A standing bronze figure h tall at (x, y, z), facing the bearing `facing` (radians from +x): legs in
     contrapposto, the torso, shoulders and head, and arms in one of eight gestures (raised, holding out,
     at rest), modelled as tapered tubes (the parvis's statues seen from the gardens and the terrace)."""
@@ -1404,6 +1434,40 @@ def gilt_figure(m, x, y, z, facing, h, pose=0):
     (el, ha), (er, hr) = gestures[pose % 8], gestures[(pose + 3) % 8]
     m.tube([sh_l, P(*el), P(*ha)], [0.1, 0.085, 0.06], sides=6)
     m.tube([sh_r, P(er[0], -er[1], er[2]), P(hr[0], -hr[1], hr[2])], [0.1, 0.085, 0.06], sides=6)
+
+
+def bearing(F, du, dv):
+    """The world bearing (radians from +x) of the direction (du, dv) in a frame."""
+    o, q = F(0, 0, 0), F(du, dv, 0)
+    return math.atan2(q[1] - o[1], q[0] - o[0])
+
+
+def wings(m, F, u, v, z, span):
+    """A pair of spread wings in the frame's v-z plane at (u, v), their roots at height z: each a fan of
+    three feathered points, the primaries swept up and out."""
+    for side in (-1, 1):
+        root = F(u, v + side * 0.25, z)
+        tips = [(0.9, 0.95), (1.0, 0.45), (0.75, -0.2), (0.4, -0.55)]
+        pts = [F(u - 0.1 * k, v + side * span * a, z + span * b) for k, (a, b) in enumerate(tips)]
+        for p, q in zip(pts[:-1], pts[1:]):
+            m.tri(root, p, q)
+
+
+def pegasus(m, x, y, z, facing, h):
+    """A rearing winged horse h tall on a plinth at (x, y, z), facing `facing`: its body, neck and head, the
+    hind legs it stands on, the forelegs pawing the air, the tail and the wings."""
+    c, s_ = math.cos(facing), math.sin(facing)
+    P = lambda f, l, u: (x + c * f - s_ * l, y + s_ * f + c * l, z + u * h / 4.5)
+    m.tube([P(-1.0, 0, 1.6), P(-0.2, 0, 2.2), P(0.5, 0, 2.9)], [0.45, 0.55, 0.45], sides=8)           # the body, rearing
+    m.tube([P(0.5, 0, 2.9), P(0.75, 0, 3.6), P(0.85, 0, 4.0)], [0.3, 0.24, 0.2], sides=7)             # the neck
+    m.tube([P(0.75, 0, 4.0), P(1.15, 0, 4.05), P(1.4, 0, 3.85)], [0.2, 0.16, 0.12], sides=6)          # the head
+    for side in (-1, 1):
+        m.tube([P(-0.9, side * 0.25, 1.4), P(-0.6, side * 0.3, 0.8), P(-0.75, side * 0.3, 0.0)], [0.16, 0.12, 0.09], sides=6)
+        m.tube([P(0.45, side * 0.25, 2.7), P(1.0, side * 0.28, 2.6), P(1.15, side * 0.28, 2.0)], [0.14, 0.11, 0.08], sides=6)
+        root = P(0.1, side * 0.3, 2.8)
+        for a, b in (((-0.2, 1.6, 4.4), (-0.9, 2.0, 3.6)), ((-0.9, 2.0, 3.6), (-1.1, 1.2, 2.9))):
+            m.tri(root, P(a[0], side * a[1], a[2]), P(b[0], side * b[1], b[2]))
+    m.tube([P(-1.15, 0, 1.6), P(-1.6, 0, 1.0), P(-1.7, 0, 0.3)], [0.14, 0.12, 0.05], sides=5)       # the tail
 
 
 def chaillot_zones():
@@ -1567,6 +1631,26 @@ def landmark_demolished(scene):
     return sorted(gone | over | {si for si, on in chaillot_site() if not on})
 
 
+def chaillot_statues():
+    """The parvis's statues: [(x, y, facing, pose)], four either side of the axis between the head pavilions'
+    cores, 22 m out from it, off the palace's roofs."""
+    from shapely.geometry import Polygon, Point
+    polys = [(z, Polygon(r).buffer(0)) for z, r in chaillot_zones()]
+    A, B = sorted((p for z, p in polys if z > 66.0), key=lambda p: -p.area)[:2]
+    pa, pb = A.centroid, B.centroid
+    ux, uy = pb.x - pa.x, pb.y - pa.y
+    Lp = math.hypot(ux, uy)
+    nx, ny = -uy / Lp, ux / Lp
+    out = []
+    for side in (-1, 1):
+        for k in range(4):
+            t = 0.3 + 0.13 * k
+            x, y = pa.x + ux * t + nx * side * 22.0, pa.y + uy * t + ny * side * 22.0
+            if not any(p.contains(Point(x, y)) for _, p in polys):
+                out.append((x, y, math.atan2(-side * ny, -side * nx), k + (side > 0) * 4))
+    return out
+
+
 def chaillot(rows, mats):
     """The Palais de Chaillot on its measured massing: each wing a tall range on the gardens' side (57 m,
     its square piers to 58.7 m) and a lower gallery on the streets' (46-48 m), from the parvis (34 m) down
@@ -1628,19 +1712,11 @@ def chaillot(rows, mats):
                 ak.openings_along(gold, ak.WORLD, a, b, z - 4.6, min(L - 3.0, 30.0), 1.1, L, depth=0.1)
     # the eight gilded bronze statues along the parvis (1937), on their plinths, four either side of its axis,
     # facing across it
-    ux, uy = pb.x - pa.x, pb.y - pa.y
-    Lp = math.hypot(ux, uy)
-    nx, ny = -uy / Lp, ux / Lp
-    for side in (-1, 1):
-        for k in range(4):
-            t = 0.3 + 0.13 * k
-            x, y = pa.x + ux * t + nx * side * 22.0, pa.y + uy * t + ny * side * 22.0
-            if roof_at(x, y) is not None:
-                continue
-            gz = T(x, y)
-            st.box((x, y, gz), (x, y, gz + 2.2), 1.6, 1.6)
-            tr.box((x, y, gz + 2.2), (x, y, gz + 2.45), 1.9, 1.9)
-            gilt_figure(gold, x, y, gz + 2.45, math.atan2(-side * ny, -side * nx), 4.2, pose=k + (side > 0) * 4)
+    for x, y, facing, pose in chaillot_statues():
+        gz = T(x, y)
+        st.box((x, y, gz), (x, y, gz + 2.2), 1.6, 1.6)
+        tr.box((x, y, gz + 2.2), (x, y, gz + 2.45), 1.9, 1.9)
+        figure(gold, x, y, gz + 2.45, facing, 4.2, pose=pose)
     # the solids the palace draws instead: its own pieces, and what the built data puts on its roofs
     hide = {s["si"] for s in rows} | {si for si, inside in chaillot_site() if inside}
     return K.out(), sorted(hide)

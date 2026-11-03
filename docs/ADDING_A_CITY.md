@@ -225,10 +225,19 @@ measured from the data (footprint centroids, bearings), never from guesses.
 building's frame (`Frame(cx, cy, axis_deg, ground)`, u along, v across): walls
 with ashlar UVs, cornices and string courses swept round an outline, arched and
 square openings, columns, colonnades, pilasters, pediments, steps,
-balustrades, domes with ribs, drums and lanterns; and for Japan, hipped-and-gabled
-(irimoya) roofs with curved eaves, halls (platform, pillars, tie beams, bracket
-band, roof, an optional pent roof), two-storey gates, battered stone ramparts
-(ishigaki) and plastered walls (dobei). `load_solids(city)` reads the built
+balustrades, domes with ribs, drums and lanterns; and for Japan, one roof that
+every kit builds on (`japanese_roof`: hipped, hipped-and-gabled or gabled, its
+height a function of the depth in from the eaves raised to a profile exponent for
+the concave sweep, the corners lifted, the long slopes running out to the gables
+over the hips, with fascia, ridges and the eaves' underside; `japankit` and
+Shibuya's shrines call it too), halls (platform, pillars, tie beams, bracket band,
+roof, an optional pent roof), two-storey gates, corridors (回廊: three rows of
+pillars, a plastered middle wall with lattice windows, a gabled roof), battered
+stone ramparts (ishigaki) and plastered walls (dobei). `outline_roof` puts a hipped
+roof of equal pitches on any outline, an L, a bend or a ring round a court (the
+straight skeleton's roof, as the distance in from the eaves): draw a building on
+its own outline with it when the outline is far from its rectangle, rather than as
+a hall on its bounding box. `load_solids(city)` reads the built
 footprints and `Terrain(city)` the ground, so a monument can stand on its
 mapped outline: Paris's monuments, Kyoto's temples, castle and palace,
 Kabuki-za and the Yoyogi gymnasiums are built this way. Return the solids a

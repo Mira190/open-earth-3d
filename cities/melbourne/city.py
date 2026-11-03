@@ -273,12 +273,24 @@ def crown():
         for p, _ in gas_brigades(river):
             K["crown_granite"].box((p[0], p[1], g), (p[0], p[1], g + 14.0), GAS_BRIGADE_M, GAS_BRIGADE_M)
             K["crown_fire"].lathe([(g + 14.0, 1.0), (g + 14.6, 1.6), (g + 15.0, 1.7)], (p[0], p[1]), segs=10)
-    # an unmapped duplicate of the casino under the complex's outline (w972192630, 31 m): drawn by the podium too
+    return K.out(), [r["si"] for r in rows]
+
+
+def crown_duplicates():
+    """An unmapped duplicate of the casino under the complex's outline (w972192630, 31 m), which the podium
+    draws: demolished rather than hidden, so the surface model (and the arrival's measure of what a walker
+    sees of Crown) has the podium alone."""
     from shapely.geometry import Polygon
-    outline = Polygon(q["ring"]).buffer(0)
-    dup = [r["si"] for r in ak.load_solids("melbourne") if r["osm"] != CROWN and abs(ak.ring_area(r["ring"])) > 1000
-           and Polygon(r["ring"]).buffer(0).intersection(outline).area > 0.8 * abs(ak.ring_area(r["ring"]))]
-    return K.out(), [r["si"] for r in rows] + dup
+    rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
+    if not rows:
+        return []
+    outline = Polygon(max(rows, key=lambda r: abs(ak.ring_area(r["ring"])))["ring"]).buffer(0)
+    return [r["si"] for r in ak.load_solids("melbourne") if r["osm"] != CROWN and abs(ak.ring_area(r["ring"])) > 1000
+            and Polygon(r["ring"]).buffer(0).intersection(outline).area > 0.8 * abs(ak.ring_area(r["ring"]))]
+
+
+def landmark_demolished(scene):
+    return crown_duplicates()
 
 
 def flinders_street(s):
