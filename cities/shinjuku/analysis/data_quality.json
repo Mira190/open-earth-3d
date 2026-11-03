@@ -1,0 +1,53 @@
+{
+ "ml_heights": {
+  "buildings": 32753,
+  "with_height": 3269,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -1200,
+   3300,
+   230,
+   3300
+  ],
+  "land": {
+   "samples": 22140,
+   "median_excess_m": 7.4,
+   "p90_excess_m": 17.7
+  },
+  "under_buildings": {
+   "samples": 10372,
+   "median_excess_m": 7.5,
+   "p90_excess_m": 17.8
+  },
+  "open_ground": {
+   "samples": 11768,
+   "median_excess_m": 7.4,
+   "p90_excess_m": 17.5
+  },
+  "points": {
+   "Suga Shrine": {
+    "terrarium_m": 33.3,
+    "dem_m": 30.9
+   },
+   "Shinjuku Station": {
+    "terrarium_m": 54.0,
+    "dem_m": 37.4
+   },
+   "Tochomae": {
+    "terrarium_m": 41.0,
+    "dem_m": 33.4
+   },
+   "Shinanomachi": {
+    "terrarium_m": 34.7,
+    "dem_m": 34.7
+   }
+  }
+ }
+}

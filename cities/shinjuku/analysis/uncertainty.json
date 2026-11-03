@@ -1,0 +1,267 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "Shinjuku Gyoen 新宿御苑",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 5.1,
+   "catchment_buildings": 54,
+   "shade_by_height_source_pct": {
+    "plateau": 84.1,
+    "estimate": 13.4,
+    "mapped": 2.4
+   },
+   "top_blockers": [
+    {
+     "building": 15439,
+     "name": "大温室",
+     "height_m": 15.6,
+     "source": "plateau",
+     "osm_id": "w228926578",
+     "share_pct": 11.7
+    },
+    {
+     "building": 15474,
+     "name": "unnamed greenhouse",
+     "height_m": 6.8,
+     "source": "plateau",
+     "osm_id": "w1322002390",
+     "share_pct": 5.1
+    },
+    {
+     "building": 12553,
+     "name": "レストランゆりのき",
+     "height_m": 22.7,
+     "source": "plateau",
+     "osm_id": "w149732542",
+     "share_pct": 3.7
+    },
+    {
+     "building": 12396,
+     "name": "環境省 新宿御苑 管理事務所",
+     "height_m": 8.3,
+     "source": "plateau",
+     "osm_id": "w229076834",
+     "share_pct": 3.2
+    },
+    {
+     "building": 15530,
+     "name": "unnamed greenhouse",
+     "height_m": 6.6,
+     "source": "estimate",
+     "osm_id": "w1322002388",
+     "share_pct": 2.9
+    },
+    {
+     "building": 12550,
+     "name": "インフォメーションセンター",
+     "height_m": 8.7,
+     "source": "plateau",
+     "osm_id": "w155785002",
+     "share_pct": 2.9
+    }
+   ],
+   "base_by_month": [
+    92.5,
+    94.1,
+    95.3,
+    96.2,
+    97,
+    97.5,
+    97.1,
+    96.3,
+    95.2,
+    93.7,
+    91.9,
+    91.3
+   ],
+   "p05_by_month": [
+    91.9,
+    93.8,
+    95.1,
+    96.1,
+    96.9,
+    97.4,
+    97.1,
+    96.2,
+    95,
+    93.3,
+    91.3,
+    90.6
+   ],
+   "p95_by_month": [
+    92.6,
+    94.2,
+    95.3,
+    96.3,
+    97.1,
+    97.6,
+    97.3,
+    96.4,
+    95.2,
+    93.7,
+    91.9,
+    91.3
+   ],
+   "window_mean": {
+    "base": 94.8,
+    "p05": 94.6,
+    "p95": 94.9
+   },
+   "max_halfwidth_pp": 0.4
+  },
+  {
+   "name": "Suga Park 須賀公園",
+   "period": "all",
+   "window": "12:00-13:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 19.2,
+   "catchment_buildings": 2,
+   "shade_by_height_source_pct": {
+    "plateau": 100
+   },
+   "top_blockers": [
+    {
+     "building": 22912,
+     "name": "unnamed building",
+     "height_m": 9.2,
+     "source": "plateau",
+     "osm_id": "w159499864",
+     "share_pct": 70.5
+    },
+    {
+     "building": 22893,
+     "name": "unnamed building",
+     "height_m": 9.5,
+     "source": "plateau",
+     "osm_id": "w159499968",
+     "share_pct": 29.5
+    }
+   ],
+   "base_by_month": [
+    51.1,
+    85.6,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    76.7,
+    32.2,
+    24.4
+   ],
+   "p05_by_month": [
+    43.3,
+    80,
+    96.7,
+    100,
+    100,
+    100,
+    100,
+    100,
+    97.7,
+    67.7,
+    28.9,
+    20
+   ],
+   "p95_by_month": [
+    54.5,
+    86.7,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    100,
+    78.9,
+    36.8,
+    28.9
+   ],
+   "window_mean": {
+    "base": 80.8,
+    "p05": 78,
+    "p95": 81.8
+   },
+   "max_halfwidth_pp": 5.6
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "Suga Park 須賀公園",
+   "building": 22912,
+   "name": "unnamed building",
+   "osm_id": "w159499864",
+   "height_m": 9.2,
+   "source": "plateau",
+   "plausible_m": [
+    9,
+    10
+   ],
+   "sun_change_pp": [
+    -2.2,
+    1.1
+   ],
+   "swing_pp": 3.3
+  },
+  {
+   "place": "Suga Park 須賀公園",
+   "building": 22893,
+   "name": "unnamed building",
+   "osm_id": "w159499968",
+   "height_m": 9.5,
+   "source": "plateau",
+   "plausible_m": [
+    9,
+    10
+   ],
+   "sun_change_pp": [
+    -2.2,
+    0
+   ],
+   "swing_pp": 2.2
+  }
+ ],
+ "seconds": 159.498,
+ "sigma": {
+  "floors": 0.181,
+  "estimate": 0.294,
+  "ml": null
+ }
+}

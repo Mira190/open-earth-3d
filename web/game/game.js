@@ -2887,7 +2887,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     A.start();
     if (cont && saved) {
       qs = Object.assign(qs, migrate(saved.qs));
-      spawn(saved.pos, saved.pos[2] != null ? saved.pos[2] + 0.5 : undefined); // back on the deck or roof where you left off
+      // back on the deck or roof where you left off; at the start if that is no longer in the map (a map split in two)
+      const F = scene.frame, inMap = p => Array.isArray(p) && p[0] > F.x[0] + 20 && p[0] < F.x[1] - 20 && p[1] > F.y[0] + 20 && p[1] < F.y[1] - 20;
+      if (inMap(saved.pos)) spawn(saved.pos, saved.pos[2] != null ? saved.pos[2] + 0.5 : undefined);
+      else spawn();
       if (saved.car && myCar && nav.floorAt(saved.car[0], saved.car[1], saved.car[2] + 1)) parkMyCar({ x: saved.car[0], y: saved.car[1], z: saved.car[2], h: saved.car[3] });
       if (saved.clock) { clock.scale = saved.clock.scale || 30; setClock(saved.clock.y, saved.clock.m, saved.clock.d, saved.clock.min); }
     }

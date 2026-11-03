@@ -69,15 +69,28 @@
     },
     {
       "id": "shibuya",
-      "name": "Shibuya & Shinjuku",
-      "native": "渋谷・新宿",
+      "name": "Shibuya",
+      "native": "渋谷",
       "country": "Japan",
-      "lat": 35.6685,
-      "lon": 139.6965,
+      "lat": 35.6586,
+      "lon": 139.6913,
       "status": "live",
-      "summary": "Sangenjaya to Shibuya, Shinjuku and Yotsuya: 90,000 buildings at PLATEAU-surveyed heights, the Shibuya scramble, SHIBUYA SKY's roof with its lift and escalator, the Suga Shrine stairs of Your Name with this year's ema, and the streets Persona 5 drew, from Sangenjaya's backstreets to Kabukicho.",
+      "summary": "Sangenjaya to Shibuya, Harajuku and Yoyogi Park: 48,000 buildings at PLATEAU-surveyed heights, the scramble and Hachiko, SHIBUYA SKY's roof with its lift and escalator, Center Gai, Yoyogi's gymnasiums and the streets Persona 5 drew, from Sangenjaya's backstreets to the station.",
       "group": "Tokyo",
-      "tagline": "The scramble, SHIBUYA SKY, Sangenjaya's lanes, Kabukicho and the Your Name stairs"
+      "tagline": "The scramble, Hachiko, SHIBUYA SKY, Center Gai and Sangenjaya's lanes",
+      "moved": {"shinjuku": ["t-suga", "t-stairs", "t-kabuki", "t-aoyama"]}
+    },
+    {
+      "id": "shinjuku",
+      "name": "Shinjuku",
+      "native": "新宿",
+      "country": "Japan",
+      "lat": 35.6844,
+      "lon": 139.7081,
+      "status": "live",
+      "summary": "Nishi-Shinjuku's towers to Yotsuya: 27,000 buildings at PLATEAU-surveyed heights, Kabukicho's arch, the east exit's screens, 2-chome and Golden Gai, Shinjuku Gyoen, Jingu Gaien's ginkgo avenue and the Suga Shrine stairs of Your Name with this year's ema.",
+      "group": "Tokyo",
+      "tagline": "Kabukicho, the east exit, Nishi-Shinjuku's towers and the Your Name stairs"
     },
     {
       "id": "asakusa",
@@ -233,16 +246,17 @@
         {"name": "Marunouchi", "native": "丸の内", "lat": 35.6812, "lon": 139.7671, "map": "tokyo", "label": "r"},
         {"name": "Ginza", "native": "銀座", "lat": 35.6717, "lon": 139.764, "map": "tokyo", "label": "l"},
         {"name": "Shibuya", "native": "渋谷", "lat": 35.659, "lon": 139.7016, "map": "shibuya", "label": "r"},
-        {"name": "Harajuku", "native": "原宿", "lat": 35.6702, "lon": 139.7027, "map": "shibuya", "label": "r"},
+        {"name": "Harajuku", "native": "原宿", "lat": 35.6702, "lon": 139.7027, "map": "shibuya", "travel": "t-harajuku", "label": "r"},
         {
           "name": "Shinjuku",
           "native": "新宿",
           "lat": 35.6905,
           "lon": 139.7003,
-          "map": "shibuya",
-          "travel": "t-kabuki",
+          "map": "shinjuku",
+          "travel": "t-east",
           "label": "r"
         },
+        {"name": "Yotsuya", "native": "四ツ谷", "lat": 35.686, "lon": 139.7302, "map": "shinjuku", "travel": "t-suga", "label": "r"},
         {
           "name": "Sangen-jaya",
           "native": "三軒茶屋",
@@ -419,6 +433,23 @@
             [35.6743, 139.7671],
             [35.6705, 139.7737],
             [35.6646, 139.784]
+          ]
+        },
+        {
+          "name": "Marunouchi Line",
+          "native": "丸ノ内線",
+          "colour": "#f62e36",
+          "stops": [
+            [35.6905, 139.7003],
+            [35.6906, 139.7055],
+            [35.6884, 139.7105],
+            [35.6882, 139.72],
+            [35.686, 139.7302],
+            [35.677, 139.737],
+            [35.674, 139.7451],
+            [35.6739, 139.7505],
+            [35.6717, 139.764],
+            [35.6812, 139.7671]
           ]
         },
         {

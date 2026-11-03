@@ -7,9 +7,21 @@ station goes into that district.
 | Map | id | Districts on the subway map | Landmarks built in code |
 |---|---|---|---|
 | Marunouchi & Ginza 丸の内・銀座 | `tokyo` | Marunouchi, Ginza | Tokyo Tower |
-| Shibuya & Shinjuku 渋谷・新宿 | `shibuya` | Shibuya, Harajuku, Shinjuku, Sangen-jaya | Suga Shrine's stairs, SHIBUYA SKY, the scramble |
+| Shibuya 渋谷 | `shibuya` | Shibuya, Harajuku, Sangen-jaya | SHIBUYA SKY, the scramble and Hachiko, Center Gai's arch, Yoyogi's gymnasiums |
+| Shinjuku 新宿 | `shinjuku` | Shinjuku, Yotsuya | Suga Shrine's stairs, Kabukicho's arch, the east exit's screens, the Docomo tower's clock |
 | Asakusa 浅草 | `asakusa` | Asakusa, Oshiage · Skytree | Senso-ji (Kaminarimon, Hozomon, pagoda, main hall), Tokyo Skytree, the Asahi flame |
 | Akihabara 秋葉原 | `akihabara` | Akihabara | Electric Town's signs and prints, Kanda Myojin's Zuishinmon, Nikolai-do's dome |
+
+Shibuya and Shinjuku were one map, 5.4 × 6.2 km from Sangenjaya to Yotsuya, until they were split
+in two by the rule above (issue #85). Shibuya runs 4.45 × 4.0 km from Sangenjaya to Harajuku and
+Meiji Jingu; Shinjuku 4.5 × 3.07 km from Tokyo Opera City to Yotsuya and from Jingu Gaien and
+Aoyama-itchome to Kabukicho. They overlap by about 0.7 km over Meiji Jingu's woods and Yoyogi Park's
+north end, so the boundary falls in the trees rather than through a street. Both keep the one map's
+frame (the same origin; each map's extent is its own), so a coordinate means the same place in both,
+the landmarks are built by one file (`cities/shibuya/city.py`, loaded by `cities/shinjuku/city.py`),
+and the game's points kept their ids. An old link to a point that moved, `#play-shibuya@t-suga`,
+opens `#play-shinjuku@t-suga` (`moved` in `cities/index.json`, read by the router in
+`web/index.html`), and a saved game whose position is no longer in its map starts at the map's start.
 
 Next in line, grey on the map: Ueno, Ikebukuro, Jinbocho, Roppongi, Tsukishima, Odaiba,
 Shinagawa.
@@ -37,7 +49,7 @@ map that holds it, `travel`: a travel point in that map's game to start at, `not
 built) and the lines (`colour`, `stops` as `[lat, lon]`, `loop`). Stations and lines are drawn at
 their real positions (an equirectangular projection at Tokyo's latitude), with the built maps'
 extents shaded behind them. The lines are JR's Yamanote Line and Tokyo Metro's Ginza, Hanzomon,
-Yurakucho and Hibiya lines and the Yurikamome, in their own colours; station positions are the
+Yurakucho, Hibiya and Marunouchi lines and the Yurikamome, in their own colours; station positions are the
 stations' own (OpenStreetMap), rounded.
 
 `pipeline/build_scene.py` copies the group onto each member in `web/data/cities.json`
