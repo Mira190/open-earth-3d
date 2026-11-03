@@ -518,6 +518,7 @@ window.OEJunctions = (function () {
       const j = a.j, m = mv(c, e);
       const had = j.active.find(o => o.c === c && o.k === a.i && o.m === m);
       if (had && c.mv && c.mv.j === j) { c.mv = { j, a, e }; return; } // (in it already, this way: as it was)
+      if (had && c.mv0 && c.mv0.j === j) return; // (and the one it is leaving, two close together crossed at once)
       if (forced) overLine++; // (a car already over the line: the checks count these)
       unwait(c);
       if (c.mv && c.mv.j === j) release(c);
