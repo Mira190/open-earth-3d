@@ -606,7 +606,7 @@ const { findQueue } = require('./ride_queue');
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
       for (const c of g.cars.C.concat(mc ? [Object.assign({ mine: true }, mc.D.st)] : [])) {
         const dx = c.x - t.x, dy = c.y - t.y, a = dx * fx + dy * fy;
-        if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}`);
+        if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}${c.mine ? '' : ` (${c.why}${c.q ? ', queueing' : ''}${c.mv ? ', in a junction' : ''})`}`);
       }
       r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}, held ${(t.held || 0).toFixed(0)} s, ${t.why}${t.junction ? ` (the junction: ${t.junction})` : ''}${t.block ? ` behind ${t.block === player ? 'you' : mc && t.block.x === mc.D.st.x ? 'your car' : t.block.line != null ? `a car on line ${t.block.line} (stuck ${(t.block.stuck || 0).toFixed(0)} s, v ${(t.block.v || 0).toFixed(1)})` : 'something'} at ${Math.hypot(t.block.x - t.x, t.block.y - t.y).toFixed(1)} m${t.block.still ? ', still' : ''}` : ''}; ${ahead.join('; ') || 'nothing ahead'}`;
       // (and what is in the junction it waits at: each car's way, what holds it, and for how long it has stood)
@@ -704,26 +704,31 @@ const { findQueue } = require('./ride_queue');
       const st = o.drv.st, queued = C.filter(c => c.line === pick.h.line && c.dir === pick.h.dir && c.q);
       r = { n: queued.length, shift: 0, passed: [], behind: false, behindOff: 0, gone: false, moved: null, follow: null, jams };
       const sHead = (pick.h.s - pick.rt.from.s) * pick.h.dir; // (the head of the queue, along the taxi's way)
+      const arm = g.junctions.armAt(pick.h.line, pick.h.dir > 0 ? 1 : 0), seq = [];
       for (let t = 0; t < 180 && !st.done; t += 0.25) { // (a red can be long where the signals give a call or a scramble its turn)
         g.advance(0.25);
+        const lt = g.junctions.light(arm); if (!seq.length || seq[seq.length - 1][1] !== lt) seq.push([t, lt]); // (the light it waits at, as it changes)
         r.shift = Math.max(r.shift, Math.abs(st.shift));
         const a = st.h, bl = st.block;
         if (bl && bl.q && st.v < 0.5) { r.behind = true; r.ahead = bl; }
         // the queue moves: the car it waits behind is off (then it follows within a few seconds)
         if (r.ahead && r.moved == null && r.ahead.v > 1) r.moved = t;
         if (r.moved != null && r.follow == null && st.v > 0.5) { r.follow = t - r.moved; r.goneT = t; }
+        // and it never stands with room ahead of it and no line to stop at (the queue moved on without it)
+        r.openT = r.behind && st.v < 0.3 && st.gap > 7 && !/^the line/.test(st.why || '') ? (r.openT || 0) + 0.25 : 0;
+        r.openMax = Math.max(r.openMax || 0, r.openT);
         for (const c of queued) if (c.q && c.line === pick.h.line && along(c, st, a) < -(c.half + o.C.half) && Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a)) < 4 && !r.passed.includes(C.indexOf(c))) r.passed.push(C.indexOf(c));
         if (st.q) for (const c of C) if (c.line === pick.h.line && c.dir === pick.h.dir) { const b = along(c, st, a); if (b < 0 && b > -30) r.behindOff = Math.max(r.behindOff, Math.abs(c.off || 0)); }
-        if (r.follow != null && t - r.moved > 4) break;
+        if (r.follow != null && t - r.goneT > 4) break;
         if (st.s > sHead + 5) { r.gone = true; break; }
       }
-      const bl = st.block, lt = g.junctions.armAt(pick.h.line, pick.h.dir > 0 ? 1 : 0);
-      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, light ${lt ? g.junctions.light(lt) : '?'}${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
+      const bl = st.block;
+      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
       delete r.ahead;
-      if (r.follow != null || r.moved != null || !r.behind) break;
-      jams.push(`line ${pick.h.line}: ${r.why}`); // (the queue never moved in 3 minutes: a long red or a jam in the junction, not the taxi's doing; another queue)
+      if (r.follow != null || r.moved != null) break;
+      jams.push(`line ${pick.h.line}: ${r.behind ? '' : 'the light changed before it caught up; '}${r.why}`); // (the queue never moved in 3 minutes: a long red or a jam in the junction, not the taxi's doing; another queue)
     }
-    if (!r) { g.skipRide(); g.advance(6); g.leaveRide(); return { none: 'no queue at a red light in 90 s' }; }
+    if (!r) { g.skipRide(); g.advance(6); g.leaveRide(); return { none: 'no queue at a red light in 3 minutes' }; }
     g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
     return r;
   });
@@ -732,8 +737,8 @@ const { findQueue } = require('./ride_queue');
     check(queue.behind && queue.shift < 0.5, `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.behind ? '' : ', never caught up with the queue'})`);
     check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed car ${queue.passed.join(', ')})` : ''}`);
     check(queue.behindOff < 1.2, `the traffic behind it queues behind it (swung out by ${queue.behindOff.toFixed(2)} m at most)`);
-    if (queue.jams.length) console.log(`note the queue did not move in 3 minutes: ${queue.jams.join(' | ')}`);
-    check(queue.follow != null && queue.follow < 6, `and it goes on when the queue moves (${queue.follow != null ? `off ${queue.follow.toFixed(1)} s after the car ahead, ${queue.goneT.toFixed(0)} s after it came up` : queue.moved != null ? `the car ahead went ${queue.moved.toFixed(0)} s in, the taxi did not: ${queue.why}` : `the queue never moved: ${queue.why}`})`);
+    if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 3 minutes, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);
+    check(queue.follow != null && queue.openMax < 2.5, `and it goes on when the queue moves (${queue.follow != null ? `off ${queue.follow.toFixed(1)} s after the car ahead first moved, ${queue.goneT.toFixed(0)} s after it came up; stood at most ${queue.openMax.toFixed(1)} s with room ahead` : queue.moved != null ? `the car ahead went ${queue.moved.toFixed(0)} s in, the taxi did not: ${queue.why}` : `the queue never moved: ${queue.why}`})`);
   }
 
   // a quick start: the helicopter waits on a pad near where you start and a taxi can reach you

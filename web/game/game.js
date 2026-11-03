@@ -756,8 +756,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
     o.T0 = plan.T; o.sig = plan.sig; // (the lights it is to stop at near you, s along its route)
-    o.driver = makeRig(driverLook(), {});
+    const look = driverLook();
+    o.driver = makeRig(look, {});
     C.sit(o.driver, 'driver');
+    // none of the crowd's characters loaded yet (a ride in the first seconds of a game): a simple
+    // figure at the wheel for now, and one of them as soon as it has loaded
+    if (!look.character && lib) {
+      const names = Object.keys(lib.info.characters).filter(n => !PLAYER_LOOKS[n]);
+      const name = names[Math.floor(Math.random() * names.length)];
+      if (name) Promise.resolve(lib.require(name)).then(() => {
+        if (ride !== o || !lib.tpl[name]) return;
+        const rig = makeRig(OEPeople.randomLook(lib, name, CR.style), {});
+        if (o.driver.root.parent) o.driver.root.parent.remove(o.driver.root);
+        o.driver = rig;
+        C.sit(rig, 'driver');
+      }).catch(() => {});
+    }
     return o;
   }
   // one setting out from a street a couple of hundred metres off by road, chosen so it takes
@@ -1009,7 +1023,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);
     o.C.animate(dt, { v: st.v, h: st.h, steer: st.steer, brake: st.brake, signal: st.signal, hazard: o.phase === 'waiting' || o.phase === 'arrived', night, on: true,
-      inside: player.vehicle === o && cam.mode === 'cabin',
+      inside: player.vehicle === o && cam.mode === 'cabin', near: st.gap,
       sign: o.kind === 'taxi' && (o.phase === 'coming' || o.phase === 'leaving') });
     o.driver.animate(dt, 0, 'sit', clockT);
     if (o.phase === 'driving') o.meter += st.v * dt;
@@ -3523,7 +3537,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function cabinView(dt, o, st) {
     const seat = o === myCar ? 'driver' : kerbSeat, back = clockT - cam.lastInput > 1.2 ? Math.max(0, 1 - dt * 3) : 1;
     o.C.body.updateWorldMatrix(true, false); // where the car is this frame, not where it was last drawn
-    o.C.body.localToWorld(eye.copy(o.C.seats[seat]).add(new THREE.Vector3(0, seat === 'driver' ? 0.7 : 0.64, 0.08)));
+    // (from the back seat, leaning in towards the middle, as a passenger does to see the road between the front seats' headrests)
+    const s0 = o.C.seats[seat];
+    o.C.body.localToWorld(seat === 'driver' ? eye.copy(s0).add(new THREE.Vector3(0, 0.7, 0.08)) : eye.set(s0.x * 0.3, s0.y + 0.66, s0.z + 0.12));
     cam.yaw = st.h + angDiff(cam.yaw, st.h) * back;
     cam.pitch = 0.2 + (cam.pitch - 0.2) * back;
     const p = -(cam.pitch - 0.2) * 0.8 - 0.06;

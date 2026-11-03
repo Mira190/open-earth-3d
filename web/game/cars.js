@@ -192,12 +192,19 @@ window.OECars = (function () {
     // left and right in the frame of a left-hand-drive car swap with the cabin
     if (mirror < 0 && seats.rear_left) [seats.rear_left, seats.rear_right] = [seats.rear_right, seats.rear_left];
     // lamps seen from afar after dark
-    const glows = [];
+    const glows = [], gv = new THREE.Vector3(), dv = new THREE.Vector3(), cv = new THREE.Vector3();
     const glow = (p, hex, size, kind) => {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: lin(hex), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       s.position.copy(p).add(new THREE.Vector3(0, 0, Math.sign(p.z) * 0.06));
       s.renderOrder = 3;
-      s.userData = { size, kind };
+      s.userData = { size, kind, op: 0, out: new THREE.Vector3(0, 0, Math.sign(p.z) || 1) };
+      // a lamp shines the way it faces: its glow fades out as it is seen side on, and is gone from
+      // behind (a headlamp's glow seen from the back of the car read as a white bloom on the car ahead)
+      s.onBeforeRender = (r, sc, cam) => {
+        s.getWorldPosition(gv); dv.copy(s.userData.out).transformDirection(body.matrixWorld);
+        const f = dv.dot(cv.setFromMatrixPosition(cam.matrixWorld).sub(gv).normalize());
+        s.material.opacity = s.userData.op * clamp((f + 0.15) / 0.55, 0, 1);
+      };
       body.add(s);
       glows.push(s);
     };
@@ -255,9 +262,12 @@ window.OECars = (function () {
           const k = q.userData.kind === 'head' ? (lit && !s.inside ? 1 : 0) : lit ? (s.brake ? 1.4 : 0.8) : s.brake ? 0.6 : 0;
           q.visible = k > 0.01;
           q.scale.setScalar(q.userData.size * (0.5 + 0.8 * night) * Math.max(0.6, k));
-          q.material.opacity = Math.min(1, k * (0.35 + 0.65 * night));
+          q.material.opacity = q.userData.op = Math.min(1, k * (0.35 + 0.65 * night));
         }
-        if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) : 0;
+        // (the beam on a car stopped close ahead, s.near metres: dimmed as the eye would adapt to it,
+        // rather than a white wall where a queue's back is lit from 3 m)
+        const nearK = s.near != null && s.near < 12 ? Math.max(0.15, (Math.max(0, s.near) / 12) ** 2) : 1;
+        if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) * nearK : 0;
       },
       // a person in a seat, facing forward: the rig's root on the floor in front of the cushion
       // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it. The
@@ -922,6 +932,7 @@ window.OECars = (function () {
       // light's red, a jam in the junction, when it counts again, for a ride to find another way round)
       st.qT = queued && st.v < 0.5 ? (st.qT || 0) + dt : 0;
       const waiting = queued && carGap >= 0.5 && st.qT < 60;
+      st.gap = carGap; // (the gap to the car ahead: its headlamp beam is dimmed on one close ahead)
       st.held = line <= carGap || waiting ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
       // queueing for a junction itself (stopped for its line, or behind a car that is): what the traffic
       // behind reads, as it reads a car of its own (c.q), so it queues behind and never goes round

@@ -51,16 +51,20 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900', timesArg = '10:00,s
       g.setClock(c.y, c.m, c.d, min);
       g.advance(1);
       // a taxi hailed at the kerb (or a ride ordered on the phone), and in the back
-      g.hail();
-      if (!g.ride()) { const dest = g.destinations(g.player.x, g.player.y)[0]; if (dest) g.orderRide(dest); }
-      const o = g.ride();
-      if (!o) return { none: 'no taxi or ride' };
-      for (let t = 0; t < 90 && o.phase === 'coming'; t += 0.5) g.advance(0.5);
-      g.boardRide();
-      for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
-      for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
-      if (g.dlg.open) g.dlg.choose(0);
-      if (g.player.mode !== 'ride') return { none: 'not in the taxi' };
+      let o = null;
+      for (let k = 0; k < 4 && g.player.mode !== 'ride'; k++) { // (the last one may still be pulling away: a few seconds on, again)
+        if (g.ride() && g.ride().phase === 'leaving') g.advance(4);
+        g.hail();
+        if (!g.ride() || g.ride().phase === 'leaving') { const dest = g.destinations(g.player.x, g.player.y)[0]; if (dest) g.orderRide(dest); }
+        o = g.ride();
+        if (!o || o.phase === 'leaving') { g.advance(5); continue; }
+        for (let t = 0; t < 90 && o.phase === 'coming'; t += 0.5) g.advance(0.5);
+        g.boardRide();
+        for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
+        for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
+        if (g.dlg.open) g.dlg.choose(0);
+      }
+      if (g.player.mode !== 'ride') return { none: `not in the taxi (${o ? o.phase : 'none came'})` };
       const pick = window.__findQueue(g, new Set(), [g.player.x, g.player.y]) || window.__findQueue(g, new Set());
       if (!pick) return { none: 'no queue at a red light' };
       o.drv.leave();
