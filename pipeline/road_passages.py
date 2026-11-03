@@ -195,6 +195,11 @@ def carve(out_dir, walls):
         else:
             n_left += 1
             continue
+        if kind == "pass":  # (a sliver left beside the passage, by the road: part of what stands over it, not a needle up the building)
+            thin = [q for q in rp if q.area < 6 or 2 * q.area / q.length < 1.2]
+            if thin:
+                rp = [q for q in rp if q not in thin]
+                cut = shapely.unary_union([cut] + thin)
         old_flags = {}
         if si in fronts:
             f = fronts[si]
