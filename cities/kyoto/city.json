@@ -325,7 +325,7 @@
       {
         "id": "haruka",
         "name": "Haruka",
-        "role": "Survey lead",
+        "role": "Kyoto Station guide",
         "at": [-267, -1802],
         "look": {
           "character": "R_Female_Adult_04_f003",
@@ -338,7 +338,7 @@
           "clip": "Documents"
         },
         "idle": [
-          "The whole model is open data. If a building looks wrong here, tell me. Kyoto Tower is the easy one: 131 m, and nothing else comes close."
+          "Kyoto Tower opened in 1964, the same year as the Shinkansen. People hated it then. Now it's how you know you're home."
         ]
       },
       {
@@ -470,10 +470,9 @@
         "title": "Welcome to Kyoto Station",
         "stamp": "Kyoto Station",
         "talk": [
-          "You are the new surveyor? Good. This city is rebuilt from open data: {buildings} buildings, laser terrain, the real sun, and building heights that were measured from the air.",
-          "Before we check anything, get your bearings. Kyoto Tower is right behind me. Brother Sozen is at Higashi Honganji, a short walk north. Say hello.",
-          "Or go further. The helicopter is on the station plaza, just to your right, and the taxis are right here: a hand up at the kerb (Y).",
-          "WASD or the arrow keys to walk, Shift to run, drag to look around. E to talk."
+          "Konnichiwa, welcome to Kyoto. I'm Haruka; I grew up two streets from the station. That's Kyoto Tower behind me: 131 m, and nothing else in the city comes close.",
+          "Start with Higashi Honganji, a short walk north: Brother Sozen will show you the great wooden hall. The helicopter is on the station plaza and taxis wait right here: a hand up at the kerb (Y).",
+          "WASD or the arrow keys to walk, Shift to run, drag to look around, E to talk. いってらっしゃい."
         ],
         "steps": [
           {
@@ -490,7 +489,7 @@
         "stamp": "Higashi Honganji",
         "talk": [
           "Welcome. This is the Founder's Hall, the Goei-do. It was rebuilt in 1895 and is among the largest wooden buildings in the world.",
-          "Look at the roofs around it. Kyoto has always been low. Mr. Tanaka is in the office streets near Karasuma and Shijo, a long walk north. He can tell you what the city measures."
+          "Look at the roofs around it. Kyoto has always been low. Mr. Tanaka is in the office streets near Karasuma and Shijo, a long walk north. He can tell you why."
         ],
         "steps": [
           {
@@ -506,25 +505,12 @@
         "title": "A city that stays low",
         "stamp": "Karasuma-Shijo",
         "talk": [
-          "A surveyor! I am in from Tokyo. Look around: very few buildings here pass 31 m, and the rules want it that way.",
-          "Every building in this model carries the source of its height. Here most are measured from the air by Project PLATEAU: {share:plateau}% of the footprint area. Floor counts cover {share:floors}%, and {share:estimate}% is estimated.",
-          "Aim at a building and press Q for the survey lens. Find a measured one, a floor-count one and an estimated one."
+          "Ah, a visitor! I am in from Tokyo too. Look around: very few buildings here pass 31 m, and the rules want it that way.",
+          "In 2007 the city lowered its height limits, 31 m at most even here in the centre, and banned signs on the rooftops. Even the convenience stores dress in quieter colours.",
+          "Go and eat something at Nishiki Market, a few blocks east. Mrs. Nakamura will feed you."
         ],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": [
-              "plateau",
-              "floors",
-              "estimate"
-            ],
-            "text": "Survey lens (Q): a measured, a floor-count and an estimated height"
-          },
-          {
-            "type": "talk",
-            "npc": "obaasan",
-            "text": "Find Mrs. Nakamura in Nishiki Market"
-          }
+          {"type": "talk", "npc": "obaasan", "text": "Find Mrs. Nakamura in Nishiki Market"}
         ]
       },
       {
@@ -533,7 +519,7 @@
         "title": "Eel's beds",
         "stamp": "Nishiki Market",
         "talk": [
-          "Ah, the surveyor! Try a pickle. Look how narrow the shops are: three or four metres wide, and very deep. That is how Kyoto was taxed, by the width of your front.",
+          "Ah, a hungry one! Try a pickle. Look how narrow the shops are: three or four metres wide, and very deep. That is how Kyoto was taxed, by the width of your front.",
           "Ken at Nijo Castle knows even older things. Go west and north, past the Imperial Gardens' south side, and tell him I sent you."
         ],
         "steps": [
@@ -568,8 +554,8 @@
         "stamp": "Kyoto Imperial Gardens",
         "talk": [
           "Konnichiwa! Is it true the sun stays so low in winter? Tokyo feels dark between the buildings.",
-          "On 21 December at noon, {sun:京都御苑|12-21|12:00}% of the Kyoto Gyoen gets direct sun. On 21 June it is {sun:京都御苑|6-21|12:00}%. There is no rule that protects it, we just measure.",
-          "Find a sunny spot in the gardens at noon on 21 December. Watch the sun meter under the map. It ray-casts from where you stand."
+          "On 21 December at noon, {sun:京都御苑|12-21|12:00}% of the Kyoto Gyoen gets direct sun. On 21 June it is {sun:京都御苑|6-21|12:00}%. No rule protects it.",
+          "Find a sunny spot in the gardens at noon on 21 December. The sun meter under the map tells you when you're in it."
         ],
         "choices": [
           {
@@ -604,17 +590,17 @@
       {
         "id": "done",
         "giver": "yui",
-        "title": "Survey complete",
-        "stamp": "Surveyor",
+        "title": "From the station to the Palace",
+        "stamp": "京都 Kyoto",
         "talk": [
           "Arigato! That's Kyoto, from the station to the Palace.",
-          "{acc:matched} towers have been checked against published heights, and the rest are measured or estimated as you saw. Take the helicopter from Kyoto Gyoen if you want to see how flat it really is.",
+          "Take the helicopter from Kyoto Gyoen if you want to see how flat it really is: the streets still keep the grid of 794.",
           "The city is yours. Change the time of day, or fly anywhere."
         ],
         "steps": []
       }
     ],
-    "blurb": "Walk a real city rebuilt from open data and lit by the real sun. Talk to the people who know it, from the monks of Higashi Honganji to a salaryman up from Tokyo, and fly over the grid Kyoto was laid out on in 794. Every fact they tell you about the model comes from the model.",
+    "blurb": "Walk Kyoto under the real sun. Talk to the people who know it, from the monks of Higashi Honganji to a salaryman up from Tokyo, and fly over the grid Kyoto was laid out on in 794.",
     "local_name": "Kyoto local",
     "greeting": "Konnichiwa.",
     "water_name": "the Kamo River"

@@ -121,7 +121,7 @@
     "local_name": "Tokyoite",
     "water_name": "the Kanda",
     "greeting": "いらっしゃいませ!",
-    "blurb": "Walk the real Akihabara, rebuilt from open data and lit by the real sun: Chuo-dori's signs and wall prints, the lanes of parts shops and arcades, and up the hill to Kanda Myojin and Nikolai-do.",
+    "blurb": "Walk Akihabara under the real sun: Chuo-dori's signs and wall prints, the lanes of parts shops and arcades, and up the hill to Kanda Myojin and Nikolai-do.",
     "smalltalk": ["いらっしゃいませ!", "すみません。", "どうも。", "Excuse me!", "お帰りなさいませ!"],
     "start": {
       "at": [195.0, -58.0],
@@ -289,7 +289,7 @@
         "giver": "yuto",
         "title": "Electric Town",
         "stamp": "Akihabara",
-        "talk": ["Welcome to Akiba! This is the real one, rebuilt from open data: {buildings} buildings, {share:plateau}% of the footprint area at PLATEAU-surveyed heights.", "Chuo-dori is the main street; the lanes behind it are where things happen. Mai hands out flyers on the corner."],
+        "talk": ["Welcome to Akiba! I'm Yuto. My father sold radio parts under these tracks; I sell everything else.", "Chuo-dori is the main street; the lanes behind it are where things happen. Mai hands out flyers on the corner."],
         "steps": [{"type": "talk", "npc": "mai", "text": "Find Mai on Chuo-dori"}]
       },
       {
@@ -307,13 +307,9 @@
         "giver": "taku",
         "title": "Junk Street",
         "stamp": "Junk Street",
-        "talk": ["Look up at the blade signs: パーツ, 中古, 買取, レトロゲーム. Every floor a different shop.", "Aim at a building and press Q: the survey lens says where its height came from. Find a surveyed one and a floor-count one."],
+        "talk": ["Look up at the blade signs: パーツ, 中古, 買取, レトロゲーム. Every floor a different shop.", "Pick a door and climb. In Akiba the best shop is always on the top floor, and the lift is always broken."],
         "steps": [
-          {
-            "type": "inspect",
-            "sources": ["plateau", "floors"],
-            "text": "Survey lens (Q): a PLATEAU and a floor-count height"
-          }
+
         ]
       },
       {

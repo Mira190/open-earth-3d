@@ -174,7 +174,7 @@ tests. `sun_access.js` reports a 10 am–2 pm window on the 21st of each month.
 
 You start on the promenade at the foot of St Kilda Pier, at the city's live
 clock. There are four people and four stamps:
-- **Kim (survey lead):** sends you out along the pier to the kiosk.
+- **Kim (a St Kilda local):** sends you out along the pier to the kiosk.
 - **Tash (Earthcare St Kilda volunteer):** explains the colony.
   - About 1,400 little penguins live in the breakwater, which was built for
     the sailing at the 1956 Olympics.
