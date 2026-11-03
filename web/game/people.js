@@ -671,7 +671,9 @@ transformed = crowdPose(transformed, false);`);
     // umbrellas for the rain: each person's own colour (Tokyo carries clear vinyl), and whether they
     // put one up in a drizzle (some don't bother) or only when it really rains
     const UMB = (styleOf(style) || STYLE || {}).umbrellas || ['#1d1f26', '#1d1f26', '#22304a', '#2f3b33', '#5a1f2b', '#7b8794', '#c9b28a', '#2b4a6b'];
-    for (const p of P) { p.umbK = rnd(); p.look.umbrella = UMB[Math.floor(rnd() * UMB.length)]; }
+    let us = 977; // (its own random run, so the crowd's looks and pace stay as they were without it)
+    const urnd = () => ((us = (us * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (const p of P) { p.umbK = urnd(); p.look.umbrella = UMB[Math.floor(urnd() * UMB.length)]; }
     const umbMeshes = {}, umbGeo = canopyGeo();
     const umbMesh = clear => umbMeshes[clear] || (umbMeshes[clear] = (() => {
       const m = new THREE.InstancedMesh(umbGeo, clear ? stdMat('clear') : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0, side: THREE.DoubleSide }), P.length);
