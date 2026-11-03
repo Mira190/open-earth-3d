@@ -148,6 +148,47 @@ window.OEAtmos = (function () {
     return out;
   }
 
+  // The camera's own effects, for photo mode and the opening shot only (never in play): depth of
+  // field, a disc of 24 taps whose radius is the circle of confusion for the focus distance and the
+  // lens, and the camera's motion blur, each pixel smeared along the way it moved on screen since
+  // the last frame (its distance from the camera, read from a distance pass, put back into the
+  // world and seen from the last frame's camera). The distance pass is drawn only while either is on.
+  const CAMFX = {
+    uniforms: { tDiffuse: { value: null }, tDist: { value: null }, uFocus: { value: 10 }, uAperture: { value: 0 }, uBlur: { value: 0 },
+      uInvProj: { value: new THREE.Matrix4() }, uCamWorld: { value: new THREE.Matrix4() }, uPrevVP: { value: new THREE.Matrix4() }, uFar: { value: 3000 }, uAspect: { value: 1 } },
+    vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: `#include <packing>
+      uniform sampler2D tDiffuse, tDist; uniform float uFocus, uAperture, uBlur, uFar, uAspect; uniform mat4 uInvProj, uCamWorld, uPrevVP; varying vec2 vUv;
+      float dist(vec2 uv) { return unpackRGBAToDepth(texture2D(tDist, uv)) * uFar; }
+      float coc(float d) { return clamp(uAperture * abs(d - uFocus) / max(d, 0.1), 0.0, 0.025); } // (a fraction of the frame's height)
+      void main() {
+        vec3 c = texture2D(tDiffuse, vUv).rgb;
+        float d = dist(vUv);
+        if (uAperture > 0.0) {
+          float r = coc(d), w = 1.0;
+          if (r > 0.0007) {
+            for (int i = 0; i < 24; i++) {
+              float a = float(i) * 2.39996, q = sqrt((float(i) + 0.5) / 24.0);
+              vec2 o = vec2(cos(a), sin(a)) * q * r * vec2(1.0 / uAspect, 1.0);
+              float dn = dist(vUv + o), rn = coc(dn);
+              float k = dn < d ? smoothstep(0.0, 1.0, rn / max(q * r, 1e-4)) : 1.0;   // a nearer, sharper sample doesn't bleed behind
+              c += texture2D(tDiffuse, vUv + o).rgb * k; w += k;
+            }
+            c /= w;
+          }
+        }
+        if (uBlur > 0.0) {
+          vec4 v = uInvProj * vec4(vUv * 2.0 - 1.0, 1.0, 1.0); vec3 dir = normalize(v.xyz / v.w);
+          vec4 wp = uCamWorld * vec4(dir * min(d, uFar * 0.99), 1.0), pp = uPrevVP * wp;
+          vec2 prev = pp.xy / max(pp.w, 1e-4) * 0.5 + 0.5, mv = clamp((vUv - prev) * uBlur, vec2(-0.03), vec2(0.03));
+          vec3 m = c;
+          for (int i = 1; i < 8; i++) m += texture2D(tDiffuse, vUv - mv * (float(i) / 7.0 - 0.5)).rgb;
+          c = m / 8.0;
+        }
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  };
+
   // Wd: the world (world.js); city: scene.city (lat, lon); sky: game.sky ({clouds, cloud_density}); look: game.look ({grade})
   function create(Wd, renderer, camera, { city, sky = {}, look = {} } = {}) {
     const keys = {};
@@ -164,7 +205,8 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let composer = null, bloom = null, grade = null, lens = null;
+    let composer = null, bloom = null, grade = null, lens = null, camFx = null, distRT = null, fx = null;
+    const distMat = new THREE.MeshDistanceMaterial(), prevVP = new THREE.Matrix4(), curVP = new THREE.Matrix4();
     const QC = window.OEQuality ? window.OEQuality.city() : { post: true, samples: 4 };
     const canPost = THREE.EffectComposer && renderer.capabilities.isWebGL2 && sky.post !== false && QC.post;
     if (canPost) {
@@ -186,6 +228,9 @@ window.OEAtmos = (function () {
         lens = new THREE.ShaderPass(OELens.shader());
         Object.assign(lens.uniforms, { uGrain: { value: 0.03 }, uCA: { value: 0.15 }, uVignette: { value: 0.18 } });
         lens.uniforms.uAspect.value = size.x / Math.max(1, size.y);
+        camFx = new THREE.ShaderPass(CAMFX);
+        camFx.enabled = false;
+        composer.addPass(camFx);
         composer.addPass(lens);
       } else {
         composer.addPass(new THREE.OutputPass());
@@ -233,8 +278,30 @@ window.OEAtmos = (function () {
       },
       setSize(w, h) { if (composer) { composer.setPixelRatio(renderer.getPixelRatio()); composer.setSize(w, h); } if (lens) lens.uniforms.uAspect.value = w / Math.max(1, h); },
       // draw the frame: through the post stack, or plainly
-      render(scene, cam) { if (composer) composer.render(); else renderer.render(scene, cam); },
-      dispose() { if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
+      // photo mode and the opening shot: {focus: m, aperture: 0..1, blur: 0..1}, or null (off, as in play)
+      camFx(o) { if (o && !fx) o.fresh = true; fx = o && camFx ? o : null; },
+      render(scene, cam) {
+        if (camFx) camFx.enabled = !!fx && (fx.aperture > 0 || fx.blur > 0);
+        if (camFx && camFx.enabled) {
+          const z = renderer.getDrawingBufferSize(new THREE.Vector2()), w = Math.max(2, z.x >> 1), h = Math.max(2, z.y >> 1);
+          if (!distRT || distRT.width !== w || distRT.height !== h) { if (distRT) distRT.dispose(); distRT = new THREE.WebGLRenderTarget(w, h); }
+          const F = camFx.uniforms, far = 3000;
+          distMat.referencePosition = cam.position; distMat.nearDistance = 0; distMat.farDistance = far;
+          const prevT = renderer.getRenderTarget(), prevO = scene.overrideMaterial, prevBg = scene.background, prevS = renderer.shadowMap.autoUpdate, cc = renderer.getClearColor(new THREE.Color()), ca = renderer.getClearAlpha();
+          scene.overrideMaterial = distMat; scene.background = null; renderer.shadowMap.autoUpdate = false;
+          renderer.setRenderTarget(distRT); renderer.setClearColor(0xffffff, 1); renderer.clear(); renderer.render(scene, cam);
+          renderer.setRenderTarget(prevT); scene.overrideMaterial = prevO; scene.background = prevBg; renderer.shadowMap.autoUpdate = prevS; renderer.setClearColor(cc, ca);
+          cam.updateMatrixWorld();
+          curVP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
+          Object.assign(F.uFocus, { value: fx.focus || 10 }); F.uAperture.value = fx.aperture || 0; F.uBlur.value = fx.blur || 0; F.uFar.value = far;
+          F.tDist.value = distRT.texture; F.uInvProj.value.copy(cam.projectionMatrixInverse); F.uCamWorld.value.copy(cam.matrixWorld);
+          F.uPrevVP.value.copy(fx.fresh ? curVP : prevVP); F.uAspect.value = z.x / Math.max(1, z.y);
+          fx.fresh = false;
+        }
+        if (camFx) { cam.updateMatrixWorld(); prevVP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); }
+        if (composer) composer.render(); else renderer.render(scene, cam);
+      },
+      dispose() { if (distRT) distRT.dispose(); if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
     };
     return api;
   }

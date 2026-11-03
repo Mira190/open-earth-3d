@@ -2339,11 +2339,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
 
   // ------------------------------------------------------------ photo mode
   // The world holds still and the HUD goes. Orbit the camera round a focus that starts on
-  // you: drag to turn, scroll (or Distance) to come closer, WASD and Space/C to move the
+  // you: drag to turn, scroll (or Distance) to come closer, Aperture for the depth of field, WASD and Space/C to move the
   // focus up to 300 m away. Time sets the sun for the photo (the clock stays there when
   // you leave); Lens is the field of view, shown as a 35 mm focal length. Saving draws a
   // caption with the place, the time and the sun's height into the corner.
-  const photo = { on: false, focus: new THREE.Vector3(), anchor: new THREE.Vector3(), az: 0, pitch: 0.3, dist: 8, fov: BASE_FOV, turn: false };
+  const FSTOPS = [1.4, 2, 2.8, 4, 5.6, 8, 11, 16]; // the aperture: depth of field focused on the focus point
+  const photo = { fstop: 2.8, on: false, focus: new THREE.Vector3(), anchor: new THREE.Vector3(), az: 0, pitch: 0.3, dist: 8, fov: BASE_FOV, turn: false };
   const distOf = v => 1.5 * Math.pow(400 / 1.5, v / 1000), distTo = d => Math.round(1000 * Math.log(d / 1.5) / Math.log(400 / 1.5)); // a log slider, 1.5 to 400 m
   const focal = fov => Math.round(12 / Math.tan(fov * RAD / 2)); // a full-frame 35 mm camera, 24 mm tall
   function photoMode(on) {
@@ -2368,11 +2369,18 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cine.play(OECine.mix(() => from, () => live, k => OECine.ease.smooth(k)), 0.9, { label: 'crane' });
     }
   }
+  // the circle of confusion of a full-frame camera at this field of view and f-number, focused at
+  // `focus` m, for a point at distance d: lensBlur(...) * |d - focus| / d of the frame's height
+  function lensBlur(fov, focus, fstop) {
+    const f = 0.012 / Math.tan(fov * RAD / 2); // the focal length, m, on a 24 mm tall frame
+    return f * f / (fstop * Math.max(0.05, focus - f)) / 0.024;
+  }
   function photoSync() { // the sliders follow the camera and the clock
     $('#ph-time').value = String(Math.round(clock.min));
     $('#ph-time-v').textContent = `${fmtMin(clock.min)} · sun ${sun.altitude.toFixed(0)}°`;
     $('#ph-fov').value = String(Math.round(photo.fov));
     $('#ph-fov-v').textContent = `${focal(photo.fov)} mm`;
+    $('#ph-f').value = String(FSTOPS.indexOf(photo.fstop)); $('#ph-f-v').textContent = `f/${photo.fstop}`;
     $('#ph-dist').value = String(distTo(photo.dist));
     $('#ph-dist-v').textContent = `${photo.dist < 20 ? photo.dist.toFixed(1) : Math.round(photo.dist)} m`;
   }
@@ -2428,6 +2436,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   on($('#ph-time'), 'input', e => { setClock(clock.y, clock.m, clock.d, +e.target.value); photoSync(); });
   on($('#ph-fov'), 'input', e => { photo.fov = +e.target.value; photoSync(); });
+  on($('#ph-f'), 'input', e => { photo.fstop = FSTOPS[+e.target.value] || 2.8; photoSync(); });
   on($('#ph-dist'), 'input', e => { photo.dist = distOf(+e.target.value); photoSync(); });
   on($('#ph-turn'), 'click', e => { photo.turn = !photo.turn; e.currentTarget.setAttribute('aria-pressed', String(photo.turn)); });
   on($('#ph-grid'), 'click', e => { const g = !stage.classList.contains('grid'); stage.classList.toggle('grid', g); e.currentTarget.setAttribute('aria-pressed', String(g)); });
@@ -3250,6 +3259,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     fpsAcc[0] += dt; fpsAcc[1]++;
     if (fpsAcc[0] > 6) { if (!fpsWarned && fpsAcc[1] / fpsAcc[0] < 22 && !titleOn) { fpsWarned = true; H.toast('Running slowly? Lower the crowd density in the menu (Esc).'); } fpsAcc = [0, 0]; }
     if (player.rig.hideHead) player.rig.hideHead(player.mode === 'heli' && cam.mode === 'cockpit' && !photo.on && !(cine.active && cine.label !== 'crane'));
+    // depth of field in photo mode, and with the camera's motion blur in the opening shot; never in play
+    if (atmos && atmos.camFx) atmos.camFx(photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
+      : arriving && cine.active ? { focus: camera.position.distanceTo(live.look), aperture: lensBlur(camera.fov, camera.position.distanceTo(live.look), 4), blur: 0.5 } : null);
     if (mirror) mirror.update(world, clockT);
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     care.drawn();
