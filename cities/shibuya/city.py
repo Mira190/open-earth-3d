@@ -53,6 +53,18 @@ import archkit as ak
 from japankit import open_fronts
 from meshkit import Mesh
 
+
+def _sibling(name):
+    """A module next to this file (this file is loaded by path, so its folder is not on sys.path)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"shibuya_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+scramble = _sibling("scramble")   # the scramble at street level: its street, entrances, buildings and signs (#111)
+
 # the map being built: "shibuya", or "shinjuku" when cities/shinjuku/city.py loads this file
 CITY = globals().get("CITY", "shibuya")
 _EXTENT = {}
@@ -1260,6 +1272,9 @@ def landmark_assets(out_dir, scene):
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
     out = ["atlas.jpg"]
     lm = scene["landmarks"]
+    sb = scramble_build(lm)
+    if sb:
+        out.append(sb.draw(out_dir))
     for key, sheet, name in (("scramble", CROSSING, "screens.jpg"), ("kabukicho_gate", EAST, "screens_east.jpg")):
         path = os.path.join(out_dir, name)
         if key in lm:   # each map draws only the screens it has
@@ -1337,19 +1352,17 @@ BOARDS = [("いらっしゃいませ", (200, 30, 40), (255, 255, 255)), ("営業
 # buildings' own names, set in open fonts, not their logos; the adverts are invented.
 CROSSING_SIGNS = [
     # QFRONT's Q'S WALL: on each glass side wall a print of up to 100 m2, lit by lamps from the top (11 on the
-    # Center Gai side, 8 on the Jinnan side); and SHIBUYA TSUTAYA's name over Q'S EYE (its placement is an estimate)
+    # Center Gai side, 8 on the Jinnan side); SHIBUYA TSUTAYA's name is on the canopy (scramble.py)
     {"building": "Q-FRONT", "edge": [[332.0, -956.0], [346.0, -969.0]], "toward": [320.0, -990.0], "kind": "print", "w": 10.5, "h": 9.5, "z": 13.0,
      "lamps": 11, "art": "qwall_c"},
     {"building": "Q-FRONT", "edge": [[363.0, -967.0], [367.0, -951.0]], "toward": [400.0, -960.0], "kind": "print", "w": 9.0, "h": 10.5, "z": 13.0,
      "lamps": 8, "art": "qwall_j"},
-    {"building": "Q-FRONT", "edge": [[346.0, -969.6], [363.0, -967.6]], "kind": "box", "w": 9.5, "h": 1.6, "z": 26.4, "depth": 1.5, "art": "tsutaya"},
     # the Shibuya Ekimae building's vertical board, 25 x 4 m, and the Nishimura building's hanging banner,
     # 7.6 x 14.6 m, both lit from outside
     {"building": "渋谷駅前ビル", "toward": [318.0, -985.0], "kind": "print", "w": 4.0, "h": 25.0, "z": 3.5, "along": 9.0, "lamps": 3, "art": "ekimae_board"},
     {"building": "w136690966", "toward": [312.0, -1010.0], "kind": "print", "w": 7.6, "h": 14.6, "z": 5.0, "along": 7.5, "lamps": 4, "art": "nishimura"},
-    # MAGNET by SHIBUYA109: its name over the corner (the words, not the M of its logo), the 18.25 x 3.71 m
+    # MAGNET by SHIBUYA109 (its name on the corner's fascia: scramble.py): the 18.25 x 3.71 m
     # vertical banner and a 7.1 x 11.2 m wall ad on the Jinnan side, lit from outside
-    {"building": "MAGNET SHIBUYA", "edge": [[393.0, -983.0], [400.0, -986.0]], "kind": "box", "w": 7.0, "h": 2.0, "z": -1.2, "depth": 0.5, "art": "magnet"},
     {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 3.71, "h": 18.25, "z": 6.0, "along": 21.0, "lamps": 2, "art": "magnet_banner"},
     {"building": "MAGNET SHIBUYA", "toward": [360.0, -955.0], "kind": "print", "w": 7.1, "h": 11.2, "z": 11.0, "along": 12.0, "lamps": 4, "art": "magnet_wall"},
     # SHIBU HACHI BOX, the ward's tourist information on Hachiko Square (since October 2020), facing the statue
@@ -1370,10 +1383,8 @@ WALL_PRINTS = [("music", 1), ("soda", 0), ("movie", 1), ("game", 1), ("live", 0)
 # a still from the screens' programme, as a print. Words are the buildings' own names; the adverts are invented
 CROSSING_SIGN_ART = {
     "qwall_c": ("clip", "fashion", 0), "qwall_j": ("clip", "beauty", 0), "magnet_wall": ("clip", "shoe", 0),
-    "tsutaya": ("#101216", [("SHIBUYA TSUTAYA", "bebas", "#f4f4f0", 1.0)], None),
     "ekimae_board": (["#14052b", "#5b1080"], [("NOVA", "monoton", "#ffd6ff", 0.25), ("夜光", "dela", "#ffffff", 0.45), ("11.20", "bebas", "#ffe36e", 0.3)], None),
     "nishimura": (["#062b3a", "#0c5d6e"], [("RUN", "anton", "#ffffff", 0.3), ("THE CITY", "anton", "#2ee6c8", 0.3), ("AERO 9", "bebas", "#ffffff", 0.4)], None),
-    "magnet": ("#121214", [("MAGNET by SHIBUYA109", "bebas", "#ffffff", 1.0)], "#e8343c"),
     "magnet_banner": (["#ff3fa4", "#7a2bff"], [("STELLA", "reggae", "#ffffff", 0.5), ("LIVE", "anton", "#fff3a0", 0.5)], None),
     "hachibox": ("#f2f0ea", [("SHIBU HACHI BOX  観光案内所  i", "zen", "#1d3c78", 1.0)], None),
     "hoarding": ("#f4f3ef", [("渋谷スクランブルスクエア 第Ⅱ期 工事中", "zen", "#16367a", 0.42), ("ご迷惑をおかけしております  Under construction", "zen", "#55606e", 0.3),
@@ -2023,25 +2034,21 @@ def docomo(K, d):
 
 
 def districts_meshes(lm):
-    K = Kit("p5", floodlit=("lamp", "neon_red", "neon_pink", "clock_face"))
-    if "scramble" in lm:
-        zebra(K, lm["scramble"]["lines"], lm["scramble"]["z"])
+    K = Kit("p5", floodlit=("lamp", "neon_red", "neon_pink", "clock_face"))   # (the scramble's crosswalks: scramble.py)
     if "hachiko" in lm:
         hachiko_square(K, lm["hachiko"], lm)
-    if "center_gai" in lm:
-        center_gai_gate(K, lm["center_gai"])
+    if "center_gai" in lm and CITY != "shibuya":
+        center_gai_gate(K, lm["center_gai"])   # (in the Shibuya map, the gate as it stands: scramble.py)
     if "scramble" in lm:
         CROSSING.meshes(K, lm["scramble"]["node"])
         crossing_signs(K, lm)
         toyoko_site(K, lm)
-        qfront_glass(K)
+        # (QFRONT itself, its glass and its signs: scramble.py)
         if "signs" in lm:
             crossing_wall_signs(K, lm)
     if "kabukicho_gate" in lm:   # Shinjuku's east exit
         EAST.meshes(K, EAST_EXIT, face="screens_east")
-    if "s109" in lm:
-        s = lm["s109"]
-        facade_panel(K("atlas", "lit"), s["at"], s["normal"], 2.6, s["z1"] - 10.4, s["z1"], "s109", off=0.3)
+    # (SHIBUYA109, its cylinder and its name: scramble.py)
     if "yongen" in lm:
         yongen(K, lm["yongen"])
     if "kabukicho_gate" in lm:
@@ -2071,8 +2078,8 @@ MATERIALS.update({
     # the screens' face: dark LED tiles that light with the programme (world.js "led_screen")
     "screens": {"color": "#0b0c0e", "roughness": 0.32, "metalness": 0.0, "map": "screens.jpg", "pattern": "led_screen"},
     "crane_yellow": {"color": "#d8a21e", "roughness": 0.55, "metalness": 0.4},
-    # Hachiko Square's granite paving, laid over the ground (web/world.js granite: joints every 0.9 m)
-    "plaza": {"color": "#57544f", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 0.9], "decal": True, "street_lit": True},
+        # Hachiko Square's pavers: rose-brown clay setts, 30 x 15 cm, under the yellow tactile lines (photographs, 2024-25)
+    "plaza": {"color": "#8a6961", "roughness": 0.82, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.15], "decal": True, "street_lit": True},
     # QFRONT's glass front (web/world.js curtain_wall: panes between mullions, some lit after dark)
     "qfront_glass": {"color": "#3b4c58", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.4, "lit_k": 0.42},
@@ -2111,14 +2118,18 @@ CROSSING_SCREENS = [
     # NW: QFRONT's Q'S EYE, built into the double-skin glass over the diagonal: 12.96 x 7.289 m and a banner
     # screen of 12.96 x 5.33 m under it (Tokyu; spec of 15 August 2025). QFRONT's front is the chord across
     # its rounded footprint
-    {"name": "Q'S EYE", "building": "Q-FRONT", "edge": [[346.0, -969.6], [363.0, -967.6]], "w": 12.96, "h": 7.289, "z": 16.6, "along": 0.0,
-     "clips": ["music", "phone", "movie", "live", "soda", "beauty"], "phase": 0.0, "pitch": 0.012, "off": 1.4},
-    {"name": "Q'S EYE banner", "building": "Q-FRONT", "edge": [[346.0, -969.6], [363.0, -967.6]], "w": 12.96, "h": 5.33, "z": 11.0, "along": 0.0,
-     "clips": ["music", "phone", "movie", "live", "soda", "beauty"], "phase": 4.0, "pitch": 0.012, "off": 1.4},
+    {"name": "Q'S EYE", "building": "Q-FRONT", "edge": [[346.0, -969.6], [363.0, -967.6]], "w": 12.96, "h": 7.289, "z": 30.8, "along": 0.0,
+     "clips": ["music", "phone", "movie", "live", "soda", "beauty"], "phase": 0.0, "pitch": 0.012, "off": 0.7},
+    {"name": "Q'S EYE banner", "building": "Q-FRONT", "edge": [[346.0, -969.6], [363.0, -967.6]], "w": 12.96, "h": 5.33, "z": 20.4, "along": 0.0,
+     "clips": ["music", "phone", "movie", "live", "soda", "beauty"], "phase": 4.0, "pitch": 0.012, "off": 0.7},
     # W corner at Center Gai's mouth: Rakuten Vision (formerly Mighty Vision, DHC Channel), 10.24 x 5.76 m on
     # the wall of the Taiseido building, speakers above it
     {"name": "Rakuten Vision", "building": "w136690966", "edge": [[324.0, -975.0], [330.0, -969.0]], "w": 10.24, "h": 5.76, "z": 9.5, "off": 0.9,
      "clips": ["shoe", "noodle", "info", "game", "fashion"], "phase": 3.0, "pitch": 0.01},
+    # under it, the block's second screen over the bookshop's fascia (a portrait screen in the photographs of
+    # 2024-25; its size is an estimate): it plays its own programme, not the synchronised slot
+    {"name": "Taiseido corner screen", "building": "w136690966", "edge": [[324.0, -975.0], [330.0, -969.0]], "w": 5.6, "h": 5.0, "z": 4.1, "off": 0.9,
+     "clips": ["game", "beauty", "music", "movie"], "phase": 7.0, "pitch": 0.008, "sync": False},
     # SW: on the roof of the Shibuya Ekimae building, the station-front vision (Tokyu, from 2019): 21.6 x
     # 12.144 m over a 21.6 x 4.176 m banner screen; and south of it, on the roof of the Oto building, HIT's
     # Shibuhachi Hit Vision, 24.32 x 17.28 m. The two buildings are one footprint in the open data
@@ -3275,7 +3286,24 @@ def landmark_meshes(scene):
     if "kabukicho_gate" in lm:
         mats["screens_east"] = EAST.material(EAST_EXIT)
     more, hidden = yoyogi()
-    return mats, meshes + more, {"hidden": hidden}
+    extra = {"hidden": hidden}
+    sb = scramble_build(lm)
+    if sb:
+        sm, sh, sc = sb.meshes()
+        meshes += sm
+        extra["hidden"] = hidden + sh
+        extra["clip"] = sc
+        mats.update(scramble.MATERIALS)
+    return mats, meshes + more, extra
+
+
+def scramble_build(lm):
+    """The scramble's street-level build (scramble.py), in the Shibuya map only; made once."""
+    if "scramble" not in lm or CITY != "shibuya":
+        return None
+    if "scramble_build" not in _DATA:
+        _DATA["scramble_build"] = scramble.Build(CITY, lm["scramble"]["node"], lm)
+    return _DATA["scramble_build"]
 
 
 YOYOGI_SPINE = "w1069271775"

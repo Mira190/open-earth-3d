@@ -13,6 +13,10 @@ Reads web/data/<city>/game.json and writes web/data/<city>/night.json:
   pts     the roads' points, base64 int16 little-endian: x and y in quarter metres, z in
           decimetres
   lamps   the street lamps OpenStreetMap maps (game.json props), in the same units
+  foot, foot_pts, foot_classes
+          the lit ways for people on foot (pedestrian streets and squares, footways, steps),
+          in the same format as roads and pts: the lamps along squares, park walks and station
+          plazas, which web/night.js places clear of the street lights already there
   style   the city's lights: the colours of its street lamps and their shares, the
           colours on its motorways, the side its traffic keeps to, the height from which
           its towers carry aircraft warning lights and whether they flash, the light on the
@@ -30,6 +34,7 @@ import sys
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+FOOT_CLASSES = ["pedestrian", "footway", "steps"]  # lit; tracks (path) and cycleways are left dark
 CLASSES = ["motorway", "trunk", "primary", "secondary", "tertiary", "residential", "unclassified", "living_street"]
 XY, Z = 0.25, 0.1  # metres per unit
 
@@ -115,11 +120,21 @@ def build(cid, game):
         q = p[k]
         roads += [CLASSES.index(r["c"]), round(r.get("v", 9) * 10), len(q)]
         pts += [v for x, y, z in q for v in (round(x / XY), round(y / XY), round(z / Z))]
+    foot, foot_pts = [], []
+    for r in game["paths"].get("foot", []):
+        if r["c"] not in FOOT_CLASSES or len(r["p"]) < 6:
+            continue
+        p = np.array(r["p"], float).reshape(-1, 3) / 10
+        q = p[rdp(p)]
+        foot += [FOOT_CLASSES.index(r["c"]), 0, len(q)]
+        foot_pts += [v for x, y, z in q for v in (round(x / XY), round(y / XY), round(z / Z))]
     lamps = game.get("props", {}).get("street_lamp", [])
     lamps = [round(v * 0.1 / (Z if i % 3 == 2 else XY)) for i, v in enumerate(lamps)]
     out = {"note": "Street lights, traffic and tower lights for web/night.js, from game.json (pipeline/night_lights.py)",
-           "classes": CLASSES, "units": [XY, Z], "roads": pack(roads), "pts": pack(pts), "lamps": pack(lamps), "style": style}
+           "classes": CLASSES, "units": [XY, Z], "roads": pack(roads), "pts": pack(pts), "lamps": pack(lamps),
+           "foot_classes": FOOT_CLASSES, "foot": pack(foot), "foot_pts": pack(foot_pts), "style": style}
     print(f"{cid}: {len(roads) // 3} roads, {n0} points simplified to {len(pts) // 3}, {len(lamps) // 3} mapped lamps,"
+          f" {len(foot) // 3} lit footways ({len(foot_pts) // 3} points),"
           f" keeps {style['keep']}")
     return out
 
