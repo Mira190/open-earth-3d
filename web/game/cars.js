@@ -803,10 +803,10 @@ window.OECars = (function () {
     // is coming along the side of the road it would swing out into: it waits behind until that has
     // gone by.
     const c = {}, passing = [], passed = [];
-    let still = false;
+    let still = false, queued = false;
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
-      still = false; passing.length = 0; passed.length = 0;
+      still = queued = false; passing.length = 0; passed.length = 0;
       st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       for (const o of others) {
@@ -817,11 +817,13 @@ window.OECars = (function () {
         if (Math.abs(w - lane - st.shift) >= Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) continue; // (side by side, clear)
         // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
         // turns round every few seconds and so never stays stuck long enough to be marked still
-        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        // (but never one queueing at a junction, o.q: a queue at a red light is waited out in the lane,
+        // not overtaken up the oncoming side to its head)
+        if (!o.q && (o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
-        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; }
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = !!o.q; }
       }
       if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
         if (passed.includes(o)) continue;
@@ -914,7 +916,8 @@ window.OECars = (function () {
       // held up behind cars (never at the line: a red light is waited out) it counts the time while it
       // crawls, and keeps it until it is under way, since a car caught up with it turns round every few
       // seconds and the gap comes and goes
-      st.held = line <= carGap ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // (in a queue for a junction, the car ahead waiting its turn there, it is waiting for the light too)
+      st.held = line <= carGap || queued ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
       // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
       // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
       if (st.held > 8 && carGap < 0.5) want = Math.max(want, 1.5);

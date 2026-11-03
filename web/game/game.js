@@ -401,7 +401,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
   // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
   const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE,
-    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra } }); // (and the crossings between junctions: signals or zebra stripes)
+    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra },
+    scrambles: [((scene.landmarks || {}).scramble || {}).node, ...(G.scrambles || [])].filter(Boolean) }); // (Shibuya's scramble: every way at once, in a phase of its own) // (and the crossings between junctions: signals or zebra stripes)
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
   crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };
@@ -964,7 +965,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
-    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(c.stuck > 4 || (late && c.v < 2) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v } : c);
+    for (const c of cars.C) if (c.line >= 0 && Math.abs(c.x - st.x) < 60 && Math.abs(c.y - st.y) < 60) out.push(!c.q && (c.stuck > 4 || (late && c.v < 2)) ? { x: c.x, y: c.y, half: c.half, hw: c.hw, still: true, stay: c.stuck > 10, line: c.line, v: c.v } : c);
     if (myCar) { const parked = player.mode !== 'car' && myCar.D.st.speed < 0.3; out.push({ x: myCar.D.st.x, y: myCar.D.st.y, half: myCar.C.half, hw: myCar.C.hw, still: parked, stay: parked }); }
     if (player.mode === 'foot' && o.phase !== 'coming') out.push(player);
     return out;
