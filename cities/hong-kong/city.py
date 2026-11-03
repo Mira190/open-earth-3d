@@ -74,7 +74,7 @@ MATERIALS = {
     "cp_crown": {"color": "#c9c3b0", "roughness": 0.2, "metalness": 0.6},
     "wheel": {"color": "#f1f3f4", "roughness": 0.35, "metalness": 0.4},
     "gondola": {"color": "#eef1f2", "roughness": 0.3, "metalness": 0.25},
-    "gondola_glass": {"color": "#22323d", "roughness": 0.06, "metalness": 0.7, "emissive": "#d6e8ff", "glow": 0.35},
+    "gondola_glass": {"color": "#22323d", "roughness": 0.06, "metalness": 0.7, "emissive": "#ffe4bd", "glow": 0.55},
     "wheel_deck": {"color": "#8d8f8c", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 0.6},
     "wheel_deck_side": {"color": "#b9bbb7", "roughness": 0.7, "metalness": 0.1},
     "brick": {"color": "#a4523a", "roughness": 0.85, "metalness": 0.0},
@@ -552,8 +552,8 @@ def wheel_deck_profile(g0):
 def observation_wheel(o):
     c, d, ax, g0, hub, r, rc = wheel_geometry(o)
     n = o["gondolas"]
-    frame, shell = Mesh("wheel_frame", "wheel", False, floodlit=True), Mesh("wheel_gondolas", "gondola", True, floodlit=True)
-    glass, trim = Mesh("wheel_gondola_glass", "gondola_glass", True, floodlit=True), Mesh("wheel_gondola_trim", "wheel", False, floodlit=True)
+    frame, shell = Mesh("wheel_frame", "wheel", False, floodlit=True), Mesh("wheel_gondolas", "gondola", True)
+    glass, trim = Mesh("wheel_gondola_glass", "gondola_glass", True, floodlit=True), Mesh("wheel_gondola_trim", "wheel", False)
     P = lambda a, rr, off: [c[0] + d[0] * rr * math.cos(a) + ax[0] * off, c[1] + d[1] * rr * math.cos(a) + ax[1] * off, hub + rr * math.sin(a)]
     for off in (-1.2, 1.2):  # the twin rims
         frame.tube([P(a, r, off) for a in np.linspace(0, 2 * math.pi, 73)], 0.35, 6)

@@ -120,9 +120,10 @@ window.OEDecks = (function () {
       }
       // a line that comes onto a built surface and ends under it, where the data stops short of a bridge it
       // does not map (Ebisubashi, an area in OpenStreetMap: the street's line ends at the river walk's level
-      // under the deck): its end is on the surface with the point before it (not steps, which go down off it)
+      // under the deck): its loose end is on the surface with the point before it (not an end another line
+      // meets, such as a ramp's foot on a quay under a bridge, nor steps, which go down off it)
       if (o.c !== 'steps' && n > 1) for (const [k, j] of [[0, 1], [n - 1, n - 2]]) {
-        if (cls[k] !== 0 || cls[j] !== 1) continue;
+        if (cls[k] !== 0 || cls[j] !== 1 || joined(X(k), Y(k))) continue;
         const s = nav.surfaceAt(X(k), Y(k));
         if (s > zs[k] + 1 && s - zs[k] < 2 * RISE && Math.abs(s - zs[j]) < 1.5) { cls[k] = 1; zs[k] = s; }
       }
