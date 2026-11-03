@@ -298,7 +298,10 @@ every pitched roof plain. The before/after stills of that fix are in
 (each city's opening view and a street view of its most characteristic styles, at
 day, dusk and night, on a desktop and a phone, from `tools/style_views.py`: night at 21:00 on a winter date, and a street
 view that sees past eaves and tree crowns as well as buildings) and
-`tools/style_compare.py` lays two runs side by side.
+`tools/style_compare.py` lays two runs side by side. The stills after issue #73 (the storeys counted again,
+one corner sign a building, the views past trees and at a winter night) are in
+[images/facade-styles/after-73/](images/facade-styles/after-73/), with `corner-signs.jpg` taken from
+the mixed-use cameras of the sheets above.
 
 The integrated build, every city rebuilt (mesh and build time in headless Chrome
 on a CPU, SwiftShader):
