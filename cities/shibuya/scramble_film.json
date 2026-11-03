@@ -50,7 +50,11 @@
   ],
   "tempo": 84,
   "voice": "pluck",
-  "air": "city"
+  "air": "city",
+  "title_shot": "window",
+  "title_at": 0.4,
+  "finale_shot": "rise",
+  "finale_at": 1.0
  },
  "shots": [
   {
