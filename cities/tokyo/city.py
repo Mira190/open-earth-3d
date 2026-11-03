@@ -138,6 +138,10 @@ KABUKIZA = "r4859313"
 FRONT_DEG = 215.0  # the front's compass bearing, onto Harumi-dori
 
 
+KZ_STEP = 0.2       # the front's stone plinth over the pavement
+KZ_FRONT = {}       # the front's frame, as kabukiza() lays it out (for game_extras)
+
+
 def kabukiza():
     import json
     import os
@@ -178,13 +182,17 @@ def kabukiza():
     hl = L / 2
     vf = W / 2  # the street face
     vb = -W / 2
-    # ground floor: the arcade of the entrances, its glass, the stone plinth; the first eaves (tiles) at 8.5 m
-    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, 0.6)
-    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, 0.6, 15.5, top=False)
-    for u in np.linspace(-hl + 3, hl - 3, 13):
-        ak.opening(K["kz_glass"], F, (-hl, vf - 1.5 + 0.02), (hl, vf - 1.5 + 0.02), 0.6, 3.2, 4.6, centre=u + hl)
-        x, y, z = F(u, vf - 0.4, 0.6)
-        K["kz_red"].lathe([(z, 0.3), (z + 7.6, 0.3)], (x, y), segs=6)
+    # ground floor: the arcade of the entrances, its glass, the stone plinth (one low step from the pavement,
+    # so people walk in under the porch to the doors); the first eaves (tiles) at 8.5 m
+    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, KZ_STEP)
+    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, KZ_STEP, 15.5, top=False)
+    us = np.linspace(-hl + 3, hl - 3, 13)
+    for u in us:
+        # (the wall run from +u to -u, so that the street is on its right: archkit draws openings there)
+        ak.opening(K["kz_glass"], F, (hl, vf - 1.5 + 0.02), (-hl, vf - 1.5 + 0.02), KZ_STEP, 3.2, 4.6, centre=hl - u)
+    for u in (us[:-1] + us[1:]) / 2:                 # the arcade's posts between the doors, none in front of one
+        x, y, z = F(u, vf - 0.4, KZ_STEP)
+        K["kz_red"].lathe([(z, 0.3), (z + 8.2 - KZ_STEP, 0.3)], (x, y), segs=6)
     ak.irimoya(K, ak.Frame(*F(0, vf - 3.0, 0)[:2], ax, g), L + 1.0, 5.0, 8.4, 1.8, over=2.2, lift=0.4,
                mats=("kz_tile", "kz_ridge", "kz_plaster"), gable_frac=1.0, sag=0.06)
     # the lanterns under the first eaves
@@ -194,7 +202,7 @@ def kabukiza():
     # the upper storey: vermilion railings and lattices, white plaster, the side roofs
     ak.balustrade(K["kz_red"], F, [(-hl + 1, vf - 1.6), (hl - 1, vf - 1.6)], 10.4, h=1.1)
     for u in np.linspace(-hl + 4, hl - 4, 9):
-        ak.opening(K["kz_red"], F, (-hl, vf - 1.48), (hl, vf - 1.48), 11.8, 2.6, 2.8, centre=u + hl)
+        ak.opening(K["kz_red"], F, (hl, vf - 1.48), (-hl, vf - 1.48), 11.8, 2.6, 2.8, centre=hl - u)
     side = L * 0.3
     for sgn in (-1, 1):
         uc = sgn * (hl - side / 2)
@@ -221,6 +229,76 @@ def kabukiza():
             gold.box(F(ua, v + 0.1, za - 0.3), F(ub, v + 0.1, zb - 0.3), 0.25, 0.45)
             K["kz_plaster"].tri(F(ua, v, za - 0.3), F(ub, v, zb - 0.3), F(0.0, v, z0 - 0.4))
     for su in (-1, 1):
-        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, 0.6)
-        K["kz_red"].lathe([(z, 0.35), (z + z0 - 0.6, 0.35)], (x, y), segs=8)
+        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, KZ_STEP)
+        K["kz_red"].lathe([(z, 0.35), (z + z0 - KZ_STEP, 0.35)], (x, y), segs=8)
+    KZ_FRONT.update({"F": F, "vf": vf, "g": g})
     return K.out(), [s["si"] for s in solids]
+
+
+# ---------------------------------------------------------------- the game
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def landmark_demolished(scene):
+    """Kabuki-za's surveyed blocks: kabukiza() draws the theatre and, in the game, holds walkers back at its
+    own walls; the blocks would stand solid across the arcade under its porch. (The next full build can drop
+    them in adjust_building.)"""
+    return sorted(s["si"] for s in ak.load_solids("tokyo") if s["osm"] == KABUKIZA)
+
+
+def game_extras(scene):
+    """The things people walk right up to: Tokyo Tower's four legs, where they meet the ground, and the
+    Foot Town doors between them; Kabuki-za's doors under the karahafu porch."""
+    close = []
+    t = scene["landmarks"].get("tokyo_tower")
+    if t:
+        cx, cy = t["centre"]
+        a = math.radians(t["axis_deg"])
+        R = lambda x, y: np.array([cx + math.cos(a) * x - math.sin(a) * y, cy + math.sin(a) * x + math.cos(a) * y])
+        from shapely.geometry import LineString, Point, Polygon
+        h0 = leg_x(0, t["base"])
+        solids = ak.load_solids("tokyo")
+        T = ak.Terrain("tokyo")
+        blocks = [Polygon(q["ring"]).buffer(0.6) for q in solids if q["base"] == 0 and q["top"] > 0.5 and len(q["ring"]) > 2
+                  and Point(cx, cy).distance(Polygon(q["ring"])) < 90]
+        for k, (sx, sy) in enumerate(((1, 1), (-1, 1), (-1, -1), (1, -1))):
+            # the leg's foot (tower(): a box 4.3 m square across its corner), its face 2.2 m out from its middle: from out
+            # along the diagonal, or the nearest way round to it that no building stands in. The tower stands on
+            # Shiba's slope: the floor there is the ground's, up to 4 m above the tower's datum on the north side
+            c = R(sx * h0, sy * h0)
+            for turn in (0, 1, -1, 2, -2):
+                b = math.atan2(*((R(sx, sy) - R(0, 0))[::-1])) + turn * math.pi / 8
+                d = np.array([math.cos(b), math.sin(b)])
+                path = LineString([c + d * 2.2, c + d * 7.0])
+                if not any(path.intersects(g) for g in blocks):
+                    break
+            # the leg leans in as it rises (leg_x): its outer face at a walker's knees, over the floor there
+            zf = T(*(c + d * 2.2))
+            for _ in range(2):
+                lean = h0 - leg_x(max(zf + 0.4 - t["ground_m"], 0.0), t["base"])
+                at = c + d * 2.2 - (R(sx, sy) - R(0, 0)) / math.sqrt(2) * lean * math.sqrt(2)
+                zf = T(*at)
+            close.append(close_to(f"Tokyo Tower, the foot of leg {k + 1}", at, zf, c + d * 7.0, 1.2))
+        foot = [q for q in solids if q["name"] == FOOT_TOWN and q["base"] == 0]
+        if foot:
+            from shapely.geometry import Point, Polygon
+            ring = Polygon(max(foot, key=lambda q: abs(ak.ring_area(q["ring"])))["ring"]).exterior
+            mid = (R(h0, h0) + R(h0, -h0)) / 2          # between two legs, under the tower
+            q = ring.interpolate(ring.project(Point(*mid)))
+            p = np.array([q.x, q.y])
+            close.append(close_to("Tokyo Tower, Foot Town under the legs", p, t["ground_m"], p + (mid - p) / np.linalg.norm(mid - p) * 5.0, 1.2))
+    if not KZ_FRONT:
+        kabukiza()
+    if KZ_FRONT:
+        F, vf, g = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"]
+        # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
+        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + KZ_STEP, F(0, vf + 5.5, 0), 1.0))
+    return {"close": close}

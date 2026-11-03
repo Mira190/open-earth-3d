@@ -361,6 +361,8 @@ def landmark_meshes(scene):
         if "well_house" in lm:
             well_house(M, lm["well_house"])
         meshes += [m for m in M.values() if m.v]
+    if "kotenshu" in lm:
+        meshes += kotenshu_steps(lm["kotenshu"])
     if "tsutenkaku" in lm:
         meshes += tsutenkaku(lm["tsutenkaku"])
     if "hep_five" in lm:
@@ -1268,3 +1270,112 @@ def shop_signs(sites):
                 zz0 = min(z0 + z, z0 + top - h - 1.0)
                 loft(m, lambda u, v, zzz: Q(u0 + u, v + 0.15, zzz), w, 0.3, zz0, w, 0.3, zz0 + h)
     return [m for m in meshes.values() if m.v]
+
+
+# ---------------------------------------------------------------- the game
+
+def kotenshu_flight(p):
+    """The stone steps up the east face of the small keep platform, at the back of its south-east re-entrant
+    corner between the ticket office and the platform's northern arm, where visitors climb past the
+    Kinmeisui well house to the keep (the flight's width and pitch are indicative): a strip whose u runs west into the platform from the foot of its face, rising in steps
+    of 0.2 by 0.3 m to the platform's top, then across it to beside the well house.
+    {origin, axis, half_width, profile, z0, top, n}"""
+    ring = np.array(p["ring"], float)
+    z0, top = p["ground_m"], p["ground_m"] + p["height_m"]
+    # the re-entrant corner's face: the edge that faces east with the most of the platform west of it
+    best = None
+    for i in range(len(ring)):
+        a, b = ring[i], ring[(i + 1) % len(ring)]
+        t = (b - a) / np.linalg.norm(b - a)
+        n = np.array([t[1], -t[0]])                     # outward for an anticlockwise ring
+        if n[0] > 0.9 and (best is None or a[0] < best[0][0]):
+            best = (a, b, n)
+    a, b, n = best
+    hw = 1.2
+    foot = b - (b - a) / np.linalg.norm(b - a) * (hw + 0.8)       # beside the northern arm, clear of the ticket office
+    rise, tread = 0.2, 0.3
+    k = int(round((top - z0) / rise))
+    prof = [[round(-k * tread - 2.5, 3), z0], [round(-k * tread - 0.02, 3), z0]]
+    for j in range(k):
+        u = -(k - j) * tread
+        prof += [[round(u + (0.02 if j else 0), 3), round(z0 + (j + 1) * rise, 3)], [round(u + tread, 3), round(z0 + (j + 1) * rise, 3)]]
+    prof.append([4.0, round(top, 3)])
+    return {"origin": [float(foot[0]), float(foot[1])], "axis": [float(-n[0]), float(-n[1])], "half_width": hw, "profile": prof,
+            "z0": z0, "top": top, "n": k, "tread": tread, "rise": rise}
+
+
+def kotenshu_steps(p):
+    """The flight up to the small keep platform (kotenshu_flight) in granite, with its stone cheeks."""
+    f = kotenshu_flight(p)
+    P = frame(f["origin"][0], f["origin"][1], math.atan2(f["axis"][1], f["axis"][0]))
+    m = Mesh("kotenshu_steps", "granite", False, uv=True)
+    hw, k, t, r = f["half_width"], f["n"], f["tread"], f["rise"]
+    for j in range(k):
+        slab(m, P, -(k - j) * t, 1.0, -hw, hw, f["z0"] - 0.3, f["z0"] + (j + 1) * r)
+    for sv in (-1, 1):   # the cheeks, a handrail's height over the treads
+        slab(m, P, -k * t - 0.3, 1.0, sv * hw + (0.05 if sv > 0 else -0.35), sv * hw + (0.35 if sv > 0 else -0.05), f["z0"] - 0.3, f["z0"] + 0.5)
+        for j in range(0, k, 3):
+            u0 = -(k - j) * t
+            slab(m, P, u0, min(1.0, u0 + 3 * t), sv * hw + (0.05 if sv > 0 else -0.35), sv * hw + (0.35 if sv > 0 else -0.05),
+                 f["z0"] - 0.3, f["z0"] + (j + 3) * r + 0.9)
+    return [m]
+
+
+def game_surfaces(scene):
+    """The steps up to the small keep platform, walked as a strip."""
+    k = scene["landmarks"].get("kotenshu")
+    if not k:
+        return []
+    f = kotenshu_flight(k)
+    return [{"name": "Osaka Castle, the steps to the small keep platform", "type": "strip", "origin": [round(v, 2) for v in f["origin"]],
+             "axis": [round(v, 5) for v in f["axis"]], "half_width": f["half_width"], "profile": f["profile"], "thickness": 1.5,
+             "mesh": "kotenshu_steps", "label": "the small keep platform"}]
+
+
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close"): `at` on it at the floor's height z, the walk starting at
+    `start`; the walker must get within `within` m and never nearer than `keep`."""
+    return {"name": name, "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def game_extras(scene):
+    """The things people walk up to: under Tsutenkaku to the ceiling painting and to a leg; Osaka Castle's
+    keep on its stone base, from the honmaru and from the small keep platform, and the Kinmeisui well house;
+    Kani Doraku's door under the crab; the Glico sign's building from the Tombori River Walk."""
+    lm, close = scene["landmarks"], []
+    t = lm.get("tsutenkaku")
+    if t:
+        P = frame(*t["centroid"], math.radians(t["axis_deg"]))
+        z, half = t["ground_m"], min(t["width_m"], t["depth_m"]) / 2 - 0.5
+        close.append(close_to("Tsutenkaku, under the ceiling painting", P(0, 0, z), z, P(half + 6.0, 0, z), 1.0))
+        close.append(close_to("Tsutenkaku, a leg", P(half + 1.1, -half, z), z, P(half + 6.0, -half, z), 1.0))
+    c = lm.get("castle")
+    if c:
+        P = frame(*c["centroid"], math.radians(c["axis_deg"]) - math.pi / 2)
+        z = c["ground_m"]
+        close.append(close_to("Osaka Castle keep, the foot of its stone base", P(KEEP_STONE[0][0], 0, z), z, P(KEEP_STONE[0][0] + 5.0, 0, z), 1.0))
+    k, w = lm.get("kotenshu"), lm.get("well_house")
+    if k and w:
+        f = kotenshu_flight(k)
+        o, d = np.array(f["origin"]), np.array(f["axis"])
+        top = o + d * 1.5                                                     # at the head of the steps
+        W = frame(*w["centroid"], math.radians(w["axis_deg"]))
+        zt = w["ground_m"] + w["base_m"]
+        face = min((W(su * (w["long_m"] / 2 - 0.3), sv * (w["short_m"] / 2 - 0.3), zt) for su, sv in ((1, 0), (-1, 0), (0, 1), (0, -1))),
+                   key=lambda q: np.hypot(q[0] - top[0], q[1] - top[1]))      # its stone plinth, on the side towards the steps
+        close.append(close_to("Kinmeisui well house 金明水井戸屋形", face, zt, top, 1.0))
+        if c:   # across the platform to the keep's stone base, where the visitors go in
+            P = frame(*c["centroid"], math.radians(c["axis_deg"]) - math.pi / 2)
+            h = (zt - c["ground_m"]) / CASTLE_STONE_H
+            v = KEEP_STONE[1][1] + (KEEP_STONE[0][1] - KEEP_STONE[1][1]) * (1 - h) ** 1.7     # stone_base(): the batter at that height
+            at = P(0, -v, zt)[:2]
+            close.append(close_to("Osaka Castle keep, from the small keep platform", at, zt, at + (top - at) / np.linalg.norm(top - at) * 5.0, 1.2))
+    kc = lm.get("kani")
+    if kc:
+        a, n = np.array(kc["at"]), np.array(kc["normal"])
+        close.append(close_to("Kani Doraku, the door under the crab", a, kc["ground_m"], a + n * 5.0, 1.0))
+    return {"close": close}

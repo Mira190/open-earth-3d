@@ -187,14 +187,20 @@ def electric_town(K, et, names):
             K("frame").box(np.array([*p, r["z"]]), np.array([*p, z0 + h * 0.8]), 0.18, 0.18)
 
 
+GATE_STONE = 0.25   # the gate's stone floor: one low step up from the paving, walked over
+
+
+def zuishin_frame(gte):
+    """The gate's frame (u out of the precinct, v across) and its half sizes, as zuishinmon() builds it."""
+    return frame(gte["c"], np.asarray(gte["axis"])), min(gte["half_u"], 4.5), min(gte["half_v"], 7.5)
+
+
 def zuishinmon(K, gte):
-    ax = np.asarray(gte["axis"])
-    P = frame(gte["c"], ax)
+    P, hu, hv = zuishin_frame(gte)
     z0 = gte["z"]
-    hu, hv = min(gte["half_u"], 4.5), min(gte["half_v"], 7.5)
     top = z0 + max(min(gte["top_m"], 14.0), 12.0)
-    block(K("stone"), P, -hu - 0.5, hu + 0.5, -hv - 0.5, hv + 0.5, z0 - 0.3, z0 + 0.4)
-    zb = z0 + 0.4
+    block(K("stone"), P, -hu - 0.5, hu + 0.5, -hv - 0.5, hv + 0.5, z0 - 0.3, z0 + GATE_STONE)
+    zb = z0 + GATE_STONE
     z1 = zb + 5.0
     for u in np.linspace(-hu + 0.4, hu - 0.4, 3):
         for v in np.linspace(-hv + 0.4, hv - 0.4, 4):
@@ -301,9 +307,59 @@ def landmark_glows(scene):
     return out
 
 
+def xy(p):
+    return [round(float(p[0]), 2), round(float(p[1]), 2)]
+
+
+def close_to(name, at, z, start, within=1.5, keep=0.0):
+    """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+
+
+def wall_point(ring, toward):
+    """The point of a footprint's outline nearest `toward`, and the outline's outward normal there."""
+    from shapely.geometry import Point, Polygon
+    g = Polygon(ring)
+    q = g.exterior.interpolate(g.exterior.project(Point(*toward[:2])))
+    p = np.array([q.x, q.y])
+    n = unit(np.asarray(toward, float)[:2] - p)
+    return p, n
+
+
+def close_extras(lm, close):
+    """Things people walk right up to: through Kanda Myojin's gate and up to its posts, to the hall's
+    front, and to Nikolai-do's west door under its bell tower."""
+    import archkit
+    z = lm.get("zuishinmon")
+    solids = archkit.load_solids("akihabara") if z or "nikolai" in lm else []
+    if z:
+        P, hu, hv = zuishin_frame(z)
+        zb = z["z"] + GATE_STONE
+        close.append(close_to("Zuishinmon, through the gate", P(0, 0, 0), zb, P(hu + 5.0, 0, 0), 1.0))
+        v = (hv - 0.4) / 3                          # the posts either side of the passage (radius 0.32)
+        close.append(close_to("Zuishinmon, a vermilion post", P(hu - 0.4 + 0.32, -v, 0), zb, P(hu + 4.5, -v, 0), 1.0))
+        hall = [q for q in solids if q["name"] == SHADEN and q["base"] == 0]
+        if hall:
+            q = max(hall, key=lambda q: archkit.ring_area(q["ring"]) ** 2)
+            gate_in = P(-hu - 2.0, 0, 0)            # the hall's face that looks at the gate
+            p, n = wall_point(q["ring"], gate_in)
+            close.append(close_to("Kanda Myojin, the hall's front", p, q["ground"], p + n * 5.0, 1.2))
+    nk = lm.get("nikolai")
+    if nk:
+        # the bell tower's block, its west front, where the door is (the cathedral faces west, the altar east)
+        parts = [q for q in solids if q["name"] == NIKOLAI and q["base"] == 0]
+        if parts:
+            west = min(parts, key=lambda q: min(x for x, _ in q["ring"]))
+            c = np.mean(np.asarray(west["ring"]), 0)
+            p, n = wall_point(west["ring"], c + np.array([-30.0, 0.0]))
+            close.append(close_to("Nikolai-do, under its bell tower", p, west["ground"], p + n * 5.0, 1.2))
+
+
 def game_extras(scene):
     lm = scene["landmarks"]
-    spots, chatter = [], []
+    spots, chatter, close = [], [], []
+    close_extras(lm, close)
     z = lm.get("zuishinmon")
     if z:
         p = np.asarray(z["c"]) + np.asarray(z["axis"]) * (z["half_u"] + 5.0)
@@ -320,4 +376,4 @@ def game_extras(scene):
         x, y, nx, ny, g, top, L = et["sites"][0]
         chatter.append({"at": [x + nx * 4, y + ny * 4, g], "radius": 14, "side": True,
                         "lines": [["Shopper", "Is the junk-parts shop still down that lane?"], ["Friend", "Since 1980-something. Bring cash."], ["Shopper", "And then the arcade."]]})
-    return {"spots": spots, "chatter": chatter}
+    return {"spots": spots, "chatter": chatter, "close": close}
