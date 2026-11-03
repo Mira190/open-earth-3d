@@ -445,6 +445,7 @@
   },
   "verified_heights": "verified_heights.csv",
   "game": {
+    "weather": {"rain_days": [6.4, 7.3, 10.3, 10.0, 10.4, 12.3, 11.3, 7.8, 10.6, 9.2, 7.0, 7.1], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Osaka: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Osaka on Foot",
     "start": {
       "at": [
@@ -558,6 +559,7 @@
       "cars": 150,
       "radius_m": 450,
       "style": {
+        "umbrellas": ["clear", "clear", "clear", "clear", "#1d1f26", "#22304a", "#1d1f26", "#f2f2f2", "#7a2f1f"],
         "skin": [
           "#f6dccb",
           "#f0cdb3",
