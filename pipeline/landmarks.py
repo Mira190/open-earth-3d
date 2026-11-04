@@ -14,7 +14,8 @@ drawn once per kind and instanced at every [x, y, z, heading(, scale across)] in
 "far" metres; "clip", regions ({ring, holes}) where the viewer does not draw the ground above
 the water (under paving, and in front of a seawall) (web/world.js); "seawalls", the face of a
 seawall the landmark draws itself, polylines [[x, y], ...] with the water on their right, where a
-walker stops at its edge (web/quays.js).
+walker stops at its edge (web/quays.js); "trees", a landmark's own trees, [x, y, z, height] in decimetres as
+places.json's, standing at z (a roof garden's, on its terraces), drawn after the woods' in the city's mix (web/world.js).
 
     python pipeline/landmarks.py --city sydney      # reads/writes web/data/<city>
 """
