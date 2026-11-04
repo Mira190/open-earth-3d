@@ -73,7 +73,7 @@ MATERIALS = {
     "x_qf_panel": {"color": "#cfd2d5", "roughness": 0.45, "metalness": 0.5},
     "x_qf_roof": {"color": "#6d7176", "roughness": 0.8, "metalness": 0.2},
     "x_shop": {"color": "#59616a", "roughness": 0.12, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.8, "spandrel": 0.04,
-               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 1.0, "lit_k": 1.1, "warm_share": 0.8},
+               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 0.85, "lit_k": 0.4, "warm_share": 0.8},
     # QFRONT's floors behind the outer skin (as city.py's qfront_glass)
     "qfront_glass": {"color": "#2b3741", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.55, "lit_k": 0.6},
@@ -101,7 +101,7 @@ MATERIALS = {
     "x_bk_box": {"color": "#f1f1ee", "roughness": 0.5, "metalness": 0.1},
 }
 MATERIALS.update(streets.MATERIALS)
-LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp", "st_shop"}
+LIT = {"x_light", "x_atlas", "x_print", "x_red_lamp"}
 
 
 # ---------------------------------------------------------------- data
