@@ -737,11 +737,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
   const pathQ = new Float32Array(2 * (NPATH + 64)), pathZ = new Float32Array(NPATH + 64), pathNext = [];
+  // a car coming the other way within reach ahead of car c (heading fx, fy), on its road or a step from
+  // its centre line: one it would meet swinging out over that line
+  function oncomingIn(C, c, fx, fy, reach) {
+    for (const o of C) {
+      if (o === c || o.line < 0 || Math.abs(o.z - c.z) >= LEVEL) continue;
+      const dx = o.x - c.x, dy = o.y - c.y, a = dx * fx + dy * fy;
+      if (a <= 0 || a > reach || Math.abs(-dx * fy + dy * fx) > 4.5) continue;
+      if (Math.sin(o.h) * fx + Math.cos(o.h) * fy < -0.5) return true;
+    }
+    return false;
+  }
   function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null } = {}) {
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const JN = junctions || OEJunctions.create(net, { keep, lane: LANE, signals: [] });
     const I = lib && lib.cars && lib.info.cars, C = [], tmp = {}, m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1);
     let mesh = null, fleet = null;
+    const oncoming = (c, fx, fy, reach) => oncomingIn(C, c, fx, fy, reach);
     if (I) {
       const geos = carGeometries(lib.cars, I.tones), names = Object.keys(I.models).filter(k => geos[k] && geos[k].length === 3);
       const taxi = Object.assign({}, I.liveries.taxi, cfg.taxi), bus = Object.assign({}, I.liveries.bus, cfg.bus);
@@ -1155,7 +1167,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             // (not round one stopped at a junction's line, a taxi waiting for its turn: it queues behind)
             const atJ = arm && left - arm.back < a + b.half + 15;
             const toKerb = w0 + side * need, toCentre = w0 - side * need; // (the kerb is on the keep side)
-            const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
+            // (over the centre line only with nothing coming the other way up to 40 m ahead: else it waits behind,
+            // as a driver does; one coming down a narrow street, in from a facade, would meet it head on)
+            const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 && !oncoming(c, fx, fy, a + b.half + 30) ? toCentre : null;
             if (sw != null && !atJ) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
           if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; } // (a ride pulling in still reaches into the lane)
