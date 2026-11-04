@@ -39,6 +39,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
+| Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
 | Woods | `woods.py` (run by `game_data.py`) | `woods.png` and `woods` in `places.json`: in every mapped wood, forest, scrub, park, garden, cemetery and temple ground, the trees planted from an open canopy height model (Meta and WRI, CC BY 4.0) and a mask of the ground under that canopy, which the ground shader draws as a wood's floor instead of the photo's tree tops. See [Woods](#woods-and-park-canopy) below |
 | Night | `night_lights.py` (run by `game_data.py`) | `night.json`: the roads simplified for the street lights and the traffic, the mapped lamps, and the city's lighting style (lamp colours, keep side, aircraft lights, crowns, sky glow). See [NIGHT.md](NIGHT.md) |
@@ -149,7 +150,25 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     layer keeps OSM's tags (`source_tags`) and `level` for this. `pipeline/refresh_piers.py`
     rewrites them without a rebuild; `tools/stale_shore.py` lists where mapped land still
     lies under the built water, and `tools/coast_overlay.py` draws the water, the mask and
-    the decks over the aerial photograph to check a coastline (issue 50).
+    the decks over the aerial photograph to check a coastline (issue 50). Their tops show
+    the aerial photograph, as a flat roof does (`web/world.js`), so a wharf has its parking
+    bays and kerbs rather than a plain slab.
+  - Buildings out on the water that are not buildings (`pipeline/wet_buildings.py`, issue 65):
+    a footprint 80% in the water and not on a mapped pier is a **deck** when it is a
+    machine-learned footprint (Microsoft's) of 1,000 m² or more joined to the land (Garden
+    Island's cruiser wharf), added to the piers and its solid not drawn; the deck of a
+    **bridge** or an elevated road when it is a machine-learned footprint at least 20% over the
+    water and half under a road Overture flags as a bridge or raises a level (Osaka's Hanshin
+    loop over the Higashi-Yokobori), not drawn; and a **vessel** when OpenStreetMap tags it
+    `building=ship`, `boat`, `houseboat` or `barge`, `floating=yes` or `seamark:type=hulk`, when
+    its class is in `water.floating`, and for any other machine-learned footprint out there (the
+    boats moored when the imagery was taken). A vessel floats at the waterline with a dark
+    hull to its freeboard (by its length, 1 to 4 m) under a deck, and a lighter superstructure
+    set in from the sides and amidships on a ship, added as a new building (class `vessel`;
+    the hull's class is `vessel_hull`). The tags come from the OpenStreetMap API for those
+    buildings only (`data/raw/<id>/osm_wet_buildings.json`). `build_scene.py` leaves the decks
+    out and runs it; `refresh_piers.py` (or `python pipeline/wet_buildings.py --city <id>`)
+    applies it to a built city, hiding solids as a demolished building's are, so no index moves.
   - `trees`: flat `[x, y, z, h]` in decimetres.
   - `woods`: the trees planted from the canopy (`pipeline/woods.py`), the same
     way, with the height the canopy model measured.

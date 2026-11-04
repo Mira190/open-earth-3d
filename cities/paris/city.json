@@ -503,6 +503,7 @@
     "buildings_ign": "IGN BD TOPO buildings (eaves heights, floors, dates, use, materials from the Fichiers fonciers) and LiDAR HD heights, via the Géoplateforme (Licence Ouverte / Etalab 2.0)"
   },
   "game": {
+    "weather": {"rain_days": [9.9, 9.1, 9.5, 8.6, 9.2, 8.3, 7.4, 8.1, 7.5, 9.5, 10.4, 11.4], "threshold_mm": 1.0, "drizzle": 0.5, "source": "Météo-France, Paris-Montsouris, 1991-2020 normals, days with at least 1 mm"},
     "title": "Paris on Foot",
     "local_name": "Parisian",
     "water_name": "the Seine",

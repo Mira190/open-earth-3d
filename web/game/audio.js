@@ -1,7 +1,8 @@
 // Sound, synthesised with Web Audio (no audio files): harbour ambience, footsteps,
 // the helicopter rotor, the ferry engine and horn, a car's engine through its gears,
 // its tyres in a slide and its horn, dialogue voice beeps with a pitch per character,
-// little penguins braying in the dark and silver gulls. Browsers allow
+// little penguins braying in the dark and silver gulls; at a busy crossing the crowd's murmur, the
+// screens' music, the walk signal's bird calls and the station's announcements. Browsers allow
 // sound only after a click, so start() is called from the Play button.
 'use strict';
 window.OEAudio = (function () {
@@ -58,6 +59,19 @@ window.OEAudio = (function () {
     sb.type = 'bandpass'; sb.frequency.value = 1500; sb.Q.value = 6; sg.gain.value = 0;
     sn.connect(sb); sb.connect(sg); sg.connect(master);
     ch.skid = sg;
+    // rain: a hiss of fine drops (high-passed noise), the patter on leaves and paving (a band of
+    // noise that flutters), and under a roof its drumming (a low band, louder there)
+    const hn = noiseSource(), hh = ctx.createBiquadFilter(), hg = ctx.createGain();
+    hh.type = 'highpass'; hh.frequency.value = 3200; hg.gain.value = 0;
+    hn.connect(hh); hh.connect(hg); hg.connect(master);
+    const pn = noiseSource(), pb = ctx.createBiquadFilter(), pg = ctx.createGain(), pl = ctx.createOscillator(), plg = ctx.createGain(), pv = ctx.createGain();
+    pb.type = 'bandpass'; pb.frequency.value = 1400; pb.Q.value = 0.7; pg.gain.value = 0.6; pv.gain.value = 0;
+    pl.type = 'triangle'; pl.frequency.value = 7.3; plg.gain.value = 0.35; pl.connect(plg); plg.connect(pg.gain); pl.start();
+    pn.connect(pb); pb.connect(pg); pg.connect(pv); pv.connect(master);
+    const rn2 = noiseSource(), rb = ctx.createBiquadFilter(), rgain = ctx.createGain();
+    rb.type = 'bandpass'; rb.frequency.value = 420; rb.Q.value = 0.9; rgain.gain.value = 0;
+    rn2.connect(rb); rb.connect(rgain); rgain.connect(master);
+    ch.rain = { hiss: hg, patter: pv, roof: rgain, hp: hh };
   }
   const ramp = (p, v, t = 0.25) => { if (ctx) p.setTargetAtTime(v, ctx.currentTime, t); };
   function rotor(spin, load = 0) {
@@ -76,6 +90,19 @@ window.OEAudio = (function () {
     ramp(ch.car.lp.frequency, 220 + 900 * throttle * rpm + 200 * rpm, 0.08);
   }
   function skid(level) { if (ctx) ramp(ch.skid.gain, Math.min(0.06, level * 0.06), 0.06); }
+  // level 0..1 (drizzle to a downpour); roof: under one, which drums; inside: a car or a cabin, muffled
+  let dripAt = 0;
+  function rain(level, roof = false, inside = false) {
+    if (!ctx || !ch.rain) return;
+    const k = inside ? 0.35 : 1;
+    ramp(ch.rain.hiss.gain, level * 0.05 * k * (roof ? 0.6 : 1), 0.8);
+    ramp(ch.rain.patter.gain, level * 0.07 * k * (roof ? 0.5 : 1), 0.8);
+    ramp(ch.rain.roof.gain, (roof ? 0.11 : inside ? 0.05 : 0) * Math.min(1, level * 1.4), 0.6);
+    ramp(ch.rain.hp.frequency, inside ? 1800 : 3200, 0.5);
+    // under a roof, now and then a drop off its edge
+    const now = ctx.currentTime;
+    if (roof && level > 0.05 && now > dripAt) { dripAt = now + 0.25 + Math.random() * (1.6 - level); blip(900 + Math.random() * 700, 0.05, 'sine', 0.025); }
+  }
   function blip(freq, dur, type = 'square', vol = 0.05) {
     if (!ctx || muted) return;
     const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
@@ -138,7 +165,88 @@ window.OEAudio = (function () {
   function chime() { [660, 880, 1320].forEach((f, i) => setTimeout(() => blip(f, 0.35, 'sine', 0.07), i * 110)); }
   // a tram's foot gong, struck twice ("ding ding")
   function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
+  // ---------------------------------------------------------------- a busy crossing (game.look.sound)
+  // the crowd's murmur: noise through two voice bands, a little of it pulsing at a syllable's rate,
+  // as a thousand people talking at once sound; level 0..1 with how many are round you
+  let crowdBed = null, screenBed = null, beatAt = 0, chord = 0;
+  function murmur(level) {
+    if (!ctx) return;
+    if (!crowdBed && level > 0) {
+      const n = noiseSource(), a = ctx.createBiquadFilter(), b = ctx.createBiquadFilter(), g = ctx.createGain(), am = ctx.createOscillator(), ag = ctx.createGain(), out = ctx.createGain();
+      a.type = 'bandpass'; a.frequency.value = 420; a.Q.value = 0.9; b.type = 'bandpass'; b.frequency.value = 1150; b.Q.value = 1.4;
+      am.frequency.value = 4.3; ag.gain.value = 0.25; g.gain.value = 0.75; am.connect(ag); ag.connect(g.gain); am.start();
+      n.connect(a); n.connect(b); a.connect(g); b.connect(g); g.connect(out); out.gain.value = 0; out.connect(master);
+      crowdBed = { out, am };
+    }
+    if (crowdBed) { ramp(crowdBed.out.gain, Math.min(1, level) * 0.11, 0.6); ramp(crowdBed.am.frequency, 3.6 + Math.random() * 1.6, 0.8); }
+  }
+  // the screens' sound: a pop song heard across the street, its kick and its chords through the
+  // traffic's noise (muffled: little above 1 kHz carries); level 0..1 with distance
+  function screens(level) {
+    if (!ctx) return;
+    if (!screenBed && level > 0) {
+      const lp = ctx.createBiquadFilter(), out = ctx.createGain(), oscs = [];
+      lp.type = 'lowpass'; lp.frequency.value = 950; lp.Q.value = 0.7; out.gain.value = 0;
+      for (let i = 0; i < 3; i++) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; g.gain.value = 0.18; o.connect(g); g.connect(lp); o.start(); oscs.push(o); }
+      lp.connect(out); out.connect(master);
+      screenBed = { out, oscs };
+    }
+    if (!screenBed) return;
+    ramp(screenBed.out.gain, Math.min(1, level) * 0.05, 0.8);
+    // the beat and the changes, scheduled a little ahead (122 bpm, a chord every bar)
+    const t = ctx.currentTime, beat = 60 / 122;
+    if (level > 0.02 && beatAt < t + 0.3) {
+      if (beatAt < t) beatAt = t + 0.05;
+      const CH = [[220, 277.2, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 311.1]];
+      for (let k = 0; k < 4; k++) {
+        const at = beatAt + k * beat, o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(120, at); o.frequency.exponentialRampToValueAtTime(45, at + 0.12);
+        g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.5, at + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.22);
+        o.connect(g); g.connect(screenBed.out); o.start(at); o.stop(at + 0.25);
+      }
+      CH[chord % 4].forEach((f, i) => screenBed.oscs[i].frequency.setValueAtTime(f, beatAt));
+      chord++; beatAt += 4 * beat;
+    }
+  }
+  // Japan's walk signal for the blind (the standard of 2003): a bird's "piyo" from one kerb answered
+  // by "piyo-piyo" from the other, or the cuckoo's "kakko" answered by "ka-kakko"; side 0 or 1
+  function piyo(side = 0, level = 1) {
+    if (!ctx || muted || level <= 0) return;
+    const t = ctx.currentTime, n = side ? 2 : 1;
+    for (let k = 0; k < n; k++) {
+      const a = t + k * 0.17, o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.setValueAtTime(2900, a); o.frequency.exponentialRampToValueAtTime(2050, a + 0.11);
+      g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.05 * level, a + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.13);
+      o.connect(g); g.connect(master); o.start(a); o.stop(a + 0.15);
+    }
+  }
+  function kakko(side = 0, level = 1) {
+    if (!ctx || muted || level <= 0) return;
+    const t = ctx.currentTime, notes = side ? [[0, 830], [0.12, 830], [0.32, 660]] : [[0, 830], [0.22, 660]];
+    for (const [d, f] of notes) {
+      const a = t + d, o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.045 * level, a + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.2);
+      o.connect(g); g.connect(master); o.start(a); o.stop(a + 0.22);
+    }
+  }
+  // a station's announcement, carried from the concourse: its two-note chime, then a voice too far
+  // off to make out (noise through moving vowel formants)
+  function announce(level = 1) {
+    if (!ctx || muted || level <= 0) return;
+    const t = ctx.currentTime;
+    [[0, 1046.5], [0.32, 784]].forEach(([d, f]) => { const o = ctx.createOscillator(), g = ctx.createGain(), a = t + d;
+      o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.05 * level, a + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.9);
+      o.connect(g); g.connect(master); o.start(a); o.stop(a + 1); });
+    const s = ctx.createBufferSource(), f1 = ctx.createBiquadFilter(), f2 = ctx.createBiquadFilter(), g = ctx.createGain(), a = t + 1.3, dur = 3.6;
+    s.buffer = noise; s.loop = true; f1.type = 'bandpass'; f1.Q.value = 6; f2.type = 'bandpass'; f2.Q.value = 8;
+    for (let k = 0; k < 18; k++) { const at = a + k * dur / 18; f1.frequency.setValueAtTime(350 + Math.random() * 500, at); f2.frequency.setValueAtTime(1000 + Math.random() * 1300, at); }
+    g.gain.setValueAtTime(0.0001, a);
+    for (let k = 0; k < 14; k++) { const at = a + k * dur / 14; g.gain.linearRampToValueAtTime((0.04 + Math.random() * 0.05) * level, at + 0.05); g.gain.linearRampToValueAtTime(0.008 * level, at + dur / 14); }
+    g.gain.linearRampToValueAtTime(0.0001, a + dur);
+    s.connect(f1); s.connect(f2); f1.connect(g); f2.connect(g); g.connect(master); s.start(a); s.stop(a + dur + 0.1);
+  }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, murmur, screens, piyo, kakko, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

@@ -17,6 +17,7 @@ Parametric landmark (called by pipeline/landmarks.py):
                the cusped karahafu porch, the side roofs, white plaster, vermilion railings and lattices,
                and the row of red lanterns. OSM records the theatre at the 141 m of the tower behind it;
                the tower (歌舞伎座タワー) stays a building.
+  National Diet Building  on its 26 mapped solids, in granite, with its tower (cities/tokyo/diet.py).
 """
 import math
 
@@ -24,6 +25,18 @@ import numpy as np
 
 import archkit as ak
 from meshkit import Mesh
+
+
+def _load(name):
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location(f"tokyo_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+DIET = _load("diet")
 
 TOWER_LL = (139.745433, 35.658581)
 TOWER = {"height": 333.0, "base": 80.0, "main_deck": 150.0, "top_deck": 250.0, "antenna_from": 255.0}
@@ -131,7 +144,11 @@ def landmark_meshes(scene):
         for k in ("orange", "white", "deck"):
             mats[k]["flood"] = [round(t["ground_m"], 1), round(t["ground_m"] + TOWER["height"], 1), 0.5, 0.5]
     meshes, hidden = kabukiza()
-    return mats, (tower(t) if t else []) + meshes, {"hidden": hidden}
+    dm, dh = DIET.meshes("tokyo")  # the National Diet Building (cities/tokyo/diet.py)
+    mats.update({k: dict(v) for k, v in DIET.MATERIALS.items()})
+    for k in ("diet_granite", "diet_trim") if DIET.GROUND else ():  # floodlit from the forecourt, fading up the tower
+        mats[k]["flood"] = [DIET.GROUND[0], round(DIET.GROUND[0] + DIET.TOWER_M, 1), 0.5, 0.55]
+    return mats, (tower(t) if t else []) + meshes + dm, {"hidden": hidden + dh}
 
 
 KABUKIZA = "r4859313"
