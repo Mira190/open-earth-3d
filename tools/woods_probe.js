@@ -4,7 +4,8 @@
 // For the woods planted from the canopy (pipeline/woods.py) against main's mapped trees alone.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/woods_probe.js kyoto 357,2590 100,1880   # x,y in the city's local frame
-// TIER=low takes the small device's share of the woods.
+// TIER=low takes the small device's share of the woods. The shadow figure is what the sun's shadow
+// map draws again (each caster, every frame the shadows update).
 const { chromium } = require('playwright');
 const [,, city = 'kyoto', ...spots] = process.argv;
 (async () => {
@@ -31,16 +32,19 @@ const [,, city = 'kyoto', ...spots] = process.argv;
       for (let i = 0; i < 4; i++) await new Promise(r => requestAnimationFrame(r));
       const ms = (performance.now() - t0) / 4;
       const per = {};
-      let tris = 0;
+      let tris = 0, shadow = 0;
       g.Wd.world.traverse(o => {
         if (!o.isInstancedMesh || !o.geometry.getAttribute('tc') || !o.count) return;
         const t = (o.geometry.index ? o.geometry.index.count : o.geometry.getAttribute('position').count) / 3;
         tris += t * o.count;
+        if (o.castShadow) shadow += t * o.count;
         per[t] = (per[t] || 0) + o.count;
       });
-      return { trees: g.Wd.trees ? g.Wd.trees.n : 0, tris: Math.round(tris), perMeshTriangles: per, ms: Math.round(ms) };
+      const T = g.Wd.trees, species = T ? T.species.map((sp, k) => `${sp} ${T.count[k]}`).join(', ') : '';
+      return { species, trees: g.Wd.trees ? g.Wd.trees.n : 0, tris: Math.round(tris), shadow: Math.round(shadow), perMeshTriangles: per, ms: Math.round(ms) };
     }, [x, y]);
-    console.log(`${city} at ${x},${y}: ${r.trees} trees in all; ${(r.tris / 1e6).toFixed(2)} M tree triangles drawn (per mesh size: ${JSON.stringify(r.perMeshTriangles)}); ${r.ms} ms a frame`);
+    console.log(`${city} [${process.env.TIER || 'high'}] at ${x},${y}: ${r.trees} trees in all; ${(r.tris / 1e6).toFixed(2)} M tree triangles drawn, ${(r.shadow / 1e6).toFixed(2)} M of them into the shadow map (per mesh size: ${JSON.stringify(r.perMeshTriangles)}); ${r.ms} ms a frame`);
+    if (s === spots[0] || !spots.length) console.log(`  species: ${r.species}`);
   }
   if (logs.length) console.log(logs.join('\n'));
   await b.close();
