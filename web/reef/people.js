@@ -5,8 +5,7 @@
 // attribute (6k vertices), and the draw call count stays at one per person (plus accessories).
 // Swimming has no Quaternius clip, so the pose is driven on the bones in code (see `proc`).
 import * as THREE from 'three/webgpu';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+import { GLTFLoader } from '../gltf.js'; // (the shared models are meshopt-compressed: it decodes them, and retries)
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { BUILDERS, mat as gmat } from './gear.js';
 import { makeLook, SKIN_TONES, HAIR_TONES, stingerSeason, ROLES } from './looks.js';
@@ -22,11 +21,19 @@ const regionOf = n => /^(Head|Neck)$/.test(n) ? REG.head : /^(Wrist|Index|Middle
 
 // ---------------------------------------------------------------- library
 let lib = null;
+// people.json, tried again twice if the request fails (as gltf.js does for the models)
+async function fetchJSON(url) {
+  for (let i = 0; ; i++) {
+    try { const r = await fetch(url); if (r.ok) return await r.json(); if (i >= 2 || r.status < 500) throw new Error(`${url}: HTTP ${r.status}`); }
+    catch (e) { if (i >= 2) throw e; }
+    await new Promise(r => setTimeout(r, 800 * 3 ** i));
+  }
+}
 export async function loadLibrary(base = BASE) {
   if (lib) return lib;
-  const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); // (the shared models are meshopt-compressed)
+  const L = new GLTFLoader();
   const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
-  const info = await (await fetch(base + 'people.json')).json();
+  const info = await fetchJSON(base + 'people.json');
   const [aM, aW] = await Promise.all([get(info.anims.M), get(info.anims.W)]);
   lib = { info, base, get, clips: { M: aM.animations, W: aW.animations }, tpl: {}, loading: {}, lod: null };
   return lib;

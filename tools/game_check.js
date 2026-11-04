@@ -1193,6 +1193,30 @@ const npcNight = require('./npc_night');
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
   check(Math.abs(gl.after.mean - gl.before.mean) < 10, `and lit as before (luma ${gl.before.mean.toFixed(1)} before, ${gl.after.mean.toFixed(1)} after)`);
 
+  // a device that can't keep up (game.js shed): it gives up the rain's extras, then every drop, then
+  // the street's reflections, then pixels, in that order, and never the people: the player, the NPCs
+  // and the crowd near them keep their realistic models
+  const shed = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    if (W) { W.set('rain', { now: true }); g.advance(1); }
+    const seen = [];
+    for (let i = 0; i < 8 && g.shed(); i++) {
+      await frames(2);
+      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror ? !!g.mirror.off : null, px: g.pxScale() });
+    }
+    const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
+    if (W) W.set('live');
+    return { seen, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+  });
+  {
+    const s = shed.seen, at = k => s.findIndex(x => x.lvl === k);
+    const order = s.length >= 2 && s[s.length - 1].px === 0.7 && s.every((x, i) => !i || x.px <= s[i - 1].px)
+      && s.every(x => x.px === 1 || (x.w === null || x.w === 2) && (x.mirror === null || x.mirror));
+    const rainFirst = at(1) < 0 || (s[at(1)].far === false && s[at(1)].near === true && s[at(1)].px === 1);
+    check(order && rainFirst, `a slow device sheds the rain's extras first, then the drops, the reflections and then pixels (${s.map(x => `${x.lvl}:${x.w ?? '-'}/${x.mirror ?? '-'}/${x.px}`).join(' ')})`);
+    check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
+  }
+
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));
   await b.close();

@@ -580,6 +580,21 @@ Each result is re-run on four height-error scenarios drawn from the measured
 errors. The protected times can be read as standard time or clock time; the
 city's `protection.default_time_basis` sets the default.
 
+### What a slow device gives up first
+
+The game's frame rate is measured over four seconds at a time while it is being played. Below 24
+frames a second it sheds one thing per window, the nice-to-haves first (`shed` in
+`web/game/game.js`): the far rain streaks and the splashes (`weather.shed = 1`; the low tier
+starts there), then every drop (`2`: the streets stay wet, the sky grey, the rain audible), then
+the wet street's reflections (`mirror.off`), then pixels, to 85% and then 70% of the tier's. Only
+when nothing is left does it suggest a lower crowd density. The people keep their realistic
+models on every tier: the box-built figures (`OEActors.makePerson`) are a last resort for a
+device that could load none of the people's files, and a single character that fails to load
+(after `web/gltf.js`'s retries) is worn by another loaded one of the same sex instead. The tools
+drive the game under `navigator.webdriver`, where the measurement is off (a software renderer
+would shed everything); `tools/game_check.js` calls `shed` itself to check the order and that no
+one turns into a box.
+
 ## Analyses
 
 All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
@@ -871,9 +886,15 @@ does not quantise to integers, re-order, merge or rename anything, so `cars.js` 
 read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
 corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
 exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
-Each view is decoded again and compared before the file is written. `web/index.html` gives every
-`GLTFLoader` the decoder; the reef's `people.js` sets it on its own. `tools/check.sh` fails on a
-model that is not compressed.
+Each view is decoded again and compared before the file is written. Every page makes its
+`GLTFLoader` from `web/gltf.js` (the city viewer and the game through `web/index.html`'s
+`THREE.GLTFLoader`, the reef's `people.js` and `life/flora.js` by importing it), which sets the
+decoder and tries a failed download again twice (0.8 s, 2.4 s). Where there is no WebAssembly
+(iOS Lockdown Mode, some locked-down browsers) it decodes with meshoptimizer's pure-JavaScript
+reference decoder instead (1.3.0, the encoder's version, MIT, vendored in
+`web/vendor/meshoptimizer/`, loaded only then): slower, but the people, trees and cars are still
+the real models rather than the box-built stand-ins. `tools/check.sh` fails on a model that is
+not compressed.
 
 | Models | Before | After |
 |---|---|---|
