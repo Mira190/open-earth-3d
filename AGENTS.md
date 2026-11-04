@@ -33,7 +33,9 @@ or an integration session. Done means in main.
    pull request.
 4. Push the branch, open a pull request into main (what changed and why, what was checked, what
    wasn't), and land it with `git push origin HEAD:main`. That push only fast-forwards, so it is
-   refused if main moved after step 1: go back to 1. GitHub then marks the pull request merged.
+   refused if main moved after step 1: go back to 1, and the check in step 3 then covers only what
+   changed since your last pass (main's new commits and your conflict fixes), not the whole
+   branch again; `CHECK_FULL=1` forces the whole branch. GitHub then marks the pull request merged.
    If the push to main is refused for permission, merge the pull request with a merge commit,
    never a squash or a rebase, so that branches stay ancestors of main. `gh pr create` is
    refused here; open it with the GitHub MCP tools or `gh api repos/Mira190/open-earth-3d/pulls`.
@@ -43,6 +45,10 @@ or an integration session. Done means in main.
 6. Tell the owner in one line: the branch, the commit, in main or why not, and what the checks
    covered.
 
+- Keep re-checks small. A change to shared code (`web/game/`, `web/assets/`, `web/*.js`,
+  `web/index.html`) makes every city's checks run, about an hour on a software renderer: land it
+  on its own and early, and keep city work in city files. Stay in the landing loop until it
+  lands; each round after the first is short.
 - Land in pieces. When something that other work will build on works (a shared module, a
   style, a pipeline step), land it then rather than holding it on a branch for hours.
 - A hook that asks you to commit and push work in progress: push it to your branch. Landing on
