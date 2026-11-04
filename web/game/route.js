@@ -337,7 +337,11 @@ window.OERoute = (function () {
               let trap = !!(l.wall & (e ? 2 : 1));
               if (!trap) {
                 const at = (roadNet.nodes.get(endOf(l, e)) || []).filter(o => o[0] !== i && RL[o[0]].ow !== (o[1] === 0 ? -1 : 1));
-                trap = at.length > 0 && at.every(o => drive[o[0]]);
+                // (or none at all, where another one-way road ends there too: two merging into nothing, a road
+                // the data has lost between them, on Hong Kong's hillside west of Central; a single road ending at nothing is a
+                // stub or the map's edge, where a car turns round)
+                const into = (roadNet.nodes.get(endOf(l, e)) || []).filter(o => o[0] !== i).length;
+                trap = at.length > 0 ? at.every(o => drive[o[0]]) : into > 0;
               }
               if (trap) { drive[i] = 1; more = true; }
             }

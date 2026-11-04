@@ -591,10 +591,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
     const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
     let first = null;
-    for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
+    // (not in a junction, nor so close to one that the traffic turning through it can't get round: at Hong
+    // Kong's start it was parked at a junction's mouth, and every car behind waited on it for good, issue 128)
+    const l0 = roadNet.L[pl.line], n0 = l0.pts.length / 3, jn = k => (roadNet.nodes.get(roadNet.key(l0.pts[3 * k], l0.pts[3 * k + 1])) || []).length > 2;
+    const nearJ = s => junctions.inner(pl.line) || (jn(0) && s < half + 12) || (jn(n0 - 1) && L - s < half + 12);
+    for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24, 30, -30, 36, -36]) {
       const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
       first = first || { pl: q, pose };
-      if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+      if (nearJ(q.s) || cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
       let hit = false;
       const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
       posts.near(pose.x, pose.y, half + 1, p => {
