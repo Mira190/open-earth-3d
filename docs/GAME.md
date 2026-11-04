@@ -377,7 +377,8 @@ to the street, then tilts down to the player, the line kept 24 m over the roofs
 uses it: the title looks over the station to QFRONT's screen, the crane comes down
 over the scramble as every arm turns red and the walk turns green, and the crowd
 gathered at the kerbs of every crosswalk (`crowd.muster`, twenty at yours) steps out
-round you as control comes, a couple of seconds into the walk. The travel menu's
+round you as control comes, a couple of seconds into the walk; a car moving in or
+near the box as the walk is forced green comes back elsewhere (`clearBox`). The travel menu's
 Shibuya stop is the same kerb, and Aoi, the guide the onboarding sends you to,
 waits across the diagonal by QFRONT, so the first walk is the crossing.
 `game.start.car` puts your car at a kerb away from the start when the start's own
@@ -895,8 +896,13 @@ Sydney's traffic stood still a third of the time.
   crosswalks, beyond the node's radius. Its walkers wait at the ends of its mapped
   crosswalks (`landmarks.scramble.lines`), the diagonals too, rather than at kerbs
   found from the arms' roads, which meet at a node in the middle of the crossing.
+  Each way in stops behind the crosswalk mapped across it (21 to 36 m from the
+  node at Shibuya), not in the stripes. Out on a crosswalk a walker spreads across
+  the band's width and keeps to its left, so the crowds from the two kerbs pass.
   A ride's call never cuts the walk short; the time to green it shows counts the
   rest of the walk, and a hailed taxi held at its red is timed with that wait.
+  `tools/scramble_cars.js` prints the cars in and near the box over a cycle and
+  what holds each.
 - **The signal heads** are instanced, a handful of draw calls for a city's
   thousands. Each arm with signals has a pole at the kerb by its stop line with
   a lantern facing the traffic, and a second across the junction; a main road's
