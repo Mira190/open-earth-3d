@@ -11,7 +11,9 @@ Building adjustments (called by pipeline/build_scene.py):
     and stand 2.6-3.5 m above the water, a guess from the common ark (a flat-roofed box on a
     concrete hull).
   * Towers: a laser over a 10 m footprint cannot draw a spire. The five tallest are parametric
-    (below); their measured solids stay in the surface model for the sun analyses.
+    (below); their measured solids stay in the surface model for the sun analyses. In a church,
+    only the pieces the drawn tower stands in place of are hidden, never its body (draws_instead);
+    pipeline/refresh_hidden.py applies that rule to a built scene.
 
 Parametric landmarks (called by pipeline/landmarks.py), placed on their footprints:
   Westertoren       85 m (87 m with the weathercock; westerkerk.nl), Hendrick de Keyser,
@@ -136,12 +138,61 @@ def adjust_building(b, cls, g, geoms, ctx):
             hmax = max(pl.h[i] for i in idx)
             c = shapely.union_all([pl.polys[i] for i in idx if pl.h[i] >= 0.75 * hmax]).centroid
             mr = np.asarray(g.minimum_rotated_rectangle.exterior.coords)[:4]
-            sq = c.buffer(0.75 * t["side"])
-            _anchor(ctx, t["label"], t, c, t["side"], mr[1] - mr[0], sq)
-            for gm in geoms:  # the church's tall pieces inside the tower: the tower draws them
-                if gm[2] > 25 and gm[0].intersection(sq).area > 0.5 * gm[0].area:
+            edge = mr[1] - mr[0]
+            sq = tower_square(c.x, c.y, t["side"], math.degrees(math.atan2(edge[1], edge[0])) % 90)
+            _anchor(ctx, t["label"], t, c, t["side"], edge, sq)
+            body = church_body([(gm[0], gm[2]) for gm in geoms])
+            for gm in geoms:  # the pieces the drawn tower stands in place of
+                if draws_instead(gm[0], gm[2], sq, t["side"], body):
                     ctx.hide(gm)
     return geoms
+
+
+def tower_square(x, y, side, axis_deg):
+    """The square a church tower is drawn on (landmark_meshes): side m wide, turned axis_deg."""
+    a = math.radians(axis_deg)
+    u, v = np.array([math.cos(a), math.sin(a)]) * side / 2, np.array([-math.sin(a), math.cos(a)]) * side / 2
+    c = np.array([x, y])
+    return shapely.Polygon([c - u - v, c + u - v, c + u + v, c - u + v])
+
+
+def church_body(pieces):
+    """The height of a church's body, the top of its main roofs: the highest of its pieces of 100 m2 or
+    more. pieces: [(outline, top above the ground)]."""
+    return max((top for poly, top in pieces if poly.area >= 100), default=0.0)
+
+
+def draws_instead(poly, top, sq, side, body):
+    """Whether the tower drawn on the square sq (side m wide) stands in place of a church piece (its
+    outline, its top above the ground): the piece lies mostly inside the square, or it is the measured
+    tower's masonry, which the survey draws up to half as wide again as the drawn shaft: rising more than
+    2 m over the church's body (church_body) with its centre within 0.75 side of the tower's. The body's
+    pieces round the tower, its nave and aisle roofs, are never hidden unless the square covers them
+    mostly: they stay drawn and in the surface model."""
+    poly = poly if poly.is_valid else poly.buffer(0)
+    if poly.area <= 0:
+        return False
+    if poly.intersection(sq).area > 0.5 * poly.area:
+        return True
+    return top > body + 2.0 and poly.centroid.distance(sq.centroid) < 0.75 * side
+
+
+def refresh_hidden(scene, solids):
+    """scene.json hidden_solids for the church towers, from the built city's solids by the same rule as
+    adjust_building (draws_instead), without rebuilding the scene: (solid indices to show, to hide)."""
+    towers = {t["name"]: t for t in scene["landmarks"].get("towers", [])}
+    show, hide = set(), set()
+    for church, t in CHURCH_TOWERS.items():
+        tw = towers.get(t["label"])
+        if not tw:
+            continue
+        sq = tower_square(*tw["centre"], tw["side_m"], tw["axis_deg"])
+        pieces = [(sd, shapely.Polygon(sd["ring"])) for sd in solids if sd["name"] == church]
+        body = church_body([(poly, sd["top"]) for sd, poly in pieces])
+        for sd, poly in pieces:
+            if poly.distance(sq) < 30:
+                (hide if draws_instead(poly, sd["top"], sq, tw["side_m"], body) else show).add(sd["si"])
+    return show, hide
 
 
 def _anchor(ctx, name, t, c, side, edge, base):

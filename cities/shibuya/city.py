@@ -120,7 +120,7 @@ MATERIALS = {
     # the drawn images (landmark_assets): ema, plaques, banners, signs and screens; lit after dark where floodlit
     "atlas": {"color": "#ffffff", "roughness": 0.75, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 1.25},
     # the ema: the atlas, lit after dark as the precinct's lanterns and the hall's lamps light the rack, softly
-    "ema": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 0.2},
+    "ema": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "ema.jpg", "emissive_map": True, "glow": 0.2},
     # the same images printed and lit from outside by lamps (a hoarding, a wall print): dimmer than a lit box
     "atlas_print": {"color": "#ffffff", "roughness": 0.8, "metalness": 0.0, "map": "atlas.jpg", "emissive_map": True, "glow": 0.42},
 }
@@ -830,7 +830,7 @@ def ema(m, P, u, v, zc, side, tilt, face, back):
     `face`, its back `back`, each a pentagon of the atlas."""
     c, s = math.cos(tilt), math.sin(tilt)
     for key, dv, flip in ((face, 0.0, 1), (back, -side * 0.004, -1)):
-        u0, v0, u1, v1 = atlas_uv(key)
+        u0, v0, u1, v1 = ema_uv(key)
         pts, uvs = [], []
         for x, y in EMA_SHAPE:
             # read from its side: someone at +v looking across the rack has -u on their right, at -v, +u
@@ -1050,22 +1050,28 @@ WISHES = [
 ]
 PINKS = [("yomogi", ["10周年", "おめでとう"], "#ad1457"), ("kurenaido", ["恋愛成就", "2026"], "#ad1457"), ("klee", ["縁結び", "令和八年"], "#ad1457")]
 
-EMA_CELL = (192, 128)
+EMA_CELL = (192, 128)   # an ema as drawn, in pixels (1280 px/m)
+EMA_SCALE = 2           # and as stored in its own atlas (ema.jpg): 2560 px/m, sharp at a phone's dpr 3 in the look closer
 
 
 def atlas_items():
     """(key, width, height) of every image in the atlas, in packing order."""
-    items = [("ema_front", *EMA_CELL)] + [(f"ema_w{i}", *EMA_CELL) for i in range(len(WISHES))]
-    items += [(f"ema_pink{i}", *EMA_CELL) for i in range(len(PINKS))]
-    items += [("gaku", 160, 224), ("nobori", 96, 512), ("shago", 64, 448), ("kasen", 288, 192)]
+    items = [("gaku", 160, 224), ("nobori", 96, 512), ("shago", 64, 448), ("kasen", 288, 192)]
     items += EXTRA_ATLAS
     return items
 
 
-def atlas_layout(width=2048, pad=4):
+def ema_items():
+    """(key, width, height) of every ema in the ema atlas: drawn at EMA_CELL and stored EMA_SCALE times larger,
+    with the 4 px the wood is drawn past the cell's edge, so that the tablet's edge never samples a neighbour."""
+    w, h = (EMA_CELL[0] + 8) * EMA_SCALE, (EMA_CELL[1] + 8) * EMA_SCALE
+    return [(k, w, h) for k in ATLAS_KEYS]
+
+
+def atlas_layout(width=2048, pad=4, items=None):
     """Shelf-pack the atlas: {key: (x, y, w, h)} in pixels, and the atlas size."""
     out, x, y, row = {}, 0, 0, 0
-    for key, w, h in sorted(atlas_items(), key=lambda it: -it[2]):   # tallest first: shelves waste less
+    for key, w, h in sorted(items or atlas_items(), key=lambda it: -it[2]):   # tallest first: shelves waste less
         if x + w + 2 * pad > width:
             x, y, row = 0, y + row, 0
         out[key] = (x + pad, y + pad, w, h)
@@ -1073,6 +1079,67 @@ def atlas_layout(width=2048, pad=4):
         row = max(row, h + 2 * pad)
     height = int(math.ceil((y + row) / 256.0) * 256)
     return out, (width, height)
+
+
+def ema_uv(key):
+    """An ema's tablet in the ema atlas as texture coordinates (u0, v0, u1, v1), v up: its EMA_CELL, inside the
+    4 px (scaled) of wood round it."""
+    rects, (W, H) = atlas_layout(items=ema_items())
+    x, y, w, h = rects[key]
+    b = 4 * EMA_SCALE
+    return (x + b) / W, 1 - (y + h - b) / H, (x + w - b) / W, 1 - (y + b) / H
+
+
+class Scaled:
+    """An ImageDraw that draws k times larger: every coordinate, line width and font scaled, so that the
+    ema's drawing code, written for EMA_CELL, draws them sharp at EMA_SCALE."""
+
+    def __init__(self, d, k):
+        self.d, self.k = d, k
+
+    def _xy(self, xy):
+        k = self.k
+        if xy and isinstance(xy[0], (tuple, list)):
+            return [(a * k, b * k) for a, b in xy]
+        return [v * k for v in xy]
+
+    def _kw(self, kw):
+        from PIL import ImageFont
+        kw = dict(kw)
+        if "width" in kw:
+            kw["width"] = max(1, int(round(kw["width"] * self.k)))
+        if "font" in kw:
+            f = kw["font"]
+            kw["font"] = ImageFont.truetype(f.path, int(round(f.size * self.k)))
+        return kw
+
+    def line(self, xy, **kw): self.d.line(self._xy(xy), **self._kw(kw))
+    def polygon(self, xy, **kw): self.d.polygon(self._xy(xy), **self._kw(kw))
+    def rectangle(self, xy, **kw): self.d.rectangle(self._xy(xy), **self._kw(kw))
+    def ellipse(self, xy, **kw): self.d.ellipse(self._xy(xy), **self._kw(kw))
+    def point(self, xy, **kw): self.d.point(self._xy(xy if isinstance(xy, list) else [xy]), **kw)
+    def text(self, xy, t, **kw): self.d.text(tuple(v * self.k for v in xy), t, **self._kw(kw))
+    def textlength(self, t, font=None): return self.d.textlength(t, font=font)
+
+
+def draw_ema_atlas(path, rng):
+    """The ema atlas: each ema drawn at EMA_CELL through Scaled, EMA_SCALE times larger."""
+    from PIL import Image, ImageDraw
+    rects, (W, H) = atlas_layout(items=ema_items())
+    img = Image.new("RGB", (W, H), (120, 110, 100))
+    cell = (4, 4, *EMA_CELL)   # the tablet inside the 4 px of wood drawn round it
+    for key in ATLAS_KEYS:
+        x, y, w, h = rects[key]
+        one = Image.new("RGB", (w, h), (120, 110, 100))
+        d = Scaled(ImageDraw.Draw(one), EMA_SCALE)
+        if key == "ema_front":
+            draw_ema_front(one, d, cell, rng)
+        elif key.startswith("ema_w"):
+            draw_wish(one, d, cell, WISHES[int(key[5:])], rng)
+        else:
+            draw_pink(one, d, cell, PINKS[int(key[8:])], rng)
+        img.paste(one, (x, y))
+    img.save(path, quality=90)
 
 
 def atlas_uv(key):
@@ -1263,16 +1330,17 @@ def landmark_assets(out_dir, scene):
     img = Image.new("RGB", (W, H), (120, 110, 100))
     d = ImageDraw.Draw(img)
     rng = np.random.default_rng(2026)
-    draw_ema_front(img, d, rects["ema_front"], rng)
-    for i, wsh in enumerate(WISHES):
-        draw_wish(img, d, rects[f"ema_w{i}"], wsh, rng)
-    for i, p in enumerate(PINKS):
-        draw_pink(img, d, rects[f"ema_pink{i}"], p, rng)
     draw_shrine_items(img, d, rects, rng)
     draw_extra(img, d, rects, rng)
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
     out = ["atlas.jpg"]
     lm = scene["landmarks"]
+    path = os.path.join(out_dir, "ema.jpg")
+    if "suga" in lm:   # the ema, on the map that has Suga Shrine
+        draw_ema_atlas(path, np.random.default_rng(2026))
+        out.append("ema.jpg")
+    elif os.path.exists(path):
+        os.remove(path)
     sb = scramble_build(lm)
     if sb:
         out.append(sb.draw(out_dir))
@@ -3488,6 +3556,8 @@ def landmark_meshes(scene):
         meshes += sky_meshes(lm["shibuya_sky"])
     mats = dict(MATERIALS)
     mats.pop("screens"), mats.pop("screens_east")   # each map has the screens it has, and only those
+    if "suga" not in lm:
+        mats.pop("ema")   # and the ema (ema.jpg, landmark_assets) only on the map with Suga Shrine
     if "scramble" in lm:
         mats["screens"] = CROSSING.material(lm["scramble"]["node"])
     if "kabukicho_gate" in lm:
