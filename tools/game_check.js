@@ -5,7 +5,8 @@
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
-// change with the traffic stopping for them, ride a taxi up behind a queue at a red light (it waits
+// change with the traffic stopping for them, hear the walk signals' calls
+// (tools/walkcalls_step.js), ride a taxi up behind a queue at a red light (it waits
 // in its lane and goes when the queue moves), swing the chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
@@ -54,6 +55,18 @@ const npcNight = require('./npc_night');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
+
+  // what loads after the game opens (issue 148): the NPCs away from the start as you come near them,
+  // and the helicopter's model when a pad is in range; here all of them at once, and in their places
+  const lazy = await p.evaluate(async () => {
+    const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
+    await g.npcsReady();
+    if (g.heli && g.heli.want) { await g.heli.want(); g.advance(0.1); }
+    return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
+      wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
+  });
+  check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
+  check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
 
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
@@ -393,8 +406,10 @@ const npcNight = require('./npc_night');
   {
     const f = await p.evaluate(() => { const n = window.__game.nav, pl = window.__game.player, b0 = n.fineBoxes;
       const t = performance.now(), all = n.prefetch(pl.x, pl.y, 48, 60000);
-      return { start: n.startMs, boxes: b0, ms: n.fineMs, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
-    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, ${f.boxes} boxes laid by the start; the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
+      const [laid, of] = n.tiles;
+      return { start: n.startMs, sweeps: n.sweepMs, boxes: b0, ms: n.fineMs, laid, of, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
+    // (by the start: the tiles round the walker; the sweeps read a landmark's triangles, nav.js withoutFine)
+    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, the start-up sweeps ${f.sweeps.toFixed(0)} ms, ${f.boxes} boxes in ${f.laid} of ${f.of} tiles laid by the start (${(f.ms - f.prefetch).toFixed(0)} ms); the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
   }
 
   // the camera under a slab (a patch's "upper", such as the forecourt over Sydney's Lower Concourse
@@ -517,6 +532,21 @@ const npcNight = require('./npc_night');
     check(hop.top > hop.run * 0.8, `runs at ${hop.top.toFixed(1)} m/s (the run is ${hop.run} m/s)`);
   }
   await shot('travel');
+
+  // a landmark you go up (an observation deck with its own lift): travel from the map puts you on its deck, high
+  // over the street and facing out, not on the street looking up at it
+  const decks = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const lm of g.landmarks.filter(l => g.deckOf(l))) {
+      const at = g.deckStand(g.deckOf(lm)) || g.deckOf(lm)[0], ok = g.travelTo(lm);
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const pl = g.player;
+      out.push({ name: lm.name, ok, mode: pl.mode, d: Math.hypot(at[0] - pl.x, at[1] - pl.y), up: pl.z - Math.max(0, g.nav.terrain(pl.x, pl.y)), dz: Math.abs(pl.z - at[2]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    return out;
+  });
+  for (const h of decks) check(h.ok && h.mode === 'foot' && h.walk && h.d < 45 && h.dz < 6 && h.up > 60, `travels to ${h.name}'s deck (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.up.toFixed(0)} m over the street, ${h.walk ? 'on' : 'off'} walkable ground)`);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it
@@ -1076,6 +1106,9 @@ const npcNight = require('./npc_night');
     check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
   }
   await shot('junction');
+
+  // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
+  { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
 
   // a ride behind a queue at a red light (#107): it waits its turn in its own lane, never swings out
   // round a car queueing there (c.q) to the head of the queue, and goes on when the queue moves;

@@ -15,7 +15,10 @@ Before building, we looked at what renders in a browser on ordinary hardware in 
 | three.js [SSRNode](https://threejs.org/docs/pages/SSRNode.html) and [SSGINode](https://app.unpkg.com/three@0.184.0/files/examples/jsm/tsl/display/SSGINode.js) (`examples/jsm/tsl/display`) | screen-space reflections and global illumination as TSL nodes, with MRT normals and temporal filtering | MIT | Not adopted: they are WebGPU node-material passes. The game renders through `WebGLRenderer` with an `EffectComposer` stack (bloom, the title's lens) and a reversed float depth buffer; moving it to `WebGPURenderer` is a separate project. SSR also misses everything off screen, and at a crossing the screens behind the camera are half of what a wet street reflects. |
 | [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) | merged effect passes (SMAA, SSAO, depth of field, tone mapping) for WebGL | zlib | Not adopted: a second post stack beside three.js's own would double the passes the low tier pays for. Its ideas (merge effects into one pass, keep the HDR chain half-float) are already how `lens.js` works. |
 | [realism-effects](https://www.npmjs.com/package/realism-effects) (0beqz) | SSGI, SSR, TRAA and motion blur for WebGL | MIT | Not adopted: built on pmndrs/postprocessing, and its last public release predates three.js r160; the v2 rewrite is unfinished. |
-| [N8AO](https://github.com/N8python/n8ao) | fast screen-space ambient occlusion for three.js | see its repository | Not adopted yet: it needs a resolved depth buffer, which the game's MSAA target does not keep (`atmosphere.js` `resolveDepthBuffer = false`). A follow-up (the flat facades by day want contact shadows). |
+| [N8AO](https://github.com/N8python/n8ao) | fast screen-space ambient occlusion for three.js from the depth buffer alone: normals rebuilt from depth, half-resolution option, depth-aware denoise and upsample | CC0 1.0 | **Adopted** in its approach (`web/game/ao.js`, issue 138), written here rather than imported: N8AO reads ordinary and logarithmic depth but not three.js r186's reversed float depth, which the game draws with. The composer's target now resolves its depth for it on the medium and high tiers. |
+| three.js [GTAOPass](https://threejs.org/docs/#examples/en/postprocessing/GTAOPass) (r186, `examples/jsm/postprocessing`) and GTAONode (TSL) | ground-truth AO (Jimenez et al. 2016) with Poisson denoise | MIT | Not adopted: the pass draws the scene again for its own depth and normals (a second pass over the whole city), and the node is WebGPU-only. Its horizon search is a better integral than a sample disc; worth a second look if the game moves to `WebGPURenderer`. |
+| three.js [SAOPass](https://threejs.org/docs/#examples/en/postprocessing/SAOPass) (Scalable Ambient Obscurance, McGuire, Mara and Luebke, HPG 2012) | AO from a depth and a normal pass | MIT | Not adopted as a pass (it also draws the scene again for depth and normals); its falloff and estimator are the ones `ao.js` uses. |
+| [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing) SSAOEffect | SSAO with a normal pass, in its own effect stack | zlib | Not adopted, for the reason above: a second post stack, and a normal pass. |
 | [three-gpu-pathtracer](https://github.com/gkjohnson/three-gpu-pathtracer) | a progressive path tracer for three.js scenes | MIT | Not in the game: a reference renderer for checking a grade against ground truth, too slow for play. |
 | three.js `RectAreaLight` with [linearly transformed cosines](https://eheitz.github.io/research_ltc/) (Heitz, Dupuy, Hill and Neubelt, SIGGRAPH 2016) | analytic area lights: the right spread, falloff and specular shape for a rectangle of light | MIT (three.js and its LTC tables) | **Adopted** (`web/neon.js`): each big screen near the camera is an area light in the colour it is playing. |
 | three.js `Reflector` (planar reflection with an oblique clip plane, Lengyel) | a mirror drawn from a mirrored camera | MIT | **Adopted** in its mechanism (`web/mirror.js`): the mirrored camera and its texture matrix, sampled by the ground's own materials in the puddles, with a clipping plane in place of the oblique near plane. |
@@ -67,6 +70,24 @@ reflect as long images, as they do in a photograph of Shibuya in the rain. Below
 the wet street (darker, smoother: the weather's own patch) reflects the sky and, through its
 lower roughness, the screens' area lights.
 
+### Contact shadows (`web/game/ao.js`, issue 138)
+
+By day the facades and street corners read flat because nothing darkened where they meet. On
+the medium and high tiers one pass after the scene is drawn (before the bloom) adds ambient
+occlusion from the depth buffer alone, the city is not drawn a second time: at half the screen's
+size each pixel's position comes from depth and its normal from its neighbours, a spiral of 16
+samples (8 on the medium tier) in a disc of up to 1.8 m near the camera and a little more further
+off gathers the occlusion with SAO's falloff, two depth-aware blurs take the noise out, and a
+depth-aware upsample darkens the frame by it. It fades out between 160 and 420 m, so the far city
+keeps the photograph's light, and is a third weaker at night, when the light is the street's own.
+The low tier is untouched.
+
+A frame-time budget (20 ms on the high tier, 25 ms on the medium) watches the frame: over it for
+three seconds, AO steps down to the lite level and then off; when stepping down did not make the
+frame faster, AO was not the cost and comes back. `?ao=0` turns it off, `?ao=1` keeps it whatever
+the budget, `?ao=show` shows the occlusion alone; stills take `"ao"` in their views
+(`tools/game_shot.js`) and `tools/ao_cost.js` measures what each level costs.
+
 ### The crowd (`web/game/game.js`, `game.crowd`)
 
 On the medium and high tiers a city has room for its peak crowd (`pedestrians_peak`: Shibuya
@@ -82,11 +103,11 @@ Rocketbox avatars.
 
 All synthesised, no recordings: the crowd's murmur (noise through two voice bands pulsing at a
 syllable's rate) as loud as there are people round you; the screens' music, muffled across the
-street, while they play (9:00 to midnight); the walk signal's bird calls for the blind, Japan's
-standard pair (a "piyo" answered by "piyo-piyo" from the far kerb; or the cuckoo's "kakko"),
-while the walk is on at the crossing's signals; and now and then the station's two-note chime
+street, while they play (9:00 to midnight); and now and then the station's two-note chime
 and an announcement too far off to make out. All of it is heard from the camera, so a film hears
-what it sees.
+what it sees. The walk signals' bird calls are no longer part of it: they play at every
+signalled crossing, from the signal heads (`web/game/walkcalls.js`, [GAME.md](GAME.md), "Walk
+signals' calls"), and `sound.signal` is ignored.
 
 ## Frame time by tier
 

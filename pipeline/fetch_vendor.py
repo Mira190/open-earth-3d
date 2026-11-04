@@ -26,7 +26,7 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 ADDONS = ["controls/OrbitControls.js", "objects/Sky.js", "objects/Reflector.js", "loaders/GLTFLoader.js",
           "utils/SkeletonUtils.js", "utils/BufferGeometryUtils.js", "postprocessing/EffectComposer.js",
           "postprocessing/RenderPass.js", "postprocessing/UnrealBloomPass.js", "postprocessing/OutputPass.js",
-          "postprocessing/ShaderPass.js"]
+          "postprocessing/ShaderPass.js", "libs/meshopt_decoder.module.js"]
 
 # the families index.html sets type in, latin and latin-ext only; Japanese and Chinese text
 # falls back to the system's own fonts (Hiragino, Yu Gothic, Noto CJK) except the city names,
@@ -59,7 +59,9 @@ def three():
     base = f"{NPM}/three@{THREE}"
     out = os.path.join(WEB, "vendor", "three")
     for f in ["three.module.min.js", "three.core.min.js"]:
-        save(os.path.join(out, f), get(f"{base}/build/{f}"))
+        data = get(f"{base}/build/{f}")
+        # the minified module imports the full-size core (1.5 MB): point it at the minified one (0.4 MB)
+        save(os.path.join(out, f), data.replace(b'from"./three.core.js"', b'from"./three.core.min.js"'))
     todo, done = list(ADDONS), set()
     while todo:
         rel = todo.pop()

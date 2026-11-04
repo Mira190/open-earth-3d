@@ -596,10 +596,29 @@ pipeline writes. The only city-specific code is landmark geometry in
     triangle is sampled in rows along its longest edge, every 0.22 m, so a long thin
     one costs its area; a flat top only round its edges, since its sides are
     triangles of their own. What lies under a walkable strip (the stone of a flight
-    of steps) is the strip's slab and is left out. It adds 0.2 s (Osaka) to 1.8 s
-    (Kyoto's temples) to the game's start on a desktop.
+    of steps) is the strip's slab and is left out. The fine cells are laid tile by
+    tile (32 m), the first time a query touches a tile or a few milliseconds a frame
+    ahead of the walker or the car (`nav.prefetch`).
+  - **Start-up sweeps:** at the start the game looks over the whole city for where
+    trees, lamps, poles and benches can stand, which stretches of footway the crowd
+    keeps to and where roads are cut at walls (`nav.withoutFine`). Away from the
+    landmarks that needs only the 2 m surface model. Where a landmark's 2 m cell
+    says a sweep is stopped, the triangles its fine cells are laid from are asked
+    again: whether any comes within the radius between knee and head, with the
+    fine cells' margins. So a crowd's way through a gate's passage or between
+    lanterns is kept where a walker gets through (issue #141). Laying the fine
+    cells of every tile the sweeps meet cost 1.8 s more at Kyoto's start and
+    1.0 s at Paris's; reading the triangles costs about 30 ms.
+  - **Landmark floors:** a landmark's flat top within a step of the ground is a
+    floor when it covers 2 m² and reaches a fine cell round each of its cells. A
+    material that says `"floor": false` is never one, however wide its top (a
+    wide, low offering box).
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
-    the city's note. A boardwalk across them stays walkable.
+    the city's note. A boardwalk across them stays walkable. A landmark's own
+    water that the city's water leaves out (Higashi Honganji's moat in Kyoto) is
+    `keep_off` in `game.json`: rings at half a metre, where a walker on the
+    ground stops without a word; its bridges are left out of them, and the
+    crowd's footways that cross them are dropped (`pipeline/game_extras.py`).
 - **Collision** (`web/game/collision.js`): every building solid is a prism, its
   published footprint between two heights, and each landmark cell is a box.
   - **Walking:** the walker is a 0.35 m capsule, moved the way Unreal's
@@ -731,13 +750,22 @@ pipeline writes. The only city-specific code is landmark geometry in
     nearer the point where their ways meet, goes first.
   - **Junctions** (`web/game/junctions.js`): see [Junctions and traffic
     lights](#junctions-and-traffic-lights).
-  - **Unsticking:** a car waiting on someone standing in the road edges on
-    after a few seconds and the walker turns back; a car waiting at its line
+  - **Unsticking:** a car waiting on someone standing in the road edges up to
+    them (never into them) after a few seconds and the walker turns back, and a
+    walker a car has come up against, or who has stepped up against a standing
+    car, takes a step out of its footprint; a car waiting at its line
     that a bus can't swing past backs off a metre; a car in a junction stopped
     behind one waiting at another of its lines asks it to back off, and after
-    8 s goes on as if it weren't there; two cars held nose to nose for 15 s
-    (10 s in a junction, 25 s by one that only inches along) squeeze past each
-    other; a car held 1.5 s part way across to another lane goes back to its
+    8 s goes on as if it weren't there. A car held 3 s by another that is
+    stopped too has one of them give way and back off a metre or two: the one
+    not in the junction for the one in it, of two in it the one that went in
+    later. A car that can't back off because a stopped car is behind it asks
+    that one to back off first, so a short queue makes room (each car backs off
+    at most 6 s before it has moved on again). Two still held for 15 s (10 s in
+    a junction, 25 s by one that only inches along): out of view, behind the
+    camera or more than 200 m off, the held one leaves the traffic and comes
+    back elsewhere; in view they wait, and only after 90 s squeeze past each
+    other. A car held 1.5 s part way across to another lane goes back to its
     own; and out of sight, a car stopped 45 s that is not in a queue comes back
     elsewhere.
   - **Never through anything:** a car never moves into another car, your car,
@@ -888,7 +916,10 @@ Sydney's traffic stood still a third of the time.
   car that has waited longer at a line crosses it, and on a lesser road or past
   a give-way sign no car is coming on the main road within 3 s. And only if
   there is room for it beyond the junction, up to the next junction's line, so
-  a queue never reaches back into the box: SUMO's *keep clear*. A junction just
+  a queue never reaches back into the box: SUMO's *keep clear*. An exit that is
+  a short piece running straight on into another (a slip, a loop back, as at
+  Roppongi's line 619 into 572) counts the room on those pieces too, up to the
+  next junction's line. A junction just
   beyond, too close to wait between, is crossed with this one or not at all.
   A bus has the junction to itself. A car gives its movement up once its rear
   is past the stop line on its exit. When the lights change before it gets
@@ -946,6 +977,50 @@ Sydney's traffic stood still a third of the time.
   crossing has a walk signal on a post on each kerb, facing across: a red
   figure standing over a green one walking, the red flashing while those
   already out finish crossing. The lamps change only when a signal does.
+- **Walk signals' calls** (`web/game/walkcalls.js`, the sounds in `web/game/audio.js`,
+  all synthesised with Web Audio, no recordings). Each walk-signal head
+  (`junctions.heads.peds`; its crosswalk runs to the head on the far kerb, or a
+  scramble's along `j.walks`) is a speaker 3.3 m up, heard from the camera, fading with distance and panned
+  left or right; the game's sound switch mutes them. A city gets its country's
+  sound (`game.signals.sound` overrides it):
+  - **Japan** (視覚障害者用付加装置, the National Police Agency's guideline of
+    October 2003, renewed in 2019 and March 2024 (警察庁丁規発第52号), as the
+    prefectures' police publish it): the *異種鳴き交わし方式*. Only while the
+    walk is steady green (not while it flashes). A crosswalk's two ends answer
+    each other about 1.5 s apart, one with the single call and the other with
+    the double. The guideline leaves the axis to each prefecture; we follow
+    Kagawa's published rule (the only one we found written down): a crosswalk
+    running north-south plays the chick, "piyo" from its north end and
+    "piyo-piyo" from its south end; one running east-west the cuckoo, "kakko"
+    from its west end and "ka-kakko" from its east end. At a scramble
+    (歩車分離, scramble and pedestrian-only phases) the four play in turn round
+    all its crosswalks, piyo, piyo-piyo, kakko, ka-kakko, 1.5 s apart, and its
+    diagonals have none (the guideline's own rule; a crosswalk passing within
+    6 m of the junction's middle counts as a diagonal). The guideline asks for timer
+    switches and lower volume where the calls disturb residents at night, and
+    the published lists (Toyama's, for one) run most from 7:00 to 20:00 or
+    21:00. Minato ward notes that most in Tokyo stop at night and early in the
+    morning. So the calls play from 7:00 to 20:00, are softer in the hour
+    either side, and are off from 21:00 to 6:00. The push-button that brings
+    them back at night isn't modelled. The chick is a sine chirp (2.3 kHz up to
+    3.3 kHz and down to 2 kHz in 0.13 s, a touch of its octave). The cuckoo is
+    two sine notes a major third apart (830 Hz, then 665 Hz held longer).
+  - **Australia**: the push-button box's slow locator tick on red, the falling
+    "zap" as the walk comes on, then its rapid tick through the green.
+    **Hong Kong**: slow pips on red, rapid pips on green. **The Netherlands**:
+    the *rateltikker*, a slow knock on red and a fast rattle on green. These
+    are heard only within about 20 m of the box, the nearest two at a time, at
+    half volume from 23:00 to 6:00. **France** has none by default: Paris's
+    *répétiteurs sonores* speak only when a blind walker's remote control asks
+    them to.
+  - `tools/game_check.js` checks it in every city with signals: by day, at the
+    principal scramble if the city has one (otherwise at the nearest
+    signalled junction), the country's calls play during the walk and
+    none in the traffic's turn, none from a scramble's diagonals, and none
+    while the game is muted (`tools/walkcalls_step.js`; on its own, quicker:
+    `xvfb-run -a node tools/walkcalls_check.js shibuya osaka sydney`).
+    `node tools/walkcalls_wav.js out.wav` renders every kind offline to a WAV
+    to listen to.
 
 `tools/traffic_check.js <city>` measures the flow headless at three places (the
 game's own frame loop stopped), with the surveyor on a kerb beside the roads,
@@ -1413,6 +1488,13 @@ helicopter a line ahead in the air rather than a pointer.
 | **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
 | ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
 
+**The helicopter comes after the game opens (issue 148).** Its model is 3.7 MB, more than any city's
+buildings once packed, and most games start on foot. `OEVehicles.load(..., { heli: 'later' })` leaves
+it out of the wait; the game asks for it (`heli.want()`) once the helicopter is within 800 m of you
+or you get in (`heliToPad`, `enterHeli`). Until it has come the pad stands empty; if you climb in
+first, the kit-built helicopter stands in and the model takes its place once you are out and the
+engine is off.
+
 All of them are modelled in Blender from code by `blender/build_vehicles.py`,
 with no hand modelling and no stock assets. The script bakes their ambient
 occlusion in Cycles and writes `web/assets/vehicles/`. Every city's game loads
@@ -1568,6 +1650,13 @@ python blender/build_people.py --preview         # -> web/assets/people/H_*.glb,
 | Every city's NPCs as the game draws them, waiting at their posts (`web/game/lineup.html?city=…`) |
 |---|
 | ![](images/people/npcs.jpg) |
+
+**Loaded as you come near (issue 148).** Only the NPCs within 300 m of the start are loaded before the
+game opens; the others are nobody until you first come within 300 m of them (`npcStream` in
+`game.js`, twice a second, from the player or the helicopter), and then their character is fetched
+and put in their place. One that can't be loaded stands in as a simple figure, as before. In a
+city of a dozen NPCs that is half a megabyte to a few megabytes off the wait; `__game.npcsReady()`
+loads all of them at once for the tools that look at them (`npc_shot.js`, `talk_shot.js`).
 
 The people who send you out are Rocketbox avatars too, cast city by city for who
 they are: police, pilots, a paramedic's jumpsuit for a bridge climber, a white
@@ -1878,7 +1967,10 @@ deadlock or a meeting at a shared berth takes to show.
     own car's driver (`cars.js`) don't yet stop for a crossing between
     junctions.
   - A few awkward corners (a turning circle, two lines meeting at a very sharp
-    angle) can still hold two cars until they squeeze past each other.
+    angle, a loop back past another junction's entry) can still hold two cars;
+    in view they wait up to 90 s before squeezing past each other.
+    `tools/overlap_probe.js` prints the last seconds of both cars of every pair
+    that comes to overlap, and with `WATCH=x,y,r` the lines and cars at a place.
   - Only roads at about your height count as the kerb, so a taxi won't stop on
     a flyover above you. A destination is reached at its nearest street, so a
     landmark across a plaza is a short walk from where you get out.
@@ -1924,6 +2016,15 @@ deadlock or a meeting at a shared berth takes to show.
 
 ## Sources
 
+- Walk signals' calls: the National Police Agency on [audible pedestrian signals](https://www.npa.go.jp/bureau/traffic/seibi2/annzen-shisetu/hyoushiki-shingouki/onkyou.html)
+  (the 2003 notice; 21,644 in Japan, 99% of them bird calls); the guideline as Shimane's police
+  publish it, [視覚障害者用付加装置に関する設置・運用指針](https://www.pref.shimane.lg.jp/police/06_information_disclosure/kunrei_tsuutatsu/koutsuu/koutsuu.data/k-kisei_shisetu_09.pdf)
+  (the two ways of answering, about 1.5 s apart, the scramble's round and its silent diagonals,
+  the speaker 3.3 m up, sound only on the steady green, timer switches at night); Kagawa's police on
+  [which axis plays which](https://www.pref.kagawa.lg.jp/police/kokikaku/koutsuuanzen/koutsuu/otonoderusingou.html);
+  Toyama's police [list of sites and their hours](https://police.pref.toyama.jp/documents/3562/r080331shikaku.pdf);
+  Minato ward's [assembly paper](https://gikai2.city.minato.tokyo.jp/voices/GikaiDoc/attach/Nittei/Nt183_20190312_giun_01.pdf)
+  (night stops in Tokyo). Facts only: every sound is synthesised, no recording is used.
 - Junctions: [SUMO, Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html)
   (movements as lanes across the junction, their foes, and *keep clear*: no
   car into a junction it can't leave). Ideas only; no SUMO code (EPL-2.0) is used.
