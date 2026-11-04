@@ -458,17 +458,6 @@ const npcNight = require('./npc_night');
       `climbs ${c.name}: from ${c.start.toFixed(2)} m to ${c.z.toFixed(2)} m (the top is ${c.to.toFixed(2)} m), ${c.d.toFixed(1)} m from it`);
   }
 
-  // the passages through the landmarks (landmarks.json "passages", pipeline/landmark_passages.py: the
-  // Rijksmuseum's cycle passage and its aisles, the Imperial Palace's gates, Saint-Sulpice's loggia): each
-  // walked end to end both ways on foot, and a road's with room for a car along it (tools/passage_walk.js)
-  {
-    const res = await require('./passage_walk')(p);
-    for (const r of res) {
-      if (r.notYet) { console.log(`     (not opened in the model yet: ${r.name}, way ${r.osm}: ${r.notYet})`); continue; }
-      check(r.ok, `walks the passage ${r.name} (way ${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
-    }
-  }
-
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {
@@ -1183,6 +1172,18 @@ const npcNight = require('./npc_night');
   });
   check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
   check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}${carWalls.at.length ? ': at ' + carWalls.at.join('; ') : ''}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
+
+  // the passages through the landmarks (landmarks.json "passages", pipeline/landmark_passages.py: the
+  // Rijksmuseum's cycle passage and its aisles, the Imperial Palace's gates, Saint-Sulpice's loggia): each
+  // walked end to end both ways on foot, and a road's with room for a car along it (tools/passage_walk.js).
+  // After the traffic's steps: its walks run the world on for minutes, which would hand them other traffic
+  {
+    const res = await require('./passage_walk')(p);
+    for (const r of res) {
+      if (r.notYet) { console.log(`     (not opened in the model yet: ${r.name}, way ${r.osm}: ${r.notYet})`); continue; }
+      check(r.ok, `walks the passage ${r.name} (way ${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
+    }
+  }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
