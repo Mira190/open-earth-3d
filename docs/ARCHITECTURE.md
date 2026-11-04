@@ -312,7 +312,7 @@ The views switch in place, without reloading the page.
   - trees (`trees.js`): the seven species of `blender/build_trees.py`, in the
     city's mix (and an area's own), instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
-    cut-out leaf shadows, jacarandas that flower and maples that redden in season; the trees
+    cut-out leaf shadows, jacarandas and cherries that flower and maples that redden in season; the trees
     planted from a wood's canopy after them, sized by their measured height,
     without palms, stepping down sooner (full within 72 m, sparse to 200 m, half of them as hulls beyond), thinning out to 900 m, further from higher up (600 m and a
     third of them on a small device) where the photo's canopy takes over;
@@ -711,7 +711,7 @@ jointed threads):
   reds, the ginkgos go gold, the zelkovas rust and the planes and elms a dull
   yellow (`FALL`), each tree a little ahead of or behind the others, and the far
   crown hulls follow `autumn_colour`. The deciduous species (`deciduous` in
-  trees.json: plane, elm, maple, zelkova, ginkgo) then drop their cards one by
+  trees.json: plane, elm, maple, zelkova, ginkgo, cherry) then drop their cards one by
   one from 24 November to 14 December, in the shadow pass too, their far hulls go
   when half the leaves have, and they leaf out green from 21 March to 14 April
   (six months on in the south). Osaka's Midosuji (issue #62) is a `trees.areas`
@@ -725,6 +725,56 @@ jointed threads):
   and on the reef.
 - **Plane bark** is warmer (`#a08f78`), so a plane wood's trunks stay bark in the
   blue shade.
+
+### The cherry (issue #147)
+
+The Somei-yoshino (*Cerasus × yedoensis*) is Japan's cherry: most of the trees on
+the moats, rivers and park walks the cities are known for in spring. The shared
+set grows one like the others (`blender/build_trees.py` `cherry`): a short dark
+trunk (2.3 m) forking into six limbs that spread a crown 12 m wide on a tree
+under 9 m, wider than it is tall, as the photographs of Chidorigafuchi and the
+Meguro River show. The atlas has a fifth row for it: its leaves (elliptic,
+toothed) and its bloom, umbels of four to six five-petalled flowers on short
+stalks along a bare twig, white with a blush of warm pink and a darker eye, and a
+few deeper-pink buds. Every one of the cherry's cards is a bloom card
+(`sakura`); `web/trees.js` shows the leaf cell beside it out of flower.
+
+- **When:** the first flowers (kaika) come on the city's average day: Tokyo's is
+  24 March, the Japan Meteorological Agency's 1991-2020 normal, and the day comes
+  about four days later for each degree further from the equator
+  (`SAKURA_PER_DEG`; Kagoshima 26 March, Sendai 8 April, Sapporo 1 May). A city
+  whose own normal differs from its latitude's sets `trees.cherry_open`: Kyoto
+  26 March, Osaka 27 March. The flowers open over a week on bare branches, every
+  card at its own time in the order the leaves fall in autumn (`uSakura`); full
+  bloom (mankai) holds five days, then the petals go over five more as the leaves
+  come out (hazakura), and from mid April the tree is green. Its leaves turn an
+  orange-red with the others in November and fall with them; in winter and until
+  it flowers it shows no leaf at all. The far crown hull is the blossom's pink in
+  flower. Six months on in the south.
+- **Where:** a share of every Japanese city's street mix (0.05-0.08; the cherry
+  is among Tokyo's three commonest street trees with the ginkgo and the zelkova)
+  and its woods, and `trees.areas` for the places known for it, their outlines
+  from OpenStreetMap: Chidorigafuchi Park and the 700 m moat walk (some 260
+  trees, Chiyoda City), Kitanomaru Park, the Meguro River's banks (about 800,
+  Meguro City; the river widened 14 m either side), Hachiko Square's two round
+  planters, Ueno Park and its Sakura-dori (outline drawn along the walk from the
+  Saigo statue to the fountain; about 800 trees), Sumida Park (about 600),
+  Roppongi's Sakura-zaka, Aoyama Cemetery's avenue and Tokyo Midtown's garden,
+  Ishikawajima Park on Tsukudajima, Shinjuku Gyoen, Kyoto's Takase canal by
+  Kiyamachi and Gion Shirakawa (with elms standing in for the willows), the Kyoto
+  Gyoen and Nijo-jo, the Osaka Mint's passage, the Okawa's east bank
+  (Kema Sakuranomiya Park, about 4,800), Osaka Castle Park and Utsubo Park.
+  Kyoto's Philosopher's Path and Maruyama Park are east of the Kyoto map.
+- **Not yet:** the other kinds (the weeping shidare-zakura of the Gyoen and
+  Maruyama, the late double yaezakura) are all Somei-yoshino here; the bark's
+  horizontal bands of lenticels are not drawn (bark is one colour); the petals do
+  not drift down.
+- **Sources:** JMA's sakura phenology normals (public data); the parks' and wards'
+  own guides for the tree counts; OpenStreetMap (ODbL) for the outlines. No code
+  or art was taken from elsewhere.
+
+![The cherry through the year: bare, in flower, hazakura, green, autumn](images/trees/cherry_year.jpg)
+![The Meguro River at Nakameguro on 1 April and in June; Hachiko Square's planters on 1 April and in January](images/trees/cherry_places.jpg)
 
 ### The coral cays
 

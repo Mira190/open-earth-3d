@@ -237,7 +237,7 @@ SPRAYS = {
     "cherry": dict(leaf="ovate", L=30, W=15, twigs=7, spread=0.85, every=1, angle=(0.6, 1.1), colours=["#5f8c3a", "#6c9944", "#557f33", "#78a24c"],
                    twig="#3f322e", twig_w=2, fill=0.85),
     "sakura": dict(leaf="blossom", L=0, W=0, twigs=13, spread=0.72, every=1, start=1, angle=(0.6, 1.2),
-                   colours=["#f6dae2", "#f1ccd7", "#f9e6eb", "#ecc2cf", "#f7e0e6"], eye="#d48596", twig="#3f322e", twig_w=3, fill=0.9),
+                   colours=["#f9dfe1", "#f4d1d6", "#fcebeb", "#f0c6cd", "#fae5e5"], eye="#d68590", twig="#3f322e", twig_w=3, fill=0.9),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
 }
@@ -314,7 +314,7 @@ SPECIES = {
                    note="Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree "
                         "(Midosuji, Jingu Gaien), gold in late November"),
     "cherry": dict(deciduous=True, H=8.8, trunk=2.3, r0=0.34, crown=("ellipsoid", 5.7, 6.2, 3.0), n=420, size=2.4, n1=6, n2=5, leaf="sakura",
-                   bark="#3e3431", lean=0.1, leader=False, colour="#5d8a3a", autumn_colour="#b2532f", bloom_colour="#f1d6de",
+                   bark="#3e3431", lean=0.1, leader=False, colour="#5d8a3a", autumn_colour="#b2532f", bloom_colour="#f3dadc",
                    note="Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, "
                         "a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo "
                         "(web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf "

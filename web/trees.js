@@ -21,7 +21,7 @@ window.OETrees = (function () {
   // own lightness: the maple keeps its crimson-to-gold range below; the ginkgo goes a clear gold, the zelkova rust,
   // the plane a dull yellow-brown and the elm yellow
   // and the cherry an orange-red
-  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36], plane: [1.55, 1.2, 0.45], elm: [2.0, 1.7, 0.4], cherry: [1.9, 0.78, 0.4] };
+  const FALL = { ginkgo: [3.1, 2.35, 0.35], zelkova: [1.5, 0.82, 0.36], plane: [1.55, 1.2, 0.45], elm: [2.0, 1.7, 0.4], cherry: [2.5, 0.72, 0.3] };
   // the Somei-yoshino's first flowers (kaika): JMA's 1991-2020 normals put Tokyo's on 24 March, the day of the
   // year 82 (from 0), and the date comes about four days later for each degree further from the equator
   // (Kagoshima 26 March, Sendai 8 April, Sapporo 1 May; in the south, Melbourne's in late September); full bloom

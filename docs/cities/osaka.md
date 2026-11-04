@@ -403,8 +403,9 @@ test hook.
   names are invented. The Tombori River Cruise is split into two short routes
   so that a boat at a landing always goes the way the quest wants. Every boat
   is the shared river shuttle, 20 m long, in an approximate white and blue.
-- **The trees are stand-ins.** The shared trees have no ginkgo or cherry, so
-  Midosuji's ginkgos are drawn as plane trees, and the zelkovas as elms.
+- **The trees** are the shared set's: Midosuji's ginkgos, and Somei-yoshino cherries at the
+  Mint, along the Okawa's east bank, in Osaka Castle and Utsubo parks, in flower from
+  27 March (`trees.cherry_open`).
 - **No Blender render** of Osaka has been made.
 
 ## 10. Reproducing it
