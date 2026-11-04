@@ -399,7 +399,7 @@ def kaminarimon(K, g, ax):
     return {"lantern": [round(float(x), 2), round(float(y), 2), round(zt - 2.5, 2)]}
 
 
-HOZO_STONE = 0.25   # the gate's stone floor over the paving
+HOZO_STONE = 0.5    # the gate's stone floor over the paving, stepped onto (web/game/nav.js floorAt)
 
 
 def hozomon(K, g, ax):
@@ -855,10 +855,11 @@ def xy(p):
     return [round(float(p[0]), 2), round(float(p[1]), 2)]
 
 
-def close_to(name, at, z, start, within=1.5, keep=0.0):
+def close_to(name, at, z, start, within=1.5, keep=0.0, on=False):
     """A thing to walk up to (game.json "close", a spot's "reach"): `at` on it at the floor's height z, the walk
-    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`."""
-    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {})}
+    starting at `start`; tools/close_step.js must get within `within` m and never nearer than `keep`, and with `on`, stand on
+    that floor (a gate's stone base, a plinth)."""
+    return {**({"name": name} if name else {}), "at": [*xy(at), round(float(z), 2)], "from": xy(start), "within": within, **({"keep": keep} if keep else {}), **({"on": True} if on else {})}
 
 
 def sensoji_extras(s, spots, chatter, close):
@@ -885,7 +886,7 @@ def sensoji_extras(s, spots, chatter, close):
         g = s["hozomon"]
         d = dims("hozomon", g)
         P, hu, hv, bay, zb = frame(g["c"], ax), d["depth"] / 2, d["frontage"] / 2, d["frontage"] / 5, g["z"] + HOZO_STONE
-        close.append(close_to("Hozomon, under the 小舟町 lantern", P(0, 0, 0), zb, P(hu + 6.0, 0, 0), 1.0))
+        close.append(close_to("Hozomon, under the 小舟町 lantern", P(0, 0, 0), zb, P(hu + 6.0, 0, 0), 1.0, on=True))
         v = -(hv - bay / 2)                          # a straw sandal (4.5 m) on the back, 0.35 m deep
         close.append(close_to("Hozomon, a great straw sandal", P(-hu - 0.35, v, 0), zb, P(-hu - 5.5, v, 0), 1.0, 0.2))
     if "hondo" in s:
