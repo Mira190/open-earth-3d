@@ -56,6 +56,18 @@ const npcNight = require('./npc_night');
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
 
+  // what loads after the game opens (issue 148): the NPCs away from the start as you come near them,
+  // and the helicopter's model when a pad is in range; here all of them at once, and in their places
+  const lazy = await p.evaluate(async () => {
+    const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
+    await g.npcsReady();
+    if (g.heli && g.heli.want) { await g.heli.want(); g.advance(0.1); }
+    return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
+      wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
+  });
+  check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
+  check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
+
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
   // must ease: no frame may turn the view's pitch or move the camera about the player by a jump (#97)
@@ -373,8 +385,10 @@ const npcNight = require('./npc_night');
   {
     const f = await p.evaluate(() => { const n = window.__game.nav, pl = window.__game.player, b0 = n.fineBoxes;
       const t = performance.now(), all = n.prefetch(pl.x, pl.y, 48, 60000);
-      return { start: n.startMs, boxes: b0, ms: n.fineMs, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
-    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, ${f.boxes} boxes laid by the start; the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
+      const [laid, of] = n.tiles;
+      return { start: n.startMs, sweeps: n.sweepMs, boxes: b0, ms: n.fineMs, laid, of, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
+    // (by the start: the tiles round the walker; the sweeps read a landmark's triangles, nav.js withoutFine)
+    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, the start-up sweeps ${f.sweeps.toFixed(0)} ms, ${f.boxes} boxes in ${f.laid} of ${f.of} tiles laid by the start (${(f.ms - f.prefetch).toFixed(0)} ms); the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
   }
 
   // the camera under a slab (a patch's "upper", such as the forecourt over Sydney's Lower Concourse

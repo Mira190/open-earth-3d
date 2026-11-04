@@ -273,7 +273,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the helicopter, ferries and cars every city shares (vehicles.js); the box-built ones if they can't be loaded
   let vlib = null;
-  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}) }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
+  // (the helicopter's model after the game opens, when a pad is in range: heliToPad, enterHeli; issue 148)
+  try { vlib = await OEVehicles.load('assets/vehicles/', { ferry: (G.ferries || []).length > 0 && (G.ferry_style || {}), heli: 'later' }); } catch (e) { console.warn('Vehicle models unavailable, using simple ones:', e); }
   // decks under the mapped bridges and viaducts (decks.js): drawn, walked, and in the shade model. A
   // bridge over a ferry's course clears the boats with someone standing on the upper deck
   const FI = vlib && vlib.ferryInfo, fstyle = G.ferry_style || {};
@@ -342,8 +343,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // deck too low for it to stand under
   const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) })));
   const inRoad = (x, y, z, r) => roadsNow.depth(x, y, z, r) > 0;
-  // (a landmark's 2 m cells stand in for its fine ones here: laying the fine cells of the whole city
-  // would cost seconds at the start, nav.js; paving, padded 0.3 m in those cells, stays under 0.45)
+  // (against the 2 m surface model, and where a landmark's 2 m cell says no, its triangles, nav.js
+  // withoutFine: the fine cells of the whole city would cost seconds at the start; paving, padded 0.3 m
+  // in the 2 m cells, stays under 0.45)
   const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
   const underDeck = (x, y, z, top) => { let hit = false; nav.decksAt(x, y, h => { if (h > z + 0.5 && h < z + top) hit = true; }); const s = nav.surfaceAt(x, y); return hit || (s > z + 0.5 && s < z + top); };
   for (const [k, r] of [['street_lamp', 0.12], ['bench', 0.3]]) {
@@ -419,7 +421,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the traffic keeps off the stretches of road that run through a wall (cutAtWalls); the crowd
   // walks the footways where a walker can, not through the buildings a mapped passage runs into
   // (route.js), nor through a wall
-  // (against a landmark's 2 m cells: its fine ones are laid as the walker nears them, nav.js)
+  // (against a landmark's triangles where its 2 m cells would cut the way, nav.js withoutFine: a crowd's
+  // way through a gate's passage or between lanterns is kept where a walker gets through)
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
   loadMsg('Footways people can walk', 0.84);
   await idle();
@@ -458,6 +461,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let playerChar = 'W_Worker';
   try { if (PLAYER_LOOKS[localStorage.getItem(PLAYER_KEY)]) playerChar = localStorage.getItem(PLAYER_KEY); } catch (e) { /* storage blocked */ }
   let lib = null;
+  const NPC_LOAD_M = 300, nearStart = n => !G.start || Math.hypot(n.at[0] - G.start.at[0], n.at[1] - G.start.at[1]) < NPC_LOAD_M;
   try {
     lib = await OEPeople.load('assets/people/');
     if ((G.crowd || {}).style) OEPeople.setStyle(G.crowd.style);
@@ -468,10 +472,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const pl = PLAYER_LOOKS[playerChar];
     if (pl.hero) await lib.require(pl.hero).then(() => Object.assign(pl, { character: pl.hero, scale: 1 })).catch(e => console.warn(`${pl.hero} unavailable:`, e));
     await lib.require(pl.character);
-    // an NPC whose file doesn't load stands in as a simple figure, without taking the others with it
-    await Promise.all(G.npcs.map(n => n.look.character).filter(Boolean).map(c => lib.require(c).catch(e => console.warn(`${c} unavailable:`, e))));
+    // the NPCs near the start before the game opens, the others as you first come within NPC_LOAD_M of
+    // them (npcStream; issue 148). One whose file doesn't load stands in as a simple figure
+    await Promise.all(G.npcs.filter(nearStart).map(n => n.look.character).filter(Boolean).map(c => lib.require(c).catch(e => console.warn(`${c} unavailable:`, e))));
   } catch (e) { console.warn('Realistic people unavailable, using simple figures:', e); lib = null; }
   const makeRig = (look, opts) => (lib && look.character && lib.tpl[look.character] ? OEPeople.person(lib, Object.assign({}, look)) : OEActors.makePerson(look, opts));
+  // an NPC whose character is still to load: nobody there yet (npcStream puts them in when it has come)
+  const awaited = look => lib && look.character && !lib.tpl[look.character] && (lib.npcs[look.character] || lib.heroes[look.character] || lib.info.characters[look.character]);
+  const pendingRig = () => ({ root: new THREE.Group(), pending: true, animate() {} });
   const CR = G.crowd || {};
   let crowdDraw = null; // the crowd's renderer (people.js), for umbrellas in the rain
   // the box-built fallback figures can't sit, so only the realistic crowd uses the benches
@@ -511,9 +519,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   const hash = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   const npcs = [];
+  // the old characters run large; the Rocketbox ones (R_) are life size
+  const npcLook = n => Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look);
   for (const n of G.npcs) {
-    // the old characters run large; the Rocketbox ones (R_) are life size
-    const rig = makeRig(Object.assign({ scale: /^W_/.test(n.look.character) ? 0.91 : /^M_/.test(n.look.character) ? 0.96 : 1 }, n.look));
+    const rig = awaited(n.look) ? pendingRig() : makeRig(npcLook(n));
     world.add(rig.root);
     // on the ground, or a strip or roof below 200 m (not up on a viaduct passing over), or at the height given;
     // off a bank sloping into the water, out of the road (and the room a car pulls in to at the kerb), clear
@@ -535,6 +544,22 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     npcs.push(o);
   }
   const npcById = id => npcs.find(n => n.id === id);
+  // an NPC's character, loaded and put in their place (or a simple figure if it can't be loaded)
+  const npcLoad = n => n.loading || (n.loading = !n.rig.pending ? Promise.resolve() : lib.require(n.look.character).catch(e => console.warn(`${n.look.character} unavailable:`, e)).then(() => {
+    const old = n.rig, rig = makeRig(npcLook(n));
+    rig.root.position.copy(old.root.position); rig.root.rotation.copy(old.root.rotation);
+    rig.root.add(n.marker);
+    if (old.root.parent) old.root.parent.remove(old.root);
+    world.add(rig.root);
+    n.rig = rig;
+  }));
+  let npcBudget = 0;
+  function npcStream(dt, cx, cy) { // twice a second: those within NPC_LOAD_M of you
+    if ((npcBudget -= dt) > 0) return;
+    npcBudget = 0.5;
+    for (const n of npcs) if (n.rig.pending && !n.loading && Math.hypot(n.x - cx, n.y - cy) < NPC_LOAD_M) npcLoad(n);
+  }
+  const npcsReady = () => Promise.all(npcs.map(npcLoad)); // every NPC in place (for the tools that look at them)
 
   // ------------------------------------------------------------ vehicles
   const vopts = { lib: vlib, cfg: G.vehicles || {}, city: CITY, U, camera, renderer, water: Wd.sea };
@@ -563,6 +588,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if ((padCheck -= 1) > 0) return;
     padCheck = 30; // every half second or so
     const st = heli.st;
+    if (!heli.loaded() && Math.hypot(st.x - player.x, st.y - player.y) < 800) heli.want(); // its model, once you are near it
     if (!st.landed || st.on || st.rotor > 0.02 || st.door > 0 || Math.hypot(st.x - player.x, st.y - player.y) < 700) return;
     for (const p of G.helipads) {
       if (Math.hypot(p.at[0] - player.x, p.at[1] - player.y) > 300 || Math.hypot(p.at[0] - st.x, p.at[1] - st.y) < 20) continue;
@@ -2151,6 +2177,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let boarding = null; // { dir: 1 in or -1 out, t, ... } while getting in or out (player.mode 'board')
   const HALF_PI = Math.PI / 2, ease = (t, a, b) => { const k = Math.min(1, Math.max(0, (t - a) / (b - a))); return k * k * (3 - 2 * k); };
   function enterHeli() {
+    if (!heli.loaded()) { heli.want(); heli.show(); } // in before its model has come: the simple one until you are out again
     const w = heli.way, me = heli.toLocal(player.x, player.y, player.z);
     // from the far side, round the nose (the tail boom is too low to walk under)
     const legs = [];
@@ -3548,6 +3575,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     player.rig.lookTarget = gaze;
     const cx = player.mode === 'heli' ? heli.st.x : player.x, cy = player.mode === 'heli' ? heli.st.y : player.y;
+    npcStream(dt, cx, cy);
     crowd.update(dt, cx, cy, clockT, player.mode === 'foot' ? player : player.mode === 'car' ? { x: player.x, y: player.y, h: player.h, speed: myCar.D.st.v, r: 1.1 } : null);
     if (colonies.length) {
       const L = dayLimits();
@@ -4145,7 +4173,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { walkCalls, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { walkCalls, npcsReady, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, musterScramble, opening: () => OPENING, openingHere, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

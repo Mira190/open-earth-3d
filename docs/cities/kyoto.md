@@ -77,6 +77,22 @@ only haze. Where the 5 m laser DEM has no data (1% of the stitched tiles, mostly
 beds), the nearest cell fills it. The branch that added Kyoto set those cells to sea level,
 25–80 m below the ground around them.
 
+## 3a. Landmarks
+
+The temples, Nijo Castle and the Imperial Palace are built on their mapped
+outlines (`cities/kyoto/city.py`, `pipeline/archkit.py`). At the Imperial Palace
+the court before the Shishinden (南庭) is enclosed by its corridors (回廊) on
+vermilion pillars, with the vermilion Jōmei-mon (承明門) to the south and the
+Nikka-mon and Gekka-mon to the east and west; the Kenrei-mon is plain cypress.
+Outlines that bend, turn round a court or run along a wall are drawn on their own
+outline under an outline roof, rather than as one hall over their bounding box
+(which had roofed whole courts over). The parts mapped over a gate's posts go with
+the gate. At Nijo, the covered ways between the Ninomaru's halls are corridors.
+A block with a guessed height in the Shishinden's court is dropped.
+
+![The Imperial Palace's south court, its corridors and the Jōmei-mon](../images/kyoto/gosho-south-court.jpg)
+![Nijo's Ninomaru palace](../images/kyoto/nijo-ninomaru.jpg)
+
 ## 4. Sun on public places
 
 Kyoto has no statutory sun window for public places. The places listed (Kyoto Gyoen, Kamo
@@ -95,6 +111,21 @@ are in Kyoto from Tokyo: a salaryman who came down on the Nozomi, and a student 
 school trip. What they say about the model is computed from it; the cultural facts (Goei-do
 rebuilt in 1895, Nijo Castle 1603, Kyoto's narrow deep machiya) are common knowledge, not
 verified for this project.
+
+### Higashi Honganji's moat
+
+The moat (お堀) round Higashi Honganji, along Karasuma-dori and the temple's north and
+south sides, is OpenStreetMap way 1010912897 (`natural=water`, 2,650 m², 3 to 4 m wide).
+It is too small for the city's water (`water.min_area_m2`), so the aerial photograph's dark
+strip of water lay flat on the paving, a strong blue band in front of the gates. It is drawn
+as a landmark (`moat_meshes()` in `cities/kyoto/city.py`): still water 1.1 m below the
+pavement between granite sides under a coping, the ground not drawn over it (`clip`), and
+crossed by the seven bridges OpenStreetMap maps over it, each as wide as GSI's photograph
+shows it (5 m where it does not). The one before the Founder's Hall Gate spans 32 m of the
+moat, the gate's width (31 m), and its granite runs on east to the pavement over the gate's
+shadow on the photograph. Walkers keep off the water (`keep_off` in `game.json`), and the
+crowd's footways that crossed it are dropped. The bridges' widths and the water's depth below
+the pavement are read from the photograph, not measured.
 
 ## 6. What is not verified
 
