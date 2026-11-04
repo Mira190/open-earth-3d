@@ -59,8 +59,8 @@ MATERIALS = {
     "kb_hoard": {"color": "#ecebe6", "roughness": 0.7, "metalness": 0.1, "pattern": "granite", "joints_m": [0.5, 0.0]},
     "kb_gravel": {"color": "#8d877d", "roughness": 0.95, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0], "decal": True},
     # the kaiju: grey-green cement, rough; paler dorsal plates; its eyes and the inside of its mouth
-    "kb_hide": {"color": "#454a43", "roughness": 0.85, "metalness": 0.05},
-    "kb_plate": {"color": "#8d8f86", "roughness": 0.8, "metalness": 0.05},
+    "kb_hide": {"color": "#62675d", "roughness": 0.82, "metalness": 0.05, "emissive": "#b9c4cf", "glow": 0.35},
+    "kb_plate": {"color": "#9a9b90", "roughness": 0.78, "metalness": 0.05, "emissive": "#c9d2da", "glow": 0.4},
     "kb_mouth": {"color": "#5a2a26", "roughness": 0.7, "metalness": 0.0},
     "kb_tooth": {"color": "#e7e1d2", "roughness": 0.5, "metalness": 0.0},
     "kb_eye": {"color": "#d8b23a", "roughness": 0.3, "metalness": 0.0, "emissive": "#ffcc33", "glow": 2.6},
@@ -71,7 +71,7 @@ MATERIALS = {
                  "spandrel": 0.35, "mullion_m": 0.12, "frame": "#c9ccce", "lit_share": 0.55, "lit_k": 0.75, "warm_share": 0.85},
     "kb_roof": {"color": "#77797b", "roughness": 0.85, "metalness": 0.1},
 }
-LIT = {"kb_red", "kb_bulb", "kb_atlas", "kb_lantern", "kb_eye"}
+LIT = {"kb_red", "kb_bulb", "kb_atlas", "kb_lantern", "kb_eye", "kb_hide", "kb_plate"}
 
 # the streets whose fronts carry the stacks (OSM way names), and how far from a street a front may stand
 CANYON = {"歌舞伎町一番街通り": "Ichibangai", "セントラルロード": "Central Road", "歌舞伎町さくら通り": "Sakura-dori"}
@@ -439,37 +439,41 @@ def lamps(D, avoid, every=12.0):
 
 def kaiju_field():
     """The head as a signed distance field in its frame: u the way it looks, v to its left, z up from the
-    terrace. A generic reptile: a thick neck, a long skull with a heavy brow, the jaw open in a roar,
-    and a row of plates down the back of the neck."""
+    terrace. A generic reptile: a neck that leans forward out of the terrace, a broad flat skull with a
+    heavy brow, the jaw dropped in a roar, and jagged plates down the back of the neck."""
     L = sk.mirror_v
-    neck = sk.capsule((-2.4, 0.0, 0.0), (-0.3, 0.0, 7.2), 3.0, 2.25)
-    skull = sk.ellipsoid((0.4, 0.0, 8.6), (2.9, 1.95, 1.75))
-    snout = sk.capsule((1.6, 0.0, 8.8), (4.9, 0.0, 8.6), 1.45, 0.95)
-    brow = L(sk.ellipsoid((1.7, 0.95, 9.65), (1.3, 0.55, 0.5)))
-    cheek = L(sk.ellipsoid((0.2, 1.3, 7.7), (1.6, 0.85, 1.2)))
-    jaw = sk.capsule((0.6, 0.0, 6.9), (4.4, 0.0, 6.0), 1.25, 0.75)
-    throat = sk.ellipsoid((0.0, 0.0, 6.2), (2.0, 1.7, 1.6))
-    head = sk.smooth_union(0.6, skull, snout, brow, cheek)
-    body = sk.smooth_union(0.9, neck, throat, jaw)
-    f = sk.smooth_union(0.7, body, head)
-    # the open mouth: a wedge cut between the upper snout and the jaw
-    mouth = sk.capsule((1.6, 0.0, 7.75), (5.6, 0.0, 7.5), 0.55, 0.85)
-    f = sk.subtract(0.25, f, mouth)
-    # nostrils and eye sockets
+    neck = sk.path([(-2.6, 0.0, -0.2), (-1.6, 0.0, 3.0), (-0.6, 0.0, 5.8), (0.2, 0.0, 7.6)], [3.3, 2.75, 2.25, 1.95])
+    traps = L(sk.capsule((-2.6, 1.6, 0.2), (-0.6, 1.0, 6.6), 1.5, 0.9))          # the muscles either side of the neck
+    skull = sk.ellipsoid((0.9, 0.0, 9.0), (2.5, 2.05, 1.5))
+    snout = sk.capsule((2.2, 0.0, 9.15), (5.6, 0.0, 9.0), 1.25, 0.8)
+    snout_top = sk.ellipsoid((3.6, 0.0, 9.75), (2.2, 0.75, 0.45))
+    brow = L(sk.ellipsoid((2.1, 1.0, 9.95), (1.15, 0.6, 0.42)))
+    cheek = L(sk.ellipsoid((0.6, 1.45, 8.35), (1.7, 0.75, 1.05)))
+    jaw = L(sk.capsule((0.9, 0.85, 7.6), (4.9, 0.45, 6.55), 0.75, 0.5))           # the lower jaw, dropped open
+    chin = sk.capsule((3.6, 0.0, 6.8), (5.0, 0.0, 6.45), 0.75, 0.5)
+    throat = sk.ellipsoid((0.4, 0.0, 6.9), (2.0, 1.55, 1.4))
+    head = sk.smooth_union(0.55, skull, snout, snout_top, brow, cheek)
+    body = sk.smooth_union(0.8, neck, traps, throat)
+    f = sk.smooth_union(0.6, body, head, sk.smooth_union(0.3, jaw, chin))
+    # the open mouth between the upper snout and the jaw
+    f = sk.subtract(0.2, f, sk.capsule((1.9, 0.0, 8.1), (6.2, 0.0, 7.75), 0.5, 0.85))
+    # nostrils, eye sockets under the brow
     for s in (-1, 1):
-        f = sk.subtract(0.08, f, sk.sphere((4.95, s * 0.45, 9.05), 0.2))
-        f = sk.subtract(0.12, f, sk.sphere((2.05, s * 1.25, 9.25), 0.32))
-    # plates down the back of the neck, biggest at the shoulders, thin across
+        f = sk.subtract(0.08, f, sk.sphere((5.55, s * 0.42, 9.55), 0.2))
+        f = sk.subtract(0.1, f, sk.sphere((2.25, s * 1.3, 9.5), 0.3))
+    # jagged plates down the back of the neck, biggest at the shoulders: each a pointed leaf of two lobes
     plates = []
-    for k, (u, z, r) in enumerate(((-1.3, 10.0, 0.9), (-2.4, 8.6, 1.3), (-3.3, 6.8, 1.6), (-4.0, 4.6, 1.9), (-4.4, 2.3, 2.0))):
-        plates.append(sk.ellipsoid((u - r * 0.35, 0.0, z + r * 0.25), (r * 0.75, 0.22 + 0.04 * k, r)))
-        plates.append(L(sk.ellipsoid((u - r * 0.1, 0.55, z - r * 0.35), (r * 0.5, 0.18, r * 0.65))))
-    f = sk.smooth_union(0.18, f, *plates)
-    return sk.roughen(f, 0.05, 0.35, seed=2015)
+    for k, (u, z, r) in enumerate(((-0.9, 10.2, 0.75), (-1.9, 8.9, 1.05), (-2.9, 7.2, 1.35), (-3.7, 5.2, 1.6), (-4.3, 3.0, 1.75), (-4.7, 0.9, 1.6))):
+        tip = (u - r * 1.05, 0.0, z + r * 0.55)
+        plates.append(sk.capsule((u + 0.3, 0.0, z - r * 0.5), tip, r * 0.55, 0.06))
+        plates.append(sk.capsule((u + 0.3, 0.0, z - r * 0.2), (u - r * 0.75, 0.0, z - r * 0.55), r * 0.4, 0.05))
+    flat = lambda g: (lambda uu, vv, zz: g(uu, vv * 1.7, zz))                      # thin across, as the plates are
+    f = sk.smooth_union(0.15, f, flat(sk.union(*plates)))
+    return sk.roughen(f, 0.05, 0.3, seed=2015)
 
 
 def kaiju_sculpt():
-    v, t = sk.mesh(kaiju_field(), (-6.6, -3.4, -0.2), (6.2, 3.4, 12.2), KAIJU["cell"])
+    v, t = sk.mesh(kaiju_field(), (-7.2, -3.6, -0.2), (6.8, 3.6, 12.2), KAIJU["cell"])
     v = sk.relax(v, t, 0.45, 2)
     return v, t
 
@@ -536,8 +540,8 @@ def kaiju(K, D, terrace=None):
     nrm = np.cross(v[t[:, 1]] - v[t[:, 0]], v[t[:, 2]] - v[t[:, 0]])
     eye = np.zeros(len(t), bool)
     for s in (-1, 1):
-        eye |= np.linalg.norm(c - np.array([2.05, s * 1.25, 9.25]), axis=1) < 0.36
-    mouth = (c[:, 0] > 1.6) & (np.abs(c[:, 1]) < 0.75) & (c[:, 2] > 6.6) & (c[:, 2] < 8.2) & ~eye
+        eye |= np.linalg.norm(c - np.array([2.25, s * 1.3, 9.5]), axis=1) < 0.36
+    mouth = (c[:, 0] > 1.8) & (np.abs(c[:, 1]) < 0.7) & (c[:, 2] > 7.2) & (c[:, 2] < 8.7) & ~eye
     plate = (c[:, 0] < -1.0) & (np.abs(c[:, 1]) < 0.75) & (c[:, 2] > 1.5) & (nrm[:, 0] < 0) & ~mouth
     for mat, sel in (("kb_hide", ~(eye | mouth | plate)), ("kb_plate", plate), ("kb_mouth", mouth), ("kb_eye", eye)):
         m = K[mat]
@@ -553,16 +557,16 @@ def kaiju(K, D, terrace=None):
     tooth = K["kb_tooth"]
     for s in (-1, 1):
         for k in range(7):
-            u = 2.2 + k * 0.42
-            zu = 8.15 - 0.05 * k - 0.0
-            zl = 7.0 - 0.2 * k
-            for z, dz in ((zu, -0.42), (zl, 0.36)):
-                b = P(u, s * (0.78 - 0.04 * k), z)
-                tip = P(u + 0.05, s * (0.72 - 0.04 * k), z + dz)
+            u = 2.4 + k * 0.47
+            zu = 8.55 - 0.03 * k
+            zl = 7.45 - 0.13 * k
+            for z, dz in ((zu, -0.45), (zl, 0.4)):
+                b = P(u, s * (0.66 - 0.03 * k), z)
+                tip = P(u + 0.05, s * (0.6 - 0.03 * k), z + dz)
                 tooth.tube([b, tip], [0.11, 0.01], 5)
     top = P(0.4, 0.0, zt + KAIJU["head_m"])
     return {"at": [round(float(at[0]), 2), round(float(at[1]), 2)], "look": [round(float(look[0]), 4), round(float(look[1]), 4)],
-            "terrace_z": round(zt, 2), "top_z": round(float(zt + KAIJU["head_m"]), 2), "street_z": round(g, 2), "eye": [round(float(x), 2) for x in P(2.05, 0, zt + 9.25)]}
+            "terrace_z": round(zt, 2), "top_z": round(float(zt + KAIJU["head_m"]), 2), "street_z": round(g, 2), "eye": [round(float(x), 2) for x in P(2.25, 0, zt + 9.5)]}
 
 
 # ---------------------------------------------------------------- Studio Alta's lot
