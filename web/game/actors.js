@@ -700,11 +700,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return true;
     }
     const ZAT = { z: 0, deck: 0 };
-    function carDepth(x, y, m = 0.3) { // how deep (x, y) is in the cars near (gathered), as a row of discs along each, m out from its sides
+    function carDepth(x, y, m = 0.3) { // how deep (x, y) is in the cars near (gathered): each its box, grown m all round (the corners too)
       let deep = 0;
       for (const o of nearCars) {
-        const ox = Math.sin(o.h), oy = Math.cos(o.h), k = Math.max(1, Math.round(o.half / o.hw)), rr = o.hw + m;
-        for (let m = 0; m < k; m++) { const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half - 2 * o.hw) * m / (k - 1), e = rr - Math.hypot(x - o.x - ox * u, y - o.y - oy * u); if (e > 0) deep += e; }
+        const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = x - o.x, dy = y - o.y;
+        const ea = o.half + m - Math.abs(dx * fx + dy * fy), eb = o.hw + m - Math.abs(-dx * fy + dy * fx);
+        if (ea > 0 && eb > 0) deep += Math.min(ea, eb);
       }
       return deep;
     }
@@ -769,11 +770,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // never a step into a car (one edging out of the box): stand, and let it by
       // (held up a while against a car caught in the box, with others round it: close along its side to get by)
       q.jam = q.ph === 'cross' && q.v < 0.15 ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt);
-      const M = q.jam > 3 ? 0.05 : 0.3;
+      const M = q.jam > 3 ? 0.12 : 0.3;
       if (q.jam > 6) { // (and still stuck: back to the kerb it set out from, if the way there is clear)
         const back = spotAt(g, q.spread, 0.8, {}, pz.road);
         let clear = true;
-        for (let k = 1; k <= 6 && clear; k++) if (carDepth(q.x + (back.x - q.x) * k / 6, q.y + (back.y - q.y) * k / 6, 0.05) > 0) clear = false;
+        for (let k = 1; k <= 6 && clear; k++) if (carDepth(q.x + (back.x - q.x) * k / 6, q.y + (back.y - q.y) * k / 6, 0.12) > 0) clear = false;
         if (clear) { q.g = null; toGate(q, g, 0.8 + rnd()); q.jam = 0; return; }
         q.jam = 3.5;
       }
