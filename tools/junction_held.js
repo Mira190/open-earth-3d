@@ -5,7 +5,8 @@
 // a light read wrong ('light' on green). For each it prints the junction, the car's why and, for
 // every movement in the junction then, its car, its arm and exit, how long it has been in, its speed,
 // why it stops and the junction it is headed for. Exits 1 when a car is held through more than
-// MAX greens (default 2).
+// MAX greens (default 2), or a movement stands in a junction more than MAX of its cycles (the holds
+// by your car, a ride or you in the road, and behind a car at a wall, are listed but don't count).
 //   cd web && python3 -m http.server 8800 &
 //   GAME_TIME=10:00 xvfb-run -a node tools/junction_held.js shibuya [seconds] [places] [jid,...]
 // places: the start and then traffic_check.js's places on the roads; jid: junctions to stand by
@@ -49,10 +50,12 @@ const MAX = Number(process.env.MAX_GREENS || 2);
     }, st);
     const r = await p.evaluate(heldStep, { T: Number(secs), max: MAX, chain: !!process.env.CHAIN });
     const where = st.j != null ? `junction ${st.j}` : `place ${st.site}`;
-    console.log(`${city} ${where}: ${r.watched} cars watched at signalled lines, ${r.cleared} cleared, ${r.cycles} greens seen; held through more than ${MAX} greens: ${r.held.length}`);
+    console.log(`${city} ${where}: ${r.watched} cars watched at signalled lines, ${r.cleared} cleared, ${r.cycles} greens seen; movements standing over ${MAX} cycles: ${r.held.length}, queues held through over ${MAX} greens: ${r.queues.length}`);
     for (const h of r.held) console.log('  ' + h);
+    for (const h of r.queues) console.log('  (queue) ' + h);
     for (const h of r.yours) console.log('  (by you) ' + h);
-    bad += r.held.length;
+    for (const h of r.walls) console.log('  (wall) ' + h);
+    bad += r.held.length + r.queues.length;
     await p.close();
   }
   await b.close();
