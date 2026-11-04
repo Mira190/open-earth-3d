@@ -48,6 +48,20 @@
         "z_m": 31.2,
         "feather_m": 8,
         "note": "DEM5A interpolates a false terrace up to 40.5 m east of the keep, where the laser points were filtered out with the keep and its stone base. The 10 m DEM reads 31.5 to 32.6 m there and PLATEAU puts the ground under the keep at 30.9 to 31.7 m, so the honmaru is levelled to 31.2 m, DEM5A's median over the open plaza just south of it."
+      },
+      {
+        "name": "Ebisubashi's north head",
+        "ring": [[135.501415, 34.669228], [135.501415, 34.669327], [135.501196, 34.669327], [135.501196, 34.669228]],
+        "z_m": 3.9,
+        "feather_m": 3,
+        "note": "The DEM keeps the old bridge's approach as a hump across Ebisubashi-suji that stands up to 0.2 m over the drawn bridge's end (cities/osaka/city.py, EBISU) and falls 0.6 m across the street. The street at the bridge's north end, from 5 m on the bridge to 6 m past it and 10 m either side of its line, is levelled to the end of its deck, 3.9 m (the street's line in OpenStreetMap is at 3.9 m there)."
+      },
+      {
+        "name": "Ebisubashi's south head",
+        "ring": [[135.501415, 34.668804], [135.501415, 34.668903], [135.501196, 34.668903], [135.501196, 34.668804]],
+        "z_m": 4.1,
+        "feather_m": 3,
+        "note": "The same at the south end, under the Glico sign: levelled to the end of the deck, 4.1 m (the street's line, 4.1 to 4.2 m)."
       }
     ],
     "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey, with the 10 m DEM where it has gaps (GSI terms of use, compatible with CC BY 4.0)"
