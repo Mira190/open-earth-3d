@@ -14,7 +14,8 @@
 // ("closer": a photo spot's id looks closer at it from where you stand, "along": seconds looking along it,
 // "up": seconds up (or down, negative) between its rails, with the panel up: a screenshot of the page, not the canvas;
 // "street": true stands on the ground there rather than on the roof over it; "z": on the floor
-// nearest that level, as under a slab)
+// nearest that level, as under a slab; "scramble": "walk" or "wait" runs on to that moment of the
+// nearest scramble's cycle; "eye": [x, y, z] looks from there at "look" instead of the chase camera)
 // in the city's local frame (x east, y north, z up, metres).
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -96,9 +97,27 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       if (g.cine.active) { g.cine.skip(); place(); g.advance(0.5); }
       // "closer": a photo spot's id, to look closer at it from there (places.js), "along" seconds to the right
       if (v.closer) { g.lookAt(g.G.spots.find(s => s.id === v.closer)); g.advance(1.2); if (v.along) g.advance(v.along, ['KeyD']); if (v.up) g.advance(Math.abs(v.up), [v.up > 0 ? 'KeyW' : 'KeyS']); }
+      // "scramble": "walk" or "wait": on until the nearest scramble is that far into its walk (its crowd
+      // out on the crosswalks) or into the cross road's green (its crowd massed at the kerbs), "phaseT" s in
+      if (v.scramble) {
+        const j = g.junctions.J.filter(q => q.scramble).sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y))[0];
+        const ph = v.scramble === 'walk' ? 3 : 1, at = v.phaseT ?? (ph === 3 ? 9 : 8);
+        for (let i = 0; j && i < 600 && !(j.ph === ph && j.st === 'g' && j.t >= at); i++) g.advance(0.25);
+      }
+      // "eye": [x, y, z] a camera there looking at "look" (with "lookZ" its height), held still in photo mode
+      if (v.eye) {
+        g.photoMode(true);
+        const P = g.photo, lz = v.lookZ ?? (g.player.z + 1.2), dx = v.eye[0] - v.look[0], dy = v.eye[1] - v.look[1], h = v.eye[2] - lz, d = Math.hypot(dx, dy);
+        P.focus.set(v.look[0], lz, -v.look[1]); P.anchor.copy(P.focus);
+        Object.assign(P, { az: Math.atan2(dx, dy), pitch: Math.atan2(h, d), dist: Math.hypot(d, h) });
+        if (v.fov) P.fov = v.fov;
+        g.player.rig.root.visible = false;
+        g.advance(0.1);
+      }
     }, v);
     await (v.closer ? grabPage : grab)(v.name);
     if (v.closer) await p.evaluate(() => window.__game.interact()); // (step back)
+    if (v.eye) await p.evaluate(() => { window.__game.photoMode(false); window.__game.player.rig.root.visible = true; });
   }
   if (logs.length) console.log(logs.slice(0, 20).join('\n'));
   await b.close();

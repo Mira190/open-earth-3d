@@ -402,6 +402,12 @@
     "helipads_from_data": false,
     "wharves": [],
     "ferries": [],
+    "scrambles": [
+      {"name": "新宿駅東口 Alta-mae", "at": [392.1, 2658.6], "note": "The first of four scramble crossings in a row along Shinjuku-dori from Alta (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
+      {"name": "新宿通り Shinjuku-dori, the second", "at": [477.1, 2635.2], "note": "The second of the four; diagonals mapped in OSM."},
+      {"name": "新宿通り Shinjuku-dori, the third", "at": [551.9, 2595.3], "note": "The third of the four; diagonals mapped in OSM."},
+      {"name": "新宿通り Shinjuku-dori, the fourth", "at": [650.3, 2541.2], "note": "The fourth of the four; diagonals mapped in OSM."}
+    ],
     "crowd": {
       "pedestrians": 640,
       "cars": 200,

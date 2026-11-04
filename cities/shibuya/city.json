@@ -430,6 +430,12 @@
     "helipads_from_data": false,
     "wharves": [],
     "ferries": [],
+    "scrambles": [
+      {"name": "道玄坂下 Dogenzaka-shita", "at": [268.0, -998.6], "note": "In front of 109, where Dogenzaka and Bunkamura-dori fork; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings)."},
+      {"name": "井ノ頭通り入口 Inokashira-dori Iriguchi", "at": [391.4, -894.8], "note": "Koen-dori at Seibu; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."},
+      {"name": "神南一丁目 Jinnan 1-chome", "at": [392.3, -819.0], "note": "Koen-dori, the next crossing up; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
+      {"name": "勤労福祉会館前 Kinro Fukushi Kaikan-mae", "at": [251.7, -680.2], "note": "Koen-dori, about 200 m further; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."}
+    ],
     "crowd": {
       "pedestrians": 640,
       "cars": 200,

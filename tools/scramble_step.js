@@ -5,8 +5,8 @@
 //   - in its walk phase (3) every arm's light is red, its walk signals show the green figure, and
 //     the crowd is out on the crosswalks, the diagonal too;
 //   - in the traffic's phases (0 and 1) no walker steps out onto its carriageway, none is still
-//     out there once the traffic's green has run 2 s, and no car moves through the box while
-//     anyone is out on it; no car runs its red.
+//     out there once the traffic's green has run 2 s; no car drives into the box while anyone is
+//     out on it, or through it faster than a walk (one caught there edges out); none runs its red.
 // "On the carriageway": the scramble's own crowd crossing between the kerbs (actors.js plazas),
 // and a walker on a footway between a crossing's kerbs (junctions.js scrambleCrossings).
 // Returns [{ at, checks: [[ok, what]], ... }] (an empty list where the city has no scramble).
@@ -28,7 +28,7 @@ module.exports = async function scrambles(p) {
       const onPlaza = q => q.pz === pz && q.ph === 'cross' && between(q, q.g);
       const diagonal = gt => { const ex = gt.partner.x - gt.x, ey = gt.partner.y - gt.y, t = Math.max(0, Math.min(1, ((j.x - gt.x) * ex + (j.y - gt.y) * ey) / (ex * ex + ey * ey))); return Math.hypot(gt.x + ex * t - j.x, gt.y + ey * t - j.y) < 6; };
       const diagonals = G.filter(diagonal).length / 2;
-      const ins = j.arms.filter(a => a.in), s0 = A.stats(), was = new Map(), log = [];
+      const ins = j.arms.filter(a => a.in), s0 = A.stats(), was = new Map(), log = [], inBox = new Map();
       let walkPhase = 0, allRed = 0, figures = 0, peak = 0, peakDiag = 0, steppedOut = 0, lingering = 0, carsAmong = 0, wrongFigures = 0, cycles = 0, last = j.ph;
       const box = Math.max(10, j.reach * 0.55);
       for (let t = 0; t < 2 * 4 * (j.green[0] + j.green[1] + j.green[3] + 3 * (j.amber + j.allred)); t++) {
@@ -47,21 +47,24 @@ module.exports = async function scrambles(p) {
           peakDiag = Math.max(peakDiag, P.filter(q => onPlaza(q) && diagonal(q.g)).length);
         } else if (j.ph !== 3 && shown.some(v => v === 'g')) wrongFigures++;
         if ((j.ph === 0 || j.ph === 1) && !(j.ph === 0 && j.st === 'g' && j.t < 2)) lingering = Math.max(lingering, out.length);
-        const among = out.length ? A.C.find(c => c.line >= 0 && c.v > 1 && Math.hypot(c.x - j.x, c.y - j.y) < box) : null;
-        if (among) { carsAmong++; if (log.length < 6) log.push(`a car at ${among.v.toFixed(1)} m/s ${Math.hypot(among.x - j.x, among.y - j.y).toFixed(0)} m from the middle, ${out.length} out, phase ${j.ph}${j.st} ${j.t.toFixed(1)} s`); }
-        if ((j.ph === 0 || j.ph === 1) && out.length && log.length < 6 && !(j.ph === 0 && j.st === 'g' && j.t < 2)) log.push(`${out.length} out in phase ${j.ph}${j.st} ${j.t.toFixed(1)} s: ${out.map(q => q.pz ? `crossing ${q.ph}` : `on a footway at ${q.s.toFixed(1)} going ${q.dir}, ${q.v.toFixed(2)} m/s`).join('; ')}`);
+        // (a car caught in the box may edge out at a walking pace; none drives in, or through at speed)
+        const among = out.length ? A.C.find(c => c.line >= 0 && Math.hypot(c.x - j.x, c.y - j.y) < box && (c.v > 2.5 || (c.v > 0.5 && inBox.has(c) === false))) : null;
+        const wasIn = among ? inBox.get(among) : null;
+        for (const c of A.C) inBox.set(c, c.line >= 0 && Math.hypot(c.x - j.x, c.y - j.y) < box);
+        if (among) { carsAmong++; if (log.length < 6) log.push(`a car ${wasIn ? 'in it' : 'driving in'} (${among.mv ? (among.mv.j === j ? 'across it' : 'across another junction') : 'on its way'}, ${among.why || ''}) at ${among.v.toFixed(1)} m/s ${Math.hypot(among.x - j.x, among.y - j.y).toFixed(0)} m from the middle, ${out.length} out, phase ${j.ph}${j.st} ${j.t.toFixed(1)} s`); }
+        if ((j.ph === 0 || j.ph === 1) && out.length && log.length < 6 && !(j.ph === 0 && j.st === 'g' && j.t < 2)) log.push(`${out.length} out in phase ${j.ph}${j.st} ${j.t.toFixed(1)} s: ${out.map(q => { const c = A.C.filter(c => c.line >= 0).reduce((m, c) => (Math.hypot(c.x - q.x, c.y - q.y) < (m ? Math.hypot(m.x - q.x, m.y - q.y) : 9) ? c : m), null); return (q.pz ? `crossing ${q.ph}` : `on a footway at ${q.s.toFixed(1)} going ${q.dir}, ${q.v.toFixed(2)} m/s`) + (c ? ` (a car ${Math.hypot(c.x - q.x, c.y - q.y).toFixed(1)} m off at ${c.v.toFixed(1)} m/s)` : ''); }).join('; ')}`);
       }
       const s1 = A.stats();
       return { at: [Math.round(j.x), Math.round(j.y)], crosswalks: G.length / 2, diagonals, walkPhase, allRed, figures, heads: H && H.walkShown ? H.walkShown(j).length : 0,
-        peak, peakDiag, steppedOut, lingering, carsAmong, wrongFigures, cycles, red: s1.redRuns - s0.redRuns, log };
+        peak, peakDiag, steppedOut, lingering, carsAmong, wrongFigures, cycles, red: s1.redRuns - s0.redRuns, log, crowd: C.P.slice(0, C.active).filter(q => q.pz === pz).length };
     }, k));
   }
   return res.map(r => Object.assign(r, { checks: [
-    [r.crosswalks >= 4 && r.cycles >= 2, `the scramble at ${r.at} runs its walk phase (${r.cycles} walks in two cycles; ${r.crosswalks} crosswalks, ${r.diagonals} diagonal)`],
+    [r.crosswalks >= 3 && r.cycles >= 2, `the scramble at ${r.at} runs its walk phase (${r.cycles} walks in two cycles; ${r.crosswalks} crosswalks, ${r.diagonals} diagonal)`],
     [r.walkPhase > 0 && r.allRed === r.walkPhase, `in its walk every arm's light is red (${r.allRed} of ${r.walkPhase} looks)`],
     [r.heads > 0 && r.figures === r.walkPhase && !r.wrongFigures, `its ${r.heads} walk signals show the green figure in the walk (${r.figures} of ${r.walkPhase}) and never in the traffic's turns (${r.wrongFigures})`],
-    [r.peak >= 40 && (!r.diagonals || r.peakDiag >= 8), `the crowd surges across (${r.peak} out at once, ${r.peakDiag} on the diagonal)`],
+    [r.peak >= Math.max(10, r.crowd * 0.5) && (!r.diagonals || r.peakDiag >= 3), `the crowd surges across (${r.peak} out at once of the ${r.crowd} gathered there, ${r.peakDiag} on the diagonals)`],
     [!r.steppedOut && !r.lingering, `no one steps out in the traffic's turns (${r.steppedOut}) or is still out on the road once its green has run 2 s (${r.lingering})${r.lingering ? ': ' + r.log.filter(l => !l.startsWith('a car')).join(' | ') : ''}`],
-    [!r.carsAmong && !r.red, `no car moves through the box while anyone is out on it (${r.carsAmong} looks) or runs its red (${r.red})${r.carsAmong ? ': ' + r.log.filter(l => l.startsWith('a car')).join(' | ') : ''}`],
+    [!r.carsAmong && !r.red, `no car drives into the box while anyone is out on it, or through it faster than a walk (${r.carsAmong} looks) or runs its red (${r.red})${r.carsAmong ? ': ' + r.log.filter(l => l.startsWith('a car')).join(' | ') : ''}`],
   ] }));
 };

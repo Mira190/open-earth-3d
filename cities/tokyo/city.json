@@ -526,6 +526,9 @@
         ]
       }
     ],
+    "scrambles": [
+      {"name": "数寄屋橋 Sukiyabashi", "at": [385.0, 279.8], "note": "Harumi-dori and Sotobori-dori in Ginza; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."}
+    ],
     "crowd": {
       "pedestrians": 520,
       "cars": 190,

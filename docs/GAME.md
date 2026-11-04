@@ -865,6 +865,55 @@ Sydney's traffic stood still a third of the time.
   (not the arrow) is green, and ends 5 s before that phase can. Someone already
   out in the road (over a median, say) walks on. Turning cars still give way to
   people on the crossing.
+- **Scrambles** (歩車分離 with diagonal crosswalks). Shibuya's crossing (scene
+  `landmarks.scramble`, with its six mapped crosswalks, the one diagonal from
+  Hachiko to QFRONT among them) and the junctions a city lists in
+  `game.scrambles` in `city.json` run a fourth phase after the traffic's two:
+  every arm red and every walk signal green together for 32 s, the green figures
+  flashing for the last 6, then 16 s for the main road and 12 s for the cross
+  road (the real cycle is about two minutes with 40 to 50 s of walk; a game keeps
+  the traffic's turns short). The all-red before the traffic's green is 4 s and
+  is held up to 8 s more while anyone is still out on the road. Nobody walks in
+  the traffic's phases, a ride's priority never shortens or skips the walk, and
+  a car caught in the box when the walk comes on stays put while the crowd flows
+  round it. The scramble's stop lines stand behind its crosswalks (OSM puts
+  Shibuya's signals at them, 30 m out, so a scramble always has signals), and a
+  mid-block signal mapped on one of its crosswalks is folded in.
+  - *Its crowd* (`actors.js`, plazas). Near the player about a third of the
+    crowd belongs to the scramble (a landmark's six times a smaller one's share):
+    massed on the pavement behind the kerbs where the crosswalks land, deeper
+    the more there are, facing the road. When the walk comes on they step out
+    after a moment's reaction, the front rows first, and only with the time to
+    reach the far kerb; they cross freely in the stripes' full width rather than
+    in single file, keep apart, and step a little to the left on meeting someone
+    coming the other way, so lanes form as they do in a real counterflow. On the
+    far side each strolls to a kerb of that corner and waits again. The rest of
+    the crowd still walks the footways; more of it gathers round the scramble,
+    crosses on the same walk with time to make the far kerb, waits at a line's
+    end that would step straight into the road, and spreads across the stripes.
+  - *The other scrambles* listed: Shibuya's Dogenzaka-shita and three on
+    Koen-dori (Inokashira-dori Iriguchi, Jinnan 1-chome, Kinro Fukushi
+    Kaikan-mae), the four in a row along Shinjuku-dori from Alta, Ginza's
+    Sukiyabashi and Asakusa's Kaminarimon-mae. Each is named in a published list
+    of Tokyo's scramble crossings, or has both diagonals mapped in OSM, or both.
+    Not listed: Jingumae (Omotesando and Meiji-dori), reported as not a
+    pedestrian-only phase; Ginza 4-chome, Akihabara's Chuo-dori and Ikebukuro's
+    east exit, for which no source or mapped diagonal was found (Ikebukuro is
+    outside every city's extent).
+  - *From games and research.* Persona 5 and The World Ends with You make the
+    scramble a set piece, with the crowd as silhouettes or flat figures that
+    part for you; Ghostwire: Tokyo empties it. Here the crowd is people who keep
+    the signals. The crossing behaviour follows Helbing and Molnár's social forces
+    (repulsion between bodies, a small sidestep bias that makes lanes form); the
+    ShibuyaSocial model, learnt from 8K video of this crossing, and Zanlungo,
+    Feliciani, Nishinari and others' crossing-flow experiments (stripes form even
+    at fairly low density) confirm the patterns to aim for. Ideas only; no code or
+    data from any of them.
+  - `tools/scramble_step.js`, run by `tools/game_check.js` in every city with a
+    scramble, checks that in the walk every arm's light is red, the walk signals
+    are green and the crowd is out on the crosswalks and the diagonals; that in
+    the traffic's phases nobody steps out or is still out on the road once the
+    green has run 2 s; and that no car moves through the box while anyone is on it.
 - **The signal heads** are instanced, a handful of draw calls for a city's
   thousands. Each arm with signals has a pole at the kerb by its stop line with
   a lantern facing the traffic, and a second across the junction; a main road's
@@ -1816,6 +1865,14 @@ deadlock or a meeting at a shared berth takes to show.
 
 ## Sources
 
+- Scrambles: [LIVE JAPAN on Shibuya Crossing](https://livejapan.com/en/in-tokyo/in-pref-tokyo/in-shibuya/article-a0002128/)
+  (the cycle and the walk), [Wikipedia, Shibuya Crossing](https://en.wikipedia.org/wiki/Shibuya_Crossing)
+  (1,000 to 3,000 people a walk), [乗りものニュース on its single diagonal](https://trafficnews.jp/post/122022),
+  [JAF Mate on Tokyo's scramble crossings](https://jafmate.jp/essay/road_trivia_20231225.html)
+  (Dogenzaka-shita, Koen-dori, Shinjuku-dori's four from Alta, Sukiyabashi),
+  [JAF Mate on Jingumae](https://jafmate.jp/car/surveyteam_20241105.html) (not a pedestrian-only phase),
+  [ShibuyaSocial](https://arxiv.org/html/2512.18550v1) and the crossing-flow stripe experiments
+  of Zanlungo, Feliciani, Nishinari et al. Ideas only.
 - Junctions: [SUMO, Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html)
   (movements as lanes across the junction, their foes, and *keep clear*: no
   car into a junction it can't leave). Ideas only; no SUMO code (EPL-2.0) is used.

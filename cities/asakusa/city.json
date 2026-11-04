@@ -166,6 +166,9 @@
       }
     ],
     "ferry_note": "Piers are from OpenStreetMap via Overture. One boat runs between the piers on this map; the timetable is not real. Tokyo Cruise and the Tokyo Mizube Line run on to Hinode, Hamarikyu and Odaiba from here.",
+    "scrambles": [
+      {"name": "雷門前 Kaminarimon-mae", "at": [-471.6, -123.8], "note": "Kaminarimon-dori before the gate; both diagonals mapped in OSM."}
+    ],
     "crowd": {"pedestrians": 560, "cars": 150, "radius_m": 420, "style": "tokyo"},
     "vehicles": {
       "helicopter": {"registration": "JA634T"},

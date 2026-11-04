@@ -234,7 +234,7 @@ window.OEJunctions = (function () {
         for (const a of j.arms) crossAt(a, SCR_R, cand, (d, g) => keep.add(g));
         segs = [...keep];
       }
-      j.walks = segs; j.reach = R;
+      j.walks = segs; j.reach = R; j.mapped3 = !!(o.lines && o.lines.length); // (a landmark's own: its crowd the thickest)
       // each arm's stop line: back behind its outermost crosswalk
       for (const a of j.arms) {
         let far = 0;
@@ -245,6 +245,7 @@ window.OEJunctions = (function () {
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
+    const inScramble = (x, y) => J.some(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach); // (in a scramble's box: no car is put there)
     // ------------------------------------------------ crossings between junctions
     // A pedestrian crossing mapped on a road away from any junction (opts.midCrossings: game.json's
     // props crossing_signals and crossing_zebra, from OSM's tags: pipeline/road_rules.py) is a
@@ -650,7 +651,7 @@ window.OEJunctions = (function () {
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 8)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road: j.busy, actors.js)
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 8) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 6)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > j.green[j.ph] - 5);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
@@ -746,7 +747,7 @@ window.OEJunctions = (function () {
     }
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
-    return { J, midsOn, armAt, exits, choose, light, arrow, walk, walkLeft, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    return { J, inScramble, scrambles: J.filter(j => j.scramble), midsOn, armAt, exits, choose, light, arrow, walk, walkLeft, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
