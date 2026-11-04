@@ -40,6 +40,9 @@ OWN = {"w136691386", "w116806281", "w60739635", "w136690966", "w55895868", "w558
        "w116710254", "w136690945", "w136690970", "w904652357"}
 
 MATERIALS = {
+    # the side streets' shop windows: dark glass between mullions, most lit after dark, warm, softer than QFRONT's
+    "st_shop": {"color": "#3c454e", "roughness": 0.1, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 1.6, "storey_m": 3.4, "spandrel": 0.08,
+                "mullion_m": 0.1, "frame": "#2a2d31", "lit_share": 0.75, "lit_k": 0.45, "warm_share": 0.75},
     # Seibu's cream precast panels; the windows small and set deep, dark since the store closed
     "st_seibu": {"color": "#2a3036", "roughness": 0.2, "metalness": 0.2, "pattern": "curtain_wall", "bay_m": 2.7, "storey_m": 4.5, "spandrel": 0.58,
                  "mullion_m": 1.55, "frame": "#ddd3bd", "lit_share": 0.04, "lit_k": 0.4, "warm_share": 0.2},
@@ -233,7 +236,7 @@ def shopfront(K, a, b, n, g, z1=3.25):
         return
     f = (b - a) / L
     p, q = a + f * 0.3 + n * 0.07, b - f * 0.3 + n * 0.07
-    K["x_shop"].quad(np.array([*p, g + 0.05]), np.array([*q, g + 0.05]), np.array([*q, g + z1]), np.array([*p, g + z1]),
+    K["st_shop"].quad(np.array([*p, g + 0.05]), np.array([*q, g + 0.05]), np.array([*q, g + z1]), np.array([*p, g + z1]),
                      [[0, 0], [L - 0.6, 0], [L - 0.6, z1], [0, z1]])
 
 

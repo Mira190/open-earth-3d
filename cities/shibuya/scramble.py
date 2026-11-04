@@ -101,7 +101,7 @@ MATERIALS = {
     "x_bk_box": {"color": "#f1f1ee", "roughness": 0.5, "metalness": 0.1},
 }
 MATERIALS.update(streets.MATERIALS)
-LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp"}
+LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp", "st_shop"}
 
 
 # ---------------------------------------------------------------- data
