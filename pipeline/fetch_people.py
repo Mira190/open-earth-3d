@@ -156,7 +156,9 @@ class GLB:
         out = (struct.pack("<III", 0x46546C67, 2, 12 + 8 + len(js) + 8 + len(blob)) + struct.pack("<II", len(js), 0x4E4F534A) + js
                + struct.pack("<II", len(blob), 0x004E4942) + blob)
         open(path, "wb").write(out)
-        return len(out)
+        from meshopt import compress  # meshopt-compressed in place (issue 148)
+        compress(path)
+        return os.path.getsize(path)
 
 
 def q8(v):
