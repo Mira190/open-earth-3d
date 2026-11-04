@@ -3289,10 +3289,11 @@ def landmark_meshes(scene):
     extra = {"hidden": hidden}
     sb = scramble_build(lm)
     if sb:
-        sm, sh, sc = sb.meshes()
+        sm, sh, sc, props = sb.meshes()
         meshes += sm
         extra["hidden"] = hidden + sh
         extra["clip"] = sc
+        extra["props"] = props
         mats.update(scramble.MATERIALS)
     return mats, meshes + more, extra
 
