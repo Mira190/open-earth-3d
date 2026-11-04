@@ -763,10 +763,43 @@ window.OENav = (function () {
     // room for a body of radius r standing on the floor at z (x, y), from knee height to z + top,
     // passing what a walker there passes (a car on the road, a walker wider than R)
     function room(x, y, z, r, top = HEAD, onDeck = false) { return !col.overlap(x, y, r, z + KNEE, z + top, passes(z, onDeck)); }
+    // the camera alone stops at these: the landmark faces whose material is "camera" but not solid, such
+    // as the soffit of a slab walked under on a patch (Sydney's Lower Concourse colonnade), which the
+    // collision world leaves to the patch; as triangles [ax, ay, az, e1, e2, bounds] in local metres
+    const camTris = [];
+    for (const m of D.LM.meshes || []) {
+      const mat = (D.LM.materials || {})[m.material] || {};
+      if (!mat.camera || mat.solid !== false) continue;
+      const p = m.position, idx = m.index;
+      for (let t = 0; t < idx.length; t += 3) {
+        const v = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[i * 3], p[i * 3 + 1], p[i * 3 + 2]]);
+        const lo = [0, 1, 2].map(k => Math.min(v[0][k], v[1][k], v[2][k]) - PROBE), hi = [0, 1, 2].map(k => Math.max(v[0][k], v[1][k], v[2][k]) + PROBE);
+        camTris.push([v[0], [0, 1, 2].map(k => v[1][k] - v[0][k]), [0, 1, 2].map(k => v[2][k] - v[0][k]), lo, hi]);
+      }
+    }
+    // the fraction of the segment (local x, y, z) a -> b before the probe meets one of camTris, or 1
+    function camHit(ax, ay, az, bx, by, bz) {
+      const d = [bx - ax, by - ay, bz - az], len = Math.hypot(d[0], d[1], d[2]) || 1;
+      const lo = [Math.min(ax, bx), Math.min(ay, by), Math.min(az, bz)], hi = [Math.max(ax, bx), Math.max(ay, by), Math.max(az, bz)];
+      let f = 1;
+      for (const [o, e1, e2, tl, th] of camTris) {
+        if (hi[0] < tl[0] || lo[0] > th[0] || hi[1] < tl[1] || lo[1] > th[1] || hi[2] < tl[2] || lo[2] > th[2]) continue;
+        const px = d[1] * e2[2] - d[2] * e2[1], py = d[2] * e2[0] - d[0] * e2[2], pz = d[0] * e2[1] - d[1] * e2[0]; // Moller-Trumbore
+        const det = e1[0] * px + e1[1] * py + e1[2] * pz;
+        if (Math.abs(det) < 1e-9) continue;
+        const sx = ax - o[0], sy = ay - o[1], sz = az - o[2], u = (sx * px + sy * py + sz * pz) / det;
+        if (u < 0 || u > 1) continue;
+        const qx = sy * e1[2] - sz * e1[1], qy = sz * e1[0] - sx * e1[2], qz = sx * e1[1] - sy * e1[0];
+        const v = (d[0] * qx + d[1] * qy + d[2] * qz) / det, t = (e2[0] * qx + e2[1] * qy + e2[2] * qz) / det;
+        if (v < 0 || u + v > 1 || t < 0 || t > 1) continue;
+        f = Math.min(f, Math.max(0, t - PROBE / len));
+      }
+      return f;
+    }
     // how far along the segment a -> b (three.js world coordinates) the camera probe gets
     // before touching a building, a landmark or a deck's slab: a fraction 0..1, or 1 when clear
     function clearFraction(a, b) {
-      const f = col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE);
+      const f = Math.min(col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE), camTris.length ? camHit(a.x, -a.z, a.y, b.x, -b.z, b.y) : 1);
       if (!decks.length) return f;
       const n = Math.ceil(f * a.distanceTo(b) / 0.5);
       for (let i = 1; i <= n; i++) {

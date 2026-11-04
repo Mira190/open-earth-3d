@@ -252,6 +252,53 @@ const { pinClock } = require('./pin_clock');
     check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, ${f.boxes} boxes laid by the start; the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
   }
 
+  // the camera under a slab (a patch's "upper", such as the forecourt over Sydney's Lower Concourse
+  // colonnade): standing under it at up to 8 places spread along it, the camera swung round in 8
+  // directions sees the walker from under the slab or from beyond it, never through it (its line to the
+  // head does not pass between the soffit, clear_m over the floor, and the slab's top)
+  const slabCam = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, out = [];
+    const dec = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, pitch: g.cam.pitch };
+    for (const P of g.G.patches || []) {
+      const U = P.upper;
+      if (!U) continue;
+      const Z = dec(P.data), UZ = dec(U.data), clear = P.clear_m || 2.2;
+      const slab = (x, y) => {
+        const c = Math.floor((x - P.x0) / P.cell), r = Math.floor((y - P.y0) / P.cell), uc = c - U.i0, ur = r - U.j0;
+        if (uc < 0 || ur < 0 || uc >= U.nx || ur >= U.ny || c >= P.nx || r >= P.ny) return null;
+        const u = UZ[ur * U.nx + uc], f = Z[r * P.nx + c];
+        return u === -32768 || f === -32768 ? null : [f / 100, u / 100];
+      };
+      // places under the slab with room round them (the slab 1.5 m round on every side)
+      const under = [];
+      for (let j = 0; j < U.ny; j += 2) for (let i = 0; i < U.nx; i += 2) {
+        const x = P.x0 + (U.i0 + i + 0.5) * P.cell, y = P.y0 + (U.j0 + j + 0.5) * P.cell, s = slab(x, y);
+        if (s && [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]].every(([dx, dy]) => slab(x + dx, y + dy)) && g.nav.walk(x, y, s[0]).ok) under.push([x, y, s[0]]);
+      }
+      for (let n = 0; n < Math.min(8, under.length); n++) {
+        const [x, y, z] = under[Math.floor((n + 0.5) * under.length / Math.min(8, under.length))];
+        let worst = null;
+        for (let k = 0; k < 8; k++) {
+          Object.assign(pl, { x, y, z, ground: true, vz: 0, speed: 0 });
+          g.cam.yaw = k * Math.PI / 4; g.cam.pitch = 0.35;
+          for (let i = 0; i < 20; i++) g.advance(0.05);
+          const c = g.live.pos, cx = c.x, cy = -c.z, cz = c.y, hz = pl.z + 1.55;
+          for (let s = 0; s <= 1; s += 0.02) {
+            const X = pl.x + (cx - pl.x) * s, Y = pl.y + (cy - pl.y) * s, H = hz + (cz - hz) * s, q = slab(X, Y);
+            if (q && H > q[0] + clear + 0.05 && H < q[1] - 0.05) { worst = { k, at: [X.toFixed(1), Y.toFixed(1), H.toFixed(2)], slab: q }; break; }
+          }
+          if (worst) break;
+        }
+        out.push({ at: [Math.round(x), Math.round(y)], z, worst });
+      }
+    }
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.cam.pitch = keep.pitch; g.advance(0.2);
+    return out;
+  });
+  for (const s of slabCam) check(!s.worst, `the camera stays out of the slab over ${s.at} (${s.z.toFixed(2)} m)` +
+    (s.worst ? `: its line to the head passes through it at ${s.worst.at} (floor and top ${s.worst.slab}), looking ${s.worst.k * 45}°` : ''));
+
   // up close: walk right up to each thing the city's builders name to see close to (game.json "close",
   // a spot's "reach": a shrine's ema rack, a lantern, a statue, a gate's posts), within 1.5 m or what the
   // target says and never into it; and look closer at each photo spot (a spot's "look") and step back

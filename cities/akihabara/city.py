@@ -12,8 +12,10 @@ dresses Electric Town and builds two landmarks up the hill, placed on OpenStreet
   * The names of a few buildings on their roofs' edges, as they are read from the street: Radio Kaikan,
     Don Quijote, GiGO, Yodobashi Akiba. Their own words set in open fonts, not their logos.
   * 随神門 Zuishinmon, Kanda Myojin's gate (1975): a two-storey vermilion gate with green copper roofs
-    and gold fittings, on OpenStreetMap's footprint; the hall behind it (1934, concrete) is given its
-    vermilion.
+    and gold fittings, on OpenStreetMap's footprint; and the hall behind it (御社殿, 1934, reinforced
+    concrete), gongen-zukuri: the worship hall, the offering hall and the main hall joined, the wings either
+    side and the roof over the front steps, in vermilion and black lacquer under green copper, on its
+    footprint (shaden; the survey's block of it is not drawn).
   * ニコライ堂 Nikolai-do, the Holy Resurrection Cathedral (1891, rebuilt 1929): its green copper dome,
     about 35 m to the cross (Japanese Orthodox Church; Chiyoda City), on its drum over the nave.
 
@@ -44,6 +46,7 @@ MATERIALS = {
     "stone": {"color": "#9a968e", "roughness": 0.9, "metalness": 0.0},
     "plaster": {"color": "#e4dccb", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffe6c0", "glow": 0.35},
     "dome": {"color": "#5c9a86", "roughness": 0.5, "metalness": 0.35},
+    "lacquer": {"color": "#1c1815", "roughness": 0.3, "metalness": 0.05},
 }
 
 # the trades of Electric Town, on blade signs (words, background, ink, font)
@@ -219,6 +222,169 @@ def zuishinmon(K, gte):
     ATLAS.quad(K("atlas"), P(hu2 + 0.05, 1.4, z2 + 0.6), P(hu2 + 0.05, -1.4, z2 + 0.6), P(hu2 + 0.05, -1.4, z2 + 1.55), P(hu2 + 0.05, 1.4, z2 + 1.55), "kanda")
 
 
+# ---------------------------------------------------------------- Kanda Myojin's hall (御社殿)
+
+# The hall of 1934 (Ōe Shintarō and Sano Toshikata; reinforced concrete, an Important Cultural Property
+# since 2003) is gongen-zukuri: the worship hall (拝殿) in front, joined by the offering hall (幣殿) to the
+# main hall (本殿) behind, with a roof over the front steps (向拝); vermilion, black lacquer and gold under
+# green copper roofs. Laid out in OpenStreetMap's footprint of it (御社殿), whose outline holds the three
+# halls and the wings either side; the worship hall about 21 m across its front. The heights stop at the
+# survey's 13.6 m. The proportions are from photographs, not drawings.
+SHADEN_KIDAN = 1.2      # the stone platform over the paving in front: six steps up
+SHADEN_STEPS = (6, 0.32)
+
+
+def shaden_site(solids, gate):
+    """The hall's frame on its footprint (u toward the gate, v to its left; the footprint's rectangle
+    axis nearest that), the footprint's extents in it, its levels and the survey's solids of it:
+    {P, u0, u1, v0, v1, z0 (the paving in front), top (the platform), si}, or None."""
+    import archkit as ak
+    parts = [q for q in solids if q["name"] == SHADEN]
+    if not parts or not gate:
+        return None
+    main = max(parts, key=lambda q: abs(ak.ring_area(q["ring"])))
+    cx, cy, axd, L, W = ak.oriented(main["ring"])
+    to_gate = unit(np.asarray(gate["c"]) - [cx, cy])
+    a = math.radians(axd)
+    axes = [np.array([math.cos(a + k * math.pi / 2), math.sin(a + k * math.pi / 2)]) for k in range(4)]
+    f = max(axes, key=lambda e: float(e @ to_gate))
+    P = frame((cx, cy), f)
+    r = np.asarray(main["ring"]) - [cx, cy]
+    u, v = r @ f, r @ left_of(f)
+    T = ak.Terrain("akihabara")
+    u1 = float(u.max())
+    edge = u1 - 5.7                                    # the platform's front edge, under the front roof
+    z0 = float(np.median([T(*P(edge + 3.5, s, 0)[:2]) for s in np.linspace(-6, 6, 7)]))
+    hi = max(T(*P(uu, vv, 0)[:2]) for uu in np.linspace(u.min(), u1, 9) for vv in np.linspace(v.min(), v.max(), 9))
+    top = round(max(z0 + SHADEN_KIDAN, hi + 0.6), 2)
+    return {"P": P, "u0": float(u.min()), "u1": u1, "v0": float(v.min()), "v1": float(v.max()), "edge": edge,
+            "z0": round(z0, 2), "top": top, "si": sorted(q["si"] for q in parts)}
+
+
+def _body(K, P, u0, u1, v0, v1, zf, zt, front_open=0.0):
+    """A hall's walls between its floor zf and the foot of its bracket band zt: vermilion pillars every
+    bay round it, the walls between them set in, three black-lacquered tie beams (長押) with gold caps
+    at the corners; on the front (u1) the middle bays open (front_open m wide) onto the dark interior."""
+    block(K("vermilion", "wall"), P, u0 + 0.25, u1 - 0.25, v0 + 0.25, v1 - 0.25, zf, zt)
+    if front_open:
+        block(K("frame"), P, u1 - 0.24, u1 - 0.2, -front_open / 2, front_open / 2, zf, zt - 0.5)
+        for v in np.linspace(-front_open / 2, front_open / 2, 5)[1:-1]:      # the lattice doors folded back
+            block(K("lacquer"), P, u1 - 0.3, u1 - 0.18, v - 0.06, v + 0.06, zf, zt - 0.5)
+    for (a, b) in (((u0, v0), (u1, v0)), ((u1, v0), (u1, v1)), ((u1, v1), (u0, v1)), ((u0, v1), (u0, v0))):
+        n = max(1, int(round(math.hypot(b[0] - a[0], b[1] - a[1]) / 2.7)))
+        for k in range(n):
+            t = k / n
+            uu, vv = a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+            lathe_at(K("vermilion"), *P(uu, vv, 0)[:2], [(zf, 0.3), (zt, 0.28)], 10)
+    for z in (zf + 0.35, zf + (zt - zf) * 0.62, zt - 0.3):
+        block(K("lacquer"), P, u0 - 0.12, u1 + 0.12, v0 - 0.12, v1 + 0.12, z - 0.14, z + 0.14)
+    for su in (u0, u1):
+        for sv in (v0, v1):
+            for z in (zf + 0.35, zf + (zt - zf) * 0.62, zt - 0.3):
+                block(K("gold"), P, su - 0.16, su + 0.16, sv - 0.16, sv + 0.16, z - 0.16, z + 0.16)
+    # the bracket band (組物): black, with a gilt line, under the eaves
+    block(K("lacquer"), P, u0 - 0.35, u1 + 0.35, v0 - 0.35, v1 + 0.35, zt, zt + 0.7)
+    block(K("gold"), P, u0 - 0.37, u1 + 0.37, v0 - 0.37, v1 + 0.37, zt + 0.32, zt + 0.4)
+
+
+def _roof_across(K, P, uc, hu, hv, z_eave, z_ridge, ov):
+    """A hip-and-gable roof in copper with its ridge across the frame (along v), centred at u = uc."""
+    Q = lambda a, b, z: P(uc + b, a, z)
+    r = jk.irimoya(K("copper_green"), K("vermilion", "gable"), K("soffit"), Q, hv, hu, z_eave, z_ridge, ov, gable_at=0.5)
+    K("lacquer").box(P(uc, -r["Ug"] - 0.3, z_ridge + 0.15), P(uc, r["Ug"] + 0.3, z_ridge + 0.15), 0.7, 0.55)   # the ridge
+
+
+def shaden(K, site):
+    """Kanda Myojin's hall (see above): the main hall, the offering hall and the worship hall, the wings
+    either side, the front roof over the steps on its posts, and the steps (shaden_steps)."""
+    P, u0, u1, v0, v1, z0, top, edge = (site[k] for k in ("P", "u0", "u1", "v0", "v1", "z0", "top", "edge"))
+    hw = min(10.5, (v1 - v0) / 2 - 1.0)          # the worship hall's half width (21 m across its front)
+    hf = edge - 1.6                              # its front wall
+    hb = hf - 11.0                               # its back wall
+    ob = hb - 5.5                                # the offering hall, to the main hall's front
+    mb = max(u0 + 0.8, ob - 14.0)                # the main hall's back wall
+    mh = min(hw, 10.0)
+    up = top + 0.45                              # the main hall's floor, a step above the rest
+    stone = K("stone")
+    # the stone platform: under the worship and offering halls to the front edge, higher under the main hall
+    block(stone, P, hb - 0.2, edge, -hw - 1.6, hw + 1.6, z0 - 0.4, top)
+    block(stone, P, mb - 1.2, hb - 0.2, -mh - 1.4, mh + 1.4, z0 - 0.4, up)
+    # the wings either side, along the courtyard: low halls on their own low plinth
+    wv0, wv1 = hw + 1.8, min(abs(v0), abs(v1)) - 0.6
+    if wv1 - wv0 > 3.0:
+        for s in (-1, 1):
+            Pw = lambda a, b, z, s=s: P(a, s * b, z)
+            wu0, wu1 = hb - 9.0, hf - 3.5
+            block(stone, Pw, wu0 - 0.6, wu1 + 0.6, wv0 - 0.6, wv1 + 0.6, z0 - 0.4, z0 + 0.5)
+            _body(K, P, wu0, wu1, *sorted((s * wv0, s * wv1)), z0 + 0.5, z0 + 3.6)
+            jk.irimoya(K("copper_green"), K("vermilion", "gable"), K("soffit"), lambda a, b, z, s=s: P((wu0 + wu1) / 2 + a, s * (wv0 + wv1) / 2 + b, z),
+                       (wu1 - wu0) / 2, (wv1 - wv0) / 2, z0 + 4.3, z0 + 7.6, 1.4, gable_at=0.5)
+    # the main hall (本殿)
+    _body(K, P, mb, ob, -mh, mh, up, up + 5.6)
+    _roof_across(K, P, (mb + ob) / 2, (ob - mb) / 2, mh, up + 6.3, z0 + 13.6, 2.2)
+    # the offering hall (幣殿), lower, its ridge running from the worship hall to the main hall
+    _body(K, P, ob - 0.3, hb + 0.3, -4.6, 4.6, top, top + 4.6)
+    jk.irimoya(K("copper_green"), K("vermilion", "gable"), K("soffit"), lambda a, b, z: P((ob + hb) / 2 + a, b, z),
+               (hb - ob) / 2 + 0.3, 4.6, top + 5.3, z0 + 10.4, 1.4, gable_at=0.5)
+    # the worship hall (拝殿), open across its middle bays
+    _body(K, P, hb, hf, -hw, hw, top, top + 5.2, front_open=11.0)
+    _roof_across(K, P, (hb + hf) / 2, (hf - hb) / 2, hw, top + 5.9, z0 + 13.0, 2.6)
+    # the front roof (向拝) over the steps, on four vermilion posts at their foot, its gable to the front
+    pu = edge + SHADEN_STEPS[0] * SHADEN_STEPS[1] + 0.5
+    for v in (-4.6, 4.6):
+        lathe_at(K("vermilion"), *P(pu, v, 0)[:2], [(z0, 0.32), (z0 + 4.0, 0.3)], 12)
+        block(K("stone"), P, pu - 0.45, pu + 0.45, v - 0.45, v + 0.45, z0 - 0.2, z0 + 0.25)
+    block(K("lacquer"), P, hf, pu + 0.4, -4.9, 4.9, z0 + 4.0, z0 + 4.55)          # the beam over the posts
+    block(K("gold"), P, pu + 0.38, pu + 0.44, -4.9, 4.9, z0 + 4.2, z0 + 4.35)
+    zr, ze, w = z0 + 6.4, z0 + 4.6, 6.0
+    roof, gable = K("copper_green"), K("vermilion", "gable")
+    ua, ub = hf - 0.5, pu + 1.6
+    for s in (-1, 1):
+        _facing(roof, [P(ua, 0, zr), P(ub, 0, zr), P(ub, s * w, ze), P(ua, s * w, ze)], up=True)
+        _facing(K("soffit"), [P(ua, 0, zr - 0.35), P(ub, 0, zr - 0.35), P(ub, s * w, ze - 0.05), P(ua, s * w, ze - 0.05)], up=False)
+    gable.tri(P(ub - 0.3, -w + 0.6, ze + 0.15), P(ub - 0.3, w - 0.6, ze + 0.15), P(ub - 0.3, 0, zr - 0.2))
+    K("gold").box(P(ub - 0.25, 0, zr - 1.0), P(ub - 0.25, 0, zr - 0.3), 0.5, 0.12)        # the gilt ornament in the gable
+    K("lacquer").box(P(ua, 0, zr + 0.15), P(ub + 0.1, 0, zr + 0.15), 0.5, 0.4)
+    shaden_steps(site)
+
+
+_SHADEN_STEPS = []
+
+
+def _facing(m, q, up):
+    """A quad wound to face up (or down)."""
+    n = np.cross(q[1] - q[0], q[2] - q[0])
+    m.quad(*(q if (n[2] > 0) == up else q[::-1]))
+
+
+def shaden_approach(site):
+    """The strip a walker takes up the front steps onto the platform (game.json "surfaces"), in a frame whose
+    u runs inward from the platform's front edge: {origin, axis, half_width, profile, z0, top}."""
+    P, z0, top, edge = site["P"], site["z0"], site["top"], site["edge"]
+    n, tread = SHADEN_STEPS
+    rise = (top - z0) / n
+    o, inward = P(edge, 0, 0)[:2], -(P(1, 0, 0)[:2] - P(0, 0, 0)[:2])
+    prof = [[-n * tread - 4.0, z0], [round(-n * tread - 0.02, 3), z0]]
+    for j in range(n):
+        a = -(n - j) * tread
+        prof += [[round(a + (0.02 if j else 0), 3), round(z0 + (j + 1) * rise, 3)], [round(a + tread, 3), round(z0 + (j + 1) * rise, 3)]]
+    prof.append([1.4, round(top, 3)])                # onto the platform, to the worship hall's open front
+    return {"origin": [float(o[0]), float(o[1])], "axis": [float(inward[0]), float(inward[1])], "half_width": 3.4, "profile": prof,
+            "z0": z0, "top": top, "rise": rise}
+
+
+def shaden_steps(site):
+    """The front steps in granite, under the strip's treads (shaden_approach), as a mesh of their own."""
+    from meshkit import Mesh
+    a = shaden_approach(site)
+    m = Mesh("akiba_shaden_steps", "stone", False)
+    F = frame(a["origin"], a["axis"])
+    n, tread = SHADEN_STEPS
+    for j in range(n):
+        block(m, F, -(n - j) * tread, 0.05, -a["half_width"] - 0.4, a["half_width"] + 0.4, a["z0"] - 0.3, a["z0"] + (j + 1) * a["rise"])
+    _SHADEN_STEPS[:] = [m]
+
+
 def nikolai(K, nk):
     """The dome on its drum over the crossing, the cross on top, and a lit lantern ring."""
     x, y = nk["c"]
@@ -247,7 +413,11 @@ def landmark_meshes(scene):
         zuishinmon(K, lm["zuishinmon"])
     if "nikolai" in lm:
         nikolai(K, lm["nikolai"])
-    return MATERIALS, K.meshes()
+    import archkit
+    site = shaden_site(archkit.load_solids("akihabara"), lm.get("zuishinmon"))
+    if site:
+        shaden(K, site)
+    return MATERIALS, K.meshes() + (_SHADEN_STEPS if site else []), {"hidden": site["si"] if site else []}
 
 
 def _grad(img, rect, top, bot):
@@ -340,12 +510,11 @@ def close_extras(lm, close):
         close.append(close_to("Zuishinmon, through the gate", P(0, 0, 0), zb, P(hu + 5.0, 0, 0), 1.0, on=True))
         v = (hv - 0.4) / 3                          # the posts either side of the passage (radius 0.32)
         close.append(close_to("Zuishinmon, a vermilion post", P(hu - 0.4 + 0.32, -v, 0), zb, P(hu + 4.5, -v, 0), 1.0))
-        hall = [q for q in solids if q["name"] == SHADEN and q["base"] == 0]
-        if hall:
-            q = max(hall, key=lambda q: archkit.ring_area(q["ring"]) ** 2)
-            gate_in = P(-hu - 2.0, 0, 0)            # the hall's face that looks at the gate
-            p, n = wall_point(q["ring"], gate_in)
-            close.append(close_to("Kanda Myojin, the hall's front", p, q["ground"], p + n * 5.0, 1.2))
+        site = shaden_site(solids, z)
+        if site:                                    # up the hall's front steps, onto its platform
+            a = shaden_approach(site)
+            o, d = np.asarray(a["origin"]), np.asarray(a["axis"])
+            close.append(close_to("Kanda Myojin, up the hall's front steps", o + d * 0.6, a["top"], o + d * (a["profile"][0][0] - 3.0), 1.0))
     nk = lm.get("nikolai")
     if nk:
         # the bell tower's block, its west front, where the door is (the cathedral faces west, the altar east)
@@ -355,6 +524,18 @@ def close_extras(lm, close):
             c = np.mean(np.asarray(west["ring"]), 0)
             p, n = wall_point(west["ring"], c + np.array([-30.0, 0.0]))
             close.append(close_to("Nikolai-do, under its bell tower", p, west["ground"], p + n * 5.0, 1.2))
+
+
+def game_surfaces(scene):
+    """Kanda Myojin's front steps, walked as a strip (shaden_approach)."""
+    import archkit
+    site = shaden_site(archkit.load_solids("akihabara"), scene["landmarks"].get("zuishinmon"))
+    if not site:
+        return []
+    a = shaden_approach(site)
+    return [{"name": "Kanda Myojin, the hall's front steps", "type": "strip", "origin": [round(v, 2) for v in a["origin"]],
+             "axis": [round(v, 5) for v in a["axis"]], "half_width": a["half_width"], "profile": a["profile"], "thickness": 1.2,
+             "mesh": "akiba_shaden_steps", "label": "Kanda Myojin 神田明神"}]
 
 
 def game_extras(scene):
