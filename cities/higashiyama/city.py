@@ -513,7 +513,7 @@ def landmark_assets(out_dir, scene):
     x, y, w, h = LANES_ATLAS.rects["koshi"]
     for k in range(0, w, 16):   # the lattice: thin vertical slats close together, two rails across
         d.rectangle([x + k, y, x + k + 9, y + h - 1], fill=(58, 44, 34, 255))
-    for yy in (y + 18, y + h - 30):
+    for yy in (y, y + 18, y + h - 30):
         d.rectangle([x, yy, x + w - 1, yy + 12], fill=(48, 36, 28, 255))
     x, y, w, h = LANES_ATLAS.rects["chochin"]
     d.ellipse([x, y, x + w - 1, y + h - 1], fill=(240, 226, 196, 255))

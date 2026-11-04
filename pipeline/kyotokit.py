@@ -139,12 +139,13 @@ def romon(K, M, P, z0, frontage, depth, ridge, nio=True, lattice=True, ground=No
     return {"stone": zb, "balcony": zbal, "eave": ze}
 
 
-def kirizuma(K, M, P, hu, hv, z_eave, z_ridge, ov_u, ov_v, k=1.5):
+def kirizuma(K, M, P, hu, hv, z_eave, z_ridge, ov_u, ov_v, k=1.3):
     """A gabled roof with its ridge along v (across the passage), its slopes curving down to the eaves
     front and back, barge boards at the gables, the ridge and its end tiles."""
     us = np.linspace(-(hu + ov_u), hu + ov_u, 15)
     Eu = hu + ov_u
-    zr = lambda u: z_eave + (z_ridge - z_eave) * (1 - abs(u) / Eu) ** (1 / k)
+    # the slope sags (concave): flat at the eaves, steeper toward the ridge, as a temple roof's does
+    zr = lambda u: z_eave + (z_ridge - z_eave) * (1 - abs(u) / Eu) ** k
     vs = np.linspace(-(hv + ov_v), hv + ov_v, 5)
     K[M["roof"]].grid([[P(u, v, zr(u)) for v in vs] for u in us])
     for sv in (-1, 1):
@@ -353,8 +354,8 @@ def torii(m_body, m_black, h, span, r=None, style="inari", text=None):
     ends = half + r * 4.5
     pts = [(x, 0, zs + 0.09 * h * (abs(x) / ends) ** 2.2) for x in np.linspace(-ends, ends, 7)]
     for a, b in zip(pts, pts[1:]):
-        m_body.box(a, b, 1.5 * r, 0.06 * h)
-        m_black.box((a[0], a[1], a[2] + 0.075 * h), (b[0], b[1], b[2] + 0.075 * h), 1.8 * r, 0.05 * h)
+        m_body.box(a, b, 1.3 * r, 0.06 * h)
+        m_black.box((a[0], a[1], a[2] + 0.065 * h), (b[0], b[1], b[2] + 0.065 * h), 1.4 * r, 0.03 * h)
 
 
 def stone_lantern(m, h=2.0):

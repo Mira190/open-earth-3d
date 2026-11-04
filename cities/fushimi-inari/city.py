@@ -39,6 +39,8 @@ MATERIALS = {
     # Inari's vermilion: red lead (鉛丹), a brighter orange than Kiyomizu's
     "inari_shu": {"color": "#d8502a", "roughness": 0.55, "metalness": 0.0, "emissive": "#ff7a40", "glow": 0.45},
     "inari_black": {"color": "#1d1a19", "roughness": 0.5, "metalness": 0.05},
+    # the torii: lit only by the lanterns along the path after dark, not floodlit
+    "torii_shu": {"color": "#d24e28", "roughness": 0.5, "metalness": 0.0},
     "inari_white": {"color": "#f0ebde", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffe2bc", "glow": 0.25},
     "bracket_green": {"color": "#356e5a", "roughness": 0.7, "metalness": 0.0},
     "gold": {"color": "#d6a93a", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.5},
@@ -56,7 +58,7 @@ MATERIALS = {
     "bronze": {"color": "#4c4234", "roughness": 0.45, "metalness": 0.75},
     "nio": {"color": "#8a5a3c", "roughness": 0.7, "metalness": 0.1},
     "wood_dark": {"color": "#4a3a2e", "roughness": 0.85, "metalness": 0.0},
-    "lamp_glass": {"color": "#f6e7c4", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffc070", "glow": 1.8},
+    "lamp_glass": {"color": "#f6e7c4", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffc070", "glow": 0.5},
     "setts": {"color": "#8f8a80", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.4], "street_lit": True},
     "kerb": {"color": "#a19b90", "roughness": 0.9, "metalness": 0.0},
     # the donors' names on the torii's backs
@@ -374,7 +376,7 @@ def torii_props():
         if not at:
             continue
         h, span = KINDS[kind]
-        body = Mesh(f"torii_{kind}_shu", "inari_shu", False, floodlit=True)
+        body = Mesh(f"torii_{kind}_shu", "torii_shu", False)
         black = Mesh(f"torii_{kind}_black", "inari_black", False)
         words = Mesh(f"torii_{kind}_words", "inari_words", False, uv=True)
         kk.torii(body, black, h, span)
@@ -441,7 +443,7 @@ def landmark_assets(out_dir, scene):
 
 
 def landmark_glows(scene):
-    return [[a[0], a[1], 7.0, "#ffb070", 0.3] for a in lamps()]
+    return [[a[0], a[1], 6.0, "#ffb070", 0.22] for a in lamps()]
 
 
 def finalize(ctx):
