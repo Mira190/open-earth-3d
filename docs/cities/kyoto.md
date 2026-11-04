@@ -118,5 +118,7 @@ the pavement are read from the photograph, not measured.
   above 31 m (1,340) and 45 m (65) are from the model, and inherit the PLATEAU question in section 1.
 - The Kyoto Tower radii and observation-deck shape are an approximation.
 - The `accuracy` panel compares PLATEAU with OSM-mapped heights, not with published tower heights.
-- The trees are stand-ins: the shared trees have no ginkgo, cherry or maple, so the zelkovas
-  are drawn as elms and the street planes and ginkgos as plane trees (`trees.mix`).
+- The trees are the shared set's ginkgos, zelkovas, maples, pines and camphors, and its
+  Somei-yoshino cherries along the Takase canal, at Gion Shirakawa, in the Gyoen and at Nijo-jo,
+  in flower from 26 March (`trees.cherry_open`); the Gyoen's weeping cherries are Somei-yoshino
+  too, and the Philosopher's Path and Maruyama Park are east of the map.
