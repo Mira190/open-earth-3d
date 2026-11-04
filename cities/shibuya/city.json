@@ -79,6 +79,13 @@
     "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py).",
     "areas": [
       {
+        "name": "Hachiko Square",
+        "at": [376.0, -1043.0],
+        "radius": 14.0,
+        "mix": {"maple": 0.5, "zelkova": 0.5},
+        "note": "Hachiko Square: cherries in the round planters and a maple behind Hachiko. The shared trees have no cherry; a spreading zelkova stands in for it"
+      },
+      {
         "name": "Meiji Jingu",
         "find": "明治神宮",
         "mix": {

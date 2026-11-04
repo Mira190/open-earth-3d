@@ -119,7 +119,8 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
   // own mix (a garden's maples, a palace lawn's pines): mix for every tree there, woods (if given) for
   // those planted from the canopy; woods: the mix of the trees planted from a wood's canopy (the city's
   // own without its palms if not given)
-  function create(world, lib, list, { mix = null, woods = null, south = true, measured = Infinity, keep = 1, areas = [] } = {}) {
+  // fixed: the index from which the trees are a landmark's own, standing where it puts them (on a planter, a terrace)
+  function create(world, lib, list, { mix = null, woods = null, south = true, measured = Infinity, keep = 1, areas = [], fixed = Infinity } = {}) {
     const I = lib.info, n = list.length / 4;
     const AT = I.atlas || {}, cells = AT.cells || {};
     const A = { cols: AT.columns || 4, rows: AT.rows || 2, bloom: cells.bloom ?? 5, maple: cells.maple ?? 7 };
@@ -185,13 +186,13 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
-      const wood = i >= measured;
+      const wood = i >= measured && i < fixed; // (a landmark's own trees are each placed: never thinned out)
       const zi = zones.findIndex(a => inZone(a, x, y));
       const k = pick(hash(x, y), zi >= 0 ? (wood ? zoneWood[zi] : zoneW[zi]) : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
-      const s = wood ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
+      const s = i >= measured ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
         : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
       q.setFromAxisAngle(up, hash(y, x) * Math.PI * 2);
       m4.compose(at.set(x, z - 0.05, -y), q, sc.set(s, s * (0.92 + 0.16 * hash(x + 1, y)), s));
@@ -276,6 +277,7 @@ if (uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11)); int
       // for a tree not to draw
       reseat(ground) {
         for (let i = 0; i < n; i++) {
+          if (i >= fixed) continue; // a landmark's own tree: on its planter or terrace, not the ground under it
           const z = ground(list[4 * i] / 10, list[4 * i + 1] / 10, list[4 * i + 2] / 10);
           if (z == null) { M.fill(0, 16 * i, 16 * i + 15); M[16 * i + 15] = 1; continue; } // shrunk to a point
           if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // one left out

@@ -222,6 +222,13 @@ measured from the data (footprint centroids, bearings), never from guesses.
   path), `panel` (a strip for a cut-out pattern) and `rails`;
 - `grid`, `quad` and `tri` for anything else.
 
+`pipeline/sculptkit.py` is for what is organic (a statue, a rock, a pruned pine): shapes as signed
+distance fields (ellipsoids, capsules and tapered limbs, tori, boxes) joined with smooth unions, carved,
+roughened with noise, and meshed by surface nets into a closed mesh with shared vertices, which the
+viewer smooths (Hachiko, `cities/shibuya/hachiko.py`). Set the mesh's `digits = 3` to keep millimetres.
+`python3 tools/sculpt_preview.py <module.py> out.png` draws a module's `sculpt()` from four sides
+without the browser, to check its shape while modelling it.
+
 `pipeline/archkit.py` builds on it with the parts buildings are made of, in a
 building's frame (`Frame(cx, cy, axis_deg, ground)`, u along, v across): walls
 with ashlar UVs, cornices and string courses swept round an outline, arched and
