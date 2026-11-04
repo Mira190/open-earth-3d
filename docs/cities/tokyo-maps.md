@@ -11,6 +11,10 @@ station goes into that district.
 | Shinjuku 新宿 | `shinjuku` | Shinjuku, Yotsuya | Suga Shrine's stairs, Kabukicho's arch, the east exit's screens, the Docomo tower's clock |
 | Asakusa 浅草 | `asakusa` | Asakusa, Oshiage · Skytree | Senso-ji (Kaminarimon, Hozomon, pagoda, main hall), Tokyo Skytree, the Asahi flame |
 | Akihabara 秋葉原 | `akihabara` | Akihabara | Electric Town's signs and prints, Kanda Myojin's Zuishinmon, Nikolai-do's dome |
+| Ueno 上野 | `ueno` | Ueno | Shinobazu Pond's water and lotus, Bentendo, Toshogu's Konjiki-den, Kan'ei-ji's pagoda, Saigo's statue, Ameyoko's signs and gate |
+| Ikebukuro 池袋 | `ikebukuro` | Ikebukuro | Sunshine 60-dori's and Otome Road's signs, the stores' roof names, GLOBAL RING |
+| Jinbocho 神保町 | `jinbocho` | Jinbocho | The book town's signs and carts, the Catholic Kanda Church, Nikolai-do (shared with Akihabara) |
+| Roppongi 六本木 | `roppongi` | Roppongi | Maman, the Mohri Garden's pond, the National Art Center's glass wave, Keyakizaka's lights, the crossing's signs |
 
 Shibuya and Shinjuku were one map, 5.4 × 6.2 km from Sangenjaya to Yotsuya, until they were split
 in two by the rule above (issue #85). Shibuya runs 4.45 × 4.0 km from Sangenjaya to Harajuku and
@@ -23,8 +27,12 @@ and the game's points kept their ids. An old link to a point that moved, `#play-
 opens `#play-shinjuku@t-suga` (`moved` in `cities/index.json`, read by the router in
 `web/index.html`), and a saved game whose position is no longer in its map starts at the map's start.
 
-Next in line, grey on the map: Ueno, Ikebukuro, Jinbocho, Roppongi, Tsukishima, Odaiba,
-Shinagawa.
+Next in line, grey on the map: Tsukishima, Odaiba, Shinagawa.
+
+The district maps after the first four share their parts in `pipeline/districtkit.py` (ponds above
+the sea, a pagoda, a bronze figure, stone lanterns, an octagonal hall, a street's gate) on top of
+`pipeline/japankit.py`. A map whose ponds stand above the sea (Ueno's Shinobazu) draws them at
+their own level and gives them to the game as water through a `game_ponds` hook in its `city.py`.
 
 ## How games draw Tokyo, and what was taken from them
 

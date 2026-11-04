@@ -37,6 +37,22 @@
     "pixel_deg": 5.5e-05,
     "fill_below_m": -3.0,
     "bare_earth": true,
+    "level": [
+      {
+        "name": "Arts Centre Melbourne, the Theatres Building and its forecourt on St Kilda Road",
+        "ring": [[144.968512, -37.821821], [144.968414, -37.821874], [144.968287, -37.82188], [144.968203, -37.821835], [144.968156, -37.821753], [144.968324, -37.82116], [144.968378, -37.821086], [144.968463, -37.82105], [144.968545, -37.82105], [144.968635, -37.821086], [144.968906, -37.821086], [144.969194, -37.821716], [144.968554, -37.821752]],
+        "z_m": 8.7,
+        "feather_m": 4,
+        "note": "The Theatres Building lies under its forecourt, mostly below St Kilda Road. The bare-earth filter takes out its roof and the forecourt over it and fills the gap from the Southbank promenade, which digs a pit 10 m deep under the spire (-1 to 2 m against 8.3 to 9.2 m on St Kilda Road beside it), and under the west edge of the road and its footpath. The building's outline (OpenStreetMap way 22664482, 5 m in from it, a DEM cell, so the promenade beside it keeps its own level) and the forecourt out to the road are levelled to the road's 8.7 m; the building itself is drawn by cities/melbourne/city.py on the outline."
+      },
+      {
+        "name": "Southbank promenade beside the Theatres Building's west wall",
+        "ring": [[144.967997, -37.821554], [144.968164, -37.821554], [144.968267, -37.821194], [144.967997, -37.821194]],
+        "z_m": 4.3,
+        "feather_m": 3,
+        "note": "The same pit reaches out under the promenade along the building's river side (-1 to 3 m against the promenade's 4 to 5 m round it): levelled to 4.3 m, out to a metre inside the wall."
+      }
+    ],
     "attribution": "Geoscience Australia DEM_LiDAR_5m_2025, 5 m bare earth from LiDAR (CC BY 4.0)"
   },
   "terrain_check": {
