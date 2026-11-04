@@ -3092,16 +3092,31 @@ def ring_wall(m, c, r, a0, a1, z0, z1, out=True, seg_deg=4.0):
 
 
 def ring_top(m, c, r0, r1, a0, a1, z, seg_deg=4.0, polar_uv=False):
-    """A flat annular sector facing up; UVs in metres (polar: along the arcs and out from the centre)."""
+    """An annular sector facing up, flat at z or, where z is a function of (x, y), lying on it; UVs in
+    metres (polar: along the arcs and out from the centre)."""
     n = max(2, int(abs(a1 - a0) / math.radians(seg_deg)))
     a = np.linspace(a0, a1, n + 1)
     if a1 < a0:
         a = a[::-1]
     for k in range(n):
         pts = [(r0, a[k]), (r0, a[k + 1]), (r1, a[k + 1]), (r1, a[k])]
-        P3 = [np.array([c[0] + r * math.cos(t), c[1] + r * math.sin(t), z]) for r, t in pts]
+        P3 = [np.array([c[0] + r * math.cos(t), c[1] + r * math.sin(t), 0.0]) for r, t in pts]
+        for p in P3:
+            p[2] = z(p[0], p[1]) if callable(z) else z
         uv = [[r * t, r] for r, t in pts] if polar_uv else [[p[0], p[1]] for p in P3]
         m.quad(*P3, uv)
+
+
+def ground_cell(m, poly, gz, lift):
+    """A polygon of paving lying lift over the ground, UVs in metres. A cell cut by a curve can be
+    concave, so it is cut into the triangles of its vertices that lie inside it, not fanned."""
+    from shapely.geometry.polygon import orient
+    from shapely.ops import triangulate
+    for t in triangulate(poly):
+        if t.area < 1e-5 or not poly.contains(t.representative_point()):
+            continue
+        pts = [np.array([px, py, gz(px, py) + lift]) for px, py in list(orient(t).exterior.coords)[:-1]]
+        m.tri(*pts, [list(p[:2]) for p in pts])
 
 
 def rail_ring(m, c, r, a0, a1, z, seg_deg=6.0, radius=0.028):
@@ -3160,17 +3175,18 @@ def hachiko_square(K, h, lm):
             cell = Polygon([(x, y), (x + 2, y), (x + 2, y + 2), (x, y + 2)]).intersection(sq)
             if cell.is_empty or cell.geom_type != "Polygon" or cell.area < 0.05:
                 continue
-            pts = [np.array([px, py, gz(px, py) + 0.06]) for px, py in list(cell.exterior.coords)[:-1]]
-            for k in range(1, len(pts) - 1):
-                K("plaza").tri(pts[0], pts[k], pts[k + 1], [list(pts[0][:2]), list(pts[k][:2]), list(pts[k + 1][:2])])
+            ground_cell(K("plaza"), cell, gz, 0.06)
     for lx, ly in HACHIKO_LAMPS:
         g = gz(lx, ly)
         lathe_at(K("steel_dark"), lx, ly, [(g, 0.14), (g + 8.0, 0.09), (g + 8.05, 0.0)], 8)
         lathe_at(K("lamp", "lit"), lx, ly, [(g + 7.6, 0.0), (g + 7.6, 0.45), (g + 8.0, 0.45), (g + 8.05, 0.0)], 10)
     # grey granite setts laid in arcs round him and on out round the planters (photographs 2020-21: the
     # square's clay pavers start beyond them), the arcs round him edged by two bands of darker stone
-    zd = z + 0.075
-    ring_top(K("hk_setts"), at, 0.0, HK_DISC_M, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
+    # on the ground, which rises 9 cm across them (laid flat at his foot, the clay pavers round them would
+    # come up through their uphill side)
+    zd = lambda x, y: max(z, gz(x, y)) + 0.075
+    for k in range(6):
+        ring_top(K("hk_setts"), at, HK_DISC_M * k / 6, HK_DISC_M * (k + 1) / 6, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
     from shapely.ops import unary_union
     field = unary_union([Point(*c).buffer(HK_PLANTER["r"] + 2.6, 24) for c in HK_PLANTERS] + [Point(*at).buffer(HK_DISC_M, 48)]).convex_hull
     field = field.intersection(Polygon(HACHIKO_SQUARE).buffer(-0.3)).difference(Point(*at).buffer(HK_DISC_M - 0.02, 48))
@@ -3180,11 +3196,9 @@ def hachiko_square(K, h, lm):
             for g in getattr(cell, "geoms", [cell]):
                 if g.is_empty or g.geom_type != "Polygon" or g.area < 0.02:
                     continue
-                pts = [np.array([px, py, gz(px, py) + 0.07]) for px, py in list(g.exterior.coords)[:-1]]
-                for k in range(1, len(pts) - 1):
-                    K("hk_setts").tri(pts[0], pts[k], pts[k + 1], [list(pts[0][:2]), list(pts[k][:2]), list(pts[k + 1][:2])])
+                ground_cell(K("hk_setts"), g, gz, 0.07)
     for r in (3.1, HK_DISC_M - 0.15):
-        ring_top(K("hk_band"), at, r - 0.08, r + 0.08, 0.0, 2 * math.pi, zd + 0.004, 5.0)
+        ring_top(K("hk_band"), at, r - 0.08, r + 0.08, 0.0, 2 * math.pi, lambda x, y: zd(x, y) + 0.004, 5.0)
     for k, (bx, by) in enumerate(HK_BLOSSOMS):
         blossom(K("hk_inlay"), (bx, by), 0.85, gz(bx, by) + 0.08, turn=0.4 * k)
     # the bed behind him: the low wall people sit on, its cap, the soil, stainless rails, lamps in the wall
