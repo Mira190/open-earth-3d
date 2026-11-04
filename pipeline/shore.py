@@ -80,8 +80,9 @@ def deck_like(r):
 def decks(C, con, raw, rows, sea):
     """Deck polygons (local frame) for the structures over the water that are not pier polygons:
     any area tagged man_made=pier whatever its Overture class, areas of DECK_CLASSES mostly in the
-    water and at ground level (deck_like), and the water part of each line pier, as wide as the
-    roads that run along it over the water (a service road down a finger pier), else a 3 m jetty.
+    water and at ground level (deck_like), the water part of each line pier, as wide as the
+    roads that run along it over the water (a service road down a finger pier), else a 3 m jetty,
+    and the wharf decks mapped as buildings (wet_buildings.py).
     pipeline/build_scene.py adds them to the piers."""
     path = raw("infrastructure")
     if not sea or not os.path.exists(path):
@@ -139,6 +140,9 @@ def decks(C, con, raw, rows, sea):
                     if len(pts) >= 5:
                         half = max(half, min(LINE_PIER_MAX_HALF_M, max(ln.distance(q) for q in pts) + widths[i]))
             out += [p for p in polygons(ln.buffer(half, cap_style="flat").intersection(wet.buffer(half))) if p.area > 20]
+    # a wharf deck mapped as a building (pipeline/wet_buildings.py: Garden Island's cruiser wharf)
+    import wet_buildings
+    out += wet_buildings.decks(C, con, raw, sea)
     return out
 
 
