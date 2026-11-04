@@ -576,7 +576,18 @@ pipeline writes. The only city-specific code is landmark geometry in
       and dropped 30 m in 23 m off the deck; it now runs from the deck down to
       its north end at Milsons Point.
     - The crowd and the traffic keep to the decks, the sun meter sees their
-      shade, and you can walk them (but not the expressways). In Osaka this is
+      shade, and you can walk them (but not the expressways). The traffic's
+      router (route.js) looks for a car's floor along each road, which takes the
+      expressways' decks (`nav.floorAt(x, y, z, true)`), at the height the car
+      drives at: on a deck the line's, on the ground the ground's, since a hill
+      road's straight line between two of its points cuts under the brow of the
+      hill. Before (issue #119) it looked for a walker's floor at the line's
+      height, so it kept the traffic off the whole Shuto and Hanshin
+      expressways and Hong Kong's hill roads, though their decks were built and
+      drawn. Road pieces the traffic keeps off, before and after: Osaka 139 to
+      15, Tokyo 79 to 6, Hong Kong 47 to 4 (`tools/road_walls.js`); none is left
+      with no floor at its height (`tools/deck_gaps.js` lists any, with the decks
+      at each spot and why). In Osaka this is
       what joins the city across its rivers: from the start on the Dotonbori,
       every NPC can now be reached on foot.
   - **Everything else on the ground:** passers-by, cars, trees, benches and
@@ -1376,8 +1387,7 @@ drop or into the water.
     10; Paris 17, 14; Akihabara 15, 5; Shinagawa 14, 19; Hong Kong 13, 15;
     Jinbocho 11, 3; Sydney 11, 9; Tsukishima 5, 5, 3. What `road_walls.js` still
     lists afterwards is mostly alleys and roads through landmarks (Odaiba's 41
-    stretches, Amsterdam 32, Paris 21: issue #120); elevated roads with no deck
-    under them stay off the traffic's way (issue #119). The
+    stretches, Amsterdam 32, Paris 21: issue #120). The
     game check counts the car-seconds in a wall (at most 1%), the cars waiting at
     a wall and the one-way roads into one.
 - **Helipads on roofs:** a pad the data puts on the ground inside a building's

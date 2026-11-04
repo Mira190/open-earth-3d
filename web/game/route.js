@@ -95,7 +95,7 @@ window.OERoute = (function () {
     return out;
   }
 
-  function create({ nav, footNet, roadNet, DSM, helipads = [], lifts = [] }) {
+  function create({ nav, footNet, roadNet, DSM, helipads = [], lifts = [], ground = null }) {
     // ------------------------------------------------------------ what a walker can do
     // stand at (x, y) on the floor of a line at height zl: the floor stood on, or NaN
     function standZ(x, y, zl, tol = LEVEL) {
@@ -257,6 +257,7 @@ window.OERoute = (function () {
           pos.x = p[3 * k - 3] + (p[3 * k] - p[3 * k - 3]) * t; pos.y = p[3 * k - 2] + (p[3 * k + 1] - p[3 * k - 2]) * t; pos.z = p[3 * k - 1] + (p[3 * k + 2] - p[3 * k - 1]) * t;
           const hx = p[3 * k] - p[3 * k - 3], hy = p[3 * k + 1] - p[3 * k - 2], h = Math.hypot(hx, hy) || 1;
           pos.hx = hx / h; pos.hy = hy / h;
+          pos.deck = l.deck ? l.deck[k - 1] : 0;
         };
         const finish = (run, b, cls) => {
           if (!run || run.pts.length < 6) return;
@@ -309,13 +310,16 @@ window.OERoute = (function () {
           const a = l.stops[i - 1].at, b = l.stops[i].at, na = newNode(a[0], a[1], a[2]), nb = newNode(b[0], b[1], b[2]);
           EA.push(na); EB.push(nb); EM.push(LIFT); EP.push(Float32Array.of(a[0], a[1], a[2], b[0], b[1], b[2]));
         }
-        // the roads as a car drives them: a floor near the road's height every 2 m, and room for the car
+        // the roads as a car drives them: a floor near the height the car drives at every 2 m (on a deck, the
+        // line's; on the ground, the ground's: ground(), as cars.js has it, since a hill road's straight line
+        // between two of its points cuts under the brow of the hill), and room for the car. A car's floor takes
+        // the expressways' decks, which a walker's does not (issue 119)
         for (let i = 0; i < roadNet.L.length; i++) {
           const l = roadNet.L[i], n = Math.max(1, Math.ceil(l.len / 2));
           for (let j = 0; j <= n && !drive[i]; j++) {
             lineAt(l, l.len * j / n);
-            const f = nav.floorAt(pos.x, pos.y, pos.z + 0.6);
-            if (!f || Math.abs(f.z - pos.z) > LEVEL || !nav.room(pos.x, pos.y, f.z, 0.9, 1.6, nav.isDeck(f.kind))) drive[i] = 1;
+            const zd = (ground && ground(pos.x, pos.y, pos)) ?? pos.z, f = nav.floorAt(pos.x, pos.y, zd + 0.6, true);
+            if (!f || Math.abs(f.z - zd) > LEVEL || !nav.room(pos.x, pos.y, f.z, 0.9, 1.6, nav.isDeck(f.kind))) drive[i] = 1;
           }
           if (i % 100 === 0) await tick(0.85 + 0.15 * i / roadNet.L.length, 'the roads');
         }

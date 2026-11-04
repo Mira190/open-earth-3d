@@ -982,5 +982,5 @@ window.OEJunctions = (function () {
     return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list };
   }
 
-  return { create, STYLES, RANK, lanesOf, shiftOf };
+  return { create, STYLES, RANK, lanesOf, shiftOf, byClass };
 })();

@@ -573,7 +573,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const CARS_OK = !!(vlib && vlib.cars && Object.values(vlib.info.cars.models).some(m => m.seats));
   const carCfg = Object.assign({ model: 'Car_Hatch', colour: '#c8372d', seat: '#34363a' }, (G.vehicles || {}).car);
   // the ways you can actually go, on foot, by road and in the air (route.js), worked out in slices behind the title
-  const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [] });
+  const ways = OERoute.create({ nav, footNet, roadNet, DSM, helipads: G.helipads, lifts: G.lifts || [], ground: lineGround });
   roadNet.avoid = ways.drive;
   const roads = OECars.router(roadNet, { avoid: ways.drive }), headlamp = CARS_OK ? OECars.headlamp(world) : null, rq = {};
   // a pose at the kerb of a place on the roads (router.place), facing the way it goes
