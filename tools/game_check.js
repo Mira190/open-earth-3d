@@ -1204,7 +1204,7 @@ const npcNight = require('./npc_night');
     const seen = [];
     for (let i = 0; i < 8 && g.shed(); i++) {
       await frames(2);
-      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror ? !!g.mirror.off : null, px: g.pxScale() });
+      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
     }
     const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
     if (W) W.set('live');
