@@ -462,6 +462,11 @@ RIJKS_OSM = "w431070185"  # the Rijksmuseumgebouw: 46 solids in the 3DBAG
 # measured solids on each front (local metres)
 RIJKS_PASSAGE = ((-473.0, -1420.5), (-512.5, -1467.0))
 PASSAGE_W, PASSAGE_SPRING, PASSAGE_CROWN = 10.0, 6.5, 10.0  # m, from photographs
+# the side aisles either side of it, for walkers: their axes where OpenStreetMap maps the two footways
+# through the building (ways 310324474 and 310324477, 7.8 m either side of the cycle path's), each under the
+# smaller arch either side of the great one on both fronts (3.2 m wide, springing at 4.4 m), and open to the
+# cycle passage through an arcade between the vault's pilasters (issues #120, #127)
+AISLE_V, AISLE_W, AISLE_SPRING, AISLE_CROWN = 7.8, 3.2, 4.4, 6.0
 # storeys above the building's ground (m): the granite plinth, the ground floor, the main floor of the
 # galleries and the attic, each with its windows (sill, width, height to the arch's crown)
 RIJKS_BANDS = (2.6, 9.6, 18.8)
@@ -495,7 +500,8 @@ def rijksmuseum():
     red brick with sandstone string courses over a granite plinth, arched windows in rows on every outer
     wall, the 3DBAG's measured roofs in slate (glass over the two courtyards), gilt finials on the towers;
     and the passage through the central wing from the Stadhouderskade front to the Museumplein front, a
-    10 m wide vaulted tunnel under a great arch at each end, with a smaller blind arch either side."""
+    10 m wide vaulted tunnel under a great arch at each end, with a smaller arch either side into an aisle
+    for walkers, open to the cycle passage through an arcade, its outer wall glass."""
     from shapely.geometry import LineString, Polygon
     solids = [s for s in ak.load_solids("amsterdam") if s["osm"] == RIJKS_OSM]
     if not solids:
@@ -511,6 +517,8 @@ def rijksmuseum():
     d = (b - a) / np.linalg.norm(b - a)
     f = np.array([-d[1], d[0]])  # across the passage
     C = LineString([a - d * 25, b + d * 25]).buffer(PASSAGE_W / 2, cap_style="flat")  # out past both fronts
+    aw = AISLE_V + AISLE_W / 2  # the aisles' outer walls, from the axis
+    CA = LineString([a - d * 25, b + d * 25]).buffer(aw, cap_style="flat")  # the passage and its aisles
     pz = T(*((a + b) / 2))  # the passage's floor
     crown = pz + PASSAGE_CROWN
 
@@ -553,10 +561,13 @@ def rijksmuseum():
         g0 = sd["ground"]
         eave = g0 + (r["eave"] if r else sd["top"])
         z0 = g0 - 0.6
-        if poly.intersection(C).area > 1.0 and eave > crown + 1.0:  # under it, the passage
-            for p in getattr(poly.difference(C), "geoms", [poly.difference(C)]):
-                if p.area > 0.5:
-                    walls(list(p.exterior.coords), z0, crown)
+        if poly.intersection(CA).area > 1.0 and eave > crown + 1.0:  # under it, the passage and its aisles
+            za = pz + AISLE_CROWN
+            for cut, zz0, zz1 in ((CA, z0, za), (C, za, crown)):
+                rest = poly.difference(cut)
+                for p in getattr(rest, "geoms", [rest]):
+                    if p.area > 0.5:
+                        walls(list(p.exterior.coords), zz0, zz1, detail=zz0 == z0)
             z0 = crown
         rings = [list(poly.exterior.coords)] if poly.geom_type == "Polygon" else [list(g.exterior.coords) for g in poly.geoms]
         for ring in rings:
@@ -581,6 +592,12 @@ def rijksmuseum():
         [float(np.dot(np.asarray(c) - a, d)) for g in inside.geoms for c in g.exterior.coords]
     t0, t1 = min(ts), max(ts)
     hw = PASSAGE_W / 2
+    ends = {}  # each aisle's two fronts, along the axis
+    for side in (-1, 1):
+        lane = LineString([a - d * 25 + f * side * AISLE_V, b + d * 25 + f * side * AISLE_V]).buffer(AISLE_W / 2, cap_style="flat").intersection(U)
+        cs = [c for g in getattr(lane, "geoms", [lane]) for c in g.exterior.coords]
+        tt = [float(np.dot(np.asarray(c) - a, d)) for c in cs] or [t0, t1]
+        ends[side] = (min(tt), max(tt))
     zv = lambda v: pz + PASSAGE_SPRING + (PASSAGE_CROWN - PASSAGE_SPRING) * (1 - (v / hw) ** 2)
     vs = np.linspace(-hw, hw, 13)
     Pt = lambda t, v, z: (*(a + d * t + f * v), z)
@@ -602,21 +619,60 @@ def rijksmuseum():
             stone.box(Pt(t + o, v0, zv(v0) + 0.35), Pt(t + o, v1, zv(v1) + 0.35), 0.7, 0.5, up=tuple(d) + (0,))
         for v in (-hw, hw):  # its piers
             granite.box(Pt(t + o, v, pz - 0.3), Pt(t + o, v, pz + PASSAGE_SPRING), 0.9, 0.5, up=(0, 0, 1))
-        for side in (-1, 1):  # a blind arch either side, dark
-            vc = side * (hw + 3.6)
-            pts = [(vc + 1.6 * math.cos(q), pz + 4.4 + 1.6 * math.sin(q)) for q in np.linspace(0, math.pi, 9)]
-            win.quad(Pt(t + out * 0.06, vc - 1.6, pz), Pt(t + out * 0.06, vc + 1.6, pz), Pt(t + out * 0.06, vc + 1.6, pz + 4.4), Pt(t + out * 0.06, vc - 1.6, pz + 4.4))
+        for side in (-1, 1):  # the smaller arch either side, into an aisle
+            vc, ar = side * AISLE_V, AISLE_W / 2
+            ta = ends[side][0 if out < 0 else 1]
+            pts = [(vc + ar * math.cos(q), pz + AISLE_SPRING + ar * math.sin(q)) for q in np.linspace(0, math.pi, 9)]
             for (v0, z0), (v1, z1) in zip(pts[:-1], pts[1:]):
-                win.tri(Pt(t + out * 0.06, vc, pz + 4.4), Pt(t + out * 0.06, v0, z0), Pt(t + out * 0.06, v1, z1))
-                stone.box(Pt(t + out * 0.18, v0, z0 + 0.2), Pt(t + out * 0.18, v1, z1 + 0.2), 0.4, 0.35, up=tuple(d) + (0,))
+                stone.box(Pt(ta + out * 0.12, v0, z0 + 0.2), Pt(ta + out * 0.12, v1, z1 + 0.2), 0.4, 0.35, up=tuple(d) + (0,))
+                # the brick between the arch and the aisle's ceiling, on the front and on the inside
+                for o2, sgn in ((0.0, 1), (-out * 0.5, -1)):
+                    zc = pz + AISLE_CROWN + 0.05
+                    brick.quad(*([Pt(ta + o2, v0, z0), Pt(ta + o2, v1, z1), Pt(ta + o2, v1, zc), Pt(ta + o2, v0, zc)][::sgn * side * int(out)]))
+            for v in (vc - ar, vc + ar):  # its piers
+                granite.box(Pt(ta + out * 0.12, v, pz - 0.3), Pt(ta + out * 0.12, v, pz + AISLE_SPRING), 0.5, 0.4, up=(0, 0, 1))
+    # the aisles: a barrel vault over each, an arcade between it and the cycle passage (an arch between each
+    # two of the vault's pilasters, on piers), the outer wall glass with the museum's doors behind it
+    for side in (-1, 1):
+        sa, sb = ends[side]
+        vi, vo = side * hw, side * aw
+        vs2 = np.linspace(min(vi, vo), max(vi, vo), 7)
+        zs = lambda v: pz + AISLE_SPRING + (AISLE_CROWN - AISLE_SPRING) * (1 - ((v - side * (hw + aw) / 2) / ((aw - hw) / 2)) ** 2)
+        for v0, v1 in zip(vs2[:-1], vs2[1:]):
+            q = [Pt(sa, v0, zs(v0)), Pt(sb, v0, zs(v0)), Pt(sb, v1, zs(v1)), Pt(sa, v1, zs(v1))]
+            vault.quad(*q)
+        # the arcade: piers on the line of the pilasters, an arch between each two, brick over it up to the vault
+        piers = [sa] + [t for t in np.arange(t0 + 5.0, t1 - 3.0, 6.0) if sa + 1.0 < t < sb - 1.0] + [sb]
+        vm = side * (hw + 0.6)
+        for t in piers[1:-1]:
+            brick.box(Pt(t, vm, pz), Pt(t, vm, pz + AISLE_SPRING), 1.2, 1.2, up=(0, 0, 1))
+            granite.box(Pt(t, vm, pz - 0.2), Pt(t, vm, pz + 0.6), 1.35, 1.35, up=(0, 0, 1))
+        for ta, tb in zip(piers[:-1], piers[1:]):
+            ta2, tb2 = ta + (0.6 if ta != sa else 0.0), tb - (0.6 if tb != sb else 0.0)
+            if tb2 - ta2 < 1.0:
+                continue
+            tc, r = (ta2 + tb2) / 2, (tb2 - ta2) / 2
+            zr = lambda q: pz + AISLE_SPRING + min(r, AISLE_CROWN - AISLE_SPRING - 0.25) * math.sin(q)
+            arc = [(tc - r * math.cos(q), zr(q)) for q in np.linspace(0, math.pi, 9)]
+            for v in (vi, side * (hw + 1.2)):  # both faces of the arcade
+                sgn = 1 if (v == vi) == (side > 0) else -1
+                for (u0, z0), (u1, z1) in zip(arc[:-1], arc[1:]):
+                    brick.quad(*([Pt(u0, v, z0), Pt(u1, v, z1), Pt(u1, v, pz + AISLE_CROWN + 0.3), Pt(u0, v, pz + AISLE_CROWN + 0.3)][::sgn]))
+                for (u0, z0), (u1, z1) in zip(arc[:-1], arc[1:]):  # the arch's sandstone, under it
+                    stone.quad(*([Pt(u0, vi, z0 - 0.02), Pt(u1, vi, z1 - 0.02), Pt(u1, side * (hw + 1.2), z1 - 0.02), Pt(u0, side * (hw + 1.2), z0 - 0.02)][::-sgn]))
+        # the glass of the outer wall, between brick piers, and a lamp over each bay
+        gl = vo - side * 0.15
+        for ta, tb in zip(piers[:-1], piers[1:]):
+            glass.quad(*([Pt(ta + 0.4, gl, pz), Pt(tb - 0.4, gl, pz), Pt(tb - 0.4, gl, pz + AISLE_SPRING), Pt(ta + 0.4, gl, pz + AISLE_SPRING)][::side]))
+            K["rijks_win"].box(Pt((ta + tb) / 2, vo - side * 0.6, pz + AISLE_CROWN - 0.5), Pt((ta + tb) / 2, vo - side * 0.6, pz + AISLE_CROWN - 0.2), 0.3, 0.3, up=(1, 0, 0))
     # the passage's floor, level from the street at one end to the square at the other (the ground the
     # viewer draws there is the bare earth under the building: not drawn, "clip"): the red cycle path
     # between two footways of granite setts
     za, zb = T(*Pt(t0 - 3.0, 0, 0)[:2]), T(*Pt(t1 + 3.0, 0, 0)[:2])
     zt = lambda t: za + (zb - za) * (t - t0 + 2.0) / (t1 - t0 + 4.0) + 0.04
     ts = np.linspace(t0 - 2.0, t1 + 2.0, 9)
-    for v0, v1, m in ((-hw, -hw + 2.5, granite), (-hw + 2.5, hw - 2.5, K["rijks_cycle"]), (hw - 2.5, hw, granite)):
+    for v0, v1, m in ((-aw, -hw + 2.5, granite), (-hw + 2.5, hw - 2.5, K["rijks_cycle"]), (hw - 2.5, aw, granite)):
         for ta, tb in zip(ts[:-1], ts[1:]):
             m.quad(Pt(ta, v0, zt(ta)), Pt(tb, v0, zt(tb)), Pt(tb, v1, zt(tb)), Pt(ta, v1, zt(ta)))
-    floor = [Pt(t0 - 2.0, -hw, 0)[:2], Pt(t1 + 2.0, -hw, 0)[:2], Pt(t1 + 2.0, hw, 0)[:2], Pt(t0 - 2.0, hw, 0)[:2]]
+    floor = [Pt(t0 - 2.0, -aw, 0)[:2], Pt(t1 + 2.0, -aw, 0)[:2], Pt(t1 + 2.0, aw, 0)[:2], Pt(t0 - 2.0, aw, 0)[:2]]
     return K.out(), sorted(hidden), [{"ring": [[round(x, 2), round(y, 2)] for x, y in floor]}]
