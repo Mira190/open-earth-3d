@@ -1,7 +1,9 @@
 // What the game's contact shadows (web/game/ao.js) cost: the mean frame time in a city's game at
 // each AO level (off, lite, full), on the same view, the tier forced (high unless TIER is set).
 // On a software renderer the numbers say how the levels compare, not what a GPU takes. Then the
-// frame-time budget is put under the frame time, to see it step down and back (the levels each second).
+// frame-time budget is fed simulated GPU frames on a clock of its own and must step down when the
+// AO is what slows the frame, take a step back when it is not, and hold when under budget (the
+// levels after each simulated second). Exits 1 if the budget misbehaves or the page throws.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/ao_cost.js shibuya [frames] [WxH]
 const { chromium } = require('playwright');
@@ -29,15 +31,21 @@ const [,, city = 'shibuya', frames = '40', size = '1440x900'] = process.argv;
       for (let i = 0; i < n; i++) await frame();
       res[`level ${lv}${res[`level ${lv}`] ? ' again' : ''}`] = +((performance.now() - t0) / n).toFixed(1);
     }
-    // the budget: under one far below the frame time, AO steps down; as the frame does not get
-    // faster on its own here, each step is tried and taken back
-    ao.set(2); ao.testBudget(1);
-    const seen = [];
-    for (let t = 0; t < 16; t++) { await new Promise(r => setTimeout(r, 1000)); seen.push(ao.level); }
-    res.budget = seen.join('');
+    // the budget, fed frames on a clock of its own (a software renderer's 2 s frames say nothing
+    // about it): 30 ms frames against the high tier's 20 ms budget
+    ao.testBudget(20);
+    // a GPU the AO slows: 30 ms at full, 22 ms at lite, 17 ms off; it steps 2 to 1 to 0 and stays
+    ao.set(2); res.budgetSlowAO = ao.testFrames(12, lv => [17, 22, 30][lv]);
+    // a frame slow for another reason (30 ms at every level): each step is taken back, then a rest
+    ao.set(2); res.budgetNotAO = ao.testFrames(12, () => 30);
+    // under budget: it never steps
+    ao.set(2); res.budgetFast = ao.testFrames(8, () => 12);
     ao.testBudget(1e9); ao.set(2);
+    const ok = /^2+1+0+$/.test(res.budgetSlowAO) && /^2+1+2+$/.test(res.budgetNotAO) && /^2+$/.test(res.budgetFast);
+    res.budget = ok ? 'ok' : 'FAIL';
     return res;
   }, +frames);
   console.log(JSON.stringify(out), errs.length ? `errors: ${errs.join(' | ')}` : '');
   await b.close();
+  if (out.budget !== 'ok' || errs.length) process.exit(1);
 })();

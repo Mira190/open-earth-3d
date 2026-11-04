@@ -145,7 +145,7 @@ void main() {
     let night = 0;
     // the frame-time budget: an average over about a second; over budget for 3 s steps down once,
     // and 3 s later a step that bought nothing is taken back and the budget rests, a minute, then two...
-    const B$ = { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0 };
+    const B$ = { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0, sim: false };
     function watch(now) {
       const ms = B$.last ? now - B$.last : 0;
       B$.last = now;
@@ -199,13 +199,27 @@ void main() {
     return {
       pass,
       // per frame from atmosphere.js, drawn or not: how far into the night it is (0..1), and the budget
-      update(n) { night = n; watch(performance.now()); pass.enabled = level > 0; },
+      update(n) { night = n; if (!B$.sim) watch(performance.now()); pass.enabled = level > 0; },
       // 0 off, 1 lite, 2 full (no higher than the tier's own); for stills, films and the menu
       set(v) { level = Math.max(0, Math.min(top || 2, v | 0)); pass.enabled = level > 0; B$.trial = null; B$.over = 0; },
       get level() { return level; },
       get frameMs() { return B$.ema; },
       // for tools/ao_cost.js: a budget in ms that also holds on a software renderer
       testBudget(ms) { budget = ms; software = false; B$.rest = 0; B$.misses = 0; B$.trial = null; B$.over = 0; },
+      // for tools/ao_cost.js: the budget fed frames of the given lengths (ms) on a clock of its own,
+      // as a GPU would show them; frameOf(level) gives each frame's length at the level then set.
+      // Returns the level after each simulated second. The real frames are not watched meanwhile.
+      testFrames(seconds, frameOf) {
+        B$.sim = true; Object.assign(B$, { ema: 0, over: 0, last: 0, trial: null, rest: 0, misses: 0 });
+        const seen = []; let t = 1e6;
+        for (let s = 0; s < seconds; s++) {
+          for (const end = t + 1000; t < end;) { t += frameOf(level); watch(t); }
+          seen.push(level);
+        }
+        B$.sim = false; B$.last = 0; B$.ema = 0; B$.rest = 0; B$.trial = null; B$.over = 0;
+        pass.enabled = level > 0;
+        return seen.join('');
+      },
     };
   }
   return { create, LEVELS };
