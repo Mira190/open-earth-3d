@@ -1135,6 +1135,10 @@ const npcNight = require('./npc_night');
   // no movement left standing in a junction: three minutes round where you are, no car that has its way
   // through a signalled junction stands still in it for more than two of its cycles (and the queues held
   // at a line through more than two greens are listed; tools/junction_held_step.js; #144, #150)
+  await p.evaluate(() => { // (on foot first: out of a ride still going, once it stops)
+    const g = window.__game;
+    for (let t = 0; t < 40 && g.player.mode === 'ride'; t++) { g.leaveRide(); g.advance(0.5); }
+  });
   const heldQ = await p.evaluate(heldStep, { T: 180, max: 2 });
   check(heldQ.held.length === 0, `no movement left standing in a junction for more than two cycles (${heldQ.watched} cars watched at their lines, ${heldQ.cycles} greens waited through${heldQ.held.length ? `; ${heldQ.held.length} standing` : ''})`);
   for (const h of heldQ.held.slice(0, 6)) console.log('  ' + h);
