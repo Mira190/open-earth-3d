@@ -638,7 +638,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const ex = w[3] - w[0], ey = w[4] - w[1], t = Math.max(0, Math.min(1, ((x - w[0]) * ex + (y - w[1]) * ey) / (ex * ex + ey * ey || 1)));
     return Math.hypot(x - w[0] - ex * t, y - w[1] - ey * t) < r;
   });
-  const inScramble = (line, s) => { roadNet.at(line, s, rq); return nearSpan(rq.x, rq.y, 7.5); };
+  // (and the box between them: out to the farthest crosswalk's middle)
+  const SCR_BOX = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.hypot((w[0] + w[3]) / 2 - j.x, (w[1] + w[4]) / 2 - j.y))) }));
+  const inScramble = (line, s) => { roadNet.at(line, s, rq); return nearSpan(rq.x, rq.y, 7.5) || SCR_BOX.some(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
   function offScramble(pl) {
     if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
     // (the nearest clear spot either way, the one with road ahead to drive off along first)
@@ -1128,7 +1130,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function rideStep(dt, night) {
     const o = ride;
     let st = o.drv.st;
-    o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z)); // (and the lights, in sight)
+    o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z) || SCR_BOX.some(j => Math.hypot(st.x - j.x, st.y - j.y) < j.r + 60)); // (and the lights, in sight, and a scramble's always: out of sight or not, nobody drives into its walk)
     // running well late in a jam and out of view, it finds its way round, a stretch at a time, to a
     // clear piece of road (games keep the cars that come for you on time); in view it queues as it would
     if (o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 6 && st.v < 0.5 && clockT - (o.hopT || 0) > 2.5 && !inView(st.x, st.y, st.z)) {
