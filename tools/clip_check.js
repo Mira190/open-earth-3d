@@ -8,14 +8,17 @@
 //            trunk, your car or a ride, or a building's wall; people inside a car, a post, a bench or
 //            a wall (where the game lets nobody stand); NPCs inside a car; ferries inside each other
 //            or over land; the helicopter on its pad
-//   driven:  your car driven at a lamp post and at a tree, and you walked into a post: how far
-//            each gets into it
+//   driven:  your car driven at a lamp post and at a tree, then stopped against the tree with
+//            another car pressing in from behind, and you walked into a post: how far each gets into it
 //   seated:  every crowd character (a ride's driver is one) in the driver's and the rear seats of
 //            every car model: the top of the head under the roof
 // Prints one line per measure and exits 1 when any is over its tolerance.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/clip_check.js sydney [seconds] [out.json]   # llvmpipe; without xvfb-run, SwiftShader
+// GAME_TIME (HH:MM, or YYYY-MM-DDTHH:MM) pins the page's clock to that wall time in the city's own
+// time zone (tools/pin_clock.js), as tools/check.sh does; unset or "live", the real clock
 const { chromium } = require('playwright');
+const { pinClock } = require('./pin_clock');
 const fs = require('fs');
 const [,, city = 'sydney', secs = '60', outFile = ''] = process.argv;
 
@@ -42,6 +45,8 @@ const TOL = {
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: 800, height: 500 } });
+  const pinned = await pinClock(p, city); // (GAME_TIME)
+  if (pinned) console.log(`clock pinned to ${pinned.spec} in ${pinned.tz} (${pinned.utc})`);
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
   const t0 = Date.now();
@@ -334,6 +339,7 @@ const TOL = {
     // the nearest few posts and trunks a car could reach: on open ground beside a road, with 14 m of room to run up
     const cand = H.posts.filter(q => Math.hypot(q.x - home.x, q.y - home.y) < 400 && Math.abs(q.z - home.z) < 3).sort((a, b) => Math.hypot(a.x - home.x, a.y - home.y) - Math.hypot(b.x - home.x, b.y - home.y));
     const tried = {};
+    let pressed = null;
     g.enterCar();
     for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5);
     if (g.player.mode !== 'car') return [{ what: 'could not get in' }];
@@ -364,7 +370,30 @@ const TOL = {
       }
       out.push({ what: `car at a ${q.kind}`, deep: +deep.toFixed(2), kmh: Math.round(top * 3.6), x: +q.x.toFixed(1), y: +q.y.toFixed(1) });
       if (deep > TOL.drive.deep) H.note(`drove into a ${q.kind}`, deep, { x: +q.x.toFixed(1), y: +q.y.toFixed(1) });
+      if (q.kind === 'tree' && !pressed) pressed = { q, h, z: f.z };
       if (tried.tree >= 2 && tried.post >= 2) break;
+    }
+    // nose to the first trunk, another car's box creeping into yours from behind (square,
+    // and angled, across its width): yours may go round the trunk but never into it (a traffic car
+    // swinging round you pushed it 0.87 m into one in Sydney, #96)
+    if (pressed) {
+      const C = c.C, fx = Math.sin(pressed.h), fy = Math.cos(pressed.h), gap = C.half + pressed.q.r + 0.02;
+      const x = pressed.q.x - fx * gap, y = pressed.q.y - fy * gap, fl = g.nav.floorAt(x, y, pressed.q.z + 1);
+      const q = { q: pressed.q, h: pressed.h, z: fl ? fl.z : pressed.z, x, y }; // (nose to the trunk, on the run-up's heading, on the floor there)
+      let deep = 0;
+      for (const side of [-1.2, -0.6, 0, 0.6, 1.2]) for (const ang of [0, 0.3, -0.3]) {
+        Object.assign(st, { x: q.x, y: q.y, z: q.z, h: q.h, vx: 0, vy: 0, v: 0, speed: 0, r: 0, vz: 0, steer: 0, air: false });
+        const near = [];
+        g.posts.near(q.x, q.y, 10, o => near.push(o)); // (the game's own posts, as your car meets them)
+        for (let k = 0; k < 120; k++) {
+          const back = -(C.half + 2.2) + 0.015 * k;
+          const box = { x: q.x + fx * back - fy * side, y: q.y + fy * back + fx * side, z: q.z, h: q.h + ang, hl: 2.2, hw: 0.9, top: 1.5 };
+          c.D.step(1 / 30, { fwd: 0, turn: 0 }, { boxes: [box], people: [], posts: near }, []);
+          deep = Math.max(deep, H.boxCircle({ x: st.x, y: st.y, h: st.h, hl: C.half, hw: C.hw }, q.q.x, q.q.y, q.q.r));
+        }
+      }
+      out.push({ what: 'car pushed at a tree', deep: +deep.toFixed(2), kmh: null, x: +q.q.x.toFixed(1), y: +q.q.y.toFixed(1) });
+      if (deep > TOL.drive.deep) H.note('pushed into a tree', deep, { x: +q.q.x.toFixed(1), y: +q.q.y.toFixed(1) });
     }
     Object.assign(st, home, { vx: 0, vy: 0, v: 0, speed: 0, r: 0 });
     g.advance(0.2);
