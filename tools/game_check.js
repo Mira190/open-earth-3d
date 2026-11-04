@@ -801,7 +801,7 @@ const npcNight = require('./npc_night');
       tried.add(pick.h.line);
       // the taxi, on that road behind the queue (cars.js chauffeur, driven by the game's own ride step)
       o.drv.leave();
-      o.drv = OECars.chauffeur(o.C, pick.rt, { keep: k, from: 'lane', v: 0, lights: g.junctions, now: g.t });
+      o.drv = OECars.chauffeur(o.C, Object.assign({}, pick.rt, { end: false }), { keep: k, from: 'lane', v: 0, lights: g.junctions, now: g.t }); // (on through: not pulling in at the end of this short way)
       const st = o.drv.st, queued = C.filter(c => c.line === pick.h.line && c.dir === pick.h.dir && c.q);
       r = { n: queued.length, shift: 0, passed: [], behind: false, overtook: [], gone: false, moved: null, follow: null, jams };
       const sHead = (pick.h.s - pick.rt.from.s) * pick.h.dir; // (the head of the queue, along the taxi's way)

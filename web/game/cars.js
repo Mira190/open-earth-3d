@@ -819,7 +819,7 @@ window.OECars = (function () {
     // gone by.
     const c = {}, passing = [], passed = [];
     let still = false, queued = false;
-    function gapAhead(others) {
+    function gapAhead(others, dt = 0) {
       let gap = Infinity, pass = 0;
       still = queued = false; passing.length = 0; passed.length = 0;
       st.block = null; // what sets the gap (for the game check)
@@ -863,6 +863,10 @@ window.OECars = (function () {
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + Math.max(0, a)) * keep;
         if (Math.abs(w - lane - pass) < (o.hw || 0.4) + C.hw + 0.4) { pass = 0; break; }
       }
+      // (a driver pulls out only once the way round has looked clear for a second, not on a frame's glimpse
+      // of it: one queueing that reads for a moment as stopped for good is never swung out round)
+      st.passT = pass ? (st.passT || 0) + dt : 0;
+      if (pass && Math.abs(st.shift) < 0.2 && st.passT < 1) pass = 0;
       if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay; }
       st.pass = pass; st.passed = passed; // (what it goes round, for the game check)
       return gap;
@@ -934,7 +938,7 @@ window.OECars = (function () {
       let want = Math.min(cruise, q.v || cruise) * hz;
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       // the cars ahead, and the line at a red light or a stop sign
-      const carGap = gapAhead(others), line = obey && !dry ? lineGap() : Infinity;
+      const carGap = gapAhead(others, dt), line = obey && !dry ? lineGap() : Infinity;
       if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
       // a car standing where it is to pull in: pull in behind it
       if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
