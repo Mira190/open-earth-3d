@@ -49,6 +49,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
       };
       const prev = C.map(c => ({ line: c.line, dir: c.dir, x: c.x, y: c.y }));
       const still = C.map(() => 0);
+      const walls = new Map();
       let samples = 0, stopped = 0, dist = 0, carSecs = 0, turns = 0, worstJam = 0, jammed = 0, jammedNow = 0, overlaps = 0, overlapMax = 0, inWall = 0, onFlagged = 0;
       const nav = g.nav, avoid = () => g.roadNet.avoid;
       const warm = Math.min(60, T / 4);
@@ -64,7 +65,16 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
           carSecs++;
           if (c.v < 0.3) stopped++;
           // in a building or a landmark (its middle, most of its width, knee to roof height), or on a road a car doesn't fit along
-          if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
+          if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) {
+            inWall++;
+            // where: by 4 m cell, the road, what holds the car, and what it is in (the solids its middle overlaps)
+            const key = `${Math.round(c.x / 4)},${Math.round(c.y / 4)}`, w = walls.get(key) || { n: 0, x: Math.round(c.x), y: Math.round(c.y), z: +(c.z || 0).toFixed(1), line: c.line, ow: !!L[c.line].ow, ln: c.ln || 0, lo: +(c.lo || 0).toFixed(2), why: new Set(), mv: !!c.mv, cars: new Set(), what: new Set() };
+            const q = {}; g.roadNet.at(c.line, c.s, q);
+            w.dc = +Math.hypot(c.x - q.x, c.y - q.y).toFixed(2); w.off = +(c.off || 0).toFixed(2); w.hw = c.hw; w.roomC = nav.room(q.x, q.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2); w.w = L[c.line].w;
+            w.n++; w.why.add(c.why || '-'); w.cars.add(i); if (c.mv) w.mv = true;
+            nav.col.overlap(c.x, c.y, c.hw * 0.8, c.z + 0.4, c.z + 1.4, (pi, pr) => { w.what.add(`${pr.tag === nav.LANDMARK ? 'landmark' : 'building'} ${pr.id}`); return true; });
+            walls.set(key, w);
+          }
           if (avoid() && avoid()[c.line]) onFlagged++;
           still[i] = c.v < 0.3 ? still[i] + 1 : 0;
           if (still[i] >= 30) jammedNow++;
@@ -81,6 +91,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
       const out = { at: [Math.round(g.player.x), Math.round(g.player.y)], cars: A.active, seconds: samples, stoppedShare: stopped / Math.max(1, carSecs), meanSpeed: dist / Math.max(1, carSecs),
         jammedShare: jammed / Math.max(1, carSecs), jammedAtEnd: jammedNow, longestStill: worstJam, turnsPerCarMin: turns / Math.max(1, carSecs / 60), overlapsPerSample: overlaps / Math.max(1, samples), overlapMax,
         inWallShare: inWall / Math.max(1, carSecs), onFlaggedShare: onFlagged / Math.max(1, carSecs) };
+      out.walls = [...walls.values()].sort((a, b) => b.n - a.n).slice(0, 12).map(w => Object.assign(w, { why: [...w.why].join('/'), cars: w.cars.size, what: [...w.what].join(', ') || 'between checks' }));
       out.updateMs = ut / Math.max(1, un);
       out.kerbWait = g.crowd ? g.crowd.kerbWait : 0; // walker-seconds at a kerb for the walk signal (since the start)
       A.update = upd;
@@ -95,6 +106,7 @@ const [,, city = 'sydney', secs = '150', places = '3'] = process.argv;
     console.log(`  jammed (still 30 s or more): ${(r.jammedShare * 100).toFixed(1)}% of the time, ${r.jammedAtEnd} at the end; longest still: ${r.longestStill} s`);
     console.log(`  turned back in the road: ${f(r.turnsPerCarMin, 3)} per car-minute; caught up in another car: ${f(r.overlapsPerSample)} pairs a second, ${r.overlapMax} at worst`);
     console.log(`  in a wall: ${(r.inWallShare * 100).toFixed(2)}% of the time; on a road a car doesn't fit along: ${(r.onFlaggedShare * 100).toFixed(2)}%`);
+    for (const w of r.walls) console.log(`    in a wall at ${w.x}, ${w.y} z ${w.z}: ${w.n} car-seconds, ${w.cars} car(s), line ${w.line}${w.ow ? ' one-way' : ''} lane ${w.ln} lo ${w.lo} off ${w.off} from the centre ${w.dc} (room there ${w.roomC}, hw ${w.hw}, w ${w.w}), ${w.mv ? 'in a junction, ' : ''}held by ${w.why}; ${w.what}`);
     console.log(`  the traffic update: ${f(r.updateMs)} ms a frame`);
     if (r.laneChanges != null) console.log(`  lane changes: ${r.laneChanges}; walkers waiting at a kerb for the walk signal: ${f(r.kerbWait / Math.max(1, r.seconds), 1)} on average`);
     if (r.signals != null) console.log(`  red lights run: ${r.redRuns}; crossing movements let into one junction at once: ${r.conflicts}; cars found over a line: ${r.overLine}, crossing ${r.crossedOver || 0} movements in the junction`);
