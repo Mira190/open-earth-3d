@@ -826,6 +826,25 @@ const npcNight = require('./npc_night');
     : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
 
+  // photo mode's depth of field (its aperture), and none of it back in play (atmosphere.js camFx); a city
+  // with a busy crossing's sound (game.look.sound) finds the crossing's signals
+  const fx = await p.evaluate(async () => {
+    const g = window.__game, A = g.atmos, frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    const snd = g.sound ? g.sound() : null;
+    if (!A || !A.composer || !A.camFx) return { none: true, snd };
+    if (g.player.mode === 'car') { g.exitCar(); g.advance(1); }
+    g.photoMode(true); g.photo.fstop = 1.4;
+    for (let i = 0; i < 3; i++) await frame();
+    const pass = A.composer.passes.find(q => q.uniforms && q.uniforms.uAperture);
+    const on = !!(g.photo.on && pass && pass.enabled && pass.uniforms.uAperture.value > 0);
+    g.photoMode(false);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.1);
+    for (let i = 0; i < 3; i++) await frame();
+    return { on, off: !(pass && pass.enabled), snd };
+  });
+  check(fx.none || (fx.on && fx.off), fx.none ? 'no post stack for the depth of field' : `photo mode focuses with a depth of field (${fx.on}), and play has none (${fx.off})`);
+  if (fx.snd) check(fx.snd.junction != null, `the crossing's sound listens to its signals (junction ${fx.snd.junction})`);
+
   // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
   const lights = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
@@ -963,6 +982,30 @@ const npcNight = require('./npc_night');
     check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
   }
   await shot('junction');
+
+  // the traffic keeps out of the walls: cars whose body (most of its width, knee to 1.4 m) is in a building or a
+  // landmark, over 20 s; none stands at a wall across its way for long; and no one-way road that comes to a
+  // wall (a road the data runs into a building: game.js cutAtWalls, pipeline/road_passages.py) is open to it
+  const carWalls = await p.evaluate(() => {
+    const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, av = g.roadNet.avoid;
+    let n = 0, inWall = 0, waits = 0;
+    const still = new Map();
+    for (let t = 0; t < 20; t++) {
+      g.advance(1);
+      for (const c of C) {
+        if (c.line < 0) continue;
+        n++;
+        if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
+        const s = c.why === 'wall' && c.v < 0.1 ? (still.get(c) || 0) + 1 : 0;
+        still.set(c, s);
+        if (s === 6) waits++;
+      }
+    }
+    const traps = RL.filter((l, i) => l.ow && (l.wall & (l.ow > 0 ? 2 : 1)) && !(av && av[i])).length;
+    return { n, inWall, waits, traps, ends: RL.filter(l => l.wall).length };
+  });
+  check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
+  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)

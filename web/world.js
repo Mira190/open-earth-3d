@@ -1132,6 +1132,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       return g;
     };
     // small things are drawn only within their "far" (metres): beyond it they are under a pixel
+    const screenMeshes = []; // the big LED screens' faces, for the light they throw (neon.js)
     const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
     for (const m of LM.meshes || []) {
       const g = lmGeometry(m);
@@ -1143,6 +1144,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
       mesh.name = m.name;
       world.add(mesh);
+      if ((LM.materials[m.material] || {}).pattern === 'led_screen') screenMeshes.push({ mesh, m: LM.materials[m.material], mat: lmMats[m.material] });
     }
     // street furniture (landmarks.json "props"): each kind's parts drawn once, instanced at every
     // place it stands ([x, y, z, heading, scale across]), one draw call per part
@@ -1208,6 +1210,8 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
       } catch (e) { return false; }
     }
     const api = {
+      // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
+      screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
       world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local

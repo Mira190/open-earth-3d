@@ -319,6 +319,26 @@ window.OERoute = (function () {
           }
           if (i % 100 === 0) await tick(0.85 + 0.15 * i / roadNet.L.length, 'the roads');
         }
+        // a one-way road that comes to a wall (a lane the data runs into a building: game.js cutAtWalls),
+        // or whose only ways on are roads a car can't get along: a car on it could only wait at its end,
+        // so none goes on it; back up the one-way roads that lead only there, in turn
+        {
+          const RL = roadNet.L, endOf = (l, e) => { const k = e ? l.pts.length / 3 - 1 : 0; return roadNet.key(l.pts[3 * k], l.pts[3 * k + 1]); };
+          for (let pass = 0, more = true; more && pass < 30; pass++) {
+            more = false;
+            for (let i = 0; i < RL.length; i++) {
+              const l = RL[i];
+              if (drive[i] || !l.ow) continue;
+              const e = l.ow > 0 ? 1 : 0;
+              let trap = !!(l.wall & (e ? 2 : 1));
+              if (!trap) {
+                const at = (roadNet.nodes.get(endOf(l, e)) || []).filter(o => o[0] !== i && RL[o[0]].ow !== (o[1] === 0 ? -1 : 1));
+                trap = at.length > 0 && at.every(o => drive[o[0]]);
+              }
+              if (trap) { drive[i] = 1; more = true; }
+            }
+          }
+        }
         await tick(0.9, 'links');
         index();
         await repair(tick);
