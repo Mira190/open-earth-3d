@@ -74,6 +74,20 @@ tread is lowered by the least change to the grid that clears it, and each grid p
 to how far it stands above the treads, so the hillside beside the stairs takes the cut and the lane at the
 foot barely moves. The checks compare the uncut DEM.
 
+## 2a. The Tokyo Metropolitan Government Building
+
+PLATEAU gives the six OpenStreetMap parts of the No. 1 building (Kenzo Tange,
+1991) its top's 243 m, so the two towers stood as flat slabs the full width of
+their bases with no body between them. OpenStreetMap's parts have their own
+heights (`cities/shinjuku/tocho_osm.json`, from `pipeline/osm_parts.py`): the
+body under the split 133 m, the towers' notched bases 176 m, their second stages
+207 m, the turned tops 243 m. `pipeline/retop.py` applied them to the built
+scene, and `adjust_building` applies them, with the body the parts replaced, on
+the next build. `cities/shinjuku/tocho.py` draws the building in a granite grid
+(a curtain wall of narrow windows between broad granite piers), with the
+observatories' glass at 202 m and masts on the roofs. The body is drawn but is
+not in the surface model until the next build.
+
 ## 3. Suga Shrine and the 男坂
 
 ### 3.1 The stairs
