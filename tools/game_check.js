@@ -424,6 +424,21 @@ const npcNight = require('./npc_night');
   }
   await shot('travel');
 
+  // a landmark you go up (an observation deck with its own lift): travel from the map puts you on its deck, high
+  // over the street and facing out, not on the street looking up at it
+  const decks = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const lm of g.landmarks.filter(l => g.deckOf(l))) {
+      const at = g.deckOf(lm), ok = g.travelTo(lm);
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const pl = g.player;
+      out.push({ name: lm.name, ok, mode: pl.mode, d: Math.hypot(at[0] - pl.x, at[1] - pl.y), up: pl.z - Math.max(0, g.nav.terrain(pl.x, pl.y)), dz: Math.abs(pl.z - at[2]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    return out;
+  });
+  for (const h of decks) check(h.ok && h.mode === 'foot' && h.walk && h.d < 45 && h.dz < 6 && h.up > 60, `travels to ${h.name}'s deck (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.up.toFixed(0)} m over the street, ${h.walk ? 'on' : 'off'} walkable ground)`);
+
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it
   const hops = await p.evaluate(() => {
