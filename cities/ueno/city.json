@@ -71,11 +71,39 @@
   },
   "trees": {
     "mix": {
-      "elm": 0.45,
-      "plane": 0.35,
-      "maple": 0.2
+      "zelkova": 0.3,
+      "ginkgo": 0.25,
+      "plane": 0.15,
+      "camphor": 0.15,
+      "evergreen": 0.1,
+      "maple": 0.05
     },
-    "note": "Species are not mapped, and the shared trees have no cherry or ginkgo, so the mix stands in: elms for the park's zelkovas (keyaki) and its rows of Somei-yoshino cherries, plane trees for the ginkgos and the street planes, and Japanese maples by the pond and the temple grounds. A guess, not a survey."
+    "woods": {
+      "camphor": 0.25,
+      "evergreen": 0.25,
+      "zelkova": 0.2,
+      "ginkgo": 0.1,
+      "maple": 0.1,
+      "pine": 0.05,
+      "sugi": 0.05
+    },
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py).",
+    "areas": [
+      {
+        "name": "Ueno Park",
+        "find": "上野恩賜公園",
+        "mix": {
+          "zelkova": 0.25,
+          "camphor": 0.2,
+          "ginkgo": 0.15,
+          "evergreen": 0.15,
+          "plane": 0.1,
+          "maple": 0.1,
+          "pine": 0.05
+        },
+        "note": "The park's zelkovas, camphors and ginkgos (its Somei-yoshino cherries are not among the shared trees: zelkovas stand in)."
+      }
+    ]
   },
   "storey": {
     "res": [
