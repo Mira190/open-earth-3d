@@ -6,7 +6,7 @@
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
 // change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
-// (tools/scramble_step.js), ride a taxi up behind a queue at a red light (it waits in its lane and
+// (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up behind a queue at a red light (it waits in its lane and
 // goes when the queue moves), swing the chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
@@ -1046,6 +1046,8 @@ const npcNight = require('./npc_night');
 
   // the scrambles: every way at once in a walk phase of their own, the diagonals too (tools/scramble_step.js)
   for (const r of await require('./scramble_step')(p)) { for (const [ok, what] of r.checks) check(ok, what); await shot(`scramble-${r.at.join('_')}`); }
+  // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
+  { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
 
   // a ride behind a queue at a red light (#107): it waits its turn in its own lane, never swings out
   // round a car queueing there (c.q) to the head of the queue, and goes on when the queue moves;

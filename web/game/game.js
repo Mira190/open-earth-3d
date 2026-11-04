@@ -1795,12 +1795,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const party = ((wd === 5 || wd === 6) && h >= 18) || ((wd === 6 || wd === 0) && h < 4);
     return Math.max(0, Math.min(1, v * (party ? CR.weekend_night || 1 : 1) * (wd === 0 || wd === 6 ? CR.weekend || 1 : 1)));
   }
-  // A busy crossing's sound (game.look.sound: {at, r, signal: "piyo" | "kakko", station: [x, y]}):
-  // the crowd's murmur as many as are round you, the screens' music while they play, the walk
-  // signal's bird calls while the walk is on, and now and then the station's announcement, all
-  // rising as you come to it (heard from the camera, so a film hears what it sees).
+  // A busy crossing's sound (game.look.sound: {at, r, station: [x, y]}): the crowd's murmur as many
+  // as are round you, the screens' music while they play, and now and then the station's
+  // announcement, all rising as you come to it (heard from the camera, so a film hears what it
+  // sees). The walk signals' calls, there and at every signalled crossing: walkcalls.js.
+  const walkCalls = OEWalkCalls.create({ junctions, audio: A, country: CITY.country, cfg: (G.signals || {}).sound, hour: () => clock.min / 60 });
   const SND = (G.look || {}).sound;
-  let sndJ = null, sndBeat = 0, sndSide = 0, sndAnn = 20 + Math.random() * 30, sndNear = 0, sndCount = 0;
+  let sndJ = null, sndAnn = 20 + Math.random() * 30, sndNear = 0, sndCount = 0;
   if (SND) {
     let best = 60;
     for (const j of junctions.J) {
@@ -1820,11 +1821,6 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     A.murmur(level * Math.min(1, 0.25 + sndCount / 80));
     const hr = clock.min / 60;
     A.screens(level * (hr >= 9 || hr < 0.1 ? 1 : 0));
-    const walkOn = sndJ && sndJ.arms.some(a => junctions.walk(a));
-    if (walkOn && level > 0 && (sndBeat -= dt) <= 0) {
-      sndBeat = 1.1; sndSide = 1 - sndSide;
-      (SND.signal === 'kakko' ? A.kakko : A.piyo)(sndSide, level);
-    }
     if (SND.station && (sndAnn -= dt) <= 0) {
       sndAnn = 45 + Math.random() * 60;
       const ds = Math.hypot(cx - SND.station[0], cy - SND.station[1]);
@@ -3278,7 +3274,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!paused) checkSteps();
     }
     if (!paused) simulate(dt);
-    if (!paused) crossingSound(dt);
+    if (!paused) { crossingSound(dt); walkCalls.update(dt, camera); }
     else if (places) places.hush(); // a paused game (the title, the menu, photo mode) shows no caption
     if (player.mode !== 'heli') nav.prefetch(player.x, player.y); // the landmarks' fine collision ahead of the walker or the car, a few ms a frame
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
@@ -4026,7 +4022,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { walkCalls, neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

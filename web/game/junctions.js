@@ -947,11 +947,13 @@ window.OEJunctions = (function () {
           const len = Math.hypot(w[2] - w[0], w[3] - w[1]);
           if (len < 4) continue;
           const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len;
+          // (a diagonal: through the middle of the box rather than along its side; walkcalls.js leaves it silent)
+          const u = Math.max(0, Math.min(1, ((j.x - w[0]) * ux + (j.y - w[1]) * uy) / len)), diag = Math.hypot(w[0] + ux * len * u - j.x, w[1] + uy * len * u - j.y) < 6, cw = { j, w };
           for (const [ex, ey, k] of [[w[0], w[1], -1], [w[2], w[3], 1]]) {
             const px = ex + ux * k * 1.2 + uy * k * (SCR_W_POST), py = ey + uy * k * 1.2 - ux * k * (SCR_W_POST);
             if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
             const g = ground ? ground(px, py, { z: j.z, deck: 0 }) : null;
-            peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k), scr: true });
+            peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k), scr: true, cw, cx: (w[0] + w[2]) / 2, cy: (w[1] + w[3]) / 2, ux, uy, diag });
           }
         }
         continue;
@@ -959,12 +961,12 @@ window.OEJunctions = (function () {
       for (const a of (j.mid != null ? j.arms.slice(0, 1) : j.arms)) { // (a crossing between junctions: one post on each kerb)
         const l = net.L[a.line], d = Math.max(1.5, a.back - 1.6), s = alongArm(l, a, d);
         net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
-        const kerb = (ROADW[a.c] || 7) / 2 + 0.55;
+        const kerb = (ROADW[a.c] || 7) / 2 + 0.55, cw = { j, a }, cx = tmp.x, cy = tmp.y, ux = -tmp.hy, uy = tmp.hx; // (the crosswalk: its middle, the way across)
         for (const k of [1, -1]) {
           const px = tmp.x - tmp.hy * kerb * k, py = tmp.y + tmp.hx * kerb * k;
           if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
           const g = ground ? ground(px, py, tmp) : null;
-          peds.push({ a, x: px, y: py, z: g != null ? g : tmp.z, h: Math.atan2(tmp.hy * k, -tmp.hx * k) }); // (facing across, to the far kerb)
+          peds.push({ a, x: px, y: py, z: g != null ? g : tmp.z, h: Math.atan2(tmp.hy * k, -tmp.hx * k), cw, cx, cy, ux, uy }); // (facing across, to the far kerb)
         }
       }
     }
@@ -1129,6 +1131,7 @@ window.OEJunctions = (function () {
     setNight(0);
     update();
     return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list,
+      peds, // (the walk signals: { a, x, y, z, cw: its crosswalk, cx, cy, ux, uy: its middle and the way across, diag }: walkcalls.js sounds them)
       walkPosts: peds.filter(o => o.scr), // (a scramble's own, standing away from the road's kerbs: for the crowd to walk round)
       walkShown: j => peds.map((o, i) => (o.a.j === j ? pShown[i] : null)).filter(v => v != null) }; // (what a junction's walk signals show: 'g', 'r', or 'o' flashing off)
   }
