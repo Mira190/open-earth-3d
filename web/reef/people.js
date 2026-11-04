@@ -6,6 +6,7 @@
 // Swimming has no Quaternius clip, so the pose is driven on the bones in code (see `proc`).
 import * as THREE from 'three/webgpu';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import { BUILDERS, mat as gmat } from './gear.js';
 import { makeLook, SKIN_TONES, HAIR_TONES, stingerSeason, ROLES } from './looks.js';
@@ -23,7 +24,7 @@ const regionOf = n => /^(Head|Neck)$/.test(n) ? REG.head : /^(Wrist|Index|Middle
 let lib = null;
 export async function loadLibrary(base = BASE) {
   if (lib) return lib;
-  const L = new GLTFLoader();
+  const L = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder); // (the shared models are meshopt-compressed)
   const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
   const info = await (await fetch(base + 'people.json')).json();
   const [aM, aW] = await Promise.all([get(info.anims.M), get(info.anims.W)]);

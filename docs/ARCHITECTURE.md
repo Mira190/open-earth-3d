@@ -707,10 +707,36 @@ stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
 The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
 more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
 
-Browser options surveyed for the shared models (next steps of issue 148): three.js r186 ships
-`EXT_meshopt_compression` support in `GLTFLoader` with `MeshoptDecoder`
-(`examples/jsm/libs/meshopt_decoder.module.js`, meshoptimizer, MIT), `KHR_draco_mesh_compression`
-with `DRACOLoader` (Draco, Apache-2.0, a WASM decoder of a few hundred kB) and
-`KHR_texture_basisu` with `KTX2Loader` (Basis Universal, Apache-2.0, a WASM transcoder). Meshopt
-decodes fastest, keeps skinning and morph targets, and its decoder is a few kB of JS, so it is
-the choice for geometry; KTX2 is for textures where GPU memory matters more than bytes.
+### Shared models: meshopt
+
+What three.js r186 can decode out of the box, surveyed for the shared models (`web/assets/vehicles`,
+`trees`, `people`):
+
+| Option | three.js r186 | Licence | For |
+|---|---|---|---|
+| `EXT_meshopt_compression` (meshoptimizer) | `GLTFLoader.setMeshoptDecoder`, `examples/jsm/libs/meshopt_decoder.module.js`, 29 kB of JS with its WASM inline | MIT | geometry, skins and animation; decodes at gigabytes a second, keeps every node, name and attribute |
+| `KHR_draco_mesh_compression` (Draco) | `DRACOLoader`, a WASM decoder of about 300 kB fetched on first use | Apache-2.0 | static geometry; smaller than meshopt on dense meshes, but no animation, slower to decode, and it re-orders vertices |
+| `KHR_texture_basisu` (KTX2, Basis Universal) | `KTX2Loader`, a WASM transcoder of about 500 kB | Apache-2.0 | textures that stay compressed in GPU memory; the transcoder outweighs what it saves on these few textures |
+| `EXT_texture_webp` | built in | — | already used by the people's textures |
+
+Adopted: meshopt, for every shared model. `pipeline/meshopt_glb.mjs` (meshoptimizer's own encoder,
+1.3.0, MIT, vendored in `pipeline/vendor/meshoptimizer/`) encodes each buffer view of vertex
+attributes, indices and animation in place, as the last step of `blender/build_vehicles.py`,
+`build_trees.py`, `build_people.py` and `pipeline/fetch_people.py` (`pipeline/meshopt.py`). It
+does not quantise to integers, re-order, merge or rename anything, so `cars.js` and `people.js`
+read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
+corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
+exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
+Each view is decoded again and compared before the file is written. `web/index.html` gives every
+`GLTFLoader` the decoder; the reef's `people.js` sets it on its own. `tools/check.sh` fails on a
+model that is not compressed.
+
+| Models | Before | After |
+|---|---|---|
+| `cars.glb` | 5.40 MB | 2.35 MB |
+| `helicopter.glb` | 3.75 MB | 1.69 MB |
+| `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
+| `trees.glb` (1.3 MB of it the leaf atlas, a PNG) | 2.11 MB | 1.69 MB |
+| the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
+| the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
+| all 87 shared models | 57.24 MB | 35.82 MB |

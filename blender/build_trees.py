@@ -30,6 +30,7 @@ from mathutils import Vector
 from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from meshopt import compress  # noqa: E402  (build_vehicles puts pipeline/ on the path)
 from build_vehicles import MAT, ROOT, TAU, Mesh, camera, ground_plane, material, render, select, setup_render, sun_lamp  # noqa: E402
 
 OUT = os.path.join(ROOT, "web", "assets", "trees")
@@ -600,6 +601,7 @@ def main():
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_vertex_color="ACTIVE", export_normals=True,
                               export_materials="EXPORT", export_image_format="AUTO", export_cameras=False, export_lights=False,
                               export_animations=False)
+    compress(path)
     print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
     manifest = {
         "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient "
