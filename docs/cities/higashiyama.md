@@ -85,6 +85,9 @@ climb is the real one.
 - The Yasaka Pagoda's first-storey width is an estimate from its 13.5 m footprint, which is traced at
   the eaves.
 - Jishu-jinja is under restoration until about 2027–28 and is left as PLATEAU's blocks.
-- Trees come from the canopy model. The shared trees have no cedar or cypress, so the hillside woods
-  stand in as elms and plane trees, with maples red from mid November.
+- Trees are planted from the canopy model; species are not mapped, so the mix is a guess
+  (`trees` in `cities/higashiyama/city.json`): evergreen oaks, cedars (standing for cypress too),
+  black pines and a few maples on the hills, and maples and cherries thick in Kiyomizu-dera, Maruyama
+  Park and Kodai-ji, outlined from OpenStreetMap. Cherries open on 26 March, maples redden from mid
+  November.
 - Not checked on: a real GPU, WebGPU, Safari or iOS.

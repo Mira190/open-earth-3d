@@ -37,6 +37,9 @@ The sources are those of the other Kyoto maps:
   - A donor's name runs in black down the back of each pillar, so it shows as you come down.
 - **The great torii** on the Omotesando.
 - **Stone lanterns** at the 154 lamps OpenStreetMap maps along the paths, lit after dark.
+- **Trees**: planted from the canopy model, as the shared trees; species are not mapped, so the mix
+  is a guess: Mount Inari's sacred wood is cedars (standing for cypress too) and evergreen oaks, with a
+  few maples and cherries in the shrine's precinct, outlined from OpenStreetMap.
 
 ## The game: Fushimi Inari on Foot
 
