@@ -632,8 +632,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // a place on the roads moved along its street clear of a scramble: no stopping within 5 m of its
   // crosswalks (Japan's Road Traffic Act, art. 44), where its crowd masses at the kerb and surges out
-  const SCR_AT = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.max(Math.hypot(w[0] - j.x, w[1] - j.y), Math.hypot(w[3] - j.x, w[4] - j.y)))) + 7 }));
-  const inScramble = (line, s) => { roadNet.at(line, s, rq); return SCR_AT.some(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
+  // (the crosswalks, each its two ends; a car's centre within 5 m and its half-length of one is too close)
+  const SCR_AT = [].concat(...junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => j.spans));
+  const nearSpan = (x, y, r) => SCR_AT.some(w => {
+    const ex = w[3] - w[0], ey = w[4] - w[1], t = Math.max(0, Math.min(1, ((x - w[0]) * ex + (y - w[1]) * ey) / (ex * ex + ey * ey || 1)));
+    return Math.hypot(x - w[0] - ex * t, y - w[1] - ey * t) < r;
+  });
+  const inScramble = (line, s) => { roadNet.at(line, s, rq); return nearSpan(rq.x, rq.y, 7.5); };
   function offScramble(pl) {
     if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
     // (the nearest clear spot either way, the one with road ahead to drive off along first)
