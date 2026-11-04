@@ -256,12 +256,13 @@ window.OEAtmos = (function () {
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
       update(utcMs, tSec, U) {
         night = U.uNight.value;
+        const ov = window.OEWeather ? OEWeather.U.uOeOvercast.value : 0; // cloud cover from the weather (weather.js)
         if (su.time) su.time.value = tSec;
-        if (su.uSkySat) su.uSkySat.value = 1 + (skySat - 1) * (1 - night); // not the night sky's red
+        if (su.uSkySat) su.uSkySat.value = (1 + (skySat - 1) * (1 - night)) * (1 - 0.55 * ov); // not the night sky's red; a pale sky under cloud
         skyBasis(utcMs, city.lat, city.lon, basis);
         S.matrix.copy(basis).setPosition(camera.position);
         S.matrixWorldNeedsUpdate = true;
-        S.material.uniforms.uOpacity.value = night * (1 - 0.6 * clouds);
+        S.material.uniforms.uOpacity.value = night * (1 - 0.6 * clouds) * (1 - ov);
         S.material.uniforms.uTime.value = tSec;
         S.material.uniforms.uScale.value = renderer.getPixelRatio();
         S.visible = night > 0.02;
@@ -273,7 +274,7 @@ window.OEAtmos = (function () {
         // the sun's direction in the disc's own frame, so the lit limb faces the sun
         q.copy(camera.quaternion).invert();
         M.material.uniforms.uSun.value.copy(Wd.sunDir).applyQuaternion(q);
-        M.material.uniforms.uOpacity.value = 0.25 + 0.75 * night;
+        M.material.uniforms.uOpacity.value = (0.25 + 0.75 * night) * (1 - 0.92 * ov);
         if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
         if (lens) {
           const L = lens.uniforms;
@@ -282,7 +283,8 @@ window.OEAtmos = (function () {
           L.uLift.value = 1 - 0.7 * night;                         // at night the city keeps its blacks
           L.uContrast.value = gr.contrast;
           L.uNightTone.value = night;                              // blue between the lights, amber in them
-          L.uSat.value = gr.sat;
+          L.uSat.value = gr.sat - 0.1 * ov;                        // under cloud a little cooler and softer, not grey
+          L.uContrast.value += 0.05 * ov;
           L.uTint.value.set(gr.tint[0], gr.tint[1], gr.tint[2]);
           L.uTime.value = tSec;
         }

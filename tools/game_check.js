@@ -1,7 +1,7 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
-// in sight at night,
+// in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
@@ -116,6 +116,52 @@ const npcNight = require('./npc_night');
     return { n, inWall };
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
+
+  // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
+  // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
+  // black nor blown; then clear again, dry and quiet. And the season's weather keeps to the city's
+  // climate: over a year, wet days within a third of what its normals give.
+  const rain = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather;
+    if (!W) return null;
+    const luma = () => { const c = document.getElementById('game-gl'), t = document.createElement('canvas'); t.width = 96; t.height = 60;
+      const x = t.getContext('2d'); x.drawImage(c, 0, 0, 96, 60); const d = x.getImageData(0, 0, 96, 60).data; let s = 0, hi = 0;
+      for (let i = 0; i < d.length; i += 4) { const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; s += l; if (l > 250) hi++; } return { mean: s / (d.length / 4), blown: hi / (d.length / 4) }; };
+    const frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    W.set('rain', { now: true });
+    g.advance(2);
+    await frames(4);
+    const st = W.state, cd = g.crowdDraw(), m4 = new THREE.Matrix4();
+    let umb = 0;
+    if (cd && cd.umbrellas) for (const m of Object.values(cd.umbrellas)) if (m.visible) for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, m4); if (m4.elements[0] !== 0) umb++; }
+    umb += cd ? [...cd.active.values()].filter(r => r.umbOn).length : 0;
+    const out = { st, umb, walkers: g.crowd.P.filter(q => q.line >= 0).length, streaks: W.meshes.near.visible && W.meshes.near.material.uniforms.uCount.value > 0.5,
+      occ: W.U.uOeOccOn.value, chip: document.querySelector('#g-sun span').textContent, lum: luma() };
+    W.set('clear', { now: true });
+    g.advance(1);
+    await frames(2);
+    out.after = W.state; out.dry = !W.meshes.near.visible;
+    // a year of the season's weather at 09:00 and 15:00
+    const cl = g.G.weather;
+    if (cl) {
+      let wet = 0, want = 0;
+      for (let k = 0; k < 365; k++) { const t = new Date(Date.UTC(2026, 0, 1) + k * 864e5), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, d = t.getUTCDate();
+        if (W.season(y, m, d, 9 * 60).rain > 0.06 || W.season(y, m, d, 15 * 60).rain > 0.06) wet++; }
+      for (let m = 1; m <= 12; m++) want += OEWeather.wetChance(cl, m) * [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+      out.year = { wet, want: Math.round(want) };
+    }
+    W.set('live');
+    return out;
+  });
+  if (rain) {
+    check(rain.st.kind === 'rain' && rain.st.rain > 0.5 && rain.st.wet > 0.5 && rain.streaks && rain.occ === 1,
+      `rain falls (rain ${rain.st.rain.toFixed(2)}, ground wet ${rain.st.wet.toFixed(2)}, streaks ${rain.streaks}, occlusion map ${rain.occ})`);
+    check(rain.walkers === 0 || rain.umb > 0, `umbrellas up in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
+    check(/^(Rain|Drizzle) · /.test(rain.chip), `the HUD shows the rain ("${rain.chip}")`);
+    check(rain.lum.mean > 18 && rain.lum.blown < 0.02, `the rain's frame is lit, not black or blown (luma ${rain.lum.mean.toFixed(0)}, ${(rain.lum.blown * 100).toFixed(1)}% blown)`);
+    check(rain.after.rain === 0 && rain.after.wet === 0 && rain.dry, 'and clear again, dry');
+    if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
+  }
 
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
   // edge (the centre within 0.3 m of the face as drawn), at the level of the quay, not a cell short

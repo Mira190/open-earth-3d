@@ -375,6 +375,15 @@ local welcome instead. "Show the intro again" in the menu runs the tour at any
 time. While the tour shows nothing can be started (no talk, no boarding), and it
 carries `data-hush`, so the area sign waits for it.
 
+### Weather
+
+Rain, drizzle and overcast come as each city's climate brings them for the date on the game's
+clock (Tokyo's June rainy season about half its days), or as chosen in the menu's Weather row or a
+quest (Kaede waits for the rain in Shinjuku Gyoen's shelter). Rain falls round you but not under a
+roof or a tree, the ground darkens and holds puddles with rings in them, the crowd puts up
+umbrellas and the light goes soft and grey-blue. How it works, what it learnt from and its sources:
+[WEATHER.md](WEATHER.md).
+
 ## What we took from other games, and where this one is different
 
 A research pass looked at the games people compare this to. The sources are

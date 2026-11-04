@@ -444,6 +444,7 @@
     "gables": "Gable dates: Grachtenmuseum, Architecture in the canal district (grachten.museum)"
   },
   "game": {
+    "weather": {"rain_days": [12.2, 10.8, 9.7, 8.6, 8.9, 9.7, 10.9, 11.6, 10.9, 12.4, 13.4, 14.1], "threshold_mm": 1.0, "drizzle": 0.55, "source": "KNMI, Amsterdam Airport Schiphol, 1991-2020 normals, days with at least 1 mm"},
     "title": "Amsterdam on Foot",
     "local_name": "Amsterdammer",
     "water_name": "the canals",

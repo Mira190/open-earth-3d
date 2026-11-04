@@ -476,6 +476,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-sun i { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 10px var(--accent); }
 .g-sun[data-s="shade"] i { background: var(--shade); box-shadow: 0 0 10px var(--shade); }
 .g-sun[data-s="night"] i { background: #3a4558; box-shadow: none; }
+.g-sun[data-s="rain"] i { background: #9fb4c8; box-shadow: 0 0 10px rgba(159, 180, 200, 0.7); border-radius: 50% 50% 50% 0; transform: rotate(-45deg); }
 /* the gait on foot (walk, run, sprint), under the sun chip */
 .g-gait { padding: 8px 12px; display: flex; gap: 10px; align-items: center; font: 400 9.5px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); }
 .g-gait b { font-weight: 400; color: #fff; }
@@ -1051,6 +1052,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
           <div class="field"><span class="note">Time of day</span><div class="seg wrap" id="gm-time"><button data-t="live">Now</button></div></div>
           <div class="field"><label for="gm-clock"><span>Any time</span><output class="num" id="gm-clock-v"></output></label><input type="range" id="gm-clock" min="0" max="1439" step="1" aria-label="Time of day, local clock time"></div>
           <div class="field"><label for="gm-date"><span>Date</span></label><input type="date" id="gm-date" aria-label="Date"></div>
+          <div class="field"><span class="note">Weather</span><div class="seg wrap" id="gm-weather"><button data-w="live" aria-pressed="true">As the season brings it</button><button data-w="clear">Clear</button><button data-w="overcast">Overcast</button><button data-w="drizzle">Drizzle</button><button data-w="rain">Rain</button></div></div>
           <div class="field"><span class="note">Clock speed</span><div class="seg" id="gm-speed"><button data-s="1">Real time</button><button data-s="30" aria-pressed="true">30×</button><button data-s="120">120×</button><button data-s="0">Paused</button></div></div>
           <div class="field"><span class="note">Play as</span><div class="seg" id="gm-who"><button data-c="W_Worker">Surveyor (woman)</button><button data-c="M_Worker">Surveyor (man)</button></div></div>
           <div class="field"><span class="note">Crowds and traffic</span><div class="seg" id="gm-density"><button data-d="low">Light</button><button data-d="normal" aria-pressed="true">Normal</button></div></div>
@@ -1177,6 +1179,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/route.js"></script>
 <script src="game/rail.js"></script>
 <script src="game/atmosphere.js"></script>
+<script src="game/weather.js"></script>
 <script src="game/penguins.js"></script>
 <script src="game/gulls.js"></script>
 <script src="game/audio.js"></script>
