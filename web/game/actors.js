@@ -647,7 +647,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (const pz of api.plazas || []) {
         const G = gatesOf(pz);
         if (!G.length) continue;
-        const want = near.includes(pz) ? Math.min(G.length * 15, Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W)) : 0; // (no more than its crosswalks can carry)
+        const want = near.includes(pz) ? Math.min(G.reduce((a, h) => a + h.len * 0.6, 0), Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W)) : 0; // (no more than its crosswalks can carry)
         let have = 0;
         for (let i = 0; i < api.active; i++) if (P[i].pz === pz) have++;
         // (more than its share: with the player gone, back to the footways at once, out of sight; else
@@ -662,6 +662,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           q.pz = pz; q.state = 'scr'; q.mode = 'ground'; q.line = Math.max(0, q.line); q.g = null; q.pause = 0;
           toGate(q, g);
           q.x = q.T.x; q.y = q.T.y; q.z = g.z; q.ph = 'wait'; q.v = q.vx = q.vy = 0; q.h = Math.atan2(-g.ox, -g.oy);
+          gather(q.x, q.y, q, true, q.z);
+          if (carDepth(q.x, q.y) > 0) { g.n--; q.pz = q.g = null; q.state = 'walk'; q.line = -1; continue; } // (not put inside a car waiting there)
           have++;
         }
       }
@@ -697,10 +699,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return true;
     }
     const ZAT = { z: 0, deck: 0 };
-    function carDepth(x, y) { // how deep (x, y) is in the cars near (gathered), as a row of discs along each
+    function carDepth(x, y, m = 0.3) { // how deep (x, y) is in the cars near (gathered), as a row of discs along each, m out from its sides
       let deep = 0;
       for (const o of nearCars) {
-        const ox = Math.sin(o.h), oy = Math.cos(o.h), k = Math.max(1, Math.round(o.half / o.hw)), rr = o.hw + 0.3;
+        const ox = Math.sin(o.h), oy = Math.cos(o.h), k = Math.max(1, Math.round(o.half / o.hw)), rr = o.hw + m;
         for (let m = 0; m < k; m++) { const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half - 2 * o.hw) * m / (k - 1), e = rr - Math.hypot(x - o.x - ox * u, y - o.y - oy * u); if (e > 0) deep += e; }
       }
       return deep;
@@ -740,14 +742,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
       }
       if (player) { const ex = q.x - player.x, ey = q.y - player.y, e = Math.hypot(ex, ey); if (e < 1.1 && e > 1e-4) { const f = (1.1 - e) / e * 2.5; fx += ex * f; fy += ey * f; } }
-      // and round a car caught in the box (a row of discs along it)
+      // and round a car caught in the box (a row of discs along it), and the posts
       gather(q.x, q.y, q, (frame + i) % 3 === 0 || !q.cars, q.z);
+      for (const o of nearPosts) {
+        const ex = q.x - o.x, ey = q.y - o.y, e = Math.hypot(ex, ey), rr = o.r + POST + 0.25;
+        if (e < rr + 0.5 && e > 1e-4) { const f = Math.max(0, rr - e) / e * 3, side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.5 - e) / e * Math.max(0.6, vv) * 0.9; fx += ex * f - ey * side * t; fy += ey * f + ex * side * t; }
+      }
       for (const o of nearCars) {
-        const ox = Math.sin(o.h), oy = Math.cos(o.h), k = Math.max(1, Math.round(o.half / o.hw)), rr = o.hw + KERB + 0.25;
+        // (one on the move a second ahead too: out of its way before it gets there)
+        const ox = Math.sin(o.h), oy = Math.cos(o.h), ahead = Math.min(6, (o.v || 0) * 1.0), k = Math.max(1, Math.round((o.half + ahead / 2) / o.hw)), rr = o.hw + KERB + 0.25;
         for (let m = 0; m < k; m++) {
-          const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half - 2 * o.hw) * m / (k - 1), ex = q.x - (o.x + ox * u), ey = q.y - (o.y + oy * u), e = Math.hypot(ex, ey);
+          const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half + ahead - 2 * o.hw) * m / (k - 1), ex = q.x - (o.x + ox * u), ey = q.y - (o.y + oy * u), e = Math.hypot(ex, ey);
           if (e < rr + 0.6 && e > 1e-4) {
-            const f = Math.max(0, rr - e) / e * 3, side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.6 - e) / e * Math.max(0.6, vv) * 0.9;
+            const f = Math.max(0, rr - e) / e * (q.jam > 3 ? 0.6 : 3), side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.6 - e) / e * Math.max(0.6, vv) * 0.9;
             fx += ex * f - ey * side * t; fy += ey * f + ex * side * t; // (out of it, and round it, on the side it is already heading for)
           }
         }
@@ -759,8 +766,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const k = Math.min(1, dt * 5);
       q.vx += (vx - q.vx) * k; q.vy += (vy - q.vy) * k;
       // never a step into a car (one edging out of the box): stand, and let it by
-      const was = carDepth(q.x, q.y), nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
-      if (carDepth(nx, ny) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
+      // (held up a while against a car caught in the box, with others round it: close along its side to get by)
+      q.jam = q.ph === 'cross' && q.v < 0.15 ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt);
+      const M = q.jam > 3 ? 0.05 : 0.3;
+      if (q.jam > 6) { // (and still stuck: back to the kerb it set out from, if the way there is clear)
+        const back = spotAt(g, q.spread, 0.8, {}, pz.road);
+        let clear = true;
+        for (let k = 1; k <= 6 && clear; k++) if (carDepth(q.x + (back.x - q.x) * k / 6, q.y + (back.y - q.y) * k / 6, 0.05) > 0) clear = false;
+        if (clear) { q.g = null; toGate(q, g, 0.8 + rnd()); q.jam = 0; return; }
+        q.jam = 3.5;
+      }
+      const was = carDepth(q.x, q.y, M), nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+      if (was > 0.02) { // (caught by one, a car pulling up: straight out of it, the shortest way)
+        const e = 0.05, gx = carDepth(q.x + e, q.y, M) - carDepth(q.x - e, q.y, M), gy = carDepth(q.x, q.y + e, M) - carDepth(q.x, q.y - e, M), gl = Math.hypot(gx, gy);
+        if (gl > 1e-6) { q.x -= gx / gl * 1.2 * dt; q.y -= gy / gl * 1.2 * dt; q.vx = -gx / gl * 1.2; q.vy = -gy / gl * 1.2; }
+      } else if (carDepth(nx, ny, M) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
       else { q.x = nx; q.y = ny; }
       q.v = Math.hypot(q.vx, q.vy);
       ZAT.z = q.z;

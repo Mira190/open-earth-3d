@@ -742,7 +742,7 @@ window.OEJunctions = (function () {
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 8) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 6)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED) && !(j.ph === 3 && j.busy > 0 && j.t < j.allred + 15) && !(j.nxt === 3 && j.active.length && j.t < j.allred + 12)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); } // (a scramble's all-red held a few seconds more for the last of its crowd out on its road, j.busy (actors.js), or of the cars in its box)
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > j.green[j.ph] - 5);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
@@ -949,7 +949,7 @@ window.OEJunctions = (function () {
             const px = ex + ux * k * 1.2 + uy * k * (SCR_W_POST), py = ey + uy * k * 1.2 - ux * k * (SCR_W_POST);
             if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
             const g = ground ? ground(px, py, { z: j.z, deck: 0 }) : null;
-            peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k) });
+            peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k), scr: true });
           }
         }
         continue;
@@ -1127,6 +1127,7 @@ window.OEJunctions = (function () {
     setNight(0);
     update();
     return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list,
+      walkPosts: peds.filter(o => o.scr), // (a scramble's own, standing away from the road's kerbs: for the crowd to walk round)
       walkShown: j => peds.map((o, i) => (o.a.j === j ? pShown[i] : null)).filter(v => v != null) }; // (what a junction's walk signals show: 'g', 'r', or 'o' flashing off)
   }
 
