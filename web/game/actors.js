@@ -1168,6 +1168,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.waitOn = c.waitOnCar === front ? (c.waitOn || 0) + dt : 0; c.waitOnCar = front;
           if (c.waitOn > 8) { c.passBy = front; c.waitOn = 0; }
         } else if (!front || front !== c.waitOnCar) { c.waitOn = 0; c.waitOnCar = null; }
+        // two in a junction, each stopped for the other as the car ahead (nose to nose where their ways
+        // cross, each path seeing the other): after 4 s the one that went in first goes on as if the
+        // other weren't there, and the other gives way to it when they touch (below; #144)
+        if (front && c.mv && front.mv && front.front === c && c.v < 0.3 && front.v < 0.3) {
+          c.faceT = c.faceCar === front ? (c.faceT || 0) + dt : 0; c.faceCar = front;
+          if (c.faceT > 4 && (c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
+        } else { c.faceT = 0; c.faceCar = null; }
         if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
@@ -1198,8 +1205,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy;
           if (a + q.r < c.half || a > reach || Math.abs(-dx * fy + dy * fx) >= c.hw + q.r + 0.1) return;
           const g = a - q.r - c.half;
-          if (g < gap) { gap = g; byCar = true; front = null; why = 'post'; }
+          if (g < gap && !(c.postPass > 0)) { gap = g; byCar = true; front = null; why = 'post'; }
         });
+        // (stopped for one more than 10 s, a post its way runs into in a junction, say: it edges past it, #144)
+        c.postT = why === 'post' && c.v < 0.3 ? (c.postT || 0) + dt : 0;
+        if (c.postT > 10) { c.postT = 0; c.postPass = 6; } else if (c.postPass > 0) c.postPass -= dt;
         // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
         // metres to go, not a time, so a car that stops beside a facade stays in from it however long it waits)
         // (and only once it is close to the place: one waiting short of a narrow stretch for a car coming the
