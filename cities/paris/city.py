@@ -281,7 +281,7 @@ def ground_at(scene):
 def game_extras(scene):
     """The things people walk up to: the Eiffel Tower's north leg from outside and from under the
     tower, and the way in between two legs; the Arc de Triomphe's great arch (where the Unknown
-    Soldier lies) and a relief group's pedestal; Notre-Dame's three west portals."""
+    Soldier lies) and a relief group's pedestal; Notre-Dame's three west portals; the Louvre Pyramid's glass at its entrance, and a corner."""
     lm, close = scene["landmarks"], []
     gz = ground_at(scene)
 
@@ -313,6 +313,23 @@ def game_extras(scene):
         for name, s in (("Notre-Dame, Saint Anne's portal", -12.5), ("Notre-Dame, the portal of the Last Judgement", 0.0), ("Notre-Dame, the Virgin's portal", 12.5)):
             p = ((ax_ + bx) / 2 + al[0] * s, (ay_ + by) / 2 + al[1] * s)
             to(name, p, (p[0] + out[0] * 5.0, p[1] + out[1] * 5.0), 1.0, 0.3)
+    p = lm.get("louvre_pyramid")
+    if p:
+        # the entrance is in the face with no small pyramid before it: the one towards the Carrousel (west);
+        # the small pyramids stand off the other three. A walker meets the glass at its foot, where it
+        # springs from the paving
+        a, s = math.radians(p["axis_deg"]), PYRAMID["base"] / 2
+        normals = [(math.cos(a + k * math.pi / 2), math.sin(a + k * math.pi / 2)) for k in range(4)]
+        nx_, ny_ = min(normals, key=lambda n: n[0])  # the face whose outward normal points furthest west
+        cx, cy = p["centre"]
+        foot = (cx + nx_ * s, cy + ny_ * s)
+        to("Louvre Pyramid, the glass at the entrance", foot, (foot[0] + nx_ * 6.0, foot[1] + ny_ * 6.0), 1.0, 0.3)
+        # its south-west corner: the entrance face's left end seen from outside, along the diagonal
+        tx_, ty_ = -ny_, nx_
+        corner = (foot[0] + tx_ * s, foot[1] + ty_ * s)
+        d = math.hypot(corner[0] - cx, corner[1] - cy)
+        out = ((corner[0] - cx) / d, (corner[1] - cy) / d)
+        to("Louvre Pyramid, a corner", corner, (corner[0] + out[0] * 6.0, corner[1] + out[1] * 6.0), 1.0, 0.3)
     return {"close": close}
 
 
