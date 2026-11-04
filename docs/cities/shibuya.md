@@ -307,6 +307,47 @@ python3 tools/aerial_local.py shibuya 362 -998 32    # the aerial photo in the l
 python3 tools/scramble_plan.py shibuya 365 -1005 110 # a plan of the footprints, roads and crossings
 ```
 
+## 6c. The streets off the scramble (#118)
+
+`cities/shibuya/streets.py`, built into the scramble's kit and atlas, dresses the first 150 m of the
+five streets that leave the scramble: Center Gai, Dogenzaka, Bunkamura-dori, Jingu-dori up to MODI,
+and Inokashira-dori between the two Seibu buildings. The generic city gives them their masses and
+windows; what makes them read as Shibuya from the pavement is what hangs on the fronts.
+
+| Part | How it is built | Measured from | Estimated |
+|---|---|---|---|
+| Every front onto the five streets | Found from the built city: each outline edge of 4.5 m or more within 15 m of a street's centreline and facing it. At its foot a shop window lit from inside and a lit fascia over it; on four fronts in five a vertical sign of tenants (縦看板), one panel a floor (3.2 m), standing out from the wall at one end and read up and down the street; on some, bands of tenants' signs floor over floor | OSM's street lines (scramble_osm.json), the built city's footprints and heights | The fascia's and signs' sizes, from photographs 2023-25; which front carries which is seeded per building |
+| The camera and electronics store on Dogenzaka | A white fascia with the name in red, a blue band under it, three banners up its floors in red, blue and white | Photographs 2024-25 | Sizes. The name is invented (カメラのサクラ) |
+| The drugstore and the shoe store on Center Gai | Yellow fascia with the name in dark blue and the big 薬; white on red with a navy band | Photographs 2024-25 | Sizes. Names invented (ドラッグ あおば, STEP MARKET) |
+| MODI on Jingu-dori | MODI up a blade at its corner (the building's name, in an open font), the record and book store's fascia over the door | Photographs 2024 | Sizes. The store's name is invented (DISC & BOOKS) |
+| SHIBUYA109's Bunkamura-dori face | SHIBUYA109 up a blade near the point, the front's printed advert again on a 9 × 13.5 m frame, shop windows at the foot | OSM's footprint | The print's size and place |
+| Seibu A and B | Closed on 30 September 2026 (A and B; LOFT and MOVIDA stay open under their own names). Cream precast panels with small, deep windows over every face from 4.6 m up, dark now; the ground floor's glass dark behind it; the closing notice on a white board at the doors on Jingu-dori and Inokashira-dori; the enclosed glass bridge between the two over Inokashira-dori | Footprints and heights from PLATEAU and OSM; closing: [Sakigake, 25 March 2026](https://www.sakigake.jp/news/article/20260325CO0078/), [AdverTimes](https://www.advertimes.com/?p=559377), [FASHIONSNAP](https://www.fashionsnap.com/article/2026-03-25/seibu-shibuya-close/) | The panels' bay (2.7 m) and window size; the bridge at 9-13 m. Whether the SEIBU letters are off the buildings yet is not reported: none is drawn |
+| Shibuhachi Hit Vision, bent | HIT's screen on the Oto building's roof (June 2014; 24.3 × 17.3 m, about 420 m² by HIT's release), its foot along the face over the station square and turning round the building's south-east corner on a 6 m radius (`screens.py`'s `path` and `round`) | Size: HIT ([value-press, 2014](https://www.value-press.com/pressrelease/128731)) | The bend's place and radius, from photographs |
+| The Taiseido block | The pharmacy's and the monja restaurant's small vertical signs on its Dogenzaka face, and the tower's three billboards stacked 15 cm apart to the tower's top at 39.4 m | PLATEAU's tower | The signs' sizes. Names invented (八千代薬品, もんじゃ 月島) |
+
+All the signs' words are in `cities/shibuya/streets.py` and drawn into `web/data/shibuya/scramble.jpg`;
+no text is shared with another city. On foot at 13:00, 15 minutes after sunset and 20:30 on 3 November
+(desktop, then phone; `tools/game_shot.js shibuya tools/compare/shibuya_streets.json`):
+
+| | |
+|---|---|
+| Center Gai | ![](../images/shibuya/streets/centergai.jpg) |
+| Dogenzaka | ![](../images/shibuya/streets/dogenzaka.jpg) |
+| Bunkamura-dori | ![](../images/shibuya/streets/bunkamura.jpg) |
+| Jingu-dori at Seibu A | ![](../images/shibuya/streets/seibu.jpg) |
+| Inokashira-dori and the Seibu bridge | ![](../images/shibuya/streets/inokashira.jpg) |
+| Shibuhachi Hit Vision from the station square | ![](../images/shibuya/streets/hitvision.jpg) |
+| Jingu-dori at MODI | ![](../images/shibuya/streets/modi.jpg) |
+| The Taiseido block from the scramble | ![](../images/shibuya/streets/taiseido.jpg) |
+
+The shop glass round the scramble (`x_shop`, `st_shop`) is no longer a floodlit material: a floodlit
+material glows all over after dark, and the shop windows read as flat cream slabs. Only their panes
+light now. The cost: landmarks.json 3.92 to 4.10 MB, 93.5k to 96.6k triangles, scramble.jpg 0.71 to
+about 1.3 MB (2048 × 4096).
+
+**Not done.** The bird call of the walk signals is #133. A real GPU's frame time on the low tier is still
+unmeasured (only llvmpipe, `tools/city_shot.js`).
+
 ## 7. Tokyo Pilgrimage: Shibuya
 
 The game is a walk, not a survey. Aoi, a pilgrimage guide at Hachiko, welcomes you;
