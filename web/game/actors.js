@@ -469,7 +469,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const d = Math.abs(x.s - s);
         if (d >= x.kerb) continue;
         const far = (x.s - s) * dir + x.kerb;
-        if (x.scramble && toPlaza(p, x.scramble)) return 'plaza';
+        if (x.at && toPlaza(p, x.at)) return 'plaza';
         if (!C.walk(x.a) || (x.scramble && C.walkLeft(x.a) < far / (p.speed * 0.65))) { C.call(x.a); return true; }
       }
       return false;
@@ -608,7 +608,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // through those coming the other way, a little to the left as they meet, so that lanes form as
     // they do in any thick crossing flow (Helbing and Molnar's social forces). On the far side it
     // strolls to a kerb of that corner and waits again; away from the player it goes back to the footways.
-    const PLAZA_SHARE = 0.32, PLAZA_R = 0.8; // (of the crowd; within this share of its radius of the player)
+    const PLAZA_SHARE = 0.42, PLAZA_R = 0.8; // (of the crowd; within this share of its radius of the player)
     function gatesOf(pz) {
       if (pz.gates) return pz.gates;
       const G = [];
@@ -619,23 +619,34 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const a = { x: w[0], y: w[1], z: w[2], ox: -ux, oy: -uy, len, n: 0 }, b = { x: w[3], y: w[4], z: w[5], ox: ux, oy: uy, len, n: 0 };
         a.partner = b; b.partner = a; G.push(a, b);
       }
-      for (const g of G) g.corner = G.filter(h => h !== g && h !== g.partner && Math.hypot(h.x - g.x, h.y - g.y) < 16);
-      return (pz.gates = G);
+      // (a crosswalk landing in a road, at an island or another street, isn't one to wait at either end of)
+      const on = (g, d, u) => pz.road && pz.road(g.x + g.ox * d - g.oy * u * SCR_HW, g.y + g.oy * d + g.ox * u * SCR_HW);
+      const ok = G.filter(g => !(on(g, 3, 0) && on(g, 5, 0)) && !(on(g.partner, 3, 0) && on(g.partner, 5, 0)));
+      for (const g of ok) g.corner = ok.filter(h => h !== g && h !== g.partner && Math.hypot(h.x - g.x, h.y - g.y) < 16);
+      return (pz.gates = ok);
     }
-    // a place to wait at gate g, behind its kerb (u: across the stripes' width, -1 to 1), or to land at it
-    function spotAt(g, u, depth, out) { out.x = g.x + g.ox * depth - g.oy * u * SCR_HW; out.y = g.y + g.oy * depth + g.ox * u * SCR_HW; return out; }
+    // a place to wait at gate g, behind its kerb (u: across the stripes' width, -1 to 1), or to land at
+    // it; drawn in towards the stripes' line, and nearer the kerb, where that would be in a road
+    function spotAt(g, u, depth, out, road = null) {
+      for (let k = 0; k < 6; k++) {
+        out.x = g.x + g.ox * depth - g.oy * u * SCR_HW; out.y = g.y + g.oy * depth + g.ox * u * SCR_HW;
+        if (!road || !road(out.x, out.y)) break;
+        u *= 0.6; depth = 0.8 + (depth - 0.8) * 0.6;
+      }
+      return out;
+    }
     function toGate(q, g, depth) { // to wait at gate g
       if (q.g) q.g.n--;
       q.g = g; g.n++; q.ph = 'stroll'; q.react = 0.2 + rnd() * 2.2;
-      spotAt(g, q.spread, depth != null ? depth : 0.7 + Math.max(0, Math.min(3.5, g.n * 0.07)) + rnd() * 1.6, q.T || (q.T = {}));
+      spotAt(g, q.spread, depth != null ? depth : 0.7 + Math.max(0, Math.min(3.5, g.n * 0.07)) + rnd() * 1.6, q.T || (q.T = {}), q.pz && q.pz.road);
     }
     function plazas(t, cx, cy) {
       // (the share split between those near, a landmark's the most)
-      const near = (api.plazas || []).filter(q => Math.hypot(q.x - cx, q.y - cy) < radius * PLAZA_R), W = near.reduce((a, q) => a + (q.weight || 1), 0);
+      const near = (api.plazas || []).filter(q => Math.hypot(q.x - cx, q.y - cy) < radius * PLAZA_R && gatesOf(q).length), W = near.reduce((a, q) => a + (q.weight || 1), 0) || 1;
       for (const pz of api.plazas || []) {
         const G = gatesOf(pz);
         if (!G.length) continue;
-        const want = near.includes(pz) ? Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W) : 0;
+        const want = near.includes(pz) ? Math.min(G.length * 15, Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W)) : 0; // (no more than its crosswalks can carry)
         let have = 0;
         for (let i = 0; i < api.active; i++) if (P[i].pz === pz) have++;
         // (more than its share: with the player gone, back to the footways at once, out of sight; else
@@ -657,10 +668,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // the crowd on the footways and a scramble's own trade places at its kerbs: one walking up to it
     // joins those waiting there (they cross the scramble's way, free of the footways' single file),
     // and one of them, on the far side, walks off along the footway it stands by
-    function toPlaza(p, j) {
+    function toPlaza(p, j, reach = 9) {
       const pz = j.plaza, G = pz && pz.gates;
       if (!G || !G.length || !api.plazas || !api.plazas.includes(pz)) return false;
-      let g = null, bd = 9;
+      let g = null, bd = reach;
       for (const h of G) { const d = Math.hypot(h.x - p.x, h.y - p.y); if (d < bd) { bd = d; g = h; } }
       if (!g) return false;
       release(p);
@@ -685,6 +696,14 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       return true;
     }
     const ZAT = { z: 0, deck: 0 };
+    function carDepth(x, y) { // how deep (x, y) is in the cars near (gathered), as a row of discs along each
+      let deep = 0;
+      for (const o of nearCars) {
+        const ox = Math.sin(o.h), oy = Math.cos(o.h), k = Math.max(1, Math.round(o.half / o.hw)), rr = o.hw + 0.3;
+        for (let m = 0; m < k; m++) { const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half - 2 * o.hw) * m / (k - 1), e = rr - Math.hypot(x - o.x - ox * u, y - o.y - oy * u); if (e > 0) deep += e; }
+      }
+      return deep;
+    }
     function plazaStep(i, q, dt, player) {
       const pz = q.pz, g = q.g;
       let sp = 0;
@@ -692,8 +711,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // the walk on, and time enough to make the far kerb: out, after a moment's reaction
         const far = g.len + 1; // (the crosswalk's length: the deepest of the crowd at the kerb a little behind the front rows)
         if (pz.walk() && pz.left() > far / (q.speed * 0.85)) { // (with time in hand for a crowd in the way)
-          if ((q.react -= dt) <= 0) { q.ph = 'cross'; spotAt(g.partner, -q.spread + (rnd() - 0.5) * 0.5, 0.6 + rnd() * 1.4, q.T); g.n--; }
+          if ((q.react -= dt) <= 0) { q.ph = 'cross'; spotAt(g.partner, -q.spread + (rnd() - 0.5) * 0.5, 0.6 + rnd() * 1.4, q.T, pz.road); g.n--; }
         }
+      }
+      else if (q.ph === 'cross') { // (still behind the kerb as the walk ends, or with too little of it left: back to wait)
+        const P2 = g.partner, ex = P2.x - g.x, ey = P2.y - g.y, t = ((q.x - g.x) * ex + (q.y - g.y) * ey) / (ex * ex + ey * ey);
+        if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (q.speed * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
       }
       const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
       if (q.ph === 'cross') { sp = q.speed * 1.05; pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.3 ? 0.5 : 0;
@@ -702,7 +725,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // the others near: apart, and, meeting someone coming the other way, a step to the left
       let fx = 0, fy = 0;
       const c0 = Math.floor(q.x / CELL), r0 = Math.floor(q.y / CELL), vv = Math.hypot(vx, vy);
-      for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+      // (caught a while in the press, mid-road: shuffles on through it, as for the footways' knots)
+      q.stuck = q.ph === 'cross' && q.v < 0.15 ? (q.stuck || 0) + dt : 0;
+      if (q.stuck > 2) { q.squeeze = 1.5; q.stuck = 0; }
+      if (q.squeeze > 0) q.squeeze -= dt;
+      if (!(q.squeeze > 0)) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
         for (let k = head[bucket(c0 + a, r0 + b)]; k >= 0; k = chain[k]) {
           if (k === i) continue;
           const o = P[k], ex = q.x - o.x, ey = q.y - o.y, e = Math.hypot(ex, ey);
@@ -730,7 +757,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // eased, as a body speeds up and turns
       const k = Math.min(1, dt * 5);
       q.vx += (vx - q.vx) * k; q.vy += (vy - q.vy) * k;
-      q.x += q.vx * dt; q.y += q.vy * dt;
+      // never a step into a car (one edging out of the box): stand, and let it by
+      const was = carDepth(q.x, q.y), nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+      if (carDepth(nx, ny) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
+      else { q.x = nx; q.y = ny; }
       q.v = Math.hypot(q.vx, q.vy);
       ZAT.z = q.z;
       const z = ground ? ground(q.x, q.y, ZAT) : null;
@@ -839,9 +869,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // there (the button pressed) for the walk signal; someone already out in the road walks on
       // (at a scramble, only with the time to reach the far kerb before the traffic moves)
       let atKerb = false;
+      // (out in a scramble's road when its walk is over: off it with its own crowd, to the nearest kerb they wait at)
+      if (X) for (const x of X) if (x.at && Math.abs(x.s - p.s) < x.kerb - 0.3 && !api.crossings.walk(x.a) && toPlaza(p, x.at, 30)) return;
       if (X && !X.some(x => Math.abs(x.s - p.s) < x.kerb - 0.3)) for (const x of X) { // (not while out in a road: over a median, it crosses the other half too)
         const d = (x.s - p.s) * p.dir;
-        if (x.scramble && d > x.kerb - 0.4 && d < x.kerb + 1.5 && toPlaza(p, x.scramble)) return; // (to the scramble's own crowd)
+        if (x.at && d > x.kerb - 0.4 && d < x.kerb + 1.5 && toPlaza(p, x.at)) return; // (to the scramble's own crowd)
         if (d > x.kerb - 0.4 && d < x.kerb + 3 && (!api.crossings.walk(x.a) || (x.scramble && api.crossings.walkLeft(x.a) < (d + x.kerb) / (p.speed * 0.65)))) {
           atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5));
         }

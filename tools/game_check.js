@@ -610,6 +610,8 @@ const npcNight = require('./npc_night');
     r.dest = o.dest && o.dest.name;
     const s0 = o.drv.st.s;
     g.advance(20);
+    // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so up to its length more)
+    for (r.walkWait = 0; o.drv.st.s - s0 < 20 && r.walkWait < 50 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) g.advance(1);
     r.drove = o.drv.st.s - s0;
     if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
@@ -666,7 +668,7 @@ const npcNight = require('./npc_night');
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, `orders a ride on the phone${taxi.ordered ? '' : ` (${taxi.orderWhy})`}`);
     check(taxi.ordered && taxi.phoneMap, 'the phone shows the ride on its map, on the way');

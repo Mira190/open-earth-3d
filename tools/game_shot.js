@@ -75,8 +75,10 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (air.length) await p.evaluate(() => window.__game.flyover.camera(null));
   // on foot, in the game
   if (foot.length) {
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    const play = await p.waitForSelector('#gt-play', { state: 'visible', timeout: 60000 }).catch(() => null); // (the title's play button, once it shows)
+    if (play) await play.click({ timeout: 10000 }).catch(() => p.evaluate(() => document.getElementById('gt-play').click())); // (through anything laid over it)
+    // the arrival from the title (#89) settled at once, and no first-time tour over the view
+    await p.evaluate(() => { const g = window.__game; g.advance(0.5); if (g.arriving && g.arriving()) { g.settleArrival(); for (let i = 0; i < 20 && g.arriving(); i++) g.advance(0.25); } const O = window.OEOnboard, t = O && O.current && O.current(); if (t) t.skip(); });
   }
   for (const v of foot) {
     await p.evaluate(v => {

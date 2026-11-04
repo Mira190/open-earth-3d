@@ -10,19 +10,22 @@
 // "On the carriageway": the scramble's own crowd crossing between the kerbs (actors.js plazas),
 // and a walker on a footway between a crossing's kerbs (junctions.js scrambleCrossings).
 // Returns [{ at, checks: [[ok, what]], ... }] (an empty list where the city has no scramble).
-module.exports = async function scrambles(p) {
-  const n = await p.evaluate(() => window.__game.junctions.J.filter(j => j.scramble).length);
+// { all: true } watches every scramble the city has (tools/scramble_check.js); otherwise only its
+// principal one, a landmark's (Shibuya's) or the one with the most crosswalks to wait at, to keep within tools/game_check.js's time.
+const order = () => { const n = j => (j.mapped3 ? 100 : 0) + (j.plaza && j.plaza.gates ? j.plaza.gates.length : 0); return window.__game.junctions.J.filter(j => j.scramble).sort((a, b) => n(b) - n(a)); };
+module.exports = async function scrambles(p, { all = false } = {}) {
+  const n = await p.evaluate(`(${order})().length`);
   const res = [];
-  for (let k = 0; k < n; k++) {
-    res.push(await p.evaluate(k => {
+  for (let k = 0; k < (all ? n : Math.min(1, n)); k++) {
+    res.push(await p.evaluate(([k, order]) => {
       const g = window.__game, JN = g.junctions, A = g.cars, C = g.crowd, H = JN.heads;
-      const j = JN.J.filter(q => q.scramble)[k];
+      const j = eval(`(${order})`)()[k];
       // stand on the pavement at one of its kerbs, so that its crowd gathers round
       const pz = j.plaza, G = pz && pz.gates ? pz.gates : [];
       const g0 = G[0], s = g0 ? g.nav.stand(g0.x + g0.ox * 4, g0.y + g0.oy * 4, g0.z + 1, { rMax: 4 }) : null;
       if (s) Object.assign(g.player, { mode: 'foot', vehicle: null, x: s.x, y: s.y, z: s.z, ground: true, vz: 0, speed: 0 });
       g.advance(2);
-      const recs = [...C.crossings.byLine.entries()].flatMap(([fi, l]) => l.filter(x => x.scramble === j).map(x => ({ fi, s: x.s, kerb: x.kerb })));
+      const recs = [...C.crossings.byLine.entries()].flatMap(([fi, l]) => l.filter(x => x.at === j).map(x => ({ fi, s: x.s, kerb: x.kerb })));
       const onFoot = q => !q.pz && q.line >= 0 && recs.some(r => r.fi === q.line && Math.abs(q.s - r.s) < r.kerb - 1); // (more than 0.7 m out from the kerb)
       const between = (q, gt) => { const P2 = gt.partner, ex = P2.x - gt.x, ey = P2.y - gt.y, t = ((q.x - gt.x) * ex + (q.y - gt.y) * ey) / (ex * ex + ey * ey); return t > 0.04 && t < 0.96; };
       const onPlaza = q => q.pz === pz && q.ph === 'cross' && between(q, q.g);
@@ -56,11 +59,11 @@ module.exports = async function scrambles(p) {
       }
       const s1 = A.stats();
       return { at: [Math.round(j.x), Math.round(j.y)], crosswalks: G.length / 2, diagonals, walkPhase, allRed, figures, heads: H && H.walkShown ? H.walkShown(j).length : 0,
-        peak, peakDiag, steppedOut, lingering, carsAmong, wrongFigures, cycles, red: s1.redRuns - s0.redRuns, log, crowd: C.P.slice(0, C.active).filter(q => q.pz === pz).length };
-    }, k));
+        peak, peakDiag, steppedOut, lingering, carsAmong, wrongFigures, cycles, red: s1.redRuns - s0.redRuns, log, crowd: pz ? C.P.slice(0, C.active).filter(q => q.pz === pz).length : 0 };
+    }, [k, String(order)]));
   }
   return res.map(r => Object.assign(r, { checks: [
-    [r.crosswalks >= 3 && r.cycles >= 2, `the scramble at ${r.at} runs its walk phase (${r.cycles} walks in two cycles; ${r.crosswalks} crosswalks, ${r.diagonals} diagonal)`],
+    [r.crosswalks >= 2 && r.cycles >= 2, `the scramble at ${r.at} runs its walk phase (${r.cycles} walks in two cycles; ${r.crosswalks} crosswalks, ${r.diagonals} diagonal)`],
     [r.walkPhase > 0 && r.allRed === r.walkPhase, `in its walk every arm's light is red (${r.allRed} of ${r.walkPhase} looks)`],
     [r.heads > 0 && r.figures === r.walkPhase && !r.wrongFigures, `its ${r.heads} walk signals show the green figure in the walk (${r.figures} of ${r.walkPhase}) and never in the traffic's turns (${r.wrongFigures})`],
     [r.peak >= Math.max(10, r.crowd * 0.5) && (!r.diagonals || r.peakDiag >= 3), `the crowd surges across (${r.peak} out at once of the ${r.crowd} gathered there, ${r.peakDiag} on the diagonals)`],

@@ -45,6 +45,7 @@ window.OEJunctions = (function () {
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const LINK = 24;      // a piece this short joining two junction nodes lies inside one junction (m)
   const SPAN = 42;      // and a junction is no wider than this (m)
+  const SCR_W_POST = 4.2; // (m: a scramble's walk signal stands this far to the side of its crosswalk's line)
   const AMBER = 3.5, ALLRED = 2, CALL = 24; // seconds; a phase with nobody waiting on the other turns after CALL more
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
@@ -236,11 +237,15 @@ window.OEJunctions = (function () {
       }
       j.walks = segs; j.reach = R; j.mapped3 = !!(o.lines && o.lines.length); // (a landmark's own: its crowd the thickest)
       // each arm's stop line: back behind its outermost crosswalk
+      const bare = [];
       for (const a of j.arms) {
         let far = 0;
         crossAt(a, R, segs, d => { if (d > far) far = d; });
-        if (far > 2) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, far + SCR_W + 1));
+        if (far > 2) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, far + SCR_W + 1)); else bare.push(a);
       }
+      // (an arm with no crosswalk mapped across it still stops its traffic outside the box, as far out as the others')
+      const backs = j.arms.filter(a => !bare.includes(a)).map(a => a.back).sort((p, q) => p - q);
+      if (backs.length) for (const a of bare) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, backs[backs.length >> 1]));
       j.green = [16, 12, 6, 32]; j.allred = 4; // (and longer all-red before the walk: a wide box to clear)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
@@ -661,18 +666,23 @@ window.OEJunctions = (function () {
     // where the crowd's footways (fnet: actors.network) cross the arms' roads at the junctions with
     // signals, from the junction's node out to just past the stop line: per footway line, [{ s
     // (along it), a (the arm), kerb (from there back to the kerb, along the footway) }]
-    function crossings(fnet) {
+    // (road(x, y): is that in a carriageway? A scramble's crosswalk counts as one kerb to kerb only
+    // where both its ends are on a pavement; a footway with none such crosses its arms as anywhere else,
+    // on the scramble's walk)
+    function crossings(fnet, road = null) {
       const out = new Map(), F = fnet.L, R2 = [];
       let n = 0;
       for (const j of J) {
         if (!j.sig) continue;
-        if (j.scramble) { n += scrambleCrossings(j, fnet, out); continue; }
+        let skip = null;
+        if (j.scramble) { n += scrambleCrossings(j, fnet, out, road); skip = new Set([...out.keys()].filter(fi => out.get(fi).some(x => x.scramble === j))); }
         for (const a of j.arms) {
           const l = L[a.line], d1 = Math.min(l.len, a.back + 2.5);
           R2.length = 0;
           for (let d = 0; d <= d1 + 1e-6; d += 1) { net.at(a.line, Math.max(0, Math.min(l.len, alongArm(l, a, d))), tmp); R2.push(tmp.x, tmp.y); }
           const half = (ROADW[a.c] || 7) / 2;
           for (const fi of new Set(fnet.near(a.x, a.y, 0, d1 + 12))) {
+            if (skip && skip.has(fi)) continue;
             const f = F[fi], m = f.pts.length / 3;
             for (let k = 1; k < m; k++) {
               const ax = f.pts[3 * k - 3], ay = f.pts[3 * k - 2], ex = f.pts[3 * k] - ax, ey = f.pts[3 * k + 1] - ay, fl = Math.hypot(ex, ey);
@@ -685,7 +695,7 @@ window.OEJunctions = (function () {
                 const sin = Math.abs(den) / (fl * Math.hypot(gx, gy));
                 if (sin < 0.5) continue; // along the road, not across it
                 if (!out.has(fi)) out.set(fi, []);
-                out.get(fi).push({ s: f.cum[k - 1] + u * fl, a, kerb: Math.min(10, (half + 0.2) / sin) });
+                out.get(fi).push({ s: f.cum[k - 1] + u * fl, a, kerb: Math.min(10, (half + 0.2) / sin), at: j.scramble ? j : null });
                 n++;
               }
             }
@@ -697,7 +707,7 @@ window.OEJunctions = (function () {
     }
     // a scramble's crossings: the stretches of the crowd's footways that run along its crosswalks
     // (j.walks), each one crossing from kerb to kerb, the diagonals too; its walkers wait at either end
-    function scrambleCrossings(j, fnet, out) {
+    function scrambleCrossings(j, fnet, out, road) {
       const F = fnet.L, a = j.arms.find(q => q.in) || j.arms[0], W = j.walks || [];
       let n = 0;
       j.spans = [];
@@ -721,10 +731,12 @@ window.OEJunctions = (function () {
         for (const [p, q] of spans) {
           if (q - p < 3) continue;
           // (and the crosswalk kerb to kerb, for the scramble's own crowd: once, however many footways run along it)
-          const A = fnet.at(fi, p, {}), B = fnet.at(fi, q, {});
+          const A = fnet.at(fi, p, {}), B = fnet.at(fi, q, {}), ux = (B.x - A.x) / (q - p), uy = (B.y - A.y) / (q - p);
+          const wet = (x, y, k) => road(x + ux * 3 * k, y + uy * 3 * k) && road(x + ux * 5 * k, y + uy * 5 * k); // (still in a road a few metres on)
+          if (road && (wet(A.x, A.y, -1) || wet(B.x, B.y, 1))) continue; // (landing in a road: not a crosswalk kerb to kerb)
           if (!j.spans.some(w => Math.min(Math.hypot(w[0] - A.x, w[1] - A.y) + Math.hypot(w[3] - B.x, w[4] - B.y), Math.hypot(w[0] - B.x, w[1] - B.y) + Math.hypot(w[3] - A.x, w[4] - A.y)) < 5)) j.spans.push([A.x, A.y, A.z, B.x, B.y, B.z]);
           if (!out.has(fi)) out.set(fi, []);
-          out.get(fi).push({ s: (p + q) / 2, a, kerb: (q - p) / 2 + 0.3, scramble: j });
+          out.get(fi).push({ s: (p + q) / 2, a, kerb: (q - p) / 2 + 0.3, scramble: j, at: j });
           out.get(fi).scramble = true; // (a footway the crowd spreads out on: actors.js)
           n++;
         }
@@ -840,6 +852,21 @@ window.OEJunctions = (function () {
     const peds = [];
     for (const j of J) {
       if (!j.sig) continue;
+      if (j.scramble && j.walks && j.walks.length) { // (a scramble's: at both ends of each crosswalk, beside it on the pavement, facing across)
+        const a = j.arms.find(q => q.in) || j.arms[0];
+        for (const w of j.walks) {
+          const len = Math.hypot(w[2] - w[0], w[3] - w[1]);
+          if (len < 4) continue;
+          const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len;
+          for (const [ex, ey, k] of [[w[0], w[1], -1], [w[2], w[3], 1]]) {
+            const px = ex + ux * k * 1.2 + uy * k * (SCR_W_POST), py = ey + uy * k * 1.2 - ux * k * (SCR_W_POST);
+            if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
+            const g = ground ? ground(px, py, { z: j.z, deck: 0 }) : null;
+            peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k) });
+          }
+        }
+        continue;
+      }
       for (const a of (j.mid != null ? j.arms.slice(0, 1) : j.arms)) { // (a crossing between junctions: one post on each kerb)
         const l = net.L[a.line], d = Math.max(1.5, a.back - 1.6), s = alongArm(l, a, d);
         net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
