@@ -838,10 +838,11 @@ Sydney's traffic stood still a third of the time.
   junction of its own with no way to turn (`junctions.js`, `j.mid`), an arm for
   the traffic heading each way, its stop line 3 to 3.6 m back from the
   stripes. One with signals keeps the traffic's green until a walker presses
-  the button, after at least 20 s of it: amber, all red, the walk for 12 s (the
-  red figure flashing for the last 5), and back; it has the junctions'
-  lanterns and a walk signal on each kerb. At a zebra the traffic gives way at
-  the line to anyone of the crowd on the stripes or walking out onto them (and
+  the button, after at least 14 s of it (7 s when no car is coming): amber,
+  all red, the walk for 10 s (the red figure flashing for the last 5), and
+  back; it has the junctions' lanterns and a walk signal on each kerb. At a
+  zebra the traffic gives way at the line to anyone of the crowd on the
+  stripes or walking out onto them (and
   after 15 s waiting on one who stands there, edges on, braking for them as for
   anyone in the road). Sydney has 97 crossings with signals between junctions
   and 63 zebras; the others are at junctions, whose arms have walk signals
@@ -911,16 +912,21 @@ Sydney's traffic stood still a third of the time.
   junction's node), or, in a city without the data, at a junction of two main
   roads. The arms take two phases, the main road's axis and the cross road's:
   green, amber (3.5 s, 4.5 s where the limit is over 60 km/h), 2 s all red. A
-  phase is green for 16 to 26 s on the main road and 10 to 18 s on the cross
-  road, and stays green while no car waits on the other, for up to 24 s more,
-  as the side roads of SCATS (Sydney's adaptive signals) are skipped when no one
-  is there. Taxis and rides stop for a red light and at a stop sign too, while
-  in sight. Your own car doesn't: drive over a line on red and you hear about it.
+  phase is green for 12 to 24 s on the main road (about 20 s on a primary) and
+  7.5 to 15 s on the cross road (about 12 s on a secondary), short as a game keeps
+  them (#108), and stays green while no car waits on the other, for up to 12 s
+  more, as the side roads of SCATS (Sydney's adaptive signals) are skipped when
+  no one is there. It also gaps out as SCATS and vehicle-actuated signals do:
+  when someone waits on another phase and no car is coming on this one (none
+  within 12 s of its line), its green ends after 7 s, the walk over 5 s before.
+  `tools/traffic_check.js` measures the waits at a red, for cars and walkers;
+  `tools/wait_sweep.sh` runs it over every city. Taxis and rides stop for a
+  red light and at a stop sign too, while in sight. Your own car doesn't: drive over a line on red and you hear about it.
 - **Turn arrows.** A big junction of two main roads (four arms or more, the
   main road secondary or above and two-way, the cross road tertiary or above)
   gets a third phase after the main road's: the turn across the oncoming
   traffic (right where the traffic keeps left, left where it keeps right) on an
-  arrow while everything else is red, for 6 to 10 s, ended after 3 s when no
+  arrow while everything else is red, for 7 to 8.5 s, ended after 3 s when no
   one is left to turn. As SCATS runs a lagging right-turn phase, it comes only
   when a car waits to turn there, and the turners keep their green from the
   main road's phase into it while the straight-ahead traffic beside them goes
