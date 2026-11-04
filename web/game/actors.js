@@ -451,7 +451,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         return;
       }
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, muster };
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], muster };
     // a crowd gathered somewhere at once (the scramble as the game opens on its walk): each of `spots`
     // ({ line, s, dir, side: its place across the footway, m }) takes the walker farthest from (cx, cy), placed on the next step
     function muster(spots, cx, cy) {
@@ -668,6 +668,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (d > x.kerb - 0.4 && d < x.kerb + 3 && !api.crossings.walk(x.a)) { atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5)); }
       }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
+      // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
+      if (atKerb) p.kw = (p.kw || 0) + dt;
+      else if (p.kw) { if (api.kerbWaits.length < 4000) api.kerbWaits.push(p.kw); p.kw = 0; }
       const target = p.pause > 0 ? 0 : Math.min(p.speed, cap);
       p.v = Math.max(0, p.v + Math.max(-3 * dt, Math.min(1.2 * dt, target - p.v)));
       // face to face with someone neither can get round: after a while, turn back
