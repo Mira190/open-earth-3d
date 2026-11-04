@@ -238,6 +238,21 @@ ROAD_W = {"motorway": 16, "trunk": 14, "primary": 13, "secondary": 11, "tertiary
 FOOT_W = {"footway": 2.5, "pedestrian": 4, "path": 2, "steps": 3, "cycleway": 2, "track": 3}
 
 
+def paint_rings(C):
+    """city.json imagery.paint: [{"ring": [[lon, lat], ...], "over": a SYNTH key, "fill": a SYNTH key,
+    "note"}]: inside the ring, the land use or land drawn as "over" is drawn as "fill" instead (water,
+    roads, footways and footprints are drawn over it as ever), for land use that does not say what
+    the ground is: a construction site mapped over the paved promenade that stays open beside it.
+    pipeline/refresh_ground.py applies them to built tiles."""
+    out = []
+    for r in C.cfg.get("imagery", {}).get("paint", []):
+        for k in ("over", "fill"):
+            if r.get(k) not in SYNTH:
+                raise SystemExit(f"{C.id}: imagery.paint {k} {r.get(k)!r} is not one of {sorted(SYNTH)}")
+        out.append({"poly": C.to_local(shapely.Polygon(r["ring"])), "over": r["over"], "fill": r["fill"]})
+    return out
+
+
 def synth_ground(C, con, raw, extent):
     """Ground tiles drawn from land use, land, water, roads, footways, rail and footprints,
     with fine noise and contact shading around buildings so it reads as a surface."""
@@ -260,15 +275,23 @@ def synth_ground(C, con, raw, extent):
             if ln.geom_type == "LineString" and len(ln.coords) > 1:
                 d.line(P(ln.coords), fill=colour, width=max(1, int(round(width / IMG_M))), joint="curve")
     local = lambda r: C.to_local(swkb.loads(bytes(r["wkb"])))
+    paint = paint_rings(C)
+
+    def fill_kind(geom, kind):  # a fill, less what city.json imagery.paint draws instead of it
+        for p in paint:
+            if p["over"] == kind:
+                fill(geom.intersection(p["poly"]), SYNTH[p["fill"]])
+                geom = geom.difference(p["poly"])
+        fill(geom, SYNTH[kind])
     lu = sorted(rows(con, raw("land_use")), key=lambda r: -swkb.loads(bytes(r["wkb"])).area)  # small ones on top
     for r in lu:
         if r["class"] in LANDUSE_FILL:
-            fill(local(r), SYNTH[LANDUSE_FILL[r["class"]]])
+            fill_kind(local(r), LANDUSE_FILL[r["class"]])
     for r in rows(con, raw("land")):
         if r["class"] in LAND_FILL:
             g = local(r)
             if g.geom_type in ("Polygon", "MultiPolygon"):
-                fill(g, SYNTH[LAND_FILL[r["class"]]])
+                fill_kind(g, LAND_FILL[r["class"]])
     for r in rows(con, raw("water")):
         g = local(r)
         if g.geom_type in ("Polygon", "MultiPolygon") and r["class"] not in ("strait", "sea", "ocean"):

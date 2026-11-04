@@ -77,7 +77,9 @@ SPIRE_TOP_M = 162.0
 # the Theatres Building's outline (OpenStreetMap way 22664482, mapped from aerial imagery), longitude and latitude
 THEATRES_OUTLINE = [[144.968591, -37.8218057], [144.9685573, -37.8218489], [144.9685262, -37.8218741], [144.9684864, -37.821896], [144.9684327, -37.8219166], [144.9683793, -37.8219264], [144.9683255, -37.8219284], [144.9682742, -37.8219241], [144.9682307, -37.821911], [144.9681966, -37.8218914], [144.9681597, -37.8218638], [144.9681278, -37.8218256], [144.9681087, -37.8217894], [144.968098, -37.8217558], [144.9681049, -37.8217099], [144.9681174, -37.8216694], [144.9681321, -37.8216259], [144.9682702, -37.821146], [144.9682998, -37.821091], [144.96834, -37.8210518], [144.9683909, -37.8210263], [144.9684473, -37.8210062], [144.9685036, -37.8210009], [144.9685269, -37.8210028], [144.9685559, -37.8210051], [144.9685798, -37.8210107], [144.9686243, -37.821021], [144.9686739, -37.8210528], [144.9687168, -37.8210899], [144.9687463, -37.8211376], [144.9687571, -37.8211863], [144.9687504, -37.821234], [144.9687124, -37.8214178], [144.9686766, -37.8215336], [144.9686639, -37.8215749], [144.9686187, -37.8217329], [144.9686108, -37.8217607]]
 # the row of clocks over the main entrance hangs over the top of its steps, which climb about 1 m from the
-# corner's pavement; the clocks' lower edge is about 3 m over the top step (photographs)
+# corner's pavement; the clocks' lower edge is about 3 m over the top step (photographs: no published
+# measurement of the steps or the clocks' height was found, in Wikipedia, eMelbourne or the Victorian
+# Heritage Database's entry, H1083)
 ENTRANCE_STEPS_M, CLOCKS_OVER_STEPS_M, ENTRANCE_CLOCK_R = 1.0, 3.0, 0.5
 FLINDERS_STREET = (144.9671, -37.8183)
 MATERIALS = {
@@ -90,7 +92,8 @@ MATERIALS = {
     "fss_green": {"color": DARK_GREEN, "roughness": 0.6, "metalness": 0.1},
     "fss_cream": {"color": CREAM, "roughness": 0.8, "metalness": 0.0},
     "fss_copper": {"color": "#5d7f6d", "roughness": 0.45, "metalness": 0.5, "emissive": "#7fbf9f", "glow": 0.3},
-    "fss_clock": {"color": "#f4f1e6", "roughness": 0.4, "metalness": 0.0},
+    # the faces are lit from behind after dark, the row over the entrance and the tower's alike (photographs)
+    "fss_clock": {"color": "#f4f1e6", "roughness": 0.4, "metalness": 0.0, "emissive": "#fff2d8", "glow": 0.8},
     "fss_hands": {"color": "#1d1d1f", "roughness": 0.5, "metalness": 0.2},
     # the station's walls (floodlit after dark, as its festoon of lights picks it out), windows lit from inside
     "fss_wall": {"color": CREAM, "roughness": 0.8, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.9, "block_m": 2.0,
@@ -308,12 +311,24 @@ def crown():
         for p, _ in gas_brigades(river):
             K["crown_granite"].box((p[0], p[1], g), (p[0], p[1], g + 14.0), GAS_BRIGADE_M, GAS_BRIGADE_M)
             K["crown_fire"].lathe([(g + 14.0, 1.0), (g + 14.6, 1.6), (g + 15.0, 1.7)], (p[0], p[1]), segs=10)
-    # an unmapped duplicate of the casino under the complex's outline (w972192630, 31 m): drawn by the podium too
+    return K.out(), [r["si"] for r in rows]
+
+
+def crown_duplicates():
+    """An unmapped duplicate of the casino under the complex's outline (w972192630, 31 m), which the podium
+    draws: demolished rather than hidden, so the surface model (and the arrival's measure of what a walker
+    sees of Crown) has the podium alone."""
     from shapely.geometry import Polygon
-    outline = Polygon(q["ring"]).buffer(0)
-    dup = [r["si"] for r in ak.load_solids("melbourne") if r["osm"] != CROWN and abs(ak.ring_area(r["ring"])) > 1000
-           and Polygon(r["ring"]).buffer(0).intersection(outline).area > 0.8 * abs(ak.ring_area(r["ring"]))]
-    return K.out(), [r["si"] for r in rows] + dup
+    rows = [q for q in ak.load_solids("melbourne") if q["osm"] == CROWN]
+    if not rows:
+        return []
+    outline = Polygon(max(rows, key=lambda r: abs(ak.ring_area(r["ring"])))["ring"]).buffer(0)
+    return [r["si"] for r in ak.load_solids("melbourne") if r["osm"] != CROWN and abs(ak.ring_area(r["ring"])) > 1000
+            and Polygon(r["ring"]).buffer(0).intersection(outline).area > 0.8 * abs(ak.ring_area(r["ring"]))]
+
+
+def landmark_demolished(scene):
+    return crown_duplicates()
 
 
 def flinders_street(s):

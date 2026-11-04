@@ -42,8 +42,10 @@ window.OEVehicles = (function () {
 
   // ------------------------------------------------------------ loading and liveries
   // ferry: false for a city without ferries, else its ferry_style, which picks the model:
-  // 'model': 'river' (the 22 m shuttle) or 'harbour' (the 34 m ferry), else by its length
-  async function load(base = 'assets/vehicles/', { ferry = true, cars = true } = {}) {
+  // 'model': 'river' (the 22 m shuttle) or 'harbour' (the 34 m ferry), else by its length.
+  // heli: 'later' leaves the helicopter (3.7 MB) out of the wait (issue 148): lib.loadHeli() fetches it
+  // when it is wanted, and helicopter() stands it on its pad when it has come
+  async function load(base = 'assets/vehicles/', { ferry = true, cars = true, heli = true } = {}) {
     if (!THREE.GLTFLoader) throw new Error('GLTFLoader is not available');
     const L = new THREE.GLTFLoader();
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
@@ -53,8 +55,11 @@ window.OEVehicles = (function () {
     const ferryInfo = ferry ? (river && info.ferry_river) || info.ferry : null;
     // the traffic's cars are optional: without them the streets keep their box cars
     const car = cars && info.cars ? get(info.cars.file).catch(e => { console.warn('Car models unavailable:', e); return null; }) : null;
-    const [heli, fer, carLib] = await Promise.all([get(info.helicopter.file), ferryInfo ? get(ferryInfo.file) : null, car]);
-    return { info, heli, ferry: fer, ferryInfo, cars: carLib };
+    let heliP = null;
+    const loadHeli = () => heliP || (heliP = get(info.helicopter.file).then(g => (lib.heli = g)));
+    const [h, fer, carLib] = await Promise.all([heli === 'later' ? null : loadHeli(), ferryInfo ? get(ferryInfo.file) : null, car]);
+    const lib = { info, heli: h, ferry: fer, ferryInfo, cars: carLib, loadHeli };
+    return lib;
   }
   // a livery by name, or the city's own colours over the default
   function livery(I, spec) {
@@ -233,8 +238,23 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
   // ------------------------------------------------------------ helicopter
   function helicopter(world, nav, pad, opts = {}) {
     const lib = opts.lib, cfg = (opts.cfg && opts.cfg.helicopter) || {};
-    const V = lib ? heliModel(world, lib, cfg, opts) : kitHeli();
-    const g = V.group, seat = V.seat, door = V.door;
+    // the model hangs in g, which carries the flight (and a pilot attached to it). A model still on its
+    // way (load with heli: 'later'): nothing on the pad until it comes, or the kit-built one if you get in
+    // first or it can't be loaded; it takes the kit's place as soon as nobody is aboard
+    const g = new THREE.Group();
+    let V = null, real = null, ready = null, swap = null;
+    const wear = v => { if (V) g.remove(V.group); V = v; g.add(v.group); };
+    if (lib && lib.heli) wear(heliModel(world, lib, cfg, opts));
+    else {
+      wear(kitHeli());
+      if (lib && lib.loadHeli) {
+        g.visible = false;
+        ready = () => lib.loadHeli().then(() => { if (!real) real = heliModel(world, lib, cfg, opts); return real; })
+          .catch(e => { console.warn('Helicopter model unavailable, using a simple one:', e); g.visible = true; return null; });
+        // (nobody aboard: only the model in g, the engine off, the door shut)
+        swap = () => { if (real && V !== real && g.children.length === 1 && !st.on && st.rotor < 0.02 && st.door === 0) { wear(real); g.visible = true; swap = null; } };
+      }
+    }
     world.add(g);
     // door: how far the pilot's door is open (0 shut, 1 open) and where it is going
     const st = { x: pad[0], y: pad[1], z: pad[2], h: 0.6, vx: 0, vy: 0, vz: 0, yawRate: 0, pitch: 0, roll: 0, rotor: 0, on: false, landed: true,
@@ -254,6 +274,7 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
       return best;
     };
     function update(dt, inp, events) {
+      if (swap) swap();
       st.door += clamp(st.doorTo - st.door, -dt / 0.35, dt / 0.35); // a third of a second each way
       const spool = st.on ? 1 : 0;
       st.rotor += (spool - st.rotor) * Math.min(1, dt / 1.2);
@@ -316,14 +337,20 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     }
     // the door in local coordinates, for walking up to it
     const doorAt = () => {
-      const c = Math.cos(st.h), s = Math.sin(st.h);
+      const c = Math.cos(st.h), s = Math.sin(st.h), door = V.door;
       return { x: st.x + door.x * c + door.y * s, y: st.y - door.x * s + door.y * c };
     };
     // a point in the model's frame (+z forward, +y up, +x left) in the world's game coordinates
     // and a point in the world's game coordinates in the model's frame
     const toWorld = (v, out = new THREE.Vector3()) => { g.updateMatrixWorld(); out.copy(v).applyMatrix4(g.matrixWorld); return { x: out.x, y: -out.z, z: out.y }; };
     const toLocal = (x, y, z) => { g.updateMatrixWorld(); return g.worldToLocal(W(x, y, z)); };
-    return { group: g, st, seat, update, doorAt, way: V.way, toWorld, toLocal };
+    // want(): fetch the model now (a pad in range, or about to fly), resolving when it is on the pad;
+    // show(): someone is getting in before it has come, so the kit-built one stands in until then
+    let asked = null;
+    const want = () => asked || (asked = ready ? ready().then(m => { if (swap) swap(); return m; }) : Promise.resolve(V));
+    const show = () => { g.visible = true; };
+    return { group: g, st, get seat() { return V.seat; }, update, doorAt, get way() { return V.way; }, toWorld, toLocal, want, show,
+      loaded: () => !ready || V === real };
   }
 
   function heliModel(world, lib, cfg, opts) {

@@ -27,6 +27,15 @@
   "year": 2026,
   "imagery": {
     "type": "synth",
+    "paint": [
+      {
+        "name": "Southbank promenade and the Theatres Building's west ramp",
+        "ring": [[144.968128, -37.820948], [144.967935, -37.820521], [144.967981, -37.820521], [144.967997, -37.820552], [144.968014, -37.82057], [144.968059, -37.820596], [144.968185, -37.820869], [144.968275, -37.820842], [144.968288, -37.820872], [144.968539, -37.820794], [144.968586, -37.820888], [144.968553, -37.820995], [144.96849, -37.820991], [144.968424, -37.821002], [144.968362, -37.821023], [144.968317, -37.82105], [144.968261, -37.821105], [144.968072, -37.821746], [144.968092, -37.821809], [144.968085, -37.821833], [144.968105, -37.821864], [144.968023, -37.822109], [144.967998, -37.822147], [144.967936, -37.822138], [144.967928, -37.822167], [144.967496, -37.822332], [144.967503, -37.822267], [144.967563, -37.822065], [144.967691, -37.821636], [144.967174, -37.82154], [144.96723, -37.821377], [144.967279, -37.821278], [144.967818, -37.821051], [144.967931, -37.82101]],
+        "over": "dirt",
+        "fill": "paving",
+        "note": "OpenStreetMap maps the Melbourne Arts Precinct Transformation's first phase (way 1279223388, landuse=construction) over the promenade between Hamer Hall and the Theatres Building, and over the ramp from the promenade up to the forecourt south-west of the building, so the drawn ground filled them as bare earth. Both are walked here as the paved promenade they are beside the works: drawn as paving (pipeline/refresh_ground.py)."
+      }
+    ],
     "attribution": "No open aerial imagery covers central Melbourne, so the ground is drawn from Overture Maps land use, land, water and transport (OpenStreetMap contributors, ODbL)"
   },
   "terrain": {
@@ -51,6 +60,13 @@
         "z_m": 4.3,
         "feather_m": 3,
         "note": "The same pit reaches out under the promenade along the building's river side (-1 to 3 m against the promenade's 4 to 5 m round it): levelled to 4.3 m, out to a metre inside the wall."
+      },
+      {
+        "name": "The forecourt's west edge, between the promenade and the Theatres Building's south-west wall",
+        "ring": [[144.96802, -37.821581], [144.968213, -37.821581], [144.968213, -37.822365], [144.96802, -37.822365]],
+        "z_m": 8.7,
+        "feather_m": 2,
+        "note": "West of the building, from the promenade's end to the walkway at layer 1 (OpenStreetMap ways 1279223392 and 45480005) that comes in at the forecourt's level, the bare-earth model keeps a ridge of 10.6 to 11.1 m along the wall, 2 m above the forecourt beside it and 6 to 8 m above the promenade: the edge of the raised decks there, left as a mound. Levelled to the forecourt's 8.7 m, so the forecourt runs out to its edge over the promenade."
       }
     ],
     "attribution": "Geoscience Australia DEM_LiDAR_5m_2025, 5 m bare earth from LiDAR (CC BY 4.0)"
