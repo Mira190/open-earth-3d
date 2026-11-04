@@ -1542,9 +1542,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (!e || p.state !== 'walk' || p.line < 0) continue;
           const x = bx[j] + e.x * 1.02, y = by[j] + e.y * 1.02;
           if (nav && !nav.walk(x, y, p.z).ok) continue;
-          const dx = x - p.x, dy = y - p.y, L = net.L[p.line];
+          const dx = x - p.x, dy = y - p.y; // (p.line is the crowd's network's, not the roads': past its end, walk() takes it on)
           p.lat += -dx * p.hy + dy * p.hx;
-          p.s = Math.max(0, Math.min(L.len, p.s + p.dir * (dx * p.hx + dy * p.hy)));
+          p.s += p.dir * (dx * p.hx + dy * p.hy);
           p.x = bx[j] = x; p.y = by[j] = y;
         }
       }
