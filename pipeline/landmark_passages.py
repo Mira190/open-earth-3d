@@ -68,7 +68,7 @@ INSIDE = {"593157575": "the Rijksmuseum's doors from the passage into its hall",
           "1460593031": "Saint-Sulpice's south-west door, from its loggia into the church",
           "582149849": "between the Imperial Palace's halls (Kyoto), through their corridors, which are closed to visitors"}
 # passages a landmark's model does not open yet: OSM way -> what it needs (listed with "open": false; tools/passage_walk.js
-# reports them and does not count them blocked)
+# reports them and does not count them blocked; GitHub issue #161 tracks opening them)
 NOT_YET = {
     "1064828742": "Central Plaza (Hong Kong): the public way through its ground floor; the tower is drawn as one glass prism",
     "1416961012": "the ICC and Elements (Hong Kong): the covered walk runs on into the mall's halls, which are not modelled",

@@ -13,8 +13,10 @@ module.exports = async function walkPassages(p) {
     const P = nav.passages || [];
     if (!P.length) return out;
     const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, mode: pl.mode };
-    // the ground, or a surface the city lays over it there (a flight of steps, a loggia's floor: game.json surfaces)
-    const ground = (x, y) => Math.max(nav.terrain(x, y), nav.surfaceAt(x, y));
+    // the floor at the passage's own level: the ground, or a surface the city lays over it there (a flight of steps,
+    // a loggia's floor: game.json surfaces), within a step of the height of the passage's points there, not a bridge
+    // deck that runs high over it
+    const ground = (x, y, zr) => { const f = nav.floorAt(x, y, zr + 0.6); return f ? f.z : nav.terrain(x, y); };
     const FOOT = new Set(['footway', 'pedestrian', 'path', 'living_street', 'steps', 'cycleway']);
     for (const pa of P) {
       if (pa.open === false) { out.push({ name: pa.name || `way ${pa.osm}`, osm: pa.osm, cls: pa.class, len: 0, rev: false, ok: true, notYet: pa.needs }); continue; }
@@ -26,7 +28,7 @@ module.exports = async function walkPassages(p) {
         // from where one can stand at its first point (within 2 m: a way mapped along a wall's face, or from a quay's edge)
         const [sx, sy, sz] = pts[0];
         const f = nav.stand(sx, sy, sz + 0.5, { rMax: 2.0 });
-        if (!f || Math.abs(f.z - (pa.floor ? sz : ground(f.x, f.y))) > 1.2) { r.why = `no floor at its start (${f ? f.z.toFixed(2) : 'none'} for ${sz.toFixed(2)} m)`; r.at = [sx, sy]; out.push(r); continue; }
+        if (!f || Math.abs(f.z - (pa.floor ? sz : ground(f.x, f.y, sz))) > 1.2) { r.why = `no floor at its start (${f ? f.z.toFixed(2) : 'none'} for ${sz.toFixed(2)} m)`; r.at = [sx, sy]; out.push(r); continue; }
         Object.assign(pl, { mode: 'foot', vehicle: null, x: f.x, y: f.y, z: f.z, ground: true, vz: 0, speed: 0 });
         let k = 1, still = 0, best = Infinity, off = 0, offAt = null;
         for (let i = 0; i < 4000 && k < pts.length; i++) {
@@ -38,7 +40,8 @@ module.exports = async function walkPassages(p) {
           // the floor the passage gives here: through a building, its points' height nearest along the way; under
           // a roof open at the sides, the ground or the surface laid over it (a platform the landmark draws stands within
           // the tolerance)
-          const zq = pa.floor ? pts[Math.max(0, k - 1)][2] + (pts[k] ? (pts[k][2] - pts[Math.max(0, k - 1)][2]) * 0.5 : 0) : ground(pl.x, pl.y);
+          const zp = pts[Math.max(0, k - 1)][2] + (pts[k] ? (pts[k][2] - pts[Math.max(0, k - 1)][2]) * 0.5 : 0);
+          const zq = pa.floor ? zp : ground(pl.x, pl.y, zp);
           if (Math.abs(pl.z - zq) > Math.abs(off)) { off = pl.z - zq; offAt = [pl.x, pl.y]; }
         }
         const [ex, ey] = pts[pts.length - 1];
