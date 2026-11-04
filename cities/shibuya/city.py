@@ -3185,8 +3185,8 @@ def hachiko_square(K, h, lm):
     # on the ground, which rises 9 cm across them (laid flat at his foot, the clay pavers round them would
     # come up through their uphill side)
     zd = lambda x, y: max(z, gz(x, y)) + 0.075
-    for k in range(6):
-        ring_top(K("hk_setts"), at, HK_DISC_M * k / 6, HK_DISC_M * (k + 1) / 6, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
+    for k in range(12):
+        ring_top(K("hk_setts"), at, HK_DISC_M * k / 12, HK_DISC_M * (k + 1) / 12, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
     from shapely.ops import unary_union
     field = unary_union([Point(*c).buffer(HK_PLANTER["r"] + 2.6, 24) for c in HK_PLANTERS] + [Point(*at).buffer(HK_DISC_M, 48)]).convex_hull
     field = field.intersection(Polygon(HACHIKO_SQUARE).buffer(-0.3)).difference(Point(*at).buffer(HK_DISC_M - 0.02, 48))
@@ -3198,7 +3198,7 @@ def hachiko_square(K, h, lm):
                     continue
                 ground_cell(K("hk_setts"), g, gz, 0.07)
     for r in (3.1, HK_DISC_M - 0.15):
-        ring_top(K("hk_band"), at, r - 0.08, r + 0.08, 0.0, 2 * math.pi, lambda x, y: zd(x, y) + 0.004, 5.0)
+        ring_top(K("hk_band"), at, r - 0.08, r + 0.08, 0.0, 2 * math.pi, lambda x, y: zd(x, y) + 0.015, 5.0)
     for k, (bx, by) in enumerate(HK_BLOSSOMS):
         blossom(K("hk_inlay"), (bx, by), 0.85, gz(bx, by) + 0.08, turn=0.4 * k)
     # the bed behind him: the low wall people sit on, its cap, the soil, stainless rails, lamps in the wall
