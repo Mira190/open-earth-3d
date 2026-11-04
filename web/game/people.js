@@ -304,6 +304,22 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     return out;
   }
 
+  // ------------------------------------------------------------ the street lights on people
+  // setLight(patch): a shader patch every person's material takes from then on (world.js
+  // streetLit: after dark the street lights' pool where they stand lights them as it lights the
+  // pavement, so the player and the people they meet are not silhouettes under a lamp)
+  let streetLit = null;
+  function setLight(patch) { streetLit = patch; }
+  function litMaterial(m) {
+    if (!streetLit || !m || !m.isMeshStandardMaterial || m.userData.streetLit) return;
+    const own = m.onBeforeCompile, patch = streetLit, key = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => { if (own) own.call(m, sh, r); patch(sh); };
+    // three.js keys a program by the text of onBeforeCompile, which this wrapper makes alike for all
+    m.customProgramCacheKey = () => `person-lit|${key ? key.call(m) : ''}|${own ? own.toString() : ''}`;
+    m.userData.streetLit = true;
+    m.needsUpdate = true;
+  }
+
   // ------------------------------------------------------------ one person: skinned, animated
   function paletteMaterial(pal, cls) {
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0 });
@@ -358,9 +374,10 @@ ${PAT_GLSL}`)
     const bone = {};
     model.traverse(o => { if (o.isSkinnedMesh && !mesh) mesh = o; if (o.isBone) bone[o.name] = o; });
     head = bone[alias('Head')] || null;
-    if (T.textured) model.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; o.frustumCulled = false; } });
+    if (T.textured) model.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; o.frustumCulled = false; (Array.isArray(o.material) ? o.material : [o.material]).forEach(litMaterial); } });
     else {
       mesh.material = paletteMaterial(colours(T.extras, look), T.extras.classes.map(c => CLS[c] || 0));
+      litMaterial(mesh.material);
       mesh.castShadow = mesh.receiveShadow = true;
       mesh.frustumCulled = false;
     }
@@ -654,6 +671,7 @@ transformed = crowdPose(transformed, false);`);
       for (const a of ['iSkin', 'iHair', 'iTop', 'iLegs', 'aAnim']) geo.setAttribute(a, new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
       geo.setAttribute('iPat', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
       const { mat, depth } = crowdMaterial(L.extras, U);
+      litMaterial(mat);
       const mesh = new THREE.InstancedMesh(geo, mat, n);
       mesh.customDepthMaterial = depth;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -758,5 +776,5 @@ transformed = crowdPose(transformed, false);`);
     return { begin, place, hide, end, setRain, meshes, active, umbrellas: umbMeshes };
   }
 
-  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle };
+  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle, setLight };
 })();
