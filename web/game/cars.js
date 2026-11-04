@@ -192,12 +192,19 @@ window.OECars = (function () {
     // left and right in the frame of a left-hand-drive car swap with the cabin
     if (mirror < 0 && seats.rear_left) [seats.rear_left, seats.rear_right] = [seats.rear_right, seats.rear_left];
     // lamps seen from afar after dark
-    const glows = [];
+    const glows = [], gv = new THREE.Vector3(), dv = new THREE.Vector3(), cv = new THREE.Vector3();
     const glow = (p, hex, size, kind) => {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: lin(hex), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       s.position.copy(p).add(new THREE.Vector3(0, 0, Math.sign(p.z) * 0.06));
       s.renderOrder = 3;
-      s.userData = { size, kind };
+      s.userData = { size, kind, op: 0, out: new THREE.Vector3(0, 0, Math.sign(p.z) || 1) };
+      // a lamp shines the way it faces: its glow fades out as it is seen side on, and is gone from
+      // behind (a headlamp's glow seen from the back of the car read as a white bloom on the car ahead)
+      s.onBeforeRender = (r, sc, cam) => {
+        s.getWorldPosition(gv); dv.copy(s.userData.out).transformDirection(body.matrixWorld);
+        const f = dv.dot(cv.setFromMatrixPosition(cam.matrixWorld).sub(gv).normalize());
+        s.material.opacity = s.userData.op * clamp((f + 0.15) / 0.55, 0, 1);
+      };
       body.add(s);
       glows.push(s);
     };
@@ -250,14 +257,17 @@ window.OECars = (function () {
         mats.Light_Head.emissiveIntensity = lit ? 2.4 : 0.05;
         mats.Light_Tail.emissiveIntensity = (s.brake ? 2.2 : 0) + (lit ? 0.9 : 0.05);
         mats.Light_Amber.emissiveIntensity = amber ? 2.6 : 0;
-        mats.Sign.emissiveIntensity = s.sign ? 0.4 + 1.6 * night : 0;
+        mats.Sign.emissiveIntensity = s.sign ? 0.3 + 0.8 * night : 0; // (a lit panel, not a lamp: no bloom across the car)
         for (const q of glows) { // (the headlamps' glow is for the street, not for whoever is at the wheel: s.inside)
           const k = q.userData.kind === 'head' ? (lit && !s.inside ? 1 : 0) : lit ? (s.brake ? 1.4 : 0.8) : s.brake ? 0.6 : 0;
           q.visible = k > 0.01;
           q.scale.setScalar(q.userData.size * (0.5 + 0.8 * night) * Math.max(0.6, k));
-          q.material.opacity = Math.min(1, k * (0.35 + 0.65 * night));
+          q.material.opacity = q.userData.op = Math.min(1, k * (0.35 + 0.65 * night));
         }
-        if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) : 0;
+        // (the beam on a car stopped close ahead, s.near metres: dimmed as the eye would adapt to it,
+        // rather than a white wall where a queue's back is lit from 3 m)
+        const nearK = s.near != null && s.near < 12 ? Math.max(0.05, (Math.max(0, s.near) / 12) ** 2) : 1;
+        if (api.lamp) api.lamp.intensity = lit ? (PHYS() ? 2600 : 1.4) * nearK : 0;
       },
       // a person in a seat, facing forward: the rig's root on the floor in front of the cushion
       // (people.js puts the feet there), the shins forward and, at the wheel, the hands on it. The
@@ -791,6 +801,11 @@ window.OECars = (function () {
     return { pts, cum, len, corner, at, pos };
   }
 
+  // a traffic car in a queue for a junction: queueing itself (c.q), or stopped behind cars, one after
+  // another up the lane, the first of which that isn't stopped is queueing (where the traffic's own
+  // c.q, set car by car, missed one: a car stopped behind another a little out of line)
+  const queueing = o => { for (let x = o, k = 0; x && k < 12; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 0.5) return false; } return false; };
+
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for
   // bends, for the end, and for anything in its way (others: [{ x, y, half }], judged against
@@ -941,12 +956,24 @@ window.OECars = (function () {
     // is coming along the side of the road it would swing out into: it waits behind until that has
     // gone by.
     const c = {}, passing = [], passed = [], rounding = new Set();
-    let still = false;
-    function gapAhead(others) {
+    let still = false, queued = false;
+    function gapAhead(others, dt = 0) {
       let gap = Infinity, pass = 0;
-      still = false; passing.length = 0; passed.length = 0;
+      still = queued = false; passing.length = 0; passed.length = 0;
       st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
+      // the back of the nearest car in the lane ahead queueing for a junction (o.q): a car stopped short
+      // of a queue is passed only with room to pull back in ahead of it, short of the queue, and never
+      // up the side of the queue itself
+      let qBack = Infinity;
+      for (const o of others) {
+        if (!queueing(o)) continue;
+        const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
+        if (a <= 0 || a > 100) continue;
+        P.at(Math.min(P.len, st.s + a), c);
+        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep;
+        if (Math.abs(w - lane - st.shift) < Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) qBack = Math.min(qBack, a - (o.half || 0.4));
+      }
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 60) continue;
@@ -954,9 +981,14 @@ window.OECars = (function () {
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4, room = Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1);
         // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
         // turns round every few seconds and so never stays stuck long enough to be marked still
+        // (but never one queueing at a junction, o.q: a queue at a red light is waited out in the lane,
+        // not overtaken up the oncoming side to its head)
+        // (o.still: true, a flag the game sets, or a traffic car's own count of the seconds it has stood:
+        // over 6 s, and not queueing, it is stopped for good, as one caught up with this one at a kerb)
         // (and one it has begun to swing out round stays one while it stands there: its held time is
         // reset at a red light, and the car would else drop out and back in from frame to frame)
-        const stopped = (o.still || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay); // (not one parked where it is to pull in)
+        const oq = queueing(o);
+        const stopped = !oq && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay); // (not one parked where it is to pull in)
         // (side by side, clear; a stopped car in its lane is judged by the lane, not by where it has
         // swung out to: else, once out, it would count as clear, swing back in, and so on every frame)
         if (Math.abs(w - lane - (stopped ? 0 : st.shift)) >= room) continue;
@@ -964,7 +996,7 @@ window.OECars = (function () {
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
-        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; }
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = oq; }
       }
       if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
         if (passed.includes(o)) continue;
@@ -974,10 +1006,14 @@ window.OECars = (function () {
         const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + Math.max(0, a)) * keep;
         if (Math.abs(w - lane - pass) < (o.hw || 0.4) + C.hw + 0.4) { pass = 0; break; }
       }
+      // (a driver pulls out only once the way round has looked clear for a second, not on a frame's glimpse
+      // of it: one queueing that reads for a moment as stopped for good is never swung out round)
+      st.passT = pass ? (st.passT || 0) + dt : 0;
+      if (pass && Math.abs(st.shift) < 0.2 && st.passT < 1) pass = 0;
       if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay; }
       rounding.clear();
       if (pass) for (const o of passed) rounding.add(o);
-      st.pass = pass;
+      st.pass = pass; st.passed = passed; // (what it goes round, for the game check)
       return gap;
     }
     // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
@@ -1077,7 +1113,7 @@ window.OECars = (function () {
       // (and a corner just behind: it is still turning it, the route's line being taken as a curve over some metres)
       for (let i = q.i; i > 0 && st.s - P.cum[i] < 8; i--) if (P.corner[i] < want) want = P.corner[i];
       // the cars ahead, and the line at a red light or a stop sign
-      const carGap = gapAhead(others), line = obey && !dry ? Math.min(lineGap(), midGap(dt)) : Infinity;
+      const carGap = gapAhead(others, dt), line = obey && !dry ? Math.min(lineGap(), midGap(dt)) : Infinity;
       if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
       // a car standing where it is to pull in: pull in behind it
       if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
@@ -1089,15 +1125,26 @@ window.OECars = (function () {
       // held up behind cars (never at the line: a red light is waited out) it counts the time while it
       // crawls, and keeps it until it is under way, since a car caught up with it turns round every few
       // seconds and the gap comes and goes
-      st.held = line <= carGap ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // (in a queue for a junction, the car ahead waiting its turn there, it is waiting for the light too:
+      // unless it is caught up in that car, or the queue has not moved for a minute, longer than any
+      // light's red, a jam in the junction, when it counts again, for a ride to find another way round)
+      st.qT = queued && st.v < 0.5 ? (st.qT || 0) + dt : 0;
+      const waiting = queued && carGap >= 0.5 && st.qT < 60;
+      st.gap = carGap; // (the gap to the car ahead: its headlamp beam is dimmed on one close ahead)
+      st.held = line <= carGap || waiting ? 0 : st.v < 1 ? st.held + dt : st.v > 4 ? 0 : st.held;
+      // queueing for a junction itself (stopped for its line, or behind a car that is): what the traffic
+      // behind reads, as it reads a car of its own (c.q), so it queues behind and never goes round
+      st.q = st.v < 0.5 && ((line < Infinity && line <= carGap) || (queued && carGap < line));
+      st.qBy = st.q && carGap < line ? st.block : null; // (the car it queues behind: that one does not queue behind it in turn)
       // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
       // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
       if (st.held > 8 && carGap < 0.5) want = Math.max(want, 1.5);
       // and held for 12 s in a tangle the traffic does not clear, it stops giving way and creeps on at
       // up to 3 m/s until it is under way (to the line, if a light is red), rather than wait for good
-      if (st.held > 12) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
+      // (never on into a car queueing ahead of it)
+      if (st.held > 12 && !queued) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // held up near the end for good (by a car that isn't moving off, not a light): stop here
-      st.stall = st.v < 0.2 && room < 0.1 && carGap < line ? st.stall + dt : 0;
+      st.stall = st.v < 0.2 && room < 0.1 && carGap < line && !waiting ? st.stall + dt : 0; // (not in a queue for the lights)
       if (end && st.stall > 8 && left < 45) { endAt(st.s); left = 0; }
       // and queued 8 s behind cars within 45 m of the end (a jam between it and you), it stops where
       // it is, as a driver picking you up does, and you walk the last few metres
@@ -1177,5 +1224,5 @@ window.OECars = (function () {
     return { st, update, finish, jump, leave, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
-  return { car, headlamp, drive, router, path, chauffeur, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
+  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
 })();
