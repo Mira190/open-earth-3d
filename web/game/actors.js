@@ -981,6 +981,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
     if (crowd) crowd.cars = api;
     if (nav) nav.movers = api;
+    // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
+    // in it, or still moving within r of its node, comes back elsewhere, out past r, rather than being
+    // caught in the box by the crowd stepping off the kerbs
+    api.clearBox = (x, y, r) => {
+      let k = 0;
+      for (const c of C) {
+        if (c.line < 0 || Math.hypot(c.x - x, c.y - y) > r || !(JN.inner(c.line) || c.v > 1.5)) continue;
+        respawn(c, x, y, r + 20); k++;
+      }
+      return k;
+    };
     // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
     function take(c) { JN.forget(c); c.line = -1; c.v = 0; }
     // how deep a car-sized box (x, y at height z, heading h, half length and width, grown by m) would

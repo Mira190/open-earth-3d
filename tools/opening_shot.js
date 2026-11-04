@@ -35,8 +35,11 @@ const [W, H] = size.split('x').map(Number);
       const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));
       fs.writeFileSync(path.join(outDir, `${city}-open-${n}-${name}-${tag}.png`), Buffer.from(png.split(',')[1], 'base64'));
     };
-    const play = await p.$('#gt-play');
-    if (play) await play.click().catch(() => {});
+    for (let k = 0; k < 10; k++) { // (Play again until the crane has begun: a click before the title is ready is lost)
+      const play = await p.$('#gt-play');
+      if (play) await play.click().catch(() => {});
+      if (await p.waitForFunction(() => window.__game.arriving(), null, { timeout: 15000 }).then(() => true, () => false)) break;
+    }
     await p.evaluate(t => { // the light of the hour asked, set after Play (which sets the title's choice)
       const g = window.__game, c = g.clock, sun = /^sunset([+-]\d+)?$/.exec(t);
       const min = t === 'night' ? 22 * 60 : sun ? Math.round(g.dayLimits().sunset + (+sun[1] || 0)) : t.split(':').reduce((a, v, i) => a + (i ? +v : v * 60), 0);

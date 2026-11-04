@@ -3066,7 +3066,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const skip = OEOnboard.done() && $('#gt-skip-on').checked;
     if (openingHere()) { // (#110: the opening shot, the scramble's walk turning green as it comes down)
       const j = junctions.J.find(q => q.scramble && Math.hypot(q.x - player.x, q.y - player.y) < 80);
-      if (j) { junctions.walkIn(j, OPENING.walkIn); musterScramble(); }
+      if (j) { junctions.walkIn(j, OPENING.walkIn); cars.clearBox(j.x, j.y, 45); musterScramble(); }
     }
     craneIn(() => (cont ? OEOnboard.markDone(CITY.id) : skip ? welcome(true) : startTour(() => welcome(false))));
     renderPassport();
