@@ -7,7 +7,8 @@
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
 // change with the traffic stopping for them, ride a taxi up behind a queue at a red light (it waits
 // in its lane and goes when the queue moves), swing the chase camera round walls in tight spots
-// frame by frame (it must ease, never jump), and lose the WebGL context on purpose and get it
+// frame by frame (it must ease, never jump), watch the queues at the signals round you for three minutes
+// (none held through more than two greens, no movement left standing in a junction), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -21,6 +22,7 @@ const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
 const { findQueue } = require('./ride_queue');
+const { heldStep } = require('./junction_held_step');
 const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
@@ -1129,6 +1131,13 @@ const npcNight = require('./npc_night');
     if (queue.follow == null && queue.moved == null) console.log(`note and it goes on when the queue moves: not tried, the queue never moved (${queue.why})`);
     else check(queue.follow != null && queue.openMax < 2.5, `and it goes on when the queue moves (${queue.follow != null ? `off ${queue.follow.toFixed(1)} s after the car ahead first moved, ${queue.goneT.toFixed(0)} s after it came up; stood at most ${queue.openMax.toFixed(1)} s with room ahead` : queue.moved != null ? `the car ahead went ${queue.moved.toFixed(0)} s in, the taxi did not: ${queue.why}` : `the queue never moved: ${queue.why}`})`);
   }
+
+  // no queue held at a green: every car stopped at a signalled junction's line goes within two greens of
+  // its own light, and no movement stands in a junction for more than two of its cycles, three minutes
+  // round where you are (tools/junction_held_step.js; #144, #150)
+  const heldQ = await p.evaluate(heldStep, { T: 180, max: 2 });
+  check(heldQ.held.length === 0, `no queue at a signal held through more than two greens, and no movement left standing in a junction (${heldQ.watched} cars watched at their lines, ${heldQ.cycles} greens waited through${heldQ.held.length ? `; ${heldQ.held.length} held` : ''})`);
+  for (const h of heldQ.held.slice(0, 6)) console.log('  ' + h);
 
   // the traffic keeps out of the walls: cars whose body (most of its width, knee to 1.4 m) is in a building or a
   // landmark, over 20 s; none stands at a wall across its way for long; and no one-way road that comes to a

@@ -1462,14 +1462,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // and a step along its road that took it deeper into another car is taken back (one parting
           // from a car it has long been caught with: deeper into any other), unless it is squeezing past
           // one it has waited on a long time; a step onto the next road was checked above, with the junction
-          if (!turn && !squeeze) {
-            const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1;
+          // Taken back, it is held by that car: in a junction, by one waiting at its line whose nose is in
+          // the way out (and which waits for this very movement to clear), that one backs off, as for a
+          // step held above; and after 10 s it squeezes on past, as one held in a junction does (#144)
+          if (!turn && !squeeze && !(c.mv && c.revT > 10)) {
+            const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1, o1 = mostCar;
             if (f1 > 0 && f1 > (overlaps(c, was[3], was[4], Math.sin(was[6]), Math.cos(was[6]), 0, 0, null, kn), free ? fresh : depth) + 1e-3) {
               [c.line, c.s, c.dir, c.x, c.y, c.z, c.h] = was;
               [c.lo, c.ln] = wasLane;
               c.v = 0;
-            }
-          }
+              held = true; holder = o1; c.revT = (c.revT || 0) + dt;
+              if (o1 && c.mv && !o1.mv && o1.v < 0.3 && o1.toLine != null && o1.toLine - o1.half < 4) o1.backoff = 1.5;
+            } else c.revT = 0;
+          } else c.revT = c.mv && c.revT > 10 && c.revT < 13 ? c.revT + dt : 0; // (squeezing on for 3 s)
         }
         c.stuck = c.v < 0.1 && (byCar || held) && !c.q ? c.stuck + dt : 0;
         c.zebraT = why === 'zebra' && c.v < 0.3 ? (c.zebraT || 0) + dt : 0;
