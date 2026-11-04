@@ -20,7 +20,12 @@ window.OECollision = (function () {
   function create(cellSize = 8) {
     const prisms = []; // {rings, zlo, zhi, tag, id, x0, y0, x1, y1}
     let segs = null, segP = null, segCell = null, prCell = null, segMark = null, prMark = null, mark = 0;
-    let gx0 = 0, gy0 = 0, gnx = 1, gny = 1;
+    let gx0 = 0, gy0 = 0, gnx = 1, gny = 1, nseg = 0, built = false;
+    // solids added after build() (nav.js lays a landmark's fine cells in tile by tile, as the walker
+    // nears them) go into per-cell lists beside the packed grid; need(x0, y0, x1, y1), when set, is
+    // asked to add what lies in a box before a query visits it
+    const late = { seg: new Map(), pr: new Map() };
+    let need = null;
 
     // a solid: rings of flat [x, y, ...] arrays (outer ring and holes, metres), from zlo to zhi
     function add(rings, zlo, zhi, tag = 1, id = -1) {
@@ -29,8 +34,28 @@ window.OECollision = (function () {
         if (r[k] < x0) x0 = r[k]; if (r[k] > x1) x1 = r[k];
         if (r[k + 1] < y0) y0 = r[k + 1]; if (r[k + 1] > y1) y1 = r[k + 1];
       }
-      prisms.push({ rings, zlo, zhi, tag, id, x0, y0, x1, y1 });
-      return prisms.length - 1;
+      const pi = prisms.push({ rings, zlo, zhi, tag, id, x0, y0, x1, y1 }) - 1;
+      if (built) addLate(pi);
+      return pi;
+    }
+    const grow = (a, n) => { if (n <= a.length) return a; const b = new a.constructor(Math.max(n, a.length * 2)); b.set(a); return b; };
+    function cellsOf(x0, y0, x1, y1, fn) {
+      const c0 = Math.max(0, Math.floor((x0 - gx0) / cellSize)), r0 = Math.max(0, Math.floor((y0 - gy0) / cellSize));
+      const c1 = Math.min(gnx - 1, Math.floor((x1 - gx0) / cellSize)), r1 = Math.min(gny - 1, Math.floor((y1 - gy0) / cellSize));
+      for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) fn(r * gnx + c);
+    }
+    const lpush = (M, k, i) => { const l = M.get(k); if (l) l.push(i); else M.set(k, [i]); };
+    function addLate(pi) {
+      const p = prisms[pi];
+      prMark = grow(prMark, prisms.length);
+      cellsOf(p.x0, p.y0, p.x1, p.y1, k => lpush(late.pr, k, pi));
+      for (const r of p.rings) for (let a = 0, m = r.length / 2; a < m; a++) {
+        const b = (a + 1) % m, k = nseg++;
+        segs = grow(segs, 4 * nseg); segP = grow(segP, nseg); segMark = grow(segMark, nseg);
+        segs[4 * k] = r[2 * a]; segs[4 * k + 1] = r[2 * a + 1]; segs[4 * k + 2] = r[2 * b]; segs[4 * k + 3] = r[2 * b + 1];
+        segP[k] = pi;
+        cellsOf(Math.min(r[2 * a], r[2 * b]), Math.min(r[2 * a + 1], r[2 * b + 1]), Math.max(r[2 * a], r[2 * b]), Math.max(r[2 * a + 1], r[2 * b + 1]), c => lpush(late.seg, c, k));
+      }
     }
 
     // a uniform grid in compressed rows: cell -> item indices, for walls and for whole prisms
@@ -71,11 +96,14 @@ window.OECollision = (function () {
       });
       prCell = bucket(prisms.length, (i, b) => { const p = prisms[i]; b[0] = p.x0; b[1] = p.y0; b[2] = p.x1; b[3] = p.y1; });
       segMark = new Uint32Array(n); prMark = new Uint32Array(prisms.length);
+      segCell.late = late.seg; prCell.late = late.pr; nseg = n; built = true;
       return api;
     }
 
     // visit each wall (or prism) whose cell overlaps the box once; stop early when fn returns true
     function visit(grid, marks, x0, y0, x1, y1, fn) {
+      if (need) need(x0, y0, x1, y1);
+      marks = grid === segCell ? segMark : prMark; // (need() may have grown them)
       const c0 = Math.max(0, Math.floor((x0 - gx0) / cellSize)), c1 = Math.min(gnx - 1, Math.floor((x1 - gx0) / cellSize));
       const r0 = Math.max(0, Math.floor((y0 - gy0) / cellSize)), r1 = Math.min(gny - 1, Math.floor((y1 - gy0) / cellSize));
       if (++mark === 0xffffffff) { segMark.fill(0); prMark.fill(0); mark = 1; }
@@ -83,6 +111,12 @@ window.OECollision = (function () {
         const k = r * gnx + c;
         for (let j = grid.start[k]; j < grid.start[k + 1]; j++) {
           const i = grid.items[j];
+          if (marks[i] === mark) continue;
+          marks[i] = mark;
+          if (fn(i)) return true;
+        }
+        const l = grid.late.get(k);
+        if (l) for (const i of l) {
           if (marks[i] === mark) continue;
           marks[i] = mark;
           if (fn(i)) return true;
@@ -266,7 +300,7 @@ window.OECollision = (function () {
     }
 
     const api = { add, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prisms, SKIN,
-      get walls() { return segP ? segP.length : 0; } };
+      get walls() { return nseg; }, set need(f) { need = f; }, get need() { return need; } };
     return api;
   }
   return { create, SKIN };

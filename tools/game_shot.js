@@ -30,6 +30,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   const p = await b.newPage({ viewport: { width: w, height: h } });
   // a software renderer picks the low tier for itself; stills are taken at the desktop one
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
+  await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, opts) {
@@ -76,14 +78,28 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (air.length) await p.evaluate(() => window.__game.flyover.camera(null));
   // on foot, in the game
   if (foot.length) {
-    const play = await p.waitForSelector('#gt-play', { state: 'visible', timeout: 60000 }).catch(() => null); // (the title's play button, once it shows)
-    if (play) await play.click({ timeout: 10000 }).catch(() => p.evaluate(() => document.getElementById('gt-play').click())); // (through anything laid over it)
-    // the arrival from the title (#89) settled at once, and no first-time tour over the view
-    await p.evaluate(() => { const g = window.__game; g.advance(0.5); if (g.arriving && g.arriving()) { g.settleArrival(); for (let i = 0; i < 20 && g.arriving(); i++) g.advance(0.25); } const O = window.OEOnboard, t = O && O.current && O.current(); if (t) t.skip(); });
+    // (the title comes up once the loader has drawn the scene twice; a click before it does nothing)
+    await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
+    const play = await p.$('#gt-play');
+    if (play) await play.click().catch(() => {});
+    // until the title has gone (a click while the city is still loading can be lost): click again
+    for (let i = 0; i < 60 && !(await p.evaluate(() => { const t = document.getElementById('g-title'); return !t || t.hidden; })); i++) {
+      await p.evaluate(() => { const b = document.getElementById('gt-play'); if (b) b.click(); });
+      await p.waitForTimeout(1000);
+    }
+    // the arrival's crane shot: settled, so that it does not fly the camera over the first view
+    await p.evaluate(async () => {
+      const g = window.__game;
+      for (let t = 0; t < 10 && (!g.arriving || !g.arriving()); t += 0.25) await new Promise(r => setTimeout(r, 250));
+      for (let t = 0; t < 10 && g.arriving && g.arriving(); t += 0.25) { g.settleArrival(); g.advance(0.25); await new Promise(r => requestAnimationFrame(r)); }
+    });
+    // and no first-time tour over the view
+    await p.evaluate(() => { const O = window.OEOnboard, t = O && O.current && O.current(); if (t) t.skip(); });
   }
   for (const v of foot) {
     await p.evaluate(v => {
       const g = window.__game;
+      for (let i = 0; i < 40 && g.arriving && g.arriving(); i++) { g.settleArrival(); g.advance(0.1); } // an arrival that began late
       if (g.cine.active) g.cine.skip();
       window.__shotClock(v);
       const [x, y] = v.at, f = g.nav.floorAt(x, y, v.z != null ? v.z + 0.5 : v.street ? g.nav.terrain(x, y) + 0.5 : 200); // (the roof there, the street under a canopy, or the floor nearest z)
@@ -96,8 +112,11 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       g.player.x = x + 400; g.advance(0.05);
       place();
       g.advance(2);
+      // the arrival's crane down to the player (it starts a moment after play) takes the camera: settle it
+      for (let t = 0; g.arriving() && t < 6; t += 0.1) { g.settleArrival(); g.advance(0.1); }
       // a cutscene the place set off (the survey's turn on the spot) would be caught half way: skip it
-      if (g.cine.active) { g.cine.skip(); place(); g.advance(0.5); }
+      if (g.cine.active) g.cine.skip();
+      place(); g.advance(0.5);
       // "closer": a photo spot's id, to look closer at it from there (places.js), "along" seconds to the right
       if (v.closer) { g.lookAt(g.G.spots.find(s => s.id === v.closer)); g.advance(1.2); if (v.along) g.advance(v.along, ['KeyD']); if (v.up) g.advance(Math.abs(v.up), [v.up > 0 ? 'KeyW' : 'KeyS']); }
       // "scramble": "walk" or "wait": on until the nearest scramble is that far into its walk (its crowd
