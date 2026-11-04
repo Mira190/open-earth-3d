@@ -422,3 +422,98 @@ def draw_signs(d, atlas, blades, boards):
 def sign_glows(sites, every=3, colours=("#ffd9a0", "#ffffff", "#ffb070"), strength=0.26):
     return [[round(x + nx * 3.0, 1), round(y + ny * 3.0, 1), 8.0, colours[k % len(colours)], strength]
             for k, (x, y, nx, ny, g, top, L) in enumerate(sites) if k % every == 0]
+
+
+# ---------------------------------------------------------------- bridges over the water
+
+BRIDGE_MATS = {"bridge_deck": {"color": "#55575a", "roughness": 0.9, "metalness": 0.0},
+               "bridge_girder": {"color": "#7d9aa0", "roughness": 0.55, "metalness": 0.45},
+               "bridge_rail": {"color": "#c9ccc8", "roughness": 0.5, "metalness": 0.5},
+               "bridge_pier": {"color": "#8a877f", "roughness": 0.9, "metalness": 0.0}}
+
+
+def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_m2=250.0, colours=None, widths=None):
+    """The bridges OpenStreetMap outlines over the water (Overture infrastructure, class bridge, at least
+    min_m2 and a quarter of it over the water): the axis along the outline's long side, its length and width,
+    and the deck's height at both ends (the ground just beyond each end, at least 3.5 m) with a crown in the
+    middle. A Tokyo river bridge is a steel girder painted in its own colour (`colours` by name)."""
+    import shapely
+    C = ctx.city
+    water = shapely.union_all([r["geom"] for r in jk.overture(C, "water", "class IN (" + ", ".join(f"'{c}'" for c in classes) + ")")
+                               if r["geom"].geom_type in ("Polygon", "MultiPolygon")])
+    out = []
+    rows = jk.overture(C, "infrastructure", "class = 'bridge'")
+    shapes = [(r["name"] or "", r["geom"]) for r in rows if r["geom"].geom_type == "Polygon"]
+    # a bridge mapped only as its centre lines (one per carriageway): the lines of one name together, a
+    # deck 6 m either side of them (or `widths` by name)
+    named = {n for n, _ in shapes if n}
+    lines = {}
+    for r in rows:
+        if r["geom"].geom_type == "LineString" and r["name"] and r["name"] not in named:
+            lines.setdefault(r["name"], []).append(r["geom"])
+    for n, ls in lines.items():
+        u = shapely.union_all(ls)
+        half = (widths or {}).get(n, 12.0) / 2
+        shapes.append((n, u.buffer(half, cap_style="flat", join_style="mitre")))
+    for name, g in shapes:
+        if g.geom_type != "Polygon" or g.area < min_m2:
+            continue
+        over = g.intersection(water).area / g.area
+        if over < 0.25:
+            continue
+        mr = np.asarray(g.minimum_rotated_rectangle.exterior.coords)[:4]
+        s1, s2 = mr[1] - mr[0], mr[2] - mr[1]
+        L1, L2 = float(np.hypot(*s1)), float(np.hypot(*s2))
+        ax = (s1 / L1) if L1 >= L2 else (s2 / L2)
+        length, width = max(L1, L2), min(L1, L2)
+        if width > 60 or length < 15:
+            continue
+        c = np.asarray(g.minimum_rotated_rectangle.centroid.coords[0])
+        za = max(ctx.ground(*(c - ax * (length / 2 + 3))), 3.5)
+        zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), 3.5)
+        out.append({"name": name, "centre": rnd(c), "axis": rnd(ax, 5), "length_m": round(length, 1), "width_m": round(width, 1),
+                    "z_ends": [round(za, 2), round(zb, 2)], "colour": (colours or {}).get(name)})
+    return out
+
+
+def deck_profile(b):
+    """[[u, z]] along a bridge's axis: the two banks, and a crown of 2% of its length (at least 0.8 m)."""
+    L, (za, zb) = b["length_m"], b["z_ends"]
+    crown = max(0.8, 0.02 * L)
+    us = np.linspace(-L / 2 - 3, L / 2 + 3, 11)
+    t = (us - us[0]) / (us[-1] - us[0])
+    return [[round(float(u), 1), round(float(za + (zb - za) * k + crown * 4 * k * (1 - k)), 2)] for u, k in zip(us, t)]
+
+
+def bridge_meshes(K, b, pier_every=45.0):
+    """A girder bridge on its outline: the deck, the girders' painted faces under its edges, railings, and
+    piers in the water every pier_every metres."""
+    P = frame(b["centre"], b["axis"])
+    L, hw = b["length_m"], b["width_m"] / 2
+    prof = deck_profile(b)
+    us, zs = np.array([p[0] for p in prof]), np.array([p[1] for p in prof])
+    dz = lambda u: float(np.interp(u, us, zs))
+    girder = "bridge_girder_" + b["name"] if b.get("colour") else "bridge_girder"
+    if b.get("colour"):
+        K.mats[girder] = {"color": b["colour"], "roughness": 0.55, "metalness": 0.45}
+    deep = min(3.2, max(1.4, L / 60))
+    u_s = np.linspace(-L / 2, L / 2, max(8, int(L / 6)))
+    for u0, u1 in zip(u_s[:-1], u_s[1:]):
+        z0, z1 = dz(u0), dz(u1)
+        K("bridge_deck").quad(P(u0, -hw, z0), P(u1, -hw, z1), P(u1, hw, z1), P(u0, hw, z0))
+        K("bridge_deck").quad(P(u0, hw, z0 - deep), P(u1, hw, z1 - deep), P(u1, -hw, z1 - deep), P(u0, -hw, z0 - deep))
+        for v, s in ((-hw, -1), (hw, 1)):
+            q = [P(u0, v, z0 - deep), P(u1, v, z1 - deep), P(u1, v, z1 + 0.15), P(u0, v, z0 + 0.15)]
+            K(girder).quad(*(q if s < 0 else [q[1], q[0], q[3], q[2]]))
+    for v in (-hw + 0.2, hw - 0.2):
+        K("bridge_rail").rails([P(u, v, dz(u)) for u in u_s], 1.1, post_every=2.0, post=0.06, rail=0.05, rails=3)
+    n = int(L // pier_every)
+    for k in range(1, n + 1):
+        u = -L / 2 + k * L / (n + 1)
+        block(K("bridge_pier"), P, u - 1.4, u + 1.4, -hw + 1.0, hw - 1.0, -6.0, dz(u) - deep)
+
+
+def bridge_surfaces(bridges, mesh="bridge_deck"):
+    """The decks as walkable, drivable strips for the game (game_data.py game_surfaces), flown under."""
+    return [{"name": b["name"] or "a bridge", "type": "strip", "origin": b["centre"], "axis": b["axis"], "half_width": round(b["width_m"] / 2, 1),
+             "profile": deck_profile(b), "thickness": 1.6, "mesh": mesh, "fly_under": True, "label": b["name"] or "the bridge"} for b in bridges]
