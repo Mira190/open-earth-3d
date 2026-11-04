@@ -17,6 +17,8 @@ class Mesh:
     def __init__(self, name, mat, smooth, floodlit=False, uv=False):
         self.name, self.mat, self.smooth, self.floodlit, self.v, self.i, self.t = name, mat, smooth, floodlit, [], [], []
         self.keep_uv = uv  # write texture coordinates (for a patterned material)
+        self.sky = None  # the share of the sky's (ambient) light it takes, under a slab or a canopy; None: all
+        self.bounce = None  # under one, the colour of the ground its light comes back up off (sRGB hex)
 
     def _uv(self, uvs, n):
         if uvs is not None:
@@ -168,4 +170,8 @@ class Mesh:
         t = np.asarray(self.t, float)
         if self.keep_uv and len(t) == len(self.v):
             out["uv"] = np.round(t, 2).ravel().tolist()
+        if self.sky is not None:
+            out["sky"] = round(float(self.sky), 2)
+            if self.bounce:
+                out["bounce"] = self.bounce
         return out

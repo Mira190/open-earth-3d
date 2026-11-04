@@ -18,10 +18,21 @@
 //            red. It is skipped when nobody waits to turn, as SCATS skips it.
 //   turns    a turn OpenStreetMap bans (Overture's prohibited_transitions, game.json "nt" on the
 //            road piece it starts from: pipeline/road_rules.py) is not among an arm's exits.
+//   hours    a turn banned only at some hours ("ntw"), and a street shut to cars at some hours
+//            ("tb": Japan's school roads in the morning, a shopping street by day, Amsterdam's
+//            streets open to cars only for their deliveries' hours), are left out by the game's
+//            clock (setClock): no car chooses them then, the rides' router goes round, and no car
+//            is put on such a street then. One already on it drives out.
 //   lanes    a main road (motorway, trunk, primary, a one-way secondary) has two lanes each way:
 //            the one beside the centre line (or on the keep side of a one-way street) for every
 //            movement, and the other for going straight ahead onto a road like it. Each lane's
-//            movement has its own way across.
+//            movement has its own way across. Where OpenStreetMap counts one lane each way on a
+//            main road (game.json "nl", pipeline/road_lanes.py) it has one, smoothed along the
+//            road between junctions: a stretch of two shorter than SHORT2 between stretches of one
+//            has one, and a stretch of one shorter than SHORT1 between stretches of two keeps two,
+//            so that nobody has to merge and move out again within a few metres. A car in the
+//            second lane moves across before it ends (actors.js), looking along the road past the
+//            pieces between junctions (laneRun) to where it does.
 //   timing   greens are short, as a game keeps them (a minute's wait at a red is no fun): about
 //            20 s for a main road, 12 s for a side road, 6 to 8 s for an arrow, a phase with nobody
 //            waiting on the other turning after CALL more; a crossing between junctions keeps the
@@ -58,10 +69,9 @@ window.OEJunctions = (function () {
   // the place along an arm's piece d metres back from where its traffic meets the junction (the
   // piece's end, or for a crossing between junctions the crossing itself)
   const alongArm = (l, a, d) => (a.mid != null ? a.mid + (a.end ? -d : d) : a.end ? l.len - d : d);
-  // (game.json also carries OSM's own count, "nl", pipeline/road_lanes.py; the traffic doesn't use it
-  // yet: where it changes from one piece to the next the cars' merging can't keep up, and Sydney's
-  // jams under tools/traffic_check.js more than double)
-  const lanesOf = l => (TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
+  const byClass = l => (TWO[l.c] || (l.ow && l.c === 'secondary') ? 2 : 1);
+  const lanesOf = l => l.lanes || byClass(l); // (l.lanes: OSM's count, smoothed: create)
+  const SHORT2 = 120, SHORT1 = 40; // m
   const shiftOf = (l, ln) => (ln ? (l.ow ? -3.2 : 3.0) : 0);
 
   // net: actors.network of the roads; opts.signals, .stops, .giveWay: mapped points [x, y, z, ...]
@@ -79,6 +89,78 @@ window.OEJunctions = (function () {
     let nBans = 0;
     L.forEach((l, i) => { if (l.nt) for (const [e, k, e2, n] of l.nt) { const i2 = byI0.get(k); if (i2 == null) continue; const key = i * 2 + e; if (!bans.has(key)) bans.set(key, []); bans.get(key).push([i2, e2, n]); nBans++; } });
     net.bans = bans; // (the rides' router keeps to them too: cars.js)
+    // ------------------------------------------------ lanes each way, from OSM's counts
+    // a road between junctions: the pieces joined end to end at nodes where only two meet
+    const through = (line, end) => { const v = net.nodes.get(nodeKey(line, end)); if (!v || v.length !== 2) return null; const o = v[0][0] === line && v[0][1] === end ? v[1] : v[0]; return o[0] === line ? null : o; }; // [line, its end there]
+    {
+      for (const l of L) l.lanes = byClass(l) > 1 && l.nl === 1 ? 1 : byClass(l);
+      const seen = new Set();
+      for (let i = 0; i < L.length; i++) {
+        if (seen.has(i)) continue;
+        // the chain i is on, from one end to the other
+        let a = i, ae = 0;
+        for (let n = 0; n < 200; n++) { const o = through(a, ae); if (!o || o[0] === i) break; a = o[0]; ae = 1 - o[1]; }
+        const chain = [];
+        for (let b = a, be = ae, n = 0; n < 400; n++) { if (seen.has(b)) break; seen.add(b); chain.push(b); const o = through(b, 1 - be); if (!o) break; b = o[0]; be = o[1]; }
+        if (chain.length < 3) continue;
+        // runs of the same count; a short one between two of the other count takes theirs
+        for (let pass = 0; pass < 2; pass++) {
+          const runs = [];
+          for (const b of chain) { const n = L[b].lanes; if (runs.length && runs[runs.length - 1].n === n) { const r = runs[runs.length - 1]; r.ids.push(b); r.len += L[b].len; } else runs.push({ n, ids: [b], len: L[b].len }); }
+          for (let k = 1; k < runs.length - 1; k++) {
+            const r = runs[k];
+            if (runs[k - 1].n !== r.n && runs[k + 1].n !== r.n && byClass(L[r.ids[0]]) > 1 && r.len < (r.n > 1 ? SHORT2 : SHORT1) && (pass === 0) === (r.n > 1)) for (const b of r.ids) L[b].lanes = runs[k - 1].n;
+          }
+        }
+      }
+    }
+    // how far the second lane runs on past the end `end` of line (where a car going that way leaves
+    // it), along the road to the next junction: 0 if it ends there, Infinity if it reaches a junction
+    const runs = new Map();
+    function laneRun(line, end) {
+      const key = line * 2 + end;
+      if (runs.has(key)) return runs.get(key);
+      runs.set(key, 0); // (a loop)
+      const o = through(line, end);
+      let r = Infinity;
+      if (o) { const l2 = L[o[0]]; r = lanesOf(l2) < 2 || !l2.ow !== !L[line].ow || !canReach(o[0], 1 - o[1]) ? 0 : l2.len + laneRun(o[0], 1 - o[1]); }
+      runs.set(key, r);
+      return r;
+    }
+    // the turns banned at some hours, as bans but with the times: (line, end) -> [[line, end, steps, windows]]
+    const bansT = new Map();
+    let nBansT = 0;
+    L.forEach((l, i) => { if (l.ntw) for (const [e, k, e2, n, W] of l.ntw) { const i2 = byI0.get(k); if (i2 == null) continue; const key = i * 2 + e; if (!bansT.has(key)) bansT.set(key, []); bansT.get(key).push([i2, e2, n, W]); nBansT++; } });
+    // the game's clock, which the timed rules go by: () => { dow (0 Monday .. 6 Sunday), min (of the day) }
+    let clockOf = null;
+    const setClock = fn => { clockOf = fn; };
+    const inWin = (W, t) => W.some(w => ((w[0] >> t.dow) & 1) && t.min >= w[1] && t.min < w[2]);
+    // is line shut to a car going along it that way (dir 1 with its points, -1 against) at time t (now)?
+    function shutNow(line, dir, t = clockOf && clockOf()) {
+      const l = L[line];
+      if (!l || !l.tb || !t) return false;
+      for (const [way, shut, W] of l.tb) if (!way || way === dir) { if (shut ? inWin(W, t) : !inWin(W, t)) return true; }
+      return false;
+    }
+    // the windows of the turns banned at some hours that the way from arm (line, end) by steps is one of
+    function bannedAt(line, end, steps) {
+      if (!bansT.size) return null;
+      let out = null;
+      for (let i = 0; i < steps.length; i++) {
+        const from = i === 0 ? line * 2 + end : steps[i - 1][0] * 2 + 1 - steps[i - 1][1], B = bansT.get(from);
+        if (!B) continue;
+        for (const [l2, e2, n, W] of B) for (let k = i; k < steps.length && (n > 1 || k === i); k++) if (steps[k][0] === l2 && steps[k][1] === e2) (out = out || []).push(W);
+      }
+      return out;
+    }
+    // is exit e closed at time t (now)? a turn banned then, or onto a street shut then
+    function closedNow(e, t = clockOf && clockOf()) {
+      if (!t) return false;
+      if (e.tw && e.tw.some(W => inWin(W, t))) return true;
+      return shutNow(e.m.line, e.m.end === 0 ? 1 : -1, t);
+    }
+    net.shutNow = shutNow; // (the rides' router keeps off them: cars.js)
+    net.turnShut = (from, line, end) => { const B = bansT.get(from), t = clockOf && clockOf(); return !!(B && t && B.some(b => b[2] === 1 && b[0] === line && b[1] === end && inWin(b[3], t))); };
     // is the way from arm (line, end reached) by these steps ([line, end entered], ...) a banned turn?
     function banned(line, end, steps) {
       if (!bans.size) return false;
@@ -238,7 +320,7 @@ window.OEJunctions = (function () {
             if (!m || !m.exit) continue;
             const steps = [[line, end]];
             for (let n = k; seen.get(n); n = seen.get(n)[0]) steps.unshift([seen.get(n)[1], seen.get(n)[2]]);
-            if (!banned(a.line, a.end, steps)) out.push({ m, steps, turn: angle(m.out, a.out + Math.PI) });
+            if (!banned(a.line, a.end, steps)) out.push({ m, steps, turn: angle(m.out, a.out + Math.PI), tw: bannedAt(a.line, a.end, steps) });
             else a.bans = (a.bans || 0) + 1;
           }
         }
@@ -270,7 +352,7 @@ window.OEJunctions = (function () {
       for (const e of a.exits) {
         const lm = L[e.m.line], way = Math.abs(e.turn) < 0.45 ? 't' : e.turn > 0 ? 'r' : 'l';
         e.across = Math.abs(e.turn) < 2.6 && e.turn * side > 0.5; // across the oncoming traffic
-        const room = two && lanesOf(lm) > 1 && lm.len >= 60 && (way !== 't' || !la.ow === !lm.ow); // (not onto a stretch too short to move across on before the next junction)
+        const room = two && lanesOf(lm) > 1 && lm.len + laneRun(e.m.line, 1 - e.m.end) >= 60 && (way !== 't' || !la.ow === !lm.ow); // (not onto a stretch too short to move across on before the next junction, or before its second lane ends)
         let ls = ar ? ar.map((s, ln) => (s.includes(way) ? ln : -1)).filter(ln => ln >= 0) : [];
         if (!ls.length) ls = !two ? [0] : Math.abs(e.turn) < 0.5 ? [0, 1] : e.across ? [inner] : [1 - inner]; // (and where arrows leave this way out: a gap in the data) // (arrows that leave this way out: a gap in the data)
         if (ls.length > 1 && !room) ls = Math.abs(e.turn) < 0.5 ? [0] : [e.across ? inner : 1 - inner];
@@ -280,15 +362,19 @@ window.OEJunctions = (function () {
       for (let ln = 0; ln < (two ? 2 : 1); ln++) if (a.exits.length && !a.exits.some(e => e.lanes.includes(ln))) {
         const e = a.exits.reduce((p, q) => (Math.abs(q.turn) < Math.abs(p.turn) ? q : p));
         e.lanes = e.lanes.concat(ln).sort();
-        if (e.lanes.length > 1 && !(lanesOf(L[e.m.line]) > 1 && L[e.m.line].len >= 60)) e.lanes = [ln]; // (no room for two side by side beyond: this lane's alone)
+        if (e.lanes.length > 1 && !(lanesOf(L[e.m.line]) > 1 && L[e.m.line].len + laneRun(e.m.line, 1 - e.m.end) >= 60)) e.lanes = [ln]; // (no room for two side by side beyond: this lane's alone)
       }
       a.lanes = two && a.exits.some(e => e.lanes.includes(1)) ? 2 : 1;
       return a.exits;
     }
     // choose an exit: ahead more often than a turn, and a main road more often than a lane
     function choose(a) {
-      const ex = exits(a);
+      let ex = exits(a);
       if (!ex.length) return null;
+      if (clockOf && ex.some(e => e.tw || L[e.m.line].tb)) { // (not a way closed at this hour, if there is another)
+        const t = clockOf(), open = ex.filter(e => !closedNow(e, t));
+        if (open.length) ex = open;
+      }
       let sum = 0;
       const w = ex.map(e => { const v = (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank); sum += Math.max(0.15, v); return Math.max(0.15, v); });
       let r = rnd() * sum;
@@ -639,12 +725,13 @@ window.OEJunctions = (function () {
     }
     function stats() {
       const sj = J.filter(j => j.sig && j.mid == null);
-      return { overLine, crossedOver, crossLog, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra,
+      return { overLine, crossedOver, crossLog, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, timedBans: nBansT, timedShut: L.filter(l => l.tb).length, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
     // the crossings between junctions on a piece, along it (or null)
     const midsOn = line => mids.get(line) || null;
-    return { J, midsOn, armAt, exits, choose, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
+    net.midsOn = midsOn; // (the rides' router notes the crossings along a route: cars.js)
+    return { J, midsOn, armAt, exits, choose, laneRun, setClock, shutNow, closedNow, light, arrow, walk, call, crossings, lanesOf, shiftOf, mv, approach, priority, toGreen, request, enter, after, reach, wait, unwait, release, forget, update, build, stats, conflict, conflicts, inner, get heads() { return heads; } };
   }
 
   // ------------------------------------------------------------ signal heads
