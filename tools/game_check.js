@@ -488,7 +488,8 @@ const npcNight = require('./npc_night');
     Object.assign(pl, { x: ox + ax * u0, y: oy + ay * u0, z: f.z, ground: true, vz: 0, speed: 0 });
     let worst = 0, over = 0;
     const tx = ox + ax * u1, ty = oy + ay * u1;
-    for (let i = 0; i < 1500 && Math.hypot(tx - pl.x, ty - pl.y) > 0.6; i++) {
+    // (room for a walker or a fine collision tile laid late under load to hold you up on the far bank)
+    for (let i = 0; i < 3000 && Math.hypot(tx - pl.x, ty - pl.y) > 0.6; i++) {
       pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y);
       g.advance(0.05, ['KeyW']);
       const u = (pl.x - ox) * ax + (pl.y - oy) * ay;
