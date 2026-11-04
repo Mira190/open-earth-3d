@@ -908,7 +908,10 @@ const npcNight = require('./npc_night');
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
     const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
-    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    if (!sig.length) { // no junction with signals (Higashiyama's lanes): the traffic still has to move
+      g.advance(20);
+      return { junctions: JN.J.length, signals: 0, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+    }
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
     const s1 = A.stats();

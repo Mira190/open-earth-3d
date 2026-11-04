@@ -272,10 +272,10 @@
       {
         "id": "kenta",
         "name": "Kenta 健太",
-        "role": "Shrine attendant, Fushimi Inari",
+        "role": "Shrine attendant, at the foot of the Omotesando",
         "at": [
-          -430,
-          118
+          -528,
+          119
         ],
         "look": {
           "character": "R_Male_Adult_09",
@@ -352,10 +352,15 @@
         "title": "The gate of the foxes",
         "stamp": "Romon",
         "talk": [
-          "ようお参り, welcome to Fushimi Inari. The Romon was given by Toyotomi Hideyoshi in 1589.",
-          "The foxes either side are Inari's messengers: a jewel, and the key to the rice store. Go on past the halls to the Senbon Torii; Mrs. Ota's shop is at the entrance."
+          "ようお参り, welcome to Fushimi Inari. Straight up the Omotesando is the Romon, given by Toyotomi Hideyoshi in 1589.",
+          "The foxes either side of it are Inari's messengers: a jewel, and the key to the rice store. Go through the gate and past the halls to the Senbon Torii; Mrs. Ota's shop is at the entrance."
         ],
         "steps": [
+          {
+            "type": "spot",
+            "spot": "romon",
+            "text": "Walk up the Omotesando to the Romon and its foxes"
+          },
           {
             "type": "talk",
             "npc": "ota",
