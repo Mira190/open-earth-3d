@@ -36,6 +36,6 @@ The ponds are water to the game: no walking on them.
 
 - The pagoda's and the hall's proportions against measured drawings; the Toshogu's three halls are
   fitted to OpenStreetMap's footprint in proportions from photographs.
-- The trees are the shared elms, planes and maples: the shared set has no cherry, and Ueno's
-  cherries are what the park is known for.
+- The park's trees are the shared set's, with Somei-yoshino cherries along Sakura-dori (its
+  outline drawn by hand along the walk) and through the park, in flower from 24 March.
 - The Tokyo National Museum's and the Hyokeikan's roofs are PLATEAU's blocks, not built in code.

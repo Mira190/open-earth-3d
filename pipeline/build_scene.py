@@ -35,7 +35,7 @@ import roofs
 import typology
 import wet_buildings
 from measured import IGNHeights
-from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
+from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons, trees_cfg
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
@@ -1504,7 +1504,7 @@ def build(C):
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
         "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter", "seawall")},
-        "trees": cfg.get("trees", {}),
+        "trees": trees_cfg(C),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),
