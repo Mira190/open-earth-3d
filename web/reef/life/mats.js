@@ -4,7 +4,7 @@
 // at 5 m and a blue clam mantle still glows at 10 m: that is the water, not the palette.
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, sin, cos, exp, pow, length, smoothstep, clamp, select, fract, floor, atan,
-  positionGeometry, positionWorld, cameraPosition, mx_noise_float, mx_worley_noise_float, uniform, dot, normalize } from 'three/tsl';
+  positionGeometry, positionWorld, cameraPosition, mx_noise_float, mx_worley_noise_float, uniform, dot, normalize, texture, uv, dFdx, dFdy, log2 } from 'three/tsl';
 import { I, pose } from './kit.js';
 
 export function createMats(env, torch) {
@@ -283,10 +283,26 @@ export function createMats(env, torch) {
     const c = treeColour();
     return finish(m, c, { glow: transmit(c) });
   })();
+  // the shared trees' leaf cards (geo.sharedTree): the atlas's leaves, tinted by the instance's colour (iC, the
+  // site's leaf albedo over the atlas's own), shaded darker inside the crown (aux.y), cut out by the atlas's alpha;
+  // the alpha is scaled up with the mip level so thin leaves do not vanish with distance (as web/trees.js does)
+  const cards = atlas => {
+    const m = pose(std({ rough: 0.82, side: THREE.DoubleSide }), { post: treeSway, flatten: 0.2 });
+    const t = texture(atlas, uv()), size = vec2(atlas.image.width, atlas.image.height);
+    const tx = uv().mul(size), d = max(dot(dFdx(tx), dFdx(tx)), dot(dFdy(tx), dFdy(tx)));
+    m.opacityNode = t.a.mul(float(1).add(max(float(0), log2(d).mul(0.5)).mul(0.25)));
+    m.alphaTest = 0.5;
+    const c = Fn(() => {
+      const clump = mx_noise_float(positionWorld.mul(0.45)).mul(0.5).add(0.5);
+      return t.rgb.mul(C.rgb).mul(mix(float(0.5), float(1), aux.y)).mul(clump.mul(0.3).add(0.85));
+    })();
+    // leaves lit from behind glow a little (transmit() reads aux.w: 0 here, foliage)
+    return finish(m, c, { glow: transmit(c) });
+  };
   const farTree = (() => {
     const m = pose(std({ rough: 0.95 }), { squash: vec3(C.w, D.w, C.w), flatten: 0.6 });
     return finish(m, Fn(() => select(aux.w.lessThan(0.5), C.rgb.mul(mx_noise_float(positionWorld.mul(0.5)).mul(0.25).add(0.85)).mul(aux.x.mul(0.4).add(0.65)), D.rgb))());
   })();
 
-  return { coral, fish, sharkMat, ray, turtle, tree, farTree, surge };
+  return { coral, fish, sharkMat, ray, turtle, tree, cards, farTree, surge };
 }

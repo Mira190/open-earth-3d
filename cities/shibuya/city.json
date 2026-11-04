@@ -61,18 +61,87 @@
   },
   "trees": {
     "mix": {
-      "elm": 0.6,
-      "plane": 0.4
+      "zelkova": 0.35,
+      "ginkgo": 0.25,
+      "plane": 0.2,
+      "camphor": 0.1,
+      "evergreen": 0.1,
+      "cherry": 0.08
     },
+    "woods": {
+      "evergreen": 0.3,
+      "camphor": 0.22,
+      "zelkova": 0.18,
+      "ginkgo": 0.1,
+      "maple": 0.08,
+      "sugi": 0.07,
+      "pine": 0.05,
+      "cherry": 0.04
+    },
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
     "areas": [
       {
-        "at": [376.0, -1043.0],
-        "radius": 14.0,
-        "mix": {"maple": 0.5, "elm": 0.5},
-        "note": "Hachiko Square: cherries in the round planters and a maple behind Hachiko. The shared trees have no cherry; a spreading elm stands in for it"
+        "name": "Hachiko Square's planters",
+        "at": [
+          381.0,
+          -1035.5
+        ],
+        "radius": 2.0,
+        "mix": {
+          "cherry": 1.0
+        },
+        "note": "The round planter north of Hachiko holds a Somei-yoshino (photographs 2020-25)."
+      },
+      {
+        "name": "Hachiko Square's planters, south",
+        "at": [
+          383.6,
+          -1049.2
+        ],
+        "radius": 2.0,
+        "mix": {
+          "cherry": 1.0
+        },
+        "note": "And so does the one south of him."
+      },
+      {
+        "name": "Meguro River",
+        "osm": "R16272154",
+        "buffer": 14,
+        "mix": {
+          "cherry": 0.9,
+          "zelkova": 0.1
+        },
+        "note": "About 800 cherries on both banks from Ikejiri-Ohashi down through Nakameguro, their branches over the water (Meguro City)."
+      },
+      {
+        "name": "Meiji Jingu",
+        "find": "明治神宮",
+        "mix": {
+          "camphor": 0.3,
+          "evergreen": 0.35,
+          "sugi": 0.1,
+          "zelkova": 0.1,
+          "ginkgo": 0.05,
+          "pine": 0.05,
+          "maple": 0.05
+        },
+        "note": "The planted shrine forest, now mostly camphor and the evergreen oaks and shii of the laurel forest."
+      },
+      {
+        "name": "Yoyogi Park",
+        "find": "代々木公園",
+        "mix": {
+          "zelkova": 0.3,
+          "ginkgo": 0.2,
+          "plane": 0.15,
+          "camphor": 0.15,
+          "evergreen": 0.1,
+          "pine": 0.1,
+          "cherry": 0.15
+        }
       }
-    ],
-    "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey."
+    ]
   },
   "storey": {
     "res": [
