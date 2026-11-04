@@ -1018,6 +1018,7 @@ window.OECars = (function () {
       rounding.clear();
       if (pass) for (const o of passed) rounding.add(o);
       st.pass = pass; st.passed = passed; // (what it goes round, for the game check)
+      if (pass) st.rounded = { cars: passed.slice(), held: st.held }; // (and what it last went round, kept: the game check samples it between steps)
       return gap;
     }
     // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
