@@ -1101,7 +1101,7 @@ const npcNight = require('./npc_night');
       for (let t = 0; t < 180 && !st.done; t += 0.25) { // (a red can be long where the signals give a call or a scramble its turn)
         g.advance(0.25);
         const lt = g.junctions.light(arm); if (!seq.length || seq[seq.length - 1][1] !== lt) seq.push([t, lt]); // (the light it waits at, as it changes)
-        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed || []).map(c => `car ${C.indexOf(c)} (${c.why}, v ${(c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''})`).join(', ') || 'nothing';
+        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed || []).map(c => `car ${C.indexOf(c)} (${c.why}, v ${(c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''}${(() => { const ch = []; for (let x = c.front, k = 0; x && k < 6; x = x.front, k++) ch.push(`${C.indexOf(x) >= 0 ? C.indexOf(x) : 'you'} ${x.why || ''} v ${(x.v || 0).toFixed(1)}${x.q ? ' q' : ''}`); return ch.length ? `; ahead of it ${ch.join(' < ')}` : ''; })()})`).join(', ') || 'nothing';
         r.shift = Math.max(r.shift, Math.abs(st.shift));
         const a = st.h, bl = st.block;
         if (bl && bl.q && st.v < 0.5) { r.behind = true; r.ahead = bl; }
