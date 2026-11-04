@@ -252,7 +252,9 @@ window.OEBuildings = (function () {
 
     // ------------------------------------------------------------ walls
     const LEVELS = [0, 8, 24, 48, 96, 192, 384];
-    function walls(ring, bi, si, zb, zt, g0, kindOk, fronts, o) {
+    // signRun: this ring carries the building's one vertical corner sign (mixed-use fronts), at the
+    // start of its longest run on a street (else its longest run)
+    function walls(ring, bi, si, zb, zt, g0, kindOk, fronts, o, signRun = false) {
       const P = BI[bi], n = ring.length / 2, grid = GRIDS[P.style] || GRID.plain;
       const bayW = grid[0] * (0.92 + 0.16 * P.u);
       // edges, directions and turns; runs break at corners sharper than 30 degrees
@@ -275,7 +277,16 @@ window.OEBuildings = (function () {
         runs[runs.length - 1].push(k);
       }
       const h = zt - zb, levels = LEVELS.filter(l => l < h).map(l => zb + l).concat([zt]);
-      for (const run of runs) {
+      let signAt = -1;
+      if (signRun) {
+        let best = -1;
+        runs.forEach((run, ri) => {
+          let total = 0, street = 0;
+          for (const k of run) { total += L[k]; if (fronts && o === 0 && fronts.get(k)) street = 1e6; }
+          if (street + total > best) { best = street + total; signAt = ri; }
+        });
+      }
+      for (const [ri, run] of runs.entries()) {
         let total = 0;
         for (const k of run) total += L[k];
         const margin = 0.6, nb = bayW > 0 && kindOk ? Math.floor((total - 2 * margin) / bayW + 0.5) : 0;
@@ -298,7 +309,7 @@ window.OEBuildings = (function () {
           const x0 = ring[2 * k], y0 = ring[2 * k + 1], x1 = ring[2 * j], y1 = ring[2 * j + 1];
           const s0 = facade ? (u - margin) * scale : u, s1 = facade ? (u + L[k] - margin) * scale : u + L[k];
           const fl = (fronts && o === 0 && fronts.get(k)) || 0;
-          const flags = fl + 32 * nFloors;
+          const flags = fl + (ri === signAt ? 4 : 0) + 32 * nFloors;
           let prevIds = null;
           for (let li = 0; li < levels.length; li++) {
             const z = levels[li];
@@ -448,13 +459,20 @@ window.OEBuildings = (function () {
 
     const deckZ = new Map(); // solid -> deck height, for rooftop plant
     const hidden = new Set(scene.hidden_solids || []); // drawn by a parametric landmark instead
+    // a mixed-use building's vertical sign hangs on one corner: of its tallest solid from the ground
+    const signSolid = new Map(), signTop = new Map();
+    B.s.forEach((s, si) => {
+      const bi = s[0];
+      if (hidden.has(si) || s[2] !== 0 || BI[bi].style !== 'mixed') return;
+      if (!(s[3] <= signTop.get(bi))) { signTop.set(bi, s[3]); signSolid.set(bi, si); }
+    });
     B.s.forEach((s, si) => {
       if (hidden.has(si)) return;
       const bi = s[0], P = BI[bi], g0 = s[1] / 10, zb = g0 + s[2] / 10, zt = g0 + s[3] / 10;
       const rings = s.slice(4).map(r => r.map(q => q / 10));
       const r = roofOf.get(si), fronts = frontOf.get(si);
       const eave = r ? g0 + r[2] / 10 : zt;
-      rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o));
+      rings.forEach((ring, o) => walls(ring, bi, P.si, zb, Math.max(eave, zb + 0.1), g0, P.windows, fronts, o, o === 0 && signSolid.get(bi) === si));
       if (foot && s[2] === 0) plinth(rings, bi, P.si, zb);
       if (s[2] > 0 && meta[bi][1] === 'roof') { // a canopy over the street (pipeline/arcades.py): its underside, and the posts it stands on
         cap(rings, zb, bi, soffitC, K_SOFFIT, 0, true);
@@ -970,8 +988,12 @@ window.OEBuildings = (function () {
     float sign = 0.0; vec3 signC = vec3(0.0);
     if (style > 10.5 && style < 11.5 && uSigns > 0.0 && fl > 0.5) {
       float sr = h21(vec2(fl, floor(bay / 2.0)) + bidH * 1.7);
-      float pane = step(sr, 0.22 * uSigns) * band(fy, 0.12, 0.88, fw.y) * band(fract(bay / 2.0) * 2.0 + fx, 0.08, 1.92, fw.x);
-      float vert = step(0.45, seed) * step(bay, 0.5) * band(fx, 0.18, 0.82, fw.x);
+      // a panel spans two bays and only where both are in the run, never into its margins; the
+      // vertical sign takes the first bay of the one run the building gives it (flag 4)
+      float pane = step(sr, 0.22 * uSigns) * band(fy, 0.12, 0.88, fw.y) * band(fract(bay / 2.0) * 2.0 + fx, 0.08, 1.92, fw.x)
+                 * step(-0.5, bay) * step(2.0 * floor(bay / 2.0) + 2.0, nb + 0.5);
+      float vert = step(0.45, seed) * step(-0.5, bay) * step(bay, 0.5) * step(0.5, nb) * step(0.5, mod(floor(flags / 4.0), 2.0))
+                 * band(fx, 0.18, 0.82, fw.x);
       float hue = h21(vec2(floor(bay / 2.0), fl) * 1.3 + bidH);
       signC = hue < 0.3 ? vec3(0.85, 0.12, 0.1) : hue < 0.5 ? vec3(0.95, 0.8, 0.15) : hue < 0.7 ? vec3(0.92, 0.92, 0.9) : hue < 0.85 ? vec3(0.1, 0.35, 0.8) : vec3(0.1, 0.6, 0.3);
       if (vert > 0.5) signC = seed < 0.7 ? vec3(0.9, 0.9, 0.88) : vec3(0.85, 0.15, 0.12);
