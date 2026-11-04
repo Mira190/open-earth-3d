@@ -42,7 +42,7 @@ def update(city):
             game[k] = g[k]
     # the NPCs: everything but where they stand, which game_data.py snapped to open ground; one new to
     # city.json, or moved there more than MOVED_M from where game.json has it, stands where city.json puts
-    # it (placed on open ground by hand: tools/game_check.js talks to each)
+    # it (placed on open ground by hand; tools/game_check.js finds each in light and in sight at night)
     have = {n["id"]: n for n in game.get("npcs", [])}
     npcs = []
     for n in g.get("npcs", []):

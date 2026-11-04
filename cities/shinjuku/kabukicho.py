@@ -59,19 +59,22 @@ MATERIALS = {
     "kb_hoard": {"color": "#ecebe6", "roughness": 0.7, "metalness": 0.1, "pattern": "granite", "joints_m": [0.5, 0.0]},
     "kb_gravel": {"color": "#8d877d", "roughness": 0.95, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0], "decal": True},
     # the kaiju: grey-green cement, rough; paler dorsal plates; its eyes and the inside of its mouth
-    "kb_hide": {"color": "#62675d", "roughness": 0.82, "metalness": 0.05, "emissive": "#b9c4cf", "glow": 0.35},
-    "kb_plate": {"color": "#9a9b90", "roughness": 0.78, "metalness": 0.05, "emissive": "#c9d2da", "glow": 0.4},
+    "kb_hide": {"color": "#3f4955", "roughness": 0.8, "metalness": 0.08, "emissive": "#7fa4d8", "glow": 0.18},
+    "kb_plate": {"color": "#6f7c8a", "roughness": 0.75, "metalness": 0.08, "emissive": "#a9c4e8", "glow": 0.22},
     "kb_mouth": {"color": "#5a2a26", "roughness": 0.7, "metalness": 0.0},
     "kb_tooth": {"color": "#e7e1d2", "roughness": 0.5, "metalness": 0.0},
     "kb_eye": {"color": "#d8b23a", "roughness": 0.3, "metalness": 0.0, "emissive": "#ffcc33", "glow": 2.6},
     # the Shinjuku Toho Building: the cinema podium's dark glass and stone, the hotel tower's grey grid
-    "kb_podium": {"color": "#3a3f45", "roughness": 0.2, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 3.0, "storey_m": 5.0,
-                  "spandrel": 0.45, "mullion_m": 0.18, "frame": "#9a9ea2", "lit_share": 0.5, "lit_k": 0.8, "warm_share": 0.6},
+    # (photographs from Cine City Plaza, 2023: silver panels in horizontal bands on the podium's sides and the
+    # tower's south wall behind the head; the hotel's windows on the tower's other faces)
+    "kb_podium": {"color": "#a7acb2", "roughness": 0.4, "metalness": 0.55, "pattern": "granite", "joints_m": [0.0, 1.25]},
     "kb_tower": {"color": "#56606a", "roughness": 0.18, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 3.1,
                  "spandrel": 0.35, "mullion_m": 0.12, "frame": "#c9ccce", "lit_share": 0.55, "lit_k": 0.75, "warm_share": 0.85},
+    "kb_silver": {"color": "#b4b9bf", "roughness": 0.38, "metalness": 0.55, "pattern": "granite", "joints_m": [0.0, 1.25],
+                  "emissive": "#9fb6d6", "glow": 0.25},
     "kb_roof": {"color": "#77797b", "roughness": 0.85, "metalness": 0.1},
 }
-LIT = {"kb_red", "kb_bulb", "kb_atlas", "kb_lantern", "kb_eye", "kb_hide", "kb_plate"}
+LIT = {"kb_red", "kb_bulb", "kb_atlas", "kb_lantern", "kb_eye", "kb_hide", "kb_plate", "kb_silver"}
 
 # the streets whose fronts carry the stacks (OSM way names), and how far from a street a front may stand
 CANYON = {"歌舞伎町一番街通り": "Ichibangai", "セントラルロード": "Central Road", "歌舞伎町さくら通り": "Sakura-dori"}
@@ -82,7 +85,7 @@ FRONT_NEAR = 7.5
 ARCH = {"from_node_m": 11.0, "half_span": 4.3, "pillar": (0.62, 0.62, 3.3), "band": 0.62, "depth": 0.62,
         "lower_z": (5.25, 4.8), "upper_z": (6.75, 7.65), "sign": (5.0, 1.05, 6.05), "corner_r": 1.1}
 
-KAIJU = {"toho": "w170267549", "head_m": 12.0, "terrace_m": 40.0, "back_m": 6.5, "setback_m": 15.0, "cell": 0.2}
+KAIJU = {"toho": "w170267549", "head_m": 12.0, "terrace_m": 40.0, "back_m": 4.5, "setback_m": 10.0, "cell": 0.2}
 ALTA = "w55798483"
 PLAZA = (402.0, 2620.0)   # the east exit's plaza, where the walk starts
 ARCH_OSM = "w820506894"   # the arch, mapped in OSM as a little building under it
@@ -515,6 +518,31 @@ def toho(K, A, D):
         pts = [np.array([x, y, zp + 1.1]) for x, y in ln.coords]
         if len(pts) > 1:
             K["kb_frame"].tube(pts, 0.05, 4)
+    # the podium's south face to Central Road: planted ledges from the third floor to the terrace, the
+    # cinema's lit name band under them; and the tower's south wall behind the head, silver bands
+    best = None
+    ring = ccw(foot)
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        a, b = np.asarray(a), np.asarray(b)
+        L = float(np.linalg.norm(b - a))
+        nn = np.array([(b - a)[1], -(b - a)[0]]) / (L or 1)
+        face = float(np.dot(nn, -north))
+        if L > 8 and face > 0.5 and (best is None or face * L > best[3]):   # the widest face to the south
+            best = (a, b, L, face * L, nn)
+    if best:
+        a, b, L, _, nn = best
+        f = (b - a) / L
+        mid = (a + b) / 2 + nn * 0.15
+        w = L * 0.62
+        p0, p1 = mid - f * w / 2, mid + f * w / 2   # seen from the plaza: a (to its left) first
+        A.quad(K["kb_atlas"], np.array([*p0, g + 12.0]), np.array([*p1, g + 12.0]), np.array([*p1, zp - 0.5]), np.array([*p0, zp - 0.5]), "toho_green")
+        A.quad(K["kb_atlas"], np.array([*p0, g + 8.6]), np.array([*p1, g + 8.6]), np.array([*p1, g + 10.6]), np.array([*p0, g + 10.6]), "toho_name")
+        tw = [np.asarray(p) for p in ccw(tower)]
+        tb = max(zip(tw, tw[1:] + tw[:1]), key=lambda e: np.dot(np.array([(e[1] - e[0])[1], -(e[1] - e[0])[0]]) / (np.linalg.norm(e[1] - e[0]) or 1), -north) * np.linalg.norm(e[1] - e[0]))
+        ta, tb_ = tb
+        tn = np.array([(tb_ - ta)[1], -(tb_ - ta)[0]]) / np.linalg.norm(tb_ - ta)
+        K["kb_silver"].quad(np.array([*(ta + tn * 0.1), zp]), np.array([*(tb_ + tn * 0.1), zp]), np.array([*(tb_ + tn * 0.1), g + top - 2.5]), np.array([*(ta + tn * 0.1), g + top - 2.5]),
+                            [[0, zp], [float(np.linalg.norm(tb_ - ta)), zp], [float(np.linalg.norm(tb_ - ta)), g + top - 2.5], [0, g + top - 2.5]])
     edge = c + north * s0
     return [s["si"] for s in solids], {"south": [round(float(edge[0]), 2), round(float(edge[1]), 2)], "north": north, "terrace_z": zp}
 
@@ -529,8 +557,11 @@ def kaiju(K, D, terrace=None):
     end = np.array(road.coords[-1])        # where Central Road meets the building
     look = unit(np.array(road.coords[0]) - end)
     # on the terrace: back from the building's south face along the road's line
-    edge = np.array(foot.exterior.interpolate(foot.exterior.project(Point(*end))).coords[0]) if foot.geom_type == "Polygon" else end
-    at = edge - look * KAIJU["back_m"]
+    if terrace:   # on the terrace's middle line, back from its south edge (toho())
+        at = np.asarray(terrace["south"]) + np.asarray(terrace["north"]) * KAIJU["back_m"]
+    else:
+        edge = np.array(foot.exterior.interpolate(foot.exterior.project(Point(*end))).coords[0]) if foot.geom_type == "Polygon" else end
+        at = edge - look * KAIJU["back_m"]
     g = min(s["ground"] for s in solids)
     zt = g + KAIJU["terrace_m"]
     P = frame(at, look)
@@ -671,6 +702,26 @@ def draw_unica(img, rects):
     ad.text(img, (x + w / 2, y + h / 2 + 2), "Alpen TOKYO", "anton", h * 0.66, fill="#ffffff", max_w=w - 30)
 
 
+def draw_toho(img, rects):
+    from PIL import ImageDraw
+    d = ImageDraw.Draw(img)
+    rng = np.random.default_rng(2015)
+    x, y, w, h = rects["toho_green"]   # planted ledges: bands of green between thin grey sills
+    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(64, 72, 60))
+    rows = 9
+    for k in range(rows):
+        y0 = y + k * h / rows
+        d.rectangle([x, y0, x + w - 1, y0 + h / rows * 0.18], fill=(150, 154, 156))
+        for _ in range(140):
+            cx, cy = x + rng.random() * w, y0 + h / rows * (0.2 + rng.random() * 0.8)
+            r = 3 + rng.random() * 7
+            g = int(70 + rng.random() * 70)
+            d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(int(g * 0.55), g, int(g * 0.4)))
+    x, y, w, h = rects["toho_name"]
+    d.rectangle([x, y, x + w - 1, y + h - 1], fill=(40, 42, 58))
+    ad.text(img, (x + w * 0.5, y + h / 2 + 2), "TOHO CINEMAS   IMAX", "anton", h * 0.55, fill="#ffffff", max_w=w - 40)
+
+
 # ---------------------------------------------------------------- the build
 
 class Build:
@@ -680,7 +731,7 @@ class Build:
         self.lm = lm
         self.D = Data(city_id)
         items = [("arch_sign", 1024, 216), ("gekijo", 64, 256), ("alta_notice", 768, 256),
-                 ("unika_name", 768, 128), ("golf5", 384, 304), ("alpen", 768, 84)]
+                 ("unika_name", 768, 128), ("golf5", 384, 304), ("alpen", 768, 84), ("toho_green", 512, 512), ("toho_name", 1024, 96)]
         items += [(f"stack{i}", 80, 640) for i in range(STACKS)]
         items += [(f"fascia{i}", 448, 64) for i in range(FASCIAS)]
         self.A = Atlas(items, width=2048)
@@ -711,6 +762,7 @@ class Build:
         draw_canyon(img, self.A.rects)
         draw_alta(img, self.A.rects)
         draw_unica(img, self.A.rects)
+        draw_toho(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=88)
         return ATLAS_FILE
 

@@ -884,8 +884,8 @@
         "name": "Fumi 文",
         "role": "Bar owner, Golden Gai ゴールデン街",
         "at": [
-          733.9,
-          2832.6
+          708.8,
+          2813.0
         ],
         "look": {
           "character": "R_Female_Adult_09_f011_grey",
@@ -1143,7 +1143,7 @@
           {
             "type": "talk",
             "npc": "fumi",
-            "text": "Find Fumi in Golden Gai"
+            "text": "Find Fumi where Golden Gai meets the promenade"
           }
         ]
       },

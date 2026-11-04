@@ -169,6 +169,10 @@ how high up it they are (estimated from photographs).
 
 ## 4a. Kabukicho at street level, autumn 2026
 
+| The arch from Yasukuni-dori, at night | Ichibangai's tenant stacks | The head over the Toho building's planted ledges, at dusk |
+|---|---|---|
+| ![](../images/shinjuku/kabukicho-arch-2026.jpg) | ![](../images/shinjuku/kabukicho-ichibangai-night.jpg) | ![](../images/shinjuku/kabukicho-toho-head.jpg) |
+
 `cities/shinjuku/kabukicho.py` draws what a walker sees between the east exit and Cine City Plaza, as
 it stands now, on OpenStreetMap's hand-mapped detail (`cities/shinjuku/kabukicho_osm.json`,
 `pipeline/osm_detail.py`, ODbL) and photographs (Wikimedia Commons, 2023 to September 2026; looked at,
