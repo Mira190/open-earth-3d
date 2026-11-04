@@ -108,8 +108,11 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       g.player.x = x + 400; g.advance(0.05);
       place();
       g.advance(2);
+      // the arrival's crane down to the player (it starts a moment after play) takes the camera: settle it
+      for (let t = 0; g.arriving() && t < 6; t += 0.1) { g.settleArrival(); g.advance(0.1); }
       // a cutscene the place set off (the survey's turn on the spot) would be caught half way: skip it
-      if (g.cine.active) { g.cine.skip(); place(); g.advance(0.5); }
+      if (g.cine.active) g.cine.skip();
+      place(); g.advance(0.5);
       // "closer": a photo spot's id, to look closer at it from there (places.js), "along" seconds to the right
       if (v.closer) { g.lookAt(g.G.spots.find(s => s.id === v.closer)); g.advance(1.2); if (v.along) g.advance(v.along, ['KeyD']); if (v.up) g.advance(Math.abs(v.up), [v.up > 0 ? 'KeyW' : 'KeyS']); }
     }, v);

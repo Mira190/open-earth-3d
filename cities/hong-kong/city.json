@@ -27,6 +27,29 @@
     "frame_crs": "EPSG:4326",
     "pixel_m": 1.0,
     "bare_earth": true,
+    "level": [
+      {
+        "name": "Peak Tower's forecourt, on the Peak Galleria side",
+        "ring": [[114.150131, 22.271098], [114.150022, 22.271081], [114.149898, 22.271095], [114.1498, 22.271132], [114.149729, 22.27117], [114.149678, 22.271207], [114.149647, 22.271245], [114.149637, 22.271281], [114.149649, 22.271316], [114.149763, 22.271295], [114.149753, 22.271273], [114.149764, 22.271248], [114.149793, 22.271225], [114.149839, 22.271206], [114.149895, 22.271195], [114.149951, 22.271191], [114.15, 22.271187], [114.150055, 22.27118]],
+        "z_m": 396.5,
+        "feather_m": 3,
+        "note": "The laser's ground filter took Peak Tower out and the gap was interpolated from the slope below it to the plaza above, so round its south and west faces the ground fell 4 to 5 m in the 6 m out to the forecourt (391 m at the glass, 396 m beyond). The forecourt is one level with the Peak Galleria's plaza and the road at the west end (396.0 to 398.5 m in the mapped walkways), and the Peak Tram's upper terminus in the tower is at 396 m: from 4 m inside the body to 8 m out, along its south and west faces, it is levelled to 396.5 m. Its south-east corner, between the forecourt and the east end 13 m lower, is left to the DEM's slope."
+      },
+      {
+        "name": "Peak Tower's north side, over Findlay Road",
+        "ring": [[114.149719, 22.271354], [114.149768, 22.271375], [114.14983, 22.271393], [114.149908, 22.271408], [114.150002, 22.27141], [114.150094, 22.271391], [114.150168, 22.271363], [114.150225, 22.271334], [114.150269, 22.271305], [114.150174, 22.271288], [114.150134, 22.271304], [114.150086, 22.271315], [114.150037, 22.271319], [114.149993, 22.27132], [114.14995, 22.271326], [114.1499, 22.271331], [114.149851, 22.271329], [114.149809, 22.271321]],
+        "z_m": 377.5,
+        "feather_m": 3,
+        "note": "The same interpolation on the downhill side: 377.6 m at the glass falling to 373.9 m 6 m out. The tower's lower floors stand on a terrace there at the level of its foot (377.2 to 378.1 m round the north face), from 4 m inside the body to 6 m out."
+      },
+      {
+        "name": "Peak Tower's east end",
+        "ring": [[114.150286, 22.27129], [114.1503, 22.271274], [114.150309, 22.271258], [114.150315, 22.271241], [114.150315, 22.271226], [114.150311, 22.27121], [114.150303, 22.271195], [114.15029, 22.271181], [114.150273, 22.271168], [114.150181, 22.271196], [114.150196, 22.271204], [114.150208, 22.271213], [114.150215, 22.271223], [114.150219, 22.271234], [114.150218, 22.271245], [114.150212, 22.271257], [114.150203, 22.271268], [114.150189, 22.271279]],
+        "z_m": 383.5,
+        "feather_m": 3,
+        "note": "Round the east end the ground ran from 380 m on its north side to 387 m on its south within 10 m of the tip; it is levelled to 383.5 m, the ground at the tip (383 to 384.5 m in the LiDAR), from 4 m inside the body to 6 m out."
+      }
+    ],
     "attribution": "Civil Engineering and Development Department, territory-wide airborne LiDAR digital terrain model, 0.5 m, flown December 2019 to February 2020; Hong Kong 1980 Grid, mPD (CSDI, (c) The Government of the Hong Kong SAR)"
   },
   "surface_check": {
