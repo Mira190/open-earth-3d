@@ -52,24 +52,43 @@
   },
   "trees": {
     "mix": {
-      "elm": 0.62,
-      "plane": 0.3,
-      "maple": 0.08
+      "zelkova": 0.2,
+      "ginkgo": 0.14,
+      "camphor": 0.16,
+      "cherry": 0.12,
+      "maple": 0.12,
+      "pine": 0.1,
+      "evergreen": 0.16
     },
-    "note": "Species are not mapped. The hillside woods of Higashiyama and Mount Inari are mostly cedar, cypress and broadleaf evergreens, which the shared trees do not have, so elms and plane trees stand in for them; Japanese maples (momiji), red from mid November, are planted thickly only in the temple and shrine grounds (areas). A guess, not a survey.",
+    "woods": {
+      "sugi": 0.42,
+      "evergreen": 0.37,
+      "camphor": 0.08,
+      "maple": 0.03,
+      "pine": 0.05,
+      "zelkova": 0.05
+    },
+    "note": "Species are not mapped; the mix is a guess from Kyoto's street-tree surveys and the shrine's own guide. Mount Inari is a sacred wood of cedars and cypresses (sugi, standing for hinoki too) and evergreen oaks, the torii tunnels running under them; the streets below have zelkovas, ginkgos, camphors and cherries. The shrine's precinct takes a mix of its own, its outline OpenStreetMap's (pipeline/tree_areas.py).",
     "areas": [
       {
-        "at": [
-          -360,
-          130
-        ],
-        "radius": 110,
+        "name": "Fushimi Inari Taisha",
+        "find": "伏見稲荷大社",
         "mix": {
-          "maple": 0.4,
-          "elm": 0.6
+          "maple": 0.3,
+          "cherry": 0.14,
+          "sugi": 0.2,
+          "evergreen": 0.24,
+          "camphor": 0.12
+        },
+        "woods": {
+          "sugi": 0.54,
+          "evergreen": 0.36,
+          "maple": 0.04,
+          "camphor": 0.06
         }
       }
-    ]
+    ],
+    "cherry_open": "03-26"
   },
   "storey": {
     "res": [

@@ -52,35 +52,66 @@
   },
   "trees": {
     "mix": {
-      "elm": 0.62,
-      "plane": 0.3,
-      "maple": 0.08
+      "zelkova": 0.2,
+      "ginkgo": 0.14,
+      "camphor": 0.12,
+      "cherry": 0.14,
+      "maple": 0.16,
+      "pine": 0.1,
+      "evergreen": 0.14
     },
-    "note": "Species are not mapped. The hillside woods of Higashiyama and Mount Inari are mostly cedar, cypress and broadleaf evergreens, which the shared trees do not have, so elms and plane trees stand in for them; Japanese maples (momiji), red from mid November, are planted thickly only in the temple and shrine grounds (areas). A guess, not a survey.",
+    "woods": {
+      "evergreen": 0.38,
+      "sugi": 0.22,
+      "camphor": 0.1,
+      "maple": 0.06,
+      "pine": 0.1,
+      "zelkova": 0.08,
+      "cherry": 0.06
+    },
+    "note": "Species are not mapped; the mix is a guess from Kyoto's street-tree surveys and the temples' own guides. The streets have zelkovas (keyaki), ginkgos, camphors and cherries; the Higashiyama hillsides are a laurel forest of evergreen oaks and chinquapins (evergreen) with cedars (sugi, standing for hinoki too), black pines and maples. Areas give the precincts known for their own trees a mix of their own: Kiyomizu-dera's thousand maples and fifteen hundred cherries, Maruyama Park's cherries round the Gion weeping cherry, Kodai-ji's maples. Their outlines are OpenStreetMap's (pipeline/tree_areas.py).",
     "areas": [
       {
-        "at": [
-          260,
-          -240
-        ],
-        "radius": 170,
+        "name": "Kiyomizu-dera",
+        "find": "清水寺",
         "mix": {
-          "maple": 0.55,
-          "elm": 0.45
-        }
+          "maple": 0.42,
+          "cherry": 0.3,
+          "pine": 0.1,
+          "evergreen": 0.18
+        },
+        "woods": {
+          "maple": 0.34,
+          "cherry": 0.16,
+          "evergreen": 0.3,
+          "sugi": 0.12,
+          "pine": 0.08
+        },
+        "note": "About a thousand maples and fifteen hundred cherries round the Stage and down the Nishikigumo valley."
       },
       {
-        "at": [
-          -190,
-          330
-        ],
-        "radius": 120,
+        "name": "Maruyama Park",
+        "find": "円山公園",
+        "mix": {
+          "cherry": 0.6,
+          "maple": 0.15,
+          "pine": 0.1,
+          "zelkova": 0.15
+        },
+        "note": "Kyoto's oldest public park, famous for its cherries round the Gion weeping cherry."
+      },
+      {
+        "name": "Kodai-ji",
+        "find": "高台寺",
         "mix": {
           "maple": 0.45,
-          "elm": 0.55
+          "pine": 0.15,
+          "evergreen": 0.2,
+          "cherry": 0.2
         }
       }
-    ]
+    ],
+    "cherry_open": "03-26"
   },
   "storey": {
     "res": [
