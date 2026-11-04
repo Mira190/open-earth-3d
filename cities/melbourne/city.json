@@ -75,6 +75,11 @@
         "lamp_style": "bronze",
         "note": "1888, three wrought-iron arch spans on bluestone piers"
       },
+      "Kings Bridge": {
+        "form": "girder",
+        "deck_z": [13.5, 3.5],
+        "note": "1961, Kings Way carried over the Crown promenade on its south bank, down to Flinders Street on the north"
+      },
       "Queens Bridge": {
         "form": "deck_arch",
         "spans": 5,

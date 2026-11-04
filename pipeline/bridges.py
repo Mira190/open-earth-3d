@@ -22,7 +22,8 @@ A bridge takes its form from city.json "bridges" "forms", by its OpenStreetMap n
 with `colour` (the paint), `spans`, `rise_m` (the arch's rise over the deck, or of the deck arch under
 it), `rail` ("steel", "stone", "timber" with giboshi caps), `lamps` (lamp posts a side) and `lamp`
 (their head's colour), `lamp_style` ("bronze": stone pedestals and candelabra), `span_m` (the published spans,
-in proportion), `crown_m` (the deck's rise in the middle). `skip` names bridges to leave out, `widths` the deck of one mapped as lines,
+in proportion), `crown_m` (the deck's rise in the middle), `deck_z` (the deck's height at its two ends, from its
+south or west end, where the road over it is carried up above the banks). `skip` names bridges to leave out, `widths` the deck of one mapped as lines,
 `deck_min_m` the lowest a deck's ends stand (3.5 m: a Tokyo river's embankment), `min_m2` the smallest outline,
 `classes` the water's classes, `form`, `colour`, `stone`, `rail` and `lamps` the city's default for every bridge,
 and `off` leaves them all out.
@@ -139,6 +140,8 @@ def find(ctx, scene=None):
         b["form"] = f.pop("form", cfg.get("form", "girder"))
         b["colour"] = f.pop("colour", b.get("colour"))
         b.update(f)
+        if "deck_z" in b:   # the deck's height at its two ends, where the road over it is carried up (Kings Way over Crown)
+            b["z_ends"] = [float(z) for z in b.pop("deck_z")]
         clear(ctx, b)
         b["z_base"] = round(max(min(ctx.ground(*b["centre"]), min(b["z_ends"]) - 1.5), 0.0), 2)
         if b["form"] == "x":   # an X in plan (Sakura-bashi): two decks corner to corner of its outline
