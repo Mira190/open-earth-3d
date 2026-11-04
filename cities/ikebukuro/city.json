@@ -72,7 +72,8 @@
   "trees": {
     "mix": {
       "elm": 0.5,
-      "plane": 0.5
+      "plane": 0.5,
+      "cherry": 0.08
     },
     "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and parks, plane trees for the street planes and ginkgos. A guess, not a survey."
   },
