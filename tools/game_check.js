@@ -5,7 +5,8 @@
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
-// change with the traffic stopping for them, ride a taxi up behind a queue at a red light (it waits
+// change with the traffic stopping for them, hear the walk signals' calls
+// (tools/walkcalls_step.js), ride a taxi up behind a queue at a red light (it waits
 // in its lane and goes when the queue moves), swing the chase camera round walls in tight spots
 // frame by frame (it must ease, never jump), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
@@ -494,6 +495,21 @@ const npcNight = require('./npc_night');
   }
   await shot('travel');
 
+  // a landmark you go up (an observation deck with its own lift): travel from the map puts you on its deck, high
+  // over the street and facing out, not on the street looking up at it
+  const decks = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const lm of g.landmarks.filter(l => g.deckOf(l))) {
+      const at = g.deckStand(g.deckOf(lm)) || g.deckOf(lm)[0], ok = g.travelTo(lm);
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const pl = g.player;
+      out.push({ name: lm.name, ok, mode: pl.mode, d: Math.hypot(at[0] - pl.x, at[1] - pl.y), up: pl.z - Math.max(0, g.nav.terrain(pl.x, pl.y)), dz: Math.abs(pl.z - at[2]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    return out;
+  });
+  for (const h of decks) check(h.ok && h.mode === 'foot' && h.walk && h.d < 45 && h.dz < 6 && h.up > 60, `travels to ${h.name}'s deck (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.up.toFixed(0)} m over the street, ${h.walk ? 'on' : 'off'} walkable ground)`);
+
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it
   const hops = await p.evaluate(() => {
@@ -825,7 +841,7 @@ const npcNight = require('./npc_night');
       for (; u < 120 && q.phase === 'coming'; u += 0.5) {
         g.advance(0.5);
         const st = q.drv.st;
-        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
+        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.junction === 'cross' && st.lineAt ? ` (in the junction: ${st.lineAt.j.active.map(o => `${o.c === st ? 'the ride' : g.cars.C.includes(o.c) ? `car ${g.cars.C.indexOf(o.c)}` : 'another vehicle'} arm ${o.k} to ${o.m}${o.forced ? ' over its line' : ''} v ${(o.c.v || 0).toFixed(1)} ${o.c.why || ''} on ${o.c.line}${o.c.mv && o.c.mv.j !== st.lineAt.j ? ' (its next junction elsewhere)' : ''}`).join('; ') || 'nobody'})` : ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
       }
       r.rideT = u; r.rideHere = q.phase === 'waiting';
       g.phoneShow(false);
@@ -1052,6 +1068,9 @@ const npcNight = require('./npc_night');
     check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
   }
   await shot('junction');
+
+  // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
+  { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
 
   // a ride behind a queue at a red light (#107): it waits its turn in its own lane, never swings out
   // round a car queueing there (c.q) to the head of the queue, and goes on when the queue moves;

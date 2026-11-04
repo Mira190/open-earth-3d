@@ -504,6 +504,30 @@ export function scaevola(lod) {
   return b.geometry();
 }
 
+// a tree from the shared set every city plants (web/assets/trees, blender/build_trees.py: grown limbs and twigs
+// under leaf cards cut from one atlas), split into its bark and its leaf cards, in the reef's terms: aux.x the
+// height within the tree, aux.y its ambient occlusion, aux.z the sway, aux.w 0 foliage, 1 trunk
+export function sharedTree(scene, sp, lod) {
+  const node = scene.getObjectByName(`${sp}_LOD${lod}`);
+  if (!node) return null;
+  const parts = { bark: new Build(), leaves: new Build() };
+  let top = 0;
+  node.traverse(o => { if (o.isMesh) { o.geometry.computeBoundingBox(); top = Math.max(top, o.geometry.boundingBox.max.y); } });
+  const uvs = [];
+  node.traverse(o => {
+    if (!o.isMesh) return;
+    const g = o.geometry, leaf = o.material.name === 'Leaves', b = leaf ? parts.leaves : parts.bark;
+    const col = g.getAttribute('color'), uv = g.getAttribute('uv'), base = b.count;
+    b.add(g.clone(), new THREE.Matrix4(), (v, i) => [Math.max(0, v.y / top), col ? col.getX(i) : 1, col ? col.getY(i) : 0.5, leaf ? 0 : 1]);
+    if (leaf && uv) for (let i = 0; i < uv.count; i++) uvs[base + i] = [uv.getX(i), uv.getY(i)];
+  });
+  const leaves = parts.leaves.geometry(), bark = parts.bark.geometry();
+  const u = new Float32Array(leaves.attributes.position.count * 2);
+  uvs.forEach((q, i) => { if (q) { u[2 * i] = q[0]; u[2 * i + 1] = q[1]; } });
+  leaves.setAttribute('uv', new THREE.BufferAttribute(u, 2));
+  return { bark, leaves };
+}
+
 // any tree far away: a coarse spindle, stretched per instance (crown width, height) and coloured per species
 export function farTree() {
   // ten triangles: a pentagonal crown, rounded at the top; no trunk (it is a few pixels away)

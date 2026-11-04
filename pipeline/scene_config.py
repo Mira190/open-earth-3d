@@ -7,7 +7,7 @@ the same block from the same keys (cityctx.SCENE_CITY_KEYS); everything else in 
 import json
 import os
 
-from cityctx import SCENE_CITY_KEYS, city_args
+from cityctx import SCENE_CITY_KEYS, city_args, trees_cfg
 
 
 def main():
@@ -23,8 +23,8 @@ def main():
         elif k not in city.cfg and k in blk:
             del blk[k]
             changed.append(k)
-    if scene.get("trees") != city.cfg.get("trees", {}):     # build_scene.py copies it whole
-        scene["trees"] = city.cfg.get("trees", {})
+    if scene.get("trees") != trees_cfg(city):     # build_scene.py copies it whole, with the areas' outlines
+        scene["trees"] = trees_cfg(city)
         changed.append("trees")
     json.dump(scene, open(path, "w"), separators=(",", ":"))   # as build_scene.py writes it
     print(f"{path}: {', '.join(changed) or 'already current'}")

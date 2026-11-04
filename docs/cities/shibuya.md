@@ -231,7 +231,7 @@ are, checked against photographs from the same viewpoints (the comparison stills
 | The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands | PLATEAU, photographs | All the brands are invented |
 | The bookshop on Center Gai's corner | The shop that has stood on the corner since 1912, on the block's chamfer facing the crossing and 3.4 m of its south side: white clapboard to the first floor, the shop window and door, a blue awning with the name in white, and the big white box sign, lit from inside, wrapping round the corner: the name in heavy blue characters inside a red outline of an open book (its spine at the corner), the romanised name in red, a blue edge at its foot. The name is invented, 大昇堂書店 (BOOKS TAISHODO), in the real one's pattern: five characters, □□堂書店, two on the side and three on the front, in the same colours. The block's corner screen and Rakuten Vision stand above the sign (7.4 m and 12.9 m) | OSM's outline (w136690966 is the whole block); photographs 2021 and 2024 | The awning (3.0-3.45 m) and the sign (3.6-6.9 m), scaled from the door |
 | Hachiko | The bronze Akita sculpted as signed distance fields (ellipsoids, tapered limbs, a collar, the curled tail, joined with smooth unions) and meshed by surface nets (`pipeline/sculptkit.py`, `cities/shibuya/hachiko.py`), 13,000 triangles with smooth normals and a cast surface's unevenness. He sits up, forelegs straight, ears up; the forelegs and paws are rubbed bright by hands. On a speckled grey granite plinth (0.95 × 0.95 × 1.15 m) with its bronze plate, 忠犬ハチ公 set vertically, on a dark granite step clad in small tiles (1.55 m square, 0.38 m) | Photographs, July 2025 (front and three-quarter); the first statue (1934) was 162 cm on a 180 cm pedestal | All the sizes, scaled from the plinth: the dog about 0.95 m from paws to ears |
-| Hachiko's corner of the square | Round him, dark granite setts laid in arcs (6.6 m out, with two dark bands); behind him a curved bed (2.4-4.4 m out, round his back) behind a 0.48 m granite wall people sit on, with two stainless rails along it and five lamps set in its face, and in the bed rocks, four black pines pruned in pads, a maple and a Kasuga lantern; on his left the memorial stone with its plate. Out on the square two round planters of upright granite strips (2.7 m across) ringed by stainless rails, each with a tree, and four cherry-blossom inlays of pale stone in the setts | Photographs 2020-25 | All positions and sizes. The planters' trees are cherries (Somei-yoshino); the shared trees have no cherry, so elms and maples stand in for them (`trees.areas` in city.json) |
+| Hachiko's corner of the square | Round him, dark granite setts laid in arcs (6.6 m out, with two dark bands); behind him a curved bed (2.4-4.4 m out, round his back) behind a 0.48 m granite wall people sit on, with two stainless rails along it and five lamps set in its face, and in the bed rocks, four black pines pruned in pads and a Kasuga lantern; on his left the memorial stone with its plate. Out on the square two round planters of upright granite strips (2.7 m across) ringed by stainless rails, each with a tree, and four cherry-blossom inlays of pale stone in the setts | Photographs 2020-25 | All positions and sizes. The planters' trees are the shared Somei-yoshino cherries, in flower from 24 March (`trees.areas` in city.json) |
 
 **Side by side.** Each still stands the camera where the photographer stood and is cropped to the
 photo's lens (`tools/compare/shibuya.json`, `tools/compare_sheet.py`); the photo first, then the model at
@@ -306,6 +306,47 @@ python pipeline/osm_detail.py --city shibuya        # the OSM detail round the s
 python3 tools/aerial_local.py shibuya 362 -998 32    # the aerial photo in the local frame, to measure markings
 python3 tools/scramble_plan.py shibuya 365 -1005 110 # a plan of the footprints, roads and crossings
 ```
+
+## 6c. The streets off the scramble (#118)
+
+`cities/shibuya/streets.py`, built into the scramble's kit and atlas, dresses the first 150 m of the
+five streets that leave the scramble: Center Gai, Dogenzaka, Bunkamura-dori, Jingu-dori up to MODI,
+and Inokashira-dori between the two Seibu buildings. The generic city gives them their masses and
+windows; what makes them read as Shibuya from the pavement is what hangs on the fronts.
+
+| Part | How it is built | Measured from | Estimated |
+|---|---|---|---|
+| Every front onto the five streets | Found from the built city: each outline edge of 4.5 m or more within 15 m of a street's centreline and facing it. At its foot a shop window lit from inside and a lit fascia over it; on four fronts in five a vertical sign of tenants (縦看板), one panel a floor (3.2 m), standing out from the wall at one end and read up and down the street; on some, bands of tenants' signs floor over floor | OSM's street lines (scramble_osm.json), the built city's footprints and heights | The fascia's and signs' sizes, from photographs 2023-25; which front carries which is seeded per building |
+| The camera and electronics store on Dogenzaka | A white fascia with the name in red, a blue band under it, three banners up its floors in red, blue and white | Photographs 2024-25 | Sizes. The name is invented (カメラのサクラ) |
+| The drugstore and the shoe store on Center Gai | Yellow fascia with the name in dark blue and the big 薬; white on red with a navy band | Photographs 2024-25 | Sizes. Names invented (ドラッグ あおば, STEP MARKET) |
+| MODI on Jingu-dori | MODI up a blade at its corner (the building's name, in an open font), the record and book store's fascia over the door | Photographs 2024 | Sizes. The store's name is invented (DISC & BOOKS) |
+| SHIBUYA109's Bunkamura-dori face | SHIBUYA109 up a blade near the point, the front's printed advert again on a 9 × 13.5 m frame, shop windows at the foot | OSM's footprint | The print's size and place |
+| Seibu A and B | Closed on 30 September 2026 (A and B; LOFT and MOVIDA stay open under their own names). Cream precast panels with small, deep windows over every face from 4.6 m up, dark now; the ground floor's glass dark behind it; the closing notice on a white board at the doors on Jingu-dori and Inokashira-dori; the enclosed glass bridge between the two over Inokashira-dori | Footprints and heights from PLATEAU and OSM; closing: [Sakigake, 25 March 2026](https://www.sakigake.jp/news/article/20260325CO0078/), [AdverTimes](https://www.advertimes.com/?p=559377), [FASHIONSNAP](https://www.fashionsnap.com/article/2026-03-25/seibu-shibuya-close/) | The panels' bay (2.7 m) and window size; the bridge at 9-13 m. Whether the SEIBU letters are off the buildings yet is not reported: none is drawn |
+| Shibuhachi Hit Vision, bent | HIT's screen on the Oto building's roof (June 2014; 24.3 × 17.3 m, about 420 m² by HIT's release), its foot along the face over the station square and turning round the building's south-east corner on a 6 m radius (`screens.py`'s `path` and `round`) | Size: HIT ([value-press, 2014](https://www.value-press.com/pressrelease/128731)) | The bend's place and radius, from photographs |
+| The Taiseido block | The pharmacy's and the monja restaurant's small vertical signs on its Dogenzaka face, and the tower's three billboards stacked 15 cm apart to the tower's top at 39.4 m | PLATEAU's tower | The signs' sizes. Names invented (八千代薬品, もんじゃ 月島) |
+
+All the signs' words are in `cities/shibuya/streets.py` and drawn into `web/data/shibuya/scramble.jpg`;
+no text is shared with another city. On foot at 13:00, 15 minutes after sunset and 20:30 on 3 November
+(desktop, then phone; `tools/game_shot.js shibuya tools/compare/shibuya_streets.json`):
+
+| | |
+|---|---|
+| Center Gai | ![](../images/shibuya/streets/centergai.jpg) |
+| Dogenzaka | ![](../images/shibuya/streets/dogenzaka.jpg) |
+| Bunkamura-dori | ![](../images/shibuya/streets/bunkamura.jpg) |
+| Jingu-dori at Seibu A | ![](../images/shibuya/streets/seibu.jpg) |
+| Inokashira-dori and the Seibu bridge | ![](../images/shibuya/streets/inokashira.jpg) |
+| Shibuhachi Hit Vision from the station square | ![](../images/shibuya/streets/hitvision.jpg) |
+| Jingu-dori at MODI | ![](../images/shibuya/streets/modi.jpg) |
+| The Taiseido block from the scramble | ![](../images/shibuya/streets/taiseido.jpg) |
+
+The shop glass round the scramble (`x_shop`, `st_shop`) is no longer a floodlit material: a floodlit
+material glows all over after dark, and the shop windows read as flat cream slabs. Only their panes
+light now. The cost: landmarks.json 3.92 to 4.10 MB, 93.5k to 96.6k triangles, scramble.jpg 0.71 to
+about 1.3 MB (2048 × 4096).
+
+**Not done.** The bird call of the walk signals is #133. A real GPU's frame time on the low tier is still
+unmeasured (only llvmpipe, `tools/city_shot.js`).
 
 ## 7. Tokyo Pilgrimage: Shibuya
 
