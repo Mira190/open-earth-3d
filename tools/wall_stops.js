@@ -42,7 +42,7 @@ const [,, city = 'osaka', secs = '90', places = '4'] = process.argv;
         const out = [];
         for (const [pi, pr] of cand) if (nav.col.overlap(x, y, r, z + 0.4, z + 1.4, q => q !== pi)) {
           const meta = pr.tag === nav.BUILDING && g.B && g.B.b ? g.B.b[pr.id] : null;
-          const post = pr.tag === nav.BUILDING && pr.rings && pr.rings[0] && pr.rings[0].length === 8 && Math.abs(pr.rings[0][2] - pr.rings[0][0]) < 0.6;
+          const post = pr.tag === nav.BUILDING && pr.rings && pr.rings[0] && pr.rings[0].length === 8 && Math.abs(pr.rings[0][2] - pr.rings[0][0] - OEBuildings.POST) < 0.02 && Math.abs(pr.rings[0][5] - pr.rings[0][1] - OEBuildings.POST) < 0.02;
           out.push(`${pr.tag === nav.LANDMARK ? 'landmark' : post ? 'canopy post' : 'building'} ${pr.id}${meta ? ` (${meta.slice(0, 3).join(' ')})` : ''} z ${pr.zlo.toFixed(1)}..${pr.zhi.toFixed(1)}`);
         }
         return out;
@@ -55,7 +55,7 @@ const [,, city = 'osaka', secs = '90', places = '4'] = process.argv;
           if (c.line < 0 || c.why !== 'wall' || !c.ps || !c.np) continue;
           const k = Math.min(c.np - 1, Math.round((c.wallGap || 0) / (c.pst || 1))), x = c.ps[2 * k], y = c.ps[2 * k + 1];
           const l = L[c.line], d = Math.hypot(c.x - g.player.x, c.y - g.player.y);
-          found.push({ stopped: c.v < 0.1, v: +c.v.toFixed(1), key: `${Math.round(x / 4)},${Math.round(y / 4)}`, x: +x.toFixed(1), y: +y.toFixed(1), z: +c.z.toFixed(1), car: C.indexOf(c), line: c.line, ow: !!l.ow, lanes: l.lanes || 1, w: l.w, kind: l.kind || l.hw || '', lane: c.ln, lo: +(c.lo || 0).toFixed(2), off: +(c.off || 0).toFixed(2), ahead: +(c.wallGap || 0).toFixed(1), seen: +d.toFixed(0), narrow: +(c.narrow || 0).toFixed(1), hits: what(x, y, c.z, c.hw * 0.8), centre: what(c.ps[2 * k] + 0, c.ps[2 * k + 1] + 0, c.z, 0.1).length });
+          found.push({ stopped: c.v < 0.1, v: +(c.v || 0).toFixed(1), key: `${Math.round(x / 4)},${Math.round(y / 4)}`, x: +x.toFixed(1), y: +y.toFixed(1), z: +(c.z || 0).toFixed(1), car: C.indexOf(c), line: c.line, ow: !!l.ow, lanes: l.lanes || 1, w: l.w, kind: l.kind || l.hw || '', lane: c.ln, lo: +(c.lo || 0).toFixed(2), off: +(c.off || 0).toFixed(2), ahead: +(c.wallGap || 0).toFixed(1), seen: +d.toFixed(0), narrow: +(c.narrow || 0).toFixed(1), hits: what(x, y, c.z, c.hw * 0.8), centre: what(c.ps[2 * k] + 0, c.ps[2 * k + 1] + 0, c.z, 0.1).length });
         }
       }
       return { player: [Math.round(g.player.x), Math.round(g.player.y)], found };
