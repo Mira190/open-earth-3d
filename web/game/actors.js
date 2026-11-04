@@ -249,9 +249,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(pts[3 * i] - pts[3 * i - 3], pts[3 * i + 1] - pts[3 * i - 2]);
       // deck: per segment, 1 where the line is off the ground (decks.js); ow: one-way with its points (1) or against them (-1);
       // i0: its place in the lines given; nt: the turns banned from its ends, tl the arrows on its lanes
-      // (OSM's turn:lanes) at its ends (junctions.js)
+      // (OSM's turn:lanes) at its ends (junctions.js); ntw: turns banned at some hours, tb: the hours
+      // it is shut to cars (pipeline/road_rules.py); nl: OSM's count of its lanes each way (road_lanes.py);
       // wall: 1 where it starts at a wall, 2 where it ends at one (a road the data runs into a building: game.js cutAtWalls)
-      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null, ow: o.o || 0, i0, nt: o.nt || null, tl: o.tl || null, wall: o.w || 0 };
+      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null, ow: o.o || 0, i0, nt: o.nt || null, tl: o.tl || null, ntw: o.ntw || null, tb: o.tb || null, nl: o.nl || 0, wall: o.w || 0 };
     }).filter(l => l.len > 4);
     const key = (x, y) => `${Math.round(x / 2)},${Math.round(y / 2)}`;
     const nodes = new Map(), grid = new Map(), GC = 100;
@@ -873,6 +874,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return false;
     }
+    if (crowd) JN.onStripes = onStripes; // (a ride's driver gives way at a zebra too: cars.js chauffeur)
     function respawn(c, cx, cy, rMin) {
       const cand = net.near(cx, cy, rMin, radius);
       JN.forget(c);
@@ -883,7 +885,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         const ahead = dir > 0 ? L1.len - s : s, ar = JN.armAt(line, dir > 0 ? 1 : 0);
         if (ar && ahead < ar.back + 10) continue; // not at a junction's line, or over it
         if (JN.midsOn && (JN.midsOn(line) || []).some(X => Math.abs(X.mid - s) < 30)) continue; // nor at a crossing's
-        const ln = JN.lanesOf(L1) > 1 && rnd() < 0.5 ? 1 : 0, lo = side * JN.shiftOf(L1, ln);
+        if (JN.shutNow && JN.shutNow(line, dir)) continue; // nor on a street shut to cars at this hour
+        const ln = JN.lanesOf(L1) > 1 && rnd() < 0.5 && !(JN.laneRun && ahead + JN.laneRun(line, dir > 0 ? 1 : 0) < 120) ? 1 : 0, lo = side * JN.shiftOf(L1, ln); // (not in a second lane about to end)
         lanePos(line, s, dir, tmp, lo);
         c.z = tmp.z;
         if (!clear(tmp.x, tmp.y, 12, c, tmp.z) || overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 3, 1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) continue; // (and not on your car or a ride)
@@ -1195,7 +1198,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // the lane its movement needs, at the line: another way across from the lane it is in, if
           // it could not get across in time
           if (!c.mv && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
-            const alt = JN.exits(jArm).filter(e => e.lanes.includes(c.ln || 0));
+            const alt0 = JN.exits(jArm).filter(e => e.lanes.includes(c.ln || 0)), alt1 = alt0.filter(e => !JN.closedNow(e)), alt = alt1.length ? alt1 : alt0; // (not one closed at this hour)
             if (alt.length) {
               const e2 = alt[Math.floor(rnd() * alt.length)];
               if (jArm === arm) { c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; } else { c.exA.e = jEx = e2; }
@@ -1276,13 +1279,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // close to a line only into the lane it must be in
         if (JN.lanesOf(l) > 1) {
           c.lcT = (c.lcT || 0) + dt;
-          const nxL = !arm && c.nx ? net.L[nl] : null, ends = ln => ln && nxL && left < 90 && (JN.lanesOf(nxL) < 2 || !nxL.ow !== !l.ow); // (the lane ends, or moves across, on the road after)
+          // (the lane ends, or moves across, on the road ahead before the next junction: JN.laneRun looks
+          // past the pieces between, so that a car moves across in time where a short stretch comes first)
+          const endAt = arm || !JN.laneRun ? Infinity : left + JN.laneRun(c.line, c.dir > 0 ? 1 : 0), ends = ln => ln && endAt < 90 + 2 * c.v;
           const wrong = ln => (jArm && jEx && toLine < 150 && !jEx.lanes.includes(ln)) || ends(ln) || (ln && c.noL1 > 0); // (noL1: a facade beside the second lane, below)
           if (c.noL1 > 0) c.noL1 -= dt;
           let to = c.ln || 0, must = false;
           if (wrong(to) && !wrong(1 - to)) { to = 1 - to; must = true; }
           else if (wrong(to) && jArm && jEx && arm === jArm && !jEx.lanes.includes(to)) { // (neither will do: another way on from the lane it is in)
-            const alt = JN.exits(jArm).filter(e => e.lanes.includes(to));
+            const alt0 = JN.exits(jArm).filter(e => e.lanes.includes(to)), alt1 = alt0.filter(e => !JN.closedNow(e)), alt = alt1.length ? alt1 : alt0; // (not one closed at this hour)
             if (alt.length) { const e2 = alt[Math.floor(rnd() * alt.length)]; c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; }
           }
           else if (front && why === 'car' && front.v < Math.min(5, 0.6 * l.v) && gap < 30 && c.lcT > 4 && !wrong(1 - to)) to = 1 - to;
