@@ -602,9 +602,6 @@ window.OEJunctions = (function () {
     }
     function enter(c, a, e, t, forced = false) { // into the junction: its movement joins those in it
       const j = a.j, m = mv(c, e);
-      const had = j.active.find(o => o.c === c && o.k === a.i && o.m === m);
-      if (had && c.mv && c.mv.j === j) { c.mv = { j, a, e }; return; } // (in it already, this way: as it was)
-      if (had && c.mv0 && c.mv0.j === j) return; // (and the one it is leaving, two close together crossed at once)
       if (forced) overLine++; // (a car already over the line: the checks count these)
       unwait(c);
       if (c.mv && c.mv.j === j) release(c);
@@ -637,7 +634,9 @@ window.OEJunctions = (function () {
     // none), and with a car found over its line (it couldn't stop, or was put back there or turned
     // round: the checks count these apart)
     let crossed = 0, crossedOver = 0, overLine = 0; const crossLog = []; // (the first few, for tools/traffic_check.js)
-    const seenPairs = new Set();
+    const seenPairs = new Set(), carIds = new WeakMap();
+    let nCar = 0;
+    const carId = c => { let i = carIds.get(c); if (i == null) carIds.set(c, i = nCar++); return i; };
     const conflicts = () => crossed;
     const innerAll = new Set();
     for (const j of J) for (const i of j.inner) innerAll.add(i);
@@ -650,7 +649,8 @@ window.OEJunctions = (function () {
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
           const p = j.active[x], q = j.active[y];
-          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(p.t + ':' + q.t + ':' + j.id)) { seenPairs.add(p.t + ':' + q.t + ':' + j.id); if (p.forced || q.forced) crossedOver++; else crossed++; if (crossLog.length < 20) { crossLog.push(`${p.forced || q.forced ? 'over the line: ' : ''}junction ${j.id}${j.sig ? ` phase ${j.ph} ${j.st} at ${j.t.toFixed(1)} s` : ''}: arm ${p.k} to ${p.m} in at ${p.t} and arm ${q.k} to ${q.m} in at ${q.t}${p.c === q.c ? ', the same car' : ''}, now ${t.toFixed(1)}${p.forced ? ` (the first over the line: ${p.c.overWhy})` : q.forced ? ` (the second over the line: ${q.c.overWhy})` : ''}`); } }
+          const pair = `${j.id}:${carId(p.c)}:${p.k}:${p.m}:${carId(q.c)}:${q.k}:${q.m}`; // (a pair once: a car asks again every frame while it waits, or crosses two close junctions together)
+          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(pair)) { seenPairs.add(pair); if (p.forced || q.forced) crossedOver++; else crossed++; if (crossLog.length < 20) { crossLog.push(`${p.forced || q.forced ? 'over the line: ' : ''}junction ${j.id}${j.sig ? ` phase ${j.ph} ${j.st} at ${j.t.toFixed(1)} s` : ''}: arm ${p.k} to ${p.m} in at ${p.t} and arm ${q.k} to ${q.m} in at ${q.t}${p.c === q.c ? ', the same car' : ''}, now ${t.toFixed(1)}${p.forced ? ` (the first over the line: ${p.c.overWhy})` : q.forced ? ` (the second over the line: ${q.c.overWhy})` : ''}`); } }
         }
         if (!j.sig) continue;
         j.t += dt;
