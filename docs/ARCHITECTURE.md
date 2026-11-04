@@ -39,6 +39,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
+| Bridges over the water | `bridges.py` (run by `build_scene.py`, `landmarks.py`, `game_data.py`, `game_extras.py`), `refresh_bridges.py` | Every bridge OpenStreetMap maps over a city's rivers, canals and moats that the city's own builder does not draw (Paris's, Amsterdam's, Tsukishima's and Odaiba's do): its deck at the banks' height, in its real form and paint from city.json `bridges` (see [Bridges](#bridges-over-the-water)), in `landmarks.json`, and its deck walkable and drivable in `game.json` surfaces. `refresh_bridges.py` finds them again in a built city from the Overture layers and the game's ground; `tools/bridge_survey.py` lists any bridge still drawn by nothing |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
@@ -669,4 +670,37 @@ greenness picks up lawns and misses trees in shade), and the 10 m global canopy
 height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees. The
 species are still the city's mix of the six shared trees (`web/assets/trees/`):
 no pine, zelkova or camphor yet.
+
+## Bridges over the water
+
+Issue 122: the Tokyo maps built before Tsukishima and Odaiba routed their roads over the Sumida and
+the moats on nothing. Now `pipeline/bridges.py` finds every bridge that Overture's infrastructure layer
+(OpenStreetMap, ODbL) maps over the water: an outline, or the centre lines of its carriageways joined by
+name. Where an outline and a line overlap, there is one deck, and an unnamed outline takes its line's
+name. It leaves out three kinds: a bridge the city's own builder draws, an expressway's viaduct
+(OpenStreetMap's layer is an order, not a height), and the names in `skip`. A deck stands at the banks'
+height, at least `deck_min_m` (3.5 m, a Tokyo embankment), and is crowned 2% of its length. Over water
+the model draws as ground (a palace moat whose survey stands higher than its banks, Kyoto's riverbed), it
+clears that ground and ramps down to the banks.
+
+Each bridge takes its form and paint by name from city.json `bridges.forms`:
+
+| Form | Structure | Examples |
+|---|---|---|
+| `girder` | girder deck on piers | Kototoi-bashi, Sanjo Ohashi (timber rail and giboshi), Wadakura-bashi |
+| `deck_arch` | arches under the deck, spandrel posts | Azuma-bashi, Hijiri-bashi, Princes Bridge |
+| `half_through` | the middle arch rises through the deck, deck arches either side | Komagata-bashi, Tsukiji Ohashi |
+| `through_arch` | tied arches over each span, hangers | Umaya-bashi |
+| `truss` | through Warren truss | the Tobu line's Sumida bridge |
+| `stone_arch` | masonry arches, spandrel walls, stone parapet | Nihonbashi, the Seimon Ishibashi, Mansei-bashi, Shichijo Ohashi |
+| `kachidoki` | Kachidoki Bridge's bascule between two tied arches | |
+| `x` | an X in plan, two decks crossing | Sakura-bashi |
+
+The paint after dark is floodlit in its own colour, as Tokyo lights the Sumida's bridges. The Sumida's
+colours are the Tokyo Metropolitan Government's (隅田川中流部著名橋色彩基本方針, set in 1984 and confirmed in
+2014–15: Azuma-bashi red, Komagata-bashi blue, Umaya-bashi green, no two neighbours alike). The spans
+come from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record. The
+other cities' bridges come from their own records (Kyoto City's 京の橋しるべ, Heritage Victoria). A
+colour that no record gives is read from photographs and is approximate. These are facts and
+measurements, so no licence is needed. No third-party model or texture is used.
 

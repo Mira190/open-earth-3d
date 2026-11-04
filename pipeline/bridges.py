@@ -191,7 +191,7 @@ def x_arms(ctx, b, w):
 
 # ---------------------------------------------------------------- meshes
 
-def lit_tone(hex_colour, white=0.3):
+def lit_tone(hex_colour, white=0.12):
     """A paint's colour under a floodlight: the paint, a little towards white."""
     c = [int(hex_colour[k:k + 2], 16) for k in (1, 3, 5)]
     return "#" + "".join(f"{round(v + (255 - v) * white):02x}" for v in c)
