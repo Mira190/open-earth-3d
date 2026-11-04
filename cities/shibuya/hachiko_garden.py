@@ -1,20 +1,18 @@
-"""Hachiko Square's own plants: the two cherry trees in the round planters, the pruned black pines,
-the clumps of lilyturf in the bed behind Hachiko, and the leaf atlas they are drawn with.
+"""Hachiko Square's own plants: the two cherry trees in the round planters, the clumps of lilyturf in
+the bed behind Hachiko, and the leaf atlas they are drawn with.
 
 What stands there, from photographs of the square (Wikimedia Commons, April 2020, February 2021, July
 2025; docs/cities/shibuya.md):
   - each round planter holds a Somei-yoshino cherry: a short dark trunk that forks a little over head
     height into four or five limbs, which rise and then spread into a wide, open crown, 7 to 8 m high
     and as wide; in autumn its leaves turn yellow, orange and red and thin out;
-  - the bed round Hachiko's back holds rocks, a stone lantern and garden black pines (kuromatsu)
-    about as tall as a person, pruned as niwaki: a leaning trunk and a few branches, each ending in a
-    flat cloud of needles, one on top; with lilyturf (ryu-no-hige) clumps between the rocks, and a
-    Japanese maple (the shared maple, web/trees.js) at one end.
+  - the bed round Hachiko's back holds rocks, a stone lantern and lilyturf (ryu-no-hige) clumps
+    between the rocks. Its garden pines and maple are left out on purpose, so that nothing stands over
+    the statue and he stays the centre of the square.
 
 The trees are grown, not sculpted: a trunk and limbs as tapering tubes, forks and twigs from them, and
 leaf cards (quads cut out of a drawn atlas, `cutout`: their clear pixels are holes, in their shadows
-too) at the twigs' ends. The pines' clouds are flat discs of needle tufts round a dark core, so they
-read as dense from below and as needles from close by. Everything here is an estimate from the
+too) at the twigs' ends. Everything here is an estimate from the
 photographs: the trees' heights, spreads and branching. The leaves keep the colour of early autumn
 (the cherries a mix of turning green, yellow and orange-red) all year: they do not follow the
 season as the shared trees do.
@@ -26,7 +24,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 ATLAS = "hachiko_garden.png"
 CELL_PX = 256                  # a cell of the atlas, in the final image; drawn at twice that
-CELLS = {"cherry": 0, "cherry_red": 1, "pine": 2, "turf": 3}   # 2 x 2
+CELLS = {"cherry": 0, "cherry_red": 1, "turf": 3}   # 2 x 2 (cell 2 free)
 
 
 def cell_uv(k):
@@ -81,29 +79,6 @@ def _cherry(rng, palette):
     return img
 
 
-def _pine(rng):
-    """Needle tufts bursting from the middle: a pine's cloud seen from above or from the side."""
-    S = CELL_PX * 2
-    img = Image.new("RGBA", (S, S), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    c = np.array([S / 2, S / 2])
-    for k in range(70):
-        a = rng.uniform(0, 2 * math.pi)
-        r0 = rng.uniform(0, S * 0.18)
-        p0 = c + r0 * np.array([math.cos(a), math.sin(a)])
-        L = rng.uniform(S * 0.16, S * 0.3)
-        dark = rng.uniform(0.75, 1.15)
-        for n in range(12):
-            b = a + rng.uniform(-0.38, 0.38)
-            p1 = p0 + L * rng.uniform(0.8, 1.0) * np.array([math.cos(b), math.sin(b)])
-            mid = p0 + (p1 - p0) * 0.65
-            g0 = tuple(int(v * dark) for v in (34, 58, 34)) + (255,)
-            g1 = tuple(int(min(255, v * dark)) for v in (78, 104, 56)) + (255,)
-            d.line([tuple(p0), tuple(mid)], fill=g0, width=3)
-            d.line([tuple(mid), tuple(p1)], fill=g1, width=2)
-    return img
-
-
 def _turf(rng):
     """A clump of lilyturf: dark narrow blades arching up and out from the bottom middle."""
     S = CELL_PX * 2
@@ -134,7 +109,7 @@ def draw_atlas(path):
     rng = np.random.default_rng(1934)
     S = CELL_PX * 2
     big = Image.new("RGBA", (S * 2, S * 2), (0, 0, 0, 0))
-    for k, img in enumerate((_cherry(rng, CHERRY_TURNING), _cherry(rng, CHERRY_AUTUMN), _pine(rng), _turf(rng))):
+    for k, img in ((0, _cherry(rng, CHERRY_TURNING)), (1, _cherry(rng, CHERRY_AUTUMN)), (3, _turf(rng))):
         big.alpha_composite(img, ((k % 2) * S, (k // 2) * S))
     out = big.resize((CELL_PX * 2, CELL_PX * 2), Image.LANCZOS)
     # bleed the colours into the clear pixels round them, so the mips do not fringe dark
@@ -240,51 +215,6 @@ def cherry(K, base, seed, H=7.4, R=4.0, clear=2.5):
                     card(leaf, c, right, up, sz, sz, CELLS["cherry"] if rng.random() < 0.55 else CELLS["cherry_red"], anchor="centre")
                     leaves += 1
     return leaves
-
-
-def pine(K, base, h, seed, lean_az):
-    """A pruned garden black pine about h metres tall at base, leaning toward lean_az (radians):
-    a curving trunk ("hk_bark"), a few branches each ending in a flat cloud of needles, one on top."""
-    rng = np.random.default_rng(seed)
-    base = np.asarray(base, float)
-    bark, leaf, core = K("hk_bark"), K("hk_leaf"), K("hk_pine")
-    ld = np.array([math.cos(lean_az), math.sin(lean_az), 0.0])
-    sway = np.array([-ld[1], ld[0], 0.0]) * rng.uniform(-0.12, 0.12) * h
-    trunk = [base - [0, 0, 0.05], base + ld * 0.12 * h + sway * 0.5 + [0, 0, 0.35 * h], base + ld * 0.3 * h + sway + [0, 0, 0.7 * h],
-             base + ld * 0.32 * h + sway * 0.6 + [0, 0, 0.88 * h]]
-    rr = 0.075 * h / 1.8
-    bark.tube(trunk, [rr, rr * 0.8, rr * 0.6, rr * 0.45], 7)
-    axis = lambda z: base + ld * 0.3 * h * min(1, z / (0.7 * h)) + sway * min(1, z / (0.7 * h)) + [0, 0, z]
-    n = int(rng.integers(3, 5))
-    az = lean_az + math.pi + rng.uniform(-0.6, 0.6)
-    clouds = []
-    for k in range(n):
-        z = h * (0.32 + 0.48 * k / max(1, n - 1)) * rng.uniform(0.95, 1.05)
-        s = axis(z)
-        L = h * rng.uniform(0.32, 0.5) * (1 - 0.35 * k / max(1, n - 1))
-        e = s + _dir(az, math.radians(rng.uniform(-5, 18))) * L
-        bark.tube([s, (s + e) / 2 + [0, 0, 0.04 * h], e], [rr * 0.45, rr * 0.32, rr * 0.22], 5)
-        clouds.append((e + [0, 0, 0.05 * h], h * rng.uniform(0.22, 0.3) * (1 - 0.3 * k / max(1, n - 1))))
-        az += math.radians(137.5) + rng.uniform(-0.3, 0.3)
-    clouds.append((trunk[-1] + [0, 0, 0.06 * h], h * rng.uniform(0.2, 0.26)))
-    for c, a in clouds:
-        b = a * rng.uniform(0.75, 0.95)
-        t = max(0.1, a * 0.32)
-        ellipsoid(core, c, (a * 0.62, b * 0.62, t * 0.55))
-        # needles: tufts lying flat over the cloud, a few standing round its rim
-        for _ in range(int(14 + 30 * a)):
-            r, f = math.sqrt(rng.random()), rng.uniform(0, 2 * math.pi)
-            p = c + np.array([math.cos(f) * a * r * 0.85, math.sin(f) * b * r * 0.85, rng.uniform(-0.2, 0.6) * t])
-            nrm = np.array([0, 0, 1.0]) + rng.normal(0, 0.3, 3)
-            ax1, ax2 = _frame_for(nrm)
-            sz = rng.uniform(0.32, 0.5) * (0.6 + 0.6 * a)
-            card(leaf, p, ax1, ax2, sz, sz, CELLS["pine"], anchor="centre")
-        for j in range(int(5 + 8 * a)):
-            f = 2 * math.pi * (j + rng.uniform(0, 0.6)) / int(5 + 8 * a)
-            o = np.array([math.cos(f), math.sin(f), 0.0])
-            p = c + o * np.array([a, b, 0]) * 0.75
-            sz = rng.uniform(0.3, 0.45) * (0.6 + 0.6 * a)
-            card(leaf, p, np.array([-o[1], o[0], 0.0]), o * 0.35 + [0, 0, 1.0], sz, sz * 0.85, CELLS["pine"], anchor="centre")
 
 
 def turf(K, base, seed, h=0.32):

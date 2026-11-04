@@ -2137,10 +2137,8 @@ MATERIALS.update({
     "hk_soil": {"color": "#3a3128", "roughness": 1.0, "metalness": 0.0},
     "hk_steel": {"color": "#d3d7da", "roughness": 0.22, "metalness": 0.9},
     "hk_rock": {"color": "#7b776f", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
-    # the square's plants (hachiko_garden.py): the pines' dark cores under their needles, pine and cherry
-    # bark, and the leaf cards cut out of the garden's atlas (their clear pixels are holes, in shadow too)
-    "hk_pine": {"color": "#1f3320", "roughness": 0.95, "metalness": 0.0},
-    "hk_bark": {"color": "#4b3d33", "roughness": 0.95, "metalness": 0.0},
+    # the square's plants (hachiko_garden.py): the cherries' bark, and the leaf cards cut out of the
+    # garden's atlas (their clear pixels are holes, in shadow too)
     "hk_cbark": {"color": "#3f3632", "roughness": 0.9, "metalness": 0.0},
     "hk_leaf": {"color": "#e6e6e6", "roughness": 0.8, "metalness": 0.0, "map": "hachiko_garden.png", "cutout": True},
     # QFRONT's glass front (web/world.js curtain_wall: panes between mullions, some lit after dark)
@@ -2999,9 +2997,7 @@ HK_DISC_M = 6.6
 HK_PLANTERS = [(381.0, -1035.5), (383.6, -1049.2)]   # world x, y
 HK_PLANTER = {"r": 1.35, "h": 0.72}
 HK_BLOSSOMS = [(378.0, -1031.0), (386.6, -1039.5), (380.0, -1053.0), (387.5, -1045.0)]
-HK_PINES = [(130, 3.55, 1.9), (172, 3.8, 2.3), (208, 3.55, 1.7)]   # in the bed: degrees from his face, metres out, height
 HK_LANTERN_DEG = 108
-HK_MAPLE = {"deg": 240, "r": 3.75, "h": 3.3}   # the Japanese maple at the bed's end (the shared maple: city.json trees.areas)
 HK_CHERRY = {"h": 7.4, "spread": 4.0}         # the planters' cherries (hachiko_garden.cherry)
 
 
@@ -3153,17 +3149,13 @@ def hachiko_square(K, h, lm):
         Q = frame(at + d * (B["r_in"] - 0.005), -d)
         block(K("hk_steel"), Q, -0.01, 0.012, -0.32, 0.32, z + 0.1, z + 0.26)
         block(K("lamp", "lit"), Q, 0.012, 0.016, -0.28, 0.28, z + 0.12, z + 0.24)
-    # in the bed: rocks, black pines, the lantern
+    # in the bed: rocks, lilyturf and the lantern
     rm = (B["r_in"] + B["r_out"]) / 2 + 0.15
     bed_at = lambda deg, r: (r * math.cos(math.radians(deg)), r * math.sin(math.radians(deg)))
     for k, (deg, r, size) in enumerate(((118, rm, 0.42), (150, rm + 0.3, 0.55), (196, rm - 0.2, 0.36), (228, rm + 0.2, 0.5), (248, rm - 0.1, 0.32))):
         u, v = bed_at(deg, r)
         hk_rock(K("hk_rock"), P, u, v, zw - 0.12, size, 1934 + k)
-    for k, (deg, r, hh) in enumerate(HK_PINES):
-        u, v = bed_at(deg, r)
-        # each leans a little toward Hachiko, over the bed's inner wall, as garden pines are trained
-        lean = math.atan2(-(P(u, v, 0) - P(0, 0, 0))[1], -(P(u, v, 0) - P(0, 0, 0))[0]) + (0.5 if k % 2 else -0.5)
-        garden.pine(K, P(u, v, zw - 0.06), hh, 1923 + k, lean)
+    # (no trees in the bed: the real one's pines and maple are left out, so nothing stands over Hachiko)
     rng = np.random.default_rng(1989)
     for k in range(26):    # lilyturf between the rocks and round the pines' feet
         deg = B["from_deg"] + 6 + (B["to_deg"] - B["from_deg"] - 12) * (k + rng.uniform(0, 0.8)) / 26
@@ -3196,21 +3188,10 @@ def hachiko_square(K, h, lm):
 
 
 def hachiko_trees(lm):
-    """The square's own trees drawn by the shared trees, [x, y, z, height] in decimetres (places.json's
-    layout): the Japanese maple at the end of the bed behind Hachiko (its species: city.json trees.areas,
-    a circle round it). The planters' cherries and the bed's pines are the garden's own (hachiko_garden.py)."""
-    h = lm.get("hachiko")
-    if not h:
-        return []
-    p = hk_maple_at(h)
-    return [round(p[0] * 10), round(p[1] * 10), round((h["z"] + HK_BED["wall_m"] - 0.06) * 10), round(HK_MAPLE["h"] * 10)]
-
-
-def hk_maple_at(h):
-    """Where the maple stands, in world x, y."""
-    P = frame(h["at"], hachiko_face(h))
-    a = math.radians(HK_MAPLE["deg"])
-    return P(HK_MAPLE["r"] * math.cos(a), HK_MAPLE["r"] * math.sin(a), 0)[:2]
+    """The square's own trees drawn by the shared trees: none. The planters' cherries are the garden's own
+    (hachiko_garden.py), and the bed behind Hachiko is kept low (rocks, lilyturf, the lantern), so
+    nothing stands over him."""
+    return []
 
 
 def qfront_glass(K):
