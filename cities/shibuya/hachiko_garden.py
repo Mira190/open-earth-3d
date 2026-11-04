@@ -221,14 +221,14 @@ def cherry(K, base, seed, H=7.4, R=4.0, clear=2.5):
             c2 = p + _dir(taz, tel + 0.35) * L2 * 0.5
             sec = _bezier(p, c2, e2 - [0, 0, 0.25 * L2 * rng.uniform(0, 1)], 5)
             bark.tube(list(sec), list(np.linspace(0.05, 0.02, 5)), 6)
-            for u in (0.5, 0.8, 1.0):
+            for u in (0.25, 0.5, 0.75, 1.0):
                 q = sec[int(u * 4)]
                 taz2 = taz + rng.uniform(-1.0, 1.0)
                 tw_end = q + _dir(taz2, math.radians(rng.uniform(-10, 45))) * rng.uniform(0.45, 0.85)
                 bark.tube([q, (q + tw_end) / 2 + [0, 0, 0.05], tw_end], [0.018, 0.013, 0.008], 4)
                 # the leaves round the twig's end: sprays leaning out of the crown and up
-                for _ in range(int(rng.integers(3, 6))):
-                    c = tw_end + rng.normal(0, 0.22, 3) * [1, 1, 0.6]
+                for _ in range(int(rng.integers(6, 10))):
+                    c = tw_end + rng.normal(0, 0.32, 3) * [1, 1, 0.6]
                     if c[2] - base[2] < clear:
                         continue
                     out = c - (base + [0, 0, H * 0.55])
@@ -236,7 +236,7 @@ def cherry(K, base, seed, H=7.4, R=4.0, clear=2.5):
                     out /= np.linalg.norm(out) or 1
                     up = out * rng.uniform(0.4, 0.9) + np.array([0, 0, 1.0]) + rng.normal(0, 0.35, 3)
                     right = np.cross(up, rng.normal(0, 1, 3))
-                    sz = rng.uniform(0.75, 1.05)
+                    sz = rng.uniform(0.9, 1.25)
                     card(leaf, c, right, up, sz, sz, CELLS["cherry"] if rng.random() < 0.55 else CELLS["cherry_red"], anchor="centre")
                     leaves += 1
     return leaves

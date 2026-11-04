@@ -3001,7 +3001,7 @@ HK_PLANTER = {"r": 1.35, "h": 0.72}
 HK_BLOSSOMS = [(378.0, -1031.0), (386.6, -1039.5), (380.0, -1053.0), (387.5, -1045.0)]
 HK_PINES = [(130, 3.55, 1.9), (172, 3.8, 2.3), (208, 3.55, 1.7)]   # in the bed: degrees from his face, metres out, height
 HK_LANTERN_DEG = 108
-HK_MAPLE = {"deg": 240, "r": 3.75, "h": 3.8}   # the Japanese maple at the bed's end (the shared maple: city.json trees.areas)
+HK_MAPLE = {"deg": 240, "r": 3.75, "h": 3.3}   # the Japanese maple at the bed's end (the shared maple: city.json trees.areas)
 HK_CHERRY = {"h": 7.4, "spread": 4.0}         # the planters' cherries (hachiko_garden.cherry)
 
 
@@ -3105,7 +3105,7 @@ def hachiko_square(K, h, lm):
     zd = z + 0.075
     ring_top(K("hk_setts"), at, 0.0, HK_DISC_M, 0.0, 2 * math.pi, zd, 5.0, polar_uv=True)
     from shapely.ops import unary_union
-    field = unary_union([Point(*c).buffer(HK_PLANTER["r"] + 2.6, 24) for c in HK_PLANTERS] + [Point(*HK_PLANTERS[0]).buffer(1.0).union(Point(*HK_PLANTERS[1]).buffer(1.0)).convex_hull.buffer(2.4, 12)])
+    field = unary_union([Point(*c).buffer(HK_PLANTER["r"] + 2.6, 24) for c in HK_PLANTERS] + [Point(*at).buffer(HK_DISC_M, 48)]).convex_hull
     field = field.intersection(Polygon(HACHIKO_SQUARE).buffer(-0.3)).difference(Point(*at).buffer(HK_DISC_M - 0.02, 48))
     for x in np.arange(field.bounds[0], field.bounds[2], 2.0):
         for y in np.arange(field.bounds[1], field.bounds[3], 2.0):
