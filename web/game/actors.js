@@ -1210,7 +1210,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (alt.length) {
               const e2 = alt[Math.floor(rnd() * alt.length)];
               if (jArm === arm) { c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; } else { c.exA.e = jEx = e2; }
-            }
+            } else if (c.mv || c.mv0) c.anyLane = jArm; // (no way on from its lane, and it can't move across while it holds the junction behind: it goes from the lane it is in, #144)
           }
           const lt = JN.light(jArm, jEx), stop = c.v * c.v / 8 < toLine - c.half - 0.3; // (can stop by the line, at 4 m/s²)
           if (c.mv && c.mv.a === jArm && lt !== 'g' && lt != null && stop) { JN.release(c); c.rel = 'lights'; } // the lights changed before it got there
@@ -1225,7 +1225,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               // holding its way through the junction behind, whose place in the road stays as it went in
               // by until it is clear of that one: forced over its line there onto a piece too short to wait
               // on, it would wait for good, holding that junction and its queues through every green, #144)
-              const inLane = jEx.lanes.includes(c.ln || 0) && (Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3 || (c.mv && c.mv.j !== jArm.j));
+              const inLane = (c.anyLane === jArm && (c.mv || c.mv0)) || (jEx.lanes.includes(c.ln || 0) && (Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3 || (c.mv && c.mv.j !== jArm.j)));
               if (!inLane) go = false;
               // a junction just after, too close to wait between: crossed with this one, its way chosen now
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
