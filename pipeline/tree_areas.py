@@ -21,6 +21,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -40,8 +41,15 @@ def get(path, **q):
         time.sleep(wait)
     _last[0] = time.time()
     req = urllib.request.Request(f"{NOMINATIM}/{path}?{urllib.parse.urlencode(q)}", headers={"User-Agent": UA})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r)
+    for k in range(6):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:   # 429 when it is busy: back off and ask again
+            if e.code not in (429, 502, 503, 504) or k == 5:
+                raise
+            time.sleep(15 * (k + 1))
+            _last[0] = time.time()
 
 
 def outline(city, area):

@@ -65,7 +65,8 @@
       "ginkgo": 0.3,
       "plane": 0.2,
       "camphor": 0.1,
-      "evergreen": 0.1
+      "evergreen": 0.1,
+      "cherry": 0.08
     },
     "woods": {
       "evergreen": 0.25,
@@ -74,9 +75,10 @@
       "plane": 0.1,
       "ginkgo": 0.1,
       "maple": 0.08,
-      "sugi": 0.07
+      "sugi": 0.07,
+      "cherry": 0.04
     },
-    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py).",
+    "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.",
     "areas": [
       {
         "name": "Shinjuku Gyoen's Japanese garden",
@@ -88,7 +90,8 @@
         "mix": {
           "maple": 0.22,
           "elm": 0.5,
-          "plane": 0.28
+          "plane": 0.28,
+          "cherry": 0.15
         }
       },
       {
@@ -113,7 +116,8 @@
           "evergreen": 0.15,
           "pine": 0.1,
           "ginkgo": 0.1,
-          "sugi": 0.1
+          "sugi": 0.1,
+          "cherry": 0.22
         },
         "note": "The French formal garden's plane avenues, the Japanese garden's pines, the Himalayan cedars (sugi stands in) and camphors."
       },

@@ -1,9 +1,10 @@
 """Build the street and park trees every city shares: web/assets/trees/trees.glb and
 trees.json.
 
-Fifteen species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
+Sixteen species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
 Island date palm and Japanese maple (momiji, red in autumn: web/trees.js); Japan's black pine,
-cryptomeria (sugi), camphor, zelkova and ginkgo (the last two turn in autumn too); an evergreen
+cryptomeria (sugi), camphor, zelkova and ginkgo (the last two turn in autumn too) and the
+Somei-yoshino cherry (pale pink on bare branches for a fortnight in spring); an evergreen
 broadleaf for Hong Kong's hills and the laurel forest of the shrine groves; and the coral cays'
 pisonia and she-oak (casuarina). Each is grown,
 not sculpted: points are scattered through the shell of
@@ -39,12 +40,14 @@ OUT = os.path.join(ROOT, "web", "assets", "trees")
 DOCS = os.path.join(ROOT, "docs", "images", "trees")
 
 # ------------------------------------------------------------ the leaf atlas
-# 4 x 4 cells, each a spray of leaves growing up from the middle of its bottom edge (the jacaranda's
-# bloom cell stays right of its leaf cell: web/trees.js swaps one for the other with the season)
-ATLAS_W, ATLAS_H, CW, CH = 1024, 2048, 256, 512
+# 4 x 5 cells, each a spray of leaves growing up from the middle of its bottom edge (a bloom cell stays
+# right of its leaf cell: web/trees.js swaps one for the other with the season; the jacaranda's "bloom"
+# beside "jacaranda", the cherry's "sakura" beside "cherry"). Cells 18 and 19 are free.
+ATLAS_W, ATLAS_H, CW, CH = 1024, 2560, 256, 512
 COLS, ROWS = ATLAS_W // CW, ATLAS_H // CH
 CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7,
-         "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15}
+         "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15,
+         "cherry": 16, "sakura": 17}
 
 
 def cell_uv(k):
@@ -169,6 +172,25 @@ def spray(img, k, spec, rng, S=2):
                         y_ += math.sin(a_) * spec["L"] * S / 12
                         pts_.append((x_, y_))
                     dr.line(pts_, fill=col + (255,), width=max(4, int(4.0 * S)))
+                elif spec["leaf"] == "blossom":  # a cherry's: umbels of three to five five-petalled flowers on
+                    # short stalks from a bud on the bare twig, pale pink fading to white, a darker eye
+                    cx, cy = px + side * rng.uniform(2, 6) * S, py - rng.uniform(0, 4) * S
+                    for _ in range(int(rng.integers(4, 7))):
+                        fa = rng.uniform(0, TAU)
+                        fd = rng.uniform(6, 16) * S
+                        fx, fy = cx + math.cos(fa) * fd, cy + math.sin(fa) * fd * 0.8
+                        dr.line([(cx, cy), (fx, fy)], fill=hexrgb("#7a4a48") + (255,), width=max(1, int(S)))
+                        pc = hexrgb(spec["colours"][rng.integers(len(spec["colours"]))], rng.uniform(0.94, 1.04))
+                        pr = rng.uniform(5.0, 7.4) * S * scale
+                        turn = rng.uniform(0, TAU)
+                        for q in range(5):
+                            qa = turn + q * TAU / 5
+                            ex, ey = fx + math.cos(qa) * pr * 0.62, fy + math.sin(qa) * pr * 0.62
+                            dr.ellipse([ex - pr * 0.5, ey - pr * 0.5, ex + pr * 0.5, ey + pr * 0.5], fill=pc + (255,))
+                        eye = hexrgb(spec.get("eye", "#c9707f"))
+                        dr.ellipse([fx - pr * 0.22, fy - pr * 0.22, fx + pr * 0.22, fy + pr * 0.22], fill=eye + (255,))
+                    if rng.random() < 0.35:   # a bud not yet open: a deeper pink
+                        dr.ellipse([cx - 2.5 * S, cy - 3.5 * S, cx + 2.5 * S, cy + 3.5 * S], fill=hexrgb("#e3a2b4") + (255,))
                 elif spec["leaf"] == "flower":
                     for _ in range(4):
                         fx, fy = px + rng.normal(0, 10) * S, py + rng.normal(0, 10) * S
@@ -210,6 +232,12 @@ SPRAYS = {
                     twig="#8a8170", twig_w=3),
     "casuarina": dict(leaf="strand", L=170, W=0, twigs=11, spread=0.85, every=1, angle=(0.3, 0.8), colours=["#66795a", "#728564", "#5b6d52", "#7c8d6c"],
                       twig="#5a4a3c", twig_w=2),
+    # Somei-yoshino: the leaves (elliptic, pointed, finely toothed; fresh green after the flowers) and the
+    # bloom (umbels on the bare twigs, white with a blush of pink, a pink-red eye as the petals age)
+    "cherry": dict(leaf="ovate", L=30, W=15, twigs=7, spread=0.85, every=1, angle=(0.6, 1.1), colours=["#5f8c3a", "#6c9944", "#557f33", "#78a24c"],
+                   twig="#3f322e", twig_w=2, fill=0.85),
+    "sakura": dict(leaf="blossom", L=0, W=0, twigs=13, spread=0.72, every=1, start=1, angle=(0.6, 1.2),
+                   colours=["#f6dae2", "#f1ccd7", "#f9e6eb", "#ecc2cf", "#f7e0e6"], eye="#d48596", twig="#3f322e", twig_w=3, fill=0.9),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
 }
@@ -285,6 +313,12 @@ SPECIES = {
                    bark="#6e655a", lean=0.02, excurrent=True, colour="#62903a", autumn_colour="#c8a640",
                    note="Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree "
                         "(Midosuji, Jingu Gaien), gold in late November"),
+    "cherry": dict(deciduous=True, H=8.8, trunk=2.3, r0=0.34, crown=("ellipsoid", 5.7, 6.2, 3.0), n=420, size=2.4, n1=6, n2=5, leaf="sakura",
+                   bark="#3e3431", lean=0.1, leader=False, colour="#5d8a3a", autumn_colour="#b2532f", bloom_colour="#f1d6de",
+                   note="Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, "
+                        "a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo "
+                        "(web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf "
+                        "cell beside them out of flower"),
     # the subtropics: the evergreen laurel forest of Hong Kong's hills (Schima, Machilus) and of Japan's old
     # shrine groves (shii and kashi)
     "evergreen": dict(H=14.0, trunk=3.0, r0=0.36, crown=("ellipsoid", 9.0, 5.6, 5.2), n=380, size=2.5, n1=7, n2=4, leaf="evergreen",
@@ -534,7 +568,7 @@ def leaf_at(T, sp, p, base, crown_c, crown_r, rng, size):
     up = up / (np.linalg.norm(up) + 1e-6) * 0.6 + out * 0.4 + np.array([0, 0, 0.15])
     jitter = rng.normal(0, 0.35, 3)
     k_cell = CELLS[sp["leaf"]]
-    if sp["leaf"] == "jacaranda" and rng.random() < sp.get("bloom", 0):
+    if sp["leaf"] == "jacaranda" and rng.random() < sp.get("bloom", 0):   # (a cherry's are all its bloom cell, "sakura")
         k_cell = CELLS["bloom"]
     at = p - up / np.linalg.norm(up) * size * 0.45
     card(T, at, up + jitter * 0.3, out + jitter, size * rng.uniform(0.85, 1.15), k_cell, crown_c, crown_r, rng)
