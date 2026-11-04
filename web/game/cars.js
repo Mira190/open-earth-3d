@@ -521,8 +521,11 @@ window.OECars = (function () {
         if (dx || dy) { what = what || 'wall'; shove(o, dx, dy); }
       }
       // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
-      // from the nearest point of the box to its centre
-      for (const q of env.posts || []) {
+      // from the nearest point of the box to its centre; again while one moves it, so that out of one
+      // post it is not left in another beside it (a signal pole by a trunk at a corner), and the
+      // thickest last: pinned between two closer than a car's width, it gives at the thin pole, not the trunk
+      const PS = env.posts && env.posts.length > 1 ? env.posts.slice().sort((a, b) => a.r - b.r) : env.posts || [];
+      for (let pass = 0, again = true; again && pass < 3; pass++) for (const q of (again = false, PS)) {
         if (Math.abs(q.z - st.z) > 2) continue;
         const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
         const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
@@ -530,7 +533,7 @@ window.OECars = (function () {
         if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
         else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
         const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
-        st.x += px; st.y += py; nx += px; ny += py; moved = true;
+        st.x += px; st.y += py; nx += px; ny += py; moved = again = true;
         what = q.kind || 'post';
       }
       if (!moved) return;
