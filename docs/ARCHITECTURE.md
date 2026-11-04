@@ -151,7 +151,25 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     layer keeps OSM's tags (`source_tags`) and `level` for this. `pipeline/refresh_piers.py`
     rewrites them without a rebuild; `tools/stale_shore.py` lists where mapped land still
     lies under the built water, and `tools/coast_overlay.py` draws the water, the mask and
-    the decks over the aerial photograph to check a coastline (issue 50).
+    the decks over the aerial photograph to check a coastline (issue 50). Their tops show
+    the aerial photograph, as a flat roof does (`web/world.js`), so a wharf has its parking
+    bays and kerbs rather than a plain slab.
+  - Buildings out on the water that are not buildings (`pipeline/wet_buildings.py`, issue 65):
+    a footprint 80% in the water and not on a mapped pier is a **deck** when it is a
+    machine-learned footprint (Microsoft's) of 1,000 m² or more joined to the land (Garden
+    Island's cruiser wharf), added to the piers and its solid not drawn; the deck of a
+    **bridge** or an elevated road when it is a machine-learned footprint at least 20% over the
+    water and half under a road Overture flags as a bridge or raises a level (Osaka's Hanshin
+    loop over the Higashi-Yokobori), not drawn; and a **vessel** when OpenStreetMap tags it
+    `building=ship`, `boat`, `houseboat` or `barge`, `floating=yes` or `seamark:type=hulk`, when
+    its class is in `water.floating`, and for any other machine-learned footprint out there (the
+    boats moored when the imagery was taken). A vessel floats at the waterline with a dark
+    hull to its freeboard (by its length, 1 to 4 m) under a deck, and a lighter superstructure
+    set in from the sides and amidships on a ship, added as a new building (class `vessel`;
+    the hull's class is `vessel_hull`). The tags come from the OpenStreetMap API for those
+    buildings only (`data/raw/<id>/osm_wet_buildings.json`). `build_scene.py` leaves the decks
+    out and runs it; `refresh_piers.py` (or `python pipeline/wet_buildings.py --city <id>`)
+    applies it to a built city, hiding solids as a demolished building's are, so no index moves.
   - `trees`: flat `[x, y, z, h]` in decimetres.
   - `woods`: the trees planted from the canopy (`pipeline/woods.py`), the same
     way, with the height the canopy model measured.
