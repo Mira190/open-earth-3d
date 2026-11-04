@@ -630,10 +630,25 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 1);
     return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
   }
+  // a place on the roads moved along its street clear of a scramble: no stopping within 5 m of its
+  // crosswalks (Japan's Road Traffic Act, art. 44), where its crowd masses at the kerb and surges out
+  const SCR_AT = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.max(Math.hypot(w[0] - j.x, w[1] - j.y), Math.hypot(w[3] - j.x, w[4] - j.y)))) + 7 }));
+  function offScramble(pl) {
+    if (!pl || !SCR_AT.length) return pl;
+    const L = roadNet.L[pl.line].len, at = s => { roadNet.at(pl.line, s, rq); return SCR_AT.find(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
+    if (!at(pl.s)) return pl;
+    for (let d = 3; d <= 90; d += 3) for (const sg of [1, -1]) {
+      const s = pl.s + d * sg;
+      if (s < 3 || s > L - 3 || at(s)) continue;
+      roadNet.at(pl.line, s, rq);
+      return Object.assign({}, pl, { s, x: rq.x, y: rq.y, z: rq.z });
+    }
+    return pl;
+  }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   function kerbNear(x, y, z, ahead = 9, within = 250) {
-    const pl = roads.place(x, y, within, keepSign, z);
+    const pl = offScramble(roads.place(x, y, within, keepSign, z));
     if (!pl) return null;
     const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
     const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
@@ -954,7 +969,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode !== 'foot' || player.auto) return;
     if (!CARS_OK) { H.toast('There are no taxis to hail here.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(ride.phase === 'coming' ? `${ride.name} is on the way.` : `${ride.name} is waiting for you.`); return; }
-    const pickup = roads.place(player.x, player.y, 40, keepSign, player.z);
+    const pickup = offScramble(roads.place(player.x, player.y, 40, keepSign, player.z));
     if (!pickup) { H.toast('Stand at the kerb of a street to hail a taxi.'); return; }
     if (player.rig.wave) player.rig.wave(clockT);
     let best = null;
@@ -982,7 +997,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function orderRide(dest) {
     if (player.mode !== 'foot') { H.toast('Order once you are on foot.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
-    const pickup = roads.place(player.x, player.y, 120, keepSign, player.z);
+    const pickup = offScramble(roads.place(player.x, player.y, 120, keepSign, player.z));
     if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
     const o = rideFromAround('hire', pickup, dest);
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
