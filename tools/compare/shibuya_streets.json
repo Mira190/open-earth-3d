@@ -1,0 +1,458 @@
+[
+ {
+  "name": "centergai_day",
+  "at": [
+   343,
+   -975
+  ],
+  "look": [
+   300,
+   -935
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "dogenzaka_day",
+  "at": [
+   330,
+   -990
+  ],
+  "look": [
+   262,
+   -1000
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "bunkamura_day",
+  "at": [
+   262,
+   -990
+  ],
+  "look": [
+   215,
+   -965
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "seibu_day",
+  "at": [
+   388,
+   -940
+  ],
+  "look": [
+   388,
+   -880
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "inokashira_day",
+  "at": [
+   385,
+   -889
+  ],
+  "look": [
+   320,
+   -878
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "hitvision_day",
+  "at": [
+   372,
+   -1030
+  ],
+  "look": [
+   318,
+   -1045
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.32,
+  "street": true
+ },
+ {
+  "name": "modi_day",
+  "at": [
+   388,
+   -830
+  ],
+  "look": [
+   380,
+   -780
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "taiseido_day",
+  "at": [
+   335,
+   -1000
+  ],
+  "look": [
+   305,
+   -985
+  ],
+  "time": "13:00",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "centergai_dusk",
+  "at": [
+   343,
+   -975
+  ],
+  "look": [
+   300,
+   -935
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "dogenzaka_dusk",
+  "at": [
+   330,
+   -990
+  ],
+  "look": [
+   262,
+   -1000
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "bunkamura_dusk",
+  "at": [
+   262,
+   -990
+  ],
+  "look": [
+   215,
+   -965
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "seibu_dusk",
+  "at": [
+   388,
+   -940
+  ],
+  "look": [
+   388,
+   -880
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "inokashira_dusk",
+  "at": [
+   385,
+   -889
+  ],
+  "look": [
+   320,
+   -878
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "hitvision_dusk",
+  "at": [
+   372,
+   -1030
+  ],
+  "look": [
+   318,
+   -1045
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.32,
+  "street": true
+ },
+ {
+  "name": "modi_dusk",
+  "at": [
+   388,
+   -830
+  ],
+  "look": [
+   380,
+   -780
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "taiseido_dusk",
+  "at": [
+   335,
+   -1000
+  ],
+  "look": [
+   305,
+   -985
+  ],
+  "time": "sunset+15",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "centergai_night",
+  "at": [
+   343,
+   -975
+  ],
+  "look": [
+   300,
+   -935
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "dogenzaka_night",
+  "at": [
+   330,
+   -990
+  ],
+  "look": [
+   262,
+   -1000
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "bunkamura_night",
+  "at": [
+   262,
+   -990
+  ],
+  "look": [
+   215,
+   -965
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "seibu_night",
+  "at": [
+   388,
+   -940
+  ],
+  "look": [
+   388,
+   -880
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "inokashira_night",
+  "at": [
+   385,
+   -889
+  ],
+  "look": [
+   320,
+   -878
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "hitvision_night",
+  "at": [
+   372,
+   -1030
+  ],
+  "look": [
+   318,
+   -1045
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.32,
+  "street": true
+ },
+ {
+  "name": "modi_night",
+  "at": [
+   388,
+   -830
+  ],
+  "look": [
+   380,
+   -780
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ },
+ {
+  "name": "taiseido_night",
+  "at": [
+   335,
+   -1000
+  ],
+  "look": [
+   305,
+   -985
+  ],
+  "time": "20:30",
+  "date": [
+   11,
+   3
+  ],
+  "dist": 5,
+  "pitch": 0.12,
+  "street": true
+ }
+]
