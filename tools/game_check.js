@@ -370,8 +370,10 @@ const npcNight = require('./npc_night');
   {
     const f = await p.evaluate(() => { const n = window.__game.nav, pl = window.__game.player, b0 = n.fineBoxes;
       const t = performance.now(), all = n.prefetch(pl.x, pl.y, 48, 60000);
-      return { start: n.startMs, boxes: b0, ms: n.fineMs, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
-    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, ${f.boxes} boxes laid by the start; the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
+      const [laid, of] = n.tiles;
+      return { start: n.startMs, sweeps: n.sweepMs, boxes: b0, ms: n.fineMs, laid, of, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
+    // (by the start: the tiles round the walker; the sweeps read a landmark's triangles, nav.js withoutFine)
+    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, the start-up sweeps ${f.sweeps.toFixed(0)} ms, ${f.boxes} boxes in ${f.laid} of ${f.of} tiles laid by the start (${(f.ms - f.prefetch).toFixed(0)} ms); the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
   }
 
   // the camera under a slab (a patch's "upper", such as the forecourt over Sydney's Lower Concourse

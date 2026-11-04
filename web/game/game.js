@@ -344,8 +344,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // deck too low for it to stand under
   const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) })));
   const inRoad = (x, y, z, r) => roadsNow.depth(x, y, z, r) > 0;
-  // (a landmark's 2 m cells stand in for its fine ones here: laying the fine cells of the whole city
-  // would cost seconds at the start, nav.js; paving, padded 0.3 m in those cells, stays under 0.45)
+  // (against the 2 m surface model, and where a landmark's 2 m cell says no, its triangles, nav.js
+  // withoutFine: the fine cells of the whole city would cost seconds at the start; paving, padded 0.3 m
+  // in the 2 m cells, stays under 0.45)
   const inWall = (x, y, z, r) => nav.withoutFine(() => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3) || nav.landmarkHit(x, y, z + 0.45, z + 2.2));
   const underDeck = (x, y, z, top) => { let hit = false; nav.decksAt(x, y, h => { if (h > z + 0.5 && h < z + top) hit = true; }); const s = nav.surfaceAt(x, y); return hit || (s > z + 0.5 && s < z + top); };
   for (const [k, r] of [['street_lamp', 0.12], ['bench', 0.3]]) {
@@ -421,7 +422,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the traffic keeps off the stretches of road that run through a wall (cutAtWalls); the crowd
   // walks the footways where a walker can, not through the buildings a mapped passage runs into
   // (route.js), nor through a wall
-  // (against a landmark's 2 m cells: its fine ones are laid as the walker nears them, nav.js)
+  // (against a landmark's triangles where its 2 m cells would cut the way, nav.js withoutFine: a crowd's
+  // way through a gate's passage or between lanterns is kept where a walker gets through)
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
   loadMsg('Footways people can walk', 0.84);
   await idle();

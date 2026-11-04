@@ -159,7 +159,10 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
         edge to the shopfronts, a soffit on mushroom columns every 7.2 m (four
         1.8 m pavers), 1.8 m in from the edge with shafts 0.38 m across, and the
         shopfronts behind, glass between bronze mullions, lit warm after dark
-        (Luchetti Krelle, DA.131 at 1:50 and DA.101, SSD-9794-Mod-1, 2025);
+        (Luchetti Krelle, DA.131 at 1:50 and DA.101, SSD-9794-Mod-1, 2025).
+        After dark a downlight in the soffit every 3.6 m throws a pool of warm
+        light on the flags (`landmark_glows`, `web/night.js`), and the soffit
+        and the columns catch what comes back off them;
       - *the stairwell* from the forecourt down to the concourse (OSM way
         1118329015, 20 steps; "Stair to Circular Quay" on DA.101): an opening in
         the forecourt 10.7 m long, measured on the aerial photo along the way,
@@ -170,7 +173,8 @@ Wikipedia tallest list     ──► analysis/heights.py ◄──────�
         4.4 m first measured on the photo took in the upstands and their
         shadow), and from the landing at its foot a lobby whose doors open west
         onto the colonnade, the passage OSM maps as a covered footway (way
-        1118329034) (`stairwell()`).
+        1118329034) (`stairwell()`). Where the passage and the landing run on
+        under the forecourt, the slab's 1.5 m edge round the opening is drawn.
 
       The levels are the Opera House's own: the section through the Lower
       Concourse in its renewal application (Humphrey & Edwards Architects,
