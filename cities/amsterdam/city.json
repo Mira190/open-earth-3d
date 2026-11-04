@@ -55,6 +55,8 @@
   },
   "architecture": "amsterdam",
   "bridges": {
+    "deck_min_m": 1.0,
+    "skip": ["Haarlemmer Houttuinen"],
     "note": "The canal bridges the city's own builder leaves (those OpenStreetMap maps as lines): brick arches, as most of the city's are.",
     "form": "stone_arch",
     "stone": "#8a4f3c",
