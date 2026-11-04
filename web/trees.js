@@ -74,7 +74,8 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
   // measured: the index from which the trees are a wood's, with measured heights; keep: the share
   // of those drawn
   // areas: [{at: [x, y], radius, mix}], places whose trees take their own mix (a garden's maples)
-  function create(world, lib, list, { mix = null, south = true, measured = Infinity, keep = 1, areas = [] } = {}) {
+  // fixed: the index from which the trees are a landmark's own, standing where it puts them (on a planter, a terrace)
+  function create(world, lib, list, { mix = null, south = true, measured = Infinity, keep = 1, areas = [], fixed = Infinity } = {}) {
     const I = lib.info, n = list.length / 4, U = { uWind: { value: 0 }, uBloom: { value: 0 }, uAutumn: { value: 0 } };
     const city = Object.entries(mix || I.mix).filter(([k, w]) => I.species[k] && w > 0);
     // the species drawn: the city's, then any only an area plants (weight 0 in the city's own mix)
@@ -118,13 +119,13 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
     const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), sc = new THREE.Vector3(), at = new THREE.Vector3(), c = new THREE.Color();
     for (let i = 0; i < n; i++) {
       const x = list[4 * i] / 10, y = list[4 * i + 1] / 10, z = list[4 * i + 2] / 10, h = list[4 * i + 3] / 10;
-      const wood = i >= measured;
+      const wood = i >= measured && i < fixed; // (a landmark's own trees are each placed: never thinned out)
       const zi = zones.findIndex(a => (x - a.at[0]) ** 2 + (y - a.at[1]) ** 2 < a.radius * a.radius);
       const k = pick(hash(x, y), zi >= 0 ? zoneW[zi] : wood ? woodW : cityW);
       which[i] = k; count[k]++;
       if (wood) { half[i] = hash(x + 5, y + 9) > 0.5 ? 1 : 0; far[i] = 0.55 + 0.01 * hash(x + 7, y); } // a wood's trees step down sooner (full within 72 m, sparse within 200 m): there are many of them
       if (wood && keep < 1 && hash(y + 3, x) > keep) { M[16 * i + 15] = 1; pos[3 * i + 1] = -1e4; continue; } // left out: shrunk to a point
-      const s = wood ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
+      const s = i >= measured ? Math.min(1.5, Math.max(0.4, h / (I.species[weights[k][0]].height_m || 16)))
         : 0.78 + 0.44 * Math.min(1, Math.max(0, (h - 7) / 7));
       q.setFromAxisAngle(up, hash(y, x) * Math.PI * 2);
       m4.compose(at.set(x, z - 0.05, -y), q, sc.set(s, s * (0.92 + 0.16 * hash(x + 1, y)), s));
@@ -202,6 +203,7 @@ if (vMaple > 0.5 && uAutumn > 0.0) { float l = dot(diffuseColor.rgb, vec3(0.3, 0
       // for a tree not to draw
       reseat(ground) {
         for (let i = 0; i < n; i++) {
+          if (i >= fixed) continue; // a landmark's own tree: on its planter or terrace, not the ground under it
           const z = ground(list[4 * i] / 10, list[4 * i + 1] / 10, list[4 * i + 2] / 10);
           if (z == null) { M.fill(0, 16 * i, 16 * i + 15); M[16 * i + 15] = 1; continue; } // shrunk to a point
           if (M[16 * i] === 0 && M[16 * i + 2] === 0) continue; // one left out
