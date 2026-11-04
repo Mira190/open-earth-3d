@@ -1,0 +1,7 @@
+[
+ {"name":"hachiko-wide-day","at":[372,-1020],"look":[345,-990],"time":"13:00","dist":60,"pitch":0.9,"street":true},
+ {"name":"hachiko-day","at":[372,-1020],"look":[345,-990],"time":"13:00","dist":20,"pitch":0.5,"street":true},
+ {"name":"hachiko-dusk","at":[372,-1020],"look":[345,-990],"time":"sunset+15","dist":20,"pitch":0.5,"street":true},
+ {"name":"hachiko-night","at":[372,-1020],"look":[345,-990],"time":"21:00","dist":20,"pitch":0.5,"street":true},
+ {"name":"east-day","at":[395,-990],"look":[440,-1003],"time":"13:00","dist":14,"pitch":0.6,"street":true}
+]

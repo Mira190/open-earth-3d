@@ -27,20 +27,31 @@ window.OEWorld = (function () {
       onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
         0.02 + 0.26 * (want ? Math.min(1, got / want) : 0));
     };
-    const getJSON = async u => {
-      const r = await fetch(DATA + u);
+    const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
-      if (!r.body || !r.body.getReader) return r.json();
+      if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
       const reader = r.body.getReader(), parts = [];
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         parts.push(value); got += value.length; report();
       }
-      return JSON.parse(await new Blob(parts).text());
+      return new Blob(parts);
+    };
+    const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
+    // the buildings as packed by pipeline/pack.py (a quarter of the JSON's download, issue 148), or as
+    // JSON where a city has no pack yet or the browser cannot inflate one
+    const getBuildings = async () => {
+      if (window.OEPack && OEPack.supported() && (entry.packed || []).includes('buildings')) {
+        try {
+          const r = await fetch(DATA + 'buildings.bin');
+          if (r.ok) return await OEPack.decode(await (await fetchAll(r, 'buildings.bin')).arrayBuffer());
+        } catch (e) { console.warn('buildings.bin:', e); }
+      }
+      return getJSON('buildings.json');
     };
     onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getJSON('buildings.json'), getJSON('places.json'),
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getBuildings(), getJSON('places.json'),
       getJSON('landmarks.json'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);

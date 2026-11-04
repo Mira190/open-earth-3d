@@ -3482,15 +3482,6 @@ def sky_meshes(s):
             G.quad(Q(*pa, z), Q(*pb, z), Q(*pb, z + hh), Q(*pa, z + hh))
             S.tube([Q(*pa, z), Q(*pa, z + hh)], 0.04, 6)
             S.tube([Q(*pa, z + hh), Q(*pb, z + hh)], 0.03, 4)
-    # SKY EDGE: light lines in the floor fanning out to the corner over the scramble
-    for k in range(7):
-        a = math.radians(15 + k * 10)
-        p0 = (h1 - 13.0, h2 - 13.0)
-        p1 = (p0[0] + 12.0 * math.cos(a), p0[1] + 12.0 * math.sin(a))
-        d = np.array([p1[0] - p0[0], p1[1] - p0[1]])
-        nrm = np.array([-d[1], d[0]]) / np.linalg.norm(d) * 0.07
-        K("led").quad(Q(p0[0] - nrm[0], p0[1] - nrm[1], z + 0.06), Q(p1[0] - nrm[0], p1[1] - nrm[1], z + 0.06),
-                      Q(p1[0] + nrm[0], p1[1] + nrm[1], z + 0.06), Q(p0[0] + nrm[0], p0[1] + nrm[1], z + 0.06))
     # GEO COMPASS: the raised deck in the middle, the compass on its floor, steps up each side
     zt = z + 2.0
     block(K("concrete", "compass"), Q, -gc, gc, -gc, gc, z - 0.5, zt - 0.02)
