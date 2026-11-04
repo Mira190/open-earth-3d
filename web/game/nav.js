@@ -141,6 +141,16 @@ window.OENav = (function () {
       }
       return null;
     }
+    // is (x, y, z) inside the body of a slab over a patch, from its soffit to its top (with the camera probe's radius)?
+    const upperSlabs = patches.filter(p => p.up);
+    function inSlab(x, y, z) {
+      for (const p of upperSlabs) {
+        if (x < p.x0 || y < p.y0 || x >= p.x1 || y >= p.y1) continue;
+        const h = patchAt(x, y);
+        return !!h && h[1] !== null && z > h[0] + (p.clear_m || 2.2) - PROBE && z < h[1] + PROBE;
+      }
+      return false;
+    }
     const slope = (x, y) => (terrain(x, y), tri);
     // land beside the water: there the ground drawn goes down the bank (a quay wall, a moat's
     // stone side, a beach) to the bottom modelled under the water, and a walker stops at the
@@ -800,12 +810,16 @@ window.OENav = (function () {
     // before touching a building, a landmark or a deck's slab: a fraction 0..1, or 1 when clear
     function clearFraction(a, b) {
       const f = Math.min(col.sweepSphere(a.x, -a.z, a.y, b.x, -b.z, b.y, PROBE), camTris.length ? camHit(a.x, -a.z, a.y, b.x, -b.z, b.y) : 1);
-      if (!decks.length) return f;
-      const n = Math.ceil(f * a.distanceTo(b) / 0.5);
+      if (!decks.length && !upperSlabs.length) return f;
+      // a deck's slab, and the body of a slab over a city's fine walking level (a patch's "upper": from its
+      // soffit, clear_m over the floor, to its top), which a gap in the meshes drawn round it (a
+      // stairwell's opening) would otherwise let the camera into
+      const n = Math.ceil(f * a.distanceTo(b) / 0.25);
       for (let i = 1; i <= n; i++) {
         const t = f * i / n, x = a.x + (b.x - a.x) * t, y = -(a.z + (b.z - a.z) * t), z = a.y + (b.y - a.y) * t;
         let hit = false;
-        decksAt(x, y, (h, d) => { if (z > h - d.th - PROBE && z < h + PROBE) hit = true; });
+        if (decks.length) decksAt(x, y, (h, d) => { if (z > h - d.th - PROBE && z < h + PROBE) hit = true; });
+        if (!hit && upperSlabs.length) hit = inSlab(x, y, z);
         if (hit) return f * (i - 1) / n;
       }
       return f;

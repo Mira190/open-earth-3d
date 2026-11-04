@@ -3548,9 +3548,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
     }
     nav.decksAt(camPos.x, -camPos.z, h => { if (h < camTarget.y + 0.5 && h > gz) gz = h; });
+    const y0 = camPos.y;
     if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
     const ceil = nav.ceilingAt(camPos.x, -camPos.z, camTarget.y - 1); // under a slab (a colonnade): below its soffit
     if (ceil !== null && camPos.y > ceil - 0.2) camPos.y = Math.max(gz + 0.5, ceil - 0.2);
+    // lifted over steps (a stairwell's flight beside a colonnade), the line to the head can graze what the
+    // probe went round, the edge of the slab over the well: then closer in along it
+    if (camPos.y !== y0 && player.mode === 'foot') {
+      const f = nav.clearFraction(camTarget, camPos);
+      if (f < 1) camPos.lerpVectors(camTarget, camPos.clone(), Math.max(0.15, f - 0.04));
+    }
     live.pos.copy(camPos);
     live.look.copy(camTarget);
     // looking up at a landmark on arrival (cam.tilt): over your head, until you move, steer or drag the view
