@@ -296,7 +296,7 @@ window.OEJunctions = (function () {
           }
         }
       }
-      j.green = [16, 12, 6, 32];
+      j.green = [16, 12, 6, 32]; j.allred = 4; // (and a longer all-red between phases: its box is some 40 m across, the stop lines behind the stripes)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     // ------------------------------------------------ crossings between junctions
@@ -573,7 +573,7 @@ window.OEJunctions = (function () {
     // the walk already that far in (inS < 0)
     function walkIn(j, inS) {
       if (!j || !j.scramble) return;
-      if (inS > 0) { j.st = 'r'; j.nxt = 3; j.t = ALLRED - inS; } else { j.ph = 3; j.st = 'g'; j.t = -inS; }
+      if (inS > 0) { j.st = 'r'; j.nxt = 3; j.t = (j.allred || ALLRED) - inS; } else { j.ph = 3; j.st = 'g'; j.t = -inS; }
       j.walkNow = j.ph === 3 && j.st === 'g'; dirty.add(j);
     }
     // about how long until arm a's light is green for a vehicle with priority there (0 if it is, or
@@ -581,11 +581,11 @@ window.OEJunctions = (function () {
     function toGreen(a) {
       const j = a.j;
       if (!j.sig || light(a) === 'g') return 0;
-      const amber = j.amber || AMBER, change = amber + ALLRED;
+      const amber = j.amber || AMBER, allred = j.allred || ALLRED, change = amber + allred;
       if (j.ph === 3 && j.st === 'g') return Math.max(0, j.green[3] - j.t) + change; // (the scramble's walk runs its course; a call makes its phase next)
       if (j.st === 'g') return Math.max(0, MIN_G - j.t) + change; // the other road's green
-      if (j.st === 'y') return amber - j.t + ALLRED + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
-      return Math.max(0, ALLRED - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
+      if (j.st === 'y') return amber - j.t + allred + (j.nxt === a.phase ? 0 : MIN_G + change); // (its own green ending: round again)
+      return Math.max(0, allred - j.t) + (j.nxt === a.phase ? 0 : MIN_G + change);
     }
     let frame = 0;
     const dirty = new Set(); // (the junctions whose signals changed this frame, for the heads)
@@ -717,7 +717,7 @@ window.OEJunctions = (function () {
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : j.ph === 1 && j.scramble ? 3 : 0;
           }
         } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; dirty.add(j); }
+        else if (j.st === 'r' && j.t >= (j.allred || ALLRED)) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; dirty.add(j); }
         j.walkNow = j.scramble ? j.ph === 3 && j.t < j.green[3] - 6 : !(j.call && j.t > end - FLASH);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
