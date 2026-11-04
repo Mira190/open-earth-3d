@@ -3455,7 +3455,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       fwd = 1; side = 0;
       player.h += angDiff(Math.atan2(dx, dy), player.h) * Math.min(1, dt * 8);
       const sp = 2.2, nx = player.x + Math.sin(player.h) * sp * dt, ny = player.y + Math.cos(player.h) * sp * dt, w = nav.walk(nx, ny, player.z);
-      if (w.ok) { const o = OECars.pushOut(nx, ny, w.z, 0.35, carBoxes(nx, ny, 6)); player.x = o.x; player.y = o.y; player.z = w.z; } else a.t = 9;
+      if (w.ok) { const c = OECars.pushOut(nx, ny, w.z, 0.35, carBoxes(nx, ny, 6)), o = posts.pushOut(c.x, c.y, 0.35, w.z); player.x = o.x; player.y = o.y; player.z = w.z; } else a.t = 9;
       player.rig.animate(dt, sp, 'ground', clockT);
       return;
     }
@@ -3485,11 +3485,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       } else if (w.why === 'nogo' && clockT - waterT > 20) { waterT = clockT; H.toast(colonies[0] ? colonies[0].colony.keep_off_note : 'Keep out.');
       } else if (w.why === 'water' && clockT - waterT > 20) { waterT = clockT; H.toast(`No swimming in ${G.water_name || 'the water'}.${G.wharves.length ? ' Ferries leave from the wharves marked F.' : ''}`); }
     }
-    // cars are solid too: out of any the move went into, or one that drove into you (back where you were if that is a wall)
+    // cars are solid too: out of any the move went into, or one that drove into you (back where you
+    // were if that is a wall), and then out of the lamp posts and trunks, which a car can't shove you into
     const boxes = carBoxes(player.x, player.y, 6);
     if (boxes.length) {
-      const o = OECars.pushOut(player.x, player.y, player.z, 0.35, boxes);
+      let o = OECars.pushOut(player.x, player.y, player.z, 0.35, boxes);
       if (o.hit) {
+        o = posts.pushOut(o.x, o.y, 0.35, player.z);
         if (nav.walk(o.x, o.y, player.z).ok) { player.x = o.x; player.y = o.y; } else { player.x = x0; player.y = y0; }
         moved = Math.hypot(player.x - x0, player.y - y0);
       }
