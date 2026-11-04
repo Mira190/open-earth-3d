@@ -27,7 +27,7 @@ JMA = "Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm
 TOKYO = {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5,
          "drizzle": 0.55, "source": f"Tokyo (Kitanomaru Park): {JMA}"}
 CLIMATE = {
-    "tokyo": TOKYO, "shibuya": TOKYO, "shinjuku": TOKYO, "asakusa": TOKYO, "akihabara": TOKYO, "ueno": TOKYO, "ikebukuro": TOKYO, "jinbocho": TOKYO, "roppongi": TOKYO,
+    "tokyo": TOKYO, "shibuya": TOKYO, "shinjuku": TOKYO, "asakusa": TOKYO, "akihabara": TOKYO, "ueno": TOKYO, "ikebukuro": TOKYO, "jinbocho": TOKYO, "roppongi": TOKYO, "tsukishima": TOKYO, "odaiba": TOKYO, "shinagawa": TOKYO,
     "osaka": {"rain_days": [6.4, 7.3, 10.3, 10.0, 10.4, 12.3, 11.3, 7.8, 10.6, 9.2, 7.0, 7.1], "threshold_mm": 0.5,
               "drizzle": 0.5, "source": f"Osaka: {JMA}"},
     "kyoto": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5,
