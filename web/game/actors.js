@@ -757,7 +757,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         for (let m = 0; m < k; m++) {
           const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half + ahead - 2 * o.hw) * m / (k - 1), ex = q.x - (o.x + ox * u), ey = q.y - (o.y + oy * u), e = Math.hypot(ex, ey);
           if (e < rr + 0.6 && e > 1e-4) {
-            const f = Math.max(0, rr - e) / e * (q.jam > 3 ? 0.6 : 3), side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.6 - e) / e * Math.max(0.6, vv) * 0.9;
+            const f = Math.max(0, rr - e) / e * (q.tight ? 0.6 : 3), side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.6 - e) / e * Math.max(0.6, vv) * 0.9;
             fx += ex * f - ey * side * t; fy += ey * f + ex * side * t; // (out of it, and round it, on the side it is already heading for)
           }
         }
@@ -770,8 +770,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       q.vx += (vx - q.vx) * k; q.vy += (vy - q.vy) * k;
       // never a step into a car (one edging out of the box): stand, and let it by
       // (held up a while against a car caught in the box, with others round it: close along its side to get by)
-      q.jam = q.ph === 'cross' && q.v < 0.15 ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt * 0.25); // (slow to forget: shuffling a step at a time is still stuck)
-      const M = q.jam > 3 ? 0.12 : 0.3;
+      // (slow to forget: shuffling a step at a time is still stuck, and so is being put back out of a car's way)
+      q.jam = q.ph === 'cross' && (q.v < 0.15 || q.ejected) ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt * 0.25);
+      q.tight = q.ph === 'cross' && (q.jam > 3 || (q.tight && q.jam > 0)); // (once close along a car's side, it stays close until it is through: no flipping back to the wide berth)
+      const M = q.tight ? 0.12 : 0.3;
+      q.ejected = false;
       if (q.jam > 6) { // (and still stuck: back to the kerb it set out from, if the way there is clear)
         const back = spotAt(g, q.spread, 0.8, {}, pz.road);
         let clear = true;
@@ -788,7 +791,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           for (const c of nearCars) { const e = Math.hypot(q.x - c.x, q.y - c.y); if (e < c.half + c.hw + M && (best < 0 || e < best)) { best = e; o = c; } }
           if (o) { const sx = Math.cos(o.h), sy = -Math.sin(o.h), lat = (q.x - o.x) * sx + (q.y - o.y) * sy, toT = (q.T.x - q.x) * sx + (q.T.y - q.y) * sy, sd = Math.abs(lat) > 0.05 ? Math.sign(lat) : toT >= 0 ? 1 : -1; ux = sx * sd; uy = sy * sd; ul = 1; }
         }
-        if (ul > 1e-6) { q.x += ux / ul * 1.2 * dt; q.y += uy / ul * 1.2 * dt; q.vx = ux / ul * 1.2; q.vy = uy / ul * 1.2; }
+        if (ul > 1e-6) { q.x += ux / ul * 1.2 * dt; q.y += uy / ul * 1.2 * dt; q.vx = ux / ul * 1.2; q.vy = uy / ul * 1.2; q.ejected = true; }
       } else if (carDepth(nx, ny, M) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
       else { q.x = nx; q.y = ny; }
       q.v = Math.hypot(q.vx, q.vy);
