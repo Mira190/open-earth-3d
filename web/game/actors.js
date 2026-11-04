@@ -733,7 +733,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const STUCK = 20;    // seconds stopped behind a car that won't move (not queueing at a junction) before turning round
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
-  const pathQ = new Float32Array(2 * (NPATH + 64)), pathNext = [];
+  const pathQ = new Float32Array(2 * (NPATH + 64)), pathZ = new Float32Array(NPATH + 64), pathNext = [];
   function traffic(world, net, U, n, radius, { lib = null, cfg = {}, eye = null, keep = 'left', ground = null, crowd = null, nav = null, posts = null, junctions = null } = {}) {
     const side = keep === 'right' ? -1 : 1; // the lane is to the left of the centre line, or to the right
     const JN = junctions || OEJunctions.create(net, { keep, lane: LANE, signals: [] });
@@ -1062,7 +1062,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (!c.nx && !arm && left + 4 < gap) { gap = left + 4; why = 'end'; }
         // its way ahead: points every STEP metres from its front bumper along its lane, on to the
         // next piece and its way across a junction (as lanePos smooths it round corners)
-        const P = c.ps || (c.ps = new Float32Array(2 * NPATH)), Q = pathQ;
+        const P = c.ps || (c.ps = new Float32Array(2 * NPATH)), PZ = c.pz || (c.pz = new Float32Array(NPATH)), Q = pathQ;
         let np = 0, pk0 = 0, laneAt = 0; // (laneAt: how far across from the road's line the points are)
         // (far from the eye, points twice as far apart: they serve as well there, at half the work)
         const step = !eye || Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) < 250 ? STEP : 2 * STEP;
@@ -1089,17 +1089,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             if (ck < 0) { let lo = 1, hi = nn - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < sc) lo = m + 1; else hi = m; } ck = lo; }
             else { while (ck < nn - 1 && cum[ck] < sc) ck++; while (ck > 1 && cum[ck - 1] > sc) ck--; }
             const tt = (sc - cum[ck - 1]) / Math.max(1e-6, cum[ck] - cum[ck - 1]), b3 = 3 * ck;
-            Q[2 * nq] = pt[b3 - 3] + (pt[b3] - pt[b3 - 3]) * tt; Q[2 * nq + 1] = pt[b3 - 2] + (pt[b3 + 1] - pt[b3 - 2]) * tt; nq++;
+            Q[2 * nq] = pt[b3 - 3] + (pt[b3] - pt[b3 - 3]) * tt; Q[2 * nq + 1] = pt[b3 - 2] + (pt[b3 + 1] - pt[b3 - 2]) * tt; pathZ[nq] = pt[b3 - 1] + (pt[b3 + 2] - pt[b3 - 1]) * tt; nq++;
             si += di * step;
           }
           // offset into the lane by the direction over two steps either side; the first point kept is the front bumper
           const k0 = Math.round((Math.abs(c.s - sb) + c.half) / step);
           pk0 = k0; laneAt = lane;
+          c.pzc = pathZ[Math.min(nq - 1, Math.round(Math.abs(c.s - sb) / step))]; // (the line's height where the car is: PZ are the heights ahead)
           for (let k = k0; k < nq && np < NPATH; k++) {
             const ka = Math.max(0, k - 2), kb = Math.min(nq - 1, k + 2);
             let hx = Q[2 * kb] - Q[2 * ka], hy = Q[2 * kb + 1] - Q[2 * ka + 1];
             const h = Math.sqrt(hx * hx + hy * hy) || 1; hx /= h; hy /= h; // (sqrt: hypot is slow)
-            P[2 * np] = Q[2 * k] - hy * lane; P[2 * np + 1] = Q[2 * k + 1] + hx * lane; np++;
+            P[2 * np] = Q[2 * k] - hy * lane; P[2 * np + 1] = Q[2 * k + 1] + hx * lane; PZ[np] = pathZ[k]; np++;
           }
           if (np && Math.hypot(P[0] - c.x, P[1] - c.y) > c.half + step + 1) np = 0; // (it has left its line: off a swing out, say)
         }
@@ -1353,8 +1354,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             c.wallT = 0.5; c.wallGap = Infinity;
             const deck = c.z > nav.terrain(c.x, c.y) + 2;
             let nF = 0, nEnd = 0, nIn = Infinity; // (how far in from its lane it needs to be on the 25 m ahead, for how far, and from where)
+            // (each point looked at at the height the car will be there: the car's, up or down as its line climbs
+            // or falls, so that a bridge's rise ahead (Amsterdam's Huiszittenbrug, a landmark's solid under its
+            // deck) is not taken for a wall across the street)
             for (let k = 0; k < np; k++) {
-              if (nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) continue;
+              const zk = c.z + Math.max(-1.5, Math.min(1.5, PZ[k] - c.pzc));
+              if (nav.room(P[2 * k], P[2 * k + 1], zk, c.hw * 0.8, 1.4, deck)) continue;
               // a facade beside its lane, but room nearer the middle of the street: it moves in only as far as it
               // needs to there (so that two coming the other way up a narrow street can still pass). How far in
               // is measured from its own lane, not from where it already is: from there (half way in, say) the
@@ -1365,7 +1370,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 const ux = (P[2 * k] - qx) / laneAt, uy = (P[2 * k + 1] - qy) / laneAt, base = laneAt - c.off;
                 for (const F of [0.25, 0.5, 0.75, 1]) {
                   const at = base - LANE * side * F;
-                  if (nav.room(qx + ux * at, qy + uy * at, c.z, c.hw * 0.8, 1.4, deck)) { f = F; break; }
+                  if (nav.room(qx + ux * at, qy + uy * at, zk, c.hw * 0.8, 1.4, deck)) { f = F; break; }
                 }
               }
               if (f >= 0) { if (k * step < 25) { nF = Math.max(nF, f); nEnd = Math.max(nEnd, k * step + 2 * c.half + 1.5); nIn = Math.min(nIn, k * step); } continue; }
