@@ -771,9 +771,9 @@ window.OECars = (function () {
         const [x1, y1] = integral(s + ws), [x0, y0] = integral(s - ws);
         out.x = (x1 - x0) / (2 * ws); out.y = (y1 - y0) / (2 * ws);
       }
-      pos(s - Math.max(ws, 0.05), p0); pos(s + Math.max(ws, 0.05), p1);
+      const wc = Math.max(ws, Math.min(w, 2)); // (the direction over 2 m at least, near either end too)
+      pos(s - wc, p0); pos(s + wc, p1);
       let hx = p1.x - p0.x, hy = p1.y - p0.y;
-      if (Math.hypot(hx, hy) < 1e-3) { pos(s - w, p0); pos(s + w, p1); hx = p1.x - p0.x; hy = p1.y - p0.y; } // (at either end)
       const l = Math.hypot(hx, hy) || 1;
       out.hx = hx / l; out.hy = hy / l;
       return out;
@@ -912,7 +912,7 @@ window.OECars = (function () {
       // little wide round a hairpin), else its point would stop, or go back, while the route goes on
       P.at(s - 0.5, pa, w); P.at(s + 0.5, pb, w);
       const turn = angDiff(Math.atan2(pb.hx, pb.hy), Math.atan2(pa.hx, pa.hy)), run = Math.hypot(pb.x - pa.x, pb.y - pa.y);
-      if (k * turn < 0 && Math.abs(turn) > 1e-4) { const kmax = 0.6 * run / Math.abs(turn); if (Math.abs(k) > kmax) k = Math.sign(k) * kmax; }
+      if (k * turn < 0 && Math.abs(turn) > 1e-4 && s > 0.5 && s < P.len - 0.5) { const kmax = 0.6 * run / Math.abs(turn); if (Math.abs(k) > kmax) k = Math.sign(k) * kmax; }
       P.at(s, out, w);
       out.x += -out.hy * k; out.y += out.hx * k;
       return out;
