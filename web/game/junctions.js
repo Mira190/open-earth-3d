@@ -826,7 +826,7 @@ window.OEJunctions = (function () {
       arrows.push(horiz ? { o, out: o.mast || 0.32, up: (o.mast ? 5.72 : 3.0) - 0.45 } : { o, out: (o.mast || 0.32) + (geo.board ? 0.66 : 0.5), up: o.mast ? 5.3 : 2.75 });
     }
     // walk signals: a slim post on each kerb of every arm's crossing, the lantern facing across
-    const peds = [];
+    const peds = [], dropped = []; // (dropped: walk posts with no place clear of the carriageways near their kerb)
     for (const j of J) {
       if (!j.sig) continue;
       for (const a of (j.mid != null ? j.arms.slice(0, 1) : j.arms)) { // (a crossing between junctions: one post on each kerb)
@@ -838,6 +838,7 @@ window.OEJunctions = (function () {
           if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
           const g = ground ? ground(px, py, tmp) : null, z = g != null ? g : tmp.z, q = place(px, py, z, 0.07);
           if (q) peds.push({ a, x: q[0], y: q[1], z, h: Math.atan2(tmp.hy * k, -tmp.hx * k) }); // (facing across, to the far kerb)
+          else dropped.push({ a, x: px, y: py, z });
         }
       }
     }
@@ -1002,7 +1003,7 @@ window.OEJunctions = (function () {
     setNight(0);
     update();
     return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list,
-      peds }; // (the walk signals, { a: its arm, x, y, z, h }: walkcalls.js sounds them)
+      peds, dropped }; // (the walk signals, { a: its arm, x, y, z, h }: walkcalls.js sounds them)
   }
 
   return { create, STYLES, RANK, lanesOf, shiftOf };
