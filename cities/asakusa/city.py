@@ -85,7 +85,8 @@ MATERIALS = {
     "tree_core": {"color": "#c9ccd2", "roughness": 0.6, "metalness": 0.2, "emissive": "#5ab4f0", "glow": 0.45,
                   "emissive_cycle": ["#5ab4f0", "#9a5ee8"]},
     "tree_deck": {"color": "#d9dce2", "roughness": 0.45, "metalness": 0.4, "emissive": "#ffffff", "glow": 0.7},
-    "tree_glass": {"color": "#5b6b7a", "roughness": 0.1, "metalness": 0.55, "emissive": "#ffe9c8", "glow": 0.6},
+    # the decks' glass: lit from within after dark, and clear enough to see Tokyo from the deck
+    "tree_glass": {"color": "#5b6b7a", "roughness": 0.1, "metalness": 0.55, "emissive": "#ffe9c8", "glow": 0.6, "opacity": 0.35},
     "tree_floor": {"color": "#8d8f93", "roughness": 0.7, "metalness": 0.1},
     "aviation": {"color": "#ff3b30", "roughness": 0.5, "metalness": 0.0, "emissive": "#ff2a1a", "glow": 3.0},
     "flame": {"color": "#e0a636", "roughness": 0.22, "metalness": 0.95, "emissive": "#ffc463", "glow": 0.5},
@@ -916,12 +917,34 @@ def sensoji_extras(s, spots, chatter, close):
                       "reach": [close_to(None, P(bx["u"][1], 0, 0), L["zp"], P(L["steps"]["u_foot"] - 0.7, 0, 0), 1.0)]})
 
 
+def skytree_floors(t, n=12):
+    """The Tembo Deck's and the Tembo Galleria's floors, as skytree_meshes() lays them (a round slab inside the
+    glass), for walking: n strips side by side across the circle, each as long as the circle is wide at its
+    outer edge, so the lifts' stops up there are floors and the glass holds you in."""
+    gz, (cx, cy) = t["ground_m"], t["centre"]
+    out = []
+    for name, mesh, z, R in (("Tembo Deck floor", "tree_deck_floor", t["deck"][1], tree_radius(t["deck"][1], t) + 6.5 - 0.3),
+                             ("Tembo Galleria floor", "tree_gal_floor", t["galleria"][1], tree_radius(t["galleria"][1], t) + 3.2 - 0.3)):
+        hw = R / n
+        for i in range(n):
+            v = -R + hw * (2 * i + 1)                     # the strip's middle, across the circle
+            edge = max(abs(v - hw), abs(v + hw))
+            half = math.sqrt(max(R * R - edge * edge, 0.0)) - 0.4
+            if half < 1.0:
+                continue
+            out.append({"name": f"{name} {i + 1}", "type": "strip", "origin": [round(cx, 2), round(cy + v, 2)], "axis": [1.0, 0.0],
+                        "half_width": round(hw + 0.05, 3), "profile": [[round(-half, 2), round(gz + z, 2)], [round(half, 2), round(gz + z, 2)]],
+                        "thickness": 0.6, "mesh": mesh, "label": name.replace(" floor", "")})
+    return out
+
+
 def game_surfaces(scene):
     """The main hall's steps and its veranda to the doors, as hondo() builds them: a strip a walker climbs
     to the offering box (the hall's stone and floor stay solid round it)."""
+    out = skytree_floors(scene["landmarks"]["skytree"]) if "skytree" in scene["landmarks"] else []
     s = scene["landmarks"].get("sensoji")
     if not s or "hondo" not in s:
-        return []
+        return out
     g = s["hondo"]
     L, ax = hondo_layout(g), np.asarray(s["axis"], float)
     st, z0 = L["steps"], g["z"]
@@ -931,7 +954,7 @@ def game_surfaces(scene):
         z = round(z0 + (j + 1) * (L["zp"] - z0) / st["n"], 3)
         prof += [[round(j * st["tread"] + (0.02 if j else 0), 3), z], [round((j + 1) * st["tread"], 3), z]]
     prof.append([round(st["u_foot"] - L["wall_u"] - 0.1, 3), round(L["zp"], 3)])   # the veranda, to the doors
-    return [{"name": "Senso-ji main hall steps", "type": "strip", "origin": xy(foot), "axis": [round(float(-ax[0]), 5), round(float(-ax[1]), 5)],
+    return out + [{"name": "Senso-ji main hall steps", "type": "strip", "origin": xy(foot), "axis": [round(float(-ax[0]), 5), round(float(-ax[1]), 5)],
              "half_width": round(L["pw"], 2), "profile": prof, "thickness": 1.2, "mesh": "senso_steps", "label": "the main hall"}]
 
 

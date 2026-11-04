@@ -429,7 +429,7 @@ const npcNight = require('./npc_night');
   const decks = await p.evaluate(() => {
     const g = window.__game, out = [];
     for (const lm of g.landmarks.filter(l => g.deckOf(l))) {
-      const at = g.deckOf(lm), ok = g.travelTo(lm);
+      const at = g.deckStand(g.deckOf(lm)) || g.deckOf(lm)[0], ok = g.travelTo(lm);
       for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
       g.advance(0.5);
       const pl = g.player;

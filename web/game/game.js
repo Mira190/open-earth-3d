@@ -2783,16 +2783,33 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function deckOf(lm) {
     const n = lm.name.toLowerCase(), l = lifts.find(l => l.stops.length > 1 && n.startsWith(l.name.toLowerCase()) && Math.hypot(l.stops[0].at[0] - lm.at[0], l.stops[0].at[1] - lm.at[1]) < 150);
     if (!l) return null;
-    const top = l.stops.reduce((a, s) => (s.at[2] > a.at[2] ? s : a));
-    const place = (G.travel || []).find(t => t.at.length > 2 && t.at[2] > top.at[2] - 40 && Math.hypot(t.at[0] - lm.at[0], t.at[1] - lm.at[1]) < 150);
-    return place ? place.at : top.at;
+    const g = Math.min(...l.stops.map(s => s.at[2]));
+    const places = (G.travel || []).filter(t => t.at.length > 2 && t.at[2] > g + 60 && Math.hypot(t.at[0] - lm.at[0], t.at[1] - lm.at[1]) < 150).map(t => t.at);
+    const stops = l.stops.filter(s => s.at[2] > g + 60).map(s => s.at);
+    const all = [...places.sort((a, b) => b[2] - a[2]), ...stops.sort((a, b) => b[2] - a[2])];
+    return all.length ? all : null;
   }
-  const outward = (lm, p) => { const dx = p[0] - lm.at[0], dy = p[1] - lm.at[1]; return Math.hypot(dx, dy) > 2 ? Math.atan2(dx, dy) : null; };
+  // where on a deck you can stand: the first of its places with a floor at that level (not the street under it)
+  function deckStand(decks) {
+    for (const at of decks) { const p = placeNear(at[0], at[1], at[2], null, 45); if (p && Math.abs(p[2] - at[2]) < 6) return p; }
+    return null;
+  }
+  // on a deck the chase camera looks down over the city past you, as you would at the glass (and under a deck's roof)
+  const DECK_PITCH = 0.4;
+  // the side of a deck that looks at the city: towards where the game starts (the heart of it: Shibuya's
+  // scramble under SKY EDGE, Senso-ji from the Skytree), not over the edge of the map
+  const heart = lm => { const dx = G.start.at[0] - lm.at[0], dy = G.start.at[1] - lm.at[1], n = Math.hypot(dx, dy); return n > 20 ? [dx / n, dy / n] : null; };
+  const outward = (lm, p) => { const u = heart(lm); if (u) return Math.atan2(u[0], u[1]); const dx = p[0] - lm.at[0], dy = p[1] - lm.at[1]; return Math.hypot(dx, dy) > 2 ? Math.atan2(dx, dy) : null; };
+  // a deck's spots, the one on its city side first: as far out from the landmark's middle as the deck's own spot is
+  const facingSide = (lm, decks) => {
+    const u = heart(lm);
+    return u ? [...decks.map(at => { const r = Math.hypot(at[0] - lm.at[0], at[1] - lm.at[1]); return [lm.at[0] + u[0] * r, lm.at[1] + u[1] * r, at[2]]; }), ...decks] : decks;
+  };
   function arrival(d) {
     const deck = d.kind === 'landmark' ? deckOf(d) : null;
     if (deck) {
-      const p = placeNear(deck[0], deck[1], deck[2], null, 45);
-      return p && { x: p[0], y: p[1], z: p[2], face: outward(d, p), pitch: 0.22 };
+      const p = deckStand(facingSide(d, deck));
+      if (p) return { x: p[0], y: p[1], z: p[2], face: outward(d, p), pitch: DECK_PITCH };
     }
     if (d.kind === 'landmark') return standFor(d);
     if (d.kind === 'car' && myCar) {
@@ -2803,7 +2820,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!p) return null;
     // high up on a landmark (a deck the city names as a place): facing out over the city, as from its deck
     const lm = p[2] - Math.max(0, nav.terrain(p[0], p[1])) > 60 && landmarks.find(l => deckOf(l) && Math.hypot(l.at[0] - p[0], l.at[1] - p[1]) < 150);
-    return lm ? { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: 0.22 } : { x: p[0], y: p[1], z: p[2] };
+    return lm ? { x: p[0], y: p[1], z: p[2], face: outward(lm, p), pitch: DECK_PITCH } : { x: p[0], y: p[1], z: p[2] };
   }
   function travelTo(d) { // a shot playing (the start, a survey) is skipped by the hop, which plays its cues
     if (!['foot', 'car', 'ride'].includes(player.mode)) {
@@ -2875,7 +2892,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function pick(d, cx, cy) {
     picked = d;
     $('#g-mappop-name').textContent = d.kind === 'point' ? 'Your pin' : d.name;
-    const deck = d.kind === 'landmark' && deckOf(d), up = deck ? ` · travel takes you up to its deck, ${Math.round(deck[2] - Math.max(0, nav.terrain(deck[0], deck[1])))} m up` : '';
+    const deck = d.kind === 'landmark' && deckOf(d) && deckStand(deckOf(d)), up = deck ? ` · travel takes you up to its deck, ${Math.round(deck[2] - Math.max(0, nav.terrain(deck[0], deck[1])))} m up` : '';
     $('#g-mappop-note').textContent = `${{ landmark: 'Landmark', place: 'Place', trig: 'Trig station', wharf: 'Ferry wharf', car: 'Your car', start: 'Where you started', point: 'Waypoint set' }[d.kind] || ''} · ${fmtDist(Math.hypot(d.at[0] - player.x, d.at[1] - player.y))} away${up}`;
     $('#g-mappop-way').hidden = d.kind === 'point';
     mapPop.hidden = false;
@@ -4000,7 +4017,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { neon, mirror, busy, sound: () => (SND ? { junction: sndJ ? sndJ.id : null, walk: !!(sndJ && sndJ.arms.some(a => junctions.walk(a))), near: sndCount } : null), crowdAuto: v => { crowdAuto = v !== false; applyDensity(); }, t: () => clockT, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, deckOf, deckStand, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };

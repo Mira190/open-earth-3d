@@ -13,6 +13,10 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
     ? { headless: false, args: ['--ignore-gpu-blocklist', '--use-gl=angle', '--use-angle=gl', '--disable-gpu-sandbox'] }
     : { args: ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const p = await b.newPage({ viewport: { width: w, height: h } });
+  await p.addInitScript(() => { // the canvas keeps its frame, to read back
+    const get = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (type, opts) { return get.call(this, type, /webgl/.test(type) ? Object.assign({}, opts, { preserveDrawingBuffer: true }) : opts); };
+  });
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); localStorage.setItem('oe3d-onboard', '1'); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
   const logs = [];
   p.on('pageerror', e => logs.push(`pageerror: ${String(e).slice(0, 300)}`));
@@ -36,7 +40,8 @@ const [,, city = 'shibuya', outDir = '.', size = '1440x900'] = process.argv;
     for (const [tag, min] of [['day', 14 * 60], ['dusk', 17 * 60 + 5], ['night', 20 * 60 + 30]]) {
       await p.evaluate(min => { const g = window.__game, c = g.clock; g.setClock(c.y, c.m, c.d, min); for (let i = 0; i < 8; i++) g.advance(0.25); }, min);
       await p.waitForTimeout(1500);
-      await p.screenshot({ path: path.join(outDir, `${city}-${name.split(' ')[0].toLowerCase()}-deck-${tag}-${w}x${h}.png`) });
+      const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));
+      fs.writeFileSync(path.join(outDir, `${city}-${name.split(' ')[0].toLowerCase()}-deck-${tag}-${w}x${h}.png`), Buffer.from(png.split(',')[1], 'base64'));
     }
   }
   console.log(logs.join('\n'));
