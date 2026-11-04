@@ -48,6 +48,9 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
 
+`pack.py` packs each city's `buildings.json` into `buildings.bin`, which is what
+the browser downloads (see [Download size](#download-size) below).
+
 ### Ground
 
 The ground tiles are the aerial photo, resampled into the local frame at 1 m
@@ -670,3 +673,44 @@ height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees. The
 species are still the city's mix of the six shared trees (`web/assets/trees/`):
 no pine, zelkova or camphor yet.
 
+## Download size
+
+Issue 148: what a city costs to download before it can be played. `tools/load_size.js <city>
+[play|model] [mbps] --files` opens the page with the network held to a speed, counts every file
+once, raw and as GitHub Pages sends it (gzip for text types; images, models and `.bin` as they
+are), and says when the data was in and when the loading screen started to fade.
+
+### Buildings: `buildings.bin`
+
+`pipeline/pack.py` packs `buildings.json` into `buildings.bin`, a lossless columnar encoding of the
+same JSON tree, gzip-wrapped: integers as typed columns of the narrowest width, delta-coded by the
+stride that compresses best (2 for the rings' x, y pairs, 3 for the roofs' x, y, z) and split into
+byte planes; decimals as scaled integers; strings through a table; the roof meshes' base64 as their
+int16 and index bytes. `web/pack.js` inflates it with the browser's own `DecompressionStream` and
+rebuilds the object `JSON.parse` would have given, so nothing that reads it changed, except that
+the roof columns arrive as `Uint8Array` (`sun.js` `unpackRoof` takes either). `world.js` falls back
+to `buildings.json` for a city whose pack is missing or stale (`cities.json` `packed`) or a
+browser without `DecompressionStream`. `buildings.json` stays the pipeline's source: after a step
+that writes it, `python pipeline/pack.py` repacks what is stale, and `tools/check.sh` fails on a
+stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
+
+| City | buildings.json | gzipped | buildings.bin | decode (Node, desktop) | JSON.parse |
+|---|---|---|---|---|---|
+| Shibuya | 17.76 MB | 6.44 MB | 3.76 MB | 172 ms | 82 ms |
+| Kyoto | 25.71 MB | 8.90 MB | 5.29 MB | 375 ms | 272 ms |
+| Osaka | 24.61 MB | 8.62 MB | 5.09 MB | 373 ms | 160 ms |
+| Paris | 21.41 MB | 8.71 MB | 5.61 MB | 294 ms | 99 ms |
+| Amsterdam | 14.01 MB | 4.77 MB | 2.89 MB | 243 ms | 73 ms |
+| Shinjuku | 8.81 MB | 3.13 MB | 1.86 MB | 137 ms | 71 ms |
+| all 20 cities | 148.4 MB | 53.3 MB | 32.4 MB | | |
+
+The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
+more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
+
+Browser options surveyed for the shared models (next steps of issue 148): three.js r186 ships
+`EXT_meshopt_compression` support in `GLTFLoader` with `MeshoptDecoder`
+(`examples/jsm/libs/meshopt_decoder.module.js`, meshoptimizer, MIT), `KHR_draco_mesh_compression`
+with `DRACOLoader` (Draco, Apache-2.0, a WASM decoder of a few hundred kB) and
+`KHR_texture_basisu` with `KTX2Loader` (Basis Universal, Apache-2.0, a WASM transcoder). Meshopt
+decodes fastest, keeps skinning and morph targets, and its decoder is a few kB of JS, so it is
+the choice for geometry; KTX2 is for textures where GPU memory matters more than bytes.

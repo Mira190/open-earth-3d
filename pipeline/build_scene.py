@@ -1557,6 +1557,11 @@ def build(C):
         print(f"  {f}: {os.path.getsize(os.path.join(C.out, f)) / 1e6:.2f} MB")
 
 
+def _pack_stale(city):
+    from pack import stale
+    return stale(city)
+
+
 def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
@@ -1576,7 +1581,10 @@ def write_index():
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
         if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
-            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            # the buildings packed (pipeline/pack.py, issue 148) when the pack is there and up to date
+            packed = os.path.exists(os.path.join(data, "buildings.bin")) and not _pack_stale(c["id"])
+            c["packed"] = ["buildings"] if packed else []
+            model = size(["scene.json", "buildings.bin" if packed else "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))
