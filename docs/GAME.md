@@ -1488,6 +1488,13 @@ helicopter a line ahead in the air rather than a pointer.
 | **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
 | ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
 
+**The helicopter comes after the game opens (issue 148).** Its model is 3.7 MB, more than any city's
+buildings once packed, and most games start on foot. `OEVehicles.load(..., { heli: 'later' })` leaves
+it out of the wait; the game asks for it (`heli.want()`) once the helicopter is within 800 m of you
+or you get in (`heliToPad`, `enterHeli`). Until it has come the pad stands empty; if you climb in
+first, the kit-built helicopter stands in and the model takes its place once you are out and the
+engine is off.
+
 All of them are modelled in Blender from code by `blender/build_vehicles.py`,
 with no hand modelling and no stock assets. The script bakes their ambient
 occlusion in Cycles and writes `web/assets/vehicles/`. Every city's game loads
@@ -1643,6 +1650,13 @@ python blender/build_people.py --preview         # -> web/assets/people/H_*.glb,
 | Every city's NPCs as the game draws them, waiting at their posts (`web/game/lineup.html?city=…`) |
 |---|
 | ![](images/people/npcs.jpg) |
+
+**Loaded as you come near (issue 148).** Only the NPCs within 300 m of the start are loaded before the
+game opens; the others are nobody until you first come within 300 m of them (`npcStream` in
+`game.js`, twice a second, from the player or the helicopter), and then their character is fetched
+and put in their place. One that can't be loaded stands in as a simple figure, as before. In a
+city of a dozen NPCs that is half a megabyte to a few megabytes off the wait; `__game.npcsReady()`
+loads all of them at once for the tools that look at them (`npc_shot.js`, `talk_shot.js`).
 
 The people who send you out are Rocketbox avatars too, cast city by city for who
 they are: police, pilots, a paramedic's jumpsuit for a bridge climber, a white
