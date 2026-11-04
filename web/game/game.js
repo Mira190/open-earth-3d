@@ -586,7 +586,17 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   function kerbNear(x, y, z, ahead = 9, within = 250) {
-    const pl = roads.place(x, y, within, keepSign, z);
+    // (the nearest road first; where every spot along it is at a junction, a short piece between two, the
+    // roads round about, nearest first, out to 60 m)
+    let first = null;
+    for (const r of [0, 20, 40, 60]) for (let k = 0, n = r ? 8 : 1; k < n; k++) {
+      const a = 2 * Math.PI * k / n, got = kerbOn(roads.place(x + Math.cos(a) * r, y + Math.sin(a) * r, within, keepSign, z), ahead);
+      if (got && got.ok) return got.at;
+      first = first || (got && got.at);
+    }
+    return first;
+  }
+  function kerbOn(pl, ahead) {
     if (!pl) return null;
     const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
     const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
@@ -605,9 +615,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         const dx = p.x - pose.x, dy = p.y - pose.y;
         if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
       }, pose.z);
-      if (!hit) return { pl: q, pose };
+      if (!hit) return { ok: true, at: { pl: q, pose } };
     }
-    return first;
+    return { ok: false, at: first };
   }
   // where a car is on the roads, going the way it faces
   function placeOf(st) {
