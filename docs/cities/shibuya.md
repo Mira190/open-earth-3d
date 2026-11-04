@@ -55,6 +55,9 @@ before the split.
 | Footprints, names, roads, steps, water, parks | Overture Maps, release 2026-10-21.0 (OpenStreetMap) | ODbL |
 | Terrain | GSI DEM5A, 5 m airborne laser survey, bare earth (10 m DEM where 5A has no data) | GSI terms of use |
 | Aerial photos | GSI seamless photos, zoom 17 | GSI terms of use |
+| Street detail round the scramble: entrances, crossings, kerbs, tactile paving, the police box, the JR tracks | OpenStreetMap API, fetched 2026-11-03 (`pipeline/osm_detail.py`, `cities/shibuya/scramble_osm.json`) | ODbL |
+| Crosswalk widths and positions | GSI seamless aerial photos, zoom 18 (`tools/aerial_local.py`) | GSI terms of use |
+| Reference photographs (compared against, not used as textures) | Wikimedia Commons, 2019-26, listed in section 6b | CC BY 2.0 / 4.0, CC BY-SA 2.0 / 4.0, CC0 |
 | Lettering on ema, plaques and signs | Google Fonts (Yomogi, Zen Kurenaido, Klee One, Yuji Syuku, Shippori Mincho, DotGothic16, RocknRoll One, Ma Shan Zheng, ZCOOL KuaiLe, Long Cang, LXGW WenKai TC, Nanum Pen Script, Caveat, Kalam) | SIL Open Font License |
 
 ## 3. Heights and terrain
@@ -107,12 +110,9 @@ became Yongen-Jaya, and Center Gai became Central Street. The model keeps the re
 names and the real geometry, and leaves out what belongs to the game: no
 characters, logos, invented shops or interface. What is built:
 
-- **The scramble.** The crossings are found where OpenStreetMap's footway
-  crossings share nodes with the roads around the junction, and drawn as 0.45 m
-  zebra bars. Hachiko sits on his pedestal (the statue since 1948), with its
-  plaque.
-- **Center Gai's arch**, lit after dark, and **SHIBUYA109**'s vertical sign. The big
-  screens are in section 6a.
+- **The scramble.** Its street, buildings and signs are built at street level in
+  section 6b. Hachiko sits on his pedestal (the statue since 1948), with its plaque.
+- **Center Gai's gate** and **SHIBUYA109** are in section 6b, the big screens in section 6.
 - **Sangenjaya**, the triangle between Setagaya-dori and Route 246: the front of a
   snack bar the game's café is drawn on (New Marina), the bathhouse Chiyo-no-yu
   with its noren, the coin laundry and vending machines beside it, the meat shop on
@@ -192,13 +192,110 @@ them, and are dark after that.
   the half hour, to 22:00 (`light_show` `every`, `until`). Each show's length and the beams'
   movement are illustrative.
 - **Closed and gone.** Seibu Shibuya's A and B buildings closed at the end of September 2026; no
-  screen or lit sign is drawn on them. Coca-Cola's transparent screen on QFRONT's roof (2020) is
-  not drawn: whether it is still there could not be confirmed.
+  screen or lit sign is drawn on them. QFRONT's crown (a transparent LED band since 2020, still
+  there in the 2024-25 photographs) carries an invented soda's advert in its place.
 
 What could not be checked: how high up its wall most screens sit, and which way the roof
 screens face (both estimated from photographs); the outline of Scramble Square's irregular
 screen, which is stepped here; the trees and night lighting of Hachiko Square; the colours of
 the Center Gai arch; and where Scramble Square's colour lighting is on the tower.
+
+## 6b. The scramble at street level
+
+Someone who knows Shibuya should recognise every facade from the pavement. `cities/shibuya/scramble.py`
+builds the scramble's street and the buildings round it that the generic city cannot draw as they
+are, checked against photographs from the same viewpoints (the comparison stills are in
+`docs/images/shibuya/compare/`).
+
+**What is built, and from what**
+
+| Part | How it is built | Measured from | Estimated |
+|---|---|---|---|
+| Crosswalks | Five: one diagonal from Hachiko to QFRONT (the scramble has only one), and four round it; 45 cm bars with 45 cm gaps, along the traffic | Positions and widths on GSI's aerial photo: the diagonal 9.4 m wide, the two on the station side 9.0 and 9.2 m, Dogenzaka's 7.8 m, Center Gai's 7.2 m. The national standard (道路標示): 45 cm bars, gaps 45-90 cm since 2024 | The bars' phase along each walk |
+| The junction's floor | Asphalt over the carriageways between the crosswalks, so no lane line runs through the scramble | The game's road bands and the crosswalks | Its edge at the kerbs, about 0.5 m |
+| Stop lines and diamonds | A 45 cm stop line 2 m before each crosswalk on the lanes coming in (all of a one-way street), and the warning diamonds (横断歩道あり) 30 and 50 m back, one per lane | OSM's one-way tags | Lane widths 3.1 m. No 止まれ: the junction has signals, and the photographs show none |
+| Underground entrances | A5a, A5b, A6a, A6b, A7a, A7b and the unnumbered ones: a stair going down between tiled walls under a flat roof on a steel frame, aluminium to waist height and glass above, handrails, tactile blocks at the head, a lit sign with the exit's code. The ground is not drawn over the well | OSM: the entrance node, its little building, and the footway that goes underground from it (which way the stair goes down) | Treads 30 cm, risers 16.5 cm, the roof's depth |
+| Shibuchika's pavilion (exit 8) | The square pavilion on Hachiko Square with its charcoal fascia and name | OSM's 13.8 × 13.4 m outline | Its height (OSM 3.8 m) |
+| Tactile paving | Yellow 30 cm guide blocks along every footway OSM tags `tactile_paving=yes`, warning blocks where they meet a kerb or a door | OSM | |
+| Guard rails | White guard pipes (0.8 m, posts every 2 m) on the kerbs between crosswalks; short stainless bollards on QFRONT's forecourt | Photographs 2024-25 | Their exact runs |
+| The Ginza line | Its concrete viaduct on piers clear of the roads, two tracks with their third rail and no wires | OSM's line (bridge=viaduct, layer 2) | Rails 12 m over the street, the deck 9 m wide |
+| The JR lines | The Yamanote Line's two tracks and the freight line's two: the steel plate-girder bridge over the road (stiffeners, flanges, its clearance sign), north of it a concrete viaduct on three rows of columns with the Hachiko-exit bicycle lot under it (city bicycles, instanced), rails on sleepers, the overhead line on portal masts | OSM's track lines, bridge and the bicycle lot under the tracks | Rails 7.4 m over the road, the girder 2 m deep, masts every 46 m, the 4.5 m clearance |
+| QFRONT | A double skin curved round its corners: glass on silver fins every 0.9 m in front of the floors (lit after dark), the glass crown with a roof advert, Q FRONT under it, the canopy with SHIBUYA TSUTAYA and STARBUCKS COFFEE. Q'S EYE (12.96 × 7.289 m) and its banner screen are moved up to where the photographs put them, 30.8 and 20.4 m over the street | PLATEAU 52.2 m to the crown; R.I.A. design, 1999, 8 floors | Fins, storeys, the gap between the skins |
+| SHIBUYA109 | The aluminium block and the cylinder at its point, the printed advert on its front and the pink 109 in a ring on its silver top | PLATEAU: 33.6 m roof, the cylinder 49.7 m; OSM's footprint rounds the point on a 13.7 m circle (PLATEAU's generalised model, 11.5 m); drawn 13 m across | The advert's size; the panels' joints |
+| MAGNET | Its glazed corner under a sloping silver fascia with its name in red serif letters | Photographs 2025 | The fascia's height and slope |
+| Center Gai's gate | Two grey posts bending over like shepherd's crooks, disc lamps at their tips, センター街 on the posts and the basketball banner between them | Photographs 2024-25 (no dimensions are published) | 5.5 m posts, the street's 9 m |
+| The koban | 渋谷警察署渋谷駅前交番 at OSM's node on Hachiko Square's north edge: two storeys of pale tile, KOBAN and its name over the door, the red lamp | OSM | Its size, 6.4 × 4.6 × 6.6 m |
+| The station's Hachiko side | OSM maps the whole station as one 15 to 29 m building, which the generic styles drew as a yellow stone palace. It is drawn as the works site it is: pale panel walls, hoardings with the works notice at its foot, a scaffold over the square carrying an advert | OSM's outline and heights; photographs 2024-25 | The scaffold's size |
+| The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands; the Taiseido bookshop's fascia | PLATEAU, photographs | All the brands are invented |
+
+**Side by side.** Each still stands the camera where the photographer stood and is cropped to the
+photo's lens (`tools/compare/shibuya.json`, `tools/compare_sheet.py`); the photo first, then the model at
+13:00, 15 minutes after sunset and 20:30 on 3 November.
+
+| | |
+|---|---|
+| Hachiko Square toward QFRONT | ![](../images/shibuya/compare/hachiko.jpg) |
+| QFRONT from the Hachiko corner | ![](../images/shibuya/compare/qfront.jpg) |
+| SHIBUYA109 from the scramble | ![](../images/shibuya/compare/s109.jpg) |
+| The station side | ![](../images/shibuya/compare/station.jpg) |
+| Across the junction from MAGNET | ![](../images/shibuya/compare/diagonal.jpg) |
+
+**Cost.** The Shibuya map's data grew from 34.0 MB to 36.1 MB (landmarks.json 1.61 to 3.07 MB, and
+scramble.jpg, 0.3 MB). On the low tier under a software renderer (llvmpipe, `TIER=low tools/city_shot.js`)
+the map loads in 23.4 s and draws the view from Hachiko Square in 311 ms a frame by day and 368 ms at
+night; on a GPU the cost is a few more draw calls (one per material, about 40). A real GPU was not
+measured.
+
+**What was not built, and why.** The Ginza line's viaduct is drawn from Mark City across the street and
+the Toyoko site to the JR station (it carries on inside the station's outline). Seibu's A and B buildings closed on
+30 September 2026 and carry no sign here. The traffic signals and the crowd belong to the game
+(`web/game/junctions.js`). Real brands, logos and the real adverts are not drawn: every advert is
+invented in the kind the real one is, and the buildings' own names are set in open fonts.
+
+**PLATEAU.** Shibuya's newest model (2025, spec v5,
+[geospatial.jp](https://www.geospatial.jp/ckan/dataset/plateau-13113-shibuya-ku-2025)) has no LOD3
+building anywhere in the ward: LOD2, textured, is the finest. Its LOD3 roads cover the scramble, and
+its LOD3 street furniture stops about 130 m east of it. So the scramble's buildings are modelled
+here from photographs on PLATEAU's heights and OSM's outlines, and its markings from the aerial
+photo. Licence: PLATEAU's site policy (公共データ利用規約 1.0, compatible with CC BY 4.0), 「出典：国土交通省
+PLATEAU」.
+
+**How games and demos built it, and what this model does instead.**
+
+| Work | What it gets right | What it changes | Here |
+|---|---|---|---|
+| *Ghostwire: Tokyo* (Tango Gameworks, 2022) | Hand-built with no existing assets; the depth of the street wall, alleys, dense signs, wet night reflections ([Automaton](https://automaton-media.com/en/news/20230823-20986/), [Game Informer](https://gameinformer.com/feature/2022/12/30/exploring-shibuya-with-tango-gameworks)) | Gave up an exact copy early, blends Tokyo, frozen at August 2020 | The measured street, as it stands in November 2026 |
+| *The World Ends with You* (2007) and *NEO* (2021) | The scramble and Hachiko keep their names; every place scouted ([RPG Site](https://www.rpgsite.net/interview/12116-neo-the-world-ends-with-you-interview-discussing-creation-and-localization-with-the-team-behind-the-revived-cult-classic)) | Compressed, distorted perspective, 109 renamed 104 | True scale; the sign density comes from where the signs are |
+| *Persona 5* (2016) | Center Gai and the station as hubs; the screens as a story device | Compressed hub maps, brands replaced | The screens play invented programmes at their published sizes |
+| *Jet Set Radio* (2000, 2002) | The spirit: colour, graffiti, music | Caricatures | |
+| バーチャル渋谷 (cluster, 2020) | The station front for events; real advertisers on virtual screens ([MoguLive](https://www.moguravr.com/?p=134953)) | Built in a month; no sign of PLATEAU | |
+| Nimikko's *Shibuya* for Unreal | 1:1 scale, 750+ signs with fictional brands, 2-3k triangles an asset ([forum](https://forums.unrealengine.com/t/nimikko-shibuya-game-ready-environment/2578085)) | Its own layout | The same discipline: fictional brands, cheap assets, many of them |
+
+The common lesson, taken here: Shibuya is recognised by its screens and its stacked rooftop billboards
+over a street wall only 25-45 m high, with Scramble Square towering behind, and at night the light
+comes from the screens and signs while the buildings stay dark glass.
+
+**Reference photographs** (Wikimedia Commons; used to compare, not as textures):
+[Hachiko plaza toward QFRONT, 2024-10](https://commons.wikimedia.org/wiki/File:2024_%E9%96%8B%E6%A5%AD60_(54037871340).jpg) (Haydn Blackey, CC BY-SA 2.0);
+[QFRONT, 2024-12](https://commons.wikimedia.org/wiki/File:Shibuya_(54222657891).jpg) (Jeffrey Hayes, CC BY 2.0);
+[the west side, 2025-08](https://commons.wikimedia.org/wiki/File:2025_Shibuya_Crossing.jpg) (Kakidai, CC BY-SA 4.0);
+[QFRONT and the gate from the crosswalk, 2025-02](https://commons.wikimedia.org/wiki/File:Shibuya,_Tokyo,_Japan_Feb_21_2025_(54345489916).jpg) (GoToVan, CC BY 2.0);
+[109 from the scramble, 2026-02](https://commons.wikimedia.org/wiki/File:Shibuya._(55097345367).jpg) (MIKI Yoshihito, CC BY 4.0);
+[the empty junction, 2025-01](https://commons.wikimedia.org/wiki/File:%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9_2025%E5%B9%B41%E6%9C%8822%E6%97%A5%E3%81%AE%E6%B8%8B%E8%B0%B7_202501221341_IMG_2568.jpg) (ウィ貴公子, CC BY-SA 4.0);
+[the station side at night, 2026-10](https://commons.wikimedia.org/wiki/File:%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9_2026%E5%B9%B410%E6%9C%8819%E6%97%A5%E3%81%AE%E6%B8%8B%E8%B0%B7_202610192208_IMG_3376.jpg) (ウィ貴公子, CC BY-SA 4.0);
+[the station's Hachiko exit, 2024-07](https://commons.wikimedia.org/wiki/File:Shibuya_station_Hachiko_exit_streetscape_IMG_3287.jpg) (Bject, CC BY 4.0);
+[Hachiko, 2025-11](https://commons.wikimedia.org/wiki/File:The_Hachiko_statue_at_Shibuya,_Tokyo,_Japan.jpg) (Joli Rumi, CC BY-SA 4.0).
+Facts: [ja.wikipedia: QFRONT](https://ja.wikipedia.org/wiki/QFRONT), [SHIBUYA109](https://ja.wikipedia.org/wiki/SHIBUYA109),
+[渋谷スクランブル交差点](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9),
+[渋谷センター街](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%BB%E3%83%B3%E3%82%BF%E3%83%BC%E8%A1%97),
+[the single diagonal](https://trafficnews.jp/post/122022/2), [crosswalk bars since 2024](https://jafmate.jp/car/traffic_topics_20240830_1195692.html),
+[Udagawa's koban](https://architecture-tokyo.com/2017/03/04/1985-udagawacho-police-box-edward-suzuki/).
+
+```bash
+python pipeline/osm_detail.py --city shibuya        # the OSM detail round the scramble (city.json osm_detail)
+python3 tools/aerial_local.py shibuya 362 -998 32    # the aerial photo in the local frame, to measure markings
+python3 tools/scramble_plan.py shibuya 365 -1005 110 # a plan of the footprints, roads and crossings
+```
 
 ## 7. Tokyo Pilgrimage: Shibuya
 
@@ -267,7 +364,8 @@ env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
 python pipeline/fetch_tiles.py --city shibuya
 python pipeline/fetch_plateau.py --city shibuya
 python pipeline/build_scene.py --city shibuya
-python pipeline/landmarks.py --city shibuya       # also draws atlas.jpg (fonts are fetched to data/raw/fonts)
+python pipeline/osm_detail.py --city shibuya      # OSM's street detail round the scramble (cities/shibuya/scramble_osm.json)
+python pipeline/landmarks.py --city shibuya       # also draws atlas.jpg and scramble.jpg (fonts are fetched to data/raw/fonts)
 python pipeline/game_data.py --city shibuya
 python pipeline/night_lights.py --city shibuya    # after game_data.py: it reads game.json
 python analysis/data_quality.py --city shibuya

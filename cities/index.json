@@ -117,6 +117,54 @@
       "summary": "Akihabara's Electric Town from open data at PLATEAU-surveyed heights: Chuo-dori's blade signs and wall prints, lit after dark, the arcades' lanes, Kanda Myojin's gate up the hill and Nikolai-do's dome over Ochanomizu."
     },
     {
+      "id": "ueno",
+      "name": "Ueno",
+      "native": "上野",
+      "country": "Japan",
+      "lat": 35.713,
+      "lon": 139.7735,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Ueno Park, Toshogu's gilt hall, Shinobazu Pond and Bentendo, and Ameyoko's market",
+      "summary": "Ueno from open data at PLATEAU-surveyed heights: the park on its hill with Saigo's statue, Toshogu's gilt hall between its lanterns and Kan'ei-ji's pagoda, Shinobazu Pond's lotus and Bentendo on its island, and Ameyoko's market under the tracks to Okachimachi."
+    },
+    {
+      "id": "ikebukuro",
+      "name": "Ikebukuro",
+      "native": "池袋",
+      "country": "Japan",
+      "lat": 35.73,
+      "lon": 139.715,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Sunshine 60, Otome Road, the department stores and West Gate Park's ring",
+      "summary": "Ikebukuro from open data at PLATEAU-surveyed heights: Sunshine 60 over the east side, Sunshine 60-dori's signs and Otome Road's shops, the department stores' names round the station, and GLOBAL RING over West Gate Park."
+    },
+    {
+      "id": "jinbocho",
+      "name": "Jinbocho",
+      "native": "神保町",
+      "country": "Japan",
+      "lat": 35.696,
+      "lon": 139.758,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "The book town's shops and carts, the Catholic Kanda Church and Nikolai-do",
+      "summary": "Jinbocho and Kanda from open data at PLATEAU-surveyed heights: the book town's second-hand shops along Yasukuni-dori with their carts of cheap books, the Catholic Kanda Church of 1928, and Nikolai-do over Ochanomizu."
+    },
+    {
+      "id": "roppongi",
+      "name": "Roppongi",
+      "native": "六本木",
+      "country": "Japan",
+      "lat": 35.6625,
+      "lon": 139.731,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Roppongi Hills and Maman, Keyakizaka's lights, the National Art Center and the crossing's bars",
+      "summary": "Roppongi from open data at PLATEAU-surveyed heights: Mori Tower and Maman the spider at Roppongi Hills, the Mohri Garden's pond, Keyakizaka's winter lights, the National Art Center's glass wave, Tokyo Midtown, and the bars round the crossing."
+    },
+    {
       "id": "whitsundays",
       "name": "Whitsundays",
       "country": "Australia",
@@ -289,7 +337,7 @@
           "native": "上野",
           "lat": 35.7138,
           "lon": 139.7774,
-          "note": "Ueno Park, Ameyoko, Shinobazu Pond",
+          "map": "ueno",
           "label": "t"
         },
         {
@@ -297,7 +345,7 @@
           "native": "池袋",
           "lat": 35.7295,
           "lon": 139.7109,
-          "note": "Sunshine 60, Otome Road",
+          "map": "ikebukuro",
           "label": "r"
         },
         {
@@ -305,7 +353,7 @@
           "native": "神保町",
           "lat": 35.6959,
           "lon": 139.7577,
-          "note": "The book town",
+          "map": "jinbocho",
           "label": "l"
         },
         {
@@ -313,7 +361,7 @@
           "native": "六本木",
           "lat": 35.6627,
           "lon": 139.7314,
-          "note": "Roppongi Hills and Mori Tower",
+          "map": "roppongi",
           "label": "b"
         },
         {
