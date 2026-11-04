@@ -36,7 +36,7 @@ window.OEWeather = (function () {
     drizzle: { rain: 0.3, cloud: 0.95 },
     rain: { rain: 0.85, cloud: 1 },
   };
-  const NAMES = { live: 'As the season brings it', clear: 'Clear', overcast: 'Overcast', drizzle: 'Drizzle', rain: 'Rain' };
+  const NAMES = { live: 'As the season brings it', clear: 'Clear', overcast: 'Overcast', drizzle: 'Drizzle', rain: 'Rain', off: 'Off' };
   const smooth = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
   const hash = n => { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
   // a well-mixed hash of an integer (a day) and a salt, 0..1
@@ -113,7 +113,7 @@ float oeWet = uOeWet * oeOpen * (0.3 + 0.7 * oeUp);
 float oeGl = clamp(${gloss}, 0.0, 1.0) * oeWet;
 diffuseColor.rgb *= mix(1.0, 1.0 - ${porous}, oeWet);
 roughnessFactor = mix(roughnessFactor, min(roughnessFactor, 0.42), oeGl);
-float oePd = oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen;
+float oePd = uOeWet > 0.001 ? oePuddle(vOeW.xz) * clamp(${puddles}, 0.0, 1.0) * oeFlat * oeOpen : 0.0; // (dry: no noise to work out)
 diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * 0.45, oePd);
 roughnessFactor = mix(roughnessFactor, 0.06, oePd);`)
         .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
@@ -299,14 +299,24 @@ void main() {
     const tier = (QC && QC.name) || 'high';
     const T = { high: { near: 6000, far: 9000, splash: 700, occ: 256 }, medium: { near: 4000, far: 5000, splash: 420, occ: 256 }, low: { near: 2200, far: 2200, splash: 200, occ: 128 } }[tier] || { near: 4000, far: 5000, splash: 420, occ: 256 };
     const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // the wet look on the materials that take it
+    // the wet look on the materials that take it, once the weather runs (arm): a device the guard
+    // keeps the weather off on never compiles it
     // (the ground is patched from game.js, which knows its paving and road classes: patchGround)
-    if (Wd.lmMats) for (const [k, m] of Object.entries(Wd.lmMats)) {
-      if (/pond|water|pool|moat/i.test(k)) wrap(m, { water: true }, k);
-      else if (m.userData.paving || /pav|plaza|flagstone|^sk_stone|gravel|path/i.test(k)) wrap(m, { puddles: '0.6', porous: 0.35 }, k);
+    let armed = false;
+    const onArm = [];
+    function arm() {
+      if (armed) return;
+      armed = true;
+      if (Wd.lmMats) for (const [k, m] of Object.entries(Wd.lmMats)) {
+        if (/pond|water|pool|moat/i.test(k)) wrap(m, { water: true }, k);
+        else if (m.userData.paving || /pav|plaza|flagstone|^sk_stone|gravel|path/i.test(k)) wrap(m, { puddles: '0.6', porous: 0.35 }, k);
+      }
+      if (Wd.waterMat) wrap(Wd.waterMat, { water: true }, 'waterMat');
+      armSea();
+      onArm.forEach(f => f());
     }
-    if (Wd.waterMat) wrap(Wd.waterMat, { water: true }, 'waterMat');
     // the sea's own shader (water.js) works out its normal itself: its ripples go in there
+    function armSea() {
     if (Wd.sea && Wd.sea.material && !Wd.sea.material.userData.oeWeather) {
       const m = Wd.sea.material, own = m.onBeforeCompile;
       m.userData.oeWeather = true;
@@ -322,6 +332,7 @@ void main() {
       const ownKey = m.customProgramCacheKey;
       m.customProgramCacheKey = function () { return `${ownKey ? ownKey.call(this) : ''}|oew`; };
       m.needsUpdate = true;
+    }
     }
 
     // the rain occlusion map: heights of the tops of things, from straight above, round the camera
@@ -368,8 +379,71 @@ void main() {
     // state
     const params = new URLSearchParams(location.search);
     const asked = params.get('weather');
-    let mode = KINDS[asked] || asked === 'live' ? asked : navigator.webdriver ? 'clear' : 'live';
-    try { if (!asked && !navigator.webdriver) { const v = localStorage.getItem('oe3d-weather'); if (v && (KINDS[v] || v === 'live')) mode = v; } } catch (e) { /* storage blocked */ }
+    let mode = KINDS[asked] || asked === 'live' || asked === 'off' ? asked : navigator.webdriver ? 'clear' : 'live';
+    let chosen = !!asked; // the visitor (or the page's address) chose the weather: the guard never turns it off then
+    try { if (!asked && !navigator.webdriver) { const v = localStorage.getItem('oe3d-weather'); if (v && (KINDS[v] || v === 'live' || v === 'off')) { mode = v; chosen = true; } } } catch (e) { /* storage blocked */ }
+    // The guard: weather that the device cannot carry is not started. Rain costs a second render of
+    // the scene for the wet street's reflections (mirror.js, high tier), a pass from above for the
+    // occlusion map, and thousands of streaks; a wet street costs its puddles' noise and reflections
+    // for minutes after the rain. So:
+    //  - on the low tier (a software renderer, a phone, a device with 4 GB or less: quality.js) the
+    //    season's weather starts off, and its shaders are not even compiled;
+    //  - elsewhere the frame rate is watched in 4 s windows once the game is under way. In the
+    //    rain (or on a wet street) below 28 fps for two windows running, the weather goes light: no
+    //    reflections of the city in the street, half the streaks, no splashes, the occlusion map less
+    //    often. Still below 24 fps, it goes off: a clear sky, dry streets. And a device that is already
+    //    below 24 fps in dry weather does not start any;
+    //  - what the guard decided is remembered (localStorage oe3d-weather-guard), so the next visit
+    //    starts there, and said once in a toast that points at the menu, where any weather the
+    //    visitor picks is kept as picked (the guard may lighten it, never turn it off).
+    // Automated runs keep the full weather unless the address asks for the guard (?weatherguard).
+    const GUARD_KEY = 'oe3d-weather-guard', GUARD = { light: 28, off: 24, win: 4, warm: 10 };
+    let guardOn = !navigator.webdriver || params.has('weatherguard');
+    let level = 2; // 2 the full weather, 1 light, 0 off
+    let guardNote = null;
+    if (guardOn && !chosen && mode === 'live') {
+      let kept = null;
+      try { kept = localStorage.getItem(GUARD_KEY); } catch (e) { /* storage blocked */ }
+      if (tier === 'low' && kept !== 'light' && kept !== 'full') { level = 0; guardNote = 'Weather is off on this device, to keep it smooth. Turn it on in the menu (Esc).'; }
+      else if (kept === 'off') { level = 0; guardNote = 'Weather is off: it ran slowly here last time. Turn it on in the menu (Esc).'; }
+      else if (kept === 'light') level = 1;
+    }
+    if (level === 0) mode = 'off';
+    if (mode !== 'off') arm();
+    const G = { t: 0, win: 0, n: 0, strikes: 0, fps: 0, last: 0 };
+    const remember = v => { try { if (v) localStorage.setItem(GUARD_KEY, v); else localStorage.removeItem(GUARD_KEY); } catch (e) { /* storage blocked */ } };
+    // one frame's time, for the guard; idle: the title, the menu or a hidden page (not the game's own pace)
+    // (the frame's own time, not the game's step, which is capped at 50 ms)
+    // (frame: a frame's time given rather than measured, for the checks)
+    function guard(_dt, idle, frame) {
+      const now = performance.now(), dt = frame ?? (G.last ? (now - G.last) / 1000 : 0);
+      G.last = now;
+      if (!guardOn || level === 0 && mode === 'off') return;
+      if (idle || !(dt > 0) || dt > 0.5) { G.win = G.n = 0; if (idle) G.t = 0; return; } // (a stall: a tab switched back, a load)
+      G.t += dt;
+      if (G.t < GUARD.warm) return; // shaders compiling, tiles loading: not yet the device's pace
+      G.win += dt; G.n++;
+      if (G.win < GUARD.win) return;
+      const fps = G.n / G.win, busy = cur.rain > 0.05 || U.uOeWet.value > 0.05;
+      G.fps = fps; G.win = G.n = 0;
+      if (!busy) {
+        // dry, and already slow: the season's weather would only make it worse, so it does not start
+        if (fps < GUARD.off && !chosen && mode === 'live') { if (++G.strikes >= 2) setLevel(0, 'Weather is off: this device is busy enough without it. Turn it on in the menu (Esc).'); }
+        else G.strikes = 0;
+        return;
+      }
+      if (fps >= (level === 2 ? GUARD.light : GUARD.off)) { G.strikes = 0; return; }
+      if (++G.strikes < 2) return;
+      if (level === 2) setLevel(1, 'Rain made this device slow: lighter rain, no street reflections.');
+      else if (!chosen) setLevel(0, 'Weather is off: rain made this device slow. Turn it on in the menu (Esc).');
+      else G.strikes = 0;
+    }
+    function setLevel(l, note) {
+      level = l; G.strikes = 0;
+      if (l === 0) { mode = 'off'; snap = true; }
+      remember(l === 0 ? 'off' : l === 1 ? 'light' : null);
+      if (note) { guardNote = note; if (api.onGuard) { api.onGuard(note); guardNote = null; } }
+    }
     const cur = { rain: 0, cloud: 0 }, target = { rain: 0, cloud: 0 };
     let custom = null, wetPin = null;
     let clockAt = null, snap = true, cover = { roof: false, h: 0, at: 0 }, occT = -9, occAt = new THREE.Vector3(1e9, 0, 0), hideList = [], hideAt = -99;
@@ -380,7 +454,20 @@ void main() {
       U, kinds: Object.keys(KINDS), names: NAMES, meshes: { near, far, splash }, occ: occRT,
       get mode() { return mode; },
       get kind() { return kindOf(cur); },
-      get state() { return { mode, kind: kindOf(cur), rain: cur.rain, cloud: cur.cloud, wet: U.uOeWet.value, covered: cover.roof, coverH: cover.h }; },
+      // the guard's level (2 full, 1 light, 0 off), whether the wet look is compiled in, and a
+      // callback for whatever else needs recompiling once it is (the ground: game.js)
+      get level() { return level; },
+      get armed() { return armed; },
+      onArm(f) { onArm.push(f); },
+      // per frame (game.js), for the guard; and what the guard has to say, once the game can show it
+      guard,
+      onGuard: null,
+      takeNote() { const n = guardNote; guardNote = null; return n; },
+      guardState: () => ({ level, mode, chosen, fps: G.fps, tier }),
+      // for the checks: forget what the guard remembered and let the season's weather back in
+      guardForce(v) { guardOn = !!v; },
+      guardReset() { remember(null); level = 2; chosen = false; G.t = G.win = G.n = G.strikes = 0; if (mode === 'off') mode = 'live'; arm(); },
+      get state() { return { mode, level, kind: kindOf(cur), rain: cur.rain, cloud: cur.cloud, wet: U.uOeWet.value, covered: cover.roof, coverH: cover.h }; },
       // pin a weather ('clear', 'overcast', 'drizzle', 'rain'), or exact amounts ({rain, cloud, wet}
       // 0..1, for a still or a film), or follow the season ('live'); now: no easing in; keep:
       // remember it for the next visit
@@ -388,14 +475,20 @@ void main() {
         if (m && typeof m === 'object') {
           const k = m.rain > 0.5 ? 'rain' : m.rain > 0.06 ? 'drizzle' : (m.cloud ?? 0) > 0.6 ? 'overcast' : 'clear';
           custom = { rain: m.rain ?? KINDS[k].rain, cloud: m.cloud ?? Math.max(KINDS[k].cloud, m.rain > 0.06 ? 0.9 : 0) };
-          mode = 'custom'; wetPin = m.wet ?? null;
+          mode = 'custom'; wetPin = m.wet ?? null; arm();
           if (now || m.now) snap = true;
           return;
         }
-        if (!(KINDS[m] || m === 'live')) return;
+        if (!(KINDS[m] || m === 'live' || m === 'off')) return;
         mode = m; wetPin = null;
-        if (now) snap = true;
-        if (keep) try { localStorage.setItem('oe3d-weather', m); } catch (e) { /* storage blocked */ }
+        if (now || m === 'off') snap = true;
+        if (m !== 'off') { arm(); if (level === 0) level = 1; } // asked for: back on, light until the device shows it can carry more
+        if (keep) {
+          // the visitor's own pick, from the menu: kept as picked, and what the guard remembered forgotten
+          chosen = true; G.strikes = 0;
+          if (m !== 'off') { level = 2; remember(null); }
+          try { localStorage.setItem('oe3d-weather', m); } catch (e) { /* storage blocked */ }
+        }
       },
       // the clock, so the season can choose (local date and minutes)
       clock(y, mo, d, min) { clockAt = [y, mo, d, min]; },
@@ -425,7 +518,7 @@ void main() {
       },
       update(dt, tSec, focus) {
         // what the weather should be now
-        const want = mode === 'live' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : mode === 'custom' ? custom : KINDS[mode];
+        const want = mode === 'live' ? (clockAt ? season(climate, ...clockAt) : { rain: 0, cloud: 0.2 }) : mode === 'custom' ? custom : KINDS[mode] || KINDS.clear; // (off: a clear sky, dry streets)
         target.rain = want.rain; target.cloud = want.cloud;
         if (snap) { cur.rain = target.rain; cur.cloud = target.cloud; U.uOeWet.value = target.rain > 0.05 ? Math.min(1, 0.5 + target.rain) : 0; snap = false; }
         const ease = (a, b, rate) => a + (b - a) * Math.min(1, dt * rate);
@@ -442,8 +535,8 @@ void main() {
         // the camera's velocity, smoothed, for the slant of the streaks
         if (dt > 0) { const v = camera.position.clone().sub(lastCam).divideScalar(dt); if (v.length() > 80) v.set(0, 0, 0); vel.lerp(v, Math.min(1, dt * 8)); }
         lastCam.copy(camera.position);
-        const raining = cur.rain > 0.01;
-        near.visible = far.visible = splash.visible = raining;
+        const raining = cur.rain > 0.01, light = level < 2; // light: the guard's lighter rain (half the streaks, no splashes)
+        near.visible = far.visible = raining; splash.visible = raining && !light;
         if (!raining) { occOn.value = 0; return; }
         const fwd = camera.getWorldDirection(new THREE.Vector3());
         const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -453,7 +546,7 @@ void main() {
         for (const m of [near, far]) {
           const u = m.material.uniforms;
           u.uSpeed.value = 3.2 + 5.6 * heavy;
-          u.uCount.value = Math.min(1, cur.rain * 1.15);
+          u.uCount.value = Math.min(1, cur.rain * 1.15) * (light ? 0.5 : 1);
           u.uWidth.value = (m === near ? 0.0028 : 0.004) + (m === near ? 0.0025 : 0.003) * heavy;
           u.uAlpha.value = u.uAlpha0.value * (0.55 + 0.45 * heavy);
           u.uShutter.value = 0.03;
@@ -464,7 +557,7 @@ void main() {
         const day = Wd.day ?? 1, fc = world.fog ? world.fog.color : new THREE.Color(0.7, 0.75, 0.8);
         shared.uCol.value.copy(fc).multiplyScalar(1.0 + 0.9 * day).add(new THREE.Color(0.16, 0.13, 0.09).multiplyScalar(1 - day));
         // the occlusion map, when the camera has moved or a little time has passed
-        if (occRT && (tSec - occT > (tier === 'low' ? 1.2 : 0.5) || camera.position.distanceTo(occAt) > 4)) {
+        if (occRT && (tSec - occT > (tier === 'low' || light ? 1.2 : 0.5) || camera.position.distanceTo(occAt) > (light ? 8 : 4))) {
           occT = tSec; occAt.copy(camera.position);
           renderOcc(tSec);
         }

@@ -66,10 +66,10 @@
     },
     "areas": [
       {
-        "at": [376.0, -1043.0],
-        "radius": 14.0,
-        "mix": {"maple": 0.5, "elm": 0.5},
-        "note": "Hachiko Square: cherries in the round planters and a maple behind Hachiko. The shared trees have no cherry; a spreading elm stands in for it"
+        "at": [374.7, -1051.1],
+        "radius": 1.5,
+        "mix": {"maple": 1.0},
+        "note": "Hachiko Square: the Japanese maple at the end of the bed behind Hachiko. The planters' cherries and the bed's pines are the square's own (cities/shibuya/hachiko_garden.py)"
       }
     ],
     "note": "Species are not mapped. Elms stand for the zelkovas (keyaki) of Omotesando and the shrine groves, plane trees for the street planes and ginkgos of Aoyama and Meiji Jingu Gaien. A guess, not a survey."

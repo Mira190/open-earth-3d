@@ -21,9 +21,39 @@ crowd under umbrellas, the pond) and phone:
   in ten: the tsuyu.
 - **A choice.** The pause menu's Weather row (kept for the next visit), a quest choice
   (`"action": "set_weather", "weather": "rain", "date": [6, 18], "time": "08:10"`), or the page's
-  `?weather=clear|overcast|drizzle|rain|live`.
+  `?weather=clear|overcast|drizzle|rain|live|off`.
 - **Automated runs** (`navigator.webdriver`: the checks, stills and films) keep a clear sky unless
   they ask, so their frames stay comparable. `tools/game_shot.js` takes `"weather"` per view.
+
+## When the device cannot carry it
+
+Rain is the dearest thing the game draws: on the high tier a wet street draws the scene a second
+time for its reflections (`web/mirror.js`), the occlusion map draws it again from above, and the
+streaks are thousands of blended quads; a wet street keeps its puddles' noise and reflections for
+minutes after the rain. So the weather has a guard (`weather.js`, `guard`), and weather that a device
+cannot carry is not started:
+
+| When | What happens |
+| --- | --- |
+| The low tier (`web/quality.js`: a software renderer, a phone, 4 GB of memory or less) | The season's weather starts **off**: a clear sky and dry streets, and the wet look's shader code is not even compiled (`arm`). A toast says so and points at the menu |
+| In rain or on a wet street, under 28 fps for two 4 s windows running | **Light**: no reflections of the city in the street (the second render), half the streaks, no splashes, the occlusion map redrawn every 1.2 s or 8 m |
+| Still under 24 fps | **Off**, with a toast |
+| Dry, and already under 24 fps for two windows | **Off** before any rain comes: it would only make it worse |
+
+The frame rate is the frame's own time (not the game's step, which is capped at 50 ms), counted only
+in play: not on the title screen, in the menu, in photo mode or in a hidden tab, and not in the first
+10 s after the title, while shaders compile and tiles load. What the guard decided is remembered
+(`localStorage` `oe3d-weather-guard`: `light` or `off`), so the next visit starts there. A weather
+picked in the menu, which now also has **Off**, is the visitor's: kept as picked, and the guard may
+lighten it but never turns it off; picking one forgets what the guard remembered. `?weather=` counts
+as a pick. Automated runs keep the full weather unless the address carries `?weatherguard`;
+`tools/game_check.js` drives the guard with given frame times (`guard(dt, idle, frame)`) and checks
+it lightens, turns off, remembers, says so and comes back on.
+
+The same idea as the dynamic quality scaling of console and PC games (Unreal's scalability groups
+and dynamic resolution, Unity's Adaptive Performance), cut down to the one system that costs the most
+and can go without being missed: the weather steps down before anything else does, by measured frame
+time rather than by the device's name.
 
 To change a city's climate, edit the table in `pipeline/weather_climate.py` and run
 `python pipeline/weather_climate.py`; it writes `city.json` and copies the numbers (and every

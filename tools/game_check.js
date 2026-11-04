@@ -222,6 +222,42 @@ const npcNight = require('./npc_night');
     if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
   }
 
+  // the weather's guard (weather.js): rain at a smooth 60 fps keeps the full weather; rain at 10 fps
+  // goes light (no street reflections, half the streaks) and then off, remembered for the next visit
+  // and said in a toast (its note); a pick from the menu brings it back
+  const guard = await p.evaluate(() => {
+    const W = window.__game.weather;
+    if (!W || !W.guardForce) return null;
+    const feed = (s, f) => { for (let t = 0; t < s; t += f) W.guard(f, false, f); };
+    W.guardReset(); W.guardForce(true);
+    W.set({ rain: 0.9, cloud: 1, wet: 1, now: true });
+    W.update(0.1, 1, null);
+    feed(20, 1 / 60);
+    const smooth = W.level;
+    feed(9, 0.1);
+    const light = W.level;
+    feed(9, 0.1);
+    let kept = null;
+    try { kept = localStorage.getItem('oe3d-weather-guard'); } catch (e) { /* storage blocked */ }
+    const off = { level: W.level, mode: W.mode, kept };
+    W.update(0.1, 2, null);
+    const dry = W.state;
+    const note = W.takeNote();
+    W.set('rain', { now: true });
+    const back = W.level;
+    W.guardReset(); W.guardForce(false);
+    W.set('clear', { now: true }); W.update(0.1, 3, null); W.set('live');
+    return { smooth, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back };
+  });
+  if (guard) {
+    check(guard.smooth === 2, `the weather's guard keeps the full rain at 60 fps (level ${guard.smooth})`);
+    check(guard.light === 1, `and lightens it at 10 fps (level ${guard.light})`);
+    check(guard.off.level === 0 && guard.off.mode === 'off' && guard.off.kept === 'off' && guard.dry.rain === 0 && guard.dry.wet === 0,
+      `and turns it off when that is not enough, remembered (level ${guard.off.level}, ${guard.off.mode}, kept ${guard.off.kept}, rain ${guard.dry.rain}, wet ${guard.dry.wet})`);
+    check(/Weather is off/.test(guard.note || ''), `and says so ("${guard.note}")`);
+    check(guard.back >= 1, `a weather picked again comes back on (level ${guard.back})`);
+  }
+
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
   // edge (the centre within 0.3 m of the face as drawn), at the level of the quay, not a cell short
   // of it at the terrain grid's bank
