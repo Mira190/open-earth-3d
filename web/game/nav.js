@@ -40,6 +40,21 @@ window.OENav = (function () {
     // places walkers keep out of (a colony's rocks): a 2 m mask
     const nogo = (G.nogo || []).length ? { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny) } : null;
     for (const r of G.nogo || []) S.fillMax(nogo, [r.map(v => v / 10)], 1);
+    // and a landmark's own water that the city's leaves out (a temple's moat, game.json "keep_off"),
+    // at half a metre, as narrow as it is: a walker stops at its edge without a word
+    const keepOff = (() => {
+      const rings = (G.keep_off || []).map(r => r.map(v => v / 10));
+      if (!rings.length) return null;
+      let kx0 = Infinity, kx1 = -Infinity, ky0 = Infinity, ky1 = -Infinity;
+      for (const r of rings) for (let k = 0; k < r.length; k += 2) { kx0 = Math.min(kx0, r[k]); kx1 = Math.max(kx1, r[k]); ky0 = Math.min(ky0, r[k + 1]); ky1 = Math.max(ky1, r[k + 1]); }
+      const cell = 0.5, g = { nx: Math.ceil((kx1 - kx0) / cell) + 2, ny: Math.ceil((ky1 - ky0) / cell) + 2, cell, x0: kx0 - cell, y1: ky1 + cell };
+      g.data = new Float32Array(g.nx * g.ny);
+      for (const r of rings) S.fillMax(g, [r], 1);
+      return (x, y) => {
+        const c = Math.floor((x - g.x0) / cell), r = Math.floor((g.y1 - y) / cell);
+        return c >= 0 && r >= 0 && c < g.nx && r < g.ny && g.data[r * g.nx + c] > 0;
+      };
+    })();
     // ---------------------------------------------------------- strip surfaces (bridge decks, steps)
     const strips = (G.surfaces || []).filter(s => s.type === 'strip').map(s => Object.assign({}, s, {
       us: s.profile.map(p => p[0]), zs: s.profile.map(p => p[1]) }));
@@ -347,7 +362,7 @@ window.OENav = (function () {
         for (const [k, q] of mine) cpush(coarse, k, q[0] - 0.3, q[1] + 0.3);
       }
       for (const m of meshes) {
-        const p = m.position, idx = m.index, up = [];
+        const p = m.position, idx = m.index, up = [], noFloor = ((D.LM.materials || {})[m.material] || {}).floor === false;
         for (let t = 0; t < idx.length; t += 3) {
           const P = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]);
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
@@ -360,7 +375,8 @@ window.OENav = (function () {
           if (zhi > zc) { below = fan(clip(P, 2, zc, 1)); for (const q of fan(clip(P, 2, zc, -1))) up.push(q); }
           // a flat top is laid in whole only within a step of the floor, where a walker may stand on it; higher
           // (a counter, a beam, a ceiling) its edges stand for it, its sides being triangles of their own
-          const fill = zhi <= Math.max(...rs) + STEP + 0.1;
+          // (a material that says "floor": false is never stood on, however wide its top: an offering box)
+          const fill = zhi <= Math.max(...rs) + STEP + 0.1 && !noFloor;
           for (const T of below) { // into the tiles it touches
             if (!fill) T.edges = true;
             const AP = APRON * FINE; // (with the apron a tile reads round itself)
@@ -554,11 +570,46 @@ window.OENav = (function () {
       const r0 = Math.max(0, Math.floor((y1 - yb) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - ya) / TILE));
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (tileDone[r * TNX + c] !== 2) runTile(r * TNX + c, Infinity);
     }
-    // fn() run against the 2 m cells alone, the fine ones left unbuilt: a sweep over the whole city at the
-    // start (where the trees and lamps may stand, which stretches of the footways and roads the crowd and
-    // the traffic keep to) that a landmark's 2 m cells answer well enough, as they did before the fine
-    // cells; walk() and solid() then meet a landmark's 2 m cells (each mesh's extent in them)
-    function withoutFine(fn) { coarseOnly = true; try { return fn(); } finally { coarseOnly = false; } }
+    // fn() run with the fine cells left unbuilt: a sweep over the whole city at the start (where the trees
+    // and lamps may stand, which stretches of the footways and roads the crowd and the traffic keep to),
+    // which away from the landmarks needs only the 2 m surface model
+    function withoutFine(fn) { coarseOnly = true; const t = performance.now(); try { return fn(); } finally { coarseOnly = false; sweepMs += performance.now() - t; } }
+    let sweepMs = 0; // (the time the sweeps took, for tools/game_check.js)
+    // ... except where a landmark's 2 m cell says no: there its triangles near the floor (the ones its fine
+    // cells are laid from) are asked whether any comes within r of (x, y) between za and zb, so that a
+    // crowd's way through a gate's passage or between lanterns is not cut where a walker gets through
+    // (issue #141). Laying the fine cells of every tile a sweep meets would cost a second or more at the
+    // start, and even sorting their triangles into 2 m cells a fifth of one: the tile's own list is read
+    // through instead (it takes the triangles within its 2 m apron too, so one tile holds all that a
+    // walker's circle there can meet)
+    function trisNear(x, y) {
+      const c = Math.floor((x - x0) / TILE), r = Math.floor((y1 - y) / TILE);
+      return c < 0 || r < 0 || c >= TNX || r >= TNY ? [] : tileTris.get(r * TNX + c) || [];
+    }
+    const segDist = (px, py, ax, ay, bx, by) => {
+      const ex = bx - ax, ey = by - ay, L2 = ex * ex + ey * ey, t = L2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * ex + (py - ay) * ey) / L2)) : 0;
+      return Math.hypot(px - ax - ex * t, py - ay - ey * t);
+    };
+    function triHit(x, y, r, za, zb) {
+      for (const T of trisNear(x, y)) {
+        if (Math.min(T[0][2], T[1][2], T[2][2]) > zb + MZ || Math.max(T[0][2], T[1][2], T[2][2]) < za - MZ) continue;
+        const rr = r + FINE;
+        if (Math.min(T[0][0], T[1][0], T[2][0]) > x + rr || Math.max(T[0][0], T[1][0], T[2][0]) < x - rr ||
+          Math.min(T[0][1], T[1][1], T[2][1]) > y + rr || Math.max(T[0][1], T[1][1], T[2][1]) < y - rr) continue;
+        const Q = clip(clip(T, 2, zb + MZ, 1), 2, za - MZ, -1); // (its part between the two heights, with the fine cells' margin)
+        if (Q.length < 3) {
+          if (Q.length && Q.some(q => Math.hypot(q[0] - x, q[1] - y) < r + FINE / 2)) return true;
+          continue;
+        }
+        let inside = false;
+        for (let i = 0, j = Q.length - 1; i < Q.length; j = i++) {
+          if ((Q[i][1] > y) !== (Q[j][1] > y) && x < Q[j][0] + (y - Q[j][1]) / (Q[i][1] - Q[j][1]) * (Q[i][0] - Q[j][0])) inside = !inside;
+          if (segDist(x, y, Q[i][0], Q[i][1], Q[j][0], Q[j][1]) < r + FINE / 2) return true;
+        }
+        if (inside) return true;
+      }
+      return false;
+    }
     // build the tiles within `radius` of (x, y), nearest first, for at most `ms` milliseconds (the game
     // calls this every frame with the walker's or the car's place); true when they are all built
     function prefetch(x, y, radius = 48, ms = 3) {
@@ -621,7 +672,10 @@ window.OENav = (function () {
     function landmarkHit(x, y, za, zb) {
       const l = solid0.get(cellOf(x, y));
       if (!l) return false;
-      for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true;
+      for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) {
+        if (!coarseOnly) return true;
+        return triHit(x, y, 0.1, za, zb) || col.overlap(x, y, 0.1, za, zb, (j, p) => p.tag !== LANDMARK && p.tag !== LFINE); // (its triangles, and the 2 m cells high up)
+      }
       return false;
     }
     // the highest surface already built at (x, y), a deck strip or a pier (-Infinity for none)
@@ -677,8 +731,9 @@ window.OENav = (function () {
       if (!f) return { ok: false, why: offGround(x, y) || 'wall' };
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
       if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
+      if (keepOff && f.kind === 'ground' && keepOff(x, y)) return { ok: false, why: 'keep_off' };
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
-      if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cells, withoutFine)
+      if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD) && triHit(x, y, R, f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cell, and then its triangles, withoutFine)
       return { ok: true, z: f.z, kind: f.kind };
     }
     // move a walker whose feet are at z by (dx, dy), sliding along walls and round the cars
@@ -708,7 +763,7 @@ window.OENav = (function () {
       }
       if (!near) return false;
       const f = floorAt(x, y, z + 0.3), fz = f ? f.z : z;
-      if (coarseOnly && solidCell(k, fz + KNEE, fz + HEAD)) return true; // (a landmark's 2 m cells, withoutFine)
+      if (coarseOnly && solidCell(k, fz + KNEE, fz + HEAD) && triHit(x, y, r, fz + KNEE, fz + HEAD)) return true; // (a landmark's 2 m cell, and then its triangles, withoutFine)
       return col.overlap(x, y, r, fz + KNEE, fz + HEAD, passes(fz, !!f && isDeck(f.kind)));
     }
     function solidCell(k, za, zb) { const l = solid0.get(k); if (!l) return false; for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true; return false; }
@@ -826,7 +881,7 @@ window.OENav = (function () {
       }
       return f;
     }
-    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
+    const api = { under, terrainBelow, ceilingAt, approaches, stripBeside, isWater, onShore, offGround, surfaceAt, addDecks, decksAt, floorAt, walk, stand, slide, solid, push, groundBelow, free, room, isDeck, clearFraction, buildingTop, buildingId, landmarkHit, strips, stripUV, stripHeight, terrain, tops, col, get fineBoxes() { return fineBoxes; }, get fineMs() { return fineMs; }, get startMs() { return startMs; }, get sweepMs() { return sweepMs; }, get tiles() { let n = 0; for (const [k] of tileTris) if (tileDone[k] === 2) n++; return [n, tileTris.size]; }, prefetch, withoutFine, STEP, DROP, R, BUILDING, LANDMARK, LFINE, movers: null, posts: null };
     return api;
   }
   return { create };
