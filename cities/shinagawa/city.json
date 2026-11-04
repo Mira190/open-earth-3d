@@ -1,0 +1,544 @@
+{
+  "id": "shinagawa",
+  "name": "Shinagawa",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Shinagawa and Takanawa from open data, lit by the real sun: the station between the Takanawa hills and Konan's towers, Takanawa Gateway's folded roof, and the old Tokaido's first post town at Kita-Shinagawa.",
+  "bbox": [
+    139.7291,
+    35.6214,
+    139.7499,
+    35.6386
+  ],
+  "origin": [
+    139.7395,
+    35.63
+  ],
+  "extent_m": [
+    -900,
+    900,
+    -900,
+    900
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "river",
+      "canal",
+      "water"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.5,
+      "plane": 0.5
+    },
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas, plane trees for the street planes and ginkgos. A guess, not a survey."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Shinagawa Station": [
+      139.7387,
+      35.6285
+    ],
+    "Takanawa Gateway": [
+      139.7407,
+      35.6355
+    ],
+    "Kita-Shinagawa": [
+      139.7393,
+      35.6222
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:20",
+    "cam": [
+      900,
+      -1000,
+      480
+    ],
+    "tgt": [
+      0,
+      -100,
+      30
+    ]
+  },
+  "labels": {
+    "品川シーズンテラス": "Shinagawa Season Terrace",
+    "グランドプリンスホテル新高輪": "Grand Prince Hotel Shin Takanawa",
+    "アクアパーク品川": "Maxell Aqua Park",
+    "THE LINKPILLAR 1": "THE LINKPILLAR 1"
+  },
+  "minor_labels": [
+    "グランドプリンスホテル新高輪"
+  ],
+  "places": [],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Shinagawa, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [
+        900,
+        -1000,
+        480
+      ],
+      "tgt": [
+        0,
+        -100,
+        30
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 8
+    },
+    {
+      "title": "Takanawa Gateway",
+      "text": "The Yamanote line's newest station, 2020, its roof folded like paper, on the rail yard that is becoming a new quarter.",
+      "cam": [
+        300,
+        450,
+        60
+      ],
+      "tgt": [
+        105,
+        609,
+        15
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 9
+    },
+    {
+      "title": "Shinagawa-shuku",
+      "text": "The old Tokaido's first post town south of the Yatsuyama bridge, its shops and lanterns. The signs here are typical of the street, not its real shops'.",
+      "cam": [
+        150,
+        -760,
+        40
+      ],
+      "tgt": [
+        22,
+        -835,
+        5
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "17:30",
+      "to": "18:30",
+      "hold": 10
+    }
+  ],
+  "sources": {
+    "landmarks": "Takanawa Gateway Station (Kengo Kuma, 2020; East Japan Railway Company) on OpenStreetMap's footprint, its folded roof from photographs; the old Tokaido on OpenStreetMap's line. The post town's signs are indicative: typical trades, no real shops' signs.",
+    "fonts": "Signs drawn with Google Fonts under the SIL Open Font License: Zen Kaku Gothic New, Shippori Mincho"
+  },
+  "night": {
+    "note": "The post town's signs and lanterns and the station's roof are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "title": "Shinagawa on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "the canal",
+    "greeting": "いらっしゃいませ。",
+    "blurb": "Walk Shinagawa under the real sun: out of the Konan exit among the towers, up the tracks to Takanawa Gateway's folded roof, and south over the Yatsuyama bridge to the old Tokaido's post town.",
+    "smalltalk": [
+      "いらっしゃいませ。",
+      "すみません。",
+      "どうも。",
+      "Excuse me!",
+      "お疲れさまです。"
+    ],
+    "start": {
+      "at": [
+        498.0,
+        -150.0
+      ],
+      "facing": [
+        600.0,
+        -150.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "shina_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "shina-pad",
+        "name": "Konan, Season Terrace lawn pad (game)",
+        "at": [
+          300.0,
+          250.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 620,
+      "cars": 170,
+      "radius_m": 420,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA28SG"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.22
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#2a7a3a"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "品川",
+        "kana": "しながわ",
+        "romaji": "Shinagawa",
+        "band": "#9acd32",
+        "left": "大崎",
+        "right": "高輪ゲートウェイ",
+        "at": [
+          60.0,
+          -150.0
+        ],
+        "radius": 260,
+        "note": "The Shinkansen's stop and the southern gate of Tokyo"
+      },
+      {
+        "name": "高輪ゲートウェイ",
+        "kana": "たかなわゲートウェイ",
+        "romaji": "Takanawa Gateway",
+        "band": "#9acd32",
+        "left": "品川",
+        "right": "田町",
+        "at": [
+          105.0,
+          609.0
+        ],
+        "radius": 220,
+        "note": "The newest station on the loop"
+      },
+      {
+        "name": "北品川",
+        "kana": "きたしながわ",
+        "romaji": "Kita-Shinagawa",
+        "band": "#e5171f",
+        "left": "品川",
+        "right": "新馬場",
+        "at": [
+          -20.0,
+          -869.0
+        ],
+        "radius": 200,
+        "note": "The old post town"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-canal",
+        "name": "Konan, the Takahama canal 高浜運河",
+        "at": [
+          498.0,
+          -150.0
+        ]
+      },
+      {
+        "id": "t-konan",
+        "name": "Shinagawa Station, Konan exit 港南口",
+        "at": [
+          180.0,
+          -70.0
+        ]
+      },
+      {
+        "id": "t-takanawa",
+        "name": "Shinagawa Station, Takanawa exit 高輪口",
+        "at": [
+          -200.0,
+          -150.0
+        ]
+      },
+      {
+        "id": "t-gateway",
+        "name": "Takanawa Gateway Station 高輪ゲートウェイ駅",
+        "at": [
+          40.0,
+          560.0
+        ]
+      },
+      {
+        "id": "t-shuku",
+        "name": "Shinagawa-shuku 品川宿",
+        "at": [
+          10.0,
+          -800.0
+        ]
+      },
+      {
+        "id": "t-aqua",
+        "name": "Maxell Aqua Park アクアパーク品川",
+        "at": [
+          -330.0,
+          -240.0
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "kenji",
+        "name": "Kenji 健司",
+        "role": "Office worker 会社員",
+        "at": [
+          506.0,
+          -142.0
+        ],
+        "look": {
+          "character": "R_Business_Male_05_m017",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#2a2e36",
+          "legs": "#2a2e36",
+          "shirt": "#2a2e36",
+          "pants": "#2a2e36",
+          "clip": "Phone"
+        },
+        "idle": [
+          "Eight in the morning, the passage to the Konan exit is a river of grey suits. There's a famous photograph of it.",
+          "The Shinkansen to Osaka stops here; the airport trains too. Everyone passes through Shinagawa. {time}."
+        ]
+      },
+      {
+        "id": "asuka",
+        "name": "Asuka 明日香",
+        "role": "Station guide",
+        "at": [
+          40.0,
+          560.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_04",
+          "skin": "#f2cdb4",
+          "hair": "#2a1d17",
+          "top": "#2f6a3a",
+          "legs": "#2a2e36",
+          "shirt": "#2f6a3a",
+          "pants": "#2a2e36",
+          "clip": "Present"
+        },
+        "idle": [
+          "Inside, the roof lets the daylight through. On a sunny day you don't need a single lamp.",
+          "The old embankment they found here was the first railway in Japan: 1872, on the sea. {sun_line}"
+        ]
+      },
+      {
+        "id": "masa",
+        "name": "Masa 雅",
+        "role": "Sweet shop owner 和菓子屋",
+        "at": [
+          5.0,
+          -790.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_13_m017_grey",
+          "skin": "#e2b48f",
+          "hair": "#9a958f",
+          "top": "#3d4a5c",
+          "legs": "#1d2330",
+          "shirt": "#3d4a5c",
+          "pants": "#1d2330",
+          "clip": "Present",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#f4f1ea"
+        },
+        "idle": [
+          "Shinagawa-shuku: the first night out of Edo on the Tokaido. Inns, teahouses, and travellers saying goodbye.",
+          "My family has made sweets on this road for five generations. The road's older."
+        ]
+      },
+      {
+        "id": "kaori",
+        "name": "Kaori 香織",
+        "role": "Aquarium staff 水族館",
+        "at": [
+          -330.0,
+          -240.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_13",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#2a5d8a",
+          "legs": "#2b3440",
+          "shirt": "#2a5d8a",
+          "pants": "#2b3440",
+          "clip": "Talk"
+        },
+        "idle": [
+          "An aquarium in a hotel: dolphins, a jellyfish room, and a tunnel of sharks.",
+          "At night the dolphin show has lights and music. Book ahead."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "north",
+        "title": "Takanawa Gateway",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "south",
+        "title": "The old Tokaido",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "kenji",
+        "title": "Shinagawa",
+        "stamp": "Shinagawa",
+        "talk": [
+          "Welcome to Shinagawa. Konan's towers along the canal this side, hotels and hills across the tracks.",
+          "Walk up to Takanawa Gateway, the new station. Asuka can show you around."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "asuka",
+            "text": "Find Asuka at Takanawa Gateway"
+          }
+        ]
+      },
+      {
+        "id": "gateway",
+        "line": "north",
+        "giver": "asuka",
+        "title": "Takanawa Gateway",
+        "stamp": "Takanawa Gateway",
+        "talk": [
+          "Look at the roof: white membrane on timber, folded.",
+          "The whole rail yard here is becoming a new town. Come back in ten years."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "gateway",
+            "text": "Look at Takanawa Gateway's roof"
+          }
+        ]
+      },
+      {
+        "id": "shuku",
+        "line": "south",
+        "giver": "masa",
+        "title": "Shinagawa-shuku",
+        "stamp": "Shinagawa-shuku",
+        "talk": [
+          "The Tokaido, the old road to Kyoto. Walk along it a little.",
+          "Then go and see the dolphins up the hill, at the hotel. Kaori works there."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "shuku",
+            "text": "Walk along the old Tokaido"
+          },
+          {
+            "type": "talk",
+            "npc": "kaori",
+            "text": "Find Kaori at the aquarium"
+          }
+        ]
+      }
+    ]
+  }
+}
