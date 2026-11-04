@@ -46,8 +46,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2892353,
-   "game": 7167105
+   "model": 2892368,
+   "game": 7167120
   },
   "group_meta": {
    "kind": "city",
@@ -140,8 +140,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 13747323,
-   "game": 16750400
+   "model": 15753746,
+   "game": 18756823
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -174,8 +174,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4854123,
-   "game": 5401343
+   "model": 4985986,
+   "game": 5533206
   }
  },
  {
@@ -202,8 +202,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2039023,
-   "game": 2475310
+   "model": 2065628,
+   "game": 2501915
   }
  },
  {
@@ -229,8 +229,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 3760093,
-   "game": 7188387
+   "model": 3846250,
+   "game": 7274544
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -835,8 +835,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 8846977,
-   "game": 12404322
+   "model": 8858435,
+   "game": 12415780
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1427,8 +1427,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 7243375,
-   "game": 10105222
+   "model": 7239574,
+   "game": 10101421
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -2019,8 +2019,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4609652,
-   "game": 5705710
+   "model": 4664258,
+   "game": 5760316
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -2611,8 +2611,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 1541940,
-   "game": 2285788
+   "model": 1574470,
+   "game": 2318318
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3203,8 +3203,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4426386,
-   "game": 5251567
+   "model": 4464100,
+   "game": 5289281
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -7461,8 +7461,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 13294054,
-   "game": 19570734
+   "model": 15570951,
+   "game": 21847779
   }
  },
  {
