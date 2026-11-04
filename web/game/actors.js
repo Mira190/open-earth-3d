@@ -1221,7 +1221,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (toLine - c.half < -1) { c.overWhy = `${c.rel || ''} ${c.why} v ${c.v.toFixed(1)} toLine ${(toLine - c.half).toFixed(1)} lane ${c.ln} lo ${c.lo.toFixed(1)} lt ${lt}`; JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
               if (go && !room(c, jEx)) go = false;
-              const inLane = jEx.lanes.includes(c.ln || 0) && Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3; // (in a lane its movement can't go from, or still moving across: it waits)
+              // (in a lane its movement can't go from, or still moving across: it waits; but not one still
+              // holding its way through the junction behind, whose place in the road stays as it went in
+              // by until it is clear of that one: forced over its line there onto a piece too short to wait
+              // on, it would wait for good, holding that junction and its queues through every green, #144)
+              const inLane = jEx.lanes.includes(c.ln || 0) && (Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3 || (c.mv && c.mv.j !== jArm.j));
               if (!inLane) go = false;
               // a junction just after, too close to wait between: crossed with this one, its way chosen now
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
@@ -1421,7 +1425,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // held a long time all the same by one that isn't moving either (an awkward corner, two
         // stopped nose to nose): it squeezes past, in a junction sooner; and by one that only
         // inches along, caught up with it (the time counts on while it is held by one that moves)
-        c.inHeld = held ? (c.inHeld || 0) + dt : 0;
+        c.inHeld = held || c.revT > 0 ? (c.inHeld || 0) + dt : 0; // (a step taken back below, last frame, is held too)
         // (and in a junction, caught up behind one for 10 s: it squeezes past that one too)
         c.behindT = behind && !turn ? (c.behindT || 0) + dt : 0;
         const squeeze = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
@@ -1465,19 +1469,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // and a step along its road that took it deeper into another car is taken back (one parting
           // from a car it has long been caught with: deeper into any other), unless it is squeezing past
           // one it has waited on a long time; a step onto the next road was checked above, with the junction
-          // Taken back, it is held by that car: in a junction, by one waiting at its line whose nose is in
-          // the way out (and which waits for this very movement to clear), that one backs off, as for a
-          // step held above; and after 10 s it squeezes on past, as one held in a junction does (#144)
-          if (!turn && !squeeze && !(c.mv && c.revT > 10)) {
+          // Taken back, it is held by that car, as by a step held above: in a junction, by one waiting at
+          // its line whose nose is in the way out (and which waits for this very movement to clear), that one
+          // backs off; and it squeezes past in time, as one held is (#144: the step was taken back unseen,
+          // the time held never counted, and two nose to nose, or a movement out of a junction and the car
+          // waiting on it, stood for good)
+          if (!turn && !squeeze) {
             const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1, o1 = mostCar;
             if (f1 > 0 && f1 > (overlaps(c, was[3], was[4], Math.sin(was[6]), Math.cos(was[6]), 0, 0, null, kn), free ? fresh : depth) + 1e-3) {
               [c.line, c.s, c.dir, c.x, c.y, c.z, c.h] = was;
               [c.lo, c.ln] = wasLane;
               c.v = 0;
-              held = true; holder = o1; c.revT = (c.revT || 0) + dt;
+              held = true; holder = o1; c.revT = dt;
               if (o1 && c.mv && !o1.mv && o1.v < 0.3 && o1.toLine != null && o1.toLine - o1.half < 4) o1.backoff = 1.5;
             } else c.revT = 0;
-          } else c.revT = c.mv && c.revT > 10 && c.revT < 13 ? c.revT + dt : 0; // (squeezing on for 3 s)
+          } else c.revT = 0;
         }
         c.stuck = c.v < 0.1 && (byCar || held) && !c.q ? c.stuck + dt : 0;
         c.zebraT = why === 'zebra' && c.v < 0.3 ? (c.zebraT || 0) + dt : 0;

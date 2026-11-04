@@ -1138,6 +1138,7 @@ const npcNight = require('./npc_night');
   const heldQ = await p.evaluate(heldStep, { T: 180, max: 2 });
   check(heldQ.held.length === 0, `no queue at a signal held through more than two greens, and no movement left standing in a junction (${heldQ.watched} cars watched at their lines, ${heldQ.cycles} greens waited through${heldQ.held.length ? `; ${heldQ.held.length} held` : ''})`);
   for (const h of heldQ.held.slice(0, 6)) console.log('  ' + h);
+  if (heldQ.yours.length) console.log(`note held at a signal by your car, a ride or you in the road (not the junction's doing): ${heldQ.yours.length}\n  ${heldQ.yours.slice(0, 3).join('\n  ')}`);
 
   // the traffic keeps out of the walls: cars whose body (most of its width, knee to 1.4 m) is in a building or a
   // landmark, over 20 s; none stands at a wall across its way for long; and no one-way road that comes to a

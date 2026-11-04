@@ -4,18 +4,34 @@
 // Each green of the car's own light (for its movement) that begins and ends with the car still
 // there counts against it; a car that moves on, or leaves the line, starts again. It returns the
 // cars held through more than `max` greens, each with what held it and every movement in its
-// junction at the time.
-function heldStep({ T, max }) {
+// junction at the time (and apart, `yours`, those held by your car, a ride or you in the road).
+function heldStep({ T, max, chain: process_chain = false }) {
   const g = window.__game, A = g.cars, C = A.C, JN = g.junctions, L = A.netL;
   const idx = new Map(C.map((c, i) => [c, i]));
   const at = c => c.line >= 0 && c.lineArm && c.lineArm.j.sig && c.lineArm.j.mid == null && c.toLine - c.half < 3 && c.v < 0.3;
   const W = new Map(); // car -> { a (its arm), on (its light green last second), greens, why: [] }
+  // (where it is: along its piece, its lane, the line ahead and the lanes its way there goes from, its exit's line behind, the car in front)
+  const detail = c => {
+    const m = c.mv && c.mv.e.m, f = c.front;
+    return ` [s ${c.s.toFixed(1)} of ${L[c.line].len.toFixed(1)} dir ${c.dir} lane ${c.ln || 0}${c.lineArm ? `, line of junction ${c.lineArm.j.id} arm ${c.lineArm.i} ${(c.toLine - c.half).toFixed(1)} m on, its way from lanes ${c.lineEx ? c.lineEx.lanes : '-'}` : ''}${m ? `, out by piece ${m.line} back ${m.back.toFixed(1)}, via ${c.mv.via}` : ''}${c.mv0 ? `, still leaving ${c.mv0.j.id}` : ''}${process_chain ? `, held ${(c.inHeld || 0).toFixed(1)} behind ${(c.behindT || 0).toFixed(1)} tangle ${(c.tangleT || 0).toFixed(1)} backoff ${(c.backoff || 0).toFixed(1)} revT ${c.revT || 0} stuck ${(c.stuck || 0).toFixed(1)} q ${c.q}` : ''}${f && f.line != null ? `; in front car ${idx.get(f)} ${f.why} v ${(f.v || 0).toFixed(1)} on piece ${f.line}` : f ? '; in front: yours' : ''}${root(c)}]`;
+  };
+  // (the head of the cars in front, and what holds it)
+  const root = c => {
+    let x = c, k = 0;
+    while (x.front && x.front.line != null && k < 30 && x.why === 'car' || (x.why === 'held' && x.front && x.front.line != null && k < 30)) { x = x.front; k++; }
+    if (x === c) return '';
+    if (process_chain) { const P = []; for (let y = c, n = 0; y && y.line != null && n < 12; y = y.front, n++) P.push(`${idx.get(y)}:${y.line}/${y.dir}/${y.s.toFixed(0)}/${y.why}/q${y.q ? 1 : 0}/lo${(y.lo || 0).toFixed(1)}/off${(y.off || 0).toFixed(1)}`); return '; chain ' + P.join(' > '); }
+    return `; at the head ${k} cars on, car ${idx.get(x)} ${x.why}${x.heldBy ? ' by ' + x.heldBy : ''} v ${(x.v || 0).toFixed(1)} on piece ${x.line}${x.lineArm ? ` at junction ${x.lineArm.j.id} arm ${x.lineArm.i} ${(x.toLine - x.half).toFixed(1)} m on (light ${JN.light(x.lineArm, x.lineEx)})` : ''}${x.mv ? `, in junction ${x.mv.j.id}` : ''}${x.mv0 ? ` and ${x.mv0.j.id}` : ''}`;
+  };
   const mvDesc = (j, o, now) => {
     const c = o.c, a = j.arms[o.k];
-    return `car ${idx.get(c)} arm ${o.k}->${o.m & 15} lane ${o.m >> 4} in ${(now - o.t).toFixed(0)} s, v ${c.v.toFixed(1)} ${c.why}${c.heldBy ? ' by ' + c.heldBy : ''}, on piece ${c.line}${c.line === a.line ? ` ${(c.toLine - c.half).toFixed(1)} m to its line` : ''}${c.mv && c.mv.j !== j ? `, headed for junction ${c.mv.j.id}` : ''}${o.forced ? ', forced over its line' : ''}`;
+    return `car ${idx.get(c)} arm ${o.k}->${o.m & 15} lane ${o.m >> 4} in ${(now - o.t).toFixed(0)} s, v ${c.v.toFixed(1)} ${c.why}${c.heldBy ? ' by ' + c.heldBy : ''}${c.why === 'person' ? ` (${c.who >= 0 ? `walker ${c.who}, ${g.crowd.P[c.who].state} v ${g.crowd.P[c.who].v.toFixed(1)}` : `you or a character, ${Math.hypot(g.player.x - c.x, g.player.y - c.y).toFixed(0)} m from you`})` : ''}, on piece ${c.line}${c.line === a.line ? ` ${(c.toLine - c.half).toFixed(1)} m to its line` : ''}${c.mv && c.mv.j !== j ? `, headed for junction ${c.mv.j.id}` : ''}${o.forced ? ', forced over its line' : ''}${detail(c)}`;
   };
+  // (held by you: your car or a ride stopped in the way, or you on foot in the road, at the head of the
+  // cars in front: the game's doing, not the junction's, noted apart)
+  const byYou = c => { for (let x = c, k = 0; x && x.line != null && k < 15; x = x.front, k++) if (x.why === 'you' || (x.why === 'person' && !(x.who >= 0))) return true; return false; };
   let watched = 0, cleared = 0, cycles = 0;
-  const held = [], reported = new Set();
+  const held = [], yours = [], reported = new Set();
   // and a movement in a signalled junction whose car stands still in it longer than `max` of the
   // junction's cycles: one that never leaves (#150)
   const stillIn = new Map(), cycleOf = j => j.green[0] + j.green[1] + 2 * (j.amber + 2);
@@ -31,7 +47,7 @@ function heldStep({ T, max }) {
         stillIn.set(o, n);
         if (n > max * cycleOf(j) && !reported.has(o)) {
           reported.add(o);
-          held.push(`junction ${j.id}: a movement stands in it ${n} s, over ${max} cycles of ${cycleOf(j).toFixed(0)} s: ${mvDesc(j, o, now)}; the others in it: ${j.active.filter(x => x !== o).map(x => mvDesc(j, x, now)).join('; ') || 'none'}`);
+          (byYou(o.c) ? yours : held).push(`junction ${j.id}: a movement stands in it ${n} s, over ${max} cycles of ${cycleOf(j).toFixed(0)} s: ${mvDesc(j, o, now)}; the others in it: ${j.active.filter(x => x !== o).map(x => mvDesc(j, x, now)).join('; ') || 'none'}`);
         }
       }
     }
@@ -50,10 +66,10 @@ function heldStep({ T, max }) {
         reported.add(c);
         const j = c.lineArm.j, by = {};
         for (const y of w.whyLast) by[y] = (by[y] || 0) + 1;
-        held.push(`junction ${j.id} arm ${c.lineArm.i} (piece ${c.line}, ${L[c.line].c}): car ${idx.get(c)} at its line through ${w.greens} greens, held by ${Object.entries(by).map(([k, n]) => `${k} ${n} s`).join(', ')}; in the junction: ${j.active.map(o => mvDesc(j, o, now)).join('; ') || 'nothing'}; waiting: ${j.pend.map(o => `car ${idx.get(o.c)} arm ${o.k}->${o.m & 15} ${(now - o.since).toFixed(0)} s`).join(', ') || 'none'}`);
+        (byYou(c) ? yours : held).push(`junction ${j.id} arm ${c.lineArm.i} (piece ${c.line}, ${L[c.line].c}): car ${idx.get(c)} at its line through ${w.greens} greens, held by ${Object.entries(by).map(([k, n]) => `${k} ${n} s`).join(', ')}; in the junction: ${j.active.map(o => mvDesc(j, o, now)).join('; ') || 'nothing'}; waiting: ${j.pend.map(o => `car ${idx.get(o.c)} arm ${o.k}->${o.m & 15} ${(now - o.since).toFixed(0)} s`).join(', ') || 'none'}`);
       }
     }
   }
-  return { watched, cleared, cycles, held };
+  return { watched, cleared, cycles, held, yours };
 }
 module.exports = { heldStep };

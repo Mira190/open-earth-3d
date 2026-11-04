@@ -32,18 +32,26 @@ const MAX = Number(process.env.MAX_GREENS || 2);
     await p.evaluate(st => {
       window.requestAnimationFrame = () => 0;
       const g = window.__game, L = g.cars.netL;
-      if (st.j != null) { const j = g.junctions.J[st.j]; g.player.x = j.x + 12; g.player.y = j.y + 12; g.player.z = j.z; }
+      // (beside a road, off it: never standing in the traffic's way, as traffic_check.js places you)
+      const kerb = (l, k) => {
+        const ex = l.pts[k + 3] - l.pts[k], ey = l.pts[k + 4] - l.pts[k + 1], el = Math.hypot(ex, ey) || 1;
+        let off = 7.5;
+        for (const o of [6, -6, 9, -9, 12, -12, 16, -16]) if (!g.roadNet.nearest(l.pts[k] - ey / el * o, l.pts[k + 1] + ex / el * o, 5)) { off = o; break; }
+        g.player.x = l.pts[k] - ey / el * off; g.player.y = l.pts[k + 1] + ex / el * off; g.player.z = l.pts[k + 2];
+      };
+      if (st.j != null) { const a = g.junctions.J[st.j].arms[0], l = L[a.line], n = l.pts.length / 3; kerb(l, 3 * Math.max(0, Math.min(n - 2, Math.floor(n / 2)))); }
       else if (st.site > 0) {
         const d = l => Math.hypot(l.pts[0] - g.player.x, l.pts[1] - g.player.y);
         const cand = L.filter(l => l.len > 40 && d(l) > 250 * st.site && d(l) < 300 * st.site + 200);
-        if (cand.length) { const l = cand[(st.site * 7919) % cand.length]; g.player.x = l.pts[0] + 8; g.player.y = l.pts[1] + 8; g.player.z = l.pts[2]; }
+        if (cand.length) { const l = cand[(st.site * 7919) % cand.length]; kerb(l, Math.floor(l.pts.length / 6) * 3); }
       }
       g.advance(1);
     }, st);
-    const r = await p.evaluate(heldStep, { T: Number(secs), max: MAX });
+    const r = await p.evaluate(heldStep, { T: Number(secs), max: MAX, chain: !!process.env.CHAIN });
     const where = st.j != null ? `junction ${st.j}` : `place ${st.site}`;
     console.log(`${city} ${where}: ${r.watched} cars watched at signalled lines, ${r.cleared} cleared, ${r.cycles} greens seen; held through more than ${MAX} greens: ${r.held.length}`);
     for (const h of r.held) console.log('  ' + h);
+    for (const h of r.yours) console.log('  (by you) ' + h);
     bad += r.held.length;
     await p.close();
   }
