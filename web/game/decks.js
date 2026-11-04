@@ -165,10 +165,28 @@ window.OEDecks = (function () {
       // what each point is on: 0 the ground, 1 a surface already built (a bridge's strip, steps, a pier), 2 a deck to build
       let cls = new Uint8Array(n), zs = new Float32Array(n);
       for (let k = 0; k < n; k++) {
-        const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), water = nav.isWater(x, y), s = nav.surfaceAt(x, y);
-        if (s > -Infinity && (Math.abs(s - z) < 1 || (water && z - s < 2 * RISE))) { cls[k] = 1; zs[k] = s; } // put on it by the data, or over the water on a pier
+        const x = X(k), y = Y(k), z = p[3 * k + 2] / 10, g = nav.terrain(x, y), water = nav.isWater(x, y);
+        let s = nav.surfaceAt(x, y);
+        // a level over a raised deck that is drawn, or a metre off its edge: a bridge's sidewalk the data lifts a
+        // level where the bridge itself is an area (Ebisubashi)
+        let lifted = false;
+        if (!water && z - g > RISE) {
+          const s1 = Math.max(s, ...[[1, 0], [-1, 0], [0, 1], [0, -1]].map(([dx, dy]) => nav.surfaceAt(x + dx, y + dy)));
+          if (s1 > g + 1 && z > s1 && z - s1 < 2 * RISE) { s = s1; lifted = true; }
+        }
+        // put on it by the data, or over the water on a pier, or lifted a level over it
+        if (s > -Infinity && (Math.abs(s - z) < 1 || (water && z - s < 2 * RISE) || lifted)) { cls[k] = 1; zs[k] = s; }
         else if (!water && z - g <= RISE) zs[k] = g; // on the ground drawn there
         else { cls[k] = 2; zs[k] = z; }
+      }
+      // a line that comes onto a built surface and ends under it, where the data stops short of a bridge it
+      // does not map (Ebisubashi, an area in OpenStreetMap: the street's line ends at the river walk's level
+      // under the deck): its loose end is on the surface with the point before it (not an end another line
+      // meets, such as a ramp's foot on a quay under a bridge, nor steps, which go down off it)
+      if (o.c !== 'steps' && n > 1) for (const [k, j] of [[0, 1], [n - 1, n - 2]]) {
+        if (cls[k] !== 0 || cls[j] !== 1 || joined(X(k), Y(k))) continue;
+        const s = nav.surfaceAt(X(k), Y(k));
+        if (s > zs[k] + 1 && s - zs[k] < 2 * RISE && Math.abs(s - zs[j]) < 1.5) { cls[k] = 1; zs[k] = s; }
       }
       // a line along a bridge's strip that the data puts a few metres past its edge, and so far below it (the
       // Harbour Bridge cycleway, mapped a metre outside the deck and given the ground's height plus a level):

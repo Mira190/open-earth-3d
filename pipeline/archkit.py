@@ -641,15 +641,16 @@ def hall(K, P, L, W, ridge, mats, eave_frac=0.42, over=None, base_h=1.0, mokoshi
             mats=(mats["roof"], mats["ridge"], mats.get("gable", mats["ridge"])), gable_frac=gable_frac, sag=0.16, ridge_h=min(2.2, 0.03 * L + 0.6))
 
 
-def gate(K, P, L, W, ridge, mats, storeys=2):
-    """A temple gate (三門 / 二重門): two storeys under two roofs, open bays at the foot."""
+def gate(K, P, L, W, ridge, mats, storeys=2, base_h=0.8, foot=0.3):
+    """A temple gate (三門 / 二重門): two storeys under two roofs, open bays at the foot, on a stone
+    platform (基壇) base_h m up, its stone running foot m below the frame's 0 into the ground."""
     base, post = K[mats["base"]], K[mats["post"]]
-    block(base, P, -L / 2, L / 2, -W / 2, W / 2, -0.3, 0.8)
-    z1 = 0.8 + (ridge - 0.8) * (0.32 if storeys == 2 else 0.5)
+    block(base, P, -L / 2, L / 2, -W / 2, W / 2, -foot, base_h)
+    z1 = base_h + (ridge - base_h) * (0.32 if storeys == 2 else 0.5)
     for u in np.linspace(-L / 2 + 1.0, L / 2 - 1.0, 6):
         for v in (-W / 2 + 1.0, 0.0, W / 2 - 1.0):
-            x, y, z = P(u, v, 0.8)
-            post.lathe([(z, 0.42), (z + z1 - 0.8, 0.42)], (x, y), segs=6)
+            x, y, z = P(u, v, base_h)
+            post.lathe([(z, 0.42), (z + z1 - base_h, 0.42)], (x, y), segs=6)
     if storeys == 2:
         z2 = z1 + 1.8
         irimoya(K, P, L - 2.0, W - 2.0, z1 + 0.6, 2.2, over=2.6, lift=0.6, mats=(mats["roof"], mats["ridge"], mats["ridge"]), gable_frac=1.0, sag=0.08)
