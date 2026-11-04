@@ -998,7 +998,7 @@ window.OECars = (function () {
         if (Math.abs(w - lane - (stopped ? 0 : st.shift)) >= room) continue;
         if (stopped) {
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
-          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
+          if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); o.whyRound = o.still === true ? 'flagged still' : o.still > 6 ? `stood ${o.still.toFixed(0)} s` : st.held > 6 && (o.v || 0) < 0.1 ? `held ${st.held.toFixed(0)} s` : 'went round already'; continue; }
         }
         if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = oq; }
       }
