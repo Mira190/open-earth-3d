@@ -167,6 +167,34 @@ in front of its western neighbour's wall, and the 新宿オカダヤ building to
 end of the bend from some of the plaza); how long each leg of the bend is; how the Unica screens are spaced round their front and
 how high up it they are (estimated from photographs).
 
+## 4a. Kabukicho at street level, autumn 2026
+
+`cities/shinjuku/kabukicho.py` draws what a walker sees between the east exit and Cine City Plaza, as
+it stands now, on OpenStreetMap's hand-mapped detail (`cities/shinjuku/kabukicho_osm.json`,
+`pipeline/osm_detail.py`, ODbL) and photographs (Wikimedia Commons, 2023 to September 2026; looked at,
+not copied into the repository). Its signs and screens have an atlas of their own (`kabukicho.jpg`).
+
+| What | As built | Source |
+|---|---|---|
+| Kabukicho Ichibangai's arch (1969) | Two grey granite pillars 3.3 m high, 8.6 m apart (the street between the corner buildings); on them a red box-section ribbon 0.62 m deep looped over the street, the upper band climbing from 6.75 m at the east post to 7.65 m at the west, the lower band falling the other way under the sign; two rows of bulbs on both faces; the white sign 歌舞伎町一番街 in red, 5.0 × 1.05 m, the same both ways; the pink 劇場通り boxes on the pillars. It stands 11 m up the street from Yasukuni-dori, where the zebra across the mouth of the street ends. OSM maps it as a little building (w820506894), which is not drawn. | Commons photographs of September 2026 (south side, in rain) and 2023 (north side); 55th year in 2025: [Sanshin Shoji](https://san-tatsu.jp/pressrelease/462363/) |
+| The canyon: Ichibangai, Central Road, Sakura-dori | A tall tenant sign standing out from each 7 m of front, from the second floor to one under the roof, a panel a floor with its floor (2F ... B1F) in a band; a lit box over each shop front; lantern lamps every 12 m on alternate sides, half a metre in front of the fronts. The trades are Kabukicho's; the names are invented, not the real tenants'. The districts' generic shop signs (`cities/shibuya/city.py`) are left off these fronts. | Commons photographs; OSM maps no lamps there |
+| The kaiju on the Shinjuku Toho Building | A head 12 m tall on the eighth-floor terrace, its top about 52 m over the street, looking down Central Road (Godzilla Road). Sculpted for the model (`pipeline/sculptkit.py`): a generic reptile, open-jawed, with plates down its neck; not Toho's figure. The building is redrawn: an eight-storey podium (40 m) whose roof is the terrace, and the hotel tower set back 15 m behind it to the building's 130 m (PLATEAU's outline carries the tower's height over the whole footprint). | [Movie Walker](https://press.moviewalker.jp/news/article/57464/), [eiga.com](https://eiga.com/news/20150409/17/) (April 2015: 12 m, about 52 m up, 80 t) |
+| Studio Alta (新宿ダイビル, 1980) | Closed on 28 February 2025, pulled down from 25 April 2025, the lot clear by July 2026. Its solids are left out (`landmark_demolished`); a white hoarding 3 m high stands round the lot, its notice toward the plaza. What goes up next has not been announced. | [WWD](https://www.wwdjapan.com/articles/2050496), [Livedoor News](https://x.com/livedoornews/status/1905396056751579292), [site report, 2026](https://kiichiroyoshimoto.jp/2026/04/27/45%E5%B9%B4%E3%81%AE%E6%AD%B4%E5%8F%B2%E3%81%8C%E3%80%81%E4%BB%8A%E3%81%BE%E3%81%95%E3%81%AB%E6%9B%B4%E5%9C%B0%E3%81%B8%E3%81%A8%E3%83%BB%E6%96%B0%E5%AE%BF%E3%82%A2%E3%83%AB%E3%82%BF1984%E2%87%942026/) |
+| The Unica building's names | UNIKA BLDG. over its screens, GOLF5's green flagship box and Alpen TOKYO over the shop floors, on its curved front to Yasukuni-dori: what you see through the arch from the north. | Commons photographs, 2023-2026 |
+
+**Learning from a game, not copying it.** Kabukicho is the model for the Yakuza series' Kamurocho
+(Ryu Ga Gotoku Studio). What its streets get right, and what was adopted here: the gate as the
+threshold you pass under, read from both sides; the canyon made by tenant signs standing out from
+every front, one tenant a floor, which reads as a wall of light at night from far down the street;
+a tower and a plaza closing the north end; and a district told in short encounters with the people
+on its streets (overheard talk, things to look at, small errands) rather than in a single plot. Its
+names, signs, characters and look are not used.
+
+What could not be checked: the arch's heights (scaled from photographs, about ±0.4 m); whether Cross
+Shinjuku Vision 2, announced for 2026 on a new four-storey building across the side street from the
+Cross Shinjuku building, has opened (it is not drawn); the tenants of each building; the real
+lamp positions; the exact plan of the Toho building's terrace.
+
 ## 5. Shinkai's Shinjuku: the pilgrimage sites
 
 Makoto Shinkai's films made central Shinjuku one of the most visited places for film pilgrimages
@@ -268,8 +296,8 @@ screen; then four lines run side by side, and a report back waits for all of the
 
 | Line | Who | What you do |
 |---|---|---|
-| Welcome | Nao at the east exit | Stand under the cat on the corner screen, meet Officer Ono at the Kabukicho koban |
-| Shinjuku | Mika, a bartender in 2-chome; Officer Ono at the koban | See Kabukicho's arch after dark |
+| Welcome | Nao at the east exit | Stand under the cat on the corner screen, look across at Studio Alta's cleared lot, walk under the arch and up Ichibangai to Cine City Plaza, meet Officer Ono at the Kabukicho koban (where it stands, at the top of the street) |
+| Shinjuku | Mika, a bartender in 2-chome; Officer Ono at the koban; Fumi, who keeps a bar in Golden Gai; Kenta, a yakitori cook in Omoide Yokocho | See the arch after dark; look up at the kaiju over Central Road; find Golden Gai, walk up to Hanazono Shrine (its Tori-no-ichi in November); cross under the railway to Omoide Yokocho, and stand at the west exit where the Odakyu department store's main building came down (2022-) for a 260 m tower (2029) |
 | Your Name | Xiaoyu, a pilgrim from Shanghai; Mr Sato, a Yotsuya resident | Climb the 男坂, read an ema, stand at the foot of the stairs (a choice sets the clock to dusk) |
 | Aoyama | Rin, a high-school student | Walk the ginkgo avenue at Jingu Gaien |
 | Shinkai's Shinjuku | Kaede, a garden volunteer; Kenji, a photographer; Haruka, a Sophia student | Sit in the shelter by the pond, walk under the trellis to the Kyu-Goryotei, stand on the Shinanomachi footbridge, walk Yotsuya's moat, find where Yoyogi Kaikan stood, and Sangubashi Station (section 5) |
@@ -280,6 +308,9 @@ helipad on Kabukicho's Cine City Plaza, by the Toho building, is a game device; 
 Travel points: the east exit, Tochomae, Suga Shrine and the foot of the 男坂, Kabukicho, Aoyama-itchome,
 the shelter in Shinjuku Gyoen, the Shinanomachi footbridge and Yotsuya Station; `#play-shinjuku@t-suga`
 starts at the shrine. The people are original characters. None stands for a real shop's staff.
+Kabukicho adds things to look at (the arch, the head over Central Road, Studio Alta's lot) and talk
+to overhear (`kabukicho.extras`). An NPC added to city.json, or moved there by more than 20 m, stands
+where city.json puts it when `pipeline/game_text.py` copies the text, without a full game-data build.
 
 ## 7. Sun
 

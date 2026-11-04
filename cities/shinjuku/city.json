@@ -363,6 +363,9 @@
     "landmarks": "Suga Shrine's 男坂 from the Tokyo stairs database (52 steps, 3.6 m, 16 m, 27°, red iron handrails); its hall, torii and furniture placed from OpenStreetMap and photographs; the Docomo tower's clock (15 m, 150 m up; Tokyo tourism, TV Tokyo) and mast (272 m; SkyscraperPage); Kabukicho's arch (1969; Sanshin Shoji). Signs, screens and shop fronts are indicative.",
     "fonts": "Ema, plaques and signs drawn with Google Fonts under the SIL Open Font License: Yomogi, Zen Kurenaido, Klee One, Yuji Syuku, Shippori Mincho, DotGothic16, RocknRoll One, Ma Shan Zheng, ZCOOL KuaiLe, Long Cang, LXGW WenKai TC, Nanum Pen Script, Caveat, Kalam"
   },
+  "osm_detail": {
+    "kabukicho": {"bbox": [139.699, 35.6895, 139.705, 35.6965], "note": "Kabukicho from Yasukuni-dori to Cine City Plaza and the east exit's plaza: pipeline/osm_detail.py"}
+  },
   "night_ambient": 0.08,
   "game": {
     "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
@@ -778,10 +781,10 @@
       {
         "id": "ono",
         "name": "Officer Ono 小野巡査",
-        "role": "Kabukicho koban 交番",
+        "role": "Kabukicho koban 歌舞伎町交番",
         "at": [
-          401.1,
-          2800.8
+          467.5,
+          3059.5
         ],
         "look": {
           "character": "R_Police_Male_01_m024_plain",
@@ -797,7 +800,7 @@
         },
         "idle": [
           "Touts are not allowed to follow you. If one does, come to the koban.",
-          "The arch went red in 1969. It's been red ever since."
+          "The arch at the bottom of the street went up in 1969. Red ever since."
         ]
       },
       {
@@ -875,6 +878,52 @@
           "Lectures across the road, the moat's bank for lunch.",
           "Yotsuya at {time}. {sun_line}"
         ]
+      },
+      {
+        "id": "fumi",
+        "name": "Fumi 文",
+        "role": "Bar owner, Golden Gai ゴールデン街",
+        "at": [
+          733.9,
+          2832.6
+        ],
+        "look": {
+          "character": "R_Female_Adult_09_f011_grey",
+          "skin": "#efc9ad",
+          "hair": "#8f8a86",
+          "top": "#2c2f3a",
+          "legs": "#1c1d22",
+          "shirt": "#2c2f3a",
+          "pants": "#1c1d22",
+          "clip": "Work"
+        },
+        "idle": [
+          "Six seats, one counter, forty years. You'd be surprised who has sat on them.",
+          "We open at seven. Some nights the whole bar is three people and a record player."
+        ]
+      },
+      {
+        "id": "kenta",
+        "name": "Kenta 健太",
+        "role": "Yakitori cook, Omoide Yokocho 思い出横丁",
+        "at": [
+          270.9,
+          2728.2
+        ],
+        "look": {
+          "character": "R_Male_Adult_06",
+          "skin": "#e3b593",
+          "hair": "#141010",
+          "top": "#f2efe8",
+          "legs": "#2b2b30",
+          "shirt": "#f2efe8",
+          "pants": "#2b2b30",
+          "clip": "None"
+        },
+        "idle": [
+          "Salt or sauce? Everyone's first question, and the only one that matters.",
+          "The smoke is the sign. You smell this lane before you see it."
+        ]
       }
     ],
     "lines": [
@@ -930,8 +979,9 @@
         "title": "The east exit",
         "stamp": "Shinjuku east exit",
         "talk": [
-          "ようこそ新宿へ! I'm Nao. I guide pilgrims: people who come to stand where a story stood. Ten years ago a film put a staircase in Yotsuya on its poster, and a game sent its heroes to Shinjuku's bars.",
-          "The busiest station in the world is behind you. Look up at the corner: the cat on the curved screen. Then go up the street to Kabukicho's arch and say hello at the koban. A hand up at the kerb (Y) stops a taxi."
+          "ようこそ新宿へ! I'm Nao. I guide pilgrims: people who come to stand where a story stood. Ten years ago a film put a staircase in Yotsuya on its poster, and games keep sending their heroes into Kabukicho's lanes.",
+          "The busiest station in the world is behind you. Look up at the corner: the cat on the curved screen. Across the side street, that white hoarding is where Studio Alta stood from 1980. It closed in February 2025 and came down by this summer.",
+          "Then up the street to Kabukicho's red arch, through Ichibangai to the plaza at the top, and say hello to Officer Ono at the koban there. A hand up at the kerb (Y) stops a taxi."
         ],
         "steps": [
           {
@@ -942,6 +992,33 @@
             ],
             "radius": 16,
             "text": "Stand under the cat on the corner screen"
+          },
+          {
+            "type": "visit",
+            "at": [
+              420.8,
+              2663.7
+            ],
+            "radius": 10,
+            "text": "Look across at the hoarding where Studio Alta stood"
+          },
+          {
+            "type": "visit",
+            "at": [
+              409.2,
+              2811.0
+            ],
+            "radius": 7,
+            "text": "Walk under Kabukicho's red arch"
+          },
+          {
+            "type": "visit",
+            "at": [
+              404.3,
+              2996.4
+            ],
+            "radius": 18,
+            "text": "Come out on Cine City Plaza"
           },
           {
             "type": "talk",
@@ -1022,23 +1099,23 @@
         "stamp": "Shinjuku",
         "talk": [
           "Shinjuku 2-chome: a few hundred bars, most of them the size of a living room. A game put a bar here where a journalist drank.",
-          "Kabukicho's arch has been red since 1969. Go and see it after dark, and say hello to Officer Ono at the koban."
+          "Kabukicho's arch has been red since 1969. See it after dark, then walk up Ichibangai to Officer Ono at the koban by Cine City Plaza."
         ],
         "steps": [
           {
             "type": "visit",
             "at": [
-              407.9,
-              2806.1
+              409.2,
+              2811.0
             ],
-            "radius": 15,
+            "radius": 12,
             "after_dark": true,
             "text": "See Kabukicho's arch after dark"
           },
           {
             "type": "talk",
             "npc": "ono",
-            "text": "Talk to Officer Ono"
+            "text": "Talk to Officer Ono at the koban"
           }
         ]
       },
@@ -1049,10 +1126,77 @@
         "title": "Kabukicho",
         "stamp": "Kabukicho",
         "talk": [
-          "Kabukicho is named for a kabuki theatre planned here after the war. It was never built; the name stayed.",
-          "From the south side of the station you can see the Docomo tower's clock: {landmark:docomo.clock_d_m} metres across, {landmark:docomo.clock_z_m} metres up. You may know it from a film."
+          "Kabukicho is named for a kabuki theatre planned here after the war. It was never built; the name stayed, and the cinemas came instead.",
+          "The Koma Theatre stood across the plaza from 1956 to 2008. On its site now, the Toho building: cinemas below, a hotel above, and on the eighth-floor terrace a monster's head, twelve metres of it, fifty-odd metres over the street. Go down Central Road and look up. People call it Godzilla Road now.",
+          "The tower behind me opened in 2023: 225 metres, built to look like a fountain springing out of the ground; this plaza had one once. When you've seen the head, find Golden Gai, east past the ward office. Ask for Fumi."
         ],
-        "steps": []
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              469.3,
+              2871.3
+            ],
+            "radius": 12,
+            "text": "Look up at the head over Central Road"
+          },
+          {
+            "type": "talk",
+            "npc": "fumi",
+            "text": "Find Fumi in Golden Gai"
+          }
+        ]
+      },
+      {
+        "id": "goldengai",
+        "line": "shinjuku",
+        "giver": "fumi",
+        "title": "Golden Gai",
+        "stamp": "ゴールデン街",
+        "talk": [
+          "Golden Gai: six lanes, some two hundred bars, two storeys of wood each, most built in the late fifties. Writers, film people, musicians. Some seat five.",
+          "In the bubble years men came with money to buy us out, and some tried worse. Most of us stayed. Now the lanes are full of travellers, and we're glad of them. Read the door before you sit: some bars charge a seat fee.",
+          "Hanazono Shrine is just behind us: Shinjuku's own shrine since Edo. In November it holds the rooster fair, Tori-no-ichi, all night, with bamboo rakes for luck. Pay your respects. Then go west, under the great railway bridge, to Omoide Yokocho. Kenta grills there."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              763.3,
+              2793.0
+            ],
+            "radius": 16,
+            "text": "Walk up to Hanazono Shrine"
+          },
+          {
+            "type": "talk",
+            "npc": "kenta",
+            "text": "Find Kenta in Omoide Yokocho, by the west exit"
+          }
+        ]
+      },
+      {
+        "id": "omoide",
+        "line": "shinjuku",
+        "giver": "kenta",
+        "title": "Omoide Yokocho",
+        "stamp": "思い出横丁",
+        "talk": [
+          "Omoide Yokocho: Memory Lane. It started as a black market by the west exit after the war. Eighty-odd counters now, each under a roof you can touch.",
+          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 260 metres, goes up there for 2029. The lane stays. The smoke stays.",
+          "Go and stand at the west exit and see the gap it left. Then come back and eat."
+        ],
+        "steps": [
+          {
+            "type": "visit",
+            "at": [
+              205.9,
+              2602.9
+            ],
+            "radius": 25,
+            "text": "Stand at the west exit where the department store stood"
+          }
+        ]
       },
       {
         "id": "icho",
