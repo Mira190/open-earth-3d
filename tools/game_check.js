@@ -826,6 +826,25 @@ const npcNight = require('./npc_night');
     : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
 
+  // photo mode's depth of field (its aperture), and none of it back in play (atmosphere.js camFx); a city
+  // with a busy crossing's sound (game.look.sound) finds the crossing's signals
+  const fx = await p.evaluate(async () => {
+    const g = window.__game, A = g.atmos, frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    const snd = g.sound ? g.sound() : null;
+    if (!A || !A.composer || !A.camFx) return { none: true, snd };
+    if (g.player.mode === 'car') { g.exitCar(); g.advance(1); }
+    g.photoMode(true); g.photo.fstop = 1.4;
+    for (let i = 0; i < 3; i++) await frame();
+    const pass = A.composer.passes.find(q => q.uniforms && q.uniforms.uAperture);
+    const on = !!(g.photo.on && pass && pass.enabled && pass.uniforms.uAperture.value > 0);
+    g.photoMode(false);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.1);
+    for (let i = 0; i < 3; i++) await frame();
+    return { on, off: !(pass && pass.enabled), snd };
+  });
+  check(fx.none || (fx.on && fx.off), fx.none ? 'no post stack for the depth of field' : `photo mode focuses with a depth of field (${fx.on}), and play has none (${fx.off})`);
+  if (fx.snd) check(fx.snd.junction != null, `the crossing's sound listens to its signals (junction ${fx.snd.junction})`);
+
   // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
   const lights = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
