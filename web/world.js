@@ -1036,7 +1036,7 @@ ${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
     const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1, fixed: ((P.trees || []).length + (P.woods || []).length) / 4 }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {
