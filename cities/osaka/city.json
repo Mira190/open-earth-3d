@@ -215,6 +215,27 @@
       "hold": 8
     },
     {
+      "title": "Namba Parks",
+      "text": "The Jerde Partnership's mall on the site of the old Osaka Stadium, opened in 2003: a canyon curves through it, and its roof is a park, terraces stepping up from the 2nd floor by Nankai Namba station to the 9th.",
+      "cam": [
+        -870,
+        -1820,
+        140
+      ],
+      "tgt": [
+        -1005,
+        -1980,
+        15
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "13:00",
+      "to": "14:00",
+      "hold": 9
+    },
+    {
       "title": "Tsutenkaku",
       "text": "The tower of Shinsekai: {landmark:tsutenkaku.published_m} m, {landmark:tsutenkaku.with_rod_m} m with the lightning rod, rebuilt in 1956. The gold observatory is on the fifth floor at {landmark:tsutenkaku.observatory_m} m.",
       "cam": [

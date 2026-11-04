@@ -18,6 +18,17 @@ checked and what was not. Every number comes from the scripts in `pipeline/` and
   150 m and 250 m, an 80 m base), anchored at its published coordinates. It is
   an approximation of the lattice, not a scan.
 
+### The National Diet Building
+
+The Diet's 26 mapped solids are drawn in granite by `cities/tokyo/diet.py` and
+hidden (they stay in the surface model): courses over a plinth, three storeys of
+tall windows between string courses, cornice and parapets, the chambers'
+measured skylit roofs, the east porch's square columns, and the tower: a square
+base, the colonnade of its upper stage between corner piers and the stepped
+pyramid to the lantern at 65.45 m (House of Representatives, the building's
+fact sheet: 206.36 by 88.63 m). The storeys and the tower's stages are taken
+from photographs.
+
 ## 2. Sources
 
 | Layer | Source | Licence |

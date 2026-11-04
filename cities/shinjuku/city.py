@@ -9,8 +9,9 @@ Kabukicho Ichibangai's arch, the screens over the east exit, the shop signs of K
 
 On top of those, the places of Makoto Shinkai's films that are in this map (pipeline/shinkai.py, issue
 #86): Shinjuku Gyoen's shelter of The Garden of Words, its wisteria trellis, the Kyu-Goryotei and the
-Japanese garden's ponds, and the Shinanomachi Station footbridge of Your Name. The hooks below chain the
-shared file's and shinkai's.
+Japanese garden's ponds, and the Shinanomachi Station footbridge of Your Name. The Tokyo Metropolitan
+Government Building is drawn on its OpenStreetMap parts at their own heights (cities/shinjuku/tocho.py).
+The hooks below chain the shared file's, shinkai's and tocho's.
 """
 import importlib.util
 import os
@@ -26,9 +27,13 @@ globals().update({k: v for k, v in vars(_m).items() if not k.startswith("_")})
 
 import shinkai  # noqa: E402  (pipeline/ is on the path of every script that loads a city)
 
+_tspec = importlib.util.spec_from_file_location("shinjuku_tocho", os.path.join(os.path.dirname(os.path.abspath(__file__)), "tocho.py"))
+tocho = importlib.util.module_from_spec(_tspec)
+_tspec.loader.exec_module(tocho)
+
 
 def adjust_building(b, cls, g, geoms, ctx):
-    return shinkai.building(b, cls, g, _m.adjust_building(b, cls, g, geoms, ctx), ctx)
+    return tocho.building(b, shinkai.building(b, cls, g, _m.adjust_building(b, cls, g, geoms, ctx), ctx), ctx)
 
 
 def adjust_terrain(dem, C, cell):
@@ -42,7 +47,14 @@ def finalize(ctx):
 
 def landmark_meshes(scene):
     mats, meshes, extra = _m.landmark_meshes(scene)
-    return {**mats, **shinkai.MATERIALS}, meshes + shinkai.meshes(scene["landmarks"]), extra
+    tm, th = tocho.meshes("shinjuku")  # the Tokyo Metropolitan Government Building (cities/shinjuku/tocho.py)
+    extra = {**extra, "hidden": sorted(set(extra.get("hidden", [])) | set(th))}
+    return {**mats, **shinkai.MATERIALS, **tocho.MATERIALS}, meshes + shinkai.meshes(scene["landmarks"]) + tm, extra
+
+
+def retop(sd):
+    """pipeline/retop.py: the Metropolitan Government Building's parts at their own heights."""
+    return tocho.retop(sd)
 
 
 def landmark_glows(scene):

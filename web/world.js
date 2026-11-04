@@ -1013,10 +1013,11 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     }
 
     // trees mapped in OSM, then those planted from the woods' and parks' canopy (pipeline/woods.py,
-    // with measured heights; a third of them on a small device): the shared Blender species
+    // with measured heights; a third of them on a small device), then a landmark's own (landmarks.json
+    // "trees", [x, y, z, height] dm: a roof garden's, standing on its terraces): the shared Blender species
     // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
     // heights are not mapped (7-14 m spread)
-    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || []), nT = TR.length / 4;
+    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
       try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
