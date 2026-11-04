@@ -880,7 +880,22 @@ model that is not compressed.
 | `cars.glb` | 5.40 MB | 2.35 MB |
 | `helicopter.glb` | 3.75 MB | 1.69 MB |
 | `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
-| `trees.glb`, its leaf atlas a WebP (`pipeline/glb_webp.py`: 1.30 MB as a PNG, 0.28 MB at quality 92, the cut-out alpha exact) | 2.11 MB | 0.76 MB |
+| `trees.glb` (48 species and stages), its leaf atlases WebP (`pipeline/glb_webp.py`: quality 92, the cut-out alpha exact; a fifth of the PNG) | 5.15 MB | 1.85 MB |
 | the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
 | the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
-| all 87 shared models | 57.24 MB | 34.89 MB |
+| all 87 shared models | 60.28 MB | 35.98 MB |
+
+What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
+issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):
+
+| Shibuya `#play` | files | raw | on the wire | playable at 20 Mbps |
+|---|---|---|---|---|
+| before | 128 | 66.3 MB | 45.2 MB | 67.4 s |
+| after | 127 | 36.6 MB | 27.7 MB | 55.3 s |
+
+The times are on a software renderer (Mesa llvmpipe), where building the scene's shaders and
+geometry, not the network, takes most of them; on a GPU the download is the larger share.
+
+The helicopter (1.7 MB) is no longer among them: it is fetched when the player comes within 800 m of
+its pad or boards it. NPCs whose characters no one within 300 m of the start wears load after the
+game opens.
