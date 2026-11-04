@@ -28,6 +28,18 @@ from japankit import Atlas
 HERE = os.path.dirname(os.path.abspath(__file__))
 ATLAS_FILE = "scramble.jpg"
 
+
+def _sibling(name):
+    """A module next to this one (this folder is not on sys.path): streets.py, the streets off the scramble."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"shibuya_{name}", os.path.join(HERE, f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+streets = _sibling("streets")
+
 MATERIALS = {
     # the junction's asphalt, laid over the ground (dark, a little worn; the game's street texture under it)
     "x_asphalt": {"color": "#4b4e52", "roughness": 0.93, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0], "decal": True, "street_lit": True},
@@ -61,7 +73,7 @@ MATERIALS = {
     "x_qf_panel": {"color": "#cfd2d5", "roughness": 0.45, "metalness": 0.5},
     "x_qf_roof": {"color": "#6d7176", "roughness": 0.8, "metalness": 0.2},
     "x_shop": {"color": "#59616a", "roughness": 0.12, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.8, "spandrel": 0.04,
-               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 1.0, "lit_k": 1.1, "warm_share": 0.8},
+               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 0.9, "lit_k": 0.8, "warm_share": 0.8},
     # QFRONT's floors behind the outer skin (as city.py's qfront_glass)
     "qfront_glass": {"color": "#2b3741", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.55, "lit_k": 0.6},
@@ -88,7 +100,8 @@ MATERIALS = {
     "x_bk_blue": {"color": "#1f45a8", "roughness": 0.65, "metalness": 0.0},
     "x_bk_box": {"color": "#f1f1ee", "roughness": 0.5, "metalness": 0.1},
 }
-LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp"}
+MATERIALS.update(streets.MATERIALS)
+LIT = {"x_light", "x_atlas", "x_print", "x_red_lamp"}
 
 
 # ---------------------------------------------------------------- data
@@ -1111,7 +1124,9 @@ def draw_gate(img, rects):
 # over the street); the brands are invented, in the kinds the real ones are (a pharmaceutical's two
 # boxes, a card company, a furniture store, throat lozenges, a karaoke chain).
 BILLBOARDS = [
-    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 11.0, 3.6), ("bb_hikari2", 11.0, 6.2)], "gap": 0.5, "lift": 1.0},
+    # the Taiseido block's tower: three boxes stacked tight (15 cm apart) up to the tower's top at 39.4 m
+    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 11.0, 3.6), ("bb_hikari2", 11.0, 6.2), ("bb_lens", 11.0, 4.0)],
+     "gap": 0.15, "lift": 1.0},
     {"at": (306.5, -951.0), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_card", 8.0, 8.0)], "lift": 3.0},
     {"at": (281.0, -952.0), "face": (372.0, -1020.0), "roof_m": 37.8, "boxes": [("bb_home", 10.5, 4.8)], "lift": 2.0},
     {"at": (274.0, -968.0), "face": (372.0, -1020.0), "roof_m": 52.1, "boxes": [("bb_nodo", 12.0, 5.6)], "lift": 1.5},
@@ -1135,6 +1150,7 @@ BB_ART = {
     "bb_card": ("#ffffff", "NC", "anton", "#1d3c9a", "NOVA CARD"),
     "bb_home": ("#f2c400", "HOMELY", "anton", "#164aa8", "家具と雑貨"),
     "bb_nodo": ("#f06aa0", "のどにハッカ", "zen", "#ffffff", "ハッカ散 ダイレクト"),
+    "bb_lens": ("#0b2a6f", "1DAY CLEAR", "anton", "#ffffff", "コンタクト レンズ"),
     "band_shabu": ("#f07a1a", "しゃぶしゃぶ 葉山", "zen", "#ffffff", None),
     "band_cafe": ("#d7262b", "Cafeレストラン ガロ", "zen", "#ffffff", None),
     "band_megane": ("#d42f2f", "メガネ・コンタクト", "zen", "#fff3a0", None),
@@ -1550,6 +1566,7 @@ class Build:
         items += [("jr_clear", 384, 96), ("st_billboard", 1024, 480), ("st_hoarding", 512, 160), ("magnet_name", 768, 112), ("koban_sign", 384, 76), ("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
         items += [("qf_crown", 1024, 320), ("qf_name", 384, 52), ("qf_starbucks", 768, 92), ("qf_tsutaya", 512, 84)]
         items += [("bk_sign", 1600, 400), ("bk_awning", 768, 48)]
+        items += streets.atlas_items()
         self.A = Atlas(list(dict.fromkeys(items)), width=2048)
 
     def meshes(self):
@@ -1567,6 +1584,7 @@ class Build:
         skins(K, self.D)
         sign_bands(K, self.A, self.D)
         bookshop(K, self.A, self.D)
+        streets.build(K, self.A, self.D)
         if "center_gai" in self.lm:
             center_gai_gate(K, self.A, self.D, self.lm["center_gai"])
         for e in self.entrances:
@@ -1587,6 +1605,7 @@ class Build:
         draw_koban(img, self.A.rects)
         draw_magnet(img, self.A.rects)
         draw_bookshop(img, self.A.rects)
+        streets.draw(img, self.A.rects)
         draw_station(img, self.A.rects)
         draw_jr(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=90)
