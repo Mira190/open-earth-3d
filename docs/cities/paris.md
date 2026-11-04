@@ -217,7 +217,11 @@ model, and would float every building.
 - **Notre-Dame's spire**, 96 m, rebuilt to Viollet-le-Duc's design. The LiDAR of
   March 2023 saw only scaffolding where it stands.
 - **The Arc de Triomphe** with its great arch and side arches, and **the Louvre
-  Pyramid** in glass on a steel net. Their solids stay in the sun analyses.
+  Pyramid** in glass on a steel net. Their solids stay in the sun analyses. The
+  net draws the pyramid's lozenge panes, 18 to a side of each face between two
+  families of mullions parallel to its hips (603 lozenges and 70 triangles, the
+  Louvre). After dark the hall's light comes up through the glass: warm,
+  brightest at the foot and fading to the apex, with the net dark over it.
 
 ## 6. Paris on Foot
 

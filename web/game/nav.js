@@ -40,6 +40,21 @@ window.OENav = (function () {
     // places walkers keep out of (a colony's rocks): a 2 m mask
     const nogo = (G.nogo || []).length ? { nx: DSM.nx, ny: DSM.ny, cell: DSM.cell, x0, y1, data: new Float32Array(DSM.nx * DSM.ny) } : null;
     for (const r of G.nogo || []) S.fillMax(nogo, [r.map(v => v / 10)], 1);
+    // and a landmark's own water that the city's leaves out (a temple's moat, game.json "keep_off"),
+    // at half a metre, as narrow as it is: a walker stops at its edge without a word
+    const keepOff = (() => {
+      const rings = (G.keep_off || []).map(r => r.map(v => v / 10));
+      if (!rings.length) return null;
+      let kx0 = Infinity, kx1 = -Infinity, ky0 = Infinity, ky1 = -Infinity;
+      for (const r of rings) for (let k = 0; k < r.length; k += 2) { kx0 = Math.min(kx0, r[k]); kx1 = Math.max(kx1, r[k]); ky0 = Math.min(ky0, r[k + 1]); ky1 = Math.max(ky1, r[k + 1]); }
+      const cell = 0.5, g = { nx: Math.ceil((kx1 - kx0) / cell) + 2, ny: Math.ceil((ky1 - ky0) / cell) + 2, cell, x0: kx0 - cell, y1: ky1 + cell };
+      g.data = new Float32Array(g.nx * g.ny);
+      for (const r of rings) S.fillMax(g, [r], 1);
+      return (x, y) => {
+        const c = Math.floor((x - g.x0) / cell), r = Math.floor((g.y1 - y) / cell);
+        return c >= 0 && r >= 0 && c < g.nx && r < g.ny && g.data[r * g.nx + c] > 0;
+      };
+    })();
     // ---------------------------------------------------------- strip surfaces (bridge decks, steps)
     const strips = (G.surfaces || []).filter(s => s.type === 'strip').map(s => Object.assign({}, s, {
       us: s.profile.map(p => p[0]), zs: s.profile.map(p => p[1]) }));
@@ -347,7 +362,7 @@ window.OENav = (function () {
         for (const [k, q] of mine) cpush(coarse, k, q[0] - 0.3, q[1] + 0.3);
       }
       for (const m of meshes) {
-        const p = m.position, idx = m.index, up = [];
+        const p = m.position, idx = m.index, up = [], noFloor = ((D.LM.materials || {})[m.material] || {}).floor === false;
         for (let t = 0; t < idx.length; t += 3) {
           const P = [idx[t], idx[t + 1], idx[t + 2]].map(i => [p[3 * i], p[3 * i + 1], p[3 * i + 2]]);
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
@@ -360,7 +375,8 @@ window.OENav = (function () {
           if (zhi > zc) { below = fan(clip(P, 2, zc, 1)); for (const q of fan(clip(P, 2, zc, -1))) up.push(q); }
           // a flat top is laid in whole only within a step of the floor, where a walker may stand on it; higher
           // (a counter, a beam, a ceiling) its edges stand for it, its sides being triangles of their own
-          const fill = zhi <= Math.max(...rs) + STEP + 0.1;
+          // (a material that says "floor": false is never stood on, however wide its top: an offering box)
+          const fill = zhi <= Math.max(...rs) + STEP + 0.1 && !noFloor;
           for (const T of below) { // into the tiles it touches
             if (!fill) T.edges = true;
             const AP = APRON * FINE; // (with the apron a tile reads round itself)
@@ -554,11 +570,26 @@ window.OENav = (function () {
       const r0 = Math.max(0, Math.floor((y1 - yb) / TILE)), r1 = Math.min(TNY - 1, Math.floor((y1 - ya) / TILE));
       for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (tileDone[r * TNX + c] !== 2) runTile(r * TNX + c, Infinity);
     }
-    // fn() run against the 2 m cells alone, the fine ones left unbuilt: a sweep over the whole city at the
+    // fn() run with the fine cells left unbuilt where no landmark is: a sweep over the whole city at the
     // start (where the trees and lamps may stand, which stretches of the footways and roads the crowd and
-    // the traffic keep to) that a landmark's 2 m cells answer well enough, as they did before the fine
-    // cells; walk() and solid() then meet a landmark's 2 m cells (each mesh's extent in them)
+    // the traffic keep to), which away from the landmarks needs only the 2 m surface model
     function withoutFine(fn) { coarseOnly = true; try { return fn(); } finally { coarseOnly = false; } }
+    // ... except where a landmark is: where a sweep meets a landmark's 2 m cell (or one beside it), the tiles
+    // round it are built and the fine cells answer, so that a crowd's way through a gate's passage or between
+    // lanterns is not cut where a walker gets through (issue #141). True when the caller is to look again with
+    // the fine cells (coarseOnly is then off: the caller puts it back with fineDone)
+    function fineHere(x, y, r) {
+      if (!coarseOnly) return false;
+      const k = cellOf(x, y);
+      if (k < 0) return false;
+      let hit = false;
+      for (let a = -1; a <= 1 && !hit; a++) for (let b = -1; b <= 1 && !hit; b++) hit = solid0.has(k + a * DSM.nx + b);
+      if (!hit) return false;
+      coarseOnly = false;
+      need(x - r - 1, y - r - 1, x + r + 1, y + r + 1);
+      return true;
+    }
+    const fineDone = v => { coarseOnly = true; return v; };
     // build the tiles within `radius` of (x, y), nearest first, for at most `ms` milliseconds (the game
     // calls this every frame with the walker's or the car's place); true when they are all built
     function prefetch(x, y, radius = 48, ms = 3) {
@@ -621,6 +652,7 @@ window.OENav = (function () {
     function landmarkHit(x, y, za, zb) {
       const l = solid0.get(cellOf(x, y));
       if (!l) return false;
+      if (fineHere(x, y, 0.1)) return fineDone(col.overlap(x, y, 0.1, za, zb, (i, p) => p.tag === BUILDING)); // (its fine cells, and the coarse ones high up)
       for (let i = 0; i < l.length; i += 2) if (l[i] < zb && l[i + 1] > za) return true;
       return false;
     }
@@ -672,10 +704,12 @@ window.OENav = (function () {
     const isDeck = kind => kind !== 'ground' && kind !== 'pier' && kind !== 'roof' && kind !== 'landmark';
     // can a walker whose feet are at z stand at (x, y)? Returns the new floor or a reason.
     function walk(x, y, z) {
+      if (fineHere(x, y, R)) return fineDone(walk(x, y, z));
       const f = floorAt(x, y, z);
       if (!f) return { ok: false, why: offGround(x, y) || 'wall' };
       if (f.z < z - DROP) return { ok: false, why: 'drop' };
       if (nogo && f.kind !== 'pier' && nogo.data[cellOf(x, y)] > 0) return { ok: false, why: 'nogo' };
+      if (keepOff && f.kind === 'ground' && keepOff(x, y)) return { ok: false, why: 'keep_off' };
       if (col.overlap(x, y, R, f.z + KNEE, f.z + HEAD, passes(f.z, isDeck(f.kind)))) return { ok: false, why: 'wall' };
       if (coarseOnly && solidCell(cellOf(x, y), f.z + KNEE, f.z + HEAD)) return { ok: false, why: 'wall' }; // (a landmark's 2 m cells, withoutFine)
       return { ok: true, z: f.z, kind: f.kind };
@@ -698,6 +732,7 @@ window.OENav = (function () {
     // is a walker whose feet are at about z, at (x, y), inside a wall (a circle of radius r between
     // knee and head height)? A look at the 2 m surface model round it first, for speed
     function solid(x, y, z, r = 0.1) {
+      if (fineHere(x, y, r)) return fineDone(solid(x, y, z, r));
       const k = cellOf(x, y);
       if (k < 0) return false;
       let near = false;

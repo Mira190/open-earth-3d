@@ -58,6 +58,9 @@ EIFFEL = {"height": 330.0, "base_half": 62.45, "leg": 25.0, "floor1": 57.6, "flo
 EIFFEL_OSM = "w5013364"
 ARC = {"height": 49.5, "width": 45.0, "depth": 22.0, "arch_h": 29.19, "arch_w": 14.62, "side_h": 18.68, "side_w": 8.44}
 PYRAMID = {"height": 21.6, "base": 35.4}
+# 603 lozenge panes and 70 triangles on its four faces (the Louvre): 18 lozenges along each side of a
+# face's net, which gives 153 lozenges and 18 triangles a face less the entrance's
+PYRAMID_ROWS = 18
 SPIRE_M = 96.0
 NOTRE_DAME = "Cathédrale Notre-Dame de Paris"
 OPERA = "Opéra Garnier"
@@ -87,7 +90,9 @@ MATERIALS = {
     "gilt": {"color": "#d4a63a", "roughness": 0.3, "metalness": 0.9},
     "balustrade": {"color": "#d0c6b0", "roughness": 0.85, "metalness": 0.0, "pattern": "railing", "bar_m": 0.32, "rails_m": [0.12, 0.95]},
     "lead": {"color": "#5b6066", "roughness": 0.5, "metalness": 0.5},
-    "pyramid_glass": {"color": "#a9c0c8", "roughness": 0.05, "metalness": 0.75},
+    # after dark the hall's light comes up through the glass: warm, brightest at its foot, fading up the
+    # faces to the apex ("flood", set from its ground in landmark_meshes), with the net dark over it
+    "pyramid_glass": {"color": "#a9c0c8", "roughness": 0.05, "metalness": 0.75, "emissive": "#ffd39a", "glow": 0.42},
     "pyramid_net": {"color": "#3c4246", "roughness": 0.4, "metalness": 0.7},
     # the monuments: Lutetian limestone in courses, its mouldings a shade paler, the windows dark until the
     # lights come on, roofs of lead and slate, copper gone green, gilding; floodlit gold after dark ("flood" per
@@ -358,6 +363,8 @@ def landmark_meshes(scene):
         meshes += arc(lm["arc_de_triomphe"], mats)
     if "louvre_pyramid" in lm:
         meshes += pyramid(lm["louvre_pyramid"])
+        gz = lm["louvre_pyramid"]["ground_m"]
+        mats["pyramid_glass"]["flood"] = [round(gz, 1), round(gz + PYRAMID["height"], 1), 1.0, 0.35]
     more, hidden = monuments(mats)
     meshes += more
     return mats, meshes, {"hidden": hidden}
@@ -544,14 +551,26 @@ def pyramid(t):
     P = lambda x, y, z: (float(cx + ca * x - sa * y), float(cy + sa * x + ca * y), float(gz + z))
     glass, net = Mesh("louvre_pyramid", "pyramid_glass", False, floodlit=True), Mesh("louvre_pyramid_net", "pyramid_net", False)
     c = [(-s, -s), (s, -s), (s, s), (-s, s)]
-    apex = P(0, 0, h)
+    apex = np.array(P(0, 0, h))
     for k in range(4):
         (x0, y0), (x1, y1) = c[k], c[(k + 1) % 4]
-        glass.tri(P(x0, y0, 0), P(x1, y1, 0), apex)
-        # the net: rungs up the face and the hip ribs
-        for f in np.linspace(0.1, 0.9, 9):
-            net.box(P(x0 * (1 - f), y0 * (1 - f), h * f), P(x1 * (1 - f), y1 * (1 - f), h * f), 0.12, 0.12)
-        net.box(P(x0, y0, 0), apex, 0.3, 0.3)
+        b0, b1 = np.array(P(x0, y0, 0)), np.array(P(x1, y1, 0))
+        glass.tri(tuple(b0), tuple(b1), tuple(apex))
+        nrm = np.cross(b1 - b0, apex - b0)
+        nrm /= np.linalg.norm(nrm)
+        if np.dot(nrm, (b0 + b1) / 2 - np.array(P(0, 0, 0))) < 0:
+            nrm = -nrm
+        up, off = tuple(nrm), nrm * 0.06  # the net stands just out from the glass
+        F = lambda u, v: b0 + u * (b1 - b0) + v * (apex - b0) + off
+        # the net: the lozenge panes, PYRAMID_ROWS to a side, between two families of mullions, one
+        # parallel to each hip (u constant, and u + v constant), and the hip ribs and the sill
+        n = PYRAMID_ROWS
+        for i in range(1, n):
+            f = i / n
+            net.box(F(f, 0), F(f, 1 - f), 0.08, 0.1, up=up)
+            net.box(F(f, 0), F(0, f), 0.08, 0.1, up=up)
+        net.box(F(0, 0), F(0, 1), 0.3, 0.3, up=up)
+        net.box(F(0, 0), F(1, 0), 0.2, 0.2, up=up)
     return [glass, net]
 
 
