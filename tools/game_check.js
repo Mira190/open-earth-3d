@@ -234,9 +234,9 @@ const npcNight = require('./npc_night');
     W.update(0.1, 1, null);
     feed(20, 1 / 60);
     const smooth = W.level;
-    feed(9, 0.1);
+    feed(13, 0.1); // (two whole 4 s windows, whatever the last one left)
     const light = W.level;
-    feed(9, 0.1);
+    feed(13, 0.1); // (two whole 4 s windows, whatever the last one left)
     let kept = null;
     try { kept = localStorage.getItem('oe3d-weather-guard'); } catch (e) { /* storage blocked */ }
     const off = { level: W.level, mode: W.mode, kept };

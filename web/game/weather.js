@@ -440,7 +440,7 @@ void main() {
     }
     function setLevel(l, note) {
       level = l; G.strikes = 0;
-      if (l === 0) { mode = 'off'; snap = true; }
+      if (l === 0) { mode = 'off'; snap = true; wetPin = null; custom = null; } // (a pinned wetness too: dry streets)
       remember(l === 0 ? 'off' : l === 1 ? 'light' : null);
       if (note) { guardNote = note; if (api.onGuard) { api.onGuard(note); guardNote = null; } }
     }
