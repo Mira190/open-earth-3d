@@ -140,6 +140,21 @@ school trip. What they say about the model is computed from it; the cultural fac
 rebuilt in 1895, Nijo Castle 1603, Kyoto's narrow deep machiya) are common knowledge, not
 verified for this project.
 
+### Higashi Honganji's moat
+
+The moat (お堀) round Higashi Honganji, along Karasuma-dori and the temple's north and
+south sides, is OpenStreetMap way 1010912897 (`natural=water`, 2,650 m², 3 to 4 m wide).
+It is too small for the city's water (`water.min_area_m2`), so the aerial photograph's dark
+strip of water lay flat on the paving, a strong blue band in front of the gates. It is drawn
+as a landmark (`moat_meshes()` in `cities/kyoto/city.py`): still water 1.1 m below the
+pavement between granite sides under a coping, the ground not drawn over it (`clip`), and
+crossed by the seven bridges OpenStreetMap maps over it, each as wide as GSI's photograph
+shows it (5 m where it does not). The one before the Founder's Hall Gate spans 32 m of the
+moat, the gate's width (31 m), and its granite runs on east to the pavement over the gate's
+shadow on the photograph. Walkers keep off the water (`keep_off` in `game.json`), and the
+crowd's footways that crossed it are dropped. The bridges' widths and the water's depth below
+the pavement are read from the photograph, not measured.
+
 ## 6. What is not verified
 
 - The 31 m height cap in the tour is the figure usually quoted for the busiest districts under

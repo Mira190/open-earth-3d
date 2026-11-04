@@ -387,6 +387,7 @@ python analysis/heights.py --city sydney              # published heights vs mod
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
 python pipeline/open_sea.py --city sydney             # the open water past the frame (Overture, 40 km around)
+python pipeline/far_land.py --city sydney             # the land past the frame: relief, land cover, night lights (40 km around)
 python pipeline/road_rules.py sydney                  # one-way streets, banned turns, traffic signals and crossings into a built game.json (after fetch_overture --only segment infrastructure)
 python pipeline/road_lanes.py sydney                  # OSM lane arrows and counts by way id into a built game.json (after fetch_overture --only segment)
 python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
@@ -524,6 +525,18 @@ Data tab. The shared sources are:
   coarse, too rough for the harbours a few hundred metres past the frame, and
   OSM's own land polygons (osmdata.openstreetmap.de, ODbL) are the same
   coastline as Overture's ocean polygons, but only as a global download.
+- **Land past the model's frame:** Copernicus DEM GLO-30 (ESA and Airbus,
+  Copernicus DEM licence: free use with attribution, "© DLR e.V. 2010-2014 and
+  © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the
+  European Union and ESA; all rights reserved"), from the AWS open data
+  registry; ESA WorldCover 10 m 2021 v200 (CC BY 4.0, © ESA WorldCover project
+  2021, contains modified Copernicus Sentinel data); NASA Black Marble 2016
+  (VIIRS day/night band, public domain) via NASA GIBS. 40 km around each city
+  and 60 km around each reef site, through `pipeline/far_land.py` into
+  `web/data/<id>/far.*`. Considered and not used: FABDEM (bare-earth GLO-30) is
+  CC BY-NC-SA; Sentinel-2 cloudless mosaics after 2016 are CC BY-NC-SA, and a
+  per-city Sentinel-2 composite over 80 km is a large download for a few hazed
+  pixels; the Terrarium tiles are a mix of older sources at this scale.
 - **Vehicles and trees:** modelled from code in this repository
   (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
   third-party assets; the leaf atlas is drawn by the script.

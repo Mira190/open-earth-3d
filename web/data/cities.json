@@ -19,8 +19,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5295013,
-   "game": 8571637
+   "model": 5312985,
+   "game": 8589609
   }
  },
  {
@@ -46,8 +46,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2892368,
-   "game": 7167120
+   "model": 2892400,
+   "game": 7167149
   },
   "group_meta": {
    "kind": "city",
@@ -140,8 +140,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 15753746,
-   "game": 18756823
+   "model": 16599038,
+   "game": 19602699
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -7461,8 +7461,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 15570951,
-   "game": 21847779
+   "model": 15637651,
+   "game": 21914479
   }
  },
  {

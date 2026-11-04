@@ -664,6 +664,8 @@ def main():
     if C.hook("game_extras"):
         for k, v in C.hook("game_extras")(scene).items():
             out[k] = out.get(k, []) + v if isinstance(v, list) else v
+    import game_extras
+    game_extras.drop_kept_off(out)  # the crowd's footways over a landmark's water (game_extras "keep_off")
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
