@@ -780,7 +780,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const was = carDepth(q.x, q.y, M), nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
       if (was > 0.02) { // (caught by one, a car pulling up: straight out of it, the shortest way)
         const e = 0.05, gx = carDepth(q.x + e, q.y, M) - carDepth(q.x - e, q.y, M), gy = carDepth(q.x, q.y + e, M) - carDepth(q.x, q.y - e, M), gl = Math.hypot(gx, gy);
-        if (gl > 1e-6) { q.x -= gx / gl * 1.2 * dt; q.y -= gy / gl * 1.2 * dt; q.vx = -gx / gl * 1.2; q.vy = -gy / gl * 1.2; }
+        let ux = -gx, uy = -gy, ul = gl;
+        if (gl < 0.02) { // (on its long axis the discs' pulls cancel: out to the side, the one nearer where it was going)
+          let o = null, best = -1;
+          for (const c of nearCars) { const e = Math.hypot(q.x - c.x, q.y - c.y); if (e < c.half + c.hw + M && (best < 0 || e < best)) { best = e; o = c; } }
+          if (o) { const sx = Math.cos(o.h), sy = -Math.sin(o.h), lat = (q.x - o.x) * sx + (q.y - o.y) * sy, toT = (q.T.x - q.x) * sx + (q.T.y - q.y) * sy, sd = Math.abs(lat) > 0.05 ? Math.sign(lat) : toT >= 0 ? 1 : -1; ux = sx * sd; uy = sy * sd; ul = 1; }
+        }
+        if (ul > 1e-6) { q.x += ux / ul * 1.2 * dt; q.y += uy / ul * 1.2 * dt; q.vx = ux / ul * 1.2; q.vy = uy / ul * 1.2; }
       } else if (carDepth(nx, ny, M) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
       else { q.x = nx; q.y = ny; }
       q.v = Math.hypot(q.vx, q.vy);
