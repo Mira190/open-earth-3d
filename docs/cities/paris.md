@@ -222,6 +222,45 @@ model, and would float every building.
   families of mullions parallel to its hips (603 lozenges and 70 triangles, the
   Louvre). After dark the hall's light comes up through the glass: warm,
   brightest at the foot and fading to the apex, with the net dark over it.
+- **The Palais de Chaillot** on its measured massing. `pipeline/lidar_massing.py`
+  reads IGN LiDAR HD's surface and bare-earth models (0.5 m, Licence Ouverte) over
+  OpenStreetMap's wing outlines (ways 79742852 and 79749386), grown into the flat
+  roofs beside them, and cuts the footprint into zones by roof level
+  (`cities/paris/massing.json`): the head pavilions to 62.8 m round a 68 m core, each
+  wing's tall range on the gardens' side at 56.9 m with its square piers to 58.7 m,
+  and a lower gallery on the streets' side at 46-48 m (the scene's datum is the
+  Seine, 26.9 m NGF; BD TOPO puts the eaves at 84 m NGF, 57 m here). From the
+  gardens' foot at 25 m the wings stand about 30 m, as OpenStreetMap has it. Before,
+  they were drawn to 12 m over the parvis and sank into the hill. Tall windows
+  between piers on every exposed face, Paul Valéry's gilded inscriptions under the
+  pavilions' cornices, and the eight gilded statues on the parvis as figures.
+- **The Trocadéro gardens.** The Warsaw Fountain's basins on OpenStreetMap's water
+  outlines (`cities/paris/trocadero.json`, ODbL): the long basin a hand below its
+  12.0 m coping (measured in the LiDAR), the curved basin at its foot, the small
+  basins at its head up the slope, and the jets Wikipedia lists (twenty cannons in
+  four groups of five aimed along the basin towards the Eiffel Tower, twelve 7 m
+  columns). The lawns (OpenStreetMap `landuse=grass`) are draped over the terrain:
+  the aerial photograph shows a temporary hall over the slope. The LiDAR saw a
+  temporary platform over the basin too, which the built data had as a 10.9 m
+  "monument" with a pyramid roof (the grey mound); it is demolished, and no tree
+  stands in a landmark's clipped ground.
+  ![The Palais de Chaillot from the Seine, before: the wings drawn to 12 m over the parvis and a pyramid-roofed block over the fountain](../images/paris/chaillot-before.jpg)
+  ![After: the wings on their LiDAR massing, the Warsaw Fountain and the lawns](../images/paris/chaillot-from-the-seine.jpg)
+  ![From above](../images/paris/chaillot-air.jpg)
+  ![After dark, floodlit](../images/paris/chaillot-night.jpg)
+  ![The parvis's gilded statues and the Eiffel Tower between the pavilions](../images/paris/chaillot-parvis.jpg)
+- **Sculpture.** The Arc de Triomphe's four high-relief groups (three figures on the
+  pedestal and a winged Genius over them) and the Opéra's gilded groups (Harmony and
+  Poetry with their geniuses, Millet's Apollo raising his lyre, Lequesne's Pegasi)
+  are figures, not blocks, built from tapered limbs in `cities/paris/city.py`.
+  ![The Opéra's gilded groups](../images/paris/opera-statues.jpg)
+  ![The Arc's relief groups](../images/paris/arc-reliefs.jpg)
+- **Guessed heights over bare ground.** `lidar_massing.py` also tests the solids
+  whose height the build could only guess (an estimate or an ML height): where the
+  laser sees bare ground under the whole footprint (Microsoft ML outlines in the
+  gardens and squares, a basin's coping), `landmark_demolished` drops them, 222 of
+  246. Light structures a mapper named (shelters, kiosks, huts) stay, since they
+  may be newer than the flight.
 
 ## 6. Paris on Foot
 
@@ -287,6 +326,7 @@ env -u AWS_ACCESS_KEY_ID -u AWS_SECRET_ACCESS_KEY -u AWS_SESSION_TOKEN \
 python pipeline/fetch_ign.py --city paris        # BD TOPO buildings and LiDAR HD (about 600 MB)
 python pipeline/fetch_tiles.py --city paris      # BD ORTHO, LiDAR terrain, Terrarium
 python pipeline/build_scene.py --city paris      # about 8 minutes
+python pipeline/lidar_massing.py --city paris   # Chaillot's massing, the guessed solids over bare ground
 python pipeline/landmarks.py --city paris
 python analysis/heights.py --city paris
 python analysis/lidar_check.py --city paris

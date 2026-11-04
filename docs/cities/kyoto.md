@@ -77,6 +77,22 @@ only haze. Where the 5 m laser DEM has no data (1% of the stitched tiles, mostly
 beds), the nearest cell fills it. The branch that added Kyoto set those cells to sea level,
 25–80 m below the ground around them.
 
+## 3a. Landmarks
+
+The temples, Nijo Castle and the Imperial Palace are built on their mapped
+outlines (`cities/kyoto/city.py`, `pipeline/archkit.py`). At the Imperial Palace
+the court before the Shishinden (南庭) is enclosed by its corridors (回廊) on
+vermilion pillars, with the vermilion Jōmei-mon (承明門) to the south and the
+Nikka-mon and Gekka-mon to the east and west; the Kenrei-mon is plain cypress.
+Outlines that bend, turn round a court or run along a wall are drawn on their own
+outline under an outline roof, rather than as one hall over their bounding box
+(which had roofed whole courts over). The parts mapped over a gate's posts go with
+the gate. At Nijo, the covered ways between the Ninomaru's halls are corridors.
+A block with a guessed height in the Shishinden's court is dropped.
+
+![The Imperial Palace's south court, its corridors and the Jōmei-mon](../images/kyoto/gosho-south-court.jpg)
+![Nijo's Ninomaru palace](../images/kyoto/nijo-ninomaru.jpg)
+
 ## 4. Sun on public places
 
 Kyoto has no statutory sun window for public places. The places listed (Kyoto Gyoen, Kamo
