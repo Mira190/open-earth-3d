@@ -536,6 +536,7 @@ window.OECars = (function () {
   // distance along it, and the way a car is going (+1 with the line's points, -1 against them).
   // avoid: per line, 1 where a car can't get along it (route.js fills it in once it has looked):
   // such a line is taken only where there is no other way
+  const UTURN = 400; // what a U-turn costs a route, as metres driven (router)
   function router(net, { avoid = null } = {}) {
     const L = net.L, ids = new Map(), adj = [], all = [], into = []; // (all: both ways along every line, for when the one-way streets leave no way; into: the ways in to each node)
     const node = (x, y) => { const k = `${Math.round(x / 2)},${Math.round(y / 2)}`; if (!ids.has(k)) { ids.set(k, adj.length); adj.push([]); all.push([]); into.push([]); } return ids.get(k); };
@@ -589,10 +590,13 @@ window.OECars = (function () {
           if (d > limit) break;
           const p = prev.get(u), from = p ? p[1] * 2 + (p[2] > 0 ? 1 : 0) : a.line * 2 + (a.dir > 0 ? 1 : 0), B = net.bans && net.bans.get(from);
           for (const [v, li, dir] of edges[u]) {
-            const back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
+            // straight back the way it came: a U-turn at the junction, or at the end of the street it
+            // set out on. A car turns on the spot there (it has no room for a turning circle in its two
+            // lanes), so it goes round the block instead, unless that is UTURN metres further
+            const back = p ? p[1] === li : li === a.line;
             if (B && edges === adj && B.some(b => b[2] === 1 && b[0] === li && b[1] === (dir > 0 ? 0 : 1))) continue; // a banned turn (junctions.js)
             if (edges === adj && (net.shutNow && net.shutNow(li, dir > 0 ? 1 : -1) || net.turnShut && net.turnShut(from, li, dir > 0 ? 0 : 1))) continue; // (or one at this hour, or a street shut to cars now)
-            const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? 60 : 0);
+            const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? UTURN : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
@@ -713,22 +717,63 @@ window.OECars = (function () {
     const corner = new Float64Array(n).fill(Infinity);
     for (let i = 1; i < n - 1; i++) {
       const a = Math.atan2(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]), b = Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
-      const turn = Math.abs(angDiff(b, a));
-      if (turn > 0.12) corner[i] = Math.max(4.2, 17 * (1 - turn / 2.3));
+      const turn = Math.abs(angDiff(b, a)), seg = Math.min(cum[i] - cum[i - 1], cum[i + 1] - cum[i]);
+      if (turn > 0.12) corner[i] = Math.max(turn > 1.7 ? 2.8 : 4.2, 17 * (1 - turn / 2.3)); // (round a hairpin, at a walking pace and a bit)
+      // a curve drawn in short pieces (a U-turn's loop): as fast as 2.5 m/s² across it allows
+      if (turn > 0.05 && seg < 3) corner[i] = Math.min(corner[i], Math.max(2.5, Math.sqrt(2.5 * seg / turn)));
     }
     function idx(s) { let lo = 0, hi = n - 1; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (cum[m] <= s) lo = m; else hi = m; } return lo; }
+    // the height summed along the route (as FX, FY below), for its average over a stretch
+    const FZ = new Float64Array(n);
+    for (let i = 1; i < n; i++) FZ[i] = FZ[i - 1] + (cum[i] - cum[i - 1]) * (pts[i - 1][2] + pts[i][2]) / 2;
+    function zInt(s) {
+      s = clamp(s, 0, len);
+      const i = Math.min(idx(s), n - 2), L = Math.max(1e-6, cum[i + 1] - cum[i]), u = s - cum[i];
+      return FZ[i] + pts[i][2] * u + (pts[i + 1][2] - pts[i][2]) * u * u / (2 * L);
+    }
+    // the height averaged over VC metres either side (a vertical curve), so that a car takes the
+    // change of grade at a point of the line as a gentle rise or dip, not a kink in a frame
+    const VC = 4;
     function pos(s, out) {
       s = clamp(s, 0, len);
       const i = Math.min(idx(s), n - 2), t = (s - cum[i]) / Math.max(1e-6, cum[i + 1] - cum[i]), a = pts[i], b = pts[i + 1];
-      out.x = a[0] + (b[0] - a[0]) * t; out.y = a[1] + (b[1] - a[1]) * t; out.z = a[2] + (b[2] - a[2]) * t;
+      out.x = a[0] + (b[0] - a[0]) * t; out.y = a[1] + (b[1] - a[1]) * t;
+      const vc = Math.min(VC, s, len - s);
+      out.z = vc > 0.05 ? (zInt(s + vc) - zInt(s - vc)) / (2 * vc) : a[2] + (b[2] - a[2]) * t;
       out.v = a[3]; out.c = a[4]; out.i = i;
       return out;
     }
     const p0 = {}, p1 = {};
-    function at(s, out) {
+    // the route's points summed along it (the integral of x and of y from the start to each point),
+    // for the average position over a stretch of it
+    const FX = new Float64Array(n), FY = new Float64Array(n);
+    for (let i = 1; i < n; i++) {
+      const L = cum[i] - cum[i - 1];
+      FX[i] = FX[i - 1] + L * (pts[i - 1][0] + pts[i][0]) / 2; FY[i] = FY[i - 1] + L * (pts[i - 1][1] + pts[i][1]) / 2;
+    }
+    const F = [0, 0];
+    function integral(s) {
+      s = clamp(s, 0, len);
+      const i = Math.min(idx(s), n - 2), L = Math.max(1e-6, cum[i + 1] - cum[i]), u = s - cum[i], a = pts[i], b = pts[i + 1];
+      F[0] = FX[i] + a[0] * u + (b[0] - a[0]) * u * u / (2 * L); F[1] = FY[i] + a[1] * u + (b[1] - a[1]) * u * u / (2 * L);
+      return F;
+    }
+    // where the route is at s, and its direction: the average of its points over w either side, so
+    // that it turns a corner as a curve (the direction changing smoothly, the way it is going
+    // always the way it faces) instead of a kink where the car's heading would snap round. w is
+    // 3 m; a car held off the line by k takes more (chauffeur pose): turning over less than about
+    // 3k, the point k to the inside of a sharp turn would go back as s goes on, and the car with it.
+    function at(s, out, w = 3) {
       pos(s, out);
-      pos(s - 3, p0); pos(s + 3, p1);
+      s = clamp(s, 0, len);
+      const ws = Math.min(w, s, len - s);
+      if (ws > 0.05) {
+        const [x1, y1] = integral(s + ws), [x0, y0] = integral(s - ws);
+        out.x = (x1 - x0) / (2 * ws); out.y = (y1 - y0) / (2 * ws);
+      }
+      pos(s - Math.max(ws, 0.05), p0); pos(s + Math.max(ws, 0.05), p1);
       let hx = p1.x - p0.x, hy = p1.y - p0.y;
+      if (Math.hypot(hx, hy) < 1e-3) { pos(s - w, p0); pos(s + w, p1); hx = p1.x - p0.x; hy = p1.y - p0.y; } // (at either end)
       const l = Math.hypot(hx, hy) || 1;
       out.hx = hx / l; out.hy = hy / l;
       return out;
@@ -757,7 +802,63 @@ window.OECars = (function () {
   // for its way across (request: none crossing it already in, the longest waiting first, giving
   // way to the main road), and is out of it once the whole car is past the exit's line; leave()
   // takes it out of every junction (the car taken off the street, or given another route).
+  // A route that turns straight back on itself (a U-turn where a street leads on to nowhere a car may
+  // go) as a car makes one: from UT_D metres before the turn it bears off to its kerb side, swings
+  // round a loop of UT_R metres' radius across the road, ahead of the turning point, and comes back
+  // in on the other side, instead of turning on the spot. The route's junction nodes and crossings
+  // keep their places on it.
+  const UT_R = 4.5, UT_D = 9;
+  function uTurns(route, keep) {
+    let pts = route.pts, nodes = route.nodes, mids = route.mids, changed = false;
+    for (let guard = 0; guard < 8; guard++) {
+      const n = pts.length, cum = [0];
+      for (let i = 1; i < n; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      let at = -1;
+      for (let i = 1; i < n - 1 && at < 0; i++) {
+        const a = Math.atan2(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]), b = Math.atan2(pts[i + 1][0] - pts[i][0], pts[i + 1][1] - pts[i][1]);
+        if (Math.abs(angDiff(b, a)) > 2.6) at = i;
+      }
+      if (at < 0) break;
+      const V = pts[at], sV = cum[at], D = Math.min(UT_D, sV - 0.3, cum[n - 1] - sV - 0.3);
+      if (D < 3) break; // (no room to make it: as it was)
+      const R = Math.min(UT_R, D * 0.6), beta = Math.asin(R / D);
+      const back = (s, out = []) => { // the point at distance s along the route
+        let i = 1;
+        while (i < n - 1 && cum[i] < s) i++;
+        const t = (s - cum[i - 1]) / Math.max(1e-6, cum[i] - cum[i - 1]), a = pts[i - 1], b = pts[i];
+        return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t, a[3], a[4]];
+      };
+      const A = back(sV - D), A2 = back(sV + D);
+      let dx = V[0] - A[0], dy = V[1] - A[1];
+      const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+      const ux = dy * keep, uy = -dx * keep; // across, away from the kerb (right where they keep left)
+      // the loop: centred on the turning point, out from A on its kerb side (-u) and back to A2 on the other
+      const loop = [], cx = V[0], cy = V[1]; // (bearings as atan2(x, y))
+      // the tangent points: from A, beta off the line towards -u
+      const t1 = Math.atan2(-ux * Math.cos(beta) - dx * Math.sin(beta), -uy * Math.cos(beta) - dy * Math.sin(beta));
+      const sweep = Math.PI + 2 * beta, m = Math.max(8, Math.ceil(sweep * R / 0.9));
+      // round the far side of the turning point, from -u to +u: the way whose halfway point is ahead
+      const sg = Math.sin(t1 + sweep / 2) * dx + Math.cos(t1 + sweep / 2) * dy > 0 ? 1 : -1;
+      for (let k = 0; k <= m; k++) {
+        const th = t1 + k / m * sweep * sg;
+        loop.push([cx + Math.sin(th) * R, cy + Math.cos(th) * R, V[2], Math.min(V[3] || 11, 5), V[4]]);
+      }
+      const iA = pts.findIndex((q, i) => cum[i] > sV - D), iB = pts.findIndex((q, i) => cum[i] >= sV + D);
+      const out = pts.slice(0, iA).concat([A], loop, [A2], pts.slice(iB < 0 ? n : iB));
+      // where the nodes and the crossings now are: shifted by the points and the length the loop adds
+      let L2 = 0;
+      const seq = [A, ...loop, A2];
+      for (let k = 1; k < seq.length; k++) L2 += Math.hypot(seq[k][0] - seq[k - 1][0], seq[k][1] - seq[k - 1][1]);
+      const dn = (iA + seq.length) - (iB < 0 ? n : iB), ds = L2 - 2 * D;
+      // (a node at the turning point itself: at the start of the loop, so that its line is before it)
+      if (nodes) nodes = nodes.map(nd => (nd.k >= iA && nd.k < (iB < 0 ? n : iB) ? Object.assign({}, nd, { k: iA + (nd.k < at ? 0 : nd.k === at ? 1 : seq.length - 1) }) : nd.k >= (iB < 0 ? n : iB) ? Object.assign({}, nd, { k: nd.k + dn }) : nd));
+      if (mids) mids = mids.map(x => (x.at > sV ? Object.assign({}, x, { at: x.at + ds }) : x));
+      pts = out; changed = true;
+    }
+    return changed ? Object.assign({}, route, { pts, nodes, mids, len: pts.reduce((s, q, i) => s + (i ? Math.hypot(q[0] - pts[i - 1][0], q[1] - pts[i - 1][1]) : 0), 0) }) : route;
+  }
   function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, lights = null, priority = false, now = null } = {}) {
+    route = uTurns(route, keep);
     const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, held: 0, end: P.len, route, P };
     // as junctions.js sees it: a car of the traffic (line >= 0 while it is on the street, half, v)
     const reg = !!(lights && lights.request && now && route.nodes);
@@ -803,9 +904,16 @@ window.OECars = (function () {
       if (from === 'kerb') k += (kerbStart - LANE) * (1 - smooth(0, 12, s));
       return k;
     }
+    const pa = {}, pb = {};
     function pose(s, out, k) {
-      P.at(s, out);
       k = k * keep + st.shift;
+      const w = Math.max(3, 3 * Math.abs(k) + 0.5);
+      // on the inside of a sharp turn it keeps within the turn's radius there (as a driver swings a
+      // little wide round a hairpin), else its point would stop, or go back, while the route goes on
+      P.at(s - 0.5, pa, w); P.at(s + 0.5, pb, w);
+      const turn = angDiff(Math.atan2(pb.hx, pb.hy), Math.atan2(pa.hx, pa.hy)), run = Math.hypot(pb.x - pa.x, pb.y - pa.y);
+      if (k * turn < 0 && Math.abs(turn) > 1e-4) { const kmax = 0.6 * run / Math.abs(turn); if (Math.abs(k) > kmax) k = Math.sign(k) * kmax; }
+      P.at(s, out, w);
       out.x += -out.hy * k; out.y += out.hx * k;
       return out;
     }
@@ -822,7 +930,7 @@ window.OECars = (function () {
     // it (st.pass, eased into st.shift) instead of waiting behind it for good, but not while a car
     // is coming along the side of the road it would swing out into: it waits behind until that has
     // gone by.
-    const c = {}, passing = [], passed = [];
+    const c = {}, passing = [], passed = [], rounding = new Set();
     let still = false;
     function gapAhead(others) {
       let gap = Infinity, pass = 0;
@@ -833,11 +941,16 @@ window.OECars = (function () {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 60) continue;
         P.at(Math.min(P.len, st.s + a), c);
-        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4;
-        if (Math.abs(w - lane - st.shift) >= Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) continue; // (side by side, clear)
+        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep, half = o.half || 0.4, room = Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1);
         // held up for 6 s, a car stopped ahead counts as stopped for good: one caught up with this one
         // turns round every few seconds and so never stays stuck long enough to be marked still
-        if ((o.still || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        // (and one it has begun to swing out round stays one while it stands there: its held time is
+        // reset at a red light, and the car would else drop out and back in from frame to frame)
+        const stopped = (o.still || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay); // (not one parked where it is to pull in)
+        // (side by side, clear; a stopped car in its lane is judged by the lane, not by where it has
+        // swung out to: else, once out, it would count as clear, swing back in, and so on every frame)
+        if (Math.abs(w - lane - (stopped ? 0 : st.shift)) >= room) continue;
+        if (stopped) {
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
@@ -852,6 +965,8 @@ window.OECars = (function () {
         if (Math.abs(w - lane - pass) < (o.hw || 0.4) + C.hw + 0.4) { pass = 0; break; }
       }
       if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay; }
+      rounding.clear();
+      if (pass) for (const o of passed) rounding.add(o);
       st.pass = pass;
       return gap;
     }
@@ -949,6 +1064,8 @@ window.OECars = (function () {
       const hz = hurry ? hurry(st, dry) : 1;
       let want = Math.min(cruise, q.v || cruise) * hz;
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
+      // (and a corner just behind: it is still turning it, the route's line being taken as a curve over some metres)
+      for (let i = q.i; i > 0 && st.s - P.cum[i] < 8; i--) if (P.corner[i] < want) want = P.corner[i];
       // the cars ahead, and the line at a red light or a stop sign
       const carGap = gapAhead(others), line = obey && !dry ? Math.min(lineGap(), midGap(dt)) : Infinity;
       if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
@@ -976,7 +1093,10 @@ window.OECars = (function () {
       // it is, as a driver picking you up does, and you walk the last few metres
       else if (end && !dry && st.held > 8 && left < 45 && carGap < line && carGap < 12) { endAt(st.s); left = 0; }
       // out round something stopped in the lane, and back in after it, at a crawl
-      st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
+      // (across no faster than its speed allows a car to steer, and easing in as it gets there, so
+      // that it straightens out as a car does rather than snapping straight when it is across)
+      const sr = Math.min(1.4, 0.05 + 0.3 * st.v, 1.6 * Math.abs(st.pass - st.shift) + 0.05);
+      st.shift += clamp(st.pass - st.shift, -sr * dt, sr * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
       const dv = clamp(want - st.v, -7.5 * dt, 2.6 * dt);
       st.brake = dv < -0.02 * dt * 60 || (st.v < 0.2 && want < 0.1);
@@ -986,8 +1106,19 @@ window.OECars = (function () {
       // across the road it eases to its line as it goes, never sideways on the spot (so an end
       // brought forward bends its path in rather than jumping it)
       const k = lat(st.s);
-      st.lat += clamp(k - st.lat, -0.35 * st.v * dt, 0.35 * st.v * dt);
+      const lr = Math.min(0.35 * st.v, 1.6 * Math.abs(k - st.lat) + 0.02);
+      st.lat += clamp(k - st.lat, -lr * dt, lr * dt);
       pose(st.s, q, st.lat);
+      // its lane is shorter than the route's line on the inside of a turn, and longer on the outside:
+      // it goes on along the line as far as covers its speed in its lane, so that it neither slows to
+      // a crawl round a tight corner nor speeds up round a wide one
+      const step = st.v * dt;
+      for (let it = 0; it < 3 && step > 0.01 && st.s > s0; it++) {
+        const moved = Math.hypot(q.x - st.x, q.y - st.y);
+        if (moved < 1e-4 || Math.abs(moved - step) < 0.02 * step) break;
+        st.s = Math.min(st.end, s0 + (st.s - s0) * clamp(step / moved, 0.5, 2));
+        pose(st.s, q, st.lat);
+      }
       // never a step further into a car of the traffic (solid: how deep a pose is in their
       // footprints); it waits, and after a second wedged goes on at a crawl (a car that won't move off)
       if (solid && !dry && st.s > s0 && Math.abs(st.shift) < 0.2) { // (not while swinging out round a car: that line keeps a hand's width clear)
@@ -997,8 +1128,11 @@ window.OECars = (function () {
           pose(st.s, q, st.lat);
         } else if (d1 <= 0.02) st.wedged = 0;
       }
-      const h0 = st.h;
-      st.h += angDiff(Math.atan2(q.x - st.x + q.hx * 0.01, q.y - st.y + q.hy * 0.01), st.h) * Math.min(1, dt * 6) * (st.v > 0.05 ? 1 : 0);
+      // it faces the way it moves, never round to a step that goes back (a car does not spin on the spot)
+      const h0 = st.h, mh = Math.atan2(q.x - st.x + q.hx * 0.01, q.y - st.y + q.hy * 0.01);
+      // and turns no faster than its steering lets it at its speed (a turning circle of 4.5 m)
+      const yaw = (Math.abs(angDiff(mh, st.h)) < 1.2 ? angDiff(mh, st.h) : angDiff(Math.atan2(q.hx, q.hy), st.h)) * Math.min(1, dt * 6) * (st.v > 0.05 ? 1 : 0), ym = (st.v / 4.5 + 0.1) * dt;
+      st.h += clamp(yaw, -ym, ym);
       st.steer = clamp(dt > 0 ? angDiff(st.h, h0) / dt * C.wheelbase / Math.max(1, st.v) : 0, -0.6, 0.6);
       const dz = q.z - st.z;
       st.pitch += (clamp(-Math.atan2(dz, Math.max(0.01, st.v * dt)), -0.2, 0.2) * (st.v > 0.5 ? 1 : 0) - st.pitch) * Math.min(1, dt * 4);

@@ -703,8 +703,8 @@ window.OEJunctions = (function () {
     const armAt = (line, end) => { const a = armOf.get(line * 2 + end); if (!a || !a.in) return null; if (!a.j.ready) prepare(a.j); return a; };
     // ------------------------------------------------ the signal heads
     let heads = null;
-    function build(world, { style = {}, ground = null, eye = null } = {}) {
-      heads = signalHeads(world, J, net, { style, side, lane, ground, light, arrow, walk });
+    function build(world, { style = {}, ground = null, eye = null, clear = null } = {}) {
+      heads = signalHeads(world, J, net, { style, side, lane, ground, light, arrow, walk, clear });
       if (heads && eye) heads.watch(eye);
       return heads;
     }
@@ -733,8 +733,13 @@ window.OEJunctions = (function () {
   const LIT = { r: [3.4, 0.16, 0.05], y: [3.1, 1.25, 0.04], g: [0.1, 2.3, 1.05] }; // linear, bright enough to bloom
   const DARK = { r: [0.07, 0.012, 0.01], y: [0.07, 0.045, 0.01], g: [0.01, 0.06, 0.045] };
   const WALK = { r: [3.0, 0.22, 0.08], g: [0.4, 3.0, 2.0], off: [0.035, 0.03, 0.028] }; // the walk signals' figures, lit and dark
-  function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light, arrow = () => '', walk = () => true }) {
+  // clear(x, y, z, r): the nearest spot to (x, y) where a pole of radius r stands clear of every
+  // carriageway ([x, y]), or null: a pole put at one road's kerb can stand in another's lanes
+  // where several roads meet at odd angles (Shibuya's scramble), and the traffic would drive
+  // through it; it steps back behind the kerb, its mast lengthened to reach the same lane
+  function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light, arrow = () => '', walk = () => true, clear = null }) {
     const S = Object.assign({}, STYLES.default, STYLES[style.country] || {}, style), horiz = S.layout === 'horizontal';
+    const place = (x, y, z, r) => (clear ? clear(x, y, z, r) : [x, y]);
     const list = []; // poles: { a (the arm it faces), x, y, z, h (the way its lanterns face: towards the arm's traffic), mast (its arm's length), side (+1 on the keep side) }
     const tmp = {};
     for (const j of J) {
@@ -750,13 +755,15 @@ window.OEJunctions = (function () {
         const h = Math.atan2(-hx, -hy), rank = a.rank;
         const px = tmp.x - hy * kerb * side, py = tmp.y + hx * kerb * side;
         const mast = rank >= S.mast ? Math.max(0, kerb - lane - (horiz ? 0 : 0.2)) : 0; // out over the lane
-        list.push({ a, x: px, y: py, z: gz(px, py), h, mast, side });
+        const near = place(px, py, gz(px, py), 0.09);
+        if (near) list.push({ a, x: near[0], y: near[1], z: gz(near[0], near[1]), h, mast: mast ? mast + Math.hypot(near[0] - px, near[1] - py) : 0, side });
         // the far one, across the junction on the other side, for the same arm
         if (S.far && a.j.arms.length >= 3) {
           const far = a.back + Math.max(...a.j.arms.filter(b => b !== a).map(b => b.back)) + Math.min(14, 2 * Math.hypot(a.x - a.j.x, a.y - a.j.y) + 2);
           const fx = tmp.x + hx * far + hy * kerb * side, fy = tmp.y + hy * far - hx * kerb * side;
           if (net.nearest(fx, fy, 2.2)) continue; // that would stand in a road
-          list.push({ a, x: fx, y: fy, z: gz(fx, fy), h, mast: 0, side: -side });
+          const far2 = place(fx, fy, gz(fx, fy), 0.09);
+          if (far2) list.push({ a, x: far2[0], y: far2[1], z: gz(far2[0], far2[1]), h, mast: 0, side: -side });
         }
       }
     }
@@ -814,8 +821,8 @@ window.OEJunctions = (function () {
         for (const k of [1, -1]) {
           const px = tmp.x - tmp.hy * kerb * k, py = tmp.y + tmp.hx * kerb * k;
           if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
-          const g = ground ? ground(px, py, tmp) : null;
-          peds.push({ a, x: px, y: py, z: g != null ? g : tmp.z, h: Math.atan2(tmp.hy * k, -tmp.hx * k) }); // (facing across, to the far kerb)
+          const g = ground ? ground(px, py, tmp) : null, z = g != null ? g : tmp.z, q = place(px, py, z, 0.07);
+          if (q) peds.push({ a, x: q[0], y: q[1], z, h: Math.atan2(tmp.hy * k, -tmp.hx * k) }); // (facing across, to the far kerb)
         }
       }
     }
@@ -979,7 +986,7 @@ window.OEJunctions = (function () {
     function setNight(night) { glowMat.opacity = 0.12 + 0.88 * night; glowMat.size = 1.4 + 1.6 * night; }
     setNight(0);
     update();
-    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list };
+    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list, peds };
   }
 
   return { create, STYLES, RANK, lanesOf, shiftOf };

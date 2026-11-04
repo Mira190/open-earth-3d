@@ -241,6 +241,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const L = Math.hypot(d.bx - d.ax, d.by - d.ay) || 1, nx = -(d.by - d.ay) / L * d.hw, ny = (d.bx - d.ax) / L * d.hw;
     S.fillMax(DSM, [[d.ax + nx, d.ay + ny, d.bx + nx, d.by + ny, d.bx - nx, d.by - ny, d.ax - nx, d.ay - ny]], Math.max(d.az, d.bz), -3);
   }
+  // the roads as decks.js has laid them, on their bridges' and viaducts' decks (streets.js): the
+  // columns under the decks stand clear of the roads below them, and of the buildings
+  const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) })));
+  const inWall = (x, y, z, r) => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3);
+  deckPlan.columns = OEDecks.clearColumns(deckPlan.runs, (x, y, z, r) => roadsNow.depth(x, y, z, r), inWall);
   world.add(OEDecks.mesh(deckPlan.runs, OEWorld.lin));
   // where a walkable strip (a canal bridge's deck) is carried on to the quay (nav.js), the approach is drawn in the deck's stone
   const LMM = (D.LM && D.LM.materials) || {};
@@ -269,9 +274,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // that step back from the water, in a carriageway (streets.js moved them out of those before; here
   // the roads are where decks.js has laid them, on their bridges' and viaducts' decks), nor under a
   // deck too low for it to stand under
-  const roadsNow = OEStreets.carriageways(G.paths.road.map(r => ({ c: r.c, p: r.p.map(v => v / 10) })));
   const inRoad = (x, y, z, r) => roadsNow.depth(x, y, z, r) > 0;
-  const inWall = (x, y, z, r) => nav.col.overlap(x, y, r, z + 0.3, z + 2.2, (i, p) => p.tag === 1 && p.zhi <= z + 0.3);
   const underDeck = (x, y, z, top) => { let hit = false; nav.decksAt(x, y, h => { if (h > z + 0.5 && h < z + top) hit = true; }); const s = nav.surfaceAt(x, y); return hit || (s > z + 0.5 && s < z + top); };
   for (const [k, r] of [['street_lamp', 0.12], ['bench', 0.3]]) {
     const flat = (G.props || {})[k];
@@ -408,7 +411,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
   const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE,
     midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra } }); // (and the crossings between junctions: signals or zebra stripes)
-  junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
+  junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera, clear: (x, y, z, r) => roadsNow.kerbside(x, y, z, r, 6) });
+  // the signal poles, the walk-signal posts and the columns under the decks are solid too
+  { const H = junctions.heads;
+    for (const o of (H && H.list) || []) posts.add(o.x, o.y, o.z, 0.09, 'signal');
+    for (const o of (H && H.peds) || []) posts.add(o.x, o.y, o.z, 0.07, 'signal');
+    for (const r of deckPlan.runs) for (const c of r.cols || []) {
+      if (c.beam || c.z0 < -1) continue; // (a portal's beam is overhead; a column in the water is the boats' business)
+      const rr = Math.min(c.hx, c.hy), long = Math.max(c.hx, c.hy) - rr, ux = c.hx > c.hy ? c.ex : -c.ey, uy = c.hx > c.hy ? c.ey : c.ex;
+      for (let u = -long; u <= long + 1e-6; u += Math.max(0.3, rr)) posts.add(c.x + ux * u, c.y + uy * u, c.z0 + 0.3, rr, 'column');
+    } }
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
   crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav, posts, junctions });
@@ -3850,7 +3862,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
   const flyover = { titlePose, camera: o => { flyCam = o ? { pos: W(...o.cam), look: W(...o.look), shadow: o.shadow || 600 } : null; }, restart: () => fromFlyover() };
-  window.__game = { t: () => clockT, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
+  window.__game = { t: () => clockT, deckPlan, arriving: () => !!arriving, settleArrival, startTour, welcome, onboard: OEOnboard, route: { get mode() { return routeMode; }, set: setRouteMode, peek: peekRoute, PEEK: ROUTE_PEEK }, vlib, peopleLib: lib, posts, junctions, rideEta: () => (ride ? eta(ride) : 0), flyover, Wd, colonies, flocks, dayLimits, footNet, crowdNet, travelTo, travelGroups, standFor, seenNow, bodyOf, B, landmarks, GAIT, toggleMap, scene, mapPins: () => bigPins, mapView: () => ({ z: mapZ.z, cx: mapZ.cx, cy: mapZ.cy, names: bigNames.slice(), picked: !mapPop.hidden }), benches, sunWant, benchTalk, advance, atmos, dlg, cine, photo, photoMode, snapPhoto, hopTo, craneIn, live, VP, viewshed, survey, renderPassport, guess, guessStart, guessCheck, completeQuest, LINES, ls, tracked, cycleTrack, openLines, lastDock: () => lastDock, waypoint: w => { waypoint = w; }, player, myCar: () => myCar, ride: () => ride, kerbAction, hail, orderRide, cancelRide, boardRide, leaveRide, skipRide, enterCar, exitCar, bringCar, resetCar, destinations, roads, carBoxes, phoneShow, KEEP, heli, helipads: G.helipads, fer, rail, npcs, crowd, cars, nav, clock, setClock, qs: () => qs, quest, step, completeStep, talkTo, board, alight, interact, enterHeli, exitHeli, spawn, objective, lens, camera, cam, DSM, G, ways, gold, guide: () => guide, roadNet, currentAction, keys, lifts, rideLift, places, lookAt, care, weather, crowdDraw: () => crowdDraw };
   return {
     stop() { running = false; ac.abort(); ro.disconnect(); care.dispose(); if (atmos) atmos.dispose(); if (weather) weather.dispose(); renderer.dispose(); Wd.dispose(); A.stop(); window.__game = null; },
   };
