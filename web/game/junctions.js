@@ -448,7 +448,7 @@ window.OEJunctions = (function () {
         const t = clockOf(), open = ex.filter(e => !closedNow(e, t));
         if (open.length) ex = open;
       }
-      if (ex.length > 1) { // (not into a one-way street that leads nowhere, mapped as ending in a station square, say, if there is another way)
+      if (ex.length > 1 && a.j.scramble) { // (out of a scramble, not into a one-way street that leads nowhere, mapped as ending in its station square, say, to wait at its end over the crosswalk, if there is another way)
         const on = ex.filter(e => { const l = L[e.m.line]; return !(l.ow && !net.next(e.m.line, 1 - e.m.end, true)); });
         if (on.length) ex = on;
       }
