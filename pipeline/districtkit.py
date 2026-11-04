@@ -494,9 +494,14 @@ def deck_profile(b):
     """[[u, z]] along a bridge's axis: the two banks, and a crown of 2% of its length (at least 0.8 m), or its crown_m."""
     L, (za, zb) = b["length_m"], b["z_ends"]
     crown = b.get("crown_m", max(0.8, 0.02 * L))
-    us = np.linspace(-L / 2 - 3, L / 2 + 3, 11)
+    us = np.linspace(-L / 2 - 3, L / 2 + 3, 11 if not b.get("lift_m") else 21)
     t = (us - us[0]) / (us[-1] - us[0])
-    out = [[round(float(u), 1), round(float(za + (zb - za) * k + crown * 4 * k * (1 - k)), 2)] for u, k in zip(us, t)]
+    if b.get("lift_m"):   # over a ferry's course (bridges.py lift): level across the middle, eased up from the banks
+        m = np.minimum(1.0, np.clip(np.minimum(t, 1 - t), 0, None) / 0.3)
+        rise = b["lift_m"] * m * m * (3 - 2 * m)
+    else:
+        rise = crown * 4 * t * (1 - t)
+    out = [[round(float(u), 1), round(float(za + (zb - za) * k + r), 2)] for u, k, r in zip(us, t, rise)]
     if b.get("banks"):   # ramps down to banks lower than the deck's ends (bridges.py: the deck clears the ground under it)
         (ga, gb), r = b["banks"], b.get("ramp_m", 0.0)
         out = [[round(-L / 2 - 3 - r, 1), ga]] + out + [[round(L / 2 + 3 + r, 1), gb]]

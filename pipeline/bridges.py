@@ -23,11 +23,13 @@ with `colour` (the paint), `spans`, `rise_m` (the arch's rise over the deck, or 
 it), `rail` ("steel", "stone", "timber" with giboshi caps), `lamps` (lamp posts a side) and `lamp`
 (their head's colour), `lamp_style` ("bronze": stone pedestals and candelabra), `span_m` (the published spans,
 in proportion), `crown_m` (the deck's rise in the middle), `deck_z` (the deck's height at its two ends, from its
-south or west end, where the road over it is carried up above the banks). `skip` names bridges to leave out, `widths` the deck of one mapped as lines,
+south or west end, where the road over it is carried up above the banks). Over a ferry's course (game.json "ferries") a deck rises
+in the middle until the city's boats pass under it, with someone standing on the upper deck (`lift_m`). `skip` names bridges to leave out, `widths` the deck of one mapped as lines,
 `deck_min_m` the lowest a deck's ends stand (3.5 m: a Tokyo river's embankment), `min_m2` the smallest outline,
 `classes` the water's classes, `form`, `colour`, `stone`, `rail` and `lamps` the city's default for every bridge,
 and `off` leaves them all out.
 """
+import json
 import math
 
 import numpy as np
@@ -114,6 +116,45 @@ def elevated(C, b):
     return bool(levels) and min(levels) >= 1
 
 
+def boats(C):
+    """How high the city's ferries stand over the water (the shared model's upper deck, at the city's
+    length, and someone standing on it: as the game reckons it, web/game/game.js boatTop) and their
+    courses as lines, from the built game.json (none on a first build: the next build lifts the decks)."""
+    import os
+    from shapely.geometry import LineString
+    path = os.path.join(C.out, "game.json")
+    if not os.path.exists(path):
+        return 0.0, []
+    g = json.load(open(path, encoding="utf8"))
+    courses = [LineString(l["path"]) for f in g.get("ferries", []) for l in f.get("legs", []) if len(l.get("path", [])) > 1]
+    if not courses:
+        return 0.0, []
+    st = g.get("ferry_style") or {}
+    V = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web", "assets", "vehicles", "vehicles.json"), encoding="utf8"))
+    m = V.get("ferry_river" if st.get("model") == "river" else "ferry") or {}
+    top = m.get("upper_deck_m", 4.2) * (st["length_m"] / m["length_m"] if st.get("length_m") and m.get("length_m") else 1.0) + 2.2
+    return top, courses
+
+
+def lift(b, top, courses):
+    """Over a ferry's course the middle of the span rises until the boats pass under its soffit, level
+    across the middle of the bridge (as web/game/decks.js lifts the bridges it draws): b["lift_m"]."""
+    from shapely.geometry import Polygon
+    if not courses or not top:
+        return
+    P = frame(b["centre"], b["axis"])
+    L, hw = b["length_m"] / 2, b["width_m"] / 2
+    box = Polygon([P(-L, -hw, 0)[:2], P(L, -hw, 0)[:2], P(L, hw, 0)[:2], P(-L, hw, 0)[:2]])
+    if not any(box.intersects(c) for c in courses):
+        return
+    stone = b.get("form") == "stone_arch"
+    n_sp = len(b["span_m"]) if b.get("span_m") else int(b.get("spans") or max(1, round(b["length_m"] / (30.0 if stone else 45.0))))
+    deep = 1.2 if stone else min(2.6, max(1.2, b["length_m"] / (n_sp * 25)))
+    need = max(b.get("z_base", 0.0), 0.0) + top + deep - min(b["z_ends"])
+    if need > b.get("crown_m", max(0.8, 0.02 * b["length_m"])):
+        b["lift_m"] = round(need, 2)
+
+
 def find(ctx, scene=None):
     """The bridges over the water that the city does not draw itself, each with its form (city.json
     "bridges"), its deck at the banks' height, and z_base, the water's (or the riverbed's) height under it."""
@@ -130,6 +171,7 @@ def find(ctx, scene=None):
         print(f"bridges: none ({e})")
         return []
     decks = own_decks(C, scene or {"landmarks": ctx.landmarks})
+    top, courses = boats(C)
     skip = set(cfg.get("skip", []))
     out, dropped = [], 0
     for b in found:
@@ -144,6 +186,7 @@ def find(ctx, scene=None):
             b["z_ends"] = [float(z) for z in b.pop("deck_z")]
         clear(ctx, b)
         b["z_base"] = round(max(min(ctx.ground(*b["centre"]), min(b["z_ends"]) - 1.5), 0.0), 2)
+        lift(b, top, courses)
         if b["form"] == "x":   # an X in plan (Sakura-bashi): two decks corner to corner of its outline
             out += x_arms(ctx, b, float(f.get("arm_m", 8.0)))
             continue

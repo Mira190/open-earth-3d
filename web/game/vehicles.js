@@ -515,7 +515,13 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // either side, so it never swings out and back in short (two meeting in a river as narrow as
     // Osaka's Dotonbori pass close to its banks)
     const sc = I && style.length_m ? style.length_m / I.length_m : 1, hullL = I ? I.length_m * sc : style.length_m || 36, hullB = I ? I.beam_m * sc : style.beam_m || 10;
-    const open = (x, y) => nav.isWater(x, y) && nav.surfaceAt(x, y) === -Infinity;
+    // (a bridge's deck the boats pass under, a strip with fly_under, is not in the hull's way)
+    const spans = (nav.strips || []).filter(s => s.fly_under);
+    const open = (x, y) => {
+      if (!nav.isWater(x, y)) return false;
+      const h = nav.surfaceAt(x, y);
+      return h === -Infinity || spans.some(s => { const z = nav.stripHeight(s, x, y); return z != null && z >= h - 0.01; });
+    };
     const hullClear = (x, y, fx, fy) => {
       for (const u of [-0.5, -0.25, 0, 0.25, 0.5]) for (const w of [-1, 0, 1]) {
         const a = u * hullL + Math.sign(u) * 0.5, b = w * (hullB / 2 + 0.5);
