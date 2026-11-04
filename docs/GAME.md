@@ -602,10 +602,13 @@ pipeline writes. The only city-specific code is landmark geometry in
   - **Start-up sweeps:** at the start the game looks over the whole city for where
     trees, lamps, poles and benches can stand, which stretches of footway the crowd
     keeps to and where roads are cut at walls (`nav.withoutFine`). Away from the
-    landmarks that needs only the 2 m surface model. Where a sweep meets a
-    landmark's 2 m cell, or one beside it, the tiles round it are built then and
-    the fine cells answer, so a crowd's way through a gate's passage or between
-    lanterns is kept where a walker gets through (issue #141).
+    landmarks that needs only the 2 m surface model. Where a landmark's 2 m cell
+    says a sweep is stopped, the triangles its fine cells are laid from are asked
+    again: whether any comes within the radius between knee and head, with the
+    fine cells' margins. So a crowd's way through a gate's passage or between
+    lanterns is kept where a walker gets through (issue #141). Laying the fine
+    cells of every tile the sweeps meet cost 1.8 s more at Kyoto's start and
+    1.0 s at Paris's; reading the triangles costs about 30 ms.
   - **Landmark floors:** a landmark's flat top within a step of the ground is a
     floor when it covers 2 m² and reaches a fine cell round each of its cells. A
     material that says `"floor": false` is never one, however wide its top (a
