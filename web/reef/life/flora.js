@@ -5,7 +5,10 @@
 // inside a fringe of octopus bush, sea lettuce, casuarina and pandanus. 64 m tiles, three rings: detailed
 // plants near the camera, simpler ones to 650 m, then a thinned set of coarse spindles to 2.6 km so an
 // island's skyline reads as forest from the sea. Nothing grows on open beach sand or below the vegetation line.
+// The coral cays' pisonia and she-oaks and Green Island's vine forest within 160 m are the shared trees every city plants (web/assets/trees,
+// blender/build_trees.py: grown limbs under leaf cards), the full tree within 55 m, once they have loaded.
 import * as THREE from 'three/webgpu';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { Herd, hash } from './kit.js';
 import { pick, inside } from './profile.js';
 import * as G from './geo.js';
@@ -13,6 +16,10 @@ import * as G from './geo.js';
 const TT = 64;
 const R0 = 160, R1 = 650, R2 = 2600;
 const KEEP1 = 0.6, KEEP2 = 0.2;         // share of trees drawn in the middle and far rings (by a per-tree rank)
+const RS = 55;                          // the shared trees' full model within this, their sparse one to R0
+// the reef's species drawn with a shared tree near the camera: its name in web/assets/trees/trees.json
+// (Green Island's closed vine forest, a rainforest of evergreen broadleaves, takes the shared evergreen)
+const SHARED = { pisonia: 'pisonia', casuarina: 'casuarina', 'vine-forest': 'evergreen' };
 
 // model height (m) of each geometry, per-instance scale range, colours (linear albedo), far spindle width/height,
 // how far it is sunk, instance capacity [near, mid], and the planting grid (m)
@@ -43,6 +50,31 @@ export function createFlora(ctx, ground, mats, profile) {
   }
   const far = new Herd('trees-far', G.farTree(), mats.farTree, 60000);
   group.add(far.mesh);
+  // the shared trees, when they have loaded: per species [full, sparse], each { leaves, bark } herds
+  const shared = {};
+  const sharedIds = IDS.filter(id => SHARED[id]);
+  const ready = !sharedIds.length ? Promise.resolve() : new GLTFLoader().loadAsync(new URL('../../assets/trees/trees.glb', import.meta.url).href).then(async gltf => {
+    const info = await (await fetch(new URL('../../assets/trees/trees.json', import.meta.url))).json();
+    let atlas = null;
+    gltf.scene.traverse(o => { if (o.isMesh && o.material.name === 'Leaves') atlas = o.material.map; });
+    if (!atlas) return;
+    const cardMat = mats.cards(atlas);
+    for (const id of sharedIds) {
+      const sp = SHARED[id], S = info.species[sp];
+      if (!S) continue;
+      const lods = [0, 1].map(lod => G.sharedTree(gltf.scene, sp, lod));
+      if (lods.some(l => !l)) continue;
+      // the atlas's leaves carry their own colour: the instance's leaf albedo is taken over the species' own
+      const ref = new THREE.Color(S.colour); // (linear: three.js converts a CSS colour to its working space)
+      shared[id] = { ref: [ref.r, ref.g, ref.b], H: S.height_m, herds: lods.map((g, lod) => {
+        const cap = lod ? TREES[id].cap[0] : 600;
+        const h = { leaves: new Herd(`${id}-shared${lod}`, g.leaves, cardMat, cap), bark: new Herd(`${id}-shared${lod}-bark`, g.bark, mats.tree, cap) };
+        group.add(h.leaves.mesh, h.bark.mesh);
+        return h;
+      }) };
+    }
+    keyNear = ''; // filled again at the next update
+  }).catch(e => console.warn('reef: shared trees not loaded', e));
   const cell = Math.max(3, Math.min(7, P.cell || 7)), clear = (P.clear || []).filter(c => c.xy && c.xy.length > 2);
 
   // the satellite's own colour of the canopy, a quarter resolution, to tint each tree a little toward it
@@ -120,7 +152,7 @@ export function createFlora(ctx, ground, mats, profile) {
   const counts = {};
   function fill(cam, near) {
     const cx = cam.x, cn = -cam.z, R = near ? R1 : R2, r = Math.ceil(R / TT) + 1, tx0 = Math.floor(cx / TT), ty0 = Math.floor(cn / TT);
-    const n = {}; for (const id of IDS) n[id] = [0, 0];
+    const n = {}; for (const id of IDS) n[id] = [0, 0, 0, 0];
     let nf = 0, budget = near ? 400 : 160;
     for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) {
       const tx = tx0 + i, ty = ty0 + j, x0 = tx * TT, n0 = ty * TT;
@@ -135,6 +167,16 @@ export function createFlora(ctx, ground, mats, profile) {
           if (dd > R1) continue;
           const lod = dd < R0 ? 1 : 0;
           if (lod === 0 && o.rank > KEEP1) continue;
+          const sh = lod && shared[o.sp];
+          if (sh) { // the shared tree: full or sparse
+            const L = dd < RS ? 0 : 1, H = sh.herds[L], k = n[o.sp][2 + L];
+            if (k >= H.leaves.cap) continue;
+            const s = o.s * TREES[o.sp].H / sh.H, r = sh.ref;
+            H.leaves.put(k, o.x, o.y, o.z, s, o.yaw, 0, o.lean, o.rank * 6.283, o.leaf[0] / r[0], o.leaf[1] / r[1], o.leaf[2] / r[2], 1, 0, 0, 0, 1);
+            H.bark.put(k, o.x, o.y, o.z, s, o.yaw, 0, o.lean, o.rank * 6.283, o.leaf[0], o.leaf[1], o.leaf[2], 1, o.bark[0], o.bark[1], o.bark[2], 1);
+            n[o.sp][2 + L] = k + 1;
+            continue;
+          }
           const H = herds[o.sp][lod], k = n[o.sp][lod]; if (k >= H.cap) continue;
           // the middle ring has fewer trees: wider crowns keep the canopy closed, and the boles darken into its shade
           const w = lod ? 1 : 1.3, bk = lod ? 1 : 0.5;
@@ -148,7 +190,10 @@ export function createFlora(ctx, ground, mats, profile) {
         }
       }
     }
-    if (near) for (const id of IDS) { herds[id][0].commit(n[id][0]); herds[id][1].commit(n[id][1]); counts[id] = n[id][0] + n[id][1]; }
+    if (near) for (const id of IDS) {
+      herds[id][0].commit(n[id][0]); herds[id][1].commit(n[id][1]); counts[id] = n[id][0] + n[id][1] + n[id][2] + n[id][3];
+      if (shared[id]) shared[id].herds.forEach((h, L) => { h.leaves.commit(n[id][2 + L]); h.bark.commit(n[id][2 + L]); });
+    }
     else { far.commit(nf); counts.far = nf; }
   }
   let first = true, wasDeep = false;
@@ -159,11 +204,18 @@ export function createFlora(ctx, ground, mats, profile) {
     // a diver more than a couple of metres down sees the land only through Snell's window, not tree by tree
     const deep = cam.y < env.u.tide.value - 2.5;
     if (deep !== wasDeep) { wasDeep = deep; keyNear = keyFar = ''; }
-    if (deep) { if (keyNear !== 'deep') { keyNear = keyFar = 'deep'; for (const id of IDS) { herds[id][0].commit(0); herds[id][1].commit(0); counts[id] = 0; } far.commit(0); counts.far = 0; } first = false; return; }
+    if (deep) {
+      if (keyNear !== 'deep') {
+        keyNear = keyFar = 'deep';
+        for (const id of IDS) { herds[id][0].commit(0); herds[id][1].commit(0); counts[id] = 0; if (shared[id]) for (const h of shared[id].herds) { h.leaves.commit(0); h.bark.commit(0); } }
+        far.commit(0); counts.far = 0;
+      }
+      first = false; return;
+    }
     if (kN !== keyNear || wasPending) { keyNear = kN; fill(cam, true); }
     if (kF !== keyFar || wasPending) { keyFar = kF; fill(cam, false); }
     if (tiles.size > 20000) for (const [k, t] of tiles) { const dx = t.x0 - cam.x, dn = t.n0 + cam.z; if (dx * dx + dn * dn > (R2 + 600) ** 2) tiles.delete(k); }
     first = false;
   }
-  return { group, herds, far, update, counts, tiles, ids: IDS };
+  return { group, herds, shared, far, update, counts, tiles, ids: IDS, ready };
 }

@@ -14,6 +14,7 @@ tools/voice_check.py checks the result.
     python pipeline/game_text.py shibuya tokyo
 """
 import json
+import math
 import os
 import sys
 
@@ -21,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cityctx import City  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+MOVED_M = 20.0   # an NPC moved further than this in city.json stands where city.json puts it
 TOP = ("title", "local_name", "water_name", "greeting", "blurb", "under_bridge_note", "smalltalk", "lines", "areas", "regulars",
        "crowd", "look")  # (and two settings tuned by eye: how many people are out when, the grade by the hour)
 
@@ -38,11 +40,19 @@ def update(city):
     for k in TOP:
         if k in g:
             game[k] = g[k]
-    # the NPCs: everything but where they stand, which game_data.py snapped to open ground
+    # the NPCs: everything but where they stand, which game_data.py snapped to open ground; one new to
+    # city.json, or moved there more than MOVED_M from where game.json has it, stands where city.json puts
+    # it (placed on open ground by hand; tools/game_check.js finds each in light and in sight at night)
     have = {n["id"]: n for n in game.get("npcs", [])}
-    if set(have) != {n["id"] for n in g.get("npcs", [])}:
-        raise SystemExit(f"{city}: the NPCs in city.json are not the ones in game.json; rebuild with pipeline/game_data.py")
-    game["npcs"] = [dict(n, at=have[n["id"]]["at"]) for n in g.get("npcs", [])]
+    npcs = []
+    for n in g.get("npcs", []):
+        h = have.get(n["id"])
+        if h and math.hypot(h["at"][0] - n["at"][0], h["at"][1] - n["at"][1]) <= MOVED_M:
+            npcs.append(dict(n, at=h["at"]))
+        else:
+            npcs.append(dict(n, at=[round(float(v), 2) for v in n["at"]]))
+            print(f"{city}: {n['id']} {'moved' if h else 'added'}, at {npcs[-1]['at']} as city.json gives it")
+    game["npcs"] = npcs
     # the quests, with a flock's place as game_data.py found it
     flocks = {f["id"]: f["at"] for f in game.get("flocks", [])}
     quests = json.loads(json.dumps(g.get("quests", [])))

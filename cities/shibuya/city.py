@@ -65,7 +65,7 @@ def _sibling(name):
 
 scramble = _sibling("scramble")   # the scramble at street level: its street, entrances, buildings and signs (#111)
 hachiko_kit = _sibling("hachiko")  # Hachiko, sculpted: the bronze Akita and his pedestal
-garden = _sibling("hachiko_garden")  # Hachiko Square's cherries, pines and lilyturf, and their leaf atlas
+garden = _sibling("hachiko_garden")  # the lilyturf in the bed behind Hachiko, and its atlas
 
 # the map being built: "shibuya", or "shinjuku" when cities/shinjuku/city.py loads this file
 CITY = globals().get("CITY", "shibuya")
@@ -1365,7 +1365,7 @@ def landmark_assets(out_dir, scene):
     img.save(os.path.join(out_dir, "atlas.jpg"), quality=90)
     out = ["atlas.jpg"]
     lm = scene["landmarks"]
-    if "hachiko" in lm:   # Hachiko Square's leaf atlas
+    if "hachiko" in lm:   # Hachiko Square's lilyturf atlas
         out.append(os.path.basename(garden.draw_atlas(os.path.join(out_dir, garden.ATLAS))))
     path = os.path.join(out_dir, "ema.jpg")
     if "suga" in lm:   # the ema, on the map that has Suga Shrine
@@ -2205,9 +2205,8 @@ MATERIALS.update({
     "hk_soil": {"color": "#3a3128", "roughness": 1.0, "metalness": 0.0},
     "hk_steel": {"color": "#d3d7da", "roughness": 0.22, "metalness": 0.9},
     "hk_rock": {"color": "#7b776f", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.0]},
-    # the square's plants (hachiko_garden.py): the cherries' bark, and the leaf cards cut out of the
-    # garden's atlas (their clear pixels are holes, in shadow too)
-    "hk_cbark": {"color": "#3f3632", "roughness": 0.9, "metalness": 0.0},
+    # the bed's lilyturf (hachiko_garden.py): cards cut out of the garden's atlas (their clear pixels
+    # are holes, in shadow too)
     "hk_leaf": {"color": "#e6e6e6", "roughness": 0.8, "metalness": 0.0, "map": "hachiko_garden.png", "cutout": True},
     # QFRONT's glass front (web/world.js curtain_wall: panes between mullions, some lit after dark)
     "qfront_glass": {"color": "#3b4c58", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
@@ -3059,9 +3058,10 @@ HACHIKO_LAMPS = [(374.5, -1028.0), (386.0, -1022.0), (386.0, -1052.0), (366.0, -
 # 2020, 2021 and July 2025 he is seen from behind looking at QFRONT's side, in profile from the square's south,
 # and from the front with the buses behind him (Wikimedia Commons, docs/cities/shibuya.md)
 HACHIKO_LOOKS_AT = (400.0, -1022.0)
-# Round his back, a curved bed of rocks, black pines and a maple behind a low granite wall that people sit
-# on, with stainless rails along it and lamps set in it; a Kasuga lantern in the bed; on his left the
-# memorial stone with its plate. Round him, dark granite setts laid in arcs. Out on the square, round
+# Round his back, a curved bed behind a low granite wall that people sit on, with stainless rails along
+# it and lamps set in it; in the bed rocks, lilyturf and a Kasuga lantern, and no tree (the real bed's
+# pines and maple are left out so that nothing stands over him); on his left the memorial stone with its
+# plate. Round him, grey granite setts laid in arcs. Out on the square, round
 # raised planters of granite strips with stainless rails, each with a cherry tree (photographs 2020-25;
 # the sizes are estimates). The setts' cherry-blossom inlays lie round the planters.
 HK_BED = {"r_in": 2.4, "r_out": 4.4, "from_deg": 100.0, "to_deg": 260.0, "wall_m": 0.48}
@@ -3070,7 +3070,6 @@ HK_PLANTERS = [(381.0, -1035.5), (383.6, -1049.2)]   # world x, y
 HK_PLANTER = {"r": 1.35, "h": 0.72}
 HK_BLOSSOMS = [(378.0, -1031.0), (386.6, -1039.5), (380.0, -1053.0), (387.5, -1045.0)]
 HK_LANTERN_DEG = 108
-HK_CHERRY = {"h": 7.4, "spread": 4.0}         # the planters' cherries (hachiko_garden.cherry)
 
 
 def hachiko_face(h):
@@ -3256,14 +3255,18 @@ def hachiko_square(K, h, lm):
             p = c + d * (R + 0.34)
             K("hk_steel").tube([np.array([*p, g]), np.array([*p, g + 0.74])], 0.024, 6)
             K("hk_steel").tube([np.array([*p, g + 0.6]), np.array([*(c + d * R), g + 0.6])], 0.018, 6)
-        garden.cherry(K, (c[0], c[1], g + H - 0.08), 1923 + int(c[1]), H=HK_CHERRY["h"], R=HK_CHERRY["spread"])
 
 
 def hachiko_trees(lm):
-    """The square's own trees drawn by the shared trees: none. The planters' cherries are the garden's own
-    (hachiko_garden.py), and the bed behind Hachiko is kept low (rocks, lilyturf, the lantern), so
-    nothing stands over him."""
-    return []
+    """The square's own trees, [x, y, z, height] in decimetres (places.json's layout): a cherry in each
+    round planter (the species: city.json trees.areas). The bed round Hachiko has no tree."""
+    if not lm.get("hachiko"):
+        return []
+    out = []
+    for c in HK_PLANTERS:
+        g = lm_ground_at(lm, *c)
+        out += [round(c[0] * 10), round(c[1] * 10), round((g + HK_PLANTER["h"] - 0.08) * 10), 72]
+    return out
 
 
 def qfront_glass(K):
