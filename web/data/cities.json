@@ -15,9 +15,12 @@
    3.0,
    4.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 7889792,
-   "game": 11166416
+   "model": 5295013,
+   "game": 8571637
   }
  },
  {
@@ -39,9 +42,12 @@
    4.8,
    3.9
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 6188481,
-   "game": 10463077
+   "model": 2892353,
+   "game": 7167105
   },
   "group_meta": {
    "kind": "city",
@@ -67,9 +73,12 @@
    3.2,
    7.7
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5393525,
-   "game": 8916219
+   "model": 2609509,
+   "game": 6132203
   },
   "group_meta": {
    "kind": "city",
@@ -93,9 +102,12 @@
    4.5,
    6.4
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 30913927,
-   "game": 37494964
+   "model": 11938598,
+   "game": 18521081
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -121,9 +133,12 @@
    3.0,
    5.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 33880374,
-   "game": 36883456
+   "model": 13469220,
+   "game": 16472297
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -151,9 +166,12 @@
    3.2,
    4.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 7438133,
-   "game": 10866416
+   "model": 3760093,
+   "game": 7188387
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -754,9 +772,12 @@
    4.5,
    4.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 21798467,
-   "game": 25354702
+   "model": 8846977,
+   "game": 12404322
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1343,9 +1364,12 @@
    4.5,
    3.1
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 13426924,
-   "game": 16283871
+   "model": 7243375,
+   "game": 10105222
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1932,9 +1956,12 @@
    2.6,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 8445246,
-   "game": 9537028
+   "model": 4609652,
+   "game": 5705710
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -2521,9 +2548,12 @@
    1.8,
    1.5
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 2803705,
-   "game": 3547113
+   "model": 1541940,
+   "game": 2285788
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3110,9 +3140,12 @@
    1.9,
    1.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 6503500,
-   "game": 7328681
+   "model": 4426386,
+   "game": 5251567
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3699,9 +3732,12 @@
    1.8,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 3484407,
-   "game": 4159826
+   "model": 1110306,
+   "game": 1785725
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -4288,9 +4324,12 @@
    1.8,
    1.5
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 1617727,
-   "game": 2262621
+   "model": 889739,
+   "game": 1534633
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -4877,9 +4916,12 @@
    1.8,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 2411447,
-   "game": 3054294
+   "model": 1189433,
+   "game": 1832280
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -5466,9 +5508,12 @@
    1.8,
    1.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 1493735,
-   "game": 2055616
+   "model": 561183,
+   "game": 1123064
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -6055,9 +6100,12 @@
    1.8,
    1.6
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5172733,
-   "game": 5738746
+   "model": 4171024,
+   "game": 4737037
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -6644,9 +6692,12 @@
    2.2,
    2.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5382638,
-   "game": 6095784
+   "model": 5207639,
+   "game": 5920785
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -7347,9 +7398,12 @@
    5.6,
    4.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 29084229,
-   "game": 35360677
+   "model": 13294054,
+   "game": 19570734
   }
  },
  {
@@ -7368,9 +7422,12 @@
    4.0,
    4.0
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 17349358,
-   "game": 20582146
+   "model": 6240869,
+   "game": 9473657
   }
  },
  {
@@ -7390,9 +7447,12 @@
    4.0,
    4.8
   ],
+  "packed": [
+   "buildings"
+  ],
   "load_bytes": {
-   "model": 5279668,
-   "game": 8871133
+   "model": 4534902,
+   "game": 8127161
   }
  },
  {

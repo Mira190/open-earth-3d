@@ -48,6 +48,9 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
 
+`pack.py` packs each city's `buildings.json` into `buildings.bin`, which is what
+the browser downloads (see [Download size](#download-size) below).
+
 ### Ground
 
 The ground tiles are the aerial photo, resampled into the local frame at 1 m
@@ -814,3 +817,85 @@ and planes they replace); the shadow pass a third less.
 Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
 llvmpipe gives (seconds) say nothing about a device.
 
+## Download size
+
+Issue 148: what a city costs to download before it can be played. `tools/load_size.js <city>
+[play|model] [mbps] --files` opens the page with the network held to a speed, counts every file
+once, raw and as GitHub Pages sends it (gzip for text types; images, models and `.bin` as they
+are), and says when the data was in and when the loading screen started to fade.
+
+### Buildings: `buildings.bin`
+
+`pipeline/pack.py` packs `buildings.json` into `buildings.bin`, a lossless columnar encoding of the
+same JSON tree, gzip-wrapped: integers as typed columns of the narrowest width, delta-coded by the
+stride that compresses best (2 for the rings' x, y pairs, 3 for the roofs' x, y, z) and split into
+byte planes; decimals as scaled integers; strings through a table; the roof meshes' base64 as their
+int16 and index bytes. `web/pack.js` inflates it with the browser's own `DecompressionStream` and
+rebuilds the object `JSON.parse` would have given, so nothing that reads it changed, except that
+the roof columns arrive as `Uint8Array` (`sun.js` `unpackRoof` takes either). `world.js` falls back
+to `buildings.json` for a city whose pack is missing or stale (`cities.json` `packed`) or a
+browser without `DecompressionStream`. `buildings.json` stays the pipeline's source: after a step
+that writes it, `python pipeline/pack.py` repacks what is stale, and `tools/check.sh` fails on a
+stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
+
+| City | buildings.json | gzipped | buildings.bin | decode (Node, desktop) | JSON.parse |
+|---|---|---|---|---|---|
+| Shibuya | 17.76 MB | 6.44 MB | 3.76 MB | 172 ms | 82 ms |
+| Kyoto | 25.71 MB | 8.90 MB | 5.29 MB | 375 ms | 272 ms |
+| Osaka | 24.61 MB | 8.62 MB | 5.09 MB | 373 ms | 160 ms |
+| Paris | 21.41 MB | 8.71 MB | 5.61 MB | 294 ms | 99 ms |
+| Amsterdam | 14.01 MB | 4.77 MB | 2.89 MB | 243 ms | 73 ms |
+| Shinjuku | 8.81 MB | 3.13 MB | 1.86 MB | 137 ms | 71 ms |
+| all 20 cities | 148.4 MB | 53.3 MB | 32.4 MB | | |
+
+The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
+more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
+
+### Shared models: meshopt
+
+What three.js r186 can decode out of the box, surveyed for the shared models (`web/assets/vehicles`,
+`trees`, `people`):
+
+| Option | three.js r186 | Licence | For |
+|---|---|---|---|
+| `EXT_meshopt_compression` (meshoptimizer) | `GLTFLoader.setMeshoptDecoder`, `examples/jsm/libs/meshopt_decoder.module.js`, 29 kB of JS with its WASM inline | MIT | geometry, skins and animation; decodes at gigabytes a second, keeps every node, name and attribute |
+| `KHR_draco_mesh_compression` (Draco) | `DRACOLoader`, a WASM decoder of about 300 kB fetched on first use | Apache-2.0 | static geometry; smaller than meshopt on dense meshes, but no animation, slower to decode, and it re-orders vertices |
+| `KHR_texture_basisu` (KTX2, Basis Universal) | `KTX2Loader`, a WASM transcoder of about 500 kB | Apache-2.0 | textures that stay compressed in GPU memory; the transcoder outweighs what it saves on these few textures |
+| `EXT_texture_webp` | built in | — | already used by the people's textures |
+
+Adopted: meshopt, for every shared model. `pipeline/meshopt_glb.mjs` (meshoptimizer's own encoder,
+1.3.0, MIT, vendored in `pipeline/vendor/meshoptimizer/`) encodes each buffer view of vertex
+attributes, indices and animation in place, as the last step of `blender/build_vehicles.py`,
+`build_trees.py`, `build_people.py` and `pipeline/fetch_people.py` (`pipeline/meshopt.py`). It
+does not quantise to integers, re-order, merge or rename anything, so `cars.js` and `people.js`
+read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
+corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
+exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
+Each view is decoded again and compared before the file is written. `web/index.html` gives every
+`GLTFLoader` the decoder; the reef's `people.js` sets it on its own. `tools/check.sh` fails on a
+model that is not compressed.
+
+| Models | Before | After |
+|---|---|---|
+| `cars.glb` | 5.40 MB | 2.35 MB |
+| `helicopter.glb` | 3.75 MB | 1.69 MB |
+| `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
+| `trees.glb` (48 species and stages), its leaf atlases WebP (`pipeline/glb_webp.py`: quality 92, the cut-out alpha exact; a fifth of the PNG) | 5.15 MB | 1.85 MB |
+| the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
+| the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
+| all 87 shared models | 60.28 MB | 35.98 MB |
+
+What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
+issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):
+
+| Shibuya `#play` | files | raw | on the wire | playable at 20 Mbps |
+|---|---|---|---|---|
+| before | 128 | 66.3 MB | 45.2 MB | 67.4 s |
+| after | 127 | 36.6 MB | 27.7 MB | 55.3 s |
+
+The times are on a software renderer (Mesa llvmpipe), where building the scene's shaders and
+geometry, not the network, takes most of them; on a GPU the download is the larger share.
+
+The helicopter (1.7 MB) is no longer among them: it is fetched when the player comes within 800 m of
+its pad or boards it. NPCs whose characters no one within 300 m of the start wears load after the
+game opens.
