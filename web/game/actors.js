@@ -732,6 +732,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const c0 = Math.floor(q.x / CELL), r0 = Math.floor(q.y / CELL), vv = Math.hypot(vx, vy);
       // (caught a while in the press, mid-road: shuffles on through it, as for the footways' knots)
       q.stuck = q.ph === 'cross' && q.v < 0.15 ? (q.stuck || 0) + dt : 0;
+      if (q.ph === 'cross' && !pz.walk() && pz.left() < 3) q.squeeze = Math.max(q.squeeze || 0, 0.3); // (the walk over and still out on the road: on through the press, hurrying)
       if (q.stuck > 2) { q.squeeze = 1.5; q.stuck = 0; }
       if (q.squeeze > 0) q.squeeze -= dt;
       if (!(q.squeeze > 0)) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
@@ -769,7 +770,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       q.vx += (vx - q.vx) * k; q.vy += (vy - q.vy) * k;
       // never a step into a car (one edging out of the box): stand, and let it by
       // (held up a while against a car caught in the box, with others round it: close along its side to get by)
-      q.jam = q.ph === 'cross' && q.v < 0.15 ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt);
+      q.jam = q.ph === 'cross' && q.v < 0.15 ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt * 0.25); // (slow to forget: shuffling a step at a time is still stuck)
       const M = q.jam > 3 ? 0.12 : 0.3;
       if (q.jam > 6) { // (and still stuck: back to the kerb it set out from, if the way there is clear)
         const back = spotAt(g, q.spread, 0.8, {}, pz.road);
@@ -1451,7 +1452,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
-        let atLine = false;
+        let atLine = false, lineGap = Infinity;
         // the junction it comes up to: at the end of this piece, or of the next if that is a short one
         // (its line can be close to where the car comes onto it), with its way across (c.ex, or c.exA)
         let jArm = arm, jEx = c.ex, toLine = arm ? left - arm.back : 0;
@@ -1507,6 +1508,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               }
               if (r !== true) {
                 const g = toLine - c.half + 2.4;
+                lineGap = Math.min(lineGap, g);
                 if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : 'room'); }
                 if (toLine - c.half < 2.5 && c.v < 0.6) {
                   if (jArm.sign === 'stop') c.halt = true;
@@ -1636,7 +1638,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
           }
         }
-        c.q = atLine || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there)
+        c.q = atLine || (why === 'person' && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there)
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)

@@ -50,8 +50,8 @@ module.exports = async function scrambles(p, { all = false } = {}) {
           peakDiag = Math.max(peakDiag, P.filter(q => onPlaza(q) && diagonal(q.g)).length);
         } else if (j.ph !== 3 && shown.some(v => v === 'g')) wrongFigures++;
         if ((j.ph === 0 || j.ph === 1) && !(j.ph === 0 && j.st === 'g' && j.t < 2)) lingering = Math.max(lingering, out.length);
-        // (a car caught in the box may edge out at a walking pace; none drives in, or through at speed)
-        const among = out.length ? A.C.find(c => c.line >= 0 && Math.hypot(c.x - j.x, c.y - j.y) < box && (c.v > 2.5 || (c.v > 0.5 && inBox.has(c) === false))) : null;
+        // (a car caught in the box, or across it when the walk began (its movement there given before), may edge out at a walking pace; none drives in, or through at speed)
+        const among = out.length ? A.C.find(c => c.line >= 0 && Math.hypot(c.x - j.x, c.y - j.y) < box && (c.v > 2.5 || (c.v > 0.5 && inBox.has(c) === false && !(c.mv && c.mv.j === j)))) : null;
         const wasIn = among ? inBox.get(among) : null;
         for (const c of A.C) inBox.set(c, c.line >= 0 && Math.hypot(c.x - j.x, c.y - j.y) < box);
         if (among) { carsAmong++; if (log.length < 6) log.push(`a car ${wasIn ? 'in it' : 'driving in'} (${among.mv ? (among.mv.j === j ? 'across it' : 'across another junction') : 'on its way'}, ${among.why || ''}) at ${among.v.toFixed(1)} m/s ${Math.hypot(among.x - j.x, among.y - j.y).toFixed(0)} m from the middle, ${out.length} out, phase ${j.ph}${j.st} ${j.t.toFixed(1)} s`); }
