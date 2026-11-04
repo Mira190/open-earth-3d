@@ -165,6 +165,42 @@
       "summary": "Roppongi from open data at PLATEAU-surveyed heights: Mori Tower and Maman the spider at Roppongi Hills, the Mohri Garden's pond, Keyakizaka's winter lights, the National Art Center's glass wave, Tokyo Midtown, and the bars round the crossing."
     },
     {
+      "id": "shinagawa",
+      "name": "Shinagawa",
+      "native": "品川",
+      "country": "Japan",
+      "lat": 35.63,
+      "lon": 139.7395,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Takanawa Gateway's folded roof, the station's two sides and the old Tokaido's post town",
+      "summary": "Shinagawa and Takanawa from open data at PLATEAU-surveyed heights: the station between the Takanawa hills and Konan's towers, Takanawa Gateway Station's folded roof, and the old Tokaido's first post town at Kita-Shinagawa with its shops and lanterns."
+    },
+    {
+      "id": "tsukishima",
+      "name": "Tsukishima",
+      "native": "月島",
+      "country": "Japan",
+      "lat": 35.664,
+      "lon": 139.783,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Monja Street, Tsukuda's fishing village and Kachidoki Bridge",
+      "summary": "Tsukishima and Tsukuda from open data at PLATEAU-surveyed heights: Monja Street's seventy shops, Tsukuda's moat, its vermilion bridge and Sumiyoshi Shrine by the Sumida, the river's bridges, and Kachidoki Bridge's arches."
+    },
+    {
+      "id": "odaiba",
+      "name": "Odaiba",
+      "native": "お台場",
+      "country": "Japan",
+      "lat": 35.629,
+      "lon": 139.771,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "The Rainbow Bridge, the seaside park and its Statue of Liberty, and Fuji TV's sphere",
+      "summary": "Odaiba from open data at PLATEAU-surveyed heights: the Rainbow Bridge's towers and cables over the bay, the seaside park's beach and Statue of Liberty, Fuji TV's titanium sphere, and the Yurikamome's guideway across the islands."
+    },
+    {
       "id": "whitsundays",
       "name": "Whitsundays",
       "country": "Australia",
@@ -369,7 +405,7 @@
           "native": "月島",
           "lat": 35.6646,
           "lon": 139.784,
-          "note": "Monja Street",
+          "map": "tsukishima",
           "label": "r"
         },
         {
@@ -377,7 +413,7 @@
           "native": "お台場",
           "lat": 35.627,
           "lon": 139.775,
-          "note": "Seaside Park and Rainbow Bridge",
+          "map": "odaiba",
           "label": "r"
         },
         {
@@ -385,7 +421,7 @@
           "native": "品川",
           "lat": 35.6285,
           "lon": 139.7387,
-          "note": "The southern gateway",
+          "map": "shinagawa",
           "label": "l"
         }
       ],
