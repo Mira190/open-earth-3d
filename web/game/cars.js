@@ -591,6 +591,7 @@ window.OECars = (function () {
           for (const [v, li, dir] of edges[u]) {
             const back = p && p[1] === li; // straight back the way it came: a U-turn at the junction
             if (B && edges === adj && B.some(b => b[2] === 1 && b[0] === li && b[1] === (dir > 0 ? 0 : 1))) continue; // a banned turn (junctions.js)
+            if (edges === adj && (net.shutNow && net.shutNow(li, dir > 0 ? 1 : -1) || net.turnShut && net.turnShut(from, li, dir > 0 ? 0 : 1))) continue; // (or one at this hour, or a street shut to cars now)
             const nd = d + L[li].len * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? 60 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
@@ -603,9 +604,12 @@ window.OECars = (function () {
         for (const [, li, dir] of chain) segs.push([li, dir > 0 ? 0 : L[li].len, dir > 0 ? L[li].len : 0]);
         segs.push([b.line, b.dir > 0 ? 0 : lb.len, b.s]);
       }
-      const pts = [], nodes = [];
+      const pts = [], nodes = [], mids = [];
+      let run = 0;
       segs.forEach(([li, s0, s1], n) => {
         if (Math.abs(s1 - s0) < 1e-3) return;
+        midsAlong(li, s0, s1, run, mids);
+        run += Math.abs(s1 - s0);
         const part = [];
         stretch(li, s0, s1, part);
         for (const p of part) {
@@ -618,7 +622,21 @@ window.OECars = (function () {
       if (pts.length < 2) return null;
       let len = 0;
       for (let i = 1; i < pts.length; i++) len += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]);
-      return { pts, len, from: a, to: b, nodes };
+      return { pts, len, from: a, to: b, nodes, mids };
+    }
+    // the crossings between junctions (junctions.js midsOn, given to the network as net.midsOn) on
+    // line li from s0 to s1, with the route's distance to each (run: the route's at s0) and the arm
+    // its traffic comes up to them on: pushed onto out as { X, a, at }
+    function midsAlong(li, s0, s1, run, out) {
+      const Ms = net.midsOn ? net.midsOn(li) : null;
+      if (!Ms) return;
+      const up = s1 >= s0, lo = Math.min(s0, s1), hi = Math.max(s0, s1);
+      const on = Ms.filter(X => X.mid > lo && X.mid < hi);
+      if (!up) on.reverse();
+      for (const X of on) {
+        const a = X.arms.find(b => b.end === (up ? 1 : 0));
+        if (a) out.push({ X, a, at: run + Math.abs(X.mid - s0) });
+      }
     }
     // a place to start from, about r0..r1 metres away by road from (x, y) (an ordered ride sets out from there)
     function around(x, y, r0, r1) {
@@ -666,10 +684,12 @@ window.OECars = (function () {
     // (out.nodes: the junctions it comes up to, as a route's)
     function onward(rt, length = 220) {
       const b = rt.to, out = [];
-      out.nodes = [];
-      let li = b.line, dir = b.dir, s = b.s, left = length;
+      out.nodes = []; out.mids = [];
+      let li = b.line, dir = b.dir, s = b.s, left = length, run = 0;
       while (left > 0 && out.length < 40) {
         const l = L[li], s1 = dir > 0 ? l.len : 0, part = [];
+        midsAlong(li, s, s1, run, out.mids);
+        run += Math.abs(s1 - s);
         stretch(li, s, s1, part);
         for (const p of part) out.push([p[0], p[1], p[2], l.v || 11, l.c]);
         out.nodes.push({ k: out.length - 1, line: li, end: dir > 0 ? 1 : 0 });
@@ -876,6 +896,34 @@ window.OECars = (function () {
       }
       return Infinity;
     }
+    // the gap to the line of a crossing between junctions ahead (route.mids, from the router), if it
+    // must stop there: at its red, or at amber if it can stop by the line, as the traffic does; at a
+    // zebra while someone is on the stripes or stepping onto them (lights.onStripes, from the
+    // traffic: actors.js), and after 15 s held there by someone standing on them it edges on
+    // for 6 s, braking for them as for anyone in the road. Infinity if it needn't.
+    let zebraT = 0, zebraOff = 0;
+    function midGap(dt) {
+      const M = route.mids;
+      if (!lights || !M || !M.length) return Infinity;
+      if (zebraOff > 0) zebraOff -= dt;
+      for (const m of M) {
+        const front = m.at - m.a.back - st.s - C.half; // its front bumper to the line
+        if (front < -0.5) continue; // over it already: on across
+        if (front > 90) break;
+        let hold = false;
+        if (m.X.sig) {
+          const lt = lights.light(m.a);
+          hold = lt === 'r' || (lt === 'y' && st.v * st.v / 8 < front - 0.3);
+          if (priority && lt === 'g' && lights.priority) lights.priority(m.a); // (its green held while it comes: never the walkers' cut short)
+        } else if (lights.onStripes && !(zebraOff > 0) && st.v * st.v / 14 < front + 0.5) hold = lights.onStripes(m.X); // (if it can stop by then, braking as hard as it does: update)
+        zebraT = hold && !m.X.sig && st.v < 0.3 ? zebraT + dt : 0;
+        if (zebraT > 15) { zebraT = 0; zebraOff = 6; }
+        if (!hold) return Infinity;
+        st.junction = m.X.sig ? 'crossing red' : 'zebra'; st.lineAt = m.a;
+        return front + 2.6;
+      }
+      return Infinity;
+    }
     // the signals at the next junction ahead on its way, asked for its green in time (PRIO_T), as lineGap does
     function callAhead() {
       if (!lights || !lights.priority || !route.nodes) return;
@@ -902,7 +950,7 @@ window.OECars = (function () {
       let want = Math.min(cruise, q.v || cruise) * hz;
       for (let i = q.i + 1; i < P.pts.length && P.cum[i] - st.s < 120; i++) if (P.corner[i] < want) want = Math.min(want, Math.sqrt(P.corner[i] * P.corner[i] + 2 * 3 * (P.cum[i] - st.s)));
       // the cars ahead, and the line at a red light or a stop sign
-      const carGap = gapAhead(others), line = obey && !dry ? lineGap() : Infinity;
+      const carGap = gapAhead(others), line = obey && !dry ? Math.min(lineGap(), midGap(dt)) : Infinity;
       if (!obey && !dry && priority) callAhead(); // (out of your sight it drives through a red: it calls its green all the same, for when it comes into sight)
       // a car standing where it is to pull in: pull in behind it
       if (end && still && carGap < line && carGap < Infinity && st.s + carGap > st.end - 30) endAt(Math.min(st.end, st.s + Math.max(0, carGap - 3.2)));
