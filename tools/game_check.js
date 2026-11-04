@@ -809,6 +809,7 @@ const npcNight = require('./npc_night');
       for (let t = 0; t < 180 && !st.done; t += 0.25) { // (a red can be long where the signals give a call or a scramble its turn)
         g.advance(0.25);
         const lt = g.junctions.light(arm); if (!seq.length || seq[seq.length - 1][1] !== lt) seq.push([t, lt]); // (the light it waits at, as it changes)
+        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed || []).map(c => `car ${C.indexOf(c)} (${c.why}, v ${(c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''})`).join(', ') || 'nothing';
         r.shift = Math.max(r.shift, Math.abs(st.shift));
         const a = st.h, bl = st.block;
         if (bl && bl.q && st.v < 0.5) { r.behind = true; r.ahead = bl; }
@@ -832,7 +833,7 @@ const npcNight = require('./npc_night');
         if (st.s > sHead + 5) { r.gone = true; break; }
       }
       const bl = st.block;
-      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
+      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)}; now phase ${arm.j.ph} ${arm.j.st} for ${arm.j.t.toFixed(0)} s, next ${arm.j.nxt}, called ${arm.j.call})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
       delete r.ahead;
       if (r.follow != null || r.moved != null) break;
       jams.push(`line ${pick.h.line}: ${r.behind ? '' : 'the light changed before it caught up; '}${r.why}`); // (the queue never moved in 3 minutes: a long red or a jam in the junction, not the taxi's doing; another queue)
@@ -843,7 +844,7 @@ const npcNight = require('./npc_night');
   });
   if (queue.none) check(true, `a ride at a red light: not tried (${queue.none})`);
   else {
-    check(queue.behind && queue.shift < 0.5, `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.behind ? '' : ', never caught up with the queue'})`);
+    check(queue.behind && queue.shift < 0.5, `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.round ? `, going round ${queue.round}` : ''}${queue.behind ? '' : ', never caught up with the queue'})`);
     check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed car ${queue.passed.join(', ')})` : ''}`);
     check(!queue.overtook.length, `the traffic behind it queues behind it${queue.overtook.length ? ` (car ${queue.overtook.join(', ')} came past it)` : ''}`);
     if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 3 minutes, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);

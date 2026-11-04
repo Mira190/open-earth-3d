@@ -819,6 +819,18 @@ window.OECars = (function () {
       still = queued = false; passing.length = 0; passed.length = 0;
       st.block = null; // what sets the gap (for the game check)
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
+      // the back of the nearest car in the lane ahead queueing for a junction (o.q): a car stopped short
+      // of a queue is passed only with room to pull back in ahead of it, short of the queue, and never
+      // up the side of the queue itself
+      let qBack = Infinity;
+      for (const o of others) {
+        if (!o.q) continue;
+        const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
+        if (a <= 0 || a > 100) continue;
+        P.at(Math.min(P.len, st.s + a), c);
+        const w = (o.x - c.x) * -c.hy + (o.y - c.y) * c.hx, lane = lat(st.s + a) * keep;
+        if (Math.abs(w - lane - st.shift) < Math.max(1.5, (o.hw || 0.4) + C.hw + 0.1)) qBack = Math.min(qBack, a - (o.half || 0.4));
+      }
       for (const o of others) {
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 60) continue;
@@ -831,7 +843,7 @@ window.OECars = (function () {
         // not overtaken up the oncoming side to its head)
         // (o.still: true, a flag the game sets, or a traffic car's own count of the seconds it has stood:
         // over 6 s, and not queueing, it is stopped for good, as one caught up with this one at a kerb)
-        if (!o.q && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        if (!o.q && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
@@ -846,7 +858,7 @@ window.OECars = (function () {
         if (Math.abs(w - lane - pass) < (o.hw || 0.4) + C.hw + 0.4) { pass = 0; break; }
       }
       if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay; }
-      st.pass = pass;
+      st.pass = pass; st.passed = passed; // (what it goes round, for the game check)
       return gap;
     }
     // the gap to the line of the next junction ahead, if it must stop there (Infinity if not)
@@ -947,7 +959,7 @@ window.OECars = (function () {
       // (never on into a car queueing ahead of it)
       if (st.held > 12 && !queued) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // held up near the end for good (by a car that isn't moving off, not a light): stop here
-      st.stall = st.v < 0.2 && room < 0.1 && carGap < line ? st.stall + dt : 0;
+      st.stall = st.v < 0.2 && room < 0.1 && carGap < line && !waiting ? st.stall + dt : 0; // (not in a queue for the lights)
       if (end && st.stall > 8 && left < 45) { endAt(st.s); left = 0; }
       // and queued 8 s behind cars within 45 m of the end (a jam between it and you), it stops where
       // it is, as a driver picking you up does, and you walk the last few metres
