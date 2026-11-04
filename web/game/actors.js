@@ -1392,7 +1392,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // (across to its lane a little at a time, slowly while it is barely moving, nosing that way)
         // (in a junction it keeps the lane it went in by: its way across is that lane's)
         const back = line === c.line && dir !== c.dir, keepIt = c.mv && !back, lnNow = keepIt ? c.ln : !back && JN.lanesOf(net.L[line]) > 1 ? c.ln : 0, loT = side * JN.shiftOf(net.L[line], lnNow);
-        const rate = Math.min(1.3, 0.4 + 0.15 * c.v) * dt, lo1 = back ? 0 : keepIt ? c.lo : c.lo + Math.max(-rate, Math.min(rate, loT - c.lo));
+        // (but not over the middle of a two-way road: out of a one-way street's lane nearest the middle,
+        // the lane kept across the junction is the oncoming one there, so it moves across at once, and
+        // can do so standing, where a car waiting at that road's line would otherwise hold it until it squeezed through)
+        const across = !back && !net.L[line].ow && LANE + side * (c.off + c.lo) < c.hw + 0.2;
+        const rate = Math.min(1.3, 0.4 + 0.15 * c.v) * dt, lo1 = back ? 0 : keepIt && !across ? c.lo : c.lo + Math.max(-rate, Math.min(rate, loT - c.lo));
         lanePos(line, s, dir, tmp, c.off + lo1, onto ? [c.line, c.dir] : dir === c.dir ? c.pv : null, onto ? nx2 : dir === c.dir && c.nx ? [nl, nd] : null);
         let dh = Math.atan2(tmp.hx, tmp.hy) - c.h; dh = Math.atan2(Math.sin(dh), Math.cos(dh));
         const yaw = !back && dt > 0 ? Math.atan2((lo1 - c.lo) / dt, Math.max(c.v, 1.5)) : 0; // (a lane change: nosing across, left of the way it goes for a shift to the left)
