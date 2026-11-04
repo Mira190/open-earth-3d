@@ -55,6 +55,18 @@ const npcNight = require('./npc_night');
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
 
+  // what loads after the game opens (issue 148): the NPCs away from the start as you come near them,
+  // and the helicopter's model when a pad is in range; here all of them at once, and in their places
+  const lazy = await p.evaluate(async () => {
+    const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
+    await g.npcsReady();
+    if (g.heli && g.heli.want) { await g.heli.want(); g.advance(0.1); }
+    return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
+      wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
+  });
+  check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
+  check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
+
   // the chase camera in tight spots: placed with a wall close behind, the camera swung round
   // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
   // must ease: no frame may turn the view's pitch or move the camera about the player by a jump (#97)
