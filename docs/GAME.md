@@ -1380,6 +1380,39 @@ drop or into the water.
     under them stay off the traffic's way (issue #119). The
     game check counts the car-seconds in a wall (at most 1%), the cars waiting at
     a wall and the one-way roads into one.
+  - **Passages through landmarks** (`pipeline/landmark_passages.py`, issues #120
+    and #127): OpenStreetMap maps a way through a building as
+    `tunnel=building_passage` and one under a roof open at the sides as
+    `covered=yes`; Overture flags both (`is_tunnel`, `is_covered`) and names the
+    ways, and `game_data.py` drops every `is_tunnel` piece with the city's real
+    tunnels. The script reads the flagged segments (Overture on S3, cached in
+    `data/raw/<id>/overture_passages.json`) and the ways' tags (OSM API by id,
+    `osm_passages.json`), keeps the parts at the ground under a landmark's mesh,
+    lists them in `landmarks.json` `passages` (points at the floor, width, and
+    whether it is a floor through a building) and puts the dropped ones back in
+    `game.json`'s paths (appended, marked `lp`). Through a building whose
+    bare-earth model departs from the line between the passage's ends (under the
+    Rijksmuseum it dips 2 m), `nav.js` takes the passage's floor for the ground
+    in its corridor and 3 m either side. `pipeline/landmarks.py` measures them
+    again after each rebuild. Ways that only run into a landmark's inside (a
+    museum's doors, the Eiffel Tower's pillar) are left out (`INSIDE`), and ways
+    a model doesn't open yet are listed `open: false` with what they need
+    (`NOT_YET`: Central Plaza and the ICC's walk in Hong Kong, Crown's riverside
+    walk in Melbourne). Opened in the models: the Rijksmuseum's two side arches
+    lead into aisles for walkers (the footways OSM maps 7.8 m either side of the
+    cycle path), open to the cycle passage through an arcade, their outer walls
+    glass, and the passage's vault now springs from the street's level, not the
+    dip under the building (it sat 2 m low); the Imperial Palace's gates (Kyoto)
+    stand on a 0.3 m platform a walker steps onto, face out of the wall they
+    stand in (a near-square outline left the bays across the way), and a gate
+    under 11 m has three bays, not five too narrow to pass; Saint-Sulpice's
+    loggia (Paris) is recessed between the towers where OSM maps its walk, up a
+    flight of steps across the front, square to the towers (8 degrees off north).
+    Passages: Amsterdam 3, Kyoto 11, Paris 7, Sydney 11 (under the Harbour
+    Bridge's approaches), Hong Kong 4, Melbourne 2, Akihabara 1, Asakusa 1
+    (Nakamise under the Hozomon), Osaka 1. A wall beside a raised floor (a strip
+    up to 3 m over the ground) is laid into fine cells from that floor, so that
+    its 2 m cells don't come down to the head of someone on it.
 - **Helipads on roofs:** a pad the data puts on the ground inside a building's
   footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
   clear above for the rotor, else on the nearest open ground with clear sky
@@ -1826,7 +1859,10 @@ more than 8 s off what the phone said. `tools/wall_stops.js <city> [seconds]
 [places]` lists where the traffic stops at a wall across its way, and what the
 wall is (a building, a canopy's post, a landmark); `tools/road_walls.js <city>`
 lists every stretch where the game cuts a road at a wall, or a car doesn't fit
-along it, with what is in the way (`--json` for `pipeline/road_passages.py`). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+along it, with what is in the way (`--json` for `pipeline/road_passages.py`). `tools/passage_check.js <city...>`
+walks every passage through a city's landmarks end to end both ways (`tools/passage_walk.js`, also a step of
+`game_check.js`), and `tools/what_blocks.js <city> '[[x, y, z, r]]'` lists the floor and the collision boxes a
+body meets at a point. `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
 time and fails if two hulls overlap or a vessel never calls, which is what a
 deadlock or a meeting at a shared berth takes to show.
 
@@ -1933,6 +1969,11 @@ deadlock or a meeting at a shared berth takes to show.
 - Crossings: OSM's [`highway=crossing`](https://wiki.openstreetmap.org/wiki/Tag:highway%3Dcrossing)
   and [`crossing=*`](https://wiki.openstreetmap.org/wiki/Key:crossing) tags, as Overture's
   infrastructure `source_tags`. Data © OpenStreetMap contributors (ODbL), via Overture.
+- Passages through landmarks: OpenStreetMap's [`tunnel=building_passage`](https://wiki.openstreetmap.org/wiki/Tag:tunnel%3Dbuilding_passage)
+  and [`covered=yes`](https://wiki.openstreetmap.org/wiki/Key:covered), read by way id from the OSM API as for the
+  lanes (cached in `data/raw/<id>/osm_passages.json`), on Overture's segments flagged `is_tunnel` and `is_covered`
+  ([road flags](https://docs.overturemaps.org/schema/reference/transportation/segment/)). Data © OpenStreetMap
+  contributors (ODbL).
 - One-way streets: [Overture roads guide](https://docs.overturemaps.org/guides/transportation/roads/)
   and [access rules](https://docs.overturemaps.org/schema/reference/transportation/types/access_rules)
   (a heading-scoped denial is a one-way street). Data © OpenStreetMap contributors (ODbL), via Overture.

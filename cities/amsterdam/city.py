@@ -519,7 +519,9 @@ def rijksmuseum():
     C = LineString([a - d * 25, b + d * 25]).buffer(PASSAGE_W / 2, cap_style="flat")  # out past both fronts
     aw = AISLE_V + AISLE_W / 2  # the aisles' outer walls, from the axis
     CA = LineString([a - d * 25, b + d * 25]).buffer(aw, cap_style="flat")  # the passage and its aisles
-    pz = T(*((a + b) / 2))  # the passage's floor
+    # the passage's floor: the street's level outside its two fronts (the bare earth under the building, which
+    # the built city guesses, dips 2 m in the middle)
+    pz = (T(*(a - d * 3.0)) + T(*(b + d * 3.0))) / 2
     crown = pz + PASSAGE_CROWN
 
     def walls(ring, z0, z1, detail=True):

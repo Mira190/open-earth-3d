@@ -42,11 +42,22 @@ def main():
     if city.hook("landmark_demolished"):
         out["demolished"] = city.hook("landmark_demolished")(scene)
     path = os.path.join(city.out, "landmarks.json")
+    # the passages through the landmarks (pipeline/landmark_passages.py): kept until that script measures them
+    # again on the new meshes, which it does here when the segments it reads are cached (data/raw/<id>)
+    old = json.load(open(path)) if os.path.exists(path) else {}
+    if old.get("passages"):
+        out["passages"] = old["passages"]
     json.dump(out, open(path, "w"), separators=(",", ":"))
     for p in extra.get("props", []):
         print(f"  props: {len(p['at'])} x {p['name']} ({sum(len(q['index']) // 3 for q in p['parts'])} triangles each)")
     print(f"{sum(len(m.v) for m in meshes)} vertices, {sum(len(m.i) for m in meshes) // 3} triangles -> {path}"
           f" ({os.path.getsize(path) / 1e6:.2f} MB)")
+    if os.path.exists(os.path.join(city.raw, "overture_passages.json")):
+        import subprocess
+        import sys
+        subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), "landmark_passages.py"), "--city", city.id], check=True)
+    elif out.get("passages"):
+        print("  passages kept from before: run pipeline/landmark_passages.py to measure them on the new meshes")
 
 
 if __name__ == "__main__":

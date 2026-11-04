@@ -15,6 +15,7 @@ const cities = process.argv.slice(2);
     const res = await walk(p);
     if (!res.length) console.log(`${city}: no passages through its landmarks`);
     for (const r of res) {
+      if (r.notYet) { console.log(`${city}: not yet ${r.name} (w${r.osm}): ${r.notYet}`); continue; }
       if (!r.ok) bad++;
       console.log(`${city}: ${r.ok ? 'ok  ' : 'FAIL'} ${r.name} (w${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
     }

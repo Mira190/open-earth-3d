@@ -13,18 +13,23 @@ This script finds, for each city with a game, the Overture segments flagged is_t
 is_covered whose OSM way is tagged tunnel=building_passage or covered=yes (the tags read from the
 OSM API by id, cached in data/raw/<id>/osm_passages.json), and keeps the parts of them that pass
 under a landmark's mesh (web/data/<id>/landmarks.json: a triangle of it 2.2 m or more over the
-ground there). Each such passage
+ground there), all of it at the ground (not a deck's or a bridge's walkway). A way that runs on into
+the landmark's inside (INSIDE: a museum's doors into its hall) is not a way through and is left out.
+Each passage is
 
-- goes back into web/data/<id>/game.json's paths (a footway, a cycle path or a road, with the
-  way's class and one-way rule as game_data.py gives them), its height the landmark's own floor
-  where the landmark gives one, else the ground;
-- is listed in landmarks.json "openings": {name, osm, class, ring (dm), z (m), pts}: the ring is
-  the passage's corridor (its width from OSM's width tag, else 3 m for a footway, 4 m for a
-  cycle path, 6.5 m for a road) where it runs under the mesh. web/game/nav.js takes an opening's
-  floor at z and keeps the 2 m cells of the landmark out of it below its soffit, so that the
-  walker, the camera and the traffic go through as the drawn landmark lets them;
-- and is reported with what the landmark draws over it (its soffit: the lowest mesh above the
-  floor), so that a landmark model that draws no opening there can be given one (cities/<id>/city.py).
+- listed in landmarks.json "passages": [{osm, name, class, kind, w, floor, pts}]: its points every
+  2 m or so at its floor ([x, y, z], m), its width w (OSM's width tag, else 3 m for a footway, 4 m
+  for a cycle path or a pedestrian street, 6.5 m for a road). Its floor is the landmark's own where
+  the landmark draws one over the way (a gate's stone platform, a passage's paving), else the ground;
+  through a building whose bare-earth model departs from the line between the ground at the passage's
+  two ends by more than DIP, that line, and then "floor" is true: web/game/nav.js takes the passage's
+  floor for the ground in its corridor (the walker, the traffic, the camera);
+- put back in web/data/<id>/game.json's paths where game_data.py dropped it as a tunnel (a footway,
+  a cycle path or a road with its class, speed and one-way rule as game_data.py writes them, marked
+  "lp"; appended, so that no other piece's index moves);
+- marked "open": false with what it needs where the landmark's model does not open it yet (NOT_YET);
+- printed with the clearance the landmark leaves over it (the lowest mesh over its floor; 2.2 m means
+  a wall), so that a landmark that draws no opening there can be given one (cities/<id>/city.py).
 
 The survey (--survey) prints the passages without writing anything. tools/passage_check.js walks
 each opening end to end in the game.
@@ -48,7 +53,7 @@ from shapely.ops import substring
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from cityctx import City  # noqa: E402
 import road_rules  # noqa: E402
-from game_data import FOOT, ROAD, level_of  # noqa: E402
+from game_data import FOOT, ROAD, level_of, strip_height  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 API = "https://api.openstreetmap.org/api/0.6"
@@ -57,6 +62,19 @@ WIDTH = {"footway": 3.0, "path": 3.0, "steps": 3.0, "pedestrian": 4.0, "cycleway
 OVER = 2.2      # a mesh this high over the ground or more stands over the way
 SHARE = 0.5     # the least share of a passage's length under a landmark (less: a sign or an awning over a street)
 COVERED = ("yes", "arcade", "colonnade")
+# ways that run on into a landmark's inside (its halls, which are not modelled), not through it: OSM way -> where
+INSIDE = {"593157575": "the Rijksmuseum's doors from the passage into its hall",
+          "335101059": "into the Eiffel Tower's north pillar, to its lifts and stairs",
+          "1460593031": "Saint-Sulpice's south-west door, from its loggia into the church",
+          "582149849": "between the Imperial Palace's halls (Kyoto), through their corridors, which are closed to visitors"}
+# passages a landmark's model does not open yet: OSM way -> what it needs (listed with "open": false; tools/passage_walk.js
+# reports them and does not count them blocked)
+NOT_YET = {
+    "1064828742": "Central Plaza (Hong Kong): the public way through its ground floor; the tower is drawn as one glass prism",
+    "1416961012": "the ICC and Elements (Hong Kong): the covered walk runs on into the mall's halls, which are not modelled",
+    "1515285572": "Crown (Melbourne): the covered riverside walk under the complex's overhang; the model's wall stands on it",
+}
+DIP = 0.4       # the bare earth under a building this far off the line between a passage's two ends is a guess
 CELL = 1.0      # the cells the landmarks' cover is read in (m)
 
 
@@ -181,15 +199,13 @@ def cover(lm, boxes):
 
 
 def soffit(cells, x, y, floor):
-    """The lowest landmark mesh over (x, y) more than OVER above `floor`, and its mesh name; or (None, None).
-    Also the highest mesh top at or below it (a floor the landmark draws)."""
+    """(lo, name, top): the lowest landmark mesh in (x, y)'s cell reaching more than OVER above `floor` (from
+    there up), and its mesh's name, or None, None; and the highest top of a mesh from 0.6 m under `floor` to 1.5 m
+    over it (a floor the landmark draws: a platform, paving), or None."""
     lo, name, top = None, None, None
-    for a in (-1, 0, 1):
-        for b in (-1, 0, 1):
-            for zl, zh, nm in cells.get((int(math.floor(x / CELL)) + a, int(math.floor(y / CELL)) + b), ()):
-                if a == 0 and b == 0 and zh <= floor + 0.6 and zh >= floor - 1.5:
-                    top = zh if top is None else max(top, zh)
     for zl, zh, nm in cells.get((int(math.floor(x / CELL)), int(math.floor(y / CELL))), ()):
+        if floor - 0.6 <= zh <= floor + 1.5:
+            top = zh if top is None else max(top, zh)
         if zh > floor + OVER:
             z = max(zl, floor + OVER) if zl < floor + OVER else zl
             if lo is None or z < lo:
@@ -235,6 +251,8 @@ def passages(C, game, lm, tags, segs):
             share = len(hit) / len(under)
             if len(hit) * piece.length / (n - 1) < 3.0 or share < SHARE:
                 continue
+            if osm in INSIDE:
+                continue
             out.append({"osm": osm, "kind": kind, "class": cls_of(sg), "name": tg.get("name", ""), "width": tg.get("width"),
                         "line": piece, "under": under, "meshes": sorted({u[4] for u in hit}), "share": share,
                         "soffit": min(u[3] - u[2] for u in hit), "tunnel": tunnel, "seg": sg, "range": (a, b)})
@@ -252,22 +270,28 @@ def num(v):
         return None
 
 
-def floor_of(p, T):
-    """The passage's floor along its points: [[x, y, z]]. Through a building (a passage under solids, where the
-    bare-earth model under the building is no more than a guess) level from the ground at one end to the
-    ground at the other, or on the floor the landmark draws there; under a roof open at the sides the ground."""
+def floor_of(p, T, strips=()):
+    """The passage's floor along its points ([[x, y, z]]) and whether nav.js should take it for the ground there.
+    Where the landmark draws a floor over the way (a gate's stone platform, a passage's paving: the top of a
+    mesh from 0.6 m under the ground to 1.5 m over it, with room over it, or a surface the game walks there, a
+    flight of steps up to a portico: game.json surfaces) that floor; elsewhere the ground, but
+    through a building (a building passage) where the bare-earth model under it departs from the line between
+    the ground at its two ends by more than DIP (a guess under the solids: under the Rijksmuseum it dips 2 m)
+    that line, and the ground there is the passage's floor (landmarks.json passages[].floor)."""
     U = p["under"]
-    if p["kind"] != "building_passage":
-        return [[x, y, z] for x, y, z, *_ in U]
-    L = p["line"].length
     za, zb = T(*U[0][:2]), T(*U[-1][:2])
+    line = [za + (zb - za) * k / max(1, len(U) - 1) for k in range(len(U))]
+    dip = p["kind"] == "building_passage" and max(abs(u[2] - z) for u, z in zip(U, line)) > DIP
     out = []
-    for k, (x, y, z, lo, nm, top) in enumerate(U):
-        f = za + (zb - za) * k / max(1, len(U) - 1)
-        if top is not None and abs(top - f) < 0.6:
-            f = top  # the landmark's own paving
+    for (x, y, z, lo, nm, top), zl in zip(U, line):
+        f = zl if dip else z
+        hs = [h for st in strips if (h := strip_height(st, x, y)) is not None and f - 0.6 <= h <= f + 2.5]
+        if hs:
+            f = max(hs)  # a walked surface the city lays there (a flight of steps up to a portico, its floor)
+        elif top is not None and f - 0.6 <= top <= f + 1.5 and (lo is None or lo - top > OVER):
+            f = top  # the landmark's own floor
         out.append([x, y, f])
-    return out if L > 0 else []
+    return out, dip
 
 
 def piece_of(p, pts):
@@ -309,10 +333,10 @@ def main():
         print(f"{cid}: {len(segs)} tunnel or covered segments, {len(ps)} under a landmark")
         listed, added = [], {"foot": [], "road": []}
         for p in ps:
-            pts = floor_of(p, T)
+            pts, dip = floor_of(p, T, [st for st in game.get("surfaces", []) if st.get("type") == "strip"])
             z = [q[2] for q in pts]
             clear = min((u[3] - q[2] for u, q in zip(p["under"], pts) if u[3] is not None), default=None)
-            back = p["tunnel"] and (p["class"] in FOOT or p["class"] in ROAD)
+            back = p["tunnel"] and (p["class"] in FOOT or p["class"] in ROAD) and p["osm"] not in NOT_YET
             print(f"  w{p['osm']} {p['kind']} {p['class']} {p['name']!r} {p['line'].length:.0f} m, {100 * p['share']:.0f}% under "
                   f"{', '.join(p['meshes'][:4])}; floor {min(z):.1f}..{max(z):.1f}, clear {clear:.1f} m; "
                   f"{'put back in the paths' if back else 'in the paths'}; "
@@ -321,7 +345,8 @@ def main():
             step = max(1, len(pts) // max(2, int(p["line"].length / 2)))
             keep = pts[::step] + ([pts[-1]] if (len(pts) - 1) % step else [])
             listed.append({"osm": int(p["osm"]), "name": p["name"], "class": p["class"], "kind": p["kind"], "w": round(w, 1),
-                           "floor": p["kind"] == "building_passage", "pts": [[round(v, 2) for v in q] for q in keep]})
+                           "floor": dip, **({"open": False, "needs": NOT_YET[p["osm"]]} if p["osm"] in NOT_YET else {}),
+                           "pts": [[round(v, 2) for v in q] for q in keep]})
             if back:
                 k, piece = piece_of(p, pts)
                 added[k].append(piece)

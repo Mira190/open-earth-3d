@@ -123,11 +123,13 @@ window.OENav = (function () {
     // the floors of the passages through a landmark (landmarks.json "passages" with floor: a road, a cycle
     // path or a footway mapped through the building, pipeline/landmark_passages.py): the bare-earth model
     // under a building is a guess (under the Rijksmuseum it dips 2 m), so in a passage's corridor the
-    // ground is the passage's floor, level from one end to the other as the landmark draws it (issue #127)
-    const PG = 16, pgrid = new Map(), pkey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
+    // ground is the passage's floor, level from one end to the other as the landmark draws it (issue #127),
+    // and for PMARGIN either side of it: the hall the way runs through (the Rijksmuseum's aisles either side of
+    // its cycle path), whose floor the landmark's cells stand on (ref, landmarkCells)
+    const PMARGIN = 3.0, PG = 16, pgrid = new Map(), pkey = (cx, cy) => (cx + 32768) * 65536 + (cy + 32768);
     for (const pa of (D.LM && D.LM.passages) || []) {
       if (!pa.floor || !pa.pts || pa.pts.length < 2) continue;
-      const hw = pa.w / 2;
+      const hw = pa.w / 2 + PMARGIN;
       for (let i = 1; i < pa.pts.length; i++) {
         const [ax, ay, az] = pa.pts[i - 1], [bx, by, bz] = pa.pts[i], L = Math.hypot(bx - ax, by - ay);
         if (L < 1e-3) continue;
@@ -338,6 +340,20 @@ window.OENav = (function () {
       if (k >= 0 && pier.data[k] > h) h = pier.data[k];
       return h;
     };
+    // the floor a walker beside a point may stand on: the floor under it, or a strip's within a 2 m cell of it, up
+    // to 3 m over that (a wall beside a raised floor, a tower's beside the loggia it flanks, is laid into fine cells
+    // up to BAND over that floor, so that its 2 m cells do not come down to the head of someone on it; not a
+    // bridge's deck high over the ground beside it)
+    const refBeside = (x, y, h0) => {
+      let h = h0;
+      for (const s of stripsAt(x, y)) {
+        const [u, v] = stripUV(s, x, y);
+        if (Math.abs(v) > s.half_width + DSM.cell || u < s.us[0] - DSM.cell || u > s.us[s.us.length - 1] + DSM.cell) continue;
+        const q = interp(s.us, s.zs, u);
+        if (q > h && q < h0 + 3.0) h = q;
+      }
+      return h;
+    };
     // a triangle's points every `step` metres at most, each passed to fn(x, y, z): rows parallel to its
     // longest edge, so that a long thin triangle (a post's side, a ridge) costs its area, not its length squared
     const seg = (P, Q, step, fn) => { const n = Math.max(1, Math.ceil(Math.hypot(Q[0] - P[0], Q[1] - P[1], Q[2] - P[2]) / step));
@@ -387,7 +403,7 @@ window.OENav = (function () {
           const zlo = Math.min(P[0][2], P[1][2], P[2][2]), zhi = Math.max(P[0][2], P[1][2], P[2][2]);
           const cx = (P[0][0] + P[1][0] + P[2][0]) / 3, cy = (P[0][1] + P[1][1] + P[2][1]) / 3;
           const rs = [ref(cx, cy), ref(P[0][0], P[0][1]), ref(P[1][0], P[1][1]), ref(P[2][0], P[2][1])];
-          const rlo = Math.min(...rs), zc = Math.max(...rs) + BAND;
+          const rlo = Math.min(...rs), zc = refBeside(cx, cy, Math.max(...rs)) + BAND;
           if (zlo >= zc) { up.push(P); continue; }
           if (zhi < rlo + FLAT) continue; // paving on the floor
           let below = [P];

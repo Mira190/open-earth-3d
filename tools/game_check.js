@@ -457,6 +457,17 @@ const npcNight = require('./npc_night');
       `climbs ${c.name}: from ${c.start.toFixed(2)} m to ${c.z.toFixed(2)} m (the top is ${c.to.toFixed(2)} m), ${c.d.toFixed(1)} m from it`);
   }
 
+  // the passages through the landmarks (landmarks.json "passages", pipeline/landmark_passages.py: the
+  // Rijksmuseum's cycle passage and its aisles, the Imperial Palace's gates, Saint-Sulpice's loggia): each
+  // walked end to end both ways on foot, and a road's with room for a car along it (tools/passage_walk.js)
+  {
+    const res = await require('./passage_walk')(p);
+    for (const r of res) {
+      if (r.notYet) { console.log(`     (not opened in the model yet: ${r.name}, way ${r.osm}: ${r.notYet})`); continue; }
+      check(r.ok, `walks the passage ${r.name} (way ${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
+    }
+  }
+
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {
