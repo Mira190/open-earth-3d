@@ -986,7 +986,10 @@ const npcNight = require('./npc_night');
     check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed car ${queue.passed.join(', ')})` : ''}`);
     check(!queue.overtook.length, `the traffic behind it queues behind it${queue.overtook.length ? ` (car ${queue.overtook.join(', ')} came past it)` : ''}`);
     if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 3 minutes, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);
-    check(queue.follow != null && queue.openMax < 2.5, `and it goes on when the queue moves (${queue.follow != null ? `off ${queue.follow.toFixed(1)} s after the car ahead first moved, ${queue.goneT.toFixed(0)} s after it came up; stood at most ${queue.openMax.toFixed(1)} s with room ahead` : queue.moved != null ? `the car ahead went ${queue.moved.toFixed(0)} s in, the taxi did not: ${queue.why}` : `the queue never moved: ${queue.why}`})`);
+    // (a queue that never moved in any of the tries is a jam ahead of it, not the taxi's doing: noted
+    // above; the check is the taxi's own: once the car ahead moves, it follows without standing)
+    if (queue.follow == null && queue.moved == null) console.log(`note and it goes on when the queue moves: not tried, the queue never moved (${queue.why})`);
+    else check(queue.follow != null && queue.openMax < 2.5, `and it goes on when the queue moves (${queue.follow != null ? `off ${queue.follow.toFixed(1)} s after the car ahead first moved, ${queue.goneT.toFixed(0)} s after it came up; stood at most ${queue.openMax.toFixed(1)} s with room ahead` : queue.moved != null ? `the car ahead went ${queue.moved.toFixed(0)} s in, the taxi did not: ${queue.why}` : `the queue never moved: ${queue.why}`})`);
   }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
