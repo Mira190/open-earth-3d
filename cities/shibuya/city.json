@@ -115,18 +115,6 @@
         "note": "About 800 cherries on both banks from Ikejiri-Ohashi down through Nakameguro, their branches over the water (Meguro City)."
       },
       {
-        "name": "Hachiko Square",
-        "at": [
-          376.0,
-          -1043.0
-        ],
-        "radius": 14.0,
-        "mix": {
-          "maple": 1.0
-        },
-        "note": "The maple in the bed behind Hachiko (the planters' cherries are the areas before this one)."
-      },
-      {
         "name": "Meiji Jingu",
         "find": "明治神宮",
         "mix": {
