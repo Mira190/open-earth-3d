@@ -969,6 +969,50 @@ Sydney's traffic stood still a third of the time.
   crossing has a walk signal on a post on each kerb, facing across: a red
   figure standing over a green one walking, the red flashing while those
   already out finish crossing. The lamps change only when a signal does.
+- **Walk signals' calls** (`web/game/walkcalls.js`, the sounds in `web/game/audio.js`,
+  all synthesised with Web Audio, no recordings). Each walk-signal head
+  (`junctions.heads.peds`; its crosswalk runs to the head on the far kerb, or a
+  scramble's along `j.walks`) is a speaker 3.3 m up, heard from the camera, fading with distance and panned
+  left or right; the game's sound switch mutes them. A city gets its country's
+  sound (`game.signals.sound` overrides it):
+  - **Japan** (視覚障害者用付加装置, the National Police Agency's guideline of
+    October 2003, renewed in 2019 and March 2024 (警察庁丁規発第52号), as the
+    prefectures' police publish it): the *異種鳴き交わし方式*. Only while the
+    walk is steady green (not while it flashes). A crosswalk's two ends answer
+    each other about 1.5 s apart, one with the single call and the other with
+    the double. The guideline leaves the axis to each prefecture; we follow
+    Kagawa's published rule (the only one we found written down): a crosswalk
+    running north-south plays the chick, "piyo" from its north end and
+    "piyo-piyo" from its south end; one running east-west the cuckoo, "kakko"
+    from its west end and "ka-kakko" from its east end. At a scramble
+    (歩車分離, scramble and pedestrian-only phases) the four play in turn round
+    all its crosswalks, piyo, piyo-piyo, kakko, ka-kakko, 1.5 s apart, and its
+    diagonals have none (the guideline's own rule; a crosswalk passing within
+    6 m of the junction's middle counts as a diagonal). The guideline asks for timer
+    switches and lower volume where the calls disturb residents at night, and
+    the published lists (Toyama's, for one) run most from 7:00 to 20:00 or
+    21:00. Minato ward notes that most in Tokyo stop at night and early in the
+    morning. So the calls play from 7:00 to 20:00, are softer in the hour
+    either side, and are off from 21:00 to 6:00. The push-button that brings
+    them back at night isn't modelled. The chick is a sine chirp (2.3 kHz up to
+    3.3 kHz and down to 2 kHz in 0.13 s, a touch of its octave). The cuckoo is
+    two sine notes a major third apart (830 Hz, then 665 Hz held longer).
+  - **Australia**: the push-button box's slow locator tick on red, the falling
+    "zap" as the walk comes on, then its rapid tick through the green.
+    **Hong Kong**: slow pips on red, rapid pips on green. **The Netherlands**:
+    the *rateltikker*, a slow knock on red and a fast rattle on green. These
+    are heard only within about 20 m of the box, the nearest two at a time, at
+    half volume from 23:00 to 6:00. **France** has none by default: Paris's
+    *répétiteurs sonores* speak only when a blind walker's remote control asks
+    them to.
+  - `tools/game_check.js` checks it in every city with signals: by day, at the
+    principal scramble if the city has one (otherwise at the nearest
+    signalled junction), the country's calls play during the walk and
+    none in the traffic's turn, none from a scramble's diagonals, and none
+    while the game is muted (`tools/walkcalls_step.js`; on its own, quicker:
+    `xvfb-run -a node tools/walkcalls_check.js shibuya osaka sydney`).
+    `node tools/walkcalls_wav.js out.wav` renders every kind offline to a WAV
+    to listen to.
 
 `tools/traffic_check.js <city>` measures the flow headless at three places (the
 game's own frame loop stopped), with the surveyor on a kerb beside the roads,
@@ -1966,6 +2010,15 @@ deadlock or a meeting at a shared berth takes to show.
 
 ## Sources
 
+- Walk signals' calls: the National Police Agency on [audible pedestrian signals](https://www.npa.go.jp/bureau/traffic/seibi2/annzen-shisetu/hyoushiki-shingouki/onkyou.html)
+  (the 2003 notice; 21,644 in Japan, 99% of them bird calls); the guideline as Shimane's police
+  publish it, [視覚障害者用付加装置に関する設置・運用指針](https://www.pref.shimane.lg.jp/police/06_information_disclosure/kunrei_tsuutatsu/koutsuu/koutsuu.data/k-kisei_shisetu_09.pdf)
+  (the two ways of answering, about 1.5 s apart, the scramble's round and its silent diagonals,
+  the speaker 3.3 m up, sound only on the steady green, timer switches at night); Kagawa's police on
+  [which axis plays which](https://www.pref.kagawa.lg.jp/police/kokikaku/koutsuuanzen/koutsuu/otonoderusingou.html);
+  Toyama's police [list of sites and their hours](https://police.pref.toyama.jp/documents/3562/r080331shikaku.pdf);
+  Minato ward's [assembly paper](https://gikai2.city.minato.tokyo.jp/voices/GikaiDoc/attach/Nittei/Nt183_20190312_giun_01.pdf)
+  (night stops in Tokyo). Facts only: every sound is synthesised, no recording is used.
 - Junctions: [SUMO, Intersections](https://sumo.dlr.de/docs/Simulation/Intersections.html)
   (movements as lanes across the junction, their foes, and *keep clear*: no
   car into a junction it can't leave). Ideas only; no SUMO code (EPL-2.0) is used.

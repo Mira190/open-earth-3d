@@ -994,7 +994,8 @@ window.OEJunctions = (function () {
     function setNight(night) { glowMat.opacity = 0.12 + 0.88 * night; glowMat.size = 1.4 + 1.6 * night; }
     setNight(0);
     update();
-    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list };
+    return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list,
+      peds }; // (the walk signals, { a: its arm, x, y, z, h }: walkcalls.js sounds them)
   }
 
   return { create, STYLES, RANK, lanesOf, shiftOf, byClass };
