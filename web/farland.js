@@ -149,10 +149,13 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   vec2 o = vec2(farH(iq), farH(iq + 17.3)) - 0.5;
   float fw = max(fwidth(q.x), fwidth(q.y)), dens = 0.08 + 0.5 * L;
   float on = step(1.0 - dens, farH(iq + 5.1)), r = length(fq - 0.6 * o);
-  // a dot of radius 0.07 cells; one smaller than a pixel is drawn a pixel wide and that much dimmer
-  // (as a camera sees a point of light: smaller than a pixel, it is still a pixel, less bright)
-  float rr = max(0.07, fw), dots = on * (1.0 - smoothstep(rr * 0.5, rr, r)) * 0.07 / rr / (dens * 0.0090);
-  float grain = 0.12 + mix(dots, 0.88, smoothstep(0.35, 0.9, fw));
+  // a dot of radius 0.07 cells; one smaller than a pixel is drawn a pixel wide and dimmer by the
+  // ratio of the areas (as a camera sees a point of light: its light spread over the pixel), so
+  // the mean over many cells stays at about 1 at any distance
+  float rr = max(0.07, fw), k = 0.07 / rr, dots = on * (1.0 - smoothstep(rr * 0.5, rr, r)) * k * k / (dens * 0.0090);
+  // where the points merge, the glow they leave: brighter than their strict mean, as a camera's
+  // tone curve shows a sea of sub-pixel lights, so that the two meet without a step
+  float grain = 0.2 + mix(0.8 * dots, 1.8, smoothstep(0.15, 1.2, fw));
   L *= L; // Black Marble's visual product saturates over a city: more contrast between core and suburb
   totalEmissiveRadiance *= L * grain * uFarNight;
 }`);
@@ -166,7 +169,7 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
     return {
       mesh, height,
       // after dark (world.js setSun, U.uNight 0..1)
-      setNight(k) { night.value = k; mat.emissiveIntensity = k > 0 ? 0.035 : 0; },
+      setNight(k) { night.value = k; mat.emissiveIntensity = k > 0 ? 0.05 : 0; },
       dispose() { geo.dispose(); mat.dispose(); lightTex.dispose(); col.dispose(); },
     };
   }
