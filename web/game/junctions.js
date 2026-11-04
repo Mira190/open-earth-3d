@@ -33,6 +33,12 @@
 //            so that nobody has to merge and move out again within a few metres. A car in the
 //            second lane moves across before it ends (actors.js), looking along the road past the
 //            pieces between junctions (laneRun) to where it does.
+//   timing   greens are short, as a game keeps them (a minute's wait at a red is no fun): about
+//            20 s for a main road, 12 s for a side road, 6 to 8 s for an arrow, a phase with nobody
+//            waiting on the other turning after CALL more; a crossing between junctions keeps the
+//            traffic's green 14 s and walks 10 s. A green gaps out (SCATS, vehicle-actuated
+//            signals): someone waiting on another phase and no car coming on this one, it ends
+//            after GAP_MIN. tools/traffic_check.js measures the waits at a red.
 //   walkers  the crowd crosses an arm's road at a junction with signals while that arm's traffic is
 //            held at red, and presses the button for it; it waits at the kerb otherwise.
 //   the box  a car goes in only when its movement (from its arm to its exit) crosses no movement
@@ -51,7 +57,7 @@ window.OEJunctions = (function () {
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const LINK = 24;      // a piece this short joining two junction nodes lies inside one junction (m)
   const SPAN = 42;      // and a junction is no wider than this (m)
-  const AMBER = 3.5, ALLRED = 2, CALL = 24; // seconds; a phase with nobody waiting on the other turns after CALL more
+  const AMBER = 3.5, ALLRED = 2, CALL = 12, GAP_MIN = 7, FLASH = 5; // seconds; a phase with nobody waiting on the other turns after CALL more
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
   let seed = 4242;
@@ -247,7 +253,7 @@ window.OEJunctions = (function () {
       j.sig = both && (mapped ? !!j.mapped : main2);
       if (j.sig) {
         const top = p => Math.max(0, ...j.arms.filter(a => a.phase === p).map(a => a.rank));
-        j.green = [16 + 2 * top(0), 10 + 1.5 * top(1), 6 + 0.5 * top(0)];
+        j.green = [10 + 2 * top(0), 6 + 1.5 * top(1), 5 + 0.5 * top(0)];
         // a protected turn across after the main road's phase: at a big junction of two main roads
         const mainIn = j.arms.filter(a => a.in && a.phase === 0);
         j.arrow = j.arms.length >= 4 && top(0) >= 4 && top(1) >= 3 && mainIn.length >= 2 && mainIn.some(a => !L[a.line].ow);
@@ -281,7 +287,7 @@ window.OEJunctions = (function () {
       if (on.some(o => Math.abs(o.mid - q.s) < 25)) return; // (one per stretch: a crossing with an island is mapped as two)
       net.at(q.line, q.s, tmp);
       const j = { id: J.length, mid: q.s, line: q.line, nodes: [], arms: [], inner: new Set(), x: tmp.x, y: tmp.y, z: tmp.z, hx: tmp.hx, hy: tmp.hy, sig, half: (ROADW[l.c] || 7) / 2,
-        green: [20, 12, 0], amber: (l.v || 11) > 16 ? AMBER + 1 : AMBER, ph: 0, st: 'g', t: rnd() * 20, nxt: 1, active: [], pend: [], near: [], demand: [0, 0, 0], seen: -1 };
+        green: [14, 10, 0], amber: (l.v || 11) > 16 ? AMBER + 1 : AMBER, ph: 0, st: 'g', t: rnd() * 20, nxt: 1, active: [], pend: [], near: [], demand: [0, 0, 0], seen: -1 };
       for (const end of [1, 0]) { // (the traffic heading for each end)
         if (!canReach(q.line, end)) continue;
         net.at(q.line, Math.max(0, Math.min(l.len, q.s + (end ? -6 : 6))), tmp);
@@ -505,7 +511,7 @@ window.OEJunctions = (function () {
     function walk(a) {
       const j = a.j;
       if (!j.sig) return true;
-      return j.ph !== a.phase && j.ph !== 2 && j.st === 'g' && !(j.call && j.t > j.green[j.ph] - 5);
+      return j.ph !== a.phase && j.ph !== 2 && j.st === 'g' && !(j.call && j.t > (j.gEnd != null ? j.gEnd : j.green[j.ph]) - FLASH);
     }
     // a walker waits to cross arm a: the button calls the phase that lets them
     function call(a) {
@@ -595,12 +601,14 @@ window.OEJunctions = (function () {
       return L[m.line].len - m.back - (a2 && a2.in && a2.j !== m.j ? a2.back : 0);
     }
     function enter(c, a, e, t, forced = false) { // into the junction: its movement joins those in it
-      const j = a.j;
+      const j = a.j, m = mv(c, e);
       if (forced) overLine++; // (a car already over the line: the checks count these)
       unwait(c);
       if (c.mv && c.mv.j === j) release(c);
       else if (c.mv) { release(c, 'mv0'); c.mv0 = c.mv; } // still leaving the last one
-      j.active.push({ c, k: a.i, m: mv(c, e), t, forced });
+      if (c.mv0 && c.mv0.j === j) c.mv0 = null; // (one movement a car at a junction: one it came back to, its exit changed, replaces the one it had)
+      for (let i = j.active.length - 1; i >= 0; i--) if (j.active[i].c === c) j.active.splice(i, 1);
+      j.active.push({ c, k: a.i, m, t, forced });
       c.mv = { j, a, e }; c.mvT = t;
     }
     // car c is waiting at the line for its movement: the longest waiting goes first
@@ -625,8 +633,10 @@ window.OEJunctions = (function () {
     // movements in one junction at once that cross, pairs: let in by the junction (by construction
     // none), and with a car found over its line (it couldn't stop, or was put back there or turned
     // round: the checks count these apart)
-    let crossed = 0, crossedOver = 0, overLine = 0;
-    const seenPairs = new Set();
+    let crossed = 0, crossedOver = 0, overLine = 0; const crossLog = []; // (the first few, for tools/traffic_check.js)
+    const seenPairs = new Set(), carIds = new WeakMap();
+    let nCar = 0;
+    const carId = c => { let i = carIds.get(c); if (i == null) carIds.set(c, i = nCar++); return i; };
     const conflicts = () => crossed;
     const innerAll = new Set();
     for (const j of J) for (const i of j.inner) innerAll.add(i);
@@ -639,7 +649,8 @@ window.OEJunctions = (function () {
         if (j.pend.length) for (let i = j.pend.length - 1; i >= 0; i--) { const o = j.pend[i]; if (o.c.line < 0 || o.c.wj !== j || t - o.since > 180) j.pend.splice(i, 1); }
         for (let x = 0; x < j.active.length; x++) for (let y = x + 1; y < j.active.length; y++) {
           const p = j.active[x], q = j.active[y];
-          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(p.t + ':' + q.t + ':' + j.id)) { seenPairs.add(p.t + ':' + q.t + ':' + j.id); if (p.forced || q.forced) crossedOver++; else crossed++; }
+          const pair = `${j.id}:${carId(p.c)}:${p.k}:${p.m}:${carId(q.c)}:${q.k}:${q.m}`; // (a pair once: a car asks again every frame while it waits, or crosses two close junctions together)
+          if (conflict(j, p.k, p.m, q.k, q.m) && !seenPairs.has(pair)) { seenPairs.add(pair); if (p.forced || q.forced) crossedOver++; else crossed++; if (crossLog.length < 20) { crossLog.push(`${p.forced || q.forced ? 'over the line: ' : ''}junction ${j.id}${j.sig ? ` phase ${j.ph} ${j.st} at ${j.t.toFixed(1)} s` : ''}: arm ${p.k} to ${p.m} in at ${p.t} and arm ${q.k} to ${q.m} in at ${q.t}${p.c === q.c ? ', the same car' : ''}, now ${t.toFixed(1)}${p.forced ? ` (the first over the line: ${p.c.overWhy})` : q.forced ? ` (the second over the line: ${q.c.overWhy})` : ''}`); } }
         }
         if (!j.sig) continue;
         j.t += dt;
@@ -650,14 +661,18 @@ window.OEJunctions = (function () {
         j.call = !!call;
         const wasWalk = j.walkNow;
         const held = j.hold != null && j.hold >= frame - 2 && j.ph !== 2 && j.t < j.green[j.ph] + HOLD; // (a vehicle with priority coming: held green for it)
+        // gap-out (as SCATS and vehicle-actuated signals do): someone waits on another phase and no
+        // car is coming on this one, so its green ends after GAP_MIN, the walk over first (FLASH)
+        if (j.st === 'g' && j.cut == null && call && !D[j.ph] && j.ph !== 2 && !(j.mid != null && j.ph === 1) && j.t >= GAP_MIN - FLASH) j.cut = Math.max(j.t, GAP_MIN - FLASH) + FLASH;
+        const end = j.gEnd = j.cut != null ? Math.min(j.green[j.ph], j.cut) : j.green[j.ph];
         if (j.st === 'g' && !held) {
-          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= j.green[j.ph] && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
+          if (j.ph === 2 ? j.t >= j.green[2] || (j.t >= 3 && !D[2]) : j.t >= end && (call || (j.t >= j.green[j.ph] + CALL && j.mid == null))) { // (a crossing's traffic keeps its green till someone calls)
             j.st = 'y'; j.t = 0; dirty.add(j);
             j.nxt = j.ph === 0 ? (arrowCall ? 2 : 1) : j.ph === 2 ? 1 : 0;
           }
         } else if (j.st === 'y' && j.t >= j.amber) { j.st = 'r'; j.t = 0; dirty.add(j); }
-        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; dirty.add(j); }
-        j.walkNow = !(j.call && j.t > j.green[j.ph] - 5);
+        else if (j.st === 'r' && j.t >= ALLRED) { j.ph = j.nxt; j.st = 'g'; j.t = 0; j.cut = null; dirty.add(j); }
+        j.walkNow = !(j.call && j.t > end - FLASH);
         if (j.walkNow !== wasWalk) dirty.add(j); // (the walk signals: the walk is over)
       }
       if (heads) heads.update(dirty);
@@ -710,7 +725,7 @@ window.OEJunctions = (function () {
     }
     function stats() {
       const sj = J.filter(j => j.sig && j.mid == null);
-      return { overLine, crossedOver, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, timedBans: nBansT, timedShut: L.filter(l => l.tb).length, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra,
+      return { overLine, crossedOver, crossLog, junctions: J.length, signals: sj.length, arrows: sj.filter(j => j.arrow).length, bans: nBans, timedBans: nBansT, timedShut: L.filter(l => l.tb).length, bannedExits: J.reduce((n, j) => n + j.arms.reduce((m, a) => m + (a.bans || 0), 0), 0), mapped: J.filter(j => j.sig && j.mapped).length, heads: heads ? heads.count : 0, midSignals: nMid, zebras: nZebra,
         stops: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'stop').length, 0), giveWays: J.reduce((n, j) => n + j.arms.filter(a => a.sign === 'give_way').length, 0) };
     }
     // the crossings between junctions on a piece, along it (or null)
