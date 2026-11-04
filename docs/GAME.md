@@ -154,12 +154,15 @@ A taxi or a ride reaches you within half a minute. The router searches the stree
 network backwards from the pick-up for points 110 to 270 m away by road (40 to
 110 m where none of those is near enough in time), following the one-way streets;
 each is timed by driving its route in a dry run (the driver's own rules, nothing
-in the way), with 1 s added for each set of traffic lights near the pick-up, and
+in the way), with 1 s added for each set of traffic lights near the pick-up and
+1.8 s for each car already queued at a signalled arm on its way (`OECars.queueing`:
+it waits behind a queue, never round it; #143), and
 the one that takes 10 to 20 s, out of your sight where it can be and not where a
 car of the traffic or a queue would be in its way as it sets out, is chosen,
 leaving the rest of the half minute for the traffic you can see. The same time is
 what the phone shows: it counts down as the car comes and, held up behind the
-traffic, rises as it waits, as an app's does; stopped at a red light, or queued
+traffic, rises as it waits, as an app's does, and with the queues still ahead
+of it as they grow and clear; stopped at a red light, or queued
 behind cars that are, it shows the time to that light's green (`junctions.js`
 `toGreen`) and a moment for the queue to move off, and behind a car stuck at a wall
 or stopped for good, the few seconds before its driver swings out round it. Coming
@@ -735,7 +738,12 @@ pipeline writes. The only city-specific code is landmark geometry in
     after a few seconds and the walker turns back; a car waiting at its line
     that a bus can't swing past backs off a metre; a car in a junction stopped
     behind one waiting at another of its lines asks it to back off, and after
-    8 s goes on as if it weren't there; two cars held nose to nose for 15 s
+    8 s goes on as if it weren't there; one on its way out whose next step
+    would take it into the nose of a car waiting at another arm's line (which
+    waits for this very movement to clear) counts as held by it: that one backs
+    off, and after 10 s the car in the junction squeezes on (#144: the step was
+    taken back unseen, and the movement held the junction and the queues at
+    its other arms through green after green); two cars held nose to nose for 15 s
     (10 s in a junction, 25 s by one that only inches along) squeeze past each
     other; a car held 1.5 s part way across to another lane goes back to its
     own; and out of sight, a car stopped 45 s that is not in a queue comes back
@@ -1813,7 +1821,13 @@ update's cost a frame, the lane changes and the walkers waiting at a kerb;
 `tools/traffic_why.js <city> [place] [seconds] [still]` lists the cars standing
 at the end of a run with what holds each (the car in front and what holds that
 one, the light, the movement it waits for, the lane), and the cars caught up in
-one another; `tools/traffic_profile.js <city> [seconds]` runs the browser's
+one another; `tools/junction_held.js <city> [seconds] [places] [junction ids]`
+watches every car stopped at a signalled line and every movement in a
+junction, and lists the cars held through more than two greens of their own
+light and the movements standing in a junction for more than two of its
+cycles, each with what holds it and every movement in the junction then
+(`tools/game_check.js` runs the same watch, `tools/junction_held_step.js`, for
+three minutes where you are, and fails on any); `tools/traffic_profile.js <city> [seconds]` runs the browser's
 profiler over the traffic and lists its functions and busiest lines; and
 `tools/signal_shot.js <city> out [count|ids|arrows<n>] [HH:MM,...] [WxH]` takes
 a driver's view of the nearest junctions with signals (or with a turn arrow) at
