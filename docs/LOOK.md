@@ -76,7 +76,7 @@ By day the facades and street corners read flat because nothing darkened where t
 the medium and high tiers one pass after the scene is drawn (before the bloom) adds ambient
 occlusion from the depth buffer alone, the city is not drawn a second time: at half the screen's
 size each pixel's position comes from depth and its normal from its neighbours, a spiral of 16
-samples (8 on the medium tier) in a disc of up to 2.5 m near the camera and a little more further
+samples (8 on the medium tier) in a disc of up to 1.8 m near the camera and a little more further
 off gathers the occlusion with SAO's falloff, two depth-aware blurs take the noise out, and a
 depth-aware upsample darkens the frame by it. It fades out between 160 and 420 m, so the far city
 keeps the photograph's light, and is a third weaker at night, when the light is the street's own.

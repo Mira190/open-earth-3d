@@ -80,7 +80,8 @@ void main() {
     occ += f * f * f * max((dot(v, Nn) - bias) / (vv + 0.01 * R2), 0.0);
   }
   occ /= R2 * R2 * R2;
-  float ao = max(0.0, 1.0 - occ * uIntensity * 5.0 / float(N));
+  // (never darker than 0.45: a walker or a bollard leaves a contact shadow, not a black pool)
+  float ao = max(0.45, 1.0 - occ * uIntensity * 5.0 / float(N));
   gl_FragColor = vec4(ao, dist, 0.0, 1.0);
 }`;
   // a depth-aware blur along one axis at half size: r the occlusion, g the distance
@@ -136,7 +137,7 @@ void main() {
     const common = () => ({ tDepth: { value: null }, uInvProj: { value: new THREE.Matrix4() }, uReversed: { value: reversed } });
     const aoMat = n => new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: AO(n), depthTest: false, depthWrite: false,
       uniforms: Object.assign(common(), { uProj: { value: new THREE.Matrix4() }, uTexel: { value: new THREE.Vector2() }, uAspect: { value: 1 },
-        uRadius: { value: 2.5 }, uGrow: { value: 0.02 }, uMaxR: { value: 0.12 }, uIntensity: { value: 4.0 }, uFadeFar: { value: 420 } }) });
+        uRadius: { value: 1.8 }, uGrow: { value: 0.016 }, uMaxR: { value: 0.12 }, uIntensity: { value: 3.0 }, uFadeFar: { value: 420 } }) });
     const mats = { 1: aoMat(LEVELS[1].samples), 2: aoMat(LEVELS[2].samples) };
     const blurMat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: BLUR, depthTest: false, depthWrite: false, uniforms: { tAO: { value: null }, uStep: { value: new THREE.Vector2() } } });
     const mixMat = new THREE.ShaderMaterial({ vertexShader: VERT, fragmentShader: MIX, depthTest: false, depthWrite: false,
