@@ -42,7 +42,7 @@ OWN = {"w136691386", "w116806281", "w60739635", "w136690966", "w55895868", "w558
 MATERIALS = {
     # the side streets' shop windows: dark glass between mullions, most lit after dark, warm, softer than QFRONT's
     "st_shop": {"color": "#3c454e", "roughness": 0.1, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 1.6, "storey_m": 3.4, "spandrel": 0.08,
-                "mullion_m": 0.1, "frame": "#2a2d31", "lit_share": 0.6, "lit_k": 0.22, "warm_share": 0.75},
+                "mullion_m": 0.1, "frame": "#2a2d31", "lit_share": 0.8, "lit_k": 0.7, "warm_share": 0.75},
     # Seibu's cream precast panels; the windows small and set deep, dark since the store closed
     "st_seibu": {"color": "#2a3036", "roughness": 0.2, "metalness": 0.2, "pattern": "curtain_wall", "bay_m": 2.7, "storey_m": 4.5, "spandrel": 0.58,
                  "mullion_m": 1.55, "frame": "#ddd3bd", "lit_share": 0.04, "lit_k": 0.4, "warm_share": 0.2},
