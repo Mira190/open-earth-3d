@@ -94,9 +94,10 @@ and a schoolgirl. The crowd takes its palette from `OEPeople` style `tokyo`: dar
 suits, navy blazers, black hair, many office workers. Names and place labels are
 bilingual. The water-bus piers are real (OpenStreetMap), the vessel names are
 Tokyo Cruise's, and the timetable is invented. The boats are the shared harbour
-ferry in an approximate white and navy. The trees are stand-ins too: elms for
-the zelkovas and plane trees for the planes and ginkgos, since the shared trees
-have no ginkgo or cherry. The pads on the Marunouchi plaza (where the game now starts, in front of the station) and in Hibiya Park are game devices; no real
+ferry in an approximate white and navy. The trees are the shared set's ginkgos,
+zelkovas, planes, camphors and pines, and Somei-yoshino cherries in flower from 24 March at
+Chidorigafuchi and along its moat walk, in Kitanomaru, Hibiya and Shiba parks and on the
+streets. The pads on the Marunouchi plaza (where the game now starts, in front of the station) and in Hibiya Park are game devices; no real
 heliport is in the area.
 
 ## 7. Limits
