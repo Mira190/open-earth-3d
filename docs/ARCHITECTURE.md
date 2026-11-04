@@ -37,6 +37,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
+| Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
@@ -150,7 +151,25 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     layer keeps OSM's tags (`source_tags`) and `level` for this. `pipeline/refresh_piers.py`
     rewrites them without a rebuild; `tools/stale_shore.py` lists where mapped land still
     lies under the built water, and `tools/coast_overlay.py` draws the water, the mask and
-    the decks over the aerial photograph to check a coastline (issue 50).
+    the decks over the aerial photograph to check a coastline (issue 50). Their tops show
+    the aerial photograph, as a flat roof does (`web/world.js`), so a wharf has its parking
+    bays and kerbs rather than a plain slab.
+  - Buildings out on the water that are not buildings (`pipeline/wet_buildings.py`, issue 65):
+    a footprint 80% in the water and not on a mapped pier is a **deck** when it is a
+    machine-learned footprint (Microsoft's) of 1,000 m² or more joined to the land (Garden
+    Island's cruiser wharf), added to the piers and its solid not drawn; the deck of a
+    **bridge** or an elevated road when it is a machine-learned footprint at least 20% over the
+    water and half under a road Overture flags as a bridge or raises a level (Osaka's Hanshin
+    loop over the Higashi-Yokobori), not drawn; and a **vessel** when OpenStreetMap tags it
+    `building=ship`, `boat`, `houseboat` or `barge`, `floating=yes` or `seamark:type=hulk`, when
+    its class is in `water.floating`, and for any other machine-learned footprint out there (the
+    boats moored when the imagery was taken). A vessel floats at the waterline with a dark
+    hull to its freeboard (by its length, 1 to 4 m) under a deck, and a lighter superstructure
+    set in from the sides and amidships on a ship, added as a new building (class `vessel`;
+    the hull's class is `vessel_hull`). The tags come from the OpenStreetMap API for those
+    buildings only (`data/raw/<id>/osm_wet_buildings.json`). `build_scene.py` leaves the decks
+    out and runs it; `refresh_piers.py` (or `python pipeline/wet_buildings.py --city <id>`)
+    applies it to a built city, hiding solids as a demolished building's are, so no index moves.
   - `trees`: flat `[x, y, z, h]` in decimetres.
   - `woods`: the trees planted from the canopy (`pipeline/woods.py`), the same
     way, with the height the canopy model measured.

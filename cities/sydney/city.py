@@ -119,19 +119,21 @@ MATERIALS = {
     # like the paving (walked on, not solids), the walls in courses; the forecourt's soffit and the
     # colonnade's "unpainted mushroom columns" in off-form concrete; the shopfronts behind them. Not
     # solids for the game's 2 m collision cells, which would fill the narrow concourse: the walker is
-    # held back by the fine walking levels (walk_patch), where the walls and parapets stand up
+    # held back by the fine walking levels (walk_patch), where the walls and parapets stand up. The game's
+    # camera, which the patch does not hold, stops at the walls, the fascia, the soffit and the shopfronts
+    # ("camera": web/game/nav.js), so it does not rise through the forecourt over the colonnade
     "lc_tread": {"color": "#b8a08c", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "decal": True, "street_lit": True},
     "lc_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser", "decal": True},
-    "lc_wall": {"color": "#a8897a", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 2.4, "street_lit": True, "solid": False},
-    "lc_soffit": {"color": "#a69d90", "roughness": 0.9, "metalness": 0.0, "solid": False, "emissive": "#ffd8a8", "glow": 0.05},  # off-form concrete (its meshes take SKY_UNDER of the sky)
+    "lc_wall": {"color": "#a8897a", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 2.4, "street_lit": True, "solid": False, "camera": True},
+    "lc_soffit": {"color": "#a69d90", "roughness": 0.9, "metalness": 0.0, "solid": False, "camera": True, "emissive": "#ffd8a8", "glow": 0.05},  # off-form concrete (its meshes take SKY_UNDER of the sky)
     "lc_floor": {"color": "#b49c89", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 2.4], "decal": True,
                  "emissive": "#ffd8a8", "glow": 0.16},  # the colonnade's flags, under the soffit's downlights after dark
-    "lc_fascia": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6], "solid": False},
+    "lc_fascia": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6], "solid": False, "camera": True},
     "lc_bronze": {"color": "#5a4029", "roughness": 0.4, "metalness": 0.8, "solid": False},  # the stairwell's handrail
     # the shopfronts: glass between bronze mullions, a kick plate at the foot, most panes lit after dark
     "lc_shop": {"color": "#1d1712", "roughness": 0.08, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.1, "storey_m": 2.4,
                 "spandrel": 0.12, "mullion_m": 0.09, "frame": "#5a4029", "lit_share": 0.85, "lit_k": 0.32,
-                "warm_share": 1.0, "emissive": "#ffc27a", "glow": 0.12, "solid": False},
+                "warm_share": 1.0, "emissive": "#ffc27a", "glow": 0.12, "solid": False, "camera": True},
     "coping": {"color": "#c2ad9b", "roughness": 0.75, "metalness": 0.0, "pattern": "granite", "joints_m": [1.5, 0.0], "street_lit": True},
     "bollard": {"color": "#1d1f21", "roughness": 0.45, "metalness": 0.6},
     "post": {"color": "#2b2f30", "roughness": 0.5, "metalness": 0.55},

@@ -20,7 +20,8 @@
 # The games play at a pinned local hour (GAME_TIME, default 10:00 in each city's own time zone,
 # tools/pin_clock.js), so that a run does not depend on the hour it is started at:
 #   GAME_TIME=22:40 tools/check.sh osaka    # at another hour; GAME_TIME=live: the real clock
-#   tools/check.sh                      # what this branch changed (committed or not)
+#   tools/check.sh                      # what this branch changed (committed or not); after a
+#                                       # pass, only what changed since it (CHECK_FULL=1: all of it)
 #   tools/check.sh sydney hardy-reef    # these cities and reef sites
 #   tools/check.sh title                # the title screen only
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
@@ -34,6 +35,8 @@ JOBS=${CHECK_JOBS:-3}
 mkdir -p "$OUT"
 export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
 
+STAMP="$(git rev-parse --git-dir)/oe-check-pass"   # the commit of the last full pass, in this clone only
+stamp() { [ $# -eq 0 ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
 CITIES=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
@@ -58,6 +61,17 @@ if [ $# -gt 0 ]; then
   done
 else
   base=$(git merge-base origin/main HEAD 2>/dev/null) || { echo "no origin/main to compare with: git fetch origin main"; exit 2; }
+  # After a pass, only what changed since then. A run with no targets that passes on a clean tree
+  # stamps HEAD in $STAMP. When main moves on and is merged in again, the commit checked last is
+  # still an ancestor of HEAD, and everything not yet checked (main's new commits, conflict fixes,
+  # later work of the branch) is in the diff from it: a merge of main that only brought other
+  # cities checks those cities, not all twenty. CHECK_FULL=1 compares with main as before.
+  last=$(cat "$STAMP" 2>/dev/null)
+  if [ -z "${CHECK_FULL:-}" ] && [ -n "$last" ] && git merge-base --is-ancestor "$last" HEAD 2>/dev/null \
+     && ! git merge-base --is-ancestor "$last" "$base"; then
+    echo "checking what changed since the last pass, $(git log -1 --format='%h %s' "$last" | cut -c1-70) (CHECK_FULL=1 for the whole branch)"
+    base=$last
+  fi
   changed=$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)
   for f in $changed; do
     case "$f" in
@@ -76,6 +90,7 @@ fi
 
 if [ ${#cities[@]} -eq 0 ] && [ ${#reefs[@]} -eq 0 ] && [ $title -eq 0 ] && [ $loader -eq 0 ] && [ $voice -eq 0 ]; then
   echo "nothing to check: no change to a city, a reef site, the game, the renderer or the title"
+  stamp "$@"
   exit 0
 fi
 
@@ -176,4 +191,5 @@ EOF
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
 } | tee "$OUT/summary.txt"
-! grep -q '^FAIL' "$OUT/summary.txt"
+grep -q '^FAIL' "$OUT/summary.txt" && exit 1
+stamp "$@"

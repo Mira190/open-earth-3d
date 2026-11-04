@@ -130,7 +130,10 @@ def temples_and_palaces():
     def draw(sd, ridge, kind, mats):
         cx, cy, ax, L, W = ak.oriented(sd["ring"])
         P = ak.Frame(cx, cy, ax, sd["ground"])
-        if kind == "gate":
+        if kind == "gate" and sd["osm"] in GATE_LEVELS_OF:
+            top = gate_levels(sd)[2]
+            ak.gate(K, P, L, W, ridge, mats, storeys=2, base_h=top - sd["ground"], foot=0.6)
+        elif kind == "gate":
             ak.gate(K, P, L, W, ridge, mats, storeys=2 if ridge > 15 else 1)
         else:
             ak.hall(K, P, L, W, ridge, mats, eave_frac=0.36 if kind == "founders" else 0.42, mokoshi=kind == "founders")
@@ -211,6 +214,27 @@ FRONTS = [("w1241560765", "Higashi Honganji, the Founder's Hall Gate 御影堂�
           ("w99130389", "Higashi Honganji, the Founder's Hall 御影堂", "founders"),
           ("w99182315", "Nishi Hongwanji, the Founder's Hall 御影堂", "founders")]
 RISE, TREAD = 0.2, 0.32
+GATE_LEVELS_OF = {"w1241560765"}   # the gates whose platform is set on the paving round them (gate_levels)
+KIDAN = 0.4                        # the gate's stone platform stands this far above the highest ground under it
+_terrain = []
+
+
+def gate_levels(sd):
+    """A gate's levels on the ground round it: (the paving in front, east; the paving behind, west; the
+    top of its stone platform). The built city's ground under the gate (sd["ground"]) lies below the
+    bare-earth terrain the viewer draws, which bulges up to 1 m over the footprint, so a platform set
+    on sd["ground"] is buried; the platform is set KIDAN above the highest terrain under it instead,
+    and the steps run down to the paving measured 1.5 m outside each long side."""
+    if not _terrain:
+        _terrain.append(ak.Terrain("kyoto"))
+    T = _terrain[0]
+    cx, cy, ax, L, W = ak.oriented(sd["ring"])
+    P = ak.Frame(cx, cy, ax, 0.0)
+    sgn = 1 if P(0, 1, 0)[0] > P(0, -1, 0)[0] else -1
+    us = np.linspace(-L / 2 + 2, L / 2 - 2, 9)
+    inside = max(T(*P(u, v, 0)[:2]) for u in np.linspace(-L / 2, L / 2, 13) for v in np.linspace(-W / 2, W / 2, 11))
+    side = lambda s: round(float(np.median([T(*P(u, s * (W / 2 + 1.5), 0)[:2]) for u in us])), 2)
+    return side(sgn), side(-sgn), round(inside + KIDAN, 2)
 
 
 def approaches(solids):
@@ -227,8 +251,14 @@ def approaches(solids):
         cx, cy, ax, L, W = ak.oriented(sd["ring"])
         P = ak.Frame(cx, cy, ax, sd["ground"])
         sgn = 1 if P(0, 1, 0)[0] > P(0, -1, 0)[0] else -1          # the side of the frame towards the east
-        if kind == "gate":                                           # gate(): the platform is the outline, 0.8 m up
-            edge, base_h, wall, hw = W / 2, 0.8, None, 2.2
+        z0 = sd["ground"]
+        if kind == "gate":                                           # gate(): the platform is the outline
+            edge, wall, hw = W / 2, None, 2.2
+            if oid in GATE_LEVELS_OF:
+                z0, z_back, top = gate_levels(sd)
+                base_h = top - z0
+            else:
+                base_h, z_back = 0.8, z0
         else:                                                        # hall(): the platform 1.2 m out from the walls
             over = max(1.6, 0.11 * W)
             wall = W / 2 - over * 0.55
@@ -236,21 +266,27 @@ def approaches(solids):
         front = np.array(P(0, sgn * edge, 0)[:2])
         inward = np.array(P(0, 0, 0)[:2]) - front
         inward /= np.linalg.norm(inward)
-        z0, n = sd["ground"], int(round(base_h / RISE))
+        n = max(2, int(round(base_h / RISE)))
+        rise = base_h / n
         prof = [[-(W / 2 - edge) - 2.5, z0], [round(-n * TREAD - 0.02, 3), z0]]   # the paving from outside the outline
         for j in range(n):
             a = -(n - j) * TREAD
-            prof += [[round(a + (0.02 if j else 0), 3), round(z0 + (j + 1) * RISE, 3)], [round(a + TREAD, 3), round(z0 + (j + 1) * RISE, 3)]]
+            prof += [[round(a + (0.02 if j else 0), 3), round(z0 + (j + 1) * rise, 3)], [round(a + TREAD, 3), round(z0 + (j + 1) * rise, 3)]]
+        nb, rb = n, rise
         if kind == "gate":                                           # across the platform and down the far side
-            prof.append([round(W - 0.02, 3), round(z0 + base_h, 3)])
-            for j in range(n):
+            top = z0 + base_h
+            nb = max(2, int(round((top - z_back) / RISE)))
+            rb = (top - z_back) / nb
+            prof.append([round(W - 0.02, 3), round(top, 3)])
+            for j in range(nb):
                 a = W + j * TREAD
-                prof += [[round(a + 0.02, 3), round(z0 + base_h - (j + 1) * RISE, 3)], [round(a + TREAD, 3), round(z0 + base_h - (j + 1) * RISE, 3)]]
-            prof.append([round(W + n * TREAD + 2.5, 3), z0])
+                prof += [[round(a + 0.02, 3), round(top - (j + 1) * rb, 3)], [round(a + TREAD, 3), round(top - (j + 1) * rb, 3)]]
+            prof.append([round(W + nb * TREAD + 2.5, 3), round(z_back, 3)])
         else:
             prof.append([1.2, round(z0 + base_h, 3)])                # the platform, to the doors
         out.append({"name": name, "kind": kind, "origin": [float(front[0]), float(front[1])], "axis": [float(inward[0]), float(inward[1])],
-                    "half_width": hw, "profile": prof, "z0": z0, "base_h": base_h, "depth": W})
+                    "half_width": hw, "profile": prof, "z0": z0, "base_h": base_h, "depth": W,
+                    "steps": (n, rise, nb, rb)})
     return out
 
 
@@ -260,11 +296,14 @@ def approach_steps(solids):
     for a in approaches(solids):
         ang = math.degrees(math.atan2(a["axis"][1], a["axis"][0]))
         F = ak.Frame(a["origin"][0], a["origin"][1], ang, 0.0)
-        z0, n, hw = a["z0"], int(round(a["base_h"] / RISE)), a["half_width"] + 0.3
+        z0, hw = a["z0"], a["half_width"] + 0.3
+        n, rise, nb, rb = a["steps"]
         for j in range(n):
-            ak.block(m, F, -(n - j) * TREAD, 0.0, -hw, hw, z0 - 0.3, z0 + (j + 1) * RISE)
-            if a["kind"] == "gate":
-                ak.block(m, F, a["depth"], a["depth"] + (n - j) * TREAD, -hw, hw, z0 - 0.3, z0 + (j + 1) * RISE)
+            ak.block(m, F, -(n - j) * TREAD, 0.0, -hw, hw, z0 - 0.3, z0 + (j + 1) * rise)
+        if a["kind"] == "gate":
+            top = z0 + a["base_h"]
+            for j in range(nb):
+                ak.block(m, F, a["depth"], a["depth"] + (nb - j) * TREAD, -hw, hw, top - nb * rb - 0.3, top - (nb - 1 - j) * rb)
     return [m] if m.i else []
 
 

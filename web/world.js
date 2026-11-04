@@ -1000,14 +1000,30 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
     const pierGeo = extrude((P.piers || []).map((r, i) => [-1, 0, 0, Math.round(D.pierZ[i] * 10), r]), () => pierColour);
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
-    piers.material.onBeforeCompile = streetLit;
+    // the deck's top shows the aerial photo, as a flat roof does (buildings.js uPhoto: the ground tiles in
+    // one canvas): the parking bays, kerbs and sheds the photograph has of the wharf, not a plain slab
+    // (issue 65); its sides stay concrete
+    piers.material.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, { uPhoto: U.uPhoto, uPhotoOn: U.uPhotoOn, uFrame: U.uFrame, uPhotoGrade: PG });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vDeckW; varying float vDeckUp;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvDeckW = (modelMatrix * vec4(transformed, 1.0)).xyz; vDeckUp = normal.y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; varying vec3 vDeckW; varying float vDeckUp;
+${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
+  if (uPhotoOn > 0.5 && vDeckUp > 0.7) {
+    vec2 duv = vec2((vDeckW.x - uFrame.x) * uFrame.z, (-vDeckW.z - uFrame.y) * uFrame.w);
+    diffuseColor.rgb = mix(diffuseColor.rgb, photoGrade(texture2D(uPhoto, duv).rgb), 0.8);
+  }`);
+      streetLit(sh);
+    };
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
     // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
     const walks = (D.G && D.G.boardwalks) || [];
     if (walks.length) {
       const top = Math.round((D.G.pier_deck_m || 2.2) * 10), timber = { wall: lin('#6f5a44'), roof: lin('#8a7258'), code: 3, windows: false };
-      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), piers.material);
+      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
+      deck.material.onBeforeCompile = streetLit;
       deck.castShadow = deck.receiveShadow = true;
       world.add(deck);
     }
@@ -1020,7 +1036,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1, fixed: ((P.trees || []).length + (P.woods || []).length) / 4 }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {
@@ -1116,6 +1132,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       return g;
     };
     // small things are drawn only within their "far" (metres): beyond it they are under a pixel
+    const screenMeshes = []; // the big LED screens' faces, for the light they throw (neon.js)
     const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
     for (const m of LM.meshes || []) {
       const g = lmGeometry(m);
@@ -1127,6 +1144,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
       mesh.name = m.name;
       world.add(mesh);
+      if ((LM.materials[m.material] || {}).pattern === 'led_screen') screenMeshes.push({ mesh, m: LM.materials[m.material], mat: lmMats[m.material] });
     }
     // street furniture (landmarks.json "props"): each kind's parts drawn once, instanced at every
     // place it stands ([x, y, z, heading, scale across]), one draw call per part
@@ -1192,6 +1210,8 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       } catch (e) { return false; }
     }
     const api = {
+      // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
+      screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
       world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
