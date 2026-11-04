@@ -1,0 +1,559 @@
+{
+  "id": "odaiba",
+  "name": "Odaiba",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Odaiba from open data, lit by the real sun: the Rainbow Bridge over the bay, the seaside park's beach and its Statue of Liberty, Fuji TV's sphere, and the Yurikamome's guideway across the islands.",
+  "bbox": [
+    139.7583,
+    35.6195,
+    139.7837,
+    35.6385
+  ],
+  "origin": [
+    139.771,
+    35.629
+  ],
+  "extent_m": [
+    -1100,
+    1100,
+    -1000,
+    1000
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "ocean",
+      "bay",
+      "water",
+      "river",
+      "canal"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.4,
+      "plane": 0.4,
+      "palm": 0.2
+    },
+    "note": "Species are not mapped; the mix is a guess: elms and plane trees for the parks and streets, and palms for the seaside park's promenade."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Daiba Station": [
+      139.7714,
+      35.6259
+    ],
+    "Fuji TV": [
+      139.7744,
+      35.6268
+    ],
+    "Odaiba Seaside Park": [
+      139.774,
+      35.63
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:40",
+    "cam": [
+      900,
+      -900,
+      420
+    ],
+    "tgt": [
+      -200,
+      300,
+      40
+    ]
+  },
+  "labels": {
+    "ダイバーシティ東京": "DiverCity Tokyo",
+    "アクアシテイお台場": "Aqua City",
+    "デックス東京ビーチ": "DECKS Tokyo Beach",
+    "日本科学未来館": "Miraikan",
+    "ヒルトン東京お台場": "Hilton Tokyo Odaiba"
+  },
+  "minor_labels": [
+    "アクアシテイお台場",
+    "デックス東京ビーチ",
+    "ヒルトン東京お台場"
+  ],
+  "places": [],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Odaiba, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on islands made in the bay.",
+      "cam": [
+        900,
+        -900,
+        420
+      ],
+      "tgt": [
+        -200,
+        300,
+        40
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 8
+    },
+    {
+      "title": "The Rainbow Bridge",
+      "text": "1993: 798 m, a 570 m main span between towers 126 m high, the expressway on top and the Yurikamome below.",
+      "cam": [
+        150,
+        250,
+        60
+      ],
+      "tgt": [
+        -400,
+        650,
+        60
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "16:30",
+      "to": "17:30",
+      "hold": 10
+    },
+    {
+      "title": "The seaside park",
+      "text": "The beach, the Statue of Liberty, and Fuji TV's titanium sphere behind them.",
+      "cam": [
+        60,
+        120,
+        30
+      ],
+      "tgt": [
+        200,
+        -200,
+        60
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 9
+    }
+  ],
+  "sources": {
+    "landmarks": "The Rainbow Bridge (Metropolitan Expressway, Port of Tokyo: 798 m, main span 570 m, towers 126 m) on OpenStreetMap's line of the expressway, its deck heights from published clearances; Fuji TV's sphere (32 m across) on the FCG building's footprint at about its height; the Statue of Liberty replica (2000, 12.25 m; Minato City) at OpenStreetMap's position; the Yurikamome's guideway on OpenStreetMap's line.",
+    "fonts": "none"
+  },
+  "night": {
+    "note": "The Rainbow Bridge's towers and cables are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "title": "Odaiba on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "Tokyo Bay",
+    "greeting": "いらっしゃいませ!",
+    "blurb": "Walk Odaiba under the real sun: along the seaside park's beach to the Statue of Liberty, under Fuji TV's sphere, and out to see the Rainbow Bridge lit over the bay.",
+    "smalltalk": [
+      "いらっしゃいませ!",
+      "すみません。",
+      "どうも。",
+      "Excuse me!"
+    ],
+    "start": {
+      "at": [
+        40.0,
+        -330.0
+      ],
+      "facing": [
+        80.0,
+        -200.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "odaiba_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "odaiba-pad",
+        "name": "Shiokaze Park pad (game)",
+        "at": [
+          -150.0,
+          -500.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 560,
+      "cars": 160,
+      "radius_m": 450,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA27OD"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.22
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#0b5aa8"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "台場",
+        "kana": "だいば",
+        "romaji": "Daiba",
+        "band": "#0b5aa8",
+        "left": "お台場海浜公園",
+        "right": "東京国際クルーズターミナル",
+        "at": [
+          37.0,
+          -346.0
+        ],
+        "radius": 220,
+        "note": "Fuji TV's station"
+      },
+      {
+        "name": "お台場海浜公園",
+        "kana": "おだいばかいひんこうえん",
+        "romaji": "Odaiba-kaihinkoen",
+        "band": "#0b5aa8",
+        "left": "芝浦ふ頭",
+        "right": "台場",
+        "at": [
+          707.0,
+          101.0
+        ],
+        "radius": 200,
+        "note": "The beach and the bay"
+      },
+      {
+        "name": "東京テレポート",
+        "kana": "とうきょうテレポート",
+        "romaji": "Tokyo Teleport",
+        "band": "#00418e",
+        "left": "天王洲アイル",
+        "right": "国際展示場",
+        "at": [
+          642.0,
+          -212.0
+        ],
+        "radius": 120,
+        "note": "The Rinkai line's station under the islands"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-daiba",
+        "name": "Daiba Station 台場駅",
+        "at": [
+          40.0,
+          -330.0
+        ]
+      },
+      {
+        "id": "t-beach",
+        "name": "Odaiba Seaside Park, the beach お台場海浜公園",
+        "at": [
+          180.0,
+          -40.0
+        ]
+      },
+      {
+        "id": "t-liberty",
+        "name": "The Statue of Liberty 自由の女神像",
+        "at": [
+          90.0,
+          -140.0
+        ]
+      },
+      {
+        "id": "t-fuji",
+        "name": "Fuji TV フジテレビ",
+        "at": [
+          250.0,
+          -200.0
+        ]
+      },
+      {
+        "id": "t-teleport",
+        "name": "Tokyo Teleport Station 東京テレポート駅",
+        "at": [
+          640.0,
+          -230.0
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "yui",
+        "name": "Yui 結衣",
+        "role": "Studio tour guide",
+        "at": [
+          60.0,
+          -320.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_17",
+          "skin": "#f2cdb4",
+          "hair": "#2a1d17",
+          "top": "#e86a2a",
+          "legs": "#2b3440",
+          "shirt": "#e86a2a",
+          "pants": "#2b3440",
+          "clip": "Present"
+        },
+        "idle": [
+          "Welcome to Odaiba! Twenty years ago this was empty reclaimed land. Now: a TV station, beaches, malls and a bridge.",
+          "The Yurikamome has no driver. Sit in the front seat and you're the driver. {time}."
+        ]
+      },
+      {
+        "id": "kenta",
+        "name": "Kenta 健太",
+        "role": "Beach patrol",
+        "at": [
+          170.0,
+          -30.0
+        ],
+        "look": {
+          "character": "R_Sports_Male_02_m008",
+          "skin": "#e2b48f",
+          "hair": "#17120f",
+          "top": "#ff4a2a",
+          "legs": "#1d1d22",
+          "shirt": "#ff4a2a",
+          "pants": "#1d1d22",
+          "clip": "LookAround"
+        },
+        "idle": [
+          "No swimming most of the year, but you can paddle. The sand was brought in by boat.",
+          "In summer there are fireworks over the bay. The whole beach sits and waits. {sun_line}"
+        ]
+      },
+      {
+        "id": "mika",
+        "name": "Mika 美香",
+        "role": "Photographer",
+        "at": [
+          105.0,
+          -160.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_15",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#1d1d22",
+          "legs": "#3a3f48",
+          "shirt": "#1d1d22",
+          "pants": "#3a3f48",
+          "clip": "Photo",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Everybody takes the same picture: Liberty, the bridge, the sunset. I've taken it four hundred times.",
+          "Wait for the bridge's lights. They come on at dusk, all at once."
+        ]
+      },
+      {
+        "id": "shun",
+        "name": "Shun 駿",
+        "role": "Yurikamome station staff",
+        "at": [
+          640.0,
+          -195.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_14_m017_grey",
+          "skin": "#e9bf9d",
+          "hair": "#4a4440",
+          "top": "#1d3f7a",
+          "legs": "#1d2330",
+          "shirt": "#1d3f7a",
+          "pants": "#1d2330",
+          "clip": "Present"
+        },
+        "idle": [
+          "The Yurikamome loops over the Rainbow Bridge to get up to its deck. Watch the view from the front.",
+          "Odaiba was built as a fort, in 1853, against the American ships. The old batteries are islands now."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "bay",
+        "title": "The bay",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "islands",
+        "title": "The islands",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "yui",
+        "title": "Odaiba",
+        "stamp": "Odaiba",
+        "talk": [
+          "Welcome to Odaiba! Look up: the sphere on the TV station, the bridge across the water.",
+          "Go down to the beach. Kenta patrols it; he'll show you the bay."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "kenta",
+            "text": "Find Kenta on the beach"
+          }
+        ]
+      },
+      {
+        "id": "beach",
+        "line": "bay",
+        "giver": "kenta",
+        "title": "The beach",
+        "stamp": "Seaside Park",
+        "talk": [
+          "Sand from a quarry, water from the bay, and the city on the other side. Not bad.",
+          "Walk along to the Statue of Liberty. Mika's always there with her camera."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "liberty",
+            "text": "Find the Statue of Liberty"
+          },
+          {
+            "type": "talk",
+            "npc": "mika",
+            "text": "Find Mika by the statue"
+          }
+        ]
+      },
+      {
+        "id": "bridge",
+        "line": "bay",
+        "giver": "mika",
+        "title": "The Rainbow Bridge",
+        "stamp": "Rainbow Bridge",
+        "talk": [
+          "Now look at the bridge. Wait till the lights come on.",
+          "You can walk across it, on the footpath under the expressway. Thirty minutes to Shibaura."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "rainbow",
+            "text": "Look at the Rainbow Bridge"
+          }
+        ]
+      },
+      {
+        "id": "sphere",
+        "line": "islands",
+        "giver": "shun",
+        "title": "The sphere",
+        "stamp": "Fuji TV",
+        "talk": [
+          "Fuji TV's sphere: they built a ball into a building, and you can stand inside it.",
+          "Go and look at it from below. It's bigger than you think."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "sphere",
+            "text": "Look up at Fuji TV's sphere"
+          }
+        ]
+      }
+    ]
+  }
+}

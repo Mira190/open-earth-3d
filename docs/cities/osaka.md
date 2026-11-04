@@ -178,6 +178,27 @@ factor of 1.31 at the median and 2.5 at the 90th percentile. The Monte Carlo
 sigmas the sun study uses are 0.165 for `floors` and 0.43 for `estimate`,
 and 0.03 for a measured height.
 
+
+### 3.8 Namba Parks
+
+PLATEAU gives every part of Namba Parks the 155 m of its tower, so the
+terraced mall stood as one curved glass slab. OpenStreetMap maps each of its 39
+terraces as a part with `building:levels` (1 to 10) and, for the bridges over
+the canyon, `building:min_level`. `pipeline/osm_parts.py` reads them from the
+OpenStreetMap API (ODbL) into `cities/osaka/namba_parks.json`; at 4.5 m a
+storey (the building record's own) the mall tops out at 45 m. `adjust_building`
+uses them on the next build, and `pipeline/retop.py` applied them to the built
+`buildings.json`, so the surface model, the shadows and the game have the
+terraces. The sun analyses keep the old heights until they are rerun.
+
+A landmark draws the parts instead (Jerde Partnership, 2003 and 2007): the walls
+in strata of sandstone tones, the canyon between them, glass shopfronts, and the
+Parks Garden, terraces stepping up from the 2nd floor by Nankai Namba station to
+the 9th, planted behind pale copings and rails, with trees on the terraces
+(`landmarks.json` `"trees"`). Tones, strata and planting follow photographs
+(Wikimedia Commons, "NAMBA PARKS Overview 201306.jpg", "Jerde nambaparks.jpg");
+the planting is indicative.
+
 ## 4. Terrain
 
 | Source | Over land in the model area |

@@ -13,6 +13,11 @@ Building adjustments (called by pipeline/build_scene.py):
     (game_surfaces), past the well house to the keep's stone base.
   * Tsutenkaku: the OSM footprint is a 108 m box. The footprint stays as a 12 m base and the
     steel tower is parametric above it.
+  * Namba Parks: PLATEAU gives every part of the complex its tower's 155 m, so the terraced mall
+    stood as one curved glass slab. Each part takes its own levels from OpenStreetMap's parts
+    (cities/osaka/namba_parks.json, pipeline/osm_parts.py; building:levels 1-10, building:min_level
+    for the bridges over the canyon) at 4.5 m a storey; pipeline/retop.py applied the same to the
+    built scene.
   * HEP FIVE: PLATEAU's 107 m is the top of the Ferris wheel, not the building. The building
     is drawn at 47 m (an estimate) and the wheel is parametric.
   * The Glico sign and the Kani Doraku crab are placed on the buildings nearest their published
@@ -44,6 +49,14 @@ Parametric landmarks (pipeline/landmarks.py), with anchors measured from the dat
   Kani Doraku crab    the moving crab on the Dotonbori front, about 8 m across.
   HEP FIVE wheel      75 m diameter, top at 106 m above the street, lowest point at the seventh
                       floor (about 31 m).
+  Namba Parks         the Jerde Partnership's mall on the old Osaka Stadium (2003, extended 2007), on
+                      its 39 parts at their own levels (above), which it hides: the walls in strata of
+                      sandstone tones, the canyon curving through it between them, glass shopfronts,
+                      and the Parks Garden on the roofs, terraces stepping up from the 2nd floor by
+                      Nankai Namba station to the 9th in the south, planted (with trees, landmarks.json
+                      "trees") behind pale copings and steel rails. The strata's tones and widths are
+                      taken from photographs (Wikimedia Commons, "NAMBA PARKS Overview 201306.jpg",
+                      "Jerde nambaparks.jpg"); the planting is indicative.
 """
 import math
 import os
@@ -53,6 +66,7 @@ import shapely
 from shapely.geometry import Point, Polygon
 
 import adkit as ad
+import archkit as ak
 import screens
 from meshkit import Mesh
 
@@ -67,6 +81,40 @@ GLICO_LONLAT = (135.50114, 34.66892)   # Glico sign: on the back of 道頓堀1-1
 CASTLE_STONE_H, CASTLE_TOWER_H, CASTLE_TOP_H = 13.3, 39.4, 54.8
 BRICK_HALL, CITY_HALL = "大阪市中央公会堂", "大阪市役所"
 HEP5_BUILDING_H = 47.0
+NAMBA_PARKS = "なんばパークス"
+NAMBA_STOREY_M = 4.5   # the mall's storey (the building record's own), so its ten levels stand 45 m
+_NAMBA_PARTS = []
+
+
+def namba_parts():
+    """Namba Parks' parts from OpenStreetMap (cities/osaka/namba_parks.json, pipeline/osm_parts.py):
+    [(polygon, min level, levels, osm id)]."""
+    if not _NAMBA_PARTS:
+        import json
+        d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "namba_parks.json")))
+        _NAMBA_PARTS[:] = [(Polygon(q["ring"]).buffer(0), q["min_level"], q["levels"], q["osm"]) for q in d["parts"]]
+    return _NAMBA_PARTS
+
+
+def namba_part(poly):
+    """The OpenStreetMap part a solid of Namba Parks stands on (the best overlap, at least half of
+    both): (min height m, top m, osm id), or None."""
+    best, got = 0.5, None
+    for q, mn, lv, osm in namba_parts():
+        if not q.intersects(poly):
+            continue
+        iou = q.intersection(poly).area / max(q.union(poly).area, 1e-6)
+        if iou > best:
+            best, got = iou, (mn * NAMBA_STOREY_M, lv * NAMBA_STOREY_M, osm)
+    return got
+
+
+def retop(sd):
+    """pipeline/retop.py: Namba Parks' solids at their own levels (PLATEAU gave each the tower's 155 m)."""
+    if sd["name"] != NAMBA_PARKS:
+        return None
+    got = namba_part(Polygon(sd["ring"], sd["holes"]).buffer(0))
+    return got[:2] if got else None
 
 MATERIALS = {
     # the castle: dressed granite in courses, copper formed as round tiles (verdigris), white
@@ -256,6 +304,13 @@ def adjust_building(b, cls, g, geoms, ctx):
         for s_ in out:
             ctx.hide(s_)
         return out
+    if name == NAMBA_PARKS:
+        # every terrace at its own levels (OpenStreetMap's parts), not the tower's height PLATEAU gives them all
+        out = []
+        for q in geoms:
+            got = namba_part(q[0])
+            out.append([q[0], got[0], got[1], "mapped", q[4]] if got else q)
+        return out
     if name == HEP5 and "hep_five" not in lm:
         c, ang, long_, short_ = rect_of(g)
         lm["hep_five"] = {"centroid": [round(c[0], 1), round(c[1], 1)], "axis_deg": round(math.degrees(ang), 2),
@@ -383,7 +438,10 @@ def landmark_meshes(scene):
         meshes += kani_crab(lm["kani"])
     if "signs" in lm:
         meshes += shop_signs(lm["signs"]["sites"])
-    return mats | {"screens": DOTONBORI.material(EBISUBASHI)}, meshes
+    more, hidden, trees = namba_parks()
+    meshes += more
+    mats.update({k: dict(MATERIALS[k]) for k in MATERIALS if k.startswith("np_")})
+    return mats | {"screens": DOTONBORI.material(EBISUBASHI)}, meshes, {"hidden": hidden, "trees": trees}
 
 
 def landmark_assets(out_dir, scene):
@@ -1616,3 +1674,108 @@ def game_extras(scene):
     v = EBISU["half_width"] - 0.25 - 0.25
     close.append(close_to("Ebisubashi, the parapet below the Glico sign", P(u, v, 0), ebisu_z(u), P(u, v - 6.0, 0), 1.0, 0.2))
     return {"close": close}
+
+
+# ---------------------------------------------------------------- Namba Parks
+
+# the canyon's walls: horizontal strata in sandstone tones, as the Jerde Partnership drew them (photographs:
+# Wikimedia Commons, "NAMBA PARKS Overview 201306.jpg", "Jerde nambaparks.jpg"), a band every STRATUM_M
+NAMBA_STRATA = ["np_sand", "np_tan", "np_light", "np_sand", "np_brown", "np_light", "np_tan", "np_rose"]
+STRATUM_M = 0.75
+MATERIALS.update({
+    "np_sand": {"color": "#c9a272", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_tan": {"color": "#b3845c", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_light": {"color": "#dcc196", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_brown": {"color": "#946548", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_rose": {"color": "#bb8a76", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_coping": {"color": "#e3d4b4", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffe3bd", "glow": 0.15},
+    "np_garden": {"color": "#56743a", "roughness": 0.95, "metalness": 0.0},
+    "np_paving": {"color": "#bfb4a3", "roughness": 0.85, "metalness": 0.0},
+    "np_glass": {"color": "#2b3136", "roughness": 0.15, "metalness": 0.5, "emissive": "#ffd7a0", "glow": 0.85},
+    "np_roof": {"color": "#a9a296", "roughness": 0.9, "metalness": 0.0},
+    "np_rail": {"color": "#c9ccce", "roughness": 0.35, "metalness": 0.7},
+})
+
+
+def namba_parks():
+    """Namba Parks (the Jerde Partnership, 2003 and 2007) on its 39 parts, which it hides: every wall in
+    strata of sandstone tones, the canyon's curving walls with them; glass shopfronts along the ground
+    and the canyon; the terraces of the Parks Garden stepping up from the 2nd floor by the station to the
+    9th in the south, each planted (lawn and beds, its trees in landmarks.json "trees") behind a pale
+    coping and a steel rail, the stairs' landings paved; the tallest blocks (the cinema, the halls) with
+    plain roofs. The bridges over the canyon (OpenStreetMap's parts with a min_level) span it with their
+    soffits. Returns (meshes, hidden solids, trees [x, y, z, h] dm)."""
+    from shapely.geometry import Point
+    solids = [s for s in ak.load_solids("osaka") if s["name"] == NAMBA_PARKS]
+    if not solids:
+        return [], [], []
+    K = ak.Kit("namba_parks", floodlit=set(NAMBA_STRATA) | {"np_coping", "np_glass"})
+    polys = {s["si"]: Polygon(s["ring"], s["holes"]).buffer(0) for s in solids}
+    U = shapely.union_all(list(polys.values())).buffer(0.05)
+    top_of = lambda s: s["ground"] + s["top"]
+    tops = [(polys[s["si"]], top_of(s), s["ground"] + s["base"]) for s in solids]
+
+    def higher_at(pt, z):
+        """Is there another part of the building standing above z at pt (so that a wall there is hidden)?"""
+        return any(p.contains(pt) and t > z + 0.3 and b < z for p, t, b in tops)
+
+    trees, rng = [], np.random.default_rng(2003)
+    for sd in solids:
+        poly = polys[sd["si"]]
+        z0, z1 = sd["ground"] + sd["base"], top_of(sd)
+        bridge = sd["base"] > 0.5
+        rings = [poly] if poly.geom_type == "Polygon" else list(poly.geoms)
+        for pg in rings:
+            pts = ak.simplify(list(pg.exterior.coords), 0.35)
+            if ak.ring_area(pts) < 0:
+                pts = pts[::-1]
+            n = len(pts)
+            for k in range(n):
+                a, b = pts[k], pts[(k + 1) % n]
+                L = math.dist(a, b)
+                if L < 0.05:
+                    continue
+                t = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+                out = Point((a[0] + b[0]) / 2 + t[1] * 0.6, (a[1] + b[1]) / 2 - t[0] * 0.6)
+                # the strata, from the foot (or the bridge's soffit) to the coping
+                zb = z0 if bridge else sd["ground"] - 0.5
+                j0 = int(math.floor((zb - 0.0) / STRATUM_M))
+                for j in range(j0, int(math.ceil(z1 / STRATUM_M))):
+                    za, zc = max(zb, j * STRATUM_M), min(z1, (j + 1) * STRATUM_M)
+                    if zc - za < 0.02 or higher_at(out, (za + zc) / 2):
+                        continue
+                    m = K[NAMBA_STRATA[(j * 3 + (j // 5)) % len(NAMBA_STRATA)]]
+                    m.quad((a[0], a[1], za), (b[0], b[1], za), (b[0], b[1], zc), (a[0], a[1], zc))
+                exposed = not U.contains(out)
+                # shopfronts: glass along the ground and every floor's foot where the wall faces out, a window band
+                if exposed and not bridge and L > 3.0:
+                    g0 = sd["ground"]
+                    nrm = (t[1] * 0.06, -t[0] * 0.06)
+                    for zf in (g0 + 0.2, *([g0 + 4.5 + 0.4] if z1 - g0 > 9.5 else [])):
+                        zt = zf + (3.6 if zf - g0 < 1 else 2.6)
+                        A, B = (a[0] + nrm[0], a[1] + nrm[1]), (b[0] + nrm[0], b[1] + nrm[1])
+                        K["np_glass"].quad((A[0], A[1], zf), (B[0], B[1], zf), (B[0], B[1], zt), (A[0], A[1], zt))
+                # the coping and the rail along the roof's open edges
+                if not higher_at(out, z1 + 0.5):
+                    ak.edge_band(K["np_coping"], a, b, z1 - 0.35, 0.25, 0.45)
+                    K["np_rail"].box((a[0], a[1], z1 + 1.05), (b[0], b[1], z1 + 1.05), 0.06, 0.06)
+            if bridge:  # its soffit over the canyon
+                ak.cap(K["np_coping"], ak.WORLD, pts, z0, down=True)
+            # the roof: a planted terrace, or a plain roof on the tallest blocks and the bridges
+            # (the one- and two-storey parts by the station are the canyon's deck and the plaza: paved)
+            garden = 2.5 * NAMBA_STOREY_M < sd["top"] < 44.0 and not bridge and pg.area > 30
+            ak.cap(K["np_paving" if garden else "np_roof"], ak.WORLD, pts, z1 + 0.03)
+            if garden:
+                inner = pg.buffer(-2.5)
+                if not inner.is_empty:  # the planting, raised in its bed inside a paved walk, and its trees
+                    for g in getattr(inner, "geoms", [inner]):
+                        ring = ak.simplify(list(g.exterior.coords), 0.4)
+                        if len(ring) >= 3:
+                            ak.cap(K["np_garden"], ak.WORLD, ring, z1 + 0.35)
+                    bx0, by0, bx1, by1 = inner.bounds
+                    for x in np.arange(bx0 + 2.0, bx1, 6.5):
+                        for y in np.arange(by0 + 2.0, by1, 6.5):
+                            px, py = x + rng.uniform(-2.2, 2.2), y + rng.uniform(-2.2, 2.2)
+                            if inner.contains(Point(px, py)) and rng.random() < 0.8:
+                                trees += [round(px * 10), round(py * 10), round((z1 + 0.35) * 10), round(rng.uniform(5.0, 9.5) * 10)]
+    return K.out(), sorted(s["si"] for s in solids), trees

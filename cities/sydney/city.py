@@ -107,6 +107,7 @@ MATERIALS = {
     # broadwalk's in the podium's aggregate, Sydney Cove's and Farm Cove's in sandstone) with its
     # tidal band, its coping, and the street furniture
     "flagstone": {"color": "#b49c89", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 2.4], "decal": True, "street_lit": True},
+    "seabed": {"color": "#2e3836", "roughness": 1.0, "metalness": 0.0, "solid": False},  # the harbour's silt at the seawall's foot
     "seawall_opera": {"color": "#9f8574", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.9, "block_m": 2.4, "tide": True},
     "seawall_sandstone": {"color": "#9a8a74", "roughness": 0.9, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.55, "block_m": 1.3, "tide": True},
     "seawall_sandstone_dry": {"color": "#a08a6c", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.8, "block_m": 2.2},
@@ -124,7 +125,9 @@ MATERIALS = {
     "lc_tread": {"color": "#b8a08c", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "decal": True, "street_lit": True},
     "lc_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser", "decal": True},
     "lc_wall": {"color": "#a8897a", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 2.4, "street_lit": True, "solid": False, "camera": True},
-    "lc_soffit": {"color": "#8a8276", "roughness": 0.9, "metalness": 0.0, "solid": False, "camera": True},  # (in the slab's shade: no sky over it)
+    "lc_soffit": {"color": "#a69d90", "roughness": 0.9, "metalness": 0.0, "solid": False, "camera": True, "emissive": "#ffd8a8", "glow": 0.05},  # off-form concrete (its meshes take SKY_UNDER of the sky)
+    "lc_floor": {"color": "#b49c89", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 2.4], "decal": True,
+                 "emissive": "#ffd8a8", "glow": 0.16},  # the colonnade's flags, under the soffit's downlights after dark
     "lc_fascia": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6], "solid": False, "camera": True},
     "lc_bronze": {"color": "#5a4029", "roughness": 0.4, "metalness": 0.8, "solid": False},  # the stairwell's handrail
     # the shopfronts: glass between bronze mullions, a kick plate at the foot, most panes lit after dark
@@ -232,15 +235,28 @@ CLIFF_BACK_M = (6.0, 9.0, 12.0, 15.0)
 # the walkway's end to the Northern Broadwalk (OpenStreetMap maps its two lanes as two ways of 13
 # steps, near `north_near`; the aerial photo, NSW Imagery at 7.5 cm, shows one flight 8 m wide), and
 # from the forecourt a stairwell of 20 risers goes down to the concourse (OpenStreetMap way 1118329015,
-# near `well`): an opening in the forecourt 4.4 by 10.7 m, measured on the same photo along the way
-# (u from its upper end, v across to the east), the flight down its east side, a void beside it, and
-# from the landing at its foot a passage west under the forecourt, through the colonnade's shopfronts,
-# to the concourse
+# near `well`; "Stair to Circular Quay" beside the car park's entrance on Luchetti Krelle's lower
+# level plan DA.101, SSD-9794-Mod-1, 2025): an opening in the forecourt 10.7 m long along the way
+# (u from its upper end, v across to the east), measured on the same photo, and 3.0 m across, as the
+# plan and OpenStreetMap's outline of it (way 1118329050) have it; one straight flight down it to the
+# south-south-west, the full width between its balustrades, with no void beside it; and from the
+# landing at its foot a lobby whose doors open west onto the colonnade, the passage west under the
+# forecourt that OpenStreetMap maps as a covered footway (way 1118329034). The colonnade is 5.8 m deep
+# from the forecourt's edge to the shopfronts and its mushroom columns stand 7.2 m apart (four 1.8 m
+# pavers), 1.8 m in from the edge, their shafts 0.38 m across (DA.131, Opera Kitchen, 1:50; DA.101
+# has 5.9 m to the back-of-house wall at the Opera Bar)
 LOWER = {"fence_near": (233.0, 430.0), "walk_m": 1.58, "floor_m": 0.60, "riser_m": 0.15, "tread_m": 0.45, "up_risers": 13,
-         "hold_m": 9.0, "recess_m": 5.0, "slab_m": 1.50, "parapet_m": 1.05, "wall_parapet_m": 0.9, "column_every_m": 8.4,
+         "hold_m": 9.0, "recess_m": 5.8, "slab_m": 1.50, "parapet_m": 1.05, "wall_parapet_m": 0.9, "column_every_m": 7.2,
+         "column_in_m": 1.8, "column_r_m": 0.19,
          "north_near": (249.5, 502.0), "north_tread_m": 0.40,
-         "well": {"near": (241.0, 432.0), "risers": 20, "open_u": (-2.0, 8.7), "open_v": (-2.0, 2.4), "stair_v": (-0.6, 2.4),
+         "well": {"near": (241.0, 432.0), "risers": 20, "open_u": (-2.0, 8.7), "open_v": (-0.6, 2.4), "stair_v": (-0.6, 2.4),
                   "top_u": -1.2, "foot_u": 7.9, "land_u": 10.7, "passage_v": -14.0, "rail_m": 1.0}}
+# The share of the sky's light that reaches the surfaces under the forecourt's slab (world.js "sky"):
+# the colonnade's floor and shopfronts see it through the 2.4 m opening across the 5 m recess, about
+# a third of the sky; the soffit faces down and takes only what comes back off the paving outside.
+# After dark the downlights in the soffit light the colonnade's floor, and the soffit and the columns
+# catch their spill (the materials' glow)
+SKY_UNDER = {"soffit": 0.3, "columns": 0.45, "floor": 0.35, "shopfront": 0.35, "passage": 0.2}
 # Overture infrastructure drawn in the precinct, by (subtype, class)
 STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "bollard", ("transportation", "street_lamp"): "lamp",
                     ("tower", "lighting"): "floodlight", ("pedestrian", "information"): "pylon"}
@@ -1371,6 +1387,10 @@ def bennelong(ctx):
     rings = lambda p: {"ring": [[round(x, 1), round(y, 1)] for x, y in p.exterior.coords],
                        "holes": [[[round(x, 1), round(y, 1)] for x, y in h.coords] for h in p.interiors]}
     clip = [rings(p) for p in ctx.polygons(sea.intersection(line.buffer(CLIP_OUT_M)).simplify(0.2)) if p.area > 4]
+    # and the bottom there, at the seawall's foot: without it the strip where the ground is not drawn
+    # was open under the water, and the sky's colour showed through it as a pale band along the wall,
+    # widest in the corner west of the walkway's round end (issue 84)
+    seabed = list(clip)
     clip += [rings(p) for p in ctx.polygons(deck_u.buffer(-0.15).simplify(0.2)) if p.area > 4]
     # and under the Monumental Steps and their apron, where the DEM's bumps in the forecourt (the car
     # park's vent) came up through the apron as a pale strip of the aerial photo
@@ -1453,7 +1473,7 @@ def bennelong(ctx):
           f"{ {k: len(v) for k, v in props.items()} }; {len(parts)} furniture parts; {len(clip)} clip regions; "
           f"paving {grid[grid > -50].min():.1f} to {grid.max():.1f} m")
     print(f"  the Tarpeian Wall: a cliff along {sum(1 for sk in skirts for p in sk if len(p) > 4) * 2} m of the paving's edge")
-    out = {"seawalls": seawalls, "skirts": skirts, "deck": deck_out, "level": lv, "clip": clip, "props": props, "parts": parts,
+    out = {"seawalls": seawalls, "skirts": skirts, "deck": deck_out, "level": lv, "clip": clip, "seabed": seabed, "props": props, "parts": parts,
            "axis": o["steps"]["axis"], "origin": o["steps"]["origin"]}
     if lc:
         out["lower"] = concourse_out(lc, level_base)
@@ -1680,8 +1700,8 @@ def stairwell(W, steps, F, floor):
     """The stairwell from the forecourt down to the Lower Concourse (LOWER["well"]): on the
     OpenStreetMap way near W["near"], u from its upper end down it, v across to the east. The
     opening in the forecourt (open_u by open_v); the top landing at the forecourt's level; the
-    flight down its east side (stair_v), W["risers"] treads from top_u to foot_u; the void beside
-    it and the landing at its foot, at the concourse's level, the landing carried on under the
+    flight down it (stair_v, the opening's width), W["risers"] treads from top_u to foot_u; the
+    landing at its foot, at the concourse's level, the landing carried on under the
     forecourt to land_u; and from the landing a passage west under the forecourt to the
     balustrade (passage_v), through the colonnade. Returns the pieces drawn in the opening
     [(polygon, level, kind)], and the parts under the forecourt."""
@@ -1823,7 +1843,7 @@ def colonnade_columns(E):
             deep = all(storey_over(E[j]) for j in range(max(k - 2, 0), min(k + 4, len(E))))
             while deep and next_col <= run + L1:
                 t = (next_col - run) / max(L1, 1e-6)
-                c = q0 + (q1 - q0) * t + (n0 + (n1 - n0) * t) * 1.1
+                c = q0 + (q1 - q0) * t + (n0 + (n1 - n0) * t) * LOWER["column_in_m"]
                 out.append([float(c[0]), float(c[1]), e0[4] + (e1[4] - e0[4]) * t, e0[5] - LOWER["slab_m"] + (e1[5] - e0[5]) * t])
                 next_col += LOWER["column_every_m"]
             if not deep:
@@ -1972,6 +1992,18 @@ def bennelong_meshes(b, o, ground=()):
     meshes.append(pave)
     if b.get("lower"):
         meshes += concourse_meshes(b["lower"], uv, lv, [Polygon(d["ring"], d["holes"]).buffer(0) for d in b["deck"]])
+    # the harbour's bottom at the seawall's foot, out across the strip where the ground is not drawn
+    bed = Mesh("seawall_bed", "seabed", False)
+    for r in b.get("seabed", []):
+        poly = Polygon(r["ring"], r["holes"]).buffer(0)
+        for t in shapely.constrained_delaunay_triangles(poly).geoms if not poly.is_empty else []:
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            bed.tri(*[np.array([x, y, SEAWALL_FOOT_M]) for x, y in cs])
+    if bed.v:
+        meshes.append(bed)
     # the seawall: its face from the coping down below low water, and the coping, a little proud
     walls = {k: Mesh(f"seawall_{k}", f"seawall_{k}", False, uv=True) for k in ("opera", "sandstone")}
     coping = Mesh("seawall_coping", "coping", False, uv=True)
@@ -2159,8 +2191,8 @@ def concourse_meshes(L, uv, lv, drape):
             par.box(np.array([p[0], p[1], p[2] + h / 2 - 0.15]), np.array([q[0], q[1], q[2] + h / 2 - 0.15]), 0.32, h + 0.3)
     # the forecourt's edge over the concourse
     E = L["edge"]
-    fascia, soffit, shop = Mesh("lc_fascia", "lc_fascia", False, uv=True), Mesh("lc_soffit", "lc_soffit", False), Mesh("lc_shopfronts", "lc_shop", False, floodlit=True, uv=True)
-    floor_m, cols = Mesh("lc_colonnade_floor", "flagstone", True, uv=True), Mesh("lc_columns", "lc_soffit", True)
+    fascia, soffit, shop = Mesh("lc_fascia", "lc_fascia", False, uv=True), Mesh("lc_soffit", "lc_soffit", False, floodlit=True), Mesh("lc_shopfronts", "lc_shop", False, floodlit=True, uv=True)
+    floor_m, cols = Mesh("lc_colonnade_floor", "lc_floor", True, floodlit=True, uv=True), Mesh("lc_columns", "lc_soffit", True, floodlit=True)
     rec, slab, ph = LOWER["recess_m"], LOWER["slab_m"], LOWER["parapet_m"]
     well = L.get("well")
     # the passage to the stairwell, through the shopfronts, and the stairwell's opening: no shopfront or soffit across them
@@ -2201,8 +2233,14 @@ def concourse_meshes(L, uv, lv, drape):
             lo0 = lo1 = min(min(e[4], e[5]) for e in near) - 0.4
             fascia.quad(P(q0, lo0), P(q1, lo1), P(q1, top1), P(q0, top0), [[run, lo0], [run + L1, lo1], [run + L1, top1], [run, top0]])
         run += L1
+    # under the slab they see the sky only between the columns, the soffit not at all (its light is
+    # what comes back up off the concourse): the share of the sky's light each takes (world.js "sky"),
+    # the view factors of a 5 m recess under a 2.4 m opening
+    soffit.sky, cols.sky, floor_m.sky, shop.sky = SKY_UNDER["soffit"], SKY_UNDER["columns"], SKY_UNDER["floor"], SKY_UNDER["shopfront"]
+    soffit.bounce = cols.bounce = shop.bounce = MATERIALS["flagstone"]["color"]  # (off the forecourt's pink granite)
     for x, y, zf, zs in colonnade_columns(E):  # the mushroom columns, just in from the fascia
-        cols.lathe([(zf - 0.1, 0.24), (zs - 0.75, 0.24), (zs - 0.35, 0.55), (zs - 0.08, 1.05), (zs, 1.1)], np.array([x, y]), segs=14)
+        r = LOWER["column_r_m"]
+        cols.lathe([(zf - 0.1, r), (zs - 0.75, r), (zs - 0.35, 0.55), (zs - 0.08, 1.05), (zs, 1.1)], np.array([x, y]), segs=14)
     out = [flags, treads, risers, walls, par, fascia, soffit, shop, floor_m, cols, bed]
     if well:
         out += well_meshes(well, lc, uv)
@@ -2216,8 +2254,8 @@ def well_meshes(W, lc, uv):
     upstand under a bronze rail."""
     floor_, top = W["floor_m"], W["top_m"]
     ceil = top - LOWER["slab_m"]
-    pas = Mesh("lc_well_floor", "flagstone", True, uv=True)
-    lid = Mesh("lc_well_ceiling", "lc_soffit", False)
+    pas = Mesh("lc_well_floor", "lc_floor", True, floodlit=True, uv=True)
+    lid = Mesh("lc_well_ceiling", "lc_soffit", False, floodlit=True)
     side = Mesh("lc_well_walls", "lc_wall", False, uv=True)
     rail = Mesh("lc_well_rail", "lc_wall", False, uv=True)
     bronze = Mesh("lc_well_bronze", "lc_bronze", False)
@@ -2261,6 +2299,8 @@ def well_meshes(W, lc, uv):
         a2, b2 = a + o * 0.14, b + o * 0.14
         rail.box(np.array([*a2, top + (h - 0.25) / 2]), np.array([*b2, top + (h - 0.25) / 2]), 0.26, h - 0.25 + 0.05)
         bronze.box(np.array([*a2, top + h - 0.08]), np.array([*b2, top + h - 0.08]), 0.08, 0.16)
+    pas.sky = lid.sky = side.sky = SKY_UNDER["passage"]
+    lid.bounce = side.bounce = MATERIALS["flagstone"]["color"]  # (in under the forecourt, lit from the colonnade's end)
     return [pas, lid, side, rail, bronze]
 
 

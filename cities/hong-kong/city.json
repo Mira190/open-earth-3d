@@ -172,6 +172,7 @@
   "analysis_region": [-1400, 1400, -1300, 1500],
   "sun_hours_region": [-1500, 1500, -1400, 1600],
   "game": {
+    "weather": {"rain_days": [5.7, 7.97, 10.5, 11.37, 15.37, 19.33, 18.43, 17.5, 14.9, 7.83, 5.7, 5.3], "threshold_mm": 0.1, "drizzle": 0.3, "source": "Hong Kong Observatory, 1991-2020 normals, days with at least 0.1 mm"},
     "title": "Hong Kong on Foot",
     "local_name": "Hongkonger",
     "greeting": "Néih hóu.",

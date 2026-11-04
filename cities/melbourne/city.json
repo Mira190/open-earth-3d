@@ -550,6 +550,7 @@
     "planning": "Melbourne Planning Scheme via api.app.planning.vic.gov.au (VC314, 28 October 2026)"
   },
   "game": {
+    "weather": {"rain_days": [8.3, 7.5, 8.4, 9.9, 12.0, 13.0, 14.0, 14.8, 13.9, 12.5, 10.8, 9.9], "threshold_mm": 0.2, "drizzle": 0.6, "source": "Bureau of Meteorology, Melbourne, 1991-2020, days with at least 0.2 mm"},
     "title": "Melbourne on Foot",
     "blurb": "Walk central Melbourne under the real sun. Talk to the people who know it, take the river shuttle down the Yarra, and fly past the Arts Centre spire.",
     "local_name": "Melburnian",

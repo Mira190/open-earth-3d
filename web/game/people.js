@@ -59,6 +59,8 @@ window.OEPeople = (function () {
     weights: { M_Casual2: 3, M_Hoodie: 1.6, M_Suit: 1.6, M_Worker: 0.6, M_Beach: 0.2, M_Adventurer: 1.2, M_Punk: 0.2,
       W_Casual: 3, W_Formal: 1.6, W_Suit: 1.4, W_Worker: 0.5, W_Adventurer: 1.2, W_Punk: 0.2 },
   };
+  // Japan carries the clear vinyl umbrellas sold at every konbini, and black and navy ones
+  STYLES.tokyo.umbrellas = ['clear', 'clear', 'clear', 'clear', 'clear', '#1d1f26', '#22304a', '#1d1f26', '#f2f2f2', '#6b2a35'];
   STYLES.kyoto = Object.assign({}, STYLES.tokyo, {
     tops: ['#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#46604f', '#8a2f39', '#5b6b7a', '#c9c2b5', '#7a4e8f'],
   });
@@ -92,7 +94,12 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
 }`;
   const GEO = {}, MAT = {};
   const geo = (k, f) => GEO[k] || (GEO[k] = f());
-  const stdMat = hex => MAT[hex] || (MAT[hex] = new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.75, metalness: 0, side: THREE.DoubleSide }));
+  // 'clear': the clear vinyl of a convenience-store umbrella
+  const stdMat = hex => MAT[hex] || (MAT[hex] = hex === 'clear'
+    ? new THREE.MeshStandardMaterial({ color: 0xf2f5f7, roughness: 0.18, metalness: 0, transparent: true, opacity: 0.34, depthWrite: false, side: THREE.DoubleSide })
+    : new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.75, metalness: 0, side: THREE.DoubleSide }));
+  // an open umbrella's canopy: eight panels over a cone, open underneath (the apex up)
+  const canopyGeo = () => new THREE.ConeGeometry(0.5, 0.2, 8, 1, true);
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
   // Everything is built in the model's own space (y up, +z forward, metres) around anchors read from the
   // reference pose, so one set of numbers fits every character; attach() then hangs it on a bone. A
@@ -156,6 +163,12 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       M(geo('umbhR', () => new THREE.CylinderGeometry(0.014, 0.014, 0.12, 6).rotateZ(1.5708)), '#6a4a2a', g.at(0.05, 0.0, 0.0), null, g.q)] : [
       M(geo('umb', () => new THREE.CylinderGeometry(0.018, 0.028, 1.0, 8)), '#222a44', h.clone().add(V3(0, -0.4, 0.02))),
       M(geo('umbh', () => new THREE.CylinderGeometry(0.014, 0.014, 0.14, 6)), '#6a4a2a', h.clone().add(V3(0, 0.0, 0)))]) },
+    // open in the rain, held up over the head by the shaft (weather.js turns it on): from the chest,
+    // so it rides with the body and not with the swing of the arm
+    umbrella_open: { bone: 'Chest', build: (M, h, c, look) => [
+      M(geo('umbC', canopyGeo), look.umbrella || '#1d1f26', h.clone().add(V3(-0.1, 0.7, 0.12))),
+      M(geo('umbS', () => new THREE.CylinderGeometry(0.009, 0.009, 0.86, 6)), '#2a2a2e', h.clone().add(V3(-0.1, 0.3, 0.12))),
+      M(geo('umbH', () => new THREE.CylinderGeometry(0.016, 0.016, 0.12, 6)), '#3a2a1e', h.clone().add(V3(-0.1, -0.12, 0.12)))] },
     beret: { bone: 'Head', build: (M, h, c, look, real) => [
       M(geo('beret', () => new THREE.CylinderGeometry(0.14, 0.13, 0.04, 20)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, real ? 0.135 : 0.15, -0.01)), real ? V3(1.1, 1, 1.1) : null, null, 0.18),
       M(geo('beretc', () => new THREE.CylinderGeometry(0.008, 0.008, 0.025, 6)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, real ? 0.165 : 0.18, -0.01)))] },
@@ -673,6 +686,24 @@ transformed = crowdPose(transformed, false);`);
       world.add(mesh);
       meshes.push(mesh);
     }
+    // umbrellas for the rain: each person's own colour (Tokyo carries clear vinyl), and whether they
+    // put one up in a drizzle (some don't bother) or only when it really rains
+    const UMB = (styleOf(style) || STYLE || {}).umbrellas || ['#1d1f26', '#1d1f26', '#22304a', '#2f3b33', '#5a1f2b', '#7b8794', '#c9b28a', '#2b4a6b'];
+    let us = 977; // (its own random run, so the crowd's looks and pace stay as they were without it)
+    const urnd = () => ((us = (us * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (const p of P) { p.umbK = urnd(); p.look.umbrella = UMB[Math.floor(urnd() * UMB.length)]; }
+    const umbMeshes = {}, umbGeo = canopyGeo();
+    const umbMesh = clear => umbMeshes[clear] || (umbMeshes[clear] = (() => {
+      const m = new THREE.InstancedMesh(umbGeo, clear ? stdMat('clear') : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0, side: THREE.DoubleSide }), P.length);
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero);
+      if (!clear) for (let i = 0; i < P.length; i++) m.setColorAt(i, lin(P[i].look.umbrella === 'clear' ? '#1d1f26' : P[i].look.umbrella));
+      m.castShadow = !clear; m.frustumCulled = false; m.visible = false;
+      world.add(m);
+      return m;
+    })());
+    let rain = 0, umbOn = false;
+    const wantUmb = p => rain > 0.06 && p.mode !== 'sit' && p.umbK < 0.3 + 0.62 * Math.min(1, (rain - 0.06) / 0.5);
     const free = {}, active = new Map();
     let dtNow = 0, tNow = 0;
     function begin(dt, cx, cy, t, nActive) {
@@ -688,13 +719,17 @@ transformed = crowdPose(transformed, false);`);
         if (!lib.tpl[name]) { lib.require(name); continue; }
         const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, p.look));
         r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, p.look));
+        r.umbOn = false;
         world.add(r.root);
         active.set(i, r);
       }
     }
     function place(i, p, moving) {
       const r = active.get(i);
+      if (umbOn) for (const c of [true, false]) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       if (r) {
+        const u = wantUmb(p);
+        if (u !== !!r.umbOn) { r.umbOn = u; r.setLook({ acc: u ? [...(p.look.acc || []), 'umbrella_open'] : p.look.acc || null }); }
         p.mesh.setMatrixAt(p.slot, zero);
         r.root.position.copy(W(p.x, p.y, p.z));
         r.root.rotation.y = Math.PI - p.h;
@@ -708,6 +743,11 @@ transformed = crowdPose(transformed, false);`);
       sc.setScalar(p.look.scale);
       m4.compose(W(p.x, p.y, p.z - (sit ? p.thigh : 0)), q, sc);
       p.mesh.setMatrixAt(p.slot, m4);
+      if (umbOn && wantUmb(p)) {
+        const s = p.look.scale, f = 0.12 * s;
+        m4.compose(W(p.x + Math.sin(p.h) * f, p.y + Math.cos(p.h) * f, p.z + 1.98 * s), q, sc);
+        umbMesh(p.look.umbrella === 'clear').setMatrixAt(i, m4);
+      }
       // the cadence follows the speed; when it changes, shift the phase so the stride doesn't jump
       const f = moving ? 4.5 * (p.v ?? p.speed) / p.look.scale : p.animF ?? 4.5 * p.speed / p.look.scale;
       if (p.animF == null) { p.animF = f; p.animO = p.phase; }
@@ -717,13 +757,23 @@ transformed = crowdPose(transformed, false);`);
     function hide(i) {
       const p = P[i];
       p.mesh.setMatrixAt(p.slot, zero);
+      if (umbOn) for (const c of [true, false]) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       const r = active.get(i);
       if (r) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
     }
     function end() {
       for (const m of meshes) { m.instanceMatrix.needsUpdate = true; m.geometry.attributes.aAnim.needsUpdate = true; }
+      for (const m of Object.values(umbMeshes)) if (m.visible) m.instanceMatrix.needsUpdate = true;
     }
-    return { begin, place, hide, end, meshes, active };
+    // the rain, 0..1 (weather.js): umbrellas go up as it comes on
+    function setRain(r) {
+      rain = r;
+      const on = r > 0.06;
+      if (on === umbOn) return;
+      umbOn = on;
+      for (const c of [true, false]) { const m = umbMesh(c); m.visible = on; if (!on) { for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero); m.instanceMatrix.needsUpdate = true; } }
+    }
+    return { begin, place, hide, end, setRain, meshes, active, umbrellas: umbMeshes };
   }
 
   return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle, setLight };

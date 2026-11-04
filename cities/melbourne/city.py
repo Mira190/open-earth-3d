@@ -43,6 +43,8 @@ Parametric landmarks (called by pipeline/landmarks.py):
                       granite with the fire bowls that send up fireballs each night. Their 14 m height
                       and spacing are taken from photographs.
 
+  Southbank towers    Eureka Tower and Australia 108 on their mapped parts (cities/melbourne/southbank.py).
+
 Labels: no footprint in Overture carries Flinders Street Station's name, so its label
 stands over the dome, the station's front (its published coordinates are out over the platforms).
 """
@@ -54,6 +56,18 @@ from shapely.geometry import Point
 
 import archkit as ak
 from meshkit import Mesh
+
+
+def _load(name):
+    import importlib.util
+    import os
+    spec = importlib.util.spec_from_file_location(f"melbourne_{name}", os.path.join(os.path.dirname(os.path.abspath(__file__)), f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+SOUTHBANK = _load("southbank")
 
 SPIRE_OSM = ("w271670390", "w22664482")  # the anchor comes from the first
 STATION_OSM = "w271939456"  # its parts: the dome w271939464, the clock tower w306665754
@@ -162,7 +176,10 @@ def landmark_meshes(scene):
     more, hide = crown()
     meshes += more
     hidden += hide
-    mats = {k: dict(v) for k, v in MATERIALS.items()}
+    more, hide = SOUTHBANK.meshes("melbourne")  # Eureka Tower and Australia 108 (cities/melbourne/southbank.py)
+    meshes += more
+    hidden += hide
+    mats = {k: dict(v) for k, v in {**MATERIALS, **SOUTHBANK.MATERIALS}.items()}
     if "flinders_street" in lm:
         g0 = lm["flinders_street"]["ground_m"]
         for k in ("fss_wall", "fss_trim"):

@@ -58,6 +58,19 @@ window.OEAudio = (function () {
     sb.type = 'bandpass'; sb.frequency.value = 1500; sb.Q.value = 6; sg.gain.value = 0;
     sn.connect(sb); sb.connect(sg); sg.connect(master);
     ch.skid = sg;
+    // rain: a hiss of fine drops (high-passed noise), the patter on leaves and paving (a band of
+    // noise that flutters), and under a roof its drumming (a low band, louder there)
+    const hn = noiseSource(), hh = ctx.createBiquadFilter(), hg = ctx.createGain();
+    hh.type = 'highpass'; hh.frequency.value = 3200; hg.gain.value = 0;
+    hn.connect(hh); hh.connect(hg); hg.connect(master);
+    const pn = noiseSource(), pb = ctx.createBiquadFilter(), pg = ctx.createGain(), pl = ctx.createOscillator(), plg = ctx.createGain(), pv = ctx.createGain();
+    pb.type = 'bandpass'; pb.frequency.value = 1400; pb.Q.value = 0.7; pg.gain.value = 0.6; pv.gain.value = 0;
+    pl.type = 'triangle'; pl.frequency.value = 7.3; plg.gain.value = 0.35; pl.connect(plg); plg.connect(pg.gain); pl.start();
+    pn.connect(pb); pb.connect(pg); pg.connect(pv); pv.connect(master);
+    const rn2 = noiseSource(), rb = ctx.createBiquadFilter(), rgain = ctx.createGain();
+    rb.type = 'bandpass'; rb.frequency.value = 420; rb.Q.value = 0.9; rgain.gain.value = 0;
+    rn2.connect(rb); rb.connect(rgain); rgain.connect(master);
+    ch.rain = { hiss: hg, patter: pv, roof: rgain, hp: hh };
   }
   const ramp = (p, v, t = 0.25) => { if (ctx) p.setTargetAtTime(v, ctx.currentTime, t); };
   function rotor(spin, load = 0) {
@@ -76,6 +89,19 @@ window.OEAudio = (function () {
     ramp(ch.car.lp.frequency, 220 + 900 * throttle * rpm + 200 * rpm, 0.08);
   }
   function skid(level) { if (ctx) ramp(ch.skid.gain, Math.min(0.06, level * 0.06), 0.06); }
+  // level 0..1 (drizzle to a downpour); roof: under one, which drums; inside: a car or a cabin, muffled
+  let dripAt = 0;
+  function rain(level, roof = false, inside = false) {
+    if (!ctx || !ch.rain) return;
+    const k = inside ? 0.35 : 1;
+    ramp(ch.rain.hiss.gain, level * 0.05 * k * (roof ? 0.6 : 1), 0.8);
+    ramp(ch.rain.patter.gain, level * 0.07 * k * (roof ? 0.5 : 1), 0.8);
+    ramp(ch.rain.roof.gain, (roof ? 0.11 : inside ? 0.05 : 0) * Math.min(1, level * 1.4), 0.6);
+    ramp(ch.rain.hp.frequency, inside ? 1800 : 3200, 0.5);
+    // under a roof, now and then a drop off its edge
+    const now = ctx.currentTime;
+    if (roof && level > 0.05 && now > dripAt) { dripAt = now + 0.25 + Math.random() * (1.6 - level); blip(900 + Math.random() * 700, 0.05, 'sine', 0.025); }
+  }
   function blip(freq, dur, type = 'square', vol = 0.05) {
     if (!ctx || muted) return;
     const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
@@ -140,5 +166,5 @@ window.OEAudio = (function () {
   function bell() { [0, 320].forEach(d => setTimeout(() => { blip(1180, 0.8, 'sine', 0.06); blip(2840, 0.45, 'sine', 0.02); }, d)); }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, rotor, engine, wind, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();

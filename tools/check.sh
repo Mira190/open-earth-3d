@@ -90,13 +90,31 @@ export PORT
 export GAME_TIME=${GAME_TIME:-10:00}
 X=; command -v xvfb-run >/dev/null && X="xvfb-run -a"
 
+# The game's and the clip check's timing and traffic steps can miss under three cities' load at once
+# on a software renderer (a taxi's drive-off, a ride's ETA, the brightness after a lost context, a car
+# into a post), and pass when run alone (issue 84). Run in parallel (pass=load), a failure is put off
+# to a rerun alone after the others (pass=alone), and only a failure alone fails; the run under load
+# keeps its log as <city>-load.log
+RETRY="$OUT/retry.txt"
+: >"$RETRY"
+game_step() {
+  local c=$1 pass=$2
+  if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then
+    echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
+  elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
+  else echo "FAIL game   $c   (see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
+}
+clip_step() {
+  local c=$1 pass=$2
+  if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
+    echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance$([ "$pass" = alone ] && echo "; alone, after failing under load: see $OUT/$c-clip-load.log"))"
+  elif [ "$pass" = load ]; then cp "$OUT/$c-clip.log" "$OUT/$c-clip-load.log"; echo "clip $c" >>"$RETRY"
+  else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+}
 run_city() {
   local c=$1
-  if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then echo "ok   game   $c"
-  else echo "FAIL game   $c   (see $OUT/$c.log)"; fi
-  if timeout 1200 $X node tools/clip_check.js "$c" 40 "$OUT/$c-clip.json" >"$OUT/$c-clip.log" 2>&1; then
-    echo "ok   clip   $c   ($(grep -c '^ok' "$OUT/$c-clip.log") measures within tolerance)"
-  else echo "FAIL clip   $c   ($(grep '^FAIL' "$OUT/$c-clip.log" | head -2 | cut -c6-90 | paste -sd ';' -); see $OUT/$c-clip.log)"; fi
+  game_step "$c" load
+  clip_step "$c" load
   # a big model's tour under a software renderer, three cities at a time, can take 20 minutes (Paris)
   timeout 1800 $X node tools/tour_check.js "$c" "$OUT/tour-$c" >"$OUT/tour-$c.log" 2>&1; rc=$?
   if [ $rc -eq 0 ]; then echo "ok   tour   $c: $(tail -1 "$OUT/tour-$c.log" | sed 's/^[^:]*: //')"
@@ -153,6 +171,7 @@ EOF
     run_city "$c" &
   done
   wait
+  while read -r step c; do "${step}_step" "$c" alone; done <"$RETRY"
   for r in "${reefs[@]}"; do run_reef "$r"; done
   [ $loader -eq 1 ] && run_loader
   [ $title -eq 1 ] && run_title
