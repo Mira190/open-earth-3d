@@ -3378,6 +3378,8 @@ def landmark_meshes(scene):
         meshes += sky_meshes(lm["shibuya_sky"])
     mats = dict(MATERIALS)
     mats.pop("screens"), mats.pop("screens_east")   # each map has the screens it has, and only those
+    if "suga" not in lm:
+        mats.pop("ema")   # and the ema (ema.jpg, landmark_assets) only on the map with Suga Shrine
     if "scramble" in lm:
         mats["screens"] = CROSSING.material(lm["scramble"]["node"])
     if "kabukicho_gate" in lm:

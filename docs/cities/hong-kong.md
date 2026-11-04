@@ -192,8 +192,8 @@ model, so their shadows are the measured ones.
   in three pieces: the forecourt on the Peak Galleria side at 396.5 m (the
   plaza and the road at the west end are 396 to 398.5 m; the Peak Tram's upper
   terminus is at 396 m), the north side at 377.5 m and the east end at 383.5 m,
-  the ground at the glass there. `pipeline/relevel.py` applied them to the
-  built terrain; a full build applies them to the DEM.
+  the ground at the glass there. `pipeline/refresh_terrain.py` applied them to the
+  built terrain from the DEM, as a full build does.
 
 ## 7. The game
 
