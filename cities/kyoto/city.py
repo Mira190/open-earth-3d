@@ -20,6 +20,14 @@ Parametric landmarks (called by pipeline/landmarks.py):
                     OpenStreetMap maps them (cities/kyoto/castles_osm.json).
   Imperial Palace   the Hall for State Ceremonies (紫宸殿), 20.5 m to its ridge under cypress bark, and the
                     halls, gates and walls inside the palace's outline.
+  Kyoto Station Building (京都駅ビル, Hiroshi Hara, 1997): 470 m along the tracks, 80 m deep and 60 m
+               high (JR West; the building's own figures), on its PLATEAU footprint, which the renderers
+               then leave out: the west block over the Isetan, the Grand Staircase (大階段, 171 steps rising
+               35 m over about 70 m) climbing west from the concourse to the roof garden, the atrium over
+               the concourse (147 m long, 29 m deep, 50 m high) under a glass roof of about 4,000 panes on
+               a steel grid, the Skyway (空中径路, 185 m long, 45 m up) along its north side, and the east
+               block of the Hotel Granvia. The massing and the steel's spacing are read from GSI's aerial
+               photograph and photographs, not from drawings.
   Kyoto Tower  131 m to the spire, observation deck at 100 m, a stressed-skin steel tube
                (no inner frame) completed in 1964. Published figures are the two heights;
                the radii and the deck's shape are an approximation, not survey data.
@@ -52,6 +60,15 @@ MATERIALS = {
     "gable_white": {"color": "#e9e4d6", "roughness": 0.8, "metalness": 0.0},
     "ishigaki": {"color": "#8f897d", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.65, "block_m": 1.1},
     "jp_gold": {"color": "#d6a93a", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.5},
+    # Kyoto Station: grey-silver aluminium and glass on a 3.6 m grid, the atrium's glass, white steel
+    "ks_panel": {"color": "#8d9399", "roughness": 0.35, "metalness": 0.55, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
+                 "spandrel": 0.45, "mullion_m": 0.18, "frame": "#cfd3d6", "lit_share": 0.55, "lit_k": 0.8},
+    "ks_glass": {"color": "#6f8696", "roughness": 0.05, "metalness": 0.6, "pattern": "curtain_wall", "bay_m": 3.6, "storey_m": 4.2,
+                 "spandrel": 0.0, "mullion_m": 0.06, "frame": "#e6e9eb", "lit_share": 0.9, "lit_k": 0.5},
+    "ks_roofglass": {"color": "#b8c9d4", "roughness": 0.06, "metalness": 0.3, "opacity": 0.32},
+    "ks_steel": {"color": "#dfe2e4", "roughness": 0.35, "metalness": 0.6, "emissive": "#fff1dc", "glow": 0.35},
+    "ks_concrete": {"color": "#b3b0aa", "roughness": 0.85, "metalness": 0.0},
+    "ks_steps": {"color": "#9d988f", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.4], "stair": "tread"},
 }
 
 
@@ -98,7 +115,117 @@ def landmark_meshes(scene):
     mast = Mesh("Kyoto Tower mast", "mast", True, floodlit=True)
     lathe(mast, x, y, z0, [(71, 3.4), (74, 2.0), (90, 0.9), (100 - BASE_M + 31, 0.12)], n=12)   # spire tip at 131 m above ground
     more, hidden = temples_and_palaces()
-    return mats, [shaft, deck, cone, mast] + more, {"hidden": hidden}
+    st, st_hidden = kyoto_station()
+    return mats, [shaft, deck, cone, mast] + more + st, {"hidden": sorted(set(hidden + st_hidden))}
+
+
+# ---------------------------------------------------------------- Kyoto Station
+
+STATION_OSM = "w136243347"   # 京都駅ビル: the largest of its solids is the building over the concourse
+STATION = {"length": 470.0, "height": 59.8, "atrium": (214.0, 361.0), "atrium_deep": 29.0, "atrium_h": 50.0,
+           "stairs": (130.0, 214.0), "stairs_top": 45.0, "stairs_foot": 10.0, "steps": 171, "skyway_m": 45.0,
+           "west_top": 59.8, "garden": 45.0, "south": 31.0, "east_top": 59.8}
+
+
+def station_layout():
+    """The building's frame (u east along the tracks from its west end, v north) and its bounds, from
+    the PLATEAU solid it replaces."""
+    from shapely.geometry import Polygon, box as sbox
+    solids = ak.load_solids("kyoto")
+    got = [sd for sd in solids if sd["osm"] == STATION_OSM]
+    if not got:
+        return None
+    sd = max(got, key=lambda d: abs(ak.ring_area(d["ring"])))
+    cx, cy, ax, L, W = ak.oriented(sd["ring"])
+    if math.cos(math.radians(ax)) < 0:
+        ax += 180.0
+    F0 = ak.Frame(cx, cy, ax, 0.0)
+    loc = Polygon([F0.local(x, y) for x, y in sd["ring"]]).buffer(0)
+    u0, v0, u1, v1 = loc.bounds
+    def north(a, b):
+        g = loc.intersection(sbox(u0 + a, v0 - 1, u0 + b, v1 + 1))
+        return g.bounds[3] if not g.is_empty else v1
+    def south(a, b):
+        g = loc.intersection(sbox(u0 + a, v0 - 1, u0 + b, v1 + 1))
+        return g.bounds[1] if not g.is_empty else v0
+    return {"sd": sd, "F": ak.Frame(cx, cy, ax, sd["ground"]), "u0": u0, "u1": u1, "v0": v0, "v1": v1, "north": north, "south": south,
+            "ground": sd["ground"]}
+
+
+def kyoto_station():
+    """Kyoto Station Building, its parts west to east along the tracks (STATION; s in metres from the west
+    end): the west block, the roof garden, the Grand Staircase, the atrium over the concourse with its
+    glass roof and the Skyway, the east block."""
+    S = station_layout()
+    if not S:
+        return [], []
+    F, u0, D = S["F"], S["u0"], STATION
+    K = ak.Kit("kyoto_station", floodlit={"ks_steel"}, uv={"ks_panel", "ks_glass", "ks_steps"})
+    scale = (S["u1"] - S["u0"]) / D["length"]
+    s_ = lambda s: u0 + s * scale
+    A0, A1 = D["atrium"]
+    T0, T1 = D["stairs"]
+    vn = S["north"](A0, A1)
+    vs = S["south"](0, D["length"])
+    va = vn - D["atrium_deep"]                                   # the atrium's south side
+    def mass(sa, sb, va_, vb_, h, mat="ks_panel", roof=True):
+        ak.block(K[mat], F, s_(sa), s_(sb), va_, vb_, 0.0, h, top=False)
+        if roof:
+            ak.block(K["ks_concrete"], F, s_(sa) + 0.4, s_(sb) - 0.4, va_ + 0.4, vb_ - 0.4, h - 0.3, h + 0.9)
+    # the west block: its upper storeys stepping back from the north, the roof garden east of it
+    vw = S["north"](0, 85)
+    mass(0, 85, vs, vw, 45.0)
+    mass(4, 85, vs + 4, vw - 9, D["west_top"])
+    mass(85, T0, vs, S["north"](85, T0), D["garden"])
+    # the Grand Staircase: from the concourse up westward to the roof garden, in the atrium's band,
+    # the south part of the block beside it at the garden's height
+    mass(T0, A0, vs, va, D["garden"])
+    n = D["steps"]
+    run = (s_(T1) - s_(T0)) / n
+    for k in range(n):
+        z = D["stairs_foot"] + (D["stairs_top"] - D["stairs_foot"]) * (k + 1) / n
+        ua = s_(T1) - (k + 1) * run
+        ak.block(K["ks_steps"], F, ua, ua + run + 0.02, va, vn, z - 0.6, z, top=True)
+    ak.block(K["ks_concrete"], F, s_(T0), s_(T1), va + 0.5, vn - 0.5, 0.0, D["stairs_foot"] - 0.6, top=True)
+    for v in (va, vn):   # the staircase's side walls, stepping down with it
+        K["ks_panel"].quad(F(s_(T1), v, 0.0), F(s_(T0), v, 0.0), F(s_(T0), v, D["stairs_top"] + 1.2), F(s_(T1), v, D["stairs_foot"] + 1.2),
+                           [[0, 0], [s_(T1) - s_(T0), 0], [s_(T1) - s_(T0), D["stairs_top"]], [0, D["stairs_foot"]]])
+    # the atrium: the block south of it at 31 m, open over the concourse to the glass roof
+    mass(A0, A1, vs, va, D["south"])
+    ak.wall(K["ks_glass"], F, s_(A0), va, s_(A1), va, D["south"], D["atrium_h"])               # the south wall above the block
+    H = D["atrium_h"]
+    # the north face: a frame of white steel, glazed from 6 m up, open over the concourse's doors
+    for k in range(int((s_(A1) - s_(A0)) / 7.2) + 1):
+        u = s_(A0) + k * 7.2
+        K["ks_steel"].box(F(u, vn, 0.0), F(u, vn, H), 0.7, 0.9)
+    for z in np.arange(6.0, H, 4.2):
+        K["ks_steel"].box(F(s_(A0), vn, z), F(s_(A1), vn, z), 0.35, 0.5)
+    ak.wall(K["ks_glass"], F, s_(A0), vn - 0.2, s_(A1), vn - 0.2, 6.0, H)
+    # the roof: glass on a steel grid with a lower chord and diagonals, rising a little to the south
+    zr = lambda v: H + 3.0 * (vn - v) / D["atrium_deep"]
+    K["ks_roofglass"].quad(F(s_(A0), vn, zr(vn) + 0.1), F(s_(A1), vn, zr(vn) + 0.1), F(s_(A1), va, zr(va) + 0.1), F(s_(A0), va, zr(va) + 0.1))
+    for k in range(int((s_(A1) - s_(A0)) / 3.6) + 1):
+        u = s_(A0) + k * 3.6
+        K["ks_steel"].box(F(u, va, zr(va)), F(u, vn, zr(vn)), 0.25, 0.3)
+        if k % 2 == 0:
+            K["ks_steel"].box(F(u, va, zr(va) - 2.4), F(u, vn, zr(vn) - 2.4), 0.2, 0.25)
+            K["ks_steel"].box(F(u, va, zr(va)), F(u + 3.6, (va + vn) / 2, zr((va + vn) / 2) - 2.4), 0.12, 0.12)
+            K["ks_steel"].box(F(u, vn, zr(vn)), F(u + 3.6, (va + vn) / 2, zr((va + vn) / 2) - 2.4), 0.12, 0.12)
+    for v in np.arange(va, vn + 0.1, 3.6):
+        K["ks_steel"].box(F(s_(A0), v, zr(v)), F(s_(A1), v, zr(v)), 0.22, 0.25)
+    # the Skyway: a glazed corridor along the atrium's north side, 45 m up, on to the blocks either end
+    zs = D["skyway_m"]
+    ak.block(K["ks_glass"], F, s_(A0 - 25), s_(A1 + 13), vn - 5.0, vn - 1.5, zs, zs + 3.2, top=False)
+    ak.block(K["ks_steel"], F, s_(A0 - 25), s_(A1 + 13), vn - 5.2, vn - 1.3, zs - 0.6, zs)
+    ak.block(K["ks_steel"], F, s_(A0 - 25), s_(A1 + 13), vn - 5.2, vn - 1.3, zs + 3.2, zs + 3.6)
+    # the east block: the hotel, 60 m, the glazed triangle of its east atrium facing north
+    ve = S["north"](A1, D["length"])
+    mass(A1, D["length"], vs, ve - 12.0, D["east_top"])
+    mass(A1 + 45, D["length"], ve - 12.0, ve, D["east_top"] - 12.0)
+    K["ks_glass"].quad(F(s_(A1), ve, 0.0), F(s_(A1 + 45), ve, 0.0), F(s_(A1 + 45), ve - 12.0, D["east_top"] - 8.0), F(s_(A1), ve - 12.0, D["east_top"]),
+                       [[0, 0], [45, 0], [45, 52], [0, 60]])
+    ak.wall(K["ks_glass"], F, s_(A1), ve, s_(A1), ve - 12.0, 0.0, D["east_top"])
+    return K.out(), [S["sd"]["si"]]
 
 
 # ---------------------------------------------------------------- temples, the castle and the palace
