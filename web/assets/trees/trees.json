@@ -14,10 +14,20 @@
    "jacaranda": 4,
    "bloom": 5,
    "palm": 6,
-   "maple": 7
+   "maple": 7,
+   "pine": 8,
+   "sugi": 9,
+   "camphor": 10,
+   "zelkova": 11,
+   "ginkgo": 12,
+   "evergreen": 13,
+   "pisonia": 14,
+   "casuarina": 15,
+   "cherry": 16,
+   "sakura": 17
   },
   "columns": 4,
-  "rows": 2
+  "rows": 5
  },
  "mix": {
   "plane": 0.3,
@@ -36,13 +46,17 @@
     6.4
    ],
    "colour": "#557f37",
-   "bark": "#9a957c",
+   "bark": "#a08f78",
    "triangles": [
-    2335,
+    1852,
     435,
     103
    ],
-   "note": "London plane: the street tree of both cities"
+   "cell": 1,
+   "trunk_r": 0.36,
+   "note": "London plane: the street tree of both cities",
+   "autumn_colour": "#7f7444",
+   "deciduous": true
   },
   "elm": {
    "height_m": 16.0,
@@ -55,11 +69,15 @@
    "colour": "#4f7a32",
    "bark": "#5a4c40",
    "triangles": [
-    2038,
+    1623,
     363,
     103
    ],
-   "note": "English elm: Melbourne's avenues"
+   "cell": 2,
+   "trunk_r": 0.34,
+   "note": "English elm: Melbourne's avenues",
+   "autumn_colour": "#8c8240",
+   "deciduous": true
   },
   "gum": {
    "height_m": 18.0,
@@ -71,10 +89,12 @@
    "colour": "#73906d",
    "bark": "#ddd5c6",
    "triangles": [
-    1468,
+    1193,
     317,
     103
    ],
+   "cell": 0,
+   "trunk_r": 0.4,
    "note": "Eucalyptus: pale bark, open crown in clumps"
   },
   "fig": {
@@ -87,10 +107,12 @@
    "colour": "#335f2c",
    "bark": "#6e665c",
    "triangles": [
-    2776,
+    2224,
     510,
     103
    ],
+   "cell": 3,
+   "trunk_r": 0.85,
    "note": "Moreton Bay fig: a broad dark dome on buttresses"
   },
   "jacaranda": {
@@ -103,10 +125,12 @@
    "colour": "#5f8a3d",
    "bark": "#5c4e42",
    "triangles": [
-    1793,
+    1448,
     351,
     103
    ],
+   "cell": 4,
+   "trunk_r": 0.26,
    "note": "Jacaranda: purple in late spring (cards swap to the bloom cell with the season)",
    "bloom_colour": "#9177c9"
   },
@@ -124,6 +148,8 @@
     72,
     116
    ],
+   "cell": 6,
+   "trunk_r": 0.42,
    "note": "Canary Island date palm"
   },
   "maple": {
@@ -136,12 +162,185 @@
    "colour": "#628f3b",
    "bark": "#5b534a",
    "triangles": [
-    2054,
+    1640,
     390,
     103
    ],
+   "cell": 7,
+   "trunk_r": 0.2,
    "note": "Japanese maple (momiji, Acer palmatum): a low, wide, layered crown; red from mid November in Tokyo and Kyoto",
-   "autumn_colour": "#c2412b"
+   "autumn_colour": "#c2412b",
+   "deciduous": true
+  },
+  "pine": {
+   "height_m": 11.0,
+   "crown": [
+    7.6,
+    5.4,
+    3.2
+   ],
+   "colour": "#33502b",
+   "bark": "#4d4038",
+   "triangles": [
+    2165,
+    533,
+    103
+   ],
+   "cell": 8,
+   "trunk_r": 0.3,
+   "note": "Japanese black pine (kuromatsu, Pinus thunbergii): a leaning, crooked trunk under flat pads of needles, as on the Kyoto Gyoen's and the Kokyo Gaien's lawns"
+  },
+  "sugi": {
+   "height_m": 28.0,
+   "crown": [
+    7.0,
+    28.5,
+    4.4
+   ],
+   "colour": "#2f4b2b",
+   "bark": "#6b4532",
+   "triangles": [
+    3010,
+    752,
+    103
+   ],
+   "cell": 9,
+   "trunk_r": 0.45,
+   "note": "Japanese cedar (sugi, Cryptomeria japonica): straight red-brown trunk, a narrow cone; the shrine woods' tree, and stands for hinoki"
+  },
+  "camphor": {
+   "height_m": 20.0,
+   "crown": [
+    12.5,
+    10.5,
+    7.2
+   ],
+   "colour": "#56813a",
+   "bark": "#5a4f45",
+   "triangles": [
+    2424,
+    550,
+    103
+   ],
+   "cell": 10,
+   "trunk_r": 0.72,
+   "note": "Camphor laurel (kusunoki, Cinnamomum camphora): a broad, bright evergreen dome on a massive trunk; the shrine trees of Osaka and Kyoto and Meiji Jingu's commonest"
+  },
+  "zelkova": {
+   "height_m": 20.0,
+   "crown": [
+    3.6,
+    20.0,
+    1.6,
+    8.6
+   ],
+   "colour": "#557d35",
+   "bark": "#857d70",
+   "triangles": [
+    2165,
+    471,
+    103
+   ],
+   "cell": 11,
+   "trunk_r": 0.45,
+   "note": "Japanese zelkova (keyaki, Zelkova serrata): a broom of upswept limbs and fine twigs; the avenue tree of Omotesando and the precincts, rust-orange in November",
+   "autumn_colour": "#8e6a3e",
+   "deciduous": true
+  },
+  "ginkgo": {
+   "height_m": 17.0,
+   "crown": [
+    10.0,
+    4.2,
+    7.4
+   ],
+   "colour": "#62903a",
+   "bark": "#6e655a",
+   "triangles": [
+    2105,
+    545,
+    103
+   ],
+   "cell": 12,
+   "trunk_r": 0.34,
+   "note": "Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree (Midosuji, Jingu Gaien), gold in late November",
+   "autumn_colour": "#c8a640",
+   "deciduous": true
+  },
+  "cherry": {
+   "height_m": 8.8,
+   "crown": [
+    5.7,
+    6.2,
+    3.0
+   ],
+   "colour": "#5d8a3a",
+   "bark": "#3e3431",
+   "triangles": [
+    1994,
+    438,
+    103
+   ],
+   "cell": 17,
+   "trunk_r": 0.34,
+   "note": "Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo (web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf cell beside them out of flower",
+   "bloom_colour": "#f3dadc",
+   "autumn_colour": "#b2532f",
+   "deciduous": true
+  },
+  "evergreen": {
+   "height_m": 14.0,
+   "crown": [
+    9.0,
+    5.6,
+    5.2
+   ],
+   "colour": "#3a6129",
+   "bark": "#5e554b",
+   "triangles": [
+    1952,
+    453,
+    103
+   ],
+   "cell": 13,
+   "trunk_r": 0.36,
+   "note": "Evergreen broadleaf (Schima superba, Machilus; in Japan shii and kashi): a dense, dark, glossy rounded crown; Hong Kong's hillside woods and the laurel forest of the old shrine groves"
+  },
+  "pisonia": {
+   "height_m": 9.5,
+   "crown": [
+    7.2,
+    6.4,
+    2.4
+   ],
+   "colour": "#759c42",
+   "bark": "#9f988a",
+   "triangles": [
+    1600,
+    382,
+    103
+   ],
+   "cell": 14,
+   "trunk_r": 0.5,
+   "note": "Pisonia (Pisonia grandis): pale soft trunks leaning out and a broad low canopy of big lime-green leaves; the coral cays' forest, mostly 6-8 m on Heron Island"
+  },
+  "casuarina": {
+   "height_m": 16.0,
+   "crown": [
+    4.5,
+    16.5,
+    3.4
+   ],
+   "colour": "#5e7055",
+   "bark": "#4d3f35",
+   "triangles": [
+    1985,
+    521,
+    103
+   ],
+   "cell": 15,
+   "trunk_r": 0.28,
+   "note": "Coastal she-oak (Casuarina equisetifolia): an open, tapering crown of drooping grey-green branchlets, behind the beaches"
   }
  }
 }

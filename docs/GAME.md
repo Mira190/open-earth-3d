@@ -731,13 +731,22 @@ pipeline writes. The only city-specific code is landmark geometry in
     nearer the point where their ways meet, goes first.
   - **Junctions** (`web/game/junctions.js`): see [Junctions and traffic
     lights](#junctions-and-traffic-lights).
-  - **Unsticking:** a car waiting on someone standing in the road edges on
-    after a few seconds and the walker turns back; a car waiting at its line
+  - **Unsticking:** a car waiting on someone standing in the road edges up to
+    them (never into them) after a few seconds and the walker turns back, and a
+    walker a car has come up against, or who has stepped up against a standing
+    car, takes a step out of its footprint; a car waiting at its line
     that a bus can't swing past backs off a metre; a car in a junction stopped
     behind one waiting at another of its lines asks it to back off, and after
-    8 s goes on as if it weren't there; two cars held nose to nose for 15 s
-    (10 s in a junction, 25 s by one that only inches along) squeeze past each
-    other; a car held 1.5 s part way across to another lane goes back to its
+    8 s goes on as if it weren't there. A car held 3 s by another that is
+    stopped too has one of them give way and back off a metre or two: the one
+    not in the junction for the one in it, of two in it the one that went in
+    later. A car that can't back off because a stopped car is behind it asks
+    that one to back off first, so a short queue makes room (each car backs off
+    at most 6 s before it has moved on again). Two still held for 15 s (10 s in
+    a junction, 25 s by one that only inches along): out of view, behind the
+    camera or more than 200 m off, the held one leaves the traffic and comes
+    back elsewhere; in view they wait, and only after 90 s squeeze past each
+    other. A car held 1.5 s part way across to another lane goes back to its
     own; and out of sight, a car stopped 45 s that is not in a queue comes back
     elsewhere.
   - **Never through anything:** a car never moves into another car, your car,
@@ -888,7 +897,10 @@ Sydney's traffic stood still a third of the time.
   car that has waited longer at a line crosses it, and on a lesser road or past
   a give-way sign no car is coming on the main road within 3 s. And only if
   there is room for it beyond the junction, up to the next junction's line, so
-  a queue never reaches back into the box: SUMO's *keep clear*. A junction just
+  a queue never reaches back into the box: SUMO's *keep clear*. An exit that is
+  a short piece running straight on into another (a slip, a loop back, as at
+  Roppongi's line 619 into 572) counts the room on those pieces too, up to the
+  next junction's line. A junction just
   beyond, too close to wait between, is crossed with this one or not at all.
   A bus has the junction to itself. A car gives its movement up once its rear
   is past the stop line on its exit. When the lights change before it gets
@@ -1878,7 +1890,10 @@ deadlock or a meeting at a shared berth takes to show.
     own car's driver (`cars.js`) don't yet stop for a crossing between
     junctions.
   - A few awkward corners (a turning circle, two lines meeting at a very sharp
-    angle) can still hold two cars until they squeeze past each other.
+    angle, a loop back past another junction's entry) can still hold two cars;
+    in view they wait up to 90 s before squeezing past each other.
+    `tools/overlap_probe.js` prints the last seconds of both cars of every pair
+    that comes to overlap, and with `WATCH=x,y,r` the lines and cars at a place.
   - Only roads at about your height count as the kerb, so a taxi won't stop on
     a flyover above you. A destination is reached at its nearest street, so a
     landmark across a plaza is a short walk from where you get out.

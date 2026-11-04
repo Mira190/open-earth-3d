@@ -313,7 +313,7 @@ The views switch in place, without reloading the page.
   - trees (`trees.js`): the seven species of `blender/build_trees.py`, in the
     city's mix (and an area's own), instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
-    cut-out leaf shadows, jacarandas that flower and maples that redden in season; the trees
+    cut-out leaf shadows, jacarandas and cherries that flower and maples that redden in season; the trees
     planted from a wood's canopy after them, sized by their measured height,
     without palms, stepping down sooner (full within 72 m, sparse to 200 m, half of them as hulls beyond), thinning out to 900 m, further from higher up (600 m and a
     third of them on a small device) where the photo's canopy takes over;
@@ -618,9 +618,10 @@ Two more scripts build what every city shares, from code, with no stock assets:
   shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
-- `blender/build_trees.py`: six tree species grown from points in their crown
-  shapes, with a leaf atlas it draws itself, in three levels of detail, into
-  `web/assets/trees/` with `trees.json`.
+- `blender/build_trees.py`: fifteen tree species grown from points in their
+  crown shapes, with a leaf atlas it draws itself (4 x 4 cells), in three levels
+  of detail, into `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
+  (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
 
 ## Woods and park canopy
 
@@ -667,9 +668,152 @@ thousands (issue #54). `pipeline/woods.py` fixes this for every city:
 
 Considered and not adopted: drawing the canopy from the photo alone (its
 greenness picks up lawns and misses trees in shade), and the 10 m global canopy
-height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees. The
-species are still the city's mix of the six shared trees (`web/assets/trees/`):
-no pine, zelkova or camphor yet.
+height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees.
+
+### Local species (issue #69)
+
+The woods were drawn from six street trees, so the Kyoto Gyoen, Meiji Jingu and
+the palace gardens were elms and planes, and the pale plane trunks read as
+grey-green columns in a wood's blue shade. The shared set now has the trees those
+places are known for, grown by the same code from new crown shapes (a cone with
+its trunk carried through as a leader; flat pads in tiers) and leaf cells drawn
+for them (paired needles in tufts, a cedar's awls, the ginkgo's fan, a she-oak's
+jointed threads):
+
+| Species | Where | Autumn |
+| --- | --- | --- |
+| Japanese black pine (kuromatsu) | the Gyoen's and Kokyo Gaien's lawns, Hama-rikyu, castle and temple gardens | |
+| Japanese cedar (sugi; stands for hinoki) | shrine woods | |
+| Camphor (kusunoki) | shrine trees, Meiji Jingu, Osaka | |
+| Zelkova (keyaki) | avenues and precincts | rust, from mid November |
+| Ginkgo (icho) | street rows (Midosuji, Jingu Gaien), temple precincts | gold, late November |
+| Evergreen broadleaf (Schima, Machilus; shii and kashi) | Hong Kong's hills, the laurel forest of the shrine groves | |
+| Pisonia, coastal she-oak (casuarina) | the coral cays (below) | |
+
+![The shared trees](images/trees/lineup.jpg)
+![Late November: ginkgo, maple, zelkova](images/trees/lineup_autumn.jpg)
+
+- **Mixes:** a city's `trees.mix` is its streets', `trees.woods` the mix of the
+  trees planted from a wood's canopy (the street mix without its palms if it has
+  none), and `trees.areas` the places with a mix of their own. An area names its
+  place in OpenStreetMap (`find`, or `osm`); `pipeline/tree_areas.py` looks up
+  its outline through Nominatim (ODbL), simplifies it to about 4 m into
+  `cities/<id>/tree_areas.json`, and `scene.json` carries it (`cityctx.trees_cfg`).
+  `web/trees.js` tests each tree against the outlines (a bounding box first). The
+  Japanese maps have the Gyoen, Nijo-jo, the Honganji, Kokyo Gaien (about 2,000
+  black pines), the East Gardens and the palace woods, Hibiya, Shiba Park,
+  Hama-rikyu, Shinjuku Gyoen, Jingu Gaien's ginkgo avenue, Meiji Jingu, Yoyogi
+  Park, Senso-ji, Kanda Myojin and Osaka Castle Park. Hong Kong's hills are
+  evergreen broadleaf, its streets banyans (the fig stands in), camphors and palms.
+  Species are still not mapped tree by tree: every mix is a guess from the
+  cities' street-tree surveys and the parks' own guides.
+- **Autumn and winter:** web/trees.js finds a leaf card's atlas cell from its uv;
+  from mid November (late April in the south) the maples keep their range of
+  reds, the ginkgos go gold, the zelkovas rust and the planes and elms a dull
+  yellow (`FALL`), each tree a little ahead of or behind the others, and the far
+  crown hulls follow `autumn_colour`. The deciduous species (`deciduous` in
+  trees.json: plane, elm, maple, zelkova, ginkgo, cherry) then drop their cards one by
+  one from 24 November to 14 December, in the shadow pass too, their far hulls go
+  when half the leaves have, and they leaf out green from 21 March to 14 April
+  (six months on in the south). Osaka's Midosuji (issue #62) is a `trees.areas`
+  avenue: `tree_areas.py` widens the mapped street 22 m either side (`buffer`),
+  and nine in ten of its trees are ginkgos, gold in late November and bare on
+  the tour's 21 December.
+- **Thin leaves at a distance:** a card's alpha averaged down the mip chain fell
+  under the cut-out and the she-oak's threads, the palm's leaflets and the
+  jacaranda's vanished past a few tens of metres; the leaf shader scales alpha up
+  with the mip level (Ben Golus, *Anti-aliased Alpha Test*, 2017), in the city
+  and on the reef.
+- **Plane bark** is warmer (`#a08f78`), so a plane wood's trunks stay bark in the
+  blue shade.
+
+### The cherry (issue #147)
+
+The Somei-yoshino (*Cerasus × yedoensis*) is Japan's cherry: most of the trees on
+the moats, rivers and park walks the cities are known for in spring. The shared
+set grows one like the others (`blender/build_trees.py` `cherry`): a short dark
+trunk (2.3 m) forking into six limbs that spread a crown 12 m wide on a tree
+under 9 m, wider than it is tall, as the photographs of Chidorigafuchi and the
+Meguro River show. The atlas has a fifth row for it: its leaves (elliptic,
+toothed) and its bloom, umbels of four to six five-petalled flowers on short
+stalks along a bare twig, white with a blush of warm pink and a darker eye, and a
+few deeper-pink buds. Every one of the cherry's cards is a bloom card
+(`sakura`); `web/trees.js` shows the leaf cell beside it out of flower.
+
+- **When:** the first flowers (kaika) come on the city's average day: Tokyo's is
+  24 March, the Japan Meteorological Agency's 1991-2020 normal, and the day comes
+  about four days later for each degree further from the equator
+  (`SAKURA_PER_DEG`; Kagoshima 26 March, Sendai 8 April, Sapporo 1 May). A city
+  whose own normal differs from its latitude's sets `trees.cherry_open`: Kyoto
+  26 March, Osaka 27 March. The flowers open over a week on bare branches, every
+  card at its own time in the order the leaves fall in autumn (`uSakura`); full
+  bloom (mankai) holds five days, then the petals go over five more as the leaves
+  come out (hazakura), and from mid April the tree is green. Its leaves turn an
+  orange-red with the others in November and fall with them; in winter and until
+  it flowers it shows no leaf at all. The far crown hull is the blossom's pink in
+  flower. Six months on in the south.
+- **Where:** a share of every Japanese city's street mix (0.05-0.08; the cherry
+  is among Tokyo's three commonest street trees with the ginkgo and the zelkova)
+  and its woods, and `trees.areas` for the places known for it, their outlines
+  from OpenStreetMap: Chidorigafuchi Park and the 700 m moat walk (some 260
+  trees, Chiyoda City), Kitanomaru Park, the Meguro River's banks (about 800,
+  Meguro City; the river widened 14 m either side), Hachiko Square's two round
+  planters, Ueno Park and its Sakura-dori (outline drawn along the walk from the
+  Saigo statue to the fountain; about 800 trees), Sumida Park (about 600),
+  Roppongi's Sakura-zaka, Aoyama Cemetery's avenue and Tokyo Midtown's garden,
+  Ishikawajima Park on Tsukudajima, Shinjuku Gyoen, Kyoto's Takase canal by
+  Kiyamachi and Gion Shirakawa (with elms standing in for the willows), the Kyoto
+  Gyoen and Nijo-jo, the Osaka Mint's passage, the Okawa's east bank
+  (Kema Sakuranomiya Park, about 4,800), Osaka Castle Park and Utsubo Park.
+  Kyoto's Philosopher's Path and Maruyama Park are east of the Kyoto map.
+- **Not yet:** the other kinds (the weeping shidare-zakura of the Gyoen and
+  Maruyama, the late double yaezakura) are all Somei-yoshino here; the bark's
+  horizontal bands of lenticels are not drawn (bark is one colour); the petals do
+  not drift down.
+- **Sources:** JMA's sakura phenology normals (public data); the parks' and wards'
+  own guides for the tree counts; OpenStreetMap (ODbL) for the outlines. No code
+  or art was taken from elsewhere.
+
+![The cherry through the year: bare, in flower, hazakura, green, autumn](images/trees/cherry_year.jpg)
+![The Meguro River at Nakameguro on 1 April and in June; Hachiko Square's planters on 1 April and in January](images/trees/cherry_places.jpg)
+
+### The coral cays
+
+Heron and Lady Elliot's pisonia and she-oaks and Green Island's vine forest were
+the reef renderer's spheres on cylinders (`web/reef/life/geo.js`). Within 160 m of
+the camera they are now the shared trees (`web/reef/life/flora.js` `SHARED`,
+`geo.sharedTree`, `mats.cards`): the full tree within 55 m, the sparse one beyond;
+the far rings keep the reef's own crowns and spindles. The site's leaf albedo
+tints the atlas (over the species' own colour). The life module waits for them
+while it loads, so they do not pop in. On Heron Island the trees drawn from the
+beach are 1.08 M triangles (1.09 M before), from 30 m up 0.46 M (0.47 M); on Lady
+Elliot 0.74 M (0.92 M).
+
+### What the trees cost
+
+`tools/woods_probe.js` counts the tree triangles drawn on foot where the woods are
+thickest, and the share of them drawn again into the sun's shadow map. The far
+crown hulls (200-900 m) no longer cast shadows: they stood mostly outside the
+shadow map and were drawn into it for nothing. Twigs are three-sided tubes and
+limbs six (a fifth fewer triangles in every full tree). Under llvmpipe, at the
+desktop (high and medium draw the same trees) and low tiers:
+
+| Where (tier) | Before: drawn / into the shadow map | After: drawn / into the shadow map | Both passes |
+| --- | --- | --- | --- |
+| Kyoto Gyoen 357,2590 (desktop) | 1.59 / 1.59 M | 1.66 / 1.00 M | -16% |
+| Kyoto Gyoen 100,1880 (desktop) | 1.96 / 1.96 M | 2.12 / 1.36 M | -11% |
+| Kyoto Gyoen 202,2002 (desktop) | 2.19 / 2.19 M | 2.36 / 1.56 M | -11% |
+| Kyoto Gyoen 100,1880 (low) | 0.90 / 0.90 M | 0.96 / 0.50 M | -19% |
+| Hong Kong's wooded hill (desktop) | 3.44 / 3.44 M | 3.61 / 2.06 M | -18% |
+| Hong Kong's wooded hill (low) | 1.06 / 1.06 M | 1.12 / 0.74 M | -12% |
+| Meiji Jingu 300,700, Shibuya (desktop) | 1.59 / 1.59 M | 1.79 / 1.16 M | -7% |
+| Meiji Jingu 300,700, Shibuya (low) | 0.63 / 0.63 M | 0.71 / 0.46 M | -7% |
+
+The camera pass draws 4-13% more (the local species are fuller trees than the elms
+and planes they replace); the shadow pass a third less.
+
+Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
+llvmpipe gives (seconds) say nothing about a device.
 
 ## Bridges over the water
 

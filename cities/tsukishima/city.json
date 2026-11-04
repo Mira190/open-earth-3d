@@ -90,9 +90,22 @@
   "trees": {
     "mix": {
       "elm": 0.5,
-      "plane": 0.5
+      "plane": 0.5,
+      "cherry": 0.08
     },
-    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas, plane trees for the street planes and the riverside's cherries. A guess, not a survey."
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas, plane trees for the street planes and the riverside's cherries. A guess, not a survey.",
+    "areas": [
+      {
+        "name": "Ishikawajima Park",
+        "osm": "W597773279",
+        "mix": {
+          "cherry": 0.6,
+          "zelkova": 0.2,
+          "plane": 0.2
+        },
+        "note": "Cherries along the Sumida's terrace at the tip of Tsukudajima."
+      }
+    ]
   },
   "storey": {
     "res": [

@@ -971,7 +971,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         free = Math.min(free, (out > 0 ? o.s : ml.len - o.s) - o.half - m.back);
       }
       for (const a of m.j.active) if ((a.m & 15) === m.i && (!two || (a.m >> 4) === ln) && a.c !== c && a.c.line !== m.line) need += 2 * a.c.half + 2.5;
-      return free >= Math.min(need, JN.reach(e) - 1);
+      // a short exit that simply runs on into another piece, no junction between (a slip road, a loop
+      // back): the room is on those pieces too, up to the next junction's line, behind the last car on
+      // them, or a car let in stops part way, still across this junction, in the queue for the next
+      let reach = JN.reach(e), li = m.line, end = 1 - m.end, base = ml.len - m.back;
+      for (let k = 0; k < 3 && reach < need && free >= reach && !JN.armAt(li, end); k++) {
+        const nx = net.only(li, end);
+        if (!nx) break;
+        const l2 = net.L[nx[0]], d2 = nx[1] === 0 ? 1 : -1, a2 = JN.armAt(nx[0], 1 - nx[1]);
+        reach = free = base + l2.len - (a2 ? a2.back : 0);
+        for (const j of onLine.get(nx[0]) || []) {
+          const o = C[j];
+          if (o === c || o.dir !== d2) continue;
+          free = Math.min(free, base + (d2 > 0 ? o.s : l2.len - o.s) - o.half);
+        }
+        li = nx[0]; end = 1 - nx[1]; base += l2.len;
+      }
+      return free >= Math.min(need, reach - 1);
     }
     let redRuns = 0, laneChanges = 0;
     const redLog = []; // (the last few cars over a crossing's line on red, how: tools/traffic_why.js)
@@ -980,6 +996,13 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     if (nav) nav.movers = api;
     // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
     function take(c) { JN.forget(c); c.line = -1; c.v = 0; }
+    // ask traffic car o to back off for t seconds (not your car or a ride, and not one that has
+    // already backed off a good while without moving on since): whether it will
+    function backOff(o, t) {
+      if (o.stuck === undefined || o.line < 0 || o.boSpent > 6) return false;
+      o.backoff = Math.max(o.backoff || 0, t);
+      return true;
+    }
     // how deep a car-sized box (x, y at height z, heading h, half length and width, grown by m) would
     // be in the traffic's cars (not api.extra): 0 when clear. For a car driven by something else (a
     // ride) to wait rather than move into one, as the traffic waits for it
@@ -995,9 +1018,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     let tick = 0;
     const FAR = 160; // cars farther than this from the eye (m, along x and y) take a step every second frame
+    // is car c where the camera can see it: near enough, and not behind it or far out to a side?
+    const look = new THREE.Vector3();
+    function inView(c) {
+      if (!eye) return false;
+      const dx = c.x - eye.position.x, dy = c.y + eye.position.z, d = Math.hypot(dx, dy);
+      const h = Math.hypot(look.x, look.z); // (looking down from high up, all round it)
+      return d < 12 || (d < 200 && (h < 0.3 ? d < 150 : (dx * look.x - dy * look.z) / (d * h) > 0.3)); // (sim y is -z)
+    }
     function update(dt0, cx, cy, t, blockers) {
       const dt = dt0;
       tick++;
+      if (eye) eye.getWorldDirection(look);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;
@@ -1420,28 +1452,44 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           held = d1 > 0 && (tangled > 0 ? (d1 > d0 + 1e-4 && !free) || f1 > fresh + 1e-4 : d1 > d0 + 1e-3); holder = o;
         }
         // in a junction and held there by a car waiting at its line (a bus swinging wide, say): that one backs off a little
-        if (held && holder && c.mv && !holder.mv && holder.v < 0.3 && holder.toLine != null && holder.toLine - holder.half < 4) holder.backoff = 1.5;
-        // held a long time all the same by one that isn't moving either (an awkward corner, two
-        // stopped nose to nose): it squeezes past, in a junction sooner; and by one that only
-        // inches along, caught up with it (the time counts on while it is held by one that moves)
+        if (held && holder && c.mv && !holder.mv && holder.v < 0.3 && holder.toLine != null && holder.toLine - holder.half < 4) backOff(holder, 1.5);
         c.inHeld = held ? (c.inHeld || 0) + dt : 0;
-        // (and in a junction, caught up behind one for 10 s: it squeezes past that one too)
+        // held a while by a car that is stopped too (an awkward corner, two nose to nose where a turn
+        // cuts across the other lane): one of them gives way, backing off a metre or two, and the cars
+        // behind it back off in turn to make it room (below). The one not in the junction gives way to
+        // the one in it; of two in it, the one that went in later; of two on a street, one of the two
+        if (held && holder && holder.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
+          c.giveT = 5;
+          const mutual = holder.front === c, j = C.indexOf(holder);
+          const yieldC = c.mv && holder.mv ? mutual && c.mvT > holder.mvT : !c.mv && holder.mv ? mutual : !c.mv && !holder.mv && mutual && i > j;
+          backOff(yieldC ? c : holder, 1.5);
+        }
+        if (c.giveT > 0) c.giveT -= dt;
+        // held a long time all the same (a knot no backing off undoes), or in a junction caught up behind
+        // one for 10 s: out of view (behind the camera, or far off) it leaves the traffic (its slot comes
+        // back elsewhere); in view it waits on, and only after a minute and a half squeezes past, through
+        // the other car, as the last way out of a knot you stand and watch
         c.behindT = behind && !turn ? (c.behindT || 0) + dt : 0;
-        const squeeze = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
+        const long = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
+        if (long && !inView(c)) { c.inHeld = c.behindT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
+        const squeeze = long && c.inHeld > 90;
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
-          held = d1 > (c.pw > 5 ? (turn ? 1.2 : 0.35) : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3;
+          held = d1 > (c.pw > 5 ? 0.12 : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3; // (waited on a while, it edges up to them, not into them: they step aside, below)
           if (held && who >= 0) walker = who; // (a walker against it: asked to turn back, below, if it waits on them)
         }
         if (behind && !turn && !squeeze) held = true;
         if (c.backoff > 0) { // backing off for a car that can't get past, a metre or two, if the way behind is clear
-          c.backoff -= dt; c.v = 0;
+          c.v = 0; c.boSpent = (c.boSpent || 0) + dt;
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.2 * dt));
           lanePos(c.line, sb, c.dir, tmp, c.off + c.lo, c.pv, c.nx ? [nl, nd] : null);
-          if (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); }
+          const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
+          if (bd === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; }
+          else if (bk && bk.v < 0.5 && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 < 0 && Math.sin(bk.h) * hx0 + Math.cos(bk.h) * hy0 > 0.5 && backOff(bk, c.backoff)) c.backoff -= dt * 0.25; // (the car behind it, stopped and going its way, backs off first)
+          else c.backoff -= dt;
           held = true;
-        }
+        } else if (c.v > 2) c.boSpent = 0;
         if (held && tangled > 0) { // can't get out ahead: try another road next (if it isn't in a junction yet), and back up a little
           if (!c.mv) { c.nx = undefined; c.plan = c.ex = null; }
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.5 * dt));
@@ -1487,6 +1535,24 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         q.setFromAxisAngle(up, Math.PI - c.h);
         m4.compose(W(c.x, c.y, c.z), q, one);
         place(i, c);
+      }
+      // and a walker it has come up against (a corner taken, edging up to one who stands in the road),
+      // or who has stepped up against it where it stands: a step out of its way, along the footway and across it, if that is not into a wall
+      if (crowd) for (let i = 0; i < api.active; i++) {
+        const c = C[i];
+        if (c.line < 0) continue;
+        const R = c.half + 0.5, a0 = Math.floor((c.x - R) / CELL), a1 = Math.floor((c.x + R) / CELL), b0 = Math.floor((c.y - R) / CELL), b1 = Math.floor((c.y + R) / CELL);
+        for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) for (let j = bhead[bucket(a, b)]; j >= 0; j = bchain[j]) {
+          if (bi[j] < 0 || Math.abs(bz[j] - c.z) >= LEVEL) continue;
+          const e = into(c, bx[j], by[j], 0.25), p = crowd.P[bi[j]];
+          if (!e || p.state !== 'walk' || p.line < 0) continue;
+          const x = bx[j] + e.x * 1.02, y = by[j] + e.y * 1.02;
+          if (nav && !nav.walk(x, y, p.z).ok) continue;
+          const dx = x - p.x, dy = y - p.y; // (p.line is the crowd's network's, not the roads': past its end, walk() takes it on)
+          p.lat += -dx * p.hy + dy * p.hx;
+          p.s += p.dir * (dx * p.hx + dy * p.hy);
+          p.x = bx[j] = x; p.y = by[j] = y;
+        }
       }
       // a car that has come up against the player (turning in, say) moves them out of its way
       if (nav) for (const b of blockers) {
