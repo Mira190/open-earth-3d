@@ -400,7 +400,7 @@ window.OECars = (function () {
       st.roll += (gr - st.roll) * Math.min(1, dt * 8);
     }
     function sub(dt, inp, env, events) {
-      const fx = Math.sin(st.h), fy = Math.cos(st.h), lx = -fy, ly = fx;
+      const fx = Math.sin(st.h), fy = Math.cos(st.h), lx = -fy, ly = fx, ph = st.h;
       let vf = st.vx * fx + st.vy * fy, vl = st.vx * lx + st.vy * ly;
       const fwd = clamp(inp.fwd || 0, -1, 1), hb = !!inp.handbrake && !st.air;
       // drive (W) and brake (S); stopped, S reverses and W goes forward again
@@ -442,11 +442,12 @@ window.OECars = (function () {
       const px = st.x, py = st.y;
       st.x += st.vx * dt; st.y += st.vy * dt;
       for (let it = 0; it < 2; it++) collide(env, events);
-      // the water's edge, a drop, a wall too high: back to where it was, bouncing off
+      // the water's edge, a drop, a wall too high: back to where it was, bouncing off (the heading
+      // too: a turn on the spot would swing the body into the trunk or wall it was pushed out of)
       const nfx = Math.sin(st.h), nfy = Math.cos(st.h);
       if (offs.some(o => !standable(st.x + nfx * o, st.y + nfy * o, st.z))) {
         const sp = Math.hypot(st.vx, st.vy);
-        st.x = px; st.y = py; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
+        st.x = px; st.y = py; st.h = ph; st.vx *= -0.15; st.vy *= -0.15; st.r *= 0.3;
         if (sp > 2) events.push({ type: 'edge', speed: sp });
       }
       // follow the ground: up kerbs and ramps at once, off an edge under gravity
@@ -461,16 +462,20 @@ window.OECars = (function () {
         }
       }
     }
-    // walls (through nav), other cars (boxes), lamp posts and trunks and people (circles): push the
-    // body out along the contact, take the speed into it away (a hard hit bounces), and kick the yaw
+    // other cars (boxes) and people, then walls (through nav), then lamp posts and trunks (circles):
+    // push the body out along the contact, take the speed into it away (a hard hit bounces), and
+    // kick the yaw. What can move goes first and what can't last, so that a car pressing in from
+    // the side can't shove yours into a wall or a trunk (the last push is the one that holds)
     function collide(env, events) {
       const fx = Math.sin(st.h), fy = Math.cos(st.h);
       let nx = 0, ny = 0, moved = false, what = null;
+      const shove = (o, dx, dy) => {
+        st.x += dx; st.y += dy; nx += dx; ny += dy; moved = true;
+        st.r += clamp(o * (dx * fy - dy * fx) * 0.6, -0.3, 0.3); // a hit off the centre turns it
+      };
       for (const o of offs) {
         const cx = st.x + fx * o, cy = st.y + fy * o;
-        const p = nav.push(cx, cy, st.z, rad, 1.6);
-        let dx = p.x - cx, dy = p.y - cy;
-        if (dx || dy) what = what || 'wall';
+        let dx = 0, dy = 0;
         for (const b of env.boxes || []) { // other cars: the closest point of the box
           if (b.ref === st || st.z > b.z + b.top || st.z + 1.5 < b.z) continue;
           const bx = Math.sin(b.h), by = Math.cos(b.h), ex = cx + dx - b.x, ey = cy + dy - b.y;
@@ -489,23 +494,7 @@ window.OECars = (function () {
           what = what || 'person';
           if (q.onHit) q.onHit();
         }
-        if (dx || dy) {
-          st.x += dx; st.y += dy; nx += dx; ny += dy; moved = true;
-          st.r += clamp(o * (dx * fy - dy * fx) * 0.6, -0.3, 0.3); // a hit off the centre turns it
-        }
-      }
-      // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
-      // from the nearest point of the box to its centre
-      for (const q of env.posts || []) {
-        if (Math.abs(q.z - st.z) > 2) continue;
-        const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
-        const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
-        let pu, pw, m;
-        if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
-        else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
-        const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
-        st.x += px; st.y += py; nx += px; ny += py; moved = true;
-        what = q.kind || 'post';
+        if (dx || dy) shove(o, dx, dy);
       }
       // and the corners the three circles leave out: the body as a box against each other car's box,
       // pushed out along the axis it is least deep on (the separating axes)
@@ -525,6 +514,24 @@ window.OECars = (function () {
         st.x += ux * best; st.y += uy * best; nx += ux * best; ny += uy * best; moved = true;
         what = 'car';
         if (b.onHit) b.onHit();
+      }
+      // the walls (through nav)
+      for (const o of offs) {
+        const cx = st.x + fx * o, cy = st.y + fy * o, p = nav.push(cx, cy, st.z, rad, 1.6), dx = p.x - cx, dy = p.y - cy;
+        if (dx || dy) { what = what || 'wall'; shove(o, dx, dy); }
+      }
+      // lamp posts and tree trunks ({ x, y, z, r, kind }), solid: the body as a box, out of each circle
+      // from the nearest point of the box to its centre
+      for (const q of env.posts || []) {
+        if (Math.abs(q.z - st.z) > 2) continue;
+        const ex = q.x - st.x, ey = q.y - st.y, u = ex * fx + ey * fy, w = -ex * fy + ey * fx;
+        const cu = clamp(u, -C.half, C.half), cw = clamp(w, -C.hw, C.hw), du = u - cu, dw = w - cw, d = Math.hypot(du, dw);
+        let pu, pw, m;
+        if (d > 1e-6) { if (d >= q.r) continue; m = q.r - d; pu = -du / d; pw = -dw / d; } // (its centre outside the box)
+        else { const ou = C.half - Math.abs(u), ow = C.hw - Math.abs(w); if (ou < ow) { m = ou + q.r; pu = -Math.sign(u || 1); pw = 0; } else { m = ow + q.r; pu = 0; pw = -Math.sign(w || 1); } }
+        const px = (fx * pu - fy * pw) * (m + 0.005), py = (fy * pu + fx * pw) * (m + 0.005);
+        st.x += px; st.y += py; nx += px; ny += py; moved = true;
+        what = q.kind || 'post';
       }
       if (!moved) return;
       const l = Math.hypot(nx, ny) || 1;
