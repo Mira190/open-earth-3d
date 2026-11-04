@@ -35,7 +35,7 @@ import roofs
 import typology
 import wet_buildings
 from measured import IGNHeights
-from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
+from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons, trees_cfg
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
@@ -1504,7 +1504,7 @@ def build(C):
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
         "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter", "seawall")},
-        "trees": cfg.get("trees", {}),
+        "trees": trees_cfg(C),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),
@@ -1557,6 +1557,11 @@ def build(C):
         print(f"  {f}: {os.path.getsize(os.path.join(C.out, f)) / 1e6:.2f} MB")
 
 
+def _pack_stale(city):
+    from pack import stale
+    return stale(city)
+
+
 def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
@@ -1576,7 +1581,10 @@ def write_index():
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
         if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
-            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            # the buildings packed (pipeline/pack.py, issue 148) when the pack is there and up to date
+            packed = os.path.exists(os.path.join(data, "buildings.bin")) and not _pack_stale(c["id"])
+            c["packed"] = ["buildings"] if packed else []
+            model = size(["scene.json", "buildings.bin" if packed else "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))

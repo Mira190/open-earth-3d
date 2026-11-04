@@ -103,11 +103,11 @@ Rocketbox avatars.
 
 All synthesised, no recordings: the crowd's murmur (noise through two voice bands pulsing at a
 syllable's rate) as loud as there are people round you; the screens' music, muffled across the
-street, while they play (9:00 to midnight); the walk signal's bird calls for the blind, Japan's
-standard pair (a "piyo" answered by "piyo-piyo" from the far kerb; or the cuckoo's "kakko"),
-while the walk is on at the crossing's signals; and now and then the station's two-note chime
+street, while they play (9:00 to midnight); and now and then the station's two-note chime
 and an announcement too far off to make out. All of it is heard from the camera, so a film hears
-what it sees.
+what it sees. The walk signals' bird calls are no longer part of it: they play at every
+signalled crossing, from the signal heads (`web/game/walkcalls.js`, [GAME.md](GAME.md), "Walk
+signals' calls"), and `sound.signal` is ignored.
 
 ## Frame time by tier
 

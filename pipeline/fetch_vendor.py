@@ -59,7 +59,9 @@ def three():
     base = f"{NPM}/three@{THREE}"
     out = os.path.join(WEB, "vendor", "three")
     for f in ["three.module.min.js", "three.core.min.js"]:
-        save(os.path.join(out, f), get(f"{base}/build/{f}"))
+        data = get(f"{base}/build/{f}")
+        # the minified module imports the full-size core (1.5 MB): point it at the minified one (0.4 MB)
+        save(os.path.join(out, f), data.replace(b'from"./three.core.js"', b'from"./three.core.min.js"'))
     todo, done = list(ADDONS), set()
     while todo:
         rel = todo.pop()
