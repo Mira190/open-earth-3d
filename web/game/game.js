@@ -252,6 +252,34 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     S.fillMax(DSM, [[d.ax + nx, d.ay + ny, d.bx + nx, d.by + ny, d.bx - nx, d.by - ny, d.ax - nx, d.ay - ny]], Math.max(d.az, d.bz), -3);
   }
   world.add(OEDecks.mesh(deckPlan.runs, OEWorld.lin));
+  // under the decks drawn over the water, the photograph of the same bridge or expressway lies on the bottom
+  // and showed through the water as a road on the riverbed (Tokyo's Nihonbashi under the Shuto, issue 65):
+  // the water closes over the bottom there. The mask is a little wider than the deck, more so the higher it
+  // stands, since an aerial photograph leans a raised deck off its plan position
+  if (Wd.sea && Wd.sea.setCover) {
+    const wet = deckPlan.runs.filter(r => r.pts.some(q => nav.isWater(q[0], q[1])));
+    if (wet.length) {
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const r of wet) for (const q of r.pts) { x0 = Math.min(x0, q[0]); x1 = Math.max(x1, q[0]); y0 = Math.min(y0, q[1]); y1 = Math.max(y1, q[1]); }
+      x0 -= 40; x1 += 40; y0 -= 40; y1 += 40;
+      const res = Math.max(1, Math.max(x1 - x0, y1 - y0) / 4096), cv = document.createElement('canvas');
+      cv.width = Math.ceil((x1 - x0) / res); cv.height = Math.ceil((y1 - y0) / res);
+      const g = cv.getContext('2d');
+      g.fillStyle = '#000'; g.fillRect(0, 0, cv.width, cv.height);
+      g.strokeStyle = '#fff'; g.lineCap = g.lineJoin = 'round';
+      for (const r of wet) {
+        const hi = Math.max(...r.pts.map(q => q[2]));
+        g.lineWidth = (r.w + 2 * Math.max(2.5, 0.25 * hi)) / res;
+        g.beginPath();
+        r.pts.forEach((q, k) => g[k ? 'lineTo' : 'moveTo']((q[0] - x0) / res, (y1 - q[1]) / res));
+        g.stroke();
+      }
+      g.filter = 'blur(2px)'; g.drawImage(cv, 0, 0); // a soft edge, not a cut line in the water
+      const tex = new THREE.CanvasTexture(cv);
+      tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.colorSpace = THREE.NoColorSpace;
+      Wd.sea.setCover(tex, x0, y1, x1 - x0, y1 - y0);
+    }
+  }
   // where a walkable strip (a canal bridge's deck) is carried on to the quay (nav.js), the approach is drawn in the deck's stone
   const LMM = (D.LM && D.LM.materials) || {};
   if (nav.approaches.length) world.add(OEDecks.mesh(nav.approaches.map(a => {
@@ -1772,7 +1800,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function applyDensity() { if (crowdAuto) crowd.active = Math.round(crowd.P.length * density[settings.density] * busy()); }
   // mode: 'chase', 'bird' (the helicopter's bird's-eye view) or 'cockpit' (the pilot's eyes, looking lookYaw left and lookPitch up)
   // distTo and yawTo, when set, ease the chase camera somewhere (out to the helicopter's view, round to its door)
-  const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1 };
+  const cam = { yaw: 0, pitch: 0.36, tilt: 0, dist: 7.5, distTo: 0, yawTo: null, lastInput: -10, mode: 'chase', birdAlt: 320, lookYaw: 0, lookPitch: -0.1, lift: 0, liftHold: 0, pull: 1, floor: null, snap: false };
   const cine = OECine.director({ reduced }); // camera shots, on the game clock (clockT)
   let joy = { x: 0, y: 0 }, touchLift = 0, uiOpen = () => !$('#g-menu').hidden || !$('#g-bigmap').hidden || !$('#g-pass').hidden || !$('#g-title').hidden;
   const k = c => keys.has(c);
@@ -3564,7 +3592,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     camera.lookAt(live.look);
     Wd.fitShadow(live.look, live.half);
   }
-  const cabinQ = new THREE.Quaternion();
+  const cabinQ = new THREE.Quaternion(), camProbe = new THREE.Vector3();
+  const CAM_LIFTS = [0, 0.15, 0.3, 0.45, 0.6, 0.8]; // the chase camera's lifts over a wall behind, in radians of pitch
   function rig(dt) {
     const k2 = Math.min(1, dt * 6);
     if (player.mode === 'heli' && cam.mode === 'cockpit') {
@@ -3605,33 +3634,46 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const dist = player.mode === 'heli' ? Math.max(cam.distTo ? cam.dist : 14, cam.dist) : player.mode === 'ferry' || player.mode === 'rail' ? Math.max(25, cam.dist) : veh ? Math.max(5, cam.dist) + Math.min(2.5, Math.abs(vs.v) * 0.05) : cam.dist;
     const close = player.mode === 'foot' || player.mode === 'board';
     camTarget.lerp(W(tx, ty, tz), close ? 1 : veh ? Math.min(1, dt * 14) : k2);
-    // keep the camera out of walls and cars: first rise over them (look down on the player), then come closer
+    // keep the camera out of walls and cars: first rise over them (look down on the player), then come
+    // closer. The lift and the pull-in are eased at a bounded rate rather than switched between steps,
+    // so a tight spot never makes the view jump from one frame to the next (#97): it rises quickly when
+    // a wall comes between, holds a moment, and settles back slowly once the way behind is open
     const near = carBoxes(tx, ty, dist + 6, veh);
     const clear = (a, b) => Math.min(nav.clearFraction(a, b), near.length ? OECars.sweep({ x: a.x, y: -a.z, z: a.y }, { x: b.x, y: -b.z, z: b.y }, near) : 1);
-    let best = null;
-    for (const lift of [0, 0.25, 0.5, 0.8]) {
-      const pitch = Math.min(1.35, cam.pitch + lift), cp = Math.cos(pitch);
-      const pos = new THREE.Vector3(camTarget.x - Math.sin(cam.yaw) * cp * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(cam.yaw) * cp * dist);
-      const f = clear(camTarget, pos);
-      if (!best || f > best.f + 0.05) best = { f, pos };
+    const orbit = (lift, out) => { const pitch = Math.min(1.35, cam.pitch + lift), cp = Math.cos(pitch); return out.set(camTarget.x - Math.sin(cam.yaw) * cp * dist, camTarget.y + Math.sin(pitch) * dist, camTarget.z + Math.cos(cam.yaw) * cp * dist); };
+    let want = null;
+    for (const lift of CAM_LIFTS) {
+      const f = clear(camTarget, orbit(lift, camProbe));
+      if (!want || f > want.f + 0.05) want = { f, lift };
       if (f >= 0.97) break;
     }
-    camPos.copy(best.pos);
-    if (best.f < 1) camPos.lerpVectors(camTarget, best.pos, Math.max(0.15, best.f - 0.04));
+    const jumped = cam.snap || camSmooth.lengthSq() === 0 || camSmooth.distanceTo(orbit(cam.lift, camProbe)) > 60; // after a teleport, or a stretch of advance()
+    cam.snap = false;
+    if (jumped) { cam.lift = want.lift; cam.liftHold = 0; }
+    else if (want.lift > cam.lift) { cam.lift = Math.min(want.lift, cam.lift + Math.min((want.lift - cam.lift) * dt * 6, dt * 2)); cam.liftHold = 0.5; }
+    else if ((cam.liftHold -= dt) <= 0) cam.lift = Math.max(want.lift, cam.lift - Math.min((cam.lift - want.lift) * dt * 2, dt * 0.5));
+    const f = clear(camTarget, orbit(cam.lift, camPos)), pull = f < 1 ? Math.max(0.15, f - 0.04) : 1;
+    if (jumped) cam.pull = pull;
+    else cam.pull += pull < cam.pull ? -Math.min(cam.pull - pull, Math.max(dt * 2, (cam.pull - pull) * dt * 4)) : Math.min(pull - cam.pull, dt * 0.8);
+    if (cam.pull < 1) camPos.lerpVectors(camTarget, camPos, cam.pull);
     // pulled in that close by a wall, it may be over a car: then it looks down over the roof
     for (const q of near) if (OECars.pushOut(camPos.x, -camPos.z, q.z + 0.5, 0.35, [q]).hit) camPos.y = Math.max(camPos.y, q.z + q.top + 0.45);
-    if (camSmooth.lengthSq() === 0 || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos); // after a teleport
+    if (jumped || camSmooth.distanceTo(camPos) > 60) camSmooth.copy(camPos);
     camSmooth.lerp(camPos, close ? Math.min(1, dt * 10) : veh ? Math.min(1, dt * 16) : 1);
     camPos.copy(camSmooth);
-    let gz = Math.max(0, nav.terrainBelow(camPos.x, -camPos.z, camTarget.y + 0.5)); // over the water, its surface; under a slab, the floor
-    for (const st of nav.strips) { // steps and decks below the player's head lift the camera too
+    // the floor under the camera: the ground (or the water; under a slab, the floor) at once, steps and
+    // decks below the player's head eased in, so walking onto a stair or a deck lifts the view smoothly
+    const ground = Math.max(0, nav.terrainBelow(camPos.x, -camPos.z, camTarget.y + 0.5));
+    let gz = ground;
+    for (const st of nav.strips) {
       const h = nav.stripHeight(st, camPos.x, -camPos.z);
       if (h != null && h < camTarget.y + 0.5 && h > gz) gz = h;
     }
     nav.decksAt(camPos.x, -camPos.z, h => { if (h < camTarget.y + 0.5 && h > gz) gz = h; });
-    if (camPos.y < gz + 0.5) camPos.y = gz + 0.5;
+    cam.floor = jumped || cam.floor == null ? gz : cam.floor + (gz - cam.floor) * Math.min(1, dt * 8);
+    camPos.y = Math.max(camPos.y, ground + 0.5, cam.floor + 0.5);
     const ceil = nav.ceilingAt(camPos.x, -camPos.z, camTarget.y - 1); // under a slab (a colonnade): below its soffit
-    if (ceil !== null && camPos.y > ceil - 0.2) camPos.y = Math.max(gz + 0.5, ceil - 0.2);
+    if (ceil !== null && camPos.y > ceil - 0.2) camPos.y = Math.max(ground + 0.5, ceil - 0.2);
     live.pos.copy(camPos);
     live.look.copy(camTarget);
     // looking up at a landmark on arrival (cam.tilt): over your head, until you move, steer or drag the view
@@ -3930,7 +3972,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     routeShow(Infinity, titled);
     groundLod(player.mode === 'heli' ? heli.st.x : player.x, player.mode === 'heli' ? heli.st.y : player.y);
     camTarget.copy(player.mode === 'heli' ? W(heli.st.x, heli.st.y, heli.st.z + 2.5) : player.mode === 'ferry' ? W(player.vehicle.x, player.vehicle.y, 5) : W(player.x, player.y, player.z + 1.55));
+    cam.snap = n > 1; // a stretch run without the camera lands it where it would have settled (a step at a time, it eases)
     if (closeup) closeupCamera(0); else updateCamera(1 / 30, false);
+    cam.snap = false;
     camera.updateMatrixWorld();
   }
   // the recorder's handles (tools/flyover.js): the title pose, a scripted title camera, and the orbit restarted from the video's last frame
