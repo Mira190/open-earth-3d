@@ -68,6 +68,9 @@ MATERIALS = {
     "ks_roofglass": {"color": "#b8c9d4", "roughness": 0.06, "metalness": 0.3, "opacity": 0.32},
     "ks_steel": {"color": "#dfe2e4", "roughness": 0.35, "metalness": 0.6, "emissive": "#fff1dc", "glow": 0.35},
     "ks_concrete": {"color": "#b3b0aa", "roughness": 0.85, "metalness": 0.0},
+    # the Grand Staircase's LED risers (since 2012): a warm white, red and green for Christmas, cherry pink in spring
+    "ks_led": {"color": "#d8d4cc", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffe3b8", "glow": 0.9,
+               "emissive_dates": [["12-01", "12-25", "#ff5a4a"], ["03-20", "04-15", "#ff9ec4"]]},
     "ks_steps": {"color": "#9d988f", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.4], "stair": "tread"},
 }
 
@@ -160,7 +163,7 @@ def kyoto_station():
     if not S:
         return [], []
     F, u0, D = S["F"], S["u0"], STATION
-    K = ak.Kit("kyoto_station", floodlit={"ks_steel"}, uv={"ks_panel", "ks_glass", "ks_steps"})
+    K = ak.Kit("kyoto_station", floodlit={"ks_steel", "ks_led"}, uv={"ks_panel", "ks_glass", "ks_steps"})
     scale = (S["u1"] - S["u0"]) / D["length"]
     s_ = lambda s: u0 + s * scale
     A0, A1 = D["atrium"]
@@ -186,6 +189,8 @@ def kyoto_station():
         z = D["stairs_foot"] + (D["stairs_top"] - D["stairs_foot"]) * (k + 1) / n
         ua = s_(T1) - (k + 1) * run
         ak.block(K["ks_steps"], F, ua, ua + run + 0.02, va, vn, z - 0.6, z, top=True)
+        zr0 = D["stairs_foot"] + (D["stairs_top"] - D["stairs_foot"]) * k / n
+        K["ks_led"].quad(F(ua + run + 0.03, va + 0.6, zr0), F(ua + run + 0.03, vn - 0.6, zr0), F(ua + run + 0.03, vn - 0.6, z - 0.02), F(ua + run + 0.03, va + 0.6, z - 0.02))
     ak.block(K["ks_concrete"], F, s_(T0), s_(T1), va + 0.5, vn - 0.5, 0.0, D["stairs_foot"] - 0.6, top=True)
     for v in (va, vn):   # the staircase's side walls, stepping down with it
         K["ks_panel"].quad(F(s_(T1), v, 0.0), F(s_(T0), v, 0.0), F(s_(T0), v, D["stairs_top"] + 1.2), F(s_(T1), v, D["stairs_foot"] + 1.2),

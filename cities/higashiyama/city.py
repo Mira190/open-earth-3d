@@ -74,12 +74,18 @@ MATERIALS = {
     "screen": {"color": "#2f2620", "roughness": 0.8, "metalness": 0.0, "opacity": 0.75},
     "water": {"color": "#d6eef6", "roughness": 0.05, "metalness": 0.1, "opacity": 0.55, "emissive": "#bfe8ff", "glow": 0.3},
     # the lanes: granite setts and steps, the shops' noren, lattices and lanterns (one atlas)
-    "setts": {"color": "#8f8a80", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.45, 0.3], "street_lit": True},
-    "kerb": {"color": "#a19b90", "roughness": 0.9, "metalness": 0.0},
-    "step_stone": {"color": "#97918a", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.35], "stair": "tread"},
-    "lanes": {"color": "#ffffff", "roughness": 0.85, "metalness": 0.0, "map": "lanes.png", "cutout": True, "emissive_map": True, "glow": 0.55},
-    "lamp_paper": {"color": "#f3e6c8", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffc070", "glow": 1.6},
-    "lamp_cap": {"color": "#1d1a18", "roughness": 0.5, "metalness": 0.2},
+    "setts": {"color": "#8f8a80", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.45, 0.3], "street_lit": True, "decal": True},
+    "kerb": {"color": "#a19b90", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    "step_stone": {"color": "#97918a", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.35], "stair": "tread", "solid": False},
+    "lanes": {"color": "#ffffff", "roughness": 0.85, "metalness": 0.0, "map": "lanes.png", "cutout": True, "emissive_map": True, "glow": 0.55, "solid": False},
+    "lamp_paper": {"color": "#f3e6c8", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffc070", "glow": 1.6, "solid": False},
+    "lamp_cap": {"color": "#1d1a18", "roughness": 0.5, "metalness": 0.2, "solid": False},
+    # kukurizaru (くくり猿): cloth monkeys bound hand and foot, hung in bright strings at Yasaka Koshin-do
+    "saru_red": {"solid": False, "color": "#d8352c", "roughness": 0.85, "metalness": 0.0},
+    "saru_pink": {"solid": False, "color": "#e77aa0", "roughness": 0.85, "metalness": 0.0},
+    "saru_yellow": {"solid": False, "color": "#e8c03a", "roughness": 0.85, "metalness": 0.0},
+    "saru_green": {"solid": False, "color": "#4f9a58", "roughness": 0.85, "metalness": 0.0},
+    "saru_purple": {"solid": False, "color": "#7d5bb0", "roughness": 0.85, "metalness": 0.0},
     "hisashi": {"color": "#4d5054", "roughness": 0.65, "metalness": 0.1, "pattern": "roof_tiles", "bay_m": 0.25, "course_m": 0.25},
 }
 
@@ -112,6 +118,7 @@ KIYOMIZU = {
 YASAKA = ("w371717416", 46.0)            # 八坂の塔
 KIYOMIZU_ZAKA_TOP = (84.0, -165.0)       # where Kiyomizu-zaka meets the gate's steps (OSM 清水坂's end)
 OTOWA = (300.2, -286.4)                  # 音羽の滝 不動明王 (OSM wayside shrine at the falls)
+KOSHINDO = (135.7787378, 34.9985413)     # 八坂庚申堂 (OSM 庚申堂, the stone at its gate on Yasaka-dori)
 LANES = ("産寧坂", "二寧坂", "一念坂", "清水坂", "八坂通")
 
 _cache = {}
@@ -386,6 +393,31 @@ def yasaka(K, hidden):
     hidden.append(sd["si"])
 
 
+def koshindo(K):
+    """Yasaka Koshin-do's kukurizaru: strings of cloth monkeys, each a ball bound hand and foot, in red
+    with the odd pink, yellow, green and purple, hung on a frame at the temple's gate on Yasaka-dori
+    (where Detective Conan's Crimson School Trip, 2018, puts Shinichi and Ran with the pagoda behind)."""
+    C, T, S = ctx()
+    x, y = C.fwd.transform(*KOSHINDO)
+    P = kk.frame((x, y + 1.2), (0.0, -1.0))           # facing the street, south
+    z0 = T(x, y + 1.2)
+    rng = np.random.default_rng(4)
+    for side in (-1, 1):                               # a frame either side of the gate
+        Q = lambda u, v, z, side=side: P(u, v + side * 2.6, z)
+        for v in (-1.3, 1.3):
+            xx, yy, _ = Q(0, v, 0)
+            kk.post(K, "timber_dark", xx, yy, z0, z0 + 2.6, 0.06)
+        K["timber_dark"].box(Q(0, -1.4, z0 + 2.55), Q(0, 1.4, z0 + 2.55), 0.08, 0.08)
+        for v in np.linspace(-1.2, 1.2, 13):
+            for k in range(9):
+                zz = z0 + 2.4 - 0.2 - k * 0.2
+                c = ("saru_red",) * 6 + ("saru_pink", "saru_yellow", "saru_green", "saru_purple")
+                mat = c[int(rng.integers(len(c)))]
+                xx, yy, _ = Q(0.0, v + rng.uniform(-0.02, 0.02), 0)
+                lathe_at(K[mat], xx, yy, [(zz - 0.08, 0.0), (zz - 0.06, 0.06), (zz + 0.02, 0.075), (zz + 0.07, 0.04), (zz + 0.08, 0.0)], 6)
+    _cache["koshindo"] = {"at": (float(x), float(y) - 2.0), "z": z0}
+
+
 # ---------------------------------------------------------------- the lanes
 
 NOREN = [  # (key, cloth colour, words, ink)
@@ -490,6 +522,7 @@ def landmark_meshes(scene):
     hidden = []
     kiyomizu(K, hidden)
     yasaka(K, hidden)
+    koshindo(K)
     L = ak.Kit("lanes", floodlit={"lanes", "lamp_paper"}, uv={"setts", "step_stone", "lanes"})
     lanes(L)
     H = hondo_layout()
@@ -609,6 +642,12 @@ def game_extras(scene):
                                 "清水寺, the Temple of Pure Water, is named for this spring."],
                       "radius": 3.5, "pick": 1})
     C, T, S = ctx()
+    kx, ky = C.fwd.transform(*KOSHINDO)
+    spots.append({"id": "koshindo", "name": "Yasaka Koshin-do 八坂庚申堂", "at": [round(kx, 2), round(ky - 3.0, 2), round(T(kx, ky - 3.0), 2)],
+                  "verb": "Look at the kukurizaru",
+                  "lines": ["Kukurizaru: cloth monkeys bound hand and foot, so a desire is held in check. Write your wish on one and give up one thing for it.",
+                            "In Detective Conan's Crimson School Trip, Shinichi and Ran stand here, the charms in front and the Yasaka Pagoda behind."],
+                  "radius": 3.5})
     sd = solid_of(YASAKA[0])
     if sd:
         cx, cy = ak.ring_centroid(sd["ring"])

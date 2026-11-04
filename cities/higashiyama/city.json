@@ -274,8 +274,8 @@
     ],
     "start": {
       "at": [
-        -322,
-        178
+        -452,
+        188
       ],
       "facing": [
         -251,
@@ -307,7 +307,7 @@
         "role": "Kimono rental, Yasaka-dori",
         "at": [
           -312,
-          171
+          166
         ],
         "look": {
           "character": "R_Female_Adult_15_f013",
@@ -408,9 +408,14 @@
         "stamp": "Yasaka Pagoda",
         "talk": [
           "おこしやす, welcome to Higashiyama. That's the Yasaka Pagoda: five storeys, 46 m, rebuilt in 1440. Every photo of Kyoto has it somewhere.",
-          "Walk up past it and turn right into Ninenzaka, then the steps of Sannenzaka. Mr. Fujii keeps a pottery shop on the way. WASD to walk, Shift to run, E to talk."
+          "Before you climb, look at the coloured charms at Koshin-do, just here: Conan fans know them. Then walk up past the pagoda into Ninenzaka and the steps of Sannenzaka. Mr. Fujii keeps a pottery shop on the way. WASD to walk, Shift to run, E to talk."
         ],
         "steps": [
+          {
+            "type": "spot",
+            "spot": "koshindo",
+            "text": "See the kukurizaru at Yasaka Koshin-do"
+          },
           {
             "type": "talk",
             "npc": "fujii",

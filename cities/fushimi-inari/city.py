@@ -59,8 +59,8 @@ MATERIALS = {
     "nio": {"color": "#8a5a3c", "roughness": 0.7, "metalness": 0.1},
     "wood_dark": {"color": "#4a3a2e", "roughness": 0.85, "metalness": 0.0},
     "lamp_glass": {"color": "#f6e7c4", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffc070", "glow": 0.5},
-    "setts": {"color": "#8f8a80", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.4], "street_lit": True},
-    "kerb": {"color": "#a19b90", "roughness": 0.9, "metalness": 0.0},
+    "setts": {"color": "#8f8a80", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.4], "street_lit": True, "decal": True},
+    "kerb": {"color": "#a19b90", "roughness": 0.9, "metalness": 0.0, "solid": False},
     # the donors' names on the torii's backs
     "inari_words": {"color": "#ffffff", "roughness": 0.6, "metalness": 0.0, "map": "inari.png", "cutout": True},
 }

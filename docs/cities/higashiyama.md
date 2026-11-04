@@ -39,6 +39,8 @@ block is hidden from the renderers and kept in the surface model.
   Asakura-do, Shaka-do and Amida-do.
 - **The Otowa Falls**: three streams from the rock under a timber roof, at the OSM node 音羽の滝 不動明王.
 - **The Yasaka Pagoda (八坂の塔, 1440)**: five storeys, 46 m, bare timber and white plaster under tiles.
+- **Yasaka Koshin-do (八坂庚申堂)**: strings of kukurizaru, cloth monkeys bound hand and foot, on frames
+  at its gate on Yasaka-dori (at the OSM node 庚申堂). The frames' size and the colours are read from photographs.
 - **The lanes**: stone setts along OpenStreetMap's lines for 産寧坂, 二寧坂, 一念坂, 清水坂 and 八坂通,
   and stone steps on the mapped flights of steps. Every low building whose front faces a lane gets:
   - a lattice (格子) over the ground floor;
@@ -49,8 +51,11 @@ block is hidden from the renderers and kept in the surface model.
 
 ## The game: Higashiyama on Foot
 
-- **The route**: it starts on Yasaka-dori below the pagoda and climbs Ninenzaka and Sannenzaka to a
+- **The route**: it starts on Higashioji-dori at the foot of Yasaka-dori, looking up the street to the
+  pagoda (the lane itself is too narrow to park the player's car in), and climbs Ninenzaka and Sannenzaka to a
   Kiyomizu-yaki potter, then Kiyomizu-zaka to a monk at the Deva Gate.
+- **Koshin-do**: the first quest stops at the kukurizaru, where *Crimson School Trip* (2018) puts Shinichi
+  and Ran with the pagoda behind them.
 - **The Conan quest**: Mika, a Detective Conan fan on her pilgrimage, sends you to three spots:
   - **the Stage**, walkable as a strip at the floor's height;
   - **the Okunoin's stage**, the view from which the whole Main Hall is photographed;

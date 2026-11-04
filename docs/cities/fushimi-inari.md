@@ -40,7 +40,7 @@ The sources are those of the other Kyoto maps:
 
 ## The game: Fushimi Inari on Foot
 
-From JR Inari station through the Romon, you meet a shrine attendant, then a shopkeeper at the mouth
+From Hommachi-dori, south of JR Inari station (where the player's car has a kerb with room to drive off), through the Romon, you meet a shrine attendant, then a shopkeeper at the mouth
 of the Senbon Torii, then a hiker resting at Yotsutsuji, where Kyoto opens out to the west.
 
 ## What is approximate
