@@ -33,13 +33,14 @@ function heldStep({ T, max, chain: process_chain = false }) {
   };
   // (held by you: your car or a ride stopped in the way, or you on foot in the road, at the head of the
   // cars in front: the game's doing, not the junction's, noted apart)
-  const byYou = c => { for (let x = c, k = 0; x && x.line != null && k < 15; x = x.front, k++) if (x.why === 'you' || (x.why === 'person' && !(x.who >= 0))) return true; return false; };
+  const byYou = c => { for (let x = c, k = 0; x && x.line != null && k < 15; x = x.front, k++) if (x.why === 'you' || (x.why === 'person' && !(x.who >= 0)) || !idx.has(x)) return true; return false; }; // (a front not among the traffic's cars is your car or a ride: cars.extra)
   // (and a car at a wall across its way at the head: the roads' doing, traffic_check.js's walls)
   const byWall = c => { for (let x = c, k = 0; x && x.line != null && k < 15; x = x.front, k++) if (x.why === 'wall') return true; return false; };
   // (and, for a movement, the head of the cars in front of it held by something outside the junction:
-  // a walker standing in the road, or the queue for another junction's red beyond)
+  // a walker standing in the road, or the queue for another junction beyond: its red, or its own waiting)
   const head = c => { let x = c; for (let k = 0; k < 30 && x.front && x.front.line != null && (x.why === 'car' || x.why === 'held'); k++) x = x.front; return x; };
-  const outside = (c, j) => { const h = head(c); return (h.why === 'person' && h.who >= 0) || (h.why === 'light' && h.lineArm && h.lineArm.j !== j && JN.light(h.lineArm, h.lineEx) !== 'g') || (h.why === 'zebra'); };
+  const outside = (c, j) => { const h = head(c); return (h.why === 'person' && h.who >= 0) || (h.why === 'light' && h.lineArm && h.lineArm.j !== j && JN.light(h.lineArm, h.lineEx) !== 'g') || (h.why === 'zebra') ||
+    (['room', 'stop', 'turn', 'cross', 'lane'].includes(h.why) && h.lineArm && h.lineArm.j !== j && h.toLine - h.half < 3); }; // (or waiting at another junction's line: spillback from beyond)
   const sort = (c, j, text) => {
     const any = f => f(c) || j.active.some(o => f(o.c)), mvt = text.startsWith('M');
     (any(byYou) ? yours : any(byWall) ? walls : mvt && outside(c, j) ? beyond : mvt ? held : queues).push(any(byYou) ? yoursAt(c) + ' ' + text.slice(1) : text.slice(1));

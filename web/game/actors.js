@@ -1466,7 +1466,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (heldBy0 && heldBy0.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
           c.giveT = 5;
           const mutual = heldBy0.front === c, j = C.indexOf(heldBy0);
-          const yieldC = c.mv && heldBy0.mv ? mutual && c.mvT > heldBy0.mvT : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
+          const yieldC = c.mv && heldBy0.mv ? mutual && (c.mvT > heldBy0.mvT || (c.mvT === heldBy0.mvT && i > j)) : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
           backOff(yieldC ? c : heldBy0, 1.5);
         }
         if (c.giveT > 0) c.giveT -= dt;
