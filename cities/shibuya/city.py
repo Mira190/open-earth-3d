@@ -2261,7 +2261,11 @@ CROSSING_SCREENS = [
      "clips": ["live", "soda", "fashion", "phone", "noodle"], "phase": 6.0, "pitch": 0.016},
     {"name": "Shibuya Ekimae Vision banner", "building": "渋谷駅前ビル", "w": 21.6, "h": 4.176, "roof": True, "lift": 1.0, "along": 12.5,
      "clips": ["live", "soda", "fashion", "phone", "noodle"], "phase": 10.0, "pitch": 0.016},
-    {"name": "Shibuhachi Hit Vision", "building": "渋谷駅前ビル", "w": 24.32, "h": 17.28, "roof": True, "lift": 1.0, "along": -12.0,
+    # Shibuhachi Hit Vision (HIT, June 2014; about 420 m2) is bent round the Oto building's south-east corner:
+    # its foot runs north along the face over the station square and turns onto the south face, the corner
+    # rounded on a 6 m radius (photographs 2023-25; the bend's place and radius are estimates)
+    {"name": "Shibuhachi Hit Vision", "building": "渋谷駅前ビル", "path": [[311.0, -1055.9], [319.2, -1054.3], [322.4, -1037.9]], "round": 6.0,
+     "w": 24.32, "h": 17.28, "roof": True, "lift": 1.0,
      "clips": ["movie", "beauty", "game", "info", "music"], "phase": 9.5, "pitch": 0.016, "sync": False},
     # NE: Starts Vision SHIBUYA (formerly Glico Vision), 6.356 x 3.456 m on the roof of the narrow Sanzenri
     # building beside MAGNET (not a footprint of its own in the open data: MAGNET's west end stands for it)
@@ -3253,18 +3257,13 @@ def hachiko_square(K, h, lm):
 
 def hachiko_trees(lm):
     """The square's own trees, [x, y, z, height] in decimetres (places.json's layout): a cherry in each
-    round planter and a maple in the bed behind Hachiko (the species: city.json trees.areas)."""
-    h = lm.get("hachiko")
-    if not h:
+    round planter (the species: city.json trees.areas). The bed round Hachiko has no tree."""
+    if not lm.get("hachiko"):
         return []
     out = []
     for c in HK_PLANTERS:
         g = lm_ground_at(lm, *c)
         out += [round(c[0] * 10), round(c[1] * 10), round((g + HK_PLANTER["h"] - 0.08) * 10), 72]
-    face = hachiko_face(h)
-    P = frame(h["at"], face)
-    p = P((HK_BED["r_in"] + HK_BED["r_out"]) / 2 * math.cos(math.radians(160)), (HK_BED["r_in"] + HK_BED["r_out"]) / 2 * math.sin(math.radians(160)), 0)
-    out += [round(p[0] * 10), round(p[1] * 10), round((h["z"] + HK_BED["wall_m"] - 0.06) * 10), 55]
     return out
 
 
@@ -3483,15 +3482,6 @@ def sky_meshes(s):
             G.quad(Q(*pa, z), Q(*pb, z), Q(*pb, z + hh), Q(*pa, z + hh))
             S.tube([Q(*pa, z), Q(*pa, z + hh)], 0.04, 6)
             S.tube([Q(*pa, z + hh), Q(*pb, z + hh)], 0.03, 4)
-    # SKY EDGE: light lines in the floor fanning out to the corner over the scramble
-    for k in range(7):
-        a = math.radians(15 + k * 10)
-        p0 = (h1 - 13.0, h2 - 13.0)
-        p1 = (p0[0] + 12.0 * math.cos(a), p0[1] + 12.0 * math.sin(a))
-        d = np.array([p1[0] - p0[0], p1[1] - p0[1]])
-        nrm = np.array([-d[1], d[0]]) / np.linalg.norm(d) * 0.07
-        K("led").quad(Q(p0[0] - nrm[0], p0[1] - nrm[1], z + 0.06), Q(p1[0] - nrm[0], p1[1] - nrm[1], z + 0.06),
-                      Q(p1[0] + nrm[0], p1[1] + nrm[1], z + 0.06), Q(p0[0] + nrm[0], p0[1] + nrm[1], z + 0.06))
     # GEO COMPASS: the raised deck in the middle, the compass on its floor, steps up each side
     zt = z + 2.0
     block(K("concrete", "compass"), Q, -gc, gc, -gc, gc, z - 0.5, zt - 0.02)

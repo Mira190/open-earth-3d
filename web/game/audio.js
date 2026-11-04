@@ -208,28 +208,50 @@ window.OEAudio = (function () {
       chord++; beatAt += 4 * beat;
     }
   }
-  // Japan's walk signal for the blind (the standard of 2003): a bird's "piyo" from one kerb answered
-  // by "piyo-piyo" from the other, or the cuckoo's "kakko" answered by "ka-kakko"; side 0 or 1
-  function piyo(side = 0, level = 1) {
-    if (!ctx || muted || level <= 0) return;
-    const t = ctx.currentTime, n = side ? 2 : 1;
-    for (let k = 0; k < n; k++) {
-      const a = t + k * 0.17, o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.setValueAtTime(2900, a); o.frequency.exponentialRampToValueAtTime(2050, a + 0.11);
-      g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.05 * level, a + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.13);
-      o.connect(g); g.connect(master); o.start(a); o.stop(a + 0.15);
-    }
+  // ---------------------------------------------------------------- the walk signals' sounds
+  // (walkcalls.js says which, when and from where). Japan's guide calls (誘導音, the National Police
+  // Agency's guideline: docs/GAME.md "Walk signals' calls"): the chick's "piyo" answered from the far
+  // kerb by "piyo-piyo", or the cuckoo's "kakko" answered by "ka-kakko". Elsewhere a push-button
+  // box's locator tick (slow, on red) and its walk tick (fast, on green): Australia's with its
+  // falling "zap" as the walk comes on, Hong Kong's hard pips, the Netherlands' rateltikker.
+  // level 0..1 (with distance); pan -1 (left) to 1 (right)
+  function out(level, pan) {
+    const g = ctx.createGain();
+    g.gain.value = level;
+    if (ctx.createStereoPanner && pan) { const p = ctx.createStereoPanner(); p.pan.value = Math.max(-1, Math.min(1, pan)); g.connect(p); p.connect(master); }
+    else g.connect(master);
+    return g;
   }
-  function kakko(side = 0, level = 1) {
-    if (!ctx || muted || level <= 0) return;
-    const t = ctx.currentTime, notes = side ? [[0, 830], [0.12, 830], [0.32, 660]] : [[0, 830], [0.22, 660]];
-    for (const [d, f] of notes) {
-      const a = t + d, o = ctx.createOscillator(), g = ctx.createGain();
-      o.type = 'sine'; o.frequency.value = f;
-      g.gain.setValueAtTime(0.0001, a); g.gain.linearRampToValueAtTime(0.045 * level, a + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, a + 0.2);
-      o.connect(g); g.connect(master); o.start(a); o.stop(a + 0.22);
-    }
+  function tone(dst, at, dur, type, f0, f1, vol, attack = 0.008) {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, at); if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + dur * 0.9);
+    g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(vol, at + attack); g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    o.connect(g); g.connect(dst); o.start(at); o.stop(at + dur + 0.02);
+    return o;
   }
+  // a chick's chirp: a quick rise and a longer fall ("pi-yo"), a touch of its octave for the edge
+  function chirp(dst, at) {
+    const o = tone(dst, at, 0.15, 'sine', 2300, 0, 0.9, 0.006), h = tone(dst, at, 0.12, 'sine', 4600, 0, 0.12, 0.006);
+    for (const [q, k] of [[o, 1], [h, 2]]) { q.frequency.setValueAtTime(2300 * k, at); q.frequency.linearRampToValueAtTime(3300 * k, at + 0.028); q.frequency.exponentialRampToValueAtTime(2000 * k, at + 0.13); }
+  }
+  const CALLS = {
+    piyo: (d, t) => chirp(d, t),
+    piyopiyo: (d, t) => { chirp(d, t); chirp(d, t + 0.2); },
+    // the cuckoo: a higher note and a falling, longer lower one, a major third down
+    kakko: (d, t) => { tone(d, t, 0.16, 'sine', 830, 815, 0.75, 0.012); tone(d, t + 0.22, 0.36, 'sine', 665, 640, 0.75, 0.015); },
+    kakakko: (d, t) => { tone(d, t, 0.09, 'sine', 830, 820, 0.7, 0.01); tone(d, t + 0.11, 0.15, 'sine', 830, 815, 0.75, 0.012); tone(d, t + 0.32, 0.36, 'sine', 665, 640, 0.75, 0.015); },
+    tick: (d, t) => tone(d, t, 0.018, 'square', 1250, 0, 0.5, 0.001), // (a locator's or a walk's tick)
+    zap: (d, t) => tone(d, t, 0.3, 'sawtooth', 2400, 420, 0.25, 0.004), // (Australia's: the walk is on)
+    pip: (d, t) => tone(d, t, 0.035, 'square', 2050, 0, 0.35, 0.002), // (Hong Kong's)
+    ratel: (d, t) => { tone(d, t, 0.012, 'square', 900, 0, 0.55, 0.001); tone(d, t + 0.004, 0.02, 'triangle', 2600, 0, 0.25, 0.001); }, // (the rateltikker's knock)
+  };
+  function walkCall(kind, level = 1, pan = 0) {
+    if (!ctx || muted || level <= 0.002 || !CALLS[kind]) return false;
+    CALLS[kind](out(0.09 * Math.min(1, level), pan), ctx.currentTime + 0.01);
+    return true;
+  }
+  function piyo(side = 0, level = 1) { walkCall(side ? 'piyopiyo' : 'piyo', level); }
+  function kakko(side = 0, level = 1) { walkCall(side ? 'kakakko' : 'kakko', level); }
   // a station's announcement, carried from the concourse: its two-note chime, then a voice too far
   // off to make out (noise through moving vowel formants)
   function announce(level = 1) {
@@ -248,5 +270,5 @@ window.OEAudio = (function () {
   }
   function setMuted(m) { muted = m; if (master) ramp(master.gain, m ? 0 : 0.55, 0.05); }
   function stop() { if (ctx) { ctx.close(); ctx = null; } }
-  return { start, murmur, screens, piyo, kakko, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
+  return { start, murmur, screens, piyo, kakko, walkCall, get on() { return !!ctx; }, announce, rotor, engine, wind, rain, car, skid, beep, step, horn, honk, chime, bell, thump, shutter, penguin, gull, setMuted, stop, get muted() { return muted; } };
 })();
