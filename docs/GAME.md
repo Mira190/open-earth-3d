@@ -898,8 +898,8 @@ Sydney's traffic stood still a third of the time.
     of Tokyo's scramble crossings, or has both diagonals mapped in OSM, or both.
     Not listed: Jingumae (Omotesando and Meiji-dori), reported as not a
     pedestrian-only phase; Ginza 4-chome, Akihabara's Chuo-dori and Ikebukuro's
-    east exit, for which no source or mapped diagonal was found (Ikebukuro is
-    outside every city's extent).
+    east exit (on Meiji-dori), for which neither a source nor a mapped diagonal
+    was found; Ueno, Roppongi and Jinbocho have none either.
   - *From games and research.* Persona 5 and The World Ends with You make the
     scramble a set piece, with the crowd as silhouettes or flat figures that
     part for you; Ghostwire: Tokyo empties it. Here the crowd is people who keep
