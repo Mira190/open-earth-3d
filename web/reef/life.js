@@ -60,6 +60,7 @@ export async function init(ctx) {
   root.add(fauna.group);
   const flora = createFlora(ctx, ground, mats, profile);
   root.add(flora.group);
+  await flora.ready; // the shared trees (web/assets/trees) the cays' pisonia and she-oaks are drawn with near the camera
   const drift = createDrift(ctx, torch, reef, ground);
   root.add(drift.group);
 
