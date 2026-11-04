@@ -482,9 +482,8 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
         if width > 60 or length < 15:
             continue
         c = np.asarray(g.minimum_rotated_rectangle.centroid.coords[0])
-        # each end meets the bank at the highest ground 3-15 m beyond it: the road on the bank, not
-        # a riverside walk that passes under the end (Princes Bridge's Southbank promenade)
-        za, zb = (max(max(ctx.ground(*(c + sg * ax * (length / 2 + e))) for e in (3, 6, 9, 12, 15)), floor) for sg in (-1, 1))
+        za = max(ctx.ground(*(c - ax * (length / 2 + 3))), floor)
+        zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), floor)
         out.append({"name": name, "centre": rnd(c), "axis": rnd(ax, 5), "length_m": round(length, 1), "width_m": round(width, 1),
                     "z_ends": [round(za, 2), round(zb, 2)], "colour": (colours or {}).get(name)})
     return out
