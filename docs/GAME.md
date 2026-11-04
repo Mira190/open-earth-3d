@@ -606,10 +606,29 @@ pipeline writes. The only city-specific code is landmark geometry in
     triangle is sampled in rows along its longest edge, every 0.22 m, so a long thin
     one costs its area; a flat top only round its edges, since its sides are
     triangles of their own. What lies under a walkable strip (the stone of a flight
-    of steps) is the strip's slab and is left out. It adds 0.2 s (Osaka) to 1.8 s
-    (Kyoto's temples) to the game's start on a desktop.
+    of steps) is the strip's slab and is left out. The fine cells are laid tile by
+    tile (32 m), the first time a query touches a tile or a few milliseconds a frame
+    ahead of the walker or the car (`nav.prefetch`).
+  - **Start-up sweeps:** at the start the game looks over the whole city for where
+    trees, lamps, poles and benches can stand, which stretches of footway the crowd
+    keeps to and where roads are cut at walls (`nav.withoutFine`). Away from the
+    landmarks that needs only the 2 m surface model. Where a landmark's 2 m cell
+    says a sweep is stopped, the triangles its fine cells are laid from are asked
+    again: whether any comes within the radius between knee and head, with the
+    fine cells' margins. So a crowd's way through a gate's passage or between
+    lanterns is kept where a walker gets through (issue #141). Laying the fine
+    cells of every tile the sweeps meet cost 1.8 s more at Kyoto's start and
+    1.0 s at Paris's; reading the triangles costs about 30 ms.
+  - **Landmark floors:** a landmark's flat top within a step of the ground is a
+    floor when it covers 2 m² and reaches a fine cell round each of its cells. A
+    material that says `"floor": false` is never one, however wide its top (a
+    wide, low offering box).
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
-    the city's note. A boardwalk across them stays walkable.
+    the city's note. A boardwalk across them stays walkable. A landmark's own
+    water that the city's water leaves out (Higashi Honganji's moat in Kyoto) is
+    `keep_off` in `game.json`: rings at half a metre, where a walker on the
+    ground stops without a word; its bridges are left out of them, and the
+    crowd's footways that cross them are dropped (`pipeline/game_extras.py`).
 - **Collision** (`web/game/collision.js`): every building solid is a prism, its
   published footprint between two heights, and each landmark cell is a box.
   - **Walking:** the walker is a 0.35 m capsule, moved the way Unreal's
@@ -1492,6 +1511,13 @@ helicopter a line ahead in the air rather than a pointer.
 | **Rotor wash over the harbour** | **A Kelvin wake at 16 knots** |
 | ![](images/sydney/game-rotorwash.jpg) | ![](images/sydney/game-wake.jpg) |
 
+**The helicopter comes after the game opens (issue 148).** Its model is 3.7 MB, more than any city's
+buildings once packed, and most games start on foot. `OEVehicles.load(..., { heli: 'later' })` leaves
+it out of the wait; the game asks for it (`heli.want()`) once the helicopter is within 800 m of you
+or you get in (`heliToPad`, `enterHeli`). Until it has come the pad stands empty; if you climb in
+first, the kit-built helicopter stands in and the model takes its place once you are out and the
+engine is off.
+
 All of them are modelled in Blender from code by `blender/build_vehicles.py`,
 with no hand modelling and no stock assets. The script bakes their ambient
 occlusion in Cycles and writes `web/assets/vehicles/`. Every city's game loads
@@ -1647,6 +1673,13 @@ python blender/build_people.py --preview         # -> web/assets/people/H_*.glb,
 | Every city's NPCs as the game draws them, waiting at their posts (`web/game/lineup.html?city=…`) |
 |---|
 | ![](images/people/npcs.jpg) |
+
+**Loaded as you come near (issue 148).** Only the NPCs within 300 m of the start are loaded before the
+game opens; the others are nobody until you first come within 300 m of them (`npcStream` in
+`game.js`, twice a second, from the player or the helicopter), and then their character is fetched
+and put in their place. One that can't be loaded stands in as a simple figure, as before. In a
+city of a dozen NPCs that is half a megabyte to a few megabytes off the wait; `__game.npcsReady()`
+loads all of them at once for the tools that look at them (`npc_shot.js`, `talk_shot.js`).
 
 The people who send you out are Rocketbox avatars too, cast city by city for who
 they are: police, pilots, a paramedic's jumpsuit for a bridge climber, a white

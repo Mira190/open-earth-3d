@@ -1,0 +1,9 @@
+[
+ {"name":"crossing-day","at":[362,-990],"look":[345,-968],"time":"13:00","dist":7,"pitch":0.12,"street":true},
+ {"name":"crossing-day-noao","at":[362,-990],"look":[345,-968],"time":"13:00","dist":7,"pitch":0.12,"street":true,"ao":0},
+ {"name":"crossing-dusk","at":[362,-990],"look":[345,-968],"time":"sunset+15","dist":7,"pitch":0.12,"street":true},
+ {"name":"crossing-night","at":[362,-990],"look":[345,-968],"time":"21:00","dist":7,"pitch":0.12,"street":true},
+ {"name":"crossing-rain","at":[362,-990],"look":[345,-968],"time":"21:00","dist":7,"pitch":0.12,"street":true,"weather":"rain"},
+ {"name":"hachiko-day","at":[372,-1020],"look":[345,-990],"time":"13:00","dist":20,"pitch":0.45,"street":true},
+ {"name":"hachiko-day-noao","at":[372,-1020],"look":[345,-990],"time":"13:00","dist":20,"pitch":0.45,"street":true,"ao":0}
+]

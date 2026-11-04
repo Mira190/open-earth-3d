@@ -128,7 +128,10 @@ Thirteen addresses are not in Overture's address points at all.
   On top of the body it adds:
   - the dome drawn as a copper dome on a drum;
   - clock faces near the top of the tower;
-  - the row of clocks over the main entrance;
+  - the row of clocks over the main entrance, their faces lit from behind
+    after dark, as are the tower's (photographs; no published measurement of
+    the steps under them or the clocks' height was found, so the steps' 1 m
+    rise and the 3 m to the clocks' lower edge are taken from photographs);
   - the 1910 colour scheme that the 2018–2020 repaint restored: cream,
     terracotta and dark green.
 

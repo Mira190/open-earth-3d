@@ -26,7 +26,7 @@ UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chr
 ADDONS = ["controls/OrbitControls.js", "objects/Sky.js", "objects/Reflector.js", "loaders/GLTFLoader.js",
           "utils/SkeletonUtils.js", "utils/BufferGeometryUtils.js", "postprocessing/EffectComposer.js",
           "postprocessing/RenderPass.js", "postprocessing/UnrealBloomPass.js", "postprocessing/OutputPass.js",
-          "postprocessing/ShaderPass.js"]
+          "postprocessing/ShaderPass.js", "libs/meshopt_decoder.module.js"]
 
 # the families index.html sets type in, latin and latin-ext only; Japanese and Chinese text
 # falls back to the system's own fonts (Hiragino, Yu Gothic, Noto CJK) except the city names,
