@@ -1146,6 +1146,7 @@ const npcNight = require('./npc_night');
   qNote('a queue at a signal held through more than two greens', heldQ.queues);
   qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
   qNote('held at a signal behind a car at a wall across its way', heldQ.walls);
+  qNote('a movement standing behind a walker in the road or the queue for the next junction\'s red', heldQ.beyond);
 
   // the traffic keeps out of the walls: cars whose body (most of its width, knee to 1.4 m) is in a building or a
   // landmark, over 20 s; none stands at a wall across its way for long; and no one-way road that comes to a

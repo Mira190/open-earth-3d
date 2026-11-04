@@ -6,7 +6,9 @@
 //   queues  the cars at a line through more than `max` greens of their own light (each green that
 //           begins and ends with the car still there counts; one that moves on starts again);
 // each with what holds it and every movement in its junction then; and apart, the ones of either
-// kind held by your car, a ride or you in the road (`yours`), or behind a car at a wall (`walls`).
+// kind held by your car, a ride or you in the road (`yours`), or behind a car at a wall (`walls`),
+// and the movements standing behind a walker in the road or the queue for another junction's red
+// (`beyond`: not this junction's doing).
 function heldStep({ T, max, chain: process_chain = false }) {
   const g = window.__game, A = g.cars, C = A.C, JN = g.junctions, L = A.netL;
   const idx = new Map(C.map((c, i) => [c, i]));
@@ -34,7 +36,14 @@ function heldStep({ T, max, chain: process_chain = false }) {
   const byYou = c => { for (let x = c, k = 0; x && x.line != null && k < 15; x = x.front, k++) if (x.why === 'you' || (x.why === 'person' && !(x.who >= 0))) return true; return false; };
   // (and a car at a wall across its way at the head: the roads' doing, traffic_check.js's walls)
   const byWall = c => { for (let x = c, k = 0; x && x.line != null && k < 15; x = x.front, k++) if (x.why === 'wall') return true; return false; };
-  const sort = (c, j, text) => { const any = f => f(c) || j.active.some(o => f(o.c)); (any(byYou) ? yours : any(byWall) ? walls : text.startsWith('M') ? held : queues).push(any(byYou) ? yoursAt(c) + ' ' + text.slice(1) : text.slice(1)); };
+  // (and, for a movement, the head of the cars in front of it held by something outside the junction:
+  // a walker standing in the road, or the queue for another junction's red beyond)
+  const head = c => { let x = c; for (let k = 0; k < 30 && x.front && x.front.line != null && (x.why === 'car' || x.why === 'held'); k++) x = x.front; return x; };
+  const outside = (c, j) => { const h = head(c); return (h.why === 'person' && h.who >= 0) || (h.why === 'light' && h.lineArm && h.lineArm.j !== j && JN.light(h.lineArm, h.lineEx) !== 'g') || (h.why === 'zebra'); };
+  const sort = (c, j, text) => {
+    const any = f => f(c) || j.active.some(o => f(o.c)), mvt = text.startsWith('M');
+    (any(byYou) ? yours : any(byWall) ? walls : mvt && outside(c, j) ? beyond : mvt ? held : queues).push(any(byYou) ? yoursAt(c) + ' ' + text.slice(1) : text.slice(1));
+  };
   const yoursAt = c => { const out = []; const mc = g.myCar && g.myCar(), r = g.ride && g.ride();
     const st = o => (o.D ? o.D.st : o.drv ? o.drv.st : o);
     if (mc) { const q = st(mc); out.push(`your car ${Math.hypot(q.x - c.x, q.y - c.y).toFixed(0)} m off, v ${(q.v || 0).toFixed(1)}`); }
@@ -42,7 +51,7 @@ function heldStep({ T, max, chain: process_chain = false }) {
     out.push(`you ${g.player.mode} ${Math.hypot(g.player.x - c.x, g.player.y - c.y).toFixed(0)} m off`);
     return ' {' + out.join(', ') + '}'; };
   let watched = 0, cleared = 0, cycles = 0;
-  const held = [], queues = [], yours = [], walls = [], reported = new Set();
+  const held = [], queues = [], yours = [], walls = [], beyond = [], reported = new Set();
   // and a movement in a signalled junction whose car stands still in it longer than `max` of the
   // junction's cycles: one that never leaves (#150)
   const stillIn = new Map(), cycleOf = j => j.green[0] + j.green[1] + 2 * (j.amber + 2);
@@ -81,6 +90,6 @@ function heldStep({ T, max, chain: process_chain = false }) {
       }
     }
   }
-  return { watched, cleared, cycles, held, queues, yours, walls };
+  return { watched, cleared, cycles, held, queues, yours, walls, beyond };
 }
 module.exports = { heldStep };
