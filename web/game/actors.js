@@ -647,9 +647,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (const o of nearCars) seeCar(o);
       if (was > 0) cap = cap0;
       // sideways within the footway (a little past its edge for whoever keeps far left), and speed
-      const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
+      // (out on a scramble's crosswalk, a band of stripes 4 to 6 m wide: across its width, each walker keeping to
+      // its left so the two crowds pass rather than meet face to face in the middle of the road)
+      const X = api.crossings && api.crossings.byLine.get(p.line), band = X && X.some(x => x.scramble && Math.abs(x.s - p.s) < x.kerb);
+      const hw = band ? 2.6 : Math.max(1, (FOOTW[l.c] || 3) / 2), side = band ? 1.2 + 0.5 * Math.max(-1.6, Math.min(1.6, p.side)) : p.side; // (lat: to the walker's left)
       p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
-      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, p.side) + 0.2, p.side + p.dodge));
+      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, side) + 0.2, side + p.dodge));
       // a facade beside the line, here or a little ahead: in towards the line (looked at every few steps)
       if (clear && ((p.wallStep = (p.wallStep || 0) + 1) % 3 === 0 || p.lim == null)) { net.at(p.line, p.s, tmp); p.lim = wallFree(p, want, hw); p.limWant = want; }
       if (clear && p.lim != null && p.lim !== p.limWant) want = p.limWant >= 0 ? Math.min(want, p.lim) : Math.max(want, p.lim); // (no further out on that side)
@@ -658,7 +661,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // a road ahead at a junction with signals, its traffic free to go: up to the kerb, and wait
       // there (the button pressed) for the walk signal; someone already out in the road walks on
       let atKerb = false;
-      const X = api.crossings && api.crossings.byLine.get(p.line);
       if (X && !X.some(x => Math.abs(x.s - p.s) < x.kerb - 0.3)) for (const x of X) { // (not while out in a road: over a median, it crosses the other half too)
         const d = (x.s - p.s) * p.dir;
         if (d > x.kerb - 0.4 && d < x.kerb + 3 && !api.crossings.walk(x.a)) { atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5)); }

@@ -185,6 +185,7 @@ window.OEJunctions = (function () {
       j.active = []; j.pend = []; j.near = []; j.demand = [0, 0, 0]; j.seen = -1;
     }
     // the scrambles: a fourth phase (3), the walkers', every arm red; the traffic's turns kept short
+    const STRIPE_HALF = 2.5; // (half a crosswalk's width along the road: Shibuya's are 4 to 6 m wide)
     let nScramble = 0;
     for (const sc of scrambles || []) { // ([x, y], or { node: [x, y], lines: its crosswalks [[x, y], [x, y]] })
       const [x, y] = Array.isArray(sc) ? sc : sc.node, j = nearestJ(x, y, 30);
@@ -195,6 +196,21 @@ window.OEJunctions = (function () {
       }
       j.scramble = true; nScramble++;
       j.stripes = Array.isArray(sc) ? null : sc.lines || null;
+      if (j.stripes) for (const a of j.arms.filter(a => a.in)) { // each way in stops behind the crosswalk painted across it, not in the stripes
+        const l = L[a.line], P = {}, side = (d, A, B) => { net.at(a.line, a.end ? l.len - d : d, P); return (P.x - A[0]) * (B[1] - A[1]) - (P.y - A[1]) * (B[0] - A[0]); };
+        for (const [A, B] of j.stripes) {
+          let s0 = side(0, A, B);
+          for (let d = 1; d <= Math.min(40, l.len - 4); d++) {
+            const s1 = side(d, A, B);
+            if (s0 * s1 <= 0) { // the arm crosses the stripes' line here: within the stripes?
+              const bl = Math.hypot(B[0] - A[0], B[1] - A[1]), u = ((P.x - A[0]) * (B[0] - A[0]) + (P.y - A[1]) * (B[1] - A[1])) / (bl * bl);
+              if (u > -0.1 && u < 1.1) a.back = Math.max(a.back, Math.min(l.len - 4, d + STRIPE_HALF + 1));
+              break;
+            }
+            s0 = s1;
+          }
+        }
+      }
       j.green = [16, 12, 6, 32];
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
