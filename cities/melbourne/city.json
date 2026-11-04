@@ -61,6 +61,44 @@
     "field": "altitude",
     "name": "Vicmap Elevation METRO spot heights (CC BY 4.0)"
   },
+  "bridges": {
+    "note": "The Yarra's bridges; forms from each bridge's record (Heritage Victoria and others).",
+    "skip": ["Capital City Trail Main Yarra Trail"],
+    "colour": "#7a8186",
+    "forms": {
+      "Princes Bridge": {
+        "form": "deck_arch",
+        "spans": 3,
+        "colour": "#4d5a50",
+        "rail": "painted",
+        "lamps": 4,
+        "lamp_style": "bronze",
+        "note": "1888, three wrought-iron arch spans on bluestone piers"
+      },
+      "Queens Bridge": {
+        "form": "deck_arch",
+        "spans": 5,
+        "colour": "#5d6468",
+        "rise_m": 1.5,
+        "note": "1889, five flat-arched wrought-iron girders"
+      },
+      "Sandridge Bridge": {
+        "form": "girder",
+        "colour": "#6b6e70",
+        "span_m": [36.9, 36.6, 36.3, 36.9, 31.7],
+        "note": "1888 rail bridge, a footbridge since 2006"
+      },
+      "Seafarers Bridge": {"form": "girder", "colour": "#efefeb", "spans": 1},
+      "Swan Street Bridge": {"form": "deck_arch", "spans": 3, "colour": "#7a8186"},
+      "Morell Bridge": {
+        "form": "stone_arch",
+        "spans": 3,
+        "stone": "#c9c2b4",
+        "note": "1899, three concrete arches, Victoria's first"
+      },
+      "Webb Bridge": {"form": "truss", "colour": "#9aa0a4", "spans": 3}
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#55524d",

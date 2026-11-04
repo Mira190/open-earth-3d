@@ -38,6 +38,42 @@
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
   },
+  "bridges": {
+    "note": "The Kanda River's bridges; forms from each bridge's record.",
+    "forms": {
+      "聖橋": {
+        "form": "deck_arch",
+        "spans": 1,
+        "colour": "#b9b5aa",
+        "rail": "stone",
+        "stone": "#b9b5aa",
+        "note": "1927, a parabolic concrete arch over the gorge"
+      },
+      "御茶ノ水橋": {"form": "girder", "colour": "#5d7f68", "spans": 3, "note": "1931, a steel Gerber rigid frame"},
+      "お茶の水橋": {"form": "girder", "colour": "#5d7f68", "spans": 3},
+      "昌平橋": {
+        "form": "stone_arch",
+        "spans": 1,
+        "stone": "#b6b0a2",
+        "lamps": 2,
+        "note": "1923, a concrete solid-spandrel arch, its lamps restored in 1983"
+      },
+      "万世橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#aaa395",
+        "lamps": 2,
+        "note": "1930, a double arch faced in granite"
+      },
+      "中央通り;万世橋": {"form": "stone_arch", "spans": 2, "stone": "#aaa395", "lamps": 2},
+      "和泉橋": {
+        "form": "deck_arch",
+        "spans": 1,
+        "colour": "#4a6e9a",
+        "note": "about 1930, a steel two-hinged deck arch, its sides blue"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",

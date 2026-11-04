@@ -32,6 +32,19 @@
     "field": "Stretch.Pixel Value",
     "name": "Geoscience Australia 5 m LiDAR DEM"
   },
+  "bridges": {
+    "skip": ["Aquarium Wharf", "Barangaroo Pontoon", "Rowntrees Dock", "Festival Pontoon", "Heritage Pontoon", "Pyrmont Bay Wharf"],
+    "note": "Darling Harbour's bridges; the wharves' and pontoons' gangways float and are left out.",
+    "forms": {
+      "Pyrmont Bridge": {
+        "form": "girder",
+        "colour": "#6f6a60",
+        "lamps": 4,
+        "lamp_style": "bronze",
+        "note": "1902, timber Allan trusses and the steel swing span"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#8f7f69",

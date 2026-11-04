@@ -58,6 +58,7 @@ import arcades
 import restorey
 import walls
 import woods
+import bridges
 import kerbside
 import night_lights
 import road_rules
@@ -161,7 +162,7 @@ def main():
     ground = lambda x, y: float(sample(C, dem, x, y)[0])
 
     hook = C.hook("game_surfaces")
-    surfaces = hook(scene) if hook else []
+    surfaces = (hook(scene) if hook else []) + bridges.surfaces(scene)
 
     def surface_z(x, y):
         hs = [h for s in surfaces if (h := strip_height(s, x, y)) is not None]

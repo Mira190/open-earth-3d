@@ -39,6 +39,60 @@
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)",
     "exclude": [{"at": [139.810714, 35.710045], "radius_m": 30, "name": "Tokyo Skytree"}]
   },
+  "bridges": {
+    "note": "The Sumida's bridges in the colours the Tokyo Metropolitan Government chose in 1984 and kept in 2015 (隅田川中流部著名橋色彩基本方針: no two neighbours alike, low saturation); forms and spans from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record.",
+    "forms": {
+      "吾妻橋": {
+        "form": "deck_arch",
+        "colour": "#a8392e",
+        "spans": 3,
+        "rail": "painted",
+        "lamps": 5,
+        "note": "1931, three steel solid-rib deck arches, vermilion after Senso-ji"
+      },
+      "駒形橋": {
+        "form": "half_through",
+        "colour": "#4e7398",
+        "span_m": [32.5, 74.7, 32.5],
+        "rise_m": 9.0,
+        "rail": "painted",
+        "lamps": 4,
+        "note": "1927, Japan's first half-through steel arch over the middle span, deck arches either side; blue"
+      },
+      "厩橋": {
+        "form": "through_arch",
+        "colour": "#4f8268",
+        "span_m": [47.5, 56.4, 47.5],
+        "rise_m": 8.5,
+        "rail": "painted",
+        "lamps": 4,
+        "note": "1929, the Sumida's only three-span through tied arch; green"
+      },
+      "言問橋": {
+        "form": "girder",
+        "colour": "#9aa8b0",
+        "spans": 3,
+        "lamps": 6,
+        "note": "1928, three-span steel Gerber girder, blue-grey"
+      },
+      "桜橋": {
+        "form": "x",
+        "colour": "#d9d7d0",
+        "arm_m": 6.0,
+        "spans": 3,
+        "lamps": 3,
+        "note": "1985, the Sumida's footbridge, an X in plan: 6 m arms, 20 m where they cross"
+      },
+      "隅田川橋梁": {
+        "form": "truss",
+        "colour": "#e6ecef",
+        "span_m": [51, 64, 51],
+        "truss_h": 8.0,
+        "lamps": 0,
+        "note": "Tobu Skytree Line, 1931: three-span Warren truss, repainted Skytree White in 2020"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",

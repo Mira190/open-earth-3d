@@ -15,6 +15,7 @@ built from scene.json alone, so a change to a builder lands in the game in secon
 import json
 import os
 
+import bridges
 from cityctx import city_args
 
 KEYS = ("spots", "chatter", "close")  # (city.json's own first, then the builders')
@@ -24,7 +25,7 @@ def apply(C, scene, out):
     """Set out's surfaces and KEYS from the city's hooks and city.json, as game_data.py builds them."""
     gcfg = C.cfg.get("game", {})
     hook = C.hook("game_surfaces")
-    out["surfaces"] = hook(scene) if hook else []
+    out["surfaces"] = (hook(scene) if hook else []) + bridges.surfaces(scene)   # and the bridges over the water (bridges.py)
     for k in KEYS:
         out.pop(k, None)
         if k in gcfg:

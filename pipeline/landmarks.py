@@ -22,6 +22,7 @@ places.json's, standing at z (a roof garden's, on its terraces), drawn after the
 import json
 import os
 
+import bridges
 from cityctx import city_args
 
 
@@ -31,6 +32,8 @@ def main():
     hook = city.hook("landmark_meshes")
     got = hook(scene) if hook else ({}, [])
     materials, meshes, extra = got if len(got) == 3 else (*got, {})  # extra: "props", "clip" (see above)
+    bm, bmeshes = bridges.meshes(scene)   # the bridges over the water the city does not draw itself (bridges.py)
+    materials, meshes = {**materials, **bm}, list(meshes) + bmeshes
     if city.hook("landmark_assets"):
         for f in city.hook("landmark_assets")(city.out, scene) or []:
             print(f"{f}: {os.path.getsize(os.path.join(city.out, f)) / 1e6:.2f} MB")
@@ -39,6 +42,8 @@ def main():
     out.update(extra)
     if city.hook("landmark_glows"):
         out["glows"] = city.hook("landmark_glows")(scene)
+    if bridges.glows(scene):
+        out["glows"] = out.get("glows", []) + bridges.glows(scene)
     if city.hook("landmark_demolished"):
         out["demolished"] = city.hook("landmark_demolished")(scene)
     path = os.path.join(city.out, "landmarks.json")

@@ -54,6 +54,21 @@
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
   },
+  "bridges": {
+    "min_m2": 50,
+    "deck_min_m": 2.0,
+    "widths": {"佃小橋": 4.4},
+    "forms": {
+      "佃小橋": {
+        "form": "girder",
+        "colour": "#c8402c",
+        "rail": "none",
+        "crown_m": 0.35,
+        "lamps": 0,
+        "note": "the deck under the vermilion railings city.py draws"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",
