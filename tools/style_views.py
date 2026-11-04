@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Views for tools/city_shot.js that look at a city's own facade styles: the opening view and a
 close oblique view over the densest block of the city's most characteristic style (machiya,
-haussmann, grachtenpand, mixed, terrace...), each at day, dusk and night.
+haussmann, grachtenpand, mixed, terrace...), each at day, dusk and night. Day and dusk fall on the
+tour's first date; night at 21:00 on a winter date (20 January, or 20 July south of the equator),
+when the city is dark and its homes still lit, whatever the tour's season. A street view sees past
+buildings, their eaves and the mapped and planted trees (places.json).
   python3 tools/style_views.py kyoto > views.json            # or: --style machiya
 """
 import argparse, json, math, sys
 from collections import Counter, defaultdict
 
 PREF = ['machiya', 'haussmann', 'grachtenpand', 'mixed', 'terrace', 'heritage', 'house', 'apartment']
-TIMES = [('day', '10:30'), ('dusk', 'sunset+15'), ('night', 'sunset+150')]  # well after dusk, whatever the tour's date
+TIMES = [('day', '10:30'), ('dusk', 'sunset+15'), ('night', '21:00')]
+EAVES = 1.2  # m: how far a roof's eaves may reach past its footprint
 
 ap = argparse.ArgumentParser()
 ap.add_argument('city')
@@ -19,6 +23,13 @@ ap.add_argument('--times', default='day,dusk,night', help='which of day, dusk an
 a = ap.parse_args()
 TIMES = [t for t in TIMES if t[0] in a.times.split(',')]
 B = json.load(open(f'{a.data}/{a.city}/buildings.json'))
+S = json.load(open(f'{a.data}/{a.city}/scene.json'))
+try:
+    P = json.load(open(f'{a.data}/{a.city}/places.json'))
+except OSError:
+    P = {}
+tour_date = (S['city'].get('start') or {}).get('date') or next((s['date'] for s in S['city'].get('tour') or [] if s.get('date')), [6, 21])
+DATES = {'day': tour_date, 'dusk': tour_date, 'night': [7, 20] if S['city'].get('lat', 1) < 0 else [1, 20]}
 styles = B.get('styles') or []
 style_of = [styles[m[10]] if len(m) > 10 and isinstance(m[10], int) and m[10] < len(styles) else None for m in B['b']]
 count = Counter(s for s in style_of if s)
@@ -42,6 +53,33 @@ for si, s in enumerate(B['s']):
             grid[(gi, gj)].append((xs, ys, (s[1] + s[3]) / 10))
 
 
+# the trees, on a 50 m grid, sized as web/trees.js draws them: a mapped tree (places.json trees) is
+# its species' model scaled 0.78-1.22 by its mapped height, a wood's (woods) its measured height;
+# the tallest and widest species of the city's mix, a crown from a quarter of the height up
+SP = json.load(open(f'{a.data}/../assets/trees/trees.json'))
+mix = (S.get('trees') or {}).get('mix') or SP['mix']
+kinds = [SP['species'][k] for k in mix if k in SP['species']] or list(SP['species'].values())
+TH, TW = max(k['height_m'] for k in kinds), max(max(k['crown'][:2]) for k in kinds)
+trees = defaultdict(list)
+TR = (P.get('trees') or []) + (P.get('woods') or [])
+n_mapped = len(P.get('trees') or []) // 4
+for k in range(0, len(TR) - 3, 4):
+    x, y, g, h = (v / 10 for v in TR[k:k + 4])
+    s = 0.78 + 0.44 * min(1, max(0, (h - 7) / 7)) if k // 4 < n_mapped else min(1.5, max(0.4, h / TH))
+    trees[(math.floor(x / 50), math.floor(y / 50))].append((x, y, g, TH * s * 1.08, TW / 2 * s))
+
+
+def tree_at(x, y, z, pad=0.0):
+    """a crown at (x, y, z above the datum), or within pad metres of it"""
+    gi, gj = math.floor(x / 50), math.floor(y / 50)
+    for di in (-1, 0, 1):
+        for dj in (-1, 0, 1):
+            for tx, ty, g, h, r in trees.get((gi + di, gj + dj), ()):
+                if math.hypot(x - tx, y - ty) < r + pad and g + h / 4 - pad < z < g + h + pad:
+                    return True
+    return False
+
+
 # the street frontages of each solid (edge indices), from the pipeline
 fronts = {f[0]: set(f[1::2]) for f in B.get('f', [])}
 
@@ -55,22 +93,31 @@ def inside(xs, ys, x, y):
     return c
 
 
-def roof_at(x, y):
-    """the top of the solids over (x, y), above the datum (bases are)"""
-    return max([t for xs, ys, t in grid[(math.floor(x / 50), math.floor(y / 50))] if inside(xs, ys, x, y)], default=0.0)
+def roof_at(x, y, pad=0.0):
+    """the top of the solids over (x, y), above the datum (bases are); with pad, of those within
+    pad metres (their eaves)"""
+    pts = [(x, y)] + [(x + pad * math.cos(a * math.pi / 4), y + pad * math.sin(a * math.pi / 4)) for a in range(8)] * (pad > 0)
+    return max([t for px, py in pts for xs, ys, t in grid[(math.floor(px / 50), math.floor(py / 50))] if inside(xs, ys, px, py)], default=0.0)
 
 
 def clear(cam, tgt, ground):
-    """no solid between the camera and 85% of the way to the target (heights above the ground)"""
-    for k in range(0, 18):
-        t = k / 20
+    """no solid, eaves or tree crown between the camera and 85% of the way to the target (heights
+    above the ground), a sample every metre"""
+    n = max(18, int(math.dist(cam, tgt)))
+    for k in range(0, int(n * 0.85) + 1):
+        t = k / n
         x, y, z = (cam[i] + (tgt[i] - cam[i]) * t for i in range(3))
-        if roof_at(x, y) > z + ground + 1:
+        if roof_at(x, y, EAVES if t < 0.8 else 0.0) > z + ground + 1 or tree_at(x, y, z + ground, 3.0 if t < 0.4 else 0.0):
             return False
     return True
 
 
-views = [{'name': f'open-{t}', 'time': tm} for t, tm in TIMES]
+def room(c, base):
+    """the camera stands in the open: no solid (or eaves) within 8 m round it and no crown within 5 m"""
+    return roof_at(c[0], c[1], 8.0) < base + 0.5 and roof_at(c[0], c[1], 4.0) < base + 0.5 and not tree_at(c[0], c[1], c[2] + base, 5.0)
+
+
+views = [{'name': f'open-{t}', 'date': DATES[t], 'time': tm} for t, tm in TIMES]
 CELL = 120
 for st in want:
     cells = Counter()
@@ -102,10 +149,11 @@ for st in want:
                 ex, ey = (qx - ax) / L, (qy - ay) / L
                 mx, my = (ax + qx) / 2, (ay + qy) / 2
                 for d, along, h in ((30, 16, 9), (40, 22, 12), (55, 30, 16)):
+                    if d < 0.9 * min(bt, 60):  # far enough back to see a tall front whole, not a wall filling the frame
+                        continue
                     c = [mx + ey * d + ex * along, my - ex * d + ey * along, h]
                     t = [mx + ey * 0.5, my - ex * 0.5, tz]
-                    if all(roof_at(c[0] + ox, c[1] + oy) < base + 0.5 for ox, oy in ((0, 0), (6, 0), (-6, 0), (0, 6), (0, -6))) \
-                            and clear(c, t, base):
+                    if room(c, base) and clear(c, t, base):
                         cam, tgt = c, t
                         break
                 if cam:
@@ -117,11 +165,11 @@ for st in want:
     if not cam:
         bx, by, bt, base, b = min(xs, key=lambda p: math.hypot(p[0] - x, p[1] - y))
         tgt = [bx, by, max(4.0, bt * 0.6)]  # (tops are heights above the base)
-        for d, h in ((90, 30), (110, 40), (140, 55), (180, 75), (240, 110)):
+        for d, h in ((60, 24), (90, 30), (110, 40), (140, 55), (180, 75), (240, 110)):
             for k in range(8):
                 a = math.radians(-50 + 45 * k)
                 c = [bx + d * math.cos(a), by + d * math.sin(a), max(h, tgt[2] + 15)]
-                if roof_at(c[0], c[1]) - base < c[2] - 15 and clear(c, tgt, base):
+                if roof_at(c[0], c[1], 8.0) - base < c[2] - 15 and clear(c, tgt, base):
                     cam = c
                     break
             if cam:
@@ -129,5 +177,5 @@ for st in want:
         cam = cam or [bx + 120, by - 160, 120]
     for t, tm in TIMES:
         views.append({'name': f'{st}-{t}', 'cam': [round(cam[0]), round(cam[1]), round(cam[2])],
-                      'tgt': [round(tgt[0]), round(tgt[1]), round(tgt[2])], 'agl': True, 'time': tm})
+                      'tgt': [round(tgt[0]), round(tgt[1]), round(tgt[2])], 'agl': True, 'date': DATES[t], 'time': tm})
 json.dump(views, sys.stdout, indent=1)
