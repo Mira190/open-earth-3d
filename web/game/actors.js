@@ -460,7 +460,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         return;
       }
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, hot: null, plazas: null };
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], hot: null, plazas: null };
     const near1 = (l, x, y, r) => { for (let k = 0; k < l.pts.length; k += 3) if (Math.hypot(l.pts[k] - x, l.pts[k + 1] - y) < r) return true; return false; };
     // would a walker set off at s along line `line` heading `dir` be out in a road at a crossing
     // whose walk isn't on (or, at a scramble, too short for it to reach the far kerb)? Then its button is pressed
@@ -908,6 +908,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
       }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
+      // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
+      if (atKerb) p.kw = (p.kw || 0) + dt;
+      else if (p.kw) { if (api.kerbWaits.length < 4000) api.kerbWaits.push(p.kw); p.kw = 0; }
       const target = p.pause > 0 ? 0 : Math.min(p.speed, cap);
       p.v = Math.max(0, p.v + Math.max(-3 * dt, Math.min(1.2 * dt, target - p.v)));
       // face to face with someone neither can get round: after a while, turn back
