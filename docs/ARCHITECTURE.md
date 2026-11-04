@@ -736,7 +736,7 @@ model that is not compressed.
 | `cars.glb` | 5.40 MB | 2.35 MB |
 | `helicopter.glb` | 3.75 MB | 1.69 MB |
 | `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
-| `trees.glb` (1.3 MB of it the leaf atlas, a PNG) | 2.11 MB | 1.69 MB |
+| `trees.glb`, its leaf atlas a WebP (`pipeline/glb_webp.py`: 1.30 MB as a PNG, 0.28 MB at quality 92, the cut-out alpha exact) | 2.11 MB | 0.76 MB |
 | the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
 | the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
-| all 87 shared models | 57.24 MB | 35.82 MB |
+| all 87 shared models | 57.24 MB | 34.89 MB |
