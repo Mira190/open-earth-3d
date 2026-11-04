@@ -551,7 +551,9 @@ window.OECars = (function () {
     // the nearest place on a road to (x, y), within maxD (and, given z, at about that height),
     // going the way that keeps (x, y) on the kerb side (keep: 1 left, -1 right); { line, s, dir, x, y, z, d } or null
     function place(x, y, maxD = 150, keep = 1, z = null) {
-      const q = net.nearest(x, y, maxD, z, 3.5);
+      // (a street at your level; else one up to 10 m below, which you walk down to from a raised
+      // square or a bridge over it, not one overhead)
+      const q = net.nearest(x, y, maxD, z, 3.5) || (z != null ? net.nearest(x, y, maxD, z - 5, 5) : null);
       if (!q) return null;
       net.at(q.line, q.s, tmp);
       const side = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx; // > 0: (x, y) is left of the line's direction
