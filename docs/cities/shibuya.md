@@ -326,8 +326,24 @@ windows; what makes them read as Shibuya from the pavement is what hangs on the 
 | The Taiseido block | The pharmacy's and the monja restaurant's small vertical signs on its Dogenzaka face, and the tower's three billboards stacked 15 cm apart to the tower's top at 39.4 m | PLATEAU's tower | The signs' sizes. Names invented (八千代薬品, もんじゃ 月島) |
 
 All the signs' words are in `cities/shibuya/streets.py` and drawn into `web/data/shibuya/scramble.jpg`;
-no text is shared with another city. Stills from each street at day, dusk and night, desktop and phone:
-`docs/images/shibuya/streets/`.
+no text is shared with another city. On foot at 13:00, 15 minutes after sunset and 20:30 on 3 November
+(desktop, then phone; `tools/game_shot.js shibuya tools/compare/shibuya_streets.json`):
+
+| | |
+|---|---|
+| Center Gai | ![](../images/shibuya/streets/centergai.jpg) |
+| Dogenzaka | ![](../images/shibuya/streets/dogenzaka.jpg) |
+| Bunkamura-dori | ![](../images/shibuya/streets/bunkamura.jpg) |
+| Jingu-dori at Seibu A | ![](../images/shibuya/streets/seibu.jpg) |
+| Inokashira-dori and the Seibu bridge | ![](../images/shibuya/streets/inokashira.jpg) |
+| Shibuhachi Hit Vision from the station square | ![](../images/shibuya/streets/hitvision.jpg) |
+| Jingu-dori at MODI | ![](../images/shibuya/streets/modi.jpg) |
+| The Taiseido block from the scramble | ![](../images/shibuya/streets/taiseido.jpg) |
+
+The shop glass round the scramble (`x_shop`, `st_shop`) is no longer a floodlit material: a floodlit
+material glows all over after dark, and the shop windows read as flat cream slabs. Only their panes
+light now. The cost: landmarks.json 3.92 to 4.10 MB, 93.5k to 96.6k triangles, scramble.jpg 0.71 to
+about 1.3 MB (2048 × 4096).
 
 **Not done.** The bird call of the walk signals is #133. A real GPU's frame time on the low tier is still
 unmeasured (only llvmpipe, `tools/city_shot.js`).
