@@ -125,8 +125,8 @@
    5.0
   ],
   "load_bytes": {
-   "model": 34144076,
-   "game": 37147153
+   "model": 34163818,
+   "game": 37166895
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -156,8 +156,8 @@
    1.8
   ],
   "load_bytes": {
-   "model": 6816439,
-   "game": 7375922
+   "model": 7146398,
+   "game": 7693618
   }
  },
  {
@@ -181,8 +181,8 @@
    1.3
   ],
   "load_bytes": {
-   "model": 3008576,
-   "game": 3449042
+   "model": 3008699,
+   "game": 3444986
   }
  },
  {
@@ -808,8 +808,8 @@
    4.0
   ],
   "load_bytes": {
-   "model": 22665983,
-   "game": 26223328
+   "model": 22843063,
+   "game": 26400408
   },
   "group_meta": {
    "native": "\u6771\u4eac",
