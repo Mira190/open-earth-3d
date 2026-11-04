@@ -1312,11 +1312,14 @@ drop or into the water.
     (Sydney's at 22 and 33 m through one building) is measured from its own
     height, and a building with roads through it at two levels is carved for each
     in turn (`road_passages.sh` repeats until nothing changes). Footprints stood
-    back, passages and posts left out: Osaka 473, 91, 22; Shibuya 151, 29;
-    Kyoto 111, 20; Shinjuku 106, 23; Tokyo 43, 38, 2; Amsterdam 19, 28; Asakusa
-    26, 8; Ueno 23, 5; Hong Kong 22, 18; Melbourne 18, 11; Akihabara 16, 5; Paris
-    11, 14; Sydney 11, 9. What `road_walls.js` still lists afterwards is mostly
-    alleys and roads through landmarks (Amsterdam 32 stretches, Paris 21). The
+    back, passages and posts left out: Osaka 491, 86, 22; Shibuya 151, 29;
+    Kyoto 120, 19; Shinjuku 106, 23; Ikebukuro 51, 23, 3; Tokyo 42, 38, 2;
+    Asakusa 26, 8; Roppongi 26, 6; Ueno 23, 5; Amsterdam 19, 28; Melbourne 18,
+    10; Paris 17, 14; Akihabara 15, 5; Shinagawa 14, 19; Hong Kong 13, 15;
+    Jinbocho 11, 3; Sydney 11, 9; Tsukishima 5, 5, 3. What `road_walls.js` still
+    lists afterwards is mostly alleys and roads through landmarks (Odaiba's 41
+    stretches, Amsterdam 32, Paris 21: issue #120); elevated roads with no deck
+    under them stay off the traffic's way (issue #119). The
     game check counts the car-seconds in a wall (at most 1%), the cars waiting at
     a wall and the one-way roads into one.
 - **Helipads on roofs:** a pad the data puts on the ground inside a building's
