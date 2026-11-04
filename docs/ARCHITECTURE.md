@@ -35,6 +35,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
+| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
@@ -372,6 +373,34 @@ The views switch in place, without reloading the page.
     above and from the tour cameras toward and away from a low sun:
     `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
     for `tools/city_shot.js`).
+  - past the frame, the land (issue 78). Under that haze stands the land that is
+    really there (`web/farland.js`, `pipeline/far_land.py`): a low terrain 40 km
+    either side of the frame's centre (60 km at a reef site) from Copernicus
+    GLO-30 heights at 156 m (234 m), less the trees' and buildings' share of the
+    surface model, its grid lines about 40 m apart at the frame and a few hundred
+    metres far out (256 x 256 cells, 128 x 128 on the low tier). It is coloured by
+    ESA WorldCover 2021's land cover, each class's share of a 78 m cell, in colours
+    solved from the city's own photo inside the frame against the classes' shares
+    there (held toward a default and mostly to its hue, with the built-up land
+    darkened to the drawn city's tone, `BUILT_SHADE`), with value noise at 30 to
+    300 m for what the cells average away. Water at sea level sits under the
+    sea; a lake in the hills stays, flat, in the water's colour (Lake Biwa
+    behind Higashiyama), and the open sea is not drawn over land past the frame
+    (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
+    haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
+    land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
+    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    built-up land glows: NASA's Black Marble at 500 m, raised to a power for
+    contrast (its visual product saturates over a city) and shared out by
+    WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
+    more of them the brighter the land, which fade into their mean where a pixel
+    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    with node materials under the reef's own air (`env.medium`), the land raised
+    clear of the highest tide: the ranges behind Cairns stand on Green Island's
+    horizon, and the coast's towns are a band of light at night. `?far=off`
+    leaves it out, to compare; `tools/far_views.py` writes the high views out
+    past each edge at noon, dusk and night for `tools/city_shot.js`.
+    Before and after: `docs/images/far-land/*-compare.jpg`.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
