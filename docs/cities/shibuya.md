@@ -111,7 +111,7 @@ names and the real geometry, and leaves out what belongs to the game: no
 characters, logos, invented shops or interface. What is built:
 
 - **The scramble.** Its street, buildings and signs are built at street level in
-  section 6b. Hachiko sits on his pedestal (the statue since 1948), with its plaque.
+  section 6b. Hachiko, sculpted, sits on his pedestal (the statue since 1948), with its plate.
 - **Center Gai's gate** and **SHIBUYA109** are in section 6b, the big screens in section 6.
 - **Sangenjaya**, the triangle between Setagaya-dori and Route 246: the front of a
   snack bar the game's café is drawn on (New Marina), the bathhouse Chiyo-no-yu
@@ -184,10 +184,12 @@ them, and are dark after that.
   out here (`landmarks.json` `demolished`), and the site is a construction site: a hoarding with
   the developer's notice, floodlights and a tower crane. The crane's place and height are
   illustrative.
-- **Hachiko Square.** Hachiko has faced east, towards the station, since May 1989, when his
-  pedestal was lowered so people could touch him. Metal benches ring him. The station's Hachiko
-  gate moved to the Miyamasuzaka side on 26 January 2025, and the *Hachiko Family* tile relief
-  was taken down from February 2025, so neither is drawn.
+- **Hachiko Square.** Hachiko's pedestal was lowered in May 1989 so people could touch him. He
+  looks north-east, toward the station's Hachiko exit, with the bus street at his back: photographs
+  from 2020, 2021 and July 2025 show him from behind looking toward QFRONT's side, in profile from the
+  square's south, and from the front with the buses behind him. The station's Hachiko gate moved to the
+  Miyamasuzaka side on 26 January 2025, and the *Hachiko Family* tile relief was taken down from
+  February 2025, so neither is drawn. Hachiko and his corner of the square are described in section 6b.
 - **SHIBUYA SKY's CROSSING LIGHT.** Its 18 searchlights put on a show from 19:00, on the hour and
   the half hour, to 22:00 (`light_show` `every`, `until`). Each show's length and the beams'
   movement are illustrative.
@@ -226,7 +228,10 @@ are, checked against photographs from the same viewpoints (the comparison stills
 | Center Gai's gate | Two grey posts bending over like shepherd's crooks, disc lamps at their tips, センター街 on the posts and the basketball banner between them | Photographs 2024-25 (no dimensions are published) | 5.5 m posts, the street's 9 m |
 | The koban | 渋谷警察署渋谷駅前交番 at OSM's node on Hachiko Square's north edge: two storeys of pale tile, KOBAN and its name over the door, the red lamp | OSM | Its size, 6.4 × 4.6 × 6.6 m |
 | The station's Hachiko side | OSM maps the whole station as one 15 to 29 m building, which the generic styles drew as a yellow stone palace. It is drawn as the works site it is: pale panel walls, hoardings with the works notice at its foot, a scaffold over the square carrying an advert | OSM's outline and heights; photographs 2024-25 | The scaffold's size |
-| The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands; the Taiseido bookshop's fascia | PLATEAU, photographs | All the brands are invented |
+| The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands | PLATEAU, photographs | All the brands are invented |
+| The bookshop on Center Gai's corner | The shop that has stood on the corner since 1912, on the block's chamfer facing the crossing and 3.4 m of its south side: white clapboard to the first floor, the shop window and door, a blue awning with the name in white, and the big white box sign, lit from inside, wrapping round the corner: the name in heavy blue characters inside a red outline of an open book (its spine at the corner), the romanised name in red, a blue edge at its foot. The name is invented, 大昇堂書店 (BOOKS TAISHODO), in the real one's pattern: five characters, □□堂書店, two on the side and three on the front, in the same colours. The block's corner screen and Rakuten Vision stand above the sign (7.4 m and 12.9 m) | OSM's outline (w136690966 is the whole block); photographs 2021 and 2024 | The awning (3.0-3.45 m) and the sign (3.6-6.9 m), scaled from the door |
+| Hachiko | The bronze Akita sculpted as signed distance fields (ellipsoids, tapered limbs, a collar, the curled tail, joined with smooth unions) and meshed by surface nets (`pipeline/sculptkit.py`, `cities/shibuya/hachiko.py`), 13,000 triangles with smooth normals and a cast surface's unevenness. He sits up, forelegs straight, ears up; the forelegs and paws are rubbed bright by hands. On a speckled grey granite plinth (0.95 × 0.95 × 1.15 m) with its bronze plate, 忠犬ハチ公 set vertically, on a dark granite step clad in small tiles (1.55 m square, 0.38 m) | Photographs, July 2025 (front and three-quarter); the first statue (1934) was 162 cm on a 180 cm pedestal | All the sizes, scaled from the plinth: the dog about 0.95 m from paws to ears |
+| Hachiko's corner of the square | Round him, dark granite setts laid in arcs (6.6 m out, with two dark bands); behind him a curved bed (2.4-4.4 m out, round his back) behind a 0.48 m granite wall people sit on, with two stainless rails along it and five lamps set in its face, and in the bed rocks, four black pines pruned in pads, a maple and a Kasuga lantern; on his left the memorial stone with its plate. Out on the square two round planters of upright granite strips (2.7 m across) ringed by stainless rails, each with a tree, and four cherry-blossom inlays of pale stone in the setts | Photographs 2020-25 | All positions and sizes. The planters' trees are cherries (Somei-yoshino); the shared trees have no cherry, so elms and maples stand in for them (`trees.areas` in city.json) |
 
 **Side by side.** Each still stands the camera where the photographer stood and is cropped to the
 photo's lens (`tools/compare/shibuya.json`, `tools/compare_sheet.py`); the photo first, then the model at
@@ -284,7 +289,12 @@ comes from the screens and signs while the buildings stay dark glass.
 [the empty junction, 2025-01](https://commons.wikimedia.org/wiki/File:%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9_2025%E5%B9%B41%E6%9C%8822%E6%97%A5%E3%81%AE%E6%B8%8B%E8%B0%B7_202501221341_IMG_2568.jpg) (ウィ貴公子, CC BY-SA 4.0);
 [the station side at night, 2026-10](https://commons.wikimedia.org/wiki/File:%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9_2026%E5%B9%B410%E6%9C%8819%E6%97%A5%E3%81%AE%E6%B8%8B%E8%B0%B7_202610192208_IMG_3376.jpg) (ウィ貴公子, CC BY-SA 4.0);
 [the station's Hachiko exit, 2024-07](https://commons.wikimedia.org/wiki/File:Shibuya_station_Hachiko_exit_streetscape_IMG_3287.jpg) (Bject, CC BY 4.0);
-[Hachiko, 2025-11](https://commons.wikimedia.org/wiki/File:The_Hachiko_statue_at_Shibuya,_Tokyo,_Japan.jpg) (Joli Rumi, CC BY-SA 4.0).
+[Hachiko, 2025-11](https://commons.wikimedia.org/wiki/File:The_Hachiko_statue_at_Shibuya,_Tokyo,_Japan.jpg) (Joli Rumi, CC BY-SA 4.0);
+Hachiko from the front and three-quarters, 2025-07 ([094](https://commons.wikimedia.org/wiki/File:Tokyo-Shibuya-and-Shinbashi---2025-07-13_094.jpg), [095](https://commons.wikimedia.org/wiki/File:Tokyo-Shibuya-and-Shinbashi---2025-07-13_095.jpg); RuinDig, CC BY 4.0);
+[Hachiko Square, 2020-04](https://commons.wikimedia.org/wiki/File:Hachiko_square_2020-04-19.jpg) (Asanagi, CC0);
+[Hachiko Square's planters, 2021-02](https://commons.wikimedia.org/wiki/File:Shibuya_Hachiko_2021-02-22.jpg) (しんぎんぐきゃっと, CC BY-SA 4.0);
+[Hachiko in the crowd, 2023](https://commons.wikimedia.org/wiki/File:Hachiko_(53083712909).jpg) (Dick Thomas Johnson, CC BY 2.0);
+[the bookshop's corner, 2021-03](https://commons.wikimedia.org/wiki/File:Tienda_Taiseido_en_Shibuya_(51045981721).jpg) (Antonio Tajuelo, CC BY 2.0).
 Facts: [ja.wikipedia: QFRONT](https://ja.wikipedia.org/wiki/QFRONT), [SHIBUYA109](https://ja.wikipedia.org/wiki/SHIBUYA109),
 [渋谷スクランブル交差点](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9),
 [渋谷センター街](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%BB%E3%83%B3%E3%82%BF%E3%83%BC%E8%A1%97),

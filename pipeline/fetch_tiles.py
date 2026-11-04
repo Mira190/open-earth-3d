@@ -28,6 +28,7 @@ Terrarium tiles are always downloaded as well: analysis/radar_check.py uses them
 as an independent check of building mass.
 
     python pipeline/fetch_tiles.py --city sydney
+    python pipeline/fetch_tiles.py --city paris --only dem   # the terrain alone (pipeline/refresh_terrain.py)
 
 Writes data/raw/<city>/imagery/<z>/<x>_<y>.<ext>, terrarium/15/..., dem.tif and dem.json.
 """
@@ -295,18 +296,22 @@ def dem_gsi(bbox, cfg, raw):
 
 
 def main():
-    city, _ = city_args(__doc__.splitlines()[0])
+    city, a = city_args(__doc__.splitlines()[0], lambda ap: ap.add_argument("--only", choices=["dem"], help="fetch the terrain alone"))
     city.ensure_dirs()
     bbox, cfg = city.cfg["bbox"], city.cfg
     im = cfg["imagery"]
     t = time.time()
-    if im["type"] == "xyz":
+    xs = ys = []
+    if a.only == "dem":
+        print("imagery and terrarium: skipped (--only dem)")
+    elif im["type"] == "xyz":
         ok, n, _ = fetch_xyz(bbox, im["url"], im["zoom"], im.get("format", "jpg"), os.path.join(city.raw, "imagery", str(im["zoom"])))
         print(f"imagery: z{im['zoom']}, {ok}/{n} tiles in {time.time() - t:.0f} s")
     else:
         print(f"imagery: {im['type']}, nothing to download")
-    ok, n, (xs, ys) = fetch_xyz(bbox, TERRARIUM, 15, "png", os.path.join(city.raw, "terrarium", "15"))
-    print(f"terrarium: z15, {ok}/{n} tiles")
+    if a.only != "dem" or cfg["terrain"]["type"] == "terrarium":
+        ok, n, (xs, ys) = fetch_xyz(bbox, TERRARIUM, 15, "png", os.path.join(city.raw, "terrarium", "15"))
+        print(f"terrarium: z15, {ok}/{n} tiles")
     tc = cfg["terrain"]
     if tc["type"] == "arcgis_image":
         mbbox, size = dem_arcgis(bbox, tc, city.raw)
@@ -331,7 +336,7 @@ def main():
               open(os.path.join(city.raw, "dem.json"), "w"))
     print(f"dem: {tc['type']}, {size[0]} x {size[1]} px")
     sc = cfg.get("surface_check")  # a LiDAR surface model, for analysis/lidar_heights.py
-    if sc and sc["type"] == "tile_index":
+    if sc and sc["type"] == "tile_index" and a.only != "dem":
         mbbox, size = dem_tile_index(bbox, sc, city.raw, "dsm")
         json.dump({"crs": sc["crs"], "frame_crs": sc.get("frame_crs", "EPSG:7844"), "bbox": mbbox, "size": list(size), "source": sc["type"]},
                   open(os.path.join(city.raw, "dsm.json"), "w"))
