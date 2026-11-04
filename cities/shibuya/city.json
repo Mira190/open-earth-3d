@@ -436,9 +436,20 @@
     "ferries": [],
     "crowd": {
       "pedestrians": 640,
+      "pedestrians_peak": 1600,
+      "hours": [[0, 0.32], [1, 0.16], [3, 0.07], [5, 0.1], [7, 0.42], [8, 0.72], [9, 0.55], [11, 0.55], [12, 0.7], [14, 0.62], [16, 0.72], [18, 0.88], [20, 0.86], [22, 0.66], [23, 0.5]],
+      "weekend_night": 1.15,
+      "weekend": 1.15,
+      "note": "hours: the share of the peak crowd out, by the hour: the morning commute, lunch, and the evening, busiest from 18:00 to 21:00 and busier still on Friday and Saturday nights and at the weekend (Shibuya Redevelopment Association, 2014: 260,000 people a day on weekdays, 390,000 on holidays); few after the last trains (about 00:30)",
       "cars": 200,
       "radius_m": 450,
       "style": "tokyo"
+    },
+    "look": {
+      "neon": 1,
+      "fill": [{ "at": [368.7, -1000.6], "z": 12, "w": 60, "h": 56, "colour": "#ffe4c8", "k": 1.2 }],
+      "sound": { "at": [368.7, -1000.6], "r": 170, "signal": "piyo", "station": [430.0, -1070.0] },
+      "note": "neon: the screens' light on the street (web/neon.js); fill: after dark, the light the crossing's shopfronts, floodlights and signs put on the middle of the scramble, where no street lamp stands (a light card over it, medium and high tiers); sound: the crossing's murmur, its screens' music, the walk signal's bird calls and the station's announcements (web/game/audio.js)"
     },
     "vehicles": {
       "helicopter": {
