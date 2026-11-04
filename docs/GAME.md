@@ -596,10 +596,29 @@ pipeline writes. The only city-specific code is landmark geometry in
     triangle is sampled in rows along its longest edge, every 0.22 m, so a long thin
     one costs its area; a flat top only round its edges, since its sides are
     triangles of their own. What lies under a walkable strip (the stone of a flight
-    of steps) is the strip's slab and is left out. It adds 0.2 s (Osaka) to 1.8 s
-    (Kyoto's temples) to the game's start on a desktop.
+    of steps) is the strip's slab and is left out. The fine cells are laid tile by
+    tile (32 m), the first time a query touches a tile or a few milliseconds a frame
+    ahead of the walker or the car (`nav.prefetch`).
+  - **Start-up sweeps:** at the start the game looks over the whole city for where
+    trees, lamps, poles and benches can stand, which stretches of footway the crowd
+    keeps to and where roads are cut at walls (`nav.withoutFine`). Away from the
+    landmarks that needs only the 2 m surface model. Where a landmark's 2 m cell
+    says a sweep is stopped, the triangles its fine cells are laid from are asked
+    again: whether any comes within the radius between knee and head, with the
+    fine cells' margins. So a crowd's way through a gate's passage or between
+    lanterns is kept where a walker gets through (issue #141). Laying the fine
+    cells of every tile the sweeps meet cost 1.8 s more at Kyoto's start and
+    1.0 s at Paris's; reading the triangles costs about 30 ms.
+  - **Landmark floors:** a landmark's flat top within a step of the ground is a
+    floor when it covers 2 m² and reaches a fine cell round each of its cells. A
+    material that says `"floor": false` is never one, however wide its top (a
+    wide, low offering box).
   - **No-go areas:** walkers are stopped at the edge of a colony's rocks, with
-    the city's note. A boardwalk across them stays walkable.
+    the city's note. A boardwalk across them stays walkable. A landmark's own
+    water that the city's water leaves out (Higashi Honganji's moat in Kyoto) is
+    `keep_off` in `game.json`: rings at half a metre, where a walker on the
+    ground stops without a word; its bridges are left out of them, and the
+    crowd's footways that cross them are dropped (`pipeline/game_extras.py`).
 - **Collision** (`web/game/collision.js`): every building solid is a prism, its
   published footprint between two heights, and each landmark cell is a box.
   - **Walking:** the walker is a 0.35 m capsule, moved the way Unreal's

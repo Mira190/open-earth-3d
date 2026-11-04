@@ -55,7 +55,45 @@ MATERIALS = {
     "shu": {"color": "#b5452f", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffc9a8", "glow": 0.2},   # vermilion lacquer
     "renji": {"color": "#3e6b56", "roughness": 0.75, "metalness": 0.0},  # the corridors' green lattice
     "jp_gold": {"color": "#d6a93a", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.5},
+    # Higashi Honganji's moat (honganji_moat): its still water, its granite sides and their coping; none of
+    # them solid (the 2 m cells would fill the pavement beside it): walkers keep off it by game.json "keep_off"
+    "moat_water": {"color": "#24312c", "roughness": 0.06, "metalness": 0.35, "solid": False},
+    "moat_stone": {"color": "#878176", "roughness": 0.95, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.4, "block_m": 0.9, "solid": False},
+    "moat_coping": {"color": "#a39d92", "roughness": 0.9, "metalness": 0.0, "solid": False},
+    # the bridges' granite decks, laid over the photograph (which has the gate's shadow across the one before it)
+    "moat_deck": {"color": "#aaa398", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [0.9, 1.8], "decal": True, "street_lit": True},
 }
+
+# Higashi Honganji's moat (お堀), round the temple along Karasuma-dori and its north and south sides:
+# OpenStreetMap way 1010912897 (natural=water, 2,650 m2, 3 to 4 m wide), too small for the city's water
+# (city.json water.min_area_m2), so the aerial photograph's dark strip of water lay on the paving, a blue
+# band in front of the gates. Drawn sunk MOAT_DROP_M below the pavement between granite sides, under a
+# coping, and crossed by the bridges OpenStreetMap maps over it (footways, bridge=yes): (way, the
+# bridge's line, its width along the moat, metres, measured on GSI's photograph where it shows,
+# MOAT_BRIDGE_M otherwise). The broad one before the Founder's Hall Gate spans 32 m of the moat, the
+# gate's width (31 m, Wikipedia): the photograph shows no water across it.
+MOAT_RING = [[135.7582888, 34.9895685], [135.7582892, 34.9895432], [135.7595912, 34.9895402], [135.7595909, 34.9898292],
+             [135.7596123, 34.9898542], [135.7596061, 34.9903165], [135.7595991, 34.9926007], [135.7595891, 34.9926094],
+             [135.7595828, 34.9931876], [135.7595128, 34.9932544], [135.7571322, 34.9932498], [135.757132, 34.9932231],
+             [135.7594864, 34.9932221], [135.7594902, 34.9931832], [135.75954, 34.9931829], [135.7595407, 34.9925999],
+             [135.7595615, 34.9925852], [135.7595644, 34.9911995], [135.7595764, 34.9898821], [135.759508, 34.9898837],
+             [135.7595065, 34.9895648]]
+MOAT_BRIDGES = [("w1010912912", [[135.7595368, 34.9927771], [135.7595827, 34.9927775]], None),
+                ("w1010912910", [[135.7596044, 34.9924711], [135.7595452, 34.9924711]], 14.0),
+                ("w1010912907", [[135.7596074, 34.9920907], [135.7595527, 34.9920912]], 8.0),
+                ("w1010912904", [[135.7596092, 34.9914458], [135.7595616, 34.9914458]], 6.0),
+                ("w1010912900", [[135.7596197, 34.9910006], [135.7595692, 34.9910007]], 32.0),
+                ("w1010912899", [[135.7596084, 34.9903588], [135.7595607, 34.9903592]], 9.0),
+                ("w1241562565", [[135.7590092, 34.9895684], [135.7590095, 34.9895376]], None)]
+# the bridge before the gate is not centred on OpenStreetMap's line: the photograph has it from 18.7 m
+# north of the line to 13.3 m south (way: metres north of the line its middle is)
+MOAT_BRIDGE_SHIFT = {"w1010912900": 2.7}
+# and its granite runs on east of the moat to the pavement's flags, over the gate's shadow on the
+# photograph (metres past the line's east end)
+MOAT_DECK_EAST = {"w1010912900": 4.5}
+MOAT_BRIDGE_M, MOAT_DROP_M, MOAT_COPING = 5.0, 1.1, (0.35, 0.18)  # width; water below the pavement; coping wide, high
+MOAT_WALK_M, MOAT_TEMPLE_XY = 2.5, (-370.0, -1290.0)  # the flags along the outer bank; a point inside the temple's grounds
+KEEP_OFF_PAD_M = 0.25  # a walker's half-width: the keep-off area reaches this far out over the coping
 
 
 def adjust_building(b, cls, g, geoms, ctx):
@@ -101,7 +139,7 @@ def landmark_meshes(scene):
     mast = Mesh("Kyoto Tower mast", "mast", True, floodlit=True)
     lathe(mast, x, y, z0, [(71, 3.4), (74, 2.0), (90, 0.9), (100 - BASE_M + 31, 0.12)], n=12)   # spire tip at 131 m above ground
     more, hidden = temples_and_palaces()
-    return mats, [shaft, deck, cone, mast] + more, {"hidden": hidden}
+    return mats, [shaft, deck, cone, mast] + more, {"hidden": hidden, "clip": moat_meshes()[1]}
 
 
 # ---------------------------------------------------------------- temples, the castle and the palace
@@ -255,7 +293,129 @@ def temples_and_palaces():
     # every part of a building drawn here goes with it (the parts mapped over a gate's posts, a hall's roof)
     drawn = {sd["osm"] for sd in solids if sd["si"] in set(hidden) and sd["osm"]}
     hidden += [sd["si"] for sd in solids if sd["osm"] in drawn]
-    return K.out() + approach_steps(solids), sorted(set(hidden))
+    return K.out() + approach_steps(solids) + moat_meshes()[0], sorted(set(hidden))
+
+
+def moat_shapes():
+    """Higashi Honganji's moat in the local frame: (the water less the bridges, the bridges' rectangles, the
+    moat, and the decks' reach past it: MOAT_DECK_EAST)."""
+    import cityctx
+    import shapely
+    from shapely.geometry import LineString, Polygon
+    C = cityctx.City("kyoto")
+    loc = lambda pts: [C.fwd.transform(lon, lat) for lon, lat in pts]
+    moat = Polygon(loc(MOAT_RING)).buffer(0)
+    decks, ext = [], []
+    for way, line, width in MOAT_BRIDGES:
+        a, b = (np.array(p) for p in loc(line))
+        t = (b - a) / np.linalg.norm(b - a)
+        n = np.array([-t[1], t[0]])
+        if n[1] < 0:
+            n = -n  # (to the north, or the west of a bridge running north-south)
+        mid = (a + b) / 2 + n * MOAT_BRIDGE_SHIFT.get(way, 0.0)
+        half_w, half_l = (width or MOAT_BRIDGE_M) / 2, np.linalg.norm(b - a) / 2 + 2.0
+        decks.append(Polygon([mid - t * half_l - n * half_w, mid + t * half_l - n * half_w,
+                              mid + t * half_l + n * half_w, mid - t * half_l + n * half_w]))
+        east = MOAT_DECK_EAST.get(way)
+        if east:  # (the deck's own reach: the rectangle on east past the moat)
+            e = a if a[0] > b[0] else b
+            ext.append(Polygon([mid - n * half_w, e + t * np.sign(np.dot(e - mid, t)) * east + (mid - (a + b) / 2) - n * half_w,
+                                e + t * np.sign(np.dot(e - mid, t)) * east + (mid - (a + b) / 2) + n * half_w, mid + n * half_w]).buffer(0))
+    water = moat.difference(shapely.union_all(decks))
+    return [q for q in getattr(water, "geoms", [water]) if q.area > 1.0], decks, moat, ext
+
+
+def moat_meshes():
+    """The moat: its water MOAT_DROP_M below the pavement, its granite sides down to it (the bridges'
+    faces among them), the coping along its banks and the bridges' parapets; and the clip regions,
+    where the ground is not drawn (world.js "clip")."""
+    from shapely.geometry import Point
+    T = ak.Terrain("kyoto")
+    pieces, decks, moat, ext = moat_shapes()
+    water, side = Mesh("kyoto_moat_water", "moat_water", False), Mesh("kyoto_moat_sides", "moat_stone", False, uv=True)
+    coping = Mesh("kyoto_moat_coping", "moat_coping", False)
+    cw, ch = MOAT_COPING
+    import shapely
+    for q in pieces:
+        for t in shapely.constrained_delaunay_triangles(q.segmentize(4.0)).geoms:
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            water.tri(*[np.array([x, y, T(x, y) - MOAT_DROP_M]) for x, y in cs])
+        ring = np.asarray(q.exterior.segmentize(2.0).coords)
+        if not q.exterior.is_ccw:
+            ring = ring[::-1]
+        run = 0.0
+        for a, b in zip(ring, ring[1:]):
+            L = float(np.linalg.norm(b - a))
+            if L < 1e-3:
+                continue
+            za, zb = T(*a), T(*b)
+            # (anticlockwise: the water on the left, so the face looks in at it from the right)
+            side.quad(np.array([*b, zb - MOAT_DROP_M - 0.3]), np.array([*a, za - MOAT_DROP_M - 0.3]), np.array([*a, za]), np.array([*b, zb]),
+                      [[run + L, -MOAT_DROP_M - 0.3], [run, -MOAT_DROP_M - 0.3], [run, 0.0], [run + L, 0.0]])
+            run += L
+            mid = (a + b) / 2
+            o = np.array([(b - a)[1], -(b - a)[0]]) / L  # out of the water, onto the bank or the bridge
+            on_bridge = any(d.buffer(0.05).contains(Point(*(mid + o * 0.4))) for d in decks)
+            h = 0.55 if on_bridge else ch  # a bridge's parapet, or the bank's coping
+            coping.box(np.array([*(a + o * cw / 2), za + h / 2]), np.array([*(b + o * cw / 2), zb + h / 2]), cw, h)
+    # the bridges' decks: granite flags across the moat and its coping, a little over the ground
+    deck = Mesh("kyoto_moat_decks", "moat_deck", False, uv=True)
+    for d in decks + ext:
+        g = d.intersection(moat.buffer(cw + 0.4, join_style="mitre")) if d in decks else d.difference(moat.buffer(cw + 0.4, join_style="mitre"))
+        for q in getattr(g, "geoms", [g]):
+            if q.geom_type != "Polygon" or q.area < 1.0:
+                continue
+            for t in shapely.constrained_delaunay_triangles(q.segmentize(2.0)).geoms:
+                cs = np.asarray(t.exterior.coords)[:3]
+                (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+                if ax * by - ay * bx < 0:
+                    cs = cs[::-1]
+                deck.tri(*[np.array([x, y, T(x, y) + 0.03]) for x, y in cs], [[x, y] for x, y in cs])
+    # the flags along the outer bank (the street's side, away from the temple), out to the pavement: over the
+    # photograph's strip of shade there, which the drawn pavement does not reach
+    from shapely.geometry import Polygon as Poly
+    temple = np.array(MOAT_TEMPLE_XY)
+    strips = []
+    for q in pieces:
+        ring = np.asarray(q.exterior.segmentize(2.0).coords)
+        for a, b in zip(ring, ring[1:]):
+            L = float(np.linalg.norm(b - a))
+            if L < 1e-3:
+                continue
+            o = np.array([(b - a)[1], -(b - a)[0]]) / L
+            mid = (a + b) / 2
+            if Point(*(mid + o * 0.3)).within(q):
+                o = -o  # (out of the water)
+            if np.linalg.norm(mid + o * 2.0 - temple) < np.linalg.norm(mid - temple):
+                continue  # the temple's side
+            strips.append(Poly([a + o * cw, b + o * cw, b + o * (cw + MOAT_WALK_M), a + o * (cw + MOAT_WALK_M)]).buffer(0.05, join_style="mitre"))
+    walk_g = shapely.union_all(strips).difference(moat.buffer(cw, join_style="mitre")).difference(shapely.union_all(decks + ext).buffer(0.01)) if strips else None
+    for q in (getattr(walk_g, "geoms", [walk_g]) if walk_g is not None else []):
+        if q.geom_type != "Polygon" or q.area < 0.5:
+            continue
+        for t in shapely.constrained_delaunay_triangles(q.segmentize(2.0)).geoms:
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            deck.tri(*[np.array([x, y, T(x, y) + 0.03]) for x, y in cs], [[x, y] for x, y in cs])
+    clip = [{"ring": [[round(x, 2), round(y, 2)] for x, y in q.exterior.coords[:-1]]} for q in pieces]
+    return [m for m in (water, side, coping, deck) if m.v], clip
+
+
+def keep_off(scene=None):
+    """Where walkers keep off (game.json "keep_off", rings in decimetres): the moat's water less its
+    bridges, out over the coping by a walker's half-width."""
+    pieces = moat_shapes()[0]
+    out = []
+    for q in pieces:
+        g = q.buffer(KEEP_OFF_PAD_M + MOAT_COPING[0] / 2, join_style="mitre")
+        for p in getattr(g, "geoms", [g]):
+            out.append([round(v * 10) for xy_ in p.simplify(0.1).exterior.coords[:-1] for v in xy_])
+    return out
 
 
 def gosho_court_strays():
@@ -419,4 +579,4 @@ def game_extras(scene):
             close.append(close_to(a["name"] + ", through it", o + d * a["depth"] / 2, a["z0"] + a["base_h"], start, 1.0))
         else:                      # up the steps to the doors
             close.append(close_to(a["name"] + ", up to its doors", o + d * 1.2, a["z0"] + a["base_h"], start, 1.0))
-    return {"close": close}
+    return {"close": close, "keep_off": keep_off()}

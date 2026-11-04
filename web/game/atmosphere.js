@@ -3,9 +3,10 @@
 // clear sky for its analysis). After dark the stars come out where they really are for the
 // city and the time (bright named stars, the Southern Cross among them, and a scatter of
 // fainter ones), and the moon rises in its place in its real phase. The frame goes through
-// a post stack: HDR bloom (lamps at night, glints on the water by day), then the title
-// screen's lens (lens.js: its tone curve, grade, grain and vignette), or without it the
-// world's own tone curve, a slight grade and a vignette.
+// a post stack: contact shadows (ao.js, on the medium and high tiers), HDR bloom (lamps at
+// night, glints on the water by day), then the title screen's lens (lens.js: its tone curve,
+// grade, grain and vignette), or without it the world's own tone curve, a slight grade and a
+// vignette.
 'use strict';
 window.OEAtmos = (function () {
   const RAD = Math.PI / 180;
@@ -205,7 +206,7 @@ window.OEAtmos = (function () {
     world.add(S, M);
     // the post stack, where the GPU can render to half-float targets (measured by quality.js),
     // with the tier's multisampling; elsewhere the scene goes straight to the screen
-    let composer = null, bloom = null, grade = null, lens = null, camFx = null, distRT = null, fx = null;
+    let composer = null, bloom = null, grade = null, lens = null, camFx = null, distRT = null, fx = null, ao = null;
     // the distance pass: the depth material (which skins and instances as the scene's own materials do)
     // writing each pixel's distance from the camera over FAR, packed into RGBA. (MeshDistanceMaterial
     // reads its point from a point light's shadow camera and cannot be drawn outside a shadow pass.)
@@ -225,11 +226,16 @@ window.OEAtmos = (function () {
       // with the game's reversed depth buffer (game.js), a 32-bit float depth: it resolves a few
       // millimetres at two kilometres, where 24 bits behind a 0.3 m near plane resolve a metre, so
       // distant walls and roofs no longer fight over the same pixels as the camera moves
-      const deep = renderer.capabilities.reversedDepthBuffer ? new THREE.DepthTexture(size.x, size.y, THREE.FloatType) : null;
+      // ambient occlusion (ao.js) on the medium and high tiers reads that depth, so there it is
+      // resolved from the multisampled buffer into the texture; elsewhere only its format is wanted
+      const wantAO = !!window.OEAO && QC.name !== 'low' && sky.ao !== false;
+      const deep = renderer.capabilities.reversedDepthBuffer ? new THREE.DepthTexture(size.x, size.y, THREE.FloatType)
+        : wantAO ? new THREE.DepthTexture(size.x, size.y, THREE.UnsignedIntType) : null;
       const rt = new THREE.WebGLRenderTarget(size.x, size.y, { type: THREE.HalfFloatType, samples: QC.samples, depthTexture: deep });
-      if (deep) rt.resolveDepthBuffer = false; // only its format is wanted, not the texture
+      if (deep) rt.resolveDepthBuffer = wantAO;
       composer = new THREE.EffectComposer(renderer, rt);
       composer.addPass(new THREE.RenderPass(world, camera));
+      if (wantAO) { ao = OEAO.create(renderer, camera, { tier: QC.name }); composer.addPass(ao.pass); }
       bloom = new THREE.UnrealBloomPass(size.clone(), 0.15, 0.4, 6.0);
       if (window.OELens) OELens.tameBloom(bloom); // no black frame from a glint (lens.js)
       composer.addPass(bloom);
@@ -252,7 +258,7 @@ window.OEAtmos = (function () {
     const q = new THREE.Quaternion();
     let night = 0;
     const api = {
-      composer, lens, stars: S, moon: M, keys, // (keys: the grade by the hour, for a film's lens: tools/film/director.js)
+      composer, lens, ao, stars: S, moon: M, keys, // (keys: the grade by the hour, for a film's lens: tools/film/director.js)
       // per frame: the sky's turn for this moment, the moon's place and phase, the clouds' drift
       update(utcMs, tSec, U) {
         night = U.uNight.value;
@@ -275,6 +281,7 @@ window.OEAtmos = (function () {
         q.copy(camera.quaternion).invert();
         M.material.uniforms.uSun.value.copy(Wd.sunDir).applyQuaternion(q);
         M.material.uniforms.uOpacity.value = (0.25 + 0.75 * night) * (1 - 0.92 * ov);
+        if (ao) ao.update(night);
         if (bloom) { bloom.threshold = 6.0 - 4.4 * night; bloom.strength = 0.15 + 0.15 * night; }
         if (lens) {
           const L = lens.uniforms;
@@ -313,7 +320,7 @@ window.OEAtmos = (function () {
         if (camFx) { cam.updateMatrixWorld(); prevVP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse); }
         if (composer) composer.render(); else renderer.render(scene, cam);
       },
-      dispose() { if (distRT) distRT.dispose(); if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
+      dispose() { if (distRT) distRT.dispose(); if (ao) ao.pass.dispose(); if (composer) { composer.renderTarget1.dispose(); composer.renderTarget2.dispose(); } },
     };
     return api;
   }
