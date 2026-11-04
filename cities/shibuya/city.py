@@ -2232,7 +2232,11 @@ CROSSING_SCREENS = [
      "clips": ["live", "soda", "fashion", "phone", "noodle"], "phase": 6.0, "pitch": 0.016},
     {"name": "Shibuya Ekimae Vision banner", "building": "渋谷駅前ビル", "w": 21.6, "h": 4.176, "roof": True, "lift": 1.0, "along": 12.5,
      "clips": ["live", "soda", "fashion", "phone", "noodle"], "phase": 10.0, "pitch": 0.016},
-    {"name": "Shibuhachi Hit Vision", "building": "渋谷駅前ビル", "w": 24.32, "h": 17.28, "roof": True, "lift": 1.0, "along": -12.0,
+    # Shibuhachi Hit Vision (HIT, June 2014; about 420 m2) is bent round the Oto building's south-east corner:
+    # its foot runs north along the face over the station square and turns onto the south face, the corner
+    # rounded on a 6 m radius (photographs 2023-25; the bend's place and radius are estimates)
+    {"name": "Shibuhachi Hit Vision", "building": "渋谷駅前ビル", "path": [[311.0, -1055.9], [319.2, -1054.3], [322.4, -1037.9]], "round": 6.0,
+     "w": 24.32, "h": 17.28, "roof": True, "lift": 1.0,
      "clips": ["movie", "beauty", "game", "info", "music"], "phase": 9.5, "pitch": 0.016, "sync": False},
     # NE: Starts Vision SHIBUYA (formerly Glico Vision), 6.356 x 3.456 m on the roof of the narrow Sanzenri
     # building beside MAGNET (not a footprint of its own in the open data: MAGNET's west end stands for it)
