@@ -66,6 +66,89 @@ def oneway(restrictions, t=0.5):
     return way
 
 
+DAYS = ("Mo", "Tu", "We", "Th", "Fr", "Sa", "Su")
+ALL_DAYS = 127
+
+
+def windows(during):
+    """The times an OSM opening_hours value (Overture's `when.during`) covers, as [[days, m0, m1], ...]:
+    days a bit mask (1 Monday .. 64 Sunday), m0..m1 minutes of the day (m1 up to 1440); one past
+    midnight is split, its morning part on the next day. Overture drops the spaces
+    ("Mo-Fr07:30-08:30", "07:30-08:3016:00-18:00"). None for what it can't read (sunrise, public
+    holidays, months), which the game then leaves out."""
+    import re
+    if not during:
+        return None
+    d = during.strip()
+    if d == "24/7":
+        return [[ALL_DAYS, 0, 1440]]
+    out = []
+    for part in d.split(";"):
+        part = part.strip()
+        if not part:
+            continue
+        m = re.match(r"^((?:(?:Mo|Tu|We|Th|Fr|Sa|Su)(?:-(?:Mo|Tu|We|Th|Fr|Sa|Su))?,?\s*)*)(.*)$", part)
+        dpart, rest = m.group(1), m.group(2).strip()
+        mask = 0
+        for a, b in re.findall(r"(Mo|Tu|We|Th|Fr|Sa|Su)(?:-(Mo|Tu|We|Th|Fr|Sa|Su))?", dpart):
+            i, j = DAYS.index(a), DAYS.index(b or a)
+            k = i
+            while True:
+                mask |= 1 << k
+                if k == j:
+                    break
+                k = (k + 1) % 7
+        mask = mask or ALL_DAYS
+        times = re.findall(r"(\d{1,2}):(\d\d)-(\d{1,2}):(\d\d)", rest)
+        if re.sub(r"(\d{1,2}):(\d\d)-(\d{1,2}):(\d\d)|[,\s]", "", rest):
+            return None  # (something else: sunrise, PH, months, "off")
+        if not times:
+            out.append([mask, 0, 1440])
+        for h0, n0, h1, n1 in times:
+            m0, m1 = int(h0) * 60 + int(n0), int(h1) * 60 + int(n1)
+            if m1 <= m0:
+                m1 += 1440
+            m0 = min(m0, 1440)
+            if m1 <= 1440:
+                out.append([mask, m0, m1])
+            else:  # (past midnight: its morning on the next day)
+                if m0 < 1440:
+                    out.append([mask, m0, 1440])
+                nxt = ((mask << 1) | (mask >> 6)) & ALL_DAYS
+                out.append([nxt, 0, min(1440, m1 - 1440)])
+    return out or None
+
+
+def timed_access(restrictions, t=0.5):
+    """The times a segment is shut to cars at fraction t along it, as [[way, shut, windows], ...]:
+    way 0 both ways, +1 for a car going with its points, -1 against them; shut 1 while the windows
+    last (OSM's access=no @ (Mo-Fr 07:30-08:30), as Japan's school roads are in the morning), 0
+    outside them (a street shut to cars but for their deliveries' hours, as Amsterdam's are)."""
+    out, base = [], {0: False, 1: False, -1: False}
+    def car_rule(w):
+        return not (w.get("mode") and not MOTOR & set(w["mode"])) and not (w.get("using") or w.get("recognized") or w.get("vehicle"))
+    rules = []
+    for a in restrictions or []:
+        w, b = a.get("when") or {}, a.get("between") or [0.0, 1.0]
+        if not b[0] <= t <= b[1] or not car_rule(w):
+            continue
+        way = 1 if w.get("heading") == "forward" else -1 if w.get("heading") == "backward" else 0
+        if not w.get("during"):
+            if a.get("access_type") == "denied" and way == 0:
+                base[0] = True
+            continue
+        win = windows(w["during"])
+        if win is None or win == [[ALL_DAYS, 0, 1440]]:
+            continue
+        rules.append((a.get("access_type"), way, win))
+    for kind, way, win in rules:
+        if kind == "denied":
+            out.append([way, 1, win])
+        elif kind in ("allowed", "permissive", "delivery", "destination") and base[0]:
+            out.append([way, 0, win])
+    return out
+
+
 def allowed_for_cars(w):
     """Does a rule with this `when` apply to cars, all the time?"""
     w = w or {}
@@ -156,13 +239,21 @@ def turns(C, con, roads, lines):
 
     for o in roads:
         o.pop("nt", None)
+        o.pop("ntw", None)
     n = 0
     for i, (_, g, _, rules) in enumerate(segs):
         if not rules or i not in by_seg:
             continue
         for r in rules:
             w, seq = r.get("when") or {}, r.get("sequence") or []
-            if not seq or not allowed_for_cars(w):
+            win = None
+            if w.get("during") and allowed_for_cars({k: v for k, v in w.items() if k != "during"}):
+                win = windows(w["during"])  # a turn banned at some hours: "ntw", with the times
+                if win is None:
+                    continue
+            elif not seq or not allowed_for_cars(w):
+                continue
+            if not seq:
                 continue
             j = ids.get(seq[-1]["segment_id"])
             x0, x1 = connector_at(i, seq[0]["connector_id"]), connector_at(j, seq[-1]["connector_id"]) if j is not None else None
@@ -180,6 +271,12 @@ def turns(C, con, roads, lines):
                         continue
                     if r.get("final_heading") in ("forward", "backward") and (e2 == 0) != ((r["final_heading"] == "forward") == same2):
                         continue  # into it the other way
+                    if win:
+                        ntw = roads[k].setdefault("ntw", [])
+                        if [e, k2, e2, len(seq), win] not in ntw:
+                            ntw.append([e, k2, e2, len(seq), win])
+                            n += 1
+                        continue
                     nt = roads[k].setdefault("nt", [])
                     if [e, k2, e2, len(seq)] not in nt:
                         nt.append([e, k2, e2, len(seq)])
@@ -201,6 +298,22 @@ def signs(C, con, extent):
             if extent.contains(q):
                 out[k].append((q.x, q.y))
     return out
+
+
+def piece_times(line, segs, tree):
+    """The times a road piece is shut to cars ("tb": timed_access, its ways turned to the piece's
+    points), by the segment nearest its middle; [] if none."""
+    p = line.interpolate(0.5, normalized=True)
+    cand = [i for i in tree.query(p.buffer(1.5)) if segs[i][1].distance(p) < 1.5]
+    if not cand:
+        return []
+    i = min(cand, key=lambda i: segs[i][1].distance(p))
+    g = segs[i][1]
+    t = g.project(p)
+    a, b = line.interpolate(max(0.0, line.project(p) - 1.0)), line.interpolate(min(line.length, line.project(p) + 1.0))
+    c, d = g.interpolate(max(0.0, t - 1.0)), g.interpolate(min(g.length, t + 1.0))
+    same = (b.x - a.x) * (d.x - c.x) + (b.y - a.y) * (d.y - c.y) >= 0
+    return [[way if same else -way, shut, win] for way, shut, win in timed_access(segs[i][2], t / max(g.length, 1e-9))]
 
 
 def piece_way(line, segs, tree):
@@ -237,7 +350,7 @@ def main(cities):
         C = City(cid)
         segs = segments(C, con)
         tree = shapely.STRtree([g for _, g, _ in segs])
-        n1 = 0
+        n1 = n2 = 0
         lines = []
         for o in roads:
             p = np.array(o["p"], dtype=float).reshape(-1, 3)[:, :2] / 10
@@ -247,6 +360,12 @@ def main(cities):
             if way:
                 o["o"] = way
                 n1 += 1
+            o.pop("tb", None)
+            tb = piece_times(lines[-1], segs, tree) if len(p) > 1 else []
+            tb = [r for r in tb if not (way and r[0] == -way)]  # (not the way no car goes anyway)
+            if tb:
+                o["tb"] = tb
+                n2 += 1
         nt = turns(C, con, roads, lines)
         # a sign's height: the road's nearest point (the game seats props on the ground or deck there)
         pts = np.concatenate([np.array(o["p"], dtype=float).reshape(-1, 3) for o in roads]) / 10
@@ -259,7 +378,7 @@ def main(cities):
                 flat += [round(x * 10), round(y * 10), round(z * 10)]
             props[k] = flat
         json.dump(game, open(out, "w"), separators=(",", ":"))   # as game_data.py writes it
-        print(f"{cid}: {n1} of {len(roads)} road pieces one-way, {nt} banned turns; " + ", ".join(f"{len(v)} {k}" for k, v in found.items()))
+        print(f"{cid}: {n1} of {len(roads)} road pieces one-way, {n2} shut to cars at some hours, {nt} banned turns; " + ", ".join(f"{len(v)} {k}" for k, v in found.items()))
 
 
 if __name__ == "__main__":

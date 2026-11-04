@@ -365,6 +365,7 @@
   },
   "night_ambient": 0.08,
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Tokyo Pilgrimage: Shinjuku 東京巡礼・新宿",
     "local_name": "Tokyoite",
     "water_name": "the river",
@@ -1085,6 +1086,18 @@
           "Welcome to Shinjuku Gyoen. I've volunteered in this garden for twelve years.",
           "A film made this Japanese garden famous in 2013: two strangers keep meeting in the shelter by the pond on rainy mornings. The shelter is real, and so is the rain: tsuyu, the rainy season, runs from early June to mid July.",
           "Sit in the shelter and look at the water. Then take the path under the wisteria trellis to the Kyu-Goryotei, the pavilion Taiwan's Japanese residents gave in 1927. The maples go red at the end of November."
+        ],
+        "choices": [
+          {
+            "text": "Wait for the rain in the shelter",
+            "action": "set_weather",
+            "weather": "rain",
+            "date": [6, 18],
+            "time": "08:10"
+          },
+          {
+            "text": "I'll walk the garden as it is"
+          }
         ],
         "steps": [
           {
