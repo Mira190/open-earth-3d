@@ -1175,11 +1175,20 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; } // (a ride pulling in still reaches into the lane)
         }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
+        // (along its way ahead, P, round a corner as it will drive it: a line straight on from its heading
+        // crossed the corner of a turn, and a car braked to a stop in the junction for the walk-signal post
+        // on that corner, which its way never comes near, and the cars behind it ran into it; Roppongi,
+        // tools/clip_check.js. With no way ahead, straight on as before)
         if (posts) posts.near(c.x + fx * reach / 2, c.y + fy * reach / 2, reach / 2 + 1, q => {
           if (Math.abs(q.z - c.z) >= LEVEL) return;
-          const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy;
-          if (a + q.r < c.half || a > reach || Math.abs(-dx * fy + dy * fx) >= c.hw + q.r + 0.1) return;
-          const g = a - q.r - c.half;
+          const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy, r = c.hw + q.r + 0.1;
+          let g = Infinity;
+          if (np) {
+            if (a < c.half - r) return; // (beside or behind it)
+            const r2 = r * r;
+            for (let k = 0; k < np; k++) { const ex = P[2 * k] - q.x, ey = P[2 * k + 1] - q.y; if (ex * ex + ey * ey < r2) { g = k * step - q.r; break; } }
+            if (g === Infinity && a + q.r >= c.half && a <= c.half + step && Math.abs(-dx * fy + dy * fx) < r) g = a - q.r - c.half; // (between its bumper and the first point)
+          } else if (a + q.r >= c.half && a <= reach && Math.abs(-dx * fy + dy * fx) < r) g = a - q.r - c.half;
           if (g < gap) { gap = g; byCar = true; front = null; why = 'post'; }
         });
         // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
