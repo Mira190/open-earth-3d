@@ -8,7 +8,10 @@ web/data/<id>/game.json:
 
   "nl": n       lanes each way (1 or 2: the game drives at most two each way), where OSM tags them:
                 a one-way road's `lanes`; a two-way road's `lanes:forward` and `lanes:backward`
-                (the fewer of the two), or half its `lanes` less any `lanes:both_ways`
+                (the more of the two), or half its `lanes` less any `lanes:both_ways`, rounded up:
+                the game keeps one count for both ways, and the traffic only takes a main road
+                down to one lane each way, so a road with two lanes one way and one the other
+                (lanes=3) keeps its second lane where it has one
   "tl": [[end, "l|t|tr"], ...]
                 the lane arrows of the traffic coming up to the piece's end (0 its first point, 1
                 its last), one entry per OSM lane from left to right as the driver sees them,
@@ -16,9 +19,8 @@ web/data/<id>/game.json:
                 at an end where the OSM way itself ends (where its arrows are painted)
 
 The traffic (web/game/junctions.js) reads the arrows: a movement goes from the lanes whose arrows show
-its way. It doesn't read the counts yet (lanesOf keeps two each way on a main road, one elsewhere):
-where the count changes from one piece to the next the cars' merging can't keep up, and Sydney's
-jams under tools/traffic_check.js more than double. The tags are cached in data/raw/<id>/osm_ways.json.
+its way. It reads the counts where they take a main road down to one lane each way, smoothed along
+the road between junctions (lanesOf, laneRun). The tags are cached in data/raw/<id>/osm_ways.json.
 
     python pipeline/fetch_overture.py --city sydney --only segment   # with records
     python pipeline/road_lanes.py                  # every city with roads
@@ -103,10 +105,10 @@ def lanes_each_way(t, oneway):
         return num(t.get("lanes"))
     f, b = num(t.get("lanes:forward")), num(t.get("lanes:backward"))
     if f and b:
-        return min(f, b)
+        return max(f, b)
     n = num(t.get("lanes"))
     if n:
-        return max(1, (n - (num(t.get("lanes:both_ways")) or 0)) // 2)
+        return max(1, (n - (num(t.get("lanes:both_ways")) or 0) + 1) // 2)
     return None
 
 

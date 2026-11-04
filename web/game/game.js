@@ -753,6 +753,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const p = rt.pts[nd.k], a = p && Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140 ? junctions.armAt(nd.line, nd.end) : null;
       if (a && a.j.sig) sig.push(P.cum[Math.min(nd.k, P.cum.length - 1)]);
     }
+    for (const m of rt.mids || []) if (m.X.sig && Math.hypot(m.X.x - pickup.x, m.X.y - pickup.y) < 140) sig.push(m.at); // (and the crossings' lights between junctions)
+    sig.sort((p, q) => p - q);
     const drive = OECars.chauffeur(STUB, rt, opts).total();
     return { rt, opts, drive, sig, T: drive + SIG_WAIT * sig.length };
   }
@@ -949,7 +951,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const o = ride;
     o.phase = 'leaving'; o.t0 = clockT;
     const pl = placeOf(o.drv.st), pts = pl ? roads.onward({ to: pl }, 260) : [];
-    if (pts.length > 1) { o.drv.leave(); o.drv = OECars.chauffeur(o.C, { pts, end: false, nodes: pts.nodes }, { keep: keepSign, from: o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v, lights: junctions, now: rideClock }); }
+    if (pts.length > 1) { o.drv.leave(); o.drv = OECars.chauffeur(o.C, { pts, end: false, nodes: pts.nodes, mids: pts.mids }, { keep: keepSign, from: o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v, lights: junctions, now: rideClock }); }
   }
   function leaveRide() {
     const o = ride;
@@ -1271,6 +1273,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // ------------------------------------------------------------ clock: 30 times real time by default, as in GTA
   const clock = { y: CITY.year || new Date().getFullYear(), m: 3, d: 21, min: 600, scale: 30, frozen: false };
   let sun = null, clockUtc = Date.now();
+  // the traffic's rules by the hour (junctions.js: turns banned and streets shut at some hours) go by this clock
+  let dowKey = '', dow = 0;
+  junctions.setClock(() => { const k = `${clock.y}-${clock.m}-${clock.d}`; if (k !== dowKey) { dowKey = k; dow = (new Date(Date.UTC(clock.y, clock.m - 1, clock.d)).getUTCDay() + 6) % 7; } return { dow, min: clock.min }; });
   function setClock(y, m, d, min) {
     const t = new Date(Date.UTC(y, m - 1, d) + Math.floor(min / 1440) * 864e5);
     Object.assign(clock, { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate(), min: ((min % 1440) + 1440) % 1440 });
