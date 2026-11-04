@@ -33,6 +33,9 @@ import struct
 import sys
 
 import bpy
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "pipeline"))
+from meshopt import compress  # noqa: E402  (meshopt-compress each model written: issue 148)
 import numpy as np
 from mathutils import Matrix
 
@@ -298,6 +301,7 @@ def export(rig, path, colour_px=1024, data_px=512, mesh=True, clips=True, shared
                               **({} if clips and mesh else {"export_vertex_color": "NONE"}))
     before = os.path.getsize(path)
     slim_glb(path, shared=shared, quantize=not clips)
+    compress(path)
     print(f"wrote {path} ({os.path.getsize(path) / 1e6:.2f} MB; {before / 1e6:.2f} MB as exported)")
 
 

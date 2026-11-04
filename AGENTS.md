@@ -152,6 +152,10 @@ The owner should not be the one who finds the bug.
   (`game.vehicles.car`) and its vessel names in `game.vehicles` and `game.ferries`, its
   ferry model in `game.ferry_style.model`, the side of the road it keeps to in
   `game.keep`, and its tree species in `trees.mix`, all in `cities/<id>/city.json`.
+- The shared models are meshopt-compressed (`EXT_meshopt_compression`) as the last step of each build
+  script (`pipeline/meshopt.py`, needs Node); `tools/check.sh` fails on one that is not. A model
+  written another way: `node pipeline/meshopt_glb.mjs <file.glb>`. Every `GLTFLoader` the pages make
+  has three.js's `MeshoptDecoder` set (`web/index.html`, `web/reef/people.js`).
 - To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.
