@@ -340,13 +340,15 @@ vec3 oeGlitter(vec3 spec, vec2 xz, float camD, float lostK, float t) {
       uFloor: { value: shore && shore.floor_m || 4 },
       uEdge: { value: opts.edge || 0 },
       uRefl: { value: null }, uReflOn: { value: 0 }, uReflMat: { value: new THREE.Matrix4() }, uWind: { value: W.wind_ms ?? 5 },
-      uWake: { value: null }, uWakeBox: { value: new THREE.Vector4(0, 0, 1, 0) }
+      uWake: { value: null }, uWakeBox: { value: new THREE.Vector4(0, 0, 1, 0) },
+      // where the bottom is not to show (setCover): under the decks the game draws over the water
+      uCover: { value: null }, uCoverBox: { value: new THREE.Vector4(0, 0, 1, 1) }, uCoverOn: { value: 0 }
     };
     const C = sizes.length;
     const COMMON = `
 uniform sampler2D uDisp[${C}], uDeriv[${C}], uShore; uniform float uSize[${C}], uTime, uHs, uShoreOn, uClarity, uFloor, uReflOn, uWind;
 uniform vec4 uShoreBox; uniform float uEdge; uniform vec3 uDeep, uShallow, uSlopes; uniform float uScatter; uniform sampler2D uRefl; uniform mat4 uReflMat;
-uniform sampler2D uWake; uniform vec4 uWakeBox;
+uniform sampler2D uWake; uniform vec4 uWakeBox; uniform sampler2D uCover; uniform vec4 uCoverBox; uniform float uCoverOn;
 // the wake field (x, z of its centre, its size, on): foam drawn by passing vessels
 float wakeAt(vec2 xz) {
   if (uWakeBox.w < 0.5) return 0.0;
@@ -440,6 +442,12 @@ ${sizes.map((_, c) => `  { float k = 1.0 - smoothstep(0.25, 1.0, fp * 128.0 / uS
   float shFar = smoothstep(0.5 * SHORE_REACH, SHORE_REACH, sh0.x);
   wAlpha = max(wAlpha, mix(mix(mix(0.9, 0.55, sh0.z), 0.0, sh0.y), 1.0, shFar) * sh0.w);
   wAlpha = max(wAlpha, wFoam);
+  // under a deck the game draws (a bridge, an expressway over a river) the photograph of that deck is on
+  // the bottom, and was seen through the water as a road on the riverbed (issue 65): the water closes over it
+  if (uCoverOn > 0.5) {
+    vec2 cuv = vec2((vXZ.x - uCoverBox.x) / uCoverBox.z, (uCoverBox.y + vXZ.y) / uCoverBox.w);
+    if (all(greaterThan(cuv, vec2(0.0))) && all(lessThan(cuv, vec2(1.0)))) wAlpha = max(wAlpha, texture(uCover, cuv).r);
+  }
   // towards the edge of the shore map (the model's frame) the water closes over the bottom, which is
   // not drawn beyond it, so a sea that runs on past the frame shows no seam there. It is closed
   // across the whole of the edge haze (uEdge, world.js edgeHaze): the bottom hazes out there but
@@ -584,7 +592,11 @@ vec4 shoreAt(vec2 xz) {
 
     function dispose() { fft.dispose(); geo.dispose(); mat.dispose(); wakeRT.dispose(); if (refl) { refl.getRenderTarget().dispose(); refl.material.dispose(); } }
     // wakes: set by whatever puts meshes on the wake layer, so a scene without any skips the pass
-    const api = { mesh, material: mat, update, patchGround, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false };
+    // a mask (red: how much the water hides the bottom) over the box x0, y1 (its top), w, h in local metres
+    function setCover(tex, x0, y1, w, h) {
+      u.uCover.value = tex; u.uCoverBox.value.set(x0, y1, w, h); u.uCoverOn.value = tex ? 1 : 0;
+    }
+    const api = { mesh, material: mat, update, patchGround, setCover, dispose, Hs, fft, uniforms: u, reflections: !!refl, N, wakeLayer: WAKE_LAYER, wakes: false };
     return api;
   }
 

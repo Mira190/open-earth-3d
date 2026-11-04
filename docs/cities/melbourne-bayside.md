@@ -137,6 +137,23 @@ none (2 buildings of 15 floors or more).
 
   Both are drawn meshes only. They are not in the surface model, so they cast
   no shade in the analyses.
+- **The Palais Theatre** (Henry E. White, 1927; restored 2017-2019 in its
+  original sand colour). It is drawn on its mapped footprint (OSM w15477104,
+  34 by 78 m), which it hides; the solid stays in the surface model:
+  - the front to the Lower Esplanade between two square towers, each with a tall
+    slit window, an upper stage with an arched window and Spanish Baroque corner
+    pinnacles, and a zinc dome and spire;
+  - between them the curved parapet with PALAIS THEATRE in raised capitals
+    (`archkit.letters`, set in Cinzel, SIL Open Font License, from Google Fonts),
+    the crest and flagpole, the arched recess with five tall windows and lattice
+    panels, the glazed loggia of three arches over the balustrade, and the
+    canopy with its sign band over the doors;
+  - behind, the auditorium under a shallow barrel roof.
+
+  No drawings are published. The front's proportions are scaled from a 2025
+  photograph (Wikimedia Commons, "Palais Theatre St Kilda 2025.jpg") to the
+  footprint's 34 m, which puts the spires at about 30 m and the parapet's crown
+  at 25 m; the auditorium's 20 m is the mapped height.
 - **St Kilda Pier.** The pier was rebuilt and reopened in December 2024. It is
   mapped, and the game walks it on its deck height, like Sydney's wharves. Two
   boardwalks (`game.boardwalks`) are drawn as timber decks at the same height:

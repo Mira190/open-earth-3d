@@ -1000,23 +1000,40 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
     const pierGeo = extrude((P.piers || []).map((r, i) => [-1, 0, 0, Math.round(D.pierZ[i] * 10), r]), () => pierColour);
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
-    piers.material.onBeforeCompile = streetLit;
+    // the deck's top shows the aerial photo, as a flat roof does (buildings.js uPhoto: the ground tiles in
+    // one canvas): the parking bays, kerbs and sheds the photograph has of the wharf, not a plain slab
+    // (issue 65); its sides stay concrete
+    piers.material.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, { uPhoto: U.uPhoto, uPhotoOn: U.uPhotoOn, uFrame: U.uFrame, uPhotoGrade: PG });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vDeckW; varying float vDeckUp;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvDeckW = (modelMatrix * vec4(transformed, 1.0)).xyz; vDeckUp = normal.y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; varying vec3 vDeckW; varying float vDeckUp;
+${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
+  if (uPhotoOn > 0.5 && vDeckUp > 0.7) {
+    vec2 duv = vec2((vDeckW.x - uFrame.x) * uFrame.z, (-vDeckW.z - uFrame.y) * uFrame.w);
+    diffuseColor.rgb = mix(diffuseColor.rgb, photoGrade(texture2D(uPhoto, duv).rgb), 0.8);
+  }`);
+      streetLit(sh);
+    };
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
     // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
     const walks = (D.G && D.G.boardwalks) || [];
     if (walks.length) {
       const top = Math.round((D.G.pier_deck_m || 2.2) * 10), timber = { wall: lin('#6f5a44'), roof: lin('#8a7258'), code: 3, windows: false };
-      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), piers.material);
+      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
+      deck.material.onBeforeCompile = streetLit;
       deck.castShadow = deck.receiveShadow = true;
       world.add(deck);
     }
 
     // trees mapped in OSM, then those planted from the woods' and parks' canopy (pipeline/woods.py,
-    // with measured heights; a third of them on a small device): the shared Blender species
+    // with measured heights; a third of them on a small device), then a landmark's own (landmarks.json
+    // "trees", [x, y, z, height] dm: a roof garden's, standing on its terraces): the shared Blender species
     // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
     // heights are not mapped (7-14 m spread)
-    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || []), nT = TR.length / 4;
+    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
       try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
@@ -1054,6 +1071,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
       // a bridge's deck, or paving ("street_lit"), under the street lights and the screens' glow
       if ((m.pattern === 'deck_zones' || m.street_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
+      if (m.pattern === 'deck_zones' || m.street_lit) lmMats[k].userData.paving = true; // ground you walk on: it gets wet in the rain (weather.js)
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
       if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
