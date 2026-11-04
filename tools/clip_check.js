@@ -260,7 +260,7 @@ const TOL = {
       // your car and a ride
       const mine = [];
       if (g.myCar()) { const s = g.myCar().D.st, c = g.myCar().C; mine.push({ x: s.x, y: s.y, z: s.z, h: s.h, hl: c.half, hw: c.hw, what: 'your car' }); }
-      if (g.ride()) { const s = g.ride().drv.st, c = g.ride().C; mine.push({ x: s.x, y: s.y, z: s.z, h: s.h, hl: c.half, hw: c.hw, what: 'the ride' }); }
+      if (g.ride()) { const s = g.ride().drv.st, c = g.ride().C; mine.push({ x: s.x, y: s.y, z: s.z, h: s.h, hl: c.half, hw: c.hw, what: 'the ride', v: s.v }); }
       for (const m of mine) boxes.forEach((a, i) => {
         if (Math.abs(a.z - m.z) >= LEVEL) return;
         const d = H.boxBox(a, m);
@@ -275,7 +275,7 @@ const TOL = {
         for (const a of allCars) {
           if (Math.abs(a.z - q.z) >= 2 || Math.abs(a.x - q.x) > a.hl + 1 || Math.abs(a.y - q.y) > a.hl + 1) continue;
           const d = H.boxCircle(a, q.x, q.y, 0.2);
-          if (d > TOL.people.deep) { o.people++; H.note('walker in car', d, { x: +q.x.toFixed(1), y: +q.y.toFixed(1), state: q.state, car: a.what || 'traffic' }); }
+          if (d > TOL.people.deep) { o.people++; H.note('walker in car', d, { x: +q.x.toFixed(1), y: +q.y.toFixed(1), state: q.state, v: +(q.v || 0).toFixed(2), kerb: +(q.kw || 0).toFixed(1), line: q.line, car: a.what || 'traffic', carV: a.v != null ? +a.v.toFixed(2) : null, t: +g.t().toFixed(1) }); }
         }
         if (q.state === 'sit') continue;
         H.postsNear(q.x, q.y, 2, s => {

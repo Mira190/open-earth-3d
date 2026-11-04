@@ -653,6 +653,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (d > x.kerb - 0.4 && d < x.kerb + 3 && !api.crossings.walk(x.a)) { atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5)); }
       }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
+      // waiting at the kerb with a car pulled up into where it stands (a taxi coming in to the kerb by a
+      // crossing): a step sideways along the kerb, out of it, rather than wait inside it for the walk
+      if (atKerb && was > 0) for (const d of [0.9 * dt, -0.9 * dt]) {
+        if (Math.abs(p.lat + d) > hw + 0.2) continue;
+        if (blocked(p.x - p.hy * d, p.y + p.hx * d) < was - 1e-4) { p.lat += d; p.x -= p.hy * d; p.y += p.hx * d; break; }
+      }
       // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
       if (atKerb) p.kw = (p.kw || 0) + dt;
       else if (p.kw) { if (api.kerbWaits.length < 4000) api.kerbWaits.push(p.kw); p.kw = 0; }
