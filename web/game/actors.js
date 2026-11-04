@@ -131,7 +131,7 @@ objectNormal = rx(ang) * objectNormal;`)
 transformed.y -= piv; transformed = rx(ang) * transformed; transformed.y += piv;
 vCol = tone < 0.5 ? aC0 : tone < 1.5 ? aC1 : tone < 2.5 ? aC2 : tone < 3.5 ? aC3 : tone < 4.5 ? vec3(0.03, 0.045, 0.06) : tone < 5.5 ? vec3(0.02) : tone < 6.5 ? vec3(0.9, 0.88, 0.8) : tone < 7.5 ? vec3(0.5, 0.02, 0.02)
   : tone < 8.5 ? vec3(0.03) : tone < 9.5 ? vec3(0.8) : tone < 10.5 ? vec3(0.42, 0.43, 0.45) : tone < 11.5 ? vec3(0.78, 0.78, 0.72) : tone < 12.5 ? vec3(0.9, 0.8, 0.42) : vec3(0.7, 0.32, 0.02);
-vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.6 : 0.0;
+vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.3 : 0.0; // (a taxi's roof sign: a lit panel, not a lamp, that blooms across the car behind it)
 #ifdef TONE_CARS
 vAO = ao; vTone = tone;
 #endif`);
@@ -1140,10 +1140,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
         // one left in the lane, as traffic goes round a stopped car; otherwise braked for like a car ahead
+        let youQ = false; // (the one braked for is a ride queueing for a junction: this car queues behind it)
         for (const b of blockers) {
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
-          if (b.parked) {
+          // (never round a ride queueing at a red light, b.q: it waits its turn there, and so does this car)
+          if (b.parked && !b.q) {
             const need = c.hw + (b.hw || 0.9) + 0.3;
             // (w0: where it is across from the car's own lane, without the swing out the car has already
             // taken, so that the swing is the whole way out round it and not half of it: with w the swing
@@ -1156,7 +1158,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
             if (sw != null && !atJ) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
-          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; } // (a ride pulling in still reaches into the lane)
+          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; } // (a ride pulling in still reaches into the lane)
         }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
         if (posts) posts.near(c.x + fx * reach / 2, c.y + fy * reach / 2, reach / 2 + 1, q => {
@@ -1199,8 +1201,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         if (jArm && jEx) {
           // the lane its movement needs, at the line: another way across from the lane it is in, if
-          // it could not get across in time
-          if (!c.mv && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
+          // it could not get across in time (also while it still holds its way through the junction
+          // behind, as one pushed over a line there and out onto a short piece before this one: it
+          // can't change lanes while it holds that, and waiting for the lane there held that
+          // junction, and the queue behind it at a green, for good)
+          if ((!c.mv || c.mv.j !== jArm.j) && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
             const alt0 = JN.exits(jArm).filter(e => e.lanes.includes(c.ln || 0)), alt1 = alt0.filter(e => !JN.closedNow(e)), alt = alt1.length ? alt1 : alt0; // (not one closed at this hour)
             if (alt.length) {
               const e2 = alt[Math.floor(rnd() * alt.length)];
@@ -1355,7 +1360,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
           }
         }
-        c.q = atLine || (byCar && front != null && front.q && c.v < 0.5); // queueing at a junction
+        c.q = atLine || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there)
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
@@ -1483,8 +1488,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // a car that has come up against the player (turning in, say) moves them out of its way
       if (nav) for (const b of blockers) {
         if (b.half || b.fixed) continue;
-        const o = pushOut(b.x, b.y, 0.35, b.z);
-        if ((o.x !== b.x || o.y !== b.y) && nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
+        let o = pushOut(b.x, b.y, 0.35, b.z);
+        if (o.x !== b.x || o.y !== b.y) {
+          if (nav.posts) o = nav.posts.pushOut(o.x, o.y, 0.35, b.z); // (and not into a lamp post or a trunk)
+          if (nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
+        }
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {
