@@ -138,7 +138,7 @@ KABUKIZA = "r4859313"
 FRONT_DEG = 215.0  # the front's compass bearing, onto Harumi-dori
 
 
-KZ_STEP = 0.6       # the front's stone plinth over the pavement, stepped onto (web/game/nav.js floorAt)
+KZ_STEP = 0.3       # the front's stone plinth over the pavement at the street's top end (it rises 0.37 m along the front), stood on (web/game/nav.js floorAt)
 KZ_FRONT = {}       # the front's frame, as kabukiza() lays it out (for game_extras)
 
 
@@ -184,15 +184,19 @@ def kabukiza():
     vb = -W / 2
     # ground floor: the arcade of the entrances, its glass, the stone plinth (one low step from the pavement,
     # so people walk in under the porch to the doors); the first eaves (tiles) at 8.5 m
-    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, KZ_STEP)
-    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, KZ_STEP, 15.5, top=False)
+    # (its top KZ_STEP over the highest ground along the street face: the pavement rises 0.4 m along it, and a
+    # plinth set from the site's lowest corner was buried at the doors), level, so 0.3 to 0.7 m over the pavement
+    T = ak.Terrain("tokyo")
+    zs = max(T(*F(u, v, 0)[:2]) for u in np.linspace(-hl, hl, 25) for v in (vf, vf + 1.0)) - g + KZ_STEP
+    ak.block(K["kz_stone"], F, -hl, hl, vb, vf, 0.0, zs)
+    ak.block(K["kz_plaster"], F, -hl, hl, vb, vf - 1.5, zs, 15.5, top=False)
     us = np.linspace(-hl + 3, hl - 3, 13)
     for u in us:
         # (the wall run from +u to -u, so that the street is on its right: archkit draws openings there)
-        ak.opening(K["kz_glass"], F, (hl, vf - 1.5 + 0.02), (-hl, vf - 1.5 + 0.02), KZ_STEP, 3.2, 4.6, centre=hl - u)
+        ak.opening(K["kz_glass"], F, (hl, vf - 1.5 + 0.02), (-hl, vf - 1.5 + 0.02), zs, 3.2, 4.6, centre=hl - u)
     for u in (us[:-1] + us[1:]) / 2:                 # the arcade's posts between the doors, none in front of one
-        x, y, z = F(u, vf - 0.4, KZ_STEP)
-        K["kz_red"].lathe([(z, 0.3), (z + 8.2 - KZ_STEP, 0.3)], (x, y), segs=6)
+        x, y, z = F(u, vf - 0.4, zs)
+        K["kz_red"].lathe([(z, 0.3), (z + 8.2 - zs, 0.3)], (x, y), segs=6)
     ak.irimoya(K, ak.Frame(*F(0, vf - 3.0, 0)[:2], ax, g), L + 1.0, 5.0, 8.4, 1.8, over=2.2, lift=0.4,
                mats=("kz_tile", "kz_ridge", "kz_plaster"), gable_frac=1.0, sag=0.06)
     # the lanterns under the first eaves
@@ -229,9 +233,9 @@ def kabukiza():
             gold.box(F(ua, v + 0.1, za - 0.3), F(ub, v + 0.1, zb - 0.3), 0.25, 0.45)
             K["kz_plaster"].tri(F(ua, v, za - 0.3), F(ub, v, zb - 0.3), F(0.0, v, z0 - 0.4))
     for su in (-1, 1):
-        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, KZ_STEP)
-        K["kz_red"].lathe([(z, 0.35), (z + z0 - KZ_STEP, 0.35)], (x, y), segs=8)
-    KZ_FRONT.update({"F": F, "vf": vf, "g": g})
+        x, y, z = F(su * (pw / 2 - 0.6), vf + pd * 0.5 - 0.6, zs)
+        K["kz_red"].lathe([(z, 0.35), (z + z0 - zs, 0.35)], (x, y), segs=8)
+    KZ_FRONT.update({"F": F, "vf": vf, "g": g, "zs": zs})
     return K.out(), [s["si"] for s in solids]
 
 
@@ -292,7 +296,7 @@ def game_extras(scene):
     if not KZ_FRONT:
         kabukiza()
     if KZ_FRONT:
-        F, vf, g = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"]
+        F, vf, g, zs = KZ_FRONT["F"], KZ_FRONT["vf"], KZ_FRONT["g"], KZ_FRONT["zs"]
         # under the porch to the glass doors of the main entrance (1.5 m in from the street face)
-        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + KZ_STEP, F(0, vf + 5.5, 0), 1.0, on=True))
+        close.append(close_to("Kabuki-za, the doors under the porch", F(0, vf - 1.5, 0), g + zs, F(0, vf + 5.5, 0), 1.0, on=True))
     return {"close": close}

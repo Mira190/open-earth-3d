@@ -343,12 +343,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // the traffic keeps off the stretches of road that run through a wall (cutAtWalls); the crowd
   // walks the footways where a walker can, not through the buildings a mapped passage runs into
   // (route.js), nor through a wall
-  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(cutAtWalls(G.paths.road, 0.5, true));
+  // (against a landmark's 2 m cells: its fine ones are laid as the walker nears them, nav.js)
+  const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
   loadMsg('Footways people can walk', 0.84);
   await idle();
-  const crowdNet = OEActors.network(cutAtWalls(OERoute.walkable(nav, G.paths.foot)));
+  const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot))));
   // benches face their footway, or the water behind it; each has two seats the crowd can use
-  const benches = OEActors.benches(G.props.bench || [], crowdNet, nav), lamps = G.props.street_lamp || [];
+  const benches = nav.withoutFine(() => OEActors.benches(G.props.bench || [], crowdNet, nav)), lamps = G.props.street_lamp || [];
   const benchMesh = new THREE.InstancedMesh(OEActors.boxes([ // seat, backrest and two ends; faces +z
     [1.7, 0.06, 0.42, 0, 0.42, 0.03, 0, 0], [1.7, 0.34, 0.05, 0, 0.66, -0.2, 0, 0], [0.07, 0.42, 0.44, 0.72, 0.21, 0, 0, 0], [0.07, 0.42, 0.44, -0.72, 0.21, 0, 0, 0]]),
   new THREE.MeshStandardMaterial({ color: lin('#6e5a44'), roughness: 0.9 }), benches.list.length);

@@ -29,6 +29,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   const p = await b.newPage({ viewport: { width: w, height: h } });
   // a software renderer picks the low tier for itself; stills are taken at the desktop one
   await p.addInitScript(t => { try { localStorage.setItem('oe3d-quality', t); } catch (e) { /* storage blocked */ } }, process.env.TIER || 'high');
+  // a player who has been through the HUD tour (web/onboard.js), so that its card is not in the stills
+  await p.addInitScript(() => { try { localStorage.setItem('oe3d-onboard', JSON.stringify({ done: 1 })); } catch (e) { /* storage blocked */ } });
   await p.addInitScript(() => {
     const get = HTMLCanvasElement.prototype.getContext;
     HTMLCanvasElement.prototype.getContext = function (type, opts) {
@@ -74,6 +76,8 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
   if (air.length) await p.evaluate(() => window.__game.flyover.camera(null));
   // on foot, in the game
   if (foot.length) {
+    // (the title comes up once the loader has drawn the scene twice; a click before it does nothing)
+    await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
     const play = await p.$('#gt-play');
     if (play) await play.click().catch(() => {});
   }

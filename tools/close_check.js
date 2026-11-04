@@ -28,8 +28,18 @@ const [,, city = 'shibuya', outDir = '.'] = process.argv;
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
   const nv = await p.evaluate(() => { const n = window.__game.nav; return [n.startMs, n.fineBoxes, n.fineMs].map(Math.round); });
   console.log(`loaded in ${((Date.now() - t0) / 1000).toFixed(1)} s; landmark tiles sorted in ${nv[0]} ms, ${nv[1]} fine boxes laid so far in ${nv[2]} ms`);
+  // (the title comes up once the loader has drawn the scene twice; a click before it does nothing)
+  await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 300000 }).catch(() => {});
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
+  // the arrival's camera move and the first-time HUD tour after it (web/onboard.js) hold every action
+  // back: settle the one and skip the other
+  await p.evaluate(async () => {
+    const g = window.__game;
+    g.advance(0.5); g.settleArrival();
+    for (let t = 0; g.arriving() && t < 5; t += 0.1) { g.advance(0.1); await new Promise(r => requestAnimationFrame(r)); }
+    for (let t = 0; t < 2; t += 0.1) { const c = window.OEOnboard.current(); if (c) { c.skip(); break; } g.advance(0.1); }
+  });
   await p.evaluate(extra => { const G = window.__game.G; G.close = (G.close || []).concat(extra); window.__game.advance(1); }, JSON.parse(process.env.CLOSE || '[]'));
   const res = await require('./close_step')(p, { outDir, prefix: `${city}-` });
   let bad = 0;

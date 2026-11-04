@@ -243,6 +243,15 @@ const { pinClock } = require('./pin_clock');
       `walks ${w.name}: from ${w.from} m to ${w.z.toFixed(2)} m (expected ${w.to} m), ${w.d.toFixed(1)} m from the end, never below ${w.low.toFixed(2)} or above ${w.high.toFixed(2)} m`);
   }
 
+  // the landmarks' fine collision is laid tile by tile (web/game/nav.js): what the start cost, and the
+  // tiles round the walker all laid when asked (as the game's frames do, a few ms at a time)
+  {
+    const f = await p.evaluate(() => { const n = window.__game.nav, pl = window.__game.player, b0 = n.fineBoxes;
+      const t = performance.now(), all = n.prefetch(pl.x, pl.y, 48, 60000);
+      return { start: n.startMs, boxes: b0, ms: n.fineMs, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
+    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, ${f.boxes} boxes laid by the start; the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
+  }
+
   // up close: walk right up to each thing the city's builders name to see close to (game.json "close",
   // a spot's "reach": a shrine's ema rack, a lantern, a statue, a gate's posts), within 1.5 m or what the
   // target says and never into it; and look closer at each photo spot (a spot's "look") and step back

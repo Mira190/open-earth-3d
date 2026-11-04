@@ -260,20 +260,6 @@ window.OECollision = (function () {
       return best;
     }
 
-    // the highest top of a solid tagged `tag` (axis-aligned boxes: their bounds are their footprint)
-    // within r of (x, y) and no higher than zmax, or -Infinity: where a walker's feet can rest
-    function topNear(x, y, r, zmax, tag) {
-      let best = -Infinity;
-      visit(prCell, prMark, x - r, y - r, x + r, y + r, pi => {
-        const p = prisms[pi];
-        if (p.tag !== tag || p.zhi > zmax || p.zhi <= best) return false;
-        const dx = Math.max(p.x0 - x, 0, x - p.x1), dy = Math.max(p.y0 - y, 0, y - p.y1);
-        if (dx * dx + dy * dy <= r * r) best = p.zhi;
-        return false;
-      });
-      return best;
-    }
-
     // the solid under (x, y) whose top is highest, or null
     function prismAt(x, y, tag = 0) {
       let best = null;
@@ -313,7 +299,7 @@ window.OECollision = (function () {
       return best;
     }
 
-    const api = { add, build, sweep, slide, depenetrate, overlap, topAt, topNear, prismAt, sweepSphere, inside, prisms, SKIN,
+    const api = { add, build, sweep, slide, depenetrate, overlap, topAt, prismAt, sweepSphere, inside, prisms, SKIN,
       get walls() { return nseg; }, set need(f) { need = f; }, get need() { return need; } };
     return api;
   }
