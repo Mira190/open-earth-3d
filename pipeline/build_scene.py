@@ -33,6 +33,7 @@ from shapely.ops import polylabel
 
 import roofs
 import typology
+import wet_buildings
 from measured import IGNHeights
 from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
@@ -1253,8 +1254,12 @@ def build(C):
                          "has_parts": False, "src": "survey", "record_id": None, "height_src": None, "wkb": shapely.to_wkb(ll)})
         print(f"survey: {len(extra)} blocks added that Overture does not have")
     survey.claim([(b["id"], C.to_local(swkb.loads(bytes(b["wkb"])))) for b in blds if not b["is_underground"]])
+    # buildings out on the water that are not buildings (wet_buildings.py): a wharf deck mapped as a
+    # building is drawn with the piers, an expressway's deck by the game; a vessel floats, and gets its
+    # hull after the build
+    wet = wet_buildings.classify(C, con, raw, sea)
     for b in blds:
-        if b["is_underground"]:
+        if b["is_underground"] or wet.get(b["id"], {}).get("kind") in ("deck", "bridge", "under"):
             continue
         # ids of solids a hook hid: only this building's, since Python reuses the ids of freed objects
         ctx.hidden.clear()
@@ -1334,7 +1339,7 @@ def build(C):
             cs = np.asarray(q.exterior.coords)
             # a building of a class that floats (water.floating: Amsterdam's houseboats) sits on the
             # water; others stand on the lowest ground under them
-            zb = 0.0 if cls in floating else max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
+            zb = 0.0 if cls in floating or wet.get(b["id"], {}).get("kind") == "vessel" else max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
             solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10), ring(q.exterior.coords)] +
                           [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
             r0 = rec[0] if rec else b  # roof tags of the part, else of the building
@@ -1546,6 +1551,7 @@ def build(C):
                             "dormers: count, step_dm along the angle, bitmask of bays left empty"], "p": prop_rows},
               open(os.path.join(C.out, "buildings.json"), "w"), separators=(",", ":"))
     json.dump({"piers": piers, "places": places, "trees": trees}, open(os.path.join(C.out, "places.json"), "w"), separators=(",", ":"))
+    print("wet buildings: %d deck solids hidden, %d vessels given a hull" % wet_buildings.mark(C, wet))
     write_index()
     for f in sorted(os.listdir(C.out)):
         print(f"  {f}: {os.path.getsize(os.path.join(C.out, f)) / 1e6:.2f} MB")

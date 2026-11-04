@@ -6,6 +6,7 @@ follow cities/shibuya/city.py (Suga Shrine), which has its own copies.
 """
 import math
 import os
+import urllib.parse
 import urllib.request
 
 import numpy as np
@@ -23,6 +24,8 @@ FONTS = {
     "dela": "ofl/delagothicone/DelaGothicOne-Regular.ttf", "zen": "ofl/zenkakugothicnew/ZenKakuGothicNew-Bold.ttf",
     "bebas": "ofl/bebasneue/BebasNeue-Regular.ttf", "reggae": "ofl/reggaeone/ReggaeOne-Regular.ttf",
     "kaisei": "ofl/kaiseidecol/KaiseiDecol-Bold.ttf", "mplus": "ofl/mplusrounded1c/MPLUSRounded1c-ExtraBold.ttf",
+    # Latin capitals for lettering cast on a facade (archkit.letters): Roman capitals with a 1920s cut
+    "cinzel": "ofl/cinzel/Cinzel[wght].ttf",
 }
 FONT_URL = "https://raw.githubusercontent.com/google/fonts/main/{}"
 
@@ -33,7 +36,7 @@ def font(name, size):
     os.makedirs(d, exist_ok=True)
     path = os.path.join(d, os.path.basename(FONTS[name]))
     if not os.path.exists(path):
-        urllib.request.urlretrieve(FONT_URL.format(FONTS[name]), path)
+        urllib.request.urlretrieve(FONT_URL.format(urllib.parse.quote(FONTS[name])), path)
     return ImageFont.truetype(path, size)
 
 
