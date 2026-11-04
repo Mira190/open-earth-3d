@@ -233,10 +233,19 @@ without the browser, to check its shape while modelling it.
 building's frame (`Frame(cx, cy, axis_deg, ground)`, u along, v across): walls
 with ashlar UVs, cornices and string courses swept round an outline, arched and
 square openings, columns, colonnades, pilasters, pediments, steps,
-balustrades, domes with ribs, drums and lanterns; and for Japan, hipped-and-gabled
-(irimoya) roofs with curved eaves, halls (platform, pillars, tie beams, bracket
-band, roof, an optional pent roof), two-storey gates, battered stone ramparts
-(ishigaki) and plastered walls (dobei). `load_solids(city)` reads the built
+balustrades, domes with ribs, drums and lanterns; and for Japan, one roof that
+every kit builds on (`japanese_roof`: hipped, hipped-and-gabled or gabled, its
+height a function of the depth in from the eaves raised to a profile exponent for
+the concave sweep, the corners lifted, the long slopes running out to the gables
+over the hips, with fascia, ridges and the eaves' underside; `japankit` and
+Shibuya's shrines call it too), halls (platform, pillars, tie beams, bracket band,
+roof, an optional pent roof), two-storey gates, corridors (回廊: three rows of
+pillars, a plastered middle wall with lattice windows, a gabled roof), battered
+stone ramparts (ishigaki) and plastered walls (dobei). `outline_roof` puts a hipped
+roof of equal pitches on any outline, an L, a bend or a ring round a court (the
+straight skeleton's roof, as the distance in from the eaves): draw a building on
+its own outline with it when the outline is far from its rectangle, rather than as
+a hall on its bounding box. `load_solids(city)` reads the built
 footprints and `Terrain(city)` the ground, so a monument can stand on its
 mapped outline: Paris's monuments, Kyoto's temples, castle and palace,
 Kabuki-za and the Yoyogi gymnasiums are built this way. Return the solids a
@@ -244,6 +253,14 @@ mesh draws instead as `{"hidden": [...]}` (the third item of
 `landmark_meshes`): the renderers leave them out, the surface model keeps them.
 Outlines that the built data lacks are fetched once from OpenStreetMap and kept
 next to the city's hooks with their way ids (`cities/kyoto/castles_osm.json`).
+Where a landmark steps in section (wings with a lower gallery, a pavilion with an
+attic), measure it rather than guess: `pipeline/lidar_massing.py` cuts a
+footprint (`massing_footprints()` in the city's hooks) into zones by the roof
+levels an airborne LiDAR surface model shows, with their heights
+(`cities/<id>/massing.json`; IGN LiDAR HD so far), and lists the solids with a
+guessed height that stand on bare ground, for `landmark_demolished`
+(`lidar_massing.absent_solids`). Paris's Palais de Chaillot is built this way.
+A landmark's `clip` regions (no ground drawn) also keep the trees out.
 
 Every part takes metres. Build the small parts too: the railings, lamps,
 mullions and deck markings are what make a structure read as built, and they
