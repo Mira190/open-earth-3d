@@ -3257,18 +3257,13 @@ def hachiko_square(K, h, lm):
 
 def hachiko_trees(lm):
     """The square's own trees, [x, y, z, height] in decimetres (places.json's layout): a cherry in each
-    round planter and a maple in the bed behind Hachiko (the species: city.json trees.areas)."""
-    h = lm.get("hachiko")
-    if not h:
+    round planter (the species: city.json trees.areas). The bed round Hachiko has no tree."""
+    if not lm.get("hachiko"):
         return []
     out = []
     for c in HK_PLANTERS:
         g = lm_ground_at(lm, *c)
         out += [round(c[0] * 10), round(c[1] * 10), round((g + HK_PLANTER["h"] - 0.08) * 10), 72]
-    face = hachiko_face(h)
-    P = frame(h["at"], face)
-    p = P((HK_BED["r_in"] + HK_BED["r_out"]) / 2 * math.cos(math.radians(160)), (HK_BED["r_in"] + HK_BED["r_out"]) / 2 * math.sin(math.radians(160)), 0)
-    out += [round(p[0] * 10), round(p[1] * 10), round((h["z"] + HK_BED["wall_m"] - 0.06) * 10), 55]
     return out
 
 
