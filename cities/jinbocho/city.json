@@ -72,9 +72,24 @@
   "trees": {
     "mix": {
       "elm": 0.5,
-      "plane": 0.5
+      "plane": 0.5,
+      "cherry": 0.08
     },
-    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki), plane trees for the street planes and ginkgos. A guess, not a survey."
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki), plane trees for the street planes and ginkgos. A guess, not a survey.",
+    "areas": [
+      {
+        "name": "Kitanomaru Park",
+        "osm": "W624081603",
+        "mix": {
+          "cherry": 0.25,
+          "zelkova": 0.2,
+          "evergreen": 0.2,
+          "camphor": 0.15,
+          "maple": 0.1,
+          "ginkgo": 0.1
+        }
+      }
+    ]
   },
   "storey": {
     "res": [
