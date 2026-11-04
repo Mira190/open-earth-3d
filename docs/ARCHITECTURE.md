@@ -686,10 +686,18 @@ jointed threads):
   evergreen broadleaf, its streets banyans (the fig stands in), camphors and palms.
   Species are still not mapped tree by tree: every mix is a guess from the
   cities' street-tree surveys and the parks' own guides.
-- **Autumn:** web/trees.js finds a leaf card's atlas cell from its uv; the
-  maples keep their range of reds, the ginkgos go gold and the zelkovas rust
-  (`FALL`), each tree a little ahead of or behind the others, and the far crown
-  hulls follow `autumn_colour`.
+- **Autumn and winter:** web/trees.js finds a leaf card's atlas cell from its uv;
+  from mid November (late April in the south) the maples keep their range of
+  reds, the ginkgos go gold, the zelkovas rust and the planes and elms a dull
+  yellow (`FALL`), each tree a little ahead of or behind the others, and the far
+  crown hulls follow `autumn_colour`. The deciduous species (`deciduous` in
+  trees.json: plane, elm, maple, zelkova, ginkgo) then drop their cards one by
+  one from 24 November to 14 December, in the shadow pass too, their far hulls go
+  when half the leaves have, and they leaf out green from 21 March to 14 April
+  (six months on in the south). Osaka's Midosuji (issue #62) is a `trees.areas`
+  avenue: `tree_areas.py` widens the mapped street 22 m either side (`buffer`),
+  and nine in ten of its trees are ginkgos, gold in late November and bare on
+  the tour's 21 December.
 - **Thin leaves at a distance:** a card's alpha averaged down the mip chain fell
   under the cut-out and the she-oak's threads, the palm's leaflets and the
   jacaranda's vanished past a few tens of metres; the leaf shader scales alpha up
