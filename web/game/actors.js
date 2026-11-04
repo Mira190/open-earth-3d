@@ -1180,7 +1180,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // behind, as one pushed over a line there and out onto a short piece before this one: it
           // can't change lanes while it holds that, and waiting for the lane there held that
           // junction, and the queue behind it at a green, for good)
-          if ((!c.mv || c.mv.a !== jArm) && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
+          if ((!c.mv || c.mv.j !== jArm.j) && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
             const alt = JN.exits(jArm).filter(e => e.lanes.includes(c.ln || 0));
             if (alt.length) {
               const e2 = alt[Math.floor(rnd() * alt.length)];

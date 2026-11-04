@@ -726,6 +726,11 @@ window.OECars = (function () {
     return { pts, cum, len, corner, at, pos };
   }
 
+  // a traffic car in a queue for a junction: queueing itself (c.q), or stopped behind cars, one after
+  // another up the lane, the first of which that isn't stopped is queueing (where the traffic's own
+  // c.q, set car by car, missed one: a car stopped behind another a little out of line)
+  const queueing = o => { for (let x = o, k = 0; x && k < 12; x = x.front, k++) { if (x.q) return true; if ((x.v || 0) >= 0.5) return false; } return false; };
+
   // ------------------------------------------------------------ the chauffeur
   // Drives a car (from car()) along a route: keeps to the lane on the keep side, slows for
   // bends, for the end, and for anything in its way (others: [{ x, y, half }], judged against
@@ -824,7 +829,7 @@ window.OECars = (function () {
       // up the side of the queue itself
       let qBack = Infinity;
       for (const o of others) {
-        if (!o.q) continue;
+        if (!queueing(o)) continue;
         const dx = o.x - st.x, dy = o.y - st.y, a = dx * fx + dy * fy;
         if (a <= 0 || a > 100) continue;
         P.at(Math.min(P.len, st.s + a), c);
@@ -843,11 +848,12 @@ window.OECars = (function () {
         // not overtaken up the oncoming side to its head)
         // (o.still: true, a flag the game sets, or a traffic car's own count of the seconds it has stood:
         // over 6 s, and not queueing, it is stopped for good, as one caught up with this one at a kerb)
-        if (!o.q && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
+        const oq = queueing(o);
+        if (!oq && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1)) && a < 40 && (!end || st.end - st.s - a > 25 || !o.stay)) { // (not one parked where it is to pull in)
           const by = w - keep * ((o.hw || 0.9) + C.hw + 0.4) - lane; // its centre-line side, a hand's width clear
           if (Math.abs(by) < 4.5) { if (Math.abs(by) > Math.abs(pass)) pass = by; passing.push([a - half - C.half, !!o.stay]); passed.push(o); continue; }
         }
-        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = !!o.q; }
+        if (a - half - C.half < gap) { gap = a - half - C.half; still = !!o.stay; st.block = o; queued = oq; }
       }
       if (pass && Math.abs(st.shift) < 0.2) for (const o of others) { // (a car coming the other way)
         if (passed.includes(o)) continue;
@@ -1022,5 +1028,5 @@ window.OECars = (function () {
     return { st, update, finish, jump, leave, path: P, box: () => boxOf(st, C.half, C.hw, C.top), remaining: () => st.end - st.s, timeLeft, total: () => timed().total };
   }
 
-  return { car, headlamp, drive, router, path, chauffeur, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
+  return { car, headlamp, drive, router, path, chauffeur, queueing, pushOut, sweep, boxOf, kerbOf, ROADW, LANE, PERF };
 })();
