@@ -54,9 +54,13 @@ window.OEWalkCalls = (function () {
         let cx, cy, ux, uy;
         if (o.scr && j.walks && j.walks.length) {
           let w = null, bd = Infinity;
-          for (const q of j.walks) for (const k of [0, 2]) { const d = Math.hypot(o.x - q[k], o.y - q[k + 1]); if (d < bd) { bd = d; w = q; } }
+          const fx = Math.sin(o.h), fy = Math.cos(o.h); // (it faces across, along its own crosswalk: a corner has two crosswalks' ends)
+          for (const q of j.walks) {
+            const ql = Math.hypot(q[2] - q[0], q[3] - q[1]) || 1, along = Math.abs((fx * (q[2] - q[0]) + fy * (q[3] - q[1])) / ql);
+            for (const k of [0, 2]) { const d = Math.hypot(o.x - q[k], o.y - q[k + 1]) + (along < 0.8 ? 50 : 0); if (d < bd) { bd = d; w = q; } }
+          }
           const len = Math.hypot(w[2] - w[0], w[3] - w[1]) || 1, vx = (w[2] - w[0]) / len, vy = (w[3] - w[1]) / len;
-          cx = (w[0] + w[2]) / 2; cy = (w[1] + w[3]) / 2;
+          cx = (w[0] + w[2]) / 2; cy = (w[1] + w[3]) / 2; o.walk = w;
           // (a diagonal runs through the middle of the box, within 6 m of it, not along its side: silent)
           const t = Math.max(0, Math.min(1, ((j.x - w[0]) * vx + (j.y - w[1]) * vy) / len));
           o.diag = Math.hypot(w[0] + vx * len * t - j.x, w[1] + vy * len * t - j.y) < 6;
