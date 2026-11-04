@@ -348,27 +348,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const out = [];
     for (const l of lines) {
       const p = l.p, n = p.length / 3;
-      let cur = null, curD = null;
-      const flush = () => {
+      let cur = null, curD = null, wallA = 0, wall = 0; // (w: 1 where a piece starts at a wall, 2 where it ends at one)
+      const flush = (atWall = false) => {
         if (cur && cur.length >= 6) {
           let len = 0;
           for (let k = 3; k < cur.length; k += 3) len += Math.hypot(cur[k] - cur[k - 3], cur[k + 1] - cur[k - 2]);
-          if (len >= 40) out.push(Object.assign({}, l, { p: cur, d: l.d ? Uint8Array.from(curD) : undefined }));
+          if (len >= 40) out.push(Object.assign({}, l, { p: cur, d: l.d ? Uint8Array.from(curD) : undefined, w: wallA | (atWall ? 2 : 0) }));
         }
         cur = curD = null;
+        if (atWall) wall = 1;
       };
-      const put = (x, y, z, d) => { if (!cur) { cur = []; curD = []; } else curD.push(d); cur.push(x, y, z); };
+      const put = (x, y, z, d) => { if (!cur) { cur = []; curD = []; wallA = wall; wall = 0; } else curD.push(d); cur.push(x, y, z); };
       for (let k = 0; k < n; k++) {
         const x = p[3 * k], y = p[3 * k + 1], z = p[3 * k + 2], deck = l.d && k > 0 ? l.d[k - 1] : 0, skip = overDecks && deck;
         if (k > 0) { // every metre and a half along the stretch from the last point
           const ax = p[3 * k - 3], ay = p[3 * k - 2], az = p[3 * k - 1], m = Math.max(1, Math.ceil(Math.hypot(x - ax, y - ay) / 15));
           for (let j = 1; j < m; j++) {
             const qx = ax + (x - ax) * j / m, qy = ay + (y - ay) * j / m, qz = az + (z - az) * j / m;
-            if (!skip && nav.solid(qx / 10, qy / 10, qz / 10, r)) flush();
+            if (!skip && nav.solid(qx / 10, qy / 10, qz / 10, r)) flush(true);
             else if (!cur) put(Math.round(qx), Math.round(qy), Math.round(qz), deck);
           }
         }
-        if (!skip && nav.solid(x / 10, y / 10, z / 10, r)) flush();
+        if (!skip && nav.solid(x / 10, y / 10, z / 10, r)) flush(true);
         else put(x, y, z, deck);
       }
       flush();
