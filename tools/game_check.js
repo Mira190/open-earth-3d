@@ -1,7 +1,7 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
 // from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
-// in sight at night,
+// in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
@@ -118,6 +118,52 @@ const npcNight = require('./npc_night');
     return { n, inWall };
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
+
+  // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
+  // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
+  // black nor blown; then clear again, dry and quiet. And the season's weather keeps to the city's
+  // climate: over a year, wet days within a third of what its normals give.
+  const rain = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather;
+    if (!W) return null;
+    const luma = () => { const c = document.getElementById('game-gl'), t = document.createElement('canvas'); t.width = 96; t.height = 60;
+      const x = t.getContext('2d'); x.drawImage(c, 0, 0, 96, 60); const d = x.getImageData(0, 0, 96, 60).data; let s = 0, hi = 0;
+      for (let i = 0; i < d.length; i += 4) { const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; s += l; if (l > 250) hi++; } return { mean: s / (d.length / 4), blown: hi / (d.length / 4) }; };
+    const frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    W.set('rain', { now: true });
+    g.advance(2);
+    await frames(4);
+    const st = W.state, cd = g.crowdDraw(), m4 = new THREE.Matrix4();
+    let umb = 0;
+    if (cd && cd.umbrellas) for (const m of Object.values(cd.umbrellas)) if (m.visible) for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, m4); if (m4.elements[0] !== 0) umb++; }
+    umb += cd ? [...cd.active.values()].filter(r => r.umbOn).length : 0;
+    const out = { st, umb, walkers: g.crowd.P.filter(q => q.line >= 0).length, streaks: W.meshes.near.visible && W.meshes.near.material.uniforms.uCount.value > 0.5,
+      occ: W.U.uOeOccOn.value, chip: document.querySelector('#g-sun span').textContent, lum: luma() };
+    W.set('clear', { now: true });
+    g.advance(1);
+    await frames(2);
+    out.after = W.state; out.dry = !W.meshes.near.visible;
+    // a year of the season's weather at 09:00 and 15:00
+    const cl = g.G.weather;
+    if (cl) {
+      let wet = 0, want = 0;
+      for (let k = 0; k < 365; k++) { const t = new Date(Date.UTC(2026, 0, 1) + k * 864e5), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, d = t.getUTCDate();
+        if (W.season(y, m, d, 9 * 60).rain > 0.06 || W.season(y, m, d, 15 * 60).rain > 0.06) wet++; }
+      for (let m = 1; m <= 12; m++) want += OEWeather.wetChance(cl, m) * [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+      out.year = { wet, want: Math.round(want) };
+    }
+    W.set('live');
+    return out;
+  });
+  if (rain) {
+    check(rain.st.kind === 'rain' && rain.st.rain > 0.5 && rain.st.wet > 0.5 && rain.streaks && rain.occ === 1,
+      `rain falls (rain ${rain.st.rain.toFixed(2)}, ground wet ${rain.st.wet.toFixed(2)}, streaks ${rain.streaks}, occlusion map ${rain.occ})`);
+    check(rain.walkers === 0 || rain.umb > 0, `umbrellas up in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
+    check(/^(Rain|Drizzle) · /.test(rain.chip), `the HUD shows the rain ("${rain.chip}")`);
+    check(rain.lum.mean > 18 && rain.lum.blown < 0.02, `the rain's frame is lit, not black or blown (luma ${rain.lum.mean.toFixed(0)}, ${(rain.lum.blown * 100).toFixed(1)}% blown)`);
+    check(rain.after.rain === 0 && rain.after.wet === 0 && rain.dry, 'and clear again, dry');
+    if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
+  }
 
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
   // edge (the centre within 0.3 m of the face as drawn), at the level of the quay, not a cell short
@@ -597,7 +643,7 @@ const npcNight = require('./npc_night');
     r.hailed = true;
     r.log = [];
     let t = 0;
-    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''} near[${near}]`); } }
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'})` : ''} near[${near}]`); } }
     r.hailT = t;
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     r.behind = o.drv.st.end < o.drv.path.len - 1; // (it pulled in behind a car at the kerb: your car, parked there)
@@ -754,6 +800,98 @@ const npcNight = require('./npc_night');
     check(/rW.* g/.test(mid.seen) && !/gW/.test(mid.seen), `a crossing with signals between junctions gives the walk on a call and the traffic its green after (${mid.seen}; ${mid.n} such crossings, ${mid.zebras} zebras)`);
     check(mid.walkers > 0 && !mid.red, `the crowd's footways cross there (${mid.walkers}) and no car runs its red (${mid.red}${mid.red ? ': ' + mid.log : ''})`);
   }
+  // a ride's driver (cars.js chauffeur) at a crossing between junctions (#82): it stops short of the
+  // line at the crossing's red and goes on its green; at a zebra it gives way while someone is on the
+  // stripes and goes once they are clear. Driven on its own (the clock held, nothing else in the way)
+  // down the crossing's road from 40 m back
+  const rideMid = await p.evaluate(() => {
+    const g = window.__game, JN = g.junctions, L = g.roadNet.L, out = [];
+    if (!JN) return out;
+    const near = j => Math.hypot(j.x - g.player.x, j.y - g.player.y);
+    for (const sig of [true, false]) {
+      const j = JN.J.filter(x => x.mid != null && !!x.sig === sig).sort((p, q) => near(p) - near(q))[0];
+      if (!j) continue;
+      const a = j.arms[0], dir = a.end ? 1 : -1, l = L[j.line];
+      const s0 = Math.max(0.5, Math.min(l.len - 0.5, j.mid - dir * 40)), s1 = dir > 0 ? l.len - 0.5 : 0.5;
+      const rt = g.roads.route({ line: j.line, s: s0, dir }, { line: j.line, s: s1, dir }, 500);
+      if (!rt || !(rt.mids || []).some(m => m.X === j)) { out.push({ sig, none: true }); continue; }
+      rt.end = false;
+      let clear = false;
+      const keep = { ph: j.ph, st: j.st, t: j.t };
+      const lights = Object.assign(Object.create(JN), { onStripes: X => X === j && !clear });
+      if (sig) { j.ph = 1; j.st = 'g'; j.t = 0; } // the walk: the traffic held at red
+      const C = { half: 2.3, hw: 0.9, top: 1.5, wheelbase: 2.7 }, D = OECars.chauffeur(C, rt, { keep: g.KEEP === 'right' ? -1 : 1, from: 'lane', v: 10, lights, cruise: 12 });
+      const at = rt.mids.find(m => m.X === j).at, line = at - a.back;
+      for (let k = 0; k < 120; k++) D.update(0.1, [], false, true); // 12 s at the red, or at the stripes (after 15 s stopped at a zebra it edges on)
+      const held = { front: line - D.st.s - C.half, v: D.st.v, why: D.st.junction };
+      clear = true; if (sig) { j.ph = 0; j.st = 'g'; j.t = 0; }
+      for (let k = 0; k < 150; k++) D.update(0.1, [], false, true);
+      const went = D.st.s - at;
+      Object.assign(j, keep);
+      out.push({ sig, id: j.id, held, went });
+    }
+    return out;
+  });
+  for (const r of rideMid) {
+    const kind = r.sig ? 'its red' : 'a zebra with someone on it';
+    if (r.none) { check(false, `a ride can be routed over the nearest ${r.sig ? 'crossing with signals' : 'zebra'}`); continue; }
+    check(r.held.front > -0.5 && r.held.front < 6 && r.held.v < 0.2, `a ride stops at a crossing between junctions at ${kind} (crossing ${r.id}: its front ${r.held.front.toFixed(1)} m short of the line, ${r.held.v.toFixed(1)} m/s, ${r.held.why})`);
+    check(r.went > 5, `and goes on across once ${r.sig ? 'it turns green' : 'the stripes are clear'} (${r.went.toFixed(0)} m past it)`);
+  }
+  // lanes from OSM's counts (#82): the main road pieces they take down to one lane each way; over 40 s,
+  // the cars in a second lane that are within 5 m of where it ends (they should have moved across
+  // well before: actors.js looks ahead along the road, junctions.js laneRun)
+  const lanes = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions, L = g.roadNet.L, TWO = { motorway: 1, trunk: 1, primary: 1 };
+    const one = L.filter(l => (TWO[l.c] || (l.ow && l.c === 'secondary')) && JN.lanesOf(l) === 1).length;
+    let inL1 = 0, atEnd = 0;
+    for (let t = 0; t < 40; t++) {
+      g.advance(1);
+      for (const c of A.C) {
+        if (c.line < 0 || c.ln !== 1 || c.mv) continue;
+        inL1++;
+        const l = L[c.line], end = c.dir > 0 ? 1 : 0, left = c.dir > 0 ? l.len - c.s : c.s;
+        if (!JN.armAt(c.line, end) && left + JN.laneRun(c.line, end) < 5 + c.half) atEnd++;
+      }
+    }
+    return { one, inL1, atEnd };
+  });
+  check(lanes.atEnd <= Math.max(2, 0.02 * lanes.inL1), `${lanes.one} main road pieces one lane each way by OSM's count; cars in a second lane within 5 m of its end: ${lanes.atEnd} of ${lanes.inL1} samples`);
+  // turns banned and streets shut to cars at some hours (#82: junctions.js by the game's clock): at an
+  // hour it is closed no car chooses that way and the rides' router keeps off the street; at an hour it
+  // is open, cars take it again
+  const timed = await p.evaluate(() => {
+    const g = window.__game, JN = g.junctions, L = g.roadNet.L, st = JN.stats();
+    const r = { bans: st.timedBans, shut: st.timedShut };
+    let pick = null;
+    for (const j of JN.J) { if (j.mid != null) continue; for (const a of j.arms) { if (!a.in) continue; const ex = JN.exits(a); const e = ex.length > 1 && ex.find(x => x.tw || L[x.m.line].tb); if (e) { pick = { a, e }; break; } } if (pick) break; }
+    if (!pick) return r;
+    const { a, e } = pick, when = [];
+    for (let dow = 0; dow < 7; dow++) for (let min = 15; min < 1440; min += 30) when.push({ dow, min });
+    const shutT = when.find(t => JN.closedNow(e, t)), openT = when.find(t => !JN.closedNow(e, t));
+    if (!shutT || !openT) return Object.assign(r, { always: !!shutT });
+    const c0 = Object.assign({}, g.clock);
+    const at = t => { const dow0 = (new Date(Date.UTC(c0.y, c0.m - 1, c0.d)).getUTCDay() + 6) % 7; g.setClock(c0.y, c0.m, c0.d + (t.dow - dow0 + 7) % 7, t.min); };
+    const tries = t => { at(t); let n = 0; for (let k = 0; k < 400; k++) if (JN.choose(a) === e) n++; return n; };
+    r.whenShut = tries(shutT); r.whenOpen = tries(openT);
+    // the router: a route from the arm's road to the street beyond the shut one, at the hour it is
+    // shut, goes round it where there is another way (one that keeps off it when told to shun it)
+    const la = L[a.line], from = { line: a.line, s: a.end ? Math.max(0.5, la.len - 20) : Math.min(la.len - 0.5, 20), dir: a.end ? 1 : -1 };
+    const far = 1 - e.m.end, nx = !e.tw && g.roadNet.next(e.m.line, far, true);
+    if (nx) {
+      const ln = L[nx[0]], to = { line: nx[0], s: ln.len / 2, dir: nx[1] === 0 ? 1 : -1 };
+      const via = rt => (!rt ? 'none' : rt.nodes.some(nd => nd.line === e.m.line) ? 'through' : 'round');
+      at(openT); const alt = via(g.roads.route(from, to, 3000, undefined, new Set([e.m.line])));
+      at(shutT); r.routed = via(g.roads.route(from, to, 3000)); r.alt = alt;
+    }
+    r.what = `${e.tw ? "a turn banned" : `the street (${L[e.m.line].c}) shut`} at ${['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][shutT.dow]} ${Math.floor(shutT.min / 60)}:${String(shutT.min % 60).padStart(2, '0')}`;
+    g.setClock(c0.y, c0.m, c0.d, c0.min);
+    return r;
+  });
+  if (timed.whenShut != null) {
+    check(timed.whenShut === 0 && timed.whenOpen > 0, `${timed.bans} turns banned and ${timed.shut} streets shut to cars at some hours: ${timed.what}, chosen ${timed.whenShut} times in 400 then, ${timed.whenOpen} at an hour it is open`);
+    if (timed.alt === 'round') check(timed.routed === 'round', `and a ride's route goes round it then (${timed.routed})`);
+  } else console.log(`     ${timed.bans || 0} turns banned and ${timed.shut || 0} streets shut at some hours${timed.always != null ? ' (the nearest closed all week or never)' : ''}`);
   if (lights.none) check(false, 'the traffic has junctions');
   else {
     check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);

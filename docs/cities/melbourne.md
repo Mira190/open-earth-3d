@@ -142,6 +142,13 @@ Thirteen addresses are not in Overture's address points at all.
   91.69%, and Batman Park's by 0.02 points. The other eighteen protected places
   and the sun-access results are unchanged.
 
+- **Eureka Tower and Australia 108** (`cities/melbourne/southbank.py`), on their
+  mapped parts, which they hide. Eureka (297.3 m): blue glass, white bars, the
+  red stripe up the north face and 24-carat gold glass on the top 10 floors and
+  the crown, the symbols its architects gave the Eureka Stockade. Australia 108
+  (316.7 m): dark glass and the gold starburst of its sky lobby on levels
+  69-71. The starburst's reach and the stripe's width are from photographs.
+
 ### The river
 
 The Yarra uses the same water as Sydney Harbour (`web/water.js`), with its own
