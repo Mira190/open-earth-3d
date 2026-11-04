@@ -560,6 +560,14 @@ pipeline writes. The only city-specific code is landmark geometry in
       boats.
     - Viaducts (an expressway, several levels up) keep their mapped height.
       Stubs that end over the water at nothing are cut back to the bank.
+    - Under a deck over the water the aerial photograph has the same bridge or
+      expressway, draped on the modelled bottom, and it showed through the
+      water as a road on the riverbed (Tokyo's Nihonbashi under the Shuto,
+      Osaka's Higashi-Yokobori under the Hanshin loop). `game.js` draws the
+      decks over the water into a mask, a little wider than each deck and more
+      so the higher it stands (a photograph leans a raised deck off its plan),
+      and the water closes over the bottom there (`water.js` `setCover`). The
+      viewer, which draws no decks, keeps the photograph as the bridge (issue 65).
     - A deck the data's levels make climb steeper than 1 in 3.3 (outside
       steps) is graded evenly from end to end; a line along a strip that the
       data puts up to 4 m past its edge, far below it, is on the strip's level
@@ -1324,6 +1332,45 @@ drop or into the water.
     the flags arrive (a second or two after the start) leaves it at once if it is
     out of sight. In Shibuya the share of car-time inside a wall fell from 2.5%
     to 0.5% (`tools/traffic_check.js`, which now counts it).
+  - How far in from its lane it moves for a facade is measured from its own
+    lane, not from where it already is (it stayed half way in, brushing the
+    house), and it stays in until its back has passed the place, however long it
+    waits there (a car stopped in a queue beside a house drifted back out into
+    it once a timer ran out). On Osaka's narrow streets the car-time in a wall
+    fell from 0.8-1.1% to 0.2-0.5% at `traffic_check.js`'s places; it now lists
+    where (`in a wall at ...`: the road, the lane, how far from its line, what holds
+    the car and what it is in).
+  - **Roads into a building** (`pipeline/road_passages.py`, run by
+    `tools/road_passages.sh <city|all>`): where the data runs a road into a
+    building or a canopy's post, the traffic used to stop at the wall
+    (`cutAtWalls`) or keep off the road (route.js). `tools/road_walls.js` lists
+    each such stretch with what is in the way, by the game's own collision; then
+    a footprint that only clips the road (at most a quarter of it, at most a
+    metre deep into a tall one) stands back from it; a road into or through a
+    building with 2.5 m of it over a 4.5 m clearance gets a passage, with a
+    ceiling (Osaka's OCAT bus terminal and Minatomachi River Place, the roads
+    under the Loop Line's viaduct, an elevated road past a tower in Sydney); a
+    main road (motorway to secondary) through a lower building trims it; and an
+    arcade's post in a carriageway is left out (buildings.json `no_posts`, an
+    Osaka shotengai). A lane between buildings on both sides that is only too
+    narrow for a car (an alley) is left as it is, and so is a road through a row
+    of low houses or a landmark. A one-way road that comes to a wall, or whose
+    only ways on are roads the traffic keeps off, is kept off too (route.js), back
+    up the one-way roads that lead only there, so no car waits at its end in
+    sight. An elevated road with no deck under it where it runs into a tower
+    (Sydney's at 22 and 33 m through one building) is measured from its own
+    height, and a building with roads through it at two levels is carved for each
+    in turn (`road_passages.sh` repeats until nothing changes). Footprints stood
+    back, passages and posts left out: Osaka 491, 86, 22; Shibuya 151, 29;
+    Kyoto 120, 19; Shinjuku 106, 23; Ikebukuro 51, 23, 3; Tokyo 42, 38, 2;
+    Asakusa 26, 8; Roppongi 26, 6; Ueno 23, 5; Amsterdam 19, 28; Melbourne 18,
+    10; Paris 17, 14; Akihabara 15, 5; Shinagawa 14, 19; Hong Kong 13, 15;
+    Jinbocho 11, 3; Sydney 11, 9; Tsukishima 5, 5, 3. What `road_walls.js` still
+    lists afterwards is mostly alleys and roads through landmarks (Odaiba's 41
+    stretches, Amsterdam 32, Paris 21: issue #120); elevated roads with no deck
+    under them stay off the traffic's way (issue #119). The
+    game check counts the car-seconds in a wall (at most 1%), the cars waiting at
+    a wall and the one-way roads into one.
 - **Helipads on roofs:** a pad the data puts on the ground inside a building's
   footprint (Hong Kong's hospital and tower pads) is on the roof: there if it is
   clear above for the rotor, else on the nearest open ground with clear sky
@@ -1768,7 +1815,9 @@ past traffic lights near you. It seeds `Math.random` and takes `GAME_TIME`, so a
 run is the same each time, and fails when more than one ride in ten is late or
 more than 8 s off what the phone said. `tools/wall_stops.js <city> [seconds]
 [places]` lists where the traffic stops at a wall across its way, and what the
-wall is (a building, a canopy's post, a landmark). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
+wall is (a building, a canopy's post, a landmark); `tools/road_walls.js <city>`
+lists every stretch where the game cuts a road at a wall, or a car doesn't fit
+along it, with what is in the way (`--json` for `pipeline/road_passages.py`). `tools/ferry_check.js <city> [seconds]` runs the ferries for 15 minutes of game
 time and fails if two hulls overlap or a vessel never calls, which is what a
 deadlock or a meeting at a shared berth takes to show.
 

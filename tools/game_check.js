@@ -5,7 +5,8 @@
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
-// change with the traffic stopping for them, and lose the WebGL context on purpose and get it
+// change with the traffic stopping for them, swing the chase camera round walls in tight spots
+// frame by frame (it must ease, never jump), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -51,6 +52,62 @@ const npcNight = require('./npc_night');
   if (play) await play.click().catch(() => {});
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
+
+  // the chase camera in tight spots: placed with a wall close behind, the camera swung round
+  // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
+  // must ease: no frame may turn the view's pitch or move the camera about the player by a jump (#97)
+  const swing = mode => p.evaluate(mode => {
+    const g = window.__game, V = (x, y, z) => new THREE.Vector3(x, z, -y), r = { spots: 0, pitch: 0, move: 0, lifted: 0 };
+    const head = () => mode === 'car' ? (s => V(s.x, s.y, s.z + 1.5))(g.myCar().D.st) : V(g.player.x, g.player.y, g.player.z + 1.55);
+    const settle = () => { for (let i = 0; i < 45; i++) g.advance(1 / 30); }; // advance() moves the camera once per call
+    const run = (frames, each, walk = true) => { // the second half walking on (on foot)
+      let last = null;
+      for (let i = 0; i < frames; i++) {
+        each(i);
+        g.advance(1 / 30, walk && i >= frames / 2 ? ['KeyW'] : []);
+        const c = g.camera.position, t = g.live.look, off = c.clone().sub(t), pitch = Math.atan2(off.y, Math.hypot(off.x, off.z));
+        r.lifted = Math.max(r.lifted, g.cam.lift || 0);
+        const v = last && off.clone().sub(last.off);
+        if (last) { r.pitch = Math.max(r.pitch, Math.abs(pitch - last.pitch) * 180 / Math.PI); if (last.v) r.move = Math.max(r.move, v.distanceTo(last.v)); }
+        last = { pitch, off, v };
+      }
+    };
+    if (mode === 'car') {
+      const c = g.myCar && g.myCar();
+      if (!c) return null;
+      if (g.player.mode !== 'car') { const st = c.D.st; g.player.x = st.x; g.player.y = st.y; g.player.z = st.z; g.enterCar(); for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5); }
+      if (g.player.mode !== 'car') return null;
+      g.cam.mode = 'chase'; g.cam.dist = 7.5; settle();
+      run(160, () => { g.cam.yaw += 0.04; }, false); // a full turn round the parked car (driving, a knock jolts the car itself)
+      r.spots = 1;
+      g.exitCar(); g.advance(1);
+      return r;
+    }
+    // spots on the ground within 300 m where a wall stands within the camera's reach behind
+    const x0 = g.player.x, y0 = g.player.y, spots = [];
+    for (let k = 0; k < 400 && spots.length < 4; k++) {
+      const a = k * 2.39996, d = 20 + 280 * Math.sqrt(k / 400), s = g.nav.stand(x0 + Math.cos(a) * d, y0 + Math.sin(a) * d, 0, { rMax: 3 });
+      if (!s || spots.some(q => Math.hypot(q.x - s.x, q.y - s.y) < 40)) continue;
+      const h = V(s.x, s.y, s.z + 1.55);
+      for (let j = 0; j < 8; j++) {
+        const yaw = j * Math.PI / 4, b = V(s.x - Math.sin(yaw) * 6.9, s.y - Math.cos(yaw) * 6.9, s.z + 1.55 + 2.6);
+        const f = g.nav.clearFraction(h, b);
+        if (f > 0.2 && f < 0.6) { spots.push({ x: s.x, y: s.y, z: s.z, yaw }); break; }
+      }
+    }
+    for (const s of spots) {
+      g.player.x = s.x; g.player.y = s.y; g.player.z = s.z; g.player.speed = 0;
+      g.cam.mode = 'chase'; g.cam.dist = 7.5; g.cam.pitch = 0.36; g.cam.yaw = s.yaw + 1.2; g.player.h = s.yaw;
+      settle();
+      run(150, i => { if (i < 75) g.cam.yaw -= 0.032; });
+      r.spots++;
+    }
+    return r;
+  }, mode);
+  const tight = (r, what) => {
+    if (!r || !r.spots) { check(true, `no tight spot for the chase camera ${what}`); return; }
+    check(r.pitch < 5 && r.move < 0.6, `the chase camera eases round walls ${what} (${r.spots} spots, lift up to ${r.lifted.toFixed(2)} rad; worst frame ${r.pitch.toFixed(1)}° of pitch, a ${r.move.toFixed(2)} m jolt)`);
+  };
 
   // the arrival (#89): the calm move from the title shot hands over to the chase camera within 4.5 s, then the
   // first-time tour of the HUD opens; every step points at its control, it steps back and on, and skips
@@ -103,6 +160,8 @@ const npcNight = require('./npc_night');
   });
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
+  tight(await swing('foot'), 'on foot');
+  await p.evaluate(() => { const g = window.__game; g.spawn(); g.advance(1); });
 
   // the crowd keeps out of the walls: walkers whose body (0.3 m round, knee to head) is in a building or a
   // landmark, against those walking (a footway along a facade narrows their offset from its line)
@@ -679,6 +738,7 @@ const npcNight = require('./npc_night');
   check(car.none || (car.top * 3.6 > 15 && car.moved > 5), car.none ? 'no car' : `drives your car (${(car.top * 3.6).toFixed(0)} km/h, ${car.moved.toFixed(0)} m in 4 s)`);
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);
   await shot('car');
+  tight(await swing('car'), 'at the wheel');
 
   // a taxi: a hand up at the kerb, the nearest one pulls in, in the back, the driver asks where to,
   // the heads clear the roof, it drives off, the trip is skipped to the kerb there, out; then a ride
@@ -822,6 +882,25 @@ const npcNight = require('./npc_night');
     : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
 
+  // photo mode's depth of field (its aperture), and none of it back in play (atmosphere.js camFx); a city
+  // with a busy crossing's sound (game.look.sound) finds the crossing's signals
+  const fx = await p.evaluate(async () => {
+    const g = window.__game, A = g.atmos, frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    const snd = g.sound ? g.sound() : null;
+    if (!A || !A.composer || !A.camFx) return { none: true, snd };
+    if (g.player.mode === 'car') { g.exitCar(); g.advance(1); }
+    g.photoMode(true); g.photo.fstop = 1.4;
+    for (let i = 0; i < 3; i++) await frame();
+    const pass = A.composer.passes.find(q => q.uniforms && q.uniforms.uAperture);
+    const on = !!(g.photo.on && pass && pass.enabled && pass.uniforms.uAperture.value > 0);
+    g.photoMode(false);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.1);
+    for (let i = 0; i < 3; i++) await frame();
+    return { on, off: !(pass && pass.enabled), snd };
+  });
+  check(fx.none || (fx.on && fx.off), fx.none ? 'no post stack for the depth of field' : `photo mode focuses with a depth of field (${fx.on}), and play has none (${fx.off})`);
+  if (fx.snd) check(fx.snd.junction != null, `the crossing's sound listens to its signals (junction ${fx.snd.junction})`);
+
   // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
   const lights = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
@@ -959,6 +1038,30 @@ const npcNight = require('./npc_night');
     check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
   }
   await shot('junction');
+
+  // the traffic keeps out of the walls: cars whose body (most of its width, knee to 1.4 m) is in a building or a
+  // landmark, over 20 s; none stands at a wall across its way for long; and no one-way road that comes to a
+  // wall (a road the data runs into a building: game.js cutAtWalls, pipeline/road_passages.py) is open to it
+  const carWalls = await p.evaluate(() => {
+    const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, av = g.roadNet.avoid;
+    let n = 0, inWall = 0, waits = 0;
+    const still = new Map();
+    for (let t = 0; t < 20; t++) {
+      g.advance(1);
+      for (const c of C) {
+        if (c.line < 0) continue;
+        n++;
+        if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
+        const s = c.why === 'wall' && c.v < 0.1 ? (still.get(c) || 0) + 1 : 0;
+        still.set(c, s);
+        if (s === 6) waits++;
+      }
+    }
+    const traps = RL.filter((l, i) => l.ow && (l.wall & (l.ow > 0 ? 2 : 1)) && !(av && av[i])).length;
+    return { n, inWall, waits, traps, ends: RL.filter(l => l.wall).length };
+  });
+  check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
+  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
