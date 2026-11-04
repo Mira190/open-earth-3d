@@ -1166,7 +1166,7 @@ const npcNight = require('./npc_night');
   const carWalls = await p.evaluate(() => {
     const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, av = g.roadNet.avoid;
     let n = 0, inWall = 0, waits = 0;
-    const still = new Map();
+    const still = new Map(), at = [];
     for (let t = 0; t < 20; t++) {
       g.advance(1);
       for (const c of C) {
@@ -1175,14 +1175,14 @@ const npcNight = require('./npc_night');
         if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
         const s = c.why === 'wall' && c.v < 0.1 ? (still.get(c) || 0) + 1 : 0;
         still.set(c, s);
-        if (s === 6) waits++;
+        if (s === 6) { waits++; at.push(`${c.x.toFixed(0)},${c.y.toFixed(0)} line ${c.line}`); }
       }
     }
     const traps = RL.filter((l, i) => l.ow && (l.wall & (l.ow > 0 ? 2 : 1)) && !(av && av[i])).length;
-    return { n, inWall, waits, traps, ends: RL.filter(l => l.wall).length };
+    return { n, inWall, waits, at, traps, ends: RL.filter(l => l.wall).length };
   });
   check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
-  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
+  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}${carWalls.at.length ? ': at ' + carWalls.at.join('; ') : ''}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
