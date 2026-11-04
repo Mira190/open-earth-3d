@@ -8,6 +8,8 @@
 #     inside each other and inside posts, people inside cars and walls, ferries, seated heads);
 #   - plays each city's guided tour in the model viewer (tools/tour_check.js: every stop in order,
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
+#   - checks that every city's buildings.bin is packed from its buildings.json as it is now and decodes
+#     to the same values (pipeline/pack.py --check, tools/pack_check.js);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
 #     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
@@ -176,6 +178,11 @@ EOF
   # what the characters say, everywhere (tools/voice_check.py): locals, not the map's credits. A second or so.
   if python3 tools/voice_check.py >"$OUT/voice.log" 2>&1; then tail -1 "$OUT/voice.log"
   else echo "FAIL voice  $(grep '^FAIL' "$OUT/voice.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/voice.log)"; fi
+  # each city's packed buildings (buildings.bin, pipeline/pack.py) against its buildings.json: up to date,
+  # and decoded by the browser's decoder (web/pack.js) to the same values. Ten seconds or so.
+  if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
+    echo "ok   pack   $(ls web/data/*/buildings.bin | wc -l) cities' buildings.bin up to date and decoded to their buildings.json"
+  else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
   # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
   if [ ${#cities[@]} -gt 0 ]; then
     if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"
