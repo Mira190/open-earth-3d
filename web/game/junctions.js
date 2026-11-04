@@ -80,9 +80,7 @@ window.OEJunctions = (function () {
     const L = net.L, side = keep === 'right' ? -1 : 1, tmp = {};
     const nodeKey = (line, end) => { const l = L[line], k = end ? l.pts.length / 3 - 1 : 0; return net.key(l.pts[3 * k], l.pts[3 * k + 1]); };
     // can a car leave a node along line `line` from its end `end` (0: with its points)?
-    // (and not into a one-way street that leads nowhere, mapped as ending in a station square, say:
-    // a car could only wait at its end for good, over the crosswalk there)
-    const canLeave = (line, end) => (end === 0 ? L[line].ow !== -1 : L[line].ow !== 1) && !(L[line].ow && !net.next(line, 1 - end, true));
+    const canLeave = (line, end) => (end === 0 ? L[line].ow !== -1 : L[line].ow !== 1);
     const canReach = (line, end) => (end === 1 ? L[line].ow !== -1 : L[line].ow !== 1);
     // the banned turns: (line, the end a car reaches) -> [[line, the end it enters by, steps]]
     // (game.json "nt" names pieces by their place in paths.road; network() drops the shortest)
@@ -443,6 +441,10 @@ window.OEJunctions = (function () {
       if (clockOf && ex.some(e => e.tw || L[e.m.line].tb)) { // (not a way closed at this hour, if there is another)
         const t = clockOf(), open = ex.filter(e => !closedNow(e, t));
         if (open.length) ex = open;
+      }
+      if (ex.length > 1) { // (not into a one-way street that leads nowhere, mapped as ending in a station square, say, if there is another way)
+        const on = ex.filter(e => { const l = L[e.m.line]; return !(l.ow && !net.next(e.m.line, 1 - e.m.end, true)); });
+        if (on.length) ex = on;
       }
       let sum = 0;
       const w = ex.map(e => { const v = (1 + 1.6 * Math.cos(e.turn)) * (0.6 + 0.2 * e.m.rank); sum += Math.max(0.15, v); return Math.max(0.15, v); });
