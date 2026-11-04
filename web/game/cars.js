@@ -990,8 +990,9 @@ window.OECars = (function () {
         // over 6 s, and not queueing, it is stopped for good, as one caught up with this one at a kerb)
         // (and one it has begun to swing out round stays one while it stands there: its held time is
         // reset at a red light, and the car would else drop out and back in from frame to frame)
+        // (nor one whose car ahead is moving off: a queue that has begun to move, its tail not yet off)
         const oq = queueing(o);
-        const stopped = !oq && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
+        const stopped = !oq && !(o.front && (o.front.v || 0) >= 0.5) && qBack - (a + half) > 2 * C.half + 4 && (o.still === true || o.still > 6 || (st.held > 6 && (o.v || 0) < 0.1) || (rounding.has(o) && (o.v || 0) < 0.5)) && a < 40 && (!end || st.end - st.s - (a + half) > 2 * C.half + 8 || !o.stay); // (not one parked where it is to pull in: one parked short of it, with room past it to pull back in to the kerb, it goes round, and pulls in beside you, not 20 m back behind it)
         // (side by side, clear; a stopped car in its lane is judged by the lane, not by where it has
         // swung out to: else, once out, it would count as clear, swing back in, and so on every frame)
         if (Math.abs(w - lane - (stopped ? 0 : st.shift)) >= room) continue;
