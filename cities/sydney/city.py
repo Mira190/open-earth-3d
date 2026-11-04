@@ -125,9 +125,11 @@ MATERIALS = {
     "lc_tread": {"color": "#b8a08c", "roughness": 0.8, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "decal": True, "street_lit": True},
     "lc_riser": {"color": "#7e6154", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 0.0], "stair": "riser", "decal": True},
     "lc_wall": {"color": "#a8897a", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 2.4, "street_lit": True, "solid": False, "camera": True},
-    "lc_soffit": {"color": "#a69d90", "roughness": 0.9, "metalness": 0.0, "solid": False, "camera": True, "emissive": "#ffd8a8", "glow": 0.05},  # off-form concrete (its meshes take SKY_UNDER of the sky)
+    "lc_soffit": {"color": "#a69d90", "roughness": 0.9, "metalness": 0.0, "solid": False, "camera": True, "emissive": "#ffd8a8", "glow": 0.14},  # off-form concrete (its meshes take SKY_UNDER of the sky); after dark, the downlights' light back off the flags
     "lc_floor": {"color": "#b49c89", "roughness": 0.78, "metalness": 0.0, "pattern": "granite", "joints_m": [1.2, 2.4], "decal": True,
-                 "emissive": "#ffd8a8", "glow": 0.16},  # the colonnade's flags, under the soffit's downlights after dark
+                 "emissive": "#ffd8a8", "glow": 0.12, "street_lit": True},  # the colonnade's flags: their pools of light under the downlights (landmark_glows)
+    # the downlights in the soffit over the colonnade, a row of them between the columns (lc_downlights)
+    "lc_downlight": {"color": "#bdb8ae", "roughness": 0.4, "metalness": 0.0, "emissive": "#ffe3bd", "glow": 2.2, "solid": False},
     "lc_fascia": {"color": "#a57c66", "roughness": 0.85, "metalness": 0.0, "pattern": "granite", "joints_m": [1.25, 3.6], "solid": False, "camera": True},
     "lc_bronze": {"color": "#5a4029", "roughness": 0.4, "metalness": 0.8, "solid": False},  # the stairwell's handrail
     # the shopfronts: glass between bronze mullions, a kick plate at the foot, most panes lit after dark
@@ -257,6 +259,10 @@ LOWER = {"fence_near": (233.0, 430.0), "walk_m": 1.58, "floor_m": 0.60, "riser_m
 # After dark the downlights in the soffit light the colonnade's floor, and the soffit and the columns
 # catch their spill (the materials' glow)
 SKY_UNDER = {"soffit": 0.3, "columns": 0.45, "floor": 0.35, "shopfront": 0.35, "passage": 0.2}
+# The colonnade after dark (issue #141): a downlight in the soffit every 3.6 m (between the 7.2 m bays'
+# columns and over them), each throwing a pool on the flags (landmark_glows, web/night.js)
+DOWNLIGHT_EVERY_M, DOWNLIGHT_R_M, DOWNLIGHT_POOL = 3.6, 0.1, (3.2, "#ffd8a8", 0.55)
+DOWNLIGHTS = []  # (x, y) of each, as concourse_meshes lays them (landmark_glows reads them)
 # Overture infrastructure drawn in the precinct, by (subtype, class)
 STREET_FURNITURE = {("pedestrian", "bench"): "bench", ("barrier", "bollard"): "bollard", ("transportation", "street_lamp"): "lamp",
                     ("tower", "lighting"): "floodlight", ("pedestrian", "information"): "pylon"}
@@ -661,8 +667,16 @@ def game_extras(scene):
     return {"close": close}
 
 
+def landmark_glows(scene):
+    """The pools of light the Lower Concourse's downlights throw on its flags (web/night.js), from
+    the downlights landmark_meshes laid."""
+    R, hexc, k = DOWNLIGHT_POOL
+    return [[x, y, R, hexc, k] for x, y in DOWNLIGHTS]
+
+
 def landmark_meshes(scene):
     """(materials, meshes) for pipeline/landmarks.py."""
+    DOWNLIGHTS.clear()
     lm = scene["landmarks"]
     meshes = []
     if "opera_house" in lm:
@@ -2198,6 +2212,8 @@ def concourse_meshes(L, uv, lv, drape):
     # the passage to the stairwell, through the shopfronts, and the stairwell's opening: no shopfront or soffit across them
     door = shapely.union_all([Polygon(well["passage"]), Polygon(well["opening"])]).buffer(0.05) if well else Polygon()
     run = 0.0
+    downs = Mesh("lc_downlights", "lc_downlight", False, floodlit=True)
+    next_light = DOWNLIGHT_EVERY_M / 2
     for k in range(len(E) - 1):
         e0, e1 = E[k], E[k + 1]
         q0, q1 = np.array(e0[:2]), np.array(e1[:2])
@@ -2219,6 +2235,21 @@ def concourse_meshes(L, uv, lv, drape):
             b0, b1 = q0 + n0 * rec, q1 + n1 * rec
             if not Polygon([q0, q1, b1, b0]).intersects(Polygon(well["opening"]) if well else Polygon()):
                 soffit.quad(P(q0, s0), P(q1, s1), P(b1, s1), P(b0, s0))
+                # the downlights: every DOWNLIGHT_EVERY_M along the colonnade, in the middle of its depth
+                while next_light <= run + L1:
+                    f = (next_light - run) / L1
+                    c = q0 + (q1 - q0) * f + (n0 + (n1 - n0) * f) * rec * 0.5
+                    zc = s0 + (s1 - s0) * f - 0.02
+                    if zc - (e0[4] + (e1[4] - e0[4]) * f) < 1.8:  # (no colonnade under the edge here)
+                        next_light += DOWNLIGHT_EVERY_M
+                        continue
+                    ring = [c + DOWNLIGHT_R_M * np.array([math.cos(a), math.sin(a)]) for a in np.linspace(0, 2 * math.pi, 9)[:-1]]
+                    for a, b in zip(ring, ring[1:] + ring[:1]):
+                        downs.tri(P(c, zc), P(b, zc), P(a, zc))  # (facing down)
+                    DOWNLIGHTS.append((round(float(c[0]), 1), round(float(c[1]), 1)))
+                    next_light += DOWNLIGHT_EVERY_M
+            else:
+                next_light = max(next_light, run + L1 + DOWNLIGHT_EVERY_M / 2)
             if not door.intersects(shapely.LineString([b0, b1])):
                 shop.quad(P(b0, e0[4]), P(b1, e1[4]), P(b1, s1), P(b0, s0), [[run, 0.0], [run + L1, 0.0], [run + L1, s1 - e1[4]], [run, s0 - e0[4]]])
             floor_m.quad(P(q0, e0[4] + 0.03), P(q1, e1[4] + 0.03), P(b1, e1[4] + 0.03), P(b0, e0[4] + 0.03), [uv(*q0), uv(*q1), uv(*b1), uv(*b0)])
@@ -2241,7 +2272,7 @@ def concourse_meshes(L, uv, lv, drape):
     for x, y, zf, zs in colonnade_columns(E):  # the mushroom columns, just in from the fascia
         r = LOWER["column_r_m"]
         cols.lathe([(zf - 0.1, r), (zs - 0.75, r), (zs - 0.35, 0.55), (zs - 0.08, 1.05), (zs, 1.1)], np.array([x, y]), segs=14)
-    out = [flags, treads, risers, walls, par, fascia, soffit, shop, floor_m, cols, bed]
+    out = [flags, treads, risers, walls, par, fascia, soffit, shop, floor_m, cols, bed, downs]
     if well:
         out += well_meshes(well, lc, uv)
     return [m for m in out if m.v]
@@ -2288,6 +2319,23 @@ def well_meshes(W, lc, uv):
             side.quad(np.array([*b, floor_ - 0.1]), np.array([*a, floor_ - 0.1]), np.array([*a, ceil]), np.array([*b, ceil]),
                       [[run + n, floor_], [run, floor_], [run, ceil], [run + n, ceil]])
             run += n
+    # the slab's edge round the opening, where the passage or the landing runs on under the slab: its
+    # 1.5 m from their ceiling up to the forecourt (without it, nothing is drawn between the two and the
+    # stair looks into the slab's body, issue #141)
+    under = shapely.union_all([pc["poly"] for pc in lc["under"] if pc["kind"] == "passage"]).buffer(0.02)
+    oc = np.asarray(opening.exterior.segmentize(1.0).coords)
+    occw = opening.exterior.is_ccw
+    run = 0.0
+    for a, b in zip(oc, oc[1:]):
+        e = b - a
+        n = float(np.linalg.norm(e))
+        if n < 1e-3:
+            continue
+        out = np.array([e[1], -e[0]]) / n * (1 if occw else -1)  # out of the opening, into the slab
+        if under.contains(Point(*((a + b) / 2 + out * 0.3))) and not opening.contains(Point(*((a + b) / 2 + out * 0.3))):
+            side.quad(np.array([*a, ceil - 0.02]), np.array([*b, ceil - 0.02]), np.array([*b, top + 0.02]), np.array([*a, top + 0.02]),
+                      [[run, ceil], [run + n, ceil], [run + n, top], [run, top]])
+        run += n
     # the balustrade round the opening: a granite upstand, a bronze rail on it
     r = np.asarray(W["rail"], float)
     h = LOWER["well"]["rail_m"]

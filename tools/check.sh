@@ -10,6 +10,7 @@
 #     an end card instead of a loop, no NaN or runaway highlight, no flat or flickering frame);
 #   - checks that every city's buildings.bin is packed from its buildings.json as it is now and decodes
 #     to the same values (pipeline/pack.py --check, tools/pack_check.js);
+#   - checks that every shared model in web/assets is meshopt-compressed (pipeline/meshopt_glb.mjs --check);
 #   - looks for signs whose words read mirrored in each city's built landmarks (tools/sign_check.py);
 #   - reads every line the games' characters say, in every city and reef site, for talk about the
 #     data or how the map was built (tools/voice_check.py: open data, PLATEAU, LiDAR, "rebuilt from"...);
@@ -183,6 +184,9 @@ EOF
   if python3 pipeline/pack.py --check >"$OUT/pack.log" 2>&1 && node tools/pack_check.js >>"$OUT/pack.log" 2>&1; then
     echo "ok   pack   $(ls web/data/*/buildings.bin | wc -l) cities' buildings.bin up to date and decoded to their buildings.json"
   else echo "FAIL pack   $(grep '^FAIL' "$OUT/pack.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/pack.log)"; fi
+  # every shared model meshopt-compressed (pipeline/meshopt_glb.mjs, issue 148): a rebuilt one that missed the step
+  if node pipeline/meshopt_glb.mjs --check web/assets/*/*.glb >"$OUT/meshopt.log" 2>&1; then tail -1 "$OUT/meshopt.log"
+  else echo "FAIL meshopt $(grep '^FAIL' "$OUT/meshopt.log" | head -2 | cut -c6-140 | paste -sd ';' -)   (see $OUT/meshopt.log)"; fi
   # signs that read mirrored, in the built landmarks of the cities checked (tools/sign_check.py)
   if [ ${#cities[@]} -gt 0 ]; then
     if python3 tools/sign_check.py "${cities[@]}" >"$OUT/signs.log" 2>&1; then echo "ok   signs  ${#cities[@]} cities, every sign reads the right way round"

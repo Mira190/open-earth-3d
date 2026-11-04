@@ -21,9 +21,11 @@ canvas{display:block}
 // clip=Talk, acc=a,b (everyone) | only=ids or indices | shadows=0 | labels=0 or names | t=seconds to advance |
 // cx,cy,cz camera, tx,ty,tz target, fov | gap | ry | live=1
 import * as T from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader as GLTFLoaderBase } from 'three/addons/loaders/GLTFLoader.js';
+import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 T.ColorManagement.enabled = false;
+class GLTFLoader extends GLTFLoaderBase { constructor(m) { super(m); this.setMeshoptDecoder(MeshoptDecoder); } } // (meshopt-compressed models)
 window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils });
 const q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
 addEventListener('error', e => { $('err').textContent += String(e.error && e.error.stack || e.message) + '\n'; });
