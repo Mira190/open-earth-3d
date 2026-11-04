@@ -298,7 +298,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // the closest point on any line within maxD of (x, y): {line, s, x, y, z, d} or null; with z,
     // only where the line is within dz of that height (the street you are on, not the flyover above it)
-    function nearest(x, y, maxD, z = null, dz = 3) {
+    // the nearest point on the lines within maxD of (x, y), within dz of height z (when given), and
+    // with a grade, within dz + grade * the distance: a street down a slope from a raised plaza
+    // (Melbourne's Federation Square) counts, a road on a deck right above or below does not
+    function nearest(x, y, maxD, z = null, dz = 3, grade = 0) {
       let best = null;
       for (const i of new Set(near(x, y, 0, maxD))) {
         const l = L[i], n = l.pts.length / 3;
@@ -306,7 +309,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], ex = l.pts[3 * k] - ax, ey = l.pts[3 * k + 1] - ay, L2 = ex * ex + ey * ey;
           const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
           const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(x - qx, y - qy), qz = l.pts[3 * k - 1] + (l.pts[3 * k + 2] - l.pts[3 * k - 1]) * t;
-          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
+          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz + grade * d)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
         }
       }
       return best;
