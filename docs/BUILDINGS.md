@@ -190,7 +190,7 @@ machiya, mixed (Japanese mixed use with signs), stone, haussmann or grachtenpand
 |---|---|
 | Curtain wall when `facade_material` is glass, an office is 40 m or taller (85%), or anything is 80 m or taller | Research synthesis |
 | Heritage for churches, civic buildings and stations up to 50 m: round-headed windows, string courses, a rusticated base | Sydney sandstone civic buildings |
-| Storey height from the floor count and wall height, capped by style. Above the top floor the rest of the wall is attic or parapet, because a residential floor-count height includes 2.8 m of roof. One floor on a wall taller than two of the style's tallest storeys is a register counting a whole block as one storey (Paris has about 1,600 at 15–30 m): its storeys are counted from the style's height instead (`typology.storeys`, and `buildings.js` for files built before) | `storey` model in `city.json` |
+| Storey height from the floor count and wall height, capped by style. Above the top floor the rest of the wall is attic or parapet, because a residential floor-count height includes 2.8 m of roof. One floor on a wall taller than two of the style's tallest storeys is a register counting a whole block as one storey (Paris has about 1,600 at 15–30 m): its storeys are counted from the style's height instead (`typology.storeys`; `pipeline/restorey.py` gives the same storeys to a `buildings.json` built before without the raw downloads, about 1,900 buildings in ten cities, Paris 1,423, Osaka 326, Hong Kong 100; `buildings.js` still applies the rule to any file left stale) | `storey` model in `city.json` |
 | A taller ground floor (+1.1 m) with a shopfront on edges that face a road within 14 m. Flats and unclassed buildings get shopfronts only on main streets | Overture road segments |
 | Awnings over 80% of Sydney's shopfronts; the street pent roof (hisashi) on machiya | City of Sydney, Kyoto machiya guidance |
 | A precinct wall (`pipeline/walls.py`, a step after `game_data.py`): one unnamed solid of no use class, at most 3.5 m thick on average and at least 80 m long, with no mapped footway along it, is drawn in the `wall` style: no windows or storeys, a stone plinth, plaster stained under its coping. An estimated height becomes a wall's (`walls.height_m`, 4 m); a measured one up to 6 m stands. With `walls.coping: "kawara"` it gets a hipped coping of glazed tiles over a 0.35 m overhang, and inside a `walls.lines` box the white lines of a suji-bei (five round the Kyoto Gosho and Sento Gosho) | OpenStreetMap, PLATEAU; Kyoto Gyoen notices (five lines, stone plinth); Sanjusangen-do's Taiko-bei, 5.3 m |
@@ -230,7 +230,7 @@ Osaka have built-in adjustments:
 | Roofs | Hipped houses and semis, gabled terraces, tile, metal or slate | Gabled houses, kawara or sheet metal, flat from 3–4 floors |
 | Walls | Painted stucco and sandstock brick (terraces); red face brick and roughcast (Federation); liver and cream brick (flats); precast (offices); sandstone | Ceramic siding (over 80% of new houses); tile and painted concrete; low chroma under the Tokyo and Kyoto colour rules |
 | Grids | Metric bays, 2.8–3.6 m | The 910 mm module: sliding units of 1,690 mm on 1,820 mm bays; machiya fronts of three 1.97 m bays |
-| Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, lettered with real words (a business across a floor's panel, a two-character tenant a floor down a corner sign, read top to bottom; dark on a light sign, white on a dark one) and backlit at night. The words are kinds of business, not shops' names, drawn into `web/assets/signs/glyphs.png` by `pipeline/sign_glyphs.py` with Google Fonts (Zen Kaku Gothic New, Shippori Mincho, Dela Gothic One, RocknRoll One, M PLUS Rounded 1c; SIL Open Font License); until it loads, strokes in the shape of characters |
+| Street | Awnings over shopfronts | Shop signs on mixed-use mid-rises, lettered with real words (a business across a floor's panel, a two-character tenant a floor down a corner sign, read top to bottom; dark on a light sign, white on a dark one) and backlit at night. A building has one corner sign, at the start of the longest street front of its tallest solid, and a floor's panel takes two whole bays of a wall run, never its margins. The words are kinds of business, not shops' names, drawn into `web/assets/signs/glyphs.png` by `pipeline/sign_glyphs.py` with Google Fonts (Zen Kaku Gothic New, Shippori Mincho, Dela Gothic One, RocknRoll One, M PLUS Rounded 1c; SIL Open Font License); until it loads, strokes in the shape of characters |
 | City adjustments | | Kyoto: machiya, signs at 0.35 (no rooftop or flashing signs by ordinance). Osaka: signs at 1.4 |
 
 **Paris** (`paris`, country FR) measures its roofs instead of drawing them. IGN's
@@ -296,8 +296,12 @@ was drawn from the guess: no machiya, Haussmann, canal house or mixed-use front,
 every pitched roof plain. The before/after stills of that fix are in
 [images/facade-styles/](images/facade-styles/); `tools/style_shots.sh` takes them
 (each city's opening view and a street view of its most characteristic styles, at
-day, dusk and night, on a desktop and a phone, from `tools/style_views.py`) and
-`tools/style_compare.py` lays two runs side by side.
+day, dusk and night, on a desktop and a phone, from `tools/style_views.py`: night at 21:00 on a winter date, and a street
+view that sees past eaves and tree crowns as well as buildings) and
+`tools/style_compare.py` lays two runs side by side. The stills after issue #73 (the storeys counted again,
+one corner sign a building, the views past trees and at a winter night) are in
+[images/facade-styles/after-73/](images/facade-styles/after-73/), with `corner-signs.jpg` taken from
+the mixed-use cameras of the sheets above.
 
 The integrated build, every city rebuilt (mesh and build time in headless Chrome
 on a CPU, SwiftShader):

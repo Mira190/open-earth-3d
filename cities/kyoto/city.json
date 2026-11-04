@@ -297,6 +297,7 @@
     }
   ],
   "game": {
+    "weather": {"rain_days": [8.1, 8.9, 11.2, 10.6, 10.8, 13.2, 12.6, 9.3, 11.1, 9.4, 7.4, 8.2], "threshold_mm": 0.5, "drizzle": 0.5, "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Kyoto on Foot",
     "start": {
       "at": [-262, -1812],

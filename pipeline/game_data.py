@@ -55,6 +55,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 import arcades
+import restorey
 import walls
 import woods
 import kerbside
@@ -591,7 +592,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate", "sky") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate", "sky", "weather") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
@@ -632,6 +633,7 @@ def main():
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
     kerbside.tidy_places(C.out, roads)  # the mapped trees out of the carriageways too (places.json)
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
+    print(f"{restorey.mark(C.out)} one-floor records given storeys (buildings.json)")  # pipeline/restorey.py: a no-op on a fresh build
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
     if os.path.exists(os.path.join(C.raw, "overture_land_use.parquet")):
