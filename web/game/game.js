@@ -633,17 +633,20 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // a place on the roads moved along its street clear of a scramble: no stopping within 5 m of its
   // crosswalks (Japan's Road Traffic Act, art. 44), where its crowd masses at the kerb and surges out
   const SCR_AT = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.max(Math.hypot(w[0] - j.x, w[1] - j.y), Math.hypot(w[3] - j.x, w[4] - j.y)))) + 7 }));
+  const inScramble = (line, s) => { roadNet.at(line, s, rq); return SCR_AT.some(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
   function offScramble(pl) {
-    if (!pl || !SCR_AT.length) return pl;
-    const L = roadNet.L[pl.line].len, at = s => { roadNet.at(pl.line, s, rq); return SCR_AT.find(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
-    if (!at(pl.s)) return pl;
-    for (let d = 3; d <= 90; d += 3) for (const sg of [1, -1]) {
+    if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
+    // (the nearest clear spot either way, the one with road ahead to drive off along first)
+    const L = roadNet.L[pl.line].len, found = [];
+    for (const sg of [1, -1]) for (let d = 3; d <= 90; d += 3) {
       const s = pl.s + d * sg;
-      if (s < 3 || s > L - 3 || at(s)) continue;
-      roadNet.at(pl.line, s, rq);
-      return Object.assign({}, pl, { s, x: rq.x, y: rq.y, z: rq.z });
+      if (s < 3 || s > L - 3) break;
+      if (!inScramble(pl.line, s)) { found.push({ s, d, room: pl.dir > 0 ? L - s : s }); break; }
     }
-    return pl;
+    if (!found.length) return pl;
+    found.sort((a, b) => (b.room > 25) - (a.room > 25) || a.d - b.d);
+    roadNet.at(pl.line, found[0].s, rq);
+    return Object.assign({}, pl, { s: found[0].s, x: rq.x, y: rq.y, z: rq.z });
   }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
@@ -654,7 +657,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
     let first = null;
     for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
-      const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
+      const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) });
+      if (SCR_AT.length && inScramble(q.line, q.s)) continue; // (not back by the scramble's crosswalks)
+      const pose = kerbPose(q);
       first = first || { pl: q, pose };
       if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
       let hit = false;
@@ -665,7 +670,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       }, pose.z);
       if (!hit) return { pl: q, pose };
     }
-    return first;
+    return first || { pl, pose: kerbPose(pl) };
   }
   // where a car is on the roads, going the way it faces
   function placeOf(st) {
