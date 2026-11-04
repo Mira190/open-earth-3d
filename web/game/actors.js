@@ -1462,12 +1462,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // cuts across the other lane): one of them gives way, backing off a metre or two, and the cars
         // behind it back off in turn to make it room (below). The one not in the junction gives way to
         // the one in it; of two in it, the one that went in later; of two on a street, one of the two
-        const by = held ? holder : revBy;
-        if (by && by.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
+        const heldBy0 = held ? holder : revBy;
+        if (heldBy0 && heldBy0.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
           c.giveT = 5;
-          const mutual = by.front === c, j = C.indexOf(by);
-          const yieldC = c.mv && by.mv ? mutual && c.mvT > by.mvT : !c.mv && by.mv ? mutual : !c.mv && !by.mv && mutual && i > j;
-          backOff(yieldC ? c : by, 1.5);
+          const mutual = heldBy0.front === c, j = C.indexOf(heldBy0);
+          const yieldC = c.mv && heldBy0.mv ? mutual && c.mvT > heldBy0.mvT : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
+          backOff(yieldC ? c : heldBy0, 1.5);
         }
         if (c.giveT > 0) c.giveT -= dt;
         // held a long time all the same (a knot no backing off undoes), or in a junction caught up behind
