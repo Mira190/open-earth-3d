@@ -375,6 +375,15 @@ local welcome instead. "Show the intro again" in the menu runs the tour at any
 time. While the tour shows nothing can be started (no talk, no boarding), and it
 carries `data-hush`, so the area sign waits for it.
 
+### Weather
+
+Rain, drizzle and overcast come as each city's climate brings them for the date on the game's
+clock (Tokyo's June rainy season about half its days), or as chosen in the menu's Weather row or a
+quest (Kaede waits for the rain in Shinjuku Gyoen's shelter). Rain falls round you but not under a
+roof or a tree, the ground darkens and holds puddles with rings in them, the crowd puts up
+umbrellas and the light goes soft and grey-blue. How it works, what it learnt from and its sources:
+[WEATHER.md](WEATHER.md).
+
 ## What we took from other games, and where this one is different
 
 A research pass looked at the games people compare this to. The sources are
@@ -751,6 +760,24 @@ Sydney's traffic stood still a third of the time.
   and written on the piece it starts from as `"nt": [[end, piece, end entered,
   steps]]`: Sydney has 185, Hong Kong 612, Melbourne 343, Osaka 368.
   `game_data.py` writes the same as it builds.
+- **Rules by the hour.** Overture keeps OSM's conditional restrictions as
+  `when.during`, an opening_hours value with its spaces dropped
+  (`Mo-Fr07:30-08:30`, `07:30-08:3016:00-18:00`). `road_rules.py` reads the days
+  and times (`windows`: a day mask and minutes, a range past midnight split onto
+  the next day; sunrise, public holidays and months are left out) and writes a
+  turn banned at some hours as `"ntw"` (as `"nt"`, with the times) and a street
+  shut to cars at some hours as `"tb": [[way, shut, times]]`: shut while the
+  times last (`access=no @ (...)`: Japan's school roads on weekday mornings, a
+  shopping street by day), or, on a street shut to cars but for its deliveries,
+  open only then (Amsterdam's streets, `motor_vehicle=no` with
+  `delivery @ (07:00-11:00)`). Rules for lorries, bicycles or by weight alone
+  don't count. `junctions.js` goes by the game's clock (`setClock`, from
+  `game.js`): a car coming up to a junction doesn't choose a way closed at that
+  hour if there is another, the rides' router goes round, and no car is put on
+  a shut street; one already on it drives out. Tokyo has 26 such streets and one
+  timed turn, Shibuya and Shinjuku 29 streets, Osaka 24, Kyoto 4 and 3 turns,
+  Sydney and Amsterdam 7, Hong Kong 5, Paris 2; Overture's release carries few
+  timed turn bans anywhere (6 in all the cities).
 - **Lanes from the data.** Overture's segments don't carry OSM's `lanes` or
   `turn:lanes`, but each names the OSM ways it was cut from.
   `pipeline/road_lanes.py` reads those ways' tags from the OpenStreetMap API by
@@ -759,12 +786,20 @@ Sydney's traffic stood still a third of the time.
   arrows at a piece's end where the OSM way itself ends, and `"nl"`, the lanes
   each way where tagged (1 or 2). Sydney has 609 of its 1957 pieces with a
   count and 71 with arrows, Melbourne 1853 and 128, Hong Kong 1242 and 109;
-  Japan's cities tag almost no arrows. The traffic reads the arrows. It doesn't
-  read the counts yet: where the count changes from one piece to the next
-  (OSM's `lanes=2` on a short stretch between two one-lane ones) the cars'
-  merging can't keep up, and Sydney's jams under `traffic_check.js` (six places)
-  went from 1.2% to 3.4% with the counts and 2.2% with only their reductions to
-  one lane. That waits on merging that looks ahead along the road.
+  Japan's cities tag almost no arrows. The traffic reads the arrows, and the
+  counts where they take a main road down to one lane each way (the game draws
+  a minor road one lane wide each way, so a count of two there is left alone).
+  Along a road between junctions (pieces joined where only two meet) the counts
+  are smoothed: a stretch of two shorter than 120 m between stretches of one has
+  one, and a stretch of one shorter than 40 m between stretches of two keeps two,
+  so nobody has to merge and pull out again within a few metres. A car in the
+  second lane looks along the road past the pieces between junctions to where
+  that lane ends (`junctions.js laneRun`) and moves across from 90 m (and 2 s at
+  its speed) before it; a junction lets two movements go side by side onto a
+  road only where its second lane runs on 60 m. With the counts read the first
+  time (#51) Sydney's jams under `traffic_check.js` went from 1.2% to 3.4%, as
+  cars had to merge within a few metres; with the smoothing and the look ahead
+  they are 1.2% (three places, 150 s each; main without the counts 1.7%).
 - **Crossings between junctions.** A pedestrian crossing (OSM's
   `highway=crossing`, Overture's infrastructure class `crossing`) is sorted by
   its tags (Overture keeps them as `source_tags`) into one with signals
@@ -782,7 +817,13 @@ Sydney's traffic stood still a third of the time.
   after 15 s waiting on one who stands there, edges on, braking for them as for
   anyone in the road). Sydney has 97 crossings with signals between junctions
   and 63 zebras; the others are at junctions, whose arms have walk signals
-  already.
+  already. A ride's driver (`cars.js chauffeur`) keeps to them too: the router
+  notes the crossings along a route (`route.mids`), and in your sight the driver
+  stops at a crossing's red, and at a zebra gives way while someone is on the
+  stripes or stepping onto them (`onStripes`, from the traffic), braking as hard
+  as it brakes for a red; it holds a crossing's green while it comes, as at a
+  junction, but never cuts the walk short. The app's time counts their lights
+  near you as it counts a junction's.
 - **A junction** is a node where three or more pieces end, or a few such nodes
   joined by pieces under 24 m and no more than 42 m across: a divided road
   crossing another is two to four nodes and one junction. Its arms are the
@@ -1755,15 +1796,18 @@ deadlock or a meeting at a shared berth takes to show.
   - Cars push you aside instead of knocking you down, and stop dead for people.
   - Lanes come from the road's class: two each way on a main road, one
     elsewhere, so a wide residential street still carries one file and a
-    six-lane motorway two. OSM's counts are in `game.json` (`"nl"`) but unused
-    until the merging copes with a count that changes along a road (see
+    six-lane motorway two. OSM's counts (`"nl"`) only take a main road down to one lane
+    each way, smoothed along the road (see
     [Junctions and traffic lights](#junctions-and-traffic-lights)). There are no turn pockets.
   - The arrow phase follows the main road's on every big junction alike; the
     real plans (SCATS's, Tokyo's) are not open data. None of the game's cities
     publishes its signal timings (a request to NSW for Sydney's was refused,
     as Vienna's was); the crowd-sourced Better Intersections map, built on
-    OpenStreetMap, is the one lead, its coverage and licence still to check. Banned turns that apply
-    only at some hours, or to some vehicles, are left out.
+    OpenStreetMap, was checked (#82): it is crowd-sourced stopwatch timings of the walk
+    signals, mostly in Sydney, with its code under the AGPL-3.0 and
+    no licence stated for the timings, so the game doesn't take them; they could serve to check
+    the walkers' waits (#108) against. Banned turns and street closures at some hours follow the
+    game's clock; ones only for some vehicles (lorries, by weight) are left out.
   - Walkers cross where their footways cross a road; they wait for a walk
     signal at junctions with signals and at crossings with signals between
     junctions. The crowd doesn't seek out a crossing, and the rides' and your

@@ -5,7 +5,7 @@
 //     tools/flyover.js records with, to see the world the viewer and the game share (world.js,
 //     water.js) whole, as tools/city_shot.js does for the viewer.
 // Each at the clock time given (HH:MM local, or relative to the day's sun: "sunset+20", "sunrise-15");
-// "date" [month, day] sets the day. The views from the air are taken first, while the title is up.
+// "date" [month, day] sets the day; "weather" the weather (clear unless given). The views from the air are taken first, while the title is up.
 // Prints the page's errors.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_shot.js sydney views.json out_dir [WxH]   # llvmpipe; without xvfb-run, SwiftShader
@@ -51,6 +51,7 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       if (rel && g.dayLimits) min = Math.round(g.dayLimits()[rel[1]] + (+rel[2] || 0));
       else if (v.time) { const [hh, mm] = v.time.split(':').map(Number); min = hh * 60 + mm; }
       g.setClock(c.y, m, d, min);
+      if (g.weather) g.weather.set(v.weather || 'clear', { now: true }); // "weather": clear, overcast, drizzle, rain (weather.js)
     };
   });
   const grabPage = async name => { await p.evaluate(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))); await p.screenshot({ path: path.join(outDir, `${name}.png`) }); console.log(name); };
