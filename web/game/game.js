@@ -137,6 +137,18 @@ const vec3 LUM = vec3(0.2126, 0.7152, 0.0722);
 // the photo's baked shadows and blotches, flattened towards the ground around them
 float l0 = dot(texture2D(map, vMapUv).rgb, LUM), l4 = dot(texture2D(map, vMapUv, 4.0).rgb, LUM);
 diffuseColor.rgb *= mix(1.0, clamp(sqrt(l4 / max(l0, 0.01)), 0.7, 1.45), 0.75 * (1.0 - smoothstep(25.0, 160.0, camD)));
+// the photo's road paint (zebras, stop lines, arrows) where no street is drawn over it, or the drawn
+// one has thinned out: a pale, grey pixel much brighter than the grey ground about 6 m round it is
+// paint (or a white car's roof), and is brought down to that ground, so roads read as asphalt rather
+// than as pale blotches (issue 137). The neighbourhood is the photo's own mip at that size
+vec2 oeTx = vec2(textureSize(map, 0));
+float oeMpp = length(fwidth(vWP.xz)) / max(length(fwidth(vMapUv * oeTx)), 1e-5); // metres per photo pixel
+vec3 nb = textureLod(map, vMapUv, clamp(log2(6.0 / max(oeMpp, 1e-3)), 0.0, 8.0)).rgb;
+float lnb = dot(nb, LUM), lpx = dot(diffuseColor.rgb, LUM);
+float nbSat = (max(nb.r, max(nb.g, nb.b)) - min(nb.r, min(nb.g, nb.b))) / max(max(nb.r, max(nb.g, nb.b)), 1e-3);
+float paint = smoothstep(1.35, 1.9, lpx / max(lnb, 0.01)) * smoothstep(0.35, 0.2, lnb) * smoothstep(0.3, 0.15, nbSat)
+  * (1.0 - smoothstep(160.0, 260.0, camD));
+diffuseColor.rgb *= mix(1.0, lnb * 0.75 / max(lpx, 1e-3), paint);
 // what kind of ground: paved (pale and grey), planted (green), the rest
 float mx = max(diffuseColor.r, max(diffuseColor.g, diffuseColor.b)), sat = (mx - min(diffuseColor.r, min(diffuseColor.g, diffuseColor.b))) / max(mx, 1e-3);
 float green = smoothstep(0.02, 0.08, diffuseColor.g - max(diffuseColor.r, diffuseColor.b));
@@ -144,9 +156,30 @@ float paved = smoothstep(0.32, 0.18, sat) * smoothstep(0.07, 0.16, dot(diffuseCo
 float roadway = 0.0;
 if (uStreetOn > 0.5) { // drawn streets near the camera: no blur, no shadows baked into the photo
   vec4 st = sRGBTransferEOTF(texture2D(uStreet, vMapUv));
+  // Gaps in the drawn carriageway (where the photo's road is wider than the width drawn, or where a
+  // way stops short of a junction) are filled from the drawn streets 8 m round: a blurred level of
+  // them, where it is mostly asphalt and no footway or kerb is drawn at the pixel itself
+  // and 16 m round (where footways are drawn near, their pale paint keeps the wider level from
+  // counting as carriageway, so it does not spread over a pavement or a forecourt)
+  vec4 sb = textureLod(uStreet, vMapUv, 4.0), sc = textureLod(uStreet, vMapUv, 5.0);
+  sb.rgb = sRGBTransferEOTF(vec4(sb.rgb / max(sb.a, 0.05), 1.0)).rgb; // (a mip averages in the empty pixels' black)
+  sc.rgb = sRGBTransferEOTF(vec4(sc.rgb / max(sc.a, 0.05), 1.0)).rgb;
+  float hb = smoothstep(0.4, 0.75, sb.a) * smoothstep(0.13, 0.09, dot(sb.rgb, LUM));
+  float hc = smoothstep(0.3, 0.6, sc.a) * smoothstep(0.12, 0.09, dot(sc.rgb, LUM));
+  if (hc > hb) sb.rgb = sc.rgb;
+  float hole = (1.0 - st.a) * max(hb, hc) * (1.0 - green);
+  st = vec4(mix(st.rgb, sb.rgb, hole / max(st.a + hole, 1e-3)), max(st.a, hole));
+  float sl = dot(st.rgb, LUM);
+  // The photo's own road paint (zebras, stop lines, arrows, the bright concrete of a junction) under
+  // the drawn asphalt is flattened to the asphalt's albedo before the two are mixed, or it shows
+  // through the street as pale blotches where the drawn layer thins out with distance (issue 137).
+  // The drawn street carries its own markings; the photo keeps its paint only beyond 260 m, where
+  // the drawn streets are gone too
+  float asph = smoothstep(0.0, 0.5, st.a) * smoothstep(0.12, 0.07, sl) * (1.0 - smoothstep(160.0, 260.0, camD));
+  float pl = dot(diffuseColor.rgb, LUM), cap = sl * 1.25 + 0.006;
+  if (pl > cap) diffuseColor.rgb *= mix(1.0, (cap + (pl - cap) * 0.12) / pl, asph);
   float k = st.a * (1.0 - smoothstep(35.0, 140.0, camD)) * 0.92;
   diffuseColor.rgb = mix(diffuseColor.rgb, st.rgb, k);
-  float sl = dot(st.rgb, LUM);
   roadway = k * smoothstep(0.12, 0.07, sl);           // asphalt (dark), not the footways and kerbs drawn beside it
   paved = mix(paved, 1.0 - roadway, k);
 }
