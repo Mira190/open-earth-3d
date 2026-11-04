@@ -1145,7 +1145,8 @@ window.OEJunctions = (function () {
     update();
     return { count: lanterns.length, poles: list.length, arrows: arrows.length, walks: peds.length, update, setNight, watch, meshes, glows, list,
       walkPosts: peds.filter(o => o.scr), // (a scramble's own, standing away from the road's kerbs: for the crowd to walk round)
-      walkShown: j => peds.map((o, i) => (o.a.j === j ? pShown[i] : null)).filter(v => v != null) }; // (what a junction's walk signals show: 'g', 'r', or 'o' flashing off)
+      walkShown: j => peds.map((o, i) => (o.a.j === j ? pShown[i] : null)).filter(v => v != null), // (what a junction's walk signals show: 'g', 'r', or 'o' flashing off)
+      peds }; // (the walk signals, { a: its arm, x, y, z, h }: walkcalls.js sounds them)
   }
 
   return { create, STYLES, RANK, lanesOf, shiftOf };
