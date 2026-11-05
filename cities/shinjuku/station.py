@@ -64,7 +64,7 @@ MATERIALS = {
     "st_kt_glass": {"color": "#7d93a8", "roughness": 0.12, "metalness": 0.45, "pattern": "curtain_wall", "bay_m": 1.5, "storey_m": 4.2,
                     "spandrel": 0.22, "mullion_m": 0.08, "frame": "#d6dade", "lit_share": 0.5, "lit_k": 0.85, "warm_share": 0.7},
     "st_kt_frit": {"color": "#f4f6f8", "roughness": 0.35, "metalness": 0.1, "map": FRIT_FILE, "cutout": True, "emissive": "#cfe4ff", "glow": 0.22},
-    "st_kt_fin": {"color": "#e8ecf0", "roughness": 0.3, "metalness": 0.4, "emissive": "#bfe0ff", "glow": 1.7},
+    "st_kt_fin": {"color": "#e8ecf0", "roughness": 0.3, "metalness": 0.4, "emissive": "#bfe0ff", "glow": 2.6},
     "st_kt_canopy": {"color": "#d9dcdf", "roughness": 0.35, "metalness": 0.6},
     "st_lobby": {"color": "#55606a", "roughness": 0.15, "metalness": 0.3, "emissive": "#ffe6c0", "glow": 1.4},
     # the drawn signs (this module's atlas), lit from inside after dark
