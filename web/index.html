@@ -528,6 +528,8 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
 .g-vhud span { font: 400 8.5px/1.2 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
 .g-vhud .note { grid-column: 1 / -1; margin: 6px 0 0; padding-top: 8px; border-top: 1px solid var(--line); font: 400 9px/1.5 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); }
 .g-vhud .note kbd { font-size: 9px; padding: 1px 4px; }
+.g-vhud .note b.intent { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; font: 500 9.5px/1.5 var(--f-mono); letter-spacing: 0.12em; color: var(--accent); }
+.g-vhud .note b.intent::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 .g-lens { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 130px; width: 290px; padding: 14px 16px 15px; display: grid; gap: 5px; }
 .g-lens .eyebrow { color: var(--accent); }
 .g-lens b { font: 500 15px/1.3 var(--f-body); color: #fff; }

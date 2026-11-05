@@ -1112,7 +1112,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // to; `fresh`: how deep it is in the ones not in knownSet, the cars it is already caught up with)
     let depth = 0, most = 0, ahead = false, oc = null, ox0 = 0, oy0 = 0, ohx = 0, ohy = 0, mL = 0, mW = 0, mostCar = null, inSet = null, known = null, fresh = 0;
     const overlapTest = o => {
-      if (o === oc || (o.soft && Math.sin(o.h) * ohx + Math.cos(o.h) * ohy < 0.5)) return; // (a ride on the move, but for one it follows: game.js)
+      if (o === oc) return;
       const dx = o.x - ox0, dy = o.y - oy0, ox = Math.sin(o.h), oy = Math.cos(o.h), cs = Math.abs(ox * ohx + oy * ohy), sn = Math.abs(-ox * ohy + oy * ohx);
       const ea = oc.half + cs * o.half + sn * o.hw + mL - Math.abs(dx * ohx + dy * ohy), eb = oc.hw + sn * o.half + cs * o.hw + mW - Math.abs(-dx * ohy + dy * ohx);
       if (ea > 0 && eb > 0) {
@@ -1279,9 +1279,35 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return free >= Math.min(need, reach - 1);
     }
-    let redRuns = 0, laneChanges = 0;
+    // is car c's way across the junction at arm a (its line toLine ahead of its centre; its way ahead P,
+    // np points step apart from its bumper) blocked by a ride or your car standing in it? That car, or null
+    function wayBlocked(c, a, toLine, P, np, step) {
+      const from = toLine - c.half - 0.5, j = a.j;
+      let hit = null;
+      for (const o of api.extra) {
+        if ((o.v || 0) >= 0.5 || Math.abs(o.z - c.z) >= LEVEL || Math.hypot(o.x - j.x, o.y - j.y) > 35) continue;
+        if (hitAt(P, np, o, o.half + 0.3, o.hw + c.hw + 0.15, step) >= from) { hit = o; break; }
+      }
+      return hit;
+    }
+    let redRuns = 0, laneChanges = 0, outOfRing = 0;
     const redLog = []; // (the last few cars over a crossing's line on red, how: tools/traffic_why.js)
     const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
+    // who goes first where two cars' ways meet (car c's way comes into o's box d metres ahead of its
+    // bumper, and o's into c's d2 ahead): read the same way by both, so that one goes and the other
+    // waits and never both. A car that can no longer stop short of the place goes; then the one in
+    // the junction (of two in it, the one in first); then the one nearer the place; at a dead heat,
+    // the one first in the list (ic, io: the traffic's index, or -1 for a ride or your car). This is
+    // what a ride's driver (cars.js chauffeur) reads too, as the traffic reads it of a ride.
+    function first(c, o, d, d2, ic, io) {
+      const cs = (c.v || 0) * (c.v || 0) / 8 > d + 0.3, os = (o.v || 0) * (o.v || 0) / 8 > d2 + 0.3; // (braking at 4 m/s²)
+      if (cs !== os) return cs;
+      if (c.mv && o.mv && c.mv.j === o.mv.j) return c.mvT < o.mvT || (c.mvT === o.mvT && ic < io);
+      if (c.mv && !o.mv && o.toLine > 0) return true;
+      if (!c.mv && o.mv && c.toLine > 0) return false;
+      return d < d2 - 0.5 || (Math.abs(d - d2) <= 0.5 && ic < io);
+    }
+    JN.first = first;
     if (crowd) crowd.cars = api;
     if (nav) nav.movers = api;
     // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
@@ -1317,6 +1343,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       ownOnly = false;
       return d;
     }
+    // a ride's driver nose to nose with cars of the traffic that won't move off (each waiting on the other):
+    // the ones up against its box (x, y, z, heading h, half length and width, grown by m) are asked to back
+    // off a metre or two, as one of two of the traffic is (backOff). Whether any will
+    function makeWay(x, y, z, h, half, hw, m = 0.8) {
+      Object.assign(probe, { half, hw, z });
+      ownOnly = true;
+      const set = new Set();
+      overlaps(probe, x, y, Math.sin(h), Math.cos(h), m, m, set);
+      ownOnly = false;
+      let k = 0;
+      for (const o of set) if (canBack(o) && backOff(o, 2)) k++;
+      return k > 0;
+    }
+    JN.makeWay = makeWay;
+    JN.room = (c, e) => room(c, e); // (a ride's driver waits at the line for room beyond, as the traffic does: never stopped in the box)
     // blockers: the player on foot { x, y, z } and your car or a ride { x, y, half (half length),
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     let tick = 0;
@@ -1465,6 +1506,21 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             }
           }
         }
+        // a ride or your car on the move, along its way as a car of the traffic is (not along a straight line from
+        // the bonnet, which misses one round the corner it is turning), and given way to by the same rule as the
+        // traffic's (first): the one that goes on is the one that would. One standing still is
+        // left to the blockers below (passed side by side, swung out round, or braked for)
+        let sawX = null;
+        if (np) for (const o of api.extra) {
+          if (o.v < 0.3 || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
+          const d = hitAt(P, np, o, o.half + 0.6, o.hw + c.hw + 0.25, step);
+          if (d < 0) continue;
+          (sawX || (sawX = new Set())).add(o.id);
+          const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
+          if (d2 >= 0 && first(c, o, d, d2, i, -1)) continue;
+          const g = d + 0.6;
+          if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; }
+        }
         // in a junction and stopped behind a car waiting at another of its lines (an awkward corner,
         // a short arm whose line can't be set back far enough): that one backs off a little, and
         // after 8 s the car goes on as if it weren't there, to squeeze past it as cars caught up do
@@ -1490,6 +1546,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         let youQ = false; // (the one braked for is a ride queueing for a junction: this car queues behind it)
         for (const b of blockers) {
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
+          if (!b.parked && b.id && sawX && sawX.has(b.id)) continue; // (on the move and on its way: given way to, or not, above)
+          if (np && !b.parked && b.id && api.extra.some(o => o.id === b.id && o.np)) { // (on the move with a way of its own, not on this car's: only one straight across its bonnet, close, holds it)
+            const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
+            if (a > 0 && a < c.half + b.half + 4 && Math.abs(w) < c.hw + (b.hw || 0.9) + 0.2 && a - b.half - c.half < gap) { gap = Math.max(0, a - b.half - c.half); byCar = true; front = null; why = 'you'; }
+            continue;
+          }
           const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
           // (never round a ride queueing at a red light, b.q: it waits its turn there, and so does this car)
           if (b.parked && !b.q) {
@@ -1570,7 +1632,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               let go = lt == null || lt === 'g' || (lt === 'y' && !stop);
               if (toLine - c.half < -1) { c.overWhy = `${c.rel || ''} ${c.why} v ${c.v.toFixed(1)} toLine ${(toLine - c.half).toFixed(1)} lane ${c.ln} lo ${c.lo.toFixed(1)} lt ${lt}`; JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
-              if (go && !room(c, jEx)) go = false;
+              let noRoom = false;
+              if (go && !room(c, jEx)) { go = false; noRoom = true; }
+              // keep the box clear: not in while its way across is blocked by a ride or your car standing in the
+              // junction (it would stop half way across, the junction held, and the two nose to nose, each waiting
+              // on the other, until one drove through the other: SUMO's keep-clear, A/B Street's "don't block the
+              // box"). After 12 s it goes in all the same, and is given way to as before, so that a car left there
+              // for good never shuts the movement out. (One of the traffic waiting at another line with its nose in
+              // the way is asked to back off once this car is in, below: kept out for it, the traffic jammed more,
+              // 6.1% of the time in Shibuya against 4.8%.) Looked at four times a second while it waits, not every frame
+              if (go && np && (c.boxT || 0) < 12 && !((c.wbT = (c.wbT || 0) - dt) > 0)) { c.wbT = 0.25; c.wbCar = wayBlocked(c, jArm, toLine, P, np, step); }
+              const wb = go && np && (c.boxT || 0) < 12 ? c.wbCar : null;
+              if (wb) { go = false; c.boxT = (c.boxT || 0) + dt; } else if (!go || toLine - c.half > 4) c.boxT = 0;
               // (in a lane its movement can't go from, or still moving across: it waits; but not one still
               // holding its way through the junction behind, whose place in the road stays as it went in
               // by until it is clear of that one: forced over its line there onto a piece too short to wait
@@ -1592,6 +1665,20 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
                 const g = toLine - c.half + 2.4;
                 lineGap = Math.min(lineGap, g);
                 if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : 'room'); }
+                // no room on its way out for 5 s, at its line with its light green: another way out with room, if
+                // there is one (the traffic wanders, so any way will do). A queue that waits for room behind a queue
+                // that waits for room, round a block and back, is a ring that never moves: Shibuya's station streets
+                // had a car stand 220 s at its line so. Taking another way out breaks the ring, as drivers do
+                c.roomT = noRoom && toLine - c.half < 2.5 && c.v < 0.6 && !c.mv ? (c.roomT || 0) + dt : 0;
+                if (c.roomT > 5) {
+                  c.roomT = 0;
+                  const alt = JN.exits(jArm).filter(e => e !== jEx && e.lanes.includes(c.ln || 0) && !JN.closedNow(e) && room(c, e) && (JN.light(jArm, e) == null || JN.light(jArm, e) === 'g'));
+                  if (alt.length) {
+                    const e2 = alt[Math.floor(rnd() * alt.length)];
+                    if (jArm === arm) { c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; } else if (c.exA) c.exA.e = jEx = e2;
+                    c.reroutes = (c.reroutes || 0) + 1; outOfRing++;
+                  }
+                }
                 if (toLine - c.half < 2.5 && c.v < 0.6) {
                   if (jArm.sign === 'stop') c.halt = true;
                   if (r) { JN.wait(c, jArm, jEx, t); c.wj = jArm.j; } // its turn comes: it waits for the way across, not for a light or room
@@ -1909,7 +1996,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         M.geometry.attributes.aC0.needsUpdate = M.geometry.attributes.aC1.needsUpdate = true;
       }
     }
-    return Object.assign(api, { update, take, footprint, stats: () => Object.assign(JN.stats(), { redRuns, redLog, laneChanges, conflicts: JN.conflicts() }) });
+    return Object.assign(api, { update, take, footprint, stats: () => Object.assign(JN.stats(), { redRuns, redLog, laneChanges, outOfRing, conflicts: JN.conflicts() }) });
   }
 
   // ------------------------------------------------------------ text sprites (names, markers)
