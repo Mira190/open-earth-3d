@@ -63,7 +63,7 @@ export default function lakePukaki(G) {
       hello: { say: G2 => {
         const a = P('aoraki'), here = G2.here();
         return [{ t: `${G2.greet()}! I'm Hana, with the Department of Conservation. This is Tapataia Mahaka, Peter's Lookout, above the west shore of Lake Pukaki.`, src: ['model-pois'] },
-          a ? { t: `That white block at the head of the lake is Aoraki / Mount Cook, ${G2.km(G2.dist(here, a))} ${G2.dirName(G2.bearing(here, a))} of us over the model's terrain.`, src: ['model-terrain', 'model-pois'] } : null];
+          a ? { t: `That white block at the head of the lake is Aoraki / Mount Cook, ${G2.km(G2.dist(here, a))} ${G2.dirName(G2.bearing(here, a))} of us as the crow flies.`, src: ['model-terrain', 'model-pois'] } : null];
       }, choices: [
         { text: 'Why is the lake that colour?', go: 'colour' },
         { text: 'Tell me about Aoraki.', go: 'aoraki' },
@@ -76,13 +76,13 @@ export default function lakePukaki(G) {
       aoraki: { say: G2 => {
         const a = P('aoraki');
         return [{ t: 'New Zealand\'s highest mountain: 3,724 m since the 2014 survey. Three summits along that flat ridge, the Low Peak, the Middle Peak and the High Peak.', src: ['wiki-aoraki'] },
-          a ? { t: `In this model its top stands ${asl(G2.height(a.x, a.north))} m above sea level, on LINZ's LiDAR averaged to a ${G2.S.terrain.cell_m} m grid, so the sharpest point is rounded off.`, src: ['model-terrain'] } : null,
+          a ? { t: `Look at it from here and the top sits about ${G2.km(G2.dist(G2.here(), a))} away and ${asl(G2.height(a.x, a.north)) - asl(G2.height(G2.here().x, G2.here().north))} m above us.`, src: ['model-terrain', 'model-pois'] } : null,
           { t: 'You can see it from most of State Highway 80 along the lake. Cloud often sits on it: the westerlies off the Tasman Sea hit the Alps there first.', src: ['wiki-aoraki'] }];
       }, next: 'hello' },
       lake: { say: G2 => [
         { t: 'About 179 square kilometres and 70 m deep at its deepest.', src: ['wiki-pukaki', 'lakes380-pukaki'] },
         { t: 'It is a hydro lake now: raised 9 m in 1952 and 37 m in 1976, and run over a 13.8 m range, from 518.2 to 532 m. With Tekapo it holds over half of New Zealand\'s hydro storage.', src: ['wiki-pukaki'] },
-        lake ? { t: `In this model the surface is at ${lake.level_nzvd.toFixed(1)} m, where the LiDAR found it.`, src: ['model-lake'] } : null,
+        lake ? { t: `Today the water stands at about ${lake.level_nzvd.toFixed(0)} m, near the middle of that range: see the pale gravel along the shore.`, src: ['model-lake', 'wiki-pukaki'] } : null,
         { t: 'The 1976 raising drowned Te Kohai, the island on the old five-pound note: from a 1934 photograph by Bobbie Barwell.', src: ['wiki-pukaki'] }], next: 'hello' },
       lupins: { say: G2 => {
         const m = G2.monthIndex(), on = m >= 8 || m <= 1;
@@ -168,8 +168,8 @@ export default function lakePukaki(G) {
         if (G2.lineOfSight(at, p, 1.6, 30)) seen.push(`${p.name}, ${asl(G2.height(p.x, p.north))} m, ${G2.km(G2.dist(at, p))} ${G2.dirName(G2.bearing(at, p))}`);
       }
       return [{ t: 'Tapataia Mahaka / Peter\'s Lookout, as mapped.', src: ['model-pois'] },
-        { t: `This board stands ${asl(G2.height(at.x, at.north))} m above sea level, ${Math.round(G2.height(at.x, at.north))} m above the lake's surface in this model.`, src: ['model-terrain', 'model-lake'] },
-        seen.length ? { t: `In sight from here over the model's terrain: ${seen.slice(0, 5).join('; ')}.`, src: ['model-terrain', 'model-pois'] } : null];
+        { t: `${asl(G2.height(at.x, at.north))} m above sea level, ${Math.round(G2.height(at.x, at.north))} m above the lake.`, src: ['model-terrain', 'model-lake'] },
+        seen.length ? { t: `In sight from here: ${seen.slice(0, 5).join('; ')}.`, src: ['model-terrain', 'model-pois'] } : null];
     } } } };
   const memorial = P('alpine-memorial') ? {
     id: 'alpine-memorial', title: 'Alpine Memorial',
