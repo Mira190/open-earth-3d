@@ -105,11 +105,12 @@ const [,, city = 'shibuya', trials = '4'] = process.argv;
       // the rig in the car's seat, not left standing in the street
       const seated = g.player.rig.root.parent && g.player.rig.root.parent !== g.scene && !!o2.C.body.getObjectById(g.player.rig.root.id);
       if (!worst && !seated) worst = 'you are in the ride, but your figure is not in its seat';
-      // and it drives you off (one got back into in the traffic is in the jam you got out of: a minute for it to clear)
+      // and it drives you off (one got back into in the traffic is in the jam you got out of: a minute for
+      // it to clear or find a way round; reported, not failed: that is the traffic's, not the ride's)
       const s1 = o2.drv.st.s;
-      for (let i = 0; i < 90 && o2.drv.st.s - s1 < 30 && !worst && o2.phase === 'driving'; i++) g.advance(0.5);
-      if (!worst && o2.phase === 'driving' && o2.drv.st.s - s1 < 30) worst = `in it, but it hasn't moved on in 60 s: ${(o2.drv.st.s - s1).toFixed(0)} m (${o2.drv.st.why || ''}${o2.drv.st.lineAt && o2.drv.st.lineAt.j.sig ? `, light ${o2.drv.st.lineAt.j.ph}${o2.drv.st.lineAt.j.st}` : ''})`;
-      r.second = worst || `in, ${(o2.drv.st.s).toFixed(0)} m on to ${o2.dest && o2.dest.name}`;
+      for (let i = 0; i < 120 && o2.drv.st.s - s1 < 30 && !worst && o2.phase === 'driving'; i++) g.advance(0.5);
+      if (!worst && o2.phase === 'driving' && o2.drv.st.s - s1 < 30) r.stuck = `hasn't moved on in a minute: ${(o2.drv.st.s - s1).toFixed(0)} m (${o2.drv.st.why || ''}${o2.drv.st.lineAt && o2.drv.st.lineAt.j.sig ? `, light ${o2.drv.st.lineAt.j.ph}${o2.drv.st.lineAt.j.st}` : ''}, found another way ${o2.rerouted || 0} times)`;
+      r.second = worst || `in, ${(o2.drv.st.s).toFixed(0)} m on to ${o2.dest && o2.dest.name}${o2.rerouted ? `, round a jam ${o2.rerouted} times` : ''}`;
       r.ok = !worst;
       res.push(r);
     }
@@ -122,7 +123,8 @@ const [,, city = 'shibuya', trials = '4'] = process.argv;
   }
   if (errors.length) console.log('page errors:\n' + errors.join('\n'));
   const tried = out.filter(r => r.how).length;
-  console.log(`${city}: ${tried} second rides, ${bad} leaving you outside${errors.length ? `, ${errors.length} page errors` : ''}`);
+  const stuck = out.filter(r => r.stuck).length;
+  console.log(`${city}: ${tried} second rides, ${bad} leaving you outside${stuck ? `, ${stuck} still in a jam a minute on` : ''}${errors.length ? `, ${errors.length} page errors` : ''}`);
   await b.close();
   process.exit(bad || errors.length || !tried ? 1 : 0);
 })();

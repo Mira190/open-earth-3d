@@ -183,7 +183,8 @@ traffic does, asking `junctions.js` for its way across (none crossing it already
 in, the longest waiting first, giving way to the main road), so a car of the
 traffic never enters the same junction across it. Held more than 10 s behind a
 queue in view, it looks for another way from where it stands round the piece of
-road the queue is on, and takes it if it is no more than 300 m longer; queued 8 s
+road the queue is on, and takes it if it is no more than 300 m longer (and so with
+you in it, on the way to where you are going, up to a quarter longer); queued 8 s
 within 45 m of the pick-up, it stops there and you walk the last metres. Where the kerb it
 is to pull in at is taken, by your own car or one stopped there for good (10 s),
 it pulls in just behind, and drives round one only waiting in the traffic; held

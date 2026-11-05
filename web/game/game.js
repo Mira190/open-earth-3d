@@ -1223,7 +1223,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (!rt) { o.dest = null; askWhereTo(`I can't get to ${dest.name} by road from here, sorry. Somewhere else?`, dest.id); return; }
     Object.assign(o, { dest, phase: 'driving', meter: 0, talkT: clockT + 9, t0: clockT });
     o.drv.leave();
-    o.drv = OECars.chauffeur(o.C, rt, { keep: keepSign, from: o.inLane ? 'lane' : 'kerb', lights: junctions, priority: true, now: rideClock }); // (got back into in its lane: on from there; you in it, its green called ahead, as for one coming for you)
+    const opts = { keep: keepSign, from: o.inLane ? 'lane' : 'kerb', lights: junctions, priority: true, now: rideClock }; // (got back into in its lane: on from there; you in it, its green called ahead, as for one coming for you)
+    o.drv = OECars.chauffeur(o.C, rt, opts);
+    o.drv.opts = opts; // (for a new way round a jam)
     o.inLane = o.hold = false;
     H.toast(`<b>${o.name}:</b> ${dest.name}, ${(rt.len / 1000).toFixed(1)} km by road. <kbd>F</kbd> to skip the trip.`);
   }
@@ -1296,11 +1298,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // held up more than 10 s behind a queue in view (one it can't pass for the traffic coming the
     // other way), it looks for another way from where it stands, round the piece of road the queue
-    // is on, and takes it if it is no more than 300 m longer, as a driver with a map app does
-    if (o.phase === 'coming' && st.held > 10 && st.block && st.block.line >= 0 && clockT - (o.rerouteT || 0) > 10) {
+    // is on, and takes it if it is no more than 300 m longer, as a driver with a map app does; and
+    // so on the way to where you are going, you in it, to the same kerb, up to a quarter longer
+    const going = o.phase === 'driving' && player.vehicle === o && st.route && st.route.to;
+    if ((o.phase === 'coming' || going) && st.held > 10 && st.block && st.block.line >= 0 && clockT - (o.rerouteT || 0) > 10) {
       o.rerouteT = clockT;
-      const pl = placeOf(st), rt = pl && roads.route(pl, o.pickup, 4000, undefined, new Set([st.block.line]));
-      if (rt && rt.len < st.end - st.s + 300 && !(rt.nodes || []).some(nd => nd.line === st.block.line) && pl.line !== st.block.line) {
+      const left = st.end - st.s, pl = placeOf(st), rt = pl && roads.route(pl, going ? st.route.to : o.pickup, going ? 30000 : 4000, undefined, new Set([st.block.line]));
+      if (rt && rt.len < left + (going ? Math.max(300, left / 4) : 300) && !(rt.nodes || []).some(nd => nd.line === st.block.line) && pl.line !== st.block.line) {
         const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: st.v });
         o.drv.leave();
         o.drv = OECars.chauffeur(o.C, rt, opts);
