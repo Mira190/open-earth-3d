@@ -36,26 +36,26 @@ const [,, city = 'tokyo'] = process.argv;
       if (g.resetCar) g.resetCar();
       for (let i = 0; i < 60; i++) g.frame(1 / 60);
       g.keys.add('KeyW');
-      let t = 0;
-      while (t < 3) { const dt = dtOf(0); g.frame(dt); t += dt; }
+      for (let i = 0; i < 300 && st.speed < 12; i++) g.frame(1 / 60); // (up to speed with even frames)
       const ds = [], vs = [];
-      for (let i = 0; i < 240; i++) {
+      for (let i = 0; i < 120; i++) {
         const dt = dtOf(i);
         if (st.speed > 13) g.keys.delete('KeyW'); else g.keys.add('KeyW'); // (about 13 m/s, near enough steady)
         g.frame(dt);
+        if (st.speed < 9) break; // (at the end of the straight: what was measured so far)
         const fx = Math.sin(st.h), fy = Math.cos(st.h), cx = cam.position.x, cy = -cam.position.z;
         ds.push((st.x - cx) * fx + (st.y - cy) * fy); vs.push(st.v);
       }
       g.keys.delete('KeyW');
       let jump = 0, lo = Infinity, hi = -Infinity;
-      for (let i = 20; i < ds.length; i++) { jump = Math.max(jump, Math.abs(ds[i] - ds[i - 1]) - Math.abs(vs[i] - vs[i - 1]) * 0.2); lo = Math.min(lo, ds[i]); hi = Math.max(hi, ds[i]); }
-      out[name] = { jump: +jump.toFixed(3), range: +(hi - lo).toFixed(3), ahead: +((hi + lo) / 2).toFixed(2), v: +vs[vs.length - 1].toFixed(1) };
+      for (let i = 10; i < ds.length; i++) { jump = Math.max(jump, Math.abs(ds[i] - ds[i - 1]) - Math.abs(vs[i] - vs[i - 1]) * 0.2); lo = Math.min(lo, ds[i]); hi = Math.max(hi, ds[i]); }
+      out[name] = { jump: +jump.toFixed(3), range: +(hi - lo).toFixed(3), ahead: +((hi + lo) / 2).toFixed(2), v: vs.length ? +vs[vs.length - 1].toFixed(1) : 0, n: ds.length };
     }
     return out;
   });
   console.log(JSON.stringify(r));
   let bad = !!r.none;
-  if (!r.none) for (const [k, v] of Object.entries(r)) { const ok = v.jump < 0.03; if (!ok) bad = true; console.log(`${ok ? 'ok  ' : 'FAIL'} frames ${k}: the car ahead of the camera by ${v.ahead} m moves ${v.jump} m from a frame to the next at most (${v.range} m over 4 s, at ${v.v} m/s)`); }
+  if (!r.none) for (const [k, v] of Object.entries(r)) { const ok = v.n >= 40 && v.jump < 0.03; if (!ok) bad = true; console.log(`${ok ? 'ok  ' : 'FAIL'} frames ${k}: the car ahead of the camera by ${v.ahead} m moves ${v.jump} m from a frame to the next at most (${v.range} m over ${v.n} frames, at ${v.v} m/s)`); }
   await b.close();
   process.exit(bad ? 1 : 0);
 })();
