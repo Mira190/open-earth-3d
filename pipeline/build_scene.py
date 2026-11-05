@@ -1590,6 +1590,15 @@ def _pack_stale(city):
 def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
+    # parked cities (index.json "parked") are left off the globe, and a metro map draws their
+    # stations grey, as districts still to build; their data stays where it is
+    parked = set(idx.get("parked", []))
+    idx["cities"] = [c for c in idx["cities"] if c["id"] not in parked]
+    for g in idx.get("groups", {}).values():
+        for s in g.get("districts", []):
+            if s.get("map") in parked:
+                s.pop("map")
+                s.pop("travel", None)
     for c in idx["cities"]:
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time

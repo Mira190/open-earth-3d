@@ -30,6 +30,8 @@
 #   tools/check.sh voice                # what the characters say only (it runs with every target)
 #   tools/check.sh loader               # the loading screen's hand-over only
 #   tools/check.sh all                  # every city, every reef site and the title
+# Parked cities (cities/index.json "parked", tools/live_cities.sh) are left out of every run, even
+# when they changed or the shared code did; name one to check it anyway: tools/check.sh amsterdam
 set -u
 cd "$(dirname "$0")/.."
 PORT=${PORT:-8870}
@@ -40,7 +42,8 @@ export NODE_PATH=${NODE_PATH:-$(npm root -g 2>/dev/null)}
 
 STAMP="$(git rev-parse --git-dir)/oe-check-pass"   # the commit of the last full pass, in this clone only
 stamp() { [ $# -eq 0 ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
-CITIES=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done)
+CITIES=$(tools/live_cities.sh)
+PARKED=$(tools/live_cities.sh --parked)
 REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
@@ -57,7 +60,7 @@ if [ $# -gt 0 ]; then
       voice) voice=1 ;;
       title) title=1 ;;
       loader) loader=1 ;;
-      *) if is_in "$t" "$CITIES"; then add_city "$t"
+      *) if is_in "$t" "$CITIES" || is_in "$t" "$PARKED"; then add_city "$t"
          elif is_in "$t" "$REEFS"; then add_reef "$t"
          else echo "unknown target: $t (cities: $(echo $CITIES); reef sites: $(echo $REEFS))"; exit 2; fi ;;
     esac
@@ -78,6 +81,7 @@ else
   changed=$( { git diff --name-only "$base"; git ls-files --others --exclude-standard; } | sort -u)
   for f in $changed; do
     case "$f" in
+      cities/index.json|web/data/cities.json) title=1 ;;   # the globe's list of cities
       cities/*/*|web/data/*/*)
         id=${f#web/data/}; id=${id#cities/}; id=${id%%/*}   # the city or reef site: cities/<id>/..., web/data/<id>/...
         if is_in "$id" "$CITIES"; then add_city "$id"; elif is_in "$id" "$REEFS"; then add_reef "$id"; fi ;;
