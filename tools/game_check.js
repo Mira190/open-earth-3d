@@ -335,6 +335,8 @@ const npcNight = require('./npc_night');
       // a clear run of 8 m up to the wall, on open ground
       const sx = x - nx * 8, sy = y - ny * 8, f = g.nav.floorAt(sx, sy, top + 1);
       if (!f || f.kind !== 'ground' || Math.abs(f.z - top) > 0.6) continue;
+      // water beyond the wall, not a pier's deck that carries on from it (a walker goes on onto the jetty)
+      if ([1, 1.5, 2.5].some(e => { const q = g.nav.floorAt(x + nx * e, y + ny * e, top + 1); return q && q.z > 0.5 && Math.abs(q.z - top) < 1 && g.nav.walk(x + nx * e, y + ny * e, q.z).ok; })) continue;
       let clear = true;
       for (let s = 0; s <= 7; s += 0.5) if (!g.nav.walk(sx + nx * s, sy + ny * s, f.z).ok) { clear = false; break; }
       if (!clear) continue;

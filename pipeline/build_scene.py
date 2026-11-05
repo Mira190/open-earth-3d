@@ -389,7 +389,7 @@ def roof_colour(C, ortho, geom, top):
     """Median aerial-photo colour inside the footprint; tall towers lean in a
     non-true orthophoto, so they get a neutral roof instead (as does every roof
     when the ground is drawn rather than photographed)."""
-    if C.cfg["imagery"]["type"] != "xyz":
+    if C.cfg["imagery"]["type"] not in ("xyz", "stac_cog"):
         return ROOFS[int(abs(geom.centroid.x * 7 + geom.centroid.y * 13)) % len(ROOFS)]
     if top > 40:
         return "#8d8f8f"
@@ -1215,7 +1215,7 @@ def build(C):
     ctx = Ctx(C, dem_land)
     ctx.sea = sea  # the water polygons, for a hook that follows the shore (a seawall)
 
-    tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] == "xyz" else synth_ground(C, con, raw, extent)
+    tiles, ortho = ground_tiles(C) if cfg["imagery"]["type"] in ("xyz", "stac_cog") else synth_ground(C, con, raw, extent)
     for f in set(os.listdir(C.out)) - {t["file"] for t in tiles}:   # tiles of an earlier, larger extent
         if f.startswith("ground_") and f.endswith(".jpg"):
             os.remove(os.path.join(C.out, f))

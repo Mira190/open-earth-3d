@@ -8,6 +8,11 @@
 //              ringing their bell as they pull away
 //   funicular  two cars on one cable: as one climbs the other comes down, and they pass at the
 //              middle of the line. The player can ride one, from end to end.
+//   gondola    a detachable gondola (Queenstown's Skyline): cabins on a loop of cable, up one
+//              side and down the other, slowing through each station round its bullwheel. The
+//              line (`lines[0].p`) is the cable's profile from the bottom station up, with its
+//              sag between the towers; the towers, stations and cable are the city's landmarks.
+//              The player can ride a cabin from one station to the other.
 'use strict';
 window.OERail = (function () {
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
@@ -74,6 +79,33 @@ window.OERail = (function () {
     for (const s of [-1, 1]) kit.add(paint, K.box(Bw, Hh - 0.5, 0.18, 0, (Hh - 0.5) / 2 + 0.4, s * L / 2));
     K.lamp(g, '#fff4d6', 0, 1.2, L / 2 + 0.2, 0.8);
     K.lamp(g, '#fff4d6', 0, 1.2, -L / 2 - 0.2, 0.8);
+    kit.build(g);
+    return g;
+  }
+
+
+  function cabinModel(o) {
+    // a cabin hanging from its grip: the hanger arm, a rounded glazed body with a solid floor band
+    // and roof, the doors on the uphill side (model frame: +z forward along the line, +y up; origin
+    // at the grip on the cable)
+    const K = OEKit, M = K.materials(), kit = new K.Kit(), g = new THREE.Group();
+    const Bw = o.width_m || 1.8, L = o.length_m || 1.9, Hh = o.height_m || 2.05, drop = o.hanger_m || 2.6;
+    const paint = new THREE.MeshStandardMaterial({ color: lin(o.livery || '#1d2a33'), roughness: 0.35, metalness: 0.3 });
+    const trim = new THREE.MeshStandardMaterial({ color: lin(o.trim || '#c9ced1'), roughness: 0.35, metalness: 0.6 });
+    const y0 = -drop - Hh; // the floor
+    kit.add(trim, K.box(0.5, 0.35, 0.9, 0, -0.1, 0)); // grip and its carriage on the cable
+    kit.add(M.dark, K.cyl(0.11, 0.11, 0.9).rotateX(Math.PI / 2).translate(0, -0.05, 0));
+    kit.add(trim, K.rod([0, -0.25, 0], [0, -drop * 0.55, -0.18], 0.07)); // the hanger arm, bent to clear the cabin
+    kit.add(trim, K.rod([0, -drop * 0.55, -0.18], [0, -drop, 0], 0.07));
+    kit.add(trim, K.box(0.9, 0.12, 0.25, 0, -drop + 0.05, 0));
+    const plan = K.rrect(Bw, L, 0.35);
+    kit.add(paint, K.slab(plan, y0, 0.55, 0.06)); // floor band
+    kit.add(M.glassClear, K.slab(K.rrect(Bw * 0.98, L * 0.98, 0.33), y0 + 0.55, Hh - 0.85, 0.02));
+    kit.add(paint, K.slab(K.rrect(Bw * 1.01, L * 1.01, 0.35), y0 + Hh - 0.3, 0.3, 0.08)); // roof
+    for (const [x, z] of [[Bw / 2 - 0.08, L / 2 - 0.08], [-Bw / 2 + 0.08, L / 2 - 0.08], [Bw / 2 - 0.08, -L / 2 + 0.08], [-Bw / 2 + 0.08, -L / 2 + 0.08]])
+      kit.add(paint, K.box(0.1, Hh - 0.8, 0.1, x * 0.97, y0 + 0.55 + (Hh - 0.85) / 2, z * 0.97)); // corner posts
+    kit.add(M.seat, K.box(Bw * 0.8, 0.12, 0.42, 0, y0 + 0.45 + 0.42, L / 2 - 0.3)); // the two benches
+    kit.add(M.seat, K.box(Bw * 0.8, 0.12, 0.42, 0, y0 + 0.45 + 0.42, -L / 2 + 0.3));
     kit.build(g);
     return g;
   }
@@ -219,6 +251,69 @@ window.OERail = (function () {
       out.updateFunicular(0, false);
     }
 
+
+    // ---------------------------------------------------------- gondola
+    if (R.gondola && R.gondola.lines.length) {
+      const Q = R.gondola, ln = line(Q.lines[0].p), half = (Q.track_m || 5.6) / 2;
+      const v = Q.speed_ms || 4, slow = 0.35, dwellM = Math.PI * half + 2 * (Q.platform_m || 8); // through a station: the platform, the bullwheel, the platform
+      const tRun = ln.L / v, tSt = dwellM / slow, T = 2 * (tRun + tSt);
+      const n = Q.cabins || Math.round(2 * ln.L / (Q.spacing_m || 60));
+      const ends = [{ id: Q.stations?.[0]?.id || 'lower', name: Q.stations?.[0]?.name || 'Lower station', d: 0 },
+        { id: Q.stations?.[1]?.id || 'upper', name: Q.stations?.[1]?.name || 'Upper station', d: ln.L }];
+      for (const st of ends) { const p = ln.at(st.d); out.stations.push(Object.assign(st, { x: p.x, y: p.y, z: p.z })); }
+      // a cabin's place on the loop at loop time t: [0, tSt) round the bottom station, then up, round the top, down
+      const place = t => {
+        t = ((t % T) + T) % T;
+        const side = sgn => (d, extra = 0) => { const p = ln.at(d), r = sgn * (half + extra); return { x: p.x + Math.cos(p.h) * r, y: p.y - Math.sin(p.h) * r, z: p.z, h: sgn > 0 ? p.h : p.h + Math.PI, pitch: sgn > 0 ? p.pitch : -p.pitch }; };
+        const up = side(1), down = side(-1);
+        const station = (u, top) => { // u: metres through the station; down track in, round the wheel, up track out (bottom); mirrored at the top
+          const P = Q.platform_m || 8, d0 = top ? ln.L : 0, dir = top ? 1 : -1; // dir: away from the line, into the station
+          const at = ln.at(d0), ux = Math.sin(at.h) * dir, uy = Math.cos(at.h) * dir, rx = Math.cos(at.h), ry = -Math.sin(at.h);
+          const from = top ? 1 : -1; // the side the cabin comes in on: down track at the bottom, up track at the top
+          let a, b, h;
+          if (u < P) { a = u; b = from; h = Math.atan2(ux, uy); }
+          else if (u < P + Math.PI * half) { const th = (u - P) / half; a = P + Math.sin(th) * half; b = from * Math.cos(th); h = Math.atan2(ux, uy) + from * th * (top ? -1 : 1); }
+          else { a = P - (u - P - Math.PI * half); b = -from; h = Math.atan2(-ux, -uy); }
+          return { x: at.x + ux * a + rx * b * half, y: at.y + uy * a + ry * b * half, z: at.z, h, pitch: 0, station: top ? 1 : 0 };
+        };
+        if (t < tSt) return station(t * slow, false);
+        t -= tSt;
+        if (t < tRun) return Object.assign(up(t * v), { run: 1, d: t * v });
+        t -= tRun;
+        if (t < tSt) return station(t * slow, true);
+        t -= tSt;
+        return Object.assign(down(ln.L - t * v), { run: -1, d: ln.L - t * v });
+      };
+      for (let k = 0; k < n; k++) {
+        const model = cabinModel(Q);
+        world.add(model);
+        out.cars.push({ id: k, name: `${Q.cabin_name || 'Cabin'} ${k + 1}`, model, rider: false, t0: k * T / n });
+      }
+      const clock = { t: 0 };
+      out.gondola = { ln, T, tRun, tSt, n, clock };
+      out.funicular = { cyc: { get t() { return out.eta(); } } }; // what the HUD reads for the wait
+      out.stationOf = k => { const c = out.cars[k]; return c && c.st != null ? out.stations[c.st] : null; };
+      out.eta = () => T / n; // a cabin comes round every T / n seconds
+      // the rider stands in the middle of the cabin, its floor under the grip
+      out.riderPos = c => ({ x: c.x, y: c.y, z: c.z - (Q.hanger_m || 2.6) - (Q.height_m || 2.05) + 0.05, h: c.h });
+      out.updateGondola = (dt, skip) => {
+        clock.t += dt * (skip ? 8 : 1);
+        for (const c of out.cars) {
+          const p = place(clock.t + c.t0), was = c.st;
+          c.x = p.x; c.y = p.y; c.z = p.z; c.h = p.h; c.pitch = p.pitch;
+          c.st = p.station != null ? p.station : null;
+          c.speed = p.station != null ? slow : v;
+          if (c.rider && was != null && c.st == null) out.events.push({ type: 'depart' });
+          if (c.rider && was == null && c.st != null) out.events.push({ type: 'arrive' });
+          const sway = p.run ? Math.sin(clock.t * 0.9 + c.id) * 0.025 : 0;
+          c.model.position.copy(W(p.x, p.y, p.z));
+          c.model.rotation.order = 'YXZ';
+          c.model.rotation.set(sway, Math.PI - p.h, 0);
+        }
+      };
+      out.updateGondola(0, false);
+    }
+
     // ---------------------------------------------------------- per frame
     out.update = (dt, clockT, people, skip) => {
       for (const t of out.trams) {
@@ -243,6 +338,7 @@ window.OERail = (function () {
         t.model.rotation.y = Math.PI - p.h + (t.dir < 0 ? Math.PI : 0);
       }
       if (out.updateFunicular) out.updateFunicular(dt, skip);
+      if (out.updateGondola) out.updateGondola(dt, skip);
     };
     return out;
   }
