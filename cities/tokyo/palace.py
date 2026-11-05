@@ -12,6 +12,10 @@ import numpy as np
 import archkit as ak
 
 OSM = "r1968066"
+# an unnamed 64 m² outline in the palace's east court (OpenStreetMap way 1212165280) that the build, with no
+# survey height for it, gave its neighbours' 22 m: a seven-storey box in the court, which is open (the Imperial
+# Household Agency's plan of the palace). Left out with the palace's own parts.
+STRAY = ("w1212165280",)
 EAVE = 9.0          # m over the ground: the mapped parts' walls
 OVER = 2.4          # m, the eaves out from the walls
 MATERIALS = {
@@ -26,7 +30,9 @@ def meshes():
     """(materials, meshes, hidden solids)."""
     import shapely
     from shapely.geometry import Polygon
-    parts = [s for s in ak.load_solids("tokyo") if s["osm"] == OSM]
+    solids = ak.load_solids("tokyo")
+    parts = [s for s in solids if s["osm"] == OSM]
+    stray = [s["si"] for s in solids if s["osm"] in STRAY]
     if not parts:
         return {}, [], []
     polys = [Polygon(s["ring"], s["holes"]).buffer(0) for s in parts]
@@ -46,5 +52,5 @@ def meshes():
             ak.prism(K["kyuden_wall"], ak.WORLD, r, g + 0.8, g + EAVE - 0.3, top=False)
         rise = float(np.clip(top - (g + EAVE), 2.5, 0.42 * (w + 2 * OVER)))
         ak.outline_roof(K["kyuden_copper"], rings[0], g + EAVE, 0.62, over=OVER, rise_max=rise, k=1.25, holes=rings[1:],
-                        soffit=K["kyuden_soffit"], wall_z=g + EAVE - 0.3, cell=2.5)
-    return MATERIALS, K.out(), [s["si"] for s in parts]
+                        soffit=K["kyuden_soffit"], wall_z=g + EAVE - 0.3, cell=1.8)
+    return MATERIALS, K.out(), [s["si"] for s in parts] + stray
