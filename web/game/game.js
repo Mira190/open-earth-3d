@@ -3487,8 +3487,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     $('#g-loader').classList.add('out');
     setTimeout(() => { $('#g-loader').hidden = true; OEPlate.stop($('#g-loader')); }, reduced ? 0 : 700);
     // the helicopter's model while the title is up, if it waits within reach of the start (it is left out of the
-    // loader's wait, issue 148): fetched, built and its shaders compiled now, not during the opening shot
-    setTimeout(() => { if (running && !heli.loaded() && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.want(); }, reduced ? 0 : 900);
+    // loader's wait, issue 148): fetched, built, its shaders compiled and its textures sent now, not during the
+    // opening shot; it lands on its pad once the game opens (heliToPad), not in the title's shot
+    setTimeout(() => { if (running && !heli.loaded() && heli.prefetch && Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 800) heli.prefetch(); }, reduced ? 0 : 900);
   });
   renderPassport();
 

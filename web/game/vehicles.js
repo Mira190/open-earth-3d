@@ -255,11 +255,17 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // a model that comes later has its shaders compiled before it is shown, off the frame (where the GPU
     // compiles in parallel, KHR_parallel_shader_compile), not in the first frame that draws it
     // (opts.compile: the page's own, which compiles the variant its post stack draws with: world.js compile)
+    // (and its textures sent to the GPU then too, not in the first frame that draws them)
     const warm = m => {
       const R = opts.renderer, cam = opts.camera;
+      if (m && m.warmed) return m.warmed;
+      if (m && R && R.initTexture) {
+        const seen = new Set();
+        for (const o of [m.group, ...(m.extras || [])]) o.traverse(q => { for (const mat of [].concat(q.material || [])) for (const v of Object.values(mat)) if (v && v.isTexture && !seen.has(v)) { seen.add(v); try { R.initTexture(v); } catch (e) { /* drawn later instead */ } } });
+      }
       const one = opts.compile ? o => opts.compile(o, world) : R && R.compileAsync && cam ? o => R.compileAsync(o, cam, world) : null;
       if (!m || !one) return Promise.resolve(m);
-      return Promise.all([m.group, ...(m.extras || [])].map(one)).catch(() => {}).then(() => m);
+      return (m.warmed = Promise.all([m.group, ...(m.extras || [])].map(one)).catch(() => {}).then(() => m));
     };
     if (lib && lib.heli) wear(heliModel(world, lib, cfg, mopts));
     else {
@@ -365,8 +371,11 @@ void main() { vec2 c = gl_PointCoord - 0.5; float d = dot(c, c) * 4.0; if (d > 1
     // show(): someone is getting in before it has come, so the kit-built one stands in until then
     let asked = null;
     const want = () => asked || (asked = ready ? ready().then(m => { if (swap) swap(); return m; }) : Promise.resolve(V));
+    // prefetch(): the model fetched, built and its shaders and textures readied, but not yet put on the pad
+    // (the title screen: it would appear out of nowhere in the shot); want() then puts it there at once
+    const prefetch = () => (ready && !asked ? ready() : Promise.resolve(null));
     const show = () => { g.visible = true; };
-    return { group: g, st, get seat() { return V.seat; }, update, doorAt, get way() { return V.way; }, toWorld, toLocal, want, show,
+    return { group: g, st, get seat() { return V.seat; }, update, doorAt, get way() { return V.way; }, toWorld, toLocal, want, prefetch, show,
       loaded: () => !ready || V === real };
   }
 
