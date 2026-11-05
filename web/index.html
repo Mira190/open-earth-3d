@@ -791,6 +791,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
               <li><b>Footprints and heights</b> from Overture Maps (OpenStreetMap and Microsoft ML), each height tagged with where it came from, or measured by LiDAR and surveys where the city publishes them.</li>
               <li><b>Bare-earth terrain and aerial imagery</b> from the national or state open-data service, checked against an independent source.</li>
               <li><b>Missing heights</b> estimated from neighbours and calibrated against published heights, with a measured error for every source.</li>
+              <li><b>The land past the model</b> from Copernicus GLO-30 heights, ESA WorldCover 2021 land cover (CC BY 4.0) and NASA's Black Marble lights, under the haze.</li>
               <li><b>The real sun</b> from the NOAA equations in the city's own time zone, ray-cast through a 2 m surface model.</li>
             </ol>
           </div>
@@ -1167,6 +1168,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="night.js"></script>
 <script src="glcare.js"></script>
 <script src="quays.js"></script>
+<script src="farland.js"></script>
 <script src="world.js"></script>
 <script src="lights.js"></script>
 <script src="neon.js"></script>

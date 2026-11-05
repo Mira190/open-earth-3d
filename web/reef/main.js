@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { loadScene, createTerrain, heightTexture, terrainHeight, waterBed, habitatAt } from './world.js';
+import { createFarLand } from './farland.js';
 import { makeWaves, createEnv, setSun } from './env.js';
 import { createOcean } from './ocean.js';
 import { createShore } from './shore.js';
@@ -75,6 +76,9 @@ async function main() {
   scene.add(ocean.mesh);
   const shore = createShore(d, env, heightTexture(d, d.heights), terrain);   // the ground's own heights, hollows and all
   scene.add(shore.mesh);
+  // the land past the survey: the mainland's ranges and the coast's lights (farland.js); fewer triangles on a small screen
+  const far = await createFarLand(base, d, env, { small: Math.min(innerWidth, innerHeight) < 700 }).catch(e => { console.warn('far land: none drawn', e); return null; });
+  if (far) scene.add(far.mesh);
 
   // sky dome
   const { Fn, vec3, vec4, positionWorld, cameraPosition, normalize } = await import('three/tsl');
