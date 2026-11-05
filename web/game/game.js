@@ -510,8 +510,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     || /^(Hong Kong|Macau)/.test(CITY.name) ? 'left' : 'right');
   // the junctions and their rules (junctions.js): the mapped signals, stop and give-way signs, and the signal heads
   const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE,
-    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra }, // (and the crossings between junctions: signals or zebra stripes)
-    scrambles: [((scene.landmarks || {}).scramble || {}).node ? scene.landmarks.scramble : null, ...(G.scrambles || [])].filter(Boolean) }); // (Shibuya's scramble, its crosswalks mapped: every way at once, in a phase of its own)
+    midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra },
+    // (and the crossings between junctions: signals or zebra stripes); the scrambles, every way at once in
+    // a phase of their own: Shibuya's with its mapped crosswalks (scene landmarks), the others a city names
+    scrambles: [(scene.landmarks || {}).scramble, ...(G.scrambles || [])].filter(Boolean), foot: crowdNet });
   // a main road whose second lane runs into a solid somewhere between its junctions (a tower beside an
   // expressway's deck, Sydney's Cahill Expressway past one at 33 m, issue 119; the data's lanes are where
   // the line is, not where the second lane is) has one lane there, so no car waits at the facade for room
@@ -535,8 +537,19 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     } });
     junctions.oneLane = one; }
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
+  if (junctions.heads && junctions.heads.walkPosts) for (const q of junctions.heads.walkPosts) posts.add(q.x, q.y, q.z, 0.09, 'lamp'); // (a scramble's walk signals stand beside its crosswalks: walked round)
+  // (is (x, y) in a carriageway, as the game draws the roads? nobody waits there)
+  const ROAD_HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 };
+  const onRoad = (x, y) => { const q = roadNet.nearest(x, y, 8); return !!q && q.d < (ROAD_HALF[roadNet.L[q.line].c] || 3.5) + 0.3; };
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
-  crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };
+  crowd.crossings = { byLine: junctions.crossings(crowdNet, onRoad), walk: junctions.walk, walkLeft: junctions.walkLeft, call: junctions.call };
+  // and gathers at the scrambles: a share of it their own, massing at the kerbs and surging across
+  // every way at once (actors.js plazas), and more of it on the footways round them
+  { const S = junctions.J.filter(j => j.scramble && j.spans && j.spans.length);
+    if (S.length) {
+      crowd.plazas = S.map(j => { const a = j.arms.find(q => q.in) || j.arms[0]; return (j.plaza = { j, x: j.x, y: j.y, spans: j.spans, weight: j.mapped3 ? 8 : 1, road: onRoad, walk: () => junctions.walk(a), left: () => junctions.walkLeft(a) }); });
+      crowd.hot = S.map(j => ({ x: j.x, y: j.y, r: 90, share: 0.16 / S.length, pull: 0.5 }));
+    } }
   const cars = OEActors.traffic(world, roadNet, U, CR.cars || 120, (CR.radius_m || 450) + 100, { lib: vlib, cfg: (G.vehicles || {}).cars || {}, eye: camera, keep: KEEP, ground: lineGround, crowd, nav, posts, junctions });
   const density = { low: 0.35, normal: 1, high: 1 };
   const playerLook = () => Object.assign({ shirt: '#2f4858', pants: '#2b3440', skin: '#e0ac85', hair: '#3b2a20' }, PLAYER_LOOKS[playerChar]);
@@ -682,45 +695,88 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const x = rq.x - hy * k, y = rq.y + hx * k, f = nav.floorAt(x, y, rq.z + 1);
     return { x, y, z: f ? f.z : rq.z, h: Math.atan2(hx, hy) };
   }
+  // a place on the roads moved along its street clear of a scramble: no stopping within 5 m of its
+  // crosswalks (Japan's Road Traffic Act, art. 44), where its crowd masses at the kerb and surges out
+  // (the crosswalks, each its two ends; a car's centre within 5 m and its half-length of one is too close)
+  const SCR_AT = [].concat(...junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => j.spans));
+  const nearSpan = (x, y, r) => SCR_AT.some(w => {
+    const ex = w[3] - w[0], ey = w[4] - w[1], t = Math.max(0, Math.min(1, ((x - w[0]) * ex + (y - w[1]) * ey) / (ex * ex + ey * ey || 1)));
+    return Math.hypot(x - w[0] - ex * t, y - w[1] - ey * t) < r;
+  });
+  // (and the box between them: out to the farthest crosswalk's middle)
+  const SCR_BOX = junctions.J.filter(j => j.scramble && j.spans && j.spans.length).map(j => ({ x: j.x, y: j.y, r: Math.max(...j.spans.map(w => Math.hypot((w[0] + w[3]) / 2 - j.x, (w[1] + w[4]) / 2 - j.y))) }));
+  const inScramble = (line, s) => { roadNet.at(line, s, rq); return nearSpan(rq.x, rq.y, 7.5) || SCR_BOX.some(j => Math.hypot(rq.x - j.x, rq.y - j.y) < j.r); };
+  function offScramble(pl, room = false) { // (room: a car to drive off from it, the spot with road ahead first; a pick-up, the nearest)
+    if (!pl || !SCR_AT.length || (!inScramble(pl.line, pl.s) && !(room && inScramble(pl.line, Math.max(0, Math.min(roadNet.L[pl.line].len, pl.s - 15 * pl.dir)))))) return pl;
+    // (the nearest clear spot either way, the one with road ahead to drive off along first)
+    const L = roadNet.L[pl.line].len, found = [];
+    const clear = s => !inScramble(pl.line, s) && (!room || !inScramble(pl.line, Math.max(0, Math.min(L, s - 15 * pl.dir)))); // (a car: and the kerb behind it, room for a taxi to pull in there)
+    for (const sg of [1, -1]) for (let d = 3; d <= 90; d += 3) {
+      const s = pl.s + d * sg;
+      if (s < 3 || s > L - 3) break;
+      if (clear(s)) { found.push({ s, d, room: pl.dir > 0 ? L - s : s }); break; }
+    }
+    if (!found.length) return pl;
+    found.sort((a, b) => (room ? (b.room > 25) - (a.room > 25) : 0) || a.d - b.d);
+    roadNet.at(pl.line, found[0].s, rq);
+    return Object.assign({}, pl, { s: found[0].s, x: rq.x, y: rq.y, z: rq.z });
+  }
+  // where to be picked up near (x, y): the nearest kerb within reach that is clear of a scramble, on
+  // this street or one round it (a taxi never pulls in on a scramble's crosswalks or in its box)
+  function pickupNear(x, y, z, within) {
+    const pl = roads.place(x, y, within, keepSign, z);
+    if (!pl || !SCR_AT.length || !inScramble(pl.line, pl.s)) return pl;
+    let best = offScramble(pl), bd = inScramble(best.line, best.s) ? Infinity : Math.hypot(best.x - x, best.y - y);
+    for (let r = 6; r <= Math.min(within, 40); r += 6) for (let k = 0; k < 16; k++) {
+      const a = k / 16 * Math.PI * 2, q = roads.place(x + Math.sin(a) * r, y + Math.cos(a) * r, 6, keepSign, z);
+      if (!q || inScramble(q.line, q.s)) continue;
+      roadNet.at(q.line, q.s, rq); // (going the way that keeps you on its kerb side)
+      q.dir = roadNet.L[q.line].ow || (((x - rq.x) * -rq.hy + (y - rq.y) * rq.hx) * keepSign >= 0 ? 1 : -1);
+      const d = Math.hypot(q.x - x, q.y - y);
+      if (d < bd) { bd = d; best = q; }
+    }
+    return best;
+  }
   // the kerb near (x, y) at about height z, a few metres along the road (so a car isn't put on top of
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   const scrambleJ = junctions.J.filter(j => j.scramble);
   function kerbNear(x, y, z, ahead = 9, within = 250) {
-    // (the nearest road first; where every spot along it is at a junction, a short piece between two, the
-    // roads round about, nearest first, out to 60 m)
-    let first = null;
-    for (const r of [0, 20, 40, 60]) for (let k = 0, n = r ? 8 : 1; k < n; k++) {
-      const a = 2 * Math.PI * k / n, got = kerbOn(roads.place(x + Math.cos(a) * r, y + Math.sin(a) * r, within, keepSign, z), ahead);
-      if (got && got.ok) return got.at;
-      first = first || (got && got.at);
-    }
-    return first;
-  }
-  function kerbOn(pl, ahead) {
-    if (!pl) return null;
+    const pl0 = offScramble(roads.place(x, y, within, keepSign, z), true);
+    if (!pl0) return null;
     const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
-    const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
     let first = null;
-    // (not in a junction, nor so close to one that the traffic turning through it can't get round: at Hong
-    // Kong's start it was parked at a junction's mouth, and every car behind waited on it for good, issue 128;
-    // 12 m clear of one ahead, 24 m of one behind)
-    const l0 = roadNet.L[pl.line], n0 = l0.pts.length / 3, jn = k => (roadNet.nodes.get(roadNet.key(l0.pts[3 * k], l0.pts[3 * k + 1])) || []).length > 2;
-    // (more room behind it than ahead: a taxi hailed from beside it pulls in behind it, clear of the junction)
-    const back = d => half + (d ? 24 : 12), nearJ = s => junctions.inner(pl.line) || (jn(0) && s < back(pl.dir > 0)) || (jn(n0 - 1) && L - s < back(pl.dir < 0));
-    for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24, 30, -30, 36, -36]) {
-      const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
-      first = first || { pl: q, pose };
-      if (nearJ(q.s) || cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
-      if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
-      let hit = false;
-      const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
-      posts.near(pose.x, pose.y, half + 1, p => {
-        const dx = p.x - pose.x, dy = p.y - pose.y;
-        if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
-      }, pose.z);
-      if (!hit) return { ok: true, at: { pl: q, pose } };
+    const along = (pl, s0) => {
+      const L = roadNet.L[pl.line].len;
+      // (not in a junction, nor so close to one that the traffic turning through it can't get round: at Hong
+      // Kong's start it was parked at a junction's mouth, and every car behind waited on it for good, issue 128;
+      // 12 m clear of one ahead, and 24 m of one behind, where a taxi hailed from beside it pulls in)
+      const l0 = roadNet.L[pl.line], n0 = l0.pts.length / 3, jn = k => (roadNet.nodes.get(roadNet.key(l0.pts[3 * k], l0.pts[3 * k + 1])) || []).length > 2;
+      const back = d => half + (d ? 24 : 12), nearJ = s => junctions.inner(pl.line) || (jn(0) && s < back(pl.dir > 0)) || (jn(n0 - 1) && L - s < back(pl.dir < 0));
+      for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24, 30, -30, 36, -36]) {
+        const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) });
+        if (SCR_AT.length && (inScramble(q.line, q.s) || inScramble(q.line, Math.max(0, Math.min(L, q.s - 15 * q.dir))) || (q.dir > 0 ? L - q.s : q.s) < 12)) continue; // (not back by the scramble's crosswalks, nor the kerb behind it; and with road ahead to drive off along)
+        const pose = kerbPose(q);
+        first = first || { pl: q, pose };
+        if (nearJ(q.s) || cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+        if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
+        let hit = false;
+        const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
+        posts.near(pose.x, pose.y, half + 1, p => {
+          const dx = p.x - pose.x, dy = p.y - pose.y;
+          if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
+        }, pose.z);
+        if (!hit) return { pl: q, pose };
+      }
+      return null;
+    };
+    let got = along(pl0, pl0.s + ahead * pl0.dir);
+    // (by a scramble, its street too short for all that, or a short piece between two junctions: the streets
+    // round, nearest first)
+    if (!got) for (let r = 15; r <= 75 && !got; r += 15) for (let k = 0; k < 12 && !got; k++) {
+      const a = k / 12 * Math.PI * 2, q = roads.place(x + Math.sin(a) * r, y + Math.cos(a) * r, 8, keepSign, z);
+      if (q && q.line !== pl0.line) got = along(q, q.s);
     }
-    return { ok: false, at: first };
+    return got || first || { pl: pl0, pose: kerbPose(pl0) };
   }
   // where a car is on the roads, going the way it faces
   function placeOf(st) {
@@ -898,6 +954,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // gets there, so it seldom stops (tools/ride_check.js signals measures it); the time with them is
   // the one a ride is picked by and the app first says.
   const SIG_WAIT = 1;
+  // A scramble's walk is the one turn its priority never cuts (junctions.js), and a ride keeps a
+  // scramble's lights in sight or not, so a scramble near you adds more: coming up to it as the walk
+  // starts, the walk and the all red round it, about half a minute. It is counted at near that, so
+  // a taxi on your side of it is picked whenever there is one, and the time the app says holds.
+  const SCR_WAIT = 24;
   // and the cars already queued at each signalled arm on its way (OECars.queueing), Q_CLEAR each to
   // move off ahead of it when the light turns green: a ride waits behind a queue, never round it (#107, #143)
   const Q_CLEAR = 1.8;
@@ -908,8 +969,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
     if (!rt) return null;
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
-    const P = OECars.path(rt.pts), sig = [], qArms = [];
-    let walks = 0; // (a scramble in its walk, which no call cuts short: the rest of it)
+    const P = OECars.path(rt.pts), sig = [], scr = [], qArms = [];
     for (const nd of rt.nodes || []) {
       const p = rt.pts[nd.k], a = p ? junctions.armAt(nd.line, nd.end) : null;
       if (!a || !a.j.sig) continue;
@@ -917,13 +977,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       qArms.push({ s, a });
       if (Math.hypot(p[0] - pickup.x, p[1] - pickup.y) < 140) {
         sig.push(s);
-        if (a.j.scramble && a.j.ph === 3) walks += junctions.toGreen(a);
+        if (a.j.scramble) scr.push(s); // (its walk: SCR_WAIT)
       }
     }
     for (const m of rt.mids || []) if (m.X.sig && Math.hypot(m.X.x - pickup.x, m.X.y - pickup.y) < 140) sig.push(m.at); // (and the crossings' lights between junctions)
     sig.sort((p, q) => p - q);
     const drive = OECars.chauffeur(STUB, rt, opts).total();
-    return { rt, opts, drive, sig, qArms, T: drive + SIG_WAIT * sig.length + walks + queueWait(qArms, -Infinity) };
+    return { rt, opts, drive, sig, scr, qArms, T: drive + SIG_WAIT * sig.length + SCR_WAIT * scr.length + queueWait(qArms, -Infinity) };
   }
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, on its planned route to the pick-up
   function newRide(kind, from, pickup, plan, dest = null) {
@@ -938,7 +998,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const opts = Object.assign({ solid: (x, y, z, h) => (inSight(x, y, z) ? cars.footprint(x, y, z, h, C.half, C.hw, 0) : 0) }, plan.opts);
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
-    o.T0 = plan.T; o.sig = plan.sig; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
+    o.T0 = plan.T; o.sig = plan.sig; o.scr = plan.scr || []; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
     const look = driverLook();
     o.driver = makeRig(look, {});
     C.sit(o.driver, 'driver');
@@ -964,11 +1024,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // none can reach that kerb in time (a dead end the near side of the street faces into, a stub no
     // road feeds): the kerb across the street and the streets round it too, as a ride app moves the
     // pick-up (a few seconds' allowance for each metre further from yours)
-    if (!best || best.plan.T > RIDE_T[1] + 5) {
+    // (a scramble's walk on the way counts in the time the app gives, but no move of the pick-up gets round it: every way there crosses it)
+    if (!best || best.plan.T - SCR_WAIT * (best.plan.scr || []).length > RIDE_T[1] + 5) {
       const alts = roadNet.L[pickup.line].ow ? [] : [Object.assign({}, pickup, { dir: -pickup.dir })];
       for (const [dx, dy] of [[25, 0], [-25, 0], [0, 25], [0, -25]]) {
         const q = roads.place(pickup.x + dx, pickup.y + dy, 30, keepSign, pickup.z);
-        if (q && q.line !== pickup.line && !alts.some(a => a.line === q.line)) alts.push(q);
+        if (q && q.line !== pickup.line && !alts.some(a => a.line === q.line) && !(SCR_AT.length && inScramble(q.line, q.s))) alts.push(q);
       }
       for (const q of alts) {
         const b = bestFrom(q), walk = Math.hypot(q.x - pickup.x, q.y - pickup.y) / 3;
@@ -1025,14 +1086,15 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const eta = o => {
     if (o.phase !== 'coming') return o.phase === 'driving' ? o.drv.timeLeft() : 0;
     const st = o.drv.st, w = rideWait(st), lights = (o.sig || []).filter(s => s > st.s + 2).length - (w && w.light ? 1 : 0);
-    return o.drv.timeLeft() + SIG_WAIT * Math.max(0, lights) + (w ? w.t : 0) + queueWait(o.qArms, st.s, w && w.a); // (the queue it is in already counted by rideWait)
+    const scr = (o.scr || []).filter(s => s > st.s + 2).length - (w && w.light && st.lineAt && st.lineAt.j.scramble ? 1 : 0); // (the scrambles still ahead: their walk, as it comes)
+    return o.drv.timeLeft() + SIG_WAIT * Math.max(0, lights) + SCR_WAIT * Math.max(0, scr) + (w ? w.t : 0) + queueWait(o.qArms, st.s, w && w.a); // (the queue it is in already counted by rideWait)
   };
   // Y at the kerb: a hand up, and the nearest free taxi coming your way pulls in
   function hail() {
     if (player.mode !== 'foot' || player.auto) return;
     if (!CARS_OK) { H.toast('There are no taxis to hail here.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(ride.phase === 'coming' ? `${ride.name} is on the way.` : `${ride.name} is waiting for you.`); return; }
-    const pickup = roads.place(player.x, player.y, 40, keepSign, player.z);
+    const pickup = pickupNear(player.x, player.y, player.z, 40);
     if (!pickup) { H.toast('Stand at the kerb of a street to hail a taxi.'); return; }
     if (player.rig.wave) player.rig.wave(clockT);
     let best = null;
@@ -1062,7 +1124,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function orderRide(dest) {
     if (player.mode !== 'foot') { H.toast('Order once you are on foot.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
-    const pickup = roads.place(player.x, player.y, 120, keepSign, player.z);
+    const pickup = pickupNear(player.x, player.y, player.z, 120);
     if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
     const o = rideFromAround('hire', pickup, dest);
     if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
@@ -1160,6 +1222,9 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // Out of your sight (inSight) nothing holds a driver up, as games keep the cars that come for you on time.
   function inTheWay(o) {
     const st = o.drv.st, out = [];
+    // a scramble's crowd, out across its road on the walk (actors.js plazas), in sight or not: one that
+    // drove through them would be seen there by those who come after (and is caught by tools/clip_check.js)
+    if (crowd.plazas) for (let i = 0; i < crowd.active; i++) { const p = crowd.P[i]; if (p.pz && Math.abs(p.x - st.x) < 40 && Math.abs(p.y - st.y) < 40 && (p.ph === 'cross' || p.pz.road(p.x, p.y))) out.push({ x: p.x, y: p.y, half: 0.3, hw: 0.3, v: Math.max(0.2, p.v), walker: true }); } // (out on the road, never one to drive round: it waits for them; not those waiting on the pavement)
     if (!inSight(st.x, st.y, st.z)) return out;
     // a ride running late for you goes round a car holding it up instead of queueing behind it
     const late = o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 3;
@@ -1180,7 +1245,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function rideStep(dt, night) {
     const o = ride;
     let st = o.drv.st;
-    o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z)); // (and the lights, in sight)
+    o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z) || SCR_BOX.some(j => Math.hypot(st.x - j.x, st.y - j.y) < j.r + 60)); // (and the lights, in sight, and a scramble's always: out of sight or not, nobody drives into its walk)
     // running well late in a jam and out of view, it finds its way round, a stretch at a time, to a
     // clear piece of road (games keep the cars that come for you on time); in view it queues as it would
     if (o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 6 && st.v < 0.5 && clockT - (o.hopT || 0) > 2.5 && !inView(st.x, st.y, st.z)) {
@@ -1203,7 +1268,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
         o.drv = OECars.chauffeur(o.C, rt, opts);
         o.drv.opts = opts;
         st = o.drv.st;
-        o.sig = []; o.qArms = []; o.rerouted = (o.rerouted || 0) + 1; // (the lights it was to stop at were on the old way)
+        o.sig = []; o.scr = []; o.qArms = []; o.rerouted = (o.rerouted || 0) + 1; // (the lights it was to stop at were on the old way)
       }
     }
     o.C.place(st.x, st.y, st.z, st.h, st.pitch, 0);

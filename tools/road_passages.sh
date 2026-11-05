@@ -10,7 +10,7 @@ set -u
 cd "$(dirname "$0")/.."
 OUT=${OUT:-/tmp/oe-walls}
 mkdir -p "$OUT"
-if [ "${1:-all}" = all ]; then cities=$(for f in web/data/*/game.json; do basename "$(dirname "$f")"; done); else cities="$*"; fi
+if [ "${1:-all}" = all ]; then cities=$(tools/live_cities.sh); else cities="$*"; fi
 for c in $cities; do
   for pass in 1 2 3 4 5 6; do
     xvfb-run -a node tools/road_walls.js "$c" --json "$OUT/$c.$pass.json" > "$OUT/$c.$pass.log" 2>&1 || { echo "$c: road_walls.js failed (see $OUT/$c.$pass.log)"; continue 2; }

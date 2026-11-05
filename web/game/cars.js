@@ -1029,10 +1029,10 @@ window.OECars = (function () {
       if (st.held > 12 && !queued) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // held up near the end for good (by a car that isn't moving off, not a light): stop here
       st.stall = st.v < 0.2 && room < 0.1 && carGap < line && !waiting ? st.stall + dt : 0; // (not in a queue for the lights)
-      if (end && st.stall > 8 && left < 45) { endAt(st.s); left = 0; }
+      if (end && st.stall > 8 && left < 45 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; }
       // and queued 8 s behind cars within 45 m of the end (a jam between it and you), it stops where
       // it is, as a driver picking you up does, and you walk the last few metres
-      else if (end && !dry && st.held > 8 && left < 45 && carGap < line && carGap < 12) { endAt(st.s); left = 0; }
+      else if (end && !dry && st.held > 8 && left < 45 && carGap < line && carGap < 12 && !(st.block && st.block.walker)) { endAt(st.s); left = 0; } // (not for a crowd crossing in front: that is waited out)
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
