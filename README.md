@@ -210,6 +210,21 @@ machine; you overhear the pilgrims on the stairs. Go to `#play-shibuya` or `#pla
 |---|---|---|
 | ![](docs/images/shibuya/suga-stairs.jpg) | ![](docs/images/shibuya/game-ema.jpg) | ![](docs/images/shibuya/sky-escalator.jpg) |
 
+## Walk it: Lake Pukaki and Aoraki / Mount Cook
+
+An alpine site in the same viewer (`web/reef/`, site kind `alpine`): 38 × 84 km of the Mackenzie District, from the
+south shore of Lake Pukaki up the Tasman Valley to Aoraki / Mount Cook and the Main Divide. It is rebuilt from LINZ's
+1 m LiDAR terrain and 0.3 m aerial photos, a 2025–26 summer satellite mosaic, the lake's glacial-flour colour measured
+from Sentinel-2 and its Secchi depth, and OpenStreetMap's lakes, glaciers and places. One physical sky gives the blue
+distance of the ranges, twilight and the dark-sky reserve's Milky Way. The mountains cast real shadows, the lake mirrors
+them, and tussock and Russell lupins grow round you. Walk from Peter's Lookout, fly round Aoraki from Glentanner, walk
+the Hooker Valley, or wait for dark on the south shore. Choose **Mackenzie** on the title screen, or
+`reef/index.html?city=lake-pukaki`. [docs/cities/lake-pukaki.md](docs/cities/lake-pukaki.md)
+
+| Peter's Lookout, a long lens | The dark-sky reserve |
+|---|---|
+| ![](docs/images/lake-pukaki/hero.jpg) | ![](docs/images/lake-pukaki/night.jpg) |
+
 ## Dive it: the Great Barrier Reef
 
 Five Queensland reef sites are marine worlds of their own (`web/reef/`, three.js r186 with WebGPU and a WebGL2
