@@ -31,14 +31,16 @@ float oePuddle(vec2 xz) { float n = oeMirN(xz * 0.11) * 0.6 + oeMirN(xz * 0.37) 
       uMirrorPx: { value: new THREE.Vector2(1, 1) }, uMirrorDark: { value: window.OEWeather ? 0 : 1 }, uWetM: { value: 0 }, uRainM: (W() && W().uOeRain) || { value: 0 } };
     const high = tier === 'high' && renderer.capabilities.isWebGL2;
     const size = renderer.getDrawingBufferSize(new THREE.Vector2());
-    const rt = high ? new THREE.WebGLRenderTarget(Math.max(2, size.x >> 1), Math.max(2, size.y >> 1), { type: THREE.HalfFloatType, samples: 0 }) : null;
+    // a third of the screen's size: the picture is blurred and rippled down to far less than that anyway
+    const DIV = 3, dim = v => Math.max(2, Math.round(v / DIV));
+    const rt = high ? new THREE.WebGLRenderTarget(dim(size.x), dim(size.y), { type: THREE.HalfFloatType, samples: 0 }) : null;
+    let tick = 0;
     const blank = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
     blank.needsUpdate = true;
     U.uMirror.value = blank;
     const cam = new THREE.PerspectiveCamera();
     const bias = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1);
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), look = new THREE.Vector3(), dir = new THREE.Vector3(), up = new THREE.Vector3();
-    let warmed = false;
     const patched = new WeakSet();
     const puddle = PUDDLE; // (the weather's own oePuddle where its patch is in the shader: game/weather.js)
 
@@ -91,7 +93,10 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         U.uWetM.value = w;
         if (!rt || api.off || w < 0.003) { U.uMirrorOn.value = 0; return; } // (off: game.js sheds it on a device that can't keep up)
         const h = ground(camera.position.x, -camera.position.z);
-        if (camera.position.y - h > 120) { U.uMirrorOn.value = 0; return; } // high over the city: the street's reflections are lost in the distance
+        if (camera.position.y - h > 120 && !api.every) { U.uMirrorOn.value = 0; return; } // high over the city: the street's reflections are lost in the distance
+        // drawn every other frame: the last picture is kept with the mirrored camera it was drawn from
+        // (uMirrorMat), so in between it still lands where it should, a frame behind what moves in it
+        if ((tick++ & 1) && U.uMirrorOn.value === 1 && !api.every) return;
         camera.updateMatrixWorld();
         cam.copy(camera, false);
         camera.getWorldDirection(dir);
@@ -117,26 +122,15 @@ ${/oePuddle\s*\(/.test(sh.fragmentShader) ? '' : puddle}`)
         renderer.shadowMap.autoUpdate = prevShadow;
         U.uMirror.value = rt.texture; U.uMirrorOn.value = 1;
       },
-      // the mirror's own variant of the scene's shaders (three.js builds the clipping plane at the ground into
-      // each one), compiled a few objects at a time while the page is idle (OEWorld.compile), ahead of the first
-      // wet street (game.js asks when the sky clouds over): compiled in that street's first frame, a whole
-      // city's worth froze the game as the rain began
+      setSize(w, h) { if (rt) { rt.setSize(dim(w), dim(h)); U.uMirrorPx.value.set(1 / dim(w), 1 / dim(h)); } },
+      // draw it once while the game loads, whatever the weather: the scene's materials compile again
+      // for the mirror's clipping plane, seconds of stall that would otherwise come with the first rain
       warm(scene) {
-        if (!rt || !window.OEWorld || !OEWorld.compile || warmed) return;
-        warmed = true;
-        const todo = scene.children.slice(), idle = window.requestIdleCallback ? f => requestIdleCallback(f, { timeout: 400 }) : f => setTimeout(f, 30);
-        const step = deadline => {
-          const prev = renderer.clippingPlanes, t0 = performance.now();
-          renderer.clippingPlanes = [plane];
-          try {
-            do { const o = todo.pop(); if (o && o.parent === scene) OEWorld.compile(renderer, o, camera, { scene, target: rt }); }
-            while (todo.length && performance.now() - t0 < Math.min(6, Math.max(2, deadline && deadline.timeRemaining ? deadline.timeRemaining() : 6)));
-          } finally { renderer.clippingPlanes = prev; }
-          if (todo.length) idle(step);
-        };
-        idle(step);
+        if (!rt) return;
+        const u = wetU() || own, w = u.value;
+        u.value = 1; api.every = true;
+        try { api.update(scene, 0); } finally { u.value = w; api.every = false; U.uMirrorOn.value = 0; U.uWetM.value = w; }
       },
-      setSize(w, h) { if (rt) { rt.setSize(Math.max(2, w >> 1), Math.max(2, h >> 1)); U.uMirrorPx.value.set(1 / Math.max(2, w >> 1), 1 / Math.max(2, h >> 1)); } },
       dispose() { if (rt) rt.dispose(); blank.dispose(); },
     };
     api.setSize(size.x, size.y);

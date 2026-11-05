@@ -662,9 +662,11 @@ keys each program on more than the material, so these rules hold for every page:
 - **Avoid passes that draw the whole scene with an `overrideMaterial`.** Each kind of mesh
   (plain, instanced, skinned, batched) gets its own variant of the override, and the scene's
   geometry is drawn again. The camera effects read the depth buffer the scene already wrote
-  (`atmosphere.js`, as `ao.js` does). Passes that change a global state built into shaders
-  (the wet street's clipping plane, `mirror.js`) compile their variant in idle time before they
-  are needed. The rain's occlusion pass still compiles on the first rain (issue 201).
+  (`atmosphere.js`, as `ao.js` does). The rain's passes, which do override the scene's materials
+  or change a global state built into its shaders (the occlusion map from above, the wet
+  street's clipping plane in `mirror.js`), are drawn once behind the loader whatever the weather
+  (`warmRain` in `game.js`), so the first rain comes on without a stall (`tools/rain_perf.js`
+  measures it).
 
 `tools/start_profile.js` measures the start. It times every frame and main-thread WebGL call
 either side of the click, and lists each program compiled after the title, which objects use it
