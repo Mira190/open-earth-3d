@@ -285,7 +285,9 @@ def run(cid):
     box = Box(C, fc.get("half_m", HALF_M[kind]))
     fr = landcover(box)
     dem = warp(box, DEM_URL, 1, NH, Resampling.average, 0, 0.0)
-    off = C.cfg.get("datum_offset_m", 0.0)  # an inland city's 0 m (Queenstown: its lake)
+    # an inland city's 0 m (Queenstown: its lake), only where city.json sets it; an alpine site keeps heights above
+    # the sea, and web/reef/farland.js lowers the mesh by its terrain.datum_m instead
+    off = C.cfg.get("datum_offset_m", 0.0) if kind != "alpine" else 0.0
     if fc.get("relief"):
         bare = stac_relief(box, fc["relief"])
         m = np.isfinite(bare)
