@@ -792,7 +792,7 @@ window.OECars = (function () {
   // for its way across (request: none crossing it already in, the longest waiting first, giving
   // way to the main road), and is out of it once the whole car is past the exit's line; leave()
   // takes it out of every junction (the car taken off the street, or given another route).
-  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, makeWay = null, lights = null, priority = false, now = null } = {}) {
+  function chauffeur(C, route, { keep = 1, from = 'lane', v = 0, cruise = 15, hurry = null, solid = null, makeWay = null, wedge = WEDGE_GIVE, lights = null, priority = false, now = null } = {}) {
     const P = path(route.pts), st = { s: 0, v, x: 0, y: 0, z: 0, h: 0, pitch: 0, done: false, signal: 0, brake: false, steer: 0, lat: 0, shift: 0, pass: 0, stall: 0, wedged: 0, held: 0, end: P.len, route, P,
       half: C.half, hw: C.hw, ps: new Float32Array(2 * LOOK_N), np: 0, pst: LOOK_STEP, toLine: Infinity, backoff: 0 };
     // as junctions.js sees it: a car of the traffic (line >= 0 while it is on the street, half, v)
@@ -1185,7 +1185,7 @@ window.OECars = (function () {
       // two (makeWay), every 2 s; only after WEDGE_GIVE, a knot nothing undoes, does it go on at a crawl
       if (solid && !dry && st.s > s0 && Math.abs(st.shift) < 0.2) { // (not while swinging out round a car: that line keeps a hand's width clear)
         const d1 = solid(q.x, q.y, q.z, Math.atan2(q.hx, q.hy));
-        if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < WEDGE_GIVE) {
+        if (d1 > 0.02 && d1 > solid(st.x, st.y, st.z, st.h) + 0.01 && (st.wedged += dt) < wedge) {
           if (makeWay && st.wedged > 2 && Math.floor(st.wedged / 2) !== Math.floor((st.wedged - dt) / 2)) makeWay(q.x, q.y, q.z, Math.atan2(q.hx, q.hy), C.half, C.hw);
           st.s = s0; st.lat = lat0; st.v = 0; st.brake = true;
           pose(st.s, q, st.lat);

@@ -852,8 +852,11 @@ yields. In this game every car's intent is exact, so:
   can no longer stop (braking at 4 m/s²) goes; then the one already in the junction (of two in
   it, the one in first); then the one nearer the place; at a dead heat, a ride before the
   traffic. The one that goes isn't braked for; the other stops short of it. The traffic reads a
-  ride as one of its own (its way, its movement, its line); the old "soft" ride the traffic
-  stepped into is gone.
+  ride with you in it as one of its own (its way, its movement, its line, stopped or moving) and
+  never steps into it. A ride on its way to you is left to its own driver as before ("soft": the
+  traffic doesn't wait on it, and wedged a second it goes on at a crawl), so that it comes within
+  the half minute in Tokyo's tangled streets; held to the rule, it stood two minutes in a knot of
+  cars giving way to each other in Shinjuku's game check.
 - **Keep the box clear.** A car of the traffic doesn't go into a junction whose way across is
   blocked by a ride or your car standing there, or by a car waiting at another of its lines with
   its nose in the way (after 3 s that one is asked to back off a metre or two; after 12 s the car

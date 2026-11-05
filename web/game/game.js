@@ -964,9 +964,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // what keeps a ride's driver out of the traffic's cars where you could see it (out of sight, as nothing
   // else holds a driver up there, it would only be late): never a step further into one (solid), and,
   // wedged against one that won't move off, asking it to back off (makeWay, actors.js)
-  const rideGuard = C => ({
+  // (on its way to you, wedged a second, it goes on at a crawl as before, so that it comes in good time: wedge)
+  const rideGuard = (C, coming = false) => ({
     solid: (x, y, z, h) => (inSight(x, y, z) ? cars.footprint(x, y, z, h, C.half, C.hw, 0) : 0),
     makeWay: (x, y, z, h, half, hw) => !!(junctions.makeWay && inSight(x, y, z) && junctions.makeWay(x, y, z, h, half, hw)),
+    wedge: coming ? 1 : undefined,
   });
   // a ride (kind 'taxi' or 'hire') from a traffic car or a place on the roads, on its planned route to the pick-up
   function newRide(kind, from, pickup, plan, dest = null) {
@@ -978,7 +980,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       t0: clockT, meter: 0, talkT: 0, wait: 0, pitch: 140 + Math.floor(Math.random() * 140), rating: (4.7 + Math.random() * 0.29).toFixed(2).slice(0, 3) };
     // (never a step further into a car of the traffic where you could see it: out of sight, as nothing
     // else holds a driver up there, it would only be late)
-    const opts = Object.assign(rideGuard(C), plan.opts);
+    const opts = Object.assign(rideGuard(C, true), plan.opts);
     o.drv = OECars.chauffeur(C, plan.rt, opts);
     o.drv.opts = opts; // (for a new route round a jam)
     o.T0 = plan.T; o.sig = plan.sig; o.scr = plan.scr || []; o.qArms = plan.qArms; // (the lights it is to stop at near you, s along its route)
@@ -3777,12 +3779,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       const st = stOf(o), id = o === ride ? 'ride' : 'car';
       // (a ride on its way, stopped for a moment, is not parked: the traffic gives way to it, or not, by the rule
       // it reads of a ride on the move, as the ride reads it, never one by one rule and the other by another)
-      const live = o === ride && !st.done && (ride.phase === 'coming' || ride.phase === 'driving' || ride.phase === 'leaving');
+      // (on its way to you, a ride is left to its own driver as before, soft: the traffic doesn't wait on it,
+      // so that it comes in good time; with you in it, it is read by the rule, never stepped into)
+      const live = o === ride && !st.done && (ride.phase === 'driving' || ride.phase === 'leaving'), soft = o === ride && ride.phase === 'coming' && Math.abs(st.v) >= 0.3;
       blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
-      const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top };
-      if (o === ride) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null });
+      const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top, soft };
+      if (o === ride && !soft) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null });
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);
