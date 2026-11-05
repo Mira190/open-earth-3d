@@ -1634,7 +1634,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const w0 = w + c.off;
             if (a < -b.half - c.half || a > 45 || Math.abs(w0) >= need) continue;
             // (not round one stopped at a junction's line, a taxi waiting for its turn: it queues behind)
-            const atJ = arm && left - arm.back < a + b.half + 15;
+            // (your car parked by the kerb near a junction is not a car waiting at its line: it is gone round)
+            const atJ = b.id !== 'car' && arm && left - arm.back < a + b.half + 15;
             const toKerb = w0 + side * need, toCentre = w0 - side * need; // (the kerb is on the keep side)
             // (over the centre line only with nothing coming the other way up to 40 m ahead: else it waits behind,
             // as a driver does; one coming down a narrow street, in from a facade, would meet it head on)
