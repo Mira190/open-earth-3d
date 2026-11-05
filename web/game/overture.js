@@ -83,6 +83,8 @@ window.OEOverture = (function () {
     ginkgo: { geo: ginkgoGeometry, color: '#f2c230', edge: '#ffe27a', size: 0.12, glow: '#ffd36b', fall: 1.3, spin: 2.2 },
     snow: { geo: flakeGeometry, color: '#f4f8ff', edge: '#ffffff', size: 0.035, glow: '#dfeaff', fall: 0.7, spin: 1.2 },
     mote: { geo: null, color: '#fff1d0', edge: '#fff1d0', size: 0.05, glow: '#ffe6b0', fall: -0.05, spin: 0 },
+    // a meteor, for the night: a white head and a long blue-violet tail across the sky, far off (sized in metres there)
+    meteor: { geo: null, color: '#ffffff', edge: '#7f6bff', size: 2.2, glow: '#e8f2ff', fall: 0, spin: 0, tail: 36, far: true },
   };
   function kindFor(spec, m, d) {
     const md = m * 100 + d;
@@ -106,8 +108,16 @@ window.OEOverture = (function () {
   // ctx: { G, scene, CITY, W, world, camera, stage, cine, live, handOver, junctions, crowd, footNet, nav, clock,
   //        setClock, player, spawn, tier, reduced, sun: () => sun, U, onEnd }
   function create(ctx) {
-    const spec = ctx.G.overture;
-    if (!spec || !spec.shots || !spec.shots.length) return null;
+    const base = ctx.G.overture;
+    if (!base || !base.shots || !base.shots.length) return null;
+    // the day's overture, or its night one (spec.night: what differs after dark, its own shots, score and guide)
+    // when the sun is down at the hour the game starts
+    let spec = base, variant = 'day';
+    function pick() {
+      const sp = ctx.sun && ctx.sun(), v = base.night && sp && sp.altitude < (base.night.below ?? -6) ? 'night' : 'day';
+      if (v !== variant) { variant = v; spec = v === 'night' ? Object.assign({}, base, base.night) : base; cut(); scoreBuf = null; scoreFor = null; }
+      return variant;
+    }
     const { W, scene, nav } = ctx;
     const V3 = THREE.Vector3;
 
@@ -156,9 +166,9 @@ window.OEOverture = (function () {
     }
 
     // the cut
-    let T = 0;
-    const shots = spec.shots.map(s => { const q = Object.assign({}, s, { t0: T }); T += s.dur; return q; });
-    const total = T;
+    let shots = [], total = 0;
+    function cut() { let T = 0; shots = spec.shots.map(s => { const q = Object.assign({}, s, { t0: T }); T += s.dur; return q; }); total = T; }
+    cut();
     function resolve() { // the shots' points, once the player is placed (an "end" anchor depends on it)
       for (const s of shots) {
         for (const k of ['at', 'look', 'from', 'to', 'lookFrom', 'lookTo', 'via']) if (s[k]) s['_' + k] = point(s[k]);
@@ -168,10 +178,10 @@ window.OEOverture = (function () {
 
     // ------------------------------------------------------------ the guide and the air
     const tier = ctx.tier || 'high';
-    let kind = 'sakura', K = KINDS.sakura, hero = null, glow = null, drift = null, driftData = null, group = null;
+    let kind = 'sakura', K = KINDS.sakura, hero = null, glow = null, drift = null, driftData = null, group = null, tail = [];
     const NDRIFT = { high: 420, medium: 260, low: 110 }[tier] || 200, BOX = 36;
     function build() {
-      kind = kindFor(spec, ctx.clock.m, ctx.clock.d);
+      kind = spec.guide || kindFor(spec, ctx.clock.m, ctx.clock.d);
       K = KINDS[kind];
       group = new THREE.Group();
       group.name = 'overture';
@@ -179,8 +189,14 @@ window.OEOverture = (function () {
       const geo = K.geo ? K.geo() : null;
       const mat = geo ? new THREE.MeshStandardMaterial({ color: new THREE.Color(K.color), emissive: new THREE.Color(K.edge), emissiveIntensity: 0.35, roughness: 0.55, metalness: 0, side: THREE.DoubleSide, transparent: true, opacity: 0.96 }) : null;
       if (geo) { hero = new THREE.Mesh(geo, mat); hero.scale.setScalar(K.size); hero.frustumCulled = false; group.add(hero); }
-      glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(K.glow), transparent: true, opacity: 0.0, depthWrite: false, blending: THREE.AdditiveBlending }));
+      glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(K.glow), transparent: true, opacity: 0.0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
       glow.scale.setScalar(K.size * 4); glow.frustumCulled = false; group.add(glow);
+      // a meteor's tail: glowing sprites along the way it came, smaller and fainter towards the end
+      tail = [];
+      if (K.tail) for (let i = 0; i < K.tail; i++) {
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: new THREE.Color(K.glow).lerp(new THREE.Color(K.edge), i / K.tail), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+        sp.frustumCulled = false; sp.visible = false; group.add(sp); tail.push(sp);
+      }
       // the air: petals (or leaves, flakes, motes) drifting round the camera in a box that wraps
       const dgeo = geo || new THREE.PlaneGeometry(1, 1);
       const dmat = geo ? mat.clone() : new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(K.glow), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
@@ -199,7 +215,7 @@ window.OEOverture = (function () {
       if (!group) return;
       ctx.world.remove(group);
       group.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) { if (o.material.map) o.material.map.dispose(); o.material.dispose(); } });
-      group = hero = glow = drift = null;
+      group = hero = glow = drift = null; tail = [];
     }
 
     // the guide's path through a shot: a Catmull-Rom curve through its points, held at the first until `rest`
@@ -207,6 +223,7 @@ window.OEOverture = (function () {
     function guideAt(s, k, out) {
       const P = s._guide;
       if (!P || !P.length) return null;
+      if (s.gFrom != null || s.gTo != null) { const a = s.gFrom ?? 0, b = s.gTo ?? 1; if (k < a || k > b) return null; k = (k - a) / (b - a); }
       if (P.length === 1) return out.copy(W(...P[0]));
       const r = s.rest || 0, u = k < r ? 0 : EASE[s.guideEase || 'inOut']((k - r) / (1 - r)) * (P.length - 1);
       const i = Math.min(P.length - 2, Math.floor(u)), f = u - i;
@@ -214,7 +231,7 @@ window.OEOverture = (function () {
       const cr = (a, b, c, d) => 0.5 * ((2 * b) + (-a + c) * f + (2 * a - 5 * b + 4 * c - d) * f * f + (-a + 3 * b - 3 * c + d) * f * f * f);
       const x = cr(p0[0], p1[0], p2[0], p3[0]), y = cr(p0[1], p1[1], p2[1], p3[1]), z = cr(p0[2], p1[2], p2[2], p3[2]);
       // a leaf's flutter: a lazy sway across its line and a bob, more as it moves
-      const t = (s.t0 + k * s.dur), amp = (k < r ? 0.012 : 0.16) * (s.flutter ?? 1);
+      const t = (s.t0 + k * s.dur), amp = K.far ? 0 : (k < r ? 0.012 : 0.16) * (s.flutter ?? 1);
       out.copy(W(x + Math.sin(t * 1.9) * amp, y + Math.cos(t * 1.4) * amp, z + Math.sin(t * 2.6) * amp * 0.6));
       return out;
     }
@@ -319,7 +336,7 @@ window.OEOverture = (function () {
     }
 
     // ------------------------------------------------------------ the score (film-score.js, rendered offline and played)
-    let audio = null, scoreBuf = null, scoreSrc = null;
+    let audio = null, scoreBuf = null, scoreSrc = null, scoreFor = null;
     function loadScript(src) {
       return new Promise((ok, no) => { if (window.OEFilmScore) return ok(); const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = no; document.head.appendChild(el); });
     }
@@ -330,11 +347,12 @@ window.OEOverture = (function () {
         title: at(sc.title_shot, sc.title_at), finale: at(sc.finale_shot, sc.finale_at), hush: sc.hush_shot ? [at(sc.hush_shot, sc.hush_at[0]), at(sc.hush_shot, sc.hush_at[1])] : null });
     }
     async function prepareScore() {
-      if (scoreBuf || !spec.score) return scoreBuf;
+      const v = pick();
+      if ((scoreBuf && scoreFor === v) || !spec.score) return scoreBuf;
       try {
         await loadScript('film-score.js');
         const chs = await OEFilmScore.render(scorePlan(), 44100);
-        scoreBuf = chs;
+        if (v === variant) { scoreBuf = chs; scoreFor = v; } // (not if the hour changed to the other overture meanwhile)
       } catch (e) { console.warn('overture: no score', e); }
       return scoreBuf;
     }
@@ -438,6 +456,22 @@ window.OEOverture = (function () {
         const camD = pose.pos.distanceTo(gp);
         glow.material.opacity = (kind === 'mote' ? 0.9 : 0.22 + 0.5 * clamp((camD - 4) / 30)) * (s.type === 'land' ? clamp((0.93 - k) / 0.1) : 1);
         glow.scale.setScalar(K.size * (kind === 'mote' ? 5 : 3.2) * Math.max(1, camD / 12));
+        if (K.far) { // a meteor: the same size on screen however far, bright in the middle of its run, its tail behind it
+          const a0 = s.gFrom ?? 0, a1 = s.gTo ?? 1, u = clamp((k - a0) / Math.max(1e-3, a1 - a0)), life = Math.sin(Math.PI * u);
+          const px = d => d * Math.tan(fov * RAD / 2) * 2 / 900; // (metres a pixel at d, on 900 lines)
+          glow.material.opacity = 0.95 * Math.pow(life, 0.6);
+          glow.scale.setScalar(px(camD) * 26 * K.size / 2.2);
+          const n = tail.length, len = (s.tailLen ?? 0.22) * (a1 - a0);
+          tail.forEach((sp, i) => {
+            const q = guideAt(s, k - len * (i + 1) / n, tmpB);
+            sp.visible = !!q && show;
+            if (!sp.visible) return;
+            sp.position.copy(q);
+            const f = 1 - (i + 1) / n, d = pose.pos.distanceTo(q);
+            sp.material.opacity = 0.75 * f * f * Math.pow(life, 0.6);
+            sp.scale.setScalar(px(d) * (5 + 14 * f));
+          });
+        }
         if (g) gprev.copy(g);
       }
       // the land shot hands over to the chase camera in its last fifth
@@ -457,7 +491,7 @@ window.OEOverture = (function () {
       const gr = spec.grade || {}, w = EASE.smooth(clamp(t / 1.5)) * (s.type === 'land' ? 1 - EASE.smooth(clamp((k - 0.55) / 0.45)) : 1);
       const tint = gr.tint || [1, 1, 1];
       // (on top of the hour's own grade, which atmosphere.js applies each frame)
-      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)], skySat: lerp(1, gr.sky_sat ?? 1, w) };
+      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)], skySat: lerp(1, gr.sky_sat ?? 1, w), stars: lerp(1, gr.stars ?? 1, w) };
       if (ctx.Wd && ctx.Wd.su) ctx.Wd.su.cloudTrim = (gr.clouds || 0) * w; // (more cloud, for the sun to light: weather.js)
       const sp = ctx.sun && ctx.sun(), L = lens.uniforms;
       if (!sp || !L.uSunVis || !window.OELens) return;
@@ -527,6 +561,7 @@ window.OEOverture = (function () {
     // returns false (and leaves everything as it was) if the spec does not fit the map: a landmark it
     // names is missing after a rebuild, say; the game then plays its plain crane instead
     function play(done) {
+      pick();
       try { placeEnd(); resolve(); } catch (e) { console.warn(String(e)); return false; }
       onDone = done;
       active = true; settling = false; fired = new Set(); lastShot = null; from = null; lapsed = 0;
@@ -569,7 +604,7 @@ window.OEOverture = (function () {
       if (onDone) onDone(skipped);
     }
     return {
-      play, skip, update, prepareScore, scorePlan, point, shots, total,
+      play, skip, update, prepareScore, scorePlan, point, get shots() { return shots; }, get total() { return total; }, get variant() { return variant; },
       get active() { return active; }, get fov() { return fov; }, get fx() { return active ? fx : null; }, get t() { return t; }, get kind() { return kind; }, get end() { return endAt.slice(); },
       // the guide's and the camera's path through each shot (for tools/overture_film.js's checks)
       sample(s, k) { const g = shotPose(s, k); return { pos: pose.pos.clone(), look: pose.look.clone(), guide: g ? g.clone() : null }; },

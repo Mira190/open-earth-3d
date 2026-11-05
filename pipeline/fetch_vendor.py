@@ -45,8 +45,9 @@ def cjk_text():
     """the cities' names on the title, and the title drop of each map's overture (game.overture.title)"""
     chars = set("大阪京都東香港")
     for f in glob.glob(os.path.join(os.path.dirname(WEB), "cities", "*", "city.json")):
-        t = (json.load(open(f, encoding="utf8")).get("game") or {}).get("overture", {}).get("title", {})
-        chars |= {c for c in t.get("name", "") + t.get("line", "") if ord(c) > 0x2e7f}
+        ov = (json.load(open(f, encoding="utf8")).get("game") or {}).get("overture", {})
+        for t in (ov.get("title", {}), ov.get("night", {}).get("title", {})):  # (the day's and the night's)
+            chars |= {c for c in t.get("name", "") + t.get("line", "") if ord(c) > 0x2e7f}
     return "".join(sorted(chars))
 
 

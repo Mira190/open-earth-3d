@@ -331,7 +331,7 @@ window.OEAtmos = (function () {
         S.matrixWorldNeedsUpdate = true;
         S.material.uniforms.uOpacity.value = night * (1 - 0.6 * clouds) * (1 - ov);
         S.material.uniforms.uTime.value = tSec;
-        S.material.uniforms.uScale.value = renderer.getPixelRatio();
+        S.material.uniforms.uScale.value = renderer.getPixelRatio() * ((lens && lens.trim && lens.trim.stars) || 1); // (a shot's starrier sky: overture.js)
         S.visible = night > 0.02;
         const md = moonRaDec(utcMs), dir = eq(md.ra, md.dec).applyMatrix4(basis).normalize();
         M.visible = dir.y > -0.02;
