@@ -559,7 +559,7 @@ void main() {
     // what the camera should not see from above: the sky, the stars and the moon, sprites and
     // labels, the rain itself, and whatever draws its own pass (a mirror)
     function hidden(tSec) {
-      if (tSec - hideAt < 8) return hideList;
+      if (tSec - hideAt < 60 && tSec >= hideAt) return hideList; // (a walk of the whole scene: once a minute, not every few seconds)
       hideAt = tSec;
       hideList = [];
       const plain = THREE.Object3D.prototype.onBeforeRender;

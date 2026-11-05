@@ -28,9 +28,11 @@ const [,, city = 'shibuya', framesArg = '60'] = process.argv;
     const r = {};
     const run = async name => { upd = 0; nUpd = 0; const t = await time(); r[name] = Object.assign(t, { weatherCpu: +(upd / Math.max(1, nUpd)).toFixed(2) }); };
     W.set('clear', { now: true }); await run('clear');
+    // what the first rain frame spends where: the weather's own work, the mirror's draw, the main draw
+    const M0 = g.mirror && g.mirror.update; let mT = 0; if (M0) g.mirror.update = function (...a) { const t = performance.now(); const r = M0.apply(this, a); mT += performance.now() - t; return r; };
     // the first frames as the rain comes on: what it compiles and builds the first time
     W.set('rain', { now: true });
-    { const t0 = performance.now(); const ts = await frames(6); r['rain, its first 6 frames'] = { mean: +((ts[ts.length - 1] - t0) / 6).toFixed(1), p90: 0, max: +Math.max(...ts.slice(1).map((t, i) => t - ts[i]), ts[0] - t0).toFixed(1), weatherCpu: +(upd / Math.max(1, nUpd)).toFixed(2) }; }
+    { const t0 = performance.now(); const ts = await frames(6); r['rain, its first 6 frames'] = { mean: +((ts[ts.length - 1] - t0) / 6).toFixed(1), p90: 0, max: +Math.max(...ts.slice(1).map((t, i) => t - ts[i]), ts[0] - t0).toFixed(1), weatherCpu: +(upd / Math.max(1, nUpd)).toFixed(2), mirror: +mT.toFixed(0) }; }
     await run('rain');
     if (g.mirror) { g.mirror.off = true; await run('rain, no street reflections'); }
     // and no occlusion pass from above either
@@ -52,6 +54,6 @@ const [,, city = 'shibuya', framesArg = '60'] = process.argv;
     return { r, tier: (window.OEQuality && OEQuality.city && OEQuality.city().name) || '?', walkers: g.crowd.active };
   }, +framesArg);
   console.log(city, out.tier, `${out.walkers} walkers`);
-  for (const [k, v] of Object.entries(out.r)) console.log(`  ${k.padEnd(36)} ${String(v.mean).padStart(6)} ms mean, p90 ${v.p90}, max ${v.max}; weather.update ${v.weatherCpu} ms`);
+  for (const [k, v] of Object.entries(out.r)) console.log(`  ${k.padEnd(36)} ${String(v.mean).padStart(6)} ms mean, p90 ${v.p90}, max ${v.max}; weather.update ${v.weatherCpu} ms${v.mirror != null ? `; mirror ${v.mirror} ms in all` : ''}`);
   await b.close();
 })();
