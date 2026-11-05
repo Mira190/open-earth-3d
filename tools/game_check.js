@@ -69,6 +69,11 @@ const npcNight = require('./npc_night');
     return Object.keys(n).sort().map(k => `${n[k]} ${k}`).join(', ');
   });
   const lights0 = await lightCensus();
+  // on the title, as a player reading it does: the helicopter readied while it is up (game.js, heli.prefetch:
+  // fetched, built, its shaders compiled), with the game paused, so that the wait for its shaders (long on a
+  // software renderer) doesn't run the traffic on in real time once the game has opened
+  await p.waitForFunction(() => !document.getElementById('g-title').hidden, null, { timeout: 600000 }).catch(() => {});
+  await p.evaluate(() => { const h = window.__game.heli; return h && h.prefetch ? h.prefetch().then(() => null) : null; });
   const lightsKept = async when => { const l = await lightCensus(); check(l === lights0, `the scene's lights are the title's ${when} (${l}${l === lights0 ? '' : `; on the title ${lights0}`})`); };
   const play = await p.$('#gt-play');
   if (play) await play.click().catch(() => {});
