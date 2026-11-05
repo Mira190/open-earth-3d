@@ -271,7 +271,7 @@ window.OEOverture = (function () {
 .ov-cap small { display: block; margin-bottom: 4px; font: 400 9.5px/1.3 var(--f-mono, ui-monospace, monospace); letter-spacing: .22em; text-transform: uppercase; color: var(--accent, #ffb066); }
 .ov-skip { position: absolute; right: max(16px, 3vw); bottom: calc(8.5vh + 18px); font: 400 10px/1 var(--f-mono, ui-monospace, monospace); letter-spacing: .2em; text-transform: uppercase; color: rgba(255,255,255,.55); opacity: 0; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 10px 0; }
 .ov-skip:hover { color: #fff; }
-@media (max-width: 640px) { .ov-title { top: 30%; } .ov-cap { bottom: calc(8.5vh + 14px); } }
+@media (max-width: 640px) { .ov-title { top: 30%; } .ov-cap { bottom: calc(8.5vh + 14px); } .ov-skip { top: calc(8.5vh + 6px); bottom: auto; } }
 `;
     let layer = null, black = null, titleEl = null, capEl = null, skipEl = null;
     function overlay() {
