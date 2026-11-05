@@ -49,6 +49,13 @@ or an integration session. Done means in main.
   `web/index.html`) makes every live city's checks run (seven while the others are parked): land
   it on its own and early, and keep city work in city files. Stay in the landing loop until it
   lands; each round after the first is short.
+- After merging main, run plain `tools/check.sh`, with no city names: it checks only the live
+  cities (`tools/live_cities.sh`). Don't list cities yourself; that checks the parked ones too.
+- Once your branch has passed its checks, merging main again needs no new check when the merge has
+  no conflicts and main's new commits change none of the files your branch changes (compare
+  `git diff --name-only HEAD^2...HEAD^1` with `git diff --name-only HEAD^1...HEAD^2`): push it to
+  main straight away. Main's commits were checked by their own branches; re-checking them only
+  keeps you racing main.
 - Land in pieces. When something that other work will build on works (a shared module, a
   style, a pipeline step), land it then rather than holding it on a branch for hours.
 - A hook that asks you to commit and push work in progress: push it to your branch. Landing on
