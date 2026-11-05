@@ -479,7 +479,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // other (a little farther out; where the cars are is read as they move)
     const none = [];
     let nearBenches = none, nearCars = none, nearPosts = none;
-    const addCar = o => { nearCars.push(o); }, addPost = o => { nearPosts.push(o); };
+    const addCar = o => { nearCars.push(o); }, addPost = o => { if (o.kind !== 'signal') nearPosts.push(o); }; // (not the junctions' poles: solid for the cars, but a walker steering round a walk signal's post at the kerb, where the crossing begins, is pushed out into the road and stands in the traffic's way)
     function gather(x, y, q, fresh, z) { // (z: the cars on that level, not on a deck over it or a street under it)
       nearBenches = benchAt.size ? benchAt.get(bkey(Math.floor(x / 4), Math.floor(y / 4))) || none : none;
       nearCars = q.cars || (q.cars = []);
