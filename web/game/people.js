@@ -59,6 +59,8 @@ window.OEPeople = (function () {
     weights: { M_Casual2: 3, M_Hoodie: 1.6, M_Suit: 1.6, M_Worker: 0.6, M_Beach: 0.2, M_Adventurer: 1.2, M_Punk: 0.2,
       W_Casual: 3, W_Formal: 1.6, W_Suit: 1.4, W_Worker: 0.5, W_Adventurer: 1.2, W_Punk: 0.2 },
   };
+  // Japan carries the clear vinyl umbrellas sold at every konbini, and black and navy ones
+  STYLES.tokyo.umbrellas = ['clear', 'clear', 'clear', 'clear', 'clear', '#1d1f26', '#22304a', '#1d1f26', '#f2f2f2', '#6b2a35'];
   STYLES.kyoto = Object.assign({}, STYLES.tokyo, {
     tops: ['#1f2328', '#1f2328', '#1d2b4a', '#1d2b4a', '#e9e6df', '#f2f0ea', '#2b2f3a', '#9aa3a8', '#d7c6a5', '#46604f', '#8a2f39', '#5b6b7a', '#c9c2b5', '#7a4e8f'],
   });
@@ -92,8 +94,22 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
 }`;
   const GEO = {}, MAT = {};
   const geo = (k, f) => GEO[k] || (GEO[k] = f());
-  const stdMat = hex => MAT[hex] || (MAT[hex] = new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.75, metalness: 0, side: THREE.DoubleSide }));
+  // 'clear': the frosted vinyl of a convenience-store umbrella (mostly opaque: the head under it is hidden)
+  const stdMat = hex => MAT[hex] || (MAT[hex] = hex === 'clear'
+    ? new THREE.MeshStandardMaterial({ color: 0xf2f5f7, roughness: 0.32, metalness: 0, transparent: true, opacity: 0.82, depthWrite: false, side: THREE.DoubleSide })
+    : new THREE.MeshStandardMaterial({ color: lin(hex), roughness: 0.75, metalness: 0, side: THREE.DoubleSide }));
+  // an open umbrella's canopy: eight panels over a cone, open underneath (the apex up)
+  const canopyGeo = () => new THREE.ConeGeometry(0.56, 0.24, 8, 1, true);
   const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+  // how an open umbrella is held, in a body's own space (y up, +z forward), as games' umbrella walks
+  // hold it: the elbow by the side, the fist up under the chin a little to the right, the shaft upright
+  // and the canopy low over the head, so it hides the hand and the head under it. From
+  // the head's joint (hd); the near people (umbrella_open) and the crowd's far copies share it
+  const UMB_LEN = 0.66, UMB_D = [0.05, 1, -0.06];
+  const umbrellaHold = hd => {
+    const dir = V3(...UMB_D).normalize(), grip = hd.clone().add(V3(-0.1, -0.32, 0.17));
+    return { grip, dir, top: grip.clone().addScaledVector(dir, UMB_LEN), q: new THREE.Quaternion().setFromUnitVectors(V3(0, 1, 0), dir) };
+  };
   // Everything is built in the model's own space (y up, +z forward, metres) around anchors read from the
   // reference pose, so one set of numbers fits every character; attach() then hangs it on a bone. A
   // Rocketbox body (real: the main characters and the NPCs) is slimmer and its spine sits further back,
@@ -156,6 +172,16 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
       M(geo('umbhR', () => new THREE.CylinderGeometry(0.014, 0.014, 0.12, 6).rotateZ(1.5708)), '#6a4a2a', g.at(0.05, 0.0, 0.0), null, g.q)] : [
       M(geo('umb', () => new THREE.CylinderGeometry(0.018, 0.028, 1.0, 8)), '#222a44', h.clone().add(V3(0, -0.4, 0.02))),
       M(geo('umbh', () => new THREE.CylinderGeometry(0.014, 0.014, 0.14, 6)), '#6a4a2a', h.clone().add(V3(0, 0.0, 0)))]) },
+    // open in the rain, held up in the right hand in front of the chest, the shaft leaning back so the
+    // canopy is over the head (weather.js turns it on). It hangs from the chest, so it rides with the
+    // body; the arm is posed to its handle every frame (person: rig.animate). Laid out from the head's
+    // joint (r: the reference pose), so it fits every body
+    umbrella_open: { bone: 'Chest', build: (M, h, c, look, real, r) => {
+      const u = umbrellaHold(r && r.Head ? r.Head.pos : h.clone().add(V3(0, 0.3, 0)));
+      return [M(geo('umbC', canopyGeo), look.umbrella || '#1d1f26', u.top, null, u.q),
+        M(geo('umbT', () => new THREE.SphereGeometry(0.012, 6, 4)), '#2a2a2e', u.top.clone().addScaledVector(u.dir, 0.11)),
+        M(geo('umbS', () => new THREE.CylinderGeometry(0.008, 0.008, UMB_LEN, 6).translate(0, -UMB_LEN / 2, 0)), '#2a2a2e', u.top, null, u.q),
+        M(geo('umbH', () => new THREE.CylinderGeometry(0.016, 0.016, 0.13, 6)), '#3a2a1e', u.grip, null, u.q)]; } },
     beret: { bone: 'Head', build: (M, h, c, look, real) => [
       M(geo('beret', () => new THREE.CylinderGeometry(0.14, 0.13, 0.04, 20)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, real ? 0.135 : 0.15, -0.01)), real ? V3(1.1, 1, 1.1) : null, null, 0.18),
       M(geo('beretc', () => new THREE.CylinderGeometry(0.008, 0.008, 0.025, 6)), look.beret || '#1a1a1d', h.clone().add(V3(0.02, real ? 0.165 : 0.18, -0.01)))] },
@@ -197,11 +223,19 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
   });
 
   // ------------------------------------------------------------ loading
+  // people.json, tried again twice if the request fails (as gltf.js does for the models)
+  async function fetchJSON(url) {
+    for (let i = 0; ; i++) {
+      try { const r = await fetch(url); if (r.ok) return await r.json(); if (i >= 2 || r.status < 500) throw new Error(`${url}: HTTP ${r.status}`); }
+      catch (e) { if (i >= 2) throw e; }
+      await new Promise(r => setTimeout(r, 800 * 3 ** i));
+    }
+  }
   async function load(base, { onMsg } = {}) {
     if (!THREE.GLTFLoader || !THREE.SkeletonUtils) throw new Error('GLTFLoader is not available');
     const L = new THREE.GLTFLoader();
     const get = u => new Promise((res, rej) => L.load(base + u, res, null, rej));
-    const info = await (await fetch(base + 'people.json')).json();
+    const info = await fetchJSON(base + 'people.json');
     const [aM, aW, cr] = await Promise.all([get(info.anims.M), get(info.anims.W), get(info.crowd)]);
     const lib = { info, clips: { M: aM.animations, W: aW.animations }, lod: {}, tpl: {}, loading: {} };
     cr.scene.traverse(o => {
@@ -291,6 +325,22 @@ vec3 oePattern(vec3 base, vec3 p, float id, vec3 c2) {
     return out;
   }
 
+  // ------------------------------------------------------------ the street lights on people
+  // setLight(patch): a shader patch every person's material takes from then on (world.js
+  // streetLit: after dark the street lights' pool where they stand lights them as it lights the
+  // pavement, so the player and the people they meet are not silhouettes under a lamp)
+  let streetLit = null;
+  function setLight(patch) { streetLit = patch; }
+  function litMaterial(m) {
+    if (!streetLit || !m || !m.isMeshStandardMaterial || m.userData.streetLit) return;
+    const own = m.onBeforeCompile, patch = streetLit, key = m.customProgramCacheKey;
+    m.onBeforeCompile = (sh, r) => { if (own) own.call(m, sh, r); patch(sh); };
+    // three.js keys a program by the text of onBeforeCompile, which this wrapper makes alike for all
+    m.customProgramCacheKey = () => `person-lit|${key ? key.call(m) : ''}|${own ? own.toString() : ''}`;
+    m.userData.streetLit = true;
+    m.needsUpdate = true;
+  }
+
   // ------------------------------------------------------------ one person: skinned, animated
   function paletteMaterial(pal, cls) {
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.82, metalness: 0 });
@@ -345,9 +395,10 @@ ${PAT_GLSL}`)
     const bone = {};
     model.traverse(o => { if (o.isSkinnedMesh && !mesh) mesh = o; if (o.isBone) bone[o.name] = o; });
     head = bone[alias('Head')] || null;
-    if (T.textured) model.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; o.frustumCulled = false; } });
+    if (T.textured) model.traverse(o => { if (o.isSkinnedMesh) { o.castShadow = o.receiveShadow = true; o.frustumCulled = false; (Array.isArray(o.material) ? o.material : [o.material]).forEach(litMaterial); } });
     else {
       mesh.material = paletteMaterial(colours(T.extras, look), T.extras.classes.map(c => CLS[c] || 0));
+      litMaterial(mesh.material);
       mesh.castShadow = mesh.receiveShadow = true;
       mesh.frustumCulled = false;
     }
@@ -429,7 +480,7 @@ ${PAT_GLSL}`)
         const fit = bn === 'Head' && headFit;
         if (fit) anchor.copy(fit.mid);
         else if (bn === 'Head') { anchor.y += 0.11; anchor.z -= 0.05; }   // the middle of the head
-        for (const m of a.build(mk, anchor, grip[bn], look, !!headFit)) {
+        for (const m of a.build(mk, anchor, grip[bn], look, !!headFit, ref)) {
           if (fit) { m.position.sub(anchor).multiply(fit.s).add(anchor); m.scale.multiply(fit.s); }
           grp.add(m);
         }
@@ -438,6 +489,32 @@ ${PAT_GLSL}`)
         bones[bn].add(grp);
         accObjs.push(grp);
       }
+      // an open umbrella's handle, in the model's own space: the right hand goes to it (holdUmbrella)
+      umbGrip = ids.includes('umbrella_open') && ref.Head && ref.Chest ? umbrellaHold(ref.Head.pos).grip : null;
+    }
+    // the right arm up to the umbrella's handle, over whatever the clip has it doing: a two-bone reach
+    // from the shoulder, the elbow down and out by the side, the fist (a hand's length past the
+    // wrist) round the handle. The clip's arm is kept to be put back before the next frame.
+    let umbGrip = null, armHeld = null;
+    const armBack = () => { if (armHeld) { const a = arms[1]; a.ua.quaternion.copy(armHeld[0]); a.la.quaternion.copy(armHeld[1]); armHeld = null; } };
+    function holdUmbrella() {
+      const a = arms[1];
+      armHeld = [a.ua.quaternion.clone(), a.la.quaternion.clone()];
+      root.updateMatrixWorld(true);
+      const fist = r2.copy(umbGrip).applyMatrix4(ref.Chest.inv).applyMatrix4(bones.Chest.matrixWorld);
+      const sh = a.ua.getWorldPosition(r3), el = a.la.getWorldPosition(r4);
+      const L1 = sh.distanceTo(el), L2 = el.distanceTo(a.wr.getWorldPosition(r1)), L3 = L2 + 0.075 * model.getWorldScale(sa).y;
+      const to = sd2.subVectors(fist, sh), d = Math.min(Math.max(to.length(), Math.abs(L1 - L3) + 1e-3), L1 + L3 - 1e-3);
+      to.normalize();
+      const along = (L1 * L1 - L3 * L3 + d * d) / (2 * d), off = Math.sqrt(Math.max(0, L1 * L1 - along * along));
+      // which way the elbow bends: down, out to the right and a little back
+      const out = r1.set(-1, 0, 0).applyQuaternion(root.getWorldQuaternion(rq)), back = fw.set(0, 0, -1).applyQuaternion(rq);
+      const pole = out.multiplyScalar(0.55).addScaledVector(back, 0.25);
+      pole.y -= 1;
+      pole.addScaledVector(to, -pole.dot(to)).normalize();
+      const elbow = r4.copy(sh).addScaledVector(to, along).addScaledVector(pole, off);
+      aim(a.ua, a.la, elbow.clone().sub(sh).normalize());
+      aim(a.la, a.wr, fist.sub(elbow).normalize());
     }
     function play(name, fade = 0.25, once = false) {
       const a = act[name];
@@ -538,8 +615,10 @@ ${PAT_GLSL}`)
       else if (act.Sprint && speed > 7) play('Sprint', 0.2).setEffectiveTimeScale(Math.max(0.7, Math.min(1.6, speed / (speeds.Sprint * s))));
       else play('Run', 0.2).setEffectiveTimeScale(Math.max(0.6, Math.min(2.4, speed / (speeds.Run * s)))); // up to the 8.5 m/s sprint (game.js GAIT)
       if (mode !== 'sit') feetBack();
+      armBack();
       mixer.update(dt);
       if (mode === 'sit') seat();
+      else if (umbGrip && reaches && bones.Chest) holdUmbrella();
       // the walk cycle as a phase, two steps per cycle (footsteps)
       const d = cur.getClip().duration, tt = cur.time / d;
       if (tt < lastT) cycles++;
@@ -573,7 +652,7 @@ ${PAT_GLSL}`)
     const uni = { uPal: { value: pal }, uCls: { value: cls }, uSkinRef: { value: skinRef },
       uHip: { value: new THREE.Vector2(...ex.hip) }, uKnee: { value: new THREE.Vector2(...ex.knee) }, uShoulder: { value: new THREE.Vector2(...ex.shoulder) } };
     const pose = `
-attribute float mat; attribute float part; attribute vec3 aAnim;
+attribute float mat; attribute float part; attribute vec3 aAnim; attribute float iUmb;
 uniform float uTime; uniform vec2 uHip; uniform vec2 uKnee; uniform vec2 uShoulder;
 mat3 rx(float a) { float c = cos(a), s = sin(a); return mat3(1.0, 0.0, 0.0, 0.0, c, s, 0.0, -s, c); }
 // legs swing from the hips with the knee bending on the back swing; arms swing from the shoulders.
@@ -586,7 +665,14 @@ vec3 crowdPose(vec3 p, bool isNormal) {
   vec3 piv;
   if (shin) { float k = sit ? 1.5708 : max(0.0, -cos(ph) * side) * amp * 1.3; piv = vec3(0.0, uKnee); p = isNormal ? rx(k) * p : rx(k) * (p - piv) + piv; }
   if (leg) { float a = sit ? -1.5708 : sw * side; piv = vec3(0.0, uHip); p = isNormal ? rx(a) * p : rx(a) * (p - piv) + piv; }
-  if (arm) { piv = vec3(0.0, uShoulder); p = isNormal ? rx(-sw * side * 0.8) * p : rx(-sw * side * 0.8) * (p - piv) + piv; }
+  // the right arm holding an umbrella up (iUmb): the upper arm back by the side, the forearm folded up
+  // to the handle under the chin (umbrellaHold)
+  if (arm && side < 0.0 && iUmb > 0.5 && !sit) {
+    vec3 el = vec3(0.0, uShoulder.x - 0.27, uShoulder.y);
+    float lo = smoothstep(el.y + 0.05, el.y - 0.03, position.y);
+    float a = -2.3 * lo; p = isNormal ? rx(a) * p : rx(a) * (p - el) + el;
+    piv = vec3(0.0, uShoulder); p = isNormal ? rx(0.5) * p : rx(0.5) * (p - piv) + piv;
+  } else if (arm) { piv = vec3(0.0, uShoulder); p = isNormal ? rx(-sw * side * 0.8) * p : rx(-sw * side * 0.8) * (p - piv) + piv; }
   if (!isNormal) p.y += abs(cos(ph)) * 0.035 * amp;
   return p;
 }`;
@@ -640,7 +726,9 @@ transformed = crowdPose(transformed, false);`);
       const L = lib.lod[name], geo = L.geometry.clone(), n = ps.length;
       for (const a of ['iSkin', 'iHair', 'iTop', 'iLegs', 'aAnim']) geo.setAttribute(a, new THREE.InstancedBufferAttribute(new Float32Array(n * 3), 3));
       geo.setAttribute('iPat', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
+      geo.setAttribute('iUmb', new THREE.InstancedBufferAttribute(new Float32Array(n), 1).setUsage(THREE.DynamicDrawUsage));
       const { mat, depth } = crowdMaterial(L.extras, U);
+      litMaterial(mat);
       const mesh = new THREE.InstancedMesh(geo, mat, n);
       mesh.customDepthMaterial = depth;
       mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -655,6 +743,33 @@ transformed = crowdPose(transformed, false);`);
       world.add(mesh);
       meshes.push(mesh);
     }
+    // umbrellas for the rain: each person's own colour (Tokyo carries clear vinyl), and whether they
+    // put one up in a drizzle (some don't bother) or only when it really rains
+    const UMB = (styleOf(style) || STYLE || {}).umbrellas || ['#1d1f26', '#1d1f26', '#22304a', '#2f3b33', '#5a1f2b', '#7b8794', '#c9b28a', '#2b4a6b'];
+    let us = 977; // (its own random run, so the crowd's looks and pace stay as they were without it)
+    const urnd = () => ((us = (us * 1664525 + 1013904223) >>> 0) / 4294967296);
+    for (const p of P) { p.umbK = urnd(); p.look.umbrella = UMB[Math.floor(urnd() * UMB.length)]; }
+    // the far crowd's umbrellas: the canopy and its shaft, held as the near people hold theirs
+    // (umbrellaHold), laid out from the crowd's mean shoulder; each drawn with the body's own matrix
+    const shoulder = [0, 0];
+    for (const p of P) { const e = lib.lod[p.look.character].extras.shoulder; shoulder[0] += e[0] / P.length; shoulder[1] += e[1] / P.length; }
+    const hold = umbrellaHold(V3(0, shoulder[0] + 0.16, shoulder[1]));
+    const umbGeo = canopyGeo().applyQuaternion(hold.q).translate(hold.top.x, hold.top.y, hold.top.z);
+    const shaftGeo = new THREE.CylinderGeometry(0.01, 0.01, UMB_LEN, 5).translate(0, -UMB_LEN / 2, 0).applyQuaternion(hold.q).translate(hold.top.x, hold.top.y, hold.top.z);
+    const umbMeshes = {};
+    const umbMesh = clear => umbMeshes[clear] || (umbMeshes[clear] = (() => {
+      const shaft = clear === 'shaft';
+      const m = new THREE.InstancedMesh(shaft ? shaftGeo : umbGeo, shaft ? stdMat('#2a2a2e') : clear ? stdMat('clear') : new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0, side: THREE.DoubleSide }), P.length);
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero);
+      if (!clear) for (let i = 0; i < P.length; i++) m.setColorAt(i, lin(P[i].look.umbrella === 'clear' ? '#1d1f26' : P[i].look.umbrella));
+      m.castShadow = clear !== true; m.frustumCulled = false; m.visible = false;
+      world.add(m);
+      return m;
+    })());
+    const UMB_KEYS = [true, false, 'shaft'];
+    let rain = 0, umbOn = false;
+    const wantUmb = p => rain > 0.06 && p.mode !== 'sit' && p.umbK < 0.3 + 0.62 * Math.min(1, (rain - 0.06) / 0.5);
     const free = {}, active = new Map();
     let dtNow = 0, tNow = 0;
     function begin(dt, cx, cy, t, nActive) {
@@ -670,13 +785,17 @@ transformed = crowdPose(transformed, false);`);
         if (!lib.tpl[name]) { lib.require(name); continue; }
         const r = (free[name] && free[name].pop()) || person(lib, Object.assign({}, p.look));
         r.setLook(Object.assign({ pattern: null, pattern2: null, acc: null }, p.look));
+        r.umbOn = false;
         world.add(r.root);
         active.set(i, r);
       }
     }
     function place(i, p, moving) {
       const r = active.get(i);
+      if (umbOn) for (const c of UMB_KEYS) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       if (r) {
+        const u = wantUmb(p);
+        if (u !== !!r.umbOn) { r.umbOn = u; r.setLook({ acc: u ? [...(p.look.acc || []), 'umbrella_open'] : p.look.acc || null }); }
         p.mesh.setMatrixAt(p.slot, zero);
         r.root.position.copy(W(p.x, p.y, p.z));
         r.root.rotation.y = Math.PI - p.h;
@@ -690,6 +809,10 @@ transformed = crowdPose(transformed, false);`);
       sc.setScalar(p.look.scale);
       m4.compose(W(p.x, p.y, p.z - (sit ? p.thigh : 0)), q, sc);
       p.mesh.setMatrixAt(p.slot, m4);
+      const held = umbOn && wantUmb(p);
+      if (held) { umbMesh(p.look.umbrella === 'clear').setMatrixAt(i, m4); umbMesh('shaft').setMatrixAt(i, m4); }
+      const ua = p.mesh.geometry.attributes.iUmb;
+      if (ua.getX(p.slot) !== (held ? 1 : 0)) { ua.setX(p.slot, held ? 1 : 0); ua.needsUpdate = true; }
       // the cadence follows the speed; when it changes, shift the phase so the stride doesn't jump
       const f = moving ? 4.5 * (p.v ?? p.speed) / p.look.scale : p.animF ?? 4.5 * p.speed / p.look.scale;
       if (p.animF == null) { p.animF = f; p.animO = p.phase; }
@@ -699,14 +822,24 @@ transformed = crowdPose(transformed, false);`);
     function hide(i) {
       const p = P[i];
       p.mesh.setMatrixAt(p.slot, zero);
+      if (umbOn) for (const c of UMB_KEYS) umbMeshes[c] && umbMeshes[c].setMatrixAt(i, zero);
       const r = active.get(i);
       if (r) { world.remove(r.root); (free[r.character] = free[r.character] || []).push(r); active.delete(i); }
     }
     function end() {
       for (const m of meshes) { m.instanceMatrix.needsUpdate = true; m.geometry.attributes.aAnim.needsUpdate = true; }
+      for (const m of Object.values(umbMeshes)) if (m.visible) m.instanceMatrix.needsUpdate = true;
     }
-    return { begin, place, hide, end, meshes, active };
+    // the rain, 0..1 (weather.js): umbrellas go up as it comes on
+    function setRain(r) {
+      rain = r;
+      const on = r > 0.06;
+      if (on === umbOn) return;
+      umbOn = on;
+      for (const c of UMB_KEYS) { const m = umbMesh(c); m.visible = on; if (!on) { for (let i = 0; i < P.length; i++) m.setMatrixAt(i, zero); m.instanceMatrix.needsUpdate = true; } }
+    }
+    return { begin, place, hide, end, setRain, meshes, active, umbrellas: umbMeshes };
   }
 
-  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle };
+  return { load, person, randomLook, pickCharacter, crowdRenderer, colours, setStyle, setLight };
 })();

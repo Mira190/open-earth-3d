@@ -161,6 +161,17 @@ def band(m, P, ring, z, out=0.15, h=0.4):
     cornice(m, P, ring, z, ((0.0, 0.0), (out, 0.0), (out, h), (0.0, h)))
 
 
+def edge_band(m, a, b, z, out, h):
+    """A string course along one wall a -> b in world coordinates (outside on the right), `out` m proud, h m tall."""
+    a, b = np.asarray(a, float), np.asarray(b, float)
+    t = (b - a) / (np.linalg.norm(b - a) or 1)
+    n = np.array([t[1], -t[0]]) * out
+    A, B = (*(a + n), 0), (*(b + n), 0)
+    m.quad((A[0], A[1], z), (B[0], B[1], z), (B[0], B[1], z + h), (A[0], A[1], z + h))
+    m.quad((A[0], A[1], z + h), (B[0], B[1], z + h), (b[0], b[1], z + h), (a[0], a[1], z + h))
+    m.quad((a[0], a[1], z), (b[0], b[1], z), (B[0], B[1], z), (A[0], A[1], z))
+
+
 def rect(u0, u1, v0, v1):
     return [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
 
@@ -372,80 +383,169 @@ def ring_openings_round(m, centre, z0, R, n, w, h, arch=True, phase=0.0, depth=0
 
 # ---------------------------------------------------------------- Japan
 
-def irimoya(K, P, L, W, z_eave, rise, over=3.0, lift=0.9, mats=("roof", "eave", "gable"), gable_frac=0.45, sag=0.18, ridge_h=1.2, n=None):
-    """A hipped-and-gabled roof (入母屋) over an L x W rectangle centred on the frame's origin (L along u):
-    the hipped lower roof from eaves `over` outside the walls, its corners lifted `lift` and its slopes
-    sagging (concave) by `sag` of the rise; from gable_frac of the rise up, the long slopes run on out to
-    the gables (妻), which stand over the end hips, and the ridge runs between them. gable_frac 1 is a plain
-    hipped roof (寄棟). UVs on the roof: metres along the eaves and up the slope."""
-    roof, eave, gab = (K[m] for m in mats)
-    hu, hv = L / 2 + over, W / 2 + over
-    zr = z_eave + rise
-    n = n or (8 if W > 30 else 6 if W > 14 else 4)
-    hs = 5 if W > 30 else 3 if W > 14 else 2
+def japanese_roof(P, u_half, v_half, z_eave, z_top, over, roof, eave=None, gable=None, soffit=None, gable_frac=1.0, k=1.0,
+                  lift=0.0, ridge_frac=1.0, ridge_h=1.2, ridges=True, n=None, wall_z=None, swap=None):
+    """The one Japanese roof every kit builds on (archkit, japankit, Shibuya's shrines): a hipped (寄棟) or
+    hipped-and-gabled (入母屋) roof over the rectangle u in +-u_half, v in +-v_half (the ridge along u),
+    its eaves `over` outside the walls.
+
+    Its height is a function of the depth in from the eaves, tau (0 at the eaves, 1 at the ridge, the same on
+    the long slopes and the hips, so the hips are the lines where they meet): z = z_eave + (z_top - z_eave) *
+    tau ** k, k > 1 the concave sweep, flat at the eaves and steep at the ridge; the corners lift `lift` (反り),
+    fading up the slope. From tau = gable_frac up, the long slopes run on out to the gables (妻) standing over
+    the end hips; gable_frac 1 is a plain hipped roof, whose ridge is ridge_frac of the hips' natural one
+    (0: a pyramid, as a pagoda's storeys); gable_frac 0 is a gabled roof (切妻). Meshes: roof (the slopes), eave (fascia, barge boards, the ridge
+    and the hips' ridges when `ridges`), gable (the gables' faces), soffit (the eaves' underside, back to the
+    walls at wall_z). swap: run the ridge along v (by default, when v is the longer side). Returns {"zr": z at depth d m in from the long eaves (without the lift), "Ug": the
+    gables' plane, "Ev", "Eu", "corners": the eave's corners, as P gives them}."""
+    swap = v_half > u_half if swap is None else swap  # the ridge runs along the longer side, unless told
+    Q = (lambda u, v, z: P(v, u, z)) if swap else P
+    uh, vh = (v_half, u_half) if swap else (u_half, v_half)
+    Eu, Ev = uh + over, vh + over
+    H = z_top - z_eave
+    R = max(Eu - Ev, 0.0) * (ridge_frac if gable_frac >= 1.0 else 1.0)  # the ridge's half length on a hipped roof
     tg = min(1.0, gable_frac)
-    hip_half = max(0.5, hu - hv)  # where the hips would meet on a plain hipped roof
-    ug = hu - (hu - hip_half) * tg  # the gables' plane (a hipped roof: the hips' ridge end)
+    Ug = R + (Eu - R) * (1 - tg)
+    n = n or (8 if Ev > 15 else 6 if Ev > 7 else 4)
+    m = max(4, n)
+    f = lambda t: H * max(t, 0.0) ** k
 
-    def z_at(s, t):
-        lift_s = lift * abs(s) ** 3
-        return z_eave + lift_s + (zr - z_eave - lift_s) * t - sag * rise * math.sin(math.pi * t) * (1 - 0.5 * abs(s))
+    def z(s, t):
+        return z_eave + f(t) + lift * abs(s) ** 3 * (1 - t)
 
-    def long_pt(s, t, sgn):  # a long face (v = sgn * hv at the eave)
-        uhalf = hu - (hu - ug) * min(1.0, t / tg)
-        return s * uhalf, sgn * hv * (1 - t), z_at(s, t)
+    def half_u(t):  # the long slopes' half length at depth t
+        return R + (Eu - R) * (1 - min(t, tg))
 
-    def end_pt(s, t, sgn):  # an end face (u = sgn * hu at the eave), up to the gable's foot
-        tt = t * tg
-        return sgn * (hu - (hu - ug) * t), s * hv * (1 - tt), z_at(s, tt)
-
-    faces = [(long_pt, -1), (long_pt, 1), (end_pt, -1), (end_pt, 1)]
-    for f, sgn in faces:
+    def long_face(sgn):
+        ts = sorted(set([i / n for i in range(n + 1)] + [tg]))
         rows, uvs = [], []
-        for i in range(n + 1):
-            t = i / n
-            row, urow = [], []
-            for j in range(n + 1):
-                s_ = -1 + 2 * j / n
-                u, v, z = f(s_, t, sgn)
-                row.append(P(u, v, z))
-                urow.append([s_ * (hu if f is long_pt else hv), t * (math.hypot(rise, hv) if f is long_pt else math.hypot(rise * tg, hu - ug))])
-            rows.append(row)
-            uvs.append(urow)
+        for t in ts:
+            hu = half_u(t)
+            rows.append([Q(s_ * hu, sgn * Ev * (1 - t), z(s_, t)) for s_ in np.linspace(-1, 1, m + 1)])
+            uvs.append([[s_ * hu, t * math.hypot(H, Ev)] for s_ in np.linspace(-1, 1, m + 1)])
         roof.grid(rows, uvs)
-        a, b = f(-1, 0, sgn), f(1, 0, sgn)
-        eave.box(P(a[0], a[1], a[2] - 0.35), P(b[0], b[1], b[2] - 0.35), 0.5, 0.7)
-    if tg < 1.0:
-        # the gables: each a fan from its foot up the long faces' edge to the ridge, and the barge boards
-        k = max(3, n // 2)
-        for sgn in (-1, 1):
-            edge_l = [long_pt(sgn * 1.0, tg + (1 - tg) * i / k, -1) for i in range(k + 1)]
-            edge_r = [long_pt(sgn * 1.0, tg + (1 - tg) * i / k, 1) for i in range(k + 1)]
-            u_g = sgn * ug * 0.985
-            base_z = edge_l[0][2]
-            centre = (u_g, 0.0, base_z)
-            for edge in (edge_l, edge_r):
-                for p0, p1 in zip(edge[:-1], edge[1:]):
-                    gab.tri(P(*centre), P(u_g, p0[1], p0[2]), P(u_g, p1[1], p1[2]))
-                for p0, p1 in zip(edge[:-1], edge[1:]):
-                    eave.box(P(sgn * (ug + 0.15), p0[1], p0[2] + 0.1), P(sgn * (ug + 0.15), p1[1], p1[2] + 0.1), 0.35, 0.45)
-            gab.quad(P(u_g, edge_l[0][1], base_z), P(u_g, edge_r[0][1], base_z), P(u_g, edge_r[0][1], base_z - 0.4), P(u_g, edge_l[0][1], base_z - 0.4))
-    # the ridge with its end tiles (鬼瓦)
-    rh = ug if tg < 1.0 else hip_half
-    eave.box(P(-rh - 0.3, 0, zr), P(rh + 0.3, 0, zr), 1.2, ridge_h)
+
+    def end_face(sgn):
+        ts = [tg * i / n for i in range(n + 1)]
+        rows, uvs = [], []
+        for t in ts:
+            hv = Ev * (1 - t)
+            rows.append([Q(sgn * half_u(t), s_ * hv, z(s_, t)) for s_ in np.linspace(-1, 1, m + 1)])
+            uvs.append([[s_ * hv, t * math.hypot(H, Eu - R)] for s_ in np.linspace(-1, 1, m + 1)])
+        roof.grid(rows, uvs)
+
     for sgn in (-1, 1):
-        eave.box(P(sgn * (rh + 0.1), 0, zr), P(sgn * (rh + 0.1), 0, zr + ridge_h * 1.8), 1.0, 1.4)
-    # the hips' ridges, from the corners to the gables' feet (or the ridge's ends)
-    for su in (-1, 1):
-        for sv in (-1, 1):
-            pts = [end_pt(sv * 1.0, t, su) for t in np.linspace(0, 1, hs + 1)]
-            for p, q in zip(pts[:-1], pts[1:]):
-                eave.box(P(p[0], p[1], p[2] + 0.15), P(q[0], q[1], q[2] + 0.15), 0.6, 0.5)
+        long_face(sgn)
+        if Eu - R > 1e-6 and tg > 0:  # gable_frac 0: a gabled roof (切妻), no hips
+            end_face(sgn)
+    if eave is not None:  # the fascia along each eave
+        for (u0, v0), (u1, v1) in (((-Eu, -Ev), (Eu, -Ev)), ((Eu, -Ev), (Eu, Ev)), ((Eu, Ev), (-Eu, Ev)), ((-Eu, Ev), (-Eu, -Ev))):
+            eave.box(Q(u0, v0, z_eave + lift - 0.35), Q(u1, v1, z_eave + lift - 0.35), 0.5, 0.7) if ridges else None
+    if tg < 1.0:
+        # the gables: a fan from the gable's foot up to the long slopes' edge, and the barge boards on it
+        kk = max(3, n // 2)
+        ts = [tg + (1 - tg) * i / kk for i in range(kk + 1)]
+        zg = z(1.0, tg)
+        for sgn in (-1, 1):
+            ug = sgn * Ug * 0.985
+            for side in (-1, 1):
+                edge = [(side * Ev * (1 - t), z(1.0, t)) for t in ts]
+                if gable is not None:
+                    for (v0, z0), (v1, z1) in zip(edge[:-1], edge[1:]):
+                        gable.tri(Q(ug, 0.0, zg), Q(ug, v0, z0), Q(ug, v1, z1))
+                if eave is not None:
+                    for (v0, z0), (v1, z1) in zip(edge[:-1], edge[1:]):
+                        eave.box(Q(sgn * (Ug + 0.15), v0, z0 + (0.1 if ridges else -0.18)), Q(sgn * (Ug + 0.15), v1, z1 + (0.1 if ridges else -0.18)), 0.35, 0.45)
+            if gable is not None:
+                v0 = Ev * (1 - tg)
+                gable.quad(Q(ug, -v0, zg), Q(ug, v0, zg), Q(ug, v0, zg - 0.4), Q(ug, -v0, zg - 0.4))
+    if ridges and eave is not None:
+        # the ridge with its end tiles (鬼瓦), and the hips' ridges from the corners up
+        rh = max(Ug if tg < 1.0 else R, 0.3)
+        eave.box(Q(-rh - 0.3, 0, z_top), Q(rh + 0.3, 0, z_top), 1.2, ridge_h)
+        for sgn in (-1, 1):
+            eave.box(Q(sgn * (rh + 0.1), 0, z_top), Q(sgn * (rh + 0.1), 0, z_top + ridge_h * 1.8), 1.0, 1.4)
+        hs = max(2, n // 2)
+        for su in (-1, 1):
+            for sv in (-1, 1):
+                pts = [(su * half_u(t), sv * Ev * (1 - t), z(1.0, t)) for t in np.linspace(0, tg, hs + 1)]
+                for p, q in zip(pts[:-1], pts[1:]):
+                    eave.box(Q(p[0], p[1], p[2] + 0.15), Q(q[0], q[1], q[2] + 0.15), 0.6, 0.5)
+    corners = [Q(su * Eu, sv * Ev, z_eave + lift) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+    if soffit is not None:  # the fascia's face and the underside back to the walls
+        zw = wall_z if wall_z is not None else z_eave - 0.4
+        walls = [Q(su * uh, sv * vh, zw) for su, sv in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
+        dn = np.array([0, 0, -0.35])
+        for i in range(4):
+            j = (i + 1) % 4
+            a, b = np.array(corners[i]), np.array(corners[j])
+            soffit.quad(a + dn, b + dn, b, a)
+            soffit.quad(a + dn, walls[i], walls[j], b + dn)
+    zr = lambda d: z_eave + f(min(max(d / Ev, 0.0), 1.0))
+    return {"zr": zr, "Ug": Ug, "Ev": Ev, "Eu": Eu, "corners": corners}
+
+
+def outline_roof(roof, ring, z_eave, pitch, over=1.0, rise_max=None, k=1.0, holes=(), cell=1.0, soffit=None, wall_z=None):
+    """A hipped roof of equal pitches over any outline (an L, a bend, a corridor round a court), in the world
+    frame: the height is the distance in from the eaves (the outline `over` m out), times `pitch`, raised to
+    k for the concave sweep and capped at rise_max (a flat top where the outline is wider): the straight
+    skeleton's roof, its hips and valleys where the distances from two eaves meet. Triangulated on the eaves'
+    outline and a `cell` m grid inside it. soffit: the eaves' underside back to the walls, at wall_z."""
+    import shapely
+    from shapely.geometry import MultiPoint, Point, Polygon
+    foot = Polygon(ring, list(holes)).buffer(0)
+    eav = foot.buffer(over, join_style="mitre", mitre_limit=2.0)
+    if eav.is_empty:
+        return
+    edge = eav.boundary
+    full = rise_max / pitch if rise_max else None  # the depth at which the roof reaches its top
+
+    def z(x, y):
+        d = float(shapely.distance(edge, Point(x, y)))
+        if full is None:
+            return z_eave + pitch * d
+        return z_eave + rise_max * (min(d, full) / full) ** k
+
+    dense = shapely.segmentize(eav, cell)
+    pts = [c for r in [dense.exterior] + list(dense.interiors) for c in r.coords] if dense.geom_type == "Polygon" else \
+        [c for g in dense.geoms for r in [g.exterior] + list(g.interiors) for c in r.coords]
+    x0, y0, x1, y1 = eav.bounds
+    gx, gy = np.meshgrid(np.arange(x0 + cell / 2, x1, cell), np.arange(y0 + cell / 2, y1, cell))
+    inner = shapely.contains_xy(eav.buffer(-cell * 0.3), gx, gy)
+    pts += list(zip(gx[inner], gy[inner]))
+    tris = shapely.delaunay_triangles(MultiPoint(pts))
+    for t in tris.geoms:
+        c = t.centroid
+        if not eav.contains(c):
+            continue
+        a, b, cc = list(t.exterior.coords)[:3]
+        if (b[0] - a[0]) * (cc[1] - a[1]) - (b[1] - a[1]) * (cc[0] - a[0]) < 0:
+            b, cc = cc, b
+        roof.tri(*[(float(px), float(py), float(z(px, py))) for px, py in (a, b, cc)], [[a[0], a[1]], [b[0], b[1]], [cc[0], cc[1]]])
+    if soffit is not None:  # the eaves' underside: between the eaves' outline and the walls'
+        zw = wall_z if wall_z is not None else z_eave - 0.4
+        under = eav.difference(foot)
+        for g in getattr(under, "geoms", [under]):
+            if g.geom_type != "Polygon":
+                continue
+            for t in shapely.constrained_delaunay_triangles(g).geoms:
+                q = [(px, py, z_eave - 0.3 if not foot.buffer(0.05).contains(Point(px, py)) else zw) for px, py in list(t.exterior.coords)[:3]]
+                soffit.tri(*q)
+
+
+def irimoya(K, P, L, W, z_eave, rise, over=3.0, lift=0.9, mats=("roof", "eave", "gable"), gable_frac=0.45, sag=0.18, ridge_h=1.2, n=None, soffit=None):
+    """A hipped-and-gabled roof (入母屋) over an L x W rectangle centred on the frame's origin (L along u), by
+    japanese_roof: eaves `over` outside the walls, corners lifted `lift`, the slopes' concave sweep from
+    `sag` (k = 1 + 3 sag), the gables from gable_frac of the depth up (1: a plain hipped roof, 寄棟).
+    mats: names in the kit K (roof, eave and ridge, gable); soffit: a name for the eaves' underside."""
+    roof, eave, gab = (K[m] for m in mats)
+    return japanese_roof(P, L / 2, W / 2, z_eave, z_eave + rise, over, roof, eave, gab, K[soffit] if soffit else None,
+                         gable_frac=gable_frac, k=1.0 + 3.0 * sag, lift=lift, ridge_h=ridge_h, n=n)
 
 
 def hip_roof(K, P, L, W, z_eave, rise, over=2.0, lift=0.5, mat="roof", trim="eave", sag=0.12):
     """A hipped roof with curved eaves (寄棟) — irimoya without its gables."""
-    irimoya(K, P, L, W, z_eave, rise, over, lift, (mat, trim, trim), gable_frac=1.0, sag=sag, ridge_h=0.8)
+    return irimoya(K, P, L, W, z_eave, rise, over, lift, (mat, trim, trim), gable_frac=1.0, sag=sag, ridge_h=0.8)
 
 
 def pillars(m, P, L, W, z0, h, every, r=0.28, inset=0.0):
@@ -630,15 +730,16 @@ def hall(K, P, L, W, ridge, mats, eave_frac=0.42, over=None, base_h=1.0, mokoshi
             mats=(mats["roof"], mats["ridge"], mats.get("gable", mats["ridge"])), gable_frac=gable_frac, sag=0.16, ridge_h=min(2.2, 0.03 * L + 0.6))
 
 
-def gate(K, P, L, W, ridge, mats, storeys=2):
-    """A temple gate (三門 / 二重門): two storeys under two roofs, open bays at the foot."""
+def gate(K, P, L, W, ridge, mats, storeys=2, base_h=0.8, foot=0.3):
+    """A temple gate (三門 / 二重門): two storeys under two roofs, open bays at the foot, on a stone
+    platform (基壇) base_h m up, its stone running foot m below the frame's 0 into the ground."""
     base, post = K[mats["base"]], K[mats["post"]]
-    block(base, P, -L / 2, L / 2, -W / 2, W / 2, -0.3, 0.8)
-    z1 = 0.8 + (ridge - 0.8) * (0.32 if storeys == 2 else 0.5)
+    block(base, P, -L / 2, L / 2, -W / 2, W / 2, -foot, base_h)
+    z1 = base_h + (ridge - base_h) * (0.32 if storeys == 2 else 0.5)
     for u in np.linspace(-L / 2 + 1.0, L / 2 - 1.0, 6):
         for v in (-W / 2 + 1.0, 0.0, W / 2 - 1.0):
-            x, y, z = P(u, v, 0.8)
-            post.lathe([(z, 0.42), (z + z1 - 0.8, 0.42)], (x, y), segs=6)
+            x, y, z = P(u, v, base_h)
+            post.lathe([(z, 0.42), (z + z1 - base_h, 0.42)], (x, y), segs=6)
     if storeys == 2:
         z2 = z1 + 1.8
         irimoya(K, P, L - 2.0, W - 2.0, z1 + 0.6, 2.2, over=2.6, lift=0.6, mats=(mats["roof"], mats["ridge"], mats["ridge"]), gable_frac=1.0, sag=0.08)
@@ -650,6 +751,41 @@ def gate(K, P, L, W, ridge, mats, storeys=2):
                 mats=(mats["roof"], mats["ridge"], mats.get("gable", mats["ridge"])), gable_frac=0.45, sag=0.16)
     else:
         irimoya(K, P, L - 2.0, W - 2.0, z1, ridge - z1, over=2.0, lift=0.6, mats=(mats["roof"], mats["ridge"], mats.get("gable", mats["ridge"])))
+
+
+def corridor(K, P, L, W, ridge, mats, bay=3.0):
+    """A roofed corridor (回廊) along u, L x W, the frame's origin at its centre: a stone plinth, three rows of
+    pillars every `bay` m (the outer rows open, the middle one in a plastered wall with a lattice window,
+    連子窓, in every bay), tie beams along the rows, and a gabled roof to `ridge` (japanese_roof). mats:
+    {"base", "post", "wall", "lattice", "roof", "ridge", "gable"}."""
+    base, post, wall_m = K[mats["base"]], K[mats["post"]], K[mats["wall"]]
+    lat = K[mats.get("lattice", mats["post"])]
+    z0 = 0.45
+    block(base, P, -L / 2 - 0.4, L / 2 + 0.4, -W / 2, W / 2, -0.3, z0)
+    over = 1.2
+    eave = z0 + (ridge - z0) * 0.62
+    zb = eave - 0.5  # the tie beams' top
+    n = max(1, int(round(L / bay)))
+    us = np.linspace(-L / 2 + 0.3, L / 2 - 0.3, n + 1)
+    rows = (-W / 2 + over, 0.0, W / 2 - over)
+    for v in rows:
+        for u in us:
+            x, y, z = P(u, v, z0)
+            post.lathe([(z, 0.17), (z + zb - z0, 0.17)], (x, y), segs=8)
+        block(post, P, -L / 2 + 0.1, L / 2 - 0.1, v - 0.13, v + 0.13, zb - 0.45, zb, top=False)
+        block(post, P, -L / 2 + 0.1, L / 2 - 0.1, v - 0.1, v + 0.1, z0 + 0.15, z0 + 0.4, top=False)  # the sill
+    # the middle wall, white between the pillars, and the green lattice windows in it on both faces
+    block(wall_m, P, -L / 2 + 0.3, L / 2 - 0.3, -0.09, 0.09, z0 + 0.4, zb - 0.45, top=False)
+    for a, b in zip(us[:-1], us[1:]):
+        c, w = (a + b) / 2, (b - a) * 0.62
+        for sv in (-1, 1):
+            vv = sv * 0.11
+            lat.quad(P(c - w / 2, vv, z0 + 1.1), P(c + w / 2, vv, z0 + 1.1), P(c + w / 2, vv, zb - 0.8), P(c - w / 2, vv, zb - 0.8))
+            for k in range(1, 8):  # the lattice's bars
+                uu = c - w / 2 + w * k / 8
+                post.box(P(uu, vv + sv * 0.03, z0 + 1.1), P(uu, vv + sv * 0.03, zb - 0.8), 0.05, 0.05)
+    japanese_roof(P, L / 2, W / 2 - over, eave, ridge, over, K[mats["roof"]], K[mats["ridge"]], K[mats.get("gable", mats["ridge"])],
+                  gable_frac=0.0, k=1.25, lift=0.0, ridge_h=0.6, swap=False)
 
 
 def ishigaki_line(m, P, pts, z_top, z_foot, low_side, batter=0.3, coping=None):
@@ -697,3 +833,98 @@ def dobei(K, P, pts, z, h=2.4, mats=("plaster", "kawara", "kawara_ridge")):
                       [[s, 0], [s + L, 0], [s + L, 0.9], [s, 0.9]])
         ridge.box(P(*a, z + h + 0.45), P(*b, z + h + 0.45), 0.3, 0.25)
         s += L
+
+
+# ---------------------------------------------------------------- lettering
+
+_GLYPHS = {}
+
+
+def glyph_outline(ch, font, px=240):
+    """A character's outline as shapely polygons (with holes) in units of its cap height (0..1 up,
+    advance along), traced from the font's raster at px pixels: rows of ink merged into one shape
+    and simplified, so a letter's bowls and counters come out as holes."""
+    import shapely
+    from PIL import Image, ImageDraw
+    from shapely.geometry import box
+    key = (ch, id(font), px)
+    if key in _GLYPHS:
+        return _GLYPHS[key]
+    cap_top, cap_bot = font.getbbox("H")[1], font.getbbox("H")[3]
+    l, t, r, b = font.getbbox(ch)
+    adv = font.getlength(ch)
+    img = Image.new("L", (int(r - l) + 4, int(b - t) + 4), 0)
+    ImageDraw.Draw(img).text((2 - l, 2 - t), ch, font=font, fill=255)
+    a = np.asarray(img) > 127
+    boxes = []
+    for y in range(a.shape[0]):
+        row = np.flatnonzero(np.diff(np.concatenate(([0], a[y].astype(np.int8), [0]))))
+        for x0, x1 in zip(row[::2], row[1::2]):
+            boxes.append(box(x0, -y - 1, x1, -y))
+    H = float(cap_bot - cap_top) or 1.0
+    shape = shapely.union_all(boxes).simplify(px * 0.004) if boxes else None
+    polys = []
+    if shape is not None and not shape.is_empty:
+        # back to cap-height units: x from the advance's start, y up from the baseline
+        shape = shapely.affinity.affine_transform(shape, [1 / H, 0, 0, 1 / H, (l - 2) / H, (cap_bot - t + 2) / H])
+        polys = [g for g in getattr(shape, "geoms", [shape]) if g.area > 1e-4]
+    _GLYPHS[key] = (polys, adv / H)
+    return _GLYPHS[key]
+
+
+def letters(m, P, text, font, u, v_mid, z_base, height, depth=0.2, spacing=0.06, arc=None, back=False):
+    """Letters cast or fixed on a wall facing +u (the frame's u out of the wall, v to a viewer's right),
+    a line of `text` centred at v_mid, its cap height `height` m standing on z_base, each letter a solid
+    `depth` m proud of the wall at u. With arc = radius (m), the line follows a circle whose centre is
+    that far below the letters' foot at v_mid, each letter turned to it (a curved parapet's lettering)."""
+    import shapely
+    glyphs = [glyph_outline(c, font) if c != " " else ([], font.getlength(" ") / max(1.0, font.getbbox("H")[3] - font.getbbox("H")[1])) for c in text]
+    widths = [g[1] * height + spacing * height for g in glyphs]
+    total = sum(widths) - spacing * height
+    s = -total / 2
+    for (polys, adv), w in zip(glyphs, widths):
+        mid = s + adv * height / 2  # the letter's centre along the line
+        if arc:
+            ang = mid / arc
+            cv, cz = v_mid + arc * math.sin(ang), z_base - arc + arc * math.cos(ang)
+            ca, sa = math.cos(ang), math.sin(ang)
+        else:
+            cv, cz, ca, sa = v_mid + mid, z_base, 1.0, 0.0
+        # a point of the glyph (x along its advance from its centre, y up) in the frame
+        Q = lambda x, y, uu: P(uu, cv + ca * x + sa * y, cz - sa * x + ca * y)
+        for poly in polys:
+            g = shapely.affinity.scale(poly, height, height, origin=(0, 0))
+            g = shapely.affinity.translate(g, -adv * height / 2, 0)
+            for tri in shapely.constrained_delaunay_triangles(g).geoms:
+                a, b, c = list(tri.exterior.coords)[:3]
+                m.tri(Q(*a, u + depth), Q(*b, u + depth), Q(*c, u + depth))
+                if back:
+                    m.tri(Q(*c, u), Q(*b, u), Q(*a, u))
+            for ring in [g.exterior, *g.interiors]:
+                pts = list(ring.coords)
+                for p0, p1 in zip(pts[:-1], pts[1:]):
+                    m.quad(Q(*p0, u), Q(*p1, u), Q(*p1, u + depth), Q(*p0, u + depth))
+        s += w
+
+
+def measured_roofs(city_id):
+    """The built city's measured roofs (buildings.json "r", the 3DBAG's or PLATEAU's LOD2), by solid:
+    {si: {"eave": m above the solid's ground, "top": m, "roof": [triangle [(x, y, z) m absolute]], "rest": [...]}};
+    "roof" are the roof's own faces, "rest" its gables and soffits (web/sun.js unpackRoof reads the same)."""
+    import base64
+    import json
+    import os
+    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city_id)
+    B = json.load(open(os.path.join(root, "buildings.json")))
+    out = {}
+    for r in B.get("r", []):
+        si, top, eave, _shape, x0, y0, xyz, tris, n_roof = r
+        q = np.frombuffer(base64.b64decode(xyz), dtype="<i2").reshape(-1, 3).astype(float)
+        ib = base64.b64decode(tris)
+        idx = np.frombuffer(ib, dtype="<u2" if len(q) > 255 else np.uint8).astype(int).reshape(-1, 3)
+        s = B["s"][si]
+        g0, k = s[1] / 10, s[3] / top if top else 1.0  # the solid's ground; a solid scaled from its roof's top
+        V = [(float((x + x0) / 10), float((y + y0) / 10), float(g0 + z * k / 10)) for x, y, z in q]
+        T = [tuple(V[i] for i in t) for t in idx]
+        out[si] = {"eave": eave * k / 10, "top": top * k / 10, "roof": T[:n_roof], "rest": T[n_roof:]}
+    return out

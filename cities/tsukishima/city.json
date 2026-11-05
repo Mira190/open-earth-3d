@@ -1,0 +1,583 @@
+{
+  "id": "tsukishima",
+  "name": "Tsukishima",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Tsukishima and Tsukuda from open data, lit by the real sun: Monja Street's shops, Tsukuda's fishing village by the Sumida with its moat and shrine, and Kachidoki Bridge's arches.",
+  "bbox": [
+    139.7725,
+    35.6563,
+    139.7935,
+    35.6717
+  ],
+  "origin": [
+    139.783,
+    35.664
+  ],
+  "extent_m": [
+    -900,
+    900,
+    -800,
+    800
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "bridges": {
+    "min_m2": 50,
+    "deck_min_m": 2.0,
+    "widths": {"佃小橋": 4.4},
+    "forms": {
+      "佃小橋": {
+        "form": "girder",
+        "colour": "#c8402c",
+        "rail": "none",
+        "crown_m": 0.35,
+        "lamps": 0,
+        "note": "the deck under the vermilion railings city.py draws"
+      }
+    }
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "ocean",
+      "bay",
+      "water",
+      "river",
+      "canal"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.5,
+      "plane": 0.5,
+      "cherry": 0.08
+    },
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas, plane trees for the street planes and the riverside's cherries. A guess, not a survey.",
+    "areas": [
+      {
+        "name": "Ishikawajima Park",
+        "osm": "W597773279",
+        "mix": {
+          "cherry": 0.6,
+          "zelkova": 0.2,
+          "plane": 0.2
+        },
+        "note": "Cherries along the Sumida's terrace at the tip of Tsukudajima."
+      }
+    ]
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Tsukishima Station": [
+      139.784,
+      35.6646
+    ],
+    "Kachidoki Bridge": [
+      139.7752,
+      35.6622
+    ],
+    "Tsukuda": [
+      139.7835,
+      35.668
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:30",
+    "cam": [
+      700,
+      -900,
+      420
+    ],
+    "tgt": [
+      -150,
+      0,
+      10
+    ]
+  },
+  "labels": {
+    "聖路加タワー": "St. Luke's Tower",
+    "勝どきビュータワー": "Kachidoki View Tower"
+  },
+  "minor_labels": [
+    "勝どきビュータワー"
+  ],
+  "places": [],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Tsukishima, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [
+        700,
+        -900,
+        420
+      ],
+      "tgt": [
+        -150,
+        0,
+        10
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 8
+    },
+    {
+      "title": "Monja Street",
+      "text": "About seventy monjayaki shops along Nishinaka-dori, lit after dark. The signs here are typical of the street, not its real shops'.",
+      "cam": [
+        150,
+        140,
+        30
+      ],
+      "tgt": [
+        -80,
+        -80,
+        4
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "17:30",
+      "to": "18:30",
+      "hold": 10
+    },
+    {
+      "title": "Kachidoki Bridge",
+      "text": "1940: two tied arches either side of a bascule that last opened in 1970, over the Sumida's mouth.",
+      "cam": [
+        -560,
+        -60,
+        40
+      ],
+      "tgt": [
+        -730,
+        -190,
+        12
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:30",
+      "to": "16:30",
+      "hold": 9
+    }
+  ],
+  "sources": {
+    "landmarks": "Kachidoki Bridge (1940; Tokyo Metropolitan Government, Kachidoki Bridge Museum: 246 m, arches of 86 m, bascule of 44 m) on OpenStreetMap's centre lines; the river bridges on OpenStreetMap's outlines and lines, their colours from photographs; Tsukuda Kobashi and Sumiyoshi Shrine's torii from photographs. Monja Street's signs are indicative: typical trades, no real shops' signs.",
+    "fonts": "Signs drawn with Google Fonts under the SIL Open Font License: Zen Kaku Gothic New, Dela Gothic One, M PLUS Rounded 1c, Shippori Mincho"
+  },
+  "night": {
+    "note": "Monja Street's signs are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "title": "Tsukishima on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "the Sumida",
+    "greeting": "いらっしゃい!",
+    "blurb": "Walk Tsukishima under the real sun: down Monja Street for monjayaki, through Tsukuda's old fishing village by its moat and shrine, and along the Sumida to Kachidoki Bridge.",
+    "smalltalk": [
+      "いらっしゃい!",
+      "すみません。",
+      "どうも。",
+      "Excuse me!"
+    ],
+    "start": {
+      "at": [
+        110.0,
+        100.0
+      ],
+      "facing": [
+        20.0,
+        20.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "tsuki_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "tsuki-pad",
+        "name": "Tsukuda Park pad (game)",
+        "at": [
+          0.0,
+          308.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 520,
+      "cars": 150,
+      "radius_m": 420,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA26TS"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.22
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#2a7a3a"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "月島",
+        "kana": "つきしま",
+        "romaji": "Tsukishima",
+        "band": "#c1a470",
+        "left": "新富町",
+        "right": "豊洲",
+        "at": [
+          70.0,
+          50.0
+        ],
+        "radius": 240,
+        "note": "Monja Street, on land made from the bay in 1892"
+      },
+      {
+        "name": "勝どき",
+        "kana": "かちどき",
+        "romaji": "Kachidoki",
+        "band": "#b6007a",
+        "left": "月島",
+        "right": "築地市場",
+        "at": [
+          -600.0,
+          -600.0
+        ],
+        "radius": 220,
+        "note": "The towers by the bridge"
+      },
+      {
+        "name": "築地",
+        "kana": "つきじ",
+        "romaji": "Tsukiji",
+        "band": "#b5b5ac",
+        "left": "東銀座",
+        "right": "八丁堀",
+        "at": [
+          -733.0,
+          455.0
+        ],
+        "radius": 200,
+        "note": "The outer market across the river"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-station",
+        "name": "Tsukishima Station 月島駅",
+        "at": [
+          110.0,
+          100.0
+        ]
+      },
+      {
+        "id": "t-monja",
+        "name": "Monja Street もんじゃストリート",
+        "at": [
+          -80.0,
+          -75.0
+        ]
+      },
+      {
+        "id": "t-tsukuda",
+        "name": "Tsukuda, the moat 佃堀",
+        "at": [
+          20.0,
+          350.0
+        ]
+      },
+      {
+        "id": "t-kachidoki",
+        "name": "Kachidoki Bridge, the east end 勝鬨橋",
+        "at": [
+          -640.0,
+          -305.0
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "haru",
+        "name": "Haru 春",
+        "role": "Monja shop owner もんじゃ屋",
+        "at": [
+          -60.0,
+          -60.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_04_f003",
+          "skin": "#efcdb4",
+          "hair": "#2a1d17",
+          "top": "#2a3a5a",
+          "legs": "#1d2330",
+          "shirt": "#2a3a5a",
+          "pants": "#1d2330",
+          "clip": "Talk",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#d4001a"
+        },
+        "idle": [
+          "Monja: flour, water, dashi, cabbage. Make a bank of the cabbage and pour the batter in the middle. Don't rush it.",
+          "My mother's shop, and her mother's sweet shop before that. Children bought monja for five yen. {time}."
+        ]
+      },
+      {
+        "id": "kiyoshi",
+        "name": "Kiyoshi 清",
+        "role": "Tsukudani maker 佃煮屋",
+        "at": [
+          5.0,
+          330.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_03_m008_grey",
+          "skin": "#e2b48f",
+          "hair": "#9a958f",
+          "top": "#2b2b30",
+          "legs": "#1d2330",
+          "shirt": "#2b2b30",
+          "pants": "#1d2330",
+          "clip": "Present",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#3d4a5c"
+        },
+        "idle": [
+          "Tsukudani: little fish boiled down in soy and sugar until they keep for months. The fishermen of Tsukuda made it first, in Edo's time.",
+          "The moat out there was where the boats tied up. Now it's for the shrine's poles, sunk in the mud between festivals. {sun_line}"
+        ]
+      },
+      {
+        "id": "nao",
+        "name": "Nao 奈央",
+        "role": "Bridge museum guide",
+        "at": [
+          -640.0,
+          -305.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_11",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#3d6a8a",
+          "legs": "#2a2e36",
+          "shirt": "#3d6a8a",
+          "pants": "#2a2e36",
+          "clip": "Present"
+        },
+        "idle": [
+          "Kachidoki Bridge opened five times a day once, for twenty minutes. The last time was 1970.",
+          "The motors are still inside the piers. You can see them on a tour."
+        ]
+      },
+      {
+        "id": "riku",
+        "name": "Riku 陸",
+        "role": "Runner on the river terrace",
+        "at": [
+          -140.0,
+          180.0
+        ],
+        "look": {
+          "character": "R_Sports_Male_04_m024",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#e86a2a",
+          "legs": "#1d1d22",
+          "shirt": "#e86a2a",
+          "pants": "#1d1d22",
+          "clip": "Stretch"
+        },
+        "idle": [
+          "The terrace runs along the Sumida all the way to Kachidoki Bridge. Best at sunset, with the towers lit across the river.",
+          "Everybody runs here, then eats monja. That's the deal."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "monja",
+        "title": "Monja Street",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "river",
+        "title": "The river",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "haru",
+        "title": "Tsukishima",
+        "stamp": "Tsukishima",
+        "talk": [
+          "Welcome to Tsukishima! This island was made from the bay in 1892, for factories. Now it's made of monja.",
+          "Sit down later. First go and see Tsukuda, the old village at the top of the island. Kiyoshi makes tsukudani there."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "monja",
+            "text": "Walk down Monja Street"
+          },
+          {
+            "type": "talk",
+            "npc": "kiyoshi",
+            "text": "Find Kiyoshi in Tsukuda"
+          }
+        ]
+      },
+      {
+        "id": "tsukuda",
+        "line": "river",
+        "giver": "kiyoshi",
+        "title": "Tsukuda",
+        "stamp": "Tsukuda",
+        "talk": [
+          "Tsukuda: the fishermen came from Osaka in 1590, invited by the shogun. Their shrine is still here.",
+          "Go and look at it, by the river. Then follow the terrace down to the bridge; Riku runs there every evening."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "sumiyoshi",
+            "text": "Look at Sumiyoshi Shrine"
+          },
+          {
+            "type": "talk",
+            "npc": "riku",
+            "text": "Find Riku on the river terrace"
+          }
+        ]
+      },
+      {
+        "id": "terrace",
+        "line": "river",
+        "giver": "riku",
+        "title": "The terrace",
+        "stamp": "Sumida",
+        "talk": [
+          "Down the river, Kachidoki Bridge: the arches, and the middle that used to open.",
+          "Nao at the bridge museum will tell you how it worked."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "nao",
+            "text": "Find Nao at Kachidoki Bridge"
+          }
+        ]
+      },
+      {
+        "id": "bridge",
+        "line": "monja",
+        "giver": "nao",
+        "title": "Kachidoki Bridge",
+        "stamp": "Kachidoki Bridge",
+        "talk": [
+          "Look at the bridge from the bank: two arches, and the bascule between them.",
+          "Then go back to Monja Street. Haru will have the plate hot."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "kachidoki",
+            "text": "Look at Kachidoki Bridge"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,620 @@
+{
+  "id": "roppongi",
+  "name": "Roppongi",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Roppongi from open data, lit by the real sun: Roppongi Hills under Mori Tower with Maman the spider and the Mohri Garden, Keyakizaka's winter lights, the National Art Center's glass wave, Tokyo Midtown, and the bars round the crossing.",
+  "bbox": [
+    139.7205,
+    35.6548,
+    139.7415,
+    35.6702
+  ],
+  "origin": [
+    139.731,
+    35.6625
+  ],
+  "extent_m": [
+    -900,
+    900,
+    -800,
+    800
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "river",
+      "canal"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.55,
+      "plane": 0.3,
+      "maple": 0.15,
+      "cherry": 0.08
+    },
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki) of Keyakizaka and the gardens, plane trees for the street planes and ginkgos, maples for the Mohri Garden and Midtown's. A guess, not a survey.",
+    "areas": [
+      {
+        "name": "Roppongi Sakura-zaka",
+        "osm": "W92702351",
+        "buffer": 10,
+        "mix": {
+          "cherry": 0.9,
+          "zelkova": 0.1
+        },
+        "note": "Sakura-zaka, Roppongi Hills: the slope named for its cherries."
+      },
+      {
+        "name": "Sakura-zaka Park",
+        "osm": "W715997015",
+        "mix": {
+          "cherry": 0.8,
+          "zelkova": 0.2
+        }
+      },
+      {
+        "name": "Aoyama Cemetery",
+        "osm": "W37721897",
+        "mix": {
+          "cherry": 0.45,
+          "zelkova": 0.2,
+          "ginkgo": 0.15,
+          "camphor": 0.1,
+          "evergreen": 0.1
+        },
+        "note": "Its central avenue is a tunnel of cherries."
+      },
+      {
+        "name": "Hinokicho Park",
+        "osm": "W645538985",
+        "mix": {
+          "cherry": 0.35,
+          "maple": 0.25,
+          "pine": 0.2,
+          "zelkova": 0.2
+        },
+        "note": "Tokyo Midtown's garden: the cherries of its Sakura-dori and the Japanese garden's pines and maples."
+      }
+    ]
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Roppongi crossing": [
+      139.7314,
+      35.6627
+    ],
+    "Mori Tower": [
+      139.7292,
+      35.6604
+    ],
+    "Tokyo Midtown": [
+      139.731,
+      35.6655
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:40",
+    "cam": [
+      900,
+      -1100,
+      560
+    ],
+    "tgt": [
+      -60,
+      0,
+      80
+    ]
+  },
+  "labels": {
+    "六本木ヒルズ森タワー": "Roppongi Hills Mori Tower",
+    "ミッドタウンタワー": "Tokyo Midtown",
+    "テレビ朝日本社ビル": "TV Asahi",
+    "麻布台ヒルズ森JPタワー": "Azabudai Hills",
+    "21_21 Design Sight": "21_21 Design Sight",
+    "サントリーホール": "Suntory Hall"
+  },
+  "minor_labels": [
+    "21_21 Design Sight",
+    "サントリーホール",
+    "テレビ朝日本社ビル"
+  ],
+  "places": [
+    {
+      "name": "毛利庭園",
+      "label": "Mohri Garden",
+      "class": "garden",
+      "protected": false
+    }
+  ],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Roppongi, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [
+        900,
+        -1100,
+        560
+      ],
+      "tgt": [
+        -60,
+        0,
+        80
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "16:00",
+      "to": "17:00",
+      "hold": 8
+    },
+    {
+      "title": "Roppongi Hills",
+      "text": "Mori Tower, 238 m, and at its foot Maman, Louise Bourgeois's spider; Keyakizaka's zelkovas lit blue and white in November and December.",
+      "cam": [
+        -20,
+        -120,
+        40
+      ],
+      "tgt": [
+        -121,
+        -170,
+        8
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "17:00",
+      "to": "18:00",
+      "hold": 10
+    },
+    {
+      "title": "The art triangle",
+      "text": "The National Art Center's glass wave, Tokyo Midtown, and the bars of the crossing between them. The signs there are typical of the street, not its real shops'.",
+      "cam": [
+        -200,
+        200,
+        60
+      ],
+      "tgt": [
+        -360,
+        300,
+        12
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 9
+    }
+  ],
+  "sources": {
+    "landmarks": "Maman (Louise Bourgeois, 1999; Mori Building: 9.27 m by 10.0 m) at OpenStreetMap's position; the National Art Center, Tokyo (Kisho Kurokawa, 2007) on its footprint, its glass front's waves from photographs; Keyakizaka's illumination after Mori Building's seasonal programme. The bars' signs are indicative: typical trades, no real shops' signs.",
+    "fonts": "Signs drawn with Google Fonts under the SIL Open Font License: Zen Kaku Gothic New, Dela Gothic One, Bebas Neue, Shippori Mincho"
+  },
+  "night": {
+    "note": "The bars' signs and Keyakizaka's LEDs are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "title": "Roppongi on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "the Mohri Garden pond",
+    "greeting": "いらっしゃいませ!",
+    "blurb": "Walk Roppongi under the real sun: under the spider at Roppongi Hills, down Keyakizaka's lit avenue, to the National Art Center's glass wave and Midtown, and back to the bars of the crossing.",
+    "smalltalk": [
+      "いらっしゃいませ!",
+      "すみません。",
+      "Excuse me!",
+      "Hey, where's the party?",
+      "どうも。"
+    ],
+    "start": {
+      "at": [
+        45.0,
+        10.0
+      ],
+      "facing": [
+        -60.0,
+        -100.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "ropp_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "ropp-pad",
+        "name": "Roppongi 6-chome, the open lot pad (game)",
+        "at": [
+          60.0,
+          -160.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 600,
+      "cars": 180,
+      "radius_m": 420,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA25RP"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#111111",
+            "#f2f2ee",
+            "#e8c21a"
+          ],
+          "share": 0.26
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#2a7a3a"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "六本木",
+        "kana": "ろっぽんぎ",
+        "romaji": "Roppongi",
+        "band": "#b5b5ac",
+        "left": "広尾",
+        "right": "神谷町",
+        "at": [
+          40.0,
+          30.0
+        ],
+        "radius": 240,
+        "note": "Clubs, galleries and towers"
+      },
+      {
+        "name": "乃木坂",
+        "kana": "のぎざか",
+        "romaji": "Nogizaka",
+        "band": "#00bb85",
+        "left": "表参道",
+        "right": "赤坂",
+        "at": [
+          -420.0,
+          462.0
+        ],
+        "radius": 200,
+        "note": "The National Art Center's station"
+      },
+      {
+        "name": "六本木一丁目",
+        "kana": "ろっぽんぎいっちょうめ",
+        "romaji": "Roppongi-itchome",
+        "band": "#00ac9b",
+        "left": "麻布十番",
+        "right": "溜池山王",
+        "at": [
+          711.0,
+          274.0
+        ],
+        "radius": 200,
+        "note": "Ark Hills and Suntory Hall"
+      },
+      {
+        "name": "麻布十番",
+        "kana": "あざぶじゅうばん",
+        "romaji": "Azabu-juban",
+        "band": "#b6007a",
+        "left": "赤羽橋",
+        "right": "六本木",
+        "at": [
+          520.0,
+          -760.0
+        ],
+        "radius": 200,
+        "note": "The old shopping street down the hill"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-crossing",
+        "name": "Roppongi crossing 六本木交差点",
+        "at": [
+          45.0,
+          10.0
+        ]
+      },
+      {
+        "id": "t-hills",
+        "name": "Roppongi Hills, 66 Plaza 66プラザ",
+        "at": [
+          -115.0,
+          -150.0
+        ]
+      },
+      {
+        "id": "t-keyaki",
+        "name": "Keyakizaka けやき坂",
+        "at": [
+          0.0,
+          -375.0
+        ]
+      },
+      {
+        "id": "t-nact",
+        "name": "The National Art Center 国立新美術館",
+        "at": [
+          -310.0,
+          300.0
+        ]
+      },
+      {
+        "id": "t-midtown",
+        "name": "Tokyo Midtown ミッドタウン",
+        "at": [
+          30.0,
+          250.0
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "ken",
+        "name": "Ken 健",
+        "role": "Bartender バーテンダー",
+        "at": [
+          60.0,
+          20.0
+        ],
+        "look": {
+          "character": "R_Business_Male_06_m024",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#1d1d22",
+          "legs": "#1d1d22",
+          "shirt": "#1d1d22",
+          "pants": "#1d1d22",
+          "clip": "Present"
+        },
+        "idle": [
+          "Roppongi: embassies up the hill, bars down the street, and the last train at half past midnight.",
+          "Every country in the world drinks in this square kilometre. {time}."
+        ]
+      },
+      {
+        "id": "erika",
+        "name": "Erika 恵里花",
+        "role": "Gallery guide ギャラリー",
+        "at": [
+          -110.0,
+          -150.0
+        ],
+        "look": {
+          "character": "R_Business_Female_02",
+          "skin": "#f2cdb4",
+          "hair": "#2a1d17",
+          "top": "#1d1d22",
+          "legs": "#3a3f48",
+          "shirt": "#1d1d22",
+          "pants": "#3a3f48",
+          "clip": "Present"
+        },
+        "idle": [
+          "The art museum is on the 53rd floor. The highest gallery in the world, they say, open till ten at night.",
+          "The garden down there was a samurai lord's. The pond is older than everything else here."
+        ]
+      },
+      {
+        "id": "mei",
+        "name": "Mei 芽衣",
+        "role": "Designer",
+        "at": [
+          -40.0,
+          470.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_15_f013",
+          "skin": "#f6d8c6",
+          "hair": "#17120f",
+          "top": "#e8e2d6",
+          "legs": "#2b3440",
+          "shirt": "#e8e2d6",
+          "pants": "#2b3440",
+          "clip": "Photo"
+        },
+        "idle": [
+          "21_21 Design Sight is Tadao Ando's: a steel roof folded like a sheet of paper.",
+          "The art triangle: Mori, Midtown, the National Art Center. One ticket stub gets a discount at the others. {sun_line}"
+        ]
+      },
+      {
+        "id": "akio",
+        "name": "Akio 昭夫",
+        "role": "Museum attendant",
+        "at": [
+          -300.0,
+          290.0
+        ],
+        "look": {
+          "character": "R_Security_Female_01_f003_plain",
+          "skin": "#efcdb4",
+          "hair": "#2a2420",
+          "top": "#2a3a5a",
+          "legs": "#2a2e36",
+          "shirt": "#2a3a5a",
+          "pants": "#2a2e36",
+          "clip": "LookAround"
+        },
+        "idle": [
+          "No collection of our own. Only exhibitions: twelve galleries, and the building itself is the best exhibit.",
+          "The glass wave was the last thing Kurokawa saw finished. He died that year."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "hills",
+        "title": "Roppongi Hills",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "art",
+        "title": "The art triangle",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "ken",
+        "title": "Roppongi",
+        "stamp": "Roppongi",
+        "talk": [
+          "Welcome to Roppongi. By day, art; by night, this.",
+          "Go and meet Erika under the spider at Roppongi Hills. Everybody meets under the spider."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "erika",
+            "text": "Find Erika at Roppongi Hills"
+          }
+        ]
+      },
+      {
+        "id": "spider",
+        "line": "hills",
+        "giver": "erika",
+        "title": "Under the spider",
+        "stamp": "Maman",
+        "talk": [
+          "Maman: look up at her. Then walk down Keyakizaka; in November the trees are wound in lights.",
+          "At the bottom of the hill you can see Tokyo Tower, framed by the avenue."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "maman",
+            "text": "Stand under Maman"
+          },
+          {
+            "type": "spot",
+            "spot": "keyaki",
+            "text": "Walk down Keyakizaka"
+          }
+        ]
+      },
+      {
+        "id": "triangle",
+        "line": "art",
+        "giver": "mei",
+        "title": "The art triangle",
+        "stamp": "Midtown",
+        "talk": [
+          "Midtown's garden, then across to the National Art Center. Akio works there; ask him about the glass.",
+          "The wave is best at four, when the sun is low behind you."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "akio",
+            "text": "Find Akio at the National Art Center"
+          }
+        ]
+      },
+      {
+        "id": "wave",
+        "line": "art",
+        "giver": "akio",
+        "title": "The glass wave",
+        "stamp": "National Art Center",
+        "talk": [
+          "Stand back and look at it: glass louvers in a wave, leaning out as they rise.",
+          "Inside, the restaurant floats on top of a concrete cone. Kurokawa liked his cones."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "nact",
+            "text": "Look at the National Art Center's glass wave"
+          }
+        ]
+      }
+    ]
+  }
+}

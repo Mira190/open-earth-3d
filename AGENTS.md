@@ -33,7 +33,9 @@ or an integration session. Done means in main.
    pull request.
 4. Push the branch, open a pull request into main (what changed and why, what was checked, what
    wasn't), and land it with `git push origin HEAD:main`. That push only fast-forwards, so it is
-   refused if main moved after step 1: go back to 1. GitHub then marks the pull request merged.
+   refused if main moved after step 1: go back to 1, and the check in step 3 then covers only what
+   changed since your last pass (main's new commits and your conflict fixes), not the whole
+   branch again; `CHECK_FULL=1` forces the whole branch. GitHub then marks the pull request merged.
    If the push to main is refused for permission, merge the pull request with a merge commit,
    never a squash or a rebase, so that branches stay ancestors of main. `gh pr create` is
    refused here; open it with the GitHub MCP tools or `gh api repos/Mira190/open-earth-3d/pulls`.
@@ -43,6 +45,10 @@ or an integration session. Done means in main.
 6. Tell the owner in one line: the branch, the commit, in main or why not, and what the checks
    covered.
 
+- Keep re-checks small. A change to shared code (`web/game/`, `web/assets/`, `web/*.js`,
+  `web/index.html`) makes every live city's checks run (seven while the others are parked): land
+  it on its own and early, and keep city work in city files. Stay in the landing loop until it
+  lands; each round after the first is short.
 - Land in pieces. When something that other work will build on works (a shared module, a
   style, a pipeline step), land it then rather than holding it on a branch for hours.
 - A hook that asks you to commit and push work in progress: push it to your branch. Landing on
@@ -58,6 +64,11 @@ The owner has asked for these things again and again. They are standing rules; d
 - **Everywhere by default.** A fix or a feature asked for in one city goes to every city, reef
   site and page it fits, on desktop and phone, unless the owner names one place. A reported bug
   is a class of bugs: find and fix the others like it.
+- **Parked cities wait.** The cities in `cities/index.json` `parked` (for now everything but
+  Sydney, Kyoto's three maps and Tokyo's Marunouchi-Ginza, Shibuya and Shinjuku) are off the globe
+  and out of `tools/check.sh` (`tools/live_cities.sh` lists the rest). Don't spend work on them
+  or rebuild their data; "every city" means every live one. Their data stays in the repository
+  and the owner brings one back by taking it off the list.
 - **Decide, don't offer a menu.** If you would recommend an option, do it. For an open ask
   ("keep optimising", "push to your limit") do your best ideas in order and report them. Never
   end a turn on a question that a sensible default answers ("shall I open a PR?", "shall I fix
@@ -134,6 +145,11 @@ The owner should not be the one who finds the bug.
 
 # Shared assets
 
+- The browser loads each city's buildings from `web/data/<id>/buildings.bin`, packed from
+  `buildings.json` (a quarter of its gzipped size). `buildings.json` stays the pipeline's source; after
+  any step that writes it, run `python pipeline/pack.py` (it packs what is stale and updates
+  `cities.json`). `tools/check.sh` fails on a stale pack. Never hand-merge a `.bin`: repack it.
+
 - Every city shares the helicopter, ferry, river shuttle and car models
   (`web/assets/vehicles/`), the trees (`web/assets/trees/`) and the people
   (`web/assets/people/`). Don't add per-city copies. A city picks its liveries, its
@@ -141,6 +157,10 @@ The owner should not be the one who finds the bug.
   (`game.vehicles.car`) and its vessel names in `game.vehicles` and `game.ferries`, its
   ferry model in `game.ferry_style.model`, the side of the road it keeps to in
   `game.keep`, and its tree species in `trees.mix`, all in `cities/<id>/city.json`.
+- The shared models are meshopt-compressed (`EXT_meshopt_compression`) as the last step of each build
+  script (`pipeline/meshopt.py`, needs Node); `tools/check.sh` fails on one that is not. A model
+  written another way: `node pipeline/meshopt_glb.mjs <file.glb>`. Every `GLTFLoader` the pages make
+  has three.js's `MeshoptDecoder` set (`web/index.html`, `web/reef/people.js`).
 - To change a vehicle for every city, edit `blender/build_vehicles.py` and rebuild with
   `python blender/build_vehicles.py` (or `--only cars`, needs `pip install bpy==5.2.3`).
   For the trees, edit `blender/build_trees.py` and run `python blender/build_trees.py`.

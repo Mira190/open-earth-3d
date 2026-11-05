@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trees lineup</title>
+<style>html,body{margin:0;height:100%;background:#a9c3d6;overflow:hidden}canvas{display:block}#err{position:fixed;top:8px;left:8px;color:#a00;white-space:pre-wrap;font:12px monospace}
+#names{position:fixed;left:0;right:0;bottom:10px;display:flex;justify-content:space-around;font:12px system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px #000;pointer-events:none}</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+</head>
+<body>
+<div id="err"></div><div id="names"></div>
+<script type="module">
+// Dev page: the shared trees (web/trees.js, assets/trees, blender/build_trees.py) in a row on a lawn, as the
+// game draws them, to judge a species next to the others. Query: species=a,b,c (default: all, in
+// trees.json's order) | date=month,day (11,28: the ginkgos, zelkovas and maples turned) | sun=elevation
+// degrees | dist=camera distance (m; 520+ shows the far crown hulls, 130+ the sparse trees) | h=height (m) |
+// lod=1 shows every species at the three distances in three rows
+import * as T from 'three';
+import { GLTFLoader } from './gltf.js'; // (trees.glb is meshopt-compressed)
+window.THREE = Object.assign({}, T, { GLTFLoader });
+const q = new URLSearchParams(location.search), $ = id => document.getElementById(id);
+addEventListener('error', e => { $('err').textContent += String(e.error && e.error.stack || e.message); });
+addEventListener('unhandledrejection', e => { $('err').textContent += String(e.reason && e.reason.stack || e.reason); });
+const s = document.createElement('script'); s.src = 'trees.js'; document.head.append(s);
+await new Promise(r => { s.onload = r; });
+const lib = await OETrees.load('assets/trees/');
+const names = (q.get('species') || Object.keys(lib.info.species).join(',')).split(',').filter(k => lib.info.species[k]);
+const renderer = new T.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = T.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.9;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+document.body.prepend(renderer.domElement);
+const scene = new T.Scene(); scene.background = new T.Color(0xa9c3d6); scene.fog = new T.Fog(0xa9c3d6, 300, 1800);
+scene.add(new T.HemisphereLight(0xc7dcf0, 0x5a5a40, 1.1));
+const el = (+q.get('sun') || 38) * Math.PI / 180, sun = new T.DirectionalLight(0xfff1dc, 3.0);
+const gap = 22, W = gap * names.length;
+sun.position.set(-Math.cos(el) * 120, Math.sin(el) * 200, -Math.cos(el) * 200); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -W / 2 - 30, right: W / 2 + 30, top: 60, bottom: -60, near: 1, far: 600 });
+sun.shadow.mapSize.set(4096, 2048); sun.shadow.bias = -0.0004; scene.add(sun, sun.target);
+const ground = new T.Mesh(new T.PlaneGeometry(4000, 4000), new T.MeshStandardMaterial({ color: 0x4b5a30, roughness: 0.95 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+// each tree in an area of its own whose mix is its species alone; rows at the three distances with lod=1
+const dist = +q.get('dist') || W * 0.62 + 20, rows = q.get('lod') ? [0, 200, 560] : [0], h = +q.get('h') || 10.4;
+const list = [], areas = [];
+rows.forEach(back => names.forEach((sp, k) => {
+  const x = ((names.length - 1) / 2 - k) * gap, y = -back; // (the camera looks north from the south: east is on its left)
+  list.push(Math.round(x * 10), Math.round(y * 10), 0, Math.round(h * 10));
+  areas.push({ at: [x, y], radius: 2, mix: { [sp]: 1 } });
+}));
+const world = new T.Group(); scene.add(world);
+const trees = OETrees.create(world, lib, list, { mix: { [names[0]]: 1 }, areas, south: false });
+const [m, d] = (q.get('date') || '7,1').split(',').map(Number); trees.setSeason(m, d);
+const camera = new T.PerspectiveCamera(30, innerWidth / innerHeight, 1, 5000);
+camera.position.set(0, 7, -dist); camera.lookAt(0, 7.5, 0);
+$('names').innerHTML = names.map(n => `<span>${n}</span>`).join('');
+let t0 = performance.now();
+renderer.setAnimationLoop(() => { trees.update(camera, (performance.now() - t0) / 1000); renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1; });
+</script>
+</body>
+</html>

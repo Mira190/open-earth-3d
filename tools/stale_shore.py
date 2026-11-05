@@ -71,11 +71,14 @@ def scan(cid, min_cells):
 
     piers = []
     if os.path.exists(raw("infrastructure")):
-        for cls, b in con.execute(f"SELECT class, wkb FROM '{raw('infrastructure')}'").fetchall():
+        from shore import deck_like  # not under the ground or on a roof (a garage under a canal)
+        tagged = "source_tags" in {d[0] for d in con.execute(f"DESCRIBE SELECT * FROM '{raw('infrastructure')}'").fetchall()}
+        for r in con.execute(f"SELECT class, wkb{', level, source_tags' if tagged else ''} FROM '{raw('infrastructure')}'").fetchall():
+            cls, b = r[0], r[1]
             g = C.to_local(wkb.loads(bytes(b)))
             if cls == "pier":
                 piers += polygons(g)
-            elif cls in SOLID:
+            elif cls in SOLID and (not tagged or deck_like({"level": r[2], "source_tags": r[3]})):
                 mark_poly(g, 4)
     if os.path.exists(raw("segment")):
         for flags, levels, b in con.execute(f"SELECT road_flags, level_rules, wkb FROM '{raw('segment')}' WHERE subtype = 'road'").fetchall():
@@ -90,8 +93,10 @@ def scan(cid, min_cells):
                 pts = [line.interpolate(d) for d in np.arange(0, line.length, STEP)]
                 mark_pts([p.x for p in pts], [p.y for p in pts], 1)
     if os.path.exists(raw("building")):
-        for cls, under, b in con.execute(f"SELECT class, is_underground, wkb FROM '{raw('building')}'").fetchall():
-            if cls in floating or under:
+        import wet_buildings  # a vessel floats; a wharf deck mapped as a building is one of the piers (issue 65)
+        afloat = set(wet_buildings.classify(C))  # vessels; decks, bridges and garages under the water, not drawn
+        for bid, cls, under, b in con.execute(f"SELECT id, class, is_underground, wkb FROM '{raw('building')}'").fetchall():
+            if cls in floating or under or bid in afloat:
                 continue
             mark_poly(C.to_local(wkb.loads(bytes(b))), 2)
     # a building or a road on a pier stands on its deck, which the scene draws (places.json: the

@@ -47,9 +47,11 @@ module.exports = async function walkUpClose(p, { outDir = null, prefix = '' } = 
       Object.assign(pl, { x: best.end[0], y: best.end[1], z: best.end[2], speed: 0 });
       pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y);
       g.advance(0.3);
-      const ok = best.d <= within && best.d >= keep - 0.05 && best.mode === 'foot' && Math.abs(best.dz) < 1.2;
-      return { name: t.name, ok, d: best.d, from: best.from, at: t.at, within, keep, dz: best.dz,
-        why: ok ? '' : best.d > within ? `stopped ${best.d.toFixed(2)} m short of it` : best.d < keep - 0.05 ? 'walked into it' : `on ${best.mode}, ${best.dz.toFixed(1)} m off its floor` };
+      // a target "on" a raised floor (a gate's stone base, a plinth: stood on through nav.floorAt) is
+      // reached standing on that floor, not beside it or inside it
+      const ok = best.d <= within && best.d >= keep - 0.05 && best.mode === 'foot' && Math.abs(best.dz) < (t.on ? 0.12 : 1.2);
+      return { name: t.name, ok, d: best.d, from: best.from, at: t.at, within, keep, dz: best.dz, on: !!t.on,
+        why: ok ? '' : best.d > within ? `stopped ${best.d.toFixed(2)} m short of it` : best.d < keep - 0.05 ? 'walked into it' : `on ${best.mode}, ${best.dz.toFixed(2)} m off its floor` };
     }, targets[n]);
     if (outDir) {
       const png = await p.evaluate(() => document.getElementById('game-gl').toDataURL('image/png'));

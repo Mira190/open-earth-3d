@@ -1,0 +1,589 @@
+{
+  "id": "ikebukuro",
+  "name": "Ikebukuro",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "ja-JP",
+  "description": "Ikebukuro from open data, lit by the real sun: Sunshine 60 over the east side, Sunshine 60-dori's signs and Otome Road behind it, the department stores round the station, and West Gate Park's GLOBAL RING.",
+  "bbox": [
+    139.7045,
+    35.7223,
+    139.7255,
+    35.7377
+  ],
+  "origin": [
+    139.715,
+    35.73
+  ],
+  "extent_m": [
+    -900,
+    900,
+    -800,
+    800
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P.",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 17,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, source attribution)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "fallback": {
+      "url": "https://cyberjapandata.gsi.go.jp/xyz/dem_png/{z}/{x}/{y}.png",
+      "zoom": 14
+    },
+    "holes": "sea_level",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI Fundamental Geospatial Data DEM5A, 5 m airborne laser survey bare earth (GSI terms of use); 10 m DEM where 5A is absent"
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "plateau": {
+    "tiles": "https://indigo-lab.github.io/plateau-lod2-mvt/{z}/{x}/{y}.pbf",
+    "zoom": 14,
+    "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
+  },
+  "water": {
+    "seawall": {
+      "stone": "#6b6862",
+      "coping": "#89847b",
+      "course_m": 0.6,
+      "block_m": 1.1,
+      "high_water_m": 0.8,
+      "note": "The rivers' and the bay's revetments and the castle moats: granite blocks and concrete."
+    },
+    "classes": [
+      "river",
+      "canal"
+    ],
+    "min_area_m2": 3000
+  },
+  "trees": {
+    "mix": {
+      "elm": 0.5,
+      "plane": 0.5,
+      "cherry": 0.08
+    },
+    "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki) of the avenues and parks, plane trees for the street planes and ginkgos. A guess, not a survey."
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "check_points": {
+    "Ikebukuro Station": [
+      139.7109,
+      35.7295
+    ],
+    "Sunshine 60": [
+      139.7196,
+      35.729
+    ],
+    "West Gate Park": [
+      139.709,
+      35.7301
+    ]
+  },
+  "start": {
+    "date": [
+      11,
+      3
+    ],
+    "time": "16:30",
+    "cam": [
+      -1050,
+      -900,
+      520
+    ],
+    "tgt": [
+      40,
+      0,
+      60
+    ]
+  },
+  "labels": {
+    "サンシャインシティ": "Sunshine City",
+    "東京芸術劇場": "Tokyo Metropolitan Theatre",
+    "HarezaTower": "Hareza Tower",
+    "西武池袋本店": "Seibu"
+  },
+  "minor_labels": [
+    "東京芸術劇場",
+    "HarezaTower"
+  ],
+  "places": [],
+  "place_labels": [],
+  "tour": [
+    {
+      "title": "Ikebukuro, from open data",
+      "text": "{buildings} buildings. {share:plateau}% of the footprint area stands at a height Project PLATEAU surveyed, on GSI's 5 m laser-scanned bare earth.",
+      "cam": [
+        -1050,
+        -900,
+        520
+      ],
+      "tgt": [
+        40,
+        0,
+        60
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "15:30",
+      "to": "16:30",
+      "hold": 8
+    },
+    {
+      "title": "Sunshine 60-dori",
+      "text": "From the east exit to Sunshine City: arcades, karaoke and ramen, and Otome Road behind. The signs here are typical of the street, not its real shops'.",
+      "cam": [
+        -190,
+        -110,
+        80
+      ],
+      "tgt": [
+        100,
+        -30,
+        45
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "17:20",
+      "to": "18:20",
+      "hold": 10
+    },
+    {
+      "title": "West Gate Park",
+      "text": "GLOBAL RING over the open-air theatre, and the Metropolitan Theatre's glass beside it.",
+      "cam": [
+        -470,
+        -70,
+        60
+      ],
+      "tgt": [
+        -545,
+        10,
+        42
+      ],
+      "date": [
+        11,
+        3
+      ],
+      "from": "17:00",
+      "to": "18:00",
+      "hold": 9
+    }
+  ],
+  "sources": {
+    "landmarks": "GLOBAL RING (Toshima City, 2019), about 35 m across, its height from photographs. The roof names are the stores' own words in open fonts, not their logos; the street signs are indicative: typical trades, no real shops' signs.",
+    "fonts": "Signs drawn with Google Fonts under the SIL Open Font License: Zen Kaku Gothic New, Dela Gothic One, M PLUS Rounded 1c, Bebas Neue, Shippori Mincho"
+  },
+  "night": {
+    "note": "The street signs, the roof names and the ring's LED rings are lit landmark meshes (city.py); the streets' lamps are the country's defaults."
+  },
+  "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
+    "title": "Ikebukuro on Foot",
+    "local_name": "Tokyoite",
+    "water_name": "the water",
+    "greeting": "いらっしゃいませ!",
+    "blurb": "Walk Ikebukuro under the real sun: along Sunshine 60-dori to the tower, round Otome Road's shops, and through the station to West Gate Park's ring.",
+    "smalltalk": [
+      "いらっしゃいませ!",
+      "すみません。",
+      "どうも。",
+      "Excuse me!",
+      "お帰りなさいませ、お嬢様。"
+    ],
+    "start": {
+      "at": [
+        -150.0,
+        -35.0
+      ],
+      "facing": [
+        -60.0,
+        -40.0
+      ],
+      "time": "live"
+    },
+    "shade_landmarks": [
+      "ike_"
+    ],
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "ike-pad",
+        "name": "Minami-Ikebukuro Park pad (game)",
+        "at": [
+          -59.0,
+          -270.0
+        ]
+      }
+    ],
+    "wharves": [],
+    "ferries": [],
+    "crowd": {
+      "pedestrians": 680,
+      "cars": 170,
+      "radius_m": 420,
+      "style": "tokyo"
+    },
+    "vehicles": {
+      "helicopter": {
+        "registration": "JA23IB"
+      },
+      "cars": {
+        "taxi": {
+          "colours": [
+            "#1e2742",
+            "#e8c21a",
+            "#f2f2ee",
+            "#2f6a3a"
+          ],
+          "share": 0.22
+        },
+        "bus": {
+          "colour": "#f3f3ef",
+          "band": "#d4421e"
+        }
+      }
+    },
+    "areas": [
+      {
+        "name": "池袋",
+        "kana": "いけぶくろ",
+        "romaji": "Ikebukuro",
+        "band": "#9acd32",
+        "left": "目白",
+        "right": "大塚",
+        "at": [
+          -330.0,
+          0.0
+        ],
+        "radius": 260,
+        "note": "Two department stores, three railways, and the owl to meet at"
+      },
+      {
+        "name": "東池袋",
+        "kana": "ひがしいけぶくろ",
+        "romaji": "Higashi-Ikebukuro",
+        "band": "#c1a470",
+        "left": "池袋",
+        "right": "護国寺",
+        "at": [
+          400.0,
+          -330.0
+        ],
+        "radius": 200,
+        "note": "Sunshine City's back door"
+      },
+      {
+        "name": "都電雑司ヶ谷",
+        "kana": "とでんぞうしがや",
+        "romaji": "Toden-Zoshigaya",
+        "band": "#e4007f",
+        "left": "鬼子母神前",
+        "right": "東池袋四丁目",
+        "at": [
+          265.0,
+          -644.0
+        ],
+        "radius": 160,
+        "note": "The last streetcar line, the Tokyo Sakura Tram"
+      }
+    ],
+    "travel": [
+      {
+        "id": "t-east",
+        "name": "Ikebukuro Station, East exit 東口",
+        "at": [
+          -150.0,
+          -35.0
+        ]
+      },
+      {
+        "id": "t-west",
+        "name": "West Gate Park, the ring 池袋西口公園",
+        "at": [
+          -515.0,
+          40.0
+        ]
+      },
+      {
+        "id": "t-sunshine",
+        "name": "Sunshine 60, the foot サンシャイン60",
+        "at": [
+          220.0,
+          -70.0
+        ]
+      },
+      {
+        "id": "t-otome",
+        "name": "Otome Road 乙女ロード",
+        "at": [
+          257.0,
+          100.0
+        ]
+      },
+      {
+        "id": "t-hareza",
+        "name": "Hareza Ikebukuro ハレザ池袋",
+        "at": [
+          30.0,
+          230.0
+        ]
+      }
+    ],
+    "spots": [
+      {
+        "id": "sunshine",
+        "name": "Sunshine 60 サンシャイン60",
+        "at": [
+          200.0,
+          -75.0
+        ],
+        "radius": 8.0,
+        "verb": "Look up at the tower",
+        "lines": [
+          "Sunshine 60: 240 metres, the tallest in Asia when it opened in 1978. Sixty floors, and an aquarium on the roof of the building beside it.",
+          "The prison where the war's leaders were held stood here. They built a city on it, and a park for the people who remembered."
+        ]
+      },
+      {
+        "id": "otome",
+        "name": "Otome Road 乙女ロード",
+        "at": [
+          252.0,
+          86.0
+        ],
+        "radius": 8.0,
+        "verb": "Look along the street",
+        "lines": [
+          "Otome Road: the maidens' road. Books, goods and cafes for women fans, since the 2000s.",
+          "On a release day the line for one shop goes round the block, and nobody complains."
+        ]
+      }
+    ],
+    "npcs": [
+      {
+        "id": "hiro",
+        "name": "Hiro 宏",
+        "role": "Ramen chef ラーメン屋",
+        "at": [
+          -140.0,
+          -25.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_06_m024_brown",
+          "skin": "#e9bf9d",
+          "hair": "#17120f",
+          "top": "#f2f2ee",
+          "legs": "#1d2330",
+          "shirt": "#f2f2ee",
+          "pants": "#1d2330",
+          "clip": "Present",
+          "acc": [
+            "apron"
+          ],
+          "apron": "#2b2b2b"
+        },
+        "idle": [
+          "Ikebukuro is the ramen battlefield. Forty shops within ten minutes of the station, and every one says it's the best.",
+          "Mine's tonkotsu, twelve hours on the bone. {time}."
+        ]
+      },
+      {
+        "id": "yumi",
+        "name": "Yumi 由美",
+        "role": "Aquarium keeper 飼育員",
+        "at": [
+          215.0,
+          -60.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_13_f003_brown",
+          "skin": "#f2cdb4",
+          "hair": "#3a2a20",
+          "top": "#2a5d8a",
+          "legs": "#2b3440",
+          "shirt": "#2a5d8a",
+          "pants": "#2b3440",
+          "clip": "Talk"
+        },
+        "idle": [
+          "Our penguins swim over your head, against the sky: a glass tank on the roof, forty metres up.",
+          "The sea lions eat at three. Come and watch. {sun_line}"
+        ]
+      },
+      {
+        "id": "rin",
+        "name": "Rin 凛",
+        "role": "Bookshop clerk 書店員",
+        "at": [
+          259.0,
+          108.0
+        ],
+        "look": {
+          "character": "R_Female_Adult_14_f016",
+          "skin": "#f6d8c6",
+          "hair": "#2a1d17",
+          "top": "#6a3d8a",
+          "legs": "#1d1d22",
+          "shirt": "#6a3d8a",
+          "pants": "#1d1d22",
+          "clip": "Phone",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Otome Road's shops sell to women fans: books, badges, acrylic stands. Akihabara has the boys; we have the girls.",
+          "The butler cafe's just round the corner. 'Welcome home, my lady.'"
+        ]
+      },
+      {
+        "id": "kaito",
+        "name": "Kaito 海斗",
+        "role": "Street dancer",
+        "at": [
+          -520.0,
+          40.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_09",
+          "skin": "#e2b48f",
+          "hair": "#1b1512",
+          "top": "#1d1d22",
+          "legs": "#3a3f48",
+          "shirt": "#1d1d22",
+          "pants": "#3a3f48",
+          "clip": "Stretch"
+        },
+        "idle": [
+          "We practise under the ring at night: the glass of the theatre's a good mirror.",
+          "This park was in a TV drama in 2000. My father still calls it the West Gate Park, like the kids in it."
+        ]
+      }
+    ],
+    "lines": [
+      {
+        "id": "start",
+        "title": "Welcome"
+      },
+      {
+        "id": "east",
+        "title": "The east side",
+        "after": [
+          "start"
+        ]
+      },
+      {
+        "id": "west",
+        "title": "The west side",
+        "after": [
+          "start"
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "arrive",
+        "line": "start",
+        "giver": "hiro",
+        "title": "Ikebukuro",
+        "stamp": "Ikebukuro",
+        "talk": [
+          "Welcome to Ikebukuro! The east exit has Seibu, the west exit has Tobu. Don't ask me why; nobody knows.",
+          "Walk down Sunshine 60-dori to the tower. Yumi at the aquarium knows the east side better than anyone."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "yumi",
+            "text": "Find Yumi at Sunshine City"
+          }
+        ]
+      },
+      {
+        "id": "tower",
+        "line": "east",
+        "giver": "yumi",
+        "title": "Sunshine 60",
+        "stamp": "Sunshine 60",
+        "talk": [
+          "Look up: Sunshine 60. From the deck you can see Fuji on a clear morning.",
+          "Behind us is Otome Road. Rin works in a bookshop there."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "sunshine",
+            "text": "Look up at Sunshine 60"
+          },
+          {
+            "type": "talk",
+            "npc": "rin",
+            "text": "Find Rin on Otome Road"
+          }
+        ]
+      },
+      {
+        "id": "otome",
+        "line": "east",
+        "giver": "rin",
+        "title": "Otome Road",
+        "stamp": "Otome Road",
+        "talk": [
+          "Welcome to Otome Road. Pick a shop, any shop. Second floor up is where the good stuff is.",
+          "And if you're tired: the butler cafe. They call everyone 'my lady'."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "otome",
+            "text": "Walk along Otome Road"
+          }
+        ]
+      },
+      {
+        "id": "ring",
+        "line": "west",
+        "giver": "kaito",
+        "title": "West Gate Park",
+        "stamp": "GLOBAL RING",
+        "talk": [
+          "West Gate Park. Through the station and out the other side: everybody gets lost the first time.",
+          "Look at the ring after dark. Five rings of light, over the theatre."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "ring",
+            "text": "Stand under GLOBAL RING"
+          }
+        ]
+      }
+    ]
+  }
+}

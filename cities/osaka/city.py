@@ -13,6 +13,11 @@ Building adjustments (called by pipeline/build_scene.py):
     (game_surfaces), past the well house to the keep's stone base.
   * Tsutenkaku: the OSM footprint is a 108 m box. The footprint stays as a 12 m base and the
     steel tower is parametric above it.
+  * Namba Parks: PLATEAU gives every part of the complex its tower's 155 m, so the terraced mall
+    stood as one curved glass slab. Each part takes its own levels from OpenStreetMap's parts
+    (cities/osaka/namba_parks.json, pipeline/osm_parts.py; building:levels 1-10, building:min_level
+    for the bridges over the canyon) at 4.5 m a storey; pipeline/retop.py applied the same to the
+    built scene.
   * HEP FIVE: PLATEAU's 107 m is the top of the Ferris wheel, not the building. The building
     is drawn at 47 m (an estimate) and the wheel is parametric.
   * The Glico sign and the Kani Doraku crab are placed on the buildings nearest their published
@@ -38,9 +43,20 @@ Parametric landmarks (pipeline/landmarks.py), with anchors measured from the dat
                       behind the runner; the figure is simplified and indicative.
   Dotonbori screens   TSUTAYA EBISUBASHI HIT VISION across the bridge, Tombori Station, and Namba
                       Ebisubashi Multi Vision at Sennichimae-dori (DOTONBORI below).
+  Ebisubashi          the 2007 bridge over Dotonbori below the Glico sign, 26 m, granite and bronze;
+                      walked as strips, high enough over the canal for the river cruise
+                      (EBISU below).
   Kani Doraku crab    the moving crab on the Dotonbori front, about 8 m across.
   HEP FIVE wheel      75 m diameter, top at 106 m above the street, lowest point at the seventh
                       floor (about 31 m).
+  Namba Parks         the Jerde Partnership's mall on the old Osaka Stadium (2003, extended 2007), on
+                      its 39 parts at their own levels (above), which it hides: the walls in strata of
+                      sandstone tones, the canyon curving through it between them, glass shopfronts,
+                      and the Parks Garden on the roofs, terraces stepping up from the 2nd floor by
+                      Nankai Namba station to the 9th in the south, planted (with trees, landmarks.json
+                      "trees") behind pale copings and steel rails. The strata's tones and widths are
+                      taken from photographs (Wikimedia Commons, "NAMBA PARKS Overview 201306.jpg",
+                      "Jerde nambaparks.jpg"); the planting is indicative.
 """
 import math
 import os
@@ -50,6 +66,7 @@ import shapely
 from shapely.geometry import Point, Polygon
 
 import adkit as ad
+import archkit as ak
 import screens
 from meshkit import Mesh
 
@@ -64,6 +81,40 @@ GLICO_LONLAT = (135.50114, 34.66892)   # Glico sign: on the back of 道頓堀1-1
 CASTLE_STONE_H, CASTLE_TOWER_H, CASTLE_TOP_H = 13.3, 39.4, 54.8
 BRICK_HALL, CITY_HALL = "大阪市中央公会堂", "大阪市役所"
 HEP5_BUILDING_H = 47.0
+NAMBA_PARKS = "なんばパークス"
+NAMBA_STOREY_M = 4.5   # the mall's storey (the building record's own), so its ten levels stand 45 m
+_NAMBA_PARTS = []
+
+
+def namba_parts():
+    """Namba Parks' parts from OpenStreetMap (cities/osaka/namba_parks.json, pipeline/osm_parts.py):
+    [(polygon, min level, levels, osm id)]."""
+    if not _NAMBA_PARTS:
+        import json
+        d = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "namba_parks.json")))
+        _NAMBA_PARTS[:] = [(Polygon(q["ring"]).buffer(0), q["min_level"], q["levels"], q["osm"]) for q in d["parts"]]
+    return _NAMBA_PARTS
+
+
+def namba_part(poly):
+    """The OpenStreetMap part a solid of Namba Parks stands on (the best overlap, at least half of
+    both): (min height m, top m, osm id), or None."""
+    best, got = 0.5, None
+    for q, mn, lv, osm in namba_parts():
+        if not q.intersects(poly):
+            continue
+        iou = q.intersection(poly).area / max(q.union(poly).area, 1e-6)
+        if iou > best:
+            best, got = iou, (mn * NAMBA_STOREY_M, lv * NAMBA_STOREY_M, osm)
+    return got
+
+
+def retop(sd):
+    """pipeline/retop.py: Namba Parks' solids at their own levels (PLATEAU gave each the tower's 155 m)."""
+    if sd["name"] != NAMBA_PARKS:
+        return None
+    got = namba_part(Polygon(sd["ring"], sd["holes"]).buffer(0))
+    return got[:2] if got else None
 
 MATERIALS = {
     # the castle: dressed granite in courses, copper formed as round tiles (verdigris), white
@@ -96,6 +147,12 @@ MATERIALS = {
     "glico_gold": {"color": "#f3b320", "roughness": 0.5, "metalness": 0.0, "emissive": "#ffb020", "glow": 0.6},
     "crab": {"color": "#e04a2b", "roughness": 0.45, "metalness": 0.1, "emissive": "#ff4a20", "glow": 0.9},
     "wheel_red": {"color": "#d8302f", "roughness": 0.45, "metalness": 0.3},
+    # Ebisubashi: granite paving, a darker inlay for the plaza's ring, granite faces, bronze, the lanterns
+    "ebisu_paving": {"color": "#a9a49b", "roughness": 0.9, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.6, "block_m": 0.9},
+    "ebisu_inlay": {"color": "#5f5c58", "roughness": 0.7, "metalness": 0.0},
+    "ebisu_granite": {"color": "#b9b2a6", "roughness": 0.85, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.5, "block_m": 1.2},
+    "ebisu_bronze": {"color": "#5b4630", "roughness": 0.45, "metalness": 0.75},
+    "ebisu_lamp": {"color": "#f3ead6", "roughness": 0.4, "metalness": 0.0, "emissive": "#ffd9a0", "glow": 1.3},
     # shop signs: painted by day, lit after dark (the viewer lights "floodlit" meshes by night)
     "sign_red": {"color": "#d8262b", "roughness": 0.6, "metalness": 0.0, "emissive": "#ff2a2a", "glow": 1.5},
     "sign_yellow": {"color": "#f1c21b", "roughness": 0.6, "metalness": 0.0, "emissive": "#ffcf30", "glow": 1.4},
@@ -247,6 +304,13 @@ def adjust_building(b, cls, g, geoms, ctx):
         for s_ in out:
             ctx.hide(s_)
         return out
+    if name == NAMBA_PARKS:
+        # every terrace at its own levels (OpenStreetMap's parts), not the tower's height PLATEAU gives them all
+        out = []
+        for q in geoms:
+            got = namba_part(q[0])
+            out.append([q[0], got[0], got[1], "mapped", q[4]] if got else q)
+        return out
     if name == HEP5 and "hep_five" not in lm:
         c, ang, long_, short_ = rect_of(g)
         lm["hep_five"] = {"centroid": [round(c[0], 1), round(c[1], 1)], "axis_deg": round(math.degrees(ang), 2),
@@ -369,12 +433,15 @@ def landmark_meshes(scene):
         meshes += tsutenkaku(lm["tsutenkaku"])
     if "hep_five" in lm:
         meshes += hep_wheel(lm["hep_five"])
-    meshes += dotonbori_meshes()
+    meshes += dotonbori_meshes() + ebisubashi()
     if "kani" in lm:
         meshes += kani_crab(lm["kani"])
     if "signs" in lm:
         meshes += shop_signs(lm["signs"]["sites"])
-    return mats | {"screens": DOTONBORI.material(EBISUBASHI)}, meshes
+    more, hidden, trees = namba_parks()
+    meshes += more
+    mats.update({k: dict(MATERIALS[k]) for k in MATERIALS if k.startswith("np_")})
+    return mats | {"screens": DOTONBORI.material(EBISUBASHI)}, meshes, {"hidden": hidden, "trees": trees}
 
 
 def landmark_assets(out_dir, scene):
@@ -384,7 +451,9 @@ def landmark_assets(out_dir, scene):
 
 def landmark_glows(scene):
     """The light Dotonbori's screens throw on the canal and its banks (web/night.js)."""
-    return DOTONBORI.glows(EBISUBASHI)
+    P, U, hw = ebisu_frame(), EBISU["parapet_u"], EBISU["half_width"] - 0.3
+    lanterns = [[round(float(q[0]), 1), round(float(q[1]), 1), 7.0, "#ffd9a0", 0.12] for q in (P(su * U, sv * hw, 0) for su in (-1, 1) for sv in (-1, 1))]
+    return DOTONBORI.glows(EBISUBASHI) + lanterns
 
 
 # ---------------------------------------------------------------- Osaka Castle keep
@@ -1296,6 +1365,145 @@ def shop_signs(sites):
     return [m for m in meshes.values() if m.v]
 
 
+# ---------------------------------------------------------------- Ebisubashi
+#
+# Ebisubashi (戎橋), the bridge of Ebisubashi-suji over Dotonbori below the Glico sign. The present bridge
+# (Konoike Gumi, 2007) is a 26 m girder bridge faced in granite, its parapets bronze in the three-window
+# pattern of the 1925 bridge, a circular plaza in the middle of its deck, and the Tombori River Walk
+# passing under both ends (Wikipedia ja, "戎橋"; Osaka City). OpenStreetMap maps it as a pedestrian area,
+# which the game's paths leave out, so it is drawn here and walked as strips (game_surfaces). Its line is
+# Ebisubashi-suji's (the pedestrian street's ends at x = -1072 m, 26 m apart across the canal); its width
+# (16.7 m) takes in the two sidewalks OpenStreetMap maps on it (at x = -1080 and -1065 m, a level up), up to
+# the Glico sign's building at its south-west corner; its ends meet the street at GSI's DEM (3.9 m north,
+# 4.1 m south). The deck rises over the
+# canal so that the river cruise's boats, with people standing on their upper deck, pass under it as they
+# do under the canal's other bridges (web/game/decks.js: the boats' height plus the slab): its middle is
+# 5.85 m up, about a metre over the real bridge, whose railing stands some 6 m over the water.
+EBISU = {"centre": (-1071.85, -1102.0), "half_width": 8.35, "abutment": 13.0, "end_n": 23.0, "end_s": -23.0,
+         "z_n": 3.9, "z_s": 4.1, "crest": 5.85, "crest_u": (-5.5, 1.5), "slab": 0.7, "parapet_u": 19.0, "plaza_u": -2.0}
+
+
+def ebisu_z(u):
+    """The deck's height at u metres north of the bridge's middle: level over the boats' course, easing down
+    to the street at each end."""
+    e, (c0, c1) = EBISU, EBISU["crest_u"]
+    if c0 <= u <= c1:
+        return e["crest"]
+    if u > c1:
+        t, z = min(1.0, (u - c1) / (e["end_n"] - c1)), e["z_n"]
+    else:
+        t, z = min(1.0, (c0 - u) / (c0 - e["end_s"])), e["z_s"]
+    return z + (e["crest"] - z) * (1 + math.cos(math.pi * t)) / 2
+
+
+def ebisu_frame():
+    return frame(*EBISU["centre"], math.pi / 2)     # u to the north, v to the west
+
+
+def faced(mesh, a, b, c, d, out):
+    """A quad wound to face `out`."""
+    a, b, c, d = (np.asarray(q, float) for q in (a, b, c, d))
+    if float(np.dot(np.cross(c - a, d - b), out)) < 0:
+        a, b, c, d = d, c, b, a
+    mesh.quad(a, b, c, d)
+
+
+def ebisubashi():
+    """The bridge: a granite-paved deck with its circular plaza, granite fascias and soffit, the abutments
+    the river walk passes, granite parapets with bronze three-window panels, and a granite pillar with a
+    bronze lantern at each corner."""
+    e, P = EBISU, ebisu_frame()
+    hw, A, sl = e["half_width"], e["abutment"], e["slab"]
+    deck = Mesh("ebisubashi_deck", "ebisu_paving", False, uv=True)
+    ring = Mesh("ebisubashi_deck_ring", "ebisu_inlay", False)
+    stone = Mesh("ebisubashi_stone", "ebisu_granite", False, uv=True)
+    bronze = Mesh("ebisubashi_bronze", "ebisu_bronze", False)
+    lamp = Mesh("ebisubashi_lamps", "ebisu_lamp", False, floodlit=True)
+    us = sorted(set(np.round(np.r_[np.arange(e["end_s"], e["end_n"] + 1e-6, 1.0), -A, A, *e["crest_u"]], 3)))
+    vs = np.linspace(-hw, hw, 7)
+    deck.grid([[P(u, v, ebisu_z(u)) for u in us] for v in vs], [[(u, v) for u in us] for v in vs])
+    # the plaza in the middle: a ring of dark granite and a medallion, inlaid flush with the paving
+    cu = e["plaza_u"]
+    for r0, r1 in ((5.6, 6.1), (0.0, 1.3)):
+        for k in range(48):
+            a0, a1 = 2 * math.pi * k / 48, 2 * math.pi * (k + 1) / 48
+            q = [(cu + r * math.cos(a), r * math.sin(a)) for r, a in ((r0, a0), (r0, a1), (r1, a1), (r1, a0))]
+            pts = [P(u, v, ebisu_z(u) + 0.02) for u, v in q]
+            faced(ring, *pts, (0, 0, 1))
+    up, down = np.array([0, 0, 1.0]), np.array([0, 0, -1.0])
+    for u0, u1 in zip(us[:-1], us[1:]):
+        za, zb = ebisu_z(u0), ebisu_z(u1)
+        span = -A <= u0 and u1 <= A
+        for sv in (-1, 1):   # the fascias: the girder's face over the span, the abutments' walls past it
+            out = np.r_[P(0, sv, 0)[:2] - P(0, 0, 0)[:2], 0.0]
+            lo_a, lo_b = (za - sl, zb - sl) if span else (0.5, 0.5)
+            faced(stone, P(u0, sv * hw, lo_a), P(u1, sv * hw, lo_b), P(u1, sv * hw, zb), P(u0, sv * hw, za), out)
+            # the cornice: a granite band standing a little proud of the face under the parapet
+            stone.box(P(u0, sv * (hw + 0.06), za - 0.12), P(u1, sv * (hw + 0.06), zb - 0.12), 0.12, 0.3)
+        if span:             # the soffit
+            faced(stone, P(u0, -hw, za - sl), P(u1, -hw, zb - sl), P(u1, hw, zb - sl), P(u0, hw, za - sl), down)
+    for s in (-1, 1):        # the abutments' faces towards the canal, over the river walk
+        u = s * A
+        out = np.r_[P(-s, 0, 0)[:2] - P(0, 0, 0)[:2], 0.0]
+        z = ebisu_z(u) - sl
+        faced(stone, P(u, -hw, 0.5), P(u, hw, 0.5), P(u, hw, z), P(u, -hw, z), out)
+        # the bearing: a granite course under the girder's end
+        stone.box(P(u - s * 0.4, -hw + 0.2, z - 0.25), P(u - s * 0.4, hw - 0.2, z - 0.25), 0.8, 0.5)
+    # the parapets: a granite base and coping between posts, bronze three-window panels between them
+    U = e["parapet_u"]
+    for sv in (-1, 1):
+        v = sv * (hw - 0.25)
+        posts = np.linspace(-U, U, 11)
+        pu = sorted(set(np.round(np.r_[np.arange(-U, U + 1e-6, 1.0), -A, A], 3)))
+        for u0, u1 in zip(pu[:-1], pu[1:]):
+            za, zb = ebisu_z(u0), ebisu_z(u1)
+            stone.box(P(u0, v, za + 0.17), P(u1, v, zb + 0.17), 0.42, 0.36)            # the base course
+            stone.box(P(u0, v, za + 1.06), P(u1, v, zb + 1.06), 0.5, 0.12)             # the coping
+            bronze.box(P(u0, v, za + 0.97), P(u1, v, zb + 0.97), 0.12, 0.06)           # the panels' head
+        for k, u in enumerate(posts):
+            z = ebisu_z(u)
+            if 0 < k < len(posts) - 1:
+                stone.box(P(u, v, z), P(u, v, z + 1.14), 0.42, 0.5, up=(P(1, 0, 0) - P(0, 0, 0)))
+        for ua, ub in zip(posts[:-1], posts[1:]):   # three windows a bay: bronze frames with a transom
+            a, b = ua + 0.3, ub - 0.3
+            for j in range(4):
+                u = a + (b - a) * j / 3
+                z = ebisu_z(u)
+                bronze.box(P(u, v, z + 0.35), P(u, v, z + 0.97), 0.09, 0.08, up=(P(1, 0, 0) - P(0, 0, 0)))
+            for j in range(3):
+                u0, u1 = a + (b - a) * j / 3, a + (b - a) * (j + 1) / 3
+                for h in (0.62, 0.78):
+                    bronze.box(P(u0, v, ebisu_z(u0) + h), P(u1, v, ebisu_z(u1) + h), 0.05, 0.035)
+    # the corner pillars, each with a bronze lantern
+    for su in (-1, 1):
+        for sv in (-1, 1):
+            u, v = su * U, sv * (hw - 0.3)
+            z = ebisu_z(u)
+            c = P(u, v, 0)
+            stone.box([c[0], c[1], z - 0.3], [c[0], c[1], z + 1.75], 0.9, 0.9, up=(P(1, 0, 0) - P(0, 0, 0)))
+            stone.box([c[0], c[1], z + 1.75], [c[0], c[1], z + 1.92], 1.05, 1.05, up=(P(1, 0, 0) - P(0, 0, 0)))
+            bronze.tube([[c[0], c[1], z + 1.92], [c[0], c[1], z + 3.3]], [0.11, 0.07], 8)
+            lamp.lathe([(z + 3.3, 0.12), (z + 3.38, 0.26), (z + 3.85, 0.26), (z + 3.9, 0.12)], (c[0], c[1]), 12)
+            bronze.lathe([(z + 3.88, 0.32), (z + 4.02, 0.3), (z + 4.16, 0.05)], (c[0], c[1]), 12)
+    return [deck, ring, stone, bronze, lamp]
+
+
+def ebisubashi_strips():
+    """The deck walked as strips laid as given ("drape"): the approaches from the street to the abutments
+    (their slabs reach down into the fill, so that nobody walks in under them from the river walk), and the
+    girder's span over the river walk and the canal, its slab as deep as the girder."""
+    e, P = EBISU, ebisu_frame()
+    A = e["abutment"]
+    axis = [round(float(v), 5) for v in (P(1, 0, 0) - P(0, 0, 0))[:2]]
+    out = []
+    for name, u0, u1, th in (("the south approach", e["end_s"], -A, 3.5), ("the span", -A, A, e["slab"]), ("the north approach", A, e["end_n"], 3.5)):
+        us = sorted(set(np.round(np.r_[np.arange(u0, u1 + 1e-6, 1.0), u1, *[c for c in e["crest_u"] if u0 < c < u1]], 3)))
+        out.append({"name": f"Ebisubashi, {name}", "type": "strip", "origin": [round(float(v), 2) for v in e["centre"]], "axis": axis,
+                    "half_width": e["half_width"], "profile": [[round(float(u), 2), round(ebisu_z(u), 3)] for u in us], "thickness": th,
+                    "mesh": "ebisubashi_deck", "drape": True, "fly_under": False, "label": "Ebisubashi"})
+    return out
+
+
 # ---------------------------------------------------------------- the game
 
 def kotenshu_flight(p):
@@ -1397,7 +1605,7 @@ def game_surfaces(scene):
     the strips' slab, so the well house on it is met in the walker's fine cells)."""
     k = scene["landmarks"].get("kotenshu")
     if not k:
-        return []
+        return ebisubashi_strips()
     f = kotenshu_flight(k)
     top = k["ground_m"] + k["height_m"]
     floor = [{"name": f"Osaka Castle, the small keep platform {j + 1}", "type": "strip", "origin": [round(v, 2) for v in o], "axis": [round(v, 5) for v in a],
@@ -1405,7 +1613,7 @@ def game_surfaces(scene):
               "mesh": "kotenshu_paving", "label": "the small keep platform"} for j, (o, a, hw, u0, u1) in enumerate(kotenshu_floor(k, scene["landmarks"].get("castle", {}).get("centroid")))]
     return floor + [{"name": "Osaka Castle, the steps to the small keep platform", "type": "strip", "origin": [round(v, 2) for v in f["origin"]],
              "axis": [round(v, 5) for v in f["axis"]], "half_width": f["half_width"], "profile": f["profile"], "thickness": 1.5,
-             "mesh": "kotenshu_steps", "label": "the small keep platform"}]
+             "mesh": "kotenshu_steps", "label": "the small keep platform"}] + ebisubashi_strips()
 
 
 def xy(p):
@@ -1421,7 +1629,8 @@ def close_to(name, at, z, start, within=1.5, keep=0.0):
 def game_extras(scene):
     """The things people walk up to: under Tsutenkaku to the ceiling painting and to a leg; Osaka Castle's
     keep on its stone base, from the honmaru and from the small keep platform, and the Kinmeisui well house;
-    Kani Doraku's door under the crab; the Glico sign's wall from the Tombori River Walk."""
+    Kani Doraku's door under the crab; the Glico sign's wall from the Tombori River Walk, and Ebisubashi's
+    parapet below it."""
     lm, close = scene["landmarks"], []
     t = lm.get("tsutenkaku")
     if t:
@@ -1456,7 +1665,117 @@ def game_extras(scene):
         a, n = np.array(kc["at"]), np.array(kc["normal"])
         close.append(close_to("Kani Doraku, the door under the crab", a, kc["ground_m"], a + n * 5.0, 1.0))
     # under the Glico sign on the Tombori River Walk (the paving 2.2 m up, GSI's DEM), to the foot of the wall
-    # it hangs on (Ebisubashi itself is not in the open data's walkways, so the bridge is not walked yet)
+    # it hangs on
     g = np.mean(np.array(GLICO_EDGE, float), axis=0)
     close.append(close_to("Glico sign, from the Tombori River Walk", g, 2.2, g + np.array([0.0, 6.0]), 1.0))
+    # Ebisubashi: across the deck from the plaza in its middle to the west parapet, where people stand to
+    # look up at the runner, the coping just under their hands (ebisubashi(): the parapet's inner face)
+    P, u = ebisu_frame(), EBISU["plaza_u"] - 2.0
+    v = EBISU["half_width"] - 0.25 - 0.25
+    close.append(close_to("Ebisubashi, the parapet below the Glico sign", P(u, v, 0), ebisu_z(u), P(u, v - 6.0, 0), 1.0, 0.2))
     return {"close": close}
+
+
+# ---------------------------------------------------------------- Namba Parks
+
+# the canyon's walls: horizontal strata in sandstone tones, as the Jerde Partnership drew them (photographs:
+# Wikimedia Commons, "NAMBA PARKS Overview 201306.jpg", "Jerde nambaparks.jpg"), a band every STRATUM_M
+NAMBA_STRATA = ["np_sand", "np_tan", "np_light", "np_sand", "np_brown", "np_light", "np_tan", "np_rose"]
+STRATUM_M = 0.75
+MATERIALS.update({
+    "np_sand": {"color": "#c9a272", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_tan": {"color": "#b3845c", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_light": {"color": "#dcc196", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_brown": {"color": "#946548", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_rose": {"color": "#bb8a76", "roughness": 0.85, "metalness": 0.0, "emissive": "#ffd9aa", "glow": 0.1},
+    "np_coping": {"color": "#e3d4b4", "roughness": 0.7, "metalness": 0.0, "emissive": "#ffe3bd", "glow": 0.15},
+    "np_garden": {"color": "#56743a", "roughness": 0.95, "metalness": 0.0},
+    "np_paving": {"color": "#bfb4a3", "roughness": 0.85, "metalness": 0.0},
+    "np_glass": {"color": "#2b3136", "roughness": 0.15, "metalness": 0.5, "emissive": "#ffd7a0", "glow": 0.85},
+    "np_roof": {"color": "#a9a296", "roughness": 0.9, "metalness": 0.0},
+    "np_rail": {"color": "#c9ccce", "roughness": 0.35, "metalness": 0.7},
+})
+
+
+def namba_parks():
+    """Namba Parks (the Jerde Partnership, 2003 and 2007) on its 39 parts, which it hides: every wall in
+    strata of sandstone tones, the canyon's curving walls with them; glass shopfronts along the ground
+    and the canyon; the terraces of the Parks Garden stepping up from the 2nd floor by the station to the
+    9th in the south, each planted (lawn and beds, its trees in landmarks.json "trees") behind a pale
+    coping and a steel rail, the stairs' landings paved; the tallest blocks (the cinema, the halls) with
+    plain roofs. The bridges over the canyon (OpenStreetMap's parts with a min_level) span it with their
+    soffits. Returns (meshes, hidden solids, trees [x, y, z, h] dm)."""
+    from shapely.geometry import Point
+    solids = [s for s in ak.load_solids("osaka") if s["name"] == NAMBA_PARKS]
+    if not solids:
+        return [], [], []
+    K = ak.Kit("namba_parks", floodlit=set(NAMBA_STRATA) | {"np_coping", "np_glass"})
+    polys = {s["si"]: Polygon(s["ring"], s["holes"]).buffer(0) for s in solids}
+    U = shapely.union_all(list(polys.values())).buffer(0.05)
+    top_of = lambda s: s["ground"] + s["top"]
+    tops = [(polys[s["si"]], top_of(s), s["ground"] + s["base"]) for s in solids]
+
+    def higher_at(pt, z):
+        """Is there another part of the building standing above z at pt (so that a wall there is hidden)?"""
+        return any(p.contains(pt) and t > z + 0.3 and b < z for p, t, b in tops)
+
+    trees, rng = [], np.random.default_rng(2003)
+    for sd in solids:
+        poly = polys[sd["si"]]
+        z0, z1 = sd["ground"] + sd["base"], top_of(sd)
+        bridge = sd["base"] > 0.5
+        rings = [poly] if poly.geom_type == "Polygon" else list(poly.geoms)
+        for pg in rings:
+            pts = ak.simplify(list(pg.exterior.coords), 0.35)
+            if ak.ring_area(pts) < 0:
+                pts = pts[::-1]
+            n = len(pts)
+            for k in range(n):
+                a, b = pts[k], pts[(k + 1) % n]
+                L = math.dist(a, b)
+                if L < 0.05:
+                    continue
+                t = ((b[0] - a[0]) / L, (b[1] - a[1]) / L)
+                out = Point((a[0] + b[0]) / 2 + t[1] * 0.6, (a[1] + b[1]) / 2 - t[0] * 0.6)
+                # the strata, from the foot (or the bridge's soffit) to the coping
+                zb = z0 if bridge else sd["ground"] - 0.5
+                j0 = int(math.floor((zb - 0.0) / STRATUM_M))
+                for j in range(j0, int(math.ceil(z1 / STRATUM_M))):
+                    za, zc = max(zb, j * STRATUM_M), min(z1, (j + 1) * STRATUM_M)
+                    if zc - za < 0.02 or higher_at(out, (za + zc) / 2):
+                        continue
+                    m = K[NAMBA_STRATA[(j * 3 + (j // 5)) % len(NAMBA_STRATA)]]
+                    m.quad((a[0], a[1], za), (b[0], b[1], za), (b[0], b[1], zc), (a[0], a[1], zc))
+                exposed = not U.contains(out)
+                # shopfronts: glass along the ground and every floor's foot where the wall faces out, a window band
+                if exposed and not bridge and L > 3.0:
+                    g0 = sd["ground"]
+                    nrm = (t[1] * 0.06, -t[0] * 0.06)
+                    for zf in (g0 + 0.2, *([g0 + 4.5 + 0.4] if z1 - g0 > 9.5 else [])):
+                        zt = zf + (3.6 if zf - g0 < 1 else 2.6)
+                        A, B = (a[0] + nrm[0], a[1] + nrm[1]), (b[0] + nrm[0], b[1] + nrm[1])
+                        K["np_glass"].quad((A[0], A[1], zf), (B[0], B[1], zf), (B[0], B[1], zt), (A[0], A[1], zt))
+                # the coping and the rail along the roof's open edges
+                if not higher_at(out, z1 + 0.5):
+                    ak.edge_band(K["np_coping"], a, b, z1 - 0.35, 0.25, 0.45)
+                    K["np_rail"].box((a[0], a[1], z1 + 1.05), (b[0], b[1], z1 + 1.05), 0.06, 0.06)
+            if bridge:  # its soffit over the canyon
+                ak.cap(K["np_coping"], ak.WORLD, pts, z0, down=True)
+            # the roof: a planted terrace, or a plain roof on the tallest blocks and the bridges
+            # (the one- and two-storey parts by the station are the canyon's deck and the plaza: paved)
+            garden = 2.5 * NAMBA_STOREY_M < sd["top"] < 44.0 and not bridge and pg.area > 30
+            ak.cap(K["np_paving" if garden else "np_roof"], ak.WORLD, pts, z1 + 0.03)
+            if garden:
+                inner = pg.buffer(-2.5)
+                if not inner.is_empty:  # the planting, raised in its bed inside a paved walk, and its trees
+                    for g in getattr(inner, "geoms", [inner]):
+                        ring = ak.simplify(list(g.exterior.coords), 0.4)
+                        if len(ring) >= 3:
+                            ak.cap(K["np_garden"], ak.WORLD, ring, z1 + 0.35)
+                    bx0, by0, bx1, by1 = inner.bounds
+                    for x in np.arange(bx0 + 2.0, bx1, 6.5):
+                        for y in np.arange(by0 + 2.0, by1, 6.5):
+                            px, py = x + rng.uniform(-2.2, 2.2), y + rng.uniform(-2.2, 2.2)
+                            if inner.contains(Point(px, py)) and rng.random() < 0.8:
+                                trees += [round(px * 10), round(py * 10), round((z1 + 0.35) * 10), round(rng.uniform(5.0, 9.5) * 10)]
+    return K.out(), sorted(s["si"] for s in solids), trees

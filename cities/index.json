@@ -1,5 +1,8 @@
 {
   "note": "Cities on the globe. status: live (built and in web/data/<id>) or planned. Planned entries list the open data to check first; none of them has been verified for this project yet.",
+  "parked_note": "Parked: built cities taken off the globe and out of the checks for now, to keep each round of checks short while work focuses on the others. Their data stays in cities/<id> and web/data/<id>. To bring one back, take its id off this list, rebuild the globe's list (python pipeline/pack.py) and run tools/check.sh <id>.",
+  "parked": ["amsterdam", "paris", "hong-kong", "osaka", "melbourne", "melbourne-bayside",
+    "akihabara", "asakusa", "ueno", "ikebukuro", "jinbocho", "roppongi", "shinagawa", "tsukishima", "odaiba"],
   "cities": [
     {
       "id": "sydney",
@@ -53,7 +56,36 @@
       "lat": 35.003,
       "lon": 135.7625,
       "status": "live",
+      "group": "Kyoto",
+      "district": "Central Kyoto",
+      "tagline": "Kyoto Station and Kyoto Tower to the Imperial Palace",
       "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people."
+    },
+    {
+      "id": "higashiyama",
+      "name": "Higashiyama",
+      "native": "東山",
+      "country": "Japan",
+      "lat": 34.997,
+      "lon": 135.782,
+      "status": "live",
+      "group": "Kyoto",
+      "district": "Higashiyama",
+      "tagline": "Kiyomizu-dera, Sannenzaka, Ninenzaka and the Yasaka Pagoda",
+      "summary": "Kyoto's Higashiyama: Kiyomizu-dera's stage on its keyaki lattice, the stone lanes of Sannenzaka and Ninenzaka with their noren and lanterns, and the Yasaka Pagoda, on PLATEAU's measured heights."
+    },
+    {
+      "id": "fushimi-inari",
+      "name": "Fushimi Inari",
+      "native": "伏見稲荷",
+      "country": "Japan",
+      "lat": 34.966,
+      "lon": 135.777,
+      "status": "live",
+      "group": "Kyoto",
+      "district": "Fushimi Inari",
+      "tagline": "The Romon, the Senbon Torii and Mount Inari",
+      "summary": "Fushimi Inari Taisha: the Romon and the halls, the two tunnels of the Senbon Torii and thousands more torii climbing Mount Inari to Yotsutsuji and the summit, on PLATEAU's measured heights."
     },
     {
       "id": "tokyo",
@@ -127,6 +159,78 @@
       "group": "Tokyo",
       "tagline": "Ueno Park, Toshogu's gilt hall, Shinobazu Pond and Bentendo, and Ameyoko's market",
       "summary": "Ueno from open data at PLATEAU-surveyed heights: the park on its hill with Saigo's statue, Toshogu's gilt hall between its lanterns and Kan'ei-ji's pagoda, Shinobazu Pond's lotus and Bentendo on its island, and Ameyoko's market under the tracks to Okachimachi."
+    },
+    {
+      "id": "ikebukuro",
+      "name": "Ikebukuro",
+      "native": "池袋",
+      "country": "Japan",
+      "lat": 35.73,
+      "lon": 139.715,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Sunshine 60, Otome Road, the department stores and West Gate Park's ring",
+      "summary": "Ikebukuro from open data at PLATEAU-surveyed heights: Sunshine 60 over the east side, Sunshine 60-dori's signs and Otome Road's shops, the department stores' names round the station, and GLOBAL RING over West Gate Park."
+    },
+    {
+      "id": "jinbocho",
+      "name": "Jinbocho",
+      "native": "神保町",
+      "country": "Japan",
+      "lat": 35.696,
+      "lon": 139.758,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "The book town's shops and carts, the Catholic Kanda Church and Nikolai-do",
+      "summary": "Jinbocho and Kanda from open data at PLATEAU-surveyed heights: the book town's second-hand shops along Yasukuni-dori with their carts of cheap books, the Catholic Kanda Church of 1928, and Nikolai-do over Ochanomizu."
+    },
+    {
+      "id": "roppongi",
+      "name": "Roppongi",
+      "native": "六本木",
+      "country": "Japan",
+      "lat": 35.6625,
+      "lon": 139.731,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Roppongi Hills and Maman, Keyakizaka's lights, the National Art Center and the crossing's bars",
+      "summary": "Roppongi from open data at PLATEAU-surveyed heights: Mori Tower and Maman the spider at Roppongi Hills, the Mohri Garden's pond, Keyakizaka's winter lights, the National Art Center's glass wave, Tokyo Midtown, and the bars round the crossing."
+    },
+    {
+      "id": "shinagawa",
+      "name": "Shinagawa",
+      "native": "品川",
+      "country": "Japan",
+      "lat": 35.63,
+      "lon": 139.7395,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Takanawa Gateway's folded roof, the station's two sides and the old Tokaido's post town",
+      "summary": "Shinagawa and Takanawa from open data at PLATEAU-surveyed heights: the station between the Takanawa hills and Konan's towers, Takanawa Gateway Station's folded roof, and the old Tokaido's first post town at Kita-Shinagawa with its shops and lanterns."
+    },
+    {
+      "id": "tsukishima",
+      "name": "Tsukishima",
+      "native": "月島",
+      "country": "Japan",
+      "lat": 35.664,
+      "lon": 139.783,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "Monja Street, Tsukuda's fishing village and Kachidoki Bridge",
+      "summary": "Tsukishima and Tsukuda from open data at PLATEAU-surveyed heights: Monja Street's seventy shops, Tsukuda's moat, its vermilion bridge and Sumiyoshi Shrine by the Sumida, the river's bridges, and Kachidoki Bridge's arches."
+    },
+    {
+      "id": "odaiba",
+      "name": "Odaiba",
+      "native": "お台場",
+      "country": "Japan",
+      "lat": 35.629,
+      "lon": 139.771,
+      "status": "live",
+      "group": "Tokyo",
+      "tagline": "The Rainbow Bridge, the seaside park and its Statue of Liberty, and Fuji TV's sphere",
+      "summary": "Odaiba from open data at PLATEAU-surveyed heights: the Rainbow Bridge's towers and cables over the bay, the seaside park's beach and Statue of Liberty, Fuji TV's titanium sphere, and the Yurikamome's guideway across the islands."
     },
     {
       "id": "whitsundays",
@@ -309,7 +413,7 @@
           "native": "池袋",
           "lat": 35.7295,
           "lon": 139.7109,
-          "note": "Sunshine 60, Otome Road",
+          "map": "ikebukuro",
           "label": "r"
         },
         {
@@ -317,7 +421,7 @@
           "native": "神保町",
           "lat": 35.6959,
           "lon": 139.7577,
-          "note": "The book town",
+          "map": "jinbocho",
           "label": "l"
         },
         {
@@ -325,7 +429,7 @@
           "native": "六本木",
           "lat": 35.6627,
           "lon": 139.7314,
-          "note": "Roppongi Hills and Mori Tower",
+          "map": "roppongi",
           "label": "b"
         },
         {
@@ -333,7 +437,7 @@
           "native": "月島",
           "lat": 35.6646,
           "lon": 139.784,
-          "note": "Monja Street",
+          "map": "tsukishima",
           "label": "r"
         },
         {
@@ -341,7 +445,7 @@
           "native": "お台場",
           "lat": 35.627,
           "lon": 139.775,
-          "note": "Seaside Park and Rainbow Bridge",
+          "map": "odaiba",
           "label": "r"
         },
         {
@@ -349,7 +453,7 @@
           "native": "品川",
           "lat": 35.6285,
           "lon": 139.7387,
-          "note": "The southern gateway",
+          "map": "shinagawa",
           "label": "l"
         }
       ],

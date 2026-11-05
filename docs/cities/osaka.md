@@ -178,6 +178,27 @@ factor of 1.31 at the median and 2.5 at the 90th percentile. The Monte Carlo
 sigmas the sun study uses are 0.165 for `floors` and 0.43 for `estimate`,
 and 0.03 for a measured height.
 
+
+### 3.8 Namba Parks
+
+PLATEAU gives every part of Namba Parks the 155 m of its tower, so the
+terraced mall stood as one curved glass slab. OpenStreetMap maps each of its 39
+terraces as a part with `building:levels` (1 to 10) and, for the bridges over
+the canyon, `building:min_level`. `pipeline/osm_parts.py` reads them from the
+OpenStreetMap API (ODbL) into `cities/osaka/namba_parks.json`; at 4.5 m a
+storey (the building record's own) the mall tops out at 45 m. `adjust_building`
+uses them on the next build, and `pipeline/retop.py` applied them to the built
+`buildings.json`, so the surface model, the shadows and the game have the
+terraces. The sun analyses keep the old heights until they are rerun.
+
+A landmark draws the parts instead (Jerde Partnership, 2003 and 2007): the walls
+in strata of sandstone tones, the canyon between them, glass shopfronts, and the
+Parks Garden, terraces stepping up from the 2nd floor by Nankai Namba station to
+the 9th, planted behind pale copings and rails, with trees on the terraces
+(`landmarks.json` `"trees"`). Tones, strata and planting follow photographs
+(Wikimedia Commons, "NAMBA PARKS Overview 201306.jpg", "Jerde nambaparks.jpg");
+the planting is indicative.
+
 ## 4. Terrain
 
 | Source | Over land in the model area |
@@ -221,6 +242,7 @@ or chosen by us.
 | Tombori Station | 5.00 × 2.80 m on the north wall of the Bel Sud building (道頓堀1-9, w222963577), its foot 5.4 m over the street* | B&D |
 | Namba Ebisubashi Multi Vision | 4.096 × 3.072 m outdoors on the north wall and 2.95 × 2.10 m indoors on the east wall of the Namba Ichiban building (難波3-5-1, w219869421), their feet about 5 m over the street* | KESION, oogatavision-navi |
 | TSUTAYA EBISUBASHI HIT VISION | 15.4 × 17.3 m on the wall facing the canal and 18.6 × 10.2 m on the roof over it (455 m²), on 道頓堀1-8-19 at the south-east foot of the bridge (OpenStreetMap w174743244); its top at PLATEAU's 40.2 m* | HIT, [Namba Keizai Shimbun](https://namba.keizai.biz/headline/3343/) |
+| Ebisubashi | the 2007 girder bridge, 26 m between its abutments, faced in granite, bronze three-window parapets after the 1925 bridge, a circular plaza in the middle of the deck, the Tombori River Walk under both ends; its line from Ebisubashi-suji and its width (16.7 m*) from the two sidewalks OpenStreetMap maps on it, its ends at GSI's DEM (3.9 and 4.1 m); its middle 5.85 m* up, about a metre over the real deck, so that the river cruise's boats with people on their upper deck pass under it as under the canal's other bridges; the corner pillars and lanterns are indicative. OpenStreetMap maps it as a pedestrian area, which the game's paths leave out: the game walks it as strips | Wikipedia (ja) "戎橋", Osaka City |
 | Kani Doraku crab | about 9 m across* with its legs, on the Dotonbori facade | indicative |
 | Shop signs | 1,400 facades with a street in front of them, in three districts*; blades, banners and boards in six colours, lit at night | indicative, random |
 
@@ -381,8 +403,9 @@ test hook.
   names are invented. The Tombori River Cruise is split into two short routes
   so that a boat at a landing always goes the way the quest wants. Every boat
   is the shared river shuttle, 20 m long, in an approximate white and blue.
-- **The trees are stand-ins.** The shared trees have no ginkgo or cherry, so
-  Midosuji's ginkgos are drawn as plane trees, and the zelkovas as elms.
+- **The trees** are the shared set's: Midosuji's ginkgos, and Somei-yoshino cherries at the
+  Mint, along the Okawa's east bank, in Osaka Castle and Utsubo parks, in flower from
+  27 March (`trees.cherry_open`).
 - **No Blender render** of Osaka has been made.
 
 ## 10. Reproducing it

@@ -28,6 +28,18 @@ from japankit import Atlas
 HERE = os.path.dirname(os.path.abspath(__file__))
 ATLAS_FILE = "scramble.jpg"
 
+
+def _sibling(name):
+    """A module next to this one (this folder is not on sys.path): streets.py, the streets off the scramble."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(f"shibuya_{name}", os.path.join(HERE, f"{name}.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+streets = _sibling("streets")
+
 MATERIALS = {
     # the junction's asphalt, laid over the ground (dark, a little worn; the game's street texture under it)
     "x_asphalt": {"color": "#4b4e52", "roughness": 0.93, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0], "decal": True, "street_lit": True},
@@ -50,7 +62,7 @@ MATERIALS = {
     # the JR lines' bed: retaining walls of concrete, the girder bridge's steel (painted grey), ballast, rails
     "x_jr_wall": {"color": "#a7a39a", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [5.0, 0.0]},
     "x_jr_concrete": {"color": "#bab6ad", "roughness": 0.9, "metalness": 0.0},
-    "x_jr_steel": {"color": "#8e959a", "roughness": 0.55, "metalness": 0.45},
+    "x_jr_steel": {"color": "#727a80", "roughness": 0.55, "metalness": 0.45},
     "x_ballast": {"color": "#6f6a63", "roughness": 1.0, "metalness": 0.0, "pattern": "granite", "joints_m": [0, 0]},
     "x_sleeper": {"color": "#9a968e", "roughness": 0.9, "metalness": 0.0},
     "x_rail_steel": {"color": "#8a8580", "roughness": 0.35, "metalness": 0.85},
@@ -61,7 +73,7 @@ MATERIALS = {
     "x_qf_panel": {"color": "#cfd2d5", "roughness": 0.45, "metalness": 0.5},
     "x_qf_roof": {"color": "#6d7176", "roughness": 0.8, "metalness": 0.2},
     "x_shop": {"color": "#59616a", "roughness": 0.12, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 2.4, "storey_m": 4.8, "spandrel": 0.04,
-               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 1.0, "lit_k": 1.1, "warm_share": 0.8},
+               "mullion_m": 0.08, "frame": "#30343a", "lit_share": 0.9, "lit_k": 0.8, "warm_share": 0.8},
     # QFRONT's floors behind the outer skin (as city.py's qfront_glass)
     "qfront_glass": {"color": "#2b3741", "roughness": 0.12, "metalness": 0.35, "pattern": "curtain_wall", "bay_m": 1.8, "storey_m": 4.6,
                      "spandrel": 0.1, "mullion_m": 0.09, "frame": "#a9b3bb", "lit_share": 0.55, "lit_k": 0.6},
@@ -72,10 +84,24 @@ MATERIALS = {
     "x_station": {"color": "#c9ccce", "roughness": 0.6, "metalness": 0.2, "pattern": "granite", "joints_m": [1.5, 3.6]},
     "x_koban": {"color": "#d8d4cb", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.3, 0.6]},
     "x_red_lamp": {"color": "#d0201a", "roughness": 0.3, "metalness": 0.0, "emissive": "#ff2010", "glow": 3.0},
+    # a white grid of mullions and floor bands over a building's glass (city windows lit behind it after dark)
+    "x_skin": {"color": "#3a4650", "roughness": 0.15, "metalness": 0.3, "pattern": "curtain_wall", "bay_m": 1.7, "storey_m": 3.4, "spandrel": 0.3,
+               "mullion_m": 0.22, "frame": "#ecebe6", "lit_share": 0.6, "lit_k": 0.9, "warm_share": 0.5},
     "x_gate": {"color": "#7c8086", "roughness": 0.5, "metalness": 0.55},
+    "x_fence": {"color": "#6f757b", "roughness": 0.5, "metalness": 0.6, "pattern": "railing", "bar_m": 0.1, "rails_m": [0.05, 1.75]},
+    "x_tyre": {"color": "#1b1b1c", "roughness": 0.8, "metalness": 0.0},
+    "x_bike_silver": {"color": "#b4b8bc", "roughness": 0.35, "metalness": 0.7},
+    "x_bike_black": {"color": "#26282b", "roughness": 0.5, "metalness": 0.3},
+    "x_bike_white": {"color": "#e8e8e4", "roughness": 0.45, "metalness": 0.2},
+    "x_bike_red": {"color": "#a8262a", "roughness": 0.45, "metalness": 0.3},
     "x_atlas": {"color": "#ffffff", "roughness": 0.6, "metalness": 0.0, "map": ATLAS_FILE, "emissive_map": True, "glow": 1.3},
+    # the bookshop on Center Gai's corner: white clapboard, its blue awning and trim, the sign box's white sides
+    "x_clap": {"color": "#ecebe6", "roughness": 0.7, "metalness": 0.0, "pattern": "granite", "joints_m": [0.0, 0.2]},
+    "x_bk_blue": {"color": "#1f45a8", "roughness": 0.65, "metalness": 0.0},
+    "x_bk_box": {"color": "#f1f1ee", "roughness": 0.5, "metalness": 0.1},
 }
-LIT = {"x_light", "x_atlas", "x_print", "x_shop", "x_red_lamp"}
+MATERIALS.update(streets.MATERIALS)
+LIT = {"x_light", "x_atlas", "x_print", "x_red_lamp"}
 
 
 # ---------------------------------------------------------------- data
@@ -543,6 +569,43 @@ JR = {"y0": -1016.0, "y1": -860.0, "bridge": (-1012.5, -987.5), "rail_m": 7.4, "
       "lines": ("山手線", "山手貨物線"), "mast_every_m": 46.0}
 
 
+JR_LOT = (422.5, -908.0, 447.5, -898.8)   # ハチ公口自転車等駐輪場 under the tracks (OSM): x0, y0, x1, y1
+
+
+def bicycle_model(colour, basket):
+    """A city bicycle (mamachari), pointing along +x, its wheels on the ground at x = -0.55 and 0.5."""
+    from meshkit import Mesh
+    tyre, frm, black, steel = (Mesh(f"bike_{n}", m, False) for n, m in (("tyre", "x_tyre"), ("frame", colour), ("saddle", "x_bike_black"), ("bars", "x_rail")))
+    P = lambda u, v, z: np.array([u, v, z])
+    r = 0.33
+    for u in (-0.55, 0.5):
+        tyre.tube([P(u + r * math.cos(t), 0, r + r * math.sin(t)) for t in np.linspace(0, 2 * math.pi, 13)], 0.022, 4)
+    frm.tube([P(-0.55, 0, r), P(-0.12, 0, 0.78), P(0.38, 0, 0.8), P(0.5, 0, r)], 0.022, 4)
+    frm.tube([P(-0.12, 0, 0.78), P(0.0, 0, r), P(0.38, 0, 0.8)], 0.02, 4)
+    black.tube([P(-0.17, 0, 0.92), P(-0.02, 0, 0.92)], 0.045, 5)
+    steel.tube([P(0.42, -0.26, 1.0), P(0.42, 0.26, 1.0)], 0.015, 4)
+    if basket:
+        box(steel, frame((0, 0), (1, 0)), 0.48, 0.78, -0.15, 0.15, 0.72, 0.92)
+    return [m for m in (tyre, frm, black, steel) if m.v]
+
+
+def bicycles(D, lot, every=0.62):
+    """The bicycle lot under the tracks: two rows of city bicycles in their racks, in a few colours,
+    instanced (landmarks.json props)."""
+    x0, y0, x1, y1 = lot
+    rng = np.random.default_rng(1105)
+    kinds = {f"bicycle_{c}_{b}": (f"x_bike_{c}", b) for c in ("silver", "black", "white", "red") for b in (0, 1)}
+    at = {k: [] for k in kinds}
+    for row_y, face in ((y0 + 1.2, 1), (y1 - 1.2, -1)):
+        for x in np.arange(x0 + 0.6, x1 - 0.4, every):
+            if rng.random() < 0.15:
+                continue                                   # a free space
+            k = list(kinds)[int(rng.integers(len(kinds)))]
+            yy = row_y - face * 0.5                        # the bicycle's middle, pointing into the rack
+            at[k].append([round(float(x), 2), round(float(yy), 2), round(D.ground(x, yy), 2), round(face * math.pi / 2, 3)])
+    return [dict(name=k, at=v, parts=[m.dump() for m in bicycle_model(*kinds[k])], far=250) for k, v in at.items() if v]
+
+
 def jr_tracks(D):
     """Each track's centre line, south to north, clipped to the corridor drawn (OSM, the surface lines)."""
     from shapely.ops import linemerge
@@ -595,13 +658,16 @@ def jr_lines(K, A, D):
     for k in range(len(ys) - 1):
         y, y2 = ys[k], ys[k + 1]
         on_bridge = b0 <= (y + y2) / 2 <= b1
+        viaduct = (y + y2) / 2 > b1 + 1.2          # north of the bridge the tracks are on a viaduct (the bicycle lot is under it)
         q = [(west[k], y), (east[k], y), (east[k + 1], y2), (west[k + 1], y2)]
         ballast.quad(*[np.array([x, yy, zb]) for x, yy in q], [[x, yy] for x, yy in q])
+        if viaduct:
+            conc.quad(*[np.array([x, yy, zb - JR["girder_m"] + 0.3]) for x, yy in (q[1], q[0], q[3], q[2])])   # its soffit
         for xs, side in ((west, -1), (east, 1)):
             a, b = np.array([xs[k], y]), np.array([xs[k + 1], y2])
             g0 = min(D.ground(*a), D.ground(*b))
-            zlow = zb - JR["girder_m"] if on_bridge else g0 - 0.3
-            mat = steel if on_bridge else wall
+            zlow = zb - JR["girder_m"] if (on_bridge or viaduct) else g0 - 0.3
+            mat = steel if on_bridge else (conc if viaduct else wall)
             p0, p1 = (a, b) if side > 0 else (b, a)    # wound to face out
             mat.quad(np.array([*p0, zlow]), np.array([*p1, zlow]), np.array([*p1, zb + 1.15]), np.array([*p0, zb + 1.15]),
                      [[0, zlow], [np.linalg.norm(b - a), zlow], [np.linalg.norm(b - a), zb + 1.15], [0, zb + 1.15]])
@@ -610,6 +676,35 @@ def jr_lines(K, A, D):
             if on_bridge:   # the girder's underside
                 steel.quad(np.array([*p1, zlow]), np.array([*p0, zlow]), np.array([*p0 + np.array([-side * 1.2, 0]), zlow]),
                            np.array([*p1 + np.array([-side * 1.2, 0]), zlow]))
+    # the bridge's plate girders: vertical stiffeners every 1.2 m and a flange top and bottom, on both faces,
+    # and the clearance sign over the road on the scramble's side (高さ制限; its figure is an estimate)
+    for xs, side in ((west, -1), (east, 1)):
+        for yy in np.arange(b0 + 0.4, b1 - 0.2, 1.2):
+            x = np.interp(yy, ys, xs)
+            box(steel, frame((x, yy), (side, 0)), 0.0, 0.12, -0.06, 0.06, zb - JR["girder_m"], zb + 1.15)
+        for z in (zb - JR["girder_m"], zb + 1.0):
+            x0_, x1_ = np.interp(b0, ys, xs), np.interp(b1, ys, xs)
+            box(steel, frame((x0_, b0), (x1_ - x0_, b1 - b0)), 0.0, b1 - b0, -0.25 * side - 0.0, 0.25 * side, z, z + 0.15)
+    xw0 = np.interp((b0 + b1) / 2, ys, west)
+    Pw = frame((xw0 - 0.15, (b0 + b1) / 2), (-1, 0))
+    A.quad(K["x_atlas"], Pw(0, 1.6, zb - JR["girder_m"] + 0.25), Pw(0, -1.6, zb - JR["girder_m"] + 0.25), Pw(0, -1.6, zb - JR["girder_m"] + 1.05),
+           Pw(0, 1.6, zb - JR["girder_m"] + 1.05), "jr_clear")
+    # the viaduct's columns, in three rows, and the fence between the western ones (open at the bicycle lot)
+    lot = JR_LOT
+    for yy in np.arange(b1 + 6.0, JR["y1"], 7.5):
+        xa, xb = np.interp(yy, ys, west), np.interp(yy, ys, east)
+        g = D.ground((xa + xb) / 2, yy)
+        for x in (xa + 0.6, (xa + xb) / 2, xb - 0.6):
+            box(conc, frame((x, yy), (1, 0)), -0.45, 0.45, -0.45, 0.45, g - 0.2, zb - JR["girder_m"] + 0.3, uvm=True)
+        y2 = yy + 7.5
+        if y2 < JR["y1"] and not (lot[1] - 1 < yy + 3.75 < lot[3] + 1):
+            xa2 = np.interp(y2, ys, west)
+            K["x_fence"].quad(np.array([xa + 0.15, yy, g]), np.array([xa2 + 0.15, y2, g]), np.array([xa2 + 0.15, y2, g + 1.8]), np.array([xa + 0.15, yy, g + 1.8]),
+                              [[0, 0], [7.5, 0], [7.5, 1.8], [0, 1.8]])
+    D.props = getattr(D, "props", []) + bicycles(D, lot)
+    for row_y, face in ((lot[1] + 1.2, 1), (lot[3] - 1.2, -1)):     # the racks' rails
+        K["x_rail"].tube([np.array([lot[0] + 0.5, row_y + face * 0.6, D.ground(lot[0], row_y) + 0.3]),
+                          np.array([lot[2] - 0.5, row_y + face * 0.6, D.ground(lot[2], row_y) + 0.3])], 0.025, 4)
     # under the bridge: the deck's soffit with its cross girders, and the abutments each side of the road
     xw, xe = np.interp(b0, ys, west), np.interp(b0, ys, east)
     xw2, xe2 = np.interp(b1, ys, west), np.interp(b1, ys, east)
@@ -648,6 +743,59 @@ def jr_lines(K, A, D):
     for t in tracks:
         for h, r in ((5.1, 0.008), (6.0, 0.01)):
             K["x_wire"].tube([np.array([x_at(t, yy), yy, zr + h]) for yy in np.arange(JR["y0"], JR["y1"] + 0.1, 10.0)], r, 4)
+
+
+# ---------------------------------------------------------------- the Ginza line's viaduct
+
+# The Ginza line, Tokyo's first underground (1927), comes out into the air at Shibuya: from its depot in
+# the Mark City block it runs east on a concrete viaduct at about the third floor, over the street and the
+# old Toyoko site, to the station over Meiji-dori (since January 2020). OSM's line (bridge=viaduct, layer
+# 2); the rails' height (12 m over the street), the deck and the piers are estimates. It takes its power
+# from a third rail, so no wires run over it.
+GINZA = {"name": "東京メトロ銀座線", "rail_m": 12.0, "width_m": 9.0, "deck_m": 2.2, "pier_every_m": 24.0, "x1": 418.0}
+
+
+def ginza_viaduct(K, D):
+    ways = [w for w in D.ways if w["tags"].get("name") == GINZA["name"] and w["tags"].get("bridge") == "viaduct" and w["tags"].get("layer") == "2"
+            and len(w["xy"]) > 3]
+    if not ways:
+        return
+    from shapely.geometry import box as sbox
+    ln = LineString([tuple(p) for p in max(ways, key=lambda w: len(w["xy"]))["xy"]]).intersection(sbox(300, -1200, GINZA["x1"], -1000))
+    if ln.is_empty or ln.geom_type != "LineString":
+        return
+    g0 = D.ground(360.0, -1090.0)
+    zr = g0 + GINZA["rail_m"]
+    zt, zb = zr - 0.5, zr - 0.5 - GINZA["deck_m"]
+    hw = GINZA["width_m"] / 2
+    conc, dark = K["x_jr_concrete"], K["x_jr_wall"]
+    bands = road_bands(D)
+    pts = [np.asarray(ln.interpolate(s_).coords[0]) for s_ in np.arange(0, ln.length, 3.0)] + [np.asarray(ln.coords[-1])]
+    for a, b in zip(pts[:-1], pts[1:]):
+        f = unit(b - a)
+        l = np.array([-f[1], f[0]])
+        L = float(np.linalg.norm(b - a))
+        for side in (-1, 1):
+            p, q = a + l * hw * side, b + l * hw * side
+            p0, q0 = (p, q) if side < 0 else (q, p)
+            dark.quad(np.array([*p0, zb]), np.array([*q0, zb]), np.array([*q0, zt + 1.1]), np.array([*p0, zt + 1.1]), [[0, zb], [L, zb], [L, zt + 1.1], [0, zt + 1.1]])
+            conc.quad(np.array([*p0, zt + 1.1]), np.array([*q0, zt + 1.1]), np.array([*(q0 - l * side * 0.25), zt + 1.2]), np.array([*(p0 - l * side * 0.25), zt + 1.2]))
+        conc.quad(np.array([*(b - l * hw), zb]), np.array([*(a - l * hw), zb]), np.array([*(a + l * hw), zb]), np.array([*(b + l * hw), zb]))     # the soffit
+        K["x_ballast"].quad(*[np.array([*x, zt]) for x in (a - l * hw, b - l * hw, b + l * hw, a + l * hw)], [list(x) for x in (a - l * hw, b - l * hw, b + l * hw, a + l * hw)])
+    # the two tracks with their third rail; piers where they stand clear of the roads
+    for off in (-1.9, 1.9):
+        for r in (-0.7175, 0.7175, 1.25 * np.sign(off)):
+            path = [np.array([*(p + np.array([-unit(np.asarray(ln.coords[-1]) - np.asarray(ln.coords[0]))[1], unit(np.asarray(ln.coords[-1]) - np.asarray(ln.coords[0]))[0]]) * (off + r)), zt + 0.25])
+                    for p in pts]
+            K["x_rail_steel"].tube(path, 0.04 if abs(r) < 1 else 0.06, 4)
+    for s_ in np.arange(6.0, ln.length, GINZA["pier_every_m"]):
+        c = np.asarray(ln.interpolate(s_).coords[0])
+        if bands.buffer(1.5).contains(Point(*c)):
+            continue
+        q = np.asarray(ln.interpolate(min(ln.length, s_ + 1.0)).coords[0])
+        P = frame(c, q - c)
+        g = D.ground(*c)
+        box(conc, P, -0.7, 0.7, -hw + 1.0, hw - 1.0, g, zb, uvm=True)
 
 
 # ---------------------------------------------------------------- QFRONT
@@ -976,30 +1124,39 @@ def draw_gate(img, rects):
 # over the street); the brands are invented, in the kinds the real ones are (a pharmaceutical's two
 # boxes, a card company, a furniture store, throat lozenges, a karaoke chain).
 BILLBOARDS = [
-    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 8.2, 2.7), ("bb_hikari2", 8.2, 4.6)], "gap": 0.4},
-    {"at": (306.5, -951.0), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_card", 6.4, 6.4)], "lift": 3.0},
-    {"at": (281.0, -952.0), "face": (372.0, -1020.0), "roof_m": 37.8, "boxes": [("bb_home", 8.0, 3.6)], "lift": 2.0},
-    {"at": (274.0, -968.0), "face": (372.0, -1020.0), "roof_m": 52.1, "boxes": [("bb_nodo", 9.0, 4.2)], "lift": 1.5},
+    # the Taiseido block's tower: three boxes stacked tight (15 cm apart) up to the tower's top at 39.4 m
+    {"at": (324.7, -971.6), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_hikari", 11.0, 3.6), ("bb_hikari2", 11.0, 6.2), ("bb_lens", 11.0, 4.0)],
+     "gap": 0.15, "lift": 1.0},
+    {"at": (306.5, -951.0), "face": (372.0, -1030.0), "roof_m": 24.1, "boxes": [("bb_card", 8.0, 8.0)], "lift": 3.0},
+    {"at": (281.0, -952.0), "face": (372.0, -1020.0), "roof_m": 37.8, "boxes": [("bb_home", 10.5, 4.8)], "lift": 2.0},
+    {"at": (274.0, -968.0), "face": (372.0, -1020.0), "roof_m": 52.1, "boxes": [("bb_nodo", 12.0, 5.6)], "lift": 1.5},
 ]
 # bands of tenants' signs across a building's face toward the scramble: (building, floors' heights above
-# the street, art) -- the Oto building's restaurants and opticians, the Taiseido block's bookshop fascia
+# the street, art) -- the Oto building's restaurants and opticians (the bookshop on the corner: BOOKSHOP)
 BANDS = [
     {"building": "渋谷駅前ビル", "near": (320.0, -1045.0), "toward": (372.0, -1010.0), "rows": [(8.2, "band_shabu"), (11.6, "band_cafe"), (15.0, "band_megane"),
                                                                                        (18.4, "band_price"), (21.8, "band_clinic")], "w": 0.8},
-    {"building": "w136690966", "near": (318.0, -975.0), "toward": (360.0, -1000.0), "rows": [(3.2, "band_books")], "w": 0.55},
+    {"building": "渋谷駅前ビル", "near": (310.0, -1015.0), "toward": (305.0, -980.0), "rows": [(4.6, "band_karaoke"), (8.2, "band_cafe"), (11.6, "band_shabu"),
+                                                                                    (15.0, "band_megane"), (18.4, "band_clinic")], "w": 0.85},
 ]
+# the station-front building's faces on the scramble and on Dogenzaka: a white grid of mullions and
+# floor bands over its glass (photographs; its windows' red frames are not drawn)
+SKINS = [{"building": "渋谷駅前ビル", "near": (320.0, -1045.0), "toward": (372.0, -1010.0)},
+         {"building": "渋谷駅前ビル", "near": (310.0, -1015.0), "toward": (305.0, -980.0)},
+         {"building": "渋谷駅前ビル", "near": (310.0, -1015.0), "toward": (350.0, -995.0)}]
 BB_ART = {
     "bb_hikari": ("#1d4fa8", "HIKARIDO", "bebas", "#ffffff", None),
     "bb_hikari2": ("#1f9a4c", "ヒカリパス", "zen", "#ffffff", "貼る、すっきり。"),
     "bb_card": ("#ffffff", "NC", "anton", "#1d3c9a", "NOVA CARD"),
     "bb_home": ("#f2c400", "HOMELY", "anton", "#164aa8", "家具と雑貨"),
     "bb_nodo": ("#f06aa0", "のどにハッカ", "zen", "#ffffff", "ハッカ散 ダイレクト"),
+    "bb_lens": ("#0b2a6f", "1DAY CLEAR", "anton", "#ffffff", "コンタクト レンズ"),
     "band_shabu": ("#f07a1a", "しゃぶしゃぶ 葉山", "zen", "#ffffff", None),
     "band_cafe": ("#d7262b", "Cafeレストラン ガロ", "zen", "#ffffff", None),
     "band_megane": ("#d42f2f", "メガネ・コンタクト", "zen", "#fff3a0", None),
     "band_price": ("#ffde2a", "チケット プライス", "zen", "#c0141c", None),
     "band_clinic": ("#ffffff", "渋谷駅前クリニック", "zen", "#1d4fa8", None),
-    "band_books": ("#ffffff", "大盛堂書店", "mincho", "#1a3c9c", None),
+    "band_karaoke": ("#e01f26", "カラオケ ONE  2F", "zen", "#ffffff", None),
 }
 
 
@@ -1032,11 +1189,21 @@ def billboards(K, A, D):
             zz -= b.get("gap", 0.0)
 
 
+def skins(K, D):
+    import screens as sc_
+    for b in SKINS:
+        mid, n, L, z0, z1 = sc_.facade("shibuya", b["building"], b["toward"], near=b.get("near"))
+        t = np.array([-n[1], n[0]])
+        a, c = mid - t * L / 2 + n * 0.12, mid + t * L / 2 + n * 0.12
+        zt = z1 - 0.3
+        K["x_skin"].quad(np.array([*a, z0 + 4.0]), np.array([*c, z0 + 4.0]), np.array([*c, zt]), np.array([*a, zt]), [[0, 4.0], [L, 4.0], [L, zt - z0], [0, zt - z0]])
+
+
 def sign_bands(K, A, D):
     import screens as sc_
     for b in BANDS:
         mid, n, L, z0, z1 = sc_.facade("shibuya", b["building"], b["toward"], near=b.get("near"))
-        P = frame(mid, n)
+        P = frame(mid + n * 0.5, n)        # (standing out from the wall, in front of its skin)
         w = L * b["w"]
         for z, key in b["rows"]:
             if z0 + z + 1.2 > z1:
@@ -1116,6 +1283,134 @@ def draw_magnet(img, rects):
     img.paste(im, (x, y))
 
 
+# ---------------------------------------------------------------- the bookshop on Center Gai's corner
+
+# On the corner where Center Gai meets the scramble stands a bookshop that has been there since 1912, in a
+# narrow building at the south-east corner of the block (OSM's w136690966 is the whole block). Its front
+# is the corner's chamfer, facing the crossing, and a few metres of the side on the street to the south:
+# white clapboard to the first floor, the shop window and door on the chamfer under a blue awning with the
+# shop's name in white, and over them a big white box sign, lit from inside, wrapping round the corner:
+# the name in heavy blue characters inside a red outline of an open book, the romanised name in red
+# under it, a blue edge along its foot (photographs 2021-24). The name is invented in the real one's
+# pattern -- five characters, □□堂書店, set the same way in the same colours -- not the real shop's.
+# Sizes from photographs, scaled from the door: the awning at 3.0-3.45 m, the sign 3.6-6.9 m.
+BOOKSHOP = {"a": (323.6, -975.2), "b": (329.9, -969.4), "south_from": (295.4, -978.2), "return_m": 3.4,
+            "name": ("大昇", "堂書店"), "roman": "BOOKS TAISHODO", "awning": "TAISHODO",
+            "sign_z": (3.6, 6.9), "sign_off": 0.75, "awning_z": (3.0, 3.45), "awning_out": 1.15}
+
+
+def _offset_corner(a, n1, f1, n2, f2, off):
+    """Where the two faces' lines, each moved `off` out along its normal, meet (the sign's mitre)."""
+    p, q = a + n1 * off, a + n2 * off
+    M = np.array([f1, -f2]).T
+    t = np.linalg.solve(M, q - p)
+    return p + f1 * t[0]
+
+
+def bookshop(K, A, D):
+    """The corner bookshop: clapboard, shop window, awning and the wrapping box sign (BOOKSHOP)."""
+    B = BOOKSHOP
+    a, b, s0 = (np.asarray(B[k], float) for k in ("a", "b", "south_from"))
+    f1 = unit(b - a)                       # along the chamfer, from the south corner to Center Gai's
+    n1 = np.array([f1[1], -f1[0]])         # its outward normal (the crossing)
+    f2 = unit(a - s0)                      # along the south face, toward the corner
+    n2 = np.array([f2[1], -f2[0]])         # its outward normal (the street to the south)
+    Lc, Lr = float(np.linalg.norm(b - a)), B["return_m"]
+    r0 = a - f2 * Lr                       # where the shop's front starts on the south face
+    g = min(D.ground(*a), D.ground(*b), D.ground(*r0))
+
+    def face(p, q, n, off, z0, z1, m, uvm=True):
+        p, q = p + n * off, q + n * off
+        L = float(np.linalg.norm(q - p))
+        m.quad(np.array([*p, z0]), np.array([*q, z0]), np.array([*q, z1]), np.array([*p, z1]),
+               [[0, z0 - g], [L, z0 - g], [L, z1 - g], [0, z1 - g]] if uvm else None)
+
+    za0, za1 = (g + z for z in B["awning_z"])
+    # the ground floor: clapboard, the window and door on the chamfer, a display window on the side
+    face(r0, a, n2, 0.12, g, za1, K["x_clap"])
+    face(a, b, n1, 0.12, g, za1, K["x_clap"])
+    for p, q, n, inset in ((a, b, n1, 1.1), (r0, a, n2, 0.6)):
+        ff = unit(q - p)
+        pp, qq = p + ff * inset, q - ff * (inset if n is n1 else 1.4)
+        face(pp, qq, n, 0.14, g + (0.03 if n is n1 else 0.7), g + 2.55, K["x_shop"])
+        P = frame(pp + n * 0.14, n)
+        Lw = float(np.linalg.norm(qq - pp))
+        for v in np.linspace(0, Lw, max(2, int(Lw / 1.5)) + 1):     # mullions
+            box(K["x_frame"], P, 0.0, 0.05, v - 0.03, v + 0.03, g + (0.03 if n is n1 else 0.7), g + 2.55)
+        box(K["x_frame"], P, 0.0, 0.05, 0.0, Lw, g + 2.55, g + 2.66)
+    # the awning: sloping out from the wall, its front valance carrying the name in white
+    for p, q, n in ((r0, a, n2), (a, b, n1)):
+        out = B["awning_out"]
+        pa, qa = p + n * 0.12, q + n * 0.12
+        po, qo = pa + n * out, qa + n * out
+        K["x_bk_blue"].quad(np.array([*pa, za1]), np.array([*po, za0 + 0.25]), np.array([*qo, za0 + 0.25]), np.array([*qa, za1]))
+        K["x_bk_blue"].quad(np.array([*qa, za1 - 0.02]), np.array([*qo, za0 + 0.23]), np.array([*po, za0 + 0.23]), np.array([*pa, za1 - 0.02]))
+        if n is n1:
+            A.quad(K["x_atlas"], np.array([*po, za0]), np.array([*qo, za0]), np.array([*qo, za0 + 0.25]), np.array([*po, za0 + 0.25]), "bk_awning")
+        else:
+            K["x_bk_blue"].quad(np.array([*po, za0]), np.array([*qo, za0]), np.array([*qo, za0 + 0.25]), np.array([*po, za0 + 0.25]))
+    # the sign box round the corner: its face (one image across both faces), top, foot and ends
+    zs0, zs1 = (g + z for z in B["sign_z"])
+    off = B["sign_off"]
+    c = _offset_corner(a, n1, f1, n2, f2, off)
+    s_start, s_end = r0 + n2 * off, b + n1 * off + f1 * 0.2
+    L1, L2 = float(np.linalg.norm(c - s_start)), float(np.linalg.norm(s_end - c))
+    u0, v0, u1, v1 = A.uv("bk_sign")
+    um = u0 + (u1 - u0) * L1 / (L1 + L2)
+    zb = zs0 + 0.16                         # (the blue edge along its foot)
+    K["x_atlas"].quad(np.array([*s_start, zb]), np.array([*c, zb]), np.array([*c, zs1]), np.array([*s_start, zs1]), [[u0, v0], [um, v0], [um, v1], [u0, v1]])
+    K["x_atlas"].quad(np.array([*c, zb]), np.array([*s_end, zb]), np.array([*s_end, zs1]), np.array([*c, zs1]), [[um, v0], [u1, v0], [u1, v1], [um, v1]])
+    for p, q in ((s_start, c), (c, s_end)):
+        K["x_bk_blue"].quad(np.array([*p, zs0]), np.array([*q, zs0]), np.array([*q, zb]), np.array([*p, zb]))
+    wall_s, wall_e = r0 + n2 * 0.1, b + n1 * 0.1 + f1 * 0.2
+    wall_c = _offset_corner(a, n1, f1, n2, f2, 0.1)
+    for z, up in ((zs1, True), (zs0, False)):      # its top and its underside: a band bent round the corner
+        for quad in ((wall_s, s_start, c, wall_c), (wall_c, c, s_end, wall_e)):
+            for tri in ((quad[0], quad[1], quad[2]), (quad[0], quad[2], quad[3])):
+                pts = [np.array([*p, z]) for p in tri]
+                nz = np.cross(pts[1] - pts[0], pts[2] - pts[0])[2]
+                K["x_bk_box"].tri(*(pts if (nz > 0) == up else pts[::-1]))
+    for p, q in ((wall_s, s_start), (s_end, wall_e)):  # its ends
+        K["x_bk_box"].quad(np.array([*p, zs0]), np.array([*q, zs0]), np.array([*q, zs1]), np.array([*p, zs1]))
+        K["x_bk_box"].quad(np.array([*q, zs0]), np.array([*p, zs0]), np.array([*p, zs1]), np.array([*q, zs1]))
+
+
+def draw_bookshop(img, rects):
+    from PIL import ImageDraw
+    x, y, w, h = rects["bk_sign"]
+    B = BOOKSHOP
+    a, b, s0 = (np.asarray(B[k], float) for k in ("a", "b", "south_from"))
+    Lc = float(np.linalg.norm(b - a)) + 0.2 + 0.5
+    split = int(w * (B["return_m"] + 0.5) / (B["return_m"] + 0.5 + Lc))
+    im = Image_new(w, h, (250, 250, 247))
+    d = ImageDraw.Draw(im)
+    red, blue = (214, 40, 40), (24, 56, 190)
+    # the open book: a red outline, its pages' top edges dipping to the spine at the corner (the side face
+    # carries its left page, the front its right)
+    lw = max(6, h // 40)
+    top, bot = h * 0.1, h * 0.86
+    spine = split                           # at the corner, where the box turns
+    pts_top = [(lw, top + h * 0.06), (spine * 0.5, top), (spine, top + h * 0.1), (spine + (w - spine) * 0.5, top), (w - lw, top + h * 0.06)]
+    d.line(pts_top, fill=red, width=lw, joint="curve")
+    d.line([(lw, top + h * 0.06), (lw, bot)], fill=red, width=lw)
+    d.line([(lw, bot), (spine, bot + h * 0.04), (w * 0.74, bot)], fill=red, width=lw)
+    d.line([(spine, top + h * 0.1), (spine, bot + h * 0.04)], fill=red, width=max(3, lw // 2))
+    # the name: two characters on the side, three on the front
+    left, right = B["name"]
+    sz = int(h * 0.62)
+    for k, ch in enumerate(left):
+        ad.text(im, (split * (k + 0.5) / len(left), h * 0.5), ch, "zen", min(sz, int(split / len(left) * 0.92)), fill="#1838be")
+    span = (w - split) * 0.96
+    for k, ch in enumerate(right):
+        ad.text(im, (split + span * (k + 0.42) / len(right), h * 0.44), ch, "zen", sz, fill="#1838be")
+    ad.text(im, (w * 0.86, h * 0.8), B["roman"], "anton", int(h * 0.13), fill="#d42a2a")
+    img.paste(im, (x, y))
+    x, y, w, h = rects["bk_awning"]
+    im = Image_new(w, h, (31, 69, 168))
+    ad.text(im, (w * 0.5, h * 0.52), B["awning"], "anton", int(h * 0.74), fill="#ffffff", spacing=int(h * 0.1))
+    img.paste(im, (x, y))
+
+
 # ---------------------------------------------------------------- the JR station's Hachiko side
 
 # OSM maps JR Shibuya station's whole outline as one 15 m building, which the generic styles drew as a
@@ -1180,6 +1475,17 @@ def station(K, A, D, koban_box):
         p = a + f * L * (k + 0.5) / 6 + n * (lift + 1.4)
         box(K["x_light"], frame(p, n), -0.25, 0.25, -0.3, 0.3, z1 + 0.4, z1 + 0.7)
     return [q["si"] for q in sol]
+
+
+def draw_jr(img, rects):
+    from PIL import ImageDraw
+    x, y, w, h = rects["jr_clear"]
+    im = Image_new(w, h, (245, 245, 240))
+    d = ImageDraw.Draw(im)
+    d.rectangle([3, 3, w - 4, h - 4], outline=(30, 60, 150), width=5)
+    ad.text(im, (w * 0.3, h * 0.5), "高さ制限", "zen", int(h * 0.36), fill="#1e3c96")
+    ad.text(im, (w * 0.74, h * 0.52), "4.5m", "anton", int(h * 0.6), fill="#1e3c96")
+    img.paste(im, (x, y))
 
 
 def draw_station(img, rects):
@@ -1257,8 +1563,10 @@ class Build:
         for b in BILLBOARDS:
             items += [(k, int(min(512, 96 * w / h)) if w >= h else 128, 96 if w >= h else int(128 * h / w)) for k, w, h in b["boxes"]]
         items += [(k, 768, 76) for b in BANDS for _, k in b["rows"]]
-        items += [("st_billboard", 1024, 480), ("st_hoarding", 512, 160), ("magnet_name", 768, 112), ("koban_sign", 384, 76), ("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
+        items += [("jr_clear", 384, 96), ("st_billboard", 1024, 480), ("st_hoarding", 512, 160), ("magnet_name", 768, 112), ("koban_sign", 384, 76), ("s109_wrap", 512, 768), ("s109_name", 512, 384), ("cg_banner", 768, 160), ("cg_name", 64, 384)]
         items += [("qf_crown", 1024, 320), ("qf_name", 384, 52), ("qf_starbucks", 768, 92), ("qf_tsutaya", 512, 84)]
+        items += [("bk_sign", 1600, 400), ("bk_awning", 768, 48)]
+        items += streets.atlas_items()
         self.A = Atlas(list(dict.fromkeys(items)), width=2048)
 
     def meshes(self):
@@ -1266,19 +1574,23 @@ class Build:
         clip, hidden = [], []
         crosswalks(K, self.D, self.node)
         jr_lines(K, self.A, self.D)
+        ginza_viaduct(K, self.D)
         hidden += qfront(K, self.A, self.D)
         hidden += shibuya109(K, self.A, self.D)
         billboards(K, self.A, self.D)
         kb = koban(K, self.A, self.D, self.node)
         hidden += station(K, self.A, self.D, kb)
         magnet_front(K, self.A, self.D)
+        skins(K, self.D)
         sign_bands(K, self.A, self.D)
+        bookshop(K, self.A, self.D)
+        streets.build(K, self.A, self.D)
         if "center_gai" in self.lm:
             center_gai_gate(K, self.A, self.D, self.lm["center_gai"])
         for e in self.entrances:
             clip.append({"ring": entrance(K, self.A, e)})
             hidden.append(e["si"])
-        return K.out(), hidden, clip
+        return K.out(), hidden, clip, getattr(self.D, "props", [])
 
     def draw(self, out_dir):
         from PIL import Image
@@ -1292,6 +1604,9 @@ class Build:
         draw_billboards(img, self.A.rects)
         draw_koban(img, self.A.rects)
         draw_magnet(img, self.A.rects)
+        draw_bookshop(img, self.A.rects)
+        streets.draw(img, self.A.rects)
         draw_station(img, self.A.rects)
+        draw_jr(img, self.A.rects)
         img.save(os.path.join(out_dir, ATLAS_FILE), quality=90)
         return ATLAS_FILE

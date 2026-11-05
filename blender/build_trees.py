@@ -1,8 +1,12 @@
 """Build the street and park trees every city shares: web/assets/trees/trees.glb and
 trees.json.
 
-Seven species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
-Island date palm and Japanese maple (momiji, red in autumn: web/trees.js). Each is grown,
+Sixteen species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
+Island date palm and Japanese maple (momiji, red in autumn: web/trees.js); Japan's black pine,
+cryptomeria (sugi), camphor, zelkova and ginkgo (the last two turn in autumn too) and the
+Somei-yoshino cherry (pale pink on bare branches for a fortnight in spring); an evergreen
+broadleaf for Hong Kong's hills and the laurel forest of the shrine groves; and the coral cays'
+pisonia and she-oak (casuarina). Each is grown,
 not sculpted: points are scattered through the shell of
 the species' crown shape, clustered into limbs and twigs, and branches are grown from the
 trunk out to each cluster; every point carries a card with a spray of leaves from a leaf
@@ -31,21 +35,28 @@ from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_vehicles import MAT, ROOT, TAU, Mesh, camera, ground_plane, material, render, select, setup_render, sun_lamp  # noqa: E402
+from meshopt import compress  # noqa: E402  (build_vehicles puts pipeline/ on the path)
+from glb_webp import webp  # noqa: E402
 
 OUT = os.path.join(ROOT, "web", "assets", "trees")
 DOCS = os.path.join(ROOT, "docs", "images", "trees")
 
 # ------------------------------------------------------------ the leaf atlas
-# 4 x 2 cells, each a spray of leaves growing up from the middle of its bottom edge
-ATLAS, CW, CH = 1024, 256, 512
-CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7}
+# 4 x 5 cells, each a spray of leaves growing up from the middle of its bottom edge (a bloom cell stays
+# right of its leaf cell: web/trees.js swaps one for the other with the season; the jacaranda's "bloom"
+# beside "jacaranda", the cherry's "sakura" beside "cherry"). Cells 18 and 19 are free.
+ATLAS_W, ATLAS_H, CW, CH = 1024, 2560, 256, 512
+COLS, ROWS = ATLAS_W // CW, ATLAS_H // CH
+CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7,
+         "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15,
+         "cherry": 16, "sakura": 17}
 
 
 def cell_uv(k):
     """The cell's rectangle in UV space (v up), inset half a texel."""
-    c, r = k % 4, k // 4
-    e = 0.5 / ATLAS
-    return (c * CW / ATLAS + e, 1 - (r + 1) * CH / ATLAS + e, (c + 1) * CW / ATLAS - e, 1 - r * CH / ATLAS - e)
+    c, r = k % COLS, k // COLS
+    eu, ev = 0.5 / ATLAS_W, 0.5 / ATLAS_H
+    return (c * CW / ATLAS_W + eu, 1 - (r + 1) * CH / ATLAS_H + ev, (c + 1) * CW / ATLAS_W - eu, 1 - r * CH / ATLAS_H - ev)
 
 
 def hexrgb(h, k=1.0):
@@ -77,6 +88,14 @@ def leaf_poly(kind, L, Wd, rng):
             lobe = abs(math.cos(3.5 * a)) ** 3
             r = R * (0.34 + 0.66 * lobe) * (1 - 0.3 * abs(a) / math.pi)
             pts.append((R * 0.8 + r * math.cos(a), r * math.sin(a)))
+        return pts
+    if kind == "fan":       # ginkgo: a fan on a long stalk, its outer edge wavy and notched in the middle
+        pts = [(0, 0)]
+        R = L
+        for a in np.linspace(-0.62, 0.62, 30):
+            notch = 1 - 0.22 * math.exp(-(a / 0.07) ** 2)
+            r = R * (0.92 + 0.05 * math.sin(a * 23)) * notch
+            pts.append((R * 0.35 + r * 0.65 * math.cos(a), r * 0.65 * math.sin(a)))
         return pts
     # palmate (plane): five pointed lobes round the stalk end
     pts = []
@@ -133,7 +152,48 @@ def spray(img, k, spec, rng, S=2):
                 ang = ta + side * rng.uniform(*spec["angle"]) + spec.get("droop", 0) * (1 if math.cos(ta + side) > 0 else -1)
                 scale = rng.uniform(0.75, 1.15) * (0.6 + 0.4 * i / n if spec.get("taper") else 1)
                 col = hexrgb(spec["colours"][rng.integers(len(spec["colours"]))], rng.uniform(0.85, 1.12))
-                if spec["leaf"] == "flower":
+                if spec["leaf"] == "needle":   # a pine's tuft: paired needles fanned forward from the twig
+                    for _ in range(16):
+                        na = ta + rng.normal(0, 0.6) * side
+                        nl = spec["L"] * S * scale * rng.uniform(0.7, 1.1)
+                        dr.line([(px, py), (px + math.cos(na) * nl, py + math.sin(na) * nl)], fill=col + (255,), width=max(2, int(2.2 * S)))
+                elif spec["leaf"] == "awl":    # a cryptomeria's: short stiff awls all round a cord of green
+                    for _ in range(8):
+                        na = ta + side * rng.uniform(0.35, 1.1)
+                        nl = spec["L"] * S * scale * rng.uniform(0.6, 1.0)
+                        ox_, oy_ = px + rng.normal(0, 2) * S, py + rng.normal(0, 2) * S
+                        dr.line([(ox_, oy_), (ox_ + math.cos(na) * nl, oy_ + math.sin(na) * nl)], fill=col + (255,), width=max(3, int(3.2 * S)))
+                    dr.ellipse([px - 7 * S, py - 7 * S, px + 7 * S, py + 7 * S], fill=col + (255,))
+                elif spec["leaf"] == "strand":  # a she-oak's branchlets: jointed green threads hanging from the twig
+                    x_, y_ = px, py
+                    a_ = ta + side * rng.uniform(0.3, 0.8)
+                    pts_ = [(x_, y_)]
+                    for _ in range(12):
+                        a_ += (math.pi / 2 - a_) * 0.12      # gravity pulls each joint down
+                        x_ += math.cos(a_) * spec["L"] * S / 12
+                        y_ += math.sin(a_) * spec["L"] * S / 12
+                        pts_.append((x_, y_))
+                    dr.line(pts_, fill=col + (255,), width=max(4, int(4.0 * S)))
+                elif spec["leaf"] == "blossom":  # a cherry's: umbels of three to five five-petalled flowers on
+                    # short stalks from a bud on the bare twig, pale pink fading to white, a darker eye
+                    cx, cy = px + side * rng.uniform(2, 6) * S, py - rng.uniform(0, 4) * S
+                    for _ in range(int(rng.integers(4, 7))):
+                        fa = rng.uniform(0, TAU)
+                        fd = rng.uniform(6, 16) * S
+                        fx, fy = cx + math.cos(fa) * fd, cy + math.sin(fa) * fd * 0.8
+                        dr.line([(cx, cy), (fx, fy)], fill=hexrgb("#7a4a48") + (255,), width=max(1, int(S)))
+                        pc = hexrgb(spec["colours"][rng.integers(len(spec["colours"]))], rng.uniform(0.94, 1.04))
+                        pr = rng.uniform(5.0, 7.4) * S * scale
+                        turn = rng.uniform(0, TAU)
+                        for q in range(5):
+                            qa = turn + q * TAU / 5
+                            ex, ey = fx + math.cos(qa) * pr * 0.62, fy + math.sin(qa) * pr * 0.62
+                            dr.ellipse([ex - pr * 0.5, ey - pr * 0.5, ex + pr * 0.5, ey + pr * 0.5], fill=pc + (255,))
+                        eye = hexrgb(spec.get("eye", "#c9707f"))
+                        dr.ellipse([fx - pr * 0.22, fy - pr * 0.22, fx + pr * 0.22, fy + pr * 0.22], fill=eye + (255,))
+                    if rng.random() < 0.35:   # a bud not yet open: a deeper pink
+                        dr.ellipse([cx - 2.5 * S, cy - 3.5 * S, cx + 2.5 * S, cy + 3.5 * S], fill=hexrgb("#e3a2b4") + (255,))
+                elif spec["leaf"] == "flower":
                     for _ in range(4):
                         fx, fy = px + rng.normal(0, 10) * S, py + rng.normal(0, 10) * S
                         r = rng.uniform(4, 8) * S
@@ -158,6 +218,28 @@ SPRAYS = {
                   twig="#5a4a3a", twig_w=2, fill=0.95),
     "maple": dict(leaf="maple", L=46, W=46, twigs=8, spread=0.85, every=2, angle=(0.6, 1.2), droop=0.3,
                   colours=["#7aa646", "#86b24e", "#6c9a3e", "#93ba58"], twig="#6b3b2c", twig_w=2, fill=0.8),
+    "pine": dict(leaf="needle", L=46, W=0, twigs=7, spread=0.85, every=1, angle=(0.2, 0.6), colours=["#2c4724", "#36522b", "#263f20", "#3d5a30"],
+                 twig="#4f3d2e", twig_w=3, fill=0.95),
+    "sugi": dict(leaf="awl", L=20, W=0, twigs=10, spread=0.9, every=1, start=1, angle=(0.4, 1.0), colours=["#2d4a2b", "#365533", "#294225", "#3f5a35"],
+                 twig="#3f4a2c", twig_w=4),
+    "camphor": dict(leaf="ovate", L=26, W=12, twigs=8, spread=0.85, every=1, angle=(0.6, 1.1), colours=["#5a8636", "#679441", "#4f7a2f", "#7da64e"],
+                    twig="#5a5040", twig_w=2, fill=0.85),
+    "zelkova": dict(leaf="ovate", L=20, W=9, twigs=9, spread=0.9, every=1, angle=(0.7, 1.2), colours=["#587f35", "#64903e", "#4e742f", "#6d9744"],
+                    twig="#5f564a", twig_w=2, fill=0.8),
+    "ginkgo": dict(leaf="fan", L=30, W=30, twigs=6, spread=0.8, every=2, angle=(0.5, 1.1), colours=["#6a9a3a", "#76a544", "#5f8c34", "#82ad4c"],
+                   twig="#6b5f52", twig_w=2, fill=0.9),
+    "evergreen": dict(leaf="ovate", L=34, W=14, twigs=7, spread=0.8, every=1, angle=(0.5, 1.0), colours=["#36602a", "#416c31", "#2f5525", "#4b7838"],
+                      twig="#55493d", twig_w=2, fill=0.9),
+    "pisonia": dict(leaf="ovate", L=60, W=34, twigs=5, spread=0.8, every=2, angle=(0.5, 1.0), colours=["#7ea548", "#8bb253", "#71983f", "#97bb5c"],
+                    twig="#8a8170", twig_w=3),
+    "casuarina": dict(leaf="strand", L=170, W=0, twigs=11, spread=0.85, every=1, angle=(0.3, 0.8), colours=["#66795a", "#728564", "#5b6d52", "#7c8d6c"],
+                      twig="#5a4a3c", twig_w=2),
+    # Somei-yoshino: the leaves (elliptic, pointed, finely toothed; fresh green after the flowers) and the
+    # bloom (umbels on the bare twigs, white with a blush of pink, a pink-red eye as the petals age)
+    "cherry": dict(leaf="ovate", L=30, W=15, twigs=7, spread=0.85, every=1, angle=(0.6, 1.1), colours=["#5f8c3a", "#6c9944", "#557f33", "#78a24c"],
+                   twig="#3f322e", twig_w=2, fill=0.85),
+    "sakura": dict(leaf="blossom", L=0, W=0, twigs=13, spread=0.72, every=1, start=1, angle=(0.6, 1.2),
+                   colours=["#f9dfe1", "#f4d1d6", "#fcebeb", "#f0c6cd", "#fae5e5"], eye="#d68590", twig="#3f322e", twig_w=3, fill=0.9),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
 }
@@ -166,7 +248,7 @@ SPRAYS = {
 def build_atlas(path):
     rng = np.random.default_rng(7)
     S = 2
-    img = Image.new("RGBA", (ATLAS, ATLAS), (0, 0, 0, 0))
+    img = Image.new("RGBA", (ATLAS_W, ATLAS_H), (0, 0, 0, 0))
     for name, k in CELLS.items():
         cell = Image.new("RGBA", (CW * S, CH * S), (0, 0, 0, 0))
         spray(cell, k, SPRAYS[name], rng, S)
@@ -176,7 +258,7 @@ def build_atlas(path):
         ey = np.minimum(np.arange(CH * S), np.arange(CH * S)[::-1]) / (6 * S)
         a[..., 3] *= np.clip(np.minimum(ex[None, :], ey[:, None]), 0, 1)
         cell = Image.fromarray(a.astype(np.uint8), "RGBA").resize((CW, CH), Image.LANCZOS)
-        img.paste(cell, ((k % 4) * CW, (k // 4) * CH))
+        img.paste(cell, ((k % COLS) * CW, (k // COLS) * CH))
     # bleed the leaf colours into the clear texels, so mipmaps don't fringe dark
     a = np.asarray(img, np.float32) / 255
     rgb, al = a[..., :3], a[..., 3:]
@@ -195,10 +277,10 @@ def build_atlas(path):
 # Heights in metres; a crown is a shape that says, for a point, how far out it is (1 at the
 # surface). Species are near their usual street-tree size; the game scales each tree.
 SPECIES = {
-    "plane": dict(H=17.0, trunk=4.2, r0=0.36, crown=("ellipsoid", 10.6, 6.6, 6.4), n=330, size=2.9, n1=7, n2=4, leaf="plane",
-                  bark="#9a957c", lean=0.04, leader=True, colour="#557f37", note="London plane: the street tree of both cities"),
-    "elm": dict(H=16.0, trunk=3.0, r0=0.34, crown=("vase", 3.2, 16.0, 1.2, 7.4), n=320, size=2.7, n1=5, n2=5, leaf="elm",
-                bark="#5a4c40", lean=0.02, leader=False, colour="#4f7a32", note="English elm: Melbourne's avenues"),
+    "plane": dict(deciduous=True, H=17.0, trunk=4.2, r0=0.36, crown=("ellipsoid", 10.6, 6.6, 6.4), n=330, size=2.9, n1=7, n2=4, leaf="plane",
+                  bark="#a08f78", lean=0.04, leader=True, colour="#557f37", autumn_colour="#7f7444", note="London plane: the street tree of both cities"),
+    "elm": dict(deciduous=True, H=16.0, trunk=3.0, r0=0.34, crown=("vase", 3.2, 16.0, 1.2, 7.4), n=320, size=2.7, n1=5, n2=5, leaf="elm",
+                bark="#5a4c40", lean=0.02, leader=False, colour="#4f7a32", autumn_colour="#8c8240", note="English elm: Melbourne's avenues"),
     "gum": dict(H=18.0, trunk=6.5, r0=0.40, crown=("clumps", 12.5, 5.6, 5.0), n=200, size=2.8, n1=5, n2=3, leaf="gum",
                 bark="#ddd5c6", lean=0.10, leader=True, colour="#73906d", note="Eucalyptus: pale bark, open crown in clumps"),
     "fig": dict(H=15.0, trunk=2.6, r0=0.85, crown=("dome", 8.6, 10.5, 6.4), n=440, size=3.1, n1=8, n2=4, leaf="fig",
@@ -208,13 +290,56 @@ SPECIES = {
                       note="Jacaranda: purple in late spring (cards swap to the bloom cell with the season)"),
     "palm": dict(H=11.0, trunk=8.2, r0=0.42, crown=("palm", 9.0, 4.2, 2.6), n=26, size=5.6, leaf="palm",
                  bark="#86745c", lean=0.03, colour="#62803e", note="Canary Island date palm"),
-    "maple": dict(H=7.5, trunk=1.5, r0=0.2, crown=("umbrella", 4.7, 4.6, 2.5), n=300, size=2.2, n1=6, n2=4, leaf="maple",
+    "maple": dict(deciduous=True, H=7.5, trunk=1.5, r0=0.2, crown=("umbrella", 4.7, 4.6, 2.5), n=300, size=2.2, n1=6, n2=4, leaf="maple",
                   bark="#5b534a", lean=0.12, leader=False, colour="#628f3b", autumn_colour="#c2412b",
                   note="Japanese maple (momiji, Acer palmatum): a low, wide, layered crown; red from mid November in Tokyo and Kyoto"),
+    # Japan's own: the Gyoen's and the palace lawns' black pines, the shrine woods' cryptomeria, the camphor
+    # and the zelkova of the precincts and avenues, and the ginkgo rows that go gold in late autumn
+    "pine": dict(H=11.0, trunk=3.4, r0=0.3, crown=("pads", 7.6, 5.4, 3.2), flat=0.34, n=420, size=2.5, n1=9, n2=3, leaf="pine",
+                 bark="#4d4038", lean=0.28, leader=False, colour="#33502b",
+                 note="Japanese black pine (kuromatsu, Pinus thunbergii): a leaning, crooked trunk under flat pads of needles, as on the "
+                      "Kyoto Gyoen's and the Kokyo Gaien's lawns"),
+    "sugi": dict(H=28.0, trunk=9.0, r0=0.45, crown=("cone", 7.0, 28.5, 4.4), n=480, size=3.3, n1=14, n2=3, leaf="sugi",
+                 bark="#6b4532", lean=0.01, excurrent=True, colour="#2f4b2b",
+                 note="Japanese cedar (sugi, Cryptomeria japonica): straight red-brown trunk, a narrow cone; the shrine woods' tree, and "
+                      "stands for hinoki"),
+    "camphor": dict(H=20.0, trunk=3.2, r0=0.72, crown=("dome", 12.5, 10.5, 7.2), n=540, size=3.4, n1=8, n2=4, leaf="camphor",
+                    bark="#5a4f45", lean=0.04, leader=False, colour="#56813a",
+                    note="Camphor laurel (kusunoki, Cinnamomum camphora): a broad, bright evergreen dome on a massive trunk; the "
+                         "shrine trees of Osaka and Kyoto and Meiji Jingu's commonest"),
+    "zelkova": dict(deciduous=True, H=20.0, trunk=3.0, r0=0.45, crown=("vase", 3.6, 20.0, 1.6, 8.6), n=420, size=3.0, n1=7, n2=5, leaf="zelkova",
+                    bark="#857d70", lean=0.02, leader=False, colour="#557d35", autumn_colour="#8e6a3e",
+                    note="Japanese zelkova (keyaki, Zelkova serrata): a broom of upswept limbs and fine twigs; the avenue tree of "
+                         "Omotesando and the precincts, rust-orange in November"),
+    "ginkgo": dict(deciduous=True, H=17.0, trunk=2.6, r0=0.34, crown=("ellipsoid", 10.0, 4.2, 7.4), n=360, size=2.8, n1=9, n2=3, leaf="ginkgo",
+                   bark="#6e655a", lean=0.02, excurrent=True, colour="#62903a", autumn_colour="#c8a640",
+                   note="Ginkgo (icho, Ginkgo biloba): a tall narrow crown on a central stem; Tokyo's and Osaka's street tree "
+                        "(Midosuji, Jingu Gaien), gold in late November"),
+    "cherry": dict(deciduous=True, H=8.8, trunk=2.3, r0=0.34, crown=("ellipsoid", 5.7, 6.2, 3.0), n=420, size=2.4, n1=6, n2=5, leaf="sakura",
+                   bark="#3e3431", lean=0.1, leader=False, colour="#5d8a3a", autumn_colour="#b2532f", bloom_colour="#f3dadc",
+                   note="Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, "
+                        "a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo "
+                        "(web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf "
+                        "cell beside them out of flower"),
+    # the subtropics: the evergreen laurel forest of Hong Kong's hills (Schima, Machilus) and of Japan's old
+    # shrine groves (shii and kashi)
+    "evergreen": dict(H=14.0, trunk=3.0, r0=0.36, crown=("ellipsoid", 9.0, 5.6, 5.2), n=380, size=2.5, n1=7, n2=4, leaf="evergreen",
+                      bark="#5e554b", lean=0.07, leader=False, colour="#3a6129",
+                      note="Evergreen broadleaf (Schima superba, Machilus; in Japan shii and kashi): a dense, dark, glossy rounded "
+                           "crown; Hong Kong's hillside woods and the laurel forest of the old shrine groves"),
+    # the coral cays: the reef islands' own trees (web/reef/life/flora.js)
+    "pisonia": dict(H=9.5, trunk=3.6, r0=0.5, crown=("umbrella", 7.2, 6.4, 2.4), n=280, size=2.9, n1=6, n2=4, leaf="pisonia",
+                    bark="#9f988a", lean=0.18, leader=False, colour="#759c42",
+                    note="Pisonia (Pisonia grandis): pale soft trunks leaning out and a broad low canopy of big lime-green leaves; "
+                         "the coral cays' forest, mostly 6-8 m on Heron Island"),
+    "casuarina": dict(H=16.0, trunk=4.5, r0=0.28, crown=("cone", 4.5, 16.5, 3.4), n=300, size=4.0, n1=9, n2=3, leaf="casuarina",
+                      bark="#4d3f35", lean=0.06, excurrent=True, colour="#5e7055",
+                      note="Coastal she-oak (Casuarina equisetifolia): an open, tapering crown of drooping grey-green branchlets, "
+                           "behind the beaches"),
 }
 
 
-def inside(shape, p, rng_state=None):
+def inside(shape, p, rng_state=None, flat=0.8):
     """How far out p is in the crown: < 1 inside."""
     kind = shape[0]
     x, y, z = p
@@ -230,10 +355,17 @@ def inside(shape, p, rng_state=None):
         t = (z - z0) / (z1 - z0)
         r = rb + (rt - rb) * math.sin(min(1.0, t * 1.25) * HALFPI) * (1 - 0.55 * max(0.0, t - 0.8) / 0.2)
         return math.hypot(x, y) / max(r, 0.1)
-    if kind == "clumps":
+    if kind == "cone":
+        _, z0, z1, rb = shape
+        if not z0 <= z <= z1:
+            return 9.0
+        t = (z - z0) / (z1 - z0)
+        r = rb * (1 - t) ** 0.85 * (0.75 + 0.25 * min(1.0, t * 5)) + 0.15
+        return math.hypot(x, y) / r
+    if kind in ("clumps", "pads"):
         best = 9.0
         for cx, cy, cz, cr in rng_state:
-            best = min(best, math.sqrt((x - cx) ** 2 + (y - cy) ** 2 + ((z - cz) / 0.8) ** 2) / cr)
+            best = min(best, math.sqrt((x - cx) ** 2 + (y - cy) ** 2 + ((z - cz) / flat) ** 2) / cr)
         return best
     raise ValueError(kind)
 
@@ -252,6 +384,15 @@ def crown_points(sp, rng):
             d = r * rng.uniform(0.35, 0.8)
             clumps.append((d * math.cos(a), d * math.sin(a), zc + rng.uniform(-0.6, 0.9) * h * 0.6, rng.uniform(1.8, 2.8)))
         clumps.append((0, 0, zc + h * 0.75, 2.4))
+    if shape[0] == "pads":         # a pine: flat pads of needles in tiers, wider low down, one crowning the top
+        _, zc, r, h = shape
+        clumps = []
+        for k in range(sp["n1"]):
+            t = k / (sp["n1"] - 1)
+            a = k * 2.39996 + rng.uniform(-0.3, 0.3)
+            d = r * (0.85 - 0.6 * t) * rng.uniform(0.7, 1.05)
+            clumps.append((d * math.cos(a), d * math.sin(a), zc - h * 0.5 + h * 1.1 * t, rng.uniform(1.5, 2.3) * (1.15 - 0.4 * t)))
+        clumps.append((0, 0, zc + h * 0.75, 1.7))
     lo = np.array([-14, -14, 0.0])
     hi = np.array([14, 14, sp["H"] + 1])
     pts = []
@@ -259,7 +400,7 @@ def crown_points(sp, rng):
     while len(pts) < sp["n"] and tries < 200000:
         tries += 1
         p = lo + (hi - lo) * rng.random(3)
-        f = inside(shape, p, clumps)
+        f = inside(shape, p, clumps, sp.get("flat", 0.8))
         # mostly near the surface, some inside so it never looks hollow
         if f < 1.0 and (f > 0.62 or rng.random() < 0.18):
             pts.append(p)
@@ -365,28 +506,39 @@ def grow(name, sp, seed, lod):
         return grow_palm(name, sp, rng, lod)
     P, clumps = crown_points(sp, rng)
     shape = sp["crown"]
-    crown_c = np.array([0, 0, shape[1] if shape[0] != "vase" else (shape[1] + shape[2]) / 2])
-    crown_r = max(shape[2] if shape[0] != "vase" else shape[4], 3.0)
+    if shape[0] in ("vase", "cone"):
+        crown_c = np.array([0, 0, (shape[1] + shape[2]) / 2])
+        crown_r = max(shape[4] if shape[0] == "vase" else max(shape[3], (shape[2] - shape[1]) * 0.3), 3.0)
+    else:
+        crown_c = np.array([0, 0, shape[1]])
+        crown_r = max(shape[2], 3.0)
     lean = np.array([rng.uniform(-1, 1), rng.uniform(-1, 1), 0]) * sp["lean"]
-    top = np.array([0, 0, sp["trunk"]]) + lean * sp["trunk"]
-    # the trunk, with a flare at the foot
-    trunk_pts = bezier(np.array([0, 0, 0.0]), np.array([0, 0, sp["trunk"] * 0.5]) + lean * sp["trunk"] * 0.2, top, 6 if lod < 2 else 2)
+    # an excurrent tree (a cedar, a ginkgo, a she-oak) carries its trunk up through the crown as a leader
+    excurrent = sp.get("excurrent", False)
+    top = np.array([0, 0, H * 0.94 if excurrent else sp["trunk"]]) + lean * sp["trunk"]
+    # the trunk, with a flare at the foot; a pine's bends one way and then back
+    mid = np.array([0, 0, top[2] * 0.5]) + lean * sp["trunk"] * (0.2 if sp["lean"] < 0.2 else 1.1)
+    trunk_pts = bezier(np.array([0, 0, 0.0]), mid, top, (9 if excurrent else 6) if lod < 2 else 2)
     segs = 10 if lod == 0 else 6 if lod == 1 else 5
     r0 = sp["r0"]
-    branch(T, [trunk_pts[0] - np.array([0, 0, 0.3])] + trunk_pts, r0 * 1.35, r0 * 0.72, bark, segs, H, ao=(0.75, 0.55), sway1=0.05)
+    branch(T, [trunk_pts[0] - np.array([0, 0, 0.3])] + trunk_pts, r0 * 1.35, r0 * (0.12 if excurrent else 0.72), bark, segs, H, ao=(0.75, 0.55),
+           sway1=0.2 if excurrent else 0.05)
     if lod == 2:
         return hull(T, name, sp, P, crown_c, crown_r)
     C1, lab1 = kmeans(P, sp["n1"], rng)
     limbs = []
     for j, c in enumerate(C1):
         start = top + np.array([0, 0, rng.uniform(-0.6, 0.4)])
-        if sp["leader"] and j == int(np.argmax(C1[:, 2])):
+        if sp.get("leader") and j == int(np.argmax(C1[:, 2])):
             start = top
+        if excurrent:       # from the leader at the limb's own height, a little above it
+            zt = min(max(c[2] + 0.4, sp["trunk"]), top[2] - 0.5)
+            start = np.array([0, 0, zt]) + lean * sp["trunk"] * (zt / top[2])
         end = start + (c - start) * 0.82
         ctrl = start + np.array([0, 0, (end[2] - start[2]) * 0.6 + 1.0]) + (end - start) * np.array([0.25, 0.25, 0])
         pts = bezier(start, ctrl, end, 7 if lod == 0 else 4)
-        rl = r0 * 0.55 * (0.7 + 0.3 * rng.random())
-        branch(T, pts, rl, rl * 0.35, bark, 7 if lod == 0 else 5, H, ao=(0.6, 0.7), sway0=0.05, sway1=0.45)
+        rl = r0 * (0.28 if excurrent else 0.55) * (0.7 + 0.3 * rng.random())
+        branch(T, pts, rl, rl * 0.35, bark, 6 if lod == 0 else 5, H, ao=(0.6, 0.7), sway0=0.05, sway1=0.45)
         limbs.append(pts)
         mine = P[lab1 == j]
         if not len(mine):
@@ -398,7 +550,8 @@ def grow(name, sp, seed, lod):
                 s = pts[k0]
                 e = s + (c2 - s) * 0.9
                 twig = bezier(s, (s + e) / 2 + np.array([0, 0, 0.6]), e, 4)
-                branch(T, twig, rl * 0.32, 0.03, bark, 5, H, ao=(0.65, 0.8), sway0=0.4, sway1=0.85)
+                # twigs are thin and mostly inside the crown: a three-sided tube reads the same
+                branch(T, twig, rl * 0.32, 0.03, bark, 3, H, ao=(0.65, 0.8), sway0=0.4, sway1=0.85)
                 for p in mine[lab2 == i2]:
                     leaf_at(T, sp, p, e, crown_c, crown_r, rng, sp["size"])
         else:
@@ -417,7 +570,7 @@ def leaf_at(T, sp, p, base, crown_c, crown_r, rng, size):
     up = up / (np.linalg.norm(up) + 1e-6) * 0.6 + out * 0.4 + np.array([0, 0, 0.15])
     jitter = rng.normal(0, 0.35, 3)
     k_cell = CELLS[sp["leaf"]]
-    if sp["leaf"] == "jacaranda" and rng.random() < sp.get("bloom", 0):
+    if sp["leaf"] == "jacaranda" and rng.random() < sp.get("bloom", 0):   # (a cherry's are all its bloom cell, "sakura")
         k_cell = CELLS["bloom"]
     at = p - up / np.linalg.norm(up) * size * 0.45
     card(T, at, up + jitter * 0.3, out + jitter, size * rng.uniform(0.85, 1.15), k_cell, crown_c, crown_r, rng)
@@ -557,27 +710,44 @@ def build_all(atlas):
             objs[ob.name] = ob
             tri.append(triangles(ob))
         info[name] = {"height_m": sp["H"], "crown": list(sp["crown"][1:]), "colour": sp["colour"], "bark": sp["bark"], "triangles": tri,
-                      "note": sp["note"]}
-        for k_ in ("bloom_colour", "autumn_colour"):
+                      "cell": CELLS[sp["leaf"]], "trunk_r": sp["r0"], "note": sp["note"]}
+        for k_ in ("bloom_colour", "autumn_colour", "deciduous"):
             if k_ in sp:
                 info[name][k_] = sp[k_]
     return objs, info
 
 
-def preview(objs, folder):
+def preview(objs, folder, samples=24):
+    """A contact sheet: each species' full tree on its own, framed by its height, and its three levels of
+    detail side by side, so a new species can be judged next to the others."""
     os.makedirs(folder, exist_ok=True)
     names = list(SPECIES)
-    for ob in objs.values():
-        name, lod = ob.name.rsplit("_LOD", 1)
-        ob.location = (names.index(name) * 22.0 - 55, int(lod) * 26.0, 0)
-    setup_render(24, (1280, 640), sun=(38, 140), strength=0.6)
+    setup_render(samples, (420, 560), sun=(38, 140), strength=0.6)
     ground_plane("Ground", 400, material("Grass", "#4d5a33", 0.95))
     sun_lamp(38, 140, energy=2.2)
-    # camera() takes the vehicle frame: x = -Blender y, y = Blender x
-    for shot, loc, tgt, lens in (("row", (80, 0, 10), (0, 0, 8), 24), ("near", (24, -4, 2.5), (0, 2, 9), 22),
-                                 ("lods", (40, -80, 28), (-26, -40, 6), 30), ("above", (60, 10, 70), (-10, 0, 0), 24)):
-        camera("Cam", loc, tgt, lens)
-        render(os.path.join(folder, f"trees_{shot}.jpg"))
+    tiles = []
+    for name in names:
+        H = SPECIES[name]["H"]
+        for ob in objs.values():
+            sp, lod = ob.name.rsplit("_LOD", 1)
+            ob.hide_render = sp != name
+            ob.location = ((int(lod) - 1) * H * 1.15, 0, 0)
+        # camera() takes the vehicle frame: x = -Blender y, y = Blender x
+        camera("Cam", (H * 3.9, 0, H * 0.42), (0, 0, H * 0.5), 30)
+        bpy.context.scene.render.resolution_x = 1100
+        path = os.path.join(folder, f"{name}.jpg")
+        render(path)
+        tiles.append((name, path))
+    W, Hh = 1100, 560
+    cols = 3
+    sheet = Image.new("RGB", (W * cols // 2, Hh * ((len(tiles) + cols - 1) // cols) // 2), (20, 20, 20))
+    dr = ImageDraw.Draw(sheet)
+    for k, (name, path) in enumerate(tiles):
+        im = Image.open(path).resize((W // 2, Hh // 2))
+        x, y = (k % cols) * W // 2, (k // cols) * Hh // 2
+        sheet.paste(im, (x, y))
+        dr.text((x + 8, y + 6), name, fill=(255, 255, 255))
+    sheet.save(os.path.join(folder, "sheet.jpg"), quality=88)
 
 
 def main():
@@ -591,7 +761,7 @@ def main():
     atlas = build_atlas(os.path.join(OUT, "leaves.png") if not a.preview else os.path.join(a.preview, "leaves.png"))
     objs, info = build_all(atlas)
     if a.preview:
-        preview(objs, a.preview)
+        preview(objs, a.preview, min(a.samples, 24))
         return
     for ob in objs.values():
         ob.location = (0, 0, 0)
@@ -600,12 +770,14 @@ def main():
     bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True, export_vertex_color="ACTIVE", export_normals=True,
                               export_materials="EXPORT", export_image_format="AUTO", export_cameras=False, export_lights=False,
                               export_animations=False)
+    webp(path)  # the leaf atlas as a WebP (a fifth of the PNG), then meshopt
+    compress(path)
     print(f"  {os.path.relpath(path, ROOT)}: {os.path.getsize(path) / 1e6:.2f} MB")
     manifest = {
         "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient "
                 "occlusion, green how far the wind moves a vertex, blue a phase for the leaves' flutter. A city picks its mix of "
                 "species in city.json 'trees'.",
-        "file": "trees.glb", "lod_m": [130, 520], "atlas": {"cells": CELLS, "columns": 4, "rows": 2},
+        "file": "trees.glb", "lod_m": [130, 520], "atlas": {"cells": CELLS, "columns": COLS, "rows": ROWS},
         "mix": {"plane": 0.3, "gum": 0.25, "elm": 0.15, "fig": 0.1, "jacaranda": 0.1, "palm": 0.1},
         "species": info,
     }
@@ -614,17 +786,18 @@ def main():
         f.write("\n")
     print(os.path.join(OUT, "trees.json"))
     if a.render:
-        # the full trees in a row, a little apart
+        # the full trees in three staggered rows of five, a little apart
         names = list(SPECIES)
         for ob in objs.values():
             name, lod = ob.name.rsplit("_LOD", 1)
             ob.hide_render = lod != "0"
-            ob.location = (names.index(name) * 16.0 - 8.0 * (len(names) - 1), 0, 0)
+            k = names.index(name)
+            ob.location = ((k % 5) * 19.0 - 38.0 + (k // 5) * 6.0, (k // 5) * 26.0, 0)
         os.makedirs(DOCS, exist_ok=True)
         setup_render(a.samples, (1600, 900), sun=(34, 150), strength=0.6)
         ground_plane("Ground", 400, material("Grass", "#4d5a33", 0.95))
         sun_lamp(34, 150, energy=2.2)
-        camera("Cam", (72, -6, 3.5), (0, 2, 8.5), 24)
+        camera("Cam", (96, 6, 40), (-24, 6, 5), 28)
         render(os.path.join(DOCS, "trees.jpg"))
     os.remove(atlas)        # it travels inside the GLB
 

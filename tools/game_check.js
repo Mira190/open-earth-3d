@@ -1,10 +1,16 @@
 // Smoke-test a city's game headlessly (software WebGL through SwiftShader): load it, start
 // it, walk, walk right up to the things the city names to see up close (tools/close_step.js), travel
-// from the map to a landmark and run there, talk to the first quest giver,
+// from the map to a landmark and run there, talk to the first quest giver, find every NPC in light and
+// in sight at night, put the rain on and off (weather.js),
 // fly the helicopter up and watch the ferries move, drive your car, hail a taxi and ride it
 // (and order a ride on the phone, which must reach you within half a minute, shown on the
 // phone's map), travel from the map in your car, watch the signals at the nearest junction
-// change with the traffic stopping for them, and lose the WebGL context on purpose and get it
+// change with the traffic stopping for them, watch the scrambles' crowds cross every way at once
+// (tools/scramble_step.js), hear the walk signals' calls (tools/walkcalls_step.js), ride a taxi up
+// behind a queue at a red light (it waits in its lane and goes when the queue moves), swing the
+// chase camera round walls in tight spots
+// frame by frame (it must ease, never jump), watch the signalled junctions round you for three minutes
+// (no movement left standing in one for more than two cycles), and lose the WebGL context on purpose and get it
 // back, with a screenshot after each. Prints what happened and the page's errors; exits 1 on failure.
 //   cd web && python3 -m http.server 8800 &
 //   xvfb-run -a node tools/game_check.js sydney out_dir    # llvmpipe; without xvfb-run, SwiftShader
@@ -17,6 +23,9 @@ const fs = require('fs');
 const path = require('path');
 const [,, city = 'sydney', outDir = '.'] = process.argv;
 const { pinClock } = require('./pin_clock');
+const { findQueue } = require('./ride_queue');
+const { heldStep } = require('./junction_held_step');
+const npcNight = require('./npc_night');
 (async () => {
   // under xvfb-run, Mesa's llvmpipe draws the frames, about four times faster than SwiftShader
   const b = await chromium.launch(process.env.DISPLAY
@@ -50,6 +59,74 @@ const { pinClock } = require('./pin_clock');
   await p.evaluate(() => window.__game.advance(1));
   await shot('start');
 
+  // what loads after the game opens (issue 148): the NPCs away from the start as you come near them,
+  // and the helicopter's model when a pad is in range; here all of them at once, and in their places
+  const lazy = await p.evaluate(async () => {
+    const g = window.__game, open = g.npcs.filter(n => n.rig.pending).length, t = performance.now();
+    await g.npcsReady();
+    if (g.heli && g.heli.want) { await g.heli.want(); g.advance(0.1); }
+    return { n: g.npcs.length, open, pending: g.npcs.filter(n => n.rig.pending).length, drawn: g.npcs.filter(n => n.rig.character).length,
+      wanted: g.npcs.filter(n => n.look.character).length, heli: !g.vlib || !g.heli || g.heli.loaded(), s: (performance.now() - t) / 1000 };
+  });
+  check(lazy.pending === 0 && lazy.drawn >= lazy.wanted - 1, `the NPCs' characters load after the game opens (${lazy.open} of ${lazy.n} still to come at the start; all in place after ${lazy.s.toFixed(1)} s, ${lazy.drawn} of ${lazy.wanted} as their own characters)`);
+  check(lazy.heli, 'the helicopter\'s model comes after the game opens and stands on its pad');
+
+  // the chase camera in tight spots: placed with a wall close behind, the camera swung round
+  // (as a drag would) and then walked or driven along, frame by frame. Its wall lift and pull-in
+  // must ease: no frame may turn the view's pitch or move the camera about the player by a jump (#97)
+  const swing = mode => p.evaluate(mode => {
+    const g = window.__game, V = (x, y, z) => new THREE.Vector3(x, z, -y), r = { spots: 0, pitch: 0, move: 0, lifted: 0 };
+    const head = () => mode === 'car' ? (s => V(s.x, s.y, s.z + 1.5))(g.myCar().D.st) : V(g.player.x, g.player.y, g.player.z + 1.55);
+    const settle = () => { for (let i = 0; i < 45; i++) g.advance(1 / 30); }; // advance() moves the camera once per call
+    const run = (frames, each, walk = true) => { // the second half walking on (on foot)
+      let last = null;
+      for (let i = 0; i < frames; i++) {
+        each(i);
+        g.advance(1 / 30, walk && i >= frames / 2 ? ['KeyW'] : []);
+        const c = g.camera.position, t = g.live.look, off = c.clone().sub(t), pitch = Math.atan2(off.y, Math.hypot(off.x, off.z));
+        r.lifted = Math.max(r.lifted, g.cam.lift || 0);
+        const v = last && off.clone().sub(last.off);
+        if (last) { r.pitch = Math.max(r.pitch, Math.abs(pitch - last.pitch) * 180 / Math.PI); if (last.v) r.move = Math.max(r.move, v.distanceTo(last.v)); }
+        last = { pitch, off, v };
+      }
+    };
+    if (mode === 'car') {
+      const c = g.myCar && g.myCar();
+      if (!c) return null;
+      if (g.player.mode !== 'car') { const st = c.D.st; g.player.x = st.x; g.player.y = st.y; g.player.z = st.z; g.enterCar(); for (let i = 0; i < 20 && g.player.mode !== 'car'; i++) g.advance(0.5); }
+      if (g.player.mode !== 'car') return null;
+      g.cam.mode = 'chase'; g.cam.dist = 7.5; settle();
+      run(160, () => { g.cam.yaw += 0.04; }, false); // a full turn round the parked car (driving, a knock jolts the car itself)
+      r.spots = 1;
+      g.exitCar(); g.advance(1);
+      return r;
+    }
+    // spots on the ground within 300 m where a wall stands within the camera's reach behind
+    const x0 = g.player.x, y0 = g.player.y, spots = [];
+    for (let k = 0; k < 400 && spots.length < 4; k++) {
+      const a = k * 2.39996, d = 20 + 280 * Math.sqrt(k / 400), s = g.nav.stand(x0 + Math.cos(a) * d, y0 + Math.sin(a) * d, 0, { rMax: 3 });
+      if (!s || spots.some(q => Math.hypot(q.x - s.x, q.y - s.y) < 40)) continue;
+      const h = V(s.x, s.y, s.z + 1.55);
+      for (let j = 0; j < 8; j++) {
+        const yaw = j * Math.PI / 4, b = V(s.x - Math.sin(yaw) * 6.9, s.y - Math.cos(yaw) * 6.9, s.z + 1.55 + 2.6);
+        const f = g.nav.clearFraction(h, b);
+        if (f > 0.2 && f < 0.6) { spots.push({ x: s.x, y: s.y, z: s.z, yaw }); break; }
+      }
+    }
+    for (const s of spots) {
+      g.player.x = s.x; g.player.y = s.y; g.player.z = s.z; g.player.speed = 0;
+      g.cam.mode = 'chase'; g.cam.dist = 7.5; g.cam.pitch = 0.36; g.cam.yaw = s.yaw + 1.2; g.player.h = s.yaw;
+      settle();
+      run(150, i => { if (i < 75) g.cam.yaw -= 0.032; });
+      r.spots++;
+    }
+    return r;
+  }, mode);
+  const tight = (r, what) => {
+    if (!r || !r.spots) { check(true, `no tight spot for the chase camera ${what}`); return; }
+    check(r.pitch < 5 && r.move < 0.6, `the chase camera eases round walls ${what} (${r.spots} spots, lift up to ${r.lifted.toFixed(2)} rad; worst frame ${r.pitch.toFixed(1)}° of pitch, a ${r.move.toFixed(2)} m jolt)`);
+  };
+
   // the arrival (#89): the calm move from the title shot hands over to the chase camera within 4.5 s, then the
   // first-time tour of the HUD opens; every step points at its control, it steps back and on, and skips
   const onboard = await p.evaluate(async () => {
@@ -74,6 +151,21 @@ const { pinClock } = require('./pin_clock');
     }
     return { arrived: t, near, steps, missing, flag: O.done() };
   });
+  // an opening shot at a scramble (#110: Shibuya): you start at its kerb or on its stripes, the walk on, the crowd round you
+  const opening = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, sc = (g.scene.landmarks || {}).scramble;
+    if (!g.opening() || !sc || !sc.lines) return null;
+    const j = g.junctions.J.find(q => q.scramble && Math.hypot(q.x - pl.x, q.y - pl.y) < 80);
+    let kerb = Infinity, on = Infinity;
+    for (const [[ax, ay], [bx, by]] of sc.lines) {
+      kerb = Math.min(kerb, Math.hypot(pl.x - ax, pl.y - ay), Math.hypot(pl.x - bx, pl.y - by));
+      const ex = bx - ax, ey = by - ay, u = Math.max(0, Math.min(1, ((pl.x - ax) * ex + (pl.y - ay) * ey) / (ex * ex + ey * ey)));
+      on = Math.min(on, Math.hypot(pl.x - ax - ex * u, pl.y - ay - ey * u));
+    }
+    return { kerb, on, ph: j ? `${j.ph}${j.st}` : 'none', walkers: g.crowd.P.filter(q => q.line >= 0 && Math.hypot(q.x - pl.x, q.y - pl.y) < 10).length };
+  });
+  if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
+    `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
   check(onboard.steps.length >= 8 && !onboard.missing.length && onboard.back === onboard.steps.length - 2 && onboard.skipped && onboard.flag && onboard.noTalk,
     `the HUD tour opens the first time, steps through ${onboard.steps.join(', ')}, steps back and skips, and remembers it${onboard.missing.length ? ` (${onboard.missing.join('; ')})` : ''}`);
@@ -138,6 +230,8 @@ const { pinClock } = require('./pin_clock');
   });
   check(walk.moved > 3, `walks forward (${walk.moved.toFixed(1)} m in 4 s, on foot at ${walk.z.toFixed(1)} m)`);
   await shot('walk');
+  tight(await swing('foot'), 'on foot');
+  await p.evaluate(() => { const g = window.__game; g.spawn(); g.advance(1); });
 
   // the crowd keeps out of the walls: walkers whose body (0.3 m round, knee to head) is in a building or a
   // landmark, against those walking (a footway along a facade narrows their offset from its line)
@@ -151,6 +245,52 @@ const { pinClock } = require('./pin_clock');
     return { n, inWall };
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
+
+  // the weather (weather.js): rain on, and the streaks are drawn, kept out from under cover by the
+  // occlusion map, the ground wet, umbrellas up in the crowd, the HUD saying so, and the frame neither
+  // black nor blown; then clear again, dry and quiet. And the season's weather keeps to the city's
+  // climate: over a year, wet days within a third of what its normals give.
+  const rain = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather;
+    if (!W) return null;
+    const luma = () => { const c = document.getElementById('game-gl'), t = document.createElement('canvas'); t.width = 96; t.height = 60;
+      const x = t.getContext('2d'); x.drawImage(c, 0, 0, 96, 60); const d = x.getImageData(0, 0, 96, 60).data; let s = 0, hi = 0;
+      for (let i = 0; i < d.length; i += 4) { const l = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]; s += l; if (l > 250) hi++; } return { mean: s / (d.length / 4), blown: hi / (d.length / 4) }; };
+    const frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    W.set('rain', { now: true });
+    g.advance(2);
+    await frames(4);
+    const st = W.state, cd = g.crowdDraw(), m4 = new THREE.Matrix4();
+    let umb = 0;
+    if (cd && cd.umbrellas) for (const m of Object.values(cd.umbrellas)) if (m.visible) for (let i = 0; i < m.count; i++) { m.getMatrixAt(i, m4); if (m4.elements[0] !== 0) umb++; }
+    umb += cd ? [...cd.active.values()].filter(r => r.umbOn).length : 0;
+    const out = { st, umb, walkers: g.crowd.P.filter(q => q.line >= 0).length, streaks: W.meshes.near.visible && W.meshes.near.material.uniforms.uCount.value > 0.5,
+      occ: W.U.uOeOccOn.value, chip: document.querySelector('#g-sun span').textContent, lum: luma() };
+    W.set('clear', { now: true });
+    g.advance(1);
+    await frames(2);
+    out.after = W.state; out.dry = !W.meshes.near.visible;
+    // a year of the season's weather at 09:00 and 15:00
+    const cl = g.G.weather;
+    if (cl) {
+      let wet = 0, want = 0;
+      for (let k = 0; k < 365; k++) { const t = new Date(Date.UTC(2026, 0, 1) + k * 864e5), y = t.getUTCFullYear(), m = t.getUTCMonth() + 1, d = t.getUTCDate();
+        if (W.season(y, m, d, 9 * 60).rain > 0.06 || W.season(y, m, d, 15 * 60).rain > 0.06) wet++; }
+      for (let m = 1; m <= 12; m++) want += OEWeather.wetChance(cl, m) * [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][m - 1];
+      out.year = { wet, want: Math.round(want) };
+    }
+    W.set('live');
+    return out;
+  });
+  if (rain) {
+    check(rain.st.kind === 'rain' && rain.st.rain > 0.5 && rain.st.wet > 0.5 && rain.streaks && rain.occ === 1,
+      `rain falls (rain ${rain.st.rain.toFixed(2)}, ground wet ${rain.st.wet.toFixed(2)}, streaks ${rain.streaks}, occlusion map ${rain.occ})`);
+    check(rain.walkers === 0 || rain.umb > 0, `umbrellas up in the crowd (${rain.umb} of ${rain.walkers} walkers)`);
+    check(/^(Rain|Drizzle) · /.test(rain.chip), `the HUD shows the rain ("${rain.chip}")`);
+    check(rain.lum.mean > 18 && rain.lum.blown < 0.02, `the rain's frame is lit, not black or blown (luma ${rain.lum.mean.toFixed(0)}, ${(rain.lum.blown * 100).toFixed(1)}% blown)`);
+    check(rain.after.rain === 0 && rain.after.wet === 0 && rain.dry, 'and clear again, dry');
+    if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
+  }
 
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
   // edge (the centre within 0.3 m of the face as drawn), at the level of the quay, not a cell short
@@ -280,6 +420,64 @@ const { pinClock } = require('./pin_clock');
       `walks ${w.name}: from ${w.from} m to ${w.z.toFixed(2)} m (expected ${w.to} m), ${w.d.toFixed(1)} m from the end, never below ${w.low.toFixed(2)} or above ${w.high.toFixed(2)} m`);
   }
 
+  // the landmarks' fine collision is laid tile by tile (web/game/nav.js): what the start cost, and the
+  // tiles round the walker all laid when asked (as the game's frames do, a few ms at a time)
+  {
+    const f = await p.evaluate(() => { const n = window.__game.nav, pl = window.__game.player, b0 = n.fineBoxes;
+      const t = performance.now(), all = n.prefetch(pl.x, pl.y, 48, 60000);
+      const [laid, of] = n.tiles;
+      return { start: n.startMs, sweeps: n.sweepMs, boxes: b0, ms: n.fineMs, laid, of, all, more: n.fineBoxes - b0, prefetch: performance.now() - t }; });
+    // (by the start: the tiles round the walker; the sweeps read a landmark's triangles, nav.js withoutFine)
+    check(f.all, `the landmarks' fine collision: sorted into tiles in ${f.start.toFixed(0)} ms at the start, the start-up sweeps ${f.sweeps.toFixed(0)} ms, ${f.boxes} boxes in ${f.laid} of ${f.of} tiles laid by the start (${(f.ms - f.prefetch).toFixed(0)} ms); the tiles within 48 m of the walker laid on asking (${f.more} more boxes, ${f.prefetch.toFixed(0)} ms)`);
+  }
+
+  // the camera under a slab (a patch's "upper", such as the forecourt over Sydney's Lower Concourse
+  // colonnade): standing under it at up to 8 places spread along it, the camera swung round in 8
+  // directions sees the walker from under the slab or from beyond it, never through it (its line to the
+  // head does not pass between the soffit, clear_m over the floor, and the slab's top)
+  const slabCam = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, out = [];
+    const dec = s => { const b = Uint8Array.from(atob(s), c => c.charCodeAt(0)); return new Int16Array(b.buffer, 0, b.length >> 1); };
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw, pitch: g.cam.pitch };
+    for (const P of g.G.patches || []) {
+      const U = P.upper;
+      if (!U) continue;
+      const Z = dec(P.data), UZ = dec(U.data), clear = P.clear_m || 2.2;
+      const slab = (x, y) => {
+        const c = Math.floor((x - P.x0) / P.cell), r = Math.floor((y - P.y0) / P.cell), uc = c - U.i0, ur = r - U.j0;
+        if (uc < 0 || ur < 0 || uc >= U.nx || ur >= U.ny || c >= P.nx || r >= P.ny) return null;
+        const u = UZ[ur * U.nx + uc], f = Z[r * P.nx + c];
+        return u === -32768 || f === -32768 ? null : [f / 100, u / 100];
+      };
+      // places under the slab with room round them (the slab 1.5 m round on every side)
+      const under = [];
+      for (let j = 0; j < U.ny; j += 2) for (let i = 0; i < U.nx; i += 2) {
+        const x = P.x0 + (U.i0 + i + 0.5) * P.cell, y = P.y0 + (U.j0 + j + 0.5) * P.cell, s = slab(x, y);
+        if (s && [[1.5, 0], [-1.5, 0], [0, 1.5], [0, -1.5]].every(([dx, dy]) => slab(x + dx, y + dy)) && g.nav.walk(x, y, s[0]).ok) under.push([x, y, s[0]]);
+      }
+      for (let n = 0; n < Math.min(8, under.length); n++) {
+        const [x, y, z] = under[Math.floor((n + 0.5) * under.length / Math.min(8, under.length))];
+        let worst = null;
+        for (let k = 0; k < 8; k++) {
+          Object.assign(pl, { x, y, z, ground: true, vz: 0, speed: 0 });
+          g.cam.yaw = k * Math.PI / 4; g.cam.pitch = 0.35;
+          for (let i = 0; i < 20; i++) g.advance(0.05);
+          const c = g.live.pos, cx = c.x, cy = -c.z, cz = c.y, hz = pl.z + 1.55;
+          for (let s = 0; s <= 1; s += 0.02) {
+            const X = pl.x + (cx - pl.x) * s, Y = pl.y + (cy - pl.y) * s, H = hz + (cz - hz) * s, q = slab(X, Y);
+            if (q && H > q[0] + clear + 0.05 && H < q[1] - 0.05) { worst = { k, at: [X.toFixed(1), Y.toFixed(1), H.toFixed(2)], slab: q }; break; }
+          }
+          if (worst) break;
+        }
+        out.push({ at: [Math.round(x), Math.round(y)], z, worst });
+      }
+    }
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.cam.pitch = keep.pitch; g.advance(0.2);
+    return out;
+  });
+  for (const s of slabCam) check(!s.worst, `the camera stays out of the slab over ${s.at} (${s.z.toFixed(2)} m)` +
+    (s.worst ? `: its line to the head passes through it at ${s.worst.at} (floor and top ${s.worst.slab}), looking ${s.worst.k * 45}°` : ''));
+
   // up close: walk right up to each thing the city's builders name to see close to (game.json "close",
   // a spot's "reach": a shrine's ema rack, a lantern, a statue, a gate's posts), within 1.5 m or what the
   // target says and never into it; and look closer at each photo spot (a spot's "look") and step back
@@ -289,7 +487,7 @@ const { pinClock } = require('./pin_clock');
     const near = await require('./close_step')(p, {});
     for (const r of near) {
       if (r.look) check(r.ok, `looks closer at ${r.name} (${r.open ? `the eye ${r.eye.toFixed(2)} m off it, reading "${String(r.text).slice(0, 40)}", ${r.moved.toFixed(2)} m along it, ${r.closed && r.back ? 'and back' : 'NOT back'}` : `offered: ${r.offered}`})`);
-      else check(r.ok, `walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}${r.keep ? `, not nearer than ${r.keep}` : ''})${r.ok ? '' : `: ${r.why}`}`}`);
+      else check(r.ok, `walks up to ${r.name}: ${r.d == null ? r.why : `${r.d.toFixed(2)} m from it (within ${r.within}${r.keep ? `, not nearer than ${r.keep}` : ''}${r.on ? `, standing ${r.dz.toFixed(2)} m off the raised floor it is on` : ''})${r.ok ? '' : `: ${r.why}`}`}`);
     }
     if (!near.length) console.log('     (nothing named to walk up to)');
     await p.evaluate(k => { const g = window.__game, pl = g.player; Object.assign(pl, { x: k.x, y: k.y, z: k.z, h: k.h, speed: 0 }); g.cam.yaw = k.yaw; g.advance(0.2); }, keep);
@@ -329,6 +527,36 @@ const { pinClock } = require('./pin_clock');
       `climbs ${c.name}: from ${c.start.toFixed(2)} m to ${c.z.toFixed(2)} m (the top is ${c.to.toFixed(2)} m), ${c.d.toFixed(1)} m from it`);
   }
 
+  // the longest bridge over the water (pipeline/bridges.py, issue 122): walk across its deck from the bank
+  // beyond one end to the bank beyond the other, and keep to the deck's height all the way over the water
+  const cross = await p.evaluate(() => {
+    const g = window.__game, pl = g.player;
+    const S = (g.G.surfaces || []).filter(s => s.mesh === 'bridges_wb_deck' && s.type === 'strip');
+    if (!S.length) return null;
+    const s = S.reduce((a, b) => (b.profile[b.profile.length - 1][0] - b.profile[0][0] > a.profile[a.profile.length - 1][0] - a.profile[0][0] ? b : a));
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    const [ox, oy] = s.origin, [ax, ay] = s.axis, P = s.profile, u0 = P[0][0] + 1.5, u1 = P[P.length - 1][0] - 1.5;
+    const zAt = u => { for (let i = 1; i < P.length; i++) if (u <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (u - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
+    const f = g.nav.floorAt(ox + ax * u0, oy + ay * u0, zAt(u0) + 0.5);
+    const r = { name: s.name, len: u1 - u0 };
+    if (!f) return r;
+    Object.assign(pl, { x: ox + ax * u0, y: oy + ay * u0, z: f.z, ground: true, vz: 0, speed: 0 });
+    let worst = 0, over = 0;
+    const tx = ox + ax * u1, ty = oy + ay * u1;
+    // (room for a walker or a fine collision tile laid late under load to hold you up on the far bank)
+    for (let i = 0; i < 3000 && Math.hypot(tx - pl.x, ty - pl.y) > 0.6; i++) {
+      pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y);
+      g.advance(0.05, ['KeyW']);
+      const u = (pl.x - ox) * ax + (pl.y - oy) * ay;
+      if (g.nav.isWater(pl.x, pl.y)) { over++; worst = Math.max(worst, Math.abs(pl.z - zAt(u))); }
+    }
+    Object.assign(r, { d: Math.hypot(tx - pl.x, ty - pl.y), worst, over, mode: pl.mode });
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return r;
+  });
+  if (cross) check(cross.d != null && cross.mode === 'foot' && cross.d < 1.5 && cross.worst < 0.4,
+    `walks across ${cross.name} (${cross.len.toFixed(0)} m): ${cross.d == null ? 'no floor at its end' : `${cross.d.toFixed(1)} m from the far end, ${cross.over} steps over the water at most ${cross.worst.toFixed(2)} m off the deck, ${cross.mode}`}`);
+
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {
@@ -353,6 +581,21 @@ const { pinClock } = require('./pin_clock');
     check(hop.top > hop.run * 0.8, `runs at ${hop.top.toFixed(1)} m/s (the run is ${hop.run} m/s)`);
   }
   await shot('travel');
+
+  // a landmark you go up (an observation deck with its own lift): travel from the map puts you on its deck, high
+  // over the street and facing out, not on the street looking up at it
+  const decks = await p.evaluate(() => {
+    const g = window.__game, out = [];
+    for (const lm of g.landmarks.filter(l => g.deckOf(l))) {
+      const at = g.deckStand(g.deckOf(lm)) || g.deckOf(lm)[0], ok = g.travelTo(lm);
+      for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.25);
+      g.advance(0.5);
+      const pl = g.player;
+      out.push({ name: lm.name, ok, mode: pl.mode, d: Math.hypot(at[0] - pl.x, at[1] - pl.y), up: pl.z - Math.max(0, g.nav.terrain(pl.x, pl.y)), dz: Math.abs(pl.z - at[2]), walk: g.nav.walk(pl.x, pl.y, pl.z).ok });
+    }
+    return out;
+  });
+  for (const h of decks) check(h.ok && h.mode === 'foot' && h.walk && h.d < 45 && h.dz < 6 && h.up > 60, `travels to ${h.name}'s deck (${h.mode}, ${h.d.toFixed(0)} m from it, ${h.up.toFixed(0)} m over the street, ${h.walk ? 'on' : 'off'} walkable ground)`);
 
   // the travel points a city names for checking (travel[].check: a new place to go): each hop lands you on
   // your feet, on ground you can walk, near it
@@ -435,6 +678,14 @@ const { pinClock } = require('./pin_clock');
   await shot('talk');
   await p.evaluate(() => { const g = window.__game; for (let i = 0; i < 40 && g.dlg.open; i++) { if (g.dlg.hasChoices) g.dlg.choose(0); else g.dlg.next(); g.advance(0.2); } });
   if (!talk.none) check(await p.evaluate(() => !window.__game.dlg.open), 'the conversation runs to its end');
+
+  // after dark every NPC waits in light and in sight (#92; tools/npc_night.js): the street lights' light
+  // where they stand, and walkers round them who can see them past the walls
+  {
+    const rs = await p.evaluate(npcNight.survey), bad = rs.map(r => [r, npcNight.verdict(r)]).filter(([, w]) => w.length);
+    const dim = rs.filter(r => r.light != null).sort((a, b) => a.light - b.light)[0];
+    check(!bad.length, `every NPC stands in light and in sight at night (${rs.length} NPCs${dim ? `; the dimmest, ${dim.name}, at ${dim.light.toFixed(2)}` : ''})${bad.length ? ': ' + bad.map(([r, w]) => `${r.name} at ${r.at} ${w.join(', ')}`).join('; ') : ''}`);
+  }
 
   // the area caption (places.js): up briefly when you walk into an area, gone within 3.5 s, never over a
   // conversation, and not brought back by walking along an area's edge
@@ -604,6 +855,7 @@ const { pinClock } = require('./pin_clock');
   check(car.none || (car.top * 3.6 > 15 && car.moved > 5), car.none ? 'no car' : `drives your car (${(car.top * 3.6).toFixed(0)} km/h, ${car.moved.toFixed(0)} m in 4 s)`);
   check(car.none || (car.stopped < 0.5 && car.out), car.none ? 'no car' : `brakes to a stop and gets out beside it${car.out ? '' : ` (${car.stopped.toFixed(1)} m/s, ${car.mode}: ${car.said})`}`);
   await shot('car');
+  tight(await swing('car'), 'at the wheel');
 
   // a taxi: a hand up at the kerb, the nearest one pulls in, in the back, the driver asks where to,
   // the heads clear the roof, it drives off, the trip is skipped to the kerb there, out; then a ride
@@ -622,7 +874,8 @@ const { pinClock } = require('./pin_clock');
     r.hailed = true;
     r.log = [];
     let t = 0;
-    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''} near[${near}]`); } }
+    r.scrWait = 0; // (stood at a scramble's red through its walk, which no ride's priority cuts short: not counted against the half minute)
+    for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (o.drv.st.v < 0.5 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble && /^the line/.test(o.drv.st.why || '')) r.scrWait += 0.5; if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'})` : ''} near[${near}]`); } }
     r.hailT = t;
     r.waiting = o.phase === 'waiting'; r.near = Math.hypot(o.drv.st.x - g.player.x, o.drv.st.y - g.player.y);
     r.behind = o.drv.st.end < o.drv.path.len - 1; // (it pulled in behind a car at the kerb: your car, parked there)
@@ -637,12 +890,15 @@ const { pinClock } = require('./pin_clock');
     r.dest = o.dest && o.dest.name;
     const s0 = o.drv.st.s;
     g.advance(20);
+    // (held at a scramble's red through its walk: a walk of its own that nothing cuts short, so at worst the other
+    // road's turn, the walk, the all reds round them and the wait for the last walkers, some 70 s, more)
+    for (r.walkWait = 0; o.drv.st.s - s0 < 20 && r.walkWait < 70 && o.drv.st.lineAt && o.drv.st.lineAt.j.scramble; r.walkWait++) g.advance(1);
     r.drove = o.drv.st.s - s0;
     if (r.drove < 20) { // what holds it up: the nearest cars ahead of it, yours among them
       const t = o.drv.st, player = g.player, fx = Math.sin(t.h), fy = Math.cos(t.h), mc = g.myCar && g.myCar(), ahead = [];
       for (const c of g.cars.C.concat(mc ? [Object.assign({ mine: true }, mc.D.st)] : [])) {
         const dx = c.x - t.x, dy = c.y - t.y, a = dx * fx + dy * fy;
-        if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}`);
+        if (a > 0 && a < 40 && Math.abs(-dx * fy + dy * fx) < 4) ahead.push(`${c.mine ? 'your car' : 'car'} ${a.toFixed(0)} m ahead, ${(-dx * fy + dy * fx).toFixed(1)} m across, v ${(c.v || c.speed || 0).toFixed(1)}${c.still ? ' still' : ''}${c.mine ? '' : ` (${c.why}${c.q ? ', queueing' : ''}${c.mv ? ', in a junction' : ''})`}`);
       }
       r.why = `v ${t.v.toFixed(1)}, at ${t.s.toFixed(0)} of ${t.P.len.toFixed(0)} m${t.done ? " (done)" : ""}, phase ${o.phase}, pass ${t.pass.toFixed(1)}, held ${(t.held || 0).toFixed(0)} s, ${t.why}${t.junction ? ` (the junction: ${t.junction})` : ''}${t.block ? ` behind ${t.block === player ? 'you' : mc && t.block.x === mc.D.st.x ? 'your car' : t.block.line != null ? `a car on line ${t.block.line} (stuck ${(t.block.stuck || 0).toFixed(0)} s, v ${(t.block.v || 0).toFixed(1)})` : 'something'} at ${Math.hypot(t.block.x - t.x, t.block.y - t.y).toFixed(1)} m${t.block.still ? ', still' : ''}` : ''}; ${ahead.join('; ') || 'nothing ahead'}`;
       // (and what is in the junction it waits at: each car's way, what holds it, and for how long it has stood)
@@ -676,7 +932,7 @@ const { pinClock } = require('./pin_clock');
       for (; u < 120 && q.phase === 'coming'; u += 0.5) {
         g.advance(0.5);
         const st = q.drv.st;
-        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
+        if (u % 5 === 0 || (st.v < 0.5 && u % 1 === 0)) r.rideLog.push(`${u}s s=${st.s.toFixed(0)}/${st.end.toFixed(0)} v=${st.v.toFixed(1)} held=${(st.held || 0).toFixed(0)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'}${st.lineAt && st.lineAt.j.sig ? `, light ${st.lineAt.j.ph}${st.lineAt.j.st} ${st.lineAt.j.t.toFixed(1)} s, arm phase ${st.lineAt.phase}` : ''})` : ''} eta ${g.rideEta().toFixed(0)}${st.junction === 'cross' && st.lineAt ? ` (in the junction: ${st.lineAt.j.active.map(o => `${o.c === st ? 'the ride' : g.cars.C.includes(o.c) ? `car ${g.cars.C.indexOf(o.c)}` : 'another vehicle'} arm ${o.k} to ${o.m}${o.forced ? ' over its line' : ''} v ${(o.c.v || 0).toFixed(1)} ${o.c.why || ''} on ${o.c.line}${o.c.mv && o.c.mv.j !== st.lineAt.j ? ' (its next junction elsewhere)' : ''}`).join('; ') || 'nobody'})` : ''}${st.block ? ` behind ${st.block.line != null ? `car ${g.cars.C.indexOf(st.block)} v ${(st.block.v || 0).toFixed(1)} ${st.block.why || ''}` : 'something'}` : ''}`);
       }
       r.rideT = u; r.rideHere = q.phase === 'waiting';
       g.phoneShow(false);
@@ -687,13 +943,13 @@ const { pinClock } = require('./pin_clock');
   if (taxi.none) check(true, 'no car, no taxis');
   else {
     check(taxi.hint, 'the kerb offers a taxi (Y)');
-    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15) && taxi.hailT <= 30)) console.log(taxi.log.join("\n"));
+    if (taxi.log && !(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15) && taxi.hailT - (taxi.scrWait || 0) <= 30)) console.log(taxi.log.join("\n"));
     check(taxi.hailed && taxi.waiting && taxi.near < (taxi.behind ? 22 : 15), `hails a taxi: it pulls in beside you${taxi.hailed ? ` (${(taxi.near || 0).toFixed(1)} m away${taxi.behind ? ', behind the car parked at the kerb' : ''})` : ''}`);
-    check(taxi.hailed && taxi.hailT <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s`})`);
+    check(taxi.hailed && taxi.hailT - (taxi.scrWait || 0) <= 30, `the taxi is there within half a minute (${taxi.hailT == null ? '–' : `${taxi.hailT.toFixed(1)} s${taxi.scrWait ? `, ${taxi.scrWait.toFixed(1)} s of it at a scramble's red` : ''}`})`);
     check(taxi.inTaxi && taxi.choices >= 2, `gets in the back, and the driver asks where to (${taxi.choices || 0} answers)`);
     check(taxi.you == null || taxi.you > 0, `in the back, your head is under the roof (${taxi.you == null ? 'not measured' : `${taxi.you.toFixed(2)} m`})`);
     check(taxi.driver == null || taxi.driver > 0, `the driver's head is under the roof (${taxi.driver == null ? 'not measured' : `${taxi.driver.toFixed(2)} m`})`);
-    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s)${taxi.why ? `: ${taxi.why}` : ''}`);
+    check(taxi.drove > 20, `drives off for ${taxi.dest || 'nowhere'} (${(taxi.drove || 0).toFixed(0)} m in 20 s${taxi.walkWait ? ` and ${taxi.walkWait} s of a scramble's walk` : ''})${taxi.why ? `: ${taxi.why}` : ''}`);
     check(taxi.arrived && taxi.out, 'skips the trip to the kerb there, and you get out');
     check(taxi.ordered, `orders a ride on the phone${taxi.ordered ? '' : ` (${taxi.orderWhy})`}`);
     check(taxi.ordered && taxi.phoneMap, 'the phone shows the ride on its map, on the way');
@@ -747,12 +1003,34 @@ const { pinClock } = require('./pin_clock');
     : `travels from the map in your car to ${drive.name} (${drive.mode}, ${drive.mode === 'car' ? '' : `${(drive.me || 0).toFixed(0)} m from it, `}the car parked ${(drive.d || 0).toFixed(0)} m from it)`);
   await shot('drive');
 
+  // photo mode's depth of field (its aperture), and none of it back in play (atmosphere.js camFx); a city
+  // with a busy crossing's sound (game.look.sound) finds the crossing's signals
+  const fx = await p.evaluate(async () => {
+    const g = window.__game, A = g.atmos, frame = () => new Promise(r => requestAnimationFrame(() => r()));
+    const snd = g.sound ? g.sound() : null;
+    if (!A || !A.composer || !A.camFx) return { none: true, snd };
+    if (g.player.mode === 'car') { g.exitCar(); g.advance(1); }
+    g.photoMode(true); g.photo.fstop = 1.4;
+    for (let i = 0; i < 3; i++) await frame();
+    const pass = A.composer.passes.find(q => q.uniforms && q.uniforms.uAperture);
+    const on = !!(g.photo.on && pass && pass.enabled && pass.uniforms.uAperture.value > 0);
+    g.photoMode(false);
+    for (let i = 0; i < 40 && g.cine.active; i++) g.advance(0.1);
+    for (let i = 0; i < 3; i++) await frame();
+    return { on, off: !(pass && pass.enabled), snd };
+  });
+  check(fx.none || (fx.on && fx.off), fx.none ? 'no post stack for the depth of field' : `photo mode focuses with a depth of field (${fx.on}), and play has none (${fx.off})`);
+  if (fx.snd) check(fx.snd.junction != null, `the crossing's sound listens to its signals (junction ${fx.snd.junction})`);
+
   // the junctions: the signals change, and the traffic stops for them (junctions.js; tools/traffic_check.js measures the flow)
   const lights = await p.evaluate(() => {
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
     const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
-    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    if (!sig.length) { // no junction with signals (Higashiyama's lanes): the traffic still has to move
+      g.advance(20);
+      return { junctions: JN.J.length, signals: 0, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+    }
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
     const s1 = A.stats();
@@ -779,6 +1057,98 @@ const { pinClock } = require('./pin_clock');
     check(/rW.* g/.test(mid.seen) && !/gW/.test(mid.seen), `a crossing with signals between junctions gives the walk on a call and the traffic its green after (${mid.seen}; ${mid.n} such crossings, ${mid.zebras} zebras)`);
     check(mid.walkers > 0 && !mid.red, `the crowd's footways cross there (${mid.walkers}) and no car runs its red (${mid.red}${mid.red ? ': ' + mid.log : ''})`);
   }
+  // a ride's driver (cars.js chauffeur) at a crossing between junctions (#82): it stops short of the
+  // line at the crossing's red and goes on its green; at a zebra it gives way while someone is on the
+  // stripes and goes once they are clear. Driven on its own (the clock held, nothing else in the way)
+  // down the crossing's road from 40 m back
+  const rideMid = await p.evaluate(() => {
+    const g = window.__game, JN = g.junctions, L = g.roadNet.L, out = [];
+    if (!JN) return out;
+    const near = j => Math.hypot(j.x - g.player.x, j.y - g.player.y);
+    for (const sig of [true, false]) {
+      const j = JN.J.filter(x => x.mid != null && !!x.sig === sig).sort((p, q) => near(p) - near(q))[0];
+      if (!j) continue;
+      const a = j.arms[0], dir = a.end ? 1 : -1, l = L[j.line];
+      const s0 = Math.max(0.5, Math.min(l.len - 0.5, j.mid - dir * 40)), s1 = dir > 0 ? l.len - 0.5 : 0.5;
+      const rt = g.roads.route({ line: j.line, s: s0, dir }, { line: j.line, s: s1, dir }, 500);
+      if (!rt || !(rt.mids || []).some(m => m.X === j)) { out.push({ sig, none: true }); continue; }
+      rt.end = false;
+      let clear = false;
+      const keep = { ph: j.ph, st: j.st, t: j.t };
+      const lights = Object.assign(Object.create(JN), { onStripes: X => X === j && !clear });
+      if (sig) { j.ph = 1; j.st = 'g'; j.t = 0; } // the walk: the traffic held at red
+      const C = { half: 2.3, hw: 0.9, top: 1.5, wheelbase: 2.7 }, D = OECars.chauffeur(C, rt, { keep: g.KEEP === 'right' ? -1 : 1, from: 'lane', v: 10, lights, cruise: 12 });
+      const at = rt.mids.find(m => m.X === j).at, line = at - a.back;
+      for (let k = 0; k < 120; k++) D.update(0.1, [], false, true); // 12 s at the red, or at the stripes (after 15 s stopped at a zebra it edges on)
+      const held = { front: line - D.st.s - C.half, v: D.st.v, why: D.st.junction };
+      clear = true; if (sig) { j.ph = 0; j.st = 'g'; j.t = 0; }
+      for (let k = 0; k < 150; k++) D.update(0.1, [], false, true);
+      const went = D.st.s - at;
+      Object.assign(j, keep);
+      out.push({ sig, id: j.id, held, went });
+    }
+    return out;
+  });
+  for (const r of rideMid) {
+    const kind = r.sig ? 'its red' : 'a zebra with someone on it';
+    if (r.none) { check(false, `a ride can be routed over the nearest ${r.sig ? 'crossing with signals' : 'zebra'}`); continue; }
+    check(r.held.front > -0.5 && r.held.front < 6 && r.held.v < 0.2, `a ride stops at a crossing between junctions at ${kind} (crossing ${r.id}: its front ${r.held.front.toFixed(1)} m short of the line, ${r.held.v.toFixed(1)} m/s, ${r.held.why})`);
+    check(r.went > 5, `and goes on across once ${r.sig ? 'it turns green' : 'the stripes are clear'} (${r.went.toFixed(0)} m past it)`);
+  }
+  // lanes from OSM's counts (#82): the main road pieces they take down to one lane each way; over 40 s,
+  // the cars in a second lane that are within 5 m of where it ends (they should have moved across
+  // well before: actors.js looks ahead along the road, junctions.js laneRun)
+  const lanes = await p.evaluate(() => {
+    const g = window.__game, A = g.cars, JN = A.junctions, L = g.roadNet.L, TWO = { motorway: 1, trunk: 1, primary: 1 };
+    const one = L.filter(l => (TWO[l.c] || (l.ow && l.c === 'secondary')) && JN.lanesOf(l) === 1).length;
+    let inL1 = 0, atEnd = 0;
+    for (let t = 0; t < 40; t++) {
+      g.advance(1);
+      for (const c of A.C) {
+        if (c.line < 0 || c.ln !== 1 || c.mv) continue;
+        inL1++;
+        const l = L[c.line], end = c.dir > 0 ? 1 : 0, left = c.dir > 0 ? l.len - c.s : c.s;
+        if (!JN.armAt(c.line, end) && left + JN.laneRun(c.line, end) < 5 + c.half) atEnd++;
+      }
+    }
+    return { one, inL1, atEnd };
+  });
+  check(lanes.atEnd <= Math.max(2, 0.02 * lanes.inL1), `${lanes.one} main road pieces one lane each way by OSM's count; cars in a second lane within 5 m of its end: ${lanes.atEnd} of ${lanes.inL1} samples`);
+  // turns banned and streets shut to cars at some hours (#82: junctions.js by the game's clock): at an
+  // hour it is closed no car chooses that way and the rides' router keeps off the street; at an hour it
+  // is open, cars take it again
+  const timed = await p.evaluate(() => {
+    const g = window.__game, JN = g.junctions, L = g.roadNet.L, st = JN.stats();
+    const r = { bans: st.timedBans, shut: st.timedShut };
+    let pick = null;
+    for (const j of JN.J) { if (j.mid != null) continue; for (const a of j.arms) { if (!a.in) continue; const ex = JN.exits(a); const e = ex.length > 1 && ex.find(x => x.tw || L[x.m.line].tb); if (e) { pick = { a, e }; break; } } if (pick) break; }
+    if (!pick) return r;
+    const { a, e } = pick, when = [];
+    for (let dow = 0; dow < 7; dow++) for (let min = 15; min < 1440; min += 30) when.push({ dow, min });
+    const shutT = when.find(t => JN.closedNow(e, t)), openT = when.find(t => !JN.closedNow(e, t));
+    if (!shutT || !openT) return Object.assign(r, { always: !!shutT });
+    const c0 = Object.assign({}, g.clock);
+    const at = t => { const dow0 = (new Date(Date.UTC(c0.y, c0.m - 1, c0.d)).getUTCDay() + 6) % 7; g.setClock(c0.y, c0.m, c0.d + (t.dow - dow0 + 7) % 7, t.min); };
+    const tries = t => { at(t); let n = 0; for (let k = 0; k < 400; k++) if (JN.choose(a) === e) n++; return n; };
+    r.whenShut = tries(shutT); r.whenOpen = tries(openT);
+    // the router: a route from the arm's road to the street beyond the shut one, at the hour it is
+    // shut, goes round it where there is another way (one that keeps off it when told to shun it)
+    const la = L[a.line], from = { line: a.line, s: a.end ? Math.max(0.5, la.len - 20) : Math.min(la.len - 0.5, 20), dir: a.end ? 1 : -1 };
+    const far = 1 - e.m.end, nx = !e.tw && g.roadNet.next(e.m.line, far, true);
+    if (nx) {
+      const ln = L[nx[0]], to = { line: nx[0], s: ln.len / 2, dir: nx[1] === 0 ? 1 : -1 };
+      const via = rt => (!rt ? 'none' : rt.nodes.some(nd => nd.line === e.m.line) ? 'through' : 'round');
+      at(openT); const alt = via(g.roads.route(from, to, 3000, undefined, new Set([e.m.line])));
+      at(shutT); r.routed = via(g.roads.route(from, to, 3000)); r.alt = alt;
+    }
+    r.what = `${e.tw ? "a turn banned" : `the street (${L[e.m.line].c}) shut`} at ${['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'][shutT.dow]} ${Math.floor(shutT.min / 60)}:${String(shutT.min % 60).padStart(2, '0')}`;
+    g.setClock(c0.y, c0.m, c0.d, c0.min);
+    return r;
+  });
+  if (timed.whenShut != null) {
+    check(timed.whenShut === 0 && timed.whenOpen > 0, `${timed.bans} turns banned and ${timed.shut} streets shut to cars at some hours: ${timed.what}, chosen ${timed.whenShut} times in 400 then, ${timed.whenOpen} at an hour it is open`);
+    if (timed.alt === 'round') check(timed.routed === 'round', `and a ride's route goes round it then (${timed.routed})`);
+  } else console.log(`     ${timed.bans || 0} turns banned and ${timed.shut || 0} streets shut at some hours${timed.always != null ? ' (the nearest closed all week or never)' : ''}`);
   if (lights.none) check(false, 'the traffic has junctions');
   else {
     check(lights.junctions > 0, `${lights.junctions} junctions, ${lights.signals} with signals (${lights.heads || 0} lanterns)`);
@@ -789,9 +1159,143 @@ const { pinClock } = require('./pin_clock');
       check(lights.crossings > 0 && lights.walkSignals > 0, `the crowd's footways cross at the signals (${lights.crossings} crossings, ${lights.walkSignals} walk signals)`);
       if (lights.walkTurns) check(lights.walkTurns === 2, 'the nearest junction\'s walk signal turns on and off');
     }
-    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
+    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two || 0} cars in a main road's second lane`);
   }
   await shot('junction');
+
+  // the scrambles: every way at once in a walk phase of their own, the diagonals too (tools/scramble_step.js)
+  for (const r of await require('./scramble_step')(p)) { for (const [ok, what] of r.checks) check(ok, what); await shot(`scramble-${r.at.join('_')}`); }
+  // the walk signals' calls for the blind (walkcalls.js): Japan's bird calls in the walk, the ticking elsewhere, none when muted (tools/walkcalls_step.js)
+  { const r = await require('./walkcalls_step')(p); if (r.none) console.log(`(no walk signals' calls in ${r.country || 'this country'})`); else for (const [ok, what] of r.checks) check(ok, what); }
+
+  // a ride behind a queue at a red light (#107): it waits its turn in its own lane, never swings out
+  // round a car queueing there (c.q) to the head of the queue, and goes on when the queue moves;
+  // and the traffic that comes up behind it queues behind it too, never round it
+  await p.evaluate(src => { window.__findQueue = eval(`(${src})`); }, findQueue.toString());
+  const queue = await p.evaluate(() => {
+    const g = window.__game, st0 = window.__kerb, L = g.roadNet.L, C = g.cars.C;
+    if (!st0 || !g.myCar || !g.myCar()) return { none: 'no kerb' };
+    if (g.ride()) g.cancelRide();
+    if (g.player.mode !== 'foot') g.exitCar();
+    const k = g.KEEP === 'left' ? 1 : -1;
+    g.player.x = st0.x - Math.sin(st0.h) * 12 - Math.cos(st0.h) * 2.4 * k; g.player.y = st0.y - Math.cos(st0.h) * 12 + Math.sin(st0.h) * 2.4 * k; g.player.z = st0.z;
+    g.advance(1);
+    g.hail();
+    const o = g.ride();
+    if (!o) return { none: 'no taxi' };
+    for (let t = 0; t < 60 && o.phase === 'coming'; t += 0.5) g.advance(0.5);
+    g.boardRide();
+    for (let i = 0; i < 16 && g.player.mode !== 'ride'; i++) g.advance(0.5);
+    for (let i = 0; i < 80 && g.dlg.open && !g.dlg.hasChoices; i++) g.dlg.tick(0.1);
+    if (g.dlg.open) g.dlg.choose(0);
+    if (g.player.mode !== 'ride') return { none: 'not in the taxi' };
+    // a queue at a red light: its head stopped at the line, the cars behind it queueing (c.q), with
+    // a straight run of road behind its tail for the taxi to come up it, and a road on from the junction
+    const along = (c, h, a) => (c.x - h.x) * Math.sin(a) + (c.y - h.y) * Math.cos(a);
+    const findQueue = skip => window.__findQueue(g, skip);
+    const tried = new Set(), jams = [];
+    let r = null;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const pick = findQueue(tried);
+      if (!pick) break;
+      tried.add(pick.h.line);
+      // the taxi, on that road behind the queue (cars.js chauffeur, driven by the game's own ride step)
+      o.drv.leave();
+      o.drv = OECars.chauffeur(o.C, Object.assign({}, pick.rt, { end: false }), { keep: k, from: 'lane', v: 0, lights: g.junctions, now: g.t }); // (on through: not pulling in at the end of this short way)
+      const st = o.drv.st, queued = C.filter(c => c.line === pick.h.line && c.dir === pick.h.dir && c.q);
+      r = { n: queued.length, shift: 0, passed: [], behind: false, overtook: [], gone: false, moved: null, follow: null, jams };
+      const sHead = (pick.h.s - pick.rt.from.s) * pick.h.dir; // (the head of the queue, along the taxi's way)
+      const arm = g.junctions.armAt(pick.h.line, pick.h.dir > 0 ? 1 : 0), seq = [], behind = new Set();
+      for (let t = 0; t < 180 && !st.done; t += 0.25) { // (a red can be long where the signals give a call or a scramble its turn)
+        g.advance(0.25);
+        const lt = g.junctions.light(arm); if (!seq.length || seq[seq.length - 1][1] !== lt) seq.push([t, lt]); // (the light it waits at, as it changes)
+        if (Math.abs(st.shift) > Math.max(0.2, r.shift)) r.round = (st.passed || []).map(c => `car ${C.indexOf(c)} (${c.why}, v ${(c.v || 0).toFixed(1)}${c.q ? ', queueing' : ''}, stood ${typeof c.still === 'number' ? c.still.toFixed(0) : c.still} s${c.stuck ? `, stuck ${c.stuck.toFixed(0)} s` : ''})`).join(', ') || 'nothing';
+        r.shift = Math.max(r.shift, Math.abs(st.shift));
+        const a = st.h, bl = st.block;
+        if (bl && bl.q && st.v < 0.5) { r.behind = true; r.ahead = bl; }
+        // the queue moves: the car it waits behind is off (then it follows within a few seconds)
+        if (r.ahead && r.moved == null && r.ahead.v > 1) r.moved = t;
+        if (r.moved != null && r.follow == null && st.v > 0.5) { r.follow = t - r.moved; r.goneT = t; }
+        // and it never stands with room ahead of it and no line to stop at (the queue moved on without it)
+        r.openT = r.behind && st.v < 0.3 && st.gap > 7 && !/^the line/.test(st.why || '') ? (r.openT || 0) + 0.25 : 0;
+        r.openMax = Math.max(r.openMax || 0, r.openT);
+        // (passed: one queueing in its own lane, now behind it; not one in the other lane of a road with two each way)
+        for (const c of queued) if (c.q && c.line === pick.h.line && along(c, st, a) < -(c.half + o.C.half) && Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a)) < c.hw + o.C.hw + 0.2 && !r.passed.includes(C.indexOf(c))) r.passed.push(C.indexOf(c));
+        // the traffic behind it, in its lane, while it queues: none comes past it (on a road with two
+        // lanes each way, one moving up in the other lane is not one going round it)
+        const lat = c => Math.abs((c.x - st.x) * Math.cos(a) - (c.y - st.y) * Math.sin(a));
+        if (st.q) for (const c of C) if (c.line === pick.h.line && c.dir === pick.h.dir) {
+          const b = along(c, st, a), i = C.indexOf(c);
+          if (b < 0 && b > -30 && lat(c) < c.hw + o.C.hw + 0.3) behind.add(i);
+          else if (behind.has(i) && b > 0 && !c.ln && !r.overtook.includes(i)) r.overtook.push(i);
+        } else behind.clear();
+        if (r.follow != null && t - r.goneT > 4) break;
+        if (st.s > sHead + 5) { r.gone = true; break; }
+      }
+      const bl = st.block;
+      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)}; now phase ${arm.j.ph} ${arm.j.st} for ${arm.j.t.toFixed(0)} s, next ${arm.j.nxt}, called ${arm.j.call})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
+      delete r.ahead;
+      if (r.follow != null || r.moved != null) break;
+      jams.push(`line ${pick.h.line}: ${r.behind ? '' : 'the light changed before it caught up; '}${r.why}`); // (the queue never moved in 3 minutes: a long red or a jam in the junction, not the taxi's doing; another queue)
+    }
+    if (!r) { g.skipRide(); g.advance(6); g.leaveRide(); return { none: 'no queue at a red light in 3 minutes' }; }
+    g.skipRide(); g.advance(6); g.leaveRide(); g.advance(1);
+    return r;
+  });
+  if (queue.none) check(true, `a ride at a red light: not tried (${queue.none})`);
+  else {
+    // (none of the tries caught up with its queue before the light changed: the waiting is not tried,
+    // noted above; the lane is still checked for the way up to it)
+    if (!queue.behind) console.log(`note a ride behind a queue at a red light: not tried, the light changed before it caught up with any (out of its lane by ${queue.shift.toFixed(2)} m at most)`);
+    check(queue.shift < 0.5 && (queue.behind || !queue.round), `a ride behind a queue of ${queue.n} at a red light waits in its lane (out of it by ${queue.shift.toFixed(2)} m at most${queue.round ? `, going round ${queue.round}` : ''}${queue.behind ? '' : ', never caught up with the queue'})`);
+    check(queue.passed.length === 0, `it never passes a car queueing there${queue.passed.length ? ` (passed car ${queue.passed.join(', ')})` : ''}`);
+    check(!queue.overtook.length, `the traffic behind it queues behind it${queue.overtook.length ? ` (car ${queue.overtook.join(', ')} came past it)` : ''}`);
+    if (queue.jams.length) console.log(`note a queue not tried to the end (it did not move in 3 minutes, or moved off before the taxi came up): ${queue.jams.join(' | ')}`);
+    // (a queue that never moved in any of the tries is a jam ahead of it, not the taxi's doing: noted
+    // above; the check is the taxi's own: once the car ahead moves, it follows without standing)
+    if (queue.follow == null && queue.moved == null) console.log(`note and it goes on when the queue moves: not tried, the queue never moved (${queue.why})`);
+    else check(queue.follow != null && queue.openMax < 2.5, `and it goes on when the queue moves (${queue.follow != null ? `off ${queue.follow.toFixed(1)} s after the car ahead first moved, ${queue.goneT.toFixed(0)} s after it came up; stood at most ${queue.openMax.toFixed(1)} s with room ahead` : queue.moved != null ? `the car ahead went ${queue.moved.toFixed(0)} s in, the taxi did not: ${queue.why}` : `the queue never moved: ${queue.why}`})`);
+  }
+
+  // no movement left standing in a junction: three minutes round where you are, no car that has its way
+  // through a signalled junction stands still in it for more than two of its cycles (and the queues held
+  // at a line through more than two greens are listed; tools/junction_held_step.js; #144, #150)
+  await p.evaluate(() => { // (on foot first: out of a ride still going, once it stops)
+    const g = window.__game;
+    for (let t = 0; t < 40 && g.player.mode === 'ride'; t++) { g.leaveRide(); g.advance(0.5); }
+  });
+  const heldQ = await p.evaluate(heldStep, { T: 180, max: 2 });
+  check(heldQ.held.length === 0, `no movement left standing in a junction for more than two cycles (${heldQ.watched} cars watched at their lines, ${heldQ.cycles} greens waited through${heldQ.held.length ? `; ${heldQ.held.length} standing` : ''})`);
+  for (const h of heldQ.held.slice(0, 6)) console.log('  ' + h);
+  const qNote = (what, L) => { if (L.length) console.log(`note ${what}: ${L.length}\n  ${L.slice(0, 3).join('\n  ')}`); };
+  qNote('a queue at a signal held through more than two greens', heldQ.queues);
+  qNote('held at a signal by your car, a ride or you in the road (not the junction\'s doing)', heldQ.yours);
+  qNote('held at a signal behind a car at a wall across its way', heldQ.walls);
+  qNote('a movement standing behind a walker in the road or the queue for the next junction\'s red', heldQ.beyond);
+
+  // the traffic keeps out of the walls: cars whose body (most of its width, knee to 1.4 m) is in a building or a
+  // landmark, over 20 s; none stands at a wall across its way for long; and no one-way road that comes to a
+  // wall (a road the data runs into a building: game.js cutAtWalls, pipeline/road_passages.py) is open to it
+  const carWalls = await p.evaluate(() => {
+    const g = window.__game, nav = g.nav, C = g.cars.C, RL = g.roadNet.L, av = g.roadNet.avoid;
+    let n = 0, inWall = 0, waits = 0;
+    const still = new Map();
+    for (let t = 0; t < 20; t++) {
+      g.advance(1);
+      for (const c of C) {
+        if (c.line < 0) continue;
+        n++;
+        if (!nav.room(c.x, c.y, c.z, c.hw * 0.8, 1.4, c.z > nav.terrain(c.x, c.y) + 2)) inWall++;
+        const s = c.why === 'wall' && c.v < 0.1 ? (still.get(c) || 0) + 1 : 0;
+        still.set(c, s);
+        if (s === 6) waits++;
+      }
+    }
+    const traps = RL.filter((l, i) => l.ow && (l.wall & (l.ow > 0 ? 2 : 1)) && !(av && av[i])).length;
+    return { n, inWall, waits, traps, ends: RL.filter(l => l.wall).length };
+  });
+  check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
+  check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)
@@ -800,6 +1304,30 @@ const { pinClock } = require('./pin_clock');
   check(gl.paused && gl.note, `a lost context holds the game under a note (paused ${gl.paused}, note ${gl.note})`);
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
   check(Math.abs(gl.after.mean - gl.before.mean) < 10, `and lit as before (luma ${gl.before.mean.toFixed(1)} before, ${gl.after.mean.toFixed(1)} after)`);
+
+  // a device that can't keep up (game.js shed): it gives up the rain's extras, then every drop, then
+  // the street's reflections, then pixels, in that order, and never the people: the player, the NPCs
+  // and the crowd near them keep their realistic models
+  const shed = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    if (W) { W.set('rain', { now: true }); g.advance(1); }
+    const seen = [];
+    for (let i = 0; i < 8 && g.shed(); i++) {
+      await frames(2);
+      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
+    }
+    const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
+    if (W) W.set('live');
+    return { seen, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+  });
+  {
+    const s = shed.seen, at = k => s.findIndex(x => x.lvl === k);
+    const order = s.length >= 2 && s[s.length - 1].px === 0.7 && s.every((x, i) => !i || x.px <= s[i - 1].px)
+      && s.every(x => x.px === 1 || (x.w === null || x.w === 2) && (x.mirror === null || x.mirror));
+    const rainFirst = at(1) < 0 || (s[at(1)].far === false && s[at(1)].near === true && s[at(1)].px === 1);
+    check(order && rainFirst, `a slow device sheds the rain's extras first, then the drops, the reflections and then pixels (${s.map(x => `${x.lvl}:${x.w ?? '-'}/${x.mirror ?? '-'}/${x.px}`).join(' ')})`);
+    check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
+  }
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

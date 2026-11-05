@@ -21,7 +21,7 @@ canvas{display:block}
 // clip=Talk, acc=a,b (everyone) | only=ids or indices | shadows=0 | labels=0 or names | t=seconds to advance |
 // cx,cy,cz camera, tx,ty,tz target, fov | gap | ry | live=1
 import * as T from 'three';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from '../gltf.js'; // (meshopt-compressed models; retries)
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 T.ColorManagement.enabled = false;
 window.THREE = Object.assign({}, T, { GLTFLoader, SkeletonUtils });

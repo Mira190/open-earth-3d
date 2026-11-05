@@ -206,9 +206,9 @@
   }
   // a roof row as shipped ([solid, top, eave, shape, x0, y0, xyz b64, triangles b64, n_roof]) to the
   // working form [solid, top, eave, shape, xyz (absolute dm), triangles, n_roof]; idempotent
-  const b64 = s => typeof atob === 'function' ? Uint8Array.from(atob(s), c => c.charCodeAt(0)) : new Uint8Array(Buffer.from(s, 'base64'));
+  const b64 = s => s instanceof Uint8Array ? s : typeof atob === 'function' ? Uint8Array.from(atob(s), c => c.charCodeAt(0)) : new Uint8Array(Buffer.from(s, 'base64'));
   function unpackRoof(r) {
-    if (r.length !== 9 || typeof r[6] !== 'string') return r;
+    if (r.length !== 9 || !(typeof r[6] === 'string' || r[6] instanceof Uint8Array)) return r; // (bytes: buildings.bin)
     const raw = b64(r[6]), q = new Int16Array(raw.buffer, raw.byteOffset, raw.length / 2), pos = new Int32Array(q.length);
     for (let i = 0; i < q.length; i += 3) { pos[i] = q[i] + r[4]; pos[i + 1] = q[i + 1] + r[5]; pos[i + 2] = q[i + 2]; }
     const ib = b64(r[7]), tri = pos.length / 3 > 255 ? new Uint16Array(ib.buffer.slice(ib.byteOffset, ib.byteOffset + ib.length)) : ib;

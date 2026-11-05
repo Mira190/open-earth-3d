@@ -48,7 +48,7 @@ const [w, h] = size.split('x').map(Number);
   fs.mkdirSync(outDir, { recursive: true });
   const loaderSel = mode === 'play' ? '#g-loader' : '#loader';
   // HOLD=1: the buildings never arrive, so the loading screen stays up to be looked at
-  if (process.env.HOLD) await p.route(/buildings\.json$/, () => {});
+  if (process.env.HOLD) await p.route(/buildings\.(json|bin)$/, () => {});
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#${mode === 'play' ? 'play-' : ''}${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   const t0 = Date.now(), frames = [];
   let goneAt = null;

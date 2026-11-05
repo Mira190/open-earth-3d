@@ -111,7 +111,7 @@ names and the real geometry, and leaves out what belongs to the game: no
 characters, logos, invented shops or interface. What is built:
 
 - **The scramble.** Its street, buildings and signs are built at street level in
-  section 6b. Hachiko sits on his pedestal (the statue since 1948), with its plaque.
+  section 6b. Hachiko, sculpted, sits on his pedestal (the statue since 1948), with its plate.
 - **Center Gai's gate** and **SHIBUYA109** are in section 6b, the big screens in section 6.
 - **Sangenjaya**, the triangle between Setagaya-dori and Route 246: the front of a
   snack bar the game's café is drawn on (New Marina), the bathhouse Chiyo-no-yu
@@ -184,10 +184,12 @@ them, and are dark after that.
   out here (`landmarks.json` `demolished`), and the site is a construction site: a hoarding with
   the developer's notice, floodlights and a tower crane. The crane's place and height are
   illustrative.
-- **Hachiko Square.** Hachiko has faced east, towards the station, since May 1989, when his
-  pedestal was lowered so people could touch him. Metal benches ring him. The station's Hachiko
-  gate moved to the Miyamasuzaka side on 26 January 2025, and the *Hachiko Family* tile relief
-  was taken down from February 2025, so neither is drawn.
+- **Hachiko Square.** Hachiko's pedestal was lowered in May 1989 so people could touch him. He
+  looks north-east, toward the station's Hachiko exit, with the bus street at his back: photographs
+  from 2020, 2021 and July 2025 show him from behind looking toward QFRONT's side, in profile from the
+  square's south, and from the front with the buses behind him. The station's Hachiko gate moved to the
+  Miyamasuzaka side on 26 January 2025, and the *Hachiko Family* tile relief was taken down from
+  February 2025, so neither is drawn. Hachiko and his corner of the square are described in section 6b.
 - **SHIBUYA SKY's CROSSING LIGHT.** Its 18 searchlights put on a show from 19:00, on the hour and
   the half hour, to 22:00 (`light_show` `every`, `until`). Each show's length and the beams'
   movement are illustrative.
@@ -218,17 +220,39 @@ are, checked against photographs from the same viewpoints (the comparison stills
 | Shibuchika's pavilion (exit 8) | The square pavilion on Hachiko Square with its charcoal fascia and name | OSM's 13.8 × 13.4 m outline | Its height (OSM 3.8 m) |
 | Tactile paving | Yellow 30 cm guide blocks along every footway OSM tags `tactile_paving=yes`, warning blocks where they meet a kerb or a door | OSM | |
 | Guard rails | White guard pipes (0.8 m, posts every 2 m) on the kerbs between crosswalks; short stainless bollards on QFRONT's forecourt | Photographs 2024-25 | Their exact runs |
-| The JR lines | The Yamanote Line's two tracks and the freight line's two on a raised bed between retaining walls, the steel girder bridge over the road under them, rails on sleepers, the overhead line on portal masts | OSM's track lines and bridge | Rails 7.4 m over the road, the girder 2 m deep, masts every 46 m |
+| The Ginza line | Its concrete viaduct on piers clear of the roads, two tracks with their third rail and no wires | OSM's line (bridge=viaduct, layer 2) | Rails 12 m over the street, the deck 9 m wide |
+| The JR lines | The Yamanote Line's two tracks and the freight line's two: the steel plate-girder bridge over the road (stiffeners, flanges, its clearance sign), north of it a concrete viaduct on three rows of columns with the Hachiko-exit bicycle lot under it (city bicycles, instanced), rails on sleepers, the overhead line on portal masts | OSM's track lines, bridge and the bicycle lot under the tracks | Rails 7.4 m over the road, the girder 2 m deep, masts every 46 m, the 4.5 m clearance |
 | QFRONT | A double skin curved round its corners: glass on silver fins every 0.9 m in front of the floors (lit after dark), the glass crown with a roof advert, Q FRONT under it, the canopy with SHIBUYA TSUTAYA and STARBUCKS COFFEE. Q'S EYE (12.96 × 7.289 m) and its banner screen are moved up to where the photographs put them, 30.8 and 20.4 m over the street | PLATEAU 52.2 m to the crown; R.I.A. design, 1999, 8 floors | Fins, storeys, the gap between the skins |
 | SHIBUYA109 | The aluminium block and the cylinder at its point, the printed advert on its front and the pink 109 in a ring on its silver top | PLATEAU: 33.6 m roof, the cylinder 49.7 m; OSM's footprint rounds the point on a 13.7 m circle (PLATEAU's generalised model, 11.5 m); drawn 13 m across | The advert's size; the panels' joints |
 | MAGNET | Its glazed corner under a sloping silver fascia with its name in red serif letters | Photographs 2025 | The fascia's height and slope |
 | Center Gai's gate | Two grey posts bending over like shepherd's crooks, disc lamps at their tips, センター街 on the posts and the basketball banner between them | Photographs 2024-25 (no dimensions are published) | 5.5 m posts, the street's 9 m |
 | The koban | 渋谷警察署渋谷駅前交番 at OSM's node on Hachiko Square's north edge: two storeys of pale tile, KOBAN and its name over the door, the red lamp | OSM | Its size, 6.4 × 4.6 × 6.6 m |
 | The station's Hachiko side | OSM maps the whole station as one 15 to 29 m building, which the generic styles drew as a yellow stone palace. It is drawn as the works site it is: pale panel walls, hoardings with the works notice at its foot, a scaffold over the square carrying an advert | OSM's outline and heights; photographs 2024-25 | The scaffold's size |
-| The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands; the Taiseido bookshop's fascia | PLATEAU, photographs | All the brands are invented |
+| The west side's billboards | Box billboards stacked on steel towers over the roofs (the Taiseido block's tower is in PLATEAU's LOD2, 5.5 × 5.6 m to 39.4 m) and the Oto building's floor-by-floor sign bands | PLATEAU, photographs | All the brands are invented |
+| The bookshop on Center Gai's corner | The shop that has stood on the corner since 1912, on the block's chamfer facing the crossing and 3.4 m of its south side: white clapboard to the first floor, the shop window and door, a blue awning with the name in white, and the big white box sign, lit from inside, wrapping round the corner: the name in heavy blue characters inside a red outline of an open book (its spine at the corner), the romanised name in red, a blue edge at its foot. The name is invented, 大昇堂書店 (BOOKS TAISHODO), in the real one's pattern: five characters, □□堂書店, two on the side and three on the front, in the same colours. The block's corner screen and Rakuten Vision stand above the sign (7.4 m and 12.9 m) | OSM's outline (w136690966 is the whole block); photographs 2021 and 2024 | The awning (3.0-3.45 m) and the sign (3.6-6.9 m), scaled from the door |
+| Hachiko | The bronze Akita sculpted as signed distance fields (ellipsoids, tapered limbs, a collar, the curled tail, joined with smooth unions) and meshed by surface nets (`pipeline/sculptkit.py`, `cities/shibuya/hachiko.py`), 13,000 triangles with smooth normals and a cast surface's unevenness. He sits up, forelegs straight, ears up; the forelegs and paws are rubbed bright by hands. On a speckled grey granite plinth (0.95 × 0.95 × 1.15 m) with its bronze plate, 忠犬ハチ公 set vertically, on a dark granite step clad in small tiles (1.55 m square, 0.38 m) | Photographs, July 2025 (front and three-quarter); the first statue (1934) was 162 cm on a 180 cm pedestal | All the sizes, scaled from the plinth: the dog about 0.95 m from paws to ears |
+| Hachiko's corner of the square | Round him, dark granite setts laid in arcs (6.6 m out, with two dark bands); behind him a curved bed (2.4-4.4 m out, round his back) behind a 0.48 m granite wall people sit on, with two stainless rails along it and five lamps set in its face, and in the bed rocks, four black pines pruned in pads and a Kasuga lantern; on his left the memorial stone with its plate. Out on the square two round planters of upright granite strips (2.7 m across) ringed by stainless rails, each with a tree, and four cherry-blossom inlays of pale stone in the setts | Photographs 2020-25 | All positions and sizes. The planters' trees are the shared Somei-yoshino cherries, in flower from 24 March (`trees.areas` in city.json) |
 
-**What was not built, and why.** The Ginza line's viaduct over the Toyoko site is not drawn: its line
-over the street could not be confirmed against a photograph. Seibu's A and B buildings closed on
+**Side by side.** Each still stands the camera where the photographer stood and is cropped to the
+photo's lens (`tools/compare/shibuya.json`, `tools/compare_sheet.py`); the photo first, then the model at
+13:00, 15 minutes after sunset and 20:30 on 3 November.
+
+| | |
+|---|---|
+| Hachiko Square toward QFRONT | ![](../images/shibuya/compare/hachiko.jpg) |
+| QFRONT from the Hachiko corner | ![](../images/shibuya/compare/qfront.jpg) |
+| SHIBUYA109 from the scramble | ![](../images/shibuya/compare/s109.jpg) |
+| The station side | ![](../images/shibuya/compare/station.jpg) |
+| Across the junction from MAGNET | ![](../images/shibuya/compare/diagonal.jpg) |
+
+**Cost.** The Shibuya map's data grew from 34.0 MB to 36.1 MB (landmarks.json 1.61 to 3.07 MB, and
+scramble.jpg, 0.3 MB). On the low tier under a software renderer (llvmpipe, `TIER=low tools/city_shot.js`)
+the map loads in 23.4 s and draws the view from Hachiko Square in 311 ms a frame by day and 368 ms at
+night; on a GPU the cost is a few more draw calls (one per material, about 40). A real GPU was not
+measured.
+
+**What was not built, and why.** The Ginza line's viaduct is drawn from Mark City across the street and
+the Toyoko site to the JR station (it carries on inside the station's outline). Seibu's A and B buildings closed on
 30 September 2026 and carry no sign here. The traffic signals and the crowd belong to the game
 (`web/game/junctions.js`). Real brands, logos and the real adverts are not drawn: every advert is
 invented in the kind the real one is, and the buildings' own names are set in open fonts.
@@ -265,7 +289,12 @@ comes from the screens and signs while the buildings stay dark glass.
 [the empty junction, 2025-01](https://commons.wikimedia.org/wiki/File:%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9_2025%E5%B9%B41%E6%9C%8822%E6%97%A5%E3%81%AE%E6%B8%8B%E8%B0%B7_202501221341_IMG_2568.jpg) (ウィ貴公子, CC BY-SA 4.0);
 [the station side at night, 2026-10](https://commons.wikimedia.org/wiki/File:%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9_2026%E5%B9%B410%E6%9C%8819%E6%97%A5%E3%81%AE%E6%B8%8B%E8%B0%B7_202610192208_IMG_3376.jpg) (ウィ貴公子, CC BY-SA 4.0);
 [the station's Hachiko exit, 2024-07](https://commons.wikimedia.org/wiki/File:Shibuya_station_Hachiko_exit_streetscape_IMG_3287.jpg) (Bject, CC BY 4.0);
-[Hachiko, 2025-11](https://commons.wikimedia.org/wiki/File:The_Hachiko_statue_at_Shibuya,_Tokyo,_Japan.jpg) (Joli Rumi, CC BY-SA 4.0).
+[Hachiko, 2025-11](https://commons.wikimedia.org/wiki/File:The_Hachiko_statue_at_Shibuya,_Tokyo,_Japan.jpg) (Joli Rumi, CC BY-SA 4.0);
+Hachiko from the front and three-quarters, 2025-07 ([094](https://commons.wikimedia.org/wiki/File:Tokyo-Shibuya-and-Shinbashi---2025-07-13_094.jpg), [095](https://commons.wikimedia.org/wiki/File:Tokyo-Shibuya-and-Shinbashi---2025-07-13_095.jpg); RuinDig, CC BY 4.0);
+[Hachiko Square, 2020-04](https://commons.wikimedia.org/wiki/File:Hachiko_square_2020-04-19.jpg) (Asanagi, CC0);
+[Hachiko Square's planters, 2021-02](https://commons.wikimedia.org/wiki/File:Shibuya_Hachiko_2021-02-22.jpg) (しんぎんぐきゃっと, CC BY-SA 4.0);
+[Hachiko in the crowd, 2023](https://commons.wikimedia.org/wiki/File:Hachiko_(53083712909).jpg) (Dick Thomas Johnson, CC BY 2.0);
+[the bookshop's corner, 2021-03](https://commons.wikimedia.org/wiki/File:Tienda_Taiseido_en_Shibuya_(51045981721).jpg) (Antonio Tajuelo, CC BY 2.0).
 Facts: [ja.wikipedia: QFRONT](https://ja.wikipedia.org/wiki/QFRONT), [SHIBUYA109](https://ja.wikipedia.org/wiki/SHIBUYA109),
 [渋谷スクランブル交差点](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9),
 [渋谷センター街](https://ja.wikipedia.org/wiki/%E6%B8%8B%E8%B0%B7%E3%82%BB%E3%83%B3%E3%82%BF%E3%83%BC%E8%A1%97),
@@ -277,6 +306,47 @@ python pipeline/osm_detail.py --city shibuya        # the OSM detail round the s
 python3 tools/aerial_local.py shibuya 362 -998 32    # the aerial photo in the local frame, to measure markings
 python3 tools/scramble_plan.py shibuya 365 -1005 110 # a plan of the footprints, roads and crossings
 ```
+
+## 6c. The streets off the scramble (#118)
+
+`cities/shibuya/streets.py`, built into the scramble's kit and atlas, dresses the first 150 m of the
+five streets that leave the scramble: Center Gai, Dogenzaka, Bunkamura-dori, Jingu-dori up to MODI,
+and Inokashira-dori between the two Seibu buildings. The generic city gives them their masses and
+windows; what makes them read as Shibuya from the pavement is what hangs on the fronts.
+
+| Part | How it is built | Measured from | Estimated |
+|---|---|---|---|
+| Every front onto the five streets | Found from the built city: each outline edge of 4.5 m or more within 15 m of a street's centreline and facing it. At its foot a shop window lit from inside and a lit fascia over it; on four fronts in five a vertical sign of tenants (縦看板), one panel a floor (3.2 m), standing out from the wall at one end and read up and down the street; on some, bands of tenants' signs floor over floor | OSM's street lines (scramble_osm.json), the built city's footprints and heights | The fascia's and signs' sizes, from photographs 2023-25; which front carries which is seeded per building |
+| The camera and electronics store on Dogenzaka | A white fascia with the name in red, a blue band under it, three banners up its floors in red, blue and white | Photographs 2024-25 | Sizes. The name is invented (カメラのサクラ) |
+| The drugstore and the shoe store on Center Gai | Yellow fascia with the name in dark blue and the big 薬; white on red with a navy band | Photographs 2024-25 | Sizes. Names invented (ドラッグ あおば, STEP MARKET) |
+| MODI on Jingu-dori | MODI up a blade at its corner (the building's name, in an open font), the record and book store's fascia over the door | Photographs 2024 | Sizes. The store's name is invented (DISC & BOOKS) |
+| SHIBUYA109's Bunkamura-dori face | SHIBUYA109 up a blade near the point, the front's printed advert again on a 9 × 13.5 m frame, shop windows at the foot | OSM's footprint | The print's size and place |
+| Seibu A and B | Closed on 30 September 2026 (A and B; LOFT and MOVIDA stay open under their own names). Cream precast panels with small, deep windows over every face from 4.6 m up, dark now; the ground floor's glass dark behind it; the closing notice on a white board at the doors on Jingu-dori and Inokashira-dori; the enclosed glass bridge between the two over Inokashira-dori | Footprints and heights from PLATEAU and OSM; closing: [Sakigake, 25 March 2026](https://www.sakigake.jp/news/article/20260325CO0078/), [AdverTimes](https://www.advertimes.com/?p=559377), [FASHIONSNAP](https://www.fashionsnap.com/article/2026-03-25/seibu-shibuya-close/) | The panels' bay (2.7 m) and window size; the bridge at 9-13 m. Whether the SEIBU letters are off the buildings yet is not reported: none is drawn |
+| Shibuhachi Hit Vision, bent | HIT's screen on the Oto building's roof (June 2014; 24.3 × 17.3 m, about 420 m² by HIT's release), its foot along the face over the station square and turning round the building's south-east corner on a 6 m radius (`screens.py`'s `path` and `round`) | Size: HIT ([value-press, 2014](https://www.value-press.com/pressrelease/128731)) | The bend's place and radius, from photographs |
+| The Taiseido block | The pharmacy's and the monja restaurant's small vertical signs on its Dogenzaka face, and the tower's three billboards stacked 15 cm apart to the tower's top at 39.4 m | PLATEAU's tower | The signs' sizes. Names invented (八千代薬品, もんじゃ 月島) |
+
+All the signs' words are in `cities/shibuya/streets.py` and drawn into `web/data/shibuya/scramble.jpg`;
+no text is shared with another city. On foot at 13:00, 15 minutes after sunset and 20:30 on 3 November
+(desktop, then phone; `tools/game_shot.js shibuya tools/compare/shibuya_streets.json`):
+
+| | |
+|---|---|
+| Center Gai | ![](../images/shibuya/streets/centergai.jpg) |
+| Dogenzaka | ![](../images/shibuya/streets/dogenzaka.jpg) |
+| Bunkamura-dori | ![](../images/shibuya/streets/bunkamura.jpg) |
+| Jingu-dori at Seibu A | ![](../images/shibuya/streets/seibu.jpg) |
+| Inokashira-dori and the Seibu bridge | ![](../images/shibuya/streets/inokashira.jpg) |
+| Shibuhachi Hit Vision from the station square | ![](../images/shibuya/streets/hitvision.jpg) |
+| Jingu-dori at MODI | ![](../images/shibuya/streets/modi.jpg) |
+| The Taiseido block from the scramble | ![](../images/shibuya/streets/taiseido.jpg) |
+
+The shop glass round the scramble (`x_shop`, `st_shop`) is no longer a floodlit material: a floodlit
+material glows all over after dark, and the shop windows read as flat cream slabs. Only their panes
+light now. The cost: landmarks.json 3.92 to 4.10 MB, 93.5k to 96.6k triangles, scramble.jpg 0.71 to
+about 1.3 MB (2048 × 4096).
+
+**Not done.** The bird call of the walk signals is #133. A real GPU's frame time on the low tier is still
+unmeasured (only llvmpipe, `tools/city_shot.js`).
 
 ## 7. Tokyo Pilgrimage: Shibuya
 
@@ -307,7 +377,7 @@ What the game took from *Persona 5*, and what it does instead:
 
 The crowd uses the `tokyo` style. The helicopter's registration is JA26SB; taxis
 come in Tokyo's dark navy, yellow, white and green, and buses in white with a red
-band. The helipad in Yoyogi Park is a game device; there is no heliport there. The game starts the helicopter on the roof of SHIBUYA SKY, on the GEO COMPASS deck, a lift ride from the start at Hachiko; that pad is a game device too.
+band. The helipad in Yoyogi Park is a game device; there is no heliport there. The game starts the helicopter on the roof of SHIBUYA SKY, on the GEO COMPASS deck, a lift ride from the start at the scramble's Hachiko-side kerb; that pad is a game device too. The game opens with a crane down from QFRONT's screen to that kerb as the walk turns green, the crowd stepping out round you (docs/GAME.md, Arriving and getting started).
 
 ## 8. Sun
 

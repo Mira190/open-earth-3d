@@ -128,7 +128,10 @@ Thirteen addresses are not in Overture's address points at all.
   On top of the body it adds:
   - the dome drawn as a copper dome on a drum;
   - clock faces near the top of the tower;
-  - the row of clocks over the main entrance;
+  - the row of clocks over the main entrance, their faces lit from behind
+    after dark, as are the tower's (photographs; no published measurement of
+    the steps under them or the clocks' height was found, so the steps' 1 m
+    rise and the 3 m to the clocks' lower edge are taken from photographs);
   - the 1910 colour scheme that the 2018–2020 repaint restored: cream,
     terracotta and dark green.
 
@@ -141,6 +144,13 @@ Thirteen addresses are not in Overture's address points at all.
   In the error budget, Birrarung Marr's production figure moves from 91.48% to
   91.69%, and Batman Park's by 0.02 points. The other eighteen protected places
   and the sun-access results are unchanged.
+
+- **Eureka Tower and Australia 108** (`cities/melbourne/southbank.py`), on their
+  mapped parts, which they hide. Eureka (297.3 m): blue glass, white bars, the
+  red stripe up the north face and 24-carat gold glass on the top 10 floors and
+  the crown, the symbols its architects gave the Eureka Stockade. Australia 108
+  (316.7 m): dark glass and the gold starburst of its sky lobby on levels
+  69-71. The starburst's reach and the stripe's width are from photographs.
 
 ### The river
 

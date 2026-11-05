@@ -27,20 +27,31 @@ window.OEWorld = (function () {
       onMsg(want ? `Downloading ${entry.name || 'the city'}: ${mb(Math.min(got, want))} of ${mb(want)} MB` : `Downloading: ${mb(got)} MB`,
         0.02 + 0.26 * (want ? Math.min(1, got / want) : 0));
     };
-    const getJSON = async u => {
-      const r = await fetch(DATA + u);
+    const fetchAll = async (r, u) => {
       if (!r.ok) throw new Error(`${u}: HTTP ${r.status}`);
-      if (!r.body || !r.body.getReader) return r.json();
+      if (!r.body || !r.body.getReader) return new Blob([await r.arrayBuffer()]);
       const reader = r.body.getReader(), parts = [];
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         parts.push(value); got += value.length; report();
       }
-      return JSON.parse(await new Blob(parts).text());
+      return new Blob(parts);
+    };
+    const getJSON = async u => JSON.parse(await (await fetchAll(await fetch(DATA + u), u)).text());
+    // the buildings as packed by pipeline/pack.py (a quarter of the JSON's download, issue 148), or as
+    // JSON where a city has no pack yet or the browser cannot inflate one
+    const getBuildings = async () => {
+      if (window.OEPack && OEPack.supported() && (entry.packed || []).includes('buildings')) {
+        try {
+          const r = await fetch(DATA + 'buildings.bin');
+          if (r.ok) return await OEPack.decode(await (await fetchAll(r, 'buildings.bin')).arrayBuffer());
+        } catch (e) { console.warn('buildings.bin:', e); }
+      }
+      return getJSON('buildings.json');
     };
     onMsg(want ? `Downloading ${entry.name || 'the city'}: 0 of ${mb(want)} MB` : 'Downloading footprints, terrain and landmarks', 0.02);
-    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getJSON('buildings.json'), getJSON('places.json'),
+    const [scene, B, P, LM, terrBuf, UNC, G, N] = await Promise.all([getJSON('scene.json'), getBuildings(), getJSON('places.json'),
       getJSON('landmarks.json'), getJSON('terrain.json').then(t => Uint8Array.from(atob(t.data), c => c.charCodeAt(0)).buffer),
       getJSON('uncertainty.json').catch(() => null), game ? getJSON('game.json') : Promise.resolve(null),
       window.OENight ? getJSON('night.json').catch(() => null) : Promise.resolve(null)]);
@@ -399,7 +410,9 @@ vec3 scrCell(float cell, vec2 uv) {
   // inverse is its transpose). Things within about 150 m of the camera stay clear, so you
   // can still stand near the edge.
   let FOG0 = null;
-  function edgeHaze(frame, near = 150) {
+  // farLand: the land past the frame is drawn (farland.js), so the city fades into it only part
+  // way (FAR_EDGE) instead of into a wall of haze
+  function edgeHaze(frame, near = 150, farLand = false) {
     const C = THREE.ShaderChunk;
     if (!FOG0) FOG0 = { pv: C.fog_pars_vertex, v: C.fog_vertex, pf: C.fog_pars_fragment, f: C.fog_fragment };
     const w = frame.x[1] - frame.x[0], h = frame.y[1] - frame.y[0], fade = Math.min(500, Math.max(250, 0.1 * Math.min(w, h)));
@@ -433,14 +446,30 @@ vec3 scrCell(float cell, vec2 uv) {
 	  // past the frame, the sun's glints far out, seen through that much air, no brighter than a little over the haze
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, min( gl_FragColor.rgb, fogColor * ( 1.2 + 40.0 * ( 1.0 - fogFactor ) * ( 1.0 - fogFactor ) ) ), smoothstep( 0.0, 3000.0, oePast ) );
 	  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor * 0.75, oeOpen * 0.55 * smoothstep( 0.0, 9000.0, oePast ) * ( 1.0 - fogFactor ) );
+#ifdef OE_FARLAND
+	  if ( oePast > 30.0 && oeOpen < 0.5 ) discard; // over land past the frame the far land is drawn (farland.js)
+#endif
 	  oeEdge *= 1.0 - oeOpen; }
+#endif
+#ifdef OE_FAR
+	// the land past the frame (farland.js): as hazed as the city at the frame, where the city has faded
+	// into the haze, clearing over the first few hundred metres to a distant land's veil, and thickening
+	// with distance as air does (FAR_AIR m to 63%), so a far city's plain meets the sky in haze, not in a band
+	float oeFar = 0.0;
+	{ float oePast = length( max( abs( vEdgeXZ - ${c} ) - vec2( ${n(w / 2)}, ${n(h / 2)} ), 0.0 ) );
+	  float oeAir = 1.0 - exp( -vFogDepth / ${n(FAR_AIR)} );
+	  oeFar = max( ${FAR_EDGE.toFixed(3)} * ( 1.0 - smoothstep( 0.0, ${n(FAR_RAMP)}, oePast ) ), ${FAR_BASE.toFixed(3)} + ${(1 - FAR_BASE).toFixed(3)} * oeAir );
+	  oeEdge = 0.0; }
 #endif
 	// The edge's haze is a distant shore's tone, a little darker and greener than the horizon's, which
 	// the distance takes back to the horizon's by 12 km: so a headland fading out at the frame, or an
 	// island past it, reads as land in the haze beside the open sea rather than a pale blob on it.
 	// (fogFactor still holds the edge, for the night's additive lights, night.js.)
 	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
-	fogFactor = max( fogFactor, oeEdge * oeGate );
+	fogFactor = max( fogFactor, oeEdge * oeGate${farLand ? ` * ${FAR_EDGE.toFixed(3)}` : ''} );
+#ifdef OE_FAR
+	fogFactor = max( fogFactor, oeFar );
+#endif
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
 #ifdef OE_SEA
 	gl_FragColor.a = mix( gl_FragColor.a, 1.0, fogFactor ); // the haze hides what lies under the water too, so nothing shows through it from below
@@ -452,6 +481,9 @@ vec3 scrCell(float cell, vec2 uv) {
   // its soft one (g), and from that to its softest (b).
   // SEA_LAND: the edge haze's tone (distant land), as a share of the fog's colour.
   const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
+  // the land past the frame (farland.js): how far its haze takes to clear from the frame, and to how much
+  const FAR_RAMP = (window.OEFarLand || {}).RAMP || 1400, FAR_BASE = (window.OEFarLand || {}).BASE || 0.32,
+    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_AIR = (window.OEFarLand || {}).AIR || 30000;
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
@@ -564,7 +596,10 @@ vec3 photoGrade(vec3 c) {
     world.add(hemi);
     const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
-    const edgeFade = edgeHaze(scene.frame);
+    // whether there is land past the frame to draw (farland.js), before the haze is written
+    const farOn = !!window.OEFarLand && new URLSearchParams(location.search).get('far') !== 'off'
+      && await fetch(D.DATA + 'far.json', { method: 'HEAD' }).then(r => r.ok, () => false);
+    const edgeFade = edgeHaze(scene.frame, 150, farOn);
 
     // ------------------------------------------------------------ terrain and imagery
     loadMsg('Draping aerial imagery on the terrain', 0.35);
@@ -616,6 +651,8 @@ vec3 photoGrade(vec3 c) {
     // them (tileGeometry) and not drawn above the water out in front of them (clipGround)
     // the open water past the frame (edgeHaze); without it everything past the frame is haze
     const seaLoad = new Promise(res => texLoader.load(D.DATA + 'sea.jpg', t => { t.colorSpace = THREE.NoColorSpace; res(t); }, undefined, () => res(null)));
+    // and the land past it (farland.js, far.*), but for ?far=off, to compare
+    const farLoad = farOn ? OEFarLand.load(D.DATA) : Promise.resolve(null);
     let shoreTex = null, Q = null;
     if (scene.shore) {
       shoreTex = await new Promise(res => texLoader.load(D.DATA + scene.shore.file, res, undefined, () => res(null)));
@@ -837,6 +874,14 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         m.onBeforeCompile = (sh, r) => { if (ob) ob.call(m, sh, r); sh.uniforms.uSeaOpen = so; };
       }
     }
+    // the land past the frame, under its haze (farland.js); the sea over it is not drawn
+    let far = null;
+    const farData = await farLoad;
+    if (farData) try {
+      far = OEFarLand.create(farData, { frame: scene.frame, ground: D.ground, small, PG, PHOTO_GRADE });
+      world.add(far.mesh);
+      if (seaTex) for (const m of [water.material, waterMat]) m.defines = Object.assign({}, m.defines, { OE_FARLAND: '' });
+    } catch (e) { console.warn('far land: none drawn', e); far = null; }
     world.add(water);
     if (sea) for (const m of groundMeshes) m.material.onBeforeCompile = sh => { sea.patchGround(sh); gradePhoto(sh); };
 
@@ -1000,26 +1045,43 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
     const pierColour = { wall: lin('#9c9a92'), roof: lin('#a7a59d'), code: 3, windows: false };
     const pierGeo = extrude((P.piers || []).map((r, i) => [-1, 0, 0, Math.round(D.pierZ[i] * 10), r]), () => pierColour);
     const piers = new THREE.Mesh(pierGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
-    piers.material.onBeforeCompile = streetLit;
+    // the deck's top shows the aerial photo, as a flat roof does (buildings.js uPhoto: the ground tiles in
+    // one canvas): the parking bays, kerbs and sheds the photograph has of the wharf, not a plain slab
+    // (issue 65); its sides stay concrete
+    piers.material.onBeforeCompile = sh => {
+      Object.assign(sh.uniforms, { uPhoto: U.uPhoto, uPhotoOn: U.uPhotoOn, uFrame: U.uFrame, uPhotoGrade: PG });
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vDeckW; varying float vDeckUp;')
+        .replace('#include <project_vertex>', '#include <project_vertex>\nvDeckW = (modelMatrix * vec4(transformed, 1.0)).xyz; vDeckUp = normal.y;');
+      sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
+uniform sampler2D uPhoto; uniform float uPhotoOn; uniform vec4 uFrame; varying vec3 vDeckW; varying float vDeckUp;
+${PHOTO_GRADE}`).replace('#include <color_fragment>', `#include <color_fragment>
+  if (uPhotoOn > 0.5 && vDeckUp > 0.7) {
+    vec2 duv = vec2((vDeckW.x - uFrame.x) * uFrame.z, (-vDeckW.z - uFrame.y) * uFrame.w);
+    diffuseColor.rgb = mix(diffuseColor.rgb, photoGrade(texture2D(uPhoto, duv).rgb), 0.8);
+  }`);
+      streetLit(sh);
+    };
     piers.castShadow = piers.receiveShadow = true;
     world.add(piers);
     // the game's boardwalks (game.json): 0.3 m timber decks at the pier deck height
     const walks = (D.G && D.G.boardwalks) || [];
     if (walks.length) {
       const top = Math.round((D.G.pier_deck_m || 2.2) * 10), timber = { wall: lin('#6f5a44'), roof: lin('#8a7258'), code: 3, windows: false };
-      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), piers.material);
+      const deck = new THREE.Mesh(extrude(walks.map(r => [-1, top - 3, 0, 3, r]), () => timber), new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.9 }));
+      deck.material.onBeforeCompile = streetLit;
       deck.castShadow = deck.receiveShadow = true;
       world.add(deck);
     }
 
     // trees mapped in OSM, then those planted from the woods' and parks' canopy (pipeline/woods.py,
-    // with measured heights; a third of them on a small device): the shared Blender species
+    // with measured heights; a third of them on a small device), then a landmark's own (landmarks.json
+    // "trees", [x, y, z, height] dm: a roof garden's, standing on its terraces): the shared Blender species
     // (trees.js) in the city's mix, else low-poly crowns on short trunks; the mapped trees'
     // heights are not mapped (7-14 m spread)
-    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || []), nT = TR.length / 4;
+    const nMapped = (P.trees || []).length / 4, TR = (P.trees || []).concat(P.woods || [], (LM && LM.trees) || []), nT = TR.length / 4;
     let trees = null;
     if (nT && window.OETrees) {
-      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, measured: nMapped, keep: small ? 0.35 : 1 }); }
+      try { trees = OETrees.create(world, await OETrees.load('assets/trees/'), TR, { mix: (scene.trees || {}).mix, woods: (scene.trees || {}).woods, areas: (scene.trees || {}).areas, south: D.CITY.lat < 0, lat: D.CITY.lat, cherry: (scene.trees || {}).cherry_open, measured: nMapped, keep: small ? 0.35 : 1, fixed: ((P.trees || []).length + (P.woods || []).length) / 4 }); }
       catch (e) { console.warn('Tree models unavailable, using simple ones:', e); }
     }
     if (nT && !trees) {
@@ -1054,6 +1116,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if (m.pattern && PATTERNS[m.pattern]) PATTERNS[m.pattern](lmMats[k], m);
       // a bridge's deck, or paving ("street_lit"), under the street lights and the screens' glow
       if ((m.pattern === 'deck_zones' || m.street_lit) && NU) { const own = lmMats[k].onBeforeCompile; lmMats[k].onBeforeCompile = sh => { if (own) own(sh); streetLit(sh); }; }
+      if (m.pattern === 'deck_zones' || m.street_lit) lmMats[k].userData.paving = true; // ground you walk on: it gets wet in the rain (weather.js)
       if (m.decal) Object.assign(lmMats[k], { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // laid over a roof: in front of it
       if (m.map) Object.assign(lmMats[k], { map: imageTex(m.map), alphaTest: m.cutout ? 0.5 : 0 }); // cutout: its clear pixels are holes
       if (m.opacity < 1) Object.assign(lmMats[k], { transparent: true, opacity: m.opacity, depthWrite: false }); // glass, nets
@@ -1071,6 +1134,38 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       // its own program: a floodlit copy of a patterned material, or one lit from below (which wraps
       // the pattern, so the wrapper's text alone would not tell two programs apart)
       customProgramCacheKey: LM.materials[k].flood ? () => `lm|${k}|flood` : lmMats[k].onBeforeCompile ? () => `lm|${k}|lit` : lmMats[k].customProgramCacheKey }));
+    // a mesh under a slab or a canopy ("sky": the share of the sky it sees, landmarks.json) takes only
+    // that share of the ambient light, which three.js spreads over every surface as if in the open:
+    // without it a soffit and the columns under it read as pale as the paving in the sun (issue 84)
+    // What does reach it comes mostly back up off the ground ("bounce", its colour), not from the
+    // sky: the part it does not see of the sky takes the ground's hue, at the same brightness
+    const skyMats = {}, sheltered = (base, key, sky, bounce) => {
+      const id = `${key}|${sky}|${bounce || ''}`;
+      if (skyMats[id]) return skyMats[id];
+      let tint = 'vec3(1.0)';
+      if (bounce) {
+        const c = lin(bounce), l = 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b || 1, k = 1 - sky;
+        tint = `vec3(${[c.r, c.g, c.b].map(v => (1 + (v / l - 1) * k).toFixed(3)).join(', ')})`;
+      }
+      return (skyMats[id] = follow(base, Object.assign(base.clone(), {
+        onBeforeCompile: sh => {
+          if (base.onBeforeCompile) base.onBeforeCompile(sh);
+          sh.fragmentShader = sh.fragmentShader.replace('#include <aomap_fragment>',
+            `#include <aomap_fragment>\nreflectedLight.indirectDiffuse *= ${sky.toFixed(3)} * ${tint}; reflectedLight.indirectSpecular *= ${sky.toFixed(3)};`);
+        },
+        defines: Object.assign({}, base.defines), userData: base.userData,
+        customProgramCacheKey: () => `lm|${id}` })));
+    };
+    // (a floodlit one glows as its material does after dark: the same colour, the same intensity)
+    const follow = (base, m) => {
+      m.emissive = base.emissive;
+      Object.defineProperty(m, 'emissiveIntensity', { get: () => base.emissiveIntensity, set: () => {} });
+      return m;
+    };
+    const lmMaterial = m => {
+      const base = m.floodlit ? floodlit(m.material) : lmMats[m.material];
+      return m.sky != null && m.sky < 1 ? sheltered(base, (m.floodlit ? 'flood|' : '') + m.material, m.sky, m.bounce) : base;
+    };
     const lmGeometry = m => {
       const p = m.position, arr = new Float32Array(p.length);
       for (let i = 0; i < p.length; i += 3) { arr[i] = p[i]; arr[i + 1] = p[i + 2]; arr[i + 2] = -p[i + 1]; }
@@ -1082,10 +1177,11 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       return g;
     };
     // small things are drawn only within their "far" (metres): beyond it they are under a pixel
+    const screenMeshes = []; // the big LED screens' faces, for the light they throw (neon.js)
     const farObjs = [], farAt = (o, c, r, far) => { o.userData.far = { c, r2: (far + r) * (far + r) }; farObjs.push(o); };
     for (const m of LM.meshes || []) {
       const g = lmGeometry(m);
-      const mesh = new THREE.Mesh(g, m.floodlit ? floodlit(m.material) : lmMats[m.material]);
+      const mesh = new THREE.Mesh(g, lmMaterial(m));
       if (m.far) { g.computeBoundingSphere(); farAt(mesh, g.boundingSphere.center.clone(), g.boundingSphere.radius, m.far); }
       mesh.castShadow = mesh.receiveShadow = true;
       if (['railing', 'lattice'].includes((LM.materials[m.material] || {}).pattern)) mesh.castShadow = false; // a cut-out strip; its shadow would be solid
@@ -1093,6 +1189,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       if ((LM.materials[m.material] || {}).decal) mesh.castShadow = false; // paving on the ground: nothing under it to shade
       mesh.name = m.name;
       world.add(mesh);
+      if ((LM.materials[m.material] || {}).pattern === 'led_screen') screenMeshes.push({ mesh, m: LM.materials[m.material], mat: lmMats[m.material] });
     }
     // street furniture (landmarks.json "props"): each kind's parts drawn once, instanced at every
     // place it stands ([x, y, z, heading, scale across]), one draw call per part
@@ -1158,7 +1255,9 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
       } catch (e) { return false; }
     }
     const api = {
-      world, sky, su, sunLight, shCam, hemi, pmrem, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
+      // the screens' faces and their programmes' clock, hour and night (neon.js lights the street from them)
+      screens: { meshes: screenMeshes, clock: SCREEN, night: LM_NIGHT },
+      world, sky, su, sunLight, shCam, hemi, pmrem, far, groundMeshes, quayMeshes, quays: Q, gradePhoto, streetLit, tileGeometry, groundMesh, water, waterMat, sea, trees, buildings, bGeo, U, SRC, extrude, bColour, floodMats, lmMats, night,
       sunDir: new THREE.Vector3(0, 1, 0), day: 1, edgeFade, // the width of the haze at the model's edge, metres (edgeHaze)
       // light the scene for a sun position {altitude, azimuth} and, for lit windows, the local
       // clock time in minutes; returns the daylight factor 0..1
@@ -1185,6 +1284,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         hemi.color.set(day > 0.3 ? 0xc3d6e6 : 0x5d6f92);
         if (day <= 0.3) hemi.color.lerp(TWI_LIGHT, tw * 0.6);
         U.uNight.value = 1 - smooth(-7, 2, sp.altitude);
+        if (far) far.setNight(U.uNight.value);
         // The sky after dark as night photographs of a city show it: a deep blue overhead and, low
         // down, the glow its lights put in the air, which the haze at the model's edge takes too.
         // (The sky's own curve lifts a night sky to a grey tenth of the day's, which lit every glass
@@ -1290,7 +1390,7 @@ totalEmissiveRadiance += diffuseColor.rgb * streetLight(transpose(mat3(viewMatri
         if (api.lastSun) api.setSun(api.lastSun.sp, api.lastSun.minutes);
         renderer.shadowMap.needsUpdate = true;
       },
-      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); },
+      dispose() { if (envRT) envRT.dispose(); if (hazeRT) hazeRT.dispose(); pmrem.dispose(); if (sea) sea.dispose(); if (night) night.dispose(); if (far) far.dispose(); },
     };
     return api;
   }

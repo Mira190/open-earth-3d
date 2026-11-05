@@ -366,9 +366,17 @@ window.OEOverture = (function () {
       J = p ? all.filter(j => j.sig).map(j => [j, Math.hypot(j.x - p[0], j.y - p[1])]).filter(a => a[1] < 30).sort((a, b) => a[1] - b[1]).map(a => a[0])[0] || false : false;
       return J;
     }
+    // the cues: 'red' holds every arm at red until the 'green' cue's moment and gathers the crowd at the kerbs
+    // (the game's own walkIn, as its opening shot does); 'green' lets them all go at once
+    const greenAt = () => { for (const q of shots) for (const [ck, name] of q.cues || []) if (name === 'green') return q.t0 + ck * q.dur; return null; };
     function signal(name) {
       const j = junction();
       if (!j) return;
+      if (ctx.walkIn && j.scramble) {
+        if (name === 'red') { const g = greenAt(); ctx.walkIn(j, g != null ? Math.max(0.1, g - t) : 0.1); }
+        if (name === 'green' && !(j.ph === 3 && j.st === 'g')) ctx.walkIn(j, -0.01);
+        return;
+      }
       if (name === 'red') { j.ph = 0; j.st = 'g'; j.t = 0; j.nxt = 1; } // the traffic's turn: the walkers wait at the kerbs
       if (name === 'green') {
         if (j.scramble) { j.ph = 3; j.st = 'g'; j.t = 0; j.nxt = 0; } // every crossing at once, the diagonals too
@@ -448,8 +456,8 @@ window.OEOverture = (function () {
       if (!lens) return;
       const gr = spec.grade || {}, w = EASE.smooth(clamp(t / 1.5)) * (s.type === 'land' ? 1 - EASE.smooth(clamp((k - 0.55) / 0.45)) : 1);
       const tint = gr.tint || [1, 1, 1];
-      lens.uniforms.uTint.value.set(lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w));
-      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w) };
+      // (on top of the hour's own grade, which atmosphere.js applies each frame)
+      lens.trim = { ev: lerp(1, gr.ev ?? 1, w), sat: lerp(1, gr.sat ?? 1, w), tint: [lerp(1, tint[0], w), lerp(1, tint[1], w), lerp(1, tint[2], w)] };
       const sp = ctx.sun && ctx.sun(), L = lens.uniforms;
       if (!sp || !L.uSunVis || !window.OELens) return;
       const alt = sp.altitude * RAD, az = sp.azimuth * RAD;
@@ -470,7 +478,6 @@ window.OEOverture = (function () {
     function unlook() {
       const lens = ctx.atmos && ctx.atmos.lens;
       if (!lens) return;
-      lens.uniforms.uTint.value.set(1, 1, 1);
       lens.trim = null;
       if (lens.uniforms.uSunVis) lens.uniforms.uSunVis.value = 0;
       flareVis = 0;

@@ -142,7 +142,7 @@ streets, keeping to the city's side of the road, and talks about what you pass.
 Choose a destination
 on the title screen and **Play**, or go to `#play-sydney`, `#play-melbourne`, `#play-melbourne-bayside` or
 `#play-hong-kong`, the Japanese cities' games at `#play-osaka`, `#play-kyoto`,
-`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa`, `#play-akihabara` and `#play-ueno`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
+`#play-tokyo`, `#play-shibuya`, `#play-shinjuku`, `#play-asakusa`, `#play-akihabara`, `#play-ueno`, `#play-ikebukuro`, `#play-jinbocho`, `#play-roppongi`, `#play-tsukishima`, `#play-odaiba` and `#play-shinagawa`, Paris at `#play-paris` and Amsterdam at `#play-amsterdam`.
 
 The helicopter, the ferries, the cars and the trees are modelled in Blender
 from code, with ambient occlusion baked in Cycles. Every city shares them, in
@@ -197,7 +197,7 @@ card, or go to `#play-osaka`.
 
 **Tokyo is a set of maps**, as games draw it: on the globe it is one destination whose card is a
 subway map of its districts (Marunouchi & Ginza, Shibuya, Shinjuku, Akihabara, Asakusa and the
-Skytree, Ueno; Ikebukuro, Odaiba and more in grey, next in line). Pick a station and go in there.
+Skytree, Ueno, Ikebukuro, Jinbocho, Roppongi, Tsukishima, Odaiba and Shinagawa). Pick a station and go in there.
 See [Tokyo as maps](docs/cities/tokyo-maps.md).
 
 **Tokyo Pilgrimage** walks Shibuya and Shinjuku, two maps of Tokyo, ten years after a film and a
@@ -248,6 +248,12 @@ whose every line is computed from the model or cited. Choose **Great Barrier Ree
 | **Asakusa**, Japan (a map of Tokyo) | **Live** | Asakusa and the Sumida across 2.6 × 1.6 km at PLATEAU-surveyed heights. Senso-ji built to its published sizes: the Kaminarimon and its 700 kg lantern, Nakamise, the Hozomon, the 53 m pagoda and the main hall; Tokyo Skytree, 634 m, lit Iki and Miyabi on alternate nights, with a lift to the Tembo Deck; the Asahi flame; the Sumida water bus. [Case study](docs/cities/asakusa.md) |
 | **Akihabara**, Japan (a map of Tokyo) | **Live** | Electric Town across 1.8 × 1.5 km at PLATEAU-surveyed heights: Chuo-dori's blade signs, boards and wall prints, lit after dark; Kanda Myojin's gate and Nikolai-do's dome up the hill. [Case study](docs/cities/akihabara.md) |
 | **Ueno**, Japan (a map of Tokyo) | **Live** | Ueno Park and Shinobazu Pond across 1.9 × 1.8 km at PLATEAU-surveyed heights: the pond's water at its own level with the lotus beds, Bentendo on its island, Toshogu's gilt hall and lantern-lined approach, Kan'ei-ji's pagoda, Saigo's statue, and Ameyoko's signs and gate under the tracks. [Case study](docs/cities/ueno.md) |
+| **Ikebukuro**, Japan (a map of Tokyo) | **Live** | Sunshine 60 and Ikebukuro's two sides across 1.8 × 1.6 km at PLATEAU-surveyed heights: Sunshine 60-dori's and Otome Road's signs, the department stores' names on their roofs, and GLOBAL RING over West Gate Park, lit after dark. [Case study](docs/cities/ikebukuro.md) |
+| **Jinbocho**, Japan (a map of Tokyo) | **Live** | The book town and Kanda across 1.8 × 1.5 km: the second-hand bookshops' signs and their carts of cheap books, the Catholic Kanda Church's basilica, and Nikolai-do over Ochanomizu. [Case study](docs/cities/jinbocho.md) |
+| **Roppongi**, Japan (a map of Tokyo) | **Live** | Roppongi Hills to Tokyo Midtown across 1.8 × 1.6 km: Maman the spider, the Mohri Garden's pond, the National Art Center's glass wave, Keyakizaka's lit zelkovas and the crossing's bars. [Case study](docs/cities/roppongi.md) |
+| **Tsukishima**, Japan (a map of Tokyo) | **Live** | The islands at the Sumida's mouth across 1.8 × 1.6 km: Monja Street's signs and gate, Tsukuda's moat, bridge and shrine, the river's bridges as decks you drive on, and Kachidoki Bridge's arches and control houses. [Case study](docs/cities/tsukishima.md) |
+| **Odaiba**, Japan (a map of Tokyo) | **Live** | The islands in the bay across 2.2 × 2.0 km: the Rainbow Bridge's towers, cables and decks, lit after dark and driven on in the game, Fuji TV's titanium sphere, the Statue of Liberty and the Yurikamome's guideway. [Case study](docs/cities/odaiba.md) |
+| **Shinagawa**, Japan (a map of Tokyo) | **Live** | Shinagawa and Takanawa across 1.8 × 1.8 km: Takanawa Gateway Station's folded roof, and the old Tokaido's first post town with its shops and lanterns. [Case study](docs/cities/shinagawa.md) |
 | **Hong Kong**, China | **Live** | 7,513 buildings (842 solids with pitched roofs) across 4.0 × 4.8 km, from Central and Wan Chai to Tsim Sha Tsui and the Peak. 86% of the footprint area carries the top level the Lands Department surveyed, and 12% more is measured from the 2020 LiDAR; against that LiDAR the surveyed roofs agree to 1.2 m at the median, and against 40 published towers to 5.0%. The terrain is the same LiDAR, checked against 101 levelling bench marks (0.6 m). The Bank of China Tower, HSBC, Two IFC, the ICC and Central Plaza are built to their published geometry. [Case study](docs/cities/hong-kong.md) |
 | **Paris**, France | **Live** | 29,087 buildings across 5.6 × 4.0 km, from the Eiffel Tower to the Île Saint-Louis. 99.4% of the footprint area stands at a height measured by IGN's airborne LiDAR (March 2023); three published towers agree to 2.6% at the median. Each roof is read from the laser's profile over IGN's surveyed eaves: half the pitched roofs are mansards or gambrels, with their dormers and chimney stacks. IGN LiDAR terrain (0.12 m from RGE ALTI at the median) under IGN aerial photographs; the Eiffel Tower, 27 Seine bridges and Notre-Dame's spire; *Paris on Foot*, with the Batobus. [Case study](docs/cities/paris.md) |
 | **Amsterdam**, Netherlands | **Live** | 35,479 buildings across 4.0 × 4.05 km, from the IJ to Museumplein. 95.8% of the footprint area takes its height and roof from the 3DBAG, built from the national register and the AHN's airborne laser (83% of it flown in 2023); eleven published heights agree to 8.7% at the median. 29,915 measured roofs, 92% of the pitched ones gabled, and 8,395 canal houses whose 4,303 gables are typed by the register's year of construction. AHN 0.5 m terrain under PDOK aerial photographs; five church towers, 225 bridges and 1,231 houseboats; *Amsterdam on Foot*, with the IJ ferry. [Case study](docs/cities/amsterdam.md) |
@@ -300,7 +306,9 @@ of a footprint-only model (see [what the Sydney study found](docs/cities/sydney.
   road in the city's own mix of sodium and LED, the light they put on the streets
   and the lower floors, traffic in white and red, office towers lit by the floor
   with their crowns lit, red lights on the tallest tops, a deep blue sky with the
-  city's glow on the horizon, and a night grade. See [docs/NIGHT.md](docs/NIGHT.md).
+  city's glow on the horizon, and a night grade. See [docs/NIGHT.md](docs/NIGHT.md). The big LED
+  screens light the street, the crowd and the facades in the colour they are playing, a wet street
+  mirrors them, and the grade follows the hour. See [docs/LOOK.md](docs/LOOK.md).
 
   | Tokyo at 21:00 | Sydney: the bridge, its traffic, the CBD in the harbour |
   |---|---|
@@ -379,6 +387,7 @@ python analysis/heights.py --city sydney              # published heights vs mod
 python pipeline/build_scene.py --city sydney          # again, to apply reference corrections
 python pipeline/game_data.py --city sydney            # paths, water, wharves, ferry routes for the game
 python pipeline/open_sea.py --city sydney             # the open water past the frame (Overture, 40 km around)
+python pipeline/far_land.py --city sydney             # the land past the frame: relief, land cover, night lights (40 km around)
 python pipeline/road_rules.py sydney                  # one-way streets, banned turns, traffic signals and crossings into a built game.json (after fetch_overture --only segment infrastructure)
 python pipeline/road_lanes.py sydney                  # OSM lane arrows and counts by way id into a built game.json (after fetch_overture --only segment)
 python pipeline/fetch_people.py                       # the game's crowd (once; Quaternius CC0 packs)
@@ -516,6 +525,18 @@ Data tab. The shared sources are:
   coarse, too rough for the harbours a few hundred metres past the frame, and
   OSM's own land polygons (osmdata.openstreetmap.de, ODbL) are the same
   coastline as Overture's ocean polygons, but only as a global download.
+- **Land past the model's frame:** Copernicus DEM GLO-30 (ESA and Airbus,
+  Copernicus DEM licence: free use with attribution, "© DLR e.V. 2010-2014 and
+  © Airbus Defence and Space GmbH 2014-2018 provided under COPERNICUS by the
+  European Union and ESA; all rights reserved"), from the AWS open data
+  registry; ESA WorldCover 10 m 2021 v200 (CC BY 4.0, © ESA WorldCover project
+  2021, contains modified Copernicus Sentinel data); NASA Black Marble 2016
+  (VIIRS day/night band, public domain) via NASA GIBS. 40 km around each city
+  and 60 km around each reef site, through `pipeline/far_land.py` into
+  `web/data/<id>/far.*`. Considered and not used: FABDEM (bare-earth GLO-30) is
+  CC BY-NC-SA; Sentinel-2 cloudless mosaics after 2016 are CC BY-NC-SA, and a
+  per-city Sentinel-2 composite over 80 km is a large download for a few hazed
+  pixels; the Terrarium tiles are a mix of older sources at this scale.
 - **Vehicles and trees:** modelled from code in this repository
   (`blender/build_vehicles.py`, `blender/build_trees.py`), with no
   third-party assets; the leaf atlas is drawn by the script.

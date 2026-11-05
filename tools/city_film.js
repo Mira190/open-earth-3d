@@ -6,7 +6,8 @@
 //   NODE_PATH=$(npm root -g) node tools/city_film.js sydney --stills        # one still per shot, to check the cut
 //   NODE_PATH=$(npm root -g) node tools/city_film.js sydney --part 1/2      # every other shot (run 2/2 alongside)
 //   NODE_PATH=$(npm root -g) node tools/city_film.js sydney --encode        # score and encode the frames on disk
-// Options: --size 1920x804 (2.39:1), --fps 24, --shots id,id, --frames <dir> (kept between runs, so
+// Options: --spec <file> (another shot list than cities/<id>/film.json), --out <dir> (written there, not
+// listed on the site), --size 1920x804 (2.39:1), --fps 24, --shots id,id, --frames <dir> (kept between runs, so
 // an interrupted render resumes), --quality high (the picture tier, quality.js), PORT (8800).
 // Writes web/films/<id>.mp4, <id>.jpg (the poster), <id>.json (the cue sheet the player reads:
 // shots, titles and chapters) and adds the film to web/films/index.json. <id> is the film's own `id`
@@ -26,14 +27,14 @@ const city = argv[0];
 const opt = (name, def) => { const i = argv.indexOf(`--${name}`); return i < 0 ? def : argv[i + 1] === undefined || argv[i + 1].startsWith('--') ? true : argv[i + 1]; };
 if (!city) { console.error('usage: node tools/city_film.js <city> [--stills] [--part i/n] [--encode]'); process.exit(1); }
 const ROOT = path.join(__dirname, '..');
-const SPEC = path.join(ROOT, 'cities', city, 'film.json');
+const SPEC = opt('spec', path.join(ROOT, 'cities', city, 'film.json'));
 const spec = fs.existsSync(SPEC) ? JSON.parse(fs.readFileSync(SPEC, 'utf8')) : { shots: [] };
 const [W, H] = String(opt('size', spec.size || '1920x804')).split('x').map(Number);
 const FPS = +opt('fps', spec.fps || 24);
 const FILM = spec.id || city;
 const REEF = spec.engine === 'reef';
 const FRAMES = opt('frames', path.join(os.tmpdir(), `oe3d-film-${FILM}-${W}x${H}`));
-const OUT = path.join(ROOT, 'web', 'films');
+const OUT = opt('out', path.join(ROOT, 'web', 'films')); // (elsewhere: a film to look at, not added to the site's list)
 const PORT = process.env.PORT || 8800;
 // the tier a desktop GPU gets: a software renderer would otherwise pick 'low' for itself, which
 // leaves out the shopfronts, parapets, awnings, rooftop plant and the water's reflection, and draws

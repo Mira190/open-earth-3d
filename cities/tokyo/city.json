@@ -59,6 +59,69 @@
       }
     ]
   },
+  "bridges": {
+    "note": "Central Tokyo's bridges over the rivers and the Imperial Palace's moats; forms from each bridge's record (Tokyo Metropolitan Government, Chiyoda and Chuo wards).",
+    "widths": {"和田倉橋": 7.5, "皇居正門鉄橋 「二重橋」": 10.0},
+    "forms": {
+      "勝鬨橋": {"form": "kachidoki", "colour": "#8ea8a6", "note": "1940, the bascule between two tied arches"},
+      "築地大橋": {
+        "form": "half_through",
+        "colour": "#eeeeea",
+        "span_m": [50, 145, 50],
+        "rise_m": 22.0,
+        "rail": "painted",
+        "lamps": 6,
+        "note": "2018, a three-span half-through steel arch, white"
+      },
+      "日本橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#b8b0a0",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1911, a granite double arch, bronze lamp standards with kirin"
+      },
+      "常盤橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#b5ae9f",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1926, a two-span arch faced in stone"
+      },
+      "一石橋": {"form": "girder", "colour": "#8c9296", "spans": 2, "note": "2000, two continuous girders"},
+      "江戸橋": {"form": "girder", "colour": "#8c9296", "spans": 3},
+      "神田橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e", "note": "1925, stone and concrete"},
+      "一ツ橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e", "note": "1925, stone and concrete"},
+      "鎌倉橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8", "note": "1929, concrete"},
+      "錦橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8", "note": "1927, a concrete arch"},
+      "竹橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8"},
+      "和田倉橋": {
+        "form": "girder",
+        "colour": "#cfcabd",
+        "spans": 2,
+        "rail": "timber",
+        "lamps": 0,
+        "note": "1953, concrete under a wooden-style railing with bronze giboshi"
+      },
+      "皇居正門石橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#c4bdae",
+        "lamps": 3,
+        "lamp_style": "bronze",
+        "note": "1887, the granite double arch (Meganebashi), bronze candelabra"
+      },
+      "皇居正門鉄橋 「二重橋」": {
+        "form": "girder",
+        "colour": "#26272a",
+        "rail": "painted",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1964 steel, to the 1888 iron bridge's design, black"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",
@@ -79,7 +142,7 @@
     ],
     "min_area_m2": 3000
   },
-  "trees": {"mix": {"elm": 0.55, "plane": 0.45}, "note": "Species are not mapped, and the shared trees have no ginkgo or cherry, so the mix stands in: elms for the zelkovas (keyaki, of the elm family) of the avenues and parks, plane trees for the London planes and the ginkgo rows. A guess, not a survey."},
+  "trees": {"mix": {"ginkgo": 0.3, "zelkova": 0.2, "plane": 0.2, "camphor": 0.12, "evergreen": 0.12, "pine": 0.06, "cherry": 0.08}, "woods": {"evergreen": 0.25, "camphor": 0.2, "zelkova": 0.18, "pine": 0.12, "ginkgo": 0.1, "maple": 0.08, "sugi": 0.07, "cherry": 0.04}, "note": "Species are not mapped; the mix is a guess from the cities' street-tree surveys and the parks' own guides: ginkgo and zelkova (keyaki) are Japan's commonest street trees, with plane trees and camphor; the woods are the laurel forest's evergreen broadleaves and camphors, with zelkovas, black pines, maples and a few cedars (sugi, standing for hinoki too). Areas give the parks and precincts known for their own trees a mix of their own; their outlines are OpenStreetMap's (pipeline/tree_areas.py). Somei-yoshino cherries (sakura) line Tokyo's streets after the ginkgo and the zelkova, and stand in the parks' lawns and along the rivers and moats; areas give the places known for them a mix of their own.", "areas": [{"name": "Chidorigafuchi", "osm": "W43941104", "mix": {"cherry": 0.85, "zelkova": 0.15}, "note": "Chidorigafuchi Park: the cherries leaning out over the moat by the boat pier (photographs)."}, {"name": "Chidorigafuchi Ryokudo", "osm": "W133037881", "buffer": 14, "mix": {"cherry": 0.9, "zelkova": 0.1}, "note": "The 700 m footpath along the moat under some 260 cherries (Chiyoda City)."}, {"name": "Kitanomaru Park", "osm": "W624081603", "mix": {"cherry": 0.25, "zelkova": 0.2, "evergreen": 0.2, "camphor": 0.15, "maple": 0.1, "ginkgo": 0.1}}, {"name": "Kokyo Gaien", "find": "皇居外苑", "mix": {"pine": 0.8, "camphor": 0.1, "zelkova": 0.1}, "note": "About two thousand black pines on the outer garden's lawns (the Ministry of the Environment's guide)."}, {"name": "Kokyo Higashi Gyoen", "find": "皇居東御苑", "mix": {"evergreen": 0.3, "pine": 0.2, "maple": 0.15, "camphor": 0.15, "zelkova": 0.1, "sugi": 0.1, "cherry": 0.05}}, {"name": "Kokyo", "find": "皇居", "mix": {"evergreen": 0.45, "camphor": 0.2, "zelkova": 0.15, "pine": 0.1, "sugi": 0.1}, "note": "The palace's own woods (Fukiage): mostly the laurel forest's evergreen broadleaves."}, {"name": "Hibiya Park", "find": "日比谷公園", "mix": {"ginkgo": 0.25, "plane": 0.2, "zelkova": 0.2, "camphor": 0.15, "pine": 0.1, "maple": 0.1, "cherry": 0.1}}, {"name": "Hama-rikyu", "find": "浜離宮恩賜庭園", "mix": {"pine": 0.45, "evergreen": 0.25, "camphor": 0.15, "maple": 0.15}}, {"name": "Shiba Park", "find": "芝公園", "mix": {"evergreen": 0.25, "camphor": 0.2, "sugi": 0.15, "ginkgo": 0.15, "zelkova": 0.15, "maple": 0.1, "cherry": 0.12}}]},
   "storey": {
     "res": [
       3.0,
@@ -450,6 +513,7 @@
     "landmarks": "Tokyo Tower: parametric from published dimensions (333 m; decks at 150 m and 250 m; 80 m base), anchored at its published coordinates"
   },
   "game": {
+    "weather": {"rain_days": [5.3, 6.1, 10.3, 10.9, 11.1, 12.8, 12.0, 9.4, 12.3, 11.8, 8.2, 5.8], "threshold_mm": 0.5, "drizzle": 0.55, "source": "Tokyo (Kitanomaru Park): Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"},
     "title": "Tokyo on Foot",
     "local_name": "Tokyoite",
     "water_name": "Tokyo Bay",
@@ -525,6 +589,9 @@
           330
         ]
       }
+    ],
+    "scrambles": [
+      {"name": "数寄屋橋 Sukiyabashi", "at": [385.0, 279.8], "note": "Harumi-dori and Sotobori-dori in Ginza; scramble-style (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); both diagonals mapped in OSM."}
     ],
     "crowd": {
       "pedestrians": 520,
@@ -626,8 +693,8 @@
         "name": "Yui 結衣",
         "role": "Office worker OL",
         "at": [
-          520,
-          200
+          518,
+          183
         ],
         "look": {
           "character": "R_Business_Female_03",

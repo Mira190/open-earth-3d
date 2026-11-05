@@ -35,16 +35,24 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
+| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
+| Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
+| Repainted ground | `refresh_ground.py` | Applies a city's `imagery.paint` (land use that draws the wrong ground: a construction site mapped over a paved promenade) to the drawn ground tiles of a city without aerial imagery, without a rebuild; `build_scene.py` draws the same fill in place of the land use |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
+| Bridges over the water | `bridges.py` (run by `build_scene.py`, `landmarks.py`, `game_data.py`, `game_extras.py`), `refresh_bridges.py` | Every bridge OpenStreetMap maps over a city's rivers, canals and moats that the city's own builder does not draw (Paris's, Amsterdam's, Tsukishima's and Odaiba's do): its deck at the banks' height, in its real form and paint from city.json `bridges` (see [Bridges](#bridges-over-the-water)), in `landmarks.json`, and its deck walkable and drivable in `game.json` surfaces. `refresh_bridges.py` finds them again in a built city from the Overture layers and the game's ground; `tools/bridge_survey.py` lists any bridge still drawn by nothing |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
+| Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
 | Woods | `woods.py` (run by `game_data.py`) | `woods.png` and `woods` in `places.json`: in every mapped wood, forest, scrub, park, garden, cemetery and temple ground, the trees planted from an open canopy height model (Meta and WRI, CC BY 4.0) and a mask of the ground under that canopy, which the ground shader draws as a wood's floor instead of the photo's tree tops. See [Woods](#woods-and-park-canopy) below |
 | Night | `night_lights.py` (run by `game_data.py`) | `night.json`: the roads simplified for the street lights and the traffic, the mapped lamps, and the city's lighting style (lamp colours, keep side, aircraft lights, crowns, sky glow). See [NIGHT.md](NIGHT.md) |
 
 `build_scene.py` also writes `web/data/cities.json` from `cities/index.json`,
 and marks each city built or not.
+
+`pack.py` packs each city's `buildings.json` into `buildings.bin`, which is what
+the browser downloads (see [Download size](#download-size) below).
 
 ### Ground
 
@@ -149,7 +157,25 @@ residuals go to `height_model.json`, and `uncertainty.js` resamples them.
     layer keeps OSM's tags (`source_tags`) and `level` for this. `pipeline/refresh_piers.py`
     rewrites them without a rebuild; `tools/stale_shore.py` lists where mapped land still
     lies under the built water, and `tools/coast_overlay.py` draws the water, the mask and
-    the decks over the aerial photograph to check a coastline (issue 50).
+    the decks over the aerial photograph to check a coastline (issue 50). Their tops show
+    the aerial photograph, as a flat roof does (`web/world.js`), so a wharf has its parking
+    bays and kerbs rather than a plain slab.
+  - Buildings out on the water that are not buildings (`pipeline/wet_buildings.py`, issue 65):
+    a footprint 80% in the water and not on a mapped pier is a **deck** when it is a
+    machine-learned footprint (Microsoft's) of 1,000 m² or more joined to the land (Garden
+    Island's cruiser wharf), added to the piers and its solid not drawn; the deck of a
+    **bridge** or an elevated road when it is a machine-learned footprint at least 20% over the
+    water and half under a road Overture flags as a bridge or raises a level (Osaka's Hanshin
+    loop over the Higashi-Yokobori), not drawn; and a **vessel** when OpenStreetMap tags it
+    `building=ship`, `boat`, `houseboat` or `barge`, `floating=yes` or `seamark:type=hulk`, when
+    its class is in `water.floating`, and for any other machine-learned footprint out there (the
+    boats moored when the imagery was taken). A vessel floats at the waterline with a dark
+    hull to its freeboard (by its length, 1 to 4 m) under a deck, and a lighter superstructure
+    set in from the sides and amidships on a ship, added as a new building (class `vessel`;
+    the hull's class is `vessel_hull`). The tags come from the OpenStreetMap API for those
+    buildings only (`data/raw/<id>/osm_wet_buildings.json`). `build_scene.py` leaves the decks
+    out and runs it; `refresh_piers.py` (or `python pipeline/wet_buildings.py --city <id>`)
+    applies it to a built city, hiding solids as a demolished building's are, so no index moves.
   - `trees`: flat `[x, y, z, h]` in decimetres.
   - `woods`: the trees planted from the canopy (`pipeline/woods.py`), the same
     way, with the height the canopy model measured.
@@ -292,7 +318,7 @@ The views switch in place, without reloading the page.
   - trees (`trees.js`): the seven species of `blender/build_trees.py`, in the
     city's mix (and an area's own), instanced per species and per distance (full within 130 m,
     sparse to 520 m, a crown hull beyond), with wind in the vertex shader,
-    cut-out leaf shadows, jacarandas that flower and maples that redden in season; the trees
+    cut-out leaf shadows, jacarandas and cherries that flower and maples that redden in season; the trees
     planted from a wood's canopy after them, sized by their measured height,
     without palms, stepping down sooner (full within 72 m, sparse to 200 m, half of them as hulls beyond), thinning out to 900 m, further from higher up (600 m and a
     third of them on a small device) where the photo's canopy takes over;
@@ -348,6 +374,34 @@ The views switch in place, without reloading the page.
     above and from the tour cameras toward and away from a low sun:
     `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
     for `tools/city_shot.js`).
+  - past the frame, the land (issue 78). Under that haze stands the land that is
+    really there (`web/farland.js`, `pipeline/far_land.py`): a low terrain 40 km
+    either side of the frame's centre (60 km at a reef site) from Copernicus
+    GLO-30 heights at 156 m (234 m), less the trees' and buildings' share of the
+    surface model, its grid lines about 40 m apart at the frame and a few hundred
+    metres far out (256 x 256 cells, 128 x 128 on the low tier). It is coloured by
+    ESA WorldCover 2021's land cover, each class's share of a 78 m cell, in colours
+    solved from the city's own photo inside the frame against the classes' shares
+    there (held toward a default and mostly to its hue, with the built-up land
+    darkened to the drawn city's tone, `BUILT_SHADE`), with value noise at 30 to
+    300 m for what the cells average away. Water at sea level sits under the
+    sea; a lake in the hills stays, flat, in the water's colour (Lake Biwa
+    behind Higashiyama), and the open sea is not drawn over land past the frame
+    (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
+    haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
+    land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
+    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    built-up land glows: NASA's Black Marble at 500 m, raised to a power for
+    contrast (its visual product saturates over a city) and shared out by
+    WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
+    more of them the brighter the land, which fade into their mean where a pixel
+    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    with node materials under the reef's own air (`env.medium`), the land raised
+    clear of the highest tide: the ranges behind Cairns stand on Green Island's
+    horizon, and the coast's towns are a band of light at night. `?far=off`
+    leaves it out, to compare; `tools/far_views.py` writes the high views out
+    past each edge at noon, dusk and night for `tools/city_shot.js`.
+    Before and after: `docs/images/far-land/*-compare.jpg`.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -557,6 +611,21 @@ Each result is re-run on four height-error scenarios drawn from the measured
 errors. The protected times can be read as standard time or clock time; the
 city's `protection.default_time_basis` sets the default.
 
+### What a slow device gives up first
+
+The game's frame rate is measured over four seconds at a time while it is being played. Below 24
+frames a second it sheds one thing per window, the nice-to-haves first (`shed` in
+`web/game/game.js`): the far rain streaks and the splashes (`weather.shed = 1`; the low tier
+starts there), then every drop (`2`: the streets stay wet, the sky grey, the rain audible), then
+the wet street's reflections (`mirror.off`), then pixels, to 85% and then 70% of the tier's. Only
+when nothing is left does it suggest a lower crowd density. The people keep their realistic
+models on every tier: the box-built figures (`OEActors.makePerson`) are a last resort for a
+device that could load none of the people's files, and a single character that fails to load
+(after `web/gltf.js`'s retries) is worn by another loaded one of the same sex instead. The tools
+drive the game under `navigator.webdriver`, where the measurement is off (a software renderer
+would shed everything); `tools/game_check.js` calls `shed` itself to check the order and that no
+one turns into a box.
+
 ## Analyses
 
 All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
@@ -597,9 +666,10 @@ Two more scripts build what every city shares, from code, with no stock assets:
   shuttle and the traffic (sedan, taxi, hatchback, SUV, van and bus), with
   ambient occlusion baked in Cycles and decimated copies for distance, into
   `web/assets/vehicles/` with a manifest, `vehicles.json`.
-- `blender/build_trees.py`: six tree species grown from points in their crown
-  shapes, with a leaf atlas it draws itself, in three levels of detail, into
-  `web/assets/trees/` with `trees.json`.
+- `blender/build_trees.py`: fifteen tree species grown from points in their
+  crown shapes, with a leaf atlas it draws itself (4 x 4 cells), in three levels
+  of detail, into `web/assets/trees/` with `trees.json`. `web/trees-lineup.html`
+  (`tools/trees_lineup_shot.js`) shows them in a row as the game draws them.
 
 ## Woods and park canopy
 
@@ -646,7 +716,275 @@ thousands (issue #54). `pipeline/woods.py` fixes this for every city:
 
 Considered and not adopted: drawing the canopy from the photo alone (its
 greenness picks up lawns and misses trees in shade), and the 10 m global canopy
-height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees. The
-species are still the city's mix of the six shared trees (`web/assets/trees/`):
-no pine, zelkova or camphor yet.
+height of Lang et al. 2023 (ETH, CC BY 4.0), too coarse for single trees.
 
+### Local species (issue #69)
+
+The woods were drawn from six street trees, so the Kyoto Gyoen, Meiji Jingu and
+the palace gardens were elms and planes, and the pale plane trunks read as
+grey-green columns in a wood's blue shade. The shared set now has the trees those
+places are known for, grown by the same code from new crown shapes (a cone with
+its trunk carried through as a leader; flat pads in tiers) and leaf cells drawn
+for them (paired needles in tufts, a cedar's awls, the ginkgo's fan, a she-oak's
+jointed threads):
+
+| Species | Where | Autumn |
+| --- | --- | --- |
+| Japanese black pine (kuromatsu) | the Gyoen's and Kokyo Gaien's lawns, Hama-rikyu, castle and temple gardens | |
+| Japanese cedar (sugi; stands for hinoki) | shrine woods | |
+| Camphor (kusunoki) | shrine trees, Meiji Jingu, Osaka | |
+| Zelkova (keyaki) | avenues and precincts | rust, from mid November |
+| Ginkgo (icho) | street rows (Midosuji, Jingu Gaien), temple precincts | gold, late November |
+| Evergreen broadleaf (Schima, Machilus; shii and kashi) | Hong Kong's hills, the laurel forest of the shrine groves | |
+| Pisonia, coastal she-oak (casuarina) | the coral cays (below) | |
+
+![The shared trees](images/trees/lineup.jpg)
+![Late November: ginkgo, maple, zelkova](images/trees/lineup_autumn.jpg)
+
+- **Mixes:** a city's `trees.mix` is its streets', `trees.woods` the mix of the
+  trees planted from a wood's canopy (the street mix without its palms if it has
+  none), and `trees.areas` the places with a mix of their own. An area names its
+  place in OpenStreetMap (`find`, or `osm`); `pipeline/tree_areas.py` looks up
+  its outline through Nominatim (ODbL), simplifies it to about 4 m into
+  `cities/<id>/tree_areas.json`, and `scene.json` carries it (`cityctx.trees_cfg`).
+  `web/trees.js` tests each tree against the outlines (a bounding box first). The
+  Japanese maps have the Gyoen, Nijo-jo, the Honganji, Kokyo Gaien (about 2,000
+  black pines), the East Gardens and the palace woods, Hibiya, Shiba Park,
+  Hama-rikyu, Shinjuku Gyoen, Jingu Gaien's ginkgo avenue, Meiji Jingu, Yoyogi
+  Park, Senso-ji, Kanda Myojin and Osaka Castle Park. Hong Kong's hills are
+  evergreen broadleaf, its streets banyans (the fig stands in), camphors and palms.
+  Species are still not mapped tree by tree: every mix is a guess from the
+  cities' street-tree surveys and the parks' own guides.
+- **Autumn and winter:** web/trees.js finds a leaf card's atlas cell from its uv;
+  from mid November (late April in the south) the maples keep their range of
+  reds, the ginkgos go gold, the zelkovas rust and the planes and elms a dull
+  yellow (`FALL`), each tree a little ahead of or behind the others, and the far
+  crown hulls follow `autumn_colour`. The deciduous species (`deciduous` in
+  trees.json: plane, elm, maple, zelkova, ginkgo, cherry) then drop their cards one by
+  one from 24 November to 14 December, in the shadow pass too, their far hulls go
+  when half the leaves have, and they leaf out green from 21 March to 14 April
+  (six months on in the south). Osaka's Midosuji (issue #62) is a `trees.areas`
+  avenue: `tree_areas.py` widens the mapped street 22 m either side (`buffer`),
+  and nine in ten of its trees are ginkgos, gold in late November and bare on
+  the tour's 21 December.
+- **Thin leaves at a distance:** a card's alpha averaged down the mip chain fell
+  under the cut-out and the she-oak's threads, the palm's leaflets and the
+  jacaranda's vanished past a few tens of metres; the leaf shader scales alpha up
+  with the mip level (Ben Golus, *Anti-aliased Alpha Test*, 2017), in the city
+  and on the reef.
+- **Plane bark** is warmer (`#a08f78`), so a plane wood's trunks stay bark in the
+  blue shade.
+
+### The cherry (issue #147)
+
+The Somei-yoshino (*Cerasus × yedoensis*) is Japan's cherry: most of the trees on
+the moats, rivers and park walks the cities are known for in spring. The shared
+set grows one like the others (`blender/build_trees.py` `cherry`): a short dark
+trunk (2.3 m) forking into six limbs that spread a crown 12 m wide on a tree
+under 9 m, wider than it is tall, as the photographs of Chidorigafuchi and the
+Meguro River show. The atlas has a fifth row for it: its leaves (elliptic,
+toothed) and its bloom, umbels of four to six five-petalled flowers on short
+stalks along a bare twig, white with a blush of warm pink and a darker eye, and a
+few deeper-pink buds. Every one of the cherry's cards is a bloom card
+(`sakura`); `web/trees.js` shows the leaf cell beside it out of flower.
+
+- **When:** the first flowers (kaika) come on the city's average day: Tokyo's is
+  24 March, the Japan Meteorological Agency's 1991-2020 normal, and the day comes
+  about four days later for each degree further from the equator
+  (`SAKURA_PER_DEG`; Kagoshima 26 March, Sendai 8 April, Sapporo 1 May). A city
+  whose own normal differs from its latitude's sets `trees.cherry_open`: Kyoto
+  26 March, Osaka 27 March. The flowers open over a week on bare branches, every
+  card at its own time in the order the leaves fall in autumn (`uSakura`); full
+  bloom (mankai) holds five days, then the petals go over five more as the leaves
+  come out (hazakura), and from mid April the tree is green. Its leaves turn an
+  orange-red with the others in November and fall with them; in winter and until
+  it flowers it shows no leaf at all. The far crown hull is the blossom's pink in
+  flower. Six months on in the south.
+- **Where:** a share of every Japanese city's street mix (0.05-0.08; the cherry
+  is among Tokyo's three commonest street trees with the ginkgo and the zelkova)
+  and its woods, and `trees.areas` for the places known for it, their outlines
+  from OpenStreetMap: Chidorigafuchi Park and the 700 m moat walk (some 260
+  trees, Chiyoda City), Kitanomaru Park, the Meguro River's banks (about 800,
+  Meguro City; the river widened 14 m either side), Hachiko Square's two round
+  planters, Ueno Park and its Sakura-dori (outline drawn along the walk from the
+  Saigo statue to the fountain; about 800 trees), Sumida Park (about 600),
+  Roppongi's Sakura-zaka, Aoyama Cemetery's avenue and Tokyo Midtown's garden,
+  Ishikawajima Park on Tsukudajima, Shinjuku Gyoen, Kyoto's Takase canal by
+  Kiyamachi and Gion Shirakawa (with elms standing in for the willows), the Kyoto
+  Gyoen and Nijo-jo, the Osaka Mint's passage, the Okawa's east bank
+  (Kema Sakuranomiya Park, about 4,800), Osaka Castle Park and Utsubo Park.
+  Kyoto's Philosopher's Path and Maruyama Park are east of the Kyoto map.
+- **Not yet:** the other kinds (the weeping shidare-zakura of the Gyoen and
+  Maruyama, the late double yaezakura) are all Somei-yoshino here; the bark's
+  horizontal bands of lenticels are not drawn (bark is one colour); the petals do
+  not drift down.
+- **Sources:** JMA's sakura phenology normals (public data); the parks' and wards'
+  own guides for the tree counts; OpenStreetMap (ODbL) for the outlines. No code
+  or art was taken from elsewhere.
+
+![The cherry through the year: bare, in flower, hazakura, green, autumn](images/trees/cherry_year.jpg)
+![The Meguro River at Nakameguro on 1 April and in June; Hachiko Square's planters on 1 April and in January](images/trees/cherry_places.jpg)
+
+### The coral cays
+
+Heron and Lady Elliot's pisonia and she-oaks and Green Island's vine forest were
+the reef renderer's spheres on cylinders (`web/reef/life/geo.js`). Within 160 m of
+the camera they are now the shared trees (`web/reef/life/flora.js` `SHARED`,
+`geo.sharedTree`, `mats.cards`): the full tree within 55 m, the sparse one beyond;
+the far rings keep the reef's own crowns and spindles. The site's leaf albedo
+tints the atlas (over the species' own colour). The life module waits for them
+while it loads, so they do not pop in. On Heron Island the trees drawn from the
+beach are 1.08 M triangles (1.09 M before), from 30 m up 0.46 M (0.47 M); on Lady
+Elliot 0.74 M (0.92 M).
+
+### What the trees cost
+
+`tools/woods_probe.js` counts the tree triangles drawn on foot where the woods are
+thickest, and the share of them drawn again into the sun's shadow map. The far
+crown hulls (200-900 m) no longer cast shadows: they stood mostly outside the
+shadow map and were drawn into it for nothing. Twigs are three-sided tubes and
+limbs six (a fifth fewer triangles in every full tree). Under llvmpipe, at the
+desktop (high and medium draw the same trees) and low tiers:
+
+| Where (tier) | Before: drawn / into the shadow map | After: drawn / into the shadow map | Both passes |
+| --- | --- | --- | --- |
+| Kyoto Gyoen 357,2590 (desktop) | 1.59 / 1.59 M | 1.66 / 1.00 M | -16% |
+| Kyoto Gyoen 100,1880 (desktop) | 1.96 / 1.96 M | 2.12 / 1.36 M | -11% |
+| Kyoto Gyoen 202,2002 (desktop) | 2.19 / 2.19 M | 2.36 / 1.56 M | -11% |
+| Kyoto Gyoen 100,1880 (low) | 0.90 / 0.90 M | 0.96 / 0.50 M | -19% |
+| Hong Kong's wooded hill (desktop) | 3.44 / 3.44 M | 3.61 / 2.06 M | -18% |
+| Hong Kong's wooded hill (low) | 1.06 / 1.06 M | 1.12 / 0.74 M | -12% |
+| Meiji Jingu 300,700, Shibuya (desktop) | 1.59 / 1.59 M | 1.79 / 1.16 M | -7% |
+| Meiji Jingu 300,700, Shibuya (low) | 0.63 / 0.63 M | 0.71 / 0.46 M | -7% |
+
+The camera pass draws 4-13% more (the local species are fuller trees than the elms
+and planes they replace); the shadow pass a third less.
+
+Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
+llvmpipe gives (seconds) say nothing about a device.
+
+## Bridges over the water
+
+Issue 122: the Tokyo maps built before Tsukishima and Odaiba routed their roads over the Sumida and
+the moats on nothing. Now `pipeline/bridges.py` finds every bridge that Overture's infrastructure layer
+(OpenStreetMap, ODbL) maps over the water: an outline, or the centre lines of its carriageways joined by
+name. Where an outline and a line overlap, there is one deck, and an unnamed outline takes its line's
+name. It leaves out three kinds: a bridge the city's own builder draws, an expressway's viaduct
+(OpenStreetMap's layer is an order, not a height), and the names in `skip`. A deck stands at the banks'
+height, at least `deck_min_m` (3.5 m, a Tokyo embankment), and is crowned 2% of its length. Over water
+the model draws as ground (a palace moat whose survey stands higher than its banks, Kyoto's riverbed), it
+clears that ground and ramps down to the banks. Over a ferry's course (game.json `ferries`) the middle of the span rises
+until the city's boats pass under its soffit with someone standing on the upper deck, level across the
+middle, as `web/game/decks.js` lifts the decks it draws; a deck the boats pass under is not a bank to
+them. A deck whose road the data carries up above a bank (Kings Way over the Crown promenade) takes
+`deck_z`.
+
+Each bridge takes its form and paint by name from city.json `bridges.forms`:
+
+| Form | Structure | Examples |
+|---|---|---|
+| `girder` | girder deck on piers | Kototoi-bashi, Sanjo Ohashi (timber rail and giboshi), Wadakura-bashi |
+| `deck_arch` | arches under the deck, spandrel posts | Azuma-bashi, Hijiri-bashi, Princes Bridge |
+| `half_through` | the middle arch rises through the deck, deck arches either side | Komagata-bashi, Tsukiji Ohashi |
+| `through_arch` | tied arches over each span, hangers | Umaya-bashi |
+| `truss` | through Warren truss | the Tobu line's Sumida bridge |
+| `stone_arch` | masonry arches, spandrel walls, stone parapet | Nihonbashi, the Seimon Ishibashi, Mansei-bashi, Shichijo Ohashi |
+| `kachidoki` | Kachidoki Bridge's bascule between two tied arches | |
+| `x` | an X in plan, two decks crossing | Sakura-bashi |
+
+The paint after dark is floodlit in its own colour, as Tokyo lights the Sumida's bridges. The Sumida's
+colours are the Tokyo Metropolitan Government's (隅田川中流部著名橋色彩基本方針, set in 1984 and confirmed in
+2014–15: Azuma-bashi red, Komagata-bashi blue, Umaya-bashi green, no two neighbours alike). The spans
+come from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record. The
+other cities' bridges come from their own records (Kyoto City's 京の橋しるべ, Heritage Victoria). A
+colour that no record gives is read from photographs and is approximate. These are facts and
+measurements, so no licence is needed. No third-party model or texture is used.
+
+## Download size
+
+Issue 148: what a city costs to download before it can be played. `tools/load_size.js <city>
+[play|model] [mbps] --files` opens the page with the network held to a speed, counts every file
+once, raw and as GitHub Pages sends it (gzip for text types; images, models and `.bin` as they
+are), and says when the data was in and when the loading screen started to fade.
+
+### Buildings: `buildings.bin`
+
+`pipeline/pack.py` packs `buildings.json` into `buildings.bin`, a lossless columnar encoding of the
+same JSON tree, gzip-wrapped: integers as typed columns of the narrowest width, delta-coded by the
+stride that compresses best (2 for the rings' x, y pairs, 3 for the roofs' x, y, z) and split into
+byte planes; decimals as scaled integers; strings through a table; the roof meshes' base64 as their
+int16 and index bytes. `web/pack.js` inflates it with the browser's own `DecompressionStream` and
+rebuilds the object `JSON.parse` would have given, so nothing that reads it changed, except that
+the roof columns arrive as `Uint8Array` (`sun.js` `unpackRoof` takes either). `world.js` falls back
+to `buildings.json` for a city whose pack is missing or stale (`cities.json` `packed`) or a
+browser without `DecompressionStream`. `buildings.json` stays the pipeline's source: after a step
+that writes it, `python pipeline/pack.py` repacks what is stale, and `tools/check.sh` fails on a
+stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
+
+| City | buildings.json | gzipped | buildings.bin | decode (Node, desktop) | JSON.parse |
+|---|---|---|---|---|---|
+| Shibuya | 17.76 MB | 6.44 MB | 3.76 MB | 172 ms | 82 ms |
+| Kyoto | 25.71 MB | 8.90 MB | 5.29 MB | 375 ms | 272 ms |
+| Osaka | 24.61 MB | 8.62 MB | 5.09 MB | 373 ms | 160 ms |
+| Paris | 21.41 MB | 8.71 MB | 5.61 MB | 294 ms | 99 ms |
+| Amsterdam | 14.01 MB | 4.77 MB | 2.89 MB | 243 ms | 73 ms |
+| Shinjuku | 8.81 MB | 3.13 MB | 1.86 MB | 137 ms | 71 ms |
+| all 20 cities | 148.4 MB | 53.3 MB | 32.4 MB | | |
+
+The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
+more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
+
+### Shared models: meshopt
+
+What three.js r186 can decode out of the box, surveyed for the shared models (`web/assets/vehicles`,
+`trees`, `people`):
+
+| Option | three.js r186 | Licence | For |
+|---|---|---|---|
+| `EXT_meshopt_compression` (meshoptimizer) | `GLTFLoader.setMeshoptDecoder`, `examples/jsm/libs/meshopt_decoder.module.js`, 29 kB of JS with its WASM inline | MIT | geometry, skins and animation; decodes at gigabytes a second, keeps every node, name and attribute |
+| `KHR_draco_mesh_compression` (Draco) | `DRACOLoader`, a WASM decoder of about 300 kB fetched on first use | Apache-2.0 | static geometry; smaller than meshopt on dense meshes, but no animation, slower to decode, and it re-orders vertices |
+| `KHR_texture_basisu` (KTX2, Basis Universal) | `KTX2Loader`, a WASM transcoder of about 500 kB | Apache-2.0 | textures that stay compressed in GPU memory; the transcoder outweighs what it saves on these few textures |
+| `EXT_texture_webp` | built in | — | already used by the people's textures |
+
+Adopted: meshopt, for every shared model. `pipeline/meshopt_glb.mjs` (meshoptimizer's own encoder,
+1.3.0, MIT, vendored in `pipeline/vendor/meshoptimizer/`) encodes each buffer view of vertex
+attributes, indices and animation in place, as the last step of `blender/build_vehicles.py`,
+`build_trees.py`, `build_people.py` and `pipeline/fetch_people.py` (`pipeline/meshopt.py`). It
+does not quantise to integers, re-order, merge or rename anything, so `cars.js` and `people.js`
+read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
+corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
+exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
+Each view is decoded again and compared before the file is written. Every page makes its
+`GLTFLoader` from `web/gltf.js` (the city viewer and the game through `web/index.html`'s
+`THREE.GLTFLoader`, the reef's `people.js` and `life/flora.js` by importing it), which sets the
+decoder and tries a failed download again twice (0.8 s, 2.4 s). Where there is no WebAssembly
+(iOS Lockdown Mode, some locked-down browsers) it decodes with meshoptimizer's pure-JavaScript
+reference decoder instead (1.3.0, the encoder's version, MIT, vendored in
+`web/vendor/meshoptimizer/`, loaded only then): slower, but the people, trees and cars are still
+the real models rather than the box-built stand-ins. `tools/check.sh` fails on a model that is
+not compressed.
+
+| Models | Before | After |
+|---|---|---|
+| `cars.glb` | 5.40 MB | 2.35 MB |
+| `helicopter.glb` | 3.75 MB | 1.69 MB |
+| `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
+| `trees.glb` (48 species and stages), its leaf atlases WebP (`pipeline/glb_webp.py`: quality 92, the cut-out alpha exact; a fifth of the PNG) | 5.15 MB | 1.85 MB |
+| the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
+| the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
+| all 87 shared models | 60.28 MB | 35.98 MB |
+
+What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
+issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):
+
+| Shibuya `#play` | files | raw | on the wire | playable at 20 Mbps |
+|---|---|---|---|---|
+| before | 128 | 66.3 MB | 45.2 MB | 67.4 s |
+| after | 127 | 36.6 MB | 27.7 MB | 55.3 s |
+
+The times are on a software renderer (Mesa llvmpipe), where building the scene's shaders and
+geometry, not the network, takes most of them; on a GPU the download is the larger share.
+
+The helicopter (1.7 MB) is no longer among them: it is fetched when the player comes within 800 m of
+its pad or boards it. NPCs whose characters no one within 300 m of the start wears load after the
+game opens.

@@ -178,9 +178,22 @@ model, so their shadows are the measured ones.
   and a base that curves out (KPF; Architectural Record).
 - **Central Plaza.** Roof 309 m, mast to 373.9 m, a triangle with cut corners
   and a three-sided glass pyramid; gold glass, and the Lightime clock's bars.
-- **Observation Wheel** (60 m, 42 gondolas), the **Clock Tower** (44 m and its
+- **Observation Wheel** (60 m, 42 fully enclosed, air-conditioned gondolas seating
+  eight; Wikipedia), the **Clock Tower** (44 m and its
   7 m lightning rod, red brick and granite; Antiquities and Monuments Office)
-  and the **Peak Tower**'s crescent roof (396 to 428 m above the datum).
+  and the **Peak Tower**'s crescent roof (396 to 428 m above the datum). The
+  wheel's gondolas are rounded capsules glazed all round, held upright outside
+  the rim, the lowest at a boarding platform: a low deck either side of the
+  cabins' path, ramped at its ends, which the game walks. The cabins' size
+  (2.9 × 2.3 × 2.5 m) and the platform are indicative.
+- **Peak Tower's ground.** The LiDAR's ground filter took the tower out and the
+  gap was interpolated from the slope below to the plaza above, so the ground
+  round its body fell 4 to 5 m in 6 m. `city.json` (`terrain.level`) levels it
+  in three pieces: the forecourt on the Peak Galleria side at 396.5 m (the
+  plaza and the road at the west end are 396 to 398.5 m; the Peak Tram's upper
+  terminus is at 396 m), the north side at 377.5 m and the east end at 383.5 m,
+  the ground at the glass there. `pipeline/refresh_terrain.py` applied them to the
+  built terrain from the DEM, as a full build does.
 
 ## 7. The game
 

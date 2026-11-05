@@ -55,8 +55,10 @@ from shapely.geometry import LineString, Point, Polygon, box
 from shapely.ops import substring
 
 import arcades
+import restorey
 import walls
 import woods
+import bridges
 import kerbside
 import night_lights
 import road_rules
@@ -68,6 +70,39 @@ FOOT = {"footway", "pedestrian", "path", "living_street", "steps", "cycleway"}
 ROAD = {"motorway": 22, "trunk": 19, "primary": 14, "secondary": 13, "tertiary": 12, "residential": 9,
         "unclassified": 9, "living_street": 5}  # default speeds, m/s
 PIER_DECK = 2.2
+
+
+def connected_roads(roads, keep_share=0.15):
+    """The road pieces joined to the street network: pieces meet where they share a point (to 0.5 m),
+    and a group of pieces is kept if it is at least keep_share of the largest group's length. A piece
+    of road cut off from the rest (a lane between pedestrian streets, a road clipped at the map's
+    edge) is one no car can reach: a taxi asked to a kerb on it cannot get there (Higashiyama).
+    Returns (kept pieces, how many were dropped)."""
+    parent = {}
+
+    def find(a):
+        while parent.setdefault(a, a) != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    lengths = []
+    for i, r in enumerate(roads):
+        p = r["p"]
+        me = ("r", i)
+        find(me)
+        for k in range(0, len(p), 3):
+            parent[find((round(p[k] / 5), round(p[k + 1] / 5)))] = find(me)   # decimetres to 0.5 m
+        lengths.append(sum(math.hypot(p[k + 3] - p[k], p[k + 4] - p[k + 1]) / 10 for k in range(0, len(p) - 3, 3)))
+    total = {}
+    for i, L in enumerate(lengths):
+        c = find(("r", i))
+        total[c] = total.get(c, 0.0) + L
+    if not total:
+        return roads, 0
+    big = max(total.values())
+    kept = [r for i, r in enumerate(roads) if total[find(("r", i))] >= keep_share * big]
+    return kept, len(roads) - len(kept)
 
 
 def strip_height(surf, x, y):
@@ -160,7 +195,7 @@ def main():
     ground = lambda x, y: float(sample(C, dem, x, y)[0])
 
     hook = C.hook("game_surfaces")
-    surfaces = hook(scene) if hook else []
+    surfaces = (hook(scene) if hook else []) + bridges.surfaces(scene)
 
     def surface_z(x, y):
         hs = [h for s in surfaces if (h := strip_height(s, x, y)) is not None]
@@ -228,6 +263,9 @@ def main():
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
                     way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
                     roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
+    roads, n_cut = connected_roads(roads)
+    if n_cut:
+        print(f"roads: {n_cut} pieces cut off from the street network dropped (no car can reach them)")
     # the banned turns (Overture's prohibited_transitions), on the pieces they start from
     n_turns = road_rules.turns(C, con, roads, [LineString(np.array(o["p"], dtype=float).reshape(-1, 3)[:, :2] / 10) for o in roads])
     print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces, {n_turns} banned turns; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")
@@ -591,7 +629,7 @@ def main():
     out = {
         "note": "Game data for web/game, written by pipeline/game_data.py.",
         "title": gcfg.get("title", f"{cfg['name']} on Foot"),
-        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate", "sky") if k in gcfg},
+        **{k: gcfg[k] for k in ("local_name", "water_name", "greeting", "blurb", "under_bridge_note", "shade_landmarks", "ferry_style", "climate", "sky", "weather") if k in gcfg},
         "water": {"cell": DEM_CELL, "nx": nx, "ny": ny, "bits": pack(water)},
     "terrain": {"cell": DEM_CELL, "nx": nx, "ny": ny, "scale": 0.1, "encoding": "int16le-base64",
                 "data": base64.b64encode(np.round(ground_grid * 10).astype("<i2").tobytes()).decode()},
@@ -622,16 +660,19 @@ def main():
         "vehicles": gcfg.get("vehicles", {}),
     }
     # a city's own flavour: the title-screen text, crowd small talk, the player's look
-    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "close", "metro", "regulars", "signals", "overture") if k in gcfg}
+    out |= {k: gcfg[k] for k in ("blurb", "smalltalk", "player_looks", "areas", "spots", "chatter", "close", "metro", "regulars", "signals", "scrambles", "overture") if k in gcfg}
     # what the city's landmarks add to the game (lifts, places to travel to on a roof): city.py game_extras(scene)
     if C.hook("game_extras"):
         for k, v in C.hook("game_extras")(scene).items():
             out[k] = out.get(k, []) + v if isinstance(v, list) else v
+    import game_extras
+    game_extras.drop_kept_off(out)  # the crowd's footways over a landmark's water (game_extras "keep_off")
     path = os.path.join(C.out, "game.json")
     json.dump(out, open(path, "w"), separators=(",", ":"))
     print(f"{path}: {os.path.getsize(path) / 1e6:.2f} MB")
     kerbside.tidy_places(C.out, roads)  # the mapped trees out of the carriageways too (places.json)
     night_lights.write(C.out, out)  # the street lights and traffic the city shows at night (night.json)
+    print(f"{restorey.mark(C.out)} one-floor records given storeys (buildings.json)")  # pipeline/restorey.py: a no-op on a fresh build
     print(f"{arcades.mark(C.out)} covered walkways and gates opened to walk under (buildings.json)")  # pipeline/arcades.py
     print(f"{walls.mark(C.out, C.id)} precinct walls drawn as walls (buildings.json)")  # pipeline/walls.py
     if os.path.exists(os.path.join(C.raw, "overture_land_use.parquet")):

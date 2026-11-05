@@ -31,10 +31,12 @@ from shapely import wkb as swkb
 from shapely.geometry import Polygon, box
 from shapely.ops import polylabel
 
+import bridges
 import roofs
 import typology
+import wet_buildings
 from measured import IGNHeights
-from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons
+from cityctx import ROOT, SCENE_CITY_KEYS, City, city_args, polygons, trees_cfg
 from shore import FLOOR_M, QUAY_SHELF_M, SHORE_CELL, decks, depth_at, raised_classes, shore_map, without_raised
 from survey import Survey
 
@@ -236,6 +238,21 @@ ROAD_W = {"motorway": 16, "trunk": 14, "primary": 13, "secondary": 11, "tertiary
 FOOT_W = {"footway": 2.5, "pedestrian": 4, "path": 2, "steps": 3, "cycleway": 2, "track": 3}
 
 
+def paint_rings(C):
+    """city.json imagery.paint: [{"ring": [[lon, lat], ...], "over": a SYNTH key, "fill": a SYNTH key,
+    "note"}]: inside the ring, the land use or land drawn as "over" is drawn as "fill" instead (water,
+    roads, footways and footprints are drawn over it as ever), for land use that does not say what
+    the ground is: a construction site mapped over the paved promenade that stays open beside it.
+    pipeline/refresh_ground.py applies them to built tiles."""
+    out = []
+    for r in C.cfg.get("imagery", {}).get("paint", []):
+        for k in ("over", "fill"):
+            if r.get(k) not in SYNTH:
+                raise SystemExit(f"{C.id}: imagery.paint {k} {r.get(k)!r} is not one of {sorted(SYNTH)}")
+        out.append({"poly": C.to_local(shapely.Polygon(r["ring"])), "over": r["over"], "fill": r["fill"]})
+    return out
+
+
 def synth_ground(C, con, raw, extent):
     """Ground tiles drawn from land use, land, water, roads, footways, rail and footprints,
     with fine noise and contact shading around buildings so it reads as a surface."""
@@ -258,15 +275,23 @@ def synth_ground(C, con, raw, extent):
             if ln.geom_type == "LineString" and len(ln.coords) > 1:
                 d.line(P(ln.coords), fill=colour, width=max(1, int(round(width / IMG_M))), joint="curve")
     local = lambda r: C.to_local(swkb.loads(bytes(r["wkb"])))
+    paint = paint_rings(C)
+
+    def fill_kind(geom, kind):  # a fill, less what city.json imagery.paint draws instead of it
+        for p in paint:
+            if p["over"] == kind:
+                fill(geom.intersection(p["poly"]), SYNTH[p["fill"]])
+                geom = geom.difference(p["poly"])
+        fill(geom, SYNTH[kind])
     lu = sorted(rows(con, raw("land_use")), key=lambda r: -swkb.loads(bytes(r["wkb"])).area)  # small ones on top
     for r in lu:
         if r["class"] in LANDUSE_FILL:
-            fill(local(r), SYNTH[LANDUSE_FILL[r["class"]]])
+            fill_kind(local(r), LANDUSE_FILL[r["class"]])
     for r in rows(con, raw("land")):
         if r["class"] in LAND_FILL:
             g = local(r)
             if g.geom_type in ("Polygon", "MultiPolygon"):
-                fill(g, SYNTH[LAND_FILL[r["class"]]])
+                fill_kind(g, LAND_FILL[r["class"]])
     for r in rows(con, raw("water")):
         g = local(r)
         if g.geom_type in ("Polygon", "MultiPolygon") and r["class"] not in ("strait", "sea", "ocean"):
@@ -1253,8 +1278,12 @@ def build(C):
                          "has_parts": False, "src": "survey", "record_id": None, "height_src": None, "wkb": shapely.to_wkb(ll)})
         print(f"survey: {len(extra)} blocks added that Overture does not have")
     survey.claim([(b["id"], C.to_local(swkb.loads(bytes(b["wkb"])))) for b in blds if not b["is_underground"]])
+    # buildings out on the water that are not buildings (wet_buildings.py): a wharf deck mapped as a
+    # building is drawn with the piers, an expressway's deck by the game; a vessel floats, and gets its
+    # hull after the build
+    wet = wet_buildings.classify(C, con, raw, sea)
     for b in blds:
-        if b["is_underground"]:
+        if b["is_underground"] or wet.get(b["id"], {}).get("kind") in ("deck", "bridge", "under"):
             continue
         # ids of solids a hook hid: only this building's, since Python reuses the ids of freed objects
         ctx.hidden.clear()
@@ -1334,7 +1363,7 @@ def build(C):
             cs = np.asarray(q.exterior.coords)
             # a building of a class that floats (water.floating: Amsterdam's houseboats) sits on the
             # water; others stand on the lowest ground under them
-            zb = 0.0 if cls in floating else max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
+            zb = 0.0 if cls in floating or wet.get(b["id"], {}).get("kind") == "vessel" else max(float(np.min(sample(C, dem_land, cs[:, 0], cs[:, 1]))), 0.0)
             solids.append([bi, round(zb * 10), round(h0 * 10), round(h1 * 10), ring(q.exterior.coords)] +
                           [ring(r.coords) for r in q.interiors if len(r.coords) > 3])
             r0 = rec[0] if rec else b  # roof tags of the part, else of the building
@@ -1449,6 +1478,7 @@ def build(C):
     ctx.roof_shapes, ctx.roof_sources = list(roofs.CODES), ROOF_SRC
     if C.hook("finalize"):
         C.hook("finalize")(ctx)
+    ctx.landmarks["water_bridges"] = bridges.find(ctx)   # the bridges over the water the city does not draw itself (bridges.py)
     # labels the landmark hook adds go first: the viewer hides a label that would overlap an earlier one
     ctx.labels = {k: v for k, v in ctx.labels.items() if k not in before} | {k: v for k, v in ctx.labels.items() if k in before}
 
@@ -1499,7 +1529,7 @@ def build(C):
                   "encoding": "r: 128 + 2 x signed distance to the shoreline (m, water positive); g: sand; b: rock",
                   "slopes": sm["slopes"], "floor_m": FLOOR_M} | sm["counts"],
         "water": {k: v for k, v in cfg.get("water", {}).items() if k in ("waves", "colour", "shallow_colour", "clarity_m", "scatter", "seawall")},
-        "trees": cfg.get("trees", {}),
+        "trees": trees_cfg(C),
         "hidden_solids": hidden_solids,
         "storey": {k: {"per_floor_m": a, "plus_m": b} for k, (a, b) in H.storey.items()},
         "height_sources": dict(src_count),
@@ -1546,14 +1576,29 @@ def build(C):
                             "dormers: count, step_dm along the angle, bitmask of bays left empty"], "p": prop_rows},
               open(os.path.join(C.out, "buildings.json"), "w"), separators=(",", ":"))
     json.dump({"piers": piers, "places": places, "trees": trees}, open(os.path.join(C.out, "places.json"), "w"), separators=(",", ":"))
+    print("wet buildings: %d deck solids hidden, %d vessels given a hull" % wet_buildings.mark(C, wet))
     write_index()
     for f in sorted(os.listdir(C.out)):
         print(f"  {f}: {os.path.getsize(os.path.join(C.out, f)) / 1e6:.2f} MB")
 
 
+def _pack_stale(city):
+    from pack import stale
+    return stale(city)
+
+
 def write_index():
     """web/data/cities.json: the globe's list, with each city marked built or not."""
     idx = json.load(open(os.path.join(ROOT, "cities", "index.json"), encoding="utf8"))
+    # parked cities (index.json "parked") are left off the globe, and a metro map draws their
+    # stations grey, as districts still to build; their data stays where it is
+    parked = set(idx.get("parked", []))
+    idx["cities"] = [c for c in idx["cities"] if c["id"] not in parked]
+    for g in idx.get("groups", {}).values():
+        for s in g.get("districts", []):
+            if s.get("map") in parked:
+                s.pop("map")
+                s.pop("travel", None)
     for c in idx["cities"]:
         own = os.path.join(ROOT, "cities", c["id"], "city.json")
         if "timezone" not in c and os.path.exists(own):  # the globe shows each site's local time
@@ -1570,7 +1615,10 @@ def write_index():
             c["extent_km"] = [round((x1 - x0) / 1000, 1), round((y1 - y0) / 1000, 1)]
         if os.path.exists(os.path.join(data, "buildings.json")):  # what the loader downloads, for its progress bar (world.js)
             size = lambda names: sum(os.path.getsize(os.path.join(data, n)) for n in names if os.path.exists(os.path.join(data, n)))
-            model = size(["scene.json", "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
+            # the buildings packed (pipeline/pack.py, issue 148) when the pack is there and up to date
+            packed = os.path.exists(os.path.join(data, "buildings.bin")) and not _pack_stale(c["id"])
+            c["packed"] = ["buildings"] if packed else []
+            model = size(["scene.json", "buildings.bin" if packed else "buildings.json", "places.json", "landmarks.json", "terrain.json", "uncertainty.json"])
             c["load_bytes"] = {"model": model, "game": model + size(["game.json"])}
         if os.path.exists(os.path.join(data, "flyover.json")):  # the loading flyover (tools/flyover.js, web/flyover.js)
             fly = json.load(open(os.path.join(data, "flyover.json"), encoding="utf8"))

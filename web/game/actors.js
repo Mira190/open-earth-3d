@@ -131,7 +131,7 @@ objectNormal = rx(ang) * objectNormal;`)
 transformed.y -= piv; transformed = rx(ang) * transformed; transformed.y += piv;
 vCol = tone < 0.5 ? aC0 : tone < 1.5 ? aC1 : tone < 2.5 ? aC2 : tone < 3.5 ? aC3 : tone < 4.5 ? vec3(0.03, 0.045, 0.06) : tone < 5.5 ? vec3(0.02) : tone < 6.5 ? vec3(0.9, 0.88, 0.8) : tone < 7.5 ? vec3(0.5, 0.02, 0.02)
   : tone < 8.5 ? vec3(0.03) : tone < 9.5 ? vec3(0.8) : tone < 10.5 ? vec3(0.42, 0.43, 0.45) : tone < 11.5 ? vec3(0.78, 0.78, 0.72) : tone < 12.5 ? vec3(0.9, 0.8, 0.42) : vec3(0.7, 0.32, 0.02);
-vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.6 : 0.0;
+vEmit = tone > 5.5 && tone < 7.5 ? (tone < 6.5 ? 1.0 : 0.7) : tone > 11.5 && tone < 12.5 ? 0.3 : 0.0; // (a taxi's roof sign: a lit panel, not a lamp, that blooms across the car behind it)
 #ifdef TONE_CARS
 vAO = ao; vTone = tone;
 #endif`);
@@ -249,8 +249,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 1; i < n; i++) cum[i] = cum[i - 1] + Math.hypot(pts[3 * i] - pts[3 * i - 3], pts[3 * i + 1] - pts[3 * i - 2]);
       // deck: per segment, 1 where the line is off the ground (decks.js); ow: one-way with its points (1) or against them (-1);
       // i0: its place in the lines given; nt: the turns banned from its ends, tl the arrows on its lanes
-      // (OSM's turn:lanes) at its ends (junctions.js)
-      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null, ow: o.o || 0, i0, nt: o.nt || null, tl: o.tl || null };
+      // (OSM's turn:lanes) at its ends (junctions.js); ntw: turns banned at some hours, tb: the hours
+      // it is shut to cars (pipeline/road_rules.py); nl: OSM's count of its lanes each way (road_lanes.py);
+      // wall: 1 where it starts at a wall, 2 where it ends at one (a road the data runs into a building: game.js cutAtWalls)
+      return { pts, cum, len: cum[n - 1], v: o.v || 0, c: o.c || '', deck: o.d || null, ow: o.o || 0, i0, nt: o.nt || null, tl: o.tl || null, ntw: o.ntw || null, tb: o.tb || null, nl: o.nl || 0, wall: o.w || 0 };
     }).filter(l => l.len > 4);
     const key = (x, y) => `${Math.round(x / 2)},${Math.round(y / 2)}`;
     const nodes = new Map(), grid = new Map(), GC = 100;
@@ -296,7 +298,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // the closest point on any line within maxD of (x, y): {line, s, x, y, z, d} or null; with z,
     // only where the line is within dz of that height (the street you are on, not the flyover above it)
-    function nearest(x, y, maxD, z = null, dz = 3) {
+    // the nearest point on the lines within maxD of (x, y), within dz of height z (when given), and
+    // with a grade, within dz + grade * the distance: a street down a slope from a raised plaza
+    // (Melbourne's Federation Square) counts, a road on a deck right above or below does not
+    function nearest(x, y, maxD, z = null, dz = 3, grade = 0) {
       let best = null;
       for (const i of new Set(near(x, y, 0, maxD))) {
         const l = L[i], n = l.pts.length / 3;
@@ -304,7 +309,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], ex = l.pts[3 * k] - ax, ey = l.pts[3 * k + 1] - ay, L2 = ex * ex + ey * ey;
           const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
           const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(x - qx, y - qy), qz = l.pts[3 * k - 1] + (l.pts[3 * k + 2] - l.pts[3 * k - 1]) * t;
-          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
+          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz + grade * d)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
         }
       }
       return best;
@@ -421,6 +426,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const BODY = 0.6;    // two walkers closer than this are in each other's way (m, centre to centre)
   const CLOSE = 0.45;  // a walker never steps closer than this to another (m, centre to centre)
   const KERB = 0.45;   // how far a walker keeps from a car's side or bumper (m, centre to body)
+  const HOT_MIN = 45;  // how near the player a walker may be put where the crowd gathers (m: lost in the crowd there)
+  const SCR_HW = 3.4;  // the half-width of a scramble's crosswalk the crowd spreads across (m: Shibuya's are about 8 m wide)
   const POST = 0.25;   // and from a lamp post or a trunk
   const MOVING = 1.2;  // and the seconds of a moving car's path ahead it won't step into
   const NEAR = 60, FAR = 150; // walkers farther than these from the player take a step every 2nd, 4th frame (m)
@@ -430,26 +437,74 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   const WALL_LOOK = 1.5; // how far ahead a walker looks for a wall beside its line (m)
   function crowd(world, net, U, n, radius, makeRenderer, { benches: BN = null, ground = null, wall = null, posts: PO = null, clear = null } = {}) {
     const P = [], tmp = {}, ahead = {};
-    for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, lat: null, dodge: 0, v: 0, vx: 0, vy: 0,
+    for (let i = 0; i < n; i++) P.push({ line: -1, s: 0, dir: 1, speed: 1.1 + rnd() * 0.6, phase: rnd() * 6.28, side: 0.6 + rnd() * 1.2, spread: rnd() * 2 - 1, lat: null, dodge: 0, v: 0, vx: 0, vy: 0,
       pause: 0, x: 0, y: 0, z: 0, h: 0, scale: 0.92 + rnd() * 0.16, state: 'walk', mode: 'ground', seat: null, t: 0, rest: rnd() * 30 });
     const R = makeRenderer ? makeRenderer(P) : boxRenderer(world, U, P);
     function release(p) { if (p.seat) { p.seat.by = -1; p.seat = null; } }
     function respawn(p, cx, cy, rMin) {
       release(p);
-      p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.side = 0.6 + rnd() * 1.2;
-      const cand = net.near(cx, cy, rMin, radius);
+      p.state = 'walk'; p.mode = 'ground'; p.lat = null; p.side = 0.6 + rnd() * 1.2; p.kerbNext = null; p.kerbBack = false;
+      // (a share of them where the crowd gathers, api.hot: a scramble; out of the player's way there)
+      const H = api.hot && api.hot.filter(h => Math.hypot(h.x - cx, h.y - cy) < radius);
+      const hot = H && H.length && rnd() < H.reduce((a, h) => a + h.share, 0) ? H[Math.floor(rnd() * H.length)] : null;
+      const cand = hot ? net.near(hot.x, hot.y, 0, hot.r).filter(i => near1(net.L[i], hot.x, hot.y, hot.r)) : net.near(cx, cy, rMin, radius);
+      const rMe = hot ? Math.min(rMin, HOT_MIN) : 0;
       p.line = -1;
-      for (let k = 0; k < 4 && cand.length; k++) { // somewhere clear of the cars and benches
+      for (let k = 0; k < (hot ? 8 : 4) && cand.length; k++) { // somewhere clear of the cars and benches
         const line = cand[Math.floor(rnd() * cand.length)], s = rnd() * net.L[line].len, dir = rnd() < 0.5 ? 1 : -1;
         net.at(line, s, tmp);
         const x = tmp.x - tmp.hy * dir * p.side, y = tmp.y + tmp.hx * dir * p.side;
+        if (hot && (Math.hypot(x - hot.x, y - hot.y) > hot.r || Math.hypot(x - cx, y - cy) < rMe)) continue;
+        const X = api.crossings && api.crossings.byLine.get(line);
+        if (X && X.some(q => Math.abs(q.s - s) < q.kerb + 0.5)) continue; // (not out in a road at a crossing)
         gather(x, y, p, true, tmp.z);
         if (blocked(x, y) > 0 || (wall && wall(x, y, tmp.z))) continue;
         p.line = line; p.s = s; p.dir = dir;
         return;
       }
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0 };
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], hot: null, plazas: null, muster };
+    const near1 = (l, x, y, r) => { for (let k = 0; k < l.pts.length; k += 3) if (Math.hypot(l.pts[k] - x, l.pts[k + 1] - y) < r) return true; return false; };
+    // would a walker set off at s along line `line` heading `dir` be out in a road at a crossing
+    // whose walk isn't on (or, at a scramble, too short for it to reach the far kerb)? Then its button is pressed
+    function heldAt(line, s, dir, p) {
+      const C = api.crossings, X = C && C.byLine.get(line);
+      if (!X) return false;
+      for (const x of X) {
+        const d = Math.abs(x.s - s);
+        if (d >= x.kerb) continue;
+        const far = (x.s - s) * dir + x.kerb;
+        if (x.at && toPlaza(p, x.at)) return 'plaza';
+        if (!C.walk(x.a) || (x.scramble && C.walkLeft(x.a) < far / (p.speed * 0.65))) { C.call(x.a); return true; }
+      }
+      return false;
+    }
+    // where a walker goes on at the end of its line: any way on, and near a place the crowd gathers
+    // (api.hot), more often the way towards it, so that the crowd stays thick there
+    function onward(p, end) {
+      let nx = net.next(p.line, end);
+      const h = nx && api.hot && api.hot.find(q => Math.hypot(p.x - q.x, p.y - q.y) < q.r * 1.6);
+      if (h && rnd() < h.pull) {
+        const far = o => { const l = net.L[o[0]], k = o[1] === 0 ? l.pts.length - 3 : 0; return Math.hypot(l.pts[k] - h.x, l.pts[k + 1] - h.y); };
+        let best = null, bd = Math.hypot(p.x - h.x, p.y - h.y) - 2; // (only a way that does lead nearer: no back and forth in a pocket)
+        for (let k = 0; k < 4; k++) { const o = net.next(p.line, end), d = o && far(o); if (o && d < bd) { best = o; bd = d; } }
+        if (best) nx = best;
+      }
+      return nx;
+    }
+    // a crowd gathered somewhere at once (the scramble as the game opens on its walk): each of `spots`
+    // ({ line, s, dir, side: its place across the footway, m }) takes the walker farthest from (cx, cy), placed on the next step
+    function muster(spots, cx, cy) {
+      const order = P.slice(0, api.active).map((q, i) => [i, q.line < 0 ? 1e9 : Math.hypot(q.x - cx, q.y - cy)]).sort((a, b) => b[1] - a[1]);
+      spots.slice(0, order.length).forEach((sp, k) => {
+        const q = P[order[k][0]];
+        release(q);
+        q.state = 'walk'; q.mode = 'ground'; q.lat = null; q.side = sp.side ?? 0.3 + rnd() * 1.4; q.pause = 0; q.still = 0; q.wait = 0;
+        q.line = sp.line; q.s = Math.max(0, Math.min(net.L[sp.line].len, sp.s)); q.dir = sp.dir;
+        net.at(q.line, q.s, tmp); q.x = tmp.x; q.y = tmp.y; q.z = tmp.z; // (walk() puts it beside the line)
+      });
+      return Math.min(spots.length, order.length);
+    }
     // the benches as obstacles: for each 4 m cell, those in it and the cells round it
     const benchAt = new Map(), bkey = (cx, cy) => (cx + 8192) * 16384 + cy + 8192; // a small integer key, for speed
     if (BN) for (const b of BN.list) for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) {
@@ -561,10 +616,220 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       net.at(q.line, q.s, tmp);
       q.back = { x: tmp.x - tmp.hy * q.dir * q.side, y: tmp.y + tmp.hx * q.dir * q.side, z: tmp.z };
     }
+    // ------------------------------------------------ a scramble's own crowd
+    // api.plazas (game.js, from junctions.js): per scramble { x, y, spans: its crosswalks kerb to kerb
+    // [ax, ay, az, bx, by, bz], walk(), left() }. Near the player a share of the crowd is the
+    // scramble's: massed on the pavement behind the kerbs where its crosswalks land, deeper the more
+    // wait, each stepping out when the walk comes on (a moment's reaction, the front rows first, and
+    // only with the time to make the far kerb); then out across the broad stripes to the far side,
+    // the diagonal too, free in the road as the real crowd is: not in single file but weaving
+    // through those coming the other way, a little to the left as they meet, so that lanes form as
+    // they do in any thick crossing flow (Helbing and Molnar's social forces). On the far side it
+    // strolls to a kerb of that corner and waits again; away from the player it goes back to the footways.
+    const PLAZA_SHARE = 0.42, PLAZA_R = 0.8; // (of the crowd; within this share of its radius of the player)
+    function gatesOf(pz) {
+      if (pz.gates) return pz.gates;
+      const G = [];
+      for (const w of pz.spans) {
+        const len = Math.hypot(w[3] - w[0], w[4] - w[1]);
+        if (len < 4) continue;
+        const ux = (w[3] - w[0]) / len, uy = (w[4] - w[1]) / len;
+        const a = { x: w[0], y: w[1], z: w[2], ox: -ux, oy: -uy, len, n: 0 }, b = { x: w[3], y: w[4], z: w[5], ox: ux, oy: uy, len, n: 0 };
+        a.partner = b; b.partner = a; G.push(a, b);
+      }
+      // (a crosswalk landing in a road, at an island or another street, isn't one to wait at either end of)
+      const on = (g, d, u) => pz.road && pz.road(g.x + g.ox * d - g.oy * u * SCR_HW, g.y + g.oy * d + g.ox * u * SCR_HW);
+      const ok = G.filter(g => !(on(g, 3, 0) && on(g, 5, 0)) && !(on(g.partner, 3, 0) && on(g.partner, 5, 0)));
+      for (const g of ok) g.corner = ok.filter(h => h !== g && h !== g.partner && Math.hypot(h.x - g.x, h.y - g.y) < 16);
+      return (pz.gates = ok);
+    }
+    // a place to wait at gate g, behind its kerb (u: across the stripes' width, -1 to 1), or to land at
+    // it; drawn in towards the stripes' line, and nearer the kerb, where that would be in a road
+    function spotAt(g, u, depth, out, road = null) {
+      for (let k = 0; k < 6; k++) {
+        out.x = g.x + g.ox * depth - g.oy * u * SCR_HW; out.y = g.y + g.oy * depth + g.ox * u * SCR_HW;
+        if (!road || !road(out.x, out.y)) break;
+        u *= 0.6; depth = 0.8 + (depth - 0.8) * 0.6;
+      }
+      return out;
+    }
+    function toGate(q, g, depth) { // to wait at gate g
+      if (q.g) q.g.n--;
+      q.g = g; g.n++; q.ph = 'stroll'; q.react = 0.2 + rnd() * 2.2;
+      spotAt(g, q.spread, depth != null ? depth : 0.7 + Math.max(0, Math.min(3.5, g.n * 0.07)) + rnd() * 1.6, q.T || (q.T = {}), q.pz && q.pz.road);
+    }
+    function plazas(t, cx, cy) {
+      // (the share split between those near, a landmark's the most)
+      const near = (api.plazas || []).filter(q => Math.hypot(q.x - cx, q.y - cy) < radius * PLAZA_R && gatesOf(q).length), W = near.reduce((a, q) => a + (q.weight || 1), 0) || 1;
+      for (const pz of api.plazas || []) {
+        const G = gatesOf(pz);
+        if (!G.length) continue;
+        const want = near.includes(pz) ? Math.min(G.reduce((a, h) => a + h.len * 0.6, 0), Math.round(api.active * PLAZA_SHARE * (pz.weight || 1) / W)) : 0; // (no more than its crosswalks can carry)
+        let have = 0;
+        for (let i = 0; i < api.active; i++) if (P[i].pz === pz) have++;
+        // (more than its share: with the player gone, back to the footways at once, out of sight; else
+        // each leaves along a footway as it reaches the far side, pz.owe)
+        if (!want) for (let i = 0; i < api.active && have > 0; i++) { const q = P[i]; if (q.pz === pz && q.ph !== 'cross') { release(q); if (q.g) q.g.n--; q.pz = q.g = null; q.state = 'walk'; q.line = -1; have--; } }
+        pz.owe = Math.max(0, have - want);
+        // (taken from those well out of sight, or all at once as the game starts)
+        for (let i = 0; i < api.active && have < want; i++) {
+          const q = P[i];
+          if (q.pz || q.state !== 'walk' || (t >= 1 && q.line >= 0 && Math.hypot(q.x - cx, q.y - cy) < 120)) continue;
+          const g = G[Math.floor(rnd() * G.length)];
+          q.pz = pz; q.state = 'scr'; q.mode = 'ground'; q.line = Math.max(0, q.line); q.g = null; q.pause = 0;
+          toGate(q, g);
+          q.x = q.T.x; q.y = q.T.y; q.z = g.z; q.ph = 'wait'; q.v = q.vx = q.vy = 0; q.h = Math.atan2(-g.ox, -g.oy);
+          gather(q.x, q.y, q, true, q.z);
+          if (carDepth(q.x, q.y) > 0) { g.n--; q.pz = q.g = null; q.state = 'walk'; q.line = -1; continue; } // (not put inside a car waiting there)
+          have++;
+        }
+      }
+    }
+    // the crowd on the footways and a scramble's own trade places at its kerbs: one walking up to it
+    // joins those waiting there (they cross the scramble's way, free of the footways' single file),
+    // and one of them, on the far side, walks off along the footway it stands by
+    function toPlaza(p, j, reach = 9) {
+      const pz = j.plaza, G = pz && pz.gates;
+      if (!G || !G.length || !api.plazas || !api.plazas.includes(pz)) return false;
+      let g = null, bd = reach;
+      for (const h of G) { const d = Math.hypot(h.x - p.x, h.y - p.y); if (d < bd) { bd = d; g = h; } }
+      if (!g) return false;
+      release(p);
+      p.pz = pz; p.state = 'scr'; p.mode = 'ground'; p.g = null; p.kerbNext = null; p.kerbBack = false;
+      toGate(p, g, 0.7 + rnd() * 1.5);
+      p.vx = p.vy = 0;
+      return true;
+    }
+    function toFootway(q) {
+      const near = net.nearest(q.x, q.y, 6, q.z, 2);
+      if (!near) return false;
+      const X = api.crossings && api.crossings.byLine.get(near.line);
+      if (X && X.some(x => Math.abs(x.s - near.s) < x.kerb + 0.5)) return false; // (not out in the road)
+      net.at(near.line, near.s, tmp);
+      const j = q.pz.j, away = (tmp.x - j.x) * tmp.hx + (tmp.y - j.y) * tmp.hy >= 0 ? 1 : -1; // (on away from the scramble)
+      if (q.g) q.g.n--;
+      q.pz = q.g = null; q.state = 'walk'; q.mode = 'ground';
+      q.line = near.line; q.s = near.s; q.dir = away;
+      q.hx = tmp.hx * away; q.hy = tmp.hy * away;
+      q.lat = q.lim = (q.x - tmp.x) * -q.hy + (q.y - tmp.y) * q.hx; q.limWant = q.side = Math.max(0.3, Math.min(1.8, Math.abs(q.lat)));
+      q.dodge = 0; q.v = Math.hypot(q.vx, q.vy);
+      return true;
+    }
+    const ZAT = { z: 0, deck: 0 };
+    function carDepth(x, y, m = 0.3) { // how deep (x, y) is in the cars near (gathered): each its box, grown m all round (the corners too)
+      let deep = 0;
+      for (const o of nearCars) {
+        const fx = Math.sin(o.h), fy = Math.cos(o.h), dx = x - o.x, dy = y - o.y;
+        const ea = o.half + m - Math.abs(dx * fx + dy * fy), eb = o.hw + m - Math.abs(-dx * fy + dy * fx);
+        if (ea > 0 && eb > 0) deep += Math.min(ea, eb);
+      }
+      return deep;
+    }
+    function plazaStep(i, q, dt, player) {
+      const pz = q.pz, g = q.g;
+      let sp = 0;
+      if (q.ph === 'wait') {
+        // the walk on, and time enough to make the far kerb: out, after a moment's reaction
+        const far = g.len + 1; // (the crosswalk's length: the deepest of the crowd at the kerb a little behind the front rows)
+        if (pz.walk() && pz.left() > far / (q.speed * 0.85)) { // (with time in hand for a crowd in the way)
+          if ((q.react -= dt) <= 0) { q.ph = 'cross'; spotAt(g.partner, -q.spread + (rnd() - 0.5) * 0.5, 0.6 + rnd() * 1.4, q.T, pz.road); g.n--; }
+        }
+      }
+      else if (q.ph === 'cross') { // (still behind the kerb as the walk ends, or with too little of it left: back to wait)
+        const P2 = g.partner, ex = P2.x - g.x, ey = P2.y - g.y, t = ((q.x - g.x) * ex + (q.y - g.y) * ey) / (ex * ex + ey * ey);
+        if (t < 0.03 && (!pz.walk() || pz.left() < g.len / (q.speed * 0.85))) { q.ph = 'wait'; g.n++; spotAt(g, q.spread, 0.7 + rnd() * 1.6, q.T, pz.road); q.react = 0.2 + rnd() * 2.2; }
+      }
+      const dx = q.T.x - q.x, dy = q.T.y - q.y, d = Math.hypot(dx, dy);
+      if (q.ph === 'cross') { sp = q.speed * 1.05; pz.busy = (pz.busy || 0) + 1; } else if (q.ph === 'stroll') sp = q.speed * 0.75; else sp = d > 0.3 ? 0.5 : 0;
+      if (q.pause > 0) sp = 0;
+      let vx = d > 1e-3 ? dx / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0, vy = d > 1e-3 ? dy / d * Math.min(sp, d / Math.max(dt, 1e-3)) : 0;
+      // the others near: apart, and, meeting someone coming the other way, a step to the left
+      let fx = 0, fy = 0;
+      const c0 = Math.floor(q.x / CELL), r0 = Math.floor(q.y / CELL), vv = Math.hypot(vx, vy);
+      // (caught a while in the press, mid-road: shuffles on through it, as for the footways' knots)
+      q.stuck = q.ph === 'cross' && q.v < 0.15 ? (q.stuck || 0) + dt : 0;
+      if (q.ph === 'cross' && !pz.walk() && pz.left() < 3) q.squeeze = Math.max(q.squeeze || 0, 0.3); // (the walk over and still out on the road: on through the press, hurrying)
+      if (q.stuck > 2) { q.squeeze = 1.5; q.stuck = 0; }
+      if (q.squeeze > 0) q.squeeze -= dt;
+      if (!(q.squeeze > 0)) for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
+        for (let k = head[bucket(c0 + a, r0 + b)]; k >= 0; k = chain[k]) {
+          if (k === i) continue;
+          const o = P[k], ex = q.x - o.x, ey = q.y - o.y, e = Math.hypot(ex, ey);
+          if (e > 2.4 || e < 1e-4) continue;
+          if (e < 0.75) { const f = (0.75 - e) / e * 2.2; fx += ex * f; fy += ey * f; }
+          if (vv > 0.3 && e < 2.4 && (o.vx * vx + o.vy * vy) < 0 && (-ex * vx - ey * vy) > 0) { const f = 0.5 * (2.4 - e) / 2.4; fx += -vy / vv * f; fy += vx / vv * f; } // (left: + across the heading)
+        }
+      }
+      if (player) { const ex = q.x - player.x, ey = q.y - player.y, e = Math.hypot(ex, ey); if (e < 1.1 && e > 1e-4) { const f = (1.1 - e) / e * 2.5; fx += ex * f; fy += ey * f; } }
+      // and round a car caught in the box (a row of discs along it), and the posts
+      gather(q.x, q.y, q, (frame + i) % 3 === 0 || !q.cars, q.z);
+      for (const o of nearPosts) {
+        const ex = q.x - o.x, ey = q.y - o.y, e = Math.hypot(ex, ey), rr = o.r + POST + 0.25;
+        if (e < rr + 0.5 && e > 1e-4) { const f = Math.max(0, rr - e) / e * 3, side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.5 - e) / e * Math.max(0.6, vv) * 0.9; fx += ex * f - ey * side * t; fy += ey * f + ex * side * t; }
+      }
+      for (const o of nearCars) {
+        // (one on the move a second ahead too: out of its way before it gets there)
+        const ox = Math.sin(o.h), oy = Math.cos(o.h), ahead = Math.min(6, (o.v || 0) * 1.0), k = Math.max(1, Math.round((o.half + ahead / 2) / o.hw)), rr = o.hw + KERB + 0.25;
+        for (let m = 0; m < k; m++) {
+          const u = k === 1 ? 0 : -o.half + o.hw + (2 * o.half + ahead - 2 * o.hw) * m / (k - 1), ex = q.x - (o.x + ox * u), ey = q.y - (o.y + oy * u), e = Math.hypot(ex, ey);
+          if (e < rr + 0.6 && e > 1e-4) {
+            const f = Math.max(0, rr - e) / e * (q.tight ? 0.6 : 3), side = vx * -ey + vy * ex > 0 ? 1 : -1, t = (rr + 0.6 - e) / e * Math.max(0.6, vv) * 0.9;
+            fx += ex * f - ey * side * t; fy += ey * f + ex * side * t; // (out of it, and round it, on the side it is already heading for)
+          }
+        }
+      }
+      vx += fx; vy += fy;
+      const m = Math.hypot(vx, vy), top = Math.max(sp, 0.6) * 1.15;
+      if (m > top) { vx *= top / m; vy *= top / m; }
+      // eased, as a body speeds up and turns
+      const k = Math.min(1, dt * 5);
+      q.vx += (vx - q.vx) * k; q.vy += (vy - q.vy) * k;
+      // never a step into a car (one edging out of the box): stand, and let it by
+      // (held up a while against a car caught in the box, with others round it: close along its side to get by)
+      // (slow to forget: shuffling a step at a time is still stuck, and so is being put back out of a car's way)
+      q.jam = q.ph === 'cross' && (q.v < 0.15 || q.ejected) ? (q.jam || 0) + dt : Math.max(0, (q.jam || 0) - dt * 0.25);
+      q.tight = q.ph === 'cross' && (q.jam > 3 || (q.tight && q.jam > 0)); // (once close along a car's side, it stays close until it is through: no flipping back to the wide berth)
+      const M = q.tight ? 0.12 : 0.3;
+      q.ejected = false;
+      if (q.jam > 6) { // (and still stuck: back to the kerb it set out from, if the way there is clear)
+        const back = spotAt(g, q.spread, 0.8, {}, pz.road);
+        let clear = true;
+        for (let k = 1; k <= 6 && clear; k++) if (carDepth(q.x + (back.x - q.x) * k / 6, q.y + (back.y - q.y) * k / 6, 0.12) > 0) clear = false;
+        if (clear) { q.g = null; toGate(q, g, 0.8 + rnd()); q.jam = 0; return; }
+        q.jam = 3.5;
+      }
+      const was = carDepth(q.x, q.y, M), nx = q.x + q.vx * dt, ny = q.y + q.vy * dt;
+      if (was > 0.02) { // (caught by one, a car pulling up: straight out of it, the shortest way)
+        const e = 0.05, gx = carDepth(q.x + e, q.y, M) - carDepth(q.x - e, q.y, M), gy = carDepth(q.x, q.y + e, M) - carDepth(q.x, q.y - e, M), gl = Math.hypot(gx, gy);
+        let ux = -gx, uy = -gy, ul = gl;
+        if (gl < 0.02) { // (on its long axis the discs' pulls cancel: out to the side, the one nearer where it was going)
+          let o = null, best = -1;
+          for (const c of nearCars) { const e = Math.hypot(q.x - c.x, q.y - c.y); if (e < c.half + c.hw + M && (best < 0 || e < best)) { best = e; o = c; } }
+          if (o) { const sx = Math.cos(o.h), sy = -Math.sin(o.h), lat = (q.x - o.x) * sx + (q.y - o.y) * sy, toT = (q.T.x - q.x) * sx + (q.T.y - q.y) * sy, sd = Math.abs(lat) > 0.05 ? Math.sign(lat) : toT >= 0 ? 1 : -1; ux = sx * sd; uy = sy * sd; ul = 1; }
+        }
+        if (ul > 1e-6) { q.x += ux / ul * 1.2 * dt; q.y += uy / ul * 1.2 * dt; q.vx = ux / ul * 1.2; q.vy = uy / ul * 1.2; q.ejected = true; }
+      } else if (carDepth(nx, ny, M) > was + 1e-4) { q.vx *= 0.3; q.vy *= 0.3; }
+      else { q.x = nx; q.y = ny; }
+      q.v = Math.hypot(q.vx, q.vy);
+      ZAT.z = q.z;
+      const z = ground ? ground(q.x, q.y, ZAT) : null;
+      if (z != null) q.z = z;
+      if (q.face != null) q.h = q.face;
+      else if (q.v > 0.15) { const h = Math.atan2(q.vx, q.vy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 6); }
+      else if (q.ph === 'wait') { const h = Math.atan2(-g.ox, -g.oy); q.h += Math.atan2(Math.sin(h - q.h), Math.cos(h - q.h)) * Math.min(1, dt * 2); } // (facing the road)
+      // there: on the far side, on to a kerb of that corner (or this one) to wait again
+      if (Math.hypot(q.T.x - q.x, q.T.y - q.y) < 0.5) {
+        if (q.ph === 'cross' && pz.owe > 0 && toFootway(q)) pz.owe--;
+        else if (q.ph === 'cross') { const c = g.partner.corner, n2 = rnd() < 0.55 && c.length ? c[Math.floor(rnd() * c.length)] : g.partner; q.g = null; toGate(q, n2); }
+        else if (q.ph === 'stroll') q.ph = 'wait';
+      }
+    }
     let frame = 0;
     function update(dt, cx, cy, t, player) {
       R.begin(dt, cx, cy, t, api.active);
       frame++;
+      if (api.plazas && (frame % 15 === 1 || t < 1)) plazas(t, cx, cy);
+      if (api.plazas) for (const pz of api.plazas) if (pz.j) { pz.j.busy = pz.busy || 0; pz.busy = 0; } // (who was out on its road last step: the signals wait for them)
       head.fill(-1);
       for (let i = 0; i < api.active; i++) {
         const q = P[i];
@@ -575,7 +840,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const pvx = player ? Math.sin(player.h) * player.speed : 0, pvy = player ? Math.cos(player.h) * player.speed : 0;
       for (let i = 0; i < n; i++) {
         p = P[i];
-        if (i >= api.active) { R.hide(i); release(p); p.line = -1; continue; }
+        if (i >= api.active) { R.hide(i); release(p); if (p.pz) { if (p.g) p.g.n--; p.pz = p.g = null; p.state = 'walk'; } p.line = -1; continue; }
+        if (p.pz) { if (p.pause > 0) p.pause -= dt; plazaStep(i, p, dt, player); p.mode = 'ground'; R.place(i, p, p.v > 0.05); continue; }
         if (p.line < 0 || Math.hypot(p.x - cx, p.y - cy) > radius * 1.15) respawn(p, cx, cy, p.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (p.line < 0) { R.hide(i); continue; }
         if (p.pause > 0) p.pause -= dt;
@@ -619,8 +885,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       push = 0; cap = p.speed; nn = 0;
       const c0 = Math.floor(p.x / CELL), r0 = Math.floor(p.y / CELL);
       for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) {
-        for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) if (j !== i) { const o = P[j]; see(o.x, o.y, o.vx, o.vy, BODY, 1); nbr[nn++] = j; }
+        if (!(p.squeeze > 0)) for (let j = head[bucket(c0 + a, r0 + b)]; j >= 0; j = chain[j]) if (j !== i) { const o = P[j]; see(o.x, o.y, o.vx, o.vy, BODY, 1); nbr[nn++] = j; }
       }
+      if (p.squeeze > 0) p.squeeze -= dt;
       if (player) see(player.x, player.y, pvx, pvy, BODY + (player.r || 0.15), 1.6); // give the player a little more room (a car more)
       gather(p.x, p.y, p, (p.steps = (p.steps || 0) + 1) % 2 === 0 || !p.cars, p.z);
       // the benches' two seats: step round them, without slowing (it may be passing to sit down)
@@ -634,9 +901,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (const o of nearCars) seeCar(o);
       if (was > 0) cap = cap0;
       // sideways within the footway (a little past its edge for whoever keeps far left), and speed
-      const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
+      // (out on a scramble's crosswalk, a band of stripes 4 to 6 m wide: across its width, each walker keeping to
+      // its left so the two crowds pass rather than meet face to face in the middle of the road)
+      const X = api.crossings && api.crossings.byLine.get(p.line), band = X && X.some(x => x.scramble && Math.abs(x.s - p.s) < x.kerb);
+      const hw = band ? 2.6 : Math.max(1, (FOOTW[l.c] || 3) / 2), side = band ? 1.2 + 0.5 * Math.max(-1.6, Math.min(1.6, p.side)) : p.side; // (lat: to the walker's left)
       p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
-      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, p.side) + 0.2, p.side + p.dodge));
+      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, side) + 0.2, side + p.dodge));
+      // (counted out on a scramble's crosswalk, for its signals to wait for; and massed at its kerbs, spread
+      // across the stripes' width rather than in single file)
+      if (X && X.scramble) for (const x of X) if (x.scramble && Math.abs(x.s - p.s) < x.kerb - 0.3 && x.scramble.plaza) x.scramble.plaza.busy = (x.scramble.plaza.busy || 0) + 1;
+      if (!band && X && X.scramble && X.some(x => x.scramble && Math.abs(x.s - p.s) < x.kerb + 5)) want = Math.max(-SCR_HW, Math.min(SCR_HW, p.spread * SCR_HW + p.dodge));
       // a facade beside the line, here or a little ahead: in towards the line (looked at every few steps)
       if (clear && ((p.wallStep = (p.wallStep || 0) + 1) % 3 === 0 || p.lim == null)) { net.at(p.line, p.s, tmp); p.lim = wallFree(p, want, hw); p.limWant = want; }
       if (clear && p.lim != null && p.lim !== p.limWant) want = p.limWant >= 0 ? Math.min(want, p.lim) : Math.max(want, p.lim); // (no further out on that side)
@@ -644,17 +918,30 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       p.lat += dl;
       // a road ahead at a junction with signals, its traffic free to go: up to the kerb, and wait
       // there (the button pressed) for the walk signal; someone already out in the road walks on
+      // (at a scramble, only with the time to reach the far kerb before the traffic moves)
       let atKerb = false;
-      const X = api.crossings && api.crossings.byLine.get(p.line);
+      // (out in a scramble's road when its walk is over: off it with its own crowd, to the nearest kerb they wait at)
+      if (X) for (const x of X) if (x.at && Math.abs(x.s - p.s) < x.kerb - 0.3 && !api.crossings.walk(x.a) && toPlaza(p, x.at, 30)) return;
       if (X && !X.some(x => Math.abs(x.s - p.s) < x.kerb - 0.3)) for (const x of X) { // (not while out in a road: over a median, it crosses the other half too)
         const d = (x.s - p.s) * p.dir;
-        if (d > x.kerb - 0.4 && d < x.kerb + 3 && !api.crossings.walk(x.a)) { atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5)); }
+        if (x.at && d > x.kerb - 0.4 && d < x.kerb + 1.5 && toPlaza(p, x.at)) return; // (to the scramble's own crowd)
+        if (d > x.kerb - 0.4 && d < x.kerb + 3 && (!api.crossings.walk(x.a) || (x.scramble && api.crossings.walkLeft(x.a) < (d + x.kerb) / (p.speed * 0.65)))) {
+          atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5));
+        }
       }
       if (atKerb && p.v < 0.05) api.kerbWait += dt;
+      // each wait at a kerb for the walk, from coming up to it to stepping out (tools/traffic_check.js)
+      if (atKerb) p.kw = (p.kw || 0) + dt;
+      else if (p.kw) { if (api.kerbWaits.length < 4000) api.kerbWaits.push(p.kw); p.kw = 0; }
       const target = p.pause > 0 ? 0 : Math.min(p.speed, cap);
       p.v = Math.max(0, p.v + Math.max(-3 * dt, Math.min(1.2 * dt, target - p.v)));
       // face to face with someone neither can get round: after a while, turn back
-      p.still = p.pause <= 0 && p.v < 0.05 && !atKerb ? (p.still || 0) + dt : 0;
+      p.still = p.pause <= 0 && p.v < 0.05 && !atKerb && !p.kerbNext && !p.kerbBack ? (p.still || 0) + dt : 0;
+      // caught in a knot of walkers where footways meet (a thick crowd's head-on): shuffle on through
+      // it for a moment, as people in a crush do (and off a road, through those waiting at its kerb);
+      // never into the crowd massed at a kerb, though
+      p.slow = p.pause <= 0 && p.v < 0.25 && !atKerb && !p.kerbNext && !p.kerbBack ? (p.slow || 0) + dt : 0; // (or barely edging through it)
+      if ((p.still > 1.5 || p.wait > 1.5 || p.slow > 2.5) && !(X && X.some(x => { const d = (x.s - p.s) * p.dir; return d > x.kerb - 0.3 && d < x.kerb + 10; }))) { p.squeeze = 1.2; p.still = p.slow = 0; }
       if (p.still > 4) { p.dir = -p.dir; p.hx = -p.hx; p.hy = -p.hy; p.still = 0; }
       const s0 = p.s, line0 = p.line, dir0 = p.dir;
       p.s += p.dir * p.v * dt;
@@ -669,9 +956,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         return;
       }
       if (p.s < 0 || p.s > l.len) {
-        const nx = net.next(p.line, p.s > l.len ? 1 : 0);
-        if (nx && rnd() < 0.9) { p.line = nx[0]; p.dir = nx[1] === 0 ? 1 : -1; p.s = nx[1] === 0 ? 0 : net.L[p.line].len; }
-        else { p.dir = -p.dir; p.s = Math.max(0, Math.min(l.len, p.s)); }
+        // on along the next line, or back; but where that steps straight out into a road at a
+        // crossing whose walk isn't on (a crosswalk mapped from the kerb), the walker waits at the
+        // end, the way chosen kept for when it is
+        const nx = p.kerbNext || onward(p, p.s > l.len ? 1 : 0), back = p.kerbNext ? false : p.kerbBack || !nx || rnd() >= 0.9;
+        const nl = back ? p.line : nx[0], nd = back ? -p.dir : nx[1] === 0 ? 1 : -1, ns = back ? Math.max(0, Math.min(l.len, p.s)) : nx[1] === 0 ? 0 : net.L[nl].len;
+        const held = heldAt(nl, ns, nd, p);
+        if (held === 'plaza') return;
+        if (held) {
+          p.kerbNext = back ? null : nx; p.kerbBack = back;
+          p.s = Math.max(0, Math.min(l.len, p.s)); p.v = 0;
+          api.kerbWait += dt;
+        } else { p.kerbNext = null; p.kerbBack = false; p.line = nl; p.dir = nd; p.s = ns; }
       }
       net.at(p.line, p.s, tmp);
       const nhx = tmp.hx * p.dir, nhy = tmp.hy * p.dir;
@@ -872,6 +1168,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       }
       return false;
     }
+    if (crowd) JN.onStripes = onStripes; // (a ride's driver gives way at a zebra too: cars.js chauffeur)
     function respawn(c, cx, cy, rMin) {
       const cand = net.near(cx, cy, rMin, radius);
       JN.forget(c);
@@ -879,16 +1176,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let k = 0; k < 4 && cand.length; k++) { // somewhere no other car is, the way the street goes, not inside a junction
         const line = cand[Math.floor(rnd() * cand.length)], L1 = net.L[line], s = L1.len * (0.1 + 0.8 * rnd()), dir = L1.ow || (rnd() < 0.5 ? 1 : -1);
         if (JN.inner(line) || L1.len < 15) continue;
+        if (L1.ow && !net.next(line, dir > 0 ? 1 : 0, true)) continue; // (not on a one-way street that leads nowhere: stuck at its end)
         const ahead = dir > 0 ? L1.len - s : s, ar = JN.armAt(line, dir > 0 ? 1 : 0);
         if (ar && ahead < ar.back + 10) continue; // not at a junction's line, or over it
         if (JN.midsOn && (JN.midsOn(line) || []).some(X => Math.abs(X.mid - s) < 30)) continue; // nor at a crossing's
-        const ln = JN.lanesOf(L1) > 1 && rnd() < 0.5 ? 1 : 0, lo = side * JN.shiftOf(L1, ln);
+        if (JN.shutNow && JN.shutNow(line, dir)) continue; // nor on a street shut to cars at this hour
+        const ln = JN.lanesOf(L1) > 1 && rnd() < 0.5 && !(JN.laneRun && ahead + JN.laneRun(line, dir > 0 ? 1 : 0) < 120) ? 1 : 0, lo = side * JN.shiftOf(L1, ln); // (not in a second lane about to end)
         lanePos(line, s, dir, tmp, lo);
+        if (JN.inScramble && JN.inScramble(tmp.x, tmp.y)) continue;
         c.z = tmp.z;
         if (!clear(tmp.x, tmp.y, 12, c, tmp.z) || overlaps(c, tmp.x, tmp.y, tmp.hx, tmp.hy, 3, 1) > 0 || peopleIn(c, tmp.x, tmp.y, tmp.hx, tmp.hy) > 0) continue; // (and not on your car or a ride)
         c.line = line; c.s = s; c.dir = dir; c.v = L1.v * 0.7; c.stuck = 0; c.nx = undefined; c.plan = c.ex = c.ex2 = c.exA = c.pv = null; c.halt = false; c.q = false; c.off = 0;
         c.ln = ln; c.lo = lo; c.lcT = 0; c.lnWait = 0;
-        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; // (a wall seen where it was is not one here: looked for at once)
+        c.wallGap = Infinity; c.wallT = 0; c.atWall = 0; c.narrow = 0; c.narrowF = 0; c.narrowIn = Infinity; // (a wall seen where it was is not one here: looked for at once)
         c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.h = Math.atan2(tmp.hx, tmp.hy);
         return;
       }
@@ -961,15 +1261,51 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         free = Math.min(free, (out > 0 ? o.s : ml.len - o.s) - o.half - m.back);
       }
       for (const a of m.j.active) if ((a.m & 15) === m.i && (!two || (a.m >> 4) === ln) && a.c !== c && a.c.line !== m.line) need += 2 * a.c.half + 2.5;
-      return free >= Math.min(need, JN.reach(e) - 1);
+      // a short exit that simply runs on into another piece, no junction between (a slip road, a loop
+      // back): the room is on those pieces too, up to the next junction's line, behind the last car on
+      // them, or a car let in stops part way, still across this junction, in the queue for the next
+      let reach = JN.reach(e), li = m.line, end = 1 - m.end, base = ml.len - m.back;
+      for (let k = 0; k < 3 && reach < need && free >= reach && !JN.armAt(li, end); k++) {
+        const nx = net.only(li, end);
+        if (!nx) break;
+        const l2 = net.L[nx[0]], d2 = nx[1] === 0 ? 1 : -1, a2 = JN.armAt(nx[0], 1 - nx[1]);
+        reach = free = base + l2.len - (a2 ? a2.back : 0);
+        for (const j of onLine.get(nx[0]) || []) {
+          const o = C[j];
+          if (o === c || o.dir !== d2) continue;
+          free = Math.min(free, base + (d2 > 0 ? o.s : l2.len - o.s) - o.half);
+        }
+        li = nx[0]; end = 1 - nx[1]; base += l2.len;
+      }
+      return free >= Math.min(need, reach - 1);
     }
     let redRuns = 0, laneChanges = 0;
     const redLog = []; // (the last few cars over a crossing's line on red, how: tools/traffic_why.js)
     const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
     if (crowd) crowd.cars = api;
     if (nav) nav.movers = api;
+    // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
+    // in it, or still moving within r of its node, comes back elsewhere, out past r, rather than being
+    // caught in the box by the crowd stepping off the kerbs
+    api.clearBox = (x, y, r) => {
+      let k = 0;
+      for (const c of C) {
+        if (c.line < 0 || Math.hypot(c.x - x, c.y - y) > r || !(JN.inner(c.line) || c.v > 1.5)) continue;
+        respawn(c, x, y, r + 20); k++;
+      }
+      return k;
+    };
     // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
     function take(c) { JN.forget(c); c.line = -1; c.v = 0; }
+    // ask traffic car o to back off for t seconds (not your car or a ride, and not one that has
+    // already backed off a good while without moving on since): whether it will
+    // has it room on its piece to back off into (not at the very start of it)?
+    const canBack = o => o.line >= 0 && (o.dir > 0 ? o.s > 0.5 : o.s < net.L[o.line].len - 0.5);
+    function backOff(o, t) {
+      if (o.stuck === undefined || o.line < 0 || o.boSpent > 6) return false;
+      o.backoff = Math.max(o.backoff || 0, t);
+      return true;
+    }
     // how deep a car-sized box (x, y at height z, heading h, half length and width, grown by m) would
     // be in the traffic's cars (not api.extra): 0 when clear. For a car driven by something else (a
     // ride) to wait rather than move into one, as the traffic waits for it
@@ -985,9 +1321,18 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     let tick = 0;
     const FAR = 160; // cars farther than this from the eye (m, along x and y) take a step every second frame
+    // is car c where the camera can see it: near enough, and not behind it or far out to a side?
+    const look = new THREE.Vector3();
+    function inView(c) {
+      if (!eye) return false;
+      const dx = c.x - eye.position.x, dy = c.y + eye.position.z, d = Math.hypot(dx, dy);
+      const h = Math.hypot(look.x, look.z); // (looking down from high up, all round it)
+      return d < 12 || (d < 200 && (h < 0.3 ? d < 150 : (dx * look.x - dy * look.z) / (d * h) > 0.3)); // (sim y is -z)
+    }
     function update(dt0, cx, cy, t, blockers) {
       const dt = dt0;
       tick++;
+      if (eye) eye.getWorldDirection(look);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;
@@ -1033,7 +1378,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // its way ahead: points every STEP metres from its front bumper along its lane, on to the
         // next piece and its way across a junction (as lanePos smooths it round corners)
         const P = c.ps || (c.ps = new Float32Array(2 * NPATH)), Q = pathQ;
-        let np = 0, pk0 = 0;
+        let np = 0, pk0 = 0, laneAt = 0; // (laneAt: how far across from the road's line the points are)
         // (far from the eye, points twice as far apart: they serve as well there, at half the work)
         const step = !eye || Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) < 250 ? STEP : 2 * STEP;
         c.pst = step;
@@ -1064,7 +1409,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           // offset into the lane by the direction over two steps either side; the first point kept is the front bumper
           const k0 = Math.round((Math.abs(c.s - sb) + c.half) / step);
-          pk0 = k0;
+          pk0 = k0; laneAt = lane;
           for (let k = k0; k < nq && np < NPATH; k++) {
             const ka = Math.max(0, k - 2), kb = Math.min(nq - 1, k + 2);
             let hx = Q[2 * kb] - Q[2 * ka], hy = Q[2 * kb + 1] - Q[2 * ka + 1];
@@ -1090,6 +1435,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               // is it coming into my way as I come into its? Then whoever is in the junction first, or
               // nearer the place where the two ways meet, goes first, and the other waits
               const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
+              // two coming at each other up a street too narrow for both (each in from a facade): the one already in
+              // the narrow stretch goes on, and the other waits short of it, in its lane; never into the other
+              const headOn = d2 >= 0 && o.line === c.line && o.dir !== c.dir && (c.narrowF > 0.2 || o.narrowF > 0.2);
+              if (headOn) {
+                const cIn = c.narrow > 0 && c.narrowIn < 1, oIn = o.narrow > 0 && o.narrowIn < 1;
+                let g = d + 0.6, w = 'car';
+                if (!cIn && c.narrowIn < Infinity && (oIn || d2 < d)) { const g2 = Math.max(0, c.narrowIn - 1.5); if (g2 < g) { g = g2; w = 'narrow'; } }
+                if (g < gap) { gap = g; byCar = true; front = o; why = w; }
+                continue;
+              }
               if (d2 >= 0) {
                 const first = c.mv && o.mv && c.mv.j === o.mv.j ? c.mvT < o.mvT || (c.mvT === o.mvT && i < j) : c.mv && !o.mv && o.toLine > 0 ? true : !c.mv && o.mv && c.toLine > 0 ? false : d < d2 - 0.5 || (Math.abs(d - d2) <= 0.5 && i < j);
                 if (first) continue;
@@ -1119,14 +1474,25 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.waitOn = c.waitOnCar === front ? (c.waitOn || 0) + dt : 0; c.waitOnCar = front;
           if (c.waitOn > 8) { c.passBy = front; c.waitOn = 0; }
         } else if (!front || front !== c.waitOnCar) { c.waitOn = 0; c.waitOnCar = null; }
+        // two in a junction, each stopped for the other as the car ahead (nose to nose where their ways
+        // cross, each path seeing the other): after 4 s the one that went in first goes on as if the
+        // other weren't there, and the other gives way to it when they touch (below; #144)
+        if (front && c.mv && front.mv && front.front === c && c.v < 0.3 && front.v < 0.3) {
+          c.faceAll = c.faceCar === front ? (c.faceAll || 0) + dt : 0;
+          c.faceT = c.faceCar === front ? (c.faceT || 0) + dt : 0; c.faceCar = front;
+          const cb = canBack(c), fb = canBack(front); // (the one that can't back off goes on, else the one in first)
+          if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
+        } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
         if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
         // one left in the lane, as traffic goes round a stopped car; otherwise braked for like a car ahead
+        let youQ = false; // (the one braked for is a ride queueing for a junction: this car queues behind it)
         for (const b of blockers) {
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           const dx = b.x - c.x, dy = b.y - c.y, a = dx * fx + dy * fy, w = -dx * fy + dy * fx;
-          if (b.parked) {
+          // (never round a ride queueing at a red light, b.q: it waits its turn there, and so does this car)
+          if (b.parked && !b.q) {
             const need = c.hw + (b.hw || 0.9) + 0.3;
             // (w0: where it is across from the car's own lane, without the swing out the car has already
             // taken, so that the swing is the whole way out round it and not half of it: with w the swing
@@ -1139,7 +1505,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             const sw = Math.abs(toKerb) < 1.6 && Math.abs(toKerb) < Math.abs(toCentre) ? toKerb : Math.abs(toCentre) < 2.6 ? toCentre : null;
             if (sw != null && !atJ) { if (Math.abs(sw) > Math.abs(swerve)) swerve = sw; continue; }
           }
-          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; } // (a ride pulling in still reaches into the lane)
+          if (a > 0 && Math.abs(w) < Math.max(1.6, c.hw + (b.hw || 0.9) + 0.2) && a - b.half - c.half < gap) { gap = a - b.half - c.half; byCar = true; front = null; why = 'you'; youQ = !!b.q && b.qBy !== c; } // (a ride pulling in still reaches into the lane)
         }
         // a lamp post or a trunk in the way (at a corner taken wide): braked for like a car stopped there
         if (posts) posts.near(c.x + fx * reach / 2, c.y + fy * reach / 2, reach / 2 + 1, q => {
@@ -1147,13 +1513,24 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const dx = q.x - c.x, dy = q.y - c.y, a = dx * fx + dy * fy;
           if (a + q.r < c.half || a > reach || Math.abs(-dx * fy + dy * fx) >= c.hw + q.r + 0.1) return;
           const g = a - q.r - c.half;
-          if (g < gap) { gap = g; byCar = true; front = null; why = 'post'; }
+          if (g < gap && !(c.postPass > 0)) { gap = g; byCar = true; front = null; why = 'post'; }
         });
-        if (c.narrow > 0) { c.narrow -= dt; if (!swerve) swerve = -LANE * side * (c.narrowF || 0); } else c.narrowF = 0; // (a facade beside its lane: in from it, below)
-        c.off += (swerve - c.off) * Math.min(1, dt * 1.6);
+        // (stopped for one more than 10 s, a post its way runs into in a junction, say: it edges past it, #144)
+        c.postT = why === 'post' && c.v < 0.3 ? (c.postT || 0) + dt : 0;
+        if (c.postT > 10) { c.postT = 0; c.postPass = 6; } else if (c.postPass > 0) c.postPass -= dt;
+        // (a facade beside its lane: in from it, below, until its back has passed the place: c.narrow is the
+        // metres to go, not a time, so a car that stops beside a facade stays in from it however long it waits)
+        // (and only once it is close to the place: one waiting short of a narrow stretch for a car coming the
+        // other way through it keeps to its lane, out of that car's way)
+        if (c.narrow > 0) {
+          c.narrow -= c.v * dt; c.narrowIn = Math.max(0, (c.narrowIn ?? 0) - c.v * dt);
+          if (c.narrow <= 0) { c.wallT = 0; c.narrowIn = Infinity; }
+          if (!swerve && c.narrowIn < 6 + c.v) swerve = -LANE * side * (c.narrowF || 0);
+        } else { c.narrowF = 0; c.narrowIn = Infinity; }
+        c.off += (swerve - c.off) * Math.min(1, dt * (c.narrow > 0 && Math.abs(swerve) > Math.abs(c.off) ? 3.5 : 1.6)); // (in from a facade the sooner)
         // the junction ahead: in time to stop at its line, the light, a stop sign, the way across
         // and the room beyond it; then in, or wait at the line (the longest waiting goes first)
-        let atLine = false;
+        let atLine = false, lineGap = Infinity;
         // the junction it comes up to: at the end of this piece, or of the next if that is a short one
         // (its line can be close to where the car comes onto it), with its way across (c.ex, or c.exA)
         let jArm = arm, jEx = c.ex, toLine = arm ? left - arm.back : 0;
@@ -1174,13 +1551,16 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         if (jArm && jEx) {
           // the lane its movement needs, at the line: another way across from the lane it is in, if
-          // it could not get across in time
-          if (!c.mv && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
-            const alt = JN.exits(jArm).filter(e => e.lanes.includes(c.ln || 0));
+          // it could not get across in time (also while it still holds its way through the junction
+          // behind, as one pushed over a line there and out onto a short piece before this one: it
+          // can't change lanes while it holds that, and waiting for the lane there held that
+          // junction, and the queue behind it at a green, for good)
+          if ((!c.mv || c.mv.j !== jArm.j) && !jEx.lanes.includes(c.ln || 0) && toLine - c.half < 20) {
+            const alt0 = JN.exits(jArm).filter(e => e.lanes.includes(c.ln || 0)), alt1 = alt0.filter(e => !JN.closedNow(e)), alt = alt1.length ? alt1 : alt0; // (not one closed at this hour)
             if (alt.length) {
               const e2 = alt[Math.floor(rnd() * alt.length)];
               if (jArm === arm) { c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; } else { c.exA.e = jEx = e2; }
-            }
+            } else if (c.mv || c.mv0) c.anyLane = jArm; // (no way on from its lane, and it can't move across while it holds the junction behind: it goes from the lane it is in, #144)
           }
           const lt = JN.light(jArm, jEx), stop = c.v * c.v / 8 < toLine - c.half - 0.3; // (can stop by the line, at 4 m/s²)
           if (c.mv && c.mv.a === jArm && lt !== 'g' && lt != null && stop) { JN.release(c); c.rel = 'lights'; } // the lights changed before it got there
@@ -1191,7 +1571,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               if (toLine - c.half < -1) { c.overWhy = `${c.rel || ''} ${c.why} v ${c.v.toFixed(1)} toLine ${(toLine - c.half).toFixed(1)} lane ${c.ln} lo ${c.lo.toFixed(1)} lt ${lt}`; JN.enter(c, jArm, jEx, t, true); c.mv.via = [c.line]; go = false; } // already over the line: in the junction, so through it
               if (go && jArm.sign === 'stop' && !c.halt) go = false;
               if (go && !room(c, jEx)) go = false;
-              const inLane = jEx.lanes.includes(c.ln || 0) && Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3; // (in a lane its movement can't go from, or still moving across: it waits)
+              // (in a lane its movement can't go from, or still moving across: it waits; but not one still
+              // holding its way through the junction behind, whose place in the road stays as it went in
+              // by until it is clear of that one: forced over its line there onto a piece too short to wait
+              // on, it would wait for good, holding that junction and its queues through every green, #144)
+              const inLane = (c.anyLane === jArm && (c.mv || c.mv0)) || (jEx.lanes.includes(c.ln || 0) && (Math.abs(c.lo - side * JN.shiftOf(l, c.ln)) < 0.3 || (c.mv && c.mv.j !== jArm.j)));
               if (!inLane) go = false;
               // a junction just after, too close to wait between: crossed with this one, its way chosen now
               const a2 = go ? JN.after(jEx, 2 * c.half + 3) : null;
@@ -1206,6 +1590,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
               }
               if (r !== true) {
                 const g = toLine - c.half + 2.4;
+                lineGap = Math.min(lineGap, g);
                 if (g < gap) { gap = g; byCar = false; atLine = true; front = null; why = r || (lt === 'r' || lt === 'y' ? 'light' : jArm.sign === 'stop' && !c.halt ? 'stop' : !inLane ? 'lane' : 'room'); }
                 if (toLine - c.half < 2.5 && c.v < 0.6) {
                   if (jArm.sign === 'stop') c.halt = true;
@@ -1216,6 +1601,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           }
           c.toLine = toLine; c.lineArm = jArm; c.lineEx = jEx;
         } else c.lineArm = null;
+        // caught in a scramble's box when its walk comes on (held up on its way out, say): out at a
+        // walking pace, the crowd parting round it and anyone in its way stopping it, as a taxi caught there does
+        if (JN.scrambles && JN.scrambles.length) for (const sj of JN.scrambles) {
+          if (sj.ph === 3 && Math.hypot(c.x - sj.x, c.y - sj.y) < sj.reach * 0.75 && 4.8 < gap) { gap = 4.8; byCar = false; front = null; why = 'walk'; }
+        }
         // a crossing between junctions ahead, on this piece or the next (junctions.js): held at its line
         // by its lights, or at a zebra by someone on the stripes or stepping onto them (not for ever: a
         // walker who stands there, it edges on after a while, braking for them as for anyone in the road)
@@ -1257,13 +1647,15 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // close to a line only into the lane it must be in
         if (JN.lanesOf(l) > 1) {
           c.lcT = (c.lcT || 0) + dt;
-          const nxL = !arm && c.nx ? net.L[nl] : null, ends = ln => ln && nxL && left < 90 && (JN.lanesOf(nxL) < 2 || !nxL.ow !== !l.ow); // (the lane ends, or moves across, on the road after)
+          // (the lane ends, or moves across, on the road ahead before the next junction: JN.laneRun looks
+          // past the pieces between, so that a car moves across in time where a short stretch comes first)
+          const endAt = arm || !JN.laneRun ? Infinity : left + JN.laneRun(c.line, c.dir > 0 ? 1 : 0), ends = ln => ln && endAt < 90 + 2 * c.v;
           const wrong = ln => (jArm && jEx && toLine < 150 && !jEx.lanes.includes(ln)) || ends(ln) || (ln && c.noL1 > 0); // (noL1: a facade beside the second lane, below)
           if (c.noL1 > 0) c.noL1 -= dt;
           let to = c.ln || 0, must = false;
           if (wrong(to) && !wrong(1 - to)) { to = 1 - to; must = true; }
           else if (wrong(to) && jArm && jEx && arm === jArm && !jEx.lanes.includes(to)) { // (neither will do: another way on from the lane it is in)
-            const alt = JN.exits(jArm).filter(e => e.lanes.includes(to));
+            const alt0 = JN.exits(jArm).filter(e => e.lanes.includes(to)), alt1 = alt0.filter(e => !JN.closedNow(e)), alt = alt1.length ? alt1 : alt0; // (not one closed at this hour)
             if (alt.length) { const e2 = alt[Math.floor(rnd() * alt.length)]; c.ex = jEx = e2; c.plan = e2.steps.slice(1); c.nx = e2.steps[0]; }
           }
           else if (front && why === 'car' && front.v < Math.min(5, 0.6 * l.v) && gap < 30 && c.lcT > 4 && !wrong(1 - to)) to = 1 - to;
@@ -1297,18 +1689,29 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           if ((c.wallT = (c.wallT || 0) - dt) <= 0 || flagged) {
             c.wallT = 0.5; c.wallGap = Infinity;
             const deck = c.z > nav.terrain(c.x, c.y) + 2;
+            let nF = 0, nEnd = 0, nIn = Infinity; // (how far in from its lane it needs to be on the 25 m ahead, for how far, and from where)
             for (let k = 0; k < np; k++) {
               if (nav.room(P[2 * k], P[2 * k + 1], c.z, c.hw * 0.8, 1.4, deck)) continue;
               // a facade beside its lane, but room nearer the middle of the street: it moves in only as far as it
-              // needs to there (so that two coming the other way up a narrow street can still pass)
+              // needs to there (so that two coming the other way up a narrow street can still pass). How far in
+              // is measured from its own lane, not from where it already is: from there (half way in, say) the
+              // share found would be taken as the whole swing, and it would stay half way, brushing the facade
               const q = pk0 + k, qx = pathQ[2 * q], qy = pathQ[2 * q + 1];
               let f = -1;
-              for (const g of [0.5, 0.25, 0]) if (nav.room(qx + (P[2 * k] - qx) * g, qy + (P[2 * k + 1] - qy) * g, c.z, c.hw * 0.8, 1.4, deck)) { f = g; break; }
-              if (f >= 0) { if (k * step < 25) { c.narrow = 1.5; c.narrowF = Math.max(c.narrow > 1.4 ? c.narrowF || 0 : 0, 1 - f); } continue; }
+              if (Math.abs(laneAt) > 0.05) {
+                const ux = (P[2 * k] - qx) / laneAt, uy = (P[2 * k + 1] - qy) / laneAt, base = laneAt - c.off;
+                for (const F of [0.25, 0.5, 0.75, 1]) {
+                  const at = base - LANE * side * F;
+                  if (nav.room(qx + ux * at, qy + uy * at, c.z, c.hw * 0.8, 1.4, deck)) { f = F; break; }
+                }
+              }
+              if (f >= 0) { if (k * step < 25) { nF = Math.max(nF, f); nEnd = Math.max(nEnd, k * step + 2 * c.half + 1.5); nIn = Math.min(nIn, k * step); } continue; }
               c.wallGap = k * step; break;
             }
+            // (a facade still beside it from before, further in: it keeps to that one until it is past it)
+            if (nF > 0) { if (!(c.narrow > 0) || nF >= c.narrowF) c.narrowF = nF; c.narrow = Math.max(c.narrow > 0 ? c.narrow : 0, nEnd); c.narrowIn = Math.min(c.narrow > 0 && c.narrowIn != null ? c.narrowIn : Infinity, nIn); c.narrowNow = true; } else c.narrowNow = false;
           }
-          if (c.ln && (c.wallGap < 40 || c.narrow > 1.4)) c.noL1 = 6; // (a facade by the second lane: back to the first)
+          if (c.ln && (c.wallGap < 40 || c.narrowNow)) c.noL1 = 6; // (a facade by the second lane: back to the first)
           if (c.wallGap < gap) { gap = c.wallGap; byCar = false; front = null; why = 'wall'; }
           c.atWall = why === 'wall' && c.v < 0.1 ? (c.atWall || 0) + dt : 0;
           if (c.atWall > 1.5) {
@@ -1317,7 +1720,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
             c.stuck = STUCK + 1; // (turned round below, as from a jam; on a one-way street it waits to be out of sight)
           }
         }
-        c.q = atLine || (byCar && front != null && front.q && c.v < 0.5); // queueing at a junction
+        c.q = atLine || (why === 'person' && walker >= 0 && c.v < 0.5 && lineGap < gap + 4) || (byCar && c.v < 0.5 && (front != null ? !!front.q : why === 'you' && youQ)); // queueing at a junction (behind a car, or a ride, queueing there; or held by the crowd crossing at its line, not by you, who may stand there for good)
         // caught up in another car (two stopped for each other can't get out by waiting): the
         // one in front creeps on, as far as that frees it, and the other backs off (below)
         // (getting out of one never takes it into another: `caught` holds the ones it is caught up with)
@@ -1374,28 +1777,52 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           held = d1 > 0 && (tangled > 0 ? (d1 > d0 + 1e-4 && !free) || f1 > fresh + 1e-4 : d1 > d0 + 1e-3); holder = o;
         }
         // in a junction and held there by a car waiting at its line (a bus swinging wide, say): that one backs off a little
-        if (held && holder && c.mv && !holder.mv && holder.v < 0.3 && holder.toLine != null && holder.toLine - holder.half < 4) holder.backoff = 1.5;
-        // held a long time all the same by one that isn't moving either (an awkward corner, two
-        // stopped nose to nose): it squeezes past, in a junction sooner; and by one that only
-        // inches along, caught up with it (the time counts on while it is held by one that moves)
-        c.inHeld = held ? (c.inHeld || 0) + dt : 0;
-        // (and in a junction, caught up behind one for 10 s: it squeezes past that one too)
+        if (held && holder && c.mv && !holder.mv && holder.v < 0.3 && holder.toLine != null && holder.toLine - holder.half < 4) backOff(holder, 1.5);
+        // (a step taken back below, last frame, is held too, by the car it would have gone into: #144)
+        const revBy = !held && c.revT > 0 && c.revBy && c.revBy.line >= 0 ? c.revBy : null;
+        c.revT = 0; // (set again below if this frame's step is taken back too)
+        c.inHeld = held || revBy ? (c.inHeld || 0) + dt : 0;
+        // held a while by a car that is stopped too (an awkward corner, two nose to nose where a turn
+        // cuts across the other lane): one of them gives way, backing off a metre or two, and the cars
+        // behind it back off in turn to make it room (below). The one not in the junction gives way to
+        // the one in it; of two in it, the one that went in later; of two on a street, one of the two
+        const heldBy0 = held ? holder : revBy;
+        if (heldBy0 && heldBy0.v < 0.3 && c.inHeld > 3 && !(c.giveT > 0)) {
+          c.giveT = 5;
+          const mutual = heldBy0.front === c, j = C.indexOf(heldBy0);
+          const yieldC = c.mv && heldBy0.mv ? mutual && (c.mvT > heldBy0.mvT || (c.mvT === heldBy0.mvT && i > j)) : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
+          let yl = yieldC ? c : heldBy0;
+          if (!canBack(yl) && canBack(yl === c ? heldBy0 : c)) yl = yl === c ? heldBy0 : c; // (not one at the very start of its piece, with nowhere to back off to: the other)
+          backOff(yl, 1.5);
+        }
+        if (c.giveT > 0) c.giveT -= dt;
+        // held a long time all the same (a knot no backing off undoes), or in a junction caught up behind
+        // one for 10 s: out of view (behind the camera, or far off) it leaves the traffic (its slot comes
+        // back elsewhere); in view it waits on, and only after a minute and a half squeezes past, through
+        // the other car, as the last way out of a knot you stand and watch
         c.behindT = behind && !turn ? (c.behindT || 0) + dt : 0;
-        const squeeze = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
+        const long = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
+        if (long && !inView(c)) { c.inHeld = c.behindT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
+        // (the one of two nose to nose in a junction that goes on, held by the other 20 s, the queue behind
+        // that one too close for it to back off: it squeezes past then, not after the minute and a half)
+        const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20));
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;
-          held = d1 > (c.pw > 5 ? (turn ? 1.2 : 0.35) : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3;
+          held = d1 > (c.pw > 5 ? 0.12 : 0.02) && d1 > peopleIn(c, c.x, c.y, hx0, hy0) + 1e-3; // (waited on a while, it edges up to them, not into them: they step aside, below)
           if (held && who >= 0) walker = who; // (a walker against it: asked to turn back, below, if it waits on them)
         }
         if (behind && !turn && !squeeze) held = true;
         if (c.backoff > 0) { // backing off for a car that can't get past, a metre or two, if the way behind is clear
-          c.backoff -= dt; c.v = 0;
+          c.v = 0; c.boSpent = (c.boSpent || 0) + dt;
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.2 * dt));
           lanePos(c.line, sb, c.dir, tmp, c.off + c.lo, c.pv, c.nx ? [nl, nd] : null);
-          if (overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1) === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); }
+          const bd = overlaps(c, tmp.x - hx0 * 0.6, tmp.y - hy0 * 0.6, hx0, hy0, 0.3, 0.1), bk = mostCar;
+          if (bd === 0 && peopleIn(c, tmp.x, tmp.y, hx0, hy0) === 0) { c.s = sb; c.x = tmp.x; c.y = tmp.y; onGround(c, tmp); c.backoff -= dt; }
+          else if (bk && bk.v < 0.5 && (bk.x - c.x) * hx0 + (bk.y - c.y) * hy0 < 0 && Math.sin(bk.h) * hx0 + Math.cos(bk.h) * hy0 > 0.5 && backOff(bk, c.backoff)) c.backoff -= dt * 0.25; // (the car behind it, stopped and going its way, backs off first)
+          else c.backoff -= dt;
           held = true;
-        }
+        } else if (c.v > 2) c.boSpent = 0;
         if (held && tangled > 0) { // can't get out ahead: try another road next (if it isn't in a junction yet), and back up a little
           if (!c.mv) { c.nx = undefined; c.plan = c.ex = null; }
           const sb = Math.max(0, Math.min(l.len, c.s - c.dir * 1.5 * dt));
@@ -1422,16 +1849,23 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           // and a step along its road that took it deeper into another car is taken back (one parting
           // from a car it has long been caught with: deeper into any other), unless it is squeezing past
           // one it has waited on a long time; a step onto the next road was checked above, with the junction
+          // Taken back, it is held by that car, as by a step held above: in a junction, by one waiting at
+          // its line whose nose is in the way out (and which waits for this very movement to clear), that one
+          // backs off; and it squeezes past in time, as one held is (#144: the step was taken back unseen,
+          // the time held never counted, and two nose to nose, or a movement out of a junction and the car
+          // waiting on it, stood for good)
           if (!turn && !squeeze) {
-            const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1;
+            const kn = free ? caught : null, d1 = overlaps(c, c.x, c.y, Math.sin(c.h), Math.cos(c.h), 0, 0, null, kn), f1 = free ? fresh : d1, o1 = mostCar;
             if (f1 > 0 && f1 > (overlaps(c, was[3], was[4], Math.sin(was[6]), Math.cos(was[6]), 0, 0, null, kn), free ? fresh : depth) + 1e-3) {
               [c.line, c.s, c.dir, c.x, c.y, c.z, c.h] = was;
               [c.lo, c.ln] = wasLane;
               c.v = 0;
+              held = true; holder = o1; c.revT = dt; c.revBy = o1;
+              if (o1 && c.mv && !o1.mv && o1.v < 0.3 && o1.toLine != null && o1.toLine - o1.half < 4) backOff(o1, 1.5);
             }
           }
         }
-        c.stuck = c.v < 0.1 && (byCar || held) && !c.q ? c.stuck + dt : 0;
+        c.stuck = c.v < 0.1 && (byCar || held || (why === 'person' && walker < 0)) && !c.q ? c.stuck + dt : 0; // (and held by you, or someone not of the crowd, who won't step aside: as from a jam, in the end it turns round)
         c.zebraT = why === 'zebra' && c.v < 0.3 ? (c.zebraT || 0) + dt : 0;
         if (c.zebraT > 15) { c.zebraT = 0; c.zebraOff = 6; }
         c.why = held ? 'held' : why; c.front = held ? holder : front; c.who = walker; c.heldBy = held ? (holder ? 'car' : c.backoff > 0 ? 'backing off' : behind ? 'caught up' : 'person') : '';
@@ -1442,11 +1876,32 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         m4.compose(W(c.x, c.y, c.z), q, one);
         place(i, c);
       }
+      // and a walker it has come up against (a corner taken, edging up to one who stands in the road),
+      // or who has stepped up against it where it stands: a step out of its way, along the footway and across it, if that is not into a wall
+      if (crowd) for (let i = 0; i < api.active; i++) {
+        const c = C[i];
+        if (c.line < 0) continue;
+        const R = c.half + 0.5, a0 = Math.floor((c.x - R) / CELL), a1 = Math.floor((c.x + R) / CELL), b0 = Math.floor((c.y - R) / CELL), b1 = Math.floor((c.y + R) / CELL);
+        for (let a = a0; a <= a1; a++) for (let b = b0; b <= b1; b++) for (let j = bhead[bucket(a, b)]; j >= 0; j = bchain[j]) {
+          if (bi[j] < 0 || Math.abs(bz[j] - c.z) >= LEVEL) continue;
+          const e = into(c, bx[j], by[j], 0.25), p = crowd.P[bi[j]];
+          if (!e || p.state !== 'walk' || p.line < 0) continue;
+          const x = bx[j] + e.x * 1.02, y = by[j] + e.y * 1.02;
+          if (nav && !nav.walk(x, y, p.z).ok) continue;
+          const dx = x - p.x, dy = y - p.y; // (p.line is the crowd's network's, not the roads': past its end, walk() takes it on)
+          p.lat += -dx * p.hy + dy * p.hx;
+          p.s += p.dir * (dx * p.hx + dy * p.hy);
+          p.x = bx[j] = x; p.y = by[j] = y;
+        }
+      }
       // a car that has come up against the player (turning in, say) moves them out of its way
       if (nav) for (const b of blockers) {
         if (b.half || b.fixed) continue;
-        const o = pushOut(b.x, b.y, 0.35, b.z);
-        if ((o.x !== b.x || o.y !== b.y) && nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
+        let o = pushOut(b.x, b.y, 0.35, b.z);
+        if (o.x !== b.x || o.y !== b.y) {
+          if (nav.posts) o = nav.posts.pushOut(o.x, o.y, 0.35, b.z); // (and not into a lamp post or a trunk)
+          if (nav.walk(o.x, o.y, b.z).ok) { b.x = o.x; b.y = o.y; }
+        }
       }
       if (mesh) mesh.instanceMatrix.needsUpdate = true;
       if (fleet) for (const k in fleet) for (const M of fleet[k]) {

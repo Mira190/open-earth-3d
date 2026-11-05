@@ -27,6 +27,10 @@ window.OENight = (function () {
     secondary: [34, 10, 9.5, true, 1.0, 13], tertiary: [34, 9, 8.5, false, 0.95, 7], residential: [36, 7, 7, false, 0.8, 1.6],
     unclassified: [38, 6, 7, false, 0.75, 1.6], living_street: [28, 5, 5, false, 0.7, 0] };
   const MAPPED = [6, 0.85]; // a mapped lamp: its height and brightness (a park or footway light)
+  // per way on foot (night.json foot): lamp spacing m, height m, brightness
+  const FOOT = { pedestrian: [22, 5.5, 0.85], footway: [28, 4.5, 0.75], steps: [14, 4, 0.75] };
+  const ARM = 1.75; // a lamp's arm, from its pole to its head
+  const SPILL = [14, 0.7, '#ffd9b0']; // the spill light round a meeting place: radius m, the light it tops up to, colour
   // the share of the busiest hour's traffic on the road at each hour of the day
   const TRAFFIC = [0.34, 0.24, 0.17, 0.15, 0.18, 0.34, 0.62, 0.9, 1, 0.86, 0.76, 0.74, 0.76, 0.74, 0.76, 0.84, 0.94, 1, 0.96, 0.82, 0.7, 0.62, 0.55, 0.45];
   const VMAX = 4; // the light map stores sqrt(light / VMAX) in 8 bits: fine steps in the dark
@@ -141,6 +145,67 @@ void main() {
         acc += len;
       }
     });
+    const nRoad = L.x.length;
+    // a hash of the lamps so far, for the footway lamps: none within reach of one already there
+    const HC = 16, near = new Map(), hk = (x, y) => `${Math.floor(x / HC)},${Math.floor(y / HC)}`;
+    const hash = (x, y) => { const k = hk(x, y); if (!near.has(k)) near.set(k, []); near.get(k).push(x, y); };
+    const lampWithin = (x, y, r) => {
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const a = near.get(`${Math.floor(x / HC) + i},${Math.floor(y / HC) + j}`);
+        if (a) for (let k = 0; k < a.length; k += 2) if (Math.hypot(a[k] - x, a[k + 1] - y) < r) return true;
+      }
+      return false;
+    };
+    for (let i = 0; i < L.x.length; i++) hash(L.x[i], L.y[i]);
+    for (let i = 0; i < mapped.length; i += 3) hash(mapped[i], mapped[i + 1]);
+    // the ways on foot (night.json foot): squares, pedestrian streets, park walks and steps are lit
+    // too, by lower lamps whose heads hang over the way, where no street light is already in reach
+    // (a pavement beside a lit road gets none of its own)
+    if (N.foot) {
+      const FI = unpack(N.foot), FP = unpack(N.foot_pts);
+      for (let i = 0, k = 0; i < FI.length; i += 3) {
+        const cls = N.foot_classes[FI[i]], n = FI[i + 2], pts = [];
+        for (let j = 0; j < n; j++, k += 3) { const x = FP[k] * XY, y = FP[k + 1] * XY; pts.push([x, y, onGround(x, y, FP[k + 2] * ZU)]); }
+        const [spacing, h, bright] = FOOT[cls] || FOOT.footway, colour = street(), s = rnd() < 0.5 ? 1 : -1;
+        let next = rnd() * spacing * 0.5, acc = 0;
+        for (let j = 1; j < pts.length; j++) {
+          const [ax, ay, az] = pts[j - 1], [bx, by, bz] = pts[j], len = Math.hypot(bx - ax, by - ay);
+          if (len < 0.01) continue;
+          const ux = (bx - ax) / len, uy = (by - ay) / len;
+          for (; next <= acc + len; next += spacing) {
+            const t = (next - acc) / len, px = ax + (bx - ax) * t, py = ay + (by - ay) * t, z = az + (bz - az) * t;
+            if (lampWithin(px, py, 0.7 * spacing)) continue;
+            const x = px - uy * s * ARM, y = py + ux * s * ARM; // the pole beside the way, its head over it
+            if (inRoad(x, y, z)) continue;
+            lamp(x, y, z + h, colour, bright * (0.9 + 0.2 * rnd()), ux, uy, h, s);
+            hash(px, py);
+          }
+          acc += len;
+        }
+      }
+    }
+    const nFoot = L.x.length;
+    // whoever waits for the player in the game (game.json npcs) stands in light after dark, as a
+    // station plaza, a shrine's gate or a pier's end is lit by its facades, shopfronts and
+    // floodlights: where the lamps leave their spot dark, a soft pool of that spill light round
+    // them (no lamp of its own: a pole there would stand between the camera and them)
+    const poolAt = (i, x, y) => {
+      const h = L.h[i], dir = L.ux[i] || L.uy[i], sa = (dir ? 1.1 : 0.8) * h, sc = (dir ? 0.6 : 0.8) * h;
+      const ux = dir ? L.ux[i] : 1, uy = dir ? L.uy[i] : 0, arm = dir ? 1.6 * L.pole[i] : 0;
+      const dx = x - (L.x[i] + uy * arm), dy = y - (L.y[i] - ux * arm), a = (dx * ux + dy * uy) / sa, b = (-dx * uy + dy * ux) / sc;
+      return Math.exp(-(a * a + b * b) * 0.5) * (dir ? 0.95 : 1.3) * L.b[i];
+    };
+    const spill = [];
+    if (game && D.G && D.G.npcs) for (const n of D.G.npcs) {
+      const [x, y] = n.at;
+      let lit = 0;
+      for (let i = 0; i < L.x.length; i++) if (Math.abs(L.x[i] - x) < 40 && Math.abs(L.y[i] - y) < 40) lit += poolAt(i, x, y);
+      for (let i = 0; i < mapped.length; i += 3) if (Math.abs(mapped[i] - x) < 30 && Math.abs(mapped[i + 1] - y) < 30) {
+        const d = Math.hypot(mapped[i] - x, mapped[i + 1] - y) / (0.8 * MAPPED[0]); lit += Math.exp(-d * d * 0.5) * 1.3 * MAPPED[1];
+      }
+      if (lit < SPILL[1]) spill.push([x, y, SPILL[0], SPILL[2], SPILL[1] - lit]);
+    }
+    const spots = spill.length;
     const nGen = L.x.length;
     for (let i = 0; i < mapped.length; i += 3) {
       const x = mapped[i], y = mapped[i + 1];
@@ -191,6 +256,7 @@ void main() {
         }
       }
     };
+    for (const [gx, gy, R, hex, k] of spill) splat(acc, mw, mh, mpp, gx, gy, R, lampColour(hex), k);
     const glows = (D.LM && D.LM.glows) || [], timed = glows.filter(g => g.length >= 7);
     const gw = Math.ceil(mw / 4), gh = Math.ceil(mh / 4), gAcc = timed.length ? new Float32Array(gw * gh * 3) : null;
     let glowHours = null;
@@ -468,8 +534,12 @@ void main() {
     group.add(...lights);
     Wd.world.add(group);
     const sizeV = new THREE.Vector2();
+    // how much of the screens' static pools to draw: less where neon.js lights the street from the
+    // screens themselves (their light then moves with the pictures; a pool would double it)
+    let glowScale = 1;
     const api = {
-      group, lamps: nL, generated: nGen, cars: nT,
+      setGlowScale(v) { glowScale = v; },
+      group, lamps: nL, generated: nGen, foot: nFoot - nRoad, spots, cars: nT,
       poles: bases, // x, y, z of the foot of each pole it draws
       // take away the poles stand(x, y, z) turns down (one in a wall: the lamp is on its bracket there)
       hidePoles(stand) {
@@ -482,6 +552,30 @@ void main() {
         api.poles = keep;
         return bases.length / 3 - keep.length / 3;
       }, towers: tops.size, crowns: crownsLit, map,
+      // the street lights' light on the ground at (x, y), local metres, once they are all on: the
+      // luminance streetLight() gives there (the pools, the district's glow from the coarse mip, and
+      // the screens' light if they play at that hour). For checks: a person standing there at night
+      lightAt(x, y, hour = 21) {
+        const fx = (x - fr.x[0]) / mpp - 0.5, fy = (y - fr.y[0]) / mpp - 0.5;
+        const lum = (A, w, h, i, j) => {
+          i = Math.max(0, Math.min(w - 1, i)); j = Math.max(0, Math.min(h - 1, j));
+          const o = (j * w + i) * 4, q = k => (A[o + k] / 255) ** 2;
+          return 0.2126 * q(0) + 0.7152 * q(1) + 0.0722 * q(2);
+        };
+        const i0 = Math.floor(fx), j0 = Math.floor(fy), u = fx - i0, v = fy - j0;
+        const pool = (1 - u) * (1 - v) * lum(px, mw, mh, i0, j0) + u * (1 - v) * lum(px, mw, mh, i0 + 1, j0)
+          + (1 - u) * v * lum(px, mw, mh, i0, j0 + 1) + u * v * lum(px, mw, mh, i0 + 1, j0 + 1);
+        // mip 6 is the mean of a 64-texel block: its colour squared, as the shader takes it
+        let r = 0, g = 0, b = 0, n = 0;
+        const bi = Math.floor((fx + 0.5) / 64) * 64, bj = Math.floor((fy + 0.5) / 64) * 64;
+        for (let j = Math.max(0, bj); j < Math.min(mh, bj + 64); j += 2) for (let i = Math.max(0, bi); i < Math.min(mw, bi + 64); i += 2) {
+          const o = (j * mw + i) * 4; r += px[o]; g += px[o + 1]; b += px[o + 2]; n++;
+        }
+        const m = k => n ? (k / n / 255) ** 2 : 0, district = 0.2126 * m(r) + 0.7152 * m(g) + 0.0722 * m(b);
+        let screens = 0;
+        if (gMap && glowHours && [hour, hour + 24].some(h => h >= glowHours[0] && h < glowHours[1])) screens = lum(gMap.image.data, gw, gh, Math.round((x - fr.x[0]) / (mw * mpp / gw) - 0.5), Math.round((y - fr.y[0]) / (mh * mpp / gh) - 0.5));
+        return (pool + 0.4 * district + screens) * VMAX;
+      },
       skyglow: st.skyglow ? OEWorld.lin(st.skyglow) : null,
       // how far on the street lights are: they come on as the sun sets
       on: () => common.uOn.value,
@@ -498,7 +592,7 @@ void main() {
         const hr = ((Wd.U.uHour.value % 24) + 24) % 24, h0 = Math.floor(hr), f = hr - h0;
         traffic.uDensity.value = TRAFFIC[h0] * (1 - f) + TRAFFIC[(h0 + 1) % 24] * f;
         // the screens' light while they play (their hours; 24 is midnight)
-        if (glowHours) NU.uGlowOn.value = [hr, hr + 24].some(h => h >= glowHours[0] && h < glowHours[1]) ? 1 : 0;
+        if (glowHours) NU.uGlowOn.value = ([hr, hr + 24].some(h => h >= glowHours[0] && h < glowHours[1]) ? 1 : 0) * glowScale;
         headMat.emissiveIntensity = 2.2 * on;
         const cp = camera.position;
         for (const p of poles) { const v = Math.hypot(p.c.x - cp.x, p.c.z - cp.z) < 500 + CELL * 0.71 && cp.y - p.c.y < 900; p.meshes[0].visible = p.meshes[1].visible = v; }

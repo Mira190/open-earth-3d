@@ -1,17 +1,100 @@
 {
-  "note": "Viewpoints of the reference photographs of the scramble (docs/cities/shibuya.md 6b), for tools/compare_sheet.py: each view's camera stands where the photographer stood, at eye height, looking the way the photo looks.",
-  "views": [
-    {"id": "hachiko", "label": "Hachiko Square toward QFRONT", "cam": [386, -1040, 16.8], "tgt": [352, -962, 36],
-     "photo": "vp1_hachiko-plaza_to_qfront_2024-10.jpg", "credit": "Haydn Blackey, CC BY-SA 2.0, 2024-10"},
-    {"id": "qfront", "label": "QFRONT from the Hachiko corner", "cam": [384, -1018, 16.6], "tgt": [349, -963, 31],
-     "photo": "vp2_qfront_day_2024-12_hayes.jpg", "credit": "Jeffrey Hayes, CC BY 2.0, 2024-12"},
-    {"id": "s109", "label": "SHIBUYA109 from the scramble", "cam": [340, -1008, 16.7], "tgt": [228, -992, 36],
-     "photo": "vp3_109_from-crossing_day_2026-02.jpg", "credit": "MIKI Yoshihito, CC BY 4.0, 2026-02"},
-    {"id": "station", "label": "The station side from Center Gai's corner", "cam": [347, -981, 16.7], "tgt": [440, -1080, 42],
-     "photo": "vp4_station-side_night_2026-10-19.jpg", "credit": "ウィ貴公子, CC BY-SA 4.0, 2026-10"},
-    {"id": "diagonal", "label": "Across the junction from MAGNET's kerb", "cam": [386, -978, 16.6], "tgt": [300, -1036, 26],
-     "photo": "vp5_diagonal_day_2025-01.jpg", "credit": "ウィ貴公子, CC BY-SA 4.0, 2025-01"}
-  ],
-  "times": {"day": "13:00", "dusk": "sunset+15", "night": "20:30"},
-  "date": [11, 3]
+ "note": "Viewpoints of the reference photographs of the scramble (docs/cities/shibuya.md 6b), for tools/compare_sheet.py: each view's camera stands where the photographer stood, at eye height, looking the way the photo looks. mm: the photo's 35 mm-equivalent focal length; the desktop stills are cropped to it from the game's 55 degree view.",
+ "views": [
+  {
+   "id": "hachiko",
+   "label": "Hachiko Square toward QFRONT",
+   "cam": [
+    386,
+    -1040,
+    16.8
+   ],
+   "tgt": [
+    352,
+    -962,
+    36
+   ],
+   "photo": "vp1_hachiko-plaza_to_qfront_2024-10.jpg",
+   "credit": "Haydn Blackey, CC BY-SA 2.0, 2024-10",
+   "mm": 27
+  },
+  {
+   "id": "qfront",
+   "label": "QFRONT from the Hachiko corner",
+   "cam": [
+    384,
+    -1018,
+    16.6
+   ],
+   "tgt": [
+    349,
+    -963,
+    31
+   ],
+   "photo": "vp2_qfront_day_2024-12_hayes.jpg",
+   "credit": "Jeffrey Hayes, CC BY 2.0, 2024-12",
+   "mm": 34
+  },
+  {
+   "id": "s109",
+   "label": "SHIBUYA109 from the scramble",
+   "cam": [
+    340,
+    -1008,
+    16.7
+   ],
+   "tgt": [
+    228,
+    -992,
+    36
+   ],
+   "photo": "vp3_109_from-crossing_day_2026-02.jpg",
+   "credit": "MIKI Yoshihito, CC BY 4.0, 2026-02",
+   "mm": 35
+  },
+  {
+   "id": "station",
+   "label": "The station side from Center Gai's corner",
+   "cam": [
+    347,
+    -981,
+    16.7
+   ],
+   "tgt": [
+    440,
+    -1080,
+    42
+   ],
+   "photo": "vp4_station-side_night_2026-10-19.jpg",
+   "credit": "ウィ貴公子, CC BY-SA 4.0, 2026-10",
+   "mm": 26
+  },
+  {
+   "id": "diagonal",
+   "label": "Across the junction from MAGNET's kerb",
+   "cam": [
+    386,
+    -978,
+    16.6
+   ],
+   "tgt": [
+    300,
+    -1036,
+    26
+   ],
+   "photo": "vp5_diagonal_day_2025-01.jpg",
+   "credit": "ウィ貴公子, CC BY-SA 4.0, 2025-01",
+   "mm": 26
+  }
+ ],
+ "times": {
+  "day": "13:00",
+  "dusk": "sunset+15",
+  "night": "20:30"
+ },
+ "date": [
+  11,
+  3
+ ],
+ "model_vfov_deg": 55
 }
