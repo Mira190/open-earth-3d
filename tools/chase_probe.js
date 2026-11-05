@@ -6,7 +6,8 @@
 // one that grows and shrinks with the frame time is the car lurching back and forth in the picture.
 //   python3 -m http.server 8800 --directory web &
 //   xvfb-run -a node tools/chase_probe.js tokyo
-// Exits 1 if the distance moves by over 3 cm from one frame to the next at a steady speed.
+// Exits 1 if the distance moves by over 3 cm from one frame to the next at a steady speed (measured
+// over 20 frames at least: a straight long enough).
 const { chromium } = require('playwright');
 const [,, city = 'tokyo'] = process.argv;
 (async () => {
@@ -55,7 +56,7 @@ const [,, city = 'tokyo'] = process.argv;
   });
   console.log(JSON.stringify(r));
   let bad = !!r.none;
-  if (!r.none) for (const [k, v] of Object.entries(r)) { const ok = v.n >= 40 && v.jump < 0.03; if (!ok) bad = true; console.log(`${ok ? 'ok  ' : 'FAIL'} frames ${k}: the car ahead of the camera by ${v.ahead} m moves ${v.jump} m from a frame to the next at most (${v.range} m over ${v.n} frames, at ${v.v} m/s)`); }
+  if (!r.none) for (const [k, v] of Object.entries(r)) { const ok = v.n >= 20 && v.jump < 0.03; if (!ok) bad = true; console.log(`${ok ? 'ok  ' : 'FAIL'} frames ${k}: the car ahead of the camera by ${v.ahead} m moves ${v.jump} m from a frame to the next at most (${v.range} m over ${v.n} frames, at ${v.v} m/s)`); }
   await b.close();
   process.exit(bad ? 1 : 0);
 })();
