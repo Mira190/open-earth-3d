@@ -383,6 +383,7 @@ def saimon_steps(K, P, u_edge, z_top, ground, width=5.4, max_rise=0.2):
     (OSM w339551498) climbs 1.5 m more to it than the slope does, by a steep flight of granite steps down
     its front (west) to where the way meets the court. Records the flight for the game (game_surfaces:
     one strip, its slope the flight's)."""
+    ground = kk.game_ground("higashiyama")      # the ground the game draws and walks at the flight's foot
     end = np.array(SAIMON_WAY_FOOT, float)
     o, f = np.array(P(0, 0, 0)[:2]), np.array(P(1, 0, 0)[:2]) - np.array(P(0, 0, 0)[:2])
     u_end = max(float((end - o) @ f), u_edge + 1.0)
@@ -408,8 +409,9 @@ def saimon_steps(K, P, u_edge, z_top, ground, width=5.4, max_rise=0.2):
     drape(K["court_flags"], pad, ground)
 
 
-def drape(m, poly, ground):
-    kk.drape(m, poly, ground, lift=0.04, cell=1.0)
+def drape(m, poly, ground=None):
+    """A decal on the ground the game draws (kyotokit.game_ground)."""
+    kk.drape(m, poly, kk.game_ground("higashiyama"), lift=0.04, cell=1.0)
 
 
 def lean_to(K, M, P, u0, u1, hv, z_hi, z_ground, ground):

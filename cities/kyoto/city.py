@@ -327,7 +327,7 @@ def aprons(K, solids, T, around, mat, heights=None):
     # at the eaves, and the photograph shows between them)
     court = ring.difference(unary_union([fp(sd).buffer(-2.0 if sd["si"] in mine else 0.05) for sd in near]))
     import kyotokit
-    kyotokit.drape(K[mat], court, T, lift=0.05, cell=4.0)
+    kyotokit.drape(K[mat], court, kyotokit.game_ground("kyoto"), lift=0.05, cell=4.0)   # on the ground the game draws
 
 
 def temples_and_palaces():

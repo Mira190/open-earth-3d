@@ -53,9 +53,10 @@ block is hidden from the renderers and kept in the surface model.
   hall's south-west corner. The veranda and the stage out from it (on its own OSM outline, w893859575,
   shallow and wide: 3.6 × 12 m) are one floor, level with the way from the Amida-do, with the railing
   on the valley side alone. Both are walked as strips (`game_surfaces`).
-- **The West Gate's steps** (OSM w339551498, #161): the gate stands on its stone platform 2.5 m over the
-  terrace west of it; thirteen granite steps run down its front between stone side walls to where the
-  mapped way starts, walked as one strip.
+- **The West Gate's steps** (OSM w339551498, #161): the gate stands on its stone platform 1.8 m over the
+  terrace west of it; ten granite steps run down its front between stone side walls to where the mapped
+  way starts, walked as one strip, the ground not drawn over them. The terrace below is granite flags
+  laid over the aerial photograph, whose trees' shadows lay on it (#187), on the ground the game draws.
 - **The Otowa Falls**: three streams from the rock under a timber roof, at the OSM node 音羽の滝 不動明王.
 - **The Yasaka Pagoda (八坂の塔, 1440)**: five storeys, 46 m, bare timber and white plaster under tiles.
 - **Yasaka Koshin-do (八坂庚申堂)**: strings of kukurizaru, cloth monkeys bound hand and foot, on frames
@@ -118,7 +119,7 @@ city's street-tree records, the way `trees.areas` and the mapped trees are here.
 - The stage's eighteen pillars stand on an even grid across the mapped outline, not each surveyed.
 - The roofs' curves are read from photographs, not from measured drawings.
 - The Okunoin's floor level (115.45 m) is taken from the corridor's ends on GSI's terrain.
-- The West Gate's flight is as steep as the mapped way's foot allows (0.19 m risers, 0.24 m treads).
+- The West Gate's flight is as steep as the mapped way's foot allows (0.18 m risers, 0.32 m treads).
 - The Yasaka Pagoda's first-storey width is an estimate from its 13.5 m footprint, which is traced at
   the eaves.
 - Jishu-jinja is under restoration until about 2027–28 and is left as PLATEAU's blocks.

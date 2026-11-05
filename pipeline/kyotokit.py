@@ -509,3 +509,29 @@ def drape(m, poly, ground, lift=0.04, cell=1.5):
             if ax * by - ay * bx < 0:
                 cs = cs[::-1]
             m.tri(*[np.array([x, y, ground(x, y) + lift]) for x, y in cs], [[x, y] for x, y in cs])
+
+
+def game_ground(city):
+    """The ground the game draws and walks on (game.json "terrain", the 5 m bare-earth grid, each cell split
+    from its south-west to its north-east corner as web/game/nav.js terrain() reads it), as ground(x, y): a
+    decal laid on it lies on what is drawn, where archkit.Terrain's model can differ by half a metre."""
+    import base64
+    import json
+    import os
+    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "data", city)
+    T = json.load(open(os.path.join(root, "game.json")))["terrain"]
+    fr = json.load(open(os.path.join(root, "scene.json")))["frame"]
+    D = np.frombuffer(base64.b64decode(T["data"]), "<i2").astype(np.float64) * T["scale"]
+    nx, ny, cell, x0, y1 = T["nx"], T["ny"], T["cell"], fr["x"][0], fr["y"][1]
+
+    def ground(x, y):
+        c = min(max((x - x0) / cell, 0.0), nx - 1.001)
+        r = min(max((y1 - y) / cell, 0.0), ny - 1.001)
+        c0, r0 = int(c), int(r)
+        fc, f_r = c - c0, r - r0
+        i = r0 * nx + c0
+        a, b, d, e = D[i], D[i + 1], D[i + nx], D[i + nx + 1]
+        if fc + f_r <= 1:
+            return float(a + fc * (b - a) + f_r * (d - a))
+        return float(e + (1 - fc) * (d - e) + (1 - f_r) * (b - e))
+    return ground
