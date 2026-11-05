@@ -197,8 +197,11 @@ async function main() {
     // the sky's light: the model's by day, the reef's measured twilight and starlight curve once the sun is down
     const day = THREE.MathUtils.smoothstep(Math.sin(sun.alt), -0.06, 0.04);
     const night = hemiI * adapt;   // already adapted below (lights() scales the hemisphere by adapt afterwards)
-    // (the night's light a little stronger than the reef's: the tussock and the snow under starlight should read)
-    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day + night * 1.8 * [0.55, 0.7, 1.0][i] * (1 - day));
+    // once the sun is down the land is lit by the twilight sky it stands under (atmos.js twilight: the same colours and
+    // brightness, over the hemisphere), never darker than starlight (a little stronger than the reef's, so the tussock
+    // and the snow read under the stars)
+    const twi = skyLight(deg) * adapt * 0.42 * (1 - THREE.MathUtils.smoothstep(deg, -1, 6));
+    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day + Math.max(Math.PI * twi * [0.11, 0.16, 0.40][i], night * 1.1 * [0.55, 0.7, 1.0][i]) * (1 - day));
     hemi.color.setRGB(sky[0], sky[1], sky[2]).multiplyScalar(1 / Math.max(lum(sky), 1e-6)); hemi.intensity = Math.max(lum(sky), 1e-6);
     hemi.groundColor.setRGB(0.55, 0.45, 0.3);
     light.u.sunE.value.setRGB(Ts[0] * E0, Ts[1] * E0, Ts[2] * E0);
