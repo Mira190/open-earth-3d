@@ -1987,6 +1987,27 @@
   ]
  },
  {
+  "id": "lake-tekapo",
+  "name": "Lake Tekapo",
+  "native": "Takap\u014d",
+  "country": "New Zealand",
+  "lat": -43.92,
+  "lon": 170.52,
+  "status": "live",
+  "viewer": "reef/index.html",
+  "group": "Mackenzie",
+  "district": "Mackenzie District, Canterbury",
+  "tagline": "The Church of the Good Shepherd on the turquoise lake",
+  "timezone": "Pacific/Auckland",
+  "summary": "Lake Tekapo / Takap\u014d, 36 by 52 km of the Mackenzie: LINZ's 1 m LiDAR terrain and aerial photos, the Church of the Good Shepherd, the sheepdog statue and Mt John's observatory modelled from the survey, lupins in their season and the dark-sky reserve's stars. Start at the church's postcard view, climb Mt John, find the Southern Cross.",
+  "built": true,
+  "game": false,
+  "extent_km": [
+   36.5,
+   51.8
+  ]
+ },
+ {
   "id": "new-york",
   "name": "New York",
   "country": "United States",

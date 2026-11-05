@@ -7,7 +7,8 @@
 // ("time" may be "sunset+15" or "sunrise-20"; without "cam" the view is the city's opening camera;
 // "face": "sun" or "away" turns that camera to the sun's bearing or away from it; "js" is evaluated
 // with C = window.__city before the frame, to take a part away and compare)
-// in the city's local frame (x east, y north, z up, metres); "agl": true measures z from the ground. Writes out_dir/<name>.png and
+// in the city's local frame (x east, y north, z up, metres); "agl": true measures z from the ground, "agl": "top"
+// from whatever stands there (a roof); a camera that would stand inside a building is lifted over its roof. Writes out_dir/<name>.png and
 // prints the page's errors and the frame time of each view.
 const { chromium } = require('playwright');
 const fs = require('fs');
@@ -59,9 +60,22 @@ const views = JSON.parse(fs.readFileSync(viewsFile, 'utf8'));
       const rel = v.time && /^(sunrise|sunset)([+-]\d+)?$/.exec(v.time);
       if (rel) C.setTime(Math.round(C.state.limits[rel[1]] + (+rel[2] || 0)));
       else if (v.time) { const [h, m] = v.time.split(':').map(Number); C.setTime(h * 60 + m); }
-      // "agl": camera and target heights above the ground instead of above the datum
-      const cam = v.cam && v.agl ? [v.cam[0], v.cam[1], v.cam[2] + C.DSM.ground(v.cam[0], v.cam[1])] : v.cam;
-      const tgt = v.tgt && v.agl ? [v.tgt[0], v.tgt[1], v.tgt[2] + C.DSM.ground(v.tgt[0], v.tgt[1])] : v.tgt;
+      // "agl": camera and target heights above the ground instead of above the datum; "agl": "top" above
+      // whatever stands there (a roof garden, a deck), from the sun model's surface (buildings on the terrain)
+      const D = C.DSM;
+      const top = (x, y) => {
+        const c = Math.floor((x - D.x0) / D.cell), r = Math.floor((D.y1 - y) / D.cell);
+        return c >= 0 && r >= 0 && c < D.nx && r < D.ny ? D.data[r * D.nx + c] : D.ground(x, y);
+      };
+      const base = (x, y) => (v.agl === 'top' ? top(x, y) : D.ground(x, y));
+      let cam = v.cam && v.agl ? [v.cam[0], v.cam[1], v.cam[2] + base(v.cam[0], v.cam[1])] : v.cam;
+      const tgt = v.tgt && v.agl ? [v.tgt[0], v.tgt[1], v.tgt[2] + base(v.tgt[0], v.tgt[1])] : v.tgt;
+      // a camera inside a building draws its walls' backs, or nothing (an empty frame, as a height over the
+      // ground under a roof gave): lift it out over the roof, and say so
+      if (cam && cam[2] < top(cam[0], cam[1]) - 0.5) {
+        console.warn(`${v.name}: the camera was inside a building (${cam[2].toFixed(1)} m under a top at ${top(cam[0], cam[1]).toFixed(1)} m); lifted over it`);
+        cam = [cam[0], cam[1], top(cam[0], cam[1]) + 2];
+      }
       if (cam) C.flyTo(cam, tgt, 0); // also cancels a flight in progress (no "cam": the city's own opening view)
       // "face": "sun" (or "away"): from that camera, or the opening one, turn to the sun's bearing (or
       // away from it), looking a little down, as for the golden hour's sky over the city
