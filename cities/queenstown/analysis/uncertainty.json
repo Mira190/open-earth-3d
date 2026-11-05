@@ -1,0 +1,411 @@
+{
+ "draws": 40,
+ "error_model": {
+  "floors": "bootstrap of floor-count vs surveyed residuals, plus a shared 3% storey error",
+  "estimate": "bootstrap of neighbour-estimate cross-validation residuals",
+  "ml": "bootstrap of ML-blend cross-validation residuals",
+  "other": "lognormal, 3%"
+ },
+ "places": [
+  {
+   "name": "Queenstown Gardens",
+   "period": "all",
+   "window": "10:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 3.2,
+   "catchment_buildings": 12,
+   "shade_by_height_source_pct": {
+    "lidar": 81.8,
+    "estimate": 0.6,
+    "terrain": 17.7
+   },
+   "top_blockers": [
+    {
+     "building": 1593,
+     "name": "unnamed retail",
+     "height_m": 7.5,
+     "source": "lidar",
+     "osm_id": "w297023056",
+     "share_pct": 56.4
+    },
+    {
+     "name": "terrain",
+     "share_pct": 17.7
+    },
+    {
+     "building": 1725,
+     "name": "unnamed building",
+     "height_m": 16.2,
+     "source": "lidar",
+     "osm_id": "w246150855",
+     "share_pct": 12.4
+    },
+    {
+     "building": 1595,
+     "name": "unnamed retail",
+     "height_m": 6,
+     "source": "lidar",
+     "osm_id": "w340277005",
+     "share_pct": 2.8
+    },
+    {
+     "building": 1587,
+     "name": "unnamed building",
+     "height_m": 3.7,
+     "source": "lidar",
+     "osm_id": "w982916622",
+     "share_pct": 2.7
+    },
+    {
+     "building": 1592,
+     "name": "unnamed building",
+     "height_m": 3.4,
+     "source": "lidar",
+     "osm_id": "w1300824186",
+     "share_pct": 2.2
+    }
+   ],
+   "base_by_month": [
+    98,
+    97.7,
+    97.4,
+    97.1,
+    96.1,
+    91.1,
+    95.4,
+    97.1,
+    97.6,
+    97.8,
+    98,
+    98.2
+   ],
+   "p05_by_month": [
+    97.9,
+    97.7,
+    97.3,
+    97.1,
+    96,
+    91.1,
+    95.4,
+    97.1,
+    97.6,
+    97.7,
+    98,
+    98.1
+   ],
+   "p95_by_month": [
+    98,
+    97.7,
+    97.4,
+    97.1,
+    96.1,
+    91.2,
+    95.5,
+    97.1,
+    97.6,
+    97.8,
+    98.1,
+    98.2
+   ],
+   "window_mean": {
+    "base": 96.8,
+    "p05": 96.7,
+    "p95": 96.8
+   },
+   "max_halfwidth_pp": 0.1
+  },
+  {
+   "name": "Queenstown Recreation Ground",
+   "period": "all",
+   "window": "10:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 2.2,
+   "catchment_buildings": 3,
+   "shade_by_height_source_pct": {
+    "lidar": 9.2,
+    "terrain": 90.8
+   },
+   "top_blockers": [
+    {
+     "name": "terrain",
+     "share_pct": 90.8
+    },
+    {
+     "building": 3004,
+     "name": "unnamed building",
+     "height_m": 9.2,
+     "source": "lidar",
+     "osm_id": "w255282514",
+     "share_pct": 8.2
+    },
+    {
+     "building": 2908,
+     "name": "Queenstown Memorial Centre",
+     "height_m": 11.2,
+     "source": "lidar",
+     "osm_id": "w385509796",
+     "share_pct": 0.7
+    },
+    {
+     "building": 2904,
+     "name": "unnamed building",
+     "height_m": 7.2,
+     "source": "lidar",
+     "osm_id": "w1199407716",
+     "share_pct": 0.2
+    },
+    {
+     "building": 3133,
+     "name": "unnamed building",
+     "height_m": 8.8,
+     "source": "lidar",
+     "osm_id": "w982916232",
+     "share_pct": 0
+    },
+    {
+     "building": 3132,
+     "name": "unnamed building",
+     "height_m": 9.1,
+     "source": "lidar",
+     "osm_id": "w982916246",
+     "share_pct": 0
+    }
+   ],
+   "base_by_month": [
+    100,
+    99.9,
+    99.9,
+    99.8,
+    95.4,
+    87.7,
+    91.7,
+    99.8,
+    99.9,
+    100,
+    100,
+    100
+   ],
+   "p05_by_month": [
+    99.9,
+    99.9,
+    99.9,
+    99.8,
+    95.3,
+    87.6,
+    91.6,
+    99.8,
+    99.9,
+    100,
+    100,
+    100
+   ],
+   "p95_by_month": [
+    100,
+    99.9,
+    99.9,
+    99.8,
+    95.5,
+    87.8,
+    91.8,
+    99.8,
+    100,
+    100,
+    100,
+    100
+   ],
+   "window_mean": {
+    "base": 97.8,
+    "p05": 97.8,
+    "p95": 97.9
+   },
+   "max_halfwidth_pp": 0.1
+  },
+  {
+   "name": "Marine Parade Reserve",
+   "period": "all",
+   "window": "10:00-14:00",
+   "months": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12
+   ],
+   "shaded_share_pct": 10.5,
+   "catchment_buildings": 6,
+   "shade_by_height_source_pct": {
+    "lidar": 87.5,
+    "terrain": 12.5
+   },
+   "top_blockers": [
+    {
+     "building": 1745,
+     "name": "unnamed hotel",
+     "height_m": 11.6,
+     "source": "lidar",
+     "osm_id": "w211230093",
+     "share_pct": 28.3
+    },
+    {
+     "building": 1746,
+     "name": "unnamed hotel",
+     "height_m": 11.7,
+     "source": "lidar",
+     "osm_id": "w211230094",
+     "share_pct": 27.4
+    },
+    {
+     "building": 1747,
+     "name": "The Bathhouse",
+     "height_m": 4.8,
+     "source": "lidar",
+     "osm_id": "w385509850",
+     "share_pct": 24.7
+    },
+    {
+     "name": "terrain",
+     "share_pct": 12.5
+    },
+    {
+     "building": 1661,
+     "name": "unnamed building",
+     "height_m": 3.8,
+     "source": "lidar",
+     "osm_id": "w792425898",
+     "share_pct": 6.2
+    },
+    {
+     "building": 1696,
+     "name": "unnamed building",
+     "height_m": 6.7,
+     "source": "lidar",
+     "osm_id": "w246150007",
+     "share_pct": 0.8
+    }
+   ],
+   "base_by_month": [
+    96.3,
+    94.1,
+    91.1,
+    89.8,
+    82.3,
+    69.7,
+    78.8,
+    89.4,
+    93.7,
+    95,
+    96.7,
+    97
+   ],
+   "p05_by_month": [
+    96.2,
+    93.9,
+    90.8,
+    89.3,
+    81.7,
+    69.2,
+    78.4,
+    88.9,
+    93.5,
+    94.8,
+    96.7,
+    96.9
+   ],
+   "p95_by_month": [
+    96.4,
+    94.4,
+    91.4,
+    90.1,
+    82.8,
+    70.2,
+    79.3,
+    89.8,
+    94,
+    95.2,
+    96.8,
+    97.1
+   ],
+   "window_mean": {
+    "base": 89.5,
+    "p05": 89.2,
+    "p95": 89.8
+   },
+   "max_halfwidth_pp": 0.5
+  }
+ ],
+ "fix_list": [
+  {
+   "place": "Marine Parade Reserve",
+   "building": 1745,
+   "name": "unnamed hotel",
+   "osm_id": "w211230093",
+   "height_m": 11.6,
+   "source": "lidar",
+   "plausible_m": [
+    11,
+    12
+   ],
+   "sun_change_pp": [
+    -0.3,
+    0.3
+   ],
+   "swing_pp": 0.6
+  },
+  {
+   "place": "Marine Parade Reserve",
+   "building": 1746,
+   "name": "unnamed hotel",
+   "osm_id": "w211230094",
+   "height_m": 11.7,
+   "source": "lidar",
+   "plausible_m": [
+    11,
+    12
+   ],
+   "sun_change_pp": [
+    -0.2,
+    0.3
+   ],
+   "swing_pp": 0.5
+  }
+ ],
+ "seconds": 318.277,
+ "sigma": {
+  "floors": null,
+  "estimate": 0.228,
+  "ml": null
+ }
+}

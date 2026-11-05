@@ -1,0 +1,57 @@
+{
+ "ml_heights": {
+  "buildings": 4237,
+  "with_height": 0,
+  "height_is_ml": 0,
+  "ml_with_floor_count": 0,
+  "median_ml_over_floor_height": null,
+  "share_ml_below_half": null,
+  "towers_15_floors_plus": 0,
+  "towers_median_ml_over_floor_height": null
+ },
+ "terrain": {
+  "region_m": [
+   -900,
+   700,
+   -800,
+   600
+  ],
+  "land": {
+   "samples": 3584,
+   "median_excess_m": -1.2,
+   "p90_excess_m": 3.6
+  },
+  "under_buildings": {
+   "samples": 624,
+   "median_excess_m": -2.8,
+   "p90_excess_m": 1.8
+  },
+  "open_ground": {
+   "samples": 2960,
+   "median_excess_m": -1.2,
+   "p90_excess_m": 4.4
+  },
+  "points": {
+   "Queenstown Mall": {
+    "terrarium_m": 315.1,
+    "dem_m": 315.3
+   },
+   "Earnslaw Park": {
+    "terrarium_m": 308.0,
+    "dem_m": 309.2
+   },
+   "Gondola base": {
+    "terrarium_m": 341.1,
+    "dem_m": 340.4
+   },
+   "Queenstown Gardens": {
+    "terrarium_m": 321.3,
+    "dem_m": 325.9
+   },
+   "Frankton Road": {
+    "terrarium_m": 356.2,
+    "dem_m": 359.0
+   }
+  }
+ }
+}

@@ -489,8 +489,10 @@ vec3 scrCell(float cell, vec2 uv) {
   const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
   // the land past the frame (farland.js): how far its haze takes to clear from the frame, and to how much
   const FAR_RAMP = (window.OEFarLand || {}).RAMP || 1400, FAR_BASE = (window.OEFarLand || {}).BASE || 0.32,
-    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_AIR = (window.OEFarLand || {}).AIR || 30000, FAR_HALF = (window.OEFarLand || {}).HALF || 40000,
-    FAR_LAYER = 1000, FAR_AIR_LOW = 15000; // the ground haze's depth, and its 63% distance in it (m)
+    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_LAYER = 1000;
+  let FAR_HALF = (window.OEFarLand || {}).HALF || 40000; // the far land's half width (far.json half_m where it gives one)
+  // the air's 63% distance, and in the ground haze's layer (m); a city's clear air stretches both (far.json clarity)
+  let FAR_AIR = (window.OEFarLand || {}).AIR || 30000, FAR_AIR_LOW = 15000;
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
@@ -604,8 +606,16 @@ vec3 photoGrade(vec3 c) {
     const TWI_SKY = new THREE.Color(0.03, 0.075, 0.24), TWI_LIGHT = new THREE.Color(0x4a72c8), TWI_FOG = new THREE.Color(0x23385e);   // the blue hour (setSun)
     world.fog = new THREE.Fog(0xc6d3dc, 6000, 26000);
     // whether there is land past the frame to draw (farland.js), before the haze is written
-    const farOn = !!window.OEFarLand && new URLSearchParams(location.search).get('far') !== 'off'
-      && await fetch(D.DATA + 'far.json', { method: 'HEAD' }).then(r => r.ok, () => false);
+    const farMeta = window.OEFarLand && new URLSearchParams(location.search).get('far') !== 'off'
+      ? await fetch(D.DATA + 'far.json').then(r => (r.ok ? r.json() : null), () => null) : null;
+    const farOn = !!farMeta;
+    // clarity: how much clearer than the default the city's air is (Queenstown's alpine air): every haze
+    // distance stretches by it, so the mountains across the lake stand out as they do in a photograph
+    const clarity = (farMeta && farMeta.clarity) || 1;
+    world.userData.clarity = clarity;
+    FAR_AIR = ((window.OEFarLand || {}).AIR || 30000) * clarity; FAR_AIR_LOW = 15000 * clarity;
+    if (farMeta && farMeta.half_m) FAR_HALF = farMeta.half_m;
+    world.fog.near *= clarity; world.fog.far *= clarity;
     const edgeFade = edgeHaze(scene.frame, 150, farOn);
 
     // ------------------------------------------------------------ terrain and imagery
