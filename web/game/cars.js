@@ -1016,7 +1016,9 @@ window.OECars = (function () {
       // of it: one queueing that reads for a moment as stopped for good is never swung out round)
       st.passT = pass ? (st.passT || 0) + dt : 0;
       if (pass && Math.abs(st.shift) < 0.2 && st.passT < 1) pass = 0;
-      if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay; }
+      // (one it would go round but can't yet, for a car coming or the second's look: waited behind,
+      // not taken for the place to pull in at, which would end the ride behind it for good)
+      if (!pass) for (const [g, stay] of passing) if (g < gap) { gap = g; still = stay && !end; }
       rounding.clear();
       if (pass) for (const o of passed) rounding.add(o);
       st.pass = pass; st.passed = passed; // (what it goes round, for the game check)
