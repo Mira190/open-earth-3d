@@ -901,7 +901,9 @@ yields. In this game every car's intent is exact, so:
 - **No way against a one-way street.** Where the one-way streets leave no legal way (7% of
   random trips in Shibuya), the router searched any street at the same cost, and a trip could
   drive 300 m against the traffic, head on into it. Now a metre against a one-way street costs 25,
-  and a banned turn 400 m, so the way found breaks the rules for the fewest metres it must.
+  and a banned turn 400 m, so the way found breaks the rules for the fewest metres it must. (The
+  way a ride comes for you is searched as before: out of your sight it comes in good time, and held
+  to this a hailed taxi in Shinjuku was given a kerb 31 m from you.)
 
 #### Junctions and traffic lights
 

@@ -942,7 +942,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const queueWait = (arms, s0, skip = null) => { let t = 0; for (const q of arms || []) if (q.s > s0 + 2 && q.a !== skip) t += Q_CLEAR * queuedAt(q.a); return t; };
   const rideClock = () => clockT; // the traffic's clock, which junctions.js keeps its turns by (a ride's driver asks it for its way across)
   function planRide(from, pickup) {
-    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000);
+    const rt = roads.route({ line: from.line, s: from.s, dir: from.dir }, pickup, 4000, undefined, null, true); // (loose: as before, the way to you)
     if (!rt) return null;
     const opts = { keep: keepSign, from: from.v ? 'lane' : 'kerb', v: from.v || 0, hurry: hurryTo(pickup), lights: junctions, priority: true, now: rideClock };
     const P = OECars.path(rt.pts), sig = [], scr = [], qArms = [];

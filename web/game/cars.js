@@ -596,7 +596,9 @@ window.OECars = (function () {
     // keeping to the one-way streets and the banned turns (net.bans, from junctions.js); where they leave no way (a street mapped one-way out from
     // the edge of the map), along any street.
     // shun: lines to keep off where there is another way (a ride re-routing round a jam).
-    function route(a, b, limit = 6000, edges = adj, shun = null) {
+    // loose: on the search along any street, against a one-way street and through a banned turn at no extra
+    // cost, as before (the way a ride comes for you, out of your sight; with you in it, never)
+    function route(a, b, limit = 6000, edges = adj, shun = null, loose = false) {
       const la = L[a.line], lb = L[b.line], segs = [];
       if (a.line === b.line && a.dir === b.dir && (b.s - a.s) * a.dir >= 0) segs.push([a.line, a.s, b.s]);
       else {
@@ -621,12 +623,12 @@ window.OECars = (function () {
             // (along any street, a street driven against its one way costs WRONG times its length, so the
             // way found keeps to the one-way streets but for the fewest metres it must: a navigator's way
             // in to a street the map lets no car reach, not 300 m against the traffic)
-            const wrong = edges !== adj && L[li].ow && L[li].ow !== dir ? WRONG : 1;
-            const nd = d + L[li].len * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? 60 : 0) + (ban && edges !== adj ? 400 : 0);
+            const wrong = edges !== adj && !loose && L[li].ow && L[li].ow !== dir ? WRONG : 1;
+            const nd = d + L[li].len * wrong * (avoid && avoid[li] ? 20 : 1) * (shun && shun.has(li) ? 20 : 1) + (back ? 60 : 0) + (ban && edges !== adj && !loose ? 400 : 0);
             if (nd < (dist.get(v) ?? Infinity)) { dist.set(v, nd); prev.set(v, [u, li, dir]); push([nd, v]); }
           }
         }
-        if (!found) return edges === adj ? route(a, b, limit * 3 + 12000, all, shun) : null;
+        if (!found) return edges === adj ? route(a, b, loose ? limit : limit * 3 + 12000, all, shun, loose) : null;
         const chain = [];
         for (let v = goal; v !== start; v = prev.get(v)[0]) chain.push(prev.get(v));
         chain.reverse();
