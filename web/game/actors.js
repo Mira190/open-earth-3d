@@ -1157,6 +1157,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
   // elsewhere). The crowd keeps out of the cars' footprints (cars.near), and opts.nav stops the
   // player walking into one (nav.movers).
   const LANE = 1.7;    // a lane's centre, on the keep side of the road's line (m)
+  const PACE = 1.25;   // the traffic drives a quarter over the posted limit, as drivers do on an open street (the data's
+                       // limits are the signs': 30 km/h on a side street reads as a crawl in play); a ride's route,
+                       // its time and how it passes a queue stay on the limits (cars.js chauffeur)
   const STUCK = 20;    // seconds stopped behind a car that won't move (not queueing at a junction) before turning round
   const LEVEL = 3;     // cars and people this far apart in height are on different levels: a deck over a street (m)
   const STEP = 1.5, NPATH = 32; // a car's way ahead, in points this far apart (m), and at most this many
@@ -1894,7 +1897,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         if (c.tangleT > 4 && Math.hypot(c.x - cx, c.y - cy) > 140) { JN.forget(c); c.line = -1; c.tangleT = 0; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         const free = c.tangleT > 4, behind = tangled > 0 && ahead && !free;
         // up to the limit, and braking in time for what is ahead (gently from far off, at most 3.5 m/s²)
-        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v, (gap - 2.6) * 0.9, Math.sqrt(7 * (gap - 2.6)) + 0.5);
+        const want = tangled > 0 && !behind ? 1.5 : gap < 2.6 ? 0 : Math.min(l.v * PACE, (gap - 2.6) * 0.9, Math.sqrt(7 * (gap - 2.6)) + 0.5);
         c.v += Math.max(-8 * dt, Math.min(3 * dt, want - c.v));
         let s = c.s + c.dir * c.v * dt, line = c.line, dir = c.dir;
         const away = !eye || Math.hypot(eye.position.x - c.x, -eye.position.z - c.y) > 90;

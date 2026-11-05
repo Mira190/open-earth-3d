@@ -431,10 +431,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // (against a landmark's triangles where its 2 m cells would cut the way, nav.js withoutFine: a crowd's
   // way through a gate's passage or between lanterns is kept where a walker gets through)
   const footNet = OEActors.network(G.paths.foot), roadNet = OEActors.network(nav.withoutFine(() => cutAtWalls(G.paths.road, 0.5, true)));
-  // the pace of the traffic, your taxi among it: a little over the posted limit, as drivers keep it on
-  // an open street (the data's limits are the signs': 30 km/h on a side street reads as a crawl in play)
-  const ROAD_PACE = 1.25;
-  for (const l of roadNet.L) if (l.v) l.v *= ROAD_PACE;
+
   loadMsg('Footways people can walk', 0.84);
   await idle();
   const crowdNet = OEActors.network(nav.withoutFine(() => cutAtWalls(OERoute.walkable(nav, G.paths.foot))));
