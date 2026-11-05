@@ -51,7 +51,10 @@ export function makeLook(role, opts = {}) {
       L.top = '#f4f1ea'; L.legs = '#1d3557'; L.shorts = true; L.barefoot = true;
       L.scale = w ? 0.93 : 0.97;
       const outfit = opts.outfit || (season ? 'stinger' : 'rash');
-      if (outfit === 'stinger') L.suit = { color: '#16324f', top: '#16324f', legs: '#16324f', legN: 2, arms: 2, torso: true };   // full-body lycra, hands/feet/face bare
+      if (outfit === 'hike') {   // an alpine site: walking clothes, a red shell jacket, long trousers and boots
+        L.character = opts.character || (w ? 'W_Adventurer' : 'M_Adventurer');
+        L.top = '#a5402d'; L.legs = '#2d3640'; L.shorts = false; L.barefoot = false; L.sleeve = { n: 2 };
+      } else if (outfit === 'stinger') L.suit = { color: '#16324f', top: '#16324f', legs: '#16324f', legN: 2, arms: 2, torso: true };   // full-body lycra, hands/feet/face bare
       else if (outfit === 'rash') { L.suit = { color: '#e4572e', top: '#e4572e', arms: 2, legN: 0, torso: true }; L.legs = '#1d3557'; }
       else { L.sleeve = { n: 2 }; }
       if (opts.hat !== false) A('hat', { color: '#e1d4b0', band: '#244a63' });
