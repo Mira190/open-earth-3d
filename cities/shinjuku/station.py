@@ -101,7 +101,11 @@ CINE_CITY = (434.0, 3020.0)     # Cine City Plaza (OSM way 684924350), the tower
 
 LUMINE = "r16502754"
 LUMINE_FRONT = ((441.1, 2467.2), (431.4, 2550.9))   # its face to the East Square (the outline's east edge)
-HANAO = {"at": (453.3, 2500.5), "plinth_r": 2.0, "plinth_m": 1.0, "h": 7.0}
+HANAO = {"at": (453.3, 2500.5), "plinth_r": 2.0, "plinth_m": 1.0, "h": 7.0, "bench_r": (3.3, 4.3), "bench_m": 0.45}
+# the round bench about it: OSM maps it as a 1 m "building" (relation 16263947, bench=yes) and PLATEAU stands it
+# and the square's planters at 2.4-2.8 m, so they read as huts; they are drawn here as the bench instead
+HANAO_HIDE = ("r16263947",)
+HANAO_HIDE_P = ((454.0, 2500.0), (453.0, 2510.0))   # PLATEAU-only solids (no OSM id) of the same, by centroid
 
 RAMPS = [{"c": (192.0, 2529.0), "a": 22.0, "b": 10.5}, {"c": (192.5, 2508.0), "a": 21.5, "b": 9.5}]   # the loops: centre, half length, half width
 RAMP_OPEN_DEG = 55.0            # each loop's parapet is open this far either side of east, where its road comes up
@@ -505,6 +509,10 @@ def hanao(K, D):
     g = D.ground(*c)
     pr, ph = HANAO["plinth_r"], HANAO["plinth_m"]
     K["st_plinth"].lathe([(g, pr), (g + ph, pr), (g + ph, 0.0)], tuple(c), 40)
+    r0, r1 = HANAO["bench_r"]
+    bz = g + HANAO["bench_m"]
+    K["st_plinth"].lathe([(g, r1), (bz, r1), (bz, r0), (g, r0)], tuple(c), 64)
+    K["st_green"].lathe([(g + 0.05, r0 - 0.05), (g + 0.3, r0 - 0.1), (g + 0.3, pr + 0.1)], tuple(c), 48)
     Ch = K["st_chrome"]
     z0 = g + ph
     Ch.lathe([(z0, 0.55), (z0 + 0.8, 0.7), (z0 + 1.8, 0.5), (z0 + 2.4, 0.42)], tuple(c), 24)   # the bunch's wrapped stems
@@ -587,6 +595,10 @@ class Build:
         hidden, self.info["tower"] = kabukicho_tower(K, self.A, self.D)
         self.info["lumine"] = lumine(K, self.A, self.D)
         self.info["hanao"] = hanao(K, self.D)
+        for sd in self.D.solids:
+            cxy = Polygon(sd["ring"]).centroid
+            if sd["osm"] in HANAO_HIDE or (not sd["osm"] and sd["top"] < 4 and any(math.hypot(cxy.x - a, cxy.y - b) < 2.5 for a, b in HANAO_HIDE_P)):
+                hidden.append(sd["si"])
         self.info["ramps"] = ramps(K, self.D)
         return K.out(), hidden
 
@@ -608,6 +620,9 @@ class Build:
         t = self.info.get("tower")
         if t:
             out.append([t["front"][0], t["front"][1], 22.0, "#ffe2b8", 0.45])
+        h = self.info.get("hanao")
+        if h:   # the square's lamps on the bouquet
+            out.append([h["at"][0], h["at"][1], 9.0, "#fff4e0", 0.5])
         lu = self.info.get("lumine")
         if lu:
             out.append([lu["front"][0], lu["front"][1], 20.0, "#fff0d8", 0.4])
