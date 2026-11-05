@@ -300,10 +300,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // only where the line is within dz of that height (the street you are on, not the flyover above it)
     // the nearest point on the lines within maxD of (x, y), within dz of height z (when given), and
     // with a grade, within dz + grade * the distance: a street down a slope from a raised plaza
-    // (Melbourne's Federation Square) counts, a road on a deck right above or below does not
-    function nearest(x, y, maxD, z = null, dz = 3, grade = 0) {
+    // (Melbourne's Federation Square) counts, a road on a deck right above or below does not;
+    // skip(i): lines to pass over
+    function nearest(x, y, maxD, z = null, dz = 3, grade = 0, skip = null) {
       let best = null;
       for (const i of new Set(near(x, y, 0, maxD))) {
+        if (skip && skip(i)) continue;
         const l = L[i], n = l.pts.length / 3;
         for (let k = 1; k < n; k++) {
           const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], ex = l.pts[3 * k] - ax, ey = l.pts[3 * k + 1] - ay, L2 = ex * ex + ey * ey;
@@ -1782,7 +1784,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           else { dir = -dir; s = Math.max(0, Math.min(l.len, s)); }
         }
         // across its stop line on red, with the cross road's green (the checks count it: tools/traffic_check.js)
-        if (c.lineArm && c.toLine > 0 && c.toLine - c.v * dt <= 0 && JN.light(c.lineArm, c.lineEx) === 'r' && c.lineArm.j.st === 'g' && !(c.mv && c.mv.a === c.lineArm)) redRuns++;
+        if (c.lineArm && c.toLine > 0 && c.toLine - c.v * dt <= 0 && JN.light(c.lineArm, c.lineEx) === 'r' && c.lineArm.j.st === 'g' && !(c.mv && c.mv.a === c.lineArm)) {
+          redRuns++;
+          const j = c.lineArm.j;
+          if (redLog.length < 20) redLog.push(`junction ${j.id}: arm ${c.lineArm.i} (phase ${c.lineArm.phase}) at phase ${j.ph} green ${j.t.toFixed(1)} s: v ${c.v.toFixed(1)} to its line ${c.toLine.toFixed(2)} ${why} gap ${gap.toFixed(1)}`);
+        }
         const onto = line !== c.line, nx2 = c.plan && c.plan.length ? [c.plan[0][0], c.plan[0][1] === 0 ? 1 : -1] : null;
         // (across to its lane a little at a time, slowly while it is barely moving, nosing that way)
         // (in a junction it keeps the lane it went in by: its way across is that lane's)

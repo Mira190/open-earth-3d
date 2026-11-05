@@ -772,6 +772,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     pl.dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1;
     return pl;
   }
+  // a route by road from place a to the kerb nearest (x, y) that a road from a reaches: at about height
+  // z (the ground's there), else at any height within 800 m (in a park, a castle's grounds); never one
+  // on a piece of road cut off from a's streets (a drive mapped at a building's level), which no
+  // route reaches (cars.js router group)
+  function driveTo(a, x, y, z = groundZ(x, y)) {
+    const g = roads.group(a.line), b = (z != null && roads.place(x, y, 300, keepSign, z, g)) || roads.place(x, y, 800, keepSign, null, g);
+    return b && (roads.route(a, b, 30000) || roads.route(a, Object.assign({}, b, { dir: -b.dir }), 30000));
+  }
   let myCar = null, ride = null;
   function parkMyCar(pose) {
     if (!CARS_OK || !vlib.info.cars.models[carCfg.model]) return;
@@ -906,6 +914,42 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       myCar.C.animate(dt, { v: mine ? st.v : 0, h: st.h, steer: st.steer, brake: mine && (st.brake || (Math.abs(st.v) < 0.3 && k('KeyS'))), night, on: mine, inside: mine && cam.mode === 'cabin' });
     }
     if (ride) rideStep(dt, night);
+    youAtLights(dt);
+  }
+  // you, waiting at a red, are seen by the signals as a car of the traffic or a walker at the button is
+  // (junctions.js want, urgeWalk), so that you never wait at one longer than junctions.RED: at the wheel,
+  // coming up to the line slowly or stopped there; on foot, standing beside a road near its junction or
+  // a crossing with signals, or at a scramble's kerb (its walk next). A ride you are in, or one coming
+  // for you, has priority (cars.js chauffeur).
+  let atLightsT = 0;
+  const atLightsQ = {};
+  function youAtLights(dt) {
+    if ((atLightsT += dt) < 0.25) return;
+    atLightsT = 0;
+    if (player.mode === 'car' && myCar) {
+      const st = myCar.D.st;
+      if (Math.abs(st.v) > 7) return;
+      const q = roadNet.nearest(st.x, st.y, 5, st.z, 2.5);
+      if (!q) return;
+      roadNet.at(q.line, q.s, atLightsQ);
+      const dir = Math.sin(st.h) * atLightsQ.hx + Math.cos(st.h) * atLightsQ.hy > 0 ? 1 : -1, l = roadNet.L[q.line];
+      const a = junctions.armAt(q.line, dir > 0 ? 1 : 0), toLine = a && (dir > 0 ? l.len - q.s : q.s) - a.back;
+      if (a && a.j.sig && toLine > -2 && toLine < 30) junctions.want(a);
+      for (const X of junctions.midsOn(q.line) || []) { // (a crossing between junctions just ahead)
+        const xa = X.sig && X.arms.find(b => b.end === (dir > 0 ? 1 : 0)), d = xa && (X.mid - q.s) * dir - xa.back;
+        if (xa && d > -2 && d < 30) junctions.want(xa);
+      }
+    } else if (player.mode === 'foot' && !player.auto && player.speed < 0.8) {
+      const S = junctions.scrambles.find(j => Math.hypot(j.x - player.x, j.y - player.y) < (j.reach || 30) + 8);
+      if (S) { junctions.urgeWalk(S.arms[0]); return; }
+      const q = roadNet.nearest(player.x, player.y, 10, player.z, 2.5);
+      if (!q) return;
+      const l = roadNet.L[q.line];
+      let best = null, bd = 28;
+      for (const end of [0, 1]) { const a = junctions.armBy(q.line, end), d = end ? l.len - q.s : q.s; if (a && a.j.sig && d < bd) { bd = d; best = a; } }
+      for (const X of junctions.midsOn(q.line) || []) if (X.sig && Math.abs(X.mid - q.s) < 10) best = X.arms[0];
+      if (best) junctions.urgeWalk(best);
+    }
   }
 
   // ------------------------------------------------------------ taxis and rides
@@ -940,11 +984,12 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // gets there, so it seldom stops (tools/ride_check.js signals measures it); the time with them is
   // the one a ride is picked by and the app first says.
   const SIG_WAIT = 1;
-  // A scramble's walk is the one turn its priority never cuts (junctions.js), and a ride keeps a
-  // scramble's lights in sight or not, so a scramble near you adds more: coming up to it as the walk
-  // starts, the walk and the all red round it, about half a minute. It is counted at near that, so
-  // a taxi on your side of it is picked whenever there is one, and the time the app says holds.
-  const SCR_WAIT = 24;
+  // A scramble's walk under way is the one turn its priority never cuts (junctions.js: one not yet
+  // started waits for the ride's turn), and a ride keeps a scramble's lights in sight or not, so a
+  // scramble near you adds more: coming up to it as the walk starts, the walk and the all red round
+  // it, over half a minute; with the walk not started, next to nothing. It is counted at about the
+  // average of the two, so a taxi on your side of it is picked whenever there is one.
+  const SCR_WAIT = 14;
   // and the cars already queued at each signalled arm on its way (OECars.queueing), Q_CLEAR each to
   // move off ahead of it when the light turns green: a ride waits behind a queue, never round it (#107, #143)
   const Q_CLEAR = 1.8;
@@ -1080,6 +1125,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode !== 'foot' || player.auto) return;
     if (!CARS_OK) { H.toast('There are no taxis to hail here.'); return; }
     if (ride && ride.phase !== 'leaving') { H.toast(ride.phase === 'coming' ? `${ride.name} is on the way.` : `${ride.name} is waiting for you.`); return; }
+    if (backIn(ride)) { backAgain(); H.toast(`<b>${ride.name}</b> is still here: <kbd>E</kbd> to get back in.`); return; }
     const pickup = pickupNear(player.x, player.y, player.z, 40);
     if (!pickup) { H.toast('Stand at the kerb of a street to hail a taxi.'); return; }
     if (player.rig.wave) player.rig.wave(clockT);
@@ -1107,17 +1153,32 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     H.toast(best ? `A taxi has seen you: it'll pull in in about ${fmtSec(eta(o))}.` : `A taxi is coming round the corner, about ${fmtSec(eta(o))} away.`);
   }
   // the phone: a private-hire car to where you say
+  // (true if a ride is on its way, or waiting; else the phone and a toast say why not)
   function orderRide(dest) {
-    if (player.mode !== 'foot') { H.toast('Order once you are on foot.'); return; }
-    if (ride && ride.phase !== 'leaving') { H.toast(`${ride.name} is already on the way.`); return; }
+    const no = msg => { H.toast(msg); phone.note = msg; phone.noteT = clockT; return false; };
+    if (player.mode !== 'foot') return no('Order once you are on foot.');
+    if (ride && ride.phase !== 'leaving') return no(`${ride.name} is already on the way.`);
+    if (backIn(ride)) { backAgain(dest); H.toast(`<b>${ride.name}</b> is still here: <kbd>E</kbd> to get back in.`); return true; } // (the car you got out of in the traffic, beside you still)
     const pickup = pickupNear(player.x, player.y, player.z, 120);
-    if (!pickup) { H.toast('There is no street near enough to be picked up from.'); return; }
+    if (!pickup) return no('There is no street near enough to be picked up from.');
     const o = rideFromAround('hire', pickup, dest);
-    if (!o) { H.toast('No drivers near you. Try again in a moment.'); return; }
+    if (!o) return no('No drivers near you. Try again in a moment.');
     if (ride) { ride.drv.leave(); ride.C.dispose(); } // the last one, still driving off
     ride = o;
     const walk = Math.hypot(o.pickup.x - player.x, o.pickup.y - player.y); // (the pick-up it was given, which may be across the street or round the corner)
     H.toast(`<b>${o.name}</b> is on the way in a ${rideCar(o)}, ${o.plate}: about ${fmtSec(eta(o))}.${walk > 25 ? ` Meet at the pick-up point, ${Math.round(walk)} m from you.` : ''}`);
+    return true;
+  }
+  // the ride you got out of on the way (in the traffic), still stopped beside you: yours to get back
+  // into, rather than another called while it drives off (or vanishes in front of you for it)
+  const backIn = o => !!o && o.phase === 'leaving' && o.inLane && o.drv.st.v < 0.5 && Math.hypot(o.drv.st.x - player.x, o.drv.st.y - player.y) < 25;
+  function backAgain(dest = null) {
+    const o = ride;
+    if (o.dest) o.prev = o.dest; // (offered first when the driver asks where to)
+    Object.assign(o, { dest, phase: 'waiting', wait: 0, hold: true }); // (held where it stands, in its lane, until you are in)
+    o.drv.st.v = 0;
+    const st = o.drv.st, pl = placeOf(st);
+    if (pl) o.pickup = Object.assign(pl, { x: st.x, y: st.y, z: st.z }); // (picked up where it stands: the phone shows it beside you)
   }
   function cancelRide() {
     if (!ride || player.mode === 'ride') return;
@@ -1135,7 +1196,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       cam.mode = 'chase'; cam.dist = 8; cam.pitch = 0.24; cam.yaw = o.drv.st.h;
       A.thump();
       if (o.dest) setOff(o.dest); else askWhereTo();
-    }, cancel: () => { if (ride === o && o.phase === 'boarding') o.phase = 'waiting'; } }; // walked off: it waits on
+    }, cancel: () => { if (ride === o && o.phase === 'boarding') o.phase = 'waiting'; } }; // walked off: it waits on (one held in its lane too: hazards on, for five minutes)
   }
   // where you might go: the waypoint, the survey, your car, the landmarks, the wharves (each
   // somewhere whose nearest street is a drive away, not round the corner)
@@ -1159,30 +1220,35 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     add('start', 'Where you started', G.start.at, '');
     return out.slice(0, 7);
   }
-  function askWhereTo() {
+  // (say: the driver's words, in place of the greeting; skip: a destination to leave out, one no road
+  // reaches. Where you were going before you got out on the way, first.)
+  function askWhereTo(say = null, skip = null) {
     const o = ride;
     o.phase = 'asking';
-    const list = destinations(o.drv.st.x, o.drv.st.y);
-    dlg.show({ name: o.name, role: o.kind === 'taxi' ? 'Taxi driver' : 'Your driver', color: '#e0a21a', pitch: o.pitch }, [`${G.greeting ? `${G.greeting} ` : ''}Where to?`],
+    let list = destinations(o.drv.st.x, o.drv.st.y).filter(d => d.id !== skip);
+    if (o.prev && o.prev.id !== skip) list = [Object.assign({}, o.prev, { note: 'where you were going' })].concat(list.filter(d => d.id !== o.prev.id)).slice(0, 7);
+    dlg.show({ name: o.name, role: o.kind === 'taxi' ? 'Taxi driver' : 'Your driver', color: '#e0a21a', pitch: o.pitch }, [say || `${G.greeting ? `${G.greeting} ` : ''}Where to?`],
       list.map(d => ({ text: `${d.name}${d.note ? ` <span class="note">· ${d.note}</span>` : ''}`, dest: d })).concat([{ text: 'Nowhere, thanks. I\'ll get out here.', dest: null }]),
       c => { if (ride !== o) return; if (c && c.dest) setOff(c.dest); else { o.phase = 'driving'; leaveRide(); } });
   }
   function setOff(dest) {
-    const o = ride, from = placeOf(o.drv.st) || o.drv.st.route.to;
-    let to = roads.place(dest.at[0], dest.at[1], 300, keepSign, groundZ(dest.at[0], dest.at[1])) || roads.place(dest.at[0], dest.at[1], 300, keepSign), rt = to && roads.route(from, to, 30000);
-    if (!rt && to) rt = roads.route(from, to = Object.assign({}, to, { dir: -to.dir }), 30000);
-    if (!rt) { H.toast(`<b>${o.name}:</b> I can't get there by road, sorry.`); o.phase = 'driving'; if (player.mode === 'ride') leaveRide(); return; }
+    const o = ride, from = placeOf(o.drv.st) || o.drv.st.route.to, rt = from && driveTo(from, dest.at[0], dest.at[1]);
+    // (no road from here gets there: the driver says so and asks again; you stay in the car)
+    if (!rt) { o.dest = null; askWhereTo(`I can't get to ${dest.name} by road from here, sorry. Somewhere else?`, dest.id); return; }
     Object.assign(o, { dest, phase: 'driving', meter: 0, talkT: clockT + 9, t0: clockT });
     o.drv.leave();
-    o.drv = OECars.chauffeur(o.C, rt, { keep: keepSign, from: 'kerb', lights: junctions, now: rideClock });
+    const opts = { keep: keepSign, from: o.inLane ? 'lane' : 'kerb', lights: junctions, priority: true, now: rideClock }; // (got back into in its lane: on from there; you in it, its green called ahead, as for one coming for you)
+    o.drv = OECars.chauffeur(o.C, rt, opts);
+    o.drv.opts = opts; // (for a new way round a jam)
+    o.inLane = o.hold = false;
     H.toast(`<b>${o.name}:</b> ${dest.name}, ${(rt.len / 1000).toFixed(1)} km by road. <kbd>F</kbd> to skip the trip.`);
   }
   // the car you are in, or have just got out of, pulls away and drives off
   function rideAway() {
     const o = ride;
-    o.phase = 'leaving'; o.t0 = clockT;
+    o.phase = 'leaving'; o.t0 = clockT; o.hold = false;
     const pl = placeOf(o.drv.st), pts = pl ? roads.onward({ to: pl }, 260) : [];
-    if (pts.length > 1) { o.drv.leave(); o.drv = OECars.chauffeur(o.C, { pts, end: false, nodes: pts.nodes, mids: pts.mids }, { keep: keepSign, from: o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v, lights: junctions, now: rideClock }); }
+    if (pts.length > 1) { o.drv.leave(); o.drv = OECars.chauffeur(o.C, { pts, end: false, nodes: pts.nodes, mids: pts.mids }, { keep: keepSign, from: o.inLane || o.drv.st.v > 1 ? 'lane' : 'kerb', v: o.drv.st.v, lights: junctions, now: rideClock }); } // (left in its lane, in the traffic: on from there, not from the kerb)
   }
   function leaveRide() {
     const o = ride;
@@ -1190,6 +1256,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (player.mode === 'ride') {
       if (o.drv.st.v > 0.5) { H.toast('Wait until the car stops.'); return; }
       if (!stepOut(o, kerbSeat)) { H.toast('No room to get out here.'); return; }
+      o.inLane = o.phase === 'driving' && !o.drv.st.done; // (out on the way, held up in the traffic: it stands in its lane)
       if (o.phase === 'arrived') H.toast(`<b>${o.name}:</b> ${OEActors.pick(['Enjoy!', 'Have a good one.', 'Take care.', 'Thanks!'])}`);
       save();
     }
@@ -1231,7 +1298,8 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   function rideStep(dt, night) {
     const o = ride;
     let st = o.drv.st;
-    o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z) || SCR_BOX.some(j => Math.hypot(st.x - j.x, st.y - j.y) < j.r + 60)); // (and the lights, in sight, and a scramble's always: out of sight or not, nobody drives into its walk)
+    if (o.hold) st.v = 0; // (waiting in its lane for you to get back in)
+    else o.drv.update(dt, inTheWay(o), false, inSight(st.x, st.y, st.z) || SCR_BOX.some(j => Math.hypot(st.x - j.x, st.y - j.y) < j.r + 60)); // (and the lights, in sight, and a scramble's always: out of sight or not, nobody drives into its walk)
     // running well late in a jam and out of view, it finds its way round, a stretch at a time, to a
     // clear piece of road (games keep the cars that come for you on time); in view it queues as it would
     if (o.phase === 'coming' && clockT - o.t0 > (o.T0 || 20) + 6 && st.v < 0.5 && clockT - (o.hopT || 0) > 2.5 && !inView(st.x, st.y, st.z)) {
@@ -1244,11 +1312,13 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     }
     // held up more than 10 s behind a queue in view (one it can't pass for the traffic coming the
     // other way), it looks for another way from where it stands, round the piece of road the queue
-    // is on, and takes it if it is no more than 300 m longer, as a driver with a map app does
-    if (o.phase === 'coming' && st.held > 10 && st.block && st.block.line >= 0 && clockT - (o.rerouteT || 0) > 10) {
+    // is on, and takes it if it is no more than 300 m longer, as a driver with a map app does; and
+    // so on the way to where you are going, you in it, to the same kerb, up to a quarter longer
+    const going = o.phase === 'driving' && player.vehicle === o && st.route && st.route.to;
+    if ((o.phase === 'coming' || going) && st.held > 10 && st.block && st.block.line >= 0 && clockT - (o.rerouteT || 0) > 10) {
       o.rerouteT = clockT;
-      const pl = placeOf(st), rt = pl && roads.route(pl, o.pickup, 4000, undefined, new Set([st.block.line]));
-      if (rt && rt.len < st.end - st.s + 300 && !(rt.nodes || []).some(nd => nd.line === st.block.line) && pl.line !== st.block.line) {
+      const left = st.end - st.s, pl = placeOf(st), rt = pl && roads.route(pl, going ? st.route.to : o.pickup, going ? 30000 : 4000, undefined, new Set([st.block.line]));
+      if (rt && rt.len < left + (going ? Math.max(300, left / 4) : 300) && !(rt.nodes || []).some(nd => nd.line === st.block.line) && pl.line !== st.block.line) {
         const opts = Object.assign({}, o.drv.opts, { from: 'lane', v: st.v });
         o.drv.leave();
         o.drv = OECars.chauffeur(o.C, rt, opts);
@@ -1321,13 +1391,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     phone.map.hidden = !(phone.view === 'ride' && rideOn());
     if (phone.view === 'home') {
       $('#gph-title').textContent = 'Phone';
-      html = `<div class="list">${item('Order a ride', rideOn() ? `${ride.name} is ${ride.phase === 'coming' ? 'on the way' : ride.phase === 'waiting' ? 'waiting for you' : 'taking you'}` : 'A car to wherever you say, here in half a minute', () => phoneShow(rideOn() ? 'ride' : 'where'))}`
+      html = (phone.note && clockT - phone.noteT < 8 ? `<p class="note">${phone.note}</p>` : '') // (why the ride just ordered isn't coming)
+        + `<div class="list">${item('Order a ride', rideOn() ? `${ride.name} is ${ride.phase === 'coming' ? 'on the way' : ride.phase === 'waiting' ? 'waiting for you' : 'taking you'}` : 'A car to wherever you say, here in half a minute', () => phoneShow(rideOn() ? 'ride' : 'where'))}`
         + `${myCar ? item('Bring my car', `It's ${Math.round(Math.hypot(myCar.D.st.x - player.x, myCar.D.st.y - player.y))} m away`, () => { bringCar(); phoneShow(false); }) : ''}</div>`
         + `<p class="note">Or raise your hand at the kerb (<kbd>Y</kbd>) and a taxi will pull in.</p>`;
     } else if (phone.view === 'where') {
       $('#gph-title').textContent = 'Ride · where to?';
       const list = destinations(player.x, player.y);
-      html = `<div class="list">${list.map(d => item(d.name, d.note, () => { orderRide(d); phoneShow(ride ? 'ride' : false); })).join('')}</div>`
+      html = `<div class="list">${list.map(d => item(d.name, d.note, () => phoneShow(orderRide(d) ? 'ride' : 'home'))).join('')}</div>`
         + `<div class="row"><button class="btn" data-back>Back</button></div>`;
     } else {
       const o = rideOn() ? ride : null;
@@ -1883,18 +1954,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       if (!a) return null;
       roadNet.at(a.line, a.s, rq);
       a.dir = Math.sin(st.h) * rq.hx + Math.cos(st.h) * rq.hy >= 0 ? 1 : -1; // the way the car faces
-      const b = roads.place(goal.x, goal.y, 300, keepSign, goal.z ?? groundZ(goal.x, goal.y)) || roads.place(goal.x, goal.y, 800, keepSign); // (in a park, the nearest kerb)
-      let rt = b && roads.route(a, b, 30000);
-      if (!rt && b) rt = roads.route(a, Object.assign({}, b, { dir: -b.dir }), 30000);
-      if (!rt) { // that kerb is on a road cut off from the streets (inside the castle grounds): the nearest that isn't
-        const near = [...new Set(roadNet.near(goal.x, goal.y, 0, 800))].map(i => {
-          const l = roadNet.L[i];
-          let bk = 0, bd = Infinity;
-          for (let k = 0; k < l.pts.length / 3; k++) { const d = Math.hypot(l.pts[3 * k] - goal.x, l.pts[3 * k + 1] - goal.y); if (d < bd) { bd = d; bk = k; } }
-          return { line: i, s: l.cum[bk], d: bd };
-        }).sort((p, q) => p.d - q.d);
-        for (const q of near.slice(0, 12)) { for (const dir of [1, -1]) if (!rt) rt = roads.route(a, { line: q.line, s: q.s, dir }, 30000); if (rt) break; }
-      }
+      const rt = driveTo(a, goal.x, goal.y, goal.z ?? groundZ(goal.x, goal.y)); // (in a park, inside the castle grounds: the nearest kerb a road from here reaches)
       return rt && { pts: drape([[st.x, st.y, st.z]].concat(laneOf(rt.pts)), 0.1), width: 1.3 };
     }
     if (m === 'ride' && ride && ride.phase === 'driving') return { pts: drape(laneOf(ride.drv.path.pts), 0.1), width: 1.3 };
@@ -2146,8 +2206,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     let bn = null, bd = 3.2;
     for (const n of npcs) { const d = Math.hypot(n.x - player.x, n.y - player.y); if (d < bd && Math.abs(n.z - player.z) < 2) { bd = d; bn = n; } }
     if (bn) return { key: 'E', text: `Talk to ${bn.name}`, act: () => talkTo(bn) };
-    if (ride && ride.phase === 'waiting' && offCar(ride, player.x, player.y) < 4 && Math.abs(ride.drv.st.z - player.z) < 2)
-      return { key: 'E', text: ride.kind === 'taxi' ? 'Get in the taxi' : `Get in ${ride.name}'s ${rideCar(ride)}`, act: boardRide };
+    if (ride && (ride.phase === 'waiting' || backIn(ride)) && offCar(ride, player.x, player.y) < 4 && Math.abs(ride.drv.st.z - player.z) < 2) {
+      const again = ride.phase === 'leaving' || ride.prev ? 'back ' : '';
+      return { key: 'E', text: ride.kind === 'taxi' ? `Get ${again}in the taxi` : `Get ${again}in ${ride.name}'s ${rideCar(ride)}`, act: () => { if (ride.phase === 'leaving') backAgain(); boardRide(); } };
+    }
     if (myCar && offCar(myCar, player.x, player.y) < 2.5 && Math.abs(myCar.D.st.z - player.z) < 2) return { key: 'E', text: 'Drive your car', act: enterCar };
     if (Math.hypot(heli.st.x - player.x, heli.st.y - player.y) < 10 && Math.abs(heli.st.z - player.z) < 3) return { key: 'E', text: 'Board the helicopter', act: enterHeli };
     const st = railStation(player.x, player.y);
