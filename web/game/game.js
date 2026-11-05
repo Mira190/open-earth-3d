@@ -3775,11 +3775,14 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     cars.extra.length = 0;
     for (const o of [myCar, ride]) if (o) {
       const st = stOf(o), id = o === ride ? 'ride' : 'car';
-      blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
+      // (a ride on its way, stopped for a moment, is not parked: the traffic gives way to it, or not, by the rule
+      // it reads of a ride on the move, as the ride reads it, never one by one rule and the other by another)
+      const live = o === ride && !st.done && (ride.phase === 'coming' || ride.phase === 'driving' || ride.phase === 'leaving');
+      blockers.push({ id, x: st.x, y: st.y, z: st.z, half: o.C.half, hw: o.C.hw, parked: Math.abs(st.v) < 0.3 && !live && (o === ride || player.mode !== 'car'), q: o === ride && !!st.q, qBy: o === ride ? st.qBy : null });
       // (a ride with its way ahead, its movement through a junction and its line, which the traffic reads to
       // give way to it or not, as it reads its own cars: actors.js first)
       const x = { id, x: st.x, y: st.y, z: st.z, h: st.h, half: o.C.half, hw: o.C.hw, v: Math.max(0, st.v), line: 0, top: o.C.top };
-      if (o === ride) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine });
+      if (o === ride) Object.assign(x, { ps: st.ps, np: st.np || 0, pst: st.pst, mv: st.mv || null, mvT: st.mvT, toLine: st.toLine, live, q: !!st.q, qBy: st.qBy || null });
       cars.extra.push(x);
     }
     cars.update(dt, cx, cy, clockT, blockers);

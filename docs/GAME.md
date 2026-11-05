@@ -862,7 +862,8 @@ yields. In this game every car's intent is exact, so:
 - **Back off, never through.** Nose to nose with a car that waits on it in turn, a ride's driver
   backs off a metre or two along its way if the road behind is clear, else asks that car to
   (`junctions.makeWay`); wedged against one that won't move off, it asks again every 2 s, and only
-  after 45 s (a knot nothing undoes) goes on at a crawl. It no longer creeps into a car at an
+  after 20 s (a knot nothing undoes, neither able to back off) goes on at a crawl. A ride stopped
+  for a moment on its way still counts as on the move to the traffic, so both read the same rule. It no longer creeps into a car at an
   angle to it after 8 s.
 - **Brake early and gently.** The traffic's speed was a limit read off the gap ahead, so a car
   kept its speed until the last metres and then braked at up to 8 m/s². The Intelligent Driver

@@ -1567,18 +1567,19 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         }
         // a ride or your car on the move, along its way as a car of the traffic is (not along a straight line from
         // the bonnet, which misses one round the corner it is turning), and given way to by the same rule as the
-        // traffic's (first): the one that goes on is the one that would. One standing still is
-        // left to the blockers below (passed side by side, swung out round, or braked for)
-        let sawX = null, leadX = null;
+        // traffic's (first): the one that goes on is the one that would. A ride stopped on its way counts as on
+        // the move (live); one parked, at the kerb, is left to the blockers below (passed side by side, swung out
+        // round, or braked for)
+        let sawX = null, leadX = null, xQ = false;
         if (np) for (const o of api.extra) {
-          if (o.v < 0.3 || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
+          if ((o.v < 0.3 && !o.live) || (o.z != null && Math.abs(o.z - c.z) >= LEVEL) || Math.abs(o.x - c.x) > 60 || Math.abs(o.y - c.y) > 60) continue;
           const d = hitAt(P, np, o, o.half + 0.6, o.hw + c.hw + 0.25, step);
           if (d < 0) continue;
           (sawX || (sawX = new Set())).add(o.id);
           const d2 = o.np ? hitAt(o.ps, o.np, c, c.half + 0.6, c.hw + o.hw + 0.25, o.pst || STEP) : -1;
           if (d2 >= 0 && first(c, o, d, d2, i, -1)) continue;
           const g = d + 0.6;
-          if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; leadX = o; }
+          if (g < gap) { gap = g; byCar = true; front = null; why = 'you'; leadX = o; xQ = !!o.q && o.qBy !== c; } // (a ride queueing for a junction: this car queues behind it)
         }
         // in a junction and stopped behind a car waiting at another of its lines (an awkward corner,
         // a short arm whose line can't be set back far enough): that one backs off a little, and
@@ -1602,7 +1603,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
         // one left in the lane, as traffic goes round a stopped car; otherwise braked for like a car ahead
-        let youQ = false; // (the one braked for is a ride queueing for a junction: this car queues behind it)
+        let youQ = xQ; // (the one braked for is a ride queueing for a junction: this car queues behind it)
         for (const b of blockers) {
           if (!b.half || (b.z != null && Math.abs(b.z - c.z) >= LEVEL)) continue;
           if (!b.parked && b.id && sawX && sawX.has(b.id)) continue; // (on the move and on its way: given way to, or not, above)

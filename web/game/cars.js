@@ -37,7 +37,7 @@ window.OECars = (function () {
   // road widths by class (m), as the streets are drawn in game.js; a car pulls in to half of it less a car's width
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const LANE = 1.7; // the traffic's lane, off the centre line (actors.js)
-  const WEDGE_GIVE = 45; // (s wedged against a car that won't move off, asked to again and again, before a ride's driver goes on through it)
+  const WEDGE_GIVE = 20; // (s wedged against a car that won't move off, asked to again and again, neither able to back off, before a ride's driver goes on through it)
   const LOOK_STEP = 1.5, LOOK_N = 34; // a driver's way ahead, as the traffic's: points every 1.5 m from the bumper (up to 50 m)
   const kerbOf = c => clamp((ROADW[c] || 7) / 2 - 0.1, 3.3, 6.5);
   // the cushions' height over the cabin floor (build_vehicles.py: the cushions 0.33 m over the floor pan, the carpet 0.1 on it)
