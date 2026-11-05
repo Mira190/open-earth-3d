@@ -108,7 +108,7 @@ where the city has ferries, and a kerb close by for a taxi. The lead's welcome
 says where each is. Sydney starts on West Circular Quay facing the Opera House,
 Paris on the Pont d'Iéna at the foot of the Eiffel Tower, Tokyo on the Marunouchi
 plaza in front of the station, Kyoto on the station plaza below Kyoto Tower,
-Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at Hachiko (its pad is the roof of SHIBUYA SKY, a lift ride up),
+Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at the Hachiko-side kerb of the scramble as its walk turns green (its pad is the roof of SHIBUYA SKY, a lift ride up),
 Hong Kong at the Star Ferry's Pier 7, Melbourne in Federation Square, the bayside
 at St Kilda Pier and Amsterdam on the Dam. Heron Island and Whitsundays start on
 the beach by their helipad.
@@ -154,12 +154,15 @@ A taxi or a ride reaches you within half a minute. The router searches the stree
 network backwards from the pick-up for points 110 to 270 m away by road (40 to
 110 m where none of those is near enough in time), following the one-way streets;
 each is timed by driving its route in a dry run (the driver's own rules, nothing
-in the way), with 1 s added for each set of traffic lights near the pick-up, and
+in the way), with 1 s added for each set of traffic lights near the pick-up and
+1.8 s for each car already queued at a signalled arm on its way (`OECars.queueing`:
+it waits behind a queue, never round it; #143), and
 the one that takes 10 to 20 s, out of your sight where it can be and not where a
 car of the traffic or a queue would be in its way as it sets out, is chosen,
 leaving the rest of the half minute for the traffic you can see. The same time is
 what the phone shows: it counts down as the car comes and, held up behind the
-traffic, rises as it waits, as an app's does; stopped at a red light, or queued
+traffic, rises as it waits, as an app's does, and with the queues still ahead
+of it as they grow and clear; stopped at a red light, or queued
 behind cars that are, it shows the time to that light's green (`junctions.js`
 `toGreen`) and a moment for the queue to move off, and behind a car stuck at a wall
 or stopped for good, the few seconds before its driver swings out round it. Coming
@@ -313,9 +316,9 @@ Amsterdam has no real helipad in the old city. The pad on the Dam is a game devi
 
 **Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
 [Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
-is a pilgrimage: in Shibuya a welcome at Hachiko, in Shinjuku at the east exit, then
+is a pilgrimage: in Shibuya a welcome across the scramble by QFRONT, in Shinjuku at the east exit, then
 lines in any order and a report back.
-- **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
+- **Shibuya:** cross the scramble to Aoi and back to Hachiko, read the arch over Center Gai, take the
   lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
@@ -363,6 +366,31 @@ tall blocks it cranes up over the player before it pulls back and takes up to
 [travel id]` follows the camera frame by frame through the arrival and a hop to
 the farthest travel point, prints each move's peak turn and pitch rates, and
 fails above 45° and 60° a second.
+
+A city can open on a shot of its own (`game.start.shot` in `city.json`, #110):
+`look` is the point the title frames (absolute metres), `dur` the move's length
+(4.2 s), `walk_in` when a scramble at the start turns its walk green (2.2 s into
+the move) and `sway_deg` the title camera's gentle sway. The title camera then sits
+behind the start's own view, turned by up to 30° and raised as far as it takes to
+frame the point clear of the towers in front of it (`openingView`, which scores a
+fan of lines over the DSM), and sways rather than orbits, so Play cranes straight
+down to over the shoulder: the look holds on the point while the camera comes down
+to the street, then tilts down to the player, the line kept 24 m over the roofs
+(their screens and signs are not in the DSM), and hands over without a cut. Shibuya
+uses it: the title looks over the station to QFRONT's screen, the crane comes down
+over the scramble as every arm turns red and the walk turns green, and the crowd
+gathered at the kerbs of every crosswalk (`crowd.muster`, twenty at yours) steps out
+round you as control comes, a couple of seconds into the walk; a car moving in or
+near the box as the walk is forced green comes back elsewhere (`clearBox`). The travel menu's
+Shibuya stop is the same kerb, and Aoi, the guide the onboarding sends you to,
+waits across the diagonal by QFRONT, so the first walk is the crossing.
+`game.start.car` puts your car at a kerb away from the start when the start's own
+kerb is no place for it (Shibuya's: at the scramble's mouth; it waits by Hachiko),
+and no car is left within 36 m of a scramble when another kerb will do.
+`tools/opening_shot.js <city> <out> [WxH] [times]` takes stills of the shot (as Play
+is pressed, in the crane, at the street, the hand-over and 3 s on), and
+`tools/game_check.js` checks that the game opens at the scramble's kerb, in its
+walk, with walkers round you.
 
 The first time a browser plays any map (or reef site), a short tour of the HUD
 follows the arrival (`web/onboard.js`): walking and looking, the map, travel,
@@ -766,10 +794,23 @@ pipeline writes. The only city-specific code is landmark geometry in
     car, takes a step out of its footprint; a car waiting at its line
     that a bus can't swing past backs off a metre; a car in a junction stopped
     behind one waiting at another of its lines asks it to back off, and after
-    8 s goes on as if it weren't there. A car held 3 s by another that is
+    8 s goes on as if it weren't there. A step taken back because it would
+    have gone deeper into another car counts as held by that car (#144: it
+    was taken back unseen, the time never counted, and a car on its way out of
+    a junction against the nose of one waiting at another arm's line, which
+    waited for that very movement, stood for good, holding the junction and
+    its queues through green after green). A car held 3 s by another that is
     stopped too has one of them give way and back off a metre or two: the one
     not in the junction for the one in it, of two in it the one that went in
-    later. A car that can't back off because a stopped car is behind it asks
+    later (of two that went in the same second, side by side from one arm, the
+    later in the traffic's list; never one at the very start of its piece, with no
+    room behind it to back into: then the other). Two in a junction stopped nose to nose, each
+    the car ahead of the other (their ways cross and each path sees the other),
+    wait 4 s, and then the one that can't back off (or else the one that went in
+    first) goes on as if the other
+    weren't there, and if the other can't back off for the queue behind it, squeezes
+    past it after 20 s. A car held more than 10 s by a lamp post or a trunk on its
+    way edges past it (Asakusa had one stand ten minutes in a junction). A car that can't back off because a stopped car is behind it asks
     that one to back off first, so a short queue makes room (each car backs off
     at most 6 s before it has moved on again). Two still held for 15 s (10 s in
     a junction, 25 s by one that only inches along): out of view, behind the
@@ -983,6 +1024,19 @@ Sydney's traffic stood still a third of the time.
   (not the arrow) is green, and ends 5 s before that phase can. Someone already
   out in the road (over a median, say) walks on. Turning cars still give way to
   people on the crossing.
+- **A scramble** (Shibuya's: scene `landmarks.scramble`) runs a walk of its own
+  after the cross road's phase, every arm red, and nobody walks in the traffic's
+  phases. It is signalled even where OpenStreetMap maps its lights at the
+  crosswalks, beyond the node's radius. Its walkers wait at the ends of its mapped
+  crosswalks (`landmarks.scramble.lines`), the diagonals too, rather than at kerbs
+  found from the arms' roads, which meet at a node in the middle of the crossing.
+  Each way in stops behind the crosswalk mapped across it (21 to 36 m from the
+  node at Shibuya), not in the stripes. Out on a crosswalk a walker spreads across
+  the band's width and keeps to its left, so the crowds from the two kerbs pass.
+  A ride's call never cuts the walk short; the time to green it shows counts the
+  rest of the walk, and a hailed taxi held at its red is timed with that wait.
+  `tools/scramble_cars.js` prints the cars in and near the box over a cycle and
+  what holds each.
 - **The signal heads** are instanced, a handful of draw calls for a city's
   thousands. Each arm with signals has a pole at the kerb by its stop line with
   a lantern facing the traffic, and a second across the junction; a main road's
@@ -1925,7 +1979,13 @@ update's cost a frame, the lane changes and the walkers waiting at a kerb;
 `tools/traffic_why.js <city> [place] [seconds] [still]` lists the cars standing
 at the end of a run with what holds each (the car in front and what holds that
 one, the light, the movement it waits for, the lane), and the cars caught up in
-one another; `tools/traffic_profile.js <city> [seconds]` runs the browser's
+one another; `tools/junction_held.js <city> [seconds] [places] [junction ids]`
+watches every car stopped at a signalled line and every movement in a
+junction, and lists the cars held through more than two greens of their own
+light and the movements standing in a junction for more than two of its
+cycles, each with what holds it and every movement in the junction then
+(`tools/game_check.js` runs the same watch, `tools/junction_held_step.js`, for
+three minutes where you are, and fails on any); `tools/traffic_profile.js <city> [seconds]` runs the browser's
 profiler over the traffic and lists its functions and busiest lines; and
 `tools/signal_shot.js <city> out [count|ids|arrows<n>] [HH:MM,...] [WxH]` takes
 a driver's view of the nearest junctions with signals (or with a turn arrow) at
