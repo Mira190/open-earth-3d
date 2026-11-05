@@ -35,9 +35,11 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
+| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
+| Repainted ground | `refresh_ground.py` | Applies a city's `imagery.paint` (land use that draws the wrong ground: a construction site mapped over a paved promenade) to the drawn ground tiles of a city without aerial imagery, without a rebuild; `build_scene.py` draws the same fill in place of the land use |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
@@ -371,6 +373,34 @@ The views switch in place, without reloading the page.
     above and from the tour cameras toward and away from a low sun:
     `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
     for `tools/city_shot.js`).
+  - past the frame, the land (issue 78). Under that haze stands the land that is
+    really there (`web/farland.js`, `pipeline/far_land.py`): a low terrain 40 km
+    either side of the frame's centre (60 km at a reef site) from Copernicus
+    GLO-30 heights at 156 m (234 m), less the trees' and buildings' share of the
+    surface model, its grid lines about 40 m apart at the frame and a few hundred
+    metres far out (256 x 256 cells, 128 x 128 on the low tier). It is coloured by
+    ESA WorldCover 2021's land cover, each class's share of a 78 m cell, in colours
+    solved from the city's own photo inside the frame against the classes' shares
+    there (held toward a default and mostly to its hue, with the built-up land
+    darkened to the drawn city's tone, `BUILT_SHADE`), with value noise at 30 to
+    300 m for what the cells average away. Water at sea level sits under the
+    sea; a lake in the hills stays, flat, in the water's colour (Lake Biwa
+    behind Higashiyama), and the open sea is not drawn over land past the frame
+    (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
+    haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
+    land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
+    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    built-up land glows: NASA's Black Marble at 500 m, raised to a power for
+    contrast (its visual product saturates over a city) and shared out by
+    WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
+    more of them the brighter the land, which fade into their mean where a pixel
+    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    with node materials under the reef's own air (`env.medium`), the land raised
+    clear of the highest tide: the ranges behind Cairns stand on Green Island's
+    horizon, and the coast's towns are a band of light at night. `?far=off`
+    leaves it out, to compare; `tools/far_views.py` writes the high views out
+    past each edge at noon, dusk and night for `tools/city_shot.js`.
+    Before and after: `docs/images/far-land/*-compare.jpg`.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -851,10 +881,51 @@ stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
 The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
 more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
 
-Browser options surveyed for the shared models (next steps of issue 148): three.js r186 ships
-`EXT_meshopt_compression` support in `GLTFLoader` with `MeshoptDecoder`
-(`examples/jsm/libs/meshopt_decoder.module.js`, meshoptimizer, MIT), `KHR_draco_mesh_compression`
-with `DRACOLoader` (Draco, Apache-2.0, a WASM decoder of a few hundred kB) and
-`KHR_texture_basisu` with `KTX2Loader` (Basis Universal, Apache-2.0, a WASM transcoder). Meshopt
-decodes fastest, keeps skinning and morph targets, and its decoder is a few kB of JS, so it is
-the choice for geometry; KTX2 is for textures where GPU memory matters more than bytes.
+### Shared models: meshopt
+
+What three.js r186 can decode out of the box, surveyed for the shared models (`web/assets/vehicles`,
+`trees`, `people`):
+
+| Option | three.js r186 | Licence | For |
+|---|---|---|---|
+| `EXT_meshopt_compression` (meshoptimizer) | `GLTFLoader.setMeshoptDecoder`, `examples/jsm/libs/meshopt_decoder.module.js`, 29 kB of JS with its WASM inline | MIT | geometry, skins and animation; decodes at gigabytes a second, keeps every node, name and attribute |
+| `KHR_draco_mesh_compression` (Draco) | `DRACOLoader`, a WASM decoder of about 300 kB fetched on first use | Apache-2.0 | static geometry; smaller than meshopt on dense meshes, but no animation, slower to decode, and it re-orders vertices |
+| `KHR_texture_basisu` (KTX2, Basis Universal) | `KTX2Loader`, a WASM transcoder of about 500 kB | Apache-2.0 | textures that stay compressed in GPU memory; the transcoder outweighs what it saves on these few textures |
+| `EXT_texture_webp` | built in | — | already used by the people's textures |
+
+Adopted: meshopt, for every shared model. `pipeline/meshopt_glb.mjs` (meshoptimizer's own encoder,
+1.3.0, MIT, vendored in `pipeline/vendor/meshoptimizer/`) encodes each buffer view of vertex
+attributes, indices and animation in place, as the last step of `blender/build_vehicles.py`,
+`build_trees.py`, `build_people.py` and `pipeline/fetch_people.py` (`pipeline/meshopt.py`). It
+does not quantise to integers, re-order, merge or rename anything, so `cars.js` and `people.js`
+read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
+corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
+exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
+Each view is decoded again and compared before the file is written. `web/index.html` gives every
+`GLTFLoader` the decoder; the reef's `people.js` sets it on its own. `tools/check.sh` fails on a
+model that is not compressed.
+
+| Models | Before | After |
+|---|---|---|
+| `cars.glb` | 5.40 MB | 2.35 MB |
+| `helicopter.glb` | 3.75 MB | 1.69 MB |
+| `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
+| `trees.glb` (48 species and stages), its leaf atlases WebP (`pipeline/glb_webp.py`: quality 92, the cut-out alpha exact; a fifth of the PNG) | 5.15 MB | 1.85 MB |
+| the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
+| the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
+| all 87 shared models | 60.28 MB | 35.98 MB |
+
+What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
+issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):
+
+| Shibuya `#play` | files | raw | on the wire | playable at 20 Mbps |
+|---|---|---|---|---|
+| before | 128 | 66.3 MB | 45.2 MB | 67.4 s |
+| after | 127 | 36.6 MB | 27.7 MB | 55.3 s |
+
+The times are on a software renderer (Mesa llvmpipe), where building the scene's shaders and
+geometry, not the network, takes most of them; on a GPU the download is the larger share.
+
+The helicopter (1.7 MB) is no longer among them: it is fetched when the player comes within 800 m of
+its pad or boards it. NPCs whose characters no one within 300 m of the start wears load after the
+game opens.

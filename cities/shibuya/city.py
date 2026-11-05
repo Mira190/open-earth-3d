@@ -539,51 +539,22 @@ def suga_building(b, cls, g, geoms, ctx):
 
 # ---------------------------------------------------------------- roofs
 
-def sweep_curve(t, k=1.3):
-    """A Japanese roof's concave sweep: flat at the eaves, steep at the ridge (t from eave 0 to ridge 1)."""
-    return max(t, 0.0) ** k
-
-
 def irimoya(mats, P, a0, a1, b_half, z_eave, z_ridge, ov=1.2, gable_at=0.55, ridge_cap=True, k=1.3):
     """A hip-and-gable roof over a in [a0, a1] (front to back) and b in +-b_half, its ridge across the
-    front (along b): the hipped skirt all round, the gables above it at gable_at of the height, a ridge
-    cap, the fascia and the eaves' underside. mats: (roof, gable, cap, fascia, soffit) meshes."""
+    front (along b), by archkit.japanese_roof: the hipped skirt all round, the gables above it at gable_at
+    of the height, a ridge cap, the fascia and the eaves' underside. mats: (roof, gable, cap, fascia, soffit)
+    meshes."""
     roof, gable, cap, fascia, soffit = mats
     A = (a0 + a1) / 2
-    Ey, Ex = (a1 - a0) / 2 + ov, b_half + ov
-    H = z_ridge - z_eave
-    d_g = Ey * gable_at ** (1 / k)       # in from the eave where the hip meets the gable
-    Gx, Yg = Ex - d_g, Ey - d_g
-    zr = lambda d: z_eave + H * sweep_curve(d / Ey, k)
     Q = lambda X, Y, z: P(A + Y, X, z)
-    ys = np.unique(np.round(np.concatenate([np.linspace(-Ey, -Yg, 5), np.linspace(-Yg, Yg, 9), np.linspace(Yg, Ey, 5)]), 4))
-    xin = np.linspace(-Gx, Gx, 7)
-    roof.grid([[Q(X, Y, zr(Ey - abs(Y))) for X in xin] for Y in ys])
-    for sgn in (-1, 1):
-        xo = np.linspace(Gx, Ex, 5) * sgn
-        roof.grid([[Q(X, Y, zr(min(Ey - abs(Y), Ex - abs(X), d_g))) for X in xo] for Y in ys])
-        # the gable: from the top of the hip to the roof line, set in where the hip stops
-        zg = zr(d_g)
-        yy = [y for y in ys if abs(y) <= Yg + 1e-6]
-        for y0, y1 in zip(yy, yy[1:]):
-            gable.quad(Q(sgn * Gx, y0, zg), Q(sgn * Gx, y1, zg), Q(sgn * Gx, y1, zr(Ey - abs(y1))), Q(sgn * Gx, y0, zr(Ey - abs(y0))))
-            # the bargeboard just under the roof line
-            fascia.quad(Q(sgn * (Gx + 0.08), y0, zr(Ey - abs(y0)) - 0.38), Q(sgn * (Gx + 0.08), y1, zr(Ey - abs(y1)) - 0.38),
-                        Q(sgn * (Gx + 0.08), y1, zr(Ey - abs(y1)) + 0.02), Q(sgn * (Gx + 0.08), y0, zr(Ey - abs(y0)) + 0.02))
-    # fascia round the eaves and the underside back to the walls
-    e = [Q(-Ex, -Ey, z_eave), Q(Ex, -Ey, z_eave), Q(Ex, Ey, z_eave), Q(-Ex, Ey, z_eave)]
-    w = [Q(-b_half, -(a1 - a0) / 2, z_eave - 0.3), Q(b_half, -(a1 - a0) / 2, z_eave - 0.3),
-         Q(b_half, (a1 - a0) / 2, z_eave - 0.3), Q(-b_half, (a1 - a0) / 2, z_eave - 0.3)]
-    dn = np.array([0, 0, -0.32])
-    for i in range(4):
-        j = (i + 1) % 4
-        fascia.quad(e[i] + dn, e[j] + dn, e[j], e[i])
-        soffit.quad(e[i] + dn, w[i], w[j], e[j] + dn)
+    R = ak.japanese_roof(Q, b_half, (a1 - a0) / 2, z_eave, z_ridge, ov, roof, fascia, gable, soffit, gable_frac=gable_at ** (1 / k), k=k,
+                         lift=0.2 * ov, ridges=False, wall_z=z_eave - 0.3, swap=False)
+    Gx = R["Ug"]
     if ridge_cap:
         block(cap, lambda u, v, z: Q(v, u, z), -0.28, 0.28, -Gx - 0.35, Gx + 0.35, z_ridge - 0.15, z_ridge + 0.42)
         for sgn in (-1, 1):  # the ridge-end tiles
             block(cap, lambda u, v, z: Q(v, u, z), -0.32, 0.32, sgn * (Gx + 0.35) - 0.25, sgn * (Gx + 0.35) + 0.25, z_ridge - 0.1, z_ridge + 0.85)
-    return {"zr": zr, "Ey": Ey, "Ex": Ex, "A": A, "Q": Q}
+    return {"zr": R["zr"], "Ey": R["Ev"], "Ex": R["Eu"], "A": A, "Q": Q}
 
 
 def karahafu(mats, P, a0, a1, width, z_edge, rise):
@@ -3717,6 +3688,22 @@ def yoyogi():
     for (a, b) in zip(rows[-1][:-1], rows[-1][1:]):
         conc.quad(a, b, (b[0], b[1], g2 - 1.0), (a[0], a[1], g2 - 1.0))
     conc.lathe([(g2 - 1.0, 2.0), (g2 + top2 + 4.0, 1.0)], (mx, my), segs=10)
+    # the spiral girder the roof hangs from: from the mast's head it winds three quarters round, out over the
+    # roof and down to its anchor at the rim's low side (where the shell's tail meets the ground)
+    k_low = int(round(0.75 * n))  # sin minimum: the rim's lowest point
+    path = []
+    for j in range(25):
+        t = j / 24
+        kf = (k_low - 0.75 * n * (1 - t)) % n
+        k0 = int(kf) % n
+        ex, ey = edge[k0]
+        r = 0.12 + 0.88 * t
+        spiral = 1.0 + 0.25 * math.sin(2 * math.pi * kf / n)
+        z = g2 + rim2 * spiral + (top2 - rim2 * spiral) * (1 - r) ** 1.6
+        path.append((mx + (ex - mx) * r, my + (ey - my) * r, z + 0.9))
+    rib.tube([(mx, my, g2 + top2 + 3.5)] + path, 0.7, sides=8)
+    ax_, ay_, az_ = path[-1]
+    conc.box((ax_, ay_, g2 - 1.0), (ax_, ay_, az_ + 0.5), 5.0, 5.0)  # its anchor block
     hidden += [s["si"] for s in solids if s["top"] < 45 and second.buffer(-2).contains(Point(*ak.ring_centroid(s["ring"])))]
     return K.out(), sorted(set(hidden))
 
