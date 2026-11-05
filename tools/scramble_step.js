@@ -34,10 +34,21 @@ module.exports = async function scrambles(p, { all = false } = {}) {
       const ins = j.arms.filter(a => a.in), s0 = A.stats(), was = new Map(), log = [], inBox = new Map();
       let walkPhase = 0, allRed = 0, figures = 0, peak = 0, peakDiag = 0, steppedOut = 0, lingering = 0, carsAmong = 0, wrongFigures = 0, cycles = 0, last = j.ph;
       const box = Math.max(10, j.reach * 0.55);
+      // no signal pole or walk post stands on its crosswalks' stripes (about 8 m wide, a little past their ends)
+      const onStripes = o => (j.walks || []).some(w => { const len = Math.hypot(w[2] - w[0], w[3] - w[1]); if (len < 4) return false; const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len, t = (o.x - w[0]) * ux + (o.y - w[1]) * uy; return t > 0 && t < len && Math.abs((o.x - w[0]) * uy - (o.y - w[1]) * ux) < 4; });
+      const poles = H ? [...H.list, ...H.peds].filter(o => o.a.j === j && onStripes(o)).map(o => `${o.x.toFixed(1)},${o.y.toFixed(1)}`) : [];
+      // and those waiting at its kerbs stand still: not turning about, or breaking into a step and out of it, half a second to the next
+      const stood = new Map();
+      let waitLooks = 0, fidgets = 0;
       for (let t = 0; t < 2 * 4 * (j.green[0] + j.green[1] + j.green[3] + 3 * (j.amber + j.allred)); t++) {
         g.advance(0.5);
         if (last !== 3 && j.ph === 3) cycles++;
         last = j.ph;
+        for (const q of C.P.slice(0, C.active)) {
+          const w = stood.get(q);
+          if (q.pz === pz && q.ph === 'wait' && w) { waitLooks++; if (Math.abs(Math.atan2(Math.sin(q.h - w.h), Math.cos(q.h - w.h))) > 0.35 || w.m !== !!q.moving) fidgets++; }
+          if (q.pz === pz && q.ph === 'wait') stood.set(q, { h: q.h, m: !!q.moving }); else stood.delete(q);
+        }
         const P = C.P.slice(0, C.active), out = P.filter(q => onPlaza(q) || onFoot(q));
         const shown = H && H.walkShown ? H.walkShown(j) : [];
         for (const q of out) if (!was.get(q) && j.ph !== 3) steppedOut++;
@@ -59,7 +70,7 @@ module.exports = async function scrambles(p, { all = false } = {}) {
       }
       const s1 = A.stats();
       return { at: [Math.round(j.x), Math.round(j.y)], crosswalks: G.length / 2, diagonals, walkPhase, allRed, figures, heads: H && H.walkShown ? H.walkShown(j).length : 0,
-        peak, peakDiag, steppedOut, lingering, carsAmong, wrongFigures, cycles, red: s1.redRuns - s0.redRuns, log, crowd: pz ? C.P.slice(0, C.active).filter(q => q.pz === pz).length : 0 };
+        peak, peakDiag, steppedOut, lingering, carsAmong, wrongFigures, cycles, red: s1.redRuns - s0.redRuns, log, poles, waitLooks, fidgets, crowd: pz ? C.P.slice(0, C.active).filter(q => q.pz === pz).length : 0 };
     }, [k, String(order)]));
   }
   return res.map(r => Object.assign(r, { checks: [
@@ -69,5 +80,7 @@ module.exports = async function scrambles(p, { all = false } = {}) {
     [r.peak >= Math.max(10, r.crowd * 0.5) && (!r.diagonals || r.peakDiag >= 3), `the crowd surges across (${r.peak} out at once of the ${r.crowd} gathered there, ${r.peakDiag} on the diagonals)`],
     [!r.steppedOut && !r.lingering, `no one steps out in the traffic's turns (${r.steppedOut}) or is still out on the road once its green has run 2 s (${r.lingering})${r.lingering ? ': ' + r.log.filter(l => !l.startsWith('a car')).join(' | ') : ''}`],
     [!r.carsAmong && !r.red, `no car drives into the box while anyone is out on it, or through it faster than a walk (${r.carsAmong} looks) or runs its red (${r.red})${r.carsAmong ? ': ' + r.log.filter(l => l.startsWith('a car')).join(' | ') : ''}`],
+    [!r.poles.length, `no signal pole or walk post stands on its crosswalks' stripes${r.poles.length ? ': ' + r.poles.join(' | ') : ''}`],
+    [r.fidgets <= Math.max(3, r.waitLooks * 0.1), `those waiting at its kerbs stand still (${r.fidgets} turns or steps in ${r.waitLooks} looks)`],
   ] }));
 };

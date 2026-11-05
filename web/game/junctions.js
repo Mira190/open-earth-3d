@@ -62,7 +62,7 @@ window.OEJunctions = (function () {
   const ROADW = { motorway: 14, trunk: 12, primary: 12, secondary: 10, tertiary: 9, residential: 7, unclassified: 6, living_street: 5 };
   const LINK = 24;      // a piece this short joining two junction nodes lies inside one junction (m)
   const SPAN = 42;      // and a junction is no wider than this (m)
-  const SCR_W_POST = 4.2; // (m: a scramble's walk signal stands this far to the side of its crosswalk's line)
+  const SCR_W_POST = 5.0; // (m: a scramble's walk signal stands this far to the side of its crosswalk's line, clear of its stripes (up to 8 m wide) and the crowd spread across them)
   const AMBER = 3.5, ALLRED = 2, CALL = 12, GAP_MIN = 7, FLASH = 5; // seconds; a phase with nobody waiting on the other turns after CALL more
   const W = (x, y, z) => new THREE.Vector3(x, z, -y);
   const lin = hex => new THREE.Color(hex).convertSRGBToLinear();
@@ -858,7 +858,7 @@ window.OEJunctions = (function () {
     // ------------------------------------------------ the signal heads
     let heads = null;
     function build(world, { style = {}, ground = null, eye = null } = {}) {
-      heads = signalHeads(world, J, net, { style, side, lane, ground, light, arrow, walk });
+      heads = signalHeads(world, J, net, { style, side, lane, ground, light, arrow, walk, foot });
       if (heads && eye) heads.watch(eye);
       return heads;
     }
@@ -887,16 +887,31 @@ window.OEJunctions = (function () {
   const LIT = { r: [3.4, 0.16, 0.05], y: [3.1, 1.25, 0.04], g: [0.1, 2.3, 1.05] }; // linear, bright enough to bloom
   const DARK = { r: [0.07, 0.012, 0.01], y: [0.07, 0.045, 0.01], g: [0.01, 0.06, 0.045] };
   const WALK = { r: [3.0, 0.22, 0.08], g: [0.4, 3.0, 2.0], off: [0.035, 0.03, 0.028] }; // the walk signals' figures, lit and dark
-  function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light, arrow = () => '', walk = () => true }) {
+  function signalHeads(world, J, net, { style = {}, side = 1, lane = 1.7, ground = null, light, arrow = () => '', walk = () => true, foot = null }) {
     const S = Object.assign({}, STYLES.default, STYLES[style.country] || {}, style), horiz = S.layout === 'horizontal';
     const list = []; // poles: { a (the arm it faces), x, y, z, h (the way its lanterns face: towards the arm's traffic), mast (its arm's length), side (+1 on the keep side) }
     const tmp = {};
+    // (on a scramble's crosswalk: its stripes, up to 8 m wide, or just past their ends; a pole there stood out on the stripes)
+    const onWalk = (j, x, y) => j.scramble && (j.walks || []).some(w => {
+      const len = Math.hypot(w[2] - w[0], w[3] - w[1]);
+      if (len < 1) return false;
+      const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len, t = (x - w[0]) * ux + (y - w[1]) * uy;
+      return t > -2.5 && t < len + 2.5 && Math.abs((x - w[0]) * uy - (y - w[1]) * ux) < SCR_W_POST - 0.3;
+    });
     for (const j of J) {
       if (!j.sig) continue;
       for (const a of j.arms) {
         if (!a.in) continue;
-        const l = net.L[a.line], d = a.back + 0.8, s = alongArm(l, a, d);
-        net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
+        const l = net.L[a.line];
+        // (at a scramble, set back along the arm until clear of its crosswalks; none if it never is)
+        let d = a.back + 0.8, s = alongArm(l, a, d), clearOf = false;
+        for (let k = 0; k <= 10; k++) {
+          d = a.back + 0.8 + k; s = alongArm(l, a, d);
+          net.at(a.line, Math.max(0, Math.min(l.len, s)), tmp);
+          const dir = a.end ? 1 : -1, kb = (ROADW[a.c] || 7) / 2 + 0.7;
+          if (!onWalk(j, tmp.x - tmp.hy * dir * kb * side, tmp.y + tmp.hx * dir * kb * side)) { clearOf = true; break; }
+        }
+        if (!clearOf) continue;
         const dir = a.end ? 1 : -1, hx = tmp.hx * dir, hy = tmp.hy * dir; // the way the arm's traffic drives
         const kerb = (ROADW[a.c] || 7) / 2 + 0.7;
         const gz = (x, y) => { const g = ground ? ground(x, y, tmp) : null; return g != null ? g : tmp.z; };
@@ -911,7 +926,7 @@ window.OEJunctions = (function () {
           const opp = a.j.scramble ? a.j.arms.filter(b => b !== a).reduce((m, b) => (Math.abs(angle(b.out, a.out)) > Math.abs(angle(m.out, a.out)) ? b : m)) : null;
           const far = opp ? a.back + opp.back : a.back + Math.max(...a.j.arms.filter(b => b !== a).map(b => b.back)) + Math.min(14, 2 * Math.hypot(a.x - a.j.x, a.y - a.j.y) + 2);
           const fx = tmp.x + hx * far + hy * kerb * side, fy = tmp.y + hy * far - hx * kerb * side;
-          if (net.nearest(fx, fy, 2.2)) continue; // that would stand in a road
+          if (net.nearest(fx, fy, 2.2) || onWalk(a.j, fx, fy)) continue; // that would stand in a road, or on a scramble's stripes
           list.push({ a, x: fx, y: fy, z: gz(fx, fy), h, mast: 0, side: -side });
         }
       }
@@ -964,15 +979,33 @@ window.OEJunctions = (function () {
     const POST_ROAD_HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }; // (as the game draws the roads)
     for (const j of J) {
       if (!j.sig) continue;
-      if (j.scramble && j.walks && j.walks.length) { // (a scramble's: at both ends of each crosswalk, beside it on the pavement, facing across)
+      if (j.scramble && j.walks && j.walks.length) { // (a scramble's: at both ends of each crosswalk, behind the kerb on the pavement, facing across)
         const a = j.arms.find(q => q.in) || j.arms[0];
-        for (const w of j.walks) {
-          const len = Math.hypot(w[2] - w[0], w[3] - w[1]);
-          if (len < 4) continue;
-          const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len;
+        const W2 = j.walks.filter(w => Math.hypot(w[2] - w[0], w[3] - w[1]) >= 4);
+        // (clear of every crosswalk's stripes and of the crowd massed behind each of its kerbs, about 5 m
+        // deep and its stripes' width: a post there stood on the stripes' edge and split the crowd)
+        const clear = (px, py) => W2.every(w => {
+          const len = Math.hypot(w[2] - w[0], w[3] - w[1]), ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len;
+          const t = (px - w[0]) * ux + (py - w[1]) * uy, d = Math.abs((px - w[0]) * uy - (py - w[1]) * ux);
+          return d > SCR_W_POST - 0.3 || t < -5.5 || t > len + 5.5;
+        });
+        const inRoad = (px, py, m = 1.5) => { const q = net.nearest(px, py, 10); return !!q && q.d < (POST_ROAD_HALF[net.L[q.line].c] || 3.5) + m; };
+        // (and on a pavement: by a footway the crowd walks, where it runs along the kerb, not out across the road)
+        const paved = (px, py) => { if (!foot) return true; const f = foot.nearest(px, py, 3, j.z, 3); return !!f && !inRoad(f.x, f.y, 0.3); };
+        for (const w of W2) {
+          const len = Math.hypot(w[2] - w[0], w[3] - w[1]), ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len;
           for (const [ex, ey, k] of [[w[0], w[1], -1], [w[2], w[3], 1]]) {
-            const px = ex + ux * k * 1.2 + uy * k * (SCR_W_POST), py = ey + uy * k * 1.2 - ux * k * (SCR_W_POST);
-            { const q = net.nearest(px, py, 9); if (q && q.d < (POST_ROAD_HALF[net.L[q.line].c] || 3.5) + 0.5) continue; } // that would stand in a road (its carriageway's width, not just its centre line)
+            // (on the side away from the box, the outside of the corner, else the other)
+            let best = null;
+            for (const sd of [1, -1]) for (const back of [1.6, 2.6, 3.6]) {
+              const px = ex + ux * k * back + uy * sd * SCR_W_POST, py = ey + uy * k * back - ux * sd * SCR_W_POST;
+              if (inRoad(px, py) || !clear(px, py) || !paved(px, py)) continue;
+              const far = Math.hypot(px - j.x, py - j.y);
+              if (!best || far > best.far + 0.5) best = { px, py, far };
+            }
+            if (!best) continue; // (no room on that corner: the crosswalk's other posts are seen from it)
+            const { px, py } = best;
+            if (peds.some(o => Math.hypot(o.x - px, o.y - py) < 1)) continue; // (not two in one spot)
             const g = ground ? ground(px, py, { z: j.z, deck: 0 }) : null;
             peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k), scr: true });
           }
