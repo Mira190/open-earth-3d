@@ -293,6 +293,10 @@ SHISHINDEN = "w554905814"
 GOSHO_KAIRO = ("w554905823", "w554905831")
 GOSHO_SHU_GATES = ("承明門", "日華門", "月華門")
 SHU = dict(BARK, post="shu", lattice="renji")
+# the palace gates' stone platforms: a low step that the paths mapped through them (OpenStreetMap's building passages)
+# step up onto and walk across (issue #127)
+GOSHO_KIDAN = 0.3
+
 BENT_FILL = 0.85   # a building filling less of its rectangle than this has a roof on its own outline (archkit.outline_roof)
 
 
@@ -334,6 +338,7 @@ def temples_and_palaces():
     import json
     import os
     from shapely.geometry import Point, Polygon
+    import shapely
     import cityctx
     C = cityctx.City("kyoto")
     T = ak.Terrain("kyoto")
@@ -440,6 +445,28 @@ def temples_and_palaces():
     gosho = Polygon(loc(osm["gosho"]["outline"]))
     in_gosho = [sd for sd in solids if gosho.buffer(4).contains(Point(*ak.ring_centroid(sd["ring"]))) and abs(ak.ring_area(sd["ring"])) >= 30]
     grounded = {sd["osm"] for sd in in_gosho if sd["base"] <= 0 and sd["osm"]}
+    court = shapely.union_all([Polygon(sd["ring"]).buffer(0) for sd in in_gosho if sd["osm"] in GOSHO_KAIRO]).convex_hull
+
+    def gate_frame(sd, cx, cy, ax, L, W):
+        """A gate's long side runs along the wall it stands in: the palace's outer wall for the gates in it, else
+        across the way out of the south court for the gates in its corridors. So the way mapped through it
+        (OpenStreetMap's building passage) crosses its open middle bay; the outline of a near-square gate (its
+        roof's, over the eaves) leaves which side is long to that. (frame, L, W)"""
+        if L < 1.3 * W:
+            a = math.radians(ax)
+            if gosho.exterior.distance(Point(cx, cy)) < 15.0:  # in the outer wall: along its nearest stretch
+                q = gosho.exterior.project(Point(cx, cy))
+                p0, p1 = gosho.exterior.interpolate(max(0.0, q - 3.0)), gosho.exterior.interpolate(q + 3.0)
+                tx, ty = p1.x - p0.x, p1.y - p0.y
+                turn = abs(math.cos(a) * tx + math.sin(a) * ty) < abs(-math.sin(a) * tx + math.cos(a) * ty)
+            else:  # in the court's corridors: across the way from the court's middle
+                c = court.centroid
+                ox, oy = cx - c.x, cy - c.y
+                turn = abs(math.cos(a) * ox + math.sin(a) * oy) > abs(-math.sin(a) * ox + math.cos(a) * oy)
+            if turn:
+                ax, L, W = ax + 90.0, W, L
+        return ak.Frame(cx, cy, ax, T(cx, cy)), L, W
+
     for sd in in_gosho:
         # a building's upper parts (a gate's roof, mapped as a part over its posts) go with it; a gate mapped
         # only by its upper part is drawn from the ground
@@ -457,9 +484,9 @@ def temples_and_palaces():
         elif sd["osm"] in GOSHO_KAIRO:
             ak.corridor(K, P, L, W, 6.4, SHU)
         elif sd["name"] in GOSHO_SHU_GATES:
-            ak.gate(K, ak.Frame(cx, cy, ax, T(cx, cy)), L, W, 10.0 if sd["name"] == "承明門" else 8.0, SHU, storeys=1)
+            ak.gate(K, *gate_frame(sd, cx, cy, ax, L, W), 10.0 if sd["name"] == "承明門" else 8.0, SHU, storeys=1, base_h=GOSHO_KIDAN, foot=0.6)
         elif sd["name"].endswith("門"):  # the outer gates, the Kenrei-mon (建礼門) first: plain cypress, open bays
-            ak.gate(K, ak.Frame(cx, cy, ax, T(cx, cy)), L, W, 8.5 if sd["name"] == "建礼門" else 7.5, BARK, storeys=1)
+            ak.gate(K, *gate_frame(sd, cx, cy, ax, L, W), 8.5 if sd["name"] == "建礼門" else 7.5, BARK, storeys=1, base_h=GOSHO_KIDAN, foot=0.6)
         elif sd["osm"] == SHISHINDEN:
             ak.hall(K, P, L, W, 20.5, BARK, eave_frac=0.42, base_h=1.6, over=3.4)
         else:
