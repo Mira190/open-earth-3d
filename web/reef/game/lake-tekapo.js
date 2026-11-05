@@ -173,8 +173,9 @@ export default function lakeTekapo(G) {
         do: G2 => { if (lupinSeason()) G2.start('lupins'); }, next: 'hello' },
       sunrise: { say: G2 => {
         const r = nextSunrise(), c = P('church-good-shepherd'), cl = sunClears(c, r);
-        return [{ t: `Sunrise is at ${G2.time(r)}. Be here then and look up the lake through the church: the light comes across from the east onto the water and the snow at the head of the lake.`, src: ['model-sun'] },
-          cl ? { t: `The sun comes up behind the hills on the far side; at the church it clears them at about ${G2.time(cl.t)}, ${cl.alt.toFixed(0)}° up in the ${G2.dirName(cl.az)}.`, src: ['model-sun', 'model-lidar'] } : null];
+        return [{ t: `Sunrise is at ${G2.time(r)}. Be here then and look up the lake through the church: the light comes across from the east onto the water and the mountains at the head of the lake.`, src: ['model-sun'] },
+          cl && cl.t - r > 6 * 60e3 ? { t: `The sun comes up behind the hills to the ${G2.dirName(cl.az)}; at the church it clears them at about ${G2.time(cl.t)}, ${cl.alt.toFixed(0)}° up.`, src: ['model-sun', 'model-lidar'] }
+            : cl ? { t: `The skyline that way is low from here, so the sun reaches the church within minutes of rising, in the ${G2.dirName(cl.az)}.`, src: ['model-sun', 'model-lidar'] } : null];
       }, choices: [
         { text: 'Wake me before sunrise.', go: 'end', do: G2 => { G2.start('church-sunrise'); G2.skipTo(nextSunrise() - 25 * 60e3); } },
         { text: 'I\'ll come back for it.', go: 'end', do: G2 => G2.start('church-sunrise') },
