@@ -21,7 +21,7 @@ toward a default) from the city's own aerial photo inside the frame against the 
 there, so the land past the frame takes up where the photo leaves off.
 
 Writes web/data/<id>/
-  far.png   HALF_M either side of the frame's centre, north up, NH x NH, RGB:
+  far.png   HALF_M either side of the frame's centre, north up, NH x NH (GRIDS for an alpine site), RGB:
             r, g  height, (r * 256 + g) / 4 - 100 m; water at sea level is pushed under it
             b     night lights, sqrt-encoded (0..1)
   far.jpg   NC x NC, the land cover's colour (sRGB) from the classes' shares and palette
@@ -54,7 +54,9 @@ import rasterio.windows  # noqa: E402
 from rasterio.transform import from_origin  # noqa: E402
 from rasterio.warp import Resampling, reproject  # noqa: E402
 
-HALF_M = {"city": 40000, "marine": 60000}  # web/world.js reads it from far.json
+HALF_M = {"city": 40000, "marine": 60000, "alpine": 100000}  # web/world.js reads it from far.json
+# an alpine site is seen from its peaks and over 80 km of lake and basin: a wider ring, finer grids (195 m, 98 m)
+GRIDS = {"alpine": (1024, 2048)}
 NH = 512   # the height grid (156 m in a city, 234 m at a reef site)
 NC = 1024  # the colour grid
 DEM_URL = "https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM/Copernicus_DSM_COG_10_{ns}{lat:02d}_00_{ew}{lon:03d}_00_DEM.tif"
@@ -159,6 +161,9 @@ def photo_samples(C, box):
     pieces = []
     if isinstance(ground, list):
         pieces = [(g["file"], g["x0"], g["x1"], g["y0"], g["y1"]) for g in ground]
+    elif isinstance(ground, dict) and "strips" in ground:   # an alpine site's ground in strips (build_alpine.py)
+        px = ground["px_m"]
+        pieces = [(s["file"], C.x0, C.x0 + ground["w"] * px, C.y1 - (s["row0"] + s["rows"]) * px, C.y1 - s["row0"] * px) for s in ground["strips"]]
     elif isinstance(ground, dict):
         w, h, px = ground["w"], ground["h"], ground["px_m"]
         x0, y1 = C.x0, C.y1
@@ -231,9 +236,11 @@ def lights(box, built):
 
 
 def run(cid):
+    global NH, NC
     t = time.time()
     C = City(cid)
-    kind = "marine" if C.cfg.get("kind") == "marine" else "city"
+    kind = C.cfg.get("kind") if C.cfg.get("kind") in ("marine", "alpine") else "city"
+    NH, NC = GRIDS.get(kind, (512, 1024))
     box = Box(C, HALF_M[kind])
     fr = landcover(box)
     dem = warp(box, DEM_URL, 1, NH, Resampling.average, 0, 0.0)

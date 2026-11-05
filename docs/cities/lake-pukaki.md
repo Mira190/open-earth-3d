@@ -41,8 +41,16 @@ python pipeline/fetch_linz.py --city lake-pukaki
 python pipeline/fetch_overture.py --city lake-pukaki --only water segment building land land_use infrastructure
 python pipeline/build_alpine.py --city lake-pukaki
 python pipeline/alpine_detail.py --city lake-pukaki
+python pipeline/far_land.py --city lake-pukaki
 python pipeline/marine_meta.py --city lake-pukaki
 ```
+
+`far_land.py` adds the land past the frame. For an alpine site that is a ring 100 km either side of the centre:
+Copernicus GLO-30 relief at 195 m, and WorldCover's classes coloured from the site's own imagery. `web/reef/farland.js`
+lowers it by the lake's height, so it meets the frame's edge. Landmark models are placed from city.json
+`landmarks` ({id, glb, lonlat, ground_m, walk?: "deck"}; `web/reef/alpine/landmarks.js`). Lupin drifts the land cover
+cannot tell come from `flora.lupins` ({lonlat, r_m, density}). `tools/site_shots.js` renders a site's `shots` on a
+desktop and a phone.
 
 The last command refreshes the POIs, spawn and helicopter after a `city.json` edit, with no raw data needed.
 
@@ -195,6 +203,5 @@ Sources read on 2026-11-05:
 - **Checked:** stills on a desktop (1440 × 900) and a phone (390 × 844) at day, dusk and night, in software WebGL2 (Mesa).
 - **Not checked:** a real GPU, WebGPU, Safari or iOS. The planar reflection renders the scene twice; on a slow device
   turn it off with `?mirror=0` and the plants with `?flora=0`.
-- **Open:** the far land past the frame (`pipeline/far_land.py` for an alpine site); the Hermitage and the visitor
-  centre as models; SH80 as a road surface with markings; cars on the highway; seasonal snow lower than the summer
+- **Open:** the Hermitage and the visitor centre as models; SH80 as a road surface with markings; cars on the highway; seasonal snow lower than the summer
   mosaic shows; a real star catalogue; volumetric clouds.

@@ -259,7 +259,7 @@ async function main() {
     clockMs, tide,                                                    // the model clock (ms) and the tide (tide.js: at(ms), turns(ms), rising(ms))
     setClock, clockLive: () => live,                                  // set the clock (UTC ms, or null for now); whether it follows now
     site: S.id, pois: S.pois || [], poi: id => (S.pois || []).find(p => p.id === id) || null };  // points of interest, metres east (x) and north (y)
-  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
+  const mods = (q.get('mods') ?? (ALP ? 'alpine/flora,alpine/landmarks,boats,player,game' : 'life,boats,player,game')).split(',').filter(Boolean);
   for (const [i, name] of mods.entries()) {
     stage(STEPS[name] || `Loading ${name}`, 0.58 + 0.3 * i / mods.length);
     await paint();
