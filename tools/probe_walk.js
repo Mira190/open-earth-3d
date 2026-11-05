@@ -8,7 +8,7 @@ const [,, city = 'sydney', pts = '[]'] = process.argv;
   const p = await b.newPage({ viewport: { width: 640, height: 400 } });
   await p.goto(`http://localhost:${process.env.PORT || 8800}/#play-${city}`, { waitUntil: 'domcontentloaded', timeout: 120000 });
   await p.waitForFunction('window.__game', null, { timeout: 300000 });
-  const out = await p.evaluate(P => P.map(([x, y, z]) => {
+  const out = await p.evaluate(P => P.map(([x, y, z]) => { z = z || window.__game.nav.terrain(x, y);
     const nav = window.__game.nav;
     return { at: [x, y, z], terrain: nav.terrain(x, y), floor: nav.floorAt(x, y, z), walk: nav.walk(x, y, z), solid: nav.landmarkHit(x, y, z + 0.4, z + 1.8) };
   }), JSON.parse(pts));

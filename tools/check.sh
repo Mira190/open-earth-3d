@@ -44,7 +44,7 @@ STAMP="$(git rev-parse --git-dir)/oe-check-pass"   # the commit of the last full
 stamp() { [ $# -eq 0 ] && [ -z "$(git status --porcelain)" ] && git rev-parse HEAD >"$STAMP"; return 0; }
 CITIES=$(tools/live_cities.sh)
 PARKED=$(tools/live_cities.sh --parked)
-REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || echo "$d"; done)
+REEFS=$(for d in web/data/*/; do d=$(basename "$d"); [ -f "web/data/$d/game.json" ] || [ ! -f "web/data/$d/scene.json" ] || echo "$d"; done)   # a reef site: its scene built, no city game
 is_in() { printf '%s\n' $2 | grep -qx "$1"; }
 
 cities=() reefs=() title=0 loader=0 voice=0
