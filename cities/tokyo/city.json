@@ -118,7 +118,8 @@
         "rail": "painted",
         "lamps": 2,
         "lamp_style": "bronze",
-        "note": "1964 steel, to the 1888 iron bridge's design, black"
+        "deck_z": [15.3, 10.1],
+        "note": "1964 steel, to the 1888 iron bridge's design, black; its deck from the palace's inner terrace (15.3 m, GSI DEM) down to the Seimon forecourt at the stone bridge's west end (10.1 m): the moat's own floor no longer sets it"
       }
     }
   },
