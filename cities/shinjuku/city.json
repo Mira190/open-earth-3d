@@ -110,6 +110,7 @@
       {
         "name": "Shinjuku Gyoen",
         "find": "新宿御苑",
+        "floor": "lawn",
         "mix": {
           "plane": 0.25,
           "zelkova": 0.15,
@@ -138,6 +139,7 @@
       },
       {
         "name": "Meiji Jingu",
+        "floor": "earth",
         "find": "明治神宮",
         "mix": {
           "camphor": 0.3,

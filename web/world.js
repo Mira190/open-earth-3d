@@ -700,18 +700,45 @@ vec3 photoGrade(vec3 c) {
     }
     const WOODS = woodsTex && { tex: { value: woodsTex }, box: { value: new THREE.Vector4(scene.woods.x0, scene.woods.y1, scene.woods.nx * scene.woods.cell, scene.woods.ny * scene.woods.cell) } };
     // the floor's three colours (linear albedo), by what grows or lies under the city's park trees (woods.py FLOOR)
-    const FLOOR = {
+    const FLOORS = {
       earth: ['vec3(0.15, 0.1, 0.058)', 'vec3(0.21, 0.135, 0.066)', 'vec3(0.085, 0.12, 0.04)'], // bare earth, leaf litter, moss
       lawn: ['vec3(0.068, 0.11, 0.034)', 'vec3(0.095, 0.135, 0.042)', 'vec3(0.15, 0.105, 0.062)'], // grass in shade, in sun, worn to earth
       gravel: ['vec3(0.3, 0.255, 0.19)', 'vec3(0.36, 0.305, 0.225)', 'vec3(0.2, 0.16, 0.11)'], // stabilised sand and gravel, damp under the crowns
-    }[(scene.woods || {}).floor] || ['vec3(0.15, 0.1, 0.058)', 'vec3(0.21, 0.135, 0.066)', 'vec3(0.085, 0.12, 0.04)'];
+    };
+    const FLOOR = FLOORS[(scene.woods || {}).floor] || FLOORS.earth;
+    // a floor per area (#165): an area in trees.areas with "floor" (earth, lawn or gravel) has its own, the Kyoto
+    // Gyoen's gravel, Meiji Jingu's leaf litter, a park's lawn: their outlines drawn into a map over the woods'
+    // box (red 80 earth, 120 lawn, 160 gravel; 0 the city's own floor), read nearest
+    const KINDS = ['earth', 'lawn', 'gravel'];
+    const floorAreas = WOODS ? ((scene.trees || {}).areas || []).filter(a => KINDS.includes(a.floor) && (a.xy || a.parts || a.at)) : [];
+    let floorTex = null;
+    if (floorAreas.length) {
+      const W = scene.woods, fc = Math.max(2, W.cell * 2), cw = Math.ceil(W.nx * W.cell / fc), chh = Math.ceil(W.ny * W.cell / fc);
+      const cv = document.createElement('canvas'); cv.width = cw; cv.height = chh;
+      const g2 = cv.getContext('2d'), px = x => (x - W.x0) / fc, py = y => (W.y1 - y) / fc;
+      // the first area listed wins where they overlap, as for the trees' mix: drawn last
+      for (const a of floorAreas.slice().reverse()) {
+        g2.fillStyle = `rgb(${(KINDS.indexOf(a.floor) + 2) * 40},0,0)`;
+        g2.beginPath();
+        if (a.at) g2.arc(px(a.at[0]), py(a.at[1]), a.radius / fc, 0, Math.PI * 2);
+        else for (const P of a.parts || [a.xy]) P.forEach(([x, y], i) => (i ? g2.lineTo(px(x), py(y)) : g2.moveTo(px(x), py(y))));
+        g2.fill();
+      }
+      floorTex = new THREE.CanvasTexture(cv);
+      floorTex.colorSpace = THREE.NoColorSpace; floorTex.flipY = false; floorTex.generateMipmaps = false;
+      floorTex.minFilter = floorTex.magFilter = THREE.NearestFilter;
+    }
     const woodsFloor = sh => {
       if (!WOODS) return;
       Object.assign(sh.uniforms, { uWoods: WOODS.tex, uWoodsBox: WOODS.box });
+      if (floorTex) { sh.uniforms.uFloorMap = { value: floorTex }; sh.defines = Object.assign(sh.defines || {}, { FLOOR_MAP: '' }); }
       sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWoodWP;')
         .replace('#include <project_vertex>', '#include <project_vertex>\nvWoodWP = (modelMatrix * vec4(transformed, 1.0)).xyz;');
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 uniform sampler2D uWoods; uniform vec4 uWoodsBox; varying vec3 vWoodWP;
+#ifdef FLOOR_MAP
+uniform sampler2D uFloorMap;
+#endif
 float woodH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float woodN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(woodH(i), woodH(i + vec2(1, 0)), f.x), mix(woodH(i + vec2(0, 1)), woodH(i + vec2(1, 1)), f.x), f.y); }
@@ -720,11 +747,21 @@ vec3 woodsFloor(vec3 c) {
   if (any(lessThan(uv, vec2(0.0))) || any(greaterThan(uv, vec2(1.0)))) return c;
   vec4 m = texture2D(uWoods, uv);
   float d = distance(vWoodWP, cameraPosition);
+  // the area's own floor, if it has one (0: the city's)
+  float fk = 0.0;
+#ifdef FLOOR_MAP
+  fk = floor(texture2D(uFloorMap, uv).r * 255.0 / 40.0 + 0.5) - 1.0; // 1 earth, 2 lawn, 3 gravel
+#endif
   // in a park, the photo's shadows on its gravel are skylight blue (the same teal), and the scene
   // casts its own: near the camera, their colour taken out
   float L = dot(c, vec3(0.2126, 0.7152, 0.0722));
   float blue = smoothstep(0.005, 0.03, c.b - c.g) * smoothstep(0.01, 0.04, c.b - c.r);
   c = mix(c, vec3(L) * vec3(1.06, 1.0, 0.9), blue * m.a * 0.85 * (1.0 - smoothstep(150.0, 700.0, d)));
+  // on a gravel ground (the Kyoto Gyoen's avenues) the whole photo's gravel, in sun and in shade, is a warm
+  // grey-beige: what is left of the sky's blue in it taken out at any distance
+  if (fk > 2.5) { float L0 = dot(c, vec3(0.2126, 0.7152, 0.0722)); float bl = smoothstep(-0.01, 0.025, c.b - 0.5 * (c.r + c.g));
+    c = mix(c, vec3(L0) * vec3(1.08, 1.0, 0.86), 0.9 * bl);
+    c *= mix(1.0, 0.8, smoothstep(0.3, 0.75, L0)); } // and its sunlit expanse kept off white, as it photographs
   // as far as the trees go (trees.js WOOD_M), and only from among them: from above, the gaps between their
   // crowns are the lower canopy and the undergrowth, which the photo has
   float fade = max(smoothstep(${small ? '260.0, 560.0' : '320.0, 780.0'}, d), smoothstep(30.0, 90.0, cameraPosition.y - vWoodWP.y));
@@ -737,8 +774,14 @@ vec3 woodsFloor(vec3 c) {
   float patches = woodN(p * 0.11) * 0.6 + woodN(p * 0.37 + 3.1) * 0.4;
   float grain = woodN(p * 1.9) * 0.45 + woodN(p * 6.3) * 0.33 + woodN(p * 21.0) * 0.22;
   // linear albedos, in patches (darker where the canopy is tall: deeper shade, damper ground)
-  vec3 g = mix(${FLOOR[0]}, ${FLOOR[1]}, smoothstep(0.35, 0.72, patches));
-  g = mix(g, ${FLOOR[2]}, smoothstep(0.5, 0.82, woodN(p * 0.19 + 7.0)) * 0.85);
+  vec3 f0 = ${FLOOR[0]}, f1 = ${FLOOR[1]}, f2 = ${FLOOR[2]};
+  if (fk > 0.5) { // an area's own floor
+    if (fk < 1.5) { f0 = ${FLOORS.earth[0]}; f1 = ${FLOORS.earth[1]}; f2 = ${FLOORS.earth[2]}; }
+    else if (fk < 2.5) { f0 = ${FLOORS.lawn[0]}; f1 = ${FLOORS.lawn[1]}; f2 = ${FLOORS.lawn[2]}; }
+    else { f0 = ${FLOORS.gravel[0]}; f1 = ${FLOORS.gravel[1]}; f2 = ${FLOORS.gravel[2]}; }
+  }
+  vec3 g = mix(f0, f1, smoothstep(0.35, 0.72, patches));
+  g = mix(g, f2, smoothstep(0.5, 0.82, woodN(p * 0.19 + 7.0)) * 0.85);
   g *= (0.78 + 0.44 * grain) * mix(1.0, 0.82, smoothstep(6.0, 22.0, m.g * 32.0));
   vec3 path = vec3(0.29, 0.26, 0.21) * (0.86 + 0.28 * woodN(p * 8.0));
   g = mix(g, path, smoothstep(0.2, 0.6, m.b));

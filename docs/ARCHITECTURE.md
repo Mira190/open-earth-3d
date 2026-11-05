@@ -893,6 +893,19 @@ flower (from the first flowers to the petals' fall, the light-ups' season).
 ![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
 ![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
 
+### A floor per area (issue #165)
+
+The ground drawn under the woods' and parks' canopy near the camera (`woods.png`,
+world.js `woodsFloor`) was one kind per city (`trees.floor`). An area in
+`trees.areas` may now set its own `floor` (`earth`, `lawn` or `gravel`): world.js
+draws the areas' outlines into a map over the woods' box when the city loads and
+the floor shader reads it, the first area listed winning where they overlap. On a
+gravel area the photo's gravel also loses what is left of the sky's blue in it, in
+sun and in shade and at any distance, and its sunlit expanse is kept off white: the
+Kyoto Gyoen's gravel read slightly blue. Set: the Kyoto Gyoen (gravel), the Kokyo
+Gaien and Shinjuku Gyoen (lawn), Meiji Jingu (leaf litter, `earth`). Yoyogi's lawn
+waits for Shibuya's opening film.
+
 **What we looked at for the night.** Real-time engines light a festival's many
 small lamps without a light per lamp: emissive meshes with a halo card or bloom
 for the lamps themselves, and baked or analytic light for what they light (three.js
