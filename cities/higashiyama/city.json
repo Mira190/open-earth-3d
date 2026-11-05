@@ -96,6 +96,7 @@
         "mix": {
           "shidarezakura": 1
         },
+        "yozakura": true,
         "note": "Maruyama Park's Gion shidarezakura (the second, grown from the first's seed), about 12 m tall. OSM maps no tree on its spot: the park's mapped trees nearest it stand for it."
       },
       {
@@ -108,6 +109,7 @@
           "pine": 0.1,
           "zelkova": 0.15
         },
+        "yozakura": true,
         "note": "Kyoto's oldest public park, famous for its cherries round the Gion weeping cherry: about 680, Somei-yoshino and weeping cherries (the park's guide)."
       },
       {

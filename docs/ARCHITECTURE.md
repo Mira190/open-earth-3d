@@ -865,6 +865,43 @@ shows the cherry's leaf cell.
 
 ![The four cherries through the year as the game draws them: kawazu-zakura in February, Somei-yoshino and the weeping cherry on 1 April, yaezakura on 18 April, June, January](images/trees/cherry_varieties.jpg)
 
+### Yozakura: the cherries lit after dark (issue #162)
+
+In the bloom the famous spots light their cherries after dark: uplights at the foot
+of each tree, and bonbori, paper lanterns on posts, along the walks. An area in
+`trees.areas` with `"yozakura": true` does the same (`web/trees.js`): its cherries,
+of any variety, are lit from sunset (world.js's `uNight`) while any of them is in
+flower (from the first flowers to the petals' fall, the light-ups' season).
+
+- **The uplight** is a term in the trees' own shader, no light source: each lit
+  tree (a per-instance flag) adds its albedo times a warm white to its emission,
+  most on the undersides of the crown and the lower boughs and falling off up the
+  tree (about a third left at 9 m), as a photograph of an uplit cherry shows it:
+  the blossom glowing pink against a dark sky, the tops going into the dark. It
+  costs a few instructions on the trees already drawn, on every tier.
+- **A pool of light** round each lit tree's foot (a soft additive disc on the
+  ground, the crown's width) and round each lantern.
+- **The bonbori** stand every 7 m along the footways mapped through the area
+  (night.json's), on alternate sides 1.5 m off the centre line, or beside every
+  other lit tree where none is mapped: a dark post, a washi shade lit warm from
+  inside and a halo. On the light tier every 14 m, at most 240, and no halos.
+- **Where:** Chidorigafuchi and its Ryokudo (Tokyo; the Chiyoda Sakura
+  Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama).
+  The Meguro River waits for Shibuya's opening film; Ueno's Sakura-dori and
+  Osaka's Mint are parked.
+
+![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
+![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
+
+**What we looked at for the night.** Real-time engines light a festival's many
+small lamps without a light per lamp: emissive meshes with a halo card or bloom
+for the lamps themselves, and baked or analytic light for what they light (three.js
+has no clustered lighting on WebGL; its WebGPU renderer does). Night photographs of
+Chidorigafuchi, Maruyama and the Meguro River show the blossom lit pink-white from
+below against a deep blue sky, the trunks and the lowest boughs brightest, and the
+lanterns as warm points. **Adopted:** the analytic per-tree uplight in the shader,
+emissive lanterns with a point-sprite halo and additive ground pools (our own code).
+
 **What we looked at.** How browser engines and open-source projects draw trees:
 three.js's `InstancedMesh` foliage with alpha-tested leaf cards (what the shared
 trees already do); [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT; a
