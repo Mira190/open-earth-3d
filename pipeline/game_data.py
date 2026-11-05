@@ -277,7 +277,7 @@ def main():
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
                     way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
                     roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
-    for t in tracks:  # a track that meets a street between the street's sampled points: give the street that point
+    for t in tracks:  # a track that meets a street between the street's sampled points
         tx, ty = t["at"]
         best = None
         for r in roads:
@@ -289,10 +289,12 @@ def main():
                 d = math.hypot(ax + (bx - ax) * u - tx, ay + (by - ay) * u - ty)
                 if 0 < u < 1 and d < t.get("r", 5) and (best is None or d < best[0]) and abs(p[k] / 10 - tx) + abs(p[k + 1] / 10 - ty) > 0.5:
                     best = (d, r, k, u)
-        if best:
+        if best:  # split the street there, so the track's end is a junction (the game's road graph joins pieces at their ends)
             d, r, k, u = best
             p = r["p"]
-            r["p"] = p[:k + 3] + [round(tx * 10), round(ty * 10), round(p[k + 2] + (p[k + 5] - p[k + 2]) * u)] + p[k + 3:]
+            mid = [round(tx * 10), round(ty * 10), round(p[k + 2] + (p[k + 5] - p[k + 2]) * u)]
+            r["p"] = p[:k + 3] + mid
+            roads.append(dict(r, p=mid + p[k + 3:]))
     roads, n_cut = connected_roads(roads)
     if n_cut:
         print(f"roads: {n_cut} pieces cut off from the street network dropped (no car can reach them)")
