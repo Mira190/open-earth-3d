@@ -408,18 +408,8 @@ def saimon_steps(K, P, u_edge, z_top, ground, width=5.4, max_rise=0.2):
     drape(K["court_flags"], pad, ground)
 
 
-def drape(m, poly, ground, lift=0.04, seg=3.0):
-    """A polygon laid on the ground `lift` over it (a decal): its triangles' corners on the terrain."""
-    import shapely
-    for q in getattr(poly, "geoms", [poly]):
-        if q.geom_type != "Polygon" or q.area < 1.0:
-            continue
-        for t in shapely.constrained_delaunay_triangles(q.segmentize(seg)).geoms:
-            cs = np.asarray(t.exterior.coords)[:3]
-            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
-            if ax * by - ay * bx < 0:
-                cs = cs[::-1]
-            m.tri(*[np.array([x, y, ground(x, y) + lift]) for x, y in cs], [[x, y] for x, y in cs])
+def drape(m, poly, ground):
+    kk.drape(m, poly, ground, lift=0.04, cell=1.0)
 
 
 def lean_to(K, M, P, u0, u1, hv, z_hi, z_ground, ground):

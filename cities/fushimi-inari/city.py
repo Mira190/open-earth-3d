@@ -513,10 +513,14 @@ def torii_props():
     return props
 
 
+WALL_TOP = 1.15   # the collision walls' height (m): over a walker's knee, so they stop walkers, and under the
+# camera, which the landmarks' coarse cells (padded 0.3 m) would otherwise lift over the torii's roofs
+
+
 def torii_hits(chunk=48.0):
     """The torii's pillars for the collision world. The torii on the paths stand closer than a walker is
     wide (0.2 m apart in the Senbon Torii, 0.65 m on the mountain), so each side of a run of them is one
-    wall, pillar to pillar, from the ground to the tie beam, broken where the run is (a shrine, a gap
+    wall, pillar to pillar, from the ground to 1.15 m (over the knee, under the camera), broken where the run is (a shrine, a gap
     of a metre or more). The walls are in a material that is solid but never drawn (opacity 0), cut into
     chunks drawn only within their own radius: walkers and the player keep between the pillars. (The
     miniature torii at the otsuka stand off the path.)"""
@@ -544,7 +548,7 @@ def torii_hits(chunk=48.0):
                 # along the pillars' outer faces: the collision world's cells (0.25 m) widen a wall by up to a
                 # cell each side, and the tunnels are only a little wider than two people
                 X = side * ((span / 2 + h * 0.01) * sc + dia / 2)
-                p = (round(x + math.cos(hd) * X, 2), round(y + math.sin(hd) * X, 2), round(z, 2), round(z + h * 0.7, 2), hd)
+                p = (round(x + math.cos(hd) * X, 2), round(y + math.sin(hd) * X, 2), round(z, 2), round(z + WALL_TOP, 2), hd)
                 if last is not None and (math.hypot(p[0] - last[0], p[1] - last[1]) > 1.0 or abs(math.remainder(hd - last[4], math.tau)) > 0.35):
                     wall(pts)
                     pts = []

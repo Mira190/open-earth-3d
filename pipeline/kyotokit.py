@@ -482,3 +482,30 @@ def stairs(m, pts, width, z_from, z_to, rise=0.17, riser=None):
             m.quad(P(i, zb), P(j, zb), P(j, z), P(i, z))
         out.append(((a + b) / 2, z))
     return out
+
+
+def drape(m, poly, ground, lift=0.04, cell=1.5):
+    """A polygon (shapely, with holes) laid on the ground `lift` over it, as a decal: triangulated over a
+    `cell` m grid inside it and its outline every `cell` m, each corner on the terrain, so that it follows
+    the ground between its edges rather than spanning them (a mound in a court would poke through)."""
+    import shapely
+    from shapely.geometry import MultiPoint, Point
+    for q in getattr(poly, "geoms", [poly]):
+        if q.geom_type != "Polygon" or q.area < 1.0:
+            continue
+        q = q.simplify(0.2)
+        pts = [c for r in [q.exterior] + list(q.interiors) for c in r.segmentize(cell).coords]
+        x0, y0, x1, y1 = q.bounds
+        inner = q.buffer(-0.3 * cell)
+        for x in np.arange(x0 + cell / 2, x1, cell):
+            for y in np.arange(y0 + cell / 2, y1, cell):
+                if inner.contains(Point(x, y)):
+                    pts.append((x, y))
+        for t in shapely.delaunay_triangles(MultiPoint(pts)).geoms:
+            if not q.buffer(0.01).contains(t.centroid):
+                continue
+            cs = np.asarray(t.exterior.coords)[:3]
+            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
+            if ax * by - ay * bx < 0:
+                cs = cs[::-1]
+            m.tri(*[np.array([x, y, ground(x, y) + lift]) for x, y in cs], [[x, y] for x, y in cs])

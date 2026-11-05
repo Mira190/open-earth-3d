@@ -296,7 +296,8 @@ SHU = dict(BARK, post="shu", lattice="renji")
 BENT_FILL = 0.85   # a building filling less of its rectangle than this has a roof on its own outline (archkit.outline_roof)
 
 
-APRON_M = 3.5   # how far round a hall's outline its court is laid over the photograph (m)
+APRON_M = 3.5   # how far round a hall's outline its court is laid over the photograph (m), at the least
+APRON_PER_M = 0.3   # and for a tall hall, this much a metre of its height: its shadow on the photograph is longer
 
 
 def W_of(sd):
@@ -307,7 +308,7 @@ def L_of(sd):
     return ak.oriented(sd["ring"])[3]
 
 
-def aprons(K, solids, T, around, mat):
+def aprons(K, solids, T, around, mat, heights=None):
     """The court round each hall in `around`, APRON_M out from its outline, laid in `mat` a little over the
     ground (#187): the aerial photograph has each hall's shadow and the lean of its eaves on the ground
     beside it, and strips of water too small to draw (city.json water.min_area_m2) along the platforms, a
@@ -318,19 +319,15 @@ def aprons(K, solids, T, around, mat):
     if not around:
         return
     fp = lambda sd: Poly(sd["ring"], sd["holes"]).buffer(0)
-    ring = unary_union([fp(sd).buffer(APRON_M, join_style="mitre") for sd in around])
+    heights = heights or {}
+    ring = unary_union([fp(sd).buffer(max(APRON_M, APRON_PER_M * heights.get(sd["osm"], 0.0)), join_style="mitre") for sd in around])
     near = [sd for sd in solids if sd["base"] <= 0 and fp(sd).intersects(ring)]
-    court = ring.difference(unary_union([fp(sd).buffer(0.05) for sd in near]))
-    m = K[mat]
-    for q in getattr(court, "geoms", [court]):
-        if q.geom_type != "Polygon" or q.area < 1.0:
-            continue
-        for t in shapely.constrained_delaunay_triangles(q.simplify(0.3).segmentize(3.0)).geoms:
-            cs = np.asarray(t.exterior.coords)[:3]
-            (ax, ay), (bx, by) = cs[1] - cs[0], cs[2] - cs[0]
-            if ax * by - ay * bx < 0:
-                cs = cs[::-1]
-            m.tri(*[np.array([x, y, T(x, y) + 0.04]) for x, y in cs], [[x, y] for x, y in cs])
+    mine = {sd["si"] for sd in around}
+    # (under a hall's own outline's edge too: its stone platform stands inside the outline, which is traced
+    # at the eaves, and the photograph shows between them)
+    court = ring.difference(unary_union([fp(sd).buffer(-2.0 if sd["si"] in mine else 0.05) for sd in near]))
+    import kyotokit
+    kyotokit.drape(K[mat], court, T, lift=0.05, cell=4.0)
 
 
 def temples_and_palaces():
@@ -468,7 +465,8 @@ def temples_and_palaces():
         else:
             ak.hall(K, P, L, W, float(np.clip(4.0 + 0.36 * W, 6.5, 14.5)), BARK, eave_frac=0.42, base_h=0.8)
         hidden.append(sd["si"])
-    aprons(K, solids, T, [sd for sd in solids for oid, _, _ in TEMPLE_HALLS if sd["osm"] == oid], "court_flags")
+    aprons(K, solids, T, [sd for sd in solids for oid, _, _ in TEMPLE_HALLS if sd["osm"] == oid], "court_flags",
+           {oid: ridge for oid, ridge, _ in TEMPLE_HALLS})
     aprons(K, solids, T, halls + [sd for sd in in_gosho if sd["base"] <= 0 and not (W_of(sd) < 4.5 and L_of(sd) > 12)], "court_gravel")
     # every part of a building drawn here goes with it (the parts mapped over a gate's posts, a hall's roof)
     drawn = {sd["osm"] for sd in solids if sd["si"] in set(hidden) and sd["osm"]}

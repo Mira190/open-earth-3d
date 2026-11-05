@@ -50,7 +50,7 @@ The sources are those of the other Kyoto maps:
   - Each is vermilion, with black feet and a black lintel, and a ring at the heads of its pillars (稲荷鳥居).
   - A donor's name runs in black down the back of each pillar, so it shows as you come down.
 - **The torii are solid** (#167): the path torii stand closer than a walker is wide, so each side of a
-  run of them is one wall from pillar to pillar, from the ground to the tie beam, broken where the run
+  run of them is one wall from pillar to pillar, from the ground to 1.15 m (over a walker's knee, under the camera, which the landmarks' coarse cells would otherwise lift over the torii's roofs), broken where the run
   is (a shrine, a fork, a gap of a metre or more). The walls are landmark meshes (`torii_hit_*`) in a
   material that is solid but never drawn (opacity 0), cut into 48 m chunks drawn only within their own
   radius, so `web/game/nav.js` lays them into its fine cells like any landmark's posts and nothing in

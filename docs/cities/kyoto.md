@@ -164,7 +164,8 @@ Seen on foot by day (#187), the aerial photograph's shadows of the halls, the le
 and strips of water too small to draw lay flat on the ground beside the halls, a dark or blue band
 where the drawn pavement stops short of a platform: along Higashi Honganji's Amida Hall, Nishi
 Hongwanji's Founder's and Amida Halls, and among Nijo's and the palace's halls. A court is laid over
-the photograph round each of these halls, 3.5 m out from its outline and not where another building
+the photograph round each of these halls, 3.5 m out from its outline, or 0.3 m a metre of its height
+for a tall one (11 m round Higashi Honganji's 38 m Founder's Hall), and not where another building
 stands (`aprons()` in `cities/kyoto/city.py`): granite flags at the two Honganji, raked gravel at
 Nijo and the Imperial Palace. The survey's views are `tools/views/kyoto-forecourts-187.json`.
 
