@@ -472,6 +472,36 @@ const npcNight = require('./npc_night');
       `climbs ${c.name}: from ${c.start.toFixed(2)} m to ${c.z.toFixed(2)} m (the top is ${c.to.toFixed(2)} m), ${c.d.toFixed(1)} m from it`);
   }
 
+  // the longest bridge over the water (pipeline/bridges.py, issue 122): walk across its deck from the bank
+  // beyond one end to the bank beyond the other, and keep to the deck's height all the way over the water
+  const cross = await p.evaluate(() => {
+    const g = window.__game, pl = g.player;
+    const S = (g.G.surfaces || []).filter(s => s.mesh === 'bridges_wb_deck' && s.type === 'strip');
+    if (!S.length) return null;
+    const s = S.reduce((a, b) => (b.profile[b.profile.length - 1][0] - b.profile[0][0] > a.profile[a.profile.length - 1][0] - a.profile[0][0] ? b : a));
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    const [ox, oy] = s.origin, [ax, ay] = s.axis, P = s.profile, u0 = P[0][0] + 1.5, u1 = P[P.length - 1][0] - 1.5;
+    const zAt = u => { for (let i = 1; i < P.length; i++) if (u <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (u - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
+    const f = g.nav.floorAt(ox + ax * u0, oy + ay * u0, zAt(u0) + 0.5);
+    const r = { name: s.name, len: u1 - u0 };
+    if (!f) return r;
+    Object.assign(pl, { x: ox + ax * u0, y: oy + ay * u0, z: f.z, ground: true, vz: 0, speed: 0 });
+    let worst = 0, over = 0;
+    const tx = ox + ax * u1, ty = oy + ay * u1;
+    // (room for a walker or a fine collision tile laid late under load to hold you up on the far bank)
+    for (let i = 0; i < 3000 && Math.hypot(tx - pl.x, ty - pl.y) > 0.6; i++) {
+      pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y);
+      g.advance(0.05, ['KeyW']);
+      const u = (pl.x - ox) * ax + (pl.y - oy) * ay;
+      if (g.nav.isWater(pl.x, pl.y)) { over++; worst = Math.max(worst, Math.abs(pl.z - zAt(u))); }
+    }
+    Object.assign(r, { d: Math.hypot(tx - pl.x, ty - pl.y), worst, over, mode: pl.mode });
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return r;
+  });
+  if (cross) check(cross.d != null && cross.mode === 'foot' && cross.d < 1.5 && cross.worst < 0.4,
+    `walks across ${cross.name} (${cross.len.toFixed(0)} m): ${cross.d == null ? 'no floor at its end' : `${cross.d.toFixed(1)} m from the far end, ${cross.over} steps over the water at most ${cross.worst.toFixed(2)} m off the deck, ${cross.mode}`}`);
+
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
   const hop = await p.evaluate(() => {
@@ -938,7 +968,10 @@ const npcNight = require('./npc_night');
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
     const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
-    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    if (!sig.length) { // no junction with signals (Higashiyama's lanes): the traffic still has to move
+      g.advance(20);
+      return { junctions: JN.J.length, signals: 0, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+    }
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
     const s1 = A.stats();
@@ -1067,7 +1100,7 @@ const npcNight = require('./npc_night');
       check(lights.crossings > 0 && lights.walkSignals > 0, `the crowd's footways cross at the signals (${lights.crossings} crossings, ${lights.walkSignals} walk signals)`);
       if (lights.walkTurns) check(lights.walkTurns === 2, 'the nearest junction\'s walk signal turns on and off');
     }
-    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
+    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two || 0} cars in a main road's second lane`);
   }
   await shot('junction');
 

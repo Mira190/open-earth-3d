@@ -350,6 +350,7 @@ python pipeline/fetch_3dbag.py --city <id>        # if the city has a bag3d bloc
 python pipeline/build_scene.py --city <id>
 python pipeline/landmarks.py --city <id>
 python pipeline/open_sea.py --city <id>           # the open water past the frame (sea.jpg)
+python pipeline/far_land.py --city <id>           # the land past the frame (far.png, far.jpg, far.json)
 python analysis/heights.py --city <id>            # if there is a reference table
 python pipeline/build_scene.py --city <id>        # applies reference corrections
 python analysis/data_quality.py --city <id>

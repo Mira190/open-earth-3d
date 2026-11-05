@@ -432,7 +432,7 @@ BRIDGE_MATS = {"bridge_deck": {"color": "#55575a", "roughness": 0.9, "metalness"
                "bridge_pier": {"color": "#8a877f", "roughness": 0.9, "metalness": 0.0}}
 
 
-def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_m2=250.0, colours=None, widths=None):
+def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_m2=250.0, colours=None, widths=None, floor=3.5):
     """The bridges OpenStreetMap outlines over the water (Overture infrastructure, class bridge, at least
     min_m2 and a quarter of it over the water): the axis along the outline's long side, its length and width,
     and the deck's height at both ends (the ground just beyond each end, at least 3.5 m) with a crown in the
@@ -441,12 +441,14 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
     C = ctx.city
     water = shapely.union_all([r["geom"] for r in jk.overture(C, "water", "class IN (" + ", ".join(f"'{c}'" for c in classes) + ")")
                                if r["geom"].geom_type in ("Polygon", "MultiPolygon")])
+    ctx.bridge_water = water   # (bridges.py clear: the ground under a deck, over the water alone)
     out = []
     rows = jk.overture(C, "infrastructure", "class = 'bridge'")
     shapes = [(r["name"] or "", r["geom"]) for r in rows if r["geom"].geom_type == "Polygon"]
     # a bridge mapped only as its centre lines (one per carriageway): the lines of one name together, a
     # deck 6 m either side of them (or `widths` by name)
     named = {n for n, _ in shapes if n}
+    n_outlined = len(shapes)
     lines = {}
     for r in rows:
         if r["geom"].geom_type == "LineString" and r["name"] and r["name"] not in named:
@@ -455,9 +457,20 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
         u = shapely.union_all(ls)
         half = (widths or {}).get(n, 12.0) / 2
         shapes.append((n, u.buffer(half, cap_style="flat", join_style="mitre")))
-    for name, g in shapes:
+    # one deck where two shapes overlap: the outline before the centre lines, the larger outline before
+    # a smaller one inside it (a railway bridge and the walkway hung on its side; a road's lines named
+    # by the street, not the bridge)
+    shapes_k = []
+    for k, (name, g) in sorted(enumerate(shapes), key=lambda kv: (kv[0] >= n_outlined, -kv[1][1].area)):
         if g.geom_type != "Polygon" or g.area < min_m2:
             continue
+        hit = next((j for j, (_, h) in enumerate(shapes_k) if g.intersection(h).area > 0.3 * min(g.area, h.area)), None)
+        if hit is not None:
+            if name and not shapes_k[hit][0]:   # an outline OpenStreetMap leaves unnamed, named by its line
+                shapes_k[hit] = (name, shapes_k[hit][1])
+            continue
+        shapes_k.append((name, g))
+    for name, g in shapes_k:
         over = g.intersection(water).area / g.area
         if over < 0.25:
             continue
@@ -469,20 +482,29 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
         if width > 60 or length < 15:
             continue
         c = np.asarray(g.minimum_rotated_rectangle.centroid.coords[0])
-        za = max(ctx.ground(*(c - ax * (length / 2 + 3))), 3.5)
-        zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), 3.5)
+        za = max(ctx.ground(*(c - ax * (length / 2 + 3))), floor)
+        zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), floor)
         out.append({"name": name, "centre": rnd(c), "axis": rnd(ax, 5), "length_m": round(length, 1), "width_m": round(width, 1),
                     "z_ends": [round(za, 2), round(zb, 2)], "colour": (colours or {}).get(name)})
     return out
 
 
 def deck_profile(b):
-    """[[u, z]] along a bridge's axis: the two banks, and a crown of 2% of its length (at least 0.8 m)."""
+    """[[u, z]] along a bridge's axis: the two banks, and a crown of 2% of its length (at least 0.8 m), or its crown_m."""
     L, (za, zb) = b["length_m"], b["z_ends"]
-    crown = max(0.8, 0.02 * L)
-    us = np.linspace(-L / 2 - 3, L / 2 + 3, 11)
+    crown = b.get("crown_m", max(0.8, 0.02 * L))
+    us = np.linspace(-L / 2 - 3, L / 2 + 3, 11 if not b.get("lift_m") else 21)
     t = (us - us[0]) / (us[-1] - us[0])
-    return [[round(float(u), 1), round(float(za + (zb - za) * k + crown * 4 * k * (1 - k)), 2)] for u, k in zip(us, t)]
+    if b.get("lift_m"):   # over a ferry's course (bridges.py lift): level across the middle, eased up from the banks
+        m = np.minimum(1.0, np.clip(np.minimum(t, 1 - t), 0, None) / 0.3)
+        rise = b["lift_m"] * m * m * (3 - 2 * m)
+    else:
+        rise = crown * 4 * t * (1 - t)
+    out = [[round(float(u), 1), round(float(za + (zb - za) * k + r), 2)] for u, k, r in zip(us, t, rise)]
+    if b.get("banks"):   # ramps down to banks lower than the deck's ends (bridges.py: the deck clears the ground under it)
+        (ga, gb), r = b["banks"], b.get("ramp_m", 0.0)
+        out = [[round(-L / 2 - 3 - r, 1), ga]] + out + [[round(L / 2 + 3 + r, 1), gb]]
+    return out
 
 
 def bridge_meshes(K, b, pier_every=45.0):

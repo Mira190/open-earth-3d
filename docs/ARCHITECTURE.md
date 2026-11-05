@@ -35,11 +35,13 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
+| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
 | Repainted ground | `refresh_ground.py` | Applies a city's `imagery.paint` (land use that draws the wrong ground: a construction site mapped over a paved promenade) to the drawn ground tiles of a city without aerial imagery, without a rebuild; `build_scene.py` draws the same fill in place of the land use |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
+| Bridges over the water | `bridges.py` (run by `build_scene.py`, `landmarks.py`, `game_data.py`, `game_extras.py`), `refresh_bridges.py` | Every bridge OpenStreetMap maps over a city's rivers, canals and moats that the city's own builder does not draw (Paris's, Amsterdam's, Tsukishima's and Odaiba's do): its deck at the banks' height, in its real form and paint from city.json `bridges` (see [Bridges](#bridges-over-the-water)), in `landmarks.json`, and its deck walkable and drivable in `game.json` surfaces. `refresh_bridges.py` finds them again in a built city from the Overture layers and the game's ground; `tools/bridge_survey.py` lists any bridge still drawn by nothing |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
@@ -372,6 +374,34 @@ The views switch in place, without reloading the page.
     above and from the tour cameras toward and away from a low sun:
     `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
     for `tools/city_shot.js`).
+  - past the frame, the land (issue 78). Under that haze stands the land that is
+    really there (`web/farland.js`, `pipeline/far_land.py`): a low terrain 40 km
+    either side of the frame's centre (60 km at a reef site) from Copernicus
+    GLO-30 heights at 156 m (234 m), less the trees' and buildings' share of the
+    surface model, its grid lines about 40 m apart at the frame and a few hundred
+    metres far out (256 x 256 cells, 128 x 128 on the low tier). It is coloured by
+    ESA WorldCover 2021's land cover, each class's share of a 78 m cell, in colours
+    solved from the city's own photo inside the frame against the classes' shares
+    there (held toward a default and mostly to its hue, with the built-up land
+    darkened to the drawn city's tone, `BUILT_SHADE`), with value noise at 30 to
+    300 m for what the cells average away. Water at sea level sits under the
+    sea; a lake in the hills stays, flat, in the water's colour (Lake Biwa
+    behind Higashiyama), and the open sea is not drawn over land past the frame
+    (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
+    haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
+    land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
+    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    built-up land glows: NASA's Black Marble at 500 m, raised to a power for
+    contrast (its visual product saturates over a city) and shared out by
+    WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
+    more of them the brighter the land, which fade into their mean where a pixel
+    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    with node materials under the reef's own air (`env.medium`), the land raised
+    clear of the highest tide: the ranges behind Cairns stand on Green Island's
+    horizon, and the coast's towns are a band of light at night. `?far=off`
+    leaves it out, to compare; `tools/far_views.py` writes the high views out
+    past each edge at noon, dusk and night for `tools/city_shot.js`.
+    Before and after: `docs/images/far-land/*-compare.jpg`.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -832,6 +862,43 @@ and planes they replace); the shadow pass a third less.
 
 Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
 llvmpipe gives (seconds) say nothing about a device.
+
+## Bridges over the water
+
+Issue 122: the Tokyo maps built before Tsukishima and Odaiba routed their roads over the Sumida and
+the moats on nothing. Now `pipeline/bridges.py` finds every bridge that Overture's infrastructure layer
+(OpenStreetMap, ODbL) maps over the water: an outline, or the centre lines of its carriageways joined by
+name. Where an outline and a line overlap, there is one deck, and an unnamed outline takes its line's
+name. It leaves out three kinds: a bridge the city's own builder draws, an expressway's viaduct
+(OpenStreetMap's layer is an order, not a height), and the names in `skip`. A deck stands at the banks'
+height, at least `deck_min_m` (3.5 m, a Tokyo embankment), and is crowned 2% of its length. Over water
+the model draws as ground (a palace moat whose survey stands higher than its banks, Kyoto's riverbed), it
+clears that ground and ramps down to the banks. Over a ferry's course (game.json `ferries`) the middle of the span rises
+until the city's boats pass under its soffit with someone standing on the upper deck, level across the
+middle, as `web/game/decks.js` lifts the decks it draws; a deck the boats pass under is not a bank to
+them. A deck whose road the data carries up above a bank (Kings Way over the Crown promenade) takes
+`deck_z`.
+
+Each bridge takes its form and paint by name from city.json `bridges.forms`:
+
+| Form | Structure | Examples |
+|---|---|---|
+| `girder` | girder deck on piers | Kototoi-bashi, Sanjo Ohashi (timber rail and giboshi), Wadakura-bashi |
+| `deck_arch` | arches under the deck, spandrel posts | Azuma-bashi, Hijiri-bashi, Princes Bridge |
+| `half_through` | the middle arch rises through the deck, deck arches either side | Komagata-bashi, Tsukiji Ohashi |
+| `through_arch` | tied arches over each span, hangers | Umaya-bashi |
+| `truss` | through Warren truss | the Tobu line's Sumida bridge |
+| `stone_arch` | masonry arches, spandrel walls, stone parapet | Nihonbashi, the Seimon Ishibashi, Mansei-bashi, Shichijo Ohashi |
+| `kachidoki` | Kachidoki Bridge's bascule between two tied arches | |
+| `x` | an X in plan, two decks crossing | Sakura-bashi |
+
+The paint after dark is floodlit in its own colour, as Tokyo lights the Sumida's bridges. The Sumida's
+colours are the Tokyo Metropolitan Government's (隅田川中流部著名橋色彩基本方針, set in 1984 and confirmed in
+2014–15: Azuma-bashi red, Komagata-bashi blue, Umaya-bashi green, no two neighbours alike). The spans
+come from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record. The
+other cities' bridges come from their own records (Kyoto City's 京の橋しるべ, Heritage Victoria). A
+colour that no record gives is read from photographs and is approximate. These are facts and
+measurements, so no licence is needed. No third-party model or texture is used.
 
 ## Download size
 

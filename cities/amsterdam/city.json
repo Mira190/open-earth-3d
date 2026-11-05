@@ -54,6 +54,24 @@
     "attribution": "3DBAG v2025.09.03 by the 3D geoinformation research group (TU Delft) and 3DGI, from BAG footprints and AHN LiDAR, CC BY 4.0"
   },
   "architecture": "amsterdam",
+  "bridges": {
+    "deck_min_m": 1.0,
+    "skip": ["Haarlemmer Houttuinen"],
+    "note": "The canal bridges the city's own builder leaves (those OpenStreetMap maps as lines): brick arches, as most of the city's are.",
+    "form": "stone_arch",
+    "stone": "#8a4f3c",
+    "forms": {
+      "Oosterdoksspoorbrug": {"form": "girder", "colour": "#5b5f63"},
+      "Blauwbrug": {
+        "form": "stone_arch",
+        "spans": 3,
+        "stone": "#c9c0ad",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1884, three stone arches and lamp columns, after Paris's Pont Alexandre III"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b4434",
