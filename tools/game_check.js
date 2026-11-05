@@ -275,6 +275,49 @@ const npcNight = require('./npc_night');
     if (rain.year) check(Math.abs(rain.year.wet - rain.year.want) <= Math.max(8, rain.year.want / 3), `the season's weather keeps to the climate (${rain.year.wet} wet days in a year, normals ${rain.year.want})`);
   }
 
+  // what a slow device sheds of the weather (weather.js shed, driven by game.js shed): first the far
+  // streaks and splashes, then the weather altogether, dry, remembered for the next visit and said in
+  // a toast (its note); a pick from the menu brings it back; a weather the visitor picked keeps its
+  // wet streets and loses only its drops
+  const guard = await p.evaluate(() => {
+    const W = window.__game.weather;
+    if (!W || !W.guardForce) return null;
+    W.guardReset(); W.guardForce(true);
+    W.set({ rain: 0.9, cloud: 1, wet: 1, now: true });
+    W.update(0.1, 1, null);
+    const full = { level: W.level, shed: W.shed };
+    W.shed = 1; W.update(0.1, 1.1, null);
+    const light = { level: W.level, near: W.meshes.near.visible, far: W.meshes.far.visible, splash: W.meshes.splash.visible };
+    W.shed = 2;
+    let kept = null;
+    try { kept = localStorage.getItem('oe3d-weather-guard'); } catch (e) { /* storage blocked */ }
+    const off = { level: W.level, mode: W.mode, kept };
+    W.update(0.1, 2, null);
+    const dry = W.state;
+    const note = W.takeNote();
+    W.set('rain', { now: true });
+    const back = W.level;
+    W.guardReset();
+    W.set('rain', { now: true, keep: true }); W.update(0.1, 3, null);
+    W.shed = 1; W.shed = 2; W.update(0.1, 3.1, null);
+    const picked = { mode: W.mode, near: W.meshes.near.visible, rain: W.state.rain, shed: W.shed };
+    W.guardReset(); W.guardForce(false);
+    try { localStorage.removeItem('oe3d-weather'); } catch (e) { /* storage blocked */ }
+    W.set('clear', { now: true }); W.update(0.1, 4, null); W.set('live');
+    return { full, light, off, dry: { rain: dry.rain, wet: dry.wet }, note, back, picked };
+  });
+  if (guard) {
+    check(guard.full.level === 2 && guard.full.shed === 0, `the full rain to begin with (level ${guard.full.level}, shed ${guard.full.shed})`);
+    check(guard.light.level === 1 && guard.light.near && !guard.light.far && !guard.light.splash,
+      `a slow device sheds the far streaks and splashes first (level ${guard.light.level}, near ${guard.light.near}, far ${guard.light.far}, splash ${guard.light.splash})`);
+    check(guard.off.level === 0 && guard.off.mode === 'off' && guard.off.kept === 'off' && guard.dry.rain === 0 && guard.dry.wet === 0,
+      `and then the weather, dry, remembered (level ${guard.off.level}, ${guard.off.mode}, kept ${guard.off.kept}, rain ${guard.dry.rain}, wet ${guard.dry.wet})`);
+    check(/Weather is off/.test(guard.note || ''), `and says so ("${guard.note}")`);
+    check(guard.back >= 1, `a weather picked again comes back on (level ${guard.back})`);
+    check(guard.picked.mode === 'rain' && !guard.picked.near && guard.picked.rain > 0.5 && guard.picked.shed === 2,
+      `a weather the visitor picked is kept, without its drops (${guard.picked.mode}, drops ${guard.picked.near}, rain ${guard.picked.rain.toFixed(2)})`);
+  }
+
   // a quay (web/quays.js): walk straight at a seawall and stop on its coping with the toes at its
   // edge (the centre within 0.3 m of the face as drawn), at the level of the quay, not a cell short
   // of it at the terrain grid's bank
@@ -1210,7 +1253,7 @@ const npcNight = require('./npc_night');
         if (st.s > sHead + 5) { r.gone = true; break; }
       }
       const bl = st.block;
-      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)}; now phase ${arm.j.ph} ${arm.j.st} for ${arm.j.t.toFixed(0)} s, next ${arm.j.nxt}, called ${arm.j.call})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, still ${(bl.still || 0).toFixed(0)} s)` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
+      r.why = `${st.why || ''}, v ${st.v.toFixed(1)}, s ${st.s.toFixed(0)} of ${sHead.toFixed(0)} to the head, the light ${seq.map(([t, l]) => `${l} at ${t.toFixed(0)} s`).join(', ')} (junction ${arm.j.id}, arm phase ${arm.phase}, green ${JSON.stringify(arm.j.green)}; now phase ${arm.j.ph} ${arm.j.st} for ${arm.j.t.toFixed(0)} s, next ${arm.j.nxt}, called ${arm.j.call})${bl ? `; behind ${bl.line != null ? `car ${C.indexOf(bl)} (${bl.why}, v ${(bl.v || 0).toFixed(1)}${bl.q ? ', queueing' : ''}, ${typeof bl.still === 'number' ? `still ${bl.still.toFixed(0)} s` : bl.still ? 'held still' : 'moving'})` : 'something'}` : ''}; the head: car ${C.indexOf(pick.h)} ${pick.h.why} v ${pick.h.v.toFixed(1)}`;
       delete r.ahead;
       if (r.follow != null || r.moved != null) break;
       jams.push(`line ${pick.h.line}: ${r.behind ? '' : 'the light changed before it caught up; '}${r.why}`); // (the queue never moved in 3 minutes: a long red or a jam in the junction, not the taxi's doing; another queue)

@@ -196,9 +196,13 @@ diffuseColor.rgb *= mix(1.0, 0.86 + 0.26 * agg, roadway * near);
 float grain = vn(vWP.xz * 2.7) * 0.55 + vn(vWP.xz * 9.0) * 0.3 + vn(vWP.xz * 0.6) * 0.15;
 diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * pnear));`);
     // in the rain: darker, glossier ground, and puddles on the roads and the paving (weather.js)
-    if (window.OEWeather) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', porous: 0.42 });
+    if (window.OEWeather && (!weather || weather.armed)) OEWeather.patch(sh, { gloss: '1.0 - green', puddles: '1.0 - green', porous: 0.42 });
     Wd.gradePhoto(sh); // the photo's haze out (world.js), before the drawn streets go over it
   };
+  // the ground's program with the wet look and without it are two programs; the weather compiles
+  // its in when it first runs (weather.js arm: a device whose weather the guard keeps off never does)
+  for (const m of Wd.groundMeshes) m.material.customProgramCacheKey = () => `ground|${weather && !weather.armed ? 'dry' : 'wet'}`;
+  if (weather) weather.onArm(() => { for (const m of Wd.groundMeshes) m.material.needsUpdate = true; });
   loadMsg('Surface model for walking, flying and sunlight', 0.78);
   await idle();
   const T = D.T = Tfine;
@@ -2560,7 +2564,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   }
   // render once more and read the canvas back in the same task (it keeps no copy), then caption it
   function snapPhoto() {
-    if (mirror) mirror.update(world, clockT);
+    mirrorTick();
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     const w = canvas.width, h = canvas.height, out = document.createElement('canvas');
     out.width = w; out.height = h;
@@ -3414,8 +3418,10 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   let last = performance.now(), clockT = 0, sunTimer = 0, sunState = 'sun', fpsAcc = [performance.now(), 0], fpsWarned = false, stepPhase = 0, bumpT = -9, waterT = -99;
   const camTarget = new THREE.Vector3(), camPos = new THREE.Vector3(), camSmooth = new THREE.Vector3();
   // What a device that can't keep up gives up, a step every four seconds below 24 frames a second,
-  // nice-to-haves first: the far rain and its splashes, then every drop (the streets stay wet and the
-  // sky grey), then the wet street's reflections, then pixels, down to 70% of the tier's. The people
+  // nice-to-haves first: the far rain and its splashes, then the weather altogether (weather.js: dry
+  // streets, its shaders left out, and remembered for the next visit; a weather the player chose keeps
+  // its wet streets and grey sky and loses only the drops), then the wet street's reflections, then
+  // pixels, down to 70% of the tier's. The people
   // keep their models and the city its detail: a crowd of boxes is not a city. False when there is
   // nothing left to shed.
   let shedLevel = 0;
@@ -3468,7 +3474,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     if (neon) neon.update(camera, dt);
     if (Math.floor(clockT) !== Math.floor(clockT - dt)) applyDensity();
     if (atmos) atmos.update(clockUtc, now / 1000, U);
-    weatherTick(dt, titleOn);
+    weatherTick(dt, titleOn, titleOn || paused || photo.on);
     if (show) show.tick(now);
     if (window.OEKit) OEKit.setNight(U.uNight.value); // cabin windows and navigation lights
     fer.vessels.forEach(v => (v.events || []).splice(0).forEach(ev => onFerryEvent(ev)));
@@ -3537,7 +3543,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     // depth of field in photo mode, and with the camera's motion blur in the opening shot; never in play
     if (atmos && atmos.camFx) atmos.camFx(photo.on ? { focus: camera.position.distanceTo(photo.focus), aperture: lensBlur(camera.fov, camera.position.distanceTo(photo.focus), photo.fstop || 2.8) }
       : arriving && cine.active ? { focus: camera.position.distanceTo(live.look), aperture: lensBlur(camera.fov, camera.position.distanceTo(live.look), 4), blur: 0.5 } : null);
-    if (mirror) mirror.update(world, clockT);
+    mirrorTick();
     if (atmos) atmos.render(world, camera); else renderer.render(world, camera);
     care.drawn();
     if (framesDrawn < 2 && ++framesDrawn === 2) firstDrawn();
@@ -3545,9 +3551,16 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     requestAnimationFrame(frame);
   }
 
+  // a wet street's reflections (mirror.js): a second render of the scene, given up by shed (above) on
+  // a device that can't keep up, and not drawn on a dry street (the weather off: weather.js)
+  function mirrorTick() {
+    if (mirror) mirror.update(world, clockT);
+  }
   // the weather's frame (weather.js): the rain round the camera, the umbrellas, the sound of it
-  function weatherTick(dt, titleOn) {
+  function weatherTick(dt, titleOn, idle = titleOn) {
     if (!weather) return;
+    // what the weather gave up for a slow device (shed, above, or the last visit's), said once in play
+    if (!idle) { const n = weather.takeNote(); if (n) H.toast(n); }
     const fx = player.mode === 'heli' ? heli.st.x : player.mode === 'ferry' ? player.vehicle.x : player.x, fy = player.mode === 'heli' ? heli.st.y : player.mode === 'ferry' ? player.vehicle.y : player.y;
     const fz = player.mode === 'heli' ? heli.st.z + 1 : player.mode === 'ferry' ? 3 : player.z + 1.7;
     weather.update(dt, clockT, W(fx, fy, fz));
