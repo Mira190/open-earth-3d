@@ -155,7 +155,7 @@ export async function gametest(api, ctx) {
         must(d < 14 && d > (HALF.yacht + 0.5), 'stepped off beside the hull', `${d.toFixed(1)} m, ${player.state}`);
         must(!api.board.it.enabled(player), 'no instant re-board right after leaving (cooldown)');
         run(1);
-      } else out(false, 'an anchored yacht to board');
+      } else if ((ctx.S.harbour && ctx.S.harbour.fleets || []).length) out(false, 'an anchored yacht to board');
       // 6. the helicopter on its pad: fly, then step off on the ground
       const h = ctx.boats.helicopter && ctx.boats.helicopter.vessel;
       if (h) {
@@ -218,6 +218,10 @@ export async function gametest(api, ctx) {
 
     // 9. light at depth, the dive slate's numbers
     const L = G.light(8);
+    if (ctx.S.kind === 'alpine') {   // glacial flour: the light is gone within a metre or two, and the lake is no place to dive
+      const L1 = G.light(1);
+      must(L1.g < 0.1 && L1.r <= L1.g && L.g < 1e-6, 'glacial flour: under 10% of the light left at 1 m, none at 8 m', `1 m: r ${(L1.r * 100).toFixed(1)}% g ${(L1.g * 100).toFixed(1)}% b ${(L1.b * 100).toFixed(1)}%`);
+    } else
     must(L.r < L.g && L.g < L.b && L.r > 0.005 && L.r < 0.1 && L.halfR > 1 && L.halfR < 3, 'red light at 8 m from env.u.K and lightPath', `r ${(L.r * 100).toFixed(1)}% g ${(L.g * 100).toFixed(0)}% b ${(L.b * 100).toFixed(0)}% halfR ${L.halfR.toFixed(1)} m m=${L.m.toFixed(2)}`);
 
     // 10. the guided dive (Raf at the Whitsundays, Sam at Hardy Reef): reach the instructor, scuba, the depth, the slate, back up
@@ -272,7 +276,8 @@ export async function gametest(api, ctx) {
       }
       player.equip('none');
     } else {
-      must(G.quest('survey') && !G.quest('survey').available(G), 'no ctx.life: the survey is unavailable, not broken');
+      if (ctx.S.kind === 'alpine') must(!G.quest('survey'), 'an alpine lake has no fish survey');
+      else must(G.quest('survey') && !G.quest('survey').available(G), 'no ctx.life: the survey is unavailable, not broken');
     }
 
     // 12. journal and saving (hear the reef facts first, so there are cited notes on every site)

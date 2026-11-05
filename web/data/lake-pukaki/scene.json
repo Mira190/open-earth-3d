@@ -1,0 +1,1378 @@
+{
+ "id": "lake-pukaki",
+ "name": "Lake Pukaki",
+ "native": "P\u016bkaki",
+ "kind": "alpine",
+ "origin": [
+  170.1506,
+  -43.8576
+ ],
+ "timezone": "Pacific/Auckland",
+ "extent_m": [
+  -19200,
+  19200,
+  -42240,
+  42240
+ ],
+ "vertical_datum": "m NZVD2016, shifted so the lake surface is 0",
+ "terrain": {
+  "file": "terrain.bin.gz",
+  "w": 1280,
+  "h": 2816,
+  "cell_m": 30,
+  "x0": -19200,
+  "y1": 42240,
+  "units_m": 0.125,
+  "datum_m": 525.82,
+  "bytes": 7208960,
+  "encoding": "plane-residual, byte planes, gzip"
+ },
+ "ground": {
+  "strips": [
+   {
+    "file": "ground_0.webp",
+    "row0": 0,
+    "rows": 3840
+   },
+   {
+    "file": "ground_1.webp",
+    "row0": 3840,
+    "rows": 3840
+   },
+   {
+    "file": "ground_2.webp",
+    "row0": 7680,
+    "rows": 768
+   }
+  ],
+  "w": 3840,
+  "h": 8448,
+  "px_m": 10
+ },
+ "cover": {
+  "file": "cover.png",
+  "w": 1920,
+  "h": 4224,
+  "px_m": 20,
+  "classes": {
+   "0": "lake",
+   "1": "river and stream",
+   "2": "snow and ice",
+   "3": "debris-covered ice",
+   "4": "rock and cliff",
+   "5": "scree and moraine",
+   "6": "riverbed gravel",
+   "7": "tussock grassland",
+   "8": "alpine herbfield",
+   "9": "shrub and scrub",
+   "10": "forest",
+   "11": "pasture",
+   "12": "wetland",
+   "13": "road",
+   "14": "built",
+   "15": "shore"
+  }
+ },
+ "lakes": [
+  {
+   "id": "pukaki",
+   "name": "Lake P\u016bkaki",
+   "main": true,
+   "level_nzvd": 525.82,
+   "area_km2": 172.703,
+   "max_depth_m": 70.0,
+   "depth_src": "Maximum depth 70 m: Our Lakes Our Future (Lakes380), Lake Pukaki datasheet, https://ourlakesourfuture.co.nz/lakes/lake-pukaki/; the bed's shape is synthesised from the distance to the shore (no open survey)",
+   "box": [
+    -2850,
+    -36990,
+    5790,
+    -5250
+   ],
+   "centre": [
+    1893,
+    -21130
+   ],
+   "level": 0.0
+  },
+  {
+   "id": "tasman-lake",
+   "name": "Tasman Lake",
+   "main": false,
+   "level_nzvd": 703.97,
+   "area_km2": 8.143,
+   "max_depth_m": 60.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    1620,
+    16620,
+    4230,
+    22830
+   ],
+   "centre": [
+    2590,
+    19743
+   ],
+   "level": 178.15
+  },
+  {
+   "id": "murchison-lake",
+   "name": "Murchison Lake",
+   "main": false,
+   "level_nzvd": 1008.39,
+   "area_km2": 2.653,
+   "max_depth_m": 60.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    13260,
+    26940,
+    15810,
+    29820
+   ],
+   "centre": [
+    14491,
+    28373
+   ],
+   "level": 482.57
+  },
+  {
+   "id": "hooker-lake",
+   "name": "Hooker Lake",
+   "main": false,
+   "level_nzvd": 866.45,
+   "area_km2": 1.785,
+   "max_depth_m": 53.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4110,
+    18720,
+    -2370,
+    21630
+   ],
+   "centre": [
+    -3215,
+    20173
+   ],
+   "level": 340.63
+  },
+  {
+   "id": "mueller-lake",
+   "name": "Mueller Lake",
+   "main": false,
+   "level_nzvd": 752.95,
+   "area_km2": 0.974,
+   "max_depth_m": 39.5,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5400,
+    15840,
+    -3990,
+    17310
+   ],
+   "centre": [
+    -4825,
+    16581
+   ],
+   "level": 227.13
+  },
+  {
+   "id": "douglas-lake",
+   "name": "Douglas Lake",
+   "main": false,
+   "level_nzvd": 950.79,
+   "area_km2": 0.911,
+   "max_depth_m": 38.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -17160,
+    17340,
+    -14610,
+    18090
+   ],
+   "centre": [
+    -15584,
+    17708
+   ],
+   "level": 424.97
+  },
+  {
+   "id": "lake-7",
+   "name": null,
+   "main": false,
+   "level_nzvd": 943.82,
+   "area_km2": 0.362,
+   "max_depth_m": 24.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9510,
+    25080,
+    -8550,
+    26670
+   ],
+   "centre": [
+    -9235,
+    25866
+   ],
+   "level": 418.0
+  },
+  {
+   "id": "lake-poaka",
+   "name": "Lake Poaka",
+   "main": false,
+   "level_nzvd": 505.44,
+   "area_km2": 0.156,
+   "max_depth_m": 15.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4530,
+    -39000,
+    -3510,
+    -38490
+   ],
+   "centre": [
+    -4018,
+    -38754
+   ],
+   "level": -20.38
+  },
+  {
+   "id": "stilling-basin",
+   "name": "Stilling Basin",
+   "main": false,
+   "level_nzvd": 675.33,
+   "area_km2": 0.14,
+   "max_depth_m": 15.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    6210,
+    -29310,
+    6660,
+    -28590
+   ],
+   "centre": [
+    6514,
+    -28935
+   ],
+   "level": 149.51
+  },
+  {
+   "id": "lake-10",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1328.79,
+   "area_km2": 0.112,
+   "max_depth_m": 13.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7560,
+    -19620,
+    -7110,
+    -19110
+   ],
+   "centre": [
+    -7319,
+    -19375
+   ],
+   "level": 802.97
+  },
+  {
+   "id": "forks-lagoon",
+   "name": "Forks Lagoon",
+   "main": false,
+   "level_nzvd": 862.34,
+   "area_km2": 0.095,
+   "max_depth_m": 12.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    18480,
+    -9900,
+    18870,
+    -9390
+   ],
+   "centre": [
+    18579,
+    -9670
+   ],
+   "level": 336.52
+  },
+  {
+   "id": "lake-12",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1040.94,
+   "area_km2": 0.092,
+   "max_depth_m": 12.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -4110,
+    39840,
+    -2490,
+    40110
+   ],
+   "centre": [
+    -3643,
+    39983
+   ],
+   "level": 515.12
+  },
+  {
+   "id": "lake-13",
+   "name": null,
+   "main": false,
+   "level_nzvd": 796.75,
+   "area_km2": 0.087,
+   "max_depth_m": 11.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    4200,
+    21600,
+    4650,
+    22140
+   ],
+   "centre": [
+    4400,
+    21871
+   ],
+   "level": 270.93
+  },
+  {
+   "id": "freds-tarn",
+   "name": "Freds Tarn",
+   "main": false,
+   "level_nzvd": 999.07,
+   "area_km2": 0.073,
+   "max_depth_m": 10.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    16440,
+    -6570,
+    16770,
+    -6210
+   ],
+   "centre": [
+    16552,
+    -6402
+   ],
+   "level": 473.25
+  },
+  {
+   "id": "lake-15",
+   "name": null,
+   "main": false,
+   "level_nzvd": 506.88,
+   "area_km2": 0.071,
+   "max_depth_m": 10.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -5820,
+    -38880,
+    -5040,
+    -38460
+   ],
+   "centre": [
+    -5521,
+    -38650
+   ],
+   "level": -18.94
+  },
+  {
+   "id": "lake-16",
+   "name": null,
+   "main": false,
+   "level_nzvd": 806.13,
+   "area_km2": 0.062,
+   "max_depth_m": 10.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    18840,
+    -17490,
+    19200,
+    -17040
+   ],
+   "centre": [
+    18941,
+    -17240
+   ],
+   "level": 280.31
+  },
+  {
+   "id": "lake-17",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1879.8,
+   "area_km2": 0.053,
+   "max_depth_m": 9.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9930,
+    6060,
+    -9660,
+    6390
+   ],
+   "centre": [
+    -9773,
+    6225
+   ],
+   "level": 1353.98
+  },
+  {
+   "id": "lake-18",
+   "name": null,
+   "main": false,
+   "level_nzvd": 515.74,
+   "area_km2": 0.048,
+   "max_depth_m": 8.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -9600,
+    -40650,
+    -9330,
+    -40350
+   ],
+   "centre": [
+    -9463,
+    -40487
+   ],
+   "level": -10.08
+  },
+  {
+   "id": "lake-19",
+   "name": null,
+   "main": false,
+   "level_nzvd": 865.94,
+   "area_km2": 0.044,
+   "max_depth_m": 8.4,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    16110,
+    -10890,
+    16350,
+    -10680
+   ],
+   "centre": [
+    16229,
+    -10776
+   ],
+   "level": 340.12
+  },
+  {
+   "id": "lake-20",
+   "name": null,
+   "main": false,
+   "level_nzvd": 620.11,
+   "area_km2": 0.041,
+   "max_depth_m": 8.0,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    11310,
+    -25020,
+    11580,
+    -24720
+   ],
+   "centre": [
+    11460,
+    -24852
+   ],
+   "level": 94.29
+  },
+  {
+   "id": "lake-21",
+   "name": null,
+   "main": false,
+   "level_nzvd": 803.96,
+   "area_km2": 0.038,
+   "max_depth_m": 7.8,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    5010,
+    22470,
+    5250,
+    22920
+   ],
+   "centre": [
+    5136,
+    22693
+   ],
+   "level": 278.14
+  },
+  {
+   "id": "the-black-hole",
+   "name": "The Black Hole",
+   "main": false,
+   "level_nzvd": 745.86,
+   "area_km2": 0.037,
+   "max_depth_m": 7.7,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    7950,
+    -16290,
+    8130,
+    -15840
+   ],
+   "centre": [
+    8041,
+    -16074
+   ],
+   "level": 220.04
+  },
+  {
+   "id": "loch-cameron",
+   "name": "Loch Cameron",
+   "main": false,
+   "level_nzvd": 508.44,
+   "area_km2": 0.036,
+   "max_depth_m": 7.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -7770,
+    -40410,
+    -7560,
+    -40050
+   ],
+   "centre": [
+    -7674,
+    -40230
+   ],
+   "level": -17.38
+  },
+  {
+   "id": "lake-24",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1326.13,
+   "area_km2": 0.033,
+   "max_depth_m": 7.3,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -11970,
+    15870,
+    -11550,
+    15990
+   ],
+   "centre": [
+    -11760,
+    15912
+   ],
+   "level": 800.31
+  },
+  {
+   "id": "lake-25",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1840.77,
+   "area_km2": 0.032,
+   "max_depth_m": 7.1,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -8670,
+    -17220,
+    -8460,
+    -16920
+   ],
+   "centre": [
+    -8596,
+    -17093
+   ],
+   "level": 1314.95
+  },
+  {
+   "id": "lake-26",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1187.55,
+   "area_km2": 0.027,
+   "max_depth_m": 6.6,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -16590,
+    11730,
+    -16380,
+    11910
+   ],
+   "centre": [
+    -16481,
+    11822
+   ],
+   "level": 661.73
+  },
+  {
+   "id": "lake-27",
+   "name": null,
+   "main": false,
+   "level_nzvd": 484.19,
+   "area_km2": 0.026,
+   "max_depth_m": 6.5,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    90,
+    -37230,
+    330,
+    -36960
+   ],
+   "centre": [
+    195,
+    -37087
+   ],
+   "level": -41.63
+  },
+  {
+   "id": "swan-lagoon",
+   "name": "Swan Lagoon",
+   "main": false,
+   "level_nzvd": 879.35,
+   "area_km2": 0.024,
+   "max_depth_m": 6.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    12090,
+    -13050,
+    12240,
+    -12840
+   ],
+   "centre": [
+    12170,
+    -12937
+   ],
+   "level": 353.53
+  },
+  {
+   "id": "lake-29",
+   "name": null,
+   "main": false,
+   "level_nzvd": 1130.67,
+   "area_km2": 0.024,
+   "max_depth_m": 6.2,
+   "depth_src": "synthesised from the lake's area (no open survey)",
+   "box": [
+    -6750,
+    -21540,
+    -6630,
+    -21030
+   ],
+   "centre": [
+    -6698,
+    -21244
+   ],
+   "level": 604.85
+  }
+ ],
+ "lake_ids": "lakes.png",
+ "optics": {
+  "K": [
+   5.0,
+   3.6,
+   3.9
+  ],
+  "Rinf": [
+   0.012,
+   0.111,
+   0.235
+  ],
+  "g": 2.2,
+  "src": "Kd from the lake's Secchi depth: a mean of 0.5 m (Irwin 1978) and 0.41 m (James and Graynoth 2002), both read through search excerpts only, with Kd = 1.7 / Secchi for green and red and blue in the ratios QAA_v6 gives on Sentinel-2 L2A over the lake (pipeline/qaa.py; QAA alone, at 0.16 /m, misses most of the glacial flour's scattering). Rinf: the lake's colour in the ground imagery itself (LINZ 10 m mosaic, median of 400 m windows at four points, linearised), so the water and the land share one brightness scale; red from L2A's red-to-green ratio. See cities/lake-pukaki/analysis/optics.json"
+ },
+ "roads": "roads.json",
+ "start": {
+  "x": 0,
+  "y": 0,
+  "z": 120,
+  "yaw": 0,
+  "pitch": -4
+ },
+ "sources": [
+  "Toit\u016b Te Whenua LINZ, New Zealand LiDAR 1m DEM (Canterbury - Mackenzie 2015 and later captures; CC BY 4.0); New Zealand Contour-Interpolated 8m DEM (Geographx, CC BY 4.0) where the LiDAR has a gap",
+  "Toit\u016b Te Whenua LINZ, New Zealand 10m Satellite Imagery (2025-2026), Copernicus Sentinel-2 (CC BY 4.0)",
+  "OpenStreetMap contributors via Overture Maps (ODbL): glaciers, scree, scrub, woods, water, roads, buildings, places",
+  "Maximum depth 70 m: Our Lakes Our Future (Lakes380), Lake Pukaki datasheet, https://ourlakesourfuture.co.nz/lakes/lake-pukaki/; the bed's shape is synthesised from the distance to the shore (no open survey)"
+ ],
+ "pois": [
+  {
+   "id": "visitor-centre",
+   "name": "Lake Pukaki Visitor Centre",
+   "kind": "gate",
+   "lonlat": [
+    170.1398,
+    -44.19009
+   ],
+   "src": "osm",
+   "x": -863,
+   "y": -36944
+  },
+  {
+   "id": "view-of-mt-cook",
+   "name": "View of Mt Cook",
+   "kind": "lookout",
+   "lonlat": [
+    170.14076,
+    -44.19
+   ],
+   "src": "osm",
+   "x": -787,
+   "y": -36934
+  },
+  {
+   "id": "salmon-shop",
+   "name": "Mt Cook Alpine Salmon Shop",
+   "kind": "shop",
+   "lonlat": [
+    170.13996,
+    -44.19018
+   ],
+   "src": "overture-places",
+   "x": -851,
+   "y": -36954
+  },
+  {
+   "id": "spillway-bridge",
+   "name": "P\u016bkaki Spillway Bridge",
+   "kind": "bridge",
+   "lonlat": [
+    170.14951,
+    -44.18783
+   ],
+   "src": "osm",
+   "x": -87,
+   "y": -36693
+  },
+  {
+   "id": "lake-camping",
+   "name": "Lake Pukaki Camping Area",
+   "kind": "camp",
+   "lonlat": [
+    170.15062,
+    -44.18416
+   ],
+   "src": "osm",
+   "x": 2,
+   "y": -36285
+  },
+  {
+   "id": "kettlehole",
+   "name": "Kettlehole Trail Viewpoint",
+   "kind": "lookout",
+   "lonlat": [
+    170.16299,
+    -44.17583
+   ],
+   "src": "osm",
+   "x": 991,
+   "y": -35359
+  },
+  {
+   "id": "peters-lookout",
+   "name": "Tapataia Mahaka / Peter's Lookout",
+   "kind": "lookout",
+   "lonlat": [
+    170.1358,
+    -44.0887
+   ],
+   "src": "osm",
+   "x": -1185,
+   "y": -25678
+  },
+  {
+   "id": "lake-viewpoint",
+   "name": "Viewpoint of the lake",
+   "kind": "lookout",
+   "lonlat": [
+    170.13168,
+    -44.00254
+   ],
+   "src": "osm",
+   "x": -1517,
+   "y": -16105
+  },
+  {
+   "id": "ben-dhu",
+   "name": "Ben Dhu",
+   "kind": "peak",
+   "lonlat": [
+    170.096194,
+    -44.056861
+   ],
+   "src": "osm",
+   "x": -4360,
+   "y": -22142
+  },
+  {
+   "id": "betty-hill",
+   "name": "Betty Hill",
+   "kind": "peak",
+   "lonlat": [
+    170.104438,
+    -44.018775
+   ],
+   "src": "osm",
+   "x": -3701,
+   "y": -17909
+  },
+  {
+   "id": "tasman-delta",
+   "name": "Tasman River delta",
+   "kind": "inlet",
+   "lonlat": [
+    170.155,
+    -43.975
+   ],
+   "src": "nominal",
+   "x": 353,
+   "y": -13044
+  },
+  {
+   "id": "glentanner",
+   "name": "Glentanner Park",
+   "kind": "camp",
+   "lonlat": [
+    170.12324,
+    -43.91464
+   ],
+   "src": "overture-places",
+   "x": -2198,
+   "y": -6338
+  },
+  {
+   "id": "glentanner-helipad",
+   "name": "Glentanner helipad",
+   "kind": "helipad",
+   "lonlat": [
+    170.12237,
+    -43.91143
+   ],
+   "src": "osm",
+   "x": -2268,
+   "y": -5981
+  },
+  {
+   "id": "acland-lagoon",
+   "name": "Acland Lagoon",
+   "kind": "lookout",
+   "lonlat": [
+    170.10895,
+    -43.83442
+   ],
+   "src": "osm",
+   "x": -3350,
+   "y": 2575
+  },
+  {
+   "id": "mt-cook-airport",
+   "name": "Aoraki / Mount Cook Airport",
+   "kind": "airport",
+   "lonlat": [
+    170.13277,
+    -43.76639
+   ],
+   "src": "overture-places",
+   "x": -1436,
+   "y": 10134
+  },
+  {
+   "id": "emergency-helipad",
+   "name": "Mount Cook Village helipad",
+   "kind": "helipad",
+   "lonlat": [
+    170.10229,
+    -43.74092
+   ],
+   "src": "osm",
+   "x": -3892,
+   "y": 12963
+  },
+  {
+   "id": "red-tarns",
+   "name": "Red Tarns",
+   "kind": "lookout",
+   "lonlat": [
+    170.0985,
+    -43.7479
+   ],
+   "src": "osm",
+   "x": -4196,
+   "y": 12187
+  },
+  {
+   "id": "dark-sky-village",
+   "name": "Mount Cook Village",
+   "kind": "town",
+   "lonlat": [
+    170.0985,
+    -43.7366
+   ],
+   "src": "overture-places",
+   "x": -4197,
+   "y": 13443
+  },
+  {
+   "id": "dog-visitor-centre",
+   "name": "Aoraki / Mount Cook National Park Visitor Centre",
+   "kind": "gate",
+   "lonlat": [
+    170.09533,
+    -43.7332
+   ],
+   "src": "osm",
+   "x": -4453,
+   "y": 13820
+  },
+  {
+   "id": "hermitage",
+   "name": "The Hermitage Hotel",
+   "kind": "building",
+   "lonlat": [
+    170.09316,
+    -43.73274
+   ],
+   "src": "overture-places",
+   "x": -4628,
+   "y": 13871
+  },
+  {
+   "id": "hillary-centre",
+   "name": "Sir Edmund Hillary Alpine Centre",
+   "kind": "building",
+   "lonlat": [
+    170.09297,
+    -43.73276
+   ],
+   "src": "overture-places",
+   "x": -4643,
+   "y": 13869
+  },
+  {
+   "id": "white-horse-hill",
+   "name": "White Horse Hill Car Park",
+   "kind": "gate",
+   "lonlat": [
+    170.09304,
+    -43.71961
+   ],
+   "src": "osm",
+   "x": -4638,
+   "y": 15330
+  },
+  {
+   "id": "alpine-memorial",
+   "name": "Alpine Memorial",
+   "kind": "cultural",
+   "lonlat": [
+    170.09703,
+    -43.71815
+   ],
+   "src": "overture-places",
+   "x": -4317,
+   "y": 15493
+  },
+  {
+   "id": "mueller-lookout",
+   "name": "Mueller Lake Lookout",
+   "kind": "lookout",
+   "lonlat": [
+    170.1027,
+    -43.71674
+   ],
+   "src": "osm",
+   "x": -3860,
+   "y": 15650
+  },
+  {
+   "id": "lower-hooker-bridge",
+   "name": "Lower Hooker Suspension Bridge",
+   "kind": "bridge",
+   "lonlat": [
+    170.10308,
+    -43.71583
+   ],
+   "src": "osm",
+   "x": -3830,
+   "y": 15751
+  },
+  {
+   "id": "kea-point",
+   "name": "Kea Point",
+   "kind": "lookout",
+   "lonlat": [
+    170.08428,
+    -43.71055
+   ],
+   "src": "osm",
+   "x": -5345,
+   "y": 16336
+  },
+  {
+   "id": "sealy-tarns",
+   "name": "Sealy Tarns",
+   "kind": "lookout",
+   "lonlat": [
+    170.07441,
+    -43.71295
+   ],
+   "src": "osm",
+   "x": -6140,
+   "y": 16069
+  },
+  {
+   "id": "mueller-hut",
+   "name": "Mueller Hut",
+   "kind": "hut",
+   "lonlat": [
+    170.06498,
+    -43.71555
+   ],
+   "src": "overture-places",
+   "x": -6900,
+   "y": 15779
+  },
+  {
+   "id": "hooker-bluff-bridge",
+   "name": "Hooker Bluff Suspension Bridge",
+   "kind": "bridge",
+   "lonlat": [
+    170.10002,
+    -43.70556
+   ],
+   "src": "osm",
+   "x": -4077,
+   "y": 16892
+  },
+  {
+   "id": "upper-hooker-bridge",
+   "name": "Upper Hooker Suspension Bridge",
+   "kind": "bridge",
+   "lonlat": [
+    170.09858,
+    -43.69271
+   ],
+   "src": "osm",
+   "x": -4194,
+   "y": 18319
+  },
+  {
+   "id": "hooker-lake-view",
+   "name": "Hooker Lake viewpoint",
+   "kind": "lookout",
+   "lonlat": [
+    170.10225,
+    -43.68918
+   ],
+   "src": "osm",
+   "x": -3898,
+   "y": 18712
+  },
+  {
+   "id": "hooker-lake",
+   "name": "Hooker Lake",
+   "kind": "lake",
+   "lonlat": [
+    170.10864,
+    -43.68286
+   ],
+   "src": "overture-places",
+   "x": -3383,
+   "y": 19414
+  },
+  {
+   "id": "blue-lakes",
+   "name": "Blue Lakes Car Park",
+   "kind": "gate",
+   "lonlat": [
+    170.16296,
+    -43.69794
+   ],
+   "src": "osm",
+   "x": 996,
+   "y": 17739
+  },
+  {
+   "id": "tasman-view",
+   "name": "Tasman Glacier View",
+   "kind": "lookout",
+   "lonlat": [
+    170.16827,
+    -43.69588
+   ],
+   "src": "osm",
+   "x": 1424,
+   "y": 17968
+  },
+  {
+   "id": "tasman-lake",
+   "name": "Tasman Lake",
+   "kind": "lake",
+   "lonlat": [
+    170.172,
+    -43.69
+   ],
+   "src": "nominal",
+   "x": 1725,
+   "y": 18621
+  },
+  {
+   "id": "tasman-lake-view",
+   "name": "Tasman Glacier and Lake Viewpoint",
+   "kind": "lookout",
+   "lonlat": [
+    170.17442,
+    -43.6682
+   ],
+   "src": "osm",
+   "x": 1921,
+   "y": 21044
+  },
+  {
+   "id": "mt-sefton",
+   "name": "Mount Sefton",
+   "kind": "peak",
+   "lonlat": [
+    170.04211,
+    -43.68246
+   ],
+   "src": "osm",
+   "x": -8748,
+   "y": 19454
+  },
+  {
+   "id": "footstool",
+   "name": "The Footstool",
+   "kind": "peak",
+   "lonlat": [
+    170.06343,
+    -43.67543
+   ],
+   "src": "osm",
+   "x": -7030,
+   "y": 20237
+  },
+  {
+   "id": "mt-wakefield",
+   "name": "Mount Wakefield",
+   "kind": "peak",
+   "lonlat": [
+    170.12419,
+    -43.69271
+   ],
+   "src": "osm",
+   "x": -2129,
+   "y": 18320
+  },
+  {
+   "id": "aoraki",
+   "name": "Aoraki / Mount Cook",
+   "kind": "peak",
+   "lonlat": [
+    170.1421677,
+    -43.5950017
+   ],
+   "src": "osm",
+   "x": -681,
+   "y": 29176
+  },
+  {
+   "id": "low-peak",
+   "name": "Low Peak",
+   "kind": "peak",
+   "lonlat": [
+    170.1395993,
+    -43.6087215
+   ],
+   "src": "osm",
+   "x": -888,
+   "y": 27652
+  },
+  {
+   "id": "mt-hicks",
+   "name": "Mount Hicks / Saint Davids Dome",
+   "kind": "peak",
+   "lonlat": [
+    170.12909,
+    -43.58763
+   ],
+   "src": "osm",
+   "x": -1737,
+   "y": 29995
+  },
+  {
+   "id": "mt-dampier",
+   "name": "Dampier",
+   "kind": "peak",
+   "lonlat": [
+    170.153,
+    -43.583
+   ],
+   "src": "nominal",
+   "x": 194,
+   "y": 30510
+  },
+  {
+   "id": "mt-tasman",
+   "name": "Mount Tasman",
+   "kind": "peak",
+   "lonlat": [
+    170.1574,
+    -43.5658
+   ],
+   "src": "nominal",
+   "x": 549,
+   "y": 32421
+  },
+  {
+   "id": "mt-haast",
+   "name": "Mount Haast",
+   "kind": "peak",
+   "lonlat": [
+    170.17779,
+    -43.559
+   ],
+   "src": "osm",
+   "x": 2197,
+   "y": 33176
+  },
+  {
+   "id": "mt-haidinger",
+   "name": "Mount Haidinger",
+   "kind": "peak",
+   "lonlat": [
+    170.19962,
+    -43.55137
+   ],
+   "src": "osm",
+   "x": 3961,
+   "y": 34023
+  },
+  {
+   "id": "malte-brun",
+   "name": "Malte Brun",
+   "kind": "peak",
+   "lonlat": [
+    170.305,
+    -43.5625
+   ],
+   "src": "overture-places",
+   "x": 12474,
+   "y": 32776
+  },
+  {
+   "id": "mt-elie-de-beaumont",
+   "name": "Mount \u00c9lie de Beaumont",
+   "kind": "peak",
+   "lonlat": [
+    170.32816,
+    -43.48165
+   ],
+   "src": "osm",
+   "x": 14365,
+   "y": 41755
+  },
+  {
+   "id": "tasman-glacier",
+   "name": "Haupapa / Tasman Glacier",
+   "kind": "glacier",
+   "lonlat": [
+    170.2641,
+    -43.5605
+   ],
+   "src": "osm",
+   "x": 9170,
+   "y": 33004
+  },
+  {
+   "id": "hooker-glacier",
+   "name": "Hooker Glacier",
+   "kind": "glacier",
+   "lonlat": [
+    170.1125,
+    -43.6211
+   ],
+   "src": "osm",
+   "x": -3075,
+   "y": 26276
+  },
+  {
+   "id": "grand-plateau",
+   "name": "Grand Plateau",
+   "kind": "glacier",
+   "lonlat": [
+    170.1697,
+    -43.5826
+   ],
+   "src": "osm",
+   "x": 1543,
+   "y": 30554
+  }
+ ],
+ "spawn": {
+  "poi": "peters-lookout",
+  "heading": 0,
+  "note": "Peter's Lookout on Mount Cook Road (SH80) above the west shore, facing up the lake to Aoraki / Mount Cook",
+  "x": -1185,
+  "y": -25678
+ },
+ "harbour": {
+  "parked": [
+   {
+    "kind": "helicopter",
+    "name": "Glentanner scenic helicopter",
+    "at": "glentanner-helipad"
+   },
+   {
+    "kind": "helicopter",
+    "name": "Village helicopter",
+    "at": "emergency-helipad"
+   }
+  ],
+  "scenic": [
+   {
+    "kind": "helicopter",
+    "name": "Scenic flight over Aoraki",
+    "around": "aoraki",
+    "r": 3800,
+    "alt": 3300,
+    "v": 45,
+    "dir": 1
+   }
+  ],
+  "moorings": 0
+ },
+ "region": "Te Manahuna \u00b7 Mackenzie Basin \u00b7 Aotearoa New Zealand",
+ "detail": [
+  {
+   "id": "peters-lookout",
+   "file": "detail_peters-lookout.webp",
+   "x0": -2749,
+   "y1": -24100,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
+  },
+  {
+   "id": "south-shore",
+   "file": "detail_south-shore.webp",
+   "x0": -1548,
+   "y1": -34656,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
+  },
+  {
+   "id": "mt-cook-village",
+   "file": "detail_mt-cook-village.webp",
+   "x0": -5576,
+   "y1": 14565,
+   "w": 4000,
+   "h": 4000,
+   "px_m": 0.75,
+   "src": "Toit\u016b Te Whenua LINZ, Canterbury 0.3m Rural Aerial Photos (2015-2016), CC BY 4.0"
+  },
+  {
+   "id": "hooker-valley",
+   "file": "detail_hooker-valley.webp",
+   "x0": -5279,
+   "y1": 18865,
+   "w": 2667,
+   "h": 4000,
+   "px_m": 0.9,
+   "src": "Toit\u016b Te Whenua LINZ, Canterbury 0.3m Rural Aerial Photos (2015-2016), CC BY 4.0"
+  }
+ ],
+ "structures": "structures.json"
+}
