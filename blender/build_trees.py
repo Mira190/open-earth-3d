@@ -1,10 +1,12 @@
 """Build the street and park trees every city shares: web/assets/trees/trees.glb and
 trees.json.
 
-Sixteen species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
+Nineteen species: London plane, elm, eucalyptus (gum), Moreton Bay fig, jacaranda, Canary
 Island date palm and Japanese maple (momiji, red in autumn: web/trees.js); Japan's black pine,
 cryptomeria (sugi), camphor, zelkova and ginkgo (the last two turn in autumn too) and the
-Somei-yoshino cherry (pale pink on bare branches for a fortnight in spring); an evergreen
+Somei-yoshino cherry (pale pink on bare branches for a fortnight in spring) with three other
+cherries on their own dates: the weeping shidarezakura, the February kawazu-zakura and the mid-April
+yaezakura, all on bark banded with lenticels (web/trees.js draws the bands); an evergreen
 broadleaf for Hong Kong's hills and the laurel forest of the shrine groves; and the coral cays'
 pisonia and she-oak (casuarina). Each is grown,
 not sculpted: points are scattered through the shell of
@@ -42,14 +44,18 @@ OUT = os.path.join(ROOT, "web", "assets", "trees")
 DOCS = os.path.join(ROOT, "docs", "images", "trees")
 
 # ------------------------------------------------------------ the leaf atlas
-# 4 x 5 cells, each a spray of leaves growing up from the middle of its bottom edge (a bloom cell stays
-# right of its leaf cell: web/trees.js swaps one for the other with the season; the jacaranda's "bloom"
-# beside "jacaranda", the cherry's "sakura" beside "cherry"). Cells 18 and 19 are free.
-ATLAS_W, ATLAS_H, CW, CH = 1024, 2560, 256, 512
+# 4 x 6 cells, each a spray of leaves growing up from the middle of its bottom edge. The jacaranda's
+# bloom cell stays right of its leaf cell ("bloom" beside "jacaranda"): web/trees.js swaps one for the other
+# with the season. The cherries' bloom cells follow each other from "sakura" (SAKURA_CELLS, in that order:
+# the Somei-yoshino, the weeping cherry, the kawazu-zakura and the yaezakura) and all show the cherry's
+# leaf cell ("cherry") out of flower. Cells 21 and 22 are the coral cays' beach scrub; 23 is free.
+ATLAS_W, ATLAS_H, CW, CH = 1024, 3072, 256, 512
 COLS, ROWS = ATLAS_W // CW, ATLAS_H // CH
 CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7,
          "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15,
-         "cherry": 16, "sakura": 17}
+         "cherry": 16, "sakura": 17, "shidare": 18, "kawazu": 19, "yae": 20,
+         "scaevola": 21, "argusia": 22}
+SAKURA_CELLS = ["sakura", "shidare", "kawazu", "yae"]
 
 
 def cell_uv(k):
@@ -183,7 +189,7 @@ def spray(img, k, spec, rng, S=2):
                         fx, fy = cx + math.cos(fa) * fd, cy + math.sin(fa) * fd * 0.8
                         dr.line([(cx, cy), (fx, fy)], fill=hexrgb("#7a4a48") + (255,), width=max(1, int(S)))
                         pc = hexrgb(spec["colours"][rng.integers(len(spec["colours"]))], rng.uniform(0.94, 1.04))
-                        pr = rng.uniform(5.0, 7.4) * S * scale
+                        pr = rng.uniform(5.0, 7.4) * S * scale * spec.get("petal", 1.0)
                         turn = rng.uniform(0, TAU)
                         for q in range(5):
                             qa = turn + q * TAU / 5
@@ -191,8 +197,30 @@ def spray(img, k, spec, rng, S=2):
                             dr.ellipse([ex - pr * 0.5, ey - pr * 0.5, ex + pr * 0.5, ey + pr * 0.5], fill=pc + (255,))
                         eye = hexrgb(spec.get("eye", "#c9707f"))
                         dr.ellipse([fx - pr * 0.22, fy - pr * 0.22, fx + pr * 0.22, fy + pr * 0.22], fill=eye + (255,))
-                    if rng.random() < 0.35:   # a bud not yet open: a deeper pink
+                    if rng.random() < spec.get("buds", 0.35):   # a bud not yet open: a deeper pink
                         dr.ellipse([cx - 2.5 * S, cy - 3.5 * S, cx + 2.5 * S, cy + 3.5 * S], fill=hexrgb("#e3a2b4") + (255,))
+                elif spec["leaf"] == "double":  # a yaezakura's (Kanzan): heavy clusters of double flowers, twenty
+                    # and more petals each, hanging on long stalks, with the bronze young leaves that come out with them
+                    cx, cy = px + side * rng.uniform(2, 6) * S, py
+                    if rng.random() < spec.get("leaves", 0):
+                        draw_leaf(dr, cx, cy, ta + side * rng.uniform(0.5, 1.0), "ovate", 26 * scale, 12 * scale,
+                                  hexrgb(spec["leaf_colour"], rng.uniform(0.85, 1.1)) + (255,), rng, S)
+                    for _ in range(int(rng.integers(2, 5))):
+                        fa = rng.uniform(-0.6, 0.6) + math.pi / 2   # down the card, the way they hang
+                        fd = rng.uniform(10, 22) * S
+                        fx, fy = cx + math.cos(fa) * fd, cy + math.sin(fa) * fd
+                        dr.line([(cx, cy), (fx, fy)], fill=hexrgb("#6e5a3a") + (255,), width=max(1, int(S)))
+                        pc = hexrgb(spec["colours"][rng.integers(len(spec["colours"]))], rng.uniform(0.94, 1.04))
+                        pr = rng.uniform(6.5, 9.0) * S * scale
+                        turn = rng.uniform(0, TAU)
+                        # three whorls of petals, the outer pale, the inner deeper and smaller
+                        for ring, (n_, f_, k_) in enumerate(((7, 0.62, 1.04), (6, 0.42, 0.95), (5, 0.22, 0.86))):
+                            rc = tuple(min(255, int(c * k_)) for c in pc)
+                            for q in range(n_):
+                                qa = turn + (q + 0.5 * ring) * TAU / n_
+                                ex, ey = fx + math.cos(qa) * pr * f_, fy + math.sin(qa) * pr * f_
+                                rr = pr * (0.46 - 0.08 * ring)
+                                dr.ellipse([ex - rr, ey - rr, ex + rr, ey + rr], fill=rc + (255,))
                 elif spec["leaf"] == "flower":
                     for _ in range(4):
                         fx, fy = px + rng.normal(0, 10) * S, py + rng.normal(0, 10) * S
@@ -240,6 +268,22 @@ SPRAYS = {
                    twig="#3f322e", twig_w=2, fill=0.85),
     "sakura": dict(leaf="blossom", L=0, W=0, twigs=13, spread=0.72, every=1, start=1, angle=(0.6, 1.2),
                    colours=["#f9dfe1", "#f4d1d6", "#fcebeb", "#f0c6cd", "#fae5e5"], eye="#d68590", twig="#3f322e", twig_w=3, fill=0.9),
+    # the other cherries (#163). The weeping cherry (shidarezakura, an Edohigan): smaller flowers, a clearer
+    # pink, close along long thin twigs (its cards hang: the twigs fall from the top of the card)
+    "shidare": dict(leaf="blossom", L=0, W=0, twigs=11, spread=0.26, every=1, start=1, angle=(0.7, 1.3), petal=0.8, buds=0.45,
+                    colours=["#f5c9d3", "#efb8c6", "#f8d6dd", "#eaaabb", "#f3c1cd"], eye="#c75d78", twig="#3a2c2a", twig_w=2, fill=0.95),
+    # kawazu-zakura: big single flowers of a deep, vivid pink in February, a red eye
+    "kawazu": dict(leaf="blossom", L=0, W=0, twigs=12, spread=0.7, every=1, start=1, angle=(0.6, 1.2), petal=1.15, buds=0.5,
+                   colours=["#f2a2bb", "#ee93b0", "#f5b2c6", "#e985a6", "#f4aac0"], eye="#b8385e", twig="#3f302c", twig_w=3, fill=0.9),
+    # yaezakura (Kanzan, the commonest double cherry): pompoms of deep pink in mid April, with bronze new leaves
+    "yae": dict(leaf="double", L=0, W=0, twigs=10, spread=0.75, every=2, start=1, angle=(0.6, 1.2), leaves=0.3, leaf_colour="#8f5a3a",
+                colours=["#f5b3c9", "#f0a6bf", "#f8c4d4", "#eb9bb7"], twig="#3f302c", twig_w=3, fill=0.9),
+    # the cays' beach scrub (#165): Scaevola's fleshy spoon-shaped leaves, yellow-green, crowded at the twigs'
+    # ends; the octopus bush's (Argusia, Heliotropium arboreum) narrow silvery-grey felted leaves in rosettes
+    "scaevola": dict(leaf="ovate", L=44, W=20, twigs=6, spread=0.8, every=1, start=8, angle=(0.4, 1.0), taper=True,
+                     colours=["#9ab84c", "#a8c457", "#8cab43", "#b2cb63"], twig="#7f8a4a", twig_w=3, fill=0.95),
+    "argusia": dict(leaf="lance", L=40, W=11, twigs=7, spread=0.85, every=1, start=6, angle=(0.5, 1.2), arch=0.4,
+                    colours=["#a7b39b", "#b6c1a9", "#98a58d", "#c0c9b2"], twig="#8a8072", twig_w=2, fill=0.95),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
 }
@@ -317,10 +361,11 @@ SPECIES = {
                         "(Midosuji, Jingu Gaien), gold in late November"),
     "cherry": dict(deciduous=True, H=8.8, trunk=2.3, r0=0.34, crown=("ellipsoid", 5.7, 6.2, 3.0), n=420, size=2.4, n1=6, n2=5, leaf="sakura",
                    bark="#3e3431", lean=0.1, leader=False, colour="#5d8a3a", autumn_colour="#b2532f", bloom_colour="#f3dadc",
+                   bloom_offset_d=0, bloom_len=1.0, bark_bands=True,
                    note="Somei-yoshino cherry (Cerasus x yedoensis): a short dark trunk that forks low into a few limbs spreading wide, "
                         "a crown wider than it is tall; pale pink on bare branches for about a fortnight from late March in Tokyo "
                         "(web/trees.js), then fresh leaves, orange-red in November. Its cards are all bloom cards, shown as the leaf "
-                        "cell beside them out of flower"),
+                        "cell out of flower"),
     # the subtropics: the evergreen laurel forest of Hong Kong's hills (Schima, Machilus) and of Japan's old
     # shrine groves (shii and kashi)
     "evergreen": dict(H=14.0, trunk=3.0, r0=0.36, crown=("ellipsoid", 9.0, 5.6, 5.2), n=380, size=2.5, n1=7, n2=4, leaf="evergreen",
@@ -329,13 +374,41 @@ SPECIES = {
                            "crown; Hong Kong's hillside woods and the laurel forest of the old shrine groves"),
     # the coral cays: the reef islands' own trees (web/reef/life/flora.js)
     "pisonia": dict(H=9.5, trunk=3.6, r0=0.5, crown=("umbrella", 7.2, 6.4, 2.4), n=280, size=2.9, n1=6, n2=4, leaf="pisonia",
-                    bark="#9f988a", lean=0.18, leader=False, colour="#759c42",
-                    note="Pisonia (Pisonia grandis): pale soft trunks leaning out and a broad low canopy of big lime-green leaves; "
-                         "the coral cays' forest, mostly 6-8 m on Heron Island"),
+                    bark="#9f988a", lean=0.18, leader=False, colour="#759c42", stems=3,
+                    note="Pisonia (Pisonia grandis): several pale soft trunks from one base, leaning out (fallen stems re-root and "
+                         "sprout, so a tree is a clump), and a broad low canopy of big lime-green leaves; the coral cays' forest, "
+                         "mostly 6-8 m on Heron Island"),
     "casuarina": dict(H=16.0, trunk=4.5, r0=0.28, crown=("cone", 4.5, 16.5, 3.4), n=300, size=4.0, n1=9, n2=3, leaf="casuarina",
                       bark="#4d3f35", lean=0.06, excurrent=True, colour="#5e7055",
                       note="Coastal she-oak (Casuarina equisetifolia): an open, tapering crown of drooping grey-green branchlets, "
                            "behind the beaches"),
+    # the other cherries (#163): each flowers on its own day, an offset (days) from the Somei-yoshino's opening
+    # (web/trees.js), over a bloom bloom_len times as long, and all carry the cherry's banded bark
+    "shidarezakura": dict(deciduous=True, H=10.5, trunk=3.0, r0=0.46, crown=("weep", 6.2, 6.6, 4.6), n1=8, n2=11, size=2.0, leaf="shidare",
+                          bark="#3d3230", lean=0.08, colour="#5d8a3a", autumn_colour="#b2532f", bloom_colour="#efbdca",
+                          bloom_offset_d=-4, bloom_len=1.0, bark_bands=True,
+                          note="Weeping cherry (shidarezakura, Cerasus spachiana 'Pendula', an Edohigan): a stout trunk, scaffold "
+                               "limbs arching up into a dome and curtains of thin branches hanging nearly to the ground, pink a few "
+                               "days before the Somei-yoshino: Maruyama Park's Gion weeping cherry, the temple gardens, Rikugien"),
+    "kawazu": dict(deciduous=True, H=7.0, trunk=1.8, r0=0.26, crown=("ellipsoid", 4.6, 4.0, 2.8), n=360, size=2.2, n1=6, n2=5, leaf="kawazu",
+                   bark="#41332f", lean=0.08, leader=False, colour="#5f8c3a", autumn_colour="#b2532f", bloom_colour="#ef9fb9",
+                   bloom_offset_d=-37, bloom_len=1.7, bark_bands=True,
+                   note="Kawazu-zakura (Cerasus 'Kawazu-zakura', from Kawazu in Izu): a small upright tree whose deep pink flowers "
+                        "open in February, five weeks before the Somei-yoshino's, and last a month"),
+    "yaezakura": dict(deciduous=True, H=8.0, trunk=2.0, r0=0.32, crown=("vase", 2.2, 8.2, 1.0, 4.6), n=400, size=2.4, n1=6, n2=5, leaf="yae",
+                      bark="#3f3330", lean=0.04, leader=False, colour="#5a8638", autumn_colour="#b2532f", bloom_colour="#eba3bc",
+                      bloom_offset_d=16, bloom_len=1.15, bark_bands=True,
+                      note="Yaezakura (Cerasus serrulata 'Kanzan', the commonest double cherry): upswept limbs in a vase, heavy "
+                           "deep pink double flowers in mid April, about two weeks after the Somei-yoshino, with bronze new leaves"),
+    # the coral cays' beach scrub (#165), drawn as blobs before: low multi-stemmed shrubs behind the beach
+    "scaevola": dict(H=2.2, trunk=0.35, r0=0.07, crown=("ellipsoid", 1.3, 2.2, 1.05), n=170, size=1.1, n1=6, n2=3, leaf="scaevola",
+                     bark="#7d7a55", lean=0.3, leader=False, colour="#8fae48", stems=5,
+                     note="Beach cabbage (Scaevola taccada): a dense mound of thick yellow-green leaves on many soft stems "
+                          "from the sand, 1-3 m high and wider than tall, the first shrub behind a cay's beach"),
+    "argusia": dict(H=3.6, trunk=0.8, r0=0.12, crown=("umbrella", 2.5, 2.7, 1.3), n=220, size=1.4, n1=6, n2=4, leaf="argusia",
+                    bark="#6f655a", lean=0.35, leader=False, colour="#a4b098", stems=4,
+                    note="Octopus bush (Argusia argentea, now Heliotropium arboreum): crooked spreading stems under a "
+                         "rounded crown of silvery grey-green felted leaves in rosettes, about 3.5 m high and 5 m across"),
 }
 
 
@@ -504,6 +577,8 @@ def grow(name, sp, seed, lod):
     H = sp["H"]
     if sp["crown"][0] == "palm":
         return grow_palm(name, sp, rng, lod)
+    if sp["crown"][0] == "weep":
+        return grow_weeping(name, sp, rng, lod)
     P, clumps = crown_points(sp, rng)
     shape = sp["crown"]
     if shape[0] in ("vase", "cone"):
@@ -523,12 +598,23 @@ def grow(name, sp, seed, lod):
     r0 = sp["r0"]
     branch(T, [trunk_pts[0] - np.array([0, 0, 0.3])] + trunk_pts, r0 * 1.35, r0 * (0.12 if excurrent else 0.72), bark, segs, H, ao=(0.75, 0.55),
            sway1=0.2 if excurrent else 0.05)
+    # a clump (pisonia, the beach scrub): more stems from the same foot, leaning out round it, a little shorter
+    tops = [top]
+    for k in range(1, sp.get("stems", 1)):
+        a = TAU * k / sp["stems"] + rng.uniform(-0.4, 0.4)
+        out = np.array([math.cos(a), math.sin(a), 0.0])
+        h = sp["trunk"] * rng.uniform(0.75, 1.0)
+        t_k = out * h * rng.uniform(0.35, 0.6) + np.array([0, 0, h])
+        pts_k = bezier(out * r0 * 0.6, out * h * 0.1 + np.array([0, 0, h * 0.5]), t_k, 5 if lod < 2 else 2)
+        branch(T, [pts_k[0] - np.array([0, 0, 0.3])] + pts_k, r0 * rng.uniform(0.75, 1.0), r0 * 0.55, bark, max(5, segs - 2), H, ao=(0.75, 0.55), sway1=0.08)
+        tops.append(t_k)
     if lod == 2:
         return hull(T, name, sp, P, crown_c, crown_r)
     C1, lab1 = kmeans(P, sp["n1"], rng)
     limbs = []
     for j, c in enumerate(C1):
-        start = top + np.array([0, 0, rng.uniform(-0.6, 0.4)])
+        near_top = tops[int(np.argmin([np.linalg.norm((c - t)[:2]) for t in tops]))]
+        start = near_top + np.array([0, 0, rng.uniform(-0.6, 0.4) * min(1.0, sp["trunk"] / 2)])
         if sp.get("leader") and j == int(np.argmax(C1[:, 2])):
             start = top
         if excurrent:       # from the leader at the limb's own height, a little above it
@@ -600,6 +686,89 @@ def hull(T, name, sp, P, crown_c, crown_r):
     for f in bm.faces:
         T.m.face([ids[v.index] for v in f.verts], f"Crown_{name}", False)
     bm.free()
+    return T
+
+
+def grow_weeping(name, sp, rng, lod):
+    """A weeping cherry: a stout trunk forking into scaffold limbs that arch up into a dome, and from them
+    curtains of thin branches that rise a little, turn over and hang nearly to the ground, flowering along
+    their length (Weber and Penn's 'curve down', as Blender's Sapling and ez-tree grow a weeping crown).
+    The hanging cards grow down their branch, so the atlas's twigs fall from the top of each card."""
+    T = Tree()
+    bark = f"Bark_{name}"
+    H = sp["H"]
+    _, zc, R, hh = sp["crown"]
+    lean = np.array([rng.uniform(-1, 1), rng.uniform(-1, 1), 0]) * sp["lean"]
+    top = np.array([0, 0, sp["trunk"]]) + lean * sp["trunk"]
+    trunk_pts = bezier(np.array([0, 0, 0.0]), np.array([0, 0, top[2] * 0.5]) + lean * sp["trunk"] * 0.3, top, 6 if lod < 2 else 2)
+    segs = 10 if lod == 0 else 6 if lod == 1 else 5
+    r0 = sp["r0"]
+    branch(T, [trunk_pts[0] - np.array([0, 0, 0.3])] + trunk_pts, r0 * 1.4, r0 * 0.8, bark, segs, H, ao=(0.75, 0.55), sway1=0.05)
+    crown_c = np.array([0, 0, (H + 1.8) / 2])
+    crown_r = max(R, (H - 1.8) / 2)
+    P, hanging = [], []
+    for j in range(sp["n1"]):
+        a = TAU * j / sp["n1"] + rng.uniform(-0.3, 0.3)
+        out = np.array([math.cos(a), math.sin(a), 0.0])
+        d = R * rng.uniform(0.42, 0.62)
+        end = np.array([0, 0, H * rng.uniform(0.82, 0.97)]) + out * d
+        start = top + np.array([0, 0, rng.uniform(-0.4, 0.3)])
+        ctrl = start + out * d * 0.35 + np.array([0, 0, (end[2] - start[2]) * 0.85])
+        limb = bezier(start, ctrl, end, 7 if lod == 0 else 4)
+        rl = r0 * 0.5 * (0.75 + 0.25 * rng.random())
+        branch(T, limb, rl, rl * 0.3, bark, 6 if lod == 0 else 5, H, ao=(0.6, 0.75), sway0=0.05, sway1=0.4)
+        if lod == 2:
+            # the far crown's hull: a dome over curtains reaching down to two metres
+            for k in range(14):
+                b = a + rng.uniform(-0.5, 0.5)
+                rr = R * rng.uniform(0.5, 1.0)
+                P.append(np.array([math.cos(b) * rr, math.sin(b) * rr, rng.uniform(1.8, H * 0.95 - 1.2 * rr / R)]))
+            continue
+        # the hanging branches: from the outer part of the limb and its tip, outward and round it
+        n2 = sp["n2"] if lod == 0 else max(3, sp["n2"] // 2)
+        for i2 in range(n2):
+            t0 = rng.uniform(0.45, 1.0)
+            k0 = min(len(limb) - 1, int(t0 * (len(limb) - 1)))
+            s = limb[k0]
+            b = a + rng.uniform(-1.1, 1.1)
+            o = np.array([math.cos(b), math.sin(b), 0.0])
+            reach = rng.uniform(1.2, 3.0) * (R - np.hypot(s[0], s[1]) * 0.5) / R * 1.7
+            z_end = rng.uniform(1.0, 3.2)
+            c1 = s + o * reach * 0.65 + np.array([0, 0, rng.uniform(0.5, 1.1)])
+            c2 = s + o * reach + np.array([0, 0, 0.2])
+            e = s + o * reach * 1.08 + np.array([0, 0, z_end - s[2]])
+            n = 7
+            pts = [((1 - t) ** 3) * s + 3 * (1 - t) ** 2 * t * c1 + 3 * (1 - t) * t * t * c2 + t ** 3 * e for t in np.linspace(0, 1, n)]
+            if lod == 0:   # (a thin three-sided tube through every other point: it reads the same)
+                branch(T, pts[::2] if len(pts) % 2 else pts, rl * 0.22, 0.012, bark, 3, H, ao=(0.65, 0.85), sway0=0.35, sway1=1.0)
+            hanging.append((pts, o))
+        # a few short sprays hanging over the top of the limb, so the dome is never bare from above
+        for k in range(5 if lod == 0 else 2):
+            p = limb[-1 - k % 3] + rng.normal(0, 0.6, 3) + np.array([0, 0, 0.4])
+            b = rng.uniform(0, TAU)
+            card(T, p, np.array([math.cos(b) * 0.5, math.sin(b) * 0.5, -1.0]), out + rng.normal(0, 0.4, 3), sp["size"] * (0.9 if lod == 0 else 1.7),
+                 CELLS[sp["leaf"]], crown_c, crown_r, rng, aspect=0.6)
+            P.append(p)
+    if lod == 2:
+        return hull(T, name, sp, np.array(P), crown_c, crown_r)
+    # cards hang along each branch from where it turns over, each growing down it, overlapping
+    step = sp["size"] * (0.55 if lod == 0 else 1.4)
+    size = sp["size"] * (1.0 if lod == 0 else 1.9)
+    for pts, o in hanging:
+        L = [0.0] + list(np.cumsum([np.linalg.norm(pts[i + 1] - pts[i]) for i in range(len(pts) - 1)]))
+        at = L[-1] * 0.22
+        while at < L[-1] - size * 0.35:
+            i = max(0, min(len(pts) - 2, int(np.searchsorted(L, at)) - 1))
+            f = (at - L[i]) / max(L[i + 1] - L[i], 1e-6)
+            p = pts[i] + (pts[i + 1] - pts[i]) * f
+            down = pts[i + 1] - pts[i]
+            down = down / (np.linalg.norm(down) + 1e-6)
+            jit = rng.normal(0, 0.25, 3)
+            b = rng.uniform(-1.3, 1.3)   # each card turned its own way round the branch: a curtain, not a strip
+            facing = np.array([o[0] * math.cos(b) - o[1] * math.sin(b), o[0] * math.sin(b) + o[1] * math.cos(b), 0.0]) + jit
+            card(T, p + jit * 0.2, down * 0.85 + np.array([0, 0, -0.3]) + o * 0.1, facing, size * rng.uniform(0.85, 1.1), CELLS[sp["leaf"]],
+                 crown_c, crown_r, rng, aspect=0.62)
+            at += step * rng.uniform(0.8, 1.2)
     return T
 
 
@@ -711,7 +880,7 @@ def build_all(atlas):
             tri.append(triangles(ob))
         info[name] = {"height_m": sp["H"], "crown": list(sp["crown"][1:]), "colour": sp["colour"], "bark": sp["bark"], "triangles": tri,
                       "cell": CELLS[sp["leaf"]], "trunk_r": sp["r0"], "note": sp["note"]}
-        for k_ in ("bloom_colour", "autumn_colour", "deciduous"):
+        for k_ in ("bloom_colour", "autumn_colour", "deciduous", "bloom_offset_d", "bloom_len", "bark_bands"):
             if k_ in sp:
                 info[name][k_] = sp[k_]
     return objs, info
@@ -777,7 +946,8 @@ def main():
         "note": "The trees every city shares, built by blender/build_trees.py. Nodes are <species>_LOD0..2; colour red is ambient "
                 "occlusion, green how far the wind moves a vertex, blue a phase for the leaves' flutter. A city picks its mix of "
                 "species in city.json 'trees'.",
-        "file": "trees.glb", "lod_m": [130, 520], "atlas": {"cells": CELLS, "columns": COLS, "rows": ROWS},
+        "file": "trees.glb", "lod_m": [130, 520], "atlas": {"cells": CELLS, "columns": COLS, "rows": ROWS,
+                                                     "sakura_cells": [CELLS[k] for k in SAKURA_CELLS]},
         "mix": {"plane": 0.3, "gum": 0.25, "elm": 0.15, "fig": 0.1, "jacaranda": 0.1, "palm": 0.1},
         "species": info,
     }
