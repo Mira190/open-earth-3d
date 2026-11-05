@@ -121,7 +121,9 @@ RETRY="$OUT/retry.txt"
 : >"$RETRY"
 game_step() {
   local c=$1 pass=$2
-  if timeout 900 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then
+  # (25 minutes: the game check has grown past 120 steps, and a busy map such as Shibuya's takes a
+  # little over 15 on a software renderer even alone)
+  if timeout 1500 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; then
     echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
   elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
   else echo "FAIL game   $c   (see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
