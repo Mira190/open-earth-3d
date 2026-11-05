@@ -791,6 +791,7 @@ td [data-band] { display: block; margin-top: 4px; white-space: nowrap; }
               <li><b>Footprints and heights</b> from Overture Maps (OpenStreetMap and Microsoft ML), each height tagged with where it came from, or measured by LiDAR and surveys where the city publishes them.</li>
               <li><b>Bare-earth terrain and aerial imagery</b> from the national or state open-data service, checked against an independent source.</li>
               <li><b>Missing heights</b> estimated from neighbours and calibrated against published heights, with a measured error for every source.</li>
+              <li><b>The land past the model</b> from Copernicus GLO-30 heights, ESA WorldCover 2021 land cover (CC BY 4.0) and NASA's Black Marble lights, under the haze.</li>
               <li><b>The real sun</b> from the NOAA equations in the city's own time zone, ray-cast through a 2 m surface model.</li>
             </ol>
           </div>
@@ -1129,7 +1130,7 @@ import * as T from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { Sky } from 'three/addons/objects/Sky.js';
 import { Reflector } from 'three/addons/objects/Reflector.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader, MeshoptDecoder } from './gltf.js'; // meshopt (WebAssembly or JavaScript) and retries
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh';
@@ -1139,7 +1140,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 T.ColorManagement.enabled = false;
-window.THREE = Object.assign({}, T, { OrbitControls, Sky, Reflector, GLTFLoader, SkeletonUtils, BufferGeometryUtils, MeshBVH, acceleratedRaycast,
+window.THREE = Object.assign({}, T, { OrbitControls, Sky, Reflector, GLTFLoader, MeshoptDecoder, SkeletonUtils, BufferGeometryUtils, MeshBVH, acceleratedRaycast,
   EffectComposer, RenderPass, UnrealBloomPass, OutputPass, ShaderPass });
 window.dispatchEvent(new Event('three-ready'));
 </script>
@@ -1163,6 +1164,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="night.js"></script>
 <script src="glcare.js"></script>
 <script src="quays.js"></script>
+<script src="farland.js"></script>
 <script src="world.js"></script>
 <script src="lights.js"></script>
 <script src="neon.js"></script>
@@ -1179,6 +1181,7 @@ window.dispatchEvent(new Event('three-ready'));
 <script src="game/cars.js"></script>
 <script src="game/route.js"></script>
 <script src="game/rail.js"></script>
+<script src="game/ao.js"></script>
 <script src="game/atmosphere.js"></script>
 <script src="game/weather.js"></script>
 <script src="game/penguins.js"></script>

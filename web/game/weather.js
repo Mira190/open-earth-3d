@@ -378,6 +378,7 @@ void main() {
     const readBuf = new Uint16Array(4);
     const api = {
       U, kinds: Object.keys(KINDS), names: NAMES, meshes: { near, far, splash }, occ: occRT,
+      shed: tier === 'low' ? 1 : 0, // how much of the rain to leave out (see update): the low tier starts without the far streaks and splashes
       get mode() { return mode; },
       get kind() { return kindOf(cur); },
       get state() { return { mode, kind: kindOf(cur), rain: cur.rain, cloud: cur.cloud, wet: U.uOeWet.value, covered: cover.roof, coverH: cover.h }; },
@@ -443,7 +444,9 @@ void main() {
         if (dt > 0) { const v = camera.position.clone().sub(lastCam).divideScalar(dt); if (v.length() > 80) v.set(0, 0, 0); vel.lerp(v, Math.min(1, dt * 8)); }
         lastCam.copy(camera.position);
         const raining = cur.rain > 0.01;
-        near.visible = far.visible = splash.visible = raining;
+        // shed (game.js, on a device that can't keep up): 1 leaves out the far streaks and the
+        // splashes, 2 every drop; the wet streets, the clouds and the sound of it stay
+        near.visible = raining && api.shed < 2; far.visible = splash.visible = raining && api.shed < 1;
         if (!raining) { occOn.value = 0; return; }
         const fwd = camera.getWorldDirection(new THREE.Vector3());
         const sz = renderer.getDrawingBufferSize(new THREE.Vector2());
@@ -464,7 +467,7 @@ void main() {
         const day = Wd.day ?? 1, fc = world.fog ? world.fog.color : new THREE.Color(0.7, 0.75, 0.8);
         shared.uCol.value.copy(fc).multiplyScalar(1.0 + 0.9 * day).add(new THREE.Color(0.16, 0.13, 0.09).multiplyScalar(1 - day));
         // the occlusion map, when the camera has moved or a little time has passed
-        if (occRT && (tSec - occT > (tier === 'low' ? 1.2 : 0.5) || camera.position.distanceTo(occAt) > 4)) {
+        if (occRT && (tSec - occT > (api.shed ? 2 : tier === 'low' ? 1.2 : 0.5) || camera.position.distanceTo(occAt) > 4)) {
           occT = tSec; occAt.copy(camera.position);
           renderOcc(tSec);
         }

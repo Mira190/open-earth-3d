@@ -35,10 +35,13 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Surveyed heights | `fetch_survey.py` | `survey.json`: a mapping agency's building blocks with surveyed top levels (Hong Kong's Lands Department) |
 | People | `fetch_people.py` | `web/assets/people/`: the game's characters, animations and crowd copies (Quaternius CC0 packs) |
 | Open water past the frame | `open_sea.py` | `sea.jpg`: Overture's ocean, bays, straits (and, where the city draws them, rivers and lakes) 40 km either side of the frame, for the edge haze (`web/world.js` `edgeHaze`, issue 57) |
+| Land past the frame | `far_land.py` | `far.png` (relief and night lights), `far.jpg` (land cover's colour), `far.json`: Copernicus GLO-30, ESA WorldCover 2021, NASA Black Marble, 40 km either side of the frame (60 km at a reef site), for `web/farland.js` (issue 78) |
 | Base map | `fetch_world.py` | `web/data/world.json`, Natural Earth land, lakes and borders for the globe |
 | Scene | `build_scene.py` | `scene.json`, `buildings.json`, `places.json`, `terrain.json`, `shore.png`, ground tiles; `cities/<id>/analysis/height_model.json` and `roof_model.json` |
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
+| Repainted ground | `refresh_ground.py` | Applies a city's `imagery.paint` (land use that draws the wrong ground: a construction site mapped over a paved promenade) to the drawn ground tiles of a city without aerial imagery, without a rebuild; `build_scene.py` draws the same fill in place of the land use |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
+| Bridges over the water | `bridges.py` (run by `build_scene.py`, `landmarks.py`, `game_data.py`, `game_extras.py`), `refresh_bridges.py` | Every bridge OpenStreetMap maps over a city's rivers, canals and moats that the city's own builder does not draw (Paris's, Amsterdam's, Tsukishima's and Odaiba's do): its deck at the banks' height, in its real form and paint from city.json `bridges` (see [Bridges](#bridges-over-the-water)), in `landmarks.json`, and its deck walkable and drivable in `game.json` surfaces. `refresh_bridges.py` finds them again in a built city from the Overture layers and the game's ground; `tools/bridge_survey.py` lists any bridge still drawn by nothing |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
@@ -371,6 +374,34 @@ The views switch in place, without reloading the page.
     above and from the tour cameras toward and away from a low sun:
     `docs/images/sea-edge/*-compare.jpg` (`tools/sea_views.py` writes the views
     for `tools/city_shot.js`).
+  - past the frame, the land (issue 78). Under that haze stands the land that is
+    really there (`web/farland.js`, `pipeline/far_land.py`): a low terrain 40 km
+    either side of the frame's centre (60 km at a reef site) from Copernicus
+    GLO-30 heights at 156 m (234 m), less the trees' and buildings' share of the
+    surface model, its grid lines about 40 m apart at the frame and a few hundred
+    metres far out (256 x 256 cells, 128 x 128 on the low tier). It is coloured by
+    ESA WorldCover 2021's land cover, each class's share of a 78 m cell, in colours
+    solved from the city's own photo inside the frame against the classes' shares
+    there (held toward a default and mostly to its hue, with the built-up land
+    darkened to the drawn city's tone, `BUILT_SHADE`), with value noise at 30 to
+    300 m for what the cells average away. Water at sea level sits under the
+    sea; a lake in the hills stays, flat, in the water's colour (Lake Biwa
+    behind Higashiyama), and the open sea is not drawn over land past the frame
+    (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
+    haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
+    land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
+    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    built-up land glows: NASA's Black Marble at 500 m, raised to a power for
+    contrast (its visual product saturates over a city) and shared out by
+    WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
+    more of them the brighter the land, which fade into their mean where a pixel
+    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    with node materials under the reef's own air (`env.medium`), the land raised
+    clear of the highest tide: the ranges behind Cairns stand on Green Island's
+    horizon, and the coast's towns are a band of light at night. `?far=off`
+    leaves it out, to compare; `tools/far_views.py` writes the high views out
+    past each edge at noon, dusk and night for `tools/city_shot.js`.
+    Before and after: `docs/images/far-land/*-compare.jpg`.
 
   Each building gets one of 13 facade styles from `typology.py` (terrace,
   machiya, curtain wall, ribbon office and others), with its storeys, a
@@ -579,6 +610,21 @@ centre lies on its site, so a redevelopment can also remove shadow.
 Each result is re-run on four height-error scenarios drawn from the measured
 errors. The protected times can be read as standard time or clock time; the
 city's `protection.default_time_basis` sets the default.
+
+### What a slow device gives up first
+
+The game's frame rate is measured over four seconds at a time while it is being played. Below 24
+frames a second it sheds one thing per window, the nice-to-haves first (`shed` in
+`web/game/game.js`): the far rain streaks and the splashes (`weather.shed = 1`; the low tier
+starts there), then every drop (`2`: the streets stay wet, the sky grey, the rain audible), then
+the wet street's reflections (`mirror.off`), then pixels, to 85% and then 70% of the tier's. Only
+when nothing is left does it suggest a lower crowd density. The people keep their realistic
+models on every tier: the box-built figures (`OEActors.makePerson`) are a last resort for a
+device that could load none of the people's files, and a single character that fails to load
+(after `web/gltf.js`'s retries) is worn by another loaded one of the same sex instead. The tools
+drive the game under `navigator.webdriver`, where the measurement is off (a software renderer
+would shed everything); `tools/game_check.js` calls `shed` itself to check the order and that no
+one turns into a box.
 
 ## Analyses
 
@@ -817,6 +863,43 @@ and planes they replace); the shadow pass a third less.
 Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
 llvmpipe gives (seconds) say nothing about a device.
 
+## Bridges over the water
+
+Issue 122: the Tokyo maps built before Tsukishima and Odaiba routed their roads over the Sumida and
+the moats on nothing. Now `pipeline/bridges.py` finds every bridge that Overture's infrastructure layer
+(OpenStreetMap, ODbL) maps over the water: an outline, or the centre lines of its carriageways joined by
+name. Where an outline and a line overlap, there is one deck, and an unnamed outline takes its line's
+name. It leaves out three kinds: a bridge the city's own builder draws, an expressway's viaduct
+(OpenStreetMap's layer is an order, not a height), and the names in `skip`. A deck stands at the banks'
+height, at least `deck_min_m` (3.5 m, a Tokyo embankment), and is crowned 2% of its length. Over water
+the model draws as ground (a palace moat whose survey stands higher than its banks, Kyoto's riverbed), it
+clears that ground and ramps down to the banks. Over a ferry's course (game.json `ferries`) the middle of the span rises
+until the city's boats pass under its soffit with someone standing on the upper deck, level across the
+middle, as `web/game/decks.js` lifts the decks it draws; a deck the boats pass under is not a bank to
+them. A deck whose road the data carries up above a bank (Kings Way over the Crown promenade) takes
+`deck_z`.
+
+Each bridge takes its form and paint by name from city.json `bridges.forms`:
+
+| Form | Structure | Examples |
+|---|---|---|
+| `girder` | girder deck on piers | Kototoi-bashi, Sanjo Ohashi (timber rail and giboshi), Wadakura-bashi |
+| `deck_arch` | arches under the deck, spandrel posts | Azuma-bashi, Hijiri-bashi, Princes Bridge |
+| `half_through` | the middle arch rises through the deck, deck arches either side | Komagata-bashi, Tsukiji Ohashi |
+| `through_arch` | tied arches over each span, hangers | Umaya-bashi |
+| `truss` | through Warren truss | the Tobu line's Sumida bridge |
+| `stone_arch` | masonry arches, spandrel walls, stone parapet | Nihonbashi, the Seimon Ishibashi, Mansei-bashi, Shichijo Ohashi |
+| `kachidoki` | Kachidoki Bridge's bascule between two tied arches | |
+| `x` | an X in plan, two decks crossing | Sakura-bashi |
+
+The paint after dark is floodlit in its own colour, as Tokyo lights the Sumida's bridges. The Sumida's
+colours are the Tokyo Metropolitan Government's (隅田川中流部著名橋色彩基本方針, set in 1984 and confirmed in
+2014–15: Azuma-bashi red, Komagata-bashi blue, Umaya-bashi green, no two neighbours alike). The spans
+come from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record. The
+other cities' bridges come from their own records (Kyoto City's 京の橋しるべ, Heritage Victoria). A
+colour that no record gives is read from photographs and is approximate. These are facts and
+measurements, so no licence is needed. No third-party model or texture is used.
+
 ## Download size
 
 Issue 148: what a city costs to download before it can be played. `tools/load_size.js <city>
@@ -851,10 +934,57 @@ stale pack and decodes every pack against its JSON (`tools/pack_check.js`).
 The pack is 40% smaller than the gzipped JSON and a fifth of the raw. Decoding costs about 0.1–0.2 s
 more than `JSON.parse` on a desktop, against 1–2 s less download at 20 Mbps for the big cities.
 
-Browser options surveyed for the shared models (next steps of issue 148): three.js r186 ships
-`EXT_meshopt_compression` support in `GLTFLoader` with `MeshoptDecoder`
-(`examples/jsm/libs/meshopt_decoder.module.js`, meshoptimizer, MIT), `KHR_draco_mesh_compression`
-with `DRACOLoader` (Draco, Apache-2.0, a WASM decoder of a few hundred kB) and
-`KHR_texture_basisu` with `KTX2Loader` (Basis Universal, Apache-2.0, a WASM transcoder). Meshopt
-decodes fastest, keeps skinning and morph targets, and its decoder is a few kB of JS, so it is
-the choice for geometry; KTX2 is for textures where GPU memory matters more than bytes.
+### Shared models: meshopt
+
+What three.js r186 can decode out of the box, surveyed for the shared models (`web/assets/vehicles`,
+`trees`, `people`):
+
+| Option | three.js r186 | Licence | For |
+|---|---|---|---|
+| `EXT_meshopt_compression` (meshoptimizer) | `GLTFLoader.setMeshoptDecoder`, `examples/jsm/libs/meshopt_decoder.module.js`, 29 kB of JS with its WASM inline | MIT | geometry, skins and animation; decodes at gigabytes a second, keeps every node, name and attribute |
+| `KHR_draco_mesh_compression` (Draco) | `DRACOLoader`, a WASM decoder of about 300 kB fetched on first use | Apache-2.0 | static geometry; smaller than meshopt on dense meshes, but no animation, slower to decode, and it re-orders vertices |
+| `KHR_texture_basisu` (KTX2, Basis Universal) | `KTX2Loader`, a WASM transcoder of about 500 kB | Apache-2.0 | textures that stay compressed in GPU memory; the transcoder outweighs what it saves on these few textures |
+| `EXT_texture_webp` | built in | — | already used by the people's textures |
+
+Adopted: meshopt, for every shared model. `pipeline/meshopt_glb.mjs` (meshoptimizer's own encoder,
+1.3.0, MIT, vendored in `pipeline/vendor/meshoptimizer/`) encodes each buffer view of vertex
+attributes, indices and animation in place, as the last step of `blender/build_vehicles.py`,
+`build_trees.py`, `build_people.py` and `pipeline/fetch_people.py` (`pipeline/meshopt.py`). It
+does not quantise to integers, re-order, merge or rename anything, so `cars.js` and `people.js`
+read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
+corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
+exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
+Each view is decoded again and compared before the file is written. Every page makes its
+`GLTFLoader` from `web/gltf.js` (the city viewer and the game through `web/index.html`'s
+`THREE.GLTFLoader`, the reef's `people.js` and `life/flora.js` by importing it), which sets the
+decoder and tries a failed download again twice (0.8 s, 2.4 s). Where there is no WebAssembly
+(iOS Lockdown Mode, some locked-down browsers) it decodes with meshoptimizer's pure-JavaScript
+reference decoder instead (1.3.0, the encoder's version, MIT, vendored in
+`web/vendor/meshoptimizer/`, loaded only then): slower, but the people, trees and cars are still
+the real models rather than the box-built stand-ins. `tools/check.sh` fails on a model that is
+not compressed.
+
+| Models | Before | After |
+|---|---|---|
+| `cars.glb` | 5.40 MB | 2.35 MB |
+| `helicopter.glb` | 3.75 MB | 1.69 MB |
+| `ferry.glb`, `ferry_river.glb` | 3.73 MB | 2.04 MB |
+| `trees.glb` (48 species and stages), its leaf atlases WebP (`pipeline/glb_webp.py`: quality 92, the cut-out alpha exact; a fifth of the PNG) | 5.15 MB | 1.85 MB |
+| the surveyors, `H_Surveyor_W.glb` + `_M` | 4.57 MB | 2.16 MB |
+| the NPCs' clips, `R_clips_f.glb` + `_m` | 3.94 MB | 2.01 MB |
+| all 87 shared models | 60.28 MB | 35.98 MB |
+
+What the game downloads before Shibuya can be played (`tools/load_size.js shibuya play 40`), main before
+issue 148 against the three steps (packed buildings, deferred helicopter and NPCs, meshopt):
+
+| Shibuya `#play` | files | raw | on the wire | playable at 20 Mbps |
+|---|---|---|---|---|
+| before | 128 | 66.3 MB | 45.2 MB | 67.4 s |
+| after | 127 | 36.6 MB | 27.7 MB | 55.3 s |
+
+The times are on a software renderer (Mesa llvmpipe), where building the scene's shaders and
+geometry, not the network, takes most of them; on a GPU the download is the larger share.
+
+The helicopter (1.7 MB) is no longer among them: it is fetched when the player comes within 800 m of
+its pad or boards it. NPCs whose characters no one within 300 m of the start wears load after the
+game opens.
