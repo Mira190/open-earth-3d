@@ -36,10 +36,13 @@ python pipeline/fetch_linz.py --city lake-tekapo --only terrain fallback imagery
 python pipeline/fetch_overture.py --city lake-tekapo --only water segment building land land_use infrastructure
 python pipeline/build_alpine.py --city lake-tekapo      # terrain, ground, cover, lakes, scene.json (and the landmarks)
 python pipeline/alpine_detail.py --city lake-tekapo     # the 0.3 m township and 0.75 m Mt John and south-shore patches
+python pipeline/far_land.py --city lake-tekapo          # the land past the frame, 100 km round
+python pipeline/alpine_snow.py --city lake-tekapo       # the season's snow from the latest Sentinel-2 pass
+python pipeline/marine_meta.py --city lake-tekapo       # places, spawn, landmarks and lupin drifts into scene.json
 python pipeline/tekapo_landmarks.py && python blender/build_tekapo.py   # the landmark models
 ```
 
-The landmarks reach the viewer through `scene.json` `landmarks` (written by `build_alpine.py` from city.json) and
+The landmarks reach the viewer through `scene.json` `landmarks` (copied by `marine_meta.py` from city.json) and
 `web/reef/alpine/landmarks.js`, which places each model and makes the footbridge's deck walkable.
 
 ## Data

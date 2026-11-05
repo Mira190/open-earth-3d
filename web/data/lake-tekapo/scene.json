@@ -1196,14 +1196,14 @@
    "walk": "deck",
    "note": "y = 0 is the river surface under it (the DEM, 707.71 m); the deck is 8.2-10.8 m above",
    "deck": {
-    "ends": [
+    "ends_m": [
      [
-      170.4803005,
-      -44.0048902
+      -61.44,
+      0.76
      ],
      [
-      170.4818388,
-      -44.0049079
+      61.93,
+      -1.22
      ]
     ],
     "width_m": 3.0,
@@ -1218,7 +1218,7 @@
      717.23,
      716.25
     ],
-    "note": "the deck's top from end to end, m NZVD2016, at nine even steps: the DSM along the OpenStreetMap way less the balustrade, fitted to a camber"
+    "note": "the walkable deck: its ends in metres east and north of the landmark's point, and its top from end to end, m NZVD2016, at nine even steps (the DSM along the OpenStreetMap way less the balustrade, fitted to a camber); web/reef/alpine/landmarks.js prefers it to raycasting the model, so the handrails are not walked on"
    },
    "kind": "landmark",
    "x": 326,
@@ -1316,5 +1316,17 @@
    "px_m": 0.75,
    "src": "Toit\u016b Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
   }
- ]
+ ],
+ "snow": {
+  "file": "snow.png",
+  "w": 1824,
+  "h": 2592,
+  "px_m": 20,
+  "date": "2026-10-24",
+  "scene": "S2C_59GMM_20261024_0_L2A",
+  "scenes": [
+   "S2C_59GMM_20261024_0_L2A"
+  ],
+  "src": "Copernicus Sentinel-2 L2A via Earth Search on AWS (Copernicus open licence); NDSI > 0.4 and B08 > 0.11; 255 = cloud"
+ }
 }
