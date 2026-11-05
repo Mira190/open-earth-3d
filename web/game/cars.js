@@ -1142,12 +1142,11 @@ window.OECars = (function () {
       st.qBy = st.q && carGap < line ? st.block : null; // (the car it queues behind: that one does not queue behind it in turn)
       // caught up in cars that stopped against it (pulled out into a jam at the kerb), with no room to
       // drive round: after 8 s it creeps on through, as the traffic does when two are caught up
-      let creep = false; // (creeping on through a tangle, below: past the gap, not braked for it)
-      if (st.held > 8 && carGap < 0.5 && !across) { want = Math.max(want, 1.5); creep = true; }
+      if (st.held > 8 && carGap < 0.5 && !across) want = Math.max(want, 1.5);
       // and held for 12 s in a tangle the traffic does not clear, it stops giving way and creeps on at
       // up to 3 m/s until it is under way (to the line, if a light is red), rather than wait for good
       // (never on into a car queueing ahead of it)
-      if (st.held > 12 && !queued && !across) { want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9)); creep = true; }
+      if (st.held > 12 && !queued && !across) want = Math.max(want, Math.min(3, w0, line < 2.8 ? 0 : (line - 2.8) * 0.9));
       // nose to nose with a car that waits on it in turn (it goes first by the rule, but this car is in its
       // way): after 3 s this one backs off a metre or two along its way, if the road behind is clear, as a
       // driver does who has pulled too far out; else it asks that car to back off (actors.js makeWay). Never
@@ -1163,14 +1162,10 @@ window.OECars = (function () {
       // out round something stopped in the lane, and back in after it, at a crawl
       st.shift += clamp(st.pass - st.shift, -1.4 * dt, 1.4 * dt);
       if (st.pass || Math.abs(st.shift) > 0.2) want = Math.min(want, 5);
-      let dv = clamp(want - st.v, -7.5 * dt, 2.6 * dt);
-      // what it closes on, by the Intelligent Driver Model's interaction term, as the traffic (actors.js):
-      // braking begins early and gently, a passenger's ride, never later than the limit above
-      if (!creep && gap < Infinity && dt > 0) {
-        const b = gap === carGap ? st.block : null, vl = b && b.h != null ? (b.v || 0) * (Math.sin(b.h) * Math.sin(st.h) + Math.cos(b.h) * Math.cos(st.h)) : 0;
-        const ss = 2.8 + Math.max(0, st.v * 1.1 + st.v * (st.v - vl) / (2 * Math.sqrt(2.2 * 2.6))), g = Math.max(0.05, gap);
-        dv = Math.min(dv, 2.2 * (1 - (ss / g) * (ss / g)) * dt);
-      }
+      // (the traffic brakes by the Intelligent Driver Model's interaction term too, actors.js idm; a ride's
+      // driver keeps the limit alone: with it, creeping up a stop-and-go queue more slowly, it was held long
+      // enough to read a car in the queue as stopped for good and go round it)
+      const dv = clamp(want - st.v, -7.5 * dt, 2.6 * dt);
       st.brake = dv < -0.02 * dt * 60 || (st.v < 0.2 && want < 0.1);
       st.v = Math.max(0, st.v + dv);
       const s0 = st.s, lat0 = st.lat;

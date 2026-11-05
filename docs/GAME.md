@@ -868,9 +868,10 @@ yields. In this game every car's intent is exact, so:
   kept its speed until the last metres and then braked at up to 8 m/s². The Intelligent Driver
   Model's interaction term (Treiber, Hennecke and Helbing 2000: the gap a driver wants grows with
   its speed and with how fast it closes) is now a second limit, for the traffic (`actors.js`
-  `idm`: stopping 2.6 m short, a 0.8 s time gap, 2.5 m/s² to pull away, 3 m/s² to brake) and,
-  softer, for a ride (1.1 s, 2.2 and 2.6): a car starts to brake for a queue or a red seen 40 m
-  off. It is never faster than the old limit, so the queues and the waits at the lights are as
+  `idm`: stopping 2.6 m short, a 0.8 s time gap, 2.5 m/s² to pull away, 3 m/s² to brake): a car
+  starts to brake for a queue or a red seen 40 m off. (A ride's driver keeps the old limit alone:
+  with the model it crept up a stop-and-go queue more slowly, was held long enough to read a car in
+  the queue as stopped for good, and went round it.) It is never faster than the old limit, so the queues and the waits at the lights are as
   before; only the braking is earlier and softer, as a passenger feels it.
 - **Break the rings.** Round Shibuya station the queues waited for room behind queues that waited
   for room, round a block and back, and nothing moved: one car stood 220 s at its line. The
