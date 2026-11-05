@@ -45,6 +45,16 @@
     "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
     "roofs": true
   },
+  "bridges": {
+    "note": "The street bridges over the Lake Biwa Canal (its Kamogawa Canal reach) through Fukakusa, and the Keihan line's: plain concrete girders with steel railings; the streets' bridges mapped as lines take their lanes' width.",
+    "colour": "#8b9296",
+    "lamps": 0,
+    "min_m2": 50,
+    "widths": {"綿森橋": 6.5, "横縄橋": 6.5, "相深橋": 6.5, "町通橋": 6.5, "野田橋": 6.5, "深草橋": 7.5},
+    "forms": {
+      "京阪電気鉄道京阪本線": {"form": "girder", "colour": "#5f6669", "rail": "none", "note": "the Keihan main line's girder bridge"}
+    }
+  },
   "water": {
     "classes": [],
     "min_area_m2": 5000,
