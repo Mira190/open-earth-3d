@@ -568,14 +568,34 @@ window.OECars = (function () {
       return [a, b];
     });
     const tmp = {};
+    // the pieces in groups that join, either way along every piece (as route() falls back to): a route
+    // only ever joins two places in one group. A group of less than ISLAND metres of road, and a fifth
+    // of the biggest, is a fragment cut off from the streets (a drive mapped at a building's level, as
+    // by Shibuya Hikarie; a stub the map's edge cuts off): no route reaches it from the rest
+    const group = new Int32Array(L.length), glen = [];
+    {
+      const gn = new Int32Array(adj.length).fill(-1);
+      for (let n0 = 0; n0 < adj.length; n0++) {
+        if (gn[n0] >= 0) continue;
+        const g = glen.push(0) - 1, stack = [n0];
+        gn[n0] = g;
+        while (stack.length) for (const [v] of all[stack.pop()]) if (gn[v] < 0) { gn[v] = g; stack.push(v); }
+      }
+      L.forEach((l, i) => { group[i] = gn[ends[i][0]]; glen[group[i]] += l.len; });
+    }
+    const ISLAND = 600, small = Math.min(ISLAND, 0.2 * glen.reduce((m, v) => Math.max(m, v), 0)), cutOff = i => glen[group[i]] < small;
     // the nearest place on a road to (x, y), within maxD (and, given z, at about that height),
-    // going the way that keeps (x, y) on the kerb side (keep: 1 left, -1 right); { line, s, dir, x, y, z, d } or null
-    function place(x, y, maxD = 150, keep = 1, z = null) {
+    // going the way that keeps (x, y) on the kerb side (keep: 1 left, -1 right); { line, s, dir, x, y, z, d } or null.
+    // within: a group (group(line)) to keep to, so that a route from there reaches it; otherwise one on
+    // a fragment cut off from the streets only where no other road is within maxD
+    function place(x, y, maxD = 150, keep = 1, z = null, within = null) {
       // the nearest kerb at your level; or, where that is more than twice as far, one down (or up) a
       // slope from you (Melbourne's Federation Square is raised above the streets round it); with none
       // at your level at all, none (a road a level up or down may be no way there)
-      let q = net.nearest(x, y, maxD, z, 3.5);
-      if (q && z != null && q.d > 20) { const sl = net.nearest(x, y, q.d / 2, z, 3.5, 0.1); if (sl) q = sl; }
+      const skip = within != null ? i => group[i] !== within : cutOff;
+      let q = net.nearest(x, y, maxD, z, 3.5, 0, skip);
+      if (q && z != null && q.d > 20) { const sl = net.nearest(x, y, q.d / 2, z, 3.5, 0.1, skip); if (sl) q = sl; }
+      if (!q && within == null) q = net.nearest(x, y, maxD, z, 3.5);
       if (!q) return null;
       net.at(q.line, q.s, tmp);
       const side = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx; // > 0: (x, y) is left of the line's direction
@@ -728,7 +748,7 @@ window.OECars = (function () {
       }
       return out;
     }
-    return { place, route, around, behind, onward, ends };
+    return { place, route, around, behind, onward, ends, group: i => group[i], cutOff };
   }
 
   // a route's points as a path to follow: position, direction (smoothed over a few metres, so the
