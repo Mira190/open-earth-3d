@@ -961,6 +961,7 @@ window.OEJunctions = (function () {
     }
     // walk signals: a slim post on each kerb of every arm's crossing, the lantern facing across
     const peds = [];
+    const POST_ROAD_HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }; // (as the game draws the roads)
     for (const j of J) {
       if (!j.sig) continue;
       if (j.scramble && j.walks && j.walks.length) { // (a scramble's: at both ends of each crosswalk, beside it on the pavement, facing across)
@@ -971,7 +972,7 @@ window.OEJunctions = (function () {
           const ux = (w[2] - w[0]) / len, uy = (w[3] - w[1]) / len;
           for (const [ex, ey, k] of [[w[0], w[1], -1], [w[2], w[3], 1]]) {
             const px = ex + ux * k * 1.2 + uy * k * (SCR_W_POST), py = ey + uy * k * 1.2 - ux * k * (SCR_W_POST);
-            if (net.nearest(px, py, 2.0)) continue; // that would stand in a road
+            { const q = net.nearest(px, py, 9); if (q && q.d < (POST_ROAD_HALF[net.L[q.line].c] || 3.5) + 0.5) continue; } // that would stand in a road (its carriageway's width, not just its centre line)
             const g = ground ? ground(px, py, { z: j.z, deck: 0 }) : null;
             peds.push({ a, x: px, y: py, z: g != null ? g : j.z, h: Math.atan2(-ux * k, -uy * k), scr: true });
           }
