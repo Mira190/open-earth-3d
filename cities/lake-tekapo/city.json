@@ -52,7 +52,7 @@
   "landmarks": [
     {"id": "church-good-shepherd", "glb": "assets/landmarks/tekapo-church.glb", "lonlat": [170.482466, -44.003346], "heading": 17, "ground_m": 714.9,
      "note": "heading is the altar end's bearing from true north: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake"},
-    {"id": "sheepdog-statue", "glb": "assets/landmarks/tekapo-collie.glb", "lonlat": [170.48397, -44.00339], "heading": 20, "ground_m": 713.2, "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is Overture's Sheepdog Memorial record, which matches a 3 m object in the LiDAR DSM"},
+    {"id": "sheepdog-statue", "glb": "assets/landmarks/tekapo-collie.glb", "lonlat": [170.48395, -44.00347], "heading": 20, "ground_m": 713.2, "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is Overture's Sheepdog Memorial record, which matches a 3 m object in the LiDAR DSM"},
     {"id": "footbridge", "glb": "assets/landmarks/tekapo-footbridge.glb", "lonlat": [170.4810666, -44.0048970], "heading": 90, "deck_m": 711.0},
     {"id": "mt-john-observatory", "glb": "assets/landmarks/tekapo-observatory.glb", "lonlat": [170.4645, -43.9855], "heading": 0, "ground_m": 1023.2}
   ],
@@ -68,7 +68,7 @@
     {"id": "lakefront", "name": "Lake Tekapo lakefront", "kind": "shore", "lonlat": [170.4797, -44.0041], "src": "nominal"},
     {"id": "township", "name": "Lake Tekapo / Takapō township", "kind": "town", "lonlat": [170.477, -44.004], "src": "overture-places"},
     {"id": "church-good-shepherd", "name": "Church of the Good Shepherd", "kind": "church", "lonlat": [170.482466, -44.003346], "src": "osm"},
-    {"id": "sheepdog-statue", "name": "Sheepdog statue", "kind": "monument", "lonlat": [170.48397, -44.00339], "src": "overture-places"},
+    {"id": "sheepdog-statue", "name": "Sheepdog statue", "kind": "monument", "lonlat": [170.48395, -44.00347], "src": "overture-places"},
     {"id": "footbridge", "name": "Lake Tekapo footbridge (MacLaren Footbridge)", "kind": "bridge", "lonlat": [170.4810666, -44.0048970], "src": "osm"},
     {"id": "dark-sky-project", "name": "Dark Sky Project", "kind": "observatory", "lonlat": [170.47712, -44.00331], "src": "overture-places"},
     {"id": "hot-springs", "name": "Tekapo Springs", "kind": "pools", "lonlat": [170.46095, -43.99481], "src": "overture-places"},
