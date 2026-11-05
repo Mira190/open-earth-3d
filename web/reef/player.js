@@ -197,7 +197,67 @@ export async function init(ctx) {
     const stripe = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.08), new THREE.MeshStandardNodeMaterial({ color: 0xffffff, roughness: 0.8, side: THREE.DoubleSide })); stripe.position.set(-0.1, 2.35, -0.199); stripe.rotation.z = 0.5; gearCrate.add(stripe);
     scene.add(gearCrate);
   }
-  function placeCrate(x, north) { const h = ctx.height(x, north); gearCrate.position.set(x, h, -north); gearCrate.rotation.y = -0.4; }
+  // an alpine lake is no place to dive (glacial flour: the light is gone within a metre or two), so no dive kit stands
+  // at its lookouts; swimming needs none
+  if (ALP) gearCrate.visible = false;
+  let kitPlaced = false;   // (a collider only once the kit stands somewhere)
+  function placeCrate(x, north) { const h = ctx.height(x, north); gearCrate.position.set(x, h, -north); gearCrate.rotation.y = -0.4; kitPlaced = true; }
+
+  // ------------------------------------------------------------ colliders
+  // what a person cannot walk through: the dive kit, the signs and the people (game.js), landmarks' walls
+  // (alpine/landmarks.js). A collider is a circle { x, north, r } or a box { x, north, ux, un, hu, hv }: half-lengths
+  // hu along the unit axis (ux, un) (east, north) and hv across it. Optional: a height band { y0, y1 } (it blocks a
+  // body overlapping it), on() to switch it off, sync() to refresh its place before use (on a moving deck).
+  const colliders = ctx.colliders || (ctx.colliders = []);
+  const BODY_R = 0.3;
+  const live = (c, y) => (!c.on || c.on()) && (c.y0 === undefined || (y + 1.7 > c.y0 && y < c.y1));
+  // the distance from a point to a collider's edge (negative inside), and the nearest point outside at `r` from it
+  function edge(c, px, pn, r) {
+    const dx = px - c.x, dn = pn - c.north;
+    if (c.r !== undefined) {
+      const d = Math.hypot(dx, dn), m = c.r + r, k = d > 1e-6 ? m / d : 0;
+      return { gap: d - c.r, x: d > 1e-6 ? c.x + dx * k : c.x + m, north: d > 1e-6 ? c.north + dn * k : c.north };
+    }
+    const u = dx * c.ux + dn * c.un, v = -dx * c.un + dn * c.ux;
+    const cu = clamp(u, -c.hu, c.hu), cv = clamp(v, -c.hv, c.hv), eu = u - cu, ev = v - cv, d = Math.hypot(eu, ev);
+    let nu = u, nv = v, gap = d;
+    if (d > 1e-6) { nu = cu + eu / d * r; nv = cv + ev / d * r; }
+    else {   // inside: out across the nearer side
+      const pu = c.hu - Math.abs(u), pv = c.hv - Math.abs(v); gap = -Math.min(pu, pv);
+      if (pu < pv) nu = (u < 0 ? -1 : 1) * (c.hu + r); else nv = (v < 0 ? -1 : 1) * (c.hv + r);
+    }
+    return { gap, x: c.x + nu * c.ux - nv * c.un, north: c.north + nu * c.un + nv * c.ux };
+  }
+  // a body at (x, north) with its feet at y, pushed clear of every live collider
+  function pushOut(x, north, y, r = BODY_R) {
+    for (const c of colliders) if (c.sync) c.sync();
+    for (let it = 0; it < 4; it++) {
+      let moved = false;
+      for (const c of colliders) {
+        if (!live(c, y)) continue;
+        const e = edge(c, x, north, r);
+        if (e.gap < r - 1e-4) { x = e.x; north = e.north; moved = true; }
+      }
+      if (!moved) break;
+    }
+    return [x, north];
+  }
+  // how far a point is from the nearest live collider's edge (negative inside one), and which
+  function clearance(x, north, y = ctx.height(x, north), skip = null) {
+    for (const c of colliders) if (c.sync) c.sync();
+    let best = Infinity, who = null;
+    for (const c of colliders) { if (c === skip || !live(c, y)) continue; const g = edge(c, x, north, BODY_R).gap; if (g < best) { best = g; who = c; } }
+    return { gap: best, who };
+  }
+  // the dive kit: a box round the crate and its flag pole, wherever it stands (the beach, a pontoon's deck)
+  const kitW = new V3(), kitQ = new THREE.Quaternion(), kitAx = new V3();
+  colliders.push({ id: 'kit', x: 0, north: 0, ux: 1, un: 0, hu: 0.56, hv: 0.36, y0: 0, y1: 0,
+    on: () => kitPlaced && gearCrate.visible && !!gearCrate.parent,
+    sync() {
+      gearCrate.getWorldPosition(kitW); gearCrate.getWorldQuaternion(kitQ); kitAx.set(1, 0, 0).applyQuaternion(kitQ);
+      const l = Math.hypot(kitAx.x, kitAx.z) || 1;
+      this.x = kitW.x; this.north = -kitW.z; this.ux = kitAx.x / l; this.un = -kitAx.z / l; this.y0 = kitW.y - 0.3; this.y1 = kitW.y + 2.4;
+    } });
   const cycleGear = () => { const g = S.gear; equip(g.scuba ? 'none' : g.snorkel ? 'scuba' : 'snorkel'); };
   // keeps the object itself (not a copy), so getters such as a moving x/north stay live
   function addInteractable(o) { if (o.radius === undefined) o.radius = 2.4; if (!o.key) o.key = 'E'; interactables.push(o); return o; }
@@ -236,7 +296,7 @@ export async function init(ctx) {
       S.pos.set(p[0], p[2], -p[1]); S.floor = p[2]; S.dep = env.u.tide.value - p[2]; setState('walk');
       splashAtFeet(8, 1.5);
     } });
-  interactables.push({ id: 'kit', object: gearCrate, radius: 2.4, key: 'E', get label() { return S.gear.scuba ? 'E: take the scuba kit off' : S.gear.snorkel ? 'E: swap to the scuba kit' : 'E: put on mask, snorkel and fins'; }, action: cycleGear });
+  interactables.push({ id: 'kit', object: gearCrate, radius: 2.4, key: 'E', enabled: () => gearCrate.visible, get label() { return S.gear.scuba ? 'E: take the scuba kit off' : S.gear.snorkel ? 'E: swap to the scuba kit' : 'E: put on mask, snorkel and fins'; }, action: cycleGear });
 
   // ------------------------------------------------------------ simulation
   const fwdV = new V3(), rightV = new V3(), tmp = new V3(), tmp2 = new V3();
@@ -259,6 +319,8 @@ export async function init(ctx) {
     return null;
   }
   function teleport(x, north, up, heading) {
+    // on foot, never inside a sign, the kit, a person or a wall: the nearest clear point
+    if (up === undefined && colliders.length) [x, north] = pushOut(x, north, groundAt(x, north));
     const h = groundAt(x, north, up ?? Infinity), dep = env.u.tide.value - h;
     S.vel.set(0, 0, 0); S.vy = 0; S.dive = false; S.emergency = false;
     if (heading !== undefined) { S.camYaw = S.bodyYaw = THREE.MathUtils.degToRad(heading); }
@@ -311,11 +373,16 @@ export async function init(ctx) {
       const h0 = groundAt(S.pos.x, -S.pos.z, S.pos.y + 0.45), h1 = groundAt(nx, -nz, S.pos.y + 0.45), d = Math.hypot(nx - S.pos.x, nz - S.pos.z);
       return d < 1e-6 || (h1 - h0) / d < MAX_SLOPE || h1 < h0 || (onDeck && h1 - S.pos.y < 0.45);   // a deck is a step up, not a slope
     };
-    const nx = S.pos.x + S.vel.x * dt, nz = S.pos.z + S.vel.z * dt;
+    const nx = S.pos.x + S.vel.x * dt, nz = S.pos.z + S.vel.z * dt, x0 = S.pos.x, z0 = S.pos.z;
     if (step(nx, nz)) { S.pos.x = nx; S.pos.z = nz; }
     else if (step(nx, S.pos.z)) { S.pos.x = nx; S.vel.z = 0; }
     else if (step(S.pos.x, nz)) { S.pos.z = nz; S.vel.x = 0; }
     else { S.vel.x = S.vel.z = 0; }
+    // solid things: pushed back out to their edge, sliding along it; the velocity is what was left of the move
+    if (colliders.length) {
+      const [cx, cn] = pushOut(S.pos.x, -S.pos.z, S.pos.y);
+      if (cx !== S.pos.x || -cn !== S.pos.z) { S.pos.x = cx; S.pos.z = -cn; if (dt > 0) { S.vel.x = (S.pos.x - x0) / dt; S.vel.z = (S.pos.z - z0) / dt; } }
+    }
     S.speed = Math.hypot(S.vel.x, S.vel.z);
     const h = groundAt(S.pos.x, -S.pos.z, S.pos.y + 0.45), dep = env.u.tide.value - h;
     S.dep = dep; S.onDeck = onDeck;
@@ -556,7 +623,8 @@ export async function init(ctx) {
       return r;
     },
     wave() { rig.wave(); },
-    placeKit: placeCrate, kit: gearCrate
+    placeKit: placeCrate, kit: gearCrate,
+    colliders, pushOut, clearance
   };
   player.interactables = interactables;
 
@@ -567,7 +635,7 @@ export async function init(ctx) {
     pont.root.updateMatrixWorld(true);
     const w = new V3(-4, 0.6, 1.5).applyMatrix4(pont.root.matrixWorld);
     teleport(w.x, -w.z, undefined, SPAWN.heading);
-    pont.root.add(gearCrate); gearCrate.position.set(-7.5, 0.55, 2.6); gearCrate.rotation.set(0, 0.3, 0);
+    pont.root.add(gearCrate); gearCrate.position.set(-7.5, 0.55, 2.6); gearCrate.rotation.set(0, 0.3, 0); kitPlaced = true;
   } else {
     teleport(SPAWN.x, SPAWN.north, undefined, SPAWN.heading);
     placeCrate(SPAWN.x - 7, SPAWN.north - 5);

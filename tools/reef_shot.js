@@ -22,7 +22,9 @@ const [,, query, out, wait = '8000', gpu = '1'] = process.argv;
   try { await p.waitForFunction('window.__ready || document.getElementById("err").textContent', null, { timeout: 170000 }); } catch (e) { logs.push('timeout waiting ready'); }
   await p.waitForTimeout(Number(wait));
   // EVAL (env): an expression to run in the page before the shot, its value printed (a probe, or a pose to set)
-  if (process.env.EVAL) console.log('eval:', JSON.stringify(await p.evaluate(process.env.EVAL)));
+  // (PROBE: a file holding the expression, for anything longer than a line)
+  const probe = process.env.EVAL || (process.env.PROBE && require('fs').readFileSync(process.env.PROBE, 'utf8'));
+  if (probe) console.log('eval:', JSON.stringify(await p.evaluate(probe)));
   const hud = await p.evaluate(() => document.getElementById('hud').textContent + ' | ' + document.getElementById('err').textContent.slice(0, 800));
   await p.screenshot({ path: out });
   console.log(hud); console.log(logs.slice(0, 12).join('\n'));

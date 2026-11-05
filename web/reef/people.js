@@ -255,6 +255,31 @@ function makeSay(rig, group, height, opts) {
   return say;
 }
 
+// The head under a hat (gear.js hat: its crown a lathe about its own y, the brim at y = 0): the bind-pose positions with
+// everything above the brim drawn inside the crown, 8 mm in from it, and none above its top. `hat` is the hat's matrix
+// in the bind pose's model space as it is worn (levelOnHead included). Built once per character and shared by everyone
+// of that character in a hat.
+const CROWN = [[0, 0.136], [0.03, 0.13], [0.098, 0.122], [0.105, 0.105]];   // (height above the brim, the crown's radius)
+const crownR = h => { for (let i = 1; i < CROWN.length; i++) if (h <= CROWN[i][0]) { const [a, ra] = CROWN[i - 1], [b, rb] = CROWN[i]; return ra + (rb - ra) * (h - a) / (b - a); } return CROWN[CROWN.length - 1][1]; };
+function hatHead(tpl, hat) {
+  if (tpl.hatPos || !hat) return tpl.hatPos || tpl.geometry.getAttribute('position');
+  const src = tpl.geometry.getAttribute('position'), n = src.count, out = new Float32Array(n * 3);
+  const inv = hat.clone().invert(), v = new THREE.Vector3(), low = tpl.T.head.top - 0.16;
+  for (let i = 0; i < n; i++) {
+    v.fromBufferAttribute(src, i);
+    if (v.y > low) {   // only a head is up there (the arms of the bind pose are at the shoulders)
+      v.applyMatrix4(inv);
+      if (v.y > -0.004 && Math.hypot(v.x, v.z) < 0.35) {
+        const h = Math.min(v.y, 0.094), r = Math.hypot(v.x, v.z), m = crownR(Math.max(0, h)) - 0.008;
+        v.y = h; if (r > m) { v.x *= m / r; v.z *= m / r; }
+      }
+      v.applyMatrix4(hat);
+    }
+    out[i * 3] = v.x; out[i * 3 + 1] = v.y; out[i * 3 + 2] = v.z;
+  }
+  return (tpl.hatPos = new THREE.BufferAttribute(out, 3));
+}
+
 export async function createPerson(lookIn, opts = {}) {
   const look = Object.assign({}, lookIn);
   await loadLibrary();
@@ -309,17 +334,41 @@ export async function createPerson(lookIn, opts = {}) {
     const holder = { type, parts: [], userData: {} };
     for (const p of list) {
       const b = bones[p.bone] || bones.Chest;
+      if ((type === 'hat' || type === 'cap') && p.bone === 'Head') levelOnHead(p.obj);
+      if (type === 'hat') { p.obj.updateMatrix(); hatHead(tpl, p.obj.matrix); }   // (model space, before attach re-expresses it)
       attach(b, p.obj);
       holder.parts.push(p.obj);
       Object.assign(holder.userData, p.obj.userData);
     }
     rig.acc[type] = holder;
+    if (type === 'hat') geo.setAttribute('position', hatHead(tpl));
     return holder;
   };
+  // A hat is worn level as the person stands: the characters' idle pose carries the head pitched and turned from its
+  // bind pose, and a hat set square on the bind pose's skull rides that tilt (from the side, the brim dips at the front).
+  // The hat is turned back by the tilt (not the head's turn about the vertical), so it sits level on the idle head and
+  // still nods and turns with it.
+  function levelOnHead(obj) {
+    const idle = rig.actions.Idle, head = bones.Head;
+    if (!idle || !head) return;
+    idle.reset().play(); rig.mixer.update(0); model.updateMatrixWorld(true);
+    const qIdle = new THREE.Quaternion(), qBind = new THREE.Quaternion(), p = new THREE.Vector3(), s = new THREE.Vector3();
+    _m.copy(model.matrixWorld).invert().multiply(head.matrixWorld).decompose(p, qIdle, s);
+    tpl.restWorld.Head.decompose(p, qBind, s);
+    const delta = qIdle.multiply(qBind.invert());                          // bind -> idle, in model space
+    const twist = new THREE.Quaternion(0, delta.y, 0, delta.w).normalize(); // its turn about the vertical
+    const tilt = 2 * Math.acos(Math.min(1, Math.abs(delta.clone().multiply(twist.clone().invert()).w)));
+    idle.stop(); rig.mixer.update(0);
+    rig.hatTilt = tilt * 180 / Math.PI;
+    if (tilt < 0.01 || tilt > 0.4) return;                               // level already, or a pose that is not standing
+    obj.quaternion.premultiply(delta.invert().multiply(twist));          // delta^-1 * twist * the hat's own turn
+  }
   rig.show = (type, v = true) => {
     if (!rig.acc[type]) { if (!v) return; rig.addAccessory(type, (look.accessories || []).find(a => a.type === type) || {}); }
     for (const p of rig.acc[type].parts) p.visible = v;
     rig.acc[type].on = v;
+    // under a hat the hair is pressed down inside its crown (a full head of hair would poke through it)
+    if (type === 'hat') geo.setAttribute('position', v ? hatHead(tpl) : tpl.geometry.getAttribute('position'));
   };
   rig.has = type => !!(rig.acc[type] && rig.acc[type].on);
   // model-space point of a bone-attached landmark, in world
