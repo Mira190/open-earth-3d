@@ -3428,7 +3428,7 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
       for (const end of [-1, 1]) {
         const len = crowdNet.L[line].len, sk = Math.max(0, Math.min(len, x.s + end * x.kerb));
         crowdNet.at(line, sk, tmp);
-        const mine = Math.hypot(tmp.x - player.x, tmp.y - player.y) < 6, n = mine ? 20 : 6;
+        const mine = Math.hypot(tmp.x - player.x, tmp.y - player.y) < 6, n = mine ? 11 : 4;
         // behind the kerb, facing across; where the footway ends at the kerb, the first steps out onto the stripes
         const back = end > 0 ? len - sk : sk;
         for (let i = 0; i < n; i++) spots.push({ line, s: back > 1.5 ? sk + end * (0.3 + Math.random() * Math.min(back - 0.3, mine ? 3.5 : 2.5)) : sk - end * Math.random() * (mine ? 3 : 2), dir: -end, side: -1.6 + Math.random() * 3.6 });

@@ -1,4 +1,4 @@
-// Sound, synthesised with Web Audio (no audio files): harbour ambience, footsteps,
+// Sound, synthesised with Web Audio (no audio files): footsteps,
 // the helicopter rotor, the ferry engine and horn, a car's engine through its gears,
 // its tyres in a slide and its horn, dialogue voice beeps with a pitch per character,
 // little penguins braying in the dark and silver gulls; at a busy crossing the crowd's murmur, the
@@ -26,12 +26,6 @@ window.OEAudio = (function () {
     noise = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
     const d = noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    // harbour and city: low rumble with slow swells
-    const amb = noiseSource(), lp = ctx.createBiquadFilter(), ag = ctx.createGain(), lfo = ctx.createOscillator(), lg = ctx.createGain();
-    lp.type = 'lowpass'; lp.frequency.value = 380; ag.gain.value = 0.05;
-    lfo.frequency.value = 0.13; lg.gain.value = 0.025; lfo.connect(lg); lg.connect(ag.gain); lfo.start();
-    amb.connect(lp); lp.connect(ag); ag.connect(master);
-    ch.amb = ag;
     // rotor: band-passed noise chopped at the blade-pass rate
     const rn = noiseSource(), bp = ctx.createBiquadFilter(), rg = ctx.createGain(), chop = ctx.createOscillator(), cg = ctx.createGain(), rv = ctx.createGain();
     bp.type = 'bandpass'; bp.frequency.value = 140; bp.Q.value = 0.8;

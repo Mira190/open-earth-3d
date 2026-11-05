@@ -227,6 +227,15 @@ const npcNight = require('./npc_night');
   });
   check(crowdWalls.n > 0 && crowdWalls.inWall <= 0.02 * crowdWalls.n, `the crowd keeps out of the walls (${crowdWalls.inWall} of ${crowdWalls.n} walkers in a wall, at most 2%)`);
 
+  // no signal pole or walk post stands in a road's lanes (any road's drawn width, not just the one it serves: tools/pole_lanes.js)
+  const poles = await p.evaluate(() => {
+    const g = window.__game, H = g.junctions.heads, net = g.roadNet, HALF = { motorway: 7, trunk: 6, primary: 6, secondary: 5, tertiary: 4.5, residential: 3.5, unclassified: 3, living_street: 2.5 }, out = [];
+    if (!H) return { n: 0, out };
+    for (const o of [...H.list, ...H.peds]) { const q = net.nearest(o.x, o.y, 10, o.z, 3); if (q && q.d < (HALF[net.L[q.line].c] || 3.5) - 0.2) out.push(`${o.x.toFixed(0)},${o.y.toFixed(0)}`); }
+    return { n: H.list.length + H.peds.length, out };
+  });
+  check(!poles.out.length, `no signal pole or walk post stands in a road's lanes (${poles.out.length} of ${poles.n}${poles.out.length ? ': ' + poles.out.slice(0, 6).join(' ') : ''})`);
+
   // the crowd keeps out of each other (actors.js CLOSE) and never jumps: over five seconds near you, a
   // frame at a time, no two walkers closer than 0.45 m centre to centre (0.3 m out on a crossing's road) (they would show inside each
   // other) and none moving farther in a frame than anyone walks (tools/crowd_spacing.js measures more)
@@ -1382,6 +1391,18 @@ const npcNight = require('./npc_night');
   });
   check(carWalls.n > 0 && carWalls.inWall <= 0.01 * carWalls.n, `the traffic keeps out of the walls (${carWalls.inWall} of ${carWalls.n} car-seconds in a wall, at most 1%)`);
   check(carWalls.waits === 0 && carWalls.traps === 0, `no car waits at a wall across its way (${carWalls.waits}${carWalls.at.length ? `: ${carWalls.at.join('; ')}` : ''}), and no one-way road into a wall is open to the traffic (${carWalls.traps} of ${carWalls.ends} road ends at a wall)`);
+
+  // the passages through the landmarks (landmarks.json "passages", pipeline/landmark_passages.py: the
+  // Rijksmuseum's cycle passage and its aisles, the Imperial Palace's gates, Saint-Sulpice's loggia): each
+  // walked end to end both ways on foot, and a road's with room for a car along it (tools/passage_walk.js).
+  // After the traffic's steps: its walks run the world on for minutes, which would hand them other traffic
+  {
+    const res = await require('./passage_walk')(p);
+    for (const r of res) {
+      if (r.notYet) { console.log(`     (not opened in the model yet: ${r.name}, way ${r.osm}: ${r.notYet})`); continue; }
+      check(r.ok, `walks the passage ${r.name} (way ${r.osm}, ${r.cls}, ${r.len.toFixed(0)} m${r.rev ? ', back' : ''})${r.ok ? '' : `: ${r.why} at ${r.at}`}`);
+    }
+  }
 
   // a lost WebGL context on purpose (WEBGL_lose_context): the game holds under a note, and once the
   // context is back the next frame is drawn, lit as it was (web/glcare.js, tools/glcare_step.js)

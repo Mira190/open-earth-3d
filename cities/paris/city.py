@@ -237,6 +237,20 @@ def game_surfaces(scene):
     for b in scene["landmarks"].get("bridges", []):
         out.append({"name": b["name"], "type": "strip", "origin": b["centre"], "axis": b["axis"], "half_width": round(b["width_m"] / 2, 1),
                     "profile": deck_profile(b), "thickness": 1.6, "mesh": "bridge_deck", "fly_under": True, "label": b["name"]})
+    # Saint-Sulpice's steps and the floor of its loggia, walked to the church's west wall
+    rows = [r for r in ak.load_solids("paris") if r["osm"] == SULPICE_OSM]
+    if sum(r["top"] > 60 for r in rows) >= 2:
+        F, half, lw = sulpice_front(rows)
+        o, e1 = F(0, SULPICE_DEEP + SULPICE_RUN, 0), F(0, SULPICE_DEEP + SULPICE_RUN - 1, 0)
+        z0, z1 = F.g, F.g + SULPICE_PLINTH
+        n = int(round(SULPICE_PLINTH / 0.16))
+        # (through the middle of each tread at its height, as ak.steps draws them: a tread's front and back
+        # within half a riser of the walked line)
+        prof = [[0.0, round(z0, 2)]] + [[round(SULPICE_RUN * (k + 0.5) / n, 2), round(z0 + SULPICE_PLINTH * (k + 1) / n, 2)] for k in range(n)] + \
+            [[SULPICE_RUN + SULPICE_DEEP - 0.2, round(z1, 2)]]
+        out.append({"name": "Saint-Sulpice's steps", "type": "strip", "origin": [round(o[0], 2), round(o[1], 2)],
+                    "axis": [round(e1[0] - o[0], 5), round(e1[1] - o[1], 5)], "half_width": round(lw, 1), "profile": prof,
+                    "thickness": SULPICE_PLINTH + 0.6, "drape": True, "label": "the steps of Saint-Sulpice"})
     e = scene["landmarks"].get("eiffel_tower")
     if e:
         a = math.radians(e["axis_deg"])
@@ -1012,6 +1026,36 @@ def opera_garnier(rows, mats):
     return K.out(), [s["si"] for s in rows]
 
 
+SULPICE_OSM = "w16077204"
+# the loggia between the towers, recessed to the line of their east faces: its floor over the square, its depth
+# from the wall at its back to the front of its floor, and the run of the flight of steps up to it from the square
+# (OpenStreetMap maps the three ways up the steps from the square's level, 5 m long, and the walk along the loggia
+# by its back wall)
+SULPICE_PLINTH, SULPICE_DEEP, SULPICE_RUN, SULPICE_END = 1.6, 9.8, 5.2, 1.2
+
+
+def sulpice_front(rows):
+    """Saint-Sulpice's west front, square to the line between its towers' middles (the church stands 8 degrees
+    off north): (a frame with u north along the front and v west out of it, the wall at the back of the loggia,
+    in line with the nearer of the towers' east faces, at v = 0 and the square's lowest ground along the foot of
+    the steps at 0 (the square slopes down to the north: the steps rise from it there, and from under it further
+    south); the half-length between the towers' middles; the loggia's half-width, between the towers' inner faces)."""
+    towers = sorted([s for s in rows if s["top"] > 60], key=lambda s: ak.ring_centroid(s["ring"])[1], reverse=True)
+    (nx, ny), (sx, sy) = (ak.ring_centroid(t["ring"]) for t in towers[:2])
+    a = math.degrees(math.atan2(ny - sy, nx - sx))
+    C = ak.Frame((nx + sx) / 2, (ny + sy) / 2, a, 0.0)
+    back = min(max(-C.local(*p)[1] for p in t["ring"]) for t in towers[:2]) + 0.5  # east of the middle
+    # (OpenStreetMap maps the ways up the steps and along the loggia at its two ends up to 0.6 m inside the towers'
+    # outlines: the loggia runs to them, the towers' inner faces SULPICE_END behind their outlines)
+    inner = min(min(abs(C.local(*p)[0]) for p in t["ring"]) for t in towers[:2]) + SULPICE_END
+    ox, oy, _ = C(0.0, -back, 0.0)
+    scene = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "web", "data", "paris", "scene.json")))
+    gz = ground_at(scene)
+    F0 = ak.Frame(ox, oy, a, 0.0)
+    g = min(gz(*F0(f * inner, SULPICE_DEEP + SULPICE_RUN + 0.3, 0)[:2]) for f in np.linspace(-1, 1, 9))
+    return ak.Frame(ox, oy, a, g), math.hypot(nx - sx, ny - sy) / 2, inner
+
+
 def saint_sulpice(rows, mats):
     """Saint-Sulpice: the nave under its slate roof, the aisles and chapels, the west front and its towers."""
     g = min(s["ground"] for s in rows)
@@ -1029,7 +1073,12 @@ def saint_sulpice(rows, mats):
     ng, nt = nave["ground"], nave["top"]
     eave = nt - 7.5
     ring = ak.simplify(nave["ring"])
-    ak.stone_body(K, ring, ng, ng + eave, (K.n["lime"], K.n["lime_trim"], "win"), storey=None)
+    # (the loggia between the towers is open: the nave's mapped outline takes it in)
+    F, half, lw = sulpice_front(rows)
+    cut = shapely.Polygon([F(-lw, -0.01, 0)[:2], F(lw, -0.01, 0)[:2], F(lw, 40.0, 0)[:2], F(-lw, 40.0, 0)[:2]])
+    body = shapely.Polygon(ring).buffer(0).difference(cut)
+    body = max(getattr(body, "geoms", [body]), key=lambda q: q.area)
+    ak.stone_body(K, ak.simplify(list(body.exterior.coords)[:-1]), ng, ng + eave, (K.n["lime"], K.n["lime_trim"], "win"), storey=None)
     ak.ring_openings(wn, ak.WORLD, ring, ng + eave - 11.0, 3.6, 9.0, 8.6, arch=True, min_len=8.0)
     mr = np.asarray(_mrr(ring))
     e1, e2 = mr[1] - mr[0], mr[2] - mr[1]
@@ -1041,20 +1090,20 @@ def saint_sulpice(rows, mats):
     lead.quad(R(-hl, 0, nt), R(hl, 0, nt), R(hl, hs, eave), R(-hl, hs, eave))
     for u in (-hl, hl):
         lead.tri(R(u, -hs, eave), R(u, hs, eave), R(u, 0, nt))
-    # the west front: between the towers, two orders of columns (Doric, then Ionic) over a loggia, a balustrade
-    (nx, ny), (sx, sy) = (ak.ring_centroid(t["ring"]) for t in towers[:2])
-    wx = min(p[0] for t in towers[:2] for p in t["ring"])
-    F = ak.Frame(wx, (ny + sy) / 2, 90.0, g)  # u north along the front, v west out of it; the church's wall at v = 0
-    half = abs(ny - sy) / 2
-    ak.block(st, F, -half, half, 0.0, 6.0, 0.0, 1.6)
-    for (z0, h, r, cap) in ((1.6, 13.0, 0.85, "doric"), (17.0, 12.0, 0.75, "ionic")):
-        for u in np.linspace(-half + 5.5, half - 5.5, 6):
-            for dv in (1.2, 4.2):
+    # the west front: between the towers, two orders of columns (Doric, then Ionic) over a loggia, a balustrade;
+    # the flight of steps up to it from the square, across the front (OpenStreetMap maps three ways up it)
+    D_, P_ = SULPICE_DEEP, SULPICE_PLINTH
+    ak.block(st, F, -lw, lw, 0.0, D_, 0.0, P_)
+    ak.steps(st, F, -lw, lw, D_ + SULPICE_RUN, D_, 0.0, P_)
+    ak.block(st, F, -lw, lw, D_, D_ + SULPICE_RUN, -0.8, 0.0, top=False)  # the steps' footing, where the square falls away
+    for (z0, h, r, cap) in ((P_, 13.0, 0.85, "doric"), (P_ + 15.4, 12.0, 0.75, "ionic")):
+        for u in np.linspace(-lw + 3.8, lw - 3.8, 6):  # (the ways at its two ends pass outside the last pair)
+            for dv in (D_ - 3.2, D_ - 1.0):  # (the walk along the loggia keeps behind them, 4.5 m from its back wall)
                 x, y, z = F(u, dv, z0)
                 ak.column(st, x, y, z, h, r, capital=cap)
-        ak.block(st, F, -half - 2, half + 2, 0.4, 5.6, z0 + h, z0 + h + 2.2)
-        ak.cornice(tr, F, ak.rect(-half - 2, half + 2, 0.4, 5.6), z0 + h + 1.4, ((0, 0), (0.3, 0.3), (0.6, 0.8), (0, 0.8)))
-    ak.balustrade(tr, F, [(-half - 2, 0.6), (half + 2, 0.6)], 31.2, panel=K['balustrade'])
+        ak.block(st, F, -half - 2, half + 2, 0.0, D_ - 0.4, z0 + h, z0 + h + 2.2)  # the entablature, the loggia's ceiling
+        ak.cornice(tr, F, ak.rect(-half - 2, half + 2, 0.0, D_ - 0.4), z0 + h + 1.4, ((0, 0), (0.3, 0.3), (0.6, 0.8), (0, 0.8)))
+    ak.balustrade(tr, F, [(-half - 2, D_ - 0.8), (half + 2, D_ - 0.8)], P_ + 29.6, panel=K['balustrade'])
     ak.block(st, F, -half + 3, half - 3, -2.0, 0.0, 0.0, 31.2)  # the front wall behind the loggias
     for u in np.linspace(-half + 5.5, half - 5.5, 5):
         ak.opening(wn, F, (-half, 5.95), (half, 5.95), 2.0, 3.6, 10.0, arch=True, centre=u + half) if False else None
@@ -1064,9 +1113,17 @@ def saint_sulpice(rows, mats):
         tg = t["ground"]
         tx, ty = ak.ring_centroid(t["ring"])
         side = math.sqrt(abs(ak.ring_area(t["ring"])))
-        T = ak.Frame(tx, ty, 0.0, tg)
+        T = ak.Frame(tx, ty, math.degrees(math.atan2(F.sa, F.ca)) - 90.0, tg)  # square to the front, v north along it
         hs_ = side / 2 + 1.0
-        ak.block(st, T, -hs_, hs_, -hs_, hs_, 0.0, 33.0, top=False)
+        # the square stage on the tower's mapped outline, its inner face standing back from the loggia's end
+        loc_ = [T.local(*p) for p in t["ring"]]
+        xs_, ys_ = [q[0] for q in loc_], [q[1] for q in loc_]
+        y0_, y1_ = min(ys_), max(ys_)
+        if F.local(tx, ty)[0] > 0:
+            y0_ += SULPICE_END
+        else:
+            y1_ -= SULPICE_END
+        ak.block(st, T, min(xs_), max(xs_), y0_, y1_, 0.0, 33.0, top=False)
         ak.cornice(tr, T, ak.rect(-hs_, hs_, -hs_, hs_), 31.6, ((0, 0), (0.5, 0.4), (1.0, 1.2), (1.0, 1.4), (0, 1.4)))
         ak.block(st, T, -hs_ + 0.6, hs_ - 0.6, -hs_ + 0.6, hs_ - 0.6, 33.0, 46.0)
         ak.ring_openings(wn, T, ak.rect(-hs_ + 0.6, hs_ - 0.6, -hs_ + 0.6, hs_ - 0.6), 35.0, 3.0, 9.0, 20.0, arch=True)

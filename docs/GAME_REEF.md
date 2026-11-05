@@ -240,6 +240,14 @@ Queensland Parks and Wildlife Service pages on the Ngaro Sea Trail could not be 
   has `text`, `target`, and completes by `check`, `on: { board | leave | talk | sign | species }` or
   `talkTo: <npc>` (which opens that person's dialogue at `node`). `generic.js` also has `ranger`,
   `surveyQuest`, `diveQuest`, `tidePage`, `slsqPages`, `reefPages`, `landArea`, `inSight`, `loadOptics`.
+- Solid things: `ctx.colliders` (`player.colliders`) holds circles `{ x, north, r }` and boxes `{ x, north, ux, un, hu, hv }`
+  (half-lengths along the unit axis `(ux, un)` and across it), with an optional height band `{ y0, y1 }`, `on()` and
+  `sync()` (for one that moves). The player on foot is pushed out of them and slides along them; a teleport lands at the
+  nearest clear point. Each sign, the dive kit and every person standing on the ground has one, and an alpine landmark
+  gets a box round its walls (`alpine/landmarks.js`, which also sets a building's walls on the highest drawn ground under
+  them, as the 30 m grid rounds off the knoll it stands on). People are placed 0.6 m clear of signs, the kit and each
+  other; if a sign or a person stands on the spawn, the start moves to the nearest clear spot (behind it first) and
+  `G.spawn()` returns that. An alpine site has no dive kit. The gametest checks all of this (step 1b).
 - `G` (also `window.__game.G`) has the helpers: `poi`, `where`, `light`, `tideTurns`, `sunset`,
   `moonrise`, `lineOfSight`, `start/advance/complete`, `note`, `transfer`, `skipTo`.
 - `?gametest=1` runs a scripted test on any site and sets `window.__gametest`. With `life.js` it makes 63 checks on

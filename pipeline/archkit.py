@@ -736,7 +736,10 @@ def gate(K, P, L, W, ridge, mats, storeys=2, base_h=0.8, foot=0.3):
     base, post = K[mats["base"]], K[mats["post"]]
     block(base, P, -L / 2, L / 2, -W / 2, W / 2, -foot, base_h)
     z1 = base_h + (ridge - base_h) * (0.32 if storeys == 2 else 0.5)
-    for u in np.linspace(-L / 2 + 1.0, L / 2 - 1.0, 6):
+    # five bays, or three on a gate too small for five to leave a walker room between the posts, or one: an
+    # odd number, so that the middle one is open for the way through
+    n = 6 if L >= 11.0 else 4 if L >= 6.0 else 2
+    for u in np.linspace(-L / 2 + 1.0, L / 2 - 1.0, n):
         for v in (-W / 2 + 1.0, 0.0, W / 2 - 1.0):
             x, y, z = P(u, v, base_h)
             post.lathe([(z, 0.42), (z + z1 - base_h, 0.42)], (x, y), segs=6)

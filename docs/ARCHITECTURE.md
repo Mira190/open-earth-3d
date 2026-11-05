@@ -464,7 +464,9 @@ The views switch in place, without reloading the page.
     materials"; Bruneton, Neyret and Holzschuch 2010 for the ocean's
     geometry-to-BRDF hand-over); no code is taken from them. The reef
     sites' ocean (`reef/ocean.js`) has its own Cox–Munk glitter from the
-    resolved slope variance. `tools/glare_probe.js <city> --tour` checks
+    resolved slope variance, drawn the same way: a fifth of it smooth, the
+    rest twinkling points on a grid sized to the pixel's footprint along
+    each axis, with a bloom whose input is held to 5 (`reef/post.js`). `tools/glare_probe.js <city> --tour` checks
     every tour stop, and each stop's camera turned to a low sun, for a
     glare that blooms.
   - **Shore:** foam by the kind of shore and the size of the waves:

@@ -7,6 +7,8 @@ import { pass, Fn, Loop, float, vec2, vec3, vec4, mix, max, min, exp, log, lengt
   clamp, screenUV, getViewPosition, cameraProjectionMatrixInverse, cameraWorldMatrix, cameraPosition, interleavedGradientNoise } from 'three/tsl';
 import { bloom } from 'three/addons/tsl/display/BloomNode.js';
 
+const BLOOM_CAP = 5;
+
 export function createPost(renderer, scene, camera, env) {
   const u = env.u;
   const post = new THREE.RenderPipeline(renderer);
@@ -16,7 +18,13 @@ export function createPost(renderer, scene, camera, env) {
   // a texel past the half float's range is infinite (or NaN, where an infinity met a zero), and the
   // bloom's blur carries it across the frame, which then shows black: the bloom sees every finite
   // colour as it is (a half float's squares sum to under 1.3e10) and nothing for the rest
-  const finite = Fn(() => select(dot(color.rgb, color.rgb).lessThan(1e12), color, vec4(0)))();
+  // what feeds the bloom is held to a few times a sunlit white (5 in the lights' units): a point of glitter or the sun's
+  // disc then glows round its own few pixels, where its full radiance spread a white veil across half the frame
+  const finite = Fn(() => {
+    const c = select(dot(color.rgb, color.rgb).lessThan(1e12), color.rgb, vec3(0));
+    const l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    return vec4(c.mul(min(float(1), float(BLOOM_CAP).div(max(l, 1e-4)))), 1);
+  })();
   const bloomPass = bloom(finite, 0.35, 0.55, 0.92);
 
   const STEPS = 14;
