@@ -210,6 +210,7 @@ export async function init(ctx) {
 
   // ------------------------------------------------------------ people
   const NPCS = new Map(), NPC_LIST = [];                  // the list is what the frame loop walks (no iterator per frame)
+  const NPC_CLEAR = 0.6;                                  // the gap a person on the ground keeps from a sign, the kit, another person
   const tmpV = new THREE.Vector3();
   function spawnNpc(def) {
     if (!player || !ctx.spawnPerson) return null;
@@ -217,9 +218,20 @@ export async function init(ctx) {
     try { at = def.at(G); } catch (e) { console.warn('game: npc', def.id, e); return null; }
     if (!at) return null;
     const onBoat = !!at.vessel;
+    // a person on the ground stands clear of the signs, the kit and the people already placed (never inside a board)
+    if (!onBoat && !at.swim && at.up === undefined && player && player.clearance && player.clearance(at.x, at.north).gap < 0.3 + NPC_CLEAR) {
+      const [x, north] = player.pushOut(at.x, at.north, ctx.height(at.x, at.north), 0.3 + NPC_CLEAR);
+      at = Object.assign({}, at, { x, north });
+    }
     const npc = ctx.spawnPerson(def.role, { x: onBoat ? at.vessel.x : at.x, north: onBoat ? -at.vessel.z : at.north, up: at.up, heading: at.heading ?? 0, gender: def.gender, name: def.name, look: def.look, animation: def.animation || 'Idle', timeOffset: Math.random() * 2 });
     const rec = { def, npc, vessel: at.vessel || null, local: at.local ? new THREE.Vector3(...at.local) : null, home: at, idleT: 0, swim: !!at.swim, depth: at.depth ?? 0 };
     NPCS.set(def.id, rec); NPC_LIST.push(rec);
+    // solid where they stand on the ground (on a vessel or in the water they move with it, and you swim past)
+    if (!onBoat && !at.swim && player && player.colliders) {
+      const hp = npc.group.position;
+      player.colliders.push(rec.collider = { id: 'npc:' + def.id, x: hp.x, north: -hp.z, r: 0.32, y0: 0, y1: 0, on: () => !rec.hidden && npc.group.visible && !!npc.group.parent,
+        sync() { this.x = hp.x; this.north = -hp.z; this.y0 = hp.y - 0.3; this.y1 = hp.y + 1.9; } });
+    }
     if (onBoat) { followVessel(rec); npc.ready.then(() => faceThePlayer(rec)); }
     if (at.swim) npc.ready.then(() => swimPose(rec));
     if (def.talk !== false) rec.it = addIt({ npcId: def.id, get x() { return npc.group.position.x; }, get north() { return -npc.group.position.z; },
@@ -257,9 +269,33 @@ export async function init(ctx) {
     g.position.set(at.x, h, -at.north); g.rotation.y = -(at.heading ?? 0) * RAD + Math.PI;
     ctx.scene.add(g);
     const sg = { def, x: at.x, north: at.north, title: def.title, group: g };
+    // solid: a box round the board and its posts (the board's width runs along the group's own x)
+    if (player && player.colliders) { const th = g.rotation.y; player.colliders.push(sg.collider = { id: 'sign:' + def.id, x: at.x, north: at.north, ux: Math.cos(th), un: Math.sin(th), hu: 0.64, hv: 0.18, y0: h - 0.3, y1: h + 1.6 }); }
     SIGNS.set(def.id, sg);
     if (player) sg.it = addIt({ signId: def.id, x: at.x, north: at.north, radius: def.radius ?? 3.5, label: 'E: read the sign', enabled: () => !busy(), action: () => readSign(sg) });
     return sg;
+  }
+  // the start: a site's spawn is often the POI its sign or its first person is put up at. Once they stand, a player still
+  // at the spawn moves to the nearest spot a step clear of all of them (behind the spawn first, so what stood on it is
+  // in view), on ground as dry and as gentle as the spawn's, facing the same way; G.spawn() is that spot from then on
+  function clearSpawn() {
+    if (!player || !player.clearance) return;
+    const s0 = G.spawn(), p = player.position, PS = player.S, CLEAR = 1.0;
+    if (Math.hypot(p.x - s0.x, -p.z - s0.north) > 0.6 || PS.water || PS.onDeck || (S.spawn && S.spawn.deck)) return;
+    if (player.clearance(s0.x, s0.north).gap >= CLEAR) return;
+    const dep0 = ctx.depth(s0.x, s0.north), back = (s0.heading + 180) * RAD, ALP = S.kind === 'alpine';
+    for (let r = 0.5; r <= 14; r += 0.5) {
+      const n = Math.max(6, Math.round(2 * Math.PI * r / 0.5));
+      let best = null, bs = -2;
+      for (let k = 0; k < n; k++) {
+        const a = 2 * Math.PI * k / n, x = s0.x + r * Math.sin(a), north = s0.north + r * Math.cos(a);
+        if (player.clearance(x, north).gap < CLEAR || slope(x, north) > 0.35) continue;
+        if (ALP ? ctx.depth(x, north) > -0.3 : ctx.depth(x, north) > Math.max(dep0, -0.2) + 0.05) continue;
+        const sc = Math.cos(a - back);
+        if (sc > bs) { bs = sc; best = { x, north }; }
+      }
+      if (best) { spawnAt = { x: best.x, north: best.north, heading: s0.heading }; player.teleport(best.x, best.north, undefined, s0.heading); return; }
+    }
   }
   function readSign(sg) {
     if (!st.signs[sg.def.id]) { st.signs[sg.def.id] = nowMs(); emit('sign', sg.def.id); save(); }
@@ -442,10 +478,11 @@ export async function init(ctx) {
   }
 
   // ------------------------------------------------------------ the public game API (site files and tests use it)
+  let spawnAt = null;                                     // the start, once moved clear of the signs and people put up round it
   const G = {
     ctx, THREE, S, env, player, hud, ui, travel, st: () => st, sources, srcOf,
     here, poi, dist, bearing, dirName, dirShort, km, landSpot, lineOfSight, horizonM, slope, height: (x, n) => ctx.height(x, n), depth: (x, n) => ctx.depth(x, n),
-    spawn: () => { const s = S.spawn || {}, t = S.start || {}; return { x: s.x ?? t.x ?? 0, north: s.y ?? t.y ?? 0, heading: s.heading ?? 0 }; },
+    spawn: () => { if (spawnAt) return Object.assign({}, spawnAt); const s = S.spawn || {}, t = S.start || {}; return { x: s.x ?? t.x ?? 0, north: s.y ?? t.y ?? 0, heading: s.heading ?? 0 }; },
     // "2.6 km south-east"
     where(t, from) { const p = resolveTarget(t); if (!p) return ''; const a = from || here(); return `${km(dist(a, p))} ${dirName(bearing(a, p))}`; },
     nowMs, skipTo, sunNow, sunset, moonrise, moonAlt, light, greet, localHour, tide: () => ctx.tide || null, tideNow, tideTurns,
@@ -482,6 +519,7 @@ export async function init(ctx) {
   for (const id of Object.keys(st.q)) if (!QUESTS.has(id)) delete st.q[id];
   for (const sd of content.signs || []) addSign(sd);
   for (const nd of content.npcs || []) spawnNpc(nd);
+  clearSpawn();
   if (content.start) content.start(G);
   G.content = content;
 

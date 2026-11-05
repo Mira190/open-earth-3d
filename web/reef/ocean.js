@@ -11,7 +11,7 @@
 import * as THREE from 'three/webgpu';
 import { Fn, float, vec2, vec3, vec4, mix, max, min, abs, smoothstep, clamp, texture, positionLocal, positionWorld,
   cameraPosition, normalize, dot, reflect, sin, cos, pow, exp, sqrt, select, length, mx_noise_float, uniform, frontFacing,
-  fwidth, screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, logarithmicDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
+  fwidth, log2, exp2, floor, fract, screenUV, viewportSharedTexture, viewportDepthTexture, perspectiveDepthToViewZ, logarithmicDepthToViewZ, cameraNear, cameraFar, cameraViewMatrix, positionView } from 'three/tsl';
 import { gridUV } from './world.js';
 
 export function createOcean(d, env, heightTex) {
@@ -165,8 +165,29 @@ export function createOcean(d, env, heightTex) {
       const p = exp(dot(dd, dd).div(sig2).negate()).div(sig2.mul(3.14159));
       return col.mul(E).mul(Fr(Hh, V)).mul(p).mul(G1(V.y).mul(G1(up))).div(V.y.max(0.03).mul(4).mul(hy.mul(hy).mul(hy).mul(hy))).mul(smoothstep(-0.02, 0.04, up)).mul(float(1).sub(haze));
     };
+    // the glitter as an eye sees it: not the slope distribution's smooth average, which a frame shows as a white smear,
+    // but the few facets that flash the sun at any instant. A fifth of the light stays smooth (facets far below the
+    // pixel); the rest goes into twinkling points, one chance per cell of a grid in the water sized to the pixel's
+    // footprint (two sizes blended, so no size pops), with the mean kept at 1 so the path is as bright on average
+    const SPARK_CELL = 0.3, SPARK_S = 0.12, SPARK_Q = 0.6, SPARK_PX = 4.5;
+    const SPARK_NORM = 1 / (Math.PI * SPARK_S * SPARK_S * (3 / 16) * SPARK_Q);
+    const hashS = (q, k) => fract(sin(dot(q, vec2(127.1 + k * 31.7, 311.7 - k * 17.3))).mul(43758.5453));
+    // a cell's point: its place, whether it flashes, and its twinkle, on cells of (sx, sz) metres
+    const sparkAt = (sx, sz) => {
+      const q = vec2(P.x.div(sx), P.z.div(sz)), cell = floor(q).add(vec2(log2(sx).mul(17.0), log2(sz).mul(29.0))), fq = fract(q);
+      const c = vec2(hashS(cell, 1), hashS(cell, 2)).mul(0.6).add(0.2), dq = fq.sub(c);
+      const tw = pow(max(sin(u.time.mul(hashS(cell, 3).mul(5).add(4)).add(hashS(cell, 4).mul(6.2832))), 0), 4);
+      return exp(dot(dq, dq).div(SPARK_S * SPARK_S).negate()).mul(tw).mul(select(hashS(cell, 5).lessThan(SPARK_Q), float(1), float(0)));
+    };
+    // each axis sized to the pixel's footprint along it (a grazing view stretches the water's depth across few pixels),
+    // so a point is a pixel or two across on screen at any range and angle
+    const lvX = log2(max(fwidth(P.x).mul(SPARK_PX / SPARK_CELL), 1)), lvZ = log2(max(fwidth(P.z).mul(SPARK_PX / SPARK_CELL), 1));
+    const x0 = floor(lvX), z0 = floor(lvZ), fx = lvX.sub(x0), fz = lvZ.sub(z0);
+    const sx0 = exp2(x0).mul(SPARK_CELL), sz0 = exp2(z0).mul(SPARK_CELL);
+    const spark = mix(mix(sparkAt(sx0, sz0), sparkAt(sx0.mul(2), sz0), fx), mix(sparkAt(sx0, sz0.mul(2)), sparkAt(sx0.mul(2), sz0.mul(2)), fx), fz)
+      .mul(SPARK_NORM).mul(0.8).add(0.2);
     // the sun's glitter, and the moon's: the same law at 2.3e-6 of the light, which the adapted eye sees as a path of silver
-    const glint = glintOf(u.sunDir, u.sunI, u.sunCol, u.sunDir.y).add(glintOf(u.moonDir, u.moonI, vec3(0.85, 0.9, 1.0), u.moonDir.y));
+    const glint = glintOf(u.sunDir, u.sunI, u.sunCol, u.sunDir.y).add(glintOf(u.moonDir, u.moonI, vec3(0.85, 0.9, 1.0), u.moonDir.y)).mul(spark);
     // the floor through the water, bent by the surface: resample the frame behind along the view-space normal,
     // by an amount that grows with the water the ray crosses; keep the straight sample where the bent one
     // would pick up something in front of the water (a hull, a swimmer)

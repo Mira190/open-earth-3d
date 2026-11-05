@@ -2,6 +2,8 @@
 // on a desktop (1440 x 900) and a phone (390 x 844), into a folder.
 //   cd web && python3 -m http.server 8800 &
 //   NODE_PATH=$(npm root -g) node tools/site_shots.js lake-tekapo out/ [shotId ...]
+// z is metres above the site's datum (the lake's surface on an alpine site), not above the ground: an eye-level shot
+// on ground 9 m up the shore is z 10.5.
 // month: renders at that month's 5th at the shot's local time of day (for a season, e.g. lupins in December).
 const { execFileSync } = require('child_process');
 const fs = require('fs'), path = require('path');

@@ -159,7 +159,9 @@ export default function lakePukaki(G) {
   // ------------------------------------------------------------ signs
   const lookoutSign = {
     id: 'peters-lookout', title: 'Tapataia Mahaka / Peter\'s Lookout',
-    at: G2 => { const p = P('peters-lookout'); const s = G2.landSpot(p.x, p.north, { maxR: 40, maxSlope: 0.3 }) || p; return { x: s.x, north: s.north, heading: 0 }; },
+    // the board a few steps ahead of the spawn (the lookout's own point) and left of the view up the lake, its face toward
+    // you as you arrive: you read it with Aoraki beyond it, as at the real lookout
+    at: G2 => { const p = P('peters-lookout'); const s = G2.landSpot(p.x - 3, p.north + 6, { maxR: 40, maxSlope: 0.3 }) || p; return { x: s.x, north: s.north, heading: 180 }; },
     nodes: { read: { say: G2 => {
       const sg = G2.sign('peters-lookout'), at = sg ? { x: sg.x, north: sg.north } : P('peters-lookout');
       const seen = [];

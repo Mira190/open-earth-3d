@@ -102,16 +102,41 @@ The ground's detail is layered by distance:
 - **Within about 1 km:** grain and relief by class: hummocks in tussock, stones in scree, strata in rock, glints in snow.
 - **Within 240 m:** a 2 m patch on a bicubic read of the grid plus that relief. Its CPU twin (`terrain.heightAt`) is
   the surface the player and the people stand on.
+- **Within 40 m:** a turf of short grass on the grassy classes (and on "built" ground where the imagery is green):
+  tufts of 15 blades 9–28 cm tall, five or six a square metre near the eye (fewer on a phone) and thinning outward. The blades are a
+  living spring green, each its own shade, one in twelve dry straw, leaning a third of the way toward the colour of the
+  10 m mosaic under the tuft and darker at the foot: from the side a blade shows its own green, not the litter and soil
+  the satellite mixes in from above. The shader shrinks them to nothing before 40 m, so the turf has no edge as the
+  camera moves.
 - **Within 100–220 m:** plants and stones, placed by tile (`web/reef/alpine/flora.js`):
   - tussock clumps of 64 blades near and 18 further out, swaying in rolling gusts and lit through from behind;
-  - Russell lupins on the shore, the riverbeds and the road verges;
-  - matagouri;
-  - stones on scree, moraine and gravel.
+  - matagouri on scrub: a metre-high tangle of crooked grey twigs with spines, greener at the tips;
+  - stones on scree, moraine and gravel, few inside a lupin stand.
+- **Russell lupins, to 340 m:** in drifts (below).
+
+Every placement draws from one integer hash per tile. Until November 2026 it returned values from −0.5 to 0.5 rather
+than 0 to 1 (a signed XOR), so half of every draw passed every test: tussock stood at nearly every spot, stones were
+smaller than meant, no matagouri was ever placed, and every lupin came out purple or violet. It is unsigned now, and
+the thresholds were set again for about the density the tussock and stones had.
 
 Lupins flower from September to February (NZPCN), from November to February on the Mackenzie's riverflats (DOC's
 braided river field guide), and are at their best from mid-November to the end of December. The share in flower
 follows the clock's month. Their colours run blue to purple in wild stands, with pinks, white and a little yellow;
 no count of the shares is published, so the mix is a judgement from photographs.
+
+They grow in drifts, as on the shore in photographs: on the shore and the riverbed gravel, on the road verges, and on
+the grass, tussock and scrub slopes above a shore, a lake or a riverbed (full within 30 m of the water, thinning out to
+90 m), wherever a low-frequency noise (stands tens of metres across, ragged at the edges) says a stand is. The site's
+`flora.lupins` patches are stands on top of that, and the only ones on "built" ground (the grounds of the Church of the
+Good Shepherd). In a full stand they stand 1.4 plants a square metre, touching. Each stand is mostly one colour, with a
+second and a few odd plants of any colour. A plant is a clump: nine spikes of 0.5–1.1 m, the tallest in the middle,
+nearly as thick as their foot for most of their length and tapering to buds, florets raised in whorls, speckled paler
+(the banner petals) and opening from the foot up, over a mound of palmate leaves (fans of 11 leaflets on their stalks).
+Three forms by distance, from one set of spots so that a plant stays put as it changes form: whole plants within 12 m,
+plainer ones (five cone spikes, six leaves) to 55 m, and beyond, out to 340 m, patches of nine spikes over small leaf
+domes, 1.4 m across, one instance each, so the drifts on a shore a few hundred metres below a lookout still read as a
+band of colour. The far ring is filled a few milliseconds a frame and swapped in when done. A phone gets fewer and
+nearer.
 
 ## 5. The lake's colour
 
@@ -165,7 +190,27 @@ filling the frame and cumulus building on the Divide.
 - the sky's irradiance from the same model;
 - a golden bounce off the tussock;
 - the mountains' shadows from a pass that marches every cell's ray toward the sun over the height grid, with the
-  Earth's curve and the sun's disc. It runs again only when the sun has moved.
+  Earth's curve and the sun's disc. It runs again only when the sun has moved;
+- by day the sky's light on the ground is taken at 0.72 of the model's. At full strength it gave about 40% of the light
+  on open ground with the sun 40° up, where a clear sky gives 15 to 25%, and its blue lifted every shadow into a grey
+  haze;
+- a daylight white balance, as a landscape photographer sets one: the overall cast of sun and sky together is taken out
+  of the land (a warm sun and a blue sky left the tussock sage). It fades out toward the golden hour, whose warmth stays.
+
+**The ground's colour** (`web/reef/alpine/terrain.js`):
+- the imagery is printed for a screen, so pale ground comes out near a linear 0.45 where dry tussock and gravel reflect
+  0.25 to 0.3. An albedo knee (`ALB_KNEE`) eases brightness down and keeps the hue; snow is set on its own;
+- ground that is green already is deepened toward a spring green (a vibrance, `GREEN_VIBRANCE`: grey-green gains most,
+  a bright lawn little); straw tussock, gravel and rock keep their colour;
+- seen low along the ground, grass hides the soil and shows its blades: richer and a little darker than the
+  straight-down photograph (none of this for red-brown ground, which turned magenta under it);
+- the looks by cover class (grain, blades, glints) blend over the four nearest 20 m cover pixels, so a class edge is a
+  fade, not a square; close up, three fine octaves and blade streaks (each fading as it shrinks under a pixel) replace
+  the 3 m blotches that read as stains.
+
+**Standing on it.** The player, the people, the plants and the seated landmarks stand on `terrain.heightAt`, which reads
+the height texture's half floats (steps of 0.125 m at 200 m above the lake, 0.25 m at 300 m) and interpolates the
+detail patch's own 2 m triangles, so nothing sinks into or floats over the surface as drawn.
 
 **Clouds** (`web/reef/alpine/clouds.js`, `?clouds=0..1`) are soft-edged cumulus puffs over the high peaks, with flat
 bases at about 2,350 m: the cloud a westerly builds on the Divide on a fine day. They are sheets facing the camera, not
@@ -173,7 +218,13 @@ volumes.
 
 **Tone and exposure:**
 - tone mapping is the title screen's curve family (Khronos PBR Neutral), not ACES, which turns the sky and the lake grey-teal;
-- exposure opens up as the light goes, as a photographer's does, until the eye's own adaptation takes over at dusk;
+- exposure is 1.7 (it was 1.9, which left the pale shores and the glitter path white) and opens up as the light goes,
+  as a photographer's does, until the eye's own adaptation takes over at dusk;
+- the sun's glitter on the lake is drawn as an eye sees it, not as the slope distribution's smooth average (a white
+  smear): a fifth of its light stays smooth and the rest goes into twinkling points on a grid sized to the pixel's
+  footprint along each axis, with the mean kept (`web/reef/ocean.js`, shared with the reef sea; the cities' water does
+  the same with `oeGlitter`). What feeds the bloom is held to 5 in the lights' units (`web/reef/post.js`), so a point
+  glows round itself instead of veiling the shore;
 - the depth buffer is logarithmic, so a far shore never flickers into its lake. Three.js r186 cannot resolve a
   reversed float depth buffer from a multisampled pass on WebGL2.
 
