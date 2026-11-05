@@ -38,7 +38,8 @@ export async function init(ctx) {
   const ears = new Ears({ onEvent: msg });
   const whenMs = q.get('time') ? Date.parse(q.get('time')) : Date.now(), t0 = performance.now();
   const nowMs = () => ctx.clockMs ? ctx.clockMs() : whenMs + (performance.now() - t0);
-  const season = P.stingerSeason(new Date(whenMs));
+  const ALP = ctx.S && ctx.S.kind === 'alpine';   // a glacial lake: no stingers, no sea temperature, walking clothes
+  const season = ALP ? false : P.stingerSeason(new Date(whenMs));
 
   // ------------------------------------------------------------ the sea surface, on the CPU
   // the same sum of swell and chop as ocean.js (ripples only bend normals), for bobbing and bubbles
@@ -71,7 +72,7 @@ export async function init(ctx) {
   };
 
   // ------------------------------------------------------------ the character
-  const look = P.makeLook('player', { gender: q.get('gender') || 'M', skin: q.get('skin') || undefined, hair: q.get('hair') || undefined, season });
+  const look = P.makeLook('player', { gender: q.get('gender') || 'M', skin: q.get('skin') || undefined, hair: q.get('hair') || undefined, season, outfit: ALP ? 'hike' : undefined });
   let rig = await P.createPerson(look);
   scene.add(rig.group);
 
@@ -527,7 +528,7 @@ export async function init(ctx) {
         { k: 'Breath', v: `${Math.floor(breath.left / 60)}:${String(Math.floor(breath.left % 60)).padStart(2, '0')} left`, c: breath.fraction > 0.8 ? 'b' : breath.fraction > 0.5 ? 'w' : '' },
         { k: 'Ears', v: ears.level === 2 ? 'pain: Q' : ears.level === 1 ? 'press: Q' : 'clear', c: ears.level === 2 ? 'b' : ears.level === 1 ? 'w' : '' }] };
     }
-    const temp = waterTemp(new Date(whenMs), below);
+    const temp = ALP ? undefined : waterTemp(new Date(whenMs), below);
     hud.update(dt, { heading: THREE.MathUtils.radToDeg(S.camYaw), clockMs: nowMs(), tz: ctx.S && ctx.S.timezone, temp, gauge });
   }
 
@@ -548,7 +549,7 @@ export async function init(ctx) {
     addInteractable, interact, setHeading(deg) { S.camYaw = S.bodyYaw = THREE.MathUtils.degToRad(deg); return player; },
     // change gender, skin, hair: rebuilds the person
     async setLook(opts = {}) {
-      const nl = P.makeLook('player', Object.assign({ gender: rig.look.gender, season }, opts));
+      const nl = P.makeLook('player', Object.assign({ gender: rig.look.gender, season, outfit: ALP ? 'hike' : undefined }, opts));
       const old = rig; scene.remove(old.group);
       const r = await P.createPerson(nl); r.group.position.copy(old.group.position); scene.add(r.group);
       rig = r; player.rig = r; player.look = r.look; S.dressKey = ''; baseOutfit.suit = nl.suit; baseOutfit.sleeve = nl.sleeve; dress();
@@ -590,6 +591,8 @@ export async function init(ctx) {
     npc.show = (acc, v) => defer(r => r.show(acc, v));
     npc.dispose = () => { npcs.delete(npc); defer(r => r.dispose()); holder.removeFromParent(); };
     const lookData = P.makeLook(role, Object.assign({ season }, opts.look || {}, opts.gender ? { gender: opts.gender } : {}, opts.skin ? { skin: opts.skin } : {}, opts.seed !== undefined ? { seed: opts.seed } : {}));
+    // a site may cast a real person (a Rocketbox avatar, look.character R_...): it stands in for the role's own character
+    if (opts.look && /^R_/.test(opts.look.character || '')) Object.assign(lookData, { character: opts.look.character, clip: opts.look.clip });
     if (opts.x !== undefined) npc.setPosition(opts.x, opts.north ?? opts.y ?? 0, opts.up);
     if (opts.parent) opts.parent.add(holder); else scene.add(holder);
     npc.ready = P.createPerson(lookData, { onSay: opts.onSay }).then(r => {
