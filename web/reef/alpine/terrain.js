@@ -182,12 +182,17 @@ export function createAlpineTerrain(d, env, renderer, light, heightTex, ctx_cloc
       const Vd = normalize(cameraPosition.sub(P));
       const graze = pow(float(1).sub(abs(dot(normalize(normalWorld), Vd))), 2).mul(wGrass.add(wTuss.mul(0.5)).min(1)).mul(float(1).sub(smoothstep(1500, 4000, dist)));
       const lumA = dot(alb, vec3(0.2126, 0.7152, 0.0722));
-      alb.assign(mix(alb, mix(vec3(lumA), alb, 1.45).mul(vec3(0.86, 0.9, 0.72)).max(0), graze.mul(0.65)));
+      // (the extra colour only for green to straw hues: red-brown scrub on the far slopes went magenta under it)
+      const redness = smoothstep(0.0, 0.12, alb.r.sub(alb.g).div(alb.r.max(1e-3)));
+      alb.assign(mix(alb, mix(vec3(lumA), alb, mix(float(1.45), float(1.0), redness)).mul(vec3(0.86, 0.9, 0.72)).max(0), graze.mul(0.65)));
       // living grass a summer green: where the ground is green already (green over red), its colour is deepened toward a
       // fresh green, as it is in photographs of the lakes in spring; the straw tussock, gravel and rock keep theirs
       const lumB = dot(alb, vec3(0.2126, 0.7152, 0.0722));
       const greenness = smoothstep(0.02, 0.22, alb.g.sub(alb.r).div(alb.g.max(1e-3))).mul(float(1).sub(select(isSnow, float(1), float(0))));
-      alb.assign(mix(alb, mix(vec3(lumB), alb, GREEN_VIBRANCE).mul(vec3(0.9, 1.06, 0.82)).max(0), greenness));
+      // (a vibrance, not a saturation: grey-green ground gains most, a lawn already bright green little, or it glows)
+      const satB = alb.g.sub(min(alb.r, alb.b)).div(alb.g.max(1e-3));
+      const vib = mix(float(GREEN_VIBRANCE), float(1.05), smoothstep(0.35, 0.75, satB));
+      alb.assign(mix(alb, mix(vec3(lumB), alb, vib).mul(mix(vec3(1), vec3(0.9, 1.06, 0.82), float(1).sub(smoothstep(0.35, 0.75, satB)))).max(0), greenness));
       // the imagery's snow is a little grey from the 10 m mix of snow and rock; fresh snow is near white
       alb.assign(select(isSnow, mix(alb, vec3(0.86, 0.89, 0.93), 0.35), alb));
       // the season's snow over the summer ground, thinning to tussock and rock showing through at its edge

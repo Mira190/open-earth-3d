@@ -355,7 +355,8 @@ export async function init(ctx) {
   // wild stands run blue to purple (Wikipedia: Lupinus polyphyllus), with pinks, white and a few yellow (NZPCN, DOC);
   // no count of the shares is published, so these are a judgement from photographs
   const LUPINS = [[0.30, 0.22, 0.70], [0.45, 0.20, 0.62], [0.66, 0.22, 0.50], [0.82, 0.40, 0.62], [0.88, 0.86, 0.82], [0.86, 0.68, 0.16]];
-  const LUPW = [0.28, 0.22, 0.16, 0.14, 0.15, 0.05];
+  // (white kept to one in twelve: at a fifth of the plants a dense stand read as a field of white candles)
+  const LUPW = [0.30, 0.26, 0.17, 0.15, 0.08, 0.04];
   const pickLupin = r => { let a = 0; for (let i = 0; i < LUPW.length; i++) { a += LUPW[i]; if (r < a) return LUPINS[i]; } return LUPINS[0]; };
   const month = () => new Date(ctx.clockMs ? ctx.clockMs() : Date.now()).getUTCMonth();   // NZ is ahead of UTC: within a day, fine for a season
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pv = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0);
