@@ -881,7 +881,7 @@ const npcNight = require('./npc_night');
     if (o.phase === 'driving') {
       const b = r.back = {};
       o.hold = true; g.advance(0.5);
-      g.leaveRide(); g.advance(0.5);
+      g.leaveRide(); o.hold = true; g.advance(0.5); // (still held: the jam hasn't cleared)
       b.out = g.player.mode === 'foot';
       g.hail();
       b.same = g.ride() === o && o.phase === 'waiting';

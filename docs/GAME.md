@@ -1032,7 +1032,7 @@ Sydney's traffic stood still a third of the time.
   flashing for the last 6, then 8 s for the main road and 6 s for the cross
   road (the real cycle is about two minutes with 40 to 50 s of walk; the game
   keeps the walk, which its crowd needs to cross, and cuts the traffic's turns
-  to a few seconds). The all-red round the walk is 3 s and is held up to 15 s
+  to a few seconds). The all-red round the walk is 4 s and is held up to 15 s
   more while anyone is still out on the road. The walk is the one wait longer
   than 10 s (`RED`): a car coming up as it starts waits for its crowd. Nobody
   walks in the traffic's phases. A ride's priority, or you waiting at the wheel,

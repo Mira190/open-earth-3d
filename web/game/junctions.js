@@ -348,7 +348,7 @@ window.OEJunctions = (function () {
       // (an arm with no crosswalk mapped across it still stops its traffic outside the box, as far out as the others')
       const backs = j.arms.filter(a => !bare.includes(a)).map(a => a.back).sort((p, q) => p - q);
       if (backs.length) for (const a of bare) a.back = Math.max(a.back, Math.min(L[a.line].len - 1.5, backs[backs.length >> 1]));
-      j.green = [8, 6, 0, 32]; j.allred = 3; // (and longer all-red round the walk: a wide box to clear)
+      j.green = [8, 6, 0, 32]; j.allred = 4; // (and longer all-red round the walk: a wide box to clear)
       j.ph = 3; j.st = 'g'; j.t = 4; j.nxt = 0; // (the game opens on the walk: the crowd already stepping out)
     }
     const scrambleNear = (x, y) => J.find(j => j.scramble && Math.hypot(j.x - x, j.y - y) < j.reach + 4);
