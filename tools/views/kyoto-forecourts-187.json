@@ -1,0 +1,11 @@
+[
+  {"name": "higashi-amida", "at": [-338, -1411], "look": [-371, -1411], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "higashi-between", "at": [-330, -1372], "look": [-372, -1372], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "nishi-goei", "at": [-948, -1287], "look": [-985, -1287], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "nishi-amida", "at": [-952, -1203], "look": [-988, -1203], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "nishi-karamon", "at": [-1041, -1380], "look": [-1041, -1401], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "nijo-karamon", "at": [-1092, 1062], "look": [-1112, 1076], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "nijo-tozamurai", "at": [-1098, 1122], "look": [-1120, 1142], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "gosho-court", "at": [-33, 2298], "look": [-33, 2345], "time": "11:00", "dist": 6, "pitch": 0.12},
+  {"name": "gosho-kenreimon", "at": [-32, 2232], "look": [-32, 2252], "time": "11:00", "dist": 6, "pitch": 0.12}
+]

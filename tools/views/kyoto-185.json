@@ -1,0 +1,170 @@
+[
+ {
+  "cam": [
+   -33,
+   2262,
+   72
+  ],
+  "tgt": [
+   -33,
+   2345,
+   54
+  ],
+  "name": "gosho-south-court-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -33,
+   2262,
+   72
+  ],
+  "tgt": [
+   -33,
+   2345,
+   54
+  ],
+  "name": "gosho-south-court-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -33,
+   2262,
+   72
+  ],
+  "tgt": [
+   -33,
+   2345,
+   54
+  ],
+  "name": "gosho-south-court-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   -1062,
+   1085,
+   78
+  ],
+  "tgt": [
+   -1160,
+   1185,
+   42
+  ],
+  "name": "nijo-ninomaru-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -1062,
+   1085,
+   78
+  ],
+  "tgt": [
+   -1160,
+   1185,
+   42
+  ],
+  "name": "nijo-ninomaru-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -1062,
+   1085,
+   78
+  ],
+  "tgt": [
+   -1160,
+   1185,
+   42
+  ],
+  "name": "nijo-ninomaru-night",
+  "time": "21:00"
+ },
+ {
+  "at": [
+   -338,
+   -1411
+  ],
+  "look": [
+   -371,
+   -1411
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "name": "higashi-amida-apron-day",
+  "time": "11:00"
+ },
+ {
+  "at": [
+   -338,
+   -1411
+  ],
+  "look": [
+   -371,
+   -1411
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "name": "higashi-amida-apron-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "at": [
+   -338,
+   -1411
+  ],
+  "look": [
+   -371,
+   -1411
+  ],
+  "dist": 6,
+  "pitch": 0.12,
+  "name": "higashi-amida-apron-night",
+  "time": "21:00"
+ },
+ {
+  "cam": [
+   -330,
+   -1700,
+   85
+  ],
+  "tgt": [
+   -370,
+   -1890,
+   40
+  ],
+  "name": "station-north-day",
+  "time": "11:00"
+ },
+ {
+  "cam": [
+   -330,
+   -1700,
+   85
+  ],
+  "tgt": [
+   -370,
+   -1890,
+   40
+  ],
+  "name": "station-north-dusk",
+  "time": "sunset+10"
+ },
+ {
+  "cam": [
+   -330,
+   -1700,
+   85
+  ],
+  "tgt": [
+   -370,
+   -1890,
+   40
+  ],
+  "name": "station-north-night",
+  "time": "21:00"
+ }
+]
