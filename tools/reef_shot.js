@@ -10,7 +10,9 @@ const [,, query, out, wait = '8000', gpu = '1'] = process.argv;
   const args = ['--ignore-gpu-blocklist', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'];
   if (gpu === '1') args.push('--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-webgpu-adapter=swiftshader');
   const b = await chromium.launch({ args });
-  const p = await b.newPage({ viewport: { width: 960, height: 540 } });
+  // W, H (env): the viewport, e.g. W=1440 H=900 for a desktop still, W=390 H=844 for a phone (deviceScaleFactor 2, MOBILE=1 for touch)
+  const W = Number(process.env.W || 960), H = Number(process.env.H || 540);
+  const p = await b.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: Number(process.env.DPR || 1), isMobile: !!process.env.MOBILE, hasTouch: !!process.env.MOBILE });
   const logs = [];
   p.on('console', m => { if (['error', 'warning'].includes(m.type())) logs.push(m.type() + ': ' + m.text().slice(0, 600)); });
   p.on('pageerror', e => logs.push('pageerror: ' + String(e).slice(0, 600)));
