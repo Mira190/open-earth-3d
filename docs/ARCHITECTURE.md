@@ -390,12 +390,22 @@ The views switch in place, without reloading the page.
     (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
     haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
     land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
-    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    distant land's veil (`BASE`), then its own air rather than the view's fog:
+    distance to 63% at `AIR` (30 km), or thicker from low down, since the air near
+    the ground is a haze layer about a kilometre deep (`FAR_LAYER`, `FAR_AIR_LOW`
+    in `world.js`), so from a tower the plain pales into haze within ten kilometres
+    while from high up it stays clear; it closes to the haze only toward its outer
+    edge. Seen at a low angle, built-up land gets a shade of roofs in 40 to 50 m
+    blocks and is cooled and darkened toward walls in sky light, and a pixel's
+    footprint is the geometric mean of its two axes, so the grain does not vanish
+    where a pixel is a few metres wide and hundreds deep. After dark the
     built-up land glows: NASA's Black Marble at 500 m, raised to a power for
     contrast (its visual product saturates over a city) and shared out by
     WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
     more of them the brighter the land, which fade into their mean where a pixel
-    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    covers them. A point of light keeps its energy when it is drawn wider than
+    itself, and since the lights shine every way, land seen at a low angle glows
+    brighter (up to four times), the band of light a city shows from a tower. The reef sites (`web/reef/farland.js`) take the same geometry
     with node materials under the reef's own air (`env.medium`), the land raised
     clear of the highest tide: the ranges behind Cairns stand on Green Island's
     horizon, and the coast's towns are a band of light at night. `?far=off`

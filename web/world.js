@@ -457,7 +457,11 @@ vec3 scrCell(float cell, vec2 uv) {
 	// with distance as air does (FAR_AIR m to 63%), so a far city's plain meets the sky in haze, not in a band
 	float oeFar = 0.0;
 	{ float oePast = length( max( abs( vEdgeXZ - ${c} ) - vec2( ${n(w / 2)}, ${n(h / 2)} ), 0.0 ) );
-	  float oeAir = 1.0 - exp( -vFogDepth / ${n(FAR_AIR)} );
+	  // and the air near the ground is thicker (a haze layer about a kilometre deep): from a tower the
+	  // line of sight stays in it and a far city pales into haze within ten kilometres, while from
+	  // high up the path through it is short and the same land stays clear
+	  float oeHc = max( cameraPosition.y, 1.0 ), oeLow = ${n(FAR_LAYER)} * ( 1.0 - exp( -oeHc / ${n(FAR_LAYER)} ) ) / oeHc;
+	  float oeAir = 1.0 - exp( -vFogDepth * max( 1.0 / ${n(FAR_AIR)}, oeLow / ${n(FAR_AIR_LOW)} ) );
 	  oeFar = max( ${FAR_EDGE.toFixed(3)} * ( 1.0 - smoothstep( 0.0, ${n(FAR_RAMP)}, oePast ) ), ${FAR_BASE.toFixed(3)} + ${(1 - FAR_BASE).toFixed(3)} * oeAir );
 	  oeEdge = 0.0; }
 #endif
@@ -468,7 +472,9 @@ vec3 scrCell(float cell, vec2 uv) {
 	vec3 oeHaze = fogColor * mix( vec3( ${SEA_LAND.join(', ')} ), vec3( 1.0 ), max( fogFactor, smoothstep( 1500.0, 12000.0, vFogDepth ) ) );
 	fogFactor = max( fogFactor, oeEdge * oeGate${farLand ? ` * ${FAR_EDGE.toFixed(3)}` : ''} );
 #ifdef OE_FAR
-	fogFactor = max( fogFactor, oeFar );
+	// the far land takes its own air, not the view's fog (which is whole by 26 km and laid a band of
+	// one tone over the plain from a tower); it closes to the haze only toward its outer edge
+	fogFactor = max( oeFar, smoothstep( ${n(FAR_HALF * 0.6)}, ${n(FAR_HALF * 0.97)}, length( vEdgeXZ - ${c} ) ) );
 #endif
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, oeHaze, fogFactor );
 #ifdef OE_SEA
@@ -483,7 +489,8 @@ vec3 scrCell(float cell, vec2 uv) {
   const SEA_HALF = 40000, SEA_SOFT = [2500, 9000], SEA_LAND = ['0.70', '0.76', '0.70'];
   // the land past the frame (farland.js): how far its haze takes to clear from the frame, and to how much
   const FAR_RAMP = (window.OEFarLand || {}).RAMP || 1400, FAR_BASE = (window.OEFarLand || {}).BASE || 0.32,
-    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_AIR = (window.OEFarLand || {}).AIR || 30000;
+    FAR_EDGE = (window.OEFarLand || {}).EDGE || 0.2, FAR_AIR = (window.OEFarLand || {}).AIR || 30000, FAR_HALF = (window.OEFarLand || {}).HALF || 40000,
+    FAR_LAYER = 1000, FAR_AIR_LOW = 15000; // the ground haze's depth, and its 63% distance in it (m)
 
   // Aerial photos are taken through a kilometre of air: their darkest tones are lifted by haze
   // and their colours are thin, which on the ground and the flat roofs reads as a grey wash.
