@@ -42,8 +42,9 @@ async function main() {
   // an alpine site takes the title screen's curve family (Khronos PBR Neutral, web/lens.js): it keeps the sky's blue
   // and the lake's turquoise where ACES pushes both toward a grey teal
   renderer.toneMapping = ALP ? THREE.NeutralToneMapping : THREE.ACESFilmicToneMapping;
-  // an alpine site is exposed as a landscape photograph is: sunlit snow just under white, the sky's blue mid-tone
-  renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.9 : 1.0));
+  // an alpine site is exposed as a landscape photograph is: sunlit snow just under white, the sky's blue mid-tone, the lake
+  // and the pale gravel of its shores with room above them (1.9 left the shore and the glitter path white)
+  renderer.toneMappingExposure = Number(q.get('exp') || (ALP ? 1.7 : 1.0));
   document.body.prepend(renderer.domElement);
   await renderer.init();
   // a lost device or context cannot be restored in place: reload with a note, not a black page (glcare.js)
@@ -155,7 +156,7 @@ async function main() {
     for (let i = 1; i < SEEN.length; i++) if (x <= SEEN[i][0]) { const [a, la] = SEEN[i - 1], [b, lb] = SEEN[i]; return la * Math.pow(lb / la, (x - a) / (b - a)); }
     return 0.1;
   };
-  const baseExp = Number(q.get('exp') || (ALP ? 1.9 : 1.0));
+  const baseExp = Number(q.get('exp') || (ALP ? 1.7 : 1.0));
   let adapt = 1;
   renderer.toneMappingExposure = baseExp;
   function lights(sun) {
@@ -184,6 +185,7 @@ async function main() {
   const eqM = new THREE.Matrix3();
   let eqT = -1e9, equatorialMatrix = null;
   if (ALP) ({ equatorialMatrix } = await import('./alpine/atmos.js'));
+  const SKY_DAY = 0.72;
   function alpineLights(sun, sunI, moonI, hemiI) {
     const y = camera.position.y, Ts = atm.sunColour(y, Math.sin(sun.alt)), deg = sun.alt * 180 / Math.PI;
     const E0 = 2.8 * adapt;
@@ -201,13 +203,22 @@ async function main() {
     // brightness, over the hemisphere), never darker than starlight (a little stronger than the reef's, so the tussock
     // and the snow read under the stars)
     const twi = skyLight(deg) * adapt * 0.42 * (1 - THREE.MathUtils.smoothstep(deg, -1, 6));
-    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day + Math.max(Math.PI * twi * [0.11, 0.16, 0.40][i], night * 1.1 * [0.55, 0.7, 1.0][i]) * (1 - day));
-    hemi.color.setRGB(sky[0], sky[1], sky[2]).multiplyScalar(1 / Math.max(lum(sky), 1e-6)); hemi.intensity = Math.max(lum(sky), 1e-6);
+    // (by day the model's sky light on the ground is taken at 0.72: as it was, the sky gave 40% of the light on open ground
+    // with the sun 40 degrees up, where a clear sky gives 15 to 25%, and its blue lifted every shadow into a grey haze)
+    const sky = [0, 1, 2].map(i => E0 * amb[i] * Math.PI * day * SKY_DAY + Math.max(Math.PI * twi * [0.11, 0.16, 0.40][i], night * 1.1 * [0.55, 0.7, 1.0][i]) * (1 - day));
+    // a landscape photographer's daylight balance: the cast of sun and sky together is taken out of the land (a warm sun
+    // and a blue sky left it sage and grey), less and less toward the golden hour, whose warmth stays
+    const sinA = Math.max(Math.sin(sun.alt), 0), tot = [0, 1, 2].map(i => Ts[i] * E0 * sinA + sky[i]), totL = Math.max(lum(tot), 1e-6);
+    const wbAmt = 0.75 * THREE.MathUtils.smoothstep(sinA, 0.08, 0.4);
+    const wb = tot.map(v => 1 + (totL / Math.max(v, 1e-6) - 1) * wbAmt);
+    const wbL = lum(wb); for (let i = 0; i < 3; i++) wb[i] /= wbL;
+    sunL.color.setRGB(Ts[0] * wb[0] / sunLum, Ts[1] * wb[1] / sunLum, Ts[2] * wb[2] / sunLum);
+    hemi.color.setRGB(sky[0] * wb[0], sky[1] * wb[1], sky[2] * wb[2]).multiplyScalar(1 / Math.max(lum(sky), 1e-6)); hemi.intensity = Math.max(lum(sky), 1e-6);
     hemi.groundColor.setRGB(0.55, 0.45, 0.3);
-    light.u.sunE.value.setRGB(Ts[0] * E0, Ts[1] * E0, Ts[2] * E0);
-    light.u.skyE.value.setRGB(sky[0], sky[1], sky[2]);
+    light.u.sunE.value.setRGB(Ts[0] * E0 * wb[0], Ts[1] * E0 * wb[1], Ts[2] * E0 * wb[2]);
+    light.u.skyE.value.setRGB(sky[0] * wb[0], sky[1] * wb[1], sky[2] * wb[2]);
     const bounce = 0.18 * (E0 * sunLum * Math.max(Math.sin(sun.alt), 0) + lum(sky));
-    light.u.groundE.value.setRGB(bounce * 1.1, bounce * 0.95, bounce * 0.7);
+    light.u.groundE.value.setRGB(bounce * 1.1 * wb[0], bounce * 0.95 * wb[1], bounce * 0.7 * wb[2]);
     light.u.moonE.value.setRGB(0.8 * moonI * adapt, 0.86 * moonI * adapt, 1.0 * moonI * adapt);
     env.u.white.value = (E0 * sunLum * Math.max(Math.sin(sun.alt), 0) + moonI * adapt * Math.max(Math.sin(sun.moonAlt), 0) + lum(sky)) / Math.PI;
     // a landscape photographer opens up as the light goes: from a high sun to the last of the golden hour about a
