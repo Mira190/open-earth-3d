@@ -998,5 +998,5 @@ window.OEJunctions = (function () {
       peds }; // (the walk signals, { a: its arm, x, y, z, h }: walkcalls.js sounds them)
   }
 
-  return { create, STYLES, RANK, lanesOf, shiftOf, byClass };
+  return { create, STYLES, RANK, lanesOf, shiftOf };
 })();

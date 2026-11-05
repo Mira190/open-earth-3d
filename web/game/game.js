@@ -661,9 +661,11 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
     const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
     let first = null;
     // (not in a junction, nor so close to one that the traffic turning through it can't get round: at Hong
-    // Kong's start it was parked at a junction's mouth, and every car behind waited on it for good, issue 128)
+    // Kong's start it was parked at a junction's mouth, and every car behind waited on it for good, issue 128;
+    // 12 m clear of one ahead, 24 m of one behind)
     const l0 = roadNet.L[pl.line], n0 = l0.pts.length / 3, jn = k => (roadNet.nodes.get(roadNet.key(l0.pts[3 * k], l0.pts[3 * k + 1])) || []).length > 2;
-    const nearJ = s => junctions.inner(pl.line) || (jn(0) && s < half + 12) || (jn(n0 - 1) && L - s < half + 12);
+    // (more room behind it than ahead: a taxi hailed from beside it pulls in behind it, clear of the junction)
+    const back = d => half + (d ? 24 : 12), nearJ = s => junctions.inner(pl.line) || (jn(0) && s < back(pl.dir > 0)) || (jn(n0 - 1) && L - s < back(pl.dir < 0));
     for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24, 30, -30, 36, -36]) {
       const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) }), pose = kerbPose(q);
       first = first || { pl: q, pose };

@@ -1962,22 +1962,20 @@ deadlock or a meeting at a shared berth takes to show.
     six-lane motorway two. OSM's counts (`"nl"`) only take a main road down to one lane
     each way, smoothed along the road (see
     [Junctions and traffic lights](#junctions-and-traffic-lights)). There are no turn pockets.
-    A city's car count is for its roads with the lanes their class gives them;
-    it is scaled by the lane-metres within the traffic's radius against those
-    (actors.js `laneShare`, every few seconds), so a city whose main roads
-    OSM counts down to one lane carries fewer cars on them; a car past the count
-    is retired when it leaves the radius, never in view (Hong Kong: 0.97 to
-    0.99 of its 170). What jammed Hong Kong after the counts (issue #128) was
+    What jammed Hong Kong after the counts (issue #128) was
     elsewhere: at the start your car was parked at a junction's mouth, on a 31 m
     piece between two junctions, and every car behind it waited on it for good
-    (your car is now parked at least 12 m and a car's length clear of a
-    junction, on the roads round about when the nearest is all junction); and
+    (your car is now parked half a car's length and 12 m clear of a junction
+    ahead of it and 24 m of one behind, where a taxi hailed beside it pulls in,
+    on the roads round about when the nearest is all junction); and
     two one-way roads merging into nothing (a road the data has lost between
     them) held their cars at the end, so they are kept off now, with the one-way
     roads that lead only there (route.js). Jammed (still 30 s or more) under
     `tools/traffic_check.js hong-kong 150 6`: 6.9% on main, 5.3% with the merge
     fix alone; the start's jammed car-seconds fell from about 2,800 to 330 with
-    the parking fix (`tools/traffic_why.js hong-kong 0`). `traffic_check.js` also
+    the parking fix (`tools/traffic_why.js hong-kong 0`). Scaling the car count
+    to the lane-metres near you was tried and left out: it took Hong Kong's 170
+    cars down by 1 to 3%, too little to show. `traffic_check.js` also
     reports the cars on a motorway and on a deck at each place.
   - The arrow phase follows the main road's on every big junction alike; the
     real plans (SCATS's, Tokyo's) are not open data. None of the game's cities

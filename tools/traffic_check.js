@@ -106,7 +106,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
       const out = { at: [Math.round(g.player.x), Math.round(g.player.y)], cars: A.active, seconds: samples, stoppedShare: stopped / Math.max(1, carSecs), meanSpeed: dist / Math.max(1, carSecs),
         jammedShare: jammed / Math.max(1, carSecs), jammedAtEnd: jammedNow, longestStill: worstJam, turnsPerCarMin: turns / Math.max(1, carSecs / 60), overlapsPerSample: overlaps / Math.max(1, samples), overlapMax,
         inWallShare: inWall / Math.max(1, carSecs), onFlaggedShare: onFlagged / Math.max(1, carSecs),
-        onRoads: carSecs / Math.max(1, samples), onMotorway: onMotorway / Math.max(1, samples), onDeck: onDeck / Math.max(1, samples), laneShare: A.share ? A.share() : 1 };
+        onRoads: carSecs / Math.max(1, samples), onMotorway: onMotorway / Math.max(1, samples), onDeck: onDeck / Math.max(1, samples) };
       for (const w of red) if (w) carWaits.push(w); // (still waiting at the end: as long as it has been)
       out.carWaits = carWaits; out.walkWaits = g.crowd && g.crowd.kerbWaits ? g.crowd.kerbWaits.filter(w => w > 0.5).map(w => Math.round(w * 10) / 10) : [];
       out.walls = [...walls.values()].sort((a, b) => b.n - a.n).slice(0, 12).map(w => Object.assign(w, { why: [...w.why].join('/'), cars: w.cars.size, what: [...w.what].join(', ') || 'between checks' }));
@@ -125,7 +125,7 @@ const waitLine = v => `mean ${mean(v).toFixed(1)} s, 95% ${pct(v, 0.95).toFixed(
     console.log(`  turned back in the road: ${f(r.turnsPerCarMin, 3)} per car-minute; caught up in another car: ${f(r.overlapsPerSample)} pairs a second, ${r.overlapMax} at worst`);
     console.log(`  in a wall: ${(r.inWallShare * 100).toFixed(2)}% of the time; on a road a car doesn't fit along: ${(r.onFlaggedShare * 100).toFixed(2)}%`);
     for (const w of r.walls) console.log(`    in a wall at ${w.x}, ${w.y} z ${w.z}: ${w.n} car-seconds, ${w.cars} car(s), line ${w.line}${w.ow ? ' one-way' : ''} lane ${w.ln} lo ${w.lo} off ${w.off} from the centre ${w.dc} (room there ${w.roomC}, hw ${w.hw}, w ${w.w}), ${w.mv ? 'in a junction, ' : ''}held by ${w.why}; ${w.what}`);
-    console.log(`  on the roads: ${f(r.onRoads, 0)} cars on average (${f(r.laneShare)} of the count for the lanes near you), ${f(r.onMotorway, 1)} on a motorway, ${f(r.onDeck, 1)} on a piece with a deck`);
+    console.log(`  on the roads: ${f(r.onRoads, 0)} cars on average, ${f(r.onMotorway, 1)} on a motorway, ${f(r.onDeck, 1)} on a piece with a deck`);
     console.log(`  the traffic update: ${f(r.updateMs)} ms a frame`);
     if (r.laneChanges != null) console.log(`  lane changes: ${r.laneChanges}; walkers waiting at a kerb for the walk signal: ${f(r.kerbWait / Math.max(1, r.seconds), 1)} on average`);
     console.log(`  wait at a red: cars ${waitLine(r.carWaits)}; walkers ${waitLine(r.walkWaits)}`);

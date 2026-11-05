@@ -1021,27 +1021,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     // hw (half width), parked }; a parked one beside the lane is passed by swinging out round it
     let tick = 0;
     const FAR = 160; // cars farther than this from the eye (m, along x and y) take a step every second frame
-    // the traffic scaled to the lanes near you (issue 128): a city's count is for its roads with the lanes
-    // their class gives them (junctions.js byClass); where OpenStreetMap counts fewer (a main road with one
-    // lane each way, "nl"), the same count would crowd less road, so it is scaled by the lane-metres within
-    // the radius against those the classes would give, every few seconds. A car past the count is taken off
-    // when it would be put back near you anyway (out of the radius), so none vanishes in view.
-    let share = 1, shareAt = -Infinity;
-    const byClass = (OEJunctions && OEJunctions.byClass) || JN.lanesOf;
-    function laneShare(cx, cy) {
-      let have = 0, want = 0;
-      const seen = new Set();
-      for (const i of net.near(cx, cy, 0, radius)) {
-        if (seen.has(i)) continue;
-        seen.add(i);
-        const l = net.L[i];
-        if (net.avoid && net.avoid[i]) continue;
-        const ways = l.ow ? 1 : 2;
-        have += l.len * ways * JN.lanesOf(l); want += l.len * ways * byClass(l);
-      }
-      return want > 0 ? Math.min(1, have / want) : 1;
-    }
-    api.share = () => share;
     // is car c where the camera can see it: near enough, and not behind it or far out to a side?
     const look = new THREE.Vector3();
     function inView(c) {
@@ -1054,8 +1033,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       const dt = dt0;
       tick++;
       if (eye) eye.getWorldDirection(look);
-      if (t - shareAt > 4 || t < shareAt) { share = laneShare(cx, cy); shareAt = t; }
-      const cap = Math.round(api.active * share);
       if (fleet) for (const k in fleet) for (const M of fleet[k]) M.count = 0;
       head.fill(-1); bhead.fill(-1); nb = 0;
       for (const a of onLine.values()) a.length = 0;
@@ -1073,10 +1050,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (let i = 0; i < n; i++) {
         const c = C[i];
         if (i >= api.active) { if (c.line >= 0) JN.forget(c); c.line = -1; if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
-        if (c.line < 0 || Math.hypot(c.x - cx, c.y - cy) > radius * 1.15) {
-          if (i >= cap) { JN.forget(c); c.line = -1; } // (past the count for the lanes near you: retired out of sight)
-          else respawn(c, cx, cy, c.line < 0 && t < 1 ? 0 : radius * 0.6);
-        }
+        if (c.line < 0 || Math.hypot(c.x - cx, c.y - cy) > radius * 1.15) respawn(c, cx, cy, c.line < 0 && t < 1 ? 0 : radius * 0.6);
         if (c.line < 0) { if (mesh) { m4.makeScale(0, 0, 0); mesh.setMatrixAt(i, m4); } continue; }
         // far off, a step of two frames every second frame (the same traffic at half the work)
         const half = eye && Math.abs(eye.position.x - c.x) + Math.abs(eye.position.z + c.y) > FAR;

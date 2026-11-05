@@ -788,6 +788,7 @@ const npcNight = require('./npc_night');
     if (!o) return Object.assign(r, { hailed: false });
     r.hailed = true;
     r.log = [];
+    { const P = o.drv.path, e = {}, cs = c.D.st; if (P && P.at) P.at(P.len, e); r.log.push(`you at ${g.player.x.toFixed(0)}, ${g.player.y.toFixed(0)}; your car at ${cs.x.toFixed(0)}, ${cs.y.toFixed(0)} (${Math.hypot(cs.x - g.player.x, cs.y - g.player.y).toFixed(0)} m); the taxi at ${o.drv.st.x.toFixed(0)}, ${o.drv.st.y.toFixed(0)}, its way ${P ? P.len.toFixed(0) : '?'} m to ${e.x != null ? `${e.x.toFixed(0)}, ${e.y.toFixed(0)}` : '?'}`); }
     let t = 0;
     for (; t < 150 && o.phase === 'coming'; t += 0.5) { g.advance(0.5); if (t % 5 === 0) { const st = o.drv.st, A = g.cars, near = A.C.filter(c => c.line >= 0 && Math.hypot(c.x - st.x, c.y - st.y) < 12).map(c => `${A.C.indexOf(c)}:${c.v.toFixed(1)}:${c.why}:${c.mv ? 'in' : ''}`).join(' '); r.log.push(`${t}s s=${st.s.toFixed(0)}/${o.drv.path.len.toFixed(0)} v=${st.v.toFixed(1)} d=${Math.hypot(st.x - g.player.x, st.y - g.player.y).toFixed(0)} pass=${st.pass.toFixed(1)} shift=${st.shift.toFixed(1)} ${st.why || ''}${/^the line/.test(st.why || '') ? ` (${st.junction || '?'})` : ''} near[${near}]`); } }
     r.hailT = t;
