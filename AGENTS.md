@@ -46,8 +46,8 @@ or an integration session. Done means in main.
    covered.
 
 - Keep re-checks small. A change to shared code (`web/game/`, `web/assets/`, `web/*.js`,
-  `web/index.html`) makes every city's checks run, about an hour on a software renderer: land it
-  on its own and early, and keep city work in city files. Stay in the landing loop until it
+  `web/index.html`) makes every live city's checks run (seven while the others are parked): land
+  it on its own and early, and keep city work in city files. Stay in the landing loop until it
   lands; each round after the first is short.
 - Land in pieces. When something that other work will build on works (a shared module, a
   style, a pipeline step), land it then rather than holding it on a branch for hours.
@@ -64,6 +64,11 @@ The owner has asked for these things again and again. They are standing rules; d
 - **Everywhere by default.** A fix or a feature asked for in one city goes to every city, reef
   site and page it fits, on desktop and phone, unless the owner names one place. A reported bug
   is a class of bugs: find and fix the others like it.
+- **Parked cities wait.** The cities in `cities/index.json` `parked` (for now everything but
+  Sydney, Kyoto's three maps and Tokyo's Marunouchi-Ginza, Shibuya and Shinjuku) are off the globe
+  and out of `tools/check.sh` (`tools/live_cities.sh` lists the rest). Don't spend work on them
+  or rebuild their data; "every city" means every live one. Their data stays in the repository
+  and the owner brings one back by taking it off the list.
 - **Decide, don't offer a menu.** If you would recommend an option, do it. For an open ask
   ("keep optimising", "push to your limit") do your best ideas in order and report them. Never
   end a turn on a question that a sensible default answers ("shall I open a PR?", "shall I fix

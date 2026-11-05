@@ -8,7 +8,8 @@ that happen:
     to back where each face sits on the far side of the other: from either side the near face is seen
     from behind, so both sides read mirrored.
 Meshes whose material has a picture (a "map": sign atlases, the LED screens' programmes) are looked
-at; the aerial photo draped on a landmark's ground is not a picture to read.
+at; the aerial photo draped on a landmark's ground is not a picture to read, nor are leaf cards cut out
+of an atlas ("cutout").
 
     python3 tools/sign_check.py [city ...]      # exits 1 if anything is mirrored
 """
@@ -72,6 +73,8 @@ def check(city):
     for mesh in L.get("meshes", []):
         m = mats.get(mesh.get("material"), {})
         if not m.get("map") or m["map"].startswith("ground") or not mesh.get("uv"):   # a picture, not the aerial photo
+            continue
+        if m.get("cutout"):   # leaves and needles cut out of an atlas: nothing to read either way round
             continue
         F = faces(mesh)
         if not F:

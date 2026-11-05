@@ -17,7 +17,7 @@
 // game draws them, to judge a species next to the others. Query: species=a,b,c (default: all, in
 // trees.json's order) | date=month,day (11,28: the ginkgos, zelkovas and maples turned) | sun=elevation
 // degrees | dist=camera distance (m; 520+ shows the far crown hulls, 130+ the sparse trees) | h=height (m) |
-// lod=1 shows every species at the three distances in three rows
+// lod=1 shows every species at the three distances in three rows | look=camera height (m; 1.6 for the trunks)
 import * as T from 'three';
 import { GLTFLoader } from './gltf.js'; // (trees.glb is meshopt-compressed)
 window.THREE = Object.assign({}, T, { GLTFLoader });
@@ -54,7 +54,7 @@ const world = new T.Group(); scene.add(world);
 const trees = OETrees.create(world, lib, list, { mix: { [names[0]]: 1 }, areas, south: false });
 const [m, d] = (q.get('date') || '7,1').split(',').map(Number); trees.setSeason(m, d);
 const camera = new T.PerspectiveCamera(30, innerWidth / innerHeight, 1, 5000);
-camera.position.set(0, 7, -dist); camera.lookAt(0, 7.5, 0);
+const ch = q.has("look") ? +q.get("look") : 7; camera.position.set(0, ch, -dist); camera.lookAt(0, ch + 0.5, 0);
 $('names').innerHTML = names.map(n => `<span>${n}</span>`).join('');
 let t0 = performance.now();
 renderer.setAnimationLoop(() => { trees.update(camera, (performance.now() - t0) / 1000); renderer.render(scene, camera); window.__frames = (window.__frames || 0) + 1; });

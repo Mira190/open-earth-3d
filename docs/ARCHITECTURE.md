@@ -390,12 +390,22 @@ The views switch in place, without reloading the page.
     (`OE_FARLAND`), so the two never fight for a pixel. Its haze follows the edge
     haze's rule (`OE_FAR`): at the frame as hazed as the city there, which with
     land past it fades only a fifth of the way (`EDGE`), clearing over 350 m to a
-    distant land's veil (`BASE`), then the distance's own fog. After dark the
+    distant land's veil (`BASE`), then its own air rather than the view's fog:
+    distance to 63% at `AIR` (30 km), or thicker from low down, since the air near
+    the ground is a haze layer about a kilometre deep (`FAR_LAYER`, `FAR_AIR_LOW`
+    in `world.js`), so from a tower the plain pales into haze within ten kilometres
+    while from high up it stays clear; it closes to the haze only toward its outer
+    edge. Seen at a low angle, built-up land gets a shade of roofs in 40 to 50 m
+    blocks and is cooled and darkened toward walls in sky light, and a pixel's
+    footprint is the geometric mean of its two axes, so the grain does not vanish
+    where a pixel is a few metres wide and hundreds deep. After dark the
     built-up land glows: NASA's Black Marble at 500 m, raised to a power for
     contrast (its visual product saturates over a city) and shared out by
     WorldCover's built-up share at 156 m, drawn as points of light in 24 m cells,
     more of them the brighter the land, which fade into their mean where a pixel
-    covers them. The reef sites (`web/reef/farland.js`) take the same geometry
+    covers them. A point of light keeps its energy when it is drawn wider than
+    itself, and since the lights shine every way, land seen at a low angle glows
+    brighter (up to four times), the band of light a city shows from a tower. The reef sites (`web/reef/farland.js`) take the same geometry
     with node materials under the reef's own air (`env.medium`), the land raised
     clear of the highest tide: the ranges behind Cairns stand on Green Island's
     horizon, and the coast's towns are a band of light at night. `?far=off`
@@ -814,16 +824,135 @@ few deeper-pink buds. Every one of the cherry's cards is a bloom card
   Gyoen and Nijo-jo, the Osaka Mint's passage, the Okawa's east bank
   (Kema Sakuranomiya Park, about 4,800), Osaka Castle Park and Utsubo Park.
   Kyoto's Philosopher's Path and Maruyama Park are east of the Kyoto map.
-- **Not yet:** the other kinds (the weeping shidare-zakura of the Gyoen and
-  Maruyama, the late double yaezakura) are all Somei-yoshino here; the bark's
-  horizontal bands of lenticels are not drawn (bark is one colour); the petals do
-  not drift down.
+- **Not yet:** the petals do not drift down. (The other kinds and the bark's
+  bands came with issue #163, below.)
 - **Sources:** JMA's sakura phenology normals (public data); the parks' and wards'
   own guides for the tree counts; OpenStreetMap (ODbL) for the outlines. No code
   or art was taken from elsewhere.
 
 ![The cherry through the year: bare, in flower, hazakura, green, autumn](images/trees/cherry_year.jpg)
 ![The Meguro River at Nakameguro on 1 April and in June; Hachiko Square's planters on 1 April and in January](images/trees/cherry_places.jpg)
+
+### The other cherries and the bark (issue #163)
+
+Three more cherries join the Somei-yoshino in `blender/build_trees.py`, each with
+its own bloom cell in the atlas (a sixth row: `sakura`, `shidare`, `kawazu`,
+`yae`, listed in `trees.json` `atlas.sakura_cells`) and its own bloom date, an
+offset in days from the Somei-yoshino's opening (`bloom_offset_d`) over a bloom
+`bloom_len` times as long. `web/trees.js` keeps one bloom value per variety
+(`uSakuraV`, and its leaves' `uCherryBareV`); out of flower every cherry's card
+shows the cherry's leaf cell.
+
+| Species | Form | Flower | Offset, length |
+|---|---|---|---|
+| `cherry` (Somei-yoshino) | low fork, crown wider than tall | white blushed pink | 0, 1 |
+| `shidarezakura` (Edohigan 'Pendula') | scaffold limbs arching into a dome, curtains of thin branches to 1-3 m off the ground | smaller, a clearer pink | -4 d, 1 |
+| `kawazu` (Kawazu-zakura) | small, upright | big, deep vivid pink | -37 d (mid February in Tokyo), 1.7 (a month) |
+| `yaezakura` (Kanzan) | upswept vase | heavy double pompoms, deep pink, with bronze new leaves | +16 d (mid April), 1.15 |
+
+- **The weeping crown** (`grow_weeping`): the trunk forks at 3 m into eight
+  limbs that arch up to 9-10 m; from the outer half of each, eleven branches rise
+  a little, turn over and hang (a cubic curve whose end tangent points down, as
+  Weber and Penn's *curvature* and *down angle* parameters make a weeping
+  tree, the model Blender's Sapling add-on implements). Cards hang along each
+  branch from where it turns over, each growing down it and turned its own way
+  round it, so the crown reads as a curtain rather than strips. 3,482 / 544 / 367
+  triangles at the three distances: the most of any species, and planted only
+  where a place is known for it.
+- **The bark:** every cherry's bark carries `bark_bands`; `web/trees.js` draws the
+  horizontal lenticels in the bark shader, in the tree's own frame: broken rows of
+  short pale dashes about 14 cm apart, each row its own height, width and dash
+  length, faded out where a row would be finer than a pixel, and the bark a little
+  glossier (roughness 0.7) than other species'.
+- **Where (`trees.areas`):** a city picks a variety per area by naming it in the
+  area's `mix`, as any species. Maruyama Park: weeping cherries among the
+  Somei-yoshino, and a circle on the Gion weeping cherry's spot that turns the
+  park's nearest mapped trees (OSM maps none on it) into one; Kodai-ji's weeping
+  cherry; Gion Shirakawa's; the Kyoto Gyoen's (the Konoe-tei's itozakura) and
+  Nijo-jo's weeping and double cherries; Shinjuku Gyoen's double cherries,
+  weeping cherries and a few kawazu-zakura; the Kokyo East Gardens' grove.
+  Shibuya's Meguro River stays Somei-yoshino (on hold for the opening film).
+
+![The four cherries through the year as the game draws them: kawazu-zakura in February, Somei-yoshino and the weeping cherry on 1 April, yaezakura on 18 April, June, January](images/trees/cherry_varieties.jpg)
+
+### Yozakura: the cherries lit after dark (issue #162)
+
+In the bloom the famous spots light their cherries after dark: uplights at the foot
+of each tree, and bonbori, paper lanterns on posts, along the walks. An area in
+`trees.areas` with `"yozakura": true` does the same (`web/trees.js`): its cherries,
+of any variety, are lit from sunset (world.js's `uNight`) while any of them is in
+flower (from the first flowers to the petals' fall, the light-ups' season).
+
+- **The uplight** is a term in the trees' own shader, no light source: each lit
+  tree (a per-instance flag) adds its albedo times a warm white to its emission,
+  most on the undersides of the crown and the lower boughs and falling off up the
+  tree (about a third left at 9 m), as a photograph of an uplit cherry shows it:
+  the blossom glowing pink against a dark sky, the tops going into the dark. It
+  costs a few instructions on the trees already drawn, on every tier.
+- **A pool of light** round each lit tree's foot (a soft additive disc on the
+  ground, the crown's width) and round each lantern.
+- **The bonbori** stand every 7 m along the footways mapped through the area
+  (night.json's), on alternate sides 1.5 m off the centre line, or beside every
+  other lit tree where none is mapped: a dark post, a washi shade lit warm from
+  inside and a halo. On the light tier every 14 m, at most 240, and no halos.
+- **Where:** Chidorigafuchi and its Ryokudo (Tokyo; the Chiyoda Sakura
+  Festival's light-up), Maruyama Park and the Gion weeping cherry (Higashiyama).
+  The Meguro River waits for Shibuya's opening film; Ueno's Sakura-dori and
+  Osaka's Mint are parked.
+
+![Yozakura at 20:00: Chidorigafuchi's moat (left) and Maruyama Park round the Gion weeping cherry](images/trees/yozakura.jpg)
+![On a phone: Chidorigafuchi and Maruyama at night, and Chidorigafuchi by day in the bloom](images/trees/yozakura_phone.jpg)
+
+### A floor per area (issue #165)
+
+The ground drawn under the woods' and parks' canopy near the camera (`woods.png`,
+world.js `woodsFloor`) was one kind per city (`trees.floor`). An area in
+`trees.areas` may now set its own `floor` (`earth`, `lawn` or `gravel`): world.js
+draws the areas' outlines into a map over the woods' box when the city loads and
+the floor shader reads it, the first area listed winning where they overlap. On a
+gravel area the photo's gravel also loses what is left of the sky's blue in it, in
+sun and in shade and at any distance, and its sunlit expanse is kept off white: the
+Kyoto Gyoen's gravel read slightly blue. Set: the Kyoto Gyoen (gravel), the Kokyo
+Gaien and Shinjuku Gyoen (lawn), Meiji Jingu (leaf litter, `earth`). Yoyogi's lawn
+waits for Shibuya's opening film.
+
+### The cays' scrub and the clumped Pisonia (issue #165)
+
+The coral cays' beach scrub was drawn as blobs near the camera. Two shared shrubs
+join the set: Scaevola (beach cabbage, `scaevola`: a mound 1-3 m high and wider than
+tall of thick yellow-green spoon-shaped leaves crowded at the twigs' ends, on five
+soft stems) and the octopus bush (`argusia`, *Heliotropium arboreum*: crooked
+spreading stems under a rounded crown of silvery felted leaves, 3.5 m high and 5 m
+across), with their own atlas cells. `web/reef/life/flora.js` draws the sites'
+`scaevola` and `beach-scrub` with the first and `octopus-bush` with the second, as it
+draws Pisonia and she-oaks. Pisonia grows as a clump of three trunks from one foot
+(`stems`), as it does on Heron, where fallen stems re-root.
+
+![Pisonia, Scaevola, the octopus bush and a she-oak; a Pisonia's clumped trunks](images/trees/cays_scrub.jpg)
+
+**What we looked at for the night.** Real-time engines light a festival's many
+small lamps without a light per lamp: emissive meshes with a halo card or bloom
+for the lamps themselves, and baked or analytic light for what they light (three.js
+has no clustered lighting on WebGL; its WebGPU renderer does). Night photographs of
+Chidorigafuchi, Maruyama and the Meguro River show the blossom lit pink-white from
+below against a deep blue sky, the trunks and the lowest boughs brightest, and the
+lanterns as warm points. **Adopted:** the analytic per-tree uplight in the shader,
+emissive lanterns with a point-sprite halo and additive ground pools (our own code).
+
+**What we looked at.** How browser engines and open-source projects draw trees:
+three.js's `InstancedMesh` foliage with alpha-tested leaf cards (what the shared
+trees already do); [ez-tree](https://github.com/dgreenheck/ez-tree) (MIT; a
+recursive three.js branch generator with a gravity-like force that bends branches
+down, CC0 bark textures from ambientCG); Blender's Sapling Tree Gen (GPL; Weber
+and Penn's parametric model, with a weeping shape and per-level curvature and
+down angle); Weber and Penn, *Creation and Rendering of Realistic Trees*
+(SIGGRAPH 1995); SpeedTree's card-and-hull LOD scheme (proprietary, the industry
+reference for the LOD steps). **Adopted:** the idea of a branch that curves down
+from its turn-over point (Weber and Penn; no code from Sapling or ez-tree), drawn
+with our existing card-and-hull pipeline; the bark's bands are our own shader.
+**Sources:** cultivar habits and bloom times from the Japan Meteorological
+Agency's normals and the parks' guides (Shinjuku Gyoen, Maruyama Park, Kawazu
+town); no art was taken from elsewhere.
 
 ### The coral cays
 

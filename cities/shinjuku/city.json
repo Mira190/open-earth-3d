@@ -91,7 +91,8 @@
           "maple": 0.22,
           "elm": 0.5,
           "plane": 0.28,
-          "cherry": 0.15
+          "cherry": 0.09,
+          "shidarezakura": 0.06
         }
       },
       {
@@ -109,6 +110,7 @@
       {
         "name": "Shinjuku Gyoen",
         "find": "新宿御苑",
+        "floor": "lawn",
         "mix": {
           "plane": 0.25,
           "zelkova": 0.15,
@@ -117,9 +119,12 @@
           "pine": 0.1,
           "ginkgo": 0.1,
           "sugi": 0.1,
-          "cherry": 0.22
+          "cherry": 0.12,
+          "yaezakura": 0.06,
+          "shidarezakura": 0.025,
+          "kawazu": 0.015
         },
-        "note": "The French formal garden's plane avenues, the Japanese garden's pines, the Himalayan cedars (sugi stands in) and camphors."
+        "note": "The French formal garden's plane avenues, the Japanese garden's pines, the Himalayan cedars (sugi stands in) and camphors. Its cherries are some sixty-five varieties, a thousand trees: the Somei-yoshino and the weeping cherries at the end of March, the double cherries (Kanzan, Ichiyo) through April, and a few kawazu-zakura in February (the garden's guide)."
       },
       {
         "name": "Meiji Jingu Gaien",
@@ -134,6 +139,7 @@
       },
       {
         "name": "Meiji Jingu",
+        "floor": "earth",
         "find": "明治神宮",
         "mix": {
           "camphor": 0.3,
@@ -461,6 +467,12 @@
     "helipads_from_data": false,
     "wharves": [],
     "ferries": [],
+    "scrambles": [
+      {"name": "新宿駅東口 Alta-mae", "at": [392.1, 2658.6], "note": "The first of four scramble crossings in a row along Shinjuku-dori from Alta (jafmate.jp road trivia, 2023-12-25, which names the scramble-style crossings); diagonals mapped in OSM."},
+      {"name": "新宿通り Shinjuku-dori, the second", "at": [477.1, 2635.2], "note": "The second of the four; diagonals mapped in OSM."},
+      {"name": "新宿通り Shinjuku-dori, the third", "at": [551.9, 2595.3], "note": "The third of the four; diagonals mapped in OSM."},
+      {"name": "新宿通り Shinjuku-dori, the fourth", "at": [650.3, 2541.2], "note": "The fourth of the four; diagonals mapped in OSM."}
+    ],
     "crowd": {
       "pedestrians": 640,
       "cars": 200,
@@ -1238,8 +1250,8 @@
         "stamp": "思い出横丁",
         "talk": [
           "Omoide Yokocho: Memory Lane. It started as a black market by the west exit after the war. Eighty-odd counters now, each under a roof you can touch.",
-          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 260 metres, goes up there for 2029. The lane stays. The smoke stays.",
-          "Go and stand at the west exit and see the gap it left. Then come back and eat."
+          "Shinjuku never stops building. Across the road the Odakyu department store's old building came down from 2022; a 48-storey tower, 258 metres, goes up there for the spring of 2030. The lane stays. The smoke stays.",
+          "Go and stand at the west exit and watch the cranes. Then come back and eat."
         ],
         "steps": [
           {
@@ -1249,7 +1261,7 @@
               2602.9
             ],
             "radius": 25,
-            "text": "Stand at the west exit where the department store stood"
+            "text": "Stand at the west exit, under the cranes where the department store stood"
           }
         ]
       },
