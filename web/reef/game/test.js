@@ -68,6 +68,36 @@ export async function gametest(api, ctx) {
     }
     must(!lint.length, 'every line renders and every cited source resolves', lint.length ? lint.slice(0, 5).join(' | ') : `${nPages} pages`);
 
+    // 1b. solid things: the start is clear of every sign, the kit and the people; nobody stands inside anyone or anything;
+    // a sign stops you; a landmark's walls stand on the ground with no gap under them
+    if (player.clearance) {
+      const h0 = G.here(), c0 = player.clearance(h0.x, h0.north, S.pos.y);
+      must(c0.gap >= 0.6 || S.onDeck || S.water, 'the start is clear of signs, the kit and people', `${c0.gap.toFixed(2)} m from ${c0.who ? c0.who.id : 'nothing'}`);
+      const bad = [];
+      for (const c of player.colliders) {
+        if (!c.id || !/^(npc|sign|kit)/.test(c.id) || (c.on && !c.on())) continue;
+        const r = player.clearance(c.x, c.north, undefined, c);
+        if (r.gap < 0.5) bad.push(`${c.id} ${r.gap.toFixed(2)} m from ${r.who.id}`);
+      }
+      must(!bad.length, 'no person, sign or kit stands inside another', bad.slice(0, 4).join('; ') || `${player.colliders.length} colliders`);
+      const sg0 = (G.content.signs || []).map(s => G.sign(s.id)).find(s => s && s.collider);
+      if (sg0) {
+        const c = sg0.collider, vx = -c.un, vn = c.ux, x = c.x + vx * 2.5, north = c.north + vn * 2.5;
+        player.teleport(x, north, undefined, G.bearing({ x, north }, c)); run(3, V({ f: 1 }));
+        const p = G.here(), side = (p.x - c.x) * vx + (p.north - c.north) * vn, g = player.clearance(p.x, p.north).gap;
+        must(side > c.hv + 0.2 && g > 0.25, `walking into the ${sg0.def.id} sign stops you at the board`, `${side.toFixed(2)} m from its middle, ${g.toFixed(2)} m clear`);
+        const sp1 = G.spawn(); player.teleport(sp1.x, sp1.north, undefined, sp1.heading); run(0.3);
+      }
+    }
+    for (const lm of ctx.landmarks || []) {
+      const f = lm.fit; if (!f) continue;
+      const c = f.collider, gs = [];   // the ground over the walls' outline, corners and middle (5 x 5)
+      for (let i = 0; i <= 4; i++) for (let j = 0; j <= 4; j++) { const a = (i / 2 - 1) * 0.97, b = (j / 2 - 1) * 0.97; gs.push(G.height(c.x + a * c.hu * c.ux - b * c.hv * c.un, c.north + a * c.hu * c.un + b * c.hv * c.ux)); }
+      const base = lm.root.position.y, low = f.plinth ? -Infinity : lm.box.min.y;
+      must(base <= Math.max(...gs) + 0.1 && low <= Math.min(...gs) + 0.1, `${lm.L.id} stands on the ground`,
+        `base ${base.toFixed(2)}, lowest ${f.plinth ? 'plinth' : low.toFixed(2)}, ground ${Math.min(...gs).toFixed(2)}..${Math.max(...gs).toFixed(2)}`);
+    }
+
     // 2. talking: E next to the ranger opens her dialogue; Enter pages on; 1 answers
     near(first, 1.6); run(0.3);
     const it = player.interactables.filter(i => (!i.enabled || i.enabled(player)) && i.npcId === first);
