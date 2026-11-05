@@ -121,12 +121,12 @@ RETRY="$OUT/retry.txt"
 : >"$RETRY"
 game_step() {
   local c=$1 pass=$2 rc
-  # (a big city's game, every step, takes up to about 20 minutes alone on a software renderer)
-  timeout 1800 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; rc=$?
+  # (a big city's game, every step, takes up to about 35 minutes alone on a software renderer: Shibuya)
+  timeout 2700 $X node tools/game_check.js "$c" "$OUT/$c" >"$OUT/$c.log" 2>&1; rc=$?
   if [ $rc -eq 0 ]; then
     echo "ok   game   $c$([ "$pass" = alone ] && echo "   (alone, after failing under load: see $OUT/$c-load.log)")"
   elif [ "$pass" = load ]; then cp "$OUT/$c.log" "$OUT/$c-load.log"; echo "game $c" >>"$RETRY"
-  elif [ $rc -eq 124 ]; then echo "FAIL game   $c   (timed out after 1800 s alone; see $OUT/$c.log)"
+  elif [ $rc -eq 124 ]; then echo "FAIL game   $c   (timed out after 2700 s alone; see $OUT/$c.log)"
   else echo "FAIL game   $c   (see $OUT/$c.log; under load $OUT/$c-load.log)"; fi
 }
 clip_step() {
