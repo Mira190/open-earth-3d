@@ -1,4 +1,4 @@
-"""Build Lake Tekapo's landmarks: web/assets/landmarks/tekapo-*.glb.
+"""Build Lake Tekapo's landmarks: web/data/lake-tekapo/models/tekapo-*.glb (meshopt-compressed).
 
     pip install bpy==5.2.3 pillow
     python pipeline/tekapo_landmarks.py        # measure first (cities/lake-tekapo/analysis/landmarks.json)
@@ -41,7 +41,7 @@ from build_vehicles import lin, setup_render, render  # noqa: E402
 from meshopt import compress  # noqa: E402  (build_vehicles puts pipeline/ on the path)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "web", "assets", "landmarks")
+OUT = os.path.join(ROOT, "web", "data", "lake-tekapo", "models")
 DOCS = os.path.join(ROOT, "docs", "images", "lake-tekapo")
 TEX = os.path.join(ROOT, "data", "raw", "lake-tekapo", "tex")
 CITY = os.path.join(ROOT, "cities", "lake-tekapo")

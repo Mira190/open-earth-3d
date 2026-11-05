@@ -50,11 +50,11 @@
     "attribution": "Toitū Te Whenua Land Information New Zealand (LINZ): New Zealand 10 m Satellite Imagery (2025-2026), Mackenzie 0.3 m Rural Aerial Photos (2021), Mackenzie 0.075 m Urban Aerial Photos (2023, 2025-2026), CC BY 4.0"
   },
   "landmarks": [
-    {"id": "church-good-shepherd", "glb": "assets/landmarks/tekapo-church.glb", "lonlat": [170.482466, -44.003346], "heading": 17, "ground_m": 714.9,
-     "note": "heading is the altar end's bearing from true north: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake"},
-    {"id": "sheepdog-statue", "glb": "assets/landmarks/tekapo-collie.glb", "lonlat": [170.48395, -44.00347], "heading": 20, "ground_m": 713.2, "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is the dark cairn in a round paved bay in the 0.075 m aerial photographs (2025-26), 9 m south of Overture's Sheepdog Memorial record"},
-    {"id": "footbridge", "glb": "assets/landmarks/tekapo-footbridge.glb", "lonlat": [170.4810666, -44.0048970], "heading": 90, "deck_m": 711.0},
-    {"id": "mt-john-observatory", "glb": "assets/landmarks/tekapo-observatory.glb", "lonlat": [170.4645, -43.9855], "heading": 0, "ground_m": 1023.2}
+    {"id": "church-good-shepherd", "glb": "data/lake-tekapo/models/tekapo-church.glb", "lonlat": [170.482466, -44.003346], "axis_deg": 16.5, "ground_m": 714.9,
+     "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them. axis_deg is the altar end's bearing: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake"},
+    {"id": "sheepdog-statue", "glb": "data/lake-tekapo/models/tekapo-collie.glb", "lonlat": [170.48395, -44.00347], "ground_m": 713.2, "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is the dark cairn in a round paved bay in the 0.075 m aerial photographs (2025-26), 9 m south of Overture's Sheepdog Memorial record"},
+    {"id": "footbridge", "glb": "data/lake-tekapo/models/tekapo-footbridge.glb", "lonlat": [170.4810666, -44.0048970], "ground_m": 707.71, "walk": "deck", "note": "y = 0 is the river surface under it (the DEM, 707.71 m); the deck is 8.2-10.8 m above"},
+    {"id": "mt-john-observatory", "glb": "data/lake-tekapo/models/tekapo-observatory.glb", "lonlat": [170.4645, -43.9855], "ground_m": 1023.2}
   ],
   "start": {"x": 418, "y": -20, "z": 38, "yaw": 15, "pitch": -6, "date": null},
   "spawn": {

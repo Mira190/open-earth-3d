@@ -99,7 +99,7 @@ Sources: [Pixeo, Church of the Good Shepherd](https://pixeoapp.com/photography-g
 
 ## Landmarks
 
-Measured by `pipeline/tekapo_landmarks.py`, built by `blender/build_tekapo.py` into `web/assets/landmarks/tekapo-*.glb`
+Measured by `pipeline/tekapo_landmarks.py`, built by `blender/build_tekapo.py` into `web/data/lake-tekapo/models/tekapo-*.glb`
 (meshopt-compressed). Each model is in its own anchor's frame, orientation baked in, y = 0 at `ground_m`.
 
 | Landmark | Measured | Source | Model |
