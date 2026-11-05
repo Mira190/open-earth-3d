@@ -21,7 +21,8 @@ A bridge takes its form from city.json "bridges" "forms", by its OpenStreetMap n
 
 with `colour` (the paint), `spans`, `rise_m` (the arch's rise over the deck, or of the deck arch under
 it), `rail` ("steel", "stone", "timber" with giboshi caps), `lamps` (lamp posts a side) and `lamp`
-(their head's colour), `lamp_style` ("bronze": stone pedestals and candelabra), `span_m` (the published spans,
+(their head's colour), `lamp_style` ("bronze": stone pedestals and candelabra), `statues` (cast bronzes from its photographs:
+{"middle": "kirin", "ends": "lion"}, Nihonbashi's kirin on the lamp standards over its pier and its lions at the ends), `span_m` (the published spans,
 in proportion), `crown_m` (the deck's rise in the middle), `deck_z` (the deck's height at its two ends, from its
 south or west end, where the road over it is carried up above the banks). Over a ferry's course (game.json "ferries") a deck rises
 in the middle until the city's boats pass under it, with someone standing on the upper deck (`lift_m`). `skip` names bridges to leave out, `widths` the deck of one mapped as lines,
@@ -251,6 +252,7 @@ def lamps(K, P, dz, L, hw, n, colour=None, h=6.5, stone=False):
     if colour:
         lamp = "wb_lamp_" + colour.lstrip("#")
         K.mats[lamp] = {**MATERIALS["wb_lamp"], "emissive": colour}
+    K.lit.add(lamp)   # lit after dark (web/world.js: a floodlit mesh's material glows by its "glow")
     for k in range(n):
         u = -L / 2 + (k + 0.5) * L / n
         for s in (-1, 1):
@@ -258,15 +260,129 @@ def lamps(K, P, dz, L, hw, n, colour=None, h=6.5, stone=False):
             z = dz(u)
             if stone:
                 block(K(K.stone), P, u - 0.45, u + 0.45, v - 0.45, v + 0.45, z, z + 1.4)
-                K("wb_bronze").box(P(u, v, z + 1.4), P(u, v, z + 4.2), 0.18, 0.18)
-                for a in (-0.6, 0.6):
-                    K("wb_bronze").box(P(u, v, z + 3.6), P(u + a, v, z + 4.0), 0.08, 0.08)
-                    block(K(lamp), P, u + a - 0.18, u + a + 0.18, v - 0.18, v + 0.18, z + 4.0, z + 4.5)
-                block(K(lamp), P, u - 0.2, u + 0.2, v - 0.2, v + 0.2, z + 4.2, z + 4.8)
+                candelabra(K, P, u, v, z + 1.4, 3.0, 2, lamp)
             else:
                 K("wb_post").box(P(u, v, z), P(u, v, z + h), 0.16, 0.16)
                 K("wb_post").box(P(u, v, z + h), P(u, v - s * 1.4, z + h + 0.3), 0.1, 0.1)
                 block(K(lamp), P, u - 0.25, u + 0.25, v - s * 1.4 - 0.25, v - s * 1.4 + 0.25, z + h - 0.05, z + h + 0.15)
+
+
+def globe(m, x, y, z, r, segs=10):
+    """A glass globe of radius r, its foot at z (a lathe of a circle)."""
+    a = np.linspace(-math.pi / 2, math.pi / 2, 7)
+    lathe_at(m, x, y, [(z + r + r * math.sin(t), max(0.0, r * math.cos(t))) for t in a], segs)
+
+
+def candelabra(K, P, u, v, z, h, arms, lamp, r=0.2):
+    """A cast-bronze lamp standard (as on Nihonbashi and the Seimon Ishibashi): a turned column h high from
+    z, with a moulded base, a collar and a capital, a globe on top and `arms` scrolled arms below it, each
+    with its own globe."""
+    x, y, _ = P(u, v, 0)
+    B = K("wb_bronze")
+    lathe_at(B, x, y, [(z, 0.3), (z + 0.12, 0.3), (z + 0.2, 0.2), (z + 0.5, 0.13), (z + h * 0.55, 0.09), (z + h * 0.6, 0.13),
+                       (z + h * 0.64, 0.08), (z + h - 0.15, 0.07), (z + h - 0.05, 0.14), (z + h, 0.1)], 10)
+    globe(K(lamp), x, y, z + h, r * 1.15)
+    for k in range(arms):
+        t = 2 * math.pi * (k + 0.5) / arms if arms > 2 else (0 if k == 0 else math.pi)
+        du, dv = math.cos(t) * 0.75, math.sin(t) * 0.75
+        za = z + h * 0.78
+        B.box(P(u, v, za), P(u + du * 0.6, v + dv * 0.6, za + 0.18), 0.06, 0.06)
+        B.box(P(u + du * 0.6, v + dv * 0.6, za + 0.18), P(u + du, v + dv, za + 0.1), 0.06, 0.06)
+        ax, ay, _ = P(u + du, v + dv, 0)
+        lathe_at(B, ax, ay, [(za, 0.0), (za + 0.04, 0.09), (za + 0.12, 0.07)], 8)
+        globe(K(lamp), ax, ay, za + 0.12, r)
+
+
+def cast(m, f, lo, hi, cell, place):
+    """A sculpted field (sculptkit.py) meshed and set down by place(u, v, z) -> world point, into mesh m
+    (its own smooth mesh: the viewer smooths across shared vertices)."""
+    import sculptkit as sk
+    verts, tris = sk.mesh(f, lo, hi, cell)
+    verts = sk.relax(np.asarray(verts, float), np.asarray(tris), 0.5, 2)
+    n = len(m.v)
+    m.smooth, m.digits = True, 3
+    for a in verts:
+        m.v.append(tuple(float(c) for c in place(*a)))
+        m.t.append([0.0, 0.0])
+    for t in tris:
+        m.i += [n + int(k) for k in t]
+
+
+def kirin_field():
+    """Nihonbashi's kirin (麒麟, Watanabe Osao after Tsumaki Yorinaka, 1911): a winged beast seated on its
+    haunches, forelegs straight, head up under two swept horns, its wings raised behind and a flame of a
+    tail, in its own frame facing +u, about 2.2 m high."""
+    import sculptkit as sk
+    side = sk.mirror_v(sk.smooth_union(0.05,
+        sk.capsule((0.36, 0.15, 0.95), (0.42, 0.16, 0.06), 0.09, 0.065),             # the forelegs
+        sk.ellipsoid((0.5, 0.17, 0.05), (0.13, 0.07, 0.05)),                          # forepaws
+        sk.ellipsoid((-0.3, 0.24, 0.32), (0.36, 0.11, 0.28)),                         # the folded hind legs
+        sk.capsule((0.47, 0.06, 1.95), (0.25, 0.09, 2.25), 0.04, 0.012),              # horns, swept back
+        sk.ellipsoid((-0.15, 0.36, 1.55), (0.5, 0.05, 0.5)),                          # the raised wings
+        sk.path([(0.1, 0.3, 1.15), (-0.05, 0.42, 1.75), (-0.45, 0.46, 2.15)], [0.09, 0.07, 0.03])))
+    body = sk.smooth_union(0.12,
+        sk.ellipsoid((-0.2, 0.0, 0.58), (0.55, 0.32, 0.42)),
+        sk.ellipsoid((0.25, 0.0, 0.95), (0.3, 0.27, 0.45)),
+        sk.capsule((0.3, 0.0, 1.2), (0.47, 0.0, 1.7), 0.19, 0.14),
+        sk.ellipsoid((0.55, 0.0, 1.85), (0.24, 0.14, 0.15)),
+        sk.capsule((0.6, 0.0, 1.83), (0.86, 0.0, 1.78), 0.09, 0.06),
+        sk.path([(-0.7, 0.0, 0.4), (-0.98, 0.0, 0.75), (-0.88, 0.0, 1.2), (-0.62, 0.0, 1.5)], [0.1, 0.085, 0.07, 0.025]))
+    return sk.roughen(sk.smooth_union(0.05, body, side), 0.012, 0.09, seed=11)
+
+
+def lion_field():
+    """Nihonbashi's lions (獅子): seated, maned, holding up the shield of the City of Tokyo's crest between
+    the forepaws; facing +u, about 1.6 m high."""
+    import sculptkit as sk
+    side = sk.mirror_v(sk.smooth_union(0.05,
+        sk.capsule((0.3, 0.15, 0.8), (0.36, 0.15, 0.06), 0.1, 0.075),
+        sk.ellipsoid((0.43, 0.16, 0.05), (0.13, 0.08, 0.05)),
+        sk.ellipsoid((-0.25, 0.23, 0.3), (0.36, 0.11, 0.28)),
+        sk.sphere((0.36, 0.12, 1.3), 0.06)))                                          # the eyes' brows
+    body = sk.smooth_union(0.1,
+        sk.ellipsoid((-0.15, 0.0, 0.52), (0.48, 0.3, 0.42)),
+        sk.ellipsoid((0.15, 0.0, 0.85), (0.3, 0.29, 0.4)),
+        sk.roughen(sk.ellipsoid((0.22, 0.0, 1.22), (0.32, 0.37, 0.36)), 0.035, 0.07, seed=5),   # the mane
+        sk.ellipsoid((0.42, 0.0, 1.18), (0.17, 0.19, 0.2)),
+        sk.ellipsoid((0.56, 0.0, 1.1), (0.09, 0.12, 0.09)),
+        sk.path([(-0.6, 0.0, 0.2), (-0.8, 0.0, 0.5), (-0.7, 0.0, 0.85)], [0.06, 0.05, 0.09]))
+    shield = sk.box((0.5, 0.0, 0.72), (0.04, 0.22, 0.27), 0.03)
+    return sk.roughen(sk.smooth_union(0.04, body, side, shield), 0.01, 0.08, seed=3)
+
+
+def statues(K, P, dz, L, hw, b, lamp):
+    """The bronze ornaments of a bridge from its photographs (city.json "statues"): on Nihonbashi the two
+    lamp standards over the middle pier, each on a granite pedestal with a pair of kirin back to back, and at
+    the four ends granite pillars with a lamp on each and a lion before it, holding the city's crest."""
+    st = b.get("statues") or {}
+    if st.get("middle") == "kirin":
+        f = kirin_field()
+        for s in (-1, 1):
+            v = s * (hw - 0.75)
+            z = dz(0.0)
+            block(K(K.stone), P, -1.6, 1.6, v - 0.9, v + 0.9, z, z + 0.5)
+            jk.taper(K(K.stone), P, 0.0, v, 3.0, 1.6, z + 0.5, 2.7, 1.4, z + 2.3)
+            block(K(K.stone), P, -1.55, 1.55, v - 0.8, v + 0.8, z + 2.3, z + 2.55)
+            for d in (-1, 1):   # back to back, each facing an end of the bridge
+                cast(K("wb_bronze", "kirin"), f, (-1.2, -0.62, -0.05), (1.05, 0.62, 2.4), 0.065,
+                     lambda a, c, e, d=d, v=v, z=z: P(d * (0.55 + a * 0.8), v + d * c * 0.8, z + 2.55 + e * 0.8))
+            candelabra(K, P, 0.0, v, z + 2.55, 5.2, 4, lamp, r=0.26)
+    if st.get("ends") == "lion":
+        f = lion_field()
+        for e in (-1, 1):
+            u = e * (L / 2 - 1.2)
+            z = dz(u)
+            for s in (-1, 1):
+                v = s * (hw - 0.75)
+                block(K(K.stone), P, u - 0.75, u + 0.75, v - 0.75, v + 0.75, z, z + 0.4)
+                jk.taper(K(K.stone), P, u, v, 1.3, 1.3, z + 0.4, 0.95, 0.95, z + 4.2)   # the end pillar
+                block(K(K.stone), P, u - 0.6, u + 0.6, v - 0.6, v + 0.6, z + 4.2, z + 4.45)
+                candelabra(K, P, u, v, z + 4.45, 2.4, 4, lamp, r=0.2)
+                # the lion on its plinth beside the pillar, out on the bank's side, facing along the street
+                lu = u + e * 1.9
+                block(K(K.stone), P, lu - 0.8, lu + 0.8, v - 0.55, v + 0.55, z, z + 1.3)
+                cast(K("wb_bronze", "lion"), f, (-0.95, -0.5, -0.05), (0.7, 0.5, 1.65), 0.06,
+                     lambda a, c, ee, e=e, lu=lu, v=v, z=z: P(lu + e * a * 0.95, v + e * c * 0.95, z + 1.3 + ee * 0.95))
 
 
 def railing(K, P, dz, us, hw, kind, paint):
@@ -382,7 +498,15 @@ def bridge(K, b):
             u = e * L / 2
             block(K("wb_pier"), P, u - (1.6 if e < 0 else 0.0), u + (0.0 if e < 0 else 1.6), -hw, hw, base - 6.0, dz(u) - deep)
     railing(K, P, dz, us, hw, b.get("rail", "stone" if stone else "steel"), paint)
-    lamps(K, P, dz, L, hw, int(b.get("lamps", max(2, int(L / 30)) if L > 25 else 0)), b.get("lamp"), stone=b.get("lamp_style") == "bronze")
+    if b.get("statues"):   # its lamps stand with its statues
+        lamp = "wb_lamp"
+        if b.get("lamp"):
+            lamp = "wb_lamp_" + b["lamp"].lstrip("#")
+            K.mats[lamp] = {**MATERIALS["wb_lamp"], "emissive": b["lamp"]}
+        K.lit.add(lamp)
+        statues(K, P, dz, L, hw, b, lamp)
+    else:
+        lamps(K, P, dz, L, hw, int(b.get("lamps", max(2, int(L / 30)) if L > 25 else 0)), b.get("lamp"), stone=b.get("lamp_style") == "bronze")
 
 
 def ramps(K, P, dz, b, hw):
