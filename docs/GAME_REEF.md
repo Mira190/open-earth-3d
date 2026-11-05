@@ -148,7 +148,9 @@ land, they stand on the pontoon deck.
 
 ## Lake Pukaki (an alpine site)
 
-`game/lake-pukaki.js`. There is no reef here, so the site has no fish survey, dive slate or yachts; the gametest skips
+`game/lake-pukaki.js`. The people are real: a site casts a Microsoft Rocketbox avatar with `look: { character: 'R_…', clip }`
+(people.json `npcs`), which `people.js` builds with its sex's clips in place of the role's Quaternius character.
+There is no reef here, so the site has no fish survey, dive slate or yachts; the gametest skips
 those on an alpine site and checks the glacial flour's light instead. People stand on dry land at any height (`G.landSpot`
 on an alpine site).
 - **Hana**, a DOC ranger at Peter's Lookout, covers the lake (colour, size, levels, hydro storage, the drowned island
