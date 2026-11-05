@@ -54,6 +54,17 @@
     "zoom": 14,
     "attribution": "MLIT Project PLATEAU Tokyo 23 wards LOD2 building models (CC BY 4.0), as vector tiles by indigo-lab (MIT)"
   },
+  "bridges": {
+    "note": "The Kanda and Nihonbashi rivers' bridges; forms from each bridge's record.",
+    "forms": {
+      "神田橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e"},
+      "一ツ橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e"},
+      "鎌倉橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8"},
+      "錦橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8"},
+      "竹橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8"},
+      "水道橋": {"form": "girder", "colour": "#8c9296", "spans": 2}
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",

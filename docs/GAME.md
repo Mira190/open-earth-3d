@@ -108,7 +108,7 @@ where the city has ferries, and a kerb close by for a taxi. The lead's welcome
 says where each is. Sydney starts on West Circular Quay facing the Opera House,
 Paris on the Pont d'Iéna at the foot of the Eiffel Tower, Tokyo on the Marunouchi
 plaza in front of the station, Kyoto on the station plaza below Kyoto Tower,
-Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at Hachiko (its pad is the roof of SHIBUYA SKY, a lift ride up),
+Osaka on the Dotonbori (its pad is on an open lot a block north-east), Shibuya at the Hachiko-side kerb of the scramble as its walk turns green (its pad is the roof of SHIBUYA SKY, a lift ride up),
 Hong Kong at the Star Ferry's Pier 7, Melbourne in Federation Square, the bayside
 at St Kilda Pier and Amsterdam on the Dam. Heron Island and Whitsundays start on
 the beach by their helipad.
@@ -313,9 +313,9 @@ Amsterdam has no real helipad in the old city. The pad on the Dam is a game devi
 
 **Tokyo Pilgrimage** (two maps of Tokyo, see the case studies of
 [Shibuya](cities/shibuya.md#7-tokyo-pilgrimage-shibuya) and [Shinjuku](cities/shinjuku.md#5-tokyo-pilgrimage-shinjuku))
-is a pilgrimage: in Shibuya a welcome at Hachiko, in Shinjuku at the east exit, then
+is a pilgrimage: in Shibuya a welcome across the scramble by QFRONT, in Shinjuku at the east exit, then
 lines in any order and a report back.
-- **Shibuya:** walk out onto the scramble, read the arch over Center Gai, take the
+- **Shibuya:** cross the scramble to Aoi and back to Hachiko, read the arch over Center Gai, take the
   lift up SHIBUYA SKY, ride the escalator out onto the roof and stand at SKY EDGE.
 - **Sangenjaya:** the backstreets a game called Yongen-Jaya, a snack bar's front, the bathhouse,
   and the triangle after dark.
@@ -363,6 +363,31 @@ tall blocks it cranes up over the player before it pulls back and takes up to
 [travel id]` follows the camera frame by frame through the arrival and a hop to
 the farthest travel point, prints each move's peak turn and pitch rates, and
 fails above 45° and 60° a second.
+
+A city can open on a shot of its own (`game.start.shot` in `city.json`, #110):
+`look` is the point the title frames (absolute metres), `dur` the move's length
+(4.2 s), `walk_in` when a scramble at the start turns its walk green (2.2 s into
+the move) and `sway_deg` the title camera's gentle sway. The title camera then sits
+behind the start's own view, turned by up to 30° and raised as far as it takes to
+frame the point clear of the towers in front of it (`openingView`, which scores a
+fan of lines over the DSM), and sways rather than orbits, so Play cranes straight
+down to over the shoulder: the look holds on the point while the camera comes down
+to the street, then tilts down to the player, the line kept 24 m over the roofs
+(their screens and signs are not in the DSM), and hands over without a cut. Shibuya
+uses it: the title looks over the station to QFRONT's screen, the crane comes down
+over the scramble as every arm turns red and the walk turns green, and the crowd
+gathered at the kerbs of every crosswalk (`crowd.muster`, twenty at yours) steps out
+round you as control comes, a couple of seconds into the walk; a car moving in or
+near the box as the walk is forced green comes back elsewhere (`clearBox`). The travel menu's
+Shibuya stop is the same kerb, and Aoi, the guide the onboarding sends you to,
+waits across the diagonal by QFRONT, so the first walk is the crossing.
+`game.start.car` puts your car at a kerb away from the start when the start's own
+kerb is no place for it (Shibuya's: at the scramble's mouth; it waits by Hachiko),
+and no car is left within 36 m of a scramble when another kerb will do.
+`tools/opening_shot.js <city> <out> [WxH] [times]` takes stills of the shot (as Play
+is pressed, in the crane, at the street, the hand-over and 3 s on), and
+`tools/game_check.js` checks that the game opens at the scramble's kerb, in its
+walk, with walkers round you.
 
 The first time a browser plays any map (or reef site), a short tour of the HUD
 follows the arrival (`web/onboard.js`): walking and looking, the map, travel,
@@ -971,6 +996,19 @@ Sydney's traffic stood still a third of the time.
   (not the arrow) is green, and ends 5 s before that phase can. Someone already
   out in the road (over a median, say) walks on. Turning cars still give way to
   people on the crossing.
+- **A scramble** (Shibuya's: scene `landmarks.scramble`) runs a walk of its own
+  after the cross road's phase, every arm red, and nobody walks in the traffic's
+  phases. It is signalled even where OpenStreetMap maps its lights at the
+  crosswalks, beyond the node's radius. Its walkers wait at the ends of its mapped
+  crosswalks (`landmarks.scramble.lines`), the diagonals too, rather than at kerbs
+  found from the arms' roads, which meet at a node in the middle of the crossing.
+  Each way in stops behind the crosswalk mapped across it (21 to 36 m from the
+  node at Shibuya), not in the stripes. Out on a crosswalk a walker spreads across
+  the band's width and keeps to its left, so the crowds from the two kerbs pass.
+  A ride's call never cuts the walk short; the time to green it shows counts the
+  rest of the walk, and a hailed taxi held at its red is timed with that wait.
+  `tools/scramble_cars.js` prints the cars in and near the box over a cycle and
+  what holds each.
 - **The signal heads** are instanced, a handful of draw calls for a city's
   thousands. Each arm with signals has a pole at the kerb by its stop line with
   a lantern facing the traffic, and a second across the junction; a main road's

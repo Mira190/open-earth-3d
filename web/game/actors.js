@@ -298,7 +298,10 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     }
     // the closest point on any line within maxD of (x, y): {line, s, x, y, z, d} or null; with z,
     // only where the line is within dz of that height (the street you are on, not the flyover above it)
-    function nearest(x, y, maxD, z = null, dz = 3) {
+    // the nearest point on the lines within maxD of (x, y), within dz of height z (when given), and
+    // with a grade, within dz + grade * the distance: a street down a slope from a raised plaza
+    // (Melbourne's Federation Square) counts, a road on a deck right above or below does not
+    function nearest(x, y, maxD, z = null, dz = 3, grade = 0) {
       let best = null;
       for (const i of new Set(near(x, y, 0, maxD))) {
         const l = L[i], n = l.pts.length / 3;
@@ -306,7 +309,7 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           const ax = l.pts[3 * k - 3], ay = l.pts[3 * k - 2], ex = l.pts[3 * k] - ax, ey = l.pts[3 * k + 1] - ay, L2 = ex * ex + ey * ey;
           const t = L2 > 0 ? Math.max(0, Math.min(1, ((x - ax) * ex + (y - ay) * ey) / L2)) : 0;
           const qx = ax + ex * t, qy = ay + ey * t, d = Math.hypot(x - qx, y - qy), qz = l.pts[3 * k - 1] + (l.pts[3 * k + 2] - l.pts[3 * k - 1]) * t;
-          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
+          if (d < maxD && (!best || d < best.d) && (z == null || Math.abs(qz - z) < dz + grade * d)) best = { line: i, s: l.cum[k - 1] + t * Math.sqrt(L2), x: qx, y: qy, z: qz, d };
         }
       }
       return best;
@@ -451,7 +454,20 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         return;
       }
     }
-    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [] };
+    const api = { R, P, active: n, benches: BN, cars: null, sitChance: () => 0, crossings: null, kerbWait: 0, kerbWaits: [], muster };
+    // a crowd gathered somewhere at once (the scramble as the game opens on its walk): each of `spots`
+    // ({ line, s, dir, side: its place across the footway, m }) takes the walker farthest from (cx, cy), placed on the next step
+    function muster(spots, cx, cy) {
+      const order = P.slice(0, api.active).map((q, i) => [i, q.line < 0 ? 1e9 : Math.hypot(q.x - cx, q.y - cy)]).sort((a, b) => b[1] - a[1]);
+      spots.slice(0, order.length).forEach((sp, k) => {
+        const q = P[order[k][0]];
+        release(q);
+        q.state = 'walk'; q.mode = 'ground'; q.lat = null; q.side = sp.side ?? 0.3 + rnd() * 1.4; q.pause = 0; q.still = 0; q.wait = 0;
+        q.line = sp.line; q.s = Math.max(0, Math.min(net.L[sp.line].len, sp.s)); q.dir = sp.dir;
+        net.at(q.line, q.s, tmp); q.x = tmp.x; q.y = tmp.y; q.z = tmp.z; // (walk() puts it beside the line)
+      });
+      return Math.min(spots.length, order.length);
+    }
     // the benches as obstacles: for each 4 m cell, those in it and the cells round it
     const benchAt = new Map(), bkey = (cx, cy) => (cx + 8192) * 16384 + cy + 8192; // a small integer key, for speed
     if (BN) for (const b of BN.list) for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) {
@@ -636,9 +652,12 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       for (const o of nearCars) seeCar(o);
       if (was > 0) cap = cap0;
       // sideways within the footway (a little past its edge for whoever keeps far left), and speed
-      const hw = Math.max(1, (FOOTW[l.c] || 3) / 2);
+      // (out on a scramble's crosswalk, a band of stripes 4 to 6 m wide: across its width, each walker keeping to
+      // its left so the two crowds pass rather than meet face to face in the middle of the road)
+      const X = api.crossings && api.crossings.byLine.get(p.line), band = X && X.some(x => x.scramble && Math.abs(x.s - p.s) < x.kerb);
+      const hw = band ? 2.6 : Math.max(1, (FOOTW[l.c] || 3) / 2), side = band ? 1.2 + 0.5 * Math.max(-1.6, Math.min(1.6, p.side)) : p.side; // (lat: to the walker's left)
       p.dodge += (Math.max(-1.5, Math.min(1.5, push * 1.2)) - p.dodge) * Math.min(1, dt * 4);
-      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, p.side) + 0.2, p.side + p.dodge));
+      let want = Math.max(-hw + 0.3, Math.min(Math.max(hw, side) + 0.2, side + p.dodge));
       // a facade beside the line, here or a little ahead: in towards the line (looked at every few steps)
       if (clear && ((p.wallStep = (p.wallStep || 0) + 1) % 3 === 0 || p.lim == null)) { net.at(p.line, p.s, tmp); p.lim = wallFree(p, want, hw); p.limWant = want; }
       if (clear && p.lim != null && p.lim !== p.limWant) want = p.limWant >= 0 ? Math.min(want, p.lim) : Math.max(want, p.lim); // (no further out on that side)
@@ -647,7 +666,6 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
       // a road ahead at a junction with signals, its traffic free to go: up to the kerb, and wait
       // there (the button pressed) for the walk signal; someone already out in the road walks on
       let atKerb = false;
-      const X = api.crossings && api.crossings.byLine.get(p.line);
       if (X && !X.some(x => Math.abs(x.s - p.s) < x.kerb - 0.3)) for (const x of X) { // (not while out in a road: over a median, it crosses the other half too)
         const d = (x.s - p.s) * p.dir;
         if (d > x.kerb - 0.4 && d < x.kerb + 3 && !api.crossings.walk(x.a)) { atKerb = true; api.crossings.call(x.a); cap = Math.min(cap, Math.max(0, (d - x.kerb) * 1.5)); }
@@ -997,6 +1015,17 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     const api = { mesh, fleet, C, active: n, near, pushOut, junctions: JN, netL: net.L, extra: [] };
     if (crowd) crowd.cars = api;
     if (nav) nav.movers = api;
+    // clear a junction's box (a scramble whose walk the opening shot turns green at once, #110): a car
+    // in it, or still moving within r of its node, comes back elsewhere, out past r, rather than being
+    // caught in the box by the crowd stepping off the kerbs
+    api.clearBox = (x, y, r) => {
+      let k = 0;
+      for (const c of C) {
+        if (c.line < 0 || Math.hypot(c.x - x, c.y - y) > r || !(JN.inner(c.line) || c.v > 1.5)) continue;
+        respawn(c, x, y, r + 20); k++;
+      }
+      return k;
+    };
     // a car leaves the traffic (a taxi you hailed): its slot comes back elsewhere, out of sight
     function take(c) { JN.forget(c); c.line = -1; c.v = 0; }
     // ask traffic car o to back off for t seconds (not your car or a ride, and not one that has
