@@ -55,7 +55,7 @@ function heldStep({ T, max, chain: process_chain = false }) {
   const held = [], queues = [], yours = [], walls = [], beyond = [], reported = new Set();
   // and a movement in a signalled junction whose car stands still in it longer than `max` of the
   // junction's cycles: one that never leaves (#150)
-  const stillIn = new Map(), cycleOf = j => j.green[0] + j.green[1] + 2 * (j.amber + 2);
+  const stillIn = new Map(), cycleOf = j => j.green[0] + j.green[1] + 2 * (j.amber + 2) + (j.scramble ? j.green[3] + (j.allred || 2) : 0); // (a scramble's walk too: a third turn in its cycle)
   for (let s = 0; s < T; s++) {
     g.advance(1);
     const now = g.t();
