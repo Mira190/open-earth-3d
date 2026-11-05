@@ -768,9 +768,11 @@ pipeline writes. The only city-specific code is landmark geometry in
     stopped too has one of them give way and back off a metre or two: the one
     not in the junction for the one in it, of two in it the one that went in
     later (of two that went in the same second, side by side from one arm, the
-    later in the traffic's list). Two in a junction stopped nose to nose, each
+    later in the traffic's list; never one at the very start of its piece, with no
+    room behind it to back into: then the other). Two in a junction stopped nose to nose, each
     the car ahead of the other (their ways cross and each path sees the other),
-    wait 4 s, and then the one that went in first goes on as if the other
+    wait 4 s, and then the one that can't back off (or else the one that went in
+    first) goes on as if the other
     weren't there. A car held more than 10 s by a lamp post or a trunk on its
     way edges past it (Asakusa had one stand ten minutes in a junction). A car that can't back off because a stopped car is behind it asks
     that one to back off first, so a short queue makes room (each car backs off

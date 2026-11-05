@@ -995,6 +995,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
     function take(c) { JN.forget(c); c.line = -1; c.v = 0; }
     // ask traffic car o to back off for t seconds (not your car or a ride, and not one that has
     // already backed off a good while without moving on since): whether it will
+    // has it room on its piece to back off into (not at the very start of it)?
+    const canBack = o => o.line >= 0 && (o.dir > 0 ? o.s > 0.5 : o.s < net.L[o.line].len - 0.5);
     function backOff(o, t) {
       if (o.stuck === undefined || o.line < 0 || o.boSpent > 6) return false;
       o.backoff = Math.max(o.backoff || 0, t);
@@ -1173,7 +1175,8 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // other weren't there, and the other gives way to it when they touch (below; #144)
         if (front && c.mv && front.mv && front.front === c && c.v < 0.3 && front.v < 0.3) {
           c.faceT = c.faceCar === front ? (c.faceT || 0) + dt : 0; c.faceCar = front;
-          if (c.faceT > 4 && (c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
+          const cb = canBack(c), fb = canBack(front); // (the one that can't back off goes on, else the one in first)
+          if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
         } else { c.faceT = 0; c.faceCar = null; }
         if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
@@ -1477,7 +1480,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
           c.giveT = 5;
           const mutual = heldBy0.front === c, j = C.indexOf(heldBy0);
           const yieldC = c.mv && heldBy0.mv ? mutual && (c.mvT > heldBy0.mvT || (c.mvT === heldBy0.mvT && i > j)) : !c.mv && heldBy0.mv ? mutual : !c.mv && !heldBy0.mv && mutual && i > j;
-          backOff(yieldC ? c : heldBy0, 1.5);
+          let yl = yieldC ? c : heldBy0;
+          if (!canBack(yl) && canBack(yl === c ? heldBy0 : c)) yl = yl === c ? heldBy0 : c; // (not one at the very start of its piece, with nowhere to back off to: the other)
+          backOff(yl, 1.5);
         }
         if (c.giveT > 0) c.giveT -= dt;
         // held a long time all the same (a knot no backing off undoes), or in a junction caught up behind
