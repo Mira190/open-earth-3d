@@ -719,27 +719,36 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   // you), at a spot where your car is clear of the traffic, the lamp posts and the trees
   const scrambleJ = junctions.J.filter(j => j.scramble);
   function kerbNear(x, y, z, ahead = 9, within = 250) {
-    const pl = offScramble(roads.place(x, y, within, keepSign, z), true);
-    if (!pl) return null;
+    const pl0 = offScramble(roads.place(x, y, within, keepSign, z), true);
+    if (!pl0) return null;
     const M = CARS_OK && vlib.info.cars.models[carCfg.model], half = M ? M.length_m / 2 : 2.2, hw = M ? M.width_m / 2 : 0.9;
-    const L = roadNet.L[pl.line].len, s0 = pl.s + ahead * pl.dir;
     let first = null;
-    for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
-      const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) });
-      if (SCR_AT.length && (inScramble(q.line, q.s) || inScramble(q.line, Math.max(0, Math.min(L, q.s - 15 * q.dir))) || (q.dir > 0 ? L - q.s : q.s) < 12)) continue; // (not back by the scramble's crosswalks, nor the kerb behind it; and with road ahead to drive off along)
-      const pose = kerbPose(q);
-      first = first || { pl: q, pose };
-      if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
-      if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
-      let hit = false;
-      const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
-      posts.near(pose.x, pose.y, half + 1, p => {
-        const dx = p.x - pose.x, dy = p.y - pose.y;
-        if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
-      }, pose.z);
-      if (!hit) return { pl: q, pose };
+    const along = (pl, s0) => {
+      const L = roadNet.L[pl.line].len;
+      for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
+        const q = Object.assign({}, pl, { s: Math.max(3, Math.min(L - 3, s0 + d * pl.dir)) });
+        if (SCR_AT.length && (inScramble(q.line, q.s) || inScramble(q.line, Math.max(0, Math.min(L, q.s - 15 * q.dir))) || (q.dir > 0 ? L - q.s : q.s) < 12)) continue; // (not back by the scramble's crosswalks, nor the kerb behind it; and with road ahead to drive off along)
+        const pose = kerbPose(q);
+        first = first || { pl: q, pose };
+        if (cars.footprint(pose.x, pose.y, pose.z, pose.h, half, hw, 0.3) > 0) continue;
+        if (scrambleJ.some(j => Math.hypot(j.x - pose.x, j.y - pose.y) < 36)) continue; // (not at the mouth of a scramble, its crowd crossing every way)
+        let hit = false;
+        const fx = Math.sin(pose.h), fy = Math.cos(pose.h);
+        posts.near(pose.x, pose.y, half + 1, p => {
+          const dx = p.x - pose.x, dy = p.y - pose.y;
+          if (Math.abs(dx * fx + dy * fy) < half + p.r + 0.2 && Math.abs(-dx * fy + dy * fx) < hw + p.r + 0.2) hit = true;
+        }, pose.z);
+        if (!hit) return { pl: q, pose };
+      }
+      return null;
+    };
+    let got = along(pl0, pl0.s + ahead * pl0.dir);
+    // (by a scramble, its street too short for all that: the streets round, nearest first)
+    if (!got && SCR_AT.length) for (let r = 15; r <= 75 && !got; r += 15) for (let k = 0; k < 12 && !got; k++) {
+      const a = k / 12 * Math.PI * 2, q = roads.place(x + Math.sin(a) * r, y + Math.cos(a) * r, 8, keepSign, z);
+      if (q && q.line !== pl0.line) got = along(q, q.s);
     }
-    return first || { pl, pose: kerbPose(pl) };
+    return got || first || { pl: pl0, pose: kerbPose(pl0) };
   }
   // where a car is on the roads, going the way it faces
   function placeOf(st) {
