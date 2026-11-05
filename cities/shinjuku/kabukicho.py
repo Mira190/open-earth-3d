@@ -276,6 +276,55 @@ TENANTS = [("居酒屋 こだま", "#ffd400", "#c8000a"), ("らーめん 龍", "
 STACKS = 28        # stacks drawn in the atlas (a stack: five to seven panels)
 FASCIAS = 16       # lit boxes over the shop fronts
 
+# the real tenants (cities/shinjuku/kabukicho_tenants.json, OpenStreetMap): a front within TENANT_NEAR metres of
+# a tenant's node carries its name, on the stack (one panel each, its floor from OSM's level) and, for one on
+# the street floor, over the shop front; a front with none keeps the typical, invented names above
+TENANT_NEAR = 9.0
+TRADE_COLOURS = {"restaurant": ("#c8000a", "#ffffff"), "pub": ("#1a1a1a", "#ffcf3a"), "bar": ("#14142a", "#ff6ad8"), "cafe": ("#3a2a20", "#f4e2c8"),
+                 "fast_food": ("#ff7a00", "#ffffff"), "karaoke_box": ("#ffe600", "#d4001a"), "convenience": ("#ffffff", "#0a7a3a"),
+                 "pharmacy": ("#ffe100", "#0a3d8f"), "chemist": ("#ffe100", "#0a3d8f"), "variety_store": ("#ffd400", "#c8000a"),
+                 "massage": ("#e8f6ff", "#0070c0"), "nightclub": ("#101010", "#2ad0ff"), "amusement_arcade": ("#1aa0e6", "#ffffff"),
+                 "adult_gaming_centre": ("#d4001a", "#ffffff"), "theatre": ("#3a1a5a", "#ffd76a")}
+
+
+def floor_tag(level):
+    """OSM's level (0: the street floor) as a Japanese floor: 1F, B1F, or a range such as 5-9F."""
+    if level in (None, ""):
+        return ""
+    parts = [p for p in str(level).replace(";", ",").split(",") if p.strip()]
+    try:
+        if "-" in parts[0][1:]:
+            a, b = parts[0][0] + parts[0][1:].split("-")[0], parts[0][1:].split("-")[1]
+            lo, hi = int(a), int(b)
+        else:
+            vals = [int(float(p)) for p in parts]
+            lo, hi = min(vals), max(vals)
+    except ValueError:
+        return ""
+    f = lambda k: f"B{-k}F" if k < 0 else f"{k + 1}F"
+    return f(lo) if lo == hi else f"{f(lo)}-{f(hi)}"
+
+
+def tenants_by_front(D, fronts):
+    """{front index: [tenant, ...]} for the fronts that carry real names, each tenant on its nearest front."""
+    raw = json.load(open(os.path.join(HERE, "kabukicho_tenants.json"), encoding="utf8"))["tenants"]
+    fwd = D.C.fwd.transform
+    out = {}
+    for t in raw:
+        p = np.array(fwd(*t["ll"]))
+        best, bd = None, TENANT_NEAR
+        for i, (mid, n, L, *_rest) in enumerate(fronts):
+            tv = np.array([-n[1], n[0]])
+            along = abs(float(np.dot(p - mid, tv)))
+            dd = math.hypot(max(0.0, along - L / 2), float(np.dot(p - mid, n)))
+            if dd < bd:
+                best, bd = i, dd
+        if best is not None:
+            out.setdefault(best, []).append(t)
+    for i in out:   # top floor first, the street floor last
+        out[i].sort(key=lambda t: -(int(float(str(t.get("level", "0")).replace(";", ",").split(",")[-1].split("-")[-1] or 0)) if t.get("level") else 0))
+    return out
+
 
 def canyon_fronts(D):
     """The fronts of the canyon's buildings: (mid, out normal, length, ground, height, street) for each
@@ -316,11 +365,13 @@ def canyon_fronts(D):
     return out
 
 
-def canyon(K, A, D, avoid):
-    """Tenant stacks standing out from the fronts, a lit box over each shop front, and the lamps."""
+def canyon(K, A, D, avoid, real=None):
+    """Tenant stacks standing out from the fronts, a lit box over each shop front, and the lamps; the
+    fronts in `real` carry their own tenants' names (tenants_by_front)."""
     rng = np.random.default_rng(1969)
     placed, sites = [], []
-    for mid, n, L, g, top, street in canyon_fronts(D):
+    real = real or {}
+    for fi, (mid, n, L, g, top, street) in enumerate(canyon_fronts(D)):
         t = np.array([-n[1], n[0]])
         sites.append([round(float(mid[0]), 1), round(float(mid[1]), 1)])
         # the shop front's lit box, the width of the front less its edges
@@ -330,7 +381,8 @@ def canyon(K, A, D, avoid):
             c = mid + n * 0.2
             q = [np.array([*(c - t * w / 2), z0]), np.array([*(c + t * w / 2), z0]), np.array([*(c + t * w / 2), z0 + 0.85]), np.array([*(c - t * w / 2), z0 + 0.85])]
             box(K["kb_frame"], frame(mid, n), 0.0, 0.18, -w / 2 - 0.05, w / 2 + 0.05, z0 - 0.05, z0 + 0.9)
-            A.quad(K["kb_atlas"], *q, f"fascia{int(rng.integers(FASCIAS))}")
+            fk = f"fascia{int(rng.integers(FASCIAS))}"
+            A.quad(K["kb_atlas"], *q, f"rfascia{fi}" if fi in real else fk)
         if top < 9.0:
             continue
         # stacks: one every 6-8 m of front, from above the shop front to a floor under the roof
@@ -353,6 +405,7 @@ def canyon(K, A, D, avoid):
             P = frame(c, n)                       # u out from the wall, v along it
             box(K["kb_frame"], P, 0.05, out_m + 0.05, -th / 2, th / 2, z0, z1)
             key = f"stack{int(rng.integers(STACKS))}"
+            key = f"rstack{fi}" if fi in real else key
             for s in (-1, 1):                     # both faces, each the right way round from its side
                 v = s * (th / 2 + 0.006)
                 ua, ub = (out_m + 0.02, 0.08) if s > 0 else (0.08, out_m + 0.02)   # its left edge first, as seen from its side
@@ -361,6 +414,46 @@ def canyon(K, A, D, avoid):
             # the stack's crown: a little lit box with its building's name side
             box(K["kb_frame"], P, 0.05, out_m + 0.05, -th / 2 - 0.02, th / 2 + 0.02, z1, z1 + 0.12)
     return sites
+
+
+def draw_real(img, rects, real):
+    """The real fronts' cells: a stack with a panel per tenant, and the fascia of the one on the street floor."""
+    from PIL import ImageDraw
+    for fi, ts in real.items():
+        x, y, w, h = rects[f"rstack{fi}"]
+        d = ImageDraw.Draw(img)
+        d.rectangle([x, y, x + w - 1, y + h - 1], fill=(26, 26, 30))
+        panels = ts[:7]
+        ph = h / max(4, len(panels))
+        y = y + (h - ph * len(panels)) / 2 if len(panels) < 4 else y
+        for k, t in enumerate(panels):
+            bg, fg = TRADE_COLOURS.get(t["trade"], ("#ffffff", "#c8000a"))
+            y0 = y + k * ph
+            d = ImageDraw.Draw(img)
+            d.rectangle([x + 3, y0 + 3, x + w - 4, y0 + ph - 3], fill=ad.rgb(bg))
+            tag = floor_tag(t.get("level"))
+            th = min(ph * 0.16, w * 0.3) if tag else 0
+            if tag:
+                d.rectangle([x + 3, y0 + ph - 3 - th, x + w - 4, y0 + ph - 3], fill=ad.rgb(fg))
+                ad.text(img, (x + w / 2, y0 + ph - 3 - th / 2), tag, "anton", th * 0.8, fill=bg, max_w=w - 8)
+            body = t["name"].replace(" ", "")
+            if all(ord(ch) < 128 for ch in body) or len(body) > 11:   # Latin, or too long to stand: across, shrunk to fit
+                words = t["name"].split()
+                lines = [" ".join(words[i:i + 2]) for i in range(0, len(words), 2)][:3] or [t["name"]]
+                for j, ln in enumerate(lines):
+                    face = "anton" if all(ord(ch) < 128 for ch in ln) else "zen"
+                    ad.text(img, (x + w / 2, y0 + (ph - th) * (j + 1) / (len(lines) + 1)), ln, face, w * 0.26, fill=fg, max_w=w - 10)
+            else:
+                size = min(w * 0.6, (ph - th - 16) / (len(body) * 1.06))
+                ad.vtext(img, (x + w / 2, y0 + 8 + max(0.0, (ph - th - 16 - size * 1.06 * len(body)) / 2)), body, "zen", size, fill=fg)
+        street = [t for t in ts if str(t.get("level", "0")).split(",")[0].split(";")[0] in ("0", "", "-1")] or ts
+        t = street[-1]
+        x, y, w, h = rects[f"rfascia{fi}"]
+        bg, fg = TRADE_COLOURS.get(t["trade"], ("#ffffff", "#c8000a"))
+        d = ImageDraw.Draw(img)
+        d.rectangle([x, y, x + w - 1, y + h - 1], fill=ad.rgb(bg))
+        d.rectangle([x + 4, y + 4, x + w - 5, y + h - 5], outline=ad.rgb(fg), width=3)
+        ad.text(img, (x + w / 2, y + h / 2 + 2), t["name"], "zen" if any(ord(c) > 127 for c in t["name"]) else "anton", h * 0.56, fill=fg, max_w=w - 30)
 
 
 def draw_canyon(img, rects):
@@ -734,6 +827,8 @@ class Build:
                  ("unika_name", 768, 128), ("golf5", 384, 304), ("alpen", 768, 84), ("toho_green", 512, 512), ("toho_name", 1024, 96)]
         items += [(f"stack{i}", 80, 640) for i in range(STACKS)]
         items += [(f"fascia{i}", 448, 64) for i in range(FASCIAS)]
+        self.real = tenants_by_front(self.D, canyon_fronts(self.D))
+        items += [(f"rstack{i}", 80, 640) for i in self.real] + [(f"rfascia{i}", 448, 64) for i in self.real]
         self.A = Atlas(items, width=2048)
         self.info = {}
 
@@ -748,7 +843,7 @@ class Build:
         gone, lot = alta(K, self.A, self.D)
         self.info["alta"] = lot
         unica(K, self.A, self.D)
-        self.info["canyon"] = canyon(K, self.A, self.D, avoid)
+        self.info["canyon"] = canyon(K, self.A, self.D, avoid, self.real)
         lamp_at = lamps(self.D, avoid)
         props = [{"name": "kabukicho_lamp", "far": 260, "at": lamp_at,
                   "parts": [m.dump() for m in lamp_model()]}] if lamp_at else []
@@ -760,6 +855,7 @@ class Build:
         img = Image.new("RGB", (self.A.W, self.A.H), (30, 32, 36))
         draw_arch(img, self.A.rects)
         draw_canyon(img, self.A.rects)
+        draw_real(img, self.A.rects, self.real)
         draw_alta(img, self.A.rects)
         draw_unica(img, self.A.rects)
         draw_toho(img, self.A.rects)
