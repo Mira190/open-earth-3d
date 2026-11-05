@@ -906,6 +906,20 @@ Kyoto Gyoen's gravel read slightly blue. Set: the Kyoto Gyoen (gravel), the Koky
 Gaien and Shinjuku Gyoen (lawn), Meiji Jingu (leaf litter, `earth`). Yoyogi's lawn
 waits for Shibuya's opening film.
 
+### The cays' scrub and the clumped Pisonia (issue #165)
+
+The coral cays' beach scrub was drawn as blobs near the camera. Two shared shrubs
+join the set: Scaevola (beach cabbage, `scaevola`: a mound 1-3 m high and wider than
+tall of thick yellow-green spoon-shaped leaves crowded at the twigs' ends, on five
+soft stems) and the octopus bush (`argusia`, *Heliotropium arboreum*: crooked
+spreading stems under a rounded crown of silvery felted leaves, 3.5 m high and 5 m
+across), with their own atlas cells. `web/reef/life/flora.js` draws the sites'
+`scaevola` and `beach-scrub` with the first and `octopus-bush` with the second, as it
+draws Pisonia and she-oaks. Pisonia grows as a clump of three trunks from one foot
+(`stems`), as it does on Heron, where fallen stems re-root.
+
+![Pisonia, Scaevola, the octopus bush and a she-oak; a Pisonia's clumped trunks](images/trees/cays_scrub.jpg)
+
 **What we looked at for the night.** Real-time engines light a festival's many
 small lamps without a light per lamp: emissive meshes with a halo card or bloom
 for the lamps themselves, and baked or analytic light for what they light (three.js

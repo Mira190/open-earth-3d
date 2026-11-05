@@ -48,12 +48,13 @@ DOCS = os.path.join(ROOT, "docs", "images", "trees")
 # bloom cell stays right of its leaf cell ("bloom" beside "jacaranda"): web/trees.js swaps one for the other
 # with the season. The cherries' bloom cells follow each other from "sakura" (SAKURA_CELLS, in that order:
 # the Somei-yoshino, the weeping cherry, the kawazu-zakura and the yaezakura) and all show the cherry's
-# leaf cell ("cherry") out of flower. Cells 21 to 23 are free.
+# leaf cell ("cherry") out of flower. Cells 21 and 22 are the coral cays' beach scrub; 23 is free.
 ATLAS_W, ATLAS_H, CW, CH = 1024, 3072, 256, 512
 COLS, ROWS = ATLAS_W // CW, ATLAS_H // CH
 CELLS = {"gum": 0, "plane": 1, "elm": 2, "fig": 3, "jacaranda": 4, "bloom": 5, "palm": 6, "maple": 7,
          "pine": 8, "sugi": 9, "camphor": 10, "zelkova": 11, "ginkgo": 12, "evergreen": 13, "pisonia": 14, "casuarina": 15,
-         "cherry": 16, "sakura": 17, "shidare": 18, "kawazu": 19, "yae": 20}
+         "cherry": 16, "sakura": 17, "shidare": 18, "kawazu": 19, "yae": 20,
+         "scaevola": 21, "argusia": 22}
 SAKURA_CELLS = ["sakura", "shidare", "kawazu", "yae"]
 
 
@@ -277,6 +278,12 @@ SPRAYS = {
     # yaezakura (Kanzan, the commonest double cherry): pompoms of deep pink in mid April, with bronze new leaves
     "yae": dict(leaf="double", L=0, W=0, twigs=10, spread=0.75, every=2, start=1, angle=(0.6, 1.2), leaves=0.3, leaf_colour="#8f5a3a",
                 colours=["#f5b3c9", "#f0a6bf", "#f8c4d4", "#eb9bb7"], twig="#3f302c", twig_w=3, fill=0.9),
+    # the cays' beach scrub (#165): Scaevola's fleshy spoon-shaped leaves, yellow-green, crowded at the twigs'
+    # ends; the octopus bush's (Argusia, Heliotropium arboreum) narrow silvery-grey felted leaves in rosettes
+    "scaevola": dict(leaf="ovate", L=44, W=20, twigs=6, spread=0.8, every=1, start=8, angle=(0.4, 1.0), taper=True,
+                     colours=["#9ab84c", "#a8c457", "#8cab43", "#b2cb63"], twig="#7f8a4a", twig_w=3, fill=0.95),
+    "argusia": dict(leaf="lance", L=40, W=11, twigs=7, spread=0.85, every=1, start=6, angle=(0.5, 1.2), arch=0.4,
+                    colours=["#a7b39b", "#b6c1a9", "#98a58d", "#c0c9b2"], twig="#8a8072", twig_w=2, fill=0.95),
     "palm": dict(leaf="lance", L=84, W=8, twigs=1, spread=0.04, every=1, start=2, angle=(0.9, 1.25), arch=0, droop=0.25,
                  colours=["#5e7a3a", "#6b8a42", "#55703a", "#738f48"], twig="#7a7a4a", twig_w=5),
 }
@@ -367,9 +374,10 @@ SPECIES = {
                            "crown; Hong Kong's hillside woods and the laurel forest of the old shrine groves"),
     # the coral cays: the reef islands' own trees (web/reef/life/flora.js)
     "pisonia": dict(H=9.5, trunk=3.6, r0=0.5, crown=("umbrella", 7.2, 6.4, 2.4), n=280, size=2.9, n1=6, n2=4, leaf="pisonia",
-                    bark="#9f988a", lean=0.18, leader=False, colour="#759c42",
-                    note="Pisonia (Pisonia grandis): pale soft trunks leaning out and a broad low canopy of big lime-green leaves; "
-                         "the coral cays' forest, mostly 6-8 m on Heron Island"),
+                    bark="#9f988a", lean=0.18, leader=False, colour="#759c42", stems=3,
+                    note="Pisonia (Pisonia grandis): several pale soft trunks from one base, leaning out (fallen stems re-root and "
+                         "sprout, so a tree is a clump), and a broad low canopy of big lime-green leaves; the coral cays' forest, "
+                         "mostly 6-8 m on Heron Island"),
     "casuarina": dict(H=16.0, trunk=4.5, r0=0.28, crown=("cone", 4.5, 16.5, 3.4), n=300, size=4.0, n1=9, n2=3, leaf="casuarina",
                       bark="#4d3f35", lean=0.06, excurrent=True, colour="#5e7055",
                       note="Coastal she-oak (Casuarina equisetifolia): an open, tapering crown of drooping grey-green branchlets, "
@@ -392,6 +400,15 @@ SPECIES = {
                       bloom_offset_d=16, bloom_len=1.15, bark_bands=True,
                       note="Yaezakura (Cerasus serrulata 'Kanzan', the commonest double cherry): upswept limbs in a vase, heavy "
                            "deep pink double flowers in mid April, about two weeks after the Somei-yoshino, with bronze new leaves"),
+    # the coral cays' beach scrub (#165), drawn as blobs before: low multi-stemmed shrubs behind the beach
+    "scaevola": dict(H=2.2, trunk=0.35, r0=0.07, crown=("ellipsoid", 1.3, 2.2, 1.05), n=170, size=1.1, n1=6, n2=3, leaf="scaevola",
+                     bark="#7d7a55", lean=0.3, leader=False, colour="#8fae48", stems=5,
+                     note="Beach cabbage (Scaevola taccada): a dense mound of thick yellow-green leaves on many soft stems "
+                          "from the sand, 1-3 m high and wider than tall, the first shrub behind a cay's beach"),
+    "argusia": dict(H=3.6, trunk=0.8, r0=0.12, crown=("umbrella", 2.5, 2.7, 1.3), n=220, size=1.4, n1=6, n2=4, leaf="argusia",
+                    bark="#6f655a", lean=0.35, leader=False, colour="#a4b098", stems=4,
+                    note="Octopus bush (Argusia argentea, now Heliotropium arboreum): crooked spreading stems under a "
+                         "rounded crown of silvery grey-green felted leaves in rosettes, about 3.5 m high and 5 m across"),
 }
 
 
@@ -581,12 +598,23 @@ def grow(name, sp, seed, lod):
     r0 = sp["r0"]
     branch(T, [trunk_pts[0] - np.array([0, 0, 0.3])] + trunk_pts, r0 * 1.35, r0 * (0.12 if excurrent else 0.72), bark, segs, H, ao=(0.75, 0.55),
            sway1=0.2 if excurrent else 0.05)
+    # a clump (pisonia, the beach scrub): more stems from the same foot, leaning out round it, a little shorter
+    tops = [top]
+    for k in range(1, sp.get("stems", 1)):
+        a = TAU * k / sp["stems"] + rng.uniform(-0.4, 0.4)
+        out = np.array([math.cos(a), math.sin(a), 0.0])
+        h = sp["trunk"] * rng.uniform(0.75, 1.0)
+        t_k = out * h * rng.uniform(0.35, 0.6) + np.array([0, 0, h])
+        pts_k = bezier(out * r0 * 0.6, out * h * 0.1 + np.array([0, 0, h * 0.5]), t_k, 5 if lod < 2 else 2)
+        branch(T, [pts_k[0] - np.array([0, 0, 0.3])] + pts_k, r0 * rng.uniform(0.75, 1.0), r0 * 0.55, bark, max(5, segs - 2), H, ao=(0.75, 0.55), sway1=0.08)
+        tops.append(t_k)
     if lod == 2:
         return hull(T, name, sp, P, crown_c, crown_r)
     C1, lab1 = kmeans(P, sp["n1"], rng)
     limbs = []
     for j, c in enumerate(C1):
-        start = top + np.array([0, 0, rng.uniform(-0.6, 0.4)])
+        near_top = tops[int(np.argmin([np.linalg.norm((c - t)[:2]) for t in tops]))]
+        start = near_top + np.array([0, 0, rng.uniform(-0.6, 0.4) * min(1.0, sp["trunk"] / 2)])
         if sp.get("leader") and j == int(np.argmax(C1[:, 2])):
             start = top
         if excurrent:       # from the leader at the limb's own height, a little above it

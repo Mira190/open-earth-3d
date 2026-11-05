@@ -27,7 +27,9 @@
    "sakura": 17,
    "shidare": 18,
    "kawazu": 19,
-   "yae": 20
+   "yae": 20,
+   "scaevola": 21,
+   "argusia": 22
   },
   "columns": 4,
   "rows": 6,
@@ -328,13 +330,13 @@
    "colour": "#759c42",
    "bark": "#9f988a",
    "triangles": [
-    1600,
-    382,
-    103
+    1772,
+    490,
+    149
    ],
    "cell": 14,
    "trunk_r": 0.5,
-   "note": "Pisonia (Pisonia grandis): pale soft trunks leaning out and a broad low canopy of big lime-green leaves; the coral cays' forest, mostly 6-8 m on Heron Island"
+   "note": "Pisonia (Pisonia grandis): several pale soft trunks from one base, leaning out (fallen stems re-root and sprout, so a tree is a clump), and a broad low canopy of big lime-green leaves; the coral cays' forest, mostly 6-8 m on Heron Island"
   },
   "casuarina": {
    "height_m": 16.0,
@@ -426,6 +428,42 @@
    "bloom_offset_d": 16,
    "bloom_len": 1.15,
    "bark_bands": true
+  },
+  "scaevola": {
+   "height_m": 2.2,
+   "crown": [
+    1.3,
+    2.2,
+    1.05
+   ],
+   "colour": "#8fae48",
+   "bark": "#7d7a55",
+   "triangles": [
+    1610,
+    550,
+    195
+   ],
+   "cell": 21,
+   "trunk_r": 0.07,
+   "note": "Beach cabbage (Scaevola taccada): a dense mound of thick yellow-green leaves on many soft stems from the sand, 1-3 m high and wider than tall, the first shrub behind a cay's beach"
+  },
+  "argusia": {
+   "height_m": 3.6,
+   "crown": [
+    2.5,
+    2.7,
+    1.3
+   ],
+   "colour": "#a4b098",
+   "bark": "#6f655a",
+   "triangles": [
+    1738,
+    519,
+    172
+   ],
+   "cell": 22,
+   "trunk_r": 0.12,
+   "note": "Octopus bush (Argusia argentea, now Heliotropium arboreum): crooked spreading stems under a rounded crown of silvery grey-green felted leaves in rosettes, about 3.5 m high and 5 m across"
   }
  }
 }
