@@ -79,7 +79,9 @@
         "stone": "#b8b0a0",
         "lamps": 2,
         "lamp_style": "bronze",
-        "note": "1911, a granite double arch, bronze lamp standards with kirin"
+        "statues": {"middle": "kirin", "ends": "lion"},
+        "lamp": "#ffe2b0",
+        "note": "1911, a granite double arch (Tsumaki Yorinaka; bronzes by Watanabe Osao): the two lamp standards over the pier with their kirin back to back, the four end pillars with their lamps and the lions holding the city's crest (Chuo City; photographs)"
       },
       "常盤橋": {
         "form": "stone_arch",
