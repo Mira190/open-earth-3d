@@ -1,0 +1,681 @@
+{
+  "id": "lake-tekapo",
+  "name": "Lake Tekapo",
+  "native": "Takapō",
+  "country": "New Zealand",
+  "country_code": "NZ",
+  "kind": "alpine",
+  "timezone": "Pacific/Auckland",
+  "locale": "en-NZ",
+  "description": "Lake Tekapo / Takapō and its township in the Mackenzie Basin, rebuilt 1:1 from LINZ's 1 m LiDAR and aerial imagery: the Church of the Good Shepherd, Mt John and its observatory, Lakes Alexandrina and McGregor, the Godley delta at the lake's head and the Two Thumb Range, under the Aoraki Mackenzie International Dark Sky Reserve.",
+  "region": "Te Manahuna · Mackenzie Basin · Aotearoa New Zealand",
+  "bbox": [
+    170.3491,
+    -44.1033,
+    170.8047,
+    -43.6363
+  ],
+  "origin": [
+    170.477,
+    -44.004
+  ],
+  "extent_m": [
+    -10240,
+    26240,
+    -11040,
+    40800
+  ],
+  "grid_m": 30,
+  "frame_note": "Local transverse Mercator on the township (pipeline/cityctx.py). In NZTM2000 (EPSG:2193) the frame's corners are E 1388072 N 5113286 (south-west), E 1424058 N 5114389 (south-east), E 1422471 N 5166364 (north-east) and E 1386485 N 5165269 (north-west): it meets the Lake Pukaki frame (east edge E 1390000) in a strip 2-3.5 km wide over the Tekapo canal and the Mary Range.",
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m NZVD2016, shifted so the lake surface is 0",
+  "year": 2026,
+  "terrain": {
+    "type": "linz_cog",
+    "cell_m": 30,
+    "read_m": 16,
+    "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dem_1m/2193/{sheet}.tiff",
+    "fallback": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand-contour/dem_8m/2193/{sheet}.tiff",
+    "sheets": [
+      "BX16",
+      "BX17",
+      "BX18",
+      "BY16",
+      "BY17",
+      "BY18",
+      "BZ16",
+      "BZ17",
+      "BZ18"
+    ],
+    "attribution": "Toitū Te Whenua LINZ, New Zealand LiDAR 1m DEM (Canterbury - Mackenzie 2015, Canterbury 2016-2019 and West Coast 2020-2022 captures; CC BY 4.0); New Zealand Contour-Interpolated 8m DEM (Geographx, CC BY 4.0) where the LiDAR has a gap",
+    "note": "The national 1 m composite covers every sheet here (BX from the West Coast 2020-2022 capture, BY and BZ from Mackenzie 2015 and Canterbury 2016-2019); the Mackenzie 2026 capture (19 April - 2 May 2026) reaches north to latitude -43.739 and is the newer source south of that line."
+  },
+  "imagery": {
+    "type": "linz_cog",
+    "pixel_m": 10,
+    "url": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand_2025-2026_10m/rgb/2193/{sheet}.tiff",
+    "sheets": [
+      "BX16",
+      "BX17",
+      "BX18",
+      "BY16",
+      "BY17",
+      "BY18",
+      "BZ16",
+      "BZ17",
+      "BZ18"
+    ],
+    "attribution": "Toitū Te Whenua LINZ, New Zealand 10m Satellite Imagery (2025-2026), Copernicus Sentinel-2 (CC BY 4.0); Mackenzie 0.3m Rural (2021) and 0.075m Urban (2025-2026) Aerial Photos (CC BY 4.0)"
+  },
+  "lakes": [
+    {
+      "id": "tekapo",
+      "name": "Lake Tekapo / Takapō",
+      "seed": [
+        170.52,
+        -43.9
+      ],
+      "main": true,
+      "max_depth_m": 120,
+      "depth_src": "Maximum depth 120 m: NIWA LakeSPI, Lake Tekapo (https://lakespi.niwa.co.nz/lake/47228); Wikipedia gives 120 m and an average of 69 m; the bed's shape is synthesised from the distance to the shore (no open survey)"
+    }
+  ],
+  "optics": {
+    "K": [
+      5.0,
+      3.6,
+      3.9
+    ],
+    "Rinf": [
+      0.03,
+      0.25,
+      0.49
+    ],
+    "g": 2.2,
+    "src": "No published Secchi depth for Lake Tekapo was found (searched 2026-11-05), so Kd is Lake Pukaki's, from that glacial-flour lake's Secchi depth (cities/lake-pukaki/city.json). Rinf keeps Pukaki's brightness with Tekapo's own hue: in the LINZ 10 m mosaic (median of 400 m windows at four mid-lake points, linearised) Tekapo is 0.0072, 0.206, 0.405 (green over blue 0.51) against Pukaki's 0.0037, 0.120, 0.250 (0.48) measured the same way; the mosaic is colour-balanced sheet by sheet, so only the hue is carried over."
+  },
+  "detail": [
+    {
+      "id": "township",
+      "centre": [
+        170.479,
+        -44.004
+      ],
+      "size_m": [
+        2400,
+        1800
+      ],
+      "px_m": 0.3,
+      "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/canterbury/mackenzie_2025-2026_0.075m/rgb/2193/",
+      "src": "Toitū Te Whenua LINZ, Mackenzie 0.075m Urban Aerial Photos (2025-2026), CC BY 4.0"
+    },
+    {
+      "id": "mt-john",
+      "centre": [
+        170.462,
+        -43.982
+      ],
+      "size_m": [
+        3000,
+        3000
+      ],
+      "px_m": 0.75,
+      "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/canterbury/mackenzie_2021_0.3m/rgb/2193/",
+      "src": "Toitū Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
+    },
+    {
+      "id": "south-shore",
+      "centre": [
+        170.505,
+        -44.0
+      ],
+      "size_m": [
+        3000,
+        3000
+      ],
+      "px_m": 0.75,
+      "collection": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/canterbury/mackenzie_2021_0.3m/rgb/2193/",
+      "src": "Toitū Te Whenua LINZ, Mackenzie 0.3m Rural Aerial Photos (2021), CC BY 4.0"
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "church-good-shepherd",
+      "glb": "data/lake-tekapo/models/tekapo-church.glb",
+      "lonlat": [
+        170.482466,
+        -44.003346
+      ],
+      "axis_deg": 16.5,
+      "ground_m": 714.9,
+      "note": "models are built with their orientation baked in (glTF x east, y up, -z north; y = 0 at ground_m): place them, do not turn them. axis_deg is the altar end's bearing: the long axis of the OpenStreetMap footprint (10.1 x 6.3 m) runs at 16.5 degrees, and the altar window looks north up the lake"
+    },
+    {
+      "id": "sheepdog-statue",
+      "glb": "data/lake-tekapo/models/tekapo-collie.glb",
+      "lonlat": [
+        170.48395,
+        -44.00347
+      ],
+      "ground_m": 713.2,
+      "note": "the way the dog faces is nominal (north-north-east, over the lake); the position is the dark cairn in a round paved bay in the 0.075 m aerial photographs (2025-26), 9 m south of Overture's Sheepdog Memorial record"
+    },
+    {
+      "id": "footbridge",
+      "glb": "data/lake-tekapo/models/tekapo-footbridge.glb",
+      "lonlat": [
+        170.4810666,
+        -44.004897
+      ],
+      "ground_m": 707.71,
+      "walk": "deck",
+      "note": "y = 0 is the river surface under it (the DEM, 707.71 m); the deck is 8.2-10.8 m above",
+      "deck": {
+        "ends_m": [
+          [
+            -61.44,
+            0.76
+          ],
+          [
+            61.93,
+            -1.22
+          ]
+        ],
+        "width_m": 3.0,
+        "z_m": [
+          715.38,
+          716.58,
+          717.46,
+          718.04,
+          718.3,
+          718.26,
+          717.9,
+          717.23,
+          716.25
+        ],
+        "note": "the walkable deck: its ends in metres east and north of the landmark's point, and its top from end to end, m NZVD2016, at nine even steps (the DSM along the OpenStreetMap way less the balustrade, fitted to a camber); web/reef/alpine/landmarks.js prefers it to raycasting the model, so the handrails are not walked on"
+      }
+    },
+    {
+      "id": "mt-john-observatory",
+      "glb": "data/lake-tekapo/models/tekapo-observatory.glb",
+      "lonlat": [
+        170.4645,
+        -43.9855
+      ],
+      "ground_m": 1023.2
+    }
+  ],
+  "start": {
+    "x": 428,
+    "y": 30,
+    "z": 30,
+    "yaw": 16,
+    "pitch": -6,
+    "date": null
+  },
+  "spawn": {
+    "poi": "church-view",
+    "x": 432,
+    "y": 52,
+    "heading": 16,
+    "note": "the postcard: 22 m south of the Church of the Good Shepherd on its own axis, on the tussock between the paths and clear of the car park (0.3 m aerial photographs, 2025-26), looking up the lake along the church's own axis. Behind the south gable and the belfry lie the lake, the head of the lake (bearing 13 degrees, 25.5 km) and Mistake Peak (3 degrees, 24.3 km); the Two Thumb Range rises on the right (Beuzenberg Peak 27 degrees). Mt John stands left of the frame at 324 degrees and hides Aoraki (329 degrees, 53 km: 3.0 degrees up against Mt John's 7.4 degrees). Bearings from WGS84 geodesics; see docs/cities/lake-tekapo.md, The first view"
+  },
+  "shots": [
+    {
+      "id": "postcard",
+      "x": 432,
+      "y": 52,
+      "z": 1.6,
+      "yaw": 16,
+      "pitch": 4,
+      "fov": 50,
+      "note": "the spawn view: church, lake, the alps at the head of the lake"
+    },
+    {
+      "id": "milky-way",
+      "x": 432,
+      "y": 52,
+      "z": 1.2,
+      "yaw": 16,
+      "pitch": 28,
+      "fov": 70,
+      "time": "night",
+      "note": "the same frame after astronomical dusk, the church against the reserve's sky"
+    },
+    {
+      "id": "lupins",
+      "x": 520,
+      "y": -150,
+      "z": 1.2,
+      "yaw": 330,
+      "pitch": 2,
+      "fov": 55,
+      "month": 11,
+      "note": "the lakeshore east of the footbridge in lupin season, the church and the lake beyond"
+    },
+    {
+      "id": "mt-john",
+      "x": -940,
+      "y": 2010,
+      "z": 1.7,
+      "yaw": 40,
+      "pitch": -4,
+      "fov": 60,
+      "note": "from the summit over the lake to the Two Thumb Range"
+    },
+    {
+      "id": "aerial",
+      "x": 2500,
+      "y": -3500,
+      "z": 900,
+      "yaw": 340,
+      "pitch": -12,
+      "fov": 50,
+      "note": "the whole lake from the south, the Godley at its head"
+    }
+  ],
+  "pois": [
+    {
+      "id": "church-view",
+      "name": "Below the Church of the Good Shepherd",
+      "kind": "viewpoint",
+      "lonlat": [
+        170.482386,
+        -44.003535
+      ],
+      "src": "nominal"
+    },
+    {
+      "id": "lakefront",
+      "name": "Lake Tekapo lakefront",
+      "kind": "shore",
+      "lonlat": [
+        170.4797,
+        -44.0041
+      ],
+      "src": "nominal"
+    },
+    {
+      "id": "township",
+      "name": "Lake Tekapo / Takapō township",
+      "kind": "town",
+      "lonlat": [
+        170.477,
+        -44.004
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "church-good-shepherd",
+      "name": "Church of the Good Shepherd",
+      "kind": "church",
+      "lonlat": [
+        170.482466,
+        -44.003346
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "sheepdog-statue",
+      "name": "Sheepdog statue",
+      "kind": "monument",
+      "lonlat": [
+        170.48395,
+        -44.00347
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "footbridge",
+      "name": "Lake Tekapo footbridge (MacLaren Footbridge)",
+      "kind": "bridge",
+      "lonlat": [
+        170.4810666,
+        -44.004897
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "dark-sky-project",
+      "name": "Dark Sky Project",
+      "kind": "observatory",
+      "lonlat": [
+        170.47712,
+        -44.00331
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "hot-springs",
+      "name": "Tekapo Springs",
+      "kind": "pools",
+      "lonlat": [
+        170.46095,
+        -43.99481
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "mt-john",
+      "name": "Mt John / Ōtehīwai",
+      "kind": "peak",
+      "lonlat": [
+        170.46504,
+        -43.98574
+      ],
+      "ele": 1031,
+      "src": "osm"
+    },
+    {
+      "id": "mt-john-observatory",
+      "name": "University of Canterbury Mt John Observatory",
+      "kind": "observatory",
+      "lonlat": [
+        170.46418,
+        -43.98525
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "astro-cafe",
+      "name": "Astro Café",
+      "kind": "cafe",
+      "lonlat": [
+        170.46473,
+        -43.98583
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "lake-alexandrina",
+      "name": "Lake Alexandrina",
+      "kind": "lake",
+      "lonlat": [
+        170.4519,
+        -43.9385
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "lake-mcgregor",
+      "name": "Lake McGregor",
+      "kind": "lake",
+      "lonlat": [
+        170.4718,
+        -43.9363
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "motuariki",
+      "name": "Motuariki Island",
+      "kind": "island",
+      "lonlat": [
+        170.52211,
+        -43.93898
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "cowans-hill",
+      "name": "Cowans Hill",
+      "kind": "peak",
+      "lonlat": [
+        170.49341,
+        -44.01542
+      ],
+      "ele": 783,
+      "src": "osm"
+    },
+    {
+      "id": "lake-george-scott",
+      "name": "Lake George Scott",
+      "kind": "lake",
+      "lonlat": [
+        170.46328,
+        -44.01534
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "tekapo-canal",
+      "name": "Tekapo Canal",
+      "kind": "canal",
+      "lonlat": [
+        170.43858,
+        -44.04205
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "lupins-shore",
+      "name": "Lakeshore east of the church",
+      "kind": "meadow",
+      "lonlat": [
+        170.4885,
+        -44.0058
+      ],
+      "src": "nominal",
+      "note": "where the game looks for lupins in season: the lakeshore and the Tekapo River's banks below the regional park"
+    },
+    {
+      "id": "godley-delta",
+      "name": "Godley River delta, head of the lake",
+      "kind": "delta",
+      "lonlat": [
+        170.553,
+        -43.772
+      ],
+      "src": "osm",
+      "note": "just north of the lake polygon's northernmost point (170.5555, -43.7799)"
+    },
+    {
+      "id": "mistake-peak",
+      "name": "Mistake Peak",
+      "kind": "peak",
+      "lonlat": [
+        170.49699,
+        -43.78479
+      ],
+      "ele": 1921,
+      "src": "osm"
+    },
+    {
+      "id": "mount-edward",
+      "name": "Mount Edward",
+      "kind": "peak",
+      "lonlat": [
+        170.59797,
+        -44.00808
+      ],
+      "ele": 1916,
+      "src": "osm"
+    },
+    {
+      "id": "mount-maude",
+      "name": "Mount Maude",
+      "kind": "peak",
+      "lonlat": [
+        170.63194,
+        -43.98139
+      ],
+      "ele": 1797,
+      "src": "osm"
+    },
+    {
+      "id": "dobson-peak",
+      "name": "Dobson Peak",
+      "kind": "peak",
+      "lonlat": [
+        170.66983,
+        -43.9356
+      ],
+      "ele": 2095,
+      "src": "osm"
+    },
+    {
+      "id": "roundhill",
+      "name": "Roundhill Ski Area",
+      "kind": "skifield",
+      "lonlat": [
+        170.65645,
+        -43.82548
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "two-thumb-range",
+      "name": "Two Thumb Range",
+      "kind": "range",
+      "lonlat": [
+        170.67136,
+        -43.73743
+      ],
+      "src": "osm"
+    },
+    {
+      "id": "beuzenberg-peak",
+      "name": "Beuzenberg Peak",
+      "kind": "peak",
+      "lonlat": [
+        170.68363,
+        -43.7166
+      ],
+      "ele": 2070,
+      "src": "osm"
+    },
+    {
+      "id": "airport",
+      "name": "Lake Tekapo Airport (Air Safaris)",
+      "kind": "airport",
+      "lonlat": [
+        170.4414,
+        -44.0024
+      ],
+      "src": "overture-places"
+    },
+    {
+      "id": "helipad",
+      "name": "Tekapo helicopter base",
+      "kind": "helipad",
+      "lonlat": [
+        170.40667,
+        -44.01278
+      ],
+      "src": "overture-places"
+    }
+  ],
+  "poi_sources": {
+    "osm": "OpenStreetMap contributors (ODbL), read through Overture Maps 2026-10-21.0 base, buildings and transportation themes; peak heights from the OSM ele tag",
+    "overture-places": "Overture Maps 2026-10-21.0 places theme (confidence 0.5 or more)",
+    "nominal": "chosen for the viewer and the game"
+  },
+  "harbour": {
+    "parked": [
+      {
+        "kind": "helicopter",
+        "name": "Tekapo scenic helicopter",
+        "at": "helipad"
+      }
+    ],
+    "scenic": [
+      {
+        "kind": "helicopter",
+        "name": "Scenic flight up the lake",
+        "around": "motuariki",
+        "r": 6000,
+        "alt": 1400,
+        "v": 45,
+        "dir": 1
+      }
+    ],
+    "moorings": 0
+  },
+  "sources": [
+    {
+      "what": "terrain",
+      "name": "New Zealand LiDAR 1 m DEM",
+      "publisher": "LINZ",
+      "licence": "CC BY 4.0",
+      "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dem_1m/2193/collection.json",
+      "checked": "2026-11-05"
+    },
+    {
+      "what": "terrain (newest)",
+      "name": "Canterbury - Mackenzie LiDAR 1 m DEM (2026)",
+      "publisher": "LINZ",
+      "licence": "CC BY 4.0",
+      "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/canterbury/mackenzie_2026/dem_1m/2193/collection.json",
+      "checked": "2026-11-05"
+    },
+    {
+      "what": "landmark heights",
+      "name": "New Zealand LiDAR 1 m DSM",
+      "publisher": "LINZ",
+      "licence": "CC BY 4.0",
+      "url": "https://nz-elevation.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand/dsm_1m/2193/collection.json",
+      "checked": "2026-11-05"
+    },
+    {
+      "what": "ground imagery",
+      "name": "New Zealand 10 m Satellite Imagery (2025-2026)",
+      "publisher": "LINZ",
+      "licence": "CC BY 4.0",
+      "url": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/new-zealand/new-zealand_2025-2026_10m/rgb/2193/collection.json",
+      "checked": "2026-11-05"
+    },
+    {
+      "what": "ground imagery (township)",
+      "name": "Mackenzie 0.075 m Urban Aerial Photos (2025-2026)",
+      "publisher": "LINZ",
+      "licence": "CC BY 4.0",
+      "url": "https://nz-imagery.s3.ap-southeast-2.amazonaws.com/canterbury/mackenzie_2025-2026_0.075m/rgb/2193/collection.json",
+      "checked": "2026-11-05"
+    },
+    {
+      "what": "places, roads, water, buildings",
+      "name": "Overture Maps 2026-10-21.0",
+      "publisher": "Overture Maps Foundation (OpenStreetMap ODbL within)",
+      "licence": "ODbL / CDLA-Permissive-2.0",
+      "url": "https://docs.overturemaps.org/",
+      "checked": "2026-11-05"
+    }
+  ],
+  "flora": {
+    "lupins": [
+      {
+        "lonlat": [
+          170.4885,
+          -44.0058
+        ],
+        "r_m": 90,
+        "density": 0.8
+      },
+      {
+        "lonlat": [
+          170.484,
+          -44.0042
+        ],
+        "r_m": 50,
+        "density": 0.6
+      },
+      {
+        "lonlat": [
+          170.4795,
+          -44.0062
+        ],
+        "r_m": 60,
+        "density": 0.6
+      },
+      {
+        "lonlat": [
+          170.493,
+          -44.0075
+        ],
+        "r_m": 80,
+        "density": 0.7
+      }
+    ]
+  }
+}

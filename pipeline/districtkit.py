@@ -442,6 +442,8 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
     water = shapely.union_all([r["geom"] for r in jk.overture(C, "water", "class IN (" + ", ".join(f"'{c}'" for c in classes) + ")")
                                if r["geom"].geom_type in ("Polygon", "MultiPolygon")])
     ctx.bridge_water = water   # (bridges.py clear: the ground under a deck, over the water alone)
+    moats = shapely.union_all([r["geom"] for r in jk.overture(C, "water", "class = 'moat'")
+                               if r["geom"].geom_type in ("Polygon", "MultiPolygon")]) if "moat" in classes else None
     out = []
     rows = jk.overture(C, "infrastructure", "class = 'bridge'")
     shapes = [(r["name"] or "", r["geom"]) for r in rows if r["geom"].geom_type == "Polygon"]
@@ -482,8 +484,20 @@ def water_bridges(ctx, classes=("river", "canal", "bay", "ocean", "water"), min_
         if width > 60 or length < 15:
             continue
         c = np.asarray(g.minimum_rotated_rectangle.centroid.coords[0])
-        za = max(ctx.ground(*(c - ax * (length / 2 + 3))), floor)
-        zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), floor)
+        # the floor is a river's embankment; a castle moat's bridge meets its banks where they are (Wadakura-bashi)
+        # (its bank read where the grid no longer takes in the water: 3 m beyond the end, or further back
+        # until 7 m from the moat: the game grid marks its shore cells water, a cell beyond the outline)
+        if moats is not None and g.intersection(moats).area > 0.5 * g.intersection(water).area:
+            def bank(s):
+                for d in np.arange(3.0, 10.5, 0.5):
+                    p = c + s * ax * (length / 2 + d)
+                    if moats.distance(shapely.Point(*p)) >= 7.0:
+                        break
+                return ctx.ground(*p)
+            za, zb = bank(-1), bank(1)
+        else:
+            za = max(ctx.ground(*(c - ax * (length / 2 + 3))), floor)
+            zb = max(ctx.ground(*(c + ax * (length / 2 + 3))), floor)
         out.append({"name": name, "centre": rnd(c), "axis": rnd(ax, 5), "length_m": round(length, 1), "width_m": round(width, 1),
                     "z_ends": [round(za, 2), round(zb, 2)], "colour": (colours or {}).get(name)})
     return out

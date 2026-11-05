@@ -108,21 +108,24 @@ window.OEFarLand = (function () {
     const col = new THREE.Texture(F.col);
     col.needsUpdate = true;
     col.colorSpace = THREE.SRGBColorSpace;
-    col.anisotropy = 4;
+    col.anisotropy = 16; // three.js holds it to what the GPU allows: the land is mostly seen at a low angle
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, emissive: lin('#ffd9a8'), emissiveIntensity: 0 });
     mat.defines = { OE_FAR: '' };
     const night = { value: 0 };
     mat.onBeforeCompile = sh => {
       Object.assign(sh.uniforms, { uPhotoGrade: PG, uFarCol: { value: col }, uFarLights: { value: lightTex }, uFarNight: night,
         uFarBox: { value: new THREE.Vector3(cx - H, cy - H, 2 * H) } });
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vFarUV; varying vec2 vFarXZ; uniform vec3 uFarBox;')
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec2 vFarUV; varying vec2 vFarXZ; varying vec3 vFarW; uniform vec3 uFarBox;')
         .replace('#include <project_vertex>', `#include <project_vertex>
-  vFarXZ = (modelMatrix * vec4(transformed, 1.0)).xz;
+  vFarW = (modelMatrix * vec4(transformed, 1.0)).xyz; vFarXZ = vFarW.xz;
   vFarUV = vec2((vFarXZ.x - uFarBox.x) / uFarBox.z, (-vFarXZ.y - uFarBox.y) / uFarBox.z);`)
         ;
       sh.fragmentShader = sh.fragmentShader.replace('#include <common>', `#include <common>
 ${PHOTO_GRADE}
-uniform sampler2D uFarCol, uFarLights; uniform float uFarNight; varying vec2 vFarUV; varying vec2 vFarXZ;
+uniform sampler2D uFarCol, uFarLights; uniform float uFarNight; varying vec2 vFarUV; varying vec2 vFarXZ; varying vec3 vFarW;
+// the size of a pixel's footprint on the ground in units of p: the geometric mean of its two axes,
+// so that land seen at a low angle (a pixel a few metres across but hundreds deep) keeps its grain
+float farFw(vec2 p) { return sqrt(length(dFdx(p)) * length(dFdy(p))); }
 float farH(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(farH(i), farH(i + vec2(1, 0)), f.x), mix(farH(i + vec2(0, 1)), farH(i + vec2(1, 1)), f.x), f.y); }`)
@@ -130,10 +133,22 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   // the land cover's colour, with what its 78 m cells average away put back as a grain of fields,
   // blocks and woods at 40 to 300 m, which fades out where a pixel covers it
   vec3 c = photoGrade(texture2D(uFarCol, vFarUV).rgb);
-  vec2 p = vFarXZ; float fw = max(fwidth(p.x), fwidth(p.y));
+  vec2 p = vFarXZ; float fw = farFw(p);
   float g = (farN(p / 300.0) - 0.5) * 0.25 * (1.0 - smoothstep(60.0, 200.0, fw))
           + (farN(p / 90.0 + 7.0) - 0.5) * 0.45 * (1.0 - smoothstep(18.0, 60.0, fw))
           + (farN(p / 33.0 + 3.0) - 0.5) * 0.3 * (1.0 - smoothstep(7.0, 22.0, fw));
+  // built-up land (where Black Marble sees lights) as roofs: blocks of 40 to 50 m, each a shade
+  // lighter or darker than its neighbours, which is what a city reads as from a tower when its
+  // buildings are too small to see (no street lines: at a low angle they alias into a grid)
+  float bu = smoothstep(0.35, 0.8, texture2D(uFarLights, vec2(vFarUV.x, 1.0 - vFarUV.y)).r);
+  // (only at a low angle: from above, the land cover's own colour is the better picture)
+  float cosV = abs(normalize(cameraPosition - vFarW).y);
+  vec2 bi = floor(p / vec2(38.0, 52.0));
+  float roofs = (farH(bi + 31.7) - 0.5) * 0.4;
+  g += bu * roofs * (1.0 - smoothstep(14.0, 45.0, fw)) * (1.0 - smoothstep(0.1, 0.3, cosV));
+  // and seen at a low angle a city is its walls more than its roofs, half of them in shade
+  float wall = bu * pow(1.0 - cosV, 6.0);
+  c *= mix(vec3(1.0), vec3(0.8, 0.85, 0.92), wall); // partly in shade, and lit by the sky's blue more than the sun
   // seen through kilometres of air the land's colours are thinner than the photo's close by
   c = mix(vec3(dot(c, vec3(0.2126, 0.7152, 0.0722))), c, 0.8);
   diffuseColor.rgb *= c * (1.0 + g);
@@ -147,7 +162,7 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   // a cell is about 1, which is what a pixel covering many cells shows
   vec2 q = vFarXZ / 24.0, iq = floor(q), fq = fract(q) - 0.5;
   vec2 o = vec2(farH(iq), farH(iq + 17.3)) - 0.5;
-  float fw = max(fwidth(q.x), fwidth(q.y)), dens = 0.08 + 0.5 * L;
+  float fw = farFw(q), dens = 0.08 + 0.5 * L;
   float on = step(1.0 - dens, farH(iq + 5.1)), r = length(fq - 0.6 * o);
   // a dot of radius 0.07 cells; one smaller than a pixel is drawn a pixel wide and dimmer by the
   // ratio of the areas (as a camera sees a point of light: its light spread over the pixel), so
@@ -157,7 +172,11 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
   // tone curve shows a sea of sub-pixel lights, so that the two meet without a step
   float grain = 0.2 + mix(0.8 * dots, 1.8, smoothstep(0.15, 1.2, fw));
   L *= L; // Black Marble's visual product saturates over a city: more contrast between core and suburb
-  totalEmissiveRadiance *= L * grain * uFarNight;
+  // a city's lights are points that shine every way, not a lit surface: seen at a low angle a
+  // pixel takes in more of them, so the land toward the horizon glows brighter (the band of light a
+  // city shows from a tower or an aircraft), up to four times
+  float cosV = abs(normalize(cameraPosition - vFarW).y);
+  totalEmissiveRadiance *= L * grain * uFarNight * clamp(1.0 / max(cosV, 0.02), 1.0, 4.0);
 }`);
     };
     mat.customProgramCacheKey = () => 'farland';
@@ -174,5 +193,6 @@ float farN(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f
     };
   }
 
-  return { load, geometry, create, EDGE, RAMP, BASE, AIR };
+  // HALF: a city's far land reaches this far either side of the frame's centre (far_land.py HALF_M)
+  return { load, geometry, create, EDGE, RAMP, BASE, AIR, HALF: 40000 };
 })();
