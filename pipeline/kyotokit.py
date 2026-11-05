@@ -191,10 +191,12 @@ def hakkyaku(K, M, P, z0, frontage, depth, ridge, roof="kirizuma", ground=None):
     return {"stone": zb, "eave": ze}
 
 
-def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, posts_every=3.0, doors=True, veranda=True, ground=None):
+def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, posts_every=3.0, doors=True, veranda=True, ground=None,
+         k=1.55, lift=None):
     """A hall raised on its floor: posts round the walls, white plaster or boarded walls with lattice
     doors in the front, a veranda (縁) round it on short legs, the bracket band and its roof:
-    "irimoya" (入母屋), "yosemune" (寄棟, hipped) or "hogyo" (宝形, a pyramid). Heights absolute."""
+    "irimoya" (入母屋), "yosemune" (寄棟, hipped) or "hogyo" (宝形, a pyramid). Heights absolute. k: the
+    roof's sweep (archkit.japanese_roof), lift: its corners' rise (反り), for a hall's own curve."""
     ov = ov if ov is not None else max(1.8, min(hu, hv) * 0.32)
     block(K[M["base"]], P, -hu - 0.8, hu + 0.8, -hv - 0.8, hv + 0.8, z0 - 0.8, z0 + 0.25)
     plinth(K, M["base"], P, hu + 0.8, hv + 0.8, z0 + 0.25, ground)
@@ -226,19 +228,19 @@ def hall(K, M, P, z0, hu, hv, z_floor, eave, ridge, roof="irimoya", ov=None, pos
     Hu, Hv = hu + 0.6, hv + 0.6
     if roof == "irimoya":
         if hv >= hu:
-            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), Hv, Hu, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=1.55)
+            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], across(P), Hv, Hu, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=k, lift=lift)
             ridge_cap(K, M, P, R["Ug"] + 0.3, ridge - 0.9, h=0.75)
         else:
-            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=1.55)
+            R = irimoya(K[M["roof"]], K[M["gable"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.7, ov=ov, gable_at=0.5, k=k, lift=lift)
             ridge_cap(K, M, across(P), R["Ug"] + 0.3, ridge - 0.9, h=0.75)
     elif roof == "yosemune":
-        e = hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.4, ov=ov, k=1.55, ridge_frac=0.55)
+        e = hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 0.4, ov=ov, k=k, ridge_frac=0.55, lift=lift)
         if hv >= hu:
             ridge_cap(K, M, P, max(Hv - Hu, 0.5) * 0.55 + 0.5, ridge - 0.6, h=0.6)
         else:
             ridge_cap(K, M, across(P), max(Hu - Hv, 0.5) * 0.55 + 0.5, ridge - 0.6, h=0.6)
     else:   # hogyo: a pyramid with its finial (露盤, 宝珠)
-        hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 1.2, ov=ov, k=1.6)
+        hip_roof(K[M["roof"]], K[M["soffit"]], P, Hu, Hv, eave, ridge - 1.2, ov=ov, k=k + 0.05, lift=lift)
         x, y, _ = P(0, 0, 0)
         lathe_at(K[M["metal"]], x, y, [(ridge - 1.4, 0.7), (ridge - 0.9, 0.7), (ridge - 0.8, 0.25), (ridge - 0.5, 0.35), (ridge, 0.0)], 8)
 
@@ -297,11 +299,12 @@ def pagoda(K, M, P, z0, storeys, height, sorin, core, podium=1.2, deep=1.0, grou
     lathe_at(K[M["metal"]], x, y, [(tip - 1.6, 0.0), (tip - 1.3, 0.3), (tip - 1.0, 0.22), (tip - 0.7, 0.0)], 10)
 
 
-def kakezukuri(K, M, P, u0, u1, v0, v1, z_floor, ground, every=3.6, levels=None, r=0.32):
+def kakezukuri(K, M, P, u0, u1, v0, v1, z_floor, ground, every=3.6, levels=None, r=0.32, bays=None):
     """The lattice a hanging stage stands on (懸造): keyaki pillars on stone from the slope to the floor,
-    every `every` m, tied in both directions by through-beams (貫) every few metres, no nails, no braces.
-    ground(x, y) gives the slope. Returns the pillars' feet [(x, y, z)]."""
-    nu, nv = max(1, int(round((u1 - u0) / every))), max(1, int(round((v1 - v0) / every)))
+    every `every` m (or `bays`: (along u, along v), a counted grid), tied in both directions by
+    through-beams (貫) every few metres, no nails, no braces. ground(x, y) gives the slope. Returns the
+    pillars' feet [(x, y, z)]."""
+    nu, nv = bays or (max(1, int(round((u1 - u0) / every))), max(1, int(round((v1 - v0) / every))))
     us, vs = np.linspace(u0, u1, nu + 1), np.linspace(v0, v1, nv + 1)
     feet = {}
     for u in us:

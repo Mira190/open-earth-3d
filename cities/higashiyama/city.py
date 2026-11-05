@@ -60,6 +60,13 @@ MATERIALS = {
     # roofs: hinoki bark (檜皮), clay tiles (本瓦)
     "hiwada": {"color": "#6a4f3e", "roughness": 0.92, "metalness": 0.0, "pattern": "roof_tiles", "bay_m": 0.09, "course_m": 0.12},
     "hiwada_ridge": {"color": "#4b3a2f", "roughness": 0.9, "metalness": 0.0},
+    # the Main Hall's roof of its own: hinoki bark laid in courses about 1.2 cm apart, weathered darker and
+    # greyer than the smaller halls' (re-roofed 2017-2020), its thick cut edge at the eaves (軒付) the colour
+    # of fresh bark
+    "hondo_hiwada": {"color": "#4f3d33", "roughness": 0.95, "metalness": 0.0, "pattern": "roof_tiles", "bay_m": 0.06, "course_m": 0.08},
+    "hondo_koba": {"color": "#86674f", "roughness": 0.92, "metalness": 0.0},
+    # the dark inner sanctum (内陣) and the outer hall (外陣) behind the lattices: unlit wood, lacquer and gilt
+    "naijin": {"color": "#16110d", "roughness": 0.96, "metalness": 0.0},
     "kawara": {"color": "#5b5f63", "roughness": 0.6, "metalness": 0.1, "pattern": "roof_tiles", "bay_m": 0.3, "course_m": 0.3},
     "kawara_ridge": {"color": "#43474a", "roughness": 0.6, "metalness": 0.1},
     "soffit": {"color": "#a8432c", "roughness": 0.8, "metalness": 0.0},
@@ -67,6 +74,8 @@ MATERIALS = {
     "gable_shu": {"color": "#a23a24", "roughness": 0.7, "metalness": 0.0},
     "gable_white": {"color": "#e7e1d3", "roughness": 0.8, "metalness": 0.0},
     "stone": {"color": "#9c968b", "roughness": 0.92, "metalness": 0.0, "pattern": "ashlar", "course_m": 0.45, "block_m": 0.9},
+    # the West Gate's steps: granite, walked as a strip (game_surfaces), so not solid
+    "gate_step": {"color": "#97918a", "roughness": 0.9, "metalness": 0.0, "pattern": "granite", "joints_m": [0.6, 0.36], "stair": "tread", "solid": False},
     "stone_dark": {"color": "#77736b", "roughness": 0.92, "metalness": 0.0},
     "bronze": {"color": "#4c4234", "roughness": 0.45, "metalness": 0.75},
     "gold": {"color": "#d6a93a", "roughness": 0.3, "metalness": 0.85, "emissive": "#ffc94a", "glow": 0.4},
@@ -115,6 +124,17 @@ KIYOMIZU = {
     "amidado": ("w102164636", 10.3),     # 阿弥陀堂
     "koyasu": ("w333894528", 15.0),      # 子安塔
 }
+# each hall's own roof: (k, the sweep: archkit.japanese_roof's exponent, flat at the eaves and steep at the
+# ridge; lift: the corners' rise, as a fraction of the overhang), read from photographs of each roof
+# side on: the Main Hall's and the Okunoin's bark roofs sag deepest and barely lift at the corners, the
+# tiled halls are stiffer and turn up more (docs/cities/higashiyama.md)
+ROOFS = {"hondo": (1.9, 0.12), "okunoin": (1.8, 0.14), "kyodo": (1.45, 0.3), "tamurado": (1.5, 0.26), "asakura": (1.5, 0.28),
+         "shakado": (1.7, 0.16), "amidado": (1.65, 0.18)}
+SAIMON_WAY_FOOT = (142.0, -204.9)   # where the way up through the West Gate (OSM w339551498) starts, in the court below it
+OKUNOIN_FLOOR = 115.45   # the Okunoin's floor (m): its stage level with the corridor from the north (114.7-115.9 on GSI's terrain)
+OKUNOIN_STAGE = "w893859575"   # the Okunoin's stage, mapped apart from the hall
+OKUNOIN_OPEN = (6.9, 4.2)   # where the stage's railing stops on its north and south ends (m forward), for the corridor
+CORRIDOR_U = 6.2   # the corridor's line in front of the Amida-do, in the hall's frame (m forward of its outline's centre)
 YASAKA = ("w371717416", 46.0)            # 八坂の塔
 KIYOMIZU_ZAKA_TOP = (84.0, -165.0)       # where Kiyomizu-zaka meets the gate's steps (OSM 清水坂's end)
 OTOWA = (300.2, -286.4)                  # 音羽の滝 不動明王 (OSM wayside shrine at the falls)
@@ -131,6 +151,10 @@ def ctx():
         _cache["T"] = ak.Terrain("higashiyama")
         _cache["S"] = ak.load_solids("higashiyama")
     return _cache["C"], _cache["T"], _cache["S"]
+
+
+def solid_by_osm(oid):
+    return solid_of(oid)
 
 
 def solid_of(oid):
@@ -202,8 +226,10 @@ def kiyomizu(K, hidden):
     if "saimon" in built:
         sd = built["saimon"]
         o, f, hu, hv = kk.site(sd["ring"], west)
-        kk.hakkyaku(K, VERMILION, kk.frame(o, f), base_of(sd), frontage=min(2 * hv - 2.2, 9.0), depth=min(2 * hu - 2.2, 5.0),
-                    ridge=KIYOMIZU["saimon"][1], roof="irimoya", ground=ground)
+        depth = min(2 * hu - 2.2, 5.0)
+        g = kk.hakkyaku(K, VERMILION, kk.frame(o, f), base_of(sd), frontage=min(2 * hv - 2.2, 9.0), depth=depth,
+                        ridge=KIYOMIZU["saimon"][1], roof="irimoya", ground=ground)
+        saimon_steps(K, kk.frame(o, f), depth / 2 + 0.7, g["stone"], ground)
         hidden.append(sd["si"])
     if "todoroki" in built:
         sd = built["todoroki"]
@@ -252,7 +278,17 @@ def kiyomizu(K, hidden):
         z0 = base_of(sd)
         h = KIYOMIZU[key][1]
         ov = max(1.6, min(hu, hv) * 0.3)
-        kk.hall(K, M, kk.frame(o, f), z0, hu - ov * 0.6, hv - ov * 0.6, z0 + 0.9, z0 + h * 0.48, z0 + h, roof=roof, ov=ov, ground=ground)
+        k, lift = ROOFS[key]
+        a = hu - ov * 0.6
+        if key == "amidado":
+            # the covered corridor (OSM w1340239544) runs along the hall's front inside its mapped outline,
+            # from the Shaka-do to the Okunoin: the hall stands back behind it, the corridor under a lean-to
+            back, front = -a, CORRIDOR_U - 1.1 - 1.6
+            a = (front - back) / 2
+            o = o + f * (front + back) / 2
+            lean_to(K, BARE, kk.frame(o, f), a + 0.3, CORRIDOR_U + 1.9 - (front + back) / 2, hv - ov * 0.6 + 0.4, z0 + h * 0.4, z0 + 0.0, ground)
+        kk.hall(K, M, kk.frame(o, f), z0, a, hv - ov * 0.6, z0 + 0.9, z0 + h * 0.48, z0 + h, roof=roof, ov=ov, ground=ground,
+                k=k, lift=lift * ov)
         hidden.append(sd["si"])
     if "hondo" in built and "butai" in built:
         hondo(K, ground)
@@ -260,6 +296,9 @@ def kiyomizu(K, hidden):
     if "okunoin" in built:
         okunoin(K, built["okunoin"], ground)
         hidden.append(built["okunoin"]["si"])
+        st = solid_of(OKUNOIN_STAGE)
+        if st:
+            hidden.append(st["si"])
     otowa(K, ground)
 
 
@@ -280,7 +319,7 @@ def hondo(K, ground):
     kk.kakezukuri(K, BARE, P, bm, b1, -wv, wv, zf, ground, every=3.8)
     zt = zf + 5.2
     block(K["timber_dark"], Q, -bh, bh, -wv, wv, zf - 0.6, zf)                   # the floor's edge beam
-    block(K["kiyo_white"], Q, -bh + 0.6, bh - 2.6, -wv + 0.6, wv - 0.6, zf, zt - 0.6)
+    naijin(K, Q, bh, wv, zf, zt)
     for u in np.linspace(-bh, bh, 9):
         for v in (-wv, wv):
             x, y, _ = Q(u, v, 0)
@@ -293,7 +332,10 @@ def hondo(K, ground):
     kk.brackets(K, BARE, Q, bh, wv, zt, zt + 1.0, out=0.9)
     # the great roof: hipped, of hinoki bark, its ridge along the hall
     from japankit import hip_roof
-    hip_roof(K["hiwada"], K["soffit_wood"], kk.across(Q), wv + 0.9, bh + 0.9, zt + 1.0, ridge - 0.5, ov=3.4, k=1.55, ridge_frac=0.62)
+    k, lift = ROOFS["hondo"]
+    corners = hip_roof(K["hondo_hiwada"], K["soffit_wood"], kk.across(Q), wv + 0.9, bh + 0.9, zt + 1.0, ridge - 0.5, ov=3.4, k=k, ridge_frac=0.62,
+                       lift=lift * 3.4)
+    koba(K["hondo_koba"], corners, lift * 3.4)
     block(K["hiwada_ridge"], Q, -0.6, 0.6, -(wv - bh) * 0.62 - 1.2, (wv - bh) * 0.62 + 1.2, ridge - 0.9, ridge + 0.4)
     # the wing corridors forward of the body, either side of the stage, each under its own roof with its gable to the front
     for side in (-1, 1):
@@ -312,13 +354,19 @@ def hondo(K, ground):
             for v in (-Wc + 0.3, Wc - 0.3):
                 x, y, _ = R(u, v, 0)
                 kk.post(K, "timber", x, y, zf, zf + 3.8, 0.26)
-        block(K["kiyo_white"], R, -Uh + 0.3, Uh - 0.3, side * (Wc - 0.5) - 0.12, side * (Wc - 0.5) + 0.12, zf, zf + 3.4)
+        # the outer wall: boards below, a band of white plaster under the eaves; dark behind the posts
+        block(K["timber_dark"], R, -Uh + 0.3, Uh - 0.3, side * (Wc - 0.5) - 0.12, side * (Wc - 0.5) + 0.12, zf, zf + 2.6)
+        block(K["kiyo_white"], R, -Uh + 0.3, Uh - 0.3, side * (Wc - 0.5) - 0.1, side * (Wc - 0.5) + 0.1, zf + 2.6, zf + 3.4)
+        block(K["naijin"], R, -Uh + 0.3, Uh - 0.3, -Wc + 0.6, Wc - 0.8, zf + 3.0, zf + 3.4)      # the ceiling's shadow
         block(K["timber_dark"], R, -Uh - 0.1, Uh + 0.1, -Wc - 0.1, Wc + 0.1, zf + 3.4, zf + 3.8)
-        kk.kirizuma(K, {"roof": "hiwada", "gable": "timber_dark", "soffit": "soffit_wood", "ridge": "hiwada_ridge"},
+        kk.kirizuma(K, {"roof": "hondo_hiwada", "gable": "timber_dark", "soffit": "soffit_wood", "ridge": "hiwada_ridge"},
                     lambda u, v, z, R=R: R(v, u, z), Wc, Uh, zf + 4.1, zf + 7.6, ov_u=1.6, ov_v=1.4)
     # the stage: boards on the lattice, its railing round the three open sides
     zs = st["z"]
-    kk.kakezukuri(K, BARE, P, st["u0"], st["u1"], st["v0"], st["v1"], zs, ground, every=3.2)
+    # eighteen keyaki pillars under the stage itself (the temple's count): six across its front, three
+    # rows deep, about 0.64 m thick (cf. photographs against the 1.8 m railing posts), tied by four tiers
+    # of through-beams
+    kk.kakezukuri(K, BARE, P, st["u0"], st["u1"], st["v0"], st["v1"], zs, ground, bays=(2, 5), r=0.32)
     m = K["hinoki_floor"]
     for k in range(int((st["v1"] - st["v0"]) / 0.3)):
         v = st["v0"] + k * 0.3
@@ -328,31 +376,114 @@ def hondo(K, ground):
     K["timber"].rails(rail, 0.95, post_every=1.8, post=0.14, rail=0.1, rails=2)
 
 
+def saimon_steps(K, P, u_edge, z_top, ground, width=5.4, max_rise=0.2):
+    """The West Gate stands on a stone platform at the top of the slope from the Deva Gate's court; the way
+    (OSM w339551498) climbs 1.5 m more to it than the slope does, by a steep flight of granite steps down
+    its front (west) to where the way meets the court. Records the flight for the game (game_surfaces:
+    one strip, its slope the flight's)."""
+    end = np.array(SAIMON_WAY_FOOT, float)
+    o, f = np.array(P(0, 0, 0)[:2]), np.array(P(1, 0, 0)[:2]) - np.array(P(0, 0, 0)[:2])
+    u_end = max(float((end - o) @ f), u_edge + 1.0)
+    z_end = ground(*P(u_end, 0, 0)[:2])
+    n = max(1, int(math.ceil((z_top - z_end) / max_rise)))
+    rise, tread = (z_top - z_end) / n, (u_end - u_edge) / n
+    for k in range(n):
+        u, z = u_edge + k * tread, z_top - (k + 1) * rise
+        block(K["gate_step"], P, u, u + tread + 0.02, -width / 2, width / 2, min(ground(*P(u + tread, sv * width / 2, 0)[:2]) for sv in (-1, 0, 1)) - 0.5, z)
+    for sv in (-1, 1):       # the flight's side walls, down from the platform
+        block(K["stone"], P, u_edge - 0.05, u_end, sv * (width / 2 + 0.3) - 0.3, sv * (width / 2 + 0.3) + 0.3,
+              min(ground(*P(u_end, sv * width / 2, 0)[:2]), z_end) - 0.5, z_top - 0.05)
+    _cache["saimon_steps"] = {"P": P, "u0": u_edge, "u1": u_end, "z_top": z_top, "z_foot": z_end, "width": width}
+
+
+def lean_to(K, M, P, u0, u1, hv, z_hi, z_ground, ground):
+    """A lean-to roof (庇) of bark from a hall's front wall out over a corridor, on a row of posts at its
+    outer edge: u from u0 (the wall, z_hi) to u1 (the posts), across +-hv."""
+    z_lo = z_hi - 0.22 * (u1 - u0) - 0.4
+    us = np.linspace(u0, u1 + 0.9, 5)
+    zs = [z_hi - (z_hi - z_lo + 0.25) * ((u - u0) / (u1 + 0.9 - u0)) ** 1.25 for u in us]
+    vs = np.linspace(-hv, hv, 6)
+    K[M["roof"]].grid([[P(u, v, z) for v in vs] for u, z in zip(us, zs)])
+    K[M["soffit"]].grid([[P(u, v, z - 0.12) for v in vs[::-1]] for u, z in zip(us, zs)])
+    for v in np.linspace(-hv + 0.3, hv - 0.3, max(2, int(2 * hv / 3.0) + 1)):
+        x, y, _ = P(u1, v, 0)
+        kk.post(K, M["post"], x, y, ground(x, y), z_lo + 0.05, 0.13, M["base"])
+    block(K[M["post"]], P, u1 - 0.12, u1 + 0.12, -hv, hv, z_lo - 0.25, z_lo + 0.05)
+
+
+def naijin(K, Q, bh, wv, zf, zt):
+    """The Main Hall's inside, seen through its lattices and open sides: the outer hall (外陣) and the
+    inner sanctum (内陣) dark, under a coffered ceiling, the gilt shrine (厨子) of the Eleven-headed
+    Thousand-armed Kannon at the back between its attendants' (the image is shown once in 33 years);
+    the outer walls of boards and shitomi lattices with a band of white plaster above, not white walls."""
+    block(K["naijin"], Q, -bh + 0.6, bh - 2.6, -wv + 0.6, wv - 0.6, zf, zt - 0.6)
+    block(K["naijin"], Q, -bh + 0.6, bh - 2.45, -wv + 0.45, wv - 0.45, zt - 1.0, zt - 0.6)       # the ceiling
+    for v in (-wv * 0.35, 0.0, wv * 0.35):                                                    # the three zushi
+        w = 1.3 if v == 0 else 0.9
+        block(K["gold"], Q, -bh + 0.62, -bh + 1.6, v - w, v + w, zf + 0.6, zf + 0.6 + 2.6 * w)
+    for side in (-1, 1):
+        sv = side * (wv - 0.35)
+        for u0, u1 in zip(np.linspace(-bh, bh, 9)[:-1], np.linspace(-bh, bh, 9)[1:]):
+            block(K["lattice"], Q, u0 + 0.32, u1 - 0.32, sv - 0.06, sv + 0.06, zf + 0.25, zt - 1.7)            # shitomi
+            block(K["kiyo_white"], Q, u0 + 0.3, u1 - 0.3, sv - 0.05, sv + 0.05, zt - 1.7, zt - 0.6)           # 小壁
+            block(K["timber_dark"], Q, u0 + 0.3, u1 - 0.3, sv - 0.1, sv + 0.1, zt - 1.85, zt - 1.7)           # 長押
+    block(K["timber_dark"], Q, -bh + 0.35, -bh + 0.6, -wv + 0.4, wv - 0.4, zf, zt - 0.6)                    # the back wall
+
+
+def koba(m, corners, lift, depth=0.55, n=12):
+    """A bark roof's thick cut edge (軒付) round the eaves, following their rise to the corners."""
+    C = [np.asarray(c, float) for c in corners]
+    for i in range(4):
+        a, b = C[i], C[(i + 1) % 4]
+        for j in range(n):
+            s0, s1 = -1 + 2 * j / n, -1 + 2 * (j + 1) / n
+            p0, p1 = a + (b - a) * (s0 + 1) / 2, a + (b - a) * (s1 + 1) / 2
+            z0 = a[2] - lift + lift * abs(s0) ** 3
+            z1 = a[2] - lift + lift * abs(s1) ** 3
+            m.quad((p0[0], p0[1], z0 - depth), (p1[0], p1[1], z1 - depth), (p1[0], p1[1], z1 + 0.05), (p0[0], p0[1], z0 + 0.05))
+
+
 def okunoin(K, sd, ground):
-    """The Inner Hall: a hipped hall of hinoki bark facing the Main Hall, its own small stage out over the
-    slope on keyaki pillars (懸造), from which the Main Hall is seen whole."""
+    """The Inner Hall: a hipped hall of hinoki bark facing the Main Hall, its stage out over the slope on
+    keyaki pillars (懸造), from which the Main Hall is seen whole. The stage runs the hall's whole front,
+    level with the way from the Amida-do: the covered corridor (OSM w1272415075) comes onto it from the
+    north, crosses it and leaves to the south past the hall's corner, so its ends are open, with the
+    railing along the valley side alone."""
     H = hondo_layout()
     toward = np.array(H["c"]) if H else np.array([0.0, 0.0])
     o, f, hu, hv = kk.site(sd["ring"], toward)
     P = kk.frame(o, f)
-    cx, cy = o
-    back = [ground(*P(u, v, 0)[:2]) for u in np.linspace(-hu + 1, 0, 4) for v in np.linspace(-hv + 1, hv - 1, 4)]
-    zf = float(np.percentile(back, 70)) + 0.4
+    # the floor: level with the corridor where it comes onto the stage from the north (the Amida-do's)
+    zf = OKUNOIN_FLOOR
     h = KIYOMIZU["okunoin"][1]
-    body_u1 = hu * 0.25
+    body_u1 = 0.6
     bh = (body_u1 + hu - 1.0) / 2
     bm = (body_u1 - hu + 1.0) / 2
     Q = lambda u, v, z: P(bm + u, v, z)
-    kk.kakezukuri(K, BARE, P, bm - bh, body_u1, -hv + 1.5, hv - 1.5, zf, ground, every=3.4)
-    kk.hall(K, BARE, Q, zf - 0.4, bh - 1.0, hv - 2.0, zf, zf + h * 0.42, zf + h, roof="yosemune", ov=2.4, veranda=False)
-    # the stage, out over the valley toward the Main Hall
-    su0, su1, sv = body_u1, hu + 1.5, min(hv - 2.0, 5.0)
-    kk.kakezukuri(K, BARE, P, su0, su1, -sv, sv, zf - 0.2, ground, every=3.0)
-    for k in range(int(2 * sv / 0.3)):
-        v = -sv + k * 0.3
-        block(K["hinoki_floor"], P, su0, su1, v + 0.012, v + 0.288, zf - 0.32, zf - 0.2)
-    K["timber"].rails([P(su0, -sv, zf - 0.2), P(su1, -sv, zf - 0.2), P(su1, sv, zf - 0.2), P(su0, sv, zf - 0.2)], 0.95, post_every=1.6, post=0.13, rail=0.09)
-    _cache["okunoin"] = {"P": P, "stage_u": (su0, su1), "sv": sv, "z": zf - 0.2, "fwd": f, "o": o}
+    wv = hv - 3.2      # clear of the corridor where it leaves past the hall's south-west corner
+    kk.kakezukuri(K, BARE, P, bm - bh, body_u1, -wv, wv, zf, ground, every=3.4)
+    k, lift = ROOFS["okunoin"]
+    kk.hall(K, BARE, Q, zf - 0.4, bh - 1.0, wv, zf, zf + h * 0.42, zf + h, roof="yosemune", ov=2.4, veranda=False, k=k, lift=lift * 2.4)
+    # the veranda along the hall's whole front, and the stage out from it over the valley toward the Main
+    # Hall, on its own outline (OSM w893859575, a shallow, wide platform); their floor one level
+    zs = zf - 0.2
+    su0, sa = body_u1 + 0.3, hu + 0.05
+    st = solid_by_osm(OKUNOIN_STAGE)
+    if st is not None:
+        r = np.asarray(st["ring"]) - o
+        us, vs = r @ f, r @ left_of(f)
+        sb, (vb0, vb1) = float(us.max()) + 0.2, (float(vs.min()), float(vs.max()))
+    else:
+        sb, (vb0, vb1) = hu + 1.5, (-5.0, 5.0)
+    kk.kakezukuri(K, BARE, P, su0, sa, -hv, hv, zs, ground, every=3.0)
+    kk.kakezukuri(K, BARE, P, sa, sb, vb0, vb1, zs, ground, every=3.0)
+    for k in range(int(2 * hv / 0.3)):
+        v = -hv + k * 0.3
+        u1 = sb if vb0 <= v + 0.15 <= vb1 else sa
+        block(K["hinoki_floor"], P, su0, u1, v + 0.012, v + 0.288, zs - 0.12, zs)
+    rail = lambda pts: K["timber"].rails([P(u, v, zs) for u, v in pts], 0.95, post_every=1.6, post=0.13, rail=0.09)
+    rail([(OKUNOIN_OPEN[0], -hv), (sa, -hv), (sa, vb0), (sb, vb0), (sb, vb1), (sa, vb1), (sa, hv), (OKUNOIN_OPEN[1], hv)])
+    _cache["okunoin"] = {"P": P, "stage_u": (su0, sa), "sv": hv, "z": zs, "fwd": f, "o": o, "stage": (sa, sb, vb0, vb1)}
 
 
 def otowa(K, ground):
@@ -518,7 +649,7 @@ def lanes(K):
 def landmark_meshes(scene):
     mats = {k: dict(v) for k, v in MATERIALS.items()}
     K = ak.Kit("kiyomizu", floodlit={"shu", "kiyo_white", "timber", "keyaki", "gold", "water", "lanes", "lamp_paper"},
-               uv={"hiwada", "kawara", "stone", "setts", "step_stone", "lanes", "hisashi"})
+               uv={"hiwada", "hondo_hiwada", "gate_step", "kawara", "stone", "setts", "step_stone", "lanes", "hisashi"})
     hidden = []
     kiyomizu(K, hidden)
     yasaka(K, hidden)
@@ -580,7 +711,9 @@ def xy(p):
 
 
 def game_surfaces(scene):
-    """The Main Hall's front gallery and its stage, walked as strips (their boards are the mesh)."""
+    """The Main Hall's front gallery and its stage, and the Okunoin's stage, walked as strips (their boards
+    are the mesh)."""
+    landmark_meshes_cache()
     H = hondo_layout()
     if not H:
         return []
@@ -598,13 +731,27 @@ def game_surfaces(scene):
     out.append({"name": "Kiyomizu-dera, the Main Hall's gallery", "type": "strip", "origin": xy(o), "axis": [round(float(-east[0]), 5), round(float(-east[1]), 5)],
                 "half_width": 1.8, "profile": [[0.0, H["zf"]], [round(2 * H["hv"] + 4.0, 2), H["zf"]]], "thickness": 1.0, "mesh": "kiyomizu_hinoki",
                 "label": "the Main Hall"})
+    gs = _cache.get("saimon_steps")
+    if gs:   # up the West Gate's steps and across its platform
+        P3 = gs["P"]
+        o = P3(gs["u1"], 0, 0)
+        ax = np.array(P3(0, 0, 0)[:2]) - np.array(P3(1, 0, 0)[:2])
+        run = gs["u1"] - gs["u0"]
+        out.append({"name": "Kiyomizu-dera, the West Gate's steps 西門", "type": "strip", "origin": xy(o), "axis": [round(float(ax[0]), 5), round(float(ax[1]), 5)],
+                    "half_width": round(gs["width"] / 2, 2), "profile": [[0.0, round(gs["z_foot"], 2)], [round(run, 2), round(gs["z_top"], 2)],
+                                                                         [round(run + 2 * gs["u0"], 2), round(gs["z_top"], 2)]],
+                    "thickness": 1.0, "mesh": "kiyomizu_gate_step", "drape": True, "label": "the West Gate"})
     ok = _cache.get("okunoin")
-    if ok:
+    if ok:   # the veranda along its front, which the corridor crosses, and the stage out from it
         P2, (a, b) = ok["P"], ok["stage_u"]
-        o = P2(a - 2.5, 0, 0)
         f = ok["fwd"]
-        out.append({"name": "Okunoin's stage 奥の院", "type": "strip", "origin": xy(o), "axis": [round(float(f[0]), 5), round(float(f[1]), 5)],
-                    "half_width": round(ok["sv"] - 0.3, 2), "profile": [[0.0, round(ok["z"], 2)], [round(b - a + 2.2, 2), round(ok["z"], 2)]],
+        ax = [round(float(f[0]), 5), round(float(f[1]), 5)]
+        out.append({"name": "Okunoin's veranda 奥の院", "type": "strip", "origin": xy(P2(a, 0, 0)), "axis": ax,
+                    "half_width": round(ok["sv"], 2), "profile": [[0.0, round(ok["z"], 2)], [round(b - a, 2), round(ok["z"], 2)]],
+                    "thickness": 1.0, "mesh": "kiyomizu_hinoki", "label": "the Okunoin"})
+        sa, sb, v0, v1 = ok["stage"]
+        out.append({"name": "Okunoin's stage 奥の院", "type": "strip", "origin": xy(P2(sa - 0.5, (v0 + v1) / 2, 0)), "axis": ax,
+                    "half_width": round((v1 - v0) / 2 - 0.15, 2), "profile": [[0.0, round(ok["z"], 2)], [round(sb - sa + 0.3, 2), round(ok["z"], 2)]],
                     "thickness": 1.0, "mesh": "kiyomizu_hinoki", "label": "the Okunoin"})
     return out
 
@@ -628,8 +775,8 @@ def game_extras(scene):
                                   ["Student", "Crossroad in the Ancient Capital. And in Crimson School Trip, Shinichi and Ran have their photo taken with the stage behind them."]]})
     ok = _cache.get("okunoin")
     if ok:
-        P2, (a, b) = ok["P"], ok["stage_u"]
-        p = P2(b - 1.0, 0, 0)
+        P2, (sa, sb, v0, v1) = ok["P"], ok["stage"]
+        p = P2((sa + sb) / 2, (v0 + v1) / 2, 0)
         spots.append({"id": "okunoin", "name": "Okunoin stage 奥の院", "at": [*xy(p), round(ok["z"], 2)], "verb": "Take the photo",
                       "lines": ["Here is the photo everyone takes: the whole Main Hall on its pillars, the stage hanging over the trees, and the city beyond.",
                                 "Detective Conan fans come for this view: Kiyomizu is in Crossroad in the Ancient Capital (2003), and Shinichi and Ran pose with the stage behind them in Crimson School Trip (2018)."],

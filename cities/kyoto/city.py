@@ -288,6 +288,7 @@ SHISHINDEN = "w554905814"
 GOSHO_KAIRO = ("w554905823", "w554905831")
 GOSHO_SHU_GATES = ("承明門", "日華門", "月華門")
 SHU = dict(BARK, post="shu", lattice="renji")
+BENT_FILL = 0.85   # a building filling less of its rectangle than this has a roof on its own outline (archkit.outline_roof)
 
 
 def temples_and_palaces():
@@ -307,9 +308,12 @@ def temples_and_palaces():
     hidden = []
 
     def bent(sd):
-        """An outline far from its rectangle (a corridor that turns, an L, a ring round a court)."""
+        """An outline far enough from its rectangle that a roof over the rectangle would hang over empty
+        ground (a corridor that turns, an L, a ring round a court, a hall with a wing or a stepped side):
+        under 85% of its rectangle (#185; it was 60%, which left the palaces' winged halls, the Gosho's
+        Otsunegoten and the Empress's, under one box of a roof)."""
         cx, cy, ax, L, W = ak.oriented(sd["ring"])
-        return bool(sd["holes"]) or abs(ak.ring_area(sd["ring"])) < 0.6 * L * W
+        return bool(sd["holes"]) or abs(ak.ring_area(sd["ring"])) < BENT_FILL * L * W
 
     def along_outline(sd, mats):
         """A building drawn on its own outline: a stone footing, white walls, and an outline roof whose eaves

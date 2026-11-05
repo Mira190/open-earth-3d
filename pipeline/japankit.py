@@ -139,20 +139,20 @@ def lathe_at(m, x, y, profile, segs=16):
     m.lathe([(float(z), float(r)) for z, r in profile], (float(x), float(y)), segs)
 
 
-def hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=1.6, rings=6, ridge_frac=0.0):
+def hip_roof(roof, soffit, P, u_half, v_half, z_eave, z_top, ov, k=1.6, rings=6, ridge_frac=0.0, lift=None):
     """A hipped roof with the concave sweep of a temple's (flat at the eaves, steep above), over the
     rectangle u in +-u_half, v in +-v_half, its eaves `ov` out; ridge_frac of the long side stays as a
     ridge (0: a pyramid, as a pagoda's storeys). archkit.japanese_roof draws it. Returns the eave
     outline's corner points."""
     return ak.japanese_roof(P, u_half, v_half, z_eave, z_top, ov, roof, soffit, None, soffit, gable_frac=1.0, k=k,
-                            lift=0.28 * ov, ridge_frac=ridge_frac, ridges=False, n=rings)["corners"]
+                            lift=0.28 * ov if lift is None else lift, ridge_frac=ridge_frac, ridges=False, n=rings)["corners"]
 
 
-def irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=0.55, k=1.5):
+def irimoya(roof, gable, soffit, P, u_half, v_half, z_eave, z_ridge, ov, gable_at=0.55, k=1.5, lift=None):
     """A hip-and-gable roof (irimoya) with its ridge along u: the hipped skirt below gable_at of the
     height, the gables above it (archkit.japanese_roof). Returns {"zr", "Ug", "Ev"}."""
     return ak.japanese_roof(P, u_half, v_half, z_eave, z_ridge, ov, roof, soffit, gable, soffit, gable_frac=gable_at ** (1 / k), k=k,
-                            lift=0.28 * ov, ridges=False)
+                            lift=0.28 * ov if lift is None else lift, ridges=False)
 
 
 # ---------------------------------------------------------------- meshes per material, and the atlas
