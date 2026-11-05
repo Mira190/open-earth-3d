@@ -1174,10 +1174,11 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         // cross, each path seeing the other): after 4 s the one that went in first goes on as if the
         // other weren't there, and the other gives way to it when they touch (below; #144)
         if (front && c.mv && front.mv && front.front === c && c.v < 0.3 && front.v < 0.3) {
+          c.faceAll = c.faceCar === front ? (c.faceAll || 0) + dt : 0;
           c.faceT = c.faceCar === front ? (c.faceT || 0) + dt : 0; c.faceCar = front;
           const cb = canBack(c), fb = canBack(front); // (the one that can't back off goes on, else the one in first)
           if (c.faceT > 4 && (cb !== fb ? fb : c.mvT < front.mvT || (c.mvT === front.mvT && i < C.indexOf(front)))) { c.passBy = front; c.faceT = 0; }
-        } else { c.faceT = 0; c.faceCar = null; }
+        } else { c.faceT = c.faceAll = 0; c.faceCar = null; }
         if (c.passBy && (!c.mv || Math.hypot(c.passBy.x - c.x, c.passBy.y - c.y) > c.half + c.passBy.half + 4)) c.passBy = null;
         // your car and a ride: one parked beside the lane is passed side by side with a hand's width
         // between, or round it: a short swing out towards the kerb, or out over the centre line round
@@ -1492,7 +1493,9 @@ totalEmissiveRadiance += vCol * vEmit * (0.25 + 2.5 * uNight);`);
         c.behindT = behind && !turn ? (c.behindT || 0) + dt : 0;
         const long = c.inHeld > (holder && holder.v >= 0.3 ? 25 : c.mv ? 10 : 15) || (c.mv && c.behindT > 10);
         if (long && !inView(c)) { c.inHeld = c.behindT = 0; respawn(c, cx, cy, radius * 0.6); continue; }
-        const squeeze = long && c.inHeld > 90;
+        // (the one of two nose to nose in a junction that goes on, held by the other 20 s, the queue behind
+        // that one too close for it to back off: it squeezes past then, not after the minute and a half)
+        const squeeze = long && (c.inHeld > 90 || (c.passBy && c.passBy === heldBy0 && c.faceAll > 20));
         if (squeeze) held = false;
         if (!held && (turn || moves)) {
           const d1 = peopleIn(c, tmp.x, tmp.y, hx1, hy1), who = inWho;

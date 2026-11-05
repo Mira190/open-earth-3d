@@ -773,7 +773,8 @@ pipeline writes. The only city-specific code is landmark geometry in
     the car ahead of the other (their ways cross and each path sees the other),
     wait 4 s, and then the one that can't back off (or else the one that went in
     first) goes on as if the other
-    weren't there. A car held more than 10 s by a lamp post or a trunk on its
+    weren't there, and if the other can't back off for the queue behind it, squeezes
+    past it after 20 s. A car held more than 10 s by a lamp post or a trunk on its
     way edges past it (Asakusa had one stand ten minutes in a junction). A car that can't back off because a stopped car is behind it asks
     that one to back off first, so a short queue makes room (each car backs off
     at most 6 s before it has moved on again). Two still held for 15 s (10 s in
