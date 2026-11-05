@@ -1,0 +1,520 @@
+{
+  "id": "higashiyama",
+  "name": "Higashiyama",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "en-JP",
+  "description": "Kyoto's Higashiyama from open data: Kiyomizu-dera and its stage on the hillside, Sannenzaka and Ninenzaka, the Yasaka Pagoda and Kodai-ji, with measured heights from Project PLATEAU on GSI laser terrain.",
+  "bbox": [
+    135.772,
+    34.989,
+    135.792,
+    35.005
+  ],
+  "origin": [
+    135.782,
+    34.997
+  ],
+  "extent_m": [
+    -900,
+    900,
+    -880,
+    880
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P. (Tokyo Peil)",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 18,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "plateau": {
+    "zip": "https://assets.cms.plateau.reearth.io/assets/3c/f912d5-980d-4c10-a037-6a9e87874a4e/26100_kyoto-shi_2022_3dtiles-mvt_1_op.zip",
+    "attribution": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0): building heights measured from aerial survey",
+    "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
+    "roofs": true
+  },
+  "water": {
+    "classes": [],
+    "min_area_m2": 5000,
+    "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
+  },
+  "trees": {
+    "mix": {
+      "zelkova": 0.2,
+      "ginkgo": 0.14,
+      "camphor": 0.12,
+      "cherry": 0.14,
+      "maple": 0.16,
+      "pine": 0.1,
+      "evergreen": 0.14
+    },
+    "woods": {
+      "evergreen": 0.38,
+      "sugi": 0.22,
+      "camphor": 0.1,
+      "maple": 0.06,
+      "pine": 0.1,
+      "zelkova": 0.08,
+      "cherry": 0.06
+    },
+    "note": "Species are not mapped; the mix is a guess from Kyoto's street-tree surveys and the temples' own guides. The streets have zelkovas (keyaki), ginkgos, camphors and cherries; the Higashiyama hillsides are a laurel forest of evergreen oaks and chinquapins (evergreen) with cedars (sugi, standing for hinoki too), black pines and maples. Areas give the precincts known for their own trees a mix of their own: Kiyomizu-dera's thousand maples and fifteen hundred cherries, Maruyama Park's cherries round the Gion weeping cherry, Kodai-ji's maples. Their outlines are OpenStreetMap's (pipeline/tree_areas.py).",
+    "areas": [
+      {
+        "name": "Kiyomizu-dera",
+        "find": "清水寺",
+        "mix": {
+          "maple": 0.42,
+          "cherry": 0.3,
+          "pine": 0.1,
+          "evergreen": 0.18
+        },
+        "woods": {
+          "maple": 0.34,
+          "cherry": 0.16,
+          "evergreen": 0.3,
+          "sugi": 0.12,
+          "pine": 0.08
+        },
+        "note": "About a thousand maples and fifteen hundred cherries round the Stage and down the Nishikigumo valley."
+      },
+      {
+        "name": "Maruyama Park",
+        "find": "円山公園",
+        "mix": {
+          "cherry": 0.6,
+          "maple": 0.15,
+          "pine": 0.1,
+          "zelkova": 0.15
+        },
+        "note": "Kyoto's oldest public park, famous for its cherries round the Gion weeping cherry."
+      },
+      {
+        "name": "Kodai-ji",
+        "find": "高台寺",
+        "mix": {
+          "maple": 0.45,
+          "pine": 0.15,
+          "evergreen": 0.2,
+          "cherry": 0.2
+        }
+      }
+    ],
+    "cherry_open": "03-26"
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "labels": {},
+  "minor_labels": [],
+  "protection": {
+    "title": "No statutory sun rule for public places",
+    "summary": "Kyoto protects its skyline with height limits (a cap of 31 m in the busiest districts) and Japan limits shadows on homes with the Building Standards Act, but neither protects sun on parks. Sun on these places is measured for information, not tested against a rule.",
+    "source_note": "No legal window is transcribed for these places, so each is shown for 10:00-14:00 and none is marked protected.",
+    "reading_note": "Heights come from Project PLATEAU, measured from aerial survey in 2020-2021, so buildings finished since are missing or low.",
+    "default_time_basis": "clock",
+    "tip": "Tip: the hillside puts the lanes in shade early on winter afternoons.",
+    "unprotected_label": "no rule"
+  },
+  "places": [],
+  "place_labels": [],
+  "osm_detail": {
+    "kiyomizu": {
+      "bbox": [
+        135.777,
+        34.9925,
+        135.787,
+        35.0005
+      ],
+      "note": "Kiyomizu-dera, Kiyomizu-zaka, Sannenzaka, Ninenzaka and the Yasaka Pagoda: pipeline/osm_detail.py"
+    }
+  },
+  "architecture_overrides": {
+    "machiya": true,
+    "signage": 0.3
+  },
+  "start": {
+    "date": [
+      11,
+      20
+    ],
+    "time": "15:40",
+    "cam": [
+      -520,
+      -640,
+      420
+    ],
+    "tgt": [
+      120,
+      -120,
+      90
+    ]
+  },
+  "analysis_region": [
+    -800,
+    800,
+    -780,
+    780
+  ],
+  "sun_hours_region": [
+    -880,
+    880,
+    -860,
+    860
+  ],
+  "tour": [
+    {
+      "title": "Higashiyama from open data",
+      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs. The lanes climb 60 m from Yasaka-dori to the gates of Kiyomizu-dera.",
+      "cam": [
+        -520,
+        -640,
+        420
+      ],
+      "tgt": [
+        120,
+        -120,
+        90
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 8
+    },
+    {
+      "title": "Kiyomizu-dera",
+      "text": "The Main Hall's stage hangs nearly 13 m over the valley on a lattice of keyaki pillars, joined without a nail. Rebuilt in 1633; the hall is about 36 m across and 18 m high.",
+      "cam": [
+        350,
+        -300,
+        126
+      ],
+      "tgt": [
+        268,
+        -248,
+        114
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "15:30",
+      "to": "16:30",
+      "hold": 8
+    },
+    {
+      "title": "Sannenzaka and Ninenzaka",
+      "text": "Stone steps and setts between two-storey wooden shops: a district preserved by law since 1976. Noren in the doorways, lanterns at the eaves.",
+      "cam": [
+        -150,
+        -40,
+        110
+      ],
+      "tgt": [
+        -108,
+        60,
+        84
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "16:20",
+      "to": "17:00",
+      "hold": 8
+    },
+    {
+      "title": "The Yasaka Pagoda",
+      "text": "Five storeys and 46 m of bare timber, rebuilt in 1440, at the top of Yasaka-dori.",
+      "cam": [
+        -340,
+        182,
+        68
+      ],
+      "tgt": [
+        -250,
+        173,
+        84
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "16:30",
+      "to": "17:10",
+      "hold": 8
+    }
+  ],
+  "game": {
+    "weather": {
+      "rain_days": [
+        8.1,
+        8.9,
+        11.2,
+        10.6,
+        10.8,
+        13.2,
+        12.6,
+        9.3,
+        11.1,
+        9.4,
+        7.4,
+        8.2
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.5,
+      "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
+    "title": "Higashiyama on Foot",
+    "local_name": "Kyoto local",
+    "greeting": "おこしやす。",
+    "water_name": "the Kamo River",
+    "blurb": "Walk Higashiyama under the real sun: up Yasaka-dori to the pagoda, through the stone lanes of Ninenzaka and Sannenzaka, to the stage of Kiyomizu-dera and the view Conan fans come for.",
+    "smalltalk": [
+      "おこしやす。",
+      "こんにちは。",
+      "おおきに。",
+      "Excuse me!",
+      "お参りどすか?"
+    ],
+    "start": {
+      "at": [
+        -452,
+        188
+      ],
+      "facing": [
+        -251,
+        173
+      ],
+      "time": "live"
+    },
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "higashiyama-pad",
+        "name": "Higashiyama pad (game)",
+        "at": [
+          -640,
+          -130
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 420,
+      "cars": 70,
+      "radius_m": 380,
+      "style": "kyoto"
+    },
+    "npcs": [
+      {
+        "id": "aiko",
+        "name": "Aiko 愛子",
+        "role": "Kimono rental, Yasaka-dori",
+        "at": [
+          -312,
+          166
+        ],
+        "look": {
+          "character": "R_Female_Adult_15_f013",
+          "skin": "#f6dcc4",
+          "hair": "#1c1411",
+          "top": "#7a2f4a",
+          "legs": "#3b2a3a",
+          "shirt": "#7a2f4a",
+          "pants": "#3b2a3a",
+          "clip": "Present"
+        },
+        "idle": [
+          "Half the girls in kimono on these lanes rented them from a shop like mine. The other half are from Kyoto and laugh at us.",
+          "Dusk is the hour: the lanterns come on and the pagoda goes dark against the sky."
+        ]
+      },
+      {
+        "id": "fujii",
+        "name": "Mr. Fujii 藤井",
+        "role": "Kiyomizu-yaki potter, Sannenzaka",
+        "at": [
+          -97,
+          30
+        ],
+        "look": {
+          "character": "R_Male_Adult_03_m008_grey",
+          "skin": "#e8c29f",
+          "hair": "#bdb7ae",
+          "top": "#3a3530",
+          "legs": "#2e2c2a",
+          "shirt": "#3a3530",
+          "pants": "#2e2c2a",
+          "clip": "Work",
+          "acc": [
+            "apron"
+          ]
+        },
+        "idle": [
+          "Kiyomizu-yaki: pottery from these slopes since the 1600s. Chawan-zaka, the Teapot Lane, is named for it.",
+          "Mind your step on Sannenzaka. They say if you fall here you'll be unlucky for three years."
+        ]
+      },
+      {
+        "id": "ryosen",
+        "name": "Ryosen 良仙",
+        "role": "Monk, Kiyomizu-dera",
+        "at": [
+          92,
+          -170
+        ],
+        "look": {
+          "character": "R_Male_Adult_15_m024_dark",
+          "skin": "#e8c29f",
+          "hair": "#e8c29f",
+          "top": "#2a2c30",
+          "legs": "#2a2c30",
+          "shirt": "#2a2c30",
+          "pants": "#2a2c30",
+          "clip": "Idle_Neutral"
+        },
+        "idle": [
+          "The Deva Gate is the temple's red front door. The two guardians: one with his mouth open, one closed. A and Un, the beginning and the end.",
+          "It is {time}. {sun_line}"
+        ]
+      },
+      {
+        "id": "mika",
+        "name": "Mika 美香",
+        "role": "Detective Conan fan on a pilgrimage",
+        "at": [
+          240,
+          -216
+        ],
+        "look": {
+          "character": "R_Female_Adult_12_f013",
+          "skin": "#f6dcc4",
+          "hair": "#1c1411",
+          "top": "#2f4f8f",
+          "legs": "#1f2a44",
+          "shirt": "#2f4f8f",
+          "pants": "#1f2a44",
+          "clip": "Photo",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "真実はいつもひとつ! One truth prevails. I've done Gojo Ohashi and Rokkaku-do already; Kiyomizu is the big one.",
+          "The view I need is from the Okunoin: the whole stage on its pillars, like in the film."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "pagoda",
+        "giver": "aiko",
+        "title": "The pagoda at the top of the street",
+        "stamp": "Yasaka Pagoda",
+        "talk": [
+          "おこしやす, welcome to Higashiyama. That's the Yasaka Pagoda: five storeys, 46 m, rebuilt in 1440. Every photo of Kyoto has it somewhere.",
+          "Before you climb, look at the coloured charms at Koshin-do, just here: Conan fans know them. Then walk up past the pagoda into Ninenzaka and the steps of Sannenzaka. Mr. Fujii keeps a pottery shop on the way. WASD to walk, Shift to run, E to talk."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "koshindo",
+            "text": "See the kukurizaru at Yasaka Koshin-do"
+          },
+          {
+            "type": "talk",
+            "npc": "fujii",
+            "text": "Climb Ninenzaka and Sannenzaka to Mr. Fujii's pottery shop"
+          }
+        ]
+      },
+      {
+        "id": "lanes",
+        "giver": "fujii",
+        "title": "Three years' luck",
+        "stamp": "Sannenzaka",
+        "talk": [
+          "Ah, a visitor. These lanes have been preserved by law since 1976: the stone, the wooden fronts, the lattices, no tall signs.",
+          "Keep going up Kiyomizu-zaka to the red gate. Ryosen will be at the Deva Gate."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "ryosen",
+            "text": "Walk up Kiyomizu-zaka to Ryosen at the Deva Gate"
+          }
+        ]
+      },
+      {
+        "id": "gate",
+        "giver": "ryosen",
+        "title": "The red gate",
+        "stamp": "Kiyomizu-dera",
+        "talk": [
+          "Welcome to Kiyomizu-dera, the Temple of Pure Water. Founded in 778; the halls you see were rebuilt in 1633.",
+          "A young pilgrim was asking for the stage. Go through the gate and past the pagoda; she is by the water basin."
+        ],
+        "steps": [
+          {
+            "type": "talk",
+            "npc": "mika",
+            "text": "Find Mika in the temple precinct"
+          }
+        ]
+      },
+      {
+        "id": "conan",
+        "giver": "mika",
+        "title": "One truth prevails",
+        "stamp": "The Stage",
+        "talk": [
+          "You're going to the stage too? Kiyomizu is in Crossroad in the Ancient Capital, and in Crimson School Trip Shinichi and Ran have their photo taken here.",
+          "Stand on the stage first, then cross to the Okunoin for the photo. The Otowa Falls are below it: drink from one stream, not three."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "butai",
+            "text": "Stand on the Stage of Kiyomizu"
+          },
+          {
+            "type": "spot",
+            "spot": "okunoin",
+            "text": "Take the photo from the Okunoin's stage"
+          },
+          {
+            "type": "spot",
+            "spot": "otowa",
+            "text": "Drink from the Otowa Falls"
+          }
+        ]
+      }
+    ]
+  }
+}

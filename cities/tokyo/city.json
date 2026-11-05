@@ -59,6 +59,69 @@
       }
     ]
   },
+  "bridges": {
+    "note": "Central Tokyo's bridges over the rivers and the Imperial Palace's moats; forms from each bridge's record (Tokyo Metropolitan Government, Chiyoda and Chuo wards).",
+    "widths": {"和田倉橋": 7.5, "皇居正門鉄橋 「二重橋」": 10.0},
+    "forms": {
+      "勝鬨橋": {"form": "kachidoki", "colour": "#8ea8a6", "note": "1940, the bascule between two tied arches"},
+      "築地大橋": {
+        "form": "half_through",
+        "colour": "#eeeeea",
+        "span_m": [50, 145, 50],
+        "rise_m": 22.0,
+        "rail": "painted",
+        "lamps": 6,
+        "note": "2018, a three-span half-through steel arch, white"
+      },
+      "日本橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#b8b0a0",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1911, a granite double arch, bronze lamp standards with kirin"
+      },
+      "常盤橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#b5ae9f",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1926, a two-span arch faced in stone"
+      },
+      "一石橋": {"form": "girder", "colour": "#8c9296", "spans": 2, "note": "2000, two continuous girders"},
+      "江戸橋": {"form": "girder", "colour": "#8c9296", "spans": 3},
+      "神田橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e", "note": "1925, stone and concrete"},
+      "一ツ橋": {"form": "stone_arch", "spans": 1, "stone": "#b4ad9e", "note": "1925, stone and concrete"},
+      "鎌倉橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8", "note": "1929, concrete"},
+      "錦橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8", "note": "1927, a concrete arch"},
+      "竹橋": {"form": "stone_arch", "spans": 1, "stone": "#b9b4a8"},
+      "和田倉橋": {
+        "form": "girder",
+        "colour": "#cfcabd",
+        "spans": 2,
+        "rail": "timber",
+        "lamps": 0,
+        "note": "1953, concrete under a wooden-style railing with bronze giboshi"
+      },
+      "皇居正門石橋": {
+        "form": "stone_arch",
+        "spans": 2,
+        "stone": "#c4bdae",
+        "lamps": 3,
+        "lamp_style": "bronze",
+        "note": "1887, the granite double arch (Meganebashi), bronze candelabra"
+      },
+      "皇居正門鉄橋 「二重橋」": {
+        "form": "girder",
+        "colour": "#26272a",
+        "rail": "painted",
+        "lamps": 2,
+        "lamp_style": "bronze",
+        "note": "1964 steel, to the 1888 iron bridge's design, black"
+      }
+    }
+  },
   "water": {
     "seawall": {
       "stone": "#6b6862",
