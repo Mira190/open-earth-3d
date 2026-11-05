@@ -99,7 +99,7 @@ async function main() {
     const groundTex = heightTexture(d, d.heights);
     const [{ createLight }, { createAlpineTerrain }, { createLakes }] = await Promise.all([import('./alpine/light.js'), import('./alpine/terrain.js'), import('./alpine/lakes.js')]);
     light = createLight(renderer, d, env, atm, groundTex);
-    terrain = createAlpineTerrain(d, env, renderer, light, groundTex);
+    terrain = createAlpineTerrain(d, env, renderer, light, groundTex, () => clockMs());
     lakes = createLakes(d, env, atm, light, groundTex);
     if (q.get('lakes') !== '0') scene.add(lakes.group);
     const { createClouds } = await import('./alpine/clouds.js');
