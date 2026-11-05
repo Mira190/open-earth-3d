@@ -19,8 +19,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 5295013,
-   "game": 8571637
+   "model": 5312985,
+   "game": 8589609
   }
  },
  {
@@ -46,8 +46,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 2892353,
-   "game": 7167105
+   "model": 2892400,
+   "game": 7167149
   },
   "group_meta": {
    "kind": "city",
@@ -124,6 +124,9 @@
   "lat": 35.003,
   "lon": 135.7625,
   "status": "live",
+  "group": "Kyoto",
+  "district": "Central Kyoto",
+  "tagline": "Kyoto Station and Kyoto Tower to the Imperial Palace",
   "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people.",
   "timezone": "Asia/Tokyo",
   "built": true,
@@ -137,14 +140,70 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 13469220,
-   "game": 16472297
+   "model": 16599038,
+   "game": 19602699
   },
   "flyover": {
    "video": "flyover.mp4",
    "webm": "flyover.webm",
    "poster": "flyover.jpg",
    "seconds": 14
+  }
+ },
+ {
+  "id": "higashiyama",
+  "name": "Higashiyama",
+  "native": "\u6771\u5c71",
+  "country": "Japan",
+  "lat": 34.997,
+  "lon": 135.782,
+  "status": "live",
+  "group": "Kyoto",
+  "district": "Higashiyama",
+  "tagline": "Kiyomizu-dera, Sannenzaka, Ninenzaka and the Yasaka Pagoda",
+  "summary": "Kyoto's Higashiyama: Kiyomizu-dera's stage on its keyaki lattice, the stone lanes of Sannenzaka and Ninenzaka with their noren and lanterns, and the Yasaka Pagoda, on PLATEAU's measured heights.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 7090,
+  "extent_km": [
+   1.8,
+   1.8
+  ],
+  "packed": [
+   "buildings"
+  ],
+  "load_bytes": {
+   "model": 4985986,
+   "game": 5533206
+  }
+ },
+ {
+  "id": "fushimi-inari",
+  "name": "Fushimi Inari",
+  "native": "\u4f0f\u898b\u7a32\u8377",
+  "country": "Japan",
+  "lat": 34.966,
+  "lon": 135.777,
+  "status": "live",
+  "group": "Kyoto",
+  "district": "Fushimi Inari",
+  "tagline": "The Romon, the Senbon Torii and Mount Inari",
+  "summary": "Fushimi Inari Taisha: the Romon and the halls, the two tunnels of the Senbon Torii and thousands more torii climbing Mount Inari to Yotsutsuji and the summit, on PLATEAU's measured heights.",
+  "timezone": "Asia/Tokyo",
+  "built": true,
+  "game": true,
+  "buildings": 5331,
+  "extent_km": [
+   2.2,
+   1.3
+  ],
+  "packed": [
+   "buildings"
+  ],
+  "load_bytes": {
+   "model": 2065628,
+   "game": 2501915
   }
  },
  {
@@ -170,8 +229,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 3760093,
-   "game": 7188387
+   "model": 3846250,
+   "game": 7274544
   },
   "flyover": {
    "video": "flyover.mp4",
@@ -776,8 +835,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 8846977,
-   "game": 12404322
+   "model": 8858435,
+   "game": 12415780
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1368,8 +1427,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 7243375,
-   "game": 10105222
+   "model": 7239574,
+   "game": 10101421
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -1960,8 +2019,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4609652,
-   "game": 5705710
+   "model": 4664258,
+   "game": 5760316
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -2552,8 +2611,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 1541940,
-   "game": 2285788
+   "model": 1574470,
+   "game": 2318318
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -3144,8 +3203,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 4426386,
-   "game": 5251567
+   "model": 4464100,
+   "game": 5289281
   },
   "group_meta": {
    "native": "\u6771\u4eac",
@@ -7402,8 +7461,8 @@
    "buildings"
   ],
   "load_bytes": {
-   "model": 13294054,
-   "game": 19570734
+   "model": 15637651,
+   "game": 21914479
   }
  },
  {

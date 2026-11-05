@@ -41,6 +41,7 @@ three.js is y-up, so the viewer draws a local point `(x, y, z)` at
 | Levelled ground | `refresh_terrain.py` | Applies a city's `terrain.level` (ground a bare-earth survey got wrong: glass it saw through, a building it filtered out) to a built `terrain.json`, `game.json` (walking ground, paths, props) and the landmarks in `scene.json` without a rebuild, from the DEM alone (`fetch_tiles.py --only dem`); then `landmarks.py` and `game_extras.py` |
 | Repainted ground | `refresh_ground.py` | Applies a city's `imagery.paint` (land use that draws the wrong ground: a construction site mapped over a paved promenade) to the drawn ground tiles of a city without aerial imagery, without a rebuild; `build_scene.py` draws the same fill in place of the land use |
 | Roofs and facades | `roofs.py`, `typology.py` (called by `build_scene.py`) | Per building: a facade style, storeys, colours. Per pitched solid: a roof mesh (straight skeleton). Also shopfront frontages and rooftop plant. See [BUILDINGS.md](BUILDINGS.md) |
+| Bridges over the water | `bridges.py` (run by `build_scene.py`, `landmarks.py`, `game_data.py`, `game_extras.py`), `refresh_bridges.py` | Every bridge OpenStreetMap maps over a city's rivers, canals and moats that the city's own builder does not draw (Paris's, Amsterdam's, Tsukishima's and Odaiba's do): its deck at the banks' height, in its real form and paint from city.json `bridges` (see [Bridges](#bridges-over-the-water)), in `landmarks.json`, and its deck walkable and drivable in `game.json` surfaces. `refresh_bridges.py` finds them again in a built city from the Overture layers and the game's ground; `tools/bridge_survey.py` lists any bridge still drawn by nothing |
 | Landmarks | `landmarks.py` | `landmarks.json`, from the city's `landmark_meshes` hook, and any images its materials use (`landmark_assets`: a texture atlas of signs and plaques; a sheet of screen keyframes drawn with `adkit.py`); with `landmark_glows`, the light its screens throw on the street, and with `landmark_demolished`, the surveyed buildings pulled down since |
 | Repairs | `osm_parts.py`, `retop.py` | a building's parts and their levels or heights from the OpenStreetMap API, and the built `buildings.json` re-heighted from a city's `retop` hook without a rebuild (Namba Parks, the Tokyo Metropolitan Government Building) |
 | Game | `game_data.py` | `game.json`: walking terrain, water mask, walkable surfaces, paths, wharves, ferry routes, boardwalks, wildlife, flocks and no-go areas, travel points, NPCs and quests, and what the city's `game_extras` hook places from its landmarks (lifts, spots, overheard talk) |
@@ -610,6 +611,21 @@ Each result is re-run on four height-error scenarios drawn from the measured
 errors. The protected times can be read as standard time or clock time; the
 city's `protection.default_time_basis` sets the default.
 
+### What a slow device gives up first
+
+The game's frame rate is measured over four seconds at a time while it is being played. Below 24
+frames a second it sheds one thing per window, the nice-to-haves first (`shed` in
+`web/game/game.js`): the far rain streaks and the splashes (`weather.shed = 1`; the low tier
+starts there), then every drop (`2`: the streets stay wet, the sky grey, the rain audible), then
+the wet street's reflections (`mirror.off`), then pixels, to 85% and then 70% of the tier's. Only
+when nothing is left does it suggest a lower crowd density. The people keep their realistic
+models on every tier: the box-built figures (`OEActors.makePerson`) are a last resort for a
+device that could load none of the people's files, and a single character that fails to load
+(after `web/gltf.js`'s retries) is worn by another loaded one of the same sex instead. The tools
+drive the game under `navigator.webdriver`, where the measurement is off (a software renderer
+would shed everything); `tools/game_check.js` calls `shed` itself to check the order and that no
+one turns into a box.
+
 ## Analyses
 
 All analyses take `--city <id>` and write `cities/<id>/analysis/<name>.json`.
@@ -847,6 +863,43 @@ and planes they replace); the shadow pass a third less.
 Not measured: a real GPU, a phone, WebGPU, Safari or iOS. The frame times
 llvmpipe gives (seconds) say nothing about a device.
 
+## Bridges over the water
+
+Issue 122: the Tokyo maps built before Tsukishima and Odaiba routed their roads over the Sumida and
+the moats on nothing. Now `pipeline/bridges.py` finds every bridge that Overture's infrastructure layer
+(OpenStreetMap, ODbL) maps over the water: an outline, or the centre lines of its carriageways joined by
+name. Where an outline and a line overlap, there is one deck, and an unnamed outline takes its line's
+name. It leaves out three kinds: a bridge the city's own builder draws, an expressway's viaduct
+(OpenStreetMap's layer is an order, not a height), and the names in `skip`. A deck stands at the banks'
+height, at least `deck_min_m` (3.5 m, a Tokyo embankment), and is crowned 2% of its length. Over water
+the model draws as ground (a palace moat whose survey stands higher than its banks, Kyoto's riverbed), it
+clears that ground and ramps down to the banks. Over a ferry's course (game.json `ferries`) the middle of the span rises
+until the city's boats pass under its soffit with someone standing on the upper deck, level across the
+middle, as `web/game/decks.js` lifts the decks it draws; a deck the boats pass under is not a bank to
+them. A deck whose road the data carries up above a bank (Kings Way over the Crown promenade) takes
+`deck_z`.
+
+Each bridge takes its form and paint by name from city.json `bridges.forms`:
+
+| Form | Structure | Examples |
+|---|---|---|
+| `girder` | girder deck on piers | Kototoi-bashi, Sanjo Ohashi (timber rail and giboshi), Wadakura-bashi |
+| `deck_arch` | arches under the deck, spandrel posts | Azuma-bashi, Hijiri-bashi, Princes Bridge |
+| `half_through` | the middle arch rises through the deck, deck arches either side | Komagata-bashi, Tsukiji Ohashi |
+| `through_arch` | tied arches over each span, hangers | Umaya-bashi |
+| `truss` | through Warren truss | the Tobu line's Sumida bridge |
+| `stone_arch` | masonry arches, spandrel walls, stone parapet | Nihonbashi, the Seimon Ishibashi, Mansei-bashi, Shichijo Ohashi |
+| `kachidoki` | Kachidoki Bridge's bascule between two tied arches | |
+| `x` | an X in plan, two decks crossing | Sakura-bashi |
+
+The paint after dark is floodlit in its own colour, as Tokyo lights the Sumida's bridges. The Sumida's
+colours are the Tokyo Metropolitan Government's (隅田川中流部著名橋色彩基本方針, set in 1984 and confirmed in
+2014–15: Azuma-bashi red, Komagata-bashi blue, Umaya-bashi green, no two neighbours alike). The spans
+come from the Tokyo Road Maintenance Corporation (ブリッジサポーター通信 No.11) and each bridge's record. The
+other cities' bridges come from their own records (Kyoto City's 京の橋しるべ, Heritage Victoria). A
+colour that no record gives is read from photographs and is approximate. These are facts and
+measurements, so no licence is needed. No third-party model or texture is used.
+
 ## Download size
 
 Issue 148: what a city costs to download before it can be played. `tools/load_size.js <city>
@@ -901,9 +954,15 @@ does not quantise to integers, re-order, merge or rename anything, so `cars.js` 
 read the same float32 arrays and nodes as before: integers and indices are lossless (a triangle's
 corners may come back rotated, the same triangle wound the same way), floats go through meshopt's
 exponential filter at 16 bits against each component's range (a tenth of a millimetre on a car).
-Each view is decoded again and compared before the file is written. `web/index.html` gives every
-`GLTFLoader` the decoder; the reef's `people.js` sets it on its own. `tools/check.sh` fails on a
-model that is not compressed.
+Each view is decoded again and compared before the file is written. Every page makes its
+`GLTFLoader` from `web/gltf.js` (the city viewer and the game through `web/index.html`'s
+`THREE.GLTFLoader`, the reef's `people.js` and `life/flora.js` by importing it), which sets the
+decoder and tries a failed download again twice (0.8 s, 2.4 s). Where there is no WebAssembly
+(iOS Lockdown Mode, some locked-down browsers) it decodes with meshoptimizer's pure-JavaScript
+reference decoder instead (1.3.0, the encoder's version, MIT, vendored in
+`web/vendor/meshoptimizer/`, loaded only then): slower, but the people, trees and cars are still
+the real models rather than the box-built stand-ins. `tools/check.sh` fails on a model that is
+not compressed.
 
 | Models | Before | After |
 |---|---|---|

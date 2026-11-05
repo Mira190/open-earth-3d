@@ -150,6 +150,21 @@ const npcNight = require('./npc_night');
     }
     return { arrived: t, near, steps, missing, flag: O.done() };
   });
+  // an opening shot at a scramble (#110: Shibuya): you start at its kerb or on its stripes, the walk on, the crowd round you
+  const opening = await p.evaluate(() => {
+    const g = window.__game, pl = g.player, sc = (g.scene.landmarks || {}).scramble;
+    if (!g.opening() || !sc || !sc.lines) return null;
+    const j = g.junctions.J.find(q => q.scramble && Math.hypot(q.x - pl.x, q.y - pl.y) < 80);
+    let kerb = Infinity, on = Infinity;
+    for (const [[ax, ay], [bx, by]] of sc.lines) {
+      kerb = Math.min(kerb, Math.hypot(pl.x - ax, pl.y - ay), Math.hypot(pl.x - bx, pl.y - by));
+      const ex = bx - ax, ey = by - ay, u = Math.max(0, Math.min(1, ((pl.x - ax) * ex + (pl.y - ay) * ey) / (ex * ex + ey * ey)));
+      on = Math.min(on, Math.hypot(pl.x - ax - ex * u, pl.y - ay - ey * u));
+    }
+    return { kerb, on, ph: j ? `${j.ph}${j.st}` : 'none', walkers: g.crowd.P.filter(q => q.line >= 0 && Math.hypot(q.x - pl.x, q.y - pl.y) < 10).length };
+  });
+  if (opening) check((opening.kerb < 3 || opening.on < 2) && opening.ph === '3g' && opening.walkers >= 6,
+    `the game opens at the scramble's kerb (${opening.kerb.toFixed(1)} m from a crosswalk's end, ${opening.on.toFixed(1)} m from its stripes), in its walk (phase ${opening.ph}), ${opening.walkers} walkers within 10 m`);
   check(onboard.arrived < 4.5, `the arrival hands over to the chase camera (${onboard.arrived.toFixed(2)} s after the start; the camera ${onboard.near.toFixed(1)} m from the player's head)`);
   check(onboard.steps.length >= 8 && !onboard.missing.length && onboard.back === onboard.steps.length - 2 && onboard.skipped && onboard.flag && onboard.noTalk,
     `the HUD tour opens the first time, steps through ${onboard.steps.join(', ')}, steps back and skips, and remembers it${onboard.missing.length ? ` (${onboard.missing.join('; ')})` : ''}`);
@@ -473,6 +488,36 @@ const npcNight = require('./npc_night');
     check(c.mode === 'foot' && c.d < 1.0 && Math.abs(c.z - c.to) < 0.35 && c.low > Math.min(c.start, c.from) - 0.3 && c.high < c.to + 0.35,
       `climbs ${c.name}: from ${c.start.toFixed(2)} m to ${c.z.toFixed(2)} m (the top is ${c.to.toFixed(2)} m), ${c.d.toFixed(1)} m from it`);
   }
+
+  // the longest bridge over the water (pipeline/bridges.py, issue 122): walk across its deck from the bank
+  // beyond one end to the bank beyond the other, and keep to the deck's height all the way over the water
+  const cross = await p.evaluate(() => {
+    const g = window.__game, pl = g.player;
+    const S = (g.G.surfaces || []).filter(s => s.mesh === 'bridges_wb_deck' && s.type === 'strip');
+    if (!S.length) return null;
+    const s = S.reduce((a, b) => (b.profile[b.profile.length - 1][0] - b.profile[0][0] > a.profile[a.profile.length - 1][0] - a.profile[0][0] ? b : a));
+    const keep = { x: pl.x, y: pl.y, z: pl.z, h: pl.h, yaw: g.cam.yaw };
+    const [ox, oy] = s.origin, [ax, ay] = s.axis, P = s.profile, u0 = P[0][0] + 1.5, u1 = P[P.length - 1][0] - 1.5;
+    const zAt = u => { for (let i = 1; i < P.length; i++) if (u <= P[i][0]) return P[i - 1][1] + (P[i][1] - P[i - 1][1]) * (u - P[i - 1][0]) / (P[i][0] - P[i - 1][0]); return P[P.length - 1][1]; };
+    const f = g.nav.floorAt(ox + ax * u0, oy + ay * u0, zAt(u0) + 0.5);
+    const r = { name: s.name, len: u1 - u0 };
+    if (!f) return r;
+    Object.assign(pl, { x: ox + ax * u0, y: oy + ay * u0, z: f.z, ground: true, vz: 0, speed: 0 });
+    let worst = 0, over = 0;
+    const tx = ox + ax * u1, ty = oy + ay * u1;
+    // (room for a walker or a fine collision tile laid late under load to hold you up on the far bank)
+    for (let i = 0; i < 3000 && Math.hypot(tx - pl.x, ty - pl.y) > 0.6; i++) {
+      pl.h = g.cam.yaw = Math.atan2(tx - pl.x, ty - pl.y);
+      g.advance(0.05, ['KeyW']);
+      const u = (pl.x - ox) * ax + (pl.y - oy) * ay;
+      if (g.nav.isWater(pl.x, pl.y)) { over++; worst = Math.max(worst, Math.abs(pl.z - zAt(u))); }
+    }
+    Object.assign(r, { d: Math.hypot(tx - pl.x, ty - pl.y), worst, over, mode: pl.mode });
+    Object.assign(pl, { x: keep.x, y: keep.y, z: keep.z, h: keep.h }); g.cam.yaw = keep.yaw; g.advance(0.2);
+    return r;
+  });
+  if (cross) check(cross.d != null && cross.mode === 'foot' && cross.d < 1.5 && cross.worst < 0.4,
+    `walks across ${cross.name} (${cross.len.toFixed(0)} m): ${cross.d == null ? 'no floor at its end' : `${cross.d.toFixed(1)} m from the far end, ${cross.over} steps over the water at most ${cross.worst.toFixed(2)} m off the deck, ${cross.mode}`}`);
 
   // map travel: the map shows the landmarks; a hop to the first lands you on your feet near it,
   // facing it, on ground you can walk; and the run there is the quick one (GAIT.run)
@@ -940,7 +985,10 @@ const npcNight = require('./npc_night');
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
     const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
-    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    if (!sig.length) { // no junction with signals (Higashiyama's lanes): the traffic still has to move
+      g.advance(20);
+      return { junctions: JN.J.length, signals: 0, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+    }
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
     const s1 = A.stats();
@@ -1069,7 +1117,7 @@ const npcNight = require('./npc_night');
       check(lights.crossings > 0 && lights.walkSignals > 0, `the crowd's footways cross at the signals (${lights.crossings} crossings, ${lights.walkSignals} walk signals)`);
       if (lights.walkTurns) check(lights.walkTurns === 2, 'the nearest junction\'s walk signal turns on and off');
     }
-    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
+    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two || 0} cars in a main road's second lane`);
   }
   await shot('junction');
 
@@ -1212,6 +1260,30 @@ const npcNight = require('./npc_night');
   check(gl.paused && gl.note, `a lost context holds the game under a note (paused ${gl.paused}, note ${gl.note})`);
   check(gl.drawn && gl.noteGone && gl.reloads === 0 && gl.after.sd >= 4, `the context restored, the next frame is drawn (in ${(gl.ms / 1000).toFixed(1)} s, luma ${gl.after.mean.toFixed(0)} ± ${gl.after.sd.toFixed(1)})`);
   check(Math.abs(gl.after.mean - gl.before.mean) < 10, `and lit as before (luma ${gl.before.mean.toFixed(1)} before, ${gl.after.mean.toFixed(1)} after)`);
+
+  // a device that can't keep up (game.js shed): it gives up the rain's extras, then every drop, then
+  // the street's reflections, then pixels, in that order, and never the people: the player, the NPCs
+  // and the crowd near them keep their realistic models
+  const shed = await p.evaluate(async () => {
+    const g = window.__game, W = g.weather, frames = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+    if (W) { W.set('rain', { now: true }); g.advance(1); }
+    const seen = [];
+    for (let i = 0; i < 8 && g.shed(); i++) {
+      await frames(2);
+      seen.push({ lvl: g.shedLevel(), w: W ? W.shed : null, near: W ? W.meshes.near.visible : null, far: W ? W.meshes.far.visible : null, mirror: g.mirror && g.mirror.on ? !!g.mirror.off : null, px: g.pxScale() });
+    }
+    const boxes = [g.player, ...g.npcs].filter(n => n.rig && !n.rig.pending && !n.rig.model).length;
+    if (W) W.set('live');
+    return { seen, boxes, people: 1 + g.npcs.length, wet: W ? W.state.wet : 0 };
+  });
+  {
+    const s = shed.seen, at = k => s.findIndex(x => x.lvl === k);
+    const order = s.length >= 2 && s[s.length - 1].px === 0.7 && s.every((x, i) => !i || x.px <= s[i - 1].px)
+      && s.every(x => x.px === 1 || (x.w === null || x.w === 2) && (x.mirror === null || x.mirror));
+    const rainFirst = at(1) < 0 || (s[at(1)].far === false && s[at(1)].near === true && s[at(1)].px === 1);
+    check(order && rainFirst, `a slow device sheds the rain's extras first, then the drops, the reflections and then pixels (${s.map(x => `${x.lvl}:${x.w ?? '-'}/${x.mirror ?? '-'}/${x.px}`).join(' ')})`);
+    check(shed.boxes === 0, `and keeps every person's realistic model (${shed.boxes} of ${shed.people} as simple figures)`);
+  }
 
   check(!logs.some(l => l.startsWith('pageerror')), 'no page errors');
   if (logs.length) console.log(logs.slice(0, 15).join('\n'));

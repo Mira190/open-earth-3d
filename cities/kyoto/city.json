@@ -45,6 +45,50 @@
     "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
     "roofs": true
   },
+  "bridges": {
+    "note": "The Kamo River's bridges, over the riverbed the aerial photograph shows; forms from Kyoto City (京の橋しるべ) and each bridge's record.",
+    "colour": "#8b9296",
+    "forms": {
+      "三条大橋": {
+        "form": "girder",
+        "colour": "#6e6355",
+        "spans": 3,
+        "rail": "timber",
+        "lamps": 0,
+        "note": "1950, steel girders under the hinoki railing and its bronze giboshi"
+      },
+      "四条大橋": {
+        "form": "girder",
+        "colour": "#8f9497",
+        "spans": 3,
+        "rail": "stone",
+        "stone": "#e3e0d8",
+        "note": "1942, a continuous girder, the 1965 white railing"
+      },
+      "五条大橋": {
+        "form": "girder",
+        "colour": "#8f9497",
+        "spans": 3,
+        "rail": "stone",
+        "stone": "#b9b3a6",
+        "note": "1959, granite balustrade with bronze giboshi"
+      },
+      "七条大橋": {
+        "form": "stone_arch",
+        "spans": 5,
+        "stone": "#cfc9bc",
+        "note": "1913, five concrete arches of about 15 m"
+      },
+      "加茂大橋": {
+        "form": "girder",
+        "colour": "#8f9497",
+        "spans": 4,
+        "rail": "stone",
+        "stone": "#c2bcae",
+        "note": "1931, steel Gerber girders under a stone balustrade"
+      }
+    }
+  },
   "water": {
     "classes": [],
     "min_area_m2": 5000,

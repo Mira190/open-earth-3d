@@ -567,7 +567,11 @@ window.OECars = (function () {
     // the nearest place on a road to (x, y), within maxD (and, given z, at about that height),
     // going the way that keeps (x, y) on the kerb side (keep: 1 left, -1 right); { line, s, dir, x, y, z, d } or null
     function place(x, y, maxD = 150, keep = 1, z = null) {
-      const q = net.nearest(x, y, maxD, z, 3.5);
+      // the nearest kerb at your level; or, where that is more than twice as far, one down (or up) a
+      // slope from you (Melbourne's Federation Square is raised above the streets round it); with none
+      // at your level at all, none (a road a level up or down may be no way there)
+      let q = net.nearest(x, y, maxD, z, 3.5);
+      if (q && z != null && q.d > 20) { const sl = net.nearest(x, y, q.d / 2, z, 3.5, 0.1); if (sl) q = sl; }
       if (!q) return null;
       net.at(q.line, q.s, tmp);
       const side = (x - tmp.x) * -tmp.hy + (y - tmp.y) * tmp.hx; // > 0: (x, y) is left of the line's direction
