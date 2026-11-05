@@ -1,0 +1,431 @@
+{
+  "id": "fushimi-inari",
+  "name": "Fushimi Inari",
+  "country": "Japan",
+  "country_code": "JP",
+  "timezone": "Asia/Tokyo",
+  "locale": "en-JP",
+  "description": "Fushimi Inari Taisha from open data: the Romon gate, the main shrine and the Senbon Torii climbing Mount Inari past Yotsutsuji, with measured heights from Project PLATEAU on GSI laser terrain.",
+  "bbox": [
+    135.765,
+    34.96,
+    135.789,
+    34.972
+  ],
+  "origin": [
+    135.777,
+    34.966
+  ],
+  "extent_m": [
+    -1090,
+    1090,
+    -660,
+    660
+  ],
+  "overture_release": "2026-10-21.0",
+  "vertical_datum": "m T.P. (Tokyo Peil)",
+  "year": 2026,
+  "imagery": {
+    "type": "xyz",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg",
+    "zoom": 18,
+    "format": "jpg",
+    "attribution": "Geospatial Information Authority of Japan (GSI) seamless aerial photographs (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "terrain": {
+    "type": "gsi_dem_png",
+    "url": "https://cyberjapandata.gsi.go.jp/xyz/dem5a_png/{z}/{x}/{y}.png",
+    "zoom": 15,
+    "bare_earth": true,
+    "attribution": "GSI DEM5A, 5 m bare earth from airborne laser survey (GSI terms of use, compatible with CC BY 4.0)"
+  },
+  "plateau": {
+    "zip": "https://assets.cms.plateau.reearth.io/assets/3c/f912d5-980d-4c10-a037-6a9e87874a4e/26100_kyoto-shi_2022_3dtiles-mvt_1_op.zip",
+    "attribution": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0): building heights measured from aerial survey",
+    "source": "Project PLATEAU Kyoto City 2022 (MLIT, CC BY 4.0)",
+    "roofs": true
+  },
+  "water": {
+    "classes": [],
+    "min_area_m2": 5000,
+    "note": "Rivers and ponds are left to the aerial photo: the viewer's water plane sits at sea level and Kyoto is 25-80 m above it."
+  },
+  "trees": {
+    "mix": {
+      "zelkova": 0.2,
+      "ginkgo": 0.14,
+      "camphor": 0.16,
+      "cherry": 0.12,
+      "maple": 0.12,
+      "pine": 0.1,
+      "evergreen": 0.16
+    },
+    "woods": {
+      "sugi": 0.42,
+      "evergreen": 0.37,
+      "camphor": 0.08,
+      "maple": 0.03,
+      "pine": 0.05,
+      "zelkova": 0.05
+    },
+    "note": "Species are not mapped; the mix is a guess from Kyoto's street-tree surveys and the shrine's own guide. Mount Inari is a sacred wood of cedars and cypresses (sugi, standing for hinoki too) and evergreen oaks, the torii tunnels running under them; the streets below have zelkovas, ginkgos, camphors and cherries. The shrine's precinct takes a mix of its own, its outline OpenStreetMap's (pipeline/tree_areas.py).",
+    "areas": [
+      {
+        "name": "Fushimi Inari Taisha",
+        "find": "伏見稲荷大社",
+        "mix": {
+          "maple": 0.3,
+          "cherry": 0.14,
+          "sugi": 0.2,
+          "evergreen": 0.24,
+          "camphor": 0.12
+        },
+        "woods": {
+          "sugi": 0.54,
+          "evergreen": 0.36,
+          "maple": 0.04,
+          "camphor": 0.06
+        }
+      }
+    ],
+    "cherry_open": "03-26"
+  },
+  "storey": {
+    "res": [
+      3.0,
+      2.8
+    ],
+    "non": [
+      3.9,
+      0.0
+    ]
+  },
+  "terrain_check": {
+    "type": "gsi_elevation_api",
+    "url": "https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php",
+    "name": "GSI elevation API (1 m laser DEM where flown, otherwise DEM5)"
+  },
+  "labels": {},
+  "minor_labels": [],
+  "protection": {
+    "title": "No statutory sun rule for public places",
+    "summary": "Kyoto protects its skyline with height limits (a cap of 31 m in the busiest districts) and Japan limits shadows on homes with the Building Standards Act, but neither protects sun on parks. Sun on these places is measured for information, not tested against a rule.",
+    "source_note": "No legal window is transcribed for these places, so each is shown for 10:00-14:00 and none is marked protected.",
+    "reading_note": "Heights come from Project PLATEAU, measured from aerial survey in 2020-2021, so buildings finished since are missing or low.",
+    "default_time_basis": "clock",
+    "tip": "Tip: the hillside puts the lanes in shade early on winter afternoons.",
+    "unprotected_label": "no rule"
+  },
+  "places": [],
+  "place_labels": [],
+  "osm_detail": {
+    "inari": {
+      "bbox": [
+        135.77,
+        34.962,
+        135.789,
+        34.9715
+      ],
+      "note": "the shrine, the Senbon Torii and the paths round Mount Inari: pipeline/osm_detail.py"
+    }
+  },
+  "architecture_overrides": {
+    "machiya": true,
+    "signage": 0.3
+  },
+  "start": {
+    "date": [
+      11,
+      20
+    ],
+    "time": "15:40",
+    "cam": [
+      -1100,
+      -500,
+      420
+    ],
+    "tgt": [
+      0,
+      120,
+      80
+    ]
+  },
+  "analysis_region": [
+    -1000,
+    1000,
+    -620,
+    620
+  ],
+  "sun_hours_region": [
+    -1080,
+    1080,
+    -650,
+    650
+  ],
+  "tour": [
+    {
+      "title": "Fushimi Inari from open data",
+      "text": "{buildings} buildings from OpenStreetMap, Overture Maps and Project PLATEAU, on GSI 5 m laser terrain under GSI aerial photographs, and thousands of torii on the paths up Inari-yama, 233 m.",
+      "cam": [
+        -1100,
+        -500,
+        420
+      ],
+      "tgt": [
+        0,
+        120,
+        80
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "15:00",
+      "to": "16:00",
+      "hold": 8
+    },
+    {
+      "title": "The Romon",
+      "text": "Toyotomi Hideyoshi's gate of 1589, about 14 m, vermilion under hinoki bark, with the foxes of Inari before it: one holds a jewel, the other a key.",
+      "cam": [
+        -440,
+        110,
+        50
+      ],
+      "tgt": [
+        -397,
+        125,
+        47
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "15:30",
+      "to": "16:20",
+      "hold": 8
+    },
+    {
+      "title": "Senbon Torii",
+      "text": "Two tunnels of torii side by side, counted on the ground at 382 and 399, each given by a person or a company whose name is on the back.",
+      "cam": [
+        -270,
+        40,
+        70
+      ],
+      "tgt": [
+        -175,
+        70,
+        52
+      ],
+      "date": [
+        11,
+        20
+      ],
+      "from": "16:00",
+      "to": "16:40",
+      "hold": 8
+    }
+  ],
+  "game": {
+    "weather": {
+      "rain_days": [
+        8.1,
+        8.9,
+        11.2,
+        10.6,
+        10.8,
+        13.2,
+        12.6,
+        9.3,
+        11.1,
+        9.4,
+        7.4,
+        8.2
+      ],
+      "threshold_mm": 0.5,
+      "drizzle": 0.5,
+      "source": "Kyoto: Japan Meteorological Agency, 1991-2020 normals, days with at least 0.5 mm"
+    },
+    "title": "Fushimi Inari on Foot",
+    "local_name": "Kyoto local",
+    "greeting": "ようお参り。",
+    "water_name": "the Kamo River",
+    "blurb": "Walk Fushimi Inari under the real sun: from JR Inari station through the Romon, into the tunnels of the Senbon Torii, and up the mountain's path of torii to Yotsutsuji and the view of Kyoto.",
+    "smalltalk": [
+      "こんにちは。",
+      "おおきに。",
+      "ようお参り。",
+      "Excuse me!",
+      "お山に登らはるの?"
+    ],
+    "start": {
+      "at": [
+        -565,
+        20
+      ],
+      "facing": [
+        -397,
+        125
+      ],
+      "time": "live"
+    },
+    "helipads_from_data": false,
+    "helipads": [
+      {
+        "id": "inari-pad",
+        "name": "Inari pad (game)",
+        "at": [
+          -440,
+          80
+        ]
+      }
+    ],
+    "crowd": {
+      "pedestrians": 420,
+      "cars": 60,
+      "radius_m": 380,
+      "style": "kyoto"
+    },
+    "npcs": [
+      {
+        "id": "kenta",
+        "name": "Kenta 健太",
+        "role": "Shrine attendant, at the foot of the Omotesando",
+        "at": [
+          -528,
+          119
+        ],
+        "look": {
+          "character": "R_Male_Adult_09",
+          "skin": "#f0cfb0",
+          "hair": "#1b1613",
+          "top": "#f2f0ea",
+          "legs": "#9a2a24",
+          "shirt": "#f2f0ea",
+          "pants": "#9a2a24",
+          "clip": "Present"
+        },
+        "idle": [
+          "Inari is the kami of rice, and so of business. That's why companies give torii: for a good year.",
+          "There are about thirty thousand Inari shrines in Japan. This is the head one."
+        ]
+      },
+      {
+        "id": "ota",
+        "name": "Mrs. Ota 太田",
+        "role": "Shopkeeper, inari sushi",
+        "at": [
+          -215,
+          112
+        ],
+        "look": {
+          "character": "R_Female_Adult_09_f011_grey",
+          "skin": "#e8c29f",
+          "hair": "#cfcac4",
+          "top": "#6e5a48",
+          "legs": "#4b4f5c",
+          "shirt": "#6e5a48",
+          "pants": "#4b4f5c",
+          "clip": "Work",
+          "acc": [
+            "apron"
+          ]
+        },
+        "idle": [
+          "Inari-zushi: rice in fried tofu. The foxes love fried tofu, they say, so we do too.",
+          "Keep right in the torii. Up on the right, down on the left."
+        ]
+      },
+      {
+        "id": "daichi",
+        "name": "Daichi 大地",
+        "role": "Hiker resting at Yotsutsuji",
+        "at": [
+          394.0,
+          342.0
+        ],
+        "look": {
+          "character": "R_Male_Adult_05_m024",
+          "skin": "#f0cfb0",
+          "hair": "#141010",
+          "top": "#3f6b4a",
+          "legs": "#2b3a4a",
+          "shirt": "#3f6b4a",
+          "pants": "#2b3a4a",
+          "clip": "LookAround",
+          "acc": [
+            "backpack"
+          ]
+        },
+        "idle": [
+          "Most people turn back here. The view is the reward: all of Kyoto to the west.",
+          "Up to the summit and round is another hour. More torii, more foxes, more steps."
+        ]
+      }
+    ],
+    "quests": [
+      {
+        "id": "romon",
+        "giver": "kenta",
+        "title": "The gate of the foxes",
+        "stamp": "Romon",
+        "talk": [
+          "ようお参り, welcome to Fushimi Inari. Straight up the Omotesando is the Romon, given by Toyotomi Hideyoshi in 1589.",
+          "The foxes either side of it are Inari's messengers: a jewel, and the key to the rice store. Go through the gate and past the halls to the Senbon Torii; Mrs. Ota's shop is at the entrance."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "romon",
+            "text": "Walk up the Omotesando to the Romon and its foxes"
+          },
+          {
+            "type": "talk",
+            "npc": "ota",
+            "text": "Find Mrs. Ota at the entrance of the Senbon Torii"
+          }
+        ]
+      },
+      {
+        "id": "senbon",
+        "giver": "ota",
+        "title": "A thousand gates",
+        "stamp": "Senbon Torii",
+        "talk": [
+          "The Senbon Torii: two tunnels, up on the right, down on the left. Someone counted 382 in one and 399 in the other.",
+          "Go on up past the Okusha. Daichi is resting at Yotsutsuji, halfway up; he'll show you the view."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "senbon",
+            "text": "Walk through the Senbon Torii"
+          },
+          {
+            "type": "talk",
+            "npc": "daichi",
+            "text": "Climb the mountain path to Daichi at Yotsutsuji"
+          }
+        ]
+      },
+      {
+        "id": "view",
+        "giver": "daichi",
+        "title": "Kyoto from the mountain",
+        "stamp": "Yotsutsuji",
+        "talk": [
+          "You made it. Look west: the whole city, and Kyoto Tower if you look hard.",
+          "From here the path goes round the summit, 233 m. Or back down through the torii: you'll see the names written on their backs."
+        ],
+        "steps": [
+          {
+            "type": "spot",
+            "spot": "yotsutsuji",
+            "text": "Look out over Kyoto from Yotsutsuji"
+          }
+        ]
+      }
+    ]
+  }
+}

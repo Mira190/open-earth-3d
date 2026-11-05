@@ -72,6 +72,39 @@ ROAD = {"motorway": 22, "trunk": 19, "primary": 14, "secondary": 13, "tertiary":
 PIER_DECK = 2.2
 
 
+def connected_roads(roads, keep_share=0.15):
+    """The road pieces joined to the street network: pieces meet where they share a point (to 0.5 m),
+    and a group of pieces is kept if it is at least keep_share of the largest group's length. A piece
+    of road cut off from the rest (a lane between pedestrian streets, a road clipped at the map's
+    edge) is one no car can reach: a taxi asked to a kerb on it cannot get there (Higashiyama).
+    Returns (kept pieces, how many were dropped)."""
+    parent = {}
+
+    def find(a):
+        while parent.setdefault(a, a) != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    lengths = []
+    for i, r in enumerate(roads):
+        p = r["p"]
+        me = ("r", i)
+        find(me)
+        for k in range(0, len(p), 3):
+            parent[find((round(p[k] / 5), round(p[k + 1] / 5)))] = find(me)   # decimetres to 0.5 m
+        lengths.append(sum(math.hypot(p[k + 3] - p[k], p[k + 4] - p[k + 1]) / 10 for k in range(0, len(p) - 3, 3)))
+    total = {}
+    for i, L in enumerate(lengths):
+        c = find(("r", i))
+        total[c] = total.get(c, 0.0) + L
+    if not total:
+        return roads, 0
+    big = max(total.values())
+    kept = [r for i, r in enumerate(roads) if total[find(("r", i))] >= keep_share * big]
+    return kept, len(roads) - len(kept)
+
+
 def strip_height(surf, x, y):
     """Height of a strip surface at (x, y), or None outside it."""
     ox, oy = surf["origin"]
@@ -230,6 +263,9 @@ def main():
                     v = (r["max_speed_kmh"] or 0) / 3.6 or ROAD[r["class"]]
                     way = road_rules.oneway(r["access_restrictions"], (a + b) / 2)
                     roads.append({"c": r["class"], "v": round(min(v, ROAD[r["class"]] + 3), 1), "p": pts, **({"o": way} if way else {})})
+    roads, n_cut = connected_roads(roads)
+    if n_cut:
+        print(f"roads: {n_cut} pieces cut off from the street network dropped (no car can reach them)")
     # the banned turns (Overture's prohibited_transitions), on the pieces they start from
     n_turns = road_rules.turns(C, con, roads, [LineString(np.array(o["p"], dtype=float).reshape(-1, 3)[:, :2] / 10) for o in roads])
     print(f"paths: {len(foot)} footway pieces, {len(roads)} road pieces, {n_turns} banned turns; {n_tunnel} tunnels dropped, {n_bridge} points on deck surfaces")

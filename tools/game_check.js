@@ -968,7 +968,10 @@ const npcNight = require('./npc_night');
     const g = window.__game, A = g.cars, JN = A.junctions;
     if (!JN) return { none: true };
     const sig = JN.J.filter(j => j.sig && j.mid == null).sort((a, b) => Math.hypot(a.x - g.player.x, a.y - g.player.y) - Math.hypot(b.x - g.player.x, b.y - g.player.y));
-    if (!sig.length) return { junctions: JN.J.length, signals: 0 };
+    if (!sig.length) { // no junction with signals (Higashiyama's lanes): the traffic still has to move
+      g.advance(20);
+      return { junctions: JN.J.length, signals: 0, moving: A.C.filter(c => c.line >= 0 && c.v > 1).length };
+    }
     const j = sig[0], seen = new Set(), s0 = A.stats();
     for (let t = 0; t < 80; t++) { g.advance(1); seen.add(j.ph + j.st); }
     const s1 = A.stats();
@@ -1097,7 +1100,7 @@ const npcNight = require('./npc_night');
       check(lights.crossings > 0 && lights.walkSignals > 0, `the crowd's footways cross at the signals (${lights.crossings} crossings, ${lights.walkSignals} walk signals)`);
       if (lights.walkTurns) check(lights.walkTurns === 2, 'the nearest junction\'s walk signal turns on and off');
     }
-    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two} cars in a main road's second lane`);
+    check(!lights.arrows || lights.arrowHeads > 0, `${lights.arrows || 0} junctions with a turn arrow (${lights.arrowHeads || 0} arrow lanterns), ${lights.bans || 0} banned turns, ${lights.two || 0} cars in a main road's second lane`);
   }
   await shot('junction');
 

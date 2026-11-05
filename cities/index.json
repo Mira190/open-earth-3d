@@ -53,7 +53,36 @@
       "lat": 35.003,
       "lon": 135.7625,
       "status": "live",
+      "group": "Kyoto",
+      "district": "Central Kyoto",
+      "tagline": "Kyoto Station and Kyoto Tower to the Imperial Palace",
       "summary": "Central Kyoto, Kyoto Station to the Imperial Palace: 66,000 buildings with measured heights from Project PLATEAU, GSI laser terrain, and a game: walk the city with Kyoto people."
+    },
+    {
+      "id": "higashiyama",
+      "name": "Higashiyama",
+      "native": "東山",
+      "country": "Japan",
+      "lat": 34.997,
+      "lon": 135.782,
+      "status": "live",
+      "group": "Kyoto",
+      "district": "Higashiyama",
+      "tagline": "Kiyomizu-dera, Sannenzaka, Ninenzaka and the Yasaka Pagoda",
+      "summary": "Kyoto's Higashiyama: Kiyomizu-dera's stage on its keyaki lattice, the stone lanes of Sannenzaka and Ninenzaka with their noren and lanterns, and the Yasaka Pagoda, on PLATEAU's measured heights."
+    },
+    {
+      "id": "fushimi-inari",
+      "name": "Fushimi Inari",
+      "native": "伏見稲荷",
+      "country": "Japan",
+      "lat": 34.966,
+      "lon": 135.777,
+      "status": "live",
+      "group": "Kyoto",
+      "district": "Fushimi Inari",
+      "tagline": "The Romon, the Senbon Torii and Mount Inari",
+      "summary": "Fushimi Inari Taisha: the Romon and the halls, the two tunnels of the Senbon Torii and thousands more torii climbing Mount Inari to Yotsutsuji and the summit, on PLATEAU's measured heights."
     },
     {
       "id": "tokyo",

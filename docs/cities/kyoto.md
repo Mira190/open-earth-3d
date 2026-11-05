@@ -93,6 +93,34 @@ A block with a guessed height in the Shishinden's court is dropped.
 ![The Imperial Palace's south court, its corridors and the Jōmei-mon](../images/kyoto/gosho-south-court.jpg)
 ![Nijo's Ninomaru palace](../images/kyoto/nijo-ninomaru.jpg)
 
+## 3b. Kyoto Station Building
+
+Hiroshi Hara's station building (1997) is drawn in code (`cities/kyoto/city.py`, `kyoto_station`) on
+its PLATEAU footprint, which the renderers leave out. PLATEAU has it as one block 66 m high.
+
+**Published dimensions** (sources in [kyoto-sights.md](kyoto-sights.md#4-kyoto-station-building-京都駅ビル-hiroshi-hara-1997)):
+- The building: 470 m long, 80 m deep and 60 m high.
+- The atrium over the concourse: 147 m long, 29 m deep and 50 m high, roofed with about 4,000 panes
+  of glass on a steel grid.
+- The Grand Staircase: 171 steps rising 35 m.
+- The Skyway: 185 m long, 45 m up.
+
+**The model, west to east along the tracks:**
+- The west block over the Isetan.
+- The roof garden at 45 m.
+- The Grand Staircase, climbing west from the concourse in the atrium's band.
+- The atrium, with its white steel frame and glass roof, and the Skyway along its north side.
+- The east block of the Hotel Granvia, with its glazed triangle facing north.
+
+**Approximate**: where each part starts and ends along the building, the set-backs and the steel's
+3.6 m spacing are read from GSI's aerial photograph and from photographs, not from drawings.
+
+**Changes under way**: JR West's works from 2026 (a new station level west of the north–south passage,
+due in FY2031) are not modelled. The rooftop Sky Garden closes from 27 November 2026.
+
+The other Kyoto maps: [Higashiyama](higashiyama.md) (Kiyomizu-dera, Sannenzaka, Ninenzaka) and
+[Fushimi Inari](fushimi-inari.md).
+
 ## 4. Sun on public places
 
 Kyoto has no statutory sun window for public places. The places listed (Kyoto Gyoen, Kamo
