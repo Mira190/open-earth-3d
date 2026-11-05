@@ -512,6 +512,28 @@ diffuseColor.rgb *= mix(1.0, 0.82 + 0.34 * grain, near * 0.75 * (1.0 - paved * p
   const junctions = OEJunctions.create(roadNet, { signals: G.props.traffic_signals || null, stops: G.props.stop || [], giveWay: G.props.give_way || [], keep: KEEP, lane: OECars.LANE,
     midCrossings: { signals: G.props.crossing_signals, zebra: G.props.crossing_zebra }, // (and the crossings between junctions: signals or zebra stripes)
     scrambles: [((scene.landmarks || {}).scramble || {}).node ? scene.landmarks.scramble : null, ...(G.scrambles || [])].filter(Boolean) }); // (Shibuya's scramble, its crosswalks mapped: every way at once, in a phase of its own)
+  // a main road whose second lane runs into a solid somewhere between its junctions (a tower beside an
+  // expressway's deck, Sydney's Cahill Expressway past one at 33 m, issue 119; the data's lanes are where
+  // the line is, not where the second lane is) has one lane there, so no car waits at the facade for room
+  // in the first
+  { const side = KEEP === 'right' ? -1 : 1, q = {}, RL = roadNet.L;
+    let one = 0;
+    nav.withoutFine(() => { for (let i = 0; i < RL.length; i++) {
+      const l = RL[i];
+      if (junctions.lanesOf(l) < 2 || l.len < 30) continue;
+      const lane = side * (OECars.LANE + junctions.shiftOf(l, 1));
+      let hit = false;
+      for (let s = 12; s <= l.len - 12 && !hit; s += 4) {
+        roadNet.at(i, s, q);
+        const z = (q.deck ? q.z : lineGround(q.x, q.y, q)) ?? q.z;
+        for (const dir of l.ow ? [l.ow] : [1, -1]) {
+          const hx = q.hx * dir, hy = q.hy * dir, x = q.x - hy * lane, y = q.y + hx * lane;
+          if (!nav.room(x, y, z, 0.75, 1.4, !!q.deck)) { hit = true; break; }
+        }
+      }
+      if (hit) { l.lanes = 1; one++; }
+    } });
+    junctions.oneLane = one; }
   junctions.build(world, { style: Object.assign({ country: CITY.country }, G.signals || {}), ground: lineGround, eye: camera });
   // the crowd waits at the kerb for the walk signal where its footways cross a junction's roads
   crowd.crossings = { byLine: junctions.crossings(crowdNet), walk: junctions.walk, call: junctions.call };

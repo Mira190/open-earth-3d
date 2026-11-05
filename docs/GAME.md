@@ -612,7 +612,11 @@ pipeline writes. The only city-specific code is landmark geometry in
       drawn. Road pieces the traffic keeps off, before and after: Osaka 139 to
       15, Tokyo 79 to 6, Hong Kong 47 to 4 (`tools/road_walls.js`); none is left
       with no floor at its height (`tools/deck_gaps.js` lists any, with the decks
-      at each spot and why). In Osaka this is
+      at each spot and why). A main road whose second lane runs into a solid
+      between its junctions (a tower beside an expressway's deck: Sydney's
+      Cahill Expressway passes one at 33 m) has one lane there, so no car waits
+      at the facade for room in the first (game.js; Sydney 11 pieces, Hong Kong
+      17, Tokyo 30, Osaka 42). In Osaka this is
       what joins the city across its rivers: from the start on the Dotonbori,
       every NPC can now be reached on foot.
   - **Everything else on the ground:** passers-by, cars, trees, benches and
